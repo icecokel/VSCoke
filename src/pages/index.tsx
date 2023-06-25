@@ -1,3 +1,3 @@
 export default function Home() {
-  return <div>df</div>;
+  return <div>index</div>;
 }

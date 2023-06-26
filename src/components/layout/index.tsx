@@ -1,4 +1,3 @@
-import { Grid } from "@mui/material";
 import Box from "@mui/material/Box";
 import { ReactNode } from "react";
 
@@ -8,14 +7,10 @@ interface ILayoutProps {
 
 const LayoutContext = ({ children }: ILayoutProps) => {
   return (
-    <Grid container>
-      <Grid item sm={1}>
-        <Box className="gray-900">layout</Box>
-      </Grid>
-      <Grid item sm={11}>
-        {children}
-      </Grid>
-    </Grid>
+    <Box sx={{ display: "flex" }}>
+      <Box className="gray-900 w-3">layout</Box>
+      <Box className="flex-1">{children}</Box>
+    </Box>
   );
 };
 

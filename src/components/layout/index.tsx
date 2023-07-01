@@ -7,20 +7,45 @@ interface ILayoutProps {
   children: ReactNode;
 }
 
-type TMode = "file" | "search";
+const TABS = [
+  {
+    name: "file",
+    icon: (
+      <>
+        <InsertDriveFileOutlinedIcon />
+        <InsertDriveFileOutlinedIcon className="ml-[-20px] mt-[-5px]" />
+      </>
+    ),
+  },
+
+  {
+    name: "search",
+    icon: <SearchOutlinedIcon />,
+  },
+];
+
+type TTab = "file" | "search";
 
 const LayoutContext = ({ children }: ILayoutProps) => {
-  const [mode, setMode] = useState<TMode>("file");
+  const [tab, setTab] = useState<TTab>("file");
+
+  const handleChangeTab: React.MouseEventHandler<HTMLDivElement> = ({ currentTarget: { id } }) => {
+    setTab(id as TTab);
+  };
   return (
     <Box className="flex">
-      <Box className="bg-gray-900 w-12 flex text-gray-100 flex-col items-center gap-2 py-2 h-screen">
-        <Box>
-          <InsertDriveFileOutlinedIcon />
-          <InsertDriveFileOutlinedIcon className="ml-[-20px] mt-[-5px]" />
-        </Box>
-        <Box>
-          <SearchOutlinedIcon />
-        </Box>
+      <Box className="flex h-screen w-12 flex-col items-center gap-2 bg-gray-900 py-2 text-gray-100">
+        {TABS.map(({ name, icon }) => {
+          const className =
+            "flex h-10 w-full items-center justify-center" + tab === name
+              ? "border-l-2 border-l-blue-100"
+              : "border-l-2 border-l-gray-900";
+          return (
+            <Box key={`tab_${name}`} id={name} onClick={handleChangeTab} className={className}>
+              {icon}
+            </Box>
+          );
+        })}
       </Box>
       <Box className="flex-1">{children}</Box>
     </Box>

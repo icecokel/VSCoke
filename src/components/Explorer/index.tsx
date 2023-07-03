@@ -34,6 +34,11 @@ const sample: ITree[] = [
       },
     ],
   },
+  {
+    id: "blog",
+    label: "blog",
+    children: [{ id: "blog", label: "index.html" }],
+  },
 ];
 
 const Explorer = () => {

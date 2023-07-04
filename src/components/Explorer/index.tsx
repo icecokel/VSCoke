@@ -3,6 +3,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import TreeItem from "@mui/lab/TreeItem";
 import TreeView from "@mui/lab/TreeView";
 import Box from "@mui/material/Box";
+import Link from "next/link";
 
 interface ITree {
   id: string;
@@ -15,7 +16,7 @@ const sample: ITree[] = [
   {
     id: "profile",
     label: "profile",
-    children: [{ id: "profile-index", label: "index.html" }],
+    children: [{ id: "profile-index", label: "index.html", path: "/profile" }],
   },
   {
     id: "project",
@@ -61,11 +62,14 @@ const Explorer = () => {
 export default Explorer;
 
 Explorer.item = ({ id, label, path, children }: ITree) => {
+  const url = !children ? path ?? "" : "";
   return (
-    <TreeItem nodeId={id} label={label}>
-      {children?.map((item) => {
-        return <Explorer.item key={`tree_${item.id}`} {...item} />;
-      })}
-    </TreeItem>
+    <Link href={url}>
+      <TreeItem nodeId={id} label={label}>
+        {children?.map((item) => {
+          return <Explorer.item key={`tree_${item.id}`} {...item} />;
+        })}
+      </TreeItem>
+    </Link>
   );
 };

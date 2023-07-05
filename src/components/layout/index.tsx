@@ -1,4 +1,5 @@
 import Explorer from "../Explorer";
+import Search from "../Search";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import Box from "@mui/material/Box";
@@ -48,7 +49,7 @@ const LayoutContext = ({ children }: ILayoutProps) => {
           );
         })}
       </Box>
-      {tab === "file" && <Explorer />}
+      {tab === "file" ? <Explorer /> : <Search />}
       <Box className="flex-1">{children}</Box>
     </Box>
   );

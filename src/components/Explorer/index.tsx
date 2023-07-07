@@ -44,7 +44,7 @@ const sample: ITree[] = [
 
 const Explorer = () => {
   return (
-    <Box className="bg-gray-900  text-gray-100 h-screen min-w-[250px] p-2">
+    <Box className="bg-gray-900  text-gray-100 h-screen min-w-[250px] p-2 border-r-2 border-r-gray-500">
       <TreeView
         aria-label="file system navigator"
         defaultCollapseIcon={<ExpandMoreIcon />}
@@ -65,7 +65,7 @@ Explorer.item = ({ id, label, path, children }: ITree) => {
   const url = !children ? path ?? "" : "";
   return (
     <Link href={url}>
-      <TreeItem nodeId={id} label={label}>
+      <TreeItem nodeId={id} label={label} className="bg-gray-900">
         {children?.map((item) => {
           return <Explorer.item key={`tree_${item.id}`} {...item} />;
         })}

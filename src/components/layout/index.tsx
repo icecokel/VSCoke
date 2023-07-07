@@ -15,7 +15,7 @@ const TABS = [
     icon: (
       <>
         <InsertDriveFileOutlinedIcon />
-        <InsertDriveFileOutlinedIcon className="ml-[-20px] mt-[-5px]" />
+        <InsertDriveFileOutlinedIcon className="ml-[-20px] mt-[-5px] " />
       </>
     ),
   },
@@ -28,7 +28,7 @@ const TABS = [
 
 type TTab = "file" | "search";
 
-const LayoutContext = ({ children }: ILayoutProps) => {
+const Layout = ({ children }: ILayoutProps) => {
   const [tab, setTab] = useState<TTab>("file");
 
   const handleChangeTab: React.MouseEventHandler<HTMLDivElement> = ({ currentTarget: { id } }) => {
@@ -38,14 +38,28 @@ const LayoutContext = ({ children }: ILayoutProps) => {
     <Box className="flex">
       <Box className="flex h-screen w-12 flex-col items-center gap-2 bg-gray-900 py-2 text-gray-100 border-r-2 border-r-gray-500">
         {TABS.map(({ name, icon }) => {
-          const className =
-            "flex h-10 w-full items-center justify-center" + tab === name
-              ? "border-l-2 border-l-blue-100"
-              : "border-l-2 border-l-gray-900";
           return (
-            <Box key={`tab_${name}`} id={name} onClick={handleChangeTab} className={className}>
-              {icon}
-            </Box>
+            <>
+              {tab === name ? (
+                <Box
+                  key={`tab_${name}`}
+                  id={name}
+                  onClick={handleChangeTab}
+                  className="flex h-10 items-center justify-center border-l-2 cursor-pointer w-full border-l-blue-100 bg-gray-900"
+                >
+                  {icon}
+                </Box>
+              ) : (
+                <Box
+                  key={`tab_${name}`}
+                  id={name}
+                  onClick={handleChangeTab}
+                  className="flex h-10 items-center justify-center border-l-2 cursor-pointer w-full border-l-gray-900 bg-gray-900"
+                >
+                  {icon}
+                </Box>
+              )}
+            </>
           );
         })}
       </Box>
@@ -55,4 +69,4 @@ const LayoutContext = ({ children }: ILayoutProps) => {
   );
 };
 
-export default LayoutContext;
+export default Layout;

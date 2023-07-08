@@ -11,13 +11,13 @@ const Search = () => {
     setKeyword(value);
   };
   return (
-    <Box className="bg-gray-900  text-gray-100 h-screen min-w-[250px] p-2">
+    <Box className="h-screen min-w-[250px] bg-gray-900 p-2 text-gray-100 md:min-w-[180px]">
       <Box className="flex items-center">
-        <ArrowForwardIosIcon className="text-sm mr-1" />
+        <ArrowForwardIosIcon className="mr-1 text-sm" />
         <input
           type="text"
           placeholder="Search"
-          className="w-full text-xs py-1 px-2 bg-gray-700 border-gray-300 border-[0.5px] rounded-sm"
+          className="w-full rounded-sm border-[0.5px] border-gray-300 bg-gray-700 px-2 py-1 text-xs"
           value={keyword}
           onKeyDown={handleChangeKeyword}
         />

@@ -44,7 +44,7 @@ const sample: ITree[] = [
 
 const Explorer = () => {
   return (
-    <Box className="bg-gray-900  text-gray-100 h-screen min-w-[250px] p-2 border-r-2 border-r-gray-500">
+    <Box className="h-screen min-w-[250px] border-r-2 border-r-gray-500 bg-gray-900 p-2 text-gray-100 md:min-w-[180px]">
       <TreeView
         aria-label="file system navigator"
         defaultCollapseIcon={<ExpandMoreIcon />}

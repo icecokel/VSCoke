@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 @import url("https://fonts.googleapis.com/css2?family=Bangers&family=Do+Hyeon&family=Noto+Sans+KR:wght@300&display=swap");
 
@@ -13,4 +13,7 @@ body {
   font-family: "Bangers", cursive;
   font-family: "Do Hyeon", sans-serif;
   font-family: "Noto Sans KR", sans-serif;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
 }

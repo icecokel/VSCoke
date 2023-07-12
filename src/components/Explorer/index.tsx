@@ -19,20 +19,17 @@ const sample: ITree[] = [
     children: [{ id: "profile-index", label: "index.html", path: "/profile" }],
   },
   {
-    id: "project",
-    label: "project",
+    id: "projects",
+    label: "projects",
     children: [
-      { id: "next-blog", label: "next-blog", path: "/profile/next-blog" },
-      { id: "next-blog-2", label: "next-blog", path: "/profile/next-blog" },
-      {
-        id: "next-blog-3",
-        label: "next-blog",
-        path: "/profile/next-blog",
-        children: [
-          { id: "next-blog-4", label: "next-blog", path: "/profile/next-blog" },
-          { id: "next-blog-5", label: "next-blog", path: "/profile/next-blog" },
-        ],
+          {
+        id: "VSCoke",
+        label: "VSCoke",
+        path: "/profile/VSCoke",
+
       },
+      { id: "Next-blog", label: "Next-blog", path: "/profile/Next-blog" },
+      { id: "MVC-Spring-Project", label: "MVC-Spring-Project", path: "/profile/MVC-Spring-Project" },
     ],
   },
   {

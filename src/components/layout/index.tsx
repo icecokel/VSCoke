@@ -1,3 +1,5 @@
+"use client";
+
 import Explorer from "../Explorer";
 import Search from "../Search";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";

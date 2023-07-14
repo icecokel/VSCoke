@@ -1,3 +1,5 @@
+"use client";
+
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import TreeItem from "@mui/lab/TreeItem";
@@ -22,14 +24,17 @@ const sample: ITree[] = [
     id: "projects",
     label: "projects",
     children: [
-          {
+      {
         id: "VSCoke",
         label: "VSCoke",
         path: "/profile/VSCoke",
-
       },
       { id: "Next-blog", label: "Next-blog", path: "/profile/Next-blog" },
-      { id: "MVC-Spring-Project", label: "MVC-Spring-Project", path: "/profile/MVC-Spring-Project" },
+      {
+        id: "MVC-Spring-Project",
+        label: "MVC-Spring-Project",
+        path: "/profile/MVC-Spring-Project",
+      },
     ],
   },
   {

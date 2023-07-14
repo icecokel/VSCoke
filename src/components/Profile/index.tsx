@@ -1,3 +1,5 @@
+"use client";
+
 import BookmarkIcon from "@mui/icons-material/Bookmark";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import PanToolAltOutlinedIcon from "@mui/icons-material/PanToolAltOutlined";

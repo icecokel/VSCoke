@@ -13,6 +13,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <title>VSCOKE</title>
+      </head>
       <body>
         <Layout>{children}</Layout>
       </body>

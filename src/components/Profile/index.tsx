@@ -2,12 +2,14 @@
 
 import BookmarkIcon from "@mui/icons-material/Bookmark";
 import GitHubIcon from "@mui/icons-material/GitHub";
+import NavigationIcon from "@mui/icons-material/Navigation";
 import PanToolAltOutlinedIcon from "@mui/icons-material/PanToolAltOutlined";
 import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
+import Fab from "@mui/material/Fab";
 import Grid from "@mui/material/Grid";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
@@ -18,6 +20,7 @@ import Link from "next/link";
  * @returns 이력서 컴포넌트
  */
 const Profile = () => {
+  const handleClickResumePage = () => {};
   return (
     <Box className="flex flex-col gap-10">
       <Box className="flex gap-5">
@@ -133,6 +136,17 @@ const Profile = () => {
             <Typography variant="body2">정보통신학과</Typography>
           </Grid>
         </Grid>
+      </Box>
+
+      <Box className="flex justify-end">
+        <Fab
+          variant="extended"
+          className="bg-yellow-200 text-gray-800 hover:text-blue-100"
+          onClick={handleClickResumePage}
+        >
+          경력 보러가기
+          <NavigationIcon sx={{ mr: 1 }} className="rotate-[90deg]" />
+        </Fab>
       </Box>
     </Box>
   );

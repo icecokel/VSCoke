@@ -20,7 +20,6 @@ import Link from "next/link";
  * @returns 이력서 컴포넌트
  */
 const Profile = () => {
-  const handleClickResumePage = () => {};
   return (
     <Box className="flex flex-col gap-10">
       <Box className="flex gap-5">
@@ -137,17 +136,17 @@ const Profile = () => {
           </Grid>
         </Grid>
       </Box>
-
-      <Box className="flex justify-end">
-        <Fab
-          variant="extended"
-          className="bg-yellow-200 text-gray-800 hover:text-blue-100"
-          onClick={handleClickResumePage}
-        >
-          경력 보러가기
-          <NavigationIcon sx={{ mr: 1 }} className="rotate-[90deg]" />
-        </Fab>
-      </Box>
+      <Link href={"/profile/resume"}>
+        <Box className="flex justify-end">
+          <Fab
+            variant="extended"
+            className="bg-yellow-200 text-gray-800 hover:text-blue-100"
+          >
+            경력 보러가기
+            <NavigationIcon sx={{ mr: 1 }} className="rotate-[90deg]" />
+          </Fab>
+        </Box>
+      </Link>
     </Box>
   );
 };

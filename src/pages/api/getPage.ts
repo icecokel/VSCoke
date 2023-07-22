@@ -14,7 +14,7 @@ export default async function handler(
   } else {
     const response = await notion.pages.retrieve({ page_id: id?.toString() });
 
-    console.log(response.properties);
+    console.log(response);
 
     res.status(200).json({ name: "John Doe" });
   }

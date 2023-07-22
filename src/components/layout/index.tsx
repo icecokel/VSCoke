@@ -70,7 +70,7 @@ const Layout = ({ children }: ILayoutProps) => {
         })}
       </Box>
       {tab === "file" ? <Explorer /> : <Search />}
-      <Container className="min-h-screen flex-1 p-20 text-white md:p-10">
+      <Container className="min-h-screen flex-1  text-white sm:p-1 md:p-5">
         {children}
       </Container>
     </Box>

@@ -1,12 +1,12 @@
 "use client";
 
-import Explorer from "../Explorer";
-import Search from "../Search";
+import Explorer from "./components/Explorer";
+import Search from "./components/Search";
+import { TSidebar } from "@/models/enum/sidebar";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
-import Head from "next/head";
 import { ReactNode, useState } from "react";
 
 interface ILayoutProps {
@@ -30,15 +30,13 @@ const TABS = [
   },
 ];
 
-type TTab = "file" | "search";
-
 const Layout = ({ children }: ILayoutProps) => {
-  const [tab, setTab] = useState<TTab>("file");
+  const [tab, setTab] = useState<TSidebar>("explore");
 
   const handleChangeTab: React.MouseEventHandler<HTMLDivElement> = ({
     currentTarget: { id },
   }) => {
-    setTab(id as TTab);
+    setTab(id as TSidebar);
   };
   return (
     <Box className="flex bg-gray-900">
@@ -60,7 +58,7 @@ const Layout = ({ children }: ILayoutProps) => {
                   key={`tab_${name}`}
                   id={name}
                   onClick={handleChangeTab}
-                  className="flex h-10 w-full cursor-pointer items-center justify-center border-l-2 border-l-gray-900 bg-gray-900"
+                  className="items-ceicenter flex h-10 w-full cursor-pointer justify-center border-l-2 border-l-gray-900 bg-gray-900"
                 >
                   {icon}
                 </Box>
@@ -69,7 +67,7 @@ const Layout = ({ children }: ILayoutProps) => {
           );
         })}
       </Box>
-      {tab === "file" ? <Explorer /> : <Search />}
+      {tab === "explore" ? <Explorer /> : <Search />}
       <Container className="min-h-screen flex-1  text-white sm:p-1 md:p-5">
         {children}
       </Container>

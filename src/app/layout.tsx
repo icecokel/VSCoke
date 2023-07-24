@@ -1,5 +1,5 @@
 import "./globals.css";
-import Layout from "@/components/Layout";
+import Sidebar from "@/components/Layout";
 
 export const metadata = {
   title: "Create Next App",
@@ -17,7 +17,7 @@ export default function RootLayout({
         <title>VSCOKE</title>
       </head>
       <body>
-        <Layout>{children}</Layout>
+        <Sidebar>{children}</Sidebar>
       </body>
     </html>
   );

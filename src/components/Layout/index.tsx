@@ -30,7 +30,7 @@ const TABS = [
   },
 ];
 
-const Layout = ({ children }: ILayoutProps) => {
+const Sidebar = ({ children }: ILayoutProps) => {
   const [tab, setTab] = useState<TSidebar>("explore");
 
   const handleChangeTab: React.MouseEventHandler<HTMLDivElement> = ({
@@ -75,4 +75,4 @@ const Layout = ({ children }: ILayoutProps) => {
   );
 };
 
-export default Layout;
+export default Sidebar;

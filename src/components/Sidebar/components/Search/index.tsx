@@ -1,8 +1,13 @@
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import Box from "@mui/material/Box";
 import { useState } from "react";
+import { twMerge } from "tailwind-merge";
 
-const Search = () => {
+interface ExplorerProps {
+  isShowing: boolean;
+}
+
+const Search = ({ isShowing }: ExplorerProps) => {
   const data = {};
   const [keyword, setKeyword] = useState("");
   const handleChangeKeyword: React.KeyboardEventHandler<HTMLInputElement> = ({
@@ -11,7 +16,12 @@ const Search = () => {
     setKeyword(value);
   };
   return (
-    <Box className="h-screen min-w-[250px] bg-gray-900 p-2 text-gray-100 md:min-w-[180px]">
+    <Box
+      className={twMerge(
+        "hi  h-screen border-r-2 border-r-gray-500 bg-gray-900 p-2 text-gray-100",
+        !isShowing ? "hidden" : "absolute left-12 z-10 w-[250px] xl:block"
+      )}
+    >
       <Box className="flex items-center">
         <ArrowForwardIosIcon className="mr-1 text-sm" />
         <input

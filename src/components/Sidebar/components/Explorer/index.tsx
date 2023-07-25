@@ -6,6 +6,7 @@ import TreeItem from "@mui/lab/TreeItem";
 import TreeView from "@mui/lab/TreeView";
 import Box from "@mui/material/Box";
 import Link from "next/link";
+import { twMerge } from "tailwind-merge";
 
 interface ITree {
   id: string;
@@ -44,9 +45,18 @@ const sample: ITree[] = [
   },
 ];
 
-const Explorer = () => {
+interface ExplorerProps {
+  isShowing: boolean;
+}
+
+const Explorer = ({ isShowing }: ExplorerProps) => {
   return (
-    <Box className="hi hidden h-screen border-r-2 border-r-gray-500 bg-gray-900 p-2 text-gray-100 xl:block xl:w-[250px]">
+    <Box
+      className={twMerge(
+        "hi  h-screen border-r-2 border-r-gray-500 bg-gray-900 p-2 text-gray-100",
+        !isShowing ? "hidden" : "absolute left-12 z-10 w-[250px] xl:block"
+      )}
+    >
       <TreeView
         aria-label="file system navigator"
         defaultCollapseIcon={<ExpandMoreIcon />}

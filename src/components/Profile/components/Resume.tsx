@@ -6,7 +6,6 @@ import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
 import { useState } from "react";
-import useSWR from "swr";
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -33,7 +32,6 @@ function TabPanel(props: TabPanelProps) {
 const Resume = () => {
   const [tabValue, setPage] = useState(1);
 
-  const {} = useSWR("/api/getPage?id=a2e9e58d2f6c4b23ac52d45e7cb17af1");
   const data: IPageProps[] = sampleData;
 
   const info = data.find((row) => row.page === tabValue);
@@ -54,6 +52,7 @@ const Resume = () => {
         {data.map((item) => {
           return (
             <Tab
+              key={item.page}
               label={
                 <Box className="flex items-end gap-1">
                   <Typography variant="h6" fontWeight={700} fontSize={18}>
@@ -71,7 +70,7 @@ const Resume = () => {
       </Tabs>
       {data.map((item) => {
         return (
-          <TabPanel value={item.page} index={tabValue}>
+          <TabPanel value={item.page} index={tabValue} key={item.page}>
             <Resume.page {...item} />
           </TabPanel>
         );

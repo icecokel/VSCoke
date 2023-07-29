@@ -15,40 +15,46 @@ import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 const Resume = () => {
-  const [step, setStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0);
 
   const handleNext = () => {
-    setStep((prevActiveStep) => prevActiveStep + 1);
+    setCurrentStep((prevActiveStep) => prevActiveStep + 1);
   };
 
   const handleBack = () => {
-    setStep((prevActiveStep) => prevActiveStep - 1);
+    setCurrentStep((prevActiveStep) => prevActiveStep - 1);
   };
 
   const handleReset = () => {
-    setStep(0);
+    setCurrentStep(0);
   };
 
   const data: IPageProps[] = sampleData;
 
-  const info = data.find((row) => row.step === step);
+  const info = data.find((row) => row.step === currentStep);
 
   if (!info) return <></>;
   return (
     <Box className="flex">
-      <Stepper activeStep={step} orientation="vertical" className="h-fit">
-        {data.map((step, index) => (
-          <Step key={step.step}>
+      <Stepper
+        activeStep={currentStep}
+        orientation="vertical"
+        className="h-fit"
+      >
+        {data.map((item, index) => (
+          <Step key={item.step}>
             <StepLabel>
               <Typography
                 variant="body1"
                 fontWeight={700}
-                className="text-white"
+                className={twMerge(
+                  currentStep === item.step ? "text-white" : "text-gray-300"
+                )}
                 fontSize={18}
               >
-                {step.corporate}
-                <Typography className="text-gray-300" variant="body2">
-                  {step.periodStart} ~ {step.periodEnd}
+                {item.corporate}
+                <Typography variant="body2">
+                  {item.periodStart} ~ {item.periodEnd}
                 </Typography>
               </Typography>
             </StepLabel>
@@ -58,7 +64,7 @@ const Resume = () => {
                 variant="body2"
                 fontSize={12}
               >
-                {step.description}
+                {item.description}
               </Typography>
               <div className="mt-2 flex items-center gap-2">
                 <Button
@@ -83,7 +89,11 @@ const Resume = () => {
       <Box>
         {data.map((item) => {
           return (
-            <Resume.stepPanel {...item} currentStep={step} key={item.step} />
+            <Resume.stepPanel
+              {...item}
+              currentStep={currentStep}
+              key={item.step}
+            />
           );
         })}
       </Box>

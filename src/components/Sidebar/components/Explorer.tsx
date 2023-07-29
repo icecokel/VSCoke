@@ -5,9 +5,14 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import TreeItem from "@mui/lab/TreeItem";
 import TreeView from "@mui/lab/TreeView";
+import LinearProgress from "@mui/material/LinearProgress";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import useSWRMutation from "swr/mutation";
+import { useState } from "react";
+import useSWR, { preload } from "swr";
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+preload("/api/getPosts", fetcher);
 
 export interface ITree {
   id: string;
@@ -30,10 +35,8 @@ interface ExplorerProps {
 
 const Explorer = ({ isShowing }: ExplorerProps) => {
   const [itemList, setItemList] = useState<ITree[]>(defaultData);
-  const fetcher = (resource: any, init: any) =>
-    fetch(resource, init).then((res) => res.json());
 
-  const { trigger } = useSWRMutation("/api/getPosts", fetcher, {
+  const { isLoading } = useSWR("/api/getPosts", fetcher, {
     onSuccess: (blog) => {
       if (!itemList.some((item) => item.label === blog.label)) {
         setItemList((prev) => [...prev, blog]);
@@ -41,21 +44,22 @@ const Explorer = ({ isShowing }: ExplorerProps) => {
     },
   });
 
-  useEffect(() => {
-    trigger();
-  }, []);
   return (
     <SidebarLayout isShowing={isShowing}>
-      <TreeView
-        aria-label="file system navigator"
-        defaultCollapseIcon={<ExpandMoreIcon />}
-        defaultExpandIcon={<ChevronRightIcon />}
-        sx={{ height: 240, flexGrow: 1, maxWidth: 400, overflowY: "auto" }}
-      >
-        {itemList.map((item) => {
-          return <Explorer.item key={`tree_${item.id}`} {...item} />;
-        })}
-      </TreeView>
+      {isLoading ? (
+        <LinearProgress className="mt-5" />
+      ) : (
+        <TreeView
+          aria-label="file system navigator"
+          defaultCollapseIcon={<ExpandMoreIcon />}
+          defaultExpandIcon={<ChevronRightIcon />}
+          sx={{ height: 240, flexGrow: 1, maxWidth: 400, overflowY: "auto" }}
+        >
+          {itemList.map((item) => {
+            return <Explorer.item key={`tree_${item.id}`} {...item} />;
+          })}
+        </TreeView>
+      )}
     </SidebarLayout>
   );
 };

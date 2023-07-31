@@ -1,3 +1,5 @@
+import Intro from "@/components/Intro";
+
 export default function Home() {
-  return <div>index</div>;
+  return <Intro />;
 }

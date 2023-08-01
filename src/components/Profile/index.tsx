@@ -11,6 +11,7 @@ import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import Fab from "@mui/material/Fab";
 import Grid from "@mui/material/Grid";
+import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
@@ -21,8 +22,8 @@ import Link from "next/link";
  */
 const Profile = () => {
   return (
-    <Box className="flex flex-col gap-10">
-      <Box className="flex gap-5">
+    <Stack flexDirection={"column"} className="gap-10">
+      <Stack flexDirection={"row"} className="gap-5">
         <Avatar
           className="h-[200px] w-[200px] border-4 border-yellow-200"
           src="https://icecokel-blog-dev.s3.ap-northeast-2.amazonaws.com/images/profileImg.jpg"
@@ -49,7 +50,7 @@ const Profile = () => {
             </Tooltip>
           </Alert>
         </Box>
-      </Box>
+      </Stack>
       <Box>
         <Typography variant="h5" fontWeight={600}>
           간단 소개글
@@ -147,7 +148,7 @@ const Profile = () => {
           </Fab>
         </Box>
       </Link>
-    </Box>
+    </Stack>
   );
 };
 

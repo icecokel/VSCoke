@@ -22,8 +22,8 @@ import Link from "next/link";
  */
 const Profile = () => {
   return (
-    <Stack flexDirection={"column"} className="gap-10">
-      <Stack flexDirection={"row"} className="gap-5">
+    <Stack flexDirection={"column"} gap={5}>
+      <Stack flexDirection={"row"} gap={3}>
         <Avatar
           className="h-[200px] w-[200px] border-4 border-yellow-200"
           src="https://icecokel-blog-dev.s3.ap-northeast-2.amazonaws.com/images/profileImg.jpg"
@@ -77,16 +77,24 @@ const Profile = () => {
         </Typography>
         <Divider className="my-5 border-white" />
         <Link href={"https://github.com/icecokel"} target="_blank">
-          <Box className="mb-4 flex gap-4 hover:text-yellow-200">
+          <Stack
+            flexDirection={"row"}
+            gap={2}
+            className="mb-4 hover:text-yellow-200"
+          >
             <GitHubIcon />
             https://github.com/icecokel
-          </Box>
+          </Stack>
         </Link>
         <Link href={"https://icecokel.tistory.com"} target="_blank">
-          <Box className="mb-4 flex gap-4 hover:text-yellow-200">
+          <Stack
+            flexDirection={"row"}
+            gap={2}
+            className="mb-4 hover:text-yellow-200"
+          >
             <BookmarkIcon />
             https://icecokel.tistory.com
-          </Box>
+          </Stack>
         </Link>
       </Box>
       <Box>

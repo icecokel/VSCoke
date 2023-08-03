@@ -6,6 +6,7 @@ import SouthIcon from "@mui/icons-material/South";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import Stack from "@mui/material/Stack";
 import Step from "@mui/material/Step";
 import StepContent from "@mui/material/StepContent";
 import StepLabel from "@mui/material/StepLabel";
@@ -35,7 +36,7 @@ const Resume = () => {
 
   if (!info) return <></>;
   return (
-    <Box className="flex">
+    <Stack flexDirection={"row"}>
       <Stepper
         activeStep={currentStep}
         orientation="vertical"
@@ -66,7 +67,12 @@ const Resume = () => {
               >
                 {item.description}
               </Typography>
-              <div className="mt-2 flex items-center gap-2">
+              <Stack
+                flexDirection={"row"}
+                alignItems={"center"}
+                gap={1}
+                className="mt-2"
+              >
                 <Button
                   disabled={index === 0}
                   onClick={handleBack}
@@ -81,7 +87,7 @@ const Resume = () => {
                 >
                   {index + 1 !== data.length ? <SouthIcon /> : <RefreshIcon />}
                 </Button>
-              </div>
+              </Stack>
             </StepContent>
           </Step>
         ))}
@@ -97,7 +103,7 @@ const Resume = () => {
           );
         })}
       </Box>
-    </Box>
+    </Stack>
   );
 };
 
@@ -132,14 +138,14 @@ Resume.stepPanel = ({ items, currentStep: index, step }: IPageProps) => {
               ({ title, periodStart, periodEnd: PeriodEnd, jobs, skiils }) => {
                 return (
                   <li key={title}>
-                    <Box className="flex items-end gap-2">
+                    <Stack flexDirection={"row"} alignItems={"end"} gap={1}>
                       <Typography variant="h6" fontWeight={700}>
                         {title}
                       </Typography>
                       <Typography className="text-gray-300" variant="body2">
                         {periodStart} ~ {PeriodEnd}
                       </Typography>
-                    </Box>
+                    </Stack>
                     <Typography
                       variant="body1"
                       fontWeight={600}

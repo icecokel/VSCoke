@@ -2,7 +2,7 @@
 
 import SidebarLayout from "./SidebarLayout";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
 import { useState } from "react";
 
 interface ExplorerProps {
@@ -19,7 +19,7 @@ const Search = ({ isShowing }: ExplorerProps) => {
   };
   return (
     <SidebarLayout isShowing={isShowing}>
-      <Box className="flex items-center">
+      <Stack flexDirection={"row"} alignItems={"center"}>
         <ArrowForwardIosIcon className="mr-1 text-sm" />
         <input
           type="text"
@@ -28,7 +28,7 @@ const Search = ({ isShowing }: ExplorerProps) => {
           defaultValue={keyword}
           onKeyDown={handleChangeKeyword}
         />
-      </Box>
+      </Stack>
     </SidebarLayout>
   );
 };

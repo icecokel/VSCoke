@@ -7,6 +7,7 @@ import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutl
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
+import Stack from "@mui/material/Stack";
 import { ReactNode, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
@@ -35,8 +36,13 @@ const Sidebar = ({ children }: ILayoutProps) => {
     setTab(value === tab ? "none" : (value as TSidebar));
   };
   return (
-    <Box className="flex bg-gray-900">
-      <Box className="z-50 flex min-h-screen w-12 flex-col items-center gap-2 border-r-2 border-r-gray-500 bg-gray-900 py-2 text-gray-100">
+    <Stack flexDirection={"row"} className=" bg-gray-900">
+      <Stack
+        flexDirection={"column"}
+        gap={1}
+        alignItems={"center"}
+        className="z-50 min-h-screen w-12 border-r-2 border-r-gray-500 bg-gray-900 py-2 text-gray-100"
+      >
         {TABS.map(({ name, icon }) => {
           return (
             <label
@@ -57,13 +63,13 @@ const Sidebar = ({ children }: ILayoutProps) => {
             </label>
           );
         })}
-      </Box>
+      </Stack>
       <Explorer isShowing={tab === "explore"} />
       <Search isShowing={tab === "search"} />
       <Container className="min-h-screen flex-1  text-white sm:p-1 md:p-5">
         {children}
       </Container>
-    </Box>
+    </Stack>
   );
 };
 

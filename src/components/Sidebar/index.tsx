@@ -2,10 +2,10 @@
 
 import Explorer from "./components/Explorer";
 import Search from "./components/Search";
+import useClickOutSide from "@/hooks/useClickOutSide";
 import { TSidebar } from "@/models/enum/sidebar";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
-import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import { ReactNode, useState } from "react";
@@ -29,12 +29,17 @@ const TABS = [
 
 const Sidebar = ({ children }: ILayoutProps) => {
   const [tab, setTab] = useState<TSidebar | "none">("none");
+  const handleClickOutside = () => {
+    setTab("none");
+  };
+  const tabRef = useClickOutSide(handleClickOutside);
 
   const handleChangeTab: React.MouseEventHandler<HTMLInputElement> = ({
     currentTarget: { value },
   }) => {
     setTab(value === tab ? "none" : (value as TSidebar));
   };
+
   return (
     <Stack flexDirection={"row"} className=" bg-gray-900">
       <Stack
@@ -64,8 +69,10 @@ const Sidebar = ({ children }: ILayoutProps) => {
           );
         })}
       </Stack>
-      <Explorer isShowing={tab === "explore"} />
-      <Search isShowing={tab === "search"} />
+      <div ref={tabRef}>
+        <Explorer isShowing={tab === "explore"} />
+        <Search isShowing={tab === "search"} />
+      </div>
       <Container className="min-h-screen flex-1  text-white sm:p-1 md:p-5">
         {children}
       </Container>

@@ -15,6 +15,7 @@ import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
+import { ReactNode } from "react";
 
 /**
  * 이력서 페이지
@@ -22,17 +23,17 @@ import Link from "next/link";
  */
 const Profile = () => {
   return (
-    <Stack flexDirection={"column"} gap={5}>
-      <Stack flexDirection={"row"} gap={3}>
+    <Stack flexDirection={"column"} gap={{ sm: 1, md: 5 }}>
+      <Stack flexDirection={"row"} gap={{ sm: 1, md: 3 }}>
         <Avatar
           className="h-[200px] w-[200px] border-4 border-yellow-200"
           src="https://icecokel-blog-dev.s3.ap-northeast-2.amazonaws.com/images/profileImg.jpg"
         />
-        <Box>
+        <Box className="">
           <Typography variant="h4" fontWeight={600}>
             코딩만 하지 않는 개발자 이상민입니다.
           </Typography>
-          <Alert severity="info" icon={false} className="mt-5">
+          <Alert severity="info" icon={false} className="mt-5 w-fit sm:w-2/3 ">
             <Typography variant="body1" className="mb-3" fontWeight={700}>
               이상민
             </Typography>
@@ -51,11 +52,7 @@ const Profile = () => {
           </Alert>
         </Box>
       </Stack>
-      <Box>
-        <Typography variant="h5" fontWeight={600}>
-          간단 소개글
-        </Typography>
-        <Divider className="my-5 border-white" />
+      <Profile.item title="간단 소개글">
         <Typography>
           안녕하세요.
           <br />
@@ -70,12 +67,8 @@ const Profile = () => {
           주로 신규 프로젝트 시 구축 설계 등을 진행하고 있으며, 기존 프로젝트를
           진행하면 성능 개선 및 리팩토링을 주로 하고 있습니다. 경력
         </Typography>
-      </Box>
-      <Box>
-        <Typography variant="h5" fontWeight={600}>
-          링크
-        </Typography>
-        <Divider className="my-5 border-white" />
+      </Profile.item>
+      <Profile.item title="링크">
         <Link href={"https://github.com/icecokel"} target="_blank">
           <Stack
             flexDirection={"row"}
@@ -96,12 +89,8 @@ const Profile = () => {
             https://icecokel.tistory.com
           </Stack>
         </Link>
-      </Box>
-      <Box>
-        <Typography variant="h5" fontWeight={600}>
-          스킬
-        </Typography>
-        <Divider className="my-5 border-white" />
+      </Profile.item>
+      <Profile.item title="스킬">
         <Box>
           {SKILLS.map((item, index) => (
             <Chip
@@ -113,12 +102,9 @@ const Profile = () => {
             />
           ))}
         </Box>
-      </Box>
-      <Box>
-        <Typography variant="h5" fontWeight={600}>
-          학력 / 교육
-        </Typography>
-        <Divider className="my-5 border-white" />
+      </Profile.item>
+
+      <Profile.item title="학력 / 교육">
         <Grid container className="mb-5">
           <Grid item xs={3}>
             2019.08 - 2020.03
@@ -144,7 +130,7 @@ const Profile = () => {
             <Typography variant="body2">정보통신학과</Typography>
           </Grid>
         </Grid>
-      </Box>
+      </Profile.item>
       <Link href={"/profile/resume"}>
         <Box className="flex justify-end">
           <Fab
@@ -161,6 +147,23 @@ const Profile = () => {
 };
 
 export default Profile;
+
+interface IItemProps {
+  title: string;
+  children: ReactNode;
+}
+
+Profile.item = ({ title, children }: IItemProps) => {
+  return (
+    <Box className="mt-10">
+      <Typography variant="h5" fontWeight={600}>
+        {title}
+      </Typography>
+      <Divider className="my-5 border-white" />
+      <Box>{children}</Box>
+    </Box>
+  );
+};
 
 const SKILLS = [
   "React",

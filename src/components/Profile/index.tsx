@@ -23,17 +23,22 @@ import { ReactNode } from "react";
  */
 const Profile = () => {
   return (
-    <Stack flexDirection={"column"} gap={{ sm: 1, md: 5 }}>
-      <Stack flexDirection={"row"} gap={{ sm: 1, md: 3 }}>
+    <Stack flexDirection={"column"} gap={{ sm: 1, md: 5 }} className="p-3">
+      <Stack
+        flexDirection={{ sm: "column", md: "row" }}
+        gap={{ sm: 1, md: 3 }}
+        alignItems={{ xs: "center", md: "flex-start" }}
+      >
         <Avatar
-          className="h-[200px] w-[200px] border-4 border-yellow-200"
+          className="h-[180px] w-[180px] border-4 border-yellow-200 md:h-[200px] md:w-[200px] "
           src="https://icecokel-blog-dev.s3.ap-northeast-2.amazonaws.com/images/profileImg.jpg"
         />
-        <Box className="">
-          <Typography variant="h4" fontWeight={600}>
-            코딩만 하지 않는 개발자 이상민입니다.
+        <Box className="ml-5 sm:mt-5">
+          <Typography variant="h4" fontWeight={600} className="text-center">
+            코딩만 하지 않는 <br className="md:hidden" />
+            개발자 이상민입니다.
           </Typography>
-          <Alert severity="info" icon={false} className="mt-5 w-fit sm:w-2/3 ">
+          <Alert severity="info" icon={false} className="mt-5 w-full max-w-sm">
             <Typography variant="body1" className="mb-3" fontWeight={700}>
               이상민
             </Typography>

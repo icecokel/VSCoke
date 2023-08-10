@@ -34,4 +34,24 @@ export const theme = createTheme({
       },
     },
   },
+  breakpoints: {
+    values: {
+      xs: 360,
+      sm: 640,
+      md: 900,
+      lg: 1200,
+      xl: 1440,
+    },
+  },
+  typography: {
+    h4: {
+      fontWeight: 700,
+    },
+    h5: {
+      fontWeight: 700,
+    },
+    h6: {
+      fontWeight: 700,
+    },
+  },
 });

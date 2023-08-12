@@ -23,9 +23,9 @@ import Link from "next/link";
  */
 const Profile = () => {
   return (
-    <Stack flexDirection={"column"} gap={{ sm: 1, md: 5 }} className="p-3">
+    <Stack direction={"column"} gap={{ sm: 1, md: 5 }} className="p-3">
       <Stack
-        flexDirection={{ sm: "column", md: "row" }}
+        direction={{ sm: "column", md: "row" }}
         gap={{ sm: 1, md: 3 }}
         alignItems={{ xs: "center", md: "flex-start" }}
       >
@@ -73,13 +73,13 @@ const Profile = () => {
         </Typography>
       </Profile.item>
       <Profile.item title="링크">
-        <Stack flexDirection={"row"} gap={2} className="mb-4 w-fit hover:text-yellow-200">
+        <Stack direction={"row"} gap={2} className="mb-4 w-fit hover:text-yellow-200">
           <GitHubIcon />
           <Link href={"https://github.com/icecokel"} target="_blank">
             https://github.com/icecokel
           </Link>
         </Stack>
-        <Stack flexDirection={"row"} gap={2} className="mb-4 w-fit hover:text-yellow-200">
+        <Stack direction={"row"} gap={2} className="mb-4 w-fit hover:text-yellow-200">
           <BookmarkIcon />
           <Link href={"https://icecokel.tistory.com"} target="_blank">
             https://icecokel.tistory.com
@@ -101,7 +101,7 @@ const Profile = () => {
       </Profile.item>
 
       <Profile.item title="학력 / 교육">
-        <Stack flexDirection={"row"}></Stack>
+        <Stack direction={"row"}></Stack>
         <Grid container className="mb-5">
           <Grid item xs={3}>
             2019.08 - 2020.03

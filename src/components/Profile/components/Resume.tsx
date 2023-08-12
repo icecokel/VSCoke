@@ -19,11 +19,11 @@ const Resume = () => {
   const [currentStep, setCurrentStep] = useState(0);
 
   const handleNext = () => {
-    setCurrentStep((prevActiveStep) => prevActiveStep + 1);
+    setCurrentStep(prevActiveStep => prevActiveStep + 1);
   };
 
   const handleBack = () => {
-    setCurrentStep((prevActiveStep) => prevActiveStep - 1);
+    setCurrentStep(prevActiveStep => prevActiveStep - 1);
   };
 
   const handleReset = () => {
@@ -32,25 +32,19 @@ const Resume = () => {
 
   const data: IPageProps[] = sampleData;
 
-  const info = data.find((row) => row.step === currentStep);
+  const info = data.find(row => row.step === currentStep);
 
   if (!info) return <></>;
   return (
-    <Stack flexDirection={"row"}>
-      <Stepper
-        activeStep={currentStep}
-        orientation="vertical"
-        className="h-fit"
-      >
+    <Stack direction={"row"}>
+      <Stepper activeStep={currentStep} orientation="vertical" className="h-fit">
         {data.map((item, index) => (
           <Step key={item.step}>
             <StepLabel>
               <Typography
                 variant="body1"
                 fontWeight={700}
-                className={twMerge(
-                  currentStep === item.step ? "text-white" : "text-gray-300"
-                )}
+                className={twMerge(currentStep === item.step ? "text-white" : "text-gray-300")}
                 fontSize={18}
               >
                 {item.corporate}
@@ -60,19 +54,10 @@ const Resume = () => {
               </Typography>
             </StepLabel>
             <StepContent>
-              <Typography
-                className="max-w-[10em] text-gray-100"
-                variant="body2"
-                fontSize={12}
-              >
+              <Typography className="max-w-[10em] text-gray-100" variant="body2" fontSize={12}>
                 {item.description}
               </Typography>
-              <Stack
-                flexDirection={"row"}
-                alignItems={"center"}
-                gap={1}
-                className="mt-2"
-              >
+              <Stack direction={"row"} alignItems={"center"} gap={1} className="mt-2">
                 <Button
                   disabled={index === 0}
                   onClick={handleBack}
@@ -93,14 +78,8 @@ const Resume = () => {
         ))}
       </Stepper>
       <Box>
-        {data.map((item) => {
-          return (
-            <Resume.stepPanel
-              {...item}
-              currentStep={currentStep}
-              key={item.step}
-            />
-          );
+        {data.map(item => {
+          return <Resume.stepPanel {...item} currentStep={currentStep} key={item.step} />;
         })}
       </Box>
     </Stack>
@@ -134,45 +113,39 @@ Resume.stepPanel = ({ items, currentStep: index, step }: IPageProps) => {
       <Box className="p-8">
         <ul>
           {items &&
-            items.map(
-              ({ title, periodStart, periodEnd: PeriodEnd, jobs, skiils }) => {
-                return (
-                  <li key={title}>
-                    <Stack flexDirection={"row"} alignItems={"end"} gap={1}>
-                      <Typography variant="h6" fontWeight={700}>
-                        {title}
-                      </Typography>
-                      <Typography className="text-gray-300" variant="body2">
-                        {periodStart} ~ {PeriodEnd}
-                      </Typography>
-                    </Stack>
-                    <Typography
-                      variant="body1"
-                      fontWeight={600}
-                      className="ml-3"
-                    >
-                      <pre>
-                        <code>{jobs}</code>
-                      </pre>
+            items.map(({ title, periodStart, periodEnd: PeriodEnd, jobs, skiils }) => {
+              return (
+                <li key={title}>
+                  <Stack direction={"row"} alignItems={"end"} gap={1}>
+                    <Typography variant="h6" fontWeight={700}>
+                      {title}
                     </Typography>
-                    <Typography variant="body2" className="my-4">
-                      사용된 기술
+                    <Typography className="text-gray-300" variant="body2">
+                      {periodStart} ~ {PeriodEnd}
                     </Typography>
-                    <Box>
-                      {skiils.map((item, index) => (
-                        <Chip
-                          key={`skill_${index}`}
-                          label={item}
-                          size="small"
-                          variant="outlined"
-                          className="mb-2 mr-2 select-none p-1 text-white "
-                        />
-                      ))}
-                    </Box>
-                  </li>
-                );
-              }
-            )}
+                  </Stack>
+                  <Typography variant="body1" fontWeight={600} className="ml-3">
+                    <pre>
+                      <code>{jobs}</code>
+                    </pre>
+                  </Typography>
+                  <Typography variant="body2" className="my-4">
+                    사용된 기술
+                  </Typography>
+                  <Box>
+                    {skiils.map((item, index) => (
+                      <Chip
+                        key={`skill_${index}`}
+                        label={item}
+                        size="small"
+                        variant="outlined"
+                        className="mb-2 mr-2 select-none p-1 text-white "
+                      />
+                    ))}
+                  </Box>
+                </li>
+              );
+            })}
         </ul>
       </Box>
     </div>
@@ -202,15 +175,7 @@ const sampleData: IPageProps[] = [
   - 페이지 이동 마다 로더 추가
   - 인피니티 스크롤 개선
 `,
-        skiils: [
-          "Next",
-          "React",
-          "TypeScript",
-          "CI/CD",
-          "github",
-          "mui",
-          "tailwind",
-        ],
+        skiils: ["Next", "React", "TypeScript", "CI/CD", "github", "mui", "tailwind"],
       },
     ],
   },
@@ -294,8 +259,7 @@ const sampleData: IPageProps[] = [
     team: "인프라",
     periodStart: "2017.08",
     periodEnd: "2019.05",
-    description:
-      "SI1팀으로 입사하여, 인프라로 콜시스템과 보안 시스템을 전담하여 운영했습니다.",
+    description: "SI1팀으로 입사하여, 인프라로 콜시스템과 보안 시스템을 전담하여 운영했습니다.",
     items: [
       {
         title: "상품 보험 가입 관리 사이트 제작",

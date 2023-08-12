@@ -38,12 +38,12 @@ const Sidebar = ({ children }: IHaveChildren) => {
   };
 
   return (
-    <Stack flexDirection={"row"} className=" bg-gray-900">
+    <Stack direction={"row"} className=" bg-gray-900">
       <Stack
-        flexDirection={"column"}
+        direction={"column"}
         gap={1}
         alignItems={"center"}
-        className="z-50 min-h-screen w-12 border-r-2 border-r-gray-500 bg-gray-900 py-2 text-gray-100"
+        className="z-50 min-h-screen w-13 border-r-2 border-r-gray-500 bg-gray-900 py-2 text-gray-100"
       >
         {TABS.map(({ name, icon }) => {
           return (
@@ -70,7 +70,7 @@ const Sidebar = ({ children }: IHaveChildren) => {
         <Explorer isShowing={tab === "explore"} />
         <Search isShowing={tab === "search"} />
       </div>
-      <Container className="min-h-screen flex-1  text-white sm:p-1 md:p-5">{children}</Container>
+      {children}
     </Stack>
   );
 };

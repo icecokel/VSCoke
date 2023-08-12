@@ -1,10 +1,9 @@
+import { IHaveChildren } from "@/models/common";
 import Box from "@mui/material/Box";
 import Slide from "@mui/material/Slide";
-import { ReactNode } from "react";
 
-interface SidebarLayoutProps {
+interface SidebarLayoutProps extends IHaveChildren {
   isShowing: boolean;
-  children: ReactNode;
 }
 
 const SidebarLayout = ({ isShowing, children }: SidebarLayoutProps) => {

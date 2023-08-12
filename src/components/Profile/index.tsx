@@ -1,5 +1,6 @@
 "use client";
 
+import { IHaveChildren } from "@/models/common";
 import BookmarkIcon from "@mui/icons-material/Bookmark";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import NavigationIcon from "@mui/icons-material/Navigation";
@@ -15,7 +16,6 @@ import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
-import { ReactNode } from "react";
 
 /**
  * 이력서 페이지
@@ -140,9 +140,8 @@ const Profile = () => {
 
 export default Profile;
 
-interface IItemProps {
+interface IItemProps extends IHaveChildren {
   title: string;
-  children: ReactNode;
 }
 
 Profile.item = ({ title, children }: IItemProps) => {

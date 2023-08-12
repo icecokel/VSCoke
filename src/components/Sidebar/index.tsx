@@ -3,17 +3,14 @@
 import Explorer from "./components/Explorer";
 import Search from "./components/Search";
 import useClickOutSide from "@/hooks/useClickOutSide";
+import { IHaveChildren } from "@/models/common";
 import { TSidebar } from "@/models/enum/sidebar";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
-import { ReactNode, useState } from "react";
+import { useState } from "react";
 import { twMerge } from "tailwind-merge";
-
-interface ILayoutProps {
-  children: ReactNode;
-}
 
 const TABS = [
   {
@@ -27,7 +24,7 @@ const TABS = [
   },
 ];
 
-const Sidebar = ({ children }: ILayoutProps) => {
+const Sidebar = ({ children }: IHaveChildren) => {
   const [tab, setTab] = useState<TSidebar | "none">("none");
   const handleClickOutside = () => {
     setTab("none");
@@ -54,7 +51,7 @@ const Sidebar = ({ children }: ILayoutProps) => {
               key={`tab_${name}`}
               className={twMerge(
                 "flex h-10 w-full cursor-pointer items-center justify-center border-l-2 bg-gray-900",
-                name === tab ? "border-l-blue-100" : "border-l-gray-900"
+                name === tab ? "border-l-blue-100" : "border-l-gray-900",
               )}
             >
               {icon}
@@ -73,9 +70,7 @@ const Sidebar = ({ children }: ILayoutProps) => {
         <Explorer isShowing={tab === "explore"} />
         <Search isShowing={tab === "search"} />
       </div>
-      <Container className="min-h-screen flex-1  text-white sm:p-1 md:p-5">
-        {children}
-      </Container>
+      <Container className="min-h-screen flex-1  text-white sm:p-1 md:p-5">{children}</Container>
     </Stack>
   );
 };

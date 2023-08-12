@@ -19,7 +19,7 @@ const Search = ({ isShowing }: ExplorerProps) => {
   };
   return (
     <SidebarLayout isShowing={isShowing}>
-      <Stack flexDirection={"row"} alignItems={"center"}>
+      <Stack direction={"row"} alignItems={"center"}>
         <ArrowForwardIosIcon className="mr-1 text-sm" />
         <input
           type="text"

@@ -1,4 +1,5 @@
 import "./globals.css";
+import HistoryTabs from "@/components/HistoryTabs";
 import Sidebar from "@/components/Sidebar";
 import LoaderProvider from "@/contexts/LoaderProvider";
 import MuiConfigProvider from "@/contexts/MuiConfigProvider";
@@ -12,7 +13,9 @@ export default async function RootLayout({ children }: IHaveChildren) {
         <SWRProvider>
           <MuiConfigProvider>
             <LoaderProvider>
-              <Sidebar>{children}</Sidebar>
+              <Sidebar>
+                <HistoryTabs>{children}</HistoryTabs>
+              </Sidebar>
             </LoaderProvider>
           </MuiConfigProvider>
         </SWRProvider>

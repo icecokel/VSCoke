@@ -7,7 +7,6 @@ import { IHaveChildren } from "@/models/common";
 import { TSidebar } from "@/models/enum/sidebar";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
-import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import { useState } from "react";
 import { twMerge } from "tailwind-merge";
@@ -38,12 +37,12 @@ const Sidebar = ({ children }: IHaveChildren) => {
   };
 
   return (
-    <Stack direction={"row"} className=" bg-gray-900">
+    <Stack direction={"row"}>
       <Stack
         direction={"column"}
         gap={1}
         alignItems={"center"}
-        className="z-50 min-h-screen w-13 border-r-2 border-r-gray-500 bg-gray-900 py-2 text-gray-100"
+        className="z-50 min-h-screen w-[80px] border-r-[1px] border-r-gray-500 bg-gray-900 py-2 text-gray-100"
       >
         {TABS.map(({ name, icon }) => {
           return (

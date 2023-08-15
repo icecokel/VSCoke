@@ -37,12 +37,12 @@ const Sidebar = ({ children }: IHaveChildren) => {
   };
 
   return (
-    <Stack direction={"row"}>
+    <Stack direction={"row"} ref={tabRef}>
       <Stack
         direction={"column"}
         gap={1}
         alignItems={"center"}
-        className="z-50 min-h-screen w-[80px] border-r-[1px] border-r-gray-500 bg-gray-900 py-2 text-gray-100"
+        className="z-50 min-h-screen w-[60px] border-r-[1px] border-r-gray-500 bg-gray-900 py-2 text-gray-100"
       >
         {TABS.map(({ name, icon }) => {
           return (
@@ -65,7 +65,7 @@ const Sidebar = ({ children }: IHaveChildren) => {
           );
         })}
       </Stack>
-      <div ref={tabRef}>
+      <div>
         <Explorer isShowing={tab === "explore"} />
         <Search isShowing={tab === "search"} />
       </div>

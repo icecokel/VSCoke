@@ -25,10 +25,10 @@ const TABS = [
 
 const Sidebar = ({ children }: IHaveChildren) => {
   const [tab, setTab] = useState<TSidebar | "none">("none");
-  const handleClickOutside = () => {
+  const tabClose = () => {
     setTab("none");
   };
-  const tabRef = useClickOutSide(handleClickOutside);
+  const tabRef = useClickOutSide(tabClose);
 
   const handleChangeTab: React.MouseEventHandler<HTMLInputElement> = ({
     currentTarget: { value },
@@ -66,7 +66,7 @@ const Sidebar = ({ children }: IHaveChildren) => {
         })}
       </Stack>
       <div>
-        <Explorer isShowing={tab === "explore"} />
+        <Explorer isShowing={tab === "explore"} tabClose={tabClose} />
         <Search isShowing={tab === "search"} />
       </div>
       {children}

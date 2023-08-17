@@ -1,6 +1,7 @@
 "use client";
 
 import SidebarLayout from "./SidebarLayout";
+import useHistory from "@/hooks/useHistory";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import TreeItem from "@mui/lab/TreeItem";
@@ -10,7 +11,7 @@ import Link from "next/link";
 import { useState } from "react";
 import useSWR, { preload } from "swr";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 preload("/api/getPosts", fetcher);
 
@@ -27,19 +28,25 @@ const defaultData: ITree[] = [
     label: "profile",
     items: [{ id: "profile-index", label: "index.html", path: "/profile" }],
   },
+  {
+    id: "hobby",
+    label: "hobby",
+    items: [{ id: "hobby-index", label: "index.html", path: "/hobby" }],
+  },
 ];
 
 interface ExplorerProps {
   isShowing: boolean;
+  tabClose: () => void;
 }
 
-const Explorer = ({ isShowing }: ExplorerProps) => {
+const Explorer = ({ isShowing, tabClose }: ExplorerProps) => {
   const [itemList, setItemList] = useState<ITree[]>(defaultData);
 
   const { isLoading } = useSWR("/api/getPosts", fetcher, {
-    onSuccess: (blog) => {
-      if (!itemList.some((item) => item.label === blog.label)) {
-        setItemList((prev) => [...prev, blog]);
+    onSuccess: blog => {
+      if (!itemList.some(item => item.label === blog.label)) {
+        setItemList(prev => [...prev, blog]);
       }
     },
   });
@@ -55,8 +62,8 @@ const Explorer = ({ isShowing }: ExplorerProps) => {
           defaultExpandIcon={<ChevronRightIcon />}
           sx={{ height: 240, flexGrow: 1, maxWidth: 400, overflowY: "auto" }}
         >
-          {itemList.map((item) => {
-            return <Explorer.item key={`tree_${item.id}`} {...item} />;
+          {itemList.map(item => {
+            return <Explorer.item key={`tree_${item.id}`} {...item} tabClose={tabClose} />;
           })}
         </TreeView>
       )}
@@ -66,13 +73,26 @@ const Explorer = ({ isShowing }: ExplorerProps) => {
 
 export default Explorer;
 
-Explorer.item = ({ id, label, path, items }: ITree) => {
+interface IItemProps extends ITree {
+  tabClose: () => void;
+}
+
+Explorer.item = ({ id, label, path, items, tabClose }: IItemProps) => {
   const url = !items ? path ?? "" : "";
+
+  const { add } = useHistory();
+
+  const handleClickItem = () => {
+    if (url) {
+      add({ isAactive: true, path: url, title: label });
+      tabClose();
+    }
+  };
   return (
-    <Link href={url}>
+    <Link href={url} onClick={handleClickItem}>
       <TreeItem nodeId={id} label={label} className="bg-gray-900">
-        {items?.map((item) => {
-          return <Explorer.item key={`tree_${item.id}`} {...item} />;
+        {items?.map(item => {
+          return <Explorer.item key={`tree_${item.id}`} {...item} tabClose={tabClose} />;
         })}
       </TreeItem>
     </Link>

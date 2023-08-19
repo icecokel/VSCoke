@@ -1,3 +1,7 @@
+"use client";
+
 const Hobby = () => {
-  return <div></div>;
+  return <div>취미</div>;
 };
+
+export default Hobby;

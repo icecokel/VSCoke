@@ -51,6 +51,7 @@ const useHistory = () => {
   };
 
   return {
+    current: history.find(item => item.isAactive),
     history,
     add,
     remove,

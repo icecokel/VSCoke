@@ -1,10 +1,20 @@
 "use client";
 
+import useHistory from "@/hooks/useHistory";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 const Intro = () => {
+  const { current } = useHistory();
+  const router = useRouter();
+  useEffect(() => {
+    if (current) {
+      router.replace(current.path);
+    }
+  }, [current]);
   return (
     <div className="p-8">
       <Stack justifyContent={"center"} alignItems={"center"}>

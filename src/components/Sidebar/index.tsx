@@ -37,38 +37,38 @@ const Sidebar = ({ children }: IHaveChildren) => {
   };
 
   return (
-    <Stack direction={"row"} ref={tabRef}>
-      <Stack
-        direction={"column"}
-        gap={1}
-        alignItems={"center"}
-        className="z-50 min-h-screen w-[60px] border-r-[1px] border-r-gray-500 bg-gray-900 py-2 text-gray-100"
-      >
-        {TABS.map(({ name, icon }) => {
-          return (
-            <label
-              key={`tab_${name}`}
-              className={twMerge(
-                "flex h-10 w-full cursor-pointer items-center justify-center border-l-2 bg-gray-900",
-                name === tab ? "border-l-blue-100" : "border-l-gray-900",
-              )}
-            >
-              {icon}
-              <input
-                type="radio"
-                name="tabs"
-                defaultValue={name}
-                className="hidden"
-                onClick={handleChangeTab}
-              />
-            </label>
-          );
-        })}
-      </Stack>
-      <div>
+    <Stack direction={"row"}>
+      <Stack direction={"row"} ref={tabRef}>
+        <Stack
+          direction={"column"}
+          gap={1}
+          alignItems={"center"}
+          className="z-50 min-h-screen w-[60px] border-r-[1px] border-r-gray-500 bg-gray-900 py-2 text-gray-100"
+        >
+          {TABS.map(({ name, icon }) => {
+            return (
+              <label
+                key={`tab_${name}`}
+                className={twMerge(
+                  "flex h-10 w-full cursor-pointer items-center justify-center border-l-2 bg-gray-900",
+                  name === tab ? "border-l-blue-100" : "border-l-gray-900",
+                )}
+              >
+                {icon}
+                <input
+                  type="radio"
+                  name="tabs"
+                  defaultValue={name}
+                  className="hidden"
+                  onClick={handleChangeTab}
+                />
+              </label>
+            );
+          })}
+        </Stack>
         <Explorer isShowing={tab === "explore"} tabClose={tabClose} />
         <Search isShowing={tab === "search"} />
-      </div>
+      </Stack>
       {children}
     </Stack>
   );

@@ -20,17 +20,24 @@ const useHistory = () => {
   };
 
   const remove = ({ path }: IHistoryItem) => {
-    // TODO 마지막이 지워질때,
-    // 리시트가 없을때
     const prevItemIndex = history.findIndex(item => item.path === path);
+    const isLast = prevItemIndex === history.length - 1;
     const historyToUpdate = [...history]
       .filter(item => item.path !== path)
-      .map((item, index) => ({ ...item, isAactive: index === prevItemIndex }));
+      .map((item, index) => ({
+        ...item,
+        isAactive: index === (isLast ? prevItemIndex : prevItemIndex - 1),
+      }));
+
     if (prevItemIndex >= 0) {
-      setHistory(historyToUpdate);
       const nextPath =
-        historyToUpdate[prevItemIndex].path ?? historyToUpdate[historyToUpdate.length - 1].path;
-      console.log(nextPath);
+        historyToUpdate[prevItemIndex]?.path ?? historyToUpdate[historyToUpdate.length - 1]?.path;
+      setHistory(historyToUpdate);
+      if (historyToUpdate.length === 0) {
+        router.replace("/");
+        return;
+      }
+
       router.replace(nextPath);
     }
   };

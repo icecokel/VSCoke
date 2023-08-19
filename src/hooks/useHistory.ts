@@ -22,11 +22,12 @@ const useHistory = () => {
   const remove = ({ path }: IHistoryItem) => {
     const prevItemIndex = history.findIndex(item => item.path === path);
     const isLast = prevItemIndex === history.length - 1;
+
     const historyToUpdate = [...history]
       .filter(item => item.path !== path)
       .map((item, index) => ({
         ...item,
-        isAactive: index === (isLast ? prevItemIndex : prevItemIndex - 1),
+        isAactive: index === (isLast ? prevItemIndex - 1 : prevItemIndex),
       }));
 
     if (prevItemIndex >= 0) {

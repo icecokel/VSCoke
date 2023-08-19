@@ -37,7 +37,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
             >
               <Typography
                 className={twMerge(
-                  "text-gray-300/80 md:py-[6px] md:px-[20px] py-[3px] px-[8px]",
+                  "text-gray-300/80 md:py-[6px] md:px-[20px] py-[4px] px-[8px]",
                   item.isAactive &&
                     "text-yellow-200/95 font-medium border-t pt-[1px] border-t-blue-100 md:pt-[5px]",
                 )}

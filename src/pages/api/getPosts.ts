@@ -1,13 +1,8 @@
 import { ITree } from "@/components/Sidebar/components/Explorer";
-import { Client } from "@notionhq/client";
+import notion from "@/service/notion";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-const notion = new Client({ auth: process.env.NOTION_API_KEY });
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<any>
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const database_id = process.env.NOTION_DATABASE_ID ?? "";
   if (!database_id) {
     res.status(400).json({ message: "check Env" });
@@ -36,7 +31,7 @@ export default async function handler(
     return {
       id: post.properties.title.title[0].plain_text,
       label: post.properties.title.title[0].plain_text,
-      path: post.url,
+      path: `/blog/${post.id}`,
     };
   });
 

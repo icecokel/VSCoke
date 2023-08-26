@@ -15,7 +15,7 @@ import { twMerge } from "tailwind-merge";
 
 const HistoryTabs = ({ children }: IHaveChildren) => {
   const [currentEl, setCurrentEl] = useState<null | HTMLElement>(null);
-  const { history, change, remove } = useHistory();
+  const { history, change, remove, setHistory } = useHistory();
 
   const handleClickTab = change;
   const handleClickClose = remove;
@@ -30,12 +30,37 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
     setCurrentEl(null);
   };
 
+  const [dragStartPath, setDragStartPath] = useState<string>();
+  const [dragEnterPath, setEnterPath] = useState<string>();
+
   const handleClickCloseMenu = (target: IHistoryItem) => {
     remove(target);
     setCurrentEl(null);
   };
 
-  // TODO 드래그 기능 추가
+  const handleDragStart = ({ currentTarget: { id } }: React.MouseEvent<HTMLDivElement>) => {
+    setDragStartPath(id);
+  };
+
+  const handleDragEnter = ({ currentTarget: { id } }: React.MouseEvent<HTMLDivElement>) => {
+    if (id && dragStartPath !== id) {
+      setEnterPath(id);
+    }
+  };
+
+  const handleDragEnd = () => {
+    if (dragStartPath !== dragEnterPath) {
+      const clickedTab = history.find(({ path }) => path == dragStartPath);
+      const targetTabIndex = history.findIndex(({ path }) => path == dragEnterPath);
+      if (clickedTab) {
+        const historyToUodate = [...history]
+          .filter(({ path }) => path !== clickedTab?.path)
+          .map(item => ({ ...item, isAactive: false }));
+        historyToUodate.splice(targetTabIndex, 0, { ...clickedTab, isAactive: true });
+        setHistory(historyToUodate);
+      }
+    }
+  };
 
   return (
     <div className="w-full bg-gray-800">
@@ -44,12 +69,17 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
           <Fragment key={`tab_${item.path}`}>
             <Tooltip title={`${item.path}/${item.title}`}>
               <div
+                id={item.path}
                 className={twMerge(
                   "border border-gray-300/60 border-l-[0px]",
                   item.isAactive && "bg-gray-800 border-b-[0px]",
                 )}
                 onClick={() => handleClickTab(item)}
                 onContextMenu={handleRightClickTab}
+                onDragStart={handleDragStart}
+                onDragEnterCapture={handleDragEnter}
+                onDragEnd={handleDragEnd}
+                draggable
               >
                 <Typography
                   className={twMerge(

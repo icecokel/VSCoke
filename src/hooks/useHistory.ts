@@ -53,6 +53,7 @@ const useHistory = () => {
   return {
     current: history.find(item => item.isAactive),
     history,
+    setHistory,
     add,
     remove,
     change,

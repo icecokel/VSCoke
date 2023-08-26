@@ -10,12 +10,14 @@ import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import { useRouter } from "next/navigation";
 import { Fragment, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 const HistoryTabs = ({ children }: IHaveChildren) => {
   const [currentEl, setCurrentEl] = useState<null | HTMLElement>(null);
   const { history, change, remove, setHistory } = useHistory();
+  const { push } = useRouter();
 
   const handleClickTab = change;
   const handleClickClose = remove;
@@ -39,17 +41,22 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
   };
 
   const handleDragStart = ({ currentTarget: { id } }: React.MouseEvent<HTMLDivElement>) => {
-    setDragStartPath(id);
+    const clickedTab = history.find(({ path }) => path === id);
+    if (clickedTab) {
+      setDragStartPath(id);
+      change(clickedTab);
+      push(id);
+    }
   };
 
   const handleDragEnter = ({ currentTarget: { id } }: React.MouseEvent<HTMLDivElement>) => {
-    if (id && dragStartPath !== id) {
+    if (id && dragStartPath && dragStartPath !== id) {
       setEnterPath(id);
     }
   };
 
   const handleDragEnd = () => {
-    if (dragStartPath !== dragEnterPath) {
+    if (dragStartPath && dragEnterPath && dragStartPath !== dragEnterPath) {
       const clickedTab = history.find(({ path }) => path == dragStartPath);
       const targetTabIndex = history.findIndex(({ path }) => path == dragEnterPath);
       if (clickedTab) {

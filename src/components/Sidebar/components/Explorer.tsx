@@ -26,12 +26,12 @@ const defaultData: ITree[] = [
   {
     id: "profile",
     label: "profile",
-    items: [{ id: "profile-index", label: "index.html", path: "/profile" }],
+    items: [{ id: "profile-index", label: "Iam.html", path: "/profile" }],
   },
   {
     id: "hobby",
     label: "hobby",
-    items: [{ id: "hobby-index", label: "index.html", path: "/hobby" }],
+    items: [{ id: "hobby-index", label: "BackPacking.html", path: "/hobby/BackPacking" }],
   },
 ];
 

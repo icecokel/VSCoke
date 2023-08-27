@@ -5,6 +5,11 @@ import LoaderProvider from "@/contexts/LoaderProvider";
 import MuiConfigProvider from "@/contexts/MuiConfigProvider";
 import { SWRProvider } from "@/contexts/SWRProvider";
 import { IHaveChildren } from "@/models/common";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "VSCOKE",
+};
 
 export default async function RootLayout({ children }: IHaveChildren) {
   return (

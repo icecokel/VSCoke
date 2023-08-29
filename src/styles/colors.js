@@ -10,11 +10,15 @@ export const colors = {
     900: "#181818",
   },
   blue: {
-    100: "#0078D4",
+    100: "#9CDCFE",
+    300: "#0078D4",
   },
   yellow: {
     100: "#D68F34",
     200: "#CCA700",
+  },
+  green: {
+    300: "#3BC9B0",
   },
   white: "#FFFFFF",
   black: "#000000",

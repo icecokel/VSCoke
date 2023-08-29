@@ -128,7 +128,7 @@ const Profile = () => {
       </Profile.item>
       <Link href={"/profile/resume"}>
         <Box className="flex justify-end">
-          <Fab variant="extended" className="bg-yellow-200 text-gray-800 hover:text-blue-100">
+          <Fab variant="extended" className="bg-yellow-200 text-gray-800 hover:text-blue-300">
             경력 보러가기
             <NavigationIcon sx={{ mr: 1 }} className="rotate-[90deg]" />
           </Fab>

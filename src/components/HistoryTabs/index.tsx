@@ -92,7 +92,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
                   className={twMerge(
                     "text-gray-300/80 md:py-[6px] md:px-[20px] py-[4px] px-[8px]",
                     item.isAactive &&
-                      "text-yellow-200/95 font-medium border-t pt-[1px] border-t-blue-100 md:pt-[5px]",
+                      "text-yellow-200/95 font-medium border-t pt-[1px] border-t-blue-300 md:pt-[5px]",
                   )}
                   fontSize={14}
                 >

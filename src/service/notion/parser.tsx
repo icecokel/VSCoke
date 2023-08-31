@@ -1,6 +1,7 @@
 import CircleIcon from "@mui/icons-material/Circle";
-import { Stack } from "@mui/material";
 import Box from "@mui/material/Box";
+import Container from "@mui/material/Container";
+import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { ListBlockChildrenResponse } from "@notionhq/client/build/src/api-endpoints";
 
@@ -19,6 +20,20 @@ export const parseToHtml = (target: ListBlockChildrenResponse): ITag[] => {
         contents: block.image.file.url,
       };
     }
+    // TODO
+    if (block.type === "table") {
+      return {
+        type: block.type,
+        contents: "table",
+      };
+    }
+
+    if (block.type === "divider") {
+      return {
+        type: "divider",
+        contents: "",
+      };
+    }
 
     if (block[block.type].rich_text.length === 0) {
       return {
@@ -26,6 +41,7 @@ export const parseToHtml = (target: ListBlockChildrenResponse): ITag[] => {
         contents: "",
       };
     }
+
     return {
       type: block.type,
       contents: block[block.type].rich_text.map((item: any) => {
@@ -35,51 +51,44 @@ export const parseToHtml = (target: ListBlockChildrenResponse): ITag[] => {
   });
 };
 
+const getText = (contents: TText[] | string, Tag: React.ElementType, option?: any) => {
+  return Array.isArray(contents) ? (
+    contents.map(item => {
+      return (
+        <Tag {...option} fontWeight={item.isBold ? 700 : 400}>
+          {item.text}
+        </Tag>
+      );
+    })
+  ) : (
+    <Tag {...option}>{contents}</Tag>
+  );
+};
+
 export const convertToElement = ({ type, contents }: ITag) => {
   switch (type) {
     case "heading_2": {
       return (
-        <Typography variant="h3" sx={{ margin: "1em 0px" }} className="flex">
-          {Array.isArray(contents)
-            ? contents.map(item => {
-                return (
-                  <Typography variant="h3" fontWeight={item.isBold ? 700 : 400}>
-                    {item.text}
-                  </Typography>
-                );
-              })
-            : contents}
-        </Typography>
+        <Stack direction={"row"}>
+          {getText(contents, Typography, {
+            variant: "h3",
+            sx: { margin: "1em 0px" },
+          })}
+        </Stack>
       );
     }
     case "heading_3": {
       return (
-        <Typography variant="h4" sx={{ margin: "1em 0px" }} className="flex">
-          {Array.isArray(contents)
-            ? contents.map(item => {
-                return (
-                  <Typography variant="h4" fontWeight={item.isBold ? 700 : 400}>
-                    {item.text}
-                  </Typography>
-                );
-              })
-            : contents}
-        </Typography>
+        <Stack direction={"row"}>
+          {getText(contents, Typography, { variant: "h4", sx: { margin: "1em 0px" } })}
+        </Stack>
       );
     }
     case "paragraph": {
       return (
-        <Typography variant="body2" sx={{ margin: "1em 0px" }} className="flex">
-          {Array.isArray(contents)
-            ? contents.map(item => {
-                return (
-                  <Typography variant="body2" fontWeight={item.isBold ? 700 : 400}>
-                    {item.text}
-                  </Typography>
-                );
-              })
-            : contents}
-        </Typography>
+        <Stack direction={"row"}>
+          {getText(contents, Typography, { variant: "body2", sx: { margin: "1em 0px" } })}
+        </Stack>
       );
     }
     case "image": {
@@ -108,28 +117,28 @@ export const convertToElement = ({ type, contents }: ITag) => {
 
     case "quote": {
       return (
-        <Box
-          className="border-l-2 border-l-blue-100"
+        <Stack
+          className="border-l-2 border-l-blue-300"
           sx={{ backgroundColor: "#4C4C4C", padding: "0.5em 1em" }}
         >
-          {Array.isArray(contents)
-            ? contents.map(item => {
-                return (
-                  <Typography variant="body2" fontWeight={item.isBold ? 700 : 400}>
-                    {item.text}
-                  </Typography>
-                );
-              })
-            : contents}
-        </Box>
+          {getText(contents, Typography, { variant: "body2" })}
+        </Stack>
       );
     }
     case "code": {
       const text = Array.isArray(contents) ? contents.map(({ text }) => text).join("") : contents;
       return (
-        <Box sx={{ backgroundColor: "#2A2A2A", padding: "1.5em", margin: "0.5em 0px" }}>
-          <pre>{text}</pre>
-        </Box>
+        <Container
+          maxWidth="md"
+          sx={{
+            backgroundColor: "#2A2A2A",
+            padding: "1.5em",
+            margin: "0.5em 0px",
+            borderRadius: "4px",
+          }}
+        >
+          <pre className="text-sm">{text}</pre>
+        </Container>
       );
     }
     case "space": {

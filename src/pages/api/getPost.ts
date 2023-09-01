@@ -9,10 +9,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     res.status(400).json({ message: "check page id" });
   }
 
-  const blockData = await notion.blocks.retrieve({ block_id: pageId?.toString() ?? "" });
+  const pageData = await notion.blocks.retrieve({ block_id: pageId?.toString() ?? "" });
   const blockChildData = await notion.blocks.children.list({ block_id: pageId?.toString() ?? "" });
 
   const html = parseToHtml(blockChildData);
 
-  res.status(200).json({ id: pageId, contents: html });
+  res.status(200).json({ id: pageId, contents: html, pageData });
 }

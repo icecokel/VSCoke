@@ -4,11 +4,14 @@ import SidebarLayout from "./SidebarLayout";
 import useHistory from "@/hooks/useHistory";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import HikingRoundedIcon from "@mui/icons-material/HikingRounded";
+import PortraitRoundedIcon from "@mui/icons-material/PortraitRounded";
+import TextSnippetOutlinedIcon from "@mui/icons-material/TextSnippetOutlined";
 import TreeItem from "@mui/lab/TreeItem";
 import TreeView from "@mui/lab/TreeView";
 import LinearProgress from "@mui/material/LinearProgress";
 import Link from "next/link";
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import useSWR, { preload } from "swr";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
@@ -18,6 +21,7 @@ preload("/api/getPosts", fetcher);
 export interface ITree {
   id: string;
   label: string;
+  icon?: ReactNode;
   path?: string;
   items?: ITree[];
 }
@@ -26,12 +30,26 @@ const defaultData: ITree[] = [
   {
     id: "profile",
     label: "profile",
-    items: [{ id: "profile-index", label: "Iam.html", path: "/profile" }],
+    items: [
+      {
+        id: "profile-index",
+        label: "Iam.html",
+        path: "/profile",
+        icon: <PortraitRoundedIcon className="text-yellow-200" />,
+      },
+    ],
   },
   {
     id: "hobby",
     label: "hobby",
-    items: [{ id: "hobby-index", label: "BackPacking.html", path: "/hobby/BackPacking" }],
+    items: [
+      {
+        id: "hobby-index",
+        label: "BackPacking.html",
+        path: "/hobby/BackPacking",
+        icon: <HikingRoundedIcon className="text-green-300" />,
+      },
+    ],
   },
 ];
 
@@ -46,7 +64,12 @@ const Explorer = ({ isShowing, tabClose }: ExplorerProps) => {
   const { isLoading } = useSWR("/api/getPosts", fetcher, {
     onSuccess: blog => {
       if (!itemList.some(item => item.label === blog.label)) {
-        setItemList(prev => [...prev, blog]);
+        const addedIconBlog = { ...blog };
+        addedIconBlog.items = addedIconBlog.items.map((item: ITree) => ({
+          ...item,
+          icon: <TextSnippetOutlinedIcon className="text-blue-100" />,
+        }));
+        setItemList(prev => [...prev, addedIconBlog]);
       }
     },
   });
@@ -77,7 +100,7 @@ interface IItemProps extends ITree {
   tabClose: () => void;
 }
 
-Explorer.item = ({ id, label, path, items, tabClose }: IItemProps) => {
+Explorer.item = ({ id, label, path, items, tabClose, icon }: IItemProps) => {
   const url = !items ? path ?? "" : "";
 
   const { add } = useHistory();
@@ -90,7 +113,7 @@ Explorer.item = ({ id, label, path, items, tabClose }: IItemProps) => {
   };
   return (
     <Link href={url} onClick={handleClickItem}>
-      <TreeItem nodeId={id} label={label} className="bg-gray-900">
+      <TreeItem nodeId={id} label={label} className="bg-gray-900" icon={icon}>
         {items?.map(item => {
           return <Explorer.item key={`tree_${item.id}`} {...item} tabClose={tabClose} />;
         })}

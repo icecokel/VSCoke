@@ -33,7 +33,7 @@ const Profile = () => {
           className="h-[180px] w-[180px] border-4 border-yellow-200 md:h-[200px] md:w-[200px] "
           src="https://icecokel-blog-dev.s3.ap-northeast-2.amazonaws.com/images/profileImg.jpg"
         />
-        <Box className="ml-5 sm:mt-5">
+        <Box marginLeft={"20px"} marginTop={{ sm: "25px" }}>
           <Typography variant="h4" className="text-center">
             코딩만 하지 않는 <br className="md:hidden" />
             개발자 이상민입니다.
@@ -127,12 +127,12 @@ const Profile = () => {
         </Grid>
       </Profile.item>
       <Link href={"/profile/resume"}>
-        <Box className="flex justify-end">
+        <Stack direction={"row"} justifyContent={"flex-end"}>
           <Fab variant="extended" className="bg-yellow-200 text-gray-800 hover:text-blue-300">
             경력 보러가기
             <NavigationIcon sx={{ mr: 1 }} className="rotate-[90deg]" />
           </Fab>
-        </Box>
+        </Stack>
       </Link>
     </Stack>
   );
@@ -146,7 +146,7 @@ interface IItemProps extends IHaveChildren {
 
 Profile.item = ({ title, children }: IItemProps) => {
   return (
-    <Box className="mt-10">
+    <Box marginTop={"40px"}>
       <Typography variant="h5">{title}</Typography>
       <Divider className="my-5 border-white" />
       <Box>{children}</Box>

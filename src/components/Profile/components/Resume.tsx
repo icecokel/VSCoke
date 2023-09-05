@@ -109,8 +109,8 @@ interface IPageItem {
 
 Resume.stepPanel = ({ items, currentStep: index, step }: IPageProps) => {
   return (
-    <div hidden={step !== index}>
-      <Box className="p-8">
+    <Box hidden={step !== index}>
+      <Box padding={"32px"}>
         <ul>
           {items &&
             items.map(({ title, periodStart, periodEnd: PeriodEnd, jobs, skiils }) => {
@@ -148,7 +148,7 @@ Resume.stepPanel = ({ items, currentStep: index, step }: IPageProps) => {
             })}
         </ul>
       </Box>
-    </div>
+    </Box>
   );
 };
 

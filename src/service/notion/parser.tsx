@@ -4,6 +4,7 @@ import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { ListBlockChildrenResponse } from "@notionhq/client/build/src/api-endpoints";
+import Image from "next/image";
 
 type TText = { isBold?: boolean; text: string };
 
@@ -92,8 +93,11 @@ export const convertToElement = ({ type, contents }: ITag) => {
       );
     }
     case "image": {
-      // return <Image fill priority sizes="500px" src={text} alt="" />;
-      return "이미지";
+      return (
+        <Container maxWidth="md">
+          <Image height={900} width={900} src={contents.toString()} alt="img" />
+        </Container>
+      );
     }
 
     case "bulleted_list_item": {

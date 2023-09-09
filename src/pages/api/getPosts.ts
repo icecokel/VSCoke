@@ -28,10 +28,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   });
 
   const posts: ITree[] = response.results.map((post: any) => {
+    const url: string = post.url.slice(post.url.lastIndexOf("/") + 1);
     return {
-      id: post.properties.title.title[0].plain_text,
+      id: url,
       label: post.properties.title.title[0].plain_text,
-      path: `/blog/${post.id}`,
+      path: `/blog/${url}`,
     };
   });
 

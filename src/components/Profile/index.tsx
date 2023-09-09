@@ -101,12 +101,11 @@ const Profile = () => {
       </Profile.item>
 
       <Profile.item title="학력 / 교육">
-        <Stack direction={"row"}></Stack>
-        <Grid container className="mb-5">
-          <Grid item xs={3}>
+        <Grid container marginBottom={5}>
+          <Grid item xs={12} sm={3} marginBottom={2}>
             2019.08 - 2020.03
           </Grid>
-          <Grid item xs={9}>
+          <Grid item xs={12} sm={9} marginBottom={2}>
             <Typography variant="h6">
               하이브리드 앱개발(ISO&안드로이드) 및 웹 개발자 양성 과정
             </Typography>
@@ -116,11 +115,11 @@ const Profile = () => {
             </Typography>
           </Grid>
         </Grid>
-        <Grid container className="mb-5">
-          <Grid item xs={3}>
+        <Grid container marginBottom={5}>
+          <Grid item xs={12} sm={3}>
             2010.03 - 2017.02
           </Grid>
-          <Grid item xs={9}>
+          <Grid item xs={12} sm={9}>
             <Typography variant="h6">서일대학교</Typography>
             <Typography variant="body2">정보통신학과</Typography>
           </Grid>
@@ -129,7 +128,7 @@ const Profile = () => {
       <Link href={"/profile/resume"}>
         <Stack direction={"row"} justifyContent={"flex-end"}>
           <Fab variant="extended" className="bg-yellow-200 text-gray-800 hover:text-blue-300">
-            경력 보러가기
+            <Typography variant="body2">경력 보러가기</Typography>
             <NavigationIcon sx={{ mr: 1 }} className="rotate-[90deg]" />
           </Fab>
         </Stack>

@@ -17,7 +17,7 @@ const Intro = () => {
   }, [current]);
   return (
     <div className="p-8">
-      <Stack justifyContent={"center"} alignItems={"center"}>
+      <Stack direction={"row"} justifyContent={"center"} alignItems={"center"} gap={"16px"}>
         <Typography variant="h3" fontWeight={700}>
           Welcome VSCoke
         </Typography>

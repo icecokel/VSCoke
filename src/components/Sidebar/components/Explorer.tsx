@@ -13,11 +13,6 @@ import TreeView from "@mui/lab/TreeView";
 import LinearProgress from "@mui/material/LinearProgress";
 import Link from "next/link";
 import { ReactNode, useContext, useEffect, useState } from "react";
-import useSWR, { preload } from "swr";
-
-const fetcher = (url: string) => fetch(url).then(res => res.json());
-
-preload("/api/getPosts", fetcher);
 
 export interface ITree {
   id: string;

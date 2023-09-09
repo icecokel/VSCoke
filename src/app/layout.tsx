@@ -6,6 +6,8 @@ import MuiConfigProvider from "@/contexts/MuiConfigProvider";
 import { SWRProvider } from "@/contexts/SWRProvider";
 import { IHaveChildren } from "@/models/common";
 import { Metadata } from "next";
+import "prismjs/themes/prism-tomorrow.css";
+import "react-notion/src/styles.css";
 
 export const metadata: Metadata = {
   title: "VSCOKE",

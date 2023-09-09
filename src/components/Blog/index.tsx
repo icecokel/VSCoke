@@ -15,7 +15,7 @@ const Blog = ({ id }: IBlogProps) => {
   const { data, isLoading } = useSWR(`https://notion-api.splitbee.io/v1/page/${id}`);
 
   return (
-    <Container maxWidth="lg" className="bg-white p-5 md:p-10">
+    <Container maxWidth="lg" className="bg-white p-5 md:p-10 rounded">
       {isLoading ? (
         <Stack justifyContent={"center"} alignItems={"center"} height={{ xs: 300, md: 500 }}>
           <CircularProgress />

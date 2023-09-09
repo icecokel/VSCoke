@@ -1,6 +1,7 @@
 "use client";
 
 import SidebarLayout from "./SidebarLayout";
+import { BlogContext } from "@/contexts/AppProvider";
 import useHistory from "@/hooks/useHistory";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -11,7 +12,7 @@ import TreeItem from "@mui/lab/TreeItem";
 import TreeView from "@mui/lab/TreeView";
 import LinearProgress from "@mui/material/LinearProgress";
 import Link from "next/link";
-import { ReactNode, useState } from "react";
+import { ReactNode, useContext, useEffect, useState } from "react";
 import useSWR, { preload } from "swr";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
@@ -60,19 +61,22 @@ interface ExplorerProps {
 
 const Explorer = ({ isShowing, tabClose }: ExplorerProps) => {
   const [itemList, setItemList] = useState<ITree[]>(defaultData);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { isLoading } = useSWR("/api/getPosts", fetcher, {
-    onSuccess: blog => {
-      if (!itemList.some(item => item.label === blog.label)) {
-        const addedIconBlog = { ...blog };
-        addedIconBlog.items = addedIconBlog.items.map((item: ITree) => ({
+  const blog = useContext(BlogContext);
+
+  useEffect(() => {
+    if (blog && !itemList.some(item => item.label === blog.label)) {
+      const addedIconBlog = { ...blog };
+      if (blog.items)
+        addedIconBlog.items = blog.items.map((item: ITree) => ({
           ...item,
           icon: <TextSnippetOutlinedIcon className="text-blue-100" />,
         }));
-        setItemList(prev => [...prev, addedIconBlog]);
-      }
-    },
-  });
+      setItemList(prev => [...prev, addedIconBlog]);
+      setIsLoading(false);
+    }
+  }, [blog]);
 
   return (
     <SidebarLayout isShowing={isShowing}>

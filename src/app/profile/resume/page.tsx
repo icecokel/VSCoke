@@ -1,4 +1,4 @@
-import Resume from "@/components/Profile/components/Resume";
+import Resume from "@/components/Profile/Resume";
 import { NextPage } from "next";
 
 /**

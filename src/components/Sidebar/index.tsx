@@ -1,7 +1,7 @@
 "use client";
 
-import Explorer from "./components/Explorer";
-import Search from "./components/Search";
+import Explorer from "./Explorer";
+import Search from "./Search";
 import useClickOutSide from "@/hooks/useClickOutSide";
 import { IHaveChildren } from "@/models/common";
 import { TSidebar } from "@/models/enum/sidebar";

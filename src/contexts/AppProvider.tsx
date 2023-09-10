@@ -2,7 +2,7 @@
 
 import MuiConfigProvider from "./MuiConfigProvider";
 import { SWRProvider } from "./SWRProvider";
-import { ITree } from "@/components/Sidebar/components/Explorer";
+import { ITree } from "@/components/Sidebar/Explorer";
 import { IHaveChildren } from "@/models/common";
 import { createContext } from "react";
 

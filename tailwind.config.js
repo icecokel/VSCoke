@@ -9,11 +9,22 @@ module.exports = {
   ],
   theme: {
     colors,
+    screens: {
+      xs: `${0}px`,
+      // => @media (min-width: 0px) { ... }
+      sm: `${640}px`,
+      // => @media (min-width: 640px) { ... }
+      md: `${900}px`,
+      // => @media (min-width: 900px) { ... }
+      lg: `${1200}px`,
+      // => @media (min-width: 1200px) { ... }
+      xl: `${1440}px`,
+      // => @media (min-width: 1440px) { ... }
+    },
     extend: {
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
-        "gradient-conic":
-          "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
+        "gradient-conic": "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
       },
     },
   },

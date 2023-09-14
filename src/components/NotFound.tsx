@@ -18,7 +18,7 @@ const NotFound = () => {
   return (
     <Container maxWidth="sm">
       <Stack direction={"column"} gap={10} sx={{ marginTop: "80px" }}>
-        <Typography variant="h5" className="text-center">
+        <Typography variant="h5" align="center">
           페이지를 찾을 수 없습니다.
         </Typography>
         <Alert severity="error">

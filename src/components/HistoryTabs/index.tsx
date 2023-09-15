@@ -138,7 +138,10 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
           </Fragment>
         ))}
       </Stack>
-      <Container maxWidth={"lg"} className="min-h-screen flex-1 text-white sm:p-1 md:p-5 ">
+      <Container
+        maxWidth={"lg"}
+        className="min-h-screen flex-1 text-white sm:p-2 md:p-5 xs:px-0 xs:py-3"
+      >
         {children}
       </Container>
     </div>

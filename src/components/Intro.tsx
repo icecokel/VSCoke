@@ -23,18 +23,34 @@ const Intro = () => {
         </Typography>
       </Stack>
       <Divider className="my-5 border-white" />
-      <Stack alignItems={"center"} className="px-10 pb-2 pt-5" direction={"row"}>
-        <Typography variant="h6">OS가 윈도우인 경우</Typography>
-        <div className="m-2 w-fit rounded-md border p-2">
-          <Typography variant="h5">F11</Typography>
-        </div>
-        <Typography variant="h6">눌러 "전체 화면" 으로 보시면</Typography>
-      </Stack>
-      <Stack alignItems={"center"} className="px-10 pb-5" direction={"row"}>
-        <Typography variant="h6"> 더욱 좋은 경험이 될겁니다</Typography>
+      <Stack gap={2}>
+        <Stack alignItems={"center"} className="px-10 pb-2" direction={"row"}>
+          <Typography variant="h6">OS가 윈도우인 경우</Typography>
+
+          <KeyButton label="F11" />
+          <Typography variant="h6">눌러 "전체 화면" 으로 보시면</Typography>
+        </Stack>
+        <Stack alignItems={"center"} className="px-10 pb-2" direction={"row"}>
+          <Typography variant="h6">OS가 MAC인 경우</Typography>
+          <KeyButton label="command" />+
+          <KeyButton label="shift" />+
+          <KeyButton label="F" />
+          <Typography variant="h6">눌러 "전체 화면" 으로 보시면</Typography>
+        </Stack>
+        <Stack alignItems={"center"} className="px-10 pb-5" direction={"row"}>
+          <Typography variant="h6"> 더욱 좋은 경험이 될겁니다</Typography>
+        </Stack>
       </Stack>
     </div>
   );
 };
 
 export default Intro;
+
+const KeyButton = ({ label }: { label: string }) => {
+  return (
+    <div className="m-2 w-fit rounded-md border py-1 px-2 text-center">
+      <Typography variant="h5">{label}</Typography>
+    </div>
+  );
+};

@@ -1,14 +1,9 @@
 "use client";
 
-import NorthIcon from "@mui/icons-material/North";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import SouthIcon from "@mui/icons-material/South";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
 import Step from "@mui/material/Step";
-import StepContent from "@mui/material/StepContent";
 import StepLabel from "@mui/material/StepLabel";
 import Stepper from "@mui/material/Stepper";
 import Typography from "@mui/material/Typography";
@@ -18,16 +13,8 @@ import { twMerge } from "tailwind-merge";
 const Resume = () => {
   const [currentStep, setCurrentStep] = useState(0);
 
-  const handleNext = () => {
-    setCurrentStep(prevActiveStep => prevActiveStep + 1);
-  };
-
-  const handleBack = () => {
-    setCurrentStep(prevActiveStep => prevActiveStep - 1);
-  };
-
-  const handleReset = () => {
-    setCurrentStep(0);
+  const handleClickItem = (index: number) => () => {
+    setCurrentStep(index);
   };
 
   const data: IPageProps[] = sampleData;
@@ -36,10 +23,15 @@ const Resume = () => {
 
   if (!info) return <></>;
   return (
-    <Stack direction={"row"}>
-      <Stepper activeStep={currentStep} orientation="vertical" className="h-fit">
+    <Stack direction={"row"} justifyContent={"space-between"}>
+      <Box>
+        {data.map(item => {
+          return <Resume.stepPanel {...item} currentStep={currentStep} key={item.step} />;
+        })}
+      </Box>
+      <Stepper activeStep={currentStep} orientation="vertical" className="h-fit min-w-[160px]">
         {data.map((item, index) => (
-          <Step key={item.step}>
+          <Step key={item.step} onClick={handleClickItem(index)}>
             <StepLabel>
               <Typography
                 variant="body1"
@@ -53,35 +45,9 @@ const Resume = () => {
                 </Typography>
               </Typography>
             </StepLabel>
-            <StepContent>
-              <Typography className="max-w-[10em] text-gray-100" variant="body2" fontSize={12}>
-                {item.description}
-              </Typography>
-              <Stack direction={"row"} alignItems={"center"} gap={1} className="mt-2">
-                <Button
-                  disabled={index === 0}
-                  onClick={handleBack}
-                  sx={{ width: "fit-content", minWidth: "4em" }}
-                >
-                  <NorthIcon />
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={index + 1 !== data.length ? handleNext : handleReset}
-                  sx={{ width: "fit-content", minWidth: "4em" }}
-                >
-                  {index + 1 !== data.length ? <SouthIcon /> : <RefreshIcon />}
-                </Button>
-              </Stack>
-            </StepContent>
           </Step>
         ))}
       </Stepper>
-      <Box>
-        {data.map(item => {
-          return <Resume.stepPanel {...item} currentStep={currentStep} key={item.step} />;
-        })}
-      </Box>
     </Stack>
   );
 };

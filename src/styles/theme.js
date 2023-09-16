@@ -36,7 +36,7 @@ export const theme = createTheme({
   },
   breakpoints: {
     values: {
-      xs: 360,
+      xs: 0,
       sm: 640,
       md: 900,
       lg: 1200,
@@ -44,6 +44,7 @@ export const theme = createTheme({
     },
   },
   typography: {
+    fontFamily: ["'Spoqa Han Sans Neo'"].join(","),
     h4: {
       fontWeight: 700,
     },

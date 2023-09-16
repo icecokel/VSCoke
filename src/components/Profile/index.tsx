@@ -3,15 +3,16 @@
 import { IHaveChildren } from "@/models/common";
 import BookmarkIcon from "@mui/icons-material/Bookmark";
 import GitHubIcon from "@mui/icons-material/GitHub";
+import LocalPhoneIcon from "@mui/icons-material/LocalPhone";
+import MailIcon from "@mui/icons-material/Mail";
 import NavigationIcon from "@mui/icons-material/Navigation";
-import PanToolAltOutlinedIcon from "@mui/icons-material/PanToolAltOutlined";
-import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import Fab from "@mui/material/Fab";
 import Grid from "@mui/material/Grid";
+import Grow from "@mui/material/Grow";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
@@ -30,31 +31,33 @@ const Profile = () => {
         alignItems={{ xs: "center", md: "flex-start" }}
       >
         <Avatar
-          className="h-[180px] w-[180px] border-4 border-yellow-200 md:h-[200px] md:w-[200px] "
-          src="https://icecokel-blog-dev.s3.ap-northeast-2.amazonaws.com/images/profileImg.jpg"
+          className="h-[180px] w-[180px] border-4 border-yellow-200 md:h-[200px] md:w-[200px]"
+          src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL}profileImg.jpg`}
         />
-        <Box marginLeft={"20px"} marginTop={{ sm: "25px" }}>
-          <Typography variant="h4" className="text-center">
+        <Box marginLeft={"12px"} marginTop={{ sm: "25px" }}>
+          <Typography variant="h4" align="center">
             코딩만 하지 않는 <br className="md:hidden" />
             개발자 이상민입니다.
           </Typography>
-          <Alert severity="info" icon={false} className="mt-5 w-full max-w-sm">
-            <Typography variant="body1" className="mb-3" fontWeight={700}>
-              이상민
-            </Typography>
-            <Tooltip title="이메일 보내기" placement="right">
-              <Typography variant="body1" className="mb-3" fontWeight={700}>
-                <a href="mailto:red9runge@gmail.com">red9runge@gmail.com</a>
-                <PanToolAltOutlinedIcon className="ml-2 rotate-[90deg] scale-y-[-1]" />
-              </Typography>
-            </Tooltip>
-            <Tooltip title="전화하기" placement="right">
-              <Typography variant="body1" className="mb-3" fontWeight={700}>
-                <a href="tel:01020809652">010-2080-9652</a>
-                <PanToolAltOutlinedIcon className="ml-2 rotate-[90deg] scale-y-[-1]" />
-              </Typography>
-            </Tooltip>
-          </Alert>
+          <Box className="mt-5 w-full max-w-sm ">
+            <Grow in={true}>
+              <Tooltip title="이메일 보내기" placement="bottom">
+                <Typography variant="body1" className="mb-3 hover:text-yellow-200">
+                  <MailIcon className="mr-1" />
+                  <a href="mailto:red9runge@gmail.com">red9runge@gmail.com</a>
+                </Typography>
+              </Tooltip>
+            </Grow>
+            {/* Conditionally applies the timeout prop to change the entry speed. */}
+            <Grow in={true} timeout={1000}>
+              <Tooltip title="전화하기" placement="bottom">
+                <Typography variant="body1" className="mb-3 hover:text-yellow-200">
+                  <LocalPhoneIcon className="mr-1" />
+                  <a href="tel:01020809652">010-2080-9652</a>
+                </Typography>
+              </Tooltip>
+            </Grow>
+          </Box>
         </Box>
       </Stack>
       <Profile.item title="간단 소개글">

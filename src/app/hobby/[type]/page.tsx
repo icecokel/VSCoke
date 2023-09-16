@@ -1,7 +1,5 @@
 import Hobby from "@/components/Hobby";
 
-export const HobbyTypeList = ["BackPacking"];
-
 interface IHobbyPageProps {
   params: {
     type: string;

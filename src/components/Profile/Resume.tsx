@@ -2,6 +2,7 @@
 
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
+import Grow from "@mui/material/Grow";
 import Stack from "@mui/material/Stack";
 import Step from "@mui/material/Step";
 import StepLabel from "@mui/material/StepLabel";
@@ -31,21 +32,26 @@ const Resume = () => {
       </Box>
       <Stepper activeStep={currentStep} orientation="vertical" className="h-fit min-w-[160px]">
         {data.map((item, index) => (
-          <Step key={item.step} onClick={handleClickItem(index)}>
-            <StepLabel>
-              <Typography
-                variant="body1"
-                fontWeight={700}
-                className={twMerge(currentStep === item.step ? "text-white" : "text-gray-300")}
-                fontSize={18}
-              >
-                {item.corporate}
-                <Typography variant="body2">
+          <Grow in={true} timeout={500 * index + 1} key={item.step}>
+            <Step onClick={handleClickItem(index)}>
+              <StepLabel>
+                <Typography
+                  variant="body1"
+                  fontWeight={700}
+                  className={twMerge(currentStep === item.step ? "text-white" : "text-gray-300")}
+                  fontSize={18}
+                >
+                  {item.corporate}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  className={twMerge(currentStep === item.step ? "text-white" : "text-gray-300")}
+                >
                   {item.periodStart} ~ {item.periodEnd}
                 </Typography>
-              </Typography>
-            </StepLabel>
-          </Step>
+              </StepLabel>
+            </Step>
+          </Grow>
         ))}
       </Stepper>
     </Stack>
@@ -73,9 +79,9 @@ interface IPageItem {
   skiils: string[];
 }
 
-Resume.stepPanel = ({ items, currentStep: index, step }: IPageProps) => {
+Resume.stepPanel = ({ items, currentStep, step }: IPageProps) => {
   return (
-    <Box hidden={step !== index}>
+    <Box hidden={step !== currentStep}>
       <Box padding={"32px"}>
         <ul>
           {items &&
@@ -90,11 +96,11 @@ Resume.stepPanel = ({ items, currentStep: index, step }: IPageProps) => {
                       {periodStart} ~ {PeriodEnd}
                     </Typography>
                   </Stack>
-                  <Typography variant="body1" fontWeight={600} className="ml-3">
+                  <Box className="ml-3 text-[14px] font-medium">
                     <pre>
                       <code>{jobs}</code>
                     </pre>
-                  </Typography>
+                  </Box>
                   <Typography variant="body2" className="my-4">
                     사용된 기술
                   </Typography>

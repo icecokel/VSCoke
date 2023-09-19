@@ -4,56 +4,38 @@ import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Grow from "@mui/material/Grow";
 import Stack from "@mui/material/Stack";
-import Step from "@mui/material/Step";
-import StepLabel from "@mui/material/StepLabel";
-import Stepper from "@mui/material/Stepper";
 import Typography from "@mui/material/Typography";
-import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 const Resume = () => {
-  const [currentStep, setCurrentStep] = useState(0);
-
-  const handleClickItem = (index: number) => () => {
-    setCurrentStep(index);
-  };
-
   const data: IPageProps[] = sampleData;
 
-  const info = data.find(row => row.step === currentStep);
-
-  if (!info) return <></>;
   return (
     <Stack direction={"row"} justifyContent={"space-between"}>
-      <Box>
-        {data.map(item => {
-          return <Resume.stepPanel {...item} currentStep={currentStep} key={item.step} />;
-        })}
-      </Box>
-      <Stepper activeStep={currentStep} orientation="vertical" className="h-fit min-w-[160px]">
+      <Stack gap={5} marginLeft={5} marginTop={5} position={"fixed"}>
         {data.map((item, index) => (
           <Grow in={true} timeout={500 * index + 1} key={item.step}>
-            <Step onClick={handleClickItem(index)}>
-              <StepLabel>
-                <Typography
-                  variant="body1"
-                  fontWeight={700}
-                  className={twMerge(currentStep === item.step ? "text-white" : "text-gray-300")}
-                  fontSize={18}
-                >
-                  {item.corporate}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  className={twMerge(currentStep === item.step ? "text-white" : "text-gray-300")}
-                >
-                  {item.periodStart} ~ {item.periodEnd}
-                </Typography>
-              </StepLabel>
-            </Step>
+            <a href={`#resume_${index + 1}`}>
+              <Typography
+                variant="body1"
+                fontWeight={700}
+                className={twMerge("text-white")}
+                fontSize={18}
+              >
+                {item.corporate}
+              </Typography>
+              <Typography variant="body2" className={twMerge("text-white")}>
+                {item.periodStart} ~ {item.periodEnd}
+              </Typography>
+            </a>
           </Grow>
         ))}
-      </Stepper>
+      </Stack>
+      <Box marginLeft={"180px"}>
+        {data.map(item => {
+          return <Resume.stepPanel {...item} key={item.step} />;
+        })}
+      </Box>
     </Stack>
   );
 };
@@ -68,7 +50,6 @@ interface IPageProps {
   periodStart: string;
   periodEnd?: string;
   items?: IPageItem[];
-  currentStep?: number;
 }
 
 interface IPageItem {
@@ -79,54 +60,52 @@ interface IPageItem {
   skiils: string[];
 }
 
-Resume.stepPanel = ({ items, currentStep, step }: IPageProps) => {
+Resume.stepPanel = ({ items, step }: IPageProps) => {
   return (
-    <Box hidden={step !== currentStep}>
-      <Box padding={"32px"}>
-        <ul>
-          {items &&
-            items.map(({ title, periodStart, periodEnd: PeriodEnd, jobs, skiils }) => {
-              return (
-                <li key={title}>
-                  <Stack direction={"row"} alignItems={"end"} gap={1}>
-                    <Typography variant="h6" fontWeight={700}>
-                      {title}
-                    </Typography>
-                    <Typography className="text-gray-300" variant="body2">
-                      {periodStart} ~ {PeriodEnd}
-                    </Typography>
-                  </Stack>
-                  <Box className="ml-3 text-[14px] font-medium">
-                    <pre>
-                      <code>{jobs}</code>
-                    </pre>
-                  </Box>
-                  <Typography variant="body2" className="my-4">
-                    사용된 기술
+    <Box padding={"32px"}>
+      <ul>
+        {items &&
+          items.map(({ title, periodStart, periodEnd: PeriodEnd, jobs, skiils }) => {
+            return (
+              <li key={title} id={`resume_${step}`}>
+                <Stack direction={"row"} alignItems={"end"} gap={1}>
+                  <Typography variant="h6" fontWeight={700}>
+                    {title}
                   </Typography>
-                  <Box>
-                    {skiils.map((item, index) => (
-                      <Chip
-                        key={`skill_${index}`}
-                        label={item}
-                        size="small"
-                        variant="outlined"
-                        className="mb-2 mr-2 select-none p-1 text-white "
-                      />
-                    ))}
-                  </Box>
-                </li>
-              );
-            })}
-        </ul>
-      </Box>
+                  <Typography className="text-gray-300" variant="body2">
+                    {periodStart} ~ {PeriodEnd}
+                  </Typography>
+                </Stack>
+                <Box className="ml-3 text-[14px] font-medium">
+                  <pre>
+                    <code>{jobs}</code>
+                  </pre>
+                </Box>
+                <Typography variant="body2" className="my-4">
+                  사용된 기술
+                </Typography>
+                <Box>
+                  {skiils.map((item, index) => (
+                    <Chip
+                      key={`skill_${index}`}
+                      label={item}
+                      size="small"
+                      variant="outlined"
+                      className="mb-2 mr-2 select-none p-1 text-white "
+                    />
+                  ))}
+                </Box>
+              </li>
+            );
+          })}
+      </ul>
     </Box>
   );
 };
 
 const sampleData: IPageProps[] = [
   {
-    step: 0,
+    step: 1,
     corporate: "코드 크레용",
     team: "개발팀",
     periodStart: "2023.05",
@@ -152,7 +131,7 @@ const sampleData: IPageProps[] = [
     ],
   },
   {
-    step: 1,
+    step: 2,
     corporate: "Allofthem",
     team: "개발팀",
     periodStart: "2021.07",
@@ -189,7 +168,7 @@ const sampleData: IPageProps[] = [
     ],
   },
   {
-    step: 2,
+    step: 3,
     corporate: "데이터로직스",
     periodStart: "2020.08",
     periodEnd: "2021.07",
@@ -226,7 +205,7 @@ const sampleData: IPageProps[] = [
     ],
   },
   {
-    step: 3,
+    step: 4,
     corporate: "데이터로직스",
     team: "인프라",
     periodStart: "2017.08",

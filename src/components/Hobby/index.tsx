@@ -34,16 +34,16 @@ const Hobby = ({ type }: IHobbyProps) => {
 
       <Box color={"black"} bgcolor={"#fff"} borderRadius={"4px"} padding={"12px"}>
         <Grid container>
-          <HobbyCard date="123" thumnail="test.JPG" title="선자령" />
-          <HobbyCard date="123" thumnail="test.JPG" title="선자령" />
-          <HobbyCard date="123" thumnail="test.JPG" title="선자령" />
-          <HobbyCard date="123" thumnail="test.JPG" title="선자령" />
-          <HobbyCard date="123" thumnail="test.JPG" title="선자령" />
-          <HobbyCard date="123" thumnail="test.JPG" title="선자령" />
-          <HobbyCard date="123" thumnail="test.JPG" title="선자령" />
-          <HobbyCard date="123" thumnail="test.JPG" title="선자령" />
-          <HobbyCard date="123" thumnail="test.JPG" title="선자령" />
-          <HobbyCard date="123" thumnail="test.JPG" title="선자령" />
+          {Array.from(Array(15)).map(() => {
+            return (
+              <HobbyCard
+                date="123"
+                thumnail="test.JPG"
+                title="선자령"
+                items={["test.JPG", "test.JPG", "test.JPG"]}
+              />
+            );
+          })}
         </Grid>
       </Box>
     </Stack>

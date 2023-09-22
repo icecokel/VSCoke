@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 const { colors } = require("./src/styles/colors");
+const { breakPoints } = require("./src/styles/breakPoints");
 
 module.exports = {
   content: [
@@ -10,15 +11,15 @@ module.exports = {
   theme: {
     colors,
     screens: {
-      xs: `${0}px`,
+      xs: `${breakPoints.xs}px`,
       // => @media (min-width: 0px) { ... }
-      sm: `${640}px`,
-      // => @media (min-width: 640px) { ... }
-      md: `${900}px`,
+      sm: `${breakPoints.sm}px`,
+      // => @media (min-width: 600px) { ... }
+      md: `${breakPoints.md}px`,
       // => @media (min-width: 900px) { ... }
-      lg: `${1200}px`,
+      lg: `${breakPoints.lg}px`,
       // => @media (min-width: 1200px) { ... }
-      xl: `${1440}px`,
+      xl: `${breakPoints.xl}px`,
       // => @media (min-width: 1440px) { ... }
     },
     extend: {

@@ -1,11 +1,13 @@
 "use client";
 
+import ArrowBackIosTwoToneIcon from "@mui/icons-material/ArrowBackIosTwoTone";
+import ArrowForwardIosTwoToneIcon from "@mui/icons-material/ArrowForwardIosTwoTone";
 import Box from "@mui/material/Box";
-import Dialog, { DialogProps } from "@mui/material/Dialog";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
+import Button from "@mui/material/Button";
+import Container from "@mui/material/Container";
 import Fade from "@mui/material/Fade";
 import Grid from "@mui/material/Grid";
+import Modal from "@mui/material/Modal";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Image from "next/image";
@@ -29,9 +31,6 @@ const HobbyCard = ({ date, thumnail, title, items, review }: ICard) => {
   const handleMouseLeave = () => {
     setIsHideInfo(true);
   };
-  const onToggleModal = () => {
-    setOpen(!open);
-  };
 
   return (
     <Grid item xs={6} sm={4} md={3}>
@@ -39,7 +38,7 @@ const HobbyCard = ({ date, thumnail, title, items, review }: ICard) => {
         className="relative overflow-hidden rounded aspect-square p-[8px]"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        onClick={onToggleModal}
+        onClick={() => setOpen(true)}
       >
         <Stack
           alignItems={"center"}
@@ -74,36 +73,79 @@ const HobbyCard = ({ date, thumnail, title, items, review }: ICard) => {
             </Box>
           </Stack>
         </Fade>
+        <HobbyCard.detail open={open} onClose={() => setOpen(false)} items={items} title={title} />
       </div>
-      <HobbyCard.detail open={open} items={items} onClose={onToggleModal} title={title} />
     </Grid>
   );
 };
 
 export default HobbyCard;
 
-interface HobbyCardDetailProps extends DialogProps {
+interface IDetailProps {
   title: string;
-  items?: string[];
+  open: boolean;
+  onClose: () => void;
+  items: string[];
 }
 
-HobbyCard.detail = ({ items, title, ...restProps }: HobbyCardDetailProps) => {
+HobbyCard.detail = ({ open, onClose, items, title }: IDetailProps) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const setIndex = (type: "inc" | "decr") => () => {
+    setCurrentIndex(prev => (type === "inc" ? prev + 1 : prev - 1));
+  };
   return (
-    <Dialog {...restProps}>
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent>
-        {items?.map(src => {
-          return (
-            <Image
-              src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL}${src}`}
-              width={300}
-              height={300}
-              alt=""
-              className="object-cover"
-            />
-          );
-        })}
-      </DialogContent>
-    </Dialog>
+    <Modal
+      open={open}
+      onClose={onClose}
+      componentsProps={{ backdrop: { sx: { backgroundColor: "rgba(0, 0, 0, 0.8)" } } }}
+    >
+      <Stack justifyContent={"center"} alignItems={"center"} className="h-screen">
+        <Typography color={"white"} variant="h5">
+          {title}
+        </Typography>
+        <Container maxWidth="md" className="mt-5 flex flex-row">
+          {items?.map((src, index) => {
+            return (
+              <Box
+                className={"my-auto items-center gap-3"}
+                key={`${src}_${index}`}
+                display={currentIndex === index ? "flex" : "none"}
+              >
+                <Button variant="text" onClick={setIndex("decr")} disabled={currentIndex === 0}>
+                  <ArrowBackIosTwoToneIcon
+                    sx={{
+                      fontSize: "38px",
+                      color: currentIndex === 0 ? "rgba(#FFFFFF, 0.7)" : "#FFFFFF",
+                    }}
+                  />
+                </Button>
+                <Fade in={currentIndex === index}>
+                  <Image
+                    src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL}${src}`}
+                    width={900}
+                    height={900}
+                    alt=""
+                    className="object-contain rounded "
+                  />
+                </Fade>
+                <Button
+                  variant="text"
+                  onClick={setIndex("inc")}
+                  disabled={currentIndex === items.length - 1}
+                >
+                  <ArrowForwardIosTwoToneIcon
+                    sx={{
+                      fontSize: "38px",
+                      color: currentIndex === items.length - 1 ? "rgba(#FFFFFF, 0.7)" : "#FFFFFF",
+                    }}
+                  />
+                </Button>
+              </Box>
+            );
+          })}
+        </Container>
+      </Stack>
+    </Modal>
   );
 };

@@ -1,5 +1,6 @@
 const { createTheme } = require("@mui/material");
 const { colors } = require("@/styles/colors");
+const { breakPoints } = require("@/styles/breakPoints");
 
 export const theme = createTheme({
   components: {
@@ -28,20 +29,13 @@ export const theme = createTheme({
           ":disabled": {
             color: colors.gray[500],
             fontWeight: 400,
-            backgroundColor: colors.gray[800],
           },
         },
       },
     },
   },
   breakpoints: {
-    values: {
-      xs: 0,
-      sm: 640,
-      md: 900,
-      lg: 1200,
-      xl: 1440,
-    },
+    values: breakPoints,
   },
   typography: {
     fontFamily: ["'Spoqa Han Sans Neo'"].join(","),

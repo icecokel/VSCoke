@@ -1,9 +1,6 @@
 "use client";
 
-import ArrowBackIosTwoToneIcon from "@mui/icons-material/ArrowBackIosTwoTone";
-import ArrowForwardIosTwoToneIcon from "@mui/icons-material/ArrowForwardIosTwoTone";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
 import Fade from "@mui/material/Fade";
 import Grid from "@mui/material/Grid";
@@ -12,6 +9,8 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Image from "next/image";
 import { useState } from "react";
+import { Navigation } from "swiper/modules";
+import { Swiper, SwiperSlide } from "swiper/react";
 
 export interface ICard {
   thumnail: string;
@@ -89,11 +88,6 @@ interface IDetailProps {
 }
 
 HobbyCard.detail = ({ open, onClose, items, title }: IDetailProps) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  const setIndex = (type: "inc" | "decr") => () => {
-    setCurrentIndex(prev => (type === "inc" ? prev + 1 : prev - 1));
-  };
   return (
     <Modal
       open={open}
@@ -105,45 +99,19 @@ HobbyCard.detail = ({ open, onClose, items, title }: IDetailProps) => {
           {title}
         </Typography>
         <Container maxWidth="md" className="mt-5 flex flex-row">
-          {items?.map((src, index) => {
-            return (
-              <Box
-                className={"my-auto items-center gap-3"}
-                key={`${src}_${index}`}
-                display={currentIndex === index ? "flex" : "none"}
-              >
-                <Button variant="text" onClick={setIndex("decr")} disabled={currentIndex === 0}>
-                  <ArrowBackIosTwoToneIcon
-                    sx={{
-                      fontSize: "38px",
-                      color: currentIndex === 0 ? "rgba(#FFFFFF, 0.7)" : "#FFFFFF",
-                    }}
-                  />
-                </Button>
-                <Fade in={currentIndex === index} className="bg-gray-500">
-                  <Image
-                    src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL}${src}`}
-                    width={900}
-                    height={900}
-                    alt=""
-                    className="object-contain rounded "
-                  />
-                </Fade>
-                <Button
-                  variant="text"
-                  onClick={setIndex("inc")}
-                  disabled={currentIndex === items.length - 1}
-                >
-                  <ArrowForwardIosTwoToneIcon
-                    sx={{
-                      fontSize: "38px",
-                      color: currentIndex === items.length - 1 ? "rgba(#FFFFFF, 0.7)" : "#FFFFFF",
-                    }}
-                  />
-                </Button>
-              </Box>
-            );
-          })}
+          <Swiper navigation={true} modules={[Navigation]} className="mySwiper">
+            {items.map(src => (
+              <SwiperSlide>
+                <Image
+                  src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL}${src}`}
+                  width={900}
+                  height={900}
+                  alt=""
+                  className="object-contain rounded "
+                />
+              </SwiperSlide>
+            ))}
+          </Swiper>
         </Container>
       </Stack>
     </Modal>

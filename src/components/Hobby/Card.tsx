@@ -120,7 +120,7 @@ HobbyCard.detail = ({ open, onClose, items, title }: IDetailProps) => {
                     }}
                   />
                 </Button>
-                <Fade in={currentIndex === index}>
+                <Fade in={currentIndex === index} className="bg-gray-500">
                   <Image
                     src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL}${src}`}
                     width={900}

@@ -57,7 +57,7 @@ interface IPageItem {
   periodStart: string;
   periodEnd?: string;
   jobs: string;
-  skiils: string[];
+  skills: string[];
 }
 
 Resume.stepPanel = ({ items, step }: IPageProps) => {
@@ -65,7 +65,7 @@ Resume.stepPanel = ({ items, step }: IPageProps) => {
     <Box padding={"32px"}>
       <ul>
         {items &&
-          items.map(({ title, periodStart, periodEnd: PeriodEnd, jobs, skiils }) => {
+          items.map(({ title, periodStart, periodEnd: PeriodEnd, jobs, skills }) => {
             return (
               <li key={title} id={`resume_${step}`}>
                 <Stack direction={"row"} alignItems={"end"} gap={1}>
@@ -85,7 +85,7 @@ Resume.stepPanel = ({ items, step }: IPageProps) => {
                   사용된 기술
                 </Typography>
                 <Box>
-                  {skiils.map((item, index) => (
+                  {skills.map((item, index) => (
                     <Chip
                       key={`skill_${index}`}
                       label={item}
@@ -126,7 +126,7 @@ const sampleData: IPageProps[] = [
   - 페이지 이동 마다 로더 추가
   - 인피니티 스크롤 개선
 `,
-        skiils: ["Next", "React", "TypeScript", "CI/CD", "github", "mui", "tailwind"],
+        skills: ["Next", "React", "TypeScript", "CI/CD", "github", "mui", "tailwind"],
       },
     ],
   },
@@ -153,7 +153,7 @@ const sampleData: IPageProps[] = [
   
 3. 관리자 가입 페이지 작성
         `,
-        skiils: [
+        skills: [
           "Next",
           "React",
           "TypeScript",
@@ -190,7 +190,7 @@ const sampleData: IPageProps[] = [
   
 3. 관리자 가입 페이지 작성
         `,
-        skiils: [
+        skills: [
           "Next",
           "React",
           "TypeScript",
@@ -226,7 +226,7 @@ const sampleData: IPageProps[] = [
   
 3. 관리자 가입 페이지 작성
         `,
-        skiils: [
+        skills: [
           "Next",
           "React",
           "TypeScript",

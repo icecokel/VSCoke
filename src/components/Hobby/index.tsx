@@ -34,9 +34,10 @@ const Hobby = ({ type }: IHobbyProps) => {
 
       <Box color={"black"} bgcolor={"#fff"} borderRadius={"4px"} padding={"12px"}>
         <Grid container>
-          {Array.from(Array(15)).map(() => {
+          {Array.from(Array(15)).map((item, index) => {
             return (
               <HobbyCard
+                key={index}
                 date="123"
                 thumnail="test.JPG"
                 title="선자령"

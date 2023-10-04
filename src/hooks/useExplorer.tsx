@@ -1,16 +1,9 @@
 "use client";
 
 import { BlogContext } from "@/contexts/AppProvider";
-import useHistory from "@/hooks/useHistory";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import HikingRoundedIcon from "@mui/icons-material/HikingRounded";
 import PortraitRoundedIcon from "@mui/icons-material/PortraitRounded";
 import TextSnippetOutlinedIcon from "@mui/icons-material/TextSnippetOutlined";
-import TreeItem from "@mui/lab/TreeItem";
-import TreeView from "@mui/lab/TreeView";
-import LinearProgress from "@mui/material/LinearProgress";
-import Link from "next/link";
 import { ReactNode, useContext, useEffect, useState } from "react";
 
 export interface ITree {

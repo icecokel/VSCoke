@@ -14,6 +14,12 @@ export interface ITree {
   items?: ITree[];
 }
 
+const iconMap = {
+  profile: <PortraitRoundedIcon className="text-yellow-200" />,
+  hobby: <HikingRoundedIcon className="text-green-300" />,
+  blog: <TextSnippetOutlinedIcon className="text-blue-100" />,
+};
+
 const defaultData: ITree[] = [
   {
     id: "profile",

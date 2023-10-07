@@ -4,7 +4,7 @@ import { SyncStringStorage } from "jotai/vanilla/utils/atomWithStorage";
 export interface IHistoryItem {
   title: string;
   path: string;
-  isAactive: boolean;
+  isActive: boolean;
 }
 
 export const historyAtom = atomWithStorage<IHistoryItem[]>("history", [], {

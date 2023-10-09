@@ -1,11 +1,14 @@
 "use client";
 
 import SidebarLayout from "./SidebarLayout";
-import useExplorer from "@/hooks/useExplorer";
-import { ITree } from "@/hooks/useExplorer";
+import useExplorer, { ITree } from "@/hooks/useExplorer";
 import useHistory from "@/hooks/useHistory";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import ContentPasteSearchIcon from "@mui/icons-material/ContentPasteSearch";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import HikingRoundedIcon from "@mui/icons-material/HikingRounded";
+import PortraitRoundedIcon from "@mui/icons-material/PortraitRounded";
+import TextSnippetOutlinedIcon from "@mui/icons-material/TextSnippetOutlined";
 import TreeItem from "@mui/lab/TreeItem";
 import TreeView from "@mui/lab/TreeView";
 import LinearProgress from "@mui/material/LinearProgress";
@@ -51,13 +54,27 @@ Explorer.item = ({ id, label, path, items, tabClose, icon }: IItemProps) => {
 
   const handleClickItem = () => {
     if (url) {
-      add({ isAactive: true, path: url, title: label });
+      add({ isActive: true, path: url, title: label });
       tabClose();
     }
   };
+
+  const convertIcon = () => {
+    switch (icon) {
+      case "profile":
+        return <PortraitRoundedIcon className="text-yellow-200" />;
+      case "backPacking":
+        return <HikingRoundedIcon className="text-green-300" />;
+      case "blog":
+        return <TextSnippetOutlinedIcon className="text-blue-100" />;
+      default:
+        <ContentPasteSearchIcon className="text-gray-100" />;
+    }
+  };
+
   return (
     <Link href={url} onClick={handleClickItem}>
-      <TreeItem nodeId={id} label={label} className="bg-gray-900" icon={icon}>
+      <TreeItem nodeId={id} label={label} className="bg-gray-900" icon={convertIcon()}>
         {items?.map(item => {
           return <Explorer.item key={`tree_${item.id}`} {...item} tabClose={tabClose} />;
         })}

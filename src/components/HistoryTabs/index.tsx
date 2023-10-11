@@ -49,7 +49,8 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
     }
   };
 
-  const handleDragEnter = ({ currentTarget: { id } }: React.MouseEvent<HTMLDivElement>) => {
+  const handleDragEnter = ({ currentTarget }: React.MouseEvent<HTMLDivElement>) => {
+    const { id } = currentTarget;
     if (id && dragStartPath && dragStartPath !== id) {
       setEnterPath(id);
     }
@@ -60,11 +61,11 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
       const clickedTab = history.find(({ path }) => path == dragStartPath);
       const targetTabIndex = history.findIndex(({ path }) => path == dragEnterPath);
       if (clickedTab) {
-        const historyToUodate = [...history]
+        const historyToUpdate = [...history]
           .filter(({ path }) => path !== clickedTab?.path)
-          .map(item => ({ ...item, isAactive: false }));
-        historyToUodate.splice(targetTabIndex, 0, { ...clickedTab, isAactive: true });
-        setHistory(historyToUodate);
+          .map(item => ({ ...item, isActive: false }));
+        historyToUpdate.splice(targetTabIndex, 0, { ...clickedTab, isActive: true });
+        setHistory(historyToUpdate);
       }
     }
   };
@@ -79,7 +80,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
                 id={item.path}
                 className={twMerge(
                   "border border-gray-300/60 border-l-[0px]",
-                  item.isAactive && "bg-gray-800 border-b-[0px]",
+                  item.isActive && "bg-gray-800 border-b-[0px]",
                 )}
                 onClick={() => handleClickTab(item)}
                 onContextMenu={handleRightClickTab}
@@ -91,7 +92,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
                 <Typography
                   className={twMerge(
                     "text-gray-300/80 md:py-[6px] md:px-[20px] py-[4px] px-[8px]",
-                    item.isAactive &&
+                    item.isActive &&
                       "text-yellow-200/95 font-medium border-t pt-[1px] border-t-blue-300 md:pt-[5px]",
                   )}
                   fontSize={14}
@@ -101,7 +102,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
                     sx={{ fontSize: 15, fontWeight: 700 }}
                     className={twMerge(
                       "ml-[4px] mr-[-4px] md:ml-[8px] md:mr-[-8px]",
-                      !item.isAactive && "hidden",
+                      !item.isActive && "hidden",
                     )}
                     onClick={() => handleClickClose(item)}
                   />

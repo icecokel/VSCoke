@@ -8,14 +8,11 @@ const useHistory = () => {
 
   const add = ({ path, title }: IHistoryItem) => {
     if (history.some(item => item.path === path)) {
-      change({ path, title, isAactive: true });
+      change({ path, title, isActive: true });
       return;
     }
     setHistory(prev => {
-      return [
-        ...prev.map(item => ({ ...item, isAactive: false })),
-        { isAactive: true, path, title },
-      ];
+      return [...prev.map(item => ({ ...item, isActive: false })), { isActive: true, path, title }];
     });
   };
 
@@ -27,7 +24,7 @@ const useHistory = () => {
       .filter(item => item.path !== path)
       .map((item, index) => ({
         ...item,
-        isAactive: index === (isLast ? prevItemIndex - 1 : prevItemIndex),
+        isActive: index === (isLast ? prevItemIndex - 1 : prevItemIndex),
       }));
 
     if (prevItemIndex >= 0) {
@@ -43,15 +40,15 @@ const useHistory = () => {
     }
   };
 
-  const change = ({ isAactive, path }: IHistoryItem) => {
-    if (!isAactive) {
-      setHistory(prev => prev.map(item => ({ ...item, isAactive: item.path === path })));
+  const change = ({ isActive: isActive, path }: IHistoryItem) => {
+    if (!isActive) {
+      setHistory(prev => prev.map(item => ({ ...item, isActive: item.path === path })));
       router.push(path);
     }
   };
 
   return {
-    current: history.find(item => item.isAactive),
+    current: history.find(item => item.isActive),
     history,
     setHistory,
     add,

@@ -1,5 +1,6 @@
 "use client";
 
+import DeviceThermostatOutlinedIcon from "@mui/icons-material/DeviceThermostatOutlined";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Fade from "@mui/material/Fade";
@@ -72,7 +73,14 @@ const HobbyCard = ({ date, thumnail, title, items, review }: ICard) => {
             </Box>
           </Stack>
         </Fade>
-        <HobbyCard.detail open={open} onClose={() => setOpen(false)} items={items} title={title} />
+        <HobbyCard.detail
+          open={open}
+          onClose={() => setOpen(false)}
+          items={items}
+          title={title}
+          temporary={17.7}
+          weather="sun"
+        />
       </div>
     </Grid>
   );
@@ -82,12 +90,14 @@ export default HobbyCard;
 
 interface IDetailProps {
   title: string;
+  temporary?: number;
+  weather?: string;
   open: boolean;
   onClose: () => void;
   items: string[];
 }
 
-HobbyCard.detail = ({ open, onClose, items, title }: IDetailProps) => {
+HobbyCard.detail = ({ open, onClose, items, title, temporary, weather }: IDetailProps) => {
   return (
     <Modal
       open={open}
@@ -95,9 +105,24 @@ HobbyCard.detail = ({ open, onClose, items, title }: IDetailProps) => {
       componentsProps={{ backdrop: { sx: { backgroundColor: "rgba(0, 0, 0, 0.8)" } } }}
     >
       <Stack justifyContent={"center"} alignItems={"center"} className="h-screen">
-        <Typography color={"white"} variant="h5">
-          {title}
-        </Typography>
+        <Container maxWidth="md" className="flex justify-between">
+          <Typography variant="h5" color={"white"}>
+            {title}
+          </Typography>
+          <Stack direction={"column"} alignItems={"flex-end"}>
+            {temporary && (
+              <Typography variant="body2" color={"white"}>
+                <DeviceThermostatOutlinedIcon />
+                {temporary}
+              </Typography>
+            )}
+            {weather && (
+              <Typography variant="body2" color={"white"}>
+                {weather}
+              </Typography>
+            )}
+          </Stack>
+        </Container>
         <Container maxWidth="md" className="mt-5 flex flex-row">
           <Swiper navigation={true} modules={[Navigation]} className="mySwiper">
             {items.map(src => (

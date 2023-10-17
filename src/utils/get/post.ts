@@ -1,4 +1,4 @@
-import { ITree } from "@/components/Sidebar/Explorer";
+import { ITree } from "@/hooks/useExplorer";
 import notion from "@/service/notion";
 import { cache } from "react";
 

@@ -21,6 +21,11 @@ interface ExplorerProps {
 
 const Explorer = ({ isShowing, tabClose }: ExplorerProps) => {
   const { itemList, isLoading } = useExplorer();
+
+  const handleRightClick: React.MouseEventHandler<HTMLDivElement> = event => {
+    event.preventDefault();
+  };
+
   return (
     <SidebarLayout isShowing={isShowing}>
       {isLoading ? (

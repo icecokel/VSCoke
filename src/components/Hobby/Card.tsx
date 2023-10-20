@@ -21,7 +21,7 @@ export interface ICard {
   items: string[];
 }
 
-const HobbyCard = ({ date, thumnail, title, items, review }: ICard) => {
+const HobbyCard = ({ date, thumnail: thumbnail, title, items, review }: ICard) => {
   const [isHideInfo, setIsHideInfo] = useState(true);
   const [open, setOpen] = useState(false);
 
@@ -46,7 +46,7 @@ const HobbyCard = ({ date, thumnail, title, items, review }: ICard) => {
           className="aspect-square bg-yellow-200/10 rounded"
         >
           <Image
-            src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL}${thumnail}`}
+            src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL}${thumbnail}`}
             width={300}
             height={300}
             alt=""

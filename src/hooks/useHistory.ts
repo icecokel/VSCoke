@@ -40,11 +40,9 @@ const useHistory = () => {
     }
   };
 
-  const change = ({ isActive: isActive, path }: IHistoryItem) => {
-    if (!isActive) {
-      setHistory(prev => prev.map(item => ({ ...item, isActive: item.path === path })));
-      router.push(path);
-    }
+  const change = ({ path }: IHistoryItem) => {
+    setHistory(prev => prev.map(item => ({ ...item, isActive: item.path === path })));
+    router.push(path);
   };
 
   return {

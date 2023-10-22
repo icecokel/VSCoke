@@ -35,9 +35,14 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
   const [dragStartPath, setDragStartPath] = useState<string>();
   const [dragEnterPath, setEnterPath] = useState<string>();
 
+  // TODO 우클릭 삭제 로직 수정
   const handleClickCloseMenu = (target: IHistoryItem) => {
     remove(target);
     setCurrentEl(null);
+  };
+
+  const handleClickCloseOuters = (target: IHistoryItem) => {
+    console.log(target);
   };
 
   const handleDragStart = ({ currentTarget: { id } }: React.MouseEvent<HTMLDivElement>) => {
@@ -134,7 +139,8 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
                 },
               }}
             >
-              <MenuItem onClick={() => handleClickCloseMenu(item)}>close</MenuItem>
+              <MenuItem onClick={() => handleClickCloseMenu(item)}>Close</MenuItem>
+              <MenuItem onClick={() => handleClickCloseOuters(item)}>Close Others</MenuItem>
             </Menu>
           </Fragment>
         ))}

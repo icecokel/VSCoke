@@ -13,7 +13,7 @@ interface IMenu {
   items: IMenuItem[];
 }
 
-const MENULIST: IMenu[] = [];
+const MENULIST: IMenu[] = [{ label: "File", items: [{ label: "Open Project" }] }];
 
 const Menubar = () => {
   return <Stack direction={"row"}></Stack>;

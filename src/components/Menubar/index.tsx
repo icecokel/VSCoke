@@ -13,9 +13,19 @@ interface IMenu {
   items: IMenuItem[];
 }
 
-const MENULIST: IMenu[] = [{ label: "File", items: [{ label: "Open Project" }] }];
+const MENULIST: IMenu[] = [
+  { label: "File", items: [{ label: "Open Project" }] },
+  { label: "Help", items: [] },
+];
 
 const Menubar = () => {
-  return <Stack direction={"row"}></Stack>;
+  return (
+    <Stack direction={"row"}>
+      {MENULIST.map(item => {
+        return <div>{item.label}</div>;
+      })}
+    </Stack>
+  );
 };
+
 export default Menubar;

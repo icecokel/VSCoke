@@ -1,5 +1,6 @@
 "use client";
 
+import { IHaveChildren } from "@/models/common";
 import Stack from "@mui/material/Stack";
 
 interface IMenuItem {
@@ -18,13 +19,16 @@ const MENULIST: IMenu[] = [
   { label: "Help", items: [] },
 ];
 
-const Menubar = () => {
+const Menubar = ({ children }: IHaveChildren) => {
   return (
-    <Stack direction={"row"}>
-      {MENULIST.map(item => {
-        return <div>{item.label}</div>;
-      })}
-    </Stack>
+    <>
+      <Stack direction={"row"}>
+        {MENULIST.map(item => {
+          return <div>{item.label}</div>;
+        })}
+      </Stack>
+      {children}
+    </>
   );
 };
 

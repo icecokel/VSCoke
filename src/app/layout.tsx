@@ -1,5 +1,6 @@
 import "./globals.css";
 import HistoryTabs from "@/components/HistoryTabs";
+import Menubar from "@/components/Menubar";
 import Sidebar from "@/components/Sidebar";
 import AppProvider from "@/contexts/AppProvider";
 import { IHaveChildren } from "@/models/common";
@@ -23,9 +24,11 @@ export default async function RootLayout({ children }: IHaveChildren) {
     <html lang="ko">
       <body>
         <AppProvider blogs={blogs} explorer={explorer}>
-          <Sidebar>
-            <HistoryTabs>{children}</HistoryTabs>
-          </Sidebar>
+          <Menubar>
+            <Sidebar>
+              <HistoryTabs>{children}</HistoryTabs>
+            </Sidebar>
+          </Menubar>
         </AppProvider>
       </body>
     </html>

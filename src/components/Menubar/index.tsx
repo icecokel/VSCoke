@@ -1,42 +1,51 @@
 "use client";
 
 import { IHaveChildren } from "@/models/common";
-import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { MouseEventHandler } from "react";
 
 interface IMenuItem {
-  label: string;
+  name: string;
   shortcut?: string;
   items?: IMenuItem[];
 }
 
 interface IMenu {
-  label: string;
+  key: string;
+  name: string;
   items: IMenuItem[];
 }
 
 const MENULIST: IMenu[] = [
-  { label: "File", items: [{ label: "Open Project" }] },
-  { label: "Help", items: [] },
+  { key: "1", name: "File", items: [{ name: "Open Project" }] },
+  { key: "2", name: "Help", items: [] },
 ];
 
 const Menubar = ({ children }: IHaveChildren) => {
+  const handleClickMenu: MouseEventHandler<HTMLDivElement> = ({ currentTarget }) => {
+    console.log(currentTarget);
+  };
   return (
     <>
-      <Stack direction={"row"} className="bg-gray-900 p-1">
-        {MENULIST.map(item => {
+      <div className="bg-gray-900 p-1 flex">
+        {MENULIST.map((item, index) => {
           return (
-            <Typography
-              variant="body1"
-              color="initial"
-              key={item.label}
-              className="text-gray-300 px-3 select-none"
+            <div
+              key={`${item.key}_${index}`}
+              name={item.name.toLowerCase()}
+              onClick={handleClickMenu}
             >
-              {item.label}
-            </Typography>
+              <Typography
+                variant="body1"
+                color="initial"
+                className="text-gray-300 px-3 select-none"
+              >
+                {item.name}
+              </Typography>
+            </div>
           );
         })}
-      </Stack>
+      </div>
 
       {children}
     </>

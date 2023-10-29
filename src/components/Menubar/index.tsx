@@ -2,7 +2,7 @@
 
 import { IHaveChildren } from "@/models/common";
 import Typography from "@mui/material/Typography";
-import { MouseEventHandler } from "react";
+import { MouseEventHandler, useState } from "react";
 
 interface IMenuItem {
   name: string;
@@ -22,19 +22,18 @@ const MENULIST: IMenu[] = [
 ];
 
 const Menubar = ({ children }: IHaveChildren) => {
-  const handleClickMenu: MouseEventHandler<HTMLDivElement> = ({ currentTarget }) => {
-    console.log(currentTarget);
+  const [openedMenu, setOpenedMenu] = useState("");
+
+  const handleClickMenu: MouseEventHandler<HTMLDivElement> = ({ currentTarget: { name } }) => {
+    setOpenedMenu(name);
   };
+
   return (
     <>
       <div className="bg-gray-900 p-1 flex">
         {MENULIST.map((item, index) => {
           return (
-            <div
-              key={`${item.key}_${index}`}
-              name={item.name.toLowerCase()}
-              onClick={handleClickMenu}
-            >
+            <div key={`${item.key}_${index}`} name={item.name} onClick={handleClickMenu}>
               <Typography
                 variant="body1"
                 color="initial"

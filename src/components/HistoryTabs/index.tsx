@@ -57,6 +57,12 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
     setCurrentEl(null);
   };
 
+  const handleClickCloseAll = (target: HTMLElement | null) => {
+    setHistory([]);
+    push("/");
+    setCurrentEl(null);
+  };
+
   const handleDragStart = ({ currentTarget: { id } }: React.MouseEvent<HTMLDivElement>) => {
     const clickedTab = history.find(({ path }) => path === id);
     if (clickedTab) {
@@ -153,6 +159,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
             >
               <MenuItem onClick={() => handleClickCloseMenu(currentEl)}>Close</MenuItem>
               <MenuItem onClick={() => handleClickCloseOuters(currentEl)}>Close Others</MenuItem>
+              <MenuItem onClick={() => handleClickCloseAll(currentEl)}>Close All</MenuItem>
             </Menu>
           </Fragment>
         ))}

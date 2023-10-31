@@ -35,7 +35,6 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
   const [dragStartPath, setDragStartPath] = useState<string>();
   const [dragEnterPath, setEnterPath] = useState<string>();
 
-  // TODO 우클릭 삭제 로직 수정
   const handleClickCloseMenu = (target: HTMLElement | null) => {
     if (target) {
       const foundTab = history.find(({ path }) => path === target.id);
@@ -62,6 +61,35 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
     push("/");
     setCurrentEl(null);
   };
+
+  const handleClickMenu =
+    (menu: "close" | "closeOthers" | "closeAll") => (target: HTMLElement | null) => {
+      if (target) {
+        const foundTab = history.find(({ path }) => path === target.id);
+        switch (menu) {
+          case "close": {
+            if (foundTab) {
+              remove(foundTab);
+            }
+            break;
+          }
+
+          case "closeOthers": {
+            if (foundTab) {
+              setHistory(prev => [{ ...foundTab, isActive: true }]);
+              push(foundTab.path);
+            }
+            break;
+          }
+
+          case "closeAll": {
+            setHistory([]);
+            push("/");
+          }
+        }
+      }
+      setCurrentEl(null);
+    };
 
   const handleDragStart = ({ currentTarget: { id } }: React.MouseEvent<HTMLDivElement>) => {
     const clickedTab = history.find(({ path }) => path === id);

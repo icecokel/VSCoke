@@ -35,33 +35,6 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
   const [dragStartPath, setDragStartPath] = useState<string>();
   const [dragEnterPath, setEnterPath] = useState<string>();
 
-  const handleClickCloseMenu = (target: HTMLElement | null) => {
-    if (target) {
-      const foundTab = history.find(({ path }) => path === target.id);
-      if (foundTab) {
-        remove(foundTab);
-      }
-    }
-    setCurrentEl(null);
-  };
-
-  const handleClickCloseOuters = (target: HTMLElement | null) => {
-    if (target) {
-      const foundTab = history.find(({ path }) => path === target.id);
-      if (foundTab) {
-        setHistory(prev => [{ ...foundTab, isActive: true }]);
-        push(foundTab.path);
-      }
-    }
-    setCurrentEl(null);
-  };
-
-  const handleClickCloseAll = (target: HTMLElement | null) => {
-    setHistory([]);
-    push("/");
-    setCurrentEl(null);
-  };
-
   const handleClickMenu =
     (menu: "close" | "closeOthers" | "closeAll") => (target: HTMLElement | null) => {
       if (target) {
@@ -90,6 +63,10 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
       }
       setCurrentEl(null);
     };
+
+  const handleClickCloseMenu = handleClickMenu("close");
+  const handleClickCloseOuters = handleClickMenu("closeOthers");
+  const handleClickCloseAll = handleClickMenu("closeAll");
 
   const handleDragStart = ({ currentTarget: { id } }: React.MouseEvent<HTMLDivElement>) => {
     const clickedTab = history.find(({ path }) => path === id);

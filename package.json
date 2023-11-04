@@ -2,7 +2,7 @@
   "name": "vscoke",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://icecokel.github.io/VSCoke/",
+  "homepage": "https://icecokel.github.io/",
   "scripts": {
     "dev": "next dev",
     "build": "next build && next export",

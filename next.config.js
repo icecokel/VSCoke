@@ -2,10 +2,13 @@
 const nextConfig = {
   reactStrictMode: false,
   output: "export",
+  basePath: "/VSCoke",
   experimental: {
     appDir: true,
   },
+
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",

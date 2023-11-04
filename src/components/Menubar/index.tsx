@@ -24,16 +24,12 @@ const MENULIST: IMenu[] = [
 const Menubar = ({ children }: IHaveChildren) => {
   const [openedMenu, setOpenedMenu] = useState("");
 
-  const handleClickMenu: MouseEventHandler<HTMLDivElement> = ({ currentTarget: { name } }) => {
-    setOpenedMenu(name);
-  };
-
   return (
     <>
       <div className="bg-gray-900 p-1 flex">
         {MENULIST.map((item, index) => {
           return (
-            <div key={`${item.key}_${index}`} name={item.name} onClick={handleClickMenu}>
+            <div key={`${item.key}_${index}`}>
               <Typography
                 variant="body1"
                 color="initial"

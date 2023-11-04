@@ -17,13 +17,13 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: IHaveChildren) {
-  // const blogs = await getPosts();
+  const blogs = await getPosts();
   const explorer = await getExplorer();
 
   return (
     <html lang="ko">
       <body>
-        <AppProvider explorer={explorer}>
+        <AppProvider blogs={blogs} explorer={explorer}>
           <Menubar>
             <Sidebar>
               <HistoryTabs>{children}</HistoryTabs>

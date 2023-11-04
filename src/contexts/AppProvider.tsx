@@ -10,7 +10,7 @@ export const BlogContext = createContext<ITree>({} as ITree);
 export const ExplorerContext = createContext<ITree[]>([]);
 
 interface IAppProviderProps extends IHaveChildren {
-  blogs?: ITree;
+  blogs: ITree;
   explorer: ITree[];
 }
 
@@ -19,8 +19,7 @@ const AppProvider = ({ children, blogs, explorer }: IAppProviderProps) => {
     <SWRProvider>
       <MuiConfigProvider>
         <ExplorerContext.Provider value={explorer}>
-          {/* <BlogContext.Provider value={blogs}></BlogContext.Provider> */}
-          {children}
+          <BlogContext.Provider value={blogs}>{children}</BlogContext.Provider>
         </ExplorerContext.Provider>
       </MuiConfigProvider>
     </SWRProvider>

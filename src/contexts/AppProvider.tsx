@@ -1,10 +1,10 @@
 "use client";
 
-import MuiConfigProvider from "./MuiConfigProvider";
-import { SWRProvider } from "./SWRProvider";
 import { ITree } from "@/hooks/useExplorer";
 import { IHaveChildren } from "@/models/common";
 import { createContext } from "react";
+import MuiConfigProvider from "./MuiConfigProvider";
+import { SWRProvider } from "./SWRProvider";
 
 export const BlogContext = createContext<ITree>({} as ITree);
 export const ExplorerContext = createContext<ITree[]>([]);

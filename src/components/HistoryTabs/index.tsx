@@ -162,7 +162,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
                 },
               }}
             >
-              <MenuItem onClick={() => handleClickCloseMenu(currentEl)}>닺기</MenuItem>
+              <MenuItem onClick={() => handleClickCloseMenu(currentEl)}>닫기</MenuItem>
               <MenuItem onClick={() => handleClickCloseOuters(currentEl)}>나머지 닫기</MenuItem>
               <MenuItem onClick={() => handleClickCloseAll(currentEl)}>모두 닫기</MenuItem>
             </Menu>

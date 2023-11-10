@@ -32,8 +32,23 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       <h3 style={{ fontSize: "20px", fontWeight: 600, padding: "3px 2px" }}>{children}</h3>
     ),
     ul: ({ children }) => <ul style={{ listStyle: "disc", paddingLeft: "2em" }}>{children}</ul>,
+    ol: ({ children }) => (
+      <ol style={{ listStyle: "decimal-leading-zero;", paddingLeft: "2em" }}>{children}</ol>
+    ),
     blockquote: ({ children }) => (
       <div style={{ borderLeft: "0.25em solid gray", padding: "1em" }}>{children}</div>
+    ),
+    code: ({ children }) => (
+      <span
+        style={{
+          color: "#EB5757",
+          padding: "3px 5px",
+          backgroundColor: "rgba(135, 131, 120, 0.15)",
+          borderRadius: "4px",
+        }}
+      >
+        {children}
+      </span>
     ),
     pre: ({ children }) => (
       <div

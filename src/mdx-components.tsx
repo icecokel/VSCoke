@@ -33,11 +33,12 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     ),
     ul: ({ children }) => <ul style={{ listStyle: "disc", paddingLeft: "2em" }}>{children}</ul>,
     ol: ({ children }) => (
-      <ol style={{ listStyle: "decimal-leading-zero;", paddingLeft: "2em" }}>{children}</ol>
+      <ol style={{ listStyle: "decimal-leading-zero", paddingLeft: "2em" }}>{children}</ol>
     ),
     blockquote: ({ children }) => (
       <div style={{ borderLeft: "0.25em solid gray", padding: "1em" }}>{children}</div>
     ),
+    p: ({ children }) => <p style={{ margin: "0.4em 0px" }}>{children}</p>,
     code: ({ children }) => (
       <span
         style={{
@@ -54,13 +55,20 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       <div
         style={{
           padding: "1em",
-          backgroundColor: "rgba(255,255,255,0.8)",
+          backgroundColor: "rgba(0,0,0,0.8)",
           borderRadius: "4px",
           color: "black",
           fontWeight: 500,
+          margin: "1em 0px",
         }}
       >
-        {children}
+        <code
+          style={{
+            backgroundColor: "transparent",
+          }}
+        >
+          {children}
+        </code>
       </div>
     ),
 

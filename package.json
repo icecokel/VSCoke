@@ -46,5 +46,10 @@
     "@trivago/prettier-plugin-sort-imports": "^4.1.1",
     "eslint": "^8.53.0",
     "prettier-plugin-tailwindcss": "^0.3.0"
+  },
+  "overrides": {
+    "next-contentlayer": {
+      "next": "$next"
+    }
   }
 }

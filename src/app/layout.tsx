@@ -1,21 +1,26 @@
+import "./globals.css";
 import HistoryTabs from "@/components/HistoryTabs";
 import Menubar from "@/components/Menubar";
 import Sidebar from "@/components/Sidebar";
 import AppProvider from "@/contexts/AppProvider";
 import { IHaveChildren } from "@/models/common";
 import { getExplorer } from "@/utils/get/explorer";
+import { allPosts } from "contentlayer/generated";
+import { compareDesc } from "date-fns";
 import { Metadata } from "next";
 import "prismjs/themes/prism-tomorrow.css";
 import "react-notion/src/styles.css";
 import "swiper/css";
 import "swiper/css/navigation";
-import "./globals.css";
 
 export const metadata: Metadata = {
   title: "VSCOKE",
 };
 
 export default async function RootLayout({ children }: IHaveChildren) {
+  const posts = allPosts.sort((a: any, b: any) => compareDesc(new Date(a.date), new Date(b.date)));
+  console.log(posts);
+
   // const blogs = await getPosts();
   const explorer = await getExplorer();
 

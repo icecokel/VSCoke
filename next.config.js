@@ -5,7 +5,7 @@ const nextConfig = {
   reactStrictMode: false,
   output: "export",
   basePath: "/VSCoke",
-
+  output: "export",
   images: {
     unoptimized: true,
     remotePatterns: [

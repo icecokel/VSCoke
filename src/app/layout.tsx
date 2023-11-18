@@ -5,8 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import AppProvider from "@/contexts/AppProvider";
 import { IHaveChildren } from "@/models/common";
 import { getExplorer } from "@/utils/get/explorer";
-import { allPosts } from "contentlayer/generated";
-import { compareDesc } from "date-fns";
+import { getPosts } from "@/utils/get/post";
 import { Metadata } from "next";
 import "prismjs/themes/prism-tomorrow.css";
 import "react-notion/src/styles.css";
@@ -18,16 +17,14 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: IHaveChildren) {
-  const posts = allPosts.sort((a: any, b: any) => compareDesc(new Date(a.date), new Date(b.date)));
-  console.log(posts);
+  const posts = await getPosts();
 
-  // const blogs = await getPosts();
   const explorer = await getExplorer();
 
   return (
     <html lang="ko">
       <body>
-        <AppProvider explorer={explorer}>
+        <AppProvider explorer={explorer} posts={posts}>
           <Menubar>
             <Sidebar>
               <HistoryTabs>{children}</HistoryTabs>

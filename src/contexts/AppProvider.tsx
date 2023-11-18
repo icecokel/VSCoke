@@ -1,26 +1,25 @@
 "use client";
 
+import MuiConfigProvider from "./MuiConfigProvider";
+import { SWRProvider } from "./SWRProvider";
 import { ITree } from "@/hooks/useExplorer";
 import { IHaveChildren } from "@/models/common";
 import { createContext } from "react";
-import MuiConfigProvider from "./MuiConfigProvider";
-import { SWRProvider } from "./SWRProvider";
 
-export const BlogContext = createContext<ITree>({} as ITree);
+export const BlogContext = createContext<ITree | undefined>({} as ITree);
 export const ExplorerContext = createContext<ITree[]>([]);
 
 interface IAppProviderProps extends IHaveChildren {
-  blogs?: ITree;
+  posts?: ITree;
   explorer: ITree[];
 }
 
-const AppProvider = ({ children, blogs, explorer }: IAppProviderProps) => {
+const AppProvider = ({ children, posts, explorer }: IAppProviderProps) => {
   return (
     <SWRProvider>
       <MuiConfigProvider>
         <ExplorerContext.Provider value={explorer}>
-          {/* <BlogContext.Provider value={blogs}></BlogContext.Provider> */}
-          {children}
+          <BlogContext.Provider value={posts}>{children}</BlogContext.Provider>
         </ExplorerContext.Provider>
       </MuiConfigProvider>
     </SWRProvider>

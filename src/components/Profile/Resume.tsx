@@ -5,14 +5,19 @@ import Chip from "@mui/material/Chip";
 import Grow from "@mui/material/Grow";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { useEffect } from "react";
 import { twMerge } from "tailwind-merge";
 
 const Resume = () => {
   const data: IPageProps[] = sampleData;
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   return (
     <Stack direction={"row"} justifyContent={"space-between"}>
-      <Stack gap={5} marginLeft={5} marginTop={5} position={"fixed"}>
+      <Stack gap={5} marginLeft={5} marginTop={5} position={"fixed"} className="hidden md:block">
         {data.map((item, index) => (
           <Grow in={true} timeout={500 * index + 1} key={item.step}>
             <a href={`#resume_${index + 1}`}>
@@ -31,11 +36,11 @@ const Resume = () => {
           </Grow>
         ))}
       </Stack>
-      <Box marginLeft={"180px"}>
+      <div className="md:ml-[180px]">
         {data.map(item => {
           return <Resume.stepPanel {...item} key={item.step} />;
         })}
-      </Box>
+      </div>
     </Stack>
   );
 };
@@ -62,20 +67,20 @@ interface IPageItem {
 
 Resume.stepPanel = ({ items, step }: IPageProps) => {
   return (
-    <Box padding={"32px"}>
+    <div className="p-[12px] md:p-[32px]">
       <ul>
         {items &&
           items.map(({ title, periodStart, periodEnd: PeriodEnd, jobs, skills }) => {
             return (
               <li key={title} id={`resume_${step}`}>
-                <Stack direction={"row"} alignItems={"end"} gap={1}>
+                <div className="flex flex-col md:flex-row gap-1 md:items-end mt-[20px] ">
                   <Typography variant="h6" fontWeight={700}>
                     {title}
                   </Typography>
                   <Typography className="text-gray-300" variant="body2">
                     {periodStart} ~ {PeriodEnd}
                   </Typography>
-                </Stack>
+                </div>
                 <Box className="ml-3 text-[14px] font-medium">
                   <pre>
                     <code>{jobs}</code>
@@ -99,7 +104,7 @@ Resume.stepPanel = ({ items, step }: IPageProps) => {
             );
           })}
       </ul>
-    </Box>
+    </div>
   );
 };
 

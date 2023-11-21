@@ -20,6 +20,9 @@ export const colors = {
   green: {
     300: "#3BC9B0",
   },
+  beige: {
+    400: "#F7F6F3",
+  },
   white: "#FFFFFF",
   black: "#000000",
 };

@@ -30,13 +30,10 @@ const useHistory = () => {
     if (prevItemIndex >= 0) {
       const nextPath =
         historyToUpdate[prevItemIndex]?.path ?? historyToUpdate[historyToUpdate.length - 1]?.path;
-      setHistory(historyToUpdate);
-      if (historyToUpdate.length === 0) {
-        router.replace("/");
-        return;
-      }
 
-      router.replace(nextPath);
+      setHistory(historyToUpdate);
+
+      router.replace(historyToUpdate.length === 0 ? "/" : nextPath);
     }
   };
 

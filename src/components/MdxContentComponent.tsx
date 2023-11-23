@@ -1,4 +1,4 @@
-import MdxCodeBlock, { IMdxCodeblockProps } from "./mdx/MdxCodeBlock";
+import MdxCodeBlock, { IMdxCodeblockProps, TCodeBlockType } from "./mdx/MdxCodeBlock";
 import MdxTable, { IMdxTableProps } from "./mdx/MdxTable";
 import type { MDXComponents } from "mdx/types";
 import { useMDXComponent } from "next-contentlayer/hooks";
@@ -41,30 +41,31 @@ const mdxComponents: MDXComponents = {
     <div style={{ borderLeft: "0.25em solid gray", padding: "1em" }}>{children}</div>
   ),
   p: ({ children }) => <p style={{ margin: "0.4em 0px" }}>{children}</p>,
-  pre: ({ children }) => (
-    <pre
-      style={{
-        padding: "1em",
-        backgroundColor: "rgba(0,0,0,0.8)",
-        borderRadius: "4px",
-        margin: "1em 0px",
-      }}
-    >
-      {children}
-    </pre>
-  ),
-  code: ({ children }) => (
-    <code
-      style={{
-        color: "#EB5757",
-        padding: "3px 5px",
-        backgroundColor: "rgba(135, 131, 120, 0.15)",
-        borderRadius: "4px",
-      }}
-    >
-      {children}
-    </code>
-  ),
+  pre: ({ children }) => {
+    const {
+      props: { className, children: code },
+    } = children as any;
+    const arg = {
+      type: className?.replaceAll("language-", "") as TCodeBlockType,
+      code: code,
+    };
+    return <MdxCodeBlock {...arg} />;
+  },
+  code: ({ children }) => {
+    return (
+      <code
+        style={{
+          color: "#EB5757",
+          padding: "3px 5px",
+          backgroundColor: "rgba(135, 131, 120, 0.15)",
+          borderRadius: "4px",
+          fontWeight: 500,
+        }}
+      >
+        {children}
+      </code>
+    );
+  },
   CodeBlock: (arg: IMdxCodeblockProps) => <MdxCodeBlock {...arg} />,
   Table: (arg: IMdxTableProps) => <MdxTable {...arg} />,
 };

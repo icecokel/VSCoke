@@ -1,4 +1,5 @@
-import MdxTable, { IBaseTable } from "./mdx/MdxTable";
+import MdxCodeBlock, { IMdxCodeblockProps } from "./mdx/MdxCodeBlock";
+import MdxTable, { IMdxTableProps } from "./mdx/MdxTable";
 import type { MDXComponents } from "mdx/types";
 import { useMDXComponent } from "next-contentlayer/hooks";
 
@@ -64,8 +65,8 @@ const mdxComponents: MDXComponents = {
       {children}
     </code>
   ),
-
-  Table: (arg: IBaseTable) => <MdxTable {...arg} />,
+  CodeBlock: (arg: IMdxCodeblockProps) => <MdxCodeBlock {...arg} />,
+  Table: (arg: IMdxTableProps) => <MdxTable {...arg} />,
 };
 
 const MdxContentComponent = ({ code }: { code: string }) => {

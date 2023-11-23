@@ -1,4 +1,4 @@
-export interface IBaseTable {
+export interface IMdxTableProps {
   tableData: string;
 }
 
@@ -18,7 +18,7 @@ const convertToTableArray = (tableData: string) => {
   };
 };
 
-const MdxTable = ({ tableData }: IBaseTable) => {
+const MdxTable = ({ tableData }: IMdxTableProps) => {
   const { head, body } = convertToTableArray(tableData);
 
   return (

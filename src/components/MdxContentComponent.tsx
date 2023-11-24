@@ -34,9 +34,7 @@ const mdxComponents: MDXComponents = {
     <h3 style={{ fontSize: "20px", fontWeight: 600, padding: "3px 2px" }}>{children}</h3>
   ),
   ul: ({ children }) => <ul style={{ listStyle: "disc", paddingLeft: "2em" }}>{children}</ul>,
-  ol: ({ children }) => (
-    <ol style={{ listStyle: "decimal-leading-zero", paddingLeft: "2em" }}>{children}</ol>
-  ),
+  ol: ({ children }) => <ol style={{ listStyle: "decimal", paddingLeft: "2em" }}>{children}</ol>,
   blockquote: ({ children }) => (
     <div style={{ borderLeft: "0.25em solid gray", padding: "1em" }}>{children}</div>
   ),

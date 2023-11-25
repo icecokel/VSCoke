@@ -33,7 +33,7 @@ const useHistory = () => {
 
       setHistory(historyToUpdate);
 
-      router.replace(historyToUpdate.length === 0 ? "/VSCoke" : nextPath);
+      router.replace(historyToUpdate.length === 0 ? "/" : nextPath);
     }
   };
 

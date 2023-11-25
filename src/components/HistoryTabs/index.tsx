@@ -10,7 +10,7 @@ import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Fragment, useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
@@ -18,6 +18,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
   const [currentEl, setCurrentEl] = useState<null | HTMLElement>(null);
   const { history, change, remove, setHistory } = useHistory();
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleClickTab = change;
   const handleClickClose = remove;
@@ -57,7 +58,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
 
           case "closeAll": {
             setHistory([]);
-            router.push("/VSCoke");
+            router.push("/");
           }
         }
       }
@@ -99,8 +100,8 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
   };
 
   useEffect(() => {
-    if (history.length === 0) {
-      router.replace("/VSCoke");
+    if (history.length === 0 && pathname !== "/") {
+      router.replace("/");
     }
   }, [router]);
 

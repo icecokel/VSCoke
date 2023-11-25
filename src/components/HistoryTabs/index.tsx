@@ -57,7 +57,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
 
           case "closeAll": {
             setHistory([]);
-            router.push("/");
+            router.push("/VSCoke");
           }
         }
       }
@@ -100,7 +100,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
 
   useEffect(() => {
     if (history.length === 0) {
-      router.replace("/");
+      router.replace("/VSCoke");
     }
   }, [router]);
 

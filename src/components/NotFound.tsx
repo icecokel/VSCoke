@@ -36,7 +36,7 @@ const NotFound = () => {
         <Button
           variant="text"
           onClick={() => {
-            push("/");
+            push("/VSCoke");
           }}
         >
           메인으로 이동하기

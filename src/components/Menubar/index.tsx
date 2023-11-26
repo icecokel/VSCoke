@@ -23,7 +23,6 @@ const MENULIST: IMenu[] = [
 
 const Menubar = ({ children }: IHaveChildren) => {
   const [openedMenu, setOpenedMenu] = useState("");
-
   return (
     <>
       <div className="bg-gray-900 p-1 flex border-b-2 border-b-gray-500">

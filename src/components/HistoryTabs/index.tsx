@@ -1,6 +1,5 @@
 "use client";
 
-import { IHistoryItem } from "@/atom/history";
 import useHistory from "@/hooks/useHistory";
 import { IHaveChildren } from "@/models/common";
 import CloseIcon from "@mui/icons-material/Close";
@@ -115,7 +114,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
                 id={item.path}
                 className={twMerge(
                   "border border-gray-300/60 border-l-[0px]",
-                  item.isActive && "bg-gray-800 border-b-[0px]",
+                  item.isActive ? "bg-gray-800 border-b-[0px]" : "hover:bg-gray-600",
                 )}
                 onClick={() => handleClickTab(item)}
                 onContextMenu={handleRightClickTab}

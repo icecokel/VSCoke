@@ -35,10 +35,11 @@ const mdxComponents: MDXComponents = {
   ),
   ul: ({ children }) => <ul style={{ listStyle: "disc", paddingLeft: "2em" }}>{children}</ul>,
   ol: ({ children }) => <ol style={{ listStyle: "decimal", paddingLeft: "2em" }}>{children}</ol>,
+  li: ({ children }) => <li style={{ lineHeight: 2 }}>{children}</li>,
   blockquote: ({ children }) => (
     <div style={{ borderLeft: "0.25em solid gray", padding: "1em" }}>{children}</div>
   ),
-  p: ({ children }) => <p style={{ margin: "0.4em 0px" }}>{children}</p>,
+  p: ({ children }) => <p style={{ margin: "0.4em 0px", lineHeight: 2 }}>{children}</p>,
   pre: ({ children }) => {
     const {
       props: { className, children: code },
@@ -57,7 +58,7 @@ const mdxComponents: MDXComponents = {
           padding: "3px 5px",
           backgroundColor: "rgba(135, 131, 120, 0.15)",
           borderRadius: "4px",
-          fontWeight: 500,
+          fontWeight: 600,
         }}
       >
         {children}
@@ -70,7 +71,6 @@ const mdxComponents: MDXComponents = {
 
 const MdxContentComponent = ({ code }: { code: string }) => {
   const MDXContent = useMDXComponent(code);
-  console.log(MDXContent);
   return <MDXContent components={mdxComponents} />;
 };
 

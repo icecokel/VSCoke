@@ -4,10 +4,6 @@ import { IHaveChildren } from "@/models/common";
 import Container from "@mui/material/Container";
 import { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "VSBLOG",
-};
-
 export default function Layout({ children }: IHaveChildren) {
   return (
     <Container

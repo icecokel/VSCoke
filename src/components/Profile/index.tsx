@@ -17,14 +17,12 @@ import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
-import useSWR from 'swr';
 
 /**
  * 이력서 페이지
  * @returns 이력서 컴포넌트
  */
 const Profile = () => {
-  useSWR("test", () => fetch("/api/test"))
   return (
     <Stack direction={"column"} gap={{ sm: 1, md: 5 }} className="p-3">
       <Stack

@@ -17,6 +17,7 @@ const Resume = () => {
 
   return (
     <Stack direction={"row"} justifyContent={"space-between"}>
+      {/* TODO 클릭 시 이동 버그  */}
       <Stack gap={5} marginLeft={5} marginTop={5} position={"fixed"} className="hidden xl:block">
         {data.map((item, index) => (
           <Grow in={true} timeout={500 * index + 1} key={item.step}>

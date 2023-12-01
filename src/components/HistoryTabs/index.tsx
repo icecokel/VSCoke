@@ -99,10 +99,10 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
   };
 
   useEffect(() => {
-    if (history.length === 0 && pathname !== "/") {
+    if (history && history.length === 0 && pathname !== "/") {
       router.replace("/");
     }
-  }, [router]);
+  }, [router, history]);
 
   return (
     <div className="w-full bg-gray-800">

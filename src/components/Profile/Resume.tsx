@@ -17,7 +17,7 @@ const Resume = () => {
 
   return (
     <Stack direction={"row"} justifyContent={"space-between"}>
-      <Stack gap={5} marginLeft={5} marginTop={5} position={"fixed"} className="hidden md:block">
+      <Stack gap={5} marginLeft={5} marginTop={5} position={"fixed"} className="hidden xl:block">
         {data.map((item, index) => (
           <Grow in={true} timeout={500 * index + 1} key={item.step}>
             <a href={`#resume_${index + 1}`}>
@@ -36,7 +36,7 @@ const Resume = () => {
           </Grow>
         ))}
       </Stack>
-      <div className="md:ml-[180px]">
+      <div className="xl:ml-[180px]">
         {data.map(item => {
           return <Resume.stepPanel {...item} key={item.step} />;
         })}

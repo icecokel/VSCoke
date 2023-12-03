@@ -2,6 +2,7 @@ import MdxCodeBlock, { IMdxCodeblockProps, TCodeBlockType } from "./mdx/MdxCodeB
 import MdxTable, { IMdxTableProps } from "./mdx/MdxTable";
 import type { MDXComponents } from "mdx/types";
 import { useMDXComponent } from "next-contentlayer/hooks";
+import Link from "next/link";
 
 const mdxComponents: MDXComponents = {
   h1: ({ children }) => (
@@ -63,6 +64,13 @@ const mdxComponents: MDXComponents = {
       >
         {children}
       </code>
+    );
+  },
+  a: ({ children, href }) => {
+    return (
+      <Link href={href ?? ""} className="text-blue-300/80 hover:text-blue-300 hover:underline">
+        {children}
+      </Link>
     );
   },
   CodeBlock: (arg: IMdxCodeblockProps) => <MdxCodeBlock {...arg} />,

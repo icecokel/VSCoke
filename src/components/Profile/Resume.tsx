@@ -17,7 +17,6 @@ const Resume = () => {
 
   return (
     <Stack direction={"row"} justifyContent={"space-between"}>
-      {/* TODO 클릭 시 이동 버그  */}
       <Stack gap={5} marginLeft={5} marginTop={5} position={"fixed"} className="hidden xl:block">
         {data.map((item, index) => (
           <Grow in={true} timeout={500 * index + 1} key={item.step}>
@@ -293,7 +292,8 @@ CSR 베이스 프로젝트 SSR 프로젝트로 변경 진행 (동결)
 2. 로더 컴포넌트 추가
   - 기존에 메시지로 표시되던 부분을 Loader를 작성하여 화면에 표출
 
-* 특이사항 : 서버리스 프로젝트(API Gateway, Lambda) 테이블 단위로만 조회가능, 초기 설계 문제로 인한 callBack hell 이슈발생,api 통신쪽 비동기 처리하여 callback hell 이슈 해결
+* 특이사항 : 서버리스 프로젝트(API Gateway, Lambda) 테이블 단위로만 조회가능, 
+초기 설계 문제로 인한 callBack hell 이슈발생,api 통신쪽 비동기 처리하여 callback hell 이슈 해결
         `,
         skills: ["React", "TypeScript", "context API", "gitLab", "CI/CD", "sass"],
       },

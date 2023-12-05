@@ -99,12 +99,8 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
   };
 
   useEffect(() => {
-    if (history) {
-      if (history.length === 0 && pathname !== "/") {
-        router.replace("/");
-      } else if (current) {
-        router.replace(current.path);
-      }
+    if (current) {
+      router.replace(current.path);
     }
   }, [history]);
 

@@ -23,6 +23,7 @@ import Link from "next/link";
  * @returns 이력서 컴포넌트
  */
 const Profile = () => {
+  const imageBase = process.env.NEXT_PUBLIC_IMAGE_BASE_URL;
   return (
     <Stack direction={"column"} gap={{ sm: 1, md: 5 }} className="p-3">
       <Stack
@@ -32,7 +33,7 @@ const Profile = () => {
       >
         <Avatar
           className="h-[180px] w-[180px] border-4 border-yellow-200 md:h-[200px] md:w-[200px]"
-          src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL}profileImg.jpg`}
+          src={imageBase ? `${imageBase}profileImg.jpg` : ""}
         />
         <Box marginLeft={"12px"} marginTop={{ sm: "25px" }}>
           <Typography variant="h4" align="center">

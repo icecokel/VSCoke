@@ -15,7 +15,7 @@ import { twMerge } from "tailwind-merge";
 
 const HistoryTabs = ({ children }: IHaveChildren) => {
   const [currentEl, setCurrentEl] = useState<null | HTMLElement>(null);
-  const { history, change, remove, setHistory } = useHistory();
+  const { history, current, change, remove, setHistory } = useHistory();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -101,6 +101,8 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
   useEffect(() => {
     if (history && history.length === 0 && pathname !== "/") {
       router.replace("/");
+    } else if (current) {
+      router.replace(current.path);
     }
   }, [router, history]);
 

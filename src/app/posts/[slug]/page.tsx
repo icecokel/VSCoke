@@ -1,3 +1,4 @@
+import NameCard from "@/components/Blog/NameCard";
 import MdxContentComponent from "@/components/MdxContentComponent";
 import { convertByFormat } from "@/utils/DateUtil";
 import { allPosts } from "contentlayer/generated";
@@ -32,6 +33,7 @@ const PostLayout = ({ params }: { params: { slug: string } }) => {
       </div>
       <hr />
       <MdxContentComponent code={post.body.code} />
+      <NameCard />
     </article>
   );
 };

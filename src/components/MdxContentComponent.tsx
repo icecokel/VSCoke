@@ -6,7 +6,7 @@ import Link from "next/link";
 
 const mdxComponents: MDXComponents = {
   h1: ({ children }) => (
-    <h3
+    <h1
       style={{
         fontSize: "30x",
         fontWeight: 600,
@@ -16,7 +16,7 @@ const mdxComponents: MDXComponents = {
       }}
     >
       {children}
-    </h3>
+    </h1>
   ),
   h2: ({ children }) => (
     <h2

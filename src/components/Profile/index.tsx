@@ -53,7 +53,7 @@ const Profile = () => {
               <Tooltip title="전화하기" placement="bottom">
                 <Typography variant="body1" className="mb-3 hover:text-yellow-200">
                   <LocalPhoneIcon className="mr-1" />
-                  <a href="tel:01020809652">010-2080-9652</a>
+                  <a href="tel:01020809652">전화 걸기</a>
                 </Typography>
               </Tooltip>
             </Grow>

@@ -12,7 +12,6 @@ import TextSnippetOutlinedIcon from "@mui/icons-material/TextSnippetOutlined";
 import TreeItem from "@mui/lab/TreeItem";
 import TreeView from "@mui/lab/TreeView";
 import LinearProgress from "@mui/material/LinearProgress";
-import Link from "next/link";
 
 interface ExplorerProps {
   isShowing: boolean;
@@ -78,12 +77,12 @@ Explorer.item = ({ id, label, path, items, tabClose, icon }: IItemProps) => {
   };
 
   return (
-    <Link href={url} onClick={handleClickItem}>
+    <div onClick={handleClickItem}>
       <TreeItem nodeId={id} label={label} className="bg-gray-900" icon={convertIcon()}>
         {items?.map(item => {
           return <Explorer.item key={`tree_${item.id}`} {...item} tabClose={tabClose} />;
         })}
       </TreeItem>
-    </Link>
+    </div>
   );
 };

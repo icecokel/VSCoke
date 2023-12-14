@@ -3,7 +3,6 @@
 import useHistory from "@/hooks/useHistory";
 import Avatar from "@mui/material/Avatar";
 import Typography from "@mui/material/Typography";
-import Link from "next/link";
 
 const NameCard = () => {
   const { add } = useHistory();

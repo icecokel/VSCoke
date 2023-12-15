@@ -5,7 +5,7 @@ const MdxLinkHead = ({ children }: IHaveChildren) => {
     <h1
       id=""
       style={{
-        fontSize: "30x",
+        fontSize: "30px",
         fontWeight: 600,
         padding: "3px 2px",
         marginTop: "32px",

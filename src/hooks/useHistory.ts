@@ -1,6 +1,7 @@
 import { IHistoryItem, historyAtom } from "@/atom/history";
 import { useAtom } from "jotai/react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 const useHistory = () => {
   const [history, setHistory] = useAtom(historyAtom);
@@ -17,24 +18,9 @@ const useHistory = () => {
   };
 
   const remove = ({ path }: IHistoryItem) => {
-    const prevItemIndex = history.findIndex(item => item.path === path);
-    const isLast = prevItemIndex === history.length - 1;
-
-    const historyToUpdate = [...history]
-      .filter(item => item.path !== path)
-      .map((item, index) => ({
-        ...item,
-        isActive: index === (isLast ? prevItemIndex - 1 : prevItemIndex),
-      }));
-
-    if (prevItemIndex >= 0) {
-      const nextPath =
-        historyToUpdate[prevItemIndex]?.path ?? historyToUpdate[historyToUpdate.length - 1]?.path;
-
-      setHistory(historyToUpdate);
-
-      router.replace(historyToUpdate.length === 0 ? "/" : nextPath);
-    }
+    setHistory(prev => {
+      return [...prev].filter(item => item.path !== path);
+    });
   };
 
   const change = ({ path }: IHistoryItem) => {
@@ -42,8 +28,24 @@ const useHistory = () => {
     router.push(path);
   };
 
+  const current = history.find(item => item.isActive);
+
+  useEffect(() => {
+    if (history.length === 0) {
+      router.replace("/");
+      return;
+    }
+
+    if (current) {
+      router.replace(current.path);
+      return;
+    } else {
+      add(history[0]);
+    }
+  }, [history]);
+
   return {
-    current: history.find(item => item.isActive),
+    current,
     history,
     setHistory,
     add,

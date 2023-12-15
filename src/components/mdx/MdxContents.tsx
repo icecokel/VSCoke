@@ -1,23 +1,14 @@
-import MdxCodeBlock, { IMdxCodeblockProps, TCodeBlockType } from "./mdx/MdxCodeBlock";
-import MdxTable, { IMdxTableProps } from "./mdx/MdxTable";
+import MdxCodeBlock, { IMdxCodeblockProps, TCodeBlockType } from "./MdxCodeBlock";
+import MdxLinkHead from "./MdxLinkHead";
+import MdxTable, { IMdxTableProps } from "./MdxTable";
 import type { MDXComponents } from "mdx/types";
 import { useMDXComponent } from "next-contentlayer/hooks";
 import Link from "next/link";
 
 const mdxComponents: MDXComponents = {
-  h1: ({ children }) => (
-    <h1
-      style={{
-        fontSize: "30x",
-        fontWeight: 600,
-        padding: "3px 2px",
-        marginTop: "32px",
-        marginBottom: "4px",
-      }}
-    >
-      {children}
-    </h1>
-  ),
+  h1: e => {
+    return <MdxLinkHead> {e.children}</MdxLinkHead>;
+  },
   h2: ({ children }) => (
     <h2
       style={{
@@ -77,9 +68,9 @@ const mdxComponents: MDXComponents = {
   Table: (arg: IMdxTableProps) => <MdxTable {...arg} />,
 };
 
-const MdxContentComponent = ({ code }: { code: string }) => {
+const MdxContent = ({ code }: { code: string }) => {
   const MDXContent = useMDXComponent(code);
   return <MDXContent components={mdxComponents} />;
 };
 
-export default MdxContentComponent;
+export default MdxContent;

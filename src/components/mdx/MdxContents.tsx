@@ -6,25 +6,9 @@ import { useMDXComponent } from "next-contentlayer/hooks";
 import Link from "next/link";
 
 const mdxComponents: MDXComponents = {
-  h1: e => {
-    return <MdxLinkHead> {e.children}</MdxLinkHead>;
-  },
-  h2: ({ children }) => (
-    <h2
-      style={{
-        fontSize: "24px",
-        fontWeight: 600,
-        padding: "3px 2px",
-        marginTop: "22px",
-        marginBottom: "1px",
-      }}
-    >
-      {children}
-    </h2>
-  ),
-  h3: ({ children }) => (
-    <h3 style={{ fontSize: "20px", fontWeight: 600, padding: "3px 2px" }}>{children}</h3>
-  ),
+  h1: ({ children }) => <MdxLinkHead variant="h1"> {children}</MdxLinkHead>,
+  h2: ({ children }) => <MdxLinkHead variant="h2"> {children}</MdxLinkHead>,
+  h3: ({ children }) => <MdxLinkHead variant="h3"> {children}</MdxLinkHead>,
   ul: ({ children }) => <ul style={{ listStyle: "disc", paddingLeft: "2em" }}>{children}</ul>,
   ol: ({ children }) => <ol style={{ listStyle: "decimal", paddingLeft: "2em" }}>{children}</ol>,
   li: ({ children }) => <li style={{ lineHeight: 2 }}>{children}</li>,

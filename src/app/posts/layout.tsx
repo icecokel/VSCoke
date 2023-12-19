@@ -1,16 +1,22 @@
 "use client";
 
+import MdxProvider from "@/components/mdx/MdxContext";
+import MdxNav from "@/components/mdx/MdxNav";
 import { IHaveChildren } from "@/models/common";
 import Container from "@mui/material/Container";
-import { Metadata } from "next";
 
 export default function Layout({ children }: IHaveChildren) {
   return (
-    <Container
-      maxWidth="md"
-      className="px-[1em] md:px[2em] w-full bg-white text-black/80 rounded-md"
-    >
-      {children}
-    </Container>
+    <MdxProvider>
+      <div className="flex gap-2">
+        <Container
+          maxWidth="md"
+          className="px-[1em] md:px[2em] w-full bg-white text-black/80 rounded-md"
+        >
+          {children}
+        </Container>
+        <MdxNav />
+      </div>
+    </MdxProvider>
   );
 }

@@ -1,5 +1,7 @@
 import NameCard from "@/components/Blog/NameCard";
 import MdxContentComponent from "@/components/mdx/MdxContents";
+import MdxProvider from "@/components/mdx/MdxContext";
+import MdxNav from "@/components/mdx/MdxNav";
 import { convertByFormat } from "@/utils/DateUtil";
 import { allPosts } from "contentlayer/generated";
 

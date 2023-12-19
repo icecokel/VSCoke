@@ -28,7 +28,7 @@ const STYLE_MAP: { [key in TVariant]: object } = {
   h3: { fontSize: "20px", fontWeight: 600, padding: "3px 2px" },
 };
 
-const PREFIX = "link-title";
+export const PREFIX = "link-title";
 
 const MdxLinkHead = ({ children, variant }: MdxLinkHeadProps) => {
   const { add } = useContext(mdxContext);
@@ -37,7 +37,7 @@ const MdxLinkHead = ({ children, variant }: MdxLinkHeadProps) => {
 
   // TODO 타입 개선
   useEffect(() => {
-    add(`${id}`);
+    add((children as string[])[1]);
   }, []);
   return (
     <h1 id={id} style={STYLE_MAP[variant]}>

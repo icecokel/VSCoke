@@ -15,17 +15,17 @@ const STYLE_MAP: { [key in TVariant]: object } = {
     fontSize: "30px",
     fontWeight: 600,
     padding: "3px 2px",
-    marginTop: "32px",
+    marginTop: "1em",
     marginBottom: "4px",
   },
   h2: {
     fontSize: "24px",
     fontWeight: 600,
     padding: "3px 2px",
-    marginTop: "22px",
+    marginTop: "1em",
     marginBottom: "1px",
   },
-  h3: { fontSize: "20px", fontWeight: 600, padding: "3px 2px" },
+  h3: { fontSize: "20px", fontWeight: 600, marginTop: "1em", padding: "3px 2px" },
 };
 
 export const PREFIX = "link-title";

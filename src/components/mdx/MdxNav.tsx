@@ -8,8 +8,8 @@ const MdxNav = () => {
   const { nav } = useContext(mdxContext);
 
   return (
-    <div className="text-white w-[300px] hidden lg:flex items-center">
-      <div className="float-left">
+    <div className="text-white w-[300px] hidden lg:block">
+      <div className="fixed flex flex-col gap-2">
         {nav.map(item => {
           return (
             <a href={`#${PREFIX}-${item}`} key={item}>

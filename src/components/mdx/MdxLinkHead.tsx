@@ -4,7 +4,7 @@ import { mdxContext } from "./MdxContext";
 import { IHaveChildren } from "@/models/common";
 import { useContext, useEffect } from "react";
 
-type TVariant = "h1" | "h2" | "h3";
+export type TVariant = "h1" | "h2" | "h3";
 
 interface MdxLinkHeadProps extends IHaveChildren {
   variant: TVariant;
@@ -37,7 +37,7 @@ const MdxLinkHead = ({ children, variant }: MdxLinkHeadProps) => {
 
   // TODO 타입 개선
   useEffect(() => {
-    add((children as string[])[1]);
+    add({ type: variant, label: (children as string[])[1] });
   }, []);
   return (
     <h1 id={id} style={STYLE_MAP[variant]}>

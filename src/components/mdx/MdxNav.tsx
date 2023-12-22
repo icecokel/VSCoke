@@ -1,8 +1,14 @@
 "use client";
 
 import { mdxContext } from "./MdxContext";
-import { PREFIX } from "./MdxLinkHead";
+import { PREFIX, TVariant } from "./MdxLinkHead";
 import { useContext } from "react";
+
+const STYLE_MAP: { [key in TVariant]: object } = {
+  h1: {},
+  h2: { marginLeft: "15px", fontSize: "0.8em" },
+  h3: { marginLeft: "30px", fontSize: "0.6em" },
+};
 
 const MdxNav = () => {
   const { nav } = useContext(mdxContext);
@@ -12,8 +18,8 @@ const MdxNav = () => {
       <div className="fixed flex flex-col gap-2">
         {nav.map(item => {
           return (
-            <a href={`#${PREFIX}-${item}`} key={item}>
-              {item}
+            <a href={`#${PREFIX}-${item.label}`} key={item.label}>
+              <span style={STYLE_MAP[item.type]}>{item.label}</span>
             </a>
           );
         })}

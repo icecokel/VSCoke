@@ -14,6 +14,7 @@ interface IMdxContext {
   add: (nav: INav) => void;
 }
 
+// TODO 블로그 페이지가 변경 시 nav 상태가 겹쳐집 이슈
 export const mdxContext = createContext<IMdxContext>({} as IMdxContext);
 
 const MdxProvider = ({ children }: IHaveChildren) => {

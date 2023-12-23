@@ -16,7 +16,7 @@ const NameCard = () => {
           className="h-[120px] w-[120px] border-2 border-gray-300"
           src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL}profileImg.jpg`}
         />
-        <div>
+        <div className="flex flex-col items-start">
           <Typography variant="h6">얼음콜라</Typography>
           <Typography variant="body2" color={"text.secondary"}>
             소심한 관종 개발자

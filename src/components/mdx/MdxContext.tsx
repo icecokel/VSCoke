@@ -5,21 +5,26 @@ import { IHaveChildren } from "@/models/common";
 import { createContext, useState } from "react";
 
 interface INav {
+  title: string;
+  items: IOldNav[];
+}
+
+interface IOldNav {
   label: string;
   type: TVariant;
 }
 
 interface IMdxContext {
-  nav: INav[];
-  add: (nav: INav) => void;
+  nav: IOldNav[];
+  add: (nav: IOldNav) => void;
 }
 
 export const mdxContext = createContext<IMdxContext>({} as IMdxContext);
 
 const MdxProvider = ({ children }: IHaveChildren) => {
-  const [nav, setNav] = useState<INav[]>([]);
+  const [nav, setNav] = useState<IOldNav[]>([]);
 
-  const add = (target: INav) => {
+  const add = (target: IOldNav) => {
     if (nav.includes(target)) {
       return;
     }

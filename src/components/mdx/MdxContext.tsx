@@ -6,31 +6,38 @@ import { createContext, useState } from "react";
 
 interface INav {
   title: string;
-  items: IOldNav[];
+  items: ILinkNav[];
 }
 
-interface IOldNav {
+interface ILinkNav {
   label: string;
   type: TVariant;
 }
 
 interface IMdxContext {
-  nav: IOldNav[];
-  add: (nav: IOldNav) => void;
+  nav: INav[];
+  add: (nav: INav) => void;
 }
 
-// TODO 블로그 페이지가 변경 시 nav 상태가 겹쳐집 이슈
 export const mdxContext = createContext<IMdxContext>({} as IMdxContext);
 
 const MdxProvider = ({ children }: IHaveChildren) => {
-  const [nav, setNav] = useState<IOldNav[]>([]);
+  const [nav, setNav] = useState<INav[]>([]);
 
-  const add = (target: IOldNav) => {
-    if (nav.includes(target)) {
-      return;
-    }
+  const add = (target: INav) => {
+    setNav(prev => {
+      const navToUpdate = prev.find(({ title }) => title === target.title);
+      if (navToUpdate) {
+        return [...prev].map(item => {
+          if (item.title === target.title) {
+            return { ...item, items: [...navToUpdate.items, ...target.items] };
+          }
+          return item;
+        });
+      }
 
-    setNav(prev => [...prev, target]);
+      return [...prev, target];
+    });
   };
 
   return <mdxContext.Provider value={{ nav, add }}>{children}</mdxContext.Provider>;

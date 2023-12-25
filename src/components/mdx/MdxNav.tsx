@@ -14,7 +14,7 @@ const STYLE_MAP: { [key in TVariant]: object } = {
 const MdxNav = () => {
   const { nav } = useContext(mdxContext);
   const pathname = usePathname();
-  console.log(nav);
+
   const items = nav.find(({ title }) => title === pathname)?.items;
   if (!items) {
     return <></>;

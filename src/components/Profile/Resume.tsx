@@ -17,26 +17,26 @@ const Resume = () => {
 
   return (
     <Stack direction={"row"} justifyContent={"space-between"}>
-      <Stack gap={5} marginLeft={5} marginTop={5} position={"fixed"} className="hidden xl:block">
+      <Stack gap={5} marginLeft={5} marginTop={5} position={"fixed"} className="hidden lg:block">
         {data.map((item, index) => (
           <Grow in={true} timeout={500 * index + 1} key={item.step}>
             <a href={`#resume_${index + 1}`}>
               <Typography
                 variant="body1"
                 fontWeight={700}
-                className={twMerge("text-white")}
+                className={"text-white hover:text-yellow-200"}
                 fontSize={18}
               >
                 {item.corporate}
               </Typography>
-              <Typography variant="body2" className={twMerge("text-white")}>
+              <Typography variant="body2" className={"text-white"}>
                 {item.periodStart} ~ {item.periodEnd}
               </Typography>
             </a>
           </Grow>
         ))}
       </Stack>
-      <div className="xl:ml-[180px]">
+      <div className="lg:ml-[180px]">
         {data.map(item => {
           return <Resume.stepPanel {...item} key={item.step} />;
         })}

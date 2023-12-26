@@ -2,7 +2,7 @@
 
 import { mdxContext } from "./MdxContext";
 import { PREFIX, TVariant } from "./MdxLinkHead";
-import { usePathname, useSearchParams, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useContext } from "react";
 
 const STYLE_MAP: { [key in TVariant]: object } = {

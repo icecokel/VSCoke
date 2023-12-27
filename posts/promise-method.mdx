@@ -1,8 +1,10 @@
-# Promise method
+---
+title: Promise method
+date: 2023-10-26
+category: 스터디
+---
 
-createAt: 2023년 10월 23일 오전 11:44
-publicationAt: 2023년 10월 26일
-updateAt: 2023년 10월 26일 오후 9:24
+# Promise method
 
 ## 1. Promise
 
@@ -10,9 +12,9 @@ updateAt: 2023년 10월 26일 오후 9:24
 
 ## 2. Promise state
 
-- 대기(*pending)*: 이행하지도, 거부하지도 않은 초기 상태.
-- 이행(*fulfilled)*: 연산이 성공적으로 완료됨.
-- 거부(*rejected)*: 연산이 실패함.
+- 대기(_pending)_: 이행하지도, 거부하지도 않은 초기 상태.
+- 이행(_fulfilled)_: 연산이 성공적으로 완료됨.
+- 거부(_rejected)_: 연산이 실패함.
 
 ## 3. Promise method
 
@@ -36,39 +38,14 @@ updateAt: 2023년 10월 26일 오후 9:24
 가장 먼저 이행되거나 거부된 Promise의 결과 값을 반환합니다.
 
 ```html
-const foreachFn =() => {
-        resultDiv.innerHTML = "loading..."
-        const requests = [getUser(), getAddress(), getPosts()];
-        const results = []
-        requests.forEach(async(req,index)=>{
-          const res = await req
-          result.push({res,index})
-        })
-
-        printing(results)
-      }
-
-      const forOfFn = async () => {
-        resultDiv.innerHTML = "loading..."
-        const requests = [getUser(), getAddress(), getPosts()];
-        const results = [];
-
-        for (const [index, req] of requests.entries()) {
-            const res = await req;
-            results.push({ res, index });
-        }
-
-        printing(results)
-      };
-
-const fetching = (url) => async () => {
-        const res = await fetch(`http://localhost:8080/${url}`);
-        return res.json();
-      };
-
-      const getUser = fetching('user');
-      const getAddress = fetching('address');
-      const getPosts = fetching('posts');
+const foreachFn =() => { resultDiv.innerHTML = "loading..." const requests = [getUser(),
+getAddress(), getPosts()]; const results = [] requests.forEach(async(req,index)=>{ const res = await
+req result.push({res,index}) }) printing(results) } const forOfFn = async () => {
+resultDiv.innerHTML = "loading..." const requests = [getUser(), getAddress(), getPosts()]; const
+results = []; for (const [index, req] of requests.entries()) { const res = await req; results.push({
+res, index }); } printing(results) }; const fetching = (url) => async () => { const res = await
+fetch(`http://localhost:8080/${url}`); return res.json(); }; const getUser = fetching('user'); const
+getAddress = fetching('address'); const getPosts = fetching('posts');
 ```
 
 ### Promise.resolve
@@ -81,9 +58,9 @@ const fetching = (url) => async () => {
 
 ## 4. foreach vs for of (순차)
 
- 배열 await 
+배열 await
 
-for of 
+for of
 
 ## foreach vs promise.all
 

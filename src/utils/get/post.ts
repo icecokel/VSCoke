@@ -6,10 +6,26 @@ import { cache } from "react";
 export const getPosts = cache(async () => {
   const result = allPosts.sort((a: any, b: any) => compareDesc(new Date(a.date), new Date(b.date)));
   const today = new Date();
-  const posts: ITree[] = result
+
+  const posts: ITree[] = [];
+
+  result
     .filter(item => new Date(item.date).getTime() <= today.getTime())
-    .map(post => {
-      return { id: post._raw.flattenedPath, label: post.title, path: post.url };
+    .forEach(post => {
+      let foundIndex = posts.findIndex(({ label }) => label === post.category);
+
+      if (foundIndex === -1) {
+        const newCategory: ITree = { id: post.category, label: post.category, items: [] };
+        posts.push(newCategory);
+        foundIndex = posts.length - 1;
+      }
+
+      posts[foundIndex]?.items?.push({
+        id: post._raw.flattenedPath,
+        label: post.title,
+        path: post.url,
+        icon: "blog",
+      });
     });
 
   return { id: "blog", label: "blog", items: posts };

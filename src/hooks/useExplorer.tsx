@@ -19,14 +19,7 @@ const useExplorer = () => {
 
   useEffect(() => {
     if (explorer && blog && !itemList.some(item => item.label === blog.label)) {
-      const addedIconBlog = { ...blog };
-      if (blog.items)
-        addedIconBlog.items = blog.items.map((item: ITree) => ({
-          ...item,
-          icon: "blog",
-        }));
-
-      setItemList([...explorer, addedIconBlog]);
+      setItemList([...explorer, { ...blog }]);
       setIsLoading(false);
     }
   }, [explorer, blog]);

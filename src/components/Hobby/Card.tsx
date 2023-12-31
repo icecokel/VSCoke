@@ -14,14 +14,14 @@ import { Navigation } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 
 export interface ICard {
-  thumnail: string;
+  thumbnail: string;
   date: string;
   title: string;
   review?: string;
   items: string[];
 }
 
-const HobbyCard = ({ date, thumnail: thumbnail, title, items, review }: ICard) => {
+const HobbyCard = ({ date, thumbnail: thumbnail, title, items, review }: ICard) => {
   const [isHideInfo, setIsHideInfo] = useState(true);
   const [open, setOpen] = useState(false);
 

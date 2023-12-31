@@ -39,7 +39,7 @@ const Hobby = ({ type }: IHobbyProps) => {
               <HobbyCard
                 key={index}
                 date="123"
-                thumnail="test.JPG"
+                thumbnail="test.JPG"
                 title="선자령"
                 items={["test.JPG", "test.JPG", "test.JPG"]}
               />

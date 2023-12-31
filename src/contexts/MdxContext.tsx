@@ -1,6 +1,6 @@
 "use client";
 
-import { TVariant } from "./MdxLinkHead";
+import { TVariant } from "../components/mdx/MdxLinkHead";
 import { IHaveChildren } from "@/models/common";
 import { createContext, useState } from "react";
 

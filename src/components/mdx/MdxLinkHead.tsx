@@ -1,6 +1,6 @@
 "use client";
 
-import { mdxContext } from "./MdxContext";
+import { mdxContext } from "../../contexts/MdxContext";
 import { IHaveChildren } from "@/models/common";
 import { usePathname } from "next/navigation";
 import { useContext, useEffect } from "react";

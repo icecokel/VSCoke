@@ -1,7 +1,7 @@
 "use client";
 
-import MdxProvider from "@/components/mdx/MdxContext";
 import MdxNav from "@/components/mdx/MdxNav";
+import MdxProvider from "@/contexts/MdxContext";
 import { IHaveChildren } from "@/models/common";
 import Container from "@mui/material/Container";
 

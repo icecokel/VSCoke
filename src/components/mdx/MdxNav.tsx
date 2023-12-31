@@ -1,6 +1,6 @@
 "use client";
 
-import { mdxContext } from "./MdxContext";
+import { mdxContext } from "../../contexts/MdxContext";
 import { PREFIX, TVariant } from "./MdxLinkHead";
 import { usePathname } from "next/navigation";
 import { useContext } from "react";

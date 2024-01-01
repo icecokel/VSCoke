@@ -1,0 +1,123 @@
+---
+title: vercel serverless function, cache
+date: 2024-01-20
+category: 스터디
+---
+
+## Vercel Serverless Function
+
+- 흐름
+
+  ![Untitled](vercel%20serverless%20function,%20cache%202e2669ec78c246dcb387e05f38f6974d/Untitled.png)
+
+  {" "}
+
+  <aside>💡 [Serverless function](https://vercel.com/docs/functions/serverless-functions)</aside>
+
+- page router
+  `/api/*`
+  `getServerSideProps`
+- app router
+
+  ```jsx
+  import { cache } from "react";
+
+  export const revalidate = 3600; // revalidate the data at most every hour
+
+  export const getItem = cache(async (id: string) => {
+    const item = await db.item.findUnique({ id });
+    return item;
+  });
+  ```
+
+````
+
+next js → be api
+
+## ColdStart
+
+### 개념
+
+FaaS(Function-as-a-Service)
+
+1. 인프라 프로비저닝
+2. 런타임 환경 조성
+3. 어플리케이션 부스트트랩 ( 컴파일, 라이브러리 인스톨 등등)
+- FaaS는실행되는 동안만 관련된 자원이 할당
+
+오랜 기간 호출되지 않는 함수의 자원이 회수 된 상태에서 함수가 재 호출 되었을 때, 기존에 걸리던 시간보다 오래 걸리는 상황
+
+### 해결 방법
+
+1. ISR
+2. 데이터 캐싱
+3. 데이터 소스와 가까운 리전을 선택
+4. 함수내의 외부 종속성을 정리
+5. warm start 유지
+
+## [Cache](https://nextjs.org/docs/app/building-your-application/data-fetching/fetching-caching-and-revalidating)
+
+- 용도 `GET`나`HEAD`방법을 요청합니다.
+- 요청에 헤더가 포함되어 있지 않습니다 `Range`
+- 요청에 헤더가 포함되어 있지 않습니다 `Authorization`
+- 응답은`200` `404` `301` `302` `307` `308`상태 코드를 사용합니다.
+- `10MB`를응답은 내용 길이를 초과하지 않습니다 .
+- 응답에 헤더가 포함되어 있지 않습니다 `set-cookie`
+- 응답의 헤더 에 `privateno-cacheno-storeCache-Control`또는 지시어가 포함되어 있지 않습니다 .
+
+### **[x-vercel-cache](https://vercel.com/docs/edge-network/headers#x-vercel-cache)**
+
+**MISS** : edge-network-cache에서 찾지 못하고 origin server에서 응답이 제공
+
+![Untitled](vercel%20serverless%20function,%20cache%202e2669ec78c246dcb387e05f38f6974d/Untitled%201.png)
+
+**HIT** : edge-network-cache에서 응답이 제공
+
+![Untitled](vercel%20serverless%20function,%20cache%202e2669ec78c246dcb387e05f38f6974d/Untitled%202.png)
+
+**STALE** : edge-network-cache에서 응답이 제공, edge-cache에 데이터를 업데이트
+
+![Untitled](vercel%20serverless%20function,%20cache%202e2669ec78c246dcb387e05f38f6974d/Untitled%203.png)
+
+**PRERENDER** : 정적 저장소에서 응답이 제공
+
+![Untitled](vercel%20serverless%20function,%20cache%202e2669ec78c246dcb387e05f38f6974d/Untitled%204.png)
+
+**REVIALIDATED** : origin-server에서 응답이 제공되었으며 수신 요청에서 사용자의 인증으로 인해 캐시가 새로 고쳐졌습니다 .
+
+![Untitled](vercel%20serverless%20function,%20cache%202e2669ec78c246dcb387e05f38f6974d/Untitled%205.png)
+
+**BYPASS** : 캐시가 우회되어 origin-sever에서 응답이 제공되었습니다.
+
+![Untitled](vercel%20serverless%20function,%20cache%202e2669ec78c246dcb387e05f38f6974d/Untitled%206.png)
+
+> 예시는 page router로 작성 되었습니다.
+>
+
+```jsx
+export async function getServerSideProps({ req, res }) {
+  res.setHeader(
+    'Cache-Control',
+    'public, s-maxage=10, stale-while-revalidate=59'
+  )
+
+  return {
+    props: {},
+  }
+
+}
+````
+
+- **maxage**
+  이 지시어는 Edge Network에서 응답이 "신선한" 것으로 간주되는 시간(초)을 설정합니다. 이 기간이 끝나면 Vercel의 Edge Network는 서버리스 기능에 대한 "새" 응답으로 응답이 비동기식으로 재검증될 때까지 에지에서 "오래된" 응답을 제공합니다.
+- **stale-while-revalidate**
+  이 `cache-control`지시문을 사용하면 Edge 캐시의 콘텐츠를 제공하는 동시에 함수의 응답으로 백그라운드에서 캐시를 업데이트할 수 있습니다. 다음과 같은 경우에 유용합니다.
+
+### 제한
+
+- 캐시 가능한 최대 응답 크기 = **10MB**
+- 최대 캐시 시간 = **31일**
+
+### 참고
+
+- [https://vercel.com/guides/how-can-i-improve-serverless-function-lambda-cold-start-performance-on-vercel](https://vercel.com/guides/how-can-i-improve-serverless-function-lambda-cold-start-performance-on-vercel)

@@ -1,6 +1,6 @@
 ---
 title: vercel serverless function, cache
-date: 2024-01-20
+date: 2023-11-09
 category: 스터디
 ---
 
@@ -8,11 +8,9 @@ category: 스터디
 
 - 흐름
 
-  ![Untitled](vercel%20serverless%20function,%20cache%202e2669ec78c246dcb387e05f38f6974d/Untitled.png)
+![Untitled 0](https://github.com/icecokel/VSCoke/assets/55083854/7f143d4d-d681-48c5-9448-c828aacbca93)
 
-  {" "}
-
-  <aside>💡 [Serverless function](https://vercel.com/docs/functions/serverless-functions)</aside>
+<aside>💡 [Serverless function](https://vercel.com/docs/functions/serverless-functions)</aside>
 
 - page router
   `/api/*`
@@ -30,8 +28,6 @@ category: 스터디
   });
   ```
 
-````
-
 next js → be api
 
 ## ColdStart
@@ -43,6 +39,7 @@ FaaS(Function-as-a-Service)
 1. 인프라 프로비저닝
 2. 런타임 환경 조성
 3. 어플리케이션 부스트트랩 ( 컴파일, 라이브러리 인스톨 등등)
+
 - FaaS는실행되는 동안만 관련된 자원이 할당
 
 오랜 기간 호출되지 않는 함수의 자원이 회수 된 상태에서 함수가 재 호출 되었을 때, 기존에 걸리던 시간보다 오래 걸리는 상황
@@ -69,44 +66,39 @@ FaaS(Function-as-a-Service)
 
 **MISS** : edge-network-cache에서 찾지 못하고 origin server에서 응답이 제공
 
-![Untitled](vercel%20serverless%20function,%20cache%202e2669ec78c246dcb387e05f38f6974d/Untitled%201.png)
+![Untitled 1](https://github.com/icecokel/VSCoke/assets/55083854/7cc04942-f1a5-4ef4-970d-545218124591)
 
 **HIT** : edge-network-cache에서 응답이 제공
 
-![Untitled](vercel%20serverless%20function,%20cache%202e2669ec78c246dcb387e05f38f6974d/Untitled%202.png)
+![Untitled 2](https://github.com/icecokel/VSCoke/assets/55083854/4074ad20-abb2-4a2f-beb9-8abfc0ab4bf1)
 
 **STALE** : edge-network-cache에서 응답이 제공, edge-cache에 데이터를 업데이트
 
-![Untitled](vercel%20serverless%20function,%20cache%202e2669ec78c246dcb387e05f38f6974d/Untitled%203.png)
+![Untitled 3](https://github.com/icecokel/VSCoke/assets/55083854/ede1cf29-1e5c-4ec8-98db-5556a8c4ccf4)
 
 **PRERENDER** : 정적 저장소에서 응답이 제공
 
-![Untitled](vercel%20serverless%20function,%20cache%202e2669ec78c246dcb387e05f38f6974d/Untitled%204.png)
+![Untitled 4](https://github.com/icecokel/VSCoke/assets/55083854/7b7c3d09-50a1-4e8a-a8fc-0f86e19a2623)
 
 **REVIALIDATED** : origin-server에서 응답이 제공되었으며 수신 요청에서 사용자의 인증으로 인해 캐시가 새로 고쳐졌습니다 .
 
-![Untitled](vercel%20serverless%20function,%20cache%202e2669ec78c246dcb387e05f38f6974d/Untitled%205.png)
+![Untitled 5](https://github.com/icecokel/VSCoke/assets/55083854/155507fc-635e-4e6e-ac27-980426109ea8)
 
 **BYPASS** : 캐시가 우회되어 origin-sever에서 응답이 제공되었습니다.
 
-![Untitled](vercel%20serverless%20function,%20cache%202e2669ec78c246dcb387e05f38f6974d/Untitled%206.png)
+![Untitled 6](https://github.com/icecokel/VSCoke/assets/55083854/2eec0327-21a0-4a01-aecc-5b2c5d6344bf)
 
 > 예시는 page router로 작성 되었습니다.
->
 
 ```jsx
 export async function getServerSideProps({ req, res }) {
-  res.setHeader(
-    'Cache-Control',
-    'public, s-maxage=10, stale-while-revalidate=59'
-  )
+  res.setHeader("Cache-Control", "public, s-maxage=10, stale-while-revalidate=59");
 
   return {
     props: {},
-  }
-
+  };
 }
-````
+```
 
 - **maxage**
   이 지시어는 Edge Network에서 응답이 "신선한" 것으로 간주되는 시간(초)을 설정합니다. 이 기간이 끝나면 Vercel의 Edge Network는 서버리스 기능에 대한 "새" 응답으로 응답이 비동기식으로 재검증될 때까지 에지에서 "오래된" 응답을 제공합니다.

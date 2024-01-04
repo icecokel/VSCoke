@@ -1,25 +1,36 @@
 "use client";
 
-import SidebarLayout from "./SidebarLayout";
+import useHistory from "@/hooks/useHistory";
+import { IResult, searchPost } from "@/utils/get/post";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import Stack from "@mui/material/Stack";
 import { useState } from "react";
+import SidebarLayout from "./SidebarLayout";
 
 interface ExplorerProps {
   isShowing: boolean;
 }
 
 const Search = ({ isShowing }: ExplorerProps) => {
-  const data = {};
   const [keyword, setKeyword] = useState("");
+  const [results, setResults] = useState<IResult[]>([]);
+  const { add } = useHistory();
   const handleChangeKeyword: React.KeyboardEventHandler<HTMLInputElement> = ({
     currentTarget: { value },
+    code,
   }) => {
     setKeyword(value);
+    if (code === "Enter") {
+      setResults(searchPost(keyword));
+    }
   };
+
+  const handleClickPost = ({ title, path }: IResult) => {
+    add({ title, path, isActive: true });
+  };
+
   return (
     <SidebarLayout isShowing={isShowing}>
-      <Stack direction={"row"} alignItems={"center"}>
+      <div className="flex items-center">
         <ArrowForwardIosIcon className="mr-1 text-sm" />
         <input
           type="text"
@@ -28,7 +39,22 @@ const Search = ({ isShowing }: ExplorerProps) => {
           defaultValue={keyword}
           onKeyDown={handleChangeKeyword}
         />
-      </Stack>
+      </div>
+      {results.length > 0 && (
+        <div className="mt-[20px] ml-3">
+          {results.map((post, index) => {
+            return (
+              <div
+                className="truncate h-[1.5em] w-[220px] my-[0.5em] cursor-pointer hover:text-yellow-200"
+                key={`${index} ${post.title}`}
+                onClick={() => handleClickPost(post)}
+              >
+                {post.title}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </SidebarLayout>
   );
 };

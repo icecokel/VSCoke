@@ -30,3 +30,23 @@ export const getPosts = cache(async () => {
 
   return { id: "blog", label: "blog", items: posts };
 });
+
+export interface IResult {
+  title: string;
+  path: string;
+}
+
+export const searchPost = (keyword: string): IResult[] => {
+  const result = allPosts.sort((a: any, b: any) => compareDesc(new Date(a.date), new Date(b.date)));
+  const searched: IResult[] = result
+    .filter(post => {
+      if (post.title.indexOf(keyword) >= 0) {
+        return post;
+      }
+    })
+    .map(post => {
+      return { title: post.title, path: post.url };
+    });
+
+  return searched;
+};

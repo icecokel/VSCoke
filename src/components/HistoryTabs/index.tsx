@@ -15,7 +15,7 @@ import { twMerge } from "tailwind-merge";
 
 const HistoryTabs = ({ children }: IHaveChildren) => {
   const [currentEl, setCurrentEl] = useState<null | HTMLElement>(null);
-  const { history, change, remove, setHistory, current } = useHistory();
+  const { history, change, remove, setHistory, current, add } = useHistory();
   const router = useRouter();
 
   const handleClickTab = change;

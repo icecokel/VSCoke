@@ -1,7 +1,6 @@
 import { IHistoryItem, historyAtom } from "@/atom/history";
 import { useAtom } from "jotai/react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 
 const useHistory = () => {
   const [history, setHistory] = useAtom(historyAtom);
@@ -29,20 +28,6 @@ const useHistory = () => {
   };
 
   const current = history.find(item => item.isActive);
-
-  useEffect(() => {
-    if (history.length === 0) {
-      router.replace("/");
-      return;
-    }
-
-    if (current) {
-      router.replace(current.path);
-      return;
-    } else {
-      add(history[0]);
-    }
-  }, [history]);
 
   return {
     current,

@@ -10,12 +10,12 @@ import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useRouter } from "next/navigation";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 const HistoryTabs = ({ children }: IHaveChildren) => {
   const [currentEl, setCurrentEl] = useState<null | HTMLElement>(null);
-  const { history, change, remove, setHistory } = useHistory();
+  const { history, change, remove, setHistory, current } = useHistory();
   const router = useRouter();
 
   const handleClickTab = change;
@@ -96,6 +96,20 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
       }
     }
   };
+
+  useEffect(() => {
+    if (history.length === 0) {
+      router.replace("/");
+      return;
+    }
+
+    if (current) {
+      router.replace(current.path);
+      return;
+    } else {
+      add(history[0]);
+    }
+  }, [history]);
 
   return (
     <div className="w-full bg-gray-800">

@@ -1,7 +1,6 @@
 import HeadTitle from "@/components/Blog/HeadTitle";
 import NameCard from "@/components/Blog/NameCard";
 import MdxContentComponent from "@/components/mdx/MdxContents";
-import { convertByFormat } from "@/utils/DateUtil";
 import { allPosts } from "contentlayer/generated";
 
 export const generateStaticParams = async () =>

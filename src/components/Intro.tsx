@@ -1,17 +1,16 @@
 "use client";
 
 import Divider from "@mui/material/Divider";
-import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
 const Intro = () => {
   return (
     <div className="p-2 md:p-8">
-      <Stack direction={"row"} justifyContent={"center"} alignItems={"center"} gap={"16px"}>
+      <div className="flex justify-center items-center gap-4">
         <Typography variant="h3" fontWeight={700}>
           Welcome VSCoke
         </Typography>
-      </Stack>
+      </div>
       <Divider className="my-5 border-white" />
       <div className="flex flex-col">
         <div className="p-2 md:px-10 pb-2 flex md:items-center flex-col md:flex-row">

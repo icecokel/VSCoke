@@ -8,7 +8,6 @@ import { TSidebar } from "@/models/enum/sidebar";
 import FileCopyOutlinedIcon from "@mui/icons-material/FileCopyOutlined";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import Fab from "@mui/material/Fab";
-import Stack from "@mui/material/Stack";
 import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 
@@ -38,14 +37,9 @@ const Sidebar = ({ children }: IHaveChildren) => {
   };
 
   return (
-    <Stack direction={"row"}>
-      <Stack direction={"row"} ref={tabRef}>
-        <Stack
-          direction={"column"}
-          gap={1}
-          alignItems={"center"}
-          className="md:flex hidden z-50 min-h-screen w-[60px] border-r-[1px] border-r-gray-500 bg-gray-900 py-2 text-gray-100"
-        >
+    <div className="flex">
+      <div className="flex" ref={tabRef}>
+        <div className="flex-col gap-1 items-center md:flex hidden z-50 min-h-screen w-[50px] border-r-[1px] border-r-gray-500 bg-gray-900 py-2 text-gray-100">
           {TABS.map(({ name, icon }) => {
             return (
               <label
@@ -66,12 +60,12 @@ const Sidebar = ({ children }: IHaveChildren) => {
               </label>
             );
           })}
-        </Stack>
+        </div>
         <Explorer isShowing={tab === "explore"} tabClose={tabClose} />
         <Search isShowing={tab === "search"} />
-      </Stack>
+      </div>
 
-      <Stack className="flex md:hidden fixed bottom-0 p-[10px]" gap={1}>
+      <div className="flex md:hidden fixed bottom-0 p-[10px] gap-1">
         {TABS.map(({ name, icon }) => {
           return (
             <Fab className="bg-gray-50" key={`tab_${name}`}>
@@ -88,10 +82,10 @@ const Sidebar = ({ children }: IHaveChildren) => {
             </Fab>
           );
         })}
-      </Stack>
+      </div>
 
       {children}
-    </Stack>
+    </div>
   );
 };
 

@@ -1,10 +1,10 @@
 "use client";
 
+import SidebarLayout from "./SidebarLayout";
 import useHistory from "@/hooks/useHistory";
 import { IResult, searchPost } from "@/utils/get/post";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import { useState } from "react";
-import SidebarLayout from "./SidebarLayout";
 
 interface ExplorerProps {
   isShowing: boolean;

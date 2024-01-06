@@ -5,7 +5,6 @@ import HikingRoundedIcon from "@mui/icons-material/HikingRounded";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import Rating from "@mui/material/Rating";
-import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
 interface IHobbyProps {
@@ -14,23 +13,15 @@ interface IHobbyProps {
 
 const Hobby = ({ type }: IHobbyProps) => {
   return (
-    <Stack gap={"10px"} borderRadius={"4px"}>
-      <Stack
-        direction={"row"}
-        gap={"20px"}
-        padding={"12px"}
-        color={"black"}
-        bgcolor={"#fff"}
-        borderRadius={"4px"}
-        alignItems={"center"}
-      >
+    <div className="gap-[10px] border-[4px]">
+      <div className="flex gap-[20px] p-3 text-black bg-white rounded items-center">
         <HikingRoundedIcon className="text-green-300 hidden sm:block" sx={{ fontSize: "80px" }} />
-        <Stack>
+        <div>
           <Typography variant="h3">{type}</Typography>
           <Typography variant="body1">주로 봄, 가을에 다니고 </Typography>
           <Rating name="read-only" value={4} readOnly />
-        </Stack>
-      </Stack>
+        </div>
+      </div>
 
       <Box color={"black"} bgcolor={"#fff"} borderRadius={"4px"} padding={"12px"}>
         <Grid container>
@@ -47,7 +38,7 @@ const Hobby = ({ type }: IHobbyProps) => {
           })}
         </Grid>
       </Box>
-    </Stack>
+    </div>
   );
 };
 

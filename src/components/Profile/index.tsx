@@ -13,7 +13,6 @@ import Divider from "@mui/material/Divider";
 import Fab from "@mui/material/Fab";
 import Grid from "@mui/material/Grid";
 import Grow from "@mui/material/Grow";
-import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
@@ -24,12 +23,8 @@ import Link from "next/link";
  */
 const Profile = () => {
   return (
-    <Stack direction={"column"} gap={{ sm: 1, md: 5 }} className="p-3">
-      <Stack
-        direction={{ sm: "column", md: "row" }}
-        gap={{ sm: 1, md: 3 }}
-        alignItems={{ xs: "center", md: "flex-start" }}
-      >
+    <div className="p-3 flex flex-col sm:gap-1 md:gap-5">
+      <div className="flex sm:flex-col sm:gap-1 md:flex-row md:gap-3 xs:items-center md:items-start">
         <Avatar
           className="h-[180px] w-[180px] border-4 border-yellow-200 md:h-[200px] md:w-[200px]"
           src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL}profileImg.jpg`}
@@ -59,7 +54,7 @@ const Profile = () => {
             </Grow>
           </Box>
         </Box>
-      </Stack>
+      </div>
       <Profile.item title="간단 소개글">
         <Typography>
           안녕하세요.
@@ -76,18 +71,18 @@ const Profile = () => {
         </Typography>
       </Profile.item>
       <Profile.item title="링크">
-        <Stack direction={"row"} gap={2} className="mb-4 w-fit hover:text-yellow-200">
+        <div className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
           <GitHubIcon />
           <Link href={"https://github.com/icecokel"} target="_blank">
             https://github.com/icecokel
           </Link>
-        </Stack>
-        <Stack direction={"row"} gap={2} className="mb-4 w-fit hover:text-yellow-200">
+        </div>
+        <div className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
           <BookmarkIcon />
           <Link href={"https://icecokel.tistory.com"} target="_blank">
             https://icecokel.tistory.com
           </Link>
-        </Stack>
+        </div>
       </Profile.item>
       <Profile.item title="스킬">
         <Box>
@@ -129,14 +124,14 @@ const Profile = () => {
         </Grid>
       </Profile.item>
       <Link href={"/profile/resume"}>
-        <Stack direction={"row"} justifyContent={"flex-end"}>
+        <div className="flex justify-end">
           <Fab variant="extended" className="bg-yellow-200 text-gray-800 hover:text-blue-300">
             <Typography variant="body2">경력 보러가기</Typography>
             <NavigationIcon sx={{ mr: 1 }} className="rotate-[90deg]" />
           </Fab>
-        </Stack>
+        </div>
       </Link>
-    </Stack>
+    </div>
   );
 };
 

@@ -6,7 +6,6 @@ import Container from "@mui/material/Container";
 import Fade from "@mui/material/Fade";
 import Grid from "@mui/material/Grid";
 import Modal from "@mui/material/Modal";
-import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Image from "next/image";
 import { useState } from "react";
@@ -40,11 +39,7 @@ const HobbyCard = ({ date, thumbnail: thumbnail, title, items, review }: ICard) 
         onMouseLeave={handleMouseLeave}
         onClick={() => setOpen(true)}
       >
-        <Stack
-          alignItems={"center"}
-          justifyContent={"center"}
-          className="aspect-square bg-yellow-200/10 rounded"
-        >
+        <div className="flex items-center justify-center aspect-square bg-yellow-200/10 rounded">
           <Image
             src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL}${thumbnail}`}
             width={300}
@@ -52,14 +47,10 @@ const HobbyCard = ({ date, thumbnail: thumbnail, title, items, review }: ICard) 
             alt=""
             className="object-cover"
           />
-        </Stack>
+        </div>
 
         <Fade in={!isHideInfo}>
-          <Stack
-            justifyContent={"center"}
-            alignItems={"center"}
-            className="w-full h-full translate-y-[-100%] rounded bg-black/60"
-          >
+          <div className="w-full h-full translate-y-[-100%] rounded bg-black/60 flex justify-center items-center">
             <Box>
               <Typography color={"white"} variant="h6" fontWeight={600}>
                 {title}
@@ -71,7 +62,7 @@ const HobbyCard = ({ date, thumbnail: thumbnail, title, items, review }: ICard) 
                 {review}
               </Typography>
             </Box>
-          </Stack>
+          </div>
         </Fade>
         <HobbyCard.detail
           open={open}
@@ -104,12 +95,12 @@ HobbyCard.detail = ({ open, onClose, items, title, temporary, weather }: IDetail
       onClose={onClose}
       componentsProps={{ backdrop: { sx: { backgroundColor: "rgba(0, 0, 0, 0.8)" } } }}
     >
-      <Stack justifyContent={"center"} alignItems={"center"} className="h-screen">
+      <div className="h-screen flex justify-center items-center">
         <Container maxWidth="md" className="flex justify-between">
           <Typography variant="h5" color={"white"}>
             {title}
           </Typography>
-          <Stack direction={"column"} alignItems={"flex-end"}>
+          <div className="flex flex-col items-end">
             {temporary && (
               <Typography variant="body2" color={"white"}>
                 <DeviceThermostatOutlinedIcon />
@@ -121,7 +112,7 @@ HobbyCard.detail = ({ open, onClose, items, title, temporary, weather }: IDetail
                 {weather}
               </Typography>
             )}
-          </Stack>
+          </div>
         </Container>
         <Container maxWidth="md" className="mt-5 flex flex-row">
           <Swiper navigation={true} modules={[Navigation]} className="mySwiper">
@@ -138,7 +129,7 @@ HobbyCard.detail = ({ open, onClose, items, title, temporary, weather }: IDetail
             ))}
           </Swiper>
         </Container>
-      </Stack>
+      </div>
     </Modal>
   );
 };

@@ -6,7 +6,6 @@ import CloseIcon from "@mui/icons-material/Close";
 import Container from "@mui/material/Container";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useRouter } from "next/navigation";
@@ -34,7 +33,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
   const [dragStartPath, setDragStartPath] = useState<string>();
   const [dragEnterPath, setEnterPath] = useState<string>();
 
-  const handleClickMenu =
+  const onClickMenu =
     (menu: "close" | "closeOthers" | "closeAll") => (target: HTMLElement | null) => {
       if (target) {
         const foundTab = history.find(({ path }) => path === target.id);
@@ -63,9 +62,9 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
       setCurrentEl(null);
     };
 
-  const handleClickCloseMenu = handleClickMenu("close");
-  const handleClickCloseOuters = handleClickMenu("closeOthers");
-  const handleClickCloseAll = handleClickMenu("closeAll");
+  const handleClickCloseMenu = onClickMenu("close");
+  const handleClickCloseOuters = onClickMenu("closeOthers");
+  const handleClickCloseAll = onClickMenu("closeAll");
 
   const handleDragStart = ({ currentTarget: { id } }: React.MouseEvent<HTMLDivElement>) => {
     const clickedTab = history.find(({ path }) => path === id);
@@ -113,7 +112,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
 
   return (
     <div className="w-full bg-gray-800">
-      <Stack direction={"row"} className="bg-gray-900">
+      <div className="flex bg-gray-900">
         {history.map(item => (
           <Fragment key={`tab_${item.path}`}>
             <Tooltip title={`${item.path}/${item.title}`}>
@@ -181,7 +180,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
             </Menu>
           </Fragment>
         ))}
-      </Stack>
+      </div>
       <Container
         maxWidth="lg"
         className="min-h-screen flex-1 text-white sm:p-2 md:p-5 xs:px-0 xs:py-3"

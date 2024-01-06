@@ -3,10 +3,8 @@
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Grow from "@mui/material/Grow";
-import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useEffect } from "react";
-import { twMerge } from "tailwind-merge";
 
 const Resume = () => {
   const data: IPageProps[] = sampleData;
@@ -16,8 +14,8 @@ const Resume = () => {
   }, []);
 
   return (
-    <Stack direction={"row"} justifyContent={"space-between"}>
-      <Stack gap={5} marginLeft={5} marginTop={5} position={"fixed"} className="hidden lg:block">
+    <div className="flex justify-between">
+      <div className="gap-5 ml-5 mt-5 fixed hidden lg:block">
         {data.map((item, index) => (
           <Grow in={true} timeout={500 * index + 1} key={item.step}>
             <a href={`#resume_${index + 1}`}>
@@ -35,13 +33,13 @@ const Resume = () => {
             </a>
           </Grow>
         ))}
-      </Stack>
+      </div>
       <div className="lg:ml-[180px]">
         {data.map(item => {
           return <Resume.stepPanel {...item} key={item.step} />;
         })}
       </div>
-    </Stack>
+    </div>
   );
 };
 

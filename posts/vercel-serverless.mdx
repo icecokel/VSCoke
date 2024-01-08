@@ -52,7 +52,9 @@ FaaS(Function-as-a-Service)
 4. 함수내의 외부 종속성을 정리
 5. warm start 유지
 
-## [Cache](https://nextjs.org/docs/app/building-your-application/data-fetching/fetching-caching-and-revalidating)
+## Cache
+
+- [참고](https://nextjs.org/docs/app/building-your-application/data-fetching/fetching-caching-and-revalidating)
 
 - 용도 `GET`나`HEAD`방법을 요청합니다.
 - 요청에 헤더가 포함되어 있지 않습니다 `Range`
@@ -62,7 +64,9 @@ FaaS(Function-as-a-Service)
 - 응답에 헤더가 포함되어 있지 않습니다 `set-cookie`
 - 응답의 헤더 에 `privateno-cacheno-storeCache-Control`또는 지시어가 포함되어 있지 않습니다 .
 
-### **[x-vercel-cache](https://vercel.com/docs/edge-network/headers#x-vercel-cache)**
+### **x-vercel-cache**
+
+- [참고](https://vercel.com/docs/edge-network/headers#x-vercel-cache)
 
 **MISS** : edge-network-cache에서 찾지 못하고 origin server에서 응답이 제공
 

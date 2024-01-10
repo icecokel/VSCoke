@@ -3,12 +3,13 @@
 import Explorer from "./Explorer";
 import Search from "./Search";
 import useClickOutSide from "@/hooks/useClickOutSide";
+import useKeyPress from "@/hooks/useKeyPress";
 import { IHaveChildren } from "@/models/common";
 import { TSidebar } from "@/models/enum/sidebar";
 import FileCopyOutlinedIcon from "@mui/icons-material/FileCopyOutlined";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import Fab from "@mui/material/Fab";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 const TABS = [
@@ -35,6 +36,17 @@ const Sidebar = ({ children }: IHaveChildren) => {
   }) => {
     setTab(value === tab ? "none" : (value as TSidebar));
   };
+
+  const { pushedKey, isSubset } = useKeyPress();
+
+  useEffect(() => {
+    // TODO 맥일때 확인
+    if (isSubset(["control", "shift", "f"])) {
+      setTab(prev => {
+        return prev !== "search" ? "search" : "none";
+      });
+    }
+  }, [pushedKey]);
 
   return (
     <div className="flex">

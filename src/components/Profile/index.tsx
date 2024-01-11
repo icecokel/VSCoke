@@ -142,7 +142,7 @@ interface IItemProps extends IHaveChildren {
 Profile.item = ({ title, children }: IItemProps) => {
   return (
     <Box marginTop={"40px"}>
-      <BaseText variant="h5">{title}</BaseText>
+      <BaseText type="h5">{title}</BaseText>
       <Divider className="my-5 border-white" />
       <Box>{children}</Box>
     </Box>

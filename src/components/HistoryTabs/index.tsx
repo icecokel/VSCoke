@@ -1,5 +1,6 @@
 "use client";
 
+import BaseText from "../baseUi/Text";
 import useHistory from "@/hooks/useHistory";
 import { IHaveChildren } from "@/models/common";
 import CloseIcon from "@mui/icons-material/Close";
@@ -129,13 +130,12 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
                 onDragEnd={handleDragEnd}
                 draggable
               >
-                <Typography
+                <BaseText
                   className={twMerge(
-                    "text-gray-300/80 md:py-[6px] md:px-[20px] py-[4px] px-[8px]",
+                    "text-gray-300/80 md:py-[6px] md:px-[20px] py-[4px] px-[8px] text-sm",
                     item.isActive &&
                       "text-yellow-200/95 font-medium border-t pt-[1px] border-t-blue-300 md:pt-[5px]",
                   )}
-                  fontSize={14}
                 >
                   {item.title}
                   <CloseIcon
@@ -146,7 +146,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
                     )}
                     onClick={() => handleClickClose(item)}
                   />
-                </Typography>
+                </BaseText>
               </div>
             </Tooltip>
             <Menu

@@ -1,9 +1,9 @@
 "use client";
 
+import BaseText from "../baseUi/Text";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Grow from "@mui/material/Grow";
-import Typography from "@mui/material/Typography";
 import { useEffect } from "react";
 
 const Resume = () => {
@@ -19,17 +19,15 @@ const Resume = () => {
         {data.map((item, index) => (
           <Grow in={true} timeout={500 * index + 1} key={item.step}>
             <a href={`#resume_${index + 1}`}>
-              <Typography
-                variant="body1"
-                fontWeight={700}
-                className={"text-white hover:text-yellow-200"}
-                fontSize={18}
+              <BaseText
+                type="body1"
+                className={"text-white hover:text-yellow-200 font-bold text-lg"}
               >
                 {item.corporate}
-              </Typography>
-              <Typography variant="body2" className={"text-white"}>
+              </BaseText>
+              <BaseText type="body2" className={"text-white"}>
                 {item.periodStart} ~ {item.periodEnd}
-              </Typography>
+              </BaseText>
             </a>
           </Grow>
         ))}
@@ -72,21 +70,19 @@ Resume.stepPanel = ({ items, step }: IPageProps) => {
             return (
               <li key={title} id={`resume_${step}`}>
                 <div className="flex flex-col md:flex-row gap-1 md:items-end mt-[20px] ">
-                  <Typography variant="h6" fontWeight={700}>
-                    {title}
-                  </Typography>
-                  <Typography className="text-gray-300" variant="body2">
+                  <BaseText type="h6">{title}</BaseText>
+                  <BaseText className="text-gray-300" type="body2">
                     {periodStart} ~ {PeriodEnd}
-                  </Typography>
+                  </BaseText>
                 </div>
                 <Box className="ml-3 text-[14px] font-medium">
                   <pre>
                     <code>{jobs}</code>
                   </pre>
                 </Box>
-                <Typography variant="body2" className="my-4">
+                <BaseText type="body2" className="my-4">
                   사용된 기술
-                </Typography>
+                </BaseText>
                 <Box>
                   {skills.map((item, index) => (
                     <Chip

@@ -1,11 +1,11 @@
 "use client";
 
+import BaseText from "../baseUi/Text";
 import HobbyCard from "./Card";
 import HikingRoundedIcon from "@mui/icons-material/HikingRounded";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import Rating from "@mui/material/Rating";
-import Typography from "@mui/material/Typography";
 
 interface IHobbyProps {
   type: string;
@@ -17,8 +17,8 @@ const Hobby = ({ type }: IHobbyProps) => {
       <div className="flex gap-[20px] p-3 text-black bg-white rounded items-center">
         <HikingRoundedIcon className="text-green-300 hidden sm:block" sx={{ fontSize: "80px" }} />
         <div>
-          <Typography variant="h3">{type}</Typography>
-          <Typography variant="body1">주로 봄, 가을에 다니고 </Typography>
+          <BaseText type="h3">{type}</BaseText>
+          <BaseText type="body1">주로 봄, 가을에 다니고 </BaseText>
           <Rating name="read-only" value={4} readOnly />
         </div>
       </div>

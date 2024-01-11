@@ -1,12 +1,12 @@
 "use client";
 
+import BaseText from "../baseUi/Text";
 import DeviceThermostatOutlinedIcon from "@mui/icons-material/DeviceThermostatOutlined";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Fade from "@mui/material/Fade";
 import Grid from "@mui/material/Grid";
 import Modal from "@mui/material/Modal";
-import Typography from "@mui/material/Typography";
 import Image from "next/image";
 import { useState } from "react";
 import { Navigation } from "swiper/modules";
@@ -52,15 +52,15 @@ const HobbyCard = ({ date, thumbnail: thumbnail, title, items, review }: ICard) 
         <Fade in={!isHideInfo}>
           <div className="w-full h-full translate-y-[-100%] rounded bg-black/60 flex justify-center items-center">
             <Box>
-              <Typography color={"white"} variant="h6" fontWeight={600}>
+              <BaseText type="h6" className="text-white">
                 {title}
-              </Typography>
-              <Typography variant="body1" className="text-white/80">
+              </BaseText>
+              <BaseText type="body1" className="text-white/80">
                 {date}
-              </Typography>
-              <Typography variant="body1" className="text-white/80">
+              </BaseText>
+              <BaseText type="body1" className="text-white/80">
                 {review}
-              </Typography>
+              </BaseText>
             </Box>
           </div>
         </Fade>
@@ -97,20 +97,20 @@ HobbyCard.detail = ({ open, onClose, items, title, temporary, weather }: IDetail
     >
       <div className="h-screen flex justify-center items-center">
         <Container maxWidth="md" className="flex justify-between">
-          <Typography variant="h5" color={"white"}>
+          <BaseText type="h5" className="text-white">
             {title}
-          </Typography>
+          </BaseText>
           <div className="flex flex-col items-end">
             {temporary && (
-              <Typography variant="body2" color={"white"}>
+              <BaseText type="body2" className="text-white">
                 <DeviceThermostatOutlinedIcon />
                 {temporary}
-              </Typography>
+              </BaseText>
             )}
             {weather && (
-              <Typography variant="body2" color={"white"}>
+              <BaseText type="body2" className="text-white">
                 {weather}
-              </Typography>
+              </BaseText>
             )}
           </div>
         </Container>

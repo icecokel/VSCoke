@@ -1,8 +1,8 @@
 "use client";
 
+import BaseText from "../baseUi/Text";
 import useHistory from "@/hooks/useHistory";
 import Avatar from "@mui/material/Avatar";
-import Typography from "@mui/material/Typography";
 
 const NameCard = () => {
   const { add } = useHistory();
@@ -17,10 +17,8 @@ const NameCard = () => {
           src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL}profileImg.jpg`}
         />
         <div className="flex flex-col items-start">
-          <Typography variant="h6">얼음콜라</Typography>
-          <Typography variant="body2" color={"text.secondary"}>
-            소심한 관종 개발자
-          </Typography>
+          <BaseText type="h6">얼음콜라</BaseText>
+          <BaseText type="body2">소심한 관종 개발자</BaseText>
         </div>
       </button>
     </div>

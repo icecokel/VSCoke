@@ -1,5 +1,6 @@
 "use client";
 
+import BaseText from "../baseUi/Text";
 import { IHaveChildren } from "@/models/common";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
@@ -43,13 +44,9 @@ const Menubar = ({ children }: IHaveChildren) => {
         {MENULIST.map((item, index) => {
           return (
             <div key={`${item.key}_${index}`} onClick={handleClickMenu} id={item.name}>
-              <Typography
-                variant="body1"
-                color="initial"
-                className="text-gray-300 px-3 select-none"
-              >
+              <BaseText type="body1" className="text-gray-300 px-3 select-none">
                 {item.name}
-              </Typography>
+              </BaseText>
             </div>
           );
         })}

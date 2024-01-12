@@ -4,14 +4,9 @@ import BaseText from "../baseUi/Text";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Grow from "@mui/material/Grow";
-import { useEffect } from "react";
 
 const Resume = () => {
   const data: IPageProps[] = sampleData;
-
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
 
   return (
     <div className="flex justify-between">

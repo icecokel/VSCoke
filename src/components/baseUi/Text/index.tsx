@@ -1,3 +1,5 @@
+"use client";
+
 import { styles } from "./style";
 import { TTextType } from "./type";
 import { IHaveChildren } from "@/models/common";

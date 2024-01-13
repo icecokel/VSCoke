@@ -29,31 +29,26 @@ const Profile = () => {
           className="h-[180px] w-[180px] border-4 border-yellow-200 md:h-[200px] md:w-[200px]"
           src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL}profileImg.jpg`}
         />
-        <Box marginLeft={"12px"} marginTop={{ sm: "25px" }}>
+        <div className="ml-3 mt-[25px] md:mt-0">
           <BaseText type="h4" className="text-center">
             코딩만 하지 않는 <br className="md:hidden" />
             개발자 이상민입니다.
           </BaseText>
-          <Box className="mt-5 w-full max-w-sm ">
-            <Grow in={true}>
-              <Tooltip title="이메일 보내기" placement="bottom">
-                <BaseText type="body1" className="mb-3 hover:text-yellow-200">
-                  <MailIcon className="mr-1" />
-                  <a href="mailto:red9runge@gmail.com">red9runge@gmail.com</a>
-                </BaseText>
-              </Tooltip>
-            </Grow>
-            {/* Conditionally applies the timeout prop to change the entry speed. */}
-            <Grow in={true} timeout={1000}>
-              <Tooltip title="전화하기" placement="bottom">
-                <BaseText type="body1" className="mb-3 hover:text-yellow-200">
-                  <LocalPhoneIcon className="mr-1" />
-                  <a href="tel:01020809652">전화 걸기</a>
-                </BaseText>
-              </Tooltip>
-            </Grow>
-          </Box>
-        </Box>
+          <div className="mt-5 w-full max-w-sm bg-blue-100/30 rounded p-4 gap-4 flex flex-col">
+            <Tooltip title="이메일 보내기" placement="bottom">
+              <BaseText type="body1" className="hover:text-yellow-200 font-bold">
+                <MailIcon className="mr-1" />
+                <a href="mailto:red9runge@gmail.com">red9runge@gmail.com</a>
+              </BaseText>
+            </Tooltip>
+            <Tooltip title="전화하기" placement="bottom">
+              <BaseText type="body1" className="hover:text-yellow-200 font-bold">
+                <LocalPhoneIcon className="mr-1" />
+                <a href="tel:01020809652">전화 걸기</a>
+              </BaseText>
+            </Tooltip>
+          </div>
+        </div>
       </div>
       <Profile.item title="간단 소개글">
         <BaseText>

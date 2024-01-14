@@ -51,7 +51,7 @@ const HobbyCard = ({ date, thumbnail: thumbnail, title, items, review }: ICard) 
 
         <Fade in={!isHideInfo}>
           <div className="w-full h-full translate-y-[-100%] rounded bg-black/60 flex justify-center items-center">
-            <Box>
+            <div>
               <BaseText type="h6" className="text-white">
                 {title}
               </BaseText>
@@ -61,7 +61,7 @@ const HobbyCard = ({ date, thumbnail: thumbnail, title, items, review }: ICard) 
               <BaseText type="body1" className="text-white/80">
                 {review}
               </BaseText>
-            </Box>
+            </div>
           </div>
         </Fade>
         <HobbyCard.detail

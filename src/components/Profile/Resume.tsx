@@ -70,15 +70,15 @@ Resume.stepPanel = ({ items, step }: IPageProps) => {
                     {periodStart} ~ {PeriodEnd}
                   </BaseText>
                 </div>
-                <Box className="ml-3 text-[14px] font-medium">
+                <div className="ml-3 text-[14px] font-medium">
                   <pre>
                     <code>{jobs}</code>
                   </pre>
-                </Box>
+                </div>
                 <BaseText type="body2" className="my-4">
                   사용된 기술
                 </BaseText>
-                <Box>
+                <div>
                   {skills.map((item, index) => (
                     <Chip
                       key={`skill_${index}`}
@@ -88,7 +88,7 @@ Resume.stepPanel = ({ items, step }: IPageProps) => {
                       className="mb-2 mr-2 select-none p-1 text-white "
                     />
                   ))}
-                </Box>
+                </div>
               </li>
             );
           })}

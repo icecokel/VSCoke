@@ -23,7 +23,7 @@ const Hobby = ({ type }: IHobbyProps) => {
         </div>
       </div>
 
-      <Box color={"black"} bgcolor={"#fff"} borderRadius={"4px"} padding={"12px"}>
+      <div className="text-black bg-white rounded p-3">
         <Grid container>
           {Array.from(Array(15)).map((item, index) => {
             return (
@@ -37,7 +37,7 @@ const Hobby = ({ type }: IHobbyProps) => {
             );
           })}
         </Grid>
-      </Box>
+      </div>
     </div>
   );
 };

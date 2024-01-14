@@ -1,6 +1,7 @@
 "use client";
 
 import BaseText from "../baseUi/Text";
+import Tooltip from "../baseUi/Tooltip";
 import { IHaveChildren } from "@/models/common";
 import BookmarkIcon from "@mui/icons-material/Bookmark";
 import GitHubIcon from "@mui/icons-material/GitHub";
@@ -13,8 +14,6 @@ import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import Fab from "@mui/material/Fab";
 import Grid from "@mui/material/Grid";
-import Grow from "@mui/material/Grow";
-import Tooltip from "@mui/material/Tooltip";
 import Link from "next/link";
 
 /**
@@ -34,14 +33,14 @@ const Profile = () => {
             코딩만 하지 않는 <br className="md:hidden" />
             개발자 이상민입니다.
           </BaseText>
-          <div className="mt-5 w-full max-w-sm bg-blue-100/30 rounded p-4 gap-4 flex flex-col">
-            <Tooltip title="이메일 보내기" placement="bottom">
+          <div className="mt-5 w-full max-w-sm bg-blue-100/20 rounded p-4 gap-4 flex flex-col">
+            <Tooltip text="이메일 보내기">
               <BaseText type="body1" className="hover:text-yellow-200 font-bold">
                 <MailIcon className="mr-1" />
                 <a href="mailto:red9runge@gmail.com">red9runge@gmail.com</a>
               </BaseText>
             </Tooltip>
-            <Tooltip title="전화하기" placement="bottom">
+            <Tooltip text="전화하기">
               <BaseText type="body1" className="hover:text-yellow-200 font-bold">
                 <LocalPhoneIcon className="mr-1" />
                 <a href="tel:01020809652">전화 걸기</a>

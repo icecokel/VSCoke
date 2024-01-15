@@ -21,7 +21,7 @@ export const styles: Record<TTextType, CSSProperties> = {
     fontFamily: "'Spoqa Han Sans Neo', sans-serif",
   },
   h4: {
-    fontSize: "2.125rem;",
+    fontSize: "2.125rem",
     fontWeight: 700,
     lineHeight: 1.235,
     fontFamily: "'Spoqa Han Sans Neo', sans-serif",

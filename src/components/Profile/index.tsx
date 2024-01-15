@@ -1,5 +1,6 @@
 "use client";
 
+import Avatar from "../baseUi/Avatar";
 import BaseText from "../baseUi/Text";
 import Tooltip from "../baseUi/Tooltip";
 import { IHaveChildren } from "@/models/common";
@@ -8,7 +9,6 @@ import GitHubIcon from "@mui/icons-material/GitHub";
 import LocalPhoneIcon from "@mui/icons-material/LocalPhone";
 import MailIcon from "@mui/icons-material/Mail";
 import NavigationIcon from "@mui/icons-material/Navigation";
-import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
@@ -26,7 +26,8 @@ const Profile = () => {
       <div className="flex sm:flex-col sm:gap-1 md:flex-row md:gap-3 xs:items-center md:items-start">
         <Avatar
           className="h-[180px] w-[180px] border-4 border-yellow-200 md:h-[200px] md:w-[200px]"
-          src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL}profileImg.jpg`}
+          src={"profileImg.jpg"}
+          size={180}
         />
         <div className="ml-3 mt-[25px] md:mt-0">
           <BaseText type="h4" className="text-center">
@@ -79,7 +80,7 @@ const Profile = () => {
         </div>
       </Profile.item>
       <Profile.item title="스킬">
-        <Box>
+        <div>
           {SKILLS.map((item, index) => (
             <Chip
               key={`skill_${index}`}
@@ -89,7 +90,7 @@ const Profile = () => {
               className="mb-2 mr-2 select-none p-1 text-white hover:border-yellow-200 hover:text-yellow-200"
             />
           ))}
-        </Box>
+        </div>
       </Profile.item>
 
       <Profile.item title="학력 / 교육">
@@ -135,11 +136,11 @@ interface IItemProps extends IHaveChildren {
 
 Profile.item = ({ title, children }: IItemProps) => {
   return (
-    <Box marginTop={"40px"}>
+    <div className="mt-10">
       <BaseText type="h5">{title}</BaseText>
       <Divider className="my-5 border-white" />
-      <Box>{children}</Box>
-    </Box>
+      <div>{children}</div>
+    </div>
   );
 };
 

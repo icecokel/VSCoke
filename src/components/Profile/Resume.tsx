@@ -1,9 +1,7 @@
 "use client";
 
+import Chip from "../baseUi/Chip";
 import BaseText from "../baseUi/Text";
-import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
-import Grow from "@mui/material/Grow";
 
 const Resume = () => {
   const data: IPageProps[] = sampleData;
@@ -12,7 +10,7 @@ const Resume = () => {
     <div className="flex justify-between">
       <div className="gap-5 ml-5 mt-5 fixed hidden lg:block">
         {data.map((item, index) => (
-          <Grow in={true} timeout={500 * index + 1} key={item.step}>
+          <div key={item.step}>
             <a href={`#resume_${index + 1}`}>
               <BaseText
                 type="body1"
@@ -24,7 +22,7 @@ const Resume = () => {
                 {item.periodStart} ~ {item.periodEnd}
               </BaseText>
             </a>
-          </Grow>
+          </div>
         ))}
       </div>
       <div className="lg:ml-[180px]">
@@ -83,8 +81,6 @@ Resume.stepPanel = ({ items, step }: IPageProps) => {
                     <Chip
                       key={`skill_${index}`}
                       label={item}
-                      size="small"
-                      variant="outlined"
                       className="mb-2 mr-2 select-none p-1 text-white "
                     />
                   ))}

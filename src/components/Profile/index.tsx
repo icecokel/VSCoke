@@ -1,6 +1,7 @@
 "use client";
 
 import Avatar from "../baseUi/Avatar";
+import Chip from "../baseUi/Chip";
 import BaseText from "../baseUi/Text";
 import Tooltip from "../baseUi/Tooltip";
 import { IHaveChildren } from "@/models/common";
@@ -9,8 +10,6 @@ import GitHubIcon from "@mui/icons-material/GitHub";
 import LocalPhoneIcon from "@mui/icons-material/LocalPhone";
 import MailIcon from "@mui/icons-material/Mail";
 import NavigationIcon from "@mui/icons-material/Navigation";
-import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import Fab from "@mui/material/Fab";
 import Grid from "@mui/material/Grid";
@@ -80,14 +79,12 @@ const Profile = () => {
         </div>
       </Profile.item>
       <Profile.item title="스킬">
-        <div>
+        <div className="flex flex-wrap gap-2">
           {SKILLS.map((item, index) => (
             <Chip
               key={`skill_${index}`}
               label={item}
-              size="small"
-              variant="outlined"
-              className="mb-2 mr-2 select-none p-1 text-white hover:border-yellow-200 hover:text-yellow-200"
+              className="select-none text-white hover:border-yellow-200 hover:text-yellow-200"
             />
           ))}
         </div>

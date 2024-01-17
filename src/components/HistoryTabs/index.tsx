@@ -1,14 +1,13 @@
 "use client";
 
-import BaseText from "../baseUi/Text";
 import useHistory from "@/hooks/useHistory";
 import { IHaveChildren } from "@/models/common";
 import CloseIcon from "@mui/icons-material/Close";
 import Container from "@mui/material/Container";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import Tooltip from "@mui/material/Tooltip";
-import Typography from "@mui/material/Typography";
+import BaseText from "@ui/Text";
+import Tooltip from "@ui/Tooltip";
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
@@ -116,7 +115,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
       <div className="flex bg-gray-900">
         {history.map(item => (
           <Fragment key={`tab_${item.path}`}>
-            <Tooltip title={`${item.path}/${item.title}`}>
+            <Tooltip text={`${item.path}/${item.title}`}>
               <div
                 id={item.path}
                 className={twMerge(
@@ -181,10 +180,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
           </Fragment>
         ))}
       </div>
-      <Container
-        maxWidth="lg"
-        className="min-h-screen flex-1 text-white sm:p-2 md:p-5 xs:px-0 xs:py-3"
-      >
+      <Container className="min-h-screen flex-1 text-white sm:p-2 md:p-5 xs:px-0 xs:py-3">
         {children}
       </Container>
     </div>

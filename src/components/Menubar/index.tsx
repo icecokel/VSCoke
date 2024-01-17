@@ -1,10 +1,9 @@
 "use client";
 
-import BaseText from "../baseUi/Text";
 import { IHaveChildren } from "@/models/common";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import Typography from "@mui/material/Typography";
+import BaseText from "@ui/Text";
 import { MouseEventHandler, useState } from "react";
 
 interface IMenuItem {

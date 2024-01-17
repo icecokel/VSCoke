@@ -1,9 +1,9 @@
 "use client";
 
-import BaseText from "./baseUi/Text";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
+import BaseText from "@ui/Text";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 

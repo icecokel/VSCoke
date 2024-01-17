@@ -1,4 +1,4 @@
-import BaseText from "./Text";
+import BaseText from "@ui/Text";
 
 interface IChipProps {
   label: string;

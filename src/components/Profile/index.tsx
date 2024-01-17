@@ -1,18 +1,17 @@
 "use client";
 
-import Avatar from "../baseUi/Avatar";
-import Chip from "../baseUi/Chip";
-import BaseText from "../baseUi/Text";
-import Tooltip from "../baseUi/Tooltip";
 import { IHaveChildren } from "@/models/common";
 import BookmarkIcon from "@mui/icons-material/Bookmark";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import LocalPhoneIcon from "@mui/icons-material/LocalPhone";
 import MailIcon from "@mui/icons-material/Mail";
 import NavigationIcon from "@mui/icons-material/Navigation";
-import Divider from "@mui/material/Divider";
 import Fab from "@mui/material/Fab";
 import Grid from "@mui/material/Grid";
+import Avatar from "@ui/Avatar";
+import Chip from "@ui/Chip";
+import BaseText from "@ui/Text";
+import Tooltip from "@ui/Tooltip";
 import Link from "next/link";
 
 /**
@@ -135,7 +134,7 @@ Profile.item = ({ title, children }: IItemProps) => {
   return (
     <div className="mt-10">
       <BaseText type="h5">{title}</BaseText>
-      <Divider className="my-5 border-white" />
+      <hr className="my-5 border-white" />
       <div>{children}</div>
     </div>
   );

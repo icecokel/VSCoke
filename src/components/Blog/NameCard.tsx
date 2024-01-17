@@ -1,8 +1,8 @@
 "use client";
 
-import BaseText from "../baseUi/Text";
 import useHistory from "@/hooks/useHistory";
 import Avatar from "@mui/material/Avatar";
+import BaseText from "@ui/Text";
 
 const NameCard = () => {
   const { add } = useHistory();

@@ -1,7 +1,7 @@
 "use client";
 
-import Chip from "../baseUi/Chip";
-import BaseText from "../baseUi/Text";
+import Chip from "@ui/Chip";
+import BaseText from "@ui/Text";
 
 const Resume = () => {
   const data: IPageProps[] = sampleData;

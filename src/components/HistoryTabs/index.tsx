@@ -96,19 +96,20 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
     }
   };
 
-  useEffect(() => {
-    if (history.length === 0) {
-      router.replace("/");
-      return;
-    }
+  // TODO 임시 제거
+  // useEffect(() => {
+  //   if (history.length === 0) {
+  //     router.replace("/");
+  //     return;
+  //   }
 
-    if (current) {
-      router.replace(current.path);
-      return;
-    } else {
-      add(history[0]);
-    }
-  }, [history]);
+  //   if (current) {
+  //     router.replace(current.path);
+  //     return;
+  //   } else {
+  //     add(history[0]);
+  //   }
+  // }, [history]);
 
   return (
     <div className="w-full bg-gray-800">

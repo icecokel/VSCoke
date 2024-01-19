@@ -4,6 +4,7 @@ import Explorer from "./Explorer";
 import Search from "./Search";
 import useClickOutSide from "@/hooks/useClickOutSide";
 import useKeyPress from "@/hooks/useKeyPress";
+import useShortCut from "@/hooks/useShortCut";
 import { IHaveChildren } from "@/models/common";
 import { TSidebar } from "@/models/enum/sidebar";
 import FileCopyOutlinedIcon from "@mui/icons-material/FileCopyOutlined";
@@ -37,16 +38,11 @@ const Sidebar = ({ children }: IHaveChildren) => {
     setTab(value === tab ? "none" : (value as TSidebar));
   };
 
-  const { pushedKey, isSubset } = useKeyPress();
-
-  useEffect(() => {
-    // TODO 맥일때 확인
-    if (isSubset(["control", "shift", "f"])) {
-      setTab(prev => {
-        return prev !== "search" ? "search" : "none";
-      });
-    }
-  }, [pushedKey]);
+  useShortCut(["control", "shift", "f"], () => {
+    setTab(prev => {
+      return prev !== "search" ? "search" : "none";
+    });
+  });
 
   return (
     <div className="flex">

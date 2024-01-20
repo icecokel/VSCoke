@@ -44,6 +44,12 @@ const Sidebar = ({ children }: IHaveChildren) => {
     });
   });
 
+  useShortCut(["control", "b"], () => {
+    setTab(prev => {
+      return prev !== "explore" ? "explore" : "none";
+    });
+  });
+
   return (
     <div className="flex">
       <div className="flex" ref={tabRef}>

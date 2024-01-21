@@ -1,9 +1,9 @@
-import { IHistoryItem, historyAtom } from "@/atom/history";
-import { useAtom } from "jotai/react";
+import { IHistoryItem } from "@/atom/history";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 const useHistory = () => {
-  const [history, setHistory] = useAtom(historyAtom);
+  const [history, setHistory] = useState<IHistoryItem[]>([]);
   const router = useRouter();
 
   const add = ({ path, title }: IHistoryItem) => {

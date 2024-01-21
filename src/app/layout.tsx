@@ -7,8 +7,6 @@ import { IHaveChildren } from "@/models/common";
 import { getExplorer } from "@/utils/get/explorer";
 import { getPosts } from "@/utils/get/post";
 import { Metadata } from "next";
-import "prismjs/themes/prism-tomorrow.css";
-import "react-notion/src/styles.css";
 import "swiper/css";
 import "swiper/css/navigation";
 

@@ -3,13 +3,13 @@
 import useHistory from "@/hooks/useHistory";
 import { IHaveChildren } from "@/models/common";
 import CloseIcon from "@mui/icons-material/Close";
-import Container from "@mui/material/Container";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
+import Container from "@ui/Container";
 import BaseText from "@ui/Text";
 import Tooltip from "@ui/Tooltip";
 import { useRouter } from "next/navigation";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 const HistoryTabs = ({ children }: IHaveChildren) => {

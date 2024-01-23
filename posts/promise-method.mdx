@@ -37,15 +37,39 @@ category: 스터디
 
 가장 먼저 이행되거나 거부된 Promise의 결과 값을 반환합니다.
 
-```html
-const foreachFn =() => { resultDiv.innerHTML = "loading..." const requests = [getUser(),
-getAddress(), getPosts()]; const results = [] requests.forEach(async(req,index)=>{ const res = await
-req result.push({res,index}) }) printing(results) } const forOfFn = async () => {
-resultDiv.innerHTML = "loading..." const requests = [getUser(), getAddress(), getPosts()]; const
-results = []; for (const [index, req] of requests.entries()) { const res = await req; results.push({
-res, index }); } printing(results) }; const fetching = (url) => async () => { const res = await
-fetch(`http://localhost:8080/${url}`); return res.json(); }; const getUser = fetching('user'); const
-getAddress = fetching('address'); const getPosts = fetching('posts');
+```js
+const foreachFn = () => {
+  resultDiv.innerHTML = "loading...";
+  const requests = [getUser(), getAddress(), getPosts()];
+
+  const results = [];
+  requests.forEach(async (req, index) => {
+    const res = await req;
+    result.push({ res, index });
+  });
+
+  printing(results);
+};
+const forOfFn = async () => {
+  resultDiv.innerHTML = "loading...";
+  const requests = [getUser(), getAddress(), getPosts()];
+
+  const results = [];
+  for (const [index, req] of requests.entries()) {
+    const res = await req;
+    results.push({ res, index });
+  }
+  printing(results);
+};
+
+const fetching = url => async () => {
+  const res = await fetch(`http://localhost:8080/${url}`);
+  return res.json();
+};
+
+const getUser = fetching("user");
+const getAddress = fetching("address");
+const getPosts = fetching("posts");
 ```
 
 ### Promise.resolve

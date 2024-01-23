@@ -7,7 +7,6 @@ import LocalPhoneIcon from "@mui/icons-material/LocalPhone";
 import MailIcon from "@mui/icons-material/Mail";
 import NavigationIcon from "@mui/icons-material/Navigation";
 import Fab from "@mui/material/Fab";
-import Grid from "@mui/material/Grid";
 import Avatar from "@ui/Avatar";
 import Chip from "@ui/Chip";
 import BaseText from "@ui/Text";
@@ -90,27 +89,23 @@ const Profile = () => {
       </Profile.item>
 
       <Profile.item title="학력 / 교육">
-        <Grid container marginBottom={5}>
-          <Grid item xs={12} sm={3} marginBottom={2}>
-            2019.08 - 2020.03
-          </Grid>
-          <Grid item xs={12} sm={9} marginBottom={2}>
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center ">
+          <div className="mb-5 min-w-[140px]">2019.08 - 2020.03</div>
+          <div className="mb-5">
             <BaseText type="h6">하이브리드 앱개발(ISO&안드로이드) 및 웹 개발자 양성 과정</BaseText>
             <BaseText type="body2">
               Java, Spring 기반의 웹 개발 기초 (스프링 기초, Restapi) <br />
               안드로이드, IOS 앱개발 기초
             </BaseText>
-          </Grid>
-        </Grid>
-        <Grid container marginBottom={5}>
-          <Grid item xs={12} sm={3}>
-            2010.03 - 2017.02
-          </Grid>
-          <Grid item xs={12} sm={9}>
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center ">
+          <div className="mb-5 min-w-[140px]">2010.03 - 2017.02</div>
+          <div className="mb-5">
             <BaseText type="h6">서일대학교</BaseText>
             <BaseText type="body2">정보통신학과</BaseText>
-          </Grid>
-        </Grid>
+          </div>
+        </div>
       </Profile.item>
       <Link href={"/profile/resume"}>
         <div className="flex justify-end">

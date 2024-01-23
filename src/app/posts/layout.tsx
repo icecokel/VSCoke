@@ -15,7 +15,7 @@ export default function Layout({ children }: IHaveChildren) {
         >
           {children}
         </Container>
-        <MdxNav />
+        {/* <MdxNav /> */}
       </div>
     </MdxProvider>
   );

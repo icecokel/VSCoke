@@ -23,6 +23,9 @@ export const colors = {
   beige: {
     400: "#F7F6F3",
   },
+  red: {
+    400: "#F85149",
+  },
   white: "#FFFFFF",
   black: "#000000",
 };

@@ -1,5 +1,6 @@
 "use client";
 
+import Button from "@ui/Button";
 import Container from "@ui/Container";
 import BaseText from "@ui/Text";
 import { usePathname, useRouter } from "next/navigation";
@@ -30,14 +31,15 @@ const NotFound = () => {
             이동해주세요.
           </BaseText>
         </div>
-        <button
-          className="text-yellow-200 mt-4"
+        <Button
+          className="mt-4"
+          type="outline"
           onClick={() => {
             push("/");
           }}
         >
           메인으로 이동하기
-        </button>
+        </Button>
       </div>
     </Container>
   );

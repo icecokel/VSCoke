@@ -9,7 +9,7 @@ import Container from "@ui/Container";
 import BaseText from "@ui/Text";
 import Tooltip from "@ui/Tooltip";
 import { useRouter } from "next/navigation";
-import { Fragment, useState } from "react";
+import { Fragment, useState, useEffect } from "react";
 import { twMerge } from "tailwind-merge";
 
 const HistoryTabs = ({ children }: IHaveChildren) => {
@@ -96,20 +96,19 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
     }
   };
 
-  // TODO 임시 제거
-  // useEffect(() => {
-  //   if (history.length === 0) {
-  //     router.replace("/");
-  //     return;
-  //   }
+  useEffect(() => {
+    if (history.length === 0) {
+      router.replace("/");
+      return;
+    }
 
-  //   if (current) {
-  //     router.replace(current.path);
-  //     return;
-  //   } else {
-  //     add(history[0]);
-  //   }
-  // }, [history]);
+    if (current) {
+      router.replace(current.path);
+      return;
+    } else {
+      add(history[0]);
+    }
+  }, [history]);
 
   return (
     <div className="w-full bg-gray-800">

@@ -7,7 +7,7 @@ interface IButton extends HtmlHTMLAttributes<HTMLButtonElement> {
 }
 
 const Button = ({ type = "text", ...restProps }: IButton) => {
-  return createElement("button", { ...restProps, style: styles[type] });
+  return createElement("button", { style: styles[type], ...restProps });
 };
 
 export default Button;

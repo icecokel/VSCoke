@@ -1,12 +1,12 @@
 "use client";
 
+import Button from "../baseUi/Button";
 import { IHaveChildren } from "@/models/common";
 import BookmarkIcon from "@mui/icons-material/Bookmark";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import LocalPhoneIcon from "@mui/icons-material/LocalPhone";
 import MailIcon from "@mui/icons-material/Mail";
 import NavigationIcon from "@mui/icons-material/Navigation";
-import Fab from "@mui/material/Fab";
 import Avatar from "@ui/Avatar";
 import Chip from "@ui/Chip";
 import BaseText from "@ui/Text";
@@ -109,10 +109,13 @@ const Profile = () => {
       </Profile.item>
       <Link href={"/profile/resume"}>
         <div className="flex justify-end">
-          <Fab variant="extended" className="bg-yellow-200 text-gray-800 hover:text-blue-300">
+          <Button
+            type="contained"
+            className="bg-yellow-200 text-gray-800 hover:!text-blue-300 !rounded-[24px]"
+          >
             <BaseText type="body2">경력 보러가기</BaseText>
             <NavigationIcon sx={{ mr: 1 }} className="rotate-[90deg]" />
-          </Fab>
+          </Button>
         </div>
       </Link>
     </div>

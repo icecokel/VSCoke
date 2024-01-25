@@ -1,15 +1,14 @@
 "use client";
 
+import Menu from "../baseUi/Menu";
 import useHistory from "@/hooks/useHistory";
 import { IHaveChildren } from "@/models/common";
 import CloseIcon from "@mui/icons-material/Close";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
 import Container from "@ui/Container";
 import BaseText from "@ui/Text";
 import Tooltip from "@ui/Tooltip";
 import { useRouter } from "next/navigation";
-import { Fragment, useState, useEffect } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 const HistoryTabs = ({ children }: IHaveChildren) => {
@@ -19,7 +18,6 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
 
   const handleClickTab = change;
   const handleClickClose = remove;
-  const open = Boolean(currentEl);
 
   const handleRightClickTab: React.MouseEventHandler<HTMLDivElement> = event => {
     event.preventDefault();
@@ -148,38 +146,16 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
                 </BaseText>
               </div>
             </Tooltip>
-            <Menu
-              id="basic-menu"
-              anchorEl={currentEl}
-              open={open}
-              onClose={onClose}
-              MenuListProps={{
-                sx: {
-                  bgcolor: "#181818",
-                  color: "#D7D7D7",
-                  fontSize: "12px",
-                  padding: "2px 4px",
-                  width: "30vw",
-                  minWidth: "120px",
-                  borderColor: "#8C8C8C",
-
-                  li: {
-                    padding: "2px 20px",
-                    borderRadius: "4px",
-                    "&:hover": {
-                      bgcolor: "#323232",
-                    },
-                  },
-                },
-              }}
-            >
-              <MenuItem onClick={() => handleClickCloseMenu(currentEl)}>닫기</MenuItem>
-              <MenuItem onClick={() => handleClickCloseOuters(currentEl)}>나머지 닫기</MenuItem>
-              <MenuItem onClick={() => handleClickCloseAll(currentEl)}>모두 닫기</MenuItem>
-            </Menu>
           </Fragment>
         ))}
       </div>
+
+      <Menu targetEl={currentEl} onClose={onClose}>
+        <Menu.item onClick={() => handleClickCloseMenu(currentEl)}>닫기</Menu.item>
+        <Menu.item onClick={() => handleClickCloseOuters(currentEl)}>나머지 닫기</Menu.item>
+        <Menu.item onClick={() => handleClickCloseAll(currentEl)}>모두 닫기</Menu.item>
+      </Menu>
+
       <Container className="min-h-screen flex-1 text-white sm:p-2 md:p-5 xs:px-0 xs:py-3">
         {children}
       </Container>

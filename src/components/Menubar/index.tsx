@@ -1,8 +1,7 @@
 "use client";
 
+import Menu from "../baseUi/Menu";
 import { IHaveChildren } from "@/models/common";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
 import BaseText from "@ui/Text";
 import { MouseEventHandler, useState } from "react";
 
@@ -50,7 +49,13 @@ const Menubar = ({ children }: IHaveChildren) => {
           );
         })}
       </div>
-      <Menu
+      <Menu targetEl={currentEl} onClose={onClose}>
+        {currentItems?.items.map((item, index) => {
+          return <Menu.item key={`${currentItems.name}_item_${index}`}>{item.name}</Menu.item>;
+        })}
+      </Menu>
+
+      {/* <Menu
         id="basic-menu"
         anchorEl={currentEl}
         open={open}
@@ -78,7 +83,7 @@ const Menubar = ({ children }: IHaveChildren) => {
         {currentItems?.items.map((item, index) => {
           return <MenuItem key={`${currentItems.name}_item_${index}`}>{item.name}</MenuItem>;
         })}
-      </Menu>
+      </Menu> */}
 
       {children}
     </>

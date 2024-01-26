@@ -23,9 +23,9 @@ const MdxNav = () => {
   return (
     <div className="text-white w-[300px] hidden lg:block">
       <div className="fixed flex flex-col gap-2">
-        {items.map(item => {
+        {items.map((item, index) => {
           return (
-            <a href={`#${PREFIX}-${item.label}`} key={item.label}>
+            <a href={`#${PREFIX}-${item.label}`} key={`${item.label}_${index}`}>
               <span style={STYLE_MAP[item.type]}>{item.label}</span>
             </a>
           );

@@ -15,7 +15,7 @@ const NameCard = () => {
         <Avatar
           size={120}
           className="h-[120px] w-[120px] border-2 border-gray-300"
-          src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL}profileImg.jpg`}
+          src={"profileImg.jpg"}
         />
         <div className="flex flex-col items-start">
           <BaseText type="h6">얼음콜라</BaseText>

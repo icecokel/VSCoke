@@ -3,14 +3,13 @@
 import Explorer from "./Explorer";
 import Search from "./Search";
 import useClickOutSide from "@/hooks/useClickOutSide";
-import useKeyPress from "@/hooks/useKeyPress";
 import useShortCut from "@/hooks/useShortCut";
 import { IHaveChildren } from "@/models/common";
 import { TSidebar } from "@/models/enum/sidebar";
 import FileCopyOutlinedIcon from "@mui/icons-material/FileCopyOutlined";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import Fab from "@mui/material/Fab";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 const TABS = [
@@ -53,7 +52,7 @@ const Sidebar = ({ children }: IHaveChildren) => {
   return (
     <div className="flex">
       <div className="flex" ref={tabRef}>
-        <div className="flex-col gap-1 items-center md:flex hidden z-50 min-h-screen w-[50px] border-r-[1px] border-r-gray-500 bg-gray-900 py-2 text-gray-100">
+        <div className="flex-col gap-1 items-center md:flex hidden z-40 min-h-screen w-[50px] border-r-[1px] border-r-gray-500 bg-gray-900 py-2 text-gray-100">
           {TABS.map(({ name, icon }) => {
             return (
               <label

@@ -1,17 +1,15 @@
 "use client";
 
 import Button from "../baseUi/Button";
+import Icon from "../baseUi/Icon";
 import { IHaveChildren } from "@/models/common";
-import BookmarkIcon from "@mui/icons-material/Bookmark";
-import GitHubIcon from "@mui/icons-material/GitHub";
-import LocalPhoneIcon from "@mui/icons-material/LocalPhone";
-import MailIcon from "@mui/icons-material/Mail";
-import NavigationIcon from "@mui/icons-material/Navigation";
 import Avatar from "@ui/Avatar";
 import Chip from "@ui/Chip";
 import BaseText from "@ui/Text";
 import Tooltip from "@ui/Tooltip";
+import Image from "next/image";
 import Link from "next/link";
+import Github from "public/images/icons/github.svg";
 
 /**
  * 이력서 페이지
@@ -33,14 +31,17 @@ const Profile = () => {
           </BaseText>
           <div className="mt-5 w-full max-w-sm bg-blue-100/20 rounded p-4 gap-4 flex flex-col">
             <Tooltip text="이메일 보내기">
-              <BaseText type="body1" className="hover:text-yellow-200 font-bold">
-                <MailIcon className="mr-1" />
+              <BaseText
+                type="body1"
+                className="flex items-center gap-x-1 hover:text-yellow-200 font-bold"
+              >
+                <Icon kind="mail" />
                 <a href="mailto:red9runge@gmail.com">red9runge@gmail.com</a>
               </BaseText>
             </Tooltip>
             <Tooltip text="전화하기">
-              <BaseText type="body1" className="hover:text-yellow-200 font-bold">
-                <LocalPhoneIcon className="mr-1" />
+              <BaseText type="body1" className="flex items-center hover:text-yellow-200 font-bold">
+                <Icon kind="call" />
                 <a href="tel:01020809652">전화 걸기</a>
               </BaseText>
             </Tooltip>
@@ -64,13 +65,13 @@ const Profile = () => {
       </Profile.item>
       <Profile.item title="링크">
         <div className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
-          <GitHubIcon />
+          <Image src={Github} width={24} height={24} alt="git-hub" />
           <Link href={"https://github.com/icecokel"} target="_blank">
             https://github.com/icecokel
           </Link>
         </div>
         <div className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
-          <BookmarkIcon />
+          <Icon kind="bookmark" />
           <Link href={"https://icecokel.tistory.com"} target="_blank">
             https://icecokel.tistory.com
           </Link>
@@ -111,10 +112,10 @@ const Profile = () => {
         <div className="flex justify-end">
           <Button
             type="contained"
-            className="bg-yellow-200 text-gray-800 hover:!text-blue-300 !rounded-[24px]"
+            className="bg-yellow-200 text-gray-800 hover:!text-blue-300 !rounded-[24px] flex items-center gap-x-2"
           >
             <BaseText type="body2">경력 보러가기</BaseText>
-            <NavigationIcon sx={{ mr: 1 }} className="rotate-[90deg]" />
+            <Icon kind="navigation" className="rotate-[90deg]" />
           </Button>
         </div>
       </Link>

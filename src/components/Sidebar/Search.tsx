@@ -1,9 +1,9 @@
 "use client";
 
+import Icon from "../baseUi/Icon";
 import SidebarLayout from "./SidebarLayout";
 import useHistory from "@/hooks/useHistory";
 import { IResult, searchPost } from "@/utils/get/post";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import { useState } from "react";
 
 interface ExplorerProps {
@@ -31,7 +31,7 @@ const Search = ({ isShowing }: ExplorerProps) => {
   return (
     <SidebarLayout isShowing={isShowing}>
       <div className="flex items-center">
-        <ArrowForwardIosIcon className="mr-1 text-sm" />
+        <Icon kind="navigate_next" />
         <input
           type="text"
           placeholder="Search"

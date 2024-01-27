@@ -1,5 +1,3 @@
-export type TSize = "xs" | "sm" | "md" | "lg" | "xl";
-
 export type TShape = "outlined" | "rounded" | "sharp";
 
 export type TKind =

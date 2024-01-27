@@ -1,9 +1,9 @@
 "use client";
 
+import Icon from "../baseUi/Icon";
 import Menu from "../baseUi/Menu";
 import useHistory from "@/hooks/useHistory";
 import { IHaveChildren } from "@/models/common";
-import CloseIcon from "@mui/icons-material/Close";
 import Container from "@ui/Container";
 import BaseText from "@ui/Text";
 import Tooltip from "@ui/Tooltip";
@@ -129,20 +129,24 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
               >
                 <BaseText
                   className={twMerge(
-                    "text-gray-300/80 md:py-[6px] md:px-[20px] py-[4px] px-[8px] text-sm",
+                    "text-gray-300/80 md:py-[6px] md:px-[20px] py-[4px] px-[8px] text-sm flex items-center",
                     item.isActive &&
                       "text-yellow-200/95 font-medium border-t pt-[1px] border-t-blue-300 md:pt-[5px]",
                   )}
                 >
                   {item.title}
-                  <CloseIcon
-                    sx={{ fontSize: 15, fontWeight: 700 }}
+                  <div
                     className={twMerge(
-                      "ml-[4px] mr-[-4px] md:ml-[8px] md:mr-[-8px]",
+                      "ml-[4px] mr-[-4px] md:ml-[8px] md:mr-[-8px] inline",
                       !item.isActive && "hidden",
                     )}
-                    onClick={() => handleClickClose(item)}
-                  />
+                  >
+                    <Icon
+                      kind="close"
+                      style={{ fontSize: "18px" }}
+                      onClick={() => handleClickClose(item)}
+                    />
+                  </div>
                 </BaseText>
               </div>
             </Tooltip>

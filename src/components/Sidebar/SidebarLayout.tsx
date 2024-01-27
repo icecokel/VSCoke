@@ -1,5 +1,4 @@
 import { IHaveChildren } from "@/models/common";
-import Slide from "@mui/material/Slide";
 
 interface SidebarLayoutProps extends IHaveChildren {
   isShowing: boolean;
@@ -7,17 +6,22 @@ interface SidebarLayoutProps extends IHaveChildren {
 }
 
 const SidebarLayout = ({ isShowing, children, onRightClick }: SidebarLayoutProps) => {
+  if (!isShowing) {
+    return <></>;
+  }
+
   return (
-    <Slide direction="right" in={isShowing} mountOnEnter unmountOnExit>
+    <div className="animate-[slideRight_0.15s_ease-out]" style={{ animationFillMode: "forwards" }}>
       <div
         onContextMenu={onRightClick}
         className={
-          "absolute z-10 h-screen w-[250px] border-r-2 border-r-gray-500 bg-gray-900 p-2 text-gray-100 md:left-12"
+          "absolute z-10 h-screen min-w-[250px] max-w-[500px] border-r-2 border-r-gray-500 bg-gray-900 p-3 text-gray-100"
         }
       >
         {children}
       </div>
-    </Slide>
+      {/* </Slide> */}
+    </div>
   );
 };
 

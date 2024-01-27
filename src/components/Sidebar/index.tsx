@@ -1,26 +1,24 @@
 "use client";
 
+import Icon from "../baseUi/Icon";
 import Explorer from "./Explorer";
 import Search from "./Search";
 import useClickOutSide from "@/hooks/useClickOutSide";
 import useShortCut from "@/hooks/useShortCut";
 import { IHaveChildren } from "@/models/common";
 import { TSidebar } from "@/models/enum/sidebar";
-import FileCopyOutlinedIcon from "@mui/icons-material/FileCopyOutlined";
-import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
-import Fab from "@mui/material/Fab";
 import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 const TABS = [
   {
     name: "explore",
-    icon: <FileCopyOutlinedIcon />,
+    icon: <Icon kind="content_copy" />,
   },
 
   {
     name: "search",
-    icon: <SearchOutlinedIcon />,
+    icon: <Icon kind="search" />,
   },
 ];
 
@@ -81,7 +79,10 @@ const Sidebar = ({ children }: IHaveChildren) => {
       <div className="flex md:hidden fixed bottom-0 p-[10px] gap-1">
         {TABS.map(({ name, icon }) => {
           return (
-            <Fab className="bg-gray-50" key={`tab_${name}`}>
+            <div
+              className="rounded-3xl flex items-center justify-center w-[50px] h-[50px] bg-gray-50 shadow-[2px_4px_4px_rgb(0,0,0,0.4)]"
+              key={`tab_${name}`}
+            >
               <label>
                 {icon}
                 <input
@@ -92,7 +93,7 @@ const Sidebar = ({ children }: IHaveChildren) => {
                   onClick={handleChangeTab}
                 />
               </label>
-            </Fab>
+            </div>
           );
         })}
       </div>

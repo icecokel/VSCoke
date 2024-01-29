@@ -1,6 +1,5 @@
 "use client";
 
-import MuiConfigProvider from "./MuiConfigProvider";
 import { ITree } from "@/hooks/useExplorer";
 import { IHaveChildren } from "@/models/common";
 import { createContext } from "react";
@@ -15,11 +14,9 @@ interface IAppProviderProps extends IHaveChildren {
 
 const AppProvider = ({ children, posts, explorer }: IAppProviderProps) => {
   return (
-    <MuiConfigProvider>
-      <ExplorerContext.Provider value={explorer}>
-        <BlogContext.Provider value={posts}>{children}</BlogContext.Provider>
-      </ExplorerContext.Provider>
-    </MuiConfigProvider>
+    <ExplorerContext.Provider value={explorer}>
+      <BlogContext.Provider value={posts}>{children}</BlogContext.Provider>
+    </ExplorerContext.Provider>
   );
 };
 

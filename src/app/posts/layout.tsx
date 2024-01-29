@@ -3,7 +3,7 @@
 import MdxNav from "@/components/mdx/MdxNav";
 import MdxProvider from "@/contexts/MdxContext";
 import { IHaveChildren } from "@/models/common";
-import Container from "@mui/material/Container";
+import Container from "@ui/Container";
 
 export default function Layout({ children }: IHaveChildren) {
   return (
@@ -15,7 +15,7 @@ export default function Layout({ children }: IHaveChildren) {
         >
           {children}
         </Container>
-        {/* <MdxNav /> */}
+        <MdxNav />
       </div>
     </MdxProvider>
   );

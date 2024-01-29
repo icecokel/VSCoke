@@ -21,7 +21,7 @@ const Menu = ({ targetEl, children, onClose }: IMenuProps) => {
         top: rect?.bottom,
         left: rect?.left,
       }}
-      className="absolute min-w-[10em] p-2 bg-gray-800 text-white rounded gap-2 flex flex-col border-gray-900 z-50"
+      className="absolute min-w-[10em] py-2 px-1 bg-gray-800 text-white rounded gap-2 flex flex-col border-gray-900 z-50"
       ref={ref}
     >
       {children}
@@ -39,7 +39,7 @@ Menu.item = ({ onClick, children }: IMenuItemProps) => {
   return (
     <li
       onClick={onClick}
-      className="hover:bg-white/20 text-sm p-1 hover:text-yellow-200 hover:font-bold z-50 cursor-pointer"
+      className="hover:bg-white/20 text-sm py-1 px-3 hover:text-yellow-200 hover:font-bold z-50 cursor-pointer"
     >
       {children}
     </li>

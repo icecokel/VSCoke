@@ -50,6 +50,9 @@ const mdxComponents: MDXComponents = {
   },
   CodeBlock: (arg: IMdxCodeblockProps) => <MdxCodeBlock {...arg} />,
   Table: (arg: IMdxTableProps) => <MdxTable {...arg} />,
+  hr: () => {
+    return <hr className="border-gray-500/40 border-t-2 rounded-sm" />;
+  },
 };
 
 const MdxContent = ({ code }: { code: string }) => {

@@ -40,7 +40,7 @@ export const searchPost = (keyword: string): IResult[] => {
   const result = allPosts.sort((a: any, b: any) => compareDesc(new Date(a.date), new Date(b.date)));
   const searched: IResult[] = result
     .filter(post => {
-      if (post.title.indexOf(keyword) >= 0) {
+      if (post.title.toLowerCase().indexOf(keyword.toLowerCase()) >= 0) {
         return post;
       }
     })

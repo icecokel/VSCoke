@@ -19,9 +19,10 @@
         "name": "next"
       }
     ],
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@ui/*": ["./src/components/baseUi/*"],
+      "@/*": ["src/*"],
+      "@ui/*": ["src/components/baseUi/*"],
       "contentlayer/generated": ["./.contentlayer/generated"]
     }
   },

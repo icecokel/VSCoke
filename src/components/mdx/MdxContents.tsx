@@ -43,7 +43,11 @@ const mdxComponents: MDXComponents = {
   },
   a: ({ children, href }) => {
     return (
-      <Link href={href ?? ""} className="text-blue-300/80 hover:text-blue-300 hover:underline">
+      <Link
+        href={href ?? ""}
+        target="_blank"
+        className="text-blue-300/80 hover:text-blue-300 hover:underline"
+      >
         {children}
       </Link>
     );

@@ -10,7 +10,7 @@ const NameCard = () => {
     add({ path: "/profile", isActive: true, title: "profile" });
   };
   return (
-    <div className="border-t-[1px] p-[20px] border-t-gray-500 mt-[50px]">
+    <div className="p-5 bg-blue-300/20 rounded-md mt-10">
       <button className="flex gap-5 items-center" onClick={handleClickLink}>
         <Avatar
           size={120}

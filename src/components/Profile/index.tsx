@@ -112,7 +112,7 @@ const Profile = () => {
         <div className="flex justify-end">
           <Button
             type="contained"
-            className="bg-yellow-200 text-gray-800 hover:!text-blue-300 !rounded-[24px] flex items-center gap-x-2"
+            className="bg-yellow-200 text-gray-800 hover:!text-blue-300 !rounded-[24px] flex items-center gap-x-2 shadow-[2px_4px_4px_rgb(0,0,0,0.4)]"
           >
             <BaseText type="body2">경력 보러가기</BaseText>
             <Icon kind="navigation" className="rotate-[90deg]" />

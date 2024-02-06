@@ -13,7 +13,7 @@ module.exports = plugin(function ({ addUtilities }) {
       },
     },
     slide: {
-      "@keyframes slideLeft": {
+      "@keyframes slide-left": {
         from: {
           opacity: 0,
           transform: "translateX(100px)",
@@ -23,7 +23,7 @@ module.exports = plugin(function ({ addUtilities }) {
           transform: "translateX(0)",
         },
       },
-      "@keyframes slideLeftClose": {
+      "@keyframes slide-left-close": {
         from: {
           opacity: 1,
           transform: "translateX(0)",
@@ -33,7 +33,7 @@ module.exports = plugin(function ({ addUtilities }) {
           transform: "translateX(100px)",
         },
       },
-      "@keyframes slideUp": {
+      "@keyframes slide-up": {
         from: {
           opacity: 0,
           transform: "translateY(100px)",
@@ -43,7 +43,7 @@ module.exports = plugin(function ({ addUtilities }) {
           transform: "translateY(0)",
         },
       },
-      "@keyframes slideUpClose": {
+      "@keyframes slide-up-close": {
         from: {
           opacity: 1,
           transform: "translateY(0)",
@@ -53,7 +53,7 @@ module.exports = plugin(function ({ addUtilities }) {
           transform: "translateY(100px)",
         },
       },
-      "@keyframes slideDown": {
+      "@keyframes slide-down": {
         from: {
           opacity: 0,
           transform: "translateY(-100px)",
@@ -63,7 +63,7 @@ module.exports = plugin(function ({ addUtilities }) {
           transform: "translateY(0)",
         },
       },
-      "@keyframes slideDownClose": {
+      "@keyframes slide-down-close": {
         from: {
           opacity: 1,
           transform: "translateY(0)",
@@ -73,17 +73,17 @@ module.exports = plugin(function ({ addUtilities }) {
           transform: "translateY(-100px)",
         },
       },
-      "@keyframes slideRight": {
+      "@keyframes slide-right": {
         from: {
           opacity: 0,
           transform: "translateX(-100px)",
         },
         to: {
           opacity: 1,
-          transform: "translateX(0)",
+          transform: "translateX(0px)",
         },
       },
-      "@keyframes slideRightClose": {
+      "@keyframes slide-right-close": {
         from: {
           opacity: 1,
           transform: "translateX(0)",

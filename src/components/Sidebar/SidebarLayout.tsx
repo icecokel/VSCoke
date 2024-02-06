@@ -1,3 +1,4 @@
+import Slide from "../baseUi/Slide";
 import { IHaveChildren } from "@/models/common";
 
 interface SidebarLayoutProps extends IHaveChildren {
@@ -6,12 +7,8 @@ interface SidebarLayoutProps extends IHaveChildren {
 }
 
 const SidebarLayout = ({ isShowing, children, onRightClick }: SidebarLayoutProps) => {
-  if (!isShowing) {
-    return <></>;
-  }
-
   return (
-    <div className="animate-[slideRight_0.15s_ease-out]" style={{ animationFillMode: "forwards" }}>
+    <Slide active={isShowing} direction="right">
       <div
         onContextMenu={onRightClick}
         className={
@@ -20,8 +17,7 @@ const SidebarLayout = ({ isShowing, children, onRightClick }: SidebarLayoutProps
       >
         {children}
       </div>
-      {/* </Slide> */}
-    </div>
+    </Slide>
   );
 };
 

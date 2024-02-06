@@ -13,16 +13,84 @@ module.exports = plugin(function ({ addUtilities }) {
       },
     },
     slide: {
+      "@keyframes slideLeft": {
+        from: {
+          opacity: 0,
+          transform: "translateX(100px)",
+        },
+        to: {
+          opacity: 1,
+          transform: "translateX(0)",
+        },
+      },
+      "@keyframes slideLeftClose": {
+        from: {
+          opacity: 1,
+          transform: "translateX(0)",
+        },
+        to: {
+          opacity: 0,
+          transform: "translateX(100px)",
+        },
+      },
       "@keyframes slideUp": {
-        from: "",
-        to: "",
+        from: {
+          opacity: 0,
+          transform: "translateY(100px)",
+        },
+        to: {
+          opacity: 1,
+          transform: "translateY(0)",
+        },
+      },
+      "@keyframes slideUpClose": {
+        from: {
+          opacity: 1,
+          transform: "translateY(0)",
+        },
+        to: {
+          opacity: 0,
+          transform: "translateY(100px)",
+        },
+      },
+      "@keyframes slideDown": {
+        from: {
+          opacity: 0,
+          transform: "translateY(-100px)",
+        },
+        to: {
+          opacity: 1,
+          transform: "translateY(0)",
+        },
+      },
+      "@keyframes slideDownClose": {
+        from: {
+          opacity: 1,
+          transform: "translateY(0)",
+        },
+        to: {
+          opacity: 0,
+          transform: "translateY(-100px)",
+        },
       },
       "@keyframes slideRight": {
         from: {
+          opacity: 0,
           transform: "translateX(-100px)",
         },
         to: {
+          opacity: 1,
           transform: "translateX(0)",
+        },
+      },
+      "@keyframes slideRightClose": {
+        from: {
+          opacity: 1,
+          transform: "translateX(0)",
+        },
+        to: {
+          opacity: 0,
+          transform: "translateX(-100px)",
         },
       },
     },

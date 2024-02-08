@@ -1,9 +1,11 @@
 "use client";
 
+import useSortByKey from "./useSortByKey";
 import { BlogContext, ExplorerContext } from "@/contexts/AppProvider";
 import { useContext, useEffect, useState } from "react";
 
 export interface ITree {
+  index?: number;
   id: string;
   label: string;
   icon?: string;
@@ -24,9 +26,11 @@ const useExplorer = () => {
     }
   }, [explorer, blog]);
 
+  const result = useSortByKey({ items: itemList, key: "index" });
+
   return {
     isLoading,
-    itemList,
+    itemList: result,
   };
 };
 

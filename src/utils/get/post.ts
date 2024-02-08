@@ -3,7 +3,7 @@ import { allPosts } from "contentlayer/generated";
 import { compareDesc } from "date-fns";
 import { cache } from "react";
 
-export const getPosts = cache(async () => {
+export const getPosts = cache(async (): Promise<ITree> => {
   const result = allPosts.sort((a: any, b: any) => compareDesc(new Date(a.date), new Date(b.date)));
   const today = new Date();
 
@@ -28,7 +28,7 @@ export const getPosts = cache(async () => {
       });
     });
 
-  return { id: "blog", label: "blog", items: posts };
+  return { index: 1, id: "blog", label: "blog", items: posts };
 });
 
 export interface IResult {

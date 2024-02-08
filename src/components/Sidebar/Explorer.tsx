@@ -67,7 +67,7 @@ Explorer.item = ({ id, label, path, items, tabClose, icon }: IItemProps) => {
   };
 
   return (
-    <div className="flex flex-col gap-y-1 cursor-pointer">
+    <div className="flex flex-col gap-y-1 cursor-pointer select-none">
       <div
         className="flex items-center gap-x-1 hover:bg-blue-300/10 rounded-sm"
         aria-valuetext={id}
@@ -89,7 +89,7 @@ Explorer.item = ({ id, label, path, items, tabClose, icon }: IItemProps) => {
           </div>
         )}
       </div>
-      {openedId === id && (
+      {openedId === id && items && (
         <div className="ml-[1em]">
           {items?.map(item => {
             return <Explorer.item key={`tree_${item.id}`} {...item} tabClose={tabClose} />;

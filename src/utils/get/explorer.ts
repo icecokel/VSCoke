@@ -1,19 +1,18 @@
+import { ITree } from "@/hooks/useExplorer";
 import { cache } from "react";
 
-export const getExplorer = cache(async () => {
-  const data = {
-    tree: [
-      {
-        id: "profile",
-        label: "profile",
-        items: [{ icon: "profile", id: "profile-index", label: "Iam.html", path: "/profile" }],
-      },
-    ],
-  };
-
-  if (!data) {
-    return [];
-  }
-
-  return data.tree;
+export const getExplorer = cache(async (): Promise<ITree[]> => {
+  return [
+    {
+      index: 0,
+      id: "profile",
+      label: "profile",
+      items: [{ icon: "profile", id: "profile-index", label: "Iam.html", path: "/profile" }],
+    },
+    {
+      index: 99,
+      id: "readme",
+      label: "README.md",
+    },
+  ];
 });

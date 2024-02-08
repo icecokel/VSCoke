@@ -48,6 +48,8 @@ const convertIcon = (icon?: string) => {
 };
 Explorer.item = ({ id, label, path, items, tabClose, icon }: IItemProps) => {
   const [openedId, setOpenedId] = useState("");
+  const url = !items ? path ?? "" : "";
+  const { add } = useHistory();
 
   const handleClickTree = ({ currentTarget: { ariaValueText } }: MouseEvent<HTMLDivElement>) => {
     setOpenedId(prev => {
@@ -56,9 +58,6 @@ Explorer.item = ({ id, label, path, items, tabClose, icon }: IItemProps) => {
       return prev === ariaValueText ? "" : ariaValueText;
     });
   };
-  const url = !items ? path ?? "" : "";
-
-  const { add } = useHistory();
 
   const handleClickItem = () => {
     if (url) {
@@ -66,6 +65,7 @@ Explorer.item = ({ id, label, path, items, tabClose, icon }: IItemProps) => {
       tabClose();
     }
   };
+
   return (
     <div className="flex flex-col gap-y-1 cursor-pointer">
       <div

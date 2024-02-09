@@ -75,11 +75,11 @@ Explorer.item = ({ id, label, path, items, tabClose, icon }: IItemProps) => {
       >
         {items ? (
           <>
-            {openedId === id ? (
-              <Icon kind="keyboard_arrow_down" style={{ fontSize: "20px" }} />
-            ) : (
-              <Icon kind="keyboard_arrow_right" style={{ fontSize: "20px" }} />
-            )}
+            <Icon
+              kind={openedId === id ? "keyboard_arrow_down" : "keyboard_arrow_right"}
+              style={{ fontSize: "20px" }}
+            />
+
             <BaseText type="body1">{id}</BaseText>
           </>
         ) : (

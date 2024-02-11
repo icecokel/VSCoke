@@ -1,6 +1,7 @@
 "use client";
 
 import Menu from "../baseUi/Menu";
+import OpenProjectModal from "./OpenProjectMadal";
 import { IHaveChildren } from "@/models/common";
 import BaseText from "@ui/Text";
 import { MouseEventHandler, useState } from "react";
@@ -9,6 +10,7 @@ interface IMenuItem {
   name: string;
   shortcut?: string;
   items?: IMenuItem[];
+  onClick?: () => void;
 }
 
 interface IMenu {
@@ -17,15 +19,26 @@ interface IMenu {
   items: IMenuItem[];
 }
 
-const MENULIST: IMenu[] = [
-  { key: "1", name: "File", items: [{ name: "Open Project" }] },
-  { key: "2", name: "Help", items: [{ name: "준비 중 ..." }] },
-];
-
 const Menubar = ({ children }: IHaveChildren) => {
   const [currentEl, setCurrentEl] = useState<null | HTMLElement>(null);
+  const [openProject, setOpenProject] = useState(false);
+
+  const MENULIST: IMenu[] = [
+    {
+      key: "1",
+      name: "File",
+      items: [
+        {
+          name: "Open Project",
+          onClick: () => {
+            setOpenProject(true);
+          },
+        },
+      ],
+    },
+    { key: "2", name: "Help", items: [{ name: "준비 중 ..." }] },
+  ];
   const currentItems = MENULIST.find(({ name }) => name === currentEl?.id);
-  const open = Boolean(currentEl);
 
   const onClose = () => {
     setCurrentEl(null);
@@ -51,39 +64,20 @@ const Menubar = ({ children }: IHaveChildren) => {
       </div>
       <Menu targetEl={currentEl} onClose={onClose}>
         {currentItems?.items.map((item, index) => {
-          return <Menu.item key={`${currentItems.name}_item_${index}`}>{item.name}</Menu.item>;
+          return (
+            <Menu.item key={`${currentItems.name}_item_${index}`} onClick={item.onClick}>
+              {item.name}
+            </Menu.item>
+          );
         })}
       </Menu>
 
-      {/* <Menu
-        id="basic-menu"
-        anchorEl={currentEl}
-        open={open}
-        onClose={onClose}
-        MenuListProps={{
-          sx: {
-            bgcolor: "#181818",
-            color: "#D7D7D7",
-            fontSize: "12px",
-            padding: "2px 4px",
-            width: "30vw",
-            minWidth: "120px",
-            borderColor: "#8C8C8C",
-
-            li: {
-              padding: "2px 20px",
-              borderRadius: "4px",
-              "&:hover": {
-                bgcolor: "#323232",
-              },
-            },
-          },
+      <OpenProjectModal
+        open={openProject}
+        onClose={() => {
+          setOpenProject(false);
         }}
-      >
-        {currentItems?.items.map((item, index) => {
-          return <MenuItem key={`${currentItems.name}_item_${index}`}>{item.name}</MenuItem>;
-        })}
-      </Menu> */}
+      />
 
       {children}
     </>

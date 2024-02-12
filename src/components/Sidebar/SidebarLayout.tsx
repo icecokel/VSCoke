@@ -8,16 +8,17 @@ interface SidebarLayoutProps extends IHaveChildren {
 
 const SidebarLayout = ({ isShowing, children, onRightClick }: SidebarLayoutProps) => {
   return (
-    <Slide active={isShowing} direction="right">
-      <div
-        onContextMenu={onRightClick}
-        className={
-          "absolute z-10 h-screen min-w-[250px] max-w-[500px] border-r-2 border-r-gray-500 bg-gray-900 p-3 text-gray-100"
-        }
-      >
-        {children}
-      </div>
-    </Slide>
+    <div className="absolute md:ml-[50px]">
+      <Slide active={isShowing} direction="right">
+        <div
+          className={
+            "z-10 h-screen min-w-[250px] max-w-[500px] border-r-2 border-r-gray-500 bg-gray-900 p-3 text-gray-100"
+          }
+        >
+          {children}
+        </div>
+      </Slide>
+    </div>
   );
 };
 

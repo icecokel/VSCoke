@@ -14,83 +14,83 @@ module.exports = plugin(function ({ addUtilities }) {
     },
     slide: {
       "@keyframes slide-left": {
-        from: {
+        "0%": {
           opacity: 0,
-          transform: "translateX(100px)",
+          transform: "translateX(100%)",
         },
-        to: {
+        "100%": {
           opacity: 1,
           transform: "translateX(0)",
         },
       },
       "@keyframes slide-left-close": {
-        from: {
+        "0%": {
           opacity: 1,
           transform: "translateX(0)",
         },
-        to: {
+        "100%": {
           opacity: 0,
-          transform: "translateX(100px)",
+          transform: "translateX(100%)",
         },
       },
       "@keyframes slide-up": {
-        from: {
+        "0%": {
           opacity: 0,
-          transform: "translateY(100px)",
+          transform: "translateY(100%)",
         },
-        to: {
+        "100%": {
           opacity: 1,
           transform: "translateY(0)",
         },
       },
       "@keyframes slide-up-close": {
-        from: {
+        "0%": {
           opacity: 1,
           transform: "translateY(0)",
         },
-        to: {
+        "100%": {
           opacity: 0,
-          transform: "translateY(100px)",
+          transform: "translateY(100%)",
         },
       },
       "@keyframes slide-down": {
-        from: {
+        "0%": {
           opacity: 0,
-          transform: "translateY(-100px)",
+          transform: "translateY(-100%)",
         },
-        to: {
+        "100%": {
           opacity: 1,
           transform: "translateY(0)",
         },
       },
       "@keyframes slide-down-close": {
-        from: {
+        "0%": {
           opacity: 1,
           transform: "translateY(0)",
         },
-        to: {
+        "100%": {
           opacity: 0,
-          transform: "translateY(-100px)",
+          transform: "translateY(-100%)",
         },
       },
       "@keyframes slide-right": {
-        from: {
-          opacity: 0,
-          transform: "translateX(-100px)",
+        "0%": {
+          opacity: 1,
+          transform: "translateX(-100%)",
         },
-        to: {
+        "100%": {
           opacity: 1,
           transform: "translateX(0px)",
         },
       },
       "@keyframes slide-right-close": {
-        from: {
+        "0%": {
           opacity: 1,
           transform: "translateX(0)",
         },
-        to: {
+        "100%": {
           opacity: 0,
-          transform: "translateX(-100px)",
+          transform: "translateX(-100%)",
         },
       },
     },

@@ -32,6 +32,7 @@ const Menubar = ({ children }: IHaveChildren) => {
           name: "Open Project",
           onClick: () => {
             setOpenProject(true);
+            setCurrentEl(null);
           },
         },
       ],

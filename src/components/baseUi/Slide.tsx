@@ -10,14 +10,14 @@ interface ISlideProps extends HTMLAttributes<HTMLDivElement> {
   active: boolean;
 }
 
-const OPEN_MAP: Record<TDirection, string> = {
+const OPEN_MAP: Record<TDirection, HTMLAttributes<HTMLDivElement>["className"]> = {
   up: "animate-[slide-up]",
   down: "animate-[slide-down]",
   right: "animate-[slide-right]",
   left: "animate-[slide-left]",
 };
 
-const CLOSE_MAP: Record<TDirection, string> = {
+const CLOSE_MAP: Record<TDirection, HTMLAttributes<HTMLDivElement>["className"]> = {
   up: "animate-[slide-up-close]",
   down: "animate-[slide-down-close]",
   right: "animate-[slide-right-close]",

@@ -13,7 +13,7 @@ const Modal = ({ onClose, open, children }: IModalProps) => {
     <>
       {open &&
         createPortal(
-          <div className="fixed bg-gray-900/60 inset-0 flex items-center justify-center">
+          <div className="fixed bg-black/60 inset-0 flex items-center justify-center z-40">
             <div className="flex flex-col bg-white p-3 rounded min-w-[200px]" ref={ref}>
               {children}
             </div>

@@ -31,6 +31,7 @@ module.exports = plugin(function ({ addUtilities }) {
         "100%": {
           opacity: 0,
           transform: "translateX(100%)",
+          display: "none",
         },
       },
       "@keyframes slide-up": {
@@ -51,6 +52,7 @@ module.exports = plugin(function ({ addUtilities }) {
         "100%": {
           opacity: 0,
           transform: "translateY(100%)",
+          display: "none",
         },
       },
       "@keyframes slide-down": {
@@ -71,6 +73,7 @@ module.exports = plugin(function ({ addUtilities }) {
         "100%": {
           opacity: 0,
           transform: "translateY(-100%)",
+          display: "none",
         },
       },
       "@keyframes slide-right": {
@@ -91,6 +94,7 @@ module.exports = plugin(function ({ addUtilities }) {
         "100%": {
           opacity: 0,
           transform: "translateX(-100%)",
+          display: "none",
         },
       },
     },

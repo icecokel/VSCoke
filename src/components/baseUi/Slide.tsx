@@ -31,8 +31,6 @@ const Slide = ({ active, direction = "up", duration = 300, ...restProps }: ISlid
     style: {
       animationFillMode: "forwards",
       animationDuration: `${duration}ms`,
-      width: active ? "auto" : 0,
-      height: active ? "auto" : 0,
     },
   });
 };

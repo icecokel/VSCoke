@@ -13,6 +13,7 @@ export const getExplorer = cache(async (): Promise<ITree[]> => {
       index: 98,
       id: "package.json",
       label: "package.json",
+      path: "/package",
     },
     {
       index: 99,

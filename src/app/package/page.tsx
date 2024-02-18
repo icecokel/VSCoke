@@ -9,7 +9,7 @@ const PackagePage: NextPage = () => {
           <ul>
             &#123;
             {value.map((item: any, index: number) => (
-              <li key={index} className="ml-[2em]">
+              <li key={index} className="ml-[1em] ">
                 {renderValue(item)}
               </li>
             ))}
@@ -18,10 +18,10 @@ const PackagePage: NextPage = () => {
         );
       } else {
         return (
-          <ul>
+          <ul className="ml-[1em]">
             &#123;
             {Object.keys(value).map((key: string, index: number) => (
-              <li key={index} className="ml-[2em]">
+              <li key={index} className="ml-[1em]">
                 <strong>"{key}":</strong> {renderValue(value[key])}
               </li>
             ))}
@@ -35,8 +35,8 @@ const PackagePage: NextPage = () => {
   };
 
   return (
-    <div className="truncate">
-      <pre className="truncate">
+    <div className="p-5 bg-gray-700 rounded">
+      <pre className="-ml-[1em]">
         <code>{renderValue(data)}</code>
       </pre>
     </div>

@@ -55,7 +55,7 @@ const Menubar = ({ children }: IHaveChildren) => {
       <div className="bg-gray-900 p-1 flex border-b-2 border-b-gray-500">
         {MENULIST.map((item, index) => {
           return (
-            <div key={`${item.key}_${index}`} onClick={handleClickMenu} id={item.name}>
+            <div key={`${item.key}_${index}`} onClick={handleClickMenu} id={`${item.name}`}>
               <BaseText type="body1" className="text-gray-300 px-3 select-none">
                 {item.name}
               </BaseText>

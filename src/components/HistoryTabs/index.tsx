@@ -115,7 +115,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
           <Fragment key={`tab_${item.path}`}>
             <Tooltip text={`${item.path}/${item.title}`}>
               <div
-                id={item.path}
+                id={`${item.path}`}
                 className={twMerge(
                   "border border-gray-300/60 border-l-[0px]",
                   item.isActive ? "bg-gray-800 border-b-[0px]" : "hover:bg-gray-600",

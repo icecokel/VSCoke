@@ -42,7 +42,7 @@ const MdxLinkHead = ({ children, variant }: MdxLinkHeadProps) => {
     add({ title: pathname, items: [{ type: variant, label: (children as string[])[1] }] });
   }, []);
   return (
-    <h1 id={id} style={STYLE_MAP[variant]}>
+    <h1 id={`${id}`} style={STYLE_MAP[variant]}>
       <a href={`#${id}`}>{children}</a>
     </h1>
   );

@@ -1,3 +1,4 @@
+import BaseText from "@/components/baseUi/Text";
 import { NextPage } from "next";
 import data from "package.json";
 
@@ -9,8 +10,8 @@ const PackagePage: NextPage = () => {
           <ul>
             &#123;
             {value.map((item: any, index: number) => (
-              <li key={index} className="ml-[1em] ">
-                {renderValue(item)}
+              <li key={index} className="ml-[1em]">
+                <BaseText>{renderValue(item)}</BaseText>
               </li>
             ))}
             &#125;
@@ -22,7 +23,8 @@ const PackagePage: NextPage = () => {
             &#123;
             {Object.keys(value).map((key: string, index: number) => (
               <li key={index} className="ml-[1em]">
-                <strong>"{key}":</strong> {renderValue(value[key])}
+                <BaseText className="font-bold mr-1">"{key}"</BaseText>:
+                <BaseText className="ml-1">{renderValue(value[key])}</BaseText>
               </li>
             ))}
             &#125;

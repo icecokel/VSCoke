@@ -1,3 +1,4 @@
+import { atom } from "jotai";
 import { atomWithStorage, createJSONStorage } from "jotai/utils";
 import { SyncStringStorage } from "jotai/vanilla/utils/atomWithStorage";
 
@@ -7,9 +8,7 @@ export interface IHistoryItem {
   isActive: boolean;
 }
 
-export const historyAtom = atomWithStorage<IHistoryItem[]>("history", [], {
-  ...createJSONStorage(() => localHistory),
-});
+export const historyAtom = atom<IHistoryItem[]>([]);
 
 historyAtom.debugLabel = "historyAtom";
 

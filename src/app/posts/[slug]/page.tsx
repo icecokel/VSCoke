@@ -17,21 +17,20 @@ export const generateMetadata = ({ params }: any) => {
 };
 
 const PostLayout = ({ params }: { params: { slug: string } }) => {
-  // const post = allPosts.find(post => post._raw.flattenedPath === params.slug);
+  const post = allPosts.find(post => post._raw.flattenedPath === params.slug);
 
-  return <></>;
-  // if (!post) {
-  //   return;
-  // }
+  if (!post) {
+    return;
+  }
 
-  // return (
-  //   <article className="py-8 w-full">
-  //     <HeadTitle title={post.title} date={post.date} />
-  //     <hr />
-  //     <MdxContentComponent code={post.body.code} />
-  //     <NameCard />
-  //   </article>
-  // );
+  return (
+    <article className="py-8 w-full">
+      <HeadTitle title={post.title} date={post.date} />
+      <hr />
+      <MdxContentComponent code={post.body.code} />
+      <NameCard />
+    </article>
+  );
 };
 
 export default PostLayout;

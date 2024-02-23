@@ -3,10 +3,8 @@ const { withContentlayer } = require("next-contentlayer");
 
 const nextConfig = {
   reactStrictMode: false,
-  basePath: "/VSCoke",
-  output: "export",
+  swcMinify: false,
   images: {
-    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",

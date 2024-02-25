@@ -7,8 +7,9 @@ export interface IHistoryItem {
   path: string;
   isActive: boolean;
 }
-
-export const historyAtom = atom<IHistoryItem[]>([]);
+export const historyAtom = atomWithStorage<IHistoryItem[]>("history", [], {
+  ...createJSONStorage(() => localHistory),
+});
 
 historyAtom.debugLabel = "historyAtom";
 

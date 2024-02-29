@@ -3,6 +3,7 @@
 import MdxNav from "@/components/mdx/MdxNav";
 import MdxProvider from "@/contexts/MdxContext";
 import { IHaveChildren } from "@/models/common";
+import { debounce } from "@/utils/DebounceUtil";
 import Container from "@ui/Container";
 import { useEffect, useRef, useState } from "react";
 
@@ -10,7 +11,6 @@ export default function Layout({ children }: IHaveChildren) {
   const [readPerPost, setReadPerPost] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
 
-  // TODO - 디바운스 추가 스타일링
   const handleScrollPost = (postHeight: number) => () => {
     if (window.scrollY > 0) {
       const computed = (window.scrollY / postHeight) * 100;
@@ -25,7 +25,7 @@ export default function Layout({ children }: IHaveChildren) {
 
   useEffect(() => {
     if (window && ref.current) {
-      const event = handleScrollPost(ref.current?.clientHeight - window.innerHeight);
+      const event = debounce(handleScrollPost(ref.current?.clientHeight - window.innerHeight), 200);
       window.addEventListener("scroll", event);
       return () => {
         window.removeEventListener("scroll", event);

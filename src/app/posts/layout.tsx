@@ -1,6 +1,7 @@
 "use client";
 
 import MdxNav from "@/components/mdx/MdxNav";
+import MdxProgressBar from "@/components/mdx/MdxProgressBar";
 import MdxProvider from "@/contexts/MdxContext";
 import { IHaveChildren } from "@/models/common";
 import { debounce } from "@/utils/DebounceUtil";
@@ -25,7 +26,7 @@ export default function Layout({ children }: IHaveChildren) {
 
   useEffect(() => {
     if (window && ref.current) {
-      const event = debounce(handleScrollPost(ref.current?.clientHeight - window.innerHeight), 200);
+      const event = debounce(handleScrollPost(ref.current?.clientHeight - window.innerHeight), 10);
       window.addEventListener("scroll", event);
       return () => {
         window.removeEventListener("scroll", event);
@@ -35,11 +36,7 @@ export default function Layout({ children }: IHaveChildren) {
 
   return (
     <MdxProvider>
-      <progress
-        className="w-full h-1 sticky top-0 px-[1em] md:px[2em] rounded-md"
-        max={100}
-        value={readPerPost}
-      >{`${readPerPost}%`}</progress>
+      <MdxProgressBar max={100} value={readPerPost}>{`${readPerPost}%`}</MdxProgressBar>
       <div className="flex gap-2" ref={ref}>
         <Container
           maxWidth="md"

@@ -3,12 +3,11 @@ import { IHaveChildren } from "@/models/common";
 
 interface SidebarLayoutProps extends IHaveChildren {
   isShowing: boolean;
-  onRightClick?: React.MouseEventHandler;
 }
 
-const SidebarLayout = ({ isShowing, children, onRightClick }: SidebarLayoutProps) => {
+const SidebarLayout = ({ isShowing, children }: SidebarLayoutProps) => {
   return (
-    <div className="absolute md:ml-[50px]">
+    <div className="absolute md:ml-[50px] z-30">
       <Slide active={isShowing} direction="right">
         <div
           className={

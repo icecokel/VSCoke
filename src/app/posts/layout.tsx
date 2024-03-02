@@ -8,6 +8,8 @@ import { debounce } from "@/utils/DebounceUtil";
 import Container from "@ui/Container";
 import { useEffect, useRef, useState } from "react";
 
+const DEBOUNCE_TIME = 200;
+
 export default function Layout({ children }: IHaveChildren) {
   const [readPerPost, setReadPerPost] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
@@ -26,7 +28,10 @@ export default function Layout({ children }: IHaveChildren) {
 
   useEffect(() => {
     if (window && ref.current) {
-      const event = debounce(handleScrollPost(ref.current?.clientHeight - window.innerHeight), 10);
+      const event = debounce(
+        handleScrollPost(ref.current?.clientHeight - window.innerHeight),
+        DEBOUNCE_TIME,
+      );
       window.addEventListener("scroll", event);
       return () => {
         window.removeEventListener("scroll", event);
@@ -36,12 +41,12 @@ export default function Layout({ children }: IHaveChildren) {
 
   return (
     <MdxProvider>
-      <MdxProgressBar max={100} value={readPerPost}>{`${readPerPost}%`}</MdxProgressBar>
-      <div className="flex gap-2" ref={ref}>
+      <div className="flex" ref={ref}>
         <Container
           maxWidth="md"
           className="px-[1em] md:px[2em] w-full bg-white text-black/80 rounded-md"
         >
+          <MdxProgressBar max={100} value={readPerPost}>{`${readPerPost}%`}</MdxProgressBar>
           {children}
         </Container>
         <MdxNav />

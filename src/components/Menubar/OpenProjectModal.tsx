@@ -19,12 +19,13 @@ interface IProject {
 }
 
 const DUMMY: ICategory[] = [
-  { label: "Portfolio", items: [{ label: "VSCOKE", link: "" }] },
+  { label: "Portfolio", items: [{ label: "VSCOKE", link: "https://vscoke.vercel.app" }] },
   { label: "Users", items: [{ label: "IceCoke", link: "" }] },
 ];
 
 const OpenProjectModal = (props: IOpenProjectModalProps) => {
   const [currentCategory, setCurrentCategory] = useState<ICategory>(DUMMY[0]);
+  const [currentProject, setCurrentProject] = useState<IProject>();
 
   useEffect(() => {
     setCurrentCategory(DUMMY[0]);
@@ -32,6 +33,15 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
 
   const handleClickCategory = (value: ICategory) => {
     setCurrentCategory(value);
+  };
+
+  const handleClickProject = (value: IProject) => {
+    setCurrentProject(value);
+  };
+
+  const handleClickOpenProject = () => {
+    props.onClose();
+    if (currentProject?.link) window.open(currentProject?.link);
   };
   return (
     <Modal {...props}>
@@ -52,8 +62,8 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                     key={`category_${index}`}
                     iconKind={"folder"}
                     label={category.label}
-                    isActive={currentCategory === category}
                     enabledArrow
+                    isActive={currentCategory === category}
                     onClick={() => {
                       handleClickCategory(category);
                     }}
@@ -69,6 +79,10 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                     iconKind={"folder"}
                     label={project.label}
                     enabledArrow
+                    isActive={currentProject === project}
+                    onClick={() => {
+                      handleClickProject(project);
+                    }}
                   />
                 );
               })}
@@ -86,7 +100,11 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                 취소
               </BaseText>
             </Button>
-            <Button type="contained" className="!bg-blue-300 !py-0">
+            <Button
+              type="contained"
+              className="!bg-blue-300 !py-0"
+              onClick={handleClickOpenProject}
+            >
               <BaseText type="body2" className="text-white font-bold">
                 열기
               </BaseText>

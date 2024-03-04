@@ -2,6 +2,7 @@ import Button from "../baseUi/Button";
 import Icon from "../baseUi/Icon";
 import { TKind } from "../baseUi/Icon/types";
 import Modal, { IModalProps } from "../baseUi/Modal";
+import useSnackBar from "../baseUi/SnackBar/hooks/useSnackBar";
 import BaseText from "../baseUi/Text";
 import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
@@ -20,7 +21,7 @@ interface IProject {
 
 const DUMMY: ICategory[] = [
   { label: "Portfolio", items: [{ label: "VSCOKE", link: "https://vscoke.vercel.app" }] },
-  { label: "Users", items: [{ label: "IceCoke", link: "" }] },
+  { label: "Users", items: [{ label: "Test", link: "" }] },
 ];
 
 const OpenProjectModal = (props: IOpenProjectModalProps) => {
@@ -39,9 +40,15 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
     setCurrentProject(value);
   };
 
+  const { open } = useSnackBar({ message: "준비중입니다" });
+
   const handleClickOpenProject = () => {
     props.onClose();
-    if (currentProject?.link) window.open(currentProject?.link);
+    if (currentProject?.link) {
+      window.open(currentProject?.link);
+    } else {
+      open();
+    }
   };
   return (
     <Modal {...props}>

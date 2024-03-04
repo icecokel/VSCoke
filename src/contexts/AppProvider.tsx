@@ -1,5 +1,6 @@
 "use client";
 
+import SnackBarProvider from "@/components/baseUi/SnackBar/context/SnackBarProvider";
 import { ITree } from "@/hooks/useExplorer";
 import { IHaveChildren } from "@/models/common";
 import { createContext } from "react";
@@ -14,9 +15,11 @@ interface IAppProviderProps extends IHaveChildren {
 
 const AppProvider = ({ children, posts, explorer }: IAppProviderProps) => {
   return (
-    <ExplorerContext.Provider value={explorer}>
-      <BlogContext.Provider value={posts}>{children}</BlogContext.Provider>
-    </ExplorerContext.Provider>
+    <SnackBarProvider>
+      <ExplorerContext.Provider value={explorer}>
+        <BlogContext.Provider value={posts}>{children}</BlogContext.Provider>
+      </ExplorerContext.Provider>
+    </SnackBarProvider>
   );
 };
 

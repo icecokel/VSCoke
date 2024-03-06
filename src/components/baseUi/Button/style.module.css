@@ -1,0 +1,22 @@
+.text {
+  color: #d68f34;
+  font-weight: 600;
+  padding: 0.5em 1em;
+  border-radius: 4px;
+}
+
+.outline {
+  color: black;
+  background-color: #d68f34;
+  font-weight: 600;
+  padding: 0.5em 1em;
+  border-radius: 4px;
+}
+
+.contained {
+  color: #d68f34;
+  border: 1px solid;
+  font-weight: 600;
+  padding: 0.5em 1em;
+  border-radius: 4px;
+}

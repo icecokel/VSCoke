@@ -1,4 +1,4 @@
-import { styles } from "./style";
+import styles from "./style.module.css";
 import { TButtonType } from "./type";
 import { createElement, HtmlHTMLAttributes } from "react";
 
@@ -7,7 +7,7 @@ interface IButton extends HtmlHTMLAttributes<HTMLButtonElement> {
 }
 
 const Button = ({ type = "text", ...restProps }: IButton) => {
-  return createElement("button", { style: styles[type], ...restProps });
+  return createElement("button", { ...restProps, className: styles[type] });
 };
 
 export default Button;

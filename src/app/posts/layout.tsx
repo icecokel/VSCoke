@@ -8,7 +8,7 @@ import { debounce } from "@/utils/DebounceUtil";
 import Container from "@ui/Container";
 import { useEffect, useRef, useState } from "react";
 
-const DEBOUNCE_TIME = 5;
+const DEBOUNCE_TIME = 100;
 
 export default function Layout({ children }: IHaveChildren) {
   const [readPerPost, setReadPerPost] = useState(0);

@@ -15,4 +15,7 @@
 .progress::-webkit-progress-value {
   border-radius: 10px;
   background: red;
+  transition-property: width;
+  transition-duration: 0.5s;
+  transition-timing-function: ease-out;
 }

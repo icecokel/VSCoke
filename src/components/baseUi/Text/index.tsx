@@ -2,19 +2,17 @@
 
 import { styles } from "./style";
 import { TTextType } from "./type";
-import { IHaveChildren } from "@/models/common";
-import { createElement } from "react";
+import { HTMLAttributes, createElement } from "react";
 
-interface IBaseTextProps extends IHaveChildren {
+interface IBaseTextProps extends HTMLAttributes<HTMLSpanElement> {
   type?: TTextType;
-  className?: string;
 }
 
-const BaseText = ({ children, type = "body1", className }: IBaseTextProps) => {
+const BaseText = ({ children, type = "body1", style, ...props }: IBaseTextProps) => {
   if (!["body1", "body2", "caption"].includes(type)) {
-    return createElement(type, { className, style: styles[type] }, children);
+    return createElement(type, { style: { ...styles[type], ...style }, ...props }, children);
   }
-  return createElement("span", { className, style: styles[type] }, children);
+  return createElement("span", { style: { ...styles[type], ...style }, ...props }, children);
 };
 
 export default BaseText;

@@ -12,10 +12,16 @@ export const getPosts = cache(async (): Promise<ITree> => {
   result
     .filter(item => new Date(item.date).getTime() <= today.getTime())
     .forEach(post => {
-      let foundIndex = posts.findIndex(({ label }) => label === post.category);
+      let foundIndex = posts.findIndex(
+        ({ label }) => label === post._raw.flattenedPath.split("/")[0],
+      );
 
       if (foundIndex === -1) {
-        const newCategory: ITree = { id: post.category, label: post.category, items: [] };
+        const newCategory: ITree = {
+          id: post._raw.flattenedPath.split("/")[0],
+          label: post._raw.flattenedPath.split("/")[0],
+          items: [],
+        };
         posts.push(newCategory);
         foundIndex = posts.length - 1;
       }

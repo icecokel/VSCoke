@@ -53,16 +53,16 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
   return (
     <Modal {...props}>
       <div className="-m-2 text-white flex gap-1">
-        <div className="border rounded-sm border-gray-600 bg-gray-800">
+        <div className="border rounded-sm border-gray-600 bg-gray-800 hidden md:block">
           <OpenProjectModal.item iconKind={"schedule"} label={"최근항목"} />
           <OpenProjectModal.item iconKind={"terminal"} label={"응용 프로그램"} />
           <OpenProjectModal.item iconKind={"computer"} label={"데스크탑"} />
           <OpenProjectModal.item iconKind={"description"} label={"문서"} />
           <OpenProjectModal.item iconKind={"arrow_circle_down"} label={"다운로드"} />
         </div>
-        <div>
+        <div className="w-full md:w-auto">
           <div className="flex min-h-[350px] gap-x-1">
-            <section className="border rounded-sm border-gray-600 bg-gray-800 min-w-[250px]">
+            <section className="border rounded-sm border-gray-600 w-1/2 bg-gray-800 md:min-w-[250px]">
               {DUMMY.map((category, index) => {
                 return (
                   <OpenProjectModal.item
@@ -78,7 +78,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                 );
               })}
             </section>
-            <section className="border rounded-sm border-gray-600 bg-gray-800 min-w-[250px]">
+            <section className="border rounded-sm border-gray-600 w-1/2 bg-gray-800 md:min-w-[250px]">
               {currentCategory.items.map((project, index) => {
                 return (
                   <OpenProjectModal.item

@@ -8,9 +8,10 @@ export const getPosts = cache(async (): Promise<ITree> => {
   const today = new Date();
 
   const posts: ITree[] = [];
-
   result
-    .filter(item => new Date(item.date).getTime() <= today.getTime())
+    .filter(item => {
+      return !!item.published && new Date(item.date).getTime() <= today.getTime();
+    })
     .forEach(post => {
       let foundIndex = posts.findIndex(
         ({ label }) => label === post._raw.flattenedPath.split("/")[0],

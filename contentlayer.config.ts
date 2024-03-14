@@ -12,8 +12,12 @@ const Post = defineDocumentType(() => ({
     },
     date: {
       type: "date",
-      description: "The date of the post",
+      description: "The date when the post was created or published",
       required: true,
+    },
+    published: {
+      type: "string",
+      description: "A flag indicating whether the post is published or not",
     },
   },
   computedFields: {

@@ -76,7 +76,7 @@ const Sidebar = ({ children }: IHaveChildren) => {
         <Search isShowing={tab === "search"} />
       </div>
 
-      <div className="flex md:hidden fixed bottom-0 p-[10px] gap-1">
+      <div className="flex md:hidden fixed bottom-0 p-[10px] gap-1 z-10">
         {TABS.map(({ name, icon }) => {
           return (
             <div

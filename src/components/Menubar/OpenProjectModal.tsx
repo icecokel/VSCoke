@@ -98,7 +98,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
           <div className="border rounded-sm border-gray-600 mt-1 p-2 flex justify-end gap-x-2 bg-gray-800">
             <Button
               type="contained"
-              className="!bg-gray-300 !py-0"
+              className="!bg-gray-300 !py-0 hover:!bg-gray-300/50"
               onClick={() => {
                 props.onClose();
               }}
@@ -109,10 +109,10 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
             </Button>
             <Button
               type="contained"
-              className="!bg-blue-300 !py-0"
+              className="!bg-blue-300 !py-0 hover:!bg-blue-300/50"
               onClick={handleClickOpenProject}
             >
-              <BaseText type="body2" className="text-white font-bold">
+              <BaseText type="body2" className="font-bold">
                 열기
               </BaseText>
             </Button>

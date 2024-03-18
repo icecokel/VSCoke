@@ -4,6 +4,7 @@ import { createElement, HtmlHTMLAttributes } from "react";
 
 interface IButton extends HtmlHTMLAttributes<HTMLButtonElement> {
   type?: TButtonType;
+  disabled?: boolean;
 }
 
 const Button = ({ type = "text", ...restProps }: IButton) => {

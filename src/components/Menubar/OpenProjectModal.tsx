@@ -1,3 +1,4 @@
+import Accordion from "../baseUi/Accordion";
 import Button from "../baseUi/Button";
 import Icon from "../baseUi/Icon";
 import { TKind } from "../baseUi/Icon/types";
@@ -60,7 +61,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
           <OpenProjectModal.item iconKind={"description"} label={"문서"} />
           <OpenProjectModal.item iconKind={"arrow_circle_down"} label={"다운로드"} />
         </div>
-        <div className="w-full md:w-auto">
+        <div className="w-full hidden md:block md:w-auto">
           <div className="flex min-h-[350px] gap-x-1">
             <section className="border rounded-sm border-gray-600 w-1/2 bg-gray-800 md:min-w-[250px]">
               {DUMMY.map((category, index) => {
@@ -111,8 +112,68 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
               type="contained"
               className="!bg-blue-300 !py-0 hover:!bg-blue-300/50"
               onClick={handleClickOpenProject}
+              disabled={!currentProject}
             >
               <BaseText type="body2" className="font-bold">
+                열기
+              </BaseText>
+            </Button>
+          </div>
+        </div>
+
+        <div className="md:hidden w-full flex flex-col gap-y-2 p-1">
+          <BaseText type="h6" className="text-black font-bold">
+            프로젝트를 선택해주세요.
+          </BaseText>
+          {DUMMY.map((category, index) => {
+            return (
+              <div key={`category_${index}`}>
+                <Accordion className="w-full py-1 pl-2 bg-gray-800 rounded-sm">
+                  <Accordion.Summary>{category.label}</Accordion.Summary>
+                  <div className="pl-4">
+                    <Accordion.Details>
+                      {category.items.map((project, index) => {
+                        return (
+                          <OpenProjectModal.item
+                            key={`project_${index}`}
+                            iconKind={"folder"}
+                            label={project.label}
+                            enabledArrow
+                            isActive={currentProject === project}
+                            onClick={() => {
+                              handleClickProject(project);
+                            }}
+                          />
+                        );
+                      })}
+                    </Accordion.Details>
+                  </div>
+                </Accordion>
+              </div>
+            );
+          })}
+          <BaseText type="caption" className="text-gray-700 font-bold">
+            열기 버튼을 누르면 프로젝트 또는 GIT이 열립니다.
+          </BaseText>
+          <div className="border rounded-sm flex gap-x-2">
+            <Button
+              type="contained"
+              className="!bg-gray-300 flex-1"
+              onClick={() => {
+                props.onClose();
+              }}
+            >
+              <BaseText type="body1" className="font-bold">
+                취소
+              </BaseText>
+            </Button>
+            <Button
+              type="contained"
+              className="!bg-blue-300 flex-1"
+              onClick={handleClickOpenProject}
+              disabled={!currentProject}
+            >
+              <BaseText type="body1" className="font-bold">
                 열기
               </BaseText>
             </Button>
@@ -146,7 +207,7 @@ OpenProjectModal.item = ({ iconKind, label, enabledArrow, isActive, onClick }: I
       <BaseText type="body2" className="font-bold flex-1">
         {label}
       </BaseText>
-      <div>{enabledArrow && <Icon kind="chevron_right" />}</div>
+      <div className="hidden md:block">{enabledArrow && <Icon kind="chevron_right" />}</div>
     </div>
   );
 };

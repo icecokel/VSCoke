@@ -4,14 +4,16 @@ import Icon from "../Icon";
 import Slide from "../Slide";
 import BaseText from "../Text";
 import { IHaveChildren } from "@/models/common";
-import { createContext, useContext, useState } from "react";
+import { HTMLAttributes, createContext, createElement, useContext, useState } from "react";
 
 interface IAccordion {
   expanded: boolean;
   toggle: () => void;
 }
 
-interface IAccordionProps extends IHaveChildren {}
+interface IAccordionProps extends IHaveChildren {
+  className?: HTMLAttributes<HTMLDivElement>["className"];
+}
 
 const DEFAULT_VALUE: IAccordion = {
   expanded: false,
@@ -20,18 +22,16 @@ const DEFAULT_VALUE: IAccordion = {
 
 const AccordionContext = createContext<IAccordion>(DEFAULT_VALUE);
 
-const Accordion = ({ children }: IAccordionProps) => {
+const Accordion = ({ children, className }: IAccordionProps) => {
   const [expanded, setExpanded] = useState<boolean>(DEFAULT_VALUE.expanded);
 
   const onToggle = () => {
     setExpanded(prev => !prev);
   };
   return (
-    <div className="p-5">
-      <AccordionContext.Provider value={{ expanded, toggle: onToggle }}>
-        {children}
-      </AccordionContext.Provider>
-    </div>
+    <AccordionContext.Provider value={{ expanded, toggle: onToggle }}>
+      {createElement("div", { children, className: className ?? "w-full p-2" })}
+    </AccordionContext.Provider>
   );
 };
 
@@ -42,7 +42,7 @@ Accordion.Summary = ({ children }: IHaveChildren) => {
   const handleClickToggle = toggle;
   return (
     <button
-      className="flex items-center justify-between border border-gray-500 rounded p-2 w-full"
+      className="flex items-center justify-between rounded px-2 w-full"
       onClick={handleClickToggle}
     >
       <BaseText type="h6">{children}</BaseText>
@@ -56,7 +56,7 @@ Accordion.Details = ({ children }: IHaveChildren) => {
 
   return (
     <Slide active={expanded} direction="down" duration={100}>
-      <div className="p-2 border border-gray-500 rounded mt-2">{children}</div>
+      <div className="px-2 mt-1 rounded">{children}</div>
     </Slide>
   );
 };

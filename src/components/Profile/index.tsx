@@ -1,5 +1,6 @@
 "use client";
 
+import Accordion from "../baseUi/Accordion";
 import Button from "../baseUi/Button";
 import Icon from "../baseUi/Icon";
 import { IHaveChildren } from "@/models/common";
@@ -17,15 +18,15 @@ import Github from "public/images/icons/github.svg";
  */
 const Profile = () => {
   return (
-    <div className="p-3 flex flex-col sm:gap-1 md:gap-5">
-      <div className="flex sm:flex-col sm:gap-1 md:flex-row md:gap-3 xs:items-center md:items-start">
+    <div className="p-3 flex flex-col gap-1 md:gap-5">
+      <div className="flex items-center flex-col gap-1 md:flex-row md:gap-3  md:items-start">
         <Avatar
           className="h-[180px] w-[180px] border-4 border-yellow-200 md:h-[200px] md:w-[200px]"
           src={"profileImg.jpg"}
           size={180}
         />
         <div className="ml-3 mt-[25px] md:mt-0">
-          <BaseText type="h4" className="text-center">
+          <BaseText type="h5" className="text-center">
             코딩만 하지 않는 <br className="md:hidden" />
             개발자 이상민입니다.
           </BaseText>

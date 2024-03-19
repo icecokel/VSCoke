@@ -121,14 +121,14 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
           </div>
         </div>
 
-        <div className="md:hidden w-full flex flex-col gap-y-2 p-1">
-          <BaseText type="h6" className="text-black font-bold">
+        <div className="md:hidden w-full flex flex-col gap-y-2 p-3">
+          <BaseText type="h6" className="text-black font-bold mb-2">
             프로젝트를 선택해주세요.
           </BaseText>
           {DUMMY.map((category, index) => {
             return (
               <div key={`category_${index}`}>
-                <Accordion className="w-full py-1 pl-2 bg-gray-800 rounded-sm">
+                <Accordion className="w-full py-1 pl-2 bg-gray-600 rounded-sm">
                   <Accordion.Summary>{category.label}</Accordion.Summary>
                   <div className="pl-4">
                     <Accordion.Details>
@@ -152,7 +152,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
               </div>
             );
           })}
-          <BaseText type="caption" className="text-gray-700 font-bold">
+          <BaseText type="caption" className="text-gray-500 font-bold underline mt-4">
             열기 버튼을 누르면 프로젝트 또는 GIT이 열립니다.
           </BaseText>
           <div className="border rounded-sm flex gap-x-2">

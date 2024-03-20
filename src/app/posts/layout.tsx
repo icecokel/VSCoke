@@ -14,7 +14,7 @@ export default function Layout({ children }: IHaveChildren) {
   const [readPerPost, setReadPerPost] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
 
-  const handleScrollPost = (postHeight: number) => () => {
+  const onScrollPost = (postHeight: number) => () => {
     if (window.scrollY <= 0) {
       setReadPerPost(0);
       return;
@@ -32,12 +32,12 @@ export default function Layout({ children }: IHaveChildren) {
   useEffect(() => {
     if (window && ref.current) {
       const event = debounce(
-        handleScrollPost(ref.current?.clientHeight - window.innerHeight),
+        onScrollPost(ref.current?.clientHeight - window.innerHeight),
         DEBOUNCE_TIME,
       );
-      window.addEventListener("scroll", event);
+      addEventListener("scroll", event);
       return () => {
-        window.removeEventListener("scroll", event);
+        removeEventListener("scroll", event);
       };
     }
   }, []);

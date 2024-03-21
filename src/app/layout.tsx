@@ -7,6 +7,12 @@ import { IHaveChildren } from "@/models/common";
 import { getExplorer } from "@/utils/get/explorer";
 import { getPosts } from "@/utils/get/post";
 import { Metadata } from "next";
+import { Noto_Sans_KR } from "next/font/google";
+
+const notoSansKr = Noto_Sans_KR({
+  subsets: ["latin"],
+  weight: ["100", "400", "700", "900"],
+});
 
 export const metadata: Metadata = {
   title: "VSCOKE",
@@ -18,7 +24,7 @@ export default async function RootLayout({ children }: IHaveChildren) {
   const explorer = await getExplorer();
 
   return (
-    <html lang="ko">
+    <html lang="ko" className={notoSansKr.className}>
       <head>
         <link
           rel="stylesheet"

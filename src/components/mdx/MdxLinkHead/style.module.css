@@ -1,0 +1,36 @@
+.h1 {
+  font-size: 48px;
+  font-weight: 600;
+  padding: 3px 2px;
+  min-height: 45px;
+  margin-top: 1em;
+  margin-bottom: 4px;
+  position: sticky;
+  top: 4px;
+  background-color: #ffffff;
+  color: rgba(0, 0, 0, 0.87);
+}
+
+.h2 {
+  font-size: 36px;
+  font-weight: 600;
+  padding: 3px 2px;
+  min-height: 45px;
+  margin-top: 1em;
+  margin-bottom: 1px;
+  position: sticky;
+  top: 4px;
+  background-color: #ffffff;
+  color: rgba(0, 0, 0, 0.87);
+}
+.h3 {
+  font-size: 32px;
+  font-weight: 600;
+  margin-top: 1em;
+  padding: 3px 2px;
+  min-height: 45px;
+  position: sticky;
+  top: 4px;
+  background-color: #ffffff;
+  color: rgba(0, 0, 0, 0.87);
+}

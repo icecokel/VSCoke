@@ -1,5 +1,5 @@
 import MdxCodeBlock, { IMdxCodeblockProps, TCodeBlockType } from "./MdxCodeBlock";
-import MdxLinkHead from "./MdxLinkHead";
+import MdxLinkHead from "./MdxLinkHead/index";
 import MdxTable, { IMdxTableProps } from "./MdxTable";
 import type { MDXComponents } from "mdx/types";
 import { useMDXComponent } from "next-contentlayer/hooks";

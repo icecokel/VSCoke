@@ -13,7 +13,7 @@ interface MdxLinkHeadProps extends IHaveChildren {
 
 const STYLE_MAP: { [key in TVariant]: CSSProperties } = {
   h1: {
-    fontSize: "30px",
+    fontSize: "48px",
     fontWeight: 600,
     padding: "3px 2px",
     minHeight: "45px",
@@ -22,9 +22,10 @@ const STYLE_MAP: { [key in TVariant]: CSSProperties } = {
     position: "sticky",
     top: "4px",
     backgroundColor: "#FFFFFF",
+    color: "rgba(0,0,0,0.87)",
   },
   h2: {
-    fontSize: "24px",
+    fontSize: "36px",
     fontWeight: 600,
     padding: "3px 2px",
     minHeight: "45px",
@@ -33,9 +34,10 @@ const STYLE_MAP: { [key in TVariant]: CSSProperties } = {
     position: "sticky",
     top: "4px",
     backgroundColor: "#FFFFFF",
+    color: "rgba(0,0,0,0.87)",
   },
   h3: {
-    fontSize: "20px",
+    fontSize: "32px",
     fontWeight: 600,
     marginTop: "1em",
     padding: "3px 2px",
@@ -43,6 +45,7 @@ const STYLE_MAP: { [key in TVariant]: CSSProperties } = {
     position: "sticky",
     top: "4px",
     backgroundColor: "#FFFFFF",
+    color: "rgba(0,0,0,0.87)",
   },
 };
 

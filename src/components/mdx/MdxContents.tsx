@@ -15,7 +15,7 @@ const mdxComponents: MDXComponents = {
   blockquote: ({ children }) => (
     <div style={{ borderLeft: "0.25em solid gray", padding: "1em" }}>{children}</div>
   ),
-  p: ({ children }) => <p style={{ margin: "0.4em 0px", lineHeight: 2 }}>{children}</p>,
+  p: ({ children }) => <p style={{ fontSize: "16px", color: "rgba(0,0,0,0.87)" }}>{children}</p>,
   pre: ({ children }) => {
     const {
       props: { className, children: code },

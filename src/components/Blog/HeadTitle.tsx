@@ -7,8 +7,8 @@ interface IHeadTitle {
 
 const HeadTitle = ({ title, date }: IHeadTitle) => {
   return (
-    <div className="flex items-end gap-2 my-[1em]">
-      <h1 className="text-[32px] font-bold ml-[0.5em]">{title}</h1>
+    <div className="flex flex-col md:items-end gap-2 my-[1em] md:flex-row p-2">
+      <h1 className="text-[32px] font-bold">{title}</h1>
       <time dateTime={date} className="text-sm text-gray-700">
         ({convertByFormat({ date })})
       </time>

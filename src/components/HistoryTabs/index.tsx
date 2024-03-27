@@ -110,47 +110,45 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
 
   return (
     <div className="w-full bg-gray-800">
-      <div className="flex bg-gray-900">
+      <div className="flex bg-gray-900 overflow-scroll">
         {history.map(item => (
-          <Fragment key={`tab_${item.path}`}>
-            <Tooltip text={`${item.path}/${item.title}`}>
-              <div
-                id={`${item.path}`}
+          <Tooltip key={`tab_${item.path}`} text={`${item.path}/${item.title}`}>
+            <div
+              id={`${item.path}`}
+              className={twMerge(
+                "border border-gray-300/60 border-l-[0px] h-[32px] truncate",
+                item.isActive ? "bg-gray-800 border-b-[0px]" : "hover:bg-gray-600",
+              )}
+              onClick={() => handleClickTab(item)}
+              onContextMenu={handleRightClickTab}
+              onDragStart={handleDragStart}
+              onDragEnterCapture={handleDragEnter}
+              onDragEnd={handleDragEnd}
+              draggable
+            >
+              <BaseText
                 className={twMerge(
-                  "border border-gray-300/60 border-l-[0px]",
-                  item.isActive ? "bg-gray-800 border-b-[0px]" : "hover:bg-gray-600",
+                  "text-gray-300/80 md:py-[6px] md:px-[20px] py-[4px] px-[8px] text-sm flex items-center",
+                  item.isActive &&
+                    "text-yellow-200/95 font-medium border-t pt-[1px] border-t-blue-300 md:pt-[5px]",
                 )}
-                onClick={() => handleClickTab(item)}
-                onContextMenu={handleRightClickTab}
-                onDragStart={handleDragStart}
-                onDragEnterCapture={handleDragEnter}
-                onDragEnd={handleDragEnd}
-                draggable
               >
-                <BaseText
+                {item.title}
+                <span
                   className={twMerge(
-                    "text-gray-300/80 md:py-[6px] md:px-[20px] py-[4px] px-[8px] text-sm flex items-center",
-                    item.isActive &&
-                      "text-yellow-200/95 font-medium border-t pt-[1px] border-t-blue-300 md:pt-[5px]",
+                    "ml-[4px] mr-[-4px] md:ml-[8px] md:mr-[-8px] inline",
+                    !item.isActive && "hidden",
                   )}
                 >
-                  {item.title}
-                  <div
-                    className={twMerge(
-                      "ml-[4px] mr-[-4px] md:ml-[8px] md:mr-[-8px] inline",
-                      !item.isActive && "hidden",
-                    )}
-                  >
-                    <Icon
-                      kind="close"
-                      style={{ fontSize: "18px" }}
-                      onClick={() => handleClickClose(item)}
-                    />
-                  </div>
-                </BaseText>
-              </div>
-            </Tooltip>
-          </Fragment>
+                  <Icon
+                    kind="close"
+                    style={{ fontSize: "18px" }}
+                    onClick={() => handleClickClose(item)}
+                  />
+                </span>
+              </BaseText>
+            </div>
+          </Tooltip>
         ))}
       </div>
 

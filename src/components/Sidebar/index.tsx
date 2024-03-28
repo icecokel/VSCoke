@@ -1,12 +1,12 @@
 "use client";
 
-import Icon from "../baseUi/Icon";
 import Explorer from "./Explorer";
 import Search from "./Search";
 import useClickOutSide from "@/hooks/useClickOutSide";
 import useShortCut from "@/hooks/useShortCut";
 import { IHaveChildren } from "@/models/common";
 import { TSidebar } from "@/models/enum/sidebar";
+import Icon from "@ui/Icon";
 import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 

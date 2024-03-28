@@ -1,4 +1,4 @@
-import BaseText from "@/components/baseUi/Text";
+import BaseText from "@ui/Text";
 import { NextPage } from "next";
 import data from "package.json";
 

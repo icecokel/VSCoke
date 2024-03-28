@@ -1,10 +1,10 @@
-import Accordion from "../baseUi/Accordion";
-import Button from "../baseUi/Button";
-import Icon from "../baseUi/Icon";
-import { TKind } from "../baseUi/Icon/types";
-import Modal, { IModalProps } from "../baseUi/Modal";
-import useSnackBar from "../baseUi/SnackBar/hooks/useSnackBar";
-import BaseText from "../baseUi/Text";
+import Accordion from "@ui/Accordion";
+import Button from "@ui/Button";
+import Icon from "@ui/Icon";
+import { TKind } from "@ui/Icon/types";
+import Modal, { IModalProps } from "@ui/Modal";
+import useSnackBar from "@ui/SnackBar/hooks/useSnackBar";
+import BaseText from "@ui/Text";
 import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 

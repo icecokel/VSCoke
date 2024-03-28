@@ -1,6 +1,6 @@
 import SnackBar from "..";
-import { ISnackBar } from "../type/type";
 import { IHaveChildren } from "@/models/common";
+import { ISnackBar } from "@ui/SnackBar/type/type";
 import { Dispatch, SetStateAction, createContext, useState } from "react";
 
 interface ISnackBarContext extends ISnackBar {

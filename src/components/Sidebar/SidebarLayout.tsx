@@ -1,5 +1,5 @@
-import Slide from "../baseUi/Slide";
 import { IHaveChildren } from "@/models/common";
+import Slide from "@ui/Slide";
 
 interface SidebarLayoutProps extends IHaveChildren {
   isShowing: boolean;

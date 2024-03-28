@@ -1,6 +1,5 @@
 "use client";
 
-import Tooltip from "../baseUi/Tooltip";
 import useHistory from "@/hooks/useHistory";
 import Avatar from "@ui/Avatar";
 import BaseText from "@ui/Text";

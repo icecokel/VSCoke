@@ -1,9 +1,9 @@
 "use client";
 
-import Icon from "../baseUi/Icon";
 import SidebarLayout from "./SidebarLayout";
 import useHistory from "@/hooks/useHistory";
 import { IResult, searchPost } from "@/utils/get/post";
+import Icon from "@ui/Icon";
 import { useState } from "react";
 
 interface ExplorerProps {

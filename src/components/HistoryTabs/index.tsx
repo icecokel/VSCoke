@@ -1,10 +1,10 @@
 "use client";
 
-import Icon from "../baseUi/Icon";
-import Menu from "../baseUi/Menu";
 import useHistory from "@/hooks/useHistory";
 import { IHaveChildren } from "@/models/common";
 import Container from "@ui/Container";
+import Icon from "@ui/Icon";
+import Menu from "@ui/Menu";
 import BaseText from "@ui/Text";
 import Tooltip from "@ui/Tooltip";
 import { useRouter } from "next/navigation";

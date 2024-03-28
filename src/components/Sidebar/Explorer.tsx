@@ -1,10 +1,10 @@
 "use client";
 
-import Icon from "../baseUi/Icon";
-import BaseText from "../baseUi/Text";
 import SidebarLayout from "./SidebarLayout";
 import useExplorer, { ITree } from "@/hooks/useExplorer";
 import useHistory from "@/hooks/useHistory";
+import Icon from "@ui/Icon";
+import BaseText from "@ui/Text";
 import { MouseEvent, useState } from "react";
 
 interface ExplorerProps {

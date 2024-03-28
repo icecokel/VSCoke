@@ -1,8 +1,8 @@
 "use client";
 
-import SnackBarProvider from "@/components/baseUi/SnackBar/context/SnackBarProvider";
 import { ITree } from "@/hooks/useExplorer";
 import { IHaveChildren } from "@/models/common";
+import SnackBarProvider from "@ui/SnackBar/context/SnackBarProvider";
 import { createContext } from "react";
 
 export const BlogContext = createContext<ITree | undefined>({} as ITree);

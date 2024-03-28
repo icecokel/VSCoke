@@ -1,8 +1,8 @@
 "use client";
 
-import { mdxContext } from "../../../contexts/MdxContext";
-import { PREFIX } from "../MdxLinkHead";
 import styles from "./style.module.css";
+import { PREFIX } from "@/components/mdx/MdxLinkHead";
+import { mdxContext } from "@/contexts/MdxContext";
 import { usePathname } from "next/navigation";
 import { useContext } from "react";
 

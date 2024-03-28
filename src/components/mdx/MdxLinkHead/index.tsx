@@ -1,7 +1,7 @@
 "use client";
 
-import { mdxContext } from "../../../contexts/MdxContext";
 import styles from "./style.module.css";
+import { mdxContext } from "@/contexts/MdxContext";
 import { IHaveChildren } from "@/models/common";
 import { usePathname } from "next/navigation";
 import { createElement, useContext, useEffect } from "react";

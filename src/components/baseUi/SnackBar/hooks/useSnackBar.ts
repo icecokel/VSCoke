@@ -1,5 +1,5 @@
-import { SnackBarContext } from "../context/SnackBarProvider";
-import { ISnackBar } from "../type/type";
+import { SnackBarContext } from "@ui/SnackBar/context/SnackBarProvider";
+import { ISnackBar } from "@ui/SnackBar/type/type";
 import { useContext } from "react";
 
 const useSnackBar = ({ message, duration = 5000 }: Omit<ISnackBar, "open">) => {

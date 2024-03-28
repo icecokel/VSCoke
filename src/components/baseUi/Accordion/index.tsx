@@ -1,9 +1,9 @@
 "use client";
 
-import Icon from "../Icon";
-import Slide from "../Slide";
-import BaseText from "../Text";
 import { IHaveChildren } from "@/models/common";
+import Icon from "@ui/Icon";
+import Slide from "@ui/Slide";
+import BaseText from "@ui/Text";
 import { HTMLAttributes, createContext, createElement, useContext, useState } from "react";
 
 interface IAccordion {

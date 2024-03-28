@@ -1,11 +1,10 @@
 "use client";
 
-import Accordion from "../baseUi/Accordion";
-import Button from "../baseUi/Button";
-import Icon from "../baseUi/Icon";
 import { IHaveChildren } from "@/models/common";
 import Avatar from "@ui/Avatar";
+import Button from "@ui/Button";
 import Chip from "@ui/Chip";
+import Icon from "@ui/Icon";
 import BaseText from "@ui/Text";
 import Tooltip from "@ui/Tooltip";
 import Image from "next/image";

@@ -1,5 +1,3 @@
-import styles from "./style.module.css";
-
 export type TCodeBlockType = "js" | "jsx" | "ts" | "tsx" | "html" | "xml";
 
 export interface IMdxCodeblockProps {
@@ -10,8 +8,8 @@ export interface IMdxCodeblockProps {
 // TODO type에 따라 스타일링
 const MdxCodeBlock = ({ code, type }: IMdxCodeblockProps) => {
   return (
-    <pre className={styles.wrapper}>
-      <code className={styles.code}>{code}</code>
+    <pre className="p-[1em] md:p-[2em] bg-beige-400 rounded my-[2em] whitespace-pre-wrap break-words">
+      <code className="text-[14px] leading-[2em] text-black">{code}</code>
     </pre>
   );
 };

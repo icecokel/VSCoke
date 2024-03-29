@@ -2,7 +2,7 @@
 
 import { TVariant } from "../components/mdx/MdxLinkHead";
 import { IHaveChildren } from "@/models/common";
-import { createContext, useEffect, useState } from "react";
+import { createContext, useState } from "react";
 
 interface INav {
   title: string;
@@ -23,6 +23,7 @@ export const mdxContext = createContext<IMdxContext>({} as IMdxContext);
 
 const MdxProvider = ({ children }: IHaveChildren) => {
   const [nav, setNav] = useState<INav[]>([]);
+
   const add = (target: INav) => {
     setNav(prev => {
       const navToUpdate = prev.find(({ title }) => title === target.title);
@@ -38,18 +39,6 @@ const MdxProvider = ({ children }: IHaveChildren) => {
       return [...prev, target];
     });
   };
-
-  useEffect(() => {
-    if (window) {
-      const event = (e: any) => {
-        console.log(window.scrollY);
-      };
-      addEventListener("scroll", event);
-      return () => {
-        removeEventListener("scroll", event);
-      };
-    }
-  }, []);
 
   return <mdxContext.Provider value={{ nav, add }}>{children}</mdxContext.Provider>;
 };

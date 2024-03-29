@@ -1,10 +1,15 @@
 "use client";
 
-import styles from "./style.module.css";
-import { PREFIX } from "@/components/mdx/MdxLinkHead";
-import { mdxContext } from "@/contexts/MdxContext";
+import { mdxContext } from "../../contexts/MdxContext";
+import { PREFIX, TVariant } from "./MdxLinkHead";
 import { usePathname } from "next/navigation";
 import { useContext } from "react";
+
+const STYLE_MAP: { [key in TVariant]: object } = {
+  h1: {},
+  h2: { marginLeft: "15px", fontSize: "0.8em" },
+  h3: { marginLeft: "30px", fontSize: "0.6em" },
+};
 
 const MdxNav = () => {
   const { nav } = useContext(mdxContext);
@@ -16,12 +21,12 @@ const MdxNav = () => {
   }
 
   return (
-    <div className={styles.wrapper}>
-      <div className={styles.nav}>
+    <div className="text-white w-[300px] hidden lg:block">
+      <div className="fixed flex flex-col gap-2">
         {items.map((item, index) => {
           return (
             <a href={`#${PREFIX}-${item.label}`} key={`${item.label}_${index}`}>
-              <span className={styles[item.type]}>{item.label}</span>
+              <span style={STYLE_MAP[item.type]}>{item.label}</span>
             </a>
           );
         })}

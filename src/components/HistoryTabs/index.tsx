@@ -110,7 +110,7 @@ const HistoryTabs = ({ children }: IHaveChildren) => {
 
   return (
     <div className="w-full bg-gray-800">
-      <div className="flex bg-gray-900 overflow-scroll">
+      <div className="flex bg-gray-900 overflow-x-auto">
         {history.map(item => (
           <Tooltip key={`tab_${item.path}`} text={`${item.path}/${item.title}`}>
             <div

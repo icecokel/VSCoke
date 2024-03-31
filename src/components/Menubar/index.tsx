@@ -1,8 +1,8 @@
 "use client";
 
-import Menu from "../baseUi/Menu";
 import OpenProjectModal from "./OpenProjectModal";
 import { IHaveChildren } from "@/models/common";
+import Menu from "@ui/Menu";
 import BaseText from "@ui/Text";
 import { MouseEventHandler, useState } from "react";
 

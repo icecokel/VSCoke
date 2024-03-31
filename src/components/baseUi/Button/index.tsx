@@ -1,16 +1,17 @@
 import styles from "./style.module.css";
-import { TButtonType } from "./type";
+import { TButtonType, TColor } from "./type";
 import { createElement, HtmlHTMLAttributes } from "react";
 
 interface IButton extends HtmlHTMLAttributes<HTMLButtonElement> {
   type?: TButtonType;
+  color?: TColor;
   disabled?: boolean;
 }
 
-const Button = ({ type = "text", ...restProps }: IButton) => {
+const Button = ({ type = "text", color = "primary", ...restProps }: IButton) => {
   return createElement("button", {
     ...restProps,
-    className: `${styles[type]} ${restProps.className}`,
+    className: `${styles[type]} ${styles[color]} ${restProps.className}`,
   });
 };
 

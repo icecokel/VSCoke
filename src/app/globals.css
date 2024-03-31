@@ -4,6 +4,23 @@
 
 body {
   margin: 0px;
+  --gray-color-50: rgb(215, 215, 215);
+  --gray-color-100: rgb(204, 204, 204);
+  --gray-color-300: rgb(140, 140, 140);
+  --gray-color-500: rgb(76, 76, 76);
+  --gray-color-600: rgb(50, 50, 50);
+  --gray-color-700: rgb(42, 42, 42);
+  --gray-color-800: rgb(31, 31, 31);
+  --gray-color-900: rgb(24, 24, 24);
+  --blue-color-100: rgb(156, 220, 254);
+  --blue-color-300: rgb(0, 120, 212);
+  --yellow-color-100: rgb(214, 143, 52);
+  --yellow-color-200: rgb(204, 167, 0);
+  --green-color-300: rgb(59, 201, 176);
+  --beige-color-400: rgb(247, 246, 243);
+  --red-color-400: rgb(248, 81, 73);
+  --white-color: rgb(255, 255, 255);
+  --black-color: rgb(0, 0, 0);
 }
 
 * {

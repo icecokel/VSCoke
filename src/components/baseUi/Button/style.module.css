@@ -3,6 +3,7 @@
   font-weight: 600;
   padding: 0.5em 1em;
   border-radius: 4px;
+  transition: background-color 0.3s ease;
 }
 
 .outline {
@@ -11,6 +12,7 @@
   font-weight: 600;
   padding: 0.5em 1em;
   border-radius: 4px;
+  transition: background-color 0.3s ease;
 }
 
 .contained {
@@ -19,4 +21,21 @@
   font-weight: 600;
   padding: 0.5em 1em;
   border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.primary {
+  background-color: var(--blue-color-300);
+}
+
+.primary:hover {
+  background-color: rgba(var(--blue-color-300), 0.5);
+}
+
+.secondary {
+  background-color: var(--gray-color-300);
+}
+
+.secondary:hover {
+  background-color: rgba(var(--gray-color-300), 0.5);
 }

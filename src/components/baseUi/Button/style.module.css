@@ -29,6 +29,8 @@
 }
 
 .primary:hover {
+  color: var(--blue-color-300);
+  border-color: var(--blue-color-300);
   background-color: rgba(var(--blue-color-300), 0.5);
 }
 

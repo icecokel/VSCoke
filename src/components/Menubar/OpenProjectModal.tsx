@@ -99,9 +99,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
           </div>
           <div className="border rounded-sm border-gray-600 mt-1 p-2 flex justify-end gap-x-2 bg-gray-800">
             <Button type="contained" onClick={onClose} color="secondary">
-              <BaseText type="body2" className="font-bold">
-                취소
-              </BaseText>
+              <BaseText type="body2">취소</BaseText>
             </Button>
             <Button
               type="contained"
@@ -109,9 +107,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
               onClick={handleClickOpenProject}
               disabled={!currentProject}
             >
-              <BaseText type="body2" className="font-bold">
-                열기
-              </BaseText>
+              <BaseText type="body2">열기</BaseText>
             </Button>
           </div>
         </div>
@@ -152,9 +148,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
           </BaseText>
           <div className="border rounded-sm flex gap-x-2">
             <Button type="contained" className="flex-1" onClick={onClose} color="secondary">
-              <BaseText type="body1" className="font-bold">
-                취소
-              </BaseText>
+              <BaseText type="body1">취소</BaseText>
             </Button>
             <Button
               type="contained"
@@ -162,9 +156,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
               onClick={handleClickOpenProject}
               disabled={!currentProject}
             >
-              <BaseText type="body1" className="font-bold">
-                열기
-              </BaseText>
+              <BaseText type="body1">열기</BaseText>
             </Button>
           </div>
         </div>

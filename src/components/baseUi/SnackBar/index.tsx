@@ -1,4 +1,5 @@
 import { SnackBarContext } from "./context/SnackBarProvider";
+import styles from "./style.module.css";
 import BaseText from "@ui/Text";
 import { useContext, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -22,8 +23,8 @@ const SnackBar = () => {
     <>
       {open &&
         createPortal(
-          <div className="fixed inset-x-0 top-[100px] flex justify-center z-40">
-            <div className="bg-blue-100/90 h-10 p-5 flex items-center justify-center rounded shadow-[4px_6px_6px_rgb(0,0,0,0.6)]">
+          <div className={styles.wrapper}>
+            <div className={styles.snackBar}>
               <BaseText type="body1" className="text-gray-900 font-bold">
                 {message}
               </BaseText>

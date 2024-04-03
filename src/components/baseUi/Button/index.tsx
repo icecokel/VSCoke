@@ -11,7 +11,7 @@ interface IButton extends HtmlHTMLAttributes<HTMLButtonElement> {
 const Button = ({ type = "text", color = "primary", ...restProps }: IButton) => {
   return createElement("button", {
     ...restProps,
-    className: `${styles[type]} ${styles[color]} ${restProps.className}`,
+    className: `${styles.button} ${styles[type]} ${styles[color]} ${restProps.className}`,
   });
 };
 

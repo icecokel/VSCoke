@@ -27,7 +27,7 @@ const DUMMY: ICategory[] = [
 
 const OpenProjectModal = (props: IOpenProjectModalProps) => {
   const [currentCategory, setCurrentCategory] = useState<ICategory>(DUMMY[0]);
-  const [currentProject, setCurrentProject] = useState<IProject>();
+  const [currentProject, setCurrentProject] = useState<IProject | undefined>();
 
   useEffect(() => {
     setCurrentCategory(DUMMY[0]);
@@ -35,6 +35,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
 
   const handleClickCategory = (value: ICategory) => {
     setCurrentCategory(value);
+    setCurrentProject(undefined);
   };
 
   const handleClickProject = (value: IProject) => {

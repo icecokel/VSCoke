@@ -2,17 +2,19 @@
   position: fixed;
   left: 0;
   right: 0;
-  top: 100;
+  top: 100px;
   display: flex;
   justify-content: center;
   z-index: 40;
 }
 
 .snackBar {
-  background-color: rgba(var(--blue-color-100), 0.9);
+  background-color: var(--blue-color-100);
+  border-radius: 4px;
   min-height: 40px;
   padding: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 5px 5px 2px var(--gray-color-900);
 }

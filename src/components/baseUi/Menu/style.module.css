@@ -1,0 +1,27 @@
+.wrapper {
+  position: absolute;
+  min-width: 10em;
+  padding: 8px 4px;
+  background-color: var(--gray-color-800);
+  color: var(--white-color);
+  border-radius: 4px;
+  display: flex;
+  gap: 8px;
+  flex-direction: column;
+  border-color: var(--gray-color-900);
+  z-index: 30;
+}
+
+.item {
+  font-size: 14px;
+  line-height: 20px;
+  padding: 4px 12px;
+  z-index: 30;
+  cursor: pointer;
+}
+
+.item:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: var(--yellow-color-200);
+  font-weight: 700;
+}

@@ -2,10 +2,13 @@
   position: fixed;
   left: 0;
   right: 0;
-  top: 100px;
+  top: 120px;
   display: flex;
   justify-content: center;
   z-index: 40;
+  animation-name: mount;
+  animation-duration: 0.2s;
+  animation-timing-function: ease-out;
 }
 
 .snackBar {
@@ -17,4 +20,15 @@
   align-items: center;
   justify-content: center;
   box-shadow: 5px 5px 2px var(--gray-color-900);
+}
+
+@keyframes mount {
+  0% {
+    top: -40px;
+    opacity: 0;
+  }
+  100% {
+    top: 120px;
+    opacity: 1;
+  }
 }

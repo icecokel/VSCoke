@@ -10,6 +10,10 @@
   flex-direction: column;
   border-color: var(--gray-color-900);
   z-index: 30;
+  cursor: pointer;
+  animation-name: mount;
+  animation-duration: 0.3s;
+  animation-timing-function: linear;
 }
 
 .item {
@@ -17,11 +21,20 @@
   line-height: 20px;
   padding: 4px 12px;
   z-index: 30;
-  cursor: pointer;
 }
 
 .item:hover {
   background-color: rgba(255, 255, 255, 0.2);
   color: var(--yellow-color-200);
   font-weight: 700;
+}
+
+@keyframes mount {
+  0% {
+    height: 0px;
+  }
+
+  100% {
+    height: auto;
+  }
 }

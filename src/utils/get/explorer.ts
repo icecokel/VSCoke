@@ -19,6 +19,7 @@ export const getExplorer = cache(async (): Promise<ITree[]> => {
       index: 99,
       id: "readme",
       label: "README.md",
+      path: "/readme",
     },
   ];
 });

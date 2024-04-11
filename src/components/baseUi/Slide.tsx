@@ -1,13 +1,15 @@
 "use client";
 
-import { HTMLAttributes, createElement } from "react";
+import { CSSProperties, HTMLAttributes, createElement } from "react";
 
 type TDirection = "up" | "down" | "right" | "left";
 
 interface ISlideProps extends HTMLAttributes<HTMLDivElement> {
+  active: boolean;
   direction?: TDirection;
   duration?: number;
-  active: boolean;
+  delay?: number;
+  fillMode?: CSSProperties["animationFillMode"];
 }
 
 const OPEN_MAP: Record<TDirection, HTMLAttributes<HTMLDivElement>["className"]> = {
@@ -24,13 +26,21 @@ const CLOSE_MAP: Record<TDirection, HTMLAttributes<HTMLDivElement>["className"]>
   left: "animate-[slide-left-close]",
 };
 
-const Slide = ({ active, direction = "up", duration = 300, ...restProps }: ISlideProps) => {
+const Slide = ({
+  active,
+  direction = "up",
+  duration = 300,
+  delay = 0,
+  fillMode = "forwards",
+  ...restProps
+}: ISlideProps) => {
   return createElement("div", {
     ...restProps,
     className: active ? OPEN_MAP[direction] : CLOSE_MAP[direction],
     style: {
-      animationFillMode: "forwards",
+      animationFillMode: fillMode,
       animationDuration: `${duration}ms`,
+      animationDelay: `${delay}ms`,
     },
   });
 };

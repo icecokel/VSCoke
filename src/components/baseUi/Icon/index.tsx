@@ -6,6 +6,7 @@ import { HTMLAttributes, createElement } from "react";
 interface IIconProps extends HTMLAttributes<HTMLSpanElement> {
   kind: TKind;
   shape?: TShape;
+  size?: number;
 }
 
 /**
@@ -13,9 +14,10 @@ interface IIconProps extends HTMLAttributes<HTMLSpanElement> {
  * @returns google font icon
  */
 
-const Icon = ({ kind, shape = "rounded", className, ...restProps }: IIconProps) => {
+const Icon = ({ kind, shape = "rounded", className, size, ...restProps }: IIconProps) => {
   return createElement("span", {
     className: `material-symbols-${shape} ${className}`,
+    style: { fontSize: size },
     dangerouslySetInnerHTML: { __html: kind },
     ...restProps,
   });

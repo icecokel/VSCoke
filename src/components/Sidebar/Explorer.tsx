@@ -37,11 +37,11 @@ interface IItemProps extends ITree {
 const convertIcon = (icon?: string) => {
   switch (icon) {
     case "profile":
-      return <Icon kind="account_box" style={{ fontSize: "22px" }} className="text-yellow-200" />;
+      return <Icon kind="account_box" size={22} className="text-yellow-200" />;
     case "backPacking":
-      return <Icon kind="hiking" style={{ fontSize: "22px" }} className="text-green-300" />;
+      return <Icon kind="hiking" size={22} className="text-green-300" />;
     case "blog":
-      return <Icon kind="article" style={{ fontSize: "22px" }} className="text-blue-100" />;
+      return <Icon kind="article" size={22} className="text-blue-100" />;
     default:
       <Icon kind="content_paste_search" className="text-gray-100" />;
   }

@@ -41,9 +41,7 @@ const MdxProvider = ({ children }: IHaveChildren) => {
 
   useEffect(() => {
     if (window) {
-      const event = (e: any) => {
-        console.log(window.scrollY);
-      };
+      const event = (e: any) => {};
       addEventListener("scroll", event);
       return () => {
         removeEventListener("scroll", event);

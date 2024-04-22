@@ -6,7 +6,7 @@ const ReadmePage: NextPage = () => {
   return (
     <article className="p-10">
       <SlideGroup delay={250}>
-        <BaseText type="h2" style={{ fontWeight: 500 }}>
+        <BaseText type="h2" fontWeight={500}>
           반가워요.
         </BaseText>
         <BaseText>

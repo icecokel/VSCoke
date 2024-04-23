@@ -1,0 +1,15 @@
+.wrapper {
+  display: flex;
+  justify-content: center;
+  width: fit-content;
+  z-index: 100;
+}
+
+.text {
+  background-color: var(--gray-color-900);
+  color: rgba(255, 255, 255, 0.9);
+  position: absolute;
+  border-radius: 4px;
+  font-weight: 700;
+  transform: translateY(2em);
+}

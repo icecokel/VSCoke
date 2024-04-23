@@ -1,4 +1,5 @@
-import BaseText from "./Text";
+import BaseText from "../Text";
+import styles from "./style.module.css";
 import { IHaveChildren } from "@/models/common";
 import { useState } from "react";
 
@@ -18,15 +19,12 @@ const Tooltip = ({ children, placement = "bottom", text }: ITooltipProps) => {
     setShowTooltip(false);
   };
   return (
-    <div className="flex justify-center w-fit">
+    <div className={styles.wrapper}>
       <div onMouseOver={handleHover} onMouseOut={handleOut}>
         {children}
       </div>
       {showTooltip && (
-        <BaseText
-          className="bg-gray-700 text-white/90 absolute p-1.5 rounded font-bold translate-y-full"
-          type="caption"
-        >
+        <BaseText className={styles.text} type="caption">
           {text}
         </BaseText>
       )}

@@ -36,7 +36,9 @@ MdxSchematic.item = ({ index, title, to, way = "one" }: IItemProps) => {
       <div className="p-8 rounded" style={{ backgroundColor: color }} id={title}>
         <BaseText className="font-bold">{title}</BaseText>
       </div>
-      {to && <MdxSchematic.arrow from={title} to={to} way={way}></MdxSchematic.arrow>}
+      {to && to !== title && (
+        <MdxSchematic.arrow from={title} to={to} way={way}></MdxSchematic.arrow>
+      )}
     </>
   );
 };

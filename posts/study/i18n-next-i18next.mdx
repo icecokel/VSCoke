@@ -101,5 +101,36 @@ published: publish
 
 ```
 
-`개`와 같이 한 글자로 표현된 경우 번역 시 dog로 인식할 수 도 있고, count가 될 수 도있다.
-앞에 변수값을 추가 해줌으로써 명료하게 count의 번역이 필요함을 작업자게에 전달 할 수 있다.
+`개`와 같이 한 글자로 표현된 경우 번역 시 `dog`로 인식할 수 도 있고, `count`가 될 수 도있다.
+앞에 변수값을 추가 해줌으로써 명료하게 count의 번역이 필요함을 작업자에게 전달 할 수 있다.
+
+### Context
+
+key 값에 context를 전달하면, 번역을 유동적으로 바꿀 수 있다.
+
+예시
+
+```
+// namespace
+{
+    "product_label_status" : "상품 상태",
+    "product_label_status_soldout" : "품절",
+    "product_label_status_restocking" : "재입고"
+}
+
+// 구현부
+{t('product_label_status',{ context : product.status })}
+
+
+```
+
+서버에서 상품의 상태를 받은 값이 product.status에 들어있다고 가정 했을 때
+아래와 같이 번역이 진행이 된다.
+
+`product.status` 가 `soldout`이라면 `product_label_status_soldout` 키값으로 번역
+`product.status` 가 `restocking`이라면 `product_label_status_restocking` 키값으로 번역
+
+서버에서 응답해준 값으로 유동적으로 번역을 진행 할 수 있으니 생각 보다 많이 쓰이는 방법이다.
+
+주의 할 점은, 서버에서 응답해준 값을 context에 넣었을 때 네임스페이스에 해당 부분이 정의 되어있지 않다면
+context가 없는 값을 반환한다 (`product_label_status`)

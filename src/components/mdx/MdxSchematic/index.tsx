@@ -4,11 +4,11 @@ import Icon from "@/components/baseUi/Icon";
 import BaseText from "@/components/baseUi/Text";
 import { CSSProperties, useEffect, useState } from "react";
 
-export interface MdxSchematicProps {
+export interface IMdxSchematicProps {
   items: IItemProps[];
 }
 
-const MdxSchematic = ({ items }: MdxSchematicProps) => {
+const MdxSchematic = ({ items }: IMdxSchematicProps) => {
   return (
     <div className="p-10 bg-blue-100/30 rounded my-4 flex justify-between items-center w-fit gap-44 mx-auto border border-gray-300">
       {items.map(item => {

@@ -1,7 +1,8 @@
 import MdxCodeBlock, { IMdxCodeblockProps, TCodeBlockType } from "./MdxCodeBlock";
 import MdxLinkHead from "./MdxLinkHead/index";
-import MdxSchematic, { MdxSchematicProps } from "./MdxSchematic";
+import MdxSchematic, { IMdxSchematicProps } from "./MdxSchematic";
 import MdxTable, { IMdxTableProps } from "./MdxTable";
+import MdxTip, { IMdxTipProps } from "./MdxTip";
 import type { MDXComponents } from "mdx/types";
 import { useMDXComponent } from "next-contentlayer/hooks";
 import Link from "next/link";
@@ -58,8 +59,11 @@ const mdxComponents: MDXComponents = {
   hr: () => {
     return <hr className="border-gray-500/40 rounded-sm my-4" />;
   },
-  MdxSchematic: (arg: MdxSchematicProps) => {
+  MdxSchematic: (arg: IMdxSchematicProps) => {
     return <MdxSchematic {...arg} />;
+  },
+  MdxTip: ({ children, ...arg }: IMdxTipProps) => {
+    return <MdxTip {...arg}>{children}</MdxTip>;
   },
 };
 

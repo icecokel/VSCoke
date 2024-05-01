@@ -170,3 +170,28 @@ key 값에 context를 전달하면, 번역을 유동적으로 바꿀 수 있다.
 ```
 
 와 같이 원하는 부분에 특정 태그를 추가하여 스타일을 줄 수 있다.
+아래와 같이 응용하는 것도 가능하다.
+
+**응용 예시**
+
+> 테일윈드를 사용 하여 스타일을 커스텀
+
+```
+
+// namespace
+// ko-Kr
+{
+"welcome_text": "<b>{{nickname}}</b>님의 회원가입을 축하합니다."
+}
+// en-Us
+{
+"welcome_text": "Congratulations on <b>{{nickname}}</b>'s membership."
+}
+
+// 구현부
+<Trans
+    i18nKey="welcome_text"
+    values={{nickname}}
+    component={ b: <b className="text-primary-300 mx-2"></b>}
+/>
+```

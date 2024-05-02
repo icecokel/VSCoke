@@ -39,16 +39,6 @@ const MdxProvider = ({ children }: IHaveChildren) => {
     });
   };
 
-  useEffect(() => {
-    if (window) {
-      const event = (e: any) => {};
-      addEventListener("scroll", event);
-      return () => {
-        removeEventListener("scroll", event);
-      };
-    }
-  }, []);
-
   return <mdxContext.Provider value={{ nav, add }}>{children}</mdxContext.Provider>;
 };
 

@@ -4,13 +4,14 @@ import Icon from "@/components/baseUi/Icon";
 import BaseText from "@/components/baseUi/Text";
 import { CSSProperties, useEffect, useState } from "react";
 
+// TODO 반응형 필요
 export interface IMdxSchematicProps {
   items: IItemProps[];
 }
 
 const MdxSchematic = ({ items }: IMdxSchematicProps) => {
   return (
-    <div className="p-10 bg-blue-100/30 rounded my-4 flex justify-between items-center w-fit gap-44 mx-auto border border-gray-300">
+    <div className="p-4 md:p-10 bg-blue-100/30 rounded my-4 flex justify-between items-center w-full gap-10 md:gap-44 mx-auto border border-gray-300">
       {items.map(item => {
         return <MdxSchematic.item {...item} key={item.index} />;
       })}
@@ -33,7 +34,7 @@ MdxSchematic.item = ({ index, title, to, way = "one" }: IItemProps) => {
   const color = COLORS[COLORS.length % index];
   return (
     <>
-      <div className="p-8 rounded" style={{ backgroundColor: color }} id={title}>
+      <div className="p-4 md:p-8 rounded" style={{ backgroundColor: color }} id={title}>
         <BaseText className="font-bold">{title}</BaseText>
       </div>
       {to && to !== title && (
@@ -101,8 +102,7 @@ MdxSchematic.arrow = ({ from, to, way }: IArrowProps) => {
   return (
     <Icon
       kind="arrow_right_alt"
-      className="absolute"
-      size={70}
+      className="text-[40px] md:text-[65px] absolute"
       style={{
         transform: `rotate(${getDegByCoords(fromCoords, toCoords)}deg)`,
         ...getArrowCoords(fromCoords, toCoords),

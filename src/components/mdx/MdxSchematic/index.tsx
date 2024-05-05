@@ -101,7 +101,7 @@ MdxSchematic.arrow = ({ from, to, way }: IArrowProps) => {
   }
   return (
     <Icon
-      kind="arrow_right_alt"
+      kind={way === "one" ? "arrow_right_alt" : "sync_alt"}
       className="text-[40px] md:text-[65px] absolute"
       style={{
         transform: `rotate(${getDegByCoords(fromCoords, toCoords)}deg)`,

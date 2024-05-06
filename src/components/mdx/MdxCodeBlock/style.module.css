@@ -1,0 +1,14 @@
+.wrapper {
+  padding: 1em;
+  background-color: var(--beige-color-400);
+  border-radius: 4px;
+  margin: 1em auto;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.code {
+  font-size: 14px;
+  line-height: 2em;
+  color: var(--black-color);
+}

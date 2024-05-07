@@ -1,3 +1,5 @@
+import styles from "./style.module.css";
+
 export interface IMdxTableProps {
   tableData: string;
 }
@@ -24,10 +26,10 @@ const MdxTable = ({ tableData }: IMdxTableProps) => {
   return (
     <table>
       <thead>
-        <tr className="">
+        <tr>
           {head.map((item, index) => {
             return (
-              <th key={`head_${index}`} className="p-2 border-[1px] border-gray-100 bg-beige-400">
+              <th key={`head_${index}`} className={styles.th}>
                 {item}
               </th>
             );
@@ -40,10 +42,7 @@ const MdxTable = ({ tableData }: IMdxTableProps) => {
             <tr key={`row_${rowIndex}`}>
               {items.map((item, index) => {
                 return (
-                  <td
-                    key={`item_${rowIndex}_${index}`}
-                    className="p-2 border-[1px] border-gray-100"
-                  >
+                  <td key={`item_${rowIndex}_${index}`} className={styles.td}>
                     {item}
                   </td>
                 );

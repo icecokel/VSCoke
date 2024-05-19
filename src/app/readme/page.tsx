@@ -5,7 +5,7 @@ import { NextPage } from "next";
 const ReadmePage: NextPage = () => {
   return (
     <article className="p-10">
-      <SlideGroup delay={250}>
+      <SlideGroup delay={250} active>
         <BaseText type="h2" fontWeight={500}>
           반가워요.
         </BaseText>

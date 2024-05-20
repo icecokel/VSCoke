@@ -1,0 +1,9 @@
+.wrapper {
+  display: inline-flex;
+  border: 1px solid white;
+  border-radius: 15px;
+  padding: 0.25em 0.5em;
+  justify-content: center;
+  align-items: center;
+  margin: 0.25em;
+}

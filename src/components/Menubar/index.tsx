@@ -1,6 +1,7 @@
 "use client";
 
 import OpenProjectModal from "./OpenProjectModal";
+import { useBoolean } from "@/hooks/useBoolean";
 import { IHaveChildren } from "@/models/common";
 import Menu from "@ui/Menu";
 import BaseText from "@ui/Text";
@@ -21,7 +22,8 @@ interface IMenu {
 
 const Menubar = ({ children }: IHaveChildren) => {
   const [currentEl, setCurrentEl] = useState<null | HTMLElement>(null);
-  const [openProject, setOpenProject] = useState(false);
+
+  const project = useBoolean();
 
   const MENULIST: IMenu[] = [
     {
@@ -31,7 +33,7 @@ const Menubar = ({ children }: IHaveChildren) => {
         {
           name: "Open Project",
           onClick: () => {
-            setOpenProject(true);
+            project.onTrue();
             setCurrentEl(null);
           },
         },
@@ -78,12 +80,7 @@ const Menubar = ({ children }: IHaveChildren) => {
         })}
       </Menu>
 
-      <OpenProjectModal
-        open={openProject}
-        onClose={() => {
-          setOpenProject(false);
-        }}
-      />
+      <OpenProjectModal open={project.value} onClose={project.onFalse} />
 
       {children}
     </>

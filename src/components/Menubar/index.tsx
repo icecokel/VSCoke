@@ -55,8 +55,13 @@ const Menubar = ({ children }: IHaveChildren) => {
       <div className="bg-gray-900 p-1 flex border-b-2 border-b-gray-500">
         {MENULIST.map((item, index) => {
           return (
-            <div key={`${item.key}_${index}`} onClick={handleClickMenu} id={`${item.name}`}>
-              <BaseText type="body1" className="text-gray-300 px-3 select-none">
+            <div
+              key={`${item.key}_${index}`}
+              onClick={handleClickMenu}
+              id={`${item.name}`}
+              className="hover:bg-gray-300 text-gray-300 hover:text-black hover:rounded-sm"
+            >
+              <BaseText type="body1" className="px-3 select-none">
                 {item.name}
               </BaseText>
             </div>

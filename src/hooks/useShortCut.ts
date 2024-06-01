@@ -1,6 +1,11 @@
 import useKeyPress from "@/hooks/useKeyPress";
 import { useEffect } from "react";
 
+/**
+ *
+ * @param keys @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values
+ * @param cb
+ */
 const useShortCut = (keys: KeyboardEvent["key"][], cb: Function) => {
   const { pushedKey, isSubset } = useKeyPress();
 

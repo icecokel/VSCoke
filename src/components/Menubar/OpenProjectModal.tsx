@@ -1,3 +1,4 @@
+import useShortCut from "@/hooks/useShortCut";
 import Accordion from "@ui/Accordion";
 import Button from "@ui/Button";
 import Icon from "@ui/Icon";
@@ -55,7 +56,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
   };
   return (
     <Modal {...props}>
-      <div className="-m-2 text-white flex gap-1">
+      <div className="m-2 text-white flex gap-1">
         <div className="border rounded-sm border-gray-600 bg-gray-800 hidden md:block">
           <OpenProjectModal.item iconKind={"schedule"} label={"최근항목"} />
           <OpenProjectModal.item iconKind={"terminal"} label={"응용 프로그램"} />
@@ -180,7 +181,7 @@ OpenProjectModal.item = ({ iconKind, label, enabledArrow, isActive, onClick }: I
   return (
     <div
       className={twMerge(
-        "flex items-center gap-x-2  hover:bg-blue-300/50 hover:text-white px-2 py-1 rounded-sm",
+        "flex items-center gap-x-2 hover:bg-blue-300/50 hover:text-white px-2 py-1 rounded-sm",
         isActive && "bg-blue-300",
       )}
       onClick={onClick}

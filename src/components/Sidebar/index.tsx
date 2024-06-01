@@ -27,6 +27,8 @@ const Sidebar = ({ children }: IHaveChildren) => {
   const tabClose = () => {
     setTab("none");
   };
+
+  useShortCut(["escape"], tabClose);
   const tabRef = useClickOutSide(tabClose);
 
   const handleChangeTab: React.MouseEventHandler<HTMLInputElement> = ({

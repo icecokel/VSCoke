@@ -1,3 +1,5 @@
+"use client";
+
 import BaseText from "../Text";
 import styles from "./style.module.css";
 import { IHaveChildren } from "@/models/common";

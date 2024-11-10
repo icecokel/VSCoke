@@ -2,30 +2,33 @@
 
 import SidebarLayout from "./SidebarLayout";
 import useHistory from "@/hooks/useHistory";
-import { IResult, searchPost } from "@/utils/get/post";
+import { searchPosts } from "@/utils/get/post";
 import Icon from "@ui/Icon";
 import { useState } from "react";
 
-interface ExplorerProps {
+interface SearchProps {
   isShowing: boolean;
 }
 
-const Search = ({ isShowing }: ExplorerProps) => {
+const Search = ({ isShowing }: SearchProps) => {
   const [keyword, setKeyword] = useState("");
-  const [results, setResults] = useState<IResult[]>([]);
+  const [results, setResults] = useState<Array<{ title: string; path: string; excerpt?: string }>>(
+    [],
+  );
   const { add } = useHistory();
+
   const handleChangeKeyword: React.KeyboardEventHandler<HTMLInputElement> = ({
     currentTarget: { value },
     code,
   }) => {
     setKeyword(value);
     if (code === "Enter") {
-      setResults(searchPost(keyword));
+      setResults(searchPosts(keyword));
     }
   };
 
-  const handleClickPost = ({ title, path }: IResult) => {
-    add({ title, path, isActive: true });
+  const handleClickPost = (result: { title: string; path: string }) => {
+    add({ title: result.title, path: result.path, isActive: true });
   };
 
   return (
@@ -42,17 +45,20 @@ const Search = ({ isShowing }: ExplorerProps) => {
       </div>
       {results.length > 0 && (
         <div className="mt-[20px] ml-3">
-          {results.map((post, index) => {
-            return (
-              <div
-                className="truncate h-[1.5em] w-[220px] my-[0.5em] cursor-pointer hover:text-yellow-200"
-                key={`${index} ${post.title}`}
-                onClick={() => handleClickPost(post)}
-              >
-                {post.title}
-              </div>
-            );
-          })}
+          {results.map((post, index) => (
+            <div
+              key={`${index}_${post.title}`}
+              className="group cursor-pointer my-[0.5em]"
+              onClick={() => handleClickPost(post)}
+            >
+              <div className="truncate w-[220px] hover:text-yellow-200">{post.title}</div>
+              {post.excerpt && (
+                <div className="text-xs text-gray-400 truncate w-[220px] hidden group-hover:block">
+                  {post.excerpt}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </SidebarLayout>

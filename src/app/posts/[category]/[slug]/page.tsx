@@ -1,37 +1,44 @@
-import HeadTitle from "@/components/Blog/HeadTitle";
-import NameCard from "@/components/Blog/NameCard";
-import MdxContentComponent from "@/components/mdx/MdxContents";
-import { allPosts } from "contentlayer/generated";
+import PostContent from "@/components/Blog/PostContent";
+import { getPost, getPosts } from "@/utils/get/post";
+import { Metadata } from "next";
 
-export const generateStaticParams = async () =>
-  allPosts.map(post => ({ slug: post._raw.flattenedPath }));
+interface Props {
+  params: {
+    category: string;
+    slug: string;
+  };
+}
 
-export const generateMetadata = ({ params }: any) => {
-  const post = allPosts.find(post => post._raw.flattenedPath === params.slug);
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { frontMatter } = await getPost(`${params.category}/${params.slug}`);
 
-  if (!post) {
-    return;
-  }
+  return {
+    title: frontMatter.title,
+    description: frontMatter.excerpt,
+  };
+}
 
-  return { title: post.title };
-};
+export async function generateStaticParams() {
+  const { items: categories } = await getPosts();
+  const paths: { category: string; slug: string }[] = [];
 
-const PostLayout = ({ params }: { params: { category: string; slug: string } }) => {
-  const post = allPosts.find(
-    post => post._raw.flattenedPath === `${params.category}/${params.slug}`,
-  );
-  if (!post) {
-    return;
-  }
+  categories?.forEach(category => {
+    category.items?.forEach(post => {
+      const [_, categoryName, slug] = post.path?.split("/") || [];
+      if (categoryName && slug) {
+        paths.push({
+          category: categoryName,
+          slug: slug,
+        });
+      }
+    });
+  });
 
-  return (
-    <article className="py-8 w-full">
-      <HeadTitle title={post.title} date={post.date} />
-      <hr />
-      <MdxContentComponent code={post.body.code} />
-      <NameCard />
-    </article>
-  );
-};
+  return paths;
+}
 
-export default PostLayout;
+export default async function PostPage({ params }: Props) {
+  const { frontMatter, content } = await getPost(`${params.category}/${params.slug}`);
+
+  return <PostContent frontMatter={frontMatter} content={content} />;
+}

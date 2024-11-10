@@ -1,36 +1,43 @@
 import HeadTitle from "@/components/Blog/HeadTitle";
 import NameCard from "@/components/Blog/NameCard";
-import MdxContentComponent from "@/components/mdx/MdxContents";
-import { allPosts } from "contentlayer/generated";
+import { getPost, getPosts } from "@/utils/get/post";
+import { Metadata } from "next";
+import { MDXRemote } from "next-mdx-remote";
 
-export const generateStaticParams = async () =>
-  allPosts.map(post => ({ slug: post._raw.flattenedPath }));
+interface Props {
+  params: {
+    category: string;
+  };
+}
 
-export const generateMetadata = ({ params }: any) => {
-  const post = allPosts.find(post => post._raw.flattenedPath === params.slug);
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { frontMatter } = await getPost(params.category);
 
-  if (!post) {
-    return;
-  }
+  return {
+    title: frontMatter.title,
+    description: frontMatter.excerpt,
+  };
+}
 
-  return { title: post.title };
-};
+export async function generateStaticParams() {
+  const { items: categories } = await getPosts();
 
-const PostLayout = ({ params }: { params: { slug: string } }) => {
-  const post = allPosts.find(post => post._raw.flattenedPath === params.slug);
+  return (
+    categories?.map(category => ({
+      category: category.label,
+    })) || []
+  );
+}
 
-  if (!post) {
-    return;
-  }
+export default async function CategoryPage({ params }: Props) {
+  const { frontMatter, content } = await getPost(params.category);
 
   return (
     <article className="py-8 w-full">
-      <HeadTitle title={post.title} date={post.date} />
+      <HeadTitle title={frontMatter.title} date={frontMatter.date} />
       <hr />
-      <MdxContentComponent code={post.body.code} />
+      <MDXRemote {...content} />
       <NameCard />
     </article>
   );
-};
-
-export default PostLayout;
+}

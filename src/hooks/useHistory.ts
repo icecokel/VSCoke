@@ -1,3 +1,6 @@
+"use client";
+
+
 import { IHistoryItem, historyAtom } from "@/atom/history";
 import { useAtom } from "jotai/react";
 import { useRouter } from "next/navigation";

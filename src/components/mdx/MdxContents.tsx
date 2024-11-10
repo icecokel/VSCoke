@@ -4,7 +4,7 @@ import MdxSchematic, { IMdxSchematicProps } from "./MdxSchematic";
 import MdxTable, { IMdxTableProps } from "./MdxTable";
 import MdxTip, { IMdxTipProps } from "./MdxTip";
 import type { MDXComponents } from "mdx/types";
-import { useMDXComponent } from "next-contentlayer/hooks";
+import { MDXRemote } from "next-mdx-remote";
 import Link from "next/link";
 
 const mdxComponents: MDXComponents = {
@@ -71,8 +71,12 @@ const mdxComponents: MDXComponents = {
 };
 
 const MdxContent = ({ code }: { code: string }) => {
-  const MDXContent = useMDXComponent(code);
-  return <MDXContent components={mdxComponents} />;
+  const mdxSource = {
+    compiledSource: code,
+    scope: {},
+    frontmatter: {},
+  };
+  return <MDXRemote {...mdxSource} components={mdxComponents} />;
 };
 
 export default MdxContent;

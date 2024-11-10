@@ -19,17 +19,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export async function generateStaticParams() {
-  const { items: categories } = await getPosts();
-  const paths: { category: string; slug: string }[] = [];
-
-  categories?.forEach(category => {
-    category.items?.forEach(post => {
-      const [_, categoryName, slug] = post.path?.split("/") || [];
-      if (categoryName && slug) {
-        paths.push({
-          category: categoryName,
-          slug: slug,
-        });
+  const postsTree = await getPosts();
+  const paths: { category: string; slug: string; }[] = [];
+  
+  postsTree.items?.forEach((category) => {
+    category.items?.forEach((post) => {
+      if (post.path) {
+        const pathParts = post.path.split('/').filter(Boolean);
+        if (pathParts[1] && pathParts[2]) {
+          paths.push({
+            category: pathParts[1],
+            slug: pathParts[2],
+          });
+        }
       }
     });
   });

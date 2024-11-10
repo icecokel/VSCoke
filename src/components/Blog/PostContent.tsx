@@ -1,9 +1,8 @@
-
 "use client"
 
 import HeadTitle from "./HeadTitle";
 import NameCard from "./NameCard";
-import { MDXRemote } from "next-mdx-remote";
+import {MDXRemote} from "next-mdx-remote";
 
 interface PostContentProps {
   frontMatter: {

@@ -8,6 +8,7 @@ import { getExplorer } from "@/utils/get/explorer";
 import { getPosts } from "@/utils/get/post";
 import { Metadata } from "next";
 import { Noto_Sans_KR } from "next/font/google";
+import { HistoryProvider } from "@/contexts/HistoryContext";
 
 const notoSansKr = Noto_Sans_KR({
   subsets: ["latin"],
@@ -40,13 +41,15 @@ export default async function RootLayout({ children }: IHaveChildren) {
         />
       </head>
       <body>
-        <AppProvider explorer={explorer} posts={posts}>
-          <Menubar>
-            <Sidebar>
-              <HistoryTabs>{children}</HistoryTabs>
-            </Sidebar>
-          </Menubar>
-        </AppProvider>
+        <HistoryProvider>
+          <AppProvider explorer={explorer} posts={posts}>
+            <Menubar>
+              <Sidebar>
+                <HistoryTabs>{children}</HistoryTabs>
+              </Sidebar>
+            </Menubar>
+          </AppProvider>
+        </HistoryProvider>
       </body>
     </html>
   );

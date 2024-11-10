@@ -1,4 +1,6 @@
-import { atom } from "jotai";
+"use client";
+
+
 import { atomWithStorage, createJSONStorage } from "jotai/utils";
 import { SyncStringStorage } from "jotai/vanilla/utils/atomWithStorage";
 

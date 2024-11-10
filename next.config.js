@@ -9,7 +9,6 @@ const withMDX = require("@next/mdx")({
 
 const nextConfig = {
   reactStrictMode: false,
-  swcMinify: false,
   pageExtensions: ["ts", "tsx", "js", "jsx", "md", "mdx"],
   images: {
     remotePatterns: [
@@ -33,9 +32,7 @@ const nextConfig = {
       },
     ],
   },
-  experimental: {
-    serverActions: true,
-  },
+
 };
 
 module.exports = withMDX(nextConfig);

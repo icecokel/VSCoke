@@ -1,8 +1,8 @@
 "use client";
 
 import OpenProjectModal from "./OpenProjectModal";
-import { useBoolean } from "@/hooks/useBoolean";
-import { IHaveChildren } from "@/models/common";
+import { useBoolean } from "@/hooks/use-boolean";
+import { TParentNode } from "@/models/common";
 import Menu from "@ui/Menu";
 import BaseText from "@ui/Text";
 import { MouseEventHandler, useState } from "react";
@@ -20,7 +20,7 @@ interface IMenu {
   items: IMenuItem[];
 }
 
-const Menubar = ({ children }: IHaveChildren) => {
+const Menubar = ({ children }: TParentNode) => {
   const [currentEl, setCurrentEl] = useState<null | HTMLElement>(null);
 
   const project = useBoolean();

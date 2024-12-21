@@ -1,6 +1,5 @@
 "use client";
 
-import useShortCut from "@/hooks/useShortCut";
 import Accordion from "@ui/Accordion";
 import Button from "@ui/Button";
 import Icon from "@ui/Icon";

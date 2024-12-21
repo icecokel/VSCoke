@@ -1,7 +1,7 @@
 "use client";
 
 import { TVariant } from "../components/mdx/MdxLinkHead";
-import { IHaveChildren } from "@/models/common";
+import { TParentNode } from "@/models/common";
 import { usePathname } from "next/navigation";
 import { createContext, useEffect, useState } from "react";
 
@@ -24,7 +24,7 @@ interface IMdxContext {
 
 export const mdxContext = createContext<IMdxContext>({} as IMdxContext);
 
-const MdxProvider = ({ children }: IHaveChildren) => {
+const MdxProvider = ({ children }: TParentNode) => {
   const [navList, setNavList] = useState<INav[]>([]);
   const [stickyHead, setStickyHead] = useState<ILinkNav>();
   const pathname = usePathname();

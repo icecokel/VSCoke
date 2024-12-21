@@ -1,4 +1,4 @@
-import { ITree } from "@/hooks/useExplorer";
+import { ITree } from "@/hooks/use-explorer";
 import { cache } from "react";
 
 export const getExplorer = cache(async (): Promise<ITree[]> => {

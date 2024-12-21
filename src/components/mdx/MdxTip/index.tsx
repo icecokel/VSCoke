@@ -1,10 +1,10 @@
 import styles from "./style.module.css";
 import Icon from "@/components/baseUi/Icon";
-import { IHaveChildren } from "@/models/common";
+import { TParentNode } from "@/models/common";
 
 type TTipType = "info";
 
-export interface IMdxTipProps extends IHaveChildren {
+export interface IMdxTipProps extends TParentNode {
   type?: TTipType;
 }
 

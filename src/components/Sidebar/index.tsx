@@ -2,9 +2,9 @@
 
 import Explorer from "./Explorer";
 import Search from "./Search";
-import useClickOutSide from "@/hooks/useClickOutSide";
-import useShortCut from "@/hooks/useShortCut";
-import { IHaveChildren } from "@/models/common";
+import useClickOutSide from "@/hooks/use-click-out-side";
+import useShortCut from "@/hooks/use-short-cut";
+import { TParentNode } from "@/models/common";
 import { TSidebar } from "@/models/enum/sidebar";
 import Icon from "@ui/Icon";
 import { useState } from "react";
@@ -22,7 +22,7 @@ const TABS = [
   },
 ];
 
-const Sidebar = ({ children }: IHaveChildren) => {
+const Sidebar = ({ children }: TParentNode) => {
   const [tab, setTab] = useState<TSidebar | "none">("none");
   const tabClose = () => {
     setTab("none");

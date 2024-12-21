@@ -1,7 +1,7 @@
 "use client";
 
-import useHistory from "@/hooks/useHistory";
-import { IHaveChildren } from "@/models/common";
+import useHistory from "@/hooks/use-history";
+import { TParentNode } from "@/models/common";
 import Container from "@ui/Container";
 import Icon from "@ui/Icon";
 import Menu from "@ui/Menu";
@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
-const HistoryTabs = ({ children }: IHaveChildren) => {
+const HistoryTabs = ({ children }: TParentNode) => {
   const [currentEl, setCurrentEl] = useState<null | HTMLElement>(null);
   const { history, change, remove, setHistory, current, add } = useHistory();
   const router = useRouter();

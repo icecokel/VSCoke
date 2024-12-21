@@ -2,10 +2,10 @@
 
 import BaseText from "../Text";
 import styles from "./style.module.css";
-import { IHaveChildren } from "@/models/common";
+import { TParentNode } from "@/models/common";
 import { useState } from "react";
 
-interface ITooltipProps extends IHaveChildren {
+interface ITooltipProps extends TParentNode {
   text: string;
   placement?: "bottom";
 }

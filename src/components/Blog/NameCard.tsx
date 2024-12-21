@@ -1,6 +1,6 @@
 "use client";
 
-import useHistory from "@/hooks/useHistory";
+import useHistory from "@/hooks/use-history";
 import Avatar from "@ui/Avatar";
 import BaseText from "@ui/Text";
 

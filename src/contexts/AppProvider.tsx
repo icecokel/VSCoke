@@ -1,14 +1,14 @@
 "use client";
 
-import { ITree } from "@/hooks/useExplorer";
-import { IHaveChildren } from "@/models/common";
+import { ITree } from "@/hooks/use-explorer";
+import { TParentNode } from "@/models/common";
 import SnackBarProvider from "@ui/SnackBar/context/SnackBarProvider";
 import { createContext } from "react";
 
 export const BlogContext = createContext<ITree | undefined>({} as ITree);
 export const ExplorerContext = createContext<ITree[]>([]);
 
-interface IAppProviderProps extends IHaveChildren {
+interface IAppProviderProps extends TParentNode {
   posts?: ITree;
   explorer: ITree[];
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import useSortByKey from "./useSortByKey";
+import useSortByKey from "./use-sort-by-key";
 import { BlogContext, ExplorerContext } from "@/contexts/AppProvider";
 import { useContext, useEffect, useState } from "react";
 

@@ -1,4 +1,4 @@
-import useKeyPress from "@/hooks/useKeyPress";
+import useKeyPress from "@/hooks/use-key-press";
 import { useEffect } from "react";
 
 /**

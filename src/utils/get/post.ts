@@ -1,6 +1,6 @@
 "use server";
 
-import { ITree } from "@/hooks/useExplorer";
+import { ITree } from "@/hooks/use-explorer";
 import { compareDesc } from "date-fns";
 import fs from "fs";
 import matter from "gray-matter";

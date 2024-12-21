@@ -1,9 +1,9 @@
 "use client";
 
-import { IHaveChildren } from "@/models/common";
+import { TParentNode } from "@/models/common";
 import Slide from "@ui/Slide";
 
-interface SidebarLayoutProps extends IHaveChildren {
+interface SidebarLayoutProps extends TParentNode {
   isShowing: boolean;
 }
 

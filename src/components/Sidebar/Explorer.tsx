@@ -1,8 +1,8 @@
 "use client";
 
 import SidebarLayout from "./SidebarLayout";
-import useExplorer, { ITree } from "@/hooks/useExplorer";
-import useHistory from "@/hooks/useHistory";
+import useExplorer, { ITree } from "@/hooks/use-explorer";
+import useHistory from "@/hooks/use-history";
 import Icon from "@ui/Icon";
 import BaseText from "@ui/Text";
 import { MouseEvent, useState } from "react";
@@ -48,7 +48,7 @@ const convertIcon = (icon?: string) => {
 };
 Explorer.item = ({ id, label, path, items, tabClose, icon }: IItemProps) => {
   const [openedId, setOpenedId] = useState("");
-  const url = !items ? path ?? "" : "";
+  const url = !items ? (path ?? "") : "";
   const { add } = useHistory();
 
   const handleClickTree = ({ currentTarget: { ariaValueText } }: MouseEvent<HTMLDivElement>) => {

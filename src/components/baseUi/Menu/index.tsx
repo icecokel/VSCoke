@@ -1,8 +1,8 @@
 import styles from "./style.module.css";
-import useClickOutSide from "@/hooks/useClickOutSide";
-import { IHaveChildren } from "@/models/common";
+import useClickOutSide from "@/hooks/use-click-out-side";
+import { TParentNode } from "@/models/common";
 
-interface IMenuProps extends IHaveChildren {
+interface IMenuProps extends TParentNode {
   targetEl: null | HTMLElement;
   onClose: () => void;
 }
@@ -32,7 +32,7 @@ const Menu = ({ targetEl, children, onClose }: IMenuProps) => {
 
 export default Menu;
 
-interface IMenuItemProps extends IHaveChildren {
+interface IMenuItemProps extends TParentNode {
   onClick?: () => void;
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { IHaveChildren } from "@/models/common";
+import { TParentNode } from "@/models/common";
 import Avatar from "@ui/Avatar";
 import Button from "@ui/Button";
 import Chip from "@ui/Chip";
@@ -125,7 +125,7 @@ const Profile = () => {
 
 export default Profile;
 
-interface IItemProps extends IHaveChildren {
+interface IItemProps extends TParentNode {
   title: string;
 }
 

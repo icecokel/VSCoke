@@ -1,5 +1,5 @@
 import SnackBar from "..";
-import { IHaveChildren } from "@/models/common";
+import { TParentNode } from "@/models/common";
 import { ISnackBar } from "@ui/SnackBar/type/type";
 import { Dispatch, SetStateAction, createContext, useState } from "react";
 
@@ -11,7 +11,7 @@ const DEFAULT_OPTION: ISnackBar = { open: false };
 
 export const SnackBarContext = createContext<ISnackBarContext>({} as ISnackBarContext);
 
-const SnackBarProvider = ({ children }: IHaveChildren) => {
+const SnackBarProvider = ({ children }: TParentNode) => {
   const [option, setOption] = useState<ISnackBar>(DEFAULT_OPTION);
 
   return (

@@ -3,14 +3,14 @@
 import MdxNav from "@/components/mdx/MdxNav";
 import MdxProgressBar from "@/components/mdx/MdxProgressBar";
 import MdxProvider from "@/contexts/MdxContext";
-import { IHaveChildren } from "@/models/common";
+import { TParentNode } from "@/models/common";
 import { debounce } from "@/utils/DebounceUtil";
 import Container from "@ui/Container";
 import { useEffect, useRef, useState } from "react";
 
 const DEBOUNCE_TIME = 10;
 
-export default function Layout({ children }: IHaveChildren) {
+export default function Layout({ children }: TParentNode) {
   const [readPerPost, setReadPerPost] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
 

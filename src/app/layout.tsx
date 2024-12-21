@@ -3,7 +3,7 @@ import HistoryTabs from "@/components/HistoryTabs";
 import Menubar from "@/components/Menubar";
 import Sidebar from "@/components/Sidebar";
 import AppProvider from "@/contexts/AppProvider";
-import { IHaveChildren } from "@/models/common";
+import { TParentNode } from "@/models/common";
 import { getExplorer } from "@/utils/get/explorer";
 import { getPosts } from "@/utils/get/post";
 import { Metadata } from "next";
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   title: "VSCOKE",
 };
 
-export default async function RootLayout({ children }: IHaveChildren) {
+export default async function RootLayout({ children }: TParentNode) {
   const posts = await getPosts();
 
   const explorer = await getExplorer();

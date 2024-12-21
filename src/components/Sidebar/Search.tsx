@@ -1,7 +1,7 @@
 "use client";
 
 import SidebarLayout from "./SidebarLayout";
-import useHistory from "@/hooks/useHistory";
+import useHistory from "@/hooks/use-history";
 import { searchPosts } from "@/utils/get/post";
 import Icon from "@ui/Icon";
 import { useState } from "react";

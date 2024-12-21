@@ -1,10 +1,10 @@
 import styles from "./style.module.css";
-import useClickOutSide from "@/hooks/useClickOutSide";
-import useShortCut from "@/hooks/useShortCut";
-import { IHaveChildren } from "@/models/common";
+import useClickOutSide from "@/hooks/use-click-out-side";
+import useShortCut from "@/hooks/use-short-cut";
+import { TParentNode } from "@/models/common";
 import { createPortal } from "react-dom";
 
-export interface IModalProps extends IHaveChildren {
+export interface IModalProps extends TParentNode {
   open: boolean;
   onClose: () => void;
   disabledEscape?: boolean;

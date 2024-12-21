@@ -1,6 +1,6 @@
 "use client";
 
-import { IHaveChildren } from "@/models/common";
+import { TParentNode } from "@/models/common";
 import Icon from "@ui/Icon";
 import Slide from "@ui/Slide";
 import BaseText from "@ui/Text";
@@ -11,7 +11,7 @@ interface IAccordion {
   toggle: () => void;
 }
 
-interface IAccordionProps extends IHaveChildren {
+interface IAccordionProps extends TParentNode {
   className?: HTMLAttributes<HTMLDivElement>["className"];
 }
 
@@ -37,7 +37,7 @@ const Accordion = ({ children, className }: IAccordionProps) => {
 
 export default Accordion;
 
-Accordion.Summary = ({ children }: IHaveChildren) => {
+Accordion.Summary = ({ children }: TParentNode) => {
   const { expanded, toggle } = useContext(AccordionContext);
   const handleClickToggle = toggle;
   return (
@@ -51,7 +51,7 @@ Accordion.Summary = ({ children }: IHaveChildren) => {
   );
 };
 
-Accordion.Details = ({ children }: IHaveChildren) => {
+Accordion.Details = ({ children }: TParentNode) => {
   const { expanded } = useContext(AccordionContext);
 
   return (

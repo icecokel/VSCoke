@@ -36,7 +36,7 @@ interface IMdxFile {
 }
 
 // Constants
-const POSTS_DIRECTORY = path.join(process.cwd(), "posts");
+const POSTS_DIRECTORY = path.join(`${process.cwd()}/src`, "posts");
 
 // Cache post data
 const postCache = new Map<string, PostData>();
@@ -98,7 +98,7 @@ export const getPosts = cache(async (): Promise<ITree> => {
     posts[targetIndex]?.items?.push({
       id: file.filePath,
       label: file.frontMatter.title,
-      path: `/posts${file.filePath}`,
+      path: `./src/${file.filePath}`,
       icon: "blog",
     });
   });
@@ -147,7 +147,7 @@ export const searchPosts = (keyword: string): ISearchResult[] => {
     .sort((a, b) => compareDesc(new Date(a.frontMatter.date), new Date(b.frontMatter.date)))
     .map(file => ({
       title: file.frontMatter.title,
-      path: `/posts${file.filePath}`,
+      path: `./src/${file.filePath}`,
       excerpt: file.content.slice(0, 150) + "...",
     }));
 };

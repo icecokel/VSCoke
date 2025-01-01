@@ -1,7 +1,7 @@
 import { convertByFormat } from "@/utils/DateUtil";
 
 interface IHeadTitle {
-  title: string;
+  title?: string;
   date: string;
 }
 

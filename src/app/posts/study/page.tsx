@@ -19,25 +19,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export async function generateStaticParams() {
-  const { items: categories } = await getPosts();
+// export async function generateStaticParams() {
+//   const { items: categories } = await getPosts();
 
-  return (
-    categories?.map(category => ({
-      category: category.label,
-    })) || []
-  );
-}
+//   return (
+//     categories?.map(category => ({
+//       category: category.label,
+//     })) || []
+//   );
+// }
 
 export default async function CategoryPage({ params }: Props) {
-  const { frontMatter, content } = await getPost(params.category);
+  const { content } = await import(`@/posts/${params.category}.mdx`);
 
   return (
-    <article className="py-8 w-full">
-      <HeadTitle title={frontMatter.title} date={frontMatter.date} />
-      <hr />
-      <MDXRemote {...content} />
-      <NameCard />
-    </article>
+    <div>test</div>
+    // <article className="py-8 w-full">
+    //   <HeadTitle title={frontMatter.title} date={frontMatter.date} />
+    //   <hr />
+    //   <MDXRemote {...content} />
+    //   <NameCard />
+    // </article>
   );
 }

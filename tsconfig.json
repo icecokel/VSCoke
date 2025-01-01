@@ -22,7 +22,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@ui/*": ["src/components/baseUi/*"]
+      "@ui/*": ["src/components/baseUi/*"],
+      "@posts/*": ["src/posts/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

@@ -25,7 +25,7 @@ const Tooltip = ({ children, placement = "bottom", text }: ITooltipProps) => {
         {children}
       </div>
       {showTooltip && (
-        <BaseText className="bg-gray-900 text-white/90 absolute rounded text-xs translate-y-12" type="caption">
+        <BaseText className="bg-gray-900 text-white/90 absolute rounded-sm text-xs translate-y-12" type="caption">
           {text}
         </BaseText>
       )}

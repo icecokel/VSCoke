@@ -3,7 +3,7 @@
 import Accordion from "@/components/base-ui/accordion";
 import Button from "@/components/base-ui/button";
 import Icon from "@/components/base-ui/icon";
-import { TKind } from "@/components/base-ui/icon/types";
+import { TKind } from "@/components/base-ui/icon.types";
 import Modal, { IModalProps } from "@/components/base-ui/modal";
 import useSnackBar from "@/components/base-ui/snack-bar/hooks/use-snack-bar";
 import BaseText from "@/components/base-ui/text";

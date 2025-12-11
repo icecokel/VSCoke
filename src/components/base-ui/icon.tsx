@@ -1,6 +1,6 @@
 "use client";
 
-import { TKind, TShape } from "./types";
+import { TKind, TShape } from "./icon.types";
 import { HTMLAttributes } from "react";
 
 interface IIconProps extends HTMLAttributes<HTMLSpanElement> {

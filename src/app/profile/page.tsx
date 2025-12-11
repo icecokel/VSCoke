@@ -1,4 +1,4 @@
-import Profile from "@/components/profile";
+import Profile from "@/components/profile/profile";
 import { NextPage } from "next";
 
 /**

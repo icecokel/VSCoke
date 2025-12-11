@@ -1,7 +1,7 @@
 'use client';
 
 import React, { HTMLAttributes, ReactNode } from 'react';
-import Slide, { ISlideProps } from '../slide';
+import Slide, { ISlideProps } from './slide';
 
 interface ISlideGroupProps extends Omit<ISlideProps, 'delay'> {
   children: ReactNode;

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
-import Menubar from "@/components/menubar";
-import Sidebar from "@/components/sidebar";
-import HistoryTabs from "@/components/history-tabs";
+import Menubar from "@/components/menubar/menubar";
+import Sidebar from "@/components/sidebar/sidebar";
+import HistoryTabs from "@/components/history-tabs/history-tabs";
 import AppProvider from "@/contexts/app-provider";
 import { HistoryProvider } from "@/contexts/history-context";
 import { getExplorer } from "@/utils/get/explorer";

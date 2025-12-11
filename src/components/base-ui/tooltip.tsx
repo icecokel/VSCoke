@@ -1,6 +1,6 @@
 "use client";
 
-import BaseText from "../text";
+import BaseText from "./text";
 import { TParentNode } from "@/models/common";
 import { useState } from "react";
 

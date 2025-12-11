@@ -9,7 +9,7 @@ const Resume = () => {
 
   return (
     <div className="flex justify-between">
-      <div className="gap-5 ml-5 mt-5 fixed hidden lg:block bg-gray-800/95 p-4 rounded-lg backdrop-blur-sm max-w-[240px]">
+      <div className="gap-5 ml-5 mt-5 fixed hidden lg:block bg-gray-800/95 p-4 rounded-lg backdrop-blur-xs max-w-[240px]">
         {careers.map((career, index) => (
           <div key={index} className="mb-4">
             <a href={`#career_${index}`}>
@@ -160,7 +160,7 @@ Resume.description = ({ description }: { description: Description }) => {
       )}
 
       {description.achievement && (
-        <div className="mt-3 p-3 bg-blue-300/10 rounded border-l-4 border-blue-300">
+        <div className="mt-3 p-3 bg-blue-300/10 rounded-sm border-l-4 border-blue-300">
           <BaseText type="body2" className="text-blue-100 font-medium">
             💡 성과
           </BaseText>

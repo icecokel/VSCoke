@@ -13,7 +13,7 @@ const NotFound = () => {
         <BaseText type="h4" className="text-center text-red-400/90 border-b pb-4">
           페이지를 찾을 수 없습니다.
         </BaseText>
-        <div className="bg-beige-400 py-2 px-4 rounded text-black">
+        <div className="bg-beige-400 py-2 px-4 rounded-sm text-black">
           <div className="flex items-end">
             <BaseText type="body1" className="text-yellow-200 font-bold mx-[0.5em]">
               &quot;{path}&quot;

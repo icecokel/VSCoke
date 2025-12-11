@@ -14,7 +14,7 @@ interface IIconProps extends HTMLAttributes<HTMLSpanElement> {
  * @returns google font icon
  */
 
-const Icon = ({ kind, shape = "rounded", className, size, style, ...restProps }: IIconProps) => {
+const Icon = ({ kind, shape = "rounded-sm", className, size, style, ...restProps }: IIconProps) => {
   return createElement("span", {
     className: `material-symbols-${shape} ${className}`,
     style: { fontSize: size, ...style },

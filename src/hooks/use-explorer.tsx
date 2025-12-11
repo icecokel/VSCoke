@@ -1,7 +1,7 @@
 "use client";
 
 import useSortByKey from "./use-sort-by-key";
-import { ExplorerContext } from "@/contexts/AppProvider";
+import { ExplorerContext } from "@/contexts/app-provider";
 import { useContext, useEffect, useState } from "react";
 
 export interface ITree {

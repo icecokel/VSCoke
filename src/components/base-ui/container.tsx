@@ -1,4 +1,4 @@
-import { breakPoints } from "@/styles/breakPoints";
+import { breakPoints } from "@/styles/break-points";
 import { HtmlHTMLAttributes, createElement } from "react";
 
 interface IContainer extends HtmlHTMLAttributes<HTMLDivElement> {

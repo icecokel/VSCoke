@@ -4,8 +4,8 @@ import "./globals.css";
 import Menubar from "@/components/menubar";
 import Sidebar from "@/components/sidebar";
 import HistoryTabs from "@/components/history-tabs";
-import AppProvider from "@/contexts/AppProvider";
-import { HistoryProvider } from "@/contexts/HistoryContext";
+import AppProvider from "@/contexts/app-provider";
+import { HistoryProvider } from "@/contexts/history-context";
 import { getExplorer } from "@/utils/get/explorer";
 
 const notoSansKr = Noto_Sans_KR({

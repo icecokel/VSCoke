@@ -1,7 +1,7 @@
 "use client";
 
-import { IHistoryItem } from "@/contexts/HistoryContext";
-import { useHistoryContext } from "@/contexts/HistoryContext";
+import { IHistoryItem } from "@/contexts/history-context";
+import { useHistoryContext } from "@/contexts/history-context";
 import { useRouter } from "next/navigation";
 
 const useHistory = () => {

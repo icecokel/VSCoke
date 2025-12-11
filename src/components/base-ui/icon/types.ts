@@ -886,7 +886,7 @@ export type TKind =
   | "gesture_select"
   | "account_child_invert"
   | "account_child"
-  | "shadow"
+  | "shadow-sm"
   | "add_ad"
   | "bookmark_manager"
   | "watch_screentime"

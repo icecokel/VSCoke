@@ -1,7 +1,7 @@
 "use client";
 
 import { TKind, TShape } from "./types";
-import { HTMLAttributes, createElement } from "react";
+import { HTMLAttributes } from "react";
 
 interface IIconProps extends HTMLAttributes<HTMLSpanElement> {
   kind: TKind;
@@ -15,12 +15,15 @@ interface IIconProps extends HTMLAttributes<HTMLSpanElement> {
  */
 
 const Icon = ({ kind, shape = "rounded", className, size, style, ...restProps }: IIconProps) => {
-  return createElement("span", {
-    className: `material-symbols-${shape} ${className}`,
-    style: { fontSize: size, ...style },
-    dangerouslySetInnerHTML: { __html: kind },
-    ...restProps,
-  });
+  return (
+    <span
+      className={`material-symbols-${shape} ${className || ""}`}
+      style={{ fontSize: size, ...style }}
+      {...restProps}
+    >
+      {kind}
+    </span>
+  );
 };
 
 export default Icon;

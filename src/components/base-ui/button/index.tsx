@@ -8,11 +8,11 @@ interface IButton extends HtmlHTMLAttributes<HTMLButtonElement> {
 }
 
 const getButtonClasses = (type: TButtonType, color: TColor) => {
-  const baseClasses = "font-semibold py-2 px-4 rounded transition-colors duration-300";
+  const baseClasses = "cursor-pointer font-semibold py-2 px-4 rounded-sm transition-colors duration-300";
 
   const typeClasses = {
     text: "text-white",
-    outline: "text-black bg-white",
+    "outline-solid": "text-black bg-white",
     contained: "text-white border",
   };
 
@@ -21,7 +21,7 @@ const getButtonClasses = (type: TButtonType, color: TColor) => {
     secondary: "bg-gray-300 hover:bg-gray-300/50",
   };
 
-  const disabledClasses = "disabled:text-gray-100 disabled:bg-gray-300 disabled:border-gray-100";
+  const disabledClasses = "disabled:cursor-default disabled:text-gray-100 disabled:bg-gray-300 disabled:border-gray-100";
 
   return `${baseClasses} ${typeClasses[type]} ${colorClasses[color]} ${disabledClasses}`;
 };

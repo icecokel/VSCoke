@@ -116,8 +116,8 @@ const HistoryTabs = ({ children }: TParentNode) => {
             <div
               id={`${item.path}`}
               className={twMerge(
-                "border border-gray-300/60 border-l-[0px] h-[32px] truncate",
-                item.isActive ? "bg-gray-800 border-b-[0px]" : "hover:bg-gray-600",
+                "border border-gray-300/60 border-l-0 h-[32px] truncate",
+                item.isActive ? "bg-gray-800 border-b-0" : "hover:bg-gray-600",
               )}
               onClick={() => handleClickTab(item)}
               onContextMenu={handleRightClickTab}
@@ -130,7 +130,7 @@ const HistoryTabs = ({ children }: TParentNode) => {
                 className={twMerge(
                   "text-gray-300/80 md:py-[6px] md:px-[20px] py-[4px] px-[8px] text-sm flex items-center",
                   item.isActive &&
-                    "text-yellow-200/95 font-medium border-t pt-[1px] border-t-blue-300 md:pt-[5px]",
+                    "text-yellow-200/95 font-medium border-t pt-px border-t-blue-300 md:pt-[5px]",
                 )}
               >
                 {item.title}

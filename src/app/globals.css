@@ -4,6 +4,8 @@
 
 body {
   margin: 0px;
+  background-color: rgb(31, 31, 31);
+  color: rgb(255, 255, 255);
   --gray-color-50: rgb(215, 215, 215);
   --gray-color-100: rgb(204, 204, 204);
   --gray-color-300: rgb(140, 140, 140);

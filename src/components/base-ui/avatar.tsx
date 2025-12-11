@@ -28,17 +28,18 @@ const Avatar = ({ className, src, size }: IAvatar) => {
     }
   }, []);
   return (
-    <Image
-      src={`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL}${src}`}
-      alt="avatar"
-      className={className}
-      style={{
-        borderRadius: "50%",
-        objectFit: "cover",
-      }}
-      width={imageSize}
-      height={imageSize}
-    />
+    // <Image
+    //   src={src}
+    //   alt="avatar"
+    //   className={className}
+    //   style={{
+    //     borderRadius: "50%",
+    //     objectFit: "cover",
+    //   }}
+    //   width={imageSize}
+    //   height={imageSize}
+    // />
+    <div className={className} style={{ borderRadius: "50%", width: imageSize, height: imageSize }} />
   );
 };
 

@@ -34,29 +34,9 @@ const CareerSection = ({ career, index }: CareerSectionProps) => {
             )}
           </div>
 
-          {project.phase ? (
-            // Phase 구조가 있는 경우
-            project.phase.map((phase, phaseIndex) => (
-              <div key={phaseIndex} className="mb-6 ml-4">
-                <BaseText type="body1" className="text-blue-100 font-bold mb-3">
-                  {phase.name}
-                </BaseText>
-                {phase.descriptions.map((desc, descIndex) => (
-                  <DescriptionItem key={descIndex} description={desc} />
-                ))}
-                {phase.note && (
-                  <BaseText type="body2" className="text-gray-300 mt-3 italic">
-                    * {phase.note}
-                  </BaseText>
-                )}
-              </div>
-            ))
-          ) : (
-            // 일반 descriptions 구조
-            project.descriptions?.map((desc, descIndex) => (
-              <DescriptionItem key={descIndex} description={desc} />
-            ))
-          )}
+          {project.descriptions?.map((desc, descIndex) => (
+            <DescriptionItem key={descIndex} description={desc} />
+          ))}
         </div>
       ))}
     </div>

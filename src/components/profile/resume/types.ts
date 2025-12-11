@@ -9,7 +9,6 @@ export interface Project {
   title: string;
   period?: string;
   descriptions?: Description[];
-  phase?: Phase[];
 }
 
 export interface Description {
@@ -18,10 +17,4 @@ export interface Description {
   skills?: string;
   tasks?: string[];
   achievement?: string;
-}
-
-export interface Phase {
-  name: string;
-  descriptions: Description[];
-  note?: string;
 }

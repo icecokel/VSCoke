@@ -270,29 +270,16 @@
         {
           "title": "AIG 기업 상품 가입 신청 페이지 FE 및 유지 보수",
           "period": "2021.11 - 2022.08",
-          "phase": [
+          "descriptions": [
             {
-              "name": "Phase 1",
-              "descriptions": [
-                {
-                  "subtitle": "AIG 기업 상품 가입 신청페이지 반응형 웹 설계 및 구축",
-                  "skills": "React, TypeScript, Context API"
-                },
-                {
-                  "subtitle": "전역 상태 관리 추가",
-                  "tasks": ["베이스 프로젝트에 전역 상태 관리 기능 추가"]
-                }
-              ]
+              "subtitle": "Phase 1: AIG 기업 상품 가입 신청페이지 반응형 웹 설계 및 구축",
+              "skills": "React, TypeScript, Context API",
+              "tasks": ["베이스 프로젝트에 전역 상태 관리 기능 추가"]
             },
             {
-              "name": "Phase 2",
-              "descriptions": [
-                {
-                  "subtitle": "결제 기능 추가",
-                  "tasks": ["결제 정보 입력 화면 및 결제 api 연계"]
-                }
-              ],
-              "note": "특이사항: 서버리스 프로젝트(API Gateway, Lambda) 테이블 단위로만 조회가능, 초기 설계 문제로 인한 callBack hell 이슈발생, api 통신쪽 비동기 처리하여 callback hell 이슈 해결"
+              "subtitle": "Phase 2: 결제 기능 추가",
+              "tasks": ["결제 정보 입력 화면 및 결제 api 연계"],
+              "detail": "특이사항: 서버리스 프로젝트(API Gateway, Lambda) 테이블 단위로만 조회가능, 초기 설계 문제로 인한 callBack hell 이슈발생, api 통신쪽 비동기 처리하여 callback hell 이슈 해결"
             }
           ]
         },

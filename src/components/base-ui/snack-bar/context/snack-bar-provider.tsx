@@ -1,6 +1,6 @@
 import SnackBar from "..";
 import { TParentNode } from "@/models/common";
-import { ISnackBar } from "@/components/base-ui/snack-bar/type/type";
+import { ISnackBar } from "@/components/base-ui/snack-bar/types/types";
 import { Dispatch, SetStateAction, createContext, useState } from "react";
 
 interface ISnackBarContext extends ISnackBar {

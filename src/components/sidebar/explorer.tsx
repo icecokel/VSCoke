@@ -68,7 +68,7 @@ const ExplorerItem = ({ id, label, path, items, tabClose, icon }: IItemProps) =>
   return (
     <div className="flex flex-col gap-y-1 cursor-pointer select-none">
       <div
-        className="flex items-center gap-x-1 hover:bg-blue-300/10 rounded-sm"
+        className="flex items-center gap-x-1 hover:bg-blue-300/10 rounded-xs"
         aria-valuetext={id}
         onClick={handleClickTree}
       >

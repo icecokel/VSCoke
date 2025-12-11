@@ -29,7 +29,7 @@ const Profile = () => {
             코딩만 하지 않는 <br className="md:hidden" />
             개발자 이상민입니다.
           </BaseText>
-          <div className="mt-5 w-full max-w-sm bg-blue-100/20 rounded p-4 gap-4 flex flex-col">
+          <div className="mt-5 w-full max-w-sm bg-blue-100/20 rounded-sm p-4 gap-4 flex flex-col">
             <Tooltip text="이메일 보내기">
               <BaseText
                 type="body1"
@@ -112,10 +112,10 @@ const Profile = () => {
         <div className="flex justify-end">
           <Button
             type="contained"
-            className="bg-yellow-200 !text-black hover:!text-blue-300 !rounded-[24px] flex items-center gap-x-2 shadow-[2px_4px_4px_rgb(0,0,0,0.4)]"
+            className="bg-yellow-200 text-black! hover:text-blue-300! rounded-[24px]! flex items-center gap-x-2 shadow-[2px_4px_4px_rgb(0,0,0,0.4)]"
           >
             <BaseText type="body2">경력 보러가기</BaseText>
-            <Icon kind="navigation" className="rotate-[90deg]" />
+            <Icon kind="navigation" className="rotate-90" />
           </Button>
         </div>
       </Link>

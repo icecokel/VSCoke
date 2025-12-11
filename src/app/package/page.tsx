@@ -39,7 +39,7 @@ const PackagePage: NextPage = () => {
   };
 
   return (
-    <div className="p-5 bg-gray-700 rounded">
+    <div className="p-5 bg-gray-700 rounded-sm">
       <pre className="-ml-[1em]">
         <code>{renderValue(data)}</code>
       </pre>

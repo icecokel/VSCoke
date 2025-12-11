@@ -48,7 +48,7 @@ const Sidebar = ({ children }: TParentNode) => {
   return (
     <div className="flex">
       <div className="flex" ref={tabRef}>
-        <div className="flex-col gap-1 items-center md:flex hidden z-20 min-h-screen w-[50px] border-r-[1px] border-r-gray-500 bg-gray-900 py-2 text-gray-100">
+        <div className="flex-col gap-1 items-center md:flex hidden z-20 min-h-screen w-[50px] border-r border-r-gray-500 bg-gray-900 py-2 text-gray-100">
           {TABS.map(({ name, icon }) => {
             return (
               <label

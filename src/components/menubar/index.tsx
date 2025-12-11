@@ -61,7 +61,7 @@ const Menubar = ({ children }: TParentNode) => {
               key={`${item.key}_${index}`}
               onClick={handleClickMenu}
               id={`${item.name}`}
-              className="hover:bg-gray-300 text-gray-300 hover:text-black hover:rounded-sm"
+              className="hover:bg-gray-300 text-gray-300 hover:text-black hover:rounded-xs"
             >
               <BaseText type="body1" className="px-3 select-none">
                 {item.name}

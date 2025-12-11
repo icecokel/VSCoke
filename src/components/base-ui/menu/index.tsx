@@ -21,7 +21,7 @@ const Menu = ({ targetEl, children, onClose }: IMenuProps) => {
         top: rect?.bottom,
         left: rect?.left,
       }}
-      className="absolute min-w-40 p-2 bg-gray-800 text-white rounded flex gap-2 flex-col border-gray-900 z-30 cursor-pointer"
+      className="absolute min-w-40 p-2 bg-gray-800 text-white rounded-sm flex gap-2 flex-col border-gray-900 z-30 cursor-pointer"
       ref={ref}
     >
       {children}

@@ -38,7 +38,7 @@ const Search = ({ isShowing }: SearchProps) => {
         <input
           type="text"
           placeholder="Search"
-          className="w-full rounded-sm border-[0.5px] border-gray-300 bg-gray-700 px-2 py-1 text-xs"
+          className="w-full rounded-xs border-[0.5px] border-gray-300 bg-gray-700 px-2 py-1 text-xs"
           defaultValue={keyword}
           onKeyDown={handleChangeKeyword}
         />

@@ -1,6 +1,6 @@
-import Icon from "../icon";
-import Modal, { IModalProps } from "../modal";
-import BaseText from "../text";
+import Icon from "./icon";
+import Modal, { IModalProps } from "./modal";
+import BaseText from "./text";
 
 interface IDialogProps extends IModalProps {
   open: boolean;

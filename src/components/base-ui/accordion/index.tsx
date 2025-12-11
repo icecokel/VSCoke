@@ -46,7 +46,7 @@ const AccordionSummary = ({ children }: TParentNode) => {
   const handleClickToggle = toggle;
   return (
     <button
-      className="flex items-center justify-between rounded px-2 w-full"
+      className="flex items-center justify-between rounded-sm px-2 w-full"
       onClick={handleClickToggle}
     >
       <BaseText type="h6">{children}</BaseText>
@@ -60,7 +60,7 @@ const AccordionDetails = ({ children }: TParentNode) => {
 
   return (
     <Slide active={expanded} direction="down" duration={100}>
-      <div className="px-2 mt-1 rounded">{children}</div>
+      <div className="px-2 mt-1 rounded-sm">{children}</div>
     </Slide>
   );
 };

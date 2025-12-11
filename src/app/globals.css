@@ -1,28 +1,67 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@theme {
+  --color-*: initial;
+  --color-gray-50: #d7d7d7;
+  --color-gray-100: #cccccc;
+  --color-gray-300: #8c8c8c;
+  --color-gray-500: #4c4c4c;
+  --color-gray-600: #323232;
+  --color-gray-700: #2a2a2a;
+  --color-gray-800: #1f1f1f;
+  --color-gray-900: #181818;
+
+  --color-blue-100: #9cdcfe;
+  --color-blue-300: #0078d4;
+
+  --color-yellow-100: #d68f34;
+  --color-yellow-200: #cca700;
+
+  --color-green-300: #3bc9b0;
+
+  --color-beige-400: #f7f6f3;
+
+  --color-red-400: #f85149;
+
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  --breakpoint-*: initial;
+  --breakpoint-xs: 0px;
+  --breakpoint-sm: 600px;
+  --breakpoint-md: 900px;
+  --breakpoint-lg: 1200px;
+  --breakpoint-xl: 1440px;
+
+  --background-image-gradient-radial: radial-gradient(var(--tw-gradient-stops));
+  --background-image-gradient-conic: conic-gradient(
+    from 180deg at 50% 50%,
+    var(--tw-gradient-stops)
+  );
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
 
 body {
   margin: 0px;
   background-color: rgb(31, 31, 31);
   color: rgb(255, 255, 255);
-  --gray-color-50: rgb(215, 215, 215);
-  --gray-color-100: rgb(204, 204, 204);
-  --gray-color-300: rgb(140, 140, 140);
-  --gray-color-500: rgb(76, 76, 76);
-  --gray-color-600: rgb(50, 50, 50);
-  --gray-color-700: rgb(42, 42, 42);
-  --gray-color-800: rgb(31, 31, 31);
-  --gray-color-900: rgb(24, 24, 24);
-  --blue-color-100: rgb(156, 220, 254);
-  --blue-color-300: rgb(0, 120, 212);
-  --yellow-color-100: rgb(214, 143, 52);
-  --yellow-color-200: rgb(204, 167, 0);
-  --green-color-300: rgb(59, 201, 176);
-  --beige-color-400: rgb(247, 246, 243);
-  --red-color-400: rgb(248, 81, 73);
-  --white-color: rgb(255, 255, 255);
-  --black-color: rgb(0, 0, 0);
 }
 
 * {

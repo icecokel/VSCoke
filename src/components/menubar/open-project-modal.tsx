@@ -58,7 +58,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
   return (
     <Modal {...props}>
       <div className="m-2 text-white flex gap-1">
-        <div className="border rounded-sm border-gray-600 bg-gray-800 hidden md:block">
+        <div className="border rounded-xs border-gray-600 bg-gray-800 hidden md:block">
           <OpenProjectModal.item iconKind={"schedule"} label={"최근항목"} />
           <OpenProjectModal.item iconKind={"terminal"} label={"응용 프로그램"} />
           <OpenProjectModal.item iconKind={"computer"} label={"데스크탑"} />
@@ -67,7 +67,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
         </div>
         <div className="w-full hidden md:block md:w-auto">
           <div className="flex min-h-[350px] gap-x-1">
-            <section className="border rounded-sm border-gray-600 w-1/2 bg-gray-800 md:min-w-[250px]">
+            <section className="border rounded-xs border-gray-600 w-1/2 bg-gray-800 md:min-w-[250px]">
               {DUMMY.map((category, index) => {
                 return (
                   <OpenProjectModal.item
@@ -83,7 +83,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                 );
               })}
             </section>
-            <section className="border rounded-sm border-gray-600 w-1/2 bg-gray-800 md:min-w-[250px]">
+            <section className="border rounded-xs border-gray-600 w-1/2 bg-gray-800 md:min-w-[250px]">
               {currentCategory.items.map((project, index) => {
                 return (
                   <OpenProjectModal.item
@@ -100,13 +100,13 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
               })}
             </section>
           </div>
-          <div className="border rounded-sm border-gray-600 mt-1 p-2 flex justify-end gap-x-2 bg-gray-800">
+          <div className="border rounded-xs border-gray-600 mt-1 p-2 flex justify-end gap-x-2 bg-gray-800">
             <Button type="contained" onClick={onClose} color="secondary">
               <BaseText type="body2">취소</BaseText>
             </Button>
             <Button
               type="contained"
-              className="!py-0"
+              className="py-0!"
               onClick={handleClickOpenProject}
               disabled={!currentProject}
             >
@@ -122,7 +122,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
           {DUMMY.map((category, index) => {
             return (
               <div key={`category_${index}`}>
-                <Accordion className="w-full py-1 pl-2 bg-gray-600 rounded-sm">
+                <Accordion className="w-full py-1 pl-2 bg-gray-600 rounded-xs">
                   <Accordion.Summary>{category.label}</Accordion.Summary>
                   <div className="pl-4">
                     <Accordion.Details>
@@ -149,7 +149,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
           <BaseText type="caption" className="text-gray-500 font-bold underline mt-4">
             열기 버튼을 누르면 프로젝트 또는 GIT이 열립니다.
           </BaseText>
-          <div className="border rounded-sm flex gap-x-2">
+          <div className="border rounded-xs flex gap-x-2">
             <Button type="contained" className="flex-1" onClick={onClose} color="secondary">
               <BaseText type="body1">취소</BaseText>
             </Button>
@@ -182,7 +182,7 @@ OpenProjectModal.item = ({ iconKind, label, enabledArrow, isActive, onClick }: I
   return (
     <div
       className={twMerge(
-        "flex items-center gap-x-2 hover:bg-blue-300/50 hover:text-white px-2 py-1 rounded-sm",
+        "flex items-center gap-x-2 hover:bg-blue-300/50 hover:text-white px-2 py-1 rounded-xs",
         isActive && "bg-blue-300",
       )}
       onClick={onClick}

@@ -18,7 +18,7 @@ const Modal = ({ onClose, open, children, disabledEscape = false }: IModalProps)
       {open &&
         createPortal(
           <div className="fixed bg-black/60 inset-0 flex items-center justify-center z-40">
-            <div className="flex flex-col bg-white rounded w-full md:min-w-[200px] md:w-auto" ref={ref}>
+            <div className="flex flex-col bg-white rounded-sm w-full md:min-w-[200px] md:w-auto" ref={ref}>
               {children}
             </div>
           </div>,

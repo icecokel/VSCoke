@@ -1,0 +1,37 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '📋 프로젝트 규칙: 1) 파일명은 케밥케이스(kebab-case) 사용 2) 함수는 arrow function 사용 3) 서버 기동/재기동은 사용자가 직접 진행'"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash.*npm run dev|Bash.*npm start|Bash.*yarn dev|Bash.*yarn start",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '⚠️ 서버 기동/재기동은 사용자가 직접 진행해주세요' && exit 2"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [[ \"$file_path\" =~ \\.(ts|tsx|js|jsx)$ ]]; then echo '✅ 코딩 규칙 적용됨: 파일명 케밥케이스, Arrow Function 사용'; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

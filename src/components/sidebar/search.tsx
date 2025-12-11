@@ -2,7 +2,7 @@
 
 import SidebarLayout from "./sidebar-layout";
 import useHistory from "@/hooks/use-history";
-import Icon from "@ui/icon";
+import Icon from "@/components/base-ui/icon";
 import { useState } from "react";
 
 interface SearchProps {

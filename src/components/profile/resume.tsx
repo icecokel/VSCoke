@@ -1,7 +1,7 @@
 "use client";
 
-import Chip from "@ui/chip";
-import BaseText from "@ui/text";
+import Chip from "@/components/base-ui/chip";
+import BaseText from "@/components/base-ui/text";
 import resumeData from "@/../resume.json";
 
 const Resume = () => {

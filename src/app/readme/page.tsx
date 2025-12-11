@@ -1,5 +1,5 @@
 import SlideGroup from "@/components/base-ui/slide-group";
-import BaseText from "@ui/text";
+import BaseText from "@/components/base-ui/text";
 import { NextPage } from "next";
 
 const ReadmePage: NextPage = () => {

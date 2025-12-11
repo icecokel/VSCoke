@@ -1,12 +1,12 @@
 "use client";
 
 import { TParentNode } from "@/models/common";
-import Avatar from "@ui/avatar";
-import Button from "@ui/button";
-import Chip from "@ui/chip";
-import Icon from "@ui/icon";
-import BaseText from "@ui/text";
-import Tooltip from "@ui/tooltip";
+import Avatar from "@/components/base-ui/avatar";
+import Button from "@/components/base-ui/button";
+import Chip from "@/components/base-ui/chip";
+import Icon from "@/components/base-ui/icon";
+import BaseText from "@/components/base-ui/text";
+import Tooltip from "@/components/base-ui/tooltip";
 import Image from "next/image";
 import Link from "next/link";
 import Github from "public/images/icons/github.svg";

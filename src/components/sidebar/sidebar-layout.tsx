@@ -1,7 +1,7 @@
 "use client";
 
 import { TParentNode } from "@/models/common";
-import Slide from "@ui/slide";
+import Slide from "@/components/base-ui/slide";
 
 interface SidebarLayoutProps extends TParentNode {
   isShowing: boolean;

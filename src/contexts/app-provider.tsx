@@ -2,7 +2,7 @@
 
 import { ITree } from "@/hooks/use-explorer";
 import { TParentNode } from "@/models/common";
-import SnackBarProvider from "@ui/snack-bar/context/snack-bar-provider";
+import SnackBarProvider from "@/components/base-ui/snack-bar/context/snack-bar-provider";
 import { createContext } from "react";
 
 export const ExplorerContext = createContext<ITree[]>([]);

@@ -3,8 +3,8 @@
 import SidebarLayout from "./sidebar-layout";
 import useExplorer, { ITree } from "@/hooks/use-explorer";
 import useHistory from "@/hooks/use-history";
-import Icon from "@ui/icon";
-import BaseText from "@ui/text";
+import Icon from "@/components/base-ui/icon";
+import BaseText from "@/components/base-ui/text";
 import { MouseEvent, useState } from "react";
 
 interface ExplorerProps {

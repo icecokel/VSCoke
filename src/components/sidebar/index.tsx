@@ -6,7 +6,7 @@ import useClickOutSide from "@/hooks/use-click-out-side";
 import useShortCut from "@/hooks/use-short-cut";
 import { TParentNode } from "@/models/common";
 import { TSidebar } from "@/models/enum/sidebar";
-import Icon from "@ui/icon";
+import Icon from "@/components/base-ui/icon";
 import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 

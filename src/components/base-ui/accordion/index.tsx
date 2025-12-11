@@ -1,9 +1,9 @@
 "use client";
 
 import { TParentNode } from "@/models/common";
-import Icon from "@ui/icon";
-import Slide from "@ui/slide";
-import BaseText from "@ui/text";
+import Icon from "@/components/base-ui/icon";
+import Slide from "@/components/base-ui/slide";
+import BaseText from "@/components/base-ui/text";
 import {
   HTMLAttributes,
   createContext,

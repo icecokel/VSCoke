@@ -2,11 +2,11 @@
 
 import useHistory from "@/hooks/use-history";
 import { TParentNode } from "@/models/common";
-import Container from "@ui/container";
-import Icon from "@ui/icon";
-import Menu from "@ui/menu";
-import BaseText from "@ui/text";
-import Tooltip from "@ui/tooltip";
+import Container from "@/components/base-ui/container";
+import Icon from "@/components/base-ui/icon";
+import Menu from "@/components/base-ui/menu";
+import BaseText from "@/components/base-ui/text";
+import Tooltip from "@/components/base-ui/tooltip";
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";

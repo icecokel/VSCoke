@@ -1,7 +1,7 @@
 "use client";
 
-import Container from "@ui/container";
-import BaseText from "@ui/text";
+import Container from "@/components/base-ui/container";
+import BaseText from "@/components/base-ui/text";
 import { usePathname } from "next/navigation";
 
 const NotFound = () => {

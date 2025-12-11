@@ -26,7 +26,8 @@
       "Bash(git commit -m \"$(cat <<''EOF''\nstyle: CSS Modules를 Tailwind CSS로 변환\n\n- 모든 컴포넌트의 CSS Module 제거\n- Tailwind CSS 클래스로 전환\n- 애니메이션 keyframes를 globals.css로 이동\n  - slide 애니메이션 (left, right, up, down)\n  - snackbar 애니메이션\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git commit -m \"$(cat <<''EOF''\nfeat: Tailwind CSS keyframes 플러그인 추가\n\n- beat, slide 애니메이션을 위한 커스텀 플러그인 작성\n- ES Module 형식으로 변경 (require -> import)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git commit -m \"$(cat <<''EOF''\nrefactor: React Hook 규칙 준수를 위한 컴포넌트 분리\n\n- Explorer.item을 ExplorerItem 컴포넌트로 분리\n- Hook을 사용하는 함수는 컴포넌트 네이밍 규칙 준수\n- 파일명 케밥케이스 적용 (SidebarLayout -> sidebar-layout)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npx depcheck:*)"
     ],
     "deny": [],
     "ask": []

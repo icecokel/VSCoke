@@ -1,4 +1,4 @@
-import SnackBar from "..";
+import SnackBar from "@/components/base-ui/snack-bar";
 import { TParentNode } from "@/models/common";
 import { ISnackBar } from "@/components/base-ui/snack-bar/types/types";
 import { Dispatch, SetStateAction, createContext, useState } from "react";

@@ -1,6 +1,6 @@
 import type { Config } from "tailwindcss";
 import { colors } from "./src/styles/colors";
-import { breakPoints } from "./src/styles/breakPoints";
+import { breakPoints } from "./src/styles/break-points";
 import keyFrames from "./src/styles/keyFrames";
 
 const config: Config = {

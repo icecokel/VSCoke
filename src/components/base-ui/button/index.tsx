@@ -1,4 +1,4 @@
-import { TButtonType, TColor } from "./type";
+import { TButtonType, TColor } from "./types";
 import { createElement, HtmlHTMLAttributes } from "react";
 
 interface IButton extends HtmlHTMLAttributes<HTMLButtonElement> {

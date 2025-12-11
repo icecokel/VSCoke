@@ -1,5 +1,5 @@
 import { SnackBarContext } from "./context/snack-bar-provider";
-import BaseText from "@ui/text";
+import BaseText from "@/components/base-ui/text";
 import { useContext, useEffect } from "react";
 import { createPortal } from "react-dom";
 

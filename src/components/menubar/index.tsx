@@ -3,8 +3,8 @@
 import OpenProjectModal from "./open-project-modal";
 import { useBoolean } from "@/hooks/use-boolean";
 import { TParentNode } from "@/models/common";
-import Menu from "@ui/menu";
-import BaseText from "@ui/text";
+import Menu from "@/components/base-ui/menu";
+import BaseText from "@/components/base-ui/text";
 import { MouseEventHandler, useState } from "react";
 
 interface IMenuItem {

@@ -1,6 +1,6 @@
 "use client";
 
-import BaseText from "@ui/text";
+import BaseText from "@/components/base-ui/text";
 
 const Intro = () => {
   return (

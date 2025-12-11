@@ -1,4 +1,4 @@
-import BaseText from "@ui/text";
+import BaseText from "@/components/base-ui/text";
 
 interface IChipProps {
   label: string;

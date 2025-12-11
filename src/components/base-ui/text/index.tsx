@@ -1,6 +1,6 @@
 "use client";
 
-import { TTextType } from "./type";
+import { TTextType } from "./types";
 import { HTMLAttributes, createElement } from "react";
 
 interface IBaseTextProps extends HTMLAttributes<HTMLSpanElement> {

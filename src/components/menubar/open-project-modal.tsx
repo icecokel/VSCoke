@@ -1,12 +1,12 @@
 "use client";
 
-import Accordion from "@ui/accordion";
-import Button from "@ui/button";
-import Icon from "@ui/icon";
-import { TKind } from "@ui/icon/types";
-import Modal, { IModalProps } from "@ui/modal";
-import useSnackBar from "@ui/snack-bar/hooks/use-snack-bar";
-import BaseText from "@ui/text";
+import Accordion from "@/components/base-ui/accordion";
+import Button from "@/components/base-ui/button";
+import Icon from "@/components/base-ui/icon";
+import { TKind } from "@/components/base-ui/icon/types";
+import Modal, { IModalProps } from "@/components/base-ui/modal";
+import useSnackBar from "@/components/base-ui/snack-bar/hooks/use-snack-bar";
+import BaseText from "@/components/base-ui/text";
 import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 

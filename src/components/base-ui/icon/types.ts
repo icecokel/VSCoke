@@ -1,4 +1,4 @@
-export type TShape = "outlined" | "rounded-sm" | "sharp";
+export type TShape = "outlined" | "rounded" | "sharp";
 
 export type TKind =
   | "search"

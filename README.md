@@ -140,7 +140,7 @@ export default {
 ### Next.js 설정 (next.config.ts)
 
 - React Strict Mode: 비활성화
-- 원격 이미지: AWS S3, Notion 지원
+- 원격 이미지: AWS S3 지원
 
 ## 📊 프로젝트 통계
 

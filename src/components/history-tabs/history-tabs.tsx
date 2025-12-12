@@ -8,7 +8,7 @@ import Menu from "@/components/base-ui/menu";
 import BaseText from "@/components/base-ui/text";
 import Tooltip from "@/components/base-ui/tooltip";
 import { useRouter } from "next/navigation";
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 const HistoryTabs = ({ children }: TParentNode) => {
@@ -45,7 +45,7 @@ const HistoryTabs = ({ children }: TParentNode) => {
 
           case "closeOthers": {
             if (foundTab) {
-              setHistory(prev => [{ ...foundTab, isActive: true }]);
+              setHistory([{ ...foundTab, isActive: true }]);
               router.push(foundTab.path);
             }
             break;

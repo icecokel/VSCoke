@@ -9,7 +9,7 @@ interface ITooltipProps extends TParentNode {
   placement?: "bottom";
 }
 
-const Tooltip = ({ children, placement = "bottom", text }: ITooltipProps) => {
+const Tooltip = ({ children, text }: ITooltipProps) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
   const handleHover = () => {
@@ -25,7 +25,10 @@ const Tooltip = ({ children, placement = "bottom", text }: ITooltipProps) => {
         {children}
       </div>
       {showTooltip && (
-        <BaseText className="bg-gray-900 text-white/90 absolute rounded-sm text-xs translate-y-12" type="caption">
+        <BaseText
+          className="bg-gray-900 text-white/90 absolute rounded-sm text-xs translate-y-12"
+          type="caption"
+        >
           {text}
         </BaseText>
       )}

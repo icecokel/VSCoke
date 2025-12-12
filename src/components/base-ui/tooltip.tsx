@@ -6,31 +6,38 @@ import { useState } from "react";
 
 interface ITooltipProps extends TParentNode {
   text: string;
-  placement?: "bottom";
+  placement?: "top" | "bottom";
 }
 
-const Tooltip = ({ children, text }: ITooltipProps) => {
+const Tooltip = ({ children, text, placement = "bottom" }: ITooltipProps) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
-  const handleHover = () => {
+  const handleMouseEnter = () => {
     setShowTooltip(true);
   };
 
-  const handleOut = () => {
+  const handleMouseLeave = () => {
     setShowTooltip(false);
   };
+
+  const placementStyles = {
+    top: "bottom-full left-1/2 -translate-x-1/2 mb-1",
+    bottom: "top-full left-1/2 -translate-x-1/2 mt-1",
+  };
+
   return (
-    <div className="flex justify-center w-fit">
-      <div onMouseOver={handleHover} onMouseOut={handleOut}>
+    <div className="relative inline-block">
+      <div onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
         {children}
       </div>
       {showTooltip && (
-        <BaseText
-          className="bg-gray-900 text-white/90 absolute rounded-sm text-xs translate-y-12"
-          type="caption"
+        <div
+          className={`absolute z-50 px-2 py-1 bg-gray-900 border border-gray-700 rounded shadow-lg whitespace-nowrap pointer-events-none ${placementStyles[placement]}`}
         >
-          {text}
-        </BaseText>
+          <BaseText className="text-white/90 text-xs" type="caption">
+            {text}
+          </BaseText>
+        </div>
       )}
     </div>
   );

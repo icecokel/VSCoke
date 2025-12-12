@@ -1,26 +1,23 @@
-import { HtmlHTMLAttributes, createElement } from "react";
+import { HtmlHTMLAttributes } from "react";
+import { twMerge } from "tailwind-merge";
 
-interface IContainer extends HtmlHTMLAttributes<HTMLDivElement> {
-  maxWidth?: "sm" | "md";
+interface IContainerProps extends HtmlHTMLAttributes<HTMLDivElement> {
+  maxWidth?: "sm" | "md" | "lg" | "xl";
 }
 
-const breakPoints = {
-  xs: 0,
-  sm: 600,
-  md: 900,
-  lg: 1200,
-  xl: 1440,
+const maxWidthClasses: Record<NonNullable<IContainerProps["maxWidth"]>, string> = {
+  sm: "max-w-[600px]",
+  md: "max-w-[900px]",
+  lg: "max-w-[1200px]",
+  xl: "max-w-[1440px]",
 };
 
-const Container = ({ maxWidth, ...restProps }: IContainer) => {
-  return createElement("div", {
-    ...restProps,
-    style: {
-      marginLeft: "auto",
-      marginRight: "auto",
-      maxWidth: breakPoints[maxWidth ?? "lg"],
-    },
-  });
+const Container = ({ maxWidth = "lg", className, children, ...restProps }: IContainerProps) => {
+  return (
+    <div className={twMerge("mx-auto", maxWidthClasses[maxWidth], className)} {...restProps}>
+      {children}
+    </div>
+  );
 };
 
 export default Container;

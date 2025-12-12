@@ -11,32 +11,43 @@ export interface IHistoryItem {
 interface HistoryContextType {
   history: IHistoryItem[];
   setHistory: (history: IHistoryItem[] | ((prev: IHistoryItem[]) => IHistoryItem[])) => void;
+  isHydrated: boolean;
 }
 
 const HistoryContext = createContext<HistoryContextType | undefined>(undefined);
 
-export function HistoryProvider({ children }: { children: React.ReactNode }) {
-  const [history, setHistory] = useState<IHistoryItem[]>([]);
+const STORAGE_KEY = "vscoke-history";
 
+export const HistoryProvider = ({ children }: { children: React.ReactNode }) => {
+  const [history, setHistory] = useState<IHistoryItem[]>([]);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // 초기 로드시 localStorage에서 데이터 가져오기
   useEffect(() => {
-    // 초기 로드시 localStorage에서 데이터 가져오기
-    const stored = localStorage.getItem("history");
+    const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      setHistory(JSON.parse(stored));
+      try {
+        setHistory(JSON.parse(stored));
+      } catch {
+        localStorage.removeItem(STORAGE_KEY);
+      }
     }
+    setIsHydrated(true);
   }, []);
 
+  // hydration 완료 후에만 localStorage에 저장
   useEffect(() => {
-    // history가 변경될 때마다 localStorage에 저장
-    localStorage.setItem("history", JSON.stringify(history));
-  }, [history]);
+    if (isHydrated) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+    }
+  }, [history, isHydrated]);
 
   return (
-    <HistoryContext.Provider value={{ history, setHistory }}>
+    <HistoryContext.Provider value={{ history, setHistory, isHydrated }}>
       {children}
     </HistoryContext.Provider>
   );
-}
+};
 
 export const useHistoryContext = () => {
   const context = useContext(HistoryContext);
@@ -44,4 +55,4 @@ export const useHistoryContext = () => {
     throw new Error("useHistoryContext must be used within a HistoryProvider");
   }
   return context;
-}; 
+};

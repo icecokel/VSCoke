@@ -1,11 +1,11 @@
 "use client";
 
 import { TTextType } from "./text.types";
-import { HTMLAttributes, createElement } from "react";
+import { HTMLAttributes } from "react";
+import { twMerge } from "tailwind-merge";
 
-interface IBaseTextProps extends HTMLAttributes<HTMLSpanElement> {
+interface IBaseTextProps extends HTMLAttributes<HTMLElement> {
   type?: TTextType;
-  fontWeight?: number;
 }
 
 const textClasses: Record<TTextType, string> = {
@@ -20,18 +20,53 @@ const textClasses: Record<TTextType, string> = {
   caption: "leading-6 text-xs",
 };
 
-const BaseText = ({ children, type = "body1", fontWeight, style, className, ...props }: IBaseTextProps) => {
-  const textClass = textClasses[type];
-  const combinedClassName = `${textClass} ${className || ""}`;
+const BaseText = ({ children, type = "body1", className, ...props }: IBaseTextProps) => {
+  const combinedClassName = twMerge(textClasses[type], className);
 
-  if (!["body1", "body2", "caption"].includes(type)) {
-    return createElement(
-      type,
-      { className: combinedClassName, style: { ...style, fontWeight: fontWeight }, ...props },
-      children,
-    );
+  switch (type) {
+    case "h1":
+      return (
+        <h1 className={combinedClassName} {...props}>
+          {children}
+        </h1>
+      );
+    case "h2":
+      return (
+        <h2 className={combinedClassName} {...props}>
+          {children}
+        </h2>
+      );
+    case "h3":
+      return (
+        <h3 className={combinedClassName} {...props}>
+          {children}
+        </h3>
+      );
+    case "h4":
+      return (
+        <h4 className={combinedClassName} {...props}>
+          {children}
+        </h4>
+      );
+    case "h5":
+      return (
+        <h5 className={combinedClassName} {...props}>
+          {children}
+        </h5>
+      );
+    case "h6":
+      return (
+        <h6 className={combinedClassName} {...props}>
+          {children}
+        </h6>
+      );
+    default:
+      return (
+        <span className={combinedClassName} {...props}>
+          {children}
+        </span>
+      );
   }
-  return createElement("span", { className: combinedClassName, ...props }, children);
 };
 
 export default BaseText;

@@ -1,5 +1,4 @@
-import Icon from "@/components/base-ui/icon";
-import { TKind } from "@/components/base-ui/icon.types";
+import Icon, { TKind } from "@/components/base-ui/icon";
 import BaseText from "@/components/base-ui/text";
 import { twMerge } from "tailwind-merge";
 

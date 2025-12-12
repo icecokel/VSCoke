@@ -6,8 +6,9 @@ import { TParentNode } from "@/models/common";
 import Menu from "@/components/base-ui/menu";
 import BaseText from "@/components/base-ui/text";
 import { MouseEventHandler, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { LANGUAGES, LANGUAGE_STORAGE_KEY, LanguageCode } from "@/i18n";
+import { useTranslations } from "next-intl";
+import { useRouter, usePathname } from "@/i18n/navigation";
+import { routing, Locale } from "@/i18n/routing";
 
 interface IMenuItem {
   name: string;
@@ -22,25 +23,31 @@ interface IMenu {
   items: IMenuItem[];
 }
 
+const LANGUAGES: Record<Locale, { label: string }> = {
+  "ko-KR": { label: "한국어" },
+  "en-US": { label: "English" },
+};
+
 const Menubar = ({ children }: TParentNode) => {
   const [currentEl, setCurrentEl] = useState<null | HTMLElement>(null);
-  const { t, i18n } = useTranslation();
+  const t = useTranslations("menu");
+  const router = useRouter();
+  const pathname = usePathname();
 
   const project = useBoolean();
 
-  const handleChangeLanguage = (lang: LanguageCode) => {
-    i18n.changeLanguage(lang);
-    localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
+  const handleChangeLanguage = (newLocale: Locale) => {
+    router.replace(pathname, { locale: newLocale });
     setCurrentEl(null);
   };
 
   const MENULIST: IMenu[] = [
     {
       key: "1",
-      name: t("menu.file"),
+      name: t("file"),
       items: [
         {
-          name: t("menu.openProject"),
+          name: t("openProject"),
           onClick: () => {
             project.onTrue();
             setCurrentEl(null);
@@ -50,13 +57,13 @@ const Menubar = ({ children }: TParentNode) => {
     },
     {
       key: "2",
-      name: t("menu.language"),
-      items: Object.entries(LANGUAGES).map(([code, { label }]) => ({
-        name: label,
-        onClick: () => handleChangeLanguage(code as LanguageCode),
+      name: t("language"),
+      items: routing.locales.map(code => ({
+        name: LANGUAGES[code].label,
+        onClick: () => handleChangeLanguage(code),
       })),
     },
-    { key: "3", name: t("menu.help"), items: [{ name: t("menu.preparing") }] },
+    { key: "3", name: t("help"), items: [{ name: t("preparing") }] },
   ];
   const currentItems = MENULIST.find(({ name }) => name === currentEl?.id);
 

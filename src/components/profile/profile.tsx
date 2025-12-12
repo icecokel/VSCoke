@@ -7,18 +7,18 @@ import BaseText from "@/components/base-ui/text";
 import Tooltip from "@/components/base-ui/tooltip";
 import { TParentNode } from "@/models/common";
 import Image from "next/image";
-import Link from "next/link";
 import Github from "public/images/icons/github.svg";
 import resumeData from "@/../resume.json";
 import { Fragment } from "react";
-import { useTranslation } from "react-i18next";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 
 /**
  * 이력서 페이지
  * @returns 이력서 컴포넌트
  */
 const Profile = () => {
-  const { t } = useTranslation();
+  const t = useTranslations("profile");
   const { introduction, contact } = resumeData;
   return (
     <div className="p-3 flex flex-col gap-1 md:gap-5">
@@ -30,11 +30,11 @@ const Profile = () => {
         />
         <div className="md:ml-3 mt-[25px] md:mt-0">
           <BaseText type="h5" className="text-center">
-            {t("profile.notOnlyCoding")} <br className="md:hidden" />
-            {t("profile.developerName")}
+            {t("notOnlyCoding")} <br className="md:hidden" />
+            {t("developerName")}
           </BaseText>
           <div className="mt-5 w-full max-w-sm bg-blue-100/20 rounded-sm p-4 gap-4 flex flex-col">
-            <Tooltip text={t("profile.sendEmail")}>
+            <Tooltip text={t("sendEmail")}>
               <BaseText
                 type="body1"
                 className="flex items-center gap-x-1 hover:text-yellow-200 font-bold"
@@ -43,7 +43,7 @@ const Profile = () => {
                 <a href={`mailto:${contact.email}`}>{contact.email}</a>
               </BaseText>
             </Tooltip>
-            <Tooltip text={t("profile.call")}>
+            <Tooltip text={t("call")}>
               <BaseText type="body1" className="flex items-center hover:text-yellow-200 font-bold">
                 <Icon kind="call" />
                 <a href={`tel:${contact.phone}`}>{contact.phone}</a>
@@ -52,7 +52,7 @@ const Profile = () => {
           </div>
         </div>
       </div>
-      <Profile.item title={t("profile.introduction")}>
+      <Profile.item title={t("introduction")}>
         <BaseText>
           {introduction.map((text, index) => {
             return (
@@ -64,47 +64,47 @@ const Profile = () => {
           })}
         </BaseText>
       </Profile.item>
-      <Profile.item title={t("profile.links")}>
+      <Profile.item title={t("links")}>
         <div className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
           <Image src={Github} width={24} height={24} alt="git-hub" />
-          <Link href={"https://github.com/icecokel"} target="_blank">
+          <a href="https://github.com/icecokel" target="_blank" rel="noopener noreferrer">
             https://github.com/icecokel
-          </Link>
+          </a>
         </div>
         <div className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
           <Icon kind="bookmark" />
-          <Link href={"https://icecokel.tistory.com"} target="_blank">
+          <a href="https://icecokel.tistory.com" target="_blank" rel="noopener noreferrer">
             https://icecokel.tistory.com
-          </Link>
+          </a>
         </div>
       </Profile.item>
 
-      <Profile.item title={t("profile.education")}>
+      <Profile.item title={t("education")}>
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center ">
           <div className="mb-5 min-w-[140px]">2019.08 - 2020.03</div>
           <div className="mb-5">
-            <BaseText type="h6">{t("profile.hybridCourse")}</BaseText>
+            <BaseText type="h6">{t("hybridCourse")}</BaseText>
             <BaseText type="body2">
-              {t("profile.hybridDesc")} <br />
-              {t("profile.hybridDesc2")}
+              {t("hybridDesc")} <br />
+              {t("hybridDesc2")}
             </BaseText>
           </div>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center ">
           <div className="mb-5 min-w-[140px]">2010.03 - 2017.02</div>
           <div className="mb-5">
-            <BaseText type="h6">{t("profile.university")}</BaseText>
-            <BaseText type="body2">{t("profile.major")}</BaseText>
+            <BaseText type="h6">{t("university")}</BaseText>
+            <BaseText type="body2">{t("major")}</BaseText>
           </div>
         </div>
       </Profile.item>
-      <Link href={"/profile/resume"}>
+      <Link href="/profile/resume">
         <div className="flex justify-end">
           <Button
             type="contained"
             className="bg-yellow-200 text-black! hover:text-blue-300! rounded-[24px]! flex items-center gap-x-2 shadow-[2px_4px_4px_rgb(0,0,0,0.4)]"
           >
-            <BaseText type="body2">{t("profile.viewCareer")}</BaseText>
+            <BaseText type="body2">{t("viewCareer")}</BaseText>
             <Icon kind="navigation" className="rotate-90" />
           </Button>
         </div>

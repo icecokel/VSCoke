@@ -1,3 +1,3 @@
-export { default } from "./config";
-export { LANGUAGES, DEFAULT_LANGUAGE, LANGUAGE_STORAGE_KEY } from "./config";
-export type { LanguageCode } from "./config";
+export { routing } from "./routing";
+export type { Locale } from "./routing";
+export { Link, redirect, usePathname, useRouter, getPathname } from "./navigation";

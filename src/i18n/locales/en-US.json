@@ -1,0 +1,35 @@
+{
+  "common": {
+    "language": "Language",
+    "korean": "한국어",
+    "english": "English"
+  },
+  "menu": {
+    "file": "File",
+    "openProject": "Open Project",
+    "language": "Language",
+    "help": "Help",
+    "preparing": "Preparing..."
+  },
+  "home": {
+    "greeting": "Hello,",
+    "developer": "I'm Sangmin Lee",
+    "suffix": "",
+    "welcome": "Welcome to VSCOKE Portfolio"
+  },
+  "profile": {
+    "notOnlyCoding": "Not just coding,",
+    "developerName": "I'm Sangmin Lee, a developer.",
+    "sendEmail": "Send Email",
+    "call": "Call",
+    "introduction": "Introduction",
+    "links": "Links",
+    "education": "Education",
+    "viewCareer": "View Career",
+    "hybridCourse": "Hybrid App Development (iOS & Android) and Web Developer Training Course",
+    "hybridDesc": "Web development basics based on Java, Spring (Spring basics, REST API)",
+    "hybridDesc2": "Android, iOS app development basics",
+    "university": "Seoil University",
+    "major": "Information and Communication Engineering"
+  }
+}

@@ -6,6 +6,8 @@ import { TParentNode } from "@/models/common";
 import Menu from "@/components/base-ui/menu";
 import BaseText from "@/components/base-ui/text";
 import { MouseEventHandler, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { LANGUAGES, LANGUAGE_STORAGE_KEY, LanguageCode } from "@/i18n";
 
 interface IMenuItem {
   name: string;
@@ -22,16 +24,23 @@ interface IMenu {
 
 const Menubar = ({ children }: TParentNode) => {
   const [currentEl, setCurrentEl] = useState<null | HTMLElement>(null);
+  const { t, i18n } = useTranslation();
 
   const project = useBoolean();
+
+  const handleChangeLanguage = (lang: LanguageCode) => {
+    i18n.changeLanguage(lang);
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
+    setCurrentEl(null);
+  };
 
   const MENULIST: IMenu[] = [
     {
       key: "1",
-      name: "File",
+      name: t("menu.file"),
       items: [
         {
-          name: "Open Project",
+          name: t("menu.openProject"),
           onClick: () => {
             project.onTrue();
             setCurrentEl(null);
@@ -39,8 +48,15 @@ const Menubar = ({ children }: TParentNode) => {
         },
       ],
     },
-    { key: "2", name: "Language", items: [{ name: "준비 중 ..." }] },
-    { key: "3", name: "Help", items: [{ name: "준비 중 ..." }] },
+    {
+      key: "2",
+      name: t("menu.language"),
+      items: Object.entries(LANGUAGES).map(([code, { label }]) => ({
+        name: label,
+        onClick: () => handleChangeLanguage(code as LanguageCode),
+      })),
+    },
+    { key: "3", name: t("menu.help"), items: [{ name: t("menu.preparing") }] },
   ];
   const currentItems = MENULIST.find(({ name }) => name === currentEl?.id);
 

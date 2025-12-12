@@ -1,0 +1,35 @@
+{
+  "common": {
+    "language": "언어",
+    "korean": "한국어",
+    "english": "English"
+  },
+  "menu": {
+    "file": "File",
+    "openProject": "Open Project",
+    "language": "Language",
+    "help": "Help",
+    "preparing": "준비 중 ..."
+  },
+  "home": {
+    "greeting": "안녕하세요,",
+    "developer": "개발자 이상민",
+    "suffix": "입니다",
+    "welcome": "Welcome to VSCOKE Portfolio"
+  },
+  "profile": {
+    "notOnlyCoding": "코딩만 하지 않는",
+    "developerName": "개발자 이상민입니다.",
+    "sendEmail": "이메일 보내기",
+    "call": "전화하기",
+    "introduction": "간단 소개글",
+    "links": "링크",
+    "education": "학력 / 교육",
+    "viewCareer": "경력 보러가기",
+    "hybridCourse": "하이브리드 앱개발(ISO&안드로이드) 및 웹 개발자 양성 과정",
+    "hybridDesc": "Java, Spring 기반의 웹 개발 기초 (스프링 기초, Restapi)",
+    "hybridDesc2": "안드로이드, IOS 앱개발 기초",
+    "university": "서일대학교",
+    "major": "정보통신학과"
+  }
+}

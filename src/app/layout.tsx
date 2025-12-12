@@ -7,6 +7,7 @@ import HistoryTabs from "@/components/history-tabs/history-tabs";
 import AppProvider from "@/contexts/app-provider";
 import { HistoryProvider } from "@/contexts/history-context";
 import { getExplorer } from "@/utils/get/explorer";
+import I18nProvider from "@/components/providers/i18n-provider";
 
 const notoSansKr = Noto_Sans_KR({
   subsets: ["latin"],
@@ -42,15 +43,17 @@ const RootLayout = async ({
         />
       </head>
       <body>
-        <HistoryProvider>
-          <AppProvider explorer={explorer}>
-            <Menubar>
-              <Sidebar>
-                <HistoryTabs>{children}</HistoryTabs>
-              </Sidebar>
-            </Menubar>
-          </AppProvider>
-        </HistoryProvider>
+        <I18nProvider>
+          <HistoryProvider>
+            <AppProvider explorer={explorer}>
+              <Menubar>
+                <Sidebar>
+                  <HistoryTabs>{children}</HistoryTabs>
+                </Sidebar>
+              </Menubar>
+            </AppProvider>
+          </HistoryProvider>
+        </I18nProvider>
       </body>
     </html>
   );

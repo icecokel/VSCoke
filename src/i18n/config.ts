@@ -1,11 +1,12 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-import koKR from "./locales/ko-KR.json";
-import enUS from "./locales/en-US.json";
+
+import koKR from "../../public/locales/ko-KR/common.json";
+import enUS from "../../public/locales/en-US/common.json";
 
 export const LANGUAGES = {
-  "ko-KR": { label: "한국어", resource: koKR },
-  "en-US": { label: "English", resource: enUS },
+  "ko-KR": { label: "한국어" },
+  "en-US": { label: "English" },
 } as const;
 
 export type LanguageCode = keyof typeof LANGUAGES;

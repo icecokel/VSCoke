@@ -1,45 +1,33 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { twMerge } from "tailwind-merge";
 
-type sizeType =
-  | number
-  | {
-      xs?: number;
-      sm?: number;
-      md?: number;
-      lg?: number;
-      xl?: number;
-    };
-
-interface IAvatar {
-  className: string;
-  src: string;
-  size: sizeType;
+interface IAvatarProps {
+  className?: string;
+  src?: string;
+  alt?: string;
+  size?: number;
 }
 
-const Avatar = ({ className, src, size }: IAvatar) => {
-  const [imageSize, setImageSize] = useState(50);
+const Avatar = ({ className, src, alt = "avatar", size = 50 }: IAvatarProps) => {
+  if (!src) {
+    return (
+      <div
+        className={twMerge("bg-gray-600 rounded-full", className)}
+        style={{ width: size, height: size }}
+      />
+    );
+  }
 
-  useEffect(() => {
-    if (typeof size === "number") {
-      setImageSize(size);
-    }
-  }, []);
   return (
-    // <Image
-    //   src={src}
-    //   alt="avatar"
-    //   className={className}
-    //   style={{
-    //     borderRadius: "50%",
-    //     objectFit: "cover",
-    //   }}
-    //   width={imageSize}
-    //   height={imageSize}
-    // />
-    <div className={className} style={{ borderRadius: "50%", width: imageSize, height: imageSize }} />
+    <Image
+      src={`/images/${src}`}
+      alt={alt}
+      className={twMerge("rounded-full object-cover", className)}
+      width={size}
+      height={size}
+    />
   );
 };
 

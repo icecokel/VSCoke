@@ -4,6 +4,7 @@ import OpenProjectModal from "./open-project-modal";
 import { useBoolean } from "@/hooks/use-boolean";
 import { TParentNode } from "@/models/common";
 import Menu from "@/components/base-ui/menu";
+import MenuItem from "@/components/base-ui/menu-item";
 import BaseText from "@/components/base-ui/text";
 import { MouseEventHandler, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -95,13 +96,11 @@ const Menubar = ({ children }: TParentNode) => {
         })}
       </div>
       <Menu targetEl={currentEl} onClose={onClose}>
-        {currentItems?.items.map((item, index) => {
-          return (
-            <Menu.item key={`${currentItems.name}_item_${index}`} onClick={item.onClick}>
-              {item.name}
-            </Menu.item>
-          );
-        })}
+        {currentItems?.items.map((item, index) => (
+          <MenuItem key={`${currentItems.name}_item_${index}`} onClick={item.onClick}>
+            {item.name}
+          </MenuItem>
+        ))}
       </Menu>
 
       <OpenProjectModal open={project.value} onClose={project.onFalse} />

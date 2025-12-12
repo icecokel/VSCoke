@@ -1,3 +1,3 @@
-export type TButtonType = "text" | "outline-solid" | "contained";
+export type TButtonVariant = "text" | "outline" | "contained";
 
-export type TColor = "primary" | "secondary";
+export type TButtonColor = "primary" | "secondary";

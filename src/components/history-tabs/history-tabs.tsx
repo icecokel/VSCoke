@@ -5,6 +5,7 @@ import { TParentNode } from "@/models/common";
 import Container from "@/components/base-ui/container";
 import Icon from "@/components/base-ui/icon";
 import Menu from "@/components/base-ui/menu";
+import MenuItem from "@/components/base-ui/menu-item";
 import BaseText from "@/components/base-ui/text";
 import Tooltip from "@/components/base-ui/tooltip";
 import { useRouter } from "next/navigation";
@@ -153,9 +154,9 @@ const HistoryTabs = ({ children }: TParentNode) => {
       </div>
 
       <Menu targetEl={currentEl} onClose={onClose}>
-        <Menu.item onClick={() => handleClickCloseMenu(currentEl)}>닫기</Menu.item>
-        <Menu.item onClick={() => handleClickCloseOuters(currentEl)}>나머지 닫기</Menu.item>
-        <Menu.item onClick={() => handleClickCloseAll(currentEl)}>모두 닫기</Menu.item>
+        <MenuItem onClick={() => handleClickCloseMenu(currentEl)}>닫기</MenuItem>
+        <MenuItem onClick={() => handleClickCloseOuters(currentEl)}>나머지 닫기</MenuItem>
+        <MenuItem onClick={() => handleClickCloseAll(currentEl)}>모두 닫기</MenuItem>
       </Menu>
 
       <Container className="min-h-screen flex-1 text-white sm:p-2 md:p-5 xs:px-0 xs:py-3">

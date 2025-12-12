@@ -101,11 +101,11 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
             </section>
           </div>
           <div className="border rounded-xs border-gray-600 mt-1 p-2 flex justify-end gap-x-2 bg-gray-800">
-            <Button type="contained" onClick={onClose} color="secondary">
+            <Button variant="contained" onClick={onClose} color="secondary">
               <BaseText type="body2">취소</BaseText>
             </Button>
             <Button
-              type="contained"
+              variant="contained"
               className="py-0!"
               onClick={handleClickOpenProject}
               disabled={!currentProject}
@@ -150,11 +150,11 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
             열기 버튼을 누르면 프로젝트 또는 GIT이 열립니다.
           </BaseText>
           <div className="border rounded-xs flex gap-x-2">
-            <Button type="contained" className="flex-1" onClick={onClose} color="secondary">
+            <Button variant="contained" className="flex-1" onClick={onClose} color="secondary">
               <BaseText type="body1">취소</BaseText>
             </Button>
             <Button
-              type="contained"
+              variant="contained"
               className="flex-1"
               onClick={handleClickOpenProject}
               disabled={!currentProject}

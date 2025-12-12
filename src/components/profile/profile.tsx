@@ -5,13 +5,13 @@ import Button from "@/components/base-ui/button";
 import Icon from "@/components/base-ui/icon";
 import BaseText from "@/components/base-ui/text";
 import Tooltip from "@/components/base-ui/tooltip";
-import { TParentNode } from "@/models/common";
 import Image from "next/image";
 import Github from "public/images/icons/github.svg";
 import resumeData from "@/../resume.json";
 import { Fragment } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import ProfileItem from "./profile-item";
 
 /**
  * 이력서 페이지
@@ -52,7 +52,7 @@ const Profile = () => {
           </div>
         </div>
       </div>
-      <Profile.item title={t("introduction")}>
+      <ProfileItem title={t("introduction")}>
         <BaseText>
           {introduction.map((text, index) => {
             return (
@@ -63,8 +63,8 @@ const Profile = () => {
             );
           })}
         </BaseText>
-      </Profile.item>
-      <Profile.item title={t("links")}>
+      </ProfileItem>
+      <ProfileItem title={t("links")}>
         <div className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
           <Image src={Github} width={24} height={24} alt="git-hub" />
           <a href="https://github.com/icecokel" target="_blank" rel="noopener noreferrer">
@@ -77,9 +77,9 @@ const Profile = () => {
             https://icecokel.tistory.com
           </a>
         </div>
-      </Profile.item>
+      </ProfileItem>
 
-      <Profile.item title={t("education")}>
+      <ProfileItem title={t("education")}>
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center ">
           <div className="mb-5 min-w-[140px]">2019.08 - 2020.03</div>
           <div className="mb-5">
@@ -97,7 +97,7 @@ const Profile = () => {
             <BaseText type="body2">{t("major")}</BaseText>
           </div>
         </div>
-      </Profile.item>
+      </ProfileItem>
       <Link href="/profile/resume">
         <div className="flex justify-end">
           <Button
@@ -113,20 +113,4 @@ const Profile = () => {
   );
 };
 
-const ProfileItem = ({ title, children }: IItemProps) => {
-  return (
-    <div className="mt-10">
-      <BaseText type="h5">{title}</BaseText>
-      <hr className="my-5 border-white" />
-      <div>{children}</div>
-    </div>
-  );
-};
-
-Profile.item = ProfileItem;
-
 export default Profile;
-
-interface IItemProps extends TParentNode {
-  title: string;
-}

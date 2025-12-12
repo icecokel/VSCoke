@@ -1,14 +1,14 @@
 "use client";
 
 import Accordion from "@/components/base-ui/accordion";
+import AccordionSummary from "@/components/base-ui/accordion-summary";
+import AccordionDetails from "@/components/base-ui/accordion-details";
 import Button from "@/components/base-ui/button";
-import Icon from "@/components/base-ui/icon";
-import { TKind } from "@/components/base-ui/icon.types";
 import Modal, { IModalProps } from "@/components/base-ui/modal";
 import useSnackBar from "@/components/base-ui/snack-bar/hooks/use-snack-bar";
 import BaseText from "@/components/base-ui/text";
 import { useEffect, useState } from "react";
-import { twMerge } from "tailwind-merge";
+import OpenProjectModalItem from "./open-project-modal-item";
 
 type IOpenProjectModalProps = Omit<IModalProps, "children">;
 
@@ -59,18 +59,18 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
     <Modal {...props}>
       <div className="m-2 text-white flex gap-1">
         <div className="border rounded-xs border-gray-600 bg-gray-800 hidden md:block">
-          <OpenProjectModal.item iconKind={"schedule"} label={"최근항목"} />
-          <OpenProjectModal.item iconKind={"terminal"} label={"응용 프로그램"} />
-          <OpenProjectModal.item iconKind={"computer"} label={"데스크탑"} />
-          <OpenProjectModal.item iconKind={"description"} label={"문서"} />
-          <OpenProjectModal.item iconKind={"arrow_circle_down"} label={"다운로드"} />
+          <OpenProjectModalItem iconKind={"schedule"} label={"최근항목"} />
+          <OpenProjectModalItem iconKind={"terminal"} label={"응용 프로그램"} />
+          <OpenProjectModalItem iconKind={"computer"} label={"데스크탑"} />
+          <OpenProjectModalItem iconKind={"description"} label={"문서"} />
+          <OpenProjectModalItem iconKind={"arrow_circle_down"} label={"다운로드"} />
         </div>
         <div className="w-full hidden md:block md:w-auto">
           <div className="flex min-h-[350px] gap-x-1">
             <section className="border rounded-xs border-gray-600 w-1/2 bg-gray-800 md:min-w-[250px]">
               {DUMMY.map((category, index) => {
                 return (
-                  <OpenProjectModal.item
+                  <OpenProjectModalItem
                     key={`category_${index}`}
                     iconKind={"folder"}
                     label={category.label}
@@ -86,7 +86,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
             <section className="border rounded-xs border-gray-600 w-1/2 bg-gray-800 md:min-w-[250px]">
               {currentCategory.items.map((project, index) => {
                 return (
-                  <OpenProjectModal.item
+                  <OpenProjectModalItem
                     key={`project_${index}`}
                     iconKind={"folder"}
                     label={project.label}
@@ -123,12 +123,12 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
             return (
               <div key={`category_${index}`}>
                 <Accordion className="w-full py-1 pl-2 bg-gray-600 rounded-xs">
-                  <Accordion.Summary>{category.label}</Accordion.Summary>
+                  <AccordionSummary>{category.label}</AccordionSummary>
                   <div className="pl-4">
-                    <Accordion.Details>
+                    <AccordionDetails>
                       {category.items.map((project, index) => {
                         return (
-                          <OpenProjectModal.item
+                          <OpenProjectModalItem
                             key={`project_${index}`}
                             iconKind={"folder"}
                             label={project.label}
@@ -140,7 +140,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                           />
                         );
                       })}
-                    </Accordion.Details>
+                    </AccordionDetails>
                   </div>
                 </Accordion>
               </div>
@@ -169,29 +169,3 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
 };
 
 export default OpenProjectModal;
-
-interface IItemProps {
-  label: string;
-  iconKind: TKind;
-  enabledArrow?: boolean;
-  isActive?: boolean;
-  onClick?: () => void;
-}
-
-OpenProjectModal.item = ({ iconKind, label, enabledArrow, isActive, onClick }: IItemProps) => {
-  return (
-    <div
-      className={twMerge(
-        "flex items-center gap-x-2 hover:bg-blue-300/50 hover:text-white px-2 py-1 rounded-xs",
-        isActive && "bg-blue-300",
-      )}
-      onClick={onClick}
-    >
-      <Icon kind={iconKind} className={twMerge(!isActive && "text-blue-300")} />
-      <BaseText type="body2" className="font-bold flex-1">
-        {label}
-      </BaseText>
-      <div className="hidden md:block">{enabledArrow && <Icon kind="chevron_right" />}</div>
-    </div>
-  );
-};

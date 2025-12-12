@@ -1,30 +1,32 @@
 "use client";
 
-import { TParentNode } from "@/models/common";
 import Avatar from "@/components/base-ui/avatar";
 import Button from "@/components/base-ui/button";
-import Chip from "@/components/base-ui/chip";
 import Icon from "@/components/base-ui/icon";
 import BaseText from "@/components/base-ui/text";
 import Tooltip from "@/components/base-ui/tooltip";
+import { TParentNode } from "@/models/common";
 import Image from "next/image";
 import Link from "next/link";
 import Github from "public/images/icons/github.svg";
+import resumeData from "@/../resume.json";
+import { Fragment } from "react";
 
 /**
  * 이력서 페이지
  * @returns 이력서 컴포넌트
  */
 const Profile = () => {
+  const { introduction, contact } = resumeData;
   return (
     <div className="p-3 flex flex-col gap-1 md:gap-5">
-      <div className="flex items-center flex-col gap-1 md:flex-row md:gap-3  md:items-start">
+      <div className="flex items-center flex-col gap-1 md:flex-row md:gap-3 md:items-start">
         <Avatar
           className="h-[180px] w-[180px] border-4 border-yellow-200 md:h-[200px] md:w-[200px]"
           src={"profileImg.jpg"}
           size={180}
         />
-        <div className="ml-3 mt-[25px] md:mt-0">
+        <div className="md:ml-3 mt-[25px] md:mt-0">
           <BaseText type="h5" className="text-center">
             코딩만 하지 않는 <br className="md:hidden" />
             개발자 이상민입니다.
@@ -36,13 +38,13 @@ const Profile = () => {
                 className="flex items-center gap-x-1 hover:text-yellow-200 font-bold"
               >
                 <Icon kind="mail" />
-                <a href="mailto:red9runge@gmail.com">red9runge@gmail.com</a>
+                <a href={`mailto:${contact.email}`}>{contact.email}</a>
               </BaseText>
             </Tooltip>
             <Tooltip text="전화하기">
               <BaseText type="body1" className="flex items-center hover:text-yellow-200 font-bold">
                 <Icon kind="call" />
-                <a href="tel:01020809652">전화 걸기</a>
+                <a href={`tel:${contact.phone}`}>{contact.phone}</a>
               </BaseText>
             </Tooltip>
           </div>
@@ -50,17 +52,14 @@ const Profile = () => {
       </div>
       <Profile.item title="간단 소개글">
         <BaseText>
-          안녕하세요.
-          <br />
-          <br /> 정보통신학과를 졸업하고 인프라 엔지니어로 3년 정도 근무하다가, 반복되는 일을
-          자동화하고, 비효율적인 프로세스를 개선하는 것을 중요하게 생각했고, 저의 이런 성격이
-          개발자에 적합하다고 판단하여 개발자로 전향하게 되었습니다. <br />
-          <br />
-          일본에 있는 AllofThem이라는 회사에서 재직 중이며, FE로 근무 중이며, 필요에 따라 BE도
-          진행할 때도 있습니다. <br />
-          <br />
-          주로 신규 프로젝트 시 구축 설계 등을 진행하고 있으며, 기존 프로젝트를 진행하면 성능 개선
-          및 리팩토링을 주로 하고 있습니다. 경력
+          {introduction.map((text, index) => {
+            return (
+              <Fragment key={`introduction_${index}`}>
+                {text}
+                <br />
+              </Fragment>
+            );
+          })}
         </BaseText>
       </Profile.item>
       <Profile.item title="링크">
@@ -75,17 +74,6 @@ const Profile = () => {
           <Link href={"https://icecokel.tistory.com"} target="_blank">
             https://icecokel.tistory.com
           </Link>
-        </div>
-      </Profile.item>
-      <Profile.item title="스킬">
-        <div className="flex flex-wrap gap-2">
-          {SKILLS.map((item, index) => (
-            <Chip
-              key={`skill_${index}`}
-              label={item}
-              className="select-none text-white hover:border-yellow-200 hover:text-yellow-200"
-            />
-          ))}
         </div>
       </Profile.item>
 
@@ -140,21 +128,3 @@ export default Profile;
 interface IItemProps extends TParentNode {
   title: string;
 }
-
-const SKILLS = [
-  "React",
-  "CSS",
-  "JavaScript",
-  "TypeScript",
-  "HTML5",
-  "Java",
-  "Spring Boot",
-  "Spring Framework",
-  "AWS",
-  "Git",
-  "GitLab",
-  "MySQL",
-  "Figma",
-  "GraphQL",
-  "Github",
-];

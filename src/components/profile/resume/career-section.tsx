@@ -12,7 +12,7 @@ interface CareerSectionProps {
 const CareerSection = ({ career, index }: CareerSectionProps) => {
   return (
     <div id={`career_${index}`} className="mb-12">
-      <div className="mb-8">
+      <div className="mb-8 ml-2">
         <BaseText type="h5" className="text-yellow-200">
           {career.company}
         </BaseText>

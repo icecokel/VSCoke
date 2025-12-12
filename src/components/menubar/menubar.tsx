@@ -39,7 +39,8 @@ const Menubar = ({ children }: TParentNode) => {
         },
       ],
     },
-    { key: "2", name: "Help", items: [{ name: "준비 중 ..." }] },
+    { key: "2", name: "Language", items: [{ name: "준비 중 ..." }] },
+    { key: "3", name: "Help", items: [{ name: "준비 중 ..." }] },
   ];
   const currentItems = MENULIST.find(({ name }) => name === currentEl?.id);
 

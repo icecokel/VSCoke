@@ -7,7 +7,7 @@ export const getExplorer = cache(async (): Promise<ITree[]> => {
   const categoryGroups = getPostsGroupedByCategory();
 
   const blogItems: ITree[] = categoryGroups.map((group, categoryIndex) => ({
-    id: `blog-category-${group.category}`,
+    id: `${group.category}`,
     label: group.category,
     index: categoryIndex,
     items: group.posts.map((post, postIndex) => ({

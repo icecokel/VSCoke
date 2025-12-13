@@ -1,4 +1,4 @@
-import { getPostBySlug, getPostSlugs } from "@/lib/blog";
+import { getAllPosts, getPostBySlug } from "@/lib/blog";
 import { notFound } from "next/navigation";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import BaseText from "@/components/base-ui/text";
@@ -17,15 +17,15 @@ interface BlogPostPageProps {
 }
 
 export const generateStaticParams = async () => {
-  const slugs = getPostSlugs();
-  return slugs.map(slug => ({ slug }));
+  const posts = getAllPosts();
+  return posts.map(post => ({ slug: post.slug }));
 };
 
 export const generateMetadata = async ({ params }: BlogPostPageProps): Promise<Metadata> => {
   const { slug } = await params;
   const post = getPostBySlug(slug);
 
-  if (!post) {
+  if (!post || !post.published) {
     return { title: "Post Not Found" };
   }
 
@@ -90,7 +90,7 @@ const BlogPostPage = async ({ params }: BlogPostPageProps) => {
   const post = getPostBySlug(slug);
   const t = await getTranslations("blog");
 
-  if (!post) {
+  if (!post || !post.published) {
     notFound();
   }
 

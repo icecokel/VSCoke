@@ -35,11 +35,12 @@ export const getPostBySlug = (slug: string): Post | null => {
     tags: data.tags || [],
     category: data.category || DEFAULT_CATEGORY,
     readingTime: stats.text,
+    published: data.published !== false, // 기본값 true, 명시적으로 false일 때만 비공개
     content,
   };
 };
 
-export const getAllPosts = (): PostMeta[] => {
+export const getAllPosts = (includeUnpublished = false): PostMeta[] => {
   const slugs = getPostSlugs();
   const posts = slugs
     .map(slug => {
@@ -50,6 +51,7 @@ export const getAllPosts = (): PostMeta[] => {
       return meta;
     })
     .filter((post): post is PostMeta => post !== null)
+    .filter(post => includeUnpublished || post.published)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return posts;

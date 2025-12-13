@@ -32,5 +32,11 @@
     "hybridDesc2": "안드로이드, IOS 앱개발 기초",
     "university": "서일대학교",
     "major": "정보통신학과"
+  },
+  "blog": {
+    "title": "블로그",
+    "description": "개발 관련 글과 경험을 공유합니다.",
+    "backToList": "목록으로",
+    "noPosts": "포스트가 없습니다."
   }
 }

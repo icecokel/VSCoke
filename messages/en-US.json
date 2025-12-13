@@ -32,5 +32,11 @@
     "hybridDesc2": "Android, iOS app development basics",
     "university": "Seoil University",
     "major": "Information and Communication Engineering"
+  },
+  "blog": {
+    "title": "Blog",
+    "description": "Sharing development experiences and insights.",
+    "backToList": "Back to List",
+    "noPosts": "No posts available."
   }
 }

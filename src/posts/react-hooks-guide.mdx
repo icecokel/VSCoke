@@ -1,0 +1,33 @@
+---
+title: "React Hooks 완벽 가이드"
+date: "2024-12-12"
+description: "useState, useEffect 등 React Hooks의 핵심 개념을 정리합니다."
+category: "개발"
+tags: ["React", "Hooks", "Frontend"]
+---
+
+# React Hooks 완벽 가이드
+
+React Hooks는 함수형 컴포넌트에서 상태와 생명주기 기능을 사용할 수 있게 해줍니다.
+
+## useState
+
+가장 기본적인 Hook으로, 컴포넌트에 상태를 추가합니다.
+
+```typescript
+const [count, setCount] = useState(0);
+```
+
+## useEffect
+
+사이드 이펙트를 처리하는 Hook입니다.
+
+```typescript
+useEffect(() => {
+  document.title = `Count: ${count}`;
+}, [count]);
+```
+
+## 마무리
+
+Hooks를 잘 활용하면 더 깔끔하고 재사용 가능한 코드를 작성할 수 있습니다.

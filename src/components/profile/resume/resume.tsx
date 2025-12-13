@@ -33,35 +33,39 @@ const Resume = () => {
   }, [careers]);
 
   return (
-    <div className="flex justify-between">
-      <div className="gap-5 ml-5 mt-5 fixed hidden lg:block bg-gray-800/95 p-4 rounded-lg backdrop-blur-xs max-w-[240px]">
-        {careers.map((career, index) => (
-          <div key={index} className="mb-4">
-            <a href={`#career_${index}`}>
-              <BaseText
-                type="body1"
-                className={twMerge(
-                  "font-bold text-lg transition-colors",
-                  activeIndex === index ? "text-yellow-200" : "text-white hover:text-yellow-200",
-                )}
-              >
-                {career.company}
-              </BaseText>
-              <br />
-              <BaseText
-                type="caption"
-                className={twMerge(
-                  "transition-colors",
-                  activeIndex === index ? "text-yellow-200/70" : "text-gray-300",
-                )}
-              >
-                {career.period}
-              </BaseText>
-            </a>
-          </div>
-        ))}
+    <div className="flex gap-5">
+      {/* 커리어 네비 - sticky */}
+      <div className="hidden lg:block w-60 shrink-0">
+        <div className="sticky top-[100px] bg-gray-800/95 p-4 rounded-lg backdrop-blur-xs">
+          {careers.map((career, index) => (
+            <div key={index} className="mb-4">
+              <a href={`#career_${index}`}>
+                <BaseText
+                  type="body1"
+                  className={twMerge(
+                    "font-bold text-lg transition-colors",
+                    activeIndex === index ? "text-yellow-200" : "text-white hover:text-yellow-200",
+                  )}
+                >
+                  {career.company}
+                </BaseText>
+                <br />
+                <BaseText
+                  type="caption"
+                  className={twMerge(
+                    "transition-colors",
+                    activeIndex === index ? "text-yellow-200/70" : "text-gray-300",
+                  )}
+                >
+                  {career.period}
+                </BaseText>
+              </a>
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="lg:ml-[280px]">
+      {/* 커리어 상세 */}
+      <div className="flex-1">
         {careers.map((career, careerIndex) => (
           <CareerSection key={careerIndex} career={career} index={careerIndex} />
         ))}

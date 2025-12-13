@@ -12,6 +12,7 @@ import { Fragment } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import ProfileItem from "./profile-item";
+import Resume from "./resume/resume";
 
 /**
  * 이력서 페이지
@@ -22,6 +23,7 @@ const Profile = () => {
   const { introduction, contact } = resumeData;
   return (
     <div className="p-3 flex flex-col gap-1 md:gap-5">
+      {/* 간단 소개글 섹션 */}
       <div className="flex items-center flex-col gap-1 md:flex-row md:gap-3 md:items-start">
         <Avatar
           className="h-[180px] w-[180px] border-4 border-yellow-200 md:h-[200px] md:w-[200px]"
@@ -81,6 +83,7 @@ const Profile = () => {
           </div>
         </div>
       </div>
+
       <ProfileItem title={t("introduction")}>
         <BaseText>
           {introduction.map((text, index) => {
@@ -93,20 +96,8 @@ const Profile = () => {
           })}
         </BaseText>
       </ProfileItem>
-      <ProfileItem title={t("links")}>
-        <div className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
-          <Image src={Github} width={24} height={24} alt="git-hub" />
-          <a href="https://github.com/icecokel" target="_blank" rel="noopener noreferrer">
-            https://github.com/icecokel
-          </a>
-        </div>
-        <div className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
-          <Icon kind="bookmark" />
-          <a href="https://icecokel.tistory.com" target="_blank" rel="noopener noreferrer">
-            https://icecokel.tistory.com
-          </a>
-        </div>
-      </ProfileItem>
+      {/* Resume 섹션 */}
+      <Resume />
 
       <ProfileItem title={t("education")}>
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center ">
@@ -127,17 +118,22 @@ const Profile = () => {
           </div>
         </div>
       </ProfileItem>
-      <Link href="/profile/resume">
-        <div className="flex justify-end">
-          <Button
-            variant="default"
-            className="bg-yellow-200 text-black hover:text-blue-300 rounded-3xl flex items-center gap-x-2 shadow-[2px_4px_4px_rgb(0,0,0,0.4)]"
-          >
-            {t("viewCareer")}
-            <Icon kind="navigation" className="rotate-90" />
-          </Button>
+
+      {/* 링크 섹션 */}
+      <ProfileItem title={t("links")}>
+        <div className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
+          <Image src={Github} width={24} height={24} alt="git-hub" />
+          <a href="https://github.com/icecokel" target="_blank" rel="noopener noreferrer">
+            https://github.com/icecokel
+          </a>
         </div>
-      </Link>
+        <div className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
+          <Icon kind="bookmark" />
+          <a href="https://icecokel.tistory.com" target="_blank" rel="noopener noreferrer">
+            https://icecokel.tistory.com
+          </a>
+        </div>
+      </ProfileItem>
     </div>
   );
 };

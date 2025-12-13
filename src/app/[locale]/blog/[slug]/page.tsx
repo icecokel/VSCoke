@@ -7,6 +7,7 @@ import Icon from "@/components/base-ui/icon";
 import Link from "next/link";
 import type { Metadata } from "next";
 import type { MDXComponents } from "mdx/types";
+import { getTranslations } from "next-intl/server";
 
 interface BlogPostPageProps {
   params: Promise<{
@@ -87,6 +88,7 @@ const mdxComponents: MDXComponents = {
 const BlogPostPage = async ({ params }: BlogPostPageProps) => {
   const { locale, slug } = await params;
   const post = getPostBySlug(slug);
+  const t = await getTranslations("blog");
 
   if (!post) {
     notFound();
@@ -99,7 +101,7 @@ const BlogPostPage = async ({ params }: BlogPostPageProps) => {
         className="inline-flex items-center gap-1 text-gray-400 hover:text-yellow-200 mb-6"
       >
         <Icon kind="arrow_back" size={18} />
-        <span>목록으로</span>
+        <span>{t("backToList")}</span>
       </Link>
 
       <header className="mb-8 pb-6 border-b border-gray-700">

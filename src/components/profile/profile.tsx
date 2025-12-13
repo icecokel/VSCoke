@@ -1,10 +1,10 @@
 "use client";
 
 import Avatar from "@/components/base-ui/avatar";
-import Button from "@/components/base-ui/button";
+import { Button } from "@/components/ui/button";
 import Icon from "@/components/base-ui/icon";
 import BaseText from "@/components/base-ui/text";
-import Tooltip from "@/components/base-ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import Image from "next/image";
 import Github from "public/images/icons/github.svg";
 import resumeData from "@/../resume.json";
@@ -34,27 +34,48 @@ const Profile = () => {
             {t("developerName")}
           </BaseText>
           <div className="mt-5 w-full max-w-sm bg-blue-100/20 rounded-sm p-4 gap-4 flex flex-col">
-            <Tooltip text={t("sendEmail")}>
-              <BaseText type="body2" className="flex items-center gap-x-1 hover:text-yellow-200 ">
-                <Icon kind="mail" size={14} className="mr-1" />
-                <a href={`mailto:${contact.email}`}>{contact.email}</a>
-              </BaseText>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <BaseText
+                  type="body2"
+                  className="flex items-center gap-x-1 hover:text-yellow-200 cursor-pointer"
+                >
+                  <Icon kind="mail" size={14} className="mr-1" />
+                  <a href={`mailto:${contact.email}`}>{contact.email}</a>
+                </BaseText>
+              </TooltipTrigger>
+              <TooltipContent className="bg-gray-900 border-gray-700 text-white">
+                {t("sendEmail")}
+              </TooltipContent>
             </Tooltip>
             <div className="flex items-center gap-2">
-              <Tooltip text={t("call")}>
-                <BaseText type="body2" className="flex items-center hover:text-yellow-200">
-                  <Icon kind="call" size={14} className="mr-1" />
-                  <a href={`tel:${contact.phone}`}>{contact.phone}</a>
-                </BaseText>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <BaseText
+                    type="body2"
+                    className="flex items-center hover:text-yellow-200 cursor-pointer"
+                  >
+                    <Icon kind="call" size={14} className="mr-1" />
+                    <a href={`tel:${contact.phone}`}>{contact.phone}</a>
+                  </BaseText>
+                </TooltipTrigger>
+                <TooltipContent className="bg-gray-900 border-gray-700 text-white">
+                  {t("call")}
+                </TooltipContent>
               </Tooltip>
-              <Tooltip text={t("copyPhone")}>
-                <button
-                  type="button"
-                  className="p-1 hover:bg-gray-700 rounded transition-colors"
-                  onClick={() => navigator.clipboard.writeText(contact.phone)}
-                >
-                  <Icon kind="content_copy" size={16} />
-                </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="p-1 hover:bg-gray-700 rounded transition-colors"
+                    onClick={() => navigator.clipboard.writeText(contact.phone)}
+                  >
+                    <Icon kind="content_copy" size={16} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="bg-gray-900 border-gray-700 text-white">
+                  {t("copyPhone")}
+                </TooltipContent>
               </Tooltip>
             </div>
           </div>
@@ -109,10 +130,10 @@ const Profile = () => {
       <Link href="/profile/resume">
         <div className="flex justify-end">
           <Button
-            variant="contained"
-            className="bg-yellow-200 text-black! hover:text-blue-300! rounded-[24px]! flex items-center gap-x-2 shadow-[2px_4px_4px_rgb(0,0,0,0.4)]"
+            variant="default"
+            className="bg-yellow-200 text-black hover:text-blue-300 rounded-3xl flex items-center gap-x-2 shadow-[2px_4px_4px_rgb(0,0,0,0.4)]"
           >
-            <BaseText type="body2">{t("viewCareer")}</BaseText>
+            {t("viewCareer")}
             <Icon kind="navigation" className="rotate-90" />
           </Button>
         </div>

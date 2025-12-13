@@ -4,66 +4,47 @@ import useHistory from "@/hooks/use-history";
 import { TParentNode } from "@/models/common";
 import Container from "@/components/base-ui/container";
 import Icon from "@/components/base-ui/icon";
-import Menu from "@/components/base-ui/menu";
-import MenuItem from "@/components/base-ui/menu-item";
 import BaseText from "@/components/base-ui/text";
-import Tooltip from "@/components/base-ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 const HistoryTabs = ({ children }: TParentNode) => {
-  const [currentEl, setCurrentEl] = useState<null | HTMLElement>(null);
   const { history, change, remove, setHistory, current, add } = useHistory();
   const router = useRouter();
 
   const handleClickTab = change;
   const handleClickClose = remove;
 
-  const handleRightClickTab: React.MouseEventHandler<HTMLDivElement> = event => {
-    event.preventDefault();
-    setCurrentEl(event.currentTarget);
-  };
-
-  const onClose = () => {
-    setCurrentEl(null);
-  };
-
   const [dragStartPath, setDragStartPath] = useState<string>();
   const [dragEnterPath, setEnterPath] = useState<string>();
 
-  const onClickMenu =
-    (menu: "close" | "closeOthers" | "closeAll") => (target: HTMLElement | null) => {
-      if (target) {
-        const foundTab = history.find(({ path }) => path === target.id);
-        switch (menu) {
-          case "close": {
-            if (foundTab) {
-              remove(foundTab);
-            }
-            break;
-          }
+  const handleCloseTab = (tabPath: string) => {
+    const foundTab = history.find(({ path }) => path === tabPath);
+    if (foundTab) {
+      remove(foundTab);
+    }
+  };
 
-          case "closeOthers": {
-            if (foundTab) {
-              setHistory([{ ...foundTab, isActive: true }]);
-              router.push(foundTab.path);
-            }
-            break;
-          }
+  const handleCloseOthers = (tabPath: string) => {
+    const foundTab = history.find(({ path }) => path === tabPath);
+    if (foundTab) {
+      setHistory([{ ...foundTab, isActive: true }]);
+      router.push(foundTab.path);
+    }
+  };
 
-          case "closeAll": {
-            setHistory([]);
-            router.push("/");
-          }
-        }
-      }
-      setCurrentEl(null);
-    };
-
-  const handleClickCloseMenu = onClickMenu("close");
-  const handleClickCloseOuters = onClickMenu("closeOthers");
-  const handleClickCloseAll = onClickMenu("closeAll");
+  const handleCloseAll = () => {
+    setHistory([]);
+    router.push("/");
+  };
 
   const handleDragStart = ({ currentTarget: { id } }: React.MouseEvent<HTMLDivElement>) => {
     const clickedTab = history.find(({ path }) => path === id);
@@ -113,51 +94,60 @@ const HistoryTabs = ({ children }: TParentNode) => {
     <div className="w-full bg-gray-800">
       <div className="flex bg-gray-900 overflow-x-auto">
         {history.map(item => (
-          <Tooltip key={`tab_${item.path}`} text={`${item.path}/${item.title}`}>
-            <div
-              id={`${item.path}`}
-              className={twMerge(
-                "border border-gray-300/60 border-l-0 h-[32px] truncate",
-                item.isActive ? "bg-gray-800 border-b-0" : "hover:bg-gray-600",
-              )}
-              onClick={() => handleClickTab(item)}
-              onContextMenu={handleRightClickTab}
-              onDragStart={handleDragStart}
-              onDragEnterCapture={handleDragEnter}
-              onDragEnd={handleDragEnd}
-              draggable
-            >
-              <BaseText
-                className={twMerge(
-                  "text-gray-300/80 md:py-[6px] md:px-[20px] py-[4px] px-[8px] text-sm flex items-center",
-                  item.isActive &&
-                    "text-yellow-200/95 font-medium border-t pt-px border-t-blue-300 md:pt-[5px]",
-                )}
-              >
-                {item.title}
-                <span
-                  className={twMerge(
-                    "ml-[4px] mr-[-4px] md:ml-[8px] md:mr-[-8px] inline",
-                    !item.isActive && "hidden",
-                  )}
-                >
-                  <Icon
-                    kind="close"
-                    style={{ fontSize: "18px" }}
-                    onClick={() => handleClickClose(item)}
-                  />
-                </span>
-              </BaseText>
-            </div>
-          </Tooltip>
+          <ContextMenu key={`tab_${item.path}`}>
+            <ContextMenuTrigger asChild>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    id={`${item.path}`}
+                    className={twMerge(
+                      "border border-gray-300/60 border-l-0 h-8 truncate",
+                      item.isActive ? "bg-gray-800 border-b-0" : "hover:bg-gray-600",
+                    )}
+                    onClick={() => handleClickTab(item)}
+                    onDragStart={handleDragStart}
+                    onDragEnterCapture={handleDragEnter}
+                    onDragEnd={handleDragEnd}
+                    draggable
+                  >
+                    <BaseText
+                      className={twMerge(
+                        "text-gray-300/80 md:py-1.5 md:px-5 py-1 px-2 text-sm flex items-center",
+                        item.isActive &&
+                          "text-yellow-200/95 font-medium border-t pt-px border-t-blue-300 md:pt-[5px]",
+                      )}
+                    >
+                      {item.title}
+                      <span
+                        className={twMerge(
+                          "ml-1 -mr-1 md:ml-2 md:-mr-2 inline",
+                          !item.isActive && "hidden",
+                        )}
+                      >
+                        <Icon
+                          kind="close"
+                          style={{ fontSize: "18px" }}
+                          onClick={() => handleClickClose(item)}
+                        />
+                      </span>
+                    </BaseText>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="bg-gray-900 border-gray-700 text-white">
+                  {`${item.path}/${item.title}`}
+                </TooltipContent>
+              </Tooltip>
+            </ContextMenuTrigger>
+            <ContextMenuContent className="bg-gray-800 border-gray-700 text-white">
+              <ContextMenuItem onClick={() => handleCloseTab(item.path)}>닫기</ContextMenuItem>
+              <ContextMenuItem onClick={() => handleCloseOthers(item.path)}>
+                나머지 닫기
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => handleCloseAll()}>모두 닫기</ContextMenuItem>
+            </ContextMenuContent>
+          </ContextMenu>
         ))}
       </div>
-
-      <Menu targetEl={currentEl} onClose={onClose}>
-        <MenuItem onClick={() => handleClickCloseMenu(currentEl)}>닫기</MenuItem>
-        <MenuItem onClick={() => handleClickCloseOuters(currentEl)}>나머지 닫기</MenuItem>
-        <MenuItem onClick={() => handleClickCloseAll(currentEl)}>모두 닫기</MenuItem>
-      </Menu>
 
       <Container className="min-h-screen flex-1 text-white sm:p-2 md:p-5 xs:px-0 xs:py-3">
         {children}

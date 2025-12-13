@@ -1,7 +1,6 @@
 "use client";
 
 import Avatar from "@/components/base-ui/avatar";
-import { Button } from "@/components/ui/button";
 import Icon from "@/components/base-ui/icon";
 import BaseText from "@/components/base-ui/text";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -10,7 +9,6 @@ import Github from "public/images/icons/github.svg";
 import resumeData from "@/../resume.json";
 import { Fragment } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
 import ProfileItem from "./profile-item";
 import Resume from "./resume/resume";
 

@@ -3,10 +3,13 @@
 import OpenProjectModal from "./open-project-modal";
 import { useBoolean } from "@/hooks/use-boolean";
 import { TParentNode } from "@/models/common";
-import Menu from "@/components/base-ui/menu";
-import MenuItem from "@/components/base-ui/menu-item";
 import BaseText from "@/components/base-ui/text";
-import { MouseEventHandler, useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useTranslations } from "next-intl";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import { routing, Locale } from "@/i18n/routing";
@@ -30,7 +33,6 @@ const LANGUAGES: Record<Locale, { label: string }> = {
 };
 
 const Menubar = ({ children }: TParentNode) => {
-  const [currentEl, setCurrentEl] = useState<null | HTMLElement>(null);
   const t = useTranslations("menu");
   const router = useRouter();
   const pathname = usePathname();
@@ -39,7 +41,6 @@ const Menubar = ({ children }: TParentNode) => {
 
   const handleChangeLanguage = (newLocale: Locale) => {
     router.replace(pathname, { locale: newLocale });
-    setCurrentEl(null);
   };
 
   const MENULIST: IMenu[] = [
@@ -51,7 +52,6 @@ const Menubar = ({ children }: TParentNode) => {
           name: t("openProject"),
           onClick: () => {
             project.onTrue();
-            setCurrentEl(null);
           },
         },
       ],
@@ -66,42 +66,33 @@ const Menubar = ({ children }: TParentNode) => {
     },
     { key: "3", name: t("help"), items: [{ name: t("preparing") }] },
   ];
-  const currentItems = MENULIST.find(({ name }) => name === currentEl?.id);
-
-  const onClose = () => {
-    setCurrentEl(null);
-  };
-
-  const handleClickMenu: MouseEventHandler<HTMLDivElement> = event => {
-    event.preventDefault();
-    setCurrentEl(event.currentTarget);
-  };
 
   return (
     <>
       <div className="bg-gray-900 p-1 flex border-b-2 border-b-gray-500">
-        {MENULIST.map((item, index) => {
-          return (
-            <div
-              key={`${item.key}_${index}`}
-              onClick={handleClickMenu}
-              id={`${item.name}`}
-              className="hover:bg-gray-300 text-gray-300 hover:text-black hover:rounded-xs"
-            >
-              <BaseText type="body1" className="px-3 select-none">
-                {item.name}
-              </BaseText>
-            </div>
-          );
-        })}
-      </div>
-      <Menu targetEl={currentEl} onClose={onClose}>
-        {currentItems?.items.map((item, index) => (
-          <MenuItem key={`${currentItems.name}_item_${index}`} onClick={item.onClick}>
-            {item.name}
-          </MenuItem>
+        {MENULIST.map((item, index) => (
+          <DropdownMenu key={`${item.key}_${index}`}>
+            <DropdownMenuTrigger asChild>
+              <div className="hover:bg-gray-300 text-gray-300 hover:text-black hover:rounded-xs cursor-pointer">
+                <BaseText type="body1" className="px-3 select-none">
+                  {item.name}
+                </BaseText>
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-gray-800 border-gray-700 text-white">
+              {item.items.map((menuItem, menuIndex) => (
+                <DropdownMenuItem
+                  key={`${item.name}_item_${menuIndex}`}
+                  onClick={menuItem.onClick}
+                  className="hover:bg-gray-700 focus:bg-gray-700 cursor-pointer"
+                >
+                  {menuItem.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         ))}
-      </Menu>
+      </div>
 
       <OpenProjectModal open={project.value} onClose={project.onFalse} />
 

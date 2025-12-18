@@ -1,7 +1,16 @@
 "use client";
 
-// 테스트: sky-drop 게임 내용을 game 메인 라우트에 배치
+import dynamic from "next/dynamic";
 import { GameConstants } from "@/components/game/GameConstants";
+
+const PhaserGame = dynamic(() => import("@/components/game/PhaserGame"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex size-full items-center justify-center bg-gray-900 text-white">
+      <p className="animate-pulse text-xl">Loading Game...</p>
+    </div>
+  ),
+});
 
 export default function GameDashboard() {
   return (
@@ -13,10 +22,7 @@ export default function GameDashboard() {
           aspectRatio: GameConstants.ASPECT_RATIO_CSS,
         }}
       >
-        {/* Phaser 없이 테스트 */}
-        <div className="flex size-full items-center justify-center text-white">
-          <p>Game Test (No Phaser)</p>
-        </div>
+        <PhaserGame />
       </div>
     </main>
   );

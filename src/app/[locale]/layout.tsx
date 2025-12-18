@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Menubar from "@/components/menubar/menubar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { MobileSidebarTrigger } from "@/components/mobile-sidebar-trigger";
 import HistoryTabs from "@/components/history-tabs/history-tabs";
 import AppProvider from "@/contexts/app-provider";
 import { HistoryProvider } from "@/contexts/history-context";
@@ -45,6 +46,7 @@ const LocaleLayout = async ({ children, params }: Props) => {
                 </div>
               </div>
             </SidebarInset>
+            <MobileSidebarTrigger />
           </SidebarProvider>
         </AppProvider>
       </HistoryProvider>

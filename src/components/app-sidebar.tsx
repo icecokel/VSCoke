@@ -13,9 +13,15 @@ import useExplorer from "@/hooks/use-explorer";
 import ExplorerItem from "@/components/sidebar/explorer-item";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { setOpen, open } = useSidebar();
+  const { setOpen, open, openMobile, isMobile } = useSidebar();
   const [activeTab, setActiveTab] = React.useState<"explorer" | "search" | "none">("explorer");
   const { itemList } = useExplorer();
+
+  React.useEffect(() => {
+    if (isMobile && openMobile) {
+      setActiveTab("explorer");
+    }
+  }, [isMobile, openMobile]);
 
   React.useEffect(() => {
     if (!open) {
@@ -42,7 +48,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* Activity Bar (Icons) - Fixed Width */}
         <div className="flex w-[3rem] flex-none flex-col items-center gap-2 border-r border-gray-800 bg-gray-900 py-2 z-20">
           <button
-            data-active={activeTab === "explorer" && open}
+            data-active={activeTab === "explorer" && (open || (isMobile && openMobile))}
             onClick={() => handleTabClick("explorer")}
             className="flex size-10 items-center justify-center rounded-none text-gray-400 hover:text-gray-100 data-[active=true]:border-l-2 data-[active=true]:border-l-blue-300 data-[active=true]:text-gray-100"
             title="Explorer"
@@ -50,7 +56,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <Icon kind="content_copy" size={24} />
           </button>
           <button
-            data-active={activeTab === "search" && open}
+            data-active={activeTab === "search" && (open || (isMobile && openMobile))}
             onClick={() => handleTabClick("search")}
             className="flex size-10 items-center justify-center rounded-none text-gray-400 hover:text-gray-100 data-[active=true]:border-l-2 data-[active=true]:border-l-blue-300 data-[active=true]:text-gray-100"
             title="Search"
@@ -60,7 +66,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </div>
 
         {/* Content Panel (Push) */}
-        {open && (
+        {(open || (isMobile && openMobile)) && (
           <SidebarContent className="flex-1 bg-gray-900 border-r border-gray-500 min-w-0">
             <SidebarGroup className="p-0 h-full">
               {activeTab === "explorer" && (

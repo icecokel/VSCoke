@@ -13,7 +13,7 @@ import useExplorer from "@/hooks/use-explorer";
 import ExplorerItem from "@/components/sidebar/explorer-item";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { setOpen, open, openMobile, isMobile } = useSidebar();
+  const { setOpen, open, openMobile, isMobile, setOpenMobile } = useSidebar();
   const [activeTab, setActiveTab] = React.useState<"explorer" | "search" | "none">("explorer");
   const { itemList } = useExplorer();
 
@@ -78,7 +78,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         key={`tree_${item.id}`}
                         {...item}
                         tabClose={() => {
-                          /* No-op */
+                          if (isMobile) {
+                            setOpenMobile(false);
+                          }
                         }}
                       />
                     ))}

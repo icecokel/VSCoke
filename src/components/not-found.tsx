@@ -2,10 +2,12 @@
 
 import Container from "@/components/base-ui/container";
 import BaseText from "@/components/base-ui/text";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { Button } from "./ui/button";
 
 const NotFound = () => {
   const path = usePathname();
+  const router = useRouter();
 
   return (
     <Container maxWidth="sm">
@@ -25,6 +27,9 @@ const NotFound = () => {
             이동해주세요.
           </BaseText>
         </div>
+        <Button className="mt-4" onClick={() => router.push("/")}>
+          메인 페이지로 이동
+        </Button>
       </div>
     </Container>
   );

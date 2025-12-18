@@ -4,26 +4,57 @@ import matter from "gray-matter";
 import readingTime from "reading-time";
 import type { Post, PostMeta, CategoryGroup } from "@/types/blog";
 
-const DEFAULT_CATEGORY = "uncategorized";
-
 const postsDirectory = path.join(process.cwd(), "src/posts");
 
-export const getPostSlugs = (): string[] => {
-  if (!fs.existsSync(postsDirectory)) {
+interface PostSlugInfo {
+  slug: string;
+  category: string;
+  filePath: string;
+}
+
+/**
+ * 재귀적으로 posts 디렉토리를 탐색하여 모든 MDX 파일 정보를 반환
+ */
+const getPostFiles = (dir: string = postsDirectory, category: string = ""): PostSlugInfo[] => {
+  if (!fs.existsSync(dir)) {
     return [];
   }
-  const files = fs.readdirSync(postsDirectory);
-  return files.filter(file => file.endsWith(".mdx")).map(file => file.replace(/\.mdx$/, ""));
+
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const posts: PostSlugInfo[] = [];
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      // 하위 폴더 탐색 - 폴더명이 카테고리
+      posts.push(...getPostFiles(fullPath, entry.name));
+    } else if (entry.isFile() && entry.name.endsWith(".mdx")) {
+      const slug = entry.name.replace(/\.mdx$/, "");
+      posts.push({
+        slug: category ? `${category}/${slug}` : slug,
+        category: category || "uncategorized",
+        filePath: fullPath,
+      });
+    }
+  }
+
+  return posts;
+};
+
+export const getPostSlugs = (): string[] => {
+  return getPostFiles().map(post => post.slug);
 };
 
 export const getPostBySlug = (slug: string): Post | null => {
-  const filePath = path.join(postsDirectory, `${slug}.mdx`);
+  const posts = getPostFiles();
+  const postInfo = posts.find(p => p.slug === slug);
 
-  if (!fs.existsSync(filePath)) {
+  if (!postInfo) {
     return null;
   }
 
-  const fileContents = fs.readFileSync(filePath, "utf8");
+  const fileContents = fs.readFileSync(postInfo.filePath, "utf8");
   const { data, content } = matter(fileContents);
   const stats = readingTime(content);
 
@@ -33,9 +64,9 @@ export const getPostBySlug = (slug: string): Post | null => {
     date: data.date || "",
     description: data.description || "",
     tags: data.tags || [],
-    category: data.category || DEFAULT_CATEGORY,
+    category: postInfo.category, // 폴더명에서 카테고리 추출
     readingTime: stats.text,
-    published: data.published !== false, // 기본값 true, 명시적으로 false일 때만 비공개
+    published: data.published !== false,
     content,
   };
 };

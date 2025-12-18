@@ -2,7 +2,7 @@ import type { ComponentProps } from "react";
 
 import { cn } from "@/lib/utils";
 
-function Skeleton({ className, ...props }: ComponentProps<"div">) {
+const Skeleton = ({ className, ...props }: ComponentProps<"div">) => {
   return (
     <div
       data-slot="skeleton"
@@ -10,6 +10,6 @@ function Skeleton({ className, ...props }: ComponentProps<"div">) {
       {...props}
     />
   );
-}
+};
 
 export { Skeleton };

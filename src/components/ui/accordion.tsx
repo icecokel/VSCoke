@@ -6,11 +6,11 @@ import { ChevronDownIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-function Accordion({ ...props }: ComponentProps<typeof AccordionPrimitive.Root>) {
+const Accordion = ({ ...props }: ComponentProps<typeof AccordionPrimitive.Root>) => {
   return <AccordionPrimitive.Root data-slot="accordion" {...props} />;
-}
+};
 
-function AccordionItem({ className, ...props }: ComponentProps<typeof AccordionPrimitive.Item>) {
+const AccordionItem = ({ className, ...props }: ComponentProps<typeof AccordionPrimitive.Item>) => {
   return (
     <AccordionPrimitive.Item
       data-slot="accordion-item"
@@ -18,13 +18,13 @@ function AccordionItem({ className, ...props }: ComponentProps<typeof AccordionP
       {...props}
     />
   );
-}
+};
 
-function AccordionTrigger({
+const AccordionTrigger = ({
   className,
   children,
   ...props
-}: ComponentProps<typeof AccordionPrimitive.Trigger>) {
+}: ComponentProps<typeof AccordionPrimitive.Trigger>) => {
   return (
     <AccordionPrimitive.Header className="flex">
       <AccordionPrimitive.Trigger
@@ -40,13 +40,13 @@ function AccordionTrigger({
       </AccordionPrimitive.Trigger>
     </AccordionPrimitive.Header>
   );
-}
+};
 
-function AccordionContent({
+const AccordionContent = ({
   className,
   children,
   ...props
-}: ComponentProps<typeof AccordionPrimitive.Content>) {
+}: ComponentProps<typeof AccordionPrimitive.Content>) => {
   return (
     <AccordionPrimitive.Content
       data-slot="accordion-content"
@@ -56,6 +56,6 @@ function AccordionContent({
       <div className={cn("pt-0 pb-4", className)}>{children}</div>
     </AccordionPrimitive.Content>
   );
-}
+};
 
 export { Accordion, AccordionItem, AccordionTrigger, AccordionContent };

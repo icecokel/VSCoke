@@ -13,7 +13,7 @@ import { useExplorer } from "@/hooks/use-explorer";
 import ExplorerItem from "@/components/sidebar/explorer-item";
 import { useTranslations } from "next-intl";
 
-export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
+export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
   const t = useTranslations("sidebar");
   const { setOpen, open, openMobile, isMobile, setOpenMobile } = useSidebar();
   const [activeTab, setActiveTab] = useState<"explorer" | "search" | "none">("explorer");
@@ -109,4 +109,4 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       <SidebarRail />
     </Sidebar>
   );
-}
+};

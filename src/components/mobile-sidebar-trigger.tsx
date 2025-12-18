@@ -5,7 +5,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { PanelLeftIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export function MobileSidebarTrigger() {
+export const MobileSidebarTrigger = () => {
   const { openMobile, setOpenMobile } = useSidebar();
   const isMobile = useIsMobile();
 
@@ -23,4 +23,4 @@ export function MobileSidebarTrigger() {
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );
-}
+};

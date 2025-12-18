@@ -11,6 +11,16 @@
     "help": "Help",
     "preparing": "Preparing..."
   },
+  "sidebar": {
+    "explorer": "Explorer",
+    "search": "Search",
+    "searchDisabled": "Search is currently disabled."
+  },
+  "metadata": {
+    "title": "VSCOKE",
+    "description": "Developer Portfolio & Blog",
+    "keywords": "Developer, Portfolio, Blog, React, Next.js"
+  },
   "home": {
     "greeting": "Hello,",
     "developer": "I'm Sangmin Lee",

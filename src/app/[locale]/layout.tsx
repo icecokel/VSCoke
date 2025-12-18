@@ -1,5 +1,5 @@
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages, setRequestLocale } from "next-intl/server";
+import { getMessages, setRequestLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import Menubar from "@/components/menubar/menubar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -19,6 +19,37 @@ type Props = {
 export const generateStaticParams = () => {
   return routing.locales.map(locale => ({ locale }));
 };
+
+export async function generateMetadata({ params }: Props) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "metadata" });
+
+  const keywords = t("keywords").split(", ");
+
+  return {
+    title: t("title"),
+    description: t("description"),
+    keywords,
+    authors: [{ name: "icecokel" }],
+    openGraph: {
+      title: t("title"),
+      description: t("description"),
+      url: "https://vscoke.vercel.app",
+      siteName: t("title"),
+      locale: locale === "ko-KR" ? "ko_KR" : "en_US",
+      type: "website",
+    },
+    twitter: {
+      card: "summary",
+      title: t("title"),
+      description: t("description"),
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
+  };
+}
 
 const LocaleLayout = async ({ children, params }: Props) => {
   const { locale } = await params;

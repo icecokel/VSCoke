@@ -11,8 +11,10 @@ import {
 import Icon from "@/components/base-ui/icon";
 import { useExplorer } from "@/hooks/use-explorer";
 import ExplorerItem from "@/components/sidebar/explorer-item";
+import { useTranslations } from "next-intl";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const t = useTranslations("sidebar");
   const { setOpen, open, openMobile, isMobile, setOpenMobile } = useSidebar();
   const [activeTab, setActiveTab] = React.useState<"explorer" | "search" | "none">("explorer");
   const { itemList } = useExplorer();
@@ -51,7 +53,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             data-active={activeTab === "explorer" && (open || (isMobile && openMobile))}
             onClick={() => handleTabClick("explorer")}
             className="flex size-10 items-center justify-center rounded-none text-gray-400 hover:text-gray-100 data-[active=true]:border-l-2 data-[active=true]:border-l-blue-300 data-[active=true]:text-gray-100"
-            title="Explorer"
+            title={t("explorer")}
           >
             <Icon kind="content_copy" size={24} />
           </button>
@@ -59,7 +61,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             data-active={activeTab === "search" && (open || (isMobile && openMobile))}
             onClick={() => handleTabClick("search")}
             className="flex size-10 items-center justify-center rounded-none text-gray-400 hover:text-gray-100 data-[active=true]:border-l-2 data-[active=true]:border-l-blue-300 data-[active=true]:text-gray-100"
-            title="Search"
+            title={t("search")}
           >
             <Icon kind="search" size={24} />
           </button>
@@ -71,7 +73,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarGroup className="p-0 h-full">
               {activeTab === "explorer" && (
                 <div className="flex flex-col gap-y-1 p-2 h-full overflow-y-auto">
-                  <div className="text-xs font-bold text-gray-400 mb-2 px-2">EXPLORER</div>
+                  <div className="text-xs font-bold text-gray-400 mb-2 px-2">
+                    {t("explorer").toUpperCase()}
+                  </div>
                   <div className="flex flex-col gap-y-1 px-2">
                     {itemList.map(item => (
                       <ExplorerItem
@@ -90,9 +94,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
               {activeTab === "search" && (
                 <div className="flex flex-col px-4 py-2 h-full">
-                  <div className="text-xs font-bold text-gray-400 mb-2">SEARCH</div>
+                  <div className="text-xs font-bold text-gray-400 mb-2">
+                    {t("search").toUpperCase()}
+                  </div>
                   <div className="mt-4 text-xs text-center text-gray-500">
-                    Search is currently disabled.
+                    {t("searchDisabled")}
                   </div>
                 </div>
               )}

@@ -21,8 +21,8 @@ const Search = ({ isShowing }: SearchProps) => {
     code,
   }) => {
     setKeyword(value);
-    if (code === "Enter") {
-      // TODO: Implement search functionality
+    if (code === "Enter" && value.trim()) {
+      // 검색 기능 미구현 - 빈 결과 반환
       setResults([]);
     }
   };

@@ -116,7 +116,7 @@ export class MainScene extends Phaser.Scene {
     // 이벤트 터널 리스너
     this.game.events.on(
       "external-resize",
-      (_data: { width: number; height: number }) => {
+      () => {
         this.updateLayout();
       },
       this,

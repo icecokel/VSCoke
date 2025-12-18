@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import * as Phaser from "phaser";
 import { GameConfig } from "./GameConfig";
-import { GameConstants } from "./GameConstants";
 
-export default function PhaserGame() {
+const PhaserGame = () => {
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -57,4 +56,6 @@ export default function PhaserGame() {
   }, []);
 
   return <div ref={containerRef} id="phaser-container" className="size-full" />;
-}
+};
+
+export default PhaserGame;

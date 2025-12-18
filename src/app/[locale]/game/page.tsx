@@ -14,9 +14,9 @@ const PhaserGame = dynamic(() => import("@/components/game/PhaserGame"), {
 
 export default function GamePage() {
   return (
-    <main className="flex h-screen w-full flex-col items-center xs:p-0 justify-center bg-slate-900 p-4">
+    <main className="flex h-screen w-full flex-col p-0 bg-slate-900 sm:p-4">
       <div
-        className="relative w-full overflow-hidden rounded-xl xs:border-0 border-4 border-slate-700 bg-black shadow-2xl"
+        className="relative w-full overflow-hidden rounded-xl border-0 sm:border-4 border-slate-700 bg-black shadow-2xl"
         style={{
           maxWidth: `${GameConstants.MAX_WIDTH}px`,
           maxHeight: "calc(100% - 8px)",

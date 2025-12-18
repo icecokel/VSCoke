@@ -15,12 +15,12 @@ export class MainScene extends Phaser.Scene {
 
   // Localized Texts
   private texts: GameTexts = {
-    score: "Score: ",
-    deadline: "DEADLINE",
-    start: "START",
-    gameOver: "GAME OVER",
-    finalScore: "Final Score: ",
-    restart: "CLICK TO RESTART",
+    score: "",
+    deadline: "",
+    start: "",
+    gameOver: "",
+    finalScore: "",
+    restart: "",
   };
   private columns: Phaser.GameObjects.Sprite[][] = [[], [], []];
   private pickedBlock: Phaser.GameObjects.Sprite | null = null;

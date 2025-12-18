@@ -6,7 +6,6 @@ import BaseText from "@/components/base-ui/text";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import Image from "next/image";
 import Github from "public/images/icons/github.svg";
-import resumeData from "@/../resume.json";
 import { Fragment } from "react";
 import { useTranslations } from "next-intl";
 import ProfileItem from "./profile-item";
@@ -18,7 +17,9 @@ import Resume from "./resume/resume";
  */
 const Profile = () => {
   const t = useTranslations("profile");
-  const { introduction, contact } = resumeData;
+  const tResume = useTranslations("resume");
+  const introduction = tResume.raw("introduction") as string[];
+  const contact = tResume.raw("contact");
   return (
     <div className="p-3 flex flex-col gap-1 md:gap-5">
       {/* 간단 소개글 섹션 */}

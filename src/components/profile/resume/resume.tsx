@@ -1,13 +1,15 @@
 "use client";
 
 import BaseText from "@/components/base-ui/text";
-import resumeData from "@/../resume.json";
 import CareerSection from "./career-section";
 import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
+import { useTranslations } from "next-intl";
 
 const Resume = () => {
-  const { careers } = resumeData;
+  const t = useTranslations("resume");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const careers = t.raw("careers") as any[];
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {

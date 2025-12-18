@@ -16,9 +16,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
+import { useTranslations } from "next-intl";
+
 const HistoryTabs = ({ children }: TParentNode) => {
   const { history, change, remove, setHistory, current, add } = useHistory();
   const router = useRouter();
+  const t = useTranslations("historyTabs");
 
   const handleClickTab = change;
   const handleClickClose = remove;
@@ -139,11 +142,13 @@ const HistoryTabs = ({ children }: TParentNode) => {
               </Tooltip>
             </ContextMenuTrigger>
             <ContextMenuContent className="bg-gray-800 border-gray-700 text-white">
-              <ContextMenuItem onClick={() => handleCloseTab(item.path)}>닫기</ContextMenuItem>
-              <ContextMenuItem onClick={() => handleCloseOthers(item.path)}>
-                나머지 닫기
+              <ContextMenuItem onClick={() => handleCloseTab(item.path)}>
+                {t("close")}
               </ContextMenuItem>
-              <ContextMenuItem onClick={() => handleCloseAll()}>모두 닫기</ContextMenuItem>
+              <ContextMenuItem onClick={() => handleCloseOthers(item.path)}>
+                {t("closeOthers")}
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => handleCloseAll()}>{t("closeAll")}</ContextMenuItem>
             </ContextMenuContent>
           </ContextMenu>
         ))}

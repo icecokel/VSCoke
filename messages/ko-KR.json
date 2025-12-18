@@ -46,5 +46,520 @@
     "gameOver": "게임 종료",
     "finalScore": "최종 점수: ",
     "restart": "클릭하여 재시작"
+  },
+  "intro": {
+    "title": "Welcome VSCoke",
+    "osWindow": "OS가 윈도우인 경우",
+    "osMac": "OS가 MAC인 경우",
+    "fullScreenGuide": "눌러 \"전체 화면\" 으로 보시면",
+    "experience": "더욱 좋은 경험이 될겁니다"
+  },
+  "notFound": {
+    "title": "페이지를 찾을 수 없습니다.",
+    "descPrefix": "\"",
+    "descSuffix": "\" 주소 페이지는 찾을 수 없습니다.",
+    "guide": "파일 아이콘을 클릭해서 다른 페이지로 이동하거나 아래 버튼을 클릭해 메인 페이지로 이동해주세요.",
+    "button": "메인 페이지로 이동"
+  },
+  "historyTabs": {
+    "close": "닫기",
+    "closeOthers": "나머지 닫기",
+    "closeAll": "모두 닫기"
+  },
+  "achievement": {
+    "label": "💡 성과"
+  },
+  "descriptionItem": {
+    "techStack": "기술 스택"
+  },
+  "resume": {
+    "name": "이상민",
+    "contact": {
+      "phone": "+821020809652",
+      "email": "red9runge@gmail.com"
+    },
+    "introduction": [
+      "안녕하세요.",
+      "정보통신학과를 졸업하고 인프라 엔지니어로 3년간 근무했습니다.",
+      "반복 업무를 자동화하고 비효율적인 프로세스를 개선하는 데 관심이 많아 개발자로 전향했습니다.",
+      "일본의 AllofThem에서 프론트엔드 개발자로 근무하며 필요 시 백엔드 개발도 진행했습니다.",
+      "이후 코드크레용에서 2년간 프론트엔드 개발자로 근무하며 이커머스와 영상 플랫폼의 웹뷰를 중점적으로 담당했습니다.",
+      "서비스를 함께 만들어가는 것을 즐기며, 개발 역량뿐 아니라 팀에 기여할 수 있는 방법을 고민합니다.",
+      "새로운 문제에 직면했을 때 현실적이고 효과적인 해결책을 찾는 것을 좋아합니다."
+    ],
+    "totalExperience": "6년 10개월",
+    "careers": [
+      {
+        "company": "주식회사 코드크레용",
+        "period": "2023.05 - 2025.07 (2년 3개월)",
+        "employmentType": "정규직",
+        "projects": [
+          {
+            "title": "숏타임 어드민",
+            "period": "2025.04 - 2025.07",
+            "descriptions": [
+              {
+                "subtitle": "Shortime의 관리 페이지 자막 번역 시스템 추가",
+                "skills": "Nextjs, TypeScript, Material-UI (MUI), Bedrock SDK",
+                "tasks": [
+                  "Vtt파일을 업로드 하여 AI를 통해 번역 일괄 처리 및 일괄 다운로드",
+                  "캐릭터 설정정보, 컨텐츠의 장르,분위기에 따라 적합한 프롬프트 적용"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "자막 번역 시스템 개발 및 활용",
+            "period": "2025.03 - 2025.06",
+            "descriptions": [
+              {
+                "subtitle": "AI 기반 자막 번역 자동화 도구",
+                "skills": "Node.js, TypeScript, AWS Bedrock, OpenAI, Express",
+                "tasks": [
+                  "원클릭 번역: 명령어 하나로 자막 파일 자동 번역",
+                  "다중 AI 엔진: 여러 AI 번역 엔진 지원 및 전환 용이",
+                  "번역 품질 검증: 자동 검증 시스템으로 품질 보장",
+                  "대용량 처리: 청크 및 병렬 처리로 대용량 자막 지원",
+                  "웹 기반 도구: 웹 UI로 사용 편의성 향상"
+                ],
+                "achievement": "AI 자막 번역 시스템 도입으로 작품당 2~3명이 필요하던 번역 작업을 1인이 하루 6~8작품 처리 가능하도록 개발 (생산성 600% 향상, 인력 대비 작업량 기준)"
+              }
+            ]
+          },
+          {
+            "title": "shortime playground",
+            "period": "2024.09 - 2025.04",
+            "descriptions": [
+              {
+                "subtitle": "쇼타임 플랫폼 게임 및 이벤트 웹뷰 플랫폼 프론트엔드 개발",
+                "skills": "Next.js 14, TypeScript, Material-UI, Tailwind CSS, Phaser 3, Jotai, shadcn-ui, next-intl, Branch SDK, Lottie",
+                "tasks": [
+                  "플라이팝, 열려라 참깨 게임 기획 및 개발",
+                  "AI를 활용한 운세보기 기능 이관 개발",
+                  "럭키드로우 시스템: 드로우 리스트 및 상세 페이지, 당첨자 정보 입력",
+                  "이벤트 페이지: 기프트 코드, 친구 초대 시스템 (딥링크 공유 및 SNS 연동), 어메이징 위크 이벤트, 개선 피드백 페이지"
+                ],
+                "achievement": "게임 콘텐츠 기획 및 개발을 통해 플랫폼 WAU(주간 활성 사용자) 유의미한 증가 달성\n사용자 참여도 및 리텐션 향상에 기여"
+              }
+            ]
+          },
+          {
+            "title": "sellectors 어드민",
+            "period": "2024.05 - 2024.07",
+            "descriptions": [
+              {
+                "subtitle": "기존 flutterWeb 어드민 페이지를 Nextjs로 마이그레이션 및 사용성 개선",
+                "skills": "Nextjs, TypeScript, Material-UI (MUI) v5, Jotai, React Hook Form + Yup, dnd",
+                "tasks": [
+                  "기존 프로젝트 마이그레이션",
+                  "dnd, 일괄 작업, 데이터 export 등 사용자 편의 기능 추가"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "sellectors-frontend",
+            "period": "2023.05 - 2025.07",
+            "descriptions": [
+              {
+                "subtitle": "셀렉터즈 이커머스 플랫폼 고객용 웹사이트 개발",
+                "skills": "Next.js 14, TypeScript, i18next, Toss Payments, PayPal, Material-UI",
+                "tasks": [
+                  "국제화: 일본어, 영문, 중문(번체) 번역 추가 및 i18n 스캐너 빌드 플로우 수정",
+                  "상품 관리: 상품 정보제공 고시 개선, 상품 카드 디자인 시스템, 판매유형별 상품 카드, 상품 리뷰 시스템",
+                  "주문/결제: 선물 받기 기능, 외국인 주문 결제, 해외 배송 지원, 부분 반품 처리",
+                  "회원 관리: 회원가입 개선, 이메일 변경 기능, 마이페이지 개선, 로그인/회원가입 리뉴얼",
+                  "셀러 기능 및 UI/UX: 판매 관리, 스트림 위젯, 셀러샵 구현, 디자인 시스템 적용, 홈 리뉴얼, 모바일 최적화"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "기타 사항",
+            "descriptions": [
+              {
+                "subtitle": "컨텐츠 불펌 추적 프로젝트",
+                "detail": "영상 불펌 탐지 크롤링 서비스",
+                "skills": "Node.js, TypeScript, Express, Cheerio, Vercel",
+                "tasks": [
+                  "주요 사이트에서 사전 저장된 키워드를 통해 일괄 검색 내용 크롤링",
+                  "한 페이지에서 모든 검색 결과를 확인할 수 있는 시스템 기획 구상 및 개발 배포",
+                  "운영팀의 데일리 루틴 키워드 검색을 효율적으로 지원"
+                ],
+                "achievement": "크롤링 자동화 시스템 구축으로 운영팀의 일일 모니터링 작업 시간을 기존 50분에서 10분 이내로 단축 (작업 효율 80% 개선)"
+              },
+              {
+                "subtitle": "상품 블로그 내용 자동생성",
+                "detail": "회사 블로그(워드프레스) 상품 페이지 AI 초안 작성 프로젝트",
+                "skills": "Node.js, Python, AI",
+                "tasks": [
+                  "내용 기획 및 가능성 및 활용성 체크",
+                  "node 활용하여 가능성 확인 및 프로토타입 작성",
+                  "python 코드로 프로토타입 백엔드에게 전달",
+                  "관리 및 퓨샷 프롬프팅 지원"
+                ]
+              },
+              {
+                "subtitle": "Vod 시스템 개선 테스트",
+                "detail": "클라우드플레어 영상 서빙 시스템 자체 구현 테스트",
+                "tasks": [
+                  "기존 클라우드플레어 사용 중인 영상 서빙 시스템 기술을 자체적으로 구현 진행",
+                  "클라이언트 테스트 담당"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "company": "allofthem",
+        "period": "2021.07 - 2023.04 (1년 10개월)",
+        "employmentType": "정규직",
+        "projects": [
+          {
+            "title": "상품 보험 가입 관리 사이트 제작",
+            "period": "2023.03 - 2023.04",
+            "descriptions": [
+              {
+                "subtitle": "기획, 설계 검토",
+                "skills": "Next, React, TypeScript, Redux, AppSync(GraphQL), DynamoDB, gitLab CI/CD, sass"
+              },
+              {
+                "subtitle": "보고서 페이지 작성",
+                "tasks": [
+                  "일/월/년 별 가입한 사용자 통계 차트 화면 개발",
+                  "차트 정보 API 개발",
+                  "파일 내보내기 기능 개발"
+                ]
+              },
+              {
+                "subtitle": "관리자 가입 페이지 작성"
+              }
+            ]
+          },
+          {
+            "title": "상품 보험 가입 반응형 웹 및 연계 라이브러리 제작 설계 및 유지 보수",
+            "period": "2022.10 - 2023.03",
+            "descriptions": [
+              {
+                "subtitle": "쇼핑몰 상품 보험 가입 반응형 웹",
+                "skills": "Next, React, TypeScript, Redux, AppSync(GraphQL), DynamoDB, gitLab CI/CD, sass",
+                "tasks": [
+                  "요청사항 및 기술 스택 등 기획 검토",
+                  "프로젝트 설계 및 구축",
+                  "초기 렌더링 속도 개선",
+                  "첫 백지 시간을 줄이기 위해 로더를 추가 진행",
+                  "백지 현상을 1290ms 에서 208ms으로 향상"
+                ]
+              },
+              {
+                "subtitle": "고객사 쇼핑몰에서 사용될 라이브러리 작성 (cdn 배포 예정)",
+                "tasks": [
+                  "반응형 웹으로 연계용으로 사용될 라이브러리 작성",
+                  "기존 스타일과 충돌 방지를 위한 css 해시화",
+                  "번들링(경량화, 난독화)"
+                ]
+              },
+              {
+                "subtitle": "페이즈 2 설계 & 구현",
+                "tasks": [
+                  "React -> Next로 전환",
+                  "LCP 평균 2.4 -> 0.6으로 렌더링 속도 증가 (한국 기준)",
+                  "LCP 평균 4.6 -> 0.6으로 렌더링 속도 증가 (일본 기준)",
+                  "에러페이지 추가 404,500,401,403,415",
+                  "next - dynamoDb 연동"
+                ]
+              },
+              {
+                "subtitle": "구글 애널리틱스, opensearch를 통해 사용자 행동 패턴, 사용자 타입 분석 적용"
+              }
+            ]
+          },
+          {
+            "title": "iChain 관리사이트 FE 디자인 개선 및 리팩토링",
+            "period": "2022.07 - 2022.07",
+            "descriptions": [
+              {
+                "subtitle": "관리 사이트 디자인 개선 및 리팩토링",
+                "skills": "React, TypeScript, GitLab, gitLab, CI/CD, sass",
+                "tasks": [
+                  "프로젝트 디자인 전면 수정",
+                  "소스 리팩토링 ( 중복 작업 함수화 )",
+                  "비사용 CSS 항목 제거"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "allofthem 크리에이터 펀딩 프로젝트(가칭)",
+            "period": "2022.07 - 2022.11",
+            "descriptions": [
+              {
+                "subtitle": "인터넷 방송하는 크리에이터 및 그들의 팬을 위한 플랫폼 서비스",
+                "skills": "Nextjs, TypeScript, Redux, React-query, gitLab, sass"
+              },
+              {
+                "subtitle": "클라이언트 반응형 웹 및 관리자 페이지",
+                "tasks": ["기술 조사 및 선정", "초기 프로젝트 설계"]
+              }
+            ]
+          },
+          {
+            "title": "allofthem 사내 기여 FE",
+            "descriptions": [
+              {
+                "subtitle": "React 베이스 프로젝트",
+                "tasks": [
+                  "환경변수화 작업 및 예시코드 작성",
+                  "전역 상태 관리 추가(ContextApi)",
+                  "공통 컴포넌트 의존성 제거",
+                  "공통 컴포넌트 추가 개발 Modal, Loader"
+                ]
+              },
+              {
+                "subtitle": "사내 문서 작성",
+                "tasks": [
+                  "React 지식 공유 문서 작성",
+                  "Js & Ts 지식 공유 문서 작성",
+                  "CSR 베이스 프로젝트 SSR 프로젝트로 변경 진행 중 (당시 동결)"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "반응형 암보험 상품 수정 개발 FE",
+            "period": "2022.04 - 2022.07",
+            "descriptions": [
+              {
+                "subtitle": "반응형 암보험 상품 수정 개발 및 기능 및 디자인 개선",
+                "skills": "React, TypeScript, Redux, Redux-saga, gitLab CI/CD",
+                "tasks": [
+                  "PC, 태블릿, 스마트폰 기준 반응형 개발",
+                  "히라가나입력시 가타카나 자동 입력 유틸 개발",
+                  "가타카나 입력시 영어 이름 자동 입력 유틸 개발"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "AIG 기업 상품 가입 신청 페이지 FE 및 유지 보수",
+            "period": "2021.11 - 2022.08",
+            "descriptions": [
+              {
+                "subtitle": "Phase 1: AIG 기업 상품 가입 신청페이지 반응형 웹 설계 및 구축",
+                "skills": "React, TypeScript, Context API",
+                "tasks": ["베이스 프로젝트에 전역 상태 관리 기능 추가"]
+              },
+              {
+                "subtitle": "Phase 2: 결제 기능 추가",
+                "tasks": ["결제 정보 입력 화면 및 결제 api 연계"],
+                "detail": "특이사항: 서버리스 프로젝트(API Gateway, Lambda) 테이블 단위로만 조회가능, 초기 설계 문제로 인한 callBack hell 이슈발생, api 통신쪽 비동기 처리하여 callback hell 이슈 해결"
+              }
+            ]
+          },
+          {
+            "title": "iChain 관리사이트 FE",
+            "period": "2021.09 - 2022.05",
+            "descriptions": [
+              {
+                "subtitle": "프로젝트 페이즈2 기능 추가 및 개선",
+                "skills": "React, TypeScript, GitLab, gitLab, CI/CD, sass"
+              },
+              {
+                "subtitle": "화면 설계 및 제작",
+                "tasks": [
+                  "고객 조회 화면 및 Api 연계",
+                  "고객 상세 화면 및 Api 연계",
+                  "캠페인 조회, csv 등록, 다운로드 화면 및 Api 연계",
+                  "앱가입 연계 작성 (csv 업로드) 화면 및 Api 연계",
+                  "환경 변수 추가",
+                  "네비게이션 기능이 일부 페이지를 건너뛰는 현상을 픽스",
+                  "ApiOption에 따라 통신 endpoint, 에러처리가 분기되도록 통신 유틸 수정"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "iChain 라쿠텐, 사쿠라 보험 BE",
+            "period": "2021.09 - 2022.03",
+            "descriptions": [
+              {
+                "subtitle": "프로젝트 구축 및 기능 개선",
+                "skills": "Java, SpringBoot, Mysql, Doma2, Thymeleaf, GitLab, DataDog, gitLab, CI/CD"
+              },
+              {
+                "subtitle": "보험 결제 웹뷰 작성 (마이페이지)",
+                "tasks": ["계약된 보험 정보", "미납 결제", "결제정보 수정 (크레딧 카드 정보 수정)"]
+              },
+              {
+                "subtitle": "관리사이트 연계",
+                "tasks": [
+                  "보험 고객 조회 API 작성 및 테스트 코드 작성(Junit)",
+                  "보험 고객 정보 상세 API 작성 및 테스트 코드 작성(Junit)",
+                  "고객 탈퇴 API 작성 및 테스트 코드 작성(Junit)"
+                ]
+              },
+              {
+                "subtitle": "고객 탈퇴 로직 변경",
+                "tasks": ["기존 DB 물리 삭제에서 논리 삭제로 전면 수정"]
+              },
+              {
+                "subtitle": "파일 다운로드 공통 모듈 작성",
+                "tasks": [
+                  "PDF, CSV등 파일 다운로드 Api에 사용될 공통 모듈 작성",
+                  "S3 업로드 공통 모듈 작성"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "보험사 관리 사이트 FE",
+            "period": "2021.07 - 2021.09",
+            "descriptions": [
+              {
+                "subtitle": "프로젝트 버그 픽스 및 기능 개선",
+                "skills": "React, TypeScript, GitLab, gitLab, CI/CD, sass"
+              },
+              {
+                "subtitle": "기존 프로젝트 버그 픽스"
+              },
+              {
+                "subtitle": "리팩터링",
+                "tasks": [
+                  "공통 컴포넌트 작업 (중복제거, 파일업/다운로드 공통 컴포넌트 작성)",
+                  "코드 리팩터링 ( 중복 코드 함수화, 함수 리네이밍 )",
+                  "함수 별 주석작업",
+                  "타입 모델링 및 타입 미지정(any) 데이터 타입 모델링"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "company": "데이터로직스",
+        "period": "2020.08 - 2021.07 (1년)",
+        "employmentType": "정규직",
+        "projects": [
+          {
+            "title": "외교부 영사콜센터 운영 및 유지보수",
+            "period": "2020.09 - 2021.07",
+            "descriptions": [
+              {
+                "subtitle": "구축 테스트",
+                "skills": "Java, JavaScript, Egov, MyBatis, Mysql, Oracle"
+              },
+              {
+                "subtitle": "운영 및 유지보수",
+                "tasks": [
+                  "상담 어플리케이션 외부 API 개발 ( 설문조사, DB 배치서버 )",
+                  "상담 어플리케이션 기능 개선 및 SR 처리 ( 미처리 버그 픽스)",
+                  "개발환경 구축 (서버 OS 설치, 타 서비스 개발 서버 연계 )",
+                  "영사콜센터 무료전화앱 트러블 슈팅"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "Smart-Dis 개발 (etl)",
+            "period": "2020.08 - 2020.09",
+            "descriptions": [
+              {
+                "subtitle": "데이터 마이그레이션 서비스 개발",
+                "skills": "Java, JavaScript, Egov, MyBatis, MariaDB, Oracle",
+                "tasks": [
+                  "온라인 전용 소프트웨어 인트라넷 상용가능 소프트웨어으로 전환 (라이브러리 전환)",
+                  "기존 오라클 query와 같은 기능을 하는 mariadb query 추가",
+                  "linux 전용 소프트웨어에 window 기능 추가 및 매뉴얼링"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "company": "데이터로직스(인프라)",
+        "period": "2017.08 - 2019.05 (1년 10개월)",
+        "employmentType": "정규직",
+        "projects": [
+          {
+            "title": "국무조정실 운영 및 유지보수",
+            "period": "2018.05 - 2019.06",
+            "descriptions": [
+              {
+                "subtitle": "운영 및 유지보수 인프라 파트",
+                "tasks": [
+                  "세종 및 서울 국무조정실 인프라 관리",
+                  "서버 및 네트워크 (L2, L3, BB) 장비 관리 및 트러블 슈팅",
+                  "보안장비(FW, IPS, TMS)및 솔루션 관리",
+                  "자원관리 및 백업 작업",
+                  "사무실 세팅 및 국정감사 인프라 세팅",
+                  "보안감사 대응"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "사회보장정보원 고도화 사업",
+            "period": "2018.01 - 2018.02",
+            "descriptions": [
+              {
+                "subtitle": "고도화 사업 인프라파트",
+                "tasks": ["장비 검수 및 마운팅", "설치 테스트 및 모니터링(설치 테스트)"]
+              }
+            ]
+          },
+          {
+            "title": "아동보호전문기관 구축 및 유지보수",
+            "period": "2017.08 - 2017.12",
+            "descriptions": [
+              {
+                "subtitle": "아동보호 전문기관 콜센터 유지보수 인프라 파트 업무 진행",
+                "tasks": ["유지보수 및 사무실 이전 작업", "장비 해제 및 재설치"]
+              },
+              {
+                "subtitle": "노원아동보호전문 기관 구축"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "education": [
+      {
+        "school": "서일대학교",
+        "period": "2010.03 - 2017.02",
+        "status": "졸업",
+        "major": "정보통신학과"
+      }
+    ],
+    "skills": [
+      "React",
+      "CSS",
+      "JavaScript",
+      "TypeScript",
+      "HTML5",
+      "Java",
+      "Spring Boot",
+      "Spring Framework",
+      "AWS",
+      "Git",
+      "GitLab",
+      "MySQL",
+      "Figma",
+      "GraphQL"
+    ],
+    "certifications": [
+      {
+        "name": "하이브리드 앱개발(ISO&안드로이드) 및 웹 개발자 양성 과정",
+        "date": "2020.03",
+        "type": "기타",
+        "details": [
+          "Java, Spring 기반의 웹 개발 기초 (스프링 기초, Restapi)",
+          "안드로이드, IOS 앱개발 기초"
+        ]
+      }
+    ],
+    "links": ["https://icecokel.tistory.com/", "https://github.com/icecokel"]
   }
 }

@@ -46,5 +46,532 @@
     "gameOver": "GAME OVER",
     "finalScore": "Final Score: ",
     "restart": "CLICK TO RESTART"
+  },
+  "intro": {
+    "title": "Welcome VSCoke",
+    "osWindow": "Windows OS",
+    "osMac": "macOS",
+    "fullScreenGuide": "Press for \"Full Screen\"",
+    "experience": "for a better experience."
+  },
+  "notFound": {
+    "title": "Page Not Found.",
+    "descPrefix": "\"",
+    "descSuffix": "\" page not found.",
+    "guide": "Please click the file icon to navigate to another page or click the button below to go to the main page.",
+    "button": "Go to Main Page"
+  },
+  "historyTabs": {
+    "close": "Close",
+    "closeOthers": "Close Others",
+    "closeAll": "Close All"
+  },
+  "achievement": {
+    "label": "💡 Achievement"
+  },
+  "descriptionItem": {
+    "techStack": "Tech Stack"
+  },
+  "resume": {
+    "name": "Sangmin Lee",
+    "contact": {
+      "phone": "+821020809652",
+      "email": "red9runge@gmail.com"
+    },
+    "introduction": [
+      "Hello.",
+      "I graduated from the Department of Information and Communication and worked as an Infrastructure Engineer for 3 years.",
+      "I became a developer because I am interested in seeking ways to automate repetitive tasks and improve inefficient processes.",
+      "I worked as a Frontend Developer at AllofThem in Japan, and also handled Backend development when necessary.",
+      "Currently, I have been working as a Frontend Developer at CodeCrayon for 2 years, focusing on webviews for e-commerce and video platforms.",
+      "I enjoy building services together and contemplate ways to contribute to the team beyond just development skills.",
+      "I like finding realistic and effective solutions when facing new problems."
+    ],
+    "totalExperience": "6 years 10 months",
+    "careers": [
+      {
+        "company": "CodeCrayon",
+        "period": "2023.05 - 2025.07 (2 years 3 months)",
+        "employmentType": "Full-time",
+        "projects": [
+          {
+            "title": "Shortime Admin",
+            "period": "2025.04 - 2025.07",
+            "descriptions": [
+              {
+                "subtitle": "Added subtitle translation system for Shortime admin page",
+                "skills": "Nextjs, TypeScript, Material-UI (MUI), Bedrock SDK",
+                "tasks": [
+                  "Implemented batch processing and downloading of translations via AI by uploading VTT files",
+                  "Applied appropriate prompts based on character settings, genre, and atmosphere of the content"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "Subtitle Translation System Development & Utilization",
+            "period": "2025.03 - 2025.06",
+            "descriptions": [
+              {
+                "subtitle": "AI-based subtitle translation automation tool",
+                "skills": "Node.js, TypeScript, AWS Bedrock, OpenAI, Express",
+                "tasks": [
+                  "One-click translation: Automatically translate subtitle files with a single command",
+                  "Multiple AI engines: Support and easy switching between multiple AI translation engines",
+                  "Translation quality verification: Guaranteed quality with an automated verification system",
+                  "Large volume processing: Support for large subtitles with chunking and parallel processing",
+                  "Web-based tool: Improved usability with Web UI"
+                ],
+                "achievement": "Developed an AI subtitle translation system, enabling 1 person to process 6-8 works per day, which previously required 2-3 people per work (600% productivity improvement, based on workload per person)"
+              }
+            ]
+          },
+          {
+            "title": "Shortime Playground",
+            "period": "2024.09 - 2025.04",
+            "descriptions": [
+              {
+                "subtitle": "Frontend development for Shortime platform games and event webviews",
+                "skills": "Next.js 14, TypeScript, Material-UI, Tailwind CSS, Phaser 3, Jotai, shadcn-ui, next-intl, Branch SDK, Lottie",
+                "tasks": [
+                  "Planning and development of FlyPop and Open Sesame games",
+                  "Migration and development of fortune-telling feature using AI",
+                  "Lucky Draw System: Draw list and detail pages, winner information input",
+                  "Event Pages: Gift codes, friend invitation system (deep link sharing and SNS integration), Amazing Week event, improvement feedback page"
+                ],
+                "achievement": "Achieved significant increase in platform WAU (Weekly Active Users) through game content planning and development. Contributed to improved user engagement and retention."
+              }
+            ]
+          },
+          {
+            "title": "Sellectors Admin",
+            "period": "2024.05 - 2024.07",
+            "descriptions": [
+              {
+                "subtitle": "Migrated existing FlutterWeb admin page to Next.js and improved usability",
+                "skills": "Nextjs, TypeScript, Material-UI (MUI) v5, Jotai, React Hook Form + Yup, dnd",
+                "tasks": [
+                  "Migration of existing project",
+                  "Added user convenience features such as DnD, batch operations, data export, etc."
+                ]
+              }
+            ]
+          },
+          {
+            "title": "Sellectors Frontend",
+            "period": "2023.05 - 2025.07",
+            "descriptions": [
+              {
+                "subtitle": "Development of customer website for Sellectors e-commerce platform",
+                "skills": "Next.js 14, TypeScript, i18next, Toss Payments, PayPal, Material-UI",
+                "tasks": [
+                  "Internationalization: Added Japanese, English, Chinese (Traditional) translations and modified i18n scanner build flow",
+                  "Product Management: Improved product information disclosure notice, product card design system, product cards by sales type, product review system",
+                  "Order/Payment: Gift receiving feature, foreigner order payment, international shipping support, partial return processing",
+                  "Member Management: Improved sign-up, email change feature, improved My Page, login/sign-up renewal",
+                  "Seller Features & UI/UX: Sales management, stream widgets, seller shop implementation, design system application, home renewal, mobile optimization"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "Others",
+            "descriptions": [
+              {
+                "subtitle": "Content Piracy Tracking Project",
+                "detail": "Video piracy detection crawling service",
+                "skills": "Node.js, TypeScript, Express, Cheerio, Vercel",
+                "tasks": [
+                  "Bulk search content crawling via pre-stored keywords on major sites",
+                  "Planned and deployed a system to check all search results on one page",
+                  "Efficiently supported the operation team's daily routine keyword search"
+                ],
+                "achievement": "Reduced daily monitoring work time of the operation team from 50 minutes to under 10 minutes by establishing a crawling automation system (80% work efficiency improvement)"
+              },
+              {
+                "subtitle": "Product Blog Content Auto-generation",
+                "detail": "AI draft writing project for company blog (WordPress) product pages",
+                "skills": "Node.js, Python, AI",
+                "tasks": [
+                  "Content planning and feasibility/usability check",
+                  "Feasibility check and prototype creation using Node",
+                  "Delivered Python code to backend for prototype",
+                  "Support for management and few-shot prompting"
+                ]
+              },
+              {
+                "subtitle": "VOD System Improvement Test",
+                "detail": "Self-implementation test of Cloudflare video serving system",
+                "tasks": [
+                  "Proceeded with self-implementation of the video serving system technology currently using Cloudflare",
+                  "In charge of client testing"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "company": "AllofThem",
+        "period": "2021.07 - 2023.04 (1 year 10 months)",
+        "employmentType": "Full-time",
+        "projects": [
+          {
+            "title": "Product Insurance Subscription Management Site Production",
+            "period": "2023.03 - 2023.04",
+            "descriptions": [
+              {
+                "subtitle": "Planning, Design Review",
+                "skills": "Next, React, TypeScript, Redux, AppSync(GraphQL), DynamoDB, gitLab CI/CD, sass"
+              },
+              {
+                "subtitle": "Report Page Creation",
+                "tasks": [
+                  "Developed user subscription statistics chart screen by day/month/year",
+                  "Developed chart information API",
+                  "Developed file export function"
+                ]
+              },
+              {
+                "subtitle": "Administrator Sign-up Page Creation"
+              }
+            ]
+          },
+          {
+            "title": "Product Insurance Subscription Responsive Web & Linked Library Design and Maintenance",
+            "period": "2022.10 - 2023.03",
+            "descriptions": [
+              {
+                "subtitle": "Shopping Mall Product Insurance Subscription Responsive Web",
+                "skills": "Next, React, TypeScript, Redux, AppSync(GraphQL), DynamoDB, gitLab CI/CD, sass",
+                "tasks": [
+                  "Review planning including requirements and tech stack",
+                  "Project design and construction",
+                  "Improve initial rendering speed",
+                  "Added loader to reduce initial white screen time",
+                  "Improved white screen phenomenon from 1290ms to 208ms"
+                ]
+              },
+              {
+                "subtitle": "Library creation for use in client shopping malls (CDN distribution planned)",
+                "tasks": [
+                  "Created library for linkage as a responsive web",
+                  "CSS hashing to prevent conflict with existing styles",
+                  "Bundling (Lightweighting, Obfuscation)"
+                ]
+              },
+              {
+                "subtitle": "Phase 2 Design & Implementation",
+                "tasks": [
+                  "Migration from React to Next",
+                  "Increased rendering speed LCP avg 2.4 -> 0.6 (Korea)",
+                  "Increased rendering speed LCP avg 4.6 -> 0.6 (Japan)",
+                  "Added error pages 404, 500, 401, 403, 415",
+                  "Next - DynamoDB integration"
+                ]
+              },
+              {
+                "subtitle": "Applied user behavior pattern and user type analysis via Google Analytics, OpenSearch"
+              }
+            ]
+          },
+          {
+            "title": "iChain Admin Site FE Design Improvement & Refactoring",
+            "period": "2022.07 - 2022.07",
+            "descriptions": [
+              {
+                "subtitle": "Admin site design improvement and refactoring",
+                "skills": "React, TypeScript, GitLab, gitLab, CI/CD, sass",
+                "tasks": [
+                  "Overhaul of project design",
+                  "Source refactoring (Functionalization of duplicate tasks)",
+                  "Removal of unused CSS items"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "AllofThem Creator Funding Project (Tentative)",
+            "period": "2022.07 - 2022.11",
+            "descriptions": [
+              {
+                "subtitle": "Platform service for internet broadcasting creators and their fans",
+                "skills": "Nextjs, TypeScript, Redux, React-query, gitLab, sass"
+              },
+              {
+                "subtitle": "Client Responsive Web & Admin Page",
+                "tasks": ["Technology research and selection", "Initial project design"]
+              }
+            ]
+          },
+          {
+            "title": "AllofThem Internal Contribution FE",
+            "descriptions": [
+              {
+                "subtitle": "React Base Project",
+                "tasks": [
+                  "Environment variable work and example code writing",
+                  "Added global state management (ContextApi)",
+                  "Removed common component dependency",
+                  "Developed additional common components: Modal, Loader"
+                ]
+              },
+              {
+                "subtitle": "Internal Documentation",
+                "tasks": [
+                  "Written React knowledge sharing document",
+                  "Written Js & Ts knowledge sharing document",
+                  "CSR base project to SSR project conversion in progress (Frozen at the time)"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "Responsive Cancer Insurance Product Modification Dev FE",
+            "period": "2022.04 - 2022.07",
+            "descriptions": [
+              {
+                "subtitle": "Responsive cancer insurance product modification dev and feature/design improvement",
+                "skills": "React, TypeScript, Redux, Redux-saga, gitLab CI/CD",
+                "tasks": [
+                  "Responsive development based on PC, Tablet, Smartphone",
+                  "Developed utility for auto-input of Katakana when Hiragana is entered",
+                  "Developed utility for auto-input of English name when Katakana is entered"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "AIG Corporate Product Subscription Application Page FE & Maintenance",
+            "period": "2021.11 - 2022.08",
+            "descriptions": [
+              {
+                "subtitle": "Phase 1: AIG Corporate Product Subscription Application Page Responsive Web Design & Construction",
+                "skills": "React, TypeScript, Context API",
+                "tasks": ["Added global state management function to base project"]
+              },
+              {
+                "subtitle": "Phase 2: Payment function addition",
+                "tasks": ["Payment information input screen and payment API linkage"],
+                "detail": "Note: Serverless project (API Gateway, Lambda) only queryable by table unit, Callback hell issue occurred due to initial design problem, Resolved callback hell issue by processing API communication asynchronously"
+              }
+            ]
+          },
+          {
+            "title": "iChain Admin Site FE",
+            "period": "2021.09 - 2022.05",
+            "descriptions": [
+              {
+                "subtitle": "Project Phase 2 Feature Addition & Improvement",
+                "skills": "React, TypeScript, GitLab, gitLab, CI/CD, sass"
+              },
+              {
+                "subtitle": "Screen Design & Creation",
+                "tasks": [
+                  "Customer inquiry screen & API linkage",
+                  "Customer detail screen & API linkage",
+                  "Campaign inquiry, CSV registration, download screen & API linkage",
+                  "App sign-up linkage writing (CSV upload) screen & API linkage",
+                  "Added environment variables",
+                  "Fixed phenomenon where navigation function skips some pages",
+                  "Modified communication utility to branch communication endpoint and error handling according to ApiOption"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "iChain Rakuten, Sakura Insurance BE",
+            "period": "2021.09 - 2022.03",
+            "descriptions": [
+              {
+                "subtitle": "Project Construction & Feature Improvement",
+                "skills": "Java, SpringBoot, Mysql, Doma2, Thymeleaf, GitLab, DataDog, gitLab, CI/CD"
+              },
+              {
+                "subtitle": "Insurance Payment Webview Creation (My Page)",
+                "tasks": [
+                  "Contracted insurance information",
+                  "Unpaid payment",
+                  "Modify payment information (Credit card information modification)"
+                ]
+              },
+              {
+                "subtitle": "Admin Site Linkage",
+                "tasks": [
+                  "Written Insurance Customer Inquiry API & Test Code (Junit)",
+                  "Written Insurance Customer Information Detail API & Test Code (Junit)",
+                  "Written Customer Withdrawal API & Test Code (Junit)"
+                ]
+              },
+              {
+                "subtitle": "Customer Withdrawal Logic Change",
+                "tasks": [
+                  "Complete revision from existing DB physical deletion to logical deletion"
+                ]
+              },
+              {
+                "subtitle": "File Download Common Module Creation",
+                "tasks": [
+                  "Written common module used for file download API such as PDF, CSV",
+                  "Written S3 upload common module"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "Insurance Company Admin Site FE",
+            "period": "2021.07 - 2021.09",
+            "descriptions": [
+              {
+                "subtitle": "Project Bug Fix & Feature Improvement",
+                "skills": "React, TypeScript, GitLab, gitLab, CI/CD, sass"
+              },
+              {
+                "subtitle": "Existing Project Bug Fix"
+              },
+              {
+                "subtitle": "Refactoring",
+                "tasks": [
+                  "Common component work (Deduplication, File Up/Download Common Component Creation)",
+                  "Code Refactoring (Functionalization of duplicate code, Function renaming)",
+                  "Commenting by function",
+                  "Type modeling and type modeling of unspecified type (any) data"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "company": "Datalogics",
+        "period": "2020.08 - 2021.07 (1 year)",
+        "employmentType": "Full-time",
+        "projects": [
+          {
+            "title": "Ministry of Foreign Affairs Consular Call Center Operation & Maintenance",
+            "period": "2020.09 - 2021.07",
+            "descriptions": [
+              {
+                "subtitle": "Construction Test",
+                "skills": "Java, JavaScript, Egov, MyBatis, Mysql, Oracle"
+              },
+              {
+                "subtitle": "Operation & Maintenance",
+                "tasks": [
+                  "Consultation application external API development (Survey, DB Batch Server)",
+                  "Consultation application feature improvement & SR processing (Unprocessed bug fix)",
+                  "Development environment construction (Server OS installation, Linkage with other service development servers)",
+                  "Consular Call Center Free Call App Troubleshooting"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "Smart-Dis Development (ETL)",
+            "period": "2020.08 - 2020.09",
+            "descriptions": [
+              {
+                "subtitle": "Data Migration Service Development",
+                "skills": "Java, JavaScript, Egov, MyBatis, MariaDB, Oracle",
+                "tasks": [
+                  "Conversion of online-only software to intranet commercial-available software (Library conversion)",
+                  "Added MariaDB query performing same function as existing Oracle query",
+                  "Added Window function to Linux-only software and manualized"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "company": "Datalogics (Infrastructure)",
+        "period": "2017.08 - 2019.05 (1 year 10 months)",
+        "employmentType": "Full-time",
+        "projects": [
+          {
+            "title": "Office for Government Policy Coordination Operation & Maintenance",
+            "period": "2018.05 - 2019.06",
+            "descriptions": [
+              {
+                "subtitle": "Operation & Maintenance Infrastructure Part",
+                "tasks": [
+                  "Infrastructure management of Sejong and Seoul Office for Government Policy Coordination",
+                  "Server & Network (L2, L3, BB) equipment management & Troubleshooting",
+                  "Security equipment (FW, IPS, TMS) and solution management",
+                  "Resource management & Backup work",
+                  "Office setting & National Audit Infrastructure setting",
+                  "Response to Security Audit"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "Social Security Information Service Advancement Project",
+            "period": "2018.01 - 2018.02",
+            "descriptions": [
+              {
+                "subtitle": "Advancement Project Infrastructure Part",
+                "tasks": [
+                  "Equipment inspection & Mounting",
+                  "Installation test & Monitoring (Installation test)"
+                ]
+              }
+            ]
+          },
+          {
+            "title": "Child Protection Agency Construction & Maintenance",
+            "period": "2017.08 - 2017.12",
+            "descriptions": [
+              {
+                "subtitle": "Child Protection Agency Call Center Maintenance Infrastructure Part Work",
+                "tasks": [
+                  "Maintenance & Office relocation work",
+                  "Equipment removal & Re-installation"
+                ]
+              },
+              {
+                "subtitle": "Nowon Child Protection Agency Construction"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "education": [
+      {
+        "school": "Seoil University",
+        "period": "2010.03 - 2017.02",
+        "status": "Graduated",
+        "major": "Information and Communication Engineering"
+      }
+    ],
+    "skills": [
+      "React",
+      "CSS",
+      "JavaScript",
+      "TypeScript",
+      "HTML5",
+      "Java",
+      "Spring Boot",
+      "Spring Framework",
+      "AWS",
+      "Git",
+      "GitLab",
+      "MySQL",
+      "Figma",
+      "GraphQL"
+    ],
+    "certifications": [
+      {
+        "name": "Hybrid App Development (ISO & Android) and Web Developer Training Course",
+        "date": "2020.03",
+        "type": "Other",
+        "details": [
+          "Web development basics based on Java, Spring (Spring basics, Restapi)",
+          "Android, iOS app development basics"
+        ]
+      }
+    ],
+    "links": ["https://icecokel.tistory.com/", "https://github.com/icecokel"]
   }
 }

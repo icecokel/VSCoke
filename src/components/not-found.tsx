@@ -4,31 +4,32 @@ import Container from "@/components/base-ui/container";
 import BaseText from "@/components/base-ui/text";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "./ui/button";
+import { useTranslations } from "next-intl";
 
 const NotFound = () => {
   const path = usePathname();
   const router = useRouter();
+  const t = useTranslations("notFound");
 
   return (
     <Container maxWidth="sm">
       <div className="mt-20 gap-[10px] flex flex-col">
         <BaseText type="h4" className="text-center text-red-400/90 border-b pb-4">
-          페이지를 찾을 수 없습니다.
+          {t("title")}
         </BaseText>
         <div className="bg-beige-400 py-2 px-4 rounded-sm text-black">
           <div className="flex items-end">
             <BaseText type="body1" className="text-yellow-200 font-bold mx-[0.5em]">
-              &quot;{path}&quot;
+              {t("descPrefix")}
+              {path}
+              {t("descPrefix")}
             </BaseText>
-            <BaseText type="body2">주소 페이지는 찾을 수 없습니다.</BaseText>
+            <BaseText type="body2">{t("descSuffix")}</BaseText>
           </div>
-          <BaseText type="body2">
-            파일 아이콘을 클릭해서 다른 페이지로 이동하거나 아래 버튼을 클릭해 메인 페이지로
-            이동해주세요.
-          </BaseText>
+          <BaseText type="body2">{t("guide")}</BaseText>
         </div>
         <Button className="mt-4" onClick={() => router.push("/")}>
-          메인 페이지로 이동
+          {t("button")}
         </Button>
       </div>
     </Container>

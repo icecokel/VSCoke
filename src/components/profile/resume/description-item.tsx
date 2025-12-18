@@ -9,7 +9,10 @@ interface DescriptionItemProps {
   description: Description;
 }
 
+import { useTranslations } from "next-intl";
+
 const DescriptionItem = ({ description }: DescriptionItemProps) => {
+  const t = useTranslations("descriptionItem");
   return (
     <div className="mb-4 ml-4">
       <BaseText type="body1" className="text-white font-medium mb-2">
@@ -25,7 +28,7 @@ const DescriptionItem = ({ description }: DescriptionItemProps) => {
       {description.skills && (
         <div className="mb-3">
           <BaseText type="body2" className="text-gray-400 mb-2">
-            기술 스택
+            {t("techStack")}
           </BaseText>
           <div className="flex flex-wrap gap-2 p-1">
             {description.skills.split(", ").map((skill, index) => (

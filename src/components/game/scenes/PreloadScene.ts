@@ -48,7 +48,7 @@ export class PreloadScene extends Phaser.Scene {
 
   private createStartUI() {
     const { width, height } = this.scale;
-    const texts = this.registry.get("texts") || { start: "START" };
+    const texts = this.registry.get("texts") || { start: "" };
 
     this.startButtonBg = this.add
       .rectangle(width / 2, height / 2, 200, 60, 0x4ecdc4)

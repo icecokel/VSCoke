@@ -3,7 +3,7 @@ import { MainScene } from "./scenes/MainScene";
 import { PreloadScene } from "./scenes/PreloadScene";
 
 export const GameConfig: Phaser.Types.Core.GameConfig = {
-  type: Phaser.AUTO,
+  type: Phaser.CANVAS, // WebGL 비활성화 테스트 (원래: Phaser.AUTO)
   width: "100%",
   height: "100%",
   parent: "phaser-container",

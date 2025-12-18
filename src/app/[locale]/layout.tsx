@@ -2,7 +2,8 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import Menubar from "@/components/menubar/menubar";
-import Sidebar from "@/components/sidebar/sidebar";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
 import HistoryTabs from "@/components/history-tabs/history-tabs";
 import AppProvider from "@/contexts/app-provider";
 import { HistoryProvider } from "@/contexts/history-context";
@@ -34,11 +35,17 @@ const LocaleLayout = async ({ children, params }: Props) => {
     <NextIntlClientProvider messages={messages}>
       <HistoryProvider>
         <AppProvider explorer={explorer}>
-          <Menubar>
-            <Sidebar>
-              <HistoryTabs>{children}</HistoryTabs>
-            </Sidebar>
-          </Menubar>
+          <SidebarProvider defaultOpen={false}>
+            <AppSidebar />
+            <SidebarInset>
+              <div className="flex flex-col h-full overflow-hidden">
+                <Menubar />
+                <div className="flex-1 overflow-auto bg-gray-900">
+                  <HistoryTabs>{children}</HistoryTabs>
+                </div>
+              </div>
+            </SidebarInset>
+          </SidebarProvider>
         </AppProvider>
       </HistoryProvider>
     </NextIntlClientProvider>

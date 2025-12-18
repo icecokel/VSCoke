@@ -2,7 +2,6 @@
 
 import OpenProjectModal from "./open-project-modal";
 import { useBoolean } from "@/hooks/use-boolean";
-import { TParentNode } from "@/models/common";
 import BaseText from "@/components/base-ui/text";
 import {
   DropdownMenu,
@@ -32,7 +31,7 @@ const LANGUAGES: Record<Locale, { label: string }> = {
   "en-US": { label: "English" },
 };
 
-const Menubar = ({ children }: TParentNode) => {
+const Menubar = () => {
   const t = useTranslations("menu");
   const router = useRouter();
   const pathname = usePathname();
@@ -95,8 +94,6 @@ const Menubar = ({ children }: TParentNode) => {
       </div>
 
       <OpenProjectModal open={project.value} onClose={project.onFalse} />
-
-      {children}
     </>
   );
 };

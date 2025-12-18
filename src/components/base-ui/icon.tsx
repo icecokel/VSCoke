@@ -22,6 +22,7 @@ import {
   ArrowDownCircleIcon,
   FolderIcon,
   CalendarIcon,
+  MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 
 export type TKind =
@@ -47,7 +48,8 @@ export type TKind =
   | "arrow_circle_down"
   | "folder"
   | "arrow_back"
-  | "calendar_today";
+  | "calendar_today"
+  | "search";
 
 interface IIconProps extends HTMLAttributes<SVGSVGElement> {
   kind: TKind;
@@ -78,6 +80,7 @@ const iconMap: Record<TKind, React.ComponentType<React.SVGProps<SVGSVGElement>>>
   folder: FolderIcon,
   arrow_back: ArrowLeftIcon,
   calendar_today: CalendarIcon,
+  search: MagnifyingGlassIcon,
 };
 
 const Icon = ({ kind, size = 20, className, style, ...restProps }: IIconProps) => {

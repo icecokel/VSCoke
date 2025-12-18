@@ -1,14 +1,15 @@
 "use client";
 
-// import dynamic from "next/dynamic";
-// const PhaserGame = dynamic(() => import("@/components/game/PhaserGame"), {
-//   ssr: false,
-//   loading: () => (
-//     <div className="flex size-full items-center justify-center bg-gray-900 text-white">
-//       <p className="animate-pulse text-xl">Loading Action Puzzle...</p>
-//     </div>
-//   ),
-// });
+import dynamic from "next/dynamic";
+
+const PhaserGame = dynamic(() => import("@/components/game/PhaserGame"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex size-full items-center justify-center bg-gray-900 text-white">
+      <p className="animate-pulse text-xl">Loading Action Puzzle...</p>
+    </div>
+  ),
+});
 
 import { GameConstants } from "@/components/game/GameConstants";
 
@@ -22,7 +23,7 @@ export default function GamePage() {
           aspectRatio: GameConstants.ASPECT_RATIO_CSS,
         }}
       >
-        {/* <PhaserGame /> */}
+        <PhaserGame />
       </div>
     </main>
   );

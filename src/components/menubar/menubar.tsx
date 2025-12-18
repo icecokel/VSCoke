@@ -69,7 +69,7 @@ const Menubar = ({ children }: TParentNode) => {
 
   return (
     <>
-      <div className="bg-gray-900 p-1 flex border-b-2 border-b-gray-500">
+      <div id="menubar" className="bg-gray-900 p-1 flex border-b-2 border-b-gray-500">
         {MENULIST.map((item, index) => (
           <DropdownMenu key={`${item.key}_${index}`}>
             <DropdownMenuTrigger asChild>

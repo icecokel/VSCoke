@@ -7,7 +7,7 @@ import useShortCut from "@/hooks/use-short-cut";
 import { TParentNode } from "@/models/common";
 import { TSidebar } from "@/models/enum/sidebar";
 import Icon from "@/components/base-ui/icon";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { twMerge } from "tailwind-merge";
 
 const TABS = [
@@ -19,30 +19,59 @@ const TABS = [
 
 const Sidebar = ({ children }: TParentNode) => {
   const [tab, setTab] = useState<TSidebar | "none">("none");
-  const tabClose = () => {
-    setTab("none");
+
+  useEffect(() => {
+    const savedTab = localStorage.getItem("sidebar_tab");
+    if (savedTab) {
+      setTab(savedTab as TSidebar | "none");
+    }
+  }, []);
+
+  const updateTab = (newTab: TSidebar | "none") => {
+    setTab(newTab);
+    localStorage.setItem("sidebar_tab", newTab);
   };
 
-  const tabRef = useClickOutSide(tabClose);
+  const currentTabClose = (event?: MouseEvent) => {
+    if (event?.target instanceof Element) {
+      // Check if click is inside menubar
+      const menubar = document.getElementById("menubar");
+      if (menubar && menubar.contains(event.target)) {
+        return;
+      }
+      // Check if click is inside any dropdown menu (Radix UI portal)
+      if (event.target.closest('[data-slot^="dropdown-menu"]')) {
+        return;
+      }
+    }
+    updateTab("none");
+  };
+
+  const tabRef = useClickOutSide(currentTabClose);
 
   const handleChangeTab: React.MouseEventHandler<HTMLInputElement> = ({
     currentTarget: { value },
   }) => {
-    setTab(value === tab ? "none" : (value as TSidebar));
+    const newTab = value === tab ? "none" : (value as TSidebar);
+    updateTab(newTab);
   };
 
-  useShortCut(["escape"], tabClose);
+  useShortCut(["escape"], () => updateTab("none"));
 
   useShortCut(["control", "shift", "f"], () => {
-    setTab((prev) => {
-      return prev !== "search" ? "search" : "none";
-    });
+    if (tab !== "search") {
+      updateTab("search");
+    } else {
+      updateTab("none");
+    }
   });
 
   useShortCut(["control", "b"], () => {
-    setTab((prev) => {
-      return prev !== "explore" ? "explore" : "none";
-    });
+    if (tab !== "explore") {
+      updateTab("explore");
+    } else {
+      updateTab("none");
+    }
   });
 
   return (
@@ -55,7 +84,7 @@ const Sidebar = ({ children }: TParentNode) => {
                 key={`tab_${name}`}
                 className={twMerge(
                   "flex h-10 w-full cursor-pointer items-center justify-center border-l-2 bg-gray-900",
-                  name === tab ? "border-l-blue-300" : "border-l-gray-900"
+                  name === tab ? "border-l-blue-300" : "border-l-gray-900",
                 )}
               >
                 {icon}
@@ -70,7 +99,7 @@ const Sidebar = ({ children }: TParentNode) => {
             );
           })}
         </div>
-        <Explorer isShowing={tab === "explore"} tabClose={tabClose} />
+        <Explorer isShowing={tab === "explore"} tabClose={() => updateTab("none")} />
         <Search isShowing={tab === "search"} />
       </div>
 

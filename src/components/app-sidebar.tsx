@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useState, useEffect, type ComponentProps } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -13,19 +13,19 @@ import { useExplorer } from "@/hooks/use-explorer";
 import ExplorerItem from "@/components/sidebar/explorer-item";
 import { useTranslations } from "next-intl";
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const t = useTranslations("sidebar");
   const { setOpen, open, openMobile, isMobile, setOpenMobile } = useSidebar();
-  const [activeTab, setActiveTab] = React.useState<"explorer" | "search" | "none">("explorer");
+  const [activeTab, setActiveTab] = useState<"explorer" | "search" | "none">("explorer");
   const { itemList } = useExplorer();
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isMobile && openMobile) {
       setActiveTab("explorer");
     }
   }, [isMobile, openMobile]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) {
       // When sidebar closes via other means (e.g. meta+b), we might want to sync visual state if needed.
     }

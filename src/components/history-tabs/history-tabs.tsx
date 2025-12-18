@@ -104,7 +104,7 @@ const HistoryTabs = ({ children }: TParentNode) => {
                   <div
                     id={`${item.path}`}
                     className={twMerge(
-                      "border border-gray-300/60 border-l-0 h-8 truncate",
+                      "border border-gray-300/60 border-l-0 h-8 truncate shrink-0",
                       item.isActive ? "bg-gray-800 border-b-0" : "hover:bg-gray-600",
                     )}
                     onClick={() => handleClickTab(item)}

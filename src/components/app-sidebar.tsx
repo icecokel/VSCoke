@@ -17,31 +17,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [activeTab, setActiveTab] = React.useState<"explorer" | "search" | "none">("explorer");
   const { itemList } = useExplorer();
 
-  // Search state
-  // const [keyword, setKeyword] = useState("");
-  // Mock results for later implementation
-  // const [results, setResults] = useState<Array<{ title: string; path: string; excerpt?: string }>>([]);
-
   React.useEffect(() => {
     if (!open) {
-      // Optional: reset active tab visual indicator?
-      // But usually sidebars keep the active tab highlighted even if collapsed?
-      // No, if collapsed, we shouldn't show content.
+      // When sidebar closes via other means (e.g. meta+b), we might want to sync visual state if needed.
     }
   }, [open]);
 
   const handleTabClick = (tab: "explorer" | "search") => {
-    // If the clicked tab is already active
     if (activeTab === tab) {
-      // If sidebar is open, close it (toggle behavior)
       if (open) {
         setOpen(false);
       } else {
-        // If closed, open it
         setOpen(true);
       }
     } else {
-      // If different tab, switch tab and ensure open
       setActiveTab(tab);
       setOpen(true);
     }
@@ -50,7 +39,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props} className="border-r-0 bg-gray-900 text-gray-100">
       <div className="flex h-full w-full flex-row overflow-hidden">
-        {/* Activity Bar (Icons) */}
+        {/* Activity Bar (Icons) - Fixed Width */}
         <div className="flex w-[3rem] flex-none flex-col items-center gap-2 border-r border-gray-800 bg-gray-900 py-2 z-20">
           <button
             data-active={activeTab === "explorer" && open}
@@ -70,7 +59,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </button>
         </div>
 
-        {/* Content Panel (Explorer/Search) */}
+        {/* Content Panel (Push) */}
         {open && (
           <SidebarContent className="flex-1 bg-gray-900 border-r border-gray-500 min-w-0">
             <SidebarGroup className="p-0 h-full">

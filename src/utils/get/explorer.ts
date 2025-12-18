@@ -50,6 +50,19 @@ export const getExplorer = cache(async (): Promise<ITree[]> => {
             ],
     },
     {
+      index: 50,
+      id: "games",
+      label: "games",
+      items: [
+        {
+          icon: "terminal",
+          id: "game-sky-drop",
+          label: "sky-drop.exe",
+          path: "/game",
+        },
+      ],
+    },
+    {
       index: 98,
       id: "package.json",
       label: "package.json",

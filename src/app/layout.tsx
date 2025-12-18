@@ -46,7 +46,7 @@ const RootLayout = ({
   children: React.ReactNode;
 }>) => {
   return (
-    <html className={notoSansKr.className}>
+    <html className={`${notoSansKr.className} dark`}>
       <body>{children}</body>
     </html>
   );

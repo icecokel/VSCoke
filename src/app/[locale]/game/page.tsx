@@ -13,16 +13,13 @@ const PhaserGame = dynamic(() => import("@/components/game/PhaserGame"), {
 });
 
 export default function GamePage() {
-  // 9:16 비율에서 max-height 계산 (MAX_WIDTH * 16/9)
-  const maxHeight = Math.round(GameConstants.MAX_WIDTH / GameConstants.ASPECT_RATIO);
-
   return (
     <main className="flex h-screen w-full flex-col items-center xs:p-0 justify-center bg-slate-900 p-4">
       <div
         className="relative w-full overflow-hidden rounded-xl xs:border-0 border-4 border-slate-700 bg-black shadow-2xl"
         style={{
           maxWidth: `${GameConstants.MAX_WIDTH}px`,
-          maxHeight: `min(${maxHeight}px, calc(100vh - 2rem))`,
+          maxHeight: "calc(100% - 8px)",
           aspectRatio: GameConstants.ASPECT_RATIO_CSS,
         }}
       >

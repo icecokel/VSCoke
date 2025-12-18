@@ -1,6 +1,6 @@
 "use client";
 
-import useSortByKey from "./use-sort-by-key";
+import { sortByKey } from "@/lib/utils";
 import { ExplorerContext } from "@/contexts/app-provider";
 import { useContext, useEffect, useState } from "react";
 
@@ -20,16 +20,14 @@ const useExplorer = () => {
 
   useEffect(() => {
     if (explorer) {
-      setItemList([...explorer]);
+      setItemList(sortByKey([...explorer], "index"));
       setIsLoading(false);
     }
   }, [explorer]);
 
-  const result = useSortByKey({ items: itemList, key: "index" });
-
   return {
     isLoading,
-    itemList: result,
+    itemList,
   };
 };
 

@@ -94,8 +94,8 @@ const HistoryTabs = ({ children }: TParentNode) => {
   }, [history, add, current, router]);
 
   return (
-    <div className="w-full bg-gray-800">
-      <div className="flex bg-gray-900 overflow-x-auto">
+    <div className="flex flex-col h-screen w-full bg-gray-800">
+      <div className="flex bg-gray-900 overflow-x-auto flex-shrink-0">
         {history.map(item => (
           <ContextMenu key={`tab_${item.path}`}>
             <ContextMenuTrigger asChild>
@@ -154,7 +154,7 @@ const HistoryTabs = ({ children }: TParentNode) => {
         ))}
       </div>
 
-      <Container className="min-h-screen flex-1 text-white sm:p-2 md:p-5 xs:px-0 xs:py-3">
+      <Container className="overflow-y-auto flex-1 text-white sm:p-2 md:p-5 xs:px-0 xs:py-3">
         {children}
       </Container>
     </div>

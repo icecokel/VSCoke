@@ -1,3 +1,12 @@
+export interface GameTexts {
+  score: string;
+  deadline: string;
+  start: string;
+  gameOver: string;
+  finalScore: string;
+  restart: string;
+}
+
 export const GameConstants = {
   MAX_WIDTH: 480,
   ASPECT_RATIO: 9 / 16,

@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { GameConstants } from "../GameConstants";
+import { GameConstants, GameTexts } from "../GameConstants";
 
 export class PreloadScene extends Phaser.Scene {
   private startButton: Phaser.GameObjects.Text | null = null;
@@ -54,8 +54,11 @@ export class PreloadScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.startGame());
 
+    const texts = this.registry.get("texts") as GameTexts;
+    const startText = texts?.start || "START";
+
     this.startButton = this.add
-      .text(width / 2, height / 2, "START", {
+      .text(width / 2, height / 2, startText, {
         fontSize: "32px",
         color: "#ffffff",
         fontStyle: "bold",

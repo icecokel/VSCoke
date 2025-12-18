@@ -1,14 +1,5 @@
 import * as Phaser from "phaser";
-import { GameConstants } from "../GameConstants";
-
-interface GameTexts {
-  score: string;
-  deadline: string;
-  start: string;
-  gameOver: string;
-  finalScore: string;
-  restart: string;
-}
+import { GameConstants, GameTexts } from "../GameConstants";
 
 export class MainScene extends Phaser.Scene {
   // ... (previous properties)

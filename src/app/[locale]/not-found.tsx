@@ -1,6 +1,6 @@
 "use client";
 
-import useHistory from "@/hooks/use-history";
+import { useHistory } from "@/hooks/use-history";
 import Container from "@/components/base-ui/container";
 import BaseText from "@/components/base-ui/text";
 import Icon from "@/components/base-ui/icon";

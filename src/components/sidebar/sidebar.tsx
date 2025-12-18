@@ -2,8 +2,8 @@
 
 import Explorer from "./explorer";
 import Search from "./search";
-import useClickOutSide from "@/hooks/use-click-out-side";
-import useShortCut from "@/hooks/use-short-cut";
+import { useClickOutSide } from "@/hooks/use-click-out-side";
+import { useShortCut } from "@/hooks/use-short-cut";
 import { TParentNode } from "@/models/common";
 import { TSidebar } from "@/models/enum/sidebar";
 import Icon from "@/components/base-ui/icon";

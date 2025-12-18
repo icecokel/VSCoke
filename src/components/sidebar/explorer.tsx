@@ -1,7 +1,7 @@
 "use client";
 
 import SidebarLayout from "./sidebar-layout";
-import useExplorer from "@/hooks/use-explorer";
+import { useExplorer } from "@/hooks/use-explorer";
 import ExplorerItem from "./explorer-item";
 
 interface ExplorerProps {

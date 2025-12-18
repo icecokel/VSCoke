@@ -4,7 +4,7 @@ import { IHistoryItem } from "@/contexts/history-context";
 import { useHistoryContext } from "@/contexts/history-context";
 import { useRouter } from "next/navigation";
 
-const useHistory = () => {
+export const useHistory = () => {
   const { history, setHistory } = useHistoryContext();
   const router = useRouter();
 
@@ -14,7 +14,10 @@ const useHistory = () => {
       return;
     }
     setHistory((prev: IHistoryItem[]) => {
-      return [...prev.map((item: IHistoryItem) => ({ ...item, isActive: false })), { isActive: true, path, title }];
+      return [
+        ...prev.map((item: IHistoryItem) => ({ ...item, isActive: false })),
+        { isActive: true, path, title },
+      ];
     });
   };
 
@@ -25,8 +28,8 @@ const useHistory = () => {
   };
 
   const change = ({ path }: IHistoryItem) => {
-    setHistory((prev: IHistoryItem[]) => 
-      prev.map((item: IHistoryItem) => ({ ...item, isActive: item.path === path }))
+    setHistory((prev: IHistoryItem[]) =>
+      prev.map((item: IHistoryItem) => ({ ...item, isActive: item.path === path })),
     );
     router.push(path);
   };
@@ -42,5 +45,3 @@ const useHistory = () => {
     change,
   };
 };
-
-export default useHistory;

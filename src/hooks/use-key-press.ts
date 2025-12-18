@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-const useKeyPress = () => {
+export const useKeyPress = () => {
   const [pushedKey, setPushedKey] = useState<string[]>([]);
 
   const handleKeyDown = useCallback(({ key }: KeyboardEvent) => {
@@ -39,5 +39,3 @@ const useKeyPress = () => {
 
   return { pushedKey, isSubset };
 };
-
-export default useKeyPress;

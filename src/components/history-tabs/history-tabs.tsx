@@ -1,6 +1,6 @@
 "use client";
 
-import useHistory from "@/hooks/use-history";
+import { useHistory } from "@/hooks/use-history";
 import { TParentNode } from "@/models/common";
 import Container from "@/components/base-ui/container";
 import Icon from "@/components/base-ui/icon";

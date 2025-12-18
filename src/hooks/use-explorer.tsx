@@ -13,7 +13,7 @@ export interface ITree {
   items?: ITree[];
 }
 
-const useExplorer = () => {
+export const useExplorer = () => {
   const [itemList, setItemList] = useState<ITree[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const explorer = useContext(ExplorerContext);
@@ -30,5 +30,3 @@ const useExplorer = () => {
     itemList,
   };
 };
-
-export default useExplorer;

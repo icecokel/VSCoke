@@ -1,7 +1,7 @@
 import { RefObject, useEffect, useRef } from "react";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const useClickOutSide = (onClickOutSide: (event: MouseEvent) => void): RefObject<any> => {
+export const useClickOutSide = (onClickOutSide: (event: MouseEvent) => void): RefObject<any> => {
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
     const handleClickOutSide = (event: MouseEvent) => {
@@ -18,5 +18,3 @@ const useClickOutSide = (onClickOutSide: (event: MouseEvent) => void): RefObject
 
   return ref;
 };
-
-export default useClickOutSide;

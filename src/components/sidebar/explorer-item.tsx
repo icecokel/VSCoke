@@ -1,7 +1,7 @@
 "use client";
 
 import { ITree } from "@/hooks/use-explorer";
-import useHistory from "@/hooks/use-history";
+import { useHistory } from "@/hooks/use-history";
 import Icon from "@/components/base-ui/icon";
 import BaseText from "@/components/base-ui/text";
 import { MouseEvent, useState } from "react";

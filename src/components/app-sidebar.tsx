@@ -9,7 +9,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import Icon from "@/components/base-ui/icon";
-import useExplorer from "@/hooks/use-explorer";
+import { useExplorer } from "@/hooks/use-explorer";
 import ExplorerItem from "@/components/sidebar/explorer-item";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

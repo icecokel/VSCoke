@@ -10,7 +10,7 @@ interface ReturnType {
   setValue: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-export function useBoolean(defaultValue?: boolean): ReturnType {
+export const useBoolean = (defaultValue?: boolean): ReturnType => {
   const [value, setValue] = useState(!!defaultValue);
 
   const onTrue = useCallback(() => {
@@ -32,4 +32,4 @@ export function useBoolean(defaultValue?: boolean): ReturnType {
     onToggle,
     setValue,
   };
-}
+};

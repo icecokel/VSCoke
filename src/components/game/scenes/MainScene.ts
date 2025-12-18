@@ -64,14 +64,7 @@ export class MainScene extends Phaser.Scene {
     super({ key: "MainScene" });
   }
 
-  preload() {
-    const graphics = this.make.graphics({ x: 0, y: 0 }, false);
-
-    // 블록 텍스처 생성
-    graphics.fillStyle(0xffffff);
-    graphics.fillRoundedRect(0, 0, this.BASE_BLOCK_WIDTH, this.BASE_BLOCK_HEIGHT, 8);
-    graphics.generateTexture("block_base", this.BASE_BLOCK_WIDTH, this.BASE_BLOCK_HEIGHT);
-  }
+  // Preload moved to PreloadScene
 
   create() {
     // 레지스트리에서 텍스트 로드 (React에서 주입됨)
@@ -80,12 +73,15 @@ export class MainScene extends Phaser.Scene {
       this.texts = { ...this.texts, ...registryTexts };
     }
 
-    // 색상 초기화 (난이도에 따른 색상 수 결정)
-    const colorCount = GameConstants.COLOR_COUNT_BY_COLS[this.COLS] || 5;
-    this.currentColors = GameConstants.BLOCK_PALETTE.slice(0, colorCount);
+    // 색상 로드 (PreloadScene에서 생성됨)
+    this.currentColors = this.registry.get("currentColors");
+    if (!this.currentColors || this.currentColors.length === 0) {
+      // Fallback if missing (should not happen)
+      const colorCount = GameConstants.COLOR_COUNT_BY_COLS[this.COLS] || 5;
+      this.currentColors = GameConstants.BLOCK_PALETTE.slice(0, colorCount);
+    }
 
     this.isGameOver = false;
-    this.isGameRunning = false;
     this.score = 0;
     this.columns = [[], [], []];
     this.pickedBlock = null;
@@ -117,9 +113,6 @@ export class MainScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0);
 
-    // 시작 버튼
-    this.createStartButton();
-
     // 초기 레이아웃 업데이트
     this.updateLayout();
 
@@ -134,6 +127,9 @@ export class MainScene extends Phaser.Scene {
       },
       this,
     );
+
+    // 게임 바로 시작
+    this.startGameLogic();
   }
 
   private resize(gameSize: Phaser.Structs.Size) {
@@ -201,15 +197,6 @@ export class MainScene extends Phaser.Scene {
       this.deadlineText.setFontSize(`${14 * this.gameScale}px`);
     }
 
-    // 시작 버튼 업데이트
-    if (this.startButton && this.startButtonBg) {
-      this.startButtonBg.setPosition(screenWidth / 2, screenHeight / 2);
-      this.startButtonBg.setSize(200 * this.gameScale, 60 * this.gameScale);
-
-      this.startButton.setPosition(screenWidth / 2, screenHeight / 2);
-      this.startButton.setFontSize(`${32 * this.gameScale}px`);
-    }
-
     // 게임 오버 그룹 업데이트
     if (this.gameOverGroup) {
       this.gameOverGroup.setPosition(screenWidth / 2, screenHeight / 2);
@@ -226,37 +213,7 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
-  private createStartButton() {
-    const screenWidth = this.cameras.main.width;
-    const screenHeight = this.cameras.main.height;
-
-    this.startButtonBg = this.add
-      .rectangle(screenWidth / 2, screenHeight / 2, 200, 60, 0x4ecdc4)
-      .setInteractive({ useHandCursor: true })
-      .on("pointerdown", () => this.startGame());
-
-    this.startButton = this.add
-      .text(screenWidth / 2, screenHeight / 2, this.texts.start, {
-        fontSize: "32px",
-        color: "#ffffff",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5);
-
-    this.startButtonBg.setName("startBtnBg");
-    this.startButton.setName("startBtnText");
-  }
-
-  private startGame() {
-    if (this.isGameRunning) return;
-
-    this.isGameRunning = true;
-
-    if (this.startButtonBg) this.startButtonBg.destroy();
-    if (this.startButton) this.startButton.destroy();
-    this.startButton = null;
-    this.startButtonBg = null;
-
+  private startGameLogic() {
     // 초기 블록 생성
     this.spawnRow();
     this.spawnRow();
@@ -276,8 +233,10 @@ export class MainScene extends Phaser.Scene {
   }
 
   private handleColumnClick(colIdx: number) {
-    if (this.isGameOver || !this.isGameRunning) return;
+    if (this.isGameOver) return;
+    // Game starts immediately now, no isGameRunning check needed or assume always true
 
+    // ... logic continues ...
     const col = this.columns[colIdx];
 
     if (this.pickedBlock === null) {
@@ -413,7 +372,7 @@ export class MainScene extends Phaser.Scene {
 
   private gameOver() {
     this.isGameOver = true;
-    this.isGameRunning = false;
+    // this.isGameRunning = false; // Removed as implicit via isGameOver
     if (this.spawnTimer) this.spawnTimer.destroy();
 
     const screenWidth = this.cameras.main.width;
@@ -447,7 +406,11 @@ export class MainScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     this.restartText.on("pointerdown", () => {
-      this.scene.restart();
+      // Restarting main scene directly, OR should go back to Preload?
+      // User wants random colors every game?
+      // If so, we should go back to PreloadScene or re-run Preload logic.
+      // PreloadScene generates colors. So we should start 'PreloadScene'.
+      this.scene.start("PreloadScene");
     });
 
     this.gameOverGroup.add([bg, this.gameOverTitle, this.finalScoreText, this.restartText]);

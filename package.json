@@ -31,8 +31,8 @@
     "next": "^15.5.7",
     "next-intl": "^4.5.8",
     "next-mdx-remote": "^5.0.0",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "reading-time": "^1.5.0",
     "tailwind-merge": "^3.4.0"
   },

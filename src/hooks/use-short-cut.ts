@@ -13,7 +13,7 @@ const useShortCut = (keys: KeyboardEvent["key"][], cb: () => void) => {
     if (isSubset(keys)) {
       cb();
     }
-  }, [pushedKey]);
+  }, [pushedKey, cb, isSubset, keys]);
 };
 
 export default useShortCut;

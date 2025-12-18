@@ -88,7 +88,7 @@ const HistoryTabs = ({ children }: TParentNode) => {
     } else {
       add(history[0]);
     }
-  }, [history]);
+  }, [history, add, current, router]);
 
   return (
     <div className="w-full bg-gray-800">

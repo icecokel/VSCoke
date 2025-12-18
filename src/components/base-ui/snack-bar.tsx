@@ -16,7 +16,7 @@ const SnackBar = () => {
         clearTimeout(timer);
       };
     }
-  }, [open]);
+  }, [open, duration, setOption]);
 
   return (
     <>

@@ -1,6 +1,10 @@
 import type { MDXComponents } from "mdx/types";
 import BaseText from "@/components/base-ui/text";
 import Chip from "@/components/base-ui/chip";
+import Icon from "@/components/base-ui/icon";
+import Container from "@/components/base-ui/container";
+import Avatar from "@/components/base-ui/avatar";
+import SlideGroup from "@/components/base-ui/slide-group";
 
 export const mdxComponents: MDXComponents = {
   h1: ({ children }) => (
@@ -61,4 +65,10 @@ export const mdxComponents: MDXComponents = {
   Tag: ({ children }: { children: React.ReactNode }) => (
     <Chip label={String(children)} className="mr-1" />
   ),
+  // Custom Components available in MDX
+  Icon,
+  Container,
+  Avatar,
+  Text: BaseText,
+  SlideGroup,
 };

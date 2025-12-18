@@ -29,7 +29,7 @@ const useKeyPress = () => {
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("keyup", handleKeyUp);
     };
-  }, []);
+  }, [handleKeyDown, handleKeyUp]);
 
   const isSubset = (target: string[]) => {
     return target.every(key => {

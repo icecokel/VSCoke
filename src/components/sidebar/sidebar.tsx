@@ -47,7 +47,7 @@ const Sidebar = ({ children }: TParentNode) => {
     updateTab("none");
   };
 
-  const tabRef = useClickOutSide(currentTabClose);
+  const tabRef = useClickOutSide<HTMLDivElement>(currentTabClose);
 
   const handleChangeTab: React.MouseEventHandler<HTMLInputElement> = ({
     currentTarget: { value },

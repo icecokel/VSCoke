@@ -4,7 +4,10 @@ import { useEffect, useRef } from "react";
 import * as Phaser from "phaser";
 import { GameConfig } from "./GameConfig";
 
+import { useTranslations } from "next-intl";
+
 const PhaserGame = () => {
+  const t = useTranslations("Game");
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -14,12 +17,12 @@ const PhaserGame = () => {
 
       // Inject game texts into the registry
       gameRef.current.registry.set("texts", {
-        score: "Score: ",
-        deadline: "DEADLINE",
-        start: "START",
-        gameOver: "GAME OVER",
-        finalScore: "Final Score: ",
-        restart: "Restart",
+        score: t("score"),
+        deadline: t("deadline"),
+        start: t("start"),
+        gameOver: t("gameOver"),
+        finalScore: t("finalScore"),
+        restart: t("restart"),
       });
     }
 
@@ -29,7 +32,7 @@ const PhaserGame = () => {
         gameRef.current = null;
       }
     };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const updateSize = () => {

@@ -1,8 +1,9 @@
 import { RefObject, useEffect, useRef } from "react";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const useClickOutSide = (onClickOutSide: (event: MouseEvent) => void): RefObject<any> => {
-  const ref = useRef<HTMLElement>(null);
+export const useClickOutSide = <T extends HTMLElement = HTMLElement>(
+  onClickOutSide: (event: MouseEvent) => void,
+): RefObject<T | null> => {
+  const ref = useRef<T>(null);
   useEffect(() => {
     const handleClickOutSide = (event: MouseEvent) => {
       if (ref.current && !ref.current.contains(event.target as Node)) {

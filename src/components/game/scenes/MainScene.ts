@@ -75,6 +75,12 @@ export class MainScene extends Phaser.Scene {
       this.currentColors = GameConstants.BLOCK_PALETTE.slice(0, colorCount);
     }
 
+    // 다국어 텍스트 로드
+    const registryTexts = this.registry.get("texts") as GameTexts;
+    if (registryTexts) {
+      this.texts = registryTexts;
+    }
+
     this.isGameOver = false;
     this.score = 0;
     this.columns = [[], [], []];

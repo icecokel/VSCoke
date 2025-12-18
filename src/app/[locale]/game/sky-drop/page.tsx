@@ -23,7 +23,7 @@ export default function GamePage() {
           aspectRatio: GameConstants.ASPECT_RATIO_CSS,
         }}
       >
-        <PhaserGame />
+        {/* <PhaserGame /> */}
       </div>
     </main>
   );

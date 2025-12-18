@@ -38,5 +38,13 @@
     "description": "Sharing development experiences and insights.",
     "backToList": "Back to List",
     "noPosts": "No posts available."
+  },
+  "Game": {
+    "score": "Score: ",
+    "deadline": "DEADLINE",
+    "start": "START",
+    "gameOver": "GAME OVER",
+    "finalScore": "Final Score: ",
+    "restart": "CLICK TO RESTART"
   }
 }

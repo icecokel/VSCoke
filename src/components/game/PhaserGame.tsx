@@ -3,14 +3,27 @@
 import React, { useEffect, useRef } from "react";
 import * as Phaser from "phaser";
 import { GameConfig } from "./GameConfig";
+import { GameConstants } from "./GameConstants";
+import { useTranslations } from "next-intl";
 
 export default function PhaserGame() {
+  const t = useTranslations("Game");
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined" && !gameRef.current) {
       gameRef.current = new Phaser.Game(GameConfig);
+
+      // Inject localized texts into the registry
+      gameRef.current.registry.set("texts", {
+        score: t("score"),
+        deadline: t("deadline"),
+        start: t("start"),
+        gameOver: t("gameOver"),
+        finalScore: t("finalScore"),
+        restart: t("restart"),
+      });
     }
 
     return () => {
@@ -19,48 +32,21 @@ export default function PhaserGame() {
         gameRef.current = null;
       }
     };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const updateSize = () => {
       if (!containerRef.current) return;
 
-      // Available space in the parent or window
-      // Since this is in a flex column (page setup), let's look at window for simplified Constraint logic
-      // or parent.
-      const windowW = window.innerWidth;
-      const windowH = window.innerHeight;
+      // CSS가 크기를 처리합니다 (aspect-ratio: 9/16, max-width: 420px)
+      // 실제 크기를 게임에 보고하기만 하면 됩니다.
+      const targetW = containerRef.current.clientWidth;
+      const targetH = containerRef.current.clientHeight;
 
-      // Constraints
-      const MIN_W = 320;
-      const MAX_W = 480;
-      const RATIO = 9 / 16;
+      // CSS가 처리하므로 style.width/height를 수동으로 설정할 필요가 없습니다.
 
-      // Start with Max Width
-      let targetW = Math.min(windowW - 32, MAX_W); // 32px padding margin
-      targetW = Math.max(targetW, MIN_W);
-
-      // Calculate Height
-      let targetH = targetW / RATIO;
-
-      // Check Height Constraint (fit in screen - padding)
-      if (targetH > windowH - 40) {
-        targetH = windowH - 40;
-        targetW = targetH * RATIO;
-      }
-
-      // Re-Check Min Width after height adjustment
-      if (targetW < MIN_W) {
-        targetW = MIN_W;
-        targetH = targetW / RATIO;
-      }
-
-      // Apply to container
-      containerRef.current.style.width = `${targetW}px`;
-      containerRef.current.style.height = `${targetH}px`;
-
-      // Direct Event Tunnel (User Request)
-      // Although REISZE mode handles it, user asked to "send size via event tunnel".
+      // 직접 이벤트 터널 (사용자 요청)
+      // RESIZE 모드가 처리하지만, '이벤트 터널을 통해 크기 전송'을 요청받았습니다.
       if (gameRef.current) {
         gameRef.current.events.emit("external-resize", { width: targetW, height: targetH });
       }
@@ -78,7 +64,11 @@ export default function PhaserGame() {
         ref={containerRef}
         id="phaser-container"
         className="overflow-hidden rounded-lg shadow-xl"
-        style={{ width: "320px", height: "568px" }} // Default fallback
+        style={{
+          width: "100%",
+          maxWidth: `${GameConstants.MAX_WIDTH}px`,
+          aspectRatio: GameConstants.ASPECT_RATIO_CSS,
+        }}
       />
     </div>
   );

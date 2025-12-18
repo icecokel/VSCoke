@@ -38,5 +38,13 @@
     "description": "개발 관련 글과 경험을 공유합니다.",
     "backToList": "목록으로",
     "noPosts": "포스트가 없습니다."
+  },
+  "Game": {
+    "score": "점수: ",
+    "deadline": "데드라인",
+    "start": "시작",
+    "gameOver": "게임 종료",
+    "finalScore": "최종 점수: ",
+    "restart": "클릭하여 재시작"
   }
 }

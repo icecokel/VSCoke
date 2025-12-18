@@ -55,9 +55,9 @@ export const getExplorer = cache(async (): Promise<ITree[]> => {
       label: "games",
       items: [
         {
-          icon: "terminal",
-          id: "game-sky-drop",
-          label: "sky-drop.exe",
+          icon: "react",
+          id: "game-dashboard",
+          label: "index.tsx",
           path: "/game",
         },
       ],

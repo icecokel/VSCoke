@@ -1,6 +1,27 @@
-import { Scene } from "phaser";
+import * as Phaser from "phaser";
+import { GameConstants } from "../GameConstants";
 
-export class MainScene extends Scene {
+interface GameTexts {
+  score: string;
+  deadline: string;
+  start: string;
+  gameOver: string;
+  finalScore: string;
+  restart: string;
+}
+
+export class MainScene extends Phaser.Scene {
+  // ... (previous properties)
+
+  // Localized Texts
+  private texts: GameTexts = {
+    score: "Score: ",
+    deadline: "DEADLINE",
+    start: "START",
+    gameOver: "GAME OVER",
+    finalScore: "Final Score: ",
+    restart: "CLICK TO RESTART",
+  };
   private columns: Phaser.GameObjects.Sprite[][] = [[], [], []];
   private pickedBlock: Phaser.GameObjects.Sprite | null = null;
   private pickedColIdx: number = -1;
@@ -11,29 +32,29 @@ export class MainScene extends Scene {
   private startButtonBg: Phaser.GameObjects.Rectangle | null = null;
   private isGameRunning: boolean = false;
 
-  // UI References
-  private colBgs: Phaser.GameObjects.Image[] = [];
+  // UI 참조
+  private colBgs: Phaser.GameObjects.Graphics[] = [];
   private deadlineGraphics: Phaser.GameObjects.Graphics | null = null;
   private deadlineText: Phaser.GameObjects.Text | null = null;
   private gameOverGroup: Phaser.GameObjects.Container | null = null;
 
-  // Game Over UI References
+  // 게임 오버 UI 참조
   private gameOverTitle: Phaser.GameObjects.Text | null = null;
   private finalScoreText: Phaser.GameObjects.Text | null = null;
   private restartText: Phaser.GameObjects.Text | null = null;
 
-  // Consts - Base Dimensions (Will be scaled)
+  // 상수 - 기본 크기 (스케일링됨)
   private readonly COLS = 3;
   private readonly BASE_BLOCK_WIDTH = 80;
   private readonly BASE_BLOCK_HEIGHT = 32;
-  private readonly BASE_BLOCK_SPACING_X = 40;
+  private readonly BASE_BLOCK_SPACING_X = 20;
   private readonly BASE_BLOCK_SPACING_Y = 4;
 
-  // Actual current dimensions (scaled)
+  // 실제 현재 크기 (스케일링 적용됨)
   private gameScale: number = 1;
 
-  // Requested Color Palette
-  private readonly COLORS = [0x91c6bc, 0x4b9da9, 0xf6f3c2, 0xe37434, 0xff6b6b];
+  // 색상 팔레트 (동적 할당)
+  private currentColors: number[] = [];
 
   private spawnTimer: Phaser.Time.TimerEvent | null = null;
   private spawnInterval: number = 3000;
@@ -46,19 +67,23 @@ export class MainScene extends Scene {
   preload() {
     const graphics = this.make.graphics({ x: 0, y: 0 }, false);
 
-    // Block texture
+    // 블록 텍스처 생성
     graphics.fillStyle(0xffffff);
     graphics.fillRoundedRect(0, 0, this.BASE_BLOCK_WIDTH, this.BASE_BLOCK_HEIGHT, 8);
     graphics.generateTexture("block_base", this.BASE_BLOCK_WIDTH, this.BASE_BLOCK_HEIGHT);
-
-    // Background column texture
-    graphics.clear();
-    graphics.lineStyle(2, 0xffffff, 0.1);
-    graphics.strokeRect(0, 0, this.BASE_BLOCK_WIDTH + 4, 600);
-    graphics.generateTexture("col_bg", this.BASE_BLOCK_WIDTH + 4, 600);
   }
 
   create() {
+    // 레지스트리에서 텍스트 로드 (React에서 주입됨)
+    const registryTexts = this.registry.get("texts");
+    if (registryTexts) {
+      this.texts = { ...this.texts, ...registryTexts };
+    }
+
+    // 색상 초기화 (난이도에 따른 색상 수 결정)
+    const colorCount = GameConstants.COLOR_COUNT_BY_COLS[this.COLS] || 5;
+    this.currentColors = GameConstants.BLOCK_PALETTE.slice(0, colorCount);
+
     this.isGameOver = false;
     this.isGameRunning = false;
     this.score = 0;
@@ -67,39 +92,41 @@ export class MainScene extends Scene {
     this.pickedColIdx = -1;
     this.colBgs = [];
 
-    // Score Board
-    this.scoreText = this.add.text(20, 20, "Score: 0", {
+    // 점수판 (안전을 위해 아래로 이동)
+    this.scoreText = this.add.text(20, 40, `${this.texts.score}0`, {
       fontSize: "24px",
       color: "#ffffff",
     });
 
-    // Column Backgrounds
+    // 컬럼 배경
     for (let i = 0; i < this.COLS; i++) {
-      const colBg = this.add.image(0, 0, "col_bg");
-      colBg.setInteractive();
+      const colBg = this.add.graphics();
+      // 클릭 감지를 위한 인터랙티브 영역 (투명 사각형)
+      const hitArea = new Phaser.Geom.Rectangle(0, 0, 100, 1000);
+      colBg.setInteractive(hitArea, Phaser.Geom.Rectangle.Contains);
       colBg.on("pointerdown", () => this.handleColumnClick(i));
       this.colBgs.push(colBg);
     }
 
-    // Deadline
+    // 데드라인
     this.deadlineGraphics = this.add.graphics();
     this.deadlineText = this.add
-      .text(0, 0, "DEADLINE", {
+      .text(0, 0, this.texts.deadline, {
         fontSize: "14px",
         color: "#ff4444",
       })
       .setOrigin(0.5, 0);
 
-    // Start Button
+    // 시작 버튼
     this.createStartButton();
 
-    // Initial Layout update
+    // 초기 레이아웃 업데이트
     this.updateLayout();
 
-    // Standard Resize Listener
+    // 기본 리사이즈 리스너
     this.scale.on("resize", this.resize, this);
 
-    // Event Tunnel Listener
+    // 이벤트 터널 리스너
     this.game.events.on(
       "external-resize",
       (_data: { width: number; height: number }) => {
@@ -128,7 +155,7 @@ export class MainScene extends Scene {
     const currentBlockWidth = this.BASE_BLOCK_WIDTH * this.gameScale;
     const currentSpacingX = this.BASE_BLOCK_SPACING_X * this.gameScale;
 
-    // Update Score Scale
+    // 점수판 크기 업데이트
     if (this.scoreText) {
       this.scoreText.setFontSize(`${24 * this.gameScale}px`);
     }
@@ -136,16 +163,31 @@ export class MainScene extends Scene {
     const totalVisualWidth = currentBlockWidth * this.COLS + currentSpacingX * (this.COLS - 1);
     const startX = (screenWidth - totalVisualWidth) / 2 + currentBlockWidth / 2;
 
+    // 컬럼 배경 업데이트 (다시 그리기)
     this.colBgs.forEach((bg, i) => {
       const x = startX + i * (currentBlockWidth + currentSpacingX);
-      bg.setPosition(x, screenHeight / 2);
-      bg.setScale(this.gameScale);
+
+      bg.clear();
+      bg.lineStyle(2 * this.gameScale, 0xffffff, 0.1);
+
+      // x를 중심으로 하는 사각형 그리기 (높이는 화면 전체)
+      const w = currentBlockWidth + 4 * this.gameScale;
+      const h = screenHeight;
+
+      // 위치 초기화 후 월드 좌표에 그리기
+      bg.setPosition(0, 0);
+      bg.strokeRect(x - w / 2, 0, w, h);
+
+      // 히트 영역 업데이트
+      bg.input!.hitArea.setTo(x - w / 2, 0, w, h);
     });
 
-    this.deadlineY = screenHeight - 100;
+    // 데드라인 업데이트
+    this.deadlineY = screenHeight - 100 * this.gameScale; // 데드라인 위치도 스케일링 적용
+    // 작은 화면 일관성을 위해 100 * gameScale 사용
     if (this.deadlineGraphics) {
       this.deadlineGraphics.clear();
-      this.deadlineGraphics.lineStyle(4, 0xff4444, 0.8);
+      this.deadlineGraphics.lineStyle(4 * this.gameScale, 0xff4444, 0.8);
       this.deadlineGraphics.lineBetween(
         startX - currentBlockWidth / 2,
         this.deadlineY,
@@ -153,13 +195,13 @@ export class MainScene extends Scene {
         this.deadlineY,
       );
     }
-    // Update Deadline Text
+    // 데드라인 텍스트 업데이트
     if (this.deadlineText) {
-      this.deadlineText.setPosition(screenWidth / 2, this.deadlineY + 10);
+      this.deadlineText.setPosition(screenWidth / 2, this.deadlineY + 10 * this.gameScale);
       this.deadlineText.setFontSize(`${14 * this.gameScale}px`);
     }
 
-    // Update Start Button
+    // 시작 버튼 업데이트
     if (this.startButton && this.startButtonBg) {
       this.startButtonBg.setPosition(screenWidth / 2, screenHeight / 2);
       this.startButtonBg.setSize(200 * this.gameScale, 60 * this.gameScale);
@@ -168,7 +210,7 @@ export class MainScene extends Scene {
       this.startButton.setFontSize(`${32 * this.gameScale}px`);
     }
 
-    // Update Game Over Group
+    // 게임 오버 그룹 업데이트
     if (this.gameOverGroup) {
       this.gameOverGroup.setPosition(screenWidth / 2, screenHeight / 2);
       const rect = this.gameOverGroup.list[0] as Phaser.GameObjects.Rectangle;
@@ -194,7 +236,7 @@ export class MainScene extends Scene {
       .on("pointerdown", () => this.startGame());
 
     this.startButton = this.add
-      .text(screenWidth / 2, screenHeight / 2, "START", {
+      .text(screenWidth / 2, screenHeight / 2, this.texts.start, {
         fontSize: "32px",
         color: "#ffffff",
         fontStyle: "bold",
@@ -215,12 +257,12 @@ export class MainScene extends Scene {
     this.startButton = null;
     this.startButtonBg = null;
 
-    // Initial blocks
+    // 초기 블록 생성
     this.spawnRow();
     this.spawnRow();
     this.spawnRow();
 
-    // Spawn timer
+    // 스폰 타이머 설정
     this.spawnTimer = this.time.addEvent({
       delay: this.spawnInterval,
       callback: this.spawnRow,
@@ -230,7 +272,7 @@ export class MainScene extends Scene {
   }
 
   update() {
-    // Game loop
+    // 게임 루프
   }
 
   private handleColumnClick(colIdx: number) {
@@ -274,7 +316,8 @@ export class MainScene extends Scene {
     if (this.isGameOver) return;
 
     for (let i = 0; i < this.COLS; i++) {
-      const color = Phaser.Utils.Array.GetRandom(this.COLORS);
+      // Use dynamically selected colors
+      const color = Phaser.Utils.Array.GetRandom(this.currentColors);
       const block = this.add.sprite(0, 0, "block_base");
       block.setTint(color);
       block.setData("color", color);
@@ -364,7 +407,7 @@ export class MainScene extends Scene {
   private addScore(points: number) {
     this.score += points;
     if (this.scoreText) {
-      this.scoreText.setText(`Score: ${this.score}`);
+      this.scoreText.setText(`${this.texts.score}${this.score}`);
     }
   }
 
@@ -381,7 +424,7 @@ export class MainScene extends Scene {
     const bg = this.add.rectangle(0, 0, screenWidth, screenHeight, 0x000000, 0.7);
 
     this.gameOverTitle = this.add
-      .text(0, -50, "GAME OVER", {
+      .text(0, -50, this.texts.gameOver, {
         fontSize: `${48 * this.gameScale}px`,
         color: "#ff4444",
         fontStyle: "bold",
@@ -389,14 +432,14 @@ export class MainScene extends Scene {
       .setOrigin(0.5);
 
     this.finalScoreText = this.add
-      .text(0, 50, `Final Score: ${this.score}`, {
+      .text(0, 50, `${this.texts.finalScore}${this.score}`, {
         fontSize: `${32 * this.gameScale}px`,
         color: "#ffffff",
       })
       .setOrigin(0.5);
 
     this.restartText = this.add
-      .text(0, 120, "CLICK TO RESTART", {
+      .text(0, 120, this.texts.restart, {
         fontSize: `${24 * this.gameScale}px`,
         color: "#4ECDC4",
       })

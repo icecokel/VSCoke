@@ -6,40 +6,40 @@ import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-function ContextMenu({ ...props }: ComponentProps<typeof ContextMenuPrimitive.Root>) {
+const ContextMenu = ({ ...props }: ComponentProps<typeof ContextMenuPrimitive.Root>) => {
   return <ContextMenuPrimitive.Root data-slot="context-menu" {...props} />;
-}
+};
 
-function ContextMenuTrigger({ ...props }: ComponentProps<typeof ContextMenuPrimitive.Trigger>) {
+const ContextMenuTrigger = ({ ...props }: ComponentProps<typeof ContextMenuPrimitive.Trigger>) => {
   return <ContextMenuPrimitive.Trigger data-slot="context-menu-trigger" {...props} />;
-}
+};
 
-function ContextMenuGroup({ ...props }: ComponentProps<typeof ContextMenuPrimitive.Group>) {
+const ContextMenuGroup = ({ ...props }: ComponentProps<typeof ContextMenuPrimitive.Group>) => {
   return <ContextMenuPrimitive.Group data-slot="context-menu-group" {...props} />;
-}
+};
 
-function ContextMenuPortal({ ...props }: ComponentProps<typeof ContextMenuPrimitive.Portal>) {
+const ContextMenuPortal = ({ ...props }: ComponentProps<typeof ContextMenuPrimitive.Portal>) => {
   return <ContextMenuPrimitive.Portal data-slot="context-menu-portal" {...props} />;
-}
+};
 
-function ContextMenuSub({ ...props }: ComponentProps<typeof ContextMenuPrimitive.Sub>) {
+const ContextMenuSub = ({ ...props }: ComponentProps<typeof ContextMenuPrimitive.Sub>) => {
   return <ContextMenuPrimitive.Sub data-slot="context-menu-sub" {...props} />;
-}
+};
 
-function ContextMenuRadioGroup({
+const ContextMenuRadioGroup = ({
   ...props
-}: ComponentProps<typeof ContextMenuPrimitive.RadioGroup>) {
+}: ComponentProps<typeof ContextMenuPrimitive.RadioGroup>) => {
   return <ContextMenuPrimitive.RadioGroup data-slot="context-menu-radio-group" {...props} />;
-}
+};
 
-function ContextMenuSubTrigger({
+const ContextMenuSubTrigger = ({
   className,
   inset,
   children,
   ...props
 }: ComponentProps<typeof ContextMenuPrimitive.SubTrigger> & {
   inset?: boolean;
-}) {
+}) => {
   return (
     <ContextMenuPrimitive.SubTrigger
       data-slot="context-menu-sub-trigger"
@@ -54,12 +54,12 @@ function ContextMenuSubTrigger({
       <ChevronRightIcon className="ml-auto" />
     </ContextMenuPrimitive.SubTrigger>
   );
-}
+};
 
-function ContextMenuSubContent({
+const ContextMenuSubContent = ({
   className,
   ...props
-}: ComponentProps<typeof ContextMenuPrimitive.SubContent>) {
+}: ComponentProps<typeof ContextMenuPrimitive.SubContent>) => {
   return (
     <ContextMenuPrimitive.SubContent
       data-slot="context-menu-sub-content"
@@ -70,12 +70,12 @@ function ContextMenuSubContent({
       {...props}
     />
   );
-}
+};
 
-function ContextMenuContent({
+const ContextMenuContent = ({
   className,
   ...props
-}: ComponentProps<typeof ContextMenuPrimitive.Content>) {
+}: ComponentProps<typeof ContextMenuPrimitive.Content>) => {
   return (
     <ContextMenuPrimitive.Portal>
       <ContextMenuPrimitive.Content
@@ -88,9 +88,9 @@ function ContextMenuContent({
       />
     </ContextMenuPrimitive.Portal>
   );
-}
+};
 
-function ContextMenuItem({
+const ContextMenuItem = ({
   className,
   inset,
   variant = "default",
@@ -98,7 +98,7 @@ function ContextMenuItem({
 }: ComponentProps<typeof ContextMenuPrimitive.Item> & {
   inset?: boolean;
   variant?: "default" | "destructive";
-}) {
+}) => {
   return (
     <ContextMenuPrimitive.Item
       data-slot="context-menu-item"
@@ -111,14 +111,14 @@ function ContextMenuItem({
       {...props}
     />
   );
-}
+};
 
-function ContextMenuCheckboxItem({
+const ContextMenuCheckboxItem = ({
   className,
   children,
   checked,
   ...props
-}: ComponentProps<typeof ContextMenuPrimitive.CheckboxItem>) {
+}: ComponentProps<typeof ContextMenuPrimitive.CheckboxItem>) => {
   return (
     <ContextMenuPrimitive.CheckboxItem
       data-slot="context-menu-checkbox-item"
@@ -137,13 +137,13 @@ function ContextMenuCheckboxItem({
       {children}
     </ContextMenuPrimitive.CheckboxItem>
   );
-}
+};
 
-function ContextMenuRadioItem({
+const ContextMenuRadioItem = ({
   className,
   children,
   ...props
-}: ComponentProps<typeof ContextMenuPrimitive.RadioItem>) {
+}: ComponentProps<typeof ContextMenuPrimitive.RadioItem>) => {
   return (
     <ContextMenuPrimitive.RadioItem
       data-slot="context-menu-radio-item"
@@ -161,15 +161,15 @@ function ContextMenuRadioItem({
       {children}
     </ContextMenuPrimitive.RadioItem>
   );
-}
+};
 
-function ContextMenuLabel({
+const ContextMenuLabel = ({
   className,
   inset,
   ...props
 }: ComponentProps<typeof ContextMenuPrimitive.Label> & {
   inset?: boolean;
-}) {
+}) => {
   return (
     <ContextMenuPrimitive.Label
       data-slot="context-menu-label"
@@ -178,12 +178,12 @@ function ContextMenuLabel({
       {...props}
     />
   );
-}
+};
 
-function ContextMenuSeparator({
+const ContextMenuSeparator = ({
   className,
   ...props
-}: ComponentProps<typeof ContextMenuPrimitive.Separator>) {
+}: ComponentProps<typeof ContextMenuPrimitive.Separator>) => {
   return (
     <ContextMenuPrimitive.Separator
       data-slot="context-menu-separator"
@@ -191,9 +191,9 @@ function ContextMenuSeparator({
       {...props}
     />
   );
-}
+};
 
-function ContextMenuShortcut({ className, ...props }: ComponentProps<"span">) {
+const ContextMenuShortcut = ({ className, ...props }: ComponentProps<"span">) => {
   return (
     <span
       data-slot="context-menu-shortcut"
@@ -201,7 +201,7 @@ function ContextMenuShortcut({ className, ...props }: ComponentProps<"span">) {
       {...props}
     />
   );
-}
+};
 
 export {
   ContextMenu,

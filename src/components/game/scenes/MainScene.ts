@@ -13,14 +13,14 @@ interface GameTexts {
 export class MainScene extends Phaser.Scene {
   // ... (previous properties)
 
-  // Localized Texts
+  // Game Texts (hardcoded in English)
   private texts: GameTexts = {
-    score: "",
-    deadline: "",
-    start: "",
-    gameOver: "",
-    finalScore: "",
-    restart: "",
+    score: "Score: ",
+    deadline: "DEADLINE",
+    start: "START",
+    gameOver: "GAME OVER",
+    finalScore: "Final Score: ",
+    restart: "Restart",
   };
   private columns: Phaser.GameObjects.Sprite[][] = [[], [], []];
   private pickedBlock: Phaser.GameObjects.Sprite | null = null;
@@ -67,12 +67,6 @@ export class MainScene extends Phaser.Scene {
   // Preload moved to PreloadScene
 
   create() {
-    // 레지스트리에서 텍스트 로드 (React에서 주입됨)
-    const registryTexts = this.registry.get("texts");
-    if (registryTexts) {
-      this.texts = { ...this.texts, ...registryTexts };
-    }
-
     // 색상 로드 (PreloadScene에서 생성됨)
     this.currentColors = this.registry.get("currentColors");
     if (!this.currentColors || this.currentColors.length === 0) {

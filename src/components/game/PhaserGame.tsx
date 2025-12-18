@@ -4,10 +4,8 @@ import React, { useEffect, useRef } from "react";
 import * as Phaser from "phaser";
 import { GameConfig } from "./GameConfig";
 import { GameConstants } from "./GameConstants";
-import { useTranslations } from "next-intl";
 
 export default function PhaserGame() {
-  const t = useTranslations("Game");
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -15,14 +13,14 @@ export default function PhaserGame() {
     if (typeof window !== "undefined" && !gameRef.current) {
       gameRef.current = new Phaser.Game(GameConfig);
 
-      // Inject localized texts into the registry
+      // Inject game texts into the registry
       gameRef.current.registry.set("texts", {
-        score: t("score"),
-        deadline: t("deadline"),
-        start: t("start"),
-        gameOver: t("gameOver"),
-        finalScore: t("finalScore"),
-        restart: t("restart"),
+        score: "Score: ",
+        deadline: "DEADLINE",
+        start: "START",
+        gameOver: "GAME OVER",
+        finalScore: "Final Score: ",
+        restart: "Restart",
       });
     }
 
@@ -32,7 +30,7 @@ export default function PhaserGame() {
         gameRef.current = null;
       }
     };
-  }, [t]);
+  }, []);
 
   useEffect(() => {
     const updateSize = () => {
@@ -58,18 +56,5 @@ export default function PhaserGame() {
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
-  return (
-    <div className="flex size-full items-center justify-center p-4">
-      <div
-        ref={containerRef}
-        id="phaser-container"
-        className="overflow-hidden rounded-lg shadow-xl"
-        style={{
-          width: "100%",
-          maxWidth: `${GameConstants.MAX_WIDTH}px`,
-          aspectRatio: GameConstants.ASPECT_RATIO_CSS,
-        }}
-      />
-    </div>
-  );
+  return <div ref={containerRef} id="phaser-container" className="size-full" />;
 }

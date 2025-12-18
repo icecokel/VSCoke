@@ -1,5 +1,5 @@
 export const GameConstants = {
-  MAX_WIDTH: 420,
+  MAX_WIDTH: 480,
   ASPECT_RATIO: 9 / 16,
   ASPECT_RATIO_CSS: "9/16",
   BLOCK_PALETTE: [

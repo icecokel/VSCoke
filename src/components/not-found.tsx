@@ -2,13 +2,14 @@
 
 import Container from "@/components/base-ui/container";
 import BaseText from "@/components/base-ui/text";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useCustomRouter } from "@/hooks/use-custom-router";
 import { Button } from "./ui/button";
 import { useTranslations } from "next-intl";
 
 const NotFound = () => {
   const path = usePathname();
-  const router = useRouter();
+  const router = useCustomRouter();
   const t = useTranslations("notFound");
 
   return (
@@ -28,7 +29,7 @@ const NotFound = () => {
           </div>
           <BaseText type="body2">{t("guide")}</BaseText>
         </div>
-        <Button className="mt-4" onClick={() => router.push("/")}>
+        <Button className="mt-4" onClick={() => router.push("/", { title: "Home" })}>
           {t("button")}
         </Button>
       </div>

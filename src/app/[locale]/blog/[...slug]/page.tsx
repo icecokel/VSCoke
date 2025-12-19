@@ -4,7 +4,7 @@ import { MDXRemote } from "next-mdx-remote/rsc";
 import BaseText from "@/components/base-ui/text";
 import Chip from "@/components/base-ui/chip";
 import Icon from "@/components/base-ui/icon";
-import Link from "next/link";
+import { CustomLink } from "@/components/custom-link";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
@@ -76,13 +76,14 @@ const BlogPostPage = async ({ params }: BlogPostPageProps) => {
 
   return (
     <div className="p-3 md:p-5 max-w-4xl mx-auto">
-      <Link
+      <CustomLink
         href={`/${locale}/blog`}
+        title="Blog"
         className="inline-flex items-center gap-1 text-gray-400 hover:text-yellow-200 mb-6"
       >
         <Icon kind="arrow_back" size={18} />
-        <span>{t("backToList")}</span>
-      </Link>
+        <BaseText type="body2">{t("backToList")}</BaseText>
+      </CustomLink>
 
       <header className="mb-8 pb-6 border-b border-gray-700">
         <BaseText type="h2" className="text-yellow-200 mb-4">

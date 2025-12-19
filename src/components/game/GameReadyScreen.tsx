@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useCustomRouter } from "@/hooks/use-custom-router";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { GameConstants } from "./GameConstants";
@@ -14,7 +14,7 @@ interface GameReadyScreenProps {
 
 const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
   const t = useTranslations("Game");
-  const router = useRouter();
+  const router = useCustomRouter();
   const { remove, current } = useHistory();
 
   const [rows, setRows] = useState<number[][]>([]);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { GameConstants } from "./GameConstants";
@@ -11,6 +12,7 @@ interface GameReadyScreenProps {
 
 const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
   const t = useTranslations("Game");
+  const router = useRouter();
 
   return (
     <div
@@ -44,13 +46,23 @@ const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
         <span className="text-3xl animate-bounce">👇</span>
       </div>
 
-      <Button
-        onClick={onStart}
-        size="lg"
-        className="text-xl px-12 py-6 bg-[#4ECDC4] hover:bg-[#3fb9b0] text-black font-bold rounded-full transition-all hover:scale-105"
-      >
-        {t("start")}
-      </Button>
+      <div className="flex flex-col gap-4 w-full items-center">
+        <Button
+          onClick={onStart}
+          size="lg"
+          className="text-xl px-12 py-6 bg-[#4ECDC4] hover:bg-[#3fb9b0] text-black font-bold rounded-full transition-all hover:scale-105"
+        >
+          {t("start")}
+        </Button>
+
+        <Button
+          onClick={() => router.back()}
+          variant="ghost"
+          className="text-gray-400 hover:text-white transition-colors"
+        >
+          {t("exit")}
+        </Button>
+      </div>
     </div>
   );
 };

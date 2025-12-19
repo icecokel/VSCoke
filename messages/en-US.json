@@ -56,7 +56,8 @@
     "gameOver": "GAME OVER",
     "finalScore": "Final Score: ",
     "restart": "CLICK TO RESTART",
-    "goBack": "Go Back"
+    "goBack": "Go Back",
+    "exit": "Exit Game"
   },
   "intro": {
     "title": "Welcome VSCoke",

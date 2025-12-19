@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { GameConstants } from "./GameConstants";
+import { useHistory } from "@/hooks/use-history";
 
 interface GameReadyScreenProps {
   onStart: () => void;
@@ -14,8 +15,16 @@ interface GameReadyScreenProps {
 const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
   const t = useTranslations("Game");
   const router = useRouter();
+  const { remove, current } = useHistory();
 
   const [rows, setRows] = useState<number[][]>([]);
+
+  const onClickBack = () => {
+    if (current) {
+      remove(current);
+    }
+    router.back();
+  };
 
   useEffect(() => {
     const initialRows = Array.from({ length: 1 }, () =>
@@ -75,7 +84,7 @@ const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
         </Button>
 
         <Button
-          onClick={() => router.back()}
+          onClick={onClickBack}
           variant="ghost"
           className="text-gray-400 hover:text-white transition-colors"
         >

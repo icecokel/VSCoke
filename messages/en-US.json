@@ -25,7 +25,10 @@
     "greeting": "Hello,",
     "developer": "I'm Sangmin Lee",
     "suffix": "",
-    "welcome": "Welcome to VSCOKE Portfolio"
+    "welcome": "Welcome to IceCokel Portfolio",
+    "entertainment": "Entertainment",
+    "entertainmentDesc": "Try playing the puzzle game Sky Drop.",
+    "playGame": "Start"
   },
   "profile": {
     "notOnlyCoding": "Not just coding,",

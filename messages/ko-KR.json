@@ -25,7 +25,10 @@
     "greeting": "안녕하세요,",
     "developer": "개발자 이상민",
     "suffix": "입니다",
-    "welcome": "Welcome to VSCOKE Portfolio"
+    "welcome": "Welcome to IceCokel Portfolio",
+    "entertainment": "Entertainment",
+    "entertainmentDesc": "퍼즐 게임 Sky Drop을 플레이해보세요.",
+    "playGame": "시작하기"
   },
   "profile": {
     "notOnlyCoding": "코딩만 하지 않는",

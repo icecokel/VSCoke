@@ -6,7 +6,13 @@ import { GameConfig } from "./GameConfig";
 
 import { useTranslations } from "next-intl";
 
-const PhaserGame = () => {
+interface PhaserGameProps {
+  isPlaying: boolean;
+  onReady: () => void;
+  onGoToReady: () => void;
+}
+
+const PhaserGame = ({ isPlaying, onReady, onGoToReady }: PhaserGameProps) => {
   const t = useTranslations("Game");
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -23,6 +29,16 @@ const PhaserGame = () => {
         gameOver: t("gameOver"),
         finalScore: t("finalScore"),
         restart: t("restart"),
+        goBack: t("goBack"),
+      });
+
+      // Event listeners for React-Phaser communication
+      gameRef.current.events.on("game:ready", () => {
+        onReady();
+      });
+
+      gameRef.current.events.on("game:goToReady", () => {
+        onGoToReady();
       });
     }
 
@@ -32,7 +48,14 @@ const PhaserGame = () => {
         gameRef.current = null;
       }
     };
-  }, [t]);
+  }, [t, onReady, onGoToReady]);
+
+  // Handle start signal
+  useEffect(() => {
+    if (isPlaying && gameRef.current) {
+      gameRef.current.events.emit("game:start");
+    }
+  }, [isPlaying]);
 
   useEffect(() => {
     const updateSize = () => {
@@ -53,9 +76,13 @@ const PhaserGame = () => {
     };
 
     window.addEventListener("resize", updateSize);
-    updateSize(); // Initial
+    // 짧은 지연 후 리사이즈 호출 (초기 로드 시 부모 컨테이너 크기 확정 대기)
+    const timer = setTimeout(updateSize, 100);
 
-    return () => window.removeEventListener("resize", updateSize);
+    return () => {
+      window.removeEventListener("resize", updateSize);
+      clearTimeout(timer);
+    };
   }, []);
 
   return <div ref={containerRef} id="phaser-container" className="size-full" />;

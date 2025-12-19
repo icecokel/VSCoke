@@ -12,6 +12,7 @@ export class MainScene extends Phaser.Scene {
     gameOver: "GAME OVER",
     finalScore: "Final Score: ",
     restart: "Restart",
+    goBack: "Go Back",
   };
   private columns: Phaser.GameObjects.Sprite[][] = [[], [], []];
   private pickedBlock: Phaser.GameObjects.Sprite | null = null;
@@ -27,12 +28,6 @@ export class MainScene extends Phaser.Scene {
   private colBgs: Phaser.GameObjects.Graphics[] = [];
   private deadlineGraphics: Phaser.GameObjects.Graphics | null = null;
   private deadlineText: Phaser.GameObjects.Text | null = null;
-  private gameOverGroup: Phaser.GameObjects.Container | null = null;
-
-  // 게임 오버 UI 참조
-  private gameOverTitle: Phaser.GameObjects.Text | null = null;
-  private finalScoreText: Phaser.GameObjects.Text | null = null;
-  private restartText: Phaser.GameObjects.Text | null = null;
 
   // 상수 - 기본 크기 (스케일링됨)
   private readonly COLS = 3;
@@ -186,17 +181,6 @@ export class MainScene extends Phaser.Scene {
     if (this.deadlineText) {
       this.deadlineText.setPosition(screenWidth / 2, this.deadlineY + 10 * this.gameScale);
       this.deadlineText.setFontSize(`${14 * this.gameScale}px`);
-    }
-
-    // 게임 오버 그룹 업데이트
-    if (this.gameOverGroup) {
-      this.gameOverGroup.setPosition(screenWidth / 2, screenHeight / 2);
-      const rect = this.gameOverGroup.list[0] as Phaser.GameObjects.Rectangle;
-      if (rect) rect.setSize(screenWidth, screenHeight);
-
-      if (this.gameOverTitle) this.gameOverTitle.setFontSize(`${48 * this.gameScale}px`);
-      if (this.finalScoreText) this.finalScoreText.setFontSize(`${32 * this.gameScale}px`);
-      if (this.restartText) this.restartText.setFontSize(`${24 * this.gameScale}px`);
     }
 
     for (let i = 0; i < this.COLS; i++) {
@@ -363,47 +347,8 @@ export class MainScene extends Phaser.Scene {
 
   private gameOver() {
     this.isGameOver = true;
-    // this.isGameRunning = false; // Removed as implicit via isGameOver
     if (this.spawnTimer) this.spawnTimer.destroy();
 
-    const screenWidth = this.cameras.main.width;
-    const screenHeight = this.cameras.main.height;
-
-    this.gameOverGroup = this.add.container(screenWidth / 2, screenHeight / 2);
-
-    const bg = this.add.rectangle(0, 0, screenWidth, screenHeight, 0x000000, 0.7);
-
-    this.gameOverTitle = this.add
-      .text(0, -50, this.texts.gameOver, {
-        fontSize: `${48 * this.gameScale}px`,
-        color: "#ff4444",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5);
-
-    this.finalScoreText = this.add
-      .text(0, 50, `${this.texts.finalScore}${this.score}`, {
-        fontSize: `${32 * this.gameScale}px`,
-        color: "#ffffff",
-      })
-      .setOrigin(0.5);
-
-    this.restartText = this.add
-      .text(0, 120, this.texts.restart, {
-        fontSize: `${24 * this.gameScale}px`,
-        color: "#4ECDC4",
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-
-    this.restartText.on("pointerdown", () => {
-      // Restarting main scene directly, OR should go back to Preload?
-      // User wants random colors every game?
-      // If so, we should go back to PreloadScene or re-run Preload logic.
-      // PreloadScene generates colors. So we should start 'PreloadScene'.
-      this.scene.start("PreloadScene");
-    });
-
-    this.gameOverGroup.add([bg, this.gameOverTitle, this.finalScoreText, this.restartText]);
+    this.scene.start("EndScene", { score: this.score });
   }
 }

@@ -5,6 +5,7 @@ export interface GameTexts {
   gameOver: string;
   finalScore: string;
   restart: string;
+  goBack: string;
 }
 
 export const GameConstants = {

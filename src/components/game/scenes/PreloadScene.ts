@@ -1,10 +1,7 @@
 import * as Phaser from "phaser";
-import { GameConstants, GameTexts } from "../GameConstants";
+import { GameConstants } from "../GameConstants";
 
 export class PreloadScene extends Phaser.Scene {
-  private startButton: Phaser.GameObjects.Text | null = null;
-  private startButtonBg: Phaser.GameObjects.Rectangle | null = null;
-
   constructor() {
     super({ key: "PreloadScene" });
   }
@@ -22,8 +19,11 @@ export class PreloadScene extends Phaser.Scene {
     // 2. 게임 데이터 준비 (색상 랜덤 선택)
     this.prepareGameData();
 
-    // 3. UI 구성 (시작 버튼)
-    this.createStartUI();
+    // 3. 준비 완료 알림
+    this.game.events.emit("game:ready");
+
+    // 4. 시작 신호 대기
+    this.game.events.on("game:start", this.startGame, this);
 
     // 리사이즈 이벤트 연결
     this.scale.on("resize", this.resize, this);
@@ -31,9 +31,7 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   private prepareGameData() {
-    // 난이도(컬럼 수)에 따른 색상 수 결정 (기본 3컬럼 가정, 혹은 레지스트리에서 읽기)
-    // 현재 MainScene에 COLS=3 상수가 있음. 이를 공유하거나 기본값 사용.
-    // 여기서는 일단 3으로 가정하고 생성 후 레지스트리에 저장.
+    // 난이도(컬럼 수)에 따른 색상 수 결정
     const cols = 3;
     const colorCount = GameConstants.COLOR_COUNT_BY_COLS[cols] || 5;
 
@@ -46,38 +44,14 @@ export class PreloadScene extends Phaser.Scene {
     this.registry.set("cols", cols);
   }
 
-  private createStartUI() {
-    const { width, height } = this.scale;
-
-    this.startButtonBg = this.add
-      .rectangle(width / 2, height / 2, 200, 60, 0x4ecdc4)
-      .setInteractive({ useHandCursor: true })
-      .on("pointerdown", () => this.startGame());
-
-    const texts = this.registry.get("texts") as GameTexts;
-    const startText = texts?.start || "START";
-
-    this.startButton = this.add
-      .text(width / 2, height / 2, startText, {
-        fontSize: "32px",
-        color: "#ffffff",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5);
-  }
-
   private startGame() {
+    this.game.events.off("game:start", this.startGame, this);
     this.scene.start("MainScene");
   }
 
   private resize(gameSize: { width: number; height: number }) {
     if (this.cameras.main) {
       this.cameras.main.setViewport(0, 0, gameSize.width, gameSize.height);
-    }
-    if (this.startButton && this.startButtonBg) {
-      const { width, height } = this.scale;
-      this.startButton.setPosition(width / 2, height / 2);
-      this.startButtonBg.setPosition(width / 2, height / 2);
     }
   }
 }

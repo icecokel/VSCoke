@@ -92,12 +92,12 @@ const BlogPostPage = async ({ params }: BlogPostPageProps) => {
         <BaseText type="body1" className="text-gray-300 mb-4">
           {post.description}
         </BaseText>
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-4 pt-4">
           {post.tags.map(tag => (
             <Chip key={tag} label={tag} />
           ))}
         </div>
-        <div className="flex items-center gap-4 text-gray-400 text-sm">
+        <div className="flex items-center gap-4 text-gray-400 text-sm mt-4">
           <span className="flex items-center gap-1">
             <Icon kind="calendar_today" size={14} />
             {post.date}
@@ -109,7 +109,7 @@ const BlogPostPage = async ({ params }: BlogPostPageProps) => {
         </div>
       </header>
 
-      <article className="prose prose-invert max-w-none">
+      <article className="prose prose-invert max-w-none pb-20">
         <MDXRemote source={post.content} components={mdxComponents} />
       </article>
     </div>

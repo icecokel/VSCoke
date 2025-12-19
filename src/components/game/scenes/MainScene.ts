@@ -13,6 +13,7 @@ export class MainScene extends Phaser.Scene {
     finalScore: "Final Score: ",
     restart: "Restart",
     goBack: "Go Back",
+    time: "Time: ",
   };
   private columns: Phaser.GameObjects.Sprite[][] = [[], [], []];
   private pickedBlock: Phaser.GameObjects.Sprite | null = null;
@@ -43,8 +44,16 @@ export class MainScene extends Phaser.Scene {
   private currentColors: number[] = [];
 
   private spawnTimer: Phaser.Time.TimerEvent | null = null;
-  private spawnInterval: number = 3000;
+  private currentSpawnInterval: number = GameConstants.INITIAL_SPAWN_INTERVAL;
   private deadlineY: number = 0;
+
+  // Time & Difficulty
+  private startTime: number = 0;
+  private timeText: Phaser.GameObjects.Text | null = null;
+
+  // Warning Overlay
+  private warningOverlay: Phaser.GameObjects.Rectangle | null = null;
+  private isWarningActive: boolean = false;
 
   // 파티클 이미터 (색상별 관리)
   private emitters: Map<number, Phaser.GameObjects.Particles.ParticleEmitter> = new Map();
@@ -93,10 +102,24 @@ export class MainScene extends Phaser.Scene {
     this.colBgs = [];
 
     // 점수판 (안전을 위해 아래로 이동)
-    this.scoreText = this.add.text(20, 40, `${this.texts.score}0`, {
+    // 점수판
+    this.scoreText = this.add.text(20, 60, `${this.texts.score}0`, {
       fontSize: "24px",
       color: "#ffffff",
     });
+
+    // 시간 표시
+    this.timeText = this.add.text(20, 20, `${this.texts.time}00:00`, {
+      fontSize: "24px",
+      color: "#ffffff",
+    });
+
+    // 경고 오버레이 (가장 위에 그려지도록 마지막에 추가하거나 depth 조절)
+    this.warningOverlay = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xff0000);
+    this.warningOverlay.setOrigin(0, 0);
+    this.warningOverlay.setAlpha(0);
+    this.warningOverlay.setDepth(100); // UI보다 아래, 게임보다 위? 상황에 따라 조절. 여기선 최상위로 하고 투명도 조절
+    this.warningOverlay.setBlendMode(Phaser.BlendModes.ADD);
 
     // 컬럼 배경
     for (let i = 0; i < this.COLS; i++) {
@@ -138,6 +161,9 @@ export class MainScene extends Phaser.Scene {
 
   private resize(gameSize: Phaser.Structs.Size) {
     this.cameras.main.setViewport(0, 0, gameSize.width, gameSize.height);
+    if (this.warningOverlay) {
+      this.warningOverlay.setSize(gameSize.width, gameSize.height);
+    }
     this.updateLayout();
   }
 
@@ -207,22 +233,117 @@ export class MainScene extends Phaser.Scene {
   }
 
   private startGameLogic() {
-    // 초기 블록 생성
-    this.spawnRow();
-    this.spawnRow();
-    this.spawnRow();
+    // 초기 블록 생성 (스케줄링 없이)
+    this.spawnRow(false);
+    this.spawnRow(false);
+    this.spawnRow(false);
 
-    // 스폰 타이머 설정
-    this.spawnTimer = this.time.addEvent({
-      delay: this.spawnInterval,
-      callback: this.spawnRow,
-      callbackScope: this,
-      loop: true,
-    });
+    // 시작 시간 기록
+    this.startTime = this.time.now;
+    this.currentSpawnInterval = GameConstants.INITIAL_SPAWN_INTERVAL;
+
+    // 첫 스폰 예약 (여기서부터 루프 시작)
+    this.scheduleNextSpawn();
+  }
+
+  private scheduleNextSpawn() {
+    if (this.isGameOver) return;
+
+    this.spawnTimer = this.time.delayedCall(this.currentSpawnInterval, this.spawnRow, [true], this);
   }
 
   update() {
-    // 게임 루프
+    if (this.isGameOver) return;
+
+    // 1. 시간 업데이트
+    const elapsed = this.time.now - this.startTime;
+    const seconds = Math.floor(elapsed / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const displaySeconds = seconds % 60;
+
+    const timeString = `${minutes.toString().padStart(2, "0")}:${displaySeconds.toString().padStart(2, "0")}`;
+    if (this.timeText) {
+      this.timeText.setText(`${this.texts.time}${timeString}`);
+    }
+
+    // 2. 난이도 조절 (시간 경과에 따라 스폰 간격 감소)
+    // 10초마다 100ms 감소 (예시)
+    const rampSteps = Math.floor(elapsed / GameConstants.DIFFICULTY_RAMP_PERIOD);
+    const newInterval =
+      GameConstants.INITIAL_SPAWN_INTERVAL - rampSteps * GameConstants.DIFFICULTY_RAMP_RATE;
+    this.currentSpawnInterval = Math.max(GameConstants.MIN_SPAWN_INTERVAL, newInterval);
+
+    // 3. 위기 경고 효과 (가장 높은 탑 확인)
+    this.checkWarningStatus();
+  }
+
+  private checkWarningStatus() {
+    let minRowsFromDeadline = 999;
+    const currentBlockHeight = this.BASE_BLOCK_HEIGHT * this.gameScale;
+    const currentSpacingY = this.BASE_BLOCK_SPACING_Y * this.gameScale;
+    // 데드라인 Y 위치 (this.deadlineY)
+    // 블록 바닥 Y 위치 계산식: startY + (index) * height...
+    // 역으로 계산하기보다, 가장 높은 블록의 Y좌표를 찾아서 데드라인과의 거리를 측정
+
+    const startY = 100;
+
+    for (const col of this.columns) {
+      if (col.length === 0) continue;
+
+      // 가장 아래(마지막)에 추가된 블록이 화면상 가장 아래에 위치함 (y값이 큼)
+      // 하지만 "쌓이는" 구조상, 배열의 앞쪽이나 뒤쪽이 위쪽인지를 확인해야 함.
+      // spawnRow에서 unshift(block) 하므로, index 0이 가장 위쪽(y값이 작음), 마지막 index가 가장 아래쪽(y값이 큼)
+      // 탑의 높이는 col.length.
+      // 데드라인에 닿는 것은 가장 아래쪽 블록의 바닥면... 이 아니라
+      // "블록이 데드라인을 넘어가면" 게임오버.
+      // 즉, col.length 가 커질수록 위험.
+      // 화면에 그려지는 Y좌표: startY + index * (h + space)
+      // 가장 아래 블록(index = col.length-1)의 Y + h 가 deadlineY 보다 크면 아웃.
+
+      // 위기 상황: 데드라인에 가까워짐.
+      // 즉, (데드라인Y - 가장 아래 블록의 바닥Y) 가 아니라,
+      // "앞으로 몇 개 더 쌓이면 죽는가?"
+      // 죽는 조건: bottomY > deadlineY
+      // bottomY = startY + (col.length) * (h + s)
+      // 여유 공간 = deadlineY - bottomY
+      // 블록 하나 높이 = h + s
+      // 남은 블록 수 = 여유 공간 / (h + s)
+
+      const totalBlockH = currentBlockHeight + currentSpacingY;
+      const currentBottomY = startY + col.length * totalBlockH; // 현재 쌓인 높이의 바닥
+
+      const distance = this.deadlineY - currentBottomY;
+      const rowsLeft = distance / totalBlockH;
+
+      if (rowsLeft < minRowsFromDeadline) {
+        minRowsFromDeadline = rowsLeft;
+      }
+    }
+
+    // 임계값보다 적게 남았으면 경고
+    if (minRowsFromDeadline <= GameConstants.WARNING_THRESHOLD_ROWS) {
+      if (!this.isWarningActive) {
+        this.isWarningActive = true;
+        if (this.warningOverlay) {
+          this.tweens.add({
+            targets: this.warningOverlay,
+            alpha: { from: 0, to: 0.3 },
+            duration: 500,
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut",
+          });
+        }
+      }
+    } else {
+      if (this.isWarningActive) {
+        this.isWarningActive = false;
+        if (this.warningOverlay) {
+          this.tweens.killTweensOf(this.warningOverlay);
+          this.warningOverlay.setAlpha(0);
+        }
+      }
+    }
   }
 
   private handleColumnClick(colIdx: number) {
@@ -264,7 +385,7 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
-  private spawnRow() {
+  private spawnRow(autoSchedule: boolean = true) {
     if (this.isGameOver) return;
 
     for (let i = 0; i < this.COLS; i++) {
@@ -281,6 +402,11 @@ export class MainScene extends Phaser.Scene {
 
     for (let i = 0; i < this.COLS; i++) {
       this.updateColumnVisuals(i);
+    }
+
+    // 다음 스폰 예약 (Recursive)
+    if (autoSchedule) {
+      this.scheduleNextSpawn();
     }
   }
 

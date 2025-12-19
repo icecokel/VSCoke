@@ -33,6 +33,7 @@ const PhaserGame = ({ isPlaying, onReady, onGoToReady }: PhaserGameProps) => {
         finalScore: t("finalScore"),
         restart: t("restart"),
         goBack: t("goBack"),
+        time: t("time"),
       });
 
       // Event listeners for React-Phaser communication

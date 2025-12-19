@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,25 @@ const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
   const t = useTranslations("Game");
   const router = useRouter();
 
+  const [rows, setRows] = useState<number[][]>([]);
+
+  useEffect(() => {
+    const initialRows = Array.from({ length: 1 }, () =>
+      Array.from({ length: 3 }, () => Math.floor(Math.random() * 5)),
+    );
+    setRows(initialRows);
+
+    const interval = setInterval(() => {
+      setRows(prev => {
+        const newRow = Array.from({ length: 3 }, () => Math.floor(Math.random() * 5));
+        const nextRows = [newRow, ...prev].slice(0, 7);
+        return nextRows;
+      });
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div
       className={`flex h-full w-full flex-col items-center justify-center bg-gray-900 text-white ${isMobile ? "p-2" : "p-4"}`}
@@ -27,23 +47,22 @@ const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
         className="w-full max-w-xs aspect-[9/16] bg-slate-800 rounded-lg border-2 border-slate-700 mb-8 flex items-center justify-center overflow-hidden relative"
         style={{ maxHeight: "40vh" }}
       >
-        {/* 간단한 게임 썸네일이나 장식용 그래픽 */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center opacity-30 gap-2">
-          {[0, 1, 2].map(row => (
-            <div key={row} className="flex gap-2">
-              {[0, 1, 2].map(col => (
+        {/* Falling Blocks Animation */}
+        <div className="absolute inset-0 flex flex-col items-center pt-4 gap-2 opacity-50">
+          {rows.map((row: number[], rowIndex: number) => (
+            <div key={`row-${rowIndex}`} className="flex gap-2">
+              {row.map((colorIdx: number, colIndex: number) => (
                 <div
-                  key={`${row}-${col}`}
-                  className="w-8 h-4 rounded-sm"
+                  key={`block-${rowIndex}-${colIndex}`}
+                  className="w-8 h-4 rounded-sm transition-all duration-500"
                   style={{
-                    backgroundColor: `#${GameConstants.BLOCK_PALETTE[(row * 3 + col) % 5].toString(16).padStart(6, "0")}`,
+                    backgroundColor: `#${GameConstants.BLOCK_PALETTE[colorIdx].toString(16).padStart(6, "0")}`,
                   }}
                 />
               ))}
             </div>
           ))}
         </div>
-        <span className="text-3xl animate-bounce">👇</span>
       </div>
 
       <div className="flex flex-col gap-4 w-full items-center">

@@ -1,0 +1,41 @@
+# AI Assistant Rules for VSCoke
+
+## 1. Project Context
+- **Framework**: Next.js 15+ (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS 4
+- **Localisation**: next-intl (`messages/` directory)
+- **UI Components**: shadcn/ui
+- **Phaser**: 3.90+
+
+## 2. Critical Rules (Must Follow)
+1. **Language Policy (Korean Only)**
+   - 모든 대화, 문서, 설명은 **한국어**로 작성한다.
+   - **Commit Messages**: 반드시 **한국어**로 작성한다 (예: "feat: 다국어 지원 추가", "fix: 라우팅 오류 수정").
+   - **Artifacts**: "Walkthrough", "Implementation Plan" 등 모든 산출물은 **한국어**로 작성한다.
+
+2. **Verification & Testing**
+   - **Build Test**: 작업이 완료되면 반드시 `npm run build`를 실행하여 빌드 오류가 없는지 확인한다.
+   - **Verification**: 코드를 수정한 후에는 반드시 관련된 기능이 정상 동작하는지 검증한다.
+
+3. **Routing Policy**
+   - **Link, useRouter 사용 지양**: 커스텀 라우팅 로직을 위해 Next.js의 기본 `Link`나 `useRouter` 대신 `useCustomRouter` 훅을 사용한다.
+
+4. **Design & Styling**
+   - **Color Code**: 기존에 정의된 프로젝트 컬러를 사용한다. 만약 적절한 컬러가 없다면 사용자에게 승인을 받은 후 추가하거나 사용한다.
+
+## 3. Coding Standards
+- **Naming Conventions**:
+  - **Files**: `kebab-case`를 사용한다 (예: `user-profile.tsx`).
+  - **Components**: `PascalCase`를 사용한다 (예: `UserProfile`).
+  - **Functions**: Arrow Function을 사용한다 (`const Component = () => {}`).
+- **Exports**:
+  - **Named Export**: `export default` 대신 Named Export를 사용한다 (`export const Component = ...`).
+- **Clean Code**: 불필요한 콘솔 로그(`console.log`)는 커밋 전에 제거한다.
+- **Types**: `any` 타입 사용을 지양하고 명시적인 타입을 사용한다.
+- **Components**: 
+  - 서버 컴포넌트와 클라이언트 컴포넌트(`"use client"`)를 명확히 구분한다.
+
+## 4. Workflow
+- 복잡한 변경 사항은 `implementation_plan.md`를 통해 먼저 계획을 수립하고 승인을 받는다.
+- 작업 완료 후 `walkthrough.md`를 통해 변경 사항과 테스트 결과를 요약한다.

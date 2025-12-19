@@ -1,11 +1,11 @@
 "use client";
 
-import { useCustomRouter } from "@/hooks/use-custom-router";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 const Home = () => {
   const t = useTranslations("home");
-  const router = useCustomRouter();
+  const router = useRouter();
 
   return (
     <div className="min-h-screen bg-gray-800 text-gray-100">
@@ -31,7 +31,7 @@ const Home = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Sky Drop Game Card */}
             <div
-              onClick={() => router.push("/game", { title: "Sky Drop" })}
+              onClick={() => router.push("/game")}
               className="group p-6 rounded-lg bg-gray-800 border border-gray-700 hover:border-gray-600 cursor-pointer transition-colors"
             >
               <h3 className="text-xl font-bold mb-2 text-white group-hover:text-[#4ECDC4] transition-colors">

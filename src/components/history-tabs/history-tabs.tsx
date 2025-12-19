@@ -12,7 +12,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { useCustomRouter } from "@/hooks/use-custom-router";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
@@ -20,7 +20,7 @@ import { useTranslations } from "next-intl";
 
 const HistoryTabs = ({ children }: TParentNode) => {
   const { history, change, remove, setHistory, current, add } = useHistory();
-  const router = useCustomRouter();
+  const router = useRouter();
   const t = useTranslations("historyTabs");
 
   const handleClickTab = change;
@@ -40,13 +40,13 @@ const HistoryTabs = ({ children }: TParentNode) => {
     const foundTab = history.find(({ path }) => path === tabPath);
     if (foundTab) {
       setHistory([{ ...foundTab, isActive: true }]);
-      router.push(foundTab.path, { title: foundTab.title });
+      router.push(foundTab.path);
     }
   };
 
   const handleCloseAll = () => {
     setHistory([]);
-    router.push("/", { title: "Home" });
+    router.push("/");
   };
 
   const handleDragStart = ({ currentTarget: { id } }: React.MouseEvent<HTMLDivElement>) => {
@@ -54,6 +54,7 @@ const HistoryTabs = ({ children }: TParentNode) => {
     if (clickedTab) {
       setDragStartPath(id);
       change(clickedTab);
+      router.push(id);
     }
   };
 

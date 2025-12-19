@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Phaser from "phaser";
 import { GameConfig } from "./GameConfig";
+import { LoadingOverlay } from "./ui/LoadingOverlay";
 
 import { useTranslations } from "next-intl";
 
@@ -16,6 +17,8 @@ const PhaserGame = ({ isPlaying, onReady, onGoToReady }: PhaserGameProps) => {
   const t = useTranslations("Game");
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined" && !gameRef.current) {
@@ -34,7 +37,12 @@ const PhaserGame = ({ isPlaying, onReady, onGoToReady }: PhaserGameProps) => {
 
       // Event listeners for React-Phaser communication
       gameRef.current.events.on("game:ready", () => {
+        setIsLoaded(true);
         onReady();
+      });
+
+      gameRef.current.events.on("game:progress", (value: number) => {
+        setLoadingProgress(value * 100);
       });
 
       gameRef.current.events.on("game:goToReady", () => {
@@ -85,7 +93,12 @@ const PhaserGame = ({ isPlaying, onReady, onGoToReady }: PhaserGameProps) => {
     };
   }, []);
 
-  return <div ref={containerRef} id="phaser-container" className="size-full" />;
+  return (
+    <div className="relative size-full overflow-hidden rounded-xl border border-white/10 shadow-2xl">
+      {!isLoaded && <LoadingOverlay progress={loadingProgress} />}
+      <div ref={containerRef} id="phaser-container" className="size-full" />
+    </div>
+  );
 };
 
 export default PhaserGame;

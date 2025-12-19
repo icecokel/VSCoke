@@ -46,6 +46,9 @@ export class MainScene extends Phaser.Scene {
   private spawnInterval: number = 3000;
   private deadlineY: number = 0;
 
+  // 파티클 이미터 (색상별 관리)
+  private emitters: Map<number, Phaser.GameObjects.Particles.ParticleEmitter> = new Map();
+
   constructor() {
     super({ key: "MainScene" });
   }
@@ -60,6 +63,21 @@ export class MainScene extends Phaser.Scene {
       const colorCount = GameConstants.COLOR_COUNT_BY_COLS[this.COLS] || 5;
       this.currentColors = GameConstants.BLOCK_PALETTE.slice(0, colorCount);
     }
+
+    // 파티클 이미터 초기화 (색상별로 생성)
+    this.currentColors.forEach(color => {
+      const emitter = this.add.particles(0, 0, "particle", {
+        lifespan: 600,
+        speed: { min: 150, max: 300 },
+        scale: { start: 0.8, end: 0 },
+        alpha: { start: 1, end: 0 },
+        blendMode: "ADD",
+        emitting: false,
+        tint: color,
+        gravityY: 200,
+      });
+      this.emitters.set(color, emitter);
+    });
 
     // 다국어 텍스트 로드
     const registryTexts = this.registry.get("texts") as GameTexts;
@@ -323,19 +341,71 @@ export class MainScene extends Phaser.Scene {
       secondLast.getData("color") === thirdLast.getData("color")
     ) {
       const removed = col.splice(col.length - 3, 3);
+      const color = last.getData("color");
 
+      // 효과 중심점 계산 (중간 블록 위치)
+      const centerX = secondLast.x;
+      const centerY = secondLast.y;
+
+      // 1. 카메라 흔들림
+      this.cameras.main.shake(150, 0.01);
+
+      // 2. 파티클 폭발
+      const emitter = this.emitters.get(color);
+      if (emitter) {
+        // 각 블록 위치에서 폭발
+        removed.forEach(block => {
+          emitter.explode(10, block.x, block.y); // 블록당 10개 파티클
+        });
+      }
+
+      // 3. 점수 텍스트 표시 (+100)
+      this.showFloatingText(centerX, centerY - 20, 100);
+
+      // 4. 블럭 파괴 애니메이션 (Pop effect)
       removed.forEach(block => {
+        // 먼저 살짝 커졌다가
         this.tweens.add({
           targets: block,
-          scale: 0,
-          alpha: 0,
-          duration: 200,
-          onComplete: () => block.destroy(),
+          scale: this.gameScale * 1.3,
+          duration: 100,
+          yoyo: false,
+          onComplete: () => {
+            // 작아지면서 사라짐
+            this.tweens.add({
+              targets: block,
+              scale: 0,
+              alpha: 0,
+              duration: 150,
+              onComplete: () => block.destroy(),
+            });
+          },
         });
       });
 
       this.addScore(100);
     }
+  }
+
+  private showFloatingText(x: number, y: number, score: number) {
+    const text = this.add
+      .text(x, y, `+${score}`, {
+        fontSize: `${24 * this.gameScale}px`,
+        color: "#ffd700", // Gold color
+        stroke: "#000000",
+        strokeThickness: 3,
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+
+    this.tweens.add({
+      targets: text,
+      y: y - 50,
+      alpha: 0,
+      duration: 1000,
+      ease: "Power2",
+      onComplete: () => text.destroy(),
+    });
   }
 
   private addScore(points: number) {

@@ -7,12 +7,30 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   preload() {
+    // 0. 로딩 이벤트 리스너
+    this.load.on("progress", (value: number) => {
+      this.game.events.emit("game:progress", value);
+    });
+
     // 1. 블록 텍스처 생성 (기존 MainScene에서 이동)
     const graphics = this.make.graphics({ x: 0, y: 0 }, false);
     graphics.fillStyle(0xffffff);
     graphics.fillRoundedRect(0, 0, 80, 32, 8); // BASE_BLOCK_WIDTH, BASE_BLOCK_HEIGHT
     graphics.generateTexture("block_base", 80, 32);
+
+    // 파티클 텍스처 생성 (흰색 원형)
+    graphics.clear();
+    graphics.fillStyle(0xffffff);
+    graphics.fillCircle(4, 4, 4);
+    graphics.generateTexture("particle", 8, 8);
+
     graphics.destroy();
+
+    // Debug: 로딩 바 테스트를 위한 임의의 지연 (실제 에셋이 적으므로)
+    // 실제 프로덕션에서는 제거하거나 에셋이 많으면 자연스럽게 동작함
+    for (let i = 0; i < 50; i++) {
+      this.load.image(`dummy${i}`, "https://labs.phaser.io/assets/skies/space3.png");
+    }
   }
 
   create() {

@@ -39,24 +39,8 @@ export const getExplorer = cache(async (): Promise<ITree[]> => {
       label: "blog",
       items:
         blogItems.length > 0
-          ? [
-              {
-                icon: "computer",
-                id: "blog-dashboard",
-                label: "dashboard.tsx",
-                path: "/blog/dashboard",
-                index: -1,
-              },
-              ...blogItems,
-            ]
+          ? blogItems
           : [
-              {
-                icon: "computer",
-                id: "blog-dashboard",
-                label: "dashboard.tsx",
-                path: "/blog/dashboard",
-                index: -1,
-              },
               {
                 icon: "article",
                 id: "blog-empty",

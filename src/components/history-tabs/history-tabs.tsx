@@ -154,7 +154,7 @@ const HistoryTabs = ({ children }: TParentNode) => {
         ))}
       </div>
 
-      <Container className="overflow-y-auto flex-1 text-white sm:p-2 md:p-5 xs:px-0 xs:py-3">
+      <Container className="overflow-y-auto flex-1 text-white p-0 sm:p-2 md:p-4">
         {children}
       </Container>
     </div>

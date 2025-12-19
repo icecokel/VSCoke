@@ -51,9 +51,9 @@ const Search = ({ isShowing }: SearchProps) => {
               className="group cursor-pointer my-[0.5em]"
               onClick={() => handleClickPost(post)}
             >
-              <div className="truncate w-[220px] hover:text-yellow-200">{post.title}</div>
+              <div className="truncate w-full hover:text-yellow-200">{post.title}</div>
               {post.excerpt && (
-                <div className="text-xs text-gray-400 truncate w-[220px] hidden group-hover:block">
+                <div className="text-xs text-gray-400 truncate w-full hidden group-hover:block">
                   {post.excerpt}
                 </div>
               )}

@@ -8,6 +8,7 @@ const notoSansKr = Noto_Sans_KR({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://vscoke.vercel.app"),
   title: "VSCOKE",
   description: "Developer Portfolio & Blog",
   keywords: [
@@ -28,11 +29,13 @@ export const metadata: Metadata = {
     siteName: "VSCOKE",
     locale: "ko_KR",
     type: "website",
+    images: ["/og.png"],
   },
   twitter: {
     card: "summary",
     title: "VSCOKE",
     description: "Developer Portfolio & Blog",
+    images: ["/og.png"],
   },
   robots: {
     index: true,

@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTranslations } from "next-intl";
-import { useRouter, usePathname } from "@/i18n/navigation";
+import { usePathname } from "@/i18n/navigation";
 import { routing, Locale } from "@/i18n/routing";
 
 interface IMenuItem {
@@ -33,13 +33,14 @@ const LANGUAGES: Record<Locale, { label: string }> = {
 
 const Menubar = () => {
   const t = useTranslations("menu");
-  const router = useRouter();
   const pathname = usePathname();
 
   const project = useBoolean();
 
   const handleChangeLanguage = (newLocale: Locale) => {
-    router.replace(pathname, { locale: newLocale });
+    // window.location 방식으로 언어 변경 (Vercel CDN 캐싱 문제 회피)
+    document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000`;
+    window.location.href = `/${newLocale}${pathname}`;
   };
 
   const MENULIST: IMenu[] = [

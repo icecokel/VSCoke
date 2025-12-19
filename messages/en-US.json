@@ -50,7 +50,9 @@
     "title": "Blog",
     "description": "Sharing development experiences and insights.",
     "backToList": "Back to List",
-    "noPosts": "No posts available."
+    "noPosts": "No posts available.",
+    "dashboardTitle": "Dashboard",
+    "dashboardDescription": "Admin dashboard for blog posts"
   },
   "Game": {
     "score": "Score: ",

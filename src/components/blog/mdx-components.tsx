@@ -13,17 +13,17 @@ export const mdxComponents: MDXComponents = {
     </BaseText>
   ),
   h2: ({ children }) => (
-    <BaseText type="h4" className="mt-6 mb-3 text-yellow-200/90">
+    <BaseText type="h4" className="mt-6 mb-3 text-white/90">
       {children}
     </BaseText>
   ),
   h3: ({ children }) => (
-    <BaseText type="h5" className="mt-4 mb-2 text-yellow-200/80">
+    <BaseText type="h5" className="mt-4 mb-2 text-white/80">
       {children}
     </BaseText>
   ),
   p: ({ children }) => (
-    <BaseText type="body1" className="mb-4 leading-relaxed text-gray-200">
+    <BaseText type="body1" className="mb-4 leading-relaxed text-gray-200/95">
       {children}
     </BaseText>
   ),

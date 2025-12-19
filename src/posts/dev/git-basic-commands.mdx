@@ -1,0 +1,100 @@
+---
+title: "Git 기본 명령어: 작업 흐름 마스터하기"
+date: "2025-12-19"
+description: "Git의 가장 기초적이면서도 필수적인 명령어인 init, status, add, commit, push, pull을 완벽하게 이해하고 작업 흐름을 마스터해봅시다."
+tags: ["Git", "Basics", "Tutorial"]
+published: true
+---
+
+# Git 기본 명령어: 작업 흐름 마스터하기
+
+개발자라면 피할 수 없는 도구, **Git**.
+복잡해 보이지만 사실 우리가 매일 사용하는 명령어는 정해져 있습니다.
+이번 글에서는 작업 영역 관리를 위한 핵심 명령어들을 살펴보겠습니다.
+
+## 1. 저장소 시작하기: `git init` & `git clone`
+
+모든 프로젝트의 시작입니다.
+
+### `git init`
+
+현재 디렉토리를 새로운 Git 저장소로 만듭니다.
+
+```bash
+git init
+```
+
+### `git clone`
+
+이미 존재하는 원격 저장소를 내 컴퓨터로 가져옵니다.
+
+```bash
+git clone <repository-url>
+```
+
+## 2. 상태 확인: `git status`
+
+현재 내 작업 공간의 상태를 확인하는 가장 중요한 명령어입니다.
+어떤 파일이 수정되었는지, 어떤 파일이 스테이징(Staging) 영역에 올라갔는지 알 수 있습니다.
+
+```bash
+git status
+```
+
+> **Tip:** 습관적으로 `git status`를 입력하는 것이 실수를 줄이는 지름길입니다.
+
+## 3. 변경 사항 저장: `git add` & `git commit`
+
+### `git add`
+
+작업한 파일을 스테이징 영역(Staging Area)으로 올립니다. 커밋할 준비를 하는 과정입니다.
+
+```bash
+# 특정 파일만 추가
+git add filename.txt
+
+# 모든 변경 사항 추가
+git add .
+```
+
+### `git commit`
+
+스테이징 된 변경 사항을 확정하여 기록(스냅샷)으로 남깁니다.
+**의미 있는 메시지**를 남기는 것이 협업의 에티켓입니다.
+
+```bash
+git commit -m "feat: 로그인 기능 구현 완료"
+```
+
+## 4. 원격 저장소와 동기화: `git pull` & `git push`
+
+### `git pull`
+
+원격 저장소의 최신 변경 내용을 가져와 내 로컬 저장소와 합칩니다.
+작업을 시작하기 전에 항상 먼저 실행하는 습관을 들이세요.
+
+```bash
+git pull origin main
+```
+
+### `git push`
+
+로컬에서 커밋한 내용을 원격 저장소에 업로드합니다.
+
+```bash
+git push origin main
+```
+
+---
+
+## 요약
+
+1. `git init` / `git clone`: 시작
+2. `git status`: 확인
+3. `git add`: 준비
+4. `git commit`: 저장
+5. `git pull`: 가져오기
+6. `git push`: 보내기
+
+이 흐름만 익혀도 Git 사용의 80%는 해결됩니다.
+다음 글에서는 협업의 꽃인 **브랜치(Branch)** 관련 명령어에 대해 알아보겠습니다.

@@ -42,7 +42,7 @@ const getPostFiles = (dir: string = postsDirectory, category: string = ""): Post
   return posts;
 };
 
-export const getPostSlugs = (): string[] => {
+const getPostSlugs = (): string[] => {
   return getPostFiles().map(post => post.slug);
 };
 
@@ -88,11 +88,6 @@ export const getAllPosts = (includeUnpublished = false): PostMeta[] => {
   return posts;
 };
 
-export const getPostsByTag = (tag: string): PostMeta[] => {
-  const allPosts = getAllPosts();
-  return allPosts.filter(post => post.tags.includes(tag));
-};
-
 export const getAllTags = (): string[] => {
   const allPosts = getAllPosts();
   const tagSet = new Set<string>();
@@ -100,20 +95,6 @@ export const getAllTags = (): string[] => {
     post.tags.forEach(tag => tagSet.add(tag));
   });
   return Array.from(tagSet).sort();
-};
-
-export const getAllCategories = (): string[] => {
-  const allPosts = getAllPosts();
-  const categorySet = new Set<string>();
-  allPosts.forEach(post => {
-    categorySet.add(post.category);
-  });
-  return Array.from(categorySet).sort();
-};
-
-export const getPostsByCategory = (category: string): PostMeta[] => {
-  const allPosts = getAllPosts();
-  return allPosts.filter(post => post.category === category);
 };
 
 export const getPostsGroupedByCategory = (): CategoryGroup[] => {

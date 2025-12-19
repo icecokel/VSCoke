@@ -4,6 +4,7 @@ import { HTMLAttributes } from "react";
 import {
   XMarkIcon,
   ChevronRightIcon,
+  ChevronLeftIcon,
   ChevronDownIcon,
   DocumentDuplicateIcon,
   EnvelopeIcon,
@@ -23,11 +24,15 @@ import {
   FolderIcon,
   CalendarIcon,
   MagnifyingGlassIcon,
+  ViewColumnsIcon,
+  Bars3Icon,
+  ServerIcon,
 } from "@heroicons/react/24/outline";
 
 export type TKind =
   | "close"
   | "chevron_right"
+  | "chevron_left"
   | "content_copy"
   | "mail"
   | "call"
@@ -49,7 +54,10 @@ export type TKind =
   | "folder"
   | "arrow_back"
   | "calendar_today"
-  | "search";
+  | "search"
+  | "view_column"
+  | "view_list"
+  | "hard_drive";
 
 interface IIconProps extends HTMLAttributes<SVGSVGElement> {
   kind: TKind;
@@ -59,6 +67,7 @@ interface IIconProps extends HTMLAttributes<SVGSVGElement> {
 const iconMap: Record<TKind, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
   close: XMarkIcon,
   chevron_right: ChevronRightIcon,
+  chevron_left: ChevronLeftIcon,
   content_copy: DocumentDuplicateIcon,
   mail: EnvelopeIcon,
   call: PhoneIcon,
@@ -81,6 +90,9 @@ const iconMap: Record<TKind, React.ComponentType<React.SVGProps<SVGSVGElement>>>
   arrow_back: ArrowLeftIcon,
   calendar_today: CalendarIcon,
   search: MagnifyingGlassIcon,
+  view_column: ViewColumnsIcon,
+  view_list: Bars3Icon,
+  hard_drive: ServerIcon,
 };
 
 const Icon = ({ kind, size = 20, className, style, ...restProps }: IIconProps) => {

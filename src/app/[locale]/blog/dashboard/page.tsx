@@ -1,5 +1,5 @@
 import { getAllPosts } from "@/lib/blog";
-import PostList from "@/components/blog/post-list";
+import DashboardSearch from "./dashboard-search";
 import BaseText from "@/components/base-ui/text";
 import { getTranslations } from "next-intl/server";
 
@@ -30,7 +30,7 @@ const BlogDashboardPage = async () => {
         </div>
       </div>
 
-      <PostList posts={posts} />
+      <DashboardSearch posts={posts} />
     </div>
   );
 };

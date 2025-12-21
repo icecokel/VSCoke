@@ -95,7 +95,7 @@ const BlogPostPage = async ({ params }: BlogPostPageProps) => {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <CustomLink
-        href={`/${locale}/blog`}
+        href="/blog"
         title="Blog"
         className="inline-flex items-center gap-1 text-gray-400 hover:text-yellow-200 mb-6"
       >

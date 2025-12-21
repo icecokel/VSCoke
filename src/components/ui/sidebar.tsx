@@ -30,8 +30,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
+const SIDEBAR_WIDTH_COOKIE_NAME = "sidebar_width";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-const SIDEBAR_WIDTH = "16rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
@@ -44,6 +44,8 @@ type SidebarContextProps = {
   setOpenMobile: (open: boolean) => void;
   isMobile: boolean;
   toggleSidebar: () => void;
+  sidebarWidth: string;
+  setSidebarWidth: (width: string) => void;
 };
 
 const SidebarContext = createContext<SidebarContextProps | null>(null);
@@ -92,6 +94,23 @@ const SidebarProvider = ({
     [setOpenProp, open],
   );
 
+  // Sidebar width state
+  const [sidebarWidth, setSidebarWidth] = useState("16rem");
+
+  // Load width from cookie on mount
+  useEffect(() => {
+    const match = document.cookie.match(new RegExp(`(^| )${SIDEBAR_WIDTH_COOKIE_NAME}=([^;]+)`));
+    if (match) {
+      setSidebarWidth(match[2]);
+    }
+  }, []);
+
+  // Update cookie when width changes
+  const handleSetSidebarWidth = useCallback((width: string) => {
+    setSidebarWidth(width);
+    document.cookie = `${SIDEBAR_WIDTH_COOKIE_NAME}=${width}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+  }, []);
+
   // Helper to toggle the sidebar.
   const toggleSidebar = useCallback(() => {
     return isMobile ? setOpenMobile(open => !open) : setOpen(open => !open);
@@ -123,8 +142,20 @@ const SidebarProvider = ({
       openMobile,
       setOpenMobile,
       toggleSidebar,
+      sidebarWidth,
+      setSidebarWidth: handleSetSidebarWidth,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar],
+    [
+      state,
+      open,
+      setOpen,
+      isMobile,
+      openMobile,
+      setOpenMobile,
+      toggleSidebar,
+      sidebarWidth,
+      handleSetSidebarWidth,
+    ],
   );
 
   return (
@@ -134,7 +165,7 @@ const SidebarProvider = ({
           data-slot="sidebar-wrapper"
           style={
             {
-              "--sidebar-width": SIDEBAR_WIDTH,
+              "--sidebar-width": sidebarWidth,
               "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
               ...style,
             } as CSSProperties
@@ -222,6 +253,7 @@ const Sidebar = ({
           "relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear",
           "group-data-[collapsible=offcanvas]:w-0",
           "group-data-[side=right]:rotate-180",
+          "group-data-[resizing=true]/sidebar-wrapper:transition-none",
           variant === "floating" || variant === "inset"
             ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]"
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon)",
@@ -231,6 +263,7 @@ const Sidebar = ({
         data-slot="sidebar-container"
         className={cn(
           "fixed top-[var(--menubar-height,2.5rem)] bottom-0 z-10 hidden h-[calc(100svh-var(--menubar-height,2.5rem))] w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex",
+          "group-data-[resizing=true]/sidebar-wrapper:transition-none",
           side === "left"
             ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
             : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
@@ -277,7 +310,60 @@ const SidebarTrigger = ({ className, onClick, ...props }: ComponentProps<typeof 
 };
 
 const SidebarRail = ({ className, ...props }: ComponentProps<"button">) => {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, setSidebarWidth, state } = useSidebar();
+
+  const handleMouseDown = useCallback(
+    (event: React.MouseEvent) => {
+      if (state === "collapsed") return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const startX = event.clientX;
+      const fontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
+      const sidebarWrapper = document.querySelector('[data-slot="sidebar-wrapper"]') as HTMLElement;
+
+      if (!sidebarWrapper) return;
+
+      sidebarWrapper.setAttribute("data-resizing", "true");
+
+      let finalWidth = "";
+
+      const onMouseMove = (moveEvent: MouseEvent) => {
+        // Use requestAnimationFrame to throttle visual updates slightly?
+        // Actually direct DOM update is fast enough usually.
+        // But let's avoid too many calcs.
+
+        let newWidth = moveEvent.clientX;
+        // Min width ~10rem (160px)
+        if (newWidth < 160) newWidth = 160;
+        // Max width 40vw
+        if (newWidth > window.innerWidth * 0.4) newWidth = window.innerWidth * 0.4;
+
+        finalWidth = `${newWidth / fontSize}rem`;
+        sidebarWrapper.style.setProperty("--sidebar-width", finalWidth);
+      };
+
+      const onMouseUp = () => {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        sidebarWrapper.removeAttribute("data-resizing");
+
+        // Commit the final width to state/cookies
+        if (finalWidth) {
+          setSidebarWidth(finalWidth);
+        }
+      };
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    },
+    [setSidebarWidth, state],
+  );
 
   return (
     <button
@@ -285,12 +371,13 @@ const SidebarRail = ({ className, ...props }: ComponentProps<"button">) => {
       data-slot="sidebar-rail"
       aria-label="Toggle Sidebar"
       tabIndex={-1}
-      onClick={toggleSidebar}
-      title="Toggle Sidebar"
+      onMouseDown={handleMouseDown}
+      onDoubleClick={() => setSidebarWidth("16rem")}
+      title="Drag to resize, Double click to reset"
       className={cn(
         "hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex",
         "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",
-        "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
+        "[[data-side=left][data-state=collapsed]_&]:cursor-auto [[data-side=right][data-state=collapsed]_&]:cursor-auto",
         "hover:group-data-[collapsible=offcanvas]:bg-sidebar group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full",
         "[[data-side=left][data-collapsible=offcanvas]_&]:-right-2",
         "[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",

@@ -5,6 +5,7 @@ import { useCustomRouter } from "@/hooks/use-custom-router";
 import Icon from "@/components/base-ui/icon";
 import BaseText from "@/components/base-ui/text";
 import { MouseEvent, useState } from "react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ExplorerItemProps extends ITree {
   tabClose: () => void;
@@ -19,7 +20,7 @@ const convertIcon = (icon?: string) => {
     case "blog":
       return <Icon kind="article" size={22} className="text-blue-100" />;
     default:
-      <Icon kind="content_paste_search" className="text-gray-100" />;
+      return <Icon kind="content_paste_search" color="text-gray-100" />;
   }
 };
 
@@ -43,12 +44,31 @@ const ExplorerItem = ({ id, label, path, items, tabClose, icon }: ExplorerItemPr
     }
   };
 
+  // Helper for leaf nodes to render with tooltip
+  const renderLeaf = () => {
+    return (
+      <TooltipProvider delayDuration={500}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-x-1 min-w-0" onClick={handleClickItem}>
+              {convertIcon(icon)}
+              <span className="truncate text-sm">{label}</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>{label}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-y-1 cursor-pointer select-none">
       <div
-        className="flex items-center gap-x-1 hover:bg-blue-300/10 rounded-xs"
+        className="flex items-center gap-x-1 hover:bg-blue-300/10 rounded-xs overflow-hidden"
         aria-valuetext={id}
-        onClick={handleClickTree}
+        onClick={items ? handleClickTree : undefined}
       >
         {items ? (
           <>
@@ -60,10 +80,7 @@ const ExplorerItem = ({ id, label, path, items, tabClose, icon }: ExplorerItemPr
             <BaseText type="body1">{id}</BaseText>
           </>
         ) : (
-          <div className="flex items-center gap-x-1" onClick={handleClickItem}>
-            {convertIcon(icon)}
-            {label}
-          </div>
+          renderLeaf()
         )}
       </div>
       {openedId === id && items && (

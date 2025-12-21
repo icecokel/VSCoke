@@ -19,6 +19,10 @@ const convertIcon = (icon?: string) => {
       return <Icon kind="hiking" size={22} className="text-green-300" />;
     case "blog":
       return <Icon kind="article" size={22} className="text-blue-100" />;
+    case "dashboard":
+      return <Icon kind="view_column" size={22} className="text-purple-300" />;
+    case "none":
+      return null;
     default:
       return <Icon kind="content_paste_search" color="text-gray-100" />;
   }

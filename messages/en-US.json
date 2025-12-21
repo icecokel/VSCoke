@@ -14,7 +14,8 @@
   "sidebar": {
     "explorer": "Explorer",
     "search": "Search",
-    "searchDisabled": "Search is currently disabled."
+    "searchDisabled": "Search is currently disabled.",
+    "more": "... (Show More)"
   },
   "metadata": {
     "title": "VSCOKE",

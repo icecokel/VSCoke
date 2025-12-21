@@ -108,5 +108,10 @@ export const getPostsGroupedByCategory = (): CategoryGroup[] => {
 
   return Array.from(categoryMap.entries())
     .map(([category, posts]) => ({ category, posts }))
-    .sort((a, b) => a.category.localeCompare(b.category));
+    .sort((a, b) => {
+      // 각 카테고리의 최신 포스트 날짜를 비교하여 내림차순 정렬
+      const dateA = a.posts[0]?.date ? new Date(a.posts[0].date).getTime() : 0;
+      const dateB = b.posts[0]?.date ? new Date(b.posts[0].date).getTime() : 0;
+      return dateB - dateA;
+    });
 };

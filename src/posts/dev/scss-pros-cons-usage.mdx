@@ -1,0 +1,235 @@
+---
+title: 'SCSS 사용하는 이유, SCSS 장점과 실 사용 예제'
+date: '2021-09-15'
+description: ''
+published: true
+---
+
+안녕하세요. 오늘은 제가 사이드 프로젝트에 추가한 SCSS에 대해서 간략한 포스팅을 진행하겠습니다. 
+
+* * *
+
+1.  **SCSS 개념 및 장점**
+2.  **SCSS 사용방법**
+
+* * *
+
+### **1\. SCSS 개념 및 장점**
+
+ CSS는 HTML 태그를 꾸미거나 효과를 넣어 주는 등 디자인 요소를 추가할 때 사용하는 전처리 과정입니다. 프로젝트 규모가 커지면 CSS는 불가피하게 가독성이 떨어지는 등 유지보수의 어려움을 주는 요소가 됩니다. 코드의 재활용성을 올리고, 가독성을 올리는 등 CSS에서 보이던 단점을 보완하고, 개발의 효율을 올리기 위해 등장한 개념이 SASS/SCSS라고 합니다.
+
+**\*\* SASS/SCSS 앞으로는 SCSS 문법으로만 진행할 것이 이기에 SCSS라고 통칭하겠습니다.** 
+
+SCSS는 중첩, 변수 선언, 연산자 등 많은 장점을 가지고 있습니다. 대표적인 장점이라고 볼 수 있는 셀렉터 중첩기능에 대해서 알아보겠습니다. 
+
+```
+ // 일반적인 CSS 코드입니다
+nav ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+nav li {
+  display: inline-block;
+}
+nav a {
+  display: block;
+  padding: 6px 12px;
+  text-decoration: none;
+}
+```
+
+```
+  // 깉은 코드를 SASS로 구현한 모습입니다.
+  
+nav
+  ul
+    margin: 0
+    padding: 0
+    list-style: none
+
+  li
+    display: inline-block
+
+  a
+    display: block
+    padding: 6px 12px
+    text-decoration: none
+```
+
+```
+  // 같은 코드를 SCSS로 구현한 모습입니다.
+
+nav {
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li { display: inline-block; }
+
+  a {
+    display: block;
+    padding: 6px 12px;
+    text-decoration: none;
+  }
+}
+```
+
+위에서 명확히 구분이 되듯, 셀렉터 안에 셀렉터를 넣어 중첩을 시켜 가독성이 좋아졌습니다. 이게 20라인도 안 되는 부분에서 보이는 장점인데, 1000라인이 넘어가는 코드에서는 명확하게 보이는 장점이겠죠. HTML처럼 계층적인 구조를 SCSS로 구현하여 HTML 보듯 자연스럽게 볼 수 있습니다.
+
+* * *
+
+### **2\. SCSS 사용방법**
+
+ 위에서 간략하게 장점을 다뤘는데, 문법을 정리하면서 좀더 다양한 장점에 대해서 알아보도록 하겠습니다.
+
+### **변수 (** Variables **)**
+
+ 근래 CSS에서도 컬러코드등을 변수로 설정할 수 있습니다만, SCSS는 좀 더 간편한 방법으로 변수 선언 및 사용이 가능합니다.
+
+```
+$color: #ed5b46;
+$borderRadius: 5px;
+
+div {
+	
+    background-color: $color;
+    border-radius: $borderRadius;
+}
+```
+
+변수를 지정해 놓고 바로 사용이 가능하고, 이렇게 지정해 해두면 프로젝트 내에 정해놓은 컬러를 사용함에 있어 오차를 줄여주고, 사용하는 개발자 입장에서도 효율적으로 개발이 가능합니다. 
+
+또한 디자인 컨셉 변경 등 컬러코드 속성을 대대적으로 변경할 때에도, 변수 선언 부만 수정하면 되니 유지보수성도 뛰어납니다.
+
+### **중첩 (** Nesting **)**
+
+ 제가 생각하는 가장 큰 장점 중 하나라고 생각하는 기능입니다. 셀렉터를 중첩시킨다던지, 속성을 중첩시키거나 상위 요소를 참조하는 것이 가능합니다.
+
+```
+ // 일반 CSS 코드
+label {
+
+      padding: 3% 0px;
+      width: 100%;
+      cursor: pointer;
+      color: $colorPoint;
+}
+
+label:hover {
+      color: white;
+      background-color: $color8;
+} 
+
+ // 같은 작업 SCSS 코드
+label {
+
+      padding: 3% 0px;
+      width: 100%;
+      cursor: pointer;
+      color: $colorPoint;
+
+      &:hover {
+        color: white;
+        background-color: $color;
+      }
+}
+```
+
+ 프로젝트에 가장 신경썼다고 일반 사용자가 느낄 수 있는 CSS 속성은 :hover라고 생각합니다. 매우 단순한 조건으로 직관적으로 표현되며, 가시성도 좋아지기 때문이라고 생각합니다. 다만 hover 하기 위해서 다시 위 코드처럼 label을 불러오는 든 가독성이 좋지 않고 번거로운 작업이 빈번하게 일어납니다. 
+
+SCSS 코드와 같이 작성을 해두면, 가독성은 물론 작성하는 개발자 또한, 효율적으로 코딩이 가능해집니다.
+
+중첩기능의 장점이라고 생각되는 부분중 하나는, 복잡한 구조의 HTML에서는 각각 요소들에 맞는 디자인을 추가하기 위해 id , class , className 등 태그마다 선언을 해줘야 하는 번거로움이 있으나, 셀렉터 중복 기능의 특성인 하위 항목에 적용되는 부분을 잘 이해하면 HTML 태그 자체에서 속성 값을 줄일 수 있으므로, HTML 코드의 가독성 또한 상승합니다.
+
+### **임포트 (** Import **)**
+
+ 다음은 import 입니다. 여러분이 생각하시는 import와 기능이 같습니다. 활용도가 단순하고, 확실해서 좋아하는 문법입니다.
+
+```
+// common.scss
+
+
+// colors
+$color1: #ed5b46;
+$color2: #f26671;
+$color3: #f28585;
+$color4: #feac97;
+
+// Size Section
+$borderRadius: 5px;
+
+// default Tags
+button {
+  cursor: pointer;
+  color: $color1;
+  background-color: $color2;
+  border-radius: $borderRadius;
+  border: 0px;
+
+  &:hover {
+    color: $color2;
+    background-color: $color1;
+  }
+}
+
+div {
+  padding: 5px;
+  border-radius: $borderRadius;
+  border: $color3 1px solid;
+}
+```
+
+```
+// style.scss
+
+@import "common.scss";
+
+.login_box {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  div {
+    border: 0px;
+  }
+
+  .box {
+    background-color: $color4;
+    width: 700px;
+    height: 400px;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+  }
+}
+```
+
+ 저 같은 경우는 공통으로 사용되는 스타일 또는 색상이나 폰트 등 자주 변하지 않는 부분은 common.scss 같은 파일로 기입해두고, 그 외에  className에 따라 작성해야 하는 경우에 style.scss파일에 common.scss를 임포트 하여 사용하고 있습니다. 
+
+이렇게 관리하면 디폴트 디자인이 가능하고, 한쪽에서 선언해둔 컬러 코드나 폰트를 가져다가 다른 scss파일에서 사용하기가 용이합니다. 그에 따라 유지보수 효과적으로 할 수 있다고 생각합니다.
+
+저는 애용 하는 기능이나, SASS팀에서 아주 슬픈 소식을 기재한 것을 이제 알았습니다 
+
+> ⚠️ Heads up!  
+> The Sass team discourages the continued use of the @import rule. Sass will gradually phase it out over the next few years, and eventually remove it from the language entirely. Prefer the @use rule instead. (Note that only Dart Sass currently supports @use. Users of other implementations must use the @import rule instead.)
+
+ 언젠간 사장될 기능으로 보입니다. 대체하는 방법에 대해서는 차후 포스팅에서 다룰 수 있도록 해보겠습니다.
+
+* * *
+
+ 저도 SCSS에 대해서 많이 알고 있지 않지만, 토이 프로젝트에 적용 후 적은 시간내에 효과적으로 진행할 수 있음을 체감했습니다. 비록 위에서 몇 가지 기능을 사용하지 않음에도 느껴지는 부분이라 공유하고 싶은 마음에 부족한 포스팅을 합니다.
+
+ 딥하게 다루고 싶었으나, 깊숙이 들어갈수록 하나의 언어처럼 배우고 익혀야 할 요소들이 적지 않아 간략한 포스팅을 진행하기로 결정했습니다. 제 포스팅에서 흥미를 느끼신 분들은 아래의 URL에서 많은 정보를 얻어 가 실 수 있었으면 좋겠습니다.
+
+[https://sass-lang.com/](https://sass-lang.com/)
+
+ [Sass: Syntactically Awesome Style Sheets
+
+Sass is the most mature, stable, and powerful professional grade CSS extension language in the world.
+
+sass-lang.com](https://sass-lang.com/)

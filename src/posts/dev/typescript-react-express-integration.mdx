@@ -1,0 +1,126 @@
+---
+title: TypeScript를 사용한 React를 기존 Express 서버에 올리기
+date: "2021-08-28"
+description: ""
+published: true
+---
+
+안녕하세요. Express 서버 세팅을 완료 하고, 해당 프로젝트에 React를 올리는 작업을 포스팅진해도록 하겠습니다.
+
+[TypeScript를 사용하여 Express 세팅하기](https://icecokel.tistory.com/9)
+
+ [TypeSrcript를 사용하여 Express 세팅
+
+안녕하세요. 사이드 프로젝트를 시작하며, TypeScript를 사용하여 Express 서버를 세팅해봤는데, 생각보다 찾아보고 설정해야할 항목이 많아서, 같은 상황에 도움이 될까하여 포스팅을 진행해봅니다
+
+icecokel.tistory.com](https://icecokel.tistory.com/9)
+
+---
+
+1.  **설치환경**
+2.  **react 설치 및 확인**
+3.  **concurrently 설치 및 scripts 세팅**
+
+---
+
+### **1\. 설치환경**
+
+| 운영체제 | Windows 10 Pro |
+| -------- | -------------- |
+| 사용 툴  | VSCode 1.59    |
+| node     | v14.17.3       |
+| npm      | 6.14.13        |
+
+---
+
+### **2\. react 설치 및 확인**
+
+react 프로젝트를 시작할 때 일반적으로 create-react-app을 사용합니다 (이전 포스팅 확인) 저희는 이번에 타입스크립트를 사용하는 프로젝트를 진행할 것이기 때문에, 타입스크립트가 가능한 react를 설치해 보도록 하겠습니다. 설치를 위해 공식 문서를 확인합니다.
+
+[https://ko.reactjs.org/docs/static-type-checking.html#typescript](https://ko.reactjs.org/docs/static-type-checking.html#typescript)
+
+ [Static Type Checking – React
+
+A JavaScript library for building user interfaces
+
+ko.reactjs.org](https://ko.reactjs.org/docs/static-type-checking.html#typescript)
+
+```
+npx create-react-app my-app --template typescript
+```
+
+설치 콘솔로 프로젝트를 설치해줍니다. 중간에 my-app은 프로젝트이름 또는 디렉토리 이름 정도로 생각하시면 될 듯합니다. 이번에는 기존 express 서버에 react를 추가하는 형태이니 디렉토리 이름이라고 생각하는게 맞겠네요.
+
+![](https://blog.kakaocdn.net/dna/bqE3Dc/btrc4E4uVSL/AAAAAAAAAAAAAAAAAAAAAFy27EPkpJxYxDS42czYSMAg6WygkTe__bk-E2Qa_ghW/img.png?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1767193199&allow_ip=&allow_referer=&signature=G8QPRvuUUrMwN05G3ygaMasZwjs%3D)
+
+저는 디렉토리이름을 views로 정했습니다. 보시는거와 같이 tsx 로 작성된 app 파일이 보입니다. Arrow Function을 주로사용할 것 이라서 App 선언부를 살짝 수정해줍니다.
+
+```
+const App = () => {
+  return (
+    <div className="App">
+
+    ...
+```
+
+기존에 세팅된 express와 Port가 겹치므로 Port를 수정해 줍니다. 저는 이번에 1203포트를 express 서버에서 사용하는 것으로 수정해 주려고 합니다.
+
+![](https://blog.kakaocdn.net/dna/sjBlE/btrc3qrSLwf/AAAAAAAAAAAAAAAAAAAAAARcznLUOEPz3xbew8yQHeuCzROl5Ci0cJMUlas6LMIl/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1767193199&allow_ip=&allow_referer=&signature=YkLsPPUA32n8%2F3nEutuQkKJD4jk%3D)
+
+server.ts에 app.listen부분을 그림과 같이 수정을 하고,(다른 포트를 사용하셔도 무관)  react 프로젝트에 프록시 설정을 해줍니다.
+
+![](https://blog.kakaocdn.net/dna/rxVea/btrc1d0612S/AAAAAAAAAAAAAAAAAAAAANeZPQNTjajG9RPRm7tnZPWAwWJg1Z8Xnrol6vwYuNm4/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1767193199&allow_ip=&allow_referer=&signature=o8YXaFZrTKtSMbEH6gyfzAFRX3A%3D)
+
+이부분이 헷갈리기 쉬운 부분인데, 기존에 package.json 파일이 있고, 새로 생성한 react 디렉터리에도 package.json이 있을 겁니다. 이번에 수정하는 부분은 react 디렉터리의 package.json입니다.
+
+이제 react 쪽 설정이 모두 끝났으니, react만 기동 해봅시다. 
+
+```
+cd views && npm start
+```
+
+**윈도우 사용자 중에 명령 실행이 안되시는 분은 powershell이 아닌 cmd로 터미널을 켜서 진행해보시길 바랍니다.**
+
+![](https://blog.kakaocdn.net/dna/QvVmU/btrcNK666Mg/AAAAAAAAAAAAAAAAAAAAAGlN_FLe_jYDDhY7zevYH9ZF_ZBSTPhDKrXimw0rMkm7/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1767193199&allow_ip=&allow_referer=&signature=%2BTZ6wdSGrV2VVe5XpOjnuCpzjrc%3D)
+
+자주 봤던 화면이 보입니다. react 쪽 설정이 확인되었으니 편의를 위한 작업을 진행하도록 하겠습니다.
+
+바로 위 콘솔에서 진행 안됐던 분들도 다음 과정을 진행하다 보면 될 수 있으니, 따라오셔도 됩니다.
+
+---
+
+### **3\. concurrently 설치 및 scripts 세팅**
+
+package.json에 등록 및 설정해둔 scripts를 동시에 진행할 때 사용하는 모듈이라고 생각하시면 됩니다.
+
+```
+npm i concurrently express --save
+```
+
+설치가 완료되었으면, 메인 package.json을 세팅해 줍시다.
+
+```
+  "scripts": {
+    "express": "nodemon --exec ts-node -r tsconfig-paths/register server/server.ts",
+    "react": "cd views && npm start",
+    "start": "concurrently \"npm run express\" \"npm run react\""
+  },
+```
+
+![](https://blog.kakaocdn.net/dna/b2pqq2/btrc4D5Anoe/AAAAAAAAAAAAAAAAAAAAAOtunusgRL92wPSCxIvPpIvFYsGm_X6g5wI-h85bVLDa/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1767193199&allow_ip=&allow_referer=&signature=HQ9iLbjEfW8qj4ZwYPSW9oXYl9M%3D)
+
+위에서부터 \[express\]는 서버만 기동 하는 명령이고, \[react\]는 React만 기동하는 명령 \[start\] 는 동시에 기동하는 명령 콘솔입니다. 
+
+설정한 scripts를 통해 express와 react를 동시에 기동하고 확인해 보겠습니다.
+
+```
+npm start
+```
+
+![](https://blog.kakaocdn.net/dna/dWFCgg/btrcQflES5W/AAAAAAAAAAAAAAAAAAAAAORS3cD8uS0mLkWIoXFEEkXBdjihL4GV1lM-J9Mq2m-G/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1767193199&allow_ip=&allow_referer=&signature=G9GBFzSMXNh0mYMlgxQ6do7FoJY%3D)
+
+브라우저를 통해 각각 Port인 3000번과 1203번으로 접속하여 둘 다 기동 되었음을 확인합니다.
+
+---
+
+브라우저에서 각각 리액트 앱 표시와 서버에서 보내주는 메시지가 보인다면 정상적으로 세팅이 되었다고 할 수 있습니다. 사이드를 하면서 이것저것 공유하고 싶은 지식이 생기는 거 같아 다행입니다. 소홀했던 포스팅을 좀 더 집중해서 쓸 수 있을 듯합니다.

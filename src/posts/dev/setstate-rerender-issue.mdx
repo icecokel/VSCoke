@@ -1,0 +1,51 @@
+---
+title: setState로 리렌더링이 안 되는 이유..
+date: '2021-09-22'
+description: ''
+published: true
+---
+
+안녕하세요. 현재 토이 프로젝트로 실시간으로 렌더링이 중요한 작업을 진행하고 있었습니다. 컴포넌트의 state를 수정해도 리 렌더링이 되지 않아 골머리를 싸맸었는데, 아주 간단한 이유였습니다.
+
+* * *
+
+1.  state의 변화 기준
+
+* * *
+
+### **1\. state의 변화 기준**
+
+ 우선 문제가 되던 프로젝트는 채팅 앱이였고, 웹소켓을 받았을 때 스테이트가 수정되도록 하는 게 목표였습니다.
+
+```
+// 서버로 부터 메시지를 받을 때
+webSocket.onmessage = (e: any) => {
+    const msgObj = JSON.parse(e.data);
+    const tempReceivedMessageList = receivedMessage;
+    tempReceivedMessageList.push(JSON.parse(msgObj.message));
+    setReceivedMessage(tempReceivedMessageList);
+  };
+```
+
+문법도 틀리지 않았고, 렌더링이 되지 않아 useEffect에 넣어보고, 데이터를 부모한테 던졌다가 받아보는 둥 여러 가지 방법을 찾고 있었고, 우선도 높은 작업 순으로 진행하면서인지 적지 않은 시간을 렌더링 문제로 시간을 버린듯합니다.
+
+이유는 아주 간단했습니다.
+
+receivedMessage를 그대로 받아와서 사용했기 때문에, 같은 주소를 가르키틑 Array가 되었고, 따라서 state의 변화를 인지 하지 못했다..입니다.
+
+해결방법은 간단합니다.
+
+```
+  webSocket.onmessage = (e: any) => {
+    const msgObj = JSON.parse(e.data);
+    const tempReceivedMessageList = [...receivedMessage];  // 수정한 부분
+    tempReceivedMessageList.push(JSON.parse(msgObj.message));
+    setReceivedMessage(tempReceivedMessageList);
+  };
+```
+
+기존 state의 값을 spread operator로 받아오면 배열을 복사해오기 때문에, setState를 진행해도 변화를 감지하여 리 렌더링이 된다.
+
+* * *
+
+ 이번 포스팅을 정보전달보다, 스스로 반성하는 계기가 되어야 한다고 생각되어 남긴다. 기초적인 부분이며, 분명히 중간 몇 번 떠 올렸던 방법이나, 평소에 개념을 다져놓지 않았기에, 어렵지 않게 해결할 수 있는 문제를 돌아 돌아 풀었던 것 같다. "맞왜틀"을 오랜만에 난사하며 짧지 않은 시간 동안 스트레스받은 부분이 후회된다. 무료 강의 찾으면서 개념을 더 단단히 숙지해둬야겠다.

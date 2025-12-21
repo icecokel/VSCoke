@@ -1,0 +1,56 @@
+---
+title: Github 토큰 인증
+date: '2021-08-17'
+description: ''
+published: true
+---
+
+안녕하세요. 오랜만에 포스팅을 진행하게 됩니다. 이 말을 항상쓰는 것 같은데 노력을 해야 겠습니다.
+
+* * *
+
+### **1\. 사건의 발단**
+
+리프레시 하는겸 가벼운 토이 프로젝트를 로컬에서 작업하고 있었는데, 나중에 언젠가 보지 않을까 싶어서 묵혀둔 Github에 push를 해둬야 겠다고 생각하고 진행하던도중..
+
+Support for password authentication was removed on August 13, 2021. Please use a personal access token instead.
+
+8월 13일 부터 푸시나 풀할때 정책이 바뀐듯 하다. 기존에 사용되면 패스워드 형태는 불가하고, 토큰인증을해야하는것 같습니다..
+
+* * *
+
+### **2\. 토큰 발급 받는 방법**
+
+개인적인 잡설은 생략하고 포시팅보시는 분들이 원하는 정보를 위해 바로 방법 공유 합니다.
+
+![](https://blog.kakaocdn.net/dna/cA62e0/btrclItrY5c/AAAAAAAAAAAAAAAAAAAAAAo6bpvXNcMSoaMdQHIOMGgsuZL1XePgcrQlQziCd2g-/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1767193199&allow_ip=&allow_referer=&signature=lg9q1vA%2FHREzBV2VbWK7IUWjSKI%3D)
+
+Github에 로그인 후 우측 상단의 프로파일 아이콘을 누른 뒤 \[Settings\] 를 클릭합니다.
+
+![](https://blog.kakaocdn.net/dna/DEVNR/btrb9Ryvxov/AAAAAAAAAAAAAAAAAAAAACV-Gcm1p-AsIzKhaj8ivN8y1FGB6ozlm1w4eXguBog6/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1767193199&allow_ip=&allow_referer=&signature=Xm9PvVEX3sC%2Byho8tQtdguGcYGU%3D)
+
+스크롤 내리다 보면 좌측 중간쯤있는 \[Developer settings\] 를 클릭합니다.
+
+![](https://blog.kakaocdn.net/dna/TaOib/btrb83TvGUO/AAAAAAAAAAAAAAAAAAAAAGekmc9Fq68_iLuN7xk_j0tAHgdHyc3swJcHCfyZlaRF/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1767193199&allow_ip=&allow_referer=&signature=Dadl6l3wYXo5j12cEPB9LhD2%2FO8%3D)
+
+좌측 탭의 \[Personal access tokens\] 를 클릭 후 우측의 \[Generate new token\] 버튼을 클릭합니다.
+
+\*\* 저는 먼저 만들어 놓은 토큰이 있어서 Revoke all 이 있지만 처음에는 없습니다.
+
+![](https://blog.kakaocdn.net/dna/5bMC2/btrcebQKTWc/AAAAAAAAAAAAAAAAAAAAAB_CTAGsn8MWbRvJjHwyGSapFGZYrNb9-lOZAmpl4vkQ/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1767193199&allow_ip=&allow_referer=&signature=27nszT3Sv1BlEIswS0BDP%2BwDuOA%3D)
+
+Note에 토큰 생성 사유를 적어준 후 Select scopes에서 ropo 체크박스를 활성화 한뒤
+
+![](https://blog.kakaocdn.net/dna/bkWY1g/btrcoj71wJA/AAAAAAAAAAAAAAAAAAAAACwuEf4oF8K40go2munhQmSsm9I1PxyGSc2PovqJyyKz/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1767193199&allow_ip=&allow_referer=&signature=mbNLKEofmR2wf%2Frv5SKKkL%2BPxrk%3D)
+
+페이지 하단의 \[Generate token\] 버튼을 클릭해 토큰을 생성합니다.
+
+* * *
+
+![](https://blog.kakaocdn.net/dna/bAiHvl/btrcb9yQV9F/AAAAAAAAAAAAAAAAAAAAALTAnVsHuLGdn-wT4xSVmIp1uyC8VKS74nto0Geai61_/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1767193199&allow_ip=&allow_referer=&signature=JWlVWLbCysBBi7zIg6If1R9ql1Y%3D)
+
+모든작업이 완료 되면 초록색 V표와 함께 토큰이 생성됩니다. 생성된 토큰을 복사하여 github을 사용하시면 되겠습니다.
+
+* * *
+
+저처럼 오랜만에 레파지토리 생성하고 관리하려는 사람은 곤란할수 있겠습니다. 질문사항있으면 댓글 부탁드립니다.

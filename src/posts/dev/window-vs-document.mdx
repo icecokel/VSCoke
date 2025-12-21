@@ -1,0 +1,56 @@
+---
+title: window 와 document 차이
+date: '2022-07-16'
+description: ''
+published: true
+---
+
+작업중이던 어느날 문득 궁금증이 생겼다. window 랑 document가 뭔가 비슷한듯 한데, 다른것 같다. 차이가 뭘까 싶어서 조사를 시작했다.
+
+* * *
+
+1.  **window 와 document 차이**
+
+* * *
+
+### **1\. window 와 document 차이**
+
+결론 부터 말하자면 , window 안에 document가 포함되어 있다. 아주 간단하게 증명할 수 있었습니다..
+
+![](https://blog.kakaocdn.net/dna/wycYm/btrHqnsprYA/AAAAAAAAAAAAAAAAAAAAABb1pqUez3V3jUWd2NpeIM83BTiSWgBcNvQFT97u43R7/img.png?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1767193199&allow_ip=&allow_referer=&signature=wF9h1xDaRV5ZH85y3eq55PmSp5I%3D)
+
+개발자 도구를 열고 window 객체를 찾아보니 보란듯이 document가 안에 있었습니다.  
+대표적인 document 예제로도 확인이 가능했습니다.
+
+![](https://blog.kakaocdn.net/dna/t4qFS/btrHp1JWGA1/AAAAAAAAAAAAAAAAAAAAAOOoPZMPYjPcPWWBPS-4Vry6xXM2Njt8HkRewrKq06pN/img.png?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1767193199&allow_ip=&allow_referer=&signature=CzaI8veazxB6A7GYvSDLZePEAnU%3D)
+
+```
+window.document.getElementById("tinymce");
+document.getElementById("tinymce");
+```
+
+이 두가지는 같은 결과를 보여줍니다. 포함 관계임을 쉽게 알 수 있었습니다.  
+stack overflow에서 정보를 찾던 도중 신기한 것도 발견했습니다.
+
+This is the first paragraph.
+
+위와 같이 html이 구성되어있을때
+
+```
+window.holyCow
+window["holyCow"]
+document.getElementById("holyCow")
+document.querySelector("#holyCow")
+document.body.firstChild
+document.body.children[0]
+```
+
+6가지 방법으로 개체를 선택할 수 있었습니다..  
+  
+이외에 console.log 같은 커맨드 라인도, 사실은 window.console.log 로 window의 자식 개채중 하나였습니다.  
+  
+이때 궁금해서 테스트로 id="console" 인 태그를 생성하고, window.console , window\["console"\]을 진행해 봤습니다만, 생성한 태그보다. console 개채가 불러짐을 확인했습니다.
+
+* * *
+
+문득떠오른 궁금증이 생각보다 흥미로는 조사시간을 만들어줬습니다. 엄청 쓸모있는 정보라고는 생각되지 않으나, 알아두면 언젠가 나에게 도움이 되리라 생각됩니다.. 앞으로도 이런 궁금증들이 많이 생겼으면 감사할듯합니다.

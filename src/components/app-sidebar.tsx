@@ -72,11 +72,11 @@ export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
           <SidebarContent className="flex-1 bg-gray-900 border-r border-gray-500 min-w-0">
             <SidebarGroup className="p-0 h-full">
               {activeTab === "explorer" && (
-                <div className="flex flex-col gap-y-1 p-2 h-full overflow-y-auto">
+                <div className="flex flex-col h-full overflow-y-auto py-2">
                   <div className="text-xs font-bold text-gray-400 mb-2 px-2">
                     {t("explorer").toUpperCase()}
                   </div>
-                  <div className="flex flex-col gap-y-1 px-2">
+                  <div className="flex flex-col gap-y-1.5 px-2">
                     {itemList.map(item => (
                       <ExplorerItem
                         key={`tree_${item.id}`}

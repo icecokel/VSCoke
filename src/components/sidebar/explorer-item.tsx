@@ -50,8 +50,10 @@ const ExplorerItem = ({ id, label, path, items, tabClose, icon }: ExplorerItemPr
       <TooltipProvider delayDuration={500}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex items-center gap-x-1 min-w-0" onClick={handleClickItem}>
-              {convertIcon(icon)}
+            <div className="flex items-center gap-x-1.5 min-w-0" onClick={handleClickItem}>
+              <div className="shrink-0 flex items-center justify-center size-4">
+                {convertIcon(icon)}
+              </div>
               <span className="truncate text-sm">{label}</span>
             </div>
           </TooltipTrigger>
@@ -64,27 +66,30 @@ const ExplorerItem = ({ id, label, path, items, tabClose, icon }: ExplorerItemPr
   };
 
   return (
-    <div className="flex flex-col gap-y-1 cursor-pointer select-none">
+    <div className="flex flex-col gap-y-1.5 cursor-pointer select-none">
       <div
         className="flex items-center gap-x-1 hover:bg-blue-300/10 rounded-xs overflow-hidden"
         aria-valuetext={id}
         onClick={items ? handleClickTree : undefined}
       >
         {items ? (
-          <>
-            <Icon
-              kind={openedId === id ? "keyboard_arrow_down" : "keyboard_arrow_right"}
-              style={{ fontSize: "20px" }}
-            />
-
-            <BaseText type="body1">{id}</BaseText>
-          </>
+          <div className="flex items-center gap-x-1.5 w-full min-w-0">
+            <div className="shrink-0 flex items-center justify-center size-4">
+              <Icon
+                kind={openedId === id ? "keyboard_arrow_down" : "keyboard_arrow_right"}
+                style={{ fontSize: "20px" }}
+              />
+            </div>
+            <BaseText type="body1" className="truncate flex-1">
+              {id}
+            </BaseText>
+          </div>
         ) : (
           renderLeaf()
         )}
       </div>
       {openedId === id && items && (
-        <div className="ml-[1em]">
+        <div className="ml-[0.85rem] pl-2 border-l border-gray-700">
           {items?.map(item => {
             return <ExplorerItem key={`tree_${item.id}`} {...item} tabClose={tabClose} />;
           })}

@@ -3,6 +3,7 @@
 import { sortByKey } from "@/lib/utils";
 import { ExplorerContext } from "@/contexts/app-provider";
 import { useContext, useEffect, useState } from "react";
+import { useBoolean } from "./use-boolean";
 
 export interface ITree {
   index?: number;
@@ -15,18 +16,20 @@ export interface ITree {
 
 export const useExplorer = () => {
   const [itemList, setItemList] = useState<ITree[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const loading = useBoolean(true);
   const explorer = useContext(ExplorerContext);
+
+  const { onFalse } = loading;
 
   useEffect(() => {
     if (explorer) {
       setItemList(sortByKey([...explorer], "index"));
-      setIsLoading(false);
+      onFalse();
     }
-  }, [explorer]);
+  }, [explorer, onFalse]);
 
   return {
-    isLoading,
+    isLoading: loading.value,
     itemList,
   };
 };

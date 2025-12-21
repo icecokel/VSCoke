@@ -15,6 +15,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
 
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useBoolean } from "@/hooks/use-boolean";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,7 +74,9 @@ const SidebarProvider = ({
   onOpenChange?: (open: boolean) => void;
 }) => {
   const isMobile = useIsMobile();
-  const [openMobile, setOpenMobile] = useState(false);
+  const mobileSidebar = useBoolean();
+  const openMobile = mobileSidebar.value;
+  const setOpenMobile = mobileSidebar.setValue;
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
@@ -113,8 +116,8 @@ const SidebarProvider = ({
 
   // Helper to toggle the sidebar.
   const toggleSidebar = useCallback(() => {
-    return isMobile ? setOpenMobile(open => !open) : setOpen(open => !open);
-  }, [isMobile, setOpen, setOpenMobile]);
+    return isMobile ? mobileSidebar.onToggle() : setOpen(open => !open);
+  }, [isMobile, setOpen, mobileSidebar]);
 
   // Adds a keyboard shortcut to toggle the sidebar.
   useEffect(() => {

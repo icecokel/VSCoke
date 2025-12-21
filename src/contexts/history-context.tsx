@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { useBoolean } from "@/hooks/use-boolean";
 
 export interface IHistoryItem {
   title: string;
@@ -20,7 +21,9 @@ const STORAGE_KEY = "vscoke-history";
 
 export const HistoryProvider = ({ children }: { children: React.ReactNode }) => {
   const [history, setHistory] = useState<IHistoryItem[]>([]);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const hydrated = useBoolean(false);
+  const isHydrated = hydrated.value;
+  const { onTrue } = hydrated;
 
   // 초기 로드시 localStorage에서 데이터 가져오기
   useEffect(() => {
@@ -32,8 +35,8 @@ export const HistoryProvider = ({ children }: { children: React.ReactNode }) => 
         localStorage.removeItem(STORAGE_KEY);
       }
     }
-    setIsHydrated(true);
-  }, []);
+    onTrue();
+  }, [onTrue]);
 
   // hydration 완료 후에만 localStorage에 저장
   useEffect(() => {

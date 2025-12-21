@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import * as Phaser from "phaser";
 import { GameConfig } from "./GameConfig";
 import { LoadingOverlay } from "./ui/LoadingOverlay";
+import { useBoolean } from "@/hooks/use-boolean";
 
 import { useTranslations } from "next-intl";
 
@@ -18,7 +19,9 @@ const PhaserGame = ({ isPlaying, onReady, onGoToReady }: PhaserGameProps) => {
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [loadingProgress, setLoadingProgress] = useState(0);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const loaded = useBoolean(false);
+  const isLoaded = loaded.value;
+  const { onTrue } = loaded;
 
   useEffect(() => {
     if (typeof window !== "undefined" && !gameRef.current) {
@@ -38,7 +41,7 @@ const PhaserGame = ({ isPlaying, onReady, onGoToReady }: PhaserGameProps) => {
 
       // Event listeners for React-Phaser communication
       gameRef.current.events.on("game:ready", () => {
-        setIsLoaded(true);
+        onTrue();
         onReady();
       });
 
@@ -57,7 +60,7 @@ const PhaserGame = ({ isPlaying, onReady, onGoToReady }: PhaserGameProps) => {
         gameRef.current = null;
       }
     };
-  }, [t, onReady, onGoToReady]);
+  }, [t, onReady, onGoToReady, onTrue]);
 
   // Handle start signal
   useEffect(() => {

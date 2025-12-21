@@ -1,5 +1,5 @@
 ---
-title: "React&Next.js_보안_이슈:_React2Shell_대응"
+title: "React&Next.js 보안 이슈: React2Shell 대응"
 date: "2025-02-18"
 description: "최근 발견된 React/Next.js의 심각한 RCE 취약점(React2Shell)과 이에 대한 긴급 대응 방법, 그리고 Server Actions 보안 가이드를 정리합니다."
 tags: ["Security", "React", "Next.js", "CVE"]
@@ -79,7 +79,7 @@ import { getUser } from "@/lib/auth";
 
 export async function updateProfile(data: FormData) {
   const user = await getUser();
-  
+
   // 1. 인증 확인
   if (!user) {
     throw new Error("Unauthorized");
@@ -115,7 +115,7 @@ export async function signup(formData: FormData) {
   if (!parsed.success) {
     return { error: "잘못된 입력입니다." };
   }
-  
+
   // ...
 }
 ```

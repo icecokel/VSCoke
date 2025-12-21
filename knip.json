@@ -1,0 +1,7 @@
+{
+  "entry": ["src/app/**/*.{ts,tsx}", "src/pages/**/*.{ts,tsx}", "src/posts/**/*.mdx"],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignore": ["**/*.d.ts"],
+  "ignoreDependencies": ["eslint-config-next", "postcss", "autoprefixer", "husky", "lint-staged"],
+  "ignoreBinaries": ["docker", "docker-compose"]
+}

@@ -6,6 +6,7 @@ import PostList from "@/components/blog/post-list";
 import BaseText from "@/components/base-ui/text";
 import { PostMeta } from "@/types/blog";
 import { debounce } from "lodash";
+import { useBoolean } from "@/hooks/use-boolean";
 
 interface DashboardSearchProps {
   posts: PostMeta[];
@@ -16,7 +17,7 @@ export default function DashboardSearch({ posts }: DashboardSearchProps) {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [filtered, setFiltered] = useState(posts);
   const [suggestions, setSuggestions] = useState<PostMeta[]>([]);
-  const [isOpen, setIsOpen] = useState(false); // 드롭다운 표시 상태
+  const dropdown = useBoolean(false);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const updateDebouncedQuery = useCallback(
@@ -29,7 +30,7 @@ export default function DashboardSearch({ posts }: DashboardSearchProps) {
   const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setQuery(value);
-    setIsOpen(true); // 입력 시 드롭다운 열기
+    dropdown.onTrue();
     updateDebouncedQuery(value);
   };
 
@@ -51,8 +52,8 @@ export default function DashboardSearch({ posts }: DashboardSearchProps) {
   // Handle suggestion click
   const handleSelect = (title: string) => {
     setQuery(title);
-    setDebouncedQuery(title); // Immediate update
-    setIsOpen(false); // 드롭다운 닫기
+    setDebouncedQuery(title);
+    dropdown.onFalse();
   };
 
   return (
@@ -62,13 +63,13 @@ export default function DashboardSearch({ posts }: DashboardSearchProps) {
           placeholder="제목으로 검색..."
           value={query}
           onChange={handleQueryChange}
-          onFocus={() => setIsOpen(true)} // 포커스 시 드롭다운 열기
-          onBlur={() => setTimeout(() => setIsOpen(false), 150)} // 포커스 해제 시 드롭다운 닫기 (클릭 이벤트 허용을 위한 지연)
+          onFocus={dropdown.onTrue}
+          onBlur={() => setTimeout(dropdown.onFalse, 150)}
           className="bg-gray-800 border-gray-700 text-gray-100 placeholder:text-gray-500"
         />
 
         {/* Autocomplete Dropdown */}
-        {isOpen && suggestions.length > 0 && query && (
+        {dropdown.value && suggestions.length > 0 && query && (
           <ul className="absolute z-10 w-full bg-gray-900 border border-gray-700 mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
             {suggestions.map(post => (
               <li

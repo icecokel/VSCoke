@@ -5,7 +5,7 @@ import { useHistoryContext } from "@/contexts/history-context";
 import { useRouter } from "next/navigation";
 
 export const useHistory = () => {
-  const { history, setHistory } = useHistoryContext();
+  const { history, setHistory, isHydrated } = useHistoryContext();
   const router = useRouter();
 
   const add = ({ path, title }: IHistoryItem) => {
@@ -43,5 +43,6 @@ export const useHistory = () => {
     add,
     remove,
     change,
+    isHydrated,
   };
 };

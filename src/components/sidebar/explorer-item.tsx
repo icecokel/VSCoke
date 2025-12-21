@@ -1,7 +1,7 @@
 "use client";
 
 import { ITree } from "@/hooks/use-explorer";
-import { useHistory } from "@/hooks/use-history";
+import { useCustomRouter } from "@/hooks/use-custom-router";
 import Icon from "@/components/base-ui/icon";
 import BaseText from "@/components/base-ui/text";
 import { MouseEvent, useState } from "react";
@@ -26,7 +26,7 @@ const convertIcon = (icon?: string) => {
 const ExplorerItem = ({ id, label, path, items, tabClose, icon }: ExplorerItemProps) => {
   const [openedId, setOpenedId] = useState("");
   const url = !items ? (path ?? "") : "";
-  const { add } = useHistory();
+  const router = useCustomRouter();
 
   const handleClickTree = ({ currentTarget: { ariaValueText } }: MouseEvent<HTMLDivElement>) => {
     setOpenedId(prev => {
@@ -38,7 +38,7 @@ const ExplorerItem = ({ id, label, path, items, tabClose, icon }: ExplorerItemPr
 
   const handleClickItem = () => {
     if (url) {
-      add({ isActive: true, path: url, title: label });
+      router.push(url, { title: label });
       tabClose();
     }
   };

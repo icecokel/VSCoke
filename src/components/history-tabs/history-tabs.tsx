@@ -12,15 +12,16 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { useTranslations } from "next-intl";
 
 const HistoryTabs = ({ children }: TParentNode) => {
-  const { history, change, remove, setHistory, current, add } = useHistory();
+  const { history, change, remove, setHistory, current, add, isHydrated } = useHistory();
   const router = useRouter();
+  const pathname = usePathname();
   const t = useTranslations("historyTabs");
 
   const handleClickTab = change;
@@ -78,19 +79,34 @@ const HistoryTabs = ({ children }: TParentNode) => {
     }
   };
 
+  // URL과 History 동기화 (URL이 진실의 원천)
   useEffect(() => {
-    if (history.length === 0) {
-      router.replace("/");
-      return;
-    }
+    if (!isHydrated) return;
 
-    if (current) {
-      router.replace(current.path);
-      return;
+    // 현재 URL에 해당하는 탭이 있는지 확인
+    const matchingTab = history.find(item => item.path === pathname);
+
+    if (matchingTab) {
+      if (!matchingTab.isActive) {
+        // 탭은 있는데 활성화가 안 되어 있다면 활성화 (URL 변경 없음)
+        setHistory(prev =>
+          prev.map(item => ({
+            ...item,
+            isActive: item.path === pathname,
+          })),
+        );
+      }
     } else {
-      add(history[0]);
+      // 탭이 없다면 새로 추가 (URL 변경 없음)
+      // 경로는 pathname 그대로 사용, 제목은 경로에서 유추하거나 기본값 사용
+      // 주의: 루트 경로('/')는 보통 탭으로 표시하지 않거나 Home으로 표시할 수 있음.
+      // 여기서는 일단 추가하는 로직 유지.
+      const title = pathname === "/" ? "Home" : pathname.split("/").pop() || pathname;
+
+      add({ path: pathname, title, isActive: true });
     }
-  }, [history, add, current, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, isHydrated]);
 
   return (
     <div className="flex flex-col h-screen w-full bg-gray-800">

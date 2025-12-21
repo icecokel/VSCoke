@@ -5,7 +5,6 @@ import { useCustomRouter } from "@/hooks/use-custom-router";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { GameConstants } from "./GameConstants";
-import { useHistory } from "@/hooks/use-history";
 
 interface GameReadyScreenProps {
   onStart: () => void;
@@ -15,14 +14,10 @@ interface GameReadyScreenProps {
 const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
   const t = useTranslations("Game");
   const router = useCustomRouter();
-  const { remove, current } = useHistory();
 
   const [rows, setRows] = useState<number[][]>([]);
 
   const onClickBack = () => {
-    if (current) {
-      remove(current);
-    }
     router.back();
   };
 

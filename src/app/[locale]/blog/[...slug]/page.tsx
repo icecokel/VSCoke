@@ -74,8 +74,26 @@ const BlogPostPage = async ({ params }: BlogPostPageProps) => {
     notFound();
   }
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: post.title,
+    description: post.description,
+    image: ["https://vscoke.vercel.app/og.png"],
+    datePublished: post.date,
+    author: {
+      "@type": "Person",
+      name: "icecokel",
+      url: "https://vscoke.vercel.app/ko/profile",
+    },
+  };
+
   return (
     <div className="p-3 md:p-5 max-w-4xl mx-auto">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <CustomLink
         href={`/${locale}/blog`}
         title="Blog"

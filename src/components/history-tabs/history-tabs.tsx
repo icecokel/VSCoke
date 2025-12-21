@@ -1,5 +1,6 @@
 "use client";
 
+import { IHistoryItem } from "@/contexts/history-context";
 import { useHistory } from "@/hooks/use-history";
 import { TParentNode } from "@/models/common";
 import Container from "@/components/base-ui/container";
@@ -19,22 +20,44 @@ import { twMerge } from "tailwind-merge";
 import { useTranslations } from "next-intl";
 
 const HistoryTabs = ({ children }: TParentNode) => {
-  const { history, change, remove, setHistory, current, add, isHydrated } = useHistory();
+  const { history, change, remove, setHistory, add, isHydrated } = useHistory();
   const router = useRouter();
   const pathname = usePathname();
   const t = useTranslations("historyTabs");
 
   const handleClickTab = change;
-  const handleClickClose = remove;
 
   const [dragStartPath, setDragStartPath] = useState<string>();
   const [dragEnterPath, setEnterPath] = useState<string>();
 
-  const handleCloseTab = (tabPath: string) => {
-    const foundTab = history.find(({ path }) => path === tabPath);
-    if (foundTab) {
-      remove(foundTab);
+  const handleSmartClose = (e: React.MouseEvent | null, item: IHistoryItem) => {
+    if (e) {
+      e.stopPropagation();
     }
+
+    // 현재 닫는 탭이 활성화 상태라면 이동할 경로 계산
+    const isActiveTab = item.path === pathname;
+
+    if (isActiveTab) {
+      const currentIndex = history.findIndex(h => h.path === item.path);
+      // 1. 오른쪽 탭 시도
+      let nextTab = history[currentIndex + 1];
+      // 2. 없으면 왼쪽 탭 시도
+      if (!nextTab) {
+        nextTab = history[currentIndex - 1];
+      }
+
+      // 이동 (URL 변경 -> useEffect가 감지하여 active 상태 업데이트)
+      if (nextTab) {
+        router.push(nextTab.path);
+      } else {
+        // 탭이 하나밖에 없는데 닫은 경우 (예: 홈으로 이동)
+        router.push("/");
+      }
+    }
+
+    // 탭 삭제
+    remove(item);
   };
 
   const handleCloseOthers = (tabPath: string) => {
@@ -119,7 +142,7 @@ const HistoryTabs = ({ children }: TParentNode) => {
                   <div
                     id={`${item.path}`}
                     className={twMerge(
-                      "border border-gray-300/60 border-l-0 h-8 truncate shrink-0",
+                      "group border border-gray-300/60 border-l-0 h-8 truncate shrink-0",
                       item.isActive ? "bg-gray-800 border-b-0" : "hover:bg-gray-600",
                     )}
                     onClick={() => handleClickTab(item)}
@@ -139,13 +162,13 @@ const HistoryTabs = ({ children }: TParentNode) => {
                       <span
                         className={twMerge(
                           "ml-1 -mr-1 md:ml-2 md:-mr-2 inline",
-                          !item.isActive && "hidden",
+                          !item.isActive && "hidden group-hover:inline-block",
                         )}
                       >
                         <Icon
                           kind="close"
                           style={{ fontSize: "18px" }}
-                          onClick={() => handleClickClose(item)}
+                          onClick={e => handleSmartClose(e, item)}
                         />
                       </span>
                     </BaseText>
@@ -157,7 +180,7 @@ const HistoryTabs = ({ children }: TParentNode) => {
               </Tooltip>
             </ContextMenuTrigger>
             <ContextMenuContent className="bg-gray-800 border-gray-700 text-white">
-              <ContextMenuItem onClick={() => handleCloseTab(item.path)}>
+              <ContextMenuItem onClick={() => handleSmartClose(null, item)}>
                 {t("close")}
               </ContextMenuItem>
               <ContextMenuItem onClick={() => handleCloseOthers(item.path)}>

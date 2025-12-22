@@ -8,6 +8,8 @@ import { MobileSidebarTrigger } from "@/components/mobile-sidebar-trigger";
 import HistoryTabs from "@/components/history-tabs/history-tabs";
 import AppProvider from "@/contexts/app-provider";
 import { HistoryProvider } from "@/contexts/history-context";
+import { LoaderProvider } from "@/contexts/loader-context";
+import { Loader } from "@/components/loader";
 import { getExplorer } from "@/utils/get/explorer";
 import { routing } from "@/i18n/routing";
 
@@ -65,26 +67,29 @@ const LocaleLayout = async ({ children, params }: Props) => {
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <HistoryProvider>
-        <AppProvider explorer={explorer}>
-          <div className="flex flex-col h-screen overflow-hidden">
-            <Menubar />
-            <div className="flex-1 overflow-hidden">
-              <SidebarProvider defaultOpen={false}>
-                <AppSidebar />
-                <SidebarInset>
-                  <div className="flex flex-col h-full overflow-hidden">
-                    <div className="flex-1 overflow-auto bg-gray-900">
-                      <HistoryTabs>{children}</HistoryTabs>
+      <LoaderProvider>
+        <HistoryProvider>
+          <AppProvider explorer={explorer}>
+            <Loader />
+            <div className="flex flex-col h-screen overflow-hidden">
+              <Menubar />
+              <div className="flex-1 overflow-hidden">
+                <SidebarProvider defaultOpen={false}>
+                  <AppSidebar />
+                  <SidebarInset>
+                    <div className="flex flex-col h-full overflow-hidden">
+                      <div className="flex-1 overflow-auto bg-gray-900">
+                        <HistoryTabs>{children}</HistoryTabs>
+                      </div>
                     </div>
-                  </div>
-                </SidebarInset>
-                <MobileSidebarTrigger />
-              </SidebarProvider>
+                  </SidebarInset>
+                  <MobileSidebarTrigger />
+                </SidebarProvider>
+              </div>
             </div>
-          </div>
-        </AppProvider>
-      </HistoryProvider>
+          </AppProvider>
+        </HistoryProvider>
+      </LoaderProvider>
     </NextIntlClientProvider>
   );
 };

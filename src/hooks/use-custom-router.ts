@@ -2,6 +2,7 @@
 
 import { useRouter } from "@/i18n/navigation";
 import { useHistory } from "./use-history";
+import { useLoader } from "@/contexts/loader-context";
 
 interface NavigateOptions {
   title?: string;
@@ -10,10 +11,13 @@ interface NavigateOptions {
 export const useCustomRouter = () => {
   const router = useRouter();
   const { history, setHistory, add, change, remove, current } = useHistory();
+  const { startLoader } = useLoader();
 
   const push = (path: string, options?: NavigateOptions) => {
     const title = options?.title || path;
     const existingItem = history.find(item => item.path === path);
+
+    startLoader();
 
     if (existingItem) {
       change(existingItem);

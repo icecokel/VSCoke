@@ -5,6 +5,7 @@ import Icon from "@/components/base-ui/icon";
 import Container from "@/components/base-ui/container";
 import Avatar from "@/components/base-ui/avatar";
 import SlideGroup from "@/components/base-ui/slide-group";
+import PreBlock from "@/components/blog/pre-block";
 
 export const mdxComponents: MDXComponents = {
   h1: ({ children }) => (
@@ -56,9 +57,7 @@ export const mdxComponents: MDXComponents = {
     }
     return <code className={className}>{children}</code>;
   },
-  pre: ({ children }) => (
-    <pre className="bg-gray-900 rounded-lg p-4 mb-4 overflow-x-auto text-sm">{children}</pre>
-  ),
+  pre: ({ children, ...props }) => <PreBlock {...props}>{children}</PreBlock>,
   hr: () => <hr className="my-8 border-gray-600" />,
   strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
   em: ({ children }) => <em className="italic">{children}</em>,

@@ -5,6 +5,7 @@ import BaseText from "@/components/base-ui/text";
 import Chip from "@/components/base-ui/chip";
 import Icon from "@/components/base-ui/icon";
 import { CustomLink } from "@/components/custom-link";
+import ScrollProgress from "@/components/blog/scroll-progress";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
@@ -94,6 +95,7 @@ const BlogPostPage = async ({ params }: BlogPostPageProps) => {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <ScrollProgress />
       <CustomLink
         href="/blog"
         title="Blog"

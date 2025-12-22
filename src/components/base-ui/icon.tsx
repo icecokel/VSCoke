@@ -27,6 +27,7 @@ import {
   ViewColumnsIcon,
   Bars3Icon,
   ServerIcon,
+  CheckIcon,
 } from "@heroicons/react/24/outline";
 
 export type TKind =
@@ -57,7 +58,8 @@ export type TKind =
   | "search"
   | "view_column"
   | "view_list"
-  | "hard_drive";
+  | "hard_drive"
+  | "check";
 
 interface IIconProps extends HTMLAttributes<SVGSVGElement> {
   kind: TKind;
@@ -93,6 +95,7 @@ const iconMap: Record<TKind, React.ComponentType<React.SVGProps<SVGSVGElement>>>
   view_column: ViewColumnsIcon,
   view_list: Bars3Icon,
   hard_drive: ServerIcon,
+  check: CheckIcon,
 };
 
 const Icon = ({ kind, size = 20, className, style, ...restProps }: IIconProps) => {

@@ -11,8 +11,7 @@ export default function GameDashboard() {
     {
       id: "sky-drop",
       title: "Sky Drop",
-      description: t("start"), // "Start Game" or similar description from locale
-      icon: "🎮",
+      description: t("skyDropDesc"),
       route: "/game/sky-drop",
     },
   ];
@@ -30,7 +29,6 @@ export default function GameDashboard() {
             onClick={() => router.push(game.route)}
             className="group relative flex h-64 w-64 flex-col items-center justify-center rounded-2xl bg-slate-800 p-6 transition-all duration-300 hover:bg-slate-700 hover:scale-105 hover:shadow-[0_0_30px_rgba(78,205,196,0.5)] border-2 border-slate-700 hover:border-[#4ECDC4]"
           >
-            <div className="text-6xl mb-4 group-hover:animate-bounce">{game.icon}</div>
             <h2 className="text-2xl font-bold text-white mb-2">{game.title}</h2>
             <p className="text-gray-400 group-hover:text-gray-200 transition-colors">
               {game.description}

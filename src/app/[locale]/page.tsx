@@ -31,15 +31,13 @@ const Home = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Sky Drop Game Card */}
             <div
-              onClick={() => router.push("/game", { title: "Sky Drop" })}
+              onClick={() => router.push("/game")}
               className="group p-6 rounded-lg bg-gray-800 border border-gray-700 hover:border-gray-600 cursor-pointer transition-colors"
             >
               <h3 className="text-xl font-bold mb-2 text-white group-hover:text-[#4ECDC4] transition-colors">
-                Sky Drop
+                Game Dashboard
               </h3>
-              <p className="text-gray-400 text-sm mb-4 leading-relaxed">
-                같은 색 블록 3개를 모으는 퍼즐 게임.
-              </p>
+              <p className="text-gray-400 text-sm mb-4 leading-relaxed">{t("entertainmentDesc")}</p>
 
               <div className="flex items-center text-[#4ECDC4] text-sm font-medium">
                 <span>{t("playGame")}</span>

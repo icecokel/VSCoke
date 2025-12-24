@@ -45,7 +45,7 @@ export default function SkyDropPage() {
         top: 0,
         left: 0,
         width: "100vw",
-        height: "100vh",
+        height: "100dvh",
         zIndex: 50,
         border: "none",
         borderRadius: 0,

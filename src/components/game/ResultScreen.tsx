@@ -28,6 +28,7 @@ export const ResultScreen = ({ score, onRestart }: ResultScreenProps) => {
         <Button
           onClick={onRestart}
           size="lg"
+          aria-label="Restart Game"
           className="w-full text-xl py-8 bg-[#4ECDC4] hover:bg-[#3fb9b0] text-black font-bold rounded-xl shadow-lg hover:checkbox-[0_0_15px_rgba(78,205,196,0.5)] transition-all transform hover:scale-105"
         >
           {t("restart")}
@@ -37,6 +38,7 @@ export const ResultScreen = ({ score, onRestart }: ResultScreenProps) => {
           onClick={() => router.push("/game")}
           variant="outline"
           size="lg"
+          aria-label="Go to Dashboard"
           className="w-full text-lg py-6 border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl transition-all"
         >
           Dashboard

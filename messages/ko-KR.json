@@ -28,7 +28,7 @@
     "suffix": "입니다",
     "welcome": "Welcome to IceCokel Portfolio",
     "entertainment": "Entertainment",
-    "entertainmentDesc": "퍼즐 게임 Sky Drop을 플레이해보세요.",
+    "entertainmentDesc": "게임 대시보드에서 다양한 미니게임을 확인하세요.",
     "playGame": "시작하기"
   },
   "profile": {
@@ -64,6 +64,7 @@
     "restart": "클릭하여 재시작",
     "goBack": "뒤로 가기",
     "exit": "나가기",
+    "skyDropDesc": "떨어지는 블록을 맞춰 점수를 획득하는 퍼즐 게임입니다.",
     "time": "시간: "
   },
   "intro": {

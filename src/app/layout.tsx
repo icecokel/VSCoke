@@ -20,6 +20,9 @@ export const metadata: Metadata = {
     "Blog",
     "React",
     "Next.js",
+    "Mini Game",
+    "Sky Drop",
+    "Web Game",
   ],
   authors: [{ name: "icecokel" }],
   openGraph: {

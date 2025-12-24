@@ -73,6 +73,7 @@ const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
         <Button
           onClick={onStart}
           size="lg"
+          aria-label="Start Game"
           className="text-xl px-12 py-6 bg-[#4ECDC4] hover:bg-[#3fb9b0] text-black font-bold rounded-full transition-all hover:scale-105"
         >
           {t("start")}
@@ -81,6 +82,7 @@ const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
         <Button
           onClick={onClickBack}
           variant="ghost"
+          aria-label="Exit Game"
           className="text-gray-400 hover:text-white transition-colors"
         >
           {t("exit")}

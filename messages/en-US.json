@@ -28,7 +28,7 @@
     "suffix": "",
     "welcome": "Welcome to IceCokel Portfolio",
     "entertainment": "Entertainment",
-    "entertainmentDesc": "Try playing the puzzle game Sky Drop.",
+    "entertainmentDesc": "Check out various mini-games on the Game Dashboard.",
     "playGame": "Start"
   },
   "profile": {
@@ -64,6 +64,7 @@
     "restart": "CLICK TO RESTART",
     "goBack": "Go Back",
     "exit": "Exit Game",
+    "skyDropDesc": "A puzzle game where you match falling blocks to score points.",
     "time": "Time: "
   },
   "intro": {

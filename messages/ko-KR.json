@@ -65,7 +65,22 @@
     "goBack": "뒤로 가기",
     "exit": "나가기",
     "skyDropDesc": "떨어지는 블록을 맞춰 점수를 획득하는 퍼즐 게임입니다.",
-    "time": "시간: "
+    "time": "시간: ",
+    "share": "자랑하기",
+    "saveImage": "이미지 저장",
+    "copied": "클립보드에 복사되었습니다!",
+    "shareMessages": {
+      "0": "🔥 Sky Drop에서 {score}점! 이 점수 넘을 수 있어?",
+      "1": "훗, {score}점이라니... 나 좀 하는 듯? 🎮",
+      "2": "와! Sky Drop {score}점 달성! 인생 게임 등극! ✨",
+      "3": "{score}점... 조금만 더 하면 신기록인데! 😭",
+      "4": "저랑 Sky Drop 한 판? 제 기록은 {score}점이에요! 👀"
+    },
+    "copyLink": "링크 복사",
+    "shareTitle": "내 점수 자랑하기",
+    "shareDescription": "Sky Drop에서 {score}점을 달성했습니다! 저를 이길 수 있나요?",
+    "tryIt": "도전해보세요!",
+    "playNow": "지금 플레이"
   },
   "intro": {
     "title": "Welcome VSCoke",

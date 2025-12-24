@@ -1,6 +1,7 @@
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { Toaster } from "@/components/ui/sonner";
 import Menubar from "@/components/menubar/menubar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -71,6 +72,7 @@ const LocaleLayout = async ({ children, params }: Props) => {
         <HistoryProvider>
           <AppProvider explorer={explorer}>
             <Loader />
+            <Toaster position="top-center" richColors />
             <div className="flex flex-col h-screen overflow-hidden">
               <Menubar />
               <div className="flex-1 overflow-hidden">

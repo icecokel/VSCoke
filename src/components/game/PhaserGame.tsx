@@ -67,7 +67,25 @@ const PhaserGame = ({ isPlaying, onReady, onGoToReady, onRestart }: PhaserGamePr
 
     return () => {
       if (gameRef.current) {
-        gameRef.current.destroy(true);
+        // AudioContext 에러 방지: 사운드 시스템 먼저 정리
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const soundManager = gameRef.current.sound as any;
+          if (soundManager) {
+            soundManager.removeAll?.();
+            soundManager.stopAll?.();
+            // 필요한 경우 컨텍스트 닫기 (일부 버전에서 필요할 수 있음)
+            // soundManager.context?.close?.();
+          }
+        } catch (e) {
+          console.warn("Error cleaning up audio:", e);
+        }
+
+        try {
+          gameRef.current.destroy(true);
+        } catch (e) {
+          console.warn("Error destroying game:", e);
+        }
         gameRef.current = null;
       }
     };

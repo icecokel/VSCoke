@@ -65,7 +65,22 @@
     "goBack": "Go Back",
     "exit": "Exit Game",
     "skyDropDesc": "A puzzle game where you match falling blocks to score points.",
-    "time": "Time: "
+    "time": "Time: ",
+    "share": "Show Off",
+    "saveImage": "Save Image",
+    "copied": "Copied to clipboard!",
+    "shareMessages": {
+      "0": "🔥 Scored {score} on Sky Drop! Can you beat this?",
+      "1": "Heh, scored {score}... I might be good at this? 🎮",
+      "2": "Wow! Reached {score} on Sky Drop! Best game ever! ✨",
+      "3": "{score} points... Just a bit more for a high score! 😭",
+      "4": "Up for a game of Sky Drop? My record is {score}! 👀"
+    },
+    "copyLink": "Copy Link",
+    "shareTitle": "Show Off My Score",
+    "shareDescription": "I scored {score} points! Can you beat my high score?",
+    "tryIt": "Try it out!",
+    "playNow": "Play Now"
   },
   "intro": {
     "title": "Welcome VSCoke",

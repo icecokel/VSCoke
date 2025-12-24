@@ -93,10 +93,10 @@ const PhaserGame = ({ isPlaying, onReady, onGoToReady, onRestart }: PhaserGamePr
 
   // 시작 신호 처리
   useEffect(() => {
-    if (isPlaying && gameRef.current) {
+    if (isPlaying && isLoaded && gameRef.current) {
       gameRef.current.events.emit("game:start");
     }
-  }, [isPlaying]);
+  }, [isPlaying, isLoaded]);
 
   useEffect(() => {
     const updateSize = () => {

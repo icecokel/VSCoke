@@ -34,7 +34,7 @@ const PhaserGame = ({ isPlaying, onReady, onGoToReady, onRestart }: PhaserGamePr
     if (typeof window !== "undefined" && !gameRef.current) {
       gameRef.current = new Phaser.Game(GameConfig);
 
-      // Inject game texts into the registry
+      // 게임 텍스트를 레지스트리에 주입
       gameRef.current.registry.set("texts", {
         score: t("score"),
         deadline: t("deadline"),
@@ -46,7 +46,7 @@ const PhaserGame = ({ isPlaying, onReady, onGoToReady, onRestart }: PhaserGamePr
         time: t("time"),
       });
 
-      // Event listeners for React-Phaser communication
+      // React-Phaser 통신을 위한 이벤트 리스너
       gameRef.current.events.on("game:ready", () => {
         onTrue();
         onReady();
@@ -73,7 +73,7 @@ const PhaserGame = ({ isPlaying, onReady, onGoToReady, onRestart }: PhaserGamePr
     };
   }, [t, onReady, onGoToReady, onTrue]);
 
-  // Handle start signal
+  // 시작 신호 처리
   useEffect(() => {
     if (isPlaying && gameRef.current) {
       gameRef.current.events.emit("game:start");

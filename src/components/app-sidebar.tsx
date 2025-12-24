@@ -27,7 +27,7 @@ export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
 
   useEffect(() => {
     if (!open) {
-      // When sidebar closes via other means (e.g. meta+b), we might want to sync visual state if needed.
+      // 사이드바가 다른 수단(예: meta+b)으로 닫힐 때, 필요한 경우 시각적 상태를 동기화할 수 있습니다.
     }
   }, [open]);
 
@@ -47,7 +47,7 @@ export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
   return (
     <Sidebar collapsible="icon" {...props} className="border-r-0 bg-gray-900 text-gray-100">
       <div className="flex h-full w-full flex-row overflow-hidden">
-        {/* Activity Bar (Icons) - Fixed Width */}
+        {/* 활동 바 (아이콘) - 고정 너비 */}
         <div className="flex w-[3rem] flex-none flex-col items-center gap-2 border-r border-gray-800 bg-gray-900 py-2 z-20">
           <button
             data-active={activeTab === "explorer" && (open || (isMobile && openMobile))}
@@ -67,7 +67,7 @@ export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
           </button>
         </div>
 
-        {/* Content Panel (Push) */}
+        {/* 콘텐츠 패널 (Push) */}
         {(open || (isMobile && openMobile)) && (
           <SidebarContent className="flex-1 bg-gray-900 border-r border-gray-500 min-w-0">
             <SidebarGroup className="p-0 h-full">

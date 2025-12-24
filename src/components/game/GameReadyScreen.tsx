@@ -51,7 +51,7 @@ const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
         className="w-full max-w-xs aspect-[9/16] bg-slate-800 rounded-lg border-2 border-slate-700 mb-8 flex items-center justify-center overflow-hidden relative"
         style={{ maxHeight: "40vh" }}
       >
-        {/* Falling Blocks Animation */}
+        {/* 떨어지는 블록 애니메이션 */}
         <div className="absolute inset-0 flex flex-col items-center pt-4 gap-2 opacity-50">
           {rows.map((row: number[], rowIndex: number) => (
             <div key={`row-${rowIndex}`} className="flex gap-2">

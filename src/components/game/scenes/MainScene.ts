@@ -4,7 +4,7 @@ import { GameConstants, GameTexts } from "../GameConstants";
 export class MainScene extends Phaser.Scene {
   // ... (previous properties)
 
-  // Game Texts (hardcoded in English)
+  // 게임 텍스트 (영어 하드코딩됨)
   private texts: GameTexts = {
     score: "Score: ",
     deadline: "DEADLINE",
@@ -47,11 +47,11 @@ export class MainScene extends Phaser.Scene {
   private currentSpawnInterval: number = GameConstants.INITIAL_SPAWN_INTERVAL;
   private deadlineY: number = 0;
 
-  // Time & Difficulty
+  // 시간 및 난이도
   private startTime: number = 0;
   private timeText: Phaser.GameObjects.Text | null = null;
 
-  // Warning Overlay
+  // 경고 오버레이
   private warningOverlay: Phaser.GameObjects.Rectangle | null = null;
   private isWarningActive: boolean = false;
 
@@ -62,13 +62,13 @@ export class MainScene extends Phaser.Scene {
     super({ key: "MainScene" });
   }
 
-  // Preload moved to PreloadScene
+  // PreloadScene으로 이동된 사전 로드
 
   create() {
     // 색상 로드 (PreloadScene에서 생성됨)
     this.currentColors = this.registry.get("currentColors");
     if (!this.currentColors || this.currentColors.length === 0) {
-      // Fallback if missing (should not happen)
+      // 누락시 대체 (발생하지 않아야 함)
       const colorCount = GameConstants.COLOR_COUNT_BY_COLS[this.COLS] || 5;
       this.currentColors = GameConstants.BLOCK_PALETTE.slice(0, colorCount);
     }
@@ -380,9 +380,9 @@ export class MainScene extends Phaser.Scene {
 
   private handleColumnClick(colIdx: number) {
     if (this.isGameOver) return;
-    // Game starts immediately now, no isGameRunning check needed or assume always true
+    // 이제 게임이 즉시 시작되므로 isGameRunning 확인이 필요 없거나 항상 true로 가정
 
-    // ... logic continues ...
+    // ... 로직 계속 ...
     const col = this.columns[colIdx];
 
     if (this.pickedBlock === null) {
@@ -421,7 +421,7 @@ export class MainScene extends Phaser.Scene {
     if (this.isGameOver) return;
 
     for (let i = 0; i < this.COLS; i++) {
-      // Use dynamically selected colors
+      // 동적으로 선택된 색상 사용
       const color = Phaser.Utils.Array.GetRandom(this.currentColors);
       const block = this.add.sprite(0, 0, "block_base");
       block.setTint(color);
@@ -528,7 +528,7 @@ export class MainScene extends Phaser.Scene {
       // 3. 점수 텍스트 표시 (+100)
       this.showFloatingText(centerX, centerY - 20, 100);
 
-      // 4. 블럭 파괴 애니메이션 (Pop effect)
+      // 4. 블록 파괴 애니메이션 (팝 효과)
       removed.forEach(block => {
         // 먼저 살짝 커졌다가
         this.tweens.add({
@@ -557,7 +557,7 @@ export class MainScene extends Phaser.Scene {
     const text = this.add
       .text(x, y, `+${score}`, {
         fontSize: `${24 * this.gameScale}px`,
-        color: "#ffd700", // Gold color
+        color: "#ffd700", // 금색
         stroke: "#000000",
         strokeThickness: 3,
         fontStyle: "bold",

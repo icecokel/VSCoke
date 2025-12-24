@@ -1,7 +1,7 @@
 import React from "react";
 
 interface LoadingOverlayProps {
-  progress: number; // 0 to 100
+  progress: number; // 0 에서 100
 }
 
 export const LoadingOverlay = ({ progress }: LoadingOverlayProps) => {

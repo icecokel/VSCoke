@@ -1,0 +1,95 @@
+[
+  {
+    "id": "codecrayon",
+    "projects": [
+      {
+        "id": "shortimeAdmin",
+        "fileRef": "shortime-frontend"
+      },
+      {
+        "id": "subtitleSystem",
+        "fileRef": "translate"
+      },
+      {
+        "id": "shortimePlayground",
+        "fileRef": "shortime-playground"
+      },
+      {
+        "id": "sellectorsAdmin",
+        "fileRef": "sellectors-admin"
+      },
+      {
+        "id": "sellectorsFrontend",
+        "fileRef": "sellectors-frontend"
+      },
+      {
+        "id": "others",
+        "descriptions": [
+          { "id": "piracyTracking", "fileRef": "freebooting-finder" },
+          { "id": "blogAutoGeneration" },
+          { "id": "vodSystem" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "allofthem",
+    "projects": [
+      {
+        "id": "insuranceSubscription"
+      },
+      {
+        "id": "insuranceResponsive"
+      },
+      {
+        "id": "ichainDesign"
+      },
+      {
+        "id": "creatorFunding"
+      },
+      {
+        "id": "internalContribution"
+      },
+      {
+        "id": "cancerInsurance"
+      },
+      {
+        "id": "aigCorporate"
+      },
+      {
+        "id": "ichainAdmin"
+      },
+      {
+        "id": "ichainRakuten"
+      },
+      {
+        "id": "insuranceAdmin"
+      }
+    ]
+  },
+  {
+    "id": "datalogics",
+    "projects": [
+      {
+        "id": "consularCallCenter"
+      },
+      {
+        "id": "smartDis"
+      }
+    ]
+  },
+  {
+    "id": "datalogicsInfra",
+    "projects": [
+      {
+        "id": "policyCoordination"
+      },
+      {
+        "id": "socialSecurity"
+      },
+      {
+        "id": "childProtection"
+      }
+    ]
+  }
+]

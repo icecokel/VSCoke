@@ -5,11 +5,11 @@ import CareerSection from "./career-section";
 import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 import { useTranslations } from "next-intl";
+import RESUME_DATA from "@/constants/resume-data.json";
 
 const Resume = () => {
   const t = useTranslations("resume");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const careers = t.raw("careers") as any[];
+  const careers = RESUME_DATA; // Use static data structure
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
@@ -49,7 +49,7 @@ const Resume = () => {
                     activeIndex === index ? "text-yellow-200" : "text-white hover:text-yellow-200",
                   )}
                 >
-                  {career.company}
+                  {t(`careers.${career.id}.company`)}
                 </BaseText>
                 <br />
                 <BaseText
@@ -59,7 +59,7 @@ const Resume = () => {
                     activeIndex === index ? "text-yellow-200/70" : "text-gray-300",
                   )}
                 >
-                  {career.period}
+                  {t(`careers.${career.id}.period`)}
                 </BaseText>
               </a>
             </div>
@@ -69,7 +69,7 @@ const Resume = () => {
       {/* 커리어 상세 */}
       <div className="flex-1">
         {careers.map((career, careerIndex) => (
-          <CareerSection key={careerIndex} career={career} index={careerIndex} />
+          <CareerSection key={careerIndex} careerData={career} index={careerIndex} />
         ))}
       </div>
     </div>

@@ -108,13 +108,15 @@
       "I like finding realistic and effective solutions when facing new problems."
     ],
     "totalExperience": "6 years 10 months",
-    "careers": [
-      {
+    "viewDescription": "Career Description",
+    "backToResume": "Back to Resume",
+    "careers": {
+      "codecrayon": {
         "company": "CodeCrayon",
         "period": "2023.05 - 2025.07 (2 years 3 months)",
         "employmentType": "Full-time",
-        "projects": [
-          {
+        "projects": {
+          "shortimeAdmin": {
             "title": "Shortime Admin",
             "period": "2025.04 - 2025.07",
             "descriptions": [
@@ -128,7 +130,7 @@
               }
             ]
           },
-          {
+          "subtitleSystem": {
             "title": "Subtitle Translation System Development & Utilization",
             "period": "2025.03 - 2025.06",
             "descriptions": [
@@ -146,7 +148,7 @@
               }
             ]
           },
-          {
+          "shortimePlayground": {
             "title": "Shortime Playground",
             "period": "2024.09 - 2025.04",
             "descriptions": [
@@ -163,7 +165,7 @@
               }
             ]
           },
-          {
+          "sellectorsAdmin": {
             "title": "Sellectors Admin",
             "period": "2024.05 - 2024.07",
             "descriptions": [
@@ -177,7 +179,7 @@
               }
             ]
           },
-          {
+          "sellectorsFrontend": {
             "title": "Sellectors Frontend",
             "period": "2023.05 - 2025.07",
             "descriptions": [
@@ -194,10 +196,10 @@
               }
             ]
           },
-          {
+          "others": {
             "title": "Others",
-            "descriptions": [
-              {
+            "descriptions": {
+              "piracyTracking": {
                 "subtitle": "Content Piracy Tracking Project",
                 "detail": "Video piracy detection crawling service",
                 "skills": "Node.js, TypeScript, Express, Cheerio, Vercel",
@@ -208,7 +210,7 @@
                 ],
                 "achievement": "Reduced daily monitoring work time of the operation team from 50 minutes to under 10 minutes by establishing a crawling automation system (80% work efficiency improvement)"
               },
-              {
+              "blogAutoGeneration": {
                 "subtitle": "Product Blog Content Auto-generation",
                 "detail": "AI draft writing project for company blog (WordPress) product pages",
                 "skills": "Node.js, Python, AI",
@@ -219,7 +221,7 @@
                   "Support for management and few-shot prompting"
                 ]
               },
-              {
+              "vodSystem": {
                 "subtitle": "VOD System Improvement Test",
                 "detail": "Self-implementation test of Cloudflare video serving system",
                 "tasks": [
@@ -227,16 +229,16 @@
                   "In charge of client testing"
                 ]
               }
-            ]
+            }
           }
-        ]
+        }
       },
-      {
+      "allofthem": {
         "company": "AllofThem",
         "period": "2021.07 - 2023.04 (1 year 10 months)",
         "employmentType": "Full-time",
-        "projects": [
-          {
+        "projects": {
+          "insuranceSubscription": {
             "title": "Product Insurance Subscription Management Site Production",
             "period": "2023.03 - 2023.04",
             "descriptions": [
@@ -257,7 +259,7 @@
               }
             ]
           },
-          {
+          "insuranceResponsive": {
             "title": "Product Insurance Subscription Responsive Web & Linked Library Design and Maintenance",
             "period": "2022.10 - 2023.03",
             "descriptions": [
@@ -295,7 +297,7 @@
               }
             ]
           },
-          {
+          "ichainDesign": {
             "title": "iChain Admin Site FE Design Improvement & Refactoring",
             "period": "2022.07 - 2022.07",
             "descriptions": [
@@ -310,7 +312,7 @@
               }
             ]
           },
-          {
+          "creatorFunding": {
             "title": "AllofThem Creator Funding Project (Tentative)",
             "period": "2022.07 - 2022.11",
             "descriptions": [
@@ -324,7 +326,7 @@
               }
             ]
           },
-          {
+          "internalContribution": {
             "title": "AllofThem Internal Contribution FE",
             "descriptions": [
               {
@@ -346,7 +348,7 @@
               }
             ]
           },
-          {
+          "cancerInsurance": {
             "title": "Responsive Cancer Insurance Product Modification Dev FE",
             "period": "2022.04 - 2022.07",
             "descriptions": [
@@ -361,7 +363,7 @@
               }
             ]
           },
-          {
+          "aigCorporate": {
             "title": "AIG Corporate Product Subscription Application Page FE & Maintenance",
             "period": "2021.11 - 2022.08",
             "descriptions": [
@@ -377,7 +379,7 @@
               }
             ]
           },
-          {
+          "ichainAdmin": {
             "title": "iChain Admin Site FE",
             "period": "2021.09 - 2022.05",
             "descriptions": [
@@ -399,7 +401,7 @@
               }
             ]
           },
-          {
+          "ichainRakuten": {
             "title": "iChain Rakuten, Sakura Insurance BE",
             "period": "2021.09 - 2022.03",
             "descriptions": [
@@ -438,7 +440,7 @@
               }
             ]
           },
-          {
+          "insuranceAdmin": {
             "title": "Insurance Company Admin Site FE",
             "period": "2021.07 - 2021.09",
             "descriptions": [
@@ -460,14 +462,14 @@
               }
             ]
           }
-        ]
+        }
       },
-      {
+      "datalogics": {
         "company": "Datalogics",
         "period": "2020.08 - 2021.07 (1 year)",
         "employmentType": "Full-time",
-        "projects": [
-          {
+        "projects": {
+          "consularCallCenter": {
             "title": "Ministry of Foreign Affairs Consular Call Center Operation & Maintenance",
             "period": "2020.09 - 2021.07",
             "descriptions": [
@@ -486,7 +488,7 @@
               }
             ]
           },
-          {
+          "smartDis": {
             "title": "Smart-Dis Development (ETL)",
             "period": "2020.08 - 2020.09",
             "descriptions": [
@@ -501,14 +503,14 @@
               }
             ]
           }
-        ]
+        }
       },
-      {
+      "datalogicsInfra": {
         "company": "Datalogics (Infrastructure)",
         "period": "2017.08 - 2019.05 (1 year 10 months)",
         "employmentType": "Full-time",
-        "projects": [
-          {
+        "projects": {
+          "policyCoordination": {
             "title": "Office for Government Policy Coordination Operation & Maintenance",
             "period": "2018.05 - 2019.06",
             "descriptions": [
@@ -525,7 +527,7 @@
               }
             ]
           },
-          {
+          "socialSecurity": {
             "title": "Social Security Information Service Advancement Project",
             "period": "2018.01 - 2018.02",
             "descriptions": [
@@ -538,7 +540,7 @@
               }
             ]
           },
-          {
+          "childProtection": {
             "title": "Child Protection Agency Construction & Maintenance",
             "period": "2017.08 - 2017.12",
             "descriptions": [
@@ -554,9 +556,9 @@
               }
             ]
           }
-        ]
+        }
       }
-    ],
+    },
     "education": [
       {
         "school": "Seoil University",

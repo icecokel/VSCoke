@@ -1,0 +1,23 @@
+---
+title: "Shortime Frontend"
+startDate: "2025-05-08"
+endDate: "2025-07-01"
+---
+
+## 개요 (Overview)
+
+**Shortime Frontend**는 숏폼 콘텐츠 소비 및 분석을 위한 프론트엔드 프로젝트입니다. 비디오 재생 경험 최적화와 AWS Bedrock 기반의 AI 자막 번역 기능을 중심으로 개발되었습니다.
+
+## 주요 기능 (Key Features)
+
+- **AI 자막 번역**:
+  - AWS Bedrock Runtime을 활용하여 영상의 자막(VTT)을 다국어로 자동 번역하는 기능을 구현했습니다(`@aws-sdk/client-bedrock-runtime`).
+  - 번역된 VTT 자막의 정합성을 검증하는 프로세스를 도입했습니다.
+- **비디오 플레이어**:
+  - `@vidstack/react`를 활용하여 모던한 비디오 플레이어 UI 및 컨트롤을 구현했습니다.
+  - HLS 스트리밍 지원 및 재생 성능 테스트를 수행했습니다.
+
+## 기술적 깊이 (Technical Depth)
+
+- **Next-Intl**: `next-intl`을 도입하여 애플리케이션 전반에 걸친 국제화(i18n) 기반을 마련했습니다.
+- **파일 업로드**: `@uppy` 라이브러리를 사용하여 대용량 비디오 파일의 안정적인 업로드(Resumable Upload)를 구현했습니다.

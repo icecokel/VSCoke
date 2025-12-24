@@ -108,13 +108,15 @@
       "새로운 문제에 직면했을 때 현실적이고 효과적인 해결책을 찾는 것을 좋아합니다."
     ],
     "totalExperience": "6년 10개월",
-    "careers": [
-      {
+    "viewDescription": "경력기술서",
+    "backToResume": "이력서로 돌아가기",
+    "careers": {
+      "codecrayon": {
         "company": "주식회사 코드크레용",
         "period": "2023.05 - 2025.07 (2년 3개월)",
         "employmentType": "정규직",
-        "projects": [
-          {
+        "projects": {
+          "shortimeAdmin": {
             "title": "숏타임 어드민",
             "period": "2025.04 - 2025.07",
             "descriptions": [
@@ -128,7 +130,7 @@
               }
             ]
           },
-          {
+          "subtitleSystem": {
             "title": "자막 번역 시스템 개발 및 활용",
             "period": "2025.03 - 2025.06",
             "descriptions": [
@@ -146,7 +148,7 @@
               }
             ]
           },
-          {
+          "shortimePlayground": {
             "title": "shortime playground",
             "period": "2024.09 - 2025.04",
             "descriptions": [
@@ -163,7 +165,7 @@
               }
             ]
           },
-          {
+          "sellectorsAdmin": {
             "title": "sellectors 어드민",
             "period": "2024.05 - 2024.07",
             "descriptions": [
@@ -177,7 +179,7 @@
               }
             ]
           },
-          {
+          "sellectorsFrontend": {
             "title": "sellectors-frontend",
             "period": "2023.05 - 2025.07",
             "descriptions": [
@@ -194,10 +196,10 @@
               }
             ]
           },
-          {
+          "others": {
             "title": "기타 사항",
-            "descriptions": [
-              {
+            "descriptions": {
+              "piracyTracking": {
                 "subtitle": "컨텐츠 불펌 추적 프로젝트",
                 "detail": "영상 불펌 탐지 크롤링 서비스",
                 "skills": "Node.js, TypeScript, Express, Cheerio, Vercel",
@@ -208,7 +210,7 @@
                 ],
                 "achievement": "크롤링 자동화 시스템 구축으로 운영팀의 일일 모니터링 작업 시간을 기존 50분에서 10분 이내로 단축 (작업 효율 80% 개선)"
               },
-              {
+              "blogAutoGeneration": {
                 "subtitle": "상품 블로그 내용 자동생성",
                 "detail": "회사 블로그(워드프레스) 상품 페이지 AI 초안 작성 프로젝트",
                 "skills": "Node.js, Python, AI",
@@ -219,7 +221,7 @@
                   "관리 및 퓨샷 프롬프팅 지원"
                 ]
               },
-              {
+              "vodSystem": {
                 "subtitle": "Vod 시스템 개선 테스트",
                 "detail": "클라우드플레어 영상 서빙 시스템 자체 구현 테스트",
                 "tasks": [
@@ -227,16 +229,16 @@
                   "클라이언트 테스트 담당"
                 ]
               }
-            ]
+            }
           }
-        ]
+        }
       },
-      {
+      "allofthem": {
         "company": "allofthem",
         "period": "2021.07 - 2023.04 (1년 10개월)",
         "employmentType": "정규직",
-        "projects": [
-          {
+        "projects": {
+          "insuranceSubscription": {
             "title": "상품 보험 가입 관리 사이트 제작",
             "period": "2023.03 - 2023.04",
             "descriptions": [
@@ -257,7 +259,7 @@
               }
             ]
           },
-          {
+          "insuranceResponsive": {
             "title": "상품 보험 가입 반응형 웹 및 연계 라이브러리 제작 설계 및 유지 보수",
             "period": "2022.10 - 2023.03",
             "descriptions": [
@@ -295,7 +297,7 @@
               }
             ]
           },
-          {
+          "ichainDesign": {
             "title": "iChain 관리사이트 FE 디자인 개선 및 리팩토링",
             "period": "2022.07 - 2022.07",
             "descriptions": [
@@ -310,7 +312,7 @@
               }
             ]
           },
-          {
+          "creatorFunding": {
             "title": "allofthem 크리에이터 펀딩 프로젝트(가칭)",
             "period": "2022.07 - 2022.11",
             "descriptions": [
@@ -324,7 +326,7 @@
               }
             ]
           },
-          {
+          "internalContribution": {
             "title": "allofthem 사내 기여 FE",
             "descriptions": [
               {
@@ -346,7 +348,7 @@
               }
             ]
           },
-          {
+          "cancerInsurance": {
             "title": "반응형 암보험 상품 수정 개발 FE",
             "period": "2022.04 - 2022.07",
             "descriptions": [
@@ -361,7 +363,7 @@
               }
             ]
           },
-          {
+          "aigCorporate": {
             "title": "AIG 기업 상품 가입 신청 페이지 FE 및 유지 보수",
             "period": "2021.11 - 2022.08",
             "descriptions": [
@@ -377,7 +379,7 @@
               }
             ]
           },
-          {
+          "ichainAdmin": {
             "title": "iChain 관리사이트 FE",
             "period": "2021.09 - 2022.05",
             "descriptions": [
@@ -399,7 +401,7 @@
               }
             ]
           },
-          {
+          "ichainRakuten": {
             "title": "iChain 라쿠텐, 사쿠라 보험 BE",
             "period": "2021.09 - 2022.03",
             "descriptions": [
@@ -432,7 +434,7 @@
               }
             ]
           },
-          {
+          "insuranceAdmin": {
             "title": "보험사 관리 사이트 FE",
             "period": "2021.07 - 2021.09",
             "descriptions": [
@@ -454,14 +456,14 @@
               }
             ]
           }
-        ]
+        }
       },
-      {
+      "datalogics": {
         "company": "데이터로직스",
         "period": "2020.08 - 2021.07 (1년)",
         "employmentType": "정규직",
-        "projects": [
-          {
+        "projects": {
+          "consularCallCenter": {
             "title": "외교부 영사콜센터 운영 및 유지보수",
             "period": "2020.09 - 2021.07",
             "descriptions": [
@@ -480,7 +482,7 @@
               }
             ]
           },
-          {
+          "smartDis": {
             "title": "Smart-Dis 개발 (etl)",
             "period": "2020.08 - 2020.09",
             "descriptions": [
@@ -495,14 +497,14 @@
               }
             ]
           }
-        ]
+        }
       },
-      {
+      "datalogicsInfra": {
         "company": "데이터로직스(인프라)",
         "period": "2017.08 - 2019.05 (1년 10개월)",
         "employmentType": "정규직",
-        "projects": [
-          {
+        "projects": {
+          "policyCoordination": {
             "title": "국무조정실 운영 및 유지보수",
             "period": "2018.05 - 2019.06",
             "descriptions": [
@@ -519,7 +521,7 @@
               }
             ]
           },
-          {
+          "socialSecurity": {
             "title": "사회보장정보원 고도화 사업",
             "period": "2018.01 - 2018.02",
             "descriptions": [
@@ -529,7 +531,7 @@
               }
             ]
           },
-          {
+          "childProtection": {
             "title": "아동보호전문기관 구축 및 유지보수",
             "period": "2017.08 - 2017.12",
             "descriptions": [
@@ -542,9 +544,9 @@
               }
             ]
           }
-        ]
+        }
       }
-    ],
+    },
     "education": [
       {
         "school": "서일대학교",

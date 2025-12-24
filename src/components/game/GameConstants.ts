@@ -24,24 +24,20 @@ export const GameConstants = {
   DIFFICULTY_RAMP_PERIOD: 10000, // 매 10초마다
   WARNING_THRESHOLD_ROWS: 2, // 데드라인으로부터 몇 줄 남았을 때 경고할지 설정
   BLOCK_PALETTE: [
-    0xff9999, // 파스텔 레드
-    0xffcc99, // 파스텔 오렌지
-    0xffff99, // 파스텔 옐로우
-    0x99ff99, // 파스텔 그린
-    0x99ffff, // 파스텔 시안
-    0x99ccff, // 파스텔 블루
-    0xcc99ff, // 파스텔 퍼플
-    0xff99ff, // 파스텔 마젠타
-    0x99ffcc, // 파스텔 민트
-    0xccff99, // 파스텔 라임
+    0xff6b6b, // Red
+    0xff9f43, // Orange
+    0xfeca57, // Yellow
+    0x1dd1a1, // Green
+    0x48dbfb, // Cyan
+    0x54a0ff, // Blue
+    0x5f27cd, // Purple
+    0xff9ff3, // Pink
   ],
   // 컬럼 수에 따른 사용 색상 수 정의
   COLOR_COUNT_BY_COLS: {
     3: 5,
     4: 6,
     5: 7,
-    6: 8,
-    7: 9,
   } as Record<number, number>,
 
   // 레이아웃 설정

@@ -14,8 +14,15 @@ export class PreloadScene extends Phaser.Scene {
 
     // 1. 블록 텍스처 생성 (기존 MainScene에서 이동)
     const graphics = this.make.graphics({ x: 0, y: 0 }, false);
+
+    // 배경 (흰색)
     graphics.fillStyle(0xffffff);
     graphics.fillRoundedRect(0, 0, 80, 32, 8); // BASE_BLOCK_WIDTH, BASE_BLOCK_HEIGHT
+
+    // 이너 테두리 (검은색, 투명도 조절로 음영 효과)
+    graphics.lineStyle(2, 0x000000, 0.4);
+    graphics.strokeRoundedRect(2, 2, 76, 28, 6); // 안쪽으로 2px 들여쓰기
+
     graphics.generateTexture("block_base", 80, 32);
 
     // 파티클 텍스처 생성 (흰색 원형)

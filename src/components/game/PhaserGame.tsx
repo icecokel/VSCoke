@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import * as Phaser from "phaser";
 import { GameConfig } from "./GameConfig";
 import { LoadingOverlay } from "./ui/LoadingOverlay";
+import { ResultScreen } from "./ResultScreen";
 import { useBoolean } from "@/hooks/use-boolean";
 
 import { useTranslations } from "next-intl";
@@ -12,13 +13,19 @@ interface PhaserGameProps {
   isPlaying: boolean;
   onReady: () => void;
   onGoToReady: () => void;
+  onRestart: () => void;
 }
 
-const PhaserGame = ({ isPlaying, onReady, onGoToReady }: PhaserGameProps) => {
+interface GameResult {
+  score: number;
+}
+
+const PhaserGame = ({ isPlaying, onReady, onGoToReady, onRestart }: PhaserGameProps) => {
   const t = useTranslations("Game");
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [gameResult, setGameResult] = useState<GameResult | null>(null);
   const loaded = useBoolean(false);
   const isLoaded = loaded.value;
   const { onTrue } = loaded;
@@ -51,6 +58,10 @@ const PhaserGame = ({ isPlaying, onReady, onGoToReady }: PhaserGameProps) => {
 
       gameRef.current.events.on("game:goToReady", () => {
         onGoToReady();
+      });
+
+      gameRef.current.events.on("game:over", (data: GameResult) => {
+        setGameResult(data);
       });
     }
 
@@ -100,6 +111,7 @@ const PhaserGame = ({ isPlaying, onReady, onGoToReady }: PhaserGameProps) => {
   return (
     <div className="relative size-full overflow-hidden rounded-xl border border-white/10 shadow-2xl">
       {!isLoaded && <LoadingOverlay progress={loadingProgress} />}
+      {gameResult && <ResultScreen score={gameResult.score} onRestart={onRestart} />}
       <div ref={containerRef} id="phaser-container" className="size-full" />
     </div>
   );

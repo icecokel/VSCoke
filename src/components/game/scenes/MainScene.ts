@@ -155,8 +155,10 @@ export class MainScene extends Phaser.Scene {
       this,
     );
 
-    // 게임 바로 시작
-    this.startGameLogic();
+    // 게임 바로 시작 (약간의 지연 후 실행하여 레이아웃 안정화)
+    this.time.delayedCall(100, () => {
+      this.startGameLogic();
+    });
   }
 
   private resize(gameSize: Phaser.Structs.Size) {
@@ -171,49 +173,77 @@ export class MainScene extends Phaser.Scene {
     const screenWidth = this.cameras.main.width;
     const screenHeight = this.cameras.main.height;
 
-    const contentBaseWidth =
-      this.BASE_BLOCK_WIDTH * this.COLS + this.BASE_BLOCK_SPACING_X * (this.COLS - 1);
-    const availableWidth = screenWidth - 40;
+    const { SIDE_MARGIN, BLOCK_SPACING, COLUMN_WIDTH_RATIO } = GameConstants.LAYOUT;
 
-    this.gameScale = availableWidth / contentBaseWidth;
-    if (this.gameScale > 1) this.gameScale = 1;
+    // 가로 여백을 제외한 사용 가능 너비
+    const availableWidth = screenWidth - SIDE_MARGIN * 2;
+
+    // 블록 spacing 합계
+    const totalSpacingX = BLOCK_SPACING * (this.COLS - 1);
+
+    // 1. 너비 기준 스케일 계산
+    const targetBlockWidth = (availableWidth - totalSpacingX) / this.COLS;
+    const scaleX = targetBlockWidth / this.BASE_BLOCK_WIDTH;
+
+    // 2. 높이 기준 스케일 계산
+    // 상단 여백(100) + (12줄 * (블록높이32 + 여백4)) + 여유 공간(50)
+    // 화면 높이가 이보다 작으면 스케일을 줄여야 함
+    const topMargin = 100;
+    const bottomPadding = 50;
+    const verticalContentHeight =
+      GameConstants.MAX_STACK_HEIGHT * (this.BASE_BLOCK_HEIGHT + this.BASE_BLOCK_SPACING_Y);
+    const availableHeightForBlocks = screenHeight - topMargin - bottomPadding;
+
+    // 블록들이 들어갈 수 있는 최대 스케일
+    const scaleY = availableHeightForBlocks / verticalContentHeight;
+
+    // 더 작은 스케일 적용 (화면 안에 다 들어오도록)
+    this.gameScale = Math.min(scaleX, scaleY);
+
+    // 최소/최대 스케일 제한 (선택 사항)
+    this.gameScale = Math.min(this.gameScale, 1.5); // 너무 커지지 않게 제한
+
+    // 비율 조정 적용 (컬럼 너비 비율)
+    // this.gameScale *= COLUMN_WIDTH_RATIO; // 높이 제한 때문에 너비 비율 조정은 신중해야 함 -> 일단 제거 또는 보정
 
     const currentBlockWidth = this.BASE_BLOCK_WIDTH * this.gameScale;
-    const currentSpacingX = this.BASE_BLOCK_SPACING_X * this.gameScale;
+    const currentSpacingX = BLOCK_SPACING; // 고정 픽셀? 아니면 이것도 스케일? -> 일단 유지
 
     // 점수판 크기 업데이트
     if (this.scoreText) {
-      this.scoreText.setFontSize(`${24 * this.gameScale}px`);
+      this.scoreText.setFontSize(`${24 * Math.min(1, this.gameScale * 1.5)}px`);
     }
 
     const totalVisualWidth = currentBlockWidth * this.COLS + currentSpacingX * (this.COLS - 1);
     const startX = (screenWidth - totalVisualWidth) / 2 + currentBlockWidth / 2;
 
-    // 컬럼 배경 업데이트 (다시 그리기)
+    // 컬럼 배경 업데이트
     this.colBgs.forEach((bg, i) => {
       const x = startX + i * (currentBlockWidth + currentSpacingX);
 
       bg.clear();
-      bg.lineStyle(2 * this.gameScale, 0xffffff, 0.1);
+      bg.lineStyle(2, 0xffffff, 0.1);
 
-      // x를 중심으로 하는 사각형 그리기 (높이는 화면 전체)
-      const w = currentBlockWidth + 4 * this.gameScale;
+      const w = currentBlockWidth;
       const h = screenHeight;
 
-      // 위치 초기화 후 월드 좌표에 그리기
       bg.setPosition(0, 0);
       bg.strokeRect(x - w / 2, 0, w, h);
-
-      // 히트 영역 업데이트
       bg.input!.hitArea.setTo(x - w / 2, 0, w, h);
     });
 
-    // 데드라인 업데이트
-    this.deadlineY = screenHeight - 100 * this.gameScale; // 데드라인 위치도 스케일링 적용
-    // 작은 화면 일관성을 위해 100 * gameScale 사용
+    // 데드라인 업데이트 (고정된 줄 수 기준)
+    const startY = 100;
+    const currentBlockHeight = this.BASE_BLOCK_HEIGHT * this.gameScale;
+    const currentSpacingY = this.BASE_BLOCK_SPACING_Y * this.gameScale;
+    const blockTotalHeight = currentBlockHeight + currentSpacingY;
+
+    // 데드라인은 12번째 블록의 바닥 바로 아래
+    this.deadlineY = startY + GameConstants.MAX_STACK_HEIGHT * blockTotalHeight;
+
     if (this.deadlineGraphics) {
       this.deadlineGraphics.clear();
-      this.deadlineGraphics.lineStyle(4 * this.gameScale, 0xff4444, 0.8);
+      this.deadlineGraphics.lineStyle(4, 0xff4444, 0.8);
       this.deadlineGraphics.lineBetween(
         startX - currentBlockWidth / 2,
         this.deadlineY,
@@ -223,12 +253,14 @@ export class MainScene extends Phaser.Scene {
     }
     // 데드라인 텍스트 업데이트
     if (this.deadlineText) {
-      this.deadlineText.setPosition(screenWidth / 2, this.deadlineY + 10 * this.gameScale);
-      this.deadlineText.setFontSize(`${14 * this.gameScale}px`);
+      this.deadlineText.setPosition(screenWidth / 2, this.deadlineY + 10);
+      this.deadlineText.setFontSize(`${14}px`);
     }
 
+    // 기존 블록들 위치 업데이트
     for (let i = 0; i < this.COLS; i++) {
-      this.updateColumnVisuals(i);
+      // 즉시 위치 갱신 (애니메이션 없이)
+      this.updateColumnVisuals(i, false);
     }
   }
 
@@ -426,13 +458,15 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
-  private updateColumnVisuals(colIdx: number) {
+  private updateColumnVisuals(colIdx: number, animate: boolean = true) {
     const col = this.columns[colIdx];
     const screenWidth = this.cameras.main.width;
 
+    const { BLOCK_SPACING } = GameConstants.LAYOUT;
+
     const currentBlockWidth = this.BASE_BLOCK_WIDTH * this.gameScale;
     const currentBlockHeight = this.BASE_BLOCK_HEIGHT * this.gameScale;
-    const currentSpacingX = this.BASE_BLOCK_SPACING_X * this.gameScale;
+    const currentSpacingX = BLOCK_SPACING;
     const currentSpacingY = this.BASE_BLOCK_SPACING_Y * this.gameScale;
 
     const totalVisualWidth = currentBlockWidth * this.COLS + currentSpacingX * (this.COLS - 1);
@@ -444,13 +478,19 @@ export class MainScene extends Phaser.Scene {
     col.forEach((block, index) => {
       const targetY = startY + index * (currentBlockHeight + currentSpacingY);
 
-      this.tweens.add({
-        targets: block,
-        x: x,
-        y: targetY,
-        scale: this.gameScale,
-        duration: 100,
-      });
+      if (animate) {
+        this.tweens.add({
+          targets: block,
+          x: x,
+          y: targetY,
+          scale: this.gameScale,
+          duration: 100,
+        });
+      } else {
+        block.x = x;
+        block.y = targetY;
+        block.setScale(this.gameScale);
+      }
     });
   }
 
@@ -545,6 +585,7 @@ export class MainScene extends Phaser.Scene {
     this.isGameOver = true;
     if (this.spawnTimer) this.spawnTimer.destroy();
 
-    this.scene.start("EndScene", { score: this.score });
+    // EndScene 대신 React로 이벤트 전송
+    this.game.events.emit("game:over", { score: this.score });
   }
 }

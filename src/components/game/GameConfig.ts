@@ -1,7 +1,6 @@
 import * as Phaser from "phaser";
 import { MainScene } from "./scenes/MainScene";
 import { PreloadScene } from "./scenes/PreloadScene";
-import { EndScene } from "./scenes/EndScene";
 
 export const GameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -20,5 +19,5 @@ export const GameConfig: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [PreloadScene, MainScene, EndScene],
+  scene: [PreloadScene, MainScene],
 };

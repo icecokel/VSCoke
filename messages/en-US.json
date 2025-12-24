@@ -188,10 +188,9 @@
                 "skills": "Next.js 14, TypeScript, i18next, Toss Payments, PayPal, Material-UI",
                 "tasks": [
                   "Internationalization: Added Japanese, English, Chinese (Traditional) translations and modified i18n scanner build flow",
-                  "Product Management: Improved product information disclosure notice, product card design system, product cards by sales type, product review system",
-                  "Order/Payment: Gift receiving feature, foreigner order payment, international shipping support, partial return processing",
-                  "Member Management: Improved sign-up, email change feature, improved My Page, login/sign-up renewal",
-                  "Seller Features & UI/UX: Sales management, stream widgets, seller shop implementation, design system application, home renewal, mobile optimization"
+                  "Commerce Experience: Fandom-focused sales features like Draw/Gifting, Stream Widget",
+                  "App-Like UX (Mobile Optimization): Native-like experience with Single Column Layout and iOS scroll/gesture optimization",
+                  "Performance/Infra: Resolved Vercel Dev Server caching issues, asynchronous image upload"
                 ]
               }
             ]

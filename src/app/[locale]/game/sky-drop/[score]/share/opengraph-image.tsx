@@ -5,13 +5,8 @@ export const alt = "Sky Drop Game Result";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-const OGImage = async ({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) => {
-  const { score: rawScore } = (await searchParams) || {};
-  const scoreParam = Array.isArray(rawScore) ? rawScore[0] : rawScore;
+const OGImage = async ({ params }: { params: Promise<{ score: string }> }) => {
+  const { score: scoreParam } = await params;
   const score = scoreParam ? parseInt(scoreParam, 10) : 0;
 
   return new ImageResponse(

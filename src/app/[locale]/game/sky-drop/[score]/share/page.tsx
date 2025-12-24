@@ -2,14 +2,11 @@ import { getTranslations } from "next-intl/server";
 import { CustomLink } from "@/components/custom-link";
 
 interface Props {
-  params: Promise<{ locale: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  params: Promise<{ locale: string; score: string }>;
 }
 
-export const generateMetadata = async ({ params, searchParams }: Props) => {
-  const { locale } = await params;
-  const { score: rawScore } = (await searchParams) || {};
-  const scoreParam = Array.isArray(rawScore) ? rawScore[0] : rawScore;
+export const generateMetadata = async ({ params }: Props) => {
+  const { locale, score: scoreParam } = await params;
   const score = scoreParam ? parseInt(scoreParam, 10) : 0;
   const t = await getTranslations({ locale, namespace: "Game" });
 
@@ -29,9 +26,8 @@ export const generateMetadata = async ({ params, searchParams }: Props) => {
   };
 };
 
-const SharePage = async ({ searchParams }: Props) => {
-  const { score: rawScore } = (await searchParams) || {};
-  const scoreParam = Array.isArray(rawScore) ? rawScore[0] : rawScore;
+const SharePage = async ({ params }: Props) => {
+  const { score: scoreParam } = await params;
   const score = scoreParam ? parseInt(scoreParam, 10) : 0;
 
   return (

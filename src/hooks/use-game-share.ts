@@ -28,7 +28,7 @@ export const useGameShare = (): UseGameShareReturn => {
   const getShareUrl = useCallback(
     ({ score, gameName = "sky-drop" }: ShareOptions): string => {
       const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-      return `${baseUrl}/${locale}/game/${gameName}/share?score=${score}`;
+      return `${baseUrl}/${locale}/game/${gameName}/${score}/share`;
     },
     [locale],
   );

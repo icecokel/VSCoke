@@ -42,7 +42,16 @@ const SharePage = async ({ params }: Props) => {
         {/* 점수 */}
         <div className="mb-8">
           <p className="text-gray-400 text-lg mb-2">SCORE</p>
-          <p className="text-7xl font-black text-white tracking-widest">{score.toLocaleString()}</p>
+          <div className="flex items-center justify-center gap-4">
+            {score >= 5000 && (
+              <span className="text-6xl filter drop-shadow-lg">
+                {score >= 7000 ? "🥇" : score >= 6000 ? "🥈" : "🥉"}
+              </span>
+            )}
+            <p className="text-7xl font-black text-white tracking-widest">
+              {score.toLocaleString()}
+            </p>
+          </div>
         </div>
 
         {/* 도전 메시지 */}

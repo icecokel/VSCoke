@@ -103,14 +103,14 @@ export class MainScene extends Phaser.Scene {
 
     // 점수 (왼쪽)
     this.scoreText = this.add.text(20, 20, "0", {
-      fontSize: "28px",
+      fontSize: "20px",
       color: "#ffffff",
       fontStyle: "bold",
     });
 
     // 시간 (오른쪽)
     this.timeText = this.add.text(this.scale.width - 20, 20, "00:00", {
-      fontSize: "28px",
+      fontSize: "20px",
       color: "#ffffff",
     });
     this.timeText.setOrigin(1, 0); // 오른쪽 정렬
@@ -211,7 +211,7 @@ export class MainScene extends Phaser.Scene {
     const currentSpacingX = BLOCK_SPACING; // 고정 픽셀? 아니면 이것도 스케일? -> 일단 유지
 
     // 점수/시간 UI 업데이트
-    const uiFontSize = `${28 * Math.min(1, this.gameScale * 1.5)}px`;
+    const uiFontSize = `${20 * Math.min(1, this.gameScale * 1.5)}px`;
     if (this.scoreText) {
       this.scoreText.setFontSize(uiFontSize);
     }

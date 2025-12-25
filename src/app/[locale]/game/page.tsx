@@ -3,6 +3,8 @@
 import { useTranslations } from "next-intl";
 import { useCustomRouter } from "@/hooks/use-custom-router";
 
+import { ChevronRight } from "lucide-react";
+
 export default function GameDashboard() {
   const t = useTranslations("Game");
   const router = useCustomRouter();
@@ -17,22 +19,30 @@ export default function GameDashboard() {
   ];
 
   return (
-    <main className="flex min-h-screen w-full flex-col items-center justify-center bg-slate-900 p-4">
-      <h1 className="mb-12 text-5xl font-bold text-white tracking-widest uppercase glow-text">
+    <main className="flex min-h-screen w-full flex-col items-center justify-start md:justify-center bg-slate-900 px-4 py-8 md:p-4">
+      <h1 className="mb-6 md:mb-12 text-2xl md:text-5xl font-bold text-white tracking-widest uppercase glow-text">
         Game Center
       </h1>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 w-full max-w-4xl">
         {games.map(game => (
           <button
             key={game.id}
             onClick={() => router.push(game.route)}
-            className="group relative flex h-64 w-64 flex-col items-center justify-center rounded-2xl bg-slate-800 p-6 transition-all duration-300 hover:bg-slate-700 hover:scale-105 hover:shadow-[0_0_30px_rgba(78,205,196,0.5)] border-2 border-slate-700 hover:border-[#4ECDC4]"
+            className="group relative flex w-full md:w-64 h-24 md:h-64 flex-row md:flex-col items-center justify-between md:justify-center rounded-2xl bg-slate-800 p-4 md:p-6 transition-all duration-300 hover:bg-slate-700 hover:scale-105 border-2 border-slate-700 hover:border-green-300 text-left md:text-center"
           >
-            <h2 className="text-2xl font-bold text-white mb-2">{game.title}</h2>
-            <p className="text-gray-400 group-hover:text-gray-200 transition-colors">
-              {game.description}
-            </p>
+            <div className="flex flex-col md:items-center">
+              <h2 className="text-xl md:text-2xl font-bold text-white mb-1 md:mb-2 leading-tight">
+                {game.title}
+              </h2>
+              <p className="text-xs md:text-base text-gray-400 group-hover:text-gray-200 transition-colors line-clamp-1 md:line-clamp-3">
+                {game.description}
+              </p>
+            </div>
+            {/* 모바일에서만 보이는 화살표 아이콘 */}
+            <div className="md:hidden text-green-300">
+              <ChevronRight className="w-6 h-6" />
+            </div>
           </button>
         ))}
       </div>

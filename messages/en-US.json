@@ -80,7 +80,9 @@
     "shareTitle": "Show Off My Score",
     "shareDescription": "I scored {score} points! Can you beat my high score?",
     "tryIt": "Try it out!",
-    "playNow": "Play Now"
+    "playNow": "Play Now",
+    "beatThisScore": "Beat this score!",
+    "viewOtherGames": "View other games"
   },
   "intro": {
     "title": "Welcome VSCoke",

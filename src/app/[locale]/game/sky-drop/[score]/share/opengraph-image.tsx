@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { getMedal } from "@/utils/sky-drop-util";
 
 export const runtime = "edge";
 export const alt = "Sky Drop Game Result";
@@ -8,6 +9,7 @@ export const contentType = "image/png";
 const OGImage = async ({ params }: { params: Promise<{ score: string }> }) => {
   const { score: scoreParam } = await params;
   const score = scoreParam ? parseInt(scoreParam, 10) : 0;
+  const medal = getMedal(score);
 
   return new ImageResponse(
     <div
@@ -68,11 +70,7 @@ const OGImage = async ({ params }: { params: Promise<{ score: string }> }) => {
           gap: 20,
         }}
       >
-        {score >= 5000 && (
-          <div style={{ fontSize: 100 }}>
-            {score >= 7000 ? "🥇" : score >= 6000 ? "🥈" : "🥉"}
-          </div>
-        )}
+        {medal && <div style={{ fontSize: 100 }}>{medal}</div>}
         <div
           style={{
             fontSize: 140,

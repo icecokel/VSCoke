@@ -80,7 +80,9 @@
     "shareTitle": "내 점수 자랑하기",
     "shareDescription": "Sky Drop에서 {score}점을 달성했습니다! 저를 이길 수 있나요?",
     "tryIt": "도전해보세요!",
-    "playNow": "지금 플레이"
+    "playNow": "지금 플레이",
+    "beatThisScore": "이 점수를 넘어보세요!",
+    "viewOtherGames": "다른 게임 보기"
   },
   "intro": {
     "title": "Welcome VSCoke",

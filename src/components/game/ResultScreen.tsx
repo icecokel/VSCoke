@@ -36,11 +36,13 @@ export const ResultScreen = ({ score, onRestart }: ResultScreenProps) => {
       <Button
         onClick={() => router.push("/game")}
         variant="ghost"
-        size="icon"
         aria-label="Go to Dashboard"
-        className="absolute top-4 left-4 text-white hover:bg-white/10 rounded-full w-12 h-12"
+        className="absolute top-4 left-4 text-white hover:bg-white/10 rounded-full w-auto h-12 px-4"
       >
-        <ArrowLeft className="h-6 w-6" />
+        <div className="flex items-center gap-2">
+          <ArrowLeft className="h-6 w-6" />
+          {t("goToDashboard")}
+        </div>
       </Button>
 
       <h2 className="text-5xl font-bold text-[#FF6B6B] mb-8 drop-shadow-[0_0_10px_rgba(255,107,107,0.5)]">

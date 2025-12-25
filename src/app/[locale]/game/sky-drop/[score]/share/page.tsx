@@ -2,6 +2,8 @@ import { getTranslations } from "next-intl/server";
 import { CustomLink } from "@/components/custom-link";
 import { getMedal } from "@/utils/sky-drop-util";
 
+import { ArrowLeft } from "lucide-react";
+
 interface Props {
   params: Promise<{ locale: string; score: string }>;
 }
@@ -33,7 +35,15 @@ const SharePage = async ({ params }: Props) => {
   const t = await getTranslations({ locale, namespace: "Game" });
 
   return (
-    <main className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+    <main className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+      {/* 상단 뒤로가기 버튼 */}
+      <CustomLink
+        href="/game"
+        className="absolute top-6 left-6 flex items-center gap-2 text-white/50 hover:text-white transition-colors"
+      >
+        <ArrowLeft className="w-6 h-6" />
+        <span className="text-lg font-medium">{t("goToDashboard")}</span>
+      </CustomLink>
       <div className="max-w-md w-full text-center">
         {/* 게임 로고 */}
         <div className="text-5xl font-bold text-[#4ECDC4] mb-4 tracking-wider">🎮 SKY DROP</div>
@@ -68,9 +78,9 @@ const SharePage = async ({ params }: Props) => {
         {/* 대시보드 링크 */}
         <CustomLink
           href="/game"
-          className="inline-block mt-4 text-gray-500 hover:text-gray-300 transition-colors"
+          className="inline-flex items-center justify-center w-full py-6 px-10 mt-4 text-gray-400 border-2 border-gray-700 hover:border-gray-500 hover:text-white font-bold text-2xl rounded-xl transition-all"
         >
-          {t("viewOtherGames")}
+          {t("goToDashboard")}
         </CustomLink>
       </div>
     </main>

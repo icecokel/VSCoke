@@ -82,7 +82,8 @@
     "tryIt": "Try it out!",
     "playNow": "Play Now",
     "beatThisScore": "Beat this score!",
-    "viewOtherGames": "View other games"
+    "viewOtherGames": "View other games",
+    "goToDashboard": "Go to Dashboard"
   },
   "intro": {
     "title": "Welcome VSCoke",

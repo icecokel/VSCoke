@@ -59,7 +59,6 @@ const OGImage = async ({ params }: { params: Promise<{ score: string }> }) => {
         SCORE
       </div>
 
-      {/* 점수 */}
       {/* 점수 및 메달 */}
       <div
         style={{
@@ -69,13 +68,11 @@ const OGImage = async ({ params }: { params: Promise<{ score: string }> }) => {
           gap: 20,
         }}
       >
-        {score >= 7000 ? (
-          <div style={{ fontSize: 100 }}>🥇</div>
-        ) : score >= 6000 ? (
-          <div style={{ fontSize: 100 }}>🥈</div>
-        ) : score >= 5000 ? (
-          <div style={{ fontSize: 100 }}>🥉</div>
-        ) : null}
+        {score >= 5000 && (
+          <div style={{ fontSize: 100 }}>
+            {score >= 7000 ? "🥇" : score >= 6000 ? "🥈" : "🥉"}
+          </div>
+        )}
         <div
           style={{
             fontSize: 140,

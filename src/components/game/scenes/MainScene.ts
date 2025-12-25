@@ -101,18 +101,19 @@ export class MainScene extends Phaser.Scene {
     this.pickedColIdx = -1;
     this.colBgs = [];
 
-    // 점수판 (안전을 위해 아래로 이동)
-    // 점수판
-    this.scoreText = this.add.text(20, 60, `${this.texts.score}0`, {
-      fontSize: "24px",
+    // 점수 (왼쪽)
+    this.scoreText = this.add.text(20, 20, "0", {
+      fontSize: "20px",
       color: "#ffffff",
+      fontStyle: "bold",
     });
 
-    // 시간 표시
-    this.timeText = this.add.text(20, 20, `${this.texts.time}00:00`, {
-      fontSize: "24px",
+    // 시간 (오른쪽)
+    this.timeText = this.add.text(this.scale.width - 20, 20, "00:00", {
+      fontSize: "20px",
       color: "#ffffff",
     });
+    this.timeText.setOrigin(1, 0); // 오른쪽 정렬
 
     // 경고 오버레이 (가장 위에 그려지도록 마지막에 추가하거나 depth 조절)
     this.warningOverlay = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xff0000);
@@ -209,9 +210,14 @@ export class MainScene extends Phaser.Scene {
     const currentBlockWidth = this.BASE_BLOCK_WIDTH * this.gameScale;
     const currentSpacingX = BLOCK_SPACING; // 고정 픽셀? 아니면 이것도 스케일? -> 일단 유지
 
-    // 점수판 크기 업데이트
+    // 점수/시간 UI 업데이트
+    const uiFontSize = `${20 * Math.min(1, this.gameScale * 1.5)}px`;
     if (this.scoreText) {
-      this.scoreText.setFontSize(`${24 * Math.min(1, this.gameScale * 1.5)}px`);
+      this.scoreText.setFontSize(uiFontSize);
+    }
+    if (this.timeText) {
+      this.timeText.setFontSize(uiFontSize);
+      this.timeText.setPosition(screenWidth - 20, 20);
     }
 
     const totalVisualWidth = currentBlockWidth * this.COLS + currentSpacingX * (this.COLS - 1);
@@ -295,7 +301,7 @@ export class MainScene extends Phaser.Scene {
 
     const timeString = `${minutes.toString().padStart(2, "0")}:${displaySeconds.toString().padStart(2, "0")}`;
     if (this.timeText) {
-      this.timeText.setText(`${this.texts.time}${timeString}`);
+      this.timeText.setText(timeString);
     }
 
     // 2. 난이도 조절 (시간 경과에 따라 스폰 간격 감소)
@@ -577,7 +583,7 @@ export class MainScene extends Phaser.Scene {
   private addScore(points: number) {
     this.score += points;
     if (this.scoreText) {
-      this.scoreText.setText(`${this.texts.score}${this.score}`);
+      this.scoreText.setText(`${this.score}`);
     }
   }
 

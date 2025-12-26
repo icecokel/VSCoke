@@ -43,7 +43,7 @@ const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
       className={`flex h-full w-full flex-col items-center justify-center bg-gray-900 text-white ${isMobile ? "p-2" : "p-4"}`}
     >
       <div className="mb-8 text-center">
-        <h1 className="text-4xl font-bold text-[#4ECDC4] mb-2">Sky Drop</h1>
+        <h1 className="text-4xl font-bold text-teal-400 mb-2">Sky Drop</h1>
         <p className="text-gray-400 text-sm">{t("start")}</p>
       </div>
 
@@ -74,7 +74,7 @@ const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
           onClick={onStart}
           size="lg"
           aria-label="Start Game"
-          className="text-xl px-12 py-6 bg-[#4ECDC4] hover:bg-[#3fb9b0] text-black font-bold rounded-full transition-all hover:scale-105"
+          className="text-xl px-12 py-6 bg-teal-400 hover:bg-teal-500 text-black font-bold rounded-full transition-all hover:scale-105"
         >
           {t("start")}
         </Button>

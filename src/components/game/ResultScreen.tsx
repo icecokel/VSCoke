@@ -45,7 +45,7 @@ export const ResultScreen = ({ score, onRestart }: ResultScreenProps) => {
         </div>
       </Button>
 
-      <h2 className="text-5xl font-bold text-[#FF6B6B] mb-8 drop-shadow-[0_0_10px_rgba(255,107,107,0.5)]">
+      <h2 className="text-5xl font-bold text-coral-400 mb-8 drop-shadow-[0_0_10px_rgba(255,107,107,0.5)]">
         GAME OVER
       </h2>
 
@@ -76,7 +76,7 @@ export const ResultScreen = ({ score, onRestart }: ResultScreenProps) => {
           onClick={onRestart}
           size="lg"
           aria-label="Restart Game"
-          className="w-full text-lg py-6 bg-[#4ECDC4] hover:bg-[#3fb9b0] text-black font-bold rounded-xl shadow-lg transition-all transform hover:scale-105"
+          className="w-full text-lg py-6 bg-teal-400 hover:bg-teal-500 text-black font-bold rounded-xl shadow-lg transition-all transform hover:scale-105"
         >
           <RotateCcw className="mr-2 h-5 w-5" />
           {t("restart")}

@@ -39,7 +39,7 @@ export const ShareResultCard = forwardRef<HTMLDivElement, ShareResultCardProps>(
           style={{
             fontSize: "30px",
             fontWeight: "bold",
-            color: "#4ECDC4",
+            color: "var(--color-teal-400)",
             marginBottom: "8px",
             letterSpacing: "0.05em",
           }}
@@ -52,7 +52,7 @@ export const ShareResultCard = forwardRef<HTMLDivElement, ShareResultCardProps>(
           style={{
             width: "80px",
             height: "4px",
-            background: "linear-gradient(90deg, #4ECDC4, #FF6B6B)",
+            background: "linear-gradient(90deg, var(--color-teal-400), var(--color-coral-400))",
             borderRadius: "2px",
             margin: "16px 0",
           }}
@@ -62,7 +62,7 @@ export const ShareResultCard = forwardRef<HTMLDivElement, ShareResultCardProps>(
         <div style={{ textAlign: "center" }}>
           <p
             style={{
-              color: "#9ca3af",
+              color: "var(--color-gray-300)",
               fontSize: "14px",
               marginBottom: "4px",
               margin: "0 0 4px 0",
@@ -81,7 +81,7 @@ export const ShareResultCard = forwardRef<HTMLDivElement, ShareResultCardProps>(
             style={{
               fontSize: "48px",
               fontWeight: 900,
-              color: "#ffffff",
+              color: "var(--color-white)",
               letterSpacing: "0.1em",
               margin: 0,
               display: "flex",
@@ -96,8 +96,12 @@ export const ShareResultCard = forwardRef<HTMLDivElement, ShareResultCardProps>(
 
         {/* 날짜 및 브랜딩 */}
         <div style={{ marginTop: "24px", textAlign: "center" }}>
-          <p style={{ color: "#6b7280", fontSize: "12px", margin: "0 0 4px 0" }}>{today}</p>
-          <p style={{ color: "#4b5563", fontSize: "12px", margin: 0 }}>vscoke.vercel.app</p>
+          <p style={{ color: "var(--color-gray-300)", fontSize: "12px", margin: "0 0 4px 0" }}>
+            {today}
+          </p>
+          <p style={{ color: "var(--color-gray-400)", fontSize: "12px", margin: 0 }}>
+            vscoke.vercel.app
+          </p>
         </div>
       </div>
     );

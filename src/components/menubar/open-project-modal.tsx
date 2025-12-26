@@ -90,8 +90,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
   return (
     <Dialog open={props.open} onOpenChange={isOpen => !isOpen && onClose()}>
       <DialogContent
-        className="bg-neutral-800 border-neutral-600 max-w-3xl p-0 rounded-xl"
-        style={{ backgroundColor: "#262626", borderRadius: "12px" }}
+        className="bg-gray-750 border-gray-500 max-w-3xl p-0 rounded-xl"
         showCloseButton={false}
         aria-describedby={undefined}
       >
@@ -102,33 +101,30 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
         {/* 데스크톱 뷰 - Finder 스타일 */}
         <div className="hidden md:flex flex-col h-[380px]">
           {/* 상단 툴바 */}
-          <div
-            className="flex items-center gap-2 px-3 py-2 border-b border-neutral-600"
-            style={{ backgroundColor: "#404040" }}
-          >
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-500 bg-gray-500">
             {/* 네비게이션 버튼 */}
             <div className="flex gap-1">
-              <button className="p-1 rounded hover:bg-neutral-600 text-neutral-400">
+              <button className="p-1 rounded hover:bg-gray-500 text-gray-300">
                 <Icon kind="chevron_left" size={18} />
               </button>
-              <button className="p-1 rounded hover:bg-neutral-600 text-neutral-400">
+              <button className="p-1 rounded hover:bg-gray-500 text-gray-300">
                 <Icon kind="chevron_right" size={18} />
               </button>
             </div>
 
             {/* 뷰 모드 버튼 */}
             <div className="flex gap-1 ml-2">
-              <button className="p-1 rounded bg-neutral-600 text-white">
+              <button className="p-1 rounded bg-gray-500 text-white">
                 <Icon kind="view_column" size={18} />
               </button>
-              <button className="p-1 rounded hover:bg-neutral-600 text-neutral-400">
+              <button className="p-1 rounded hover:bg-gray-500 text-gray-300">
                 <Icon kind="view_list" size={18} />
               </button>
             </div>
 
             {/* 경로 표시 */}
             <div className="flex-1 flex justify-center">
-              <button className="flex items-center gap-1 px-3 py-1 rounded bg-neutral-600 text-white text-sm">
+              <button className="flex items-center gap-1 px-3 py-1 rounded bg-gray-500 text-white text-sm">
                 <Icon kind="folder" size={16} className="text-blue-400" />
                 <span>{currentPath}</span>
                 <Icon kind="expand_more" size={16} />
@@ -136,7 +132,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
             </div>
 
             {/* 검색창 */}
-            <div className="flex items-center gap-1 px-2 py-1 rounded bg-neutral-600 text-neutral-400 text-sm w-40">
+            <div className="flex items-center gap-1 px-2 py-1 rounded bg-gray-500 text-gray-300 text-sm w-40">
               <Icon kind="search" size={16} />
               <span>검색</span>
             </div>
@@ -145,13 +141,10 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
           {/* 메인 컨텐츠 */}
           <div className="flex flex-1 min-h-0 overflow-hidden">
             {/* 사이드바 */}
-            <div
-              className="w-36 border-r border-neutral-600 overflow-y-auto py-2"
-              style={{ backgroundColor: "#262626" }}
-            >
+            <div className="w-36 border-r border-gray-500 overflow-y-auto py-2 bg-gray-750">
               {SIDEBAR_SECTIONS.map((section, sectionIdx) => (
                 <div key={sectionIdx} className="mb-4">
-                  <div className="px-3 py-1 text-xs text-neutral-500 font-semibold uppercase">
+                  <div className="px-3 py-1 text-xs text-gray-400 font-semibold uppercase">
                     {section.title}
                   </div>
                   {section.items.map((item, itemIdx) => (
@@ -161,7 +154,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                       className={`w-full flex items-center gap-2 px-3 py-1 text-sm ${
                         selectedSidebarItem === item.label
                           ? "bg-blue-500/20 text-blue-400"
-                          : "text-neutral-300 hover:bg-neutral-700"
+                          : "text-gray-200 hover:bg-gray-600"
                       }`}
                     >
                       <Icon kind={item.icon} size={16} />
@@ -175,10 +168,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
             {/* 컬럼 뷰 */}
             <div className="flex flex-1 overflow-x-auto">
               {/* 컬럼 1: 카테고리 */}
-              <div
-                className="w-40 min-w-40 border-r border-neutral-600 overflow-y-auto"
-                style={{ backgroundColor: "#262626" }}
-              >
+              <div className="w-40 min-w-40 border-r border-gray-500 overflow-y-auto bg-gray-750">
                 {DUMMY.map((category, index) => (
                   <button
                     key={`category_${index}`}
@@ -203,10 +193,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
               </div>
 
               {/* 컬럼 2: 프로젝트 */}
-              <div
-                className="w-40 min-w-40 border-r border-neutral-600 overflow-y-auto"
-                style={{ backgroundColor: "#262626" }}
-              >
+              <div className="w-40 min-w-40 border-r border-gray-500 overflow-y-auto bg-gray-750">
                 {currentCategory.items.map((project, index) => (
                   <button
                     key={`project_${index}`}
@@ -232,15 +219,12 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
 
               {/* 컬럼 3: 프로젝트 상세 정보 */}
               {currentProject && (
-                <div
-                  className="flex-1 min-w-52 overflow-y-auto p-4"
-                  style={{ backgroundColor: "#262626" }}
-                >
+                <div className="flex-1 min-w-52 overflow-y-auto p-4 bg-gray-750">
                   <div className="flex flex-col items-center gap-3">
                     <Icon kind="folder" size={64} className="text-blue-400" />
                     <span className="text-white font-medium">{currentProject.label}</span>
                     {currentProject.link && (
-                      <span className="text-xs text-neutral-400 break-all text-center">
+                      <span className="text-xs text-gray-300 break-all text-center">
                         {currentProject.link}
                       </span>
                     )}
@@ -251,15 +235,12 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
           </div>
 
           {/* 하단 버튼 영역 */}
-          <div
-            className="flex items-center justify-end gap-2 px-3 py-2 border-t border-neutral-600 shrink-0"
-            style={{ backgroundColor: "#404040" }}
-          >
+          <div className="flex items-center justify-end gap-2 px-3 py-2 border-t border-gray-500 shrink-0 bg-gray-500">
             <Button
               variant="ghost"
               onClick={onClose}
               size="sm"
-              className="text-neutral-300 hover:text-white hover:bg-neutral-600"
+              className="text-gray-200 hover:text-white hover:bg-gray-500"
             >
               취소
             </Button>
@@ -268,7 +249,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
               size="sm"
               onClick={handleClickOpenProject}
               disabled={!currentProject}
-              className="bg-blue-500 hover:bg-blue-400 text-white font-semibold px-5 disabled:bg-neutral-600 disabled:text-neutral-400"
+              className="bg-blue-500 hover:bg-blue-400 text-white font-semibold px-5 disabled:bg-gray-600 disabled:text-gray-300"
             >
               열기
             </Button>
@@ -285,7 +266,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
               <AccordionItem
                 key={`category_${index}`}
                 value={`category-${index}`}
-                className="bg-neutral-700 rounded-xs mb-2 border-none"
+                className="bg-gray-600 rounded-xs mb-2 border-none"
               >
                 <AccordionTrigger className="px-3 py-2 text-white hover:no-underline">
                   <div className="flex items-center gap-2">
@@ -301,7 +282,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                       className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded ${
                         currentProject === project
                           ? "bg-blue-500 text-white"
-                          : "text-neutral-300 hover:bg-neutral-600"
+                          : "text-gray-200 hover:bg-gray-600"
                       }`}
                     >
                       <Icon kind="folder" size={16} className="text-blue-400" />
@@ -313,7 +294,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
             ))}
           </Accordion>
 
-          <BaseText type="caption" className="text-neutral-400 mt-4 block">
+          <BaseText type="caption" className="text-gray-300 mt-4 block">
             열기 버튼을 누르면 프로젝트 또는 GIT이 열립니다.
           </BaseText>
 

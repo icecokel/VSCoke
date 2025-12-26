@@ -86,9 +86,9 @@ export const Loader = () => {
           />
           <defs>
             <linearGradient id="loader-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#60a5fa" />
-              <stop offset="50%" stopColor="#22d3ee" />
-              <stop offset="100%" stopColor="#3b82f6" />
+              <stop offset="0%" stopColor="var(--color-blue-400)" />
+              <stop offset="50%" stopColor="var(--color-teal-400)" />
+              <stop offset="100%" stopColor="var(--color-blue-500)" />
             </linearGradient>
           </defs>
         </svg>

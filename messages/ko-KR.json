@@ -83,7 +83,10 @@
     "playNow": "지금 플레이",
     "beatThisScore": "이 점수를 넘어보세요!",
     "viewOtherGames": "다른 게임 보기",
-    "goToDashboard": "대시보드로 가기"
+    "goToDashboard": "대시보드로 가기",
+    "height": "높이",
+    "tapToDrop": "탭해서 떨어뜨리기",
+    "blockTowerDesc": "도형을 쌓아 아슬아슬하게 탑을 쌓는 물리 기반 게임입니다."
   },
   "intro": {
     "title": "Welcome VSCoke",

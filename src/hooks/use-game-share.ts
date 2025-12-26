@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 interface ShareOptions {
   score: number;
-  gameName?: string;
+  gameName: string;
 }
 
 interface UseGameShareReturn {
@@ -26,12 +26,20 @@ export const useGameShare = (): UseGameShareReturn => {
 
   // 공유 URL 생성
   const getShareUrl = useCallback(
-    ({ score, gameName = "sky-drop" }: ShareOptions): string => {
+    ({ score, gameName }: ShareOptions): string => {
       const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
       return `${baseUrl}/${locale}/game/${gameName}/${score}/share`;
     },
     [locale],
   );
+
+  // 게임 이름을 표시용으로 포맷팅
+  const formatGameTitle = (gameName: string): string => {
+    return gameName
+      .split("-")
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
 
   // 공유 텍스트 생성
   const getShareText = useCallback(
@@ -71,11 +79,12 @@ export const useGameShare = (): UseGameShareReturn => {
     async (options: ShareOptions): Promise<void> => {
       const shareUrl = getShareUrl(options);
       const shareText = getShareText(options);
+      const gameTitle = formatGameTitle(options.gameName);
 
       if (canShare) {
         try {
           await navigator.share({
-            title: "Sky Drop",
+            title: gameTitle,
             text: shareText,
             url: shareUrl,
           });

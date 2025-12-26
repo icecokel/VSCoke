@@ -9,10 +9,11 @@ import { Share2, RotateCcw, ArrowLeft } from "lucide-react";
 
 interface ResultScreenProps {
   score: number;
+  gameName: string;
   onRestart: () => void;
 }
 
-export const ResultScreen = ({ score, onRestart }: ResultScreenProps) => {
+export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) => {
   const t = useTranslations("Game");
   const router = useCustomRouter();
   const { share } = useGameShare();
@@ -24,11 +25,11 @@ export const ResultScreen = ({ score, onRestart }: ResultScreenProps) => {
 
     setIsSharing(true);
     try {
-      await share({ score });
+      await share({ score, gameName });
     } finally {
       setIsSharing(false);
     }
-  }, [score, share, isSharing]);
+  }, [score, gameName, share, isSharing]);
 
   return (
     <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm p-6 text-center animate-in fade-in duration-300">

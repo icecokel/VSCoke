@@ -121,7 +121,9 @@ export const BlockTowerGame = ({
   return (
     <div className="relative size-full overflow-hidden rounded-xl border border-white/10 shadow-2xl">
       {!isLoaded && <LoadingOverlay progress={loadingProgress} />}
-      {gameResult && <ResultScreen score={gameResult.score} onRestart={onRestart} />}
+      {gameResult && (
+        <ResultScreen score={gameResult.score} gameName="block-tower" onRestart={onRestart} />
+      )}
       <div ref={containerRef} id="phaser-container" className="size-full" />
     </div>
   );

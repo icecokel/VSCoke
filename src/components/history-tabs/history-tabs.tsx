@@ -102,31 +102,62 @@ const HistoryTabs = ({ children }: TParentNode) => {
     }
   };
 
+  // share 페이지 경로 정규화: /game/{gameName}/{score}/share -> /game/{gameName}/share
+  // 이렇게 하면 같은 게임의 share 페이지는 하나의 탭으로 관리됨
+  const normalizeSharePath = (path: string): string => {
+    const shareMatch = path.match(/^\/game\/([^/]+)\/\d+\/share$/);
+    if (shareMatch) {
+      return `/game/${shareMatch[1]}/share`;
+    }
+    return path;
+  };
+
   // URL과 History 동기화 (URL이 진실의 원천)
   useEffect(() => {
     if (!isHydrated) return;
 
-    // 현재 URL에 해당하는 탭이 있는지 확인
-    const matchingTab = history.find(item => item.path === pathname);
+    // share 페이지는 정규화된 경로로 관리
+    const normalizedPath = normalizeSharePath(pathname);
+    const isSharePage = normalizedPath !== pathname;
 
-    if (matchingTab) {
-      if (!matchingTab.isActive) {
-        // 탭은 있는데 활성화가 안 되어 있다면 활성화 (URL 변경 없음)
+    // 중복 체크를 위해 현재 history 상태를 기준으로 확인
+    const existingTab = history.find(item => item.path === normalizedPath);
+
+    if (existingTab) {
+      // 이미 존재하는 탭이면 활성화만 변경
+      if (!existingTab.isActive) {
         setHistory(prev =>
           prev.map(item => ({
             ...item,
-            isActive: item.path === pathname,
+            isActive: item.path === normalizedPath,
           })),
         );
       }
     } else {
-      // 탭이 없다면 새로 추가 (URL 변경 없음)
-      // 경로는 pathname 그대로 사용, 제목은 경로에서 유추하거나 기본값 사용
-      // 주의: 루트 경로('/')는 보통 탭으로 표시하지 않거나 Home으로 표시할 수 있음.
-      // 여기서는 일단 추가하는 로직 유지.
-      const title = pathname === "/" ? "Home" : pathname.split("/").pop() || pathname;
+      // 탭이 없을 때만 새로 추가
+      let title: string;
+      if (isSharePage) {
+        // share 페이지는 게임 이름으로 제목 설정
+        const gameName = normalizedPath.split("/")[2] || "share";
+        title = `${gameName} share`;
+      } else {
+        title = pathname === "/" ? "Home" : pathname.split("/").pop() || pathname;
+      }
 
-      add({ path: pathname, title, isActive: true });
+      // setHistory로 직접 추가하여 중복 방지 (add 함수 대신)
+      setHistory(prev => {
+        // 다시 한번 중복 체크 (race condition 방지)
+        if (prev.some(item => item.path === normalizedPath)) {
+          return prev.map(item => ({
+            ...item,
+            isActive: item.path === normalizedPath,
+          }));
+        }
+        return [
+          ...prev.map(item => ({ ...item, isActive: false })),
+          { isActive: true, path: normalizedPath, title },
+        ];
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, isHydrated]);
@@ -174,8 +205,11 @@ const HistoryTabs = ({ children }: TParentNode) => {
                     </BaseText>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent className="bg-gray-900 border-gray-700 text-white">
-                  {`${item.path}/${item.title}`}
+                <TooltipContent
+                  className="bg-gray-900 border-gray-700 text-white"
+                  showArrow={false}
+                >
+                  {item.path}
                 </TooltipContent>
               </Tooltip>
             </ContextMenuTrigger>

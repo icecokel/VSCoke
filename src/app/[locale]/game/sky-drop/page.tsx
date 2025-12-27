@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { GameConstants } from "@/components/game/GameConstants";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useGame } from "@/contexts/game-context";
 import GameReadyScreen from "@/components/game/GameReadyScreen";
 
 const PhaserGame = dynamic(() => import("@/components/game/PhaserGame"), {
@@ -17,8 +18,15 @@ const PhaserGame = dynamic(() => import("@/components/game/PhaserGame"), {
 
 export default function SkyDropPage() {
   const isMobile = useIsMobile();
+  const { setGamePlaying } = useGame();
   const [gameState, setGameState] = useState<"ready" | "playing">("ready");
   const [gameKey, setGameKey] = useState(0);
+
+  // 게임 상태 전역 동기화
+  useEffect(() => {
+    setGamePlaying(gameState === "playing");
+    return () => setGamePlaying(false);
+  }, [gameState, setGamePlaying]);
 
   const handleGameReady = useCallback(() => {
     // Phaser 로드 완료 시 추가 작업이 필요하면 여기에 작성

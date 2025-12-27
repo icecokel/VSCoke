@@ -6,6 +6,20 @@ import { Button } from "@/components/ui/button";
 import { useCustomRouter } from "@/hooks/use-custom-router";
 import { useGameShare } from "@/hooks/use-game-share";
 import { Share2, RotateCcw, ArrowLeft } from "lucide-react";
+import { getMedal } from "@/utils/sky-drop-util";
+import { getBlockTowerMedal } from "@/utils/block-tower-util";
+
+// 게임별 메달 계산
+const getMedalForGame = (gameName: string, score: number): string | null => {
+  switch (gameName) {
+    case "sky-drop":
+      return getMedal(score);
+    case "block-tower":
+      return getBlockTowerMedal(score);
+    default:
+      return null;
+  }
+};
 
 interface ResultScreenProps {
   score: number;
@@ -52,7 +66,14 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
 
       <div className="mb-8">
         <p className="text-gray-400 text-lg mb-2">{t("finalScore")}</p>
-        <p className="text-6xl font-black text-white tracking-widest">{score}</p>
+        <div className="flex items-center justify-center gap-4">
+          {getMedalForGame(gameName, score) && (
+            <span className="text-6xl filter drop-shadow-lg">
+              {getMedalForGame(gameName, score)}
+            </span>
+          )}
+          <p className="text-6xl font-black text-white tracking-widest">{score}</p>
+        </div>
       </div>
 
       {score > 0 && (

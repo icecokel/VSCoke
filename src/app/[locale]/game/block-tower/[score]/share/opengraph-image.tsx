@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { getBlockTowerMedal } from "@/utils/block-tower-util";
 
 export const runtime = "edge";
 export const alt = "Block Tower Game Result";
@@ -68,6 +69,9 @@ const OGImage = async ({ params }: { params: Promise<{ score: string }> }) => {
           gap: 20,
         }}
       >
+        {getBlockTowerMedal(score) && (
+          <div style={{ fontSize: 100 }}>{getBlockTowerMedal(score)}</div>
+        )}
         <div
           style={{
             fontSize: 140,

@@ -2,14 +2,17 @@
 
 import { useSidebar } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useGame } from "@/contexts/game-context";
 import { PanelLeftIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const MobileSidebarTrigger = () => {
   const { openMobile, setOpenMobile } = useSidebar();
   const isMobile = useIsMobile();
+  const { isGamePlaying } = useGame();
 
-  if (!isMobile || openMobile) {
+  // 모바일이 아니거나, 사이드바가 열려있거나, 게임 진행 중일 때 숨김
+  if (!isMobile || openMobile || isGamePlaying) {
     return null;
   }
 

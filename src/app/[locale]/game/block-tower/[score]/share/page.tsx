@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { CustomLink } from "@/components/custom-link";
+import { getBlockTowerMedal } from "@/utils/block-tower-util";
 
 import { ArrowLeft } from "lucide-react";
 
@@ -54,6 +55,9 @@ const SharePage = async ({ params }: Props) => {
         <div className="mb-8">
           <p className="text-gray-400 text-lg mb-2">SCORE</p>
           <div className="flex items-center justify-center gap-4">
+            {getBlockTowerMedal(score) && (
+              <span className="text-6xl filter drop-shadow-lg">{getBlockTowerMedal(score)}</span>
+            )}
             <p className="text-7xl font-black text-white tracking-widest">
               {score.toLocaleString()}
             </p>

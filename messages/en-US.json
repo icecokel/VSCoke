@@ -70,11 +70,11 @@
     "saveImage": "Save Image",
     "copied": "Copied to clipboard!",
     "shareMessages": {
-      "0": "🔥 Scored {score} on Sky Drop! Can you beat this?",
-      "1": "Heh, scored {score}... I might be good at this? 🎮",
-      "2": "Wow! Reached {score} on Sky Drop! Best game ever! ✨",
-      "3": "{score} points... Just a bit more for a high score! 😭",
-      "4": "Up for a game of Sky Drop? My record is {score}! 👀"
+      "0": "🔥 Scored {score} on {gameName}! Can you beat this?",
+      "1": "Heh, scored {score} on {gameName}... I might be good at this? 🎮",
+      "2": "Wow! Reached {score} on {gameName}! Best game ever! ✨",
+      "3": "{gameName} {score} points... Just a bit more for a high score! 😭",
+      "4": "Up for a game of {gameName}? My record is {score}! 👀"
     },
     "copyLink": "Copy Link",
     "shareTitle": "Show Off My Score",

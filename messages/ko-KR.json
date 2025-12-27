@@ -70,11 +70,11 @@
     "saveImage": "이미지 저장",
     "copied": "클립보드에 복사되었습니다!",
     "shareMessages": {
-      "0": "🔥 Sky Drop에서 {score}점! 이 점수 넘을 수 있어?",
-      "1": "훗, {score}점이라니... 나 좀 하는 듯? 🎮",
-      "2": "와! Sky Drop {score}점 달성! 인생 게임 등극! ✨",
-      "3": "{score}점... 조금만 더 하면 신기록인데! 😭",
-      "4": "저랑 Sky Drop 한 판? 제 기록은 {score}점이에요! 👀"
+      "0": "🔥 {gameName}에서 {score}점! 이 점수 넘을 수 있어?",
+      "1": "훗, {gameName}에서 {score}점이라니... 나 좀 하는 듯? 🎮",
+      "2": "와! {gameName} {score}점 달성! 인생 게임 등극! ✨",
+      "3": "{gameName} {score}점... 조금만 더 하면 신기록인데! 😭",
+      "4": "저랑 {gameName} 한 판? 제 기록은 {score}점이에요! 👀"
     },
     "copyLink": "링크 복사",
     "shareTitle": "내 점수 자랑하기",

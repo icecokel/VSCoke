@@ -43,9 +43,10 @@ export const useGameShare = (): UseGameShareReturn => {
 
   // 공유 텍스트 생성
   const getShareText = useCallback(
-    ({ score }: ShareOptions): string => {
+    ({ score, gameName }: ShareOptions): string => {
       const randomIndex = Math.floor(Math.random() * 5);
-      return t(`shareMessages.${randomIndex}`, { score });
+      const gameTitle = formatGameTitle(gameName);
+      return t(`shareMessages.${randomIndex}`, { score, gameName: gameTitle });
     },
     [t],
   );

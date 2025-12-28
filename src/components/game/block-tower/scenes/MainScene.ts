@@ -1,5 +1,10 @@
 import * as Phaser from "phaser";
-import { BlockTowerConstants, BlockType, BlockTowerTexts } from "../BlockTowerConstants";
+import {
+  BlockTowerConstants,
+  BlockType,
+  BlockTowerTexts,
+  BlockWeight,
+} from "../BlockTowerConstants";
 
 export class MainScene extends Phaser.Scene {
   // 게임 텍스트
@@ -19,6 +24,7 @@ export class MainScene extends Phaser.Scene {
   private score: number = 0;
   private stackedBlocks: number = 0;
   private missCount: number = 0;
+  private shotCount: number = 0;
   private readonly maxMisses: number = 3; // 3번까지 허용
   private highestBlockY: number = 0; // 가장 높이 쌓인 블록의 Y좌표
 
@@ -39,7 +45,8 @@ export class MainScene extends Phaser.Scene {
 
   // 난이도
   private startTime: number = 0;
-  private availableBlockTypes: BlockType[] = BlockTowerConstants.DIFFICULTY.INITIAL_BLOCK_TYPES;
+  private currentBlockWeights: { type: BlockType; weight: number }[] =
+    BlockTowerConstants.DIFFICULTY.INITIAL_WEIGHTS;
 
   // 클릭 딜레이
   private canDrop: boolean = true;
@@ -69,9 +76,11 @@ export class MainScene extends Phaser.Scene {
     this.highestBlockY = this.cameras.main.height; // 초기값: 화면 바닥
     this.shooterDirection = 1;
     this.shooterSpeed = BlockTowerConstants.SHOOTER.INITIAL_SPEED;
-    this.availableBlockTypes = [...BlockTowerConstants.DIFFICULTY.INITIAL_BLOCK_TYPES];
+    this.shooterSpeed = BlockTowerConstants.SHOOTER.INITIAL_SPEED;
+    this.currentBlockWeights = BlockTowerConstants.DIFFICULTY.INITIAL_WEIGHTS;
     this.canDrop = true;
     this.missCount = 0;
+    this.shotCount = 0;
 
     // UI 생성
     this.createUI();
@@ -172,8 +181,18 @@ export class MainScene extends Phaser.Scene {
       this.shooterBlock.destroy();
     }
 
-    // 랜덤 블록 타입 선택
-    this.currentBlockType = Phaser.Utils.Array.GetRandom(this.availableBlockTypes);
+    // 가중치 기반 랜덤 블록 선택
+    const totalWeight = this.currentBlockWeights.reduce((sum, item) => sum + item.weight, 0);
+    const randomValue = Math.random() * totalWeight;
+
+    let accumulatedWeight = 0;
+    for (const item of this.currentBlockWeights) {
+      accumulatedWeight += item.weight;
+      if (randomValue <= accumulatedWeight) {
+        this.currentBlockType = item.type;
+        break;
+      }
+    }
     const blockInfo = BlockTowerConstants.BLOCKS[this.currentBlockType];
 
     // 장전 시 랜덤 속성 결정
@@ -324,17 +343,15 @@ export class MainScene extends Phaser.Scene {
   }
 
   private updateDifficulty() {
-    const elapsed = this.time.now - this.startTime;
-
-    // 15초마다 난이도 상승
-    if (elapsed > BlockTowerConstants.DIFFICULTY.RAMP_PERIOD * 2) {
-      this.availableBlockTypes = BlockTowerConstants.DIFFICULTY.HARD_BLOCK_TYPES;
+    // 샷 횟수에 따른 난이도 상승
+    if (this.shotCount >= BlockTowerConstants.DIFFICULTY.SHOT_THRESHOLDS.HARD) {
+      this.currentBlockWeights = BlockTowerConstants.DIFFICULTY.HARD_WEIGHTS;
       this.shooterSpeed = Math.min(
         BlockTowerConstants.SHOOTER.MAX_SPEED,
         BlockTowerConstants.SHOOTER.INITIAL_SPEED + BlockTowerConstants.SHOOTER.SPEED_INCREMENT * 2,
       );
-    } else if (elapsed > BlockTowerConstants.DIFFICULTY.RAMP_PERIOD) {
-      this.availableBlockTypes = BlockTowerConstants.DIFFICULTY.MID_BLOCK_TYPES;
+    } else if (this.shotCount >= BlockTowerConstants.DIFFICULTY.SHOT_THRESHOLDS.MID) {
+      this.currentBlockWeights = BlockTowerConstants.DIFFICULTY.MID_WEIGHTS;
       this.shooterSpeed = Math.min(
         BlockTowerConstants.SHOOTER.MAX_SPEED,
         BlockTowerConstants.SHOOTER.INITIAL_SPEED + BlockTowerConstants.SHOOTER.SPEED_INCREMENT,
@@ -425,6 +442,7 @@ export class MainScene extends Phaser.Scene {
     });
 
     // 다음 블록 생성
+    this.shotCount++;
     this.spawnNextBlock();
   }
 

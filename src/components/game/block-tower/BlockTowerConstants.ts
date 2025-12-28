@@ -29,6 +29,11 @@ export interface BlockInfo {
   label: string;
 }
 
+export interface BlockWeight {
+  type: BlockType;
+  weight: number;
+}
+
 export const BlockTowerConstants = {
   MAX_WIDTH: 480,
   ASPECT_RATIO: 9 / 16,
@@ -140,27 +145,34 @@ export const BlockTowerConstants = {
 
   // 난이도 진행
   DIFFICULTY: {
-    RAMP_PERIOD: 15000, // 15초마다 난이도 상승
-    // 직사각형 확률 상향 (약 66% 이상)
-    INITIAL_BLOCK_TYPES: ["largeSquare", "largeRect", "largeRect"] as BlockType[],
-    MID_BLOCK_TYPES: [
-      "mediumSquare",
-      "largeSquare",
-      "largeRect",
-      "largeRect",
-      "largeRect", // Rect 비율 증가
-    ] as BlockType[],
-    HARD_BLOCK_TYPES: [
-      "smallSquare",
-      "mediumSquare",
-      "smallRect",
-      "smallRect",
-      "largeRect",
-      "largeRect",
-      "extraLargeRect",
-      "triangle1",
-      "triangle2",
-    ] as BlockType[],
+    SHOT_THRESHOLDS: {
+      MID: 30, // 30회 샷 이후 중급 난이도
+      HARD: 60, // 60회 샷 이후 상급 난이도
+    },
+
+    // 초기 (0~15초): 대형 블록 위주
+    INITIAL_WEIGHTS: [
+      { type: "largeSquare", weight: 30 },
+      { type: "largeRect", weight: 70 },
+    ] as BlockWeight[],
+
+    // 중반 (15~30초): 중형 블록 및 정사각형 비중 증가
+    MID_WEIGHTS: [
+      { type: "mediumSquare", weight: 20 },
+      { type: "largeSquare", weight: 20 },
+      { type: "largeRect", weight: 60 },
+    ] as BlockWeight[],
+
+    // 후반 (30초~): 모든 블록 등장, 까다로운 블록 포함
+    HARD_WEIGHTS: [
+      { type: "smallSquare", weight: 10 },
+      { type: "mediumSquare", weight: 10 },
+      { type: "smallRect", weight: 15 },
+      { type: "largeRect", weight: 25 },
+      { type: "extraLargeRect", weight: 10 },
+      { type: "triangle1", weight: 15 },
+      { type: "triangle2", weight: 15 },
+    ] as BlockWeight[],
   },
 
   // 물리 설정

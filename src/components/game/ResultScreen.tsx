@@ -6,14 +6,14 @@ import { Button } from "@/components/ui/button";
 import { useCustomRouter } from "@/hooks/use-custom-router";
 import { useGameShare } from "@/hooks/use-game-share";
 import { Share2, RotateCcw, ArrowLeft } from "lucide-react";
-import { getMedal } from "@/utils/sky-drop-util";
+import { getSkyDropMedal } from "@/utils/sky-drop-util";
 import { getBlockTowerMedal } from "@/utils/block-tower-util";
 
 // 게임별 메달 계산
 const getMedalForGame = (gameName: string, score: number): string | null => {
   switch (gameName) {
     case "sky-drop":
-      return getMedal(score);
+      return getSkyDropMedal(score);
     case "block-tower":
       return getBlockTowerMedal(score);
     default:

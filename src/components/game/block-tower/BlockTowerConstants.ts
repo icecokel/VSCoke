@@ -100,9 +100,9 @@ export const BlockTowerConstants = {
 
   // 점수 설정
   SCORE: {
-    LAND: 10, // 착지 성공
-    PERFECT: 30, // Perfect 착지 (중앙 ±10px)
-    HEIGHT_BONUS: 50, // 5층마다 보너스
+    LAND: 100, // 착지 성공
+    PERFECT: 300, // Perfect 착지 (중앙 ±10px)
+    HEIGHT_BONUS: 500, // 5층마다 보너스
     PERFECT_THRESHOLD: 10, // Perfect 판정 픽셀 범위
   },
 

@@ -9,7 +9,15 @@ export interface BlockTowerTexts {
 }
 
 // 도형 타입 정의
-export type BlockType = "smallSquare" | "mediumSquare" | "largeSquare" | "smallRect" | "largeRect";
+export type BlockType =
+  | "smallSquare"
+  | "mediumSquare"
+  | "largeSquare"
+  | "smallRect"
+  | "largeRect"
+  | "extraLargeRect"
+  | "triangle1"
+  | "triangle2";
 
 // 도형 정보 인터페이스
 export interface BlockInfo {
@@ -44,25 +52,25 @@ export const BlockTowerConstants = {
   BLOCKS: {
     smallSquare: {
       type: "smallSquare",
-      width: 40,
-      height: 40,
-      mass: 1,
+      width: 28, // 40 * 0.7
+      height: 28,
+      mass: 0.7, // 1 * 0.7
       color: 0x54a0ff, // 파랑
       label: "소형 정사각형",
     },
     mediumSquare: {
       type: "mediumSquare",
-      width: 60,
-      height: 60,
-      mass: 2,
+      width: 42, // 60 * 0.7
+      height: 42,
+      mass: 1.4, // 2 * 0.7
       color: 0x1dd1a1, // 초록
       label: "중형 정사각형",
     },
     largeSquare: {
       type: "largeSquare",
-      width: 80,
-      height: 80,
-      mass: 4,
+      width: 56, // 80 * 0.7
+      height: 56,
+      mass: 2.8, // 4 * 0.7
       color: 0xfeca57, // 노랑
       label: "대형 정사각형",
     },
@@ -81,6 +89,30 @@ export const BlockTowerConstants = {
       mass: 3,
       color: 0xa55eea, // 보라
       label: "대형 직사각형",
+    },
+    extraLargeRect: {
+      type: "extraLargeRect",
+      width: 160,
+      height: 40,
+      mass: 4,
+      color: 0xff9ff3, // 핑크
+      label: "초대형 직사각형",
+    },
+    triangle1: {
+      type: "triangle1",
+      width: 60,
+      height: 40,
+      mass: 1.5,
+      color: 0xff9f43, // 주황
+      label: "부등변 삼각형",
+    },
+    triangle2: {
+      type: "triangle2",
+      width: 60,
+      height: 40,
+      mass: 1.5,
+      color: 0xee5a24, // 진주황
+      label: "역방향 부등변 삼각형",
     },
   } as Record<BlockType, BlockInfo>,
 
@@ -109,9 +141,26 @@ export const BlockTowerConstants = {
   // 난이도 진행
   DIFFICULTY: {
     RAMP_PERIOD: 15000, // 15초마다 난이도 상승
-    INITIAL_BLOCK_TYPES: ["largeSquare", "largeRect"] as BlockType[],
-    MID_BLOCK_TYPES: ["mediumSquare", "largeSquare", "largeRect"] as BlockType[],
-    HARD_BLOCK_TYPES: ["smallSquare", "mediumSquare", "smallRect", "largeRect"] as BlockType[],
+    // 직사각형 확률 상향 (약 66% 이상)
+    INITIAL_BLOCK_TYPES: ["largeSquare", "largeRect", "largeRect"] as BlockType[],
+    MID_BLOCK_TYPES: [
+      "mediumSquare",
+      "largeSquare",
+      "largeRect",
+      "largeRect",
+      "largeRect", // Rect 비율 증가
+    ] as BlockType[],
+    HARD_BLOCK_TYPES: [
+      "smallSquare",
+      "mediumSquare",
+      "smallRect",
+      "smallRect",
+      "largeRect",
+      "largeRect",
+      "extraLargeRect",
+      "triangle1",
+      "triangle2",
+    ] as BlockType[],
   },
 
   // 물리 설정

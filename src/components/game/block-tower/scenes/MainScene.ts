@@ -20,6 +20,7 @@ export class MainScene extends Phaser.Scene {
   private stackedBlocks: number = 0;
   private missCount: number = 0;
   private readonly maxMisses: number = 3; // 3번까지 허용
+  private highestBlockY: number = 0; // 가장 높이 쌓인 블록의 Y좌표
 
   // UI 요소
   private scoreText: Phaser.GameObjects.Text | null = null;
@@ -65,6 +66,7 @@ export class MainScene extends Phaser.Scene {
     this.isGameRunning = false;
     this.score = 0;
     this.stackedBlocks = 0;
+    this.highestBlockY = this.cameras.main.height; // 초기값: 화면 바닥
     this.shooterDirection = 1;
     this.shooterSpeed = BlockTowerConstants.SHOOTER.INITIAL_SPEED;
     this.availableBlockTypes = [...BlockTowerConstants.DIFFICULTY.INITIAL_BLOCK_TYPES];
@@ -141,6 +143,14 @@ export class MainScene extends Phaser.Scene {
       zoneHeight,
       { isStatic: true, label: "landingZone" },
     );
+
+    // UI 고정 (텍스트는 유지)
+    if (this.scoreText) this.scoreText.setScrollFactor(0);
+    if (this.heightText) this.heightText.setScrollFactor(0);
+    if (this.livesText) this.livesText.setScrollFactor(0);
+
+    // 바닥과 슈터는 물리 연산과 위치 동기화를 위해 ScrollFactor 대신 직접 좌표 제어
+    // graphics.setScrollFactor(0); // 제거
   }
 
   private createShooter() {
@@ -148,6 +158,7 @@ export class MainScene extends Phaser.Scene {
 
     // 슈터 컨테이너
     this.shooter = this.add.container(screenWidth / 2, BlockTowerConstants.SHOOTER.Y_POSITION);
+    // this.shooter.setScrollFactor(0); // 제거: 물리 위치와 시각 위치 일치를 위해 직접 제어
 
     // 초기 블록 생성
     this.spawnNextBlock();
@@ -194,6 +205,103 @@ export class MainScene extends Phaser.Scene {
 
     // 착지 영역 밖으로 떨어진 블록 확인
     this.checkFallenBlocks();
+
+    // 1. 카메라 스크롤 (가장 높은 블록 추적)
+    this.updateCameraScroll();
+
+    // 2. 슈터 위치 동기화 (카메라 이동에 따라, 바닥은 고정)
+    this.updateShooterPosition();
+  }
+
+  private updateShooterPosition() {
+    if (!this.shooter) return;
+
+    const scrollY = this.cameras.main.scrollY;
+
+    // 슈터 위치 업데이트: 화면 상단 고정
+    this.shooter.y = scrollY + BlockTowerConstants.SHOOTER.Y_POSITION;
+  }
+
+  private updateCameraScroll() {
+    const screenHeight = this.cameras.main.height;
+
+    // 가장 높은 블록이 화면 중앙보다 위로 올라가면 카메라 이동
+    // highestBlockY는 월드 좌표계 기준이므로 작을수록 높음
+    // 목표: highestBlockY가 화면 중앙에 오도록 함
+
+    // 현재 가장 높은 블록 찾기
+    let minBodyY = screenHeight; // 초기화
+
+    this.matter.world.getAllBodies().forEach(body => {
+      const gameObject = (
+        body as MatterJS.BodyType & { gameObject?: Phaser.GameObjects.GameObject }
+      ).gameObject;
+
+      if (body.label === "block" && gameObject && gameObject.getData("landed")) {
+        // 이미 떨어진 블록 제외
+        if (body.position.y < minBodyY) {
+          minBodyY = body.position.y;
+        }
+      }
+    });
+
+    // 아직 블록이 없거나 바닥 근처면 바닥 기준
+    if (minBodyY === screenHeight) {
+      if (this.landingZone) {
+        minBodyY = this.landingZone.position.y - BlockTowerConstants.LANDING_ZONE.HEIGHT;
+      }
+    }
+
+    this.highestBlockY = minBodyY;
+
+    // 목표 스크롤 Y값 계산: (가장 높은 블록 위치) - (화면 절반 높이)
+    // 블록이 높이 쌓일수록 Y값이 작아지므로, 카메라도 위로 올라가야 함 (Y값이 작아짐)
+    const targetScrollY = this.highestBlockY - screenHeight / 2;
+
+    // 바닥보다 아래(스크롤 > 0)로는 내려가지 않도록 제한 (Initial state)
+    // 사실 기본 scrollY는 0이고 위로 올라가려면 음수가 되어야 함.
+    // 하지만 Phaser 카메라는 scrollY 값만큼 월드 좌표를 빼서 렌더링함.
+    // 월드 좌표는 (0,0)에서 시작해 아래로 증가. 카메라는 이걸 그대로 비춤.
+    // 탑이 쌓이면 Y값은 0을 향해, 그리고 음수로 갈 수도 있음 (만약 0 위로 뚫고 가면).
+    // 아니면 카메라는 계속 아래에 있고 싶어하는데 블록은 위(작은 Y)로 감.
+    // 카메라가 위(작은 Y)를 비추려면 scrollY도 작아져야 함.
+
+    // 하지만! 보통 이런 게임은 월드 좌표계가 고정되어 있고 카메라가 움직임.
+    // 초기 바닥 위치가 화면 하단 근처임. (Start Y approx 800)
+    // 블록 쌓이면 Y: 700, 600, ...
+    // 화면 중앙에 맞추려면: 카메라의 중심(centerY)이 블록의 Y와 일치해야 함.
+    // camera.scrollY + screenHeight/2 = highestBlockY
+    // => targetScrollY = highestBlockY - screenHeight/2
+
+    // 초기 상태: highestBlockY = 800, screenH = 900 -> target = 800 - 450 = 350
+    // => scrollY가 양수? -> 카메라가 (0, 350)을 TopLeft로 비춤 -> 350~1250 영역이 보임
+    // 이건 카메라가 아래로 내려간 것임.
+
+    // 아! Phaser 좌표계는 Y가 아래로 증가함.
+    // 바닥은 Y가 큼. 천장은 Y가 작음.
+    // 블록이 쌓일수록 Y좌표는 작아짐.
+    // 카메라가 위로 올라가려면(작은 Y좌표를 보려면) scrollY가 줄어들어야 함.
+
+    // 현재 뷰: scrollY=0 (0 ~ screenHeight 보임)
+    // 만약 highestBlockY가 300이고 화면 높이가 800이면,
+    // 현재 화면(0~800)에 300이 포함되므로 잘 보임.
+
+    // 만약 highestBlockY가 -100이면? (화면 위로 넘어감)
+    // 화면에 보이려면 카메라도 위로 가야 함 -> scrollY가 -값이어야 함.
+    // targetScrollY = highestBlockY - (screenHeight / 2)
+    // -100 - 400 = -500.
+    // scrollY = -500이면 (-500 ~ 300) 영역을 비춤. -100이 중앙임. 맞음.
+
+    // 단, 바닥이 들리지 않게 하한선 설정 필요
+    // 초기에는 scrollY가 0이어야 함.
+    // targetScrollY가 0보다 크면(카메라가 아래로 내려가려 하면) 0으로 고정?
+    // 아니면 그냥 놔둘지? -> 바닥은 고정되어 있으니 카메라가 아래로 가면 바닥 아래 공간이 보임.
+    // 따라서 Math.min(..., 0)으로 상한선을 둬야 함 (최대 0).
+
+    const limitedTargetScrollY = Math.min(targetScrollY, 0);
+
+    // 부드러운 이동 (Lerp)
+    this.cameras.main.scrollY += (limitedTargetScrollY - this.cameras.main.scrollY) * 0.05;
   }
 
   private updateShooter(delta: number) {
@@ -252,18 +360,53 @@ export class MainScene extends Phaser.Scene {
     const dropX = this.shooter.x;
     const dropY = this.shooter.y;
 
+    // 물리 바디 옵션
+    const bodyOptions: Phaser.Types.Physics.Matter.MatterBodyConfig = {
+      mass: this.currentBlockMass,
+      friction: BlockTowerConstants.PHYSICS.FRICTION,
+      restitution: BlockTowerConstants.PHYSICS.RESTITUTION,
+      label: "block",
+    };
+
+    // 삼각형인 경우 모양(Vertices) 정의
+    if (this.currentBlockType.includes("triangle")) {
+      const blockInfo = BlockTowerConstants.BLOCKS[this.currentBlockType];
+      const w = blockInfo.width;
+      const h = blockInfo.height;
+      let verts;
+
+      if (this.currentBlockType === "triangle1") {
+        // 좌하단 직각 (|__)
+        // Matter.js는 Vertices를 시계 방향으로 정의해야 함
+        // (0, 0) -> (w, h) -> (0, h)
+        verts = [
+          { x: 0, y: 0 },
+          { x: w, y: h },
+          { x: 0, y: h },
+        ];
+      } else {
+        // 역방향 (__|)
+        // (w, 0) -> (w, h) -> (0, h)
+        verts = [
+          { x: w, y: 0 },
+          { x: w, y: h },
+          { x: 0, y: h },
+        ];
+      }
+
+      bodyOptions.shape = {
+        type: "fromVertices",
+        verts: verts,
+      };
+    }
+
     // 물리 블록 생성 (장전 시 결정된 속성 사용)
     const block = this.matter.add.sprite(
       dropX,
       dropY,
       `block_${this.currentBlockType}`,
       undefined,
-      {
-        mass: this.currentBlockMass,
-        friction: BlockTowerConstants.PHYSICS.FRICTION,
-        restitution: BlockTowerConstants.PHYSICS.RESTITUTION,
-        label: "block",
-      },
+      bodyOptions,
     );
 
     // 장전 시 결정된 색상과 스케일 적용
@@ -325,7 +468,12 @@ export class MainScene extends Phaser.Scene {
   private checkFallenBlocks() {
     const screenWidth = this.cameras.main.width;
     const screenHeight = this.cameras.main.height;
-    const threshold = screenHeight + BlockTowerConstants.GAME_OVER.FALL_THRESHOLD;
+
+    // 카메라 스크롤을 고려한 낙하 임계값 계산
+    // 카메라가 위로 올라가면(scrollY < 0), 화면 하단(보이는 영역의 바닥)의 월드 좌표는 scrollY + screenHeight
+    // 여기에 여유값(threshold)을 더함
+    const viewBottomWorldY = this.cameras.main.scrollY + screenHeight;
+    const threshold = viewBottomWorldY + BlockTowerConstants.GAME_OVER.FALL_THRESHOLD;
 
     // 떨어진 블록 확인
     this.matter.world.getAllBodies().forEach(body => {

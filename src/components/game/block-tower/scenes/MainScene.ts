@@ -487,26 +487,60 @@ export class MainScene extends Phaser.Scene {
     const screenWidth = this.cameras.main.width;
     const screenHeight = this.cameras.main.height;
 
-    // 카메라 스크롤을 고려한 낙하 임계값 계산
-    // 카메라가 위로 올라가면(scrollY < 0), 화면 하단(보이는 영역의 바닥)의 월드 좌표는 scrollY + screenHeight
-    // 여기에 여유값(threshold)을 더함
+    // 1. 메모리 최적화: 화면 높이의 1.2배 밖으로 나가면 제거
     const viewBottomWorldY = this.cameras.main.scrollY + screenHeight;
-    const threshold = viewBottomWorldY + BlockTowerConstants.GAME_OVER.FALL_THRESHOLD;
+    const deleteThreshold = this.cameras.main.scrollY + screenHeight * 1.2;
+
+    // 안전지대 X 범위 계산 (착지 영역 너비 + 여유값)
+    const landingZoneWidth = screenWidth * BlockTowerConstants.LANDING_ZONE.WIDTH_RATIO;
+    const safeZoneMargin = 60; // 좌우 여유값
+    const centerX = screenWidth / 2;
+    const safeMinX = centerX - landingZoneWidth / 2 - safeZoneMargin;
+    const safeMaxX = centerX + landingZoneWidth / 2 + safeZoneMargin;
 
     // 떨어진 블록 확인
     this.matter.world.getAllBodies().forEach(body => {
-      if (body.label === "block" && body.position.y > threshold) {
-        // 블록 제거 (중복 처리 방지)
-        body.label = "fallen";
+      // 블록이 아니거나 이미 처리된 경우 스킵
+      if (body.label !== "block") return;
 
-        // 미스 카운트 증가
-        this.missCount++;
-        this.updateLives();
-        this.showFloatingText(screenWidth / 2, screenHeight / 2, "❤️ -1", "#ff4444");
+      // 제거 임계값을 넘었는지 확인
+      if (body.position.y > deleteThreshold) {
+        const gameObject = (
+          body as MatterJS.BodyType & { gameObject?: Phaser.GameObjects.GameObject }
+        ).gameObject;
 
-        // 3번 초과 시 게임오버
-        if (this.missCount >= this.maxMisses) {
-          this.gameOver();
+        if (gameObject && gameObject instanceof Phaser.GameObjects.GameObject) {
+          const isLanded = gameObject.getData("landed");
+          const x = body.position.x;
+
+          // 판정 로직
+          // 1. 정상 블록: 이미 안착했고(landed) && 안전지대(X) 안에 있음
+          //    -> 타워의 하단부로서 스크롤 아웃된 것. 페널티 없이 제거.
+          const isSafe = isLanded && x >= safeMinX && x <= safeMaxX;
+
+          if (isSafe) {
+            // 조용히 제거 (메모리 해제)
+            gameObject.destroy();
+          } else {
+            // 실패: 안착하지 못했거나(허공), 안착했더라도 밀려 떨어짐(범위 밖)
+            // 중복 처리 방지
+            body.label = "fallen";
+
+            this.missCount++;
+            this.updateLives();
+            this.showFloatingText(screenWidth / 2, screenHeight / 2, "❤️ -1", "#ff4444");
+
+            // 블록 제거
+            gameObject.destroy();
+
+            // 3번 초과 시 게임오버
+            if (this.missCount >= this.maxMisses) {
+              this.gameOver();
+            }
+          }
+        } else {
+          // 게임 오브젝트가 없는 물리 바디만 남은 경우 (예외 처리)
+          this.matter.world.remove(body);
         }
       }
     });

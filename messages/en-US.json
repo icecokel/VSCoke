@@ -86,7 +86,8 @@
     "goToDashboard": "Go to Dashboard",
     "height": "Height",
     "tapToDrop": "Tap to Drop",
-    "blockTowerDesc": "Stack shapes to build a tower in this physics-based balance game."
+    "blockTowerDesc": "Stack shapes to build a tower in this physics-based balance game.",
+    "doomDesc": "A retro FPS game rendered in ASCII characters."
   },
   "intro": {
     "title": "Welcome VSCoke",

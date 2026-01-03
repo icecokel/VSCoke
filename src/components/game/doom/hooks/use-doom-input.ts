@@ -28,65 +28,71 @@ export const useDoomInput = () => {
       }
 
       setInput(prev => {
-        switch (e.key) {
-          case "ArrowUp":
-          case "w":
-          case "W":
-            return { ...prev, forward: true };
-          case "ArrowDown":
-          case "s":
-          case "S":
-            return { ...prev, backward: true };
-          case "ArrowLeft":
-          case "a":
-          case "A":
-            return { ...prev, turnLeft: true };
-          case "ArrowRight":
-          case "d":
-          case "D":
-            return { ...prev, turnRight: true };
-          case " ":
-          case "Control":
-            return { ...prev, fire: true };
-          case "e":
-          case "E":
-          case "Enter":
-            return { ...prev, use: true };
-          default:
-            return prev;
+        // e.code 사용: 키보드 레이아웃과 무관하게 물리적 키 위치로 판단
+        // e.key 사용: 한글 자모 입력 지원
+        const key = e.key;
+        const code = e.code;
+
+        // 전진 (W, ↑, ㅈ)
+        if (code === "KeyW" || key === "ArrowUp" || key === "ㅈ") {
+          return { ...prev, forward: true };
         }
+        // 후진 (S, ↓, ㄴ)
+        if (code === "KeyS" || key === "ArrowDown" || key === "ㄴ") {
+          return { ...prev, backward: true };
+        }
+        // 좌회전 (A, ←, ㅁ)
+        if (code === "KeyA" || key === "ArrowLeft" || key === "ㅁ") {
+          return { ...prev, turnLeft: true };
+        }
+        // 우회전 (D, →, ㅇ)
+        if (code === "KeyD" || key === "ArrowRight" || key === "ㅇ") {
+          return { ...prev, turnRight: true };
+        }
+        // 발사 (Space, Ctrl)
+        if (code === "Space" || key === "Control") {
+          return { ...prev, fire: true };
+        }
+        // 사용 (E, Enter, ㄷ)
+        if (code === "KeyE" || key === "Enter" || key === "ㄷ") {
+          return { ...prev, use: true };
+        }
+
+        return prev;
       });
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
       setInput(prev => {
-        switch (e.key) {
-          case "ArrowUp":
-          case "w":
-          case "W":
-            return { ...prev, forward: false };
-          case "ArrowDown":
-          case "s":
-          case "S":
-            return { ...prev, backward: false };
-          case "ArrowLeft":
-          case "a":
-          case "A":
-            return { ...prev, turnLeft: false };
-          case "ArrowRight":
-          case "d":
-          case "D":
-            return { ...prev, turnRight: false };
-          case " ":
-          case "Control":
-            return { ...prev, fire: false };
-          case "e":
-          case "E":
-          case "Enter":
-            return { ...prev, use: false };
-          default:
-            return prev;
+        const key = e.key;
+        const code = e.code;
+
+        // 전진 (W, ↑, ㅈ)
+        if (code === "KeyW" || key === "ArrowUp" || key === "ㅈ") {
+          return { ...prev, forward: false };
         }
+        // 후진 (S, ↓, ㄴ)
+        if (code === "KeyS" || key === "ArrowDown" || key === "ㄴ") {
+          return { ...prev, backward: false };
+        }
+        // 좌회전 (A, ←, ㅁ)
+        if (code === "KeyA" || key === "ArrowLeft" || key === "ㅁ") {
+          return { ...prev, turnLeft: false };
+        }
+        // 우회전 (D, →, ㅇ)
+        if (code === "KeyD" || key === "ArrowRight" || key === "ㅇ") {
+          return { ...prev, turnRight: false };
+        }
+        // 발사 (Space, Ctrl)
+        if (code === "Space" || key === "Control") {
+          return { ...prev, fire: false };
+        }
+        // 사용 (E, Enter, ㄷ)
+        if (code === "KeyE" || key === "Enter" || key === "ㄷ") {
+          return { ...prev, use: false };
+        }
+
+        return prev;
       });
     };
 

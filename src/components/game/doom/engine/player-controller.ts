@@ -60,8 +60,8 @@ export const updatePlayer = (
   // 좌회전
   if (input.turnLeft) {
     const oldDirX = newPlayer.direction.x;
-    const cosRot = Math.cos(rotSpeed);
-    const sinRot = Math.sin(rotSpeed);
+    const cosRot = Math.cos(-rotSpeed);
+    const sinRot = Math.sin(-rotSpeed);
 
     newPlayer.direction.x = oldDirX * cosRot - newPlayer.direction.y * sinRot;
     newPlayer.direction.y = oldDirX * sinRot + newPlayer.direction.y * cosRot;
@@ -74,8 +74,8 @@ export const updatePlayer = (
   // 우회전
   if (input.turnRight) {
     const oldDirX = newPlayer.direction.x;
-    const cosRot = Math.cos(-rotSpeed);
-    const sinRot = Math.sin(-rotSpeed);
+    const cosRot = Math.cos(rotSpeed);
+    const sinRot = Math.sin(rotSpeed);
 
     newPlayer.direction.x = oldDirX * cosRot - newPlayer.direction.y * sinRot;
     newPlayer.direction.y = oldDirX * sinRot + newPlayer.direction.y * cosRot;

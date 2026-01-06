@@ -89,6 +89,22 @@
     "blockTowerDesc": "도형을 쌓아 아슬아슬하게 탑을 쌓는 물리 기반 게임입니다.",
     "doomDesc": "ASCII 문자로 렌더링되는 레트로 FPS 게임입니다."
   },
+  "Doom": {
+    "title": "웹 둠",
+    "subtitle": "쉐어웨어 버전 • JS-DOS 에뮬레이션",
+    "warningTitle": "경고: 악마적 존재 감지됨",
+    "warningDesc": "UAC(Union Aerospace Corporation) 경고: 이 시뮬레이션은 외부 아카이브에서 약 5MB의 데이터를 다운로드합니다.",
+    "buttonLoading": "프로토콜 로딩 중...",
+    "buttonStart": "찢고 죽인다 (RIP AND TEAR)",
+    "controls": "조작: 방향키 이동 • CTRL 발사 • SPACE 문열기",
+    "footer": "DOOM®은 id Software, Inc.의 등록 상표입니다. 이 프로젝트는 교육 목적의 비영리 팬 프로젝트이며, 게임 파일은 외부 소스에서 스트리밍됩니다.",
+    "loadingTitle": "작전 브리핑",
+    "loadingStatus": "UAC 네트워크 업링크 수립 중...",
+    "guideMovement": "이동: 방향키",
+    "guideFire": "공격: CTRL",
+    "guideOpen": "상호작용: SPACE",
+    "guideStrafe": "게걸음: ALT + 방향키"
+  },
   "intro": {
     "title": "Welcome VSCoke",
     "osWindow": "OS가 윈도우인 경우",

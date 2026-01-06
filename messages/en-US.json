@@ -89,6 +89,22 @@
     "blockTowerDesc": "Stack shapes to build a tower in this physics-based balance game.",
     "doomDesc": "A retro FPS game rendered in ASCII characters."
   },
+  "Doom": {
+    "title": "WEB DOOM",
+    "subtitle": "SHAREWARE VERSION • JS-DOS EMULATION",
+    "warningTitle": "Warning: Demonic Presence Detected",
+    "warningDesc": "The Union Aerospace Corporation warns that this simulation requires downloading ~5MB of data from external archives.",
+    "buttonLoading": "Loading Protocol...",
+    "buttonStart": "RIP AND TEAR",
+    "controls": "Controls: Arrows to Move • CTRL to Fire • SPACE to Open",
+    "footer": "DOOM® is a registered trademark of id Software, Inc. This is a non-profit fan project for educational purposes. Game files are streamed from External Sources.",
+    "loadingTitle": "MISSION BRIEFING",
+    "loadingStatus": "ESTABLISHING UPLINK TO UAC NETWORK...",
+    "guideMovement": "MOVE: ARROW KEYS",
+    "guideFire": "FIRE: CTRL",
+    "guideOpen": "OPEN: SPACE",
+    "guideStrafe": "STRAFE: ALT + ARROWS"
+  },
   "intro": {
     "title": "Welcome VSCoke",
     "osWindow": "Windows OS",

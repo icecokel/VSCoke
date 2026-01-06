@@ -87,13 +87,14 @@
     "height": "Height",
     "tapToDrop": "Tap to Drop",
     "blockTowerDesc": "Stack shapes to build a tower in this physics-based balance game.",
-    "doomDesc": "A retro FPS game rendered in ASCII characters."
+    "doomDesc": "A legendary retro FPS game to enjoy in your browser.",
+    "doomTitle": "DOOM (Shareware)"
   },
   "Doom": {
-    "title": "WEB DOOM",
+    "title": "DOOM",
     "subtitle": "SHAREWARE VERSION • JS-DOS EMULATION",
     "warningTitle": "Warning: Demonic Presence Detected",
-    "warningDesc": "The Union Aerospace Corporation warns that this simulation requires downloading ~5MB of data from external archives.",
+    "warningDesc": "The Union Aerospace Corporation warns that:\nThis simulation requires downloading ~5MB of data from external archives.",
     "buttonLoading": "Loading Protocol...",
     "buttonStart": "RIP AND TEAR",
     "controls": "Controls: Arrows to Move • CTRL to Fire • SPACE to Open",
@@ -103,7 +104,10 @@
     "guideMovement": "MOVE: ARROW KEYS",
     "guideFire": "FIRE: CTRL",
     "guideOpen": "OPEN: SPACE",
-    "guideStrafe": "STRAFE: ALT + ARROWS"
+    "guideStrafe": "STRAFE: ALT + ARROWS",
+    "soundOn": "SOUND: ON",
+    "soundOff": "SOUND: OFF",
+    "muteLabel": "Turn off sound for silent play"
   },
   "intro": {
     "title": "Welcome VSCoke",

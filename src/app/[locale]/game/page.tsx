@@ -22,6 +22,12 @@ export default function GameDashboard() {
       description: t("blockTowerDesc"),
       route: "/game/block-tower",
     },
+    {
+      id: "doom",
+      title: t("doomTitle"),
+      description: t("doomDesc"),
+      route: "/doom",
+    },
   ];
 
   return (

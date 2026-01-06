@@ -37,6 +37,7 @@ export const DoomGame = () => {
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false); // Game started (downloading/running)
   const [isGameRunning, setIsGameRunning] = useState(false); // Game actually running (hidden overlay)
+  const [isMuted, setIsMuted] = useState(false);
   const rootRef = useRef<HTMLCanvasElement>(null);
   const dosInstance = useRef<DosCommandInterface | null>(null);
 
@@ -59,7 +60,8 @@ export const DoomGame = () => {
       }).ready((fs: DosFileSystem, main: DosMainFn) => {
         fs.extract(DOOM_BUNDLE_URL).then(() => {
           // Doom shareware usually runs doom.exe
-          main(["-c", "doom.exe"]).then((ci: DosCommandInterface) => {
+          const args = isMuted ? ["-c", "doom.exe -nosfx -nomusic"] : ["-c", "doom.exe"];
+          main(args).then((ci: DosCommandInterface) => {
             dosInstance.current = ci;
             // Give it a moment to boot before hiding loading screen
             setTimeout(() => setIsGameRunning(true), 1000);
@@ -101,7 +103,18 @@ export const DoomGame = () => {
                 <h3 className="text-2xl font-bold text-white uppercase tracking-widest">
                   {t("warningTitle")}
                 </h3>
-                <p className="text-zinc-400">{t("warningDesc")}</p>
+                <p className="text-zinc-400 whitespace-pre-line">{t("warningDesc")}</p>
+              </div>
+
+              {/* Mute Toggle */}
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  onClick={() => setIsMuted(!isMuted)}
+                  className={`px-4 py-2 text-sm border transition-all uppercase tracking-wider font-bold ${isMuted ? "border-red-500 text-red-500 bg-red-900/10" : "border-green-600 text-green-600 bg-green-900/10"}`}
+                >
+                  {isMuted ? t("soundOff") : t("soundOn")}
+                </button>
+                <p className="text-[10px] text-zinc-500">{t("muteLabel")}</p>
               </div>
 
               <button

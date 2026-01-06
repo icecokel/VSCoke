@@ -87,13 +87,14 @@
     "height": "높이",
     "tapToDrop": "탭해서 떨어뜨리기",
     "blockTowerDesc": "도형을 쌓아 아슬아슬하게 탑을 쌓는 물리 기반 게임입니다.",
-    "doomDesc": "ASCII 문자로 렌더링되는 레트로 FPS 게임입니다."
+    "doomDesc": "웹 브라우저에서 즐기는 전설적인 FPS 게임입니다.",
+    "doomTitle": "둠 (쉐어웨어)"
   },
   "Doom": {
-    "title": "웹 둠",
+    "title": "둠",
     "subtitle": "쉐어웨어 버전 • JS-DOS 에뮬레이션",
     "warningTitle": "경고: 악마적 존재 감지됨",
-    "warningDesc": "UAC(Union Aerospace Corporation) 경고: 이 시뮬레이션은 외부 아카이브에서 약 5MB의 데이터를 다운로드합니다.",
+    "warningDesc": "UAC(Union Aerospace Corporation) 경고:\n이 시뮬레이션은 외부 아카이브에서 약 5MB의 데이터를 다운로드합니다.",
     "buttonLoading": "프로토콜 로딩 중...",
     "buttonStart": "찢고 죽인다 (RIP AND TEAR)",
     "controls": "조작: 방향키 이동 • CTRL 발사 • SPACE 문열기",
@@ -103,7 +104,10 @@
     "guideMovement": "이동: 방향키",
     "guideFire": "공격: CTRL",
     "guideOpen": "상호작용: SPACE",
-    "guideStrafe": "게걸음: ALT + 방향키"
+    "guideStrafe": "게걸음: ALT + 방향키",
+    "soundOn": "사운드: 켜짐",
+    "soundOff": "사운드: 꺼짐",
+    "muteLabel": "조용한 플레이를 위해 소리 끄기"
   },
   "intro": {
     "title": "Welcome VSCoke",

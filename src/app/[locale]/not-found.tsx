@@ -4,20 +4,44 @@ import { useHistory } from "@/hooks/use-history";
 import Container from "@/components/base-ui/container";
 import BaseText from "@/components/base-ui/text";
 import Icon from "@/components/base-ui/icon";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 
 const NotFound = () => {
   const { history, remove } = useHistory();
   const pathname = usePathname();
+  const router = useRouter();
 
-  // 존재하지 않는 경로의 탭 자동 제거
+  // ref를 사용하여 최신 history 상태 추적 및 중복 실행 방지
+  const historyRef = useRef(history);
+  const hasRemovedRef = useRef(false);
+
+  // history 변경 시 ref 업데이트
   useEffect(() => {
-    const invalidTab = history.find(item => item.path === pathname);
-    if (invalidTab) {
-      remove(invalidTab);
+    historyRef.current = history;
+  }, [history]);
+
+  // 존재하지 않는 경로의 탭 자동 제거 및 다음 탭으로 이동 (1회만 실행)
+  useEffect(() => {
+    if (hasRemovedRef.current) return;
+
+    const currentHistory = historyRef.current;
+    const invalidTabIndex = currentHistory.findIndex(item => item.path === pathname);
+
+    if (invalidTabIndex !== -1) {
+      hasRemovedRef.current = true;
+
+      // 다음 이동할 탭 결정 (오른쪽 → 왼쪽 → 홈)
+      const nextTab = currentHistory[invalidTabIndex + 1] || currentHistory[invalidTabIndex - 1];
+
+      // 탭 제거
+      remove(currentHistory[invalidTabIndex]);
+
+      // 다음 탭으로 이동 (없으면 홈으로)
+      router.replace(nextTab?.path || "/");
     }
-  }, [pathname, history, remove]);
+  }, [pathname, remove, router]);
 
   return (
     <Container className="min-h-screen flex flex-col items-center justify-center text-white">

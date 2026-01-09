@@ -12,7 +12,7 @@ interface CareerSectionProps {
   index: number;
 }
 
-const CareerSection = ({ careerData, index }: CareerSectionProps) => {
+export const CareerSection = ({ careerData, index }: CareerSectionProps) => {
   const t = useTranslations(`resume.careers.${careerData.id}`);
   const tResume = useTranslations("resume");
   const router = useCustomRouter();
@@ -82,7 +82,7 @@ const renderDescriptions = (
   onLink: (ref: string) => void,
 ) => {
   if (projectData.descriptions && projectData.descriptions.length > 0) {
-    // Structure defined in JSON (e.g., 'Others' section)
+    // JSON에 정의된 구조 (예: 'Others' 섹션)
     return projectData.descriptions.map(descData => {
       const desc = t.raw(`${projectKey}.descriptions.${descData.id}`) as Description;
       return (
@@ -104,7 +104,7 @@ const renderDescriptions = (
       );
     });
   } else {
-    // Array structure in translation (Standard projects)
+    // 번역 내 배열 구조 (표준 프로젝트)
     const descriptions = t.raw(`${projectKey}.descriptions`) as Description[];
     if (Array.isArray(descriptions)) {
       return descriptions.map((desc, i) => <DescriptionItem key={i} description={desc} />);
@@ -112,5 +112,3 @@ const renderDescriptions = (
   }
   return null;
 };
-
-export default CareerSection;

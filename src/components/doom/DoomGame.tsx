@@ -14,6 +14,7 @@ interface DosFileSystem {
 
 interface DosMainFn {
   (args: string[]): Promise<DosCommandInterface>;
+  key: (code: number, pressed: boolean) => void;
 }
 
 interface DosOptions {
@@ -29,6 +30,16 @@ interface DosInstance {
 declare global {
   interface Window {
     Dos: (element: HTMLCanvasElement, options: DosOptions) => DosInstance;
+    DosController: {
+      Move: new (
+        element: HTMLCanvasElement,
+        keyHandler: (code: number, pressed: boolean) => void,
+      ) => unknown;
+      Qwerty: new (
+        element: HTMLCanvasElement,
+        keyHandler: (code: number, pressed: boolean) => void,
+      ) => unknown;
+    };
   }
 }
 
@@ -47,17 +58,24 @@ export const DoomGame = () => {
   const handleStart = async () => {
     if (!window.Dos || !rootRef.current) return;
 
+    const canvas = rootRef.current;
     setIsPlaying(true);
 
     try {
       const Dos = window.Dos;
 
       // V6 API - Performance Tuning: cycles: "auto"
-      Dos(rootRef.current, {
+      Dos(canvas, {
         wdosboxUrl: "https://js-dos.com/6.22/current/wdosbox.js",
         cycles: "auto",
         autolock: false,
       }).ready((fs: DosFileSystem, main: DosMainFn) => {
+        // Initialize Mobile Controls (Built-in js-dos controllers)
+        if (window.DosController) {
+          new window.DosController.Move(canvas, main.key);
+          new window.DosController.Qwerty(canvas, main.key);
+        }
+
         fs.extract(DOOM_BUNDLE_URL).then(() => {
           // Doom shareware usually runs doom.exe
           const args = isMuted ? ["-c", "doom.exe -nosfx -nomusic"] : ["-c", "doom.exe"];

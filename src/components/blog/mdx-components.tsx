@@ -5,7 +5,7 @@ import Icon from "@/components/base-ui/icon";
 import Container from "@/components/base-ui/container";
 import Avatar from "@/components/base-ui/avatar";
 import SlideGroup from "@/components/base-ui/slide-group";
-import PreBlock from "@/components/blog/pre-block";
+import { PreBlock } from "@/components/blog/pre-block";
 
 export const mdxComponents: MDXComponents = {
   h1: ({ children }) => (

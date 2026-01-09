@@ -1,7 +1,7 @@
 "use client";
 
 import BaseText from "@/components/base-ui/text";
-import CareerSection from "./career-section";
+import { CareerSection } from "./career-section";
 import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 import { useTranslations } from "next-intl";

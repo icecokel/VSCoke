@@ -7,14 +7,17 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useGame } from "@/contexts/game-context";
 import GameReadyScreen from "@/components/game/GameReadyScreen";
 
-const PhaserGame = dynamic(() => import("@/components/game/PhaserGame"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex size-full items-center justify-center bg-gray-900 text-white">
-      <p className="animate-pulse text-xl">Loading Sky Drop...</p>
-    </div>
-  ),
-});
+const PhaserGame = dynamic(
+  () => import("@/components/game/PhaserGame").then(mod => mod.PhaserGame),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex size-full items-center justify-center bg-gray-900 text-white">
+        <p className="animate-pulse text-xl">Loading Sky Drop...</p>
+      </div>
+    ),
+  },
+);
 
 export default function SkyDropPage() {
   const isMobile = useIsMobile();

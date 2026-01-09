@@ -174,7 +174,7 @@ export class MainScene extends Phaser.Scene {
     const screenWidth = this.cameras.main.width;
     const screenHeight = this.cameras.main.height;
 
-    const { SIDE_MARGIN, BLOCK_SPACING, COLUMN_WIDTH_RATIO } = GameConstants.LAYOUT;
+    const { SIDE_MARGIN, BLOCK_SPACING } = GameConstants.LAYOUT;
 
     // 가로 여백을 제외한 사용 가능 너비
     const availableWidth = screenWidth - SIDE_MARGIN * 2;

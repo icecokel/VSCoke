@@ -20,7 +20,7 @@ interface GameResult {
   score: number;
 }
 
-const PhaserGame = ({ isPlaying, onReady, onGoToReady, onRestart }: PhaserGameProps) => {
+export const PhaserGame = ({ isPlaying, onReady, onGoToReady, onRestart }: PhaserGameProps) => {
   const t = useTranslations("Game");
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -136,5 +136,3 @@ const PhaserGame = ({ isPlaying, onReady, onGoToReady, onRestart }: PhaserGamePr
     </div>
   );
 };
-
-export default PhaserGame;

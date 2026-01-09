@@ -7,7 +7,7 @@ interface PreBlockProps extends React.HTMLAttributes<HTMLPreElement> {
   children: React.ReactNode;
 }
 
-export default function PreBlock({ children, className, ...props }: PreBlockProps) {
+export function PreBlock({ children, className, ...props }: PreBlockProps) {
   const preRef = useRef<HTMLPreElement>(null);
   const [copied, setCopied] = useState(false);
 

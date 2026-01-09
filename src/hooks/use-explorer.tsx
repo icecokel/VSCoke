@@ -51,7 +51,7 @@ export const useExplorer = () => {
       setItemList(limitItemsRecursively(explorer));
       onFalse();
     }
-  }, [explorer, onFalse]);
+  }, [explorer, onFalse, t]);
 
   return {
     isLoading: loading.value,

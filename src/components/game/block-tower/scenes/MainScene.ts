@@ -1,10 +1,5 @@
 import * as Phaser from "phaser";
-import {
-  BlockTowerConstants,
-  BlockType,
-  BlockTowerTexts,
-  BlockWeight,
-} from "../BlockTowerConstants";
+import { BlockTowerConstants, BlockType, BlockTowerTexts } from "../BlockTowerConstants";
 
 export class MainScene extends Phaser.Scene {
   // 게임 텍스트
@@ -488,7 +483,6 @@ export class MainScene extends Phaser.Scene {
     const screenHeight = this.cameras.main.height;
 
     // 1. 메모리 최적화: 화면 높이의 1.2배 밖으로 나가면 제거
-    const viewBottomWorldY = this.cameras.main.scrollY + screenHeight;
     const deleteThreshold = this.cameras.main.scrollY + screenHeight * 1.2;
 
     // 안전지대 X 범위 계산 (착지 영역 너비 + 여유값)

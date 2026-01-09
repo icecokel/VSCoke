@@ -19,7 +19,7 @@ import { twMerge } from "tailwind-merge";
 
 import { useTranslations } from "next-intl";
 
-const HistoryTabs = ({ children }: TParentNode) => {
+export const HistoryTabs = ({ children }: TParentNode) => {
   const { history, change, remove, setHistory, add, isHydrated } = useHistory();
   const router = useRouter();
   const pathname = usePathname();
@@ -235,5 +235,3 @@ const HistoryTabs = ({ children }: TParentNode) => {
     </div>
   );
 };
-
-export default HistoryTabs;

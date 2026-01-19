@@ -54,6 +54,12 @@ const Menubar = () => {
             project.onTrue();
           },
         },
+        {
+          name: t("blackWhiteChefGame"),
+          onClick: () => {
+            window.open("https://icecokel.github.io/black-white-chef-game/", "_blank");
+          },
+        },
       ],
     },
     {

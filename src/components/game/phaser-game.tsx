@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as Phaser from "phaser";
-import { GameConfig } from "./GameConfig";
-import { LoadingOverlay } from "./ui/LoadingOverlay";
-import { ResultScreen } from "./ResultScreen";
+import { GameConfig } from "./game-config";
+import { LoadingOverlay } from "./ui/loading-overlay";
+import { ResultScreen } from "./result-screen";
 import { useBoolean } from "@/hooks/use-boolean";
 
 import { useTranslations } from "next-intl";

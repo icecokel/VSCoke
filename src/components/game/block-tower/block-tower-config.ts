@@ -1,7 +1,7 @@
 import * as Phaser from "phaser";
-import { PreloadScene } from "./scenes/PreloadScene";
-import { MainScene } from "./scenes/MainScene";
-import { BlockTowerConstants } from "./BlockTowerConstants";
+import { PreloadScene } from "./scenes/preload-scene";
+import { MainScene } from "./scenes/main-scene";
+import { BlockTowerConstants } from "./block-tower-constants";
 
 export const BlockTowerConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,

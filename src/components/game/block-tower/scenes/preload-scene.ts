@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { BlockTowerConstants, BlockType } from "../BlockTowerConstants";
+import { BlockTowerConstants, BlockType } from "../block-tower-constants";
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {

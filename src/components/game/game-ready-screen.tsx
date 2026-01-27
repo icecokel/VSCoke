@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useCustomRouter } from "@/hooks/use-custom-router";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { GameConstants } from "./GameConstants";
+import { GameConstants } from "./game-constants";
 
 interface GameReadyScreenProps {
   onStart: () => void;

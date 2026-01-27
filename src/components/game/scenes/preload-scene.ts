@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { GameConstants } from "../GameConstants";
+import { GameConstants } from "../game-constants";
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {

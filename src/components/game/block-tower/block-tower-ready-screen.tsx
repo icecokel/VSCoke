@@ -3,7 +3,7 @@
 import { useCustomRouter } from "@/hooks/use-custom-router";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { BlockTowerConstants } from "./BlockTowerConstants";
+import { BlockTowerConstants } from "./block-tower-constants";
 
 interface BlockTowerReadyScreenProps {
   onStart: () => void;

@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { GameConstants, GameTexts } from "../GameConstants";
+import { GameConstants, GameTexts } from "../game-constants";
 
 export class MainScene extends Phaser.Scene {
   // ... (previous properties)

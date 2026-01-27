@@ -1,4 +1,4 @@
-import { DoomGame } from "@/components/doom/DoomGame";
+import { DoomGame } from "@/components/doom/doom-game";
 import { useTranslations } from "next-intl";
 
 export default function DoomPage() {

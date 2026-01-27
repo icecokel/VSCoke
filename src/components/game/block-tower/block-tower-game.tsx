@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as Phaser from "phaser";
-import { BlockTowerConfig } from "./BlockTowerConfig";
+import { BlockTowerConfig } from "./block-tower-config";
 import { useBoolean } from "@/hooks/use-boolean";
 import { useTranslations } from "next-intl";
-import { ResultScreen } from "../ResultScreen";
+import { ResultScreen } from "../result-screen";
 
 interface BlockTowerGameProps {
   isPlaying: boolean;

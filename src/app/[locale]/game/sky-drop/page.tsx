@@ -2,13 +2,13 @@
 
 import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { GameConstants } from "@/components/game/GameConstants";
+import { GameConstants } from "@/components/game/game-constants";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGame } from "@/contexts/game-context";
-import GameReadyScreen from "@/components/game/GameReadyScreen";
+import GameReadyScreen from "@/components/game/game-ready-screen";
 
 const PhaserGame = dynamic(
-  () => import("@/components/game/PhaserGame").then(mod => mod.PhaserGame),
+  () => import("@/components/game/phaser-game").then(mod => mod.PhaserGame),
   {
     ssr: false,
     loading: () => (

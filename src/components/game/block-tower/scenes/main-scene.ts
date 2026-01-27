@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { BlockTowerConstants, BlockType, BlockTowerTexts } from "../BlockTowerConstants";
+import { BlockTowerConstants, BlockType, BlockTowerTexts } from "../block-tower-constants";
 
 export class MainScene extends Phaser.Scene {
   // 게임 텍스트

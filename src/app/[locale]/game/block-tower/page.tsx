@@ -2,14 +2,14 @@
 
 import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { BlockTowerConstants } from "@/components/game/block-tower/BlockTowerConstants";
+import { BlockTowerConstants } from "@/components/game/block-tower/block-tower-constants";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGame } from "@/contexts/game-context";
-import { BlockTowerReadyScreen } from "@/components/game/block-tower/BlockTowerReadyScreen";
+import { BlockTowerReadyScreen } from "@/components/game/block-tower/block-tower-ready-screen";
 
 const BlockTowerGame = dynamic(
   () =>
-    import("@/components/game/block-tower/BlockTowerGame").then(mod => ({
+    import("@/components/game/block-tower/block-tower-game").then(mod => ({
       default: mod.BlockTowerGame,
     })),
   {

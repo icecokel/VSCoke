@@ -12,7 +12,7 @@ export interface ScoreSubmissionData {
  * 게임 점수를 서버에 제출합니다.
  * 현재는 Mock API로 동작하며, 1초 후 성공 응답을 반환합니다.
  */
-const API_URL = "/api/game/result";
+const API_URL = "https://api.icecoke.kr/game/result";
 
 export const submitScore = async (
   data: ScoreSubmissionData,

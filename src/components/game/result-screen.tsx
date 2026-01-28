@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { useCustomRouter } from "@/hooks/use-custom-router";
@@ -39,29 +39,75 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   // 점수 제출
-  const handleSubmitScore = useCallback(async () => {
-    if (isSubmitting || isSubmitted) return;
+  const handleSubmitScore = useCallback(
+    async (token?: string) => {
+      if (isSubmitting || isSubmitted) return;
 
-    setIsSubmitting(true);
-    try {
-      const result = await submitScore({ gameName, score });
-      if (result.success) {
-        setIsSubmitted(true);
+      setIsSubmitting(true);
+      try {
+        const result = await submitScore({ gameName, score }, token);
+        if (result.success) {
+          setIsSubmitted(true);
+        } else {
+          alert(result.message || t("submitFail")); // 실패 시 알림
+        }
+      } catch (error) {
+        console.error("Failed to submit score:", error);
+        alert(t("submitFail")); // 실패 시 알림
+      } finally {
+        setIsSubmitting(false);
       }
-    } catch (error) {
-      console.error("Failed to submit score:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [gameName, score, isSubmitting, isSubmitted]);
+    },
+    [gameName, score, isSubmitting, isSubmitted, t],
+  );
 
   const handleScoreAction = useCallback(() => {
     if (!session) {
+      // 로그인 전 점수 정보 저장
+      localStorage.setItem(
+        "pendingScore",
+        JSON.stringify({
+          gameName,
+          score,
+          timestamp: Date.now(),
+        }),
+      );
       signIn("google");
       return;
     }
-    handleSubmitScore();
-  }, [session, handleSubmitScore]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const token = (session as any)?.idToken;
+    handleSubmitScore(token);
+  }, [session, handleSubmitScore, gameName, score]);
+
+  // 마운트 시 자동 제출 체크
+  useEffect(() => {
+    if (session && !isSubmitted && !isSubmitting) {
+      const pending = localStorage.getItem("pendingScore");
+      if (pending) {
+        try {
+          const { gameName: savedGame, score: savedScore, timestamp } = JSON.parse(pending);
+
+          // 5분 이내의 데이터이고, 현재 표시된 점수와 일치하면 자동 제출
+          const isValidTime = Date.now() - timestamp < 5 * 60 * 1000;
+          if (savedGame === gameName && savedScore === score && isValidTime) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const token = (session as any)?.idToken;
+            handleSubmitScore(token);
+          }
+        } catch (e) {
+          console.error("Failed to parse pending score", e);
+        }
+      }
+    }
+  }, [session, isSubmitted, isSubmitting, gameName, score, handleSubmitScore]);
+
+  // 제출 성공 시 스토리지 정리
+  useEffect(() => {
+    if (isSubmitted) {
+      localStorage.removeItem("pendingScore");
+    }
+  }, [isSubmitted]);
 
   // 공유하기 (Web Share API)
   const handleShare = useCallback(async () => {
@@ -163,7 +209,7 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
                 ? "기록 완료"
                 : !session
                   ? "Google 로그인하고 기록하기"
-                  : "점수 기록하기"}
+                  : t("submitScore")}
           </Button>
         </div>
       )}

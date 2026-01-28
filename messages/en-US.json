@@ -57,6 +57,8 @@
     "dashboardDescription": "Admin dashboard for blog posts"
   },
   "Game": {
+    "submitScore": "Submit Score",
+    "submitFail": "Failed to submit score.",
     "score": "Score: ",
     "deadline": "DEADLINE",
     "start": "START",

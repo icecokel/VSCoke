@@ -57,6 +57,8 @@
     "dashboardDescription": "블로그 게시글 관리자 페이지"
   },
   "Game": {
+    "submitScore": "점수 기록하기",
+    "submitFail": "점수 기록에 실패했습니다.",
     "score": "점수: ",
     "deadline": "데드라인",
     "start": "시작",

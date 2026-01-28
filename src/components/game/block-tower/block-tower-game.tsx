@@ -47,6 +47,22 @@ export const BlockTowerGame = ({
   const isLoaded = loaded.value;
   const { onTrue } = loaded;
 
+  // 초기 상태 복원 (로그인 리다이렉트)
+  useEffect(() => {
+    try {
+      const pendingStr = localStorage.getItem("pendingScore");
+      if (pendingStr) {
+        const pending = JSON.parse(pendingStr);
+        // 5분 이내, block-tower 게임인 경우
+        if (pending.gameName === "block-tower" && Date.now() - pending.timestamp < 5 * 60 * 1000) {
+          setGameResult({ score: pending.score });
+        }
+      }
+    } catch (e) {
+      console.error("Failed to restore pending score", e);
+    }
+  }, []);
+
   useEffect(() => {
     if (typeof window !== "undefined" && !gameRef.current) {
       gameRef.current = new Phaser.Game(BlockTowerConfig);

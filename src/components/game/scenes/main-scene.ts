@@ -160,6 +160,13 @@ export class MainScene extends Phaser.Scene {
     this.time.delayedCall(100, () => {
       this.startGameLogic();
     });
+
+    // 키보드 입력 추가 (Q, W, E)
+    if (this.input.keyboard) {
+      this.input.keyboard.on("keydown-Q", () => this.handleColumnClick(0));
+      this.input.keyboard.on("keydown-W", () => this.handleColumnClick(1));
+      this.input.keyboard.on("keydown-E", () => this.handleColumnClick(2));
+    }
   }
 
   private resize(gameSize: Phaser.Structs.Size) {

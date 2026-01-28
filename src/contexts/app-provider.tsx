@@ -11,11 +11,15 @@ interface IAppProviderProps extends TParentNode {
   explorer: ITree[];
 }
 
+import { SessionProvider } from "next-auth/react";
+
 const AppProvider = ({ children, explorer }: IAppProviderProps) => {
   return (
-    <SnackBarProvider>
-      <ExplorerContext.Provider value={explorer}>{children}</ExplorerContext.Provider>
-    </SnackBarProvider>
+    <SessionProvider>
+      <SnackBarProvider>
+        <ExplorerContext.Provider value={explorer}>{children}</ExplorerContext.Provider>
+      </SnackBarProvider>
+    </SessionProvider>
   );
 };
 

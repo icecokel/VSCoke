@@ -1,6 +1,7 @@
 export interface ScoreSubmissionResult {
   success: boolean;
   message?: string;
+  id?: string;
 }
 
 export interface ScoreSubmissionData {
@@ -8,11 +9,68 @@ export interface ScoreSubmissionData {
   score: number;
 }
 
+// ... (existing interfaces)
+
+export interface GameResult {
+  id: string;
+  score: number;
+  gameType: "SKY_DROP" | "BLOCK_TOWER";
+  createdAt: string;
+  user?: {
+    displayName: string;
+  };
+}
+
 /**
  * 게임 점수를 서버에 제출합니다.
- * 현재는 Mock API로 동작하며, 1초 후 성공 응답을 반환합니다.
  */
+// ... (existing submitScore function)
+
+/**
+ * 게임 결과를 조회합니다.
+ */
+export const getGameResult = async (id: string): Promise<GameResult | null> => {
+  try {
+    const res = await fetch(`${API_URL}/${id}`, {
+      next: { revalidate: 60 },
+    });
+
+    if (!res.ok) return null;
+
+    // API 응답 구조가 { success: true, data: { ... } } 형태일 수 있음
+    const json = await res.json();
+    return json.data || json;
+  } catch (error) {
+    console.error("Error fetching game result:", error);
+    return null;
+  }
+};
 const API_URL = "https://api.icecoke.kr/game/result";
+
+// ... (existing interfaces)
+
+// API 요청 Payload 스키마
+export interface ScoreSubmissionPayload {
+  score: number;
+  gameType: "SKY_DROP" | "BLOCK_TOWER";
+}
+
+// API 응답 스키마 (`POST /game/result`)
+export interface ScoreSubmissionResponse {
+  success: boolean;
+  data: {
+    id: string;
+    score: number;
+    gameType: "SKY_DROP" | "BLOCK_TOWER";
+    createdAt: string;
+    user?: {
+      displayName: string;
+      email: string;
+    };
+  };
+}
+
+// ... (existing GameResult interface)
 
 export const submitScore = async (
   data: ScoreSubmissionData,
@@ -27,16 +85,14 @@ export const submitScore = async (
   }
 
   try {
-    // API 명세: { score: number, gameType: "SKY_DROP" | "BLOCK_TOWER" }
-    // 현재 gameName은 "sky-drop", "block-tower" 형태이므로 변환 필요
-    const gameTypeMap: Record<string, string> = {
+    const gameTypeMap: Record<string, "SKY_DROP" | "BLOCK_TOWER"> = {
       "sky-drop": "SKY_DROP",
       "block-tower": "BLOCK_TOWER",
     };
 
-    const payload = {
+    const payload: ScoreSubmissionPayload = {
       score: data.score,
-      gameType: gameTypeMap[data.gameName] || "SKY_DROP", // Fallback
+      gameType: gameTypeMap[data.gameName] || "SKY_DROP",
     };
 
     console.log("[Score Service] Submitting to:", API_URL, payload);
@@ -59,12 +115,13 @@ export const submitScore = async (
       };
     }
 
-    const result = await response.json();
+    const result: ScoreSubmissionResponse = await response.json();
     console.log("[Score Service] Success:", result);
 
     return {
       success: true,
       message: "점수가 성공적으로 기록되었습니다!",
+      id: result.data.id,
     };
   } catch (error) {
     console.error("[Score Service] Error:", error);

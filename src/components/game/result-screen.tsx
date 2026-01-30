@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { useCustomRouter } from "@/hooks/use-custom-router";
 import { useGameShare } from "@/hooks/use-game-share";
 import { useSession, signIn } from "next-auth/react";
-import { Share2, RotateCcw, ArrowLeft, Save } from "lucide-react";
+import { Share2, RotateCcw, ArrowLeft, Save, Loader2 } from "lucide-react";
 import { getSkyDropMedal } from "@/utils/sky-drop-util";
 import { getBlockTowerMedal } from "@/utils/block-tower-util";
 import { submitScore } from "@/services/score-service";
@@ -37,23 +37,33 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
   const [isSharing, setIsSharing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [resultId, setResultId] = useState<string | undefined>(undefined);
+  const hasAutoSubmitted = useRef(false);
 
   // 점수 제출
   const handleSubmitScore = useCallback(
     async (token?: string) => {
-      if (isSubmitting || isSubmitted) return;
+      // 이미 제출되었거나, 제출 중이면 중단
+      if (isSubmitted || isSubmitting) return;
 
       setIsSubmitting(true);
       try {
         const result = await submitScore({ gameName, score }, token);
         if (result.success) {
           setIsSubmitted(true);
+          if (result.id) {
+            setResultId(result.id);
+            console.log("Score submitted with ID:", result.id);
+          } else {
+            console.warn("Score submitted but no ID returned");
+          }
         } else {
-          alert(result.message || t("submitFail")); // 실패 시 알림
+          // 실패 시 재시도하지 않음 (사용자가 수동으로 시도해야 함)
+          alert(result.message || t("submitFail"));
         }
       } catch (error) {
         console.error("Failed to submit score:", error);
-        alert(t("submitFail")); // 실패 시 알림
+        alert(t("submitFail"));
       } finally {
         setIsSubmitting(false);
       }
@@ -77,12 +87,29 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const token = (session as any)?.idToken;
+
+    // 토큰이 없으면 재로그인 유도
+    if (!token) {
+      console.warn("Session exists but no idToken found, forcing sign in");
+      localStorage.setItem(
+        "pendingScore",
+        JSON.stringify({
+          gameName,
+          score,
+          timestamp: Date.now(),
+        }),
+      );
+      signIn("google");
+      return;
+    }
+
     handleSubmitScore(token);
   }, [session, handleSubmitScore, gameName, score]);
 
   // 마운트 시 자동 제출 체크
   useEffect(() => {
-    if (session && !isSubmitted && !isSubmitting) {
+    // 세션이 있고, 아직 제출 안 했고, 제출 중 아니고, 자동 제출 시도 안 했으면
+    if (session && !isSubmitted && !isSubmitting && !hasAutoSubmitted.current) {
       const pending = localStorage.getItem("pendingScore");
       if (pending) {
         try {
@@ -91,6 +118,7 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
           // 5분 이내의 데이터이고, 현재 표시된 점수와 일치하면 자동 제출
           const isValidTime = Date.now() - timestamp < 5 * 60 * 1000;
           if (savedGame === gameName && savedScore === score && isValidTime) {
+            hasAutoSubmitted.current = true; // 시도 플래그 설정
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const token = (session as any)?.idToken;
             handleSubmitScore(token);
@@ -113,13 +141,46 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
   const handleShare = useCallback(async () => {
     if (isSharing) return;
 
-    setIsSharing(true);
-    try {
-      await share({ score, gameName });
-    } finally {
-      setIsSharing(false);
+    // 1. 점수 ID가 있으면 바로 공유
+    if (resultId) {
+      setIsSharing(true);
+      try {
+        await share({ score, gameName, id: resultId });
+      } finally {
+        setIsSharing(false);
+      }
+      return;
     }
-  }, [score, gameName, share, isSharing]);
+
+    // 2. 로그인되어 있지 않으면 로그인 유도
+    if (!session) {
+      if (confirm("공유하려면 점수 기록이 필요합니다.\n로그인하고 점수를 기록하시겠습니까?")) {
+        localStorage.setItem("pendingShare", "true"); // 공유 의도 저장
+        handleScoreAction();
+      }
+      return;
+    }
+
+    // 3. 로그인되어 있는데 점수 제출이 안 된 경우 (드문 케이스지만 처리)
+    if (!isSubmitted) {
+      if (confirm("공유하려면 점수 기록이 필요합니다.\n현재 점수를 기록하시겠습니까?")) {
+        localStorage.setItem("pendingShare", "true"); // 공유 의도 저장
+        handleScoreAction();
+      }
+      return;
+    }
+  }, [score, gameName, share, isSharing, resultId, session, isSubmitted, handleScoreAction]);
+
+  // 자동 공유 처리 (로그인/제출 후 복귀 시)
+  useEffect(() => {
+    if (resultId && localStorage.getItem("pendingShare") === "true") {
+      localStorage.removeItem("pendingShare");
+      // 브라우저 정책상 자동 share가 막힐 수 있으므로 try-catch
+      share({ score, gameName, id: resultId }).catch(() => {
+        // 실패하면 토스트나 알림 등으로 유도 (이미 share 내부에서 처리됨/fallback)
+      });
+    }
+  }, [resultId, share, score, gameName]);
 
   return (
     <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm p-6 text-center animate-in fade-in duration-300">
@@ -157,22 +218,31 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
           {/* 공유하기 버튼 */}
           <Button
             onClick={handleShare}
-            disabled={isSharing}
+            disabled={isSharing || isSubmitting}
             size="lg"
             aria-label="Share Result"
-            className="w-full text-lg py-6 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold rounded-xl shadow-lg transition-all transform hover:scale-105"
+            className="w-full text-lg py-6 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold rounded-xl shadow-lg transition-all transform hover:scale-105 disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            <Share2 className="mr-2 h-5 w-5" />
-            {isSharing ? "공유 중..." : t("share")}
+            {isSharing ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                공유 중...
+              </>
+            ) : (
+              <>
+                <Share2 className="mr-2 h-5 w-5" />
+                {t("share")}
+              </>
+            )}
           </Button>
 
           {/* 점수 기록하기 버튼 */}
           <Button
             onClick={handleScoreAction}
-            disabled={isSubmitting || isSubmitted}
+            disabled={isSubmitting || isSubmitted || isSharing}
             size="lg"
             aria-label="Submit Score"
-            className={`w-full text-lg py-6 font-bold rounded-xl shadow-lg transition-all transform hover:scale-105 ${
+            className={`w-full text-lg py-6 font-bold rounded-xl shadow-lg transition-all transform hover:scale-105 disabled:opacity-70 disabled:cursor-not-allowed ${
               isSubmitted
                 ? "bg-green-500 hover:bg-green-600 text-white"
                 : !session
@@ -180,36 +250,46 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
                   : "bg-indigo-500 hover:bg-indigo-600 text-white"
             }`}
           >
-            {!isSubmitted && !session ? (
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                기록 중...
+              </>
+            ) : !isSubmitted && !session ? (
               // Google Icon (Simple SVG)
-              <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
-                <path
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  fill="#4285F4"
-                />
-                <path
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  fill="#34A853"
-                />
-                <path
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.21.81-.63z"
-                  fill="#FBBC05"
-                />
-                <path
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  fill="#EA4335"
-                />
-              </svg>
+              <div className="flex items-center">
+                <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
+                  <path
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    fill="#4285F4"
+                  />
+                  <path
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    fill="#34A853"
+                  />
+                  <path
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.21.81-.63z"
+                    fill="#FBBC05"
+                  />
+                  <path
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    fill="#EA4335"
+                  />
+                </svg>
+                Google 로그인하고 기록하기
+              </div>
             ) : (
-              <Save className="mr-2 h-5 w-5" />
+              <>
+                {isSubmitted ? (
+                  <div className="flex items-center">기록 완료</div>
+                ) : (
+                  <div className="flex items-center">
+                    <Save className="mr-2 h-5 w-5" />
+                    {t("submitScore")}
+                  </div>
+                )}
+              </>
             )}
-            {isSubmitting
-              ? "기록 중..."
-              : isSubmitted
-                ? "기록 완료"
-                : !session
-                  ? "Google 로그인하고 기록하기"
-                  : t("submitScore")}
           </Button>
         </div>
       )}
@@ -218,9 +298,10 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
         {/* 다시하기 버튼 */}
         <Button
           onClick={onRestart}
+          disabled={isSubmitting || isSharing}
           size="lg"
           aria-label="Restart Game"
-          className="w-full text-lg py-6 bg-teal-400 hover:bg-teal-500 text-black font-bold rounded-xl shadow-lg transition-all transform hover:scale-105"
+          className="w-full text-lg py-6 bg-teal-400 hover:bg-teal-500 text-black font-bold rounded-xl shadow-lg transition-all transform hover:scale-105 disabled:opacity-70 disabled:cursor-not-allowed"
         >
           <RotateCcw className="mr-2 h-5 w-5" />
           {t("restart")}

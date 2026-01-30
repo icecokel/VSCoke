@@ -1,14 +1,47 @@
 import { ImageResponse } from "next/og";
+import { getSkyDropMedal } from "@/utils/sky-drop-util";
 import { getBlockTowerMedal } from "@/utils/block-tower-util";
+import { getGameResult } from "@/services/score-service";
 
 export const runtime = "edge";
-export const alt = "Block Tower Game Result";
+export const alt = "Game Result";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-const OGImage = async ({ params }: { params: Promise<{ score: string }> }) => {
-  const { score: scoreParam } = await params;
-  const score = scoreParam ? parseInt(scoreParam, 10) : 0;
+const OGImage = async ({ params }: { params: Promise<{ id: string }> }) => {
+  const { id } = await params;
+  const result = await getGameResult(id);
+
+  if (!result) {
+    return new ImageResponse(
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#1e293b",
+          color: "#fff",
+          fontSize: 48,
+        }}
+      >
+        Game Result Not Found
+      </div>,
+      { ...size },
+    );
+  }
+
+  const isSkyDrop = result.gameType === "SKY_DROP";
+  const gameTitle = isSkyDrop ? "SKY DROP" : "BLOCK TOWER";
+  const medal = isSkyDrop ? getSkyDropMedal(result.score) : getBlockTowerMedal(result.score);
+
+  // Colors
+  const titleColor = isSkyDrop ? "#4ECDC4" : "#FFD93D";
+  const accentGradient = isSkyDrop
+    ? "linear-gradient(90deg, #4ECDC4, #FF6B6B)"
+    : "linear-gradient(90deg, #FFD93D, #FF8E3C)";
 
   return new ImageResponse(
     <div
@@ -19,7 +52,7 @@ const OGImage = async ({ params }: { params: Promise<{ score: string }> }) => {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(135deg, #1a1a2e 0%, #2d1b3d 50%, #1a1a2e 100%)",
+        background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
         fontFamily: "system-ui, -apple-system, sans-serif",
       }}
     >
@@ -28,14 +61,13 @@ const OGImage = async ({ params }: { params: Promise<{ score: string }> }) => {
         style={{
           fontSize: 64,
           fontWeight: "bold",
-          color: "#FF6B6B",
+          color: titleColor,
           marginBottom: 16,
           letterSpacing: "0.1em",
-          display: "flex",
-          alignItems: "center",
+          display: "flex", // Flexbox for text alignment
         }}
       >
-        🏗️ BLOCK TOWER
+        {gameTitle}
       </div>
 
       {/* 구분선 */}
@@ -43,7 +75,7 @@ const OGImage = async ({ params }: { params: Promise<{ score: string }> }) => {
         style={{
           width: 120,
           height: 6,
-          background: "linear-gradient(90deg, #FF6B6B, #FFE66D)",
+          background: accentGradient,
           borderRadius: 3,
           margin: "24px 0",
         }}
@@ -60,7 +92,7 @@ const OGImage = async ({ params }: { params: Promise<{ score: string }> }) => {
         SCORE
       </div>
 
-      {/* 점수 */}
+      {/* 점수 및 메달 */}
       <div
         style={{
           display: "flex",
@@ -69,19 +101,17 @@ const OGImage = async ({ params }: { params: Promise<{ score: string }> }) => {
           gap: 20,
         }}
       >
-        {getBlockTowerMedal(score) && (
-          <div style={{ fontSize: 100 }}>{getBlockTowerMedal(score)}</div>
-        )}
+        {medal && <div style={{ fontSize: 100 }}>{medal}</div>}
         <div
           style={{
             fontSize: 140,
             fontWeight: 900,
             color: "white",
             letterSpacing: "0.1em",
-            textShadow: "0 0 40px rgba(255, 107, 107, 0.5)",
+            textShadow: `0 0 40px ${titleColor}80`, // Slight transparency
           }}
         >
-          {score.toLocaleString()}
+          {result.score.toLocaleString()}
         </div>
       </div>
 
@@ -90,11 +120,12 @@ const OGImage = async ({ params }: { params: Promise<{ score: string }> }) => {
         style={{
           marginTop: 40,
           padding: "16px 48px",
-          background: "linear-gradient(90deg, #FF6B6B, #ff5757)",
+          background: accentGradient,
           borderRadius: 16,
           fontSize: 28,
           fontWeight: "bold",
-          color: "white",
+          color: "#1a1a2e",
+          display: "flex",
         }}
       >
         도전해보세요!

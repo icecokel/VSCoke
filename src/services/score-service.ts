@@ -1,3 +1,12 @@
+import type { components } from "@/types/api";
+
+// API 스키마에서 자동 생성된 타입
+export type CreateGameHistoryDto = components["schemas"]["CreateGameHistoryDto"];
+export type GameHistoryResponseDto = components["schemas"]["GameHistoryResponseDto"];
+export type GameHistoryUserDto = components["schemas"]["GameHistoryUserDto"];
+export type GameHistory = components["schemas"]["GameHistory"];
+
+// 내부 사용 인터페이스
 export interface ScoreSubmissionResult {
   success: boolean;
   message?: string;
@@ -7,79 +16,19 @@ export interface ScoreSubmissionResult {
 export interface ScoreSubmissionData {
   gameName: string;
   score: number;
+  playTime?: number;
 }
 
-// ... (existing interfaces)
-
-export interface GameResult {
-  id: string;
-  score: number;
-  gameType: "SKY_DROP" | "BLOCK_TOWER";
-  createdAt: string;
-  user?: {
-    displayName: string;
-  };
-  rank?: number | null;
-}
+const API_URL = "https://api.icecoke.kr/game/result";
 
 /**
  * 게임 점수를 서버에 제출합니다.
  */
-// ... (existing submitScore function)
-
-/**
- * 게임 결과를 조회합니다.
- */
-export const getGameResult = async (id: string): Promise<GameResult | null> => {
-  try {
-    const res = await fetch(`${API_URL}/${id}`, {
-      next: { revalidate: 60 },
-    });
-
-    if (!res.ok) return null;
-
-    // API 응답 구조가 { success: true, data: { ... } } 형태일 수 있음
-    const json = await res.json();
-    return json.data || json;
-  } catch (error) {
-    console.error("Error fetching game result:", error);
-    return null;
-  }
-};
-const API_URL = "https://api.icecoke.kr/game/result";
-
-// ... (existing interfaces)
-
-// API 요청 Payload 스키마
-export interface ScoreSubmissionPayload {
-  score: number;
-  gameType: "SKY_DROP" | "BLOCK_TOWER";
-  playTime?: number;
-}
-
-// API 응답 스키마 (`POST /game/result`)
-export interface ScoreSubmissionResponse {
-  success: boolean;
-  data: {
-    id: string;
-    score: number;
-    gameType: "SKY_DROP" | "BLOCK_TOWER";
-    createdAt: string;
-    user?: {
-      displayName: string;
-    };
-    rank?: number | null;
-  };
-}
-
-// ... (existing GameResult interface)
-
 export const submitScore = async (
   data: ScoreSubmissionData,
   token?: string,
 ): Promise<ScoreSubmissionResult> => {
   if (!token) {
-    console.error("No token provided for score submission");
     return {
       success: false,
       message: "인증 토큰이 없습니다.",
@@ -87,17 +36,16 @@ export const submitScore = async (
   }
 
   try {
-    const gameTypeMap: Record<string, "SKY_DROP" | "BLOCK_TOWER"> = {
+    const gameTypeMap: Record<string, CreateGameHistoryDto["gameType"]> = {
       "sky-drop": "SKY_DROP",
       "block-tower": "BLOCK_TOWER",
     };
 
-    const payload: ScoreSubmissionPayload = {
+    const payload: CreateGameHistoryDto = {
       score: data.score,
       gameType: gameTypeMap[data.gameName] || "SKY_DROP",
+      playTime: data.playTime,
     };
-
-    console.log("[Score Service] Submitting to:", API_URL, payload);
 
     const response = await fetch(API_URL, {
       method: "POST",
@@ -109,27 +57,41 @@ export const submitScore = async (
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("[Score Service] Failed:", response.status, errorData);
       return {
         success: false,
         message: `점수 기록 실패 (${response.status})`,
       };
     }
 
-    const result: ScoreSubmissionResponse = await response.json();
-    console.log("[Score Service] Success:", result);
+    const result: GameHistoryResponseDto = await response.json();
 
     return {
       success: true,
       message: "점수가 성공적으로 기록되었습니다!",
-      id: result.data.id,
+      id: result.id,
     };
-  } catch (error) {
-    console.error("[Score Service] Error:", error);
+  } catch {
     return {
       success: false,
       message: "네트워크 오류가 발생했습니다.",
     };
+  }
+};
+
+/**
+ * 게임 결과를 조회합니다.
+ */
+export const getGameResult = async (id: string): Promise<GameHistoryResponseDto | null> => {
+  try {
+    const res = await fetch(`${API_URL}/${id}`, {
+      next: { revalidate: 60 },
+    });
+
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    return json.data || json;
+  } catch {
+    return null;
   }
 };

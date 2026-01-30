@@ -10,7 +10,7 @@ export type GameHistory = components["schemas"]["GameHistory"];
 export interface ScoreSubmissionResult {
   success: boolean;
   message?: string;
-  id?: string;
+  data?: GameHistoryResponseDto;
 }
 
 export interface ScoreSubmissionData {
@@ -68,7 +68,7 @@ export const submitScore = async (
     return {
       success: true,
       message: "점수가 성공적으로 기록되었습니다!",
-      id: result.id,
+      data: result,
     };
   } catch {
     return {

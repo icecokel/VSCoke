@@ -19,6 +19,7 @@ export interface GameResult {
   user?: {
     displayName: string;
   };
+  rank?: number | null;
 }
 
 /**
@@ -53,6 +54,7 @@ const API_URL = "https://api.icecoke.kr/game/result";
 export interface ScoreSubmissionPayload {
   score: number;
   gameType: "SKY_DROP" | "BLOCK_TOWER";
+  playTime?: number;
 }
 
 // API 응답 스키마 (`POST /game/result`)
@@ -65,8 +67,8 @@ export interface ScoreSubmissionResponse {
     createdAt: string;
     user?: {
       displayName: string;
-      email: string;
     };
+    rank?: number | null;
   };
 }
 

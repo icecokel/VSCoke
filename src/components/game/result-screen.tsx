@@ -6,10 +6,21 @@ import { Button } from "@/components/ui/button";
 import { useCustomRouter } from "@/hooks/use-custom-router";
 import { useGameShare } from "@/hooks/use-game-share";
 import { useSession, signIn } from "next-auth/react";
-import { Share2, RotateCcw, ArrowLeft, Save, Loader2 } from "lucide-react";
+// ... imports
+import { Share2, RotateCcw, ArrowLeft, Save, Loader2, LogIn } from "lucide-react";
 import { getSkyDropMedal } from "@/utils/sky-drop-util";
 import { getBlockTowerMedal } from "@/utils/block-tower-util";
 import { submitScore } from "@/services/score-service";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // 게임별 메달 계산
 const getMedalForGame = (gameName: string, score: number): string | null => {
@@ -38,6 +49,7 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [resultId, setResultId] = useState<string | undefined>(undefined);
+  const [showLoginDialog, setShowLoginDialog] = useState(false); // 로그인 유도 모달 상태
   const hasAutoSubmitted = useRef(false);
 
   // 점수 제출
@@ -152,24 +164,12 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
       return;
     }
 
-    // 2. 로그인되어 있지 않으면 로그인 유도
-    if (!session) {
-      if (confirm("공유하려면 점수 기록이 필요합니다.\n로그인하고 점수를 기록하시겠습니까?")) {
-        localStorage.setItem("pendingShare", "true"); // 공유 의도 저장
-        handleScoreAction();
-      }
+    // 2. 로그인되어 있지 않거나, 제출이 안 된 경우 모달 띄우기
+    if (!session || !isSubmitted) {
+      setShowLoginDialog(true);
       return;
     }
-
-    // 3. 로그인되어 있는데 점수 제출이 안 된 경우 (드문 케이스지만 처리)
-    if (!isSubmitted) {
-      if (confirm("공유하려면 점수 기록이 필요합니다.\n현재 점수를 기록하시겠습니까?")) {
-        localStorage.setItem("pendingShare", "true"); // 공유 의도 저장
-        handleScoreAction();
-      }
-      return;
-    }
-  }, [score, gameName, share, isSharing, resultId, session, isSubmitted, handleScoreAction]);
+  }, [score, gameName, share, isSharing, resultId, session, isSubmitted]);
 
   // 자동 공유 처리 (로그인/제출 후 복귀 시)
   useEffect(() => {
@@ -181,6 +181,12 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
       });
     }
   }, [resultId, share, score, gameName]);
+
+  const handleConfirmLogin = () => {
+    setShowLoginDialog(false);
+    localStorage.setItem("pendingShare", "true"); // 공유 의도 저장
+    handleScoreAction();
+  };
 
   return (
     <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm p-6 text-center animate-in fade-in duration-300">
@@ -307,6 +313,33 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
           {t("restart")}
         </Button>
       </div>
+
+      <AlertDialog open={showLoginDialog} onOpenChange={setShowLoginDialog}>
+        <AlertDialogContent className="bg-black border border-white/20 text-white max-w-sm rounded-2xl shadow-2xl z-[105]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-bold text-center">
+              로그인이 필요합니다
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400 text-center">
+              공유하려면 점수 기록이 필요합니다.
+              <br />
+              로그인하고 기록하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-3 sm:flex-col mt-6">
+            <AlertDialogAction
+              onClick={handleConfirmLogin}
+              className="w-full py-6 rounded-xl text-lg font-bold flex items-center justify-center"
+            >
+              <LogIn className="mr-2 h-5 w-5" />
+              로그인하고 기록하기
+            </AlertDialogAction>
+            <AlertDialogCancel className="w-full py-6 rounded-xl text-lg mt-2 border-zinc-700 hover:bg-zinc-900 hover:text-white transition-colors">
+              취소
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

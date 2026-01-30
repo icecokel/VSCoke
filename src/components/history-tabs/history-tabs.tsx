@@ -63,7 +63,7 @@ export const HistoryTabs = ({ children }: TParentNode) => {
   const handleCloseOthers = (tabPath: string) => {
     const foundTab = history.find(({ path }) => path === tabPath);
     if (foundTab) {
-      setHistory([{ ...foundTab, isActive: true }]);
+      setHistory([{ ...foundTab, isActive: true, lastAccessedAt: Date.now() }]);
       router.push(foundTab.path);
     }
   };
@@ -151,11 +151,17 @@ export const HistoryTabs = ({ children }: TParentNode) => {
           return prev.map(item => ({
             ...item,
             isActive: item.path === normalizedPath,
+            lastAccessedAt: item.path === normalizedPath ? Date.now() : item.lastAccessedAt,
           }));
         }
         return [
           ...prev.map(item => ({ ...item, isActive: false })),
-          { isActive: true, path: normalizedPath, title },
+          {
+            isActive: true,
+            path: normalizedPath,
+            title,
+            lastAccessedAt: Date.now(),
+          },
         ];
       });
     }

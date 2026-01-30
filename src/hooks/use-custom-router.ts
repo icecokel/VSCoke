@@ -22,7 +22,7 @@ export const useCustomRouter = () => {
     if (existingItem) {
       change(existingItem);
     } else {
-      add({ path, title, isActive: true });
+      add({ path, title });
       router.push(path);
     }
   };
@@ -34,12 +34,12 @@ export const useCustomRouter = () => {
       setHistory(prev =>
         prev.map(item =>
           item.path === current.path
-            ? { path, title, isActive: true }
+            ? { path, title, isActive: true, lastAccessedAt: Date.now() }
             : { ...item, isActive: false },
         ),
       );
     } else {
-      setHistory([{ path, title, isActive: true }]);
+      setHistory([{ path, title, isActive: true, lastAccessedAt: Date.now() }]);
     }
     router.replace(path);
   };
@@ -51,7 +51,13 @@ export const useCustomRouter = () => {
       const currentIndex = history.findIndex(item => item.path === current.path);
       if (currentIndex > 0) {
         const prevPath = history[currentIndex - 1].path;
-        setHistory(prev => prev.map(item => ({ ...item, isActive: item.path === prevPath })));
+        setHistory(prev =>
+          prev.map(item =>
+            item.path === prevPath
+              ? { ...item, isActive: true, lastAccessedAt: Date.now() }
+              : { ...item, isActive: false },
+          ),
+        );
       }
     }
     router.back();

@@ -8,15 +8,16 @@ export const useHistory = () => {
   const { history, setHistory, isHydrated } = useHistoryContext();
   const router = useRouter();
 
-  const add = ({ path, title }: IHistoryItem) => {
+  const add = ({ path, title }: Pick<IHistoryItem, "path" | "title">) => {
+    const now = Date.now();
     if (history.some((item: IHistoryItem) => item.path === path)) {
-      change({ path, title, isActive: true });
+      change({ path, title, isActive: true, lastAccessedAt: now });
       return;
     }
     setHistory((prev: IHistoryItem[]) => {
       return [
         ...prev.map((item: IHistoryItem) => ({ ...item, isActive: false })),
-        { isActive: true, path, title },
+        { isActive: true, path, title, lastAccessedAt: now },
       ];
     });
   };
@@ -29,7 +30,12 @@ export const useHistory = () => {
 
   const change = ({ path }: IHistoryItem) => {
     setHistory((prev: IHistoryItem[]) =>
-      prev.map((item: IHistoryItem) => ({ ...item, isActive: item.path === path })),
+      prev.map((item: IHistoryItem) => {
+        if (item.path === path) {
+          return { ...item, isActive: true, lastAccessedAt: Date.now() };
+        }
+        return { ...item, isActive: false };
+      }),
     );
     router.push(path);
   };

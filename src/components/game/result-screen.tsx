@@ -11,6 +11,7 @@ import { Share2, RotateCcw, ArrowLeft, Save, Loader2, LogIn } from "lucide-react
 import { getSkyDropMedal } from "@/utils/sky-drop-util";
 import { getBlockTowerMedal } from "@/utils/block-tower-util";
 import { submitScore } from "@/services/score-service";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,7 +50,8 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [resultId, setResultId] = useState<string | undefined>(undefined);
-  const [showLoginDialog, setShowLoginDialog] = useState(false); // 로그인 유도 모달 상태
+  const [rank, setRank] = useState<number | null>(null);
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
   const hasAutoSubmitted = useRef(false);
 
   // 점수 제출
@@ -61,21 +63,16 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
       setIsSubmitting(true);
       try {
         const result = await submitScore({ gameName, score }, token);
-        if (result.success) {
+        if (result.success && result.data) {
           setIsSubmitted(true);
-          if (result.id) {
-            setResultId(result.id);
-            console.log("Score submitted with ID:", result.id);
-          } else {
-            console.warn("Score submitted but no ID returned");
-          }
+          setResultId(result.data.id);
+          setRank(result.data.rank ?? null);
+          toast.success(result.message || t("submitSuccess"));
         } else {
-          // 실패 시 재시도하지 않음 (사용자가 수동으로 시도해야 함)
-          alert(result.message || t("submitFail"));
+          toast.error(result.message || t("submitFail"));
         }
-      } catch (error) {
-        console.error("Failed to submit score:", error);
-        alert(t("submitFail"));
+      } catch {
+        toast.error(t("submitFail"));
       } finally {
         setIsSubmitting(false);
       }
@@ -84,32 +81,34 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
   );
 
   const handleScoreAction = useCallback(() => {
-    if (!session) {
-      // 로그인 전 점수 정보 저장
+    // 세션 에러(토큰 갱신 실패) 시 재로그인 유도
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sessionError = (session as any)?.error;
+    if (sessionError === "RefreshAccessTokenError") {
       localStorage.setItem(
         "pendingScore",
-        JSON.stringify({
-          gameName,
-          score,
-          timestamp: Date.now(),
-        }),
+        JSON.stringify({ gameName, score, timestamp: Date.now() }),
       );
       signIn("google");
       return;
     }
+
+    if (!session) {
+      localStorage.setItem(
+        "pendingScore",
+        JSON.stringify({ gameName, score, timestamp: Date.now() }),
+      );
+      signIn("google");
+      return;
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const token = (session as any)?.idToken;
 
-    // 토큰이 없으면 재로그인 유도
     if (!token) {
-      console.warn("Session exists but no idToken found, forcing sign in");
       localStorage.setItem(
         "pendingScore",
-        JSON.stringify({
-          gameName,
-          score,
-          timestamp: Date.now(),
-        }),
+        JSON.stringify({ gameName, score, timestamp: Date.now() }),
       );
       signIn("google");
       return;
@@ -217,6 +216,21 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
           )}
           <p className="text-6xl font-black text-white tracking-widest">{score}</p>
         </div>
+
+        {/* 랭킹 유도 문구 (기록 전) */}
+        {!isSubmitted && score > 0 && (
+          <p className="mt-4 text-amber-400 text-sm animate-pulse">{t("rankPrompt")}</p>
+        )}
+
+        {/* 랭킹 결과 (기록 후) */}
+        {isSubmitted && rank !== null && (
+          <div className="mt-4 px-4 py-2 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 rounded-lg border border-amber-500/30 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <p className="text-amber-300 font-bold text-lg">
+              🎉 {t("currentRank")}: {rank}
+              {t("rankSuffix")}
+            </p>
+          </div>
+        )}
       </div>
 
       {score > 0 && (

@@ -58,6 +58,7 @@
   },
   "Game": {
     "submitScore": "Submit Score",
+    "submitSuccess": "Score recorded successfully!",
     "submitFail": "Failed to submit score.",
     "score": "Score: ",
     "deadline": "DEADLINE",
@@ -90,6 +91,9 @@
     "height": "Height",
     "tapToDrop": "Tap to Drop",
     "blockTowerDesc": "Stack shapes to build a tower in this physics-based balance game.",
+    "rankPrompt": "🏆 Record your score to see your ranking!",
+    "currentRank": "Current Rank",
+    "rankSuffix": "",
     "doomDesc": "A legendary retro FPS game to enjoy in your browser.",
     "doomTitle": "DOOM (Shareware)"
   },

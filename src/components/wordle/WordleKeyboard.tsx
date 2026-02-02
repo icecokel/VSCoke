@@ -15,11 +15,9 @@ export function WordleKeyboard({ onKey, usedKeys }: WordleKeyboardProps) {
   ];
 
   return (
-    // h-full로 부모 높이에 맞춤, 3행 키보드
-    <div className="w-full h-full flex flex-col gap-0.5">
+    <div className="w-full max-w-[500px] mx-auto flex flex-col gap-1.5">
       {rows.map((row, i) => (
-        // 각 행: h-1/3으로 균등 분할
-        <div key={i} className="h-1/3 flex justify-center gap-0.5 touch-manipulation">
+        <div key={i} className="flex justify-center gap-1 touch-manipulation">
           {row.map(key => {
             const status = usedKeys[key];
             const isSpecial = key.length > 1;
@@ -29,9 +27,9 @@ export function WordleKeyboard({ onKey, usedKeys }: WordleKeyboardProps) {
                 key={key}
                 onClick={() => onKey(key)}
                 className={cn(
-                  "h-full flex items-center justify-center rounded font-bold uppercase transition-all active:scale-95 select-none text-[10px] sm:text-xs",
-                  // 버튼 크기: 일반키는 flex-1, 특수키는 1.5배
-                  isSpecial ? "flex-[1.5] px-0.5" : "flex-1",
+                  "flex items-center justify-center rounded font-bold uppercase transition-all active:scale-95 select-none",
+                  "h-12 sm:h-14 text-xs sm:text-sm",
+                  isSpecial ? "flex-[1.5] px-2" : "flex-1",
                   // 기본 배경색
                   !status &&
                     "bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-foreground",
@@ -42,9 +40,9 @@ export function WordleKeyboard({ onKey, usedKeys }: WordleKeyboardProps) {
                 )}
               >
                 {key === "Backspace" ? (
-                  <Delete className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <Delete className="w-5 h-5" />
                 ) : key === "Enter" ? (
-                  <span className="text-[8px] sm:text-[10px]">ENTER</span>
+                  <span className="text-[10px] sm:text-xs">ENTER</span>
                 ) : (
                   key
                 )}

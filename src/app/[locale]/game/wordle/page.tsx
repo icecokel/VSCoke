@@ -42,31 +42,29 @@ export default function WordlePage() {
   }, [gameStatus, answer]);
 
   return (
-    // 화면 높이 전체 사용, 가로만 제한
-    <div className="w-full max-w-[500px] h-[100dvh] mx-auto flex flex-col overflow-hidden px-2 pb-1">
-      {/* Header - 32px 고정 */}
-      <header className="h-8 flex items-center justify-between px-1 shrink-0">
-        <h1 className="text-base font-bold tracking-tight">Wordle</h1>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={resetGame}
-          title="Restart Game"
-          className="h-6 w-6 p-0"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
+    <div className="container max-w-lg mx-auto py-4 px-4 flex flex-col min-h-[calc(100dvh-48px)]">
+      {/* Header */}
+      <header className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold tracking-tight">Wordle</h1>
+        <Button variant="ghost" size="icon" onClick={resetGame} title="Restart Game">
+          <RefreshCw className="w-5 h-5" />
         </Button>
       </header>
 
-      {/* Board - flex-1, 최소한의 패딩 */}
-      <main className="flex-1 flex items-center justify-center min-h-0">
+      {/* Board */}
+      <main className="flex-1 flex items-center justify-center mb-4">
         <WordleBoard guesses={guesses} history={history} currentGuess={currentGuess} turn={turn} />
       </main>
 
-      {/* Keyboard - 90px 고정 높이 */}
-      <footer className="h-[90px] shrink-0">
+      {/* Keyboard */}
+      <footer className="mt-auto">
         <WordleKeyboard onKey={handleKeyup} usedKeys={usedKeys} />
       </footer>
+
+      {/* 디버깅용 정답 표시 */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="text-center text-xs text-muted-foreground mt-2">Debug: {answer}</div>
+      )}
     </div>
   );
 }

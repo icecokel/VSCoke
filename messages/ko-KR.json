@@ -58,6 +58,9 @@
   },
   "Game": {
     "submitScore": "점수 기록하기",
+    "submitting": "기록 중...",
+    "loginAndSubmit": "Google 로그인하고 기록하기",
+    "submitted": "기록 완료",
     "submitSuccess": "점수가 성공적으로 기록되었습니다!",
     "submitFail": "점수 기록에 실패했습니다.",
     "score": "점수: ",

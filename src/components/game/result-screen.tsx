@@ -53,13 +53,15 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
   const [rank, setRank] = useState<number | null>(null);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const hasAutoSubmitted = useRef(false);
+  const isSubmittingRef = useRef(false);
 
   // 점수 제출
   const handleSubmitScore = useCallback(
     async (token?: string) => {
       // 이미 제출되었거나, 제출 중이면 중단
-      if (isSubmitted || isSubmitting) return;
+      if (isSubmitted || isSubmitting || isSubmittingRef.current) return;
 
+      isSubmittingRef.current = true;
       setIsSubmitting(true);
       try {
         const result = await submitScore({ gameName, score }, token);
@@ -74,6 +76,7 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
       } catch {
         toast.error(t("submitFail"));
       } finally {
+        isSubmittingRef.current = false;
         setIsSubmitting(false);
       }
     },
@@ -81,6 +84,9 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
   );
 
   const handleScoreAction = useCallback(() => {
+    // 중복 실행 방지
+    if (isSubmittingRef.current) return;
+
     // 세션 에러(토큰 갱신 실패) 시 재로그인 유도
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sessionError = (session as any)?.error;
@@ -89,6 +95,8 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
         "pendingScore",
         JSON.stringify({ gameName, score, timestamp: Date.now() }),
       );
+      isSubmittingRef.current = true;
+      setIsSubmitting(true);
       signIn("google");
       return;
     }
@@ -98,6 +106,8 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
         "pendingScore",
         JSON.stringify({ gameName, score, timestamp: Date.now() }),
       );
+      isSubmittingRef.current = true;
+      setIsSubmitting(true);
       signIn("google");
       return;
     }
@@ -110,6 +120,8 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
         "pendingScore",
         JSON.stringify({ gameName, score, timestamp: Date.now() }),
       );
+      isSubmittingRef.current = true;
+      setIsSubmitting(true);
       signIn("google");
       return;
     }
@@ -273,7 +285,7 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                기록 중...
+                {t("submitting")}
               </>
             ) : !isSubmitted && !session ? (
               // Google Icon (Simple SVG)
@@ -296,12 +308,12 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
                     fill="#EA4335"
                   />
                 </svg>
-                Google 로그인하고 기록하기
+                {t("loginAndSubmit")}
               </div>
             ) : (
               <>
                 {isSubmitted ? (
-                  <div className="flex items-center">기록 완료</div>
+                  <div className="flex items-center">{t("submitted")}</div>
                 ) : (
                   <div className="flex items-center">
                     <Save className="mr-2 h-5 w-5" />

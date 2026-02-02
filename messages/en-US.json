@@ -58,6 +58,9 @@
   },
   "Game": {
     "submitScore": "Submit Score",
+    "submitting": "Submitting...",
+    "loginAndSubmit": "Login & Submit Score",
+    "submitted": "Submitted",
     "submitSuccess": "Score recorded successfully!",
     "submitFail": "Failed to submit score.",
     "score": "Score: ",

@@ -97,7 +97,9 @@
     "currentRank": "Current Rank",
     "rankSuffix": "",
     "doomDesc": "A legendary retro FPS game to enjoy in your browser.",
-    "doomTitle": "DOOM (Shareware)"
+    "doomTitle": "DOOM (Shareware)",
+    "wordleTitle": "Wordle",
+    "wordleDesc": "Guess the 5-letter hidden word in 6 tries."
   },
   "Doom": {
     "title": "DOOM",

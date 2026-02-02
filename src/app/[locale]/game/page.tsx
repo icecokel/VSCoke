@@ -22,6 +22,12 @@ export default function GameDashboard() {
       description: t("doomDesc"),
       route: "/doom",
     },
+    {
+      id: "wordle",
+      title: t("wordleTitle"),
+      description: t("wordleDesc"),
+      route: "/game/wordle",
+    },
   ];
 
   return (

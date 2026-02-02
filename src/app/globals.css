@@ -37,6 +37,14 @@
   --color-teal-400: #4ecdc4; /* Added from codebase */
   --color-teal-500: #3fb9b0; /* Added from codebase */
 
+  /* Wordle Game Colors */
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+  --color-yellow-500: #eab308;
+  --color-yellow-600: #ca8a04;
+  --color-zinc-500: #71717a;
+  --color-zinc-600: #52525b;
+
   --color-white: #ffffff;
   --color-black: #000000;
 

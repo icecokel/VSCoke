@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { useWordle } from "@/hooks/useWordle"; // Phase 1
-import { WordleBoard } from "@/components/wordle/WordleBoard"; // Phase 2
-import { WordleKeyboard } from "@/components/wordle/WordleKeyboard"; // Phase 2
-import { toast } from "sonner"; // Sonner 사용
+import { useWordle } from "@/hooks/useWordle";
+import { WordleBoard } from "@/components/wordle/WordleBoard";
+import { WordleKeyboard } from "@/components/wordle/WordleKeyboard";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 
@@ -13,7 +13,6 @@ export default function WordlePage() {
     currentGuess,
     guesses,
     history,
-    isCorrect,
     turn,
     gameStatus,
     usedKeys,
@@ -25,7 +24,6 @@ export default function WordlePage() {
   // 윈도우 키보드 이벤트 리스너
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
-      // 보조키(Ctrl, Alt, Meta)가 눌린 상태면 무시
       if (e.ctrlKey || e.altKey || e.metaKey) return;
       handleKeyup(e.key);
     };
@@ -44,33 +42,31 @@ export default function WordlePage() {
   }, [gameStatus, answer]);
 
   return (
-    <div className="container max-w-lg mx-auto py-8 px-4 flex flex-col min-h-screen">
-      <header className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Wordle</h1>
-        <Button variant="ghost" size="icon" onClick={resetGame} title="Restart Game">
-          <RefreshCw className="w-5 h-5" />
+    // 화면 높이 전체 사용, 가로만 제한
+    <div className="w-full max-w-[500px] h-[100dvh] mx-auto flex flex-col overflow-hidden px-2 pb-1">
+      {/* Header - 32px 고정 */}
+      <header className="h-8 flex items-center justify-between px-1 shrink-0">
+        <h1 className="text-base font-bold tracking-tight">Wordle</h1>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={resetGame}
+          title="Restart Game"
+          className="h-6 w-6 p-0"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
         </Button>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-between gap-8 pb-8">
-        <div className="w-full flex justify-center">
-          <WordleBoard
-            guesses={guesses}
-            history={history}
-            currentGuess={currentGuess}
-            turn={turn}
-          />
-        </div>
-
-        <div className="w-full">
-          <WordleKeyboard onKey={handleKeyup} usedKeys={usedKeys} />
-        </div>
+      {/* Board - flex-1, 최소한의 패딩 */}
+      <main className="flex-1 flex items-center justify-center min-h-0">
+        <WordleBoard guesses={guesses} history={history} currentGuess={currentGuess} turn={turn} />
       </main>
 
-      {/* 디버깅용 정답 표시 (개발 중에만 보임) */}
-      {process.env.NODE_ENV === "development" && (
-        <div className="text-center text-xs text-muted-foreground mt-4">Debug Answer: {answer}</div>
-      )}
+      {/* Keyboard - 90px 고정 높이 */}
+      <footer className="h-[90px] shrink-0">
+        <WordleKeyboard onKey={handleKeyup} usedKeys={usedKeys} />
+      </footer>
     </div>
   );
 }

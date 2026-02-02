@@ -17,12 +17,6 @@ export default function GameDashboard() {
       route: "/game/sky-drop",
     },
     {
-      id: "block-tower",
-      title: "Block Tower",
-      description: t("blockTowerDesc"),
-      route: "/game/block-tower",
-    },
-    {
       id: "doom",
       title: t("doomTitle"),
       description: t("doomDesc"),

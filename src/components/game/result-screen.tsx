@@ -9,7 +9,6 @@ import { useSession, signIn } from "next-auth/react";
 // ... imports
 import { Share2, RotateCcw, ArrowLeft, Save, Loader2, LogIn } from "lucide-react";
 import { getSkyDropMedal } from "@/utils/sky-drop-util";
-import { getBlockTowerMedal } from "@/utils/block-tower-util";
 import { submitScore } from "@/services/score-service";
 import { toast } from "sonner";
 import {
@@ -28,8 +27,6 @@ const getMedalForGame = (gameName: string, score: number): string | null => {
   switch (gameName) {
     case "sky-drop":
       return getSkyDropMedal(score);
-    case "block-tower":
-      return getBlockTowerMedal(score);
     default:
       return null;
   }

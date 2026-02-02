@@ -38,7 +38,6 @@ export const submitScore = async (
   try {
     const gameTypeMap: Record<string, CreateGameHistoryDto["gameType"]> = {
       "sky-drop": "SKY_DROP",
-      "block-tower": "BLOCK_TOWER",
     };
 
     const payload: CreateGameHistoryDto = {

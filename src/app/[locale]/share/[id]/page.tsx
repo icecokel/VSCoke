@@ -1,7 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { CustomLink } from "@/components/custom-link";
 import { getSkyDropMedal } from "@/utils/sky-drop-util";
-import { getBlockTowerMedal } from "@/utils/block-tower-util";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getGameResult } from "@/services/score-service";
@@ -21,7 +20,7 @@ export const generateMetadata = async ({ params }: Props) => {
     };
   }
 
-  const gameTitle = result.gameType === "SKY_DROP" ? "Sky Drop" : "Block Tower";
+  const gameTitle = result.gameType === "SKY_DROP" ? "Sky Drop" : "Game";
 
   return {
     title: `${gameTitle} - ${result.score}점`,
@@ -49,14 +48,26 @@ const SharePage = async ({ params }: Props) => {
   }
 
   const isSkyDrop = result.gameType === "SKY_DROP";
-  const gameTitle = isSkyDrop ? "🎮 SKY DROP" : "🏗️ BLOCK TOWER";
-  const playLink = isSkyDrop ? "/game/sky-drop" : "/game/block-tower";
-  const colorClass = isSkyDrop ? "text-[#4ECDC4]" : "text-[#FFD93D]";
-  const fromColor = isSkyDrop ? "#4ECDC4" : "#FFD93D";
-  const toColor = isSkyDrop ? "#FF6B6B" : "#FF8E3C";
+
+  let gameTitle, playLink, colorClass, fromColor, toColor;
+
+  // Fallback for interactions with deleted games
+  if (result.gameType === "BLOCK_TOWER") {
+    gameTitle = "BLOCK TOWER (Archived)";
+    playLink = "/game";
+    colorClass = "text-gray-400";
+    fromColor = "#9ca3af";
+    toColor = "#4b5563";
+  } else {
+    gameTitle = "🎮 SKY DROP";
+    playLink = "/game/sky-drop";
+    colorClass = "text-[#4ECDC4]";
+    fromColor = "#4ECDC4";
+    toColor = "#FF6B6B";
+  }
 
   // 메달 가져오기
-  const medal = isSkyDrop ? getSkyDropMedal(result.score) : getBlockTowerMedal(result.score);
+  const medal = isSkyDrop ? getSkyDropMedal(result.score) : null;
 
   // 날짜 포맷
   const date = new Date(result.createdAt).toLocaleDateString(locale, {

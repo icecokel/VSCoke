@@ -1,6 +1,5 @@
 import { ImageResponse } from "next/og";
 import { getSkyDropMedal } from "@/utils/sky-drop-util";
-import { getBlockTowerMedal } from "@/utils/block-tower-util";
 import { getGameResult } from "@/services/score-service";
 
 export const runtime = "edge";
@@ -34,8 +33,8 @@ const OGImage = async ({ params }: { params: Promise<{ id: string }> }) => {
   }
 
   const isSkyDrop = result.gameType === "SKY_DROP";
-  const gameTitle = isSkyDrop ? "SKY DROP" : "BLOCK TOWER";
-  const medal = isSkyDrop ? getSkyDropMedal(result.score) : getBlockTowerMedal(result.score);
+  const gameTitle = isSkyDrop ? "SKY DROP" : "GAME";
+  const medal = isSkyDrop ? getSkyDropMedal(result.score) : null;
 
   // Colors
   const titleColor = isSkyDrop ? "#4ECDC4" : "#FFD93D";

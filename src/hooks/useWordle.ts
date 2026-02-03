@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { WordleLogic, LetterStatus, EnglishWordleLogic } from "@/lib/wordle/wordle-logic";
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 
 const MAX_CHALLENGES = 6;
 
@@ -22,6 +24,7 @@ export interface UseWordleReturn {
 const logic: WordleLogic = new EnglishWordleLogic();
 
 export const useWordle = (): UseWordleReturn => {
+  const t = useTranslations("Game");
   const [answer, setAnswer] = useState<string>("");
   const [currentGuess, setCurrentGuess] = useState<string>("");
   const [guesses, setGuesses] = useState<string[]>([...Array(MAX_CHALLENGES)]); // [...undefined]
@@ -55,15 +58,13 @@ export const useWordle = (): UseWordleReturn => {
 
     // 단어 유효성 검사 (길이)
     if (currentGuess.length !== logic.getWordLength()) {
-      // TODO: Toast warning "Not enough letters"
-      console.log("Not enough letters");
+      toast.error(t("notEnoughLetters"));
       return;
     }
 
     // 단어 유효성 검사 (사전)
     if (!logic.isValidWord(currentGuess)) {
-      // TODO: Toast warning "Not in word list"
-      console.log("Not in word list");
+      toast.error(t("notInList"));
       return;
     }
 
@@ -116,7 +117,7 @@ export const useWordle = (): UseWordleReturn => {
     });
 
     setCurrentGuess("");
-  }, [currentGuess, turn, answer, gameStatus]);
+  }, [currentGuess, turn, answer, gameStatus, t]);
 
   // 키 입력 핸들러 (외부에서 호출 가능)
   const handleKeyup = useCallback(

@@ -99,7 +99,9 @@
     "doomDesc": "웹 브라우저에서 즐기는 전설적인 FPS 게임입니다.",
     "doomTitle": "둠 (쉐어웨어)",
     "wordleTitle": "Wordle",
-    "wordleDesc": "6번의 기회 안에 5글자 영어 단어를 맞추는 게임입니다."
+    "wordleDesc": "6번의 기회 안에 5글자 영어 단어를 맞추는 게임입니다.",
+    "notInList": "단어 목록에 없습니다.",
+    "notEnoughLetters": "글자 수가 부족합니다."
   },
   "Doom": {
     "title": "둠",

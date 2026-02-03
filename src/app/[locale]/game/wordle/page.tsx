@@ -7,8 +7,10 @@ import { WordleKeyboard } from "@/components/wordle/WordleKeyboard";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function WordlePage() {
+  const isMobile = useIsMobile();
   const {
     currentGuess,
     guesses,
@@ -41,30 +43,57 @@ export default function WordlePage() {
     }
   }, [gameStatus, answer]);
 
+  // 조건부 컨테이너 스타일
+  const containerStyle = isMobile
+    ? {
+        position: "fixed" as const,
+        top: 0,
+        left: 0,
+        width: "100vw",
+        height: "100dvh",
+        zIndex: 50,
+      }
+    : {
+        // 데스크탑: 가로 최대 600px, 높이는 화면에 맞춤
+        width: "min(600px, 90vw)",
+        height: "min(90vh, 800px)",
+      };
+
   return (
-    <div className="container max-w-lg mx-auto py-4 px-4 flex flex-col min-h-[calc(100dvh-48px)]">
-      {/* Header */}
-      <header className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold tracking-tight">Wordle</h1>
-        <Button variant="ghost" size="icon" onClick={resetGame} title="Restart Game">
-          <RefreshCw className="w-5 h-5" />
-        </Button>
-      </header>
+    <main className="flex h-full w-full items-center justify-center bg-background">
+      <div
+        className={`relative flex flex-col overflow-hidden bg-background ${!isMobile ? "rounded-xl border border-border" : ""}`}
+        style={containerStyle}
+      >
+        {/* Header */}
+        <header className="flex items-center justify-between px-4 py-3 shrink-0">
+          <h1 className="text-xl font-bold tracking-tight">Wordle</h1>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={resetGame}
+            title="Restart Game"
+            className="h-8 w-8"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </Button>
+        </header>
 
-      {/* Board */}
-      <main className="flex-1 flex items-center justify-center mb-4">
-        <WordleBoard guesses={guesses} history={history} currentGuess={currentGuess} turn={turn} />
-      </main>
+        {/* Board - flex-1로 남은 공간 채움 */}
+        <div className="flex-1 flex items-center justify-center min-h-0 px-4">
+          <WordleBoard
+            guesses={guesses}
+            history={history}
+            currentGuess={currentGuess}
+            turn={turn}
+          />
+        </div>
 
-      {/* Keyboard */}
-      <footer className="mt-auto">
-        <WordleKeyboard onKey={handleKeyup} usedKeys={usedKeys} />
-      </footer>
-
-      {/* 디버깅용 정답 표시 */}
-      {process.env.NODE_ENV === "development" && (
-        <div className="text-center text-xs text-muted-foreground mt-2">Debug: {answer}</div>
-      )}
-    </div>
+        {/* Keyboard - 하단 고정 */}
+        <footer className="shrink-0 px-2 pb-4 pt-2">
+          <WordleKeyboard onKey={handleKeyup} usedKeys={usedKeys} />
+        </footer>
+      </div>
+    </main>
   );
 }

@@ -15,9 +15,10 @@ export function WordleKeyboard({ onKey, usedKeys }: WordleKeyboardProps) {
   ];
 
   return (
-    <div className="w-full max-w-[500px] mx-auto flex flex-col gap-1.5">
+    // 키보드 높이: 최대 160px, 최소 키 36px * 3행 + gap = 약 120px
+    <div className="w-full h-[min(30vh,160px)] min-h-[120px] flex flex-col gap-1.5">
       {rows.map((row, i) => (
-        <div key={i} className="flex justify-center gap-1 touch-manipulation">
+        <div key={i} className="flex-1 flex justify-center gap-1 touch-manipulation min-h-9">
           {row.map(key => {
             const status = usedKeys[key];
             const isSpecial = key.length > 1;
@@ -27,22 +28,21 @@ export function WordleKeyboard({ onKey, usedKeys }: WordleKeyboardProps) {
                 key={key}
                 onClick={() => onKey(key)}
                 className={cn(
-                  "flex items-center justify-center rounded font-bold uppercase transition-all active:scale-95 select-none",
-                  "h-12 sm:h-14 text-xs sm:text-sm",
-                  isSpecial ? "flex-[1.5] px-2" : "flex-1",
+                  "h-full min-h-9 flex items-center justify-center rounded font-bold uppercase transition-all active:scale-95 select-none",
+                  "text-xs sm:text-sm",
+                  isSpecial ? "flex-[1.5] px-1 sm:px-2" : "flex-1",
                   // 기본 배경색
-                  !status &&
-                    "bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-foreground",
+                  !status && "bg-gray-700 hover:bg-gray-600 text-white",
                   // 상태별 배경색
-                  status === "absent" && "bg-zinc-500 dark:bg-zinc-600 text-white",
-                  status === "present" && "bg-yellow-500 text-white",
-                  status === "correct" && "bg-green-500 text-white",
+                  status === "absent" && "bg-zinc-600 text-white",
+                  status === "present" && "bg-yellow-600 text-white",
+                  status === "correct" && "bg-green-600 text-white",
                 )}
               >
                 {key === "Backspace" ? (
-                  <Delete className="w-5 h-5" />
+                  <Delete className="w-4 h-4 sm:w-5 sm:h-5" />
                 ) : key === "Enter" ? (
-                  <span className="text-[10px] sm:text-xs">ENTER</span>
+                  <span>ENTER</span>
                 ) : (
                   key
                 )}

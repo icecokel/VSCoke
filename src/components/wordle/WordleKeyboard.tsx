@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { LetterStatus } from "@/lib/wordle/wordle-logic";
-import { Delete } from "lucide-react";
+import { Delete, CornerDownLeft } from "lucide-react";
 
 interface WordleKeyboardProps {
   onKey: (key: string) => void;
@@ -30,7 +30,7 @@ export function WordleKeyboard({ onKey, usedKeys }: WordleKeyboardProps) {
                 className={cn(
                   "h-full min-h-9 flex items-center justify-center rounded font-bold uppercase transition-all active:scale-95 select-none",
                   "text-xs sm:text-sm",
-                  isSpecial ? "flex-[1.5] px-1 sm:px-2" : "flex-1",
+                  isSpecial ? "flex-[1.25] px-1 sm:px-2" : "flex-1",
                   // 기본 배경색
                   !status && "bg-gray-700 hover:bg-gray-600 text-white",
                   // 상태별 배경색
@@ -42,7 +42,7 @@ export function WordleKeyboard({ onKey, usedKeys }: WordleKeyboardProps) {
                 {key === "Backspace" ? (
                   <Delete className="w-4 h-4 sm:w-5 sm:h-5" />
                 ) : key === "Enter" ? (
-                  <span>ENTER</span>
+                  <CornerDownLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                 ) : (
                   key
                 )}

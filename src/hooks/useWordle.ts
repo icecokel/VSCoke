@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { WordleLogic, LetterStatus, EnglishWordleLogic } from "@/lib/wordle/wordle-logic";
+import { fetchRandomWord, checkWord } from "@/lib/wordle/wordle-service";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -16,8 +17,11 @@ export interface UseWordleReturn {
   gameStatus: GameStatus;
   usedKeys: Record<string, LetterStatus>;
   handleKeyup: (key: string) => void;
-  resetGame: () => void;
-  answer: string; // 디버깅용, 실제 프로덕션에서는 숨겨야 함
+  resetGame: () => Promise<void>;
+  answer: string; // 디버깅용
+  isLoading: boolean;
+  isValidating: boolean; // 단어 검증 중 상태
+  error: Error | null;
 }
 
 // Logic 인스턴스는 컴포넌트 외부 혹은 useMemo로 관리 권장
@@ -27,34 +31,51 @@ export const useWordle = (): UseWordleReturn => {
   const t = useTranslations("Game");
   const [answer, setAnswer] = useState<string>("");
   const [currentGuess, setCurrentGuess] = useState<string>("");
-  const [guesses, setGuesses] = useState<string[]>([...Array(MAX_CHALLENGES)]); // [...undefined]
+  const [guesses, setGuesses] = useState<string[]>([...Array(MAX_CHALLENGES)]);
   const [history, setHistory] = useState<LetterStatus[][]>([...Array(MAX_CHALLENGES)]);
   const [turn, setTurn] = useState<number>(0);
   const [gameStatus, setGameStatus] = useState<GameStatus>("playing");
   const [usedKeys, setUsedKeys] = useState<Record<string, LetterStatus>>({});
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isValidating, setIsValidating] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  // 단어 가져오기
+  const loadNewWord = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const word = await fetchRandomWord();
+      setAnswer(word.toUpperCase());
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to load word"));
+      toast.error(t("loadFailed")); // 번역 키 확인 필요, 없으면 fallback
+    } finally {
+      setIsLoading(false);
+    }
+  }, [t]);
 
   // 게임 초기화
-  const resetGame = useCallback(() => {
+  const resetGame = useCallback(async () => {
     setTurn(0);
     setCurrentGuess("");
     setGuesses([...Array(MAX_CHALLENGES)]);
     setHistory([...Array(MAX_CHALLENGES)]);
     setGameStatus("playing");
     setUsedKeys({});
-    setAnswer(logic.getRandomWord());
-  }, []);
+    await loadNewWord();
+  }, [loadNewWord]);
 
   // 최초 진입 시 단어 설정
   useEffect(() => {
-    // answer가 비어있을 때만 초기화 (Strict Mode 등 중복 실행 방지)
-    if (!answer) {
-      setAnswer(logic.getRandomWord());
-    }
-  }, [answer]);
+    // 마운트 시 한 번만 실행
+    loadNewWord();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 제출 처리
-  const submitGuess = useCallback(() => {
-    if (gameStatus !== "playing") return;
+  const submitGuess = useCallback(async () => {
+    if (gameStatus !== "playing" || isValidating) return;
 
     // 단어 유효성 검사 (길이)
     if (currentGuess.length !== logic.getWordLength()) {
@@ -62,11 +83,25 @@ export const useWordle = (): UseWordleReturn => {
       return;
     }
 
-    // 단어 유효성 검사 (사전)
-    if (!logic.isValidWord(currentGuess)) {
-      toast.error(t("notInList"));
+    // 서버 API를 통한 단어 유효성 검사
+    try {
+      setIsValidating(true);
+      const isValid = await checkWord(currentGuess);
+
+      if (!isValid) {
+        toast.error(t("notInList"));
+        return;
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(t("errorOccurred")); // 에러 발생 시 메시지
       return;
+    } finally {
+      setIsValidating(false);
     }
+
+    // 로컬 로직 검증 (사전 검증이 이미 API로 대체되었지만, logic 인터페이스 유지를 위해 남겨둠/혹은 제거 가능)
+    // if (!logic.isValidWord(currentGuess)) { ... }
 
     const result = logic.checkGuess(currentGuess, answer);
 
@@ -117,12 +152,12 @@ export const useWordle = (): UseWordleReturn => {
     });
 
     setCurrentGuess("");
-  }, [currentGuess, turn, answer, gameStatus, t]);
+  }, [currentGuess, turn, answer, gameStatus, t, isValidating]);
 
   // 키 입력 핸들러 (외부에서 호출 가능)
   const handleKeyup = useCallback(
     (key: string) => {
-      if (gameStatus !== "playing") return;
+      if (gameStatus !== "playing" || isValidating) return;
 
       if (key === "Enter") {
         submitGuess();
@@ -141,7 +176,7 @@ export const useWordle = (): UseWordleReturn => {
         }
       }
     },
-    [currentGuess, gameStatus, submitGuess],
+    [currentGuess, gameStatus, submitGuess, isValidating],
   );
 
   return {
@@ -155,5 +190,8 @@ export const useWordle = (): UseWordleReturn => {
     handleKeyup,
     resetGame,
     answer,
+    isLoading,
+    isValidating,
+    error,
   };
 };

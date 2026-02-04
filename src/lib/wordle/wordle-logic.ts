@@ -3,7 +3,6 @@ export type LetterStatus = "correct" | "present" | "absent" | "initial";
 export interface WordleLogic {
   isValidWord(word: string): boolean;
   checkGuess(guess: string, answer: string): LetterStatus[];
-  getRandomWord(): string;
   getWordLength(): number;
 }
 
@@ -77,10 +76,15 @@ const MOCK_WORDS = [
 
 export class EnglishWordleLogic implements WordleLogic {
   isValidWord(word: string): boolean {
-    // 실제 구현에서는 전체 사전 데이터가 필요하겠지만,
-    // Mock 단계에서는 5글자 영어인지와 Mock 리스트에 있는지만 체크하거나
-    // 간단히 길이만 체크할 수도 있음. 여기서는 리스트 포함 여부로 체크.
-    return MOCK_WORDS.includes(word.toUpperCase());
+    // API 연동 후 검증 로직 정책:
+    // 1. API가 있다면 API 검증을 쓰겠지만 현재는 정답만 가져옴.
+    // 2. 로컬 사전 데이터보다는 길이 체크 정도로 완화하거나,
+    //    기존 MOCK_WORDS를 확장해서 검증용으로만 유지.
+    //    일단은 길이 체크만 수행하고 모든 5글자 영단어를 허용하는 방향으로 수정 (사용자 경험상 사전이 없으면 너무 빡빡함)
+    //    또는 기존 MOCK_WORDS를 'common words'로 간주하여 체크.
+    //    여기서는 간단히 길이 체크 + 영문 여부만 확인하도록 변경.
+    //    (엄격한 검증이 필요하면 별도 사전 데이터나 API 필요)
+    return /^[A-Za-z]{5}$/.test(word);
   }
 
   checkGuess(guess: string, answer: string): LetterStatus[] {
@@ -111,10 +115,6 @@ export class EnglishWordleLogic implements WordleLogic {
     });
 
     return result;
-  }
-
-  getRandomWord(): string {
-    return MOCK_WORDS[Math.floor(Math.random() * MOCK_WORDS.length)];
   }
 
   getWordLength(): number {

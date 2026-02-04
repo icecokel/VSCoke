@@ -19,7 +19,9 @@ export interface ScoreSubmissionData {
   playTime?: number;
 }
 
-const API_URL = "https://api.icecoke.kr/game/result";
+import { API_BASE_URL } from "@/lib/constants";
+
+const API_URL = `${API_BASE_URL}/game/result`;
 
 /**
  * 게임 점수를 서버에 제출합니다.

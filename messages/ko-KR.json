@@ -101,7 +101,9 @@
     "wordleTitle": "Wordle",
     "wordleDesc": "6번의 기회 안에 5글자 영어 단어를 맞추는 게임입니다.",
     "notInList": "단어 목록에 없습니다.",
-    "notEnoughLetters": "글자 수가 부족합니다."
+    "notEnoughLetters": "글자 수가 부족합니다.",
+    "loadFailed": "단어를 불러오는 데 실패했습니다.",
+    "errorOccurred": "오류가 발생했습니다."
   },
   "Doom": {
     "title": "둠",

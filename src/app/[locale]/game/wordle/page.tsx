@@ -6,7 +6,7 @@ import { WordleBoard } from "@/components/wordle/WordleBoard";
 import { WordleKeyboard } from "@/components/wordle/WordleKeyboard";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Loader2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function WordlePage() {
@@ -21,6 +21,7 @@ export default function WordlePage() {
     handleKeyup,
     resetGame,
     answer,
+    isLoading,
   } = useWordle();
 
   // 윈도우 키보드 이벤트 리스너
@@ -81,12 +82,19 @@ export default function WordlePage() {
 
         {/* Board - flex-1로 남은 공간 채움 */}
         <div className="flex-1 flex items-center justify-center min-h-0 px-4">
-          <WordleBoard
-            guesses={guesses}
-            history={history}
-            currentGuess={currentGuess}
-            turn={turn}
-          />
+          {isLoading ? (
+            <div className="flex flex-col items-center gap-4 text-muted-foreground">
+              <Loader2 className="h-10 w-10 animate-spin" />
+              <p>Loading word...</p>
+            </div>
+          ) : (
+            <WordleBoard
+              guesses={guesses}
+              history={history}
+              currentGuess={currentGuess}
+              turn={turn}
+            />
+          )}
         </div>
 
         {/* Keyboard - 하단 고정 */}

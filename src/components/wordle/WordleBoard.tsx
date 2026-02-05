@@ -25,7 +25,7 @@ export function WordleBoard({ guesses, history, currentGuess, turn }: WordleBoar
             return (
               <div key={rowIndex} className="grid grid-cols-5 gap-2">
                 {guess.split("").map((letter, j) => (
-                  <WordleTile key={j} letter={letter} status={rowStatus[j]} />
+                  <WordleTile key={j} letter={letter} status={rowStatus[j]} index={j} />
                 ))}
               </div>
             );

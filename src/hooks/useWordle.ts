@@ -90,6 +90,7 @@ export const useWordle = (): UseWordleReturn => {
 
       if (!isValid) {
         toast.error(t("notInList"));
+        setCurrentGuess(""); // 없는 단어 자동 삭제
         return;
       }
     } catch (err) {

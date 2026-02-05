@@ -46,8 +46,6 @@ export const metadata: Metadata = {
   },
 };
 
-import { Toaster } from "@/components/ui/sonner";
-
 // ... existing code ...
 
 const RootLayout = ({
@@ -57,10 +55,7 @@ const RootLayout = ({
 }>) => {
   return (
     <html className={`${notoSansKr.className} dark`}>
-      <body>
-        {children}
-        <Toaster />
-      </body>
+      <body>{children}</body>
     </html>
   );
 };

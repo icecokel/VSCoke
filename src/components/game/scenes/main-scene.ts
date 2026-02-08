@@ -58,6 +58,14 @@ export class MainScene extends Phaser.Scene {
   // 파티클 이미터 (색상별 관리)
   private emitters: Map<number, Phaser.GameObjects.Particles.ParticleEmitter> = new Map();
 
+  // 효과음
+  private sounds: {
+    pickup: Phaser.Sound.BaseSound | null;
+    putdown: Phaser.Sound.BaseSound | null;
+    score: Phaser.Sound.BaseSound | null;
+    gameover: Phaser.Sound.BaseSound | null;
+  } = { pickup: null, putdown: null, score: null, gameover: null };
+
   constructor() {
     super({ key: "MainScene" });
   }
@@ -93,6 +101,12 @@ export class MainScene extends Phaser.Scene {
     if (registryTexts) {
       this.texts = registryTexts;
     }
+
+    // 효과음 초기화
+    this.sounds.pickup = this.sound.add("sfx_pickup");
+    this.sounds.putdown = this.sound.add("sfx_putdown");
+    this.sounds.score = this.sound.add("sfx_score");
+    this.sounds.gameover = this.sound.add("sfx_gameover");
 
     this.isGameOver = false;
     this.score = 0;
@@ -403,6 +417,9 @@ export class MainScene extends Phaser.Scene {
         this.pickedBlock = col.pop()!;
         this.pickedColIdx = colIdx;
 
+        // 블록 집기 효과음
+        this.sounds.pickup?.play();
+
         this.tweens.add({
           targets: this.pickedBlock,
           y: this.pickedBlock.y + 20,
@@ -424,7 +441,11 @@ export class MainScene extends Phaser.Scene {
         this.pickedBlock = null;
         this.pickedColIdx = -1;
 
-        this.checkMatch(colIdx);
+        // 매칭 성공 시 score 소리, 아니면 put-down 소리
+        const matched = this.checkMatch(colIdx);
+        if (!matched) {
+          this.sounds.putdown?.play();
+        }
         this.checkGameOver(colIdx);
       }
     }
@@ -507,9 +528,9 @@ export class MainScene extends Phaser.Scene {
     });
   }
 
-  private checkMatch(colIdx: number) {
+  private checkMatch(colIdx: number): boolean {
     const col = this.columns[colIdx];
-    if (col.length < 3) return;
+    if (col.length < 3) return false;
 
     const last = col[col.length - 1];
     const secondLast = col[col.length - 2];
@@ -562,8 +583,13 @@ export class MainScene extends Phaser.Scene {
         });
       });
 
+      // 점수 획득 효과음
+      this.sounds.score?.play();
+
       this.addScore(100);
+      return true;
     }
+    return false;
   }
 
   private showFloatingText(x: number, y: number, score: number) {
@@ -597,6 +623,9 @@ export class MainScene extends Phaser.Scene {
   private gameOver() {
     this.isGameOver = true;
     if (this.spawnTimer) this.spawnTimer.destroy();
+
+    // 게임 오버 효과음
+    this.sounds.gameover?.play();
 
     // EndScene 대신 React로 이벤트 전송
     this.game.events.emit("game:over", { score: this.score });

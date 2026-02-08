@@ -20,7 +20,7 @@ export const GameConfig: Phaser.Types.Core.GameConfig = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   audio: {
-    noAudio: true,
+    noAudio: false,
   },
   scene: [PreloadScene, MainScene],
 };

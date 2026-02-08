@@ -33,6 +33,12 @@ export class PreloadScene extends Phaser.Scene {
 
     graphics.destroy();
 
+    // 2. 효과음 로드
+    this.load.audio("sfx_pickup", "/sounds/sky-drop/pick-up.wav");
+    this.load.audio("sfx_putdown", "/sounds/sky-drop/put-down.wav");
+    this.load.audio("sfx_score", "/sounds/sky-drop/add-score.mp3");
+    this.load.audio("sfx_gameover", "/sounds/sky-drop/game-over.wav");
+
     // Debug: 로딩 바 테스트를 위한 임의의 지연 (실제 에셋이 적으므로)
     // 실제 프로덕션에서는 제거하거나 에셋이 많으면 자연스럽게 동작함
     for (let i = 0; i < 50; i++) {

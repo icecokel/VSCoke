@@ -22,6 +22,11 @@ export class MainScene extends Phaser.Scene {
   private score: number = 0;
   private scoreText: Phaser.GameObjects.Text | null = null;
   private startButton: Phaser.GameObjects.Text | null = null;
+
+  // 콤보 시스템
+  private comboCount: number = 0;
+  private lastMatchTime: number = 0;
+  private comboText: Phaser.GameObjects.Text | null = null;
   private startButtonBg: Phaser.GameObjects.Rectangle | null = null;
   private isGameRunning: boolean = false;
 
@@ -128,6 +133,15 @@ export class MainScene extends Phaser.Scene {
       color: "#ffffff",
     });
     this.timeText.setOrigin(1, 0); // 오른쪽 정렬
+
+    // 콤보 텍스트 (중앙 상단)
+    this.comboText = this.add.text(this.scale.width / 2, 60, "", {
+      fontSize: "24px",
+      color: "#ff6b6b",
+      fontStyle: "bold",
+    });
+    this.comboText.setOrigin(0.5);
+    this.comboText.setDepth(50);
 
     // 경고 오버레이 (가장 위에 그려지도록 마지막에 추가하거나 depth 조절)
     this.warningOverlay = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xff0000);
@@ -332,7 +346,16 @@ export class MainScene extends Phaser.Scene {
       GameConstants.INITIAL_SPAWN_INTERVAL - rampSteps * GameConstants.DIFFICULTY_RAMP_RATE;
     this.currentSpawnInterval = Math.max(GameConstants.MIN_SPAWN_INTERVAL, newInterval);
 
-    // 3. 위기 경고 효과 (가장 높은 탑 확인)
+    // 3. 콤보 타임아웃 체크
+    if (
+      this.comboCount > 0 &&
+      this.time.now - this.lastMatchTime > GameConstants.SCORE.COMBO_WINDOW
+    ) {
+      this.comboCount = 0;
+      this.updateComboDisplay();
+    }
+
+    // 4. 위기 경고 효과 (가장 높은 탑 확인)
     this.checkWarningStatus();
   }
 
@@ -559,8 +582,45 @@ export class MainScene extends Phaser.Scene {
         });
       }
 
-      // 3. 점수 텍스트 표시 (+100)
-      this.showFloatingText(centerX, centerY - 20, 100);
+      // === 점수 계산 시스템 ===
+      const now = this.time.now;
+
+      // 콤보 체크: 콤보 유지 시간 내 매칭 시 콤보 증가
+      if (now - this.lastMatchTime < GameConstants.SCORE.COMBO_WINDOW) {
+        this.comboCount++;
+      } else {
+        this.comboCount = 1;
+      }
+      this.lastMatchTime = now;
+
+      // 콤보 배율 계산
+      const comboIndex = Math.min(
+        this.comboCount - 1,
+        GameConstants.SCORE.COMBO_MULTIPLIERS.length - 1,
+      );
+      const comboMultiplier = GameConstants.SCORE.COMBO_MULTIPLIERS[comboIndex];
+
+      // 시간 배율 계산
+      const elapsed = now - this.startTime;
+      let timeIndex = 0;
+      for (let i = GameConstants.SCORE.TIME_THRESHOLDS.length - 1; i >= 0; i--) {
+        if (elapsed >= GameConstants.SCORE.TIME_THRESHOLDS[i]) {
+          timeIndex = i;
+          break;
+        }
+      }
+      const timeMultiplier = GameConstants.SCORE.TIME_MULTIPLIERS[timeIndex];
+
+      // 위기 탈출 보너스
+      const dangerBonus = this.isWarningActive ? GameConstants.SCORE.DANGER_BONUS : 0;
+
+      // 최종 점수 계산
+      const finalScore = Math.floor(
+        GameConstants.SCORE.BASE_POINTS * comboMultiplier * timeMultiplier + dangerBonus,
+      );
+
+      // 3. 점수 텍스트 표시
+      this.showFloatingText(centerX, centerY - 20, finalScore);
 
       // 4. 블록 파괴 애니메이션 (팝 효과)
       removed.forEach(block => {
@@ -584,9 +644,10 @@ export class MainScene extends Phaser.Scene {
       });
 
       // 점수 획득 효과음
-      this.sounds.score?.play();
+      this.sounds.score?.play({ volume: 0.5 });
 
-      this.addScore(100);
+      this.addScore(finalScore);
+      this.updateComboDisplay();
       return true;
     }
     return false;
@@ -611,6 +672,24 @@ export class MainScene extends Phaser.Scene {
       ease: "Power2",
       onComplete: () => text.destroy(),
     });
+  }
+
+  private updateComboDisplay() {
+    if (!this.comboText) return;
+
+    if (this.comboCount >= 2) {
+      this.comboText.setText(`COMBO x${this.comboCount}`);
+      this.comboText.setAlpha(1);
+
+      // 팝 애니메이션
+      this.tweens.add({
+        targets: this.comboText,
+        scale: { from: 1.3, to: 1 },
+        duration: 200,
+      });
+    } else {
+      this.comboText.setText("");
+    }
   }
 
   private addScore(points: number) {

@@ -1,4 +1,5 @@
 import type { components } from "@/types/api";
+import { apiClient, ApiError } from "@/lib/api-client";
 
 // API 스키마에서 자동 생성된 타입
 export type CreateGameHistoryDto = components["schemas"]["CreateGameHistoryDto"];
@@ -18,10 +19,6 @@ export interface ScoreSubmissionData {
   score: number;
   playTime?: number;
 }
-
-import { API_BASE_URL } from "@/lib/constants";
-
-const API_URL = `${API_BASE_URL}/game/result`;
 
 /**
  * 게임 점수를 서버에 제출합니다.
@@ -48,33 +45,20 @@ export const submitScore = async (
       playTime: data.playTime,
     };
 
-    const response = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      return {
-        success: false,
-        message: `점수 기록 실패 (${response.status})`,
-      };
-    }
-
-    const json = await response.json();
-
-    // API 응답이 { success, data } 형태로 래핑되어 있을 경우 처리
-    const result: GameHistoryResponseDto = json.data || json;
+    const result = await apiClient.post<GameHistoryResponseDto>("/game/result", payload, { token });
 
     return {
       success: true,
       message: "점수가 성공적으로 기록되었습니다!",
       data: result,
     };
-  } catch {
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return {
+        success: false,
+        message: `점수 기록 실패 (${error.status})`,
+      };
+    }
     return {
       success: false,
       message: "네트워크 오류가 발생했습니다.",
@@ -87,14 +71,10 @@ export const submitScore = async (
  */
 export const getGameResult = async (id: string): Promise<GameHistoryResponseDto | null> => {
   try {
-    const res = await fetch(`${API_URL}/${id}`, {
+    const result = await apiClient.get<GameHistoryResponseDto>(`/game/result/${id}`, {
       next: { revalidate: 60 },
     });
-
-    if (!res.ok) return null;
-
-    const json = await res.json();
-    return json.data || json;
+    return result;
   } catch {
     return null;
   }

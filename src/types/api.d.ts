@@ -11,6 +11,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
+    /** 서버 상태 확인 */
     get: operations["AppController_getHello"];
     put?: never;
     post?: never;
@@ -29,6 +30,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
+    /** 게임 결과 생성 및 랭킹 확인 */
     post: operations["GameController_createResult"];
     delete?: never;
     options?: never;
@@ -43,6 +45,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
+    /** 게임별 Top 10 랭킹 조회 */
     get: operations["GameController_getRanking"];
     put?: never;
     post?: never;
@@ -59,9 +62,44 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
+    /** 게임 결과 상세 조회 */
     get: operations["GameController_getGameResult"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/wordle/word": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 랜덤 5글자 단어 조회 */
+    get: operations["WordleController_getRandomWord"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/wordle/check": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 단어 유효성 검사 */
+    post: operations["WordleController_checkWord"];
     delete?: never;
     options?: never;
     head?: never;
@@ -76,7 +114,7 @@ export interface components {
       score: number;
       playTime?: number;
       /** @enum {string} */
-      gameType: "BLOCK_TOWER" | "SKY_DROP";
+      gameType: "SKY_DROP";
     };
     GameHistoryUserDto: {
       /**
@@ -98,10 +136,10 @@ export interface components {
       score: number;
       /**
        * @description 게임 타입
-       * @example BLOCK_TOWER
+       * @example SKY_DROP
        * @enum {string}
        */
-      gameType: "BLOCK_TOWER" | "SKY_DROP";
+      gameType: "SKY_DROP";
       /**
        * Format: date-time
        * @description 생성 일시
@@ -115,6 +153,21 @@ export interface components {
        * @example 1
        */
       rank?: number | null;
+      /**
+       * @description 유저의 역대 최고 점수
+       * @example 1200
+       */
+      bestScore?: number | null;
+      /**
+       * @description 전체 기간 랭킹
+       * @example 42
+       */
+      allTimeRank?: number | null;
+      /**
+       * @description 금주 랭킹 (KST 월요일 0시 ~ 일요일 24시 기준)
+       * @example 5
+       */
+      weeklyRank?: number | null;
     };
     User: {
       id: string;
@@ -127,11 +180,32 @@ export interface components {
       id: string;
       score: number;
       /** @enum {string} */
-      gameType: "BLOCK_TOWER" | "SKY_DROP";
+      gameType: "SKY_DROP";
       /** Format: date-time */
       createdAt: string;
       userId: string;
       user: components["schemas"]["User"];
+    };
+    WordResponseDto: {
+      /**
+       * @description 5글자 영단어
+       * @example apple
+       */
+      word: string;
+    };
+    CheckWordDto: {
+      /**
+       * @description 확인할 5글자 영단어
+       * @example apple
+       */
+      word: string;
+    };
+    CheckWordResponseDto: {
+      /**
+       * @description 단어 존재 여부
+       * @example true
+       */
+      exists: boolean;
     };
   };
   responses: never;
@@ -151,6 +225,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
+      /** @description 서버가 정상적으로 동작 중임을 나타내는 메시지 */
       200: {
         headers: {
           [name: string]: unknown;
@@ -231,6 +306,58 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["GameHistoryResponseDto"];
+        };
+      };
+    };
+  };
+  WordleController_getRandomWord: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 랜덤으로 선택된 5글자 영단어 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WordResponseDto"];
+        };
+      };
+    };
+  };
+  WordleController_checkWord: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CheckWordDto"];
+      };
+    };
+    responses: {
+      /** @description 단어 존재 여부 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CheckWordResponseDto"];
+        };
+      };
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CheckWordResponseDto"];
         };
       };
     };

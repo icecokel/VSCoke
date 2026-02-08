@@ -52,7 +52,7 @@ const SharePage = async ({ params }: Props) => {
   let gameTitle, playLink, colorClass, fromColor, toColor;
 
   // Fallback for interactions with deleted games
-  if (result.gameType === "BLOCK_TOWER") {
+  if ((result.gameType as string) === "BLOCK_TOWER") {
     gameTitle = "BLOCK TOWER (Archived)";
     playLink = "/game";
     colorClass = "text-gray-400";

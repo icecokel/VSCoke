@@ -103,7 +103,11 @@
     "notInList": "단어 목록에 없습니다.",
     "notEnoughLetters": "글자 수가 부족합니다.",
     "loadFailed": "단어를 불러오는 데 실패했습니다.",
-    "errorOccurred": "오류가 발생했습니다."
+    "errorOccurred": "오류가 발생했습니다.",
+    "weeklyRank": "주간 순위",
+    "bestScore": "최고 점수",
+    "overall": "전체",
+    "newRecord": "신기록"
   },
   "Doom": {
     "title": "둠",

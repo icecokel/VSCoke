@@ -48,6 +48,9 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [resultId, setResultId] = useState<string | undefined>(undefined);
   const [rank, setRank] = useState<number | null>(null);
+  const [weeklyRank, setWeeklyRank] = useState<number | null>(null);
+  const [allTimeRank, setAllTimeRank] = useState<number | null>(null);
+  const [bestScore, setBestScore] = useState<number | null>(null);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const hasAutoSubmitted = useRef(false);
   const isSubmittingRef = useRef(false);
@@ -66,6 +69,9 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
           setIsSubmitted(true);
           setResultId(result.data.id);
           setRank(result.data.rank ?? null);
+          setWeeklyRank(result.data.weeklyRank ?? null);
+          setAllTimeRank(result.data.allTimeRank ?? null);
+          setBestScore(result.data.bestScore ?? null);
           toast.success(result.message || t("submitSuccess"));
         } else {
           toast.error(result.message || t("submitFail"));
@@ -232,12 +238,39 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
         )}
 
         {/* 랭킹 결과 (기록 후) */}
-        {isSubmitted && rank !== null && (
-          <div className="mt-4 px-4 py-2 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 rounded-lg border border-amber-500/30 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <p className="text-amber-300 font-bold text-lg">
-              🎉 {t("currentRank")}: {rank}
-              {t("rankSuffix")}
-            </p>
+        {isSubmitted && (
+          <div className="mt-6 w-full max-w-sm grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {/* 내 순위 (통합) */}
+            <div className="col-span-2 bg-white/5 border border-white/10 rounded-xl p-4 flex flex-col items-center justify-center">
+              <p className="text-gray-400 text-sm mb-1">{t("currentRank")}</p>
+              <div className="flex items-end gap-2">
+                <span className="text-3xl font-bold text-yellow-400">
+                  {rank ? `#${rank}` : "-"}
+                </span>
+                <span className="text-sm text-gray-500 mb-1.5">/ {t("overall")}</span>
+              </div>
+            </div>
+
+            {/* 주간 랭킹 */}
+            <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex flex-col items-center">
+              <p className="text-gray-400 text-xs mb-1">{t("weeklyRank")}</p>
+              <span className="text-xl font-bold text-sky-400">
+                {weeklyRank ? `#${weeklyRank}` : "-"}
+              </span>
+            </div>
+
+            {/* 최고 점수 */}
+            <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex flex-col items-center relative overflow-hidden">
+              <p className="text-gray-400 text-xs mb-1">{t("bestScore")}</p>
+              <span className="text-xl font-bold text-emerald-400">
+                {bestScore?.toLocaleString() ?? "-"}
+              </span>
+              {bestScore && score >= bestScore && (
+                <div className="absolute top-0 right-0 bg-red-500 text-[10px] font-bold px-1.5 py-0.5 rounded-bl-lg animate-pulse">
+                  {t("newRecord")}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

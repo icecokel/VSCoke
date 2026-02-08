@@ -102,7 +102,11 @@
     "wordleDesc": "Guess the 5-letter hidden word in 6 tries.",
     "notInList": "Not in word list.",
     "notEnoughLetters": "Not enough letters.",
-    "errorOccurred": "An error occurred."
+    "errorOccurred": "An error occurred.",
+    "weeklyRank": "Weekly Rank",
+    "bestScore": "Best Score",
+    "overall": "Overall",
+    "newRecord": "NEW"
   },
   "Doom": {
     "title": "DOOM",

@@ -64,7 +64,10 @@ export const submitScore = async (
       };
     }
 
-    const result: GameHistoryResponseDto = await response.json();
+    const json = await response.json();
+
+    // API 응답이 { success, data } 형태로 래핑되어 있을 경우 처리
+    const result: GameHistoryResponseDto = json.data || json;
 
     return {
       success: true,

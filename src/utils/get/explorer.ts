@@ -21,19 +21,6 @@ export const getExplorer = cache(async (): Promise<ITree[]> => {
 
   return [
     {
-      index: 0,
-      id: "profile",
-      label: "profile",
-      items: [
-        {
-          icon: "profile",
-          id: "profile-index",
-          label: "Iam.html",
-          path: "/profile",
-        },
-      ],
-    },
-    {
       index: 1,
       id: "blog",
       label: "blog",
@@ -88,6 +75,7 @@ export const getExplorer = cache(async (): Promise<ITree[]> => {
       index: 99,
       id: "readme",
       label: "README.md",
+      icon: "profile",
       path: "/readme",
     },
   ];

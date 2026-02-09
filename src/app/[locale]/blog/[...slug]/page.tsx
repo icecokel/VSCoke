@@ -85,7 +85,7 @@ const BlogPostPage = async ({ params }: BlogPostPageProps) => {
     author: {
       "@type": "Person",
       name: "icecokel",
-      url: "https://vscoke.vercel.app/ko/profile",
+      url: "https://vscoke.vercel.app/ko/readme",
     },
   };
 

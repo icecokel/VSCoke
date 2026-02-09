@@ -65,7 +65,7 @@ const ResumeDetailPage = async ({ params }: ResumeDetailPageProps) => {
     author: {
       "@type": "Person",
       name: "icecokel",
-      url: `https://vscoke.vercel.app/${locale}/profile`,
+      url: `https://vscoke.vercel.app/${locale}/readme`,
     },
   };
 
@@ -76,8 +76,8 @@ const ResumeDetailPage = async ({ params }: ResumeDetailPageProps) => {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <CustomLink
-        href="/profile"
-        title="Profile"
+        href="/readme"
+        title="README"
         className="inline-flex items-center gap-1 text-gray-400 hover:text-yellow-200 mb-6"
       >
         <Icon kind="arrow_back" size={18} />

@@ -10,7 +10,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     lastModified: new Date(post.date),
   }));
 
-  const staticRoutes = ["", "/blog", "/game", "/profile", "/readme", "/package"].map(route => ({
+  const staticRoutes = ["", "/blog", "/game", "/readme", "/package"].map(route => ({
     url: `${baseUrl}/ko${route}`,
     lastModified: new Date(),
   }));

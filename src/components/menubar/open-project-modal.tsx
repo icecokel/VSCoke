@@ -30,7 +30,16 @@ interface IProject {
 }
 
 const DUMMY: ICategory[] = [
-  { label: "Portfolio", items: [{ label: "VSCOKE", link: "https://vscoke.vercel.app" }] },
+  {
+    label: "Portfolio",
+    items: [
+      { label: "VSCOKE", link: "https://vscoke.vercel.app" },
+      {
+        label: "흑백요리사게임(진행중)",
+        link: "https://icecokel.github.io/black-white-chef-game/",
+      },
+    ],
+  },
   { label: "Users", items: [{ label: "Test", link: "" }] },
 ];
 

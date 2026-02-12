@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+set -eu
+
+HOOK="$HOME/.githooks/commit-msg"
+
+if [ ! -x "$HOOK" ]; then
+  echo "husky commit-msg hook not found or not executable: $HOOK" >&2
+  exit 1
+fi
+
+"$HOOK" "$1"

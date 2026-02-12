@@ -1,11 +1,53 @@
 #!/usr/bin/env sh
 set -eu
 
-HOOK="$HOME/.githooks/commit-msg"
+msg_file="$1"
+subject="$(sed -n '1p' "$msg_file" | tr -d '\r')"
 
-if [ ! -x "$HOOK" ]; then
-  echo "husky commit-msg hook not found or not executable: $HOOK" >&2
+# Allow Git-generated special messages
+case "$subject" in
+  Merge\ *|Revert\ *|fixup!\ *|squash!\ *)
+    exit 0
+    ;;
+esac
+
+if [ -z "$subject" ]; then
+  echo "[commit-msg] 커밋 제목이 비어 있습니다." >&2
   exit 1
 fi
 
-"$HOOK" "$1"
+# Rule 1,2,3: type(scope):summary or type:summary
+# - allowed types: feat|fix|refactor|perf|docs|test|chore|ci|build|revert
+# - optional scope: lowercase letters/numbers/._/-
+# - no space after ':'
+pattern='^(feat|fix|refactor|perf|docs|test|chore|ci|build|revert)(\([a-z0-9._/-]+\))?:[^[:space:]].+$'
+if ! printf '%s' "$subject" | grep -Eq "$pattern"; then
+  cat >&2 <<'MSG'
+[commit-msg] 제목 형식이 올바르지 않습니다.
+형식: type(scope):요약 또는 type:요약
+예시: feat(auth):구글토큰검증추가
+예시: fix:랭킹중복노출수정
+MSG
+  exit 1
+fi
+
+# Rule 4: keep title concise
+if [ "${#subject}" -gt 50 ]; then
+  echo "[commit-msg] 제목은 50자 이내로 작성해 주세요. 현재: ${#subject}자" >&2
+  exit 1
+fi
+
+# Rule 5: no trailing period-like punctuation
+if printf '%s' "$subject" | grep -Eq '[.!?。]$'; then
+  echo "[commit-msg] 제목 끝의 마침표/문장부호를 제거해 주세요." >&2
+  exit 1
+fi
+
+# Korean summary preference (requested)
+summary="${subject#*:}"
+if ! printf '%s' "$summary" | grep -Eq '[가-힣]'; then
+  echo "[commit-msg] 요약에는 한글을 포함해 주세요. 예: feat:기능개발" >&2
+  exit 1
+fi
+
+exit 0

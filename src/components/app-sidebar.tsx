@@ -77,10 +77,11 @@ export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
                     {t("explorer").toUpperCase()}
                   </div>
                   <div className="flex flex-col gap-y-1.5 px-2">
-                    {itemList.map(item => (
+                    {itemList.map((item, index) => (
                       <ExplorerItem
                         key={`tree_${item.id}`}
                         {...item}
+                        defaultOpen={index === 0}
                         tabClose={() => {
                           if (isMobile) {
                             setOpenMobile(false);

@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 interface ExplorerItemProps extends ITree {
   tabClose: () => void;
+  defaultOpen?: boolean;
 }
 
 const convertIcon = (icon?: string) => {
@@ -28,8 +29,16 @@ const convertIcon = (icon?: string) => {
   }
 };
 
-const ExplorerItem = ({ id, label, path, items, tabClose, icon }: ExplorerItemProps) => {
-  const [openedId, setOpenedId] = useState("");
+const ExplorerItem = ({
+  id,
+  label,
+  path,
+  items,
+  tabClose,
+  icon,
+  defaultOpen = false,
+}: ExplorerItemProps) => {
+  const [openedId, setOpenedId] = useState(defaultOpen && items ? id : "");
   const url = !items ? (path ?? "") : "";
   const router = useCustomRouter();
 

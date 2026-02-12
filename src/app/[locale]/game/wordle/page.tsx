@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { useWordle } from "@/hooks/useWordle";
-import { WordleBoard } from "@/components/wordle/WordleBoard";
-import { WordleKeyboard } from "@/components/wordle/WordleKeyboard";
+import { useWordle } from "@/hooks/use-wordle";
+import { WordleBoard } from "@/components/wordle/wordle-board";
+import { WordleKeyboard } from "@/components/wordle/wordle-keyboard";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Loader2 } from "lucide-react";

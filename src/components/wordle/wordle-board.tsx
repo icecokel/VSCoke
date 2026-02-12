@@ -1,5 +1,5 @@
 import { LetterStatus } from "@/lib/wordle/wordle-logic";
-import { WordleTile } from "./WordleTile";
+import { WordleTile } from "./wordle-tile";
 
 interface WordleBoardProps {
   guesses: string[];

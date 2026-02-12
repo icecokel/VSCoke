@@ -50,4 +50,10 @@ if ! printf '%s' "$summary" | grep -Eq '[가-힣]'; then
   exit 1
 fi
 
+# Sentence-like summary with spaces
+if ! printf '%s' "$summary" | grep -Eq '[[:space:]]'; then
+  echo "[commit-msg] 요약은 띄어쓰기를 포함한 문장으로 작성해 주세요." >&2
+  exit 1
+fi
+
 exit 0

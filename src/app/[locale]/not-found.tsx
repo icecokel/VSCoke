@@ -5,8 +5,7 @@ import Container from "@/components/base-ui/container";
 import BaseText from "@/components/base-ui/text";
 import Icon from "@/components/base-ui/icon";
 import { useEffect, useRef } from "react";
-import { usePathname } from "next/navigation";
-import { useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 
 const NotFound = () => {
   const { history, remove } = useHistory();

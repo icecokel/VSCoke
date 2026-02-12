@@ -101,6 +101,7 @@
     "wordleDesc": "Guess the 5-letter hidden word in 6 tries.",
     "notInList": "Not in word list.",
     "notEnoughLetters": "Not enough letters.",
+    "loadFailed": "Failed to load word.",
     "errorOccurred": "An error occurred.",
     "weeklyRank": "Weekly Rank",
     "bestScore": "Best Score",

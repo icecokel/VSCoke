@@ -49,7 +49,6 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
   const [resultId, setResultId] = useState<string | undefined>(undefined);
   const [rank, setRank] = useState<number | null>(null);
   const [weeklyRank, setWeeklyRank] = useState<number | null>(null);
-  const [allTimeRank, setAllTimeRank] = useState<number | null>(null);
   const [bestScore, setBestScore] = useState<number | null>(null);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const hasAutoSubmitted = useRef(false);
@@ -70,7 +69,6 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
           setResultId(result.data.id);
           setRank(result.data.rank ?? null);
           setWeeklyRank(result.data.weeklyRank ?? null);
-          setAllTimeRank(result.data.allTimeRank ?? null);
           setBestScore(result.data.bestScore ?? null);
           toast.success(result.message || t("submitSuccess"));
         } else {

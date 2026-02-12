@@ -313,7 +313,7 @@ const SidebarTrigger = ({ className, onClick, ...props }: ComponentProps<typeof 
 };
 
 const SidebarRail = ({ className, ...props }: ComponentProps<"button">) => {
-  const { toggleSidebar, setSidebarWidth, state } = useSidebar();
+  const { setSidebarWidth, state } = useSidebar();
 
   const handleMouseDown = useCallback(
     (event: React.MouseEvent) => {
@@ -322,7 +322,6 @@ const SidebarRail = ({ className, ...props }: ComponentProps<"button">) => {
       event.preventDefault();
       event.stopPropagation();
 
-      const startX = event.clientX;
       const fontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
       const sidebarWrapper = document.querySelector('[data-slot="sidebar-wrapper"]') as HTMLElement;
 

@@ -66,7 +66,7 @@ export const generateMetadata = async ({ params }: BlogPostPageProps): Promise<M
 import { mdxComponents } from "@/components/blog/mdx-components";
 
 const BlogPostPage = async ({ params }: BlogPostPageProps) => {
-  const { locale, slug } = await params;
+  const { slug } = await params;
   const slugPath = slug.join("/");
   const post = getPostBySlug(slugPath);
   const t = await getTranslations("blog");

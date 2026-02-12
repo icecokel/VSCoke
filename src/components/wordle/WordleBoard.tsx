@@ -9,8 +9,6 @@ interface WordleBoardProps {
 }
 
 export function WordleBoard({ guesses, history, currentGuess, turn }: WordleBoardProps) {
-  const emptyRows = Math.max(0, 5 - turn);
-
   return (
     // 보드 컨테이너: 높이 기준 5:6 비율 유지
     <div className="h-full max-h-full min-w-[220px] mx-auto" style={{ aspectRatio: "5/6" }}>

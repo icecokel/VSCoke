@@ -20,7 +20,7 @@ import { twMerge } from "tailwind-merge";
 import { useTranslations } from "next-intl";
 
 export const HistoryTabs = ({ children }: TParentNode) => {
-  const { history, change, remove, setHistory, add, isHydrated } = useHistory();
+  const { history, change, remove, setHistory, isHydrated } = useHistory();
   const router = useRouter();
   const pathname = usePathname();
   const t = useTranslations("historyTabs");

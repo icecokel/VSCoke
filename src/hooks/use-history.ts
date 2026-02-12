@@ -2,11 +2,12 @@
 
 import { IHistoryItem } from "@/contexts/history-context";
 import { useHistoryContext } from "@/contexts/history-context";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 
 export const useHistory = () => {
   const { history, setHistory, isHydrated } = useHistoryContext();
   const router = useRouter();
+  const pathname = usePathname();
 
   const add = ({ path, title }: Pick<IHistoryItem, "path" | "title">) => {
     const now = Date.now();
@@ -37,7 +38,10 @@ export const useHistory = () => {
         return { ...item, isActive: false };
       }),
     );
-    router.push(path);
+
+    if (pathname !== path) {
+      router.push(path);
+    }
   };
 
   const current = history.find((item: IHistoryItem) => item.isActive);

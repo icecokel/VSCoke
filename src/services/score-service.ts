@@ -27,11 +27,9 @@ export interface ScoreSubmissionData {
  */
 export const submitScore = async (
   data: ScoreSubmissionData,
-  tokens?: string[],
+  token?: string,
 ): Promise<ScoreSubmissionResult> => {
-  const candidateTokens = Array.from(new Set((tokens ?? []).filter(Boolean)));
-
-  if (candidateTokens.length === 0) {
+  if (!token) {
     return {
       success: false,
       message: "인증 토큰이 없습니다.",
@@ -51,43 +49,13 @@ export const submitScore = async (
       playTime: data.playTime,
     };
 
-    let authErrorStatus: number | undefined;
-    for (const token of candidateTokens) {
-      try {
-        const result = await apiClient.post<GameHistoryResponseDto>("/game/result", payload, {
-          token,
-        });
-
-        return {
-          success: true,
-          message: "점수가 성공적으로 기록되었습니다!",
-          data: result,
-        };
-      } catch (error) {
-        if (error instanceof ApiError) {
-          authErrorStatus = error.status;
-          if (error.status === 401) {
-            continue;
-          }
-          return {
-            success: false,
-            message: `점수 기록 실패 (${error.status})`,
-            status: error.status,
-            requiresAuth: error.status === 401,
-          };
-        }
-        return {
-          success: false,
-          message: "네트워크 오류가 발생했습니다.",
-        };
-      }
-    }
-
+    const result = await apiClient.post<GameHistoryResponseDto>("/game/result", payload, {
+      token,
+    });
     return {
-      success: false,
-      message: `점수 기록 실패 (${authErrorStatus ?? 401})`,
-      status: authErrorStatus ?? 401,
-      requiresAuth: true,
+      success: true,
+      message: "점수가 성공적으로 기록되었습니다!",
+      data: result,
     };
   } catch (error) {
     if (error instanceof ApiError) {

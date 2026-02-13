@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { useCustomRouter } from "@/hooks/use-custom-router";
@@ -71,16 +71,13 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
   const accessToken = (session as any)?.accessToken as string | undefined;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sessionError = (session as any)?.error;
-  const submitTokenCandidates = useMemo(
-    () => Array.from(new Set([accessToken, idToken].filter(Boolean) as string[])),
-    [accessToken, idToken],
-  );
+  const submitToken = idToken ?? accessToken;
   const isSessionLoading = status === "loading";
   const isAuthenticated = status === "authenticated";
   const requiresLoginForSubmit =
     !session ||
     !isAuthenticated ||
-    submitTokenCandidates.length === 0 ||
+    !submitToken ||
     sessionError === "RefreshAccessTokenError" ||
     needsReauth;
 
@@ -93,14 +90,14 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
 
   // 점수 제출
   const handleSubmitScore = useCallback(
-    async (tokens?: string[]) => {
+    async (token?: string) => {
       // 이미 제출되었거나, 제출 중이면 중단
       if (isSubmitted || isSubmitting || isSubmittingRef.current) return;
 
       isSubmittingRef.current = true;
       setIsSubmitting(true);
       try {
-        const result = await submitScore({ gameName, score }, tokens);
+        const result = await submitScore({ gameName, score }, token);
         if (result.success && result.data) {
           setIsSubmitted(true);
           setResultId(result.data.id);
@@ -132,13 +129,13 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
       startLoginForSubmit();
       return;
     }
-    handleSubmitScore(submitTokenCandidates);
+    handleSubmitScore(submitToken);
   }, [
     isSessionLoading,
     requiresLoginForSubmit,
     startLoginForSubmit,
     handleSubmitScore,
-    submitTokenCandidates,
+    submitToken,
   ]);
 
   // 제출 성공 시 스토리지 정리

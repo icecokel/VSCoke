@@ -8,6 +8,7 @@ export class MainScene extends Phaser.Scene {
   private obstacles: Phaser.Physics.Arcade.Group | null = null;
   private scoreText: Phaser.GameObjects.Text | null = null;
   private playTimeText: Phaser.GameObjects.Text | null = null;
+  private speedUpText: Phaser.GameObjects.Text | null = null;
   private spawnTimer: Phaser.Time.TimerEvent | null = null;
   private farBg: Phaser.GameObjects.TileSprite | null = null;
   private nearBg: Phaser.GameObjects.TileSprite | null = null;
@@ -20,6 +21,7 @@ export class MainScene extends Phaser.Scene {
   private startedAt = 0;
   private currentObstacleSpeed = CosmicToggleConstants.BASE_OBSTACLE_SPEED;
   private currentVerticalPadding = CosmicToggleConstants.BASE_VERTICAL_PADDING;
+  private currentSpeedStep = 0;
   private readonly trailAnchorRatio = 0.28;
 
   constructor() {
@@ -34,6 +36,7 @@ export class MainScene extends Phaser.Scene {
     this.startedAt = this.time.now;
     this.currentObstacleSpeed = CosmicToggleConstants.BASE_OBSTACLE_SPEED;
     this.currentVerticalPadding = CosmicToggleConstants.BASE_VERTICAL_PADDING;
+    this.currentSpeedStep = 0;
     this.createBackground();
     this.createBoundGuides();
     this.updateDifficulty(0);
@@ -73,6 +76,15 @@ export class MainScene extends Phaser.Scene {
       })
       .setOrigin(1, 0)
       .setDepth(10);
+    this.speedUpText = this.add
+      .text(this.scale.width / 2, 56, "", {
+        fontSize: "20px",
+        color: "#fda4af",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(11)
+      .setAlpha(0);
 
     this.input.on("pointerdown", this.toggleDirection, this);
     this.scale.on("resize", this.resize, this);
@@ -127,7 +139,7 @@ export class MainScene extends Phaser.Scene {
       const alreadyPassed = Boolean(obstacle.getData("passed"));
       if (!alreadyPassed && obstacle.x + obstacle.displayWidth / 2 < this.ship!.x) {
         obstacle.setData("passed", true);
-        this.score += 1;
+        this.score += CosmicToggleConstants.SCORE_PER_OBSTACLE;
         this.scoreText?.setText(`${this.score}`);
       }
 
@@ -232,9 +244,14 @@ export class MainScene extends Phaser.Scene {
     const speedStep = Math.floor(
       elapsedMs / CosmicToggleConstants.DIFFICULTY.SPEED_STEP_INTERVAL_MS,
     );
-    this.currentObstacleSpeed =
+    const nextObstacleSpeed =
       CosmicToggleConstants.BASE_OBSTACLE_SPEED *
       Math.pow(CosmicToggleConstants.DIFFICULTY.SPEED_MULTIPLIER_PER_STEP, speedStep);
+    this.currentObstacleSpeed = nextObstacleSpeed;
+    if (speedStep > this.currentSpeedStep) {
+      this.currentSpeedStep = speedStep;
+      this.showSpeedUpNotice(nextObstacleSpeed);
+    }
 
     const shrinkStep = Math.floor(
       elapsedMs / CosmicToggleConstants.DIFFICULTY.MAP_SHRINK_INTERVAL_MS,
@@ -263,6 +280,34 @@ export class MainScene extends Phaser.Scene {
 
     this.bottomBoundLine.setPosition(0, bottomY);
     this.bottomBoundLine.setSize(this.scale.width, 3);
+  }
+
+  private showSpeedUpNotice(nextObstacleSpeed: number) {
+    if (!this.speedUpText) return;
+
+    const speedRatio = nextObstacleSpeed / CosmicToggleConstants.BASE_OBSTACLE_SPEED;
+    this.speedUpText
+      .setText(`속도 상승 x${speedRatio.toFixed(2)}`)
+      .setPosition(this.scale.width / 2, 56)
+      .setScale(0.9)
+      .setAlpha(1);
+
+    this.tweens.killTweensOf(this.speedUpText);
+    this.tweens.add({
+      targets: this.speedUpText,
+      scaleX: 1.08,
+      scaleY: 1.08,
+      duration: 220,
+      ease: "Back.Out",
+    });
+    this.tweens.add({
+      targets: this.speedUpText,
+      y: 36,
+      alpha: 0,
+      duration: 900,
+      delay: 260,
+      ease: "Sine.Out",
+    });
   }
 
   private toggleDirection() {
@@ -446,43 +491,43 @@ export class MainScene extends Phaser.Scene {
     this.trailGraphics?.clear();
     this.ship.setVisible(false);
 
-    const flash = this.add.circle(originX, originY, 8, 0xffffff, 0.95).setDepth(15);
+    const flash = this.add.circle(originX, originY, 14, 0xffffff, 0.95).setDepth(15);
     this.tweens.add({
       targets: flash,
-      scaleX: 3.2,
-      scaleY: 3.2,
+      scaleX: 5.8,
+      scaleY: 5.8,
       alpha: 0,
-      duration: 220,
+      duration: 520,
       ease: "Cubic.Out",
       onComplete: () => flash.destroy(),
     });
 
-    const blastRing = this.add.circle(originX, originY, 10, 0xffffff, 0).setDepth(14);
+    const blastRing = this.add.circle(originX, originY, 18, 0xffffff, 0).setDepth(14);
     blastRing.setStrokeStyle(3, 0xff9aa6, 0.9);
     this.tweens.add({
       targets: blastRing,
-      scaleX: 3.6,
-      scaleY: 3.6,
+      scaleX: 6.4,
+      scaleY: 6.4,
       alpha: 0,
-      duration: 280,
+      duration: 780,
       ease: "Quart.Out",
       onComplete: () => blastRing.destroy(),
     });
 
-    const shardCount = 20;
+    const shardCount = 32;
     for (let i = 0; i < shardCount; i += 1) {
       const shard = this.add
         .rectangle(
           originX,
           originY,
-          Phaser.Math.Between(5, 12),
-          Phaser.Math.Between(2, 4),
+          Phaser.Math.Between(7, 16),
+          Phaser.Math.Between(3, 6),
           i % 4 === 0 ? 0xffd7dc : CosmicToggleConstants.ARROW_COLOR,
           0.95,
         )
         .setDepth(15);
       const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-      const distance = Phaser.Math.Between(34, 112);
+      const distance = Phaser.Math.Between(56, 170);
       const targetX = originX + Math.cos(angle) * distance;
       const targetY = originY + Math.sin(angle) * distance;
 
@@ -494,37 +539,37 @@ export class MainScene extends Phaser.Scene {
         alpha: 0,
         scaleX: 0.25,
         scaleY: 0.25,
-        duration: Phaser.Math.Between(260, 420),
+        duration: Phaser.Math.Between(520, 860),
         ease: "Cubic.Out",
         onComplete: () => shard.destroy(),
       });
     }
 
-    const sparkCount = 14;
+    const sparkCount = 24;
     for (let i = 0; i < sparkCount; i += 1) {
       const spark = this.add
         .circle(
           originX,
           originY,
-          Phaser.Math.FloatBetween(1.2, 2.6),
+          Phaser.Math.FloatBetween(1.6, 3.2),
           i % 2 === 0 ? 0xffffff : 0xff9aa6,
           0.9,
         )
         .setDepth(15);
       const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-      const distance = Phaser.Math.Between(28, 92);
+      const distance = Phaser.Math.Between(52, 148);
       this.tweens.add({
         targets: spark,
         x: originX + Math.cos(angle) * distance,
         y: originY + Math.sin(angle) * distance,
         alpha: 0,
-        duration: Phaser.Math.Between(180, 320),
+        duration: Phaser.Math.Between(420, 760),
         ease: "Sine.Out",
         onComplete: () => spark.destroy(),
       });
     }
 
-    this.time.delayedCall(420, onComplete);
+    this.time.delayedCall(900, onComplete);
   }
 
   private resize(gameSize: { width: number; height: number }) {
@@ -533,6 +578,7 @@ export class MainScene extends Phaser.Scene {
     this.farBg?.setSize(gameSize.width, gameSize.height);
     this.nearBg?.setSize(gameSize.width, gameSize.height);
     this.playTimeText?.setPosition(gameSize.width - 16, 16);
+    this.speedUpText?.setPosition(gameSize.width / 2, this.speedUpText.y);
     this.updateDifficulty(this.time.now - this.startedAt);
 
     if (this.ship) {
@@ -550,6 +596,7 @@ export class MainScene extends Phaser.Scene {
     this.trailGraphics = null;
     this.trailNodes = [];
     this.playTimeText = null;
+    this.speedUpText = null;
     this.spawnTimer?.destroy();
     this.spawnTimer = null;
     this.input.off("pointerdown", this.toggleDirection, this);

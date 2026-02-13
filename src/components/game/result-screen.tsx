@@ -38,6 +38,14 @@ interface ResultScreenProps {
   onRestart: () => void;
 }
 
+interface PendingScore {
+  gameName: string;
+  score: number;
+  timestamp: number;
+  autoSubmitTried?: boolean;
+  requiresManualLogin?: boolean;
+}
+
 export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) => {
   const t = useTranslations("Game");
   const router = useCustomRouter();
@@ -54,12 +62,33 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
   const [needsReauth, setNeedsReauth] = useState(false);
   const hasAutoSubmitted = useRef(false);
   const isSubmittingRef = useRef(false);
-  const savePendingScore = useCallback(() => {
-    localStorage.setItem(
-      "pendingScore",
-      JSON.stringify({ gameName, score, timestamp: Date.now() }),
-    );
+  const readPendingScore = useCallback((): PendingScore | null => {
+    try {
+      const pendingStr = localStorage.getItem("pendingScore");
+      if (!pendingStr) return null;
+      const pending = JSON.parse(pendingStr) as PendingScore;
+      const isValidTime = Date.now() - pending.timestamp < 5 * 60 * 1000;
+      if (!isValidTime || pending.gameName !== gameName || pending.score !== score) return null;
+      return pending;
+    } catch {
+      return null;
+    }
   }, [gameName, score]);
+  const savePendingScore = useCallback(
+    (options?: { autoSubmitTried?: boolean; requiresManualLogin?: boolean }) => {
+      localStorage.setItem(
+        "pendingScore",
+        JSON.stringify({
+          gameName,
+          score,
+          timestamp: Date.now(),
+          autoSubmitTried: options?.autoSubmitTried ?? false,
+          requiresManualLogin: options?.requiresManualLogin ?? false,
+        } satisfies PendingScore),
+      );
+    },
+    [gameName, score],
+  );
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const idToken = (session as any)?.idToken as string | undefined;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -74,7 +103,7 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
     needsReauth;
 
   const startLoginForSubmit = useCallback(() => {
-    savePendingScore();
+    savePendingScore({ autoSubmitTried: false, requiresManualLogin: false });
     hasAutoSubmitted.current = false;
     isSubmittingRef.current = true;
     setIsSubmitting(true);
@@ -100,6 +129,7 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
           setNeedsReauth(false);
           toast.success(result.message || t("submitSuccess"));
         } else if (result.requiresAuth) {
+          savePendingScore({ autoSubmitTried: true, requiresManualLogin: true });
           setNeedsReauth(true);
           toast.error(result.message || t("submitFail"));
         } else {
@@ -112,7 +142,7 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
         setIsSubmitting(false);
       }
     },
-    [gameName, score, isSubmitting, isSubmitted, t],
+    [gameName, score, isSubmitting, isSubmitted, savePendingScore, t],
   );
 
   const handleScoreAction = useCallback(() => {
@@ -125,14 +155,37 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
     handleSubmitScore(idToken);
   }, [isSessionLoading, requiresLoginForSubmit, startLoginForSubmit, handleSubmitScore, idToken]);
 
+  // 이전 자동 제출 실패로 재로그인이 필요한 상태 복원
+  useEffect(() => {
+    const pending = readPendingScore();
+    if (pending?.requiresManualLogin) {
+      setNeedsReauth(true);
+    }
+  }, [readPendingScore]);
+
   // 로그인 상태면 결과 화면 진입 시 자동 제출
   useEffect(() => {
     if (score <= 0 || isSubmitted || isSubmitting || hasAutoSubmitted.current) return;
     if (requiresLoginForSubmit || !idToken) return;
 
+    const pending = readPendingScore();
+    if (pending?.autoSubmitTried) return;
+    if (pending) {
+      savePendingScore({ autoSubmitTried: true, requiresManualLogin: false });
+    }
+
     hasAutoSubmitted.current = true;
     handleSubmitScore(idToken);
-  }, [score, isSubmitted, isSubmitting, requiresLoginForSubmit, idToken, handleSubmitScore]);
+  }, [
+    score,
+    isSubmitted,
+    isSubmitting,
+    requiresLoginForSubmit,
+    idToken,
+    handleSubmitScore,
+    readPendingScore,
+    savePendingScore,
+  ]);
 
   // 제출 성공 시 스토리지 정리
   useEffect(() => {

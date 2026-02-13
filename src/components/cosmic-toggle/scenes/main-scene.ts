@@ -7,6 +7,7 @@ export class MainScene extends Phaser.Scene {
   private trailNodes: Phaser.Math.Vector2[] = [];
   private obstacles: Phaser.Physics.Arcade.Group | null = null;
   private scoreText: Phaser.GameObjects.Text | null = null;
+  private playTimeText: Phaser.GameObjects.Text | null = null;
   private spawnTimer: Phaser.Time.TimerEvent | null = null;
   private farBg: Phaser.GameObjects.TileSprite | null = null;
   private nearBg: Phaser.GameObjects.TileSprite | null = null;
@@ -58,12 +59,20 @@ export class MainScene extends Phaser.Scene {
 
     this.physics.add.overlap(this.ship, this.obstacles, this.handleHitObstacle, undefined, this);
 
-    this.scoreText = this.add.text(16, 16, "Score: 0", {
+    this.scoreText = this.add.text(16, 16, "0", {
       fontSize: "24px",
       color: "#ffffff",
       fontStyle: "bold",
     });
     this.scoreText.setDepth(10);
+    this.playTimeText = this.add
+      .text(this.scale.width - 16, 16, "00:00", {
+        fontSize: "22px",
+        color: "#ffffff",
+        fontStyle: "bold",
+      })
+      .setOrigin(1, 0)
+      .setDepth(10);
 
     this.input.on("pointerdown", this.toggleDirection, this);
     this.scale.on("resize", this.resize, this);
@@ -83,6 +92,7 @@ export class MainScene extends Phaser.Scene {
     const dt = delta / 1000;
     const elapsedMs = this.time.now - this.startedAt;
     this.updateDifficulty(elapsedMs);
+    this.playTimeText?.setText(this.formatPlayTime(elapsedMs));
 
     const diagonalSpeed = CosmicToggleConstants.SHIP_SPEED / Math.sqrt(2);
     const verticalSpeed = this.isMovingUp ? -diagonalSpeed : diagonalSpeed;
@@ -118,7 +128,7 @@ export class MainScene extends Phaser.Scene {
       if (!alreadyPassed && obstacle.x + obstacle.displayWidth / 2 < this.ship!.x) {
         obstacle.setData("passed", true);
         this.score += 1;
-        this.scoreText?.setText(`Score: ${this.score}`);
+        this.scoreText?.setText(`${this.score}`);
       }
 
       if (obstacle.x < -obstacle.displayWidth) {
@@ -522,6 +532,7 @@ export class MainScene extends Phaser.Scene {
     this.shipAnchorX = gameSize.width * 0.25;
     this.farBg?.setSize(gameSize.width, gameSize.height);
     this.nearBg?.setSize(gameSize.width, gameSize.height);
+    this.playTimeText?.setPosition(gameSize.width - 16, 16);
     this.updateDifficulty(this.time.now - this.startedAt);
 
     if (this.ship) {
@@ -538,10 +549,18 @@ export class MainScene extends Phaser.Scene {
     this.trailGraphics?.destroy();
     this.trailGraphics = null;
     this.trailNodes = [];
+    this.playTimeText = null;
     this.spawnTimer?.destroy();
     this.spawnTimer = null;
     this.input.off("pointerdown", this.toggleDirection, this);
     this.scale.off("resize", this.resize, this);
     this.game.events.off("external-resize", this.resize, this);
+  }
+
+  private formatPlayTime(elapsedMs: number) {
+    const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
   }
 }

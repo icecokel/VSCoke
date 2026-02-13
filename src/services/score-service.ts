@@ -12,6 +12,8 @@ export interface ScoreSubmissionResult {
   success: boolean;
   message?: string;
   data?: GameHistoryResponseDto;
+  status?: number;
+  requiresAuth?: boolean;
 }
 
 export interface ScoreSubmissionData {
@@ -31,6 +33,8 @@ export const submitScore = async (
     return {
       success: false,
       message: "인증 토큰이 없습니다.",
+      status: 401,
+      requiresAuth: true,
     };
   }
 
@@ -57,6 +61,8 @@ export const submitScore = async (
       return {
         success: false,
         message: `점수 기록 실패 (${error.status})`,
+        status: error.status,
+        requiresAuth: error.status === 401,
       };
     }
     return {

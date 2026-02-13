@@ -41,7 +41,7 @@ interface ResultScreenProps {
 export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) => {
   const t = useTranslations("Game");
   const router = useCustomRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const { share } = useGameShare();
   const [isSharing, setIsSharing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,6 +51,7 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
   const [weeklyRank, setWeeklyRank] = useState<number | null>(null);
   const [bestScore, setBestScore] = useState<number | null>(null);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const [needsReauth, setNeedsReauth] = useState(false);
   const hasAutoSubmitted = useRef(false);
   const isSubmittingRef = useRef(false);
   const savePendingScore = useCallback(() => {
@@ -59,6 +60,26 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
       JSON.stringify({ gameName, score, timestamp: Date.now() }),
     );
   }, [gameName, score]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const idToken = (session as any)?.idToken as string | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sessionError = (session as any)?.error;
+  const isSessionLoading = status === "loading";
+  const isAuthenticated = status === "authenticated";
+  const requiresLoginForSubmit =
+    !session ||
+    !isAuthenticated ||
+    !idToken ||
+    sessionError === "RefreshAccessTokenError" ||
+    needsReauth;
+
+  const startLoginForSubmit = useCallback(() => {
+    savePendingScore();
+    hasAutoSubmitted.current = false;
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
+    signIn("google");
+  }, [savePendingScore]);
 
   // 점수 제출
   const handleSubmitScore = useCallback(
@@ -76,10 +97,11 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
           setRank(result.data.rank ?? null);
           setWeeklyRank(result.data.weeklyRank ?? null);
           setBestScore(result.data.bestScore ?? null);
+          setNeedsReauth(false);
           toast.success(result.message || t("submitSuccess"));
         } else if (result.requiresAuth) {
-          savePendingScore();
-          await signIn("google");
+          setNeedsReauth(true);
+          toast.error(result.message || t("submitFail"));
         } else {
           toast.error(result.message || t("submitFail"));
         }
@@ -90,53 +112,27 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
         setIsSubmitting(false);
       }
     },
-    [gameName, score, isSubmitting, isSubmitted, savePendingScore, t],
+    [gameName, score, isSubmitting, isSubmitted, t],
   );
 
   const handleScoreAction = useCallback(() => {
     // 중복 실행 방지
-    if (isSubmittingRef.current) return;
-
-    // 세션 에러(토큰 갱신 실패) 시 재로그인 유도
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sessionError = (session as any)?.error;
-    if (sessionError === "RefreshAccessTokenError") {
-      savePendingScore();
-      isSubmittingRef.current = true;
-      setIsSubmitting(true);
-      signIn("google");
+    if (isSubmittingRef.current || isSessionLoading) return;
+    if (requiresLoginForSubmit) {
+      startLoginForSubmit();
       return;
     }
-
-    if (!session) {
-      savePendingScore();
-      isSubmittingRef.current = true;
-      setIsSubmitting(true);
-      signIn("google");
-      return;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const token = (session as any)?.idToken;
-
-    if (!token) {
-      savePendingScore();
-      isSubmittingRef.current = true;
-      setIsSubmitting(true);
-      signIn("google");
-      return;
-    }
-
-    handleSubmitScore(token);
-  }, [session, handleSubmitScore, savePendingScore]);
+    handleSubmitScore(idToken);
+  }, [isSessionLoading, requiresLoginForSubmit, startLoginForSubmit, handleSubmitScore, idToken]);
 
   // 로그인 상태면 결과 화면 진입 시 자동 제출
   useEffect(() => {
-    if (!session || score <= 0 || isSubmitted || isSubmitting || hasAutoSubmitted.current) return;
+    if (score <= 0 || isSubmitted || isSubmitting || hasAutoSubmitted.current) return;
+    if (requiresLoginForSubmit || !idToken) return;
 
     hasAutoSubmitted.current = true;
-    handleScoreAction();
-  }, [session, score, isSubmitted, isSubmitting, handleScoreAction]);
+    handleSubmitScore(idToken);
+  }, [score, isSubmitted, isSubmitting, requiresLoginForSubmit, idToken, handleSubmitScore]);
 
   // 제출 성공 시 스토리지 정리
   useEffect(() => {
@@ -283,13 +279,13 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
           {/* 점수 기록하기 버튼 */}
           <Button
             onClick={handleScoreAction}
-            disabled={isSubmitting || isSubmitted || isSharing}
+            disabled={isSubmitting || isSubmitted || isSharing || isSessionLoading}
             size="lg"
             aria-label="Submit Score"
             className={`w-full text-lg py-6 font-bold rounded-xl shadow-lg transition-all transform hover:scale-105 disabled:opacity-70 disabled:cursor-not-allowed ${
               isSubmitted
                 ? "bg-green-500 hover:bg-green-600 text-white"
-                : !session
+                : requiresLoginForSubmit
                   ? "bg-white hover:bg-gray-100 text-black border border-gray-200"
                   : "bg-indigo-500 hover:bg-indigo-600 text-white"
             }`}
@@ -299,7 +295,7 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                 {t("submitting")}
               </>
-            ) : !isSubmitted && !session ? (
+            ) : !isSubmitted && requiresLoginForSubmit ? (
               // Google Icon (Simple SVG)
               <div className="flex items-center">
                 <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">

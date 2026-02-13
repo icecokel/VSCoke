@@ -13,8 +13,16 @@ export const CosmicToggleConstants = {
     MAP_SHRINK_MAX: 120,
   },
   OBSTACLE: {
-    BASE_WIDTH: 52,
-    BASE_HEIGHT: 120,
+    TEXTURE_SIZE: 96,
+    PRESET_TEXTURE_KEYS: [
+      "ct-obstacle-0",
+      "ct-obstacle-1",
+      "ct-obstacle-2",
+      "ct-obstacle-3",
+      "ct-obstacle-4",
+      "ct-obstacle-5",
+      "ct-obstacle-6",
+    ],
     SPAWN_SIDE_OFFSET: 44,
     SPAWN_VERTICAL_MARGIN: 8,
     SCALE_X_MIN: 0.72,

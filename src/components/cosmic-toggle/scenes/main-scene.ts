@@ -312,6 +312,9 @@ export class MainScene extends Phaser.Scene {
   private spawnObstacle(targetY?: number) {
     if (this.isGameOver || !this.obstacles) return;
 
+    const textureKey = Phaser.Utils.Array.GetRandom(
+      CosmicToggleConstants.OBSTACLE.PRESET_TEXTURE_KEYS,
+    );
     const scaleX = Phaser.Math.FloatBetween(
       CosmicToggleConstants.OBSTACLE.SCALE_X_MIN,
       CosmicToggleConstants.OBSTACLE.SCALE_X_MAX,
@@ -320,29 +323,30 @@ export class MainScene extends Phaser.Scene {
       CosmicToggleConstants.OBSTACLE.SCALE_Y_MIN,
       CosmicToggleConstants.OBSTACLE.SCALE_Y_MAX,
     );
-    const halfHeight = (CosmicToggleConstants.OBSTACLE.BASE_HEIGHT * scaleY) / 2;
-    const spawnMargin = halfHeight + CosmicToggleConstants.OBSTACLE.SPAWN_VERTICAL_MARGIN;
 
+    const obstacle = this.obstacles.create(
+      this.scale.width + CosmicToggleConstants.OBSTACLE.SPAWN_SIDE_OFFSET,
+      this.scale.height / 2,
+      textureKey,
+    ) as Phaser.Physics.Arcade.Image | undefined;
+
+    if (!obstacle) return;
+
+    obstacle.setScale(scaleX, scaleY);
+    const halfHeight = obstacle.displayHeight / 2;
+    const spawnMargin = halfHeight + CosmicToggleConstants.OBSTACLE.SPAWN_VERTICAL_MARGIN;
     const minY = this.currentVerticalPadding + spawnMargin;
     const maxY = this.scale.height - this.currentVerticalPadding - spawnMargin;
     const safeMinY = maxY > minY ? minY : this.scale.height / 2;
     const safeMaxY = maxY > minY ? maxY : this.scale.height / 2;
     const randomY = safeMaxY > safeMinY ? Phaser.Math.Between(safeMinY, safeMaxY) : safeMinY;
     const y = Phaser.Math.Clamp(targetY ?? randomY, safeMinY, safeMaxY);
+    obstacle.setY(y);
 
-    const obstacle = this.obstacles.create(
-      this.scale.width + CosmicToggleConstants.OBSTACLE.SPAWN_SIDE_OFFSET,
-      y,
-      "ct-obstacle",
-    ) as Phaser.Physics.Arcade.Image | undefined;
-
-    if (!obstacle) return;
-
-    obstacle.setScale(scaleX, scaleY);
     obstacle.setDepth(6);
+    obstacle.setAngle(Phaser.Math.Between(0, 359));
     obstacle.setVelocityX(-this.currentObstacleSpeed);
     obstacle.setData("passed", false);
-    obstacle.setTint(Phaser.Display.Color.RandomRGB().color);
     obstacle.body?.setSize(
       obstacle.displayWidth * CosmicToggleConstants.OBSTACLE.HITBOX_SCALE_X,
       obstacle.displayHeight * CosmicToggleConstants.OBSTACLE.HITBOX_SCALE_Y,

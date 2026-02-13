@@ -1,4 +1,5 @@
 import * as Phaser from "phaser";
+import { CosmicToggleConstants } from "../cosmic-toggle-constants";
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -39,17 +40,17 @@ export class PreloadScene extends Phaser.Scene {
 
     graphics.clear();
     const arrowShape = [
-      new Phaser.Geom.Point(40, 14),
-      new Phaser.Geom.Point(20, 3),
-      new Phaser.Geom.Point(20, 9),
-      new Phaser.Geom.Point(2, 9),
-      new Phaser.Geom.Point(2, 19),
-      new Phaser.Geom.Point(20, 19),
-      new Phaser.Geom.Point(20, 25),
+      new Phaser.Geom.Point(36, 14),
+      new Phaser.Geom.Point(24, 7),
+      new Phaser.Geom.Point(24, 10),
+      new Phaser.Geom.Point(2, 10),
+      new Phaser.Geom.Point(2, 18),
+      new Phaser.Geom.Point(24, 18),
+      new Phaser.Geom.Point(24, 21),
     ];
-    graphics.fillStyle(0x67e8f9);
+    graphics.fillStyle(CosmicToggleConstants.ARROW_COLOR);
     graphics.fillPoints(arrowShape, true);
-    graphics.generateTexture("ct-arrow", 42, 28);
+    graphics.generateTexture("ct-arrow", 38, 28);
 
     graphics.clear();
     graphics.fillStyle(0xfb7185);

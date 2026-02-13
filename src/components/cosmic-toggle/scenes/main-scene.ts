@@ -125,7 +125,7 @@ export class MainScene extends Phaser.Scene {
     this.trailGraphics.setDepth(4);
     this.trailNodes = [];
 
-    const startX = this.ship.x - this.ship.displayWidth * 0.45;
+    const startX = this.ship.x - this.ship.displayWidth * 0.48;
     const startY = this.ship.y;
     const segmentCount = 20;
     const spacing = 8;
@@ -138,7 +138,7 @@ export class MainScene extends Phaser.Scene {
   private updateTrail(time: number, dt: number) {
     if (!this.ship || !this.trailGraphics || this.trailNodes.length === 0) return;
 
-    const anchorX = this.ship.x - this.ship.displayWidth * 0.45;
+    const anchorX = this.ship.x - this.ship.displayWidth * 0.48;
     const anchorY = this.ship.y;
     const steer = this.isMovingUp ? -1 : 1;
     const sway = Math.sin(time * 0.01) * 4 + Math.sin(time * 0.023) * 2;
@@ -165,26 +165,20 @@ export class MainScene extends Phaser.Scene {
     if (!this.trailGraphics || this.trailNodes.length < 2) return;
 
     this.trailGraphics.clear();
-    const glowColor = 0x22d3ee;
+    const glowColor = CosmicToggleConstants.ARROW_COLOR;
 
     for (let i = 0; i < this.trailNodes.length - 1; i += 1) {
       const a = this.trailNodes[i];
       const b = this.trailNodes[i + 1];
       const t = i / (this.trailNodes.length - 1);
-      const width = (1 - t) * 10 + 1.2;
-      const alpha = (1 - t) * 0.45 + 0.05;
+      const width = (1 - t) * 9 + 1.4;
+      const alpha = (1 - t) * 0.62 + 0.08;
       const jitter = Math.sin(time * 0.015 + i * 0.7) * 0.4;
 
       this.trailGraphics.lineStyle(width, glowColor, alpha);
       this.trailGraphics.beginPath();
       this.trailGraphics.moveTo(a.x, a.y);
       this.trailGraphics.lineTo(b.x, b.y + jitter);
-      this.trailGraphics.strokePath();
-
-      this.trailGraphics.lineStyle(Math.max(1, width * 0.22), 0xffffff, alpha * 0.45);
-      this.trailGraphics.beginPath();
-      this.trailGraphics.moveTo(a.x, a.y);
-      this.trailGraphics.lineTo(b.x, b.y + jitter * 0.5);
       this.trailGraphics.strokePath();
     }
   }

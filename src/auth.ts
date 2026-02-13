@@ -75,7 +75,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return {
         ...token,
         accessToken: refreshed.accessToken,
-        idToken: refreshed.idToken,
+        idToken: refreshed.idToken ?? token.idToken,
         expiresAt: refreshed.expiresAt,
         refreshToken: refreshed.refreshToken,
       };
@@ -83,6 +83,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (session as any).idToken = token.idToken;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (session as any).accessToken = token.accessToken;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (session as any).error = token.error;
       return session;

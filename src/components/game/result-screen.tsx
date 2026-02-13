@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { useCustomRouter } from "@/hooks/use-custom-router";
@@ -92,13 +92,19 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const idToken = (session as any)?.idToken as string | undefined;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const accessToken = (session as any)?.accessToken as string | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sessionError = (session as any)?.error;
+  const submitTokenCandidates = useMemo(
+    () => Array.from(new Set([accessToken, idToken].filter(Boolean) as string[])),
+    [accessToken, idToken],
+  );
   const isSessionLoading = status === "loading";
   const isAuthenticated = status === "authenticated";
   const requiresLoginForSubmit =
     !session ||
     !isAuthenticated ||
-    !idToken ||
+    submitTokenCandidates.length === 0 ||
     sessionError === "RefreshAccessTokenError" ||
     needsReauth;
 
@@ -112,14 +118,14 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
 
   // 점수 제출
   const handleSubmitScore = useCallback(
-    async (token?: string) => {
+    async (tokens?: string[]) => {
       // 이미 제출되었거나, 제출 중이면 중단
       if (isSubmitted || isSubmitting || isSubmittingRef.current) return;
 
       isSubmittingRef.current = true;
       setIsSubmitting(true);
       try {
-        const result = await submitScore({ gameName, score }, token);
+        const result = await submitScore({ gameName, score }, tokens);
         if (result.success && result.data) {
           setIsSubmitted(true);
           setResultId(result.data.id);
@@ -152,8 +158,14 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
       startLoginForSubmit();
       return;
     }
-    handleSubmitScore(idToken);
-  }, [isSessionLoading, requiresLoginForSubmit, startLoginForSubmit, handleSubmitScore, idToken]);
+    handleSubmitScore(submitTokenCandidates);
+  }, [
+    isSessionLoading,
+    requiresLoginForSubmit,
+    startLoginForSubmit,
+    handleSubmitScore,
+    submitTokenCandidates,
+  ]);
 
   // 이전 자동 제출 실패로 재로그인이 필요한 상태 복원
   useEffect(() => {
@@ -166,7 +178,7 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
   // 로그인 상태면 결과 화면 진입 시 자동 제출
   useEffect(() => {
     if (score <= 0 || isSubmitted || isSubmitting || hasAutoSubmitted.current) return;
-    if (requiresLoginForSubmit || !idToken) return;
+    if (requiresLoginForSubmit) return;
 
     const pending = readPendingScore();
     if (pending?.autoSubmitTried) return;
@@ -175,14 +187,14 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
     }
 
     hasAutoSubmitted.current = true;
-    handleSubmitScore(idToken);
+    handleSubmitScore(submitTokenCandidates);
   }, [
     score,
     isSubmitted,
     isSubmitting,
     requiresLoginForSubmit,
-    idToken,
     handleSubmitScore,
+    submitTokenCandidates,
     readPendingScore,
     savePendingScore,
   ]);

@@ -42,6 +42,7 @@ interface PendingScore {
   gameName: string;
   score: number;
   timestamp: number;
+  requiresManualLogin?: boolean;
 }
 
 export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) => {
@@ -58,13 +59,34 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
   const [bestScore, setBestScore] = useState<number | null>(null);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [needsReauth, setNeedsReauth] = useState(false);
+  const hasAutoSubmitted = useRef(false);
   const isSubmittingRef = useRef(false);
-  const savePendingScore = useCallback(() => {
-    localStorage.setItem(
-      "pendingScore",
-      JSON.stringify({ gameName, score, timestamp: Date.now() } satisfies PendingScore),
-    );
+  const readPendingScore = useCallback((): PendingScore | null => {
+    try {
+      const pendingStr = localStorage.getItem("pendingScore");
+      if (!pendingStr) return null;
+      const pending = JSON.parse(pendingStr) as PendingScore;
+      const isValid = Date.now() - pending.timestamp < 5 * 60 * 1000;
+      if (!isValid || pending.gameName !== gameName || pending.score !== score) return null;
+      return pending;
+    } catch {
+      return null;
+    }
   }, [gameName, score]);
+  const savePendingScore = useCallback(
+    (requiresManualLogin: boolean = false) => {
+      localStorage.setItem(
+        "pendingScore",
+        JSON.stringify({
+          gameName,
+          score,
+          timestamp: Date.now(),
+          requiresManualLogin,
+        } satisfies PendingScore),
+      );
+    },
+    [gameName, score],
+  );
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const idToken = (session as any)?.idToken as string | undefined;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -82,7 +104,8 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
     needsReauth;
 
   const startLoginForSubmit = useCallback(() => {
-    savePendingScore();
+    savePendingScore(false);
+    hasAutoSubmitted.current = false;
     isSubmittingRef.current = true;
     setIsSubmitting(true);
     signIn("google");
@@ -107,6 +130,7 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
           setNeedsReauth(false);
           toast.success(result.message || t("submitSuccess"));
         } else if (result.requiresAuth) {
+          savePendingScore(true);
           setNeedsReauth(true);
           toast.error(result.message || t("submitFail"));
         } else {
@@ -119,7 +143,7 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
         setIsSubmitting(false);
       }
     },
-    [gameName, score, isSubmitting, isSubmitted, t],
+    [gameName, score, isSubmitting, isSubmitted, savePendingScore, t],
   );
 
   const handleScoreAction = useCallback(() => {
@@ -134,6 +158,32 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
     isSessionLoading,
     requiresLoginForSubmit,
     startLoginForSubmit,
+    handleSubmitScore,
+    submitToken,
+  ]);
+
+  // 이전 자동 제출 실패(401) 상태 복원
+  useEffect(() => {
+    const pending = readPendingScore();
+    if (pending?.requiresManualLogin) {
+      setNeedsReauth(true);
+      return;
+    }
+    setNeedsReauth(false);
+  }, [readPendingScore]);
+
+  // 자동 제출: 정상 로그인 상태에서만 1회 시도
+  useEffect(() => {
+    if (score <= 0 || isSubmitted || isSubmitting || hasAutoSubmitted.current) return;
+    if (requiresLoginForSubmit || isSessionLoading) return;
+    hasAutoSubmitted.current = true;
+    handleSubmitScore(submitToken);
+  }, [
+    score,
+    isSubmitted,
+    isSubmitting,
+    requiresLoginForSubmit,
+    isSessionLoading,
     handleSubmitScore,
     submitToken,
   ]);

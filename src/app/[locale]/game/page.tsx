@@ -17,6 +17,12 @@ export default function GameDashboard() {
       route: "/game/sky-drop",
     },
     {
+      id: "cosmic-toggle",
+      title: "Cosmic Toggle",
+      description: t("cosmicToggleDesc"),
+      route: "/game/cosmic-toggle",
+    },
+    {
       id: "doom",
       title: t("doomTitle"),
       description: t("doomDesc"),

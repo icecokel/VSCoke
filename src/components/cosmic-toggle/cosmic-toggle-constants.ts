@@ -1,0 +1,8 @@
+export const CosmicToggleConstants = {
+  MAX_WIDTH: 480,
+  ASPECT_RATIO_CSS: "9/16",
+  SHIP_SPEED: 260,
+  OBSTACLE_SPEED: 220,
+  OBSTACLE_SPAWN_DELAY: 1300,
+  VERTICAL_PADDING: 16,
+};

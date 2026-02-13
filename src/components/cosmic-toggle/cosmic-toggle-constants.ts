@@ -1,7 +1,7 @@
 export const CosmicToggleConstants = {
   MAX_WIDTH: 480,
   ASPECT_RATIO_CSS: "9/16",
-  ARROW_COLOR: 0x22d3ee,
+  ARROW_COLOR: 0xc1121f,
   SHIP_SPEED: 260,
   BASE_OBSTACLE_SPEED: 220,
   BASE_VERTICAL_PADDING: 16,

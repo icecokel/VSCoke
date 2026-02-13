@@ -17,10 +17,10 @@ export default function GameDashboard() {
       route: "/game/sky-drop",
     },
     {
-      id: "cosmic-toggle",
+      id: "arrow-drift",
       title: "Arrow Drift",
       description: t("cosmicToggleDesc"),
-      route: "/game/cosmic-toggle",
+      route: "/game/arrow-drift",
     },
     {
       id: "doom",

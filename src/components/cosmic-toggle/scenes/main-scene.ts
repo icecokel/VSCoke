@@ -44,7 +44,11 @@ export class MainScene extends Phaser.Scene {
     this.ship.setDepth(5);
     this.ship.setCollideWorldBounds(false);
     this.ship.setAngle(-35);
-    this.ship.body?.setSize(30, 14, true);
+    this.ship.body?.setSize(
+      CosmicToggleConstants.SHIP_HITBOX_WIDTH,
+      CosmicToggleConstants.SHIP_HITBOX_HEIGHT,
+      true,
+    );
     this.initTrail();
 
     this.obstacles = this.physics.add.group({
@@ -383,11 +387,10 @@ export class MainScene extends Phaser.Scene {
     obstacle.setAngle(Phaser.Math.Between(0, 359));
     obstacle.setVelocityX(-this.currentObstacleSpeed);
     obstacle.setData("passed", false);
-    obstacle.body?.setSize(
-      obstacle.displayWidth * CosmicToggleConstants.OBSTACLE.HITBOX_SCALE_X,
-      obstacle.displayHeight * CosmicToggleConstants.OBSTACLE.HITBOX_SCALE_Y,
-      true,
-    );
+    const coreHitboxSize =
+      Math.min(obstacle.displayWidth, obstacle.displayHeight) *
+      CosmicToggleConstants.OBSTACLE.HITBOX_CORE_SCALE;
+    obstacle.body?.setSize(coreHitboxSize, coreHitboxSize, true);
   }
 
   private handleHitObstacle() {
@@ -400,7 +403,118 @@ export class MainScene extends Phaser.Scene {
     this.isGameOver = true;
     this.spawnTimer?.destroy();
     this.spawnTimer = null;
-    this.scene.start("GameOverScene", { score: this.score });
+    this.input.off("pointerdown", this.toggleDirection, this);
+
+    if (this.ship) {
+      const shipBody = this.ship.body as Phaser.Physics.Arcade.Body | null;
+      shipBody?.stop();
+      if (shipBody) shipBody.enable = false;
+    }
+
+    this.obstacles?.children.each(child => {
+      const obstacle = child as Phaser.Physics.Arcade.Image;
+      const obstacleBody = obstacle.body as Phaser.Physics.Arcade.Body | null;
+      obstacleBody?.stop();
+      if (obstacleBody) obstacleBody.enable = false;
+      return true;
+    });
+
+    this.playArrowExplosion(() => {
+      this.scene.start("GameOverScene", { score: this.score });
+    });
+  }
+
+  private playArrowExplosion(onComplete: () => void) {
+    if (!this.ship) {
+      onComplete();
+      return;
+    }
+
+    const originX = this.ship.x;
+    const originY = this.ship.y;
+
+    this.trailGraphics?.clear();
+    this.ship.setVisible(false);
+
+    const flash = this.add.circle(originX, originY, 8, 0xffffff, 0.95).setDepth(15);
+    this.tweens.add({
+      targets: flash,
+      scaleX: 3.2,
+      scaleY: 3.2,
+      alpha: 0,
+      duration: 220,
+      ease: "Cubic.Out",
+      onComplete: () => flash.destroy(),
+    });
+
+    const blastRing = this.add.circle(originX, originY, 10, 0xffffff, 0).setDepth(14);
+    blastRing.setStrokeStyle(3, 0xff9aa6, 0.9);
+    this.tweens.add({
+      targets: blastRing,
+      scaleX: 3.6,
+      scaleY: 3.6,
+      alpha: 0,
+      duration: 280,
+      ease: "Quart.Out",
+      onComplete: () => blastRing.destroy(),
+    });
+
+    const shardCount = 20;
+    for (let i = 0; i < shardCount; i += 1) {
+      const shard = this.add
+        .rectangle(
+          originX,
+          originY,
+          Phaser.Math.Between(5, 12),
+          Phaser.Math.Between(2, 4),
+          i % 4 === 0 ? 0xffd7dc : CosmicToggleConstants.ARROW_COLOR,
+          0.95,
+        )
+        .setDepth(15);
+      const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+      const distance = Phaser.Math.Between(34, 112);
+      const targetX = originX + Math.cos(angle) * distance;
+      const targetY = originY + Math.sin(angle) * distance;
+
+      shard.setRotation(angle);
+      this.tweens.add({
+        targets: shard,
+        x: targetX,
+        y: targetY,
+        alpha: 0,
+        scaleX: 0.25,
+        scaleY: 0.25,
+        duration: Phaser.Math.Between(260, 420),
+        ease: "Cubic.Out",
+        onComplete: () => shard.destroy(),
+      });
+    }
+
+    const sparkCount = 14;
+    for (let i = 0; i < sparkCount; i += 1) {
+      const spark = this.add
+        .circle(
+          originX,
+          originY,
+          Phaser.Math.FloatBetween(1.2, 2.6),
+          i % 2 === 0 ? 0xffffff : 0xff9aa6,
+          0.9,
+        )
+        .setDepth(15);
+      const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+      const distance = Phaser.Math.Between(28, 92);
+      this.tweens.add({
+        targets: spark,
+        x: originX + Math.cos(angle) * distance,
+        y: originY + Math.sin(angle) * distance,
+        alpha: 0,
+        duration: Phaser.Math.Between(180, 320),
+        ease: "Sine.Out",
+        onComplete: () => spark.destroy(),
+      });
+    }
+
+    this.time.delayedCall(420, onComplete);
   }
 
   private resize(gameSize: { width: number; height: number }) {

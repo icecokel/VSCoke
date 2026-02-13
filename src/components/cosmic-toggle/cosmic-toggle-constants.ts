@@ -3,6 +3,8 @@ export const CosmicToggleConstants = {
   ASPECT_RATIO_CSS: "9/16",
   ARROW_COLOR: 0xc1121f,
   SHIP_SPEED: 260,
+  SHIP_HITBOX_WIDTH: 24,
+  SHIP_HITBOX_HEIGHT: 10,
   BASE_OBSTACLE_SPEED: 220,
   BASE_VERTICAL_PADDING: 16,
   DIFFICULTY: {
@@ -29,8 +31,7 @@ export const CosmicToggleConstants = {
     SCALE_X_MAX: 1.28,
     SCALE_Y_MIN: 0.62,
     SCALE_Y_MAX: 1.36,
-    HITBOX_SCALE_X: 0.86,
-    HITBOX_SCALE_Y: 0.9,
+    HITBOX_CORE_SCALE: 0.62,
   },
   SPAWN: {
     INITIAL_GRACE_MS: 1600,

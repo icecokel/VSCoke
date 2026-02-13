@@ -19,6 +19,7 @@ export class MainScene extends Phaser.Scene {
   private startedAt = 0;
   private currentObstacleSpeed = CosmicToggleConstants.BASE_OBSTACLE_SPEED;
   private currentVerticalPadding = CosmicToggleConstants.BASE_VERTICAL_PADDING;
+  private readonly trailAnchorRatio = 0.28;
 
   constructor() {
     super({ key: "MainScene" });
@@ -125,7 +126,7 @@ export class MainScene extends Phaser.Scene {
     this.trailGraphics.setDepth(4);
     this.trailNodes = [];
 
-    const startX = this.ship.x - this.ship.displayWidth * 0.48;
+    const startX = this.ship.x - this.ship.displayWidth * this.trailAnchorRatio;
     const startY = this.ship.y;
     const segmentCount = 20;
     const spacing = 8;
@@ -138,7 +139,7 @@ export class MainScene extends Phaser.Scene {
   private updateTrail(time: number, dt: number) {
     if (!this.ship || !this.trailGraphics || this.trailNodes.length === 0) return;
 
-    const anchorX = this.ship.x - this.ship.displayWidth * 0.48;
+    const anchorX = this.ship.x - this.ship.displayWidth * this.trailAnchorRatio;
     const anchorY = this.ship.y;
     const steer = this.isMovingUp ? -1 : 1;
     const sway = Math.sin(time * 0.01) * 4 + Math.sin(time * 0.023) * 2;

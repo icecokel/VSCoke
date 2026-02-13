@@ -169,6 +169,8 @@ export interface components {
        */
       weeklyRank?: number | null;
     };
+    /** @enum {string} */
+    GameType: "SKY_DROP";
     User: {
       id: string;
       email: string;
@@ -181,6 +183,7 @@ export interface components {
       score: number;
       /** @enum {string} */
       gameType: "SKY_DROP";
+      playTime?: number;
       /** Format: date-time */
       createdAt: string;
       userId: string;
@@ -270,7 +273,8 @@ export interface operations {
   GameController_getRanking: {
     parameters: {
       query: {
-        gameType: string;
+        /** @description 조회할 게임 타입 */
+        gameType: components["schemas"]["GameType"];
       };
       header?: never;
       path?: never;

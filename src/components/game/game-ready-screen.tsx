@@ -5,6 +5,7 @@ import { useCustomRouter } from "@/hooks/use-custom-router";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { GameConstants } from "./game-constants";
+import { getGameRanking, type GameHistory } from "@/services/score-service";
 
 interface GameReadyScreenProps {
   onStart: () => void;
@@ -16,6 +17,9 @@ const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
   const router = useCustomRouter();
 
   const [rows, setRows] = useState<number[][]>([]);
+  const [topRanking, setTopRanking] = useState<GameHistory[]>([]);
+  const [isRankingLoading, setIsRankingLoading] = useState(true);
+  const rankBadges = ["🥇", "🥈", "🥉"];
 
   const onClickBack = () => {
     router.back();
@@ -37,6 +41,30 @@ const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
 
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadRanking = async () => {
+      setIsRankingLoading(true);
+      const ranking = await getGameRanking("SKY_DROP");
+      if (!isActive) return;
+      setTopRanking(ranking.slice(0, 3));
+      setIsRankingLoading(false);
+    };
+
+    loadRanking();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const getDisplayName = (player: GameHistory["user"]) => {
+    const fullName = `${player.lastName ?? ""}${player.firstName ?? ""}`.trim();
+    if (fullName) return fullName;
+    return player.firstName || t("unknownPlayer");
+  };
 
   return (
     <div
@@ -67,6 +95,35 @@ const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="mb-7 w-full max-w-xs rounded-xl border border-white/10 bg-black/30 px-4 py-3">
+        <h2 className="mb-2 text-xs font-bold tracking-[0.2em] text-cyan-300">
+          {t("leaderboardTitle")}
+        </h2>
+
+        {isRankingLoading ? (
+          <p className="text-sm text-gray-400">{t("leaderboardLoading")}</p>
+        ) : topRanking.length === 0 ? (
+          <p className="text-sm text-gray-400">{t("leaderboardEmpty")}</p>
+        ) : (
+          <ul className="space-y-2">
+            {topRanking.map((entry, index) => (
+              <li
+                key={entry.id}
+                className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="text-sm">{rankBadges[index] ?? `#${index + 1}`}</span>
+                  <span className="truncate text-sm text-white">{getDisplayName(entry.user)}</span>
+                </div>
+                <span className="text-sm font-bold text-amber-300">
+                  {entry.score.toLocaleString()}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="flex flex-col gap-4 w-full items-center">

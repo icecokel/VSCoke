@@ -107,7 +107,11 @@
     "weeklyRank": "주간 순위",
     "bestScore": "최고 점수",
     "overall": "전체",
-    "newRecord": "신기록"
+    "newRecord": "신기록",
+    "leaderboardTitle": "TOP 3 랭킹",
+    "leaderboardLoading": "랭킹 불러오는 중...",
+    "leaderboardEmpty": "아직 랭킹 기록이 없어요.",
+    "unknownPlayer": "익명 플레이어"
   },
   "Doom": {
     "title": "둠",

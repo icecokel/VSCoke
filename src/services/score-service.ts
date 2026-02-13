@@ -79,3 +79,19 @@ export const getGameResult = async (id: string): Promise<GameHistoryResponseDto 
     return null;
   }
 };
+
+/**
+ * 게임 랭킹(Top 10)을 조회합니다.
+ */
+export const getGameRanking = async (
+  gameType: CreateGameHistoryDto["gameType"] = "SKY_DROP",
+): Promise<GameHistory[]> => {
+  try {
+    const result = await apiClient.get<GameHistory[]>(`/game/ranking?gameType=${gameType}`, {
+      cache: "no-store",
+    });
+    return result;
+  } catch {
+    return [];
+  }
+};

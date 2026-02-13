@@ -107,7 +107,11 @@
     "weeklyRank": "Weekly Rank",
     "bestScore": "Best Score",
     "overall": "Overall",
-    "newRecord": "NEW"
+    "newRecord": "NEW",
+    "leaderboardTitle": "TOP 3 RANKING",
+    "leaderboardLoading": "Loading ranking...",
+    "leaderboardEmpty": "No ranking records yet.",
+    "unknownPlayer": "Anonymous Player"
   },
   "Doom": {
     "title": "DOOM",

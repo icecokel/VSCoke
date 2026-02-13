@@ -65,7 +65,12 @@ export class MainScene extends Phaser.Scene {
     this.scale.on("resize", this.resize, this);
     this.game.events.on("external-resize", this.resize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.cleanup, this);
-    this.scheduleNextWave();
+    this.spawnTimer = this.time.delayedCall(
+      CosmicToggleConstants.SPAWN.INITIAL_GRACE_MS,
+      this.scheduleNextWave,
+      undefined,
+      this,
+    );
   }
 
   update(time: number, delta: number) {
@@ -255,6 +260,7 @@ export class MainScene extends Phaser.Scene {
   private scheduleNextWave() {
     if (this.isGameOver) return;
 
+    const elapsedMs = this.time.now - this.startedAt;
     const obstacleCount = this.pickWaveObstacleCount();
     const yTargets = this.buildWaveYTargets(obstacleCount);
     const inWaveGap = Phaser.Math.Between(
@@ -268,7 +274,6 @@ export class MainScene extends Phaser.Scene {
       });
     });
 
-    const elapsedMs = this.time.now - this.startedAt;
     const rampProgress = Phaser.Math.Clamp(
       elapsedMs / CosmicToggleConstants.SPAWN.WAVE_DELAY_RAMP_MS,
       0,
@@ -284,19 +289,37 @@ export class MainScene extends Phaser.Scene {
       CosmicToggleConstants.SPAWN.WAVE_DELAY_MAX_MS,
       rampProgress,
     );
-    const nextDelay = Phaser.Math.Between(dynamicMinDelay, dynamicMaxDelay);
+    const nextDelay = Phaser.Math.Between(Math.round(dynamicMinDelay), Math.round(dynamicMaxDelay));
+    const waveDuration = inWaveGap * Math.max(0, obstacleCount - 1);
 
-    this.spawnTimer = this.time.delayedCall(nextDelay, this.scheduleNextWave, undefined, this);
+    this.spawnTimer = this.time.delayedCall(
+      waveDuration + nextDelay,
+      this.scheduleNextWave,
+      undefined,
+      this,
+    );
   }
 
   private pickWaveObstacleCount() {
+    const elapsedMs = this.time.now - this.startedAt;
+    const rampProgress = Phaser.Math.Clamp(
+      elapsedMs / CosmicToggleConstants.SPAWN.MULTI_WAVE_RAMP_MS,
+      0,
+      1,
+    );
+    const tripleChance = Phaser.Math.Linear(
+      CosmicToggleConstants.SPAWN.TRIPLE_WAVE_CHANCE_START,
+      CosmicToggleConstants.SPAWN.TRIPLE_WAVE_CHANCE_END,
+      rampProgress,
+    );
+    const doubleChance = Phaser.Math.Linear(
+      CosmicToggleConstants.SPAWN.DOUBLE_WAVE_CHANCE_START,
+      CosmicToggleConstants.SPAWN.DOUBLE_WAVE_CHANCE_END,
+      rampProgress,
+    );
     const roll = Math.random();
-    if (roll < CosmicToggleConstants.SPAWN.TRIPLE_WAVE_CHANCE) return 3;
-    if (
-      roll <
-      CosmicToggleConstants.SPAWN.TRIPLE_WAVE_CHANCE +
-        CosmicToggleConstants.SPAWN.DOUBLE_WAVE_CHANCE
-    ) {
+    if (roll < tripleChance) return 3;
+    if (roll < tripleChance + doubleChance) {
       return 2;
     }
     return 1;

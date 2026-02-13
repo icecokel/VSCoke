@@ -268,10 +268,23 @@ export class MainScene extends Phaser.Scene {
       });
     });
 
-    const nextDelay = Phaser.Math.Between(
-      CosmicToggleConstants.SPAWN.WAVE_DELAY_MIN_MS,
-      CosmicToggleConstants.SPAWN.WAVE_DELAY_MAX_MS,
+    const elapsedMs = this.time.now - this.startedAt;
+    const rampProgress = Phaser.Math.Clamp(
+      elapsedMs / CosmicToggleConstants.SPAWN.WAVE_DELAY_RAMP_MS,
+      0,
+      1,
     );
+    const dynamicMinDelay = Phaser.Math.Linear(
+      CosmicToggleConstants.SPAWN.WAVE_DELAY_START_MIN_MS,
+      CosmicToggleConstants.SPAWN.WAVE_DELAY_MIN_MS,
+      rampProgress,
+    );
+    const dynamicMaxDelay = Phaser.Math.Linear(
+      CosmicToggleConstants.SPAWN.WAVE_DELAY_START_MAX_MS,
+      CosmicToggleConstants.SPAWN.WAVE_DELAY_MAX_MS,
+      rampProgress,
+    );
+    const nextDelay = Phaser.Math.Between(dynamicMinDelay, dynamicMaxDelay);
 
     this.spawnTimer = this.time.delayedCall(nextDelay, this.scheduleNextWave, undefined, this);
   }

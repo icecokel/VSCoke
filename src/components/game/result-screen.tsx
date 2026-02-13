@@ -130,29 +130,17 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
     handleSubmitScore(token);
   }, [session, handleSubmitScore, gameName, score]);
 
-  // 마운트 시 자동 제출 체크
+  // 로그인 상태면 결과 화면 진입 시 자동 제출
   useEffect(() => {
-    // 세션이 있고, 아직 제출 안 했고, 제출 중 아니고, 자동 제출 시도 안 했으면
-    if (session && !isSubmitted && !isSubmitting && !hasAutoSubmitted.current) {
-      const pending = localStorage.getItem("pendingScore");
-      if (pending) {
-        try {
-          const { gameName: savedGame, score: savedScore, timestamp } = JSON.parse(pending);
+    if (!session || score <= 0 || isSubmitted || isSubmitting || hasAutoSubmitted.current) return;
 
-          // 5분 이내의 데이터이고, 현재 표시된 점수와 일치하면 자동 제출
-          const isValidTime = Date.now() - timestamp < 5 * 60 * 1000;
-          if (savedGame === gameName && savedScore === score && isValidTime) {
-            hasAutoSubmitted.current = true; // 시도 플래그 설정
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const token = (session as any)?.idToken;
-            handleSubmitScore(token);
-          }
-        } catch (e) {
-          console.error("Failed to parse pending score", e);
-        }
-      }
-    }
-  }, [session, isSubmitted, isSubmitting, gameName, score, handleSubmitScore]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const token = (session as any)?.idToken;
+    if (!token) return;
+
+    hasAutoSubmitted.current = true;
+    handleSubmitScore(token);
+  }, [session, score, isSubmitted, isSubmitting, handleSubmitScore]);
 
   // 제출 성공 시 스토리지 정리
   useEffect(() => {
@@ -394,6 +382,19 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {isSubmitting && (
+        <div className="absolute inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div
+            className="flex min-w-52 flex-col items-center gap-3 rounded-2xl border border-white/15 bg-zinc-950/90 px-6 py-5 shadow-2xl"
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2 className="h-8 w-8 animate-spin text-cyan-300" />
+            <p className="text-sm font-medium text-white">{t("submitting")}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

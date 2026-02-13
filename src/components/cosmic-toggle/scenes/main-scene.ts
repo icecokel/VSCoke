@@ -3,6 +3,8 @@ import { CosmicToggleConstants } from "../cosmic-toggle-constants";
 
 export class MainScene extends Phaser.Scene {
   private ship: Phaser.Physics.Arcade.Image | null = null;
+  private trailGraphics: Phaser.GameObjects.Graphics | null = null;
+  private trailNodes: Phaser.Math.Vector2[] = [];
   private obstacles: Phaser.Physics.Arcade.Group | null = null;
   private scoreText: Phaser.GameObjects.Text | null = null;
   private spawnTimer: Phaser.Time.TimerEvent | null = null;
@@ -37,11 +39,12 @@ export class MainScene extends Phaser.Scene {
     this.shipAnchorX = this.scale.width * 0.25;
     const shipX = this.shipAnchorX;
     const shipY = this.scale.height / 2;
-    this.ship = this.physics.add.image(shipX, shipY, "ct-ship");
+    this.ship = this.physics.add.image(shipX, shipY, "ct-arrow");
     this.ship.setDepth(5);
     this.ship.setCollideWorldBounds(false);
-    this.ship.setAngle(-22);
-    this.ship.body?.setSize(28, 16, true);
+    this.ship.setAngle(-35);
+    this.ship.body?.setSize(30, 14, true);
+    this.initTrail();
 
     this.obstacles = this.physics.add.group({
       allowGravity: false,
@@ -64,7 +67,7 @@ export class MainScene extends Phaser.Scene {
     this.scheduleNextWave();
   }
 
-  update(_time: number, delta: number) {
+  update(time: number, delta: number) {
     if (this.isGameOver || !this.ship || !this.obstacles) return;
 
     const dt = delta / 1000;
@@ -77,6 +80,7 @@ export class MainScene extends Phaser.Scene {
 
     this.ship.x = this.shipAnchorX;
     this.ship.y += verticalSpeed * dt;
+    this.updateTrail(time, dt);
 
     const height = this.scale.height;
     const padding = this.currentVerticalPadding;
@@ -112,6 +116,77 @@ export class MainScene extends Phaser.Scene {
       }
       return true;
     });
+  }
+
+  private initTrail() {
+    if (!this.ship) return;
+    this.trailGraphics?.destroy();
+    this.trailGraphics = this.add.graphics();
+    this.trailGraphics.setDepth(4);
+    this.trailNodes = [];
+
+    const startX = this.ship.x - this.ship.displayWidth * 0.45;
+    const startY = this.ship.y;
+    const segmentCount = 20;
+    const spacing = 8;
+
+    for (let i = 0; i < segmentCount; i += 1) {
+      this.trailNodes.push(new Phaser.Math.Vector2(startX - i * spacing, startY));
+    }
+  }
+
+  private updateTrail(time: number, dt: number) {
+    if (!this.ship || !this.trailGraphics || this.trailNodes.length === 0) return;
+
+    const anchorX = this.ship.x - this.ship.displayWidth * 0.45;
+    const anchorY = this.ship.y;
+    const steer = this.isMovingUp ? -1 : 1;
+    const sway = Math.sin(time * 0.01) * 4 + Math.sin(time * 0.023) * 2;
+    const headFollow = Math.min(1, dt * 16);
+
+    this.trailNodes[0].x = Phaser.Math.Linear(this.trailNodes[0].x, anchorX, headFollow);
+    this.trailNodes[0].y = Phaser.Math.Linear(this.trailNodes[0].y, anchorY, headFollow);
+
+    for (let i = 1; i < this.trailNodes.length; i += 1) {
+      const prev = this.trailNodes[i - 1];
+      const current = this.trailNodes[i];
+      const follow = Math.max(0.08, 0.42 - i * 0.015);
+      const lagX = prev.x - 7.5;
+      const lagY = prev.y + steer * i * 0.18 + sway * (1 - i / this.trailNodes.length) * 0.35;
+
+      current.x = Phaser.Math.Linear(current.x, lagX, follow);
+      current.y = Phaser.Math.Linear(current.y, lagY, follow);
+    }
+
+    this.drawTrail(time);
+  }
+
+  private drawTrail(time: number) {
+    if (!this.trailGraphics || this.trailNodes.length < 2) return;
+
+    this.trailGraphics.clear();
+    const glowColor = 0x22d3ee;
+
+    for (let i = 0; i < this.trailNodes.length - 1; i += 1) {
+      const a = this.trailNodes[i];
+      const b = this.trailNodes[i + 1];
+      const t = i / (this.trailNodes.length - 1);
+      const width = (1 - t) * 10 + 1.2;
+      const alpha = (1 - t) * 0.45 + 0.05;
+      const jitter = Math.sin(time * 0.015 + i * 0.7) * 0.4;
+
+      this.trailGraphics.lineStyle(width, glowColor, alpha);
+      this.trailGraphics.beginPath();
+      this.trailGraphics.moveTo(a.x, a.y);
+      this.trailGraphics.lineTo(b.x, b.y + jitter);
+      this.trailGraphics.strokePath();
+
+      this.trailGraphics.lineStyle(Math.max(1, width * 0.22), 0xffffff, alpha * 0.45);
+      this.trailGraphics.beginPath();
+      this.trailGraphics.moveTo(a.x, a.y);
+      this.trailGraphics.lineTo(b.x, b.y + jitter * 0.5);
+      this.trailGraphics.strokePath();
+    }
   }
 
   private createBackground() {
@@ -179,7 +254,7 @@ export class MainScene extends Phaser.Scene {
   private toggleDirection() {
     if (this.isGameOver || !this.ship) return;
     this.isMovingUp = !this.isMovingUp;
-    this.ship.setAngle(this.isMovingUp ? -22 : 22);
+    this.ship.setAngle(this.isMovingUp ? -35 : 35);
   }
 
   private scheduleNextWave() {
@@ -311,6 +386,9 @@ export class MainScene extends Phaser.Scene {
   }
 
   private cleanup() {
+    this.trailGraphics?.destroy();
+    this.trailGraphics = null;
+    this.trailNodes = [];
     this.spawnTimer?.destroy();
     this.spawnTimer = null;
     this.input.off("pointerdown", this.toggleDirection, this);

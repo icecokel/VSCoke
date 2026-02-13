@@ -23,17 +23,17 @@ export const CosmicToggleReadyScreen = ({
       className={`flex h-full w-full flex-col items-center justify-center bg-slate-900/95 text-white ${isMobile ? "p-3" : "p-6"}`}
     >
       <div className="mb-10 text-center">
-        <h1 className="mb-2 text-4xl font-extrabold tracking-wide text-cyan-300">Cosmic Toggle</h1>
+        <h1 className="mb-2 text-4xl font-extrabold tracking-wide text-cyan-300">Arrow Drift</h1>
         <p className="text-sm text-slate-300">
-          {isStartEnabled ? "Tap to flip your angle" : "게임 로딩 중..."}
+          {isStartEnabled ? "Tap to bend the arrow path" : "게임 로딩 중..."}
         </p>
       </div>
 
       <div className="mb-10 flex h-44 w-full max-w-xs items-center justify-center rounded-xl border border-cyan-300/30 bg-slate-800/70">
         <p className="text-center text-sm text-slate-200">
-          시작 각도는 45도 상향
+          화살표 시작 각도는 45도 상향
           <br />
-          터치할 때마다 상/하 토글
+          터치할 때마다 상/하 진행각 토글
         </p>
       </div>
 

@@ -38,9 +38,20 @@ export class PreloadScene extends Phaser.Scene {
     graphics.generateTexture("ct-bg-near", 256, 256);
 
     graphics.clear();
+    const arrowShape = [
+      new Phaser.Geom.Point(2, 14),
+      new Phaser.Geom.Point(22, 3),
+      new Phaser.Geom.Point(22, 9),
+      new Phaser.Geom.Point(40, 9),
+      new Phaser.Geom.Point(40, 19),
+      new Phaser.Geom.Point(22, 19),
+      new Phaser.Geom.Point(22, 25),
+    ];
     graphics.fillStyle(0x67e8f9);
-    graphics.fillTriangle(4, 20, 34, 12, 4, 4);
-    graphics.generateTexture("ct-ship", 36, 24);
+    graphics.fillPoints(arrowShape, true);
+    graphics.lineStyle(2, 0xe0f2fe, 0.9);
+    graphics.strokePoints(arrowShape, true, true);
+    graphics.generateTexture("ct-arrow", 42, 28);
 
     graphics.clear();
     graphics.fillStyle(0xfb7185);

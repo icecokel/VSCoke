@@ -17,7 +17,7 @@ const CosmicTogglePhaserGame = dynamic(
     ssr: false,
     loading: () => (
       <div className="flex size-full items-center justify-center bg-slate-900 text-white">
-        <p className="animate-pulse text-xl">Loading Cosmic Toggle...</p>
+        <p className="animate-pulse text-xl">Loading Arrow Drift...</p>
       </div>
     ),
   },
@@ -51,7 +51,7 @@ export default function CosmicTogglePage() {
   const handleGameOver = useCallback((score: number) => {
     setFinalScore(score);
     setGameState("game-over");
-    console.log(`[Cosmic Toggle] game over score: ${score}`);
+    console.log(`[Arrow Drift] game over score: ${score}`);
   }, []);
 
   const handleRestart = useCallback(() => {

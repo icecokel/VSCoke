@@ -18,7 +18,7 @@ export default function GameDashboard() {
     },
     {
       id: "cosmic-toggle",
-      title: "Cosmic Toggle",
+      title: "Arrow Drift",
       description: t("cosmicToggleDesc"),
       route: "/game/cosmic-toggle",
     },

@@ -48,6 +48,19 @@ export default function ArrowDriftPage() {
     setGameState("playing");
   }, [isGameLoaded]);
 
+  useEffect(() => {
+    if (gameState !== "ready") return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== "Space" || event.repeat) return;
+      event.preventDefault();
+      handleStart();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [gameState, handleStart]);
+
   const handleGameOver = useCallback((score: number) => {
     setFinalScore(score);
     setGameState("game-over");

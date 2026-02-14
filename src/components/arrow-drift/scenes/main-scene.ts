@@ -87,6 +87,7 @@ export class MainScene extends Phaser.Scene {
       .setAlpha(0);
 
     this.input.on("pointerdown", this.toggleDirection, this);
+    this.input.keyboard?.on("keydown-SPACE", this.handleSpaceToggle, this);
     this.scale.on("resize", this.resize, this);
     this.game.events.on("external-resize", this.resize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.cleanup, this);
@@ -345,6 +346,12 @@ export class MainScene extends Phaser.Scene {
     });
   }
 
+  private handleSpaceToggle(event: KeyboardEvent) {
+    if (event.repeat) return;
+    event.preventDefault();
+    this.toggleDirection();
+  }
+
   private toggleDirection() {
     if (this.isGameOver || !this.arrow) return;
     this.isMovingUp = !this.isMovingUp;
@@ -494,6 +501,7 @@ export class MainScene extends Phaser.Scene {
     this.spawnTimer?.destroy();
     this.spawnTimer = null;
     this.input.off("pointerdown", this.toggleDirection, this);
+    this.input.keyboard?.off("keydown-SPACE", this.handleSpaceToggle, this);
 
     if (this.arrow) {
       const arrowBody = this.arrow.body as Phaser.Physics.Arcade.Body | null;
@@ -635,6 +643,7 @@ export class MainScene extends Phaser.Scene {
     this.spawnTimer?.destroy();
     this.spawnTimer = null;
     this.input.off("pointerdown", this.toggleDirection, this);
+    this.input.keyboard?.off("keydown-SPACE", this.handleSpaceToggle, this);
     this.scale.off("resize", this.resize, this);
     this.game.events.off("external-resize", this.resize, this);
   }

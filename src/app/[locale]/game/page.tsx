@@ -19,7 +19,7 @@ export default function GameDashboard() {
     {
       id: "arrow-drift",
       title: "Arrow Drift",
-      description: t("cosmicToggleDesc"),
+      description: t("arrowDriftDesc"),
       route: "/game/arrow-drift",
     },
     {

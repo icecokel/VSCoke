@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { CosmicToggleConstants } from "../cosmic-toggle-constants";
+import { ArrowDriftConstants } from "../arrow-drift-constants";
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -23,7 +23,7 @@ export class PreloadScene extends Phaser.Scene {
         Phaser.Math.Between(1, 2),
       );
     }
-    graphics.generateTexture("ct-bg-far", 256, 256);
+    graphics.generateTexture("ad-bg-far", 256, 256);
 
     graphics.clear();
     graphics.fillStyle(0x0f172a);
@@ -36,21 +36,21 @@ export class PreloadScene extends Phaser.Scene {
         Phaser.Math.Between(2, 6),
       );
     }
-    graphics.generateTexture("ct-bg-near", 256, 256);
+    graphics.generateTexture("ad-bg-near", 256, 256);
 
     graphics.clear();
     const arrowShape = [
       new Phaser.Geom.Point(36, 14),
-      new Phaser.Geom.Point(24, 7),
-      new Phaser.Geom.Point(24, 10),
-      new Phaser.Geom.Point(2, 10),
-      new Phaser.Geom.Point(2, 18),
-      new Phaser.Geom.Point(24, 18),
-      new Phaser.Geom.Point(24, 21),
+      new Phaser.Geom.Point(23, 6),
+      new Phaser.Geom.Point(23, 9),
+      new Phaser.Geom.Point(9, 9),
+      new Phaser.Geom.Point(9, 19),
+      new Phaser.Geom.Point(23, 19),
+      new Phaser.Geom.Point(23, 22),
     ];
-    graphics.fillStyle(CosmicToggleConstants.ARROW_COLOR);
+    graphics.fillStyle(ArrowDriftConstants.ARROW_COLOR);
     graphics.fillPoints(arrowShape, true);
-    graphics.generateTexture("ct-arrow", 38, 28);
+    graphics.generateTexture("ad-arrow", 38, 28);
 
     this.createAsteroidPresets(graphics);
 
@@ -197,9 +197,9 @@ export class PreloadScene extends Phaser.Scene {
       },
     ];
 
-    const textureSize = CosmicToggleConstants.OBSTACLE.TEXTURE_SIZE;
+    const textureSize = ArrowDriftConstants.OBSTACLE.TEXTURE_SIZE;
 
-    CosmicToggleConstants.OBSTACLE.PRESET_TEXTURE_KEYS.forEach((key, index) => {
+    ArrowDriftConstants.OBSTACLE.PRESET_TEXTURE_KEYS.forEach((key, index) => {
       const preset = presets[index % presets.length];
       const points = preset.points.map(([x, y]) => new Phaser.Geom.Point(x, y));
 

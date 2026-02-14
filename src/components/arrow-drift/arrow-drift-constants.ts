@@ -1,11 +1,12 @@
-export const CosmicToggleConstants = {
+export const ArrowDriftConstants = {
   MAX_WIDTH: 480,
   ASPECT_RATIO_CSS: "9/16",
   ARROW_COLOR: 0xc1121f,
-  SHIP_SPEED: 260,
+  ARROW_TRAIL_COLOR: 0x991b1b,
+  ARROW_SPEED: 260,
   SCORE_PER_OBSTACLE: 100,
-  SHIP_HITBOX_WIDTH: 24,
-  SHIP_HITBOX_HEIGHT: 10,
+  ARROW_HITBOX_WIDTH: 24,
+  ARROW_HITBOX_HEIGHT: 10,
   BASE_OBSTACLE_SPEED: 253,
   BASE_VERTICAL_PADDING: 16,
   DIFFICULTY: {
@@ -18,13 +19,13 @@ export const CosmicToggleConstants = {
   OBSTACLE: {
     TEXTURE_SIZE: 96,
     PRESET_TEXTURE_KEYS: [
-      "ct-obstacle-0",
-      "ct-obstacle-1",
-      "ct-obstacle-2",
-      "ct-obstacle-3",
-      "ct-obstacle-4",
-      "ct-obstacle-5",
-      "ct-obstacle-6",
+      "ad-obstacle-0",
+      "ad-obstacle-1",
+      "ad-obstacle-2",
+      "ad-obstacle-3",
+      "ad-obstacle-4",
+      "ad-obstacle-5",
+      "ad-obstacle-6",
     ],
     SPAWN_SIDE_OFFSET: 44,
     SPAWN_VERTICAL_MARGIN: 8,

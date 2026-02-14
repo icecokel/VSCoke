@@ -2,26 +2,26 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as Phaser from "phaser";
-import { CosmicToggleGameConfig } from "./cosmic-toggle-game-config";
+import { ArrowDriftGameConfig } from "./arrow-drift-game-config";
 import { LoadingOverlay } from "@/components/game/ui/loading-overlay";
 
 interface GameOverPayload {
   score: number;
 }
 
-interface CosmicTogglePhaserGameProps {
+interface ArrowDriftPhaserGameProps {
   isPlaying: boolean;
   onReady: () => void;
   onGameOver: (score: number) => void;
   showLoadingOverlay?: boolean;
 }
 
-export const CosmicTogglePhaserGame = ({
+export const ArrowDriftPhaserGame = ({
   isPlaying,
   onReady,
   onGameOver,
   showLoadingOverlay = false,
-}: CosmicTogglePhaserGameProps) => {
+}: ArrowDriftPhaserGameProps) => {
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -30,7 +30,7 @@ export const CosmicTogglePhaserGame = ({
   useEffect(() => {
     if (typeof window === "undefined" || gameRef.current) return;
 
-    const game = new Phaser.Game(CosmicToggleGameConfig);
+    const game = new Phaser.Game(ArrowDriftGameConfig);
     gameRef.current = game;
 
     game.events.on("game:ready", () => {
@@ -80,7 +80,7 @@ export const CosmicTogglePhaserGame = ({
   return (
     <div className="relative size-full overflow-hidden rounded-xl border border-white/10 shadow-2xl">
       {!isLoaded && showLoadingOverlay && <LoadingOverlay progress={progress} />}
-      <div ref={containerRef} id="cosmic-toggle-phaser-container" className="size-full" />
+      <div ref={containerRef} id="arrow-drift-phaser-container" className="size-full" />
     </div>
   );
 };

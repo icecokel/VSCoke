@@ -4,17 +4,17 @@ import { Button } from "@/components/ui/button";
 import { useCustomRouter } from "@/hooks/use-custom-router";
 import { useTranslations } from "next-intl";
 
-interface CosmicToggleReadyScreenProps {
+interface ArrowDriftReadyScreenProps {
   onStart: () => void;
   isStartEnabled: boolean;
   isMobile: boolean;
 }
 
-export const CosmicToggleReadyScreen = ({
+export const ArrowDriftReadyScreen = ({
   onStart,
   isStartEnabled,
   isMobile,
-}: CosmicToggleReadyScreenProps) => {
+}: ArrowDriftReadyScreenProps) => {
   const t = useTranslations("Game");
   const router = useCustomRouter();
 

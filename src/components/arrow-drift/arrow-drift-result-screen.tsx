@@ -3,12 +3,12 @@
 import { Button } from "@/components/ui/button";
 import { useCustomRouter } from "@/hooks/use-custom-router";
 
-interface CosmicToggleResultScreenProps {
+interface ArrowDriftResultScreenProps {
   score: number;
   onRestart: () => void;
 }
 
-export const CosmicToggleResultScreen = ({ score, onRestart }: CosmicToggleResultScreenProps) => {
+export const ArrowDriftResultScreen = ({ score, onRestart }: ArrowDriftResultScreenProps) => {
   const router = useCustomRouter();
 
   return (

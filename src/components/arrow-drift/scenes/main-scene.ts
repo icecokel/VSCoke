@@ -1,8 +1,8 @@
 import * as Phaser from "phaser";
-import { CosmicToggleConstants } from "../cosmic-toggle-constants";
+import { ArrowDriftConstants } from "../arrow-drift-constants";
 
 export class MainScene extends Phaser.Scene {
-  private ship: Phaser.Physics.Arcade.Image | null = null;
+  private arrow: Phaser.Physics.Arcade.Image | null = null;
   private trailGraphics: Phaser.GameObjects.Graphics | null = null;
   private trailNodes: Phaser.Math.Vector2[] = [];
   private obstacles: Phaser.Physics.Arcade.Group | null = null;
@@ -14,15 +14,15 @@ export class MainScene extends Phaser.Scene {
   private nearBg: Phaser.GameObjects.TileSprite | null = null;
   private topBoundLine: Phaser.GameObjects.Rectangle | null = null;
   private bottomBoundLine: Phaser.GameObjects.Rectangle | null = null;
-  private shipAnchorX = 0;
+  private arrowAnchorX = 0;
   private score = 0;
   private isMovingUp = true;
   private isGameOver = false;
   private startedAt = 0;
-  private currentObstacleSpeed = CosmicToggleConstants.BASE_OBSTACLE_SPEED;
-  private currentVerticalPadding = CosmicToggleConstants.BASE_VERTICAL_PADDING;
+  private currentObstacleSpeed = ArrowDriftConstants.BASE_OBSTACLE_SPEED;
+  private currentVerticalPadding = ArrowDriftConstants.BASE_VERTICAL_PADDING;
   private currentSpeedStep = 0;
-  private readonly trailAnchorRatio = 0.28;
+  private readonly trailAnchorRatio = 0.38;
 
   constructor() {
     super({ key: "MainScene" });
@@ -34,23 +34,23 @@ export class MainScene extends Phaser.Scene {
     this.isMovingUp = true;
     this.isGameOver = false;
     this.startedAt = this.time.now;
-    this.currentObstacleSpeed = CosmicToggleConstants.BASE_OBSTACLE_SPEED;
-    this.currentVerticalPadding = CosmicToggleConstants.BASE_VERTICAL_PADDING;
+    this.currentObstacleSpeed = ArrowDriftConstants.BASE_OBSTACLE_SPEED;
+    this.currentVerticalPadding = ArrowDriftConstants.BASE_VERTICAL_PADDING;
     this.currentSpeedStep = 0;
     this.createBackground();
     this.createBoundGuides();
     this.updateDifficulty(0);
 
-    this.shipAnchorX = this.scale.width * 0.25;
-    const shipX = this.shipAnchorX;
-    const shipY = this.scale.height / 2;
-    this.ship = this.physics.add.image(shipX, shipY, "ct-arrow");
-    this.ship.setDepth(5);
-    this.ship.setCollideWorldBounds(false);
-    this.ship.setAngle(-35);
-    this.ship.body?.setSize(
-      CosmicToggleConstants.SHIP_HITBOX_WIDTH,
-      CosmicToggleConstants.SHIP_HITBOX_HEIGHT,
+    this.arrowAnchorX = this.scale.width * 0.25;
+    const arrowX = this.arrowAnchorX;
+    const arrowY = this.scale.height / 2;
+    this.arrow = this.physics.add.image(arrowX, arrowY, "ad-arrow");
+    this.arrow.setDepth(5);
+    this.arrow.setCollideWorldBounds(false);
+    this.arrow.setAngle(-35);
+    this.arrow.body?.setSize(
+      ArrowDriftConstants.ARROW_HITBOX_WIDTH,
+      ArrowDriftConstants.ARROW_HITBOX_HEIGHT,
       true,
     );
     this.initTrail();
@@ -60,7 +60,7 @@ export class MainScene extends Phaser.Scene {
       immovable: true,
     });
 
-    this.physics.add.overlap(this.ship, this.obstacles, this.handleHitObstacle, undefined, this);
+    this.physics.add.overlap(this.arrow, this.obstacles, this.handleHitObstacle, undefined, this);
 
     this.scoreText = this.add.text(16, 16, "0", {
       fontSize: "24px",
@@ -91,7 +91,7 @@ export class MainScene extends Phaser.Scene {
     this.game.events.on("external-resize", this.resize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.cleanup, this);
     this.spawnTimer = this.time.delayedCall(
-      CosmicToggleConstants.SPAWN.INITIAL_GRACE_MS,
+      ArrowDriftConstants.SPAWN.INITIAL_GRACE_MS,
       this.scheduleNextWave,
       undefined,
       this,
@@ -99,19 +99,19 @@ export class MainScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number) {
-    if (this.isGameOver || !this.ship || !this.obstacles) return;
+    if (this.isGameOver || !this.arrow || !this.obstacles) return;
 
     const dt = delta / 1000;
     const elapsedMs = this.time.now - this.startedAt;
     this.updateDifficulty(elapsedMs);
     this.playTimeText?.setText(this.formatPlayTime(elapsedMs));
 
-    const diagonalSpeed = CosmicToggleConstants.SHIP_SPEED / Math.sqrt(2);
+    const diagonalSpeed = ArrowDriftConstants.ARROW_SPEED / Math.sqrt(2);
     const verticalSpeed = this.isMovingUp ? -diagonalSpeed : diagonalSpeed;
     const backgroundScrollSpeed = this.currentObstacleSpeed * dt;
 
-    this.ship.x = this.shipAnchorX;
-    this.ship.y += verticalSpeed * dt;
+    this.arrow.x = this.arrowAnchorX;
+    this.arrow.y += verticalSpeed * dt;
     this.updateTrail(time, dt);
 
     const height = this.scale.height;
@@ -119,14 +119,14 @@ export class MainScene extends Phaser.Scene {
 
     if (this.farBg) {
       this.farBg.tilePositionX +=
-        backgroundScrollSpeed * CosmicToggleConstants.BACKGROUND_SCROLL.FAR_FACTOR;
+        backgroundScrollSpeed * ArrowDriftConstants.BACKGROUND_SCROLL.FAR_FACTOR;
     }
     if (this.nearBg) {
       this.nearBg.tilePositionX +=
-        backgroundScrollSpeed * CosmicToggleConstants.BACKGROUND_SCROLL.NEAR_FACTOR;
+        backgroundScrollSpeed * ArrowDriftConstants.BACKGROUND_SCROLL.NEAR_FACTOR;
     }
 
-    if (this.ship.y < padding || this.ship.y > height - padding) {
+    if (this.arrow.y < padding || this.arrow.y > height - padding) {
       this.startGameOver();
       return;
     }
@@ -137,9 +137,9 @@ export class MainScene extends Phaser.Scene {
       obstacle.setVelocityX(-this.currentObstacleSpeed);
 
       const alreadyPassed = Boolean(obstacle.getData("passed"));
-      if (!alreadyPassed && obstacle.x + obstacle.displayWidth / 2 < this.ship!.x) {
+      if (!alreadyPassed && obstacle.x + obstacle.displayWidth / 2 < this.arrow!.x) {
         obstacle.setData("passed", true);
-        this.score += CosmicToggleConstants.SCORE_PER_OBSTACLE;
+        this.score += ArrowDriftConstants.SCORE_PER_OBSTACLE;
         this.scoreText?.setText(`${this.score}`);
       }
 
@@ -151,14 +151,14 @@ export class MainScene extends Phaser.Scene {
   }
 
   private initTrail() {
-    if (!this.ship) return;
+    if (!this.arrow) return;
     this.trailGraphics?.destroy();
     this.trailGraphics = this.add.graphics();
     this.trailGraphics.setDepth(4);
     this.trailNodes = [];
 
-    const startX = this.ship.x - this.ship.displayWidth * this.trailAnchorRatio;
-    const startY = this.ship.y;
+    const startX = this.arrow.x - this.arrow.displayWidth * this.trailAnchorRatio;
+    const startY = this.arrow.y;
     const segmentCount = 20;
     const spacing = 8;
 
@@ -168,10 +168,10 @@ export class MainScene extends Phaser.Scene {
   }
 
   private updateTrail(time: number, dt: number) {
-    if (!this.ship || !this.trailGraphics || this.trailNodes.length === 0) return;
+    if (!this.arrow || !this.trailGraphics || this.trailNodes.length === 0) return;
 
-    const anchorX = this.ship.x - this.ship.displayWidth * this.trailAnchorRatio;
-    const anchorY = this.ship.y;
+    const anchorX = this.arrow.x - this.arrow.displayWidth * this.trailAnchorRatio;
+    const anchorY = this.arrow.y;
     const steer = this.isMovingUp ? -1 : 1;
     const sway = Math.sin(time * 0.01) * 4 + Math.sin(time * 0.023) * 2;
     const headFollow = Math.min(1, dt * 16);
@@ -197,14 +197,14 @@ export class MainScene extends Phaser.Scene {
     if (!this.trailGraphics || this.trailNodes.length < 2) return;
 
     this.trailGraphics.clear();
-    const glowColor = CosmicToggleConstants.ARROW_COLOR;
+    const glowColor = ArrowDriftConstants.ARROW_TRAIL_COLOR;
 
     for (let i = 0; i < this.trailNodes.length - 1; i += 1) {
       const a = this.trailNodes[i];
       const b = this.trailNodes[i + 1];
       const t = i / (this.trailNodes.length - 1);
-      const width = (1 - t) * 9 + 1.4;
-      const alpha = (1 - t) * 0.62 + 0.08;
+      const width = (1 - t) * 9.6 + 1.8;
+      const alpha = (1 - t) * 0.78 + 0.16;
       const jitter = Math.sin(time * 0.015 + i * 0.7) * 0.4;
 
       this.trailGraphics.lineStyle(width, glowColor, alpha);
@@ -217,12 +217,12 @@ export class MainScene extends Phaser.Scene {
 
   private createBackground() {
     this.farBg = this.add
-      .tileSprite(0, 0, this.scale.width, this.scale.height, "ct-bg-far")
+      .tileSprite(0, 0, this.scale.width, this.scale.height, "ad-bg-far")
       .setOrigin(0, 0)
       .setDepth(0);
 
     this.nearBg = this.add
-      .tileSprite(0, 0, this.scale.width, this.scale.height, "ct-bg-near")
+      .tileSprite(0, 0, this.scale.width, this.scale.height, "ad-bg-near")
       .setOrigin(0, 0)
       .setAlpha(0.9)
       .setDepth(1);
@@ -241,12 +241,10 @@ export class MainScene extends Phaser.Scene {
   }
 
   private updateDifficulty(elapsedMs: number) {
-    const speedStep = Math.floor(
-      elapsedMs / CosmicToggleConstants.DIFFICULTY.SPEED_STEP_INTERVAL_MS,
-    );
+    const speedStep = Math.floor(elapsedMs / ArrowDriftConstants.DIFFICULTY.SPEED_STEP_INTERVAL_MS);
     const nextObstacleSpeed =
-      CosmicToggleConstants.BASE_OBSTACLE_SPEED *
-      Math.pow(CosmicToggleConstants.DIFFICULTY.SPEED_MULTIPLIER_PER_STEP, speedStep);
+      ArrowDriftConstants.BASE_OBSTACLE_SPEED *
+      Math.pow(ArrowDriftConstants.DIFFICULTY.SPEED_MULTIPLIER_PER_STEP, speedStep);
     this.currentObstacleSpeed = nextObstacleSpeed;
     if (speedStep > this.currentSpeedStep) {
       this.currentSpeedStep = speedStep;
@@ -254,16 +252,16 @@ export class MainScene extends Phaser.Scene {
     }
 
     const shrinkStep = Math.floor(
-      elapsedMs / CosmicToggleConstants.DIFFICULTY.MAP_SHRINK_INTERVAL_MS,
+      elapsedMs / ArrowDriftConstants.DIFFICULTY.MAP_SHRINK_INTERVAL_MS,
     );
-    const shrinkByTime = shrinkStep * CosmicToggleConstants.DIFFICULTY.MAP_SHRINK_PER_STEP;
-    const shrinkClamped = Math.min(shrinkByTime, CosmicToggleConstants.DIFFICULTY.MAP_SHRINK_MAX);
+    const shrinkByTime = shrinkStep * ArrowDriftConstants.DIFFICULTY.MAP_SHRINK_PER_STEP;
+    const shrinkClamped = Math.min(shrinkByTime, ArrowDriftConstants.DIFFICULTY.MAP_SHRINK_MAX);
     const maxPaddingByScreen = Math.max(
-      CosmicToggleConstants.BASE_VERTICAL_PADDING,
+      ArrowDriftConstants.BASE_VERTICAL_PADDING,
       this.scale.height / 2 - 80,
     );
     this.currentVerticalPadding = Math.min(
-      CosmicToggleConstants.BASE_VERTICAL_PADDING + shrinkClamped,
+      ArrowDriftConstants.BASE_VERTICAL_PADDING + shrinkClamped,
       maxPaddingByScreen,
     );
     this.syncBoundGuides();
@@ -285,7 +283,7 @@ export class MainScene extends Phaser.Scene {
   private showSpeedUpNotice(nextObstacleSpeed: number) {
     if (!this.speedUpText) return;
 
-    const speedRatio = nextObstacleSpeed / CosmicToggleConstants.BASE_OBSTACLE_SPEED;
+    const speedRatio = nextObstacleSpeed / ArrowDriftConstants.BASE_OBSTACLE_SPEED;
     this.speedUpText
       .setText(`속도 상승 x${speedRatio.toFixed(2)}`)
       .setPosition(this.scale.width / 2, 56)
@@ -311,9 +309,9 @@ export class MainScene extends Phaser.Scene {
   }
 
   private toggleDirection() {
-    if (this.isGameOver || !this.ship) return;
+    if (this.isGameOver || !this.arrow) return;
     this.isMovingUp = !this.isMovingUp;
-    this.ship.setAngle(this.isMovingUp ? -35 : 35);
+    this.arrow.setAngle(this.isMovingUp ? -35 : 35);
   }
 
   private scheduleNextWave() {
@@ -323,8 +321,8 @@ export class MainScene extends Phaser.Scene {
     const obstacleCount = this.pickWaveObstacleCount();
     const yTargets = this.buildWaveYTargets(obstacleCount);
     const inWaveGap = Phaser.Math.Between(
-      CosmicToggleConstants.SPAWN.IN_WAVE_GAP_MIN_MS,
-      CosmicToggleConstants.SPAWN.IN_WAVE_GAP_MAX_MS,
+      ArrowDriftConstants.SPAWN.IN_WAVE_GAP_MIN_MS,
+      ArrowDriftConstants.SPAWN.IN_WAVE_GAP_MAX_MS,
     );
 
     yTargets.forEach((targetY, index) => {
@@ -334,18 +332,18 @@ export class MainScene extends Phaser.Scene {
     });
 
     const rampProgress = Phaser.Math.Clamp(
-      elapsedMs / CosmicToggleConstants.SPAWN.WAVE_DELAY_RAMP_MS,
+      elapsedMs / ArrowDriftConstants.SPAWN.WAVE_DELAY_RAMP_MS,
       0,
       1,
     );
     const dynamicMinDelay = Phaser.Math.Linear(
-      CosmicToggleConstants.SPAWN.WAVE_DELAY_START_MIN_MS,
-      CosmicToggleConstants.SPAWN.WAVE_DELAY_MIN_MS,
+      ArrowDriftConstants.SPAWN.WAVE_DELAY_START_MIN_MS,
+      ArrowDriftConstants.SPAWN.WAVE_DELAY_MIN_MS,
       rampProgress,
     );
     const dynamicMaxDelay = Phaser.Math.Linear(
-      CosmicToggleConstants.SPAWN.WAVE_DELAY_START_MAX_MS,
-      CosmicToggleConstants.SPAWN.WAVE_DELAY_MAX_MS,
+      ArrowDriftConstants.SPAWN.WAVE_DELAY_START_MAX_MS,
+      ArrowDriftConstants.SPAWN.WAVE_DELAY_MAX_MS,
       rampProgress,
     );
     const nextDelay = Phaser.Math.Between(Math.round(dynamicMinDelay), Math.round(dynamicMaxDelay));
@@ -362,18 +360,18 @@ export class MainScene extends Phaser.Scene {
   private pickWaveObstacleCount() {
     const elapsedMs = this.time.now - this.startedAt;
     const rampProgress = Phaser.Math.Clamp(
-      elapsedMs / CosmicToggleConstants.SPAWN.MULTI_WAVE_RAMP_MS,
+      elapsedMs / ArrowDriftConstants.SPAWN.MULTI_WAVE_RAMP_MS,
       0,
       1,
     );
     const tripleChance = Phaser.Math.Linear(
-      CosmicToggleConstants.SPAWN.TRIPLE_WAVE_CHANCE_START,
-      CosmicToggleConstants.SPAWN.TRIPLE_WAVE_CHANCE_END,
+      ArrowDriftConstants.SPAWN.TRIPLE_WAVE_CHANCE_START,
+      ArrowDriftConstants.SPAWN.TRIPLE_WAVE_CHANCE_END,
       rampProgress,
     );
     const doubleChance = Phaser.Math.Linear(
-      CosmicToggleConstants.SPAWN.DOUBLE_WAVE_CHANCE_START,
-      CosmicToggleConstants.SPAWN.DOUBLE_WAVE_CHANCE_END,
+      ArrowDriftConstants.SPAWN.DOUBLE_WAVE_CHANCE_START,
+      ArrowDriftConstants.SPAWN.DOUBLE_WAVE_CHANCE_END,
       rampProgress,
     );
     const roll = Math.random();
@@ -392,8 +390,8 @@ export class MainScene extends Phaser.Scene {
 
     const direction = Math.random() < 0.5 ? -1 : 1;
     const step = Phaser.Math.Between(
-      CosmicToggleConstants.SPAWN.FORMATION_STEP_MIN,
-      CosmicToggleConstants.SPAWN.FORMATION_STEP_MAX,
+      ArrowDriftConstants.SPAWN.FORMATION_STEP_MIN,
+      ArrowDriftConstants.SPAWN.FORMATION_STEP_MAX,
     );
 
     const targets: number[] = [];
@@ -408,19 +406,19 @@ export class MainScene extends Phaser.Scene {
     if (this.isGameOver || !this.obstacles) return;
 
     const textureKey = Phaser.Utils.Array.GetRandom(
-      CosmicToggleConstants.OBSTACLE.PRESET_TEXTURE_KEYS,
+      ArrowDriftConstants.OBSTACLE.PRESET_TEXTURE_KEYS,
     );
     const scaleX = Phaser.Math.FloatBetween(
-      CosmicToggleConstants.OBSTACLE.SCALE_X_MIN,
-      CosmicToggleConstants.OBSTACLE.SCALE_X_MAX,
+      ArrowDriftConstants.OBSTACLE.SCALE_X_MIN,
+      ArrowDriftConstants.OBSTACLE.SCALE_X_MAX,
     );
     const scaleY = Phaser.Math.FloatBetween(
-      CosmicToggleConstants.OBSTACLE.SCALE_Y_MIN,
-      CosmicToggleConstants.OBSTACLE.SCALE_Y_MAX,
+      ArrowDriftConstants.OBSTACLE.SCALE_Y_MIN,
+      ArrowDriftConstants.OBSTACLE.SCALE_Y_MAX,
     );
 
     const obstacle = this.obstacles.create(
-      this.scale.width + CosmicToggleConstants.OBSTACLE.SPAWN_SIDE_OFFSET,
+      this.scale.width + ArrowDriftConstants.OBSTACLE.SPAWN_SIDE_OFFSET,
       this.scale.height / 2,
       textureKey,
     ) as Phaser.Physics.Arcade.Image | undefined;
@@ -429,7 +427,7 @@ export class MainScene extends Phaser.Scene {
 
     obstacle.setScale(scaleX, scaleY);
     const halfHeight = obstacle.displayHeight / 2;
-    const spawnMargin = halfHeight + CosmicToggleConstants.OBSTACLE.SPAWN_VERTICAL_MARGIN;
+    const spawnMargin = halfHeight + ArrowDriftConstants.OBSTACLE.SPAWN_VERTICAL_MARGIN;
     const minY = this.currentVerticalPadding + spawnMargin;
     const maxY = this.scale.height - this.currentVerticalPadding - spawnMargin;
     const safeMinY = maxY > minY ? minY : this.scale.height / 2;
@@ -444,7 +442,7 @@ export class MainScene extends Phaser.Scene {
     obstacle.setData("passed", false);
     const coreHitboxSize =
       Math.min(obstacle.displayWidth, obstacle.displayHeight) *
-      CosmicToggleConstants.OBSTACLE.HITBOX_CORE_SCALE;
+      ArrowDriftConstants.OBSTACLE.HITBOX_CORE_SCALE;
     obstacle.body?.setSize(coreHitboxSize, coreHitboxSize, true);
   }
 
@@ -460,10 +458,10 @@ export class MainScene extends Phaser.Scene {
     this.spawnTimer = null;
     this.input.off("pointerdown", this.toggleDirection, this);
 
-    if (this.ship) {
-      const shipBody = this.ship.body as Phaser.Physics.Arcade.Body | null;
-      shipBody?.stop();
-      if (shipBody) shipBody.enable = false;
+    if (this.arrow) {
+      const arrowBody = this.arrow.body as Phaser.Physics.Arcade.Body | null;
+      arrowBody?.stop();
+      if (arrowBody) arrowBody.enable = false;
     }
 
     this.obstacles?.children.each(child => {
@@ -480,16 +478,16 @@ export class MainScene extends Phaser.Scene {
   }
 
   private playArrowExplosion(onComplete: () => void) {
-    if (!this.ship) {
+    if (!this.arrow) {
       onComplete();
       return;
     }
 
-    const originX = this.ship.x;
-    const originY = this.ship.y;
+    const originX = this.arrow.x;
+    const originY = this.arrow.y;
 
     this.trailGraphics?.clear();
-    this.ship.setVisible(false);
+    this.arrow.setVisible(false);
 
     const flash = this.add.circle(originX, originY, 14, 0xffffff, 0.95).setDepth(15);
     this.tweens.add({
@@ -522,7 +520,7 @@ export class MainScene extends Phaser.Scene {
           originY,
           Phaser.Math.Between(7, 16),
           Phaser.Math.Between(3, 6),
-          i % 4 === 0 ? 0xffd7dc : CosmicToggleConstants.ARROW_COLOR,
+          i % 4 === 0 ? 0xffd7dc : ArrowDriftConstants.ARROW_COLOR,
           0.95,
         )
         .setDepth(15);
@@ -574,20 +572,20 @@ export class MainScene extends Phaser.Scene {
 
   private resize(gameSize: { width: number; height: number }) {
     this.cameras.main.setViewport(0, 0, gameSize.width, gameSize.height);
-    this.shipAnchorX = gameSize.width * 0.25;
+    this.arrowAnchorX = gameSize.width * 0.25;
     this.farBg?.setSize(gameSize.width, gameSize.height);
     this.nearBg?.setSize(gameSize.width, gameSize.height);
     this.playTimeText?.setPosition(gameSize.width - 16, 16);
     this.speedUpText?.setPosition(gameSize.width / 2, this.speedUpText.y);
     this.updateDifficulty(this.time.now - this.startedAt);
 
-    if (this.ship) {
+    if (this.arrow) {
       const y = Phaser.Math.Clamp(
-        this.ship.y,
+        this.arrow.y,
         this.currentVerticalPadding + 4,
         gameSize.height - this.currentVerticalPadding - 4,
       );
-      this.ship.setPosition(this.shipAnchorX, y);
+      this.arrow.setPosition(this.arrowAnchorX, y);
     }
   }
 

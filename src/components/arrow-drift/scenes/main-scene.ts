@@ -22,7 +22,7 @@ export class MainScene extends Phaser.Scene {
   private currentObstacleSpeed = ArrowDriftConstants.BASE_OBSTACLE_SPEED;
   private currentVerticalPadding = ArrowDriftConstants.BASE_VERTICAL_PADDING;
   private currentSpeedStep = 0;
-  private readonly trailAnchorRatio = 0.31;
+  private readonly trailAnchorRatio = 0.29;
 
   constructor() {
     super({ key: "MainScene" });
@@ -113,7 +113,7 @@ export class MainScene extends Phaser.Scene {
 
     this.arrow.x = this.arrowAnchorX;
     this.arrow.y += verticalSpeed * dt;
-    this.updateTrail(time, dt);
+    this.updateTrail(time);
 
     const height = this.scale.height;
     const padding = this.currentVerticalPadding;
@@ -172,17 +172,16 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
-  private updateTrail(time: number, dt: number) {
+  private updateTrail(time: number) {
     if (!this.arrow || !this.trailGraphics || this.trailNodes.length === 0) return;
 
     const anchorX = this.arrow.x - this.arrow.displayWidth * this.trailAnchorRatio;
     const anchorY = this.arrow.y;
     const steer = this.isMovingUp ? -1 : 1;
     const sway = Math.sin(time * 0.01) * 4 + Math.sin(time * 0.023) * 2;
-    const headFollow = Math.min(1, dt * 16);
-
-    this.trailNodes[0].x = Phaser.Math.Linear(this.trailNodes[0].x, anchorX, headFollow);
-    this.trailNodes[0].y = Phaser.Math.Linear(this.trailNodes[0].y, anchorY, headFollow);
+    // Pin the first trail node to the arrow tail to avoid visual separation.
+    this.trailNodes[0].x = anchorX;
+    this.trailNodes[0].y = anchorY;
 
     for (let i = 1; i < this.trailNodes.length; i += 1) {
       const prev = this.trailNodes[i - 1];
@@ -203,6 +202,8 @@ export class MainScene extends Phaser.Scene {
 
     this.trailGraphics.clear();
     const glowColor = ArrowDriftConstants.ARROW_TRAIL_COLOR;
+    this.trailGraphics.fillStyle(glowColor, 0.86);
+    this.trailGraphics.fillCircle(this.trailNodes[0].x, this.trailNodes[0].y, 5.4);
 
     for (let i = 0; i < this.trailNodes.length - 1; i += 1) {
       const a = this.trailNodes[i];

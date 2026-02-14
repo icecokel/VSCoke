@@ -22,7 +22,7 @@ export class MainScene extends Phaser.Scene {
   private currentObstacleSpeed = ArrowDriftConstants.BASE_OBSTACLE_SPEED;
   private currentVerticalPadding = ArrowDriftConstants.BASE_VERTICAL_PADDING;
   private currentSpeedStep = 0;
-  private readonly trailAnchorRatio = 0.38;
+  private readonly trailAnchorRatio = 0.31;
 
   constructor() {
     super({ key: "MainScene" });
@@ -139,8 +139,10 @@ export class MainScene extends Phaser.Scene {
       const alreadyPassed = Boolean(obstacle.getData("passed"));
       if (!alreadyPassed && obstacle.x + obstacle.displayWidth / 2 < this.arrow!.x) {
         obstacle.setData("passed", true);
-        this.score += ArrowDriftConstants.SCORE_PER_OBSTACLE;
+        const gainedScore = ArrowDriftConstants.SCORE_PER_OBSTACLE;
+        this.score += gainedScore;
         this.scoreText?.setText(`${this.score}`);
+        this.showScoreGain(gainedScore);
       }
 
       if (obstacle.x < -obstacle.displayWidth) {
@@ -305,6 +307,41 @@ export class MainScene extends Phaser.Scene {
       duration: 900,
       delay: 260,
       ease: "Sine.Out",
+    });
+  }
+
+  private showScoreGain(gainedScore: number) {
+    const baseX = this.arrow ? this.arrow.x + this.arrow.displayWidth * 0.66 : 96;
+    const baseY = this.arrow ? this.arrow.y - 10 : 56;
+    const gainText = this.add
+      .text(baseX, baseY, `+${gainedScore}`, {
+        fontSize: "20px",
+        color: "#fef08a",
+        fontStyle: "bold",
+        stroke: "#713f12",
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5, 0.5)
+      .setDepth(12)
+      .setScale(0.78)
+      .setAlpha(0);
+
+    this.tweens.add({
+      targets: gainText,
+      alpha: 1,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 120,
+      ease: "Sine.Out",
+    });
+    this.tweens.add({
+      targets: gainText,
+      y: baseY - 34,
+      alpha: 0,
+      duration: 540,
+      delay: 120,
+      ease: "Cubic.Out",
+      onComplete: () => gainText.destroy(),
     });
   }
 

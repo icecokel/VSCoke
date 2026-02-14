@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
-import { toast } from "sonner";
+import { useLinkShare } from "@/hooks/use-link-share";
 
 interface ShareOptions {
   score: number;
@@ -21,9 +21,7 @@ interface UseGameShareReturn {
 export const useGameShare = (): UseGameShareReturn => {
   const t = useTranslations("Game");
   const locale = useLocale();
-
-  // Web Share API 지원 여부 확인
-  const canShare = typeof navigator !== "undefined" && !!navigator.share;
+  const { canShare, shareLink, copyLink } = useLinkShare();
 
   // 공유 URL 생성
   const getShareUrl = useCallback(
@@ -60,23 +58,9 @@ export const useGameShare = (): UseGameShareReturn => {
     async (options: ShareOptions): Promise<void> => {
       const shareUrl = getShareUrl(options);
       const shareText = getShareText(options);
-      const fullText = `${shareText}\n${shareUrl}`;
-
-      try {
-        await navigator.clipboard.writeText(fullText);
-        toast.success(t("copied"));
-      } catch {
-        // 클립보드 API 미지원 시 폴백
-        const textArea = document.createElement("textarea");
-        textArea.value = fullText;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
-        toast.success(t("copied"));
-      }
+      await copyLink({ url: shareUrl, text: shareText });
     },
-    [getShareUrl, getShareText, t],
+    [copyLink, getShareUrl, getShareText],
   );
 
   // Web Share API를 통한 공유
@@ -85,27 +69,9 @@ export const useGameShare = (): UseGameShareReturn => {
       const shareUrl = getShareUrl(options);
       const shareText = getShareText(options);
       const gameTitle = formatGameTitle(options.gameName);
-
-      if (canShare) {
-        try {
-          await navigator.share({
-            title: gameTitle,
-            text: shareText,
-            url: shareUrl,
-          });
-        } catch (error) {
-          // 사용자가 공유를 취소한 경우 에러가 발생하지만 무시
-          if ((error as Error).name !== "AbortError") {
-            // 공유 실패 시 클립보드 복사로 폴백
-            await copyToClipboard(options);
-          }
-        }
-      } else {
-        // Web Share API 미지원 시 클립보드 복사
-        await copyToClipboard(options);
-      }
+      await shareLink({ title: gameTitle, text: shareText, url: shareUrl });
     },
-    [canShare, getShareUrl, getShareText, copyToClipboard],
+    [getShareUrl, getShareText, shareLink],
   );
 
   return {

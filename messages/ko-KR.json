@@ -113,6 +113,19 @@
     "leaderboardEmpty": "아직 랭킹 기록이 없어요.",
     "unknownPlayer": "익명 플레이어"
   },
+  "Share": {
+    "title": "VSCoke 공유하기",
+    "description": "이 링크를 확인해보세요!",
+    "share": "공유하기",
+    "qr": "QR 보기",
+    "qrTitle": "QR 코드 공유",
+    "qrDescription": "휴대폰 카메라로 스캔하거나 링크를 복사하세요.",
+    "copyLink": "링크 복사",
+    "copied": "링크가 복사되었습니다!",
+    "shareFail": "공유에 실패했습니다. 다시 시도해주세요.",
+    "wordleText": "VSCoke Wordle에 도전해보세요!",
+    "arrowDriftText": "VSCoke Arrow Drift에 도전해보세요! 제 점수는 {score}점입니다."
+  },
   "Doom": {
     "title": "둠",
     "subtitle": "쉐어웨어 버전 • JS-DOS 에뮬레이션",

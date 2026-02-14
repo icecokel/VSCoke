@@ -10,6 +10,8 @@ import { Fragment } from "react";
 import { useTranslations } from "next-intl";
 import ProfileItem from "./profile-item";
 import Resume from "./resume/resume";
+import { ShareLinkButton } from "@/components/share/share-link-button";
+import { ShareQrDialog } from "@/components/share/share-qr-dialog";
 
 /**
  * 이력서 페이지
@@ -22,6 +24,11 @@ const Profile = () => {
   const contact = tResume.raw("contact");
   return (
     <div className="p-3 flex flex-col gap-1 md:gap-5">
+      <div className="flex justify-end gap-2">
+        <ShareLinkButton />
+        <ShareQrDialog />
+      </div>
+
       {/* 간단 소개글 섹션 */}
       <div className="flex items-center flex-col gap-1 md:flex-row md:gap-3 md:items-start">
         <Avatar

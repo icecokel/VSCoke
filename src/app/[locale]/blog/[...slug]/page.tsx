@@ -8,6 +8,8 @@ import { CustomLink } from "@/components/custom-link";
 import ScrollProgress from "@/components/blog/scroll-progress";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { ShareLinkButton } from "@/components/share/share-link-button";
+import { ShareQrDialog } from "@/components/share/share-qr-dialog";
 
 interface BlogPostPageProps {
   params: Promise<{
@@ -104,6 +106,11 @@ const BlogPostPage = async ({ params }: BlogPostPageProps) => {
         <Icon kind="arrow_back" size={18} />
         <BaseText type="body2">{t("backToList")}</BaseText>
       </CustomLink>
+
+      <div className="mb-6 flex justify-end gap-2">
+        <ShareLinkButton title={post.title} text={post.description} />
+        <ShareQrDialog title={post.title} />
+      </div>
 
       <header className="mb-8 pb-6 border-b border-gray-700">
         <BaseText type="h2" className="text-yellow-200 mb-4">

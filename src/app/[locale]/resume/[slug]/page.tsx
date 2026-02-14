@@ -5,6 +5,8 @@ import Icon from "@/components/base-ui/icon";
 import { CustomLink } from "@/components/custom-link";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { ShareLinkButton } from "@/components/share/share-link-button";
+import { ShareQrDialog } from "@/components/share/share-qr-dialog";
 
 import { getResumeDetailBySlug, getAllResumeDetails } from "@/lib/resume-detail";
 import { mdxComponents } from "@/components/blog/mdx-components";
@@ -83,6 +85,11 @@ const ResumeDetailPage = async ({ params }: ResumeDetailPageProps) => {
         <Icon kind="arrow_back" size={18} />
         <BaseText type="body2">{t("backToResume")}</BaseText>
       </CustomLink>
+
+      <div className="mb-6 flex justify-end gap-2">
+        <ShareLinkButton title={detail.title} />
+        <ShareQrDialog title={detail.title} />
+      </div>
 
       <header className="mb-8 pb-6 border-b border-gray-700">
         <BaseText type="h2" className="text-yellow-200 mb-4">

@@ -8,9 +8,12 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Loader2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ShareLinkButton } from "@/components/share/share-link-button";
+import { useTranslations } from "next-intl";
 
 export default function WordlePage() {
   const isMobile = useIsMobile();
+  const tShare = useTranslations("Share");
   const {
     currentGuess,
     guesses,
@@ -69,15 +72,25 @@ export default function WordlePage() {
         {/* Header */}
         <header className="flex items-center justify-between px-4 py-3 shrink-0">
           <h1 className="text-xl font-bold tracking-tight">Wordle</h1>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={resetGame}
-            title="Restart Game"
-            className="h-8 w-8"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <ShareLinkButton
+              variant="ghost"
+              size="icon"
+              iconOnly
+              text={tShare("wordleText")}
+              label={tShare("share")}
+              className={isMobile ? "h-8 w-8" : ""}
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={resetGame}
+              title="Restart Game"
+              className="h-8 w-8"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </Button>
+          </div>
         </header>
 
         {/* Board - flex-1로 남은 공간 채움 */}

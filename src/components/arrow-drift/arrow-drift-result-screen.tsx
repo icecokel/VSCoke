@@ -2,6 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import { useCustomRouter } from "@/hooks/use-custom-router";
+import { ShareLinkButton } from "@/components/share/share-link-button";
+import { useTranslations } from "next-intl";
 
 interface ArrowDriftResultScreenProps {
   score: number;
@@ -10,6 +12,7 @@ interface ArrowDriftResultScreenProps {
 
 export const ArrowDriftResultScreen = ({ score, onRestart }: ArrowDriftResultScreenProps) => {
   const router = useCustomRouter();
+  const tShare = useTranslations("Share");
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 p-6 text-white backdrop-blur-sm">
@@ -17,6 +20,14 @@ export const ArrowDriftResultScreen = ({ score, onRestart }: ArrowDriftResultScr
       <p className="mb-10 text-4xl font-black text-cyan-300">{score}</p>
 
       <div className="flex w-full max-w-xs flex-col gap-3">
+        <ShareLinkButton
+          text={tShare("arrowDriftText", { score })}
+          variant="default"
+          size="lg"
+          className="rounded-full py-6 text-lg font-bold"
+          label={tShare("share")}
+        />
+
         <Button
           onClick={onRestart}
           className="rounded-full bg-cyan-300 py-6 text-lg font-bold text-slate-900 hover:bg-cyan-200"

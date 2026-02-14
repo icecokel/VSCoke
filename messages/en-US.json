@@ -113,6 +113,19 @@
     "leaderboardEmpty": "No ranking records yet.",
     "unknownPlayer": "Anonymous Player"
   },
+  "Share": {
+    "title": "Share VSCoke",
+    "description": "Check out this link!",
+    "share": "Share",
+    "qr": "Show QR",
+    "qrTitle": "Share with QR code",
+    "qrDescription": "Scan this with your phone camera or copy the link.",
+    "copyLink": "Copy Link",
+    "copied": "Link copied!",
+    "shareFail": "Failed to share. Please try again.",
+    "wordleText": "Try VSCoke Wordle!",
+    "arrowDriftText": "Try VSCoke Arrow Drift! My score is {score}."
+  },
   "Doom": {
     "title": "DOOM",
     "subtitle": "SHAREWARE VERSION • JS-DOS EMULATION",

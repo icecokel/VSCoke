@@ -135,7 +135,9 @@ export class MainScene extends Phaser.Scene {
     this.obstacles.children.each(child => {
       const obstacle = child as Phaser.Physics.Arcade.Image;
       if (!obstacle.active) return true;
-      obstacle.setVelocityX(-this.currentObstacleSpeed);
+      const speedFactorRaw = Number(obstacle.getData("speedFactor"));
+      const speedFactor = Number.isFinite(speedFactorRaw) ? speedFactorRaw : 1;
+      obstacle.setVelocityX(-this.currentObstacleSpeed * speedFactor);
 
       const alreadyPassed = Boolean(obstacle.getData("passed"));
       if (!alreadyPassed && obstacle.x + obstacle.displayWidth / 2 < this.arrow!.x) {
@@ -460,6 +462,10 @@ export class MainScene extends Phaser.Scene {
       ArrowDriftConstants.OBSTACLE.SCALE_Y_MIN,
       ArrowDriftConstants.OBSTACLE.SCALE_Y_MAX,
     );
+    const speedFactor = Phaser.Math.FloatBetween(
+      ArrowDriftConstants.OBSTACLE.SPEED_FACTOR_MIN,
+      ArrowDriftConstants.OBSTACLE.SPEED_FACTOR_MAX,
+    );
 
     const obstacle = this.obstacles.create(
       this.scale.width + ArrowDriftConstants.OBSTACLE.SPAWN_SIDE_OFFSET,
@@ -482,7 +488,8 @@ export class MainScene extends Phaser.Scene {
 
     obstacle.setDepth(6);
     obstacle.setAngle(Phaser.Math.Between(0, 359));
-    obstacle.setVelocityX(-this.currentObstacleSpeed);
+    obstacle.setVelocityX(-this.currentObstacleSpeed * speedFactor);
+    obstacle.setData("speedFactor", speedFactor);
     obstacle.setData("passed", false);
     const coreHitboxSize =
       Math.min(obstacle.displayWidth, obstacle.displayHeight) *

@@ -33,6 +33,8 @@ export const ArrowDriftConstants = {
     SCALE_X_MAX: 1.28,
     SCALE_Y_MIN: 0.62,
     SCALE_Y_MAX: 1.36,
+    SPEED_FACTOR_MIN: 0.8,
+    SPEED_FACTOR_MAX: 1.2,
     HITBOX_CORE_SCALE: 0.62,
   },
   SPAWN: {

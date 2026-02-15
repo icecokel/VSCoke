@@ -23,7 +23,7 @@ export class MainScene extends Phaser.Scene {
   private currentObstacleSpeed = ArrowDriftConstants.BASE_OBSTACLE_SPEED;
   private currentVerticalPadding = ArrowDriftConstants.BASE_VERTICAL_PADDING;
   private currentSpeedStep = 0;
-  private readonly trailAnchorRatio = 0.29;
+  private readonly trailTailOffsetRatio = 0.4;
 
   constructor() {
     super({ key: "MainScene" });
@@ -192,39 +192,59 @@ export class MainScene extends Phaser.Scene {
     this.trailGraphics.setDepth(4);
     this.trailNodes = [];
 
-    const startX = this.arrow.x - this.arrow.displayWidth * this.trailAnchorRatio;
-    const startY = this.arrow.y;
+    const tail = this.getArrowTailPosition();
+    const forward = this.getArrowForwardVector();
     const segmentCount = 20;
     const spacing = 8;
 
     for (let i = 0; i < segmentCount; i += 1) {
-      this.trailNodes.push(new Phaser.Math.Vector2(startX - i * spacing, startY));
+      this.trailNodes.push(
+        new Phaser.Math.Vector2(tail.x - forward.x * i * spacing, tail.y - forward.y * i * spacing),
+      );
     }
   }
 
   private updateTrail(time: number) {
     if (!this.arrow || !this.trailGraphics || this.trailNodes.length === 0) return;
 
-    const anchorX = this.arrow.x - this.arrow.displayWidth * this.trailAnchorRatio;
-    const anchorY = this.arrow.y;
-    const steer = this.isMovingUp ? -1 : 1;
-    const sway = Math.sin(time * 0.01) * 4 + Math.sin(time * 0.023) * 2;
+    const tail = this.getArrowTailPosition();
+    const forward = this.getArrowForwardVector();
+    const perpendicular = new Phaser.Math.Vector2(-forward.y, forward.x);
+
     // Pin the first trail node to the arrow tail to avoid visual separation.
-    this.trailNodes[0].x = anchorX;
-    this.trailNodes[0].y = anchorY;
+    this.trailNodes[0].x = tail.x;
+    this.trailNodes[0].y = tail.y;
 
     for (let i = 1; i < this.trailNodes.length; i += 1) {
       const prev = this.trailNodes[i - 1];
       const current = this.trailNodes[i];
       const follow = Math.max(0.08, 0.42 - i * 0.015);
-      const lagX = prev.x - 7.5;
-      const lagY = prev.y + steer * i * 0.18 + sway * (1 - i / this.trailNodes.length) * 0.35;
+      const lagDistance = 7.2 + i * 0.22;
+      const swayAmount = Math.sin(time * 0.015 + i * 0.72) * 4.2 * (1 - i / this.trailNodes.length);
+      const targetX = prev.x - forward.x * lagDistance + perpendicular.x * swayAmount;
+      const targetY = prev.y - forward.y * lagDistance + perpendicular.y * swayAmount;
 
-      current.x = Phaser.Math.Linear(current.x, lagX, follow);
-      current.y = Phaser.Math.Linear(current.y, lagY, follow);
+      current.x = Phaser.Math.Linear(current.x, targetX, follow);
+      current.y = Phaser.Math.Linear(current.y, targetY, follow);
     }
 
     this.drawTrail(time);
+  }
+
+  private getArrowForwardVector() {
+    if (!this.arrow) return new Phaser.Math.Vector2(1, 0);
+    const angleRad = Phaser.Math.DegToRad(this.arrow.angle);
+    return new Phaser.Math.Vector2(Math.cos(angleRad), Math.sin(angleRad));
+  }
+
+  private getArrowTailPosition() {
+    if (!this.arrow) return new Phaser.Math.Vector2(0, 0);
+    const forward = this.getArrowForwardVector();
+    const offset = this.arrow.displayWidth * this.trailTailOffsetRatio;
+    return new Phaser.Math.Vector2(
+      this.arrow.x - forward.x * offset,
+      this.arrow.y - forward.y * offset,
+    );
   }
 
   private drawTrail(time: number) {

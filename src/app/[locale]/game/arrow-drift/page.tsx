@@ -32,6 +32,7 @@ export default function ArrowDriftPage() {
   const [gameKey, setGameKey] = useState(0);
   const [isGameLoaded, setIsGameLoaded] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
+  const [shouldAutoStartOnReady, setShouldAutoStartOnReady] = useState(false);
 
   useEffect(() => {
     setGamePlaying(gameState === "playing");
@@ -44,9 +45,17 @@ export default function ArrowDriftPage() {
 
   const handleStart = useCallback(() => {
     if (!isGameLoaded) return;
+    setShouldAutoStartOnReady(false);
     setFinalScore(0);
     setGameState("playing");
   }, [isGameLoaded]);
+
+  useEffect(() => {
+    if (!isGameLoaded || !shouldAutoStartOnReady) return;
+    setShouldAutoStartOnReady(false);
+    setFinalScore(0);
+    setGameState("playing");
+  }, [isGameLoaded, shouldAutoStartOnReady]);
 
   useEffect(() => {
     if (gameState !== "ready") return;
@@ -62,15 +71,18 @@ export default function ArrowDriftPage() {
   }, [gameState, handleStart]);
 
   const handleGameOver = useCallback((score: number) => {
+    setShouldAutoStartOnReady(false);
     setFinalScore(score);
     setGameState("game-over");
     console.log(`[Arrow Drift] game over score: ${score}`);
   }, []);
 
   const handleRestart = useCallback(() => {
+    // Force a full game session reset before auto-starting.
     setFinalScore(0);
+    setGameState("ready");
     setIsGameLoaded(false);
-    setGameState("playing");
+    setShouldAutoStartOnReady(true);
     setGameKey(prev => prev + 1);
   }, []);
 

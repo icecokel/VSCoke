@@ -635,8 +635,15 @@ export class MainScene extends Phaser.Scene {
       | Phaser.Physics.Arcade.StaticBody
       | Phaser.Tilemaps.Tile,
   ) {
-    if (!(scoreItemObj instanceof Phaser.Physics.Arcade.Image)) return;
-    const scoreItem = scoreItemObj as Phaser.Physics.Arcade.Image;
+    if (
+      !(
+        scoreItemObj instanceof Phaser.Physics.Arcade.Image ||
+        scoreItemObj instanceof Phaser.Physics.Arcade.Sprite
+      )
+    ) {
+      return;
+    }
+    const scoreItem = scoreItemObj as Phaser.Physics.Arcade.Image | Phaser.Physics.Arcade.Sprite;
     if (!scoreItem.active) return;
     if (Boolean(scoreItem.getData("collected"))) return;
 

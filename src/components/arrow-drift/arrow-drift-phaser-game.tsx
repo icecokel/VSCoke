@@ -13,6 +13,7 @@ interface ArrowDriftPhaserGameProps {
   isPlaying: boolean;
   onReady: () => void;
   onGameOver: (score: number) => void;
+  restartToken?: number;
   showLoadingOverlay?: boolean;
 }
 
@@ -20,10 +21,12 @@ export const ArrowDriftPhaserGame = ({
   isPlaying,
   onReady,
   onGameOver,
+  restartToken = 0,
   showLoadingOverlay = false,
 }: ArrowDriftPhaserGameProps) => {
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const restartTokenRef = useRef(restartToken);
   const [isLoaded, setIsLoaded] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -58,6 +61,21 @@ export const ArrowDriftPhaserGame = ({
     if (!isLoaded || !isPlaying || !gameRef.current) return;
     gameRef.current.events.emit("game:start");
   }, [isLoaded, isPlaying]);
+
+  useEffect(() => {
+    if (restartToken === restartTokenRef.current) return;
+    restartTokenRef.current = restartToken;
+    if (!isLoaded || !gameRef.current) return;
+
+    const scene = gameRef.current.scene;
+    if (scene.isActive("GameOverScene")) {
+      scene.stop("GameOverScene");
+    }
+    if (scene.isActive("MainScene")) {
+      scene.stop("MainScene");
+    }
+    scene.start("MainScene");
+  }, [restartToken, isLoaded]);
 
   useEffect(() => {
     const updateSize = () => {

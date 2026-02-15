@@ -29,10 +29,9 @@ export default function ArrowDriftPage() {
   const isMobile = useIsMobile();
   const { setGamePlaying } = useGame();
   const [gameState, setGameState] = useState<GameState>("ready");
-  const [gameKey, setGameKey] = useState(0);
   const [isGameLoaded, setIsGameLoaded] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
-  const [shouldAutoStartOnReady, setShouldAutoStartOnReady] = useState(false);
+  const [restartToken, setRestartToken] = useState(0);
 
   useEffect(() => {
     setGamePlaying(gameState === "playing");
@@ -45,17 +44,9 @@ export default function ArrowDriftPage() {
 
   const handleStart = useCallback(() => {
     if (!isGameLoaded) return;
-    setShouldAutoStartOnReady(false);
     setFinalScore(0);
     setGameState("playing");
   }, [isGameLoaded]);
-
-  useEffect(() => {
-    if (!isGameLoaded || !shouldAutoStartOnReady) return;
-    setShouldAutoStartOnReady(false);
-    setFinalScore(0);
-    setGameState("playing");
-  }, [isGameLoaded, shouldAutoStartOnReady]);
 
   useEffect(() => {
     if (gameState !== "ready") return;
@@ -71,19 +62,16 @@ export default function ArrowDriftPage() {
   }, [gameState, handleStart]);
 
   const handleGameOver = useCallback((score: number) => {
-    setShouldAutoStartOnReady(false);
     setFinalScore(score);
     setGameState("game-over");
     console.log(`[Arrow Drift] game over score: ${score}`);
   }, []);
 
   const handleRestart = useCallback(() => {
-    // Force a full game session reset before auto-starting.
+    // Force-reset Phaser scenes so elapsed time/difficulty always restart from zero.
     setFinalScore(0);
-    setGameState("ready");
-    setIsGameLoaded(false);
-    setShouldAutoStartOnReady(true);
-    setGameKey(prev => prev + 1);
+    setGameState("playing");
+    setRestartToken(prev => prev + 1);
   }, []);
 
   const containerStyle = isMobile
@@ -125,10 +113,10 @@ export default function ArrowDriftPage() {
 
         <div className="size-full">
           <ArrowDriftPhaserGame
-            key={gameKey}
             isPlaying={gameState === "playing"}
             onReady={handleReady}
             onGameOver={handleGameOver}
+            restartToken={restartToken}
             showLoadingOverlay={false}
           />
         </div>

@@ -27,7 +27,7 @@ export class MainScene extends Phaser.Scene {
   private currentSpeedStep = 0;
   private readonly trailTailOffsetRatio = 0.44;
   private readonly trailSegmentCount = 3;
-  private readonly trailSegmentSpacing = 0.35;
+  private readonly trailSegmentSpacing = 0.42;
   private angleTween: Phaser.Tweens.Tween | null = null;
 
   constructor() {
@@ -223,10 +223,9 @@ export class MainScene extends Phaser.Scene {
     for (let i = 1; i < this.trailNodes.length; i += 1) {
       const prev = this.trailNodes[i - 1];
       const current = this.trailNodes[i];
-      const follow = Math.max(0.08, 0.42 - i * 0.015);
-      const lagDistance = 0.95 + i * 0.08;
-      const swayAmount =
-        Math.sin(time * 0.015 + i * 0.72) * 0.22 * (1 - i / this.trailNodes.length);
+      const follow = Math.max(0.08, 0.39 - i * 0.018);
+      const lagDistance = 1.15 + i * 0.12;
+      const swayAmount = Math.sin(time * 0.016 + i * 0.76) * 0.3 * (1 - i / this.trailNodes.length);
       const targetX = prev.x - forward.x * lagDistance + perpendicular.x * swayAmount;
       const targetY = prev.y - forward.y * lagDistance + perpendicular.y * swayAmount;
 
@@ -267,7 +266,7 @@ export class MainScene extends Phaser.Scene {
       const t = i / (this.trailNodes.length - 1);
       const width = (1 - t) * 10.5 + 4.8;
       const alpha = (1 - t) * 0.62 + 0.18;
-      const jitter = Math.sin(time * 0.015 + i * 0.7) * 0.03;
+      const jitter = Math.sin(time * 0.017 + i * 0.7) * 0.045;
 
       this.trailGraphics.lineStyle(width, glowColor, alpha);
       this.trailGraphics.beginPath();

@@ -6,6 +6,7 @@ export class MainScene extends Phaser.Scene {
   private trailGraphics: Phaser.GameObjects.Graphics | null = null;
   private trailNodes: Phaser.Math.Vector2[] = [];
   private obstacles: Phaser.Physics.Arcade.Group | null = null;
+  private scoreItems: Phaser.Physics.Arcade.Group | null = null;
   private scoreText: Phaser.GameObjects.Text | null = null;
   private playTimeText: Phaser.GameObjects.Text | null = null;
   private speedUpText: Phaser.GameObjects.Text | null = null;
@@ -59,8 +60,19 @@ export class MainScene extends Phaser.Scene {
       allowGravity: false,
       immovable: true,
     });
+    this.scoreItems = this.physics.add.group({
+      allowGravity: false,
+      immovable: true,
+    });
 
     this.physics.add.overlap(this.arrow, this.obstacles, this.handleHitObstacle, undefined, this);
+    this.physics.add.overlap(
+      this.arrow,
+      this.scoreItems,
+      this.handleCollectScoreItem,
+      undefined,
+      this,
+    );
 
     this.scoreText = this.add.text(16, 16, "0", {
       fontSize: "24px",
@@ -100,7 +112,7 @@ export class MainScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number) {
-    if (this.isGameOver || !this.arrow || !this.obstacles) return;
+    if (this.isGameOver || !this.arrow || !this.obstacles || !this.scoreItems) return;
 
     const dt = delta / 1000;
     const elapsedMs = this.time.now - this.startedAt;
@@ -150,6 +162,24 @@ export class MainScene extends Phaser.Scene {
 
       if (obstacle.x < -obstacle.displayWidth) {
         obstacle.destroy();
+      }
+      return true;
+    });
+
+    this.scoreItems.children.each(child => {
+      const scoreItem = child as Phaser.Physics.Arcade.Image;
+      if (!scoreItem.active) return true;
+
+      const speedFactorRaw = Number(scoreItem.getData("speedFactor"));
+      const speedFactor = Number.isFinite(speedFactorRaw) ? speedFactorRaw : 1;
+      const spinSpeedRaw = Number(scoreItem.getData("spinSpeed"));
+      const spinSpeed = Number.isFinite(spinSpeedRaw) ? spinSpeedRaw : 0;
+
+      scoreItem.setVelocityX(-this.currentObstacleSpeed * speedFactor);
+      scoreItem.angle += spinSpeed * dt;
+
+      if (scoreItem.x < -scoreItem.displayWidth) {
+        scoreItem.destroy();
       }
       return true;
     });
@@ -378,6 +408,16 @@ export class MainScene extends Phaser.Scene {
       });
     });
 
+    const itemSpawnChance = this.calculateItemSpawnChance(elapsedMs);
+    if (Math.random() < itemSpawnChance) {
+      const maxWaveIndex = Math.max(0, obstacleCount - 1);
+      const itemDelay =
+        inWaveGap * Phaser.Math.Between(0, maxWaveIndex) + Phaser.Math.Between(40, 220);
+      this.time.delayedCall(itemDelay, () => {
+        this.spawnScoreItem();
+      });
+    }
+
     const rampProgress = Phaser.Math.Clamp(
       elapsedMs / ArrowDriftConstants.SPAWN.WAVE_DELAY_RAMP_MS,
       0,
@@ -449,6 +489,19 @@ export class MainScene extends Phaser.Scene {
     return targets;
   }
 
+  private calculateItemSpawnChance(elapsedMs: number) {
+    const progress = Phaser.Math.Clamp(
+      elapsedMs / ArrowDriftConstants.SPAWN.ITEM_CHANCE_RAMP_MS,
+      0,
+      1,
+    );
+    return Phaser.Math.Linear(
+      ArrowDriftConstants.SPAWN.ITEM_CHANCE_START,
+      ArrowDriftConstants.SPAWN.ITEM_CHANCE_END,
+      progress,
+    );
+  }
+
   private spawnObstacle(targetY?: number) {
     if (this.isGameOver || !this.obstacles) return;
 
@@ -498,8 +551,79 @@ export class MainScene extends Phaser.Scene {
     obstacle.body?.setSize(coreHitboxSize, coreHitboxSize, true);
   }
 
+  private spawnScoreItem(targetY?: number) {
+    if (this.isGameOver || !this.scoreItems) return;
+
+    const scale = Phaser.Math.FloatBetween(
+      ArrowDriftConstants.ITEM.SCALE_MIN,
+      ArrowDriftConstants.ITEM.SCALE_MAX,
+    );
+    const speedFactor = Phaser.Math.FloatBetween(
+      ArrowDriftConstants.ITEM.SPEED_FACTOR_MIN,
+      ArrowDriftConstants.ITEM.SPEED_FACTOR_MAX,
+    );
+    const spinSpeed = Phaser.Math.FloatBetween(
+      ArrowDriftConstants.ITEM.SPIN_SPEED_MIN,
+      ArrowDriftConstants.ITEM.SPIN_SPEED_MAX,
+    );
+    const scoreItem = this.scoreItems.create(
+      this.scale.width + ArrowDriftConstants.ITEM.SPAWN_SIDE_OFFSET,
+      this.scale.height / 2,
+      ArrowDriftConstants.ITEM.TEXTURE_KEY,
+    ) as Phaser.Physics.Arcade.Image | undefined;
+
+    if (!scoreItem) return;
+
+    scoreItem.setScale(scale);
+    const halfHeight = scoreItem.displayHeight / 2;
+    const spawnMargin = halfHeight + ArrowDriftConstants.ITEM.SPAWN_VERTICAL_MARGIN;
+    const minY = this.currentVerticalPadding + spawnMargin;
+    const maxY = this.scale.height - this.currentVerticalPadding - spawnMargin;
+    const safeMinY = maxY > minY ? minY : this.scale.height / 2;
+    const safeMaxY = maxY > minY ? maxY : this.scale.height / 2;
+    const randomY = safeMaxY > safeMinY ? Phaser.Math.Between(safeMinY, safeMaxY) : safeMinY;
+    scoreItem.setY(Phaser.Math.Clamp(targetY ?? randomY, safeMinY, safeMaxY));
+
+    scoreItem.setDepth(7);
+    scoreItem.setVelocityX(-this.currentObstacleSpeed * speedFactor);
+    scoreItem.setData("speedFactor", speedFactor);
+    scoreItem.setData("spinSpeed", spinSpeed);
+    scoreItem.setData("collected", false);
+    const coreHitboxSize =
+      Math.min(scoreItem.displayWidth, scoreItem.displayHeight) *
+      ArrowDriftConstants.ITEM.HITBOX_CORE_SCALE;
+    scoreItem.body?.setSize(coreHitboxSize, coreHitboxSize, true);
+  }
+
   private handleHitObstacle() {
     this.startGameOver();
+  }
+
+  private handleCollectScoreItem(
+    _arrowObj:
+      | Phaser.Types.Physics.Arcade.GameObjectWithBody
+      | Phaser.Physics.Arcade.Body
+      | Phaser.Physics.Arcade.StaticBody
+      | Phaser.Tilemaps.Tile,
+    scoreItemObj:
+      | Phaser.Types.Physics.Arcade.GameObjectWithBody
+      | Phaser.Physics.Arcade.Body
+      | Phaser.Physics.Arcade.StaticBody
+      | Phaser.Tilemaps.Tile,
+  ) {
+    if (!(scoreItemObj instanceof Phaser.Physics.Arcade.Image)) return;
+    const scoreItem = scoreItemObj as Phaser.Physics.Arcade.Image;
+    if (!scoreItem.active) return;
+    if (Boolean(scoreItem.getData("collected"))) return;
+
+    scoreItem.setData("collected", true);
+    scoreItem.disableBody(true, true);
+
+    const gainedScore = ArrowDriftConstants.ITEM.SCORE_PER_PICKUP;
+    this.score += gainedScore;
+    this.scoreText?.setText(`${this.score}`);
+    this.showScoreGain(gainedScore);
+    this.playScoreItemCollectEffect(scoreItem.x, scoreItem.y);
   }
 
   private startGameOver() {
@@ -522,6 +646,14 @@ export class MainScene extends Phaser.Scene {
       const obstacleBody = obstacle.body as Phaser.Physics.Arcade.Body | null;
       obstacleBody?.stop();
       if (obstacleBody) obstacleBody.enable = false;
+      return true;
+    });
+
+    this.scoreItems?.children.each(child => {
+      const scoreItem = child as Phaser.Physics.Arcade.Image;
+      const scoreItemBody = scoreItem.body as Phaser.Physics.Arcade.Body | null;
+      scoreItemBody?.stop();
+      if (scoreItemBody) scoreItemBody.enable = false;
       return true;
     });
 
@@ -623,6 +755,36 @@ export class MainScene extends Phaser.Scene {
     this.time.delayedCall(900, onComplete);
   }
 
+  private playScoreItemCollectEffect(originX: number, originY: number) {
+    const pulse = this.add.circle(originX, originY, 8, 0xfef08a, 0.86).setDepth(13);
+    this.tweens.add({
+      targets: pulse,
+      scaleX: 3.2,
+      scaleY: 3.2,
+      alpha: 0,
+      duration: 280,
+      ease: "Cubic.Out",
+      onComplete: () => pulse.destroy(),
+    });
+
+    for (let i = 0; i < 8; i += 1) {
+      const spark = this.add
+        .circle(originX, originY, Phaser.Math.FloatBetween(1.4, 2.8), 0xfef9c3, 0.92)
+        .setDepth(13);
+      const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+      const distance = Phaser.Math.Between(18, 42);
+      this.tweens.add({
+        targets: spark,
+        x: originX + Math.cos(angle) * distance,
+        y: originY + Math.sin(angle) * distance,
+        alpha: 0,
+        duration: Phaser.Math.Between(220, 420),
+        ease: "Sine.Out",
+        onComplete: () => spark.destroy(),
+      });
+    }
+  }
+
   private resize(gameSize: { width: number; height: number }) {
     this.cameras.main.setViewport(0, 0, gameSize.width, gameSize.height);
     this.arrowAnchorX = gameSize.width * 0.25;
@@ -648,6 +810,7 @@ export class MainScene extends Phaser.Scene {
     this.trailNodes = [];
     this.playTimeText = null;
     this.speedUpText = null;
+    this.scoreItems = null;
     this.spawnTimer?.destroy();
     this.spawnTimer = null;
     this.input.off("pointerdown", this.toggleDirection, this);

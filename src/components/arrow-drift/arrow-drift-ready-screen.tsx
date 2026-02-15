@@ -34,6 +34,7 @@ export const ArrowDriftReadyScreen = ({
           화살표 시작 각도는 45도 상향
           <br />
           터치 또는 스페이스바 입력마다 상/하 진행각 토글
+          <br />별 아이템을 먹으면 추가 점수 획득
         </p>
       </div>
 

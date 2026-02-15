@@ -53,6 +53,7 @@ export class PreloadScene extends Phaser.Scene {
     graphics.generateTexture("ad-arrow", 38, 28);
 
     this.createAsteroidPresets(graphics);
+    this.createScoreItemTexture(graphics);
 
     graphics.destroy();
   }
@@ -218,6 +219,35 @@ export class PreloadScene extends Phaser.Scene {
 
       graphics.generateTexture(key, textureSize, textureSize);
     });
+  }
+
+  private createScoreItemTexture(graphics: Phaser.GameObjects.Graphics) {
+    const textureSize = ArrowDriftConstants.ITEM.TEXTURE_SIZE;
+    const center = textureSize / 2;
+    const outerRadius = textureSize * 0.36;
+    const innerRadius = textureSize * 0.16;
+    const points: Phaser.Geom.Point[] = [];
+
+    for (let i = 0; i < 10; i += 1) {
+      const angle = -Math.PI / 2 + i * (Math.PI / 5);
+      const radius = i % 2 === 0 ? outerRadius : innerRadius;
+      points.push(
+        new Phaser.Geom.Point(center + Math.cos(angle) * radius, center + Math.sin(angle) * radius),
+      );
+    }
+
+    graphics.clear();
+    graphics.fillStyle(0xfacc15);
+    graphics.fillPoints(points, true);
+    graphics.lineStyle(3, 0xfef3c7, 0.95);
+    graphics.strokePoints(points, true, true);
+    graphics.fillStyle(0xffffff, 0.5);
+    graphics.fillCircle(
+      center - textureSize * 0.12,
+      center - textureSize * 0.15,
+      textureSize * 0.08,
+    );
+    graphics.generateTexture(ArrowDriftConstants.ITEM.TEXTURE_KEY, textureSize, textureSize);
   }
 
   create() {

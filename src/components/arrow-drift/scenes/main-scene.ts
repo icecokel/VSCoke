@@ -17,9 +17,9 @@ export class MainScene extends Phaser.Scene {
   private nearBg: Phaser.GameObjects.TileSprite | null = null;
   private topBoundLine: Phaser.GameObjects.Rectangle | null = null;
   private bottomBoundLine: Phaser.GameObjects.Rectangle | null = null;
-  private arrowAnchorX = 0;
+  private arrowAnchorY = 0;
   private score = 0;
-  private isMovingUp = true;
+  private isMovingLeft = true;
   private isGameOver = false;
   private startedAt = 0;
   private currentObstacleSpeed = ArrowDriftConstants.BASE_OBSTACLE_SPEED;
@@ -34,7 +34,7 @@ export class MainScene extends Phaser.Scene {
   create() {
     this.cameras.main.setBackgroundColor("#0b1120");
     this.score = 0;
-    this.isMovingUp = true;
+    this.isMovingLeft = true;
     this.isGameOver = false;
     this.startedAt = this.time.now;
     this.currentObstacleSpeed = ArrowDriftConstants.BASE_OBSTACLE_SPEED;
@@ -44,13 +44,13 @@ export class MainScene extends Phaser.Scene {
     this.createBoundGuides();
     this.updateDifficulty(0);
 
-    this.arrowAnchorX = this.scale.width * 0.25;
-    const arrowX = this.arrowAnchorX;
-    const arrowY = this.scale.height / 2;
+    this.arrowAnchorY = this.scale.height * 0.75;
+    const arrowX = this.scale.width / 2;
+    const arrowY = this.arrowAnchorY;
     this.arrow = this.physics.add.image(arrowX, arrowY, "ad-arrow");
     this.arrow.setDepth(5);
     this.arrow.setCollideWorldBounds(false);
-    this.arrow.setAngle(-35);
+    this.arrow.setAngle(this.isMovingLeft ? -125 : -55);
     this.arrow.body?.setSize(
       ArrowDriftConstants.ARROW_HITBOX_WIDTH,
       ArrowDriftConstants.ARROW_HITBOX_HEIGHT,
@@ -122,26 +122,26 @@ export class MainScene extends Phaser.Scene {
     this.playTimeText?.setText(this.formatPlayTime(elapsedMs));
 
     const diagonalSpeed = ArrowDriftConstants.ARROW_SPEED / Math.sqrt(2);
-    const verticalSpeed = this.isMovingUp ? -diagonalSpeed : diagonalSpeed;
+    const horizontalSpeed = this.isMovingLeft ? -diagonalSpeed : diagonalSpeed;
     const backgroundScrollSpeed = this.currentObstacleSpeed * dt;
 
-    this.arrow.x = this.arrowAnchorX;
-    this.arrow.y += verticalSpeed * dt;
+    this.arrow.x += horizontalSpeed * dt;
+    this.arrow.y = this.arrowAnchorY;
     this.updateTrail(time);
 
-    const height = this.scale.height;
+    const width = this.scale.width;
     const padding = this.currentVerticalPadding;
 
     if (this.farBg) {
-      this.farBg.tilePositionX +=
+      this.farBg.tilePositionY +=
         backgroundScrollSpeed * ArrowDriftConstants.BACKGROUND_SCROLL.FAR_FACTOR;
     }
     if (this.nearBg) {
-      this.nearBg.tilePositionX +=
+      this.nearBg.tilePositionY +=
         backgroundScrollSpeed * ArrowDriftConstants.BACKGROUND_SCROLL.NEAR_FACTOR;
     }
 
-    if (this.arrow.y < padding || this.arrow.y > height - padding) {
+    if (this.arrow.x < padding || this.arrow.x > width - padding) {
       this.startGameOver();
       return;
     }
@@ -151,10 +151,10 @@ export class MainScene extends Phaser.Scene {
       if (!obstacle.active) return true;
       const speedFactorRaw = Number(obstacle.getData("speedFactor"));
       const speedFactor = Number.isFinite(speedFactorRaw) ? speedFactorRaw : 1;
-      obstacle.setVelocityX(-this.currentObstacleSpeed * speedFactor);
+      obstacle.setVelocityY(this.currentObstacleSpeed * speedFactor);
 
       const alreadyPassed = Boolean(obstacle.getData("passed"));
-      if (!alreadyPassed && obstacle.x + obstacle.displayWidth / 2 < this.arrow!.x) {
+      if (!alreadyPassed && obstacle.y - obstacle.displayHeight / 2 > this.arrow!.y) {
         obstacle.setData("passed", true);
         const gainedScore = ArrowDriftConstants.SCORE_PER_OBSTACLE;
         this.score += gainedScore;
@@ -162,7 +162,7 @@ export class MainScene extends Phaser.Scene {
         this.showScoreGain(gainedScore);
       }
 
-      if (obstacle.x < -obstacle.displayWidth) {
+      if (obstacle.y > this.scale.height + obstacle.displayHeight) {
         obstacle.destroy();
       }
       return true;
@@ -177,10 +177,10 @@ export class MainScene extends Phaser.Scene {
       const spinSpeedRaw = Number(scoreItem.getData("spinSpeed"));
       const spinSpeed = Number.isFinite(spinSpeedRaw) ? spinSpeedRaw : 0;
 
-      scoreItem.setVelocityX(-this.currentObstacleSpeed * speedFactor);
+      scoreItem.setVelocityY(this.currentObstacleSpeed * speedFactor);
       scoreItem.angle += spinSpeed * dt;
 
-      if (scoreItem.x < -scoreItem.displayWidth) {
+      if (scoreItem.y > this.scale.height + scoreItem.displayHeight) {
         scoreItem.destroy();
       }
       return true;
@@ -288,13 +288,13 @@ export class MainScene extends Phaser.Scene {
 
   private createBoundGuides() {
     this.topBoundLine = this.add
-      .rectangle(0, 0, this.scale.width, 3, 0xf43f5e, 0.8)
-      .setOrigin(0, 0.5)
+      .rectangle(0, 0, 3, this.scale.height, 0xf43f5e, 0.8)
+      .setOrigin(0.5, 0)
       .setDepth(9);
 
     this.bottomBoundLine = this.add
-      .rectangle(0, this.scale.height, this.scale.width, 3, 0xf43f5e, 0.8)
-      .setOrigin(0, 0.5)
+      .rectangle(this.scale.width, 0, 3, this.scale.height, 0xf43f5e, 0.8)
+      .setOrigin(0.5, 0)
       .setDepth(9);
   }
 
@@ -316,7 +316,7 @@ export class MainScene extends Phaser.Scene {
     const shrinkClamped = Math.min(shrinkByTime, ArrowDriftConstants.DIFFICULTY.MAP_SHRINK_MAX);
     const maxPaddingByScreen = Math.max(
       ArrowDriftConstants.BASE_VERTICAL_PADDING,
-      this.scale.height / 2 - 80,
+      this.scale.width / 2 - 80,
     );
     this.currentVerticalPadding = Math.min(
       ArrowDriftConstants.BASE_VERTICAL_PADDING + shrinkClamped,
@@ -328,14 +328,14 @@ export class MainScene extends Phaser.Scene {
   private syncBoundGuides() {
     if (!this.topBoundLine || !this.bottomBoundLine) return;
 
-    const topY = this.currentVerticalPadding;
-    const bottomY = this.scale.height - this.currentVerticalPadding;
+    const leftX = this.currentVerticalPadding;
+    const rightX = this.scale.width - this.currentVerticalPadding;
 
-    this.topBoundLine.setPosition(0, topY);
-    this.topBoundLine.setSize(this.scale.width, 3);
+    this.topBoundLine.setPosition(leftX, 0);
+    this.topBoundLine.setSize(3, this.scale.height);
 
-    this.bottomBoundLine.setPosition(0, bottomY);
-    this.bottomBoundLine.setSize(this.scale.width, 3);
+    this.bottomBoundLine.setPosition(rightX, 0);
+    this.bottomBoundLine.setSize(3, this.scale.height);
   }
 
   private showSpeedUpNotice(nextObstacleSpeed: number) {
@@ -367,8 +367,8 @@ export class MainScene extends Phaser.Scene {
   }
 
   private showScoreGain(gainedScore: number) {
-    const baseX = this.arrow ? this.arrow.x + this.arrow.displayWidth * 0.66 : 96;
-    const baseY = this.arrow ? this.arrow.y - 10 : 56;
+    const baseX = this.arrow ? this.arrow.x + (this.isMovingLeft ? -16 : 16) : 96;
+    const baseY = this.arrow ? this.arrow.y - this.arrow.displayHeight * 0.66 : 56;
     const gainText = this.add
       .text(baseX, baseY, `+${gainedScore}`, {
         fontSize: "20px",
@@ -409,8 +409,8 @@ export class MainScene extends Phaser.Scene {
 
   private toggleDirection() {
     if (this.isGameOver || !this.arrow) return;
-    this.isMovingUp = !this.isMovingUp;
-    this.arrow.setAngle(this.isMovingUp ? -35 : 35);
+    this.isMovingLeft = !this.isMovingLeft;
+    this.arrow.setAngle(this.isMovingLeft ? -125 : -55);
   }
 
   private scheduleNextWave() {
@@ -418,15 +418,15 @@ export class MainScene extends Phaser.Scene {
 
     const elapsedMs = this.time.now - this.startedAt;
     const obstacleCount = this.pickWaveObstacleCount();
-    const yTargets = this.buildWaveYTargets(obstacleCount);
+    const xTargets = this.buildWaveXTargets(obstacleCount);
     const inWaveGap = Phaser.Math.Between(
       ArrowDriftConstants.SPAWN.IN_WAVE_GAP_MIN_MS,
       ArrowDriftConstants.SPAWN.IN_WAVE_GAP_MAX_MS,
     );
 
-    yTargets.forEach((targetY, index) => {
+    xTargets.forEach((targetX, index) => {
       this.time.delayedCall(inWaveGap * index, () => {
-        this.spawnObstacle(targetY);
+        this.spawnObstacle(targetX);
       });
     });
 
@@ -491,11 +491,11 @@ export class MainScene extends Phaser.Scene {
     return 1;
   }
 
-  private buildWaveYTargets(count: number) {
-    const centerMinY = this.currentVerticalPadding + 90;
-    const centerMaxY = this.scale.height - this.currentVerticalPadding - 90;
-    const centerY =
-      centerMaxY > centerMinY ? Phaser.Math.Between(centerMinY, centerMaxY) : this.scale.height / 2;
+  private buildWaveXTargets(count: number) {
+    const centerMinX = this.currentVerticalPadding + 90;
+    const centerMaxX = this.scale.width - this.currentVerticalPadding - 90;
+    const centerX =
+      centerMaxX > centerMinX ? Phaser.Math.Between(centerMinX, centerMaxX) : this.scale.width / 2;
 
     const direction = Math.random() < 0.5 ? -1 : 1;
     const step = Phaser.Math.Between(
@@ -506,7 +506,7 @@ export class MainScene extends Phaser.Scene {
     const targets: number[] = [];
     for (let i = 0; i < count; i += 1) {
       const relative = i - (count - 1) / 2;
-      targets.push(centerY + relative * step * direction);
+      targets.push(centerX + relative * step * direction);
     }
     return targets;
   }
@@ -524,7 +524,7 @@ export class MainScene extends Phaser.Scene {
     );
   }
 
-  private spawnObstacle(targetY?: number) {
+  private spawnObstacle(targetX?: number) {
     if (this.isGameOver || !this.obstacles) return;
 
     const textureKey = Phaser.Utils.Array.GetRandom(
@@ -544,27 +544,27 @@ export class MainScene extends Phaser.Scene {
     );
 
     const obstacle = this.obstacles.create(
-      this.scale.width + ArrowDriftConstants.OBSTACLE.SPAWN_SIDE_OFFSET,
-      this.scale.height / 2,
+      this.scale.width / 2,
+      -ArrowDriftConstants.OBSTACLE.SPAWN_SIDE_OFFSET,
       textureKey,
     ) as Phaser.Physics.Arcade.Image | undefined;
 
     if (!obstacle) return;
 
     obstacle.setScale(scaleX, scaleY);
-    const halfHeight = obstacle.displayHeight / 2;
-    const spawnMargin = halfHeight + ArrowDriftConstants.OBSTACLE.SPAWN_VERTICAL_MARGIN;
-    const minY = this.currentVerticalPadding + spawnMargin;
-    const maxY = this.scale.height - this.currentVerticalPadding - spawnMargin;
-    const safeMinY = maxY > minY ? minY : this.scale.height / 2;
-    const safeMaxY = maxY > minY ? maxY : this.scale.height / 2;
-    const randomY = safeMaxY > safeMinY ? Phaser.Math.Between(safeMinY, safeMaxY) : safeMinY;
-    const y = Phaser.Math.Clamp(targetY ?? randomY, safeMinY, safeMaxY);
-    obstacle.setY(y);
+    const halfWidth = obstacle.displayWidth / 2;
+    const spawnMargin = halfWidth + ArrowDriftConstants.OBSTACLE.SPAWN_VERTICAL_MARGIN;
+    const minX = this.currentVerticalPadding + spawnMargin;
+    const maxX = this.scale.width - this.currentVerticalPadding - spawnMargin;
+    const safeMinX = maxX > minX ? minX : this.scale.width / 2;
+    const safeMaxX = maxX > minX ? maxX : this.scale.width / 2;
+    const randomX = safeMaxX > safeMinX ? Phaser.Math.Between(safeMinX, safeMaxX) : safeMinX;
+    const x = Phaser.Math.Clamp(targetX ?? randomX, safeMinX, safeMaxX);
+    obstacle.setX(x);
 
     obstacle.setDepth(6);
     obstacle.setAngle(Phaser.Math.Between(0, 359));
-    obstacle.setVelocityX(-this.currentObstacleSpeed * speedFactor);
+    obstacle.setVelocityY(this.currentObstacleSpeed * speedFactor);
     obstacle.setData("speedFactor", speedFactor);
     obstacle.setData("passed", false);
     const coreHitboxSize =
@@ -573,7 +573,7 @@ export class MainScene extends Phaser.Scene {
     obstacle.body?.setSize(coreHitboxSize, coreHitboxSize, true);
   }
 
-  private spawnScoreItem(targetY?: number) {
+  private spawnScoreItem(targetX?: number) {
     if (this.isGameOver || !this.scoreItems) return;
     const variant = this.pickScoreItemVariant();
 
@@ -590,25 +590,25 @@ export class MainScene extends Phaser.Scene {
       ArrowDriftConstants.ITEM.SPIN_SPEED_MAX,
     );
     const scoreItem = this.scoreItems.create(
-      this.scale.width + ArrowDriftConstants.ITEM.SPAWN_SIDE_OFFSET,
-      this.scale.height / 2,
+      this.scale.width / 2,
+      -ArrowDriftConstants.ITEM.SPAWN_SIDE_OFFSET,
       variant.key,
     ) as Phaser.Physics.Arcade.Image | undefined;
 
     if (!scoreItem) return;
 
     scoreItem.setScale(scale);
-    const halfHeight = scoreItem.displayHeight / 2;
-    const spawnMargin = halfHeight + ArrowDriftConstants.ITEM.SPAWN_VERTICAL_MARGIN;
-    const minY = this.currentVerticalPadding + spawnMargin;
-    const maxY = this.scale.height - this.currentVerticalPadding - spawnMargin;
-    const safeMinY = maxY > minY ? minY : this.scale.height / 2;
-    const safeMaxY = maxY > minY ? maxY : this.scale.height / 2;
-    const randomY = safeMaxY > safeMinY ? Phaser.Math.Between(safeMinY, safeMaxY) : safeMinY;
-    scoreItem.setY(Phaser.Math.Clamp(targetY ?? randomY, safeMinY, safeMaxY));
+    const halfWidth = scoreItem.displayWidth / 2;
+    const spawnMargin = halfWidth + ArrowDriftConstants.ITEM.SPAWN_VERTICAL_MARGIN;
+    const minX = this.currentVerticalPadding + spawnMargin;
+    const maxX = this.scale.width - this.currentVerticalPadding - spawnMargin;
+    const safeMinX = maxX > minX ? minX : this.scale.width / 2;
+    const safeMaxX = maxX > minX ? maxX : this.scale.width / 2;
+    const randomX = safeMaxX > safeMinX ? Phaser.Math.Between(safeMinX, safeMaxX) : safeMinX;
+    scoreItem.setX(Phaser.Math.Clamp(targetX ?? randomX, safeMinX, safeMaxX));
 
     scoreItem.setDepth(7);
-    scoreItem.setVelocityX(-this.currentObstacleSpeed * speedFactor);
+    scoreItem.setVelocityY(this.currentObstacleSpeed * speedFactor);
     scoreItem.setData("speedFactor", speedFactor);
     scoreItem.setData("spinSpeed", spinSpeed);
     scoreItem.setData("gainedScore", variant.score);
@@ -838,7 +838,7 @@ export class MainScene extends Phaser.Scene {
 
   private resize(gameSize: { width: number; height: number }) {
     this.cameras.main.setViewport(0, 0, gameSize.width, gameSize.height);
-    this.arrowAnchorX = gameSize.width * 0.25;
+    this.arrowAnchorY = gameSize.height * 0.75;
     this.farBg?.setSize(gameSize.width, gameSize.height);
     this.nearBg?.setSize(gameSize.width, gameSize.height);
     this.playTimeText?.setPosition(gameSize.width - 16, 16);
@@ -846,12 +846,12 @@ export class MainScene extends Phaser.Scene {
     this.updateDifficulty(this.time.now - this.startedAt);
 
     if (this.arrow) {
-      const y = Phaser.Math.Clamp(
-        this.arrow.y,
+      const x = Phaser.Math.Clamp(
+        this.arrow.x,
         this.currentVerticalPadding + 4,
-        gameSize.height - this.currentVerticalPadding - 4,
+        gameSize.width - this.currentVerticalPadding - 4,
       );
-      this.arrow.setPosition(this.arrowAnchorX, y);
+      this.arrow.setPosition(x, this.arrowAnchorY);
     }
   }
 

@@ -31,9 +31,9 @@ export const ArrowDriftReadyScreen = ({
 
       <div className="mb-10 flex h-44 w-full max-w-xs items-center justify-center rounded-xl border border-cyan-300/30 bg-slate-800/70">
         <p className="text-center text-sm text-slate-200">
-          우주선 시작 각도는 45도 상향
+          우주선은 하단에서 상단 방향으로 비행
           <br />
-          터치 또는 스페이스바 입력마다 상/하 진행각 토글
+          터치 또는 스페이스바 입력마다 좌/우 진행각 토글
           <br />별 아이템은 색상마다 획득 점수가 다름
         </p>
       </div>

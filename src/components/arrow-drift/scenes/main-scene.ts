@@ -26,6 +26,9 @@ export class MainScene extends Phaser.Scene {
   private currentVerticalPadding = ArrowDriftConstants.BASE_VERTICAL_PADDING;
   private currentSpeedStep = 0;
   private readonly trailTailOffsetRatio = 0.44;
+  private readonly trailSegmentCount = 14;
+  private readonly trailSegmentSpacing = 6.5;
+  private angleTween: Phaser.Tweens.Tween | null = null;
 
   constructor() {
     super({ key: "MainScene" });
@@ -196,12 +199,12 @@ export class MainScene extends Phaser.Scene {
 
     const tail = this.getArrowTailPosition();
     const forward = this.getArrowForwardVector();
-    const segmentCount = 20;
-    const spacing = 8;
-
-    for (let i = 0; i < segmentCount; i += 1) {
+    for (let i = 0; i < this.trailSegmentCount; i += 1) {
       this.trailNodes.push(
-        new Phaser.Math.Vector2(tail.x - forward.x * i * spacing, tail.y - forward.y * i * spacing),
+        new Phaser.Math.Vector2(
+          tail.x - forward.x * i * this.trailSegmentSpacing,
+          tail.y - forward.y * i * this.trailSegmentSpacing,
+        ),
       );
     }
   }
@@ -410,7 +413,17 @@ export class MainScene extends Phaser.Scene {
   private toggleDirection() {
     if (this.isGameOver || !this.arrow) return;
     this.isMovingLeft = !this.isMovingLeft;
-    this.arrow.setAngle(this.isMovingLeft ? -125 : -55);
+    const targetAngle = this.isMovingLeft ? -125 : -55;
+    this.angleTween?.stop();
+    this.angleTween = this.tweens.add({
+      targets: this.arrow,
+      angle: targetAngle,
+      duration: 140,
+      ease: "Sine.InOut",
+      onComplete: () => {
+        this.angleTween = null;
+      },
+    });
   }
 
   private scheduleNextWave() {
@@ -688,6 +701,8 @@ export class MainScene extends Phaser.Scene {
     if (this.isGameOver) return;
 
     this.isGameOver = true;
+    this.angleTween?.stop();
+    this.angleTween = null;
     this.spawnTimer?.destroy();
     this.spawnTimer = null;
     this.input.off("pointerdown", this.toggleDirection, this);
@@ -869,6 +884,8 @@ export class MainScene extends Phaser.Scene {
     this.playTimeText = null;
     this.speedUpText = null;
     this.scoreItems = null;
+    this.angleTween?.stop();
+    this.angleTween = null;
     this.spawnTimer?.destroy();
     this.spawnTimer = null;
     this.input.off("pointerdown", this.toggleDirection, this);

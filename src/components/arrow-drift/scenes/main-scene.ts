@@ -1,6 +1,8 @@
 import * as Phaser from "phaser";
 import { ArrowDriftConstants } from "../arrow-drift-constants";
 
+type ScoreItemVariant = (typeof ArrowDriftConstants.ITEM.STAR_VARIANTS)[number];
+
 export class MainScene extends Phaser.Scene {
   private arrow: Phaser.Physics.Arcade.Image | null = null;
   private trailGraphics: Phaser.GameObjects.Graphics | null = null;
@@ -23,7 +25,7 @@ export class MainScene extends Phaser.Scene {
   private currentObstacleSpeed = ArrowDriftConstants.BASE_OBSTACLE_SPEED;
   private currentVerticalPadding = ArrowDriftConstants.BASE_VERTICAL_PADDING;
   private currentSpeedStep = 0;
-  private readonly trailTailOffsetRatio = 0.4;
+  private readonly trailTailOffsetRatio = 0.44;
 
   constructor() {
     super({ key: "MainScene" });
@@ -573,6 +575,7 @@ export class MainScene extends Phaser.Scene {
 
   private spawnScoreItem(targetY?: number) {
     if (this.isGameOver || !this.scoreItems) return;
+    const variant = this.pickScoreItemVariant();
 
     const scale = Phaser.Math.FloatBetween(
       ArrowDriftConstants.ITEM.SCALE_MIN,
@@ -589,7 +592,7 @@ export class MainScene extends Phaser.Scene {
     const scoreItem = this.scoreItems.create(
       this.scale.width + ArrowDriftConstants.ITEM.SPAWN_SIDE_OFFSET,
       this.scale.height / 2,
-      ArrowDriftConstants.ITEM.TEXTURE_KEY,
+      variant.key,
     ) as Phaser.Physics.Arcade.Image | undefined;
 
     if (!scoreItem) return;
@@ -608,6 +611,7 @@ export class MainScene extends Phaser.Scene {
     scoreItem.setVelocityX(-this.currentObstacleSpeed * speedFactor);
     scoreItem.setData("speedFactor", speedFactor);
     scoreItem.setData("spinSpeed", spinSpeed);
+    scoreItem.setData("gainedScore", variant.score);
     scoreItem.setData("collected", false);
     const coreHitboxSize =
       Math.min(scoreItem.displayWidth, scoreItem.displayHeight) *
@@ -639,11 +643,38 @@ export class MainScene extends Phaser.Scene {
     scoreItem.setData("collected", true);
     scoreItem.disableBody(true, true);
 
-    const gainedScore = ArrowDriftConstants.ITEM.SCORE_PER_PICKUP;
+    const gainedScoreRaw = Number(scoreItem.getData("gainedScore"));
+    const gainedScore = Number.isFinite(gainedScoreRaw)
+      ? gainedScoreRaw
+      : ArrowDriftConstants.ITEM.DEFAULT_SCORE;
     this.score += gainedScore;
     this.scoreText?.setText(`${this.score}`);
     this.showScoreGain(gainedScore);
     this.playScoreItemCollectEffect(scoreItem.x, scoreItem.y);
+  }
+
+  private pickScoreItemVariant(): ScoreItemVariant {
+    const variants = ArrowDriftConstants.ITEM.STAR_VARIANTS;
+    if (variants.length === 0) {
+      return {
+        key: "ad-item-score-gold",
+        assetPath: "/images/game/arrow-drift/score-star.svg",
+        score: ArrowDriftConstants.ITEM.DEFAULT_SCORE,
+        weight: 1,
+      };
+    }
+
+    const totalWeight = variants.reduce((sum, variant) => sum + Math.max(0, variant.weight), 0);
+    if (totalWeight <= 0) {
+      return Phaser.Utils.Array.GetRandom(variants);
+    }
+
+    let roll = Phaser.Math.FloatBetween(0, totalWeight);
+    for (const variant of variants) {
+      roll -= Math.max(0, variant.weight);
+      if (roll <= 0) return variant;
+    }
+    return variants[variants.length - 1];
   }
 
   private startGameOver() {

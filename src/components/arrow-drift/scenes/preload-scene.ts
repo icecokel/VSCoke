@@ -10,6 +10,10 @@ export class PreloadScene extends Phaser.Scene {
     this.load.on("progress", (value: number) => {
       this.game.events.emit("game:progress", value);
     });
+    this.load.svg("ad-arrow", "/images/game/arrow-drift/player-ship.svg");
+    ArrowDriftConstants.ITEM.STAR_VARIANTS.forEach(variant => {
+      this.load.svg(variant.key, variant.assetPath);
+    });
 
     const graphics = this.make.graphics({ x: 0, y: 0 }, false);
 
@@ -38,10 +42,7 @@ export class PreloadScene extends Phaser.Scene {
     }
     graphics.generateTexture("ad-bg-near", 256, 256);
 
-    this.createArrowTexture(graphics);
-
     this.createAsteroidPresets(graphics);
-    this.createScoreItemTexture(graphics);
 
     graphics.destroy();
   }
@@ -207,73 +208,6 @@ export class PreloadScene extends Phaser.Scene {
 
       graphics.generateTexture(key, textureSize, textureSize);
     });
-  }
-
-  private createArrowTexture(graphics: Phaser.GameObjects.Graphics) {
-    const width = 64;
-    const height = 32;
-    const centerY = height / 2;
-
-    graphics.clear();
-
-    // Shaft shadow
-    graphics.fillStyle(0x7f1d1d);
-    graphics.fillRect(10, centerY - 4, 30, 8);
-
-    // Shaft core
-    graphics.fillStyle(ArrowDriftConstants.ARROW_COLOR);
-    graphics.fillRect(10, centerY - 3, 30, 6);
-
-    // Arrow head
-    graphics.fillStyle(0xe11d48);
-    graphics.fillTriangle(38, 6, 58, centerY, 38, 26);
-    graphics.fillStyle(0xfda4af, 0.92);
-    graphics.fillTriangle(42, 10, 53, centerY, 42, 22);
-
-    // Fletching
-    graphics.fillStyle(0x991b1b);
-    graphics.fillTriangle(10, centerY - 3, 2, 7, 10, centerY + 1);
-    graphics.fillTriangle(10, centerY + 3, 2, 25, 10, centerY - 1);
-    graphics.fillStyle(0x7f1d1d);
-    graphics.fillRect(6, centerY - 2, 6, 4);
-
-    // Light ridge
-    graphics.lineStyle(1.4, 0xfecdd3, 0.55);
-    graphics.beginPath();
-    graphics.moveTo(12, centerY - 1);
-    graphics.lineTo(38, centerY - 1);
-    graphics.strokePath();
-
-    graphics.generateTexture("ad-arrow", width, height);
-  }
-
-  private createScoreItemTexture(graphics: Phaser.GameObjects.Graphics) {
-    const textureSize = ArrowDriftConstants.ITEM.TEXTURE_SIZE;
-    const center = textureSize / 2;
-    const outerRadius = textureSize * 0.36;
-    const innerRadius = textureSize * 0.16;
-    const points: Phaser.Geom.Point[] = [];
-
-    for (let i = 0; i < 10; i += 1) {
-      const angle = -Math.PI / 2 + i * (Math.PI / 5);
-      const radius = i % 2 === 0 ? outerRadius : innerRadius;
-      points.push(
-        new Phaser.Geom.Point(center + Math.cos(angle) * radius, center + Math.sin(angle) * radius),
-      );
-    }
-
-    graphics.clear();
-    graphics.fillStyle(0xfacc15);
-    graphics.fillPoints(points, true);
-    graphics.lineStyle(3, 0xfef3c7, 0.95);
-    graphics.strokePoints(points, true, true);
-    graphics.fillStyle(0xffffff, 0.5);
-    graphics.fillCircle(
-      center - textureSize * 0.12,
-      center - textureSize * 0.15,
-      textureSize * 0.08,
-    );
-    graphics.generateTexture(ArrowDriftConstants.ITEM.TEXTURE_KEY, textureSize, textureSize);
   }
 
   create() {

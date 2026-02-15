@@ -26,8 +26,8 @@ export class MainScene extends Phaser.Scene {
   private currentVerticalPadding = ArrowDriftConstants.BASE_VERTICAL_PADDING;
   private currentSpeedStep = 0;
   private readonly trailTailOffsetRatio = 0.44;
-  private readonly trailSegmentCount = 14;
-  private readonly trailSegmentSpacing = 6.5;
+  private readonly trailSegmentCount = 8;
+  private readonly trailSegmentSpacing = 4.2;
   private angleTween: Phaser.Tweens.Tween | null = null;
 
   constructor() {
@@ -257,15 +257,15 @@ export class MainScene extends Phaser.Scene {
 
     this.trailGraphics.clear();
     const glowColor = ArrowDriftConstants.ARROW_TRAIL_COLOR;
-    this.trailGraphics.fillStyle(glowColor, 0.74);
-    this.trailGraphics.fillCircle(this.trailNodes[0].x, this.trailNodes[0].y, 3.8);
+    this.trailGraphics.fillStyle(glowColor, 0.68);
+    this.trailGraphics.fillCircle(this.trailNodes[0].x, this.trailNodes[0].y, 2.7);
 
     for (let i = 0; i < this.trailNodes.length - 1; i += 1) {
       const a = this.trailNodes[i];
       const b = this.trailNodes[i + 1];
       const t = i / (this.trailNodes.length - 1);
-      const width = (1 - t) * 5.6 + 1.2;
-      const alpha = (1 - t) * 0.62 + 0.12;
+      const width = (1 - t) * 3.4 + 0.8;
+      const alpha = (1 - t) * 0.54 + 0.1;
       const jitter = Math.sin(time * 0.015 + i * 0.7) * 0.4;
 
       this.trailGraphics.lineStyle(width, glowColor, alpha);

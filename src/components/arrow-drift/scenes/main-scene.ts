@@ -28,6 +28,9 @@ export class MainScene extends Phaser.Scene {
   private currentHorizontalSpeed = 0;
   private swimWaveSeed = 0;
   private swimKickUntil = 0;
+  private fishFrameIndex = 0;
+  private nextFishFrameAt = 0;
+  private readonly fishFrameKeys = ["ad-fish-0", "ad-fish-1", "ad-fish-2", "ad-fish-1"];
   private readonly trailTailOffsetRatio = 0.52;
   private readonly trailSegmentCount = 5;
   private readonly trailSegmentSpacing = 0.7;
@@ -48,6 +51,8 @@ export class MainScene extends Phaser.Scene {
     this.currentSpeedStep = 0;
     this.swimWaveSeed = Phaser.Math.FloatBetween(0, Math.PI * 2);
     this.swimKickUntil = 0;
+    this.fishFrameIndex = 0;
+    this.nextFishFrameAt = this.time.now + 90;
     this.createBackground();
     this.createBoundGuides();
     this.updateDifficulty(0);
@@ -55,7 +60,7 @@ export class MainScene extends Phaser.Scene {
     this.arrowAnchorY = this.scale.height * 0.75;
     const arrowX = this.scale.width / 2;
     const arrowY = this.arrowAnchorY;
-    this.arrow = this.physics.add.image(arrowX, arrowY, "ad-fish");
+    this.arrow = this.physics.add.image(arrowX, arrowY, this.fishFrameKeys[0]);
     this.arrow.setDepth(5);
     this.arrow.setCollideWorldBounds(false);
     this.arrow.setAngle(this.isMovingLeft ? -132 : -48);
@@ -148,6 +153,12 @@ export class MainScene extends Phaser.Scene {
     this.arrow.y = this.arrowAnchorY + swimBodyWave + swimTailWave;
     const bodyScaleWave = Math.sin(time * 0.022 + this.swimWaveSeed);
     this.arrow.setScale(1 + bodyScaleWave * 0.03, 1 - bodyScaleWave * 0.026);
+
+    if (time >= this.nextFishFrameAt) {
+      this.fishFrameIndex = (this.fishFrameIndex + 1) % this.fishFrameKeys.length;
+      this.arrow.setTexture(this.fishFrameKeys[this.fishFrameIndex]);
+      this.nextFishFrameAt = time + 88;
+    }
 
     if (!this.angleTween) {
       const baseAngle = this.isMovingLeft ? -132 : -48;
@@ -280,7 +291,7 @@ export class MainScene extends Phaser.Scene {
       current.y = Phaser.Math.Linear(current.y, targetY, follow);
     }
 
-    this.drawTrail(time);
+    this.drawTrail();
   }
 
   private getArrowForwardVector() {
@@ -299,38 +310,10 @@ export class MainScene extends Phaser.Scene {
     );
   }
 
-  private drawTrail(time: number) {
-    if (!this.trailGraphics || this.trailNodes.length < 2) return;
-
+  private drawTrail() {
+    if (!this.trailGraphics) return;
+    // Tail flame/wake intentionally disabled per current art direction.
     this.trailGraphics.clear();
-    const wakeColor = ArrowDriftConstants.FISH_WAKE_COLOR;
-    this.trailGraphics.fillStyle(wakeColor, 0.26);
-    this.trailGraphics.fillCircle(this.trailNodes[0].x, this.trailNodes[0].y, 4.8);
-
-    for (let i = 0; i < this.trailNodes.length - 1; i += 1) {
-      const a = this.trailNodes[i];
-      const b = this.trailNodes[i + 1];
-      const t = i / (this.trailNodes.length - 1);
-      const width = (1 - t) * 6.8 + 2.6;
-      const alpha = (1 - t) * 0.34 + 0.12;
-      const jitterX = Math.cos(time * 0.014 + i * 0.8) * 0.22;
-      const jitterY = Math.sin(time * 0.018 + i * 0.7) * 0.3;
-
-      this.trailGraphics.lineStyle(width, wakeColor, alpha);
-      this.trailGraphics.beginPath();
-      this.trailGraphics.moveTo(a.x, a.y);
-      this.trailGraphics.lineTo(b.x + jitterX, b.y + jitterY);
-      this.trailGraphics.strokePath();
-
-      const bubbleRadius = (1 - t) * 2.2 + 1;
-      const bubbleAlpha = (1 - t) * 0.2 + 0.08;
-      this.trailGraphics.fillStyle(0xe0f2fe, bubbleAlpha);
-      this.trailGraphics.fillCircle(
-        b.x + Math.sin(time * 0.01 + i * 0.9),
-        b.y + Math.cos(time * 0.01 + i * 0.6),
-        bubbleRadius,
-      );
-    }
   }
 
   private createBackground() {

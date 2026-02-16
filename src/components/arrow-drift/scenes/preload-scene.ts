@@ -11,7 +11,9 @@ export class PreloadScene extends Phaser.Scene {
       this.game.events.emit("game:progress", value);
     });
 
-    this.load.svg("ad-fish", "/images/game/arrow-drift/player-fish.svg");
+    this.load.svg("ad-fish-0", "/images/game/arrow-drift/player-fish-frame-0.svg");
+    this.load.svg("ad-fish-1", "/images/game/arrow-drift/player-fish-frame-1.svg");
+    this.load.svg("ad-fish-2", "/images/game/arrow-drift/player-fish-frame-2.svg");
     ArrowDriftConstants.ITEM.FISH_VARIANTS.forEach(variant => {
       this.load.svg(variant.key, variant.assetPath);
     });
@@ -27,31 +29,26 @@ export class PreloadScene extends Phaser.Scene {
     graphics.fillStyle(0x03132b);
     graphics.fillRect(0, 0, 256, 256);
 
-    for (let i = 0; i < 24; i += 1) {
-      graphics.fillStyle(0x0f4c81, Phaser.Math.FloatBetween(0.08, 0.2));
-      graphics.fillCircle(
-        Phaser.Math.Between(-30, 286),
-        Phaser.Math.Between(-20, 276),
-        Phaser.Math.Between(18, 56),
-      );
+    for (let i = 0; i < 380; i += 1) {
+      const px = Phaser.Math.Between(0, 127) * 2;
+      const py = Phaser.Math.Between(0, 127) * 2;
+      graphics.fillStyle(0x0f4c81, Phaser.Math.FloatBetween(0.1, 0.26));
+      graphics.fillRect(px, py, 2, 2);
     }
 
-    for (let i = 0; i < 90; i += 1) {
+    for (let i = 0; i < 70; i += 1) {
+      const startX = Phaser.Math.Between(6, 122) * 2;
+      const startY = Phaser.Math.Between(0, 120) * 2;
+      const length = Phaser.Math.Between(6, 16);
+      graphics.fillStyle(0x93c5fd, Phaser.Math.FloatBetween(0.08, 0.22));
+      for (let j = 0; j < length; j += 1) {
+        graphics.fillRect(startX + (j % 2 === 0 ? 0 : 2), startY + j * 2, 2, 2);
+      }
+    }
+
+    for (let i = 0; i < 120; i += 1) {
       graphics.fillStyle(0x67e8f9, Phaser.Math.FloatBetween(0.07, 0.24));
-      graphics.fillCircle(
-        Phaser.Math.Between(0, 255),
-        Phaser.Math.Between(0, 255),
-        Phaser.Math.Between(1, 3),
-      );
-    }
-
-    for (let i = 0; i < 7; i += 1) {
-      const startX = Phaser.Math.Between(12, 244);
-      graphics.lineStyle(2, 0xe0f2fe, Phaser.Math.FloatBetween(0.07, 0.16));
-      graphics.beginPath();
-      graphics.moveTo(startX, -10);
-      graphics.lineTo(startX + Phaser.Math.Between(-22, 22), 266);
-      graphics.strokePath();
+      graphics.fillRect(Phaser.Math.Between(0, 127) * 2, Phaser.Math.Between(0, 127) * 2, 2, 2);
     }
 
     graphics.generateTexture("ad-bg-far", 256, 256);
@@ -60,24 +57,25 @@ export class PreloadScene extends Phaser.Scene {
     graphics.fillStyle(0x06213f);
     graphics.fillRect(0, 0, 256, 256);
 
-    for (let i = 0; i < 22; i += 1) {
-      const baseX = Phaser.Math.Between(-20, 276);
-      const baseY = Phaser.Math.Between(22, 255);
-      const bladeHeight = Phaser.Math.Between(26, 64);
-
-      graphics.fillStyle(0x0f766e, Phaser.Math.FloatBetween(0.2, 0.45));
-      graphics.fillEllipse(baseX, baseY, Phaser.Math.Between(10, 16), bladeHeight);
-      graphics.fillStyle(0x14b8a6, Phaser.Math.FloatBetween(0.08, 0.2));
-      graphics.fillEllipse(baseX + Phaser.Math.Between(-3, 3), baseY, 5, bladeHeight - 8);
+    for (let i = 0; i < 34; i += 1) {
+      const stemX = Phaser.Math.Between(2, 122) * 2;
+      const stemBaseY = Phaser.Math.Between(82, 127) * 2;
+      const stemHeight = Phaser.Math.Between(10, 28);
+      for (let y = 0; y < stemHeight; y += 1) {
+        const wobble = Math.floor(Math.sin((y + i) * 0.45) * 1);
+        graphics.fillStyle(y % 3 === 0 ? 0x14b8a6 : 0x0f766e, Phaser.Math.FloatBetween(0.3, 0.55));
+        graphics.fillRect(stemX + wobble * 2, stemBaseY - y * 2, 2, 2);
+      }
     }
 
-    for (let i = 0; i < 58; i += 1) {
+    for (let i = 0; i < 140; i += 1) {
+      graphics.fillStyle(0x0369a1, Phaser.Math.FloatBetween(0.12, 0.3));
+      graphics.fillRect(Phaser.Math.Between(0, 127) * 2, Phaser.Math.Between(0, 127) * 2, 2, 2);
+    }
+
+    for (let i = 0; i < 84; i += 1) {
       graphics.fillStyle(0xbae6fd, Phaser.Math.FloatBetween(0.1, 0.36));
-      graphics.fillCircle(
-        Phaser.Math.Between(0, 255),
-        Phaser.Math.Between(0, 255),
-        Phaser.Math.Between(2, 5),
-      );
+      graphics.fillRect(Phaser.Math.Between(0, 127) * 2, Phaser.Math.Between(0, 127) * 2, 2, 2);
     }
 
     graphics.generateTexture("ad-bg-near", 256, 256);
@@ -107,36 +105,48 @@ export class PreloadScene extends Phaser.Scene {
 
     ArrowDriftConstants.OBSTACLE.PRESET_TEXTURE_KEYS.forEach((key, index) => {
       const palette = palettes[index % palettes.length];
-      const spikeCount = 12 + ((index + 1) % 3) * 2;
-      const outerRadius = 30 + (index % 2) * 3;
-      const innerRadius = 18 + ((index + 2) % 3) * 2;
-      const points: Phaser.Geom.Point[] = [];
+      graphics.clear();
+      const cell = 4;
+      const gridSize = textureSize / cell;
+      const c = Math.floor(gridSize / 2);
 
-      for (let i = 0; i < spikeCount * 2; i += 1) {
-        const angle = (Math.PI * 2 * i) / (spikeCount * 2) + index * 0.14;
-        const radius = i % 2 === 0 ? outerRadius : innerRadius;
-        points.push(
-          new Phaser.Geom.Point(
-            center + Math.cos(angle) * radius,
-            center + Math.sin(angle) * radius,
-          ),
-        );
+      for (let gy = 0; gy < gridSize; gy += 1) {
+        for (let gx = 0; gx < gridSize; gx += 1) {
+          const dx = gx - c;
+          const dy = gy - c;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const axis = dx === 0 || dy === 0;
+          const diag = Math.abs(Math.abs(dx) - Math.abs(dy)) <= 0.6;
+          const wave = (gx + gy + index) % 3 === 0;
+
+          if (dist <= 2.7) {
+            graphics.fillStyle(palette.core, 0.96);
+            graphics.fillRect(gx * cell, gy * cell, cell, cell);
+            continue;
+          }
+
+          if (dist <= 4.2) {
+            graphics.fillStyle(palette.glow, 0.72);
+            graphics.fillRect(gx * cell, gy * cell, cell, cell);
+            continue;
+          }
+
+          if (dist <= 8.8 && (axis || diag || wave)) {
+            graphics.fillStyle(palette.spike, 0.94);
+            graphics.fillRect(gx * cell, gy * cell, cell, cell);
+            continue;
+          }
+
+          if (dist <= 9.6 && (axis || diag)) {
+            graphics.fillStyle(palette.outline, 0.9);
+            graphics.fillRect(gx * cell, gy * cell, cell, cell);
+          }
+        }
       }
 
-      graphics.clear();
-      graphics.fillStyle(palette.spike, 0.96);
-      graphics.fillPoints(points, true);
-      graphics.lineStyle(2, palette.outline, 0.55);
-      graphics.strokePoints(points, true, true);
-
-      graphics.fillStyle(palette.core, 0.95);
-      graphics.fillCircle(center, center, 15 + (index % 3));
-      graphics.fillStyle(palette.glow, 0.36);
-      graphics.fillCircle(center - 4, center - 4, 7);
-
       dotOffsets.forEach(([dx, dy], dotIndex) => {
-        graphics.fillStyle(palette.outline, dotIndex % 2 === 0 ? 0.36 : 0.2);
-        graphics.fillCircle(center + dx, center + dy, dotIndex % 2 === 0 ? 2 : 1.5);
+        graphics.fillStyle(dotIndex % 2 === 0 ? palette.outline : palette.glow, 0.75);
+        graphics.fillRect((center + dx) & ~3, (center + dy) & ~3, cell, cell);
       });
 
       graphics.generateTexture(key, textureSize, textureSize);

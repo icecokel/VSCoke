@@ -38,7 +38,40 @@
     "welcome": "Welcome to IceCokel Portfolio",
     "entertainment": "Entertainment",
     "entertainmentDesc": "게임 대시보드에서 다양한 미니게임을 확인하세요.",
-    "playGame": "시작하기"
+    "playGame": "시작하기",
+    "headline": "지금 필요한 화면으로 빠르게 이동하세요.",
+    "subheadline": "메인 페이지를 허브로 사용해서 이력서, 블로그, 게임을 한 번에 탐색할 수 있습니다.",
+    "primaryCta": "README 보기",
+    "secondaryCta": "게임 시작",
+    "quickLaunchTitle": "Quick Launch",
+    "quickLaunchDescription": "자주 사용하는 섹션으로 바로 이동합니다.",
+    "cards": {
+      "readmeTitle": "README",
+      "readmeDesc": "프로필과 경력 요약을 확인합니다.",
+      "blogTitle": "Blog",
+      "blogDesc": "개발 글과 회고를 읽습니다.",
+      "blogDashboardTitle": "Blog Dashboard",
+      "blogDashboardDesc": "게시글 목록과 검색 상태를 점검합니다.",
+      "gameTitle": "Game Center",
+      "gameDesc": "미니게임을 골라 바로 플레이합니다.",
+      "open": "열기"
+    },
+    "trustTitle": "신뢰 지표",
+    "trustDescription": "현재 리소스 기준으로 계산한 핵심 정보입니다.",
+    "trust": {
+      "experience": "총 경력",
+      "projects": "프로젝트",
+      "posts": "게시글",
+      "games": "게임",
+      "projectSuffix": "개",
+      "postSuffix": "개",
+      "gameSuffix": "종",
+      "experienceHint": "실무 경험 기준",
+      "projectsHint": "이력서 등록 항목 수",
+      "postsHint": "공개된 블로그 글 수",
+      "gamesHint": "플레이 가능한 게임 수"
+    },
+    "techTitle": "주요 기술 스택"
   },
   "profile": {
     "notOnlyCoding": "코딩만 하지 않는",

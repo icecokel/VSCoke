@@ -38,7 +38,40 @@
     "welcome": "Welcome to IceCokel Portfolio",
     "entertainment": "Entertainment",
     "entertainmentDesc": "Check out various mini-games on the Game Dashboard.",
-    "playGame": "Start"
+    "playGame": "Start",
+    "headline": "Jump to the page you need right now.",
+    "subheadline": "Use this main page as a hub to explore resume, blog, and games in one place.",
+    "primaryCta": "Open README",
+    "secondaryCta": "Start Game",
+    "quickLaunchTitle": "Quick Launch",
+    "quickLaunchDescription": "Move directly to the sections you use most.",
+    "cards": {
+      "readmeTitle": "README",
+      "readmeDesc": "Check profile and career summary.",
+      "blogTitle": "Blog",
+      "blogDesc": "Read development posts and journals.",
+      "blogDashboardTitle": "Blog Dashboard",
+      "blogDashboardDesc": "Review post list and search status.",
+      "gameTitle": "Game Center",
+      "gameDesc": "Pick a mini-game and play instantly.",
+      "open": "Open"
+    },
+    "trustTitle": "Trust Signals",
+    "trustDescription": "Key numbers calculated from currently available resources.",
+    "trust": {
+      "experience": "Experience",
+      "projects": "Projects",
+      "posts": "Posts",
+      "games": "Games",
+      "projectSuffix": "",
+      "postSuffix": "",
+      "gameSuffix": "",
+      "experienceHint": "Hands-on work history",
+      "projectsHint": "Items listed in resume data",
+      "postsHint": "Published blog post count",
+      "gamesHint": "Currently playable games"
+    },
+    "techTitle": "Core Tech Stack"
   },
   "profile": {
     "notOnlyCoding": "Not just coding,",

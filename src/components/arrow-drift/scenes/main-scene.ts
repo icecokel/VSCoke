@@ -136,11 +136,11 @@ export class MainScene extends Phaser.Scene {
     const padding = this.currentVerticalPadding;
 
     if (this.farBg) {
-      this.farBg.tilePositionY +=
+      this.farBg.tilePositionY -=
         backgroundScrollSpeed * ArrowDriftConstants.BACKGROUND_SCROLL.FAR_FACTOR;
     }
     if (this.nearBg) {
-      this.nearBg.tilePositionY +=
+      this.nearBg.tilePositionY -=
         backgroundScrollSpeed * ArrowDriftConstants.BACKGROUND_SCROLL.NEAR_FACTOR;
     }
 

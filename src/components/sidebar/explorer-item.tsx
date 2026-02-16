@@ -57,13 +57,24 @@ const ExplorerItem = ({
     }
   };
 
+  const handlePrefetchItem = () => {
+    if (url) {
+      router.prefetch(url);
+    }
+  };
+
   // Helper for leaf nodes to render with tooltip
   const renderLeaf = () => {
     return (
       <TooltipProvider delayDuration={500}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex items-center gap-x-1.5 min-w-0" onClick={handleClickItem}>
+            <div
+              className="flex items-center gap-x-1.5 min-w-0"
+              onClick={handleClickItem}
+              onMouseEnter={handlePrefetchItem}
+              onFocus={handlePrefetchItem}
+            >
               <div className="shrink-0 flex items-center justify-center size-4">
                 {convertIcon(icon)}
               </div>

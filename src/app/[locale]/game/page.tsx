@@ -2,12 +2,13 @@
 
 import { useTranslations } from "next-intl";
 import { useCustomRouter } from "@/hooks/use-custom-router";
+import { useEffect } from "react";
 
 import { ChevronRight } from "lucide-react";
 
 export default function GameDashboard() {
   const t = useTranslations("Game");
-  const router = useCustomRouter();
+  const { push, prefetch } = useCustomRouter();
 
   const games = [
     {
@@ -36,6 +37,10 @@ export default function GameDashboard() {
     },
   ];
 
+  useEffect(() => {
+    ["/game/sky-drop", "/game/fish-drift", "/doom", "/game/wordle"].forEach(path => prefetch(path));
+  }, [prefetch]);
+
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-start md:justify-center bg-slate-900 px-4 py-8 md:p-4">
       <h1 className="mb-6 md:mb-12 text-2xl md:text-5xl font-bold text-white tracking-widest uppercase glow-text">
@@ -46,7 +51,9 @@ export default function GameDashboard() {
         {games.map(game => (
           <button
             key={game.id}
-            onClick={() => router.push(game.route)}
+            onClick={() => push(game.route)}
+            onMouseEnter={() => prefetch(game.route)}
+            onFocus={() => prefetch(game.route)}
             className="group relative flex w-full md:w-64 h-24 md:h-64 flex-row md:flex-col items-center justify-between md:justify-center rounded-2xl bg-slate-800 p-4 md:p-6 transition-all duration-300 hover:bg-slate-700 hover:scale-105 border-2 border-slate-700 hover:border-green-300 text-left md:text-center"
           >
             <div className="flex flex-col md:items-center">

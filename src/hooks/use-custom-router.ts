@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useHistory } from "./use-history";
 import { useLoader } from "@/contexts/loader-context";
+import { useCallback } from "react";
 
 interface NavigateOptions {
   title?: string;
@@ -14,47 +15,62 @@ export const useCustomRouter = () => {
   const { history, setHistory, add, change, remove, current } = useHistory();
   const { startLoader } = useLoader();
 
-  const push = (path: string, options?: NavigateOptions) => {
-    const title = options?.title || path;
-    const existingItem = history.find(item => item.path === path);
+  const prefetch = useCallback(
+    (path: string) => {
+      void router.prefetch(path);
+    },
+    [router],
+  );
 
-    if (pathname === path) {
-      if (existingItem && !existingItem.isActive) {
-        change(existingItem);
-      } else if (!existingItem) {
-        add({ path, title });
+  const push = useCallback(
+    (path: string, options?: NavigateOptions) => {
+      const title = options?.title || path;
+      const existingItem = history.find(item => item.path === path);
+
+      if (pathname === path) {
+        if (existingItem && !existingItem.isActive) {
+          change(existingItem);
+        } else if (!existingItem) {
+          add({ path, title });
+        }
+        return;
       }
-      return;
-    }
 
-    startLoader();
+      // 이동 직전 prefetch를 보강해서 체감 전환 속도를 높입니다.
+      prefetch(path);
+      startLoader();
 
-    if (existingItem) {
-      change(existingItem);
-    } else {
-      add({ path, title });
-      router.push(path);
-    }
-  };
+      if (existingItem) {
+        change(existingItem);
+      } else {
+        add({ path, title });
+        router.push(path);
+      }
+    },
+    [add, change, history, pathname, prefetch, router, startLoader],
+  );
 
-  const replace = (path: string, options?: NavigateOptions) => {
-    const title = options?.title || path;
+  const replace = useCallback(
+    (path: string, options?: NavigateOptions) => {
+      const title = options?.title || path;
 
-    if (current) {
-      setHistory(prev =>
-        prev.map(item =>
-          item.path === current.path
-            ? { path, title, isActive: true, lastAccessedAt: Date.now() }
-            : { ...item, isActive: false },
-        ),
-      );
-    } else {
-      setHistory([{ path, title, isActive: true, lastAccessedAt: Date.now() }]);
-    }
-    router.replace(path);
-  };
+      if (current) {
+        setHistory(prev =>
+          prev.map(item =>
+            item.path === current.path
+              ? { path, title, isActive: true, lastAccessedAt: Date.now() }
+              : { ...item, isActive: false },
+          ),
+        );
+      } else {
+        setHistory([{ path, title, isActive: true, lastAccessedAt: Date.now() }]);
+      }
+      router.replace(path);
+    },
+    [current, router, setHistory],
+  );
 
-  const back = () => {
+  const back = useCallback(() => {
     if (current) {
       remove(current);
 
@@ -71,10 +87,11 @@ export const useCustomRouter = () => {
       }
     }
     router.back();
-  };
+  }, [current, history, remove, router, setHistory]);
 
   return {
     ...router,
+    prefetch,
     push,
     replace,
     back,

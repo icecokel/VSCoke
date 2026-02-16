@@ -2,10 +2,11 @@
 
 import { useCustomRouter } from "@/hooks/use-custom-router";
 import { useTranslations } from "next-intl";
+import { useEffect } from "react";
 
 const Home = () => {
   const t = useTranslations("home");
-  const router = useCustomRouter();
+  const { push, prefetch } = useCustomRouter();
 
   const quickLaunchCards = [
     {
@@ -34,6 +35,11 @@ const Home = () => {
     },
   ];
 
+  useEffect(() => {
+    const routesToPrefetch = ["/readme", "/game", "/blog", "/blog/dashboard"];
+    routesToPrefetch.forEach(path => prefetch(path));
+  }, [prefetch]);
+
   return (
     <div className="min-h-full bg-gray-800 text-gray-100">
       <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-6 md:space-y-10 md:px-6 md:py-10">
@@ -52,14 +58,18 @@ const Home = () => {
           <div className="mt-8 flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={() => router.push("/readme")}
+              onClick={() => push("/readme")}
+              onMouseEnter={() => prefetch("/readme")}
+              onFocus={() => prefetch("/readme")}
               className="rounded-lg border border-blue-300 bg-blue-300 px-5 py-2 text-sm font-semibold text-gray-900 transition-colors hover:bg-blue-200"
             >
               {t("primaryCta")}
             </button>
             <button
               type="button"
-              onClick={() => router.push("/game")}
+              onClick={() => push("/game")}
+              onMouseEnter={() => prefetch("/game")}
+              onFocus={() => prefetch("/game")}
               className="rounded-lg border border-gray-500 px-5 py-2 text-sm font-semibold text-gray-100 transition-colors hover:border-gray-300 hover:bg-gray-700"
             >
               {t("secondaryCta")}
@@ -78,7 +88,9 @@ const Home = () => {
               <button
                 key={card.id}
                 type="button"
-                onClick={() => router.push(card.path)}
+                onClick={() => push(card.path)}
+                onMouseEnter={() => prefetch(card.path)}
+                onFocus={() => prefetch(card.path)}
                 className="group rounded-xl border border-gray-700 bg-gray-800 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:bg-gray-750"
               >
                 <h3 className="text-lg font-semibold text-white">{card.title}</h3>

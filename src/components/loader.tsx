@@ -11,44 +11,54 @@ export const Loader = () => {
   const [visible, setVisible] = useState(false);
   const prevPathRef = useRef(pathname);
 
-  // 로더 시작 시 표시 및 애니메이션
+  // 로더 시작 시 짧은 지연 후 표시하여 빠른 전환에서 깜빡임을 줄입니다.
   useEffect(() => {
-    if (isLoading && !visible) {
-      setVisible(true);
-      setProgress(8);
-
-      // 8단계, 최대 1500ms - 처음엔 빠르게, 나중엔 천천히
-      const timers = [
-        setTimeout(() => setProgress(20), 80),
-        setTimeout(() => setProgress(35), 200),
-        setTimeout(() => setProgress(50), 380),
-        setTimeout(() => setProgress(62), 580),
-        setTimeout(() => setProgress(73), 820),
-        setTimeout(() => setProgress(82), 1080),
-        setTimeout(() => setProgress(89), 1320),
-        setTimeout(() => setProgress(94), 1500),
-      ];
-
-      return () => timers.forEach(clearTimeout);
+    if (!isLoading) {
+      setVisible(false);
+      setProgress(0);
+      return;
     }
-  }, [isLoading, visible]);
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    const showTimer = setTimeout(() => {
+      setVisible(true);
+      setProgress(14);
+
+      timers.push(
+        setTimeout(() => setProgress(30), 100),
+        setTimeout(() => setProgress(48), 220),
+        setTimeout(() => setProgress(62), 380),
+        setTimeout(() => setProgress(74), 560),
+        setTimeout(() => setProgress(83), 760),
+        setTimeout(() => setProgress(90), 980),
+      );
+    }, 120);
+
+    timers.push(showTimer);
+
+    return () => timers.forEach(clearTimeout);
+  }, [isLoading]);
 
   // 경로 변경 시 로더 완료 처리
   useEffect(() => {
-    if (prevPathRef.current !== pathname && visible) {
-      // 경로가 실제로 변경되었을 때
-      setProgress(100);
-      const timer = setTimeout(() => {
-        setVisible(false);
+    if (prevPathRef.current !== pathname && isLoading) {
+      // 표시 전 완료된 경우 즉시 종료
+      if (!visible) {
         endLoader();
-        setProgress(0);
-      }, 300);
+      } else {
+        setProgress(100);
+        const timer = setTimeout(() => {
+          endLoader();
+        }, 80);
 
-      prevPathRef.current = pathname;
-      return () => clearTimeout(timer);
+        prevPathRef.current = pathname;
+        return () => clearTimeout(timer);
+      }
     }
+
     prevPathRef.current = pathname;
-  }, [pathname, visible, endLoader]);
+  }, [pathname, visible, isLoading, endLoader]);
 
   if (!visible) return null;
 

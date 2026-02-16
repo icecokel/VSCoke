@@ -17,13 +17,13 @@ VS Code의 UI/UX를 모티브로 파일 탐색기, 메뉴바, 탭 시스템 등�
 
 ```bash
 # 설치
-npm install
+pnpm install
 
 # 개발 서버
-npm run dev
+pnpm dev
 
 # 빌드
-npm run build
+pnpm build
 ```
 
 [http://localhost:3000](http://localhost:3000)에서 확인

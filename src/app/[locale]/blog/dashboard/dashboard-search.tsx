@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import PostList from "@/components/blog/post-list";
 import BaseText from "@/components/base-ui/text";
 import { PostMeta } from "@/types/blog";
-import { debounce } from "lodash";
 import { useBoolean } from "@/hooks/use-boolean";
 
 interface DashboardSearchProps {
@@ -19,19 +18,18 @@ export default function DashboardSearch({ posts }: DashboardSearchProps) {
   const [suggestions, setSuggestions] = useState<PostMeta[]>([]);
   const dropdown = useBoolean(false);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const updateDebouncedQuery = useCallback(
-    debounce((value: string) => {
-      setDebouncedQuery(value);
-    }, 300),
-    [],
-  );
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [query]);
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setQuery(value);
     dropdown.onTrue();
-    updateDebouncedQuery(value);
   };
 
   useEffect(() => {

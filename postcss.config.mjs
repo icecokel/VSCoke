@@ -5,7 +5,6 @@
  * - @tailwindcss/postcss: Tailwind CSS v4 전용 PostCSS 플러그인
  *
  * @see https://tailwindcss.com/docs/installation/using-postcss
- * @type {import('postcss-load-config').Config}
  */
 const config = {
   plugins: {

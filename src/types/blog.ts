@@ -17,3 +17,8 @@ export interface CategoryGroup {
   category: string;
   posts: PostMeta[];
 }
+
+export interface TagSummary {
+  label: string;
+  count: number;
+}

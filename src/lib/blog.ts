@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import readingTime from "reading-time";
-import type { Post, PostMeta, CategoryGroup } from "@/types/blog";
+import type { Post, PostMeta, CategoryGroup, TagSummary } from "@/types/blog";
 
 const postsDirectory = path.join(process.cwd(), "src/posts");
 
@@ -88,13 +88,56 @@ export const getAllPosts = (includeUnpublished = false): PostMeta[] => {
   return posts;
 };
 
-export const getAllTags = (): string[] => {
+const TAG_LABEL_ALIASES: Record<string, string> = {
+  nextjs: "Next.js",
+  gamedev: "Game Dev",
+  devlog: "Dev Log",
+  opengraph: "OpenGraph",
+  webapi: "Web API",
+  nodejs: "Node.js",
+  termux: "Termux",
+  window: "Window",
+  document: "Document",
+  android: "Android",
+  debugging: "Debugging",
+};
+
+const normalizeTagKey = (tag: string): string => {
+  return tag
+    .toLowerCase()
+    .normalize("NFKC")
+    .replace(/[^a-z0-9가-힣]+/g, "");
+};
+
+export const getAllTags = (): TagSummary[] => {
   const allPosts = getAllPosts();
-  const tagSet = new Set<string>();
+  const tagMap = new Map<string, TagSummary>();
+
   allPosts.forEach(post => {
-    post.tags.forEach(tag => tagSet.add(tag));
+    post.tags.forEach(tag => {
+      const rawTag = String(tag).trim();
+      if (!rawTag) return;
+
+      const key = normalizeTagKey(rawTag);
+      if (!key) return;
+
+      const normalizedLabel = TAG_LABEL_ALIASES[key] ?? rawTag;
+      const existing = tagMap.get(key);
+      if (existing) {
+        existing.count += 1;
+        return;
+      }
+
+      tagMap.set(key, { label: normalizedLabel, count: 1 });
+    });
   });
-  return Array.from(tagSet).sort();
+
+  return Array.from(tagMap.values()).sort((a, b) => {
+    if (b.count !== a.count) {
+      return b.count - a.count;
+    }
+    return a.label.localeCompare(b.label, "ko-KR", { sensitivity: "base" });
+  });
 };
 
 export const getPostsGroupedByCategory = (): CategoryGroup[] => {

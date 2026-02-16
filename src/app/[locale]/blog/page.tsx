@@ -40,7 +40,7 @@ const BlogPage = async () => {
       {tags.length > 0 && (
         <div className="mb-6 flex flex-wrap gap-2">
           {tags.map(tag => (
-            <Chip key={tag} label={tag} />
+            <Chip key={tag.label} label={`${tag.label} (${tag.count})`} />
           ))}
         </div>
       )}

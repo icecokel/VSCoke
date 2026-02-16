@@ -11,6 +11,7 @@ import {
 import Icon from "@/components/base-ui/icon";
 import { useExplorer } from "@/hooks/use-explorer";
 import ExplorerItem from "@/components/sidebar/explorer-item";
+import SearchPanel from "@/components/sidebar/search-panel";
 import { useTranslations } from "next-intl";
 
 export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
@@ -94,14 +95,13 @@ export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
               )}
 
               {activeTab === "search" && (
-                <div className="flex flex-col px-4 py-2 h-full">
-                  <div className="text-xs font-bold text-gray-400 mb-2">
-                    {t("search").toUpperCase()}
-                  </div>
-                  <div className="mt-4 text-xs text-center text-gray-500">
-                    {t("searchDisabled")}
-                  </div>
-                </div>
+                <SearchPanel
+                  onNavigate={() => {
+                    if (isMobile) {
+                      setOpenMobile(false);
+                    }
+                  }}
+                />
               )}
             </SidebarGroup>
           </SidebarContent>

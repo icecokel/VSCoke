@@ -13,6 +13,7 @@ import { LoaderProvider } from "@/contexts/loader-context";
 import { GameProvider } from "@/contexts/game-context";
 import { Loader } from "@/components/loader";
 import { getExplorer } from "@/utils/get/explorer";
+import { getAllPosts } from "@/lib/blog";
 import { routing } from "@/i18n/routing";
 
 type Props = {
@@ -64,15 +65,15 @@ const LocaleLayout = async ({ children, params }: Props) => {
 
   setRequestLocale(locale);
 
-  const messages = await getMessages();
-  const explorer = await getExplorer();
+  const [messages, explorer] = await Promise.all([getMessages(), getExplorer()]);
+  const searchPosts = getAllPosts();
 
   return (
     <NextIntlClientProvider messages={messages}>
       <LoaderProvider>
         <HistoryProvider>
           <GameProvider>
-            <AppProvider explorer={explorer}>
+            <AppProvider explorer={explorer} searchPosts={searchPosts}>
               <Loader />
               <Toaster position="top-center" richColors />
               <div className="flex flex-col h-screen overflow-hidden">

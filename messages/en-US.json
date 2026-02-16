@@ -15,6 +15,15 @@
     "explorer": "Explorer",
     "search": "Search",
     "searchDisabled": "Search is currently disabled.",
+    "searchPlaceholder": "Search blog, profile, and games...",
+    "searchRecommended": "Recommended",
+    "searchResults": "Results",
+    "searchResultCount": "{count} results",
+    "searchNoResult": "No matching results found.",
+    "searchHint": "Press Enter to open, Esc to clear",
+    "searchTypeBlog": "Blog",
+    "searchTypeProfile": "Profile",
+    "searchTypeGame": "Game",
     "more": "... (Show More)"
   },
   "metadata": {

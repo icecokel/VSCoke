@@ -15,6 +15,15 @@
     "explorer": "탐색기",
     "search": "검색",
     "searchDisabled": "검색 기능은 현재 비활성화되어 있습니다.",
+    "searchPlaceholder": "블로그, 프로필, 게임 검색...",
+    "searchRecommended": "추천",
+    "searchResults": "검색 결과",
+    "searchResultCount": "{count}개",
+    "searchNoResult": "검색 결과가 없습니다.",
+    "searchHint": "Enter로 열기, Esc로 초기화",
+    "searchTypeBlog": "블로그",
+    "searchTypeProfile": "프로필",
+    "searchTypeGame": "게임",
     "more": "... (더 보기)"
   },
   "metadata": {

@@ -16,8 +16,8 @@ const ArrowDriftPhaserGame = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex size-full items-center justify-center bg-slate-900 text-white">
-        <p className="animate-pulse text-xl">Loading Arrow Drift...</p>
+      <div className="flex size-full items-center justify-center bg-sky-950 text-white">
+        <p className="animate-pulse text-xl">Loading Fish Drift...</p>
       </div>
     ),
   },
@@ -64,7 +64,7 @@ export default function ArrowDriftPage() {
   const handleGameOver = useCallback((score: number) => {
     setFinalScore(score);
     setGameState("game-over");
-    console.log(`[Arrow Drift] game over score: ${score}`);
+    console.log(`[Fish Drift] game over score: ${score}`);
   }, []);
 
   const handleRestart = useCallback(() => {
@@ -92,9 +92,9 @@ export default function ArrowDriftPage() {
       };
 
   return (
-    <main className="flex h-full w-full flex-col items-center justify-center bg-slate-950 p-0 sm:p-4">
+    <main className="flex h-full w-full flex-col items-center justify-center bg-sky-950 p-0 sm:p-4">
       <div
-        className={`relative overflow-hidden bg-black shadow-2xl transition-all duration-300 ${!isMobile ? "w-full rounded-xl border-0 border-slate-700 sm:border-4" : ""}`}
+        className={`relative overflow-hidden bg-sky-950 shadow-2xl transition-all duration-300 ${!isMobile ? "w-full rounded-xl border-0 border-cyan-900 sm:border-4" : ""}`}
         style={containerStyle}
       >
         {gameState === "ready" && (

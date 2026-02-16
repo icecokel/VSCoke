@@ -16,15 +16,15 @@ export class GameOverScene extends Phaser.Scene {
   }
 
   create() {
-    this.cameras.main.setBackgroundColor("#020617");
+    this.cameras.main.setBackgroundColor("#03172f");
 
     const centerX = this.scale.width / 2;
     const centerY = this.scale.height / 2;
 
     this.add
-      .text(centerX, centerY - 32, "GAME OVER", {
+      .text(centerX, centerY - 32, "SWIM OVER", {
         fontSize: "42px",
-        color: "#ffffff",
+        color: "#e0f2fe",
         fontStyle: "bold",
       })
       .setOrigin(0.5);
@@ -32,7 +32,7 @@ export class GameOverScene extends Phaser.Scene {
     this.add
       .text(centerX, centerY + 20, `Score: ${this.score}`, {
         fontSize: "30px",
-        color: "#67e8f9",
+        color: "#6ee7b7",
       })
       .setOrigin(0.5);
 

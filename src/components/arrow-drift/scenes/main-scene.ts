@@ -1,7 +1,7 @@
 import * as Phaser from "phaser";
 import { ArrowDriftConstants } from "../arrow-drift-constants";
 
-type ScoreItemVariant = (typeof ArrowDriftConstants.ITEM.STAR_VARIANTS)[number];
+type ScoreItemVariant = (typeof ArrowDriftConstants.ITEM.FISH_VARIANTS)[number];
 
 export class MainScene extends Phaser.Scene {
   private arrow: Phaser.Physics.Arcade.Image | null = null;
@@ -25,9 +25,12 @@ export class MainScene extends Phaser.Scene {
   private currentObstacleSpeed = ArrowDriftConstants.BASE_OBSTACLE_SPEED;
   private currentVerticalPadding = ArrowDriftConstants.BASE_VERTICAL_PADDING;
   private currentSpeedStep = 0;
-  private readonly trailTailOffsetRatio = 0.44;
-  private readonly trailSegmentCount = 3;
-  private readonly trailSegmentSpacing = 0.42;
+  private currentHorizontalSpeed = 0;
+  private swimWaveSeed = 0;
+  private swimKickUntil = 0;
+  private readonly trailTailOffsetRatio = 0.52;
+  private readonly trailSegmentCount = 5;
+  private readonly trailSegmentSpacing = 0.7;
   private angleTween: Phaser.Tweens.Tween | null = null;
 
   constructor() {
@@ -35,7 +38,7 @@ export class MainScene extends Phaser.Scene {
   }
 
   create() {
-    this.cameras.main.setBackgroundColor("#0b1120");
+    this.cameras.main.setBackgroundColor("#03172f");
     this.score = 0;
     this.isMovingLeft = true;
     this.isGameOver = false;
@@ -43,6 +46,8 @@ export class MainScene extends Phaser.Scene {
     this.currentObstacleSpeed = ArrowDriftConstants.BASE_OBSTACLE_SPEED;
     this.currentVerticalPadding = ArrowDriftConstants.BASE_VERTICAL_PADDING;
     this.currentSpeedStep = 0;
+    this.swimWaveSeed = Phaser.Math.FloatBetween(0, Math.PI * 2);
+    this.swimKickUntil = 0;
     this.createBackground();
     this.createBoundGuides();
     this.updateDifficulty(0);
@@ -50,15 +55,17 @@ export class MainScene extends Phaser.Scene {
     this.arrowAnchorY = this.scale.height * 0.75;
     const arrowX = this.scale.width / 2;
     const arrowY = this.arrowAnchorY;
-    this.arrow = this.physics.add.image(arrowX, arrowY, "ad-arrow");
+    this.arrow = this.physics.add.image(arrowX, arrowY, "ad-fish");
     this.arrow.setDepth(5);
     this.arrow.setCollideWorldBounds(false);
-    this.arrow.setAngle(this.isMovingLeft ? -125 : -55);
+    this.arrow.setAngle(this.isMovingLeft ? -132 : -48);
     this.arrow.body?.setSize(
       ArrowDriftConstants.ARROW_HITBOX_WIDTH,
       ArrowDriftConstants.ARROW_HITBOX_HEIGHT,
       true,
     );
+    const diagonalSpeed = ArrowDriftConstants.ARROW_SPEED / Math.sqrt(2);
+    this.currentHorizontalSpeed = this.isMovingLeft ? -diagonalSpeed : diagonalSpeed;
     this.initTrail();
 
     this.obstacles = this.physics.add.group({
@@ -96,7 +103,7 @@ export class MainScene extends Phaser.Scene {
     this.speedUpText = this.add
       .text(this.scale.width / 2, 56, "", {
         fontSize: "20px",
-        color: "#fda4af",
+        color: "#7dd3fc",
         fontStyle: "bold",
       })
       .setOrigin(0.5, 0)
@@ -125,11 +132,28 @@ export class MainScene extends Phaser.Scene {
     this.playTimeText?.setText(this.formatPlayTime(elapsedMs));
 
     const diagonalSpeed = ArrowDriftConstants.ARROW_SPEED / Math.sqrt(2);
-    const horizontalSpeed = this.isMovingLeft ? -diagonalSpeed : diagonalSpeed;
+    const targetHorizontalSpeed = this.isMovingLeft ? -diagonalSpeed : diagonalSpeed;
+    const swimKickMultiplier = this.time.now < this.swimKickUntil ? 1.18 : 1;
+    const steerLerp = Phaser.Math.Clamp(dt * 9.2, 0.06, 0.24);
+    this.currentHorizontalSpeed = Phaser.Math.Linear(
+      this.currentHorizontalSpeed,
+      targetHorizontalSpeed * swimKickMultiplier,
+      steerLerp,
+    );
     const backgroundScrollSpeed = this.currentObstacleSpeed * dt;
 
-    this.arrow.x += horizontalSpeed * dt;
-    this.arrow.y = this.arrowAnchorY;
+    const swimBodyWave = Math.sin(time * 0.009 + this.swimWaveSeed) * 6.8;
+    const swimTailWave = Math.sin(time * 0.024 + this.swimWaveSeed * 1.7) * 2.2;
+    this.arrow.x += this.currentHorizontalSpeed * dt;
+    this.arrow.y = this.arrowAnchorY + swimBodyWave + swimTailWave;
+    const bodyScaleWave = Math.sin(time * 0.022 + this.swimWaveSeed);
+    this.arrow.setScale(1 + bodyScaleWave * 0.03, 1 - bodyScaleWave * 0.026);
+
+    if (!this.angleTween) {
+      const baseAngle = this.isMovingLeft ? -132 : -48;
+      const wobbleAngle = Math.sin(time * 0.02 + this.swimWaveSeed * 0.65) * 4.2;
+      this.arrow.setAngle(baseAngle + wobbleAngle);
+    }
     this.updateTrail(time);
 
     const width = this.scale.width;
@@ -154,7 +178,22 @@ export class MainScene extends Phaser.Scene {
       if (!obstacle.active) return true;
       const speedFactorRaw = Number(obstacle.getData("speedFactor"));
       const speedFactor = Number.isFinite(speedFactorRaw) ? speedFactorRaw : 1;
+      const driftPhaseRaw = Number(obstacle.getData("driftPhase"));
+      const driftPhase = Number.isFinite(driftPhaseRaw) ? driftPhaseRaw : 0;
+      const driftStrengthRaw = Number(obstacle.getData("driftStrength"));
+      const driftStrength = Number.isFinite(driftStrengthRaw) ? driftStrengthRaw : 0;
+      const spinSpeedRaw = Number(obstacle.getData("spinSpeed"));
+      const spinSpeed = Number.isFinite(spinSpeedRaw) ? spinSpeedRaw : 0;
       obstacle.setVelocityY(this.currentObstacleSpeed * speedFactor);
+      obstacle.angle += spinSpeed * dt;
+
+      const driftX = Math.sin(time * 0.0052 + driftPhase) * driftStrength;
+      const halfWidth = obstacle.displayWidth / 2;
+      const minX = this.currentVerticalPadding + halfWidth;
+      const maxX = this.scale.width - this.currentVerticalPadding - halfWidth;
+      if (maxX > minX) {
+        obstacle.x = Phaser.Math.Clamp(obstacle.x + driftX * dt, minX, maxX);
+      }
 
       const alreadyPassed = Boolean(obstacle.getData("passed"));
       if (!alreadyPassed && obstacle.y - obstacle.displayHeight / 2 > this.arrow!.y) {
@@ -177,11 +216,15 @@ export class MainScene extends Phaser.Scene {
 
       const speedFactorRaw = Number(scoreItem.getData("speedFactor"));
       const speedFactor = Number.isFinite(speedFactorRaw) ? speedFactorRaw : 1;
-      const spinSpeedRaw = Number(scoreItem.getData("spinSpeed"));
-      const spinSpeed = Number.isFinite(spinSpeedRaw) ? spinSpeedRaw : 0;
+      const swimPhaseRaw = Number(scoreItem.getData("swimPhase"));
+      const swimPhase = Number.isFinite(swimPhaseRaw) ? swimPhaseRaw : 0;
 
       scoreItem.setVelocityY(this.currentObstacleSpeed * speedFactor);
-      scoreItem.angle += spinSpeed * dt;
+      scoreItem.setAngle(Math.sin(time * 0.013 + swimPhase) * 13);
+      scoreItem.setScale(
+        scoreItem.scaleX,
+        1 + Math.sin(time * 0.02 + swimPhase + Math.PI / 4) * 0.06,
+      );
 
       if (scoreItem.y > this.scale.height + scoreItem.displayHeight) {
         scoreItem.destroy();
@@ -223,9 +266,13 @@ export class MainScene extends Phaser.Scene {
     for (let i = 1; i < this.trailNodes.length; i += 1) {
       const prev = this.trailNodes[i - 1];
       const current = this.trailNodes[i];
-      const follow = Math.max(0.08, 0.39 - i * 0.018);
-      const lagDistance = 1.15 + i * 0.12;
-      const swayAmount = Math.sin(time * 0.016 + i * 0.76) * 0.3 * (1 - i / this.trailNodes.length);
+      const kickFactor = this.time.now < this.swimKickUntil ? 1.2 : 1;
+      const follow = Math.max(0.08, 0.34 - i * 0.024);
+      const lagDistance = (1.9 + i * 0.42) * kickFactor;
+      const swayAmount =
+        Math.sin(time * 0.02 + i * 0.9 + this.swimWaveSeed) *
+        0.52 *
+        (1 - i / this.trailNodes.length);
       const targetX = prev.x - forward.x * lagDistance + perpendicular.x * swayAmount;
       const targetY = prev.y - forward.y * lagDistance + perpendicular.y * swayAmount;
 
@@ -256,23 +303,33 @@ export class MainScene extends Phaser.Scene {
     if (!this.trailGraphics || this.trailNodes.length < 2) return;
 
     this.trailGraphics.clear();
-    const glowColor = ArrowDriftConstants.ARROW_TRAIL_COLOR;
-    this.trailGraphics.fillStyle(glowColor, 0.72);
-    this.trailGraphics.fillCircle(this.trailNodes[0].x, this.trailNodes[0].y, 6.6);
+    const wakeColor = ArrowDriftConstants.FISH_WAKE_COLOR;
+    this.trailGraphics.fillStyle(wakeColor, 0.26);
+    this.trailGraphics.fillCircle(this.trailNodes[0].x, this.trailNodes[0].y, 4.8);
 
     for (let i = 0; i < this.trailNodes.length - 1; i += 1) {
       const a = this.trailNodes[i];
       const b = this.trailNodes[i + 1];
       const t = i / (this.trailNodes.length - 1);
-      const width = (1 - t) * 10.5 + 4.8;
-      const alpha = (1 - t) * 0.62 + 0.18;
-      const jitter = Math.sin(time * 0.017 + i * 0.7) * 0.045;
+      const width = (1 - t) * 6.8 + 2.6;
+      const alpha = (1 - t) * 0.34 + 0.12;
+      const jitterX = Math.cos(time * 0.014 + i * 0.8) * 0.22;
+      const jitterY = Math.sin(time * 0.018 + i * 0.7) * 0.3;
 
-      this.trailGraphics.lineStyle(width, glowColor, alpha);
+      this.trailGraphics.lineStyle(width, wakeColor, alpha);
       this.trailGraphics.beginPath();
       this.trailGraphics.moveTo(a.x, a.y);
-      this.trailGraphics.lineTo(b.x, b.y + jitter);
+      this.trailGraphics.lineTo(b.x + jitterX, b.y + jitterY);
       this.trailGraphics.strokePath();
+
+      const bubbleRadius = (1 - t) * 2.2 + 1;
+      const bubbleAlpha = (1 - t) * 0.2 + 0.08;
+      this.trailGraphics.fillStyle(0xe0f2fe, bubbleAlpha);
+      this.trailGraphics.fillCircle(
+        b.x + Math.sin(time * 0.01 + i * 0.9),
+        b.y + Math.cos(time * 0.01 + i * 0.6),
+        bubbleRadius,
+      );
     }
   }
 
@@ -291,12 +348,12 @@ export class MainScene extends Phaser.Scene {
 
   private createBoundGuides() {
     this.topBoundLine = this.add
-      .rectangle(0, 0, 3, this.scale.height, 0xf43f5e, 0.8)
+      .rectangle(0, 0, 3, this.scale.height, 0x38bdf8, 0.6)
       .setOrigin(0.5, 0)
       .setDepth(9);
 
     this.bottomBoundLine = this.add
-      .rectangle(this.scale.width, 0, 3, this.scale.height, 0xf43f5e, 0.8)
+      .rectangle(this.scale.width, 0, 3, this.scale.height, 0x38bdf8, 0.6)
       .setOrigin(0.5, 0)
       .setDepth(9);
   }
@@ -346,7 +403,7 @@ export class MainScene extends Phaser.Scene {
 
     const speedRatio = nextObstacleSpeed / ArrowDriftConstants.BASE_OBSTACLE_SPEED;
     this.speedUpText
-      .setText(`속도 상승 x${speedRatio.toFixed(2)}`)
+      .setText(`해류 가속 x${speedRatio.toFixed(2)}`)
       .setPosition(this.scale.width / 2, 56)
       .setScale(0.9)
       .setAlpha(1);
@@ -375,9 +432,9 @@ export class MainScene extends Phaser.Scene {
     const gainText = this.add
       .text(baseX, baseY, `+${gainedScore}`, {
         fontSize: "20px",
-        color: "#fef08a",
+        color: "#bae6fd",
         fontStyle: "bold",
-        stroke: "#713f12",
+        stroke: "#0c4a6e",
         strokeThickness: 3,
       })
       .setOrigin(0.5, 0.5)
@@ -413,16 +470,25 @@ export class MainScene extends Phaser.Scene {
   private toggleDirection() {
     if (this.isGameOver || !this.arrow) return;
     this.isMovingLeft = !this.isMovingLeft;
-    const targetAngle = this.isMovingLeft ? -125 : -55;
+    const targetAngle = this.isMovingLeft ? -132 : -48;
+    this.swimKickUntil = this.time.now + 260;
     this.angleTween?.stop();
     this.angleTween = this.tweens.add({
       targets: this.arrow,
       angle: targetAngle,
-      duration: 140,
-      ease: "Sine.InOut",
+      duration: 210,
+      ease: "Sine.Out",
       onComplete: () => {
         this.angleTween = null;
       },
+    });
+    this.tweens.add({
+      targets: this.arrow,
+      scaleX: 1.08,
+      scaleY: 0.9,
+      duration: 120,
+      yoyo: true,
+      ease: "Sine.Out",
     });
   }
 
@@ -555,6 +621,8 @@ export class MainScene extends Phaser.Scene {
       ArrowDriftConstants.OBSTACLE.SPEED_FACTOR_MIN,
       ArrowDriftConstants.OBSTACLE.SPEED_FACTOR_MAX,
     );
+    const driftStrength = Phaser.Math.FloatBetween(16, 34);
+    const spinSpeed = Phaser.Math.FloatBetween(-34, 34);
 
     const obstacle = this.obstacles.create(
       this.scale.width / 2,
@@ -579,6 +647,9 @@ export class MainScene extends Phaser.Scene {
     obstacle.setAngle(Phaser.Math.Between(0, 359));
     obstacle.setVelocityY(this.currentObstacleSpeed * speedFactor);
     obstacle.setData("speedFactor", speedFactor);
+    obstacle.setData("driftPhase", Phaser.Math.FloatBetween(0, Math.PI * 2));
+    obstacle.setData("driftStrength", driftStrength);
+    obstacle.setData("spinSpeed", spinSpeed);
     obstacle.setData("passed", false);
     const coreHitboxSize =
       Math.min(obstacle.displayWidth, obstacle.displayHeight) *
@@ -598,10 +669,7 @@ export class MainScene extends Phaser.Scene {
       ArrowDriftConstants.ITEM.SPEED_FACTOR_MIN,
       ArrowDriftConstants.ITEM.SPEED_FACTOR_MAX,
     );
-    const spinSpeed = Phaser.Math.FloatBetween(
-      ArrowDriftConstants.ITEM.SPIN_SPEED_MIN,
-      ArrowDriftConstants.ITEM.SPIN_SPEED_MAX,
-    );
+    const swimPhase = Phaser.Math.FloatBetween(0, Math.PI * 2);
     const scoreItem = this.scoreItems.create(
       this.scale.width / 2,
       -ArrowDriftConstants.ITEM.SPAWN_SIDE_OFFSET,
@@ -621,9 +689,10 @@ export class MainScene extends Phaser.Scene {
     scoreItem.setX(Phaser.Math.Clamp(targetX ?? randomX, safeMinX, safeMaxX));
 
     scoreItem.setDepth(7);
+    scoreItem.setFlipX(Math.random() < 0.5);
     scoreItem.setVelocityY(this.currentObstacleSpeed * speedFactor);
     scoreItem.setData("speedFactor", speedFactor);
-    scoreItem.setData("spinSpeed", spinSpeed);
+    scoreItem.setData("swimPhase", swimPhase);
     scoreItem.setData("gainedScore", variant.score);
     scoreItem.setData("collected", false);
     const coreHitboxSize =
@@ -674,11 +743,11 @@ export class MainScene extends Phaser.Scene {
   }
 
   private pickScoreItemVariant(): ScoreItemVariant {
-    const variants = ArrowDriftConstants.ITEM.STAR_VARIANTS;
+    const variants = ArrowDriftConstants.ITEM.FISH_VARIANTS;
     if (variants.length === 0) {
       return {
-        key: "ad-item-score-gold",
-        assetPath: "/images/game/arrow-drift/score-star.svg",
+        key: "ad-item-fish-gold",
+        assetPath: "/images/game/arrow-drift/score-fish-gold.svg",
         score: ArrowDriftConstants.ITEM.DEFAULT_SCORE,
         weight: 1,
       };
@@ -730,12 +799,12 @@ export class MainScene extends Phaser.Scene {
       return true;
     });
 
-    this.playArrowExplosion(() => {
+    this.playFishImpactEffect(() => {
       this.scene.start("GameOverScene", { score: this.score });
     });
   }
 
-  private playArrowExplosion(onComplete: () => void) {
+  private playFishImpactEffect(onComplete: () => void) {
     if (!this.arrow) {
       onComplete();
       return;
@@ -747,113 +816,96 @@ export class MainScene extends Phaser.Scene {
     this.trailGraphics?.clear();
     this.arrow.setVisible(false);
 
-    const flash = this.add.circle(originX, originY, 14, 0xffffff, 0.95).setDepth(15);
+    const flash = this.add.circle(originX, originY, 12, 0xe0f2fe, 0.8).setDepth(15);
     this.tweens.add({
       targets: flash,
-      scaleX: 5.8,
-      scaleY: 5.8,
+      scaleX: 4.4,
+      scaleY: 4.4,
       alpha: 0,
-      duration: 520,
+      duration: 420,
       ease: "Cubic.Out",
       onComplete: () => flash.destroy(),
     });
 
-    const blastRing = this.add.circle(originX, originY, 18, 0xffffff, 0).setDepth(14);
-    blastRing.setStrokeStyle(3, 0xff9aa6, 0.9);
+    const outerRipple = this.add.circle(originX, originY, 16, 0xffffff, 0).setDepth(14);
+    outerRipple.setStrokeStyle(3, 0x7dd3fc, 0.76);
     this.tweens.add({
-      targets: blastRing,
-      scaleX: 6.4,
-      scaleY: 6.4,
+      targets: outerRipple,
+      scaleX: 5.8,
+      scaleY: 5.8,
       alpha: 0,
-      duration: 780,
+      duration: 760,
       ease: "Quart.Out",
-      onComplete: () => blastRing.destroy(),
+      onComplete: () => outerRipple.destroy(),
     });
 
-    const shardCount = 32;
-    for (let i = 0; i < shardCount; i += 1) {
-      const shard = this.add
-        .rectangle(
-          originX,
-          originY,
-          Phaser.Math.Between(7, 16),
-          Phaser.Math.Between(3, 6),
-          i % 4 === 0 ? 0xffd7dc : ArrowDriftConstants.ARROW_COLOR,
-          0.95,
-        )
-        .setDepth(15);
-      const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-      const distance = Phaser.Math.Between(56, 170);
-      const targetX = originX + Math.cos(angle) * distance;
-      const targetY = originY + Math.sin(angle) * distance;
+    const innerRipple = this.add.circle(originX, originY, 10, 0xffffff, 0).setDepth(14);
+    innerRipple.setStrokeStyle(2, ArrowDriftConstants.FISH_COLOR, 0.58);
+    this.tweens.add({
+      targets: innerRipple,
+      scaleX: 4.1,
+      scaleY: 4.1,
+      alpha: 0,
+      duration: 620,
+      ease: "Sine.Out",
+      onComplete: () => innerRipple.destroy(),
+    });
 
-      shard.setRotation(angle);
-      this.tweens.add({
-        targets: shard,
-        x: targetX,
-        y: targetY,
-        alpha: 0,
-        scaleX: 0.25,
-        scaleY: 0.25,
-        duration: Phaser.Math.Between(520, 860),
-        ease: "Cubic.Out",
-        onComplete: () => shard.destroy(),
-      });
-    }
-
-    const sparkCount = 24;
-    for (let i = 0; i < sparkCount; i += 1) {
-      const spark = this.add
+    const bubbleCount = 38;
+    for (let i = 0; i < bubbleCount; i += 1) {
+      const bubble = this.add
         .circle(
           originX,
           originY,
-          Phaser.Math.FloatBetween(1.6, 3.2),
-          i % 2 === 0 ? 0xffffff : 0xff9aa6,
-          0.9,
+          Phaser.Math.FloatBetween(1.4, 3.4),
+          i % 3 === 0 ? 0xe0f2fe : 0x7dd3fc,
+          0.92,
         )
         .setDepth(15);
       const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-      const distance = Phaser.Math.Between(52, 148);
+      const distance = Phaser.Math.Between(26, 132);
       this.tweens.add({
-        targets: spark,
+        targets: bubble,
         x: originX + Math.cos(angle) * distance,
-        y: originY + Math.sin(angle) * distance,
+        y: originY + Math.sin(angle) * distance - Phaser.Math.Between(8, 42),
         alpha: 0,
-        duration: Phaser.Math.Between(420, 760),
+        scaleX: Phaser.Math.FloatBetween(0.7, 1.4),
+        scaleY: Phaser.Math.FloatBetween(0.7, 1.4),
+        duration: Phaser.Math.Between(380, 760),
         ease: "Sine.Out",
-        onComplete: () => spark.destroy(),
+        onComplete: () => bubble.destroy(),
       });
     }
 
-    this.time.delayedCall(900, onComplete);
+    this.time.delayedCall(760, onComplete);
   }
 
   private playScoreItemCollectEffect(originX: number, originY: number) {
-    const pulse = this.add.circle(originX, originY, 8, 0xfef08a, 0.86).setDepth(13);
+    const pulse = this.add.circle(originX, originY, 8, 0x5eead4, 0.82).setDepth(13);
     this.tweens.add({
       targets: pulse,
-      scaleX: 3.2,
-      scaleY: 3.2,
+      scaleX: 3.4,
+      scaleY: 3.4,
       alpha: 0,
-      duration: 280,
+      duration: 300,
       ease: "Cubic.Out",
       onComplete: () => pulse.destroy(),
     });
 
-    for (let i = 0; i < 8; i += 1) {
-      const spark = this.add
-        .circle(originX, originY, Phaser.Math.FloatBetween(1.4, 2.8), 0xfef9c3, 0.92)
+    for (let i = 0; i < 10; i += 1) {
+      const bubble = this.add
+        .circle(originX, originY, Phaser.Math.FloatBetween(1.2, 2.8), 0xe0f2fe, 0.92)
         .setDepth(13);
       const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-      const distance = Phaser.Math.Between(18, 42);
+      const distance = Phaser.Math.Between(20, 46);
       this.tweens.add({
-        targets: spark,
+        targets: bubble,
         x: originX + Math.cos(angle) * distance,
-        y: originY + Math.sin(angle) * distance,
+        y: originY + Math.sin(angle) * distance - Phaser.Math.Between(4, 16),
         alpha: 0,
-        duration: Phaser.Math.Between(220, 420),
+        duration: Phaser.Math.Between(220, 460),
         ease: "Sine.Out",
-        onComplete: () => spark.destroy(),
+        onComplete: () => bubble.destroy(),
       });
     }
   }

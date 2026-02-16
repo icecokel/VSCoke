@@ -10,200 +10,133 @@ export class PreloadScene extends Phaser.Scene {
     this.load.on("progress", (value: number) => {
       this.game.events.emit("game:progress", value);
     });
-    this.load.svg("ad-arrow", "/images/game/arrow-drift/player-ship.svg");
-    ArrowDriftConstants.ITEM.STAR_VARIANTS.forEach(variant => {
+
+    this.load.svg("ad-fish", "/images/game/arrow-drift/player-fish.svg");
+    ArrowDriftConstants.ITEM.FISH_VARIANTS.forEach(variant => {
       this.load.svg(variant.key, variant.assetPath);
     });
 
     const graphics = this.make.graphics({ x: 0, y: 0 }, false);
-
-    graphics.fillStyle(0x020617);
-    graphics.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 90; i += 1) {
-      graphics.fillStyle(0xffffff, Phaser.Math.FloatBetween(0.15, 0.65));
-      graphics.fillCircle(
-        Phaser.Math.Between(0, 255),
-        Phaser.Math.Between(0, 255),
-        Phaser.Math.Between(1, 2),
-      );
-    }
-    graphics.generateTexture("ad-bg-far", 256, 256);
-
-    graphics.clear();
-    graphics.fillStyle(0x0f172a);
-    graphics.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 45; i += 1) {
-      graphics.fillStyle(0x67e8f9, Phaser.Math.FloatBetween(0.08, 0.28));
-      graphics.fillCircle(
-        Phaser.Math.Between(0, 255),
-        Phaser.Math.Between(0, 255),
-        Phaser.Math.Between(2, 6),
-      );
-    }
-    graphics.generateTexture("ad-bg-near", 256, 256);
-
-    this.createAsteroidPresets(graphics);
-
+    this.createBackgroundTextures(graphics);
+    this.createSeaHazardPresets(graphics);
     graphics.destroy();
   }
 
-  private createAsteroidPresets(graphics: Phaser.GameObjects.Graphics) {
-    const presets = [
-      {
-        color: 0x8d6e63,
-        shade: 0x4e342e,
-        points: [
-          [16, 48],
-          [24, 24],
-          [44, 14],
-          [69, 18],
-          [82, 36],
-          [79, 62],
-          [60, 82],
-          [35, 80],
-          [20, 66],
-        ],
-        craters: [
-          [36, 38, 8],
-          [60, 56, 6],
-        ],
-      },
-      {
-        color: 0xa1887f,
-        shade: 0x5d4037,
-        points: [
-          [14, 44],
-          [30, 20],
-          [52, 12],
-          [74, 20],
-          [84, 44],
-          [78, 70],
-          [57, 83],
-          [33, 78],
-          [18, 62],
-        ],
-        craters: [
-          [44, 32, 7],
-          [58, 62, 5],
-        ],
-      },
-      {
-        color: 0x6d4c41,
-        shade: 0x3e2723,
-        points: [
-          [20, 50],
-          [25, 28],
-          [43, 16],
-          [63, 17],
-          [80, 31],
-          [82, 52],
-          [71, 72],
-          [47, 84],
-          [28, 77],
-          [17, 63],
-        ],
-        craters: [
-          [33, 55, 6],
-          [60, 39, 8],
-        ],
-      },
-      {
-        color: 0x8d6e63,
-        shade: 0x4e342e,
-        points: [
-          [13, 52],
-          [19, 31],
-          [39, 17],
-          [61, 15],
-          [78, 23],
-          [86, 43],
-          [80, 66],
-          [64, 82],
-          [42, 84],
-          [23, 73],
-        ],
-        craters: [
-          [49, 36, 7],
-          [31, 63, 6],
-        ],
-      },
-      {
-        color: 0x795548,
-        shade: 0x3e2723,
-        points: [
-          [18, 40],
-          [33, 18],
-          [57, 12],
-          [74, 25],
-          [84, 46],
-          [76, 71],
-          [50, 83],
-          [30, 79],
-          [16, 61],
-        ],
-        craters: [
-          [42, 47, 9],
-          [63, 55, 5],
-        ],
-      },
-      {
-        color: 0x9c7b6c,
-        shade: 0x5d4037,
-        points: [
-          [12, 47],
-          [20, 27],
-          [36, 14],
-          [58, 14],
-          [77, 28],
-          [84, 49],
-          [77, 72],
-          [56, 84],
-          [33, 80],
-          [17, 66],
-        ],
-        craters: [
-          [29, 42, 6],
-          [54, 60, 8],
-        ],
-      },
-      {
-        color: 0x7b5e57,
-        shade: 0x3e2723,
-        points: [
-          [15, 52],
-          [23, 29],
-          [42, 16],
-          [68, 17],
-          [82, 36],
-          [81, 60],
-          [66, 79],
-          [40, 84],
-          [22, 72],
-        ],
-        craters: [
-          [37, 33, 7],
-          [60, 50, 6],
-        ],
-      },
+  private createBackgroundTextures(graphics: Phaser.GameObjects.Graphics) {
+    graphics.clear();
+    graphics.fillStyle(0x03132b);
+    graphics.fillRect(0, 0, 256, 256);
+
+    for (let i = 0; i < 24; i += 1) {
+      graphics.fillStyle(0x0f4c81, Phaser.Math.FloatBetween(0.08, 0.2));
+      graphics.fillCircle(
+        Phaser.Math.Between(-30, 286),
+        Phaser.Math.Between(-20, 276),
+        Phaser.Math.Between(18, 56),
+      );
+    }
+
+    for (let i = 0; i < 90; i += 1) {
+      graphics.fillStyle(0x67e8f9, Phaser.Math.FloatBetween(0.07, 0.24));
+      graphics.fillCircle(
+        Phaser.Math.Between(0, 255),
+        Phaser.Math.Between(0, 255),
+        Phaser.Math.Between(1, 3),
+      );
+    }
+
+    for (let i = 0; i < 7; i += 1) {
+      const startX = Phaser.Math.Between(12, 244);
+      graphics.lineStyle(2, 0xe0f2fe, Phaser.Math.FloatBetween(0.07, 0.16));
+      graphics.beginPath();
+      graphics.moveTo(startX, -10);
+      graphics.lineTo(startX + Phaser.Math.Between(-22, 22), 266);
+      graphics.strokePath();
+    }
+
+    graphics.generateTexture("ad-bg-far", 256, 256);
+
+    graphics.clear();
+    graphics.fillStyle(0x06213f);
+    graphics.fillRect(0, 0, 256, 256);
+
+    for (let i = 0; i < 22; i += 1) {
+      const baseX = Phaser.Math.Between(-20, 276);
+      const baseY = Phaser.Math.Between(22, 255);
+      const bladeHeight = Phaser.Math.Between(26, 64);
+
+      graphics.fillStyle(0x0f766e, Phaser.Math.FloatBetween(0.2, 0.45));
+      graphics.fillEllipse(baseX, baseY, Phaser.Math.Between(10, 16), bladeHeight);
+      graphics.fillStyle(0x14b8a6, Phaser.Math.FloatBetween(0.08, 0.2));
+      graphics.fillEllipse(baseX + Phaser.Math.Between(-3, 3), baseY, 5, bladeHeight - 8);
+    }
+
+    for (let i = 0; i < 58; i += 1) {
+      graphics.fillStyle(0xbae6fd, Phaser.Math.FloatBetween(0.1, 0.36));
+      graphics.fillCircle(
+        Phaser.Math.Between(0, 255),
+        Phaser.Math.Between(0, 255),
+        Phaser.Math.Between(2, 5),
+      );
+    }
+
+    graphics.generateTexture("ad-bg-near", 256, 256);
+  }
+
+  private createSeaHazardPresets(graphics: Phaser.GameObjects.Graphics) {
+    const palettes = [
+      { spike: 0x0f766e, core: 0x2dd4bf, outline: 0x134e4a, glow: 0x99f6e4 },
+      { spike: 0x115e59, core: 0x14b8a6, outline: 0x042f2e, glow: 0xccfbf1 },
+      { spike: 0x0e7490, core: 0x22d3ee, outline: 0x164e63, glow: 0xcffafe },
+      { spike: 0x0f766e, core: 0x5eead4, outline: 0x134e4a, glow: 0xf0fdfa },
+      { spike: 0x1d4ed8, core: 0x38bdf8, outline: 0x1e3a8a, glow: 0xbfdbfe },
+      { spike: 0x164e63, core: 0x67e8f9, outline: 0x082f49, glow: 0xe0f2fe },
+      { spike: 0x155e75, core: 0x22d3ee, outline: 0x083344, glow: 0xa5f3fc },
+    ];
+
+    const dotOffsets: Array<[number, number]> = [
+      [-10, -4],
+      [8, -9],
+      [12, 6],
+      [-6, 11],
+      [0, 0],
     ];
 
     const textureSize = ArrowDriftConstants.OBSTACLE.TEXTURE_SIZE;
+    const center = textureSize / 2;
 
     ArrowDriftConstants.OBSTACLE.PRESET_TEXTURE_KEYS.forEach((key, index) => {
-      const preset = presets[index % presets.length];
-      const points = preset.points.map(([x, y]) => new Phaser.Geom.Point(x, y));
+      const palette = palettes[index % palettes.length];
+      const spikeCount = 12 + ((index + 1) % 3) * 2;
+      const outerRadius = 30 + (index % 2) * 3;
+      const innerRadius = 18 + ((index + 2) % 3) * 2;
+      const points: Phaser.Geom.Point[] = [];
+
+      for (let i = 0; i < spikeCount * 2; i += 1) {
+        const angle = (Math.PI * 2 * i) / (spikeCount * 2) + index * 0.14;
+        const radius = i % 2 === 0 ? outerRadius : innerRadius;
+        points.push(
+          new Phaser.Geom.Point(
+            center + Math.cos(angle) * radius,
+            center + Math.sin(angle) * radius,
+          ),
+        );
+      }
 
       graphics.clear();
-      graphics.fillStyle(preset.color);
+      graphics.fillStyle(palette.spike, 0.96);
       graphics.fillPoints(points, true);
-      graphics.lineStyle(2, preset.shade, 0.45);
+      graphics.lineStyle(2, palette.outline, 0.55);
       graphics.strokePoints(points, true, true);
 
-      preset.craters.forEach(([x, y, radius]) => {
-        graphics.fillStyle(preset.shade, 0.34);
-        graphics.fillCircle(x, y, radius);
-        graphics.lineStyle(1, preset.shade, 0.25);
-        graphics.strokeCircle(x, y, radius);
+      graphics.fillStyle(palette.core, 0.95);
+      graphics.fillCircle(center, center, 15 + (index % 3));
+      graphics.fillStyle(palette.glow, 0.36);
+      graphics.fillCircle(center - 4, center - 4, 7);
+
+      dotOffsets.forEach(([dx, dy], dotIndex) => {
+        graphics.fillStyle(palette.outline, dotIndex % 2 === 0 ? 0.36 : 0.2);
+        graphics.fillCircle(center + dx, center + dy, dotIndex % 2 === 0 ? 2 : 1.5);
       });
 
       graphics.generateTexture(key, textureSize, textureSize);

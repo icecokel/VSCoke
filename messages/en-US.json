@@ -71,7 +71,7 @@
     "goBack": "Go Back",
     "exit": "Exit Game",
     "skyDropDesc": "A puzzle game where you match falling blocks to score points.",
-    "arrowDriftDesc": "A one-touch arrow-flight game where you dodge obstacles by toggling 45-degree angles.",
+    "arrowDriftDesc": "A one-touch swim runner where you dodge sea hazards and collect fish schools.",
     "time": "Time: ",
     "share": "Show Off",
     "saveImage": "Save Image",
@@ -124,7 +124,7 @@
     "copied": "Link copied!",
     "shareFail": "Failed to share. Please try again.",
     "wordleText": "Try VSCoke Wordle!",
-    "arrowDriftText": "Try VSCoke Arrow Drift! My score is {score}."
+    "arrowDriftText": "Try VSCoke Fish Drift! My score is {score}."
   },
   "Doom": {
     "title": "DOOM",

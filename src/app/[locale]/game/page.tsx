@@ -18,7 +18,7 @@ export default function GameDashboard() {
     },
     {
       id: "arrow-drift",
-      title: "Arrow Drift",
+      title: "Fish Drift",
       description: t("arrowDriftDesc"),
       route: "/game/arrow-drift",
     },

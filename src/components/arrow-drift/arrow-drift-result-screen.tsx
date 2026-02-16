@@ -15,9 +15,9 @@ export const ArrowDriftResultScreen = ({ score, onRestart }: ArrowDriftResultScr
   const tShare = useTranslations("Share");
 
   return (
-    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 p-6 text-white backdrop-blur-sm">
-      <h2 className="mb-4 text-5xl font-extrabold tracking-wide text-rose-300">GAME OVER</h2>
-      <p className="mb-10 text-4xl font-black text-cyan-300">{score}</p>
+    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-sky-950/85 p-6 text-white backdrop-blur-sm">
+      <h2 className="mb-4 text-5xl font-extrabold tracking-wide text-cyan-100">SWIM OVER</h2>
+      <p className="mb-10 text-4xl font-black text-emerald-300">{score}</p>
 
       <div className="flex w-full max-w-xs flex-col gap-3">
         <ShareLinkButton
@@ -30,7 +30,7 @@ export const ArrowDriftResultScreen = ({ score, onRestart }: ArrowDriftResultScr
 
         <Button
           onClick={onRestart}
-          className="rounded-full bg-cyan-300 py-6 text-lg font-bold text-slate-900 hover:bg-cyan-200"
+          className="rounded-full bg-emerald-300 py-6 text-lg font-bold text-slate-900 hover:bg-emerald-200"
         >
           다시 시작
         </Button>

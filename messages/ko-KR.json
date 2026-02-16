@@ -71,7 +71,7 @@
     "goBack": "뒤로 가기",
     "exit": "나가기",
     "skyDropDesc": "떨어지는 블록을 맞춰 점수를 획득하는 퍼즐 게임입니다.",
-    "arrowDriftDesc": "원터치 좌우 유영으로 해저 장애물을 피하고 물고기 무리를 모으는 게임입니다.",
+    "fishDriftDesc": "원터치 좌우 유영으로 해저 장애물을 피하고 물고기 무리를 모으는 게임입니다.",
     "time": "시간: ",
     "share": "자랑하기",
     "saveImage": "이미지 저장",
@@ -124,7 +124,7 @@
     "copied": "링크가 복사되었습니다!",
     "shareFail": "공유에 실패했습니다. 다시 시도해주세요.",
     "wordleText": "VSCoke Wordle에 도전해보세요!",
-    "arrowDriftText": "VSCoke Fish Drift에 도전해보세요! 제 점수는 {score}점입니다."
+    "fishDriftText": "VSCoke Fish Drift에 도전해보세요! 제 점수는 {score}점입니다."
   },
   "Doom": {
     "title": "둠",

@@ -4,17 +4,17 @@ import { Button } from "@/components/ui/button";
 import { useCustomRouter } from "@/hooks/use-custom-router";
 import { useTranslations } from "next-intl";
 
-interface ArrowDriftReadyScreenProps {
+interface FishDriftReadyScreenProps {
   onStart: () => void;
   isStartEnabled: boolean;
   isMobile: boolean;
 }
 
-export const ArrowDriftReadyScreen = ({
+export const FishDriftReadyScreen = ({
   onStart,
   isStartEnabled,
   isMobile,
-}: ArrowDriftReadyScreenProps) => {
+}: FishDriftReadyScreenProps) => {
   const t = useTranslations("Game");
   const router = useCustomRouter();
 

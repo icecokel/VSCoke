@@ -5,12 +5,12 @@ import { useCustomRouter } from "@/hooks/use-custom-router";
 import { ShareLinkButton } from "@/components/share/share-link-button";
 import { useTranslations } from "next-intl";
 
-interface ArrowDriftResultScreenProps {
+interface FishDriftResultScreenProps {
   score: number;
   onRestart: () => void;
 }
 
-export const ArrowDriftResultScreen = ({ score, onRestart }: ArrowDriftResultScreenProps) => {
+export const FishDriftResultScreen = ({ score, onRestart }: FishDriftResultScreenProps) => {
   const router = useCustomRouter();
   const tShare = useTranslations("Share");
 
@@ -21,7 +21,7 @@ export const ArrowDriftResultScreen = ({ score, onRestart }: ArrowDriftResultScr
 
       <div className="flex w-full max-w-xs flex-col gap-3">
         <ShareLinkButton
-          text={tShare("arrowDriftText", { score })}
+          text={tShare("fishDriftText", { score })}
           variant="default"
           size="lg"
           className="rounded-full py-6 text-lg font-bold"

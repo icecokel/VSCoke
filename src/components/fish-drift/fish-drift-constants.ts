@@ -1,4 +1,4 @@
-export const ArrowDriftConstants = {
+export const FishDriftConstants = {
   MAX_WIDTH: 480,
   ASPECT_RATIO_CSS: "9/16",
   FISH_COLOR: 0x14b8a6,
@@ -41,31 +41,31 @@ export const ArrowDriftConstants = {
     FISH_VARIANTS: [
       {
         key: "ad-item-fish-gold",
-        assetPath: "/images/game/arrow-drift/score-fish-gold.svg",
+        assetPath: "/images/game/fish-drift/score-fish-gold.svg",
         score: 120,
         weight: 42,
       },
       {
         key: "ad-item-fish-emerald",
-        assetPath: "/images/game/arrow-drift/score-fish-emerald.svg",
+        assetPath: "/images/game/fish-drift/score-fish-emerald.svg",
         score: 200,
         weight: 28,
       },
       {
         key: "ad-item-fish-sapphire",
-        assetPath: "/images/game/arrow-drift/score-fish-sapphire.svg",
+        assetPath: "/images/game/fish-drift/score-fish-sapphire.svg",
         score: 300,
         weight: 17,
       },
       {
         key: "ad-item-fish-violet",
-        assetPath: "/images/game/arrow-drift/score-fish-violet.svg",
+        assetPath: "/images/game/fish-drift/score-fish-violet.svg",
         score: 430,
         weight: 9,
       },
       {
         key: "ad-item-fish-ruby",
-        assetPath: "/images/game/arrow-drift/score-fish-ruby.svg",
+        assetPath: "/images/game/fish-drift/score-fish-ruby.svg",
         score: 620,
         weight: 4,
       },

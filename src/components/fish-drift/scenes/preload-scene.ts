@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { ArrowDriftConstants } from "../arrow-drift-constants";
+import { FishDriftConstants } from "../fish-drift-constants";
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -11,10 +11,10 @@ export class PreloadScene extends Phaser.Scene {
       this.game.events.emit("game:progress", value);
     });
 
-    this.load.svg("ad-fish-0", "/images/game/arrow-drift/player-fish-frame-0.svg");
-    this.load.svg("ad-fish-1", "/images/game/arrow-drift/player-fish-frame-1.svg");
-    this.load.svg("ad-fish-2", "/images/game/arrow-drift/player-fish-frame-2.svg");
-    ArrowDriftConstants.ITEM.FISH_VARIANTS.forEach(variant => {
+    this.load.svg("ad-fish-0", "/images/game/fish-drift/player-fish-frame-0.svg");
+    this.load.svg("ad-fish-1", "/images/game/fish-drift/player-fish-frame-1.svg");
+    this.load.svg("ad-fish-2", "/images/game/fish-drift/player-fish-frame-2.svg");
+    FishDriftConstants.ITEM.FISH_VARIANTS.forEach(variant => {
       this.load.svg(variant.key, variant.assetPath);
     });
 
@@ -100,10 +100,10 @@ export class PreloadScene extends Phaser.Scene {
       [0, 0],
     ];
 
-    const textureSize = ArrowDriftConstants.OBSTACLE.TEXTURE_SIZE;
+    const textureSize = FishDriftConstants.OBSTACLE.TEXTURE_SIZE;
     const center = textureSize / 2;
 
-    ArrowDriftConstants.OBSTACLE.PRESET_TEXTURE_KEYS.forEach((key, index) => {
+    FishDriftConstants.OBSTACLE.PRESET_TEXTURE_KEYS.forEach((key, index) => {
       const palette = palettes[index % palettes.length];
       graphics.clear();
       const cell = 4;

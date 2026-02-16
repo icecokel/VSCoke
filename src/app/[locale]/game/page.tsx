@@ -17,10 +17,10 @@ export default function GameDashboard() {
       route: "/game/sky-drop",
     },
     {
-      id: "arrow-drift",
+      id: "fish-drift",
       title: "Fish Drift",
-      description: t("arrowDriftDesc"),
-      route: "/game/arrow-drift",
+      description: t("fishDriftDesc"),
+      route: "/game/fish-drift",
     },
     {
       id: "doom",

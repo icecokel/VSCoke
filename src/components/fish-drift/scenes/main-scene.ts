@@ -1,7 +1,7 @@
 import * as Phaser from "phaser";
-import { ArrowDriftConstants } from "../arrow-drift-constants";
+import { FishDriftConstants } from "../fish-drift-constants";
 
-type ScoreItemVariant = (typeof ArrowDriftConstants.ITEM.FISH_VARIANTS)[number];
+type ScoreItemVariant = (typeof FishDriftConstants.ITEM.FISH_VARIANTS)[number];
 
 export class MainScene extends Phaser.Scene {
   private arrow: Phaser.Physics.Arcade.Image | null = null;
@@ -22,8 +22,8 @@ export class MainScene extends Phaser.Scene {
   private isMovingLeft = true;
   private isGameOver = false;
   private startedAt = 0;
-  private currentObstacleSpeed = ArrowDriftConstants.BASE_OBSTACLE_SPEED;
-  private currentVerticalPadding = ArrowDriftConstants.BASE_VERTICAL_PADDING;
+  private currentObstacleSpeed = FishDriftConstants.BASE_OBSTACLE_SPEED;
+  private currentVerticalPadding = FishDriftConstants.BASE_VERTICAL_PADDING;
   private currentSpeedStep = 0;
   private currentHorizontalSpeed = 0;
   private swimWaveSeed = 0;
@@ -46,8 +46,8 @@ export class MainScene extends Phaser.Scene {
     this.isMovingLeft = true;
     this.isGameOver = false;
     this.startedAt = this.time.now;
-    this.currentObstacleSpeed = ArrowDriftConstants.BASE_OBSTACLE_SPEED;
-    this.currentVerticalPadding = ArrowDriftConstants.BASE_VERTICAL_PADDING;
+    this.currentObstacleSpeed = FishDriftConstants.BASE_OBSTACLE_SPEED;
+    this.currentVerticalPadding = FishDriftConstants.BASE_VERTICAL_PADDING;
     this.currentSpeedStep = 0;
     this.swimWaveSeed = Phaser.Math.FloatBetween(0, Math.PI * 2);
     this.swimKickUntil = 0;
@@ -65,11 +65,11 @@ export class MainScene extends Phaser.Scene {
     this.arrow.setCollideWorldBounds(false);
     this.arrow.setAngle(this.isMovingLeft ? -132 : -48);
     this.arrow.body?.setSize(
-      ArrowDriftConstants.ARROW_HITBOX_WIDTH,
-      ArrowDriftConstants.ARROW_HITBOX_HEIGHT,
+      FishDriftConstants.ARROW_HITBOX_WIDTH,
+      FishDriftConstants.ARROW_HITBOX_HEIGHT,
       true,
     );
-    const diagonalSpeed = ArrowDriftConstants.ARROW_SPEED / Math.sqrt(2);
+    const diagonalSpeed = FishDriftConstants.ARROW_SPEED / Math.sqrt(2);
     this.currentHorizontalSpeed = this.isMovingLeft ? -diagonalSpeed : diagonalSpeed;
     this.initTrail();
 
@@ -121,7 +121,7 @@ export class MainScene extends Phaser.Scene {
     this.game.events.on("external-resize", this.resize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.cleanup, this);
     this.spawnTimer = this.time.delayedCall(
-      ArrowDriftConstants.SPAWN.INITIAL_GRACE_MS,
+      FishDriftConstants.SPAWN.INITIAL_GRACE_MS,
       this.scheduleNextWave,
       undefined,
       this,
@@ -136,7 +136,7 @@ export class MainScene extends Phaser.Scene {
     this.updateDifficulty(elapsedMs);
     this.playTimeText?.setText(this.formatPlayTime(elapsedMs));
 
-    const diagonalSpeed = ArrowDriftConstants.ARROW_SPEED / Math.sqrt(2);
+    const diagonalSpeed = FishDriftConstants.ARROW_SPEED / Math.sqrt(2);
     const targetHorizontalSpeed = this.isMovingLeft ? -diagonalSpeed : diagonalSpeed;
     const swimKickMultiplier = this.time.now < this.swimKickUntil ? 1.18 : 1;
     const steerLerp = Phaser.Math.Clamp(dt * 9.2, 0.06, 0.24);
@@ -172,11 +172,11 @@ export class MainScene extends Phaser.Scene {
 
     if (this.farBg) {
       this.farBg.tilePositionY -=
-        backgroundScrollSpeed * ArrowDriftConstants.BACKGROUND_SCROLL.FAR_FACTOR;
+        backgroundScrollSpeed * FishDriftConstants.BACKGROUND_SCROLL.FAR_FACTOR;
     }
     if (this.nearBg) {
       this.nearBg.tilePositionY -=
-        backgroundScrollSpeed * ArrowDriftConstants.BACKGROUND_SCROLL.NEAR_FACTOR;
+        backgroundScrollSpeed * FishDriftConstants.BACKGROUND_SCROLL.NEAR_FACTOR;
     }
 
     if (this.arrow.x < padding || this.arrow.x > width - padding) {
@@ -209,7 +209,7 @@ export class MainScene extends Phaser.Scene {
       const alreadyPassed = Boolean(obstacle.getData("passed"));
       if (!alreadyPassed && obstacle.y - obstacle.displayHeight / 2 > this.arrow!.y) {
         obstacle.setData("passed", true);
-        const gainedScore = ArrowDriftConstants.SCORE_PER_OBSTACLE;
+        const gainedScore = FishDriftConstants.SCORE_PER_OBSTACLE;
         this.score += gainedScore;
         this.scoreText?.setText(`${this.score}`);
         this.showScoreGain(gainedScore);
@@ -342,27 +342,25 @@ export class MainScene extends Phaser.Scene {
   }
 
   private updateDifficulty(elapsedMs: number) {
-    const speedStep = Math.floor(elapsedMs / ArrowDriftConstants.DIFFICULTY.SPEED_STEP_INTERVAL_MS);
+    const speedStep = Math.floor(elapsedMs / FishDriftConstants.DIFFICULTY.SPEED_STEP_INTERVAL_MS);
     const nextObstacleSpeed =
-      ArrowDriftConstants.BASE_OBSTACLE_SPEED *
-      Math.pow(ArrowDriftConstants.DIFFICULTY.SPEED_MULTIPLIER_PER_STEP, speedStep);
+      FishDriftConstants.BASE_OBSTACLE_SPEED *
+      Math.pow(FishDriftConstants.DIFFICULTY.SPEED_MULTIPLIER_PER_STEP, speedStep);
     this.currentObstacleSpeed = nextObstacleSpeed;
     if (speedStep > this.currentSpeedStep) {
       this.currentSpeedStep = speedStep;
       this.showSpeedUpNotice(nextObstacleSpeed);
     }
 
-    const shrinkStep = Math.floor(
-      elapsedMs / ArrowDriftConstants.DIFFICULTY.MAP_SHRINK_INTERVAL_MS,
-    );
-    const shrinkByTime = shrinkStep * ArrowDriftConstants.DIFFICULTY.MAP_SHRINK_PER_STEP;
-    const shrinkClamped = Math.min(shrinkByTime, ArrowDriftConstants.DIFFICULTY.MAP_SHRINK_MAX);
+    const shrinkStep = Math.floor(elapsedMs / FishDriftConstants.DIFFICULTY.MAP_SHRINK_INTERVAL_MS);
+    const shrinkByTime = shrinkStep * FishDriftConstants.DIFFICULTY.MAP_SHRINK_PER_STEP;
+    const shrinkClamped = Math.min(shrinkByTime, FishDriftConstants.DIFFICULTY.MAP_SHRINK_MAX);
     const maxPaddingByScreen = Math.max(
-      ArrowDriftConstants.BASE_VERTICAL_PADDING,
+      FishDriftConstants.BASE_VERTICAL_PADDING,
       this.scale.width / 2 - 80,
     );
     this.currentVerticalPadding = Math.min(
-      ArrowDriftConstants.BASE_VERTICAL_PADDING + shrinkClamped,
+      FishDriftConstants.BASE_VERTICAL_PADDING + shrinkClamped,
       maxPaddingByScreen,
     );
     this.syncBoundGuides();
@@ -384,7 +382,7 @@ export class MainScene extends Phaser.Scene {
   private showSpeedUpNotice(nextObstacleSpeed: number) {
     if (!this.speedUpText) return;
 
-    const speedRatio = nextObstacleSpeed / ArrowDriftConstants.BASE_OBSTACLE_SPEED;
+    const speedRatio = nextObstacleSpeed / FishDriftConstants.BASE_OBSTACLE_SPEED;
     this.speedUpText
       .setText(`해류 가속 x${speedRatio.toFixed(2)}`)
       .setPosition(this.scale.width / 2, 56)
@@ -482,8 +480,8 @@ export class MainScene extends Phaser.Scene {
     const obstacleCount = this.pickWaveObstacleCount();
     const xTargets = this.buildWaveXTargets(obstacleCount);
     const inWaveGap = Phaser.Math.Between(
-      ArrowDriftConstants.SPAWN.IN_WAVE_GAP_MIN_MS,
-      ArrowDriftConstants.SPAWN.IN_WAVE_GAP_MAX_MS,
+      FishDriftConstants.SPAWN.IN_WAVE_GAP_MIN_MS,
+      FishDriftConstants.SPAWN.IN_WAVE_GAP_MAX_MS,
     );
 
     xTargets.forEach((targetX, index) => {
@@ -503,18 +501,18 @@ export class MainScene extends Phaser.Scene {
     }
 
     const rampProgress = Phaser.Math.Clamp(
-      elapsedMs / ArrowDriftConstants.SPAWN.WAVE_DELAY_RAMP_MS,
+      elapsedMs / FishDriftConstants.SPAWN.WAVE_DELAY_RAMP_MS,
       0,
       1,
     );
     const dynamicMinDelay = Phaser.Math.Linear(
-      ArrowDriftConstants.SPAWN.WAVE_DELAY_START_MIN_MS,
-      ArrowDriftConstants.SPAWN.WAVE_DELAY_MIN_MS,
+      FishDriftConstants.SPAWN.WAVE_DELAY_START_MIN_MS,
+      FishDriftConstants.SPAWN.WAVE_DELAY_MIN_MS,
       rampProgress,
     );
     const dynamicMaxDelay = Phaser.Math.Linear(
-      ArrowDriftConstants.SPAWN.WAVE_DELAY_START_MAX_MS,
-      ArrowDriftConstants.SPAWN.WAVE_DELAY_MAX_MS,
+      FishDriftConstants.SPAWN.WAVE_DELAY_START_MAX_MS,
+      FishDriftConstants.SPAWN.WAVE_DELAY_MAX_MS,
       rampProgress,
     );
     const nextDelay = Phaser.Math.Between(Math.round(dynamicMinDelay), Math.round(dynamicMaxDelay));
@@ -531,18 +529,18 @@ export class MainScene extends Phaser.Scene {
   private pickWaveObstacleCount() {
     const elapsedMs = this.time.now - this.startedAt;
     const rampProgress = Phaser.Math.Clamp(
-      elapsedMs / ArrowDriftConstants.SPAWN.MULTI_WAVE_RAMP_MS,
+      elapsedMs / FishDriftConstants.SPAWN.MULTI_WAVE_RAMP_MS,
       0,
       1,
     );
     const tripleChance = Phaser.Math.Linear(
-      ArrowDriftConstants.SPAWN.TRIPLE_WAVE_CHANCE_START,
-      ArrowDriftConstants.SPAWN.TRIPLE_WAVE_CHANCE_END,
+      FishDriftConstants.SPAWN.TRIPLE_WAVE_CHANCE_START,
+      FishDriftConstants.SPAWN.TRIPLE_WAVE_CHANCE_END,
       rampProgress,
     );
     const doubleChance = Phaser.Math.Linear(
-      ArrowDriftConstants.SPAWN.DOUBLE_WAVE_CHANCE_START,
-      ArrowDriftConstants.SPAWN.DOUBLE_WAVE_CHANCE_END,
+      FishDriftConstants.SPAWN.DOUBLE_WAVE_CHANCE_START,
+      FishDriftConstants.SPAWN.DOUBLE_WAVE_CHANCE_END,
       rampProgress,
     );
     const roll = Math.random();
@@ -561,8 +559,8 @@ export class MainScene extends Phaser.Scene {
 
     const direction = Math.random() < 0.5 ? -1 : 1;
     const step = Phaser.Math.Between(
-      ArrowDriftConstants.SPAWN.FORMATION_STEP_MIN,
-      ArrowDriftConstants.SPAWN.FORMATION_STEP_MAX,
+      FishDriftConstants.SPAWN.FORMATION_STEP_MIN,
+      FishDriftConstants.SPAWN.FORMATION_STEP_MAX,
     );
 
     const targets: number[] = [];
@@ -575,13 +573,13 @@ export class MainScene extends Phaser.Scene {
 
   private calculateItemSpawnChance(elapsedMs: number) {
     const progress = Phaser.Math.Clamp(
-      elapsedMs / ArrowDriftConstants.SPAWN.ITEM_CHANCE_RAMP_MS,
+      elapsedMs / FishDriftConstants.SPAWN.ITEM_CHANCE_RAMP_MS,
       0,
       1,
     );
     return Phaser.Math.Linear(
-      ArrowDriftConstants.SPAWN.ITEM_CHANCE_START,
-      ArrowDriftConstants.SPAWN.ITEM_CHANCE_END,
+      FishDriftConstants.SPAWN.ITEM_CHANCE_START,
+      FishDriftConstants.SPAWN.ITEM_CHANCE_END,
       progress,
     );
   }
@@ -590,26 +588,26 @@ export class MainScene extends Phaser.Scene {
     if (this.isGameOver || !this.obstacles) return;
 
     const textureKey = Phaser.Utils.Array.GetRandom(
-      ArrowDriftConstants.OBSTACLE.PRESET_TEXTURE_KEYS,
+      FishDriftConstants.OBSTACLE.PRESET_TEXTURE_KEYS,
     );
     const scaleX = Phaser.Math.FloatBetween(
-      ArrowDriftConstants.OBSTACLE.SCALE_X_MIN,
-      ArrowDriftConstants.OBSTACLE.SCALE_X_MAX,
+      FishDriftConstants.OBSTACLE.SCALE_X_MIN,
+      FishDriftConstants.OBSTACLE.SCALE_X_MAX,
     );
     const scaleY = Phaser.Math.FloatBetween(
-      ArrowDriftConstants.OBSTACLE.SCALE_Y_MIN,
-      ArrowDriftConstants.OBSTACLE.SCALE_Y_MAX,
+      FishDriftConstants.OBSTACLE.SCALE_Y_MIN,
+      FishDriftConstants.OBSTACLE.SCALE_Y_MAX,
     );
     const speedFactor = Phaser.Math.FloatBetween(
-      ArrowDriftConstants.OBSTACLE.SPEED_FACTOR_MIN,
-      ArrowDriftConstants.OBSTACLE.SPEED_FACTOR_MAX,
+      FishDriftConstants.OBSTACLE.SPEED_FACTOR_MIN,
+      FishDriftConstants.OBSTACLE.SPEED_FACTOR_MAX,
     );
     const driftStrength = Phaser.Math.FloatBetween(16, 34);
     const spinSpeed = Phaser.Math.FloatBetween(-34, 34);
 
     const obstacle = this.obstacles.create(
       this.scale.width / 2,
-      -ArrowDriftConstants.OBSTACLE.SPAWN_SIDE_OFFSET,
+      -FishDriftConstants.OBSTACLE.SPAWN_SIDE_OFFSET,
       textureKey,
     ) as Phaser.Physics.Arcade.Image | undefined;
 
@@ -617,7 +615,7 @@ export class MainScene extends Phaser.Scene {
 
     obstacle.setScale(scaleX, scaleY);
     const halfWidth = obstacle.displayWidth / 2;
-    const spawnMargin = halfWidth + ArrowDriftConstants.OBSTACLE.SPAWN_VERTICAL_MARGIN;
+    const spawnMargin = halfWidth + FishDriftConstants.OBSTACLE.SPAWN_VERTICAL_MARGIN;
     const minX = this.currentVerticalPadding + spawnMargin;
     const maxX = this.scale.width - this.currentVerticalPadding - spawnMargin;
     const safeMinX = maxX > minX ? minX : this.scale.width / 2;
@@ -636,7 +634,7 @@ export class MainScene extends Phaser.Scene {
     obstacle.setData("passed", false);
     const coreHitboxSize =
       Math.min(obstacle.displayWidth, obstacle.displayHeight) *
-      ArrowDriftConstants.OBSTACLE.HITBOX_CORE_SCALE;
+      FishDriftConstants.OBSTACLE.HITBOX_CORE_SCALE;
     obstacle.body?.setSize(coreHitboxSize, coreHitboxSize, true);
   }
 
@@ -645,17 +643,17 @@ export class MainScene extends Phaser.Scene {
     const variant = this.pickScoreItemVariant();
 
     const scale = Phaser.Math.FloatBetween(
-      ArrowDriftConstants.ITEM.SCALE_MIN,
-      ArrowDriftConstants.ITEM.SCALE_MAX,
+      FishDriftConstants.ITEM.SCALE_MIN,
+      FishDriftConstants.ITEM.SCALE_MAX,
     );
     const speedFactor = Phaser.Math.FloatBetween(
-      ArrowDriftConstants.ITEM.SPEED_FACTOR_MIN,
-      ArrowDriftConstants.ITEM.SPEED_FACTOR_MAX,
+      FishDriftConstants.ITEM.SPEED_FACTOR_MIN,
+      FishDriftConstants.ITEM.SPEED_FACTOR_MAX,
     );
     const swimPhase = Phaser.Math.FloatBetween(0, Math.PI * 2);
     const scoreItem = this.scoreItems.create(
       this.scale.width / 2,
-      -ArrowDriftConstants.ITEM.SPAWN_SIDE_OFFSET,
+      -FishDriftConstants.ITEM.SPAWN_SIDE_OFFSET,
       variant.key,
     ) as Phaser.Physics.Arcade.Image | undefined;
 
@@ -663,7 +661,7 @@ export class MainScene extends Phaser.Scene {
 
     scoreItem.setScale(scale);
     const halfWidth = scoreItem.displayWidth / 2;
-    const spawnMargin = halfWidth + ArrowDriftConstants.ITEM.SPAWN_VERTICAL_MARGIN;
+    const spawnMargin = halfWidth + FishDriftConstants.ITEM.SPAWN_VERTICAL_MARGIN;
     const minX = this.currentVerticalPadding + spawnMargin;
     const maxX = this.scale.width - this.currentVerticalPadding - spawnMargin;
     const safeMinX = maxX > minX ? minX : this.scale.width / 2;
@@ -680,7 +678,7 @@ export class MainScene extends Phaser.Scene {
     scoreItem.setData("collected", false);
     const coreHitboxSize =
       Math.min(scoreItem.displayWidth, scoreItem.displayHeight) *
-      ArrowDriftConstants.ITEM.HITBOX_CORE_SCALE;
+      FishDriftConstants.ITEM.HITBOX_CORE_SCALE;
     scoreItem.body?.setSize(coreHitboxSize, coreHitboxSize, true);
   }
 
@@ -718,7 +716,7 @@ export class MainScene extends Phaser.Scene {
     const gainedScoreRaw = Number(scoreItem.getData("gainedScore"));
     const gainedScore = Number.isFinite(gainedScoreRaw)
       ? gainedScoreRaw
-      : ArrowDriftConstants.ITEM.DEFAULT_SCORE;
+      : FishDriftConstants.ITEM.DEFAULT_SCORE;
     this.score += gainedScore;
     this.scoreText?.setText(`${this.score}`);
     this.showScoreGain(gainedScore);
@@ -726,12 +724,12 @@ export class MainScene extends Phaser.Scene {
   }
 
   private pickScoreItemVariant(): ScoreItemVariant {
-    const variants = ArrowDriftConstants.ITEM.FISH_VARIANTS;
+    const variants = FishDriftConstants.ITEM.FISH_VARIANTS;
     if (variants.length === 0) {
       return {
         key: "ad-item-fish-gold",
-        assetPath: "/images/game/arrow-drift/score-fish-gold.svg",
-        score: ArrowDriftConstants.ITEM.DEFAULT_SCORE,
+        assetPath: "/images/game/fish-drift/score-fish-gold.svg",
+        score: FishDriftConstants.ITEM.DEFAULT_SCORE,
         weight: 1,
       };
     }
@@ -823,7 +821,7 @@ export class MainScene extends Phaser.Scene {
     });
 
     const innerRipple = this.add.circle(originX, originY, 10, 0xffffff, 0).setDepth(14);
-    innerRipple.setStrokeStyle(2, ArrowDriftConstants.FISH_COLOR, 0.58);
+    innerRipple.setStrokeStyle(2, FishDriftConstants.FISH_COLOR, 0.58);
     this.tweens.add({
       targets: innerRipple,
       scaleX: 4.1,

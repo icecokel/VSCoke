@@ -4,15 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGame } from "@/contexts/game-context";
-import { ArrowDriftConstants } from "@/components/arrow-drift/arrow-drift-constants";
-import { ArrowDriftReadyScreen } from "@/components/arrow-drift/arrow-drift-ready-screen";
-import { ArrowDriftResultScreen } from "@/components/arrow-drift/arrow-drift-result-screen";
+import { FishDriftConstants } from "@/components/fish-drift/fish-drift-constants";
+import { FishDriftReadyScreen } from "@/components/fish-drift/fish-drift-ready-screen";
+import { FishDriftResultScreen } from "@/components/fish-drift/fish-drift-result-screen";
 
-const ArrowDriftPhaserGame = dynamic(
+const FishDriftPhaserGame = dynamic(
   () =>
-    import("@/components/arrow-drift/arrow-drift-phaser-game").then(
-      mod => mod.ArrowDriftPhaserGame,
-    ),
+    import("@/components/fish-drift/fish-drift-phaser-game").then(mod => mod.FishDriftPhaserGame),
   {
     ssr: false,
     loading: () => (
@@ -25,7 +23,7 @@ const ArrowDriftPhaserGame = dynamic(
 
 type GameState = "ready" | "playing" | "game-over";
 
-export default function ArrowDriftPage() {
+export default function FishDriftPage() {
   const isMobile = useIsMobile();
   const { setGamePlaying } = useGame();
   const [gameState, setGameState] = useState<GameState>("ready");
@@ -86,9 +84,9 @@ export default function ArrowDriftPage() {
         borderRadius: 0,
       }
     : {
-        maxWidth: `${ArrowDriftConstants.MAX_WIDTH}px`,
+        maxWidth: `${FishDriftConstants.MAX_WIDTH}px`,
         maxHeight: "calc(100% - 8px)",
-        aspectRatio: ArrowDriftConstants.ASPECT_RATIO_CSS,
+        aspectRatio: FishDriftConstants.ASPECT_RATIO_CSS,
       };
 
   return (
@@ -99,7 +97,7 @@ export default function ArrowDriftPage() {
       >
         {gameState === "ready" && (
           <div className="absolute inset-0 z-20">
-            <ArrowDriftReadyScreen
+            <FishDriftReadyScreen
               onStart={handleStart}
               isStartEnabled={isGameLoaded}
               isMobile={isMobile}
@@ -108,11 +106,11 @@ export default function ArrowDriftPage() {
         )}
 
         {gameState === "game-over" && (
-          <ArrowDriftResultScreen score={finalScore} onRestart={handleRestart} />
+          <FishDriftResultScreen score={finalScore} onRestart={handleRestart} />
         )}
 
         <div className="size-full">
-          <ArrowDriftPhaserGame
+          <FishDriftPhaserGame
             isPlaying={gameState === "playing"}
             onReady={handleReady}
             onGameOver={handleGameOver}

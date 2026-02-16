@@ -3,11 +3,11 @@ import { GameOverScene } from "./scenes/game-over-scene";
 import { MainScene } from "./scenes/main-scene";
 import { PreloadScene } from "./scenes/preload-scene";
 
-export const ArrowDriftGameConfig: Phaser.Types.Core.GameConfig = {
+export const FishDriftGameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   width: "100%",
   height: "100%",
-  parent: "arrow-drift-phaser-container",
+  parent: "fish-drift-phaser-container",
   backgroundColor: "#020617",
   physics: {
     default: "arcade",

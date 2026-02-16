@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as Phaser from "phaser";
-import { ArrowDriftGameConfig } from "./arrow-drift-game-config";
+import { FishDriftGameConfig } from "./fish-drift-game-config";
 import { LoadingOverlay } from "@/components/game/ui/loading-overlay";
 
 interface GameOverPayload {
   score: number;
 }
 
-interface ArrowDriftPhaserGameProps {
+interface FishDriftPhaserGameProps {
   isPlaying: boolean;
   onReady: () => void;
   onGameOver: (score: number) => void;
@@ -17,13 +17,13 @@ interface ArrowDriftPhaserGameProps {
   showLoadingOverlay?: boolean;
 }
 
-export const ArrowDriftPhaserGame = ({
+export const FishDriftPhaserGame = ({
   isPlaying,
   onReady,
   onGameOver,
   restartToken = 0,
   showLoadingOverlay = false,
-}: ArrowDriftPhaserGameProps) => {
+}: FishDriftPhaserGameProps) => {
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const restartTokenRef = useRef(restartToken);
@@ -33,7 +33,7 @@ export const ArrowDriftPhaserGame = ({
   useEffect(() => {
     if (typeof window === "undefined" || gameRef.current) return;
 
-    const game = new Phaser.Game(ArrowDriftGameConfig);
+    const game = new Phaser.Game(FishDriftGameConfig);
     gameRef.current = game;
 
     game.events.on("game:ready", () => {
@@ -98,7 +98,7 @@ export const ArrowDriftPhaserGame = ({
   return (
     <div className="relative size-full overflow-hidden rounded-xl border border-white/10 shadow-2xl">
       {!isLoaded && showLoadingOverlay && <LoadingOverlay progress={progress} />}
-      <div ref={containerRef} id="arrow-drift-phaser-container" className="size-full" />
+      <div ref={containerRef} id="fish-drift-phaser-container" className="size-full" />
     </div>
   );
 };

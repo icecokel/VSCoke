@@ -63,7 +63,7 @@
     "noPosts": "No posts available.",
     "dashboardTitle": "Dashboard",
     "dashboardDescription": "Admin dashboard for blog posts",
-    "showAllTags": "+ Show all ({count})",
+    "showAllTags": "+ Show all tags ({count})",
     "hideAllTags": "Collapse"
   },
   "Game": {

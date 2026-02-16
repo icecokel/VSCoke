@@ -1,27 +1,11 @@
 "use client";
 
 import { useCustomRouter } from "@/hooks/use-custom-router";
-import RESUME_DATA from "@/constants/resume-data.json";
-import { SearchPostsContext } from "@/contexts/app-provider";
 import { useTranslations } from "next-intl";
-import { useContext } from "react";
-
-interface ResumeCareer {
-  projects: unknown[];
-}
-
-const TOTAL_PROJECTS = (RESUME_DATA as ResumeCareer[]).reduce(
-  (count, career) => count + career.projects.length,
-  0,
-);
-const AVAILABLE_GAME_COUNT = 4;
-const TECH_STACKS = ["Next.js", "TypeScript", "Tailwind CSS", "Phaser 3", "Node.js"];
 
 const Home = () => {
   const t = useTranslations("home");
-  const tResume = useTranslations("resume");
   const router = useCustomRouter();
-  const posts = useContext(SearchPostsContext);
 
   const quickLaunchCards = [
     {
@@ -47,33 +31,6 @@ const Home = () => {
       title: t("cards.gameTitle"),
       description: t("cards.gameDesc"),
       path: "/game",
-    },
-  ];
-
-  const trustCards = [
-    {
-      id: "experience",
-      label: t("trust.experience"),
-      value: tResume("totalExperience"),
-      hint: t("trust.experienceHint"),
-    },
-    {
-      id: "projects",
-      label: t("trust.projects"),
-      value: `${TOTAL_PROJECTS}${t("trust.projectSuffix")}`,
-      hint: t("trust.projectsHint"),
-    },
-    {
-      id: "posts",
-      label: t("trust.posts"),
-      value: `${posts.length}${t("trust.postSuffix")}`,
-      hint: t("trust.postsHint"),
-    },
-    {
-      id: "games",
-      label: t("trust.games"),
-      value: `${AVAILABLE_GAME_COUNT}${t("trust.gameSuffix")}`,
-      hint: t("trust.gamesHint"),
     },
   ];
 
@@ -139,39 +96,6 @@ const Home = () => {
                 </div>
               </button>
             ))}
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-gray-700 bg-gray-900/60 p-5 md:p-7">
-          <div className="mb-5 md:mb-6">
-            <h2 className="text-2xl font-bold text-white md:text-3xl">{t("trustTitle")}</h2>
-            <p className="mt-2 text-sm text-gray-400 md:text-base">{t("trustDescription")}</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {trustCards.map(item => (
-              <div key={item.id} className="rounded-xl border border-gray-700 bg-gray-800/80 p-4">
-                <p className="text-xs uppercase tracking-wide text-gray-400">{item.label}</p>
-                <p className="mt-2 text-xl font-bold text-blue-100 md:text-2xl">{item.value}</p>
-                <p className="mt-1 text-xs text-gray-500">{item.hint}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-300">
-              {t("techTitle")}
-            </h3>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {TECH_STACKS.map(tech => (
-                <span
-                  key={tech}
-                  className="rounded-full border border-gray-600 bg-gray-800 px-3 py-1 text-xs text-gray-200"
-                >
-                  {tech}
-                </span>
-              ))}
-            </div>
           </div>
         </section>
       </div>

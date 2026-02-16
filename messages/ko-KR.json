@@ -62,7 +62,9 @@
     "backToList": "목록으로",
     "noPosts": "포스트가 없습니다.",
     "dashboardTitle": "대시보드",
-    "dashboardDescription": "블로그 게시글 관리자 페이지"
+    "dashboardDescription": "블로그 게시글 관리자 페이지",
+    "showAllTags": "+ 전체 보기 ({count})",
+    "hideAllTags": "접기"
   },
   "Game": {
     "submitScore": "점수 기록하기",

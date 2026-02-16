@@ -62,7 +62,9 @@
     "backToList": "Back to List",
     "noPosts": "No posts available.",
     "dashboardTitle": "Dashboard",
-    "dashboardDescription": "Admin dashboard for blog posts"
+    "dashboardDescription": "Admin dashboard for blog posts",
+    "showAllTags": "+ Show all ({count})",
+    "hideAllTags": "Collapse"
   },
   "Game": {
     "submitScore": "Submit Score",

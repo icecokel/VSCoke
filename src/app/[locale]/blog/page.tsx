@@ -1,7 +1,7 @@
 import { getAllPosts, getAllTags } from "@/lib/blog";
 import PostList from "@/components/blog/post-list";
 import BaseText from "@/components/base-ui/text";
-import Chip from "@/components/base-ui/chip";
+import BlogTags from "@/components/blog/blog-tags";
 import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 import { ShareLinkButton } from "@/components/share/share-link-button";
@@ -37,13 +37,7 @@ const BlogPage = async () => {
         </div>
       </div>
 
-      {tags.length > 0 && (
-        <div className="mb-6 flex flex-wrap gap-2">
-          {tags.map(tag => (
-            <Chip key={tag.label} label={`${tag.label} (${tag.count})`} />
-          ))}
-        </div>
-      )}
+      {tags.length > 0 && <BlogTags tags={tags} limit={15} />}
 
       <PostList posts={posts} />
     </div>

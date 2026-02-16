@@ -60,7 +60,7 @@ export const ShareQrDialog = ({
           </div>
 
           <p
-            className="w-full truncate text-center text-sm text-muted-foreground"
+            className="w-full whitespace-pre-wrap break-all text-center text-sm leading-relaxed text-muted-foreground"
             title={resolvedUrl}
           >
             {resolvedUrl}

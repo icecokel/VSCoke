@@ -2,6 +2,11 @@ import { defineConfig, devices } from "@playwright/test";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
 const useExternalServer = Boolean(process.env.PLAYWRIGHT_BASE_URL);
+const e2eEnv = {
+  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:65535",
+  AUTH_SECRET: process.env.AUTH_SECRET ?? "e2e-auth-secret",
+  NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ?? "e2e-auth-secret",
+};
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -21,6 +26,10 @@ export default defineConfig({
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 120 * 1000,
+        env: {
+          ...process.env,
+          ...e2eEnv,
+        },
       },
   projects: [
     {

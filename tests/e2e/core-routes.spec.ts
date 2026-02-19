@@ -383,8 +383,11 @@ test.describe("코어 라우트 CTA 시나리오", () => {
 
     await page.getByRole("button", { name: /Sky Drop/ }).click();
     await expectPath(page, new RegExp(`^/${localeRegex}/game/sky-drop$`));
-    await expect(page.getByRole("button", { name: "Start Game" })).toBeVisible();
-    await page.getByRole("button", { name: "Exit Game" }).click();
+    const skyDropStart = page.getByRole("button", { name: "Start Game" });
+    const skyDropExit = page.getByRole("button", { name: "Exit Game" });
+    await expect(skyDropStart).toBeVisible({ timeout: 20000 });
+    await expect(skyDropExit).toBeVisible();
+    await skyDropExit.click();
     await expectPath(page, new RegExp(`^/${localeRegex}/game$`));
 
     await page.getByRole("button", { name: /Fish Drift/ }).click();

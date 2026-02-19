@@ -32,11 +32,16 @@ export default function WordlePage() {
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+      const isAlphabeticKey = /^[A-Za-z]$/.test(e.key);
+      if (e.key !== "Enter" && e.key !== "Backspace" && !isAlphabeticKey) return;
+
+      e.preventDefault();
       handleKeyup(e.key);
     };
 
-    window.addEventListener("keyup", listener);
-    return () => window.removeEventListener("keyup", listener);
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
   }, [handleKeyup]);
 
   // 게임 종료 시 자동 알림
@@ -72,7 +77,9 @@ export default function WordlePage() {
       >
         {/* Header */}
         <header className="flex items-center justify-between px-4 py-3 shrink-0">
-          <h1 className="text-xl font-bold tracking-tight">Wordle</h1>
+          <h1 className="text-xl font-bold tracking-tight" data-testid="wordle-title">
+            Wordle
+          </h1>
           <div className="flex items-center gap-1">
             <ShareLinkButton
               variant="ghost"

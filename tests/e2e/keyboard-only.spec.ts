@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { gotoWithRetry, resolveLocaleAndMessages } from "./test-helpers";
+import { escapeRegExp, gotoWithRetry, resolveLocaleAndMessages } from "./test-helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -8,10 +8,14 @@ test.describe("키보드 전용 시나리오", () => {
     const { locale, messages } = await resolveLocaleAndMessages(page);
     await gotoWithRetry(page, `/${locale}/game/wordle`);
 
-    await expect(page.getByRole("heading", { name: "Wordle" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        name: new RegExp(`^${escapeRegExp(messages.Game.wordleTitle)}$`),
+      }),
+    ).toBeVisible();
     await expect(page.getByText("Loading word...")).toBeHidden({ timeout: 20000 });
 
-    const restartButton = page.getByTitle("Restart Game");
+    const restartButton = page.getByRole("button", { name: "Restart Game" });
     for (let index = 0; index < 30; index += 1) {
       if (await restartButton.evaluate(element => element === document.activeElement)) {
         break;

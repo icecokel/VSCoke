@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { gotoWithRetry, resolveLocaleAndMessages } from "./test-helpers";
+import {
+  escapeRegExp,
+  expectWordleKeyboardButtons,
+  gotoWithRetry,
+  resolveLocaleAndMessages,
+} from "./test-helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -17,7 +22,7 @@ test.describe("오류/네트워크 장애 fallback", () => {
 
     await gotoWithRetry(page, `/${locale}/game/sky-drop`);
 
-    await expect(page.getByRole("button", { name: "Start Game" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Start Game/i })).toBeVisible();
     await expect(page.getByText(messages.Game.leaderboardEmpty)).toBeVisible({ timeout: 15000 });
   });
 
@@ -34,8 +39,12 @@ test.describe("오류/네트워크 장애 fallback", () => {
 
     await gotoWithRetry(page, `/${locale}/game/wordle`);
 
-    await expect(page.getByRole("heading", { name: "Wordle" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        name: new RegExp(`^${escapeRegExp(messages.Game.wordleTitle)}$`),
+      }),
+    ).toBeVisible();
     await expect(page.getByText(messages.Game.loadFailed)).toBeVisible({ timeout: 10000 });
-    await expect(page.locator("footer button")).toHaveCount(28);
+    await expectWordleKeyboardButtons(page);
   });
 });

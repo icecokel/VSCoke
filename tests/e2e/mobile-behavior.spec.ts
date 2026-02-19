@@ -26,7 +26,7 @@ test.describe("모바일 전용 동작", () => {
     await gotoWithRetry(page, `/${locale}/game/sky-drop`);
     await expect(mobileTrigger).toBeVisible();
 
-    await page.getByRole("button", { name: "Start Game" }).click();
+    await page.getByRole("button", { name: /Start Game/i }).click();
     await expect(mobileTrigger).toBeHidden();
   });
 });

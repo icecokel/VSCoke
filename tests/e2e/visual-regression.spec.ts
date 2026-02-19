@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { gotoWithRetry } from "./test-helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -24,15 +25,7 @@ test.describe("비주얼 회귀", () => {
       const warmup = await page.goto("/");
       expect(warmup?.status()).toBeLessThan(400);
 
-      let response = await page.goto(pageCase.path);
-      for (let attempt = 0; attempt < 6; attempt += 1) {
-        if ((response?.status() ?? 500) < 400) {
-          break;
-        }
-        await page.waitForTimeout(1200);
-        response = await page.goto(pageCase.path);
-      }
-
+      const response = await gotoWithRetry(page, pageCase.path);
       expect(response?.status()).toBeLessThan(400);
       await expect(page.locator("#menubar")).toBeVisible();
 

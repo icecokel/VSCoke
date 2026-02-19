@@ -1,88 +1,11 @@
-import fs from "node:fs";
-import path from "node:path";
 import { expect, Locator, Page, test } from "@playwright/test";
-
-type Locale = "ko-KR" | "en-US";
-
-interface Messages {
-  menu: {
-    file: string;
-    openProject: string;
-    language: string;
-    help: string;
-    preparing: string;
-  };
-  home: {
-    primaryCta: string;
-    secondaryCta: string;
-    cards: {
-      readmeTitle: string;
-      blogTitle: string;
-      blogDashboardTitle: string;
-      gameTitle: string;
-    };
-  };
-  sidebar: {
-    explorer: string;
-    search: string;
-    searchPlaceholder: string;
-  };
-  Share: {
-    share: string;
-    qr: string;
-    copyLink: string;
-  };
-  Game: {
-    start: string;
-    exit: string;
-    doomTitle: string;
-    wordleTitle: string;
-  };
-  blog: {
-    backToList: string;
-  };
-  resume: {
-    viewDescription: string;
-    backToResume: string;
-  };
-  Doom: {
-    soundOn: string;
-    soundOff: string;
-    buttonLoading: string;
-    buttonStart: string;
-  };
-}
-
-const LOCALE_PATH_REGEX = /\/(ko-KR|en-US)(?=\/|$)/;
-
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-const loadMessages = (locale: Locale): Messages => {
-  const filePath = path.join(process.cwd(), "messages", `${locale}.json`);
-  return JSON.parse(fs.readFileSync(filePath, "utf8")) as Messages;
-};
-
-const expectPath = async (page: Page, regex: RegExp) => {
-  await expect.poll(() => new URL(page.url()).pathname, { timeout: 15000 }).toMatch(regex);
-};
-
-const resolveLocaleAndMessages = async (page: Page) => {
-  const response = await page.goto("/");
-  expect(response?.status()).toBeLessThan(400);
-
-  await expectPath(page, LOCALE_PATH_REGEX);
-  const match = new URL(page.url()).pathname.match(LOCALE_PATH_REGEX);
-  expect(match).toBeTruthy();
-
-  const locale = match![1] as Locale;
-  return { locale, messages: loadMessages(locale) };
-};
-
-const visit = async (page: Page, routePath: string) => {
-  const response = await page.goto(routePath);
-  expect(response?.status(), `${routePath} 응답 상태가 비정상입니다.`).toBeLessThan(400);
-  await expect(page.locator("#menubar")).toBeVisible();
-};
+import {
+  escapeRegExp,
+  expectPath,
+  expectWordleKeyboardButtons,
+  resolveLocaleAndMessages,
+  visit,
+} from "./test-helpers";
 
 const openQrDialogAndCopy = async (
   page: Page,
@@ -234,10 +157,9 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     const searchInput = page.getByPlaceholder(messages.sidebar.searchPlaceholder);
     await expect(searchInput).toBeVisible();
     await searchInput.fill("game");
-    await page.waitForTimeout(250);
 
     const searchResultButtons = page.locator("[data-slot='sidebar-content'] li > button");
-    expect(await searchResultButtons.count()).toBeGreaterThan(0);
+    await expect(searchResultButtons.first()).toBeVisible();
 
     const beforePath = new URL(page.url()).pathname;
     await searchResultButtons.first().click();
@@ -346,7 +268,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     expect(firstTitle).toBeTruthy();
 
     await searchInput.fill(firstTitle!);
-    await page.waitForTimeout(350);
+    await expect(page.getByText(firstTitle!)).toBeVisible();
 
     const suggestionItems = searchInput.locator("xpath=ancestor::div[1]/ul/li");
     await expect(suggestionItems.first()).toBeVisible();
@@ -360,7 +282,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     expect(filteredCount).toBeLessThanOrEqual(allCardCount);
 
     await searchInput.fill("");
-    await page.waitForTimeout(350);
+    await expect(suggestionItems).toBeHidden();
     await expect(allCards).toHaveCount(allCardCount);
   });
 
@@ -369,7 +291,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     const localeRegex = escapeRegExp(locale);
     await visit(page, `/${locale}/game`);
 
-    await expect(page.getByRole("heading", { name: "Game Center" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: messages.home.cards.gameTitle })).toBeVisible();
     await expect(page.locator("main button")).toHaveCount(4);
 
     await expect(page.getByRole("button", { name: /Sky Drop/ })).toBeVisible();
@@ -381,10 +303,13 @@ test.describe("코어 라우트 CTA 시나리오", () => {
       page.getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.wordleTitle)) }),
     ).toBeVisible();
 
-    await page.getByRole("button", { name: /Sky Drop/ }).click();
+    await page
+      .getByRole("button", { name: /Sky Drop/i })
+      .first()
+      .click();
     await expectPath(page, new RegExp(`^/${localeRegex}/game/sky-drop$`));
-    const skyDropStart = page.getByRole("button", { name: "Start Game" });
-    const skyDropExit = page.getByRole("button", { name: "Exit Game" });
+    const skyDropStart = page.getByRole("button", { name: /Start Game/i });
+    const skyDropExit = page.getByRole("button", { name: /Exit Game/i });
     await expect(skyDropStart).toBeVisible({ timeout: 20000 });
     await expect(skyDropExit).toBeVisible();
     await skyDropExit.click();
@@ -394,13 +319,13 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await expectPath(page, new RegExp(`^/${localeRegex}/game/fish-drift$`));
 
     const fishStart = page
-      .getByRole("button", { name: new RegExp(`^${escapeRegExp(messages.Game.start)}$`) })
+      .locator("button", { hasText: new RegExp(`^${escapeRegExp(messages.Game.start)}$`) })
       .first();
     await expect(fishStart).toBeVisible();
     await expect.poll(() => fishStart.isEnabled(), { timeout: 20000 }).toBe(true);
 
     await page
-      .getByRole("button", { name: new RegExp(`^${escapeRegExp(messages.Game.exit)}$`) })
+      .locator("button", { hasText: new RegExp(`^${escapeRegExp(messages.Game.exit)}$`) })
       .first()
       .click();
     await expectPath(page, new RegExp(`^/${localeRegex}/game$`));
@@ -440,10 +365,10 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await expect(
       page.getByRole("button", { name: new RegExp(`^${escapeRegExp(messages.Share.share)}$`) }),
     ).toBeVisible();
-    await expect(page.getByTitle("Restart Game")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Restart Game" })).toBeVisible();
 
     const keyboardButtons = page.locator("footer button");
-    await expect(keyboardButtons).toHaveCount(28);
+    await expectWordleKeyboardButtons(page);
     await keyboardButtons.nth(10).click();
     await keyboardButtons.nth(19).click();
     await keyboardButtons.nth(27).click();

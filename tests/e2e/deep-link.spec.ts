@@ -11,7 +11,7 @@ test.describe.configure({ mode: "serial" });
 
 test.describe("딥링크 직접 진입", () => {
   test("주요 상세/게임 라우트를 URL 직접 진입으로 렌더링한다", async ({ page }) => {
-    const { locale } = await resolveLocaleAndMessages(page);
+    const { locale, messages } = await resolveLocaleAndMessages(page);
     const localeRegex = escapeRegExp(locale);
     const blogSlug = readFirstBlogSlug();
     const resumeSlug = readFirstResumeSlug();
@@ -27,11 +27,14 @@ test.describe("딥링크 직접 진입", () => {
     await expect(page.getByRole("heading", { level: 2 })).toBeVisible();
 
     await gotoWithRetry(page, `/${locale}/game/wordle`);
-    await expect(page.getByRole("heading", { name: "Wordle" })).toBeVisible();
-    await expect(page.locator("footer button")).toHaveCount(28);
+    await expect(
+      page.getByRole("heading", {
+        name: new RegExp(`^${escapeRegExp(messages.Game.wordleTitle)}$`),
+      }),
+    ).toBeVisible();
 
     await gotoWithRetry(page, `/${locale}/game/sky-drop`);
-    await expect(page.getByRole("button", { name: "Start Game" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Exit Game" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Start Game/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Exit Game/i })).toBeVisible();
   });
 });

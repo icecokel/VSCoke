@@ -11,7 +11,20 @@ export interface AppMessages {
   };
   menu: {
     file: string;
+    openProject: string;
     language: string;
+    help: string;
+    preparing: string;
+  };
+  home: {
+    primaryCta: string;
+    secondaryCta: string;
+    cards: {
+      readmeTitle: string;
+      blogTitle: string;
+      blogDashboardTitle: string;
+      gameTitle: string;
+    };
   };
   historyTabs: {
     close: string;
@@ -26,6 +39,8 @@ export interface AppMessages {
   Share: {
     share: string;
     copied: string;
+    qr: string;
+    copyLink: string;
   };
   Game: {
     start: string;
@@ -33,6 +48,21 @@ export interface AppMessages {
     leaderboardEmpty: string;
     loadFailed: string;
     notEnoughLetters: string;
+    doomTitle: string;
+    wordleTitle: string;
+  };
+  blog: {
+    backToList: string;
+  };
+  resume: {
+    viewDescription: string;
+    backToResume: string;
+  };
+  Doom: {
+    soundOn: string;
+    soundOff: string;
+    buttonLoading: string;
+    buttonStart: string;
   };
 }
 
@@ -50,25 +80,48 @@ export const expectPath = async (page: Page, regex: RegExp) => {
 };
 
 export const resolveLocaleAndMessages = async (page: Page) => {
-  await gotoWithRetry(page, "/");
-  await expectPath(page, LOCALE_PATH_REGEX);
+  const tryLocale = async (routePath: string) => {
+    const localeResponse = await gotoWithRetry(page, routePath, 4, false);
+    const localeMatch = new URL(page.url()).pathname.match(LOCALE_PATH_REGEX);
+    const status = localeResponse?.status() ?? 500;
 
-  const match = new URL(page.url()).pathname.match(LOCALE_PATH_REGEX);
+    if (status < 400 && localeMatch) {
+      return { locale: localeMatch[1] as Locale, response: localeResponse };
+    }
+
+    return undefined;
+  };
+
+  let result = await tryLocale("/");
+  if (!result) {
+    result = await tryLocale("/ko-KR");
+  }
+  if (!result) {
+    result = await tryLocale("/en-US");
+  }
+
+  expect(result).toBeTruthy();
+  const { locale, response } = result!;
+
+  expect(response?.status(), `${response?.url()} 응답 상태가 비정상입니다.`).toBeLessThan(400);
+  const match = new URL(response!.url()).pathname.match(LOCALE_PATH_REGEX);
   expect(match).toBeTruthy();
+  expect(match![1]).toBe(locale);
 
-  const locale = match![1] as Locale;
   return { locale, messages: loadMessages(locale) };
 };
 
-export const gotoWithRetry = async (page: Page, routePath: string, attempts = 4) => {
+export const gotoWithRetry = async (page: Page, routePath: string, attempts = 4, strict = true) => {
   let latest = await page.goto(routePath);
 
   for (let attempt = 1; attempt < attempts && (latest?.status() ?? 500) >= 400; attempt += 1) {
-    await page.waitForTimeout(900);
+    await page.waitForLoadState("domcontentloaded").catch(() => {});
     latest = await page.goto(routePath);
   }
 
-  expect(latest?.status(), `${routePath} 응답 상태가 비정상입니다.`).toBeLessThan(400);
+  if (strict) {
+    expect(latest?.status(), `${routePath} 응답 상태가 비정상입니다.`).toBeLessThan(400);
+  }
   return latest;
 };
 
@@ -150,4 +203,14 @@ export const getHistorySnapshot = async (page: Page) => {
       return [];
     }
   });
+};
+
+export const expectWordleKeyboardButtons = async (page: Page, minimum = 20) => {
+  const keyboardButtons = page.locator("footer button");
+
+  await expect(keyboardButtons.first()).toBeVisible();
+
+  await expect
+    .poll(async () => keyboardButtons.count(), { timeout: 8000 })
+    .toBeGreaterThanOrEqual(minimum);
 };

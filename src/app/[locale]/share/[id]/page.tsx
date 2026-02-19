@@ -4,12 +4,13 @@ import { getSkyDropMedal } from "@/utils/sky-drop-util";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getGameResult } from "@/services/score-service";
+import type { Metadata } from "next";
 
 interface Props {
   params: Promise<{ locale: string; id: string }>;
 }
 
-export const generateMetadata = async ({ params }: Props) => {
+export const generateMetadata = async ({ params }: Props): Promise<Metadata> => {
   const { locale, id } = await params;
   const result = await getGameResult(id);
   const t = await getTranslations({ locale, namespace: "Game" });
@@ -17,6 +18,10 @@ export const generateMetadata = async ({ params }: Props) => {
   if (!result) {
     return {
       title: "Game Result Not Found",
+      robots: {
+        index: false,
+        follow: false,
+      },
     };
   }
 
@@ -34,6 +39,10 @@ export const generateMetadata = async ({ params }: Props) => {
       card: "summary_large_image",
       title: `${gameTitle} - ${result.score}점`,
       description: t("shareDescription", { score: result.score }),
+    },
+    robots: {
+      index: false,
+      follow: false,
     },
   };
 };

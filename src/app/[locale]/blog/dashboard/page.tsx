@@ -2,6 +2,20 @@ import { getAllPosts } from "@/lib/blog";
 import DashboardSearch from "./dashboard-search";
 import BaseText from "@/components/base-ui/text";
 import { getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
+
+export const generateMetadata = async (): Promise<Metadata> => {
+  const t = await getTranslations("blog");
+
+  return {
+    title: t("dashboardTitle") || "Dashboard",
+    description: t("dashboardDescription") || "Admin dashboard for blog posts",
+    robots: {
+      index: false,
+      follow: false,
+    },
+  };
+};
 
 const BlogDashboardPage = async () => {
   const t = await getTranslations("blog");

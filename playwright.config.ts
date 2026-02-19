@@ -7,6 +7,8 @@ const e2eEnv = {
   AUTH_SECRET: process.env.AUTH_SECRET ?? "e2e-auth-secret",
   NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ?? "e2e-auth-secret",
 };
+const mobileTestMatch = /mobile-behavior\.spec\.ts$/;
+const desktopTestMatch = /^(?!.*mobile-behavior\.spec\.ts$).*\.spec\.ts$/;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -34,7 +36,126 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
+      testMatch: desktopTestMatch,
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "webkit",
+      testMatch: desktopTestMatch,
+      use: { ...devices["Desktop Safari"] },
+    },
+    {
+      name: "firefox",
+      testMatch: desktopTestMatch,
+      use: { ...devices["Desktop Firefox"] },
+    },
+    {
+      name: "chromium-mobile-sm",
+      testMatch: mobileTestMatch,
+      use: {
+        ...devices["Desktop Chrome"],
+        browserName: "chromium",
+        viewport: { width: 360, height: 780 },
+        isMobile: true,
+        hasTouch: true,
+        deviceScaleFactor: 2,
+      },
+    },
+    {
+      name: "chromium-mobile-md",
+      testMatch: mobileTestMatch,
+      use: {
+        ...devices["Desktop Chrome"],
+        browserName: "chromium",
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+        deviceScaleFactor: 2,
+      },
+    },
+    {
+      name: "chromium-mobile-lg",
+      testMatch: mobileTestMatch,
+      use: {
+        ...devices["Desktop Chrome"],
+        browserName: "chromium",
+        viewport: { width: 430, height: 932 },
+        isMobile: true,
+        hasTouch: true,
+        deviceScaleFactor: 2,
+      },
+    },
+    {
+      name: "webkit-mobile-sm",
+      testMatch: mobileTestMatch,
+      use: {
+        ...devices["Desktop Safari"],
+        browserName: "webkit",
+        viewport: { width: 360, height: 780 },
+        isMobile: true,
+        hasTouch: true,
+        deviceScaleFactor: 2,
+      },
+    },
+    {
+      name: "webkit-mobile-md",
+      testMatch: mobileTestMatch,
+      use: {
+        ...devices["Desktop Safari"],
+        browserName: "webkit",
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+        deviceScaleFactor: 2,
+      },
+    },
+    {
+      name: "webkit-mobile-lg",
+      testMatch: mobileTestMatch,
+      use: {
+        ...devices["Desktop Safari"],
+        browserName: "webkit",
+        viewport: { width: 430, height: 932 },
+        isMobile: true,
+        hasTouch: true,
+        deviceScaleFactor: 2,
+      },
+    },
+    {
+      name: "firefox-mobile-sm",
+      testMatch: mobileTestMatch,
+      use: {
+        ...devices["Desktop Firefox"],
+        browserName: "firefox",
+        viewport: { width: 360, height: 780 },
+        isMobile: true,
+        hasTouch: true,
+        deviceScaleFactor: 2,
+      },
+    },
+    {
+      name: "firefox-mobile-md",
+      testMatch: mobileTestMatch,
+      use: {
+        ...devices["Desktop Firefox"],
+        browserName: "firefox",
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+        deviceScaleFactor: 2,
+      },
+    },
+    {
+      name: "firefox-mobile-lg",
+      testMatch: mobileTestMatch,
+      use: {
+        ...devices["Desktop Firefox"],
+        browserName: "firefox",
+        viewport: { width: 430, height: 932 },
+        isMobile: true,
+        hasTouch: true,
+        deviceScaleFactor: 2,
+      },
     },
   ],
 });

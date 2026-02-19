@@ -22,7 +22,7 @@ test.describe("오류/네트워크 장애 fallback", () => {
 
     await gotoWithRetry(page, `/${locale}/game/sky-drop`);
 
-    await expect(page.getByRole("button", { name: /Start Game/i })).toBeVisible();
+    await expect(page.getByTestId("game-start-button")).toBeVisible();
     await expect(page.getByText(messages.Game.leaderboardEmpty)).toBeVisible({ timeout: 15000 });
   });
 

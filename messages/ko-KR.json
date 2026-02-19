@@ -110,6 +110,7 @@
     "deadline": "데드라인",
     "start": "시작",
     "gameOver": "게임 종료",
+    "loading": "단어를 불러오는 중입니다...",
     "finalScore": "최종 점수: ",
     "restart": "클릭하여 재시작",
     "goBack": "뒤로 가기",

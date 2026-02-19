@@ -30,7 +30,7 @@ test.describe("비주얼 회귀", () => {
       await expect(page.locator("#menubar")).toBeVisible();
 
       if (pageCase.ready === "home") {
-        await expect(page.getByText("VSCOKE HUB")).toBeVisible();
+        await expect(page.locator('[data-testid="home-hero"]')).toBeVisible();
       } else if (pageCase.ready === "blog") {
         await expect(page.getByRole("heading", { level: 3, name: "블로그" })).toBeVisible();
       } else if (pageCase.ready === "dashboard") {

@@ -26,6 +26,7 @@ export const MobileSidebarTrigger = () => {
       onClick={() => setOpenMobile(true)}
       size="icon"
       className="fixed bottom-4 right-4 z-50 size-12 rounded-full shadow-lg"
+      data-testid="sidebar-trigger-mobile"
     >
       <PanelLeftIcon className="size-6" />
       <span className="sr-only">Toggle Sidebar</span>

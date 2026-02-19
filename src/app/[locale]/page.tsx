@@ -43,7 +43,10 @@ const Home = () => {
   return (
     <div className="min-h-full bg-gray-800 text-gray-100">
       <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-6 md:space-y-10 md:px-6 md:py-10">
-        <section className="rounded-2xl border border-gray-700 bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-6 md:p-10">
+        <section
+          className="rounded-2xl border border-gray-700 bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-6 md:p-10"
+          data-testid="home-hero"
+        >
           <div className="max-w-3xl">
             <p className="mb-3 text-xs uppercase tracking-[0.22em] text-blue-200/80">VSCOKE HUB</p>
             <h1 className="text-3xl font-bold text-gray-100 md:text-5xl">

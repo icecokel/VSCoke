@@ -31,7 +31,7 @@ test.describe("모바일 전용 동작", () => {
     expect(page.context().browser()?.browserType().name()).toBe(project.browserName);
 
     await visit(page, `/${locale}`);
-    const mobileTrigger = page.getByRole("button", { name: "Toggle Sidebar" });
+    const mobileTrigger = page.getByTestId("sidebar-trigger-mobile");
     await expect(mobileTrigger).toBeVisible();
 
     await mobileTrigger.click();
@@ -45,7 +45,7 @@ test.describe("모바일 전용 동작", () => {
     await gotoWithRetry(page, `/${locale}/game/sky-drop`);
     await expect(mobileTrigger).toBeVisible();
 
-    await page.getByRole("button", { name: /Start Game/i }).click();
+    await page.getByTestId("game-start-button").click();
     await expect(mobileTrigger).toBeHidden();
   });
 });

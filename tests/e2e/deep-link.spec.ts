@@ -34,7 +34,7 @@ test.describe("딥링크 직접 진입", () => {
     ).toBeVisible();
 
     await gotoWithRetry(page, `/${locale}/game/sky-drop`);
-    await expect(page.getByRole("button", { name: /Start Game/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Exit Game/i })).toBeVisible();
+    await expect(page.getByTestId("game-start-button")).toBeVisible();
+    await expect(page.getByTestId("game-exit-button")).toBeVisible();
   });
 });

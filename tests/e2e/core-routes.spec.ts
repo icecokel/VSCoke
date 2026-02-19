@@ -80,7 +80,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     const localeRegex = escapeRegExp(locale);
     await visit(page, `/${locale}`);
 
-    const heroSection = page.locator("section").filter({ has: page.getByText("VSCOKE HUB") });
+    const heroSection = page.locator('[data-testid="home-hero"]');
     await expect(heroSection).toHaveCount(1);
 
     const primaryCta = heroSection.getByRole("button", {
@@ -154,7 +154,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await visit(page, `/${locale}`);
     await searchButton.click();
 
-    const searchInput = page.getByPlaceholder(messages.sidebar.searchPlaceholder);
+    const searchInput = page.getByTestId("blog-dashboard-search-input");
     await expect(searchInput).toBeVisible();
     await searchInput.fill("game");
 
@@ -257,7 +257,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     const { locale } = await resolveLocaleAndMessages(page);
     await visit(page, `/${locale}/blog/dashboard`);
 
-    const searchInput = page.getByPlaceholder("제목으로 검색...");
+    const searchInput = page.getByPlaceholder(messages.sidebar.searchPlaceholder);
     await expect(searchInput).toBeVisible();
 
     const allCards = page.locator("article");
@@ -308,8 +308,8 @@ test.describe("코어 라우트 CTA 시나리오", () => {
       .first()
       .click();
     await expectPath(page, new RegExp(`^/${localeRegex}/game/sky-drop$`));
-    const skyDropStart = page.getByRole("button", { name: /Start Game/i });
-    const skyDropExit = page.getByRole("button", { name: /Exit Game/i });
+    const skyDropStart = page.getByTestId("game-start-button");
+    const skyDropExit = page.getByTestId("game-exit-button");
     await expect(skyDropStart).toBeVisible({ timeout: 20000 });
     await expect(skyDropExit).toBeVisible();
     await skyDropExit.click();
@@ -365,7 +365,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await expect(
       page.getByRole("button", { name: new RegExp(`^${escapeRegExp(messages.Share.share)}$`) }),
     ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Restart Game" })).toBeVisible();
+    await expect(page.getByTestId("wordle-header-restart")).toBeVisible();
 
     const keyboardButtons = page.locator("footer button");
     await expectWordleKeyboardButtons(page);

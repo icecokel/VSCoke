@@ -13,9 +13,9 @@ test.describe("키보드 전용 시나리오", () => {
         name: new RegExp(`^${escapeRegExp(messages.Game.wordleTitle)}$`),
       }),
     ).toBeVisible();
-    await expect(page.getByText("Loading word...")).toBeHidden({ timeout: 20000 });
+    await expect(page.getByTestId("wordle-loading")).toBeHidden({ timeout: 20000 });
 
-    const restartButton = page.getByRole("button", { name: "Restart Game" });
+    const restartButton = page.getByTestId("wordle-header-restart");
     for (let index = 0; index < 30; index += 1) {
       if (await restartButton.evaluate(element => element === document.activeElement)) {
         break;

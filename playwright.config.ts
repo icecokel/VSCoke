@@ -53,7 +53,7 @@ export default defineConfig({
       name: "chromium-mobile-sm",
       testMatch: mobileTestMatch,
       use: {
-        ...devices["Desktop Chrome"],
+        ...devices["iPhone 13"],
         browserName: "chromium",
         viewport: { width: 360, height: 780 },
         isMobile: true,
@@ -65,7 +65,7 @@ export default defineConfig({
       name: "chromium-mobile-md",
       testMatch: mobileTestMatch,
       use: {
-        ...devices["Desktop Chrome"],
+        ...devices["iPhone 13"],
         browserName: "chromium",
         viewport: { width: 390, height: 844 },
         isMobile: true,
@@ -77,7 +77,7 @@ export default defineConfig({
       name: "chromium-mobile-lg",
       testMatch: mobileTestMatch,
       use: {
-        ...devices["Desktop Chrome"],
+        ...devices["iPhone 13"],
         browserName: "chromium",
         viewport: { width: 430, height: 932 },
         isMobile: true,
@@ -89,7 +89,7 @@ export default defineConfig({
       name: "webkit-mobile-sm",
       testMatch: mobileTestMatch,
       use: {
-        ...devices["Desktop Safari"],
+        ...devices["iPhone 13"],
         browserName: "webkit",
         viewport: { width: 360, height: 780 },
         isMobile: true,
@@ -101,7 +101,7 @@ export default defineConfig({
       name: "webkit-mobile-md",
       testMatch: mobileTestMatch,
       use: {
-        ...devices["Desktop Safari"],
+        ...devices["iPhone 13"],
         browserName: "webkit",
         viewport: { width: 390, height: 844 },
         isMobile: true,
@@ -113,7 +113,7 @@ export default defineConfig({
       name: "webkit-mobile-lg",
       testMatch: mobileTestMatch,
       use: {
-        ...devices["Desktop Safari"],
+        ...devices["iPhone 13"],
         browserName: "webkit",
         viewport: { width: 430, height: 932 },
         isMobile: true,
@@ -125,7 +125,7 @@ export default defineConfig({
       name: "firefox-mobile-sm",
       testMatch: mobileTestMatch,
       use: {
-        ...devices["Desktop Firefox"],
+        ...devices["iPhone 13"],
         browserName: "firefox",
         viewport: { width: 360, height: 780 },
         isMobile: true,
@@ -137,7 +137,7 @@ export default defineConfig({
       name: "firefox-mobile-md",
       testMatch: mobileTestMatch,
       use: {
-        ...devices["Desktop Firefox"],
+        ...devices["iPhone 13"],
         browserName: "firefox",
         viewport: { width: 390, height: 844 },
         isMobile: true,
@@ -149,7 +149,7 @@ export default defineConfig({
       name: "firefox-mobile-lg",
       testMatch: mobileTestMatch,
       use: {
-        ...devices["Desktop Firefox"],
+        ...devices["iPhone 13"],
         browserName: "firefox",
         viewport: { width: 430, height: 932 },
         isMobile: true,

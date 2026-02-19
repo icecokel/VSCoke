@@ -394,7 +394,8 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
           onClick={onRestart}
           disabled={isSubmitting || isSharing}
           size="lg"
-          aria-label="Restart Game"
+          aria-label={t("restart")}
+          data-testid="wordle-result-restart"
           className="w-full text-lg py-6 bg-teal-400 hover:bg-teal-500 text-black font-bold rounded-xl shadow-lg transition-all transform hover:scale-105 disabled:opacity-70 disabled:cursor-not-allowed"
         >
           <RotateCcw className="mr-2 h-5 w-5" />

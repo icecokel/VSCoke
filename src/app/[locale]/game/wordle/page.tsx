@@ -14,6 +14,7 @@ import { useTranslations } from "next-intl";
 export default function WordlePage() {
   const isMobile = useIsMobile();
   const tShare = useTranslations("Share");
+  const tGame = useTranslations("Game");
   const {
     currentGuess,
     guesses,
@@ -85,7 +86,9 @@ export default function WordlePage() {
               variant="ghost"
               size="icon"
               onClick={resetGame}
-              title="Restart Game"
+              title={tGame("restart")}
+              aria-label={tGame("restart")}
+              data-testid="wordle-header-restart"
               className="h-8 w-8"
             >
               <RefreshCw className="w-4 h-4" />
@@ -98,7 +101,9 @@ export default function WordlePage() {
           {isLoading ? (
             <div className="flex flex-col items-center gap-4 text-muted-foreground">
               <Loader2 className="h-10 w-10 animate-spin" />
-              <p>Loading word...</p>
+              <p data-testid="wordle-loading" aria-live="polite">
+                {tGame("loading")}
+              </p>
             </div>
           ) : (
             <WordleBoard

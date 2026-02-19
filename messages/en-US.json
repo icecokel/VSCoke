@@ -110,6 +110,7 @@
     "deadline": "DEADLINE",
     "start": "START",
     "gameOver": "GAME OVER",
+    "loading": "Loading word...",
     "finalScore": "Final Score: ",
     "restart": "CLICK TO RESTART",
     "goBack": "Go Back",

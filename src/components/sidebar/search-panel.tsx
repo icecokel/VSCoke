@@ -96,6 +96,8 @@ const SearchPanel = ({ onNavigate }: SearchPanelProps) => {
           value={query}
           onChange={e => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
+          aria-label={t("searchPlaceholder")}
+          data-testid="blog-dashboard-search-input"
           placeholder={t("searchPlaceholder")}
           className="h-9 border-gray-700 bg-gray-800 pl-9 text-gray-100 placeholder:text-gray-500"
         />

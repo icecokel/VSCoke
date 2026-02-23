@@ -63,18 +63,15 @@ const SIDEBAR_SECTIONS: { title: string; items: { icon: TKind; label: string }[]
 
 const OpenProjectModal = (props: IOpenProjectModalProps) => {
   const [currentCategory, setCurrentCategory] = useState<ICategory>(DUMMY[0]);
-  const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
   const [currentProject, setCurrentProject] = useState<IProject | undefined>();
   const [selectedSidebarItem, setSelectedSidebarItem] = useState<string>("문서");
 
   useEffect(() => {
     setCurrentCategory(DUMMY[0]);
-    setCurrentCategoryIndex(0);
   }, []);
 
-  const handleClickCategory = (value: ICategory, index: number) => {
+  const handleClickCategory = (value: ICategory) => {
     setCurrentCategory(value);
-    setCurrentCategoryIndex(index);
     setCurrentProject(undefined);
   };
 
@@ -162,7 +159,6 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                   {section.items.map((item, itemIdx) => (
                     <button
                       key={itemIdx}
-                      data-testid={`open-project-sidebar-item-${sectionIdx}-${itemIdx}`}
                       onClick={() => setSelectedSidebarItem(item.label)}
                       className={`w-full flex items-center gap-2 px-3 py-1 text-sm ${
                         selectedSidebarItem === item.label
@@ -185,8 +181,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                 {DUMMY.map((category, index) => (
                   <button
                     key={`category_${index}`}
-                    data-testid={`open-project-category-${index}`}
-                    onClick={() => handleClickCategory(category, index)}
+                    onClick={() => handleClickCategory(category)}
                     className={`w-full flex items-center justify-between px-3 py-2 text-sm ${
                       currentCategory === category
                         ? "bg-blue-500 text-white"
@@ -211,7 +206,6 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                 {currentCategory.items.map((project, index) => (
                   <button
                     key={`project_${index}`}
-                    data-testid={`open-project-project-${currentCategoryIndex}-${index}`}
                     onClick={() => handleClickProject(project)}
                     className={`w-full flex items-center justify-between px-3 py-2 text-sm ${
                       currentProject === project
@@ -253,7 +247,6 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
           <div className="flex items-center justify-end gap-2 px-3 py-2 border-t border-gray-500 shrink-0 bg-gray-500">
             <Button
               variant="ghost"
-              data-testid="open-project-cancel"
               onClick={onClose}
               size="sm"
               className="text-gray-200 hover:text-white hover:bg-gray-500"
@@ -262,7 +255,6 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
             </Button>
             <Button
               variant="default"
-              data-testid="open-project-confirm"
               size="sm"
               onClick={handleClickOpenProject}
               disabled={!currentProject}
@@ -295,7 +287,6 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                   {category.items.map((project, idx) => (
                     <button
                       key={`project_${idx}`}
-                      data-testid={`open-project-project-${index}-${idx}`}
                       onClick={() => handleClickProject(project)}
                       className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded ${
                         currentProject === project
@@ -317,18 +308,12 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
           </BaseText>
 
           <div className="flex gap-2 mt-4">
-            <Button
-              variant="secondary"
-              className="flex-1"
-              data-testid="open-project-cancel"
-              onClick={onClose}
-            >
+            <Button variant="secondary" className="flex-1" onClick={onClose}>
               취소
             </Button>
             <Button
               variant="default"
               className="flex-1 bg-blue-500 hover:bg-blue-600"
-              data-testid="open-project-confirm"
               onClick={handleClickOpenProject}
               disabled={!currentProject}
             >

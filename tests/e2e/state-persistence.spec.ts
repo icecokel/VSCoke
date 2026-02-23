@@ -1,27 +1,22 @@
 import { expect, test } from "@playwright/test";
 import {
   escapeRegExp,
-  clearHistoryStorage,
   getHistorySnapshot,
   resolveLocaleAndMessages,
   visit,
-  waitForHistoryPath,
   waitForHistoryHydration,
 } from "./test-helpers";
+
+test.describe.configure({ mode: "serial" });
 
 test.describe("새로고침 상태 복원", () => {
   test("history/localStorage 상태가 reload 이후에도 유지된다", async ({ page }) => {
     const { locale } = await resolveLocaleAndMessages(page);
     const localeRegex = escapeRegExp(locale);
 
-    await clearHistoryStorage(page);
-
     await visit(page, `/${locale}/readme`);
-    await waitForHistoryPath(page, "/readme");
     await visit(page, `/${locale}/blog`);
-    await waitForHistoryPath(page, "/blog");
     await visit(page, `/${locale}/game`);
-    await waitForHistoryPath(page, "/game");
     await waitForHistoryHydration(page);
 
     const beforeReload = await getHistorySnapshot(page);
@@ -43,6 +38,6 @@ test.describe("새로고침 상태 복원", () => {
     const activeItem = afterReload.find((item: { isActive: boolean }) => item.isActive);
     expect(activeItem?.path.endsWith("/game")).toBeTruthy();
 
-    await expect(page.getByTestId("history-tab-game")).toBeVisible();
+    await expect(page.locator('div[id$="/game"][class*="bg-gray-800"]')).toBeVisible();
   });
 });

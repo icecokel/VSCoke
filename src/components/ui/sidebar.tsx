@@ -36,37 +36,6 @@ const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
-const SIDEBAR_MIN_WIDTH_PX = 160;
-const SIDEBAR_DEFAULT_WIDTH_REM = 16;
-const SIDEBAR_RESIZE_MAX_VIEWPORT_RATIO = 0.4;
-const SIDEBAR_KEYBOARD_STEP_REM = 1;
-const SIDEBAR_KEYBOARD_STEP_REM_LARGE = 2;
-
-const clampNumber = (value: number, min: number, max: number) => {
-  return Math.min(max, Math.max(min, value));
-};
-
-const parseCssLengthToPx = (value: string, rootFontSize: number) => {
-  const normalized = value.trim();
-  if (!normalized) return null;
-
-  if (normalized.endsWith("rem")) {
-    const parsed = Number.parseFloat(normalized);
-    return Number.isFinite(parsed) ? parsed * rootFontSize : null;
-  }
-
-  if (normalized.endsWith("px")) {
-    const parsed = Number.parseFloat(normalized);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  const parsed = Number.parseFloat(normalized);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
-const toRemString = (valuePx: number, rootFontSize: number) => {
-  return `${Number((valuePx / rootFontSize).toFixed(2))}rem`;
-};
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed";
@@ -344,70 +313,17 @@ const SidebarTrigger = ({ className, onClick, ...props }: ComponentProps<typeof 
 };
 
 const SidebarRail = ({ className, ...props }: ComponentProps<"button">) => {
-  const { setSidebarWidth, sidebarWidth, state } = useSidebar();
-  const [ariaRange, setAriaRange] = useState({
-    min: SIDEBAR_MIN_WIDTH_PX / 16,
-    max: SIDEBAR_DEFAULT_WIDTH_REM * 2.5,
-  });
-
-  const getRootFontSize = useCallback(() => {
-    return parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-  }, []);
-
-  const getSidebarWrapper = useCallback(() => {
-    return document.querySelector('[data-slot="sidebar-wrapper"]') as HTMLElement | null;
-  }, []);
-
-  useEffect(() => {
-    const updateAriaRange = () => {
-      const rootFontSize = getRootFontSize();
-      const minWidthRem = SIDEBAR_MIN_WIDTH_PX / rootFontSize;
-      const maxWidthPx = Math.max(
-        SIDEBAR_MIN_WIDTH_PX,
-        window.innerWidth * SIDEBAR_RESIZE_MAX_VIEWPORT_RATIO,
-      );
-      const maxWidthRem = maxWidthPx / rootFontSize;
-      setAriaRange({
-        min: Number(minWidthRem.toFixed(1)),
-        max: Number(maxWidthRem.toFixed(1)),
-      });
-    };
-
-    updateAriaRange();
-    window.addEventListener("resize", updateAriaRange);
-    return () => window.removeEventListener("resize", updateAriaRange);
-  }, [getRootFontSize]);
-
-  const handleSetSidebarWidthPx = useCallback(
-    (nextWidthPx: number) => {
-      const wrapper = getSidebarWrapper();
-      if (!wrapper) return;
-
-      const rootFontSize = getRootFontSize();
-      const maxWidthPx = Math.max(
-        SIDEBAR_MIN_WIDTH_PX,
-        window.innerWidth * SIDEBAR_RESIZE_MAX_VIEWPORT_RATIO,
-      );
-      const clampedWidthPx = clampNumber(nextWidthPx, SIDEBAR_MIN_WIDTH_PX, maxWidthPx);
-      const width = toRemString(clampedWidthPx, rootFontSize);
-      wrapper.style.setProperty("--sidebar-width", width);
-      setSidebarWidth(width);
-    },
-    [getRootFontSize, getSidebarWrapper, setSidebarWidth],
-  );
+  const { setSidebarWidth, state } = useSidebar();
 
   const handleMouseDown = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
+    (event: React.MouseEvent) => {
       if (state === "collapsed") return;
 
       event.preventDefault();
       event.stopPropagation();
 
-      const rootFontSize = getRootFontSize();
-      const sidebarWrapper = getSidebarWrapper();
-      const side =
-        ((event.currentTarget.closest('[data-slot="sidebar"]') as HTMLElement | null)?.dataset
-          .side as "left" | "right" | undefined) ?? "left";
+      const fontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
+      const sidebarWrapper = document.querySelector('[data-slot="sidebar-wrapper"]') as HTMLElement;
 
       if (!sidebarWrapper) return;
 
@@ -420,14 +336,13 @@ const SidebarRail = ({ className, ...props }: ComponentProps<"button">) => {
         // Actually direct DOM update is fast enough usually.
         // But let's avoid too many calcs.
 
-        let newWidthPx =
-          side === "right" ? window.innerWidth - moveEvent.clientX : moveEvent.clientX;
-        newWidthPx = clampNumber(
-          newWidthPx,
-          SIDEBAR_MIN_WIDTH_PX,
-          window.innerWidth * SIDEBAR_RESIZE_MAX_VIEWPORT_RATIO,
-        );
-        finalWidth = toRemString(newWidthPx, rootFontSize);
+        let newWidth = moveEvent.clientX;
+        // Min width ~10rem (160px)
+        if (newWidth < 160) newWidth = 160;
+        // Max width 40vw
+        if (newWidth > window.innerWidth * 0.4) newWidth = window.innerWidth * 0.4;
+
+        finalWidth = `${newWidth / fontSize}rem`;
         sidebarWrapper.style.setProperty("--sidebar-width", finalWidth);
       };
 
@@ -449,93 +364,18 @@ const SidebarRail = ({ className, ...props }: ComponentProps<"button">) => {
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
     },
-    [getRootFontSize, getSidebarWrapper, setSidebarWidth, state],
-  );
-
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLButtonElement>) => {
-      if (state === "collapsed") return;
-
-      if (
-        !["ArrowLeft", "ArrowRight", "Home", "End", "Enter", " ", "Spacebar"].includes(event.key)
-      ) {
-        return;
-      }
-
-      event.preventDefault();
-
-      const wrapper = getSidebarWrapper();
-      if (!wrapper) return;
-
-      const rootFontSize = getRootFontSize();
-      const computedWidth = getComputedStyle(wrapper).getPropertyValue("--sidebar-width");
-      const currentWidthPx =
-        parseCssLengthToPx(computedWidth, rootFontSize) ??
-        parseCssLengthToPx(sidebarWidth, rootFontSize) ??
-        SIDEBAR_DEFAULT_WIDTH_REM * rootFontSize;
-
-      const maxWidthPx = Math.max(
-        SIDEBAR_MIN_WIDTH_PX,
-        window.innerWidth * SIDEBAR_RESIZE_MAX_VIEWPORT_RATIO,
-      );
-      const side =
-        ((event.currentTarget.closest('[data-slot="sidebar"]') as HTMLElement | null)?.dataset
-          .side as "left" | "right" | undefined) ?? "left";
-      const stepRem = event.shiftKey ? SIDEBAR_KEYBOARD_STEP_REM_LARGE : SIDEBAR_KEYBOARD_STEP_REM;
-      const stepPx = stepRem * rootFontSize;
-
-      let nextWidthPx = currentWidthPx;
-      switch (event.key) {
-        case "ArrowLeft":
-          nextWidthPx += side === "right" ? stepPx : -stepPx;
-          break;
-        case "ArrowRight":
-          nextWidthPx += side === "right" ? -stepPx : stepPx;
-          break;
-        case "Home":
-          nextWidthPx = SIDEBAR_MIN_WIDTH_PX;
-          break;
-        case "End":
-          nextWidthPx = maxWidthPx;
-          break;
-        case "Enter":
-        case " ":
-        case "Spacebar":
-          nextWidthPx = SIDEBAR_DEFAULT_WIDTH_REM * rootFontSize;
-          break;
-        default:
-          return;
-      }
-
-      handleSetSidebarWidthPx(nextWidthPx);
-    },
-    [getRootFontSize, getSidebarWrapper, handleSetSidebarWidthPx, sidebarWidth, state],
-  );
-
-  const parsedSidebarWidth = Number.parseFloat(sidebarWidth);
-  const currentWidthRem = Number.isFinite(parsedSidebarWidth)
-    ? parsedSidebarWidth
-    : SIDEBAR_DEFAULT_WIDTH_REM;
-  const ariaValueNow = Number(
-    clampNumber(currentWidthRem, ariaRange.min, ariaRange.max).toFixed(1),
+    [setSidebarWidth, state],
   );
 
   return (
     <button
       data-sidebar="rail"
       data-slot="sidebar-rail"
-      aria-label="Resize Sidebar"
-      role="separator"
-      aria-orientation="vertical"
-      aria-valuemin={ariaRange.min}
-      aria-valuemax={ariaRange.max}
-      aria-valuenow={ariaValueNow}
-      aria-valuetext={`${ariaValueNow}rem`}
-      tabIndex={0}
+      aria-label="Toggle Sidebar"
+      tabIndex={-1}
       onMouseDown={handleMouseDown}
-      onKeyDown={handleKeyDown}
-      onDoubleClick={() => handleSetSidebarWidthPx(SIDEBAR_DEFAULT_WIDTH_REM * getRootFontSize())}
-      title="Drag or use arrow keys to resize. Double click, Enter, or Space to reset."
+      onDoubleClick={() => setSidebarWidth("16rem")}
+      title="Drag to resize, Double click to reset"
       className={cn(
         "hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex",
         "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",

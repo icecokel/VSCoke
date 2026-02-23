@@ -1,27 +1,22 @@
 import { expect, test } from "@playwright/test";
 import {
   escapeRegExp,
-  clearHistoryStorage,
   getHistorySnapshot,
   resolveLocaleAndMessages,
   visit,
-  waitForHistoryPath,
   waitForHistoryHydration,
 } from "./test-helpers";
+
+test.describe.configure({ mode: "serial" });
 
 test.describe("히스토리 탭 상태머신", () => {
   test("탭 추가/활성화/스마트 닫기 동작이 일관되다", async ({ page }) => {
     const { locale, messages } = await resolveLocaleAndMessages(page);
     const localeRegex = escapeRegExp(locale);
 
-    await clearHistoryStorage(page);
-
     await visit(page, `/${locale}/readme`);
-    await waitForHistoryPath(page, "/readme");
     await visit(page, `/${locale}/blog`);
-    await waitForHistoryPath(page, "/blog");
     await visit(page, `/${locale}/game`);
-    await waitForHistoryPath(page, "/game");
 
     await waitForHistoryHydration(page);
 
@@ -31,14 +26,14 @@ test.describe("히스토리 탭 상태머신", () => {
     expect(initialPaths.some((value: string) => value.endsWith("/blog"))).toBeTruthy();
     expect(initialPaths.some((value: string) => value.endsWith("/game"))).toBeTruthy();
 
-    const blogTab = page.getByTestId("history-tab-blog");
+    const blogTab = page.locator("div[id='/blog']").first();
     await expect(blogTab).toBeVisible();
     await blogTab.click();
 
     await expect(page).toHaveURL(new RegExp(`/${localeRegex}/blog$`));
     await waitForHistoryHydration(page);
 
-    await page.getByTestId("history-tab-close-blog").click({ force: true });
+    await blogTab.locator("svg").first().click({ force: true });
     await expect(page).toHaveURL(new RegExp(`/${localeRegex}/game$`));
 
     await expect
@@ -48,14 +43,14 @@ test.describe("히스토리 탭 상태머신", () => {
       })
       .toBe(false);
 
-    const gameTab = page.getByTestId("history-tab-game");
+    const gameTab = page.locator("div[id='/game']").first();
     await expect(gameTab).toBeVisible();
-    await page.getByTestId("history-tab-close-game").click({ force: true });
+    await gameTab.locator("svg").first().click({ force: true });
     await expect(page).toHaveURL(new RegExp(`/${localeRegex}/readme$`));
 
-    const readmeTab = page.getByTestId("history-tab-readme");
+    const readmeTab = page.locator("div[id='/readme']").first();
     await expect(readmeTab).toBeVisible();
-    await page.getByTestId("history-tab-close-readme").click({ force: true });
+    await readmeTab.locator("svg").first().click({ force: true });
     await expect(page).toHaveURL(new RegExp(`/${localeRegex}(?:/)?$`));
 
     await expect

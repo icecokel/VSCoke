@@ -24,7 +24,7 @@ const BlogPage = async () => {
     <div className="p-3 md:p-5">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <BaseText type="h3" className="text-yellow-200 mb-2" data-testid="blog-title">
+          <BaseText type="h3" className="text-yellow-200 mb-2">
             {t("title")}
           </BaseText>
           <BaseText type="body1" className="text-gray-300">

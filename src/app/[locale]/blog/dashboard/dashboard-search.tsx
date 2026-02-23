@@ -60,7 +60,6 @@ export default function DashboardSearch({ posts }: DashboardSearchProps) {
         <Input
           placeholder="제목으로 검색..."
           value={query}
-          data-testid="blog-dashboard-search-input"
           onChange={handleQueryChange}
           onFocus={dropdown.onTrue}
           onBlur={() => setTimeout(dropdown.onFalse, 150)}
@@ -73,7 +72,6 @@ export default function DashboardSearch({ posts }: DashboardSearchProps) {
             {suggestions.map(post => (
               <li
                 key={post.slug}
-                data-testid="blog-dashboard-search-suggestion"
                 className="p-3 hover:bg-gray-800 cursor-pointer text-gray-200 border-b border-gray-800 last:border-0"
                 onClick={() => handleSelect(post.title)}
               >

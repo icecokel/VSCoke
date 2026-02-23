@@ -135,9 +135,6 @@ const SearchPanel = ({ onNavigate }: SearchPanelProps) => {
                   <button
                     type="button"
                     onClick={() => handleNavigate(item)}
-                    aria-label={`${t(typeStyle.labelKey)}: ${item.title}`}
-                    data-testid={`app-sidebar-search-result-${index}`}
-                    data-path={item.path}
                     className={cn(
                       "flex w-full items-start gap-2 border-b border-gray-800 px-3 py-2 text-left last:border-b-0",
                       isActive ? "bg-blue-500/20" : "hover:bg-gray-800/70",

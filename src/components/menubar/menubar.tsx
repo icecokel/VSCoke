@@ -73,16 +73,11 @@ const Menubar = () => {
         {MENULIST.map((item, index) => (
           <DropdownMenu key={`${item.key}_${index}`}>
             <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="hover:bg-gray-300 text-gray-300 hover:text-black hover:rounded-xs cursor-pointer"
-                data-testid={`menubar-trigger-${item.key}`}
-                aria-label={item.name}
-              >
+              <div className="hover:bg-gray-300 text-gray-300 hover:text-black hover:rounded-xs cursor-pointer">
                 <BaseText type="body1" className="px-3 select-none">
                   {item.name}
                 </BaseText>
-              </button>
+              </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-gray-800 border-gray-700 text-white">
               {item.items.map((menuItem, menuIndex) => (
@@ -90,8 +85,6 @@ const Menubar = () => {
                   key={`${item.name}_item_${menuIndex}`}
                   onClick={menuItem.onClick}
                   className="hover:bg-gray-700 focus:bg-gray-700 cursor-pointer"
-                  aria-label={menuItem.name}
-                  data-testid={`menu-item-${item.key}-${menuIndex}`}
                 >
                   {menuItem.name}
                 </DropdownMenuItem>

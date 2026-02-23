@@ -22,15 +22,14 @@ export const FishDriftResultScreen = ({ score, onRestart }: FishDriftResultScree
       <div className="flex w-full max-w-xs flex-col gap-3">
         <ShareLinkButton
           text={tShare("fishDriftText", { score })}
-          className="rounded-full py-6 text-lg font-bold"
           variant="default"
           size="lg"
+          className="rounded-full py-6 text-lg font-bold"
           label={tShare("share")}
         />
 
         <Button
           onClick={onRestart}
-          data-testid="game-restart-button-fish-drift"
           className="rounded-full bg-emerald-300 py-6 text-lg font-bold text-slate-900 hover:bg-emerald-200"
         >
           다시 시작
@@ -39,7 +38,6 @@ export const FishDriftResultScreen = ({ score, onRestart }: FishDriftResultScree
         <Button
           onClick={() => router.push("/game")}
           variant="ghost"
-          data-testid="game-dashboard-button-fish-drift"
           className="text-slate-300 hover:text-white"
         >
           게임 목록으로

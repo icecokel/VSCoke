@@ -7,26 +7,23 @@ import {
   visit,
 } from "./test-helpers";
 
-const openQrDialogAndCopy = async (page: Page, scope: Page | Locator, copyLabel: string) => {
-  await scope.getByTestId("share-qr-trigger").first().click();
+const openQrDialogAndCopy = async (
+  page: Page,
+  scope: Page | Locator,
+  qrLabel: string,
+  copyLabel: string,
+) => {
+  await scope
+    .getByRole("button", { name: new RegExp(`^${escapeRegExp(qrLabel)}$`) })
+    .first()
+    .click();
 
   const dialog = page.getByRole("dialog").first();
-  const dialogOpened = await dialog.isVisible({ timeout: 5000 }).catch(() => false);
-
-  if (!dialogOpened) {
-    return;
-  }
-
-  const copyButtonByTestId = page.getByTestId("share-qr-copy").first();
-  const copyButtonByLabel = page.getByRole("button", {
-    name: new RegExp(`^${escapeRegExp(copyLabel)}$`),
-  });
-
-  if (await copyButtonByTestId.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await copyButtonByTestId.click();
-  } else if (await copyButtonByLabel.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await copyButtonByLabel.first().click();
-  }
+  await expect(dialog).toBeVisible();
+  await dialog
+    .getByRole("button", { name: new RegExp(`^${escapeRegExp(copyLabel)}$`) })
+    .first()
+    .click();
 
   const closeButton = dialog.getByRole("button", { name: /close/i });
   if ((await closeButton.count()) > 0) {
@@ -37,9 +34,9 @@ const openQrDialogAndCopy = async (page: Page, scope: Page | Locator, copyLabel:
   await expect(dialog).toBeHidden();
 };
 
-test.describe("코어 라우트 CTA 시나리오", () => {
-  test.setTimeout(120000);
+test.describe.configure({ mode: "serial" });
 
+test.describe("코어 라우트 CTA 시나리오", () => {
   test("메뉴바 CTA 전체 동작", async ({ page }) => {
     const { locale, messages } = await resolveLocaleAndMessages(page);
     await visit(page, `/${locale}`);
@@ -47,43 +44,51 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     const menuBar = page.locator("#menubar");
     await expect(menuBar).toBeVisible();
 
-    await menuBar.getByTestId("menubar-trigger-1").click();
-    await page.getByTestId("menu-item-1-0").click();
+    await menuBar.getByText(messages.menu.file, { exact: true }).click();
+    await page
+      .getByRole("menuitem", { name: new RegExp(`^${escapeRegExp(messages.menu.openProject)}$`) })
+      .click();
 
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
-
     const visibleButtons = dialog.locator("button:visible");
     expect(await visibleButtons.count()).toBeGreaterThanOrEqual(8);
 
-    const cancelButton = dialog.getByTestId("open-project-cancel").first();
-    const openButton = dialog.getByTestId("open-project-confirm").first();
+    const cancelButton = dialog.getByRole("button", { name: /취소|Cancel/ }).first();
+    const openButton = dialog.getByRole("button", { name: /열기|Open/ }).first();
 
     await expect(openButton).toBeDisabled();
-    await dialog.getByTestId("open-project-project-0-0").first().click();
+    await dialog.getByRole("button", { name: "Portfolio" }).first().click();
+    await dialog.getByRole("button", { name: "VSCOKE" }).first().click();
     await expect(openButton).toBeEnabled();
     await cancelButton.click();
     await expect(dialog).toBeHidden();
 
-    await menuBar.getByTestId("menubar-trigger-3").click();
-    await expect(page.getByTestId("menu-item-3-0")).toBeVisible({ timeout: 10000 });
+    await menuBar.getByText(messages.menu.language, { exact: true }).click();
+    await expect(page.getByRole("menuitem", { name: "English" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "한국어" })).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    await menuBar.getByText(messages.menu.help, { exact: true }).click({ force: true });
     await expect(
-      page.getByRole("menuitem", {
-        name: new RegExp(`^${escapeRegExp(messages.menu.preparing)}$`),
-      }),
+      page.getByRole("menuitem", { name: new RegExp(escapeRegExp(messages.menu.preparing)) }),
     ).toBeVisible();
   });
 
-  test("홈 CTA 전체 경로 검증", async ({ page }) => {
-    const { locale } = await resolveLocaleAndMessages(page);
+  test("홈 CTA 6개 전체 경로 검증", async ({ page }) => {
+    const { locale, messages } = await resolveLocaleAndMessages(page);
     const localeRegex = escapeRegExp(locale);
     await visit(page, `/${locale}`);
 
     const heroSection = page.locator('[data-testid="home-hero"]');
     await expect(heroSection).toHaveCount(1);
 
-    const primaryCta = heroSection.getByTestId("home-primary-cta");
-    const secondaryCta = heroSection.getByTestId("home-secondary-cta");
+    const primaryCta = heroSection.getByRole("button", {
+      name: new RegExp(`^${escapeRegExp(messages.home.primaryCta)}$`),
+    });
+    const secondaryCta = heroSection.getByRole("button", {
+      name: new RegExp(`^${escapeRegExp(messages.home.secondaryCta)}$`),
+    });
 
     await expect(primaryCta).toBeVisible();
     await expect(secondaryCta).toBeVisible();
@@ -96,23 +101,26 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await expectPath(page, new RegExp(`^/${localeRegex}/game$`));
     await visit(page, `/${locale}`);
 
-    const quickLaunchGrid = page.getByTestId("home-quick-launch-grid");
+    const quickLaunchGrid = page.locator(
+      "section div.grid.grid-cols-1.gap-3.sm\\:grid-cols-2.lg\\:grid-cols-4",
+    );
     await expect(quickLaunchGrid).toHaveCount(1);
     await expect(quickLaunchGrid.locator("button")).toHaveCount(4);
 
-    const quickCtaCases = ["readme", "blog", "blog-dashboard", "game"] as const;
+    const quickCtaCases: Array<{ title: string; path: string }> = [
+      { title: messages.home.cards.readmeTitle, path: "/readme" },
+      { title: messages.home.cards.blogTitle, path: "/blog" },
+      { title: messages.home.cards.blogDashboardTitle, path: "/blog/dashboard" },
+      { title: messages.home.cards.gameTitle, path: "/game" },
+    ];
 
-    for (const key of quickCtaCases) {
-      const cta = quickLaunchGrid.getByTestId(`home-quick-launch-${key}`).first();
+    for (const testCase of quickCtaCases) {
+      const cta = quickLaunchGrid
+        .getByRole("button", { name: new RegExp(escapeRegExp(testCase.title)) })
+        .first();
       await expect(cta).toBeVisible();
       await cta.click();
-      const pathByKey: Record<(typeof quickCtaCases)[number], string> = {
-        readme: "/readme",
-        blog: "/blog",
-        "blog-dashboard": "/blog/dashboard",
-        game: "/game",
-      };
-      await expectPath(page, new RegExp(`^/${localeRegex}${escapeRegExp(pathByKey[key])}$`));
+      await expectPath(page, new RegExp(`^/${localeRegex}${escapeRegExp(testCase.path)}$`));
       await visit(page, `/${locale}`);
     }
   });
@@ -121,16 +129,20 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     const { locale, messages } = await resolveLocaleAndMessages(page);
     await visit(page, `/${locale}`);
 
-    const explorerButton = page.getByTestId("app-sidebar-trigger-explorer");
-    const searchButton = page.getByTestId("app-sidebar-trigger-search");
+    const explorerButton = page
+      .getByRole("button", { name: new RegExp(`^${escapeRegExp(messages.sidebar.explorer)}$`) })
+      .first();
+    const searchButton = page
+      .getByRole("button", { name: new RegExp(`^${escapeRegExp(messages.sidebar.search)}$`) })
+      .first();
 
     await expect(explorerButton).toBeVisible();
     await expect(searchButton).toBeVisible();
 
     await explorerButton.click();
-    await expect(page.getByTestId("app-sidebar-content")).toBeVisible();
+    await expect(page.locator("[data-slot='sidebar-content']")).toBeVisible();
 
-    const sidebarContent = page.getByTestId("app-sidebar-content");
+    const sidebarContent = page.locator("[data-slot='sidebar-content']").first();
     await sidebarContent.getByText("README.md", { exact: true }).click();
     await expectPath(page, new RegExp(`^/${escapeRegExp(locale)}/readme$`));
 
@@ -146,22 +158,12 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await expect(searchInput).toBeVisible();
     await searchInput.fill("game");
 
-    const suggestionItems = sidebarContent.getByTestId(/^app-sidebar-search-result-/);
-    await expect(suggestionItems.first()).toBeVisible();
+    const searchResultButtons = page.locator("[data-slot='sidebar-content'] li > button");
+    await expect(searchResultButtons.first()).toBeVisible();
 
-    const gameSuggestionItems = suggestionItems.filter({ hasText: "/game" });
-    const pickedSuggestion =
-      (await gameSuggestionItems.count()) > 0 ? gameSuggestionItems : suggestionItems;
-
-    const pickedSuggestionPath = (await pickedSuggestion.first().getAttribute("data-path")) ?? "";
-    expect(pickedSuggestionPath).toBeTruthy();
-    await pickedSuggestion.first().click();
-    await expectPath(
-      page,
-      new RegExp(`^/${escapeRegExp(locale)}${escapeRegExp(pickedSuggestionPath)}(?:/)?$`),
-    );
-
-    await expect(page.locator("#menubar")).toBeVisible();
+    const beforePath = new URL(page.url()).pathname;
+    await searchResultButtons.first().click();
+    await expect.poll(() => new URL(page.url()).pathname).not.toBe(beforePath);
   });
 
   test("README/Resume CTA 전체 동작", async ({ page }) => {
@@ -172,7 +174,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await expect(
       page.getByRole("button", { name: new RegExp(`^${escapeRegExp(messages.Share.share)}$`) }),
     ).toBeVisible();
-    await openQrDialogAndCopy(page, page, messages.Share.copyLink);
+    await openQrDialogAndCopy(page, page, messages.Share.qr, messages.Share.copyLink);
 
     const mailLink = page.locator('a[href^="mailto:"]');
     const telLink = page.locator('a[href^="tel:"]');
@@ -200,7 +202,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await expect(
       page.getByRole("button", { name: new RegExp(`^${escapeRegExp(messages.Share.share)}$`) }),
     ).toBeVisible();
-    await openQrDialogAndCopy(page, page, messages.Share.copyLink);
+    await openQrDialogAndCopy(page, page, messages.Share.qr, messages.Share.copyLink);
 
     await page
       .getByRole("link", { name: new RegExp(escapeRegExp(messages.resume.backToResume)) })
@@ -217,7 +219,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await expect(
       page.getByRole("button", { name: new RegExp(`^${escapeRegExp(messages.Share.share)}$`) }),
     ).toBeVisible();
-    await openQrDialogAndCopy(page, page, messages.Share.copyLink);
+    await openQrDialogAndCopy(page, page, messages.Share.qr, messages.Share.copyLink);
 
     const postLinks = page.locator(`a[href^='/${locale}/blog/']`);
     const postLinkCount = await postLinks.count();
@@ -237,7 +239,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await expect(
       page.getByRole("button", { name: new RegExp(`^${escapeRegExp(messages.Share.share)}$`) }),
     ).toBeVisible();
-    await openQrDialogAndCopy(page, page, messages.Share.copyLink);
+    await openQrDialogAndCopy(page, page, messages.Share.qr, messages.Share.copyLink);
 
     const copyCodeButton = page.getByRole("button", { name: /copy code/i });
     if ((await copyCodeButton.count()) > 0) {
@@ -252,10 +254,10 @@ test.describe("코어 라우트 CTA 시나리오", () => {
   });
 
   test("블로그 대시보드 CTA 전체 동작", async ({ page }) => {
-    const { locale, messages } = await resolveLocaleAndMessages(page);
+    const { locale } = await resolveLocaleAndMessages(page);
     await visit(page, `/${locale}/blog/dashboard`);
 
-    const searchInput = page.getByTestId("blog-dashboard-search-input");
+    const searchInput = page.getByPlaceholder(messages.sidebar.searchPlaceholder);
     await expect(searchInput).toBeVisible();
 
     const allCards = page.locator("article");
@@ -268,24 +270,11 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await searchInput.fill(firstTitle!);
     await expect(page.getByText(firstTitle!)).toBeVisible();
 
-    const suggestionItems = page.locator("li[data-testid='blog-dashboard-search-suggestion']");
-    await suggestionItems
-      .first()
-      .waitFor({ state: "visible", timeout: 8000 })
-      .catch(() => {});
+    const suggestionItems = searchInput.locator("xpath=ancestor::div[1]/ul/li");
+    await expect(suggestionItems.first()).toBeVisible();
 
-    let pickedSuggestion = "";
-    if ((await suggestionItems.count()) > 0) {
-      pickedSuggestion = (await suggestionItems.first().innerText()).trim();
-      await suggestionItems.first().click();
-      await expect(searchInput).toHaveValue(pickedSuggestion);
-    } else {
-      await allCards.first().click();
-    }
-
-    if (pickedSuggestion) {
-      await expect(searchInput).toHaveValue(pickedSuggestion);
-    }
+    const pickedSuggestion = (await suggestionItems.first().innerText()).trim();
+    await suggestionItems.first().click();
     await expect(searchInput).toHaveValue(pickedSuggestion);
 
     const filteredCount = await allCards.count();
@@ -302,16 +291,22 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     const localeRegex = escapeRegExp(locale);
     await visit(page, `/${locale}/game`);
 
-    await expect(page.locator('[data-testid="game-dashboard-title"]')).toBeVisible();
-    const mainButtonCount = await page.locator("main button").count();
-    expect(mainButtonCount).toBeGreaterThanOrEqual(4);
+    await expect(page.getByRole("heading", { name: messages.home.cards.gameTitle })).toBeVisible();
+    await expect(page.locator("main button")).toHaveCount(4);
 
-    await expect(page.getByTestId("game-dashboard-card-sky-drop")).toBeVisible();
-    await expect(page.getByTestId("game-dashboard-card-fish-drift")).toBeVisible();
-    await expect(page.getByTestId("game-dashboard-card-doom")).toBeVisible();
-    await expect(page.getByTestId("game-dashboard-card-wordle")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Sky Drop/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Fish Drift/ })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.doomTitle)) }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.wordleTitle)) }),
+    ).toBeVisible();
 
-    await page.getByTestId("game-dashboard-card-sky-drop").first().click();
+    await page
+      .getByRole("button", { name: /Sky Drop/i })
+      .first()
+      .click();
     await expectPath(page, new RegExp(`^/${localeRegex}/game/sky-drop$`));
     const skyDropStart = page.getByTestId("game-start-button");
     const skyDropExit = page.getByTestId("game-exit-button");
@@ -320,18 +315,24 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await skyDropExit.click();
     await expectPath(page, new RegExp(`^/${localeRegex}/game$`));
 
-    await page.getByTestId("game-dashboard-card-fish-drift").click();
+    await page.getByRole("button", { name: /Fish Drift/ }).click();
     await expectPath(page, new RegExp(`^/${localeRegex}/game/fish-drift$`));
 
-    const fishStart = page.getByTestId("game-start-button-fish-drift");
+    const fishStart = page
+      .locator("button", { hasText: new RegExp(`^${escapeRegExp(messages.Game.start)}$`) })
+      .first();
     await expect(fishStart).toBeVisible();
     await expect.poll(() => fishStart.isEnabled(), { timeout: 20000 }).toBe(true);
 
-    const fishExit = page.getByTestId("game-exit-button-fish-drift");
-    await fishExit.click();
+    await page
+      .locator("button", { hasText: new RegExp(`^${escapeRegExp(messages.Game.exit)}$`) })
+      .first()
+      .click();
     await expectPath(page, new RegExp(`^/${localeRegex}/game$`));
 
-    await page.getByTestId("game-dashboard-card-doom").click();
+    await page
+      .getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.doomTitle)) })
+      .click();
     await expectPath(page, new RegExp(`^/${localeRegex}/doom$`));
 
     const muteToggle = page
@@ -356,10 +357,14 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     ).toBeVisible();
 
     await visit(page, `/${locale}/game`);
-    await page.getByTestId("game-dashboard-card-wordle").click();
+    await page
+      .getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.wordleTitle)) })
+      .click();
     await expectPath(page, new RegExp(`^/${localeRegex}/game/wordle$`));
 
-    await expect(page.getByTestId("share-link-button")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: new RegExp(`^${escapeRegExp(messages.Share.share)}$`) }),
+    ).toBeVisible();
     await expect(page.getByTestId("wordle-header-restart")).toBeVisible();
 
     const keyboardButtons = page.locator("footer button");

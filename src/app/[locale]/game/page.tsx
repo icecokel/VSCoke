@@ -43,7 +43,10 @@ export default function GameDashboard() {
 
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-start md:justify-center bg-slate-900 px-4 py-8 md:p-4">
-      <h1 className="mb-6 md:mb-12 text-2xl md:text-5xl font-bold text-white tracking-widest uppercase glow-text">
+      <h1
+        className="mb-6 md:mb-12 text-2xl md:text-5xl font-bold text-white tracking-widest uppercase glow-text"
+        data-testid="game-dashboard-title"
+      >
         Game Center
       </h1>
 
@@ -51,6 +54,7 @@ export default function GameDashboard() {
         {games.map(game => (
           <button
             key={game.id}
+            data-testid={`game-dashboard-card-${game.id}`}
             onClick={() => push(game.route)}
             onMouseEnter={() => prefetch(game.route)}
             onFocus={() => prefetch(game.route)}

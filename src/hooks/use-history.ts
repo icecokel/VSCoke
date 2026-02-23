@@ -38,10 +38,7 @@ export const useHistory = () => {
         return { ...item, isActive: false };
       }),
     );
-
-    if (pathname !== path) {
-      router.push(path);
-    }
+    router.push(path);
   };
 
   const current = history.find((item: IHistoryItem) => item.isActive);

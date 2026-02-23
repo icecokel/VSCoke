@@ -21,6 +21,13 @@
 - 새 파일 생성은 기본적으로 케밥 케이스(`kebab-case`)로 작성
 - 케밥 케이스 적용이 불가피하게 어려운 경우, 작업 전에 사용자에게 사유를 공유
 
+## Accessibility & E2E Rules
+
+- 모든 신규/수정 컴포넌트는 접근성(a11y)을 기본 요구사항으로 간주하고, 시맨틱 마크업과 키보드 조작 가능성(탭 이동, Enter/Space 동작, 포커스 표시)을 보장
+- 아이콘 전용 버튼, 입력 요소, 동적 UI에는 접근 가능한 이름(`aria-label`, `label`, `aria-labelledby` 등)을 명시하고, placeholder를 라벨 대체 수단으로 사용하지 않음
+- E2E는 Playwright CLI 기준으로 운영하므로, DOM 구조는 `getByRole`/`getByLabel`/`getByText` 기반 선택이 가능하도록 예측 가능하고 의미적으로 작성
+- 상호작용 컴포넌트(메뉴, 다이얼로그, 탭, 검색, 토글, 드래그 핸들 등) 변경 시 Playwright E2E 시나리오를 함께 추가하거나 기존 테스트를 갱신
+
 ## Worktree Naming Rules
 
 - 기본 형식은 `type/detail`

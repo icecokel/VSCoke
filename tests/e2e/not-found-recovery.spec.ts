@@ -8,8 +8,6 @@ import {
   waitForHistoryHydration,
 } from "./test-helpers";
 
-test.describe.configure({ mode: "serial" });
-
 test.describe("404 자동 복구", () => {
   test("잘못된 경로 진입 시 유효 탭으로 복구되고 히스토리에서 제거된다", async ({ page }) => {
     const { locale } = await resolveLocaleAndMessages(page);

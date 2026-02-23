@@ -53,6 +53,7 @@ export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
           <button
             data-active={activeTab === "explorer" && (open || (isMobile && openMobile))}
             onClick={() => handleTabClick("explorer")}
+            data-testid="app-sidebar-trigger-explorer"
             className="flex size-10 items-center justify-center rounded-none text-gray-400 hover:text-gray-100 data-[active=true]:border-l-2 data-[active=true]:border-l-blue-300 data-[active=true]:text-gray-100"
             title={t("explorer")}
           >
@@ -61,6 +62,7 @@ export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
           <button
             data-active={activeTab === "search" && (open || (isMobile && openMobile))}
             onClick={() => handleTabClick("search")}
+            data-testid="app-sidebar-trigger-search"
             className="flex size-10 items-center justify-center rounded-none text-gray-400 hover:text-gray-100 data-[active=true]:border-l-2 data-[active=true]:border-l-blue-300 data-[active=true]:text-gray-100"
             title={t("search")}
           >
@@ -70,7 +72,10 @@ export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
 
         {/* 콘텐츠 패널 (Push) */}
         {(open || (isMobile && openMobile)) && (
-          <SidebarContent className="flex-1 bg-gray-900 border-r border-gray-500 min-w-0">
+          <SidebarContent
+            className="flex-1 bg-gray-900 border-r border-gray-500 min-w-0"
+            data-testid="app-sidebar-content"
+          >
             <SidebarGroup className="p-0 h-full">
               {activeTab === "explorer" && (
                 <div className="flex flex-col h-full overflow-y-auto py-2">

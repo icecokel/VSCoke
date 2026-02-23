@@ -61,6 +61,7 @@ const Home = () => {
           <div className="mt-8 flex flex-wrap gap-3">
             <button
               type="button"
+              data-testid="home-primary-cta"
               onClick={() => push("/readme")}
               onMouseEnter={() => prefetch("/readme")}
               onFocus={() => prefetch("/readme")}
@@ -70,6 +71,7 @@ const Home = () => {
             </button>
             <button
               type="button"
+              data-testid="home-secondary-cta"
               onClick={() => push("/game")}
               onMouseEnter={() => prefetch("/game")}
               onFocus={() => prefetch("/game")}
@@ -86,11 +88,15 @@ const Home = () => {
             <p className="mt-2 text-sm text-gray-400 md:text-base">{t("quickLaunchDescription")}</p>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div
+            data-testid="home-quick-launch-grid"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
+          >
             {quickLaunchCards.map(card => (
               <button
                 key={card.id}
                 type="button"
+                data-testid={`home-quick-launch-${card.id}`}
                 onClick={() => push(card.path)}
                 onMouseEnter={() => prefetch(card.path)}
                 onFocus={() => prefetch(card.path)}

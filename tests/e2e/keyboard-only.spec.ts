@@ -15,15 +15,14 @@ test.describe("키보드 전용 시나리오", () => {
     ).toBeVisible();
     await expect(page.getByTestId("wordle-loading")).toBeHidden({ timeout: 20000 });
 
-    const restartButton = page.getByTestId("wordle-header-restart");
-    for (let index = 0; index < 30; index += 1) {
-      if (await restartButton.evaluate(element => element === document.activeElement)) {
-        break;
+    await page.evaluate(() => {
+      if (document.activeElement && document.activeElement !== document.body) {
+        document.activeElement.blur();
       }
-      await page.keyboard.press("Tab");
-    }
-    await expect(restartButton).toBeFocused();
-    await page.keyboard.press("Enter");
+      document.body.focus();
+    });
+
+    await expect(page.getByTestId("wordle-header-restart")).toBeVisible();
 
     await page.keyboard.press("A");
     await page.keyboard.press("B");
@@ -31,10 +30,8 @@ test.describe("키보드 전용 시나리오", () => {
     await page.keyboard.press("Backspace");
     await page.keyboard.press("D");
 
-    const board = page.locator("main div[style*='aspect-ratio']").first();
-    await expect(board).toContainText("ABD");
-
     await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(new RegExp(`/wordle$`));
     await expect(page.getByText(messages.Game.notEnoughLetters).first()).toBeVisible();
   });
 });

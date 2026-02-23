@@ -46,6 +46,7 @@ export const FishDriftReadyScreen = ({
           onClick={onStart}
           disabled={!isStartEnabled}
           size="lg"
+          data-testid="game-start-button-fish-drift"
           className="rounded-full bg-emerald-300 px-12 py-6 text-xl font-bold text-slate-900 hover:bg-emerald-200 disabled:bg-slate-600 disabled:text-slate-300"
         >
           {t("start")}
@@ -54,6 +55,7 @@ export const FishDriftReadyScreen = ({
         <Button
           onClick={() => router.back()}
           variant="ghost"
+          data-testid="game-exit-button-fish-drift"
           className="text-slate-300 hover:text-white"
         >
           {t("exit")}

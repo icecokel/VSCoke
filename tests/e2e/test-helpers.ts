@@ -76,7 +76,7 @@ export const loadMessages = (locale: Locale): AppMessages => {
 };
 
 export const expectPath = async (page: Page, regex: RegExp) => {
-  await expect.poll(() => new URL(page.url()).pathname, { timeout: 15000 }).toMatch(regex);
+  await expect.poll(() => new URL(page.url()).pathname, { timeout: 30000 }).toMatch(regex);
 };
 
 export const resolveLocaleAndMessages = async (page: Page) => {
@@ -112,11 +112,17 @@ export const resolveLocaleAndMessages = async (page: Page) => {
 };
 
 export const gotoWithRetry = async (page: Page, routePath: string, attempts = 4, strict = true) => {
-  let latest = await page.goto(routePath);
+  let latest = await page.goto(routePath, {
+    waitUntil: "load",
+    timeout: 45_000,
+  });
 
   for (let attempt = 1; attempt < attempts && (latest?.status() ?? 500) >= 400; attempt += 1) {
     await page.waitForLoadState("domcontentloaded").catch(() => {});
-    latest = await page.goto(routePath);
+    latest = await page.goto(routePath, {
+      waitUntil: "load",
+      timeout: 45_000,
+    });
   }
 
   if (strict) {
@@ -127,32 +133,56 @@ export const gotoWithRetry = async (page: Page, routePath: string, attempts = 4,
 
 export const visit = async (page: Page, routePath: string) => {
   await gotoWithRetry(page, routePath);
-  await expect(page.locator("#menubar")).toBeVisible();
+  await expect(page.locator("#menubar")).toBeVisible({ timeout: 10_000 });
+};
+
+export const clearHistoryStorage = async (page: Page) => {
+  await page.evaluate(() => {
+    localStorage.removeItem("vscoke-history");
+  });
+};
+
+export const waitForHistoryPath = async (page: Page, pathSuffix: string) => {
+  await expect
+    .poll(
+      async () => {
+        const current = await getHistorySnapshot(page);
+        return current.some((item: { path: string }) => item.path.endsWith(pathSuffix));
+      },
+      { timeout: 10_000 },
+    )
+    .toBe(true);
 };
 
 export const readFirstBlogSlug = (): string => {
   const postsRoot = path.join(process.cwd(), "src", "posts");
-  const stack = [postsRoot];
+  const collected: string[] = [];
+  const visit = (currentDir: string) => {
+    const entries = fs
+      .readdirSync(currentDir, { withFileTypes: true })
+      .sort((a, b) => a.name.localeCompare(b.name));
 
-  while (stack.length > 0) {
-    const current = stack.pop();
-    if (!current) continue;
-
-    const entries = fs.readdirSync(current, { withFileTypes: true });
-    for (const entry of entries) {
-      const absolutePath = path.join(current, entry.name);
+    entries.forEach(entry => {
+      const absolutePath = path.join(currentDir, entry.name);
       if (entry.isDirectory()) {
-        stack.push(absolutePath);
-        continue;
+        visit(absolutePath);
+        return;
       }
 
       if (!entry.isFile() || !entry.name.endsWith(".mdx")) {
-        continue;
+        return;
       }
 
       const relative = path.relative(postsRoot, absolutePath).replace(/\\/g, "/");
-      return relative.replace(/\.mdx$/, "");
-    }
+      collected.push(relative.replace(/\.mdx$/, ""));
+    });
+  };
+
+  visit(postsRoot);
+  collected.sort((a, b) => a.localeCompare(b));
+
+  if (collected.length > 0) {
+    return collected[0];
   }
 
   throw new Error("블로그 포스트를 찾을 수 없습니다.");

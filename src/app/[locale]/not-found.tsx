@@ -31,14 +31,19 @@ const NotFound = () => {
     if (invalidTabIndex !== -1) {
       hasRemovedRef.current = true;
 
+      const isSharePath = pathname.startsWith("/share/");
+
       // 다음 이동할 탭 결정 (오른쪽 → 왼쪽 → 홈)
       const nextTab = currentHistory[invalidTabIndex + 1] || currentHistory[invalidTabIndex - 1];
 
       // 탭 제거
       remove(currentHistory[invalidTabIndex]);
 
-      // 다음 탭으로 이동 (없으면 홈으로)
-      router.replace(nextTab?.path || "/");
+      // 공유 경로의 invalid 요청은 NotFound 화면을 우선 표시한다.
+      if (!isSharePath) {
+        // 다음 탭으로 이동 (없으면 홈으로)
+        router.replace(nextTab?.path || "/");
+      }
     }
   }, [pathname, remove, router]);
 

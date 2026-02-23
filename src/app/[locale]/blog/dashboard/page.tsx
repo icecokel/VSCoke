@@ -33,7 +33,7 @@ const BlogDashboardPage = async () => {
       </div>
 
       <div className="mb-8 p-4 bg-gray-800 rounded-lg">
-        <BaseText type="h5" className="mb-2 text-blue-300">
+        <BaseText type="h5" className="mb-2 text-blue-300" data-testid="blog-dashboard-stats">
           Stats
         </BaseText>
         <div className="flex gap-4">

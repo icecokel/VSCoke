@@ -8,8 +8,6 @@ import {
   visit,
 } from "./test-helpers";
 
-test.describe.configure({ mode: "serial" });
-
 test.describe("i18n 무결성", () => {
   test("언어 전환 후 URL/쿠키/새로고침/루트 리다이렉트가 일치한다", async ({ page }) => {
     const { locale: currentLocale, messages: currentMessages } =
@@ -22,11 +20,11 @@ test.describe("i18n 무결성", () => {
     await visit(page, `/${currentLocale}/blog`);
 
     const menuBar = page.locator("#menubar");
-    await menuBar.getByText(currentMessages.menu.language, { exact: true }).click();
+    await menuBar.getByTestId("menubar-trigger-2").click();
     await page.getByRole("menuitem", { name: targetLabel }).click();
 
     await expectPath(page, new RegExp(`^/${escapeRegExp(targetLocale)}/blog(?:/)?$`));
-    await expect(menuBar.getByText(targetMessages.menu.file, { exact: true })).toBeVisible();
+    await expect(menuBar.getByTestId("menubar-trigger-1")).toBeVisible();
 
     const localeCookie = (await page.context().cookies()).find(
       cookie => cookie.name === "NEXT_LOCALE",
@@ -35,7 +33,7 @@ test.describe("i18n 무결성", () => {
 
     await page.reload();
     await expectPath(page, new RegExp(`^/${escapeRegExp(targetLocale)}/blog(?:/)?$`));
-    await expect(menuBar.getByText(targetMessages.menu.file, { exact: true })).toBeVisible();
+    await expect(menuBar.getByTestId("menubar-trigger-1")).toBeVisible();
 
     const rootResponse = await page.goto("/");
     expect(rootResponse?.status()).toBeLessThan(400);

@@ -43,7 +43,13 @@ export const ShareQrDialog = ({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className={triggerClassName}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={triggerClassName}
+          data-testid="share-qr-trigger"
+        >
           <QrCode className="h-4 w-4" />
           {triggerLabel ?? t("qr")}
         </Button>
@@ -66,7 +72,7 @@ export const ShareQrDialog = ({
             {resolvedUrl}
           </p>
 
-          <Button type="button" onClick={handleCopy} className="w-full">
+          <Button type="button" onClick={handleCopy} className="w-full" data-testid="share-qr-copy">
             <Copy className="h-4 w-4" />
             {t("copyLink")}
           </Button>

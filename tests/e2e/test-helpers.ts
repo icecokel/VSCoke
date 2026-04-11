@@ -3,6 +3,7 @@ import path from "node:path";
 import { expect, Page } from "@playwright/test";
 
 export type Locale = "ko-KR" | "en-US";
+const DEFAULT_PLAYWRIGHT_LOCALE: Locale = "ko-KR";
 
 export interface AppMessages {
   common: {
@@ -75,51 +76,45 @@ export const loadMessages = (locale: Locale): AppMessages => {
   return JSON.parse(fs.readFileSync(filePath, "utf8")) as AppMessages;
 };
 
-export const expectPath = async (page: Page, regex: RegExp) => {
-  await expect.poll(() => new URL(page.url()).pathname, { timeout: 15000 }).toMatch(regex);
+export const expectPath = async (page: Page, regex: RegExp, timeout = 15000) => {
+  await expect.poll(() => new URL(page.url()).pathname, { timeout }).toMatch(regex);
 };
 
 export const resolveLocaleAndMessages = async (page: Page) => {
-  const tryLocale = async (routePath: string) => {
-    const localeResponse = await gotoWithRetry(page, routePath, 4, false);
-    const localeMatch = new URL(page.url()).pathname.match(LOCALE_PATH_REGEX);
-    const status = localeResponse?.status() ?? 500;
-
-    if (status < 400 && localeMatch) {
-      return { locale: localeMatch[1] as Locale, response: localeResponse };
-    }
-
-    return undefined;
-  };
-
-  let result = await tryLocale("/");
-  if (!result) {
-    result = await tryLocale("/ko-KR");
-  }
-  if (!result) {
-    result = await tryLocale("/en-US");
-  }
-
-  expect(result).toBeTruthy();
-  const { locale, response } = result!;
+  const locale = (process.env.PLAYWRIGHT_LOCALE as Locale | undefined) ?? DEFAULT_PLAYWRIGHT_LOCALE;
+  const response = await gotoWithRetry(page, `/${locale}`);
 
   expect(response?.status(), `${response?.url()} 응답 상태가 비정상입니다.`).toBeLessThan(400);
   const match = new URL(response!.url()).pathname.match(LOCALE_PATH_REGEX);
   expect(match).toBeTruthy();
   expect(match![1]).toBe(locale);
+  await expect(page.locator("#menubar")).toBeVisible();
 
   return { locale, messages: loadMessages(locale) };
 };
 
 export const gotoWithRetry = async (page: Page, routePath: string, attempts = 4, strict = true) => {
-  let latest = await page.goto(routePath);
+  let latest: Awaited<ReturnType<Page["goto"]>> | null = null;
+  let lastError: unknown;
 
-  for (let attempt = 1; attempt < attempts && (latest?.status() ?? 500) >= 400; attempt += 1) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      latest = await page.goto(routePath);
+      if ((latest?.status() ?? 500) < 400) {
+        break;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+
     await page.waitForLoadState("domcontentloaded").catch(() => {});
-    latest = await page.goto(routePath);
+    await page.waitForTimeout(250 * (attempt + 1));
   }
 
   if (strict) {
+    if (lastError && !latest) {
+      throw lastError;
+    }
     expect(latest?.status(), `${routePath} 응답 상태가 비정상입니다.`).toBeLessThan(400);
   }
   return latest;
@@ -132,17 +127,19 @@ export const visit = async (page: Page, routePath: string) => {
 
 export const readFirstBlogSlug = (): string => {
   const postsRoot = path.join(process.cwd(), "src", "posts");
-  const stack = [postsRoot];
+  const findFirstPost = (current: string): string | undefined => {
+    const entries = fs
+      .readdirSync(current, { withFileTypes: true })
+      .sort((left, right) => left.name.localeCompare(right.name));
 
-  while (stack.length > 0) {
-    const current = stack.pop();
-    if (!current) continue;
-
-    const entries = fs.readdirSync(current, { withFileTypes: true });
     for (const entry of entries) {
       const absolutePath = path.join(current, entry.name);
+
       if (entry.isDirectory()) {
-        stack.push(absolutePath);
+        const nestedPost = findFirstPost(absolutePath);
+        if (nestedPost) {
+          return nestedPost;
+        }
         continue;
       }
 
@@ -153,6 +150,13 @@ export const readFirstBlogSlug = (): string => {
       const relative = path.relative(postsRoot, absolutePath).replace(/\\/g, "/");
       return relative.replace(/\.mdx$/, "");
     }
+
+    return undefined;
+  };
+
+  const firstPost = findFirstPost(postsRoot);
+  if (firstPost) {
+    return firstPost;
   }
 
   throw new Error("블로그 포스트를 찾을 수 없습니다.");

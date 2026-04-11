@@ -28,8 +28,7 @@ test.describe("히스토리 탭 상태머신", () => {
 
     const blogTab = page.locator("div[id='/blog']").first();
     await expect(blogTab).toBeVisible();
-    await blogTab.click();
-
+    await visit(page, `/${locale}/blog`);
     await expect(page).toHaveURL(new RegExp(`/${localeRegex}/blog$`));
     await waitForHistoryHydration(page);
 

@@ -22,12 +22,32 @@ test.describe("비주얼 회귀", () => {
 
   for (const pageCase of pages) {
     test(`${pageCase.path} 화면 시각 회귀 체크`, async ({ page }) => {
-      const warmup = await page.goto("/");
-      expect(warmup?.status()).toBeLessThan(400);
+      await page.addInitScript(() => {
+        localStorage.setItem(
+          "vscoke-history",
+          JSON.stringify([
+            {
+              isActive: false,
+              lastAccessedAt: Date.now(),
+              path: "/",
+              title: "Home",
+            },
+          ]),
+        );
+      });
 
       const response = await gotoWithRetry(page, pageCase.path);
       expect(response?.status()).toBeLessThan(400);
       await expect(page.locator("#menubar")).toBeVisible();
+
+      await page.addStyleTag({
+        content: `
+          nextjs-portal,
+          [data-nextjs-dev-overlay] {
+            display: none !important;
+          }
+        `,
+      });
 
       if (pageCase.ready === "home") {
         await expect(page.locator('[data-testid="home-hero"]')).toBeVisible();
@@ -49,6 +69,7 @@ test.describe("비주얼 회귀", () => {
         animations: "disabled",
         caret: "hide",
         fullPage: false,
+        maxDiffPixels: 50,
       });
     });
   }

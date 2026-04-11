@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 interface IAvatarProps {
@@ -11,7 +12,9 @@ interface IAvatarProps {
 }
 
 const Avatar = ({ className, src, alt = "avatar", size = 50 }: IAvatarProps) => {
-  if (!src) {
+  const [hasError, setHasError] = useState(false);
+
+  if (!src || hasError) {
     return (
       <div
         className={twMerge("bg-gray-600 rounded-full", className)}
@@ -20,13 +23,16 @@ const Avatar = ({ className, src, alt = "avatar", size = 50 }: IAvatarProps) => 
     );
   }
 
+  const resolvedSrc = src.startsWith("/") ? src : `/images/${src}`;
+
   return (
     <Image
-      src={`/images/${src}`}
+      src={resolvedSrc}
       alt={alt}
       className={twMerge("rounded-full object-cover", className)}
       width={size}
       height={size}
+      onError={() => setHasError(true)}
     />
   );
 };

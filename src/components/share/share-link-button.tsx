@@ -45,6 +45,7 @@ export const ShareLinkButton = ({
       type="button"
       onClick={handleShare}
       disabled={disabled}
+      data-testid="share-link-button"
       className={className}
       variant={variant}
       size={iconOnly ? "icon-sm" : size}

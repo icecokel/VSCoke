@@ -58,6 +58,7 @@ export default function DashboardSearch({ posts }: DashboardSearchProps) {
     <div className="space-y-6">
       <div className="relative">
         <Input
+          data-testid="blog-dashboard-title-search-input"
           placeholder="제목으로 검색..."
           value={query}
           onChange={handleQueryChange}

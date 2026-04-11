@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { resolveLocaleAndMessages } from "./test-helpers";
+import { resolveLocaleAndMessages, visit } from "./test-helpers";
 
 test.describe("브라우저 capability fallback", () => {
   test("share/clipboard 미지원 환경에서 copy fallback 으로 동작한다", async ({ page }) => {
@@ -38,8 +38,7 @@ test.describe("브라우저 capability fallback", () => {
     });
 
     const { locale, messages } = await resolveLocaleAndMessages(page);
-    const response = await page.goto(`/${locale}/blog`);
-    expect(response?.status()).toBeLessThan(400);
+    await visit(page, `/${locale}/blog`);
 
     await page.evaluate(() => {
       const navigatorAny = navigator as unknown as {

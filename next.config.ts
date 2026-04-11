@@ -15,6 +15,12 @@ const nextConfig: NextConfig = {
   // false: 비활성화 - 이중 렌더링 방지
   reactStrictMode: false,
 
+  // E2E는 전용 산출물 디렉터리를 사용해 일반 개발 캐시와 충돌하지 않도록 한다.
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
+  typescript: {
+    tsconfigPath: process.env.NEXT_TYPESCRIPT_CONFIG_PATH ?? "tsconfig.json",
+  },
+
   // 루트 추론을 고정해 lockfile 다중 탐지 경고를 방지
   outputFileTracingRoot: path.resolve(process.cwd()),
 

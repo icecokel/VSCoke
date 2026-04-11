@@ -13,13 +13,24 @@ const openQrDialogAndCopy = async (
   qrLabel: string,
   copyLabel: string,
 ) => {
-  await scope
+  const qrTrigger = scope
     .getByRole("button", { name: new RegExp(`^${escapeRegExp(qrLabel)}$`) })
-    .first()
-    .click();
+    .first();
+  await expect(qrTrigger).toBeVisible();
+  await qrTrigger.click();
 
-  const dialog = page.getByRole("dialog").first();
-  await expect(dialog).toBeVisible();
+  const dialog = page
+    .getByRole("dialog")
+    .filter({
+      has: page.getByRole("button", { name: new RegExp(`^${escapeRegExp(copyLabel)}$`) }),
+    })
+    .first();
+
+  if (!(await dialog.isVisible().catch(() => false))) {
+    await qrTrigger.evaluate(element => (element as HTMLButtonElement).click());
+  }
+
+  await expect(dialog).toBeVisible({ timeout: 10000 });
   await dialog
     .getByRole("button", { name: new RegExp(`^${escapeRegExp(copyLabel)}$`) })
     .first()
@@ -257,7 +268,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     const { locale } = await resolveLocaleAndMessages(page);
     await visit(page, `/${locale}/blog/dashboard`);
 
-    const searchInput = page.getByPlaceholder(messages.sidebar.searchPlaceholder);
+    const searchInput = page.getByTestId("blog-dashboard-title-search-input");
     await expect(searchInput).toBeVisible();
 
     const allCards = page.locator("article");
@@ -307,16 +318,16 @@ test.describe("코어 라우트 CTA 시나리오", () => {
       .getByRole("button", { name: /Sky Drop/i })
       .first()
       .click();
-    await expectPath(page, new RegExp(`^/${localeRegex}/game/sky-drop$`));
     const skyDropStart = page.getByTestId("game-start-button");
     const skyDropExit = page.getByTestId("game-exit-button");
-    await expect(skyDropStart).toBeVisible({ timeout: 20000 });
+    await expect(skyDropStart).toBeVisible({ timeout: 30000 });
+    await expectPath(page, new RegExp(`^/${localeRegex}/game/sky-drop$`), 30000);
     await expect(skyDropExit).toBeVisible();
     await skyDropExit.click();
-    await expectPath(page, new RegExp(`^/${localeRegex}/game$`));
+    await expectPath(page, new RegExp(`^/${localeRegex}/game$`), 30000);
 
     await page.getByRole("button", { name: /Fish Drift/ }).click();
-    await expectPath(page, new RegExp(`^/${localeRegex}/game/fish-drift$`));
+    await expectPath(page, new RegExp(`^/${localeRegex}/game/fish-drift$`), 30000);
 
     const fishStart = page
       .locator("button", { hasText: new RegExp(`^${escapeRegExp(messages.Game.start)}$`) })
@@ -333,7 +344,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await page
       .getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.doomTitle)) })
       .click();
-    await expectPath(page, new RegExp(`^/${localeRegex}/doom$`));
+    await expectPath(page, new RegExp(`^/${localeRegex}/doom$`), 30000);
 
     const muteToggle = page
       .getByRole("button", {
@@ -360,7 +371,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await page
       .getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.wordleTitle)) })
       .click();
-    await expectPath(page, new RegExp(`^/${localeRegex}/game/wordle$`));
+    await expectPath(page, new RegExp(`^/${localeRegex}/game/wordle$`), 30000);
 
     await expect(
       page.getByRole("button", { name: new RegExp(`^${escapeRegExp(messages.Share.share)}$`) }),

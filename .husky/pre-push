@@ -1,1 +1,8 @@
+#!/usr/bin/env sh
+set -eu
+
+echo "[pre-push] 빌드를 확인합니다."
 pnpm build
+
+echo "[pre-push] 스모크 테스트를 실행합니다."
+pnpm e2e:smoke

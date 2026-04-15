@@ -17,11 +17,12 @@ interface SearchPanelProps {
 
 const TYPE_STYLE_MAP: Record<
   SearchItemType,
-  { labelKey: string; icon: "article" | "account_box" | "terminal" }
+  { labelKey: string; icon: "article" | "account_box" | "terminal" | "hard_drive" }
 > = {
   blog: { labelKey: "searchTypeBlog", icon: "article" },
   profile: { labelKey: "searchTypeProfile", icon: "account_box" },
   game: { labelKey: "searchTypeGame", icon: "terminal" },
+  geeknews: { labelKey: "searchTypeGeekNews", icon: "hard_drive" },
 };
 
 const SearchPanel = ({ onNavigate }: SearchPanelProps) => {

@@ -11,6 +11,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes = [
     "",
     "/blog",
+    "/geeknews",
     "/readme",
     "/game",
     "/game/sky-drop",

@@ -53,6 +53,19 @@ export const getExplorer = cache(async (): Promise<ITree[]> => {
             ],
     },
     {
+      index: 2,
+      id: "geeknews",
+      label: "geeknews",
+      items: [
+        {
+          icon: "hard_drive",
+          id: "geeknews-index",
+          label: "index.tsx",
+          path: "/geeknews",
+        },
+      ],
+    },
+    {
       index: 50,
       id: "games",
       label: "games",

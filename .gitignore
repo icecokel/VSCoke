@@ -58,4 +58,6 @@ next-env.d.ts
 /worktrees/
 
 # local docs
-/docs/
+/docs/*
+!/docs/geeknews-api-schema.md
+!/docs/swagger-style-guide.md

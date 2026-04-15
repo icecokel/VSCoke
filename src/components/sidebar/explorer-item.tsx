@@ -22,6 +22,8 @@ const convertIcon = (icon?: string) => {
       return <Icon kind="article" size={22} className="text-blue-100" />;
     case "dashboard":
       return <Icon kind="view_column" size={22} className="text-purple-300" />;
+    case "hard_drive":
+      return <Icon kind="hard_drive" size={22} className="text-cyan-300" />;
     case "none":
       return null;
     default:

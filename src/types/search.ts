@@ -1,4 +1,4 @@
-export type SearchItemType = "blog" | "profile" | "game";
+export type SearchItemType = "blog" | "profile" | "game" | "geeknews";
 
 export interface SearchItem {
   id: string;

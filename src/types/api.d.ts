@@ -72,6 +72,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/geeknews/sync": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 긱뉴스 최신 글을 수동으로 동기화 */
+    post: operations["GeekNewsController_syncLatestTopics"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/geeknews/articles": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 저장된 긱뉴스 번역 결과 조회 */
+    get: operations["GeekNewsController_getLatestArticles"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/wordle/word": {
     parameters: {
       query?: never;
@@ -188,6 +222,50 @@ export interface components {
       createdAt: string;
       userId: string;
       user: components["schemas"]["User"];
+    };
+    GeekNewsArticleResponseDto: {
+      id: string;
+      sourceTopicId: number;
+      topicUrl: string;
+      sourceUrl?: string | null;
+      title: string;
+      content: string;
+      translatedTitle?: string | null;
+      translatedContent?: string | null;
+      author: string;
+      points: number;
+      commentCount: number;
+      rank: number;
+      listedAtText: string;
+      /** Format: date-time */
+      postedAt?: string | null;
+      sourceLanguage: string;
+      translatedLanguage?: string | null;
+      /** @enum {string} */
+      translationStatus: "pending" | "translated" | "failed";
+      translationProvider?: string | null;
+      translationModel?: string | null;
+      translationError?: string | null;
+      /** Format: date-time */
+      translatedAt?: string | null;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    GeekNewsSyncResponseDto: {
+      /** @enum {string} */
+      status: "completed" | "skipped";
+      reason?: string | null;
+      crawledPages: number;
+      crawledTopics: number;
+      createdTopics: number;
+      updatedTopics: number;
+      skippedTopics: number;
+      translatedTopics: number;
+      pendingTopics: number;
+      failedTopics: number;
+      articles: components["schemas"]["GeekNewsArticleResponseDto"][];
     };
     WordResponseDto: {
       /**
@@ -310,6 +388,54 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["GameHistoryResponseDto"];
+        };
+      };
+    };
+  };
+  GeekNewsController_syncLatestTopics: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["GeekNewsSyncResponseDto"];
+        };
+      };
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["GeekNewsSyncResponseDto"];
+        };
+      };
+    };
+  };
+  GeekNewsController_getLatestArticles: {
+    parameters: {
+      query: {
+        limit: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["GeekNewsArticleResponseDto"][];
         };
       };
     };

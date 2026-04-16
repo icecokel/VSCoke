@@ -113,27 +113,27 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
           <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-500 bg-gray-500">
             {/* 네비게이션 버튼 */}
             <div className="flex gap-1">
-              <button className="p-1 rounded hover:bg-gray-500 text-gray-300">
+              <button className="cursor-pointer rounded p-1 text-gray-300 hover:bg-gray-500">
                 <Icon kind="chevron_left" size={18} />
               </button>
-              <button className="p-1 rounded hover:bg-gray-500 text-gray-300">
+              <button className="cursor-pointer rounded p-1 text-gray-300 hover:bg-gray-500">
                 <Icon kind="chevron_right" size={18} />
               </button>
             </div>
 
             {/* 뷰 모드 버튼 */}
             <div className="flex gap-1 ml-2">
-              <button className="p-1 rounded bg-gray-500 text-white">
+              <button className="cursor-pointer rounded bg-gray-500 p-1 text-white">
                 <Icon kind="view_column" size={18} />
               </button>
-              <button className="p-1 rounded hover:bg-gray-500 text-gray-300">
+              <button className="cursor-pointer rounded p-1 text-gray-300 hover:bg-gray-500">
                 <Icon kind="view_list" size={18} />
               </button>
             </div>
 
             {/* 경로 표시 */}
             <div className="flex-1 flex justify-center">
-              <button className="flex items-center gap-1 px-3 py-1 rounded bg-gray-500 text-white text-sm">
+              <button className="flex cursor-pointer items-center gap-1 rounded bg-gray-500 px-3 py-1 text-sm text-white">
                 <Icon kind="folder" size={16} className="text-blue-400" />
                 <span>{currentPath}</span>
                 <Icon kind="expand_more" size={16} />
@@ -160,7 +160,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                     <button
                       key={itemIdx}
                       onClick={() => setSelectedSidebarItem(item.label)}
-                      className={`w-full flex items-center gap-2 px-3 py-1 text-sm ${
+                      className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1 text-sm ${
                         selectedSidebarItem === item.label
                           ? "bg-blue-500/20 text-blue-400"
                           : "text-gray-200 hover:bg-gray-600"
@@ -182,7 +182,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                   <button
                     key={`category_${index}`}
                     onClick={() => handleClickCategory(category)}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-sm ${
+                    className={`flex w-full cursor-pointer items-center justify-between px-3 py-2 text-sm ${
                       currentCategory === category
                         ? "bg-blue-500 text-white"
                         : "text-neutral-300 hover:bg-neutral-700"
@@ -207,7 +207,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                   <button
                     key={`project_${index}`}
                     onClick={() => handleClickProject(project)}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-sm ${
+                    className={`flex w-full cursor-pointer items-center justify-between px-3 py-2 text-sm ${
                       currentProject === project
                         ? "bg-blue-500 text-white"
                         : "text-neutral-300 hover:bg-neutral-700"
@@ -288,7 +288,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                     <button
                       key={`project_${idx}`}
                       onClick={() => handleClickProject(project)}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded ${
+                      className={`flex w-full cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm ${
                         currentProject === project
                           ? "bg-blue-500 text-white"
                           : "text-gray-200 hover:bg-gray-600"

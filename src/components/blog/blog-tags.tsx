@@ -29,7 +29,7 @@ const BlogTags = ({ tags, limit = 15 }: BlogTagsProps) => {
       {hasMore && (
         <button
           type="button"
-          className="mt-3 text-sm text-gray-300 hover:text-yellow-200 transition-colors"
+          className="mt-3 cursor-pointer text-sm text-gray-300 transition-colors hover:text-yellow-200"
           onClick={() => setExpanded(prev => !prev)}
         >
           {expanded

@@ -28,7 +28,7 @@ export function WordleKeyboard({ onKey, usedKeys }: WordleKeyboardProps) {
                 key={key}
                 onClick={() => onKey(key)}
                 className={cn(
-                  "h-full min-h-9 flex items-center justify-center rounded font-bold uppercase transition-all active:scale-95 select-none",
+                  "flex h-full min-h-9 cursor-pointer items-center justify-center rounded font-bold uppercase transition-all select-none active:scale-95",
                   "text-xs sm:text-sm",
                   isSpecial ? "flex-[1.25] px-1 sm:px-2" : "flex-1",
                   // 기본 배경색

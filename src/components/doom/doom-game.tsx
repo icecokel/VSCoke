@@ -128,7 +128,7 @@ export const DoomGame = () => {
               <div className="flex flex-col items-center gap-2">
                 <button
                   onClick={() => setIsMuted(!isMuted)}
-                  className={`px-4 py-2 text-sm border transition-all uppercase tracking-wider font-bold ${isMuted ? "border-red-500 text-red-500 bg-red-900/10" : "border-green-600 text-green-600 bg-green-900/10"}`}
+                  className={`cursor-pointer border px-4 py-2 text-sm font-bold uppercase tracking-wider transition-all ${isMuted ? "border-red-500 bg-red-900/10 text-red-500" : "border-green-600 bg-green-900/10 text-green-600"}`}
                 >
                   {isMuted ? t("soundOff") : t("soundOn")}
                 </button>
@@ -138,7 +138,7 @@ export const DoomGame = () => {
               <button
                 onClick={handleStart}
                 disabled={!isReady}
-                className="group relative px-12 py-6 bg-red-600 hover:bg-red-700 disabled:bg-zinc-800 disabled:text-zinc-600 text-white font-bold tracking-widest uppercase transition-all overflow-hidden rounded-lg shadow-lg shadow-red-900/40 active:scale-95"
+                className="group relative cursor-pointer overflow-hidden rounded-lg bg-red-600 px-12 py-6 font-bold uppercase tracking-widest text-white shadow-lg shadow-red-900/40 transition-all hover:bg-red-700 active:scale-95 disabled:bg-zinc-800 disabled:text-zinc-600"
               >
                 <span className="relative z-10 text-xl md:text-2xl">
                   {isReady ? t("buttonStart") : t("buttonLoading")}

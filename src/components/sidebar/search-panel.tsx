@@ -137,7 +137,7 @@ const SearchPanel = ({ onNavigate }: SearchPanelProps) => {
                     type="button"
                     onClick={() => handleNavigate(item)}
                     className={cn(
-                      "flex w-full items-start gap-2 border-b border-gray-800 px-3 py-2 text-left last:border-b-0",
+                      "flex w-full cursor-pointer items-start gap-2 border-b border-gray-800 px-3 py-2 text-left last:border-b-0",
                       isActive ? "bg-blue-500/20" : "hover:bg-gray-800/70",
                     )}
                   >

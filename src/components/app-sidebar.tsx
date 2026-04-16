@@ -53,7 +53,7 @@ export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
           <button
             data-active={activeTab === "explorer" && (open || (isMobile && openMobile))}
             onClick={() => handleTabClick("explorer")}
-            className="flex size-10 items-center justify-center rounded-none text-gray-400 hover:text-gray-100 data-[active=true]:border-l-2 data-[active=true]:border-l-blue-300 data-[active=true]:text-gray-100"
+            className="flex size-10 cursor-pointer items-center justify-center rounded-none text-gray-400 hover:text-gray-100 data-[active=true]:border-l-2 data-[active=true]:border-l-blue-300 data-[active=true]:text-gray-100"
             title={t("explorer")}
           >
             <Icon kind="content_copy" size={24} />
@@ -61,7 +61,7 @@ export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
           <button
             data-active={activeTab === "search" && (open || (isMobile && openMobile))}
             onClick={() => handleTabClick("search")}
-            className="flex size-10 items-center justify-center rounded-none text-gray-400 hover:text-gray-100 data-[active=true]:border-l-2 data-[active=true]:border-l-blue-300 data-[active=true]:text-gray-100"
+            className="flex size-10 cursor-pointer items-center justify-center rounded-none text-gray-400 hover:text-gray-100 data-[active=true]:border-l-2 data-[active=true]:border-l-blue-300 data-[active=true]:text-gray-100"
             title={t("search")}
           >
             <Icon kind="search" size={24} />

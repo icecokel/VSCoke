@@ -106,6 +106,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/geeknews/articles/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 저장된 긱뉴스 번역 결과 상세 조회 */
+    get: operations["GeekNewsController_getArticleById"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/wordle/word": {
     parameters: {
       query?: never;
@@ -436,6 +453,27 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["GeekNewsArticleResponseDto"][];
+        };
+      };
+    };
+  };
+  GeekNewsController_getArticleById: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["GeekNewsArticleResponseDto"];
         };
       };
     };

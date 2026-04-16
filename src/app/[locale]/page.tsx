@@ -64,7 +64,7 @@ const Home = () => {
               onClick={() => push("/readme")}
               onMouseEnter={() => prefetch("/readme")}
               onFocus={() => prefetch("/readme")}
-              className="rounded-lg border border-blue-300 bg-blue-300 px-5 py-2 text-sm font-semibold text-gray-900 transition-colors hover:bg-blue-200"
+              className="cursor-pointer rounded-lg border border-blue-300 bg-blue-300 px-5 py-2 text-sm font-semibold text-gray-900 transition-colors hover:bg-blue-200"
             >
               {t("primaryCta")}
             </button>
@@ -73,7 +73,7 @@ const Home = () => {
               onClick={() => push("/game")}
               onMouseEnter={() => prefetch("/game")}
               onFocus={() => prefetch("/game")}
-              className="rounded-lg border border-gray-500 px-5 py-2 text-sm font-semibold text-gray-100 transition-colors hover:border-gray-300 hover:bg-gray-700"
+              className="cursor-pointer rounded-lg border border-gray-500 px-5 py-2 text-sm font-semibold text-gray-100 transition-colors hover:border-gray-300 hover:bg-gray-700"
             >
               {t("secondaryCta")}
             </button>
@@ -94,7 +94,7 @@ const Home = () => {
                 onClick={() => push(card.path)}
                 onMouseEnter={() => prefetch(card.path)}
                 onFocus={() => prefetch(card.path)}
-                className="group rounded-xl border border-gray-700 bg-gray-800 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:bg-gray-750"
+                className="group cursor-pointer rounded-xl border border-gray-700 bg-gray-800 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:bg-gray-750"
               >
                 <h3 className="text-lg font-semibold text-white">{card.title}</h3>
                 <p className="mt-2 line-clamp-3 text-sm text-gray-400">{card.description}</p>

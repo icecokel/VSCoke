@@ -36,7 +36,7 @@ export function PreBlock({ children, className, ...props }: PreBlockProps) {
       <button
         onClick={handleCopy}
         className={`
-          absolute top-2 right-2 p-1.5 rounded-md transition-all
+          absolute top-2 right-2 cursor-pointer rounded-md p-1.5 transition-all
           opacity-0 group-hover:opacity-100 focus:opacity-100
           ${copied ? "bg-green-500/10 text-green-400" : "bg-gray-700/80 text-gray-400 hover:bg-gray-700 hover:text-white"}
         `}

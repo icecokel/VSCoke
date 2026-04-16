@@ -75,7 +75,7 @@ const Profile = () => {
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    className="p-1 hover:bg-gray-700 rounded transition-colors"
+                    className="cursor-pointer rounded p-1 transition-colors hover:bg-gray-700"
                     onClick={() => navigator.clipboard.writeText(contact.phone)}
                   >
                     <Icon kind="content_copy" size={16} />

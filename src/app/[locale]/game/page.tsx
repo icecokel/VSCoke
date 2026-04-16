@@ -54,7 +54,7 @@ export default function GameDashboard() {
             onClick={() => push(game.route)}
             onMouseEnter={() => prefetch(game.route)}
             onFocus={() => prefetch(game.route)}
-            className="group relative flex w-full md:w-64 h-24 md:h-64 flex-row md:flex-col items-center justify-between md:justify-center rounded-2xl bg-slate-800 p-4 md:p-6 transition-all duration-300 hover:bg-slate-700 hover:scale-105 border-2 border-slate-700 hover:border-green-300 text-left md:text-center"
+            className="group relative flex h-24 w-full cursor-pointer flex-row items-center justify-between rounded-2xl border-2 border-slate-700 bg-slate-800 p-4 text-left transition-all duration-300 hover:scale-105 hover:border-green-300 hover:bg-slate-700 md:h-64 md:w-64 md:flex-col md:justify-center md:p-6 md:text-center"
           >
             <div className="flex flex-col md:items-center">
               <h2 className="text-xl md:text-2xl font-bold text-white mb-1 md:mb-2 leading-tight">

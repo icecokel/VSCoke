@@ -66,7 +66,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
 
       // 토큰 만료 - 갱신 시도
-      const refreshed = await refreshAccessToken(token.refreshToken as string);
+      const refreshToken = token.refreshToken;
+      if (typeof refreshToken !== "string" || !refreshToken) {
+        return { ...token, error: "RefreshAccessTokenError" };
+      }
+
+      const refreshed = await refreshAccessToken(refreshToken);
 
       if ("error" in refreshed) {
         return { ...token, error: refreshed.error };

@@ -82,8 +82,12 @@ export const getGameResult = async (id: string): Promise<GameHistoryResponseDto 
       next: { revalidate: 60 },
     });
     return result;
-  } catch {
-    return null;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return null;
+    }
+
+    throw error;
   }
 };
 

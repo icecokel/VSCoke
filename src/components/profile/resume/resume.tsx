@@ -13,25 +13,31 @@ const Resume = () => {
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
+    const scrollContainer = document.getElementById("main-scroll-container");
+    const scrollTarget = scrollContainer ?? window;
+
     const handleScroll = () => {
       const careerElements = careers.map((_, index) => document.getElementById(`career_${index}`));
+      const threshold = (scrollContainer?.getBoundingClientRect().top ?? 0) + 150;
 
       // 현재 뷰포트에서 가장 위에 있는 섹션 찾기
-      const scrollPosition = window.scrollY + 150; // 오프셋 조정
-
       for (let i = careerElements.length - 1; i >= 0; i--) {
         const element = careerElements[i];
-        if (element && element.offsetTop <= scrollPosition) {
+        if (element && element.getBoundingClientRect().top <= threshold) {
           setActiveIndex(i);
           break;
         }
       }
     };
 
-    window.addEventListener("scroll", handleScroll);
+    scrollTarget.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
     handleScroll(); // 초기 실행
 
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      scrollTarget.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
   }, [careers]);
 
   return (

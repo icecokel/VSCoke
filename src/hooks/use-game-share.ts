@@ -25,12 +25,12 @@ export const useGameShare = (): UseGameShareReturn => {
 
   // 공유 URL 생성
   const getShareUrl = useCallback(
-    ({ score, gameName, id }: ShareOptions): string => {
+    ({ gameName, id }: ShareOptions): string => {
       const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
       if (id) {
         return `${baseUrl}/${locale}/share/${id}`;
       }
-      return `${baseUrl}/${locale}/game/${gameName}/${score}/share`;
+      return `${baseUrl}/${locale}/game/${gameName}`;
     },
     [locale],
   );

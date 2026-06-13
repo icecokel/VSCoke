@@ -1,6 +1,6 @@
 # Agent Behavior Guidelines
 
-> **Context**: 이 파일은 현재 워크스페이스인 `vscoke-api` 프로젝트에 적용되는 규칙을 정의합니다.
+> **Context**: 이 파일은 현재 모노레포의 `apps/api` 백엔드 앱에 적용되는 규칙을 정의합니다.
 
 ## 0. 🚨 Critical Rules (Zero Tolerance)
 

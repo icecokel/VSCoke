@@ -1,22 +1,22 @@
 # 배포 가이드 (Deployment Guide)
 
-이 프로젝트(`vscoke-api`)는 **Github Actions**와 **수동 배포**가 혼합된 방식을 사용합니다.
+이 프로젝트(`apps/api`)는 **Github Actions**와 **수동 배포**가 혼합된 방식을 사용합니다.
 
 ## 1. 소스 코드 배포 (자동)
 
-코드 변경 사항(`src/`, `package.json` 등)은 Git을 통해 배포합니다.
+코드 변경 사항(`apps/api/src/`, `apps/api/package.json` 등)은 Git을 통해 배포합니다.
 
 1. 변경 사항 커밋:
    ```bash
    git add .
-   git commit -m "feat: 기능 추가"
+   git commit -m "feat(api):기능 추가"
    ```
 2. 원격 저장소 푸시:
    ```bash
    git push origin main
    ```
 3. **Github Action**이 자동으로 다음을 수행합니다:
-   - 빌드 (`npm run build`)
+   - 빌드 (`pnpm --filter @vscoke/api build`)
    - 배포 (`~/projects/vscoke-api` 경로로 전송)
    - 서버 재시작 (`pm2 restart vscoke-api`)
 
@@ -40,7 +40,7 @@
 
 ## 요약
 
-| 변경 유형              | 배포 방법     | 비고                      |
-| :--------------------- | :------------ | :------------------------ |
-| **코드 (`src` 등)**    | `git push`    | Github Action이 자동 처리 |
-| **환경 변수 (`.env`)** | `tmx cp .env` | 수동 전송 및 재시작 필요  |
+| 변경 유형                    | 배포 방법     | 비고                      |
+| :--------------------------- | :------------ | :------------------------ |
+| **코드 (`apps/api/src` 등)** | `git push`    | Github Action이 자동 처리 |
+| **환경 변수 (`.env`)**       | `tmx cp .env` | 수동 전송 및 재시작 필요  |

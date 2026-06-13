@@ -1,4 +1,5 @@
 {
-  "*.{ts,tsx}": ["pnpm --filter @vscoke/web exec eslint --fix", "prettier --write"],
+  "apps/web/**/*.{ts,tsx}": ["pnpm --filter @vscoke/web exec eslint --fix", "prettier --write"],
+  "apps/api/**/*.ts": ["pnpm --filter @vscoke/api exec eslint --fix", "prettier --write"],
   "*.{css,json,md,mjs,yaml,yml}": ["prettier --write"]
 }

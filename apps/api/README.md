@@ -27,7 +27,7 @@
 
 # VSCoke API
 
-이 프로젝트는 [VSCoke](https://github.com/icecokel/VSCoke)의 백엔드 전용 프로젝트입니다.
+이 프로젝트는 [VSCoke](https://github.com/icecokel/VSCoke) 모노레포의 백엔드 앱입니다.
 VSCode와 유사한 웹 IDE 경험을 제공하기 위한 서버 측 로직과 API를 담당합니다.
 
 ## 🔗 Related Project
@@ -49,7 +49,7 @@ VSCode와 유사한 웹 IDE 경험을 제공하기 위한 서버 측 로직과 A
 ## Project setup
 
 ```bash
-$ npm install
+$ pnpm install
 ```
 
 ## Environment Variables
@@ -72,26 +72,26 @@ DEV_AUTH_TOKEN=<local-dev-token>
 
 ```bash
 # development
-$ npm run start
+$ pnpm --filter @vscoke/api start
 
 # watch mode
-$ npm run start:dev
+$ pnpm --filter @vscoke/api start:dev
 
 # production mode
-$ npm run start:prod
+$ pnpm --filter @vscoke/api start:prod
 ```
 
 ## Run tests
 
 ```bash
 # unit tests
-$ npm run test
+$ pnpm --filter @vscoke/api test
 
 # e2e tests
-$ npm run test:e2e
+$ pnpm --filter @vscoke/api test:e2e
 
 # test coverage
-$ npm run test:cov
+$ pnpm --filter @vscoke/api test:cov
 ```
 
 ## Deployment

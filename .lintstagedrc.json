@@ -1,4 +1,4 @@
 {
-  "*.{ts,tsx}": ["eslint --fix", "prettier --write"],
-  "*.{json,md}": ["prettier --write"]
+  "*.{ts,tsx}": ["pnpm --filter @vscoke/web exec eslint --fix", "prettier --write"],
+  "*.{css,json,md,mjs,yaml,yml}": ["prettier --write"]
 }

@@ -9,6 +9,7 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 // next-intl 플러그인 설정 (i18n 요청 핸들러 경로 지정)
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+const monorepoRoot = path.resolve(process.cwd(), "../..");
 
 const nextConfig: NextConfig = {
   // React Strict Mode (개발 환경에서 잠재적 문제 감지)
@@ -21,8 +22,8 @@ const nextConfig: NextConfig = {
     tsconfigPath: process.env.NEXT_TYPESCRIPT_CONFIG_PATH ?? "tsconfig.json",
   },
 
-  // 루트 추론을 고정해 lockfile 다중 탐지 경고를 방지
-  outputFileTracingRoot: path.resolve(process.cwd()),
+  // 모노레포 루트를 명시해 workspace package 참조와 lockfile 탐지를 안정화한다.
+  outputFileTracingRoot: monorepoRoot,
 
   // 외부 이미지 도메인 허용 설정 (next/image 컴포넌트용)
   images: {

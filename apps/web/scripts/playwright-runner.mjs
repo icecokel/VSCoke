@@ -10,8 +10,7 @@ const port = process.env.PLAYWRIGHT_PORT ?? defaultPort;
 const nextDistDir = process.env.NEXT_DIST_DIR ?? defaultNextDistDir;
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://${host}:${port}`;
 const readyUrl = `${baseURL}/ko-KR`;
-const reuseExistingServer =
-  process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === "1";
+const reuseExistingServer = process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === "1";
 
 const serverEnv = {
   ...process.env,

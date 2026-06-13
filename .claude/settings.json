@@ -13,7 +13,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash.*npm run dev|Bash.*npm start|Bash.*yarn dev|Bash.*yarn start",
+        "matcher": "Bash.*npm run dev|Bash.*npm start|Bash.*yarn dev|Bash.*yarn start|Bash.*pnpm dev|Bash.*pnpm start",
         "hooks": [
           {
             "type": "command",

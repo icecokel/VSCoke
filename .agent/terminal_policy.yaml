@@ -12,8 +12,8 @@ allow_list:
   - "ls -la"
   - "git status"
   - "echo *"
-  - "npm run dev"
-  - "npm run build"
+  - "pnpm dev"
+  - "pnpm build"
 
 # Deny List: mode가 "turbo" 또는 "auto"일 때도 반드시 사용자 승인을 받거나 차단할 명령어
 deny_list:

@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import React, { HTMLAttributes, ReactNode } from 'react';
-import Slide, { ISlideProps } from './slide';
+import React, { HTMLAttributes, ReactNode } from "react";
+import Slide, { ISlideProps } from "./slide";
 
-interface ISlideGroupProps extends Omit<ISlideProps, 'delay'> {
+interface ISlideGroupProps extends Omit<ISlideProps, "delay"> {
   children: ReactNode;
   delay?: number;
-  className?: HTMLAttributes<HTMLDivElement>['className'];
+  className?: HTMLAttributes<HTMLDivElement>["className"];
 }
 
 const SlideGroup = ({ children, delay = 250, direction, className }: ISlideGroupProps) => {

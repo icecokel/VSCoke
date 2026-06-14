@@ -38,6 +38,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!apps/api/.env.example
+!apps/web/.env.example
 
 # vercel
 .vercel
@@ -63,5 +65,7 @@ next-env.d.ts
 !/docs/superpowers/
 !/docs/superpowers/plans/
 !/docs/superpowers/plans/2026-06-13-monorepo-structure.md
+!/docs/api-git-history-report.md
+!/docs/deployment-and-env.md
 !/docs/geeknews-api-schema.md
 !/docs/swagger-style-guide.md

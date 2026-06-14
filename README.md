@@ -66,6 +66,13 @@ NEXT_PUBLIC_API_URL=https://api.icecoke.kr
 NEXT_PUBLIC_API_URL=http://127.0.0.1:65535 pnpm build
 ```
 
+배포와 환경 변수 운영 기준은 [Deployment and Environment Plan](docs/deployment-and-env.md)을 따릅니다.
+
+- 웹(`apps/web`)은 Vercel 프로젝트의 Root Directory를 `apps/web`으로 설정해 배포합니다.
+- 웹 로컬 환경은 `apps/web/.env.example`, API 로컬 환경은 `apps/api/.env.example`을 복사해 시작합니다.
+- API(`apps/api`)는 GitHub Actions가 Termux 서버의 `~/projects/vscoke-api`로 배포하고 PM2로 실행합니다.
+- 웹 환경 변수는 Vercel Project Settings에서, API 운영 환경 변수는 Termux 서버의 `.env`에서 관리합니다.
+
 ## 테스트
 
 Playwright 기반 E2E 테스트는 `pnpm e2e`로 실행합니다.

@@ -54,7 +54,9 @@ $ pnpm install
 
 ## Environment Variables
 
-`.env` 파일에 최소한 아래 값을 설정해야 합니다.
+`apps/api/.env.example`을 `apps/api/.env`로 복사한 뒤 실제 값을 채웁니다. 운영 환경 변수 기준은 [Deployment and Environment Plan](../../docs/deployment-and-env.md)을 따릅니다.
+
+최소한 아래 값은 실제 환경에 맞게 설정해야 합니다.
 
 ```env
 GOOGLE_CLIENT_ID=<google-oauth-client-id>
@@ -96,16 +98,10 @@ $ pnpm --filter @vscoke/api test:cov
 
 ## Deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+VSCoke API는 GitHub Actions로 Termux 서버에 배포하고 PM2로 실행합니다.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+- API 배포 가이드: [DEPLOY.md](DEPLOY.md)
+- Monorepo 배포/환경 변수 기준: [Deployment and Environment Plan](../../docs/deployment-and-env.md)
 
 ## Resources
 

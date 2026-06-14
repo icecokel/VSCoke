@@ -141,4 +141,5 @@ vscoke/
 - Imported `git@github.com:icecokel/vscoke-api.git` into `apps/api` with subtree after the web app structure stabilized.
 - Replaced `apps/api/.gitkeep` with the real NestJS project during backend import.
 - Create real `packages/api-types` and `packages/config` packages only when shared code or config is extracted.
+- Use `docs/deployment-and-env.md` as the deployment and environment variable checklist for the Vercel web app and Termux API server.
 - Archive the standalone `vscoke-api` repository after the monorepo backend build, tests, and deployment have been verified.

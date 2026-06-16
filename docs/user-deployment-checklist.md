@@ -32,17 +32,17 @@ Vercel에서 `VSCoke` 웹 프로젝트 설정을 변경한다.
 
 Termux 서버에 monorepo 저장소 `icecokel/VSCoke`용 GitHub Actions self-hosted runner를 설치한다.
 
-- [ ] GitHub `Settings > Actions > Runners > New self-hosted runner`에서 runner 등록 토큰을 발급한다.
-- [ ] Termux 서버에 runner를 설치한다.
-- [ ] runner label에 `termux`, `vscoke-api`를 추가한다.
-- [ ] runner를 PM2, tmux, 또는 Termux:Boot 복구 스크립트로 상시 실행되게 구성한다.
-- [ ] runner 계정에서 `node`, `corepack`, `pm2` 명령이 실행되는지 확인한다.
+- [x] GitHub runner 등록 토큰을 발급한다.
+- [x] Termux 서버에 runner를 설치한다.
+- [x] runner label에 `termux`, `vscoke-api`를 추가한다.
+- [x] runner를 PM2로 상시 실행되게 구성한다.
+- [x] runner job에서 Termux native `node`, `corepack`, `pm2` 명령을 사용하도록 workflow를 구성한다.
 - [ ] 선택적으로 repository variable `API_HEALTH_URL`을 등록한다. 기본값은 `https://api.icecoke.kr/api-json`이다.
-- [ ] 선택적으로 repository variable `API_DEPLOY_DIR`을 등록한다. 기본값은 `~/projects/vscoke-api`이다.
+- [ ] 선택적으로 repository variable `API_DEPLOY_DIR`을 등록한다. 기본값은 `/data/data/com.termux/files/home/projects/vscoke-api`이다.
 
 검증:
 
-- [ ] `Deploy API to Termux (Self-hosted Runner)` workflow가 queued 상태에 오래 머물지 않는지 확인한다.
+- [x] `Deploy API to Termux (Self-hosted Runner)` workflow가 runner를 인식하는지 확인한다.
 - [ ] workflow의 `Verify self-hosted runner prerequisites` 단계가 통과하는지 확인한다.
 - [ ] workflow의 `Verify runtime env exists` 단계가 통과하는지 확인한다.
 
@@ -87,7 +87,7 @@ API 도메인과 Termux API 포트 연결을 확인한다.
 
 - [ ] `api.icecoke.kr`가 Termux 서버의 API 포트로 라우팅되는지 확인한다.
 - [ ] Tunnel이 기기 재부팅 후에도 복구되는지 확인한다.
-- [ ] GitHub Actions에서 사용하는 Cloudflare Access SSH 정책이 비대화형 배포를 허용하는지 확인한다.
+- [x] GitHub Actions 배포가 SSH/Cloudflare Access SSH 정책에 의존하지 않는지 확인한다.
 
 검증:
 

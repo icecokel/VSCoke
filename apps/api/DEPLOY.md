@@ -18,7 +18,8 @@
    git push origin main
    ```
 3. GitHub Actions가 자동으로 다음을 수행합니다:
-   - Termux self-hosted runner에서 작업 실행
+   - Termux PM2가 관리하는 self-hosted runner에서 작업 실행
+   - Termux native `node`, `corepack`, `pm2` 사용
    - 빌드 (`pnpm --filter @vscoke/api build`)
    - staged release 생성 (`~/projects/vscoke-api/.next-release`)
    - production 의존성 설치
@@ -55,7 +56,7 @@
 
 ## 운영 전 확인할 항목
 
-- GitHub Actions self-hosted runner: labels `termux`, `vscoke-api`
+- GitHub Actions self-hosted runner: labels `self-hosted`, `termux`, `vscoke-api`
 - Termux runtime: Node.js 20 이상, Corepack, pnpm 9.12.0, PM2, PostgreSQL 접근성
 - Cloudflare Tunnel: API 도메인이 Termux API 포트로 라우팅되는지 확인
 - API runtime env: `NODE_ENV=production`, `DB_SYNCHRONIZE=false`, `GOOGLE_CLIENT_ID`, DB 접속 정보

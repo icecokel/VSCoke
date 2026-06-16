@@ -20,10 +20,18 @@ jobs:
     runs-on: [self-hosted, termux, vscoke-api]
     env:
       API_HEALTH_URL: ${{ vars.API_HEALTH_URL || 'https://api.icecoke.kr/api-json' }}
-      DEPLOY_DIR: ${{ vars.API_DEPLOY_DIR || '~/projects/vscoke-api' }}
+      DEPLOY_DIR: ${{ vars.API_DEPLOY_DIR || '/data/data/com.termux/files/home/projects/vscoke-api' }}
+      TERMUX_HOME: /data/data/com.termux/files/home
+      TERMUX_PREFIX: /data/data/com.termux/files/usr
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Configure Termux runtime
+        run: |
+          echo "$TERMUX_PREFIX/bin" >> "$GITHUB_PATH"
+          echo "HOME=$TERMUX_HOME" >> "$GITHUB_ENV"
+          echo "PM2_HOME=$TERMUX_HOME/.pm2" >> "$GITHUB_ENV"
 
       - name: Verify self-hosted runner prerequisites
         run: |

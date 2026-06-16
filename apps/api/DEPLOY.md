@@ -1,6 +1,6 @@
 # API 배포 가이드
 
-이 프로젝트(`apps/api`)는 GitHub Actions로 Termux 서버에 배포하고, 환경 변수는 서버에서 수동 관리합니다.
+이 프로젝트(`apps/api`)는 Termux 서버의 GitHub Actions self-hosted runner로 배포하고, 환경 변수는 서버에서 수동 관리합니다.
 
 전체 monorepo 배포/환경 변수 기준은 [Deployment and Environment Plan](../../docs/deployment-and-env.md)을 우선합니다.
 
@@ -18,9 +18,13 @@
    git push origin main
    ```
 3. GitHub Actions가 자동으로 다음을 수행합니다:
+   - Termux self-hosted runner에서 작업 실행
    - 빌드 (`pnpm --filter @vscoke/api build`)
-   - 배포 (`~/projects/vscoke-api` 경로로 전송)
-   - 서버 재기동 (`pm2 delete vscoke-api || true` 후 `pm2 start ... --name vscoke-api`)
+   - staged release 생성 (`~/projects/vscoke-api/.next-release`)
+   - production 의존성 설치
+   - 서버 재기동 (`pm2 delete vscoke-api || true` 후 `pm2 start apps/api/dist/src/main.js --name vscoke-api --update-env`)
+   - `pm2 save`
+   - 내부/공개 API smoke test
 
 ## 2. 환경 변수 배포 (수동)
 
@@ -51,8 +55,8 @@
 
 ## 운영 전 확인할 항목
 
-- GitHub Actions secrets: `TERMUX_HOST`, `TERMUX_USER`, `TERMUX_KEY`
-- Termux runtime: Node.js 20 이상, pnpm 9.12.0, PM2, PostgreSQL 접근성
+- GitHub Actions self-hosted runner: labels `termux`, `vscoke-api`
+- Termux runtime: Node.js 20 이상, Corepack, pnpm 9.12.0, PM2, PostgreSQL 접근성
 - Cloudflare Tunnel: API 도메인이 Termux API 포트로 라우팅되는지 확인
 - API runtime env: `NODE_ENV=production`, `DB_SYNCHRONIZE=false`, `GOOGLE_CLIENT_ID`, DB 접속 정보
 - Web 연동: Vercel의 `NEXT_PUBLIC_API_URL`이 API 공개 도메인을 가리키는지 확인

@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useMemo } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import RESUME_DATA from "@/constants/resume-data.json";
 import { SearchPostsContext } from "@/contexts/app-provider";
@@ -67,6 +67,34 @@ export const useSearchIndex = (): SearchItem[] => {
   const tResume = useTranslations("resume");
   const tGame = useTranslations("Game");
   const tDoom = useTranslations("Doom");
+  const [hobbyItems, setHobbyItems] = useState<SearchItem[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    fetch("/api/hobby-search-index", { cache: "no-store" })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Search index request failed: ${response.status}`);
+        }
+
+        return response.json() as Promise<{ data?: SearchItem[] }>;
+      })
+      .then(({ data }) => {
+        if (isMounted) {
+          setHobbyItems(data ?? []);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setHobbyItems([]);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return useMemo(() => {
     const blogLanding: SearchItem = {
@@ -110,6 +138,28 @@ export const useSearchIndex = (): SearchItem[] => {
       path: "/geeknews",
       featured: true,
       priority: 405,
+    };
+
+    const hobbyRecipeLanding: SearchItem = {
+      id: "hobby:recipes:index",
+      type: "hobby",
+      title: "레시피",
+      description: "개인 요리 레시피와 재료 기록",
+      keywords: ["hobby", "recipe", "recipes", "cooking", "취미", "레시피", "요리"],
+      path: "/hobby/recipes",
+      featured: true,
+      priority: 385,
+    };
+
+    const hobbyEspressoLanding: SearchItem = {
+      id: "hobby:espresso:index",
+      type: "hobby",
+      title: "원두 기록",
+      description: "에스프레소 원두별 추출 조건과 맛 기록",
+      keywords: ["hobby", "espresso", "coffee", "bean", "취미", "원두", "에스프레소", "커피"],
+      path: "/hobby/espresso",
+      featured: true,
+      priority: 382,
     };
 
     const introLines = safeRaw(() => tResume.raw("introduction"), []);
@@ -235,9 +285,12 @@ export const useSearchIndex = (): SearchItem[] => {
       blogLanding,
       blogDashboard,
       geekNewsLanding,
+      hobbyRecipeLanding,
+      hobbyEspressoLanding,
       ...blogPosts,
       ...profileProjects,
       ...gameItems,
+      ...hobbyItems,
     ];
-  }, [posts, tBlog, tDoom, tGame, tGeekNews, tProfile, tResume]);
+  }, [hobbyItems, posts, tBlog, tDoom, tGame, tGeekNews, tProfile, tResume]);
 };

@@ -23,6 +23,7 @@ const TYPE_STYLE_MAP: Record<
   profile: { labelKey: "searchTypeProfile", icon: "account_box" },
   game: { labelKey: "searchTypeGame", icon: "terminal" },
   geeknews: { labelKey: "searchTypeGeekNews", icon: "hard_drive" },
+  hobby: { labelKey: "searchTypeHobby", icon: "article" },
 };
 
 const SearchPanel = ({ onNavigate }: SearchPanelProps) => {

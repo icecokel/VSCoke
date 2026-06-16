@@ -67,6 +67,25 @@ export const getExplorer = cache(async (): Promise<ITree[]> => {
     },
     {
       index: 50,
+      id: "hobby",
+      label: "hobby",
+      items: [
+        {
+          icon: "article",
+          id: "hobby-recipes",
+          label: "recipes.json",
+          path: "/hobby/recipes",
+        },
+        {
+          icon: "hard_drive",
+          id: "hobby-espresso",
+          label: "espresso.json",
+          path: "/hobby/espresso",
+        },
+      ],
+    },
+    {
+      index: 60,
       id: "games",
       label: "games",
       items: [

@@ -5,8 +5,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { EspressoHistoryModule } from './espresso-history/espresso-history.module';
 import { GameModule } from './game/game.module';
 import { GeekNewsModule } from './geeknews/geeknews.module';
+import { RecipeModule } from './recipe/recipe.module';
 import { WordleModule } from './wordle/wordle.module';
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/utils/winston.config';
@@ -50,8 +52,10 @@ import { winstonConfig } from './common/utils/winston.config';
     }),
     // 기능별 모듈
     AuthModule,
+    EspressoHistoryModule,
     GameModule,
     GeekNewsModule,
+    RecipeModule,
     WordleModule,
   ],
   controllers: [AppController],

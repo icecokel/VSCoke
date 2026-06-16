@@ -66,6 +66,38 @@ flowchart LR
 
 API는 GitHub Actions workflow가 담당한다. workflow는 GitHub-hosted runner에서 SSH로 접속하지 않고, Termux 서버에 설치된 self-hosted runner에서 직접 실행된다.
 
+## 프론트와 백엔드 배포 환경 차이
+
+monorepo로 합쳐도 프론트와 백엔드는 같은 런타임에서 실행되지 않는다. 저장소와 변경 이력만 하나로 묶고, 실제 배포와 운영 환경은 앱별로 분리한다.
+
+```txt
+apps/web
+└─ Vercel
+   ├─ Next.js build and hosting
+   ├─ Web production environment variables
+   └─ Public API endpoint: NEXT_PUBLIC_API_URL
+
+apps/api
+└─ Termux server
+   ├─ GitHub self-hosted runner
+   ├─ NestJS build and PM2 runtime
+   ├─ API production .env
+   ├─ Local PostgreSQL access
+   └─ Cloudflare Tunnel public ingress
+```
+
+웹 배포는 Vercel이 `apps/web`만 바라보고 빌드한다. 따라서 웹에서 API 주소, OAuth redirect, 공개 환경 변수를 바꿀 때는 Vercel Project Settings를 기준으로 관리한다.
+
+백엔드 배포는 Termux 서버가 직접 담당한다. GitHub Actions는 `apps/api` 변경을 감지한 뒤 self-hosted runner에서 빌드하고, PM2 프로세스 `vscoke-api`를 재시작한다. 백엔드의 DB, Google 인증, Gemini, 알림 같은 서버 전용 값은 Termux의 API `.env`에 둔다.
+
+이 차이 때문에 다음 원칙을 유지한다.
+
+- 웹은 API를 내부 함수처럼 import하지 않고 공개 API URL로 호출한다.
+- API는 Vercel 서버리스 함수가 아니라 Termux의 장기 실행 NestJS 프로세스다.
+- 웹 환경 변수와 API 환경 변수는 서로 다른 위치에서 관리한다.
+- 프론트 배포 성공과 백엔드 배포 성공은 별개의 이벤트로 검증한다.
+- API 도메인이나 Cloudflare Tunnel 구성이 바뀌면 Vercel의 `NEXT_PUBLIC_API_URL`도 함께 확인한다.
+
 ## API 배포 런타임
 
 Termux는 Android 환경이라 GitHub runner 공식 Linux ARM64 바이너리를 바로 실행하기 어렵다. 그래서 runner 본체는 Ubuntu/proot 안에서 실행하고, 실제 API 배포 명령은 Termux native runtime을 사용한다.

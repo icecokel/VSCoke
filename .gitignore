@@ -68,6 +68,8 @@ next-env.d.ts
 !/docs/api-git-history-report.md
 !/docs/deployment-and-env.md
 !/docs/geeknews-api-schema.md
+!/docs/local-development.md
+!/docs/operations-runbook.md
 !/docs/swagger-style-guide.md
 !/docs/user-deployment-checklist.md
 !/docs/vscoke-monorepo-concept.md

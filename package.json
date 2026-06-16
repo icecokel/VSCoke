@@ -37,6 +37,7 @@
     "test": "pnpm --filter @vscoke/api test",
     "test:api": "pnpm --filter @vscoke/api test",
     "test:api:e2e": "pnpm --filter @vscoke/api test:e2e",
+    "smoke:api:remote": "node scripts/check-api-health.mjs",
     "knip": "pnpm --filter @vscoke/web knip",
     "generate:types": "pnpm --filter @vscoke/web generate:types",
     "prepare": "husky"

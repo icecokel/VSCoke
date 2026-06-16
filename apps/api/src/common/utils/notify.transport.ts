@@ -1,4 +1,4 @@
-import Transport = require('winston-transport');
+import Transport from 'winston-transport';
 
 /**
  * 알림 서비스로 로그를 전송하기 위한 트랜스포트 옵션
@@ -7,6 +7,13 @@ interface NotifyTransportOptions extends Transport.TransportStreamOptions {
   webhookUrl?: string; // 예: http://localhost:7232/api/notify/send
   username?: string;
   password?: string;
+}
+
+interface NotifyLogInfo {
+  level?: unknown;
+  message?: unknown;
+  stack?: unknown;
+  context?: unknown;
 }
 
 /**
@@ -36,21 +43,25 @@ export class NotifyTransport extends Transport {
   /**
    * 로그 기록 시 호출되는 메서드
    */
-  log(info: any, callback: () => void) {
+  log(info: unknown, callback: () => void) {
     setImmediate(() => {
       this.emit('logged', info);
     });
 
+    const logInfo = info as NotifyLogInfo;
+
     // 에러 레벨인 경우에만 알림 전송
-    if (info.level === 'error') {
+    if (logInfo.level === 'error') {
       const message =
-        typeof info.message === 'string'
-          ? info.message
-          : JSON.stringify(info.message);
+        typeof logInfo.message === 'string'
+          ? logInfo.message
+          : JSON.stringify(logInfo.message);
 
       // 스택 트레이스 및 컨텍스트 추출
-      const stack = info.stack ? `\nStack: ${info.stack}` : '';
-      const context = info.context ? `[${info.context}] ` : '';
+      const stack =
+        typeof logInfo.stack === 'string' ? `\nStack: ${logInfo.stack}` : '';
+      const context =
+        typeof logInfo.context === 'string' ? `[${logInfo.context}] ` : '';
 
       const payload = {
         message: `🚨 **Server Error** 🚨\n${context}${message}${stack}`,
@@ -73,10 +84,11 @@ export class NotifyTransport extends Transport {
             );
           }
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           // 로깅 자체 실패 시 무한 루프 방지를 위해 stderr로 기록
+          const errorMessage = err instanceof Error ? err.message : String(err);
           process.stderr.write(
-            `NotifyTransport: Network error: ${err.message}\n`,
+            `NotifyTransport: Network error: ${errorMessage}\n`,
           );
         });
     }

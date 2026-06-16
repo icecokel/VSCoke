@@ -93,14 +93,13 @@ describe('GeekNewsService', () => {
       translatedTitle: 'Translated Title',
       translatedContent: 'Translated Content',
     });
-    repository.save.mockImplementation(
-      async (entity: Partial<GeekNewsArticle>) =>
-        ({
-          id: 'article-1',
-          createdAt: savedAt,
-          updatedAt: savedAt,
-          ...entity,
-        }) as GeekNewsArticle,
+    repository.save.mockImplementation((entity: Partial<GeekNewsArticle>) =>
+      Promise.resolve({
+        id: 'article-1',
+        createdAt: savedAt,
+        updatedAt: savedAt,
+        ...entity,
+      } as GeekNewsArticle),
     );
 
     const result = await service.syncLatestTopics();
@@ -158,8 +157,8 @@ describe('GeekNewsService', () => {
 
     crawlerService.crawlLatestPage.mockResolvedValueOnce([topic]);
     repository.find.mockResolvedValueOnce([existingArticle]);
-    repository.save.mockImplementation(
-      async (entity: GeekNewsArticle) => entity,
+    repository.save.mockImplementation((entity: GeekNewsArticle) =>
+      Promise.resolve(entity),
     );
 
     const result = await service.syncLatestTopics();

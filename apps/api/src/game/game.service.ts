@@ -6,6 +6,18 @@ import { User } from '../auth/entities/user.entity';
 import { CreateGameHistoryDto } from './dto/create-game-history.dto';
 import { GameType } from './enums/game-type.enum';
 
+type MaxScoreRow = {
+  maxScore: string | number | null;
+};
+
+type RankingIdRow = {
+  id: string;
+};
+
+type RankCountRow = {
+  count: string | number;
+};
+
 /**
  * 게임 비즈니스 로직을 처리하는 서비스
  */
@@ -37,8 +49,8 @@ export class GameService {
       });
     }
 
-    const result = await query.getRawOne();
-    return result?.maxScore ? parseInt(result.maxScore, 10) : 0;
+    const result = await query.getRawOne<MaxScoreRow>();
+    return result?.maxScore ? Number.parseInt(String(result.maxScore), 10) : 0;
   }
 
   /**
@@ -60,7 +72,7 @@ export class GameService {
    */
   async getRanking(gameType: GameType): Promise<GameHistory[]> {
     // 유저별 최고 점수 1건만 추린 뒤 전체 상위 10건을 구함
-    const ids: Array<{ id: string }> = await this.gameHistoryRepository.query(
+    const ids = await this.gameHistoryRepository.query<RankingIdRow[]>(
       `
       SELECT ranked.id
       FROM (
@@ -132,7 +144,7 @@ export class GameService {
   ): Promise<number> {
     // 유저별 최고 점수가 현재 점수보다 높은 경우만 카운트
     // 서브쿼리로 각 유저의 최고 점수 계산 후 비교
-    const result = await this.gameHistoryRepository.query(
+    const result = await this.gameHistoryRepository.query<RankCountRow[]>(
       `
       SELECT COUNT(*) as count
       FROM (
@@ -150,6 +162,6 @@ export class GameService {
     );
 
     // (나보다 높은 유저 수) + 1 = 현재 나의 등수
-    return parseInt(result?.[0]?.count || '0', 10) + 1;
+    return Number.parseInt(String(result[0]?.count ?? '0'), 10) + 1;
   }
 }

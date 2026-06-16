@@ -2,6 +2,13 @@ import { Injectable } from '@nestjs/common';
 import * as cheerio from 'cheerio';
 import { GeekNewsTopicDetail, GeekNewsTopicSummary } from './geeknews.types';
 
+type DiscussionPostingJsonLd = {
+  '@type': 'DiscussionForumPosting';
+  headline?: string;
+  text?: string;
+  datePublished?: string;
+};
+
 @Injectable()
 export class GeekNewsCrawlerService {
   private readonly baseUrl = 'https://news.hada.io';
@@ -118,7 +125,7 @@ export class GeekNewsCrawlerService {
 
   private findDiscussionPostingJsonLd(
     $: cheerio.CheerioAPI,
-  ): Record<string, string> | null {
+  ): DiscussionPostingJsonLd | null {
     const scripts = $('script[type="application/ld+json"]').toArray();
 
     for (const script of scripts) {
@@ -129,15 +136,12 @@ export class GeekNewsCrawlerService {
 
       const parsed = this.parseJsonLd(content);
       const entries = Array.isArray(parsed) ? parsed : [parsed];
-      const discussionPosting = entries.find(
-        (entry) =>
-          entry &&
-          typeof entry === 'object' &&
-          entry['@type'] === 'DiscussionForumPosting',
+      const discussionPosting = entries.find((entry) =>
+        this.isDiscussionPostingJsonLd(entry),
       );
 
-      if (discussionPosting && typeof discussionPosting === 'object') {
-        return discussionPosting as Record<string, string>;
+      if (discussionPosting) {
+        return discussionPosting;
       }
     }
 
@@ -150,6 +154,26 @@ export class GeekNewsCrawlerService {
     } catch {
       return null;
     }
+  }
+
+  private isDiscussionPostingJsonLd(
+    value: unknown,
+  ): value is DiscussionPostingJsonLd {
+    if (typeof value !== 'object' || value === null) {
+      return false;
+    }
+
+    const record = value as Record<string, unknown>;
+    return (
+      record['@type'] === 'DiscussionForumPosting' &&
+      this.isOptionalString(record.headline) &&
+      this.isOptionalString(record.text) &&
+      this.isOptionalString(record.datePublished)
+    );
+  }
+
+  private isOptionalString(value: unknown): value is string | undefined {
+    return value === undefined || typeof value === 'string';
   }
 
   private extractListedAtText(topicInfoText: string, author: string): string {

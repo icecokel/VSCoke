@@ -9,6 +9,13 @@ import {
 import { Request, Response } from 'express';
 import { ErrorMessage } from '../constants/message.constant';
 
+type ExceptionResponseWithMessage = {
+  message: unknown;
+};
+
+const hasMessage = (value: unknown): value is ExceptionResponseWithMessage =>
+  typeof value === 'object' && value !== null && 'message' in value;
+
 /**
  * 전역 예외 필터: 발생하는 모든 예외를 캡처하여 일관된 형식의 응답을 반환함
  */
@@ -31,19 +38,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
     // 에러 메시지 추출
-    const message =
+    const exceptionResponse =
       exception instanceof HttpException
         ? exception.getResponse()
         : ErrorMessage.COMMON.INTERNAL_SERVER_ERROR;
 
     // HttpException의 getResponse()가 객체일 경우(예: validation pipe) 처리
-    const errorMessage =
-      typeof message === 'object' && message !== null && 'message' in message
-        ? (message as any).message
-        : message;
+    const errorMessage = hasMessage(exceptionResponse)
+      ? exceptionResponse.message
+      : exceptionResponse;
 
     // 로깅 처리 (500번대 에러는 error로, 그 외는 warn으로 기록)
-    if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+    if (status >= Number(HttpStatus.INTERNAL_SERVER_ERROR)) {
       this.logger.error(
         `[${request.method}] ${request.url}`,
         exception instanceof Error
@@ -52,8 +58,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
       );
 
       // 알림 전송 (Fire-and-forget)
-      this.sendNotification(request, exception).catch((err: any) => {
-        this.logger.error(`Failed to send notification: ${err.message}`);
+      this.sendNotification(request, exception).catch((err: unknown) => {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        this.logger.error(`Failed to send notification: ${errorMessage}`);
       });
     } else {
       this.logger.warn(
@@ -121,23 +128,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
       'base64',
     );
 
-    try {
-      const response = await fetch(notifyUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Basic ${auth}`,
-        },
-        body: JSON.stringify(payload),
-      });
+    const response = await fetch(notifyUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Basic ${auth}`,
+      },
+      body: JSON.stringify(payload),
+    });
 
-      if (!response.ok) {
-        throw new Error(
-          `Notification service responded with ${response.status}`,
-        );
-      }
-    } catch (error) {
-      throw error;
+    if (!response.ok) {
+      throw new Error(`Notification service responded with ${response.status}`);
     }
   }
 }

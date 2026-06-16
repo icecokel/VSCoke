@@ -17,11 +17,15 @@ import {
   ApiOperation,
   ApiQuery,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 import { GameService } from './game.service';
 import { CreateGameHistoryDto } from './dto/create-game-history.dto';
 import { GameHistoryResponseDto } from './dto/game-history-response.dto';
 import { GoogleAuthGuard } from '../auth/google-auth.guard';
 import { GameType } from './enums/game-type.enum';
+import { User } from '../auth/entities/user.entity';
+
+type AuthenticatedRequest = Request & { user: User };
 
 /**
  * 게임 결과 관리 및 랭킹 조회를 담당하는 컨트롤러
@@ -40,7 +44,7 @@ export class GameController {
   @ApiOperation({ summary: '게임 결과 생성 및 랭킹 확인' })
   @ApiOkResponse({ type: GameHistoryResponseDto })
   async createResult(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Body() createGameHistoryDto: CreateGameHistoryDto,
   ): Promise<GameHistoryResponseDto> {
     const history = await this.gameService.createHistory(

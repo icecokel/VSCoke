@@ -3,12 +3,12 @@ import { GeekNewsCrawlerService } from './geeknews.crawler.service';
 describe('GeekNewsCrawlerService', () => {
   const originalFetch = global.fetch;
   let service: GeekNewsCrawlerService;
-  let fetchMock: jest.Mock<Promise<Response>, [string, RequestInit?]>;
+  let fetchMock: jest.MockedFunction<typeof fetch>;
 
   beforeEach(() => {
     service = new GeekNewsCrawlerService();
-    fetchMock = jest.fn<Promise<Response>, [string, RequestInit?]>();
-    global.fetch = fetchMock as unknown as typeof fetch;
+    fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
+    global.fetch = fetchMock;
   });
 
   afterEach(() => {
@@ -38,15 +38,12 @@ describe('GeekNewsCrawlerService', () => {
 
     const topics = await service.crawlLatestPage(1);
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://news.hada.io/new?page=1',
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          'accept-language': expect.any(String),
-          'user-agent': expect.any(String),
-        }),
-      }),
-    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, requestInit] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe('https://news.hada.io/new?page=1');
+    const headers = requestInit?.headers as Record<string, string> | undefined;
+    expect(typeof headers?.['accept-language']).toBe('string');
+    expect(typeof headers?.['user-agent']).toBe('string');
     expect(topics).toEqual([
       {
         topicId: 28511,

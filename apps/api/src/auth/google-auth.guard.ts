@@ -7,15 +7,18 @@ import {
 import { OAuth2Client } from 'google-auth-library';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Request } from 'express';
 import { User } from './entities/user.entity';
 import { ErrorMessage } from '../common/constants/message.constant';
+
+type AuthenticatedRequest = Request & { user?: User };
 
 /**
  * 구글 ID 토큰을 검증하고 사용자를 인증하는 가드
  */
 @Injectable()
 export class GoogleAuthGuard implements CanActivate {
-  private client = new OAuth2Client();
+  private readonly client: OAuth2Client = new OAuth2Client();
 
   constructor(
     @InjectRepository(User)
@@ -26,7 +29,7 @@ export class GoogleAuthGuard implements CanActivate {
    * 요청을 가로채어 구글 토큰의 유효성을 검사함
    */
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const token = this.extractTokenFromHeader(request);
 
     // 토큰이 없는 경우 예외 발생
@@ -61,7 +64,7 @@ export class GoogleAuthGuard implements CanActivate {
         await this.userRepository.save(user);
       }
 
-      request['user'] = user;
+      request.user = user;
       return true;
     }
 
@@ -104,15 +107,16 @@ export class GoogleAuthGuard implements CanActivate {
       }
 
       // 요청 객체에 유저 정보 첨부
-      request['user'] = user;
+      request.user = user;
       return true;
     } catch (e) {
       if (e instanceof UnauthorizedException) {
         throw e;
       }
 
+      const errorMessage = e instanceof Error ? e.message : String(e);
       throw new UnauthorizedException(
-        `${ErrorMessage.AUTH.INVALID_TOKEN}: ${e.message}`,
+        `${ErrorMessage.AUTH.INVALID_TOKEN}: ${errorMessage}`,
       );
     }
   }
@@ -120,9 +124,13 @@ export class GoogleAuthGuard implements CanActivate {
   /**
    * Authorization 헤더에서 Bearer 토큰을 추출함
    */
-  private extractTokenFromHeader(request: any): string | undefined {
-    // request['headers']가 아닌 원본 인터페이스를 준수하도록 any 타입 사용 (추후 구체화 가능)
-    const [type, token] = request.headers.authorization?.split(' ') ?? [];
+  private extractTokenFromHeader(request: Request): string | undefined {
+    const authorization = request.headers.authorization;
+    if (typeof authorization !== 'string') {
+      return undefined;
+    }
+
+    const [type, token] = authorization.split(' ');
     return type === 'Bearer' ? token : undefined;
   }
 }

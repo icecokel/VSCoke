@@ -67,4 +67,4 @@ async function bootstrap() {
 }
 
 // 애플리케이션 실행
-bootstrap();
+void bootstrap();

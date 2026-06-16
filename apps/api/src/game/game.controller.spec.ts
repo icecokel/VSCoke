@@ -11,8 +11,50 @@ import {
 } from '@nestjs/common';
 import { GameHistoryResponseDto } from './dto/game-history-response.dto';
 import { GameType } from './enums/game-type.enum';
+import { User } from '../auth/entities/user.entity';
+import { GameHistory } from './entities/game-history.entity';
 
-const mockGameService = () => ({
+type MockGameService = jest.Mocked<
+  Pick<
+    GameService,
+    | 'createHistory'
+    | 'getRanking'
+    | 'findHistoryById'
+    | 'getUserRank'
+    | 'getUserBestScore'
+  >
+>;
+
+type TestRequest = {
+  user: User;
+};
+
+const createUser = (overrides: Partial<User> = {}): User => ({
+  id: 'test-user',
+  email: 'test@example.com',
+  firstName: 'Gil',
+  lastName: 'Dong',
+  accessToken: '',
+  ...overrides,
+});
+
+const createGameHistory = (
+  overrides: Partial<GameHistory> = {},
+): GameHistory => {
+  const user = overrides.user ?? createUser();
+
+  return {
+    id: '1',
+    score: 100,
+    gameType: GameType.SKY_DROP,
+    createdAt: new Date(),
+    userId: user.id,
+    user,
+    ...overrides,
+  };
+};
+
+const mockGameService = (): MockGameService => ({
   createHistory: jest.fn(),
   getRanking: jest.fn(),
   findHistoryById: jest.fn(),
@@ -22,7 +64,7 @@ const mockGameService = () => ({
 
 describe('GameController', () => {
   let controller: GameController;
-  let service: ReturnType<typeof mockGameService>;
+  let service: MockGameService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -37,15 +79,15 @@ describe('GameController', () => {
       .overrideGuard(GoogleAuthGuard)
       .useValue({
         canActivate: (context: ExecutionContext) => {
-          const req = context.switchToHttp().getRequest();
-          req.user = { id: 'test-user' };
+          const req = context.switchToHttp().getRequest<TestRequest>();
+          req.user = createUser({ id: 'test-user' });
           return true;
         },
       })
       .compile();
 
     controller = module.get<GameController>(GameController);
-    service = module.get(GameService);
+    service = module.get<MockGameService>(GameService);
   });
 
   it('should be defined', () => {
@@ -58,15 +100,15 @@ describe('GameController', () => {
         score: 100,
         gameType: GameType.SKY_DROP,
       };
-      const req = {
-        user: { id: 'test-user', firstName: 'Gil', lastName: 'Dong' },
+      const req: TestRequest = {
+        user: createUser(),
       };
-      const createdHistory = {
+      const createdHistory = createGameHistory({
         id: '1',
         ...dto,
         user: req.user,
         createdAt: new Date(),
-      };
+      });
 
       const expectedResult = {
         id: createdHistory.id,
@@ -82,7 +124,7 @@ describe('GameController', () => {
         weeklyRank: 1,
       };
 
-      service.createHistory.mockResolvedValue(createdHistory as any);
+      service.createHistory.mockResolvedValue(createdHistory);
       service.getUserRank
         .mockResolvedValueOnce(1) // allTimeRank
         .mockResolvedValueOnce(1) // weeklyRank
@@ -105,15 +147,15 @@ describe('GameController', () => {
         gameType: GameType.SKY_DROP,
         playTime: 120,
       };
-      const req = {
-        user: { id: 'test-user', firstName: 'Gil', lastName: 'Dong' },
+      const req: TestRequest = {
+        user: createUser(),
       };
-      const createdHistory = {
+      const createdHistory = createGameHistory({
         id: '2',
         ...dto,
         user: req.user,
         createdAt: new Date(),
-      };
+      });
 
       const expectedResult: GameHistoryResponseDto = {
         id: createdHistory.id,
@@ -129,7 +171,7 @@ describe('GameController', () => {
         weeklyRank: 5,
       };
 
-      service.createHistory.mockResolvedValue(createdHistory as any);
+      service.createHistory.mockResolvedValue(createdHistory);
       service.getUserRank.mockResolvedValue(5);
       service.getUserBestScore.mockResolvedValue(200);
 
@@ -145,8 +187,8 @@ describe('GameController', () => {
         score: 100,
         gameType: GameType.SKY_DROP,
       };
-      const req = {
-        user: { id: 'test-user', firstName: 'Gil', lastName: 'Dong' },
+      const req: TestRequest = {
+        user: createUser(),
       };
 
       service.createHistory.mockRejectedValue(new Error('DB Error'));
@@ -164,7 +206,7 @@ describe('GameController', () => {
         score: -50, // Assuming negative score is allowed by DTO but rejected by Service logic
         gameType: GameType.SKY_DROP,
       };
-      const req = { user: { id: 'test-user' } };
+      const req: TestRequest = { user: createUser({ id: 'test-user' }) };
 
       service.createHistory.mockRejectedValue(
         new BadRequestException('Invalid Score'),
@@ -220,13 +262,13 @@ describe('GameController', () => {
     // Success Case 1
     it('should return game result by id', async () => {
       const id = 'test-uuid';
-      const history = {
+      const history = createGameHistory({
         id,
         score: 100,
         gameType: GameType.SKY_DROP,
         createdAt: new Date(),
-        user: { firstName: 'Gil', lastName: 'Dong' },
-      };
+        user: createUser({ firstName: 'Gil', lastName: 'Dong' }),
+      });
       const expectedResult = {
         id: history.id,
         score: history.score,
@@ -235,7 +277,7 @@ describe('GameController', () => {
         user: { displayName: 'Gil Dong' },
       };
 
-      service.findHistoryById.mockResolvedValue(history as any);
+      service.findHistoryById.mockResolvedValue(history);
 
       const result = await controller.getGameResult(id);
 
@@ -246,15 +288,15 @@ describe('GameController', () => {
     // Success Case 2: Formatting check (checking displayName concatenation again)
     it('should correctly format displayName in response', async () => {
       const id = 'another-uuid';
-      const history = {
+      const history = createGameHistory({
         id,
         score: 200,
         gameType: GameType.SKY_DROP,
         createdAt: new Date(),
-        user: { firstName: 'Hong', lastName: 'Gildong' },
-      };
+        user: createUser({ firstName: 'Hong', lastName: 'Gildong' }),
+      });
 
-      service.findHistoryById.mockResolvedValue(history as any);
+      service.findHistoryById.mockResolvedValue(history);
 
       const result = await controller.getGameResult(id);
 

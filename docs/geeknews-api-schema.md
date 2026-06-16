@@ -126,5 +126,5 @@ export type GeekNewsSyncResponseDto = {
 
 이 저장소에서는 아래 타입/함수로 계약을 재사용합니다.
 
-- `src/types/api.d.ts`
-- `src/services/geeknews-service.ts`
+- `apps/web/src/types/api.d.ts`
+- `apps/web/src/services/geeknews-service.ts`

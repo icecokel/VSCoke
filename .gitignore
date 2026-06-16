@@ -1,8 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
-/.pnp
+node_modules/
+.pnp
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -11,19 +11,20 @@
 !.yarn/versions
 
 # testing
-/coverage
-/playwright-report/
-/test-results/
+coverage/
+playwright-report/
+test-results/
 
 # next.js
-/.next/
-/.next-e2e/
-/.next-e2e-*/
-/.next-e2e-tsconfig-*.json
-/out/
+.next/
+.next-e2e/
+.next-e2e-*/
+.next-e2e-tsconfig-*.json
+out/
 
 # production
-/build
+build/
+dist/
 
 # misc
 .DS_Store
@@ -37,6 +38,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!apps/api/.env.example
+!apps/web/.env.example
 
 # vercel
 .vercel
@@ -59,5 +62,11 @@ next-env.d.ts
 
 # local docs
 /docs/*
+!/docs/superpowers/
+!/docs/superpowers/plans/
+!/docs/superpowers/plans/2026-06-13-monorepo-structure.md
+!/docs/api-git-history-report.md
+!/docs/deployment-and-env.md
 !/docs/geeknews-api-schema.md
 !/docs/swagger-style-guide.md
+!/docs/user-deployment-checklist.md

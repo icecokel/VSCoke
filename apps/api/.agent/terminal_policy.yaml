@@ -1,0 +1,26 @@
+# Antigravity Terminal Policy Configuration Example
+# 이 파일은 Antigravity AI가 터미널 명령어를 실행할 때의 규칙을 정의합니다.
+
+# Global Policy Mode: "off" | "auto" | "turbo"
+# - off: 모든 명령어에 대해 사용자 승인 요청
+# - auto: 안전한 명령어는 자동 실행, 위험 가능성 있는 명령어는 승인 요청
+# - turbo: Deny List에 있는 명령어를 제외하고 모두 자동 실행
+mode: "auto"
+
+# Allow List: mode가 "off"일 때도 자동 실행을 허용할 명령어 패턴
+allow_list:
+  - "ls -la"
+  - "git status"
+  - "echo *"
+  - "npm run dev"
+  - "npm run build"
+
+# Deny List: mode가 "turbo" 또는 "auto"일 때도 반드시 사용자 승인을 받거나 차단할 명령어
+deny_list:
+  - "rm -rf /"
+  - "shutdown *"
+  - "reboot"
+  - "git push --force"
+
+# Command Timeout (seconds)
+timeout: 300

@@ -1,0 +1,68 @@
+name: Deploy API to Termux (Cloudflare Tunnel)
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "apps/api/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/deploy-api.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: TERMUX
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.0 --activate
+
+      - name: Install dependencies and build API
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @vscoke/api build
+          tar -czf deploy-api.tar.gz apps/api/dist apps/api/package.json package.json pnpm-lock.yaml pnpm-workspace.yaml
+
+      - name: Install cloudflared
+        run: |
+          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared-linux-amd64.deb
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.TERMUX_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo "Host ${{ secrets.TERMUX_HOST }}" >> ~/.ssh/config
+          echo "  User ${{ secrets.TERMUX_USER }}" >> ~/.ssh/config
+          echo "  IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
+          echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+          echo "  ProxyCommand cloudflared access ssh --hostname %h" >> ~/.ssh/config
+
+      - name: Prepare target directory
+        run: |
+          ssh ${{ secrets.TERMUX_HOST }} "mkdir -p ~/projects/vscoke-api"
+
+      - name: Stop app process
+        run: |
+          ssh ${{ secrets.TERMUX_HOST }} "pm2 delete vscoke-api || true"
+          sleep 5
+
+      - name: Deploy archive
+        run: |
+          scp deploy-api.tar.gz ${{ secrets.TERMUX_HOST }}:~/projects/vscoke-api/
+
+      - name: Extract, install production dependencies, and restart
+        run: |
+          ssh ${{ secrets.TERMUX_HOST }} "cd ~/projects/vscoke-api && rm -rf apps package.json pnpm-lock.yaml pnpm-workspace.yaml && tar -xzf deploy-api.tar.gz && rm deploy-api.tar.gz && corepack enable && corepack prepare pnpm@9.12.0 --activate && pnpm install --filter @vscoke/api --prod --frozen-lockfile --ignore-scripts && pm2 start apps/api/dist/src/main.js --name vscoke-api"

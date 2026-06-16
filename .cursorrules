@@ -4,7 +4,7 @@
 - **Framework**: Next.js 15+ (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS 4
-- **Localisation**: next-intl (`messages/` directory)
+- **Localisation**: next-intl (`apps/web/messages/` directory)
 - **UI Components**: shadcn/ui
 - **Phaser**: 3.90+
 
@@ -15,7 +15,7 @@
    - **Artifacts**: "Walkthrough", "Implementation Plan" 등 모든 산출물은 **한국어**로 작성한다.
 
 2. **Verification & Testing**
-   - **Build Test**: 작업이 완료되면 반드시 `npm run build`를 실행하여 빌드 오류가 없는지 확인한다.
+   - **Build Test**: 작업이 완료되면 반드시 `pnpm build`를 실행하여 빌드 오류가 없는지 확인한다.
    - **Verification**: 코드를 수정한 후에는 반드시 관련된 기능이 정상 동작하는지 검증한다.
 
 3. **Routing Policy**

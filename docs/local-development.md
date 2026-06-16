@@ -55,7 +55,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 NEXT_PUBLIC_API_URL=https://api.icecoke.kr
 ```
 
-API는 DB, Google OAuth, GeekNews 번역, 알림 설정을 `apps/api/.env`에서 읽는다. 운영 값은 Termux 서버의 API `.env`에서 별도로 관리한다.
+API는 DB, Google OAuth, 알림 설정을 `apps/api/.env`에서 읽는다. 운영 값은 Termux 서버의 API `.env`에서 별도로 관리한다.
 
 ## 웹만 실행
 

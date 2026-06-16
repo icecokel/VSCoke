@@ -62,7 +62,6 @@ const uniqueStrings = (values: string[]): string[] => {
 export const useSearchIndex = (): SearchItem[] => {
   const posts = useContext(SearchPostsContext);
   const tBlog = useTranslations("blog");
-  const tGeekNews = useTranslations("geeknews");
   const tProfile = useTranslations("profile");
   const tResume = useTranslations("resume");
   const tGame = useTranslations("Game");
@@ -128,17 +127,6 @@ export const useSearchIndex = (): SearchItem[] => {
       path: `/blog/${post.slug}`,
       priority: 180,
     }));
-
-    const geekNewsLanding: SearchItem = {
-      id: "geeknews:index",
-      type: "geeknews",
-      title: tGeekNews("title"),
-      description: tGeekNews("description"),
-      keywords: ["geeknews", "news", "hada", "translation"],
-      path: "/geeknews",
-      featured: true,
-      priority: 405,
-    };
 
     const hobbyRecipeLanding: SearchItem = {
       id: "hobby:recipes:index",
@@ -284,7 +272,6 @@ export const useSearchIndex = (): SearchItem[] => {
       profileLanding,
       blogLanding,
       blogDashboard,
-      geekNewsLanding,
       hobbyRecipeLanding,
       hobbyEspressoLanding,
       ...blogPosts,
@@ -292,5 +279,5 @@ export const useSearchIndex = (): SearchItem[] => {
       ...gameItems,
       ...hobbyItems,
     ];
-  }, [hobbyItems, posts, tBlog, tDoom, tGame, tGeekNews, tProfile, tResume]);
+  }, [hobbyItems, posts, tBlog, tDoom, tGame, tProfile, tResume]);
 };

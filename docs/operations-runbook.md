@@ -213,7 +213,7 @@ pnpm smoke:api:remote
 
 1. Vercel deployment 상태가 `Ready`인지 확인한다.
 2. 주요 페이지가 로드되는지 확인한다.
-3. 로그인, 게임 점수 제출, GeekNews, Wordle처럼 API를 호출하는 화면을 확인한다.
+3. 로그인, 게임 점수 제출, Wordle처럼 API를 호출하는 화면을 확인한다.
 4. 브라우저 네트워크 탭에서 API URL이 `NEXT_PUBLIC_API_URL`과 일치하는지 확인한다.
 
 ## 관련 문서

@@ -69,3 +69,4 @@ next-env.d.ts
 !/docs/deployment-and-env.md
 !/docs/geeknews-api-schema.md
 !/docs/swagger-style-guide.md
+!/docs/user-deployment-checklist.md

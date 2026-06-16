@@ -1,4 +1,4 @@
-name: Deploy API to Termux (Cloudflare Tunnel)
+name: Deploy API to Termux (Self-hosted Runner)
 
 on:
   workflow_dispatch:
@@ -17,21 +17,21 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
-    environment: TERMUX
+    runs-on: [self-hosted, termux, vscoke-api]
     env:
       API_HEALTH_URL: ${{ vars.API_HEALTH_URL || 'https://api.icecoke.kr/api-json' }}
-      TERMUX_HOST: ${{ secrets.TERMUX_HOST }}
-      TERMUX_USER: ${{ secrets.TERMUX_USER }}
-      TERMUX_KEY: ${{ secrets.TERMUX_KEY }}
+      DEPLOY_DIR: ${{ vars.API_DEPLOY_DIR || '~/projects/vscoke-api' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
+      - name: Verify self-hosted runner prerequisites
+        run: |
+          command -v node
+          command -v corepack
+          command -v pm2
+          node --version
+          pm2 --version
 
       - name: Enable pnpm
         run: |
@@ -42,60 +42,48 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm --filter @vscoke/api build
-          tar -czf deploy-api.tar.gz apps/api/dist apps/api/package.json package.json pnpm-lock.yaml pnpm-workspace.yaml
-
-      - name: Install cloudflared
-        run: |
-          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
-          sudo dpkg -i cloudflared-linux-amd64.deb
-
-      - name: Validate deployment secrets
-        run: |
-          missing=0
-          for name in TERMUX_HOST TERMUX_USER TERMUX_KEY; do
-            if [ -z "${!name}" ]; then
-              echo "::error::$name is not configured in the TERMUX environment secrets"
-              missing=1
-            fi
-          done
-          exit "$missing"
-
-      - name: Configure SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "$TERMUX_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          echo "Host $TERMUX_HOST" >> ~/.ssh/config
-          echo "  User $TERMUX_USER" >> ~/.ssh/config
-          echo "  IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
-          echo "  StrictHostKeyChecking no" >> ~/.ssh/config
-          echo "  ProxyCommand cloudflared access ssh --hostname %h" >> ~/.ssh/config
-
-      - name: Prepare target directory
-        run: |
-          ssh "$TERMUX_HOST" "mkdir -p ~/projects/vscoke-api"
+          test -f apps/api/dist/src/main.js
 
       - name: Verify runtime env exists
         run: |
-          ssh "$TERMUX_HOST" "test -f ~/projects/vscoke-api/.env"
+          DEPLOY_DIR="${DEPLOY_DIR/#\~/$HOME}"
+          mkdir -p "$DEPLOY_DIR"
+          test -f "$DEPLOY_DIR/.env"
 
-      - name: Stop app process
+      - name: Stage production release
         run: |
-          ssh "$TERMUX_HOST" "pm2 delete vscoke-api || true"
-          sleep 5
+          DEPLOY_DIR="${DEPLOY_DIR/#\~/$HOME}"
+          STAGE_DIR="$DEPLOY_DIR/.next-release"
+          rm -rf "$STAGE_DIR"
+          mkdir -p "$STAGE_DIR/apps/api"
+          cp -R apps/api/dist "$STAGE_DIR/apps/api/dist"
+          cp apps/api/package.json "$STAGE_DIR/apps/api/package.json"
+          cp package.json pnpm-lock.yaml pnpm-workspace.yaml "$STAGE_DIR/"
+          cd "$STAGE_DIR"
+          corepack enable
+          corepack prepare pnpm@9.12.0 --activate
+          pnpm install --filter @vscoke/api --prod --frozen-lockfile --ignore-scripts
 
-      - name: Deploy archive
+      - name: Restart API with staged release
         run: |
-          scp deploy-api.tar.gz "$TERMUX_HOST":~/projects/vscoke-api/
-
-      - name: Extract, install production dependencies, and restart
-        run: |
-          ssh "$TERMUX_HOST" "cd ~/projects/vscoke-api && rm -rf apps package.json pnpm-lock.yaml pnpm-workspace.yaml && tar -xzf deploy-api.tar.gz && rm deploy-api.tar.gz && corepack enable && corepack prepare pnpm@9.12.0 --activate && pnpm install --filter @vscoke/api --prod --frozen-lockfile --ignore-scripts && pm2 start apps/api/dist/src/main.js --name vscoke-api --update-env && pm2 save"
+          DEPLOY_DIR="${DEPLOY_DIR/#\~/$HOME}"
+          STAGE_DIR="$DEPLOY_DIR/.next-release"
+          pm2 delete vscoke-api || true
+          rm -rf "$DEPLOY_DIR/apps" "$DEPLOY_DIR/node_modules" "$DEPLOY_DIR/package.json" "$DEPLOY_DIR/pnpm-lock.yaml" "$DEPLOY_DIR/pnpm-workspace.yaml"
+          cp -a "$STAGE_DIR"/. "$DEPLOY_DIR"/
+          rm -rf "$STAGE_DIR"
+          cd "$DEPLOY_DIR"
+          pm2 start apps/api/dist/src/main.js --name vscoke-api --update-env
+          pm2 save
 
       - name: Verify local API health on Termux
         run: |
-          ssh "$TERMUX_HOST" "cd ~/projects/vscoke-api && PORT=\$(sed -n 's/^PORT=//p' .env | tail -1) && PORT=\${PORT:-3000} && PORT=\$PORT node -e \"fetch('http://127.0.0.1:' + process.env.PORT + '/api-json').then((res) => { if (!res.ok) throw new Error('HTTP ' + res.status); }).catch((error) => { console.error(error); process.exit(1); })\""
+          DEPLOY_DIR="${DEPLOY_DIR/#\~/$HOME}"
+          cd "$DEPLOY_DIR"
+          PORT="$(sed -n 's/^PORT=//p' .env | tail -1)"
+          PORT="${PORT:-3000}"
+          PORT="$PORT" node -e "fetch('http://127.0.0.1:' + process.env.PORT + '/api-json').then((res) => { if (!res.ok) throw new Error('HTTP ' + res.status); }).catch((error) => { console.error(error); process.exit(1); })"
 
       - name: Verify public API health
         run: |
-          curl --fail --show-error --silent --retry 5 --retry-delay 5 "$API_HEALTH_URL" > /dev/null
+          pnpm smoke:api:remote

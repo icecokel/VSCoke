@@ -28,24 +28,23 @@ Vercel에서 `VSCoke` 웹 프로젝트 설정을 변경한다.
 - [ ] Google 로그인 진입이 깨지지 않는지 확인한다.
 - [ ] 웹에서 API 호출이 `https://api.icecoke.kr`로 나가는지 확인한다.
 
-## 2. GitHub Actions Secrets
+## 2. GitHub Actions Self-hosted Runner
 
-monorepo 저장소 `icecokel/VSCoke`의 GitHub Actions secrets를 확인한다.
+Termux 서버에 monorepo 저장소 `icecokel/VSCoke`용 GitHub Actions self-hosted runner를 설치한다.
 
-- [ ] `TERMUX_HOST`
-- [ ] `TERMUX_USER`
-- [ ] `TERMUX_KEY`
-
-Cloudflare Access가 GitHub Actions의 SSH 접속을 대화형 인증으로 막으면 service token을 추가한다.
-
-- [ ] `CF_ACCESS_CLIENT_ID`
-- [ ] `CF_ACCESS_CLIENT_SECRET`
+- [ ] GitHub `Settings > Actions > Runners > New self-hosted runner`에서 runner 등록 토큰을 발급한다.
+- [ ] Termux 서버에 runner를 설치한다.
+- [ ] runner label에 `termux`, `vscoke-api`를 추가한다.
+- [ ] runner를 PM2, tmux, 또는 Termux:Boot 복구 스크립트로 상시 실행되게 구성한다.
+- [ ] runner 계정에서 `node`, `corepack`, `pm2` 명령이 실행되는지 확인한다.
+- [ ] 선택적으로 repository variable `API_HEALTH_URL`을 등록한다. 기본값은 `https://api.icecoke.kr/api-json`이다.
+- [ ] 선택적으로 repository variable `API_DEPLOY_DIR`을 등록한다. 기본값은 `~/projects/vscoke-api`이다.
 
 검증:
 
-- [ ] API deploy workflow가 SSH 설정 단계에서 멈추지 않는지 확인한다.
-- [ ] 실패 시 GitHub Actions 로그에서 Cloudflare Access 인증 실패인지, SSH key 실패인지 구분한다.
-- [ ] 필요하면 repository variable `API_HEALTH_URL`을 등록한다. 기본값은 `https://api.icecoke.kr/api-json`이다.
+- [ ] `Deploy API to Termux (Self-hosted Runner)` workflow가 queued 상태에 오래 머물지 않는지 확인한다.
+- [ ] workflow의 `Verify self-hosted runner prerequisites` 단계가 통과하는지 확인한다.
+- [ ] workflow의 `Verify runtime env exists` 단계가 통과하는지 확인한다.
 
 ## 3. Termux API Server
 
@@ -74,7 +73,7 @@ Termux 서버의 운영 디렉터리를 확인한다.
 검증:
 
 - [ ] `pm2 status`에서 `vscoke-api` 상태를 확인한다.
-- [ ] 첫 운영 배포 성공 후 `pm2 save`를 실행한다.
+- [ ] workflow 배포 성공 후 `pm2 status`에서 `vscoke-api` 상태를 확인한다.
 - [ ] 재부팅 복구가 필요하면 Termux:Boot 또는 기존 부팅 자동화에서 `pm2 resurrect`가 실행되도록 설정한다.
 - [ ] `https://api.icecoke.kr/api-json` 응답을 확인한다.
 - [ ] 로컬에서 공개 API smoke test를 실행한다.

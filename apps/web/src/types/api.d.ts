@@ -21,6 +21,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/espresso-history/beans": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 에스프레소 원두 목록 조회 */
+    get: operations["EspressoHistoryController_getBeans"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/espresso-history/beans/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 에스프레소 원두 상세 조회 */
+    get: operations["EspressoHistoryController_getBeanById"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/game/result": {
     parameters: {
       query?: never;
@@ -72,32 +106,15 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/geeknews/sync": {
+  "/recipes": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    get?: never;
-    put?: never;
-    /** 긱뉴스 최신 글을 수동으로 동기화 */
-    post: operations["GeekNewsController_syncLatestTopics"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/geeknews/articles": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** 저장된 긱뉴스 번역 결과 조회 */
-    get: operations["GeekNewsController_getLatestArticles"];
+    /** 레시피 목록 조회 */
+    get: operations["RecipeController_getRecipes"];
     put?: never;
     post?: never;
     delete?: never;
@@ -106,15 +123,15 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/geeknews/articles/{id}": {
+  "/recipes/{id}": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** 저장된 긱뉴스 번역 결과 상세 조회 */
-    get: operations["GeekNewsController_getArticleById"];
+    /** 레시피 상세 조회 */
+    get: operations["RecipeController_getRecipeById"];
     put?: never;
     post?: never;
     delete?: never;
@@ -161,6 +178,215 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    EspressoEquipmentDto: {
+      /**
+       * @description 에스프레소 머신
+       * @example CRM 3605 PWM 2버전
+       */
+      machine?: string;
+      /**
+       * @description 그라인더
+       * @example DF64 Gen2
+       */
+      grinder?: string;
+      /**
+       * @description 바스켓
+       * @example IMS 20g
+       */
+      basket?: string;
+      /**
+       * @description 도징 쉐이커
+       * @example 도징쉐이커
+       */
+      dosingShaker?: string;
+      /**
+       * @description 탬퍼
+       * @example 58.5mm tamper
+       */
+      tamper?: string;
+    };
+    EspressoMeasurementDto: {
+      /**
+       * @description 단일 측정값
+       * @example 20
+       */
+      value?: number;
+      /**
+       * @description 범위 최소값
+       * @example 25
+       */
+      min?: number;
+      /**
+       * @description 범위 최대값
+       * @example 30
+       */
+      max?: number;
+      /**
+       * @description 측정 단위
+       * @example g
+       * @enum {string}
+       */
+      unit: "g" | "sec" | "celsius" | "bar";
+    };
+    EspressoRecipeParametersDto: {
+      dose?: components["schemas"]["EspressoMeasurementDto"];
+      yield?: components["schemas"]["EspressoMeasurementDto"];
+      temperature?: components["schemas"]["EspressoMeasurementDto"];
+      preinfusion?: components["schemas"]["EspressoMeasurementDto"];
+      extractionTime?: components["schemas"]["EspressoMeasurementDto"];
+      targetExtractionTime?: components["schemas"]["EspressoMeasurementDto"];
+      pressure?: components["schemas"]["EspressoMeasurementDto"];
+      /**
+       * @description 유량 조건
+       * @example 기본 유량
+       */
+      flow?: string;
+      /**
+       * @description 분쇄도 조건
+       * @example 2.4
+       */
+      grind?: string;
+    };
+    EspressoResultDto: {
+      extractionTime?: components["schemas"]["EspressoMeasurementDto"];
+      pressure?: components["schemas"]["EspressoMeasurementDto"];
+      /** @description 맛 기록 */
+      taste?: string[];
+      /** @description 추가 메모 */
+      notes?: string[];
+    };
+    EspressoRoundAnalysisDto: {
+      /** @description 변경 사항 */
+      changes?: string[];
+      /** @description 기록 메모 */
+      notes?: string[];
+      /** @description 판단 */
+      judgments?: string[];
+      /** @description 추론 */
+      inferences?: string[];
+      /** @description 결론 */
+      conclusions?: string[];
+      /** @description 비교 예정 항목 */
+      plannedComparisons?: string[];
+    };
+    EspressoRoundResponseDto: {
+      /**
+       * @description 라운드 ID
+       * @example round-1
+       */
+      id: string;
+      /**
+       * @description 라운드 번호
+       * @example 1
+       */
+      roundNumber: number;
+      /**
+       * @description 추출 일자
+       * @example 2026-06-16
+       */
+      date?: string | null;
+      /** @description 추출 레시피 */
+      recipe: components["schemas"]["EspressoRecipeParametersDto"];
+      /** @description 추출 결과 */
+      result: components["schemas"]["EspressoResultDto"];
+      /** @description 라운드 분석 */
+      analysis?: components["schemas"]["EspressoRoundAnalysisDto"];
+      /** @description 다음 액션 */
+      nextActions: string[];
+    };
+    EspressoCurrentAnalysisDto: {
+      /** @description 현재 조건 */
+      conditions?: string[];
+      /** @description 추정 문제 */
+      suspectedIssues?: string[];
+    };
+    EspressoAdjustmentGuideDto: {
+      /**
+       * @description 조정 조건
+       * @example 여전히 20초 이하
+       */
+      condition: string;
+      /**
+       * @description 조정 액션
+       * @example 분쇄도 아주 조금만 가늘게
+       */
+      action: string;
+    };
+    EspressoMethodStepDto: {
+      /**
+       * @description 추출 시점
+       * @example 0-5초
+       */
+      time: string;
+      /** @description 수행 단계 */
+      steps: string[];
+    };
+    EspressoNextTestDto: {
+      /**
+       * @description 목표 라운드 번호
+       * @example 5
+       */
+      targetRoundNumber?: number;
+      /** @description 다음 테스트 목표 */
+      goals: string[];
+      recipe: components["schemas"]["EspressoRecipeParametersDto"];
+      method: components["schemas"]["EspressoMethodStepDto"][];
+      /** @description 예상 결과 */
+      expectedResult: string[];
+    };
+    EspressoLogResponseDto: {
+      /**
+       * @description 추출 로그 ID
+       * @example fritz-jal-doeeo-gasina-log
+       */
+      id: string;
+      /**
+       * @description 로그 타입
+       * @example espresso-log
+       * @enum {string}
+       */
+      type: "espresso-log";
+      /**
+       * @description 추출 로그 제목
+       * @example 추출 세팅
+       */
+      title: string;
+      /** @description 라운드 기록 */
+      rounds: components["schemas"]["EspressoRoundResponseDto"][];
+      /** @description 현재 기준 분석 */
+      currentAnalysis?: components["schemas"]["EspressoCurrentAnalysisDto"];
+      /** @description 조건별 조정 가이드 */
+      adjustmentGuide?: components["schemas"]["EspressoAdjustmentGuideDto"][];
+      /** @description 최종 가설 */
+      finalHypothesis?: string[];
+      /** @description 다음 테스트 세팅 */
+      nextTest?: components["schemas"]["EspressoNextTestDto"];
+      /** @description 다음 방향 */
+      nextDirection?: string[];
+    };
+    EspressoBeanResponseDto: {
+      /**
+       * @description 원두 기록 ID
+       * @example bean-fritz-jal-doeeo-gasina
+       */
+      id: string;
+      /**
+       * @description 원두 이름
+       * @example 프릳츠 잘 되어 가시나
+       */
+      name: string;
+      /**
+       * @description 로스터리
+       * @example 프릳츠
+       */
+      roaster?: string;
+      /** @description 원두 추출 목표 */
+      goals: string[];
+      /** @description 공통 장비 기본 세팅 */
+      defaultEquipment: components["schemas"]["EspressoEquipmentDto"];
+      /** @description 추출 로그 */
+      logs: components["schemas"]["EspressoLogResponseDto"][];
+    };
     CreateGameHistoryDto: {
       score: number;
       playTime?: number;
@@ -240,49 +466,50 @@ export interface components {
       userId: string;
       user: components["schemas"]["User"];
     };
-    GeekNewsArticleResponseDto: {
-      id: string;
-      sourceTopicId: number;
-      topicUrl: string;
-      sourceUrl?: string | null;
-      title: string;
-      content: string;
-      translatedTitle?: string | null;
-      translatedContent?: string | null;
-      author: string;
-      points: number;
-      commentCount: number;
-      rank: number;
-      listedAtText: string;
-      /** Format: date-time */
-      postedAt?: string | null;
-      sourceLanguage: string;
-      translatedLanguage?: string | null;
-      /** @enum {string} */
-      translationStatus: "pending" | "translated" | "failed";
-      translationProvider?: string | null;
-      translationModel?: string | null;
-      translationError?: string | null;
-      /** Format: date-time */
-      translatedAt?: string | null;
-      /** Format: date-time */
-      createdAt: string;
-      /** Format: date-time */
-      updatedAt: string;
+    RecipeSourceDto: {
+      /**
+       * @description 레시피 출처 유형
+       * @example notion
+       */
+      type: string;
+      /**
+       * @description 레시피 원문 URL
+       * @example https://www.notion.so/example
+       */
+      url: string;
     };
-    GeekNewsSyncResponseDto: {
-      /** @enum {string} */
-      status: "completed" | "skipped";
-      reason?: string | null;
-      crawledPages: number;
-      crawledTopics: number;
-      createdTopics: number;
-      updatedTopics: number;
-      skippedTopics: number;
-      translatedTopics: number;
-      pendingTopics: number;
-      failedTopics: number;
-      articles: components["schemas"]["GeekNewsArticleResponseDto"][];
+    RecipeResponseDto: {
+      /**
+       * Format: uuid
+       * @description 레시피 ID
+       * @example 411b3333-a8b1-414b-bd60-9f538a885614
+       */
+      id: string;
+      /**
+       * @description 레시피 이름
+       * @example 부타동
+       */
+      name: string;
+      /** @description 검색 및 분류 태그 */
+      tags: string[];
+      /** @description 재료 목록 */
+      ingredients: string[];
+      /** @description 조리 단계 */
+      recipe: string[];
+      /** @description 레시피 출처 */
+      source?: components["schemas"]["RecipeSourceDto"];
+      /**
+       * Format: date-time
+       * @description 생성 시각
+       * @example 2026-06-16T12:00:00.000Z
+       */
+      createdAt: string;
+      /**
+       * Format: date-time
+       * @description 수정 시각
+       * @example 2026-06-16T12:00:00.000Z
+       */
+      updatedAt: string;
     };
     WordResponseDto: {
       /**
@@ -334,6 +561,56 @@ export interface operations {
       };
     };
   };
+  EspressoHistoryController_getBeans: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 에스프레소 원두 목록 조회 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EspressoBeanResponseDto"][];
+        };
+      };
+    };
+  };
+  EspressoHistoryController_getBeanById: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description 원두 기록 ID */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 에스프레소 원두 상세 조회 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EspressoBeanResponseDto"];
+        };
+      };
+      /** @description 해당 원두 기록이 존재하지 않음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   GameController_createResult: {
     parameters: {
       query?: never;
@@ -348,14 +625,6 @@ export interface operations {
     };
     responses: {
       200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["GameHistoryResponseDto"];
-        };
-      };
-      201: {
         headers: {
           [name: string]: unknown;
         };
@@ -409,7 +678,7 @@ export interface operations {
       };
     };
   };
-  GeekNewsController_syncLatestTopics: {
+  RecipeController_getRecipes: {
     parameters: {
       query?: never;
       header?: never;
@@ -418,63 +687,51 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
+      /** @description 레시피 목록 조회 성공 */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GeekNewsSyncResponseDto"];
-        };
-      };
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["GeekNewsSyncResponseDto"];
+          "application/json": components["schemas"]["RecipeResponseDto"][];
         };
       };
     };
   };
-  GeekNewsController_getLatestArticles: {
-    parameters: {
-      query: {
-        limit: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["GeekNewsArticleResponseDto"][];
-        };
-      };
-    };
-  };
-  GeekNewsController_getArticleById: {
+  RecipeController_getRecipeById: {
     parameters: {
       query?: never;
       header?: never;
       path: {
+        /** @description 레시피 UUID */
         id: string;
       };
       cookie?: never;
     };
     requestBody?: never;
     responses: {
+      /** @description 레시피 상세 조회 성공 */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GeekNewsArticleResponseDto"];
+          "application/json": components["schemas"]["RecipeResponseDto"];
         };
+      };
+      /** @description 레시피 ID가 UUID 형식이 아님 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description 해당 레시피가 존재하지 않음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };
@@ -513,14 +770,6 @@ export interface operations {
     responses: {
       /** @description 단어 존재 여부 */
       200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["CheckWordResponseDto"];
-        };
-      };
-      201: {
         headers: {
           [name: string]: unknown;
         };

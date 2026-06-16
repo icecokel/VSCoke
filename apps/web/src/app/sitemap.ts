@@ -2,16 +2,19 @@ import { getAllPosts } from "@/lib/blog";
 import { getAllResumeDetails } from "@/lib/resume-detail";
 import { MetadataRoute } from "next";
 import { routing } from "@/i18n/routing";
+import { getEspressoBeans } from "@/services/espresso-history-service";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://vscoke.vercel.app";
   const posts = getAllPosts();
   const resumeDetails = getAllResumeDetails();
+  const espressoBeans = await getEspressoBeans().catch(() => []);
 
   const staticRoutes = [
     "",
     "/blog",
-    "/geeknews",
+    "/hobby/espresso",
+    "/hobby/recipes",
     "/readme",
     "/game",
     "/game/sky-drop",
@@ -40,5 +43,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
     })),
   );
 
-  return [...localizedStaticUrls, ...localizedPostUrls, ...localizedResumeUrls];
+  const localizedEspressoUrls = routing.locales.flatMap(locale =>
+    espressoBeans.map(bean => ({
+      url: `${baseUrl}/${locale}/hobby/espresso/${bean.id}`,
+      lastModified: new Date(),
+    })),
+  );
+
+  return [
+    ...localizedStaticUrls,
+    ...localizedPostUrls,
+    ...localizedResumeUrls,
+    ...localizedEspressoUrls,
+  ];
 }

@@ -27,9 +27,9 @@
 권장 예시:
 
 ```ts
-@ApiTags("GeekNews")
-@Controller("geeknews")
-export class GeekNewsController {}
+@ApiTags("Recipe")
+@Controller("recipes")
+export class RecipeController {}
 ```
 
 ### 2-2. 경로
@@ -40,8 +40,8 @@ export class GeekNewsController {}
 
 예시:
 
-- `GET /geeknews/articles`
-- `POST /geeknews/sync`
+- `GET /recipes`
+- `GET /recipes/{id}`
 
 ## 3. Operation 규칙
 
@@ -53,8 +53,8 @@ export class GeekNewsController {}
 
 좋은 예:
 
-- `저장된 긱뉴스 번역 결과 조회`
-- `긱뉴스 최신 글을 수동으로 동기화`
+- `레시피 목록 조회`
+- `레시피 상세 조회`
 
 ### 3-2. operationId
 
@@ -69,15 +69,15 @@ export class GeekNewsController {}
 - `GET`은 본문 없이 `query`/`path`만 사용합니다.
 - 검색, 정렬, 제한 수량은 `query`에 둡니다.
 
-`GET /geeknews/articles` 예시:
+`GET /recipes/{id}` 예시:
 
 ```ts
-@ApiQuery({
-  name: "limit",
-  type: Number,
+@ApiParam({
+  name: "id",
+  type: String,
   required: true,
-  description: "조회할 기사 개수",
-  example: 10,
+  description: "레시피 ID",
+  example: "411b3333-a8b1-414b-bd60-9f538a885614",
 })
 ```
 
@@ -103,8 +103,8 @@ export class GeekNewsController {}
 
 ```ts
 @ApiOkResponse({
-  description: "긱뉴스 기사 목록 조회 성공",
-  type: GeekNewsArticleResponseDto,
+  description: "레시피 목록 조회 성공",
+  type: RecipeResponseDto,
   isArray: true,
 })
 ```
@@ -116,8 +116,8 @@ export class GeekNewsController {}
 
 예시:
 
-- `긱뉴스 기사 목록 조회 성공`
-- `동기화 작업이 새로 수행되어 결과가 생성됨`
+- `레시피 목록 조회 성공`
+- `레시피 상세 조회 성공`
 
 ### 5-3. 오류 응답
 
@@ -169,26 +169,19 @@ translationStatus: "pending" | "translated" | "failed";
 - 대표 응답 DTO에는 최소 1개의 현실적인 예시를 둡니다.
 - 번역/집계처럼 nullable이 많은 DTO는 `null` 예시도 일부 포함합니다.
 
-## 8. GeekNews 권장 문서화 예시
+## 8. Recipe 권장 문서화 예시
 
 ```ts
-@ApiTags("GeekNews")
-@ApiOperation({ summary: "저장된 긱뉴스 번역 결과 조회" })
-@ApiQuery({
-  name: "limit",
-  type: Number,
-  required: true,
-  description: "조회할 기사 개수",
-  example: 10,
-})
+@ApiTags("Recipe")
+@ApiOperation({ summary: "레시피 목록 조회" })
 @ApiOkResponse({
-  description: "긱뉴스 기사 목록 조회 성공",
-  type: GeekNewsArticleResponseDto,
+  description: "레시피 목록 조회 성공",
+  type: RecipeResponseDto,
   isArray: true,
 })
-@Get("articles")
-getLatestArticles(@Query("limit", ParseIntPipe) limit: number) {
-  return this.geekNewsService.getLatestArticles(limit);
+@Get()
+getRecipes() {
+  return this.recipeService.getRecipes();
 }
 ```
 

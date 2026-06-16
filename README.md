@@ -1,22 +1,32 @@
 # VSCoke
 
-VS Code 스타일 인터페이스를 가진 개발자 포트폴리오 웹사이트입니다.
+VS Code 스타일 인터페이스를 가진 개발자 포트폴리오 웹사이트와 NestJS API를 함께 관리하는 pnpm workspace monorepo입니다.
 
 ## 소개
 
-VS Code의 UI/UX를 모티브로 파일 탐색기, 메뉴바, 탭 시스템 등을 웹으로 구현한 포트폴리오 사이트입니다.
+VSCoke는 Next.js 웹 앱과 NestJS API를 하나의 저장소에서 관리한다. 저장소는 하나지만 배포 환경은 앱별로 분리된다.
+
+```txt
+apps/web -> Vercel
+apps/api -> GitHub Actions self-hosted runner on Termux -> PM2 -> Cloudflare Tunnel
+```
 
 ## 구조
 
 ```txt
 vscoke/
-  apps/
-    web/      # Next.js 프론트엔드
-    api/      # NestJS 백엔드
-  packages/
-    api-types/
-    config/
+├─ apps/
+│  ├─ web/      # Next.js frontend
+│  └─ api/      # NestJS backend
+├─ packages/
+│  ├─ api-types/
+│  └─ config/
+├─ docs/
+├─ package.json
+└─ pnpm-workspace.yaml
 ```
+
+루트 `package.json`은 workspace 공통 명령을 담당한다. 각 앱의 의존성과 앱 전용 명령은 `apps/web/package.json`, `apps/api/package.json`에서 관리한다.
 
 ## 기술 스택
 
@@ -30,34 +40,31 @@ vscoke/
 ## 시작하기
 
 ```bash
-# 설치
 pnpm install
-
-# 개발 서버
 pnpm dev
-pnpm dev:api
-
-# 빌드
+PORT=3001 pnpm dev:api
 pnpm build
 ```
 
-[http://localhost:3000](http://localhost:3000)에서 확인
+웹 개발 서버는 [http://localhost:3000](http://localhost:3000)에서 확인한다.
 
 웹 앱만 직접 실행할 때는 아래 명령을 사용할 수 있습니다.
 
 ```bash
 pnpm --filter @vscoke/web dev
 pnpm --filter @vscoke/web build
-pnpm --filter @vscoke/api start:dev
 pnpm --filter @vscoke/api build
+pnpm --filter @vscoke/api start:dev
 ```
+
+자세한 로컬 실행 방식은 [Local Development](docs/local-development.md)를 기준으로 한다.
 
 ## 환경 변수
 
 웹 앱 빌드에는 API 서버 주소가 필요합니다.
 
 ```env
-NEXT_PUBLIC_API_URL=https://api.icecoke.kr
+NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
 로컬에서 API 서버 없이 빌드만 확인할 때는 임시 값으로 실행할 수 있습니다.
@@ -72,6 +79,14 @@ NEXT_PUBLIC_API_URL=http://127.0.0.1:65535 pnpm build
 - 웹 로컬 환경은 `apps/web/.env.example`, API 로컬 환경은 `apps/api/.env.example`을 복사해 시작합니다.
 - API(`apps/api`)는 GitHub Actions가 Termux 서버의 `~/projects/vscoke-api`로 배포하고 PM2로 실행합니다.
 - 웹 환경 변수는 Vercel Project Settings에서, API 운영 환경 변수는 Termux 서버의 `.env`에서 관리합니다.
+
+## 문서
+
+- [Monorepo Concept](docs/vscoke-monorepo-concept.md): monorepo 구조와 배포 컨셉
+- [Local Development](docs/local-development.md): 로컬 실행, 환경 변수, DB tunnel
+- [Operations Runbook](docs/operations-runbook.md): 배포 실패와 운영 장애 대응
+- [Deployment and Environment Plan](docs/deployment-and-env.md): 배포/환경 변수 상세 기준
+- [API Git History Report](docs/api-git-history-report.md): 기존 API 저장소 이력 이전 검토
 
 ## 테스트
 
@@ -115,6 +130,9 @@ pnpm e2e:codegen
 - 비주얼 스냅샷 기준선은 현재 `chromium` 프로젝트만 사용하며, 파일명은 플랫폼과 무관하게 공유됩니다.
 - 스냅샷 갱신은 `pnpm e2e:update-snapshots` 로 수행합니다.
 
----
+## 작업 기준
 
-**Built with ❤️ using Next.js 15 & Tailwind CSS v4**
+- 새 웹 작업은 `apps/web`에서 진행한다.
+- 새 API 작업은 `apps/api`에서 진행한다.
+- API 계약이 바뀌면 Swagger/OpenAPI와 프론트 타입 갱신을 함께 확인한다.
+- 운영 비밀값은 Git에 커밋하지 않는다.

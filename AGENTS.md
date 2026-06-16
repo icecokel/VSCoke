@@ -21,6 +21,15 @@
 - 새 파일 생성은 기본적으로 케밥 케이스(`kebab-case`)로 작성
 - 케밥 케이스 적용이 불가피하게 어려운 경우, 작업 전에 사용자에게 사유를 공유
 
+## Frontend Component Rules
+
+- 공통 UI 컴포넌트는 기본적으로 shadcn/ui를 커스텀해서 사용
+- shadcn/ui primitive는 `apps/web/src/components/ui/` 아래에서 관리
+- 버튼, 입력, 다이얼로그, 드롭다운, 툴팁, 시트, 사이드바 같은 공통 UI는 새로 직접 만들기 전에 기존 shadcn 기반 컴포넌트 재사용을 먼저 검토
+- 도메인 전용 컴포넌트는 `apps/web/src/components/` 또는 feature 디렉토리에 만들되, 공통 interaction primitive는 `components/ui`를 조합해서 구현
+- shadcn 원본 컴포넌트 수정은 전체 앱에 영향을 주므로, 단일 화면 전용 스타일은 호출부 `className` 또는 도메인 래퍼 컴포넌트에서 처리
+- 새 shadcn 컴포넌트가 필요하면 프로젝트 설정(`apps/web/components.json`)과 기존 `components/ui` 스타일을 따른다
+
 ## Worktree Naming Rules
 
 - 기본 형식은 `type/detail`

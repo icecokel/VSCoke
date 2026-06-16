@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "@/lib/constants";
+import { getApiBaseUrl } from "@/lib/constants";
 
 /**
  * API 에러 클래스
@@ -63,7 +63,7 @@ export const apiClient = {
       (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${getApiBaseUrl()}${endpoint}`, {
       ...fetchOptions,
       headers,
       body: body ? JSON.stringify(body) : undefined,

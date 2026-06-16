@@ -21,12 +21,15 @@ jobs:
     environment: TERMUX
     env:
       API_HEALTH_URL: ${{ vars.API_HEALTH_URL || 'https://api.icecoke.kr/api-json' }}
+      TERMUX_HOST: ${{ secrets.TERMUX_HOST }}
+      TERMUX_USER: ${{ secrets.TERMUX_USER }}
+      TERMUX_KEY: ${{ secrets.TERMUX_KEY }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
 
@@ -46,41 +49,52 @@ jobs:
           wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared-linux-amd64.deb
 
+      - name: Validate deployment secrets
+        run: |
+          missing=0
+          for name in TERMUX_HOST TERMUX_USER TERMUX_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is not configured in the TERMUX environment secrets"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.TERMUX_KEY }}" > ~/.ssh/id_rsa
+          echo "$TERMUX_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          echo "Host ${{ secrets.TERMUX_HOST }}" >> ~/.ssh/config
-          echo "  User ${{ secrets.TERMUX_USER }}" >> ~/.ssh/config
+          echo "Host $TERMUX_HOST" >> ~/.ssh/config
+          echo "  User $TERMUX_USER" >> ~/.ssh/config
           echo "  IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
           echo "  StrictHostKeyChecking no" >> ~/.ssh/config
           echo "  ProxyCommand cloudflared access ssh --hostname %h" >> ~/.ssh/config
 
       - name: Prepare target directory
         run: |
-          ssh ${{ secrets.TERMUX_HOST }} "mkdir -p ~/projects/vscoke-api"
+          ssh "$TERMUX_HOST" "mkdir -p ~/projects/vscoke-api"
 
       - name: Verify runtime env exists
         run: |
-          ssh ${{ secrets.TERMUX_HOST }} "test -f ~/projects/vscoke-api/.env"
+          ssh "$TERMUX_HOST" "test -f ~/projects/vscoke-api/.env"
 
       - name: Stop app process
         run: |
-          ssh ${{ secrets.TERMUX_HOST }} "pm2 delete vscoke-api || true"
+          ssh "$TERMUX_HOST" "pm2 delete vscoke-api || true"
           sleep 5
 
       - name: Deploy archive
         run: |
-          scp deploy-api.tar.gz ${{ secrets.TERMUX_HOST }}:~/projects/vscoke-api/
+          scp deploy-api.tar.gz "$TERMUX_HOST":~/projects/vscoke-api/
 
       - name: Extract, install production dependencies, and restart
         run: |
-          ssh ${{ secrets.TERMUX_HOST }} "cd ~/projects/vscoke-api && rm -rf apps package.json pnpm-lock.yaml pnpm-workspace.yaml && tar -xzf deploy-api.tar.gz && rm deploy-api.tar.gz && corepack enable && corepack prepare pnpm@9.12.0 --activate && pnpm install --filter @vscoke/api --prod --frozen-lockfile --ignore-scripts && pm2 start apps/api/dist/src/main.js --name vscoke-api --update-env && pm2 save"
+          ssh "$TERMUX_HOST" "cd ~/projects/vscoke-api && rm -rf apps package.json pnpm-lock.yaml pnpm-workspace.yaml && tar -xzf deploy-api.tar.gz && rm deploy-api.tar.gz && corepack enable && corepack prepare pnpm@9.12.0 --activate && pnpm install --filter @vscoke/api --prod --frozen-lockfile --ignore-scripts && pm2 start apps/api/dist/src/main.js --name vscoke-api --update-env && pm2 save"
 
       - name: Verify local API health on Termux
         run: |
-          ssh ${{ secrets.TERMUX_HOST }} "cd ~/projects/vscoke-api && PORT=\$(sed -n 's/^PORT=//p' .env | tail -1) && PORT=\${PORT:-3000} && PORT=\$PORT node -e \"fetch('http://127.0.0.1:' + process.env.PORT + '/api-json').then((res) => { if (!res.ok) throw new Error('HTTP ' + res.status); }).catch((error) => { console.error(error); process.exit(1); })\""
+          ssh "$TERMUX_HOST" "cd ~/projects/vscoke-api && PORT=\$(sed -n 's/^PORT=//p' .env | tail -1) && PORT=\${PORT:-3000} && PORT=\$PORT node -e \"fetch('http://127.0.0.1:' + process.env.PORT + '/api-json').then((res) => { if (!res.ok) throw new Error('HTTP ' + res.status); }).catch((error) => { console.error(error); process.exit(1); })\""
 
       - name: Verify public API health
         run: |

@@ -22,6 +22,8 @@ export interface ScoreSubmissionData {
   playTime?: number;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 /**
  * 게임 점수를 서버에 제출합니다.
  */
@@ -77,6 +79,10 @@ export const submitScore = async (
  * 게임 결과를 조회합니다.
  */
 export const getGameResult = async (id: string): Promise<GameHistoryResponseDto | null> => {
+  if (!UUID_PATTERN.test(id)) {
+    return null;
+  }
+
   try {
     const result = await apiClient.get<GameHistoryResponseDto>(`/game/result/${id}`, {
       next: { revalidate: 60 },

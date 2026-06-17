@@ -32,4 +32,12 @@ test.describe("404 자동 복구", () => {
       })
       .toBe(false);
   });
+
+  test("잘못된 공유 결과 id는 서버 예외가 아니라 404로 처리된다", async ({ page }) => {
+    const { locale } = await resolveLocaleAndMessages(page);
+
+    const response = await page.goto(`/${locale}/share/not-a-real-id`);
+
+    expect(response?.status()).toBe(404);
+  });
 });

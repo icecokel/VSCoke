@@ -209,6 +209,19 @@ export const getHistorySnapshot = async (page: Page) => {
   });
 };
 
+export const waitForHistoryPaths = async (page: Page, expectedPathSuffixes: string[]) => {
+  await expect
+    .poll(async () => {
+      const current = await getHistorySnapshot(page);
+      const paths = current.map((item: { path: string }) => item.path);
+
+      return expectedPathSuffixes.every(expectedPath =>
+        paths.some((pathValue: string) => pathValue.endsWith(expectedPath)),
+      );
+    })
+    .toBe(true);
+};
+
 export const expectWordleKeyboardButtons = async (page: Page, minimum = 20) => {
   const keyboardButtons = page.locator("footer button");
 
@@ -217,4 +230,22 @@ export const expectWordleKeyboardButtons = async (page: Page, minimum = 20) => {
   await expect
     .poll(async () => keyboardButtons.count(), { timeout: 8000 })
     .toBeGreaterThanOrEqual(minimum);
+};
+
+export const mockWordleWord = async (page: Page, word = "apple") => {
+  let requestCount = 0;
+
+  await page.route("**/wordle/word", async route => {
+    requestCount += 1;
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true, data: { word } }),
+    });
+  });
+
+  return {
+    getRequestCount: () => requestCount,
+  };
 };

@@ -45,6 +45,14 @@
 - worktree 이동/생성 후 `git worktree list`로 실제 경로를 반드시 확인
 - 브랜치명은 `codex/type/detail` 형식을 권장
 
+## Workspace Monorepo Reference
+
+- 프론트엔드/백엔드/테스트/hook 작업을 시작하기 전에는 먼저 `docs/workspace-monorepo-concept.md`를 확인한다.
+- 백엔드 코드는 별도 외부 repo가 아니라 이 workspace의 `apps/api`에서 관리한다.
+- 웹 프론트엔드 코드는 `apps/web`에서 관리한다.
+- 루트 `pnpm-workspace.yaml`과 루트 `package.json` scripts를 기준으로 작업한다.
+- `/Users/smlee/vscoke-api` 같은 외부 경로는 사용자가 명시적으로 요청하지 않는 한 코드 변경 대상으로 삼지 않는다.
+
 ## Local Squash Merge Rules
 
 - 로컬 `main` 반영은 기본적으로 `squash merge`를 사용

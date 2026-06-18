@@ -70,3 +70,4 @@ next-env.d.ts
 !/docs/geeknews-api-schema.md
 !/docs/swagger-style-guide.md
 !/docs/user-deployment-checklist.md
+!/docs/workspace-monorepo-concept.md

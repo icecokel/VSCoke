@@ -13,9 +13,6 @@ vscoke/
   apps/
     web/      # Next.js 프론트엔드
     api/      # NestJS 백엔드
-  packages/
-    api-types/
-    config/
 ```
 
 ## 기술 스택

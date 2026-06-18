@@ -1,0 +1,79 @@
+name: Pull Request Check
+
+on:
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+env:
+  NEXT_PUBLIC_API_URL: https://api.icecoke.kr
+
+jobs:
+  api:
+    name: API test and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.0 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run API unit tests
+        run: pnpm test:api
+
+      - name: Run API E2E tests
+        run: pnpm test:api:e2e
+
+      - name: Build API
+        run: pnpm build:api
+
+  web:
+    name: Web test and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.0 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @vscoke/web exec playwright install --with-deps chromium
+
+      - name: Run web type check
+        run: pnpm type:check
+
+      - name: Run lint
+        run: pnpm lint
+
+      - name: Run unused code check
+        run: pnpm knip
+
+      - name: Build web
+        run: pnpm build:web
+
+      - name: Run web E2E tests
+        run: pnpm e2e

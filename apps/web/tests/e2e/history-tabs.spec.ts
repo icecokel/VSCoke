@@ -5,6 +5,7 @@ import {
   resolveLocaleAndMessages,
   visit,
   waitForHistoryHydration,
+  waitForHistoryPaths,
 } from "./test-helpers";
 
 test.describe.configure({ mode: "serial" });
@@ -19,6 +20,7 @@ test.describe("히스토리 탭 상태머신", () => {
     await visit(page, `/${locale}/game`);
 
     await waitForHistoryHydration(page);
+    await waitForHistoryPaths(page, ["/readme", "/blog", "/game"]);
 
     const initialHistory = await getHistorySnapshot(page);
     const initialPaths = initialHistory.map((item: { path: string }) => item.path);

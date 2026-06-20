@@ -4,7 +4,7 @@
 
 이 문서는 현재 구현된 VSCoke monorepo의 구조, 실행 방식, 테스트, 배포 흐름을 한눈에 보기 위한 기준 문서다. 프론트엔드, 백엔드, 테스트, hook 작업을 시작할 때는 이 문서를 먼저 확인한다.
 
-상세 실행 절차는 [Local Development](./local-development.md), 배포와 환경 변수 세부 기준은 [Deployment and Environment Plan](./deployment-and-env.md), 장애 대응은 [Operations Runbook](./operations-runbook.md)을 따른다.
+상세 실행 절차는 [Local Development](./local-development.md), 배포와 환경 변수 세부 기준은 [Deployment and Environment Plan](./deployment-and-env.md), 장애 대응은 [Operations Runbook](./operations-runbook.md), 게임 랭킹 검증은 [Game Score Policy](./game-score-policy.md)를 따른다.
 
 ## 현재 구조
 

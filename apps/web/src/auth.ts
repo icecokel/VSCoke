@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
+import { getJwtExpiresAt, isIdTokenUsable } from "@/lib/auth-token";
 
 // 토큰 갱신 함수
 async function refreshAccessToken(refreshToken: string) {
@@ -24,6 +25,7 @@ async function refreshAccessToken(refreshToken: string) {
     return {
       accessToken: tokens.access_token,
       idToken: tokens.id_token,
+      idTokenExpiresAt: getJwtExpiresAt(tokens.id_token),
       expiresAt: Math.floor(Date.now() / 1000) + tokens.expires_in,
       refreshToken: tokens.refresh_token ?? refreshToken,
     };
@@ -55,6 +57,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           ...token,
           accessToken: account.access_token,
           idToken: account.id_token,
+          idTokenExpiresAt: getJwtExpiresAt(account.id_token),
           refreshToken: account.refresh_token,
           expiresAt: account.expires_at,
         };
@@ -80,18 +83,36 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return {
         ...token,
         accessToken: refreshed.accessToken,
-        idToken: refreshed.idToken ?? token.idToken,
         expiresAt: refreshed.expiresAt,
         refreshToken: refreshed.refreshToken,
+        ...(isIdTokenUsable(refreshed.idToken, refreshed.idTokenExpiresAt)
+          ? {
+              idToken: refreshed.idToken,
+              idTokenExpiresAt: refreshed.idTokenExpiresAt,
+              error: undefined,
+            }
+          : {
+              idToken: undefined,
+              idTokenExpiresAt: undefined,
+              error: "IdTokenUnavailable",
+            }),
       };
     },
     async session({ session, token }) {
+      const idTokenExpiresAt =
+        typeof token.idTokenExpiresAt === "number"
+          ? token.idTokenExpiresAt
+          : getJwtExpiresAt(token.idToken);
+      const idToken = isIdTokenUsable(token.idToken, idTokenExpiresAt) ? token.idToken : undefined;
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (session as any).idToken = token.idToken;
+      (session as any).idToken = idToken;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (session as any).idTokenExpiresAt = idToken ? idTokenExpiresAt : undefined;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (session as any).accessToken = token.accessToken;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (session as any).error = token.error;
+      (session as any).error = idToken ? token.error : (token.error ?? "IdTokenUnavailable");
       return session;
     },
   },

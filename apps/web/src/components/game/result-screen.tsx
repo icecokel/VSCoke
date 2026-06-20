@@ -11,6 +11,7 @@ import { Share2, RotateCcw, ArrowLeft, Save, Loader2, LogIn } from "lucide-react
 import { getSkyDropMedal } from "@/utils/sky-drop-util";
 import { submitScore } from "@/services/score-service";
 import { toast } from "sonner";
+import { getSessionApiIdToken, isAuthSessionError, type ApiTokenSession } from "@/lib/auth-token";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -87,21 +88,13 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
     },
     [gameName, score],
   );
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const idToken = (session as any)?.idToken as string | undefined;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const accessToken = (session as any)?.accessToken as string | undefined;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sessionError = (session as any)?.error;
-  const submitToken = idToken ?? accessToken;
+  const apiTokenSession = session as ApiTokenSession | null;
+  const sessionError = apiTokenSession?.error;
+  const submitToken = getSessionApiIdToken(apiTokenSession);
   const isSessionLoading = status === "loading";
   const isAuthenticated = status === "authenticated";
   const requiresLoginForSubmit =
-    !session ||
-    !isAuthenticated ||
-    !submitToken ||
-    sessionError === "RefreshAccessTokenError" ||
-    needsReauth;
+    !session || !isAuthenticated || !submitToken || isAuthSessionError(sessionError) || needsReauth;
 
   const startLoginForSubmit = useCallback(() => {
     savePendingScore(false);

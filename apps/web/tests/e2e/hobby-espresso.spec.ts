@@ -11,9 +11,13 @@ test.describe("취미 원두 기록 페이지", () => {
     await expectPath(page, new RegExp(`^/${localeRegex}/hobby/espresso$`));
 
     await expect(page.getByRole("heading", { name: "원두 기록" })).toBeVisible();
-    await expect(page.getByText("총 1개 원두")).toBeVisible();
+    await expect(page.getByText("총 2개 원두")).toBeVisible();
     await expect(page.getByTestId("espresso-navigation-tree")).toHaveCount(0);
     await expect(page.getByRole("link", { name: /프릳츠 잘 되어 가시나/ })).toBeVisible();
+    await expect(page.getByTestId("espresso-bean-card").first()).toContainText(
+      "프릳츠 잘 되어 가시나",
+    );
+    await expect(page.getByTestId("espresso-bean-card").first()).toContainText("2026-06-11");
 
     await page.getByRole("link", { name: /프릳츠 잘 되어 가시나/ }).click();
     await expectPath(page, new RegExp(`^/${localeRegex}/hobby/espresso/${beanId}$`));
@@ -27,6 +31,12 @@ test.describe("취미 원두 기록 페이지", () => {
     await expect(tree.getByRole("button", { name: "히스토리" })).toBeVisible();
     await expect(tree.getByRole("button", { name: "라운드 1" })).toBeVisible();
     await expect(tree.getByRole("button", { name: "라운드 4" })).toBeVisible();
+    await expect(tree.getByRole("button", { name: /^라운드 \d+$/ })).toHaveText([
+      "라운드 4",
+      "라운드 3",
+      "라운드 2",
+      "라운드 1",
+    ]);
 
     await expect(page.getByRole("heading", { name: "현재 기준 세팅" })).toBeVisible();
     await expect(page.getByText("CRM 3605 PWM 2버전")).toHaveCount(1);
@@ -49,6 +59,12 @@ test.describe("취미 원두 기록 페이지", () => {
     await tree.getByRole("button", { name: "히스토리" }).click();
     await expect(page.getByRole("heading", { name: "히스토리" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "라운드 4" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^라운드 \d+$/ })).toHaveText([
+      "라운드 4",
+      "라운드 3",
+      "라운드 2",
+      "라운드 1",
+    ]);
 
     await tree.getByRole("button", { name: "라운드 2" }).click();
     await expect(page.getByRole("heading", { name: "라운드 2" }).first()).toBeVisible();

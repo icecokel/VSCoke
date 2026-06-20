@@ -1,7 +1,11 @@
-import { Coffee, Gauge } from "lucide-react";
+import { CalendarDays, Coffee, Gauge } from "lucide-react";
 
 import { CustomLink } from "@/components/custom-link";
-import { formatEspressoValue } from "@/features/hobby/lib/espresso";
+import {
+  formatEspressoValue,
+  getLatestEspressoRound,
+  sortEspressoBeansByRecent,
+} from "@/features/hobby/lib/espresso";
 import type { EspressoBean } from "@/features/hobby/types/espresso";
 
 type EspressoBeanListProps = {
@@ -17,6 +21,8 @@ const BeanGoal = ({ children }: { children: string }) => {
 };
 
 export const EspressoBeanList = ({ beans }: EspressoBeanListProps) => {
+  const sortedBeans = sortEspressoBeansByRecent(beans);
+
   return (
     <div className="min-h-full bg-gray-950 text-gray-100">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 md:px-6 md:py-8">
@@ -36,16 +42,18 @@ export const EspressoBeanList = ({ beans }: EspressoBeanListProps) => {
         </header>
 
         <section className="grid gap-4 md:grid-cols-2">
-          {beans.map(bean => {
+          {sortedBeans.map(bean => {
             const rounds = bean.logs.flatMap(log => log.rounds);
-            const latestRound = rounds.at(-1);
+            const latestRound = getLatestEspressoRound(bean);
             const latestExtraction = formatEspressoValue(
               latestRound?.recipe.extractionTime ?? latestRound?.result.extractionTime,
             );
+            const latestDate = latestRound?.date ?? "-";
 
             return (
               <CustomLink
                 key={bean.id}
+                data-testid="espresso-bean-card"
                 href={`/hobby/espresso/${bean.id}`}
                 title={bean.name}
                 className="group flex min-h-52 flex-col justify-between rounded-lg border border-gray-700 bg-gray-900 p-5 text-left transition-colors hover:border-blue-300/70 hover:bg-gray-850 focus-visible:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-300/30 focus-visible:outline-none"
@@ -63,7 +71,7 @@ export const EspressoBeanList = ({ beans }: EspressoBeanListProps) => {
                   </div>
                 </div>
 
-                <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                <div className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
                   <div className="rounded-md border border-gray-800 bg-gray-950 p-3">
                     <div className="text-xs text-gray-500">라운드</div>
                     <div className="mt-1 text-lg font-bold text-gray-100">{rounds.length}</div>
@@ -74,6 +82,13 @@ export const EspressoBeanList = ({ beans }: EspressoBeanListProps) => {
                       최근 추출
                     </div>
                     <div className="mt-1 text-lg font-bold text-gray-100">{latestExtraction}</div>
+                  </div>
+                  <div className="rounded-md border border-gray-800 bg-gray-950 p-3">
+                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                      <CalendarDays className="size-3" />
+                      최근 기록
+                    </div>
+                    <div className="mt-1 text-lg font-bold text-gray-100">{latestDate}</div>
                   </div>
                 </div>
 

@@ -12,7 +12,7 @@ import {
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
-import { espressoParamsToPairs } from "@/features/hobby/lib/espresso";
+import { espressoParamsToPairs, sortEspressoRoundsByRecent } from "@/features/hobby/lib/espresso";
 import type { EspressoBean, EspressoLog, EspressoRound } from "@/features/hobby/types/espresso";
 
 type EspressoLogViewProps = {
@@ -129,7 +129,7 @@ const AnalysisSection = ({ title, items }: { title: string; items: string[] }) =
 };
 
 const CurrentSettingDetail = ({ bean, log }: { bean: EspressoBean; log: EspressoLog }) => {
-  const latestRound = log.rounds.at(-1);
+  const latestRound = sortEspressoRoundsByRecent(log.rounds)[0];
   const equipmentPairs = espressoParamsToPairs(bean.defaultEquipment);
   const latestRecipePairs = espressoParamsToPairs(latestRound?.recipe);
   const latestResultPairs = espressoParamsToPairs({
@@ -277,9 +277,11 @@ const GuideDetail = ({ log }: { log: EspressoLog }) => {
 };
 
 const HistoryDetail = ({ log }: { log: EspressoLog }) => {
+  const sortedRounds = sortEspressoRoundsByRecent(log.rounds);
+
   return (
     <div className="space-y-3">
-      {log.rounds.map(round => (
+      {sortedRounds.map(round => (
         <section key={round.id} className="rounded-lg border border-gray-800 bg-gray-950 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -425,69 +427,73 @@ export const EspressoLogView = ({ bean }: EspressoLogViewProps) => {
             </div>
 
             <div className="space-y-1">
-              {bean.logs.map(log => (
-                <div key={log.id} className="space-y-1">
-                  <TreeButton
-                    depth={0}
-                    isActive={context.log?.id === log.id}
-                    onClick={() => select({ type: "current", beanId: bean.id, logId: log.id })}
-                  >
-                    <ChevronDown className="size-4 shrink-0" />
-                    <span>추출 세팅</span>
-                  </TreeButton>
+              {bean.logs.map(log => {
+                const sortedRounds = sortEspressoRoundsByRecent(log.rounds);
 
-                  <TreeButton
-                    depth={1}
-                    isActive={isActive("current", bean.id, log.id)}
-                    onClick={() => select({ type: "current", beanId: bean.id, logId: log.id })}
-                  >
-                    <FlaskConical className="size-4 shrink-0" />
-                    <span>현재 기준 세팅</span>
-                  </TreeButton>
-                  <TreeButton
-                    depth={1}
-                    isActive={isActive("next", bean.id, log.id)}
-                    onClick={() => select({ type: "next", beanId: bean.id, logId: log.id })}
-                  >
-                    <ListChecks className="size-4 shrink-0" />
-                    <span>다음 테스트 세팅</span>
-                  </TreeButton>
-                  <TreeButton
-                    depth={1}
-                    isActive={isActive("guide", bean.id, log.id)}
-                    onClick={() => select({ type: "guide", beanId: bean.id, logId: log.id })}
-                  >
-                    <SlidersHorizontal className="size-4 shrink-0" />
-                    <span>조정 가이드</span>
-                  </TreeButton>
-                  <TreeButton
-                    depth={1}
-                    isActive={isActive("history", bean.id, log.id)}
-                    onClick={() => select({ type: "history", beanId: bean.id, logId: log.id })}
-                  >
-                    <History className="size-4 shrink-0" />
-                    <span>히스토리</span>
-                  </TreeButton>
-                  {log.rounds.map(round => (
+                return (
+                  <div key={log.id} className="space-y-1">
                     <TreeButton
-                      key={round.id}
-                      depth={2}
-                      isActive={isActive("round", bean.id, log.id, round.id)}
-                      onClick={() =>
-                        select({
-                          type: "round",
-                          beanId: bean.id,
-                          logId: log.id,
-                          roundId: round.id,
-                        })
-                      }
+                      depth={0}
+                      isActive={context.log?.id === log.id}
+                      onClick={() => select({ type: "current", beanId: bean.id, logId: log.id })}
                     >
-                      <Gauge className="size-4 shrink-0" />
-                      <span>라운드 {round.roundNumber}</span>
+                      <ChevronDown className="size-4 shrink-0" />
+                      <span>추출 세팅</span>
                     </TreeButton>
-                  ))}
-                </div>
-              ))}
+
+                    <TreeButton
+                      depth={1}
+                      isActive={isActive("current", bean.id, log.id)}
+                      onClick={() => select({ type: "current", beanId: bean.id, logId: log.id })}
+                    >
+                      <FlaskConical className="size-4 shrink-0" />
+                      <span>현재 기준 세팅</span>
+                    </TreeButton>
+                    <TreeButton
+                      depth={1}
+                      isActive={isActive("next", bean.id, log.id)}
+                      onClick={() => select({ type: "next", beanId: bean.id, logId: log.id })}
+                    >
+                      <ListChecks className="size-4 shrink-0" />
+                      <span>다음 테스트 세팅</span>
+                    </TreeButton>
+                    <TreeButton
+                      depth={1}
+                      isActive={isActive("guide", bean.id, log.id)}
+                      onClick={() => select({ type: "guide", beanId: bean.id, logId: log.id })}
+                    >
+                      <SlidersHorizontal className="size-4 shrink-0" />
+                      <span>조정 가이드</span>
+                    </TreeButton>
+                    <TreeButton
+                      depth={1}
+                      isActive={isActive("history", bean.id, log.id)}
+                      onClick={() => select({ type: "history", beanId: bean.id, logId: log.id })}
+                    >
+                      <History className="size-4 shrink-0" />
+                      <span>히스토리</span>
+                    </TreeButton>
+                    {sortedRounds.map(round => (
+                      <TreeButton
+                        key={round.id}
+                        depth={2}
+                        isActive={isActive("round", bean.id, log.id, round.id)}
+                        onClick={() =>
+                          select({
+                            type: "round",
+                            beanId: bean.id,
+                            logId: log.id,
+                            roundId: round.id,
+                          })
+                        }
+                      >
+                        <Gauge className="size-4 shrink-0" />
+                        <span>라운드 {round.roundNumber}</span>
+                      </TreeButton>
+                    ))}
+                  </div>
+                );
+              })}
             </div>
           </aside>
 

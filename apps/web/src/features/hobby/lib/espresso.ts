@@ -3,6 +3,7 @@ import type {
   EspressoEquipment,
   EspressoMeasurement,
   EspressoRecipeParameters,
+  EspressoRound,
 } from "@/features/hobby/types/espresso";
 
 const unitLabelMap: Record<string, string> = {
@@ -30,6 +31,58 @@ const labelMap: Record<string, string> = {
 };
 
 const normalizeSearchText = (value: string) => value.toLowerCase().normalize("NFKC");
+
+const parseRoundDateValue = (date?: string | null) => {
+  if (!date) {
+    return Number.NEGATIVE_INFINITY;
+  }
+
+  const value = Date.parse(`${date}T00:00:00Z`);
+
+  return Number.isNaN(value) ? Number.NEGATIVE_INFINITY : value;
+};
+
+export const getRoundRecencyValue = (round: EspressoRound) => {
+  const dateValue = parseRoundDateValue(round.date);
+
+  if (dateValue !== Number.NEGATIVE_INFINITY) {
+    return dateValue;
+  }
+
+  return round.roundNumber;
+};
+
+export const sortEspressoRoundsByRecent = (rounds: EspressoRound[]) => {
+  return [...rounds].sort((a, b) => {
+    const recencyDiff = getRoundRecencyValue(b) - getRoundRecencyValue(a);
+
+    if (recencyDiff !== 0) {
+      return recencyDiff;
+    }
+
+    return b.roundNumber - a.roundNumber;
+  });
+};
+
+export const getLatestEspressoRound = (bean: EspressoBean) => {
+  return sortEspressoRoundsByRecent(bean.logs.flatMap(log => log.rounds))[0];
+};
+
+export const sortEspressoBeansByRecent = (beans: EspressoBean[]) => {
+  return [...beans].sort((a, b) => {
+    const latestRoundA = getLatestEspressoRound(a);
+    const latestRoundB = getLatestEspressoRound(b);
+    const recencyA = latestRoundA ? getRoundRecencyValue(latestRoundA) : Number.NEGATIVE_INFINITY;
+    const recencyB = latestRoundB ? getRoundRecencyValue(latestRoundB) : Number.NEGATIVE_INFINITY;
+    const recencyDiff = recencyB - recencyA;
+
+    if (recencyDiff !== 0) {
+      return recencyDiff;
+    }
+
+    return a.name.localeCompare(b.name, "ko-KR");
+  });
+};
 
 export const formatMeasurement = (measurement: EspressoMeasurement): string => {
   const unit = unitLabelMap[measurement.unit] ?? measurement.unit;

@@ -5,6 +5,14 @@ import { GameHistory } from './entities/game-history.entity';
 import { User } from '../auth/entities/user.entity';
 import { CreateGameHistoryDto } from './dto/create-game-history.dto';
 import { GameType } from './enums/game-type.enum';
+import {
+  buildNamedValidScoreCondition,
+  buildPositionalValidScoreCondition,
+  getGameScorePolicy,
+  getGameScorePolicyParams,
+  getGameScorePolicyValues,
+  validateGameScoreSubmission,
+} from './game-score-policy';
 
 type MaxScoreRow = {
   maxScore: string | number | null;
@@ -36,11 +44,16 @@ export class GameService {
     gameType: GameType,
     dateRange?: { start: Date; end: Date },
   ): Promise<number> {
+    const policy = getGameScorePolicy(gameType);
     const query = this.gameHistoryRepository
       .createQueryBuilder('gh')
       .select('MAX(gh.score)', 'maxScore')
       .where('gh.userId = :userId', { userId })
-      .andWhere('gh.gameType = :gameType', { gameType });
+      .andWhere('gh.gameType = :gameType', { gameType })
+      .andWhere(
+        buildNamedValidScoreCondition('gh'),
+        getGameScorePolicyParams(policy),
+      );
 
     if (dateRange) {
       query.andWhere('gh.createdAt BETWEEN :start AND :end', {
@@ -60,6 +73,8 @@ export class GameService {
     user: User,
     createGameHistoryDto: CreateGameHistoryDto,
   ): Promise<GameHistory> {
+    validateGameScoreSubmission(createGameHistoryDto);
+
     const history = this.gameHistoryRepository.create({
       ...createGameHistoryDto,
       user: user,
@@ -71,6 +86,8 @@ export class GameService {
    * 게임별 랭킹 목록을 조회함 (유저별 최고 점수 기준 Top 10)
    */
   async getRanking(gameType: GameType): Promise<GameHistory[]> {
+    const policy = getGameScorePolicy(gameType);
+
     // 유저별 최고 점수 1건만 추린 뒤 전체 상위 10건을 구함
     const ids = await this.gameHistoryRepository.query<RankingIdRow[]>(
       `
@@ -87,12 +104,13 @@ export class GameService {
           ) AS row_num
         FROM game_history gh
         WHERE gh."gameType" = $1
+          AND ${buildPositionalValidScoreCondition('gh', 2)}
       ) AS ranked
       WHERE ranked.row_num = 1
       ORDER BY ranked.score DESC, ranked."createdAt" ASC
       LIMIT 10
       `,
-      [gameType],
+      [gameType, ...getGameScorePolicyValues(policy)],
     );
 
     const rankingIds = ids.map((row) => row.id);
@@ -142,6 +160,9 @@ export class GameService {
     gameType: GameType,
     dateRange?: { start: Date; end: Date },
   ): Promise<number> {
+    const policy = getGameScorePolicy(gameType);
+    const policyValues = getGameScorePolicyValues(policy);
+
     // 유저별 최고 점수가 현재 점수보다 높은 경우만 카운트
     // 서브쿼리로 각 유저의 최고 점수 계산 후 비교
     const result = await this.gameHistoryRepository.query<RankCountRow[]>(
@@ -151,14 +172,15 @@ export class GameService {
         SELECT "userId", MAX(score) as max_score
         FROM game_history
         WHERE "gameType" = $1
-        ${dateRange ? 'AND "createdAt" BETWEEN $3 AND $4' : ''}
+        AND ${buildPositionalValidScoreCondition(undefined, 3)}
+        ${dateRange ? 'AND "createdAt" BETWEEN $8 AND $9' : ''}
         GROUP BY "userId"
       ) AS user_scores
       WHERE max_score > $2
       `,
       dateRange
-        ? [gameType, score, dateRange.start, dateRange.end]
-        : [gameType, score],
+        ? [gameType, score, ...policyValues, dateRange.start, dateRange.end]
+        : [gameType, score, ...policyValues],
     );
 
     // (나보다 높은 유저 수) + 1 = 현재 나의 등수

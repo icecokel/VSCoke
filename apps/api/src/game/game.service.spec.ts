@@ -83,6 +83,76 @@ describe('GameService', () => {
       expect(repository.save).toHaveBeenCalledWith(savedHistory);
       expect(result).toEqual(savedHistory);
     });
+
+    it('비정상적으로 큰 점수는 저장 전에 거절해야 함', async () => {
+      const user = new User();
+      user.id = 'test-id';
+      const createDto: CreateGameHistoryDto = {
+        score: 999999999,
+        gameType: GameType.SKY_DROP,
+        playTime: 1,
+      };
+
+      await expect(service.createHistory(user, createDto)).rejects.toThrow(
+        'SKY_DROP score must be between 1 and 100000',
+      );
+      expect(repository.create).not.toHaveBeenCalled();
+      expect(repository.save).not.toHaveBeenCalled();
+    });
+
+    it('플레이 시간 대비 불가능한 점수는 저장 전에 거절해야 함', async () => {
+      const user = new User();
+      user.id = 'test-id';
+      const createDto: CreateGameHistoryDto = {
+        score: 10000,
+        gameType: GameType.SKY_DROP,
+        playTime: 1,
+      };
+
+      await expect(service.createHistory(user, createDto)).rejects.toThrow(
+        'SKY_DROP score exceeds allowed score rate',
+      );
+      expect(repository.create).not.toHaveBeenCalled();
+      expect(repository.save).not.toHaveBeenCalled();
+    });
+
+    it('소수점 점수는 저장 전에 거절해야 함', async () => {
+      const user = new User();
+      user.id = 'test-id';
+      const createDto: CreateGameHistoryDto = {
+        score: 100.5,
+        gameType: GameType.SKY_DROP,
+      };
+
+      await expect(service.createHistory(user, createDto)).rejects.toThrow(
+        'SKY_DROP score must be an integer',
+      );
+      expect(repository.create).not.toHaveBeenCalled();
+      expect(repository.save).not.toHaveBeenCalled();
+    });
+
+    it('유효한 점수와 플레이 시간은 저장해야 함', async () => {
+      const user = new User();
+      user.id = 'test-id';
+      const createDto: CreateGameHistoryDto = {
+        score: 12000,
+        gameType: GameType.SKY_DROP,
+        playTime: 30,
+      };
+      const savedHistory = { id: 1, ...createDto, user };
+
+      repository.create.mockReturnValue(savedHistory);
+      repository.save.mockResolvedValue(savedHistory);
+
+      const result = await service.createHistory(user, createDto);
+
+      expect(repository.create).toHaveBeenCalledWith({
+        ...createDto,
+        user,
+      });
+      expect(repository.save).toHaveBeenCalledWith(savedHistory);
+      expect(result).toEqual(savedHistory);
+    });
   });
 
   describe('getRanking', () => {
@@ -114,8 +184,8 @@ describe('GameService', () => {
       const result = await service.getRanking(GameType.SKY_DROP);
 
       expect(repository.query).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE gh."gameType" = $1'),
-        [GameType.SKY_DROP],
+        expect.stringContaining('gh.score BETWEEN $2 AND $3'),
+        [GameType.SKY_DROP, 1, 100000, 1, 86400, 2000],
       );
       expect(repository.find).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -145,8 +215,8 @@ describe('GameService', () => {
       const result = await service.getRanking(GameType.SKY_DROP);
 
       expect(repository.query).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE gh."gameType" = $1'),
-        [GameType.SKY_DROP],
+        expect.stringContaining('gh.score BETWEEN $2 AND $3'),
+        [GameType.SKY_DROP, 1, 100000, 1, 86400, 2000],
       );
       expect(result).toEqual(mockRankings);
     });
@@ -201,6 +271,23 @@ describe('GameService', () => {
         dateRange,
       );
     });
+
+    it('저장된 비정상 점수를 최고 점수 산정에서 제외해야 함', async () => {
+      mockQueryBuilder.getRawOne.mockResolvedValue({ maxScore: '100' });
+
+      await service.getUserBestScore('user1', GameType.SKY_DROP);
+
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('gh.score BETWEEN :minScore AND :maxScore'),
+        {
+          minScore: 1,
+          maxScore: 100000,
+          minPlayTimeSeconds: 1,
+          maxPlayTimeSeconds: 86400,
+          maxScorePerSecond: 2000,
+        },
+      );
+    });
   });
 
   describe('getUserRank', () => {
@@ -230,9 +317,30 @@ describe('GameService', () => {
       // Raw query에 dateRange 파라미터가 전달되어야 함
       expect(repository.query).toHaveBeenCalledWith(
         expect.stringContaining('BETWEEN'),
-        [GameType.SKY_DROP, 100, dateRange.start, dateRange.end],
+        [
+          GameType.SKY_DROP,
+          100,
+          1,
+          100000,
+          1,
+          86400,
+          2000,
+          dateRange.start,
+          dateRange.end,
+        ],
       );
       expect(result).toBe(3); // 2명보다 낮으면 3등
+    });
+
+    it('저장된 비정상 점수를 등수 산정에서 제외해야 함', async () => {
+      repository.query.mockResolvedValue([{ count: '5' }]);
+
+      await service.getUserRank('user1', 100, GameType.SKY_DROP);
+
+      expect(repository.query).toHaveBeenCalledWith(
+        expect.stringContaining('score BETWEEN $3 AND $4'),
+        [GameType.SKY_DROP, 100, 1, 100000, 1, 86400, 2000],
+      );
     });
   });
 });

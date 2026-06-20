@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   escapeRegExp,
   getHistorySnapshot,
@@ -8,33 +8,47 @@ import {
   waitForHistoryPaths,
 } from "./test-helpers";
 
-test.describe.configure({ mode: "serial" });
+type TestLocale = "ko-KR" | "en-US";
+
+const getTestLocale = (): TestLocale =>
+  (process.env.PLAYWRIGHT_LOCALE as TestLocale | undefined) ?? "ko-KR";
+
+const installHistoryFixture = async (
+  page: Page,
+  history: Array<{
+    path: string;
+    title: string;
+    isActive: boolean;
+    lastAccessedAt: number;
+  }>,
+) => {
+  await page.addInitScript(items => {
+    const fixtureFlag = "__vscoke-history-fixture-installed";
+    if (sessionStorage.getItem(fixtureFlag)) return;
+
+    localStorage.setItem("vscoke-history", JSON.stringify(items));
+    sessionStorage.setItem(fixtureFlag, "true");
+  }, history);
+};
 
 test.describe("히스토리 탭 상태머신", () => {
   test("공유 상세 탭은 URL 식별자 대신 공유 탭 이름으로 표시한다", async ({ page }) => {
-    const { locale } = await resolveLocaleAndMessages(page);
+    const locale = getTestLocale();
     const shareId = "00000000-0000-4000-8000-000000000000";
     const sharePath = `/share/${shareId}`;
 
-    await page.evaluate(
-      ({ path, title }) => {
-        localStorage.setItem(
-          "vscoke-history",
-          JSON.stringify([
-            {
-              path,
-              title,
-              isActive: false,
-              lastAccessedAt: Date.now(),
-            },
-          ]),
-        );
+    await installHistoryFixture(page, [
+      {
+        path: sharePath,
+        title: shareId,
+        isActive: false,
+        lastAccessedAt: Date.now(),
       },
-      { path: sharePath, title: shareId },
-    );
+    ]);
 
     await visit(page, `/${locale}`);
     await waitForHistoryHydration(page);
+    await waitForHistoryPaths(page, [sharePath]);
 
     const shareTab = page.locator(`div[id='${sharePath}']`).first();
     await expect(shareTab).toBeVisible();
@@ -43,6 +57,8 @@ test.describe("히스토리 탭 상태머신", () => {
   });
 
   test("탭 추가/활성화/스마트 닫기 동작이 일관되다", async ({ page }) => {
+    await installHistoryFixture(page, []);
+
     const { locale, messages } = await resolveLocaleAndMessages(page);
     const localeRegex = escapeRegExp(locale);
 

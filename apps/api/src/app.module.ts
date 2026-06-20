@@ -29,10 +29,11 @@ import { winstonConfig } from './common/utils/winston.config';
       useFactory: (configService: ConfigService) => {
         const nodeEnv = configService.get<string>('NODE_ENV', 'development');
         const dbSynchronize = configService.get<string>('DB_SYNCHRONIZE');
-        const synchronize =
-          dbSynchronize !== undefined
-            ? dbSynchronize === 'true'
-            : nodeEnv !== 'production';
+        const synchronize = dbSynchronize === 'true';
+
+        if (nodeEnv === 'production' && synchronize) {
+          throw new Error('DB_SYNCHRONIZE=true is not allowed in production');
+        }
 
         return {
           type: 'postgres',

@@ -1,7 +1,6 @@
 {
   "entry": ["src/app/**/*.{ts,tsx}", "src/posts/**/*.mdx"],
   "project": ["src/**/*.{ts,tsx}"],
-  "ignore": ["**/*.d.ts"],
   "ignoreDependencies": [
     "eslint-config-next",
     "tailwindcss",

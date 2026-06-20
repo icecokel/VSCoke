@@ -32,6 +32,12 @@ export default function WordlePage() {
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.altKey || e.metaKey) return;
+      if (
+        e.target instanceof HTMLElement &&
+        e.target.closest("button, a, input, textarea, select, [contenteditable='true']")
+      ) {
+        return;
+      }
 
       const isAlphabeticKey = /^[A-Za-z]$/.test(e.key);
       if (e.key !== "Enter" && e.key !== "Backspace" && !isAlphabeticKey) return;
@@ -92,7 +98,10 @@ export default function WordlePage() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={resetGame}
+              onClick={event => {
+                event.currentTarget.blur();
+                void resetGame();
+              }}
               title={tGame("restart")}
               aria-label={tGame("restart")}
               data-testid="wordle-header-restart"

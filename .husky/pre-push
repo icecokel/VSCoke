@@ -1,6 +1,14 @@
 #!/usr/bin/env sh
 set -eu
 
+export NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-https://api.icecoke.kr}"
+
+echo "[pre-push] 웹 타입 체크를 실행합니다."
+pnpm type:check:web
+
+echo "[pre-push] 린트를 실행합니다."
+pnpm lint
+
 echo "[pre-push] 빌드를 확인합니다."
 pnpm build
 

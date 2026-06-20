@@ -76,6 +76,7 @@ jobs:
         run: |
           DEPLOY_DIR="${DEPLOY_DIR/#\~/$HOME}"
           STAGE_DIR="$DEPLOY_DIR/.next-release"
+          unset RUNNER_TRACKING_ID
           pm2 delete vscoke-api || true
           rm -rf "$DEPLOY_DIR/apps" "$DEPLOY_DIR/node_modules" "$DEPLOY_DIR/package.json" "$DEPLOY_DIR/pnpm-lock.yaml" "$DEPLOY_DIR/pnpm-workspace.yaml"
           cp -a "$STAGE_DIR"/. "$DEPLOY_DIR"/
@@ -90,14 +91,10 @@ jobs:
           cd "$DEPLOY_DIR"
           PORT="$(sed -n 's/^PORT=//p' .env | tail -1)"
           PORT="${PORT:-3000}"
-          for attempt in $(seq 1 30); do
-            if PORT="$PORT" node -e "fetch('http://127.0.0.1:' + process.env.PORT + '/api-json').then((res) => { if (!res.ok) throw new Error('HTTP ' + res.status); }).catch((error) => { console.error(error); process.exit(1); })"; then
-              exit 0
-            fi
-            echo "API health check attempt ${attempt}/30 failed; retrying..."
-            sleep 2
-          done
-          exit 1
+          API_HEALTH_URL="http://127.0.0.1:${PORT}/api-json" \
+            API_HEALTH_RETRIES=30 \
+            API_HEALTH_RETRY_DELAY_MS=2000 \
+            node "$GITHUB_WORKSPACE/scripts/check-api-health.mjs"
 
       - name: Verify public API health
         run: |

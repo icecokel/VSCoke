@@ -140,6 +140,10 @@ export const RecipeBrowser = ({ recipes }: RecipeBrowserProps) => {
 
   const filteredRecipes = useMemo(() => filterRecipes(recipes, query), [query, recipes]);
   const selectedRecipe = recipes.find(recipe => recipe.name === selectedRecipeName);
+  const emptyMessage =
+    recipes.length === 0
+      ? "레시피를 불러오지 못했거나 아직 등록된 레시피가 없습니다."
+      : "검색 결과가 없습니다.";
 
   const handleSearch = (value: string) => {
     setQuery(value);
@@ -197,7 +201,7 @@ export const RecipeBrowser = ({ recipes }: RecipeBrowserProps) => {
           </div>
         ) : (
           <div className="rounded-lg border border-gray-800 bg-gray-900 px-4 py-12 text-center text-sm text-gray-400">
-            검색 결과가 없습니다.
+            {emptyMessage}
           </div>
         )}
       </div>

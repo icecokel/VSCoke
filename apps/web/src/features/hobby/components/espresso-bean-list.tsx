@@ -41,64 +41,70 @@ export const EspressoBeanList = ({ beans }: EspressoBeanListProps) => {
           </div>
         </header>
 
-        <section className="grid gap-4 md:grid-cols-2">
-          {sortedBeans.map(bean => {
-            const rounds = bean.logs.flatMap(log => log.rounds);
-            const latestRound = getLatestEspressoRound(bean);
-            const latestExtraction = formatEspressoValue(
-              latestRound?.recipe.extractionTime ?? latestRound?.result.extractionTime,
-            );
-            const latestDate = latestRound?.date ?? "-";
+        {sortedBeans.length > 0 ? (
+          <section className="grid gap-4 md:grid-cols-2">
+            {sortedBeans.map(bean => {
+              const rounds = bean.logs.flatMap(log => log.rounds);
+              const latestRound = getLatestEspressoRound(bean);
+              const latestExtraction = formatEspressoValue(
+                latestRound?.recipe.extractionTime ?? latestRound?.result.extractionTime,
+              );
+              const latestDate = latestRound?.date ?? "-";
 
-            return (
-              <CustomLink
-                key={bean.id}
-                data-testid="espresso-bean-card"
-                href={`/hobby/espresso/${bean.id}`}
-                title={bean.name}
-                className="group flex min-h-52 flex-col justify-between rounded-lg border border-gray-700 bg-gray-900 p-5 text-left transition-colors hover:border-blue-300/70 hover:bg-gray-850 focus-visible:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-300/30 focus-visible:outline-none"
-              >
-                <div>
-                  <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.16em] text-gray-500 uppercase">
-                    <Coffee className="size-4" />
-                    {bean.roaster ?? "Roaster"}
-                  </div>
-                  <h2 className="mt-2 text-xl font-bold text-gray-50">{bean.name}</h2>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {bean.goals.map(goal => (
-                      <BeanGoal key={`${bean.id}-${goal}`}>{goal}</BeanGoal>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
-                  <div className="rounded-md border border-gray-800 bg-gray-950 p-3">
-                    <div className="text-xs text-gray-500">라운드</div>
-                    <div className="mt-1 text-lg font-bold text-gray-100">{rounds.length}</div>
-                  </div>
-                  <div className="rounded-md border border-gray-800 bg-gray-950 p-3">
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <Gauge className="size-3" />
-                      최근 추출
+              return (
+                <CustomLink
+                  key={bean.id}
+                  data-testid="espresso-bean-card"
+                  href={`/hobby/espresso/${bean.id}`}
+                  title={bean.name}
+                  className="group flex min-h-52 flex-col justify-between rounded-lg border border-gray-700 bg-gray-900 p-5 text-left transition-colors hover:border-blue-300/70 hover:bg-gray-850 focus-visible:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-300/30 focus-visible:outline-none"
+                >
+                  <div>
+                    <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.16em] text-gray-500 uppercase">
+                      <Coffee className="size-4" />
+                      {bean.roaster ?? "Roaster"}
                     </div>
-                    <div className="mt-1 text-lg font-bold text-gray-100">{latestExtraction}</div>
-                  </div>
-                  <div className="rounded-md border border-gray-800 bg-gray-950 p-3">
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <CalendarDays className="size-3" />
-                      최근 기록
+                    <h2 className="mt-2 text-xl font-bold text-gray-50">{bean.name}</h2>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {bean.goals.map(goal => (
+                        <BeanGoal key={`${bean.id}-${goal}`}>{goal}</BeanGoal>
+                      ))}
                     </div>
-                    <div className="mt-1 text-lg font-bold text-gray-100">{latestDate}</div>
                   </div>
-                </div>
 
-                <span className="mt-5 text-sm font-medium text-blue-200 transition-colors group-hover:text-blue-100">
-                  추출 기록 보기
-                </span>
-              </CustomLink>
-            );
-          })}
-        </section>
+                  <div className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
+                    <div className="rounded-md border border-gray-800 bg-gray-950 p-3">
+                      <div className="text-xs text-gray-500">라운드</div>
+                      <div className="mt-1 text-lg font-bold text-gray-100">{rounds.length}</div>
+                    </div>
+                    <div className="rounded-md border border-gray-800 bg-gray-950 p-3">
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <Gauge className="size-3" />
+                        최근 추출
+                      </div>
+                      <div className="mt-1 text-lg font-bold text-gray-100">{latestExtraction}</div>
+                    </div>
+                    <div className="rounded-md border border-gray-800 bg-gray-950 p-3">
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <CalendarDays className="size-3" />
+                        최근 기록
+                      </div>
+                      <div className="mt-1 text-lg font-bold text-gray-100">{latestDate}</div>
+                    </div>
+                  </div>
+
+                  <span className="mt-5 text-sm font-medium text-blue-200 transition-colors group-hover:text-blue-100">
+                    추출 기록 보기
+                  </span>
+                </CustomLink>
+              );
+            })}
+          </section>
+        ) : (
+          <div className="rounded-lg border border-gray-800 bg-gray-900 px-4 py-12 text-center text-sm text-gray-400">
+            원두 기록을 불러오지 못했거나 아직 등록된 원두가 없습니다.
+          </div>
+        )}
       </div>
     </div>
   );

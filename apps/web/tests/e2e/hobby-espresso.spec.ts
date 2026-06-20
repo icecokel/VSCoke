@@ -1,8 +1,31 @@
 import { expect, test } from "@playwright/test";
 import { escapeRegExp, expectPath, resolveLocaleAndMessages, visit } from "./test-helpers";
 
+const usesUnavailableHobbyApi = process.env.NEXT_PUBLIC_API_URL === "http://127.0.0.1:65535";
+
 test.describe("취미 원두 기록 페이지", () => {
+  test("API 장애 시 원두 기록 페이지가 500 대신 빈 상태를 렌더링한다", async ({ page }) => {
+    test.skip(!usesUnavailableHobbyApi, "API 미연결 E2E 환경에서만 fallback을 검증한다.");
+
+    const { locale } = await resolveLocaleAndMessages(page);
+    const localeRegex = escapeRegExp(locale);
+
+    await visit(page, `/${locale}/hobby/espresso`);
+    await expectPath(page, new RegExp(`^/${localeRegex}/hobby/espresso$`));
+
+    await expect(page.getByRole("heading", { name: "원두 기록" })).toBeVisible();
+    await expect(
+      page.getByText("원두 기록을 불러오지 못했거나 아직 등록된 원두가 없습니다."),
+    ).toBeVisible();
+    await expect(page.getByText(/Application error/i)).toHaveCount(0);
+  });
+
   test("원두 리스트에서 디테일 페이지로 이동해 추출 기록을 확인한다", async ({ page }) => {
+    test.skip(
+      usesUnavailableHobbyApi,
+      "API 의존 상세 시나리오는 fixture 분리 후 기본 E2E에 포함한다.",
+    );
+
     const { locale } = await resolveLocaleAndMessages(page);
     const localeRegex = escapeRegExp(locale);
     const beanId = "bean-fritz-jal-doeeo-gasina";
@@ -72,6 +95,11 @@ test.describe("취미 원두 기록 페이지", () => {
   });
 
   test("사이드바와 검색에서 원두 기록 페이지로 이동한다", async ({ page }) => {
+    test.skip(
+      usesUnavailableHobbyApi,
+      "API 의존 검색 상세 시나리오는 fixture 분리 후 기본 E2E에 포함한다.",
+    );
+
     const { locale, messages } = await resolveLocaleAndMessages(page);
     const localeRegex = escapeRegExp(locale);
 

@@ -1,6 +1,12 @@
 import type { FullConfig } from "@playwright/test";
 
-const warmupRoutes = ["/ko-KR", "/ko-KR/blog", "/ko-KR/readme", "/api/auth/session"];
+const warmupRoutes = [
+  "/ko-KR",
+  "/ko-KR/blog",
+  "/ko-KR/readme",
+  "/ko-KR/share/00000000-0000-4000-8000-000000000000",
+  "/api/auth/session",
+];
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 

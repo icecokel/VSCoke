@@ -10,6 +10,37 @@ import {
 test.describe.configure({ mode: "serial" });
 
 test.describe("히스토리 탭 상태머신", () => {
+  test("공유 상세 탭은 URL 식별자 대신 공유 탭 이름으로 표시한다", async ({ page }) => {
+    const { locale } = await resolveLocaleAndMessages(page);
+    const shareId = "00000000-0000-4000-8000-000000000000";
+    const sharePath = `/share/${shareId}`;
+
+    await page.evaluate(
+      ({ path, title }) => {
+        localStorage.setItem(
+          "vscoke-history",
+          JSON.stringify([
+            {
+              path,
+              title,
+              isActive: false,
+              lastAccessedAt: Date.now(),
+            },
+          ]),
+        );
+      },
+      { path: sharePath, title: shareId },
+    );
+
+    await visit(page, `/${locale}`);
+    await waitForHistoryHydration(page);
+
+    const shareTab = page.locator(`div[id='${sharePath}']`).first();
+    await expect(shareTab).toBeVisible();
+    await expect(shareTab).toContainText("share");
+    await expect(shareTab).not.toContainText(shareId);
+  });
+
   test("탭 추가/활성화/스마트 닫기 동작이 일관되다", async ({ page }) => {
     const { locale, messages } = await resolveLocaleAndMessages(page);
     const localeRegex = escapeRegExp(locale);
@@ -34,6 +65,12 @@ test.describe("히스토리 탭 상태머신", () => {
 
     await blogTab.locator("svg").first().click({ force: true });
     await expect(page).toHaveURL(new RegExp(`/${localeRegex}/game$`));
+    await expect
+      .poll(async () => {
+        const current = await getHistorySnapshot(page);
+        return current.find((item: { isActive: boolean }) => item.isActive)?.path;
+      })
+      .toBe("/game");
 
     await expect
       .poll(async () => {
@@ -46,6 +83,12 @@ test.describe("히스토리 탭 상태머신", () => {
     await expect(gameTab).toBeVisible();
     await gameTab.locator("svg").first().click({ force: true });
     await expect(page).toHaveURL(new RegExp(`/${localeRegex}/readme$`));
+    await expect
+      .poll(async () => {
+        const current = await getHistorySnapshot(page);
+        return current.find((item: { isActive: boolean }) => item.isActive)?.path;
+      })
+      .toBe("/readme");
 
     const readmeTab = page.locator("div[id='/readme']").first();
     await expect(readmeTab).toBeVisible();

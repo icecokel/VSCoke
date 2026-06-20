@@ -1,5 +1,6 @@
 import type { components } from "@/types/api";
 import { apiClient, ApiError } from "@/lib/api-client";
+import { isRecoverableReadError, logRecoverableReadError } from "@/services/api-read-error";
 
 // API 스키마에서 자동 생성된 타입
 export type CreateGameHistoryDto = components["schemas"]["CreateGameHistoryDto"];
@@ -89,7 +90,8 @@ export const getGameResult = async (id: string): Promise<GameHistoryResponseDto 
     });
     return result;
   } catch (error) {
-    if (error instanceof ApiError && error.status === 404) {
+    if (isRecoverableReadError(error)) {
+      logRecoverableReadError("game-result", error);
       return null;
     }
 

@@ -102,26 +102,21 @@ export const HistoryTabs = ({ children }: TParentNode) => {
     }
   };
 
-  // share 페이지 경로 정규화: /game/{gameName}/{score}/share -> /game/{gameName}/share
-  // 이렇게 하면 같은 게임의 share 페이지는 하나의 탭으로 관리됨
-  const normalizeSharePath = (path: string): string => {
-    const shareMatch = path.match(/^\/game\/([^/]+)\/\d+\/share$/);
-    if (shareMatch) {
-      return `/game/${shareMatch[1]}/share`;
+  const isSharePath = (path: string): boolean => /^\/share\/[^/]+$/.test(path);
+
+  const getTabTitle = (path: string, fallback: string): string => {
+    if (isSharePath(path)) {
+      return "share";
     }
-    return path;
+    return fallback;
   };
 
   // URL과 History 동기화 (URL이 진실의 원천)
   useEffect(() => {
     if (!isHydrated) return;
 
-    // share 페이지는 정규화된 경로로 관리
-    const normalizedPath = normalizeSharePath(pathname);
-    const isSharePage = normalizedPath !== pathname;
-
     // 중복 체크를 위해 현재 history 상태를 기준으로 확인
-    const existingTab = history.find(item => item.path === normalizedPath);
+    const existingTab = history.find(item => item.path === pathname);
 
     if (existingTab) {
       // 이미 존재하는 탭이면 활성화만 변경
@@ -129,36 +124,30 @@ export const HistoryTabs = ({ children }: TParentNode) => {
         setHistory(prev =>
           prev.map(item => ({
             ...item,
-            isActive: item.path === normalizedPath,
+            isActive: item.path === pathname,
           })),
         );
       }
     } else {
       // 탭이 없을 때만 새로 추가
-      let title: string;
-      if (isSharePage) {
-        // share 페이지는 게임 이름으로 제목 설정
-        const gameName = normalizedPath.split("/")[2] || "share";
-        title = `${gameName} share`;
-      } else {
-        title = pathname === "/" ? "Home" : pathname.split("/").pop() || pathname;
-      }
+      const fallbackTitle = pathname === "/" ? "Home" : pathname.split("/").pop() || pathname;
+      const title = getTabTitle(pathname, fallbackTitle);
 
       // setHistory로 직접 추가하여 중복 방지 (add 함수 대신)
       setHistory(prev => {
         // 다시 한번 중복 체크 (race condition 방지)
-        if (prev.some(item => item.path === normalizedPath)) {
+        if (prev.some(item => item.path === pathname)) {
           return prev.map(item => ({
             ...item,
-            isActive: item.path === normalizedPath,
-            lastAccessedAt: item.path === normalizedPath ? Date.now() : item.lastAccessedAt,
+            isActive: item.path === pathname,
+            lastAccessedAt: item.path === pathname ? Date.now() : item.lastAccessedAt,
           }));
         }
         return [
           ...prev.map(item => ({ ...item, isActive: false })),
           {
             isActive: true,
-            path: normalizedPath,
+            path: pathname,
             title,
             lastAccessedAt: Date.now(),
           },
@@ -195,7 +184,7 @@ export const HistoryTabs = ({ children }: TParentNode) => {
                           "text-yellow-200/95 font-medium border-t pt-px border-t-blue-300 md:pt-[5px]",
                       )}
                     >
-                      {item.title}
+                      {getTabTitle(item.path, item.title)}
                       <span
                         className={twMerge(
                           "ml-1 -mr-1 md:ml-2 md:-mr-2 inline",

@@ -1,51 +1,184 @@
 # VSCoke Monorepo Concept
 
-이 문서는 VSCoke를 monorepo로 전환하면서 정한 구조, 배포 방식, 환경 변수 관리, 로컬 작업 방식을 한눈에 이해하기 위한 컨셉 문서다.
+확인 기준일: 2026-06-20
 
-상세 배포 절차와 환경 변수 표준은 [Deployment and Environment Plan](./deployment-and-env.md)을 기준으로 한다.
+이 문서는 현재 구현된 VSCoke monorepo의 구조, 실행 방식, 테스트, 배포 흐름을 한눈에 보기 위한 기준 문서다. 프론트엔드, 백엔드, 테스트, hook 작업을 시작할 때는 이 문서를 먼저 확인한다.
 
-## 목표
+상세 실행 절차는 [Local Development](./local-development.md), 배포와 환경 변수 세부 기준은 [Deployment and Environment Plan](./deployment-and-env.md), 장애 대응은 [Operations Runbook](./operations-runbook.md)을 따른다.
 
-VSCoke는 하나의 GitHub 저장소에서 웹과 API를 함께 관리하되, 배포 주체와 런타임은 앱별로 분리한다.
+## 현재 구조
 
-```txt
-VSCoke repository
-├─ apps/web  -> Vercel
-└─ apps/api  -> Termux server -> PM2 -> Cloudflare Tunnel
-```
-
-이 구조의 목적은 다음과 같다.
-
-- 웹과 API 코드를 하나의 변경 단위로 추적한다.
-- 공통 타입, 설정, 도구를 monorepo 안에서 점진적으로 공유할 수 있게 한다.
-- 기존 Termux 서버와 Cloudflare Tunnel 운영 흐름은 유지한다.
-- 백엔드 standalone 저장소는 monorepo 배포가 안정화된 뒤 archive한다.
-
-## 저장소 구조
-
-현재 목표 구조는 다음과 같다.
+VSCoke는 하나의 GitHub 저장소에서 Next.js 웹 앱과 NestJS API를 함께 관리한다. 저장소는 하나지만 배포 주체와 런타임은 앱별로 분리한다.
 
 ```txt
 vscoke/
 ├─ apps/
-│  ├─ web/
-│  │  └─ Next.js application
-│  └─ api/
-│     └─ NestJS application
+│  ├─ web/      -> Next.js 15 App Router frontend
+│  └─ api/      -> NestJS 11 backend
 ├─ packages/
-│  ├─ api-types/
-│  └─ config/
+│  ├─ api-types/  -> future shared package placeholder
+│  └─ config/     -> future shared package placeholder
 ├─ docs/
+├─ scripts/
 ├─ package.json
 ├─ pnpm-lock.yaml
 └─ pnpm-workspace.yaml
 ```
 
-루트 `package.json`은 workspace 전체 명령을 담당한다. `apps/web/package.json`과 `apps/api/package.json`은 각 앱의 실행, 빌드, 테스트 의존성을 담당한다.
+`pnpm-workspace.yaml`은 `apps/*`, `packages/*`를 workspace로 묶는다. 현재 `packages/api-types`, `packages/config`는 자리 표시자만 있고 실제 공유 패키지 구현은 없다.
 
-## 배포 컨셉
+## 앱 책임
 
-웹과 API는 같은 저장소에 있지만 같은 플랫폼으로 배포하지 않는다.
+### Web: `apps/web`
+
+웹 앱은 Vercel에 배포되는 Next.js App Router 앱이다.
+
+주요 구성:
+
+- Next.js 15, React 19, TypeScript
+- next-intl 기반 `ko-KR`, `en-US` 라우팅
+- Tailwind CSS 4
+- Auth.js / Google OAuth
+- Playwright E2E
+
+현재 주요 라우트:
+
+| 영역           | 라우트                                                                                                         |
+| -------------- | -------------------------------------------------------------------------------------------------------------- |
+| 홈             | `/:locale`                                                                                                     |
+| 문서/이력      | `/:locale/readme`, `/:locale/resume/:slug`, `/:locale/package`                                                 |
+| 블로그         | `/:locale/blog`, `/:locale/blog/:slug`, `/:locale/blog/dashboard`                                              |
+| 게임           | `/:locale/game`, `/:locale/game/sky-drop`, `/:locale/game/fish-drift`, `/:locale/game/wordle`, `/:locale/doom` |
+| 취미           | `/:locale/hobby/espresso`, `/:locale/hobby/espresso/:beanId`, `/:locale/hobby/recipes`                         |
+| 공유           | `/:locale/share/:id`                                                                                           |
+| Next API route | `/api/auth/[...nextauth]`, `/api/hobby-search-index`                                                           |
+
+웹은 API 코드를 직접 import하지 않는다. 브라우저에서 필요한 API 주소는 `NEXT_PUBLIC_API_URL`로 주입한다.
+
+### API: `apps/api`
+
+API는 Termux 서버에서 PM2로 실행되는 NestJS 앱이다.
+
+주요 구성:
+
+- NestJS 11, TypeScript
+- TypeORM + PostgreSQL
+- Swagger UI `/api`, OpenAPI JSON `/api-json`
+- Winston logging
+- Google ID token 기반 API 인증 guard
+- 개발 환경 전용 auth bypass 옵션
+
+현재 API 모듈:
+
+| 모듈            | 주요 endpoint                                                    | 설명                            |
+| --------------- | ---------------------------------------------------------------- | ------------------------------- |
+| App             | `GET /`                                                          | 기본 상태 확인                  |
+| Recipe          | `GET /recipes`, `GET /recipes/:id`                               | 취미 레시피 목록/상세           |
+| EspressoHistory | `GET /espresso-history/beans`, `GET /espresso-history/beans/:id` | 에스프레소 원두/라운드 기록     |
+| Game            | `POST /game/result`, `GET /game/ranking`, `GET /game/result/:id` | 게임 점수 저장, 랭킹, 공유 조회 |
+| Wordle          | `GET /wordle/word`, `POST /wordle/check`                         | Wordle 단어 조회/검증           |
+
+DB 연결은 API 런타임에서만 관리한다. 웹은 DB에 직접 접근하지 않는다.
+
+## 데이터와 타입 흐름
+
+```txt
+apps/api controller/dto
+-> Swagger /api-json
+-> apps/web generate:types
+-> apps/web service layer
+-> page/component
+```
+
+프론트 타입 갱신은 공개 API의 OpenAPI JSON을 기준으로 한다.
+
+```bash
+pnpm generate:types
+```
+
+취미 검색은 브라우저가 외부 API를 직접 조합하지 않고, 같은 origin의 Next route를 거친다.
+
+```txt
+SearchPanel
+-> /api/hobby-search-index
+-> apps/web service layer
+-> NEXT_PUBLIC_API_URL
+-> apps/api
+```
+
+## 로컬 실행 기준
+
+기본 명령은 저장소 루트에서 실행한다.
+
+```bash
+corepack enable
+corepack prepare pnpm@9.12.0 --activate
+pnpm install
+```
+
+주요 루트 스크립트:
+
+| 목적              | 명령                    |
+| ----------------- | ----------------------- |
+| 웹 개발           | `pnpm dev:web`          |
+| API 개발          | `pnpm dev:api`          |
+| 전체 빌드         | `pnpm build`            |
+| 웹 빌드           | `pnpm build:web`        |
+| API 빌드          | `pnpm build:api`        |
+| 전체 lint         | `pnpm lint`             |
+| 웹 typecheck      | `pnpm type:check:web`   |
+| API unit test     | `pnpm test:api`         |
+| API E2E test      | `pnpm test:api:e2e`     |
+| 웹 E2E smoke      | `pnpm e2e:smoke`        |
+| 웹 E2E 전체       | `pnpm e2e`              |
+| unused code check | `pnpm knip`             |
+| 공개 API health   | `pnpm smoke:api:remote` |
+
+API와 웹을 동시에 로컬에서 볼 때는 터미널을 나눈다.
+
+```bash
+PORT=3001 pnpm dev:api
+NEXT_PUBLIC_API_URL=http://localhost:3001 pnpm dev:web
+```
+
+## 환경 변수 기준
+
+환경 변수는 Git에 커밋하지 않는다.
+
+| 영역      | 로컬 위치                           | 운영 위치                           |
+| --------- | ----------------------------------- | ----------------------------------- |
+| Web       | `apps/web/.env.local` 또는 실행 env | Vercel Project Settings             |
+| API       | `apps/api/.env`                     | Termux `~/projects/vscoke-api/.env` |
+| DB tunnel | `apps/api/.env`                     | 로컬 개발 보조 전용                 |
+
+중요한 값:
+
+- Web: `NEXT_PUBLIC_API_URL`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET`, optional `AUTH_URL`
+- API: `PORT`, `CORS_ORIGINS`, `GOOGLE_CLIENT_ID`, `DB_*`, `DB_SYNCHRONIZE`, optional notify env
+- 개발 전용: `ENABLE_DEV_AUTH_BYPASS`, `DEV_AUTH_TOKEN`, `CLOUDFLARE_DB_HOST`
+
+운영 API에서는 `DB_SYNCHRONIZE=false`를 명시한다.
+
+## 테스트와 hook
+
+로컬 Git hook:
+
+| Hook         | 실행 내용                                                          |
+| ------------ | ------------------------------------------------------------------ |
+| `pre-commit` | `lint-staged`                                                      |
+| `commit-msg` | 한국어 커밋 메시지 규칙 검증                                       |
+| `pre-push`   | `pnpm type:check:web`, `pnpm lint`, `pnpm build`, `pnpm e2e:smoke` |
+
+PR 자동 검증은 `.github/workflows/pull-request-check.yml`이 담당한다.
+
+| Job | 주요 검증                                            |
+| --- | ---------------------------------------------------- |
+| API | API lint, unit test, E2E test, build                 |
+| Web | typecheck, lint, knip, build, focused Playwright E2E |
+
+PR의 focused E2E는 현재 `i18n-integrity`, `hobby-games`, `keyboard-only`를 Chromium에서 실행한다. 전체 Playwright 회귀는 로컬에서 필요에 따라 `pnpm e2e` 또는 `pnpm e2e:cross-browser`로 실행한다.
+
+## 배포 구조
 
 ```mermaid
 flowchart LR
@@ -56,173 +189,57 @@ flowchart LR
   Runner["GitHub self-hosted runner"]
   Termux["Termux server"]
   PM2["PM2: vscoke-api"]
-  ApiTunnel["Cloudflare Tunnel: api.icecoke.kr"]
+  Tunnel["Cloudflare Tunnel: api.icecoke.kr"]
 
   Repo --> Web --> Vercel
-  Repo --> Api --> Runner --> Termux --> PM2 --> ApiTunnel
+  Repo --> Api --> Runner --> Termux --> PM2 --> Tunnel
 ```
 
-웹은 Vercel Git integration이 담당한다. Vercel 프로젝트의 Root Directory는 `apps/web`이다.
+웹 배포:
 
-API는 GitHub Actions workflow가 담당한다. workflow는 GitHub-hosted runner에서 SSH로 접속하지 않고, Termux 서버에 설치된 self-hosted runner에서 직접 실행된다.
+- Vercel Git integration이 담당한다.
+- Vercel Root Directory는 `apps/web`이다.
+- Vercel은 `apps/web/package.json`의 `build`를 실행한다.
 
-## 프론트와 백엔드 배포 환경 차이
+API 배포:
 
-monorepo로 합쳐도 프론트와 백엔드는 같은 런타임에서 실행되지 않는다. 저장소와 변경 이력만 하나로 묶고, 실제 배포와 운영 환경은 앱별로 분리한다.
+- `.github/workflows/deploy-api.yml`이 담당한다.
+- `main` push 중 `apps/api/**`, 루트 package/lock/workspace 파일, API deploy workflow 변경이 있을 때 실행된다.
+- runner labels는 `self-hosted`, `termux`, `vscoke-api`를 사용한다.
+- 배포 산출물은 Termux `~/projects/vscoke-api`에 staged release로 반영된다.
+- PM2 앱 이름은 `vscoke-api`, entrypoint는 `apps/api/dist/src/main.js`다.
+- 배포 후 local `/api-json`과 public `https://api.icecoke.kr/api-json`을 확인한다.
 
-```txt
-apps/web
-└─ Vercel
-   ├─ Next.js build and hosting
-   ├─ Web production environment variables
-   └─ Public API endpoint: NEXT_PUBLIC_API_URL
+## DB 접속 기준
 
-apps/api
-└─ Termux server
-   ├─ GitHub self-hosted runner
-   ├─ NestJS build and PM2 runtime
-   ├─ API production .env
-   ├─ Local PostgreSQL access
-   └─ Cloudflare Tunnel public ingress
-```
-
-웹 배포는 Vercel이 `apps/web`만 바라보고 빌드한다. 따라서 웹에서 API 주소, OAuth redirect, 공개 환경 변수를 바꿀 때는 Vercel Project Settings를 기준으로 관리한다.
-
-백엔드 배포는 Termux 서버가 직접 담당한다. GitHub Actions는 `apps/api` 변경을 감지한 뒤 self-hosted runner에서 빌드하고, PM2 프로세스 `vscoke-api`를 재시작한다. 백엔드의 DB, Google 인증, Gemini, 알림 같은 서버 전용 값은 Termux의 API `.env`에 둔다.
-
-이 차이 때문에 다음 원칙을 유지한다.
-
-- 웹은 API를 내부 함수처럼 import하지 않고 공개 API URL로 호출한다.
-- API는 Vercel 서버리스 함수가 아니라 Termux의 장기 실행 NestJS 프로세스다.
-- 웹 환경 변수와 API 환경 변수는 서로 다른 위치에서 관리한다.
-- 프론트 배포 성공과 백엔드 배포 성공은 별개의 이벤트로 검증한다.
-- API 도메인이나 Cloudflare Tunnel 구성이 바뀌면 Vercel의 `NEXT_PUBLIC_API_URL`도 함께 확인한다.
-
-## API 배포 런타임
-
-Termux는 Android 환경이라 GitHub runner 공식 Linux ARM64 바이너리를 바로 실행하기 어렵다. 그래서 runner 본체는 Ubuntu/proot 안에서 실행하고, 실제 API 배포 명령은 Termux native runtime을 사용한다.
-
-```txt
-Termux PM2
-└─ github-runner-vscoke
-   └─ proot-distro ubuntu
-      └─ GitHub runner: termux-vscoke-api
-         └─ workflow steps
-            ├─ PATH=/data/data/com.termux/files/usr/bin:$PATH
-            ├─ HOME=/data/data/com.termux/files/home
-            └─ PM2_HOME=/data/data/com.termux/files/home/.pm2
-```
-
-중요한 운영 값은 다음과 같다.
-
-| 항목              | 값                                                      |
-| ----------------- | ------------------------------------------------------- |
-| Runner process    | `github-runner-vscoke`                                  |
-| Runner name       | `termux-vscoke-api`                                     |
-| Runner labels     | `self-hosted`, `Linux`, `ARM64`, `termux`, `vscoke-api` |
-| API PM2 app       | `vscoke-api`                                            |
-| API deploy path   | `/data/data/com.termux/files/home/projects/vscoke-api`  |
-| API entrypoint    | `apps/api/dist/src/main.js`                             |
-| API health check  | `http://127.0.0.1:$PORT/api-json`                       |
-| Public API health | `https://api.icecoke.kr/api-json`                       |
-
-## API 배포 흐름
-
-API 관련 파일이 `main`에 들어오면 `.github/workflows/deploy-api.yml`이 실행된다.
-
-```mermaid
-sequenceDiagram
-  participant GH as GitHub main
-  participant Runner as Termux self-hosted runner
-  participant Build as API build
-  participant Stage as .next-release
-  participant PM2 as PM2 vscoke-api
-  participant CF as Cloudflare Tunnel
-
-  GH->>Runner: push trigger
-  Runner->>Build: pnpm install and api build
-  Build->>Stage: copy dist and package files
-  Stage->>Stage: production dependency install
-  Stage->>PM2: replace release and restart
-  PM2->>Runner: local /api-json health retry
-  Runner->>CF: public /api-json smoke test
-```
-
-배포 workflow는 staging이 성공하기 전에는 기존 PM2 프로세스를 건드리지 않는다. PM2 재시작 후 API listen 타이밍 차이를 고려해 local health check는 재시도한다.
-
-## 환경 변수 컨셉
-
-환경 변수는 Git에 커밋하지 않는다. 앱별로 관리 위치를 분리한다.
-
-| 영역           | 위치                                   | 설명                        |
-| -------------- | -------------------------------------- | --------------------------- |
-| Web production | Vercel Project Settings                | `NEXT_PUBLIC_API_URL`, Auth |
-| Web local      | 루트 `.env.local` 또는 `apps/web/.env` | 웹 로컬 개발                |
-| API production | Termux `~/projects/vscoke-api/.env`    | PM2 API 런타임              |
-| API local      | `apps/api/.env`                        | 로컬 API 작업과 테스트      |
-| DB tunnel      | `apps/api/.env`의 `CLOUDFLARE_DB_HOST` | Mac에서 DB 접근할 때 사용   |
-
-현재 로컬 API 작업용 `.env`는 기존 백엔드 저장소의 `.env`를 `apps/api/.env`로 복사해 사용한다. 이 파일은 `apps/api/.gitignore`에 의해 무시된다.
-
-## DB 접속 컨셉
-
-운영 API와 로컬 개발자의 DB 접근 방식은 다르다.
-
-운영 API는 Termux 서버 안에서 PostgreSQL에 붙는다.
+운영 API는 Termux 내부 PostgreSQL에 붙는다.
 
 ```txt
 apps/api on Termux -> DB_HOST=localhost -> PostgreSQL on Termux
 ```
 
-로컬 Mac에서 API 작업이나 DB 확인이 필요하면 Cloudflare Access TCP tunnel을 먼저 띄운다.
-
-```txt
-Mac localhost:5432 -> cloudflared access tcp -> pd.icecoke.kr -> PostgreSQL on Termux
-```
-
-로컬 터널 실행:
-
-```bash
-cd /Users/smlee/vscoke/worktrees/ci/self-hosted-api-deploy
-pnpm --filter @vscoke/api db:tunnel
-```
-
-터널을 띄운 터미널은 유지해야 한다. 다른 터미널에서 API 테스트나 DB 확인을 수행한다.
-
-## 현재 검증된 상태
-
-2026-06-16 기준 다음 항목을 확인했다.
-
-- Vercel Root Directory가 `apps/web`으로 설정되어 production 배포가 성공했다.
-- Termux self-hosted runner가 online 상태다.
-- API 배포 workflow가 self-hosted runner에서 실행된다.
-- API build, staging, PM2 restart, local health check, public smoke test가 성공했다.
-- 성공한 API 배포 run: `27598267438`
-- Termux PM2에서 `github-runner-vscoke`와 `vscoke-api`가 online 상태다.
-- 로컬 Mac에서 Cloudflare DB tunnel을 띄운 뒤 DB 연결 SQL이 성공했다.
-
-## 작업 기준
-
-앞으로 API 작업은 monorepo의 `apps/api`에서 진행한다.
-
-```bash
-cd /Users/smlee/vscoke/worktrees/ci/self-hosted-api-deploy
-pnpm --filter @vscoke/api test
-pnpm --filter @vscoke/api build
-```
-
-DB가 필요한 작업은 별도 터미널에서 tunnel을 먼저 켠다.
+Mac 로컬에서 DB가 필요한 작업을 할 때는 Cloudflare Access TCP tunnel을 먼저 띄운다.
 
 ```bash
 pnpm --filter @vscoke/api db:tunnel
 ```
 
-웹 작업은 `apps/web` 기준으로 진행하고, API 공개 주소는 Vercel 환경 변수 `NEXT_PUBLIC_API_URL`에서 관리한다.
+터널 터미널은 유지하고, 다른 터미널에서 API 실행이나 DB 확인을 진행한다.
 
-## 남은 결정
+## 작업 원칙
 
-- 메인 작업 디렉터리 `/Users/smlee/vscoke`를 최신 monorepo `main`으로 전환할지 결정한다.
-- 기존 standalone `vscoke-api` 저장소를 언제 archive할지 결정한다.
-- `packages/api-types`에 API 공유 타입을 실제로 생성할지 결정한다.
-- GitHub Actions의 `actions/checkout@v4` Node.js 20 deprecation 경고를 언제 정리할지 결정한다.
-- Cloudflare DB tunnel `pd.icecoke.kr`을 장기 유지할지, 로컬 개발 전용으로만 유지할지 결정한다.
+- 백엔드 코드는 외부 저장소가 아니라 이 workspace의 `apps/api`에서 관리한다.
+- 웹 코드는 `apps/web`에서 관리한다.
+- 루트 `pnpm-workspace.yaml`과 루트 `package.json` scripts를 기준으로 작업한다.
+- `/Users/smlee/vscoke-api` 같은 외부 경로는 사용자가 명시적으로 요청하지 않는 한 코드 변경 대상으로 삼지 않는다.
+- API 계약이 바뀌면 Swagger DTO, `/api-json`, `apps/web/src/types/api.d.ts`, service layer를 함께 확인한다.
+- E2E 산출물인 `.next-e2e*`, `playwright-report`, `test-results`는 Git에 포함하지 않는다.
+
+## 관련 문서
+
+- [Local Development](./local-development.md)
+- [Deployment and Environment Plan](./deployment-and-env.md)
+- [Operations Runbook](./operations-runbook.md)
+- [Hobby API Swagger Concept](./hobby-api-swagger-concept.md)
+- [Hobby Frontend Schema Concept](./hobby-frontend-schema-concept.md)
+- [Playwright CLI Test Spec](./playwright-cli-test-spec.md)

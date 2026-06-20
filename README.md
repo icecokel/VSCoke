@@ -19,8 +19,8 @@ vscoke/
 │  ├─ web/      # Next.js frontend
 │  └─ api/      # NestJS backend
 ├─ packages/
-│  ├─ api-types/
-│  └─ config/
+│  ├─ api-types/ # future shared package placeholder
+│  └─ config/    # future shared package placeholder
 ├─ docs/
 ├─ package.json
 └─ pnpm-workspace.yaml
@@ -82,7 +82,7 @@ NEXT_PUBLIC_API_URL=http://127.0.0.1:65535 pnpm build
 
 ## 문서
 
-- [Monorepo Concept](docs/vscoke-monorepo-concept.md): monorepo 구조와 배포 컨셉
+- [Monorepo Concept](docs/vscoke-monorepo-concept.md): 현재 구현 기준 구조, 실행, 테스트, 배포 컨셉
 - [Local Development](docs/local-development.md): 로컬 실행, 환경 변수, DB tunnel
 - [Operations Runbook](docs/operations-runbook.md): 배포 실패와 운영 장애 대응
 - [Deployment and Environment Plan](docs/deployment-and-env.md): 배포/환경 변수 상세 기준
@@ -119,6 +119,8 @@ pnpm e2e:report
 pnpm e2e:codegen
 ```
 
+- PR에서는 `.github/workflows/pull-request-check.yml`이 API lint/unit/E2E/build와 웹 typecheck/lint/knip/build/focused E2E를 실행합니다.
+- 로컬 push 전에는 `.husky/pre-push`가 웹 typecheck, 전체 lint, 전체 build, smoke E2E를 실행합니다.
 - 자동 E2E 실행은 충돌을 줄이기 위해 프로세스별 격리 포트와 프로세스별 `NEXT_DIST_DIR` 산출물을 사용합니다.
 - `pnpm e2e`, `pnpm e2e:smoke`, `pnpm e2e:codegen`은 서버를 자동으로 올리고 종료합니다.
 - `pnpm --filter @vscoke/web exec playwright test ...` 같은 직접 CLI 실행은 이미 떠 있는 서버를 대상으로 사용합니다.

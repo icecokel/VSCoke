@@ -23,16 +23,21 @@ apps/api -> NestJS backend
 
 루트 스크립트는 workspace 명령을 감싸는 진입점이다.
 
-| 목적      | 명령             |
-| --------- | ---------------- |
-| 웹 개발   | `pnpm dev:web`   |
-| API 개발  | `pnpm dev:api`   |
-| 전체 빌드 | `pnpm build`     |
-| 웹 빌드   | `pnpm build:web` |
-| API 빌드  | `pnpm build:api` |
-| 웹 lint   | `pnpm lint:web`  |
-| API test  | `pnpm test:api`  |
-| 웹 E2E    | `pnpm e2e`       |
+| 목적              | 명령                  |
+| ----------------- | --------------------- |
+| 웹 개발           | `pnpm dev:web`        |
+| API 개발          | `pnpm dev:api`        |
+| 전체 빌드         | `pnpm build`          |
+| 웹 빌드           | `pnpm build:web`      |
+| API 빌드          | `pnpm build:api`      |
+| 웹 lint           | `pnpm lint:web`       |
+| 전체 lint         | `pnpm lint`           |
+| 웹 타입 체크      | `pnpm type:check:web` |
+| API test          | `pnpm test:api`       |
+| API E2E test      | `pnpm test:api:e2e`   |
+| 웹 E2E            | `pnpm e2e`            |
+| 웹 E2E smoke      | `pnpm e2e:smoke`      |
+| unused code check | `pnpm knip`           |
 
 ## 환경 변수 준비
 
@@ -173,6 +178,25 @@ API 배포 후 공개 endpoint를 확인할 때:
 ```bash
 pnpm smoke:api:remote
 ```
+
+## Git hook과 PR 검증
+
+로컬 hook은 Husky로 관리한다.
+
+| Hook         | 실행 내용                                                          |
+| ------------ | ------------------------------------------------------------------ |
+| `pre-commit` | staged 파일에 `lint-staged` 실행                                   |
+| `commit-msg` | 한국어 커밋 메시지 규칙 검증                                       |
+| `pre-push`   | `pnpm type:check:web`, `pnpm lint`, `pnpm build`, `pnpm e2e:smoke` |
+
+PR 자동 검증은 `.github/workflows/pull-request-check.yml`에서 실행한다.
+
+| Job | 검증                                                 |
+| --- | ---------------------------------------------------- |
+| API | API lint, unit test, E2E test, build                 |
+| Web | typecheck, lint, knip, build, focused Playwright E2E |
+
+현재 PR focused E2E는 `i18n-integrity`, `hobby-games`, `keyboard-only`를 Chromium에서 실행한다. 전체 Playwright 회귀가 필요하면 로컬에서 `pnpm e2e` 또는 `pnpm e2e:cross-browser`를 별도로 실행한다.
 
 ## 자주 생기는 문제
 

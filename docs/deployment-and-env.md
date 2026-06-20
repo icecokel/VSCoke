@@ -11,6 +11,26 @@ apps/api -> GitHub Actions self-hosted runner on Termux -> PM2 -> Cloudflare Tun
 
 ## 배포 기준
 
+### Pull Request Check
+
+PR은 배포 전에 `.github/workflows/pull-request-check.yml`로 검증한다. 이 workflow는 `main` 대상 pull request와 수동 실행(`workflow_dispatch`)에서 동작한다.
+
+공통 기준:
+
+- Node.js 20
+- `pnpm@9.12.0`
+- `pnpm install --frozen-lockfile`
+- `NEXT_PUBLIC_API_URL=https://api.icecoke.kr`
+
+검증 job:
+
+| Job | 실행 내용                                                                                                    |
+| --- | ------------------------------------------------------------------------------------------------------------ |
+| API | `pnpm --filter @vscoke/api lint`, `pnpm test:api`, `pnpm test:api:e2e`, `pnpm build:api`                     |
+| Web | Playwright Chromium 설치, `pnpm type:check:web`, `pnpm lint:web`, `pnpm knip`, `pnpm build:web`, focused E2E |
+
+현재 focused E2E는 `i18n-integrity.spec.ts`, `hobby-games.spec.ts`, `keyboard-only.spec.ts`를 Chromium에서 실행한다. 전체 E2E와 cross-browser 회귀는 실행 시간이 크므로 기본 PR workflow에는 넣지 않고 필요 시 로컬 또는 별도 workflow에서 실행한다.
+
 ### Web: Vercel
 
 Vercel 프로젝트는 monorepo 루트가 아니라 웹 앱 디렉터리를 루트로 잡는다.

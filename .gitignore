@@ -73,6 +73,8 @@ next-env.d.ts
 !/docs/hobby-frontend-schema-concept.md
 !/docs/local-development.md
 !/docs/operations-runbook.md
+!/docs/playwright-cli-test-plan.md
+!/docs/playwright-cli-test-spec.md
 !/docs/swagger-style-guide.md
 !/docs/user-deployment-checklist.md
 !/docs/vscoke-monorepo-concept.md

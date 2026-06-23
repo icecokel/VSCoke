@@ -3,13 +3,20 @@
     "id": "oprimed",
     "projects": [
       {
-        "id": "optivisMedicalPlatform"
+        "id": "medicalWorkflowProductization",
+        "fileRef": "oprimed-medical-workflow-productization"
       },
       {
-        "id": "optivisPortalLabs"
+        "id": "apiContractStateAlignment",
+        "fileRef": "oprimed-api-contract-state-alignment"
       },
       {
-        "id": "optivisCicdQuality"
+        "id": "authSessionEntryExperience",
+        "fileRef": "oprimed-auth-session-entry-experience"
+      },
+      {
+        "id": "feOperationsDeploymentFlow",
+        "fileRef": "oprimed-fe-operations-deployment-flow"
       }
     ]
   },

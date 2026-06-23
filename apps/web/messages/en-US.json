@@ -228,7 +228,7 @@
       "I became a developer because I am interested in seeking ways to automate repetitive tasks and improve inefficient processes.",
       "I worked as a Frontend Developer at AllofThem in Japan, and also handled Backend development when necessary.",
       "I then worked as a Frontend Developer at CodeCrayon for 2 years, focusing on webviews for e-commerce and video platforms.",
-      "Most recently, I developed frontend features for Oprimed's medical and clinical data analysis platform, covering authentication/session flows, API contracts, result reports, and deployment stability.",
+      "Most recently, at Oprimed, I implemented medical and clinical analysis workflows as frontend product flows, organizing API contracts, result reports, authentication/session flows, and deployment verification.",
       "I enjoy building services together and contemplate ways to contribute to the team beyond just development skills.",
       "I like finding realistic and effective solutions when facing new problems."
     ],
@@ -241,54 +241,72 @@
         "period": "2026.02 - 2026.06 (5 months)",
         "employmentType": "Frontend Development",
         "projects": {
-          "optivisMedicalPlatform": {
-            "title": "OPTIVIS Medical and Clinical Analysis Platform FE",
+          "medicalWorkflowProductization": {
+            "title": "Medical and Clinical Analysis Workflow FE Productization",
             "period": "2026.02 - 2026.06",
             "descriptions": [
               {
-                "subtitle": "Developed Nexus and Trial screens and stabilized result report flows for a medical and clinical data analysis platform",
-                "skills": "Next.js, React, TypeScript, TanStack Query, Zustand, React Hook Form, Tailwind CSS, MUI, ECharts, Plotly",
+                "subtitle": "Implemented complex simulation input, execution, and result review flows as frontend product screens for a medical and clinical data analysis platform",
+                "skills": "Next.js, React, TypeScript, TanStack Query, Zustand, React Hook Form, Tailwind CSS, MUI, ECharts, Plotly, jsPDF, xlsx",
                 "tasks": [
-                  "Developed input, validation, execution, and result review flows for medical and clinical analysis workflows",
-                  "Connected subject, disease, drug, baseline feature, and simulation result data to screen state and API request payloads",
-                  "Organized request/response types and service layers based on Swagger/OpenAPI contracts",
-                  "Implemented analysis result review features including Excel import, PDF preview/download, chart fullscreen, and result tables",
-                  "Aligned tables, modals, breadcrumbs, charts, and PDF layouts against Figma designs"
+                  "Developed input, validation, execution, and result review flows for medical and clinical analysis workflows such as DRD, TRP, SUB, TOP, and Twin Outcome",
+                  "Organized connected domain data such as patient information, diseases, drugs, baseline features, analysis conditions, and simulation results into screen state and API request payloads",
+                  "Implemented features for reviewing and sharing analysis results, including Excel import, result tables, chart fullscreen, PDF preview/download, and report layouts",
+                  "Adjusted high-complexity state flows such as multiple drug selection, Drive load, IndexedDB restoration, view parameters, and handoff data",
+                  "Improved usability and completeness of analysis screens by aligning tables, modals, breadcrumbs, cards, charts, and PDF layouts against Figma designs"
+                ]
+              }
+            ]
+          },
+          "apiContractStateAlignment": {
+            "title": "API Contract and Frontend State Alignment",
+            "period": "2026.03 - 2026.06",
+            "descriptions": [
+              {
+                "subtitle": "Organized request/response types, service layers, and screen state flows according to Swagger/OpenAPI contract changes",
+                "skills": "TypeScript, Next.js, React, TanStack Query, Zustand, Yup, REST API, Swagger/OpenAPI",
+                "tasks": [
+                  "Organized request/response types and service layers for patient, disease, drug, simulation, and result APIs based on Swagger/OpenAPI",
+                  "Reduced arbitrary fallbacks and mock dependencies, then adjusted screen inputs, validation conditions, and execution conditions against real API payloads",
+                  "Handled edge cases such as nullable numeric values, gender/race codes, disease-specific input branches, drug IDs, and bootstrap conditions",
+                  "Adjusted simulation execution, cancellation, re-entry, hydration, and import restoration flows where existing values could be overwritten or sent incorrectly",
+                  "Documented API contract changes and organized QA, design parity, and progress documents as post-implementation verification evidence"
+                ]
+              }
+            ]
+          },
+          "authSessionEntryExperience": {
+            "title": "Authentication, Session, and Product Entry Experience",
+            "period": "2026.03 - 2026.05",
+            "descriptions": [
+              {
+                "subtitle": "Organized login, session expiration, and product navigation experiences across Portal, Labs, Nexus, and Trial",
+                "skills": "Next.js, React, TypeScript, Playwright, REST API",
+                "tasks": [
+                  "Organized Portal login gates, authentication cookies, session restoration, and product routing flows",
+                  "Improved shared entry points and product card UI for navigating to Labs, Nexus, Trial, and related products",
+                  "Connected the session expiration CDN SDK with shared modal flows to unify authentication failure experiences across products",
+                  "Adjusted entry policies such as referrer-based login redirects, mobile-only guidance pages, and non-mobile access blocking",
+                  "Improved portal operational stability by adding CSP response headers and authentication/API tests"
+                ]
+              }
+            ]
+          },
+          "feOperationsDeploymentFlow": {
+            "title": "FE Operations and Deployment Flow",
+            "period": "2026.03 - 2026.06",
+            "descriptions": [
+              {
+                "subtitle": "Organized local development, verification, packaging, and deployment preparation flows across multiple FE products",
+                "skills": "GitHub Actions, Docker, Shell Script, Next.js standalone, Playwright, Vitest, Husky, mkcert",
+                "tasks": [
+                  "Organized GitHub Actions release/deploy/demo-deploy workflows and deployment scripts for Nexus, Portal, Trial, and Labs FE",
+                  "Adjusted Dockerfiles, tar packaging, load scripts, Next standalone runtime, health checks, and static asset paths",
+                  "Organized self-hosted runner target settings, legacy container handling, demo runner deployment flows, and runner samples/guides",
+                  "Configured mkcert-based local HTTPS, local domains, and development/deployment envs to create a development environment closer to real product domains",
+                  "Connected pre-deployment verification and development flows by organizing Playwright, Vitest, typecheck, build, and Husky pre-push/preparation flows"
                 ],
-                "achievement": "Stabilized multiple FE products into operation- and verification-ready product flows by organizing input flows, API contracts, result reports, authentication/session handling, and CI/CD"
-              }
-            ]
-          },
-          "optivisPortalLabs": {
-            "title": "OPTIVIS Portal/Labs FE",
-            "period": "2026.03 - 2026.06",
-            "descriptions": [
-              {
-                "subtitle": "Stabilized shared authentication portal, session experience, and existing Labs screens",
-                "skills": "Next.js, React, TypeScript, Zustand, MUI, Playwright, GitHub Actions",
-                "tasks": [
-                  "Organized login gates, product routing, authentication cookies, and session restoration flows",
-                  "Improved shared entry points and product card UI for Portal, Nexus, Trial, and Labs",
-                  "Unified session expiration modals and authentication failure flows across products",
-                  "Adjusted save/restore flows and edge cases for Data Lake, Select Feature, and Data Preprocessing",
-                  "Handled Next.js/React security patches, demo deployment flows, and broken UI states"
-                ]
-              }
-            ]
-          },
-          "optivisCicdQuality": {
-            "title": "FE CI/CD and Operational Quality",
-            "period": "2026.03 - 2026.06",
-            "descriptions": [
-              {
-                "subtitle": "Organized verification, packaging, and deployment environments for OPTIVIS FE products",
-                "skills": "TypeScript, ESLint, Prettier, Playwright, GitHub Actions, Docker, Next.js standalone, Shell Script",
-                "tasks": [
-                  "Organized GitHub Actions, Docker tar packaging, deployment scripts, and self-hosted runner settings",
-                  "Adjusted Next standalone execution, health checks, static asset paths, and environment variable flows",
-                  "Set up local HTTPS development and typecheck/build/Playwright verification scripts",
-                  "Documented API contract diffs, QA, and design parity checks as post-implementation verification evidence"
-                ]
+                "achievement": "Stabilized multiple FE products so users could use them for real analysis work by organizing complex input conditions, API contracts, result reports, authentication/session flows, and deployment/verification flows from a frontend perspective"
               }
             ]
           }

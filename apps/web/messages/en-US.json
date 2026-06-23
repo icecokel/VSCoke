@@ -227,14 +227,73 @@
       "I graduated from the Department of Information and Communication and worked as an Infrastructure Engineer for 3 years.",
       "I became a developer because I am interested in seeking ways to automate repetitive tasks and improve inefficient processes.",
       "I worked as a Frontend Developer at AllofThem in Japan, and also handled Backend development when necessary.",
-      "Currently, I have been working as a Frontend Developer at CodeCrayon for 2 years, focusing on webviews for e-commerce and video platforms.",
+      "I then worked as a Frontend Developer at CodeCrayon for 2 years, focusing on webviews for e-commerce and video platforms.",
+      "Most recently, I developed frontend features for Oprimed's medical and clinical data analysis platform, covering authentication/session flows, API contracts, result reports, and deployment stability.",
       "I enjoy building services together and contemplate ways to contribute to the team beyond just development skills.",
       "I like finding realistic and effective solutions when facing new problems."
     ],
-    "totalExperience": "6 years 10 months",
+    "totalExperience": "7 years 3 months",
     "viewDescription": "Career Description",
     "backToResume": "Back to Resume",
     "careers": {
+      "oprimed": {
+        "company": "Oprimed",
+        "period": "2026.02 - 2026.06 (5 months)",
+        "employmentType": "Frontend Development",
+        "projects": {
+          "optivisMedicalPlatform": {
+            "title": "OPTIVIS Medical and Clinical Analysis Platform FE",
+            "period": "2026.02 - 2026.06",
+            "descriptions": [
+              {
+                "subtitle": "Developed Nexus and Trial screens and stabilized result report flows for a medical and clinical data analysis platform",
+                "skills": "Next.js, React, TypeScript, TanStack Query, Zustand, React Hook Form, Tailwind CSS, MUI, ECharts, Plotly",
+                "tasks": [
+                  "Developed input, validation, execution, and result review flows for medical and clinical analysis workflows",
+                  "Connected subject, disease, drug, baseline feature, and simulation result data to screen state and API request payloads",
+                  "Organized request/response types and service layers based on Swagger/OpenAPI contracts",
+                  "Implemented analysis result review features including Excel import, PDF preview/download, chart fullscreen, and result tables",
+                  "Aligned tables, modals, breadcrumbs, charts, and PDF layouts against Figma designs"
+                ],
+                "achievement": "Stabilized multiple FE products into operation- and verification-ready product flows by organizing input flows, API contracts, result reports, authentication/session handling, and CI/CD"
+              }
+            ]
+          },
+          "optivisPortalLabs": {
+            "title": "OPTIVIS Portal/Labs FE",
+            "period": "2026.03 - 2026.06",
+            "descriptions": [
+              {
+                "subtitle": "Stabilized shared authentication portal, session experience, and existing Labs screens",
+                "skills": "Next.js, React, TypeScript, Zustand, MUI, Playwright, GitHub Actions",
+                "tasks": [
+                  "Organized login gates, product routing, authentication cookies, and session restoration flows",
+                  "Improved shared entry points and product card UI for Portal, Nexus, Trial, and Labs",
+                  "Unified session expiration modals and authentication failure flows across products",
+                  "Adjusted save/restore flows and edge cases for Data Lake, Select Feature, and Data Preprocessing",
+                  "Handled Next.js/React security patches, demo deployment flows, and broken UI states"
+                ]
+              }
+            ]
+          },
+          "optivisCicdQuality": {
+            "title": "FE CI/CD and Operational Quality",
+            "period": "2026.03 - 2026.06",
+            "descriptions": [
+              {
+                "subtitle": "Organized verification, packaging, and deployment environments for OPTIVIS FE products",
+                "skills": "TypeScript, ESLint, Prettier, Playwright, GitHub Actions, Docker, Next.js standalone, Shell Script",
+                "tasks": [
+                  "Organized GitHub Actions, Docker tar packaging, deployment scripts, and self-hosted runner settings",
+                  "Adjusted Next standalone execution, health checks, static asset paths, and environment variable flows",
+                  "Set up local HTTPS development and typecheck/build/Playwright verification scripts",
+                  "Documented API contract diffs, QA, and design parity checks as post-implementation verification evidence"
+                ]
+              }
+            ]
+          }
+        }
+      },
       "codecrayon": {
         "company": "CodeCrayon",
         "period": "2023.05 - 2025.07 (2 years 3 months)",

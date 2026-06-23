@@ -1,5 +1,19 @@
 [
   {
+    "id": "oprimed",
+    "projects": [
+      {
+        "id": "optivisMedicalPlatform"
+      },
+      {
+        "id": "optivisPortalLabs"
+      },
+      {
+        "id": "optivisCicdQuality"
+      }
+    ]
+  },
+  {
     "id": "codecrayon",
     "projects": [
       {

@@ -3,20 +3,8 @@
     "id": "oprimed",
     "projects": [
       {
-        "id": "medicalWorkflowProductization",
-        "fileRef": "oprimed-medical-workflow-productization"
-      },
-      {
-        "id": "apiContractStateAlignment",
-        "fileRef": "oprimed-api-contract-state-alignment"
-      },
-      {
-        "id": "authSessionEntryExperience",
-        "fileRef": "oprimed-auth-session-entry-experience"
-      },
-      {
-        "id": "feOperationsDeploymentFlow",
-        "fileRef": "oprimed-fe-operations-deployment-flow"
+        "id": "medicalPlatformProductization",
+        "fileRef": "oprimed-medical-platform-productization"
       }
     ]
   },

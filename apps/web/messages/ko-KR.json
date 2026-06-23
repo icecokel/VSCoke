@@ -228,7 +228,7 @@
       "반복 업무를 자동화하고 비효율적인 프로세스를 개선하는 데 관심이 많아 개발자로 전향했습니다.",
       "일본의 AllofThem에서 프론트엔드 개발자로 근무하며 필요 시 백엔드 개발도 진행했습니다.",
       "이후 코드크레용에서 2년간 프론트엔드 개발자로 근무하며 이커머스와 영상 플랫폼의 웹뷰를 중점적으로 담당했습니다.",
-      "최근에는 오프리메드에서 의료·임상 분석 워크플로우를 프론트엔드 제품 흐름으로 구현하며 API 계약, 결과 리포트, 인증·세션, 배포 검증 흐름을 정리했습니다.",
+      "최근에는 오프리메드에서 의료·임상 분석 플랫폼의 복잡한 워크플로우를 프론트엔드 제품 흐름으로 구조화하고, API 계약·결과 리포트·인증·세션·배포 기준을 함께 정리했습니다.",
       "서비스를 함께 만들어가는 것을 즐기며, 개발 역량뿐 아니라 팀에 기여할 수 있는 방법을 고민합니다.",
       "새로운 문제에 직면했을 때 현실적이고 효과적인 해결책을 찾는 것을 좋아합니다."
     ],
@@ -241,72 +241,21 @@
         "period": "2026.02 - 2026.06 (5개월)",
         "employmentType": "프론트엔드 개발",
         "projects": {
-          "medicalWorkflowProductization": {
-            "title": "의료·임상 분석 워크플로우 FE 제품화",
+          "medicalPlatformProductization": {
+            "title": "의료·임상 분석 플랫폼 FE 제품화 및 운영 안정화",
             "period": "2026.02 - 2026.06",
             "descriptions": [
               {
-                "subtitle": "의료·임상 데이터 분석 플랫폼에서 복잡한 시뮬레이션 입력, 실행, 결과 확인 흐름을 프론트엔드 제품 화면으로 구현",
-                "skills": "Next.js, React, TypeScript, TanStack Query, Zustand, React Hook Form, Tailwind CSS, MUI, ECharts, Plotly, jsPDF, xlsx",
+                "subtitle": "의료·임상 데이터 분석 플랫폼에서 시뮬레이션 워크플로우, API 계약, 결과 리포트, 인증·세션, 배포 흐름을 정리",
+                "skills": "Next.js, React, TypeScript, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Playwright, GitHub Actions, Docker",
                 "tasks": [
-                  "DRD, TRP, SUB, TOP, Twin Outcome 등 의료·임상 분석 워크플로우의 입력, 검증, 실행, 결과 확인 흐름 개발",
-                  "환자 정보, 질병, 약물, baseline feature, 분석 조건, 시뮬레이션 결과처럼 서로 연결된 도메인 데이터를 화면 상태와 API 요청값으로 정리",
-                  "Excel import, 결과 테이블, 차트 fullscreen, PDF preview/download, 리포트 배치 등 분석 결과를 확인하고 공유하는 기능 구현",
-                  "다중 약물 선택, Drive load, IndexedDB 복원, View parameter, handoff 데이터처럼 상태 복잡도가 높은 화면 흐름 보정",
-                  "Figma 기준으로 테이블, 모달, 브레드크럼, 카드, 차트, PDF 레이아웃을 정렬해 분석 화면의 사용성과 완성도 개선"
-                ]
-              }
-            ]
-          },
-          "apiContractStateAlignment": {
-            "title": "API 계약과 프론트엔드 상태 정합성 정리",
-            "period": "2026.03 - 2026.06",
-            "descriptions": [
-              {
-                "subtitle": "Swagger/OpenAPI 계약 변경에 맞춰 요청·응답 타입, 서비스 레이어, 화면 상태 흐름 정리",
-                "skills": "TypeScript, Next.js, React, TanStack Query, Zustand, Yup, REST API, Swagger/OpenAPI",
-                "tasks": [
-                  "Swagger/OpenAPI 기준으로 환자, 질병, 약물, 시뮬레이션, 결과 API 요청·응답 타입과 서비스 레이어 정리",
-                  "임의 fallback과 mock 의존을 줄이고 실제 API payload 기준으로 화면 입력값, 검증 조건, 실행 조건을 보정",
-                  "nullable 수치, 성별·인종 코드, 질병별 입력 분기, 약물 id, bootstrap 조건 등 edge case 처리",
-                  "시뮬레이션 실행, 취소, 재진입, hydrate, import 복원 흐름에서 기존 값이 덮어써지거나 잘못 전송되는 문제 보정",
-                  "API 계약 변경 내역을 문서화하고 QA, design parity, progress 문서로 기능 구현 이후 검증 근거 정리"
-                ]
-              }
-            ]
-          },
-          "authSessionEntryExperience": {
-            "title": "인증·세션·제품 진입 경험 정리",
-            "period": "2026.03 - 2026.05",
-            "descriptions": [
-              {
-                "subtitle": "Portal, Labs, Nexus, Trial로 이어지는 제품군의 로그인, 세션 만료, 제품 이동 경험 정리",
-                "skills": "Next.js, React, TypeScript, Playwright, REST API",
-                "tasks": [
-                  "Portal 로그인 게이트, 인증 쿠키, 세션 복원, 제품 라우팅 흐름 정리",
-                  "Labs, Nexus, Trial 등 여러 제품으로 이동하는 공통 진입점과 제품 카드 UI 개선",
-                  "세션 만료 CDN SDK와 공통 모달 흐름을 연결해 제품 간 인증 실패 경험 통일",
-                  "referrer 기반 로그인 리다이렉트, 모바일 전용 안내 페이지, 비모바일 접근 차단 등 진입 정책 보정",
-                  "CSP 응답 헤더와 인증/API 테스트를 추가해 포털의 운영 안정성 개선"
-                ]
-              }
-            ]
-          },
-          "feOperationsDeploymentFlow": {
-            "title": "FE 운영·배포 흐름 정리",
-            "period": "2026.03 - 2026.06",
-            "descriptions": [
-              {
-                "subtitle": "여러 FE 제품의 로컬 개발, 검증, 패키징, 배포 준비 흐름을 정리",
-                "skills": "GitHub Actions, Docker, Shell Script, Next.js standalone, Playwright, Vitest, Husky, mkcert",
-                "tasks": [
-                  "Nexus, Portal, Trial, Labs FE의 GitHub Actions release/deploy/demo-deploy workflow와 배포 스크립트 정리",
-                  "Dockerfile, tar packaging, load script, Next standalone runtime, health check, static asset path 보정",
-                  "self-hosted runner 대상 설정, legacy container 처리, demo runner 배포 흐름, runner sample/guide 정리",
-                  "mkcert 기반 로컬 HTTPS, 로컬 도메인, 개발·배포 env를 정리해 실제 제품 도메인과 가까운 개발 환경 구성",
-                  "Playwright, Vitest, typecheck, build, Husky pre-push/preparation 흐름을 정리해 배포 전 검증과 개발 흐름 연결"
+                  "의료·임상 시뮬레이션 화면의 환자, 질병, 약물, 분석 조건, 결과 데이터가 복잡하게 연결되는 문제를 API payload와 사용자 진행 단계 기준으로 구조화해 DRD/TRP/SUB/TOP/Twin Outcome 입력-검증-실행-결과-PDF 흐름을 개발",
+                  "Swagger/OpenAPI 계약 변경으로 화면 상태와 요청값이 어긋날 수 있는 문제를 contract-first 방식으로 정리해 요청·응답 타입, 서비스 레이어, 실행 조건, hydrate/import 복원 edge case를 보정",
+                  "분석 결과가 단순 데이터 출력에 머물지 않도록 결과 테이블, 차트 fullscreen, PDF preview/download, Excel import/export, Figma 기준 레이아웃을 함께 정리해 결과 확인과 공유 흐름을 강화",
+                  "Portal, Labs, Nexus, Trial의 인증·세션·제품 이동 경험이 흩어지는 문제를 Portal 진입점, 세션 만료 SDK, referrer redirect, 모바일 접근 정책으로 정리해 제품군 공통 인증 흐름을 보강",
+                  "프로젝트별 Next.js/React 버전, package lock, Docker node runtime, CI, standalone 배포 흐름이 달라지는 문제를 버전 정합화와 배포 전 검증 흐름으로 보고 Next/React 패치, Docker node alignment, GitHub Actions, 로컬 HTTPS, typecheck/build/Playwright 흐름을 정리"
                 ],
-                "achievement": "의료·임상 데이터 분석 플랫폼의 복잡한 입력 조건, API 계약, 결과 리포트, 인증·세션, 배포·검증 흐름을 프론트엔드 관점에서 정리해 여러 FE 제품을 사용자가 실제로 분석 업무에 사용할 수 있는 상태로 안정화"
+                "achievement": "도메인 입력과 API 계약이 복잡한 의료·임상 분석 플랫폼에서 사용자가 입력, 실행, 결과 확인, PDF/Excel 출력까지 이어갈 수 있는 FE 흐름을 만들고, 여러 프로젝트의 인증·세션·버전·배포 기준을 함께 안정화"
               }
             ]
           }

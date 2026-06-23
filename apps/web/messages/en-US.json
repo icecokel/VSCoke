@@ -228,7 +228,7 @@
       "I became a developer because I am interested in seeking ways to automate repetitive tasks and improve inefficient processes.",
       "I worked as a Frontend Developer at AllofThem in Japan, and also handled Backend development when necessary.",
       "I then worked as a Frontend Developer at CodeCrayon for 2 years, focusing on webviews for e-commerce and video platforms.",
-      "Most recently, at Oprimed, I implemented medical and clinical analysis workflows as frontend product flows, organizing API contracts, result reports, authentication/session flows, and deployment verification.",
+      "Most recently, at Oprimed, I structured complex medical and clinical analysis workflows into frontend product flows while organizing API contracts, result reports, authentication/session flows, and deployment standards.",
       "I enjoy building services together and contemplate ways to contribute to the team beyond just development skills.",
       "I like finding realistic and effective solutions when facing new problems."
     ],
@@ -241,72 +241,21 @@
         "period": "2026.02 - 2026.06 (5 months)",
         "employmentType": "Frontend Development",
         "projects": {
-          "medicalWorkflowProductization": {
-            "title": "Medical and Clinical Analysis Workflow FE Productization",
+          "medicalPlatformProductization": {
+            "title": "Medical and Clinical Analysis Platform FE Productization and Operational Stabilization",
             "period": "2026.02 - 2026.06",
             "descriptions": [
               {
-                "subtitle": "Implemented complex simulation input, execution, and result review flows as frontend product screens for a medical and clinical data analysis platform",
-                "skills": "Next.js, React, TypeScript, TanStack Query, Zustand, React Hook Form, Tailwind CSS, MUI, ECharts, Plotly, jsPDF, xlsx",
+                "subtitle": "Organized simulation workflows, API contracts, result reports, authentication/session flows, and deployment flows for a medical and clinical data analysis platform",
+                "skills": "Next.js, React, TypeScript, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Playwright, GitHub Actions, Docker",
                 "tasks": [
-                  "Developed input, validation, execution, and result review flows for medical and clinical analysis workflows such as DRD, TRP, SUB, TOP, and Twin Outcome",
-                  "Organized connected domain data such as patient information, diseases, drugs, baseline features, analysis conditions, and simulation results into screen state and API request payloads",
-                  "Implemented features for reviewing and sharing analysis results, including Excel import, result tables, chart fullscreen, PDF preview/download, and report layouts",
-                  "Adjusted high-complexity state flows such as multiple drug selection, Drive load, IndexedDB restoration, view parameters, and handoff data",
-                  "Improved usability and completeness of analysis screens by aligning tables, modals, breadcrumbs, cards, charts, and PDF layouts against Figma designs"
-                ]
-              }
-            ]
-          },
-          "apiContractStateAlignment": {
-            "title": "API Contract and Frontend State Alignment",
-            "period": "2026.03 - 2026.06",
-            "descriptions": [
-              {
-                "subtitle": "Organized request/response types, service layers, and screen state flows according to Swagger/OpenAPI contract changes",
-                "skills": "TypeScript, Next.js, React, TanStack Query, Zustand, Yup, REST API, Swagger/OpenAPI",
-                "tasks": [
-                  "Organized request/response types and service layers for patient, disease, drug, simulation, and result APIs based on Swagger/OpenAPI",
-                  "Reduced arbitrary fallbacks and mock dependencies, then adjusted screen inputs, validation conditions, and execution conditions against real API payloads",
-                  "Handled edge cases such as nullable numeric values, gender/race codes, disease-specific input branches, drug IDs, and bootstrap conditions",
-                  "Adjusted simulation execution, cancellation, re-entry, hydration, and import restoration flows where existing values could be overwritten or sent incorrectly",
-                  "Documented API contract changes and organized QA, design parity, and progress documents as post-implementation verification evidence"
-                ]
-              }
-            ]
-          },
-          "authSessionEntryExperience": {
-            "title": "Authentication, Session, and Product Entry Experience",
-            "period": "2026.03 - 2026.05",
-            "descriptions": [
-              {
-                "subtitle": "Organized login, session expiration, and product navigation experiences across Portal, Labs, Nexus, and Trial",
-                "skills": "Next.js, React, TypeScript, Playwright, REST API",
-                "tasks": [
-                  "Organized Portal login gates, authentication cookies, session restoration, and product routing flows",
-                  "Improved shared entry points and product card UI for navigating to Labs, Nexus, Trial, and related products",
-                  "Connected the session expiration CDN SDK with shared modal flows to unify authentication failure experiences across products",
-                  "Adjusted entry policies such as referrer-based login redirects, mobile-only guidance pages, and non-mobile access blocking",
-                  "Improved portal operational stability by adding CSP response headers and authentication/API tests"
-                ]
-              }
-            ]
-          },
-          "feOperationsDeploymentFlow": {
-            "title": "FE Operations and Deployment Flow",
-            "period": "2026.03 - 2026.06",
-            "descriptions": [
-              {
-                "subtitle": "Organized local development, verification, packaging, and deployment preparation flows across multiple FE products",
-                "skills": "GitHub Actions, Docker, Shell Script, Next.js standalone, Playwright, Vitest, Husky, mkcert",
-                "tasks": [
-                  "Organized GitHub Actions release/deploy/demo-deploy workflows and deployment scripts for Nexus, Portal, Trial, and Labs FE",
-                  "Adjusted Dockerfiles, tar packaging, load scripts, Next standalone runtime, health checks, and static asset paths",
-                  "Organized self-hosted runner target settings, legacy container handling, demo runner deployment flows, and runner samples/guides",
-                  "Configured mkcert-based local HTTPS, local domains, and development/deployment envs to create a development environment closer to real product domains",
-                  "Connected pre-deployment verification and development flows by organizing Playwright, Vitest, typecheck, build, and Husky pre-push/preparation flows"
+                  "Structured the problem of tightly connected patient, disease, drug, analysis condition, and result data around API payloads and user progress stages, then developed DRD/TRP/SUB/TOP/Twin Outcome input-validation-execution-result-PDF flows",
+                  "Addressed the risk of frontend state and request payload drift from Swagger/OpenAPI contract changes with a contract-first approach, organizing request/response types, service layers, execution conditions, and hydrate/import restoration edge cases",
+                  "Strengthened result review and sharing flows by organizing result tables, chart fullscreen, PDF preview/download, Excel import/export, and Figma-aligned layouts so analysis results did not remain simple data output",
+                  "Reinforced shared product authentication flows by organizing scattered Portal, Labs, Nexus, and Trial authentication/session/product navigation experiences around the Portal entry point, session expiration SDK, referrer redirects, and mobile access policies",
+                  "Handled version alignment and pre-deployment verification as an operational stability problem by organizing Next/React patches, Docker node alignment, GitHub Actions, local HTTPS, and typecheck/build/Playwright flows across projects with different Next.js/React versions, package locks, Docker node runtimes, CI, and standalone deployment flows"
                 ],
-                "achievement": "Stabilized multiple FE products so users could use them for real analysis work by organizing complex input conditions, API contracts, result reports, authentication/session flows, and deployment/verification flows from a frontend perspective"
+                "achievement": "Built FE flows that let users proceed from input to execution, result review, and PDF/Excel output in a medical and clinical analysis platform with complex domain inputs and API contracts, while stabilizing authentication, session, version, and deployment standards across multiple projects"
               }
             ]
           }

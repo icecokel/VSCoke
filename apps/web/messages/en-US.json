@@ -239,7 +239,8 @@
       "oprimed": {
         "company": "Oprimed",
         "period": "2026.02 - 2026.06 (5 months)",
-        "employmentType": "Service Developer",
+        "employmentType": "Frontend Development",
+        "achievement": "Built frontend flows that carry complex medical and clinical analysis work from input and execution to result review and document/Excel output, while reinforcing authentication, session, and CI/CD standards across products",
         "projects": {
           "medicalAnalysisWorkspace": {
             "title": "Medical and Clinical Analysis Workspace Development",
@@ -249,9 +250,9 @@
                 "subtitle": "Developed medical and clinical analysis screens for entering patient information, diseases, drugs, lab values, and analysis conditions and reviewing results",
                 "skills": "Next.js, React, TypeScript, TanStack Query, Zustand, React Hook Form, ECharts, Plotly",
                 "tasks": [
-                  "Developed screen flows by separating complex analysis conditions into input, validation, execution, and result review stages",
-                  "Organized request/response types and screen state to reflect server feature specification changes",
-                  "Adjusted flows for reloading saved analysis conditions and Excel data",
+                  "Developed the flow by separating complex input order and execution conditions connected across patient information, diseases, drugs, lab values, and analysis conditions into input, validation, execution, and result review stages",
+                  "Organized request/response types and execution conditions to reduce mismatches between screen state and actual request data when server feature specifications changed",
+                  "Adjusted exceptions that occurred when reloading saved analysis conditions and Excel data so users could continue previous work",
                   "Configured analysis results so they could be reviewed through tables, chart zoom views, and document preview/download"
                 ]
               }
@@ -265,10 +266,10 @@
                 "subtitle": "Developed screens for searching clinical trial data, configuring conditions, and reviewing analysis results",
                 "skills": "Next.js, React, TypeScript, TanStack Query, Zustand, Material-UI, ECharts",
                 "tasks": [
-                  "Improved data flows for search conditions, result dashboards, and analysis settings screens",
-                  "Adjusted complex input state for selecting multiple drugs and analysis conditions",
-                  "Handled exceptions that occurred while reloading saved analysis settings",
-                  "Improved screen usability for result chart zoom views, report layouts, modals, and date selection"
+                  "Adjusted disconnected data flows between search conditions, result dashboards, and analysis settings screens around the screen flow",
+                  "Organized complex input state created while selecting multiple drugs and analysis conditions around state management criteria",
+                  "Handled exceptions that occurred while reloading saved analysis settings to improve analysis condition restoration flows",
+                  "Improved usability for recurring screen elements such as result chart zoom views, report layouts, modals, and date selection"
                 ]
               }
             ]
@@ -281,9 +282,9 @@
                 "subtitle": "Improved the shared login screen and session expiration experience for navigating to multiple products",
                 "skills": "Next.js, React, TypeScript, Playwright, GitHub Actions",
                 "tasks": [
-                  "Organized login screens, product navigation, authentication cookies, and session restoration flows",
-                  "Improved the shared entry point and product card screen for navigating to multiple products",
-                  "Unified the user experience by showing a shared modal when sessions expire",
+                  "Organized differences in login, session expiration, and navigation flows across products around a shared entry point and authentication flow",
+                  "Improved the product card screen for navigating to multiple products and the post-login navigation flow",
+                  "Unified the authentication failure experience by showing a shared modal when sessions expire",
                   "Adjusted mobile access guidance and login navigation flows based on previous access paths"
                 ]
               }
@@ -297,9 +298,9 @@
                 "subtitle": "Organized CI/CD, runtime environments, tests, and deployment preparation flows across multiple frontend projects",
                 "skills": "GitHub Actions, Docker, Shell Script, Next.js, Playwright, TypeScript",
                 "tasks": [
-                  "Aligned project runtime environments, dependencies, and patch versions to reduce development environment differences",
+                  "Organized development environment standards to reduce differences in runtime environments, dependencies, and patch versions across projects",
                   "Organized GitHub Actions-based CI/CD workflows along with type checking, build verification, and browser automation test scripts",
-                  "Organized Docker packaging, deployment helper scripts, and runtime environment settings",
+                  "Organized Docker packaging, deployment helper scripts, and runtime environment settings to improve frontend artifact handoff flows",
                   "Reinforced verification flows by organizing pre-deployment criteria in documents and scripts"
                 ]
               }

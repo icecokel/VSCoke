@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import BaseText from "@/components/base-ui/text";
 import { ResumeCareerData, ResumeProjectData, Description } from "./types";
 import DescriptionItem from "./description-item";
+import AchievementBox from "./achievement-box";
 import { Button } from "@/components/ui/button";
 import { useCustomRouter } from "@/hooks/use-custom-router";
 
@@ -68,6 +69,12 @@ export const CareerSection = ({ careerData, index }: CareerSectionProps) => {
           </div>
         );
       })}
+
+      {t.has("achievement") && (
+        <div className="ml-4">
+          <AchievementBox achievement={t("achievement")} />
+        </div>
+      )}
     </div>
   );
 };

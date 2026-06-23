@@ -228,7 +228,7 @@
       "I became a developer because I am interested in seeking ways to automate repetitive tasks and improve inefficient processes.",
       "I worked as a Frontend Developer at AllofThem in Japan, and also handled Backend development when necessary.",
       "I then worked as a Frontend Developer at CodeCrayon for 2 years, focusing on webviews for e-commerce and video platforms.",
-      "Most recently, at Oprimed, I structured complex medical and clinical analysis workflows into frontend product flows while organizing API contracts, result reports, authentication/session flows, and deployment standards.",
+      "Most recently at Oprimed, I structured complex medical and clinical analysis workflows into frontend product flows, while organizing server data integration, result reporting, authentication/session handling, project runtime environments, and deployment preparation flows.",
       "I enjoy building services together and contemplate ways to contribute to the team beyond just development skills.",
       "I like finding realistic and effective solutions when facing new problems."
     ],
@@ -242,20 +242,20 @@
         "employmentType": "Frontend Development",
         "projects": {
           "medicalPlatformProductization": {
-            "title": "Medical and Clinical Analysis Platform FE Productization and Operational Stabilization",
+            "title": "Medical and Clinical Analysis Platform Frontend Productization and Operational Stabilization",
             "period": "2026.02 - 2026.06",
             "descriptions": [
               {
-                "subtitle": "Organized simulation workflows, API contracts, result reports, authentication/session flows, and deployment flows for a medical and clinical data analysis platform",
+                "subtitle": "Organized simulation input, server data integration, result reports, authentication/session flows, project runtime environments, and deployment preparation flows for a medical and clinical data analysis platform",
                 "skills": "Next.js, React, TypeScript, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Playwright, GitHub Actions, Docker",
                 "tasks": [
-                  "Structured the problem of tightly connected patient, disease, drug, analysis condition, and result data around API payloads and user progress stages, then developed DRD/TRP/SUB/TOP/Twin Outcome input-validation-execution-result-PDF flows",
-                  "Addressed the risk of frontend state and request payload drift from Swagger/OpenAPI contract changes with a contract-first approach, organizing request/response types, service layers, execution conditions, and hydrate/import restoration edge cases",
-                  "Strengthened result review and sharing flows by organizing result tables, chart fullscreen, PDF preview/download, Excel import/export, and Figma-aligned layouts so analysis results did not remain simple data output",
-                  "Reinforced shared product authentication flows by organizing scattered Portal, Labs, Nexus, and Trial authentication/session/product navigation experiences around the Portal entry point, session expiration SDK, referrer redirects, and mobile access policies",
-                  "Handled version alignment and pre-deployment verification as an operational stability problem by organizing Next/React patches, Docker node alignment, GitHub Actions, local HTTPS, and typecheck/build/Playwright flows across projects with different Next.js/React versions, package locks, Docker node runtimes, CI, and standalone deployment flows"
+                  "Structured tightly connected patient information, diseases, drugs, lab values, analysis conditions, and prediction results around user progress stages and server request data, then developed medical and clinical simulation flows from input, validation, and execution to results and document output",
+                  "Resolved the risk of screen state and request data drifting from server specification changes by aligning to the specifications, and adjusted request/response types, service functions, execution conditions, and edge cases for restoring saved inputs and Excel data",
+                  "Strengthened result review and sharing flows by organizing result tables, chart zoom views, document preview and download, Excel file usage, and design-spec-aligned layouts so analysis results did not remain simple data output",
+                  "Reinforced shared authentication flows across products by organizing scattered login, session expiration, and product navigation experiences around a common entry point, shared session expiration modal, previous-path-based login redirects, and mobile access policies",
+                  "Treated differences in Next.js/React versions, dependency lockfiles, container Node.js versions, automated verification, and deployment preparation flows as runtime alignment and pre-deployment verification issues, then organized security patches, GitHub Actions, local secure access, type checks, build checks, and browser automation test flows"
                 ],
-                "achievement": "Built FE flows that let users proceed from input to execution, result review, and PDF/Excel output in a medical and clinical analysis platform with complex domain inputs and API contracts, while stabilizing authentication, session, version, and deployment standards across multiple projects"
+                "achievement": "Built frontend flows that let users proceed from input to execution, result review, and document/Excel output in a medical and clinical analysis platform with complex domain inputs and server data integration, while stabilizing authentication, session, version, and deployment standards across projects"
               }
             ]
           }

@@ -3,8 +3,20 @@
     "id": "oprimed",
     "projects": [
       {
-        "id": "medicalPlatformProductization",
-        "fileRef": "oprimed-medical-platform-productization"
+        "id": "medicalAnalysisWorkspace",
+        "fileRef": "oprimed-medical-analysis-workspace"
+      },
+      {
+        "id": "clinicalTrialAnalysis",
+        "fileRef": "oprimed-clinical-trial-analysis"
+      },
+      {
+        "id": "productAuthPortal",
+        "fileRef": "oprimed-product-auth-portal"
+      },
+      {
+        "id": "frontendDeploymentVerification",
+        "fileRef": "oprimed-frontend-deployment-verification"
       }
     ]
   },

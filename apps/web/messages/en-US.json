@@ -228,7 +228,7 @@
       "I became a developer because I am interested in seeking ways to automate repetitive tasks and improve inefficient processes.",
       "I worked as a Frontend Developer at AllofThem in Japan, and also handled Backend development when necessary.",
       "I then worked as a Frontend Developer at CodeCrayon for 2 years, focusing on webviews for e-commerce and video platforms.",
-      "Most recently at Oprimed, I developed and organized medical and clinical analysis screens, clinical trial analysis screens, a product authentication portal, and frontend deployment and verification environments.",
+      "Most recently at Oprimed, I developed and organized medical and clinical analysis screens, clinical trial analysis screens, a product authentication portal, and frontend CI/CD and deployment environments.",
       "I enjoy building services together and contemplate ways to contribute to the team beyond just development skills.",
       "I like finding realistic and effective solutions when facing new problems."
     ],
@@ -290,15 +290,15 @@
             ]
           },
           "frontendDeploymentVerification": {
-            "title": "Frontend Deployment and Verification Environment Organization",
+            "title": "Frontend CI/CD and Deployment Environment Organization",
             "period": "2026.03 - 2026.06",
             "descriptions": [
               {
-                "subtitle": "Organized runtime environments, tests, and deployment preparation flows across multiple frontend projects",
+                "subtitle": "Organized CI/CD, runtime environments, tests, and deployment preparation flows across multiple frontend projects",
                 "skills": "GitHub Actions, Docker, Shell Script, Next.js, Playwright, TypeScript",
                 "tasks": [
                   "Aligned project runtime environments, dependencies, and patch versions to reduce development environment differences",
-                  "Organized type checking, build verification, and browser automation test scripts",
+                  "Organized GitHub Actions-based CI/CD workflows along with type checking, build verification, and browser automation test scripts",
                   "Organized Docker packaging, deployment helper scripts, and runtime environment settings",
                   "Reinforced verification flows by organizing pre-deployment criteria in documents and scripts"
                 ]

@@ -223,40 +223,52 @@
       "email": "red9runge@gmail.com"
     },
     "introduction": [
-      "Hello.",
-      "I graduated from the Department of Information and Communication and worked as an Infrastructure Engineer for 3 years.",
-      "I became a developer because I am interested in seeking ways to automate repetitive tasks and improve inefficient processes.",
-      "I worked as a Frontend Developer at AllofThem in Japan, and also handled Backend development when necessary.",
-      "I then worked as a Frontend Developer at CodeCrayon for 2 years, focusing on webviews for e-commerce and video platforms.",
-      "Most recently at Oprimed, I developed complex input and result-review screens for medical and clinical analysis products, while organizing standards for server data integration, authentication, sessions, automated verification, deployment preparation, and performance improvement.",
-      "I enjoy building services together and contemplate ways to contribute to the team beyond just development skills.",
-      "I like finding realistic and effective solutions when facing new problems."
+      "I aim to build comfortable services that users can trust.",
+      "Beyond delivering assigned development work, I enjoy turning team inefficiencies into systems that save colleagues time.",
+      "Improving the work experience of the people I work with is one of the main reasons I develop software."
     ],
     "totalExperience": "7 years 3 months",
     "viewDescription": "Career Description",
     "backToResume": "Back to Resume",
     "careers": {
       "oprimed": {
-        "company": "Oprimed",
-        "period": "2026.02 - 2026.06 (5 months)",
-        "employmentType": "Frontend Development",
-        "achievement": "Built operable frontend standards for complex medical and clinical analysis products by going beyond screen implementation and organizing server data integration, result reports, authentication and sessions, automated verification, deployment preparation, and performance standards.",
+        "company": "Oprimed Co., Ltd.",
+        "period": "2026.02 - Present (5 months)",
+        "employmentType": "Full-time",
+        "achievement": "Handled frontend development for medical and clinical analysis products, including the transition of server integration structure, UI component migration and rendering performance improvements, and the setup of frontend runtime and CI/CD workflows.",
         "projects": {
           "medicalFrontendProductization": {
-            "title": "Medical and Clinical Analysis Frontend Productization and Operating Standards",
+            "title": "Server Integration Transition, UI Migration, and Frontend Execution System Setup",
             "period": "2026.02 - 2026.06",
             "descriptions": [
               {
-                "subtitle": "Developed complex input and result-review screens across multiple medical and clinical analysis products, while organizing server data integration, authentication and sessions, automated verification, deployment preparation, and performance improvement standards",
-                "skills": "Next.js, React, TypeScript, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Playwright, GitHub Actions, Docker, Shell Script",
+                "subtitle": "Server integration transition and user flow implementation for analysis products",
+                "detail": "The same server data was being fetched directly by multiple screens, scattering cache, refetch, and maintenance rules. The flow from analysis results to the next analysis also needed clear screen transition and state-passing rules.",
+                "skills": "Next.js, React, TypeScript, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Playwright, GitHub Actions, Husky, Docker",
                 "tasks": [
-                  "Reviewed execution, verification, and deployment flows across multiple frontend projects instead of stopping at single-screen implementation, and organized repeated maintenance problems the team was facing",
-                  "Reduced differences in project execution standards by aligning Next.js, React, and PostCSS security patches with container runtime environments and dependency lockfiles",
-                  "Reinforced the development, verification, and deployment-preparation flow by organizing GitHub Actions, Docker packaging, standalone deployment scripts, and Playwright-based command-line browser tests",
-                  "Structured the complex links between patient information, diseases, drugs, lab values, analysis conditions, and prediction results around user progression steps and server request data",
-                  "Connected analysis results to tables, chart zoom views, document preview/download, and Excel file workflows so the work continued beyond result review",
-                  "Organized scattered login, session expiration, and product navigation experiences around a shared entry point and authentication flow",
-                  "Replaced image-based UI with a CSS-based shared container, removing about 315 KiB of runtime PNG payload and confirming performance metric improvements in Lighthouse"
+                  "Converted server data fetching to a shared TanStack Query-based structure and removed 6 direct disease-list calls.",
+                  "Implemented task creation, state transfer, and screen transition flows from the analysis result screen to connect follow-up analysis flows.",
+                  "Separated areas that needed redefinition from non-working flows and shared them with the team, leading to clearer error, empty-state, and loading handling standards."
+                ]
+              },
+              {
+                "subtitle": "UI component migration and rendering performance improvement",
+                "detail": "Some UI depended on images and caused unnecessary network requests, while inconsistent UI implementations across screens increased maintenance cost.",
+                "tasks": [
+                  "Migrated image-based UI to code-based shared components, removing 3 runtime PNG requests and about 315 KiB of payload.",
+                  "Confirmed Lighthouse improvements by reducing LCP from 1.3s to 1.0s and Speed Index from 3.4s to 0.7s.",
+                  "Added a static image WebP conversion flow and reduced transferred image resources by about 95%.",
+                  "Introduced shared component usage standards and removed 25 legacy button imports and 34 static SVG files.",
+                  "Reduced 529 direct hex color usages to improve color management standards."
+                ]
+              },
+              {
+                "subtitle": "Frontend runtime and CI/CD workflow setup",
+                "detail": "Different dependency, runtime, and pre-deployment verification standards across projects caused repeated build and validation issues, and errors that could be caught at commit or push time were reaching deployment preparation.",
+                "tasks": [
+                  "Standardized frontend runtime by aligning security patches, dependency lockfiles, Docker runtime, and Node.js versions.",
+                  "Connected commit, push, and pre-deployment verification with GitHub Actions CI/CD and Husky pre-commit/pre-push hooks.",
+                  "Introduced Playwright CLI-based verification with passing examples for 3-browser single runs and a 6-combination browser/viewport matrix."
                 ]
               }
             ]
@@ -268,119 +280,69 @@
         "period": "2023.05 - 2025.07 (2 years 3 months)",
         "employmentType": "Full-time",
         "projects": {
-          "shortimeAdmin": {
-            "title": "Shortime Admin",
-            "period": "2025.04 - 2025.07",
+          "commerceBackoffice": {
+            "title": "Commerce and Back-office Product Development as an Early Member",
+            "period": "2023.05 - 2025.07",
             "descriptions": [
               {
-                "subtitle": "Added subtitle translation system for Shortime admin page",
-                "skills": "Nextjs, TypeScript, Material-UI (MUI), Bedrock SDK",
+                "subtitle": "Customer e-commerce and operator back-office development",
+                "detail": "Joined as an early member and developed both the customer e-commerce service and operator back office. The team needed to improve customer-facing flows and operator screens at the same time, while scattered order, product, seller, settlement, event, and inquiry data increased repetitive work.",
+                "skills": "Next.js, React, TypeScript, MUI, Tailwind CSS, Jotai, SWR, React Hook Form",
                 "tasks": [
-                  "Implemented batch processing and downloading of translations via AI by uploading VTT files",
-                  "Applied appropriate prompts based on character settings, genre, and atmosphere of the content"
+                  "Developed multilingual, payment, gifting, draw, product, order, and my-page flows for the Sellectors customer web service.",
+                  "Migrated a Flutter Web-based back office to Next.js and built management screens for orders, products, sellers, settlements, events, and inquiries.",
+                  "Reduced repetitive operator work by applying search reset, CSV/Excel export, drag-and-drop sorting, shared tables, dialogs, and form components."
                 ]
               }
             ]
           },
           "subtitleSystem": {
-            "title": "Subtitle Translation System Development & Utilization",
-            "period": "2025.03 - 2025.06",
+            "title": "Content Operations Automation with AI Subtitle Translation",
+            "period": "2025.02 - 2025.07",
             "descriptions": [
               {
-                "subtitle": "AI-based subtitle translation automation tool",
-                "skills": "Node.js, TypeScript, AWS Bedrock, OpenAI, Express",
+                "subtitle": "Expanded repetitive subtitle translation from CLI scripts to a web-based management tool",
+                "detail": "Subtitle translation consumed significant operations time as repetitive manual work, and improving content supply speed required a tool that operators could use rather than a developer-only script.",
+                "skills": "TypeScript, AWS Bedrock, OpenAI API, Google Cloud Translate, Express",
                 "tasks": [
-                  "One-click translation: Automatically translate subtitle files with a single command",
-                  "Multiple AI engines: Support and easy switching between multiple AI translation engines",
-                  "Translation quality verification: Guaranteed quality with an automated verification system",
-                  "Large volume processing: Support for large subtitles with chunking and parallel processing",
-                  "Web-based tool: Improved usability with Web UI"
-                ],
-                "achievement": "Developed an AI subtitle translation system, enabling 1 person to process 6-8 works per day, which previously required 2-3 people per work (600% productivity improvement, based on workload per person)"
+                  "Implemented subtitle file processing, language-specific prompts, chunk-based translation, translation validation, and character matching.",
+                  "Reduced team resources spent on repetitive translation work by over 90% and increased productivity by more than 10x.",
+                  "Built a workflow that allows one person to process 6-8 works per day."
+                ]
               }
             ]
           },
           "shortimePlayground": {
-            "title": "Shortime Playground",
+            "title": "Mobile WebView Playground Planning and Implementation",
             "period": "2024.09 - 2025.04",
             "descriptions": [
               {
-                "subtitle": "Frontend development for Shortime platform games and event webviews",
-                "skills": "Next.js 14, TypeScript, Material-UI, Tailwind CSS, Phaser 3, Jotai, shadcn-ui, next-intl, Branch SDK, Lottie",
+                "subtitle": "Built a webview-based product flow for fast in-app content experiments and updates",
+                "detail": "Fast content experiments inside the app required a webview-based product flow that was not tied to native release cycles, while mobile webviews required handling keyboard, safe area, loading, app-web communication, and game rendering constraints together.",
+                "skills": "Next.js, React, TypeScript, Phaser, Tailwind CSS, shadcn/ui, Flutter bridge, Airbridge",
                 "tasks": [
-                  "Planning and development of FlyPop and Open Sesame games",
-                  "Migration and development of fortune-telling feature using AI",
-                  "Lucky Draw System: Draw list and detail pages, winner information input",
-                  "Event Pages: Gift codes, friend invitation system (deep link sharing and SNS integration), Amazing Week event, improvement feedback page"
-                ],
-                "achievement": "Achieved significant increase in platform WAU (Weekly Active Users) through game content planning and development. Contributed to improved user engagement and retention."
+                  "Implemented event and game-style content as Next.js-based mobile webviews.",
+                  "Implemented Phaser games, ranking/result submission, banner and sound control, Flutter bridge, deep links, and marketing SDK integrations.",
+                  "Created a webview-based experimentation space that can improve content independently from app releases."
+                ]
               }
             ]
           },
-          "sellectorsAdmin": {
-            "title": "Sellectors Admin",
-            "period": "2024.05 - 2024.07",
+          "freebootingFinder": {
+            "title": "Unauthorized Content Monitoring Automation",
+            "period": "2025.06 - 2025.06",
             "descriptions": [
               {
-                "subtitle": "Migrated existing FlutterWeb admin page to Next.js and improved usability",
-                "skills": "Nextjs, TypeScript, Material-UI (MUI) v5, Jotai, React Hook Form + Yup, dnd",
+                "subtitle": "Automated repetitive manual monitoring with a crawling-based tool",
+                "detail": "Checking for unauthorized content use required daily manual searches, repeatedly consuming operations time. The team needed an internal tool to gather search results quickly for review and judgment.",
+                "skills": "TypeScript, Express, Axios, Cheerio, Vercel Serverless Functions",
                 "tasks": [
-                  "Migration of existing project",
-                  "Added user convenience features such as DnD, batch operations, data export, etc."
+                  "Built a keyword-based crawling tool and result-review UI.",
+                  "Reduced daily checking work from 50 minutes to under 10 minutes.",
+                  "Organized the tool into a lightweight deployment structure based on Vercel Serverless Functions."
                 ]
               }
             ]
-          },
-          "sellectorsFrontend": {
-            "title": "Sellectors Frontend",
-            "period": "2023.05 - 2025.07",
-            "descriptions": [
-              {
-                "subtitle": "Development of customer website for Sellectors e-commerce platform",
-                "skills": "Next.js 14, TypeScript, i18next, Toss Payments, PayPal, Material-UI",
-                "tasks": [
-                  "Internationalization: Added Japanese, English, Chinese (Traditional) translations and modified i18n scanner build flow",
-                  "Commerce Experience: Fandom-focused sales features like Draw/Gifting, Stream Widget",
-                  "App-Like UX (Mobile Optimization): Native-like experience with Single Column Layout and iOS scroll/gesture optimization",
-                  "Performance/Infra: Resolved Vercel Dev Server caching issues, asynchronous image upload"
-                ]
-              }
-            ]
-          },
-          "others": {
-            "title": "Others",
-            "descriptions": {
-              "piracyTracking": {
-                "subtitle": "Content Piracy Tracking Project",
-                "detail": "Video piracy detection crawling service",
-                "skills": "Node.js, TypeScript, Express, Cheerio, Vercel",
-                "tasks": [
-                  "Bulk search content crawling via pre-stored keywords on major sites",
-                  "Planned and deployed a system to check all search results on one page",
-                  "Efficiently supported the operation team's daily routine keyword search"
-                ],
-                "achievement": "Reduced daily monitoring work time of the operation team from 50 minutes to under 10 minutes by establishing a crawling automation system (80% work efficiency improvement)"
-              },
-              "blogAutoGeneration": {
-                "subtitle": "Product Blog Content Auto-generation",
-                "detail": "AI draft writing project for company blog (WordPress) product pages",
-                "skills": "Node.js, Python, AI",
-                "tasks": [
-                  "Content planning and feasibility/usability check",
-                  "Feasibility check and prototype creation using Node",
-                  "Delivered Python code to backend for prototype",
-                  "Support for management and few-shot prompting"
-                ]
-              },
-              "vodSystem": {
-                "subtitle": "VOD System Improvement Test",
-                "detail": "Self-implementation test of Cloudflare video serving system",
-                "tasks": [
-                  "Proceeded with self-implementation of the video serving system technology currently using Cloudflare",
-                  "In charge of client testing"
-                ]
-              }
-            }
           }
         }
       },
@@ -493,8 +455,7 @@
                 "subtitle": "Internal Documentation",
                 "tasks": [
                   "Written React knowledge sharing document",
-                  "Written Js & Ts knowledge sharing document",
-                  "CSR base project to SSR project conversion in progress (Frozen at the time)"
+                  "Written JavaScript & TypeScript knowledge sharing document"
                 ]
               }
             ]
@@ -745,6 +706,10 @@
         ]
       }
     ],
-    "links": ["https://icecokel.tistory.com/", "https://github.com/icecokel"]
+    "links": [
+      "https://vscoke.vercel.app/en-US",
+      "https://github.com/icecokel",
+      "https://vscoke.vercel.app/en-US/blog/dashboard"
+    ]
   }
 }

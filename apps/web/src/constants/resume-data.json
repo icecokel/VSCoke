@@ -12,8 +12,8 @@
     "id": "codecrayon",
     "projects": [
       {
-        "id": "shortimeAdmin",
-        "fileRef": "shortime-frontend"
+        "id": "commerceBackoffice",
+        "fileRef": "commerce-backoffice-product"
       },
       {
         "id": "subtitleSystem",
@@ -24,20 +24,8 @@
         "fileRef": "shortime-playground"
       },
       {
-        "id": "sellectorsAdmin",
-        "fileRef": "sellectors-admin"
-      },
-      {
-        "id": "sellectorsFrontend",
-        "fileRef": "sellectors-frontend"
-      },
-      {
-        "id": "others",
-        "descriptions": [
-          { "id": "piracyTracking", "fileRef": "freebooting-finder" },
-          { "id": "blogAutoGeneration" },
-          { "id": "vodSystem" }
-        ]
+        "id": "freebootingFinder",
+        "fileRef": "freebooting-finder"
       }
     ]
   },

@@ -7,7 +7,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import Image from "next/image";
 import Github from "public/images/icons/github.svg";
 import { Fragment } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import ProfileItem from "./profile-item";
 import Resume from "./resume/resume";
 import { ShareLinkButton } from "@/components/share/share-link-button";
@@ -20,8 +20,12 @@ import { ShareQrDialog } from "@/components/share/share-qr-dialog";
 const Profile = () => {
   const t = useTranslations("profile");
   const tResume = useTranslations("resume");
+  const locale = useLocale();
   const introduction = tResume.raw("introduction") as string[];
   const contact = tResume.raw("contact");
+  const siteUrl = `https://vscoke.vercel.app/${locale}`;
+  const blogUrl = `${siteUrl}/blog/dashboard`;
+
   return (
     <div className="p-3 flex flex-col gap-1 md:gap-5">
       <div className="flex justify-end gap-2">
@@ -128,6 +132,12 @@ const Profile = () => {
       {/* 링크 섹션 */}
       <ProfileItem title={t("links")}>
         <div className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
+          <Icon kind="navigation" />
+          <a href={siteUrl} target="_blank" rel="noopener noreferrer">
+            {siteUrl}
+          </a>
+        </div>
+        <div className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
           <Image src={Github} width={24} height={24} alt="git-hub" />
           <a href="https://github.com/icecokel" target="_blank" rel="noopener noreferrer">
             https://github.com/icecokel
@@ -135,8 +145,8 @@ const Profile = () => {
         </div>
         <div className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
           <Icon kind="bookmark" />
-          <a href="https://icecokel.tistory.com" target="_blank" rel="noopener noreferrer">
-            https://icecokel.tistory.com
+          <a href={blogUrl} target="_blank" rel="noopener noreferrer">
+            {blogUrl}
           </a>
         </div>
       </ProfileItem>

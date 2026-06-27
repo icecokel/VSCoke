@@ -223,9 +223,9 @@
       "email": "red9runge@gmail.com"
     },
     "introduction": [
-      "I aim to build comfortable services that users can trust.",
-      "Beyond delivering assigned development work, I enjoy turning team inefficiencies into systems that save colleagues time.",
-      "Improving the work experience of the people I work with is one of the main reasons I develop software."
+      "I have built React/Next.js-based frontend products, creating stable user flows and reusable development standards for teams.",
+      "Across commerce, back office, mobile webview, and medical/clinical analysis products, I have worked on server data integration, UI components, state management, rendering performance improvement, and verification automation.",
+      "I care that what I build remains as a stable screen for users and as a faster, safer frontend development flow for colleagues."
     ],
     "totalExperience": "7 years 3 months",
     "viewDescription": "Career Description",
@@ -235,40 +235,40 @@
         "company": "Oprimed Co., Ltd.",
         "period": "2026.02 - Present (5 months)",
         "employmentType": "Full-time",
-        "achievement": "Handled frontend development for medical and clinical analysis products, including the transition of server integration structure, UI component migration and rendering performance improvements, and the setup of frontend runtime and CI/CD workflows.",
+        "achievement": "Handled frontend development for React/Next.js/TypeScript-based medical and clinical analysis products. Focused on server data integration for complex analysis screens, UI component migration, and rendering performance improvements, while also improving pre-deployment verification and CI/CD flows within the frontend development environment.",
         "projects": {
           "medicalFrontendProductization": {
             "title": "Server Integration Transition, UI Migration, and Frontend Execution System Setup",
-            "period": "2026.02 - 2026.06",
             "descriptions": [
               {
-                "subtitle": "Server integration transition and user flow implementation for analysis products",
-                "detail": "The same server data was being fetched directly by multiple screens, scattering cache, refetch, and maintenance rules. The flow from analysis results to the next analysis also needed clear screen transition and state-passing rules.",
-                "skills": "Next.js, React, TypeScript, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Playwright, GitHub Actions, Husky, Docker",
+                "subtitle": "Server data integration and user flow improvements for React screens",
+                "detail": "The same server data was fetched separately across multiple screens, scattering refetch and cache standards. When moving from analysis results to the next analysis, user selections and progress state also needed to continue reliably.",
+                "skills": "React, Next.js, TypeScript, CSS, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Playwright, GitHub Actions, Husky, Docker",
                 "tasks": [
-                  "Converted server data fetching to a shared TanStack Query-based structure and removed 6 direct disease-list calls.",
-                  "Implemented task creation, state transfer, and screen transition flows from the analysis result screen to connect follow-up analysis flows.",
-                  "Separated areas that needed redefinition from non-working flows and shared them with the team, leading to clearer error, empty-state, and loading handling standards."
+                  "Converted to a shared TanStack Query-based lookup structure and removed 6 direct disease-list calls.",
+                  "Connected follow-up analysis creation, selected-value transfer, and screen transitions from the analysis result screen to the next analysis flow.",
+                  "Separated non-working or redefinition-needed flows and used them as the basis for improving error, empty-state, and loading handling standards."
                 ]
               },
               {
-                "subtitle": "UI component migration and rendering performance improvement",
-                "detail": "Some UI depended on images and caused unnecessary network requests, while inconsistent UI implementations across screens increased maintenance cost.",
+                "subtitle": "React UI component migration and rendering performance improvement",
+                "detail": "Some UI depended on images and caused unnecessary network requests, while different button, icon, and color implementation styles across screens could increase the scope of future changes.",
                 "tasks": [
-                  "Migrated image-based UI to code-based shared components, removing 3 runtime PNG requests and about 315 KiB of payload.",
+                  "Converted image-based UI to code-based shared components, removing 3 PNG requests and about 315 KiB of transferred payload.",
                   "Confirmed Lighthouse improvements by reducing LCP from 1.3s to 1.0s and Speed Index from 3.4s to 0.7s.",
-                  "Added a static image WebP conversion flow and reduced transferred image resources by about 95%.",
-                  "Introduced shared component usage standards and removed 25 legacy button imports and 34 static SVG files.",
-                  "Reduced 529 direct hex color usages to improve color management standards."
+                  "Added a static image WebP conversion flow and reduced image resource transfer by about 95%.",
+                  "Introduced shared component usage standards and removed 25 existing button imports and 34 static SVG files.",
+                  "Reduced 529 direct color-value usages to simplify color management standards."
                 ]
               },
               {
-                "subtitle": "Frontend runtime and CI/CD workflow setup",
-                "detail": "Different dependency, runtime, and pre-deployment verification standards across projects caused repeated build and validation issues, and errors that could be caught at commit or push time were reaching deployment preparation.",
+                "subtitle": "Frontend development environment and CI/CD verification flow maintenance",
+                "detail": "React/Next.js projects had different dependency, runtime, and pre-deployment verification standards, causing repeated build and validation checks. Type and build errors that could be caught at commit or push time could also reach deployment preparation.",
                 "tasks": [
-                  "Standardized frontend runtime by aligning security patches, dependency lockfiles, Docker runtime, and Node.js versions.",
-                  "Connected commit, push, and pre-deployment verification with GitHub Actions CI/CD and Husky pre-commit/pre-push hooks.",
-                  "Introduced Playwright CLI-based verification with passing examples for 3-browser single runs and a 6-combination browser/viewport matrix."
+                  "Standardized the React/Next.js runtime environment by aligning security patches, dependency lockfiles, container runtime, and frontend runtime versions.",
+                  "Connected typecheck, build, and Playwright verification flows through GitHub Actions-based CI/CD and Husky pre-commit/pre-push hooks.",
+                  "Documented Docker packaging, Next.js standalone execution, and load/deploy script standards, and shared a GitHub Actions self-hosted runner setup guide with the team.",
+                  "Introduced Playwright CLI-based verification and created reference cases for repeated validation across key browser and viewport combinations."
                 ]
               }
             ]

@@ -2,13 +2,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { expect, Page } from "@playwright/test";
 
-export type Locale = "ko-KR" | "en-US";
+export const SUPPORTED_LOCALES = ["ko-KR", "en-US", "ja-JP"] as const;
+export type Locale = (typeof SUPPORTED_LOCALES)[number];
 const DEFAULT_PLAYWRIGHT_LOCALE: Locale = "ko-KR";
 
 export interface AppMessages {
   common: {
     korean: string;
     english: string;
+    japanese: string;
   };
   menu: {
     file: string;
@@ -16,6 +18,8 @@ export interface AppMessages {
     language: string;
     help: string;
     preparing: string;
+    cancel: string;
+    open: string;
   };
   home: {
     primaryCta: string;
@@ -67,7 +71,7 @@ export interface AppMessages {
   };
 }
 
-export const LOCALE_PATH_REGEX = /\/(ko-KR|en-US)(?=\/|$)/;
+export const LOCALE_PATH_REGEX = /\/(ko-KR|en-US|ja-JP)(?=\/|$)/;
 
 export const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 

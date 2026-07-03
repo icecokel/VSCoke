@@ -11,8 +11,13 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 
-import { espressoParamsToPairs, sortEspressoRoundsByRecent } from "@/features/hobby/lib/espresso";
+import {
+  espressoParamsToPairs,
+  sortEspressoRoundsByRecent,
+  type EspressoFormatOptions,
+} from "@/features/hobby/lib/espresso";
 import type { EspressoBean, EspressoLog, EspressoRound } from "@/features/hobby/types/espresso";
 
 type EspressoLogViewProps = {
@@ -30,6 +35,37 @@ type ActiveContext = {
   bean?: EspressoBean;
   log?: EspressoLog;
   round?: EspressoRound;
+};
+
+const useEspressoFormatOptions = (): EspressoFormatOptions => {
+  const t = useTranslations("hobby.espresso");
+
+  return {
+    labels: {
+      machine: t("labels.machine"),
+      grinder: t("labels.grinder"),
+      basket: t("labels.basket"),
+      dosingShaker: t("labels.dosingShaker"),
+      tamper: t("labels.tamper"),
+      dose: t("labels.dose"),
+      yield: t("labels.yield"),
+      temperature: t("labels.temperature"),
+      preinfusion: t("labels.preinfusion"),
+      extractionTime: t("labels.extractionTime"),
+      targetExtractionTime: t("labels.targetExtractionTime"),
+      pressure: t("labels.pressure"),
+      flow: t("labels.flow"),
+      grind: t("labels.grind"),
+    },
+    maxSuffix: t("range.maxSuffix"),
+    minSuffix: t("range.minSuffix"),
+    units: {
+      g: t("units.g"),
+      sec: t("units.sec"),
+      celsius: t("units.celsius"),
+      bar: t("units.bar"),
+    },
+  };
 };
 
 const Chip = ({ children }: { children: ReactNode }) => {
@@ -129,21 +165,26 @@ const AnalysisSection = ({ title, items }: { title: string; items: string[] }) =
 };
 
 const CurrentSettingDetail = ({ bean, log }: { bean: EspressoBean; log: EspressoLog }) => {
+  const t = useTranslations("hobby.espresso");
+  const formatOptions = useEspressoFormatOptions();
   const latestRound = sortEspressoRoundsByRecent(log.rounds)[0];
-  const equipmentPairs = espressoParamsToPairs(bean.defaultEquipment);
-  const latestRecipePairs = espressoParamsToPairs(latestRound?.recipe);
-  const latestResultPairs = espressoParamsToPairs({
-    extractionTime: latestRound?.result.extractionTime,
-    pressure: latestRound?.result.pressure,
-  });
+  const equipmentPairs = espressoParamsToPairs(bean.defaultEquipment, formatOptions);
+  const latestRecipePairs = espressoParamsToPairs(latestRound?.recipe, formatOptions);
+  const latestResultPairs = espressoParamsToPairs(
+    {
+      extractionTime: latestRound?.result.extractionTime,
+      pressure: latestRound?.result.pressure,
+    },
+    formatOptions,
+  );
 
   return (
     <div className="space-y-4">
-      <SectionPanel title="장비 기본">
+      <SectionPanel title={t("defaultEquipment")}>
         <SpecGrid pairs={equipmentPairs} />
       </SectionPanel>
 
-      <SectionPanel title="현재 조건">
+      <SectionPanel title={t("currentConditions")}>
         <div className="flex flex-wrap gap-2">
           {(log.currentAnalysis?.conditions ?? []).map(condition => (
             <Chip key={condition}>{condition}</Chip>
@@ -152,10 +193,10 @@ const CurrentSettingDetail = ({ bean, log }: { bean: EspressoBean; log: Espresso
       </SectionPanel>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <SectionPanel title="최근 추출 세팅">
+        <SectionPanel title={t("latestExtractionSettings")}>
           <SpecGrid pairs={latestRecipePairs} />
         </SectionPanel>
-        <SectionPanel title="최근 결과">
+        <SectionPanel title={t("latestResult")}>
           <div className="space-y-3">
             <SpecGrid pairs={latestResultPairs} />
             <TextList
@@ -165,33 +206,43 @@ const CurrentSettingDetail = ({ bean, log }: { bean: EspressoBean; log: Espresso
         </SectionPanel>
       </div>
 
-      <AnalysisSection title="현재 의심 지점" items={log.currentAnalysis?.suspectedIssues ?? []} />
+      <AnalysisSection
+        title={t("suspectedIssues")}
+        items={log.currentAnalysis?.suspectedIssues ?? []}
+      />
     </div>
   );
 };
 
 const RoundCard = ({ round }: { round: EspressoRound }) => {
-  const recipePairs = espressoParamsToPairs(round.recipe);
-  const resultPairs = espressoParamsToPairs({
-    extractionTime: round.result.extractionTime,
-    pressure: round.result.pressure,
-  });
+  const t = useTranslations("hobby.espresso");
+  const formatOptions = useEspressoFormatOptions();
+  const recipePairs = espressoParamsToPairs(round.recipe, formatOptions);
+  const resultPairs = espressoParamsToPairs(
+    {
+      extractionTime: round.result.extractionTime,
+      pressure: round.result.pressure,
+    },
+    formatOptions,
+  );
 
   return (
     <article className="rounded-lg border border-gray-800 bg-gray-900 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-800 pb-3">
         <div>
-          <h4 className="text-lg font-semibold text-gray-50">라운드 {round.roundNumber}</h4>
+          <h4 className="text-lg font-semibold text-gray-50">
+            {t("roundLabel", { number: round.roundNumber })}
+          </h4>
           {round.date && <p className="mt-1 text-xs text-gray-500">{round.date}</p>}
         </div>
-        {round.recipe.grind && <Chip>분쇄도 {round.recipe.grind}</Chip>}
+        {round.recipe.grind && <Chip>{t("grind", { value: round.recipe.grind })}</Chip>}
       </div>
 
       <div className="mt-4 space-y-4">
         <section>
           <h5 className="mb-2 flex items-center gap-2 text-xs font-semibold tracking-wide text-blue-200 uppercase">
             <Gauge className="size-4" />
-            추출 조건
+            {t("extractionConditions")}
           </h5>
           <SpecGrid pairs={recipePairs} />
         </section>
@@ -199,7 +250,7 @@ const RoundCard = ({ round }: { round: EspressoRound }) => {
         <section>
           <h5 className="mb-2 flex items-center gap-2 text-xs font-semibold tracking-wide text-blue-200 uppercase">
             <Coffee className="size-4" />
-            결과
+            {t("result")}
           </h5>
           <div className="space-y-3">
             <SpecGrid pairs={resultPairs} />
@@ -209,12 +260,12 @@ const RoundCard = ({ round }: { round: EspressoRound }) => {
 
         <div className="grid gap-3 lg:grid-cols-2">
           <AnalysisSection
-            title="변경 / 메모"
+            title={t("changesAndNotes")}
             items={[...(round.analysis?.changes ?? []), ...(round.analysis?.notes ?? [])]}
           />
-          <AnalysisSection title="판단" items={round.analysis?.judgments ?? []} />
-          <AnalysisSection title="추론" items={round.analysis?.inferences ?? []} />
-          <AnalysisSection title="다음 액션" items={round.nextActions} />
+          <AnalysisSection title={t("judgment")} items={round.analysis?.judgments ?? []} />
+          <AnalysisSection title={t("inference")} items={round.analysis?.inferences ?? []} />
+          <AnalysisSection title={t("nextActions")} items={round.nextActions} />
         </div>
       </div>
     </article>
@@ -222,30 +273,37 @@ const RoundCard = ({ round }: { round: EspressoRound }) => {
 };
 
 const NextTestDetail = ({ log }: { log: EspressoLog }) => {
+  const t = useTranslations("hobby.espresso");
+  const formatOptions = useEspressoFormatOptions();
   if (!log.nextTest && !log.nextDirection?.length && !log.finalHypothesis?.length) {
     return null;
   }
 
-  const recipePairs = espressoParamsToPairs(log.nextTest?.recipe);
+  const recipePairs = espressoParamsToPairs(log.nextTest?.recipe, formatOptions);
 
   return (
     <div className="space-y-4">
-      {log.nextTest?.targetRoundNumber && <Chip>목표 라운드 {log.nextTest.targetRoundNumber}</Chip>}
+      {log.nextTest?.targetRoundNumber && (
+        <Chip>{t("targetRound", { number: log.nextTest.targetRoundNumber })}</Chip>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <AnalysisSection title="가설" items={log.finalHypothesis ?? []} />
-        <AnalysisSection title="방향" items={log.nextDirection ?? log.nextTest?.goals ?? []} />
-        <AnalysisSection title="기대 결과" items={log.nextTest?.expectedResult ?? []} />
+        <AnalysisSection title={t("hypothesis")} items={log.finalHypothesis ?? []} />
+        <AnalysisSection
+          title={t("direction")}
+          items={log.nextDirection ?? log.nextTest?.goals ?? []}
+        />
+        <AnalysisSection title={t("expectedResult")} items={log.nextTest?.expectedResult ?? []} />
       </div>
 
       {recipePairs.length > 0 && (
-        <SectionPanel title="추출 세팅">
+        <SectionPanel title={t("extractionSetting")}>
           <SpecGrid pairs={recipePairs} />
         </SectionPanel>
       )}
 
       {log.nextTest?.method?.length ? (
-        <SectionPanel title="추출 진행">
+        <SectionPanel title={t("extractionProgress")}>
           <div className="space-y-3">
             {log.nextTest.method.map(step => (
               <div key={step.time} className="rounded-md border border-gray-800 bg-gray-900 p-3">
@@ -277,6 +335,7 @@ const GuideDetail = ({ log }: { log: EspressoLog }) => {
 };
 
 const HistoryDetail = ({ log }: { log: EspressoLog }) => {
+  const t = useTranslations("hobby.espresso");
   const sortedRounds = sortEspressoRoundsByRecent(log.rounds);
 
   return (
@@ -285,10 +344,12 @@ const HistoryDetail = ({ log }: { log: EspressoLog }) => {
         <section key={round.id} className="rounded-lg border border-gray-800 bg-gray-950 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h4 className="text-lg font-semibold text-gray-50">라운드 {round.roundNumber}</h4>
+              <h4 className="text-lg font-semibold text-gray-50">
+                {t("roundLabel", { number: round.roundNumber })}
+              </h4>
               {round.date && <p className="mt-1 text-xs text-gray-500">{round.date}</p>}
             </div>
-            {round.recipe.grind && <Chip>분쇄도 {round.recipe.grind}</Chip>}
+            {round.recipe.grind && <Chip>{t("grind", { value: round.recipe.grind })}</Chip>}
           </div>
           <div className="mt-3">
             <TextList items={[...(round.result.taste ?? []), ...(round.result.notes ?? [])]} />
@@ -306,16 +367,18 @@ const DetailPanel = ({
   context: ActiveContext;
   selection: DetailSelection;
 }) => {
+  const t = useTranslations("hobby.espresso");
+
   if (!context.bean || !context.log) {
     return null;
   }
 
   const titleMap: Record<DetailSelection["type"], string> = {
-    current: "현재 기준 세팅",
-    next: "다음 테스트 세팅",
-    guide: "조정 가이드",
-    history: "히스토리",
-    round: context.round ? `라운드 ${context.round.roundNumber}` : "라운드",
+    current: t("currentBasisSettings"),
+    next: t("nextTestSettings"),
+    guide: t("adjustmentGuide"),
+    history: t("history"),
+    round: context.round ? t("roundLabel", { number: context.round.roundNumber }) : t("round"),
   };
 
   return (
@@ -323,12 +386,12 @@ const DetailPanel = ({
       <div className="mb-5 flex flex-col gap-3 border-b border-gray-800 pb-4 md:flex-row md:items-start md:justify-between">
         <div>
           <p className="text-xs font-semibold tracking-[0.16em] text-gray-500 uppercase">
-            {context.bean.roaster ?? "Roaster"}
+            {context.bean.roaster ?? t("roasterFallback")}
           </p>
           <h2 className="mt-1 text-2xl font-bold text-gray-50">{titleMap[selection.type]}</h2>
           <p className="mt-2 text-sm text-gray-400">{context.bean.name}</p>
         </div>
-        <Chip>{context.log.rounds.length} rounds</Chip>
+        <Chip>{t("roundCount", { count: context.log.rounds.length })}</Chip>
       </div>
 
       {selection.type === "current" && (
@@ -343,6 +406,7 @@ const DetailPanel = ({
 };
 
 export const EspressoLogView = ({ bean }: EspressoLogViewProps) => {
+  const t = useTranslations("hobby.espresso");
   const initialSelection = useMemo<DetailSelection | null>(() => {
     const log = bean?.logs[0];
 
@@ -409,10 +473,12 @@ export const EspressoLogView = ({ bean }: EspressoLogViewProps) => {
             <div>
               <h1 className="text-3xl font-bold text-gray-50 md:text-4xl">{bean.name}</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-400">
-                에스프레소 추출 조건, 맛 변화, 다음 테스트 방향을 누적한 원두 기록입니다.
+                {t("detailDescription")}
               </p>
             </div>
-            <p className="text-sm font-medium text-gray-300">{bean.roaster ?? "Roaster"}</p>
+            <p className="text-sm font-medium text-gray-300">
+              {bean.roaster ?? t("roasterFallback")}
+            </p>
           </div>
         </header>
 
@@ -423,7 +489,7 @@ export const EspressoLogView = ({ bean }: EspressoLogViewProps) => {
           >
             <div className="mb-3 flex items-center gap-2 px-2 text-xs font-semibold tracking-[0.16em] text-blue-200 uppercase">
               <SlidersHorizontal className="size-4" />
-              추출 세팅
+              {t("extractionSettings")}
             </div>
 
             <div className="space-y-1">
@@ -438,7 +504,7 @@ export const EspressoLogView = ({ bean }: EspressoLogViewProps) => {
                       onClick={() => select({ type: "current", beanId: bean.id, logId: log.id })}
                     >
                       <ChevronDown className="size-4 shrink-0" />
-                      <span>추출 세팅</span>
+                      <span>{t("extractionSettings")}</span>
                     </TreeButton>
 
                     <TreeButton
@@ -447,7 +513,7 @@ export const EspressoLogView = ({ bean }: EspressoLogViewProps) => {
                       onClick={() => select({ type: "current", beanId: bean.id, logId: log.id })}
                     >
                       <FlaskConical className="size-4 shrink-0" />
-                      <span>현재 기준 세팅</span>
+                      <span>{t("currentBasisSettings")}</span>
                     </TreeButton>
                     <TreeButton
                       depth={1}
@@ -455,7 +521,7 @@ export const EspressoLogView = ({ bean }: EspressoLogViewProps) => {
                       onClick={() => select({ type: "next", beanId: bean.id, logId: log.id })}
                     >
                       <ListChecks className="size-4 shrink-0" />
-                      <span>다음 테스트 세팅</span>
+                      <span>{t("nextTestSettings")}</span>
                     </TreeButton>
                     <TreeButton
                       depth={1}
@@ -463,7 +529,7 @@ export const EspressoLogView = ({ bean }: EspressoLogViewProps) => {
                       onClick={() => select({ type: "guide", beanId: bean.id, logId: log.id })}
                     >
                       <SlidersHorizontal className="size-4 shrink-0" />
-                      <span>조정 가이드</span>
+                      <span>{t("adjustmentGuide")}</span>
                     </TreeButton>
                     <TreeButton
                       depth={1}
@@ -471,7 +537,7 @@ export const EspressoLogView = ({ bean }: EspressoLogViewProps) => {
                       onClick={() => select({ type: "history", beanId: bean.id, logId: log.id })}
                     >
                       <History className="size-4 shrink-0" />
-                      <span>히스토리</span>
+                      <span>{t("history")}</span>
                     </TreeButton>
                     {sortedRounds.map(round => (
                       <TreeButton
@@ -488,7 +554,7 @@ export const EspressoLogView = ({ bean }: EspressoLogViewProps) => {
                         }
                       >
                         <Gauge className="size-4 shrink-0" />
-                        <span>라운드 {round.roundNumber}</span>
+                        <span>{t("roundLabel", { number: round.roundNumber })}</span>
                       </TreeButton>
                     ))}
                   </div>

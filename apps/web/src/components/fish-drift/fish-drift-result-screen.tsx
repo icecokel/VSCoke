@@ -13,10 +13,13 @@ interface FishDriftResultScreenProps {
 export const FishDriftResultScreen = ({ score, onRestart }: FishDriftResultScreenProps) => {
   const router = useCustomRouter();
   const tShare = useTranslations("Share");
+  const tGame = useTranslations("Game");
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-sky-950/85 p-6 text-white backdrop-blur-sm">
-      <h2 className="mb-4 text-5xl font-extrabold tracking-wide text-cyan-100">SWIM OVER</h2>
+      <h2 className="mb-4 text-5xl font-extrabold tracking-wide text-cyan-100">
+        {tGame("fishDriftGameOver")}
+      </h2>
       <p className="mb-10 text-4xl font-black text-emerald-300">{score}</p>
 
       <div className="flex w-full max-w-xs flex-col gap-3">
@@ -32,7 +35,7 @@ export const FishDriftResultScreen = ({ score, onRestart }: FishDriftResultScree
           onClick={onRestart}
           className="rounded-full bg-emerald-300 py-6 text-lg font-bold text-slate-900 hover:bg-emerald-200"
         >
-          다시 시작
+          {tGame("restart")}
         </Button>
 
         <Button
@@ -40,7 +43,7 @@ export const FishDriftResultScreen = ({ score, onRestart }: FishDriftResultScree
           variant="ghost"
           className="text-slate-300 hover:text-white"
         >
-          게임 목록으로
+          {tGame("viewOtherGames")}
         </Button>
       </div>
     </div>

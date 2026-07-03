@@ -26,18 +26,19 @@ export const generateMetadata = async ({ params }: Props): Promise<Metadata> => 
   }
 
   const gameTitle = result.gameType === "SKY_DROP" ? "Sky Drop" : "Game";
+  const scoreTitle = `${gameTitle} - ${result.score}${t("scorePointSuffix")}`;
 
   return {
-    title: `${gameTitle} - ${result.score}점`,
+    title: scoreTitle,
     description: t("shareDescription", { score: result.score }),
     openGraph: {
-      title: `${gameTitle} - ${result.score}점`,
+      title: scoreTitle,
       description: t("shareDescription", { score: result.score }),
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
-      title: `${gameTitle} - ${result.score}점`,
+      title: scoreTitle,
       description: t("shareDescription", { score: result.score }),
     },
     robots: {

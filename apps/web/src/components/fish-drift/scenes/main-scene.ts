@@ -383,8 +383,10 @@ export class MainScene extends Phaser.Scene {
     if (!this.speedUpText) return;
 
     const speedRatio = nextObstacleSpeed / FishDriftConstants.BASE_OBSTACLE_SPEED;
+    const texts = this.registry.get("texts") as { speedUp?: string } | undefined;
+    const speedUpText = texts?.speedUp ?? "해류 가속";
     this.speedUpText
-      .setText(`해류 가속 x${speedRatio.toFixed(2)}`)
+      .setText(`${speedUpText} x${speedRatio.toFixed(2)}`)
       .setPosition(this.scale.width / 2, 56)
       .setScale(0.9)
       .setAlpha(1);

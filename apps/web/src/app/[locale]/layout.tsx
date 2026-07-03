@@ -16,6 +16,12 @@ import { getExplorer } from "@/utils/get/explorer";
 import { getAllPosts } from "@/lib/blog";
 import { routing } from "@/i18n/routing";
 
+const OPEN_GRAPH_LOCALES: Record<(typeof routing.locales)[number], string> = {
+  "ko-KR": "ko_KR",
+  "en-US": "en_US",
+  "ja-JP": "ja_JP",
+};
+
 type Props = {
   children: React.ReactNode;
   params: Promise<{ locale: string }>;
@@ -41,7 +47,7 @@ export async function generateMetadata({ params }: Props) {
       description: t("description"),
       url: "https://vscoke.vercel.app",
       siteName: t("title"),
-      locale: locale === "ko-KR" ? "ko_KR" : "en_US",
+      locale: OPEN_GRAPH_LOCALES[locale as (typeof routing.locales)[number]] ?? "ko_KR",
       type: "website",
     },
     twitter: {

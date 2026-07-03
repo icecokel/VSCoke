@@ -3,9 +3,19 @@ import {
   escapeRegExp,
   expectPath,
   expectWordleKeyboardButtons,
+  loadMessages,
   resolveLocaleAndMessages,
+  SUPPORTED_LOCALES,
+  type AppMessages,
+  type Locale,
   visit,
 } from "./test-helpers";
+
+const LANGUAGE_LABEL_KEYS: Record<Locale, keyof AppMessages["common"]> = {
+  "ko-KR": "korean",
+  "en-US": "english",
+  "ja-JP": "japanese",
+};
 
 const openQrDialogAndCopy = async (
   page: Page,
@@ -65,8 +75,12 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     const visibleButtons = dialog.locator("button:visible");
     expect(await visibleButtons.count()).toBeGreaterThanOrEqual(8);
 
-    const cancelButton = dialog.getByRole("button", { name: /취소|Cancel/ }).first();
-    const openButton = dialog.getByRole("button", { name: /열기|Open/ }).first();
+    const cancelButton = dialog
+      .getByRole("button", { name: new RegExp(`^${escapeRegExp(messages.menu.cancel)}$`) })
+      .first();
+    const openButton = dialog
+      .getByRole("button", { name: new RegExp(`^${escapeRegExp(messages.menu.open)}$`) })
+      .first();
 
     await expect(openButton).toBeDisabled();
     await dialog.getByRole("button", { name: "Portfolio" }).first().click();
@@ -76,8 +90,14 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await expect(dialog).toBeHidden();
 
     await menuBar.getByText(messages.menu.language, { exact: true }).click();
-    await expect(page.getByRole("menuitem", { name: "English" })).toBeVisible();
-    await expect(page.getByRole("menuitem", { name: "한국어" })).toBeVisible();
+    for (const supportedLocale of SUPPORTED_LOCALES) {
+      const localeMessages = loadMessages(supportedLocale);
+      await expect(
+        page.getByRole("menuitem", {
+          name: localeMessages.common[LANGUAGE_LABEL_KEYS[supportedLocale]],
+        }),
+      ).toBeVisible();
+    }
     await page.keyboard.press("Escape");
 
     await menuBar.getByText(messages.menu.help, { exact: true }).click({ force: true });

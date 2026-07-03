@@ -2,16 +2,15 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   escapeRegExp,
   getHistorySnapshot,
+  type Locale,
   resolveLocaleAndMessages,
   visit,
   waitForHistoryHydration,
   waitForHistoryPaths,
 } from "./test-helpers";
 
-type TestLocale = "ko-KR" | "en-US";
-
-const getTestLocale = (): TestLocale =>
-  (process.env.PLAYWRIGHT_LOCALE as TestLocale | undefined) ?? "ko-KR";
+const getTestLocale = (): Locale =>
+  (process.env.PLAYWRIGHT_LOCALE as Locale | undefined) ?? "ko-KR";
 
 const installHistoryFixture = async (
   page: Page,

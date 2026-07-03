@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import * as Phaser from "phaser";
 import { FishDriftGameConfig } from "./fish-drift-game-config";
 import { LoadingOverlay } from "@/components/game/ui/loading-overlay";
+import { useTranslations } from "next-intl";
 
 interface GameOverPayload {
   score: number;
@@ -29,12 +30,16 @@ export const FishDriftPhaserGame = ({
   const restartTokenRef = useRef(restartToken);
   const [isLoaded, setIsLoaded] = useState(false);
   const [progress, setProgress] = useState(0);
+  const t = useTranslations("Game");
 
   useEffect(() => {
     if (typeof window === "undefined" || gameRef.current) return;
 
     const game = new Phaser.Game(FishDriftGameConfig);
     gameRef.current = game;
+    game.registry.set("texts", {
+      speedUp: t("fishDriftSpeedUp"),
+    });
 
     game.events.on("game:ready", () => {
       setIsLoaded(true);
@@ -55,7 +60,7 @@ export const FishDriftPhaserGame = ({
       setIsLoaded(false);
       setProgress(0);
     };
-  }, [onReady, onGameOver]);
+  }, [onReady, onGameOver, t]);
 
   useEffect(() => {
     if (!isLoaded || !isPlaying || !gameRef.current) return;

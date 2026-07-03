@@ -1,0 +1,784 @@
+{
+  "common": {
+    "language": "言語",
+    "korean": "한국어",
+    "english": "English",
+    "japanese": "日本語"
+  },
+  "menu": {
+    "file": "ファイル",
+    "openProject": "プロジェクトを開く",
+    "language": "言語",
+    "help": "ヘルプ",
+    "preparing": "準備中...",
+    "projectInProgress": "白黒料理人ゲーム（進行中）",
+    "favorites": "よく使う項目",
+    "recentItems": "最近の項目",
+    "applications": "アプリケーション",
+    "desktop": "デスクトップ",
+    "documents": "書類",
+    "downloads": "ダウンロード",
+    "locations": "場所",
+    "search": "検索",
+    "cancel": "キャンセル",
+    "open": "開く",
+    "selectProject": "プロジェクトを選択してください。",
+    "openProjectHint": "開くボタンを押すと、プロジェクトまたはGitが開きます。",
+    "preparingToast": "準備中です"
+  },
+  "sidebar": {
+    "explorer": "エクスプローラー",
+    "search": "検索",
+    "searchDisabled": "検索機能は現在無効です。",
+    "searchPlaceholder": "ブログ、プロフィール、ゲーム、趣味を検索...",
+    "searchRecommended": "おすすめ",
+    "searchResults": "検索結果",
+    "searchResultCount": "{count}件",
+    "searchNoResult": "検索結果がありません。",
+    "searchHint": "Enterで開く、Escでクリア",
+    "searchTypeBlog": "ブログ",
+    "searchTypeProfile": "プロフィール",
+    "searchTypeGame": "ゲーム",
+    "searchTypeHobby": "趣味",
+    "more": "...（もっと見る）"
+  },
+  "metadata": {
+    "title": "VSCOKE",
+    "description": "開発者ポートフォリオ & ブログ",
+    "keywords": "開発者, ポートフォリオ, ブログ, React, Next.js"
+  },
+  "home": {
+    "greeting": "こんにちは、",
+    "developer": "開発者のイ・サンミン",
+    "suffix": "です",
+    "welcome": "Welcome to IceCokel Portfolio",
+    "entertainment": "Entertainment",
+    "entertainmentDesc": "ゲームダッシュボードでさまざまなミニゲームを確認できます。",
+    "playGame": "開始",
+    "headline": "今必要な画面へすばやく移動できます。",
+    "subheadline": "メインページをハブとして、履歴書、ブログ、ゲームをまとめて探索できます。",
+    "primaryCta": "READMEを見る",
+    "secondaryCta": "ゲームを始める",
+    "quickLaunchTitle": "Quick Launch",
+    "quickLaunchDescription": "よく使うセクションへ直接移動します。",
+    "cards": {
+      "readmeTitle": "README",
+      "readmeDesc": "プロフィールと経歴サマリーを確認します。",
+      "blogTitle": "Blog",
+      "blogDesc": "開発記事と振り返りを読みます。",
+      "blogDashboardTitle": "Blog Dashboard",
+      "blogDashboardDesc": "投稿一覧と検索状態を確認します。",
+      "gameTitle": "Game Center",
+      "gameDesc": "ミニゲームを選んですぐにプレイします。",
+      "open": "開く"
+    },
+    "trustTitle": "信頼指標",
+    "trustDescription": "現在のリソースを基準に算出した主要情報です。",
+    "trust": {
+      "experience": "総経験年数",
+      "projects": "プロジェクト",
+      "posts": "投稿",
+      "games": "ゲーム",
+      "projectSuffix": "件",
+      "postSuffix": "件",
+      "gameSuffix": "種",
+      "experienceHint": "実務経験基準",
+      "projectsHint": "履歴書に登録された項目数",
+      "postsHint": "公開済みブログ記事数",
+      "gamesHint": "プレイ可能なゲーム数"
+    },
+    "techTitle": "主な技術スタック"
+  },
+  "profile": {
+    "notOnlyCoding": "コードを書くことだけにとどまらない",
+    "developerName": "開発者のイ・サンミンです。",
+    "sendEmail": "メールを送る",
+    "call": "電話する",
+    "copyPhone": "電話番号をコピー",
+    "introduction": "簡単な紹介",
+    "links": "リンク",
+    "education": "学歴 / 教育",
+    "viewCareer": "経歴を見る",
+    "hybridCourse": "ハイブリッドアプリ開発（iOS&Android）およびWeb開発者養成課程",
+    "hybridDesc": "Java、SpringベースのWeb開発基礎（Spring基礎、REST API）",
+    "hybridDesc2": "Android、iOSアプリ開発基礎",
+    "university": "瑞逸大学",
+    "major": "情報通信学科"
+  },
+  "blog": {
+    "title": "ブログ",
+    "description": "開発に関する記事と経験を共有します。",
+    "backToList": "一覧へ戻る",
+    "noPosts": "投稿がありません。",
+    "dashboardTitle": "ダッシュボード",
+    "dashboardDescription": "ブログ投稿の管理ページ",
+    "dashboardSearchPlaceholder": "タイトルで検索...",
+    "showAllTags": "+ すべてのタグを見る（{count}）",
+    "hideAllTags": "閉じる"
+  },
+  "Game": {
+    "submitScore": "スコアを記録する",
+    "submitting": "記録中...",
+    "loginAndSubmit": "Googleでログインして記録する",
+    "submitted": "記録完了",
+    "submitSuccess": "スコアを正常に記録しました！",
+    "submitFail": "スコアの記録に失敗しました。",
+    "score": "スコア: ",
+    "deadline": "デッドライン",
+    "start": "開始",
+    "gameOver": "ゲーム終了",
+    "loading": "単語を読み込んでいます...",
+    "finalScore": "最終スコア: ",
+    "restart": "クリックして再スタート",
+    "goBack": "戻る",
+    "exit": "終了",
+    "skyDropDesc": "落ちてくるブロックを合わせてスコアを獲得するパズルゲームです。",
+    "fishDriftDesc": "ワンタッチの左右遊泳で海底の障害物を避け、魚の群れを集めるゲームです。",
+    "time": "時間: ",
+    "share": "自慢する",
+    "saveImage": "画像を保存",
+    "copied": "クリップボードにコピーしました！",
+    "shareMessages": {
+      "0": "🔥 {gameName}で{score}点！このスコアを超えられる？",
+      "1": "ふふ、{gameName}で{score}点... けっこう得意かも？ 🎮",
+      "2": "やった！{gameName}で{score}点達成！人生ゲームに認定！ ✨",
+      "3": "{gameName}で{score}点... もう少しで新記録だったのに！ 😭",
+      "4": "一緒に{gameName}やります？私の記録は{score}点です！ 👀"
+    },
+    "copyLink": "リンクをコピー",
+    "shareTitle": "自分のスコアを自慢する",
+    "shareDescription": "Sky Dropで{score}点を達成しました！私に勝てますか？",
+    "tryIt": "挑戦してみてください！",
+    "playNow": "今すぐプレイ",
+    "beatThisScore": "このスコアを超えてみてください！",
+    "viewOtherGames": "他のゲームを見る",
+    "goToDashboard": "ダッシュボードへ移動",
+    "height": "高さ",
+    "tapToDrop": "タップして落とす",
+    "rankPrompt": "🏆 スコアを記録すると自分の順位を確認できます！",
+    "currentRank": "現在の順位",
+    "rankSuffix": "位",
+    "doomDesc": "Webブラウザで楽しめる伝説的なFPSゲームです。",
+    "doomTitle": "DOOM（シェアウェア）",
+    "wordleTitle": "Wordle",
+    "wordleDesc": "6回のチャンスで5文字の英単語を当てるゲームです。",
+    "notInList": "単語リストにありません。",
+    "notEnoughLetters": "文字数が足りません。",
+    "loadFailed": "単語の読み込みに失敗しました。",
+    "errorOccurred": "エラーが発生しました。",
+    "weeklyRank": "週間順位",
+    "bestScore": "最高スコア",
+    "overall": "全体",
+    "newRecord": "新記録",
+    "leaderboardTitle": "TOP 3 ランキング",
+    "leaderboardLoading": "ランキングを読み込んでいます...",
+    "leaderboardEmpty": "まだランキング記録がありません。",
+    "unknownPlayer": "匿名プレイヤー",
+    "fishDriftReady": "タップまたはSpaceで潮流を縫うように進む",
+    "fishDriftLoading": "海を読み込んでいます...",
+    "fishDriftGuide": "魚は下から上へ泳ぎます\nタッチまたはSpace入力ごとに左右の泳ぐ方向が切り替わります\n色ごとの魚の群れを集めるとスコアが大きく伸びます",
+    "fishDriftGameOver": "SWIM OVER",
+    "fishDriftSpeedUp": "潮流加速",
+    "wordleWonTitle": "正解です！ 🎉",
+    "wordleWonDescription": "答えを当てました！",
+    "wordleLostTitle": "惜しいです 😭",
+    "wordleLostDescription": "答えは{answer}でした。",
+    "scorePointSuffix": "点",
+    "resultNotFoundTitle": "ゲーム結果が見つかりません",
+    "resultNotFoundDescription": "共有されたゲーム結果を見つけられませんでした。",
+    "backToGame": "ゲームへ戻る"
+  },
+  "Share": {
+    "title": "VSCokeを共有",
+    "description": "このリンクを確認してみてください！",
+    "share": "共有",
+    "qr": "QRを見る",
+    "qrTitle": "QRコードで共有",
+    "qrDescription": "スマートフォンのカメラでスキャンするか、リンクをコピーしてください。",
+    "copyLink": "リンクをコピー",
+    "copied": "リンクをコピーしました！",
+    "shareFail": "共有に失敗しました。もう一度お試しください。",
+    "wordleText": "VSCoke Wordleに挑戦してみてください！",
+    "fishDriftText": "VSCoke Fish Driftに挑戦してみてください！私のスコアは{score}点です。"
+  },
+  "Doom": {
+    "title": "DOOM",
+    "subtitle": "シェアウェア版 • JS-DOS エミュレーション",
+    "warningTitle": "警告: 悪魔的存在を検知",
+    "warningDesc": "UAC（Union Aerospace Corporation）警告:\nこのシミュレーションは外部アーカイブから約5MBのデータをダウンロードします。",
+    "buttonLoading": "プロトコルを読み込み中...",
+    "buttonStart": "RIP AND TEAR",
+    "controls": "操作: 矢印キーで移動 • CTRLで発射 • SPACEでドアを開く",
+    "footer": "DOOM®はid Software, Inc.の登録商標です。このプロジェクトは教育目的の非営利ファンプロジェクトであり、ゲームファイルは外部ソースからストリーミングされます。",
+    "loadingTitle": "作戦ブリーフィング",
+    "loadingStatus": "UACネットワークへのアップリンクを確立中...",
+    "guideMovement": "移動: 矢印キー",
+    "guideFire": "攻撃: CTRL",
+    "guideOpen": "操作: SPACE",
+    "guideStrafe": "横移動: ALT + 矢印キー",
+    "soundOn": "サウンド: オン",
+    "soundOff": "サウンド: オフ",
+    "muteLabel": "静かにプレイするため音をオフにする"
+  },
+  "intro": {
+    "title": "Welcome VSCoke",
+    "osWindow": "OSがWindowsの場合",
+    "osMac": "OSがmacOSの場合",
+    "fullScreenGuide": "「全画面表示」でご覧いただくと",
+    "experience": "より良い体験になります"
+  },
+  "notFound": {
+    "title": "ページが見つかりません。",
+    "descPrefix": "「",
+    "descSuffix": "」のページは見つかりません。",
+    "guide": "ファイルアイコンをクリックして別のページへ移動するか、下のボタンからメインページへ移動してください。",
+    "button": "メインページへ移動"
+  },
+  "historyTabs": {
+    "close": "閉じる",
+    "closeOthers": "他を閉じる",
+    "closeAll": "すべて閉じる"
+  },
+  "achievement": {
+    "label": "💡 成果"
+  },
+  "descriptionItem": {
+    "techStack": "技術スタック"
+  },
+  "hobby": {
+    "recipes": {
+      "title": "レシピ",
+      "description": "よく作る料理の材料と調理手順をまとめた個人レシピ記録です。",
+      "searchDescription": "個人の料理レシピと材料記録",
+      "total": "全{count}件のレシピ",
+      "summary": "材料{ingredients}件 · 手順{steps}件",
+      "detailAria": "{name}の詳細を見る",
+      "viewDetail": "詳細を見る",
+      "backToList": "一覧へ戻る",
+      "source": "{source} 原文",
+      "ingredients": "材料",
+      "steps": "作り方",
+      "searchLabel": "レシピ検索",
+      "searchPlaceholder": "名前、材料、タグで検索",
+      "resultCount": "検索結果 {count}件",
+      "displayCount": "{count}件を表示",
+      "empty": "レシピを読み込めなかったか、まだ登録されたレシピがありません。",
+      "noResults": "検索結果がありません。"
+    },
+    "espresso": {
+      "title": "豆の記録",
+      "description": "豆ごとのエスプレッソ抽出条件、味の変化、次のテスト方針を管理します。",
+      "searchDescription": "エスプレッソ豆ごとの抽出条件と味の記録",
+      "detailDescription": "エスプレッソの抽出条件、味の変化、次のテスト方針を蓄積した豆の記録です。",
+      "total": "全{count}件の豆",
+      "empty": "豆の記録を読み込めなかったか、まだ登録された豆がありません。",
+      "round": "ラウンド",
+      "roundLabel": "ラウンド {number}",
+      "roundCount": "{count}ラウンド",
+      "recentExtraction": "最近の抽出",
+      "recentRecord": "最近の記録",
+      "viewRecords": "抽出記録を見る",
+      "extractionSettings": "抽出セッティング",
+      "currentBasisSettings": "現在基準のセッティング",
+      "nextTestSettings": "次回テストのセッティング",
+      "adjustmentGuide": "調整ガイド",
+      "history": "履歴",
+      "defaultEquipment": "基本機材",
+      "currentConditions": "現在の条件",
+      "latestExtractionSettings": "直近の抽出セッティング",
+      "latestResult": "直近の結果",
+      "suspectedIssues": "現在の懸念点",
+      "extractionConditions": "抽出条件",
+      "result": "結果",
+      "changesAndNotes": "変更 / メモ",
+      "judgment": "判断",
+      "inference": "推論",
+      "nextActions": "次のアクション",
+      "targetRound": "目標ラウンド {number}",
+      "hypothesis": "仮説",
+      "direction": "方針",
+      "expectedResult": "期待結果",
+      "extractionSetting": "抽出セッティング",
+      "extractionProgress": "抽出手順",
+      "grind": "挽き目 {value}",
+      "roasterFallback": "Roaster",
+      "range": {
+        "minSuffix": "以上",
+        "maxSuffix": "以下"
+      },
+      "units": {
+        "g": "g",
+        "sec": "秒",
+        "celsius": "°C",
+        "bar": "bar"
+      },
+      "labels": {
+        "machine": "マシン",
+        "grinder": "グラインダー",
+        "basket": "バスケット",
+        "dosingShaker": "ドージングシェーカー",
+        "tamper": "タンパー",
+        "dose": "ドーズ",
+        "yield": "抽出量",
+        "temperature": "温度",
+        "preinfusion": "プリインフュージョン",
+        "extractionTime": "抽出時間",
+        "targetExtractionTime": "目標時間",
+        "pressure": "圧力",
+        "flow": "流量",
+        "grind": "挽き目"
+      }
+    }
+  },
+  "resume": {
+    "name": "イ・サンミン",
+    "contact": {
+      "phone": "+821020809652",
+      "email": "red9runge@gmail.com"
+    },
+    "introduction": [
+      "サービス開発を中心に、プロダクトと運用に必要なツールもあわせて作ってきました。",
+      "AIの潮流に合わせてLLM Wikiを整備し、プロジェクトごとのAIワークフローを業務に合う形で設定しています。"
+    ],
+    "totalExperience": "7年4か月",
+    "viewDescription": "職務経歴書",
+    "backToResume": "履歴書へ戻る",
+    "careers": {
+      "oprimed": {
+        "company": "株式会社オプリメド",
+        "period": "2026.02 - 在職中（6か月）",
+        "employmentType": "正社員",
+        "achievement": "医療・臨床分析プロダクトの画面、チャート、分析データの保存・照会フローと、開発環境・検証システムをあわせて担当しました。",
+        "projects": {
+          "medicalFrontendProductization": {
+            "title": "医療・臨床分析プロダクト画面と分析データ",
+            "descriptions": [
+              {
+                "subtitle": "医療・臨床分析プロダクト画面と分析データ",
+                "detail": "医療・臨床分析プロダクトの入力画面、結果画面、チャート、分析データの保存・照会フローを担当しました。画面実装だけでなく、誤った分析リクエストを防ぎ、同じデータ基準で再照会できる構造も設計しました。",
+                "skills": "React, Next.js, TypeScript, CSS, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Playwright, GitHub Actions, Husky, Docker, Shell Script",
+                "tasks": [
+                  "分析入力画面、結果画面、チャート、ファイルアップロード・ダウンロードなどのプロダクト画面を開発しました。",
+                  "画面とhookに残っていた疾患リストの直接呼び出し6か所を削除し、同じ照会基準を一か所で管理しました。",
+                  "分析タスクデータをサーバーに保存する構造とクライアントキャッシュ戦略を設計し、画面遷移や再入場時にも同じデータ基準で照会できるようにしました。",
+                  "不足していたバリデーションとエラーケースを補強し、データアップロードをチャンク単位で処理しました。",
+                  "画像で表現していたUIを共通コンポーネントとCSSへ切り替え、不要な画像リクエストと修正コストを減らしました。",
+                  "Lighthouse基準でLCPを1.3sから1.0sへ、Speed Indexを3.4sから0.7sへ改善しました。"
+                ]
+              },
+              {
+                "subtitle": "開発環境と検証システム",
+                "detail": "プロジェクトごとに異なっていた実行・デプロイ方法をそろえ、変更を上げる前に失敗をより早く確認できるようにしました。主要ブラウザと画面サイズを確認するE2Eテストや、AIベースの開発環境もあわせて扱いました。",
+                "tasks": [
+                  "4つのフロントエンドプロジェクトの実行方式とデプロイ方式を統一しました。",
+                  "GitHub Actionsベースのデプロイと検証フローを整理しました。",
+                  "変更を上げる前に型エラーとビルド失敗を確認できるようにし、失敗した変更がリモートブランチへ上がらないようにしました。",
+                  "主要ブラウザと画面サイズで中核画面フローを確認するテストシステムを作りました。",
+                  "難しいドメイン用語や画面状態を任意に解釈しないよう、作業別スキル、実行フック、LLM Wiki、PR確認方式でプロジェクト文脈を残しました。"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "codecrayon": {
+        "company": "株式会社コードクレヨン",
+        "period": "2023.05 - 2025.07（2年3か月）",
+        "employmentType": "正社員",
+        "projects": {
+          "commerceBackoffice": {
+            "title": "コマース・バックオフィス開発",
+            "period": "2023.05 - 2025.07",
+            "descriptions": [
+              {
+                "subtitle": "運用自動化、モバイルWebView、コマース・バックオフィス開発",
+                "detail": "初期メンバーとして参加し、コマース、動画プラットフォーム、モバイルWebView、バックオフィス、運用自動化ツールを開発しました。顧客向け画面と運用者向け業務画面の両方を担当し、反復的なコンテンツ運用業務をWebツールへ移行しました。",
+                "skills": "Next.js, React, TypeScript, MUI, Tailwind CSS, Jotai, SWR, React Hook Form",
+                "tasks": [
+                  "多言語、決済、ギフト、ドロー、商品・注文・マイページ画面を開発しました。",
+                  "既存バックオフィスを新しいフロントエンド構造へ移行し、注文、商品、セラー、精算、イベント、問い合わせ管理画面を開発しました。",
+                  "検索条件の初期化、ファイルエクスポート、ドラッグ&ドロップ並び替え、共通テーブル・ダイアログ・フォームコンポーネントを適用しました。"
+                ]
+              }
+            ]
+          },
+          "subtitleSystem": {
+            "title": "字幕翻訳管理ツールによるコンテンツ運用の自動化",
+            "period": "2025.02 - 2025.07",
+            "descriptions": [
+              {
+                "subtitle": "CLIで処理していた字幕翻訳をWeb管理ツールへ移行",
+                "detail": "CLIで処理していた字幕翻訳をWeb管理ツールへ移し、運用者が直接処理できるようにしました。",
+                "skills": "TypeScript, AWS Bedrock, OpenAI API, Google Cloud Translate, Express",
+                "tasks": [
+                  "字幕ファイル処理、言語別プロンプト、翻訳レビュー、キャラクターマッチングを管理画面で処理できるようにしました。",
+                  "反復的な翻訳業務に使うチームリソースを90%以上削減し、作業生産性を10倍以上高めました。",
+                  "運用者が1日に6〜8作品を処理できるようにしました。"
+                ]
+              }
+            ]
+          },
+          "shortimePlayground": {
+            "title": "モバイルWebView Playgroundの企画・構築",
+            "period": "2024.09 - 2025.04",
+            "descriptions": [
+              {
+                "subtitle": "アプリ配布なしでイベント・ゲーム型コンテンツを運用するWebView領域の開発",
+                "detail": "アプリ配布なしでイベント・ゲーム型コンテンツを開き、更新できるWebView領域を企画して構築しました。",
+                "skills": "Next.js, React, TypeScript, Phaser, Tailwind CSS, shadcn/ui, Flutter bridge, Airbridge",
+                "tasks": [
+                  "Next.jsベースのWebView領域で、イベント、占い、ゲーム、ドローのように性格の異なるコンテンツをドメイン単位で分離して開発しました。",
+                  "Phaserベースのゲーム、ランキング・結果提出、バナー・サウンド制御、Flutter bridgeを処理しました。",
+                  "ディープリンクとマーケティングSDKを連携し、アプリ内外の流入フローをつなぎました。"
+                ]
+              }
+            ]
+          },
+          "freebootingFinder": {
+            "title": "無断転載コンテンツ検索ツール",
+            "period": "2025.06 - 2025.06",
+            "descriptions": [
+              {
+                "subtitle": "反復的な手動検索に依存していた確認業務をクローリングベースのツールへ移行",
+                "detail": "反復的な手動検索に依存していた無断転載コンテンツの確認業務を、クローリングベースのツールへ移しました。",
+                "skills": "TypeScript, Express, Axios, Cheerio, Vercel Serverless Functions",
+                "tasks": [
+                  "検索キーワードベースのクローリングツールと結果確認画面を作りました。",
+                  "毎日50分かかっていた確認業務を10分以内に短縮しました。",
+                  "ブラウザ直接クローリングでボットブロックを受ける区間は、Node.jsベースの処理へ分離しました。"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "allofthem": {
+        "company": "allofthem",
+        "period": "2021.07 - 2023.04（1年10か月）",
+        "employmentType": "正社員",
+        "projects": {
+          "insuranceSubscription": {
+            "title": "保険加入Webのパフォーマンス改善",
+            "period": "2023.03 - 2023.04",
+            "descriptions": [
+              {
+                "subtitle": "初期画面表示の遅延を減らした保険加入画面",
+                "detail": "保険加入画面で初期画面が完成するまで最大5秒かかっていた区間を短縮しました。",
+                "skills": "React, Next.js, TypeScript, Redux, Context API",
+                "tasks": [
+                  "ネストしたコールバックを除去し、データ準備、状態反映、レンダリングの順序を単純化しました。",
+                  "Reactベースの画面をNext.js構造へ移行し、ルーティングとレンダリング基準を見直しました。",
+                  "加入画面でLCP基準1.2秒を達成しました。"
+                ]
+              }
+            ]
+          },
+          "insuranceResponsive": {
+            "title": "保険加入・決済と管理画面の開発",
+            "period": "2022.10 - 2023.03",
+            "descriptions": [
+              {
+                "subtitle": "保険加入、決済、管理画面の開発",
+                "detail": "保険加入、決済、管理画面を開発しました。",
+                "skills": "React, Next.js, TypeScript, GraphQL, DynamoDB, Sass, GitLab CI/CD",
+                "tasks": [
+                  "レスポンシブな保険加入画面と決済情報入力フローを作りました。",
+                  "加入一覧、詳細、統計チャート、レポートダウンロード、ファイルアップロード・ダウンロード機能を作りました。",
+                  "アップロード・ダウンロード処理と型を共通化し、管理画面の保守負担を減らしました。"
+                ]
+              }
+            ]
+          },
+          "ichainDesign": {
+            "title": "iChain管理サイトFEデザイン改善およびリファクタリング",
+            "period": "2022.07 - 2022.07",
+            "descriptions": [
+              {
+                "subtitle": "管理サイトのデザイン改善およびリファクタリング",
+                "skills": "React, TypeScript, GitLab, CI/CD, Sass",
+                "tasks": [
+                  "プロジェクトデザインの全面修正",
+                  "ソースリファクタリング（重複作業の関数化）",
+                  "未使用CSS項目の削除"
+                ]
+              }
+            ]
+          },
+          "creatorFunding": {
+            "title": "allofthem クリエイター支援プロジェクト（仮称）",
+            "period": "2022.07 - 2022.11",
+            "descriptions": [
+              {
+                "subtitle": "インターネット配信クリエイターとそのファンのためのプラットフォームサービス",
+                "skills": "Next.js, TypeScript, Redux, React Query, GitLab, Sass"
+              },
+              {
+                "subtitle": "クライアント向けレスポンシブWebおよび管理ページ",
+                "tasks": ["技術調査および選定", "初期プロジェクト設計"]
+              }
+            ]
+          },
+          "internalContribution": {
+            "title": "allofthem 社内貢献 FE",
+            "descriptions": [
+              {
+                "subtitle": "Reactベースプロジェクト",
+                "tasks": [
+                  "環境変数化作業およびサンプルコード作成",
+                  "グローバル状態管理追加（Context API）",
+                  "共通コンポーネント依存性の除去",
+                  "共通コンポーネントの追加開発 Modal, Loader"
+                ]
+              },
+              {
+                "subtitle": "社内ドキュメント作成",
+                "tasks": [
+                  "React知識共有ドキュメント作成",
+                  "JavaScript & TypeScript知識共有ドキュメント作成"
+                ]
+              }
+            ]
+          },
+          "cancerInsurance": {
+            "title": "レスポンシブながん保険商品の修正開発 FE",
+            "period": "2022.04 - 2022.07",
+            "descriptions": [
+              {
+                "subtitle": "レスポンシブながん保険商品の修正開発および機能・デザイン改善",
+                "skills": "React, TypeScript, Redux, Redux-Saga, GitLab CI/CD",
+                "tasks": [
+                  "PC、タブレット、スマートフォン基準のレスポンシブ開発",
+                  "ひらがな入力時にカタカナを自動入力するユーティリティを開発",
+                  "カタカナ入力時に英字名を自動入力するユーティリティを開発"
+                ]
+              }
+            ]
+          },
+          "aigCorporate": {
+            "title": "AIG企業向け商品加入申込ページFEおよび保守",
+            "period": "2021.11 - 2022.08",
+            "descriptions": [
+              {
+                "subtitle": "Phase 1: AIG企業向け商品加入申込ページのレスポンシブWeb設計および構築",
+                "skills": "React, TypeScript, Context API",
+                "tasks": ["ベースプロジェクトにグローバル状態管理機能を追加"]
+              },
+              {
+                "subtitle": "Phase 2: 決済機能追加",
+                "tasks": ["決済情報入力画面および決済API連携"],
+                "detail": "特記事項: サーバーレスプロジェクト（API Gateway, Lambda）でテーブル単位の照会のみ可能。初期設計の問題でコールバック地獄が発生したため、API通信の非同期処理を改善"
+              }
+            ]
+          },
+          "ichainAdmin": {
+            "title": "iChain管理サイトFE",
+            "period": "2021.09 - 2022.05",
+            "descriptions": [
+              {
+                "subtitle": "プロジェクトPhase 2の機能追加および改善",
+                "skills": "React, TypeScript, GitLab, CI/CD, Sass"
+              },
+              {
+                "subtitle": "画面設計および制作",
+                "tasks": [
+                  "顧客照会画面およびAPI連携",
+                  "顧客詳細画面およびAPI連携",
+                  "キャンペーン照会、CSV登録、ダウンロード画面およびAPI連携",
+                  "アプリ加入連携作成（CSVアップロード）画面およびAPI連携",
+                  "環境変数追加",
+                  "ナビゲーション機能が一部ページを飛ばす現象を修正",
+                  "API optionに応じて通信endpointとエラー処理が分岐するよう通信ユーティリティを修正"
+                ]
+              }
+            ]
+          },
+          "ichainRakuten": {
+            "title": "iChain 楽天、さくら保険 BE",
+            "period": "2021.09 - 2022.03",
+            "descriptions": [
+              {
+                "subtitle": "プロジェクト構築および機能改善",
+                "skills": "Java, Spring Boot, MySQL, Doma2, Thymeleaf, GitLab, Datadog, CI/CD"
+              },
+              {
+                "subtitle": "保険決済WebView作成（マイページ）",
+                "tasks": [
+                  "契約済み保険情報",
+                  "未納決済",
+                  "決済情報修正（クレジットカード情報修正）"
+                ]
+              },
+              {
+                "subtitle": "管理サイト連携",
+                "tasks": [
+                  "保険顧客照会API作成およびテストコード作成（JUnit）",
+                  "保険顧客情報詳細API作成およびテストコード作成（JUnit）",
+                  "顧客退会API作成およびテストコード作成（JUnit）"
+                ]
+              },
+              {
+                "subtitle": "顧客退会ロジック変更",
+                "tasks": ["既存DB物理削除から論理削除へ全面修正"]
+              },
+              {
+                "subtitle": "ファイルダウンロード共通モジュール作成",
+                "tasks": [
+                  "PDF、CSVなどのファイルダウンロードAPIに使う共通モジュール作成",
+                  "S3アップロード共通モジュール作成"
+                ]
+              }
+            ]
+          },
+          "insuranceAdmin": {
+            "title": "保険会社管理サイトFE",
+            "period": "2021.07 - 2021.09",
+            "descriptions": [
+              {
+                "subtitle": "プロジェクトのバグ修正および機能改善",
+                "skills": "React, TypeScript, GitLab, CI/CD, Sass"
+              },
+              {
+                "subtitle": "既存プロジェクトのバグ修正"
+              },
+              {
+                "subtitle": "リファクタリング",
+                "tasks": [
+                  "共通コンポーネント作業（重複除去、ファイルアップロード・ダウンロード共通コンポーネント作成）",
+                  "コードリファクタリング（重複コードの関数化、関数名変更）",
+                  "関数ごとのコメント作業",
+                  "型モデリングおよび型未指定（any）データの型モデリング"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "datalogics": {
+        "company": "データロジックス",
+        "period": "2020.08 - 2021.07（1年）",
+        "employmentType": "正社員",
+        "projects": {
+          "consularCallCenter": {
+            "title": "稼働中サービスの保守、API開発、障害対応",
+            "period": "2020.09 - 2021.07",
+            "descriptions": [
+              {
+                "subtitle": "稼働中サービスの保守と開発業務",
+                "detail": "稼働中サービスの保守と開発業務を行いました。ユーザー影響、再現可能性、修正範囲を基準に課題を切り分け、運用チームへ共有しました。",
+                "skills": "Linux, Network, Security, API, JavaScript, HTML, CSS",
+                "tasks": [
+                  "エラーと変更依頼を再現し、修正・検証が必要な範囲を切り分けました。",
+                  "インフラ・セキュリティの観点から障害原因とユーザー影響を確認し、運用チームへ共有しました。",
+                  "API開発と一部ページ実装を担当し、開発と運用がつながる流れを経験しました。"
+                ]
+              }
+            ]
+          },
+          "smartDis": {
+            "title": "データ移行と実行環境の切り替え",
+            "period": "2020.08 - 2020.09",
+            "descriptions": [
+              {
+                "subtitle": "異なるデータベースと実行環境に向けた切り替え作業",
+                "detail": "既存ソフトウェアを異なるデータベースと実行環境でも利用できるよう、データ変換と環境拡張作業を行いました。",
+                "skills": "Java, JavaScript, eGovFrame, MyBatis, MariaDB, Oracle",
+                "tasks": [
+                  "OracleベースのクエリとLinux中心の機能を、MariaDB、Windows環境でも動作するよう調整しました。",
+                  "ライブラリ切り替えと実行環境拡張により、既存ソフトウェアを利用できる環境を広げました。",
+                  "Windows環境向け機能追加とマニュアル作成により、運用者が切り替え後の環境を使えるよう支援しました。"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "datalogicsInfra": {
+        "company": "データロジックス（インフラ）",
+        "period": "2017.08 - 2019.05（1年10か月）",
+        "employmentType": "正社員",
+        "projects": {
+          "policyCoordination": {
+            "title": "国務調整室の運用および保守",
+            "period": "2018.05 - 2019.06",
+            "descriptions": [
+              {
+                "subtitle": "運用および保守インフラ担当",
+                "tasks": [
+                  "世宗およびソウル国務調整室のインフラ管理",
+                  "サーバーおよびネットワーク（L2、L3、BB）機器管理とトラブルシューティング",
+                  "セキュリティ機器（FW、IPS、TMS）およびソリューション管理",
+                  "リソース管理およびバックアップ作業",
+                  "オフィスセットアップおよび国政監査インフラセットアップ",
+                  "セキュリティ監査対応"
+                ]
+              }
+            ]
+          },
+          "socialSecurity": {
+            "title": "社会保障情報院高度化事業",
+            "period": "2018.01 - 2018.02",
+            "descriptions": [
+              {
+                "subtitle": "高度化事業インフラ担当",
+                "tasks": ["機器検収およびマウント", "設置テストおよびモニタリング（設置テスト）"]
+              }
+            ]
+          },
+          "childProtection": {
+            "title": "児童保護専門機関の構築および保守",
+            "period": "2017.08 - 2017.12",
+            "descriptions": [
+              {
+                "subtitle": "児童保護専門機関コールセンター保守インフラ担当業務",
+                "tasks": ["保守およびオフィス移転作業", "機器の撤去および再設置"]
+              },
+              {
+                "subtitle": "蘆原児童保護専門機関の構築"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "education": [
+      {
+        "school": "瑞逸大学",
+        "period": "2010.03 - 2017.02",
+        "status": "卒業",
+        "major": "情報通信学科"
+      }
+    ],
+    "skills": [
+      "React",
+      "CSS",
+      "JavaScript",
+      "TypeScript",
+      "HTML5",
+      "Java",
+      "Spring Boot",
+      "Spring Framework",
+      "AWS",
+      "Git",
+      "GitLab",
+      "MySQL",
+      "Figma",
+      "GraphQL"
+    ],
+    "certifications": [
+      {
+        "name": "ハイブリッドアプリ開発（iOS&Android）およびWeb開発者養成課程",
+        "date": "2020.03",
+        "type": "その他",
+        "details": [
+          "Java、SpringベースのWeb開発基礎（Spring基礎、REST API）",
+          "Android、iOSアプリ開発基礎"
+        ]
+      }
+    ],
+    "links": [
+      "https://vscoke.vercel.app/ja-JP",
+      "https://github.com/icecokel",
+      "https://vscoke.vercel.app/ja-JP/blog/dashboard"
+    ]
+  }
+}

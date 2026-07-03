@@ -53,11 +53,13 @@ export default function WordlePage() {
   // 게임 종료 시 자동 알림
   useEffect(() => {
     if (gameStatus === "won") {
-      toast.success("축하합니다! 🎉", { description: "정답을 맞추셨습니다!" });
+      toast.success(tGame("wordleWonTitle"), { description: tGame("wordleWonDescription") });
     } else if (gameStatus === "lost") {
-      toast.error("아쉽네요 😭", { description: `정답은 ${answer}였습니다.` });
+      toast.error(tGame("wordleLostTitle"), {
+        description: tGame("wordleLostDescription", { answer }),
+      });
     }
-  }, [gameStatus, answer]);
+  }, [gameStatus, answer, tGame]);
 
   // 조건부 컨테이너 스타일
   const containerStyle = isMobile

@@ -66,6 +66,8 @@ export const useSearchIndex = (): SearchItem[] => {
   const tResume = useTranslations("resume");
   const tGame = useTranslations("Game");
   const tDoom = useTranslations("Doom");
+  const tHobbyRecipes = useTranslations("hobby.recipes");
+  const tHobbyEspresso = useTranslations("hobby.espresso");
   const [hobbyItems, setHobbyItems] = useState<SearchItem[]>([]);
 
   useEffect(() => {
@@ -131,9 +133,9 @@ export const useSearchIndex = (): SearchItem[] => {
     const hobbyRecipeLanding: SearchItem = {
       id: "hobby:recipes:index",
       type: "hobby",
-      title: "레시피",
-      description: "개인 요리 레시피와 재료 기록",
-      keywords: ["hobby", "recipe", "recipes", "cooking", "취미", "레시피", "요리"],
+      title: tHobbyRecipes("title"),
+      description: tHobbyRecipes("searchDescription"),
+      keywords: ["hobby", "recipe", "recipes", "cooking", tHobbyRecipes("title")],
       path: "/hobby/recipes",
       featured: true,
       priority: 385,
@@ -142,9 +144,9 @@ export const useSearchIndex = (): SearchItem[] => {
     const hobbyEspressoLanding: SearchItem = {
       id: "hobby:espresso:index",
       type: "hobby",
-      title: "원두 기록",
-      description: "에스프레소 원두별 추출 조건과 맛 기록",
-      keywords: ["hobby", "espresso", "coffee", "bean", "취미", "원두", "에스프레소", "커피"],
+      title: tHobbyEspresso("title"),
+      description: tHobbyEspresso("searchDescription"),
+      keywords: ["hobby", "espresso", "coffee", "bean", tHobbyEspresso("title")],
       path: "/hobby/espresso",
       featured: true,
       priority: 382,
@@ -279,5 +281,5 @@ export const useSearchIndex = (): SearchItem[] => {
       ...gameItems,
       ...hobbyItems,
     ];
-  }, [hobbyItems, posts, tBlog, tDoom, tGame, tProfile, tResume]);
+  }, [hobbyItems, posts, tBlog, tDoom, tGame, tHobbyEspresso, tHobbyRecipes, tProfile, tResume]);
 };

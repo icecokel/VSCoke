@@ -2,14 +2,29 @@
   "common": {
     "language": "Language",
     "korean": "한국어",
-    "english": "English"
+    "english": "English",
+    "japanese": "日本語"
   },
   "menu": {
     "file": "File",
     "openProject": "Open Project",
     "language": "Language",
     "help": "Help",
-    "preparing": "Preparing..."
+    "preparing": "Preparing...",
+    "projectInProgress": "Black and White Chef Game (in progress)",
+    "favorites": "Favorites",
+    "recentItems": "Recent Items",
+    "applications": "Applications",
+    "desktop": "Desktop",
+    "documents": "Documents",
+    "downloads": "Downloads",
+    "locations": "Locations",
+    "search": "Search",
+    "cancel": "Cancel",
+    "open": "Open",
+    "selectProject": "Please select a project.",
+    "openProjectHint": "Press Open to open the project or Git.",
+    "preparingToast": "Preparing"
   },
   "sidebar": {
     "explorer": "Explorer",
@@ -97,6 +112,7 @@
     "noPosts": "No posts available.",
     "dashboardTitle": "Dashboard",
     "dashboardDescription": "Admin dashboard for blog posts",
+    "dashboardSearchPlaceholder": "Search by title...",
     "showAllTags": "+ Show all tags ({count})",
     "hideAllTags": "Collapse"
   },
@@ -157,7 +173,20 @@
     "leaderboardTitle": "TOP 3 RANKING",
     "leaderboardLoading": "Loading ranking...",
     "leaderboardEmpty": "No ranking records yet.",
-    "unknownPlayer": "Anonymous Player"
+    "unknownPlayer": "Anonymous Player",
+    "fishDriftReady": "Tap or press Space to weave through the current",
+    "fishDriftLoading": "Loading the sea...",
+    "fishDriftGuide": "The fish swims from bottom to top\nSwitch left/right swimming direction with each touch or Space press\nCollect color-coded fish schools to boost your score",
+    "fishDriftGameOver": "SWIM OVER",
+    "fishDriftSpeedUp": "Current speed up",
+    "wordleWonTitle": "Correct! 🎉",
+    "wordleWonDescription": "You guessed the answer!",
+    "wordleLostTitle": "So close 😭",
+    "wordleLostDescription": "The answer was {answer}.",
+    "scorePointSuffix": " pts",
+    "resultNotFoundTitle": "Game Result Not Found",
+    "resultNotFoundDescription": "The shared game result could not be found.",
+    "backToGame": "Back to games"
   },
   "Share": {
     "title": "Share VSCoke",
@@ -215,6 +244,91 @@
   },
   "descriptionItem": {
     "techStack": "Tech Stack"
+  },
+  "hobby": {
+    "recipes": {
+      "title": "Recipes",
+      "description": "A personal recipe log with ingredients and cooking steps for dishes I make often.",
+      "searchDescription": "Personal cooking recipes and ingredient notes",
+      "total": "{count} recipes",
+      "summary": "{ingredients} ingredients · {steps} steps",
+      "detailAria": "View {name} details",
+      "viewDetail": "View details",
+      "backToList": "Back to list",
+      "source": "{source} source",
+      "ingredients": "Ingredients",
+      "steps": "Steps",
+      "searchLabel": "Search recipes",
+      "searchPlaceholder": "Search by name, ingredient, or tag",
+      "resultCount": "{count} results",
+      "displayCount": "Showing {count}",
+      "empty": "Recipes could not be loaded or no recipes have been added yet.",
+      "noResults": "No matching results found."
+    },
+    "espresso": {
+      "title": "Bean Log",
+      "description": "Track espresso extraction settings, taste changes, and next test direction by bean.",
+      "searchDescription": "Espresso bean extraction settings and taste notes",
+      "detailDescription": "A bean log that accumulates espresso extraction settings, taste changes, and next test direction.",
+      "total": "{count} beans",
+      "empty": "Bean records could not be loaded or no beans have been added yet.",
+      "round": "Round",
+      "roundLabel": "Round {number}",
+      "roundCount": "{count} rounds",
+      "recentExtraction": "Recent extraction",
+      "recentRecord": "Recent record",
+      "viewRecords": "View extraction records",
+      "extractionSettings": "Extraction settings",
+      "currentBasisSettings": "Current baseline settings",
+      "nextTestSettings": "Next test settings",
+      "adjustmentGuide": "Adjustment guide",
+      "history": "History",
+      "defaultEquipment": "Default equipment",
+      "currentConditions": "Current conditions",
+      "latestExtractionSettings": "Latest extraction settings",
+      "latestResult": "Latest result",
+      "suspectedIssues": "Current suspected issues",
+      "extractionConditions": "Extraction conditions",
+      "result": "Result",
+      "changesAndNotes": "Changes / Notes",
+      "judgment": "Judgment",
+      "inference": "Inference",
+      "nextActions": "Next actions",
+      "targetRound": "Target round {number}",
+      "hypothesis": "Hypothesis",
+      "direction": "Direction",
+      "expectedResult": "Expected result",
+      "extractionSetting": "Extraction setting",
+      "extractionProgress": "Extraction progress",
+      "grind": "Grind {value}",
+      "roasterFallback": "Roaster",
+      "range": {
+        "minSuffix": " or more",
+        "maxSuffix": " or less"
+      },
+      "units": {
+        "g": "g",
+        "sec": "sec",
+        "celsius": "°C",
+        "bar": "bar"
+      },
+      "labels": {
+        "machine": "Machine",
+        "grinder": "Grinder",
+        "basket": "Basket",
+        "dosingShaker": "Dosing shaker",
+        "tamper": "Tamper",
+        "dose": "Dose",
+        "yield": "Yield",
+        "temperature": "Temperature",
+        "preinfusion": "Pre-infusion",
+        "extractionTime": "Extraction time",
+        "targetExtractionTime": "Target time",
+        "pressure": "Pressure",
+        "flow": "Flow",
+        "grind": "Grind"
+      }
+    }
   },
   "resume": {
     "name": "Sangmin Lee",

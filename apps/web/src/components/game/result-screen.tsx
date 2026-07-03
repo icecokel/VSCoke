@@ -121,13 +121,13 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
           setWeeklyRank(result.data.weeklyRank ?? null);
           setBestScore(result.data.bestScore ?? null);
           setNeedsReauth(false);
-          toast.success(result.message || t("submitSuccess"));
+          toast.success(t("submitSuccess"));
         } else if (result.requiresAuth) {
           savePendingScore(true);
           setNeedsReauth(true);
-          toast.error(result.message || t("submitFail"));
+          toast.error(t("submitFail"));
         } else {
-          toast.error(result.message || t("submitFail"));
+          toast.error(t("submitFail"));
         }
       } catch {
         toast.error(t("submitFail"));

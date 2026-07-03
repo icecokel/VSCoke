@@ -2,14 +2,29 @@
   "common": {
     "language": "언어",
     "korean": "한국어",
-    "english": "English"
+    "english": "English",
+    "japanese": "日本語"
   },
   "menu": {
     "file": "파일",
     "openProject": "프로젝트 열기",
     "language": "언어",
     "help": "도움말",
-    "preparing": "준비 중 ..."
+    "preparing": "준비 중 ...",
+    "projectInProgress": "흑백요리사게임(진행중)",
+    "favorites": "즐겨찾기",
+    "recentItems": "최근 항목",
+    "applications": "응용 프로그램",
+    "desktop": "데스크탑",
+    "documents": "문서",
+    "downloads": "다운로드",
+    "locations": "위치",
+    "search": "검색",
+    "cancel": "취소",
+    "open": "열기",
+    "selectProject": "프로젝트를 선택해주세요.",
+    "openProjectHint": "열기 버튼을 누르면 프로젝트 또는 GIT이 열립니다.",
+    "preparingToast": "준비중입니다"
   },
   "sidebar": {
     "explorer": "탐색기",
@@ -97,6 +112,7 @@
     "noPosts": "포스트가 없습니다.",
     "dashboardTitle": "대시보드",
     "dashboardDescription": "블로그 게시글 관리자 페이지",
+    "dashboardSearchPlaceholder": "제목으로 검색...",
     "showAllTags": "+ 태그 전체보기 ({count})",
     "hideAllTags": "접기"
   },
@@ -157,7 +173,20 @@
     "leaderboardTitle": "TOP 3 랭킹",
     "leaderboardLoading": "랭킹 불러오는 중...",
     "leaderboardEmpty": "아직 랭킹 기록이 없어요.",
-    "unknownPlayer": "익명 플레이어"
+    "unknownPlayer": "익명 플레이어",
+    "fishDriftReady": "Tap or press Space to weave through the current",
+    "fishDriftLoading": "바다를 불러오는 중...",
+    "fishDriftGuide": "물고기는 하단에서 상단 방향으로 헤엄칩니다\n터치 또는 스페이스바 입력마다 좌/우 유영 방향 전환\n색상별 물고기 무리를 먹으면 점수가 크게 증가",
+    "fishDriftGameOver": "SWIM OVER",
+    "fishDriftSpeedUp": "해류 가속",
+    "wordleWonTitle": "축하합니다! 🎉",
+    "wordleWonDescription": "정답을 맞추셨습니다!",
+    "wordleLostTitle": "아쉽네요 😭",
+    "wordleLostDescription": "정답은 {answer}였습니다.",
+    "scorePointSuffix": "점",
+    "resultNotFoundTitle": "게임 결과를 찾을 수 없습니다",
+    "resultNotFoundDescription": "공유된 게임 결과를 찾을 수 없습니다.",
+    "backToGame": "게임으로 돌아가기"
   },
   "Share": {
     "title": "VSCoke 공유하기",
@@ -215,6 +244,91 @@
   },
   "descriptionItem": {
     "techStack": "기술 스택"
+  },
+  "hobby": {
+    "recipes": {
+      "title": "레시피",
+      "description": "자주 만드는 음식의 재료와 조리 순서를 정리한 개인 레시피 기록입니다.",
+      "searchDescription": "개인 요리 레시피와 재료 기록",
+      "total": "총 {count}개 레시피",
+      "summary": "재료 {ingredients}개 · 단계 {steps}개",
+      "detailAria": "{name} 상세 보기",
+      "viewDetail": "상세 보기",
+      "backToList": "목록으로",
+      "source": "{source} 원본",
+      "ingredients": "재료",
+      "steps": "만드는 법",
+      "searchLabel": "레시피 검색",
+      "searchPlaceholder": "이름, 재료, 태그 검색",
+      "resultCount": "검색 결과 {count}개",
+      "displayCount": "{count}개 표시",
+      "empty": "레시피를 불러오지 못했거나 아직 등록된 레시피가 없습니다.",
+      "noResults": "검색 결과가 없습니다."
+    },
+    "espresso": {
+      "title": "원두 기록",
+      "description": "원두별 에스프레소 추출 조건, 맛 변화, 다음 테스트 방향을 관리합니다.",
+      "searchDescription": "에스프레소 원두별 추출 조건과 맛 기록",
+      "detailDescription": "에스프레소 추출 조건, 맛 변화, 다음 테스트 방향을 누적한 원두 기록입니다.",
+      "total": "총 {count}개 원두",
+      "empty": "원두 기록을 불러오지 못했거나 아직 등록된 원두가 없습니다.",
+      "round": "라운드",
+      "roundLabel": "라운드 {number}",
+      "roundCount": "{count} rounds",
+      "recentExtraction": "최근 추출",
+      "recentRecord": "최근 기록",
+      "viewRecords": "추출 기록 보기",
+      "extractionSettings": "추출 세팅",
+      "currentBasisSettings": "현재 기준 세팅",
+      "nextTestSettings": "다음 테스트 세팅",
+      "adjustmentGuide": "조정 가이드",
+      "history": "히스토리",
+      "defaultEquipment": "장비 기본",
+      "currentConditions": "현재 조건",
+      "latestExtractionSettings": "최근 추출 세팅",
+      "latestResult": "최근 결과",
+      "suspectedIssues": "현재 의심 지점",
+      "extractionConditions": "추출 조건",
+      "result": "결과",
+      "changesAndNotes": "변경 / 메모",
+      "judgment": "판단",
+      "inference": "추론",
+      "nextActions": "다음 액션",
+      "targetRound": "목표 라운드 {number}",
+      "hypothesis": "가설",
+      "direction": "방향",
+      "expectedResult": "기대 결과",
+      "extractionSetting": "추출 세팅",
+      "extractionProgress": "추출 진행",
+      "grind": "분쇄도 {value}",
+      "roasterFallback": "Roaster",
+      "range": {
+        "minSuffix": " 이상",
+        "maxSuffix": " 이하"
+      },
+      "units": {
+        "g": "g",
+        "sec": "초",
+        "celsius": "°C",
+        "bar": "bar"
+      },
+      "labels": {
+        "machine": "머신",
+        "grinder": "그라인더",
+        "basket": "바스켓",
+        "dosingShaker": "도징쉐이커",
+        "tamper": "템퍼",
+        "dose": "도징",
+        "yield": "추출량",
+        "temperature": "온도",
+        "preinfusion": "프리인퓨전",
+        "extractionTime": "추출시간",
+        "targetExtractionTime": "목표 시간",
+        "pressure": "압력",
+        "flow": "유량",
+        "grind": "분쇄도"
+      }
+    }
   },
   "resume": {
     "name": "이상민",

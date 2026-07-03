@@ -11,8 +11,9 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import useSnackBar from "@/components/base-ui/snack-bar/hooks/use-snack-bar";
 import BaseText from "@/components/base-ui/text";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import Icon, { TKind } from "@/components/base-ui/icon";
+import { useTranslations } from "next-intl";
 
 interface IOpenProjectModalProps {
   open: boolean;
@@ -29,57 +30,63 @@ interface IProject {
   link: string;
 }
 
-const DUMMY: ICategory[] = [
-  {
-    label: "Portfolio",
-    items: [
-      { label: "VSCOKE", link: "https://vscoke.vercel.app" },
+const OpenProjectModal = (props: IOpenProjectModalProps) => {
+  const t = useTranslations("menu");
+  const categories = useMemo<ICategory[]>(
+    () => [
       {
-        label: "흑백요리사게임(진행중)",
-        link: "https://icecokel.github.io/black-white-chef-game/",
+        label: "Portfolio",
+        items: [
+          { label: "VSCOKE", link: "https://vscoke.vercel.app" },
+          {
+            label: t("projectInProgress"),
+            link: "https://icecokel.github.io/black-white-chef-game/",
+          },
+        ],
+      },
+      { label: "Users", items: [{ label: "Test", link: "" }] },
+    ],
+    [t],
+  );
+  const sidebarSections = useMemo<
+    { title: string; items: { icon: TKind; id: string; label: string }[] }[]
+  >(
+    () => [
+      {
+        title: t("favorites"),
+        items: [
+          { icon: "schedule", id: "recent", label: t("recentItems") },
+          { icon: "terminal", id: "applications", label: t("applications") },
+          { icon: "computer", id: "desktop", label: t("desktop") },
+          { icon: "description", id: "documents", label: t("documents") },
+          { icon: "arrow_circle_down", id: "downloads", label: t("downloads") },
+        ],
+      },
+      {
+        title: t("locations"),
+        items: [{ icon: "hard_drive", id: "macintosh-hd", label: "Macintosh HD" }],
       },
     ],
-  },
-  { label: "Users", items: [{ label: "Test", link: "" }] },
-];
+    [t],
+  );
+  const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
+  const [currentProjectIndex, setCurrentProjectIndex] = useState<number | undefined>();
+  const [selectedSidebarItem, setSelectedSidebarItem] = useState<string>("documents");
+  const currentCategory = categories[currentCategoryIndex] ?? categories[0];
+  const currentProject =
+    currentProjectIndex == null ? undefined : currentCategory.items[currentProjectIndex];
 
-// 사이드바 섹션 데이터
-const SIDEBAR_SECTIONS: { title: string; items: { icon: TKind; label: string }[] }[] = [
-  {
-    title: "즐겨찾기",
-    items: [
-      { icon: "schedule", label: "최근 항목" },
-      { icon: "terminal", label: "응용 프로그램" },
-      { icon: "computer", label: "데스크탑" },
-      { icon: "description", label: "문서" },
-      { icon: "arrow_circle_down", label: "다운로드" },
-    ],
-  },
-  {
-    title: "위치",
-    items: [{ icon: "hard_drive", label: "Macintosh HD" }],
-  },
-];
-
-const OpenProjectModal = (props: IOpenProjectModalProps) => {
-  const [currentCategory, setCurrentCategory] = useState<ICategory>(DUMMY[0]);
-  const [currentProject, setCurrentProject] = useState<IProject | undefined>();
-  const [selectedSidebarItem, setSelectedSidebarItem] = useState<string>("문서");
-
-  useEffect(() => {
-    setCurrentCategory(DUMMY[0]);
-  }, []);
-
-  const handleClickCategory = (value: ICategory) => {
-    setCurrentCategory(value);
-    setCurrentProject(undefined);
+  const handleClickCategory = (index: number) => {
+    setCurrentCategoryIndex(index);
+    setCurrentProjectIndex(undefined);
   };
 
-  const handleClickProject = (value: IProject) => {
-    setCurrentProject(value);
+  const handleClickProject = (index: number, categoryIndex = currentCategoryIndex) => {
+    setCurrentCategoryIndex(categoryIndex);
+    setCurrentProjectIndex(index);
   };
 
-  const { open } = useSnackBar({ message: "준비중입니다" });
+  const { open } = useSnackBar({ message: t("preparingToast") });
   const { onClose } = props;
 
   const handleClickOpenProject = () => {
@@ -104,7 +111,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
         aria-describedby={undefined}
       >
         <VisuallyHidden>
-          <DialogTitle>프로젝트 열기</DialogTitle>
+          <DialogTitle>{t("openProject")}</DialogTitle>
         </VisuallyHidden>
 
         {/* 데스크톱 뷰 - Finder 스타일 */}
@@ -143,7 +150,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
             {/* 검색창 */}
             <div className="flex items-center gap-1 px-2 py-1 rounded bg-gray-500 text-gray-300 text-sm w-40">
               <Icon kind="search" size={16} />
-              <span>검색</span>
+              <span>{t("search")}</span>
             </div>
           </div>
 
@@ -151,7 +158,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
           <div className="flex flex-1 min-h-0 overflow-hidden">
             {/* 사이드바 */}
             <div className="w-36 border-r border-gray-500 overflow-y-auto py-2 bg-gray-750">
-              {SIDEBAR_SECTIONS.map((section, sectionIdx) => (
+              {sidebarSections.map((section, sectionIdx) => (
                 <div key={sectionIdx} className="mb-4">
                   <div className="px-3 py-1 text-xs text-gray-400 font-semibold uppercase">
                     {section.title}
@@ -159,9 +166,9 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                   {section.items.map((item, itemIdx) => (
                     <button
                       key={itemIdx}
-                      onClick={() => setSelectedSidebarItem(item.label)}
+                      onClick={() => setSelectedSidebarItem(item.id)}
                       className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1 text-sm ${
-                        selectedSidebarItem === item.label
+                        selectedSidebarItem === item.id
                           ? "bg-blue-500/20 text-blue-400"
                           : "text-gray-200 hover:bg-gray-600"
                       }`}
@@ -178,12 +185,12 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
             <div className="flex flex-1 overflow-x-auto">
               {/* 컬럼 1: 카테고리 */}
               <div className="w-40 min-w-40 border-r border-gray-500 overflow-y-auto bg-gray-750">
-                {DUMMY.map((category, index) => (
+                {categories.map((category, index) => (
                   <button
                     key={`category_${index}`}
-                    onClick={() => handleClickCategory(category)}
+                    onClick={() => handleClickCategory(index)}
                     className={`flex w-full cursor-pointer items-center justify-between px-3 py-2 text-sm ${
-                      currentCategory === category
+                      currentCategoryIndex === index
                         ? "bg-blue-500 text-white"
                         : "text-neutral-300 hover:bg-neutral-700"
                     }`}
@@ -192,7 +199,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                       <Icon
                         kind="folder"
                         size={18}
-                        className={currentCategory === category ? "text-white" : "text-blue-400"}
+                        className={currentCategoryIndex === index ? "text-white" : "text-blue-400"}
                       />
                       <span>{category.label}</span>
                     </div>
@@ -206,9 +213,9 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                 {currentCategory.items.map((project, index) => (
                   <button
                     key={`project_${index}`}
-                    onClick={() => handleClickProject(project)}
+                    onClick={() => handleClickProject(index)}
                     className={`flex w-full cursor-pointer items-center justify-between px-3 py-2 text-sm ${
-                      currentProject === project
+                      currentProjectIndex === index
                         ? "bg-blue-500 text-white"
                         : "text-neutral-300 hover:bg-neutral-700"
                     }`}
@@ -217,7 +224,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                       <Icon
                         kind="folder"
                         size={18}
-                        className={currentProject === project ? "text-white" : "text-blue-400"}
+                        className={currentProjectIndex === index ? "text-white" : "text-blue-400"}
                       />
                       <span>{project.label}</span>
                     </div>
@@ -251,7 +258,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
               size="sm"
               className="text-gray-200 hover:text-white hover:bg-gray-500"
             >
-              취소
+              {t("cancel")}
             </Button>
             <Button
               variant="default"
@@ -260,7 +267,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
               disabled={!currentProject}
               className="bg-blue-500 hover:bg-blue-400 text-white font-semibold px-5 disabled:bg-gray-600 disabled:text-gray-300"
             >
-              열기
+              {t("open")}
             </Button>
           </div>
         </div>
@@ -268,10 +275,10 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
         {/* 모바일 뷰 - 아코디언 스타일 유지 */}
         <div className="md:hidden p-4 text-white">
           <BaseText type="h6" className="font-bold mb-4">
-            프로젝트를 선택해주세요.
+            {t("selectProject")}
           </BaseText>
           <Accordion type="single" collapsible className="w-full">
-            {DUMMY.map((category, index) => (
+            {categories.map((category, index) => (
               <AccordionItem
                 key={`category_${index}`}
                 value={`category-${index}`}
@@ -287,9 +294,9 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
                   {category.items.map((project, idx) => (
                     <button
                       key={`project_${idx}`}
-                      onClick={() => handleClickProject(project)}
+                      onClick={() => handleClickProject(idx, index)}
                       className={`flex w-full cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm ${
-                        currentProject === project
+                        currentProjectIndex === idx
                           ? "bg-blue-500 text-white"
                           : "text-gray-200 hover:bg-gray-600"
                       }`}
@@ -304,12 +311,12 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
           </Accordion>
 
           <BaseText type="caption" className="text-gray-300 mt-4 block">
-            열기 버튼을 누르면 프로젝트 또는 GIT이 열립니다.
+            {t("openProjectHint")}
           </BaseText>
 
           <div className="flex gap-2 mt-4">
             <Button variant="secondary" className="flex-1" onClick={onClose}>
-              취소
+              {t("cancel")}
             </Button>
             <Button
               variant="default"
@@ -317,7 +324,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
               onClick={handleClickOpenProject}
               disabled={!currentProject}
             >
-              열기
+              {t("open")}
             </Button>
           </div>
         </div>

@@ -28,6 +28,7 @@ interface IMenu {
 const LANGUAGES: Record<Locale, { label: string }> = {
   "ko-KR": { label: "한국어" },
   "en-US": { label: "English" },
+  "ja-JP": { label: "日本語" },
 };
 
 const Menubar = () => {

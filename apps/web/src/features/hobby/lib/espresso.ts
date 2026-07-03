@@ -6,14 +6,22 @@ import type {
   EspressoRound,
 } from "@/features/hobby/types/espresso";
 
-const unitLabelMap: Record<string, string> = {
+export type EspressoFormatOptions = {
+  labels?: Record<string, string>;
+  locale?: string;
+  maxSuffix?: string;
+  minSuffix?: string;
+  units?: Record<string, string>;
+};
+
+const defaultUnitLabelMap: Record<string, string> = {
   g: "g",
   sec: "초",
   celsius: "°C",
   bar: "bar",
 };
 
-const labelMap: Record<string, string> = {
+const defaultLabelMap: Record<string, string> = {
   machine: "머신",
   grinder: "그라인더",
   basket: "바스켓",
@@ -84,8 +92,12 @@ export const sortEspressoBeansByRecent = (beans: EspressoBean[]) => {
   });
 };
 
-export const formatMeasurement = (measurement: EspressoMeasurement): string => {
-  const unit = unitLabelMap[measurement.unit] ?? measurement.unit;
+export const formatMeasurement = (
+  measurement: EspressoMeasurement,
+  options: EspressoFormatOptions = {},
+): string => {
+  const unit =
+    options.units?.[measurement.unit] ?? defaultUnitLabelMap[measurement.unit] ?? measurement.unit;
 
   if (typeof measurement.value === "number") {
     return `${measurement.value}${unit}`;
@@ -96,11 +108,11 @@ export const formatMeasurement = (measurement: EspressoMeasurement): string => {
   }
 
   if (typeof measurement.min === "number") {
-    return `${measurement.min}${unit} 이상`;
+    return `${measurement.min}${unit}${options.minSuffix ?? " 이상"}`;
   }
 
   if (typeof measurement.max === "number") {
-    return `${measurement.max}${unit} 이하`;
+    return `${measurement.max}${unit}${options.maxSuffix ?? " 이하"}`;
   }
 
   return unit;
@@ -114,34 +126,41 @@ export const isMeasurement = (value: unknown): value is EspressoMeasurement => {
   return "unit" in value;
 };
 
-export const formatEspressoValue = (value: unknown): string => {
+export const formatEspressoValue = (
+  value: unknown,
+  options: EspressoFormatOptions = {},
+): string => {
   if (value == null || value === "") {
     return "-";
   }
 
   if (isMeasurement(value)) {
-    return formatMeasurement(value);
+    return formatMeasurement(value, options);
   }
 
   if (Array.isArray(value)) {
-    return value.map(formatEspressoValue).join(", ");
+    return value.map(item => formatEspressoValue(item, options)).join(", ");
   }
 
   if (typeof value === "object") {
     return Object.entries(value)
-      .map(([key, item]) => `${formatEspressoLabel(key)} ${formatEspressoValue(item)}`)
+      .map(
+        ([key, item]) =>
+          `${formatEspressoLabel(key, options)} ${formatEspressoValue(item, options)}`,
+      )
       .join(", ");
   }
 
   return String(value);
 };
 
-export const formatEspressoLabel = (key: string): string => {
-  return labelMap[key] ?? key;
+export const formatEspressoLabel = (key: string, options: EspressoFormatOptions = {}): string => {
+  return options.labels?.[key] ?? defaultLabelMap[key] ?? key;
 };
 
 export const espressoParamsToPairs = (
   value: EspressoRecipeParameters | EspressoEquipment | undefined,
+  options: EspressoFormatOptions = {},
 ): Array<{ label: string; value: string }> => {
   if (!value) {
     return [];
@@ -150,8 +169,8 @@ export const espressoParamsToPairs = (
   return Object.entries(value)
     .filter(([, item]) => item != null && item !== "")
     .map(([key, item]) => ({
-      label: formatEspressoLabel(key),
-      value: formatEspressoValue(item),
+      label: formatEspressoLabel(key, options),
+      value: formatEspressoValue(item, options),
     }));
 };
 

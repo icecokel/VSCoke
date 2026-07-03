@@ -6,12 +6,14 @@ import PostList from "@/components/blog/post-list";
 import BaseText from "@/components/base-ui/text";
 import { PostMeta } from "@/types/blog";
 import { useBoolean } from "@/hooks/use-boolean";
+import { useTranslations } from "next-intl";
 
 interface DashboardSearchProps {
   posts: PostMeta[];
 }
 
 export default function DashboardSearch({ posts }: DashboardSearchProps) {
+  const t = useTranslations("blog");
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [filtered, setFiltered] = useState(posts);
@@ -59,7 +61,7 @@ export default function DashboardSearch({ posts }: DashboardSearchProps) {
       <div className="relative">
         <Input
           data-testid="blog-dashboard-title-search-input"
-          placeholder="제목으로 검색..."
+          placeholder={t("dashboardSearchPlaceholder")}
           value={query}
           onChange={handleQueryChange}
           onFocus={dropdown.onTrue}

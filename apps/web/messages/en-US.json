@@ -223,52 +223,44 @@
       "email": "red9runge@gmail.com"
     },
     "introduction": [
-      "I have built React/Next.js-based frontend products, creating stable user flows and reusable development standards for teams.",
-      "Across commerce, back office, mobile webview, and medical/clinical analysis products, I have worked on server data integration, UI components, state management, rendering performance improvement, and verification automation.",
-      "I care that what I build remains as a stable screen for users and as a faster, safer frontend development flow for colleagues."
+      "I have focused on service development while building tools needed for products and operations.",
+      "I set up LLM Wiki and configure project-specific AI workflows to fit each team's work."
     ],
-    "totalExperience": "7 years 3 months",
+    "totalExperience": "7 years 4 months",
     "viewDescription": "Career Description",
     "backToResume": "Back to Resume",
     "careers": {
       "oprimed": {
         "company": "Oprimed Co., Ltd.",
-        "period": "2026.02 - Present (5 months)",
+        "period": "2026.02 - Present (6 months)",
         "employmentType": "Full-time",
-        "achievement": "Handled frontend development for React/Next.js/TypeScript-based medical and clinical analysis products. Focused on server data integration for complex analysis screens, UI component migration, and rendering performance improvements, while also improving pre-deployment verification and CI/CD flows within the frontend development environment.",
+        "achievement": "Worked on medical and clinical analysis product screens, charts, analysis-data save/read flows, development environment, and verification systems.",
         "projects": {
           "medicalFrontendProductization": {
-            "title": "Server Integration Transition, UI Migration, and Frontend Execution System Setup",
+            "title": "Medical and Clinical Analysis Product Screens and Analysis Data",
             "descriptions": [
               {
-                "subtitle": "Server data integration and user flow improvements for React screens",
-                "detail": "The same server data was fetched separately across multiple screens, scattering refetch and cache standards. When moving from analysis results to the next analysis, user selections and progress state also needed to continue reliably.",
-                "skills": "React, Next.js, TypeScript, CSS, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Playwright, GitHub Actions, Husky, Docker",
+                "subtitle": "Medical and Clinical Analysis Product Screens and Analysis Data",
+                "detail": "Worked on input screens, result screens, charts, and analysis-data save/read flows for a medical and clinical analysis product. Beyond screen implementation, I designed structures that prevent invalid analysis requests and let users re-enter screens with the same data basis.",
+                "skills": "React, Next.js, TypeScript, CSS, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Playwright, GitHub Actions, Husky, Docker, Shell Script",
                 "tasks": [
-                  "Converted to a shared TanStack Query-based lookup structure and removed 6 direct disease-list calls.",
-                  "Connected follow-up analysis creation, selected-value transfer, and screen transitions from the analysis result screen to the next analysis flow.",
-                  "Separated non-working or redefinition-needed flows and used them as the basis for improving error, empty-state, and loading handling standards."
+                  "Developed product screens including analysis input, result screens, charts, file upload, and file download.",
+                  "Removed 6 direct disease-list calls left in screens and hooks, and managed the same lookup basis in one place.",
+                  "Designed the server-save structure for analysis task data and the client cache strategy so screen navigation and re-entry use the same data basis.",
+                  "Strengthened missing validation and error cases, and processed data uploads in chunks.",
+                  "Converted image-based UI into shared components and CSS to reduce unnecessary image requests and change cost.",
+                  "Reduced Lighthouse LCP from 1.3s to 1.0s and Speed Index from 3.4s to 0.7s."
                 ]
               },
               {
-                "subtitle": "React UI component migration and rendering performance improvement",
-                "detail": "Some UI depended on images and caused unnecessary network requests, while different button, icon, and color implementation styles across screens could increase the scope of future changes.",
+                "subtitle": "Development Environment and Verification System",
+                "detail": "Aligned project-specific execution and deployment methods so failures could be caught earlier before changes were pushed. I also worked on E2E tests for key browsers and viewport sizes, and on an AI-based development environment.",
                 "tasks": [
-                  "Converted image-based UI to code-based shared components, removing 3 PNG requests and about 315 KiB of transferred payload.",
-                  "Confirmed Lighthouse improvements by reducing LCP from 1.3s to 1.0s and Speed Index from 3.4s to 0.7s.",
-                  "Added a static image WebP conversion flow and reduced image resource transfer by about 95%.",
-                  "Introduced shared component usage standards and removed 25 existing button imports and 34 static SVG files.",
-                  "Reduced 529 direct color-value usages to simplify color management standards."
-                ]
-              },
-              {
-                "subtitle": "Frontend development environment and CI/CD verification flow maintenance",
-                "detail": "React/Next.js projects had different dependency, runtime, and pre-deployment verification standards, causing repeated build and validation checks. Type and build errors that could be caught at commit or push time could also reach deployment preparation.",
-                "tasks": [
-                  "Standardized the React/Next.js runtime environment by aligning security patches, dependency lockfiles, container runtime, and frontend runtime versions.",
-                  "Connected typecheck, build, and Playwright verification flows through GitHub Actions-based CI/CD and Husky pre-commit/pre-push hooks.",
-                  "Documented Docker packaging, Next.js standalone execution, and load/deploy script standards, and shared a GitHub Actions self-hosted runner setup guide with the team.",
-                  "Introduced Playwright CLI-based verification and created reference cases for repeated validation across key browser and viewport combinations."
+                  "Unified the execution and deployment methods across 4 frontend projects.",
+                  "Organized GitHub Actions-based deployment and verification flows.",
+                  "Made type errors and build failures visible before pushing changes, preventing failed changes from reaching remote branches.",
+                  "Built a test system that checks core screen flows across key browsers and viewport sizes.",
+                  "Preserved project context through task-specific skills, execution hooks, LLM Wiki, and PR checks so AI tools would not arbitrarily interpret difficult domain terms or screen states."
                 ]
               }
             ]
@@ -281,33 +273,33 @@
         "employmentType": "Full-time",
         "projects": {
           "commerceBackoffice": {
-            "title": "Commerce and Back-office Product Development as an Early Member",
+            "title": "Commerce and Back-office Development",
             "period": "2023.05 - 2025.07",
             "descriptions": [
               {
-                "subtitle": "Customer e-commerce and operator back-office development",
-                "detail": "Joined as an early member and developed both the customer e-commerce service and operator back office. The team needed to improve customer-facing flows and operator screens at the same time, while scattered order, product, seller, settlement, event, and inquiry data increased repetitive work.",
+                "subtitle": "Operations Automation, Mobile WebView, Commerce, and Back-office Development",
+                "detail": "Joined as an early member and developed commerce, a video platform, mobile webviews, a back office, and operations automation tools. I worked on both customer-facing screens and operator work screens, and moved repetitive content operations work into web tools.",
                 "skills": "Next.js, React, TypeScript, MUI, Tailwind CSS, Jotai, SWR, React Hook Form",
                 "tasks": [
-                  "Developed multilingual, payment, gifting, draw, product, order, and my-page flows for the Sellectors customer web service.",
-                  "Migrated a Flutter Web-based back office to Next.js and built management screens for orders, products, sellers, settlements, events, and inquiries.",
-                  "Reduced repetitive operator work by applying search reset, CSV/Excel export, drag-and-drop sorting, shared tables, dialogs, and form components."
+                  "Developed multilingual, payment, gifting, draw, product, order, and my-page screens.",
+                  "Moved the existing back office into a new frontend structure and developed order, product, seller, settlement, event, and inquiry management screens.",
+                  "Applied search reset, file export, drag-and-drop sorting, shared tables, dialogs, and form components."
                 ]
               }
             ]
           },
           "subtitleSystem": {
-            "title": "Content Operations Automation with AI Subtitle Translation",
+            "title": "Content Operations Automation with a Subtitle Translation Management Tool",
             "period": "2025.02 - 2025.07",
             "descriptions": [
               {
-                "subtitle": "Expanded repetitive subtitle translation from CLI scripts to a web-based management tool",
-                "detail": "Subtitle translation consumed significant operations time as repetitive manual work, and improving content supply speed required a tool that operators could use rather than a developer-only script.",
+                "subtitle": "Moved CLI-based subtitle translation into a web management tool",
+                "detail": "Moved subtitle translation from a CLI workflow into a web management tool so operators could process it directly.",
                 "skills": "TypeScript, AWS Bedrock, OpenAI API, Google Cloud Translate, Express",
                 "tasks": [
-                  "Implemented subtitle file processing, language-specific prompts, chunk-based translation, translation validation, and character matching.",
+                  "Handled subtitle file processing, language-specific prompts, translation review, and character matching in the management screen.",
                   "Reduced team resources spent on repetitive translation work by over 90% and increased productivity by more than 10x.",
-                  "Built a workflow that allows one person to process 6-8 works per day."
+                  "Enabled operators to process 6-8 works per day."
                 ]
               }
             ]
@@ -317,29 +309,29 @@
             "period": "2024.09 - 2025.04",
             "descriptions": [
               {
-                "subtitle": "Built a webview-based product flow for fast in-app content experiments and updates",
-                "detail": "Fast content experiments inside the app required a webview-based product flow that was not tied to native release cycles, while mobile webviews required handling keyboard, safe area, loading, app-web communication, and game rendering constraints together.",
+                "subtitle": "Built a webview area for event and game-style content without app releases",
+                "detail": "Planned and built a webview area where event and game-style content could be opened and updated without an app release.",
                 "skills": "Next.js, React, TypeScript, Phaser, Tailwind CSS, shadcn/ui, Flutter bridge, Airbridge",
                 "tasks": [
-                  "Implemented event and game-style content as Next.js-based mobile webviews.",
-                  "Implemented Phaser games, ranking/result submission, banner and sound control, Flutter bridge, deep links, and marketing SDK integrations.",
-                  "Created a webview-based experimentation space that can improve content independently from app releases."
+                  "Developed different content types such as events, fortune content, games, and draws as separate domains in a Next.js-based webview area.",
+                  "Handled Phaser games, ranking/result submission, banner and sound control, and Flutter bridge integration.",
+                  "Connected deep links and marketing SDKs to entry flows inside and outside the app."
                 ]
               }
             ]
           },
           "freebootingFinder": {
-            "title": "Unauthorized Content Monitoring Automation",
+            "title": "Unauthorized Content Search Tool",
             "period": "2025.06 - 2025.06",
             "descriptions": [
               {
-                "subtitle": "Automated repetitive manual monitoring with a crawling-based tool",
-                "detail": "Checking for unauthorized content use required daily manual searches, repeatedly consuming operations time. The team needed an internal tool to gather search results quickly for review and judgment.",
+                "subtitle": "Moved repetitive manual checks into a crawling-based tool",
+                "detail": "Moved unauthorized-content checking work from repetitive manual searches into a crawling-based tool.",
                 "skills": "TypeScript, Express, Axios, Cheerio, Vercel Serverless Functions",
                 "tasks": [
-                  "Built a keyword-based crawling tool and result-review UI.",
+                  "Built a keyword-based crawling tool and result-review screen.",
                   "Reduced daily checking work from 50 minutes to under 10 minutes.",
-                  "Organized the tool into a lightweight deployment structure based on Vercel Serverless Functions."
+                  "Separated bot-blocked browser crawling areas into Node.js-based processing."
                 ]
               }
             ]
@@ -352,61 +344,34 @@
         "employmentType": "Full-time",
         "projects": {
           "insuranceSubscription": {
-            "title": "Product Insurance Subscription Management Site Production",
+            "title": "Insurance Subscription Web Performance Improvement",
             "period": "2023.03 - 2023.04",
             "descriptions": [
               {
-                "subtitle": "Planning, Design Review",
-                "skills": "Next, React, TypeScript, Redux, AppSync(GraphQL), DynamoDB, gitLab CI/CD, sass"
-              },
-              {
-                "subtitle": "Report Page Creation",
+                "subtitle": "Insurance subscription screen with reduced initial display delay",
+                "detail": "Reduced a section where the insurance subscription screen could take up to 5 seconds to complete the initial display.",
+                "skills": "React, Next.js, TypeScript, Redux, Context API",
                 "tasks": [
-                  "Developed user subscription statistics chart screen by day/month/year",
-                  "Developed chart information API",
-                  "Developed file export function"
+                  "Removed nested callbacks and simplified the order of data preparation, state reflection, and rendering.",
+                  "Moved React-based screens into a Next.js structure and reset routing and rendering standards.",
+                  "Achieved 1.2s LCP on the subscription screen."
                 ]
-              },
-              {
-                "subtitle": "Administrator Sign-up Page Creation"
               }
             ]
           },
           "insuranceResponsive": {
-            "title": "Product Insurance Subscription Responsive Web & Linked Library Design and Maintenance",
+            "title": "Insurance Subscription, Payment, and Admin Screen Development",
             "period": "2022.10 - 2023.03",
             "descriptions": [
               {
-                "subtitle": "Shopping Mall Product Insurance Subscription Responsive Web",
-                "skills": "Next, React, TypeScript, Redux, AppSync(GraphQL), DynamoDB, gitLab CI/CD, sass",
+                "subtitle": "Insurance subscription, payment, and admin screens",
+                "detail": "Developed insurance subscription, payment, and admin screens.",
+                "skills": "React, Next.js, TypeScript, GraphQL, DynamoDB, Sass, GitLab CI/CD",
                 "tasks": [
-                  "Review planning including requirements and tech stack",
-                  "Project design and construction",
-                  "Improve initial rendering speed",
-                  "Added loader to reduce initial white screen time",
-                  "Improved white screen phenomenon from 1290ms to 208ms"
+                  "Built responsive insurance subscription screens and payment-information input flows.",
+                  "Built subscription lists, detail screens, statistics charts, report download, and file upload/download features.",
+                  "Shared upload/download handling and types to reduce admin-screen maintenance cost."
                 ]
-              },
-              {
-                "subtitle": "Library creation for use in client shopping malls (CDN distribution planned)",
-                "tasks": [
-                  "Created library for linkage as a responsive web",
-                  "CSS hashing to prevent conflict with existing styles",
-                  "Bundling (Lightweighting, Obfuscation)"
-                ]
-              },
-              {
-                "subtitle": "Phase 2 Design & Implementation",
-                "tasks": [
-                  "Migration from React to Next",
-                  "Increased rendering speed LCP avg 2.4 -> 0.6 (Korea)",
-                  "Increased rendering speed LCP avg 4.6 -> 0.6 (Japan)",
-                  "Added error pages 404, 500, 401, 403, 415",
-                  "Next - DynamoDB integration"
-                ]
-              },
-              {
-                "subtitle": "Applied user behavior pattern and user type analysis via Google Analytics, OpenSearch"
               }
             ]
           },
@@ -582,35 +547,33 @@
         "employmentType": "Full-time",
         "projects": {
           "consularCallCenter": {
-            "title": "Ministry of Foreign Affairs Consular Call Center Operation & Maintenance",
+            "title": "Maintenance, API Development, and Incident Response for a Live Service",
             "period": "2020.09 - 2021.07",
             "descriptions": [
               {
-                "subtitle": "Construction Test",
-                "skills": "Java, JavaScript, Egov, MyBatis, Mysql, Oracle"
-              },
-              {
-                "subtitle": "Operation & Maintenance",
+                "subtitle": "Maintenance and development work for a live service",
+                "detail": "Performed maintenance and development work for a live service. Classified issues by user impact, reproducibility, and fix scope, then shared them with the operations team.",
+                "skills": "Linux, Network, Security, API, JavaScript, HTML, CSS",
                 "tasks": [
-                  "Consultation application external API development (Survey, DB Batch Server)",
-                  "Consultation application feature improvement & SR processing (Unprocessed bug fix)",
-                  "Development environment construction (Server OS installation, Linkage with other service development servers)",
-                  "Consular Call Center Free Call App Troubleshooting"
+                  "Reproduced errors and change requests, then separated the scope that needed fixes and verification.",
+                  "Checked incident causes and user impact from infrastructure and security perspectives, then shared findings with the operations team.",
+                  "Worked on API development and selected page implementation, gaining experience in how development and operations connect."
                 ]
               }
             ]
           },
           "smartDis": {
-            "title": "Smart-Dis Development (ETL)",
+            "title": "Data Migration and Runtime Environment Transition",
             "period": "2020.08 - 2020.09",
             "descriptions": [
               {
-                "subtitle": "Data Migration Service Development",
-                "skills": "Java, JavaScript, Egov, MyBatis, MariaDB, Oracle",
+                "subtitle": "Transition work for different databases and runtime environments",
+                "detail": "Worked on data conversion and environment expansion so existing software could run on different databases and runtime environments.",
+                "skills": "Java, JavaScript, eGovFrame, MyBatis, MariaDB, Oracle",
                 "tasks": [
-                  "Conversion of online-only software to intranet commercial-available software (Library conversion)",
-                  "Added MariaDB query performing same function as existing Oracle query",
-                  "Added Window function to Linux-only software and manualized"
+                  "Adjusted Oracle-based queries and Linux-centered features to work in MariaDB and Windows environments.",
+                  "Expanded the usable environments of existing software through library conversion and runtime environment expansion.",
+                  "Added Windows-environment features and documentation so operators could use the transitioned environment."
                 ]
               }
             ]

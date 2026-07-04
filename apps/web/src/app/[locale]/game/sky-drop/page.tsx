@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { GameConstants } from "@/components/game/game-constants";
+import { createDesktopGameFrameStyle } from "@/components/game/game-frame-style";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGame } from "@/contexts/game-context";
 import GameReadyScreen from "@/components/game/game-ready-screen";
@@ -61,16 +62,15 @@ export default function SkyDropPage() {
         border: "none",
         borderRadius: 0,
       }
-    : {
-        maxWidth: `${GameConstants.MAX_WIDTH}px`,
-        maxHeight: "calc(100% - 8px)",
-        aspectRatio: GameConstants.ASPECT_RATIO_CSS,
-      };
+    : createDesktopGameFrameStyle({
+        maxWidth: GameConstants.MAX_WIDTH,
+        aspectRatioCss: GameConstants.ASPECT_RATIO_CSS,
+      });
 
   return (
     <main className="flex h-full w-full flex-col items-center justify-center bg-slate-900 p-0 sm:p-4">
       <div
-        className={`relative overflow-hidden bg-black shadow-2xl transition-all duration-300 ${!isMobile ? "w-full rounded-xl border-0 border-slate-700 sm:border-4" : ""}`}
+        className={`relative overflow-hidden bg-black shadow-2xl ${!isMobile ? "rounded-xl border-0 border-slate-700 sm:border-4" : ""}`}
         style={containerStyle}
       >
         {gameState === "ready" && (

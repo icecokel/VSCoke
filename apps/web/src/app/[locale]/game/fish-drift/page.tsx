@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGame } from "@/contexts/game-context";
+import { createDesktopGameFrameStyle } from "@/components/game/game-frame-style";
 import { FishDriftConstants } from "@/components/fish-drift/fish-drift-constants";
 import { FishDriftReadyScreen } from "@/components/fish-drift/fish-drift-ready-screen";
 import { FishDriftResultScreen } from "@/components/fish-drift/fish-drift-result-screen";
@@ -83,16 +84,15 @@ export default function FishDriftPage() {
         border: "none",
         borderRadius: 0,
       }
-    : {
-        maxWidth: `${FishDriftConstants.MAX_WIDTH}px`,
-        maxHeight: "calc(100% - 8px)",
-        aspectRatio: FishDriftConstants.ASPECT_RATIO_CSS,
-      };
+    : createDesktopGameFrameStyle({
+        maxWidth: FishDriftConstants.MAX_WIDTH,
+        aspectRatioCss: FishDriftConstants.ASPECT_RATIO_CSS,
+      });
 
   return (
     <main className="flex h-full w-full flex-col items-center justify-center bg-sky-950 p-0 sm:p-4">
       <div
-        className={`relative overflow-hidden bg-sky-950 shadow-2xl transition-all duration-300 ${!isMobile ? "w-full rounded-xl border-0 border-cyan-900 sm:border-4" : ""}`}
+        className={`relative overflow-hidden bg-sky-950 shadow-2xl ${!isMobile ? "rounded-xl border-0 border-cyan-900 sm:border-4" : ""}`}
         style={containerStyle}
       >
         {gameState === "ready" && (

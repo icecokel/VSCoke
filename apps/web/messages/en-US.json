@@ -123,6 +123,7 @@
     "submitted": "Submitted",
     "submitSuccess": "Score recorded successfully!",
     "submitFail": "Failed to submit score.",
+    "apiUnavailable": "This feature is unavailable while the server is being migrated.",
     "score": "Score: ",
     "deadline": "DEADLINE",
     "start": "START",

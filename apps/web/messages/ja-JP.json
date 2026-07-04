@@ -123,6 +123,7 @@
     "submitted": "記録完了",
     "submitSuccess": "スコアを正常に記録しました！",
     "submitFail": "スコアの記録に失敗しました。",
+    "apiUnavailable": "サーバー移行作業中のため、この機能は現在利用できません。",
     "score": "スコア: ",
     "deadline": "デッドライン",
     "start": "開始",

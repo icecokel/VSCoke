@@ -50,6 +50,7 @@ export interface AppMessages {
   Game: {
     start: string;
     exit: string;
+    apiUnavailable: string;
     leaderboardEmpty: string;
     loadFailed: string;
     notEnoughLetters: string;

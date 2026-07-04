@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { GameConstants } from "./game-constants";
 import { getGameRanking, type GameHistory } from "@/services/score-service";
+import { toast } from "sonner";
 
 interface GameReadyScreenProps {
   onStart: () => void;
@@ -47,10 +48,20 @@ const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
 
     const loadRanking = async () => {
       setIsRankingLoading(true);
-      const ranking = await getGameRanking("SKY_DROP");
-      if (!isActive) return;
-      setTopRanking(ranking.slice(0, 3));
-      setIsRankingLoading(false);
+      try {
+        const ranking = await getGameRanking("SKY_DROP");
+        if (!isActive) return;
+        setTopRanking(ranking.slice(0, 3));
+      } catch (error) {
+        if (!isActive) return;
+        console.error(error);
+        toast.error(t("apiUnavailable"), { id: "api-unavailable" });
+        setTopRanking([]);
+      } finally {
+        if (isActive) {
+          setIsRankingLoading(false);
+        }
+      }
     };
 
     loadRanking();
@@ -58,7 +69,7 @@ const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [t]);
 
   const getDisplayName = (player: GameHistory["user"]) => {
     const fullName = `${player.lastName ?? ""}${player.firstName ?? ""}`.trim();

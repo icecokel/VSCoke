@@ -51,7 +51,7 @@ export const useWordle = (): UseWordleReturn => {
       setAnswer(word.toUpperCase());
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load word"));
-      toast.error(t("loadFailed")); // 번역 키 확인 필요, 없으면 fallback
+      toast.error(t("apiUnavailable"), { id: "api-unavailable" });
     } finally {
       setIsLoading(false);
     }
@@ -160,7 +160,7 @@ export const useWordle = (): UseWordleReturn => {
       setCurrentGuess("");
     } catch (err) {
       console.error(err);
-      toast.error(t("errorOccurred")); // 에러 발생 시 메시지
+      toast.error(t("apiUnavailable"), { id: "api-unavailable" });
     } finally {
       isSubmittingRef.current = false;
       setIsValidating(false);

@@ -126,6 +126,8 @@ export const ResultScreen = ({ score, gameName, onRestart }: ResultScreenProps) 
           savePendingScore(true);
           setNeedsReauth(true);
           toast.error(t("submitFail"));
+        } else if (result.unavailable) {
+          toast.error(t("apiUnavailable"), { id: "api-unavailable" });
         } else {
           toast.error(t("submitFail"));
         }

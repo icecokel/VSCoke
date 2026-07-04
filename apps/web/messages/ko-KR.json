@@ -123,6 +123,7 @@
     "submitted": "기록 완료",
     "submitSuccess": "점수가 성공적으로 기록되었습니다!",
     "submitFail": "점수 기록에 실패했습니다.",
+    "apiUnavailable": "현재 서버 이전 작업 중이라 이 기능은 사용할 수 없습니다.",
     "score": "점수: ",
     "deadline": "데드라인",
     "start": "시작",

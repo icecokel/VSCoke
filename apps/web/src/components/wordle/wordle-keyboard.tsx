@@ -26,6 +26,7 @@ export function WordleKeyboard({ onKey, usedKeys }: WordleKeyboardProps) {
             return (
               <button
                 key={key}
+                aria-label={key}
                 onClick={() => onKey(key)}
                 className={cn(
                   "flex h-full min-h-9 cursor-pointer items-center justify-center rounded font-bold uppercase transition-all select-none active:scale-95",

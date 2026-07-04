@@ -13,7 +13,7 @@ const isApiErrorLike = (error: unknown): error is ApiErrorLike =>
 
 export const isRecoverableReadError = (error: unknown): boolean => {
   if (isApiErrorLike(error)) {
-    return error.status === 404;
+    return error.status === 404 || error.status === 530;
   }
 
   return isFetchNetworkError(error);

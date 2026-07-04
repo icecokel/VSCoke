@@ -20,13 +20,8 @@ export const fetchRandomWord = async (): Promise<string> => {
  * 단어가 유효한지 검증합니다.
  */
 export const checkWord = async (word: string): Promise<boolean> => {
-  try {
-    const data = await apiClient.post<CheckWordResponse>("/wordle/check", {
-      word,
-    });
-    return data.exists;
-  } catch {
-    // API 장애 시 false 반환하여 게임 진행 차단
-    return false;
-  }
+  const data = await apiClient.post<CheckWordResponse>("/wordle/check", {
+    word,
+  });
+  return data.exists;
 };

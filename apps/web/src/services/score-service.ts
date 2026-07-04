@@ -15,6 +15,7 @@ export interface ScoreSubmissionResult {
   data?: GameHistoryResponseDto;
   status?: number;
   requiresAuth?: boolean;
+  unavailable?: boolean;
 }
 
 export interface ScoreSubmissionData {
@@ -67,11 +68,13 @@ export const submitScore = async (
         message: `점수 기록 실패 (${error.status})`,
         status: error.status,
         requiresAuth: error.status === 401,
+        unavailable: error.status !== 401,
       };
     }
     return {
       success: false,
       message: "네트워크 오류가 발생했습니다.",
+      unavailable: true,
     };
   }
 };
@@ -105,12 +108,8 @@ export const getGameResult = async (id: string): Promise<GameHistoryResponseDto 
 export const getGameRanking = async (
   gameType: CreateGameHistoryDto["gameType"] = "SKY_DROP",
 ): Promise<GameHistory[]> => {
-  try {
-    const result = await apiClient.get<GameHistory[]>(`/game/ranking?gameType=${gameType}`, {
-      cache: "no-store",
-    });
-    return result;
-  } catch {
-    return [];
-  }
+  const result = await apiClient.get<GameHistory[]>(`/game/ranking?gameType=${gameType}`, {
+    cache: "no-store",
+  });
+  return result;
 };

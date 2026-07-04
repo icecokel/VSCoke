@@ -159,7 +159,10 @@ export const HistoryTabs = ({ children }: TParentNode) => {
 
   return (
     <div className="flex flex-col h-screen w-full bg-gray-800">
-      <div className="flex bg-gray-900 overflow-x-auto flex-shrink-0">
+      <div
+        data-testid="history-tab-rail"
+        className="flex h-8 min-h-8 flex-shrink-0 overflow-x-auto bg-gray-900"
+      >
         {history.map(item => (
           <ContextMenu key={`tab_${item.path}`}>
             <ContextMenuTrigger asChild>

@@ -31,6 +31,20 @@ const installHistoryFixture = async (
 };
 
 test.describe("히스토리 탭 상태머신", () => {
+  test("빈 히스토리 상태에서도 탭 영역 높이를 예약한다", async ({ page }) => {
+    await installHistoryFixture(page, []);
+
+    const locale = getTestLocale();
+    await visit(page, `/${locale}`);
+
+    const tabRail = page.locator('[data-testid="history-tab-rail"]');
+    await expect(tabRail).toBeVisible();
+    await expect(tabRail).toHaveCSS("height", "32px");
+
+    await waitForHistoryHydration(page);
+    await expect(tabRail).toHaveCSS("height", "32px");
+  });
+
   test("공유 상세 탭은 URL 식별자 대신 공유 탭 이름으로 표시한다", async ({ page }) => {
     const locale = getTestLocale();
     const shareId = "00000000-0000-4000-8000-000000000000";

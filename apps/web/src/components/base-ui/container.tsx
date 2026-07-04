@@ -14,7 +14,7 @@ const maxWidthClasses: Record<NonNullable<IContainerProps["maxWidth"]>, string> 
 
 const Container = ({ maxWidth = "lg", className, children, ...restProps }: IContainerProps) => {
   return (
-    <div className={twMerge("mx-auto", maxWidthClasses[maxWidth], className)} {...restProps}>
+    <div className={twMerge("mx-auto w-full", maxWidthClasses[maxWidth], className)} {...restProps}>
       {children}
     </div>
   );

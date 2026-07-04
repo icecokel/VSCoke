@@ -108,18 +108,24 @@ PM2 운영 기준:
 
 웹 환경 변수는 Vercel Project Settings에서 관리한다. 로컬 개발 기본값은 `apps/web/.env.example`을 복사해 구성한다.
 
-| 이름                  | 필수 | 위치               | 설명                             |
-| --------------------- | ---- | ------------------ | -------------------------------- |
-| `NEXT_PUBLIC_API_URL` | 필수 | Vercel web project | 브라우저에서 호출할 API 공개 URL |
-| `AUTH_GOOGLE_ID`      | 필수 | Vercel web project | Google OAuth client id           |
-| `AUTH_GOOGLE_SECRET`  | 필수 | Vercel web project | Google OAuth client secret       |
-| `AUTH_SECRET`         | 필수 | Vercel web project | Auth.js session/signing secret   |
-| `AUTH_URL`            | 선택 | Vercel web project | 플랫폼이 URL을 추론하지 못할 때  |
+| 이름                            | 필수 | 위치               | 설명                                                      |
+| ------------------------------- | ---- | ------------------ | --------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL`           | 필수 | Vercel web project | 브라우저에서 호출할 API 공개 URL                          |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | 선택 | Vercel web project | GA4 직접 연결용 측정 ID. 없으면 gtag.js를 렌더링하지 않음 |
+| `NEXT_PUBLIC_GTM_ID`            | 선택 | Vercel web project | GA4/GTM 웹 컨테이너 ID. 없으면 태그를 렌더링하지 않음     |
+| `AUTH_GOOGLE_ID`                | 필수 | Vercel web project | Google OAuth client id                                    |
+| `AUTH_GOOGLE_SECRET`            | 필수 | Vercel web project | Google OAuth client secret                                |
+| `AUTH_SECRET`                   | 필수 | Vercel web project | Auth.js session/signing secret                            |
+| `AUTH_URL`                      | 선택 | Vercel web project | 플랫폼이 URL을 추론하지 못할 때                           |
 
 주의:
 
 - `NEXT_PUBLIC_` 값은 클라이언트 번들에 포함된다. 비밀값을 넣지 않는다.
 - `AUTH_GOOGLE_SECRET`, `AUTH_SECRET` 같은 비밀값에는 `NEXT_PUBLIC_` prefix를 붙이지 않는다.
+- `NEXT_PUBLIC_GA_MEASUREMENT_ID`에는 `G-`로 시작하는 GA4 측정 ID만 넣는다.
+- `NEXT_PUBLIC_GTM_ID`에는 `GTM-`로 시작하는 웹 컨테이너 ID만 넣는다.
+- GA4를 코드에서 직접 연결한 상태에서 GTM에도 같은 GA4 태그를 게시하면 page_view가 중복 집계될 수 있으므로 운영에서는 한 경로만 활성화한다.
+- 일반 GA4와 웹 GTM 연결은 무료 사용 범위다. Analytics 360, Tag Manager 360, BigQuery export, server-side GTM은 별도 비용이나 Google Cloud 과금이 생길 수 있다.
 - API 도메인이나 Auth 값을 바꾸면 Vercel Production, Preview 환경 값을 모두 확인하고 재배포한다.
 - 로컬에서 웹만 빌드 확인할 때는 임시 값으로 실행할 수 있다.
 

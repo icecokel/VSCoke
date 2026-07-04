@@ -108,7 +108,6 @@ export const DoomGame = () => {
   return (
     <>
       <Script src="https://js-dos.com/6.22/current/js-dos.js" onLoad={() => setIsReady(true)} />
-      <link rel="stylesheet" href="https://js-dos.com/6.22/current/js-dos.css" />
 
       <div className="w-full h-full bg-black relative top-0 left-0 overflow-hidden font-mono">
         <canvas ref={rootRef} className="w-full h-full block" />

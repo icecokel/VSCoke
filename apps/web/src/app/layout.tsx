@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Noto_Sans_KR } from "next/font/google";
+import { GoogleAnalytics } from "@/components/google-analytics";
+import { GoogleTagManager } from "@/components/google-tag-manager";
 import "./globals.css";
 
 const notoSansKr = Noto_Sans_KR({
@@ -55,7 +57,11 @@ const RootLayout = ({
 }>) => {
   return (
     <html className={`${notoSansKr.className} dark`}>
-      <body>{children}</body>
+      <body>
+        <GoogleAnalytics measurementId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
+        <GoogleTagManager containerId={process.env.NEXT_PUBLIC_GTM_ID} />
+        {children}
+      </body>
     </html>
   );
 };

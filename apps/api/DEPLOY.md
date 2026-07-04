@@ -47,12 +47,142 @@
    ```
    > 코드 배포와 함께라면 GitHub Actions가 재시작해주므로 생략 가능합니다.
 
+## 3. DB schema 변경
+
+운영 API는 `DB_SYNCHRONIZE=false`를 기본으로 유지합니다. schema 변경은 TypeORM migration 파일로 추적하고, 운영 DB에는 backup을 만든 뒤 migration 명령으로만 반영합니다. 운영 DB에서 `psql`로 직접 DDL을 실행하는 방식은 긴급 복구 상황이 아니면 사용하지 않습니다.
+
+### Migration 생성
+
+빈 migration을 만들 때:
+
+```bash
+pnpm --filter @vscoke/api migration:create src/migrations/<kebab-summary>
+```
+
+현재 entity와 연결된 DB를 비교해 migration 초안을 만들 때:
+
+```bash
+pnpm --filter @vscoke/api db:tunnel
+pnpm --filter @vscoke/api migration:generate src/migrations/<kebab-summary>
+```
+
+`migration:generate`는 현재 DB schema와 entity 차이를 비교하므로, 별도 터미널에서 DB tunnel을 계속 유지해야 합니다. 생성된 migration의 `up`, `down`을 모두 검토하고, rollback이 불가능한 변경은 배포 전에 별도 수동 복구 절차를 이 문서나 PR에 남깁니다.
+
+### Local dry run
+
+schema 변경 PR에서는 운영 반영 전에 로컬 또는 staging DB에서 migration 실행과 되돌리기를 확인합니다.
+
+```bash
+pnpm --filter @vscoke/api build
+pnpm --filter @vscoke/api migration:show
+pnpm --filter @vscoke/api migration:run
+pnpm --filter @vscoke/api migration:revert
+pnpm --filter @vscoke/api migration:run
+```
+
+`migration:show`, `migration:run`, `migration:revert`는 `dist/src/data-source.js`를 사용하므로 먼저 API를 build합니다.
+
+### 운영 backup
+
+운영 migration을 실행하기 직전에 Termux 서버에서 backup을 생성합니다.
+
+```bash
+cd /data/data/com.termux/files/home/projects/vscoke-api
+set -a
+. ./.env
+set +a
+mkdir -p backups
+BACKUP_FILE="backups/${DB_DATABASE}-$(date +%Y%m%d-%H%M%S).dump"
+PGPASSWORD="$DB_PASSWORD" pg_dump \
+  -h "$DB_HOST" \
+  -p "${DB_PORT:-5432}" \
+  -U "$DB_USERNAME" \
+  -d "$DB_DATABASE" \
+  --format=custom \
+  --no-owner \
+  --no-acl \
+  --file "$BACKUP_FILE"
+pg_restore --list "$BACKUP_FILE" | head
+```
+
+backup 파일이 생성되고 `pg_restore --list`가 archive 내용을 출력해야 migration을 진행합니다.
+
+### 운영 migration 실행
+
+운영 release 경로에서 migration 상태를 확인한 뒤 실행합니다.
+
+```bash
+cd /data/data/com.termux/files/home/projects/vscoke-api
+set -a
+. ./.env
+set +a
+pnpm --filter @vscoke/api migration:show
+pnpm --filter @vscoke/api migration:run
+pm2 restart vscoke-api --update-env
+pnpm smoke:api:remote
+pm2 save
+```
+
+기본 흐름은 backward-compatible migration을 먼저 적용하고, 코드가 새 schema를 사용하도록 배포하는 방식입니다. 기존 코드와 새 코드 중 한쪽이 깨지는 breaking schema 변경은 expand/contract 단계로 나누어 별도 PR로 처리합니다.
+
+### Rollback
+
+마지막 migration만 되돌리면 되는 경우:
+
+```bash
+cd /data/data/com.termux/files/home/projects/vscoke-api
+set -a
+. ./.env
+set +a
+pnpm --filter @vscoke/api migration:revert
+pm2 restart vscoke-api --update-env
+pnpm smoke:api:remote
+```
+
+backup으로 복구해야 하는 경우에는 API를 멈추고 restore한 뒤 다시 시작합니다.
+
+```bash
+cd /data/data/com.termux/files/home/projects/vscoke-api
+set -a
+. ./.env
+set +a
+pm2 stop vscoke-api
+PGPASSWORD="$DB_PASSWORD" pg_restore \
+  -h "$DB_HOST" \
+  -p "${DB_PORT:-5432}" \
+  -U "$DB_USERNAME" \
+  -d "$DB_DATABASE" \
+  --clean \
+  --if-exists \
+  --no-owner \
+  --no-acl \
+  "$BACKUP_FILE"
+pm2 restart vscoke-api --update-env
+pnpm smoke:api:remote
+pm2 save
+```
+
+restore에 사용할 `BACKUP_FILE`은 운영 backup 단계에서 생성한 파일 경로로 설정합니다.
+
+### DB 접속 기준
+
+Termux 서버에서는 API와 PostgreSQL이 같은 서버 안에서 동작하므로 `.env`의 `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`를 그대로 사용합니다.
+
+Mac 로컬에서는 Cloudflare Access TCP tunnel을 먼저 실행합니다.
+
+```bash
+pnpm --filter @vscoke/api db:tunnel
+```
+
+tunnel 터미널은 유지하고, 다른 터미널에서 migration dry run이나 DB 확인 명령을 실행합니다.
+
 ## 요약
 
-| 변경 유형                    | 배포 방법     | 비고                       |
-| :--------------------------- | :------------ | :------------------------- |
-| **코드 (`apps/api/src` 등)** | `git push`    | GitHub Actions가 자동 처리 |
-| **환경 변수 (`.env`)**       | `tmx cp .env` | 수동 전송 및 재시작 필요   |
+| 변경 유형                    | 배포 방법                  | 비고                       |
+| :--------------------------- | :------------------------- | :------------------------- |
+| **코드 (`apps/api/src` 등)** | `git push`                 | GitHub Actions가 자동 처리 |
+| **환경 변수 (`.env`)**       | `tmx cp .env`              | 수동 전송 및 재시작 필요   |
+| **DB schema**                | TypeORM migration + backup | 운영 반영 직전 backup 필수 |
 
 ## 운영 전 확인할 항목
 

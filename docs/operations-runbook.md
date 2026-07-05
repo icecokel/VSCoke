@@ -12,6 +12,14 @@ GitHub repository
 
 웹과 API는 같은 저장소를 쓰지만 배포 주체가 다르다. 웹 장애는 Vercel을 먼저 보고, API 장애는 GitHub Actions, Ubuntu host runner, PM2, Cloudflare Tunnel을 순서대로 본다.
 
+## 서버 접속
+
+운영 Ubuntu host 접속은 SSH alias만 사용한다.
+
+```bash
+ssh icenux-external
+```
+
 ## 빠른 상태 확인
 
 웹:
@@ -35,6 +43,18 @@ PORT="$(sed -n 's/^PORT=//p' .env | tail -1)"
 PORT="${PORT:-3000}"
 PORT="$PORT" node -e "fetch('http://127.0.0.1:' + process.env.PORT + '/health').then((res) => { console.log(res.status); if (!res.ok) process.exit(1); })"
 ```
+
+운영 API 프로세스 기준:
+
+```bash
+ssh icenux-external
+pm2 list
+systemctl is-active actions.runner.icecokel-VSCoke.icenux-vscoke-api-host.service
+systemctl is-active cloudflared-icenux.service
+systemctl is-active vscoke-api-native.service || true
+```
+
+기대값은 `vscoke-api`가 PM2 `online`, API runner와 `cloudflared-icenux.service`가 `active`, `vscoke-api-native.service`가 `inactive`이다.
 
 ## 웹 배포 실패
 
@@ -135,8 +155,23 @@ pm2 save
 ```bash
 cd /home/icenux/projects/vscoke-api
 test -f apps/api/dist/src/main.js
+sudo systemctl disable --now vscoke-api-native.service || true
 pm2 start apps/api/dist/src/main.js --name vscoke-api --update-env
 pm2 save
+```
+
+`/health`가 404이고 `/`만 `Hello World!`로 응답하면 이전 `/opt/icenux/vscoke-api` 기반 `vscoke-api-native.service`가 3000 포트를 점유했을 가능성이 높다. 이 경우 아래처럼 이전 서비스를 끄고 현재 PM2 API를 다시 올린다.
+
+```bash
+sudo systemctl disable --now vscoke-api-native.service
+cd /home/icenux/projects/vscoke-api
+set -a
+. ./.env
+set +a
+pm2 delete vscoke-api || true
+pm2 start apps/api/dist/src/main.js --name vscoke-api --update-env
+pm2 save
+curl -fsS http://127.0.0.1:3000/health
 ```
 
 ## Cloudflare Tunnel 장애

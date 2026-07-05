@@ -4,6 +4,16 @@
 
 전체 monorepo 배포/환경 변수 기준은 [Deployment and Environment Plan](../../docs/deployment-and-env.md)을 우선합니다.
 
+## 운영 서버 접속
+
+운영 Ubuntu host 접속은 SSH alias만 사용합니다.
+
+```bash
+ssh icenux-external
+```
+
+현재 운영 API는 `/home/icenux/projects/vscoke-api` 배포본을 PM2 앱 `vscoke-api`로 실행합니다. 이전 `/opt/icenux/vscoke-api` 기반 `vscoke-api-native.service`는 사용하지 않으며 `disabled/inactive` 상태여야 합니다.
+
 ## 1. 소스 코드 배포 (자동)
 
 코드 변경 사항(`apps/api/src/`, `apps/api/package.json` 등)은 Git을 통해 배포합니다.
@@ -177,17 +187,18 @@ tunnel 터미널은 유지하고, 다른 터미널에서 migration dry run이나
 
 ## 요약
 
-| 변경 유형                    | 배포 방법                  | 비고                       |
-| :--------------------------- | :------------------------- | :------------------------- |
-| **코드 (`apps/api/src` 등)** | `git push`                 | GitHub Actions가 자동 처리 |
-| **환경 변수 (`.env`)**       | `tmx cp .env`              | 수동 전송 및 재시작 필요   |
-| **DB schema**                | TypeORM migration + backup | 운영 반영 직전 backup 필수 |
+| 변경 유형                    | 배포 방법                                                        | 비고                       |
+| :--------------------------- | :--------------------------------------------------------------- | :------------------------- |
+| **코드 (`apps/api/src` 등)** | `git push`                                                       | GitHub Actions가 자동 처리 |
+| **환경 변수 (`.env`)**       | `scp .env icenux-external:/home/icenux/projects/vscoke-api/.env` | 수동 전송 및 재시작 필요   |
+| **DB schema**                | TypeORM migration + backup                                       | 운영 반영 직전 backup 필수 |
 
 ## 운영 전 확인할 항목
 
 - GitHub Actions self-hosted runner: labels `self-hosted`, `vscoke-api`, `host`
 - Ubuntu host runtime: Node.js 20 이상, Corepack, pnpm 9.12.0, PM2, PostgreSQL 접근성
 - Cloudflare Tunnel: API 도메인이 Ubuntu host API 포트로 라우팅되는지 확인
+- 이전 `vscoke-api-native.service`: `disabled/inactive`
 - API runtime env: `NODE_ENV=production`, `DB_SYNCHRONIZE=false`, `GOOGLE_CLIENT_ID`, DB 접속 정보
 - Web 연동: Vercel의 `NEXT_PUBLIC_API_URL`이 API 공개 도메인을 가리키는지 확인
 

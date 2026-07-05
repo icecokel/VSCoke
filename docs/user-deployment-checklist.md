@@ -37,14 +37,14 @@ Ubuntu host에 monorepo 저장소 `icecokel/VSCoke`용 GitHub Actions self-hoste
 - [x] runner label에 `vscoke-api`, `host`를 추가한다.
 - [x] runner를 systemd로 상시 실행되게 구성한다.
 - [x] runner job에서 Ubuntu host `node`, `corepack`, `pm2` 명령을 사용하도록 workflow를 구성한다.
-- [ ] 선택적으로 repository variable `API_HEALTH_URL`을 등록한다. 기본값은 `https://api.icecoke.kr/health`이다.
-- [ ] 선택적으로 repository variable `API_DEPLOY_DIR`을 등록한다. 기본값은 `/home/icenux/projects/vscoke-api`이다.
+- [x] repository variable `API_HEALTH_URL`은 기본값 `https://api.icecoke.kr/health`를 사용한다.
+- [x] repository variable `API_DEPLOY_DIR`은 기본값 `/home/icenux/projects/vscoke-api`를 사용한다.
 
 검증:
 
 - [x] `Deploy API to Ubuntu Host (Self-hosted Runner)` workflow가 runner를 인식하는지 확인한다.
-- [ ] workflow의 `Verify self-hosted runner prerequisites` 단계가 통과하는지 확인한다.
-- [ ] workflow의 host PM2 배포 단계가 통과하는지 확인한다.
+- [x] workflow의 `Verify self-hosted runner prerequisites` 단계가 통과하는지 확인한다.
+- [x] workflow의 host PM2 배포 단계가 통과하는지 확인한다.
 
 ## 3. Ubuntu API Server
 
@@ -52,31 +52,32 @@ Ubuntu host의 운영 디렉터리를 확인한다.
 
 - [x] `/home/icenux/projects/vscoke-api` 디렉터리가 존재하는지 확인한다.
 - [x] `/home/icenux/projects/vscoke-api/.env`를 생성하거나 갱신한다.
-- [ ] 운영 `.env`에 최소 필수 값을 넣는다.
-  - [ ] `NODE_ENV=production`
-  - [ ] `PORT`
-  - [ ] `GOOGLE_CLIENT_ID`
-  - [ ] `DB_HOST`
-  - [ ] `DB_PORT`
-  - [ ] `DB_USERNAME`
-  - [ ] `DB_PASSWORD`
-  - [ ] `DB_DATABASE`
-  - [ ] `DB_SYNCHRONIZE=false`
-  - [ ] `CORS_ORIGINS`
-- [ ] 운영 `.env`에 개발 인증 우회 값을 넣지 않는다.
-  - [ ] `ENABLE_DEV_AUTH_BYPASS`
-  - [ ] `DEV_AUTH_TOKEN`
+- [x] 운영 `.env`에 최소 필수 값을 넣는다.
+  - [x] `NODE_ENV=production`
+  - [x] `PORT`
+  - [x] `GOOGLE_CLIENT_ID`
+  - [x] `DB_HOST`
+  - [x] `DB_PORT`
+  - [x] `DB_USERNAME`
+  - [x] `DB_PASSWORD`
+  - [x] `DB_DATABASE`
+  - [x] `DB_SYNCHRONIZE=false`
+  - [x] `CORS_ORIGINS`
+- [x] 운영 `.env`에 개발 인증 우회 값을 넣지 않는다.
+  - [x] `ENABLE_DEV_AUTH_BYPASS`
+  - [x] `DEV_AUTH_TOKEN`
 - [ ] 운영 에러 알림을 사용할지 결정한다.
   - [ ] 사용할 경우 `NOTIFY_SERVICE_URL`, `NOTIFY_SERVICE_USER`, `NOTIFY_SERVICE_PASSWORD`를 설정한다.
   - [ ] 사용하지 않을 경우 현재 localhost fallback 동작을 허용할지 별도 이슈에서 결정한다.
 
 검증:
 
-- [ ] `pm2 status`에서 `vscoke-api` 상태를 확인한다.
-- [ ] workflow 배포 성공 후 `pm2 status`에서 `vscoke-api` 상태를 확인한다.
-- [ ] 재부팅 복구가 필요하면 PM2 systemd startup에서 `pm2 resurrect`가 실행되도록 설정한다.
-- [ ] `https://api.icecoke.kr/health` 응답을 확인한다.
-- [ ] 로컬에서 공개 API smoke test를 실행한다.
+- [x] `pm2 status`에서 `vscoke-api` 상태를 확인한다.
+- [x] workflow 배포 성공 후 `pm2 status`에서 `vscoke-api` 상태를 확인한다.
+- [x] 재부팅 복구가 필요하면 PM2 systemd startup에서 `pm2 resurrect`가 실행되도록 설정한다.
+- [x] 이전 `vscoke-api-native.service`가 `disabled/inactive`인지 확인한다.
+- [x] `https://api.icecoke.kr/health` 응답을 확인한다.
+- [x] 로컬에서 공개 API smoke test를 실행한다.
   ```bash
   pnpm smoke:api:remote
   ```
@@ -85,20 +86,20 @@ Ubuntu host의 운영 디렉터리를 확인한다.
 
 API 도메인과 Ubuntu host API 포트 연결을 확인한다.
 
-- [ ] `api.icecoke.kr`가 Ubuntu host의 API 포트로 라우팅되는지 확인한다.
-- [ ] Tunnel이 기기 재부팅 후에도 복구되는지 확인한다.
+- [x] `api.icecoke.kr`가 Ubuntu host의 API 포트로 라우팅되는지 확인한다.
+- [x] Tunnel이 기기 재부팅 후에도 복구되는지 확인한다.
 - [x] GitHub Actions 배포가 SSH/Cloudflare Access SSH 정책에 의존하지 않는지 확인한다.
 
 검증:
 
-- [ ] 외부 네트워크에서 `https://api.icecoke.kr/health`에 접근한다.
+- [x] 외부 네트워크에서 `https://api.icecoke.kr/health`에 접근한다.
 - [ ] Vercel web production에서 API 호출이 CORS 오류 없이 성공하는지 확인한다.
 
 ## 5. Existing API Repository
 
 monorepo API 배포가 한 번 이상 성공한 뒤 기존 `vscoke-api` 저장소를 archive한다.
 
-- [ ] monorepo의 `apps/api`가 production 배포에 성공했는지 확인한다.
+- [x] monorepo의 `apps/api`가 production 배포에 성공했는지 확인한다.
 - [ ] 기존 `vscoke-api` 저장소 README 또는 description에 새 위치를 안내한다.
 - [ ] 기존 `vscoke-api` 저장소를 archive한다.
 

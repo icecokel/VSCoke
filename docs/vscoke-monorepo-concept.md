@@ -1,6 +1,6 @@
 # VSCoke Monorepo Concept
 
-확인 기준일: 2026-06-20
+확인 기준일: 2026-07-06
 
 이 문서는 현재 구현된 VSCoke monorepo의 구조, 실행 방식, 테스트, 배포 흐름을 한눈에 보기 위한 기준 문서다. 프론트엔드, 백엔드, 테스트, hook 작업을 시작할 때는 이 문서를 먼저 확인한다.
 
@@ -209,6 +209,7 @@ API 배포:
 - 배포 산출물은 Ubuntu host `/home/icenux/projects/vscoke-api`에 staged release로 반영된다.
 - PM2 앱 이름은 `vscoke-api`, entrypoint는 `apps/api/dist/src/main.js`다.
 - 배포 후 local `/health`와 public `https://api.icecoke.kr/health`를 확인한다.
+- 이전 `/opt/icenux/vscoke-api` 기반 `vscoke-api-native.service`는 사용하지 않으며, host PM2 프로세스가 운영 API를 단독으로 관리한다.
 
 ## DB 접속 기준
 

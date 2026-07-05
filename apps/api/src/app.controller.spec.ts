@@ -19,4 +19,15 @@ describe('AppController', () => {
       expect(appController.getHello()).toBe('Hello World!');
     });
   });
+
+  describe('health', () => {
+    it('should return API process health details', () => {
+      const health = appController.getHealth();
+
+      expect(health.status).toBe('ok');
+      expect(Number.isFinite(health.uptime)).toBe(true);
+      expect(typeof health.timestamp).toBe('string');
+      expect(Number.isNaN(Date.parse(health.timestamp))).toBe(false);
+    });
+  });
 });

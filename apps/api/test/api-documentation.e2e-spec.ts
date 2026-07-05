@@ -29,6 +29,7 @@ const requiredOpenApiPaths = [
   '/game/ranking',
   '/game/result',
   '/game/result/{id}',
+  '/health',
   '/recipes',
   '/recipes/{id}',
   '/wordle/check',

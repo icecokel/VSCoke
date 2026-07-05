@@ -17,6 +17,21 @@ export const validateOpenApiPaths = (document, requiredPaths) => {
   return requiredPaths.filter(path => !Object.hasOwn(paths, path));
 };
 
+export const validateHealthResponse = payload => {
+  const isValid =
+    payload?.status === "ok" &&
+    typeof payload.uptime === "number" &&
+    Number.isFinite(payload.uptime) &&
+    typeof payload.timestamp === "string" &&
+    !Number.isNaN(Date.parse(payload.timestamp));
+
+  if (!isValid) {
+    throw new Error("Invalid API health response");
+  }
+};
+
+const isOpenApiDocument = payload => payload?.paths && typeof payload.paths === "object";
+
 const fetchJson = async (url, { fetcher, timeoutMs }) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -56,11 +71,16 @@ export const checkApiHealth = async ({
   timeoutMs = 10_000,
   fetcher = fetch,
 }) => {
-  const document = await fetchJson(healthUrl, { fetcher, timeoutMs });
-  const missingPaths = validateOpenApiPaths(document, requiredPaths);
+  const payload = await fetchJson(healthUrl, { fetcher, timeoutMs });
 
-  if (missingPaths.length > 0) {
-    throw new Error(`Missing required API paths: ${missingPaths.join(", ")}`);
+  if (isOpenApiDocument(payload)) {
+    const missingPaths = validateOpenApiPaths(payload, requiredPaths);
+
+    if (missingPaths.length > 0) {
+      throw new Error(`Missing required API paths: ${missingPaths.join(", ")}`);
+    }
+  } else {
+    validateHealthResponse(payload);
   }
 
   for (const endpoint of endpointChecks) {

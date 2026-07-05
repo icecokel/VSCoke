@@ -27,4 +27,23 @@ describe('AppController (e2e)', () => {
   it('/ (GET)', () => {
     return request(httpServer).get('/').expect(200).expect('Hello World!');
   });
+
+  it('/health (GET)', () => {
+    return request(httpServer)
+      .get('/health')
+      .expect(200)
+      .expect((response) => {
+        const body = response.body as {
+          status?: unknown;
+          uptime?: unknown;
+          timestamp?: unknown;
+        };
+
+        expect(body.status).toBe('ok');
+        expect(typeof body.uptime).toBe('number');
+        expect(Number.isFinite(body.uptime)).toBe(true);
+        expect(typeof body.timestamp).toBe('string');
+        expect(Number.isNaN(Date.parse(body.timestamp))).toBe(false);
+      });
+  });
 });

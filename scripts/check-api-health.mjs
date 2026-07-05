@@ -1,8 +1,12 @@
 import { DEFAULT_REQUIRED_PATHS, checkApiHealth, parseCsvList } from "./api-health-checker.mjs";
 
-const healthUrl = process.env.API_HEALTH_URL ?? "https://api.icecoke.kr/api-json";
-const requiredPaths = parseCsvList(process.env.API_REQUIRED_PATHS, DEFAULT_REQUIRED_PATHS);
-const endpointChecks = parseCsvList(process.env.API_ENDPOINT_CHECKS, requiredPaths);
+const healthUrl = process.env.API_HEALTH_URL ?? "https://api.icecoke.kr/health";
+const usesOpenApiHealthUrl = healthUrl.endsWith("/api-json");
+const requiredPaths = parseCsvList(
+  process.env.API_REQUIRED_PATHS,
+  usesOpenApiHealthUrl ? DEFAULT_REQUIRED_PATHS : [],
+);
+const endpointChecks = parseCsvList(process.env.API_ENDPOINT_CHECKS, DEFAULT_REQUIRED_PATHS);
 const timeoutMs = Number(process.env.API_HEALTH_TIMEOUT_MS ?? 10_000);
 const retries = Number(process.env.API_HEALTH_RETRIES ?? 3);
 const retryDelayMs = Number(process.env.API_HEALTH_RETRY_DELAY_MS ?? 2_000);

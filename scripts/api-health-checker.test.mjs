@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { checkApiHealth, validateOpenApiPaths } from "./api-health-checker.mjs";
+import {
+  checkApiHealth,
+  validateHealthResponse,
+  validateOpenApiPaths,
+} from "./api-health-checker.mjs";
 
 test("validateOpenApiPaths passes when every required path is present", () => {
   const document = {
@@ -27,6 +31,27 @@ test("validateOpenApiPaths returns missing required paths", () => {
     "/espresso-history/beans",
     "/recipes",
   ]);
+});
+
+test("validateHealthResponse passes for an ok health payload", () => {
+  assert.equal(
+    validateHealthResponse({
+      status: "ok",
+      uptime: 12.3,
+      timestamp: "2026-07-05T00:00:00.000Z",
+    }),
+    undefined,
+  );
+});
+
+test("validateHealthResponse rejects non-ok health payloads", () => {
+  assert.throws(
+    () =>
+      validateHealthResponse({
+        status: "error",
+      }),
+    /Invalid API health response/,
+  );
 });
 
 test("checkApiHealth fails when the OpenAPI document is missing required paths", async () => {
@@ -85,5 +110,41 @@ test("checkApiHealth checks concrete endpoints when requested", async () => {
   assert.deepEqual(requestedUrls, [
     "https://api.example.test/api-json",
     "https://api.example.test/espresso-history/beans",
+  ]);
+});
+
+test("checkApiHealth accepts the dedicated health endpoint", async () => {
+  const requestedUrls = [];
+  const fetcher = async url => {
+    requestedUrls.push(url);
+
+    if (url.endsWith("/health")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          status: "ok",
+          uptime: 12.3,
+          timestamp: "2026-07-05T00:00:00.000Z",
+        }),
+      };
+    }
+
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ success: true, data: [] }),
+    };
+  };
+
+  await checkApiHealth({
+    healthUrl: "https://api.example.test/health",
+    endpointChecks: ["/recipes"],
+    fetcher,
+  });
+
+  assert.deepEqual(requestedUrls, [
+    "https://api.example.test/health",
+    "https://api.example.test/recipes",
   ]);
 });

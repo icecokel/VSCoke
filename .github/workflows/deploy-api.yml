@@ -19,7 +19,7 @@ jobs:
   deploy:
     runs-on: [self-hosted, termux, vscoke-api]
     env:
-      API_HEALTH_URL: ${{ vars.API_HEALTH_URL || 'https://api.icecoke.kr/api-json' }}
+      API_HEALTH_URL: ${{ vars.API_HEALTH_URL || 'https://api.icecoke.kr/health' }}
       DEPLOY_DIR: ${{ vars.API_DEPLOY_DIR || '/data/data/com.termux/files/home/projects/vscoke-api' }}
       TERMUX_HOME: /data/data/com.termux/files/home
       TERMUX_PREFIX: /data/data/com.termux/files/usr
@@ -91,7 +91,7 @@ jobs:
           cd "$DEPLOY_DIR"
           PORT="$(sed -n 's/^PORT=//p' .env | tail -1)"
           PORT="${PORT:-3000}"
-          API_HEALTH_URL="http://127.0.0.1:${PORT}/api-json" \
+          API_HEALTH_URL="http://127.0.0.1:${PORT}/health" \
             API_HEALTH_RETRIES=30 \
             API_HEALTH_RETRY_DELAY_MS=2000 \
             node "$GITHUB_WORKSPACE/scripts/check-api-health.mjs"

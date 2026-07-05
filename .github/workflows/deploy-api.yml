@@ -26,9 +26,6 @@ jobs:
       API_LOCAL_HEALTH_URL: ${{ vars.API_LOCAL_HEALTH_URL || 'http://127.0.0.1:3000/health' }}
       CLOUDFLARED_CONTAINER: ${{ vars.CLOUDFLARED_CONTAINER || 'icenux-docker-cloudflared-1' }}
       COMPOSE_DIR: ${{ vars.API_COMPOSE_DIR || '/workspace/docker' }}
-      SSH_GATEWAY_CONTAINER: ${{ vars.SSH_GATEWAY_CONTAINER || 'icenux-docker-ssh-gateway-1' }}
-      SSH_LOOPBACK_CONTAINER: ${{ vars.SSH_LOOPBACK_CONTAINER || 'icenux-docker-ssh-loopback' }}
-      SSH_LOOPBACK_TARGET: ${{ vars.SSH_LOOPBACK_TARGET || 'host.docker.internal:1022' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -127,33 +124,7 @@ jobs:
             --env-file "$COMPOSE_DIR/env/local.env" \
             -f "$COMPOSE_DIR/compose.yml" \
             -f "$COMPOSE_DIR/compose.local.yml" \
-            up -d cloudflared
-
-          ssh_probe="$(docker run --rm --network "container:$CLOUDFLARED_CONTAINER" curlimages/curl:latest \
-            -sS --max-time 5 "telnet://$SSH_LOOPBACK_TARGET" 2>&1 || true)"
-
-          if printf '%s' "$ssh_probe" | grep -q 'SSH-'; then
-            docker rm -f "$SSH_GATEWAY_CONTAINER" >/dev/null 2>&1 || true
-
-            if docker ps -a --format '{{.Names}}' | grep -Fxq "$SSH_LOOPBACK_CONTAINER"; then
-              docker rm -f "$SSH_LOOPBACK_CONTAINER"
-            fi
-
-            docker run -d \
-              --name "$SSH_LOOPBACK_CONTAINER" \
-              --restart unless-stopped \
-              --network "container:$CLOUDFLARED_CONTAINER" \
-              alpine/socat:latest \
-              tcp-listen:1022,fork,reuseaddr \
-              "tcp-connect:$SSH_LOOPBACK_TARGET"
-          else
-            printf '%s\n' "$ssh_probe"
-            docker compose \
-              --env-file "$COMPOSE_DIR/env/local.env" \
-              -f "$COMPOSE_DIR/compose.yml" \
-              -f "$COMPOSE_DIR/compose.local.yml" \
-              up -d ssh-gateway
-          fi
+            up -d cloudflared ssh-gateway
 
           if docker ps -a --format '{{.Names}}' | grep -Fxq "$API_LOOPBACK_CONTAINER"; then
             docker rm -f "$API_LOOPBACK_CONTAINER"

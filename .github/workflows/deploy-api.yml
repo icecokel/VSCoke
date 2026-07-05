@@ -120,6 +120,8 @@ jobs:
 
       - name: Ensure public tunnel routes API
         run: |
+          docker rm -f icenux-docker-ssh-loopback >/dev/null 2>&1 || true
+
           docker compose \
             --env-file "$COMPOSE_DIR/env/local.env" \
             -f "$COMPOSE_DIR/compose.yml" \

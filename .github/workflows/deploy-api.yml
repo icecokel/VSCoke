@@ -1,4 +1,4 @@
-name: Deploy API to Termux (Self-hosted Runner)
+name: Deploy API to Ubuntu Docker (Self-hosted Runner)
 
 on:
   workflow_dispatch:
@@ -12,34 +12,36 @@ on:
       - ".github/workflows/deploy-api.yml"
 
 concurrency:
-  group: deploy-api-termux
+  group: deploy-api-docker
   cancel-in-progress: false
 
 jobs:
   deploy:
-    runs-on: [self-hosted, termux, vscoke-api]
+    runs-on: [self-hosted, vscoke-api, docker]
     env:
       API_HEALTH_URL: ${{ vars.API_HEALTH_URL || 'https://api.icecoke.kr/health' }}
-      DEPLOY_DIR: ${{ vars.API_DEPLOY_DIR || '/data/data/com.termux/files/home/projects/vscoke-api' }}
-      TERMUX_HOME: /data/data/com.termux/files/home
-      TERMUX_PREFIX: /data/data/com.termux/files/usr
+      API_IMAGE: ${{ vars.VSCOKE_API_IMAGE || 'icenux/vscoke-api:local' }}
+      API_CONTAINER: ${{ vars.API_CONTAINER || 'icenux-docker-vscoke-api-1' }}
+      API_LOCAL_HEALTH_URL: ${{ vars.API_LOCAL_HEALTH_URL || 'http://127.0.0.1:3000/health' }}
+      COMPOSE_DIR: ${{ vars.API_COMPOSE_DIR || '/workspace/docker' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure Termux runtime
-        run: |
-          echo "$TERMUX_PREFIX/bin" >> "$GITHUB_PATH"
-          echo "HOME=$TERMUX_HOME" >> "$GITHUB_ENV"
-          echo "PM2_HOME=$TERMUX_HOME/.pm2" >> "$GITHUB_ENV"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
 
       - name: Verify self-hosted runner prerequisites
         run: |
-          command -v node
-          command -v corepack
-          command -v pm2
-          node --version
-          pm2 --version
+          command -v docker
+          docker version
+          docker compose version
+          test -f "$COMPOSE_DIR/compose.yml"
+          test -f "$COMPOSE_DIR/compose.local.yml"
+          test -f "$COMPOSE_DIR/env/local.env"
+          test -f "$COMPOSE_DIR/vscoke-api/Dockerfile"
 
       - name: Enable pnpm
         run: |
@@ -52,50 +54,71 @@ jobs:
           pnpm --filter @vscoke/api build
           test -f apps/api/dist/src/main.js
 
-      - name: Verify runtime env exists
+      - name: Validate compose configuration
         run: |
-          DEPLOY_DIR="${DEPLOY_DIR/#\~/$HOME}"
-          mkdir -p "$DEPLOY_DIR"
-          test -f "$DEPLOY_DIR/.env"
+          docker compose \
+            --env-file "$COMPOSE_DIR/env/local.env" \
+            -f "$COMPOSE_DIR/compose.yml" \
+            -f "$COMPOSE_DIR/compose.local.yml" \
+            config --quiet
 
-      - name: Stage production release
+      - name: Build API Docker image
         run: |
-          DEPLOY_DIR="${DEPLOY_DIR/#\~/$HOME}"
-          STAGE_DIR="$DEPLOY_DIR/.next-release"
-          rm -rf "$STAGE_DIR"
-          mkdir -p "$STAGE_DIR/apps/api"
-          cp -R apps/api/dist "$STAGE_DIR/apps/api/dist"
-          cp apps/api/package.json "$STAGE_DIR/apps/api/package.json"
-          cp package.json pnpm-lock.yaml pnpm-workspace.yaml "$STAGE_DIR/"
-          cd "$STAGE_DIR"
-          corepack enable
-          corepack prepare pnpm@9.12.0 --activate
-          pnpm install --filter @vscoke/api --prod --frozen-lockfile --ignore-scripts
+          docker build \
+            --pull \
+            --tag "$API_IMAGE" \
+            --file "$COMPOSE_DIR/vscoke-api/Dockerfile" \
+            "$GITHUB_WORKSPACE"
 
-      - name: Restart API with staged release
+      - name: Restart API with Docker Compose
         run: |
-          DEPLOY_DIR="${DEPLOY_DIR/#\~/$HOME}"
-          STAGE_DIR="$DEPLOY_DIR/.next-release"
-          unset RUNNER_TRACKING_ID
-          pm2 delete vscoke-api || true
-          rm -rf "$DEPLOY_DIR/apps" "$DEPLOY_DIR/node_modules" "$DEPLOY_DIR/package.json" "$DEPLOY_DIR/pnpm-lock.yaml" "$DEPLOY_DIR/pnpm-workspace.yaml"
-          cp -a "$STAGE_DIR"/. "$DEPLOY_DIR"/
-          rm -rf "$STAGE_DIR"
-          cd "$DEPLOY_DIR"
-          pm2 start apps/api/dist/src/main.js --name vscoke-api --update-env
-          pm2 save
+          docker compose \
+            --env-file "$COMPOSE_DIR/env/local.env" \
+            -f "$COMPOSE_DIR/compose.yml" \
+            -f "$COMPOSE_DIR/compose.local.yml" \
+            up -d --no-build postgres
+          docker compose \
+            --env-file "$COMPOSE_DIR/env/local.env" \
+            -f "$COMPOSE_DIR/compose.yml" \
+            -f "$COMPOSE_DIR/compose.local.yml" \
+            up -d --no-deps --force-recreate --no-build vscoke-api
+          docker compose \
+            --env-file "$COMPOSE_DIR/env/local.env" \
+            -f "$COMPOSE_DIR/compose.yml" \
+            -f "$COMPOSE_DIR/compose.local.yml" \
+            ps postgres vscoke-api
 
-      - name: Verify local API health on Termux
+      - name: Verify local API health
         run: |
-          DEPLOY_DIR="${DEPLOY_DIR/#\~/$HOME}"
-          cd "$DEPLOY_DIR"
-          PORT="$(sed -n 's/^PORT=//p' .env | tail -1)"
-          PORT="${PORT:-3000}"
-          API_HEALTH_URL="http://127.0.0.1:${PORT}/health" \
-            API_HEALTH_RETRIES=30 \
-            API_HEALTH_RETRY_DELAY_MS=2000 \
-            node "$GITHUB_WORKSPACE/scripts/check-api-health.mjs"
+          for attempt in $(seq 1 30); do
+            if docker exec -i -e API_LOCAL_HEALTH_URL="$API_LOCAL_HEALTH_URL" "$API_CONTAINER" node - <<'NODE'
+          (async () => {
+            const response = await fetch(process.env.API_LOCAL_HEALTH_URL);
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`);
+            }
+
+            const payload = await response.json();
+            if (payload?.success !== true || payload?.data?.status !== 'ok') {
+              throw new Error(`Unexpected health payload: ${JSON.stringify(payload)}`);
+            }
+          })().catch((error) => {
+            console.error(error.message);
+            process.exit(1);
+          });
+          NODE
+            then
+              exit 0
+            fi
+
+            sleep 2
+          done
+
+          exit 1
 
       - name: Verify public API health
         run: |
-          pnpm smoke:api:remote
+          API_HEALTH_URL="$API_HEALTH_URL" \
+            API_HEALTH_RETRIES=30 \
+            API_HEALTH_RETRY_DELAY_MS=2000 \
+            node scripts/check-api-health.mjs

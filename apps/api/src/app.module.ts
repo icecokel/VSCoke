@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { EspressoHistoryModule } from './espresso-history/espresso-history.module';
 import { GameModule } from './game/game.module';
 import { RecipeModule } from './recipe/recipe.module';
+import { ResumeRagModule } from './resume-rag/resume-rag.module';
 import { WordleModule } from './wordle/wordle.module';
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/utils/winston.config';
@@ -53,6 +54,7 @@ import { winstonConfig } from './common/utils/winston.config';
     EspressoHistoryModule,
     GameModule,
     RecipeModule,
+    ResumeRagModule,
     WordleModule,
   ],
   controllers: [AppController],

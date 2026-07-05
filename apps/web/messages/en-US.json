@@ -331,6 +331,53 @@
       }
     }
   },
+  "resumeRag": {
+    "title": "Resume Questions",
+    "subtitle": "Answers are grounded in resume evidence loaded into the DB.",
+    "empty": "Ask a question and the answer will appear here.",
+    "placeholder": "Ask about the resume.",
+    "loginPlaceholder": "Login to ask a question.",
+    "login": "Login with Google",
+    "submit": "Ask",
+    "submitting": "Asking",
+    "retry": "Retry",
+    "sources": "{count} sources",
+    "similarity": "{score}% match",
+    "pending": {
+      "title": "Searching evidence and generating with Codex",
+      "description": "The API is retrieving vector evidence and generating an answer."
+    },
+    "noEvidence": {
+      "title": "Not enough evidence",
+      "description": "The retrieved vector evidence is insufficient, so confidence is shown as low."
+    },
+    "failure": {
+      "auth-required": {
+        "title": "Login required",
+        "description": "Resume questions require an authenticated session."
+      },
+      "auth-expired": {
+        "title": "Session expired",
+        "description": "Refresh your session and ask again."
+      },
+      "service-unavailable": {
+        "title": "Answer generation is not ready",
+        "description": "Codex app-server, embedding settings, or vector indexing needs attention."
+      },
+      "rate-limited": {
+        "title": "Request limit reached",
+        "description": "Wait briefly, then retry the same question."
+      },
+      "contract": {
+        "title": "Unexpected response shape",
+        "description": "The API response contract does not match what this screen expects."
+      },
+      "request": {
+        "title": "Failed to request an answer",
+        "description": "Check the network or API state, then try again."
+      }
+    }
+  },
   "resume": {
     "name": "Sangmin Lee",
     "contact": {

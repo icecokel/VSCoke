@@ -64,6 +64,7 @@ export const useSearchIndex = (): SearchItem[] => {
   const tBlog = useTranslations("blog");
   const tProfile = useTranslations("profile");
   const tResume = useTranslations("resume");
+  const tResumeRag = useTranslations("resumeRag");
   const tGame = useTranslations("Game");
   const tDoom = useTranslations("Doom");
   const tHobbyRecipes = useTranslations("hobby.recipes");
@@ -164,6 +165,24 @@ export const useSearchIndex = (): SearchItem[] => {
       path: "/readme",
       featured: true,
       priority: 450,
+    };
+
+    const resumeQuestion: SearchItem = {
+      id: "profile:resume-question",
+      type: "profile",
+      title: tResumeRag("title"),
+      description: tResumeRag("subtitle"),
+      keywords: uniqueStrings([
+        "resume",
+        "rag",
+        "question",
+        "chat",
+        tResumeRag("title"),
+        tResumeRag("subtitle"),
+      ]),
+      path: "/resume/question",
+      featured: true,
+      priority: 445,
     };
 
     const profileProjects: SearchItem[] = resumeData.flatMap(career => {
@@ -272,6 +291,7 @@ export const useSearchIndex = (): SearchItem[] => {
 
     return [
       profileLanding,
+      resumeQuestion,
       blogLanding,
       blogDashboard,
       hobbyRecipeLanding,
@@ -281,5 +301,16 @@ export const useSearchIndex = (): SearchItem[] => {
       ...gameItems,
       ...hobbyItems,
     ];
-  }, [hobbyItems, posts, tBlog, tDoom, tGame, tHobbyEspresso, tHobbyRecipes, tProfile, tResume]);
+  }, [
+    hobbyItems,
+    posts,
+    tBlog,
+    tDoom,
+    tGame,
+    tHobbyEspresso,
+    tHobbyRecipes,
+    tProfile,
+    tResume,
+    tResumeRag,
+  ]);
 };

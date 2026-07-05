@@ -19,6 +19,8 @@
     "migration:show": "typeorm -d dist/src/data-source.js migration:show",
     "migration:run": "typeorm -d dist/src/data-source.js migration:run",
     "migration:revert": "typeorm -d dist/src/data-source.js migration:revert",
+    "resume:import": "node dist/scripts/import-resume-source-items.js",
+    "resume:index": "node dist/scripts/index-resume-vectors.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",

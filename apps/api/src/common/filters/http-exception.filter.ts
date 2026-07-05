@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ErrorMessage } from '../constants/message.constant';
+import { redactSensitiveValue } from '../utils/redact-sensitive';
 
 type ExceptionResponseWithMessage = {
   message: unknown;
@@ -99,8 +100,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
     // 요청 정보 추출
     const method = request.method;
     const url = request.url;
-    const queryParams = JSON.stringify(request.query);
-    const body = JSON.stringify(request.body);
+    const queryParams = JSON.stringify(redactSensitiveValue(request.query));
+    const body = JSON.stringify(redactSensitiveValue(request.body));
     const timestamp = new Date().toISOString();
 
     // 상세 알림 메시지 포맷

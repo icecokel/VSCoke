@@ -331,6 +331,53 @@
       }
     }
   },
+  "resumeRag": {
+    "title": "履歴質問",
+    "subtitle": "DBに取り込まれた履歴根拠に基づいて回答します。",
+    "empty": "質問を入力すると回答がここに表示されます。",
+    "placeholder": "履歴について質問してください。",
+    "loginPlaceholder": "ログイン後に質問できます。",
+    "login": "Googleでログイン",
+    "submit": "質問する",
+    "submitting": "質問中",
+    "retry": "再試行",
+    "sources": "根拠 {count}件",
+    "similarity": "類似度 {score}%",
+    "pending": {
+      "title": "根拠検索とCodex応答を生成中",
+      "description": "ベクトルDBから根拠を探し、回答を生成しています。"
+    },
+    "noEvidence": {
+      "title": "根拠不足",
+      "description": "検索されたベクトル根拠が不足しているため、信頼度を低く表示します。"
+    },
+    "failure": {
+      "auth-required": {
+        "title": "ログインが必要です",
+        "description": "履歴質問には認証済みセッションが必要です。"
+      },
+      "auth-expired": {
+        "title": "認証が期限切れです",
+        "description": "セッションを更新してからもう一度質問してください。"
+      },
+      "service-unavailable": {
+        "title": "回答生成の準備が完了していません",
+        "description": "Codex app-server、埋め込み設定、またはベクトル索引の状態を確認してください。"
+      },
+      "rate-limited": {
+        "title": "リクエスト上限に達しました",
+        "description": "少し待ってから同じ質問を再試行してください。"
+      },
+      "contract": {
+        "title": "予期しない応答形式です",
+        "description": "API応答契約が画面の期待する形式と一致していません。"
+      },
+      "request": {
+        "title": "回答リクエストに失敗しました",
+        "description": "ネットワークまたはAPIの状態を確認してから再試行してください。"
+      }
+    }
+  },
   "resume": {
     "name": "イ・サンミン",
     "contact": {

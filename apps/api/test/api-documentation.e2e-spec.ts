@@ -11,6 +11,8 @@ import { GameController } from './../src/game/game.controller';
 import { GameService } from './../src/game/game.service';
 import { RecipeController } from './../src/recipe/recipe.controller';
 import { RecipeService } from './../src/recipe/recipe.service';
+import { ResumeRagController } from './../src/resume-rag/resume-rag.controller';
+import { ResumeRagService } from './../src/resume-rag/resume-rag.service';
 import { WordleController } from './../src/wordle/wordle.controller';
 import { WordleService } from './../src/wordle/wordle.service';
 import { setupApiDocumentation } from './../src/api-documentation';
@@ -32,6 +34,7 @@ const requiredOpenApiPaths = [
   '/health',
   '/recipes',
   '/recipes/{id}',
+  '/resume-rag/chat',
   '/wordle/check',
   '/wordle/word',
 ];
@@ -47,6 +50,7 @@ describe('API documentation (e2e)', () => {
         EspressoHistoryController,
         GameController,
         RecipeController,
+        ResumeRagController,
         WordleController,
       ],
       providers: [
@@ -61,6 +65,10 @@ describe('API documentation (e2e)', () => {
         },
         {
           provide: RecipeService,
+          useValue: {},
+        },
+        {
+          provide: ResumeRagService,
           useValue: {},
         },
         {

@@ -331,6 +331,53 @@
       }
     }
   },
+  "resumeRag": {
+    "title": "이력 질문",
+    "subtitle": "DB에 적재된 이력 근거로 답변합니다.",
+    "empty": "질문을 입력하면 답변이 여기에 표시됩니다.",
+    "placeholder": "이력에 대해 질문하세요.",
+    "loginPlaceholder": "로그인 후 질문할 수 있습니다.",
+    "login": "Google 로그인",
+    "submit": "질문하기",
+    "submitting": "질문 중",
+    "retry": "다시 시도",
+    "sources": "근거 {count}개",
+    "similarity": "유사도 {score}%",
+    "pending": {
+      "title": "근거 검색 및 Codex 응답 생성 중",
+      "description": "벡터 DB에서 근거를 찾고 답변을 생성하고 있습니다."
+    },
+    "noEvidence": {
+      "title": "근거 부족",
+      "description": "검색된 벡터 근거가 부족해 답변 신뢰도를 낮게 표시합니다."
+    },
+    "failure": {
+      "auth-required": {
+        "title": "로그인이 필요합니다",
+        "description": "이력 질문은 인증된 사용자만 요청할 수 있습니다."
+      },
+      "auth-expired": {
+        "title": "인증이 만료되었습니다",
+        "description": "세션을 갱신한 뒤 다시 질문해 주세요."
+      },
+      "service-unavailable": {
+        "title": "답변 생성 준비가 끝나지 않았습니다",
+        "description": "Codex app-server, 임베딩 설정, 또는 벡터 색인 상태를 확인해야 합니다."
+      },
+      "rate-limited": {
+        "title": "요청 한도에 도달했습니다",
+        "description": "잠시 후 같은 질문을 다시 시도해 주세요."
+      },
+      "contract": {
+        "title": "응답 형식이 예상과 다릅니다",
+        "description": "API 응답 계약이 화면에서 기대하는 형식과 맞지 않습니다."
+      },
+      "request": {
+        "title": "답변 요청에 실패했습니다",
+        "description": "네트워크 또는 API 상태를 확인한 뒤 다시 시도해 주세요."
+      }
+    }
+  },
   "resume": {
     "name": "이상민",
     "contact": {

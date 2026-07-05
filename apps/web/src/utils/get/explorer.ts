@@ -97,5 +97,12 @@ export const getExplorer = cache(async (): Promise<ITree[]> => {
       icon: "profile",
       path: "/readme",
     },
+    {
+      index: 100,
+      id: "resume-question",
+      label: "resume-question.chat",
+      icon: "terminal",
+      path: "/resume/question",
+    },
   ];
 });

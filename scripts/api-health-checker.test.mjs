@@ -44,6 +44,20 @@ test("validateHealthResponse passes for an ok health payload", () => {
   );
 });
 
+test("validateHealthResponse accepts a transformed ok health payload", () => {
+  assert.equal(
+    validateHealthResponse({
+      success: true,
+      data: {
+        status: "ok",
+        uptime: 12.3,
+        timestamp: "2026-07-05T00:00:00.000Z",
+      },
+    }),
+    undefined,
+  );
+});
+
 test("validateHealthResponse rejects non-ok health payloads", () => {
   assert.throws(
     () =>
@@ -123,9 +137,12 @@ test("checkApiHealth accepts the dedicated health endpoint", async () => {
         ok: true,
         status: 200,
         json: async () => ({
-          status: "ok",
-          uptime: 12.3,
-          timestamp: "2026-07-05T00:00:00.000Z",
+          success: true,
+          data: {
+            status: "ok",
+            uptime: 12.3,
+            timestamp: "2026-07-05T00:00:00.000Z",
+          },
         }),
       };
     }

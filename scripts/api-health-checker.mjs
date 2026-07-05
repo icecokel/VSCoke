@@ -18,12 +18,13 @@ export const validateOpenApiPaths = (document, requiredPaths) => {
 };
 
 export const validateHealthResponse = payload => {
+  const healthPayload = payload?.success === true && payload?.data ? payload.data : payload;
   const isValid =
-    payload?.status === "ok" &&
-    typeof payload.uptime === "number" &&
-    Number.isFinite(payload.uptime) &&
-    typeof payload.timestamp === "string" &&
-    !Number.isNaN(Date.parse(payload.timestamp));
+    healthPayload?.status === "ok" &&
+    typeof healthPayload.uptime === "number" &&
+    Number.isFinite(healthPayload.uptime) &&
+    typeof healthPayload.timestamp === "string" &&
+    !Number.isNaN(Date.parse(healthPayload.timestamp));
 
   if (!isValid) {
     throw new Error("Invalid API health response");

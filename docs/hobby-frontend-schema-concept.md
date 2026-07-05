@@ -70,7 +70,7 @@ apps/web/src/features/hobby/
 
 ## 검색 인덱스 기준
 
-전역 검색은 같은-origin Next route인 `/api/hobby-search-index`를 통해 취미 API 데이터를 읽는다. 브라우저에서 Termux API를 직접 호출하면 로컬 동적 포트와 운영 도메인 차이 때문에 CORS 이슈가 생길 수 있다.
+전역 검색은 같은-origin Next route인 `/api/hobby-search-index`를 통해 취미 API 데이터를 읽는다. 브라우저에서 운영 API를 직접 호출하면 로컬 동적 포트와 운영 도메인 차이 때문에 CORS 이슈가 생길 수 있다.
 
 ```txt
 SearchPanel

@@ -60,7 +60,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 NEXT_PUBLIC_API_URL=https://api.icecoke.kr
 ```
 
-API는 DB, Google OAuth, 알림 설정을 `apps/api/.env`에서 읽는다. 운영 값은 Termux 서버의 API `.env`에서 별도로 관리한다.
+API는 DB, Google OAuth, 알림 설정을 `apps/api/.env`에서 읽는다. 운영 값은 Ubuntu host의 API `.env`에서 별도로 관리한다.
 
 ## 웹만 실행
 
@@ -135,7 +135,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3001 pnpm dev:web
 
 ## DB tunnel
 
-운영 DB는 Termux 서버 안의 PostgreSQL을 기준으로 한다. Mac에서 DB 확인이 필요하면 Cloudflare Access TCP tunnel을 먼저 띄운다.
+운영 DB는 Ubuntu host 안의 PostgreSQL을 기준으로 한다. Mac에서 DB 확인이 필요하면 Cloudflare Access TCP tunnel을 먼저 띄운다.
 
 ```bash
 pnpm --filter @vscoke/api db:tunnel
@@ -144,7 +144,7 @@ pnpm --filter @vscoke/api db:tunnel
 터널 실행에는 `apps/api/.env`의 `CLOUDFLARE_DB_HOST`와 `DB_PORT`가 필요하다. 터널을 띄운 터미널은 유지하고, 다른 터미널에서 API 실행이나 DB 확인을 진행한다.
 
 ```txt
-Mac localhost:5432 -> cloudflared access tcp -> PostgreSQL on Termux
+Mac localhost:5432 -> cloudflared access tcp -> PostgreSQL on Ubuntu host
 ```
 
 ## API 타입 갱신

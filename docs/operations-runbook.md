@@ -7,10 +7,10 @@
 ```txt
 GitHub repository
 ├─ apps/web -> Vercel
-└─ apps/api -> GitHub Actions self-hosted runner on Termux -> PM2 -> Cloudflare Tunnel
+└─ apps/api -> GitHub Actions self-hosted runner on Ubuntu host -> PM2 -> Cloudflare Tunnel
 ```
 
-웹과 API는 같은 저장소를 쓰지만 배포 주체가 다르다. 웹 장애는 Vercel을 먼저 보고, API 장애는 GitHub Actions, Termux runner, PM2, Cloudflare Tunnel을 순서대로 본다.
+웹과 API는 같은 저장소를 쓰지만 배포 주체가 다르다. 웹 장애는 Vercel을 먼저 보고, API 장애는 GitHub Actions, Ubuntu host runner, PM2, Cloudflare Tunnel을 순서대로 본다.
 
 ## 빠른 상태 확인
 
@@ -23,16 +23,17 @@ Vercel Project -> Deployments -> latest production or preview deployment
 API 공개 health:
 
 ```bash
-API_HEALTH_URL=https://api.icecoke.kr/api-json pnpm smoke:api:remote
+API_HEALTH_URL=https://api.icecoke.kr/health pnpm smoke:api:remote
 ```
 
-API 로컬 health on Termux:
+API 로컬 health on Ubuntu host:
 
 ```bash
-cd /data/data/com.termux/files/home/projects/vscoke-api
+ssh icenux-external
+cd /home/icenux/projects/vscoke-api
 PORT="$(sed -n 's/^PORT=//p' .env | tail -1)"
 PORT="${PORT:-3000}"
-PORT="$PORT" node -e "fetch('http://127.0.0.1:' + process.env.PORT + '/api-json').then((res) => { console.log(res.status); if (!res.ok) process.exit(1); })"
+PORT="$PORT" node -e "fetch('http://127.0.0.1:' + process.env.PORT + '/health').then((res) => { console.log(res.status); if (!res.ok) process.exit(1); })"
 ```
 
 ## 웹 배포 실패
@@ -79,44 +80,44 @@ workflow_dispatch
 
 1. GitHub Actions run 로그에서 실패 step을 확인한다.
 2. self-hosted runner가 online인지 확인한다.
-3. runner labels에 `self-hosted`, `termux`, `vscoke-api`가 있는지 확인한다.
-4. Termux native runtime에 `node`, `corepack`, `pm2`가 있는지 확인한다.
-5. `/data/data/com.termux/files/home/projects/vscoke-api/.env`가 존재하는지 확인한다.
+3. runner labels에 `self-hosted`, `vscoke-api`, `host`가 있는지 확인한다.
+4. Ubuntu host runtime에 `node`, `corepack`, `pm2`가 있는지 확인한다.
+5. `/home/icenux/projects/vscoke-api/.env`가 존재하는지 확인한다.
 6. 실패가 build인지, staging install인지, PM2 restart인지, health check인지 분류한다.
 
 수동 재실행은 GitHub Actions의 `workflow_dispatch`를 사용한다.
 
-## Termux runner offline
+## Ubuntu host runner offline
 
 현재 runner 운영 값:
 
-| 항목           | 값                     |
-| -------------- | ---------------------- |
-| PM2 process    | `github-runner-vscoke` |
-| Runner name    | `termux-vscoke-api`    |
-| Required label | `termux`, `vscoke-api` |
+| 항목            | 값                                                              |
+| --------------- | --------------------------------------------------------------- |
+| systemd service | `actions.runner.icecokel-VSCoke.icenux-vscoke-api-host.service` |
+| Runner name     | `icenux-vscoke-api-host`                                        |
+| Required label  | `vscoke-api`, `host`                                            |
 
-Termux에서 확인:
+Ubuntu host에서 확인:
 
 ```bash
-pm2 list
-pm2 logs github-runner-vscoke --lines 100
+ssh icenux-external
+systemctl status actions.runner.icecokel-VSCoke.icenux-vscoke-api-host.service --no-pager
 ```
 
 재시작:
 
 ```bash
-pm2 restart github-runner-vscoke
-pm2 save
+sudo systemctl restart actions.runner.icecokel-VSCoke.icenux-vscoke-api-host.service
 ```
 
-그래도 offline이면 GitHub repository settings의 self-hosted runner 상태와 Termux 네트워크 상태를 같이 확인한다.
+그래도 offline이면 GitHub repository settings의 self-hosted runner 상태와 Ubuntu host 네트워크 상태를 같이 확인한다.
 
 ## API PM2 장애
 
-Termux에서 확인:
+Ubuntu host에서 확인:
 
 ```bash
+ssh icenux-external
 pm2 list
 pm2 logs vscoke-api --lines 100
 ```
@@ -124,7 +125,7 @@ pm2 logs vscoke-api --lines 100
 환경 변수 변경 후 재시작:
 
 ```bash
-cd /data/data/com.termux/files/home/projects/vscoke-api
+cd /home/icenux/projects/vscoke-api
 pm2 restart vscoke-api --update-env
 pm2 save
 ```
@@ -132,7 +133,7 @@ pm2 save
 프로세스가 없으면 마지막 배포 산출물이 있는지 확인한다.
 
 ```bash
-cd /data/data/com.termux/files/home/projects/vscoke-api
+cd /home/icenux/projects/vscoke-api
 test -f apps/api/dist/src/main.js
 pm2 start apps/api/dist/src/main.js --name vscoke-api --update-env
 pm2 save
@@ -142,24 +143,24 @@ pm2 save
 
 증상:
 
-- Termux 내부 `http://127.0.0.1:$PORT/api-json`는 성공한다.
-- 외부 `https://api.icecoke.kr/api-json`는 실패한다.
+- Ubuntu host 내부 `http://127.0.0.1:$PORT/health`는 성공한다.
+- 외부 `https://api.icecoke.kr/health`는 실패한다.
 
 이 경우 API 프로세스보다 Cloudflare Tunnel, DNS, ingress 설정을 먼저 본다.
 
 확인 순서:
 
 1. Cloudflare Tunnel 프로세스가 실행 중인지 확인한다.
-2. ingress가 Termux API port로 연결되어 있는지 확인한다.
+2. ingress가 Ubuntu host API port로 연결되어 있는지 확인한다.
 3. `api.icecoke.kr` DNS가 현재 tunnel로 연결되어 있는지 확인한다.
 4. API `.env`의 `PORT`와 tunnel target port가 같은지 확인한다.
 
 ## DB 접속 장애
 
-API 운영 환경에서는 PostgreSQL이 Termux local host 기준으로 연결된다.
+API 운영 환경에서는 PostgreSQL이 Ubuntu host local 기준으로 연결된다.
 
 ```txt
-apps/api on Termux -> DB_HOST=localhost -> PostgreSQL
+apps/api on Ubuntu host -> DB_HOST=127.0.0.1 -> PostgreSQL
 ```
 
 Mac 로컬에서는 Cloudflare Access TCP tunnel을 사용한다.
@@ -188,13 +189,13 @@ Vercel Project Settings -> Environment Variables
 API 운영 환경 변수:
 
 ```txt
-/data/data/com.termux/files/home/projects/vscoke-api/.env
+/home/icenux/projects/vscoke-api/.env
 ```
 
 API 환경 변수 변경 후에는 PM2 재시작이 필요하다.
 
 ```bash
-cd /data/data/com.termux/files/home/projects/vscoke-api
+cd /home/icenux/projects/vscoke-api
 pm2 restart vscoke-api --update-env
 pm2 save
 ```

@@ -1,4 +1,4 @@
-name: Deploy API to Ubuntu Docker (Self-hosted Runner)
+name: Deploy API to Ubuntu Host (Self-hosted Runner)
 
 on:
   workflow_dispatch:
@@ -12,20 +12,17 @@ on:
       - ".github/workflows/deploy-api.yml"
 
 concurrency:
-  group: deploy-api-docker
+  group: deploy-api-host
   cancel-in-progress: false
 
 jobs:
   deploy:
-    runs-on: [self-hosted, vscoke-api, docker]
+    runs-on: [self-hosted, vscoke-api, host]
     env:
+      API_DEPLOY_DIR: ${{ vars.API_DEPLOY_DIR || '/home/icenux/projects/vscoke-api' }}
       API_HEALTH_URL: ${{ vars.API_HEALTH_URL || 'https://api.icecoke.kr/health' }}
-      API_IMAGE: ${{ vars.VSCOKE_API_IMAGE || 'icenux/vscoke-api:local' }}
-      API_CONTAINER: ${{ vars.API_CONTAINER || 'icenux-docker-vscoke-api-1' }}
-      API_LOOPBACK_CONTAINER: ${{ vars.API_LOOPBACK_CONTAINER || 'icenux-docker-vscoke-api-loopback' }}
       API_LOCAL_HEALTH_URL: ${{ vars.API_LOCAL_HEALTH_URL || 'http://127.0.0.1:3000/health' }}
-      CLOUDFLARED_CONTAINER: ${{ vars.CLOUDFLARED_CONTAINER || 'icenux-docker-cloudflared-1' }}
-      COMPOSE_DIR: ${{ vars.API_COMPOSE_DIR || '/workspace/docker' }}
+      API_PROCESS_NAME: ${{ vars.API_PROCESS_NAME || 'vscoke-api' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -37,18 +34,23 @@ jobs:
 
       - name: Verify self-hosted runner prerequisites
         run: |
-          command -v docker
-          docker version
-          docker compose version
-          test -f "$COMPOSE_DIR/compose.yml"
-          test -f "$COMPOSE_DIR/compose.local.yml"
-          test -f "$COMPOSE_DIR/env/local.env"
-          test -f "$COMPOSE_DIR/vscoke-api/Dockerfile"
+          command -v node
+          command -v corepack
+          command -v pnpm || true
+          command -v pm2
+          command -v psql
+          command -v rsync
+          test -d "$API_DEPLOY_DIR"
+          test -f "$API_DEPLOY_DIR/.env"
+          node --version
+          pm2 --version
+          psql --version
 
       - name: Enable pnpm
         run: |
           corepack enable
           corepack prepare pnpm@9.12.0 --activate
+          pnpm --version
 
       - name: Install dependencies and build API
         run: |
@@ -56,44 +58,53 @@ jobs:
           pnpm --filter @vscoke/api build
           test -f apps/api/dist/src/main.js
 
-      - name: Validate compose configuration
+      - name: Create staged release
         run: |
-          docker compose \
-            --env-file "$COMPOSE_DIR/env/local.env" \
-            -f "$COMPOSE_DIR/compose.yml" \
-            -f "$COMPOSE_DIR/compose.local.yml" \
-            config --quiet
+          RELEASE_DIR="$API_DEPLOY_DIR/.next-release"
+          rm -rf "$RELEASE_DIR"
+          mkdir -p "$RELEASE_DIR/apps/api"
 
-      - name: Build API Docker image
-        run: |
-          docker build \
-            --pull \
-            --tag "$API_IMAGE" \
-            --file "$COMPOSE_DIR/vscoke-api/Dockerfile" \
-            "$GITHUB_WORKSPACE"
+          rsync -a apps/api/dist "$RELEASE_DIR/apps/api/"
+          cp apps/api/package.json "$RELEASE_DIR/apps/api/package.json"
+          cp package.json pnpm-lock.yaml pnpm-workspace.yaml "$RELEASE_DIR/"
 
-      - name: Restart API with Docker Compose
+          cd "$RELEASE_DIR"
+          pnpm --filter @vscoke/api install --prod --frozen-lockfile --ignore-scripts
+          test -f apps/api/dist/src/main.js
+          test -f apps/api/package.json
+
+      - name: Promote release
         run: |
-          docker compose \
-            --env-file "$COMPOSE_DIR/env/local.env" \
-            -f "$COMPOSE_DIR/compose.yml" \
-            -f "$COMPOSE_DIR/compose.local.yml" \
-            up -d --no-build postgres
-          docker compose \
-            --env-file "$COMPOSE_DIR/env/local.env" \
-            -f "$COMPOSE_DIR/compose.yml" \
-            -f "$COMPOSE_DIR/compose.local.yml" \
-            up -d --no-deps --force-recreate --no-build vscoke-api
-          docker compose \
-            --env-file "$COMPOSE_DIR/env/local.env" \
-            -f "$COMPOSE_DIR/compose.yml" \
-            -f "$COMPOSE_DIR/compose.local.yml" \
-            ps postgres vscoke-api
+          RELEASE_DIR="$API_DEPLOY_DIR/.next-release"
+          test -f "$RELEASE_DIR/apps/api/dist/src/main.js"
+
+          rsync -a --delete \
+            --exclude '.env' \
+            --exclude '.next-release' \
+            --exclude 'backups' \
+            "$RELEASE_DIR"/ \
+            "$API_DEPLOY_DIR"/
+
+      - name: Restart API with PM2
+        run: |
+          if systemctl list-unit-files vscoke-api-local-proxy.service >/dev/null 2>&1; then
+            sudo systemctl disable --now vscoke-api-local-proxy.service || true
+          fi
+
+          cd "$API_DEPLOY_DIR"
+          set -a
+          . ./.env
+          set +a
+
+          pm2 delete "$API_PROCESS_NAME" || true
+          pm2 start apps/api/dist/src/main.js --name "$API_PROCESS_NAME" --update-env
+          pm2 save
+          pm2 status "$API_PROCESS_NAME"
 
       - name: Verify local API health
         run: |
           for attempt in $(seq 1 30); do
-            if docker exec -i -e API_LOCAL_HEALTH_URL="$API_LOCAL_HEALTH_URL" "$API_CONTAINER" node - <<'NODE'
+            if node - <<'NODE'
           (async () => {
             const response = await fetch(process.env.API_LOCAL_HEALTH_URL);
             if (!response.ok) {
@@ -110,39 +121,6 @@ jobs:
           });
           NODE
             then
-              exit 0
-            fi
-
-            sleep 2
-          done
-
-          exit 1
-
-      - name: Ensure public tunnel routes API
-        run: |
-          docker rm -f icenux-docker-ssh-loopback >/dev/null 2>&1 || true
-
-          docker compose \
-            --env-file "$COMPOSE_DIR/env/local.env" \
-            -f "$COMPOSE_DIR/compose.yml" \
-            -f "$COMPOSE_DIR/compose.local.yml" \
-            up -d cloudflared ssh-gateway
-
-          if docker ps -a --format '{{.Names}}' | grep -Fxq "$API_LOOPBACK_CONTAINER"; then
-            docker rm -f "$API_LOOPBACK_CONTAINER"
-          fi
-
-          docker run -d \
-            --name "$API_LOOPBACK_CONTAINER" \
-            --restart unless-stopped \
-            --network "container:$CLOUDFLARED_CONTAINER" \
-            alpine/socat:latest \
-            tcp-listen:3000,fork,reuseaddr \
-            tcp-connect:vscoke-api:3000
-
-          for attempt in $(seq 1 15); do
-            if docker run --rm --network "container:$CLOUDFLARED_CONTAINER" curlimages/curl:latest \
-              -fsS http://127.0.0.1:3000/health >/dev/null; then
               exit 0
             fi
 

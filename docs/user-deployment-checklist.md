@@ -30,28 +30,28 @@ Vercel에서 `VSCoke` 웹 프로젝트 설정을 변경한다.
 
 ## 2. GitHub Actions Self-hosted Runner
 
-Termux 서버에 monorepo 저장소 `icecokel/VSCoke`용 GitHub Actions self-hosted runner를 설치한다.
+Ubuntu host에 monorepo 저장소 `icecokel/VSCoke`용 GitHub Actions self-hosted runner를 설치한다.
 
 - [x] GitHub runner 등록 토큰을 발급한다.
-- [x] Termux 서버에 runner를 설치한다.
-- [x] runner label에 `termux`, `vscoke-api`를 추가한다.
-- [x] runner를 PM2로 상시 실행되게 구성한다.
-- [x] runner job에서 Termux native `node`, `corepack`, `pm2` 명령을 사용하도록 workflow를 구성한다.
-- [ ] 선택적으로 repository variable `API_HEALTH_URL`을 등록한다. 기본값은 `https://api.icecoke.kr/api-json`이다.
-- [ ] 선택적으로 repository variable `API_DEPLOY_DIR`을 등록한다. 기본값은 `/data/data/com.termux/files/home/projects/vscoke-api`이다.
+- [x] Ubuntu host에 runner를 설치한다.
+- [x] runner label에 `vscoke-api`, `host`를 추가한다.
+- [x] runner를 systemd로 상시 실행되게 구성한다.
+- [x] runner job에서 Ubuntu host `node`, `corepack`, `pm2` 명령을 사용하도록 workflow를 구성한다.
+- [ ] 선택적으로 repository variable `API_HEALTH_URL`을 등록한다. 기본값은 `https://api.icecoke.kr/health`이다.
+- [ ] 선택적으로 repository variable `API_DEPLOY_DIR`을 등록한다. 기본값은 `/home/icenux/projects/vscoke-api`이다.
 
 검증:
 
-- [x] `Deploy API to Termux (Self-hosted Runner)` workflow가 runner를 인식하는지 확인한다.
+- [x] `Deploy API to Ubuntu Host (Self-hosted Runner)` workflow가 runner를 인식하는지 확인한다.
 - [ ] workflow의 `Verify self-hosted runner prerequisites` 단계가 통과하는지 확인한다.
-- [ ] workflow의 `Verify runtime env exists` 단계가 통과하는지 확인한다.
+- [ ] workflow의 host PM2 배포 단계가 통과하는지 확인한다.
 
-## 3. Termux API Server
+## 3. Ubuntu API Server
 
-Termux 서버의 운영 디렉터리를 확인한다.
+Ubuntu host의 운영 디렉터리를 확인한다.
 
-- [ ] `~/projects/vscoke-api` 디렉터리가 존재하는지 확인한다.
-- [ ] `~/projects/vscoke-api/.env`를 생성하거나 갱신한다.
+- [x] `/home/icenux/projects/vscoke-api` 디렉터리가 존재하는지 확인한다.
+- [x] `/home/icenux/projects/vscoke-api/.env`를 생성하거나 갱신한다.
 - [ ] 운영 `.env`에 최소 필수 값을 넣는다.
   - [ ] `NODE_ENV=production`
   - [ ] `PORT`
@@ -74,8 +74,8 @@ Termux 서버의 운영 디렉터리를 확인한다.
 
 - [ ] `pm2 status`에서 `vscoke-api` 상태를 확인한다.
 - [ ] workflow 배포 성공 후 `pm2 status`에서 `vscoke-api` 상태를 확인한다.
-- [ ] 재부팅 복구가 필요하면 Termux:Boot 또는 기존 부팅 자동화에서 `pm2 resurrect`가 실행되도록 설정한다.
-- [ ] `https://api.icecoke.kr/api-json` 응답을 확인한다.
+- [ ] 재부팅 복구가 필요하면 PM2 systemd startup에서 `pm2 resurrect`가 실행되도록 설정한다.
+- [ ] `https://api.icecoke.kr/health` 응답을 확인한다.
 - [ ] 로컬에서 공개 API smoke test를 실행한다.
   ```bash
   pnpm smoke:api:remote
@@ -83,15 +83,15 @@ Termux 서버의 운영 디렉터리를 확인한다.
 
 ## 4. Cloudflare Tunnel
 
-API 도메인과 Termux API 포트 연결을 확인한다.
+API 도메인과 Ubuntu host API 포트 연결을 확인한다.
 
-- [ ] `api.icecoke.kr`가 Termux 서버의 API 포트로 라우팅되는지 확인한다.
+- [ ] `api.icecoke.kr`가 Ubuntu host의 API 포트로 라우팅되는지 확인한다.
 - [ ] Tunnel이 기기 재부팅 후에도 복구되는지 확인한다.
 - [x] GitHub Actions 배포가 SSH/Cloudflare Access SSH 정책에 의존하지 않는지 확인한다.
 
 검증:
 
-- [ ] 외부 네트워크에서 `https://api.icecoke.kr/api-json`에 접근한다.
+- [ ] 외부 네트워크에서 `https://api.icecoke.kr/health`에 접근한다.
 - [ ] Vercel web production에서 API 호출이 CORS 오류 없이 성공하는지 확인한다.
 
 ## 5. Existing API Repository

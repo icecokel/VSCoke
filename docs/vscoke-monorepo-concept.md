@@ -57,7 +57,7 @@ vscoke/
 
 ### API: `apps/api`
 
-API는 Termux 서버에서 PM2로 실행되는 NestJS 앱이다.
+API는 Ubuntu 호스트에서 PM2로 실행되는 NestJS 앱이다.
 
 주요 구성:
 
@@ -145,11 +145,11 @@ NEXT_PUBLIC_API_URL=http://localhost:3001 pnpm dev:web
 
 환경 변수는 Git에 커밋하지 않는다.
 
-| 영역      | 로컬 위치                           | 운영 위치                           |
-| --------- | ----------------------------------- | ----------------------------------- |
-| Web       | `apps/web/.env.local` 또는 실행 env | Vercel Project Settings             |
-| API       | `apps/api/.env`                     | Termux `~/projects/vscoke-api/.env` |
-| DB tunnel | `apps/api/.env`                     | 로컬 개발 보조 전용                 |
+| 영역      | 로컬 위치                           | 운영 위치                                           |
+| --------- | ----------------------------------- | --------------------------------------------------- |
+| Web       | `apps/web/.env.local` 또는 실행 env | Vercel Project Settings                             |
+| API       | `apps/api/.env`                     | Ubuntu host `/home/icenux/projects/vscoke-api/.env` |
+| DB tunnel | `apps/api/.env`                     | 로컬 개발 보조 전용                                 |
 
 중요한 값:
 
@@ -187,12 +187,12 @@ flowchart LR
   Api["apps/api"]
   Vercel["Vercel"]
   Runner["GitHub self-hosted runner"]
-  Termux["Termux server"]
+  Host["Ubuntu host"]
   PM2["PM2: vscoke-api"]
   Tunnel["Cloudflare Tunnel: api.icecoke.kr"]
 
   Repo --> Web --> Vercel
-  Repo --> Api --> Runner --> Termux --> PM2 --> Tunnel
+  Repo --> Api --> Runner --> Host --> PM2 --> Tunnel
 ```
 
 웹 배포:
@@ -205,17 +205,17 @@ API 배포:
 
 - `.github/workflows/deploy-api.yml`이 담당한다.
 - `main` push 중 `apps/api/**`, 루트 package/lock/workspace 파일, API deploy workflow 변경이 있을 때 실행된다.
-- runner labels는 `self-hosted`, `termux`, `vscoke-api`를 사용한다.
-- 배포 산출물은 Termux `~/projects/vscoke-api`에 staged release로 반영된다.
+- runner labels는 `self-hosted`, `vscoke-api`, `host`를 사용한다.
+- 배포 산출물은 Ubuntu host `/home/icenux/projects/vscoke-api`에 staged release로 반영된다.
 - PM2 앱 이름은 `vscoke-api`, entrypoint는 `apps/api/dist/src/main.js`다.
-- 배포 후 local `/api-json`과 public `https://api.icecoke.kr/api-json`을 확인한다.
+- 배포 후 local `/health`와 public `https://api.icecoke.kr/health`를 확인한다.
 
 ## DB 접속 기준
 
-운영 API는 Termux 내부 PostgreSQL에 붙는다.
+운영 API는 Ubuntu host 내부 PostgreSQL에 붙는다.
 
 ```txt
-apps/api on Termux -> DB_HOST=localhost -> PostgreSQL on Termux
+apps/api on Ubuntu host -> DB_HOST=127.0.0.1 -> PostgreSQL on Ubuntu host
 ```
 
 Mac 로컬에서 DB가 필요한 작업을 할 때는 Cloudflare Access TCP tunnel을 먼저 띄운다.

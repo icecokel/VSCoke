@@ -242,3 +242,37 @@ Phase는 순서대로 진행한다.
 - 통과한 검증 명령
 - 남은 known gap
 - 다음 phase에서 이어받을 결정 사항
+
+## Phase Completion Log
+
+### Phase 1 완료: 2026-07-06
+
+완료 커밋:
+
+- `458e3c3 test(poke-lounge):프론트 이식 흐름 검증`
+
+통과한 검증 명령:
+
+- `pnpm type:check:web`
+- `pnpm lint:web`
+- `pnpm knip`
+- `pnpm build:web`
+- `pnpm --filter @vscoke/web e2e -- tests/e2e/poke-lounge.spec.ts --project=chromium`
+- `pnpm --filter @vscoke/web e2e -- tests/e2e/hobby-games.spec.ts --project=chromium`
+- `pnpm --filter @vscoke/web e2e -- tests/e2e/i18n-integrity.spec.ts --project=chromium`
+- `git diff --check`
+- `git ls-files | rg '(^|/)(node_modules|\.next|output|test-results|data/raw|data/processed|assets/raw|assets/processed)(/|$)' || true`
+- `git ls-files | rg '\.(nds|gba|gbc|gb|cia|3ds|zip|7z)$' || true`
+
+남은 known gap:
+
+- `network=local` room은 개발 preview 용도다. 운영 멀티플레이나 서버 권위 모델로 취급하지 않는다.
+- E2E probe는 로컬 개발과 E2E 검증을 위한 훅이며, Phase 3의 서버 검증을 대체하지 않는다.
+- Poke Lounge 결과 제출, 랭킹, 공유 결과 연동은 아직 없다.
+
+Phase 2 인계 결정 사항:
+
+- `POKE_LOUNGE`를 VSCoke 게임 결과 API의 정식 `GameType`으로 추가한다.
+- 점수는 Poke Lounge 최종 결과 화면의 누적 점수를 기준으로 API에 제출한다.
+- `playTime`은 클라이언트에서 측정 가능한 전체 플레이 시간을 초 단위로 제출하되, API 정책의 최소/최대 범위를 게임별 정책과 맞춘다.
+- Phase 2에서는 server-authoritative room, ready state, reconnect, tournament authority를 구현하지 않는다.

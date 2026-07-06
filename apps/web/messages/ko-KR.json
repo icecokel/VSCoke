@@ -345,13 +345,17 @@
     "similarity": "유사도 {score}%",
     "pending": {
       "title": "근거 검색 및 Codex 응답 생성 중",
-      "description": "벡터 DB에서 근거를 찾고 답변을 생성하고 있습니다."
+      "description": "DB에 적재된 공개 이력 근거를 찾고 답변을 생성하고 있습니다."
     },
     "noEvidence": {
       "title": "근거 부족",
-      "description": "검색된 벡터 근거가 부족해 답변 신뢰도를 낮게 표시합니다."
+      "description": "검색된 공개 이력 근거가 부족해 답변 신뢰도를 낮게 표시합니다."
     },
     "failure": {
+      "origin-blocked": {
+        "title": "허용되지 않은 요청입니다",
+        "description": "이 질문 API는 공식 VSCoke 운영 사이트에서 보낸 요청만 허용합니다."
+      },
       "auth-required": {
         "title": "로그인이 필요합니다",
         "description": "이력 질문은 인증된 사용자만 요청할 수 있습니다."

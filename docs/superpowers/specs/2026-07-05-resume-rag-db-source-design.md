@@ -31,7 +31,7 @@ Conclusion: V1 should store these as source items with flexible metadata instead
 
 ### Backend Fit
 
-VSCoke already uses NestJS, TypeORM, PostgreSQL, migration scripts, Swagger DTOs, and Google ID-token authentication. A new `ResumeRagModule` under `apps/api/src/resume-rag` should follow those patterns. File reads belong to import CLI scripts only.
+VSCoke already uses NestJS, TypeORM, PostgreSQL, migration scripts, Swagger DTOs, and route-level guards. A new `ResumeRagModule` under `apps/api/src/resume-rag` should follow those patterns. File reads belong to import CLI scripts only.
 
 ### Risk Review
 
@@ -164,7 +164,7 @@ ANN indexes are deferred until vector retrieval is selected again and embedding 
 
 It must filter by:
 
-- `visibility` allowed for the authenticated user
+- `visibility` allowed for public answers
 - `status` eligible for answering
 - locale policy
 - text/keyword ranking threshold or fallback policy
@@ -185,8 +185,10 @@ The response source citation must be built from `resume_source_items` fields and
 
 ## Security And Privacy
 
-- Chat endpoint must require authentication.
-- If private/internal source items are indexed, auth must be stronger than “any valid Google user”.
+- Public chat must not force visitor login.
+- Public chat must only retrieve `public` visibility source items.
+- Public chat must reject browser requests whose `Origin`/`Referer` is outside the configured official web origin allowlist.
+- If private/internal source items are indexed later, they must use a separate authenticated endpoint and stronger authorization than “any valid Google user”.
 - Notification payloads must redact `question`, `authorization`, token-like values, email, phone, and contact fields.
 - Import logs must not print full sensitive item bodies.
 
@@ -197,7 +199,7 @@ The response source citation must be built from `resume_source_items` fields and
 - Career/project/skill relational model.
 - Model selection UI.
 - Multi-provider fallback.
-- Public unauthenticated chat.
+- Private/internal resume chat on the public endpoint.
 - Streaming responses.
 - Chat history persistence.
 - Automatic resume rewriting.

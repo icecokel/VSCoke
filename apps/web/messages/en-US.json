@@ -345,13 +345,17 @@
     "similarity": "{score}% match",
     "pending": {
       "title": "Searching evidence and generating with Codex",
-      "description": "The API is retrieving vector evidence and generating an answer."
+      "description": "The API is retrieving public resume evidence from the DB and generating an answer."
     },
     "noEvidence": {
       "title": "Not enough evidence",
-      "description": "The retrieved vector evidence is insufficient, so confidence is shown as low."
+      "description": "The retrieved public resume evidence is insufficient, so confidence is shown as low."
     },
     "failure": {
+      "origin-blocked": {
+        "title": "Request is not allowed",
+        "description": "This question API only accepts requests sent from the official VSCoke production site."
+      },
       "auth-required": {
         "title": "Login required",
         "description": "Resume questions require an authenticated session."

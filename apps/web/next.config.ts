@@ -10,6 +10,34 @@ import createNextIntlPlugin from "next-intl/plugin";
 // next-intl 플러그인 설정 (i18n 요청 핸들러 경로 지정)
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const monorepoRoot = path.resolve(process.cwd(), "../..");
+const productionApiOrigin = "https://api.icecoke.kr";
+
+const normalizeConnectSource = (value: string | undefined) => {
+  if (!value) return undefined;
+
+  try {
+    return new URL(value).origin;
+  } catch {
+    return undefined;
+  }
+};
+
+const connectSources = Array.from(
+  new Set(
+    [
+      "'self'",
+      productionApiOrigin,
+      normalizeConnectSource(process.env.NEXT_PUBLIC_API_URL),
+      "https://www.google-analytics.com",
+      "https://region1.google-analytics.com",
+      "https://analytics.google.com",
+      "https://stats.g.doubleclick.net",
+      "https://www.googletagmanager.com",
+    ].filter((source): source is string => Boolean(source)),
+  ),
+);
+
+const contentSecurityPolicy = `connect-src ${connectSources.join(" ")};`;
 
 const nextConfig: NextConfig = {
   // React Strict Mode (개발 환경에서 잠재적 문제 감지)
@@ -36,6 +64,20 @@ const nextConfig: NextConfig = {
         pathname: "/images/**",
       },
     ],
+  },
+
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: contentSecurityPolicy,
+          },
+        ],
+      },
+    ];
   },
 };
 

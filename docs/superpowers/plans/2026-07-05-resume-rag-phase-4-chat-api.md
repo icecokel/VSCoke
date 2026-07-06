@@ -2,18 +2,19 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Expose an authenticated chat API that answers from DB text/keyword retrieval.
+**Goal:** Expose a public-origin-limited chat API that answers from DB text/keyword retrieval.
 
 **Architecture:** The API searches existing `resume_source_items.bodyText` and metadata with DB text/keyword search, builds grounded context from returned source items, and calls the configured answer-generation adapter. Natural-language answering is routed through Codex app-server via `RAG_CHAT_PROVIDER=codex-app-server`. The endpoint must not read source files or import loaders at runtime. OpenAI/API embedding keys are not required for production chat.
 
-**Tech Stack:** NestJS 11, TypeORM 0.3, PostgreSQL text search, GoogleAuthGuard, Swagger DTOs, Jest.
+**Tech Stack:** NestJS 11, TypeORM 0.3, PostgreSQL text search, route-level Origin guard, Swagger DTOs, Jest.
 
 ---
 
 ## Scope
 
 - Add `POST /resume-rag/chat`.
-- Require authenticated API access.
+- Do not require visitor login for public resume questions.
+- Require official VSCoke web browser origin for public chat requests.
 - Retrieve source evidence from `resume_source_items` only.
 - Return answer, grounded flag, and source citations.
 - Redact question body from production error notifications.
@@ -59,7 +60,7 @@ The retriever must query only `resume_source_items` and existing DB text/metadat
 It must filter by:
 
 - eligible `status`
-- allowed `visibility` for the authenticated user
+- allowed `visibility` for public answers
 - requested locale policy
 - text/keyword score or fallback threshold
 
@@ -117,7 +118,7 @@ If no source item passes the threshold, the API returns `grounded: false` and a 
 ### Task 7: Controller And Module
 
 - [ ] Create `apps/api/src/resume-rag/resume-rag.controller.ts`.
-- [ ] Use existing auth guard pattern.
+- [ ] Use route-level guard pattern for public chat origin allowlist.
 - [ ] Register controller and providers in `ResumeRagModule`.
 - [ ] Import `ResumeRagModule` into `AppModule`.
 

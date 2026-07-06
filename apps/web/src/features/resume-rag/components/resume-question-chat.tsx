@@ -2,13 +2,11 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { signIn, useSession } from "next-auth/react";
 import {
   Clock,
   DatabaseZap,
   FileWarning,
   Loader2,
-  LogIn,
   RefreshCw,
   SearchX,
   Send,
@@ -18,18 +16,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { getSessionApiIdToken, isAuthSessionError, type ApiTokenSession } from "@/lib/auth-token";
 import { ApiError } from "@/lib/api-client";
-import {
-  askResumeRag,
-  ResumeRagAuthError,
-  ResumeRagContractError,
-} from "../lib/resume-rag-service";
+import { askResumeRag, ResumeRagContractError } from "../lib/resume-rag-service";
 import type { ResumeRagSource } from "../types";
 
 type FailureKind =
-  | "auth-required"
-  | "auth-expired"
+  | "origin-blocked"
   | "service-unavailable"
   | "rate-limited"
   | "contract"
@@ -55,17 +47,13 @@ type ChatMessage =
     };
 
 const getFailureState = (caught: unknown, question: string): FailureState => {
-  if (caught instanceof ResumeRagAuthError) {
-    return { kind: "auth-required", question };
-  }
-
   if (caught instanceof ResumeRagContractError) {
     return { kind: "contract", question };
   }
 
   if (caught instanceof ApiError) {
-    if (caught.status === 401 || caught.status === 403) {
-      return { kind: "auth-expired", question };
+    if (caught.status === 403) {
+      return { kind: "origin-blocked", question };
     }
 
     if (caught.status === 429) {
@@ -83,7 +71,7 @@ const getFailureState = (caught: unknown, question: string): FailureState => {
 const FailureIcon = ({ kind }: { kind: FailureKind }) => {
   const className = "mt-0.5 size-4 shrink-0";
 
-  if (kind === "auth-required" || kind === "auth-expired") {
+  if (kind === "origin-blocked") {
     return <ShieldAlert className={className} />;
   }
   if (kind === "service-unavailable") {
@@ -107,8 +95,7 @@ const FailureNotice = ({
   onRetry: (question: string) => void;
 }) => {
   const t = useTranslations("resumeRag");
-  const needsLogin = failure.kind === "auth-required" || failure.kind === "auth-expired";
-  const canRetry = Boolean(failure.question) && !needsLogin;
+  const canRetry = Boolean(failure.question) && failure.kind !== "origin-blocked";
 
   return (
     <div className="mb-3 border border-red-900 bg-red-950/30 px-3 py-3 text-sm text-red-100">
@@ -118,12 +105,6 @@ const FailureNotice = ({
           <div className="font-medium">{t(`failure.${failure.kind}.title`)}</div>
           <div className="mt-1 text-red-200/80">{t(`failure.${failure.kind}.description`)}</div>
           <div className="mt-3 flex flex-wrap gap-2">
-            {needsLogin ? (
-              <Button type="button" size="sm" onClick={() => signIn("google")}>
-                <LogIn />
-                {t("login")}
-              </Button>
-            ) : null}
             {canRetry ? (
               <Button
                 type="button"
@@ -227,30 +208,19 @@ const GroundingNotice = ({ grounded }: { grounded: boolean }) => {
 export const ResumeQuestionChat = () => {
   const t = useTranslations("resumeRag");
   const locale = useLocale();
-  const { data: session, status } = useSession();
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [failure, setFailure] = useState<FailureState | null>(null);
 
-  const apiTokenSession = session as ApiTokenSession | null;
-  const token = getSessionApiIdToken(apiTokenSession);
-  const requiresLogin =
-    status !== "authenticated" || !token || isAuthSessionError(apiTokenSession?.error);
-
   const canSubmit = useMemo(
-    () => question.trim().length >= 2 && !isSubmitting && !requiresLogin,
-    [isSubmitting, question, requiresLogin],
+    () => question.trim().length >= 2 && !isSubmitting,
+    [isSubmitting, question],
   );
 
   const submitQuestion = async (rawQuestion: string, options: { appendUserMessage: boolean }) => {
     const trimmedQuestion = rawQuestion.trim();
     if (!trimmedQuestion || isSubmitting) return;
-
-    if (requiresLogin) {
-      signIn("google");
-      return;
-    }
 
     setIsSubmitting(true);
     setFailure(null);
@@ -265,13 +235,10 @@ export const ResumeQuestionChat = () => {
     setQuestion("");
 
     try {
-      const response = await askResumeRag(
-        {
-          question: trimmedQuestion,
-          locale,
-        },
-        token,
-      );
+      const response = await askResumeRag({
+        question: trimmedQuestion,
+        locale,
+      });
       setMessages(prev => [
         ...prev,
         {
@@ -337,22 +304,15 @@ export const ResumeQuestionChat = () => {
         <Textarea
           value={question}
           onChange={event => setQuestion(event.target.value)}
-          placeholder={requiresLogin ? t("loginPlaceholder") : t("placeholder")}
+          placeholder={t("placeholder")}
           className="min-h-28 resize-none border-gray-700 bg-gray-950 text-gray-100 placeholder:text-gray-500"
           disabled={isSubmitting}
         />
         <div className="mt-3 flex justify-end">
-          {requiresLogin ? (
-            <Button type="button" onClick={() => signIn("google")} className="min-w-32">
-              <LogIn />
-              {t("login")}
-            </Button>
-          ) : (
-            <Button type="submit" disabled={!canSubmit} className="min-w-32">
-              {isSubmitting ? <Loader2 className="animate-spin" /> : <Send />}
-              {isSubmitting ? t("submitting") : t("submit")}
-            </Button>
-          )}
+          <Button type="submit" disabled={!canSubmit} className="min-w-32">
+            {isSubmitting ? <Loader2 className="animate-spin" /> : <Send />}
+            {isSubmitting ? t("submitting") : t("submit")}
+          </Button>
         </div>
       </form>
     </section>

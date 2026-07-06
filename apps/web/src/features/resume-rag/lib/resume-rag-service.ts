@@ -1,13 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 import type { ResumeRagChatRequest, ResumeRagChatResponse } from "../types";
 
-export class ResumeRagAuthError extends Error {
-  constructor() {
-    super("Resume RAG requires an API auth token.");
-    this.name = "ResumeRagAuthError";
-  }
-}
-
 export class ResumeRagContractError extends Error {
   constructor(message = "Resume RAG API returned an invalid response.") {
     super(message);
@@ -29,15 +22,8 @@ const isResumeRagChatResponse = (value: unknown): value is ResumeRagChatResponse
 
 export const askResumeRag = async (
   request: ResumeRagChatRequest,
-  token?: string,
 ): Promise<ResumeRagChatResponse> => {
-  if (!token) {
-    throw new ResumeRagAuthError();
-  }
-
-  const response = await apiClient.post<ResumeRagChatResponse>("/resume-rag/chat", request, {
-    token,
-  });
+  const response = await apiClient.post<ResumeRagChatResponse>("/resume-rag/chat", request);
 
   if (!isResumeRagChatResponse(response)) {
     throw new ResumeRagContractError();

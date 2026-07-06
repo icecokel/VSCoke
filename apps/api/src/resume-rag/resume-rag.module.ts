@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthModule } from '../auth/auth.module';
 import {
   RESUME_RAG_CHAT_PROVIDER,
   type ChatProvider,
@@ -25,12 +24,12 @@ import {
   getResumeRagConfig,
 } from './resume-rag.config';
 import { ResumeRagController } from './resume-rag.controller';
+import { ResumeRagOriginGuard } from './resume-rag-origin.guard';
 import { ResumeRagRetrieverService } from './resume-rag-retriever.service';
 import { ResumeRagService } from './resume-rag.service';
 
 @Module({
   imports: [
-    AuthModule,
     TypeOrmModule.forFeature([
       ResumeImportBatch,
       ResumeSourceItem,
@@ -39,6 +38,7 @@ import { ResumeRagService } from './resume-rag.service';
   ],
   controllers: [ResumeRagController],
   providers: [
+    ResumeRagOriginGuard,
     ResumeSourceItemImportService,
     ResumeSourceItemChunker,
     ResumeVectorIndexerService,

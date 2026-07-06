@@ -335,6 +335,17 @@
     "title": "履歴質問",
     "subtitle": "DBに取り込まれた履歴根拠に基づいて回答します。",
     "empty": "質問を入力すると回答がここに表示されます。",
+    "emptyTitle": "何が気になりますか？",
+    "emptyDescription": "下の質問から始めるか、直接入力してください。",
+    "suggestionsLabel": "おすすめ質問",
+    "composerLabel": "質問入力",
+    "sourceLabel": "根拠",
+    "suggestions": [
+      "Oprimedではどんな業務をしましたか？",
+      "医療ドメイン経験を説明してください",
+      "CI/CDとデプロイ経験はどうですか？",
+      "フロントエンドの強みは何ですか？"
+    ],
     "placeholder": "履歴について質問してください。",
     "loginPlaceholder": "ログイン後に質問できます。",
     "login": "Googleでログイン",

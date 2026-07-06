@@ -335,6 +335,17 @@
     "title": "Resume Questions",
     "subtitle": "Answers are grounded in resume evidence loaded into the DB.",
     "empty": "Ask a question and the answer will appear here.",
+    "emptyTitle": "What would you like to know?",
+    "emptyDescription": "Start with a suggested question or type your own.",
+    "suggestionsLabel": "Suggested questions",
+    "composerLabel": "Question input",
+    "sourceLabel": "Evidence",
+    "suggestions": [
+      "What did you work on at Oprimed?",
+      "Describe your healthcare domain experience",
+      "What is your CI/CD and deployment experience?",
+      "What are your frontend strengths?"
+    ],
     "placeholder": "Ask about the resume.",
     "loginPlaceholder": "Login to ask a question.",
     "login": "Login with Google",

@@ -3,9 +3,11 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
+  ChevronRight,
   Clock,
   DatabaseZap,
   FileWarning,
+  FileText,
   Loader2,
   RefreshCw,
   SearchX,
@@ -98,12 +100,19 @@ const FailureNotice = ({
   const canRetry = Boolean(failure.question) && failure.kind !== "origin-blocked";
 
   return (
-    <div className="mb-3 border border-red-900 bg-red-950/30 px-3 py-3 text-sm text-red-100">
+    <div
+      role="alert"
+      className="mb-3 overflow-hidden border border-red-900/80 bg-gray-950 text-sm text-red-100"
+    >
+      <div className="border-b border-red-900/60 bg-red-950/30 px-3 py-1.5 text-xs font-medium text-red-200">
+        {t(`failure.${failure.kind}.title`)}
+      </div>
       <div className="flex gap-2">
-        <FailureIcon kind={failure.kind} />
-        <div className="min-w-0 flex-1">
-          <div className="font-medium">{t(`failure.${failure.kind}.title`)}</div>
-          <div className="mt-1 text-red-200/80">{t(`failure.${failure.kind}.description`)}</div>
+        <div className="flex min-h-20 w-10 items-start justify-center border-r border-red-900/40 pt-3 text-red-300">
+          <FailureIcon kind={failure.kind} />
+        </div>
+        <div className="min-w-0 flex-1 px-3 py-3">
+          <div className="text-red-200/80">{t(`failure.${failure.kind}.description`)}</div>
           <div className="mt-3 flex flex-wrap gap-2">
             {canRetry ? (
               <Button
@@ -128,18 +137,23 @@ const PendingAnswer = () => {
   const t = useTranslations("resumeRag");
 
   return (
-    <div className="mr-auto max-w-3xl border border-gray-700 bg-gray-900 p-3 text-gray-100">
-      <div className="flex items-start gap-2 text-sm text-gray-300">
-        <Loader2 className="mt-0.5 size-4 animate-spin text-blue-300" />
-        <div>
-          <div className="font-medium">{t("pending.title")}</div>
-          <div className="mt-1 text-gray-500">{t("pending.description")}</div>
-        </div>
+    <div className="mr-auto w-full max-w-3xl overflow-hidden border border-gray-700 bg-gray-950/80 text-gray-100">
+      <div className="border-b border-gray-800 bg-gray-900 px-3 py-2 text-xs text-gray-500">
+        codex.response
       </div>
-      <div className="mt-4 space-y-2">
-        <Skeleton className="h-3 w-11/12 bg-gray-800" />
-        <Skeleton className="h-3 w-9/12 bg-gray-800" />
-        <Skeleton className="h-3 w-7/12 bg-gray-800" />
+      <div className="p-3">
+        <div className="flex items-start gap-2 text-sm text-gray-300">
+          <Loader2 className="mt-0.5 size-4 animate-spin text-blue-300" />
+          <div>
+            <div className="font-medium">{t("pending.title")}</div>
+            <div className="mt-1 text-gray-500">{t("pending.description")}</div>
+          </div>
+        </div>
+        <div className="mt-4 space-y-2">
+          <Skeleton className="h-3 w-11/12 bg-gray-800" />
+          <Skeleton className="h-3 w-9/12 bg-gray-800" />
+          <Skeleton className="h-3 w-7/12 bg-gray-800" />
+        </div>
       </div>
     </div>
   );
@@ -151,38 +165,44 @@ const SourceList = ({ sources }: { sources: ResumeRagSource[] }) => {
   if (sources.length === 0) return null;
 
   return (
-    <div className="mt-3 space-y-2">
-      <div className="text-xs font-medium text-gray-400">
-        {t("sources", { count: sources.length })}
+    <div className="mt-4 border-t border-gray-800 pt-3">
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-medium text-gray-400">
+        <FileText className="size-3.5 text-blue-300" />
+        <span>{t("sourceLabel")}</span>
+        <span className="text-gray-600">/</span>
+        <span className="text-gray-500">{t("sources", { count: sources.length })}</span>
       </div>
-      {sources.map(source => {
-        const label = [source.title, source.sectionPath].filter(Boolean).join(" · ");
-        const score = Math.round(source.similarity * 100);
+      <div className="space-y-2 border-l border-gray-700 pl-3">
+        {sources.map((source, index) => {
+          const label =
+            [source.title, source.sectionPath].filter(Boolean).join(" · ") || source.sourceKey;
+          const score = Math.round(source.similarity * 100);
 
-        return (
-          <div
-            key={`${source.sourceKey}-${source.similarity}`}
-            className="border-l border-gray-600 pl-3 text-xs text-gray-400"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              {source.publicUrl ? (
-                <a
-                  href={source.publicUrl}
-                  className="text-blue-300 underline-offset-2 hover:underline"
-                >
-                  {label}
-                </a>
-              ) : (
-                <span className="text-gray-300">{label}</span>
-              )}
-              <span className="text-gray-500">{t("similarity", { score })}</span>
+          return (
+            <div
+              key={`${source.sourceKey}-${index}`}
+              className="min-w-0 text-xs leading-5 text-gray-400"
+            >
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {source.publicUrl ? (
+                  <a
+                    href={source.publicUrl}
+                    className="text-blue-300 underline-offset-2 hover:underline"
+                  >
+                    {label}
+                  </a>
+                ) : (
+                  <span className="text-gray-300">{label}</span>
+                )}
+                <span className="text-gray-500">{t("similarity", { score })}</span>
+              </div>
+              {source.caveats?.length ? (
+                <div className="mt-1 text-gray-500">{source.caveats.join(", ")}</div>
+              ) : null}
             </div>
-            {source.caveats?.length ? (
-              <div className="mt-1 text-gray-500">{source.caveats.join(", ")}</div>
-            ) : null}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 };
@@ -205,9 +225,59 @@ const GroundingNotice = ({ grounded }: { grounded: boolean }) => {
   );
 };
 
+const EmptyChatState = ({
+  suggestions,
+  onSelectSuggestion,
+}: {
+  suggestions: string[];
+  onSelectSuggestion: (suggestion: string) => void;
+}) => {
+  const t = useTranslations("resumeRag");
+
+  return (
+    <div className="min-h-72 overflow-hidden border border-gray-800 bg-gray-950/70 text-gray-100">
+      <div className="flex items-center gap-2 border-b border-gray-800 bg-gray-900 px-3 py-2 text-xs text-gray-500">
+        <span className="size-2 rounded-full bg-blue-300" />
+        <span>resume-rag.question</span>
+      </div>
+      <div className="p-4 md:p-6">
+        <div className="max-w-2xl">
+          <div className="text-sm font-semibold text-gray-100">{t("emptyTitle")}</div>
+          <p className="mt-2 text-sm leading-6 text-gray-400">{t("emptyDescription")}</p>
+        </div>
+
+        <div className="mt-5">
+          <div className="mb-2 text-xs font-medium uppercase text-gray-500">
+            {t("suggestionsLabel")}
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {suggestions.map(suggestion => (
+              <Button
+                key={suggestion}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-auto min-h-10 w-full justify-start whitespace-normal border-gray-700 bg-gray-900/60 px-3 py-2 text-left text-gray-200 hover:bg-gray-800 hover:text-gray-50"
+                onClick={() => onSelectSuggestion(suggestion)}
+              >
+                <ChevronRight className="mt-0.5 size-3.5 text-blue-300" />
+                <span className="min-w-0">{suggestion}</span>
+              </Button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const ResumeQuestionChat = () => {
   const t = useTranslations("resumeRag");
   const locale = useLocale();
+  const rawSuggestions = t.raw("suggestions");
+  const suggestions = Array.isArray(rawSuggestions)
+    ? rawSuggestions.filter((suggestion): suggestion is string => typeof suggestion === "string")
+    : [];
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -262,28 +332,39 @@ export const ResumeQuestionChat = () => {
   };
 
   return (
-    <section className="flex min-h-[calc(100vh-7rem)] flex-col">
+    <section className="flex min-h-[calc(100svh-15rem)] flex-col">
       <div className="flex-1 space-y-4 overflow-y-auto pb-4">
         {messages.length === 0 ? (
-          <div className="flex min-h-64 items-center justify-center border border-dashed border-gray-700 text-sm text-gray-500">
-            {t("empty")}
-          </div>
+          <EmptyChatState suggestions={suggestions} onSelectSuggestion={setQuestion} />
         ) : (
           messages.map(message => (
             <div
               key={message.id}
               className={
                 message.role === "user"
-                  ? "ml-auto max-w-2xl border border-blue-900 bg-blue-950/30 p-3 text-gray-100"
-                  : "mr-auto max-w-3xl border border-gray-700 bg-gray-900 p-3 text-gray-100"
+                  ? "ml-auto max-w-[min(42rem,90%)] border border-blue-900/70 bg-blue-950/25 text-gray-100"
+                  : "mr-auto w-full max-w-3xl overflow-hidden border border-gray-700 bg-gray-950/80 text-gray-100"
               }
             >
-              <div className="whitespace-pre-wrap text-sm leading-6">{message.content}</div>
               {message.role === "assistant" ? (
-                <>
+                <div className="border-b border-gray-800 bg-gray-900 px-3 py-2 text-xs text-gray-500">
+                  codex.response
+                </div>
+              ) : null}
+              <div
+                className={
+                  message.role === "user"
+                    ? "whitespace-pre-wrap px-3 py-2 text-sm leading-6"
+                    : "whitespace-pre-wrap px-3 py-3 text-sm leading-6"
+                }
+              >
+                {message.content}
+              </div>
+              {message.role === "assistant" ? (
+                <div className="px-3 pb-3">
                   <GroundingNotice grounded={message.grounded} />
                   <SourceList sources={message.sources} />
-                </>
+                </div>
               ) : null}
             </div>
           ))
@@ -300,15 +381,19 @@ export const ResumeQuestionChat = () => {
         />
       ) : null}
 
-      <form onSubmit={handleSubmit} className="border-t border-gray-800 pt-3">
+      <form
+        onSubmit={handleSubmit}
+        className="border-t border-gray-800 bg-gray-950/80 pt-3 pb-3 backdrop-blur"
+      >
         <Textarea
           value={question}
           onChange={event => setQuestion(event.target.value)}
           placeholder={t("placeholder")}
-          className="min-h-28 resize-none border-gray-700 bg-gray-950 text-gray-100 placeholder:text-gray-500"
+          aria-label={t("composerLabel")}
+          className="min-h-20 resize-none border-gray-700 bg-gray-950 text-gray-100 placeholder:text-gray-500 md:min-h-28"
           disabled={isSubmitting}
         />
-        <div className="mt-3 flex justify-end">
+        <div className="mt-2 flex justify-end md:mt-3">
           <Button type="submit" disabled={!canSubmit} className="min-w-32">
             {isSubmitting ? <Loader2 className="animate-spin" /> : <Send />}
             {isSubmitting ? t("submitting") : t("submit")}

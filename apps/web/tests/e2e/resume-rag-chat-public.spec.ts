@@ -8,13 +8,18 @@ test.describe("Resume RAG public chat", () => {
 
     const textarea = page.getByPlaceholder("이력에 대해 질문하세요.");
     const submitButton = page.getByRole("button", { name: "질문하기" });
+    const suggestedQuestion = page.getByRole("button", {
+      name: "Oprimed에서 어떤 업무를 했어?",
+    });
 
     await expect(textarea).toBeVisible();
     await expect(page.getByRole("button", { name: "Google 로그인" })).toHaveCount(0);
     await expect(submitButton).toBeDisabled();
+    await expect(suggestedQuestion).toBeVisible();
 
-    await textarea.fill("Oprimed에서 어떤 업무를 했어?");
+    await suggestedQuestion.click();
 
+    await expect(textarea).toHaveValue("Oprimed에서 어떤 업무를 했어?");
     await expect(submitButton).toBeEnabled();
   });
 
@@ -60,6 +65,8 @@ test.describe("Resume RAG public chat", () => {
     await expect(
       page.getByText("Oprimed에서는 의료 분석 워크스페이스를 개발했습니다."),
     ).toBeVisible();
+    await expect(page.getByText("Oprimed 공개 이력서 최종안")).toBeVisible();
+    await expect(page.getByText("근거 1개")).toBeVisible();
     expect(capturedRequests).toHaveLength(1);
     expect(capturedRequests[0]?.headers.authorization).toBeUndefined();
     expect(capturedRequests[0]?.body).toEqual({

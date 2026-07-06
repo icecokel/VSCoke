@@ -16,6 +16,12 @@ describe('resume rag config', () => {
     expect(config.chatModel).toBeUndefined();
   });
 
+  it('defaults retrieval similarity for keyword text search', () => {
+    const config = getResumeRagConfig({});
+
+    expect(config.minSimilarity).toBe(0.1);
+  });
+
   it('parses numeric retrieval and model settings from strings', () => {
     const config = getResumeRagConfig({
       RAG_EMBEDDING_PROVIDER: 'openai-compatible',

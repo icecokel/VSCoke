@@ -56,6 +56,20 @@ ssh icenux-external
    ```
    > 코드 배포와 함께라면 GitHub Actions가 재시작해주므로 생략 가능합니다.
 
+### Resume RAG 운영 설정
+
+운영 chat은 `resume_source_items`에 저장된 DB 텍스트를 keyword/text search로 검색하고, 검색된 근거를 Codex app-server에 전달해 답변만 생성합니다. 운영 chat runtime에는 OpenAI/API 임베딩 키가 필요하지 않습니다.
+
+필수 기준값:
+
+```bash
+RAG_CHAT_PROVIDER=codex-app-server
+RAG_CODEX_APP_SERVER_URL=ws://127.0.0.1:14561
+RAG_CODEX_CWD=/home/icenux/projects/vscoke-api
+```
+
+`RAG_AI_API_KEY`, `RAG_AI_BASE_URL`, `RAG_EMBEDDING_PROVIDER`, `RAG_EMBEDDING_MODEL`, `RAG_EMBEDDING_DIMENSIONS`는 선택적 legacy/future 벡터 인덱싱 경로에서만 설정합니다. 운영 chat만 배포할 때는 필수값으로 취급하지 않습니다.
+
 ## 3. DB schema 변경
 
 운영 API는 `DB_SYNCHRONIZE=false`를 기본으로 유지합니다. schema 변경은 TypeORM migration 파일로 추적하고, 운영 DB에는 backup을 만든 뒤 migration 명령으로만 반영합니다. 운영 DB에서 `psql`로 직접 DDL을 실행하는 방식은 긴급 복구 상황이 아니면 사용하지 않습니다.

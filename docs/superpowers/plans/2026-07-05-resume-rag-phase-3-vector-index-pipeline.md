@@ -1,10 +1,10 @@
-# Resume RAG Phase 3: Vector Index Pipeline Implementation Plan
+# Resume RAG Phase 3: Optional Vector Index Pipeline Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Generate vector chunks from DB-backed resume source items.
+**Goal:** Preserve the optional vector-indexing plan for a legacy/future retrieval path.
 
-**Architecture:** The indexer reads vectorizable `resume_source_items`, chunks `bodyText`, calls an embedding adapter, and upserts `resume_vector_chunks`. Vector rows store embedding profile fields and denormalized citation metadata so runtime retrieval can answer from vector rows only.
+**Architecture:** Current production chat does not require this phase. Runtime RAG retrieves existing DB text from `resume_source_items` with keyword/text search and uses Codex app-server for answer generation. If vector retrieval is re-enabled later, the indexer reads vectorizable `resume_source_items`, chunks `bodyText`, calls an embedding adapter, and upserts `resume_vector_chunks`.
 
 **Tech Stack:** NestJS 11, TypeORM 0.3, PostgreSQL, pgvector, provider adapter boundary, Jest.
 
@@ -12,6 +12,7 @@
 
 ## Scope
 
+- Treat this phase as optional legacy/future work, not a prerequisite for current production chat.
 - Read source text from DB source items only.
 - Chunk source item text into deterministic vector inputs.
 - Define an embedding provider adapter without choosing a final provider/model.
@@ -27,9 +28,11 @@
 
 These are required to run indexing. They must not have source-code defaults.
 
+They are not required for current production chat. `RAG_AI_API_KEY` is required only when the optional embedding provider path uses an openai-compatible API.
+
 ## Vector Row Citation Contract
 
-Each `resume_vector_chunks` row must carry enough metadata for runtime citations without joining `resume_source_items`:
+If vector retrieval is re-enabled, each `resume_vector_chunks` row must carry enough metadata for citations without joining `resume_source_items`:
 
 - `sourceType`
 - `itemType`
@@ -48,7 +51,7 @@ Each `resume_vector_chunks` row must carry enough metadata for runtime citations
 
 ## Search Strategy
 
-- Use exact pgvector search for V1.
+- Use exact pgvector search only for the optional vector path.
 - Do not add HNSW or IVFFlat indexes yet.
 - Add ANN indexes only after provider, model, dimensions, data volume, and recall requirements are selected.
 
@@ -134,3 +137,4 @@ pnpm --filter @vscoke/api build
 - Embedding profile metadata is persisted with each vector row.
 - Citation metadata is available directly from vector rows.
 - Changing embedding model does not reuse stale vectors from another profile.
+- Production chat can still run without this phase, without vector rows, and without an embedding API key.

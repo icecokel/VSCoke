@@ -25,7 +25,7 @@ describe('ResumeRagService', () => {
     expect(answer).not.toHaveBeenCalled();
   });
 
-  it('passes retrieved chunks to the chat provider and returns vector citations', async () => {
+  it('passes retrieved chunks to the chat provider and returns source citations', async () => {
     const retriever = {
       retrieve: jest.fn().mockResolvedValue([
         {

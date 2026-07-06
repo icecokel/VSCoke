@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Expose an authenticated chat API that answers from vector DB retrieval only.
+**Goal:** Expose an authenticated chat API that answers from DB text/keyword retrieval.
 
-**Architecture:** The API embeds the user question with the configured embedding provider, searches `resume_vector_chunks` by vector similarity and embedding profile, builds grounded context from returned vector rows, and calls the configured answer-generation adapter. For V1, natural-language answering is routed through Codex app-server via `RAG_CHAT_PROVIDER=codex-app-server`. The endpoint must not read source files, import loaders, or source item tables at runtime.
+**Architecture:** The API searches existing `resume_source_items.bodyText` and metadata with DB text/keyword search, builds grounded context from returned source items, and calls the configured answer-generation adapter. Natural-language answering is routed through Codex app-server via `RAG_CHAT_PROVIDER=codex-app-server`. The endpoint must not read source files or import loaders at runtime. OpenAI/API embedding keys are not required for production chat.
 
-**Tech Stack:** NestJS 11, TypeORM 0.3, PostgreSQL + pgvector, GoogleAuthGuard, Swagger DTOs, Jest.
+**Tech Stack:** NestJS 11, TypeORM 0.3, PostgreSQL text search, GoogleAuthGuard, Swagger DTOs, Jest.
 
 ---
 
@@ -14,10 +14,11 @@
 
 - Add `POST /resume-rag/chat`.
 - Require authenticated API access.
-- Retrieve source chunks from `resume_vector_chunks` only.
+- Retrieve source evidence from `resume_source_items` only.
 - Return answer, grounded flag, and source citations.
 - Redact question body from production error notifications.
 - Use Codex app-server for final natural-language answer generation.
+- Keep vector embeddings/indexing as an optional legacy/future path outside current production chat.
 - Do not add streaming in this phase.
 - Do not add chat history persistence in this phase.
 
@@ -53,17 +54,16 @@
 
 ## Retrieval Rule
 
-The retriever must query only `resume_vector_chunks`.
+The retriever must query only `resume_source_items` and existing DB text/metadata.
 
 It must filter by:
 
-- active embedding provider/model/dimensions from runtime config
 - eligible `status`
 - allowed `visibility` for the authenticated user
 - requested locale policy
-- minimum similarity threshold
+- text/keyword score or fallback threshold
 
-If no chunk passes the threshold, the API returns `grounded: false` and a localized fallback.
+If no source item passes the threshold, the API returns `grounded: false` and a localized fallback.
 
 ## Tasks
 
@@ -72,7 +72,7 @@ If no chunk passes the threshold, the API returns `grounded: false` and a locali
 - [ ] Add request DTO tests for question length and locale validation.
 - [ ] Add response DTO shape tests.
 - [ ] Assert unsupported locale is rejected.
-- [ ] Assert source DTO exposes vector-row citation fields.
+- [ ] Assert source DTO exposes source-item citation fields.
 
 ### Task 2: DTOs
 
@@ -84,18 +84,17 @@ If no chunk passes the threshold, the API returns `grounded: false` and a locali
 ### Task 3: Retriever Tests
 
 - [ ] Mock `DataSource.query`.
-- [ ] Assert SQL reads `resume_vector_chunks`.
-- [ ] Assert SQL does not join `resume_source_items`.
-- [ ] Assert SQL filters `locale`, `embeddingProvider`, `embeddingModel`, and `embeddingDimensions`.
-- [ ] Assert low-similarity rows are filtered.
+- [ ] Assert SQL reads `resume_source_items`.
+- [ ] Assert SQL does not read `resume_vector_chunks`.
+- [ ] Assert SQL filters `locale`, `status`, and `visibility`.
+- [ ] Assert low-score rows are filtered.
 - [ ] Assert no filesystem dependency exists in retriever constructor.
 
 ### Task 4: Retriever
 
 - [ ] Create `apps/api/src/resume-rag/resume-rag-retriever.service.ts`.
-- [ ] Embed question through embedding adapter.
-- [ ] Query vector DB with pgvector distance operator.
-- [ ] Return chunk content and citation metadata from vector rows.
+- [ ] Query DB text/keyword search over `resume_source_items`.
+- [ ] Return item body/excerpt and citation metadata from source item rows.
 - [ ] Enforce visibility and status filters in SQL.
 
 ### Task 5: Answer Service Tests
@@ -105,14 +104,14 @@ If no chunk passes the threshold, the API returns `grounded: false` and a locali
 - [ ] Assert retrieved chunks are included in prompt context.
 - [ ] Assert answer provider receives a grounded-only instruction.
 - [ ] Assert Codex app-server provider starts an ephemeral read-only thread and returns final answer text.
-- [ ] Assert citations are derived from vector rows, not source item repository calls.
+- [ ] Assert citations are derived from retrieved source item rows.
 
 ### Task 6: Answer Service
 
 - [ ] Create `apps/api/src/resume-rag/resume-rag.service.ts`.
-- [ ] Build context only from retrieved vector DB chunks.
+- [ ] Build context only from retrieved DB source item text.
 - [ ] Call chat provider adapter; use `codex-app-server` for natural-language generation.
-- [ ] Return citations derived from vector row fields and `citationMetadata`.
+- [ ] Return citations derived from source item fields and metadata.
 - [ ] Mark answer as low confidence when retrieval is below threshold.
 
 ### Task 7: Controller And Module
@@ -138,8 +137,9 @@ pnpm --filter @vscoke/api build
 
 ## Done When
 
-- Chat API reads `resume_vector_chunks` only.
+- Chat API reads `resume_source_items` only.
 - Auth is required.
 - Low-confidence retrieval returns `grounded: false`.
 - Question text is not leaked to error notifications.
+- Production chat requires `RAG_CHAT_PROVIDER=codex-app-server`, `RAG_CODEX_APP_SERVER_URL`, and `RAG_CODEX_CWD`, but does not require `RAG_AI_API_KEY`.
 - API tests and build pass.

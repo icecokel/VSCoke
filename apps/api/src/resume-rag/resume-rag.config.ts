@@ -84,7 +84,7 @@ export const getResumeRagConfig = (
   aiBaseUrl: env.RAG_AI_BASE_URL || undefined,
   aiApiKey: env.RAG_AI_API_KEY || undefined,
   topK: parseOptionalInt(env.RAG_TOP_K) ?? 5,
-  minSimilarity: parseOptionalFloat(env.RAG_MIN_SIMILARITY) ?? 0.78,
+  minSimilarity: parseOptionalFloat(env.RAG_MIN_SIMILARITY) ?? 0.1,
   chunkSize: parseOptionalInt(env.RAG_CHUNK_SIZE) ?? 1200,
   chunkOverlap: parseOptionalInt(env.RAG_CHUNK_OVERLAP) ?? 120,
   allowedVisibilities: splitCsv(env.RAG_ALLOWED_VISIBILITIES, ['public']),

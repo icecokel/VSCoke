@@ -152,29 +152,46 @@ API 로컬 개발 값은 `apps/api/.env`에 둔다. 시작점은 `apps/api/.env.
 
 API 운영 값은 Ubuntu host의 `/home/icenux/projects/vscoke-api/.env`에 둔다. 현재 PM2 실행은 이 경로에서 시작되므로 Nest `ConfigModule`이 이 위치의 `.env`를 읽는다.
 
-| 이름                      | 필수      | 기본값                        | 설명                               |
-| ------------------------- | --------- | ----------------------------- | ---------------------------------- |
-| `NODE_ENV`                | 권장      | `development`                 | 운영에서는 `production`            |
-| `PORT`                    | 권장      | `3000`                        | API 리슨 포트                      |
-| `CORS_ORIGINS`            | 권장      | 기본 허용 origin + 추가 없음  | 쉼표로 구분한 추가 허용 origin     |
-| `GOOGLE_CLIENT_ID`        | 필수      | 없음                          | Google OAuth 토큰 검증             |
-| `DB_HOST`                 | 필수      | `localhost`                   | PostgreSQL host                    |
-| `DB_PORT`                 | 필수      | `5432`                        | PostgreSQL port                    |
-| `DB_USERNAME`             | 필수      | `postgres`                    | PostgreSQL user                    |
-| `DB_PASSWORD`             | 필수      | `postgres`                    | PostgreSQL password                |
-| `DB_DATABASE`             | 필수      | `vscoke`                      | PostgreSQL database                |
-| `DB_SYNCHRONIZE`          | 운영 필수 | production에서는 `false` 취급 | TypeORM synchronize 제어           |
-| `NOTIFY_SERVICE_URL`      | 선택      | 없음                          | 운영 에러 알림 endpoint            |
-| `NOTIFY_SERVICE_USER`     | 선택      | 없음                          | 알림 endpoint basic auth user      |
-| `NOTIFY_SERVICE_PASSWORD` | 선택      | 없음                          | 알림 endpoint basic auth password  |
-| `ENABLE_DEV_AUTH_BYPASS`  | 개발 전용 | `false` 취급                  | 개발 인증 우회                     |
-| `DEV_AUTH_TOKEN`          | 개발 전용 | 없음                          | 개발 인증 우회 토큰                |
-| `CLOUDFLARE_DB_HOST`      | 개발 보조 | 없음                          | `db:tunnel` 스크립트용 DB hostname |
+| 이름                       | 필수      | 기본값                        | 설명                                                                      |
+| -------------------------- | --------- | ----------------------------- | ------------------------------------------------------------------------- |
+| `NODE_ENV`                 | 권장      | `development`                 | 운영에서는 `production`                                                   |
+| `PORT`                     | 권장      | `3000`                        | API 리슨 포트                                                             |
+| `CORS_ORIGINS`             | 권장      | 기본 허용 origin + 추가 없음  | 쉼표로 구분한 추가 허용 origin                                            |
+| `GOOGLE_CLIENT_ID`         | 필수      | 없음                          | Google OAuth 토큰 검증                                                    |
+| `DB_HOST`                  | 필수      | `localhost`                   | PostgreSQL host                                                           |
+| `DB_PORT`                  | 필수      | `5432`                        | PostgreSQL port                                                           |
+| `DB_USERNAME`              | 필수      | `postgres`                    | PostgreSQL user                                                           |
+| `DB_PASSWORD`              | 필수      | `postgres`                    | PostgreSQL password                                                       |
+| `DB_DATABASE`              | 필수      | `vscoke`                      | PostgreSQL database                                                       |
+| `DB_SYNCHRONIZE`           | 운영 필수 | production에서는 `false` 취급 | TypeORM synchronize 제어                                                  |
+| `NOTIFY_SERVICE_URL`       | 선택      | 없음                          | 운영 에러 알림 endpoint                                                   |
+| `NOTIFY_SERVICE_USER`      | 선택      | 없음                          | 알림 endpoint basic auth user                                             |
+| `NOTIFY_SERVICE_PASSWORD`  | 선택      | 없음                          | 알림 endpoint basic auth password                                         |
+| `ENABLE_DEV_AUTH_BYPASS`   | 개발 전용 | `false` 취급                  | 개발 인증 우회                                                            |
+| `DEV_AUTH_TOKEN`           | 개발 전용 | 없음                          | 개발 인증 우회 토큰                                                       |
+| `CLOUDFLARE_DB_HOST`       | 개발 보조 | 없음                          | `db:tunnel` 스크립트용 DB hostname                                        |
+| `RAG_CHAT_PROVIDER`        | 필수      | 없음                          | 이력 RAG 답변 생성 provider. 운영은 `codex-app-server`                    |
+| `RAG_CODEX_APP_SERVER_URL` | 필수      | `ws://127.0.0.1:14561`        | Ubuntu host의 Codex app-server loopback endpoint                          |
+| `RAG_CODEX_CWD`            | 필수      | 없음                          | Codex app-server 작업 디렉터리. 운영은 `/home/icenux/projects/vscoke-api` |
+| `RAG_CODEX_TIMEOUT_MS`     | 권장      | `120000`                      | Codex app-server 응답 timeout                                             |
+| `RAG_CHAT_MODEL`           | 선택      | 없음                          | 비워두면 Codex app-server 기본 모델 사용                                  |
+| `RAG_AI_BASE_URL`          | 선택      | 없음                          | 선택적 openai-compatible 임베딩/벡터 인덱싱 endpoint                      |
+| `RAG_AI_API_KEY`           | 선택      | 없음                          | 선택적 openai-compatible 임베딩/벡터 인덱싱 키                            |
+| `RAG_TOP_K`                | 권장      | `5`                           | 텍스트 검색 후보 수                                                       |
+| `RAG_MIN_SIMILARITY`       | 권장      | `0.1`                         | 텍스트 검색 최소 점수                                                     |
+| `RAG_ALLOWED_VISIBILITIES` | 권장      | `public`                      | RAG 검색 허용 visibility 목록                                             |
+
+Resume RAG 운영 chat은 `resume_source_items`의 기존 DB 텍스트를 keyword/text search로 검색하고, 검색된 근거를 Codex app-server에 전달해 답변만 생성한다. 따라서 운영 chat runtime에는 OpenAI/API 임베딩 키가 필요하지 않다.
+
+벡터 인덱싱과 임베딩 설정(`RAG_EMBEDDING_PROVIDER`, `RAG_EMBEDDING_MODEL`, `RAG_EMBEDDING_DIMENSIONS`, `RAG_AI_API_KEY`)은 현재 운영 배포의 필수 경로가 아니라 legacy/future 선택 경로다. 별도 벡터 인덱싱을 다시 사용할 때만 설정한다.
 
 운영 주의:
 
 - `ENABLE_DEV_AUTH_BYPASS`와 `DEV_AUTH_TOKEN`은 운영 `.env`에 넣지 않는다.
 - `DB_SYNCHRONIZE=false`를 명시한다. 코드 기본값도 `false`이며, 운영에서 `DB_SYNCHRONIZE=true`면 API가 fail-fast 한다.
+- `RAG_CHAT_PROVIDER=codex-app-server`를 명시한다.
+- Ubuntu host에서는 `RAG_CODEX_APP_SERVER_URL=ws://127.0.0.1:14561`, `RAG_CODEX_CWD=/home/icenux/projects/vscoke-api`를 기준값으로 둔다.
+- 운영 chat만 사용할 때는 `RAG_AI_API_KEY`를 요구하지 않는다.
 - 기본 CORS 허용 origin은 production 웹 도메인과 로컬 개발 웹 도메인뿐이다.
 - Vercel preview에서 production API 직접 호출이 필요하면 preview origin을 `CORS_ORIGINS`에 명시한다. wildcard, path 포함 URL, http/https가 아닌 값은 허용 목록에서 제외된다.
 - 운영 에러 알림은 `NOTIFY_SERVICE_URL`, `NOTIFY_SERVICE_USER`, `NOTIFY_SERVICE_PASSWORD`가 모두 설정된 경우에만 전역 예외 필터가 전송한다. 기본 endpoint나 기본 계정 fallback은 없다.

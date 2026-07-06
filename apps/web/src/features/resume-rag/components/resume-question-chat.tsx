@@ -333,70 +333,69 @@ export const ResumeQuestionChat = () => {
 
   return (
     <section className="flex min-h-[calc(100svh-15rem)] flex-col">
-      <div className="flex-1 space-y-4 overflow-y-auto pb-4">
+      <div className="flex-1 space-y-5 overflow-y-auto pb-4">
         {messages.length === 0 ? (
           <EmptyChatState suggestions={suggestions} onSelectSuggestion={setQuestion} />
         ) : (
           messages.map(message => (
             <div
               key={message.id}
-              className={
-                message.role === "user"
-                  ? "ml-auto max-w-[min(42rem,90%)] border border-blue-900/70 bg-blue-950/25 text-gray-100"
-                  : "mr-auto w-full max-w-3xl overflow-hidden border border-gray-700 bg-gray-950/80 text-gray-100"
-              }
+              className={message.role === "user" ? "flex justify-end" : "flex justify-start"}
             >
-              {message.role === "assistant" ? (
-                <div className="border-b border-gray-800 bg-gray-900 px-3 py-2 text-xs text-gray-500">
-                  codex.response
+              {message.role === "user" ? (
+                <div className="max-w-[min(34rem,86%)] rounded-lg rounded-br-sm border border-blue-300/25 bg-blue-300/15 px-3.5 py-2.5 text-sm leading-6 break-words whitespace-pre-wrap text-blue-50 shadow-sm shadow-black/20">
+                  {message.content}
                 </div>
-              ) : null}
-              <div
-                className={
-                  message.role === "user"
-                    ? "whitespace-pre-wrap px-3 py-2 text-sm leading-6"
-                    : "whitespace-pre-wrap px-3 py-3 text-sm leading-6"
-                }
-              >
-                {message.content}
-              </div>
-              {message.role === "assistant" ? (
-                <div className="px-3 pb-3">
-                  <GroundingNotice grounded={message.grounded} />
-                  <SourceList sources={message.sources} />
+              ) : (
+                <div className="w-full max-w-3xl overflow-hidden border border-gray-700 bg-gray-950/80 text-gray-100">
+                  <div className="border-b border-gray-800 bg-gray-900 px-3 py-2 text-xs text-gray-500">
+                    codex.response
+                  </div>
+                  <div className="px-3 py-3 text-sm leading-6 break-words whitespace-pre-wrap">
+                    {message.content}
+                  </div>
+                  <div className="px-3 pb-3">
+                    <GroundingNotice grounded={message.grounded} />
+                    <SourceList sources={message.sources} />
+                  </div>
                 </div>
-              ) : null}
+              )}
             </div>
           ))
         )}
         {isSubmitting ? <PendingAnswer /> : null}
+        {failure ? (
+          <FailureNotice
+            failure={failure}
+            onRetry={retryQuestion => {
+              void submitQuestion(retryQuestion, { appendUserMessage: false });
+            }}
+          />
+        ) : null}
       </div>
-
-      {failure ? (
-        <FailureNotice
-          failure={failure}
-          onRetry={retryQuestion => {
-            void submitQuestion(retryQuestion, { appendUserMessage: false });
-          }}
-        />
-      ) : null}
 
       <form
         onSubmit={handleSubmit}
-        className="border-t border-gray-800 bg-gray-950/80 pt-3 pb-3 backdrop-blur"
+        className="border-t border-gray-800 bg-gray-950/85 pt-3 pb-3 backdrop-blur"
       >
-        <Textarea
-          value={question}
-          onChange={event => setQuestion(event.target.value)}
-          placeholder={t("placeholder")}
-          aria-label={t("composerLabel")}
-          className="min-h-20 resize-none border-gray-700 bg-gray-950 text-gray-100 placeholder:text-gray-500 md:min-h-28"
-          disabled={isSubmitting}
-        />
-        <div className="mt-2 flex justify-end md:mt-3">
-          <Button type="submit" disabled={!canSubmit} className="min-w-32">
+        <div className="flex items-end gap-2 rounded-lg border border-gray-700 bg-gray-900/80 p-2 transition-colors focus-within:border-blue-300/70">
+          <Textarea
+            value={question}
+            onChange={event => setQuestion(event.target.value)}
+            placeholder={t("placeholder")}
+            aria-label={t("composerLabel")}
+            rows={1}
+            className="max-h-36 min-h-11 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-sm text-gray-100 shadow-none placeholder:text-gray-500 focus-visible:border-transparent focus-visible:ring-0 md:min-h-11"
+            disabled={isSubmitting}
+          />
+          <Button
+            type="submit"
+            size="icon"
+            disabled={!canSubmit}
+            aria-label={isSubmitting ? t("submitting") : t("submit")}
+            className="size-10 shrink-0 rounded-md bg-blue-300 text-gray-950 hover:bg-blue-200"
+          >
             {isSubmitting ? <Loader2 className="animate-spin" /> : <Send />}
-            {isSubmitting ? t("submitting") : t("submit")}
           </Button>
         </div>
       </form>

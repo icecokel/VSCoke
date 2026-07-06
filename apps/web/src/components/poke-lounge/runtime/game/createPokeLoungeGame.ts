@@ -3,11 +3,16 @@ import { resolveGameCanvasSize } from "./gameViewport";
 import type { InitialGameScene } from "./gameStartup";
 import { BootScene } from "./scenes/BootScene";
 import { BattleScene, type BattleE2eScenario, type BattleE2eSnapshot } from "./scenes/BattleScene";
-import { WorldScene } from "./scenes/WorldScene";
+import { WorldScene, type WorldE2eSnapshot } from "./scenes/WorldScene";
 import type { MultiplayerRoom } from "./network/localPreviewRoom";
 import { getDefaultGameStateStore } from "./state/defaultGameStateStore";
 import type { GameState, GameStateStore } from "./state/gameStateStore";
 import { isDevelopmentRuntime } from "../runtimeEnvironment";
+import {
+  pressVirtualGamepadButton,
+  releaseVirtualGamepadButton,
+  type VirtualGamepadButton,
+} from "./input/virtualGamepad";
 
 declare global {
   interface Window {
@@ -24,6 +29,10 @@ export interface PokeLoungeE2eController {
   setBattleMoveIndex(index: number): BattleE2eSnapshot | null;
   confirmBattle(): BattleE2eSnapshot | null;
   drainBattleMessages(maxMessages?: number): BattleE2eSnapshot | null;
+  getWorldSnapshot(): WorldE2eSnapshot | null;
+  closeWorldShortcutGuide(): void;
+  pressVirtualGamepad(button: VirtualGamepadButton): void;
+  releaseVirtualGamepad(button: VirtualGamepadButton): void;
   getCanvasSnapshot(): {
     width: number;
     height: number;
@@ -125,6 +134,12 @@ function createPokeLoungeE2eController(
 
   const getBattleSnapshot = (): BattleE2eSnapshot | null =>
     getBattleScene()?.getE2eSnapshotForTest() ?? null;
+  const getWorldScene = (): WorldScene | null => {
+    const sceneManager = getSceneManager(game);
+    const scene = sceneManager?.getScene("world");
+
+    return scene instanceof WorldScene ? scene : null;
+  };
 
   return {
     getActiveSceneKey() {
@@ -191,6 +206,18 @@ function createPokeLoungeE2eController(
       }
 
       return snapshot;
+    },
+    getWorldSnapshot() {
+      return getWorldScene()?.getE2eSnapshotForTest() ?? null;
+    },
+    closeWorldShortcutGuide() {
+      getWorldScene()?.closeShortcutGuideForTest();
+    },
+    pressVirtualGamepad(button) {
+      pressVirtualGamepadButton(button);
+    },
+    releaseVirtualGamepad(button) {
+      releaseVirtualGamepadButton(button);
     },
     getCanvasSnapshot() {
       const canvas = (game as Phaser.Game & { canvas?: HTMLCanvasElement }).canvas;

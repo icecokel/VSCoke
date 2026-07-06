@@ -162,6 +162,17 @@ export interface WorldTournamentBattleResult {
   reason: BattleResultReason;
 }
 
+export interface WorldE2eSnapshot {
+  player: {
+    x: number;
+    y: number;
+    facing: PlayerFacing;
+  } | null;
+  shortcutGuideOpen: boolean;
+  encounterLocked: boolean;
+  battleIntroPlaying: boolean;
+}
+
 export interface ResolvedWorldSpawn {
   x: number;
   y: number;
@@ -468,6 +479,21 @@ export class WorldScene extends Phaser.Scene {
 
   startWildBattleForTest(input: WildBattleStartInput): void {
     this.startWildBattle(input);
+  }
+
+  getE2eSnapshotForTest(): WorldE2eSnapshot {
+    return {
+      player: this.player
+        ? {
+            x: Math.round(this.player.x),
+            y: Math.round(this.player.y),
+            facing: this.facing,
+          }
+        : null,
+      shortcutGuideOpen: this.shortcutGuideOpen,
+      encounterLocked: this.encounterLocked,
+      battleIntroPlaying: this.battleIntroPlaying,
+    };
   }
 
   initializeEncounterTrackingForTest(position: { x: number; y: number }): void {

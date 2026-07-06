@@ -72,7 +72,11 @@ export async function startGamePage(
       showRoomEntry();
     };
 
-    if (roomEntry.mode === "local-room" || roomEntry.mode === "webrtc") {
+    if (
+      roomEntry.mode === "local-room" ||
+      roomEntry.mode === "server-room" ||
+      roomEntry.mode === "webrtc"
+    ) {
       renderRoomLeaveButton(mount, returnToRoomEntry);
     }
 
@@ -115,7 +119,11 @@ export async function startGamePage(
   const continueAfterStarter = () => {
     const roomEntry = readRoomEntryFromLocation(currentUrl);
 
-    if (roomEntry.mode === "local-room" || roomEntry.mode === "webrtc") {
+    if (
+      roomEntry.mode === "local-room" ||
+      roomEntry.mode === "server-room" ||
+      roomEntry.mode === "webrtc"
+    ) {
       startGame(currentUrl);
       return;
     }
@@ -141,6 +149,12 @@ function applyRoomEntrySelection(url: URL, selection: RoomEntrySelection): void 
   if (selection.mode === "webrtc") {
     url.searchParams.set("network", "webrtc");
     url.searchParams.delete("room");
+    return;
+  }
+
+  if (selection.mode === "server-room" && selection.roomCode) {
+    url.searchParams.set("network", "server");
+    url.searchParams.set("room", selection.roomCode);
     return;
   }
 

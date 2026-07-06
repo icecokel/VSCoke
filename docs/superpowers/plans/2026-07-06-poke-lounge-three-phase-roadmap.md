@@ -305,3 +305,49 @@ Phase 3 인계 결정 사항:
 - 서버는 room, participant, ready, round timer, tournament bracket, result acceptance를 authoritative source로 관리한다.
 - 클라이언트가 보내는 final score는 서버 확정 standings와 연결해야 하며, 임의 payload를 신뢰하지 않는다.
 - 기존 `network=local` preview는 개발 fallback으로만 유지할지 Phase 3 초반에 결정한다.
+
+### Phase 3 구현 기록: 2026-07-06
+
+이 기록은 Phase 3 서버 권위 MVP 완료 상태를 남긴다. 2026-07-06 기준 리뷰어 최종 판정은 `APPROVED`이며, 아래 최종 검증 명령을 실제로 통과했다.
+
+구현 결정:
+
+- REST polling server-authoritative MVP로 완료했다. WebSocket은 향후 전송 최적화로 남긴다.
+- 새 WebSocket dependency는 추가하지 않았다.
+- 서버 room state는 API 프로세스 메모리에서 관리한다.
+- `network=local`은 개발 preview로만 유지하고, 서버 관리 멀티는 `network=server&room=<code>`로 진입한다.
+- `round-started` 이후 신규 participant join은 거절한다. 기존 participant reconnect만 `waiting`/`round-started`에서 허용한다.
+- `waiting` 중 participant leave는 participant slot을 해제한다. replacement participant가 들어와 ready gate를 다시 통과할 수 있다.
+- 참가자 leave/disconnect는 tournament 중 pending match가 있으면 서버가 forfeit 결과로 확정한다. 1:1 room에서 `round-started` 중 한 참가자가 나가도 남은 참가자의 forfeit 승리로 final standings를 확정한다. 남은 connected participant가 없으면 room은 `closed`로 전환한다.
+- 서버 final standings의 score를 Poke Lounge final result submit의 우선 score로 사용할 수 있게 web adapter가 `TOURNAMENT_COMPLETED`에 서버 확정 standings를 전달한다.
+
+통과한 focused 검증 명령:
+
+- `pnpm --filter @vscoke/api test -- poke-lounge/poke-lounge-room.service.spec.ts --runInBand`
+- `pnpm --filter @vscoke/api test:e2e -- poke-lounge-room.e2e-spec.ts --runInBand`
+- `pnpm --filter @vscoke/web e2e -- tests/e2e/poke-lounge-multiplayer.spec.ts --project=chromium`
+- `pnpm type:check:web`
+- `pnpm lint`
+- `python3 /Users/smlee/.codex/skills/api-no-mock-fallback/scripts/find_mock_fallback.py apps/web/src/components/poke-lounge/runtime/game/network`
+- `git diff --check`
+
+통과한 최종 검증 명령:
+
+- `pnpm test:api`
+- `pnpm test:api:e2e`
+- `pnpm build:api`
+- `pnpm lint`
+- `pnpm type:check:web`
+- `pnpm build:web`
+- `pnpm --filter @vscoke/web e2e -- tests/e2e/poke-lounge.spec.ts --project=chromium`
+- `pnpm --filter @vscoke/web e2e -- tests/e2e/poke-lounge-multiplayer.spec.ts --project=chromium`
+- `python3 /Users/smlee/.codex/skills/api-no-mock-fallback/scripts/find_mock_fallback.py apps/web/src/components/poke-lounge/runtime/game/network`
+- `git diff --check`
+- `git ls-files | rg '(^|/)(node_modules|\.next|output|test-results|data/raw|data/processed|assets/raw|assets/processed)(/|$)' || true`
+- `git ls-files | rg '\.(nds|gba|gbc|gb|cia|3ds|zip|7z)$' || true`
+
+남은 known gap:
+
+- room state는 메모리-only라 API 프로세스 재시작, horizontal scaling, reconnect 복구에는 아직 대응하지 않는다.
+- server room 생성/입장 UI는 최소 MVP 범위로 직접 query 진입을 지원한다. 운영형 lobby UX는 별도 작업이다.
+- polling은 상태 동기화 MVP다. WebSocket은 필요성이 확인되면 전송 최적화 단계에서 도입한다.

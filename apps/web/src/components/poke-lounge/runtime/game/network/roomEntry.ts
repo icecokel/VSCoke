@@ -1,7 +1,7 @@
 export const ROOM_CODE_LENGTH = 6;
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-export type RoomEntryMode = "unset" | "solo" | "local-room" | "webrtc";
+export type RoomEntryMode = "unset" | "solo" | "local-room" | "server-room" | "webrtc";
 
 export interface RoomEntryIntent {
   mode: RoomEntryMode;
@@ -36,6 +36,14 @@ export function createInviteUrl(baseUrl: URL, roomCode: string): URL {
   return url;
 }
 
+export function createServerInviteUrl(baseUrl: URL, roomCode: string): URL {
+  const url = new URL(baseUrl.href);
+  url.searchParams.set("network", "server");
+  url.searchParams.set("room", roomCode);
+
+  return url;
+}
+
 export function readRoomEntryFromLocation(location: URL): RoomEntryIntent {
   const network = location.searchParams.get("network");
 
@@ -47,6 +55,20 @@ export function readRoomEntryFromLocation(location: URL): RoomEntryIntent {
   }
 
   const roomCode = normalizeRoomCode(location.searchParams.get("room") ?? "");
+
+  if (network === "server" && roomCode) {
+    return {
+      mode: "server-room",
+      roomCode,
+    };
+  }
+
+  if (network === "server" && location.searchParams.get("create") === "1") {
+    return {
+      mode: "server-room",
+      roomCode: null,
+    };
+  }
 
   if (roomCode) {
     return {

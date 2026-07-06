@@ -1,4 +1,5 @@
 import { createLocalPreviewRoom, type MultiplayerRoom } from "./localPreviewRoom";
+import { createServerRoom } from "./serverRoom";
 
 export interface MultiplayerRoomFactoryOptions {
   searchParams: Pick<URLSearchParams, "get">;
@@ -12,6 +13,15 @@ export function createMultiplayerRoom(options: MultiplayerRoomFactoryOptions): M
     }
 
     return options.createWebRtcRoom();
+  }
+
+  if (options.searchParams.get("network") === "server") {
+    return createServerRoom({
+      roomId: readLocalRoomId(options.searchParams),
+      sessionId: options.searchParams.get("serverSessionId") ?? undefined,
+      playerId: options.searchParams.get("serverPlayerId") ?? undefined,
+      createRoom: options.searchParams.get("create") === "1",
+    });
   }
 
   return createLocalPreviewRoom({

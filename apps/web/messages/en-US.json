@@ -358,6 +358,14 @@
       "title": "Searching evidence and generating with Codex",
       "description": "The API is retrieving public resume evidence from the DB and generating an answer."
     },
+    "pendingHintLabel": "While you wait",
+    "pendingHints": [
+      "I care about turning complex domain flows, such as healthcare workflows, into screens users can follow.",
+      "For frontend work, I look at the next user action and the surrounding flow before treating it as an implementation task.",
+      "I treat CI/CD and test automation as the baseline stamina that keeps a product reliable in operation.",
+      "I take documentation and operational checklists seriously because decisions should leave useful evidence behind.",
+      "When adding AI features, I look at data boundaries, failure paths, and understandable responses before choosing a model."
+    ],
     "noEvidence": {
       "title": "Not enough evidence",
       "description": "The retrieved public resume evidence is insufficient, so confidence is shown as low."

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   ChevronRight,
@@ -135,6 +135,21 @@ const FailureNotice = ({
 
 const PendingAnswer = () => {
   const t = useTranslations("resumeRag");
+  const rawHints = t.raw("pendingHints");
+  const hints = Array.isArray(rawHints)
+    ? rawHints.filter((hint): hint is string => typeof hint === "string")
+    : [];
+  const [hintIndex, setHintIndex] = useState(0);
+
+  useEffect(() => {
+    if (hints.length <= 1) return;
+
+    const intervalId = window.setInterval(() => {
+      setHintIndex(current => (current + 1) % hints.length);
+    }, 2800);
+
+    return () => window.clearInterval(intervalId);
+  }, [hints.length]);
 
   return (
     <div className="mr-auto w-full max-w-3xl overflow-hidden border border-gray-700 bg-gray-950/80 text-gray-100">
@@ -154,6 +169,14 @@ const PendingAnswer = () => {
           <Skeleton className="h-3 w-9/12 bg-gray-800" />
           <Skeleton className="h-3 w-7/12 bg-gray-800" />
         </div>
+        {hints.length > 0 ? (
+          <div className="mt-4 border-l border-blue-300/40 bg-blue-300/10 px-3 py-2 text-xs">
+            <div className="font-medium text-blue-100/80">{t("pendingHintLabel")}</div>
+            <p className="mt-1 min-h-[3.75rem] leading-5 text-gray-300 md:min-h-10">
+              {hints[hintIndex]}
+            </p>
+          </div>
+        ) : null}
       </div>
     </div>
   );

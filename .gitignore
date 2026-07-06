@@ -13,6 +13,7 @@ node_modules/
 # testing
 coverage/
 playwright-report/
+output/
 /.playwright-mcp/
 test-results/
 

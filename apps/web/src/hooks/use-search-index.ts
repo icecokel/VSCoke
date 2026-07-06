@@ -269,6 +269,16 @@ export const useSearchIndex = (): SearchItem[] => {
         priority: 395,
       },
       {
+        id: "game:poke-lounge",
+        type: "game",
+        title: tGame("pokeLoungeTitle"),
+        description: tGame("pokeLoungeDesc"),
+        keywords: ["poke lounge", "pokemon", "phaser", "rpg"],
+        path: "/game/poke-lounge",
+        featured: true,
+        priority: 392,
+      },
+      {
         id: "game:wordle",
         type: "game",
         title: tGame("wordleTitle"),

@@ -4,6 +4,30 @@ import type { ChatProvider } from './ai/chat-provider';
 import type { ResumeRagRetrieverService } from './resume-rag-retriever.service';
 
 describe('ResumeRagService', () => {
+  it('returns a fixed out-of-scope message without retrieving or calling AI', async () => {
+    const retrieve = jest.fn();
+    const retriever = {
+      retrieve,
+    } as unknown as ResumeRagRetrieverService;
+    const answer = jest.fn();
+    const chatProvider = {
+      answer,
+    } as unknown as ChatProvider;
+
+    const service = new ResumeRagService(retriever, chatProvider);
+
+    await expect(
+      service.answer({ question: '오늘 날씨 어때?', locale: 'ko-KR' }),
+    ).resolves.toEqual({
+      answer:
+        '이 질문은 이력과 관련된 키워드가 없어 답변하지 않았습니다. Oprimed, 의료 도메인, 프론트엔드, CI/CD처럼 이력과 관련된 질문으로 다시 물어봐 주세요.',
+      grounded: false,
+      sources: [],
+    });
+    expect(retrieve).not.toHaveBeenCalled();
+    expect(answer).not.toHaveBeenCalled();
+  });
+
   it('returns grounded false when no chunks are retrieved', async () => {
     const retriever = {
       retrieve: jest.fn().mockResolvedValue([]),
@@ -16,7 +40,7 @@ describe('ResumeRagService', () => {
     const service = new ResumeRagService(retriever, chatProvider);
 
     await expect(
-      service.answer({ question: '없는 내용?', locale: 'ko-KR' }),
+      service.answer({ question: 'Oprimed에 없는 내용?', locale: 'ko-KR' }),
     ).resolves.toEqual({
       answer: '검색된 이력 근거가 부족해 답변할 수 없습니다.',
       grounded: false,
@@ -45,7 +69,10 @@ describe('ResumeRagService', () => {
     const service = new ResumeRagService(retriever, chatProvider);
 
     await expect(
-      service.answer({ question: '질문', locale: 'ko-KR' }),
+      service.answer({
+        question: 'Oprimed에서 맡은 업무 질문',
+        locale: 'ko-KR',
+      }),
     ).resolves.toEqual({
       answer: '근거 기반 답변',
       grounded: true,
@@ -60,7 +87,7 @@ describe('ResumeRagService', () => {
     });
     expect(answer).toHaveBeenCalledWith(
       expect.objectContaining({
-        question: '질문',
+        question: 'Oprimed에서 맡은 업무 질문',
         contexts: [expect.objectContaining({ content: '근거 내용' })],
       }),
     );
@@ -89,7 +116,7 @@ describe('ResumeRagService', () => {
     const service = new ResumeRagService(retriever, chatProvider);
 
     await expect(
-      service.answer({ question: '질문', locale: 'ko-KR' }),
+      service.answer({ question: 'Oprimed 업무 질문', locale: 'ko-KR' }),
     ).rejects.toThrow(ServiceUnavailableException);
   });
 });

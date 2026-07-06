@@ -20,7 +20,7 @@ describe('ResumeRagService', () => {
       service.answer({ question: '오늘 날씨 어때?', locale: 'ko-KR' }),
     ).resolves.toEqual({
       answer:
-        '이 질문은 이력과 관련된 키워드가 없어 답변하지 않았습니다. Oprimed, 의료 도메인, 프론트엔드, CI/CD처럼 이력과 관련된 질문으로 다시 물어봐 주세요.',
+        '이 질문은 제 이력 범위를 벗어난 것 같아요. 프로젝트, 기술 경험, 업무 성과, 강점처럼 이력과 관련된 내용으로 다시 물어봐 주세요.',
       grounded: false,
       sources: [],
     });

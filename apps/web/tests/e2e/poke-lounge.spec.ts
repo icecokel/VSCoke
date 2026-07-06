@@ -76,6 +76,7 @@ interface PokeLoungeE2eController {
     roomId: string | null;
     sessionId: string | null;
   };
+  completeTournamentForTest?(): void;
 }
 
 type PokeLoungeWindow = Window & {
@@ -235,6 +236,56 @@ test.describe("Poke Lounge", () => {
       )
       .toBe(true);
 
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("최종 결과에서 Poke Lounge 점수를 명시적으로 제출한다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+    const submittedPayloads: unknown[] = [];
+
+    await mockAuthenticatedSession(page);
+    await page.route("**/game/result", async route => {
+      const request = route.request();
+      submittedPayloads.push(request.postDataJSON());
+
+      await route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: {
+            id: "123e4567-e89b-42d3-a456-426614174000",
+            score: 300,
+            gameType: "POKE_LOUNGE",
+            createdAt: new Date("2026-07-06T00:00:00.000Z").toISOString(),
+            user: { displayName: "Poke Player" },
+            rank: 1,
+            bestScore: 300,
+            allTimeRank: 1,
+            weeklyRank: 1,
+          },
+        }),
+      });
+    });
+
+    await startSoloGame(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
+    await page.evaluate(() => {
+      const pokeWindow = window as PokeLoungeWindow;
+
+      pokeWindow.__POKE_LOUNGE_E2E__?.completeTournamentForTest?.();
+    });
+
+    await expect(page.getByTestId("poke-lounge-result-submit")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId("poke-lounge-result-score")).toHaveText("300");
+    await page.getByTestId("poke-lounge-result-submit").click();
+
+    await expect(page.getByTestId("poke-lounge-result-status")).toContainText("기록되었습니다");
+    expect(submittedPayloads).toHaveLength(1);
+    expect(submittedPayloads[0]).toMatchObject({
+      score: 300,
+      gameType: "POKE_LOUNGE",
+    });
+    expect((submittedPayloads[0] as { playTime?: number }).playTime).toBeGreaterThanOrEqual(1);
     expect(browserErrors.join("\n")).toBe("");
   });
 });
@@ -561,4 +612,31 @@ async function releaseVirtualGamepad(
 
     pokeWindow.__POKE_LOUNGE_E2E__?.releaseVirtualGamepad(selectedButton);
   }, button);
+}
+
+async function mockAuthenticatedSession(page: Page): Promise<void> {
+  await page.route("**/api/auth/session", async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        user: {
+          name: "Poke Player",
+          email: "poke@example.com",
+        },
+        expires: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        idToken: createTestJwt(),
+        idTokenExpiresAt: Math.floor(Date.now() / 1000) + 60 * 60,
+      }),
+    });
+  });
+}
+
+function createTestJwt(): string {
+  const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
+  const payload = Buffer.from(
+    JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 60 * 60 }),
+  ).toString("base64url");
+
+  return `${header}.${payload}.signature`;
 }

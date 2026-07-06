@@ -25,7 +25,12 @@ export const generateMetadata = async ({ params }: Props): Promise<Metadata> => 
     };
   }
 
-  const gameTitle = result.gameType === "SKY_DROP" ? "Sky Drop" : "Game";
+  const gameTitle =
+    result.gameType === "SKY_DROP"
+      ? "Sky Drop"
+      : result.gameType === "POKE_LOUNGE"
+        ? "Poke Lounge"
+        : "Game";
   const scoreTitle = `${gameTitle} - ${result.score}${t("scorePointSuffix")}`;
 
   return {
@@ -58,6 +63,7 @@ const SharePage = async ({ params }: Props) => {
   }
 
   const isSkyDrop = result.gameType === "SKY_DROP";
+  const isPokeLounge = result.gameType === "POKE_LOUNGE";
 
   let gameTitle, playLink, colorClass, fromColor, toColor;
 
@@ -68,6 +74,12 @@ const SharePage = async ({ params }: Props) => {
     colorClass = "text-gray-400";
     fromColor = "#9ca3af";
     toColor = "#4b5563";
+  } else if (isPokeLounge) {
+    gameTitle = "POKE LOUNGE";
+    playLink = "/game/poke-lounge";
+    colorClass = "text-[#F8FBEF]";
+    fromColor = "#F8FBEF";
+    toColor = "#7CCFA7";
   } else {
     gameTitle = "🎮 SKY DROP";
     playLink = "/game/sky-drop";

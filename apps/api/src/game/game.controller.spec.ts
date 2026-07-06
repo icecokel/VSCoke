@@ -181,6 +181,54 @@ describe('GameController', () => {
       expect(result).toEqual(expectedResult);
     });
 
+    it('should create a Poke Lounge game result with ranking metadata', async () => {
+      const dto: CreateGameHistoryDto = {
+        score: 300,
+        gameType: GameType.POKE_LOUNGE,
+        playTime: 30,
+      };
+      const req: TestRequest = {
+        user: createUser(),
+      };
+      const createdHistory = createGameHistory({
+        id: 'poke-lounge-result',
+        ...dto,
+        user: req.user,
+        createdAt: new Date(),
+      });
+
+      service.createHistory.mockResolvedValue(createdHistory);
+      service.getUserRank
+        .mockResolvedValueOnce(2)
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(2);
+      service.getUserBestScore.mockResolvedValue(300);
+
+      const result = await controller.createResult(req, dto);
+
+      expect(service.createHistory).toHaveBeenCalledWith(req.user, dto);
+      expect(service.getUserBestScore).toHaveBeenCalledWith(
+        req.user.id,
+        GameType.POKE_LOUNGE,
+      );
+      expect(service.getUserRank).toHaveBeenCalledWith(
+        req.user.id,
+        createdHistory.score,
+        GameType.POKE_LOUNGE,
+      );
+      expect(result).toEqual(
+        expect.objectContaining({
+          id: createdHistory.id,
+          score: 300,
+          gameType: GameType.POKE_LOUNGE,
+          allTimeRank: 2,
+          weeklyRank: 1,
+          rank: 2,
+          bestScore: 300,
+        }),
+      );
+    });
+
     // Failure Case 1: Service throws an error (e.g., DB error)
     it('should throw InternalServerErrorException if service fails', async () => {
       const dto: CreateGameHistoryDto = {
@@ -256,6 +304,16 @@ describe('GameController', () => {
       const result = await controller.getRanking(GameType.SKY_DROP);
       expect(result).toEqual([]);
     });
+
+    it('should return Poke Lounge ranking list', async () => {
+      const expectedResult = [{ score: 300, gameType: GameType.POKE_LOUNGE }];
+      service.getRanking.mockResolvedValue(expectedResult);
+
+      const result = await controller.getRanking(GameType.POKE_LOUNGE);
+
+      expect(service.getRanking).toHaveBeenCalledWith(GameType.POKE_LOUNGE);
+      expect(result).toEqual(expectedResult);
+    });
   });
 
   describe('getGameResult', () => {
@@ -301,6 +359,31 @@ describe('GameController', () => {
       const result = await controller.getGameResult(id);
 
       expect(result.user.displayName).toBe('Hong Gildong');
+    });
+
+    it('should return Poke Lounge game result by id', async () => {
+      const id = 'poke-lounge-uuid';
+      const history = createGameHistory({
+        id,
+        score: 300,
+        gameType: GameType.POKE_LOUNGE,
+        createdAt: new Date(),
+        user: createUser({ firstName: 'Poke', lastName: 'Player' }),
+      });
+
+      service.findHistoryById.mockResolvedValue(history);
+
+      const result = await controller.getGameResult(id);
+
+      expect(service.findHistoryById).toHaveBeenCalledWith(id);
+      expect(result).toEqual(
+        expect.objectContaining({
+          id,
+          score: 300,
+          gameType: GameType.POKE_LOUNGE,
+          user: { displayName: 'Poke Player' },
+        }),
+      );
     });
 
     // Failure Case 1: ID not found (Service throws NotFoundException)

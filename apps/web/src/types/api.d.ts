@@ -391,7 +391,7 @@ export interface components {
       score: number;
       playTime?: number;
       /** @enum {string} */
-      gameType: "SKY_DROP";
+      gameType: "SKY_DROP" | "POKE_LOUNGE";
     };
     GameHistoryUserDto: {
       /**
@@ -416,7 +416,7 @@ export interface components {
        * @example SKY_DROP
        * @enum {string}
        */
-      gameType: "SKY_DROP";
+      gameType: "SKY_DROP" | "POKE_LOUNGE";
       /**
        * Format: date-time
        * @description 생성 일시
@@ -447,7 +447,7 @@ export interface components {
       weeklyRank?: number | null;
     };
     /** @enum {string} */
-    GameType: "SKY_DROP";
+    GameType: "SKY_DROP" | "POKE_LOUNGE";
     User: {
       id: string;
       email: string;
@@ -459,7 +459,7 @@ export interface components {
       id: string;
       score: number;
       /** @enum {string} */
-      gameType: "SKY_DROP";
+      gameType: "SKY_DROP" | "POKE_LOUNGE";
       playTime?: number;
       /** Format: date-time */
       createdAt: string;

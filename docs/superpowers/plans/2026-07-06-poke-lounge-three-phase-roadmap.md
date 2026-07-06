@@ -276,3 +276,32 @@ Phase 2 인계 결정 사항:
 - 점수는 Poke Lounge 최종 결과 화면의 누적 점수를 기준으로 API에 제출한다.
 - `playTime`은 클라이언트에서 측정 가능한 전체 플레이 시간을 초 단위로 제출하되, API 정책의 최소/최대 범위를 게임별 정책과 맞춘다.
 - Phase 2에서는 server-authoritative room, ready state, reconnect, tournament authority를 구현하지 않는다.
+
+### Phase 2 완료: 2026-07-06
+
+통과한 검증 명령:
+
+- `pnpm test:api`
+- `pnpm test:api:e2e`
+- `pnpm build:api`
+- `pnpm type:check:web`
+- `pnpm lint`
+- `pnpm build`
+- `pnpm --filter @vscoke/web e2e -- tests/e2e/poke-lounge.spec.ts --project=chromium`
+- `python3 /Users/smlee/.codex/skills/api-no-mock-fallback/scripts/find_mock_fallback.py apps/web/src/services/score-service.ts`
+- `git diff --check`
+- `git ls-files | rg '(^|/)(node_modules|\.next|output|test-results|data/raw|data/processed|assets/raw|assets/processed)(/|$)' || true`
+- `git ls-files | rg '\.(nds|gba|gbc|gb|cia|3ds|zip|7z)$' || true`
+
+남은 known gap:
+
+- `apps/web/src/types/api.d.ts`는 로컬 API 변경을 수동 반영했다. 기존 `pnpm generate:types`는 원격 `https://api.icecoke.kr/api-json` 기준이라 배포 전에는 `POKE_LOUNGE`를 누락할 수 있다.
+- Poke Lounge 결과 제출은 최종 `game-result`에서 명시 버튼으로 동작한다. 자동 제출이나 상세 랭킹 패널은 아직 붙이지 않았다.
+- 멀티플레이 방, 라운드, 토너먼트 권위는 여전히 클라이언트/local preview 중심이며 운영 멀티로 취급하지 않는다.
+
+Phase 3 인계 결정 사항:
+
+- 서버 관리 멀티플레이는 Phase 2의 `POKE_LOUNGE` 결과 API를 최종 저장 경로로 사용한다.
+- 서버는 room, participant, ready, round timer, tournament bracket, result acceptance를 authoritative source로 관리한다.
+- 클라이언트가 보내는 final score는 서버 확정 standings와 연결해야 하며, 임의 payload를 신뢰하지 않는다.
+- 기존 `network=local` preview는 개발 fallback으로만 유지할지 Phase 3 초반에 결정한다.

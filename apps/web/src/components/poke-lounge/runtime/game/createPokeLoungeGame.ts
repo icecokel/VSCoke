@@ -44,6 +44,12 @@ export interface PokeLoungeE2eController {
     roomId: string | null;
     sessionId: string | null;
   };
+  completeTournamentForTest(): void;
+}
+
+export interface PokeLoungeGameResult {
+  playerId: string;
+  score: number;
 }
 
 export interface PokeLoungeGameOptions {
@@ -51,6 +57,7 @@ export interface PokeLoungeGameOptions {
   battleE2eScenario?: BattleE2eScenario | null;
   gameStateStore?: GameStateStore;
   multiplayerRoom?: MultiplayerRoom;
+  onGameResult?: (result: PokeLoungeGameResult) => void;
 }
 
 export function createPokeLoungeGame(
@@ -88,6 +95,8 @@ export function createPokeLoungeGame(
       new BattleScene(gameStateStore),
     ],
   });
+  const unsubscribeGameResult = subscribeToFinalGameResult(gameStateStore, options.onGameResult);
+  game.events.once(Phaser.Core.Events.DESTROY, unsubscribeGameResult);
 
   if (shouldExposePokeLoungeE2eGlobals()) {
     window.__POKE_LOUNGE_GAME__ = game;
@@ -99,6 +108,33 @@ export function createPokeLoungeGame(
   }
 
   return game;
+}
+
+function subscribeToFinalGameResult(
+  gameStateStore: GameStateStore,
+  onGameResult?: (result: PokeLoungeGameResult) => void,
+): () => void {
+  if (!onGameResult) {
+    return () => {};
+  }
+
+  let reported = gameStateStore.getState().round.phase === "game-result";
+
+  return gameStateStore.subscribe(state => {
+    if (reported || state.round.phase !== "game-result") {
+      return;
+    }
+
+    reported = true;
+    const playerId = state.currentPlayerId;
+    const rawScore =
+      state.tournament.scoresByPlayerId[playerId] ??
+      state.playersById[playerId]?.competitive.score ??
+      0;
+    const score = Number.isFinite(rawScore) ? Math.max(0, Math.floor(rawScore)) : 0;
+
+    onGameResult({ playerId, score });
+  });
 }
 
 function shouldExposePokeLoungeE2eGlobals(): boolean {
@@ -241,6 +277,22 @@ function createPokeLoungeE2eController(
         roomId: multiplayerRoom?.roomId ?? gameStateStore.getState().session.roomId,
         sessionId: multiplayerRoom?.sessionId ?? gameStateStore.getState().session.sessionId,
       };
+    },
+    completeTournamentForTest() {
+      const state = gameStateStore.getState();
+      const playerId = state.currentPlayerId;
+
+      gameStateStore.applyTournamentCompletedFromRoom(
+        {
+          roundIndex: state.round.totalRounds,
+          championPlayerId: playerId,
+          standings: [
+            { playerId, rank: 1, score: 300 },
+            { playerId: "player-2", rank: 2, score: 0 },
+          ],
+        },
+        Date.now(),
+      );
     },
   };
 }

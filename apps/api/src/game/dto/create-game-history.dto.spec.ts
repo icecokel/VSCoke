@@ -18,6 +18,16 @@ describe('CreateGameHistoryDto', () => {
     expect(errors).toHaveLength(0);
   });
 
+  it('유효한 Poke Lounge 점수 payload를 DTO 레벨에서 허용해야 함', async () => {
+    const errors = await validateDto({
+      score: 300,
+      playTime: 30,
+      gameType: GameType.POKE_LOUNGE,
+    });
+
+    expect(errors).toHaveLength(0);
+  });
+
   it('정수가 아닌 점수는 거절해야 함', async () => {
     const errors = await validateDto({
       score: 100.5,

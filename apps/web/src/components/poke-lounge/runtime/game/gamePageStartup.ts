@@ -1,7 +1,7 @@
 import { loadBootstrapData } from "../bootstrap";
 import { renderStarterSelectionScreen, type StarterSelectionOptions } from "../starter-selection";
 import type { GameBootstrapData, StarterPokemon } from "../types";
-import { createPokeLoungeGame } from "./createPokeLoungeGame";
+import { createPokeLoungeGame, type PokeLoungeGameResult } from "./createPokeLoungeGame";
 import { readInitialBattleE2eScenario, readInitialGameScene } from "./gameStartup";
 import { renderFullscreenToggle } from "./input/fullscreenToggle";
 import { renderMobileTouchControls } from "./input/mobileTouchControls";
@@ -28,6 +28,7 @@ export interface StartGamePageDependencies {
     conversionDataOrManifest: null,
     options: StarterSelectionOptions,
   ) => void;
+  onGameResult?: (result: PokeLoungeGameResult) => void;
 }
 
 export async function startGamePage(
@@ -53,6 +54,7 @@ export async function startGamePage(
       gameStateStore,
       initialScene,
       multiplayerRoom,
+      onGameResult: dependencies.onGameResult,
     });
     renderMobileTouchControls(mount);
     renderFullscreenToggle(mount);

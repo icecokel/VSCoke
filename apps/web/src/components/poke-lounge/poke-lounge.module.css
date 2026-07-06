@@ -78,6 +78,46 @@
   image-rendering: pixelated;
 }
 
+.resultOverlay {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 50;
+  display: grid;
+  width: min(280px, calc(100vw - 32px));
+  gap: 10px;
+  padding: 14px;
+  border: 3px solid #17231c;
+  border-radius: 8px;
+  background: rgba(248, 251, 240, 0.94);
+  box-shadow: 0 6px 0 rgba(23, 35, 28, 0.72);
+  color: #17201a;
+}
+
+.resultEyebrow {
+  margin: 0;
+  color: #4a5b4d;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.resultScore {
+  min-height: 48px;
+  font-size: 2.5rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.resultMeta,
+.resultStatus {
+  min-height: 20px;
+  margin: 0;
+  color: #4a5b4d;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 .page :global(.fullscreen-toggle-button) {
   position: absolute;
   top: max(10px, env(safe-area-inset-top));

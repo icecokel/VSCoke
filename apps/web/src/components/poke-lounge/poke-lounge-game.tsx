@@ -10,6 +10,7 @@ import styles from "./poke-lounge.module.css";
 
 type PokeLoungeWindow = Window & {
   __POKE_LOUNGE_GAME__?: { destroy: (removeCanvas?: boolean) => void };
+  __POKE_LOUNGE_CLEANUP_FOR_TEST__?: () => void;
   __POKE_LOUNGE_E2E__?: unknown;
 };
 
@@ -30,12 +31,40 @@ export function PokeLoungeGame() {
 
   useEffect(() => {
     let cancelled = false;
+    let cleanedUp = false;
+    let destroyGamePage: (() => void) | null = null;
     setGamePlaying(true);
     startedAtMsRef.current = Date.now();
+    const pokeWindow = window as PokeLoungeWindow;
+    const cleanupGamePage = () => {
+      if (cleanedUp) {
+        return;
+      }
 
-    void import("./runtime/game-page").then(({ startGamePageFromDocument }) => {
+      cleanedUp = true;
+      cancelled = true;
+      setGamePlaying(false);
+
+      if (destroyGamePage) {
+        destroyGamePage();
+      } else {
+        pokeWindow.__POKE_LOUNGE_GAME__?.destroy(true);
+      }
+      delete pokeWindow.__POKE_LOUNGE_GAME__;
+      delete pokeWindow.__POKE_LOUNGE_CLEANUP_FOR_TEST__;
+      delete pokeWindow.__POKE_LOUNGE_E2E__;
+      delete document.documentElement.dataset.pokeLoungeE2eBattle;
+      document.body.classList.remove("is-game-fullscreen-fallback-active");
+      document.querySelector<HTMLElement>("#game-root")?.replaceChildren();
+    };
+
+    if (new URLSearchParams(window.location.search).has("e2e")) {
+      pokeWindow.__POKE_LOUNGE_CLEANUP_FOR_TEST__ = cleanupGamePage;
+    }
+
+    void import("./runtime/game-page").then(async ({ startGamePageFromDocument }) => {
       if (!cancelled) {
-        void startGamePageFromDocument(document, new URL(window.location.href), {
+        const gamePage = await startGamePageFromDocument(document, new URL(window.location.href), {
           onGameResult: result => {
             setFinalResult({
               score: result.score,
@@ -45,21 +74,17 @@ export function PokeLoungeGame() {
             setSubmitMessage("");
           },
         });
+
+        if (cancelled) {
+          gamePage.destroy();
+          return;
+        }
+
+        destroyGamePage = () => gamePage.destroy();
       }
     });
 
-    return () => {
-      cancelled = true;
-      setGamePlaying(false);
-
-      const pokeWindow = window as PokeLoungeWindow;
-      pokeWindow.__POKE_LOUNGE_GAME__?.destroy(true);
-      delete pokeWindow.__POKE_LOUNGE_GAME__;
-      delete pokeWindow.__POKE_LOUNGE_E2E__;
-      delete document.documentElement.dataset.pokeLoungeE2eBattle;
-      document.body.classList.remove("is-game-fullscreen-fallback-active");
-      document.querySelector<HTMLElement>("#game-root")?.replaceChildren();
-    };
+    return cleanupGamePage;
   }, [setGamePlaying]);
 
   const handleSubmitResult = useCallback(async () => {

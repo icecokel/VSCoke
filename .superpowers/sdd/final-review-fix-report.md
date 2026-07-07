@@ -16,6 +16,7 @@ Branch: `feature/poke-lounge`
 - Updated the web server-room adapter to keep the private `sessionId` in local identity storage and send it only as a write credential.
 - Added server-room result ID reverse mapping so local player IDs are submitted as server participant IDs.
 - Added class-validator decorators to Poke Lounge request DTOs and applied the production `ValidationPipe` to API e2e coverage.
+- Added a production cleanup handle so React unmount destroys the Phaser game and disposes server rooms without relying on dev/E2E globals.
 - Moved tracked runtime assets from `apps/web/public/assets/rom-*` to curated `apps/web/public/assets/poke-lounge/...` paths.
 - Updated runtime references, public manifests, and source metadata so old public `rom-*` URLs are not referenced.
 - Added final forbidden asset checks for `apps/web/public/assets/rom-*`.
@@ -31,6 +32,9 @@ Branch: `feature/poke-lounge`
 - PASS: validation pipe fix rerun `pnpm test:api:e2e -- poke-lounge` - 4 suites, 20 tests.
 - PASS: validation pipe fix rerun `pnpm test:api -- poke-lounge` - 27 suites, 142 tests.
 - PASS: validation pipe fix rerun `pnpm build:api`
+- PASS: cleanup fix rerun `pnpm type:check:web`
+- PASS: cleanup fix rerun `pnpm lint`
+- PASS: cleanup fix rerun `pnpm --filter @vscoke/web e2e -- tests/e2e/poke-lounge-multiplayer.spec.ts --project=chromium` - 7 tests.
 - PASS: final critical review rerun `pnpm type:check:web`
 - PASS: final critical review rerun `pnpm --filter @vscoke/web e2e -- tests/e2e/poke-lounge-multiplayer.spec.ts --project=chromium` - 6 tests.
 - PASS: `pnpm type:check:web`

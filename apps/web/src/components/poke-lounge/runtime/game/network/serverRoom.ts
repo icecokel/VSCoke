@@ -277,6 +277,10 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         });
     },
     dispose() {
+      if (disposed) {
+        return;
+      }
+
       disposed = true;
       if (pollTimer) {
         window.clearTimeout(pollTimer);

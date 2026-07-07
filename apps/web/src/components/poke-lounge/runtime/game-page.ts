@@ -1,4 +1,4 @@
-import { startGamePage } from "./game/gamePageStartup";
+import { startGamePage, type GamePageHandle } from "./game/gamePageStartup";
 import type { PokeLoungeGameResult } from "./game/createPokeLoungeGame";
 
 export async function startGamePageFromDocument(
@@ -7,14 +7,14 @@ export async function startGamePageFromDocument(
   options: {
     onGameResult?: (result: PokeLoungeGameResult) => void;
   } = {},
-): Promise<void> {
+): Promise<GamePageHandle> {
   const mount = documentRef.querySelector<HTMLElement>("#game-root");
 
   if (!mount) {
     throw new Error("Missing #game-root mount element");
   }
 
-  await startGamePage(mount, location, {
+  return startGamePage(mount, location, {
     onGameResult: options.onGameResult,
   });
 }

@@ -136,6 +136,40 @@ test.describe("Poke Lounge server multiplayer", () => {
     });
   });
 
+  test("server room cleanup은 e2e global 없이도 unmount 시 leave를 전송한다", async ({ page }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, { waitForResult: true, wrapped: true });
+    await startServerRoom(
+      page,
+      `/${LOCALE}/game/poke-lounge?network=server&room=${ROOM_CODE}&serverPlayerId=server-player-cleanup&serverSessionId=server-session-cleanup&e2e=1`,
+    );
+    await expect
+      .poll(() =>
+        Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+      )
+      .toBe(true);
+
+    await page.evaluate(() => {
+      delete (window as Window & { __POKE_LOUNGE_GAME__?: unknown }).__POKE_LOUNGE_GAME__;
+    });
+
+    await page.evaluate(() => {
+      (
+        window as Window & {
+          __POKE_LOUNGE_CLEANUP_FOR_TEST__?: () => void;
+        }
+      ).__POKE_LOUNGE_CLEANUP_FOR_TEST__?.();
+    });
+
+    await expect
+      .poll(
+        () => Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/leave`)),
+        { timeout: 5000 },
+      )
+      .toBe(true);
+  });
+
   test("server room create는 URL을 room code로 갱신하고 join input으로 참가한 두 컨텍스트는 서로 다른 identity를 유지한다", async ({
     browser,
   }) => {

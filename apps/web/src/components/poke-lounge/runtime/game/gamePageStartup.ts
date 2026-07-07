@@ -15,6 +15,11 @@ import { getDefaultGameStateStore } from "./state/defaultGameStateStore";
 import type { GameStateStore, PlayerPokemon } from "./state/gameStateStore";
 
 type GamePageLocation = URL;
+type PokeLoungeGameInstance = ReturnType<typeof createPokeLoungeGame>;
+
+export interface GamePageHandle {
+  destroy(): void;
+}
 
 export interface StartGamePageDependencies {
   createMultiplayerRoom?: typeof createMultiplayerRoom;
@@ -36,7 +41,7 @@ export async function startGamePage(
   mount: HTMLElement,
   location: GamePageLocation,
   dependencies: StartGamePageDependencies = {},
-): Promise<void> {
+): Promise<GamePageHandle> {
   const gameStateStore = dependencies.gameStateStore ?? getDefaultGameStateStore();
   const runtimeGameDataPromise = loadRuntimeGameDataJson();
   const initialScene = readInitialGameScene(location);
@@ -44,13 +49,45 @@ export async function startGamePage(
   const currentUrl = new URL(location.href);
   const renderEntryScreen = dependencies.renderRoomEntryScreen ?? renderRoomEntryScreen;
   const renderSelection = dependencies.renderStarterSelectionScreen ?? renderStarterSelectionScreen;
+  let activeGame: PokeLoungeGameInstance | null = null;
+  let activeMultiplayerRoom: ReturnType<typeof createMultiplayerRoom> | null = null;
+  let destroyed = false;
+
+  const handle: GamePageHandle = {
+    destroy() {
+      if (destroyed) {
+        return;
+      }
+
+      destroyed = true;
+      if (activeGame) {
+        activeGame.destroy(true);
+      } else {
+        activeMultiplayerRoom?.dispose();
+      }
+      activeGame = null;
+      activeMultiplayerRoom = null;
+      gameStateStore.setSession({
+        sessionId: null,
+        roomId: null,
+        connectionStatus: "offline",
+      });
+      mount.replaceChildren();
+    },
+  };
+
   const startGame = async (gameUrl: URL) => {
     await runtimeGameDataPromise;
+    if (destroyed) {
+      return;
+    }
+
     const multiplayerRoom = (dependencies.createMultiplayerRoom ?? createMultiplayerRoom)({
       createWebRtcRoom,
       searchParams: gameUrl.searchParams,
     });
     const roomEntry = readRoomEntryFromLocation(gameUrl);
+    activeMultiplayerRoom = multiplayerRoom;
     mount.innerHTML = "";
     const game = (dependencies.createPokeLoungeGame ?? createPokeLoungeGame)(mount, {
       ...(battleE2eScenario ? { battleE2eScenario } : {}),
@@ -59,6 +96,7 @@ export async function startGamePage(
       multiplayerRoom,
       onGameResult: dependencies.onGameResult,
     });
+    activeGame = game;
     renderMobileTouchControls(mount);
     renderFullscreenToggle(mount);
     const returnToRoomEntry = () => {
@@ -73,6 +111,12 @@ export async function startGamePage(
       currentUrl.searchParams.delete("room");
       replaceBrowserUrl(currentUrl);
       game?.destroy(true);
+      if (activeGame === game) {
+        activeGame = null;
+      }
+      if (activeMultiplayerRoom === multiplayerRoom) {
+        activeMultiplayerRoom = null;
+      }
       showRoomEntry();
     };
 
@@ -94,19 +138,34 @@ export async function startGamePage(
   };
   const showStarterSelection = async (afterSelection: () => void) => {
     const bootstrap = await (dependencies.loadBootstrapData ?? loadBootstrapData)();
+    if (destroyed) {
+      return;
+    }
 
     renderSelection(mount, bootstrap, null, {
       completeAfterSelection: true,
       onStarterSelect: starter => {
+        if (destroyed) {
+          return;
+        }
+
         gameStateStore.setStarterPokemon(createStarterPlayerPokemon(starter));
         afterSelection();
       },
     });
   };
   const showRoomEntry = () => {
+    if (destroyed) {
+      return;
+    }
+
     renderEntryScreen(mount, {
       currentUrl: new URL(currentUrl.href),
       onSelect: selection => {
+        if (destroyed) {
+          return;
+        }
+
         applyRoomEntrySelection(currentUrl, selection);
         replaceBrowserUrl(currentUrl);
 
@@ -139,10 +198,11 @@ export async function startGamePage(
 
   if (!gameStateStore.canChooseStarter()) {
     continueAfterStarter();
-    return;
+    return handle;
   }
 
   await showStarterSelection(continueAfterStarter);
+  return handle;
 }
 
 function applyRoomEntrySelection(url: URL, selection: RoomEntrySelection): void {

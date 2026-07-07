@@ -63,13 +63,23 @@ export async function loadRuntimeGameDataJson(fetcher: typeof fetch = fetch): Pr
 export function getRuntimeLevelUpMoveTable(
   fallbackTable: Record<number, LevelUpMoveRow[]>,
 ): Record<number, LevelUpMoveRow[]> {
-  return runtimeGameDataJsonState.levelUpMoveTable ?? fallbackTable;
+  return runtimeGameDataJsonState.levelUpMoveTable
+    ? {
+        ...fallbackTable,
+        ...runtimeGameDataJsonState.levelUpMoveTable,
+      }
+    : fallbackTable;
 }
 
 export function getRuntimeWildBattleMoveSets(
   fallbackMoveSets: Record<number, number[]>,
 ): Record<number, number[]> {
-  return runtimeGameDataJsonState.wildBattleMoveSets ?? fallbackMoveSets;
+  return runtimeGameDataJsonState.wildBattleMoveSets
+    ? {
+        ...fallbackMoveSets,
+        ...runtimeGameDataJsonState.wildBattleMoveSets,
+      }
+    : fallbackMoveSets;
 }
 
 export function getRuntimeBattlePokemonAssetManifest(input: {
@@ -79,12 +89,29 @@ export function getRuntimeBattlePokemonAssetManifest(input: {
   species: Record<number, BattlePokemonAssetRecord>;
   extractedRanges: BattlePokemonExtractedRangeRecord[];
 } {
-  return (
-    runtimeGameDataJsonState.battlePokemonAssets ?? {
+  if (!runtimeGameDataJsonState.battlePokemonAssets) {
+    return {
       species: input.fallbackSpecies,
       extractedRanges: input.fallbackExtractedRanges,
-    }
-  );
+    };
+  }
+
+  return {
+    species: {
+      ...input.fallbackSpecies,
+      ...runtimeGameDataJsonState.battlePokemonAssets.species,
+    },
+    extractedRanges: mergeExtractedRanges(
+      input.fallbackExtractedRanges,
+      runtimeGameDataJsonState.battlePokemonAssets.extractedRanges,
+    ),
+  };
+}
+
+export function resetRuntimeGameDataJsonStateForTest(): void {
+  runtimeGameDataJsonState.levelUpMoveTable = null;
+  runtimeGameDataJsonState.wildBattleMoveSets = null;
+  runtimeGameDataJsonState.battlePokemonAssets = null;
 }
 
 export function normalizeLevelUpMoveTable(data: unknown): Record<number, LevelUpMoveRow[]> | null {
@@ -318,6 +345,25 @@ function readPositiveInteger(value: unknown): number | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function mergeExtractedRanges(
+  fallbackRanges: BattlePokemonExtractedRangeRecord[],
+  runtimeRanges: BattlePokemonExtractedRangeRecord[],
+): BattlePokemonExtractedRangeRecord[] {
+  const mergedRanges = new Map<string, BattlePokemonExtractedRangeRecord>(
+    fallbackRanges.map(range => [toExtractedRangeKey(range), range]),
+  );
+
+  for (const range of runtimeRanges) {
+    mergedRanges.set(toExtractedRangeKey(range), range);
+  }
+
+  return [...mergedRanges.values()];
+}
+
+function toExtractedRangeKey(range: BattlePokemonExtractedRangeRecord): string {
+  return `${range.startSpeciesId}:${range.endSpeciesId}`;
 }
 
 async function fetchJson(fetcher: typeof fetch, path: string): Promise<unknown> {

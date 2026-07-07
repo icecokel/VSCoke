@@ -4,6 +4,13 @@ import { expect, type Page, test } from "@playwright/test";
 import { applyLevelUpPlayerMoves } from "../../src/components/poke-lounge/runtime/game/battle/levelUpMoves";
 import { createWildBattleState } from "../../src/components/poke-lounge/runtime/game/battle/wildBattleFactory";
 import { getBattlePokemonAssets } from "../../src/components/poke-lounge/runtime/game/battle/battlePokemonAssets";
+import {
+  BATTLE_POKEMON_ASSETS_JSON_PATH,
+  LEVEL_UP_MOVE_TABLE_JSON_PATH,
+  WILD_BATTLE_MOVE_SETS_JSON_PATH,
+  loadRuntimeGameDataJson,
+  resetRuntimeGameDataJsonStateForTest,
+} from "../../src/components/poke-lounge/runtime/game/data/game-data-json";
 import { selectWildEncounterConfig } from "../../src/components/poke-lounge/runtime/game/world/wildEncounterTables";
 import { escapeRegExp, gotoWithRetry, resolveLocaleAndMessages } from "./test-helpers";
 
@@ -93,6 +100,10 @@ const POKE_LOUNGE_LOCALE = "ko-KR";
 const LOCAL_ROOM_CODE = "ABC123";
 
 test.describe("Poke Lounge", () => {
+  test.afterEach(() => {
+    resetRuntimeGameDataJsonStateForTest();
+  });
+
   test("게임 데이터 JSON과 런타임 fallback이 문서화된 배틀 데이터를 유지한다", () => {
     const levelUpMoveTable = readPublicJson("/game-data/level-up-move-table.json") as {
       species?: Record<string, Array<{ level: number; moveId: number }>>;
@@ -139,6 +150,147 @@ test.describe("Poke Lounge", () => {
     expect(wildBattleState.opponent.playerId).toBe("wild");
     expect(wildBattleState.opponent.displayName).toBe("야생 브케인");
     expect(wildBattleState.opponent.pokemon.moves.map(move => move.id)).toEqual([52, 43]);
+  });
+
+  test("startup-loaded runtime game data는 유효한 species만 JSON을 우선하고 누락/오염 species는 fallback한다", async () => {
+    await loadRuntimeGameDataJson(
+      createRuntimeGameDataFetcher({
+        [LEVEL_UP_MOVE_TABLE_JSON_PATH]: {
+          version: 1,
+          species: {
+            "155": [{ level: 19, moveId: 345 }],
+            "158": { invalid: true },
+          },
+        },
+        [WILD_BATTLE_MOVE_SETS_JSON_PATH]: {
+          version: 1,
+          species: {
+            "155": [345, 43, 345],
+            "152": "bad-data",
+          },
+        },
+        [BATTLE_POKEMON_ASSETS_JSON_PATH]: {
+          version: 1,
+          species: {
+            "155": {
+              front: { path: "/assets/pokemon/front/155-runtime.png", width: 161, height: 81 },
+              back: {
+                path: "/assets/pokemon/battle/155/back-runtime.png",
+                width: 162,
+                height: 82,
+              },
+            },
+            "158": {
+              front: { path: "/broken/front.png", width: 160, height: 80 },
+              back: { path: "/assets/pokemon/back/158-runtime.png", width: 160, height: 80 },
+            },
+          },
+          extractedRanges: [{ startSpeciesId: 1, endSpeciesId: 10, front: null, back: null }],
+        },
+      }),
+    );
+
+    const runtimePreferredMoves = applyLevelUpPlayerMoves({
+      pokemon: {
+        speciesId: 155,
+        name: "브케인",
+        level: 19,
+        moves: [
+          { id: 52, name: "불꽃세례", pp: 25, maxPp: 25 },
+          { id: 108, name: "연막", pp: 20, maxPp: 20 },
+          { id: 98, name: "전광석화", pp: 30, maxPp: 30 },
+        ],
+      },
+      previousLevel: 18,
+      moveRecords: createTestMoveRecords([52, 98, 108, 345]),
+    });
+    expect(runtimePreferredMoves.pokemon.moves?.map(move => move.id)).toEqual([52, 108, 98, 345]);
+
+    const fallbackLevelUpMoves = applyLevelUpPlayerMoves({
+      pokemon: {
+        speciesId: 158,
+        name: "리아코",
+        level: 15,
+        moves: [
+          { id: 10, name: "할퀴기", pp: 35, maxPp: 35 },
+          { id: 43, name: "째려보기", pp: 30, maxPp: 30 },
+        ],
+      },
+      previousLevel: 14,
+      moveRecords: createTestMoveRecords([10, 43, 184]),
+    });
+    expect(fallbackLevelUpMoves.pokemon.moves?.map(move => move.id)).toEqual([10, 43, 184]);
+
+    const runtimePreferredWildBattleState = createWildBattleState({
+      encounter: {
+        mapKey: "test-map",
+        step: { from: { x: 0, y: 0 }, to: { x: 1, y: 0 } },
+        speciesId: 155,
+        name: "브케인",
+        level: 10,
+      },
+      personalRecords: createTestPersonalRecords([152, 155]),
+      moveRecords: createTestMoveRecords([33, 43, 45, 345]),
+    });
+    expect(runtimePreferredWildBattleState.opponent.pokemon.moves.map(move => move.id)).toEqual([
+      345, 43,
+    ]);
+
+    const fallbackWildBattleState = createWildBattleState({
+      encounter: {
+        mapKey: "test-map",
+        step: { from: { x: 0, y: 0 }, to: { x: 1, y: 0 } },
+        speciesId: 152,
+        name: "치코리타",
+        level: 10,
+      },
+      personalRecords: createTestPersonalRecords([152, 155]),
+      moveRecords: createTestMoveRecords([33, 43, 45, 345]),
+    });
+    expect(fallbackWildBattleState.opponent.pokemon.moves.map(move => move.id)).toEqual([33, 45]);
+
+    expect(getBattlePokemonAssets(155)).toEqual(
+      expect.objectContaining({
+        front: expect.objectContaining({
+          path: "/assets/pokemon/front/155-runtime.png",
+          width: 161,
+          height: 81,
+        }),
+        back: expect.objectContaining({
+          path: "/assets/pokemon/battle/155/back-runtime.png",
+          width: 162,
+          height: 82,
+        }),
+      }),
+    );
+    expect(getBattlePokemonAssets(158)).toEqual(
+      expect.objectContaining({
+        front: expect.objectContaining({
+          path: "/assets/pokemon/front/158.png",
+          width: 160,
+          height: 80,
+        }),
+        back: expect.objectContaining({
+          path: "/assets/pokemon/back/158.png",
+          width: 160,
+          height: 80,
+        }),
+      }),
+    );
+    expect(getBattlePokemonAssets(16)).toEqual(
+      expect.objectContaining({
+        front: expect.objectContaining({
+          path: "/assets/pokemon/front/16.png",
+          width: 160,
+          height: 80,
+        }),
+        back: expect.objectContaining({
+          path: "/assets/pokemon/back/16.png",
+          width: 160,
+          height: 80,
+        }),
+      }),
+    );
   });
 
   test("브케인 상대 스프라이트는 160x80 front sheet를 사용한다", () => {
@@ -401,6 +553,27 @@ function readPublicPngDimensions(publicPath: string): { width: number; height: n
 function readPublicJson(publicPath: string): unknown {
   const filePath = path.join(process.cwd(), "public", publicPath.replace(/^\//, ""));
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
+}
+
+function createRuntimeGameDataFetcher(fixtures: Record<string, unknown>) {
+  return async (input: string | URL | Request): Promise<Response> => {
+    const requestPath =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.pathname
+          : new URL(input.url).pathname;
+    const body = fixtures[requestPath];
+
+    if (body === undefined) {
+      return new Response(null, { status: 404 });
+    }
+
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
 }
 
 function createTestMoveRecords(moveIds: number[]) {

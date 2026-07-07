@@ -6,7 +6,7 @@ export type PokeLoungeSfxId =
   | "battle-transition"
   | "pokemon-faint";
 
-export type PokeLoungeBgmId = "wild-battle";
+export type PokeLoungeBgmId = "field-day" | "wild-battle";
 
 export interface PokeLoungeSfxManifestItem {
   id: PokeLoungeSfxId;

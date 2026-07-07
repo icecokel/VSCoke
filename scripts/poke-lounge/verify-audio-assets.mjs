@@ -15,7 +15,7 @@ const expectedIds = new Set([
   "battle-transition",
   "pokemon-faint",
 ]);
-const expectedBgmIds = new Set(["wild-battle"]);
+const expectedBgmIds = new Set(["field-day", "wild-battle"]);
 
 function fail(message) {
   console.error(`Audio asset verification failed: ${message}`);

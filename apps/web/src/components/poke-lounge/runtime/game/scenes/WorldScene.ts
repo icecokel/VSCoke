@@ -4,6 +4,7 @@ import {
   playBattleConfirmSound,
   playBattleTransitionSound,
 } from "../battle/battleAudio";
+import { playPokeLoungeBgm, stopPokeLoungeBgm } from "../audio/poke-lounge-audio";
 import type { BattleResultReason } from "../battle/battleTypes";
 import { GAME_VIEWPORT_SIZE } from "../gameViewport";
 import {
@@ -160,6 +161,10 @@ export interface WorldSceneCreateData {
   spawnPointName?: string;
   spawnPosition?: WorldSpawnPosition;
   tournamentResult?: WorldTournamentBattleResult;
+}
+
+export interface WorldSceneOptions {
+  competitiveRoundsEnabled?: boolean;
 }
 
 export interface WorldTournamentBattleResult {
@@ -335,18 +340,25 @@ export class WorldScene extends Phaser.Scene {
   private diceGambleSelectedIndex = 0;
   private diceGambleMessage = "";
   private diceGambleUiObjects: Phaser.GameObjects.GameObject[] = [];
+  private readonly competitiveRoundsEnabled: boolean;
 
   constructor(
     private readonly gameStateStore: GameStateStore = getDefaultGameStateStore(),
     private readonly room: MultiplayerRoom = createLocalPreviewRoom(),
+    options: WorldSceneOptions = {},
   ) {
     super("world");
+    this.competitiveRoundsEnabled = options.competitiveRoundsEnabled ?? true;
   }
 
   create(data: WorldSceneCreateData = {}): void {
     this.shutdownComplete = false;
     this.registerLifecycleCleanup();
     this.applyReturnedTournamentResult(data);
+    if (!this.competitiveRoundsEnabled) {
+      this.gameStateStore.resetCompetitiveSession();
+    }
+    playPokeLoungeBgm("field-day");
 
     const map = this.make.tilemap({ key: FIELD_MAP.key });
     const tileset = map.addTilesetImage(FIELD_MAP.tilesetName, FIELD_MAP.tilesetKey);
@@ -375,10 +387,12 @@ export class WorldScene extends Phaser.Scene {
 
     this.createCurrencyHud();
     this.createRankScoreHud();
-    this.createRoundHud(
-      Date.now(),
-      readRoundDurationOverride(new URL(window.location.href)) ?? DEFAULT_PREPARATION_DURATION_MS,
-    );
+    if (this.competitiveRoundsEnabled) {
+      this.createRoundHud(
+        Date.now(),
+        readRoundDurationOverride(new URL(window.location.href)) ?? DEFAULT_PREPARATION_DURATION_MS,
+      );
+    }
     this.createPartyHud();
     this.createStaticNpcs(map);
     this.createPlayer(map, data.spawnPointName ?? FIELD_MAP.defaultSpawn, data.spawnPosition);
@@ -467,6 +481,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.shutdownComplete = true;
+    stopPokeLoungeBgm("field-day");
 
     for (const unsubscribe of this.unsubscribers) {
       unsubscribe();
@@ -767,6 +782,10 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private updateRoundClock(nowMs: number): void {
+    if (!this.competitiveRoundsEnabled) {
+      return;
+    }
+
     this.gameStateStore.advanceRoundClock(nowMs);
     const nextText = this.formatRoundHudText(nowMs);
 

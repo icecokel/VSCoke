@@ -68,6 +68,16 @@
   ],
   "bgm": [
     {
+      "id": "field-day",
+      "sequenceName": "SEQ_GS_R_1_29",
+      "sequenceIndex": 1028,
+      "durationMs": 30000,
+      "fadeOutMs": 0,
+      "gain": 0.34,
+      "defaultVolume": 0.24,
+      "bitrate": "80k"
+    },
+    {
       "id": "wild-battle",
       "sequenceName": "SEQ_GS_VS_NORAPOKE",
       "sequenceIndex": 1116,

@@ -55,6 +55,7 @@ export interface PokeLoungeGameResult {
 export interface PokeLoungeGameOptions {
   initialScene?: InitialGameScene;
   battleE2eScenario?: BattleE2eScenario | null;
+  competitiveRoundsEnabled?: boolean;
   gameStateStore?: GameStateStore;
   multiplayerRoom?: MultiplayerRoom;
   onGameResult?: (result: PokeLoungeGameResult) => void;
@@ -87,7 +88,9 @@ export function createPokeLoungeGame(
     },
     scene: [
       new BootScene(options.initialScene ?? "world", options.battleE2eScenario ?? null),
-      new WorldScene(gameStateStore, options.multiplayerRoom),
+      new WorldScene(gameStateStore, options.multiplayerRoom, {
+        competitiveRoundsEnabled: options.competitiveRoundsEnabled,
+      }),
       new BattleScene(gameStateStore),
     ],
   });

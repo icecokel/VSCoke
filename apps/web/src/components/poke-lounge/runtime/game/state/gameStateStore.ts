@@ -379,6 +379,7 @@ export interface GameStateStore {
     input: ApplyRoundScoreUpdatedFromRoomInput,
   ): ApplyTournamentRoomEventResult;
   continueFromRoundResult(nowMs: number, preparationDurationMs?: number): void;
+  resetCompetitiveSession(): void;
   reset(): void;
 }
 
@@ -1165,6 +1166,14 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
           ...state.tournament,
           session: null,
         },
+      };
+      notify();
+    },
+    resetCompetitiveSession() {
+      state = {
+        ...state,
+        round: createDefaultRoundState(),
+        tournament: createDefaultGameTournamentState(),
       };
       notify();
     },

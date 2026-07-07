@@ -7,17 +7,18 @@ import { useGame } from "@/contexts/game-context";
 import { getSessionApiIdToken, isAuthSessionError, type ApiTokenSession } from "@/lib/auth-token";
 import { submitScore } from "@/services/score-service";
 import { setPokeLoungeMasterVolume } from "./runtime/game/audio/poke-lounge-audio";
-import {
-  GAME_FULLSCREEN_STATE_EVENT,
-  isGameFullscreenActive,
-  toggleGameFullscreen,
-} from "./runtime/game/input/fullscreenToggle";
+import { detectTouchGameDevice } from "./runtime/game/input/mobileTouchControls";
 import { GAME_SETTINGS_OPEN_EVENT } from "./runtime/game/input/settings-toggle";
 import {
   GAME_VIEWPORT_SIZE_PRESETS,
   type GameViewportDisplaySize,
   type GameViewportSizePreset,
 } from "./runtime/game/gameViewport";
+import {
+  GAME_FULLSCREEN_STATE_EVENT,
+  isGameFullscreenActive,
+  toggleGameFullscreen,
+} from "./runtime/web-fullscreen";
 import styles from "./poke-lounge.module.css";
 
 type PokeLoungeWindow = Window & {
@@ -32,6 +33,8 @@ interface FinalResultState {
 }
 
 const POKE_LOUNGE_VOLUME_STEPS = [0.25, 0.5, 0.75, 1] as const;
+const POKE_LOUNGE_CONTAINER_WIDTH_VAR = "--poke-lounge-container-width";
+const POKE_LOUNGE_CONTAINER_HEIGHT_VAR = "--poke-lounge-container-height";
 
 type PokeLoungeUiSize = GameViewportSizePreset;
 type PokeLoungeGamePageHandle = {
@@ -61,6 +64,7 @@ export function PokeLoungeGame() {
   const [finalResult, setFinalResult] = useState<FinalResultState | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fullscreenActive, setFullscreenActive] = useState(false);
+  const [touchGameDevice, setTouchGameDevice] = useState(false);
   const [volumeLevelIndex, setVolumeLevelIndex] = useState(POKE_LOUNGE_VOLUME_STEPS.length - 1);
   const [uiSize, setUiSize] = useState<PokeLoungeUiSize>("large");
   const [submitStatus, setSubmitStatus] = useState<
@@ -105,6 +109,71 @@ export function PokeLoungeGame() {
   useEffect(() => {
     gamePageHandleRef.current?.setViewportSize(GAME_VIEWPORT_SIZE_PRESETS[uiSize]);
   }, [uiSize]);
+
+  useEffect(() => {
+    setTouchGameDevice(
+      detectTouchGameDevice({
+        maxTouchPoints: navigator.maxTouchPoints ?? 0,
+        platform: navigator.platform ?? "",
+        userAgent: navigator.userAgent ?? "",
+      }),
+    );
+  }, []);
+
+  useEffect(() => {
+    const page = pageRef.current;
+    const parent = page?.parentElement;
+
+    if (!page || !parent) {
+      return;
+    }
+
+    const updateContainerSize = () => {
+      if (
+        document.fullscreenElement === page ||
+        page.classList.contains("is-game-fullscreen-fallback")
+      ) {
+        page.style.setProperty(POKE_LOUNGE_CONTAINER_WIDTH_VAR, `${window.innerWidth}px`);
+        page.style.setProperty(POKE_LOUNGE_CONTAINER_HEIGHT_VAR, `${window.innerHeight}px`);
+        return;
+      }
+
+      const parentRect = parent.getBoundingClientRect();
+      const parentStyle = window.getComputedStyle(parent);
+      const paddingLeft = Number.parseFloat(parentStyle.paddingLeft) || 0;
+      const paddingRight = Number.parseFloat(parentStyle.paddingRight) || 0;
+      const paddingTop = Number.parseFloat(parentStyle.paddingTop) || 0;
+      const paddingBottom = Number.parseFloat(parentStyle.paddingBottom) || 0;
+      const visibleLeft = Math.max(parentRect.left + paddingLeft, 0);
+      const visibleRight = Math.min(parentRect.right - paddingRight, window.innerWidth);
+      const visibleTop = Math.max(parentRect.top + paddingTop, 0);
+      const visibleBottom = Math.min(parentRect.bottom - paddingBottom, window.innerHeight);
+      const width = Math.max(0, visibleRight - visibleLeft);
+      const height = Math.max(0, visibleBottom - visibleTop);
+
+      page.style.setProperty(POKE_LOUNGE_CONTAINER_WIDTH_VAR, `${Math.floor(width)}px`);
+      page.style.setProperty(POKE_LOUNGE_CONTAINER_HEIGHT_VAR, `${Math.floor(height)}px`);
+    };
+
+    updateContainerSize();
+
+    const resizeObserver = new ResizeObserver(updateContainerSize);
+    resizeObserver.observe(parent);
+    window.addEventListener("resize", updateContainerSize);
+    window.visualViewport?.addEventListener("resize", updateContainerSize);
+    document.addEventListener("fullscreenchange", updateContainerSize);
+    document.addEventListener(GAME_FULLSCREEN_STATE_EVENT, updateContainerSize);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateContainerSize);
+      window.visualViewport?.removeEventListener("resize", updateContainerSize);
+      document.removeEventListener("fullscreenchange", updateContainerSize);
+      document.removeEventListener(GAME_FULLSCREEN_STATE_EVENT, updateContainerSize);
+      page.style.removeProperty(POKE_LOUNGE_CONTAINER_WIDTH_VAR);
+      page.style.removeProperty(POKE_LOUNGE_CONTAINER_HEIGHT_VAR);
+    };
+  }, []);
 
   useEffect(() => {
     const handleFullscreenStateChange = () => syncFullscreenState();
@@ -257,11 +326,27 @@ export function PokeLoungeGame() {
   return (
     <main
       ref={pageRef}
-      className={`${styles.page} phaser-game-page`}
+      className={`${styles.page} ${touchGameDevice ? styles.touchGameDevice : ""} phaser-game-page`}
       data-testid="poke-lounge-page"
       data-poke-lounge-ui-size={uiSize}
     >
-      <div id="game-root" data-testid="poke-lounge-game-root" />
+      <div className={styles.gameFrame} data-poke-lounge-game-frame="true">
+        <div id="game-root" data-testid="poke-lounge-game-root" />
+        {touchGameDevice ? (
+          <button
+            type="button"
+            className="fullscreen-toggle-button fullscreen-toggle-button--mobile"
+            onClick={handleFullscreenToggle}
+            aria-label={fullscreenActive ? "전체화면 끄기" : "전체화면 켜기"}
+            aria-pressed={fullscreenActive}
+            data-fullscreen-toggle="true"
+            data-fullscreen-toggle-placement="mobile"
+            data-poke-lounge-web-fullscreen-toggle="true"
+          >
+            ⛶
+          </button>
+        ) : null}
+      </div>
       {settingsOpen ? (
         <section
           className={styles.settingsOverlay}

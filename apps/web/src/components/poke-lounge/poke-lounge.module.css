@@ -1,5 +1,8 @@
 .page {
   --rom-screen-background: #4a4242;
+  --poke-lounge-container-width: 100vw;
+  --poke-lounge-container-height: 100dvh;
+  --poke-lounge-frame-available-height: var(--poke-lounge-container-height);
   --poke-lounge-max-display-width: 1440px;
   --poke-lounge-touch-control-gap: 8px;
   --poke-lounge-touch-control-offset: 12px;
@@ -16,8 +19,11 @@
 
   position: relative;
   display: grid;
-  min-height: 100dvh;
+  width: 100%;
+  height: var(--poke-lounge-container-height);
+  min-height: 0;
   margin: 0;
+  overflow: hidden;
   background: var(--rom-screen-background);
   color: #17201a;
   font-family:
@@ -40,14 +46,6 @@
 .page input,
 .page textarea {
   font: inherit;
-}
-
-.page {
-  display: grid;
-  min-height: 100dvh;
-  margin: 0;
-  background: var(--rom-screen-background);
-  place-items: center;
 }
 
 .page:fullscreen {
@@ -73,18 +71,33 @@
   place-items: center;
 }
 
-.page :global(#game-root) {
+.gameFrame {
   position: relative;
-  width: min(100vw, calc(100dvh * 4 / 3), var(--poke-lounge-max-display-width));
-  max-height: 100dvh;
+  width: min(
+    100%,
+    var(--poke-lounge-container-width),
+    calc(var(--poke-lounge-frame-available-height) * 4 / 3),
+    var(--poke-lounge-max-display-width)
+  );
+  max-width: 100%;
+  max-height: var(--poke-lounge-frame-available-height);
   aspect-ratio: 4 / 3;
   background: var(--rom-screen-background);
 }
 
-.page:fullscreen :global(#game-root),
-.page:global(.is-game-fullscreen-fallback) :global(#game-root) {
+.page:fullscreen .gameFrame,
+.page:global(.is-game-fullscreen-fallback) .gameFrame {
+  --poke-lounge-frame-available-height: 100dvh;
+
   width: min(100vw, calc(100dvh * 4 / 3), var(--poke-lounge-max-display-width));
   max-height: 100dvh;
+}
+
+.page :global(#game-root) {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--rom-screen-background);
 }
 
 .page :global(#game-root canvas) {
@@ -249,7 +262,7 @@
   display: none;
 }
 
-.page :global(.has-touch-game-device .fullscreen-toggle-button--mobile) {
+.touchGameDevice :global(.fullscreen-toggle-button--mobile) {
   display: inline-grid;
 }
 
@@ -364,6 +377,10 @@
   display: none !important;
 }
 
+.page :global(#game-root.is-shortcut-guide-open ~ .fullscreen-toggle-button) {
+  display: none !important;
+}
+
 .page :global(.is-shortcut-guide-open .mobile-settings-button) {
   display: none !important;
 }
@@ -463,19 +480,28 @@
 }
 
 @media (orientation: portrait) {
-  .page :global(#game-root.has-touch-game-device) {
+  .touchGameDevice {
+    --poke-lounge-frame-available-height: max(
+      0px,
+      calc(var(--poke-lounge-container-height) - var(--poke-lounge-touch-controls-reserve))
+    );
+  }
+
+  .touchGameDevice .gameFrame {
     width: min(
-      100vw,
-      calc((100dvh - var(--poke-lounge-touch-controls-reserve)) * 4 / 3),
+      100%,
+      var(--poke-lounge-container-width),
+      calc(var(--poke-lounge-frame-available-height) * 4 / 3),
       var(--poke-lounge-max-display-width)
     );
+    max-height: var(--poke-lounge-frame-available-height);
     margin-top: max(8px, env(safe-area-inset-top));
     align-self: start;
     justify-self: center;
   }
 
-  .page:fullscreen :global(#game-root.has-touch-game-device),
-  .page:global(.is-game-fullscreen-fallback) :global(#game-root.has-touch-game-device) {
+  .page:fullscreen.touchGameDevice .gameFrame,
+  .page:global(.is-game-fullscreen-fallback).touchGameDevice .gameFrame {
     width: min(100vw, calc(100dvh * 4 / 3), var(--poke-lounge-max-display-width));
     max-height: 100dvh;
     margin-top: 0;
@@ -500,7 +526,7 @@
 }
 
 @media (orientation: landscape) {
-  .page :global(.has-touch-game-device .fullscreen-toggle-button--mobile) {
+  .touchGameDevice :global(.fullscreen-toggle-button--mobile) {
     top: auto;
     bottom: max(12px, env(safe-area-inset-bottom));
   }

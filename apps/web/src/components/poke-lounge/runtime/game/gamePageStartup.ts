@@ -10,11 +10,10 @@ import {
   resolveGameCanvasSize,
   type GameViewportDisplaySize,
 } from "./gameViewport";
-import { renderFullscreenToggle } from "./input/fullscreenToggle";
 import { renderMobileSettingsToggle } from "./input/settings-toggle";
 import { renderMobileTouchControls } from "./input/mobileTouchControls";
 import { createMultiplayerRoom } from "./network/multiplayerRoomFactory";
-import { readRoomEntryFromLocation } from "./network/roomEntry";
+import { readRoomEntryFromLocation, type RoomEntryMode } from "./network/roomEntry";
 import { renderRoomEntryScreen, type RoomEntrySelection } from "./network/roomEntryScreen";
 import { renderWebRtcSignalingPanel } from "./network/webRtcSignalingPanel";
 import { createWebRtcRoom, isWebRtcRoom } from "./network/webRtcRoom";
@@ -112,15 +111,17 @@ export async function startGamePage(
       return;
     }
 
+    const roomEntry = readRoomEntryFromLocation(gameUrl);
     const multiplayerRoom = (dependencies.createMultiplayerRoom ?? createMultiplayerRoom)({
       createWebRtcRoom,
       searchParams: gameUrl.searchParams,
     });
-    const roomEntry = readRoomEntryFromLocation(gameUrl);
+    const competitiveRoundsEnabled = isCompetitiveRoomEntryMode(roomEntry.mode);
     activeMultiplayerRoom = multiplayerRoom;
     mount.innerHTML = "";
     const game = (dependencies.createPokeLoungeGame ?? createPokeLoungeGame)(mount, {
       ...(battleE2eScenario ? { battleE2eScenario } : {}),
+      competitiveRoundsEnabled,
       gameStateStore,
       initialScene,
       multiplayerRoom,
@@ -130,10 +131,6 @@ export async function startGamePage(
     activeGame = game;
     renderMobileTouchControls(mount);
     if (mount.classList.contains("has-touch-game-device")) {
-      renderFullscreenToggle(mount, {
-        className: "fullscreen-toggle-button--mobile",
-        placement: "mobile",
-      });
       renderMobileSettingsToggle(mount);
     }
     const returnToRoomEntry = () => {
@@ -157,11 +154,7 @@ export async function startGamePage(
       showRoomEntry();
     };
 
-    if (
-      roomEntry.mode === "local-room" ||
-      roomEntry.mode === "server-room" ||
-      roomEntry.mode === "webrtc"
-    ) {
+    if (competitiveRoundsEnabled) {
       renderRoomLeaveButton(mount, returnToRoomEntry);
     }
 
@@ -234,11 +227,7 @@ export async function startGamePage(
   const continueToSelectedRoomOrEntry = () => {
     const roomEntry = readRoomEntryFromLocation(currentUrl);
 
-    if (
-      roomEntry.mode === "local-room" ||
-      roomEntry.mode === "server-room" ||
-      roomEntry.mode === "webrtc"
-    ) {
+    if (isCompetitiveRoomEntryMode(roomEntry.mode)) {
       startGameAfterStarterSelection(currentUrl);
       return;
     }
@@ -248,6 +237,10 @@ export async function startGamePage(
 
   continueToSelectedRoomOrEntry();
   return handle;
+}
+
+function isCompetitiveRoomEntryMode(mode: RoomEntryMode): boolean {
+  return mode === "local-room" || mode === "server-room" || mode === "webrtc";
 }
 
 function applyRoomEntrySelection(url: URL, selection: RoomEntrySelection): void {

@@ -168,9 +168,39 @@ test.describe("Poke Lounge", () => {
     const wildBattleMoveSets = readPublicJson("/game-data/wild-battle-move-sets.json") as {
       species?: Record<string, number[]>;
     };
+    const audioManifest = readPublicJson("/assets/poke-lounge/audio/audio-manifest.json") as {
+      bgm?: Array<{
+        id: string;
+        src: string;
+        durationMs: number;
+        sizeBytes: number;
+        defaultVolume: number;
+        source?: {
+          sdatPath?: string;
+          sequenceIndex?: number;
+          sequenceName?: string;
+        };
+      }>;
+    };
 
     expect(levelUpMoveTable.species?.["155"]).toContainEqual({ level: 19, moveId: 172 });
     expect(wildBattleMoveSets.species?.["155"]).toEqual([52, 43]);
+    const fieldDayBgm = audioManifest.bgm?.find(item => item.id === "field-day");
+    expect(fieldDayBgm).toMatchObject({
+      id: "field-day",
+      src: "/assets/poke-lounge/audio/bgm/field-day.mp3",
+      durationMs: 30000,
+      defaultVolume: 0.24,
+      source: {
+        sdatPath: "data/sound/gs_sound_data.sdat",
+        sequenceIndex: 1028,
+        sequenceName: "SEQ_GS_R_1_29",
+      },
+    });
+    expect(fieldDayBgm?.sizeBytes).toBe(
+      fs.statSync(path.join(process.cwd(), "public/assets/poke-lounge/audio/bgm/field-day.mp3"))
+        .size,
+    );
 
     const learnedMoves = applyLevelUpPlayerMoves({
       pokemon: {
@@ -551,10 +581,43 @@ test.describe("Poke Lounge", () => {
     await startBattleScenario(page, "wild-victory");
 
     await expect
-      .poll(() => audioRequests.some(url => url.includes("/bgm/") && url.endsWith(".mp3")), {
+      .poll(() => audioRequests.some(url => url.endsWith("/bgm/wild-battle.mp3")), {
         timeout: 10000,
       })
       .toBe(true);
+
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("world scene 진입 시 Poke Lounge 필드 BGM asset을 요청한다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+    const audioRequests: string[] = [];
+
+    page.on("request", request => {
+      const url = request.url();
+
+      if (url.includes("/assets/poke-lounge/audio/")) {
+        audioRequests.push(url);
+      }
+    });
+
+    await startSoloGame(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?scene=world&e2e=1`);
+
+    await expect
+      .poll(() => audioRequests.some(url => url.endsWith("/bgm/field-day.mp3")), {
+        timeout: 10000,
+      })
+      .toBe(true);
+
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("넓은 데스크톱에서도 게임 화면은 현재 컨테이너 안에 맞춰진다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await page.setViewportSize({ width: 2048, height: 1080 });
+    await startBattleScenario(page, "wild-victory");
+    await expectGameFrameInsideMainContainer(page);
 
     expect(browserErrors.join("\n")).toBe("");
   });
@@ -730,10 +793,27 @@ test.describe("Poke Lounge", () => {
     expect(browserErrors.join("\n")).toBe("");
   });
 
-  test("roundMs=1000로 라운드 타이머가 tournament phase로 넘어간다", async ({ page }) => {
+  test("solo는 roundMs가 지나도 tournament phase로 넘어가지 않는다", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
 
     await startSoloGame(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?roundMs=1000&e2e=1`);
+    await page.waitForTimeout(1500);
+    expect((await getGameStateSnapshot(page))?.round.phase).toBe("waiting");
+
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("local room은 roundMs=1000로 라운드 타이머가 tournament phase로 넘어간다", async ({
+    page,
+  }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await gotoWithRetry(
+      page,
+      `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?network=local&room=${LOCAL_ROOM_CODE}&roundMs=1000&e2e=1`,
+    );
+    await continuePastOptionalStarter(page);
+    await waitForGameCanvas(page);
     await expect
       .poll(() => getGameStateSnapshot(page).then(state => state?.round.phase ?? null), {
         timeout: 10000,
@@ -757,10 +837,11 @@ test.describe("Poke Lounge", () => {
     await startSoloGame(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
     await expectCanvasFramed(page, {
       maxWidth: 1200,
-      minWidth: 1150,
+      minWidth: 1000,
       viewportWidth: 1280,
       viewportHeight: 900,
     });
+    await expectGameFrameInsideMainContainer(page);
     await expectWorldVisualScale(page);
     await expect(page.locator("[data-fullscreen-toggle]")).toHaveCount(0);
     await expect(page.locator("[data-poke-lounge-settings='true']")).toHaveCount(0);
@@ -792,10 +873,11 @@ test.describe("Poke Lounge", () => {
       canvasHeight: 576,
       canvasWidth: 768,
       maxWidth: 1200,
-      minWidth: 1150,
+      minWidth: 1000,
       viewportWidth: 1280,
       viewportHeight: 900,
     });
+    await expectGameFrameInsideMainContainer(page);
 
     const settingsFullscreenButton = settingsPanel.locator(
       "[data-poke-lounge-setting-action='fullscreen']",
@@ -842,15 +924,22 @@ test.describe("Poke Lounge", () => {
     await startSoloGame(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
     await expectCanvasFramed(page, {
       maxWidth: 1200,
-      minWidth: 1150,
+      minWidth: 1000,
       viewportWidth: 1280,
       viewportHeight: 900,
     });
+    await expectGameFrameInsideMainContainer(page);
     await expectWorldVisualScale(page);
 
     await page.setViewportSize({ width: 390, height: 844 });
     await expectCanvasFramed(page, { maxWidth: 390, viewportWidth: 390, viewportHeight: 844 });
     await expectMobileTouchLayout(page);
+    await expect(page.locator("#game-root [data-fullscreen-toggle-placement='mobile']")).toHaveCount(
+      0,
+    );
+    await expect(
+      page.locator("[data-poke-lounge-web-fullscreen-toggle='true']"),
+    ).toBeVisible();
     await expectMobileFullscreenButtonLayout(page);
     await expectMobileSettingsButtonLayout(page);
     await expectMobileTouchPressAnimation(page);
@@ -1477,6 +1566,49 @@ async function expectNoViewportOverflow(page: Page): Promise<void> {
   expect(layout).not.toBeNull();
   expect(layout.documentScrollWidth).toBeLessThanOrEqual(layout.innerWidth + 1);
   expect(layout.bodyScrollWidth).toBeLessThanOrEqual(layout.innerWidth + 1);
+}
+
+async function expectGameFrameInsideMainContainer(page: Page): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const frame = document
+            .querySelector("[data-poke-lounge-game-frame='true']")
+            ?.getBoundingClientRect();
+          const root = document.querySelector("#game-root")?.getBoundingClientRect();
+          const canvas = document.querySelector("#game-root canvas")?.getBoundingClientRect();
+          const container = document.querySelector("#main-scroll-container") as HTMLElement | null;
+
+          if (!frame || !root || !canvas || !container) {
+            return false;
+          }
+
+          const containerRect = container.getBoundingClientRect();
+          const containerStyle = getComputedStyle(container);
+          const paddingLeft = Number.parseFloat(containerStyle.paddingLeft) || 0;
+          const paddingRight = Number.parseFloat(containerStyle.paddingRight) || 0;
+          const paddingTop = Number.parseFloat(containerStyle.paddingTop) || 0;
+          const paddingBottom = Number.parseFloat(containerStyle.paddingBottom) || 0;
+          const contentLeft = containerRect.left + paddingLeft;
+          const contentRight = containerRect.right - paddingRight;
+          const contentTop = Math.max(containerRect.top + paddingTop, 0);
+          const contentBottom = Math.min(containerRect.bottom - paddingBottom, window.innerHeight);
+          const rects = [frame, root, canvas];
+
+          return rects.every(
+            rect =>
+              rect.left >= contentLeft - 1 &&
+              rect.right <= contentRight + 1 &&
+              rect.top >= contentTop - 1 &&
+              rect.bottom <= contentBottom + 1,
+          );
+        }),
+      { timeout: 10000 },
+    )
+    .toBe(true);
+
+  await expectNoViewportOverflow(page);
 }
 
 async function getPokeLoungeLayoutSnapshot(page: Page): Promise<{

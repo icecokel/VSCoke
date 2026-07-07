@@ -95,7 +95,7 @@ export type PokeLoungePublicRoomState = Omit<
 
 export interface CreatePokeLoungeRoomInput {
   playerId?: string;
-  sessionId?: string;
+  sessionId: string;
   userId?: string;
   displayName?: string;
   roundDurationMs?: number;
@@ -104,7 +104,7 @@ export interface CreatePokeLoungeRoomInput {
 
 export interface JoinPokeLoungeRoomInput {
   playerId?: string;
-  sessionId?: string;
+  sessionId: string;
   userId?: string;
   displayName?: string;
   nowMs?: number;

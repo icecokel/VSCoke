@@ -185,9 +185,10 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     reason?: "faint" | "timeout" | "forfeit" | "run" | "capture";
   }) => {
     const match = latestState?.tournament.matches.find(row => row.matchId === payload.matchId);
+    const winnerPlayerId = mapLocalPlayerIdForServer(payload.winnerPlayerId);
     const loserPlayerId =
-      payload.loserPlayerId ??
-      match?.participantIds.find(candidate => candidate !== payload.winnerPlayerId);
+      (payload.loserPlayerId ? mapLocalPlayerIdForServer(payload.loserPlayerId) : undefined) ??
+      match?.participantIds.find(candidate => candidate !== winnerPlayerId);
 
     if (!loserPlayerId) {
       return;
@@ -199,7 +200,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         reportingPlayerId: serverPlayerId,
         reportingSessionId: sessionId,
         matchId: payload.matchId,
-        winnerPlayerId: payload.winnerPlayerId,
+        winnerPlayerId,
         loserPlayerId,
         reason: payload.reason ?? "faint",
       }),
@@ -336,6 +337,10 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
 
   function mapServerPlayerIdForLocalStore(playerId: string): string {
     return playerId === serverPlayerId ? localPlayerId : playerId;
+  }
+
+  function mapLocalPlayerIdForServer(playerId: string): string {
+    return playerId === localPlayerId ? serverPlayerId : playerId;
   }
 
   function getHostPlayerIdForLocalStore(state: ServerRoomState): string {

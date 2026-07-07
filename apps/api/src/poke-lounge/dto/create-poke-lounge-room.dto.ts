@@ -1,12 +1,12 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { CreatePokeLoungeRoomInput } from './../poke-lounge-room.types';
 
 export class CreatePokeLoungeRoomDto implements CreatePokeLoungeRoomInput {
   @ApiPropertyOptional({ example: 'player-a' })
   playerId?: string;
 
-  @ApiPropertyOptional({ example: 'session-a' })
-  sessionId?: string;
+  @ApiProperty({ example: 'session-a' })
+  sessionId!: string;
 
   @ApiPropertyOptional({ example: 'user-123' })
   userId?: string;

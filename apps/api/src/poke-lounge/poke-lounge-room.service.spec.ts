@@ -90,6 +90,27 @@ describe('PokeLoungeRoomService', () => {
     ]);
   });
 
+  it('rejects room creation and new joins without a session id', () => {
+    expect(() =>
+      service.createRoom({
+        playerId: 'player-a',
+        sessionId: '',
+      }),
+    ).toThrow(BadRequestException);
+
+    service.createRoom({
+      playerId: 'player-a',
+      sessionId: 'session-a',
+    });
+
+    expect(() =>
+      service.joinRoom('ROOM01', {
+        playerId: 'player-b',
+        sessionId: '',
+      }),
+    ).toThrow(BadRequestException);
+  });
+
   it('does not start the server round until every participant is ready', () => {
     service.createRoom({
       playerId: 'player-a',

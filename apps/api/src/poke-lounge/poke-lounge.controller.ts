@@ -21,7 +21,9 @@ export class PokeLoungeController {
   @Post('rooms')
   @ApiCreatedResponse({ type: PokeLoungeRoomResponseDto })
   createRoom(@Body() body?: CreatePokeLoungeRoomDto) {
-    return toPublicRoomState(this.roomService.createRoom(body ?? {}));
+    return toPublicRoomState(
+      this.roomService.createRoom(body ?? { sessionId: '' }),
+    );
   }
 
   @Get('rooms/:roomCode')
@@ -38,7 +40,9 @@ export class PokeLoungeController {
     @Param('roomCode') roomCode: string,
     @Body() body?: JoinPokeLoungeRoomDto,
   ) {
-    return toPublicRoomState(this.roomService.joinRoom(roomCode, body ?? {}));
+    return toPublicRoomState(
+      this.roomService.joinRoom(roomCode, body ?? { sessionId: '' }),
+    );
   }
 
   @Post('rooms/:roomCode/ready')

@@ -494,7 +494,11 @@ function createParticipant(
   index: number,
 ): PokeLoungeRoomParticipant {
   const playerId = input.playerId?.trim() || `player-${index}`;
-  const sessionId = input.sessionId?.trim() || `session-${index}`;
+  const sessionId = input.sessionId?.trim();
+
+  if (!sessionId) {
+    throw new BadRequestException('sessionId is required');
+  }
 
   return {
     sessionId,

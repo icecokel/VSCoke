@@ -222,6 +222,11 @@ describe('Poke Lounge server rooms (e2e)', () => {
       });
 
     await request(httpServer)
+      .post('/poke-lounge/rooms/ROOM01/join')
+      .send({ playerId: 'player-c' })
+      .expect(400);
+
+    await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/ready')
       .send({ playerId: 'player-a', ready: true, nowMs: 0 })
       .expect(400);
@@ -490,21 +495,13 @@ describe('Poke Lounge server rooms (e2e)', () => {
       .expect(400);
   });
 
-  it('handles omitted request bodies without returning a 500 response', async () => {
+  it('rejects omitted request bodies without returning a 500 response', async () => {
+    await request(httpServer).post('/poke-lounge/rooms').expect(400);
+
     await request(httpServer)
       .post('/poke-lounge/rooms')
-      .expect(201)
-      .expect((response) => {
-        const body = response.body as PokeLoungeRoomState;
-
-        expect(body.roomCode).toBe('ROOM01');
-        expect(body.participants).toEqual([
-          expect.objectContaining({
-            playerId: 'player-1',
-            role: 'participant',
-          }),
-        ]);
-      });
+      .send({ playerId: 'player-1', sessionId: 'session-a' })
+      .expect(201);
 
     await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/ready')

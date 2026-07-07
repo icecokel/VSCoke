@@ -85,6 +85,53 @@ test.describe("Poke Lounge server multiplayer", () => {
     expect(server.calls).toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/result`);
   });
 
+  test("server room result submit은 로컬 player id를 서버 participant id로 변환한다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, { waitForResult: true, wrapped: true });
+    await startServerRoom(
+      page,
+      `/${LOCALE}/game/poke-lounge?network=server&room=${ROOM_CODE}&serverPlayerId=server-player-alpha&serverSessionId=server-session-alpha&e2e=1`,
+    );
+    await expect
+      .poll(() => Promise.resolve(server.joinedParticipants.length), { timeout: 30000 })
+      .toBeGreaterThanOrEqual(1);
+
+    const localPlayerId = await getCurrentPlayerId(page);
+    const [joinedParticipant] = server.joinedParticipants;
+
+    expect(joinedParticipant).toMatchObject({
+      playerId: "server-player-alpha",
+      sessionId: "server-session-alpha",
+    });
+    expect(localPlayerId).not.toBe(joinedParticipant.playerId);
+
+    await page.evaluate((winnerPlayerId: string) => {
+      window.dispatchEvent(
+        new CustomEvent("poke-lounge:e2e-server-result", {
+          detail: {
+            matchId: "round-1-match-1",
+            winnerPlayerId,
+            reason: "faint",
+          },
+        }),
+      );
+    }, localPlayerId ?? "player-1");
+
+    await expect(page.getByTestId("poke-lounge-result-score")).toHaveText("100", {
+      timeout: 30000,
+    });
+    await expect.poll(() => Promise.resolve(server.resultBodies.length)).toBe(1);
+    expect(server.resultBodies[0]).toMatchObject({
+      reportingPlayerId: joinedParticipant.playerId,
+      reportingSessionId: joinedParticipant.sessionId,
+      winnerPlayerId: joinedParticipant.playerId,
+      loserPlayerId: "player-2",
+    });
+  });
+
   test("server room create는 URL을 room code로 갱신하고 join input으로 참가한 두 컨텍스트는 서로 다른 identity를 유지한다", async ({
     browser,
   }) => {
@@ -287,10 +334,23 @@ async function getRoundPhase(page: Page): Promise<string | null> {
   });
 }
 
+async function getCurrentPlayerId(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const pokeWindow = window as PokeLoungeWindow;
+
+    return pokeWindow.__POKE_LOUNGE_E2E__?.getGameStateSnapshot().currentPlayerId ?? null;
+  });
+}
+
 async function mockServerRoom(
   page: Page,
   server: MockServerState,
-  options: { completeOnGet?: boolean; rejectResult?: boolean; wrapped?: boolean } = {},
+  options: {
+    completeOnGet?: boolean;
+    rejectResult?: boolean;
+    waitForResult?: boolean;
+    wrapped?: boolean;
+  } = {},
 ): Promise<void> {
   await page.route("**/poke-lounge/rooms**", async route => {
     const request = route.request();
@@ -321,13 +381,17 @@ async function mockServerRoom(
     }
 
     if (method === "POST" && suffix === "/result") {
+      const body = (await request.postDataJSON()) as MockServerState["resultBodies"][number];
+      server.resultBodies.push(body);
+      const resultError = validateResultBody(body, server);
+
       await route.fulfill({
-        status: options.rejectResult ? 400 : 201,
+        status: options.rejectResult || resultError ? 400 : 201,
         contentType: "application/json",
         body: stringifyResponse(
-          options.rejectResult
-            ? { message: "Invalid match result" }
-            : createCompletedRoomState(server),
+          options.rejectResult || resultError
+            ? { message: resultError ?? "Invalid match result" }
+            : markResultAccepted(server),
           options,
         ),
       });
@@ -338,7 +402,9 @@ async function mockServerRoom(
       status: method === "GET" ? 200 : 201,
       contentType: "application/json",
       body: stringifyResponse(
-        options.rejectResult || (options.completeOnGet && method !== "GET")
+        options.rejectResult ||
+          (options.completeOnGet && method !== "GET") ||
+          (options.waitForResult && !server.resultAccepted)
           ? createTournamentRoomState(server)
           : createCompletedRoomState(server),
         options,
@@ -374,6 +440,15 @@ interface MockServerState {
       maxHp: number;
     };
   }>;
+  resultBodies: Array<{
+    reportingPlayerId?: string;
+    reportingSessionId?: string;
+    matchId?: string;
+    winnerPlayerId?: string;
+    loserPlayerId?: string;
+    reason?: string;
+  }>;
+  resultAccepted: boolean;
   joinedPlayerIds: Set<string>;
   joinedSessionIds: Set<string>;
   joinedParticipants: Array<{
@@ -387,6 +462,8 @@ function createMockServerState(): MockServerState {
   return {
     calls: [],
     partySnapshotBodies: [],
+    resultBodies: [],
+    resultAccepted: false,
     joinedPlayerIds: new Set(),
     joinedSessionIds: new Set(),
     joinedParticipants: [],
@@ -418,6 +495,40 @@ async function recordJoinedIdentity(request: Request, server: MockServerState) {
 
 function stringifyResponse(value: unknown, options: { wrapped?: boolean }): string {
   return JSON.stringify(options.wrapped ? { success: true, data: value } : value);
+}
+
+function markResultAccepted(server: MockServerState) {
+  server.resultAccepted = true;
+
+  return createCompletedRoomState(server);
+}
+
+function validateResultBody(
+  body: MockServerState["resultBodies"][number],
+  server: MockServerState,
+): string | null {
+  const participants = getStateParticipants(server);
+  const reporter = participants.find(
+    participant => participant.playerId === body.reportingPlayerId,
+  );
+  const participantIds = new Set(participants.map(participant => participant.playerId));
+
+  if (!reporter || reporter.sessionId !== body.reportingSessionId) {
+    return "Invalid reporter";
+  }
+
+  if (
+    body.matchId !== "round-1-match-1" ||
+    !body.winnerPlayerId ||
+    !body.loserPlayerId ||
+    body.winnerPlayerId === body.loserPlayerId ||
+    !participantIds.has(body.winnerPlayerId) ||
+    !participantIds.has(body.loserPlayerId)
+  ) {
+    return "Invalid match participants";
+  }
+
+  return null;
 }
 
 function createWaitingRoomState(server: MockServerState) {
@@ -471,7 +582,6 @@ function createCompletedRoomState(server?: MockServerState) {
     status: "completed",
     participants: [
       {
-        sessionId: first.sessionId,
         playerId: first.playerId,
         displayName: first.displayName ?? "Player 1",
         role: "participant",
@@ -479,7 +589,6 @@ function createCompletedRoomState(server?: MockServerState) {
         connected: true,
       },
       {
-        sessionId: second.sessionId,
         playerId: second.playerId,
         displayName: second.displayName ?? "Player 2",
         role: "participant",

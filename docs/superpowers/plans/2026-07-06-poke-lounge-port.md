@@ -290,18 +290,22 @@ Expected current top-level public directories are `images` and `sounds`. If `ass
 
 - [ ] **Step 2: Create destination directories**
 
+2026-07-07 update: the original copy commands in this section were superseded
+by the final curated asset layout. Do not create public legacy extraction
+directories in VSCoke.
+
 ```bash
 mkdir -p \
   apps/web/public/assets/pokemon \
-  apps/web/public/assets/rom-player \
+  apps/web/public/assets/poke-lounge/dump/pbr_winframe.narc \
+  apps/web/public/assets/poke-lounge/extraction \
+  apps/web/public/assets/poke-lounge/player \
+  apps/web/public/assets/poke-lounge/screens/pbr_b_plist_gra.narc \
+  apps/web/public/assets/poke-lounge/textures/a_0_8_1_0133 \
+  apps/web/public/assets/poke-lounge/textures/a_0_8_1_0132 \
+  apps/web/public/assets/poke-lounge/textures/a_0_8_1_0039 \
+  apps/web/public/assets/poke-lounge/textures/a_0_8_1_0184 \
   apps/web/public/assets/pokemmo-reference/tilesets \
-  apps/web/public/assets/rom-extraction \
-  apps/web/public/assets/rom-screens/pbr_b_plist_gra.narc \
-  apps/web/public/assets/rom-dump/pbr_winframe.narc \
-  apps/web/public/assets/rom-textures/a_0_8_1_0133 \
-  apps/web/public/assets/rom-textures/a_0_8_1_0132 \
-  apps/web/public/assets/rom-textures/a_0_8_1_0039 \
-  apps/web/public/assets/rom-textures/a_0_8_1_0184 \
   apps/web/public/game-data \
   apps/web/public/maps/pokemmo-reference
 ```
@@ -317,17 +321,9 @@ install -m 0644 /Users/smlee/Documents/poke-lounge/public/maps/pokemmo-reference
 
 ```bash
 rsync -a /Users/smlee/Documents/poke-lounge/public/assets/pokemon/ apps/web/public/assets/pokemon/
-rsync -a /Users/smlee/Documents/poke-lounge/public/assets/rom-player/ apps/web/public/assets/rom-player/
 install -m 0644 /Users/smlee/Documents/poke-lounge/public/assets/pokemmo-reference/tilesets/tuxmon-sample-32px-extruded.png apps/web/public/assets/pokemmo-reference/tilesets/tuxmon-sample-32px-extruded.png
-install -m 0644 /Users/smlee/Documents/poke-lounge/public/assets/rom-extraction/personal-data.json apps/web/public/assets/rom-extraction/personal-data.json
-install -m 0644 /Users/smlee/Documents/poke-lounge/public/assets/rom-extraction/growth-table.json apps/web/public/assets/rom-extraction/growth-table.json
-install -m 0644 /Users/smlee/Documents/poke-lounge/public/assets/rom-extraction/refined-battle-records.json apps/web/public/assets/rom-extraction/refined-battle-records.json
-install -m 0644 /Users/smlee/Documents/poke-lounge/public/assets/rom-screens/pbr_b_plist_gra.narc/screen_0010_gfx_0022_pal_0023.png apps/web/public/assets/rom-screens/pbr_b_plist_gra.narc/screen_0010_gfx_0022_pal_0023.png
-install -m 0644 /Users/smlee/Documents/poke-lounge/public/assets/rom-dump/pbr_winframe.narc/file_0000_pal_0024.png apps/web/public/assets/rom-dump/pbr_winframe.narc/file_0000_pal_0024.png
-install -m 0644 /Users/smlee/Documents/poke-lounge/public/assets/rom-textures/a_0_8_1_0133/pcwoman1_5.png apps/web/public/assets/rom-textures/a_0_8_1_0133/pcwoman1_5.png
-install -m 0644 /Users/smlee/Documents/poke-lounge/public/assets/rom-textures/a_0_8_1_0132/shopm1_5.png apps/web/public/assets/rom-textures/a_0_8_1_0132/shopm1_5.png
-install -m 0644 /Users/smlee/Documents/poke-lounge/public/assets/rom-textures/a_0_8_1_0039/gentleman_5.png apps/web/public/assets/rom-textures/a_0_8_1_0039/gentleman_5.png
-install -m 0644 /Users/smlee/Documents/poke-lounge/public/assets/rom-textures/a_0_8_1_0184/mania_5.png apps/web/public/assets/rom-textures/a_0_8_1_0184/mania_5.png
+# Copy the allowlisted derived JSON/PNG files into apps/web/public/assets/poke-lounge/**.
+# Keep source-specific extraction directory names out of VSCoke public paths.
 ```
 
 - [ ] **Step 5: Verify required files exist and size stays small**
@@ -339,13 +335,13 @@ test -f apps/web/public/game-data/wild-encounter-tables.json
 test -f apps/web/public/maps/pokemmo-reference/town.json
 test -f apps/web/public/assets/pokemon/front/152.png
 test -f apps/web/public/assets/pokemon/battle/155/front-default-normal.png
-test -f apps/web/public/assets/rom-player/hero-atlas.json
-test -f apps/web/public/assets/rom-player/hero-atlas.png
-test -f apps/web/public/assets/rom-extraction/personal-data.json
-test -f apps/web/public/assets/rom-extraction/growth-table.json
-test -f apps/web/public/assets/rom-extraction/refined-battle-records.json
-test -f apps/web/public/assets/rom-screens/pbr_b_plist_gra.narc/screen_0010_gfx_0022_pal_0023.png
-test -f apps/web/public/assets/rom-dump/pbr_winframe.narc/file_0000_pal_0024.png
+test -f apps/web/public/assets/poke-lounge/player/hero-atlas.json
+test -f apps/web/public/assets/poke-lounge/player/hero-atlas.png
+test -f apps/web/public/assets/poke-lounge/extraction/personal-data.json
+test -f apps/web/public/assets/poke-lounge/extraction/growth-table.json
+test -f apps/web/public/assets/poke-lounge/extraction/refined-battle-records.json
+test -f apps/web/public/assets/poke-lounge/screens/pbr_b_plist_gra.narc/screen_0010_gfx_0022_pal_0023.png
+test -f apps/web/public/assets/poke-lounge/dump/pbr_winframe.narc/file_0000_pal_0024.png
 du -sh apps/web/public/assets apps/web/public/game-data apps/web/public/maps
 ```
 

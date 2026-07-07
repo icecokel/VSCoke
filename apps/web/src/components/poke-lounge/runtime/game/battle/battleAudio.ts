@@ -1,5 +1,9 @@
-import { playPokeLoungeSfx } from "../audio/poke-lounge-audio";
-import type { PokeLoungeSfxId } from "../audio/poke-lounge-audio.types";
+import {
+  playPokeLoungeBgm,
+  playPokeLoungeSfx,
+  stopPokeLoungeBgm,
+} from "../audio/poke-lounge-audio";
+import type { PokeLoungeBgmId, PokeLoungeSfxId } from "../audio/poke-lounge-audio.types";
 
 export interface RomBattleSoundCue {
   readonly sdatPath: string;
@@ -7,7 +11,8 @@ export interface RomBattleSoundCue {
   readonly sequenceIndex: number;
   readonly fileId: number;
   readonly rawFilePath: string;
-  readonly sfxId: PokeLoungeSfxId;
+  readonly sfxId?: PokeLoungeSfxId;
+  readonly bgmId?: PokeLoungeBgmId;
 }
 
 export const BATTLE_SOUND_CUES = {
@@ -17,7 +22,7 @@ export const BATTLE_SOUND_CUES = {
     sequenceIndex: 1116,
     fileId: 89,
     rawFilePath: "data/processed/rom-sound/00_data__sound__gs_sound_data.sdat/file_0089.bin",
-    sfxId: "battle-start",
+    bgmId: "wild-battle",
   },
   confirm: {
     sdatPath: "data/sound/gs_sound_data.sdat",
@@ -39,6 +44,14 @@ export const BATTLE_SOUND_CUES = {
 
 export function playBattleTransitionSound(): void {
   playPokeLoungeSfx("battle-transition");
+}
+
+export function playWildBattleBgm(): void {
+  playPokeLoungeBgm("wild-battle");
+}
+
+export function stopWildBattleBgm(): void {
+  stopPokeLoungeBgm("wild-battle");
 }
 
 export function playBattleStartSound(): void {

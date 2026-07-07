@@ -1,5 +1,7 @@
 import type {
   PokeLoungeAudioManifest,
+  PokeLoungeBgmId,
+  PokeLoungeBgmManifestItem,
   PokeLoungeSfxId,
   PokeLoungeSfxManifestItem,
 } from "./poke-lounge-audio.types";
@@ -7,11 +9,18 @@ import type {
 const AUDIO_MANIFEST_PATH = "/assets/poke-lounge/audio/audio-manifest.json";
 const MAX_PRELOADED_BYTES = 500_000;
 
+type PokeLoungeAudioItemId = PokeLoungeSfxId | PokeLoungeBgmId;
+type PokeLoungeAudioManifestItem = PokeLoungeSfxManifestItem | PokeLoungeBgmManifestItem;
+
 let manifestPromise: Promise<PokeLoungeAudioManifest> | null = null;
 let audioContext: AudioContext | null = null;
 let muted = false;
 const bufferPromises = new Map<PokeLoungeSfxId, Promise<AudioBuffer | null>>();
-const htmlAudioElements = new Map<PokeLoungeSfxId, HTMLAudioElement>();
+const htmlAudioElements = new Map<PokeLoungeAudioItemId, HTMLAudioElement>();
+let activeBgm: {
+  id: PokeLoungeBgmId;
+  audio: HTMLAudioElement;
+} | null = null;
 
 export function bindPokeLoungeAudioPrimeListeners(target: HTMLElement): () => void {
   const prime = () => {
@@ -49,10 +58,13 @@ export async function primePokeLoungeAudio(): Promise<void> {
   const totalBytes = manifest.sfx.reduce((sum, item) => sum + item.sizeBytes, 0);
   if (context && totalBytes <= MAX_PRELOADED_BYTES) {
     await Promise.all(manifest.sfx.map(item => loadAudioBuffer(item))).catch(() => undefined);
-    return;
+  } else {
+    manifest.sfx.forEach(item => {
+      getHtmlAudioElement(item);
+    });
   }
 
-  manifest.sfx.forEach(item => {
+  manifest.bgm.forEach(item => {
     getHtmlAudioElement(item);
   });
 }
@@ -65,8 +77,34 @@ export function playPokeLoungeSfx(id: PokeLoungeSfxId, options: { volume?: numbe
   void playPokeLoungeSfxAsync(id, options);
 }
 
+export function playPokeLoungeBgm(id: PokeLoungeBgmId, options: { volume?: number } = {}): void {
+  if (muted || typeof window === "undefined") {
+    return;
+  }
+
+  void playPokeLoungeBgmAsync(id, options).catch(() => undefined);
+}
+
+export function stopPokeLoungeBgm(id?: PokeLoungeBgmId): void {
+  if (id && activeBgm?.id !== id) {
+    return;
+  }
+
+  if (!activeBgm) {
+    return;
+  }
+
+  activeBgm.audio.pause();
+  activeBgm.audio.currentTime = 0;
+  activeBgm = null;
+}
+
 export function setPokeLoungeAudioMuted(nextMuted: boolean): void {
   muted = nextMuted;
+
+  if (muted) {
+    stopPokeLoungeBgm();
+  }
 }
 
 export function getPokeLoungeAudioMuted(): boolean {
@@ -93,10 +131,46 @@ async function playPokeLoungeSfxAsync(
   await playWithHtmlAudio(item, options.volume).catch(() => undefined);
 }
 
+async function playPokeLoungeBgmAsync(
+  id: PokeLoungeBgmId,
+  options: { volume?: number },
+): Promise<void> {
+  const item = await getManifestBgmItem(id);
+  if (!item) {
+    return;
+  }
+
+  const context = getAudioContext();
+  if (context?.state === "suspended") {
+    await context.resume().catch(() => undefined);
+  }
+
+  if (activeBgm?.id && activeBgm.id !== id) {
+    stopPokeLoungeBgm();
+  }
+
+  const audio = activeBgm?.id === id ? activeBgm.audio : getHtmlAudioElement(item);
+  audio.loop = true;
+  audio.volume = clampVolume(options.volume ?? item.defaultVolume);
+
+  if (activeBgm?.id !== id) {
+    audio.currentTime = 0;
+  }
+
+  activeBgm = { id, audio };
+  await audio.play();
+}
+
 async function getManifestItem(id: PokeLoungeSfxId): Promise<PokeLoungeSfxManifestItem | null> {
   const manifest = await loadAudioManifest().catch(() => null);
 
   return manifest?.sfx.find(item => item.id === id) ?? null;
+}
+
+async function getManifestBgmItem(id: PokeLoungeBgmId): Promise<PokeLoungeBgmManifestItem | null> {
+  const manifest = await loadAudioManifest().catch(() => null);
+
+  return manifest?.bgm.find(item => item.id === id) ?? null;
 }
 
 function loadAudioManifest(): Promise<PokeLoungeAudioManifest> {
@@ -105,7 +179,12 @@ function loadAudioManifest(): Promise<PokeLoungeAudioManifest> {
       throw new Error(`Failed to load Poke Lounge audio manifest: ${response.status}`);
     }
 
-    return (await response.json()) as PokeLoungeAudioManifest;
+    const manifest = (await response.json()) as PokeLoungeAudioManifest;
+
+    return {
+      ...manifest,
+      bgm: Array.isArray(manifest.bgm) ? manifest.bgm : [],
+    };
   });
 
   return manifestPromise;
@@ -187,7 +266,7 @@ async function playWithHtmlAudio(
   await audio.play();
 }
 
-function getHtmlAudioElement(item: PokeLoungeSfxManifestItem): HTMLAudioElement {
+function getHtmlAudioElement(item: PokeLoungeAudioManifestItem): HTMLAudioElement {
   const cached = htmlAudioElements.get(item.id);
   if (cached) {
     return cached;

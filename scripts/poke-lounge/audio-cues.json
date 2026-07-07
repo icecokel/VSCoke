@@ -65,5 +65,17 @@
       "defaultVolume": 0.5,
       "bitrate": "64k"
     }
+  ],
+  "bgm": [
+    {
+      "id": "wild-battle",
+      "sequenceName": "SEQ_GS_VS_NORAPOKE",
+      "sequenceIndex": 1116,
+      "durationMs": 30000,
+      "fadeOutMs": 0,
+      "gain": 0.38,
+      "defaultVolume": 0.28,
+      "bitrate": "80k"
+    }
   ]
 }

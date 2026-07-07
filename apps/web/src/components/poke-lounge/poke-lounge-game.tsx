@@ -6,6 +6,11 @@ import { Button } from "@/components/ui/button";
 import { useGame } from "@/contexts/game-context";
 import { getSessionApiIdToken, isAuthSessionError, type ApiTokenSession } from "@/lib/auth-token";
 import { submitScore } from "@/services/score-service";
+import {
+  GAME_FULLSCREEN_STATE_EVENT,
+  isGameFullscreenActive,
+  toggleGameFullscreen,
+} from "./runtime/game/input/fullscreenToggle";
 import styles from "./poke-lounge.module.css";
 
 type PokeLoungeWindow = Window & {
@@ -19,15 +24,76 @@ interface FinalResultState {
   playTime: number;
 }
 
+function isEditableEventTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return (
+    target.isContentEditable ||
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement
+  );
+}
+
 export function PokeLoungeGame() {
   const { setGamePlaying } = useGame();
   const { data: session, status } = useSession();
+  const pageRef = useRef<HTMLElement>(null);
   const startedAtMsRef = useRef(Date.now());
   const [finalResult, setFinalResult] = useState<FinalResultState | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [fullscreenActive, setFullscreenActive] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<
     "idle" | "submitting" | "success" | "auth" | "error"
   >("idle");
   const [submitMessage, setSubmitMessage] = useState<string>("");
+
+  const syncFullscreenState = useCallback(() => {
+    const page = pageRef.current;
+    setFullscreenActive(page ? isGameFullscreenActive(page) : false);
+  }, []);
+
+  const handleFullscreenToggle = useCallback(() => {
+    const page = pageRef.current;
+    if (!page) {
+      return;
+    }
+
+    void toggleGameFullscreen(page).finally(syncFullscreenState);
+  }, [syncFullscreenState]);
+
+  useEffect(() => {
+    const handleFullscreenStateChange = () => syncFullscreenState();
+
+    document.addEventListener("fullscreenchange", handleFullscreenStateChange);
+    document.addEventListener(GAME_FULLSCREEN_STATE_EVENT, handleFullscreenStateChange);
+    syncFullscreenState();
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenStateChange);
+      document.removeEventListener(GAME_FULLSCREEN_STATE_EVENT, handleFullscreenStateChange);
+    };
+  }, [syncFullscreenState]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || isEditableEventTarget(event.target)) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      setSettingsOpen(open => !open);
+    };
+
+    window.addEventListener("keydown", handleKeyDown, true);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +120,7 @@ export function PokeLoungeGame() {
       delete pokeWindow.__POKE_LOUNGE_CLEANUP_FOR_TEST__;
       delete pokeWindow.__POKE_LOUNGE_E2E__;
       delete document.documentElement.dataset.pokeLoungeE2eBattle;
+      pageRef.current?.classList.remove("is-game-fullscreen-fallback");
       document.body.classList.remove("is-game-fullscreen-fallback-active");
       document.querySelector<HTMLElement>("#game-root")?.replaceChildren();
     };
@@ -128,8 +195,45 @@ export function PokeLoungeGame() {
   }, [finalResult, session, status, submitStatus]);
 
   return (
-    <main className={`${styles.page} phaser-game-page`} data-testid="poke-lounge-page">
+    <main
+      ref={pageRef}
+      className={`${styles.page} phaser-game-page`}
+      data-testid="poke-lounge-page"
+    >
       <div id="game-root" data-testid="poke-lounge-game-root" />
+      {settingsOpen ? (
+        <section
+          className={styles.settingsOverlay}
+          data-poke-lounge-settings="true"
+          aria-label="Poke Lounge 설정"
+        >
+          <div className={styles.settingsHeader}>
+            <p className={styles.settingsTitle}>설정</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={styles.settingsCloseButton}
+              onClick={() => setSettingsOpen(false)}
+              data-poke-lounge-settings-close="true"
+            >
+              닫기
+            </Button>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className={styles.settingsFullscreenButton}
+            onClick={handleFullscreenToggle}
+            aria-label={fullscreenActive ? "전체화면 끄기" : "전체화면 켜기"}
+            aria-pressed={fullscreenActive}
+            data-fullscreen-toggle="true"
+            data-fullscreen-toggle-placement="settings"
+          >
+            {fullscreenActive ? "전체화면 끄기" : "전체화면 켜기"}
+          </Button>
+        </section>
+      ) : null}
       {finalResult ? (
         <section className={styles.resultOverlay} data-testid="poke-lounge-result-panel">
           <p className={styles.resultEyebrow}>Final Result</p>

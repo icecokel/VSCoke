@@ -1114,6 +1114,12 @@ export class WorldScene extends Phaser.Scene {
     const sprite = this.add
       .image(slot.x + 18, slot.y + 17, slot.pokemon.spriteKey)
       .setOrigin(0.5, 0.5)
+      .setCrop(
+        slot.pokemon.spriteCrop.x,
+        slot.pokemon.spriteCrop.y,
+        slot.pokemon.spriteCrop.width,
+        slot.pokemon.spriteCrop.height,
+      )
       .setDisplaySize(28, 28)
       .setScrollFactor(0)
       .setDepth(902);
@@ -2867,6 +2873,10 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    if (!hasBattleCapablePartyPokemon(this.gameStateStore.getCurrentLocalPlayer())) {
+      return;
+    }
+
     const encounter = rollWildEncounter({
       ...this.getWildEncounterLevelRangeInput(),
       ...this.getWildEncounterConfigInput(),
@@ -2920,6 +2930,10 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private startWildBattle({ encounter, facing, x, y }: WildBattleStartInput): void {
+    if (!hasBattleCapablePartyPokemon(this.gameStateStore.getCurrentLocalPlayer())) {
+      return;
+    }
+
     this.encounterLocked = true;
     this.battleIntroPlaying = true;
     this.player.setVelocity(0, 0);
@@ -3204,6 +3218,22 @@ function hasActiveTournamentPokemon(player: LocalPlayerState): boolean {
   }
 
   return true;
+}
+
+function hasBattleCapablePartyPokemon(player: LocalPlayerState): boolean {
+  return player.party.some(slot => {
+    const pokemon = slot.pokemon;
+
+    if (!pokemon || pokemon.status === "fainted") {
+      return false;
+    }
+
+    if (typeof pokemon.currentHp === "number" && pokemon.currentHp <= 0) {
+      return false;
+    }
+
+    return true;
+  });
 }
 
 function isWorldTournamentBattleResult(value: unknown): value is WorldTournamentBattleResult {

@@ -1,4 +1,18 @@
 {
+  "bgm": [
+    {
+      "defaultVolume": 0.28,
+      "durationMs": 30000,
+      "id": "wild-battle",
+      "sizeBytes": 300714,
+      "source": {
+        "sdatPath": "data/sound/gs_sound_data.sdat",
+        "sequenceIndex": 1116,
+        "sequenceName": "SEQ_GS_VS_NORAPOKE"
+      },
+      "src": "/assets/poke-lounge/audio/bgm/wild-battle.mp3"
+    }
+  ],
   "sfx": [
     {
       "defaultVolume": 0.58,

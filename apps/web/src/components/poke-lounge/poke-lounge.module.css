@@ -5,11 +5,15 @@
   --poke-lounge-touch-controls-height: clamp(136px, 21dvh, 176px);
   --poke-lounge-touch-dpad-button-size: clamp(38px, 11.8vw, 46px);
   --poke-lounge-touch-action-button-size: clamp(44px, 13.4vw, 52px);
+  --poke-lounge-mobile-fullscreen-button-size: 42px;
+  --poke-lounge-mobile-fullscreen-gap: 10px;
   --poke-lounge-touch-controls-reserve: calc(
     var(--poke-lounge-touch-controls-height) + var(--poke-lounge-touch-control-offset) +
+      var(--poke-lounge-mobile-fullscreen-gap) + var(--poke-lounge-mobile-fullscreen-button-size) +
       max(16px, env(safe-area-inset-bottom))
   );
 
+  position: relative;
   display: grid;
   min-height: 100dvh;
   margin: 0;
@@ -131,13 +135,62 @@
   font-weight: 700;
 }
 
-.page :global(.fullscreen-toggle-button) {
+.settingsOverlay {
   position: absolute;
-  top: max(10px, env(safe-area-inset-top));
-  left: 50%;
-  z-index: 40;
-  width: 44px;
-  height: 44px;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  z-index: 60;
+  display: grid;
+  width: min(260px, calc(100vw - 28px));
+  gap: 10px;
+  padding: 12px;
+  border: 3px solid #17231c;
+  border-radius: 6px;
+  background: rgba(248, 251, 240, 0.96);
+  box-shadow: 0 5px 0 rgba(23, 35, 28, 0.86);
+  color: #17201a;
+}
+
+.settingsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.settingsTitle {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 900;
+}
+
+.settingsCloseButton,
+.settingsFullscreenButton {
+  border: 2px solid #17231c;
+  border-radius: 4px;
+  background: #e9e9e4;
+  box-shadow: 0 3px 0 #17231c;
+  color: #17201a;
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.settingsFullscreenButton {
+  width: 100%;
+}
+
+.settingsCloseButton:active,
+.settingsFullscreenButton:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #17231c;
+  background: #fff9dd;
+}
+
+.page :global(.fullscreen-toggle-button) {
+  display: inline-grid;
+  width: var(--poke-lounge-mobile-fullscreen-button-size);
+  height: var(--poke-lounge-mobile-fullscreen-button-size);
+  place-items: center;
   border: 3px solid #17231c;
   border-radius: 50%;
   background: rgba(248, 251, 240, 0.84);
@@ -147,13 +200,28 @@
   font-size: 1.25rem;
   font-weight: 900;
   line-height: 1;
-  transform: translateX(-50%);
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
 }
 
-.page :global(.fullscreen-toggle-button:active) {
+.page :global(.fullscreen-toggle-button--mobile) {
+  position: absolute;
+  top: calc(
+    100% + var(--poke-lounge-touch-control-offset) + var(--poke-lounge-touch-controls-height) +
+      var(--poke-lounge-mobile-fullscreen-gap)
+  );
+  left: 50%;
+  z-index: 35;
+  display: none;
+  transform: translateX(-50%);
+}
+
+.page :global(.has-touch-game-device .fullscreen-toggle-button--mobile) {
+  display: inline-grid;
+}
+
+.page :global(.fullscreen-toggle-button--mobile:active) {
   transform: translate(-50%, 3px);
   box-shadow: 0 1px 0 rgba(23, 35, 28, 0.86);
   background: #fff9dd;
@@ -378,6 +446,13 @@
   .page :global(.has-touch-game-device .mobile-touch-controls__actions) {
     top: 4px;
     bottom: auto;
+  }
+}
+
+@media (orientation: landscape) {
+  .page :global(.has-touch-game-device .fullscreen-toggle-button--mobile) {
+    top: auto;
+    bottom: max(12px, env(safe-area-inset-bottom));
   }
 }
 

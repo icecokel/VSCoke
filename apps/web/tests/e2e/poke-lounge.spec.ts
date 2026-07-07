@@ -4,6 +4,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { applyLevelUpPlayerMoves } from "../../src/components/poke-lounge/runtime/game/battle/levelUpMoves";
 import { createWildBattleState } from "../../src/components/poke-lounge/runtime/game/battle/wildBattleFactory";
 import { getBattlePokemonAssets } from "../../src/components/poke-lounge/runtime/game/battle/battlePokemonAssets";
+import { createPartyHudSlotViews } from "../../src/components/poke-lounge/runtime/game/ui/partyHud";
 import {
   BATTLE_POKEMON_ASSETS_JSON_PATH,
   LEVEL_UP_MOVE_TABLE_JSON_PATH,
@@ -28,6 +29,8 @@ interface PokeLoungeBattleSnapshot {
     | "bag-select"
     | "resolving"
     | "ended";
+  message: string | null;
+  messageQueue: string[];
   selectedCommand: "fight" | "bag" | "pokemon" | "run";
   selectedCommandLabel: string;
   result: {
@@ -56,6 +59,18 @@ interface PokeLoungeBattleSnapshot {
 }
 
 interface PokeLoungeGameStateSnapshot {
+  currentPlayerId: string;
+  playersById: Record<
+    string,
+    {
+      party: Array<{
+        pokemon?: {
+          currentHp?: number;
+          status?: string;
+        } | null;
+      }>;
+    }
+  >;
   session: {
     roomId: string | null;
     sessionId: string | null;
@@ -324,6 +339,31 @@ test.describe("Poke Lounge", () => {
     expect(readPublicPngDimensions(assets.front.path)).toEqual({ width: 160, height: 80 });
   });
 
+  test("party HUD는 front sheet에서 포켓몬 한 프레임만 표시한다", () => {
+    const [slot] = createPartyHudSlotViews({
+      activePartySlotIndex: 0,
+      anchor: "middle-left",
+      party: [
+        {
+          slotIndex: 0,
+          pokemon: {
+            speciesId: 155,
+            name: "치코리타",
+            level: 10,
+          },
+        },
+      ],
+      screenSize: { width: 768, height: 576 },
+    });
+
+    expect((slot?.pokemon as { spriteCrop?: unknown } | null)?.spriteCrop).toEqual({
+      x: 0,
+      y: 0,
+      width: 80,
+      height: 80,
+    });
+  });
+
   test("야생 조우 설정은 지역별 encounter rate와 slot을 함께 선택한다", () => {
     const config = selectWildEncounterConfig(
       {
@@ -422,6 +462,29 @@ test.describe("Poke Lounge", () => {
     expect(browserErrors.join("\n")).toBe("");
   });
 
+  test("wild battle 진입 시 Poke Lounge BGM asset을 요청한다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+    const audioRequests: string[] = [];
+
+    page.on("request", request => {
+      const url = request.url();
+
+      if (url.includes("/assets/poke-lounge/audio/")) {
+        audioRequests.push(url);
+      }
+    });
+
+    await startBattleScenario(page, "wild-victory");
+
+    await expect
+      .poll(() => audioRequests.some(url => url.includes("/bgm/") && url.endsWith(".mp3")), {
+        timeout: 10000,
+      })
+      .toBe(true);
+
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
   test("wild-victory battle scenario가 battle result 상태까지 도달한다", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
 
@@ -443,6 +506,34 @@ test.describe("Poke Lounge", () => {
     expect(result?.reason).toBe("faint");
     expect(result?.winnerPlayerId).toBe("wild");
     await expectActiveScene(page, "battle");
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("모든 포켓몬이 전투불능이어도 필드 이동은 가능하고 야생 전투는 시작하지 않는다", async ({
+    page,
+  }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await startBattleScenario(page, "wild-defeat", "wildEncounterRate=1");
+    const result = await resolveBattleResult(page);
+    expect(result?.winnerPlayerId).toBe("wild");
+
+    await returnToWorldAfterBattleEnd(page);
+    await closeWorldShortcutGuideIfOpen(page);
+
+    const gameState = await getGameStateSnapshot(page);
+    const localPlayer = gameState?.playersById[gameState.currentPlayerId];
+    const occupiedParty = localPlayer?.party.filter(slot => slot.pokemon) ?? [];
+    expect(occupiedParty.length).toBeGreaterThan(0);
+    expect(
+      occupiedParty.every(
+        slot => slot.pokemon?.status === "fainted" || (slot.pokemon?.currentHp ?? 1) <= 0,
+      ),
+    ).toBe(true);
+
+    const afterMove = await moveWorldPlayerWithoutStartingBattle(page);
+    expect(afterMove.player).not.toBeNull();
+    await expectActiveScene(page, "world", 2000);
     expect(browserErrors.join("\n")).toBe("");
   });
 
@@ -578,7 +669,42 @@ test.describe("Poke Lounge", () => {
     expect(browserErrors.join("\n")).toBe("");
   });
 
-  test("desktop/mobile canvas framing과 fullscreen fallback을 검증한다", async ({ page }) => {
+  test("desktop에서는 Esc 설정 패널에서 fullscreen fallback을 실행한다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await page.addInitScript(() => {
+      Object.defineProperty(HTMLElement.prototype, "requestFullscreen", {
+        configurable: true,
+        value: undefined,
+      });
+    });
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await startSoloGame(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
+    await expectCanvasFramed(page, { maxWidth: 1024, viewportWidth: 1280, viewportHeight: 900 });
+    await expect(page.locator("[data-fullscreen-toggle]")).toHaveCount(0);
+    await expect(page.locator("[data-poke-lounge-settings='true']")).toHaveCount(0);
+
+    await page.keyboard.press("Escape");
+
+    const settingsPanel = page.locator("[data-poke-lounge-settings='true']");
+    await expect(settingsPanel).toBeVisible();
+    const settingsFullscreenButton = settingsPanel.locator(
+      "[data-fullscreen-toggle-placement='settings']",
+    );
+    await expect(settingsFullscreenButton).toBeVisible();
+    await settingsFullscreenButton.click();
+    await expect(page.getByTestId("poke-lounge-page")).toHaveClass(/is-game-fullscreen-fallback/);
+    await expect
+      .poll(() =>
+        page.evaluate(() => document.body.classList.contains("is-game-fullscreen-fallback-active")),
+      )
+      .toBe(true);
+
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("mobile canvas framing과 하단 fullscreen CTA를 검증한다", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
 
     await page.addInitScript(() => {
@@ -608,17 +734,21 @@ test.describe("Poke Lounge", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await expectCanvasFramed(page, { maxWidth: 390, viewportWidth: 390, viewportHeight: 844 });
     await expectMobileTouchLayout(page);
+    await expectMobileFullscreenButtonLayout(page);
     await expectMobileTouchPressAnimation(page);
 
     await page.setViewportSize({ width: 360, height: 780 });
     await expectCanvasFramed(page, { maxWidth: 360, viewportWidth: 360, viewportHeight: 780 });
     await expectMobileTouchLayout(page);
+    await expectMobileFullscreenButtonLayout(page);
 
     await page.setViewportSize({ width: 844, height: 390 });
     await expectCanvasFramed(page, { maxWidth: 844, viewportWidth: 844, viewportHeight: 390 });
     await expectNoViewportOverflow(page);
 
-    await page.locator("[data-fullscreen-toggle]").click();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expectMobileFullscreenButtonLayout(page);
+    await page.locator("[data-fullscreen-toggle-placement='mobile']").click();
     await expect(page.getByTestId("poke-lounge-page")).toHaveClass(/is-game-fullscreen-fallback/);
     await expect
       .poll(() =>
@@ -794,10 +924,16 @@ async function startSoloGame(page: Page, routePath: string): Promise<void> {
   await waitForGameCanvas(page);
 }
 
-async function startBattleScenario(page: Page, scenario: PokeLoungeBattleScenario): Promise<void> {
+async function startBattleScenario(
+  page: Page,
+  scenario: PokeLoungeBattleScenario,
+  extraQuery = "",
+): Promise<void> {
+  const suffix = extraQuery ? `&${extraQuery}` : "";
+
   await startSoloGame(
     page,
-    `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?scene=battle&e2eBattle=${scenario}&e2e=1`,
+    `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?scene=battle&e2eBattle=${scenario}&e2e=1${suffix}`,
   );
   await expectActiveScene(page, "battle");
 }
@@ -921,6 +1057,39 @@ async function resolveBattleResult(page: Page): Promise<PokeLoungeBattleSnapshot
     .not.toBe(null);
 
   return (await getBattleSnapshot(page))?.result ?? null;
+}
+
+async function returnToWorldAfterBattleEnd(page: Page): Promise<void> {
+  for (let index = 0; index < 30; index += 1) {
+    const scene = await getActiveSceneKey(page);
+
+    if (scene === "world") {
+      break;
+    }
+
+    await page.evaluate(() => {
+      const pokeWindow = window as PokeLoungeWindow;
+
+      pokeWindow.__POKE_LOUNGE_E2E__?.confirmBattle();
+    });
+    await page.waitForTimeout(50);
+  }
+
+  await expectActiveScene(page, "world");
+  await expect
+    .poll(() => getWorldSnapshot(page).then(snapshot => Boolean(snapshot?.player)), {
+      timeout: 10000,
+    })
+    .toBe(true);
+}
+
+async function getActiveSceneKey(page: Page): Promise<PokeLoungeSceneKey | null> {
+  return page.evaluate(() => {
+    const pokeWindow = window as PokeLoungeWindow;
+    const scene = pokeWindow.__POKE_LOUNGE_E2E__?.getActiveSceneKey() ?? null;
+
+    return scene === "world" || scene === "battle" ? scene : null;
+  });
 }
 
 async function getBattleSnapshot(page: Page): Promise<PokeLoungeBattleSnapshot | null> {
@@ -1072,6 +1241,36 @@ async function expectMobileTouchLayout(page: Page): Promise<void> {
   await expectNoViewportOverflow(page);
 }
 
+async function expectMobileFullscreenButtonLayout(page: Page): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const controls = document
+            .querySelector("[data-mobile-touch-controls]")
+            ?.getBoundingClientRect();
+          const fullscreenButton = document
+            .querySelector("[data-fullscreen-toggle-placement='mobile']")
+            ?.getBoundingClientRect();
+
+          if (!controls || !fullscreenButton || fullscreenButton.width === 0) {
+            return false;
+          }
+
+          return (
+            fullscreenButton.top >= controls.bottom + 8 &&
+            fullscreenButton.left >= 0 &&
+            fullscreenButton.right <= window.innerWidth &&
+            fullscreenButton.bottom <= window.innerHeight
+          );
+        }),
+      { timeout: 10000 },
+    )
+    .toBe(true);
+
+  await expectNoViewportOverflow(page);
+}
+
 async function expectNoViewportOverflow(page: Page): Promise<void> {
   const layout = await getPokeLoungeLayoutSnapshot(page);
 
@@ -1160,6 +1359,27 @@ async function dismissWorldShortcutGuide(page: Page): Promise<void> {
     .toBe(false);
 }
 
+async function closeWorldShortcutGuideIfOpen(page: Page): Promise<void> {
+  const shortcutGuideOpen = await getWorldSnapshot(page).then(
+    snapshot => snapshot?.shortcutGuideOpen ?? false,
+  );
+
+  if (!shortcutGuideOpen) {
+    return;
+  }
+
+  await page.evaluate(() => {
+    const pokeWindow = window as PokeLoungeWindow;
+
+    pokeWindow.__POKE_LOUNGE_E2E__?.closeWorldShortcutGuide();
+  });
+  await expect
+    .poll(() => getWorldSnapshot(page).then(snapshot => snapshot?.shortcutGuideOpen ?? true), {
+      timeout: 10000,
+    })
+    .toBe(false);
+}
+
 async function moveUntilWildBattle(page: Page): Promise<void> {
   const directions = ["right", "left", "down", "up"] as const;
   const snapshots: PokeLoungeWorldSnapshot[] = [];
@@ -1219,6 +1439,86 @@ async function moveUntilWildBattle(page: Page): Promise<void> {
   }
 
   throw new Error(`Wild battle did not start after field movement: ${JSON.stringify(snapshots)}`);
+}
+
+async function moveWorldPlayerWithoutStartingBattle(page: Page): Promise<PokeLoungeWorldSnapshot> {
+  const directions = ["right", "left", "down", "up"] as const;
+  const snapshots: PokeLoungeWorldSnapshot[] = [];
+
+  for (const direction of directions) {
+    const beforeMove = await getWorldSnapshot(page);
+
+    if (!beforeMove?.player) {
+      throw new Error("World player snapshot is unavailable before movement");
+    }
+
+    await pressVirtualGamepad(page, direction);
+
+    try {
+      const outcome = await page
+        .waitForFunction(
+          ([startPosition]) => {
+            const pokeWindow = window as PokeLoungeWindow;
+            const scene = pokeWindow.__POKE_LOUNGE_E2E__?.getActiveSceneKey() ?? null;
+
+            if (scene === "battle") {
+              return { kind: "battle" };
+            }
+
+            const snapshot = pokeWindow.__POKE_LOUNGE_E2E__?.getWorldSnapshot() ?? null;
+
+            if (
+              scene === "world" &&
+              snapshot?.player &&
+              startPosition &&
+              (snapshot.player.x !== startPosition.x || snapshot.player.y !== startPosition.y)
+            ) {
+              return { kind: "moved", snapshot };
+            }
+
+            return null;
+          },
+          [beforeMove.player],
+          { timeout: 2500 },
+        )
+        .then(
+          handle =>
+            handle.jsonValue() as Promise<
+              | { kind: "battle" }
+              | {
+                  kind: "moved";
+                  snapshot: PokeLoungeWorldSnapshot;
+                }
+            >,
+        )
+        .catch(() => null);
+
+      if (outcome?.kind === "battle") {
+        throw new Error("Wild battle started even though every party Pokemon fainted");
+      }
+
+      if (outcome?.kind === "moved") {
+        await page.waitForTimeout(1200);
+
+        const activeScene = await getActiveSceneKey(page);
+
+        if (activeScene === "battle") {
+          throw new Error("Wild battle started after defeated-party movement");
+        }
+
+        return outcome.snapshot;
+      }
+
+      const snapshot = await getWorldSnapshot(page);
+      if (snapshot) {
+        snapshots.push(snapshot);
+      }
+    } finally {
+      await releaseVirtualGamepad(page, direction);
+    }
+  }
+
+  throw new Error(`World player did not move after defeat: ${JSON.stringify(snapshots)}`);
 }
 
 async function getWorldSnapshot(page: Page): Promise<PokeLoungeWorldSnapshot | null> {

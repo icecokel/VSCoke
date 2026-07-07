@@ -23,6 +23,8 @@ import {
   playBattleHitSound,
   playBattleStartSound,
   playPokemonFaintSound,
+  playWildBattleBgm,
+  stopWildBattleBgm,
 } from "../battle/battleAudio";
 import {
   BATTLE_END_CONFIRM_MESSAGE,
@@ -343,6 +345,9 @@ export class BattleScene extends Phaser.Scene {
     this.bindPointerConfirm();
     this.render();
     playBattleStartSound();
+    playWildBattleBgm();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => stopWildBattleBgm());
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => stopWildBattleBgm());
     this.playBattleEntranceAnimation();
   }
 
@@ -933,6 +938,7 @@ export class BattleScene extends Phaser.Scene {
       facing,
     });
 
+    stopWildBattleBgm();
     this.scene.start("world", {
       spawnPosition: {
         x,

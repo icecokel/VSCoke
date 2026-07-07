@@ -1,4 +1,5 @@
 import { getBattlePokemonAssets } from "../battle/battlePokemonAssets";
+import type { BattleSpriteRef } from "../battle/battleTypes";
 import { PLAYER_PARTY_SLOT_COUNT, type PlayerPokemonSlot } from "../player/playerTypes";
 import type { PlayerPokemon } from "../state/gameStateStore";
 
@@ -25,6 +26,12 @@ export interface PartyHudPokemonView {
   name: string;
   level: number;
   spriteKey: string;
+  spriteCrop: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 }
 
 export interface PartyHudSlotView {
@@ -97,13 +104,27 @@ export function createPartyHudSlotViews({
       y: origin.y + slotIndex * (PARTY_HUD_SLOT_SIZE.height + PARTY_HUD_SLOT_GAP),
       occupied: pokemon !== null,
       active: slotIndex === activePartySlotIndex,
-      pokemon: pokemon
-        ? {
-            name: pokemon.name,
-            level: pokemon.level,
-            spriteKey: getBattlePokemonAssets(pokemon.speciesId).front.assetKey,
-          }
-        : null,
+      pokemon: pokemon ? createPartyHudPokemonView(pokemon) : null,
     };
   });
+}
+
+function createPartyHudPokemonView(pokemon: PlayerPokemon): PartyHudPokemonView {
+  const sprite = getBattlePokemonAssets(pokemon.speciesId).front;
+
+  return {
+    name: pokemon.name,
+    level: pokemon.level,
+    spriteKey: sprite.assetKey,
+    spriteCrop: createPartyHudSpriteCrop(sprite),
+  };
+}
+
+function createPartyHudSpriteCrop(sprite: BattleSpriteRef): PartyHudPokemonView["spriteCrop"] {
+  return {
+    x: 0,
+    y: 0,
+    width: Math.min(sprite.width ?? 80, 80),
+    height: Math.min(sprite.height ?? 80, 80),
+  };
 }

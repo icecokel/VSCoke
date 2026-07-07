@@ -104,7 +104,12 @@ export async function startGamePage(
     });
     activeGame = game;
     renderMobileTouchControls(mount);
-    renderFullscreenToggle(mount);
+    if (mount.classList.contains("has-touch-game-device")) {
+      renderFullscreenToggle(mount, {
+        className: "fullscreen-toggle-button--mobile",
+        placement: "mobile",
+      });
+    }
     const returnToRoomEntry = () => {
       multiplayerRoom.dispose();
       gameStateStore.setSession({

@@ -144,18 +144,27 @@ def write_json(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def iter_audio_cues(config):
+    for cue in config["cues"]:
+        yield "sfx", cue
+
+    for cue in config.get("bgm", []):
+        yield "bgm", cue
+
+
 def extract_catalog(config, rom_path, sdat):
     processed_dir = resolve_repo_path(config["processedDir"])
     catalog_path = processed_dir / "sdat-catalog.json"
     cues = []
 
-    for cue in config["cues"]:
+    for cue_kind, cue in iter_audio_cues(config):
         sequence_name, sequence = get_sequence(sdat, cue)
         bank_name, bank = sdat.banks[sequence.bankID]
         wave_archive_ids = list(bank.waveArchiveIDs)
         cues.append(
             {
                 "id": cue["id"],
+                "kind": cue_kind,
                 "sequenceIndex": cue["sequenceIndex"],
                 "sequenceName": sequence_name,
                 "bankIndex": sequence.bankID,
@@ -185,6 +194,8 @@ def extract_catalog(config, rom_path, sdat):
             "sequenceCount": len(sdat.sequences),
             "bankCount": len(sdat.banks),
             "waveArchiveCount": len(sdat.waveArchives),
+            "sfxCount": len(config["cues"]),
+            "bgmCount": len(config.get("bgm", [])),
             "cueCount": len(cues),
         },
         "cues": cues,
@@ -272,7 +283,7 @@ def render_wav_files(config, sdat):
     wav_dir = processed_dir / "wav"
     wav_dir.mkdir(parents=True, exist_ok=True)
 
-    for cue in config["cues"]:
+    for _, cue in iter_audio_cues(config):
         wav_path = wav_dir / f"{cue['id']}.wav"
         samples = render_cue(sdat, cue)
         write_wav(wav_path, samples)
@@ -591,21 +602,25 @@ def convert_mp3_files(config):
     wav_dir = processed_dir / "wav"
     public_dir = resolve_repo_path(config["publicDir"])
     sfx_dir = public_dir / "sfx"
+    bgm_dir = public_dir / "bgm"
     manifest_path = public_dir / "audio-manifest.json"
     ffmpeg = shutil.which("ffmpeg")
 
     if ffmpeg is None:
-        raise RuntimeError("ffmpeg is required to convert Poke Lounge SFX to MP3")
+        raise RuntimeError("ffmpeg is required to convert Poke Lounge audio to MP3")
 
     sfx_dir.mkdir(parents=True, exist_ok=True)
-    manifest_items = []
+    bgm_dir.mkdir(parents=True, exist_ok=True)
+    sfx_manifest_items = []
+    bgm_manifest_items = []
 
-    for cue in config["cues"]:
+    for cue_kind, cue in iter_audio_cues(config):
         wav_path = wav_dir / f"{cue['id']}.wav"
         if not wav_path.exists():
             raise FileNotFoundError(f"missing WAV for cue {cue['id']}: {wav_path}")
 
-        mp3_path = sfx_dir / f"{cue['id']}.mp3"
+        audio_dir = bgm_dir if cue_kind == "bgm" else sfx_dir
+        mp3_path = audio_dir / f"{cue['id']}.mp3"
         command = [
             ffmpeg,
             "-hide_banner",
@@ -628,30 +643,32 @@ def convert_mp3_files(config):
         ]
         subprocess.run(command, check=True)
         size_bytes = mp3_path.stat().st_size
-        manifest_items.append(
-            {
-                "id": cue["id"],
-                "src": f"/assets/poke-lounge/audio/sfx/{cue['id']}.mp3",
-                "durationMs": cue["durationMs"],
-                "sizeBytes": size_bytes,
-                "defaultVolume": cue["defaultVolume"],
-                "source": {
-                    "sdatPath": config["sdatPath"],
-                    "sequenceName": cue["sequenceName"],
-                    "sequenceIndex": cue["sequenceIndex"],
-                },
-            }
-        )
+        manifest_item = {
+            "id": cue["id"],
+            "src": f"/assets/poke-lounge/audio/{cue_kind}/{cue['id']}.mp3",
+            "durationMs": cue["durationMs"],
+            "sizeBytes": size_bytes,
+            "defaultVolume": cue["defaultVolume"],
+            "source": {
+                "sdatPath": config["sdatPath"],
+                "sequenceName": cue["sequenceName"],
+                "sequenceIndex": cue["sequenceIndex"],
+            },
+        }
+        if cue_kind == "bgm":
+            bgm_manifest_items.append(manifest_item)
+        else:
+            sfx_manifest_items.append(manifest_item)
         print(f"converted {mp3_path.relative_to(REPO_ROOT)} ({size_bytes} bytes)")
 
-    manifest = {"version": 1, "sfx": manifest_items}
+    manifest = {"version": 1, "sfx": sfx_manifest_items, "bgm": bgm_manifest_items}
     write_json(manifest_path, manifest)
     print(f"wrote {manifest_path.relative_to(REPO_ROOT)}")
     return manifest_path
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Render Poke Lounge SFX from a local NDS ROM.")
+    parser = argparse.ArgumentParser(description="Render Poke Lounge audio from a local NDS ROM.")
     parser.add_argument(
         "--config",
         type=Path,

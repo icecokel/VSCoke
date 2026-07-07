@@ -7,6 +7,12 @@ type PokeLoungeWindow = Window & {
       roomId: string | null;
       sessionId: string | null;
     };
+    getGameStateSnapshot(): {
+      currentPlayerId: string;
+      round: {
+        phase: string;
+      };
+    };
   };
 };
 
@@ -71,27 +77,67 @@ test.describe("Poke Lounge server multiplayer", () => {
     });
 
     await expect(page.getByTestId("poke-lounge-result-panel")).toBeHidden({ timeout: 3000 });
+    await expect
+      .poll(() => getRoundPhase(page), {
+        timeout: 3000,
+      })
+      .not.toBe("game-result");
     expect(server.calls).toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/result`);
   });
 
-  test("server room create 후 두 브라우저 컨텍스트가 서로 다른 identity로 같은 방에 참가한다", async ({
+  test("server room create는 URL을 room code로 갱신하고 join input으로 참가한 두 컨텍스트는 서로 다른 identity를 유지한다", async ({
     browser,
   }) => {
     const server = createMockServerState();
     const hostPage = await newMockedPage(browser, server, { wrapped: true });
     const guestPage = await newMockedPage(browser, server, { wrapped: true });
 
-    await startServerRoom(hostPage, `/${LOCALE}/game/poke-lounge?network=server&create=1&e2e=1`);
+    await gotoWithRetry(hostPage, `/${LOCALE}/game/poke-lounge?e2e=1`);
+    await chooseStarterIfNeeded(hostPage);
+    await expect(hostPage.locator("[data-room-entry-screen='true']")).toBeVisible({
+      timeout: 30000,
+    });
+    await hostPage.locator("[data-room-entry-server-create]").click();
+    await chooseStarterIfNeeded(hostPage);
+    await expect(hostPage).toHaveURL(new RegExp(`network=server&room=${ROOM_CODE}`), {
+      timeout: 30000,
+    });
     await expect
       .poll(() => getRoomSnapshot(hostPage).then(snapshot => snapshot?.roomId ?? null), {
         timeout: 30000,
       })
       .toBe(ROOM_CODE);
 
-    await startServerRoom(guestPage);
+    await gotoWithRetry(guestPage, `/${LOCALE}/game/poke-lounge?e2e=1`);
+    await chooseStarterIfNeeded(guestPage);
+    await expect(guestPage.locator("[data-room-entry-screen='true']")).toBeVisible({
+      timeout: 30000,
+    });
+    await guestPage.locator("[data-room-entry-server-code]").fill("srv001");
+    await guestPage.locator("[data-room-entry-server-join]").click();
+    await expect(guestPage).toHaveURL(new RegExp(`network=server&room=${ROOM_CODE}`), {
+      timeout: 30000,
+    });
+    await expect
+      .poll(() => getRoomSnapshot(guestPage).then(snapshot => snapshot?.roomId ?? null), {
+        timeout: 30000,
+      })
+      .toBe(ROOM_CODE);
 
     await expect.poll(() => Promise.resolve(server.joinedPlayerIds.size)).toBe(2);
     await expect.poll(() => Promise.resolve(server.joinedSessionIds.size)).toBe(2);
+
+    const [hostSessionId, guestSessionId] = await Promise.all([
+      getRoomSnapshot(hostPage).then(snapshot => snapshot?.sessionId ?? null),
+      getRoomSnapshot(guestPage).then(snapshot => snapshot?.sessionId ?? null),
+    ]);
+
+    expect(hostSessionId).not.toBe(guestSessionId);
+    expect(server.joinedParticipants).toHaveLength(2);
+    expect(server.joinedParticipants[0]?.sessionId).not.toBe(
+      server.joinedParticipants[1]?.sessionId,
+    );
+    expect(server.joinedParticipants[0]?.playerId).not.toBe(server.joinedParticipants[1]?.playerId);
 
     await hostPage.context().close();
     await guestPage.context().close();
@@ -230,6 +276,14 @@ async function getRoomSnapshot(
     const pokeWindow = window as PokeLoungeWindow;
 
     return pokeWindow.__POKE_LOUNGE_E2E__?.getRoomSnapshot() ?? null;
+  });
+}
+
+async function getRoundPhase(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const pokeWindow = window as PokeLoungeWindow;
+
+    return pokeWindow.__POKE_LOUNGE_E2E__?.getGameStateSnapshot().round.phase ?? null;
   });
 }
 

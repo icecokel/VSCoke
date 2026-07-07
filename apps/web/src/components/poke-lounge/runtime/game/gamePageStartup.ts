@@ -68,6 +68,7 @@ export async function startGamePage(
         roomId: null,
         connectionStatus: "offline",
       });
+      currentUrl.searchParams.delete("create");
       currentUrl.searchParams.delete("network");
       currentUrl.searchParams.delete("room");
       replaceBrowserUrl(currentUrl);
@@ -146,24 +147,39 @@ export async function startGamePage(
 
 function applyRoomEntrySelection(url: URL, selection: RoomEntrySelection): void {
   if (selection.mode === "solo") {
+    url.searchParams.delete("create");
     url.searchParams.delete("network");
     url.searchParams.delete("room");
     return;
   }
 
   if (selection.mode === "webrtc") {
+    url.searchParams.delete("create");
     url.searchParams.set("network", "webrtc");
     url.searchParams.delete("room");
     return;
   }
 
-  if (selection.mode === "server-room" && selection.roomCode) {
+  if (selection.mode === "server-room") {
     url.searchParams.set("network", "server");
-    url.searchParams.set("room", selection.roomCode);
+
+    if (selection.createRoom) {
+      url.searchParams.set("create", "1");
+      url.searchParams.delete("room");
+      return;
+    }
+
+    url.searchParams.delete("create");
+
+    if (selection.roomCode) {
+      url.searchParams.set("room", selection.roomCode);
+    }
+
     return;
   }
 
   if (selection.roomCode) {
+    url.searchParams.delete("create");
     url.searchParams.set("network", "local");
     url.searchParams.set("room", selection.roomCode);
   }

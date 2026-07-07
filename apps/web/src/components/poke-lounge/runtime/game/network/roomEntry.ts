@@ -6,6 +6,7 @@ export type RoomEntryMode = "unset" | "solo" | "local-room" | "server-room" | "w
 export interface RoomEntryIntent {
   mode: RoomEntryMode;
   roomCode: string | null;
+  createRoom?: boolean;
 }
 
 export function normalizeRoomCode(value: string): string | null {
@@ -44,8 +45,10 @@ export function createServerInviteUrl(baseUrl: URL, roomCode: string): URL {
   return url;
 }
 
-export function readRoomEntryFromLocation(location: URL): RoomEntryIntent {
-  const network = location.searchParams.get("network");
+export function readRoomEntryFromSearchParams(
+  searchParams: Pick<URLSearchParams, "get">,
+): RoomEntryIntent {
+  const network = searchParams.get("network");
 
   if (network === "webrtc") {
     return {
@@ -54,7 +57,7 @@ export function readRoomEntryFromLocation(location: URL): RoomEntryIntent {
     };
   }
 
-  const roomCode = normalizeRoomCode(location.searchParams.get("room") ?? "");
+  const roomCode = normalizeRoomCode(searchParams.get("room") ?? "");
 
   if (network === "server" && roomCode) {
     return {
@@ -63,10 +66,11 @@ export function readRoomEntryFromLocation(location: URL): RoomEntryIntent {
     };
   }
 
-  if (network === "server" && location.searchParams.get("create") === "1") {
+  if (network === "server" && searchParams.get("create") === "1") {
     return {
       mode: "server-room",
       roomCode: null,
+      createRoom: true,
     };
   }
 
@@ -81,4 +85,8 @@ export function readRoomEntryFromLocation(location: URL): RoomEntryIntent {
     mode: "unset",
     roomCode: null,
   };
+}
+
+export function readRoomEntryFromLocation(location: URL): RoomEntryIntent {
+  return readRoomEntryFromSearchParams(location.searchParams);
 }

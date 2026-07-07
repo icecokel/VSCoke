@@ -1,6 +1,7 @@
 import {
   createInviteUrl,
   createRoomCode as defaultCreateRoomCode,
+  createServerInviteUrl,
   normalizeRoomCode,
   type RoomEntryMode,
 } from "./roomEntry";
@@ -9,6 +10,7 @@ export interface RoomEntrySelection {
   mode: Exclude<RoomEntryMode, "unset">;
   roomCode: string | null;
   inviteUrl: string | null;
+  createRoom?: boolean;
   resetSession?: boolean;
 }
 
@@ -36,13 +38,22 @@ export function renderRoomEntryScreen(
 
   const soloButton = createButton("혼자 시작", "data-room-entry-solo");
   const newStartButton = createButton("새로 시작", "data-room-entry-new-start");
-  const createButtonElement = createButton("방 만들기", "data-room-entry-create");
+  const createButtonElement = createButton("로컬 방 만들기", "data-room-entry-create");
+  const serverCreateButton = createButton("서버 방 만들기", "data-room-entry-server-create");
 
   const roomCodeInput = document.createElement("input");
+  roomCodeInput.type = "text";
   roomCodeInput.placeholder = "방 코드";
   roomCodeInput.setAttribute("data-room-entry-code", "true");
 
   const joinButton = createButton("코드로 입장", "data-room-entry-join");
+
+  const serverRoomCodeInput = document.createElement("input");
+  serverRoomCodeInput.type = "text";
+  serverRoomCodeInput.placeholder = "서버 방 코드";
+  serverRoomCodeInput.setAttribute("data-room-entry-server-code", "true");
+
+  const serverJoinButton = createButton("서버 코드로 입장", "data-room-entry-server-join");
 
   const inviteInput = document.createElement("input");
   inviteInput.readOnly = true;
@@ -61,6 +72,17 @@ export function renderRoomEntryScreen(
       roomCode,
       inviteUrl,
       ...(resetSession ? { resetSession: true } : {}),
+    });
+  };
+
+  const selectServerRoom = (roomCode: string) => {
+    const inviteUrl = createServerInviteUrl(options.currentUrl, roomCode).href;
+    inviteInput.value = inviteUrl;
+    message.textContent = "";
+    options.onSelect({
+      mode: "server-room",
+      roomCode,
+      inviteUrl,
     });
   };
 
@@ -87,6 +109,18 @@ export function renderRoomEntryScreen(
     selectLocalRoom((options.createRoomCode ?? defaultCreateRoomCode)(), true);
   });
 
+  serverCreateButton.addEventListener("click", () => {
+    inviteInput.value = "";
+    message.textContent = "";
+    options.onSelect({
+      mode: "server-room",
+      roomCode: null,
+      inviteUrl: null,
+      createRoom: true,
+      resetSession: true,
+    });
+  });
+
   joinButton.addEventListener("click", () => {
     const roomCode = normalizeRoomCode(roomCodeInput.value);
 
@@ -98,6 +132,17 @@ export function renderRoomEntryScreen(
     selectLocalRoom(roomCode);
   });
 
+  serverJoinButton.addEventListener("click", () => {
+    const roomCode = normalizeRoomCode(serverRoomCodeInput.value);
+
+    if (!roomCode) {
+      message.textContent = "서버 방 코드를 입력해 주세요.";
+      return;
+    }
+
+    selectServerRoom(roomCode);
+  });
+
   panel.append(
     title,
     soloButton,
@@ -105,6 +150,9 @@ export function renderRoomEntryScreen(
     createButtonElement,
     roomCodeInput,
     joinButton,
+    serverCreateButton,
+    serverRoomCodeInput,
+    serverJoinButton,
     inviteInput,
     message,
   );

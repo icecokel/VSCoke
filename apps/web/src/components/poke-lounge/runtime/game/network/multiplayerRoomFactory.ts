@@ -1,4 +1,5 @@
 import { createLocalPreviewRoom, type MultiplayerRoom } from "./localPreviewRoom";
+import { readRoomEntryFromSearchParams } from "./roomEntry";
 import { createServerRoom } from "./serverRoom";
 
 export interface MultiplayerRoomFactoryOptions {
@@ -7,7 +8,9 @@ export interface MultiplayerRoomFactoryOptions {
 }
 
 export function createMultiplayerRoom(options: MultiplayerRoomFactoryOptions): MultiplayerRoom {
-  if (options.searchParams.get("network") === "webrtc") {
+  const roomEntry = readRoomEntryFromSearchParams(options.searchParams);
+
+  if (roomEntry.mode === "webrtc") {
     if (!options.createWebRtcRoom) {
       throw new Error("Missing createWebRtcRoom dependency for ?network=webrtc.");
     }
@@ -15,22 +18,16 @@ export function createMultiplayerRoom(options: MultiplayerRoomFactoryOptions): M
     return options.createWebRtcRoom();
   }
 
-  if (options.searchParams.get("network") === "server") {
+  if (roomEntry.mode === "server-room") {
     return createServerRoom({
-      roomId: readLocalRoomId(options.searchParams),
+      roomId: roomEntry.roomCode ?? undefined,
       sessionId: options.searchParams.get("serverSessionId") ?? undefined,
       playerId: options.searchParams.get("serverPlayerId") ?? undefined,
-      createRoom: options.searchParams.get("create") === "1",
+      createRoom: roomEntry.createRoom === true,
     });
   }
 
   return createLocalPreviewRoom({
-    roomId: readLocalRoomId(options.searchParams),
+    roomId: roomEntry.roomCode ?? undefined,
   });
-}
-
-function readLocalRoomId(searchParams: Pick<URLSearchParams, "get">): string | undefined {
-  const roomId = searchParams.get("room")?.trim();
-
-  return roomId ? roomId : undefined;
 }

@@ -60,6 +60,36 @@ describe('PokeLoungeRoomService', () => {
     ]);
   });
 
+  it('requires the original session id when an existing participant rejoins', () => {
+    service.createRoom({
+      playerId: 'player-a',
+      sessionId: 'session-a',
+      nowMs: 0,
+    });
+
+    expect(() =>
+      service.joinRoom('ROOM01', {
+        playerId: 'player-a',
+        sessionId: 'session-b',
+        nowMs: 10,
+      }),
+    ).toThrow(BadRequestException);
+
+    const room = service.joinRoom('ROOM01', {
+      playerId: 'player-a',
+      sessionId: 'session-a',
+      nowMs: 20,
+    });
+
+    expect(room.participants).toEqual([
+      expect.objectContaining({
+        playerId: 'player-a',
+        sessionId: 'session-a',
+        connected: true,
+      }),
+    ]);
+  });
+
   it('does not start the server round until every participant is ready', () => {
     service.createRoom({
       playerId: 'player-a',

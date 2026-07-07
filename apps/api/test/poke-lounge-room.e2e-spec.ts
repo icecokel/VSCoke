@@ -185,6 +185,28 @@ describe('Poke Lounge server rooms (e2e)', () => {
     await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/join')
       .send({
+        playerId: 'player-a',
+        sessionId: 'session-b',
+      })
+      .expect(400);
+
+    await request(httpServer)
+      .post('/poke-lounge/rooms/ROOM01/join')
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-a',
+      })
+      .expect(201)
+      .expect((response) => {
+        const body = response.body as PokeLoungeRoomState;
+
+        expect(body.participants).toHaveLength(1);
+        expect(body.participants[0]).not.toHaveProperty('sessionId');
+      });
+
+    await request(httpServer)
+      .post('/poke-lounge/rooms/ROOM01/join')
+      .send({
         playerId: 'player-b',
         sessionId: 'session-b',
         displayName: 'Player B',

@@ -7,6 +7,7 @@ Branch: `feature/poke-lounge`
 
 - Removed participant `sessionId` from public server room responses and Swagger response DTOs.
 - Required participant-owned session credentials for server room write APIs:
+  - `existing participant rejoin`: `playerId` + original `sessionId`
   - `ready`: `playerId` + `sessionId`
   - `leave`: `playerId` + `sessionId`
   - `party-snapshot`: `playerId` + `sessionId`
@@ -20,6 +21,8 @@ Branch: `feature/poke-lounge`
 
 - PASS: `pnpm test:api -- poke-lounge` - 27 suites, 140 tests.
 - PASS: `pnpm test:api:e2e -- poke-lounge` - 4 suites, 20 tests.
+- PASS: post-review hardening rerun `pnpm test:api -- poke-lounge` - 27 suites, 141 tests.
+- PASS: post-review hardening rerun `pnpm test:api:e2e -- poke-lounge` - 4 suites, 20 tests.
 - PASS: `pnpm type:check:web`
 - PASS: `pnpm lint`
 - PASS: `pnpm --filter @vscoke/web e2e -- tests/e2e/poke-lounge-multiplayer.spec.ts --project=chromium` - 5 tests.

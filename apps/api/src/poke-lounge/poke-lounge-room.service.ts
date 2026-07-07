@@ -82,6 +82,11 @@ export class PokeLoungeRoomService {
 
     if (existing) {
       this.assertExistingParticipantRejoinable(room);
+      assertParticipantSession(
+        existing,
+        input.sessionId,
+        'Join sessionId does not match this participant',
+      );
       existing.connected = true;
       existing.leftAtMs = undefined;
       existing.ready = existing.role === 'participant' ? existing.ready : false;

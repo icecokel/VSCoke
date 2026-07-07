@@ -56,6 +56,8 @@ export interface AppMessages {
     notEnoughLetters: string;
     doomTitle: string;
     wordleTitle: string;
+    pokeLoungeTitle: string;
+    pokeLoungeDesc: string;
   };
   blog: {
     backToList: string;

@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "species": {
+    "152": {
+      "front": { "path": "/assets/pokemon/front/152.png", "width": 160, "height": 80 },
+      "back": {
+        "path": "/assets/pokemon/battle/152/back-default-normal.png",
+        "width": 160,
+        "height": 80
+      }
+    },
+    "155": {
+      "front": { "path": "/assets/pokemon/front/155.png", "width": 160, "height": 80 },
+      "back": {
+        "path": "/assets/pokemon/battle/155/back-default-normal.png",
+        "width": 160,
+        "height": 80
+      }
+    },
+    "158": {
+      "front": { "path": "/assets/pokemon/front/158.png", "width": 160, "height": 80 },
+      "back": { "path": "/assets/pokemon/back/158.png", "width": 160, "height": 80 }
+    }
+  },
+  "extractedRanges": [
+    {
+      "startSpeciesId": 1,
+      "endSpeciesId": 10,
+      "front": {
+        "pathTemplate": "/assets/pokemon/front/{speciesId}.png",
+        "width": 160,
+        "height": 80
+      },
+      "back": { "pathTemplate": "/assets/pokemon/back/{speciesId}.png", "width": 160, "height": 80 }
+    },
+    {
+      "startSpeciesId": 16,
+      "endSpeciesId": 16,
+      "front": {
+        "pathTemplate": "/assets/pokemon/front/{speciesId}.png",
+        "width": 160,
+        "height": 80
+      },
+      "back": { "pathTemplate": "/assets/pokemon/back/{speciesId}.png", "width": 160, "height": 80 }
+    },
+    {
+      "startSpeciesId": 19,
+      "endSpeciesId": 19,
+      "front": {
+        "pathTemplate": "/assets/pokemon/front/{speciesId}.png",
+        "width": 160,
+        "height": 80
+      },
+      "back": { "pathTemplate": "/assets/pokemon/back/{speciesId}.png", "width": 160, "height": 80 }
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { EspressoHistoryModule } from './espresso-history/espresso-history.module';
 import { GameModule } from './game/game.module';
+import { PokeLoungeModule } from './poke-lounge/poke-lounge.module';
 import { RecipeModule } from './recipe/recipe.module';
 import { ResumeRagModule } from './resume-rag/resume-rag.module';
 import { WordleModule } from './wordle/wordle.module';
@@ -53,6 +54,7 @@ import { winstonConfig } from './common/utils/winston.config';
     AuthModule,
     EspressoHistoryModule,
     GameModule,
+    PokeLoungeModule,
     RecipeModule,
     ResumeRagModule,
     WordleModule,

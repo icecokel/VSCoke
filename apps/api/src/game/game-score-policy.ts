@@ -18,6 +18,13 @@ export const GAME_SCORE_POLICIES: Record<GameType, GameScorePolicy> = {
     maxPlayTimeSeconds: 86400,
     maxScorePerSecond: 2000,
   },
+  [GameType.POKE_LOUNGE]: {
+    minScore: 1,
+    maxScore: 1000,
+    minPlayTimeSeconds: 1,
+    maxPlayTimeSeconds: 86400,
+    maxScorePerSecond: 1000,
+  },
 };
 
 export const SKY_DROP_SCORE_POLICY = GAME_SCORE_POLICIES[GameType.SKY_DROP];
@@ -101,7 +108,7 @@ export const validateGameScoreSubmission = (
     dto.playTime > policy.maxPlayTimeSeconds
   ) {
     throw new BadRequestException(
-      `${dto.gameType} playTime must be between ${policy.minPlayTimeSeconds} and ${policy.maxPlayTimeSeconds}`,
+      `${dto.gameType} playTime must be between ${policy.minPlayTimeSeconds} and ${policy.maxPlayTimeSeconds} seconds`,
     );
   }
 

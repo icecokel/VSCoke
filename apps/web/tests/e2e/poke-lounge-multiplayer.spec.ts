@@ -1,0 +1,712 @@
+import { expect, type Browser, type Page, type Request, test } from "@playwright/test";
+import { gotoWithRetry } from "./test-helpers";
+
+type PokeLoungeWindow = Window & {
+  __POKE_LOUNGE_E2E__?: {
+    getRoomSnapshot(): {
+      roomId: string | null;
+      sessionId: string | null;
+    };
+    getGameStateSnapshot(): {
+      currentPlayerId: string;
+      round: {
+        phase: string;
+      };
+    };
+  };
+};
+
+const LOCALE = "ko-KR";
+const ROOM_CODE = "SRV001";
+
+test.describe("Poke Lounge server multiplayer", () => {
+  test("network=server room은 wrapped 서버 상태의 final score를 서버 확정 점수로 사용한다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, { wrapped: true });
+    await startServerRoom(page);
+
+    await expect
+      .poll(() => getRoomSnapshot(page).then(snapshot => snapshot?.roomId ?? null), {
+        timeout: 30000,
+      })
+      .toBe(ROOM_CODE);
+    await expect(page.getByTestId("poke-lounge-result-score")).toHaveText("100", {
+      timeout: 30000,
+    });
+
+    expect(server.calls).toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/join`);
+    await expect
+      .poll(() =>
+        Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+      )
+      .toBe(true);
+  });
+
+  test("server room이 completed 전이면 GET polling으로 최신 상태를 반영한다", async ({ page }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, { completeOnGet: true, wrapped: true });
+    await startServerRoom(page);
+
+    await expect
+      .poll(() => Promise.resolve(server.calls), { timeout: 30000 })
+      .toContain(`GET /poke-lounge/rooms/${ROOM_CODE}`);
+    await expect(page.getByTestId("poke-lounge-result-score")).toHaveText("100", {
+      timeout: 30000,
+    });
+  });
+
+  test("server room result submit이 거부되면 클라이언트는 토너먼트 결과를 임의 성공 처리하지 않는다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, { rejectResult: true });
+    await startServerRoom(page);
+
+    await page.evaluate(() => {
+      window.dispatchEvent(
+        new CustomEvent("poke-lounge:e2e-server-result", {
+          detail: {
+            matchId: "round-1-match-1",
+            winnerPlayerId: "player-1",
+            loserPlayerId: "player-2",
+            reason: "faint",
+          },
+        }),
+      );
+    });
+
+    await expect(page.getByTestId("poke-lounge-result-panel")).toBeHidden({ timeout: 3000 });
+    await expect
+      .poll(() => getRoundPhase(page), {
+        timeout: 3000,
+      })
+      .not.toBe("game-result");
+    expect(server.calls).toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/result`);
+  });
+
+  test("server room result submit은 로컬 player id를 서버 participant id로 변환한다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, { waitForResult: true, wrapped: true });
+    await startServerRoom(
+      page,
+      `/${LOCALE}/game/poke-lounge?network=server&room=${ROOM_CODE}&serverPlayerId=server-player-alpha&serverSessionId=server-session-alpha&e2e=1`,
+    );
+    await expect
+      .poll(() => Promise.resolve(server.joinedParticipants.length), { timeout: 30000 })
+      .toBeGreaterThanOrEqual(1);
+
+    const localPlayerId = await getCurrentPlayerId(page);
+    const [joinedParticipant] = server.joinedParticipants;
+
+    expect(joinedParticipant).toMatchObject({
+      playerId: "server-player-alpha",
+      sessionId: "server-session-alpha",
+    });
+    expect(localPlayerId).not.toBe(joinedParticipant.playerId);
+
+    await page.evaluate((winnerPlayerId: string) => {
+      window.dispatchEvent(
+        new CustomEvent("poke-lounge:e2e-server-result", {
+          detail: {
+            matchId: "round-1-match-1",
+            winnerPlayerId,
+            reason: "faint",
+          },
+        }),
+      );
+    }, localPlayerId ?? "player-1");
+
+    await expect(page.getByTestId("poke-lounge-result-score")).toHaveText("100", {
+      timeout: 30000,
+    });
+    await expect.poll(() => Promise.resolve(server.resultBodies.length)).toBe(1);
+    expect(server.resultBodies[0]).toMatchObject({
+      reportingPlayerId: joinedParticipant.playerId,
+      reportingSessionId: joinedParticipant.sessionId,
+      winnerPlayerId: joinedParticipant.playerId,
+      loserPlayerId: "player-2",
+    });
+  });
+
+  test("server room cleanup은 e2e global 없이도 unmount 시 leave를 전송한다", async ({ page }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, { waitForResult: true, wrapped: true });
+    await startServerRoom(
+      page,
+      `/${LOCALE}/game/poke-lounge?network=server&room=${ROOM_CODE}&serverPlayerId=server-player-cleanup&serverSessionId=server-session-cleanup&e2e=1`,
+    );
+    await expect
+      .poll(() =>
+        Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+      )
+      .toBe(true);
+
+    await page.evaluate(() => {
+      delete (window as Window & { __POKE_LOUNGE_GAME__?: unknown }).__POKE_LOUNGE_GAME__;
+    });
+
+    await page.evaluate(() => {
+      (
+        window as Window & {
+          __POKE_LOUNGE_CLEANUP_FOR_TEST__?: () => void;
+        }
+      ).__POKE_LOUNGE_CLEANUP_FOR_TEST__?.();
+    });
+
+    await expect
+      .poll(
+        () => Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/leave`)),
+        { timeout: 5000 },
+      )
+      .toBe(true);
+  });
+
+  test("server room create는 URL을 room code로 갱신하고 join input으로 참가한 두 컨텍스트는 서로 다른 identity를 유지한다", async ({
+    browser,
+  }) => {
+    const server = createMockServerState();
+    const hostPage = await newMockedPage(browser, server, { wrapped: true });
+    const guestPage = await newMockedPage(browser, server, { wrapped: true });
+
+    await gotoWithRetry(hostPage, `/${LOCALE}/game/poke-lounge?e2e=1`);
+    await chooseStarterIfNeeded(hostPage);
+    await expect(hostPage.locator("[data-room-entry-screen='true']")).toBeVisible({
+      timeout: 30000,
+    });
+    await hostPage.locator("[data-room-entry-server-create]").click();
+    await chooseStarterIfNeeded(hostPage);
+    await expect(hostPage).toHaveURL(new RegExp(`network=server&room=${ROOM_CODE}`), {
+      timeout: 30000,
+    });
+    await expect
+      .poll(() => getRoomSnapshot(hostPage).then(snapshot => snapshot?.roomId ?? null), {
+        timeout: 30000,
+      })
+      .toBe(ROOM_CODE);
+
+    await gotoWithRetry(guestPage, `/${LOCALE}/game/poke-lounge?e2e=1`);
+    await chooseStarterIfNeeded(guestPage);
+    await expect(guestPage.locator("[data-room-entry-screen='true']")).toBeVisible({
+      timeout: 30000,
+    });
+    await guestPage.locator("[data-room-entry-server-code]").fill("srv001");
+    await guestPage.locator("[data-room-entry-server-join]").click();
+    await expect(guestPage).toHaveURL(new RegExp(`network=server&room=${ROOM_CODE}`), {
+      timeout: 30000,
+    });
+    await expect
+      .poll(() => getRoomSnapshot(guestPage).then(snapshot => snapshot?.roomId ?? null), {
+        timeout: 30000,
+      })
+      .toBe(ROOM_CODE);
+
+    await expect.poll(() => Promise.resolve(server.joinedPlayerIds.size)).toBe(2);
+    await expect.poll(() => Promise.resolve(server.joinedSessionIds.size)).toBe(2);
+
+    const [hostSessionId, guestSessionId] = await Promise.all([
+      getRoomSnapshot(hostPage).then(snapshot => snapshot?.sessionId ?? null),
+      getRoomSnapshot(guestPage).then(snapshot => snapshot?.sessionId ?? null),
+    ]);
+
+    expect(hostSessionId).not.toBe(guestSessionId);
+    expect(server.joinedParticipants).toHaveLength(2);
+    expect(server.joinedParticipants[0]?.sessionId).not.toBe(
+      server.joinedParticipants[1]?.sessionId,
+    );
+    expect(server.joinedParticipants[0]?.playerId).not.toBe(server.joinedParticipants[1]?.playerId);
+
+    await hostPage.context().close();
+    await guestPage.context().close();
+  });
+
+  test("server room은 connect 시점과 로컬 파티 변경 시점에 party snapshot을 전송한다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, { wrapped: true });
+    await startServerRoom(page);
+
+    await page.evaluate(() => {
+      const game = (window as Window & { __POKE_LOUNGE_GAME__?: unknown }).__POKE_LOUNGE_GAME__ as {
+        scene?: {
+          getScene?: (key: string) => {
+            createLocalPlayerSnapshot?: () => unknown;
+            sendRoomMessage?: (type: "PLAYER_CHANGED_MAP", payload: unknown) => void;
+            closeShortcutGuideForTest?: () => void;
+            player?: { body?: { velocity?: { x: number; y: number } } };
+            roomConnected?: boolean;
+            gameStateStore?: {
+              getState: () => {
+                currentPlayerId: string;
+                playersById: Record<
+                  string,
+                  {
+                    activePartySlotIndex: number;
+                    party: Array<{
+                      pokemon: {
+                        speciesId: number;
+                        name: string;
+                        level: number;
+                      } | null;
+                    }>;
+                  }
+                >;
+              };
+            };
+          };
+        };
+      };
+      const worldScene = game.scene?.getScene?.("world");
+
+      if (!worldScene?.createLocalPlayerSnapshot || !worldScene.sendRoomMessage) {
+        return;
+      }
+
+      worldScene.closeShortcutGuideForTest?.();
+      const snapshot = worldScene.createLocalPlayerSnapshot() as {
+        activePartySlotIndex?: number;
+        party?: Array<{
+          slotIndex: number;
+          pokemon: {
+            speciesId: number;
+            name: string;
+            level: number;
+            currentHp: number;
+            maxHp: number;
+          } | null;
+        }>;
+      };
+
+      worldScene.sendRoomMessage("PLAYER_CHANGED_MAP", {
+        ...snapshot,
+        activePartySlotIndex: 0,
+        party: [
+          {
+            slotIndex: 0,
+            pokemon: {
+              speciesId: 25,
+              name: "Pikachu",
+              level: 12,
+              currentHp: 18,
+              maxHp: 30,
+            },
+          },
+        ],
+      });
+    });
+
+    await expect
+      .poll(() =>
+        Promise.resolve(
+          server.calls.filter(
+            call => call === `POST /poke-lounge/rooms/${ROOM_CODE}/party-snapshot`,
+          ).length,
+        ),
+      )
+      .toBeGreaterThanOrEqual(2);
+
+    const snapshotWithRepresentativePokemon = server.partySnapshotBodies.find(
+      body => body.representativePokemon,
+    );
+
+    expect(snapshotWithRepresentativePokemon).toMatchObject({
+      playerId: expect.any(String),
+      sessionId: expect.any(String),
+      representativePokemon: {
+        speciesId: expect.any(Number),
+        name: expect.any(String),
+        level: expect.any(Number),
+        currentHp: expect.any(Number),
+        maxHp: expect.any(Number),
+      },
+    });
+  });
+});
+
+async function startServerRoom(
+  page: Page,
+  url = `/${LOCALE}/game/poke-lounge?network=server&room=${ROOM_CODE}&e2e=1`,
+): Promise<void> {
+  await gotoWithRetry(page, url);
+  await chooseStarterIfNeeded(page);
+  await expect(page.locator("#game-root canvas")).toBeVisible({ timeout: 30000 });
+}
+
+async function chooseStarterIfNeeded(page: Page): Promise<void> {
+  const starterSelection = page.locator("[data-screen='starter-selection']");
+  const starterVisible = await starterSelection
+    .waitFor({ state: "visible", timeout: 5000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (starterVisible) {
+    await page.locator("[data-starter-confirm]").click();
+  }
+}
+
+async function getRoomSnapshot(
+  page: Page,
+): Promise<{ roomId: string | null; sessionId: string | null } | null> {
+  return page.evaluate(() => {
+    const pokeWindow = window as PokeLoungeWindow;
+
+    return pokeWindow.__POKE_LOUNGE_E2E__?.getRoomSnapshot() ?? null;
+  });
+}
+
+async function getRoundPhase(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const pokeWindow = window as PokeLoungeWindow;
+
+    return pokeWindow.__POKE_LOUNGE_E2E__?.getGameStateSnapshot().round.phase ?? null;
+  });
+}
+
+async function getCurrentPlayerId(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const pokeWindow = window as PokeLoungeWindow;
+
+    return pokeWindow.__POKE_LOUNGE_E2E__?.getGameStateSnapshot().currentPlayerId ?? null;
+  });
+}
+
+async function mockServerRoom(
+  page: Page,
+  server: MockServerState,
+  options: {
+    completeOnGet?: boolean;
+    rejectResult?: boolean;
+    waitForResult?: boolean;
+    wrapped?: boolean;
+  } = {},
+): Promise<void> {
+  await page.route("**/poke-lounge/rooms**", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const method = request.method();
+    const suffix = url.pathname.replace(`/poke-lounge/rooms/${ROOM_CODE}`, "");
+
+    server.calls.push(`${method} ${url.pathname}`);
+
+    if (method === "POST" && url.pathname === "/poke-lounge/rooms") {
+      await recordJoinedIdentity(request, server);
+      await route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: stringifyResponse(createWaitingRoomState(server), options),
+      });
+      return;
+    }
+
+    if (method === "POST" && suffix === "/join") {
+      await recordJoinedIdentity(request, server);
+    }
+
+    if (method === "POST" && suffix === "/party-snapshot") {
+      server.partySnapshotBodies.push(
+        (await request.postDataJSON()) as MockServerState["partySnapshotBodies"][number],
+      );
+    }
+
+    if (method === "POST" && suffix === "/result") {
+      const body = (await request.postDataJSON()) as MockServerState["resultBodies"][number];
+      server.resultBodies.push(body);
+      const resultError = validateResultBody(body, server);
+
+      await route.fulfill({
+        status: options.rejectResult || resultError ? 400 : 201,
+        contentType: "application/json",
+        body: stringifyResponse(
+          options.rejectResult || resultError
+            ? { message: resultError ?? "Invalid match result" }
+            : markResultAccepted(server),
+          options,
+        ),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: method === "GET" ? 200 : 201,
+      contentType: "application/json",
+      body: stringifyResponse(
+        options.rejectResult ||
+          (options.completeOnGet && method !== "GET") ||
+          (options.waitForResult && !server.resultAccepted)
+          ? createTournamentRoomState(server)
+          : createCompletedRoomState(server),
+        options,
+      ),
+    });
+  });
+}
+
+async function newMockedPage(
+  browser: Browser,
+  server: MockServerState,
+  options: { wrapped?: boolean } = {},
+): Promise<Page> {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  await mockServerRoom(page, server, options);
+
+  return page;
+}
+
+interface MockServerState {
+  calls: string[];
+  partySnapshotBodies: Array<{
+    playerId?: string;
+    sessionId?: string;
+    displayName?: string;
+    representativePokemon?: {
+      speciesId: number;
+      name: string;
+      level: number;
+      currentHp: number;
+      maxHp: number;
+    };
+  }>;
+  resultBodies: Array<{
+    reportingPlayerId?: string;
+    reportingSessionId?: string;
+    matchId?: string;
+    winnerPlayerId?: string;
+    loserPlayerId?: string;
+    reason?: string;
+  }>;
+  resultAccepted: boolean;
+  joinedPlayerIds: Set<string>;
+  joinedSessionIds: Set<string>;
+  joinedParticipants: Array<{
+    playerId: string;
+    sessionId: string;
+    displayName?: string;
+  }>;
+}
+
+function createMockServerState(): MockServerState {
+  return {
+    calls: [],
+    partySnapshotBodies: [],
+    resultBodies: [],
+    resultAccepted: false,
+    joinedPlayerIds: new Set(),
+    joinedSessionIds: new Set(),
+    joinedParticipants: [],
+  };
+}
+
+async function recordJoinedIdentity(request: Request, server: MockServerState) {
+  const body = (await request.postDataJSON()) as {
+    playerId?: string;
+    sessionId?: string;
+    displayName?: string;
+  };
+
+  if (!body.playerId || !body.sessionId) {
+    return;
+  }
+
+  server.joinedPlayerIds.add(body.playerId);
+  server.joinedSessionIds.add(body.sessionId);
+
+  if (!server.joinedParticipants.some(participant => participant.playerId === body.playerId)) {
+    server.joinedParticipants.push({
+      playerId: body.playerId,
+      sessionId: body.sessionId,
+      displayName: body.displayName,
+    });
+  }
+}
+
+function stringifyResponse(value: unknown, options: { wrapped?: boolean }): string {
+  return JSON.stringify(options.wrapped ? { success: true, data: value } : value);
+}
+
+function markResultAccepted(server: MockServerState) {
+  server.resultAccepted = true;
+
+  return createCompletedRoomState(server);
+}
+
+function validateResultBody(
+  body: MockServerState["resultBodies"][number],
+  server: MockServerState,
+): string | null {
+  const participants = getStateParticipants(server);
+  const reporter = participants.find(
+    participant => participant.playerId === body.reportingPlayerId,
+  );
+  const participantIds = new Set(participants.map(participant => participant.playerId));
+
+  if (!reporter || reporter.sessionId !== body.reportingSessionId) {
+    return "Invalid reporter";
+  }
+
+  if (
+    body.matchId !== "round-1-match-1" ||
+    !body.winnerPlayerId ||
+    !body.loserPlayerId ||
+    body.winnerPlayerId === body.loserPlayerId ||
+    !participantIds.has(body.winnerPlayerId) ||
+    !participantIds.has(body.loserPlayerId)
+  ) {
+    return "Invalid match participants";
+  }
+
+  return null;
+}
+
+function createWaitingRoomState(server: MockServerState) {
+  return {
+    ...createCompletedRoomState(server),
+    status: "waiting",
+    round: {
+      index: 1,
+      phase: "waiting",
+      durationMs: 1000,
+      startedAtMs: null,
+      endsAtMs: null,
+    },
+    tournament: {
+      matches: [],
+      cumulativeScores: {},
+    },
+    finalStandings: [],
+    partySnapshots: createPartySnapshots(server),
+  };
+}
+
+function createTournamentRoomState(server: MockServerState) {
+  const completed = createCompletedRoomState(server);
+  const [first, second] = getStateParticipants(server);
+
+  return {
+    ...completed,
+    status: "tournament",
+    tournament: {
+      ...completed.tournament,
+      matches: [
+        {
+          matchId: "round-1-match-1",
+          participantIds: [first.playerId, second.playerId],
+          status: "pending",
+        },
+      ],
+      cumulativeScores: {},
+    },
+    finalStandings: [],
+    partySnapshots: createPartySnapshots(server),
+  };
+}
+
+function createCompletedRoomState(server?: MockServerState) {
+  const [first, second] = getStateParticipants(server);
+
+  return {
+    roomCode: ROOM_CODE,
+    status: "completed",
+    participants: [
+      {
+        playerId: first.playerId,
+        displayName: first.displayName ?? "Player 1",
+        role: "participant",
+        ready: true,
+        connected: true,
+      },
+      {
+        playerId: second.playerId,
+        displayName: second.displayName ?? "Player 2",
+        role: "participant",
+        ready: true,
+        connected: true,
+      },
+    ],
+    partySnapshots: createPartySnapshots(server),
+    round: {
+      index: 1,
+      phase: "tournament",
+      durationMs: 1000,
+      startedAtMs: 0,
+      endsAtMs: 1000,
+    },
+    tournament: {
+      matches: [
+        {
+          matchId: "round-1-match-1",
+          participantIds: [first.playerId, second.playerId],
+          status: "completed",
+          winnerPlayerId: first.playerId,
+          loserPlayerId: second.playerId,
+          resultReason: "faint",
+        },
+      ],
+      cumulativeScores: {
+        [first.playerId]: 100,
+        [second.playerId]: 50,
+      },
+    },
+    finalStandings: [
+      {
+        playerId: first.playerId,
+        displayName: first.displayName ?? "Player 1",
+        rank: 1,
+        score: 100,
+      },
+      {
+        playerId: second.playerId,
+        displayName: second.displayName ?? "Player 2",
+        rank: 2,
+        score: 50,
+      },
+    ],
+  };
+}
+
+function createPartySnapshots(server?: MockServerState) {
+  return Object.fromEntries(
+    (server?.partySnapshotBodies ?? [])
+      .filter(
+        (snapshot): snapshot is NonNullable<typeof snapshot> & { playerId: string } =>
+          typeof snapshot.playerId === "string" && snapshot.playerId.length > 0,
+      )
+      .map(snapshot => [
+        snapshot.playerId,
+        {
+          playerId: snapshot.playerId,
+          ...(snapshot.displayName ? { displayName: snapshot.displayName } : {}),
+          ...(snapshot.representativePokemon
+            ? { representativePokemon: snapshot.representativePokemon }
+            : {}),
+          updatedAtMs: 0,
+        },
+      ]),
+  );
+}
+
+function getStateParticipants(server?: MockServerState) {
+  const first = server?.joinedParticipants[0] ?? {
+    sessionId: "server-session-1",
+    playerId: "player-1",
+    displayName: "Player 1",
+  };
+  const second = server?.joinedParticipants[1] ?? {
+    sessionId: "server-session-2",
+    playerId: "player-2",
+    displayName: "Player 2",
+  };
+
+  return [first, second] as const;
+}

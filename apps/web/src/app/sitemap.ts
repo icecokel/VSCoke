@@ -19,6 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/game",
     "/game/sky-drop",
     "/game/fish-drift",
+    "/game/poke-lounge",
     "/game/wordle",
     "/doom",
   ];

@@ -32,6 +32,24 @@ dist/
 .DS_Store
 *.pem
 
+# Poke Lounge local ROM and extraction workspaces
+*.nds
+*.gba
+*.gbc
+*.gb
+*.cia
+*.3ds
+data/raw/
+data/processed/
+assets/raw/
+assets/processed/
+apps/web/data/raw/
+apps/web/data/processed/
+apps/web/assets/raw/
+apps/web/assets/processed/
+apps/web/public/assets/raw/
+apps/web/public/assets/processed/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

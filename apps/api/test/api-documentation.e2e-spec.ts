@@ -22,6 +22,15 @@ type OpenApiDocument = {
     title?: string;
   };
   paths?: Record<string, unknown>;
+  components?: {
+    schemas?: Record<
+      string,
+      {
+        enum?: string[];
+        properties?: Record<string, { enum?: string[] }>;
+      }
+    >;
+  };
 };
 
 const requiredOpenApiPaths = [
@@ -103,6 +112,15 @@ describe('API documentation (e2e)', () => {
     expect(body.info?.title).toBe('VSCoke API');
     expect(Object.keys(body.paths ?? {}).sort()).toEqual(
       expect.arrayContaining(requiredOpenApiPaths),
+    );
+  });
+
+  it('/api-json (GET) exposes Poke Lounge in GameType enum', async () => {
+    const response = await request(httpServer).get('/api-json').expect(200);
+    const body = response.body as OpenApiDocument;
+
+    expect(body.components?.schemas?.GameType?.enum).toEqual(
+      expect.arrayContaining(['POKE_LOUNGE']),
     );
   });
 });

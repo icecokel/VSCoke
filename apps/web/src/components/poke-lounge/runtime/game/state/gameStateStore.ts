@@ -1,0 +1,1615 @@
+import {
+  PLAYER_PARTY_SLOT_COUNT,
+  type PlayerFacing,
+  type PlayerPokemonSlot,
+  type PlayerPosition,
+} from "../player/playerTypes";
+import { applyInventoryItemEffect } from "../items/inventoryItemEffects";
+import {
+  createDefaultRoundState,
+  startPreparationRound as startPreparationRoundState,
+  transitionPreparationIfExpired,
+  type GameRoundState,
+} from "../round/roundState";
+import {
+  accumulateTournamentScores,
+  rankCumulativeTournamentScores,
+  scoreTournamentStandings,
+  type CumulativeTournamentScoreRank,
+  type TournamentRoundScore,
+} from "../tournament/scoringPolicy";
+import {
+  createTournamentSession,
+  getCurrentTournamentMatch as getCurrentTournamentSessionMatch,
+  getTournamentSessionStandings,
+  recordTournamentSessionMatchResult,
+  type TournamentSession,
+} from "../tournament/tournamentSession";
+import type { TournamentMatch, TournamentParticipantInput } from "../tournament/tournamentState";
+
+export interface PlayerPokemon {
+  speciesId: number;
+  name: string;
+  level: number;
+  maxHp?: number;
+  currentHp?: number;
+  experience?: number;
+  growthRate?: number;
+  status?: PlayerPokemonStatus;
+  moves?: PlayerPokemonMove[];
+}
+
+export type PlayerPokemonStatus = "normal" | "poisoned" | "fainted";
+
+export interface PlayerPokemonMove {
+  id: number;
+  name: string;
+  pp: number;
+  maxPp: number;
+}
+
+export interface RemotePlayerPokemonSummary {
+  speciesId: number;
+  name: string;
+  level: number;
+}
+
+export interface PlayerWallet {
+  pokeDollars: number;
+}
+
+export type PlayerInventory = Record<string, number>;
+
+export interface PlayerCompetitiveStats {
+  rank: number | null;
+  score: number;
+}
+
+export interface PlayerGuideState {
+  shortcutGuideViewed: boolean;
+}
+
+export interface LocalPlayerState {
+  playerId: string;
+  displayName: string;
+  party: Array<PlayerPokemonSlot<PlayerPokemon>>;
+  activePartySlotIndex: number;
+  wallet: PlayerWallet;
+  inventory: PlayerInventory;
+  competitive: PlayerCompetitiveStats;
+  guide: PlayerGuideState;
+  position: PlayerPosition;
+}
+
+export interface RemotePlayerState {
+  sessionId: string;
+  playerId: string;
+  displayName?: string;
+  mapKey: string;
+  x: number;
+  y: number;
+  facing: PlayerFacing;
+  activePokemon?: RemotePlayerPokemonSummary;
+}
+
+export interface MultiplayerSessionState {
+  sessionId: string | null;
+  roomId: string | null;
+  connectionStatus: "offline" | "connecting" | "online";
+}
+
+export interface GameTournamentState {
+  session: TournamentSession | null;
+  scoresByPlayerId: Record<string, number>;
+  lastRoundScores: TournamentRoundScore[];
+  standings: CumulativeTournamentScoreRank[];
+}
+
+export interface LocalPlayersSaveState {
+  currentPlayerId: string;
+  playersById: Record<string, LocalPlayerState>;
+}
+
+export interface GameState extends LocalPlayersSaveState {
+  remotePlayers: Record<string, RemotePlayerState>;
+  session: MultiplayerSessionState;
+  round: GameRoundState;
+  tournament: GameTournamentState;
+}
+
+export interface GameStateStorage {
+  loadLocalPlayers(): LocalPlayersSaveState | null;
+  saveLocalPlayers(localPlayers: LocalPlayersSaveState): void;
+  clear(): void;
+}
+
+export type GameStateListener = (state: GameState) => void;
+export type GameStateUnsubscribe = () => void;
+
+export interface ShopItem {
+  id: string;
+  displayName: string;
+  price: number;
+  description: string;
+  unlockRank?: number;
+}
+
+export type BuyShopItemResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: "unknown-item" | "invalid-quantity" | "insufficient-funds" | "locked-item";
+    };
+
+export interface DiceGambleSettlementInput {
+  stakePokeDollars: number;
+  rewardPokeDollars: number;
+}
+
+export type DiceGambleSettlementResult =
+  | { ok: true; walletPokeDollars: number }
+  | { ok: false; reason: "invalid-stake" | "invalid-reward" | "insufficient-funds" };
+
+export type ConsumeInventoryItemResult =
+  | { ok: true }
+  | { ok: false; reason: "invalid-quantity" | "insufficient-quantity" };
+
+export type UseInventoryItemOnPartySlotResult =
+  | {
+      ok: true;
+      itemId: string;
+      messages: string[];
+      pokemon: PlayerPokemon;
+    }
+  | {
+      ok: false;
+      itemId: string;
+      reason:
+        | "unknown-item"
+        | "invalid-target"
+        | "insufficient-quantity"
+        | "no-effect"
+        | "unsupported-item";
+      message: string;
+    };
+
+export type AddPokemonToPartyResult =
+  | { ok: true; slotIndex: number }
+  | { ok: false; reason: "party-full" };
+
+export type SetActivePartySlotResult =
+  | { ok: true }
+  | { ok: false; reason: "empty-slot" | "invalid-slot" | "fainted" };
+
+export type UpdatePokemonInPartySlotResult =
+  | { ok: true }
+  | { ok: false; reason: "empty-slot" | "invalid-slot" };
+
+export type ReplacePokemonMoveResult =
+  | { ok: true }
+  | { ok: false; reason: "empty-slot" | "invalid-slot" | "invalid-move-index" };
+
+export type StartTournamentSessionResult =
+  | { ok: true; session: TournamentSession }
+  | { ok: false; reason: "round-not-active" | "invalid-participants" };
+
+export type RecordTournamentMatchResultResult =
+  | {
+      ok: true;
+      completed: boolean;
+      session: TournamentSession;
+      roundScores: TournamentRoundScore[];
+      standings: CumulativeTournamentScoreRank[];
+    }
+  | { ok: false; reason: "no-active-session" | "invalid-result"; message?: string };
+
+export interface ApplyTournamentStartedFromRoomInput {
+  roundIndex: number;
+  participantIds: string[];
+  matchIds?: string[];
+}
+
+export interface ApplyTournamentCompletedFromRoomInput {
+  roundIndex: number;
+  championPlayerId: string;
+  standings: Array<{
+    playerId: string;
+    rank: number;
+    score: number;
+  }>;
+}
+
+export interface ApplyRoundScoreUpdatedFromRoomInput {
+  roundIndex: number;
+  playerId: string;
+  rank: number;
+  score: number;
+}
+
+export type ApplyTournamentRoomEventResult =
+  | { ok: true }
+  | { ok: false; reason: "invalid-round" | "invalid-participants" | "invalid-standings" };
+
+export const SHOP_ITEM_CATALOG = {
+  potion: {
+    id: "potion",
+    displayName: "포션",
+    price: 300,
+    description: "포켓몬 1마리의 HP를 20 회복한다.",
+    unlockRank: 0,
+  },
+  pokeball: {
+    id: "pokeball",
+    displayName: "몬스터볼",
+    price: 200,
+    description: "야생 포켓몬을 잡기 위한 볼이다.",
+    unlockRank: 0,
+  },
+  antidote: {
+    id: "antidote",
+    displayName: "해독제",
+    price: 100,
+    description: "독 상태를 회복한다.",
+    unlockRank: 2,
+  },
+  superPotion: {
+    id: "superPotion",
+    displayName: "좋은상처약",
+    price: 700,
+    description: "포켓몬 1마리의 HP를 50 회복한다.",
+    unlockRank: 3,
+  },
+} as const satisfies Record<string, ShopItem>;
+
+export const SHOP_ITEM_IDS = ["potion", "pokeball", "antidote", "superPotion"] as const;
+
+export type ShopItemId = (typeof SHOP_ITEM_IDS)[number];
+
+export const PREMIUM_SHOP_ITEM_CATALOG = {
+  hyperPotion: {
+    id: "hyperPotion",
+    displayName: "고급상처약",
+    price: 1500,
+    description: "포켓몬 1마리의 HP를 120 회복한다.",
+    unlockRank: 3,
+  },
+  revive: {
+    id: "revive",
+    displayName: "기력의조각",
+    price: 3000,
+    description: "쓰러진 포켓몬 1마리의 HP를 절반 회복한다.",
+    unlockRank: 4,
+  },
+  ultraBall: {
+    id: "ultraBall",
+    displayName: "하이퍼볼",
+    price: 2500,
+    description: "몬스터볼보다 포획률이 높은 고성능 볼이다.",
+    unlockRank: 4,
+  },
+  rareCandy: {
+    id: "rareCandy",
+    displayName: "이상한사탕",
+    price: 8000,
+    description: "포켓몬 1마리의 레벨을 1 올린다.",
+    unlockRank: 6,
+  },
+} as const satisfies Record<string, ShopItem>;
+
+export const PREMIUM_SHOP_ITEM_IDS = ["hyperPotion", "revive", "ultraBall", "rareCandy"] as const;
+
+export type PremiumShopItemId = (typeof PREMIUM_SHOP_ITEM_IDS)[number];
+
+export function getUnlockedShopItemIds(rank: number | null): ShopItemId[] {
+  return SHOP_ITEM_IDS.filter(itemId => isShopItemUnlocked(SHOP_ITEM_CATALOG[itemId], rank));
+}
+
+export function getUnlockedPremiumShopItemIds(rank: number | null): PremiumShopItemId[] {
+  return PREMIUM_SHOP_ITEM_IDS.filter(itemId =>
+    isShopItemUnlocked(PREMIUM_SHOP_ITEM_CATALOG[itemId], rank),
+  );
+}
+
+export function getShopItemById(itemId: string): ShopItem | undefined {
+  return (
+    (SHOP_ITEM_CATALOG as Record<string, ShopItem>)[itemId] ??
+    (PREMIUM_SHOP_ITEM_CATALOG as Record<string, ShopItem>)[itemId]
+  );
+}
+
+export function isShopItemUnlocked(item: ShopItem, rank: number | null): boolean {
+  return normalizeUnlockedRank(rank) >= (item.unlockRank ?? 0);
+}
+
+export interface GameStateStore {
+  getState(): GameState;
+  getCurrentLocalPlayer(): LocalPlayerState;
+  canChooseStarter(): boolean;
+  hasCurrentLocalPlayerViewedShortcutGuide(): boolean;
+  subscribe(listener: GameStateListener): GameStateUnsubscribe;
+  setCurrentPlayer(playerId: string): void;
+  upsertLocalPlayer(localPlayer: LocalPlayerState): void;
+  setLocalPlayerPokeDollars(pokeDollars: number): void;
+  setLocalPlayerCompetitiveStats(stats: PlayerCompetitiveStats): void;
+  markCurrentLocalPlayerShortcutGuideViewed(): void;
+  buyShopItem(itemId: string, quantity: number): BuyShopItemResult;
+  buyPremiumShopItem(itemId: string, quantity: number): BuyShopItemResult;
+  consumeInventoryItem(itemId: string, quantity: number): ConsumeInventoryItemResult;
+  useInventoryItemOnPartySlot(itemId: string, slotIndex: number): UseInventoryItemOnPartySlotResult;
+  healCurrentParty(): void;
+  settleDiceGambleResult(input: DiceGambleSettlementInput): DiceGambleSettlementResult;
+  setStarterPokemon(pokemon: PlayerPokemon): void;
+  updateActivePokemon(pokemon: PlayerPokemon): void;
+  addPokemonToParty(pokemon: PlayerPokemon): AddPokemonToPartyResult;
+  setActivePartySlot(slotIndex: number): SetActivePartySlotResult;
+  updatePokemonInPartySlot(
+    slotIndex: number,
+    pokemon: PlayerPokemon,
+  ): UpdatePokemonInPartySlotResult;
+  replacePokemonMove(
+    slotIndex: number,
+    moveIndex: number,
+    move: PlayerPokemonMove,
+  ): ReplacePokemonMoveResult;
+  setLocalPlayerPosition(position: PlayerPosition): void;
+  upsertRemotePlayer(player: RemotePlayerState): void;
+  removeRemotePlayer(sessionId: string): void;
+  setSession(session: MultiplayerSessionState): void;
+  startPreparationRound(nowMs: number, preparationDurationMs?: number): void;
+  advanceRoundClock(nowMs: number): void;
+  setRoundState(round: GameRoundState): void;
+  startTournamentSession(
+    participants: ReadonlyArray<TournamentParticipantInput>,
+  ): StartTournamentSessionResult;
+  getCurrentTournamentMatch(): TournamentMatch | null;
+  recordTournamentMatchResult(
+    matchId: string,
+    winnerPlayerId: string,
+    nowMs: number,
+  ): RecordTournamentMatchResultResult;
+  applyTournamentStartedFromRoom(
+    input: ApplyTournamentStartedFromRoomInput,
+    nowMs: number,
+  ): ApplyTournamentRoomEventResult;
+  applyTournamentCompletedFromRoom(
+    input: ApplyTournamentCompletedFromRoomInput,
+    nowMs: number,
+  ): ApplyTournamentRoomEventResult;
+  applyRoundScoreUpdatedFromRoom(
+    input: ApplyRoundScoreUpdatedFromRoomInput,
+  ): ApplyTournamentRoomEventResult;
+  continueFromRoundResult(nowMs: number, preparationDurationMs?: number): void;
+  reset(): void;
+}
+
+export interface CreateGameStateStoreOptions {
+  storage?: GameStateStorage;
+  initialState?: GameState;
+}
+
+export function createDefaultGameState(): GameState {
+  const localPlayer = createDefaultLocalPlayer();
+
+  return {
+    currentPlayerId: localPlayer.playerId,
+    playersById: {
+      [localPlayer.playerId]: localPlayer,
+    },
+    remotePlayers: {},
+    session: {
+      sessionId: null,
+      roomId: null,
+      connectionStatus: "offline",
+    },
+    round: createDefaultRoundState(),
+    tournament: createDefaultGameTournamentState(),
+  };
+}
+
+export function createGameStateStore(options: CreateGameStateStoreOptions = {}): GameStateStore {
+  const { storage } = options;
+  const defaultState = options.initialState ?? createDefaultGameState();
+  const persistedLocalPlayers = storage?.loadLocalPlayers() ?? null;
+  let state: GameState = ensureCurrentPlayerExists({
+    ...defaultState,
+    ...(persistedLocalPlayers ?? {
+      currentPlayerId: defaultState.currentPlayerId,
+      playersById: defaultState.playersById,
+    }),
+    remotePlayers: {},
+    round: defaultState.round ?? createDefaultRoundState(),
+    tournament: defaultState.tournament ?? createDefaultGameTournamentState(),
+  });
+  const listeners = new Set<GameStateListener>();
+
+  const notify = () => {
+    for (const listener of listeners) {
+      listener(state);
+    }
+  };
+
+  const persistLocalPlayers = () => {
+    storage?.saveLocalPlayers({
+      currentPlayerId: state.currentPlayerId,
+      playersById: state.playersById,
+    });
+  };
+
+  const setLocalPlayers = (localPlayers: LocalPlayersSaveState) => {
+    state = ensureCurrentPlayerExists({
+      ...state,
+      ...localPlayers,
+    });
+    persistLocalPlayers();
+    notify();
+  };
+
+  const setCurrentLocalPlayer = (localPlayer: LocalPlayerState) => {
+    setLocalPlayers({
+      currentPlayerId: localPlayer.playerId,
+      playersById: {
+        ...state.playersById,
+        [localPlayer.playerId]: localPlayer,
+      },
+    });
+  };
+
+  const buyItemFromCatalog = (
+    catalog: Record<string, ShopItem>,
+    itemId: string,
+    quantity: number,
+  ): BuyShopItemResult => {
+    const item = catalog[itemId];
+
+    if (!item) {
+      return { ok: false, reason: "unknown-item" };
+    }
+
+    if (!isPositiveInteger(quantity)) {
+      return { ok: false, reason: "invalid-quantity" };
+    }
+
+    const localPlayer = getCurrentLocalPlayer(state);
+
+    if (!isShopItemUnlocked(item, localPlayer.competitive.rank)) {
+      return { ok: false, reason: "locked-item" };
+    }
+
+    const totalPrice = item.price * quantity;
+
+    if (localPlayer.wallet.pokeDollars < totalPrice) {
+      return { ok: false, reason: "insufficient-funds" };
+    }
+
+    setCurrentLocalPlayer({
+      ...localPlayer,
+      wallet: {
+        ...localPlayer.wallet,
+        pokeDollars: localPlayer.wallet.pokeDollars - totalPrice,
+      },
+      inventory: {
+        ...localPlayer.inventory,
+        [item.id]: (localPlayer.inventory[item.id] ?? 0) + quantity,
+      },
+    });
+
+    return { ok: true };
+  };
+
+  return {
+    getState() {
+      return state;
+    },
+    getCurrentLocalPlayer() {
+      return getCurrentLocalPlayer(state);
+    },
+    canChooseStarter() {
+      return getCurrentLocalPlayer(state).party.length === 0;
+    },
+    hasCurrentLocalPlayerViewedShortcutGuide() {
+      return getCurrentLocalPlayer(state).guide.shortcutGuideViewed;
+    },
+    subscribe(listener) {
+      listeners.add(listener);
+
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    setCurrentPlayer(playerId) {
+      setLocalPlayers({
+        currentPlayerId: playerId,
+        playersById: {
+          ...state.playersById,
+          [playerId]: state.playersById[playerId] ?? createDefaultLocalPlayer(playerId),
+        },
+      });
+    },
+    upsertLocalPlayer(localPlayer) {
+      setCurrentLocalPlayer(localPlayer);
+    },
+    setLocalPlayerPokeDollars(pokeDollars) {
+      const localPlayer = getCurrentLocalPlayer(state);
+
+      setCurrentLocalPlayer({
+        ...localPlayer,
+        wallet: {
+          ...localPlayer.wallet,
+          pokeDollars: normalizePokeDollars(pokeDollars),
+        },
+      });
+    },
+    setLocalPlayerCompetitiveStats(stats) {
+      const localPlayer = getCurrentLocalPlayer(state);
+
+      setCurrentLocalPlayer({
+        ...localPlayer,
+        competitive: normalizeCompetitiveStats(stats),
+      });
+    },
+    markCurrentLocalPlayerShortcutGuideViewed() {
+      const localPlayer = getCurrentLocalPlayer(state);
+
+      if (localPlayer.guide.shortcutGuideViewed) {
+        return;
+      }
+
+      setCurrentLocalPlayer({
+        ...localPlayer,
+        guide: {
+          ...localPlayer.guide,
+          shortcutGuideViewed: true,
+        },
+      });
+    },
+    buyShopItem(itemId, quantity) {
+      return buyItemFromCatalog(SHOP_ITEM_CATALOG as Record<string, ShopItem>, itemId, quantity);
+    },
+    buyPremiumShopItem(itemId, quantity) {
+      return buyItemFromCatalog(
+        PREMIUM_SHOP_ITEM_CATALOG as Record<string, ShopItem>,
+        itemId,
+        quantity,
+      );
+    },
+    consumeInventoryItem(itemId, quantity) {
+      if (!isPositiveInteger(quantity)) {
+        return { ok: false, reason: "invalid-quantity" };
+      }
+
+      const localPlayer = getCurrentLocalPlayer(state);
+      const currentQuantity = localPlayer.inventory[itemId] ?? 0;
+
+      if (currentQuantity < quantity) {
+        return { ok: false, reason: "insufficient-quantity" };
+      }
+
+      const nextQuantity = currentQuantity - quantity;
+      const nextInventory = { ...localPlayer.inventory };
+
+      if (nextQuantity > 0) {
+        nextInventory[itemId] = nextQuantity;
+      } else {
+        delete nextInventory[itemId];
+      }
+
+      setCurrentLocalPlayer({
+        ...localPlayer,
+        inventory: nextInventory,
+      });
+
+      return { ok: true };
+    },
+    useInventoryItemOnPartySlot(itemId, slotIndex) {
+      const item = getShopItemById(itemId);
+
+      if (!item) {
+        return {
+          ok: false,
+          itemId,
+          reason: "unknown-item",
+          message: "사용할 수 없는 아이템이다.",
+        };
+      }
+
+      const localPlayer = getCurrentLocalPlayer(state);
+      const quantity = localPlayer.inventory[itemId] ?? 0;
+
+      if (quantity <= 0) {
+        return {
+          ok: false,
+          itemId,
+          reason: "insufficient-quantity",
+          message: `${item.displayName}이 없다!`,
+        };
+      }
+
+      const partySlot = localPlayer.party.find(slot => slot.slotIndex === slotIndex);
+
+      if (!partySlot?.pokemon) {
+        return {
+          ok: false,
+          itemId,
+          reason: "invalid-target",
+          message: "대상 포켓몬이 없다.",
+        };
+      }
+
+      const itemResult = applyInventoryItemEffect(itemId, partySlot.pokemon);
+
+      if (!itemResult.ok) {
+        return {
+          ok: false,
+          itemId,
+          reason: itemResult.reason,
+          message: itemResult.message,
+        };
+      }
+
+      const nextQuantity = quantity - 1;
+      const nextInventory = { ...localPlayer.inventory };
+
+      if (nextQuantity > 0) {
+        nextInventory[itemId] = nextQuantity;
+      } else {
+        delete nextInventory[itemId];
+      }
+
+      const nextPokemon = itemResult.pokemon;
+
+      setCurrentLocalPlayer({
+        ...localPlayer,
+        inventory: nextInventory,
+        party: localPlayer.party.map(slot =>
+          slot.slotIndex === slotIndex ? { ...slot, pokemon: nextPokemon } : slot,
+        ),
+      });
+
+      return {
+        ok: true,
+        itemId,
+        messages: itemResult.messages,
+        pokemon: nextPokemon,
+      };
+    },
+    healCurrentParty() {
+      const localPlayer = getCurrentLocalPlayer(state);
+
+      if (localPlayer.party.length === 0) {
+        return;
+      }
+
+      setCurrentLocalPlayer({
+        ...localPlayer,
+        party: localPlayer.party.map(slot => ({
+          ...slot,
+          pokemon: slot.pokemon ? healPokemon(slot.pokemon) : slot.pokemon,
+        })),
+      });
+    },
+    settleDiceGambleResult({ stakePokeDollars, rewardPokeDollars }) {
+      if (
+        !Number.isFinite(stakePokeDollars) ||
+        !Number.isInteger(stakePokeDollars) ||
+        stakePokeDollars < 1
+      ) {
+        return { ok: false, reason: "invalid-stake" };
+      }
+
+      if (
+        !Number.isFinite(rewardPokeDollars) ||
+        !Number.isInteger(rewardPokeDollars) ||
+        rewardPokeDollars < 0
+      ) {
+        return { ok: false, reason: "invalid-reward" };
+      }
+
+      const localPlayer = getCurrentLocalPlayer(state);
+
+      if (localPlayer.wallet.pokeDollars < stakePokeDollars) {
+        return { ok: false, reason: "insufficient-funds" };
+      }
+
+      const walletPokeDollars = normalizePokeDollars(
+        localPlayer.wallet.pokeDollars - stakePokeDollars + rewardPokeDollars,
+      );
+
+      setCurrentLocalPlayer({
+        ...localPlayer,
+        wallet: {
+          ...localPlayer.wallet,
+          pokeDollars: walletPokeDollars,
+        },
+      });
+
+      return { ok: true, walletPokeDollars };
+    },
+    setStarterPokemon(pokemon) {
+      setCurrentLocalPlayer(setActivePartyPokemon(getCurrentLocalPlayer(state), pokemon));
+    },
+    updateActivePokemon(pokemon) {
+      setCurrentLocalPlayer(setActivePartyPokemon(getCurrentLocalPlayer(state), pokemon));
+    },
+    addPokemonToParty(pokemon) {
+      const localPlayer = getCurrentLocalPlayer(state);
+
+      if (localPlayer.party.length >= PLAYER_PARTY_SLOT_COUNT) {
+        return { ok: false, reason: "party-full" };
+      }
+
+      const slotIndex = localPlayer.party.length;
+      setCurrentLocalPlayer({
+        ...localPlayer,
+        party: [
+          ...localPlayer.party,
+          {
+            slotIndex,
+            pokemon,
+          },
+        ],
+      });
+
+      return { ok: true, slotIndex };
+    },
+    setActivePartySlot(slotIndex) {
+      if (!isValidPartySlotIndex(slotIndex)) {
+        return { ok: false, reason: "invalid-slot" };
+      }
+
+      const localPlayer = getCurrentLocalPlayer(state);
+      const partySlot = getPartySlot(localPlayer, slotIndex);
+
+      if (!partySlot?.pokemon) {
+        return { ok: false, reason: "empty-slot" };
+      }
+
+      if (partySlot.pokemon.status === "fainted") {
+        return { ok: false, reason: "fainted" };
+      }
+
+      setCurrentLocalPlayer({
+        ...localPlayer,
+        activePartySlotIndex: slotIndex,
+      });
+
+      return { ok: true };
+    },
+    updatePokemonInPartySlot(slotIndex, pokemon) {
+      if (!isValidPartySlotIndex(slotIndex)) {
+        return { ok: false, reason: "invalid-slot" };
+      }
+
+      const localPlayer = getCurrentLocalPlayer(state);
+      const partySlot = getPartySlot(localPlayer, slotIndex);
+
+      if (!partySlot?.pokemon) {
+        return { ok: false, reason: "empty-slot" };
+      }
+
+      setCurrentLocalPlayer({
+        ...localPlayer,
+        party: localPlayer.party.map(slot =>
+          slot.slotIndex === slotIndex ? { ...slot, pokemon } : slot,
+        ),
+      });
+
+      return { ok: true };
+    },
+    replacePokemonMove(slotIndex, moveIndex, move) {
+      if (!isValidPartySlotIndex(slotIndex)) {
+        return { ok: false, reason: "invalid-slot" };
+      }
+
+      const localPlayer = getCurrentLocalPlayer(state);
+      const partySlot = getPartySlot(localPlayer, slotIndex);
+
+      if (!partySlot?.pokemon) {
+        return { ok: false, reason: "empty-slot" };
+      }
+
+      const pokemon = partySlot.pokemon;
+      const moves = partySlot.pokemon.moves ?? [];
+
+      if (!isValidMoveIndex(moveIndex) || !moves[moveIndex]) {
+        return { ok: false, reason: "invalid-move-index" };
+      }
+
+      setCurrentLocalPlayer({
+        ...localPlayer,
+        party: localPlayer.party.map(slot =>
+          slot.slotIndex === slotIndex
+            ? {
+                ...slot,
+                pokemon: {
+                  ...pokemon,
+                  moves: moves.map((candidate, index) => (index === moveIndex ? move : candidate)),
+                },
+              }
+            : slot,
+        ),
+      });
+
+      return { ok: true };
+    },
+    setLocalPlayerPosition(position) {
+      setCurrentLocalPlayer({
+        ...getCurrentLocalPlayer(state),
+        position,
+      });
+    },
+    upsertRemotePlayer(player) {
+      state = {
+        ...state,
+        remotePlayers: {
+          ...state.remotePlayers,
+          [player.sessionId]: player,
+        },
+      };
+      notify();
+    },
+    removeRemotePlayer(sessionId) {
+      const remotePlayers = { ...state.remotePlayers };
+      delete remotePlayers[sessionId];
+      state = {
+        ...state,
+        remotePlayers,
+      };
+      notify();
+    },
+    setSession(session) {
+      state = {
+        ...state,
+        session,
+      };
+      notify();
+    },
+    startPreparationRound(nowMs, preparationDurationMs) {
+      state = {
+        ...state,
+        round: startPreparationRoundState(state.round, nowMs, preparationDurationMs),
+      };
+      notify();
+    },
+    advanceRoundClock(nowMs) {
+      const nextRound = transitionPreparationIfExpired(state.round, nowMs);
+
+      if (nextRound === state.round) {
+        return;
+      }
+
+      state = {
+        ...state,
+        round: nextRound,
+      };
+      notify();
+    },
+    setRoundState(round) {
+      state = {
+        ...state,
+        round,
+      };
+      notify();
+    },
+    startTournamentSession(participants) {
+      if (
+        state.round.phase !== "tournament" ||
+        !Number.isInteger(state.round.roundIndex) ||
+        state.round.roundIndex < 1 ||
+        state.round.roundIndex > state.round.totalRounds
+      ) {
+        return { ok: false, reason: "round-not-active" };
+      }
+
+      let session: TournamentSession;
+
+      try {
+        session = createTournamentSession({
+          roundIndex: state.round.roundIndex,
+          participants,
+        });
+      } catch {
+        return { ok: false, reason: "invalid-participants" };
+      }
+
+      state = {
+        ...state,
+        tournament: {
+          ...state.tournament,
+          session,
+          lastRoundScores: [],
+        },
+      };
+      notify();
+
+      return { ok: true, session };
+    },
+    getCurrentTournamentMatch() {
+      const session = state.tournament.session;
+
+      return session && session.status === "in-progress"
+        ? getCurrentTournamentSessionMatch(session)
+        : null;
+    },
+    recordTournamentMatchResult(matchId, winnerPlayerId, nowMs) {
+      const session = state.tournament.session;
+
+      if (!session || session.status !== "in-progress") {
+        return { ok: false, reason: "no-active-session" };
+      }
+
+      let nextSession: TournamentSession;
+
+      try {
+        nextSession = recordTournamentSessionMatchResult(session, matchId, winnerPlayerId, nowMs);
+      } catch (error) {
+        return {
+          ok: false,
+          reason: "invalid-result",
+          message: error instanceof Error ? error.message : undefined,
+        };
+      }
+
+      if (nextSession.status !== "completed") {
+        state = {
+          ...state,
+          tournament: {
+            ...state.tournament,
+            session: nextSession,
+          },
+        };
+        notify();
+
+        return {
+          ok: true,
+          completed: false,
+          session: nextSession,
+          roundScores: [],
+          standings: state.tournament.standings,
+        };
+      }
+
+      const roundScores = scoreTournamentStandings(getTournamentSessionStandings(nextSession));
+      const scoresByPlayerId = accumulateTournamentScores(
+        state.tournament.scoresByPlayerId,
+        roundScores,
+      );
+      const standings = rankCumulativeTournamentScores(
+        scoresByPlayerId,
+        nextSession.tournament.participants,
+      );
+      const finalRound = state.round.roundIndex >= state.round.totalRounds;
+      const playersById = finalRound
+        ? applyFinalTournamentCompetitiveStats(state.playersById, standings)
+        : state.playersById;
+
+      state = {
+        ...state,
+        playersById,
+        round: {
+          ...state.round,
+          phase: finalRound ? "game-result" : "round-result",
+          phaseStartedAtMs: normalizeTimestampMs(nowMs),
+          preparationEndsAtMs: null,
+        },
+        tournament: {
+          ...state.tournament,
+          session: nextSession,
+          scoresByPlayerId,
+          lastRoundScores: roundScores,
+          standings,
+        },
+      };
+
+      if (finalRound) {
+        persistLocalPlayers();
+      }
+
+      notify();
+
+      return {
+        ok: true,
+        completed: true,
+        session: nextSession,
+        roundScores,
+        standings,
+      };
+    },
+    applyTournamentStartedFromRoom(input, nowMs) {
+      const roundIndex = normalizePositiveInteger(input.roundIndex);
+
+      if (roundIndex === null || roundIndex > state.round.totalRounds) {
+        return { ok: false, reason: "invalid-round" };
+      }
+
+      const participantIds = normalizeUniquePlayerIds(input.participantIds, 2, 6);
+
+      if (!participantIds) {
+        return { ok: false, reason: "invalid-participants" };
+      }
+
+      let session: TournamentSession;
+
+      try {
+        session = createTournamentSession({
+          roundIndex,
+          participants: participantIds.map(playerId => ({
+            playerId,
+            displayName: resolvePlayerDisplayName(state, playerId),
+          })),
+        });
+      } catch {
+        return { ok: false, reason: "invalid-participants" };
+      }
+
+      state = {
+        ...state,
+        round: {
+          ...state.round,
+          phase: "tournament",
+          roundIndex,
+          phaseStartedAtMs: normalizeTimestampMs(nowMs),
+          preparationEndsAtMs: null,
+        },
+        tournament: {
+          ...state.tournament,
+          session,
+          lastRoundScores: [],
+        },
+      };
+      notify();
+
+      return { ok: true };
+    },
+    applyTournamentCompletedFromRoom(input, nowMs) {
+      const roundIndex = normalizePositiveInteger(input.roundIndex);
+
+      if (roundIndex === null || roundIndex > state.round.totalRounds) {
+        return { ok: false, reason: "invalid-round" };
+      }
+
+      const rows = normalizeRoomTournamentStandingRows(state, input.standings);
+
+      if (
+        !rows ||
+        !rows.some(row => row.playerId === input.championPlayerId.trim() && row.rank === 1)
+      ) {
+        return { ok: false, reason: "invalid-standings" };
+      }
+
+      const scoresByPlayerId = Object.fromEntries(rows.map(row => [row.playerId, row.score]));
+      const roundScores = createRoundScoresFromCumulativeRows(
+        state.tournament.scoresByPlayerId,
+        rows,
+      );
+      const finalRound = roundIndex >= state.round.totalRounds;
+      const playersById = finalRound
+        ? applyFinalTournamentCompetitiveStats(state.playersById, rows)
+        : state.playersById;
+
+      state = {
+        ...state,
+        playersById,
+        round: {
+          ...state.round,
+          phase: finalRound ? "game-result" : "round-result",
+          roundIndex,
+          phaseStartedAtMs: normalizeTimestampMs(nowMs),
+          preparationEndsAtMs: null,
+        },
+        tournament: {
+          ...state.tournament,
+          session: null,
+          scoresByPlayerId,
+          lastRoundScores: roundScores,
+          standings: rows,
+        },
+      };
+
+      if (finalRound) {
+        persistLocalPlayers();
+      }
+
+      notify();
+
+      return { ok: true };
+    },
+    applyRoundScoreUpdatedFromRoom(input) {
+      const roundIndex = normalizePositiveInteger(input.roundIndex);
+      const playerId = input.playerId.trim();
+      const rank = normalizePositiveInteger(input.rank);
+
+      if (roundIndex === null || roundIndex > state.round.totalRounds) {
+        return { ok: false, reason: "invalid-round" };
+      }
+
+      if (!playerId || rank === null) {
+        return { ok: false, reason: "invalid-standings" };
+      }
+
+      const row = {
+        playerId,
+        displayName: resolvePlayerDisplayName(state, playerId),
+        seed: readExistingTournamentSeed(state, playerId),
+        rank,
+        score: normalizeScore(input.score),
+      };
+      const nextScoresByPlayerId = {
+        ...state.tournament.scoresByPlayerId,
+        [playerId]: row.score,
+      };
+      const nextStandings = upsertTournamentScoreRow(state.tournament.standings, row).sort(
+        (left, right) => left.rank - right.rank || left.seed - right.seed,
+      );
+
+      state = {
+        ...state,
+        tournament: {
+          ...state.tournament,
+          scoresByPlayerId: nextScoresByPlayerId,
+          standings: nextStandings,
+        },
+      };
+      notify();
+
+      return { ok: true };
+    },
+    continueFromRoundResult(nowMs, preparationDurationMs) {
+      if (state.round.phase !== "round-result") {
+        return;
+      }
+
+      state = {
+        ...state,
+        round: startPreparationRoundState(state.round, nowMs, preparationDurationMs),
+        tournament: {
+          ...state.tournament,
+          session: null,
+        },
+      };
+      notify();
+    },
+    reset() {
+      storage?.clear();
+      state = createDefaultGameState();
+      notify();
+    },
+  };
+}
+
+export function createDefaultGameTournamentState(): GameTournamentState {
+  return {
+    session: null,
+    scoresByPlayerId: {},
+    lastRoundScores: [],
+    standings: [],
+  };
+}
+
+export function createDefaultLocalPlayer(playerId = "player-1"): LocalPlayerState {
+  return {
+    playerId,
+    displayName: formatDefaultPlayerName(playerId),
+    party: createEmptyParty(),
+    activePartySlotIndex: 0,
+    wallet: createDefaultPlayerWallet(),
+    inventory: createDefaultPlayerInventory(),
+    competitive: createDefaultCompetitiveStats(),
+    guide: createDefaultPlayerGuideState(),
+    position: {
+      mapKey: "town",
+      x: 656,
+      y: 1150,
+      facing: "front",
+    },
+  };
+}
+
+export function createDefaultCompetitiveStats(): PlayerCompetitiveStats {
+  return {
+    rank: null,
+    score: 0,
+  };
+}
+
+export function createDefaultPlayerGuideState(): PlayerGuideState {
+  return {
+    shortcutGuideViewed: false,
+  };
+}
+
+export function createDefaultPlayerWallet(): PlayerWallet {
+  return {
+    pokeDollars: 0,
+  };
+}
+
+export function createDefaultPlayerInventory(): PlayerInventory {
+  return {};
+}
+
+export function createEmptyParty(): Array<PlayerPokemonSlot<PlayerPokemon>> {
+  return [];
+}
+
+export function calculateOccupiedPartyAverageLevel(
+  party: Array<PlayerPokemonSlot<PlayerPokemon>>,
+): number | null {
+  const levels = party
+    .map(slot => slot.pokemon?.level)
+    .filter(
+      (level): level is number => typeof level === "number" && Number.isFinite(level) && level >= 1,
+    );
+
+  if (levels.length === 0) {
+    return null;
+  }
+
+  return Math.round(levels.reduce((total, level) => total + level, 0) / levels.length);
+}
+
+function getCurrentLocalPlayer(state: GameState): LocalPlayerState {
+  const localPlayer = state.playersById[state.currentPlayerId];
+
+  if (!localPlayer) {
+    throw new Error(`Missing local player ${state.currentPlayerId}`);
+  }
+
+  return localPlayer;
+}
+
+function ensureCurrentPlayerExists(state: GameState): GameState {
+  const playersById = Object.fromEntries(
+    Object.entries(state.playersById).map(([playerId, localPlayer]) => [
+      playerId,
+      ensureLocalPlayerDefaults(localPlayer),
+    ]),
+  );
+
+  if (state.playersById[state.currentPlayerId]) {
+    return {
+      ...state,
+      playersById,
+    };
+  }
+
+  return {
+    ...state,
+    playersById: {
+      ...playersById,
+      [state.currentPlayerId]: createDefaultLocalPlayer(state.currentPlayerId),
+    },
+  };
+}
+
+function ensureLocalPlayerDefaults(localPlayer: LocalPlayerState): LocalPlayerState {
+  return {
+    ...localPlayer,
+    wallet: {
+      ...createDefaultPlayerWallet(),
+      ...(localPlayer.wallet ?? {}),
+      pokeDollars: normalizePokeDollars(localPlayer.wallet?.pokeDollars ?? 0),
+    },
+    inventory: normalizeInventory(localPlayer.inventory ?? createDefaultPlayerInventory()),
+    competitive: normalizeCompetitiveStats(
+      localPlayer.competitive ?? createDefaultCompetitiveStats(),
+    ),
+    guide: normalizePlayerGuideState(localPlayer.guide ?? createDefaultPlayerGuideState()),
+  };
+}
+
+function formatDefaultPlayerName(playerId: string): string {
+  const match = /^player-(\d+)$/.exec(playerId);
+
+  return match ? `Player ${match[1]}` : playerId;
+}
+
+function normalizePokeDollars(pokeDollars: number): number {
+  if (!Number.isFinite(pokeDollars)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.floor(pokeDollars));
+}
+
+function normalizeInventory(inventory: Record<string, unknown>): PlayerInventory {
+  return Object.fromEntries(
+    Object.entries(inventory)
+      .map(
+        ([itemId, quantity]) =>
+          [itemId, typeof quantity === "number" ? quantity : Number(quantity)] as const,
+      )
+      .filter(([, quantity]) => Number.isFinite(quantity) && quantity >= 1)
+      .map(([itemId, quantity]) => [itemId, Math.floor(quantity)]),
+  );
+}
+
+function normalizeCompetitiveStats(
+  stats: Partial<{ rank: unknown; score: unknown }>,
+): PlayerCompetitiveStats {
+  return {
+    rank: normalizeRank(stats.rank),
+    score: normalizeScore(stats.score),
+  };
+}
+
+function normalizePlayerGuideState(
+  guide: Partial<{ shortcutGuideViewed: unknown }>,
+): PlayerGuideState {
+  return {
+    shortcutGuideViewed: guide.shortcutGuideViewed === true,
+  };
+}
+
+function normalizeRank(rank: unknown): number | null {
+  if (rank === null || rank === undefined || rank === "") {
+    return null;
+  }
+
+  const parsedRank = typeof rank === "number" ? rank : Number(rank);
+
+  if (!Number.isFinite(parsedRank)) {
+    return null;
+  }
+
+  const normalizedRank = Math.floor(parsedRank);
+
+  return normalizedRank >= 1 ? normalizedRank : null;
+}
+
+function normalizeUnlockedRank(rank: number | null): number {
+  if (typeof rank !== "number" || !Number.isFinite(rank)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.floor(rank));
+}
+
+function normalizeScore(score: unknown): number {
+  const parsedScore = typeof score === "number" ? score : Number(score);
+
+  if (!Number.isFinite(parsedScore)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.floor(parsedScore));
+}
+
+function normalizePositiveInteger(value: unknown): number | null {
+  const parsedValue = typeof value === "number" ? value : Number(value);
+
+  if (!Number.isFinite(parsedValue)) {
+    return null;
+  }
+
+  const normalizedValue = Math.floor(parsedValue);
+
+  return normalizedValue >= 1 ? normalizedValue : null;
+}
+
+function normalizeTimestampMs(nowMs: number): number {
+  return Math.max(0, Math.trunc(Number.isFinite(nowMs) ? nowMs : 0));
+}
+
+function normalizeUniquePlayerIds(
+  playerIds: unknown,
+  minCount: number,
+  maxCount: number,
+): string[] | null {
+  if (!Array.isArray(playerIds)) {
+    return null;
+  }
+
+  const seenPlayerIds = new Set<string>();
+  const normalizedPlayerIds: string[] = [];
+
+  for (const playerId of playerIds) {
+    if (typeof playerId !== "string") {
+      return null;
+    }
+
+    const normalizedPlayerId = playerId.trim();
+
+    if (!normalizedPlayerId || seenPlayerIds.has(normalizedPlayerId)) {
+      return null;
+    }
+
+    seenPlayerIds.add(normalizedPlayerId);
+    normalizedPlayerIds.push(normalizedPlayerId);
+  }
+
+  if (normalizedPlayerIds.length < minCount || normalizedPlayerIds.length > maxCount) {
+    return null;
+  }
+
+  return normalizedPlayerIds;
+}
+
+function normalizeRoomTournamentStandingRows(
+  state: GameState,
+  standings: ApplyTournamentCompletedFromRoomInput["standings"],
+): CumulativeTournamentScoreRank[] | null {
+  if (!Array.isArray(standings) || standings.length < 2 || standings.length > 6) {
+    return null;
+  }
+
+  const seenPlayerIds = new Set<string>();
+  const rows: CumulativeTournamentScoreRank[] = [];
+
+  for (const [index, standing] of standings.entries()) {
+    const playerId = typeof standing.playerId === "string" ? standing.playerId.trim() : "";
+    const rank = normalizePositiveInteger(standing.rank);
+
+    if (!playerId || rank === null || seenPlayerIds.has(playerId)) {
+      return null;
+    }
+
+    seenPlayerIds.add(playerId);
+    rows.push({
+      playerId,
+      displayName: resolvePlayerDisplayName(state, playerId),
+      seed: readExistingTournamentSeed(state, playerId) || index + 1,
+      rank,
+      score: normalizeScore(standing.score),
+    });
+  }
+
+  return rows.sort((left, right) => left.rank - right.rank || left.seed - right.seed);
+}
+
+function createRoundScoresFromCumulativeRows(
+  previousScores: Readonly<Record<string, number>>,
+  rows: ReadonlyArray<CumulativeTournamentScoreRank>,
+): TournamentRoundScore[] {
+  return rows.map(row => ({
+    playerId: row.playerId,
+    displayName: row.displayName,
+    seed: row.seed,
+    rank: row.rank,
+    score: Math.max(0, row.score - normalizeScore(previousScores[row.playerId])),
+  }));
+}
+
+function resolvePlayerDisplayName(state: GameState, playerId: string): string {
+  const localDisplayName = state.playersById[playerId]?.displayName;
+
+  if (localDisplayName) {
+    return localDisplayName;
+  }
+
+  return (
+    Object.values(state.remotePlayers).find(player => player.playerId === playerId)?.displayName ??
+    playerId
+  );
+}
+
+function readExistingTournamentSeed(state: GameState, playerId: string): number {
+  return (
+    state.tournament.session?.tournament.participants.find(
+      participant => participant.playerId === playerId,
+    )?.seed ?? 0
+  );
+}
+
+function upsertTournamentScoreRow<T extends TournamentRoundScore | CumulativeTournamentScoreRank>(
+  rows: ReadonlyArray<T>,
+  row: T,
+): T[] {
+  const replacedRows = rows.filter(candidate => candidate.playerId !== row.playerId);
+  return [...replacedRows, row].sort(
+    (left, right) => left.rank - right.rank || left.seed - right.seed,
+  );
+}
+
+function applyFinalTournamentCompetitiveStats(
+  playersById: Record<string, LocalPlayerState>,
+  standings: ReadonlyArray<CumulativeTournamentScoreRank>,
+): Record<string, LocalPlayerState> {
+  let nextPlayersById = playersById;
+
+  for (const row of standings) {
+    if (!Object.hasOwn(playersById, row.playerId)) {
+      continue;
+    }
+
+    const localPlayer = playersById[row.playerId];
+
+    if (!localPlayer) {
+      continue;
+    }
+
+    if (nextPlayersById === playersById) {
+      nextPlayersById = { ...playersById };
+    }
+
+    nextPlayersById[row.playerId] = {
+      ...localPlayer,
+      competitive: {
+        rank: row.rank,
+        score: row.score,
+      },
+    };
+  }
+
+  return nextPlayersById;
+}
+
+function isPositiveInteger(value: number): boolean {
+  return Number.isFinite(value) && Number.isInteger(value) && value >= 1;
+}
+
+function isValidPartySlotIndex(slotIndex: number): boolean {
+  return (
+    Number.isFinite(slotIndex) &&
+    Number.isInteger(slotIndex) &&
+    slotIndex >= 0 &&
+    slotIndex < PLAYER_PARTY_SLOT_COUNT
+  );
+}
+
+function isValidMoveIndex(moveIndex: number): boolean {
+  return (
+    Number.isFinite(moveIndex) && Number.isInteger(moveIndex) && moveIndex >= 0 && moveIndex < 4
+  );
+}
+
+function getPartySlot(
+  localPlayer: LocalPlayerState,
+  slotIndex: number,
+): PlayerPokemonSlot<PlayerPokemon> | undefined {
+  return localPlayer.party.find(slot => slot.slotIndex === slotIndex);
+}
+
+function healPokemon(pokemon: PlayerPokemon): PlayerPokemon {
+  const maxHp = normalizeHealMaxHp(pokemon.maxHp);
+
+  return {
+    ...pokemon,
+    ...(maxHp === null ? {} : { currentHp: maxHp }),
+    status: "normal",
+    ...(pokemon.moves
+      ? {
+          moves: pokemon.moves.map(move => ({
+            ...move,
+            pp: move.maxPp,
+          })),
+        }
+      : {}),
+  };
+}
+
+function normalizeHealMaxHp(maxHp: unknown): number | null {
+  if (typeof maxHp !== "number" || !Number.isFinite(maxHp)) {
+    return null;
+  }
+
+  return Math.max(0, Math.floor(maxHp));
+}
+
+function setActivePartyPokemon(
+  localPlayer: LocalPlayerState,
+  pokemon: PlayerPokemon,
+): LocalPlayerState {
+  if (localPlayer.party.length === 0) {
+    return {
+      ...localPlayer,
+      activePartySlotIndex: 0,
+      party: [
+        {
+          slotIndex: 0,
+          pokemon,
+        },
+      ],
+    };
+  }
+
+  if (localPlayer.party.length > PLAYER_PARTY_SLOT_COUNT) {
+    throw new Error(`Local player party exceeds ${PLAYER_PARTY_SLOT_COUNT} slots`);
+  }
+
+  return {
+    ...localPlayer,
+    party: localPlayer.party.map(slot =>
+      slot.slotIndex === localPlayer.activePartySlotIndex ? { ...slot, pokemon } : slot,
+    ),
+  };
+}

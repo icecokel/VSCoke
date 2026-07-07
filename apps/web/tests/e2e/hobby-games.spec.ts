@@ -25,6 +25,11 @@ test.describe("취미 게임 섹션", () => {
     await expect(
       page.getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.wordleTitle)) }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("button", {
+        name: new RegExp(escapeRegExp(messages.Game.pokeLoungeTitle)),
+      }),
+    ).toBeVisible();
 
     await gotoWithRetry(page, `/${locale}/game/sky-drop`);
     await expect(page).toHaveURL(new RegExp(`/${localeRegex}/game/sky-drop$`));

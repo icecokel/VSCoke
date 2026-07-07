@@ -43,13 +43,23 @@ export const submitScore = async (
   }
 
   try {
-    const gameTypeMap: Record<string, CreateGameHistoryDto["gameType"]> = {
+    const gameTypeMap = {
       "sky-drop": "SKY_DROP",
-    };
+      "poke-lounge": "POKE_LOUNGE",
+    } satisfies Record<string, CreateGameHistoryDto["gameType"]>;
+    const gameType = gameTypeMap[data.gameName as keyof typeof gameTypeMap];
+
+    if (!gameType) {
+      return {
+        success: false,
+        message: `지원하지 않는 게임입니다: ${data.gameName}`,
+        status: 400,
+      };
+    }
 
     const payload: CreateGameHistoryDto = {
       score: data.score,
-      gameType: gameTypeMap[data.gameName] || "SKY_DROP",
+      gameType,
       playTime: data.playTime,
     };
 

@@ -153,6 +153,61 @@ describe('GameService', () => {
       expect(repository.save).toHaveBeenCalledWith(savedHistory);
       expect(result).toEqual(savedHistory);
     });
+
+    it('Poke Lounge 유효 점수와 플레이 시간은 저장해야 함', async () => {
+      const user = new User();
+      user.id = 'test-id';
+      const createDto: CreateGameHistoryDto = {
+        score: 300,
+        gameType: GameType.POKE_LOUNGE,
+        playTime: 30,
+      };
+      const savedHistory = { id: 1, ...createDto, user };
+
+      repository.create.mockReturnValue(savedHistory);
+      repository.save.mockResolvedValue(savedHistory);
+
+      const result = await service.createHistory(user, createDto);
+
+      expect(repository.create).toHaveBeenCalledWith({
+        ...createDto,
+        user,
+      });
+      expect(repository.save).toHaveBeenCalledWith(savedHistory);
+      expect(result).toEqual(savedHistory);
+    });
+
+    it('Poke Lounge 정책보다 큰 점수는 저장 전에 거절해야 함', async () => {
+      const user = new User();
+      user.id = 'test-id';
+      const createDto: CreateGameHistoryDto = {
+        score: 1001,
+        gameType: GameType.POKE_LOUNGE,
+        playTime: 30,
+      };
+
+      await expect(service.createHistory(user, createDto)).rejects.toThrow(
+        'POKE_LOUNGE score must be between 1 and 1000',
+      );
+      expect(repository.create).not.toHaveBeenCalled();
+      expect(repository.save).not.toHaveBeenCalled();
+    });
+
+    it('Poke Lounge 비정상 플레이 시간은 저장 전에 거절해야 함', async () => {
+      const user = new User();
+      user.id = 'test-id';
+      const createDto: CreateGameHistoryDto = {
+        score: 300,
+        gameType: GameType.POKE_LOUNGE,
+        playTime: 0,
+      };
+
+      await expect(service.createHistory(user, createDto)).rejects.toThrow(
+        'POKE_LOUNGE playTime must be between 1 and 86400 seconds',
+      );
+      expect(repository.create).not.toHaveBeenCalled();
+      expect(repository.save).not.toHaveBeenCalled();
+    });
   });
 
   describe('getRanking', () => {
@@ -229,6 +284,17 @@ describe('GameService', () => {
       expect(result).toEqual([]);
       expect(repository.find).not.toHaveBeenCalled();
     });
+
+    it('Poke Lounge 정책 값으로 랭킹을 조회해야 함', async () => {
+      repository.query.mockResolvedValue([]);
+
+      await service.getRanking(GameType.POKE_LOUNGE);
+
+      expect(repository.query).toHaveBeenCalledWith(
+        expect.stringContaining('gh.score BETWEEN $2 AND $3'),
+        [GameType.POKE_LOUNGE, 1, 1000, 1, 86400, 1000],
+      );
+    });
   });
 
   describe('getUserBestScore', () => {
@@ -288,6 +354,27 @@ describe('GameService', () => {
         },
       );
     });
+
+    it('Poke Lounge 정책 값으로 유저 최고 점수를 조회해야 함', async () => {
+      mockQueryBuilder.getRawOne.mockResolvedValue({ maxScore: '300' });
+
+      const result = await service.getUserBestScore(
+        'user1',
+        GameType.POKE_LOUNGE,
+      );
+
+      expect(result).toBe(300);
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('gh.score BETWEEN :minScore AND :maxScore'),
+        {
+          minScore: 1,
+          maxScore: 1000,
+          minPlayTimeSeconds: 1,
+          maxPlayTimeSeconds: 86400,
+          maxScorePerSecond: 1000,
+        },
+      );
+    });
   });
 
   describe('getUserRank', () => {
@@ -340,6 +427,22 @@ describe('GameService', () => {
       expect(repository.query).toHaveBeenCalledWith(
         expect.stringContaining('score BETWEEN $3 AND $4'),
         [GameType.SKY_DROP, 100, 1, 100000, 1, 86400, 2000],
+      );
+    });
+
+    it('Poke Lounge 정책 값으로 유저 등수를 조회해야 함', async () => {
+      repository.query.mockResolvedValue([{ count: '2' }]);
+
+      const result = await service.getUserRank(
+        'user1',
+        300,
+        GameType.POKE_LOUNGE,
+      );
+
+      expect(result).toBe(3);
+      expect(repository.query).toHaveBeenCalledWith(
+        expect.stringContaining('score BETWEEN $3 AND $4'),
+        [GameType.POKE_LOUNGE, 300, 1, 1000, 1, 86400, 1000],
       );
     });
   });

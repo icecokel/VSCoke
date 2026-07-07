@@ -4,7 +4,12 @@ import { expect, type Page, test } from "@playwright/test";
 import { applyLevelUpPlayerMoves } from "../../src/components/poke-lounge/runtime/game/battle/levelUpMoves";
 import { createWildBattleState } from "../../src/components/poke-lounge/runtime/game/battle/wildBattleFactory";
 import { getBattlePokemonAssets } from "../../src/components/poke-lounge/runtime/game/battle/battlePokemonAssets";
-import { createPartyHudSlotViews } from "../../src/components/poke-lounge/runtime/game/ui/partyHud";
+import {
+  createPartyHudSlotViews,
+  PARTY_HUD_SLOT_GAP,
+  PARTY_HUD_SLOT_SIZE,
+  resolvePartyHudAnchor,
+} from "../../src/components/poke-lounge/runtime/game/ui/partyHud";
 import {
   BATTLE_POKEMON_ASSETS_JSON_PATH,
   LEVEL_UP_MOVE_TABLE_JSON_PATH,
@@ -12,6 +17,11 @@ import {
   loadRuntimeGameDataJson,
   resetRuntimeGameDataJsonStateForTest,
 } from "../../src/components/poke-lounge/runtime/game/data/game-data-json";
+import {
+  BATTLE_LAYOUT,
+  getBattleOptionIndexAtPoint,
+  resolveBattleOptionSlotRects,
+} from "../../src/components/poke-lounge/runtime/game/battle/battleLayout";
 import { selectWildEncounterConfig } from "../../src/components/poke-lounge/runtime/game/world/wildEncounterTables";
 import { escapeRegExp, gotoWithRetry, resolveLocaleAndMessages } from "./test-helpers";
 
@@ -86,10 +96,23 @@ interface PokeLoungeWorldSnapshot {
     x: number;
     y: number;
     facing: "front" | "back" | "left" | "right";
+    displayWidth: number;
+    displayHeight: number;
   } | null;
+  camera: {
+    zoom: number;
+  };
   shortcutGuideOpen: boolean;
   encounterLocked: boolean;
   battleIntroPlaying: boolean;
+  pokemonStatusPanel: {
+    slotIndex: number;
+    name: string;
+    level: number;
+    currentHp: number | null;
+    maxHp: number | null;
+    status: string;
+  } | null;
 }
 
 interface PokeLoungeCanvasSnapshot {
@@ -174,15 +197,15 @@ test.describe("Poke Lounge", () => {
         step: { from: { x: 0, y: 0 }, to: { x: 1, y: 0 } },
         speciesId: 155,
         name: "브케인",
-        level: 10,
+        level: 19,
       },
       personalRecords: createTestPersonalRecords([152, 155]),
-      moveRecords: createTestMoveRecords([33, 43, 45, 52]),
+      moveRecords: createTestMoveRecords([33, 43, 45, 52, 98, 108, 172]),
     });
 
     expect(wildBattleState.opponent.playerId).toBe("wild");
     expect(wildBattleState.opponent.displayName).toBe("야생 브케인");
-    expect(wildBattleState.opponent.pokemon.moves.map(move => move.id)).toEqual([52, 43]);
+    expect(wildBattleState.opponent.pokemon.moves.map(move => move.id)).toEqual([108, 52, 98, 172]);
   });
 
   test("startup-loaded runtime game data는 유효한 species만 JSON을 우선하고 누락/오염 species는 fallback한다", async () => {
@@ -260,13 +283,13 @@ test.describe("Poke Lounge", () => {
         step: { from: { x: 0, y: 0 }, to: { x: 1, y: 0 } },
         speciesId: 155,
         name: "브케인",
-        level: 10,
+        level: 19,
       },
       personalRecords: createTestPersonalRecords([152, 155]),
       moveRecords: createTestMoveRecords([33, 43, 45, 345]),
     });
     expect(runtimePreferredWildBattleState.opponent.pokemon.moves.map(move => move.id)).toEqual([
-      345, 43,
+      345,
     ]);
 
     const fallbackWildBattleState = createWildBattleState({
@@ -278,9 +301,9 @@ test.describe("Poke Lounge", () => {
         level: 10,
       },
       personalRecords: createTestPersonalRecords([152, 155]),
-      moveRecords: createTestMoveRecords([33, 43, 45, 345]),
+      moveRecords: createTestMoveRecords([33, 43, 45, 75, 77, 345]),
     });
-    expect(fallbackWildBattleState.opponent.pokemon.moves.map(move => move.id)).toEqual([33, 45]);
+    expect(fallbackWildBattleState.opponent.pokemon.moves.map(move => move.id)).toEqual([75, 77]);
 
     expect(getBattlePokemonAssets(155)).toEqual(
       expect.objectContaining({
@@ -324,6 +347,21 @@ test.describe("Poke Lounge", () => {
         }),
       }),
     );
+  });
+
+  test("전투 옵션 레이아웃은 하단 전체 폭의 좌상/우상/좌하/우하 슬롯을 제공한다", () => {
+    expect(BATTLE_LAYOUT.commandWindow).toEqual(BATTLE_LAYOUT.bottomWindow);
+    expect(BATTLE_LAYOUT.moveWindow).toEqual(BATTLE_LAYOUT.bottomWindow);
+    expect(resolveBattleOptionSlotRects(BATTLE_LAYOUT.bottomWindow)).toEqual([
+      { x: 6, y: 150, width: 120, height: 16 },
+      { x: 130, y: 150, width: 120, height: 16 },
+      { x: 6, y: 170, width: 120, height: 16 },
+      { x: 130, y: 170, width: 120, height: 16 },
+    ]);
+    expect(getBattleOptionIndexAtPoint({ x: 64, y: 156 }, BATTLE_LAYOUT.bottomWindow)).toBe(0);
+    expect(getBattleOptionIndexAtPoint({ x: 192, y: 156 }, BATTLE_LAYOUT.bottomWindow)).toBe(1);
+    expect(getBattleOptionIndexAtPoint({ x: 64, y: 180 }, BATTLE_LAYOUT.bottomWindow)).toBe(2);
+    expect(getBattleOptionIndexAtPoint({ x: 192, y: 180 }, BATTLE_LAYOUT.bottomWindow)).toBe(3);
   });
 
   test("브케인 상대 스프라이트는 160x80 front sheet를 사용한다", () => {
@@ -426,6 +464,32 @@ test.describe("Poke Lounge", () => {
     await waitForGameCanvas(page);
     await expect(page.locator("#game-root canvas")).toBeVisible();
     await expectActiveScene(page, "world");
+
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("웹에서 좌측 파티 슬롯을 클릭하면 포켓몬 상태 패널을 연다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await startSoloGame(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
+    await waitForInitialWorldShortcutGuideIfAny(page);
+    await closeWorldShortcutGuideIfOpen(page);
+
+    await openPartyStatusPanelFromCanvas(page, 0);
+
+    await expect
+      .poll(() => getWorldSnapshot(page).then(snapshot => snapshot?.pokemonStatusPanel ?? null), {
+        timeout: 10000,
+      })
+      .toMatchObject({
+        slotIndex: 0,
+        name: expect.any(String),
+        level: 10,
+        currentHp: null,
+        maxHp: null,
+        status: "normal",
+      });
 
     expect(browserErrors.join("\n")).toBe("");
   });
@@ -681,7 +745,13 @@ test.describe("Poke Lounge", () => {
 
     await page.setViewportSize({ width: 1280, height: 900 });
     await startSoloGame(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
-    await expectCanvasFramed(page, { maxWidth: 1024, viewportWidth: 1280, viewportHeight: 900 });
+    await expectCanvasFramed(page, {
+      maxWidth: 1200,
+      minWidth: 1150,
+      viewportWidth: 1280,
+      viewportHeight: 900,
+    });
+    await expectWorldVisualScale(page);
     await expect(page.locator("[data-fullscreen-toggle]")).toHaveCount(0);
     await expect(page.locator("[data-poke-lounge-settings='true']")).toHaveCount(0);
 
@@ -729,7 +799,13 @@ test.describe("Poke Lounge", () => {
 
     await page.setViewportSize({ width: 1280, height: 900 });
     await startSoloGame(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
-    await expectCanvasFramed(page, { maxWidth: 1024, viewportWidth: 1280, viewportHeight: 900 });
+    await expectCanvasFramed(page, {
+      maxWidth: 1200,
+      minWidth: 1150,
+      viewportWidth: 1280,
+      viewportHeight: 900,
+    });
+    await expectWorldVisualScale(page);
 
     await page.setViewportSize({ width: 390, height: 844 });
     await expectCanvasFramed(page, { maxWidth: 390, viewportWidth: 390, viewportHeight: 844 });
@@ -1129,9 +1205,10 @@ async function expectCanvasFramed(
   page: Page,
   {
     maxWidth,
+    minWidth = 0,
     viewportHeight,
     viewportWidth,
-  }: { maxWidth: number; viewportHeight: number; viewportWidth: number },
+  }: { maxWidth: number; minWidth?: number; viewportHeight: number; viewportWidth: number },
 ): Promise<void> {
   await expect
     .poll(
@@ -1148,9 +1225,11 @@ async function expectCanvasFramed(
           snapshot.width === 768 &&
           snapshot.height === 576 &&
           snapshot.clientWidth <= maxWidth &&
+          snapshot.clientWidth >= minWidth &&
           snapshot.clientWidth <= viewportWidth &&
           snapshot.clientHeight <= viewportHeight &&
           layout.root.width <= maxWidth &&
+          layout.root.width >= minWidth &&
           layout.root.width <= viewportWidth &&
           layout.root.height <= viewportHeight &&
           layout.documentScrollWidth <= layout.innerWidth + 1 &&
@@ -1174,9 +1253,11 @@ async function expectCanvasFramed(
   expect(snapshot?.width).toBe(768);
   expect(snapshot?.height).toBe(576);
   expect(snapshot?.clientWidth).toBeLessThanOrEqual(maxWidth);
+  expect(snapshot?.clientWidth).toBeGreaterThanOrEqual(minWidth);
   expect(snapshot?.clientWidth).toBeLessThanOrEqual(viewportWidth);
   expect(snapshot?.clientHeight).toBeLessThanOrEqual(viewportHeight);
   expect(layout?.root?.width).toBeLessThanOrEqual(maxWidth);
+  expect(layout?.root?.width).toBeGreaterThanOrEqual(minWidth);
   expect(layout?.root?.width).toBeLessThanOrEqual(viewportWidth);
   expect(layout?.root?.height).toBeLessThanOrEqual(viewportHeight);
   expect(layout?.documentScrollWidth).toBeLessThanOrEqual((layout?.innerWidth ?? 0) + 1);
@@ -1187,6 +1268,30 @@ async function expectCanvasFramed(
   expect(Math.abs((layout?.root?.width ?? 0) / (layout?.root?.height ?? 1) - 4 / 3)).toBeLessThan(
     0.03,
   );
+}
+
+async function expectWorldVisualScale(page: Page): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        getWorldSnapshot(page).then(snapshot =>
+          snapshot?.player
+            ? {
+                cameraZoom: snapshot.camera.zoom,
+                playerDisplayHeight: snapshot.player.displayHeight,
+                playerDisplayWidth: snapshot.player.displayWidth,
+              }
+            : null,
+        ),
+      {
+        timeout: 10000,
+      },
+    )
+    .toEqual({
+      cameraZoom: 1,
+      playerDisplayHeight: 40,
+      playerDisplayWidth: 40,
+    });
 }
 
 async function expectMobileTouchLayout(page: Page): Promise<void> {
@@ -1328,6 +1433,52 @@ async function getCanvasSnapshot(page: Page): Promise<PokeLoungeCanvasSnapshot |
   });
 }
 
+async function clickGameCanvasPoint(page: Page, point: { x: number; y: number }): Promise<void> {
+  const canvas = page.locator("#game-root canvas");
+  const box = await canvas.boundingBox();
+  const snapshot = await getCanvasSnapshot(page);
+
+  if (!box || !snapshot) {
+    throw new Error("Poke Lounge canvas is unavailable");
+  }
+
+  await page.mouse.click(
+    box.x + (point.x / snapshot.width) * box.width,
+    box.y + (point.y / snapshot.height) * box.height,
+  );
+}
+
+async function openPartyStatusPanelFromCanvas(page: Page, slotIndex: number): Promise<void> {
+  const partyHudOrigin = resolvePartyHudAnchor("middle-left", { width: 768, height: 576 });
+  const target = {
+    x: partyHudOrigin.x + PARTY_HUD_SLOT_SIZE.width / 2,
+    y:
+      partyHudOrigin.y +
+      slotIndex * (PARTY_HUD_SLOT_SIZE.height + PARTY_HUD_SLOT_GAP) +
+      PARTY_HUD_SLOT_SIZE.height / 2,
+  };
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    await clickGameCanvasPoint(page, target);
+
+    const opened = await expect
+      .poll(
+        () =>
+          getWorldSnapshot(page).then(
+            snapshot => snapshot?.pokemonStatusPanel?.slotIndex === slotIndex,
+          ),
+        { timeout: 500 },
+      )
+      .toBe(true)
+      .then(() => true)
+      .catch(() => false);
+
+    if (opened) {
+      return;
+    }
+  }
+}
+
 async function continuePastOptionalStarter(page: Page): Promise<void> {
   await chooseStarterIfNeeded(page);
   await waitForGameCanvas(page);
@@ -1378,6 +1529,15 @@ async function closeWorldShortcutGuideIfOpen(page: Page): Promise<void> {
       timeout: 10000,
     })
     .toBe(false);
+}
+
+async function waitForInitialWorldShortcutGuideIfAny(page: Page): Promise<void> {
+  await expect
+    .poll(() => getWorldSnapshot(page).then(snapshot => snapshot?.shortcutGuideOpen ?? false), {
+      timeout: 2000,
+    })
+    .toBe(true)
+    .catch(() => {});
 }
 
 async function moveUntilWildBattle(page: Page): Promise<void> {

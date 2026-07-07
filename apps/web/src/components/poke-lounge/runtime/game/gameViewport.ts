@@ -2,7 +2,7 @@ export const GAME_VIEWPORT_SIZE = { width: 768, height: 576 } as const;
 
 export const GAME_VIEWPORT_STYLE = {
   aspectRatio: "4 / 3",
-  maxDisplayWidthPx: 1024,
+  maxDisplayWidthPx: 1440,
 } as const;
 
 export const BATTLE_BASE_SIZE = { width: 256, height: 192 } as const;

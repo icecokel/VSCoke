@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { RESUME_RAG_CONFIG, type ResumeRagConfig } from './resume-rag.config';
+import { RESUME_RAG_KEYWORD_GROUPS } from './resume-rag-keyword-gate';
 
 export type ResumeRagRetrieveRequest = {
   question: string;
@@ -80,6 +81,79 @@ const STOP_WORDS = new Set([
   'me',
 ]);
 
+const SEARCH_TOKEN_EXPANSIONS_BY_KEYWORD_GROUP: Record<
+  string,
+  readonly string[]
+> = {
+  oprimed: [
+    'oprimed',
+    'optivis',
+    '오프리메드',
+    '오프리',
+    '오프티비스',
+    '의료',
+    '임상',
+  ],
+  'healthcare-domain': [
+    '의료',
+    '임상',
+    '환자',
+    '질병',
+    '약물',
+    '검사',
+    'healthcare',
+    'clinical',
+    'patient',
+  ],
+  frontend: [
+    '프론트엔드',
+    'frontend',
+    'front end',
+    'react',
+    'next.js',
+    'nextjs',
+    'next',
+    'typescript',
+    '상태관리',
+    'ui',
+  ],
+  delivery: [
+    'ci/cd',
+    'cicd',
+    'ci',
+    'cd',
+    '배포',
+    '검증',
+    '빌드',
+    '테스트',
+    'playwright',
+    'docker',
+    'github actions',
+    'github',
+    'actions',
+    'workflow',
+    'workflows',
+    'runner',
+  ],
+  'career-intent': [
+    '이력',
+    '경력',
+    '커리어',
+    '업무',
+    '프로젝트',
+    '경험',
+    '강점',
+    '성과',
+    '기여',
+    'resume',
+    'career',
+    'experience',
+    'strength',
+    'project',
+    'impact',
+  ],
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
@@ -97,16 +171,56 @@ const normalizeText = (text: string): string =>
   text
     .normalize('NFKC')
     .toLowerCase()
+    .replace(/([a-z0-9])(\p{Script=Hangul})/gu, '$1 $2')
+    .replace(/(\p{Script=Hangul})([a-z0-9])/gu, '$1 $2')
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
+
+const compactText = (text: string): string =>
+  normalizeText(text).replaceAll(' ', '');
+
+const addToken = (tokens: Set<string>, rawToken: string): void => {
+  const token = stripKoreanParticle(rawToken);
+  if (!token || token.length < 2 || STOP_WORDS.has(token)) return;
+  tokens.add(token);
+};
+
+const addTokensFromText = (tokens: Set<string>, text: string): void => {
+  for (const rawToken of normalizeText(text).split(/\s+/)) {
+    addToken(tokens, rawToken);
+  }
+};
+
+const keywordAliasMatches = (question: string, alias: string): boolean => {
+  const normalizedQuestion = normalizeText(question);
+  const normalizedAlias = normalizeText(alias);
+  if (!normalizedAlias) return false;
+
+  return (
+    normalizedQuestion.includes(normalizedAlias) ||
+    compactText(question).includes(compactText(alias))
+  );
+};
 
 const tokenize = (text: string): string[] => {
   const uniqueTokens = new Set<string>();
 
   for (const rawToken of normalizeText(text).split(/\s+/)) {
-    const token = stripKoreanParticle(rawToken);
-    if (!token || token.length < 2 || STOP_WORDS.has(token)) continue;
-    uniqueTokens.add(token);
+    addToken(uniqueTokens, rawToken);
+  }
+
+  for (const group of RESUME_RAG_KEYWORD_GROUPS) {
+    const matched = group.aliases.some((alias) =>
+      keywordAliasMatches(text, alias),
+    );
+    if (!matched) continue;
+
+    const expansions =
+      SEARCH_TOKEN_EXPANSIONS_BY_KEYWORD_GROUP[group.id] ?? group.aliases;
+    for (const expansion of expansions) {
+      addTokensFromText(uniqueTokens, expansion);
+    }
   }
 
   return [...uniqueTokens];

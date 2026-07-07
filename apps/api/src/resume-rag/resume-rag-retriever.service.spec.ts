@@ -108,4 +108,35 @@ describe('ResumeRagRetrieverService', () => {
     expect(result[0].similarity).toBeGreaterThan(0);
     expect(result[0].similarity).toBeLessThanOrEqual(1);
   });
+
+  it('expands compact resume keywords before scoring source items', async () => {
+    const query = jest.fn().mockResolvedValue([
+      {
+        id: 'item-1',
+        title: '프론트엔드 CI/CD 및 배포 환경 정리',
+        bodyText: 'GitHub Actions 기반 배포와 검증 흐름을 정리했습니다.',
+        sourcePath: 'resume/oprimed.md',
+        sourceKey: 'oprimed#delivery',
+        metadata: { sectionPath: 'Oprimed' },
+      },
+    ]);
+    const dataSource = { query } as unknown as DataSource;
+    const service = createService(
+      dataSource,
+      createConfig({ topK: 1, minSimilarity: 0.1 }),
+    );
+
+    const result = await service.retrieve({
+      question: 'cicd경험',
+      locale: 'ko-KR',
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual(
+      expect.objectContaining({
+        id: 'item-1',
+        title: '프론트엔드 CI/CD 및 배포 환경 정리',
+      }),
+    );
+  });
 });

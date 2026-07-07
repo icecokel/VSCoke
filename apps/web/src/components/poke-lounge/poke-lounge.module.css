@@ -1,5 +1,6 @@
 .page {
   --rom-screen-background: #4a4242;
+  --poke-lounge-max-display-width: 1440px;
   --poke-lounge-touch-control-gap: 8px;
   --poke-lounge-touch-control-offset: 12px;
   --poke-lounge-touch-controls-height: clamp(136px, 21dvh, 176px);
@@ -74,7 +75,7 @@
 
 .page :global(#game-root) {
   position: relative;
-  width: min(100vw, calc(100dvh * 4 / 3), 1024px);
+  width: min(100vw, calc(100dvh * 4 / 3), var(--poke-lounge-max-display-width));
   max-height: 100dvh;
   aspect-ratio: 4 / 3;
   background: var(--rom-screen-background);
@@ -82,7 +83,7 @@
 
 .page:fullscreen :global(#game-root),
 .page:global(.is-game-fullscreen-fallback) :global(#game-root) {
-  width: min(100vw, calc(100dvh * 4 / 3), 1024px);
+  width: min(100vw, calc(100dvh * 4 / 3), var(--poke-lounge-max-display-width));
   max-height: 100dvh;
 }
 
@@ -418,7 +419,11 @@
 
 @media (orientation: portrait) {
   .page :global(#game-root.has-touch-game-device) {
-    width: min(100vw, calc((100dvh - var(--poke-lounge-touch-controls-reserve)) * 4 / 3), 1024px);
+    width: min(
+      100vw,
+      calc((100dvh - var(--poke-lounge-touch-controls-reserve)) * 4 / 3),
+      var(--poke-lounge-max-display-width)
+    );
     margin-top: max(8px, env(safe-area-inset-top));
     align-self: start;
     justify-self: center;
@@ -426,7 +431,7 @@
 
   .page:fullscreen :global(#game-root.has-touch-game-device),
   .page:global(.is-game-fullscreen-fallback) :global(#game-root.has-touch-game-device) {
-    width: min(100vw, calc(100dvh * 4 / 3), 1024px);
+    width: min(100vw, calc(100dvh * 4 / 3), var(--poke-lounge-max-display-width));
     max-height: 100dvh;
     margin-top: 0;
     align-self: center;

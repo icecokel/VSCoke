@@ -1,7 +1,7 @@
 export const FIELD_NPC_BASE = {
   displaySize: {
-    width: 32,
-    height: 32,
+    width: 40,
+    height: 40,
   },
   hitbox: {
     width: 24,
@@ -23,8 +23,8 @@ export const FIELD_MAP = {
     atlasJsonUrl: "/assets/poke-lounge/player/hero-atlas.json",
     sourceFrames: "/assets/poke-lounge/textures/a_0_8_1_0069/hero_1.png..hero_16.png",
     displaySize: {
-      width: 32,
-      height: 32,
+      width: 40,
+      height: 40,
     },
     hitbox: {
       width: 24,

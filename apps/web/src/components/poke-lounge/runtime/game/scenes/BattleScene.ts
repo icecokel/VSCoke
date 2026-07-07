@@ -1,7 +1,9 @@
 import * as Phaser from "phaser";
 import {
   BATTLE_LAYOUT,
+  getBattleOptionIndexAtPoint,
   hpRatio,
+  resolveBattleOptionSlotRects,
   type BattleRect,
   type BattleSpriteBox,
 } from "../battle/battleLayout";
@@ -275,24 +277,7 @@ export function formatBattleMoveMeta(move: BattleMove): string {
   return `PP ${move.pp}/${move.maxPp} ${move.type}`;
 }
 
-export function getBattleCommandIndexAtPoint(
-  point: Pick<Phaser.Math.Vector2, "x" | "y">,
-  rect: BattleRect = BATTLE_LAYOUT.commandWindow,
-): number | null {
-  if (
-    point.x < rect.x ||
-    point.x > rect.x + rect.width ||
-    point.y < rect.y ||
-    point.y > rect.y + rect.height
-  ) {
-    return null;
-  }
-
-  const column = point.x < rect.x + rect.width / 2 ? 0 : 1;
-  const row = point.y < rect.y + rect.height / 2 ? 0 : 1;
-
-  return row * 2 + column;
-}
+export const getBattleCommandIndexAtPoint = getBattleOptionIndexAtPoint;
 
 const COMMANDS: Array<{ label: (typeof BATTLE_COMMAND_LABELS)[number]; command: BattleCommand }> = [
   { label: "싸운다", command: "fight" },
@@ -577,11 +562,25 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    const battlePoint = this.toBattleWorldPoint(pointer);
+
     if (this.state.phase === "command" && this.state.messageQueue.length === 0) {
-      const commandIndex = getBattleCommandIndexAtPoint(this.toBattleWorldPoint(pointer));
+      const commandIndex = getBattleOptionIndexAtPoint(battlePoint, BATTLE_LAYOUT.commandWindow);
 
       if (commandIndex !== null) {
         this.selectedCommandIndex = commandIndex;
+      }
+    }
+
+    if (this.state.phase === "move-select" && this.state.messageQueue.length === 0) {
+      const moveIndex = getBattleOptionIndexAtPoint(battlePoint, BATTLE_LAYOUT.moveWindow);
+
+      if (moveIndex !== null) {
+        if (!this.state.player.pokemon.moves[moveIndex]) {
+          return;
+        }
+
+        this.selectedMoveIndex = moveIndex;
       }
     }
 
@@ -1104,19 +1103,29 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (consumeVirtualGamepadPress("left") || Phaser.Input.Keyboard.JustDown(this.cursors.left)) {
-      this.selectedCommandIndex = Math.max(0, this.selectedCommandIndex - 1);
+      this.selectedCommandIndex =
+        this.selectedCommandIndex % 2 === 1
+          ? this.selectedCommandIndex - 1
+          : this.selectedCommandIndex;
       this.render();
     }
     if (consumeVirtualGamepadPress("right") || Phaser.Input.Keyboard.JustDown(this.cursors.right)) {
-      this.selectedCommandIndex = Math.min(COMMANDS.length - 1, this.selectedCommandIndex + 1);
+      this.selectedCommandIndex =
+        this.selectedCommandIndex % 2 === 0
+          ? Math.min(COMMANDS.length - 1, this.selectedCommandIndex + 1)
+          : this.selectedCommandIndex;
       this.render();
     }
     if (consumeVirtualGamepadPress("up") || Phaser.Input.Keyboard.JustDown(this.cursors.up)) {
-      this.selectedCommandIndex = Math.max(0, this.selectedCommandIndex - 2);
+      this.selectedCommandIndex =
+        this.selectedCommandIndex >= 2 ? this.selectedCommandIndex - 2 : this.selectedCommandIndex;
       this.render();
     }
     if (consumeVirtualGamepadPress("down") || Phaser.Input.Keyboard.JustDown(this.cursors.down)) {
-      this.selectedCommandIndex = Math.min(COMMANDS.length - 1, this.selectedCommandIndex + 2);
+      this.selectedCommandIndex =
+        this.selectedCommandIndex < 2
+          ? Math.min(COMMANDS.length - 1, this.selectedCommandIndex + 2)
+          : this.selectedCommandIndex;
       this.render();
     }
   }
@@ -1126,15 +1135,30 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    const maxMoveIndex = Math.max(0, this.state.player.pokemon.moves.length - 1);
+
+    if (consumeVirtualGamepadPress("left") || Phaser.Input.Keyboard.JustDown(this.cursors.left)) {
+      this.selectedMoveIndex =
+        this.selectedMoveIndex % 2 === 1 ? this.selectedMoveIndex - 1 : this.selectedMoveIndex;
+      this.render();
+    }
+    if (consumeVirtualGamepadPress("right") || Phaser.Input.Keyboard.JustDown(this.cursors.right)) {
+      this.selectedMoveIndex =
+        this.selectedMoveIndex % 2 === 0
+          ? Math.min(maxMoveIndex, this.selectedMoveIndex + 1)
+          : this.selectedMoveIndex;
+      this.render();
+    }
     if (consumeVirtualGamepadPress("up") || Phaser.Input.Keyboard.JustDown(this.cursors.up)) {
-      this.selectedMoveIndex = Math.max(0, this.selectedMoveIndex - 1);
+      this.selectedMoveIndex =
+        this.selectedMoveIndex >= 2 ? this.selectedMoveIndex - 2 : this.selectedMoveIndex;
       this.render();
     }
     if (consumeVirtualGamepadPress("down") || Phaser.Input.Keyboard.JustDown(this.cursors.down)) {
-      this.selectedMoveIndex = Math.min(
-        this.state.player.pokemon.moves.length - 1,
-        this.selectedMoveIndex + 1,
-      );
+      this.selectedMoveIndex =
+        this.selectedMoveIndex < 2
+          ? Math.min(maxMoveIndex, this.selectedMoveIndex + 2)
+          : this.selectedMoveIndex;
       this.render();
     }
   }
@@ -1424,20 +1448,27 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private drawCommandWindow(): void {
-    this.drawMessageWindow("어떻게 할까?");
     const rect = BATTLE_LAYOUT.commandWindow;
-    this.drawRomWindow(rect, { radius: 0, includeFrameMarker: true });
+    this.drawRomWindow(rect, { radius: 0, includeFrameMarker: false });
 
     COMMANDS.forEach((item, index) => {
-      const x = rect.x + 12 + (index % 2) * 54;
-      const y = rect.y + 10 + Math.floor(index / 2) * 18;
+      const slot = resolveBattleOptionSlotRects(rect)[index];
+
+      if (!slot) {
+        return;
+      }
+
+      this.drawBattleOptionSlot(slot, {
+        selected: index === this.selectedCommandIndex,
+        disabled: false,
+      });
       this.add.text(
-        x,
-        y,
-        `${index === this.selectedCommandIndex ? "▶" : " "} ${item.label}`,
+        slot.x + 10,
+        slot.y + 4,
+        `${index === this.selectedCommandIndex ? "▶ " : ""}${item.label}`,
         createGameTextStyle({
           color: "#17201a",
-          fontSize: "9px",
+          fontSize: "8px",
         }),
       );
     });
@@ -1445,29 +1476,62 @@ export class BattleScene extends Phaser.Scene {
 
   private drawMoveWindow(): void {
     const rect = BATTLE_LAYOUT.moveWindow;
-    this.drawRomWindow(rect, { radius: 0, includeFrameMarker: true });
+    this.drawRomWindow(rect, { radius: 0, includeFrameMarker: false });
 
-    this.state.player.pokemon.moves.forEach((move, index) => {
-      const y = rect.y + 6 + index * 10;
+    resolveBattleOptionSlotRects(rect).forEach((slot, index) => {
+      const move = this.state.player.pokemon.moves[index] ?? null;
+      const disabled = !move;
+
+      this.drawBattleOptionSlot(slot, {
+        selected: index === this.selectedMoveIndex && !disabled,
+        disabled,
+      });
       this.add.text(
-        rect.x + 10,
-        y,
-        `${index === this.selectedMoveIndex ? "▶" : " "} ${move.name}`,
+        slot.x + 10,
+        slot.y + 3,
+        move ? `${index === this.selectedMoveIndex ? "▶ " : ""}${move.name}` : "-",
         createGameTextStyle({
-          color: "#17201a",
-          fontSize: "8px",
+          color: disabled ? "#7a827c" : "#17201a",
+          fontSize: "7px",
         }),
       );
-      this.add.text(
-        rect.x + 148,
-        y,
-        formatBattleMoveMeta(move),
-        createGameTextStyle({
-          color: "#17201a",
-          fontSize: "8px",
-        }),
-      );
+
+      if (move) {
+        this.add.text(
+          slot.x + slot.width - 58,
+          slot.y + 5,
+          formatBattleMoveMeta(move),
+          createGameTextStyle({
+            color: "#7a827c",
+            fontSize: "5px",
+          }),
+        );
+      }
     });
+  }
+
+  private drawBattleOptionSlot(
+    rect: BattleRect,
+    options: { selected: boolean; disabled: boolean },
+  ): void {
+    const graphics = this.add.graphics();
+    const fillAlpha = options.disabled ? 0.58 : 1;
+
+    graphics
+      .fillStyle(BATTLE_SCENE_WINDOW_STYLE.shadow, options.selected ? 0.42 : 0.24)
+      .fillRect(rect.x + 1, rect.y + 1, rect.width, rect.height)
+      .fillStyle(BATTLE_SCENE_WINDOW_STYLE.fill, fillAlpha)
+      .fillRect(rect.x, rect.y, rect.width, rect.height)
+      .lineStyle(1, BATTLE_SCENE_WINDOW_STYLE.highlight, 0.95)
+      .strokeRect(rect.x + 1, rect.y + 1, rect.width - 2, rect.height - 2)
+      .lineStyle(options.selected ? 2 : 1, BATTLE_SCENE_WINDOW_STYLE.border, 1)
+      .strokeRect(rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4);
+
+    if (options.selected) {
+      graphics
+        .fillStyle(BATTLE_SCENE_WINDOW_STYLE.hpGood, 1)
+        .fillRect(rect.x + 4, rect.y + 4, 3, rect.height - 8);
+    }
   }
 
   private drawPartySelectWindow(): void {

@@ -2,10 +2,15 @@ import type { WildEncounterCandidate } from "../world/wildEncounters";
 import type { PlayerPokemon } from "../state/gameStateStore";
 import type { PlayerPokemonSlot } from "../player/playerTypes";
 import { getRuntimeWildBattleMoveSets } from "../data/game-data-json";
-import { normalizeRomMoveRecord, type RomBattleMoveRecord } from "./battleRomData";
+import type { RomBattleMoveRecord } from "./battleRomData";
 import { BATTLE_PARTY_SLOT_COUNT, createBattleParty } from "./battleParty";
 import { getBattlePokemonAssets } from "./battlePokemonAssets";
 import { getExperienceForLevel } from "./experience";
+import {
+  createBattleMoveFromRom,
+  getLevelUpMovesForSpecies,
+  MAX_POKEMON_MOVE_COUNT,
+} from "./levelUpMoves";
 import type {
   BattlePartySlot,
   BattleMove,
@@ -67,22 +72,6 @@ const DEFAULT_SPECIES_MOVE_SETS: Record<number, number[]> = {
   158: [10, 43],
 };
 
-const MOVE_NAMES: Record<number, string> = {
-  10: "할퀴기",
-  16: "바람일으키기",
-  22: "덩굴채찍",
-  28: "모래뿌리기",
-  33: "몸통박치기",
-  39: "꼬리흔들기",
-  43: "째려보기",
-  45: "울음소리",
-  52: "불꽃세례",
-  55: "물대포",
-  81: "실뿜기",
-  98: "전광석화",
-  145: "거품",
-};
-
 export function createWildBattleState({
   encounter,
   moveRecords,
@@ -101,6 +90,7 @@ export function createWildBattleState({
   });
   const opponentPokemon = createBattlePokemon({
     level: encounter.level,
+    moveIds: resolveWildBattleMoveIds(encounter.speciesId, encounter.level),
     moveRecords,
     name: encounter.name,
     personalRecords,
@@ -246,10 +236,12 @@ function createBattlePokemon({
   personalRecords,
   speciesId,
   status,
+  moveIds,
 }: {
   level: number;
   currentHp?: number;
   storedExperience?: number;
+  moveIds?: number[];
   moveRecords: RomRefinedMoveCollection;
   name: string;
   personalRecords: RomPersonalRecordCollection;
@@ -287,7 +279,7 @@ function createBattlePokemon({
           : "normal",
     frontSprite: assets.front,
     backSprite: assets.back,
-    moves: createBattleMoves(speciesId, moveRecords),
+    moves: createBattleMoves(moveIds ?? resolveDefaultBattleMoveIds(speciesId), moveRecords),
   };
 }
 
@@ -305,26 +297,24 @@ function clampHp(currentHp: number, maxHp: number): number {
   return Math.max(0, Math.min(maxHp, currentHp));
 }
 
-function createBattleMoves(speciesId: number, moveRecords: RomRefinedMoveCollection): BattleMove[] {
-  const moveSet = getRuntimeWildBattleMoveSets(DEFAULT_SPECIES_MOVE_SETS)[speciesId] ?? [];
+function createBattleMoves(moveIds: number[], moveRecords: RomRefinedMoveCollection): BattleMove[] {
+  return moveIds.map(moveId => createBattleMoveFromRom(moveId, moveRecords));
+}
 
-  return moveSet.map(moveId => {
-    const moveRecord = findMoveRecord(moveRecords, moveId);
-    const normalized = normalizeRomMoveRecord(moveRecord, MOVE_NAMES[moveId] ?? `Move ${moveId}`);
+function resolveWildBattleMoveIds(speciesId: number, level: number): number[] {
+  const levelUpMoveIds = selectRecentUniqueMoveIds(
+    getLevelUpMovesForSpecies(speciesId, 0, level).map(move => move.moveId),
+  );
 
-    return {
-      id: normalized.id,
-      name: normalized.name,
-      pp: normalized.pp,
-      maxPp: normalized.maxPp,
-      type: normalized.typeName,
-      typeId: normalized.typeId,
-      category: normalized.category,
-      effectCode: normalized.effectCode,
-      accuracy: normalized.accuracy,
-      power: normalized.power,
-    };
-  });
+  if (levelUpMoveIds.length > 0) {
+    return levelUpMoveIds;
+  }
+
+  return resolveDefaultBattleMoveIds(speciesId);
+}
+
+function resolveDefaultBattleMoveIds(speciesId: number): number[] {
+  return getRuntimeWildBattleMoveSets(DEFAULT_SPECIES_MOVE_SETS)[speciesId] ?? [];
 }
 
 function findPersonalRecord(
@@ -340,17 +330,20 @@ function findPersonalRecord(
   return record;
 }
 
-function findMoveRecord(collection: RomRefinedMoveCollection, moveId: number): RomBattleMoveRecord {
-  const { moves } = collection;
-  const record = Array.isArray(moves)
-    ? moves.find(candidate => candidate.index === moveId)
-    : moves[String(moveId)];
+function selectRecentUniqueMoveIds(moveIds: number[]): number[] {
+  const uniqueMoveIds: number[] = [];
 
-  if (!record) {
-    throw new Error(`Missing ROM move record for move ${moveId}`);
+  for (const moveId of moveIds) {
+    const existingIndex = uniqueMoveIds.indexOf(moveId);
+
+    if (existingIndex >= 0) {
+      uniqueMoveIds.splice(existingIndex, 1);
+    }
+
+    uniqueMoveIds.push(moveId);
   }
 
-  return record;
+  return uniqueMoveIds.slice(-MAX_POKEMON_MOVE_COUNT);
 }
 
 function formatWildAppearedMessage(name: string): string {

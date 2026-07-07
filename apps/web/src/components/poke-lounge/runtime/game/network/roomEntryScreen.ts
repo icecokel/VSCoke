@@ -1,17 +1,24 @@
 import {
   createInviteUrl,
+  normalizeRoomRoundDurationMs,
   createRoomCode as defaultCreateRoomCode,
   createServerInviteUrl,
   normalizeRoomCode,
+  ROOM_ROUND_DURATION_OPTIONS_MS,
+  ROOM_ROUND_DURATION_QUERY_PARAM,
   type RoomEntryMode,
+  type RoomRoundDurationMs,
 } from "./roomEntry";
 import { playPokeLoungeSfx, primePokeLoungeAudio } from "../audio/poke-lounge-audio";
+
+const DEFAULT_SELECTED_ROUND_DURATION_MS = 300_000;
 
 export interface RoomEntrySelection {
   mode: Exclude<RoomEntryMode, "unset">;
   roomCode: string | null;
   inviteUrl: string | null;
   createRoom?: boolean;
+  roundDurationMs?: RoomRoundDurationMs;
   resetSession?: boolean;
 }
 
@@ -41,6 +48,10 @@ export function renderRoomEntryScreen(
   const newStartButton = createButton("새로 시작", "data-room-entry-new-start");
   const createButtonElement = createButton("로컬 방 만들기", "data-room-entry-create");
   const serverCreateButton = createButton("서버 방 만들기", "data-room-entry-server-create");
+  let selectedRoundDurationMs = readInitialRoundDurationMs(options.currentUrl);
+  const roundDurationPicker = createRoundDurationPicker(selectedRoundDurationMs, durationMs => {
+    selectedRoundDurationMs = durationMs;
+  });
 
   const roomCodeInput = document.createElement("input");
   roomCodeInput.type = "text";
@@ -64,15 +75,20 @@ export function renderRoomEntryScreen(
   message.className = "room-entry-message";
   message.setAttribute("data-room-entry-message", "true");
 
-  const selectLocalRoom = (roomCode: string, resetSession = false) => {
+  const selectLocalRoom = (
+    roomCode: string,
+    resetSession = false,
+    roundDurationMs?: RoomRoundDurationMs,
+  ) => {
     playRoomEntryConfirmSound();
-    const inviteUrl = createInviteUrl(options.currentUrl, roomCode).href;
+    const inviteUrl = createInviteUrl(options.currentUrl, roomCode, roundDurationMs).href;
     inviteInput.value = inviteUrl;
     message.textContent = "";
     options.onSelect({
       mode: "local-room",
       roomCode,
       inviteUrl,
+      ...(roundDurationMs ? { roundDurationMs } : {}),
       ...(resetSession ? { resetSession: true } : {}),
     });
   };
@@ -111,7 +127,11 @@ export function renderRoomEntryScreen(
   });
 
   createButtonElement.addEventListener("click", () => {
-    selectLocalRoom((options.createRoomCode ?? defaultCreateRoomCode)(), true);
+    selectLocalRoom(
+      (options.createRoomCode ?? defaultCreateRoomCode)(),
+      true,
+      selectedRoundDurationMs,
+    );
   });
 
   serverCreateButton.addEventListener("click", () => {
@@ -123,6 +143,7 @@ export function renderRoomEntryScreen(
       roomCode: null,
       inviteUrl: null,
       createRoom: true,
+      roundDurationMs: selectedRoundDurationMs,
       resetSession: true,
     });
   });
@@ -153,6 +174,7 @@ export function renderRoomEntryScreen(
     title,
     soloButton,
     newStartButton,
+    roundDurationPicker,
     createButtonElement,
     roomCodeInput,
     joinButton,
@@ -180,4 +202,61 @@ function createButton(label: string, dataAttribute: string): HTMLButtonElement {
   button.setAttribute(dataAttribute, "true");
 
   return button;
+}
+
+function readInitialRoundDurationMs(url: URL): RoomRoundDurationMs {
+  return (
+    normalizeRoomRoundDurationMs(url.searchParams.get(ROOM_ROUND_DURATION_QUERY_PARAM)) ??
+    DEFAULT_SELECTED_ROUND_DURATION_MS
+  );
+}
+
+function createRoundDurationPicker(
+  selectedDurationMs: RoomRoundDurationMs,
+  onSelect: (durationMs: RoomRoundDurationMs) => void,
+): HTMLElement {
+  let activeDurationMs = selectedDurationMs;
+  const field = document.createElement("div");
+  field.className = "room-entry-round-duration";
+  field.setAttribute("data-room-entry-round-duration", "true");
+
+  const label = document.createElement("p");
+  label.textContent = "토너먼트 시간";
+
+  const options = document.createElement("div");
+  options.className = "room-entry-round-duration-options";
+  options.setAttribute("role", "group");
+  options.setAttribute("aria-label", "토너먼트 시간");
+
+  const buttons = ROOM_ROUND_DURATION_OPTIONS_MS.map(durationMs => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = `${durationMs / 60_000}분`;
+    button.setAttribute("data-room-entry-round-duration-option", String(durationMs));
+
+    button.addEventListener("click", () => {
+      activeDurationMs = durationMs;
+      onSelect(durationMs);
+      syncButtons();
+    });
+
+    options.appendChild(button);
+    return button;
+  });
+
+  const syncButtons = () => {
+    for (const button of buttons) {
+      const durationMs = normalizeRoomRoundDurationMs(
+        button.getAttribute("data-room-entry-round-duration-option"),
+      );
+      const active = durationMs === activeDurationMs;
+      button.setAttribute("aria-pressed", String(active));
+      button.classList.toggle("is-active", active);
+    }
+  };
+
+  syncButtons();
+  field.append(label, options);
+
+  return field;
 }

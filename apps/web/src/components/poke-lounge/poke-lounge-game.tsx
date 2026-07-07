@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { useGame } from "@/contexts/game-context";
 import { getSessionApiIdToken, isAuthSessionError, type ApiTokenSession } from "@/lib/auth-token";
 import { submitScore } from "@/services/score-service";
+import { startPokeLoungeAutosave } from "./poke-lounge-autosave";
 import { setPokeLoungeMasterVolume } from "./runtime/game/audio/poke-lounge-audio";
+import { getDefaultGameStateStore } from "./runtime/game/state/defaultGameStateStore";
 import { detectTouchGameDevice } from "./runtime/game/input/mobileTouchControls";
 import { GAME_SETTINGS_OPEN_EVENT } from "./runtime/game/input/settings-toggle";
 import {
@@ -41,6 +43,7 @@ type PokeLoungeGamePageHandle = {
   destroy(): void;
   setViewportSize(viewportSize: GameViewportDisplaySize): void;
 };
+type PokeLoungeRoomShareStatus = "idle" | "success" | "error";
 
 function isEditableEventTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -55,6 +58,33 @@ function isEditableEventTarget(target: EventTarget | null): boolean {
   );
 }
 
+function createPokeLoungeRoomShareUrlFromLocation(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return createPokeLoungeRoomShareUrl(new URL(window.location.href));
+}
+
+function createPokeLoungeRoomShareUrl(currentUrl: URL): string | null {
+  const network = currentUrl.searchParams.get("network");
+  const roomCode = currentUrl.searchParams.get("room");
+
+  if ((network !== "local" && network !== "server") || !roomCode) {
+    return null;
+  }
+
+  const shareUrl = new URL(currentUrl.href);
+  shareUrl.searchParams.set("network", network);
+  shareUrl.searchParams.set("room", roomCode);
+  shareUrl.searchParams.delete("create");
+  shareUrl.searchParams.delete("e2e");
+  shareUrl.searchParams.delete("e2eBattle");
+  shareUrl.searchParams.delete("scene");
+
+  return shareUrl.href;
+}
+
 export function PokeLoungeGame() {
   const { setGamePlaying } = useGame();
   const { data: session, status } = useSession();
@@ -67,12 +97,14 @@ export function PokeLoungeGame() {
   const [touchGameDevice, setTouchGameDevice] = useState(false);
   const [volumeLevelIndex, setVolumeLevelIndex] = useState(POKE_LOUNGE_VOLUME_STEPS.length - 1);
   const [uiSize, setUiSize] = useState<PokeLoungeUiSize>("large");
+  const [roomShareStatus, setRoomShareStatus] = useState<PokeLoungeRoomShareStatus>("idle");
   const [submitStatus, setSubmitStatus] = useState<
     "idle" | "submitting" | "success" | "auth" | "error"
   >("idle");
   const [submitMessage, setSubmitMessage] = useState<string>("");
   const volumeLevel = volumeLevelIndex + 1;
   const uiSizeLabel = uiSize === "large" ? "UI 크게" : "UI 보통";
+  const roomShareUrl = settingsOpen ? createPokeLoungeRoomShareUrlFromLocation() : null;
 
   const syncFullscreenState = useCallback(() => {
     const page = pageRef.current;
@@ -95,6 +127,28 @@ export function PokeLoungeGame() {
   const handleUiSizeToggle = useCallback(() => {
     setUiSize(currentSize => (currentSize === "large" ? "normal" : "large"));
   }, []);
+
+  const handleRoomShare = useCallback(async () => {
+    const shareUrl = createPokeLoungeRoomShareUrlFromLocation();
+
+    if (!shareUrl || !navigator.clipboard?.writeText) {
+      setRoomShareStatus("error");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setRoomShareStatus("success");
+    } catch {
+      setRoomShareStatus("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!settingsOpen) {
+      setRoomShareStatus("idle");
+    }
+  }, [settingsOpen]);
 
   useEffect(() => {
     setPokeLoungeMasterVolume(POKE_LOUNGE_VOLUME_STEPS[volumeLevelIndex]);
@@ -215,6 +269,24 @@ export function PokeLoungeGame() {
       document.removeEventListener(GAME_SETTINGS_OPEN_EVENT, handleSettingsOpen);
     };
   }, []);
+
+  useEffect(() => {
+    const apiSession = session as ApiTokenSession | null;
+    const token = getSessionApiIdToken(apiSession);
+
+    if (status !== "authenticated" || !token || isAuthSessionError(apiSession?.error)) {
+      return;
+    }
+
+    const autosave = startPokeLoungeAutosave({
+      gameStateStore: getDefaultGameStateStore(),
+      token,
+    });
+
+    return () => {
+      void autosave.dispose();
+    };
+  }, [session, status]);
 
   useEffect(() => {
     let cancelled = false;
@@ -396,6 +468,23 @@ export function PokeLoungeGame() {
             >
               {uiSizeLabel}
             </Button>
+            {roomShareUrl ? (
+              <Button
+                type="button"
+                variant="outline"
+                className={styles.settingsOptionButton}
+                onClick={handleRoomShare}
+                aria-label="방 링크 공유"
+                data-poke-lounge-setting-option="true"
+                data-poke-lounge-setting-action="share-link"
+              >
+                {roomShareStatus === "success"
+                  ? "링크 복사됨"
+                  : roomShareStatus === "error"
+                    ? "복사 실패"
+                    : "링크 공유"}
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="outline"

@@ -2,8 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { GameHistory } from './entities/game-history.entity';
+import { GamePokeLoungeState } from './entities/game-poke-lounge-state.entity';
 import { User } from '../auth/entities/user.entity';
 import { CreateGameHistoryDto } from './dto/create-game-history.dto';
+import { SavePokeLoungeStateDto } from './dto/save-poke-lounge-state.dto';
 import { GameType } from './enums/game-type.enum';
 import {
   buildNamedValidScoreCondition,
@@ -34,6 +36,8 @@ export class GameService {
   constructor(
     @InjectRepository(GameHistory)
     private gameHistoryRepository: Repository<GameHistory>,
+    @InjectRepository(GamePokeLoungeState)
+    private pokeLoungeStateRepository: Repository<GamePokeLoungeState>,
   ) {}
 
   /**
@@ -147,6 +151,62 @@ export class GameService {
     return history;
   }
 
+  async savePokeLoungeState(
+    user: User,
+    dto: SavePokeLoungeStateDto,
+  ): Promise<GamePokeLoungeState> {
+    const clientUpdatedAt = dto.clientUpdatedAt
+      ? new Date(dto.clientUpdatedAt)
+      : null;
+    const existingState = await this.pokeLoungeStateRepository.findOne({
+      where: { userId: user.id },
+    });
+
+    if (isStalePokeLoungeStateSave(existingState, clientUpdatedAt)) {
+      return existingState;
+    }
+
+    await this.pokeLoungeStateRepository.query(
+      `
+      INSERT INTO "game_poke_lounge_state" ("userId", "state", "clientUpdatedAt")
+      VALUES ($1, $2::jsonb, $3::timestamptz)
+      ON CONFLICT ("userId") DO UPDATE
+      SET
+        "state" = EXCLUDED."state",
+        "clientUpdatedAt" = EXCLUDED."clientUpdatedAt",
+        "updatedAt" = now()
+      WHERE "game_poke_lounge_state"."clientUpdatedAt" IS NULL
+        OR (
+          EXCLUDED."clientUpdatedAt" IS NOT NULL
+          AND "game_poke_lounge_state"."clientUpdatedAt" <= EXCLUDED."clientUpdatedAt"
+        )
+      `,
+      [user.id, JSON.stringify(dto.state), clientUpdatedAt],
+    );
+
+    const savedState = await this.pokeLoungeStateRepository.findOne({
+      where: { userId: user.id },
+    });
+
+    if (!savedState) {
+      throw new NotFoundException('Poke Lounge state not found');
+    }
+
+    return savedState;
+  }
+
+  async findPokeLoungeState(userId: string): Promise<GamePokeLoungeState> {
+    const state = await this.pokeLoungeStateRepository.findOne({
+      where: { userId },
+    });
+
+    if (!state) {
+      throw new NotFoundException('Poke Lounge state not found');
+    }
+
+    return state;
+  }
+
   /**
    * 사용자의 특정 점수에 대한 현재 전체 등수를 계산함
    * @param userId 사용자 ID
@@ -186,4 +246,19 @@ export class GameService {
     // (나보다 높은 유저 수) + 1 = 현재 나의 등수
     return Number.parseInt(String(result[0]?.count ?? '0'), 10) + 1;
   }
+}
+
+function isStalePokeLoungeStateSave(
+  existingState: GamePokeLoungeState | null,
+  clientUpdatedAt: Date | null,
+): existingState is GamePokeLoungeState {
+  if (!existingState?.clientUpdatedAt) {
+    return false;
+  }
+
+  if (!clientUpdatedAt) {
+    return true;
+  }
+
+  return existingState.clientUpdatedAt.getTime() > clientUpdatedAt.getTime();
 }

@@ -13,7 +13,11 @@ import {
 import { renderMobileSettingsToggle } from "./input/settings-toggle";
 import { renderMobileTouchControls } from "./input/mobileTouchControls";
 import { createMultiplayerRoom } from "./network/multiplayerRoomFactory";
-import { readRoomEntryFromLocation, type RoomEntryMode } from "./network/roomEntry";
+import {
+  applyRoomRoundDurationSearchParam,
+  readRoomEntryFromLocation,
+  type RoomEntryMode,
+} from "./network/roomEntry";
 import { renderRoomEntryScreen, type RoomEntrySelection } from "./network/roomEntryScreen";
 import { renderWebRtcSignalingPanel } from "./network/webRtcSignalingPanel";
 import { createWebRtcRoom, isWebRtcRoom } from "./network/webRtcRoom";
@@ -248,6 +252,7 @@ function applyRoomEntrySelection(url: URL, selection: RoomEntrySelection): void 
     url.searchParams.delete("create");
     url.searchParams.delete("network");
     url.searchParams.delete("room");
+    applyRoomRoundDurationSearchParam(url);
     return;
   }
 
@@ -255,11 +260,13 @@ function applyRoomEntrySelection(url: URL, selection: RoomEntrySelection): void 
     url.searchParams.delete("create");
     url.searchParams.set("network", "webrtc");
     url.searchParams.delete("room");
+    applyRoomRoundDurationSearchParam(url);
     return;
   }
 
   if (selection.mode === "server-room") {
     url.searchParams.set("network", "server");
+    applyRoomRoundDurationSearchParam(url, selection.roundDurationMs);
 
     if (selection.createRoom) {
       url.searchParams.set("create", "1");
@@ -280,6 +287,7 @@ function applyRoomEntrySelection(url: URL, selection: RoomEntrySelection): void 
     url.searchParams.delete("create");
     url.searchParams.set("network", "local");
     url.searchParams.set("room", selection.roomCode);
+    applyRoomRoundDurationSearchParam(url, selection.roundDurationMs);
   }
 }
 

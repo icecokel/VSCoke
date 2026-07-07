@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Put,
   Post,
   Body,
   UseGuards,
@@ -16,14 +17,18 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
+  ApiNotFoundResponse,
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { GameService } from './game.service';
 import { CreateGameHistoryDto } from './dto/create-game-history.dto';
 import { GameHistoryResponseDto } from './dto/game-history-response.dto';
+import { PokeLoungeStateResponseDto } from './dto/poke-lounge-state-response.dto';
+import { SavePokeLoungeStateDto } from './dto/save-poke-lounge-state.dto';
 import { GoogleAuthGuard } from '../auth/google-auth.guard';
 import { GameType } from './enums/game-type.enum';
 import { User } from '../auth/entities/user.entity';
+import { GamePokeLoungeState } from './entities/game-poke-lounge-state.entity';
 
 type AuthenticatedRequest = Request & { user: User };
 
@@ -112,6 +117,35 @@ export class GameController {
     };
   }
 
+  @Put('poke-lounge/state')
+  @UseGuards(GoogleAuthGuard)
+  @ApiOperation({ summary: 'Poke Lounge 상태 저장' })
+  @ApiOkResponse({ type: PokeLoungeStateResponseDto })
+  async savePokeLoungeState(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: SavePokeLoungeStateDto,
+  ): Promise<PokeLoungeStateResponseDto> {
+    const savedState = await this.gameService.savePokeLoungeState(
+      req.user,
+      body,
+    );
+
+    return toPokeLoungeStateResponse(savedState);
+  }
+
+  @Get('poke-lounge/state')
+  @UseGuards(GoogleAuthGuard)
+  @ApiOperation({ summary: 'Poke Lounge 상태 조회' })
+  @ApiOkResponse({ type: PokeLoungeStateResponseDto })
+  @ApiNotFoundResponse({ description: '저장된 Poke Lounge 상태가 없음' })
+  async getPokeLoungeState(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<PokeLoungeStateResponseDto> {
+    const savedState = await this.gameService.findPokeLoungeState(req.user.id);
+
+    return toPokeLoungeStateResponse(savedState);
+  }
+
   /**
    * KST(UTC+9) 기준 이번 주 월요일 00:00:00 ~ 일요일 23:59:59의 Date 범위를 반환
    */
@@ -183,4 +217,17 @@ export class GameController {
       },
     };
   }
+}
+
+function toPokeLoungeStateResponse(
+  savedState: GamePokeLoungeState,
+): PokeLoungeStateResponseDto {
+  return {
+    id: savedState.id,
+    userId: savedState.userId,
+    state: savedState.state,
+    createdAt: savedState.createdAt,
+    updatedAt: savedState.updatedAt,
+    clientUpdatedAt: savedState.clientUpdatedAt,
+  };
 }

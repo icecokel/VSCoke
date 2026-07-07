@@ -2,8 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { GameService } from './game.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { GameHistory } from './entities/game-history.entity';
+import { GamePokeLoungeState } from './entities/game-poke-lounge-state.entity';
 import { User } from '../auth/entities/user.entity';
 import { CreateGameHistoryDto } from './dto/create-game-history.dto';
+import { SavePokeLoungeStateDto } from './dto/save-poke-lounge-state.dto';
 import { GameType } from './enums/game-type.enum';
 
 const mockQueryBuilder = {
@@ -35,9 +37,17 @@ const mockGameHistoryRepository = () => ({
   query: jest.fn(), // Raw query 지원
 });
 
+const mockPokeLoungeStateRepository = () => ({
+  query: jest.fn(),
+  findOne: jest.fn(),
+});
+
 describe('GameService', () => {
   let service: GameService;
   let repository: ReturnType<typeof mockGameHistoryRepository>;
+  let pokeLoungeStateRepository: ReturnType<
+    typeof mockPokeLoungeStateRepository
+  >;
 
   beforeEach(async () => {
     // 각 테스트 전에 모든 모킹 초기화
@@ -50,11 +60,18 @@ describe('GameService', () => {
           provide: getRepositoryToken(GameHistory),
           useFactory: mockGameHistoryRepository,
         },
+        {
+          provide: getRepositoryToken(GamePokeLoungeState),
+          useFactory: mockPokeLoungeStateRepository,
+        },
       ],
     }).compile();
 
     service = module.get<GameService>(GameService);
     repository = module.get(getRepositoryToken(GameHistory));
+    pokeLoungeStateRepository = module.get(
+      getRepositoryToken(GamePokeLoungeState),
+    );
   });
 
   it('should be defined', () => {
@@ -443,6 +460,144 @@ describe('GameService', () => {
       expect(repository.query).toHaveBeenCalledWith(
         expect.stringContaining('score BETWEEN $3 AND $4'),
         [GameType.POKE_LOUNGE, 300, 1, 1000, 1, 86400, 1000],
+      );
+    });
+  });
+
+  describe('savePokeLoungeState', () => {
+    it('사용자 id 기준으로 Poke Lounge 상태를 upsert하고 저장본을 반환해야 함', async () => {
+      const user = new User();
+      user.id = 'poke-user';
+      const clientUpdatedAt = '2026-07-08T12:00:00.000Z';
+      const dto: SavePokeLoungeStateDto = {
+        state: {
+          trainer: { x: 12, y: 3 },
+          party: ['pikachu', 'eevee'],
+        },
+        clientUpdatedAt,
+      };
+      const savedState = {
+        id: 'state-id',
+        userId: user.id,
+        user,
+        state: dto.state,
+        clientUpdatedAt: new Date(clientUpdatedAt),
+        createdAt: new Date('2026-07-08T12:00:01.000Z'),
+        updatedAt: new Date('2026-07-08T12:00:02.000Z'),
+      } as GamePokeLoungeState;
+
+      pokeLoungeStateRepository.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(savedState);
+
+      const result = await service.savePokeLoungeState(user, dto);
+
+      expect(pokeLoungeStateRepository.query).toHaveBeenCalledWith(
+        expect.stringContaining('ON CONFLICT ("userId") DO UPDATE'),
+        [user.id, JSON.stringify(dto.state), new Date(clientUpdatedAt)],
+      );
+      expect(pokeLoungeStateRepository.query).toHaveBeenCalledWith(
+        expect.stringContaining(
+          '"game_poke_lounge_state"."clientUpdatedAt" <= EXCLUDED."clientUpdatedAt"',
+        ),
+        expect.any(Array),
+      );
+      expect(pokeLoungeStateRepository.findOne).toHaveBeenLastCalledWith({
+        where: { userId: user.id },
+      });
+      expect(result).toEqual(savedState);
+    });
+
+    it('clientUpdatedAt이 없으면 null로 저장해야 함', async () => {
+      const user = new User();
+      user.id = 'poke-user';
+      const dto: SavePokeLoungeStateDto = {
+        state: {
+          room: 'LOUNGE',
+        },
+      };
+      const savedState = {
+        id: 'state-id',
+        userId: user.id,
+        user,
+        state: dto.state,
+        clientUpdatedAt: null,
+        createdAt: new Date('2026-07-08T12:00:01.000Z'),
+        updatedAt: new Date('2026-07-08T12:00:02.000Z'),
+      } as GamePokeLoungeState;
+
+      pokeLoungeStateRepository.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(savedState);
+
+      const result = await service.savePokeLoungeState(user, dto);
+
+      expect(pokeLoungeStateRepository.query).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO "game_poke_lounge_state"'),
+        [user.id, JSON.stringify(dto.state), null],
+      );
+      expect(result).toEqual(savedState);
+    });
+
+    it('이미 저장된 상태보다 오래된 clientUpdatedAt 요청은 덮어쓰지 않아야 함', async () => {
+      const user = new User();
+      user.id = 'poke-user';
+      const existingState = {
+        id: 'state-id',
+        userId: user.id,
+        user,
+        state: {
+          marker: 'latest',
+        },
+        clientUpdatedAt: new Date('2026-07-08T12:00:10.000Z'),
+        createdAt: new Date('2026-07-08T12:00:01.000Z'),
+        updatedAt: new Date('2026-07-08T12:00:10.000Z'),
+      } as GamePokeLoungeState;
+      const dto: SavePokeLoungeStateDto = {
+        state: {
+          marker: 'stale',
+        },
+        clientUpdatedAt: '2026-07-08T12:00:00.000Z',
+      };
+
+      pokeLoungeStateRepository.findOne.mockResolvedValue(existingState);
+
+      const result = await service.savePokeLoungeState(user, dto);
+
+      expect(pokeLoungeStateRepository.query).not.toHaveBeenCalled();
+      expect(result).toEqual(existingState);
+    });
+  });
+
+  describe('findPokeLoungeState', () => {
+    it('사용자 id로 Poke Lounge 최신 저장 상태를 조회해야 함', async () => {
+      const savedState = {
+        id: 'state-id',
+        userId: 'poke-user',
+        user: { id: 'poke-user' } as User,
+        state: {
+          room: 'LOUNGE',
+        },
+        clientUpdatedAt: null,
+        createdAt: new Date('2026-07-08T12:00:01.000Z'),
+        updatedAt: new Date('2026-07-08T12:00:02.000Z'),
+      } as GamePokeLoungeState;
+
+      pokeLoungeStateRepository.findOne.mockResolvedValue(savedState);
+
+      const result = await service.findPokeLoungeState('poke-user');
+
+      expect(pokeLoungeStateRepository.findOne).toHaveBeenCalledWith({
+        where: { userId: 'poke-user' },
+      });
+      expect(result).toEqual(savedState);
+    });
+
+    it('저장 상태가 없으면 NotFoundException을 던져야 함', async () => {
+      pokeLoungeStateRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.findPokeLoungeState('poke-user')).rejects.toThrow(
+        'Poke Lounge state not found',
       );
     });
   });

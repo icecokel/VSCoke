@@ -1,7 +1,11 @@
 export const ROOM_CODE_LENGTH = 6;
+export const ROOM_ROUND_DURATION_QUERY_PARAM = "roundMs";
+export const ROOM_ROUND_DURATION_OPTIONS_MS = [180_000, 300_000, 600_000, 900_000] as const;
+
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 export type RoomEntryMode = "unset" | "solo" | "local-room" | "server-room" | "webrtc";
+export type RoomRoundDurationMs = (typeof ROOM_ROUND_DURATION_OPTIONS_MS)[number];
 
 export interface RoomEntryIntent {
   mode: RoomEntryMode;
@@ -29,20 +33,49 @@ export function createRoomCode(random: () => number = Math.random): string {
   }).join("");
 }
 
-export function createInviteUrl(baseUrl: URL, roomCode: string): URL {
+export function createInviteUrl(baseUrl: URL, roomCode: string, roundDurationMs?: number): URL {
   const url = new URL(baseUrl.href);
   url.searchParams.set("network", "local");
   url.searchParams.set("room", roomCode);
+  applyRoomRoundDurationSearchParam(url, roundDurationMs);
 
   return url;
 }
 
-export function createServerInviteUrl(baseUrl: URL, roomCode: string): URL {
+export function createServerInviteUrl(
+  baseUrl: URL,
+  roomCode: string,
+  roundDurationMs?: number,
+): URL {
   const url = new URL(baseUrl.href);
   url.searchParams.set("network", "server");
   url.searchParams.set("room", roomCode);
+  applyRoomRoundDurationSearchParam(url, roundDurationMs);
 
   return url;
+}
+
+export function normalizeRoomRoundDurationMs(value: unknown): RoomRoundDurationMs | null {
+  const numericValue = typeof value === "string" ? Number(value) : value;
+
+  if (typeof numericValue !== "number" || !Number.isFinite(numericValue)) {
+    return null;
+  }
+
+  const durationMs = Math.trunc(numericValue);
+
+  return ROOM_ROUND_DURATION_OPTIONS_MS.find(option => option === durationMs) ?? null;
+}
+
+export function applyRoomRoundDurationSearchParam(url: URL, roundDurationMs?: number): void {
+  const normalizedDurationMs = normalizeRoomRoundDurationMs(roundDurationMs);
+
+  if (normalizedDurationMs === null) {
+    url.searchParams.delete(ROOM_ROUND_DURATION_QUERY_PARAM);
+    return;
+  }
+
+  url.searchParams.set(ROOM_ROUND_DURATION_QUERY_PARAM, String(normalizedDurationMs));
 }
 
 export function readRoomEntryFromSearchParams(

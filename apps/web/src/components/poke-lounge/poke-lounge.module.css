@@ -642,6 +642,35 @@
   background: #fff9dd;
 }
 
+.page :global(.room-entry-round-duration) {
+  display: grid;
+  gap: 8px;
+}
+
+.page :global(.room-entry-round-duration p) {
+  margin: 0;
+  color: #17201a;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.page :global(.room-entry-round-duration-options) {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.page :global(.room-entry-round-duration-options button) {
+  min-height: 36px;
+  padding: 4px 2px;
+  background: #f5f6ee;
+}
+
+.page :global(.room-entry-round-duration-options button.is-active) {
+  background: #fff1a8;
+  box-shadow: 0 4px 0 #17231c inset;
+}
+
 .page :global(.room-entry-panel button:disabled),
 .page :global(.room-entry-panel input:disabled) {
   cursor: default;

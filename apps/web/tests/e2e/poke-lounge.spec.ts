@@ -95,6 +95,7 @@ interface PokeLoungeGameStateSnapshot {
   };
   round: {
     phase: "waiting" | "preparation" | "tournament" | "round-result" | "game-result";
+    preparationDurationMs: number;
   };
 }
 
@@ -157,6 +158,7 @@ interface PokeLoungeE2eController {
 
 type PokeLoungeWindow = Window & {
   __POKE_LOUNGE_E2E__?: PokeLoungeE2eController;
+  __POKE_LOUNGE_COPIED_TEXT__?: string;
 };
 
 const POKE_LOUNGE_LOCALE = "ko-KR";
@@ -804,6 +806,86 @@ test.describe("Poke Lounge", () => {
     await expect(page).not.toHaveURL(/network=local|room=/);
     await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30000 });
 
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("방 만들기에서 토너먼트 시간을 선택하면 room URL과 라운드 시간에 반영된다", async ({
+    page,
+  }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await gotoWithRetry(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
+    await continueToRoomEntry(page);
+
+    const durationOptions = page.locator("[data-room-entry-round-duration-option]");
+    await expect(durationOptions).toHaveText(["3분", "5분", "10분", "15분"]);
+    await expect(
+      page.locator("[data-room-entry-round-duration-option='300000']"),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    await page.locator("[data-room-entry-round-duration-option='600000']").click();
+    await expect(
+      page.locator("[data-room-entry-round-duration-option='600000']"),
+    ).toHaveAttribute("aria-pressed", "true");
+    await page.locator("[data-room-entry-create]").click();
+
+    await expect(page).toHaveURL(/network=local/);
+    await expect(page).toHaveURL(/roundMs=600000/);
+    await chooseStarter(page);
+    await waitForGameCanvas(page);
+    await expect
+      .poll(() =>
+        getGameStateSnapshot(page).then(state => state?.round.preparationDurationMs ?? null),
+      )
+      .toBe(600_000);
+
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("방 생성 후 설정에서 공유 링크를 복사한다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: {
+          writeText: async (text: string) => {
+            const pokeWindow = window as PokeLoungeWindow;
+
+            pokeWindow.__POKE_LOUNGE_COPIED_TEXT__ = text;
+          },
+        },
+      });
+    });
+
+    await gotoWithRetry(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
+    await continueToRoomEntry(page);
+    await page.locator("[data-room-entry-round-duration-option='600000']").click();
+    await page.locator("[data-room-entry-create]").click();
+    await chooseStarter(page);
+    await waitForGameCanvas(page);
+
+    await page.keyboard.press("Escape");
+
+    const settingsPanel = page.locator("[data-poke-lounge-settings='true']");
+    await expect(settingsPanel).toBeVisible();
+    const shareButton = settingsPanel.locator("[data-poke-lounge-setting-action='share-link']");
+    await expect(shareButton).toHaveText("링크 공유");
+    await shareButton.click();
+    await expect(shareButton).toHaveText("링크 복사됨");
+
+    const copiedText = await page.evaluate(() => {
+      const pokeWindow = window as PokeLoungeWindow;
+
+      return pokeWindow.__POKE_LOUNGE_COPIED_TEXT__ ?? null;
+    });
+
+    expect(copiedText).not.toBeNull();
+    expect(copiedText).toContain(`/${POKE_LOUNGE_LOCALE}/game/poke-lounge?`);
+    expect(copiedText).toContain("network=local");
+    expect(copiedText).toContain("room=");
+    expect(copiedText).toContain("roundMs=600000");
+    expect(copiedText).not.toContain("e2e=1");
     expect(browserErrors.join("\n")).toBe("");
   });
 

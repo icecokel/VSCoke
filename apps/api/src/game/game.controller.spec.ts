@@ -23,10 +23,37 @@ type MockGameService = jest.Mocked<
     | 'getUserRank'
     | 'getUserBestScore'
   >
->;
+> & {
+  savePokeLoungeState: jest.Mock;
+  findPokeLoungeState: jest.Mock;
+};
 
 type TestRequest = {
   user: User;
+};
+
+type PokeLoungeStatePayload = Record<string, unknown>;
+
+type PokeLoungeStateRecord = {
+  id: string;
+  userId: string;
+  state: PokeLoungeStatePayload;
+  createdAt: Date;
+  updatedAt: Date;
+  clientUpdatedAt: Date | null;
+};
+
+type SavePokeLoungeStateDtoLike = {
+  state: PokeLoungeStatePayload;
+  clientUpdatedAt?: string;
+};
+
+type PokeLoungeStateControllerContract = {
+  savePokeLoungeState(
+    req: TestRequest,
+    body: SavePokeLoungeStateDtoLike,
+  ): Promise<PokeLoungeStateRecord>;
+  getPokeLoungeState(req: TestRequest): Promise<PokeLoungeStateRecord>;
 };
 
 const createUser = (overrides: Partial<User> = {}): User => ({
@@ -60,6 +87,8 @@ const mockGameService = (): MockGameService => ({
   findHistoryById: jest.fn(),
   getUserRank: jest.fn(),
   getUserBestScore: jest.fn(),
+  savePokeLoungeState: jest.fn(),
+  findPokeLoungeState: jest.fn(),
 });
 
 describe('GameController', () => {
@@ -430,6 +459,82 @@ describe('GameController', () => {
       await expect(controller.getGameResult(id)).rejects.toThrow(
         'Unknown Error',
       );
+    });
+  });
+
+  describe('poke lounge state', () => {
+    it('should save Poke Lounge state for the authenticated user', async () => {
+      const req: TestRequest = {
+        user: createUser({ id: 'poke-user' }),
+      };
+      const clientUpdatedAt = '2026-07-08T12:00:00.000Z';
+      const body: SavePokeLoungeStateDtoLike = {
+        state: {
+          trainer: { x: 12, y: 3 },
+          party: ['pikachu', 'eevee'],
+        },
+        clientUpdatedAt,
+      };
+      const savedState: PokeLoungeStateRecord = {
+        id: 'state-id',
+        userId: req.user.id,
+        state: body.state,
+        clientUpdatedAt: new Date(clientUpdatedAt),
+        createdAt: new Date('2026-07-08T12:00:01.000Z'),
+        updatedAt: new Date('2026-07-08T12:00:02.000Z'),
+      };
+
+      service.savePokeLoungeState.mockResolvedValue(savedState);
+
+      const result = await (
+        controller as GameController & PokeLoungeStateControllerContract
+      ).savePokeLoungeState(req, body);
+
+      expect(service.savePokeLoungeState).toHaveBeenCalledWith(req.user, body);
+      expect(result).toEqual(savedState);
+    });
+
+    it('should return saved Poke Lounge state for the authenticated user', async () => {
+      const req: TestRequest = {
+        user: createUser({ id: 'poke-user' }),
+      };
+      const savedState: PokeLoungeStateRecord = {
+        id: 'state-id',
+        userId: req.user.id,
+        state: {
+          room: 'LOUNGE',
+          inventory: { potion: 2 },
+        },
+        clientUpdatedAt: null,
+        createdAt: new Date('2026-07-08T12:00:01.000Z'),
+        updatedAt: new Date('2026-07-08T12:00:02.000Z'),
+      };
+
+      service.findPokeLoungeState.mockResolvedValue(savedState);
+
+      const result = await (
+        controller as GameController & PokeLoungeStateControllerContract
+      ).getPokeLoungeState(req);
+
+      expect(service.findPokeLoungeState).toHaveBeenCalledWith(req.user.id);
+      expect(result).toEqual(savedState);
+    });
+
+    it('should propagate NotFoundException when the authenticated user has no saved state', async () => {
+      const req: TestRequest = {
+        user: createUser({ id: 'poke-user' }),
+      };
+
+      service.findPokeLoungeState.mockRejectedValue(
+        new NotFoundException('Poke Lounge state not found'),
+      );
+
+      await expect(
+        (
+          controller as GameController & PokeLoungeStateControllerContract
+        ).getPokeLoungeState(req),
+      ).rejects.toThrow(NotFoundException);
+      expect(service.findPokeLoungeState).toHaveBeenCalledWith(req.user.id);
     });
   });
 });

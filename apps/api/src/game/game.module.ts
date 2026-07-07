@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { GameController } from './game.controller';
 import { GameService } from './game.service';
 import { GameHistory } from './entities/game-history.entity';
+import { GamePokeLoungeState } from './entities/game-poke-lounge-state.entity';
 import { AuthModule } from '../auth/auth.module';
 
 /**
@@ -10,7 +11,7 @@ import { AuthModule } from '../auth/auth.module';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([GameHistory]),
+    TypeOrmModule.forFeature([GameHistory, GamePokeLoungeState]),
     // 구글 인증 가드를 사용하기 위해 AuthModule 주입
     AuthModule,
   ],

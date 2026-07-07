@@ -782,14 +782,17 @@ test.describe("Poke Lounge", () => {
     const uiSizeButton = settingsPanel.locator("[data-poke-lounge-setting-action='ui-size']");
     await expect(uiSizeButton).toHaveAttribute("data-poke-lounge-ui-size", "large");
     await uiSizeButton.click();
-    await expect(uiSizeButton).toHaveAttribute("data-poke-lounge-ui-size", "compact");
+    await expect(uiSizeButton).toHaveAttribute("data-poke-lounge-ui-size", "normal");
+    await expect(uiSizeButton).toContainText("UI 보통");
     await expect(page.getByTestId("poke-lounge-page")).toHaveAttribute(
       "data-poke-lounge-ui-size",
-      "compact",
+      "normal",
     );
     await expectCanvasFramed(page, {
-      maxWidth: 1024,
-      minWidth: 1000,
+      canvasHeight: 576,
+      canvasWidth: 768,
+      maxWidth: 1200,
+      minWidth: 1150,
       viewportWidth: 1280,
       viewportHeight: 900,
     });
@@ -1254,11 +1257,20 @@ async function expectRoomOnline(page: Page, roomId?: string): Promise<void> {
 async function expectCanvasFramed(
   page: Page,
   {
+    canvasHeight = 384,
+    canvasWidth = 512,
     maxWidth,
     minWidth = 0,
     viewportHeight,
     viewportWidth,
-  }: { maxWidth: number; minWidth?: number; viewportHeight: number; viewportWidth: number },
+  }: {
+    canvasHeight?: number;
+    canvasWidth?: number;
+    maxWidth: number;
+    minWidth?: number;
+    viewportHeight: number;
+    viewportWidth: number;
+  },
 ): Promise<void> {
   await expect
     .poll(
@@ -1272,8 +1284,8 @@ async function expectCanvasFramed(
           snapshot &&
           layout &&
           layout.root &&
-          snapshot.width === 768 &&
-          snapshot.height === 576 &&
+          snapshot.width === canvasWidth &&
+          snapshot.height === canvasHeight &&
           snapshot.clientWidth <= maxWidth &&
           snapshot.clientWidth >= minWidth &&
           snapshot.clientWidth <= viewportWidth &&
@@ -1300,8 +1312,8 @@ async function expectCanvasFramed(
   expect(snapshot).not.toBeNull();
   expect(layout).not.toBeNull();
   expect(layout?.root).not.toBeNull();
-  expect(snapshot?.width).toBe(768);
-  expect(snapshot?.height).toBe(576);
+  expect(snapshot?.width).toBe(canvasWidth);
+  expect(snapshot?.height).toBe(canvasHeight);
   expect(snapshot?.clientWidth).toBeLessThanOrEqual(maxWidth);
   expect(snapshot?.clientWidth).toBeGreaterThanOrEqual(minWidth);
   expect(snapshot?.clientWidth).toBeLessThanOrEqual(viewportWidth);
@@ -1532,7 +1544,15 @@ async function clickGameCanvasPoint(page: Page, point: { x: number; y: number })
 }
 
 async function openPartyStatusPanelFromCanvas(page: Page, slotIndex: number): Promise<void> {
-  const partyHudOrigin = resolvePartyHudAnchor("middle-left", { width: 768, height: 576 });
+  const canvasSnapshot = await getCanvasSnapshot(page);
+  if (!canvasSnapshot) {
+    throw new Error("Poke Lounge canvas is not available.");
+  }
+
+  const partyHudOrigin = resolvePartyHudAnchor("middle-left", {
+    width: canvasSnapshot.width,
+    height: canvasSnapshot.height,
+  });
   const target = {
     x: partyHudOrigin.x + PARTY_HUD_SLOT_SIZE.width / 2,
     y:

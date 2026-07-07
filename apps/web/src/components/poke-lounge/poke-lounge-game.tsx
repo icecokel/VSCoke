@@ -13,6 +13,11 @@ import {
   toggleGameFullscreen,
 } from "./runtime/game/input/fullscreenToggle";
 import { GAME_SETTINGS_OPEN_EVENT } from "./runtime/game/input/settings-toggle";
+import {
+  GAME_VIEWPORT_SIZE_PRESETS,
+  type GameViewportDisplaySize,
+  type GameViewportSizePreset,
+} from "./runtime/game/gameViewport";
 import styles from "./poke-lounge.module.css";
 
 type PokeLoungeWindow = Window & {
@@ -28,7 +33,11 @@ interface FinalResultState {
 
 const POKE_LOUNGE_VOLUME_STEPS = [0.25, 0.5, 0.75, 1] as const;
 
-type PokeLoungeUiSize = "compact" | "large";
+type PokeLoungeUiSize = GameViewportSizePreset;
+type PokeLoungeGamePageHandle = {
+  destroy(): void;
+  setViewportSize(viewportSize: GameViewportDisplaySize): void;
+};
 
 function isEditableEventTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -47,6 +56,7 @@ export function PokeLoungeGame() {
   const { setGamePlaying } = useGame();
   const { data: session, status } = useSession();
   const pageRef = useRef<HTMLElement>(null);
+  const gamePageHandleRef = useRef<PokeLoungeGamePageHandle | null>(null);
   const startedAtMsRef = useRef(Date.now());
   const [finalResult, setFinalResult] = useState<FinalResultState | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -79,7 +89,7 @@ export function PokeLoungeGame() {
   }, []);
 
   const handleUiSizeToggle = useCallback(() => {
-    setUiSize(currentSize => (currentSize === "large" ? "compact" : "large"));
+    setUiSize(currentSize => (currentSize === "large" ? "normal" : "large"));
   }, []);
 
   useEffect(() => {
@@ -91,6 +101,10 @@ export function PokeLoungeGame() {
       setPokeLoungeMasterVolume(1);
     };
   }, []);
+
+  useEffect(() => {
+    gamePageHandleRef.current?.setViewportSize(GAME_VIEWPORT_SIZE_PRESETS[uiSize]);
+  }, [uiSize]);
 
   useEffect(() => {
     const handleFullscreenStateChange = () => syncFullscreenState();
@@ -154,6 +168,7 @@ export function PokeLoungeGame() {
       } else {
         pokeWindow.__POKE_LOUNGE_GAME__?.destroy(true);
       }
+      gamePageHandleRef.current = null;
       delete pokeWindow.__POKE_LOUNGE_GAME__;
       delete pokeWindow.__POKE_LOUNGE_CLEANUP_FOR_TEST__;
       delete pokeWindow.__POKE_LOUNGE_E2E__;
@@ -178,6 +193,7 @@ export function PokeLoungeGame() {
             setSubmitStatus("idle");
             setSubmitMessage("");
           },
+          viewportSize: GAME_VIEWPORT_SIZE_PRESETS.large,
         });
 
         if (cancelled) {
@@ -185,7 +201,13 @@ export function PokeLoungeGame() {
           return;
         }
 
-        destroyGamePage = () => gamePage.destroy();
+        gamePageHandleRef.current = gamePage;
+        destroyGamePage = () => {
+          if (gamePageHandleRef.current === gamePage) {
+            gamePageHandleRef.current = null;
+          }
+          gamePage.destroy();
+        };
       }
     });
 
@@ -235,7 +257,7 @@ export function PokeLoungeGame() {
   return (
     <main
       ref={pageRef}
-      className={`${styles.page} ${uiSize === "compact" ? styles.uiSizeCompact : ""} phaser-game-page`}
+      className={`${styles.page} phaser-game-page`}
       data-testid="poke-lounge-page"
       data-poke-lounge-ui-size={uiSize}
     >

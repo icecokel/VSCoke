@@ -50,10 +50,6 @@
   place-items: center;
 }
 
-.uiSizeCompact {
-  --poke-lounge-max-display-width: 1024px;
-}
-
 .page:fullscreen {
   display: grid;
   width: 100vw;

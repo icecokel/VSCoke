@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { resolveGameCanvasSize } from "./gameViewport";
+import { resolveGameCanvasSize, type GameViewportDisplaySize } from "./gameViewport";
 import type { InitialGameScene } from "./gameStartup";
 import { BootScene } from "./scenes/BootScene";
 import { BattleScene, type BattleE2eScenario, type BattleE2eSnapshot } from "./scenes/BattleScene";
@@ -58,6 +58,7 @@ export interface PokeLoungeGameOptions {
   gameStateStore?: GameStateStore;
   multiplayerRoom?: MultiplayerRoom;
   onGameResult?: (result: PokeLoungeGameResult) => void;
+  viewportSize?: GameViewportDisplaySize;
 }
 
 export function createPokeLoungeGame(
@@ -65,12 +66,7 @@ export function createPokeLoungeGame(
   options: PokeLoungeGameOptions = {},
 ): Phaser.Game {
   const gameStateStore = options.gameStateStore ?? getDefaultGameStateStore();
-  const parentRect = parent.getBoundingClientRect();
-  const displaySize = {
-    width: parent.clientWidth || parentRect.width,
-    height: parent.clientHeight || parentRect.height,
-  };
-  const canvasSize = resolveGameCanvasSize(displaySize);
+  const canvasSize = resolveGameCanvasSize(options.viewportSize);
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,

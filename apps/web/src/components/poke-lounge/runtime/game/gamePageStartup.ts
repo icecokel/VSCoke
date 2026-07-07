@@ -5,6 +5,11 @@ import { bindPokeLoungeAudioPrimeListeners } from "./audio/poke-lounge-audio";
 import { createPokeLoungeGame, type PokeLoungeGameResult } from "./createPokeLoungeGame";
 import { loadRuntimeGameDataJson } from "./data/game-data-json";
 import { readInitialBattleE2eScenario, readInitialGameScene } from "./gameStartup";
+import {
+  getBattleCameraZoom,
+  resolveGameCanvasSize,
+  type GameViewportDisplaySize,
+} from "./gameViewport";
 import { renderFullscreenToggle } from "./input/fullscreenToggle";
 import { renderMobileSettingsToggle } from "./input/settings-toggle";
 import { renderMobileTouchControls } from "./input/mobileTouchControls";
@@ -21,6 +26,7 @@ type PokeLoungeGameInstance = ReturnType<typeof createPokeLoungeGame>;
 
 export interface GamePageHandle {
   destroy(): void;
+  setViewportSize(viewportSize: GameViewportDisplaySize): void;
 }
 
 export interface StartGamePageDependencies {
@@ -37,6 +43,7 @@ export interface StartGamePageDependencies {
     options: StarterSelectionOptions,
   ) => void;
   onGameResult?: (result: PokeLoungeGameResult) => void;
+  viewportSize?: GameViewportDisplaySize;
 }
 
 export async function startGamePage(
@@ -53,6 +60,7 @@ export async function startGamePage(
   const renderSelection = dependencies.renderStarterSelectionScreen ?? renderStarterSelectionScreen;
   let activeGame: PokeLoungeGameInstance | null = null;
   let activeMultiplayerRoom: ReturnType<typeof createMultiplayerRoom> | null = null;
+  let activeViewportSize = dependencies.viewportSize;
   let destroyed = false;
   let roomEntrySelectionPending = false;
   let starterSelectionRequestId = 0;
@@ -81,6 +89,21 @@ export async function startGamePage(
       });
       mount.replaceChildren();
     },
+    setViewportSize(nextViewportSize: GameViewportDisplaySize) {
+      activeViewportSize = nextViewportSize;
+      if (!activeGame) {
+        return;
+      }
+
+      const canvasSize = resolveGameCanvasSize(activeViewportSize);
+      activeGame.scale.resize(canvasSize.width, canvasSize.height);
+      activeGame.scene.getScenes(true).forEach(scene => {
+        scene.cameras.main.setSize(canvasSize.width, canvasSize.height);
+        if (scene.scene.key === "battle") {
+          scene.cameras.main.setZoom(getBattleCameraZoom(canvasSize.width));
+        }
+      });
+    },
   };
 
   const startGame = async (gameUrl: URL) => {
@@ -102,6 +125,7 @@ export async function startGamePage(
       initialScene,
       multiplayerRoom,
       onGameResult: dependencies.onGameResult,
+      viewportSize: activeViewportSize,
     });
     activeGame = game;
     renderMobileTouchControls(mount);

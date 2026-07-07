@@ -1,11 +1,13 @@
 import { startGamePage, type GamePageHandle } from "./game/gamePageStartup";
 import type { PokeLoungeGameResult } from "./game/createPokeLoungeGame";
+import type { GameViewportDisplaySize } from "./game/gameViewport";
 
 export async function startGamePageFromDocument(
   documentRef: Document = document,
   location: URL = new URL(window.location.href),
   options: {
     onGameResult?: (result: PokeLoungeGameResult) => void;
+    viewportSize?: GameViewportDisplaySize;
   } = {},
 ): Promise<GamePageHandle> {
   const mount = documentRef.querySelector<HTMLElement>("#game-root");
@@ -16,5 +18,6 @@ export async function startGamePageFromDocument(
 
   return startGamePage(mount, location, {
     onGameResult: options.onGameResult,
+    viewportSize: options.viewportSize,
   });
 }

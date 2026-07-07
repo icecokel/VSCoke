@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { expect, type Page, test } from "@playwright/test";
+import { applyLevelUpPlayerMoves } from "../../src/components/poke-lounge/runtime/game/battle/levelUpMoves";
+import { createWildBattleState } from "../../src/components/poke-lounge/runtime/game/battle/wildBattleFactory";
 import { getBattlePokemonAssets } from "../../src/components/poke-lounge/runtime/game/battle/battlePokemonAssets";
 import { selectWildEncounterConfig } from "../../src/components/poke-lounge/runtime/game/world/wildEncounterTables";
 import { escapeRegExp, gotoWithRetry, resolveLocaleAndMessages } from "./test-helpers";
@@ -91,13 +93,65 @@ const POKE_LOUNGE_LOCALE = "ko-KR";
 const LOCAL_ROOM_CODE = "ABC123";
 
 test.describe("Poke Lounge", () => {
+  test("게임 데이터 JSON과 런타임 fallback이 문서화된 배틀 데이터를 유지한다", () => {
+    const levelUpMoveTable = readPublicJson("/game-data/level-up-move-table.json") as {
+      species?: Record<string, Array<{ level: number; moveId: number }>>;
+    };
+    const wildBattleMoveSets = readPublicJson("/game-data/wild-battle-move-sets.json") as {
+      species?: Record<string, number[]>;
+    };
+
+    expect(levelUpMoveTable.species?.["155"]).toContainEqual({ level: 19, moveId: 172 });
+    expect(wildBattleMoveSets.species?.["155"]).toEqual([52, 43]);
+
+    const learnedMoves = applyLevelUpPlayerMoves({
+      pokemon: {
+        speciesId: 155,
+        name: "브케인",
+        level: 19,
+        moves: [
+          { id: 52, name: "불꽃세례", pp: 25, maxPp: 25 },
+          { id: 108, name: "연막", pp: 20, maxPp: 20 },
+          { id: 98, name: "전광석화", pp: 30, maxPp: 30 },
+          { id: 52, name: "불꽃세례", pp: 25, maxPp: 25 },
+        ],
+      },
+      previousLevel: 18,
+      moveRecords: createTestMoveRecords([52, 98, 108, 172]),
+    });
+
+    expect(learnedMoves.pokemon.moves?.map(move => move.id)).toEqual([108, 98, 52, 172]);
+    expect(learnedMoves.pokemon.moves?.filter(move => move.id === 172)).toHaveLength(1);
+    expect(learnedMoves.pokemon.moves).toHaveLength(4);
+
+    const wildBattleState = createWildBattleState({
+      encounter: {
+        mapKey: "test-map",
+        step: { from: { x: 0, y: 0 }, to: { x: 1, y: 0 } },
+        speciesId: 155,
+        name: "브케인",
+        level: 10,
+      },
+      personalRecords: createTestPersonalRecords([152, 155]),
+      moveRecords: createTestMoveRecords([33, 43, 45, 52]),
+    });
+
+    expect(wildBattleState.opponent.playerId).toBe("wild");
+    expect(wildBattleState.opponent.displayName).toBe("야생 브케인");
+    expect(wildBattleState.opponent.pokemon.moves.map(move => move.id)).toEqual([52, 43]);
+  });
+
   test("브케인 상대 스프라이트는 160x80 front sheet를 사용한다", () => {
     const assets = getBattlePokemonAssets(155);
 
-    expect(readPublicPngDimensions(assets.front.path)).toEqual({
-      width: 160,
-      height: 80,
-    });
+    expect(assets.front).toEqual(
+      expect.objectContaining({
+        path: "/assets/pokemon/front/155.png",
+        width: 160,
+        height: 80,
+      }),
+    );
+    expect(readPublicPngDimensions(assets.front.path)).toEqual({ width: 160, height: 80 });
   });
 
   test("야생 조우 설정은 지역별 encounter rate와 slot을 함께 선택한다", () => {
@@ -344,6 +398,53 @@ function readPublicPngDimensions(publicPath: string): { width: number; height: n
   };
 }
 
+function readPublicJson(publicPath: string): unknown {
+  const filePath = path.join(process.cwd(), "public", publicPath.replace(/^\//, ""));
+  return JSON.parse(fs.readFileSync(filePath, "utf8"));
+}
+
+function createTestMoveRecords(moveIds: number[]) {
+  return {
+    moves: Object.fromEntries(
+      moveIds.map(moveId => [
+        String(moveId),
+        {
+          index: moveId,
+          raw_hex: "",
+          refined_candidate_fields: {
+            pp: { value: 20, offset: 0, width: 1 },
+            type: { value: 10, offset: 0, width: 1 },
+            power: { value: 40, offset: 0, width: 1 },
+            accuracy: { value: 100, offset: 0, width: 1 },
+            effect: { value: 0, offset: 0, width: 1 },
+            category: { value: 2, offset: 0, width: 1 },
+          },
+        },
+      ]),
+    ),
+  };
+}
+
+function createTestPersonalRecords(speciesIds: number[]) {
+  return {
+    records: speciesIds.map(speciesId => ({
+      index: speciesId,
+      catch_rate: 45,
+      base_exp: 65,
+      growth_rate: 3,
+      base_stats: {
+        hp: 45,
+        attack: 49,
+        defense: 49,
+        special_attack: 65,
+        special_defense: 65,
+        speed: 45,
+      },
+      types: { primary: 10, secondary: null },
+    })),
+  };
+}
+
 function collectBrowserErrors(page: Page): string[] {
   const browserErrors: string[] = [];
 
@@ -359,8 +460,7 @@ function collectBrowserErrors(page: Page): string[] {
 
 async function startSoloGame(page: Page, routePath: string): Promise<void> {
   await gotoWithRetry(page, routePath);
-  await chooseStarter(page);
-  await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30000 });
+  await continueToRoomEntry(page);
   await page.locator("[data-room-entry-solo]").click();
   await waitForGameCanvas(page);
 }
@@ -376,6 +476,34 @@ async function startBattleScenario(page: Page, scenario: PokeLoungeBattleScenari
 async function chooseStarter(page: Page): Promise<void> {
   await expect(page.locator("[data-screen='starter-selection']")).toBeVisible({ timeout: 30000 });
   await page.locator("[data-starter-confirm]").click();
+}
+
+async function continueToRoomEntry(page: Page): Promise<void> {
+  const starterSelection = page.locator("[data-screen='starter-selection']");
+  const roomEntryScreen = page.locator("[data-room-entry-screen='true']");
+
+  await expect
+    .poll(
+      async () => {
+        if (await roomEntryScreen.isVisible().catch(() => false)) {
+          return "room-entry";
+        }
+
+        if (await starterSelection.isVisible().catch(() => false)) {
+          return "starter-selection";
+        }
+
+        return null;
+      },
+      { timeout: 30000 },
+    )
+    .not.toBeNull();
+
+  if (await starterSelection.isVisible().catch(() => false)) {
+    await page.locator("[data-starter-confirm]").click();
+  }
+
+  await expect(roomEntryScreen).toBeVisible({ timeout: 30000 });
 }
 
 async function waitForGameCanvas(page: Page): Promise<void> {

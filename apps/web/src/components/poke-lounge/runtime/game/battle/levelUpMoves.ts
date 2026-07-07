@@ -1,4 +1,5 @@
 import type { PlayerPokemon, PlayerPokemonMove } from "../state/gameStateStore";
+import { getRuntimeLevelUpMoveTable } from "../data/game-data-json";
 import { normalizeRomMoveRecord, type RomBattleMoveRecord } from "./battleRomData";
 import type { BattleMove, BattlePokemon } from "./battleTypes";
 import type { RomRefinedMoveCollection } from "./wildBattleFactory";
@@ -64,7 +65,7 @@ const MOVE_NAMES: Record<number, string> = {
   345: "매지컬리프",
 };
 
-export const LEVEL_UP_MOVE_TABLE: Record<number, LevelUpMoveDefinition[]> = {
+export const DEFAULT_LEVEL_UP_MOVE_TABLE: Record<number, LevelUpMoveDefinition[]> = {
   1: [
     moveAtLevel(3, 45),
     moveAtLevel(7, 73),
@@ -106,6 +107,8 @@ export const LEVEL_UP_MOVE_TABLE: Record<number, LevelUpMoveDefinition[]> = {
   158: [moveAtLevel(6, 55), moveAtLevel(8, 99), moveAtLevel(13, 44), moveAtLevel(15, 184)],
 };
 
+export const LEVEL_UP_MOVE_TABLE = DEFAULT_LEVEL_UP_MOVE_TABLE;
+
 export function getLevelUpMovesForSpecies(
   speciesId: number,
   previousLevel: number,
@@ -115,9 +118,11 @@ export function getLevelUpMovesForSpecies(
     return [];
   }
 
-  return (LEVEL_UP_MOVE_TABLE[speciesId] ?? []).filter(
-    move => move.level > previousLevel && move.level <= currentLevel,
-  );
+  const levelUpMoveTable = getRuntimeLevelUpMoveTable(DEFAULT_LEVEL_UP_MOVE_TABLE);
+
+  return (levelUpMoveTable[speciesId] ?? [])
+    .filter(move => move.level > previousLevel && move.level <= currentLevel)
+    .map(move => moveAtLevel(move.level, move.moveId));
 }
 
 export function createBattleMoveFromRom(

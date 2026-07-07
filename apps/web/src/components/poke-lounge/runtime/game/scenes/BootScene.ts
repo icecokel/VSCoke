@@ -2,6 +2,11 @@ import * as Phaser from "phaser";
 import { BATTLE_ASSET_MANIFEST_PATH } from "../battle/battleAssets";
 import { ROM_BATTLE_PRELOAD_ASSETS } from "../battle/battleDesign";
 import { toBattlePokemonPreloadAssets } from "../battle/battlePokemonAssets";
+import {
+  BATTLE_POKEMON_ASSETS_JSON_PATH,
+  LEVEL_UP_MOVE_TABLE_JSON_PATH,
+  WILD_BATTLE_MOVE_SETS_JSON_PATH,
+} from "../data/game-data-json";
 import type { InitialGameScene } from "../gameStartup";
 import type { BattleE2eScenario } from "./BattleScene";
 import { FIELD_MAP } from "../world/fieldMap";
@@ -21,11 +26,10 @@ export const ROM_BATTLE_DATA_JSON_ASSETS = [
 ] as const;
 
 export const WORLD_DATA_JSON_ASSETS = [WILD_ENCOUNTER_TABLES_JSON_ASSET] as const;
-
-export const BATTLE_PRELOAD_ASSETS = [
-  ...SAMPLE_BATTLE_POKEMON_PRELOAD_ASSETS,
-  ...toBattlePokemonPreloadAssets(),
-  ...ROM_BATTLE_PRELOAD_ASSETS,
+const GAME_DATA_JSON_ASSETS = [
+  ["levelUpMoveTable", LEVEL_UP_MOVE_TABLE_JSON_PATH],
+  ["wildBattleMoveSets", WILD_BATTLE_MOVE_SETS_JSON_PATH],
+  ["battlePokemonAssets", BATTLE_POKEMON_ASSETS_JSON_PATH],
 ] as const;
 
 export class BootScene extends Phaser.Scene {
@@ -44,7 +48,14 @@ export class BootScene extends Phaser.Scene {
     for (const [key, path] of WORLD_DATA_JSON_ASSETS) {
       this.load.json(key, path);
     }
-    for (const [key, path] of BATTLE_PRELOAD_ASSETS) {
+    for (const [key, path] of GAME_DATA_JSON_ASSETS) {
+      this.load.json(key, path);
+    }
+    for (const [key, path] of [
+      ...SAMPLE_BATTLE_POKEMON_PRELOAD_ASSETS,
+      ...toBattlePokemonPreloadAssets(),
+      ...ROM_BATTLE_PRELOAD_ASSETS,
+    ] as const) {
       this.load.image(key, path);
     }
     this.load.image(FIELD_MAP.tilesetKey, FIELD_MAP.tilesetUrl);

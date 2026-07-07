@@ -2,6 +2,7 @@ import { loadBootstrapData } from "../bootstrap";
 import { renderStarterSelectionScreen, type StarterSelectionOptions } from "../starter-selection";
 import type { GameBootstrapData, StarterPokemon } from "../types";
 import { createPokeLoungeGame, type PokeLoungeGameResult } from "./createPokeLoungeGame";
+import { loadRuntimeGameDataJson } from "./data/game-data-json";
 import { readInitialBattleE2eScenario, readInitialGameScene } from "./gameStartup";
 import { renderFullscreenToggle } from "./input/fullscreenToggle";
 import { renderMobileTouchControls } from "./input/mobileTouchControls";
@@ -37,12 +38,14 @@ export async function startGamePage(
   dependencies: StartGamePageDependencies = {},
 ): Promise<void> {
   const gameStateStore = dependencies.gameStateStore ?? getDefaultGameStateStore();
+  const runtimeGameDataPromise = loadRuntimeGameDataJson();
   const initialScene = readInitialGameScene(location);
   const battleE2eScenario = readInitialBattleE2eScenario(location);
   const currentUrl = new URL(location.href);
   const renderEntryScreen = dependencies.renderRoomEntryScreen ?? renderRoomEntryScreen;
   const renderSelection = dependencies.renderStarterSelectionScreen ?? renderStarterSelectionScreen;
-  const startGame = (gameUrl: URL) => {
+  const startGame = async (gameUrl: URL) => {
+    await runtimeGameDataPromise;
     const multiplayerRoom = (dependencies.createMultiplayerRoom ?? createMultiplayerRoom)({
       createWebRtcRoom,
       searchParams: gameUrl.searchParams,
@@ -108,11 +111,13 @@ export async function startGamePage(
 
         if (selection.resetSession) {
           gameStateStore.reset();
-          void showStarterSelection(() => startGame(currentUrl));
+          void showStarterSelection(() => {
+            void startGame(currentUrl);
+          });
           return;
         }
 
-        startGame(currentUrl);
+        void startGame(currentUrl);
       },
     });
   };
@@ -124,7 +129,7 @@ export async function startGamePage(
       roomEntry.mode === "server-room" ||
       roomEntry.mode === "webrtc"
     ) {
-      startGame(currentUrl);
+      void startGame(currentUrl);
       return;
     }
 

@@ -1,6 +1,7 @@
 import type { WildEncounterCandidate } from "../world/wildEncounters";
 import type { PlayerPokemon } from "../state/gameStateStore";
 import type { PlayerPokemonSlot } from "../player/playerTypes";
+import { getRuntimeWildBattleMoveSets } from "../data/game-data-json";
 import { normalizeRomMoveRecord, type RomBattleMoveRecord } from "./battleRomData";
 import { BATTLE_PARTY_SLOT_COUNT, createBattleParty } from "./battleParty";
 import { getBattlePokemonAssets } from "./battlePokemonAssets";
@@ -48,7 +49,7 @@ const PLAYER_SPECIES_ID = 152;
 const PLAYER_NAME = "치코리타";
 const PLAYER_LEVEL = 10;
 
-const SPECIES_MOVE_SETS: Record<number, number[]> = {
+const DEFAULT_SPECIES_MOVE_SETS: Record<number, number[]> = {
   1: [33, 45, 22],
   2: [33, 45, 22],
   3: [33, 45, 22],
@@ -305,7 +306,7 @@ function clampHp(currentHp: number, maxHp: number): number {
 }
 
 function createBattleMoves(speciesId: number, moveRecords: RomRefinedMoveCollection): BattleMove[] {
-  const moveSet = SPECIES_MOVE_SETS[speciesId] ?? [];
+  const moveSet = getRuntimeWildBattleMoveSets(DEFAULT_SPECIES_MOVE_SETS)[speciesId] ?? [];
 
   return moveSet.map(moveId => {
     const moveRecord = findMoveRecord(moveRecords, moveId);

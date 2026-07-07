@@ -17,6 +17,8 @@ export type BattleCommand = "fight" | "bag" | "pokemon" | "run";
 export interface BattleSpriteRef {
   assetKey: string;
   path: string;
+  width?: number;
+  height?: number;
 }
 
 export type BattleMoveCategory = "physical" | "special" | "status";

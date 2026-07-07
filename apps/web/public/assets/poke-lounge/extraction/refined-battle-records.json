@@ -47030,11 +47030,11 @@
     }
   ],
   "source": {
-    "battle_data": "data/processed/rom-extraction/battle-data.json",
-    "evolution_data": "data/processed/rom-extraction/evolution-data.json",
+    "battle_data": "data/processed/source-extraction/battle-data.json",
+    "evolution_data": "data/processed/source-extraction/evolution-data.json",
     "evolution_source_path": "a/0/3/4",
     "game_code": "IPKK",
-    "personal_data": "data/processed/rom-extraction/personal-data.json",
+    "personal_data": "data/processed/source-extraction/personal-data.json",
     "rom": "data/포켓몬스터 하트골드(K).nds",
     "rom_sha1": "5834fb3a2d751c48501d47d6a56898d7af6ccf9e"
   },

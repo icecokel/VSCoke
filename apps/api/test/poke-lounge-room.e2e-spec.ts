@@ -92,7 +92,12 @@ describe('Poke Lounge server rooms (e2e)', () => {
 
     await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/ready')
-      .send({ playerId: 'player-a', ready: true, nowMs: 0 })
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-a',
+        ready: true,
+        nowMs: 0,
+      })
       .expect(201)
       .expect((response) => {
         const body = response.body as PokeLoungeRoomState;
@@ -102,7 +107,12 @@ describe('Poke Lounge server rooms (e2e)', () => {
 
     await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/ready')
-      .send({ playerId: 'player-b', ready: true, nowMs: 1 })
+      .send({
+        playerId: 'player-b',
+        sessionId: 'session-b',
+        ready: true,
+        nowMs: 1,
+      })
       .expect(201)
       .expect((response) => {
         const body = response.body as PokeLoungeRoomState;
@@ -131,6 +141,7 @@ describe('Poke Lounge server rooms (e2e)', () => {
       .post('/poke-lounge/rooms/ROOM01/result')
       .send({
         reportingPlayerId: 'player-a',
+        reportingSessionId: 'session-a',
         matchId: 'round-1-match-1',
         winnerPlayerId: 'player-a',
         loserPlayerId: 'player-b',
@@ -152,6 +163,99 @@ describe('Poke Lounge server rooms (e2e)', () => {
       });
   });
 
+  it('protects participant session credentials in public responses and write APIs', async () => {
+    await request(httpServer)
+      .post('/poke-lounge/rooms')
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-a',
+        displayName: 'Player A',
+        roundDurationMs: 1,
+        nowMs: 0,
+      })
+      .expect(201)
+      .expect((response) => {
+        const body = response.body as PokeLoungeRoomState;
+
+        expect(body.participants[0]).toEqual(
+          expect.not.objectContaining({ sessionId: 'session-a' }),
+        );
+      });
+
+    await request(httpServer)
+      .post('/poke-lounge/rooms/ROOM01/join')
+      .send({
+        playerId: 'player-b',
+        sessionId: 'session-b',
+        displayName: 'Player B',
+      })
+      .expect(201)
+      .expect((response) => {
+        const body = response.body as PokeLoungeRoomState;
+
+        expect(body.participants).toHaveLength(2);
+        body.participants.forEach((participant) => {
+          expect(participant).not.toHaveProperty('sessionId');
+        });
+      });
+
+    await request(httpServer)
+      .post('/poke-lounge/rooms/ROOM01/ready')
+      .send({ playerId: 'player-a', ready: true, nowMs: 0 })
+      .expect(400);
+
+    await request(httpServer)
+      .post('/poke-lounge/rooms/ROOM01/ready')
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-b',
+        ready: true,
+        nowMs: 0,
+      })
+      .expect(400);
+
+    await request(httpServer)
+      .post('/poke-lounge/rooms/ROOM01/ready')
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-a',
+        ready: true,
+        nowMs: 0,
+      })
+      .expect(201);
+
+    await request(httpServer)
+      .post('/poke-lounge/rooms/ROOM01/ready')
+      .send({
+        playerId: 'player-b',
+        sessionId: 'session-b',
+        ready: true,
+        nowMs: 0,
+      })
+      .expect(201);
+
+    await request(httpServer)
+      .get('/poke-lounge/rooms/ROOM01?nowMs=1')
+      .expect(200);
+
+    await request(httpServer)
+      .post('/poke-lounge/rooms/ROOM01/result')
+      .send({
+        reportingPlayerId: 'player-a',
+        reportingSessionId: 'session-b',
+        matchId: 'round-1-match-1',
+        winnerPlayerId: 'player-a',
+        loserPlayerId: 'player-b',
+        reason: 'faint',
+      })
+      .expect(400);
+
+    await request(httpServer)
+      .post('/poke-lounge/rooms/ROOM01/leave')
+      .send({ playerId: 'player-a', sessionId: 'session-b', nowMs: 2 })
+      .expect(400);
+  });
+
   it('rejects invalid result payloads and marks leave as forfeit', async () => {
     await request(httpServer)
       .post('/poke-lounge/rooms')
@@ -168,11 +272,21 @@ describe('Poke Lounge server rooms (e2e)', () => {
       .expect(201);
     await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/ready')
-      .send({ playerId: 'player-a', ready: true, nowMs: 0 })
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-a',
+        ready: true,
+        nowMs: 0,
+      })
       .expect(201);
     await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/ready')
-      .send({ playerId: 'player-b', ready: true, nowMs: 0 })
+      .send({
+        playerId: 'player-b',
+        sessionId: 'session-b',
+        ready: true,
+        nowMs: 0,
+      })
       .expect(201);
     await request(httpServer)
       .get('/poke-lounge/rooms/ROOM01?nowMs=1')
@@ -182,6 +296,7 @@ describe('Poke Lounge server rooms (e2e)', () => {
       .post('/poke-lounge/rooms/ROOM01/result')
       .send({
         reportingPlayerId: 'player-c',
+        reportingSessionId: 'session-c',
         matchId: 'round-1-match-1',
         winnerPlayerId: 'player-a',
         loserPlayerId: 'player-b',
@@ -191,7 +306,7 @@ describe('Poke Lounge server rooms (e2e)', () => {
 
     await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/leave')
-      .send({ playerId: 'player-a' })
+      .send({ playerId: 'player-a', sessionId: 'session-a' })
       .expect(201)
       .expect((response) => {
         const body = response.body as PokeLoungeRoomState;
@@ -364,7 +479,6 @@ describe('Poke Lounge server rooms (e2e)', () => {
         expect(body.participants).toEqual([
           expect.objectContaining({
             playerId: 'player-1',
-            sessionId: 'session-1',
             role: 'participant',
           }),
         ]);
@@ -400,6 +514,10 @@ describe('Poke Lounge server rooms (e2e)', () => {
       body.paths?.['/poke-lounge/rooms/{roomCode}/party-snapshot']?.post
         ?.requestBody?.content?.['application/json']?.schema?.$ref,
     ).toBe('#/components/schemas/UpdatePokeLoungePartySnapshotDto');
+    expect(
+      body.paths?.['/poke-lounge/rooms/{roomCode}/leave']?.post?.requestBody
+        ?.content?.['application/json']?.schema?.$ref,
+    ).toBe('#/components/schemas/LeavePokeLoungeRoomDto');
 
     expect(
       body.paths?.['/poke-lounge/rooms']?.post?.responses?.['201']?.content?.[
@@ -413,6 +531,12 @@ describe('Poke Lounge server rooms (e2e)', () => {
 
     const roomSchemaProperties =
       body.components?.schemas?.PokeLoungeRoomResponseDto?.properties;
+    const participantSchemaProperties =
+      body.components?.schemas?.PokeLoungeRoomParticipantDto?.properties;
+    const readySchemaProperties =
+      body.components?.schemas?.SetPokeLoungeReadyDto?.properties;
+    const resultSchemaProperties =
+      body.components?.schemas?.SubmitPokeLoungeMatchResultDto?.properties;
 
     expect(roomSchemaProperties).toBeDefined();
     expect(roomSchemaProperties).toHaveProperty('participants');
@@ -420,6 +544,10 @@ describe('Poke Lounge server rooms (e2e)', () => {
     expect(roomSchemaProperties).toHaveProperty('round');
     expect(roomSchemaProperties).toHaveProperty('tournament');
     expect(roomSchemaProperties).toHaveProperty('finalStandings');
+    expect(participantSchemaProperties).toBeDefined();
+    expect(participantSchemaProperties).not.toHaveProperty('sessionId');
+    expect(readySchemaProperties).toHaveProperty('sessionId');
+    expect(resultSchemaProperties).toHaveProperty('reportingSessionId');
 
     const snapshotSchemaProperties =
       body.components?.schemas?.PokeLoungePartySnapshotDto?.properties;
@@ -456,11 +584,21 @@ describe('Poke Lounge server rooms (e2e)', () => {
       .expect(201);
     await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/ready')
-      .send({ playerId: 'player-a', ready: true, nowMs: 0 })
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-a',
+        ready: true,
+        nowMs: 0,
+      })
       .expect(201);
     await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/ready')
-      .send({ playerId: 'player-b', ready: true, nowMs: 0 })
+      .send({
+        playerId: 'player-b',
+        sessionId: 'session-b',
+        ready: true,
+        nowMs: 0,
+      })
       .expect(201);
 
     await request(httpServer)
@@ -493,7 +631,7 @@ describe('Poke Lounge server rooms (e2e)', () => {
       .expect(201);
     await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/leave')
-      .send({ playerId: 'player-b', nowMs: 10 })
+      .send({ playerId: 'player-b', sessionId: 'session-b', nowMs: 10 })
       .expect(201)
       .expect((response) => {
         const body = response.body as PokeLoungeRoomState;
@@ -509,11 +647,21 @@ describe('Poke Lounge server rooms (e2e)', () => {
       .expect(201);
     await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/ready')
-      .send({ playerId: 'player-a', ready: true, nowMs: 30 })
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-a',
+        ready: true,
+        nowMs: 30,
+      })
       .expect(201);
     await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/ready')
-      .send({ playerId: 'player-c', ready: true, nowMs: 40 })
+      .send({
+        playerId: 'player-c',
+        sessionId: 'session-c',
+        ready: true,
+        nowMs: 40,
+      })
       .expect(201)
       .expect((response) => {
         const body = response.body as PokeLoungeRoomState;
@@ -539,16 +687,26 @@ describe('Poke Lounge server rooms (e2e)', () => {
       .expect(201);
     await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/ready')
-      .send({ playerId: 'player-a', ready: true, nowMs: 0 })
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-a',
+        ready: true,
+        nowMs: 0,
+      })
       .expect(201);
     await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/ready')
-      .send({ playerId: 'player-b', ready: true, nowMs: 0 })
+      .send({
+        playerId: 'player-b',
+        sessionId: 'session-b',
+        ready: true,
+        nowMs: 0,
+      })
       .expect(201);
 
     await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/leave')
-      .send({ playerId: 'player-a', nowMs: 100 })
+      .send({ playerId: 'player-a', sessionId: 'session-a', nowMs: 100 })
       .expect(201)
       .expect((response) => {
         const body = response.body as PokeLoungeRoomState;
@@ -590,11 +748,21 @@ describe('Poke Lounge server rooms (e2e)', () => {
       .expect(201);
     await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/ready')
-      .send({ playerId: 'player-a', ready: true, nowMs: 0 })
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-a',
+        ready: true,
+        nowMs: 0,
+      })
       .expect(201);
     await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/ready')
-      .send({ playerId: 'player-b', ready: true, nowMs: 0 })
+      .send({
+        playerId: 'player-b',
+        sessionId: 'session-b',
+        ready: true,
+        nowMs: 0,
+      })
       .expect(201);
     await request(httpServer)
       .get('/poke-lounge/rooms/ROOM01?nowMs=1')
@@ -604,6 +772,7 @@ describe('Poke Lounge server rooms (e2e)', () => {
       .post('/poke-lounge/rooms/ROOM01/result')
       .send({
         reportingPlayerId: 'player-a',
+        reportingSessionId: 'session-a',
         matchId: 'round-1-match-1',
         winnerPlayerId: 'player-a',
         loserPlayerId: 'player-b',

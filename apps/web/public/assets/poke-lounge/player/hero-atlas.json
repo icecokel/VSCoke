@@ -402,7 +402,7 @@
     }
   },
   "meta": {
-    "app": "poke-lounge-rom-player-atlas",
+    "app": "poke-lounge-source-player-atlas",
     "image": "hero-atlas.png",
     "format": "RGBA8888",
     "size": {

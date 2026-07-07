@@ -30,6 +30,11 @@ export interface PokeLoungeRoomParticipant {
   leftAtMs?: number;
 }
 
+export type PokeLoungePublicRoomParticipant = Omit<
+  PokeLoungeRoomParticipant,
+  'sessionId'
+>;
+
 export interface PokeLoungeTournamentMatch {
   matchId: string;
   participantIds: [string, string];
@@ -81,6 +86,13 @@ export interface PokeLoungeRoomState {
   finalStandings: PokeLoungeFinalStanding[];
 }
 
+export type PokeLoungePublicRoomState = Omit<
+  PokeLoungeRoomState,
+  'participants'
+> & {
+  participants: PokeLoungePublicRoomParticipant[];
+};
+
 export interface CreatePokeLoungeRoomInput {
   playerId?: string;
   sessionId?: string;
@@ -100,10 +112,17 @@ export interface JoinPokeLoungeRoomInput {
 
 export interface SubmitPokeLoungeMatchResultInput {
   reportingPlayerId: string;
+  reportingSessionId?: string;
   matchId: string;
   winnerPlayerId: string;
   loserPlayerId: string;
   reason: PokeLoungeMatchResultReason;
+  nowMs?: number;
+}
+
+export interface LeavePokeLoungeRoomInput {
+  playerId?: string;
+  sessionId?: string;
   nowMs?: number;
 }
 

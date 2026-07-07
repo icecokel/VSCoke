@@ -666,6 +666,7 @@ git diff --check
 ```bash
 git ls-files | rg '(^|/)(node_modules|\.next|output|test-results|data/raw|data/processed|assets/raw|assets/processed)(/|$)' || true
 git ls-files | rg '\.(nds|gba|gbc|gb|cia|3ds|zip|7z)$' || true
+git ls-files 'apps/web/public/assets/rom-*'
 ```
 
 Expected: no output.
@@ -713,3 +714,4 @@ git commit -m "docs(poke-lounge):남은 작업 계획 정리"
 - Frontend server-room adapter has no mock fallback in runtime code.
 - API, web typecheck, lint, build, focused E2E, and diff checks pass.
 - No ROM originals, raw extraction directories, generated reports, or E2E artifacts are tracked.
+- No curated runtime asset is exposed under `apps/web/public/assets/rom-*`.

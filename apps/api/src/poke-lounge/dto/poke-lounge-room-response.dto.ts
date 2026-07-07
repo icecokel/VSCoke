@@ -9,7 +9,8 @@ import type {
   PokeLoungeMatchStatus,
   PokeLoungePartySnapshot,
   PokeLoungeParticipantRole,
-  PokeLoungeRoomParticipant,
+  PokeLoungePublicRoomParticipant,
+  PokeLoungePublicRoomState,
   PokeLoungeRoomState,
   PokeLoungeRoomStatus,
   PokeLoungeRoundPhase,
@@ -44,10 +45,7 @@ const matchResultReasons: PokeLoungeMatchResultReason[] = [
 type PokeLoungeRoundState = PokeLoungeRoomState['round'];
 type PokeLoungeTournamentState = PokeLoungeRoomState['tournament'];
 
-class PokeLoungeRoomParticipantDto implements PokeLoungeRoomParticipant {
-  @ApiProperty({ example: 'session-a' })
-  sessionId!: string;
-
+class PokeLoungeRoomParticipantDto implements PokeLoungePublicRoomParticipant {
   @ApiProperty({ example: 'player-a' })
   playerId!: string;
 
@@ -178,7 +176,7 @@ class PokeLoungeTournamentDto implements PokeLoungeTournamentState {
 }
 
 @ApiExtraModels(PokeLoungePartySnapshotDto, PokeLoungeRepresentativePokemonDto)
-export class PokeLoungeRoomResponseDto implements PokeLoungeRoomState {
+export class PokeLoungeRoomResponseDto implements PokeLoungePublicRoomState {
   @ApiProperty({ example: 'ROOM01' })
   roomCode!: string;
 

@@ -1,6 +1,6 @@
 import type { UiAsset, UiAssetArchive, UiAssetManifest } from "./types";
 
-const ROM_DUMP_MANIFEST_PATH = "/assets/rom-dump/manifest.json";
+const ROM_DUMP_MANIFEST_PATH = "/assets/poke-lounge/dump/manifest.json";
 const UI_ASSET_MANIFEST_PATH = "/assets/ui/manifest.json";
 const UI_ASSET_MANIFEST_PATHS = [ROM_DUMP_MANIFEST_PATH, UI_ASSET_MANIFEST_PATH];
 const SUITABLE_UI_ASSET_TERMS = ["panel", "background", "frame", "menu", "button"];

@@ -16,6 +16,9 @@ export class SubmitPokeLoungeMatchResultDto implements SubmitPokeLoungeMatchResu
   @ApiProperty({ example: 'player-a' })
   reportingPlayerId!: string;
 
+  @ApiProperty({ example: 'session-a' })
+  reportingSessionId!: string;
+
   @ApiProperty({ example: 'round-1-match-1' })
   matchId!: string;
 

@@ -114,12 +114,19 @@ export class PokeLoungeRoomService {
   setReady(
     roomCode: string,
     playerId: string,
+    sessionId: string | undefined,
     ready: boolean,
     nowMs?: number,
   ): PokeLoungeRoomState {
     const room = this.findRoom(roomCode);
     const participant = this.findParticipant(room, playerId);
     const currentMs = normalizeNow(nowMs);
+
+    assertParticipantSession(
+      participant,
+      sessionId,
+      'Ready sessionId does not match this participant',
+    );
 
     if (participant.role !== 'participant') {
       throw new BadRequestException('Spectators cannot become ready');
@@ -145,13 +152,12 @@ export class PokeLoungeRoomService {
     const room = this.findRoom(roomCode);
     const participant = this.findParticipant(room, input.playerId);
     const currentMs = normalizeNow(input.nowMs);
-    const requestSessionId = input.sessionId?.trim();
 
-    if (!requestSessionId || participant.sessionId !== requestSessionId) {
-      throw new BadRequestException(
-        'Party snapshot sessionId does not match this participant',
-      );
-    }
+    assertParticipantSession(
+      participant,
+      input.sessionId,
+      'Party snapshot sessionId does not match this participant',
+    );
 
     if (participant.role !== 'participant') {
       throw new BadRequestException(
@@ -190,7 +196,7 @@ export class PokeLoungeRoomService {
     }
 
     const match = this.findPendingMatch(room, input.matchId);
-    this.assertValidMatchResult(match, input);
+    this.assertValidMatchResult(room, match, input);
     this.completeMatch(
       room,
       match,
@@ -206,11 +212,18 @@ export class PokeLoungeRoomService {
   leaveRoom(
     roomCode: string,
     playerId: string,
+    sessionId: string | undefined,
     nowMs?: number,
   ): PokeLoungeRoomState {
     const room = this.findRoom(roomCode);
     const participant = this.findParticipant(room, playerId);
     const currentMs = normalizeNow(nowMs);
+
+    assertParticipantSession(
+      participant,
+      sessionId,
+      'Leave sessionId does not match this participant',
+    );
 
     participant.connected = false;
     participant.ready = false;
@@ -340,6 +353,7 @@ export class PokeLoungeRoomService {
   }
 
   private assertValidMatchResult(
+    room: PokeLoungeRoomState,
     match: PokeLoungeTournamentMatch,
     input: SubmitPokeLoungeMatchResultInput,
   ): void {
@@ -350,6 +364,16 @@ export class PokeLoungeRoomService {
         'Reporting player is not assigned to this match',
       );
     }
+
+    const reportingParticipant = this.findParticipant(
+      room,
+      input.reportingPlayerId,
+    );
+    assertParticipantSession(
+      reportingParticipant,
+      input.reportingSessionId,
+      'Match result sessionId does not match this participant',
+    );
 
     if (!isMatchResultReason(input.reason)) {
       throw new BadRequestException('Unsupported match result reason');
@@ -477,6 +501,18 @@ function createParticipant(
     connected: true,
     joinedAtMs: nowMs,
   };
+}
+
+function assertParticipantSession(
+  participant: PokeLoungeRoomParticipant,
+  sessionId: string | undefined,
+  message: string,
+): void {
+  const requestSessionId = sessionId?.trim();
+
+  if (!requestSessionId || participant.sessionId !== requestSessionId) {
+    throw new BadRequestException(message);
+  }
 }
 
 function createTournamentMatches(

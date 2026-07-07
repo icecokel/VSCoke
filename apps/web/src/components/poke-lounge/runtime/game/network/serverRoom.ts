@@ -4,11 +4,11 @@ import type { MultiplayerRoom, PlayerSnapshot, RoomEvent, RoomMessage } from "./
 type Handler<T extends RoomMessage> = (payload: RoomEvent[T]) => void;
 
 interface ServerParticipant {
-  sessionId: string;
   playerId: string;
   displayName?: string;
   role: "participant" | "spectator";
   connected: boolean;
+  joinedAtMs: number;
 }
 
 interface ServerMatch {
@@ -133,10 +133,16 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       players: Object.fromEntries(
         state.participants
           .filter(participant => participant.connected)
-          .map(participant => [
-            participant.sessionId,
-            toPlayerSnapshot(participant, serverPlayerId, localPlayerId),
-          ]),
+          .map(participant => {
+            const snapshot = toPlayerSnapshot(
+              participant,
+              serverPlayerId,
+              sessionId,
+              localPlayerId,
+            );
+
+            return [snapshot.sessionId, snapshot] as const;
+          }),
       ),
     });
 
@@ -191,6 +197,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       method: "POST",
       body: JSON.stringify({
         reportingPlayerId: serverPlayerId,
+        reportingSessionId: sessionId,
         matchId: payload.matchId,
         winnerPlayerId: payload.winnerPlayerId,
         loserPlayerId,
@@ -257,6 +264,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
             method: "POST",
             body: JSON.stringify({
               playerId: serverPlayerId,
+              sessionId,
               ready: true,
             }),
           }),
@@ -276,7 +284,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       window.removeEventListener("poke-lounge:e2e-server-result", e2eResultHandler);
       void request<ServerRoomState>(`/poke-lounge/rooms/${activeRoomId}/leave`, {
         method: "POST",
-        body: JSON.stringify({ playerId: serverPlayerId }),
+        body: JSON.stringify({ playerId: serverPlayerId, sessionId }),
       }).catch(() => {});
       handlers.clear();
     },
@@ -333,8 +341,9 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   function getHostPlayerIdForLocalStore(state: ServerRoomState): string {
     const host = [...state.participants]
       .filter(participant => participant.connected)
-      .sort((left, right) =>
-        left.sessionId.localeCompare(right.sessionId, undefined, { numeric: true }),
+      .sort(
+        (left, right) =>
+          left.joinedAtMs - right.joinedAtMs || left.playerId.localeCompare(right.playerId),
       )[0];
 
     return host ? mapServerPlayerIdForLocalStore(host.playerId) : localPlayerId;
@@ -344,12 +353,13 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
 function toPlayerSnapshot(
   participant: ServerParticipant,
   serverPlayerId: string,
+  serverSessionId: string,
   localPlayerId: string,
 ): PlayerSnapshot {
   const local = participant.playerId === serverPlayerId;
 
   return {
-    sessionId: participant.sessionId,
+    sessionId: local ? serverSessionId : participant.playerId,
     playerId: local ? localPlayerId : participant.playerId,
     displayName: participant.displayName,
     map: "new-bark-town",

@@ -19556,7 +19556,7 @@
     "end": 115256824,
     "file_id": 496,
     "game_code": "IPKK",
-    "game_data_targets": "data/processed/rom-extraction/game-data-targets.json",
+    "game_data_targets": "data/processed/source-extraction/game-data-targets.json",
     "path": "pbr/personal.narc",
     "rom": "data/포켓몬스터 하트골드(K).nds",
     "rom_manifest": "data/processed/rom-manifest.json",

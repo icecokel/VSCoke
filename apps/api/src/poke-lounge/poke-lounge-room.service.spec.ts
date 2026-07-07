@@ -72,12 +72,24 @@ describe('PokeLoungeRoomService', () => {
       sessionId: 'session-b',
     });
 
-    const waiting = service.setReady('ROOM01', 'player-a', true, 100);
+    const waiting = service.setReady(
+      'ROOM01',
+      'player-a',
+      'session-a',
+      true,
+      100,
+    );
 
     expect(waiting.status).toBe('waiting');
     expect(waiting.round.phase).toBe('waiting');
 
-    const started = service.setReady('ROOM01', 'player-b', true, 200);
+    const started = service.setReady(
+      'ROOM01',
+      'player-b',
+      'session-b',
+      true,
+      200,
+    );
 
     expect(started.status).toBe('round-started');
     expect(started.round).toEqual(
@@ -100,8 +112,8 @@ describe('PokeLoungeRoomService', () => {
       playerId: 'player-b',
       sessionId: 'session-b',
     });
-    service.setReady('ROOM01', 'player-a', true, 0);
-    service.setReady('ROOM01', 'player-b', true, 0);
+    service.setReady('ROOM01', 'player-a', 'session-a', true, 0);
+    service.setReady('ROOM01', 'player-b', 'session-b', true, 0);
 
     expect(() =>
       service.joinRoom('ROOM01', {
@@ -241,6 +253,44 @@ describe('PokeLoungeRoomService', () => {
     ).toThrow(BadRequestException);
   });
 
+  it('rejects missing or mismatched session ids for participant writes', () => {
+    service.createRoom({
+      playerId: 'player-a',
+      sessionId: 'session-a',
+      roundDurationMs: 1,
+      nowMs: 0,
+    });
+    service.joinRoom('ROOM01', {
+      playerId: 'player-b',
+      sessionId: 'session-b',
+    });
+
+    expect(() =>
+      service.setReady('ROOM01', 'player-a', undefined, true, 0),
+    ).toThrow(BadRequestException);
+    expect(() =>
+      service.setReady('ROOM01', 'player-a', 'session-b', true, 0),
+    ).toThrow(BadRequestException);
+
+    service.setReady('ROOM01', 'player-a', 'session-a', true, 0);
+    service.setReady('ROOM01', 'player-b', 'session-b', true, 0);
+    service.getRoom('ROOM01', 1);
+
+    expect(() =>
+      service.submitMatchResult('ROOM01', {
+        reportingPlayerId: 'player-a',
+        reportingSessionId: 'session-b',
+        matchId: 'round-1-match-1',
+        winnerPlayerId: 'player-a',
+        loserPlayerId: 'player-b',
+        reason: 'faint',
+      }),
+    ).toThrow(BadRequestException);
+    expect(() =>
+      service.leaveRoom('ROOM01', 'player-a', 'session-b', 2),
+    ).toThrow(BadRequestException);
+  });
+
   it('rejects malformed representative pokemon values', () => {
     service.createRoom({
       playerId: 'player-a',
@@ -316,7 +366,7 @@ describe('PokeLoungeRoomService', () => {
       sessionId: 'session-b',
     });
 
-    const afterLeave = service.leaveRoom('ROOM01', 'player-b', 10);
+    const afterLeave = service.leaveRoom('ROOM01', 'player-b', 'session-b', 10);
 
     expect(afterLeave.status).toBe('waiting');
     expect(
@@ -334,8 +384,14 @@ describe('PokeLoungeRoomService', () => {
       expect.objectContaining({ playerId: 'player-c', role: 'participant' }),
     ]);
 
-    service.setReady('ROOM01', 'player-a', true, 30);
-    const started = service.setReady('ROOM01', 'player-c', true, 40);
+    service.setReady('ROOM01', 'player-a', 'session-a', true, 30);
+    const started = service.setReady(
+      'ROOM01',
+      'player-c',
+      'session-c',
+      true,
+      40,
+    );
 
     expect(started.status).toBe('round-started');
     expect(started.round.phase).toBe('round-started');
@@ -352,8 +408,8 @@ describe('PokeLoungeRoomService', () => {
       playerId: 'player-b',
       sessionId: 'session-b',
     });
-    service.setReady('ROOM01', 'player-a', true, 0);
-    service.setReady('ROOM01', 'player-b', true, 0);
+    service.setReady('ROOM01', 'player-a', 'session-a', true, 0);
+    service.setReady('ROOM01', 'player-b', 'session-b', true, 0);
 
     const room = service.getRoom('ROOM01', 1000);
 
@@ -379,13 +435,14 @@ describe('PokeLoungeRoomService', () => {
       playerId: 'player-b',
       sessionId: 'session-b',
     });
-    service.setReady('ROOM01', 'player-a', true, 0);
-    service.setReady('ROOM01', 'player-b', true, 0);
+    service.setReady('ROOM01', 'player-a', 'session-a', true, 0);
+    service.setReady('ROOM01', 'player-b', 'session-b', true, 0);
     service.getRoom('ROOM01', 1);
 
     expect(() =>
       service.submitMatchResult('ROOM01', {
         reportingPlayerId: 'player-c',
+        reportingSessionId: 'session-c',
         matchId: 'round-1-match-1',
         winnerPlayerId: 'player-a',
         loserPlayerId: 'player-b',
@@ -395,6 +452,7 @@ describe('PokeLoungeRoomService', () => {
 
     const completed = service.submitMatchResult('ROOM01', {
       reportingPlayerId: 'player-a',
+      reportingSessionId: 'session-a',
       matchId: 'round-1-match-1',
       winnerPlayerId: 'player-a',
       loserPlayerId: 'player-b',
@@ -410,6 +468,7 @@ describe('PokeLoungeRoomService', () => {
     expect(() =>
       service.submitMatchResult('ROOM01', {
         reportingPlayerId: 'player-b',
+        reportingSessionId: 'session-b',
         matchId: 'round-1-match-1',
         winnerPlayerId: 'player-b',
         loserPlayerId: 'player-a',
@@ -429,11 +488,11 @@ describe('PokeLoungeRoomService', () => {
       playerId: 'player-b',
       sessionId: 'session-b',
     });
-    service.setReady('ROOM01', 'player-a', true, 0);
-    service.setReady('ROOM01', 'player-b', true, 0);
+    service.setReady('ROOM01', 'player-a', 'session-a', true, 0);
+    service.setReady('ROOM01', 'player-b', 'session-b', true, 0);
     service.getRoom('ROOM01', 1);
 
-    const room = service.leaveRoom('ROOM01', 'player-a');
+    const room = service.leaveRoom('ROOM01', 'player-a', 'session-a');
 
     expect(room.participants).toContainEqual(
       expect.objectContaining({
@@ -466,10 +525,10 @@ describe('PokeLoungeRoomService', () => {
       playerId: 'player-b',
       sessionId: 'session-b',
     });
-    service.setReady('ROOM01', 'player-a', true, 0);
-    service.setReady('ROOM01', 'player-b', true, 0);
+    service.setReady('ROOM01', 'player-a', 'session-a', true, 0);
+    service.setReady('ROOM01', 'player-b', 'session-b', true, 0);
 
-    const room = service.leaveRoom('ROOM01', 'player-a', 100);
+    const room = service.leaveRoom('ROOM01', 'player-a', 'session-a', 100);
 
     expect(room.status).toBe('completed');
     expect(room.round.phase).toBe('completed');
@@ -503,13 +562,14 @@ describe('PokeLoungeRoomService', () => {
       playerId: 'player-b',
       sessionId: 'session-b',
     });
-    service.setReady('ROOM01', 'player-a', true, 0);
-    service.setReady('ROOM01', 'player-b', true, 0);
+    service.setReady('ROOM01', 'player-a', 'session-a', true, 0);
+    service.setReady('ROOM01', 'player-b', 'session-b', true, 0);
     service.getRoom('ROOM01', 1);
 
     expect(() =>
       service.submitMatchResult('ROOM01', {
         reportingPlayerId: 'player-a',
+        reportingSessionId: 'session-a',
         matchId: 'round-1-match-1',
         winnerPlayerId: 'player-a',
         loserPlayerId: 'player-b',

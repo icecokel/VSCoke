@@ -20,9 +20,9 @@ const SAMPLE_BATTLE_POKEMON_PRELOAD_ASSETS = [
 ] as const;
 
 export const ROM_BATTLE_DATA_JSON_ASSETS = [
-  ["romPersonalData", "/assets/rom-extraction/personal-data.json"],
-  ["romGrowthTable", "/assets/rom-extraction/growth-table.json"],
-  ["romRefinedBattleRecords", "/assets/rom-extraction/refined-battle-records.json"],
+  ["romPersonalData", "/assets/poke-lounge/extraction/personal-data.json"],
+  ["romGrowthTable", "/assets/poke-lounge/extraction/growth-table.json"],
+  ["romRefinedBattleRecords", "/assets/poke-lounge/extraction/refined-battle-records.json"],
 ] as const;
 
 export const WORLD_DATA_JSON_ASSETS = [WILD_ENCOUNTER_TABLES_JSON_ASSET] as const;

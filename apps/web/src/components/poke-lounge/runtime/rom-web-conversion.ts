@@ -3,16 +3,16 @@ import { renderSampleMap } from "./map-sample";
 import { renderRomAssetBrowser } from "./rom-asset-browser";
 import { normalizeUiAssetManifest } from "./ui-assets";
 
-const ROM_CELL_PREVIEW_MANIFEST_PATH = "/assets/rom-extraction/cell-preview-manifest.json";
-const ROM_SCREENS_MANIFEST_PATH = "/assets/rom-screens/manifest.json";
-const ROM_DUMP_MANIFEST_PATH = "/assets/rom-dump/manifest.json";
+const ROM_CELL_PREVIEW_MANIFEST_PATH = "/assets/poke-lounge/extraction/cell-preview-manifest.json";
+const ROM_SCREENS_MANIFEST_PATH = "/assets/poke-lounge/screens/manifest.json";
+const ROM_DUMP_MANIFEST_PATH = "/assets/poke-lounge/dump/manifest.json";
 const UI_ASSET_MANIFEST_PATH = "/assets/ui/manifest.json";
-const ROM_EXTRACTION_ASSET_INDEX_PATH = "/assets/rom-extraction/asset-index.json";
+const ROM_EXTRACTION_ASSET_INDEX_PATH = "/assets/poke-lounge/extraction/asset-index.json";
 const ROM_EXTRACTION_CATALOGS = [
   {
     id: "pokemon-sprites",
     title: "Pokemon sprites",
-    path: "/assets/rom-extraction/pokemon-sprite-catalog.json",
+    path: "/assets/poke-lounge/extraction/pokemon-sprite-catalog.json",
     countKeys: ["assets", "decoded_candidate_assets", "starter_front_assets"],
     sampleKeys: ["assets", "previews", "textures"],
     countLabel: "assets",
@@ -20,7 +20,7 @@ const ROM_EXTRACTION_CATALOGS = [
   {
     id: "walking-animations",
     title: "Walking animations",
-    path: "/assets/rom-extraction/walking-animation-catalog.json",
+    path: "/assets/poke-lounge/extraction/walking-animation-catalog.json",
     countKeys: ["candidate_sets", "preview_links", "input_renderable_sets"],
     sampleKeys: ["previews", "candidates"],
     countLabel: "sets",
@@ -28,7 +28,7 @@ const ROM_EXTRACTION_CATALOGS = [
   {
     id: "textures",
     title: "Textures",
-    path: "/assets/rom-extraction/texture-manifest.json",
+    path: "/assets/poke-lounge/extraction/texture-manifest.json",
     countKeys: ["texture_entries", "decoded_pngs", "parsed_files"],
     sampleKeys: ["textures", "candidates"],
     countLabel: "textures",
@@ -36,7 +36,7 @@ const ROM_EXTRACTION_CATALOGS = [
   {
     id: "personal-data",
     title: "Personal data",
-    path: "/assets/rom-extraction/personal-data.json",
+    path: "/assets/poke-lounge/extraction/personal-data.json",
     countKeys: ["records", "personal_records"],
     sampleKeys: ["records"],
     countLabel: "records",
@@ -44,7 +44,7 @@ const ROM_EXTRACTION_CATALOGS = [
   {
     id: "battle-data",
     title: "Battle data",
-    path: "/assets/rom-extraction/battle-data.json",
+    path: "/assets/poke-lounge/extraction/battle-data.json",
     countKeys: ["items", "moves", "evolution_candidates"],
     sampleKeys: ["items", "moves"],
     countLabel: "entries",
@@ -52,7 +52,7 @@ const ROM_EXTRACTION_CATALOGS = [
   {
     id: "evolution-data",
     title: "Evolution data",
-    path: "/assets/rom-extraction/evolution-data.json",
+    path: "/assets/poke-lounge/extraction/evolution-data.json",
     countKeys: ["records", "candidates", "candidate_entries"],
     sampleKeys: ["records", "candidate_analyses"],
     countLabel: "records",
@@ -60,7 +60,7 @@ const ROM_EXTRACTION_CATALOGS = [
   {
     id: "sdat",
     title: "SDAT catalog",
-    path: "/assets/rom-extraction/sdat-catalog.json",
+    path: "/assets/poke-lounge/extraction/sdat-catalog.json",
     countKeys: ["sdat_candidates", "archives_parsed", "media_catalog_sdat_candidates"],
     sampleKeys: ["archives"],
     countLabel: "archives",
@@ -82,52 +82,52 @@ const ASSET_INDEX_CATEGORY_PRESENTATION: Record<
   },
   texture: {
     title: "Textures",
-    sourcePath: "/assets/rom-extraction/texture-manifest.json",
+    sourcePath: "/assets/poke-lounge/extraction/texture-manifest.json",
     countLabel: "textures",
   },
   pokemon: {
     title: "Pokemon sprites",
-    sourcePath: "/assets/rom-extraction/pokemon-sprite-catalog.json",
+    sourcePath: "/assets/poke-lounge/extraction/pokemon-sprite-catalog.json",
     countLabel: "assets",
   },
   walking: {
     title: "Walking animations",
-    sourcePath: "/assets/rom-extraction/walking-animation-catalog.json",
+    sourcePath: "/assets/poke-lounge/extraction/walking-animation-catalog.json",
     countLabel: "sets",
   },
   data: {
     title: "Game data",
-    sourcePath: "/assets/rom-extraction/asset-index.json",
+    sourcePath: "/assets/poke-lounge/extraction/asset-index.json",
     countLabel: "catalogs",
   },
   battle: {
     title: "Battle records",
-    sourcePath: "/assets/rom-extraction/refined-battle-records.json",
+    sourcePath: "/assets/poke-lounge/extraction/refined-battle-records.json",
     countLabel: "records",
   },
   "battle-ui": {
     title: "Battle UI",
-    sourcePath: "/assets/rom-extraction/battle-ui-catalog.json",
+    sourcePath: "/assets/poke-lounge/extraction/battle-ui-catalog.json",
     countLabel: "archives",
   },
   sound: {
     title: "Sound subfiles",
-    sourcePath: "/assets/rom-extraction/sdat-subfiles.json",
+    sourcePath: "/assets/poke-lounge/extraction/sdat-subfiles.json",
     countLabel: "subfiles",
   },
   text: {
     title: "Text candidates",
-    sourcePath: "/assets/rom-extraction/text-decode-candidates.json",
+    sourcePath: "/assets/poke-lounge/extraction/text-decode-candidates.json",
     countLabel: "candidates",
   },
   message: {
     title: "Message samples",
-    sourcePath: "/assets/rom-extraction/scr-msg-decoded.json",
+    sourcePath: "/assets/poke-lounge/extraction/scr-msg-decoded.json",
     countLabel: "samples",
   },
   field: {
     title: "Field archives",
-    sourcePath: "/assets/rom-extraction/field-archive-catalog.json",
+    sourcePath: "/assets/poke-lounge/extraction/field-archive-catalog.json",
     countLabel: "archives",
   },
 };
@@ -262,7 +262,7 @@ export function selectRomConversionCandidateSections(
     return [
       ...cellPreviewSections,
       ...createSection(
-        "rom-screens",
+        "source-screens",
         "ROM screen captures",
         data.screenManifest,
         getScreenCandidates(data.screenManifest.assets),
@@ -273,7 +273,7 @@ export function selectRomConversionCandidateSections(
   return [
     ...cellPreviewSections,
     ...createSection(
-      "rom-dump-candidates",
+      "source-dump-candidates",
       "ROM dump screen candidates",
       data.dumpManifest,
       getScreenCandidates(data.dumpManifest?.assets ?? []),

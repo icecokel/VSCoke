@@ -43,8 +43,8 @@ export const SAMPLE_MAP_TILE_DEFINITIONS: Record<SampleMapTileCode, SampleMapTil
     encounterRate: 0,
     assetPath: "/assets/map-sample-rom/forest.png",
     sourcePaths: [
-      "public/assets/rom-dump/a_1_9_9/file_0002_pal_0004.png",
-      "public/assets/rom-textures/a_0_4_4_0000/tree01_re.png",
+      "public/assets/poke-lounge/dump/a_1_9_9/file_0002_pal_0004.png",
+      "public/assets/poke-lounge/textures/a_0_4_4_0000/tree01_re.png",
     ],
   },
   G: {
@@ -54,8 +54,8 @@ export const SAMPLE_MAP_TILE_DEFINITIONS: Record<SampleMapTileCode, SampleMapTil
     encounterRate: 25,
     assetPath: "/assets/map-sample-rom/tall-grass-edge.png",
     sourcePaths: [
-      "public/assets/rom-dump/a_1_9_9/file_0002_pal_0004.png",
-      "public/assets/rom-textures/a_1_0_3_0021/lgrass_ani1_1.png",
+      "public/assets/poke-lounge/dump/a_1_9_9/file_0002_pal_0004.png",
+      "public/assets/poke-lounge/textures/a_1_0_3_0021/lgrass_ani1_1.png",
     ],
   },
   F: {
@@ -65,8 +65,8 @@ export const SAMPLE_MAP_TILE_DEFINITIONS: Record<SampleMapTileCode, SampleMapTil
     encounterRate: 0,
     assetPath: "/assets/map-sample-rom/forest.png",
     sourcePaths: [
-      "public/assets/rom-dump/a_1_9_9/file_0002_pal_0004.png",
-      "public/assets/rom-textures/a_0_4_4_0000/tree01_re.png",
+      "public/assets/poke-lounge/dump/a_1_9_9/file_0002_pal_0004.png",
+      "public/assets/poke-lounge/textures/a_0_4_4_0000/tree01_re.png",
     ],
   },
   P: {
@@ -75,7 +75,7 @@ export const SAMPLE_MAP_TILE_DEFINITIONS: Record<SampleMapTileCode, SampleMapTil
     blocksMovement: false,
     encounterRate: 0,
     assetPath: "/assets/map-sample-rom/walkable-path.png",
-    sourcePaths: ["public/assets/rom-textures/a_0_4_4_0020/grass02_r.png"],
+    sourcePaths: ["public/assets/poke-lounge/textures/a_0_4_4_0020/grass02_r.png"],
   },
   D: {
     code: "D",
@@ -83,7 +83,7 @@ export const SAMPLE_MAP_TILE_DEFINITIONS: Record<SampleMapTileCode, SampleMapTil
     blocksMovement: false,
     encounterRate: 0,
     assetPath: "/assets/map-sample-rom/dirt-path.png",
-    sourcePaths: ["public/assets/rom-textures/a_0_4_4_0103/dtf_f01.png"],
+    sourcePaths: ["public/assets/poke-lounge/textures/a_0_4_4_0103/dtf_f01.png"],
   },
   W: {
     code: "W",
@@ -92,8 +92,8 @@ export const SAMPLE_MAP_TILE_DEFINITIONS: Record<SampleMapTileCode, SampleMapTil
     encounterRate: 0,
     assetPath: "/assets/map-sample-rom/water.png",
     sourcePaths: [
-      "public/assets/rom-textures/data_minimum_nsbtx/sea_1.png",
-      "public/assets/rom-textures/data_fldtanime_narc_0001/sea_on_1.png",
+      "public/assets/poke-lounge/textures/data_minimum_nsbtx/sea_1.png",
+      "public/assets/poke-lounge/textures/data_fldtanime_narc_0001/sea_on_1.png",
     ],
   },
 };
@@ -118,7 +118,7 @@ export const SAMPLE_MAP_NURSE: Omit<SampleMapNpc, "x" | "y"> = {
   label: "Nurse NPC",
   placement: "center",
   assetPath: "/assets/map-sample-rom/nurse-npc.png",
-  sourcePaths: ["public/assets/rom-textures/a_0_8_1_0133/pcwoman1_5.png"],
+  sourcePaths: ["public/assets/poke-lounge/textures/a_0_8_1_0133/pcwoman1_5.png"],
 };
 
 export function createSampleMapModel(

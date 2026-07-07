@@ -6,7 +6,7 @@ export const BATTLE_WINDOW_FRAME_ASSET_KEY = "battle-window-frame-candidate";
 export const ROM_BATTLE_DESIGN_ASSETS = {
   background: {
     key: BATTLE_BACKGROUND_ASSET_KEY,
-    path: "/assets/rom-screens/pbr_b_plist_gra.narc/screen_0010_gfx_0022_pal_0023.png",
+    path: "/assets/poke-lounge/screens/pbr_b_plist_gra.narc/screen_0010_gfx_0022_pal_0023.png",
     role: "battle-background",
     sourceArchivePath: "pbr/b_plist_gra.narc",
     candidate: true,
@@ -14,7 +14,7 @@ export const ROM_BATTLE_DESIGN_ASSETS = {
   },
   windowFrame: {
     key: BATTLE_WINDOW_FRAME_ASSET_KEY,
-    path: "/assets/rom-dump/pbr_winframe.narc/file_0000_pal_0024.png",
+    path: "/assets/poke-lounge/dump/pbr_winframe.narc/file_0000_pal_0024.png",
     role: "battle-window-frame-candidate",
     sourceArchivePath: "pbr/winframe.narc",
     candidate: true,

@@ -19,9 +19,9 @@ export const FIELD_MAP = {
   tilesetUrl: "/assets/pokemmo-reference/tilesets/tuxmon-sample-32px-extruded.png",
   player: {
     textureKey: "currentPlayer",
-    atlasUrl: "/assets/rom-player/hero-atlas.png",
-    atlasJsonUrl: "/assets/rom-player/hero-atlas.json",
-    sourceFrames: "/assets/rom-textures/a_0_8_1_0069/hero_1.png..hero_16.png",
+    atlasUrl: "/assets/poke-lounge/player/hero-atlas.png",
+    atlasJsonUrl: "/assets/poke-lounge/player/hero-atlas.json",
+    sourceFrames: "/assets/poke-lounge/textures/a_0_8_1_0069/hero_1.png..hero_16.png",
     displaySize: {
       width: 32,
       height: 32,
@@ -49,22 +49,22 @@ export const FIELD_MAP = {
     nurse: {
       ...FIELD_NPC_BASE,
       textureKey: "field-npc-nurse",
-      imageUrl: "/assets/rom-textures/a_0_8_1_0133/pcwoman1_5.png",
+      imageUrl: "/assets/poke-lounge/textures/a_0_8_1_0133/pcwoman1_5.png",
     },
     shopkeeper: {
       ...FIELD_NPC_BASE,
       textureKey: "field-npc-shopkeeper",
-      imageUrl: "/assets/rom-textures/a_0_8_1_0132/shopm1_5.png",
+      imageUrl: "/assets/poke-lounge/textures/a_0_8_1_0132/shopm1_5.png",
     },
     premiumShopkeeper: {
       ...FIELD_NPC_BASE,
       textureKey: "field-npc-premium-shopkeeper",
-      imageUrl: "/assets/rom-textures/a_0_8_1_0039/gentleman_5.png",
+      imageUrl: "/assets/poke-lounge/textures/a_0_8_1_0039/gentleman_5.png",
     },
     gamehost: {
       ...FIELD_NPC_BASE,
       textureKey: "field-npc-gamehost",
-      imageUrl: "/assets/rom-textures/a_0_8_1_0184/mania_5.png",
+      imageUrl: "/assets/poke-lounge/textures/a_0_8_1_0184/mania_5.png",
     },
   },
   sourceRepository: "aaron5670/PokeMMO-Online-Realtime-Multiplayer-Game",

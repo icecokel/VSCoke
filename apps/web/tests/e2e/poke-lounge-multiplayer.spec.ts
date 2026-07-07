@@ -142,7 +142,36 @@ test.describe("Poke Lounge server multiplayer", () => {
       }
 
       worldScene.closeShortcutGuideForTest?.();
-      worldScene.sendRoomMessage("PLAYER_CHANGED_MAP", worldScene.createLocalPlayerSnapshot());
+      const snapshot = worldScene.createLocalPlayerSnapshot() as {
+        activePartySlotIndex?: number;
+        party?: Array<{
+          slotIndex: number;
+          pokemon: {
+            speciesId: number;
+            name: string;
+            level: number;
+            currentHp: number;
+            maxHp: number;
+          } | null;
+        }>;
+      };
+
+      worldScene.sendRoomMessage("PLAYER_CHANGED_MAP", {
+        ...snapshot,
+        activePartySlotIndex: 0,
+        party: [
+          {
+            slotIndex: 0,
+            pokemon: {
+              speciesId: 25,
+              name: "Pikachu",
+              level: 12,
+              currentHp: 18,
+              maxHp: 30,
+            },
+          },
+        ],
+      });
     });
 
     await expect
@@ -155,8 +184,20 @@ test.describe("Poke Lounge server multiplayer", () => {
       )
       .toBeGreaterThanOrEqual(2);
 
-    expect(server.partySnapshotBodies.at(-1)).toMatchObject({
+    const snapshotWithRepresentativePokemon = server.partySnapshotBodies.find(
+      body => body.representativePokemon,
+    );
+
+    expect(snapshotWithRepresentativePokemon).toMatchObject({
       playerId: expect.any(String),
+      sessionId: expect.any(String),
+      representativePokemon: {
+        speciesId: expect.any(Number),
+        name: expect.any(String),
+        level: expect.any(Number),
+        currentHp: expect.any(Number),
+        maxHp: expect.any(Number),
+      },
     });
   });
 });
@@ -269,6 +310,7 @@ interface MockServerState {
   calls: string[];
   partySnapshotBodies: Array<{
     playerId?: string;
+    sessionId?: string;
     displayName?: string;
     representativePokemon?: {
       speciesId: number;

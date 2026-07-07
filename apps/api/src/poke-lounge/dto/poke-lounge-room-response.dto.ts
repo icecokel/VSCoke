@@ -1,4 +1,8 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ApiExtraModels,
+  ApiProperty,
+  ApiPropertyOptional,
+} from '@nestjs/swagger';
 import type {
   PokeLoungeFinalStanding,
   PokeLoungeMatchResultReason,
@@ -111,7 +115,7 @@ class PokeLoungeFinalStandingDto implements PokeLoungeFinalStanding {
   score!: number;
 }
 
-class PokeLoungeRepresentativePokemonDto implements NonNullable<
+export class PokeLoungeRepresentativePokemonDto implements NonNullable<
   PokeLoungePartySnapshot['representativePokemon']
 > {
   @ApiProperty({ example: 25 })
@@ -130,7 +134,7 @@ class PokeLoungeRepresentativePokemonDto implements NonNullable<
   maxHp!: number;
 }
 
-class PokeLoungePartySnapshotDto implements PokeLoungePartySnapshot {
+export class PokeLoungePartySnapshotDto implements PokeLoungePartySnapshot {
   @ApiProperty({ example: 'player-a' })
   playerId!: string;
 
@@ -173,6 +177,7 @@ class PokeLoungeTournamentDto implements PokeLoungeTournamentState {
   cumulativeScores!: Record<string, number>;
 }
 
+@ApiExtraModels(PokeLoungePartySnapshotDto, PokeLoungeRepresentativePokemonDto)
 export class PokeLoungeRoomResponseDto implements PokeLoungeRoomState {
   @ApiProperty({ example: 'ROOM01' })
   roomCode!: string;

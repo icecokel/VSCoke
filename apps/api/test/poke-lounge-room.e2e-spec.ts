@@ -234,6 +234,7 @@ describe('Poke Lounge server rooms (e2e)', () => {
       .post('/poke-lounge/rooms/ROOM01/party-snapshot')
       .send({
         playerId: 'player-a',
+        sessionId: 'session-a',
         displayName: 'Alpha',
         representativePokemon: {
           speciesId: 25,
@@ -270,12 +271,28 @@ describe('Poke Lounge server rooms (e2e)', () => {
       .post('/poke-lounge/rooms/ROOM01/party-snapshot')
       .send({
         playerId: 'player-7',
+        sessionId: 'session-7',
         representativePokemon: {
           speciesId: 1,
           name: 'Bulbasaur',
           level: 5,
           currentHp: 20,
           maxHp: 20,
+        },
+      })
+      .expect(400);
+
+    await request(httpServer)
+      .post('/poke-lounge/rooms/ROOM01/party-snapshot')
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-7',
+        representativePokemon: {
+          speciesId: 25,
+          name: 'Pikachu',
+          level: 12,
+          currentHp: 18,
+          maxHp: 30,
         },
       })
       .expect(400);
@@ -294,6 +311,7 @@ describe('Poke Lounge server rooms (e2e)', () => {
       .post('/poke-lounge/rooms/ROOM01/party-snapshot')
       .send({
         playerId: 'player-a',
+        sessionId: 'session-a',
         representativePokemon: {
           speciesId: 0,
           name: 'Pikachu',
@@ -308,6 +326,22 @@ describe('Poke Lounge server rooms (e2e)', () => {
       .post('/poke-lounge/rooms/ROOM01/party-snapshot')
       .send({
         playerId: 'player-a',
+        sessionId: 'session-a',
+        representativePokemon: {
+          speciesId: 25,
+          name: 'Pikachu',
+          level: 5,
+          currentHp: 20,
+          maxHp: -1,
+        },
+      })
+      .expect(400);
+
+    await request(httpServer)
+      .post('/poke-lounge/rooms/ROOM01/party-snapshot')
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-a',
         representativePokemon: {
           speciesId: 25,
           name: 'Pikachu',
@@ -386,6 +420,24 @@ describe('Poke Lounge server rooms (e2e)', () => {
     expect(roomSchemaProperties).toHaveProperty('round');
     expect(roomSchemaProperties).toHaveProperty('tournament');
     expect(roomSchemaProperties).toHaveProperty('finalStandings');
+
+    const snapshotSchemaProperties =
+      body.components?.schemas?.PokeLoungePartySnapshotDto?.properties;
+    const representativePokemonSchema =
+      snapshotSchemaProperties?.representativePokemon as SchemaRef | undefined;
+    const representativePokemonProperties =
+      body.components?.schemas?.PokeLoungeRepresentativePokemonDto?.properties;
+
+    expect(snapshotSchemaProperties).toBeDefined();
+    expect(snapshotSchemaProperties).toHaveProperty('playerId');
+    expect(snapshotSchemaProperties).toHaveProperty('representativePokemon');
+    expect(representativePokemonSchema?.$ref).toBe(
+      '#/components/schemas/PokeLoungeRepresentativePokemonDto',
+    );
+    expect(representativePokemonProperties).toHaveProperty('speciesId');
+    expect(representativePokemonProperties).toHaveProperty('level');
+    expect(representativePokemonProperties).toHaveProperty('currentHp');
+    expect(representativePokemonProperties).toHaveProperty('maxHp');
   });
 
   it('rejects new joins after the round has started', async () => {

@@ -109,6 +109,7 @@ export interface SubmitPokeLoungeMatchResultInput {
 
 export interface UpdatePokeLoungePartySnapshotInput {
   playerId: string;
+  sessionId?: string;
   displayName?: string;
   representativePokemon?: PokeLoungePartySnapshot['representativePokemon'];
   nowMs?: number;

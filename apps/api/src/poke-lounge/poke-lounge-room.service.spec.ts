@@ -131,6 +131,7 @@ describe('PokeLoungeRoomService', () => {
 
     const room = service.updatePartySnapshot('ROOM01', {
       playerId: 'player-a',
+      sessionId: 'session-a',
       displayName: 'Alpha',
       representativePokemon: {
         speciesId: 25,
@@ -174,6 +175,7 @@ describe('PokeLoungeRoomService', () => {
     expect(() =>
       service.updatePartySnapshot('ROOM01', {
         playerId: 'player-7',
+        sessionId: 'session-7',
         representativePokemon: {
           speciesId: 1,
           name: 'Bulbasaur',
@@ -187,9 +189,50 @@ describe('PokeLoungeRoomService', () => {
     expect(() =>
       service.updatePartySnapshot('ROOM01', {
         playerId: 'missing-player',
+        sessionId: 'missing-session',
         representativePokemon: {
           speciesId: 4,
           name: 'Charmander',
+          level: 5,
+          currentHp: 20,
+          maxHp: 20,
+        },
+      }),
+    ).toThrow(BadRequestException);
+  });
+
+  it('rejects missing or mismatched session ids when updating party snapshots', () => {
+    service.createRoom({
+      playerId: 'player-a',
+      sessionId: 'session-a',
+      nowMs: 0,
+    });
+    service.joinRoom('ROOM01', {
+      playerId: 'player-b',
+      sessionId: 'session-b',
+      nowMs: 1,
+    });
+
+    expect(() =>
+      service.updatePartySnapshot('ROOM01', {
+        playerId: 'player-a',
+        representativePokemon: {
+          speciesId: 25,
+          name: 'Pikachu',
+          level: 5,
+          currentHp: 20,
+          maxHp: 20,
+        },
+      }),
+    ).toThrow(BadRequestException);
+
+    expect(() =>
+      service.updatePartySnapshot('ROOM01', {
+        playerId: 'player-a',
+        sessionId: 'session-b',
+        representativePokemon: {
+          speciesId: 25,
+          name: 'Pikachu',
           level: 5,
           currentHp: 20,
           maxHp: 20,
@@ -208,6 +251,7 @@ describe('PokeLoungeRoomService', () => {
     expect(() =>
       service.updatePartySnapshot('ROOM01', {
         playerId: 'player-a',
+        sessionId: 'session-a',
         representativePokemon: {
           speciesId: 0,
           name: 'Pikachu',
@@ -221,6 +265,7 @@ describe('PokeLoungeRoomService', () => {
     expect(() =>
       service.updatePartySnapshot('ROOM01', {
         playerId: 'player-a',
+        sessionId: 'session-a',
         representativePokemon: {
           speciesId: 25,
           name: 'Pikachu',
@@ -234,6 +279,21 @@ describe('PokeLoungeRoomService', () => {
     expect(() =>
       service.updatePartySnapshot('ROOM01', {
         playerId: 'player-a',
+        sessionId: 'session-a',
+        representativePokemon: {
+          speciesId: 25,
+          name: 'Pikachu',
+          level: 5,
+          currentHp: 20,
+          maxHp: -1,
+        },
+      }),
+    ).toThrow(BadRequestException);
+
+    expect(() =>
+      service.updatePartySnapshot('ROOM01', {
+        playerId: 'player-a',
+        sessionId: 'session-a',
         representativePokemon: {
           speciesId: 25,
           name: 'Pikachu',

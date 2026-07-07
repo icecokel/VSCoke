@@ -145,6 +145,13 @@ export class PokeLoungeRoomService {
     const room = this.findRoom(roomCode);
     const participant = this.findParticipant(room, input.playerId);
     const currentMs = normalizeNow(input.nowMs);
+    const requestSessionId = input.sessionId?.trim();
+
+    if (!requestSessionId || participant.sessionId !== requestSessionId) {
+      throw new BadRequestException(
+        'Party snapshot sessionId does not match this participant',
+      );
+    }
 
     if (participant.role !== 'participant') {
       throw new BadRequestException(

@@ -46,6 +46,11 @@ export class UpdatePokeLoungePartySnapshotDto implements UpdatePokeLoungePartySn
   @IsString()
   playerId!: string;
 
+  @ApiProperty({ example: 'session-a' })
+  @IsOptional()
+  @IsString()
+  sessionId?: string;
+
   @ApiPropertyOptional({ example: 'Player A' })
   @IsOptional()
   @IsString()

@@ -207,6 +207,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         method: "POST",
         body: JSON.stringify({
           playerId: serverPlayerId,
+          sessionId,
           displayName: snapshot.displayName,
           representativePokemon: toRepresentativePokemonSnapshot(snapshot),
         }),

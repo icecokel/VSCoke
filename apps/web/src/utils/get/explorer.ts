@@ -82,12 +82,6 @@ export const getExplorer = cache(async (): Promise<ITree[]> => {
           label: "index.tsx",
           path: "/game",
         },
-        {
-          icon: "react",
-          id: "game-poke-lounge",
-          label: "poke-lounge.tsx",
-          path: "/game/poke-lounge",
-        },
       ],
     },
     {
@@ -102,13 +96,6 @@ export const getExplorer = cache(async (): Promise<ITree[]> => {
       label: "README.md",
       icon: "profile",
       path: "/readme",
-    },
-    {
-      index: 100,
-      id: "resume-question",
-      label: "resume-question.chat",
-      icon: "terminal",
-      path: "/resume/question",
     },
   ];
 });

@@ -22,6 +22,12 @@ import {
   getBattleOptionIndexAtPoint,
   resolveBattleOptionSlotRects,
 } from "../../src/components/poke-lounge/runtime/game/battle/battleLayout";
+import {
+  createDefaultRoundState,
+  DEFAULT_PREPARATION_DURATION_MS,
+  getRoundRemainingMs,
+  startPreparationRound,
+} from "../../src/components/poke-lounge/runtime/game/round/roundState";
 import { selectWildEncounterConfig } from "../../src/components/poke-lounge/runtime/game/world/wildEncounterTables";
 import { WILD_ENCOUNTER_RATE } from "../../src/components/poke-lounge/runtime/game/world/wildEncounters";
 import { escapeRegExp, gotoWithRetry, resolveLocaleAndMessages } from "./test-helpers";
@@ -471,6 +477,14 @@ test.describe("Poke Lounge", () => {
 
     expect(WILD_ENCOUNTER_RATE).toBe(0.15);
     expect(tableData.tables?.map(table => table.encounterRate)).toEqual([0.15, 0.15, 0.15, 0.15]);
+  });
+
+  test("토너먼트 사이 기본 준비 시간은 5분이다", () => {
+    const startedRound = startPreparationRound(createDefaultRoundState(), 1_000);
+
+    expect(DEFAULT_PREPARATION_DURATION_MS).toBe(300_000);
+    expect(startedRound.preparationDurationMs).toBe(300_000);
+    expect(getRoundRemainingMs(startedRound, 1_000)).toBe(300_000);
   });
 
   test("게임 센터 카드와 world scene 직접 진입을 검증한다", async ({ page }) => {

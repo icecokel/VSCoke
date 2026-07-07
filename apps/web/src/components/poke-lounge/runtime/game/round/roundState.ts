@@ -1,5 +1,5 @@
 export const ROUND_TOTAL_COUNT = 3;
-export const DEFAULT_PREPARATION_DURATION_MS = 180_000;
+export const DEFAULT_PREPARATION_DURATION_MS = 300_000;
 
 export type RoundPhase = "waiting" | "preparation" | "tournament" | "round-result" | "game-result";
 

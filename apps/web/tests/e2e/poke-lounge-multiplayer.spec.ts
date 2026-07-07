@@ -38,7 +38,11 @@ test.describe("Poke Lounge server multiplayer", () => {
     });
 
     expect(server.calls).toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/join`);
-    expect(server.calls).toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`);
+    await expect
+      .poll(() =>
+        Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+      )
+      .toBe(true);
   });
 
   test("server room이 completed 전이면 GET polling으로 최신 상태를 반영한다", async ({ page }) => {

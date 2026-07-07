@@ -128,7 +128,7 @@ export interface LeavePokeLoungeRoomInput {
 
 export interface UpdatePokeLoungePartySnapshotInput {
   playerId: string;
-  sessionId?: string;
+  sessionId: string;
   displayName?: string;
   representativePokemon?: PokeLoungePartySnapshot['representativePokemon'];
   nowMs?: number;

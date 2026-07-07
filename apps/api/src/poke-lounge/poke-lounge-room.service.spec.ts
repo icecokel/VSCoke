@@ -286,7 +286,7 @@ describe('PokeLoungeRoomService', () => {
           currentHp: 20,
           maxHp: 20,
         },
-      }),
+      } as never),
     ).toThrow(BadRequestException);
 
     expect(() =>

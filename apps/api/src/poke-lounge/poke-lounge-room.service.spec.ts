@@ -7,9 +7,14 @@ const MAX_ROOMS = 200;
 
 describe('PokeLoungeRoomService', () => {
   let service: PokeLoungeRoomService;
+  let currentTimeMs: number;
 
   beforeEach(() => {
-    service = new PokeLoungeRoomService(() => 'ROOM01');
+    currentTimeMs = 0;
+    service = new PokeLoungeRoomService(
+      () => 'ROOM01',
+      () => currentTimeMs,
+    );
   });
 
   it('creates a room with a participant identity separated from session id', () => {
@@ -240,6 +245,23 @@ describe('PokeLoungeRoomService', () => {
     ).toThrow(NotFoundException);
   });
 
+  it('evicts a stale waiting room before a join lookup when nowMs is omitted', () => {
+    service.createRoom({
+      playerId: 'player-a',
+      sessionId: 'session-a',
+      nowMs: 0,
+    });
+
+    currentTimeMs = WAITING_ROOM_TTL_MS + 1;
+
+    expect(() =>
+      service.joinRoom('ROOM01', {
+        playerId: 'player-b',
+        sessionId: 'session-b',
+      }),
+    ).toThrow(NotFoundException);
+  });
+
   it('evicts a stale waiting room before a ready update', () => {
     service.createRoom({
       playerId: 'player-a',
@@ -288,8 +310,41 @@ describe('PokeLoungeRoomService', () => {
     ).toThrow(NotFoundException);
   });
 
+  it('evicts a stale completed room when it is read without nowMs', () => {
+    service.createRoom({
+      playerId: 'player-a',
+      sessionId: 'session-a',
+      roundDurationMs: 1,
+      nowMs: 0,
+    });
+    service.joinRoom('ROOM01', {
+      playerId: 'player-b',
+      sessionId: 'session-b',
+      nowMs: 0,
+    });
+    service.setReady('ROOM01', 'player-a', 'session-a', true, 0);
+    service.setReady('ROOM01', 'player-b', 'session-b', true, 0);
+    service.getRoom('ROOM01', 1);
+    service.submitMatchResult('ROOM01', {
+      reportingPlayerId: 'player-a',
+      reportingSessionId: 'session-a',
+      matchId: 'round-1-match-1',
+      winnerPlayerId: 'player-a',
+      loserPlayerId: 'player-b',
+      reason: 'faint',
+      nowMs: 2,
+    });
+
+    currentTimeMs = FINISHED_ROOM_RETENTION_MS + 3;
+
+    expect(() => service.getRoom('ROOM01')).toThrow(NotFoundException);
+  });
+
   it('rejects room creation when the in-memory room cap is reached', () => {
-    service = new PokeLoungeRoomService(createSequentialRoomCodeFactory());
+    service = new PokeLoungeRoomService(
+      createSequentialRoomCodeFactory(),
+      () => currentTimeMs,
+    );
 
     for (let index = 1; index <= MAX_ROOMS; index += 1) {
       service.createRoom({
@@ -309,7 +364,10 @@ describe('PokeLoungeRoomService', () => {
   });
 
   it('prunes stale rooms before applying the in-memory room cap', () => {
-    service = new PokeLoungeRoomService(createSequentialRoomCodeFactory());
+    service = new PokeLoungeRoomService(
+      createSequentialRoomCodeFactory(),
+      () => currentTimeMs,
+    );
 
     for (let index = 1; index < MAX_ROOMS; index += 1) {
       service.createRoom({

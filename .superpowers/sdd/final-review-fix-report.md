@@ -51,3 +51,14 @@ Branch: `feature/poke-lounge`
 
 - Server room state remains in memory only; cleanup now bounds stale state, but this does not add durable room persistence.
 - Remote players now use public `playerId` as the multiplayer snapshot key because server-owned `sessionId` is no longer public.
+
+## 2026-07-07 TTL Prune Follow-up
+
+- Fixed `PokeLoungeRoomService` so every `findRoom` caller prunes with the normalized current time even when the request omits `nowMs`.
+- Added an optional injected clock to preserve deterministic unit tests without changing existing room-code constructor usage.
+- Added regression coverage for stale waiting/completed rooms on omitted-`nowMs` lookup paths.
+
+### Verification
+
+- PASS: `pnpm --filter @vscoke/api test -- poke-lounge-room.service` - 1 suite, 24 tests.
+- FAIL: `pnpm --filter @vscoke/api test:e2e -- poke-lounge-room` - 1 suite, 11 tests. Existing e2e fixtures mix synthetic `nowMs` values like `0` with later requests that omit `nowMs`, so rooms now expire under real-time pruning instead of being implicitly kept alive.

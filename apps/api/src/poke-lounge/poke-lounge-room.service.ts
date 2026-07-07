@@ -41,10 +41,11 @@ export class PokeLoungeRoomService {
 
   constructor(
     @Optional() private roomCodeFactory: () => string = createRoomCode,
+    @Optional() private readonly nowFactory: () => number = () => Date.now(),
   ) {}
 
   createRoom(input: CreatePokeLoungeRoomInput): PokeLoungeRoomState {
-    const nowMs = normalizeNow(input.nowMs);
+    const nowMs = this.normalizeNow(input.nowMs);
     this.pruneRooms(nowMs);
 
     if (this.rooms.size >= MAX_ROOMS) {
@@ -83,11 +84,8 @@ export class PokeLoungeRoomService {
     roomCode: string,
     input: JoinPokeLoungeRoomInput,
   ): PokeLoungeRoomState {
-    const nowMs = normalizeNow(input.nowMs);
-    const room = this.findRoom(
-      roomCode,
-      input.nowMs === undefined ? undefined : nowMs,
-    );
+    const nowMs = this.normalizeNow(input.nowMs);
+    const room = this.findRoom(roomCode, nowMs);
     const existing = room.participants.find(
       (row) => row.playerId === input.playerId,
     );
@@ -122,11 +120,8 @@ export class PokeLoungeRoomService {
   }
 
   getRoom(roomCode: string, nowMs?: number): PokeLoungeRoomState {
-    const currentMs = normalizeNow(nowMs);
-    const room = this.findRoom(
-      roomCode,
-      nowMs === undefined ? undefined : currentMs,
-    );
+    const currentMs = this.normalizeNow(nowMs);
+    const room = this.findRoom(roomCode, currentMs);
     this.advanceRoomClock(room, currentMs);
 
     return cloneRoom(room);
@@ -139,11 +134,8 @@ export class PokeLoungeRoomService {
     ready: boolean,
     nowMs?: number,
   ): PokeLoungeRoomState {
-    const currentMs = normalizeNow(nowMs);
-    const room = this.findRoom(
-      roomCode,
-      nowMs === undefined ? undefined : currentMs,
-    );
+    const currentMs = this.normalizeNow(nowMs);
+    const room = this.findRoom(roomCode, currentMs);
     const participant = this.findParticipant(room, playerId);
 
     assertParticipantSession(
@@ -173,11 +165,8 @@ export class PokeLoungeRoomService {
     roomCode: string,
     input: UpdatePokeLoungePartySnapshotInput,
   ): PokeLoungeRoomState {
-    const currentMs = normalizeNow(input.nowMs);
-    const room = this.findRoom(
-      roomCode,
-      input.nowMs === undefined ? undefined : currentMs,
-    );
+    const currentMs = this.normalizeNow(input.nowMs);
+    const room = this.findRoom(roomCode, currentMs);
     const participant = this.findParticipant(room, input.playerId);
 
     assertParticipantSession(
@@ -215,11 +204,8 @@ export class PokeLoungeRoomService {
     roomCode: string,
     input: SubmitPokeLoungeMatchResultInput,
   ): PokeLoungeRoomState {
-    const currentMs = normalizeNow(input.nowMs);
-    const room = this.findRoom(
-      roomCode,
-      input.nowMs === undefined ? undefined : currentMs,
-    );
+    const currentMs = this.normalizeNow(input.nowMs);
+    const room = this.findRoom(roomCode, currentMs);
     this.advanceRoomClock(room, currentMs);
 
     if (room.status !== 'tournament') {
@@ -246,11 +232,8 @@ export class PokeLoungeRoomService {
     sessionId: string | undefined,
     nowMs?: number,
   ): PokeLoungeRoomState {
-    const currentMs = normalizeNow(nowMs);
-    const room = this.findRoom(
-      roomCode,
-      nowMs === undefined ? undefined : currentMs,
-    );
+    const currentMs = this.normalizeNow(nowMs);
+    const room = this.findRoom(roomCode, currentMs);
     const participant = this.findParticipant(room, playerId);
 
     assertParticipantSession(
@@ -459,7 +442,7 @@ export class PokeLoungeRoomService {
     reason: PokeLoungeMatchResultReason,
     nowMs?: number,
   ): void {
-    const currentMs = normalizeNow(nowMs);
+    const currentMs = this.normalizeNow(nowMs);
     match.status = 'completed';
     match.winnerPlayerId = winnerPlayerId;
     match.loserPlayerId = loserPlayerId;
@@ -540,6 +523,10 @@ export class PokeLoungeRoomService {
       'forfeit',
       nowMs,
     );
+  }
+
+  private normalizeNow(nowMs: number | undefined): number {
+    return normalizeNow(nowMs, this.nowFactory);
   }
 }
 
@@ -674,10 +661,13 @@ function normalizeRoundDuration(roundDurationMs: number | undefined): number {
   );
 }
 
-function normalizeNow(nowMs: number | undefined): number {
+function normalizeNow(
+  nowMs: number | undefined,
+  nowFactory: () => number = () => Date.now(),
+): number {
   return typeof nowMs === 'number' && Number.isFinite(nowMs)
     ? Math.max(0, Math.floor(nowMs))
-    : Date.now();
+    : nowFactory();
 }
 
 function formatDefaultPlayerName(playerId: string): string {

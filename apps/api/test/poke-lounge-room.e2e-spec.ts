@@ -5,6 +5,37 @@ import request from 'supertest';
 import { PokeLoungeModule } from './../src/poke-lounge/poke-lounge.module';
 import { PokeLoungeRoomService } from './../src/poke-lounge/poke-lounge-room.service';
 import type { PokeLoungeRoomState } from './../src/poke-lounge/poke-lounge-room.types';
+import { setupApiDocumentation } from './../src/api-documentation';
+
+type OpenApiDocument = {
+  paths?: Record<
+    string,
+    {
+      get?: {
+        responses?: Record<
+          string,
+          { content?: Record<string, { schema?: SchemaRef }> }
+        >;
+      };
+      post?: {
+        requestBody?: {
+          content?: Record<string, { schema?: SchemaRef }>;
+        };
+        responses?: Record<
+          string,
+          { content?: Record<string, { schema?: SchemaRef }> }
+        >;
+      };
+    }
+  >;
+  components?: {
+    schemas?: Record<string, { properties?: Record<string, unknown> }>;
+  };
+};
+
+type SchemaRef = {
+  $ref?: string;
+};
 
 describe('Poke Lounge server rooms (e2e)', () => {
   let app: INestApplication;
@@ -17,6 +48,7 @@ describe('Poke Lounge server rooms (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    setupApiDocumentation(app);
     await app.init();
     httpServer = app.getHttpServer() as Server;
     service = app.get(PokeLoungeRoomService);
@@ -195,6 +227,48 @@ describe('Poke Lounge server rooms (e2e)', () => {
     await request(httpServer)
       .post('/poke-lounge/rooms/ROOM01/ready')
       .expect(400);
+  });
+
+  it('exposes the Poke Lounge room DTO request and response contract in /api-json', async () => {
+    const response = await request(httpServer).get('/api-json').expect(200);
+    const body = response.body as OpenApiDocument;
+
+    expect(
+      body.paths?.['/poke-lounge/rooms']?.post?.requestBody?.content?.[
+        'application/json'
+      ]?.schema?.$ref,
+    ).toBe('#/components/schemas/CreatePokeLoungeRoomDto');
+    expect(
+      body.paths?.['/poke-lounge/rooms/{roomCode}/join']?.post?.requestBody
+        ?.content?.['application/json']?.schema?.$ref,
+    ).toBe('#/components/schemas/JoinPokeLoungeRoomDto');
+    expect(
+      body.paths?.['/poke-lounge/rooms/{roomCode}/ready']?.post?.requestBody
+        ?.content?.['application/json']?.schema?.$ref,
+    ).toBe('#/components/schemas/SetPokeLoungeReadyDto');
+    expect(
+      body.paths?.['/poke-lounge/rooms/{roomCode}/result']?.post?.requestBody
+        ?.content?.['application/json']?.schema?.$ref,
+    ).toBe('#/components/schemas/SubmitPokeLoungeMatchResultDto');
+
+    expect(
+      body.paths?.['/poke-lounge/rooms']?.post?.responses?.['201']?.content?.[
+        'application/json'
+      ]?.schema?.$ref,
+    ).toBe('#/components/schemas/PokeLoungeRoomResponseDto');
+    expect(
+      body.paths?.['/poke-lounge/rooms/{roomCode}']?.get?.responses?.['200']
+        ?.content?.['application/json']?.schema?.$ref,
+    ).toBe('#/components/schemas/PokeLoungeRoomResponseDto');
+
+    const roomSchemaProperties =
+      body.components?.schemas?.PokeLoungeRoomResponseDto?.properties;
+
+    expect(roomSchemaProperties).toBeDefined();
+    expect(roomSchemaProperties).toHaveProperty('participants');
+    expect(roomSchemaProperties).toHaveProperty('round');
+    expect(roomSchemaProperties).toHaveProperty('tournament');
+    expect(roomSchemaProperties).toHaveProperty('finalStandings');
   });
 
   it('rejects new joins after the round has started', async () => {

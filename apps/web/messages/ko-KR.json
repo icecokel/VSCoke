@@ -342,6 +342,18 @@
     "suggestionsLabel": "추천 질문",
     "composerLabel": "질문 입력",
     "sourceLabel": "근거",
+    "readmeEntry": {
+      "title": "이력에 대해 바로 질문하기",
+      "description": "README를 읽다가 궁금한 점을 남기면 답변을 준비합니다.",
+      "placeholder": "README를 보며 궁금한 점을 질문하세요.",
+      "submit": "답변 준비하기",
+      "submitting": "준비 중",
+      "submittingHint": "이력 근거를 찾고 답변을 준비하고 있습니다.",
+      "ready": "답변 보러가기",
+      "readyHint": "답변이 준비됐습니다. 질문 페이지에서 대화 기록을 확인하세요.",
+      "retry": "다시 시도",
+      "error": "답변 요청에 실패했습니다."
+    },
     "suggestions": [
       "Oprimed에서 어떤 업무를 했어?",
       "의료 도메인 경험을 설명해줘",

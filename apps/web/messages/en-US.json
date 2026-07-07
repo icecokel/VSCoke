@@ -342,6 +342,18 @@
     "suggestionsLabel": "Suggested questions",
     "composerLabel": "Question input",
     "sourceLabel": "Evidence",
+    "readmeEntry": {
+      "title": "Ask about this resume",
+      "description": "Ask while reading the README and the answer will be prepared.",
+      "placeholder": "Ask a question while reading the README.",
+      "submit": "Prepare answer",
+      "submitting": "Preparing",
+      "submittingHint": "Searching resume evidence and preparing an answer.",
+      "ready": "View answer",
+      "readyHint": "The answer is ready. Open the question page to see the conversation.",
+      "retry": "Retry",
+      "error": "Failed to request an answer."
+    },
     "suggestions": [
       "What did you work on at Oprimed?",
       "Describe your healthcare domain experience",

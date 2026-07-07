@@ -342,6 +342,18 @@
     "suggestionsLabel": "おすすめ質問",
     "composerLabel": "質問入力",
     "sourceLabel": "根拠",
+    "readmeEntry": {
+      "title": "履歴について質問する",
+      "description": "READMEを読みながら質問すると、回答を準備します。",
+      "placeholder": "READMEを見ながら気になる点を質問してください。",
+      "submit": "回答を準備",
+      "submitting": "準備中",
+      "submittingHint": "履歴根拠を探して回答を準備しています。",
+      "ready": "回答を見る",
+      "readyHint": "回答の準備ができました。質問ページで会話を確認してください。",
+      "retry": "再試行",
+      "error": "回答リクエストに失敗しました。"
+    },
     "suggestions": [
       "Oprimedではどんな業務をしましたか？",
       "医療ドメイン経験を説明してください",

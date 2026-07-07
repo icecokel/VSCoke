@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api-client";
 import { askResumeRag, ResumeRagContractError } from "../lib/resume-rag-service";
+import { readResumeRagChat } from "../lib/resume-rag-chat-storage";
 import type { ResumeRagSource } from "../types";
 
 type FailureKind =
@@ -294,7 +295,11 @@ const EmptyChatState = ({
   );
 };
 
-export const ResumeQuestionChat = () => {
+type ResumeQuestionChatProps = {
+  initialChatId?: string;
+};
+
+export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) => {
   const t = useTranslations("resumeRag");
   const locale = useLocale();
   const rawSuggestions = t.raw("suggestions");
@@ -305,6 +310,30 @@ export const ResumeQuestionChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [failure, setFailure] = useState<FailureState | null>(null);
+
+  useEffect(() => {
+    if (!initialChatId) return;
+
+    const storedChat = readResumeRagChat(initialChatId);
+    if (!storedChat) return;
+
+    setMessages([
+      {
+        id: `${storedChat.id}-user`,
+        role: "user",
+        content: storedChat.question,
+      },
+      {
+        id: `${storedChat.id}-assistant`,
+        role: "assistant",
+        content: storedChat.answer,
+        grounded: storedChat.grounded,
+        sources: storedChat.sources,
+      },
+    ]);
+    setQuestion("");
+    setFailure(null);
+  }, [initialChatId]);
 
   const canSubmit = useMemo(
     () => question.trim().length >= 2 && !isSubmitting,

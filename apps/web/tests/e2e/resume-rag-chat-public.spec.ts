@@ -3,6 +3,57 @@ import { expect, test } from "@playwright/test";
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:65535";
 
 test.describe("Resume RAG public chat", () => {
+  test("README에서 질문한 답변을 준비한 뒤 질문 페이지에서 바로 볼 수 있다", async ({ page }) => {
+    await page.route(`${apiBaseUrl}/resume-rag/chat`, async route => {
+      const request = route.request();
+
+      expect(request.postDataJSON()).toEqual({
+        question: "Oprimed에서 맡은 일을 알려줘",
+        locale: "ko-KR",
+      });
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: {
+            answer: "Oprimed에서는 의료 분석 워크스페이스를 개발했습니다.",
+            grounded: true,
+            sources: [
+              {
+                title: "Oprimed 공개 이력서 최종안",
+                sourcePath: "docs/oprimed-public-resume-final.md",
+                sourceKey: "resume-workspace:docs/oprimed-public-resume-final.md#oprimed",
+                excerpt: "의료 분석 워크스페이스 개발",
+                similarity: 0.76,
+              },
+            ],
+          },
+        }),
+      });
+    });
+
+    await page.goto("/ko-KR/readme");
+    await page
+      .getByPlaceholder("README를 보며 궁금한 점을 질문하세요.")
+      .fill("Oprimed에서 맡은 일을 알려줘");
+    await page.getByRole("button", { name: "답변 준비하기" }).click();
+
+    const viewAnswerButton = page.getByRole("button", { name: "답변 보러가기" });
+
+    await expect(viewAnswerButton).toBeVisible();
+
+    await viewAnswerButton.click();
+
+    await expect(page).toHaveURL(/\/ko-KR\/resume\/question\?chatId=/);
+    await expect(page.getByText("Oprimed에서 맡은 일을 알려줘")).toBeVisible();
+    await expect(
+      page.getByText("Oprimed에서는 의료 분석 워크스페이스를 개발했습니다."),
+    ).toBeVisible();
+    await expect(page.getByText("Oprimed 공개 이력서 최종안")).toBeVisible();
+  });
+
   test("비로그인 방문자도 질문 입력과 전송 버튼을 볼 수 있다", async ({ page }) => {
     await page.goto("/ko-KR/resume/question");
 

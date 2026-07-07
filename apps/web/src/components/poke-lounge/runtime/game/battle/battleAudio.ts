@@ -1,17 +1,13 @@
+import { playPokeLoungeSfx } from "../audio/poke-lounge-audio";
+import type { PokeLoungeSfxId } from "../audio/poke-lounge-audio.types";
+
 export interface RomBattleSoundCue {
   readonly sdatPath: string;
   readonly sequenceName: string;
   readonly sequenceIndex: number;
   readonly fileId: number;
   readonly rawFilePath: string;
-}
-
-export interface BattleToneCue {
-  readonly startMs: number;
-  readonly durationMs: number;
-  readonly frequencyHz: number;
-  readonly gain: number;
-  readonly type: OscillatorType;
+  readonly sfxId: PokeLoungeSfxId;
 }
 
 export const BATTLE_SOUND_CUES = {
@@ -21,6 +17,7 @@ export const BATTLE_SOUND_CUES = {
     sequenceIndex: 1116,
     fileId: 89,
     rawFilePath: "data/processed/rom-sound/00_data__sound__gs_sound_data.sdat/file_0089.bin",
+    sfxId: "battle-start",
   },
   confirm: {
     sdatPath: "data/sound/gs_sound_data.sdat",
@@ -28,6 +25,7 @@ export const BATTLE_SOUND_CUES = {
     sequenceIndex: 1394,
     fileId: 319,
     rawFilePath: "data/processed/rom-sound/00_data__sound__gs_sound_data.sdat/file_0319.bin",
+    sfxId: "button-confirm",
   },
   transition: {
     sdatPath: "data/sound/gs_sound_data.sdat",
@@ -35,60 +33,30 @@ export const BATTLE_SOUND_CUES = {
     sequenceIndex: 1390,
     fileId: 316,
     rawFilePath: "data/processed/rom-sound/00_data__sound__gs_sound_data.sdat/file_0316.bin",
+    sfxId: "battle-transition",
   },
 } as const satisfies Record<string, RomBattleSoundCue>;
 
-export function createBattleStartTonePlan(): BattleToneCue[] {
-  return [
-    { startMs: 0, durationMs: 90, frequencyHz: 392, gain: 0.08, type: "square" },
-    { startMs: 75, durationMs: 110, frequencyHz: 523.25, gain: 0.07, type: "square" },
-    { startMs: 160, durationMs: 150, frequencyHz: 783.99, gain: 0.055, type: "triangle" },
-  ];
+export function playBattleTransitionSound(): void {
+  playPokeLoungeSfx("battle-transition");
 }
 
-export function playBattleStartSound(audioContextFactory = createBrowserAudioContext): void {
-  const context = audioContextFactory();
-
-  if (!context) {
-    return;
-  }
-
-  const now = context.currentTime;
-
-  for (const cue of createBattleStartTonePlan()) {
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    const startAt = now + cue.startMs / 1000;
-    const stopAt = startAt + cue.durationMs / 1000;
-
-    oscillator.type = cue.type;
-    oscillator.frequency.setValueAtTime(cue.frequencyHz, startAt);
-    gain.gain.setValueAtTime(0, startAt);
-    gain.gain.linearRampToValueAtTime(cue.gain, startAt + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.001, stopAt);
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start(startAt);
-    oscillator.stop(stopAt + 0.01);
-  }
+export function playBattleStartSound(): void {
+  playPokeLoungeSfx("battle-start");
 }
 
-function createBrowserAudioContext(): AudioContext | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
+export function playBattleHitSound(): void {
+  playPokeLoungeSfx("battle-hit");
+}
 
-  const AudioContextConstructor =
-    window.AudioContext ??
-    (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+export function playPokemonFaintSound(): void {
+  playPokeLoungeSfx("pokemon-faint");
+}
 
-  if (!AudioContextConstructor) {
-    return null;
-  }
+export function playBattleConfirmSound(): void {
+  playPokeLoungeSfx("button-confirm");
+}
 
-  const context = new AudioContextConstructor();
-
-  void context.resume?.();
-
-  return context;
+export function playBattleCancelSound(): void {
+  playPokeLoungeSfx("button-cancel");
 }

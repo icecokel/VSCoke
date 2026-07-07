@@ -5,6 +5,7 @@ import {
   normalizeRoomCode,
   type RoomEntryMode,
 } from "./roomEntry";
+import { playPokeLoungeSfx, primePokeLoungeAudio } from "../audio/poke-lounge-audio";
 
 export interface RoomEntrySelection {
   mode: Exclude<RoomEntryMode, "unset">;
@@ -64,6 +65,7 @@ export function renderRoomEntryScreen(
   message.setAttribute("data-room-entry-message", "true");
 
   const selectLocalRoom = (roomCode: string, resetSession = false) => {
+    playRoomEntryConfirmSound();
     const inviteUrl = createInviteUrl(options.currentUrl, roomCode).href;
     inviteInput.value = inviteUrl;
     message.textContent = "";
@@ -76,6 +78,7 @@ export function renderRoomEntryScreen(
   };
 
   const selectServerRoom = (roomCode: string) => {
+    playRoomEntryConfirmSound();
     const inviteUrl = createServerInviteUrl(options.currentUrl, roomCode).href;
     inviteInput.value = inviteUrl;
     message.textContent = "";
@@ -87,6 +90,7 @@ export function renderRoomEntryScreen(
   };
 
   soloButton.addEventListener("click", () => {
+    playRoomEntryConfirmSound();
     message.textContent = "";
     options.onSelect({
       mode: "solo",
@@ -96,6 +100,7 @@ export function renderRoomEntryScreen(
   });
 
   newStartButton.addEventListener("click", () => {
+    playRoomEntryConfirmSound();
     message.textContent = "";
     options.onSelect({
       mode: "solo",
@@ -110,6 +115,7 @@ export function renderRoomEntryScreen(
   });
 
   serverCreateButton.addEventListener("click", () => {
+    playRoomEntryConfirmSound();
     inviteInput.value = "";
     message.textContent = "";
     options.onSelect({
@@ -160,6 +166,11 @@ export function renderRoomEntryScreen(
   mount.appendChild(screen);
 
   return screen;
+}
+
+function playRoomEntryConfirmSound(): void {
+  void primePokeLoungeAudio();
+  playPokeLoungeSfx("button-confirm");
 }
 
 function createButton(label: string, dataAttribute: string): HTMLButtonElement {

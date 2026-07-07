@@ -8,6 +8,7 @@ import {
 } from "./rom-web-conversion";
 import { isDevelopmentRuntime } from "./runtimeEnvironment";
 import { findFirstSuitableUiAsset, findItemIconAssets } from "./ui-assets";
+import { playPokeLoungeSfx, primePokeLoungeAudio } from "./game/audio/poke-lounge-audio";
 
 export interface StarterSelectionOptions {
   completeAfterSelection?: boolean;
@@ -200,7 +201,11 @@ function createStarterPreview(
   confirm.type = "button";
   confirm.dataset.starterConfirm = "";
   confirm.textContent = "이 포켓몬으로 시작";
-  confirm.addEventListener("click", () => onStarterConfirm(starter));
+  confirm.addEventListener("click", () => {
+    void primePokeLoungeAudio();
+    playPokeLoungeSfx("button-confirm");
+    onStarterConfirm(starter);
+  });
 
   meta.append(name, type, confirm);
   preview.append(stage, meta);
@@ -223,7 +228,11 @@ function createStarterGrid(
     card.type = "button";
     card.dataset.starterCard = starter.id;
     card.setAttribute("aria-pressed", starter.id === selectedStarterId ? "true" : "false");
-    card.addEventListener("click", () => onStarterPreviewSelect(starter));
+    card.addEventListener("click", () => {
+      void primePokeLoungeAudio();
+      playPokeLoungeSfx("button-confirm", { volume: 0.4 });
+      onStarterPreviewSelect(starter);
+    });
 
     if (starter.id === selectedStarterId) {
       card.classList.add("is-selected");

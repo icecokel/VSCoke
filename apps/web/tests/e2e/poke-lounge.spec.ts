@@ -390,6 +390,38 @@ test.describe("Poke Lounge", () => {
     expect(browserErrors.join("\n")).toBe("");
   });
 
+  test("사용자 입력 후 Poke Lounge 효과음 asset을 요청한다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+    const audioRequests: string[] = [];
+
+    page.on("request", request => {
+      const url = request.url();
+
+      if (url.includes("/assets/poke-lounge/audio/")) {
+        audioRequests.push(url);
+      }
+    });
+
+    await gotoWithRetry(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
+    await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30000 });
+    await page.locator("[data-room-entry-solo]").click();
+    await chooseStarter(page);
+    await waitForGameCanvas(page);
+
+    await expect
+      .poll(() => audioRequests.some(url => url.endsWith("/audio-manifest.json")), {
+        timeout: 10000,
+      })
+      .toBe(true);
+    await expect
+      .poll(() => audioRequests.some(url => url.endsWith(".mp3")), {
+        timeout: 10000,
+      })
+      .toBe(true);
+
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
   test("wild-victory battle scenario가 battle result 상태까지 도달한다", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
 

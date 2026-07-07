@@ -1,5 +1,9 @@
 import * as Phaser from "phaser";
-import { playBattleStartSound } from "../battle/battleAudio";
+import {
+  playBattleCancelSound,
+  playBattleConfirmSound,
+  playBattleTransitionSound,
+} from "../battle/battleAudio";
 import type { BattleResultReason } from "../battle/battleTypes";
 import { GAME_VIEWPORT_SIZE } from "../gameViewport";
 import {
@@ -978,7 +982,7 @@ export class WorldScene extends Phaser.Scene {
       },
     } as const;
 
-    playBattleStartSound();
+    playBattleTransitionSound();
     this.playBattleIntroTransition(() => {
       this.scene.start("battle", battleData);
     });
@@ -1582,6 +1586,7 @@ export class WorldScene extends Phaser.Scene {
       consumeVirtualGamepadPress("bag") ||
       (interactionKeys && Phaser.Input.Keyboard.JustDown(interactionKeys.inventory))
     ) {
+      playBattleConfirmSound();
       this.openInventory();
       return;
     }
@@ -1590,11 +1595,13 @@ export class WorldScene extends Phaser.Scene {
       consumeVirtualGamepadPress("help") ||
       (interactionKeys && Phaser.Input.Keyboard.JustDown(interactionKeys.help))
     ) {
+      playBattleConfirmSound();
       this.openShortcutGuide();
       return;
     }
 
     if (consumeVirtualGamepadPress("confirm") || this.isConfirmJustDown()) {
+      playBattleConfirmSound();
       this.handleConfirmInteraction();
     }
   }
@@ -1617,6 +1624,7 @@ export class WorldScene extends Phaser.Scene {
       (interactionKeys && Phaser.Input.Keyboard.JustDown(interactionKeys.backspace)) ||
       this.isConfirmJustDown()
     ) {
+      playBattleCancelSound();
       this.closeShortcutGuide();
     }
   }
@@ -1655,6 +1663,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     if (consumeVirtualGamepadPress("confirm") || this.isConfirmJustDown()) {
+      playBattleConfirmSound();
       this.confirmInventorySelection();
       return;
     }
@@ -1666,6 +1675,7 @@ export class WorldScene extends Phaser.Scene {
       Phaser.Input.Keyboard.JustDown(interactionKeys.esc) ||
       Phaser.Input.Keyboard.JustDown(interactionKeys.backspace)
     ) {
+      playBattleCancelSound();
       this.closeInventory();
     }
   }
@@ -1699,6 +1709,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     if (consumeVirtualGamepadPress("confirm") || this.isConfirmJustDown()) {
+      playBattleConfirmSound();
       this.confirmShopSelection();
       return;
     }
@@ -1709,6 +1720,7 @@ export class WorldScene extends Phaser.Scene {
         (Phaser.Input.Keyboard.JustDown(this.interactionKeys.esc) ||
           Phaser.Input.Keyboard.JustDown(this.interactionKeys.backspace)))
     ) {
+      playBattleCancelSound();
       this.closeShop();
     }
   }
@@ -1742,6 +1754,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     if (consumeVirtualGamepadPress("confirm") || this.isConfirmJustDown()) {
+      playBattleConfirmSound();
       this.confirmDiceGambleSelection();
       return;
     }
@@ -1752,6 +1765,7 @@ export class WorldScene extends Phaser.Scene {
         (Phaser.Input.Keyboard.JustDown(this.interactionKeys.esc) ||
           Phaser.Input.Keyboard.JustDown(this.interactionKeys.backspace)))
     ) {
+      playBattleCancelSound();
       this.closeDiceGamble();
     }
   }
@@ -2926,7 +2940,7 @@ export class WorldScene extends Phaser.Scene {
       },
     } as const;
 
-    playBattleStartSound();
+    playBattleTransitionSound();
     this.playBattleIntroTransition(() => {
       this.scene.start("battle", battleData);
     });

@@ -39,6 +39,7 @@ dist/
 *.gb
 *.cia
 *.3ds
+data/roms/
 data/raw/
 data/processed/
 assets/raw/

@@ -1,6 +1,7 @@
 import { loadBootstrapData } from "../bootstrap";
 import { renderStarterSelectionScreen, type StarterSelectionOptions } from "../starter-selection";
 import type { GameBootstrapData, StarterPokemon } from "../types";
+import { bindPokeLoungeAudioPrimeListeners } from "./audio/poke-lounge-audio";
 import { createPokeLoungeGame, type PokeLoungeGameResult } from "./createPokeLoungeGame";
 import { loadRuntimeGameDataJson } from "./data/game-data-json";
 import { readInitialBattleE2eScenario, readInitialGameScene } from "./gameStartup";
@@ -54,6 +55,7 @@ export async function startGamePage(
   let destroyed = false;
   let roomEntrySelectionPending = false;
   let starterSelectionRequestId = 0;
+  let removeAudioPrimeListeners: (() => void) | null = bindPokeLoungeAudioPrimeListeners(mount);
 
   const handle: GamePageHandle = {
     destroy() {
@@ -62,6 +64,8 @@ export async function startGamePage(
       }
 
       destroyed = true;
+      removeAudioPrimeListeners?.();
+      removeAudioPrimeListeners = null;
       if (activeGame) {
         activeGame.destroy(true);
       } else {

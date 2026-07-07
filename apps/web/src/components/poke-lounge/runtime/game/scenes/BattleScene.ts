@@ -18,6 +18,13 @@ import {
   ROM_BATTLE_WINDOW_STYLE,
 } from "../battle/battleDesign";
 import {
+  playBattleCancelSound,
+  playBattleConfirmSound,
+  playBattleHitSound,
+  playBattleStartSound,
+  playPokemonFaintSound,
+} from "../battle/battleAudio";
+import {
   BATTLE_END_CONFIRM_MESSAGE,
   chooseBattleBagItem,
   chooseBattleCommand,
@@ -335,6 +342,7 @@ export class BattleScene extends Phaser.Scene {
     this.bindKeys();
     this.bindPointerConfirm();
     this.render();
+    playBattleStartSound();
     this.playBattleEntranceAnimation();
   }
 
@@ -355,6 +363,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (consumeVirtualGamepadPress("help") || Phaser.Input.Keyboard.JustDown(this.helpKey)) {
+      playBattleConfirmSound();
       this.toggleShortcutGuide();
       return;
     }
@@ -367,6 +376,7 @@ export class BattleScene extends Phaser.Scene {
         Phaser.Input.Keyboard.JustDown(this.escKey) ||
         Phaser.Input.Keyboard.JustDown(this.backspaceKey)
       ) {
+        playBattleCancelSound();
         this.closeShortcutGuide();
       }
 
@@ -378,6 +388,7 @@ export class BattleScene extends Phaser.Scene {
       this.state.phase === "command" &&
       this.state.messageQueue.length === 0
     ) {
+      playBattleConfirmSound();
       this.selectedBagItemIndex = 0;
       this.setBattleState(chooseBattleCommand(this.state, "bag"));
       return;
@@ -387,6 +398,7 @@ export class BattleScene extends Phaser.Scene {
       consumeVirtualGamepadPress("confirm") ||
       this.confirmKeys.some(key => Phaser.Input.Keyboard.JustDown(key))
     ) {
+      playBattleConfirmSound();
       this.confirmSelection();
     }
 
@@ -395,6 +407,7 @@ export class BattleScene extends Phaser.Scene {
       Phaser.Input.Keyboard.JustDown(this.escKey) ||
       Phaser.Input.Keyboard.JustDown(this.backspaceKey)
     ) {
+      playBattleCancelSound();
       this.goBack();
     }
 
@@ -567,6 +580,7 @@ export class BattleScene extends Phaser.Scene {
       }
     }
 
+    playBattleConfirmSound();
     this.confirmSelection();
   }
 
@@ -732,6 +746,10 @@ export class BattleScene extends Phaser.Scene {
 
         this.hpAnimationStartedCount += 1;
         this.playHitAnimation(side);
+        playBattleHitSound();
+        if (targetHp <= 0) {
+          playPokemonFaintSound();
+        }
         this.hpTweens[side] = this.tweens.add({
           targets: tweenState,
           value: targetHp,

@@ -4,6 +4,7 @@ import {
   resetVirtualGamepad,
   type VirtualGamepadButton,
 } from "./virtualGamepad";
+import { primePokeLoungeAudio } from "../audio/poke-lounge-audio";
 
 const CONTROL_BUTTONS: ReadonlyArray<{
   button: VirtualGamepadButton;
@@ -117,6 +118,7 @@ export function renderMobileTouchControls(
       } catch {
         // Synthetic pointer events in tests may not be capturable.
       }
+      void primePokeLoungeAudio();
       setPressed(true);
       pressVirtualGamepadButton(control.button);
     });

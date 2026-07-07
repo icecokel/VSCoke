@@ -373,3 +373,50 @@ Phase 3 인계 결정 사항:
 - room state는 메모리-only라 API 프로세스 재시작, horizontal scaling, reconnect 복구에는 아직 대응하지 않는다.
 - server room 생성/입장 UI는 최소 MVP 범위로 직접 query 진입을 지원한다. 운영형 lobby UX는 별도 작업이다.
 - polling은 상태 동기화 MVP다. WebSocket은 필요성이 확인되면 전송 최적화 단계에서 도입한다.
+
+### Final Acceptance 기록: 2026-07-07
+
+이 기록은 Task 4 최종 acceptance, 스크린샷 캡처, 문서 마감을 남긴다. 2026-07-07 기준 현재 구현은 브리프의 최종 acceptance 기준을 통과했고, 아래 명령과 아티팩트로 확인했다.
+
+실행한 검증 명령:
+
+- `pnpm test:api`
+- `pnpm test:api:e2e`
+- `pnpm build:api`
+- `pnpm type:check:web`
+- `pnpm lint`
+- `pnpm build:web`
+- `pnpm --filter @vscoke/web e2e -- tests/e2e/poke-lounge.spec.ts --project=chromium`
+- `pnpm --filter @vscoke/web e2e -- tests/e2e/poke-lounge-multiplayer.spec.ts --project=chromium`
+- `python3 /Users/smlee/.codex/skills/api-no-mock-fallback/scripts/find_mock_fallback.py apps/web/src/components/poke-lounge/runtime/game/network`
+- `git diff --check`
+- `git ls-files | rg '(^|/)(node_modules|\.next|output|test-results|data/raw|data/processed|assets/raw|assets/processed)(/|$)' || true`
+- `git ls-files | rg '\.(nds|gba|gbc|gb|cia|3ds|zip|7z)$' || true`
+
+금지 자산 체크 결과:
+
+- 두 `git ls-files | rg ... || true` 명령은 모두 출력이 없었다.
+
+스크린샷 아티팩트:
+
+- `/Users/smlee/vscoke/worktrees/feat/poke-lounge/apps/web/test-results/poke-lounge-final-acceptance/starter-selection.png`
+- `/Users/smlee/vscoke/worktrees/feat/poke-lounge/apps/web/test-results/poke-lounge-final-acceptance/world-scene-desktop.png`
+- `/Users/smlee/vscoke/worktrees/feat/poke-lounge/apps/web/test-results/poke-lounge-final-acceptance/battle-scene-wild-opponent.png`
+- `/Users/smlee/vscoke/worktrees/feat/poke-lounge/apps/web/test-results/poke-lounge-final-acceptance/final-result-submit-overlay.png`
+- `/Users/smlee/vscoke/worktrees/feat/poke-lounge/apps/web/test-results/poke-lounge-final-acceptance/server-room-final-result.png`
+- `/Users/smlee/vscoke/worktrees/feat/poke-lounge/apps/web/test-results/poke-lounge-final-acceptance/mobile-canvas-framing.png`
+
+최종 acceptance 상태:
+
+- source document compliance check인 wild encounter rate 선택과 battle Pokemon sprite dimension 검증은 `tests/e2e/poke-lounge.spec.ts`에서 계속 통과한다.
+- tunable gameplay data는 JSON 우선 로딩과 TypeScript fallback 검증이 유지되고, 다음 마이그레이션 대상이라는 문서 상태도 그대로다.
+- `/ko-KR/game/poke-lounge`에서 starter selection, solo world, wild battle, final result submit, server room 진입을 focused E2E와 수동 스크린샷으로 다시 확인했다.
+- `network=server` room state는 현재도 `apps/api`가 관리하고 client-host authority로 되돌아가지 않았다.
+- server room API DTO/Swagger 노출과 frontend server-room adapter 무 mock fallback 상태는 이번 최종 검증 범위에서도 유지됐다.
+
+남은 known gap:
+
+- server room state는 여전히 API 프로세스 메모리-only다.
+- REST polling 기반 server-authoritative MVP는 유지되고, WebSocket은 이번 작업에서도 범위 밖이다.
+- server room 생성/입장 UX는 query 기반 MVP 수준이며 운영형 lobby UX는 별도 작업이다.
+- `pnpm generate:types`는 여전히 원격 `https://api.icecoke.kr/api-json` 기준이라 로컬 미배포 API 차이를 자동 반영하지 않는다.

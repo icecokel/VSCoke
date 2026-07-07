@@ -39,15 +39,19 @@ interface PokeLoungeBattleSnapshot {
   battleEntrancePlayed: boolean;
   hpAnimationPlaying: boolean;
   hpAnimationStartedCount: number;
+  hitAnimationPlaying: boolean;
+  hitAnimationStartedCount: number;
   player: {
     currentHp: number;
     maxHp: number;
     displayedCurrentHp: number;
+    hitAnimationStartedCount: number;
   };
   opponent: {
     currentHp: number;
     maxHp: number;
     displayedCurrentHp: number;
+    hitAnimationStartedCount: number;
   };
 }
 
@@ -433,7 +437,7 @@ test.describe("Poke Lounge", () => {
     expect(browserErrors.join("\n")).toBe("");
   });
 
-  test("battle 진입 연출과 HP 감소 애니메이션을 노출한다", async ({ page }) => {
+  test("battle 진입 연출과 HP 감소 및 피격 애니메이션을 노출한다", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
 
     await startBattleScenario(page, "wild-victory");
@@ -466,6 +470,9 @@ test.describe("Poke Lounge", () => {
           return Boolean(
             snapshot &&
             snapshot.hpAnimationStartedCount > (before?.hpAnimationStartedCount ?? 0) &&
+            snapshot.hitAnimationStartedCount > (before?.hitAnimationStartedCount ?? 0) &&
+            snapshot.opponent.hitAnimationStartedCount >
+              (before?.opponent.hitAnimationStartedCount ?? 0) &&
             snapshot.opponent.currentHp < (before?.opponent.currentHp ?? 0) &&
             snapshot.opponent.displayedCurrentHp >= snapshot.opponent.currentHp,
           );
@@ -481,6 +488,7 @@ test.describe("Poke Lounge", () => {
           return Boolean(
             snapshot &&
             !snapshot.hpAnimationPlaying &&
+            !snapshot.hitAnimationPlaying &&
             snapshot.opponent.displayedCurrentHp === snapshot.opponent.currentHp,
           );
         },
@@ -570,6 +578,14 @@ test.describe("Poke Lounge", () => {
     await expectMobileTouchLayout(page);
     await expectMobileTouchPressAnimation(page);
 
+    await page.setViewportSize({ width: 360, height: 780 });
+    await expectCanvasFramed(page, { maxWidth: 360, viewportWidth: 360, viewportHeight: 780 });
+    await expectMobileTouchLayout(page);
+
+    await page.setViewportSize({ width: 844, height: 390 });
+    await expectCanvasFramed(page, { maxWidth: 844, viewportWidth: 844, viewportHeight: 390 });
+    await expectNoViewportOverflow(page);
+
     await page.locator("[data-fullscreen-toggle]").click();
     await expect(page.getByTestId("poke-lounge-page")).toHaveClass(/is-game-fullscreen-fallback/);
     await expect
@@ -577,6 +593,21 @@ test.describe("Poke Lounge", () => {
         page.evaluate(() => document.body.classList.contains("is-game-fullscreen-fallback-active")),
       )
       .toBe(true);
+
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("mobile room entry와 starter 선택 UI가 뷰포트 폭을 넘지 않는다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await page.setViewportSize({ width: 360, height: 780 });
+    await gotoWithRetry(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
+    await continueToRoomEntry(page);
+    await expectNoViewportOverflow(page);
+
+    await page.locator("[data-room-entry-solo]").click();
+    await expect(page.locator("[data-screen='starter-selection']")).toBeVisible({ timeout: 30000 });
+    await expectNoViewportOverflow(page);
 
     expect(browserErrors.join("\n")).toBe("");
   });
@@ -905,16 +936,26 @@ async function expectCanvasFramed(
     .poll(
       async () => {
         const snapshot = await getCanvasSnapshot(page);
-        const aspectRatio = (snapshot?.clientWidth ?? 0) / (snapshot?.clientHeight ?? 1);
+        const layout = await getPokeLoungeLayoutSnapshot(page);
+        const canvasAspectRatio = (snapshot?.clientWidth ?? 0) / (snapshot?.clientHeight ?? 1);
+        const rootAspectRatio = (layout?.root?.width ?? 0) / (layout?.root?.height ?? 1);
 
         return Boolean(
           snapshot &&
+          layout &&
+          layout.root &&
           snapshot.width === 768 &&
           snapshot.height === 576 &&
           snapshot.clientWidth <= maxWidth &&
           snapshot.clientWidth <= viewportWidth &&
           snapshot.clientHeight <= viewportHeight &&
-          Math.abs(aspectRatio - 4 / 3) < 0.03,
+          layout.root.width <= maxWidth &&
+          layout.root.width <= viewportWidth &&
+          layout.root.height <= viewportHeight &&
+          layout.documentScrollWidth <= layout.innerWidth + 1 &&
+          layout.bodyScrollWidth <= layout.innerWidth + 1 &&
+          Math.abs(canvasAspectRatio - 4 / 3) < 0.03 &&
+          Math.abs(rootAspectRatio - 4 / 3) < 0.03,
         );
       },
       {
@@ -924,16 +965,27 @@ async function expectCanvasFramed(
     .toBe(true);
 
   const snapshot = await getCanvasSnapshot(page);
+  const layout = await getPokeLoungeLayoutSnapshot(page);
 
   expect(snapshot).not.toBeNull();
+  expect(layout).not.toBeNull();
+  expect(layout?.root).not.toBeNull();
   expect(snapshot?.width).toBe(768);
   expect(snapshot?.height).toBe(576);
   expect(snapshot?.clientWidth).toBeLessThanOrEqual(maxWidth);
   expect(snapshot?.clientWidth).toBeLessThanOrEqual(viewportWidth);
   expect(snapshot?.clientHeight).toBeLessThanOrEqual(viewportHeight);
+  expect(layout?.root?.width).toBeLessThanOrEqual(maxWidth);
+  expect(layout?.root?.width).toBeLessThanOrEqual(viewportWidth);
+  expect(layout?.root?.height).toBeLessThanOrEqual(viewportHeight);
+  expect(layout?.documentScrollWidth).toBeLessThanOrEqual((layout?.innerWidth ?? 0) + 1);
+  expect(layout?.bodyScrollWidth).toBeLessThanOrEqual((layout?.innerWidth ?? 0) + 1);
   expect(
     Math.abs((snapshot?.clientWidth ?? 0) / (snapshot?.clientHeight ?? 1) - 4 / 3),
   ).toBeLessThan(0.03);
+  expect(Math.abs((layout?.root?.width ?? 0) / (layout?.root?.height ?? 1) - 4 / 3)).toBeLessThan(
+    0.03,
+  );
 }
 
 async function expectMobileTouchLayout(page: Page): Promise<void> {
@@ -945,24 +997,78 @@ async function expectMobileTouchLayout(page: Page): Promise<void> {
           const controls = document
             .querySelector("[data-mobile-touch-controls]")
             ?.getBoundingClientRect();
+          const dpad = document
+            .querySelector(".mobile-touch-controls__dpad")
+            ?.getBoundingClientRect();
+          const actions = document
+            .querySelector(".mobile-touch-controls__actions")
+            ?.getBoundingClientRect();
           const pageRoot = document
             .querySelector("[data-testid='poke-lounge-page']")
             ?.getBoundingClientRect();
+          const buttons = Array.from(document.querySelectorAll("[data-mobile-control]"), element =>
+            element.getBoundingClientRect(),
+          );
 
-          if (!root || !controls || !pageRoot) {
+          if (!root || !controls || !dpad || !actions || !pageRoot || buttons.length === 0) {
             return false;
           }
+
+          const buttonsInsideViewport = buttons.every(
+            rect =>
+              rect.left >= 0 &&
+              rect.top >= 0 &&
+              rect.right <= window.innerWidth &&
+              rect.bottom <= window.innerHeight,
+          );
 
           return (
             root.top - pageRoot.top <= 24 &&
             controls.top >= root.bottom + 8 &&
-            controls.height >= 160 &&
-            controls.bottom <= pageRoot.top + window.innerHeight
+            controls.height >= 136 &&
+            controls.left >= 0 &&
+            controls.right <= window.innerWidth &&
+            controls.bottom <= window.innerHeight &&
+            dpad.right + 12 <= actions.left &&
+            buttonsInsideViewport
           );
         }),
       { timeout: 10000 },
     )
     .toBe(true);
+
+  await expectNoViewportOverflow(page);
+}
+
+async function expectNoViewportOverflow(page: Page): Promise<void> {
+  const layout = await getPokeLoungeLayoutSnapshot(page);
+
+  expect(layout).not.toBeNull();
+  expect(layout.documentScrollWidth).toBeLessThanOrEqual(layout.innerWidth + 1);
+  expect(layout.bodyScrollWidth).toBeLessThanOrEqual(layout.innerWidth + 1);
+}
+
+async function getPokeLoungeLayoutSnapshot(page: Page): Promise<{
+  bodyScrollWidth: number;
+  documentScrollWidth: number;
+  innerWidth: number;
+  root: { height: number; width: number } | null;
+}> {
+  return page.evaluate(() => {
+    const root = document.querySelector("#game-root")?.getBoundingClientRect();
+
+    return {
+      bodyScrollWidth: document.body.scrollWidth,
+      documentScrollWidth: document.documentElement.scrollWidth,
+      innerWidth: window.innerWidth,
+      root: root
+        ? {
+            height: root.height,
+            width: root.width,
+          }
+        : null,
+    };
+  });
 }
 
 async function expectMobileTouchPressAnimation(page: Page): Promise<void> {

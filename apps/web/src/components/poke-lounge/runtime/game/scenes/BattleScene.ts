@@ -66,6 +66,8 @@ export const BATTLE_CONFIRM_KEY_CODES = [
   Phaser.Input.Keyboard.KeyCodes.Z,
 ] as const;
 const BATTLE_HP_DECREASE_TWEEN_MS = 560;
+const BATTLE_HIT_TWEEN_MS = 300;
+const BATTLE_HIT_SHAKE_PIXELS = 4;
 const BATTLE_ENTRANCE_TWEEN_MS = 640;
 const BATTLE_BAG_PREMIUM_ITEM_IDS = [
   "hyperPotion",
@@ -96,12 +98,15 @@ export interface BattleE2eSnapshot {
   battleEntrancePlayed: boolean;
   hpAnimationPlaying: boolean;
   hpAnimationStartedCount: number;
+  hitAnimationPlaying: boolean;
+  hitAnimationStartedCount: number;
   player: {
     name: string;
     level: number;
     currentHp: number;
     maxHp: number;
     displayedCurrentHp: number;
+    hitAnimationStartedCount: number;
     status: string;
     activePartySlotIndex: number;
   };
@@ -111,6 +116,7 @@ export interface BattleE2eSnapshot {
     currentHp: number;
     maxHp: number;
     displayedCurrentHp: number;
+    hitAnimationStartedCount: number;
     status: string;
   };
 }
@@ -145,6 +151,14 @@ interface LogicalCanvasPointInput {
 type BattleHpSide = "player" | "opponent";
 type BattleDisplayedHp = Record<BattleHpSide, number>;
 const BATTLE_HP_SIDES = ["player", "opponent"] as const satisfies readonly BattleHpSide[];
+
+interface BattleHitEffectState {
+  progress: number;
+  startedCount: number;
+  tween: Phaser.Tweens.Tween | null;
+}
+
+type BattleHitEffects = Record<BattleHpSide, BattleHitEffectState>;
 
 export interface BattleSpriteVisibleBounds {
   x: number;
@@ -294,11 +308,13 @@ export class BattleScene extends Phaser.Scene {
   private returningToWorld = false;
   private displayedHp: BattleDisplayedHp = { player: 0, opponent: 0 };
   private readonly hpTweens: Partial<Record<BattleHpSide, Phaser.Tweens.Tween>> = {};
+  private hitEffects: BattleHitEffects = createBattleHitEffects();
   private battleEntrancePlaying = false;
   private battleEntranceProgress = 1;
   private battleEntrancePlayed = false;
   private battleEntranceTween: Phaser.Tweens.Tween | null = null;
   private hpAnimationStartedCount = 0;
+  private hitAnimationStartedCount = 0;
 
   constructor(private readonly gameStateStore: GameStateStore = getDefaultGameStateStore()) {
     super("battle");
@@ -309,7 +325,9 @@ export class BattleScene extends Phaser.Scene {
     this.returningToWorld = false;
     this.battleEntrancePlayed = false;
     this.hpAnimationStartedCount = 0;
+    this.hitAnimationStartedCount = 0;
     this.cancelHpTweens();
+    this.resetHitEffects();
     this.syncDisplayedHpToState();
     this.cameras.main.setBackgroundColor("#d8e6d4");
     this.cameras.main.setBounds(0, 0, BATTLE_BASE_SIZE.width, BATTLE_BASE_SIZE.height);
@@ -424,12 +442,15 @@ export class BattleScene extends Phaser.Scene {
       battleEntrancePlayed: this.battleEntrancePlayed,
       hpAnimationPlaying: this.isHpAnimationPlaying(),
       hpAnimationStartedCount: this.hpAnimationStartedCount,
+      hitAnimationPlaying: this.isHitAnimationPlaying(),
+      hitAnimationStartedCount: this.hitAnimationStartedCount,
       player: {
         name: this.state.player.pokemon.name,
         level: this.state.player.pokemon.level,
         currentHp: this.state.player.pokemon.currentHp,
         maxHp: this.state.player.pokemon.maxHp,
         displayedCurrentHp: Math.round(this.displayedHp.player),
+        hitAnimationStartedCount: this.hitEffects.player.startedCount,
         status: this.state.player.pokemon.status,
         activePartySlotIndex: this.state.player.activePartySlotIndex,
       },
@@ -439,6 +460,7 @@ export class BattleScene extends Phaser.Scene {
         currentHp: this.state.opponent.pokemon.currentHp,
         maxHp: this.state.opponent.pokemon.maxHp,
         displayedCurrentHp: Math.round(this.displayedHp.opponent),
+        hitAnimationStartedCount: this.hitEffects.opponent.startedCount,
         status: this.state.opponent.pokemon.status,
       },
     };
@@ -452,8 +474,10 @@ export class BattleScene extends Phaser.Scene {
     this.returningToWorld = false;
     this.battleEntrancePlayed = false;
     this.hpAnimationStartedCount = 0;
+    this.hitAnimationStartedCount = 0;
     this.state = createBattleScenarioStateForTest(scenario);
     this.cancelHpTweens();
+    this.resetHitEffects();
     this.syncDisplayedHpToState();
     this.render();
     this.playBattleEntranceAnimation();
@@ -707,6 +731,7 @@ export class BattleScene extends Phaser.Scene {
         const tweenState = { value: displayedHp };
 
         this.hpAnimationStartedCount += 1;
+        this.playHitAnimation(side);
         this.hpTweens[side] = this.tweens.add({
           targets: tweenState,
           value: targetHp,
@@ -736,6 +761,17 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
+  private resetHitEffects(): void {
+    this.cancelHitTweens();
+    this.hitEffects = createBattleHitEffects();
+  }
+
+  private cancelHitTweens(): void {
+    BATTLE_HP_SIDES.forEach(side => {
+      this.hitEffects[side]?.tween?.stop();
+    });
+  }
+
   private getStateHp(side: BattleHpSide): number {
     return side === "player"
       ? this.state.player.pokemon.currentHp
@@ -744,6 +780,40 @@ export class BattleScene extends Phaser.Scene {
 
   private isHpAnimationPlaying(): boolean {
     return BATTLE_HP_SIDES.some(side => Boolean(this.hpTweens[side]));
+  }
+
+  private isHitAnimationPlaying(): boolean {
+    return BATTLE_HP_SIDES.some(side => Boolean(this.hitEffects[side].tween));
+  }
+
+  private playHitAnimation(side: BattleHpSide): void {
+    const hitEffect = this.hitEffects[side];
+    const tweenState = { progress: 0 };
+
+    hitEffect.tween?.stop();
+    hitEffect.progress = 0;
+    hitEffect.startedCount += 1;
+    this.hitAnimationStartedCount += 1;
+
+    const tween = this.tweens.add({
+      targets: tweenState,
+      progress: 1,
+      duration: BATTLE_HIT_TWEEN_MS,
+      ease: "Sine.easeOut",
+      onUpdate: () => {
+        hitEffect.progress = tweenState.progress;
+        this.render();
+      },
+      onComplete: () => {
+        hitEffect.progress = 0;
+        if (hitEffect.tween === tween) {
+          hitEffect.tween = null;
+        }
+        this.render();
+      },
+    });
+
+    hitEffect.tween = tween;
   }
 
   private playBattleEntranceAnimation(): void {
@@ -1153,6 +1223,8 @@ export class BattleScene extends Phaser.Scene {
     const entranceProgress = Phaser.Math.Clamp(this.battleEntranceProgress, 0, 1);
     const entranceOffset = Math.round((1 - entranceProgress) * 18);
     const entranceAlpha = 0.35 + entranceProgress * 0.65;
+    const opponentHit = this.getHitRenderEffect("opponent");
+    const playerHit = this.getHitRenderEffect("player");
     const opponentRenderBox = getVisibleBoundsAlignedBattleSpriteRenderBox(
       opponent,
       this.resolveBattleSpriteVisibleBounds(this.state.opponent.pokemon.frontSprite.assetKey),
@@ -1160,7 +1232,7 @@ export class BattleScene extends Phaser.Scene {
     const playerRenderBox = getCroppedBattleSpriteRenderBox(player);
     this.add
       .image(
-        opponentRenderBox.x + entranceOffset,
+        opponentRenderBox.x + entranceOffset + opponentHit.offsetX,
         opponentRenderBox.y,
         this.state.opponent.pokemon.frontSprite.assetKey,
       )
@@ -1171,10 +1243,10 @@ export class BattleScene extends Phaser.Scene {
         BATTLE_SPRITE_CROP.height,
       )
       .setDisplaySize(opponentRenderBox.width, opponentRenderBox.height)
-      .setAlpha(entranceAlpha);
+      .setAlpha(entranceAlpha * opponentHit.alpha);
     this.add
       .image(
-        playerRenderBox.x - entranceOffset,
+        playerRenderBox.x - entranceOffset + playerHit.offsetX,
         playerRenderBox.y,
         this.state.player.pokemon.backSprite.assetKey,
       )
@@ -1185,7 +1257,25 @@ export class BattleScene extends Phaser.Scene {
         BATTLE_SPRITE_CROP.height,
       )
       .setDisplaySize(playerRenderBox.width, playerRenderBox.height)
-      .setAlpha(entranceAlpha);
+      .setAlpha(entranceAlpha * playerHit.alpha);
+  }
+
+  private getHitRenderEffect(side: BattleHpSide): { alpha: number; offsetX: number } {
+    const progress = Phaser.Math.Clamp(this.hitEffects[side].progress, 0, 1);
+
+    if (progress <= 0 || progress >= 1) {
+      return { alpha: 1, offsetX: 0 };
+    }
+
+    const dampening = 1 - progress;
+    const shake = Math.sin(progress * Math.PI * 7) * BATTLE_HIT_SHAKE_PIXELS * dampening;
+    const direction = side === "player" ? -1 : 1;
+    const flashAlpha = progress < 0.35 ? 0.58 : 1;
+
+    return {
+      alpha: flashAlpha,
+      offsetX: Math.round(shake * direction),
+    };
   }
 
   private resolveBattleSpriteVisibleBounds(assetKey: string): BattleSpriteVisibleBounds {
@@ -1686,5 +1776,20 @@ function updateBattleParticipantPokemon(
             pokemon: slot.pokemon ? cloneBattlePokemon(slot.pokemon) : null,
           },
     ),
+  };
+}
+
+function createBattleHitEffects(): BattleHitEffects {
+  return {
+    opponent: {
+      progress: 0,
+      startedCount: 0,
+      tween: null,
+    },
+    player: {
+      progress: 0,
+      startedCount: 0,
+      tween: null,
+    },
   };
 }

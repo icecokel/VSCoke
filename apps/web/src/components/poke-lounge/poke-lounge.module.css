@@ -1,7 +1,17 @@
 .page {
   --rom-screen-background: #4a4242;
+  --poke-lounge-touch-control-gap: 8px;
+  --poke-lounge-touch-control-offset: 12px;
+  --poke-lounge-touch-controls-height: clamp(136px, 21dvh, 176px);
+  --poke-lounge-touch-dpad-button-size: clamp(38px, 11.8vw, 46px);
+  --poke-lounge-touch-action-button-size: clamp(44px, 13.4vw, 52px);
+  --poke-lounge-touch-controls-reserve: calc(
+    var(--poke-lounge-touch-controls-height) + var(--poke-lounge-touch-control-offset) +
+      max(16px, env(safe-area-inset-bottom))
+  );
+
   display: grid;
-  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   background: var(--rom-screen-background);
   color: #17201a;
@@ -29,7 +39,7 @@
 
 .page {
   display: grid;
-  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   background: var(--rom-screen-background);
   place-items: center;
@@ -60,7 +70,8 @@
 
 .page :global(#game-root) {
   position: relative;
-  width: min(100vw, calc(100vh * 4 / 3), 1024px);
+  width: min(100vw, calc(100dvh * 4 / 3), 1024px);
+  max-height: 100dvh;
   aspect-ratio: 4 / 3;
   background: var(--rom-screen-background);
 }
@@ -85,6 +96,7 @@
   z-index: 50;
   display: grid;
   width: min(280px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
   gap: 10px;
   padding: 14px;
   border: 3px solid #17231c;
@@ -92,6 +104,7 @@
   background: rgba(248, 251, 240, 0.94);
   box-shadow: 0 6px 0 rgba(23, 35, 28, 0.72);
   color: #17201a;
+  overflow: auto;
 }
 
 .resultEyebrow {
@@ -159,7 +172,7 @@
 .page :global(.mobile-touch-controls__actions) {
   position: absolute;
   display: grid;
-  gap: 8px;
+  gap: var(--poke-lounge-touch-control-gap);
   pointer-events: none;
 }
 
@@ -170,15 +183,15 @@
     ". up ."
     "left . right"
     ". down .";
-  grid-template-columns: repeat(3, 46px);
-  grid-template-rows: repeat(3, 46px);
+  grid-template-columns: repeat(3, var(--poke-lounge-touch-dpad-button-size));
+  grid-template-rows: repeat(3, var(--poke-lounge-touch-dpad-button-size));
 }
 
 .page :global(.mobile-touch-controls__actions) {
   right: max(12px, env(safe-area-inset-right));
   bottom: max(14px, env(safe-area-inset-bottom));
-  grid-template-columns: repeat(2, 52px);
-  grid-template-rows: repeat(2, 52px);
+  grid-template-columns: repeat(2, var(--poke-lounge-touch-action-button-size));
+  grid-template-rows: repeat(2, var(--poke-lounge-touch-action-button-size));
 }
 
 .page :global(.mobile-touch-controls__button) {
@@ -249,6 +262,7 @@
   display: grid;
   gap: 6px;
   width: min(320px, calc(100% - 24px));
+  max-height: min(260px, calc(100dvh - 24px));
   padding: 10px;
   border: 3px solid #17231c;
   border-radius: 6px;
@@ -257,6 +271,7 @@
   color: #17201a;
   font-size: 0.72rem;
   font-weight: 900;
+  overflow: auto;
 }
 
 .page :global(.webrtc-signaling-panel__status) {
@@ -316,6 +331,7 @@
   right: max(10px, env(safe-area-inset-right));
   z-index: 46;
   min-height: 34px;
+  max-width: calc(100vw - 20px - env(safe-area-inset-left) - env(safe-area-inset-right));
   padding: 7px 10px;
   border: 2px solid #17231c;
   border-radius: 4px;
@@ -334,7 +350,7 @@
 
 @media (orientation: portrait) {
   .page :global(#game-root.has-touch-game-device) {
-    width: min(100vw, calc((100dvh - 204px) * 4 / 3), 1024px);
+    width: min(100vw, calc((100dvh - var(--poke-lounge-touch-controls-reserve)) * 4 / 3), 1024px);
     margin-top: max(8px, env(safe-area-inset-top));
     align-self: start;
     justify-self: center;
@@ -349,9 +365,9 @@
   }
 
   .page :global(.has-touch-game-device .mobile-touch-controls) {
-    top: calc(100% + 12px);
+    top: calc(100% + var(--poke-lounge-touch-control-offset));
     bottom: auto;
-    height: 176px;
+    height: var(--poke-lounge-touch-controls-height);
   }
 
   .page :global(.has-touch-game-device .mobile-touch-controls__dpad) {
@@ -410,8 +426,10 @@
 .page :global(.game-screen) {
   display: grid;
   gap: 18px;
-  min-height: 100vh;
+  width: 100%;
+  min-height: 100dvh;
   padding: 16px;
+  overflow: auto;
   place-items: center;
 }
 
@@ -424,8 +442,10 @@
 
 .page :global(.room-entry-screen) {
   display: grid;
-  min-height: 100%;
-  padding: 24px;
+  width: 100%;
+  min-height: 100dvh;
+  padding: clamp(12px, 4vw, 24px);
+  overflow: auto;
   place-items: center;
   background: var(--rom-screen-background);
   color: #17201a;
@@ -435,6 +455,7 @@
   display: grid;
   gap: 12px;
   width: min(420px, 100%);
+  max-width: 100%;
   padding: 20px;
   border: 3px solid #17231c;
   border-radius: 6px;
@@ -487,13 +508,14 @@
 
 .page :global(.selection-panel) {
   width: min(100%, 1040px);
-  min-height: min(680px, calc(100vh - 32px));
+  min-height: min(680px, calc(100dvh - 32px));
+  max-height: calc(100dvh - 32px);
   border: 4px solid #2b3a31;
   border-radius: 8px;
   background: #f5f1e6;
   box-shadow: 0 10px 0 #2b3a31;
   color: #17201a;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .page :global(.starter-selection-modal) {
@@ -1267,7 +1289,8 @@
   }
 
   .page :global(.selection-panel) {
-    min-height: calc(100vh - 20px);
+    min-height: min(680px, calc(100dvh - 20px));
+    max-height: calc(100dvh - 20px);
     box-shadow: none;
   }
 

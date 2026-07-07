@@ -1,5 +1,9 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PokeLoungeRoomService } from './poke-lounge-room.service';
+
+const WAITING_ROOM_TTL_MS = 30 * 60_000;
+const FINISHED_ROOM_RETENTION_MS = 10 * 60_000;
+const MAX_ROOMS = 200;
 
 describe('PokeLoungeRoomService', () => {
   let service: PokeLoungeRoomService;
@@ -220,6 +224,100 @@ describe('PokeLoungeRoomService', () => {
     });
   });
 
+  it('evicts a stale waiting room before a join lookup', () => {
+    service.createRoom({
+      playerId: 'player-a',
+      sessionId: 'session-a',
+      nowMs: 0,
+    });
+
+    expect(() =>
+      service.joinRoom('ROOM01', {
+        playerId: 'player-b',
+        sessionId: 'session-b',
+        nowMs: WAITING_ROOM_TTL_MS + 1,
+      }),
+    ).toThrow(NotFoundException);
+  });
+
+  it('evicts a stale completed room when it is read', () => {
+    service.createRoom({
+      playerId: 'player-a',
+      sessionId: 'session-a',
+      roundDurationMs: 1,
+      nowMs: 0,
+    });
+    service.joinRoom('ROOM01', {
+      playerId: 'player-b',
+      sessionId: 'session-b',
+      nowMs: 0,
+    });
+    service.setReady('ROOM01', 'player-a', 'session-a', true, 0);
+    service.setReady('ROOM01', 'player-b', 'session-b', true, 0);
+    service.getRoom('ROOM01', 1);
+    service.submitMatchResult('ROOM01', {
+      reportingPlayerId: 'player-a',
+      reportingSessionId: 'session-a',
+      matchId: 'round-1-match-1',
+      winnerPlayerId: 'player-a',
+      loserPlayerId: 'player-b',
+      reason: 'faint',
+      nowMs: 2,
+    });
+
+    expect(() =>
+      service.getRoom('ROOM01', FINISHED_ROOM_RETENTION_MS + 3),
+    ).toThrow(NotFoundException);
+  });
+
+  it('rejects room creation when the in-memory room cap is reached', () => {
+    service = new PokeLoungeRoomService(createSequentialRoomCodeFactory());
+
+    for (let index = 1; index <= MAX_ROOMS; index += 1) {
+      service.createRoom({
+        playerId: `player-${index}`,
+        sessionId: `session-${index}`,
+        nowMs: index,
+      });
+    }
+
+    expect(() =>
+      service.createRoom({
+        playerId: 'overflow-player',
+        sessionId: 'overflow-session',
+        nowMs: MAX_ROOMS + 1,
+      }),
+    ).toThrow(BadRequestException);
+  });
+
+  it('prunes stale rooms before applying the in-memory room cap', () => {
+    service = new PokeLoungeRoomService(createSequentialRoomCodeFactory());
+
+    for (let index = 1; index < MAX_ROOMS; index += 1) {
+      service.createRoom({
+        playerId: `player-${index}`,
+        sessionId: `session-${index}`,
+        nowMs: WAITING_ROOM_TTL_MS + index,
+      });
+    }
+
+    service.createRoom({
+      playerId: 'stale-player',
+      sessionId: 'stale-session',
+      nowMs: 0,
+    });
+
+    const room = service.createRoom({
+      playerId: 'fresh-player',
+      sessionId: 'fresh-session',
+      nowMs: WAITING_ROOM_TTL_MS + MAX_ROOMS + 1,
+    });
+
+    expect(room.roomCode).toBe(`ROOM${String(MAX_ROOMS + 1).padStart(2, '0')}`);
+    expect(() => service.getRoom('ROOM199')).not.toThrow();
+    expect(() => service.getRoom('ROOM200')).toThrow(NotFoundException);
+  });
+
   it('rejects spectator and missing participants when updating party snapshots', () => {
     service.createRoom({
       playerId: 'player-1',
@@ -423,6 +521,7 @@ describe('PokeLoungeRoomService', () => {
     expect(
       afterLeave.participants.map((participant) => participant.playerId),
     ).toEqual(['player-a']);
+    expect(afterLeave.partySnapshots['player-b']).toBeUndefined();
 
     const afterReplacement = service.joinRoom('ROOM01', {
       playerId: 'player-c',
@@ -629,3 +728,12 @@ describe('PokeLoungeRoomService', () => {
     ).toThrow(BadRequestException);
   });
 });
+
+function createSequentialRoomCodeFactory(): () => string {
+  let index = 0;
+
+  return () => {
+    index += 1;
+    return `ROOM${String(index).padStart(2, '0')}`;
+  };
+}

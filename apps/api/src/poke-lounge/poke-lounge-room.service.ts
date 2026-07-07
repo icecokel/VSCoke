@@ -21,6 +21,9 @@ const DEFAULT_ROUND_DURATION_MS = 60_000;
 const MIN_ROUND_DURATION_MS = 1;
 const MAX_ROUND_DURATION_MS = 3_600_000;
 const MAX_PARTICIPANTS = 6;
+const MAX_ROOMS = 200;
+const WAITING_ROOM_TTL_MS = 30 * 60_000;
+const FINISHED_ROOM_RETENTION_MS = 10 * 60_000;
 const WIN_SCORE = 100;
 const LOSS_SCORE = 50;
 const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -42,6 +45,12 @@ export class PokeLoungeRoomService {
 
   createRoom(input: CreatePokeLoungeRoomInput): PokeLoungeRoomState {
     const nowMs = normalizeNow(input.nowMs);
+    this.pruneRooms(nowMs);
+
+    if (this.rooms.size >= MAX_ROOMS) {
+      throw new BadRequestException('Poke Lounge room capacity reached');
+    }
+
     const roomCode = this.createUniqueRoomCode();
     const participant = createParticipant(input, 'participant', nowMs, 1);
     const room: PokeLoungeRoomState = {
@@ -74,8 +83,11 @@ export class PokeLoungeRoomService {
     roomCode: string,
     input: JoinPokeLoungeRoomInput,
   ): PokeLoungeRoomState {
-    const room = this.findRoom(roomCode);
     const nowMs = normalizeNow(input.nowMs);
+    const room = this.findRoom(
+      roomCode,
+      input.nowMs === undefined ? undefined : nowMs,
+    );
     const existing = room.participants.find(
       (row) => row.playerId === input.playerId,
     );
@@ -110,8 +122,12 @@ export class PokeLoungeRoomService {
   }
 
   getRoom(roomCode: string, nowMs?: number): PokeLoungeRoomState {
-    const room = this.findRoom(roomCode);
-    this.advanceRoomClock(room, normalizeNow(nowMs));
+    const currentMs = normalizeNow(nowMs);
+    const room = this.findRoom(
+      roomCode,
+      nowMs === undefined ? undefined : currentMs,
+    );
+    this.advanceRoomClock(room, currentMs);
 
     return cloneRoom(room);
   }
@@ -239,6 +255,7 @@ export class PokeLoungeRoomService {
       room.participants = room.participants.filter(
         (row) => row.playerId !== playerId,
       );
+      delete room.partySnapshots[playerId];
     }
 
     if (participant.role === 'participant') {
@@ -269,7 +286,11 @@ export class PokeLoungeRoomService {
     throw new BadRequestException('Unable to create a unique room code');
   }
 
-  private findRoom(roomCode: string): PokeLoungeRoomState {
+  private findRoom(roomCode: string, nowMs?: number): PokeLoungeRoomState {
+    if (nowMs !== undefined) {
+      this.pruneRooms(nowMs);
+    }
+
     const normalizedRoomCode = normalizeRoomCode(roomCode);
     const room = this.rooms.get(normalizedRoomCode);
 
@@ -278,6 +299,28 @@ export class PokeLoungeRoomService {
     }
 
     return room;
+  }
+
+  private pruneRooms(nowMs: number): void {
+    for (const [roomCode, room] of this.rooms.entries()) {
+      if (this.isRoomStale(room, nowMs)) {
+        this.rooms.delete(roomCode);
+      }
+    }
+  }
+
+  private isRoomStale(room: PokeLoungeRoomState, nowMs: number): boolean {
+    const ageMs = nowMs - room.updatedAtMs;
+
+    if (room.status === 'waiting') {
+      return ageMs > WAITING_ROOM_TTL_MS;
+    }
+
+    if (room.status === 'closed' || room.status === 'completed') {
+      return ageMs > FINISHED_ROOM_RETENTION_MS;
+    }
+
+    return false;
   }
 
   private findParticipant(

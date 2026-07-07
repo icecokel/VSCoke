@@ -21,7 +21,7 @@ export const ROM_BATTLE_POKEMON_ASSETS: readonly BattlePokemonAssetSet[] = [
     speciesId: 155,
     front: {
       assetKey: "battle-pokemon-155-front",
-      path: "/assets/pokemon/battle/155/front-default-normal.png",
+      path: "/assets/pokemon/front/155.png",
     },
     back: {
       assetKey: "battle-pokemon-155-back",

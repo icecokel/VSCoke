@@ -1,4 +1,8 @@
+import fs from "node:fs";
+import path from "node:path";
 import { expect, type Page, test } from "@playwright/test";
+import { getBattlePokemonAssets } from "../../src/components/poke-lounge/runtime/game/battle/battlePokemonAssets";
+import { selectWildEncounterConfig } from "../../src/components/poke-lounge/runtime/game/world/wildEncounterTables";
 import { escapeRegExp, gotoWithRetry, resolveLocaleAndMessages } from "./test-helpers";
 
 type PokeLoungeSceneKey = "world" | "battle";
@@ -87,6 +91,46 @@ const POKE_LOUNGE_LOCALE = "ko-KR";
 const LOCAL_ROOM_CODE = "ABC123";
 
 test.describe("Poke Lounge", () => {
+  test("브케인 상대 스프라이트는 160x80 front sheet를 사용한다", () => {
+    const assets = getBattlePokemonAssets(155);
+
+    expect(readPublicPngDimensions(assets.front.path)).toEqual({
+      width: 160,
+      height: 80,
+    });
+  });
+
+  test("야생 조우 설정은 지역별 encounter rate와 slot을 함께 선택한다", () => {
+    const config = selectWildEncounterConfig(
+      {
+        version: 1,
+        defaultTableId: "default",
+        tables: [
+          {
+            id: "default",
+            mapKeys: ["town"],
+            encounterRate: 0.05,
+            slots: [{ speciesId: 10, name: "캐터피", minLevel: 3, maxLevel: 5, weight: 1 }],
+          },
+          {
+            id: "rare-field",
+            mapKeys: ["town"],
+            areaIds: ["rare-field"],
+            encounterRate: 0.42,
+            slots: [{ speciesId: 16, name: "구구", minLevel: 7, maxLevel: 9, weight: 3 }],
+          },
+        ],
+      },
+      "town",
+      "rare-field",
+    );
+
+    expect(config).toEqual({
+      encounterRate: 0.42,
+      slots: [{ speciesId: 16, name: "구구", minLevel: 7, maxLevel: 9, weight: 3 }],
+    });
+  });
+
   test("게임 센터 카드와 world scene 직접 진입을 검증한다", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
     const { locale, messages } = await resolveLocaleAndMessages(page);
@@ -289,6 +333,16 @@ test.describe("Poke Lounge", () => {
     expect(browserErrors.join("\n")).toBe("");
   });
 });
+
+function readPublicPngDimensions(publicPath: string): { width: number; height: number } {
+  const filePath = path.join(process.cwd(), "public", publicPath.replace(/^\//, ""));
+  const header = fs.readFileSync(filePath).subarray(16, 24);
+
+  return {
+    width: header.readUInt32BE(0),
+    height: header.readUInt32BE(4),
+  };
+}
 
 function collectBrowserErrors(page: Page): string[] {
   const browserErrors: string[] = [];

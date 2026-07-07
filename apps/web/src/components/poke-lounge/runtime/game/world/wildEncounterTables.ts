@@ -20,11 +20,39 @@ export interface WildEncounterTable {
   slots: WildEncounterSlot[];
 }
 
+export interface WildEncounterConfig {
+  encounterRate?: number;
+  slots: ReadonlyArray<WildEncounterSlot>;
+}
+
+export function selectWildEncounterConfig(
+  data: unknown,
+  mapKey: string,
+  areaId?: string | null,
+): WildEncounterConfig | undefined {
+  const table = selectWildEncounterTable(data, mapKey, areaId);
+
+  return table
+    ? {
+        ...(table.encounterRate !== undefined ? { encounterRate: table.encounterRate } : {}),
+        slots: table.slots,
+      }
+    : undefined;
+}
+
 export function selectWildEncounterSlots(
   data: unknown,
   mapKey: string,
   areaId?: string | null,
 ): ReadonlyArray<WildEncounterSlot> | undefined {
+  return selectWildEncounterConfig(data, mapKey, areaId)?.slots;
+}
+
+function selectWildEncounterTable(
+  data: unknown,
+  mapKey: string,
+  areaId?: string | null,
+): WildEncounterTable | undefined {
   const tableData = normalizeWildEncounterTableData(data);
 
   if (!tableData) {
@@ -41,7 +69,7 @@ export function selectWildEncounterSlots(
   );
   const defaultTable = tableData.tables.find(table => table.id === tableData.defaultTableId);
 
-  return areaTable?.slots ?? mapTable?.slots ?? defaultTable?.slots;
+  return areaTable ?? mapTable ?? defaultTable;
 }
 
 export function normalizeWildEncounterTableData(data: unknown): WildEncounterTableData | null {

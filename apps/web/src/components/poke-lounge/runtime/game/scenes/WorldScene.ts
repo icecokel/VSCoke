@@ -32,7 +32,7 @@ import {
 } from "../world/wildEncounters";
 import {
   WILD_ENCOUNTER_TABLES_JSON_ASSET,
-  selectWildEncounterSlots,
+  selectWildEncounterConfig,
 } from "../world/wildEncounterTables";
 import { getDefaultGameStateStore } from "../state/defaultGameStateStore";
 import {
@@ -2855,11 +2855,10 @@ export class WorldScene extends Phaser.Scene {
 
     const encounter = rollWildEncounter({
       ...this.getWildEncounterLevelRangeInput(),
-      ...this.getWildEncounterSlotsInput(),
+      ...this.getWildEncounterConfigInput(),
       mapKey: FIELD_MAP.key,
       step,
       random: () => Math.random(),
-      rate: this.wildEncounterRateOverride,
     });
 
     if (!encounter) {
@@ -2882,18 +2881,28 @@ export class WorldScene extends Phaser.Scene {
     return averageLevel === null ? {} : { levelRange: createWildEncounterLevelRange(averageLevel) };
   }
 
-  private getWildEncounterSlotsInput(): { slots?: ReadonlyArray<WildEncounterSlot> } {
+  private getWildEncounterConfigInput(): {
+    rate?: number;
+    slots?: ReadonlyArray<WildEncounterSlot>;
+  } {
     const areaId = resolveFieldEncounterAreaId({
       x: this.player.x,
       y: this.player.y,
     });
-    const slots = selectWildEncounterSlots(
+    const config = selectWildEncounterConfig(
       this.cache.json.get(WILD_ENCOUNTER_TABLES_JSON_ASSET[0]),
       FIELD_MAP.key,
       areaId,
     );
 
-    return slots ? { slots } : {};
+    return {
+      ...(this.wildEncounterRateOverride !== undefined
+        ? { rate: this.wildEncounterRateOverride }
+        : config?.encounterRate !== undefined
+          ? { rate: config.encounterRate }
+          : {}),
+      ...(config?.slots ? { slots: config.slots } : {}),
+    };
   }
 
   private startWildBattle({ encounter, facing, x, y }: WildBattleStartInput): void {

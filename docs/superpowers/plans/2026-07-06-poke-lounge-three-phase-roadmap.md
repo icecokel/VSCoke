@@ -277,6 +277,28 @@ Phase 2 인계 결정 사항:
 - `playTime`은 클라이언트에서 측정 가능한 전체 플레이 시간을 초 단위로 제출하되, API 정책의 최소/최대 범위를 게임별 정책과 맞춘다.
 - Phase 2에서는 server-authoritative room, ready state, reconnect, tournament authority를 구현하지 않는다.
 
+### 2026-07-07 Source Document Compliance
+
+source docs read:
+
+- `/Users/smlee/Documents/poke-lounge/docs/implementation-guide.md`
+- `/Users/smlee/Documents/poke-lounge/docs/game-concept.md`
+- `/Users/smlee/Documents/poke-lounge/docs/testing-guide.md`
+- `docs/superpowers/plans/2026-07-06-poke-lounge-port.md`
+- `.superpowers/sdd/task-1-brief.md`
+
+commands passed:
+
+- `pnpm --filter @vscoke/web e2e -- tests/e2e/poke-lounge.spec.ts --project=chromium`
+- `pnpm type:check:web`
+- `pnpm lint:web`
+- `git diff --check`
+
+remaining gaps moved into later phases:
+
+- Phase 2: JSON 기반 데이터 마이그레이션, backend DTO/API 계약 정비, `POKE_LOUNGE` 결과 제출 및 랭킹 연결
+- Phase 3: 서버 권한 멀티플레이, room state/round authority, reconnect와 host election hardening
+
 ### Phase 2 완료: 2026-07-06
 
 통과한 검증 명령:

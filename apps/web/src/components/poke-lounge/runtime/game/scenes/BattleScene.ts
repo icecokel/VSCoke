@@ -48,7 +48,7 @@ import {
 } from "../state/gameStateStore";
 import { createGameTextStyle } from "../ui/gameTextStyle";
 import { createShortcutGuideRows, createShortcutGuideTitle } from "../ui/shortcutGuide";
-import { consumeVirtualGamepadPress } from "../input/virtualGamepad";
+import { consumeVirtualGamepadPress, resetVirtualGamepad } from "../input/virtualGamepad";
 import { setShortcutGuideTouchControlsSuppressed } from "../input/mobileTouchControlsVisibility";
 import type { WildEncounterCandidate } from "../world/wildEncounters";
 
@@ -65,6 +65,8 @@ export const BATTLE_CONFIRM_KEY_CODES = [
   Phaser.Input.Keyboard.KeyCodes.SPACE,
   Phaser.Input.Keyboard.KeyCodes.Z,
 ] as const;
+const BATTLE_HP_DECREASE_TWEEN_MS = 560;
+const BATTLE_ENTRANCE_TWEEN_MS = 640;
 const BATTLE_BAG_PREMIUM_ITEM_IDS = [
   "hyperPotion",
   "revive",
@@ -90,11 +92,16 @@ export interface BattleE2eSnapshot {
   selectedPartySlotIndex: number;
   result: BattleScreenState["result"];
   returnToWorld: BattleScreenState["returnToWorld"];
+  battleEntrancePlaying: boolean;
+  battleEntrancePlayed: boolean;
+  hpAnimationPlaying: boolean;
+  hpAnimationStartedCount: number;
   player: {
     name: string;
     level: number;
     currentHp: number;
     maxHp: number;
+    displayedCurrentHp: number;
     status: string;
     activePartySlotIndex: number;
   };
@@ -103,6 +110,7 @@ export interface BattleE2eSnapshot {
     level: number;
     currentHp: number;
     maxHp: number;
+    displayedCurrentHp: number;
     status: string;
   };
 }
@@ -133,6 +141,10 @@ interface LogicalCanvasPointInput {
   logicalSize: { width: number; height: number };
   rect: Pick<DOMRect, "left" | "top" | "width" | "height">;
 }
+
+type BattleHpSide = "player" | "opponent";
+type BattleDisplayedHp = Record<BattleHpSide, number>;
+const BATTLE_HP_SIDES = ["player", "opponent"] as const satisfies readonly BattleHpSide[];
 
 export interface BattleSpriteVisibleBounds {
   x: number;
@@ -280,6 +292,13 @@ export class BattleScene extends Phaser.Scene {
   private helpKey: Phaser.Input.Keyboard.Key | null = null;
   private shortcutGuideOpen = false;
   private returningToWorld = false;
+  private displayedHp: BattleDisplayedHp = { player: 0, opponent: 0 };
+  private readonly hpTweens: Partial<Record<BattleHpSide, Phaser.Tweens.Tween>> = {};
+  private battleEntrancePlaying = false;
+  private battleEntranceProgress = 1;
+  private battleEntrancePlayed = false;
+  private battleEntranceTween: Phaser.Tweens.Tween | null = null;
+  private hpAnimationStartedCount = 0;
 
   constructor(private readonly gameStateStore: GameStateStore = getDefaultGameStateStore()) {
     super("battle");
@@ -288,12 +307,17 @@ export class BattleScene extends Phaser.Scene {
   create(data: unknown = {}): void {
     this.state = this.createInitialState(data);
     this.returningToWorld = false;
+    this.battleEntrancePlayed = false;
+    this.hpAnimationStartedCount = 0;
+    this.cancelHpTweens();
+    this.syncDisplayedHpToState();
     this.cameras.main.setBackgroundColor("#d8e6d4");
     this.cameras.main.setBounds(0, 0, BATTLE_BASE_SIZE.width, BATTLE_BASE_SIZE.height);
     this.cameras.main.setZoom(getBattleCameraZoom(this.scale.width));
     this.bindKeys();
     this.bindPointerConfirm();
     this.render();
+    this.playBattleEntranceAnimation();
   }
 
   update(): void {
@@ -304,6 +328,11 @@ export class BattleScene extends Phaser.Scene {
       !this.backspaceKey ||
       !this.helpKey
     ) {
+      return;
+    }
+
+    if (this.battleEntrancePlaying) {
+      resetVirtualGamepad();
       return;
     }
 
@@ -332,8 +361,7 @@ export class BattleScene extends Phaser.Scene {
       this.state.messageQueue.length === 0
     ) {
       this.selectedBagItemIndex = 0;
-      this.state = chooseBattleCommand(this.state, "bag");
-      this.render();
+      this.setBattleState(chooseBattleCommand(this.state, "bag"));
       return;
     }
 
@@ -392,11 +420,16 @@ export class BattleScene extends Phaser.Scene {
       selectedPartySlotIndex: this.selectedPartySlotIndex,
       result: this.state.result ? { ...this.state.result } : null,
       returnToWorld: this.state.returnToWorld ? { ...this.state.returnToWorld } : undefined,
+      battleEntrancePlaying: this.battleEntrancePlaying,
+      battleEntrancePlayed: this.battleEntrancePlayed,
+      hpAnimationPlaying: this.isHpAnimationPlaying(),
+      hpAnimationStartedCount: this.hpAnimationStartedCount,
       player: {
         name: this.state.player.pokemon.name,
         level: this.state.player.pokemon.level,
         currentHp: this.state.player.pokemon.currentHp,
         maxHp: this.state.player.pokemon.maxHp,
+        displayedCurrentHp: Math.round(this.displayedHp.player),
         status: this.state.player.pokemon.status,
         activePartySlotIndex: this.state.player.activePartySlotIndex,
       },
@@ -405,6 +438,7 @@ export class BattleScene extends Phaser.Scene {
         level: this.state.opponent.pokemon.level,
         currentHp: this.state.opponent.pokemon.currentHp,
         maxHp: this.state.opponent.pokemon.maxHp,
+        displayedCurrentHp: Math.round(this.displayedHp.opponent),
         status: this.state.opponent.pokemon.status,
       },
     };
@@ -416,8 +450,13 @@ export class BattleScene extends Phaser.Scene {
     this.selectedPartySlotIndex = 0;
     this.selectedBagItemIndex = 0;
     this.returningToWorld = false;
+    this.battleEntrancePlayed = false;
+    this.hpAnimationStartedCount = 0;
     this.state = createBattleScenarioStateForTest(scenario);
+    this.cancelHpTweens();
+    this.syncDisplayedHpToState();
     this.render();
+    this.playBattleEntranceAnimation();
   }
 
   setSelectedCommandForTest(command: BattleCommand): void {
@@ -492,6 +531,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private handlePointerConfirm(pointer: Phaser.Input.Pointer): void {
+    if (this.battleEntrancePlaying) {
+      return;
+    }
+
     if (this.state.phase === "command" && this.state.messageQueue.length === 0) {
       const commandIndex = getBattleCommandIndexAtPoint(this.toBattleWorldPoint(pointer));
 
@@ -560,6 +603,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private confirmSelection(): void {
+    if (this.battleEntrancePlaying) {
+      return;
+    }
+
     if (
       this.state.phase === "ended" &&
       this.state.returnToWorld &&
@@ -570,8 +617,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.state.messageQueue.length > 0) {
-      this.state = popBattleMessage(this.state);
-      this.render();
+      this.setBattleState(popBattleMessage(this.state));
       return;
     }
 
@@ -592,8 +638,7 @@ export class BattleScene extends Phaser.Scene {
         this.selectedBagItemIndex = 0;
       }
 
-      this.state = nextState;
-      this.render();
+      this.setBattleState(nextState);
       return;
     }
 
@@ -608,23 +653,125 @@ export class BattleScene extends Phaser.Scene {
         this.gameStateStore.consumeInventoryItem(nextState.usedInventoryItemId, 1);
       }
 
-      this.state = nextState;
-      this.render();
+      this.setBattleState(nextState);
       return;
     }
 
     if (this.state.phase === "party-select") {
-      this.state = choosePartySlot(this.state, this.selectedPartySlotIndex);
-      this.render();
+      this.setBattleState(choosePartySlot(this.state, this.selectedPartySlotIndex));
       return;
     }
 
     if (this.state.phase === "move-select") {
-      this.state = this.applyLevelUpMoveLearning(
-        choosePlayerMove(this.state, this.selectedMoveIndex),
+      this.setBattleState(
+        this.applyLevelUpMoveLearning(choosePlayerMove(this.state, this.selectedMoveIndex)),
       );
+    }
+  }
+
+  private setBattleState(
+    nextState: BattleScreenState,
+    options: { animateHpDecrease?: boolean; render?: boolean } = {},
+  ): void {
+    this.state = nextState;
+    this.syncDisplayedHpTargets({
+      animateHpDecrease: options.animateHpDecrease ?? true,
+    });
+
+    if (options.render ?? true) {
       this.render();
     }
+  }
+
+  private syncDisplayedHpToState(): void {
+    this.displayedHp = {
+      player: this.getStateHp("player"),
+      opponent: this.getStateHp("opponent"),
+    };
+  }
+
+  private syncDisplayedHpTargets({ animateHpDecrease }: { animateHpDecrease: boolean }): void {
+    BATTLE_HP_SIDES.forEach(side => {
+      const targetHp = this.getStateHp(side);
+      const displayedHp = Number.isFinite(this.displayedHp[side])
+        ? this.displayedHp[side]
+        : targetHp;
+      const existingTween = this.hpTweens[side];
+
+      if (existingTween) {
+        existingTween.stop();
+        delete this.hpTweens[side];
+      }
+
+      if (animateHpDecrease && targetHp < displayedHp) {
+        const tweenState = { value: displayedHp };
+
+        this.hpAnimationStartedCount += 1;
+        this.hpTweens[side] = this.tweens.add({
+          targets: tweenState,
+          value: targetHp,
+          duration: BATTLE_HP_DECREASE_TWEEN_MS,
+          ease: "Cubic.easeOut",
+          onUpdate: () => {
+            this.displayedHp[side] = tweenState.value;
+            this.render();
+          },
+          onComplete: () => {
+            this.displayedHp[side] = targetHp;
+            delete this.hpTweens[side];
+            this.render();
+          },
+        });
+        return;
+      }
+
+      this.displayedHp[side] = targetHp;
+    });
+  }
+
+  private cancelHpTweens(): void {
+    BATTLE_HP_SIDES.forEach(side => {
+      this.hpTweens[side]?.stop();
+      delete this.hpTweens[side];
+    });
+  }
+
+  private getStateHp(side: BattleHpSide): number {
+    return side === "player"
+      ? this.state.player.pokemon.currentHp
+      : this.state.opponent.pokemon.currentHp;
+  }
+
+  private isHpAnimationPlaying(): boolean {
+    return BATTLE_HP_SIDES.some(side => Boolean(this.hpTweens[side]));
+  }
+
+  private playBattleEntranceAnimation(): void {
+    this.battleEntranceTween?.stop();
+    this.battleEntranceProgress = 0;
+    this.battleEntrancePlaying = true;
+    this.battleEntrancePlayed = true;
+    const tweenState = { progress: 0 };
+
+    const tween = this.tweens.add({
+      targets: tweenState,
+      progress: 1,
+      duration: BATTLE_ENTRANCE_TWEEN_MS,
+      ease: "Cubic.easeOut",
+      onUpdate: () => {
+        this.battleEntranceProgress = tweenState.progress;
+        this.render();
+      },
+      onComplete: () => {
+        this.battleEntranceProgress = 1;
+        this.battleEntrancePlaying = false;
+        if (this.battleEntranceTween === tween) {
+          this.battleEntranceTween = null;
+        }
+        this.render();
+      },
+    });
+    this.battleEntranceTween = tween;
   }
 
   private returnToWorld(): void {
@@ -634,7 +781,10 @@ export class BattleScene extends Phaser.Scene {
 
     this.returningToWorld = true;
     this.clearE2eSnapshot();
-    this.state = this.applyLevelUpMoveLearning(this.state);
+    this.setBattleState(this.applyLevelUpMoveLearning(this.state), {
+      animateHpDecrease: false,
+      render: false,
+    });
     const returnToWorld = this.state.returnToWorld;
 
     if (!returnToWorld) {
@@ -850,8 +1000,7 @@ export class BattleScene extends Phaser.Scene {
       this.state.phase === "party-select" ||
       this.state.phase === "bag-select"
     ) {
-      this.state = { ...this.state, phase: "command" };
-      this.render();
+      this.setBattleState({ ...this.state, phase: "command" });
     }
   }
 
@@ -955,36 +1104,41 @@ export class BattleScene extends Phaser.Scene {
     this.children.removeAll(true);
     this.drawBackground();
     this.drawPokemon();
-    this.drawHpPanel(BATTLE_LAYOUT.opponentHpPanel, this.state.opponent.pokemon, false);
-    this.drawHpPanel(BATTLE_LAYOUT.playerHpPanel, this.state.player.pokemon, true);
+    this.drawHpPanel(BATTLE_LAYOUT.opponentHpPanel, this.state.opponent.pokemon, "opponent", false);
+    this.drawHpPanel(BATTLE_LAYOUT.playerHpPanel, this.state.player.pokemon, "player", true);
     this.publishE2eSnapshot();
 
     if (this.state.phase === "move-select") {
       this.drawMoveWindow();
       this.drawShortcutGuideIfOpen();
+      this.drawBattleEntranceOverlay();
       return;
     }
 
     if (this.state.phase === "party-select" && this.state.messageQueue.length === 0) {
       this.drawPartySelectWindow();
       this.drawShortcutGuideIfOpen();
+      this.drawBattleEntranceOverlay();
       return;
     }
 
     if (this.state.phase === "bag-select" && this.state.messageQueue.length === 0) {
       this.drawBagSelectWindow();
       this.drawShortcutGuideIfOpen();
+      this.drawBattleEntranceOverlay();
       return;
     }
 
     if (this.state.phase === "command" && this.state.messageQueue.length === 0) {
       this.drawCommandWindow();
       this.drawShortcutGuideIfOpen();
+      this.drawBattleEntranceOverlay();
       return;
     }
 
     this.drawMessageWindow(this.state.messageQueue[0] ?? BATTLE_END_CONFIRM_MESSAGE);
     this.drawShortcutGuideIfOpen();
+    this.drawBattleEntranceOverlay();
   }
 
   private drawBackground(): void {
@@ -996,6 +1150,9 @@ export class BattleScene extends Phaser.Scene {
   private drawPokemon(): void {
     const opponent = BATTLE_LAYOUT.opponentSprite;
     const player = BATTLE_LAYOUT.playerSprite;
+    const entranceProgress = Phaser.Math.Clamp(this.battleEntranceProgress, 0, 1);
+    const entranceOffset = Math.round((1 - entranceProgress) * 18);
+    const entranceAlpha = 0.35 + entranceProgress * 0.65;
     const opponentRenderBox = getVisibleBoundsAlignedBattleSpriteRenderBox(
       opponent,
       this.resolveBattleSpriteVisibleBounds(this.state.opponent.pokemon.frontSprite.assetKey),
@@ -1003,7 +1160,7 @@ export class BattleScene extends Phaser.Scene {
     const playerRenderBox = getCroppedBattleSpriteRenderBox(player);
     this.add
       .image(
-        opponentRenderBox.x,
+        opponentRenderBox.x + entranceOffset,
         opponentRenderBox.y,
         this.state.opponent.pokemon.frontSprite.assetKey,
       )
@@ -1013,16 +1170,22 @@ export class BattleScene extends Phaser.Scene {
         BATTLE_SPRITE_CROP.width,
         BATTLE_SPRITE_CROP.height,
       )
-      .setDisplaySize(opponentRenderBox.width, opponentRenderBox.height);
+      .setDisplaySize(opponentRenderBox.width, opponentRenderBox.height)
+      .setAlpha(entranceAlpha);
     this.add
-      .image(playerRenderBox.x, playerRenderBox.y, this.state.player.pokemon.backSprite.assetKey)
+      .image(
+        playerRenderBox.x - entranceOffset,
+        playerRenderBox.y,
+        this.state.player.pokemon.backSprite.assetKey,
+      )
       .setCrop(
         BATTLE_SPRITE_CROP.x,
         BATTLE_SPRITE_CROP.y,
         BATTLE_SPRITE_CROP.width,
         BATTLE_SPRITE_CROP.height,
       )
-      .setDisplaySize(playerRenderBox.width, playerRenderBox.height);
+      .setDisplaySize(playerRenderBox.width, playerRenderBox.height)
+      .setAlpha(entranceAlpha);
   }
 
   private resolveBattleSpriteVisibleBounds(assetKey: string): BattleSpriteVisibleBounds {
@@ -1069,8 +1232,16 @@ export class BattleScene extends Phaser.Scene {
     return bounds;
   }
 
-  private drawHpPanel(rect: BattleRect, pokemon: BattlePokemon, alignRight: boolean): void {
+  private drawHpPanel(
+    rect: BattleRect,
+    pokemon: BattlePokemon,
+    side: BattleHpSide,
+    alignRight: boolean,
+  ): void {
     const graphics = this.drawRomWindow(rect, BATTLE_HP_PANEL_WINDOW_OPTIONS);
+    const displayedCurrentHp = Number.isFinite(this.displayedHp[side])
+      ? Math.min(pokemon.maxHp, Math.max(0, this.displayedHp[side]))
+      : pokemon.currentHp;
 
     const nameX = alignRight ? rect.x + 8 : rect.x + 6;
     this.add.text(
@@ -1089,7 +1260,38 @@ export class BattleScene extends Phaser.Scene {
     graphics.fillStyle(BATTLE_SCENE_WINDOW_STYLE.hpBack, 1).fillRect(barX, barY, barWidth, 4);
     graphics
       .fillStyle(BATTLE_SCENE_WINDOW_STYLE.hpGood, 1)
-      .fillRect(barX, barY, Math.round(barWidth * hpRatio(pokemon.currentHp, pokemon.maxHp)), 4);
+      .fillRect(barX, barY, Math.round(barWidth * hpRatio(displayedCurrentHp, pokemon.maxHp)), 4);
+  }
+
+  private drawBattleEntranceOverlay(): void {
+    if (!this.battleEntrancePlaying && this.battleEntranceProgress >= 1) {
+      return;
+    }
+
+    const progress = Phaser.Math.Clamp(this.battleEntranceProgress, 0, 1);
+    const coverAlpha = 1 - progress;
+    const graphics = this.add.graphics().setDepth(10_000);
+
+    graphics
+      .fillStyle(0x101820, Math.max(0, coverAlpha))
+      .fillRect(0, 0, BATTLE_BASE_SIZE.width, BATTLE_BASE_SIZE.height);
+
+    const stripeAlpha = Math.max(0, 0.42 - progress * 0.5);
+
+    if (stripeAlpha <= 0) {
+      return;
+    }
+
+    const stripeHeight = Math.ceil(BATTLE_BASE_SIZE.height / 6);
+
+    for (let index = 0; index < 6; index += 1) {
+      const width = Math.round(BATTLE_BASE_SIZE.width * (1 - progress));
+      const x = index % 2 === 0 ? 0 : BATTLE_BASE_SIZE.width - width;
+
+      graphics
+        .fillStyle(0xf8fbf0, stripeAlpha)
+        .fillRect(x, index * stripeHeight, width, Math.min(stripeHeight, BATTLE_BASE_SIZE.height));
+    }
   }
 
   private drawMessageWindow(message: string): void {

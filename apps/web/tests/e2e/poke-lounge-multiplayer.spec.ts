@@ -178,7 +178,6 @@ test.describe("Poke Lounge server multiplayer", () => {
     const guestPage = await newMockedPage(browser, server, { wrapped: true });
 
     await gotoWithRetry(hostPage, `/${LOCALE}/game/poke-lounge?e2e=1`);
-    await chooseStarterIfNeeded(hostPage);
     await expect(hostPage.locator("[data-room-entry-screen='true']")).toBeVisible({
       timeout: 30000,
     });
@@ -194,7 +193,6 @@ test.describe("Poke Lounge server multiplayer", () => {
       .toBe(ROOM_CODE);
 
     await gotoWithRetry(guestPage, `/${LOCALE}/game/poke-lounge?e2e=1`);
-    await chooseStarterIfNeeded(guestPage);
     await expect(guestPage.locator("[data-room-entry-screen='true']")).toBeVisible({
       timeout: 30000,
     });
@@ -203,6 +201,7 @@ test.describe("Poke Lounge server multiplayer", () => {
     await expect(guestPage).toHaveURL(new RegExp(`network=server&room=${ROOM_CODE}`), {
       timeout: 30000,
     });
+    await chooseStarterIfNeeded(guestPage);
     await expect
       .poll(() => getRoomSnapshot(guestPage).then(snapshot => snapshot?.roomId ?? null), {
         timeout: 30000,
@@ -344,12 +343,26 @@ async function startServerRoom(
 
 async function chooseStarterIfNeeded(page: Page): Promise<void> {
   const starterSelection = page.locator("[data-screen='starter-selection']");
-  const starterVisible = await starterSelection
-    .waitFor({ state: "visible", timeout: 5000 })
-    .then(() => true)
-    .catch(() => false);
+  const gameCanvas = page.locator("#game-root canvas");
 
-  if (starterVisible) {
+  await expect
+    .poll(
+      async () => {
+        if (await starterSelection.isVisible().catch(() => false)) {
+          return "starter";
+        }
+
+        if (await gameCanvas.isVisible().catch(() => false)) {
+          return "canvas";
+        }
+
+        return null;
+      },
+      { timeout: 30000 },
+    )
+    .not.toBeNull();
+
+  if (await starterSelection.isVisible().catch(() => false)) {
     await page.locator("[data-starter-confirm]").click();
   }
 }

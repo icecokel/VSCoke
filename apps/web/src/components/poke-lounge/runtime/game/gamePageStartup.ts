@@ -52,6 +52,8 @@ export async function startGamePage(
   let activeGame: PokeLoungeGameInstance | null = null;
   let activeMultiplayerRoom: ReturnType<typeof createMultiplayerRoom> | null = null;
   let destroyed = false;
+  let roomEntrySelectionPending = false;
+  let starterSelectionRequestId = 0;
 
   const handle: GamePageHandle = {
     destroy() {
@@ -137,21 +139,35 @@ export async function startGamePage(
     }
   };
   const showStarterSelection = async (afterSelection: () => void) => {
+    const requestId = (starterSelectionRequestId += 1);
     const bootstrap = await (dependencies.loadBootstrapData ?? loadBootstrapData)();
-    if (destroyed) {
+    if (destroyed || requestId !== starterSelectionRequestId) {
       return;
     }
 
+    let completed = false;
     renderSelection(mount, bootstrap, null, {
       completeAfterSelection: true,
       onStarterSelect: starter => {
-        if (destroyed) {
+        if (destroyed || completed || requestId !== starterSelectionRequestId) {
           return;
         }
 
+        completed = true;
+        starterSelectionRequestId += 1;
         gameStateStore.setStarterPokemon(createStarterPlayerPokemon(starter));
         afterSelection();
       },
+    });
+  };
+  const startGameAfterStarterSelection = (gameUrl: URL) => {
+    if (!gameStateStore.canChooseStarter()) {
+      void startGame(gameUrl);
+      return;
+    }
+
+    void showStarterSelection(() => {
+      void startGame(gameUrl);
     });
   };
   const showRoomEntry = () => {
@@ -159,29 +175,28 @@ export async function startGamePage(
       return;
     }
 
+    roomEntrySelectionPending = false;
     renderEntryScreen(mount, {
       currentUrl: new URL(currentUrl.href),
       onSelect: selection => {
-        if (destroyed) {
+        if (destroyed || roomEntrySelectionPending) {
           return;
         }
 
+        roomEntrySelectionPending = true;
+        setRoomEntryScreenPending(mount);
         applyRoomEntrySelection(currentUrl, selection);
         replaceBrowserUrl(currentUrl);
 
         if (selection.resetSession) {
           gameStateStore.reset();
-          void showStarterSelection(() => {
-            void startGame(currentUrl);
-          });
-          return;
         }
 
-        void startGame(currentUrl);
+        startGameAfterStarterSelection(currentUrl);
       },
     });
   };
-  const continueAfterStarter = () => {
+  const continueToSelectedRoomOrEntry = () => {
     const roomEntry = readRoomEntryFromLocation(currentUrl);
 
     if (
@@ -189,19 +204,14 @@ export async function startGamePage(
       roomEntry.mode === "server-room" ||
       roomEntry.mode === "webrtc"
     ) {
-      void startGame(currentUrl);
+      startGameAfterStarterSelection(currentUrl);
       return;
     }
 
     showRoomEntry();
   };
 
-  if (!gameStateStore.canChooseStarter()) {
-    continueAfterStarter();
-    return handle;
-  }
-
-  await showStarterSelection(continueAfterStarter);
+  continueToSelectedRoomOrEntry();
   return handle;
 }
 
@@ -251,6 +261,27 @@ function replaceBrowserUrl(url: URL): void {
   }
 
   window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function setRoomEntryScreenPending(mount: HTMLElement): void {
+  const screen = mount.querySelector<HTMLElement>("[data-room-entry-screen='true']");
+
+  if (!screen) {
+    return;
+  }
+
+  screen.dataset.roomEntryPending = "true";
+  screen
+    .querySelectorAll<HTMLButtonElement | HTMLInputElement>("button, input")
+    .forEach(control => {
+      control.disabled = true;
+    });
+
+  const message = screen.querySelector<HTMLElement>("[data-room-entry-message='true']");
+
+  if (message) {
+    message.textContent = "준비 중...";
+  }
 }
 
 function renderRoomLeaveButton(mount: HTMLElement, onLeave: () => void): HTMLButtonElement {

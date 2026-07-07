@@ -196,11 +196,19 @@
   pointer-events: auto;
   touch-action: none;
   user-select: none;
+  transform: translateY(0) scale(1);
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background 120ms ease;
   -webkit-user-select: none;
+  will-change: transform;
 }
 
-.page :global(.mobile-touch-controls__button:active) {
-  transform: translateY(3px);
+.page :global(.mobile-touch-controls__button:active),
+.page :global(.mobile-touch-controls__button.is-pressed),
+.page :global(.mobile-touch-controls__button[data-pressed="true"]) {
+  transform: translateY(4px) scale(0.94);
   box-shadow: 0 1px 0 rgba(23, 35, 28, 0.86);
   background: #fff9dd;
 }
@@ -325,6 +333,21 @@
 }
 
 @media (orientation: portrait) {
+  .page :global(#game-root.has-touch-game-device) {
+    width: min(100vw, calc((100dvh - 204px) * 4 / 3), 1024px);
+    margin-top: max(8px, env(safe-area-inset-top));
+    align-self: start;
+    justify-self: center;
+  }
+
+  .page:fullscreen :global(#game-root.has-touch-game-device),
+  .page:global(.is-game-fullscreen-fallback) :global(#game-root.has-touch-game-device) {
+    width: min(100vw, calc(100dvh * 4 / 3), 1024px);
+    max-height: 100dvh;
+    margin-top: 0;
+    align-self: center;
+  }
+
   .page :global(.has-touch-game-device .mobile-touch-controls) {
     top: calc(100% + 12px);
     bottom: auto;
@@ -440,6 +463,13 @@
   transform: translateY(2px);
   box-shadow: 0 2px 0 #17231c;
   background: #fff9dd;
+}
+
+.page :global(.room-entry-panel button:disabled),
+.page :global(.room-entry-panel input:disabled) {
+  cursor: default;
+  opacity: 0.58;
+  transform: none;
 }
 
 .page :global(.room-entry-panel input) {

@@ -86,20 +86,48 @@ export function renderMobileTouchControls(
     button.textContent = control.label;
     button.setAttribute("aria-label", control.ariaLabel);
     button.setAttribute("data-mobile-control", control.button);
+    const setPressed = (pressed: boolean) => {
+      button.classList.toggle("is-pressed", pressed);
+
+      if (pressed) {
+        button.setAttribute("data-pressed", "true");
+        return;
+      }
+
+      button.removeAttribute("data-pressed");
+    };
+    const releaseButton = (event?: PointerEvent) => {
+      if (event) {
+        event.preventDefault();
+        try {
+          button.releasePointerCapture?.(event.pointerId);
+        } catch {
+          // Synthetic pointer events in tests may not be capturable.
+        }
+      }
+
+      setPressed(false);
+      releaseVirtualGamepadButton(control.button);
+    };
+
     button.addEventListener("pointerdown", event => {
       event.preventDefault();
-      button.setPointerCapture?.((event as PointerEvent).pointerId);
+      try {
+        button.setPointerCapture?.(event.pointerId);
+      } catch {
+        // Synthetic pointer events in tests may not be capturable.
+      }
+      setPressed(true);
       pressVirtualGamepadButton(control.button);
     });
     button.addEventListener("pointerup", event => {
-      event.preventDefault();
-      releaseVirtualGamepadButton(control.button);
+      releaseButton(event);
     });
-    button.addEventListener("pointercancel", () => {
-      releaseVirtualGamepadButton(control.button);
+    button.addEventListener("pointercancel", event => {
+      releaseButton(event);
     });
     button.addEventListener("pointerleave", () => {
-      releaseVirtualGamepadButton(control.button);
+      releaseButton();
     });
 
     if (control.group === "dpad") {

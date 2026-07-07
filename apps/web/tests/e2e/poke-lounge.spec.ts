@@ -23,6 +23,7 @@ import {
   resolveBattleOptionSlotRects,
 } from "../../src/components/poke-lounge/runtime/game/battle/battleLayout";
 import { selectWildEncounterConfig } from "../../src/components/poke-lounge/runtime/game/world/wildEncounterTables";
+import { WILD_ENCOUNTER_RATE } from "../../src/components/poke-lounge/runtime/game/world/wildEncounters";
 import { escapeRegExp, gotoWithRetry, resolveLocaleAndMessages } from "./test-helpers";
 
 type PokeLoungeSceneKey = "world" | "battle";
@@ -433,6 +434,15 @@ test.describe("Poke Lounge", () => {
     });
   });
 
+  test("야생 조우 기본 확률은 15퍼센트로 유지한다", () => {
+    const tableData = readPublicJson("/game-data/wild-encounter-tables.json") as {
+      tables?: Array<{ encounterRate?: unknown }>;
+    };
+
+    expect(WILD_ENCOUNTER_RATE).toBe(0.15);
+    expect(tableData.tables?.map(table => table.encounterRate)).toEqual([0.15, 0.15, 0.15, 0.15]);
+  });
+
   test("게임 센터 카드와 world scene 직접 진입을 검증한다", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
     const { locale, messages } = await resolveLocaleAndMessages(page);
@@ -759,8 +769,33 @@ test.describe("Poke Lounge", () => {
 
     const settingsPanel = page.locator("[data-poke-lounge-settings='true']");
     await expect(settingsPanel).toBeVisible();
+
+    const settingOptionButtons = settingsPanel.locator("[data-poke-lounge-setting-option='true']");
+    await expect(settingOptionButtons).toHaveText(["전체화면", "소리 4/4", "UI 크게", "취소"]);
+
+    const volumeButton = settingsPanel.locator("[data-poke-lounge-setting-action='volume']");
+    await expect(volumeButton).toHaveAttribute("data-poke-lounge-volume-level", "4");
+    await volumeButton.click();
+    await expect(volumeButton).toHaveAttribute("data-poke-lounge-volume-level", "1");
+    await expect(volumeButton).toContainText("소리 1/4");
+
+    const uiSizeButton = settingsPanel.locator("[data-poke-lounge-setting-action='ui-size']");
+    await expect(uiSizeButton).toHaveAttribute("data-poke-lounge-ui-size", "large");
+    await uiSizeButton.click();
+    await expect(uiSizeButton).toHaveAttribute("data-poke-lounge-ui-size", "compact");
+    await expect(page.getByTestId("poke-lounge-page")).toHaveAttribute(
+      "data-poke-lounge-ui-size",
+      "compact",
+    );
+    await expectCanvasFramed(page, {
+      maxWidth: 1024,
+      minWidth: 1000,
+      viewportWidth: 1280,
+      viewportHeight: 900,
+    });
+
     const settingsFullscreenButton = settingsPanel.locator(
-      "[data-fullscreen-toggle-placement='settings']",
+      "[data-poke-lounge-setting-action='fullscreen']",
     );
     await expect(settingsFullscreenButton).toBeVisible();
     await settingsFullscreenButton.click();
@@ -770,6 +805,9 @@ test.describe("Poke Lounge", () => {
         page.evaluate(() => document.body.classList.contains("is-game-fullscreen-fallback-active")),
       )
       .toBe(true);
+
+    await settingsPanel.locator("[data-poke-lounge-settings-cancel='true']").click();
+    await expect(settingsPanel).toHaveCount(0);
 
     expect(browserErrors.join("\n")).toBe("");
   });
@@ -811,12 +849,23 @@ test.describe("Poke Lounge", () => {
     await expectCanvasFramed(page, { maxWidth: 390, viewportWidth: 390, viewportHeight: 844 });
     await expectMobileTouchLayout(page);
     await expectMobileFullscreenButtonLayout(page);
+    await expectMobileSettingsButtonLayout(page);
     await expectMobileTouchPressAnimation(page);
+
+    await page.locator("[data-poke-lounge-mobile-settings-toggle='true']").click();
+    const mobileSettingsPanel = page.locator("[data-poke-lounge-settings='true']");
+    await expect(mobileSettingsPanel).toBeVisible();
+    await expect(
+      mobileSettingsPanel.locator("[data-poke-lounge-setting-option='true']"),
+    ).toHaveText(["전체화면", "소리 4/4", "UI 크게", "취소"]);
+    await mobileSettingsPanel.locator("[data-poke-lounge-settings-cancel='true']").click();
+    await expect(mobileSettingsPanel).toHaveCount(0);
 
     await page.setViewportSize({ width: 360, height: 780 });
     await expectCanvasFramed(page, { maxWidth: 360, viewportWidth: 360, viewportHeight: 780 });
     await expectMobileTouchLayout(page);
     await expectMobileFullscreenButtonLayout(page);
+    await expectMobileSettingsButtonLayout(page);
 
     await page.setViewportSize({ width: 844, height: 390 });
     await expectCanvasFramed(page, { maxWidth: 844, viewportWidth: 844, viewportHeight: 390 });
@@ -824,6 +873,7 @@ test.describe("Poke Lounge", () => {
 
     await page.setViewportSize({ width: 390, height: 844 });
     await expectMobileFullscreenButtonLayout(page);
+    await expectMobileSettingsButtonLayout(page);
     await page.locator("[data-fullscreen-toggle-placement='mobile']").click();
     await expect(page.getByTestId("poke-lounge-page")).toHaveClass(/is-game-fullscreen-fallback/);
     await expect
@@ -1367,6 +1417,39 @@ async function expectMobileFullscreenButtonLayout(page: Page): Promise<void> {
             fullscreenButton.left >= 0 &&
             fullscreenButton.right <= window.innerWidth &&
             fullscreenButton.bottom <= window.innerHeight
+          );
+        }),
+      { timeout: 10000 },
+    )
+    .toBe(true);
+
+  await expectNoViewportOverflow(page);
+}
+
+async function expectMobileSettingsButtonLayout(page: Page): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const controls = document
+            .querySelector("[data-mobile-touch-controls]")
+            ?.getBoundingClientRect();
+          const fullscreenButton = document
+            .querySelector("[data-fullscreen-toggle-placement='mobile']")
+            ?.getBoundingClientRect();
+          const settingsButton = document
+            .querySelector("[data-poke-lounge-mobile-settings-toggle='true']")
+            ?.getBoundingClientRect();
+
+          if (!controls || !fullscreenButton || !settingsButton || settingsButton.width === 0) {
+            return false;
+          }
+
+          return (
+            settingsButton.top >= controls.bottom + 8 &&
+            settingsButton.left >= fullscreenButton.right + 6 &&
+            settingsButton.right <= window.innerWidth &&
+            settingsButton.bottom <= window.innerHeight
           );
         }),
       { timeout: 10000 },

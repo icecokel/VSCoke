@@ -1,6 +1,6 @@
 import type { CompletedTileStep } from "./tileSteps";
 
-export const WILD_ENCOUNTER_RATE = 0.05;
+export const WILD_ENCOUNTER_RATE = 0.15;
 export const MIN_POKEMON_LEVEL = 1;
 export const MAX_POKEMON_LEVEL = 100;
 export const WILD_ENCOUNTER_LEVEL_RADIUS = 5;

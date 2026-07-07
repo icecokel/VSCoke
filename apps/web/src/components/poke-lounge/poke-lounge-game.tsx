@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { useGame } from "@/contexts/game-context";
 import { getSessionApiIdToken, isAuthSessionError, type ApiTokenSession } from "@/lib/auth-token";
 import { submitScore } from "@/services/score-service";
+import { setPokeLoungeMasterVolume } from "./runtime/game/audio/poke-lounge-audio";
 import {
   GAME_FULLSCREEN_STATE_EVENT,
   isGameFullscreenActive,
   toggleGameFullscreen,
 } from "./runtime/game/input/fullscreenToggle";
+import { GAME_SETTINGS_OPEN_EVENT } from "./runtime/game/input/settings-toggle";
 import styles from "./poke-lounge.module.css";
 
 type PokeLoungeWindow = Window & {
@@ -23,6 +25,10 @@ interface FinalResultState {
   score: number;
   playTime: number;
 }
+
+const POKE_LOUNGE_VOLUME_STEPS = [0.25, 0.5, 0.75, 1] as const;
+
+type PokeLoungeUiSize = "compact" | "large";
 
 function isEditableEventTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -45,10 +51,14 @@ export function PokeLoungeGame() {
   const [finalResult, setFinalResult] = useState<FinalResultState | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fullscreenActive, setFullscreenActive] = useState(false);
+  const [volumeLevelIndex, setVolumeLevelIndex] = useState(POKE_LOUNGE_VOLUME_STEPS.length - 1);
+  const [uiSize, setUiSize] = useState<PokeLoungeUiSize>("large");
   const [submitStatus, setSubmitStatus] = useState<
     "idle" | "submitting" | "success" | "auth" | "error"
   >("idle");
   const [submitMessage, setSubmitMessage] = useState<string>("");
+  const volumeLevel = volumeLevelIndex + 1;
+  const uiSizeLabel = uiSize === "large" ? "UI 크게" : "UI 보통";
 
   const syncFullscreenState = useCallback(() => {
     const page = pageRef.current;
@@ -63,6 +73,24 @@ export function PokeLoungeGame() {
 
     void toggleGameFullscreen(page).finally(syncFullscreenState);
   }, [syncFullscreenState]);
+
+  const handleVolumeCycle = useCallback(() => {
+    setVolumeLevelIndex(currentIndex => (currentIndex + 1) % POKE_LOUNGE_VOLUME_STEPS.length);
+  }, []);
+
+  const handleUiSizeToggle = useCallback(() => {
+    setUiSize(currentSize => (currentSize === "large" ? "compact" : "large"));
+  }, []);
+
+  useEffect(() => {
+    setPokeLoungeMasterVolume(POKE_LOUNGE_VOLUME_STEPS[volumeLevelIndex]);
+  }, [volumeLevelIndex]);
+
+  useEffect(() => {
+    return () => {
+      setPokeLoungeMasterVolume(1);
+    };
+  }, []);
 
   useEffect(() => {
     const handleFullscreenStateChange = () => syncFullscreenState();
@@ -92,6 +120,16 @@ export function PokeLoungeGame() {
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleSettingsOpen = () => setSettingsOpen(true);
+
+    document.addEventListener(GAME_SETTINGS_OPEN_EVENT, handleSettingsOpen);
+
+    return () => {
+      document.removeEventListener(GAME_SETTINGS_OPEN_EVENT, handleSettingsOpen);
     };
   }, []);
 
@@ -197,8 +235,9 @@ export function PokeLoungeGame() {
   return (
     <main
       ref={pageRef}
-      className={`${styles.page} phaser-game-page`}
+      className={`${styles.page} ${uiSize === "compact" ? styles.uiSizeCompact : ""} phaser-game-page`}
       data-testid="poke-lounge-page"
+      data-poke-lounge-ui-size={uiSize}
     >
       <div id="game-root" data-testid="poke-lounge-game-root" />
       {settingsOpen ? (
@@ -209,29 +248,58 @@ export function PokeLoungeGame() {
         >
           <div className={styles.settingsHeader}>
             <p className={styles.settingsTitle}>설정</p>
+          </div>
+          <div className={styles.settingsOptions}>
             <Button
               type="button"
               variant="outline"
-              size="sm"
-              className={styles.settingsCloseButton}
-              onClick={() => setSettingsOpen(false)}
-              data-poke-lounge-settings-close="true"
+              className={styles.settingsOptionButton}
+              onClick={handleFullscreenToggle}
+              aria-label={fullscreenActive ? "전체화면 끄기" : "전체화면 켜기"}
+              aria-pressed={fullscreenActive}
+              data-fullscreen-toggle="true"
+              data-fullscreen-toggle-placement="settings"
+              data-poke-lounge-setting-option="true"
+              data-poke-lounge-setting-action="fullscreen"
             >
-              닫기
+              전체화면
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className={styles.settingsOptionButton}
+              onClick={handleVolumeCycle}
+              aria-label="소리 볼륨 4단계"
+              data-poke-lounge-setting-option="true"
+              data-poke-lounge-setting-action="volume"
+              data-poke-lounge-volume-level={volumeLevel}
+            >
+              소리 {volumeLevel}/4
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className={styles.settingsOptionButton}
+              onClick={handleUiSizeToggle}
+              aria-label="UI 사이즈 2단계"
+              aria-pressed={uiSize === "large"}
+              data-poke-lounge-setting-option="true"
+              data-poke-lounge-setting-action="ui-size"
+              data-poke-lounge-ui-size={uiSize}
+            >
+              {uiSizeLabel}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className={styles.settingsOptionButton}
+              onClick={() => setSettingsOpen(false)}
+              data-poke-lounge-setting-option="true"
+              data-poke-lounge-settings-cancel="true"
+            >
+              취소
             </Button>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            className={styles.settingsFullscreenButton}
-            onClick={handleFullscreenToggle}
-            aria-label={fullscreenActive ? "전체화면 끄기" : "전체화면 켜기"}
-            aria-pressed={fullscreenActive}
-            data-fullscreen-toggle="true"
-            data-fullscreen-toggle-placement="settings"
-          >
-            {fullscreenActive ? "전체화면 끄기" : "전체화면 켜기"}
-          </Button>
         </section>
       ) : null}
       {finalResult ? (

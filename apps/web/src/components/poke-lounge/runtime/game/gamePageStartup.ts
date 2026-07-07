@@ -6,6 +6,7 @@ import { createPokeLoungeGame, type PokeLoungeGameResult } from "./createPokeLou
 import { loadRuntimeGameDataJson } from "./data/game-data-json";
 import { readInitialBattleE2eScenario, readInitialGameScene } from "./gameStartup";
 import { renderFullscreenToggle } from "./input/fullscreenToggle";
+import { renderMobileSettingsToggle } from "./input/settings-toggle";
 import { renderMobileTouchControls } from "./input/mobileTouchControls";
 import { createMultiplayerRoom } from "./network/multiplayerRoomFactory";
 import { readRoomEntryFromLocation } from "./network/roomEntry";
@@ -109,6 +110,7 @@ export async function startGamePage(
         className: "fullscreen-toggle-button--mobile",
         placement: "mobile",
       });
+      renderMobileSettingsToggle(mount);
     }
     const returnToRoomEntry = () => {
       multiplayerRoom.dispose();

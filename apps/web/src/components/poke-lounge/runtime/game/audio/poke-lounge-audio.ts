@@ -15,11 +15,13 @@ type PokeLoungeAudioManifestItem = PokeLoungeSfxManifestItem | PokeLoungeBgmMani
 let manifestPromise: Promise<PokeLoungeAudioManifest> | null = null;
 let audioContext: AudioContext | null = null;
 let muted = false;
+let masterVolume = 1;
 const bufferPromises = new Map<PokeLoungeSfxId, Promise<AudioBuffer | null>>();
 const htmlAudioElements = new Map<PokeLoungeAudioItemId, HTMLAudioElement>();
 let activeBgm: {
   id: PokeLoungeBgmId;
   audio: HTMLAudioElement;
+  baseVolume: number;
 } | null = null;
 
 export function bindPokeLoungeAudioPrimeListeners(target: HTMLElement): () => void {
@@ -107,6 +109,14 @@ export function setPokeLoungeAudioMuted(nextMuted: boolean): void {
   }
 }
 
+export function setPokeLoungeMasterVolume(nextVolume: number): void {
+  masterVolume = clampVolume(nextVolume);
+
+  if (activeBgm) {
+    activeBgm.audio.volume = resolveVolume(activeBgm.baseVolume, 1);
+  }
+}
+
 export function getPokeLoungeAudioMuted(): boolean {
   return muted;
 }
@@ -150,14 +160,15 @@ async function playPokeLoungeBgmAsync(
   }
 
   const audio = activeBgm?.id === id ? activeBgm.audio : getHtmlAudioElement(item);
+  const baseVolume = options.volume ?? item.defaultVolume;
   audio.loop = true;
-  audio.volume = clampVolume(options.volume ?? item.defaultVolume);
+  audio.volume = resolveVolume(baseVolume, 1);
 
   if (activeBgm?.id !== id) {
     audio.currentTime = 0;
   }
 
-  activeBgm = { id, audio };
+  activeBgm = { id, audio, baseVolume };
   await audio.play();
 }
 
@@ -210,7 +221,7 @@ async function playWithWebAudio(
 
   const source = context.createBufferSource();
   const gain = context.createGain();
-  gain.gain.value = clampVolume(requestedVolume ?? item.defaultVolume);
+  gain.gain.value = resolveVolume(requestedVolume, item.defaultVolume);
   source.buffer = buffer;
   source.connect(gain);
   gain.connect(context.destination);
@@ -261,7 +272,7 @@ async function playWithHtmlAudio(
   requestedVolume?: number,
 ): Promise<void> {
   const audio = getHtmlAudioElement(item).cloneNode(true) as HTMLAudioElement;
-  audio.volume = clampVolume(requestedVolume ?? item.defaultVolume);
+  audio.volume = resolveVolume(requestedVolume, item.defaultVolume);
   audio.currentTime = 0;
   await audio.play();
 }
@@ -274,7 +285,7 @@ function getHtmlAudioElement(item: PokeLoungeAudioManifestItem): HTMLAudioElemen
 
   const audio = new Audio(item.src);
   audio.preload = "auto";
-  audio.volume = item.defaultVolume;
+  audio.volume = resolveVolume(undefined, item.defaultVolume);
   htmlAudioElements.set(item.id, audio);
 
   return audio;
@@ -308,4 +319,8 @@ function clampVolume(value: number): number {
   }
 
   return Math.min(1, Math.max(0, value));
+}
+
+function resolveVolume(requestedVolume: number | undefined, defaultVolume: number): number {
+  return clampVolume((requestedVolume ?? defaultVolume) * masterVolume);
 }

@@ -5,7 +5,7 @@
     {
       "id": "starter-field",
       "mapKeys": ["town"],
-      "encounterRate": 0.05,
+      "encounterRate": 0.15,
       "slots": [
         { "speciesId": 1, "name": "이상해씨", "minLevel": 5, "maxLevel": 7, "weight": 1 },
         { "speciesId": 2, "name": "이상해풀", "minLevel": 5, "maxLevel": 7, "weight": 1 },
@@ -25,7 +25,7 @@
       "id": "town-west-field",
       "mapKeys": ["town"],
       "areaIds": ["town-west-field"],
-      "encounterRate": 0.05,
+      "encounterRate": 0.15,
       "slots": [
         { "speciesId": 10, "name": "캐터피", "minLevel": 4, "maxLevel": 8, "weight": 5 },
         { "speciesId": 16, "name": "구구", "minLevel": 5, "maxLevel": 9, "weight": 3 },
@@ -37,7 +37,7 @@
       "id": "town-plaza-field",
       "mapKeys": ["town"],
       "areaIds": ["town-plaza-field"],
-      "encounterRate": 0.05,
+      "encounterRate": 0.15,
       "slots": [
         { "speciesId": 16, "name": "구구", "minLevel": 5, "maxLevel": 10, "weight": 4 },
         { "speciesId": 19, "name": "꼬렛", "minLevel": 5, "maxLevel": 10, "weight": 4 },
@@ -49,7 +49,7 @@
       "id": "town-south-field",
       "mapKeys": ["town"],
       "areaIds": ["town-south-field"],
-      "encounterRate": 0.05,
+      "encounterRate": 0.15,
       "slots": [
         { "speciesId": 19, "name": "꼬렛", "minLevel": 6, "maxLevel": 11, "weight": 4 },
         { "speciesId": 10, "name": "캐터피", "minLevel": 5, "maxLevel": 9, "weight": 2 },

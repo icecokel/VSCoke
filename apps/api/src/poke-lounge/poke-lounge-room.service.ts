@@ -41,7 +41,7 @@ export class PokeLoungeRoomService {
 
   constructor(
     @Optional() private roomCodeFactory: () => string = createRoomCode,
-    @Optional() private readonly nowFactory: () => number = () => Date.now(),
+    @Optional() private nowFactory: () => number = () => Date.now(),
   ) {}
 
   createRoom(input: CreatePokeLoungeRoomInput): PokeLoungeRoomState {
@@ -266,9 +266,13 @@ export class PokeLoungeRoomService {
     return cloneRoom(room);
   }
 
-  resetForTest(roomCodeFactory: () => string = createRoomCode): void {
+  resetForTest(
+    roomCodeFactory: () => string = createRoomCode,
+    nowFactory: () => number = () => Date.now(),
+  ): void {
     this.rooms.clear();
     this.roomCodeFactory = roomCodeFactory;
+    this.nowFactory = nowFactory;
   }
 
   private createUniqueRoomCode(): string {
@@ -282,11 +286,8 @@ export class PokeLoungeRoomService {
     throw new BadRequestException('Unable to create a unique room code');
   }
 
-  private findRoom(roomCode: string, nowMs?: number): PokeLoungeRoomState {
-    if (nowMs !== undefined) {
-      this.pruneRooms(nowMs);
-    }
-
+  private findRoom(roomCode: string, nowMs: number): PokeLoungeRoomState {
+    this.pruneRooms(nowMs);
     const normalizedRoomCode = normalizeRoomCode(roomCode);
     const room = this.rooms.get(normalizedRoomCode);
 

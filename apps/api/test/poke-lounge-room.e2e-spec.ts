@@ -59,7 +59,10 @@ describe('Poke Lounge server rooms (e2e)', () => {
     await app.init();
     httpServer = app.getHttpServer() as Server;
     service = app.get(PokeLoungeRoomService);
-    service.resetForTest(() => 'ROOM01');
+    service.resetForTest(
+      () => 'ROOM01',
+      () => 0,
+    );
   });
 
   afterEach(async () => {

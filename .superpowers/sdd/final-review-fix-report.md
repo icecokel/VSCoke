@@ -61,4 +61,5 @@ Branch: `feature/poke-lounge`
 ### Verification
 
 - PASS: `pnpm --filter @vscoke/api test -- poke-lounge-room.service` - 1 suite, 24 tests.
-- FAIL: `pnpm --filter @vscoke/api test:e2e -- poke-lounge-room` - 1 suite, 11 tests. Existing e2e fixtures mix synthetic `nowMs` values like `0` with later requests that omit `nowMs`, so rooms now expire under real-time pruning instead of being implicitly kept alive.
+- PASS: `pnpm --filter @vscoke/api test:e2e -- poke-lounge-room --runInBand` - 1 suite, 11 tests.
+- Fixed e2e clock control by letting `resetForTest` inject a deterministic `nowFactory`, while production room lookups now always prune with the normalized current time.

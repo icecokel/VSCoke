@@ -17,6 +17,7 @@ Branch: `feature/poke-lounge`
 - Added server-room result ID reverse mapping so local player IDs are submitted as server participant IDs.
 - Added class-validator decorators to Poke Lounge request DTOs and applied the production `ValidationPipe` to API e2e coverage.
 - Added a production cleanup handle so React unmount destroys the Phaser game and disposes server rooms without relying on dev/E2E globals.
+- Added in-memory server room cleanup via stale-room pruning, a process room cap, and waiting-room party snapshot deletion on leave.
 - Moved tracked runtime assets from `apps/web/public/assets/rom-*` to curated `apps/web/public/assets/poke-lounge/...` paths.
 - Updated runtime references, public manifests, and source metadata so old public `rom-*` URLs are not referenced.
 - Added final forbidden asset checks for `apps/web/public/assets/rom-*`.
@@ -35,6 +36,8 @@ Branch: `feature/poke-lounge`
 - PASS: cleanup fix rerun `pnpm type:check:web`
 - PASS: cleanup fix rerun `pnpm lint`
 - PASS: cleanup fix rerun `pnpm --filter @vscoke/web e2e -- tests/e2e/poke-lounge-multiplayer.spec.ts --project=chromium` - 7 tests.
+- PASS: room cleanup fix rerun `pnpm --filter @vscoke/api test -- poke-lounge-room.service` - 1 suite, 22 tests.
+- PASS: room cleanup fix rerun `pnpm --filter @vscoke/api test:e2e -- poke-lounge-room` - 1 suite, 11 tests.
 - PASS: final critical review rerun `pnpm type:check:web`
 - PASS: final critical review rerun `pnpm --filter @vscoke/web e2e -- tests/e2e/poke-lounge-multiplayer.spec.ts --project=chromium` - 6 tests.
 - PASS: `pnpm type:check:web`
@@ -46,5 +49,5 @@ Branch: `feature/poke-lounge`
 
 ## Remaining Risk
 
-- Server room state remains in memory only; this fix protects current REST write credentials but does not add durable room persistence.
+- Server room state remains in memory only; cleanup now bounds stale state, but this does not add durable room persistence.
 - Remote players now use public `playerId` as the multiplayer snapshot key because server-owned `sessionId` is no longer public.

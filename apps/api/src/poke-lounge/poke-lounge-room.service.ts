@@ -139,9 +139,12 @@ export class PokeLoungeRoomService {
     ready: boolean,
     nowMs?: number,
   ): PokeLoungeRoomState {
-    const room = this.findRoom(roomCode);
-    const participant = this.findParticipant(room, playerId);
     const currentMs = normalizeNow(nowMs);
+    const room = this.findRoom(
+      roomCode,
+      nowMs === undefined ? undefined : currentMs,
+    );
+    const participant = this.findParticipant(room, playerId);
 
     assertParticipantSession(
       participant,
@@ -170,9 +173,12 @@ export class PokeLoungeRoomService {
     roomCode: string,
     input: UpdatePokeLoungePartySnapshotInput,
   ): PokeLoungeRoomState {
-    const room = this.findRoom(roomCode);
-    const participant = this.findParticipant(room, input.playerId);
     const currentMs = normalizeNow(input.nowMs);
+    const room = this.findRoom(
+      roomCode,
+      input.nowMs === undefined ? undefined : currentMs,
+    );
+    const participant = this.findParticipant(room, input.playerId);
 
     assertParticipantSession(
       participant,
@@ -209,8 +215,12 @@ export class PokeLoungeRoomService {
     roomCode: string,
     input: SubmitPokeLoungeMatchResultInput,
   ): PokeLoungeRoomState {
-    const room = this.findRoom(roomCode);
-    this.advanceRoomClock(room, normalizeNow(input.nowMs));
+    const currentMs = normalizeNow(input.nowMs);
+    const room = this.findRoom(
+      roomCode,
+      input.nowMs === undefined ? undefined : currentMs,
+    );
+    this.advanceRoomClock(room, currentMs);
 
     if (room.status !== 'tournament') {
       throw new BadRequestException('Room is not accepting tournament results');
@@ -236,9 +246,12 @@ export class PokeLoungeRoomService {
     sessionId: string | undefined,
     nowMs?: number,
   ): PokeLoungeRoomState {
-    const room = this.findRoom(roomCode);
-    const participant = this.findParticipant(room, playerId);
     const currentMs = normalizeNow(nowMs);
+    const room = this.findRoom(
+      roomCode,
+      nowMs === undefined ? undefined : currentMs,
+    );
+    const participant = this.findParticipant(room, playerId);
 
     assertParticipantSession(
       participant,

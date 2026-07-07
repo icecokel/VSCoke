@@ -240,6 +240,24 @@ describe('PokeLoungeRoomService', () => {
     ).toThrow(NotFoundException);
   });
 
+  it('evicts a stale waiting room before a ready update', () => {
+    service.createRoom({
+      playerId: 'player-a',
+      sessionId: 'session-a',
+      nowMs: 0,
+    });
+
+    expect(() =>
+      service.setReady(
+        'ROOM01',
+        'player-a',
+        'session-a',
+        true,
+        WAITING_ROOM_TTL_MS + 1,
+      ),
+    ).toThrow(NotFoundException);
+  });
+
   it('evicts a stale completed room when it is read', () => {
     service.createRoom({
       playerId: 'player-a',

@@ -20,10 +20,24 @@ interface ServerMatch {
   resultReason?: "faint" | "timeout" | "forfeit" | "run" | "capture";
 }
 
+interface ServerPartySnapshot {
+  playerId: string;
+  displayName?: string;
+  representativePokemon?: {
+    speciesId: number;
+    name: string;
+    level: number;
+    currentHp: number;
+    maxHp: number;
+  };
+  updatedAtMs: number;
+}
+
 interface ServerRoomState {
   roomCode: string;
   status: "waiting" | "round-started" | "tournament" | "completed" | "closed";
   participants: ServerParticipant[];
+  partySnapshots: Record<string, ServerPartySnapshot>;
   round: {
     index: number;
   };
@@ -186,6 +200,22 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     applyServerState(nextState);
   };
 
+  const submitPartySnapshot = async (snapshot: PlayerSnapshot) => {
+    const nextState = await request<ServerRoomState>(
+      `/poke-lounge/rooms/${activeRoomId}/party-snapshot`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          playerId: serverPlayerId,
+          displayName: snapshot.displayName,
+          representativePokemon: toRepresentativePokemonSnapshot(snapshot),
+        }),
+      },
+    );
+
+    applyServerState(nextState);
+  };
+
   const e2eResultHandler = (event: Event) => {
     if (!isE2eEnabled()) {
       return;
@@ -219,14 +249,17 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       void openServerRoom(snapshot)
         .then(state => {
           applyServerState(state);
-          return request<ServerRoomState>(`/poke-lounge/rooms/${activeRoomId}/ready`, {
+          return submitPartySnapshot(snapshot);
+        })
+        .then(() =>
+          request<ServerRoomState>(`/poke-lounge/rooms/${activeRoomId}/ready`, {
             method: "POST",
             body: JSON.stringify({
               playerId: serverPlayerId,
               ready: true,
             }),
-          });
-        })
+          }),
+        )
         .then(applyServerState)
         .then(poll)
         .catch(() => {
@@ -247,6 +280,11 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       handlers.clear();
     },
     send(type, payload) {
+      if (type === "PLAYER_CHANGED_MAP") {
+        void submitPartySnapshot(payload as PlayerSnapshot).catch(() => {});
+        return;
+      }
+
       if (type === "TOURNAMENT_MATCH_RESULT") {
         void submitMatchResult(payload as RoomEvent["TOURNAMENT_MATCH_RESULT"]).catch(() => {});
       }
@@ -329,6 +367,37 @@ function createDefaultSnapshot(sessionId: string, playerId: string): PlayerSnaps
     x: 656,
     y: 1150,
     facing: "front",
+  };
+}
+
+function toRepresentativePokemonSnapshot(
+  snapshot: PlayerSnapshot,
+): ServerPartySnapshot["representativePokemon"] {
+  const partyPokemon =
+    snapshot.party?.find(slot => slot.slotIndex === snapshot.activePartySlotIndex)?.pokemon ??
+    snapshot.party?.find(slot => slot.pokemon)?.pokemon;
+
+  if (
+    !partyPokemon ||
+    !Number.isInteger(partyPokemon.speciesId) ||
+    !Number.isInteger(partyPokemon.level) ||
+    partyPokemon.currentHp === undefined ||
+    partyPokemon.maxHp === undefined ||
+    !Number.isInteger(partyPokemon.currentHp) ||
+    !Number.isInteger(partyPokemon.maxHp)
+  ) {
+    return undefined;
+  }
+
+  const currentHp = partyPokemon.currentHp;
+  const maxHp = partyPokemon.maxHp;
+
+  return {
+    speciesId: partyPokemon.speciesId,
+    name: partyPokemon.name,
+    level: partyPokemon.level,
+    currentHp,
+    maxHp,
   };
 }
 

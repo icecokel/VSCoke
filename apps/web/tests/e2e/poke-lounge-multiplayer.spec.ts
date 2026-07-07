@@ -96,6 +96,69 @@ test.describe("Poke Lounge server multiplayer", () => {
     await hostPage.context().close();
     await guestPage.context().close();
   });
+
+  test("server room은 connect 시점과 로컬 파티 변경 시점에 party snapshot을 전송한다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, { wrapped: true });
+    await startServerRoom(page);
+
+    await page.evaluate(() => {
+      const game = (window as Window & { __POKE_LOUNGE_GAME__?: unknown }).__POKE_LOUNGE_GAME__ as {
+        scene?: {
+          getScene?: (key: string) => {
+            createLocalPlayerSnapshot?: () => unknown;
+            sendRoomMessage?: (type: "PLAYER_CHANGED_MAP", payload: unknown) => void;
+            closeShortcutGuideForTest?: () => void;
+            player?: { body?: { velocity?: { x: number; y: number } } };
+            roomConnected?: boolean;
+            gameStateStore?: {
+              getState: () => {
+                currentPlayerId: string;
+                playersById: Record<
+                  string,
+                  {
+                    activePartySlotIndex: number;
+                    party: Array<{
+                      pokemon: {
+                        speciesId: number;
+                        name: string;
+                        level: number;
+                      } | null;
+                    }>;
+                  }
+                >;
+              };
+            };
+          };
+        };
+      };
+      const worldScene = game.scene?.getScene?.("world");
+
+      if (!worldScene?.createLocalPlayerSnapshot || !worldScene.sendRoomMessage) {
+        return;
+      }
+
+      worldScene.closeShortcutGuideForTest?.();
+      worldScene.sendRoomMessage("PLAYER_CHANGED_MAP", worldScene.createLocalPlayerSnapshot());
+    });
+
+    await expect
+      .poll(() =>
+        Promise.resolve(
+          server.calls.filter(
+            call => call === `POST /poke-lounge/rooms/${ROOM_CODE}/party-snapshot`,
+          ).length,
+        ),
+      )
+      .toBeGreaterThanOrEqual(2);
+
+    expect(server.partySnapshotBodies.at(-1)).toMatchObject({
+      playerId: expect.any(String),
+    });
+  });
 });
 
 async function startServerRoom(
@@ -156,6 +219,12 @@ async function mockServerRoom(
       await recordJoinedIdentity(request, server);
     }
 
+    if (method === "POST" && suffix === "/party-snapshot") {
+      server.partySnapshotBodies.push(
+        (await request.postDataJSON()) as MockServerState["partySnapshotBodies"][number],
+      );
+    }
+
     if (method === "POST" && suffix === "/result") {
       await route.fulfill({
         status: options.rejectResult ? 400 : 201,
@@ -198,6 +267,17 @@ async function newMockedPage(
 
 interface MockServerState {
   calls: string[];
+  partySnapshotBodies: Array<{
+    playerId?: string;
+    displayName?: string;
+    representativePokemon?: {
+      speciesId: number;
+      name: string;
+      level: number;
+      currentHp: number;
+      maxHp: number;
+    };
+  }>;
   joinedPlayerIds: Set<string>;
   joinedSessionIds: Set<string>;
   joinedParticipants: Array<{
@@ -210,6 +290,7 @@ interface MockServerState {
 function createMockServerState(): MockServerState {
   return {
     calls: [],
+    partySnapshotBodies: [],
     joinedPlayerIds: new Set(),
     joinedSessionIds: new Set(),
     joinedParticipants: [],
@@ -259,6 +340,7 @@ function createWaitingRoomState(server: MockServerState) {
       cumulativeScores: {},
     },
     finalStandings: [],
+    partySnapshots: createPartySnapshots(server),
   };
 }
 
@@ -281,6 +363,7 @@ function createTournamentRoomState(server: MockServerState) {
       cumulativeScores: {},
     },
     finalStandings: [],
+    partySnapshots: createPartySnapshots(server),
   };
 }
 
@@ -308,6 +391,7 @@ function createCompletedRoomState(server?: MockServerState) {
         connected: true,
       },
     ],
+    partySnapshots: createPartySnapshots(server),
     round: {
       index: 1,
       phase: "tournament",
@@ -346,6 +430,27 @@ function createCompletedRoomState(server?: MockServerState) {
       },
     ],
   };
+}
+
+function createPartySnapshots(server?: MockServerState) {
+  return Object.fromEntries(
+    (server?.partySnapshotBodies ?? [])
+      .filter(
+        (snapshot): snapshot is NonNullable<typeof snapshot> & { playerId: string } =>
+          typeof snapshot.playerId === "string" && snapshot.playerId.length > 0,
+      )
+      .map(snapshot => [
+        snapshot.playerId,
+        {
+          playerId: snapshot.playerId,
+          ...(snapshot.displayName ? { displayName: snapshot.displayName } : {}),
+          ...(snapshot.representativePokemon
+            ? { representativePokemon: snapshot.representativePokemon }
+            : {}),
+          updatedAtMs: 0,
+        },
+      ]),
+  );
 }
 
 function getStateParticipants(server?: MockServerState) {

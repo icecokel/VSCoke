@@ -6,6 +6,7 @@ import { JoinPokeLoungeRoomDto } from './dto/join-poke-lounge-room.dto';
 import { PokeLoungeRoomResponseDto } from './dto/poke-lounge-room-response.dto';
 import { SetPokeLoungeReadyDto } from './dto/set-poke-lounge-ready.dto';
 import { SubmitPokeLoungeMatchResultDto } from './dto/submit-poke-lounge-match-result.dto';
+import { UpdatePokeLoungePartySnapshotDto } from './dto/update-poke-lounge-party-snapshot.dto';
 
 @ApiTags('poke-lounge')
 @Controller('poke-lounge')
@@ -44,6 +45,20 @@ export class PokeLoungeController {
       body?.playerId ?? '',
       Boolean(body?.ready),
       body?.nowMs,
+    );
+  }
+
+  @Post('rooms/:roomCode/party-snapshot')
+  @ApiCreatedResponse({ type: PokeLoungeRoomResponseDto })
+  updatePartySnapshot(
+    @Param('roomCode') roomCode: string,
+    @Body() body?: UpdatePokeLoungePartySnapshotDto,
+  ) {
+    return this.roomService.updatePartySnapshot(
+      roomCode,
+      body ?? {
+        playerId: '',
+      },
     );
   }
 

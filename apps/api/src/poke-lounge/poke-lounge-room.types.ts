@@ -47,12 +47,26 @@ export interface PokeLoungeFinalStanding {
   score: number;
 }
 
+export interface PokeLoungePartySnapshot {
+  playerId: string;
+  displayName?: string;
+  representativePokemon?: {
+    speciesId: number;
+    name: string;
+    level: number;
+    currentHp: number;
+    maxHp: number;
+  };
+  updatedAtMs: number;
+}
+
 export interface PokeLoungeRoomState {
   roomCode: string;
   status: PokeLoungeRoomStatus;
   createdAtMs: number;
   updatedAtMs: number;
   participants: PokeLoungeRoomParticipant[];
+  partySnapshots: Record<string, PokeLoungePartySnapshot>;
   round: {
     index: number;
     phase: PokeLoungeRoundPhase;
@@ -90,5 +104,12 @@ export interface SubmitPokeLoungeMatchResultInput {
   winnerPlayerId: string;
   loserPlayerId: string;
   reason: PokeLoungeMatchResultReason;
+  nowMs?: number;
+}
+
+export interface UpdatePokeLoungePartySnapshotInput {
+  playerId: string;
+  displayName?: string;
+  representativePokemon?: PokeLoungePartySnapshot['representativePokemon'];
   nowMs?: number;
 }

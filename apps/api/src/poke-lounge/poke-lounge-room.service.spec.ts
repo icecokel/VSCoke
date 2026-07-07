@@ -121,6 +121,130 @@ describe('PokeLoungeRoomService', () => {
     ]);
   });
 
+  it('stores a participant party snapshot and exposes it from room state', () => {
+    service.createRoom({
+      playerId: 'player-a',
+      sessionId: 'session-a',
+      displayName: 'Player A',
+      nowMs: 0,
+    });
+
+    const room = service.updatePartySnapshot('ROOM01', {
+      playerId: 'player-a',
+      displayName: 'Alpha',
+      representativePokemon: {
+        speciesId: 25,
+        name: 'Pikachu',
+        level: 12,
+        currentHp: 18,
+        maxHp: 30,
+      },
+      nowMs: 50,
+    });
+
+    expect(room.partySnapshots['player-a']).toEqual({
+      playerId: 'player-a',
+      displayName: 'Alpha',
+      representativePokemon: {
+        speciesId: 25,
+        name: 'Pikachu',
+        level: 12,
+        currentHp: 18,
+        maxHp: 30,
+      },
+      updatedAtMs: 50,
+    });
+  });
+
+  it('rejects spectator and missing participants when updating party snapshots', () => {
+    service.createRoom({
+      playerId: 'player-1',
+      sessionId: 'session-1',
+      nowMs: 0,
+    });
+
+    for (let index = 2; index <= 7; index += 1) {
+      service.joinRoom('ROOM01', {
+        playerId: `player-${index}`,
+        sessionId: `session-${index}`,
+        nowMs: index,
+      });
+    }
+
+    expect(() =>
+      service.updatePartySnapshot('ROOM01', {
+        playerId: 'player-7',
+        representativePokemon: {
+          speciesId: 1,
+          name: 'Bulbasaur',
+          level: 5,
+          currentHp: 20,
+          maxHp: 20,
+        },
+      }),
+    ).toThrow(BadRequestException);
+
+    expect(() =>
+      service.updatePartySnapshot('ROOM01', {
+        playerId: 'missing-player',
+        representativePokemon: {
+          speciesId: 4,
+          name: 'Charmander',
+          level: 5,
+          currentHp: 20,
+          maxHp: 20,
+        },
+      }),
+    ).toThrow(BadRequestException);
+  });
+
+  it('rejects malformed representative pokemon values', () => {
+    service.createRoom({
+      playerId: 'player-a',
+      sessionId: 'session-a',
+      nowMs: 0,
+    });
+
+    expect(() =>
+      service.updatePartySnapshot('ROOM01', {
+        playerId: 'player-a',
+        representativePokemon: {
+          speciesId: 0,
+          name: 'Pikachu',
+          level: 5,
+          currentHp: 20,
+          maxHp: 20,
+        },
+      }),
+    ).toThrow(BadRequestException);
+
+    expect(() =>
+      service.updatePartySnapshot('ROOM01', {
+        playerId: 'player-a',
+        representativePokemon: {
+          speciesId: 25,
+          name: 'Pikachu',
+          level: 0,
+          currentHp: 20,
+          maxHp: 20,
+        },
+      }),
+    ).toThrow(BadRequestException);
+
+    expect(() =>
+      service.updatePartySnapshot('ROOM01', {
+        playerId: 'player-a',
+        representativePokemon: {
+          speciesId: 25,
+          name: 'Pikachu',
+          level: 5,
+          currentHp: 21,
+          maxHp: 20,
+        },
+      }),
+    ).toThrow(BadRequestException);
+  });
+
   it('releases a waiting participant slot when that participant leaves', () => {
     service.createRoom({
       playerId: 'player-a',

@@ -207,6 +207,118 @@ describe('Poke Lounge server rooms (e2e)', () => {
       });
   });
 
+  it('accepts participant party snapshots, exposes them in room state, and rejects spectators', async () => {
+    await request(httpServer)
+      .post('/poke-lounge/rooms')
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-a',
+        displayName: 'Player A',
+        nowMs: 0,
+      })
+      .expect(201);
+
+    for (let index = 2; index <= 7; index += 1) {
+      await request(httpServer)
+        .post('/poke-lounge/rooms/ROOM01/join')
+        .send({
+          playerId: `player-${index}`,
+          sessionId: `session-${index}`,
+          displayName: `Player ${index}`,
+          nowMs: index,
+        })
+        .expect(201);
+    }
+
+    await request(httpServer)
+      .post('/poke-lounge/rooms/ROOM01/party-snapshot')
+      .send({
+        playerId: 'player-a',
+        displayName: 'Alpha',
+        representativePokemon: {
+          speciesId: 25,
+          name: 'Pikachu',
+          level: 12,
+          currentHp: 18,
+          maxHp: 30,
+        },
+        nowMs: 25,
+      })
+      .expect(201);
+
+    await request(httpServer)
+      .get('/poke-lounge/rooms/ROOM01')
+      .expect(200)
+      .expect((response) => {
+        const body = response.body as PokeLoungeRoomState;
+
+        expect(body.partySnapshots['player-a']).toEqual({
+          playerId: 'player-a',
+          displayName: 'Alpha',
+          representativePokemon: {
+            speciesId: 25,
+            name: 'Pikachu',
+            level: 12,
+            currentHp: 18,
+            maxHp: 30,
+          },
+          updatedAtMs: 25,
+        });
+      });
+
+    await request(httpServer)
+      .post('/poke-lounge/rooms/ROOM01/party-snapshot')
+      .send({
+        playerId: 'player-7',
+        representativePokemon: {
+          speciesId: 1,
+          name: 'Bulbasaur',
+          level: 5,
+          currentHp: 20,
+          maxHp: 20,
+        },
+      })
+      .expect(400);
+  });
+
+  it('rejects malformed party snapshot pokemon values with 400', async () => {
+    await request(httpServer)
+      .post('/poke-lounge/rooms')
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-a',
+      })
+      .expect(201);
+
+    await request(httpServer)
+      .post('/poke-lounge/rooms/ROOM01/party-snapshot')
+      .send({
+        playerId: 'player-a',
+        representativePokemon: {
+          speciesId: 0,
+          name: 'Pikachu',
+          level: 5,
+          currentHp: 20,
+          maxHp: 20,
+        },
+      })
+      .expect(400);
+
+    await request(httpServer)
+      .post('/poke-lounge/rooms/ROOM01/party-snapshot')
+      .send({
+        playerId: 'player-a',
+        representativePokemon: {
+          speciesId: 25,
+          name: 'Pikachu',
+          level: 5,
+          currentHp: 21,
+          maxHp: 20,
+        },
+      })
+      .expect(400);
+  });
+
   it('handles omitted request bodies without returning a 500 response', async () => {
     await request(httpServer)
       .post('/poke-lounge/rooms')
@@ -250,6 +362,10 @@ describe('Poke Lounge server rooms (e2e)', () => {
       body.paths?.['/poke-lounge/rooms/{roomCode}/result']?.post?.requestBody
         ?.content?.['application/json']?.schema?.$ref,
     ).toBe('#/components/schemas/SubmitPokeLoungeMatchResultDto');
+    expect(
+      body.paths?.['/poke-lounge/rooms/{roomCode}/party-snapshot']?.post
+        ?.requestBody?.content?.['application/json']?.schema?.$ref,
+    ).toBe('#/components/schemas/UpdatePokeLoungePartySnapshotDto');
 
     expect(
       body.paths?.['/poke-lounge/rooms']?.post?.responses?.['201']?.content?.[
@@ -266,6 +382,7 @@ describe('Poke Lounge server rooms (e2e)', () => {
 
     expect(roomSchemaProperties).toBeDefined();
     expect(roomSchemaProperties).toHaveProperty('participants');
+    expect(roomSchemaProperties).toHaveProperty('partySnapshots');
     expect(roomSchemaProperties).toHaveProperty('round');
     expect(roomSchemaProperties).toHaveProperty('tournament');
     expect(roomSchemaProperties).toHaveProperty('finalStandings');

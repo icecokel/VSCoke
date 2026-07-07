@@ -8,11 +8,13 @@ import type {
   CreatePokeLoungeRoomInput,
   JoinPokeLoungeRoomInput,
   PokeLoungeFinalStanding,
+  PokeLoungePartySnapshot,
   PokeLoungeMatchResultReason,
   PokeLoungeRoomParticipant,
   PokeLoungeRoomState,
   PokeLoungeTournamentMatch,
   SubmitPokeLoungeMatchResultInput,
+  UpdatePokeLoungePartySnapshotInput,
 } from './poke-lounge-room.types';
 
 const DEFAULT_ROUND_DURATION_MS = 60_000;
@@ -48,6 +50,7 @@ export class PokeLoungeRoomService {
       createdAtMs: nowMs,
       updatedAtMs: nowMs,
       participants: [participant],
+      partySnapshots: {},
       round: {
         index: 1,
         phase: 'waiting',
@@ -131,6 +134,39 @@ export class PokeLoungeRoomService {
       room.round.startedAtMs = currentMs;
       room.round.endsAtMs = currentMs + room.round.durationMs;
     }
+
+    return cloneRoom(room);
+  }
+
+  updatePartySnapshot(
+    roomCode: string,
+    input: UpdatePokeLoungePartySnapshotInput,
+  ): PokeLoungeRoomState {
+    const room = this.findRoom(roomCode);
+    const participant = this.findParticipant(room, input.playerId);
+    const currentMs = normalizeNow(input.nowMs);
+
+    if (participant.role !== 'participant') {
+      throw new BadRequestException(
+        'Spectators cannot update tournament party snapshots',
+      );
+    }
+
+    const representativePokemon = normalizeRepresentativePokemon(
+      input.representativePokemon,
+    );
+
+    room.partySnapshots[participant.playerId] = {
+      playerId: participant.playerId,
+      ...(input.displayName?.trim()
+        ? { displayName: input.displayName.trim() }
+        : participant.displayName
+          ? { displayName: participant.displayName }
+          : {}),
+      ...(representativePokemon ? { representativePokemon } : {}),
+      updatedAtMs: currentMs,
+    };
+    room.updatedAtMs = currentMs;
 
     return cloneRoom(room);
   }
@@ -544,6 +580,50 @@ function formatDefaultPlayerName(playerId: string): string {
 
 function cloneRoom(room: PokeLoungeRoomState): PokeLoungeRoomState {
   return structuredClone(room);
+}
+
+function normalizeRepresentativePokemon(
+  value: PokeLoungePartySnapshot['representativePokemon'] | undefined,
+): PokeLoungePartySnapshot['representativePokemon'] | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const speciesId = normalizePositiveInteger(value.speciesId, 'speciesId');
+  const level = normalizePositiveInteger(value.level, 'level');
+  const currentHp = normalizeNonNegativeInteger(value.currentHp, 'currentHp');
+  const maxHp = normalizeNonNegativeInteger(value.maxHp, 'maxHp');
+
+  if (currentHp > maxHp) {
+    throw new BadRequestException('currentHp cannot exceed maxHp');
+  }
+
+  return {
+    speciesId,
+    name: value.name,
+    level,
+    currentHp,
+    maxHp,
+  };
+}
+
+function normalizePositiveInteger(value: unknown, fieldName: string): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) {
+    throw new BadRequestException(`Invalid ${fieldName}`);
+  }
+
+  return value;
+}
+
+function normalizeNonNegativeInteger(
+  value: unknown,
+  fieldName: string,
+): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    throw new BadRequestException(`Invalid ${fieldName}`);
+  }
+
+  return value;
 }
 
 function createRoomCode(): string {

@@ -3,6 +3,7 @@ import type {
   PokeLoungeFinalStanding,
   PokeLoungeMatchResultReason,
   PokeLoungeMatchStatus,
+  PokeLoungePartySnapshot,
   PokeLoungeParticipantRole,
   PokeLoungeRoomParticipant,
   PokeLoungeRoomState,
@@ -110,6 +111,39 @@ class PokeLoungeFinalStandingDto implements PokeLoungeFinalStanding {
   score!: number;
 }
 
+class PokeLoungeRepresentativePokemonDto implements NonNullable<
+  PokeLoungePartySnapshot['representativePokemon']
+> {
+  @ApiProperty({ example: 25 })
+  speciesId!: number;
+
+  @ApiProperty({ example: 'Pikachu' })
+  name!: string;
+
+  @ApiProperty({ example: 12 })
+  level!: number;
+
+  @ApiProperty({ example: 18 })
+  currentHp!: number;
+
+  @ApiProperty({ example: 30 })
+  maxHp!: number;
+}
+
+class PokeLoungePartySnapshotDto implements PokeLoungePartySnapshot {
+  @ApiProperty({ example: 'player-a' })
+  playerId!: string;
+
+  @ApiPropertyOptional({ example: 'Player A' })
+  displayName?: string;
+
+  @ApiPropertyOptional({ type: PokeLoungeRepresentativePokemonDto })
+  representativePokemon?: PokeLoungeRepresentativePokemonDto;
+
+  @ApiProperty({ example: 1720000002000 })
+  updatedAtMs!: number;
+}
+
 class PokeLoungeRoundDto implements PokeLoungeRoundState {
   @ApiProperty({ example: 1 })
   index!: number;
@@ -154,6 +188,14 @@ export class PokeLoungeRoomResponseDto implements PokeLoungeRoomState {
 
   @ApiProperty({ type: [PokeLoungeRoomParticipantDto] })
   participants!: PokeLoungeRoomParticipantDto[];
+
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: {
+      $ref: '#/components/schemas/PokeLoungePartySnapshotDto',
+    },
+  })
+  partySnapshots!: Record<string, PokeLoungePartySnapshotDto>;
 
   @ApiProperty({ type: PokeLoungeRoundDto })
   round!: PokeLoungeRoundDto;

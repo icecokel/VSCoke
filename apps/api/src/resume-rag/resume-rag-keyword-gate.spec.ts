@@ -14,6 +14,19 @@ describe('resume-rag keyword gate', () => {
     );
   });
 
+  it('allows resume domain keywords found in source documents', () => {
+    expect(isResumeRagQuestionInScope('웹뷰는 뭘 했어?')).toBe(true);
+    expect(isResumeRagQuestionInScope('자막 번역은?')).toBe(true);
+    expect(isResumeRagQuestionInScope('커머스 백오피스?')).toBe(true);
+    expect(isResumeRagQuestionInScope('성능 최적화?')).toBe(true);
+    expect(isResumeRagQuestionInScope('장애 대응?')).toBe(true);
+    expect(isResumeRagQuestionInScope('제품 문제 해결')).toBe(true);
+    expect(isResumeRagQuestionInScope('UX 사용성')).toBe(true);
+    expect(isResumeRagQuestionInScope('타입 모델링')).toBe(true);
+    expect(isResumeRagQuestionInScope('Web Vitals')).toBe(true);
+    expect(isResumeRagQuestionInScope('어드민 관리자 화면')).toBe(true);
+  });
+
   it('blocks unrelated questions before AI processing', () => {
     expect(isResumeRagQuestionInScope('오늘 날씨 어때?')).toBe(false);
     expect(isResumeRagQuestionInScope('비트코인 가격 알려줘')).toBe(false);

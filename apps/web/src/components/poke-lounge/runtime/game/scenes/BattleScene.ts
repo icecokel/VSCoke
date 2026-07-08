@@ -1808,6 +1808,9 @@ function createBattleScenarioStateForTest(scenario: BattleE2eScenario): BattleSc
 
   if (scenario === "wild-victory") {
     playerPokemon.speed = Math.max(playerPokemon.speed, opponentPokemon.speed + 1);
+    playerPokemon.moves = playerPokemon.moves.map((move, index) =>
+      index === 0 ? { ...move, accuracy: 100 } : move,
+    );
     opponentPokemon.currentHp = 1;
     opponentPokemon.status = "normal";
   } else {

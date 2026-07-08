@@ -1,6 +1,7 @@
 export const LEVEL_UP_MOVE_TABLE_JSON_PATH = "/game-data/level-up-move-table.json";
 export const WILD_BATTLE_MOVE_SETS_JSON_PATH = "/game-data/wild-battle-move-sets.json";
 export const BATTLE_POKEMON_ASSETS_JSON_PATH = "/game-data/battle-pokemon-assets.json";
+export const POKEMON_DATA_JSON_PATH = "/game-data/pokemon-data.json";
 
 export interface LevelUpMoveRow {
   level: number;
@@ -33,6 +34,7 @@ interface BattlePokemonSpriteAssetRecordTemplate {
 }
 
 interface RuntimeGameDataJsonState {
+  pokemonDataRecordCount: number | null;
   levelUpMoveTable: Record<number, LevelUpMoveRow[]> | null;
   wildBattleMoveSets: Record<number, number[]> | null;
   battlePokemonAssets: {
@@ -42,18 +44,22 @@ interface RuntimeGameDataJsonState {
 }
 
 const runtimeGameDataJsonState: RuntimeGameDataJsonState = {
+  pokemonDataRecordCount: null,
   levelUpMoveTable: null,
   wildBattleMoveSets: null,
   battlePokemonAssets: null,
 };
 
 export async function loadRuntimeGameDataJson(fetcher: typeof fetch = fetch): Promise<void> {
-  const [levelUpMoveTable, wildBattleMoveSets, battlePokemonAssets] = await Promise.all([
-    fetchJson(fetcher, LEVEL_UP_MOVE_TABLE_JSON_PATH),
-    fetchJson(fetcher, WILD_BATTLE_MOVE_SETS_JSON_PATH),
-    fetchJson(fetcher, BATTLE_POKEMON_ASSETS_JSON_PATH),
-  ]);
+  const [pokemonData, levelUpMoveTable, wildBattleMoveSets, battlePokemonAssets] =
+    await Promise.all([
+      fetchJson(fetcher, POKEMON_DATA_JSON_PATH),
+      fetchJson(fetcher, LEVEL_UP_MOVE_TABLE_JSON_PATH),
+      fetchJson(fetcher, WILD_BATTLE_MOVE_SETS_JSON_PATH),
+      fetchJson(fetcher, BATTLE_POKEMON_ASSETS_JSON_PATH),
+    ]);
 
+  runtimeGameDataJsonState.pokemonDataRecordCount = normalizePokemonDataRecordCount(pokemonData);
   runtimeGameDataJsonState.levelUpMoveTable = normalizeLevelUpMoveTable(levelUpMoveTable);
   runtimeGameDataJsonState.wildBattleMoveSets = normalizeWildBattleMoveSets(wildBattleMoveSets);
   runtimeGameDataJsonState.battlePokemonAssets =
@@ -108,10 +114,31 @@ export function getRuntimeBattlePokemonAssetManifest(input: {
   };
 }
 
+export function getRuntimePokemonDataRecordCountForTest(): number | null {
+  return runtimeGameDataJsonState.pokemonDataRecordCount;
+}
+
 export function resetRuntimeGameDataJsonStateForTest(): void {
+  runtimeGameDataJsonState.pokemonDataRecordCount = null;
   runtimeGameDataJsonState.levelUpMoveTable = null;
   runtimeGameDataJsonState.wildBattleMoveSets = null;
   runtimeGameDataJsonState.battlePokemonAssets = null;
+}
+
+export function normalizePokemonDataRecordCount(data: unknown): number | null {
+  if (!isRecord(data) || data.version !== 1 || !isRecord(data.species)) {
+    return null;
+  }
+
+  const recordCount = Object.values(data.species).filter(value => {
+    if (!isRecord(value)) {
+      return false;
+    }
+
+    return readPositiveInteger(value.speciesId) !== null && isRecord(value.baseStats);
+  }).length;
+
+  return recordCount > 0 ? recordCount : null;
 }
 
 export function normalizeLevelUpMoveTable(data: unknown): Record<number, LevelUpMoveRow[]> | null {

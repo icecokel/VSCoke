@@ -1,8 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { expect, type Page, test } from "@playwright/test";
+import { choosePlayerMove } from "../../src/components/poke-lounge/runtime/game/battle/battleLogic";
 import { applyLevelUpPlayerMoves } from "../../src/components/poke-lounge/runtime/game/battle/levelUpMoves";
+import { createSampleBattleState } from "../../src/components/poke-lounge/runtime/game/battle/battleSampleState";
 import { createWildBattleState } from "../../src/components/poke-lounge/runtime/game/battle/wildBattleFactory";
+import type { BattleMove } from "../../src/components/poke-lounge/runtime/game/battle/battleTypes";
 import { getBattlePokemonAssets } from "../../src/components/poke-lounge/runtime/game/battle/battlePokemonAssets";
 import {
   createPartyHudSlotViews,
@@ -13,7 +16,9 @@ import {
 import {
   BATTLE_POKEMON_ASSETS_JSON_PATH,
   LEVEL_UP_MOVE_TABLE_JSON_PATH,
+  POKEMON_DATA_JSON_PATH,
   WILD_BATTLE_MOVE_SETS_JSON_PATH,
+  getRuntimePokemonDataRecordCountForTest,
   loadRuntimeGameDataJson,
   resetRuntimeGameDataJsonStateForTest,
 } from "../../src/components/poke-lounge/runtime/game/data/game-data-json";
@@ -170,6 +175,18 @@ test.describe("Poke Lounge", () => {
   });
 
   test("게임 데이터 JSON과 런타임 fallback이 문서화된 배틀 데이터를 유지한다", () => {
+    const pokemonData = readPublicJson(POKEMON_DATA_JSON_PATH) as {
+      stats?: { pokemonRecords?: number; moveRecords?: number; learnsetSpecies?: number };
+      species?: Record<
+        string,
+        {
+          baseStats?: Record<string, number>;
+          types?: { ids?: number[]; names?: string[] };
+          levelUpMoves?: Array<{ level: number; moveId: number }>;
+        }
+      >;
+      moves?: Record<string, unknown>;
+    };
     const levelUpMoveTable = readPublicJson("/game-data/level-up-move-table.json") as {
       species?: Record<string, Array<{ level: number; moveId: number }>>;
     };
@@ -191,6 +208,37 @@ test.describe("Poke Lounge", () => {
       }>;
     };
 
+    expect(pokemonData.stats).toEqual({
+      pokemonRecords: 500,
+      moveRecords: 471,
+      learnsetSpecies: 500,
+    });
+    expect(Object.keys(pokemonData.species ?? {})).toHaveLength(500);
+    expect(Object.keys(pokemonData.moves ?? {})).toHaveLength(471);
+    expect(pokemonData.species?.["152"]).toMatchObject({
+      baseStats: {
+        hp: 45,
+        attack: 49,
+        defense: 65,
+        speed: 45,
+        specialAttack: 49,
+        specialDefense: 65,
+      },
+      types: { ids: [12], names: ["풀"] },
+    });
+    expect(pokemonData.species?.["152"].levelUpMoves).toEqual(
+      expect.arrayContaining([
+        { level: 1, moveId: 33 },
+        { level: 45, moveId: 76 },
+      ]),
+    );
+    expect(Object.keys(levelUpMoveTable.species ?? {})).toHaveLength(500);
+    expect(levelUpMoveTable.species?.["152"]).toEqual(
+      expect.arrayContaining([
+        { level: 1, moveId: 33 },
+        { level: 45, moveId: 76 },
+      ]),
+    );
     expect(levelUpMoveTable.species?.["155"]).toContainEqual({ level: 19, moveId: 172 });
     expect(wildBattleMoveSets.species?.["155"]).toEqual([52, 43]);
     const fieldDayBgm = audioManifest.bgm?.find(item => item.id === "field-day");
@@ -250,6 +298,12 @@ test.describe("Poke Lounge", () => {
   test("startup-loaded runtime game data는 유효한 species만 JSON을 우선하고 누락/오염 species는 fallback한다", async () => {
     await loadRuntimeGameDataJson(
       createRuntimeGameDataFetcher({
+        [POKEMON_DATA_JSON_PATH]: {
+          version: 1,
+          species: {
+            "1": { speciesId: 1, baseStats: { hp: 45 } },
+          },
+        },
         [LEVEL_UP_MOVE_TABLE_JSON_PATH]: {
           version: 1,
           species: {
@@ -284,6 +338,7 @@ test.describe("Poke Lounge", () => {
         },
       }),
     );
+    expect(getRuntimePokemonDataRecordCountForTest()).toBe(1);
 
     const runtimePreferredMoves = applyLevelUpPlayerMoves({
       pokemon: {
@@ -479,6 +534,76 @@ test.describe("Poke Lounge", () => {
 
     expect(WILD_ENCOUNTER_RATE).toBe(0.15);
     expect(tableData.tables?.map(table => table.encounterRate)).toEqual([0.15, 0.15, 0.15, 0.15]);
+  });
+
+  test("전투 계산은 우선도, 상대 랜덤 기술, 타입 상성을 반영한다", () => {
+    const baseState = createSampleBattleState();
+    const fireMove = createBattleMoveFixture({
+      accuracy: 100,
+      category: "special",
+      effectCode: 4,
+      id: 52,
+      name: "불꽃세례",
+      power: 40,
+      type: "불꽃",
+      typeId: 10,
+    });
+    const tackle = createBattleMoveFixture({
+      accuracy: 100,
+      category: "physical",
+      effectCode: 0,
+      id: 33,
+      name: "몸통박치기",
+      power: 35,
+      type: "노말",
+      typeId: 0,
+    });
+    const quickAttack = createBattleMoveFixture({
+      accuracy: 100,
+      category: "physical",
+      effectCode: 103,
+      id: 98,
+      name: "전광석화",
+      power: 40,
+      type: "노말",
+      typeId: 0,
+    });
+    const battleState = {
+      ...baseState,
+      phase: "move-select" as const,
+      messageQueue: [],
+      player: {
+        ...baseState.player,
+        pokemon: {
+          ...baseState.player.pokemon,
+          speed: 100,
+          typeIds: [10],
+          moves: [fireMove],
+        },
+      },
+      opponent: {
+        ...baseState.opponent,
+        pokemon: {
+          ...baseState.opponent.pokemon,
+          currentHp: baseState.opponent.pokemon.maxHp,
+          speed: 1,
+          typeIds: [12],
+          moves: [tackle, quickAttack],
+        },
+      },
+    };
+
+    const resolved = choosePlayerMove(battleState, 0, {
+      random: createRandomSequence([0.75, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99]),
+    });
+
+    expect(resolved.messageQueue[0]).toBe("브케인의 전광석화!");
+    expect(resolved.messageQueue).toContain("치코리타의 불꽃세례!");
+    expect(resolved.messageQueue).toContain("효과는 굉장했다!");
+    expect(resolved.player.pokemon.currentHp).toBeLessThan(battleState.player.pokemon.currentHp);
+    expect(resolved.opponent.pokemon.currentHp).toBeLessThan(
+      battleState.opponent.pokemon.currentHp,
+    );
   });
 
   test("토너먼트 사이 기본 준비 시간은 5분이다", () => {
@@ -820,14 +945,16 @@ test.describe("Poke Lounge", () => {
 
     const durationOptions = page.locator("[data-room-entry-round-duration-option]");
     await expect(durationOptions).toHaveText(["3분", "5분", "10분", "15분"]);
-    await expect(
-      page.locator("[data-room-entry-round-duration-option='300000']"),
-    ).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("[data-room-entry-round-duration-option='300000']")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
 
     await page.locator("[data-room-entry-round-duration-option='600000']").click();
-    await expect(
-      page.locator("[data-room-entry-round-duration-option='600000']"),
-    ).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("[data-room-entry-round-duration-option='600000']")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     await page.locator("[data-room-entry-create]").click();
 
     await expect(page).toHaveURL(/network=local/);
@@ -1031,12 +1158,10 @@ test.describe("Poke Lounge", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await expectCanvasFramed(page, { maxWidth: 390, viewportWidth: 390, viewportHeight: 844 });
     await expectMobileTouchLayout(page);
-    await expect(page.locator("#game-root [data-fullscreen-toggle-placement='mobile']")).toHaveCount(
-      0,
-    );
     await expect(
-      page.locator("[data-poke-lounge-web-fullscreen-toggle='true']"),
-    ).toBeVisible();
+      page.locator("#game-root [data-fullscreen-toggle-placement='mobile']"),
+    ).toHaveCount(0);
+    await expect(page.locator("[data-poke-lounge-web-fullscreen-toggle='true']")).toBeVisible();
     await expectMobileFullscreenButtonLayout(page);
     await expectMobileSettingsButtonLayout(page);
     await expectMobileTouchPressAnimation(page);
@@ -1191,6 +1316,24 @@ function createRuntimeGameDataFetcher(fixtures: Record<string, unknown>) {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
+  };
+}
+
+function createBattleMoveFixture(input: Omit<BattleMove, "pp" | "maxPp">): BattleMove {
+  return {
+    ...input,
+    pp: 20,
+    maxPp: 20,
+  };
+}
+
+function createRandomSequence(values: number[]): () => number {
+  let index = 0;
+
+  return () => {
+    const value = values[index] ?? values[values.length - 1] ?? 0;
+    index += 1;
+    return value;
   };
 }
 

@@ -5,6 +5,7 @@ import { toBattlePokemonPreloadAssets } from "../battle/battlePokemonAssets";
 import {
   BATTLE_POKEMON_ASSETS_JSON_PATH,
   LEVEL_UP_MOVE_TABLE_JSON_PATH,
+  POKEMON_DATA_JSON_PATH,
   WILD_BATTLE_MOVE_SETS_JSON_PATH,
 } from "../data/game-data-json";
 import type { InitialGameScene } from "../gameStartup";
@@ -27,6 +28,7 @@ export const ROM_BATTLE_DATA_JSON_ASSETS = [
 
 export const WORLD_DATA_JSON_ASSETS = [WILD_ENCOUNTER_TABLES_JSON_ASSET] as const;
 const GAME_DATA_JSON_ASSETS = [
+  ["pokemonData", POKEMON_DATA_JSON_PATH],
   ["levelUpMoveTable", LEVEL_UP_MOVE_TABLE_JSON_PATH],
   ["wildBattleMoveSets", WILD_BATTLE_MOVE_SETS_JSON_PATH],
   ["battlePokemonAssets", BATTLE_POKEMON_ASSETS_JSON_PATH],

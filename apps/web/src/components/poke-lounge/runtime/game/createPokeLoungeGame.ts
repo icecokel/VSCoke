@@ -6,7 +6,7 @@ import { BattleScene, type BattleE2eScenario, type BattleE2eSnapshot } from "./s
 import { WorldScene, type WorldE2eSnapshot } from "./scenes/WorldScene";
 import type { MultiplayerRoom } from "./network/localPreviewRoom";
 import { getDefaultGameStateStore } from "./state/defaultGameStateStore";
-import type { GameState, GameStateStore } from "./state/gameStateStore";
+import type { GameState, GameStateStore, LocalPlayerState } from "./state/gameStateStore";
 import { isDevelopmentRuntime } from "../runtimeEnvironment";
 import {
   pressVirtualGamepadButton,
@@ -31,6 +31,12 @@ export interface PokeLoungeE2eController {
   drainBattleMessages(maxMessages?: number): BattleE2eSnapshot | null;
   getWorldSnapshot(): WorldE2eSnapshot | null;
   closeWorldShortcutGuide(): void;
+  setCurrentLocalPlayerForTest(player: LocalPlayerState): void;
+  openPcBoxForTest(): WorldE2eSnapshot | null;
+  movePcBoxSelectionForTest(delta: number): WorldE2eSnapshot | null;
+  togglePcBoxFocusForTest(): WorldE2eSnapshot | null;
+  confirmPcBoxSelectionForTest(): WorldE2eSnapshot | null;
+  closePcBoxForTest(): WorldE2eSnapshot | null;
   pressVirtualGamepad(button: VirtualGamepadButton): void;
   releaseVirtualGamepad(button: VirtualGamepadButton): void;
   getCanvasSnapshot(): {
@@ -247,6 +253,59 @@ function createPokeLoungeE2eController(
     },
     closeWorldShortcutGuide() {
       getWorldScene()?.closeShortcutGuideForTest();
+    },
+    setCurrentLocalPlayerForTest(player) {
+      gameStateStore.upsertLocalPlayer(player);
+    },
+    openPcBoxForTest() {
+      const worldScene = getWorldScene();
+
+      if (!worldScene) {
+        return null;
+      }
+
+      worldScene.openPcBoxForTest();
+      return worldScene.getE2eSnapshotForTest();
+    },
+    movePcBoxSelectionForTest(delta) {
+      const worldScene = getWorldScene();
+
+      if (!worldScene) {
+        return null;
+      }
+
+      worldScene.movePcBoxSelectionForTest(delta);
+      return worldScene.getE2eSnapshotForTest();
+    },
+    togglePcBoxFocusForTest() {
+      const worldScene = getWorldScene();
+
+      if (!worldScene) {
+        return null;
+      }
+
+      worldScene.togglePcBoxFocusForTest();
+      return worldScene.getE2eSnapshotForTest();
+    },
+    confirmPcBoxSelectionForTest() {
+      const worldScene = getWorldScene();
+
+      if (!worldScene) {
+        return null;
+      }
+
+      worldScene.confirmPcBoxSelectionForTest();
+      return worldScene.getE2eSnapshotForTest();
+    },
+    closePcBoxForTest() {
+      const worldScene = getWorldScene();
+
+      if (!worldScene) {
+        return null;
+      }
+
+      worldScene.closePcBoxForTest();
+      return worldScene.getE2eSnapshotForTest();
     },
     pressVirtualGamepad(button) {
       pressVirtualGamepadButton(button);

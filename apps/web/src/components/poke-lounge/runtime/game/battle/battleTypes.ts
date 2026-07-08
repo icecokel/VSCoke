@@ -13,7 +13,7 @@ export type BattlePhase =
   | "resolving"
   | "ended";
 export type BattleKind = "sample" | "wild" | "trainer";
-export type BattlePokemonStatus = "normal" | "poisoned" | "fainted";
+export type BattlePokemonStatus = "normal" | "poisoned" | "burned" | "paralyzed" | "fainted";
 export type BattleResultReason = "faint" | "timeout" | "forfeit" | "run" | "capture";
 export type BattleCommand = "fight" | "bag" | "pokemon" | "run";
 

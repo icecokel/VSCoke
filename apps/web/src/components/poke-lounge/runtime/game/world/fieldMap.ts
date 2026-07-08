@@ -66,6 +66,20 @@ export const FIELD_MAP = {
       textureKey: "field-npc-gamehost",
       imageUrl: "/assets/poke-lounge/textures/a_0_8_1_0184/mania_5.png",
     },
+    storagePc: {
+      displaySize: {
+        width: 40,
+        height: 40,
+      },
+      hitbox: {
+        width: 26,
+        height: 18,
+        offsetX: 3,
+        offsetY: 14,
+      },
+      textureKey: "field-object-storage-pc",
+      imageUrl: "/assets/poke-lounge/textures/a_0_7_0_0093/tmfl04_door1.png",
+    },
   },
   sourceRepository: "aaron5670/PokeMMO-Online-Realtime-Multiplayer-Game",
   defaultSpawn: "Spawn Point",

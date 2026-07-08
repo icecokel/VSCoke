@@ -284,6 +284,30 @@
         },
         {
           "height": 0,
+          "id": 912,
+          "name": "storagePc",
+          "point": true,
+          "properties": [
+            {
+              "name": "displayName",
+              "type": "string",
+              "value": "PC 박스"
+            },
+            {
+              "name": "role",
+              "type": "string",
+              "value": "storage-pc"
+            }
+          ],
+          "rotation": 0,
+          "type": "storage-pc",
+          "visible": true,
+          "width": 0,
+          "x": 688,
+          "y": 960
+        },
+        {
+          "height": 0,
           "id": 909,
           "name": "shopkeeper",
           "point": true,
@@ -456,7 +480,7 @@
     }
   ],
   "nextlayerid": 8,
-  "nextobjectid": 294,
+  "nextobjectid": 913,
   "orientation": "orthogonal",
   "properties": [
     {

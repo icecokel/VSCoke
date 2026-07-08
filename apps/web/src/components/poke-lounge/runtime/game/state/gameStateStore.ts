@@ -41,7 +41,7 @@ export interface PlayerPokemon {
   moves?: PlayerPokemonMove[];
 }
 
-export type PlayerPokemonStatus = "normal" | "poisoned" | "fainted";
+export type PlayerPokemonStatus = "normal" | "poisoned" | "burned" | "paralyzed" | "fainted";
 
 export interface PlayerPokemonMove {
   id: number;
@@ -179,6 +179,18 @@ export type UseInventoryItemOnPartySlotResult =
 export type AddPokemonToPartyResult =
   | { ok: true; destination: "party"; slotIndex: number }
   | { ok: true; destination: "box"; boxIndex: number };
+
+export type MovePartyPokemonToBoxResult =
+  | { ok: true; destination: "box"; boxIndex: number }
+  | { ok: false; reason: "invalid-slot" | "empty-slot" | "last-pokemon" };
+
+export type MoveBoxPokemonToPartyResult =
+  | { ok: true; destination: "party"; slotIndex: number }
+  | { ok: false; reason: "invalid-box-index" | "party-full" };
+
+export type SwapPartyPokemonWithBoxResult =
+  | { ok: true }
+  | { ok: false; reason: "invalid-slot" | "empty-slot" | "invalid-box-index" };
 
 export type SetActivePartySlotResult =
   | { ok: true }
@@ -344,6 +356,9 @@ export interface GameStateStore {
   setStarterPokemon(pokemon: PlayerPokemon): void;
   updateActivePokemon(pokemon: PlayerPokemon): void;
   addPokemonToParty(pokemon: PlayerPokemon): AddPokemonToPartyResult;
+  movePartyPokemonToBox(slotIndex: number): MovePartyPokemonToBoxResult;
+  moveBoxPokemonToParty(boxIndex: number): MoveBoxPokemonToPartyResult;
+  swapPartyPokemonWithBox(slotIndex: number, boxIndex: number): SwapPartyPokemonWithBoxResult;
   setActivePartySlot(slotIndex: number): SetActivePartySlotResult;
   updatePokemonInPartySlot(
     slotIndex: number,
@@ -761,6 +776,109 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
       });
 
       return { ok: true, destination: "party", slotIndex };
+    },
+    movePartyPokemonToBox(slotIndex) {
+      if (!isValidPartySlotIndex(slotIndex)) {
+        return { ok: false, reason: "invalid-slot" };
+      }
+
+      const localPlayer = getCurrentLocalPlayer(state);
+      const partySlot = getPartySlot(localPlayer, slotIndex);
+      const pokemon = partySlot?.pokemon;
+
+      if (!pokemon) {
+        return { ok: false, reason: "empty-slot" };
+      }
+
+      const occupiedSlots = localPlayer.party.filter(slot => slot.pokemon);
+
+      if (occupiedSlots.length <= 1) {
+        return { ok: false, reason: "last-pokemon" };
+      }
+
+      const nextBoxIndex = localPlayer.pokemonBox.length;
+      const activePokemon = getPartySlot(localPlayer, localPlayer.activePartySlotIndex)?.pokemon;
+      const nextParty = compactPartySlots(
+        localPlayer.party.filter(slot => slot.slotIndex !== slotIndex),
+      );
+      const nextActiveSlotIndex =
+        nextParty.find(slot => slot.pokemon === activePokemon)?.slotIndex ??
+        nextParty[0]?.slotIndex ??
+        0;
+
+      setCurrentLocalPlayer({
+        ...localPlayer,
+        activePartySlotIndex: nextActiveSlotIndex,
+        party: nextParty,
+        pokemonBox: [...localPlayer.pokemonBox, pokemon],
+      });
+
+      return { ok: true, destination: "box", boxIndex: nextBoxIndex };
+    },
+    moveBoxPokemonToParty(boxIndex) {
+      const localPlayer = getCurrentLocalPlayer(state);
+      const normalizedBoxIndex = normalizeBoxIndex(boxIndex);
+      const pokemon =
+        normalizedBoxIndex === null ? undefined : localPlayer.pokemonBox[normalizedBoxIndex];
+
+      if (!pokemon || normalizedBoxIndex === null) {
+        return { ok: false, reason: "invalid-box-index" };
+      }
+
+      const nextParty = compactPartySlots(localPlayer.party);
+
+      if (nextParty.length >= PLAYER_PARTY_SLOT_COUNT) {
+        return { ok: false, reason: "party-full" };
+      }
+
+      const slotIndex = nextParty.length;
+      const nextBox = localPlayer.pokemonBox.filter((_, index) => index !== normalizedBoxIndex);
+
+      setCurrentLocalPlayer({
+        ...localPlayer,
+        party: [
+          ...nextParty,
+          {
+            slotIndex,
+            pokemon,
+          },
+        ],
+        pokemonBox: nextBox,
+      });
+
+      return { ok: true, destination: "party", slotIndex };
+    },
+    swapPartyPokemonWithBox(slotIndex, boxIndex) {
+      if (!isValidPartySlotIndex(slotIndex)) {
+        return { ok: false, reason: "invalid-slot" };
+      }
+
+      const localPlayer = getCurrentLocalPlayer(state);
+      const normalizedBoxIndex = normalizeBoxIndex(boxIndex);
+      const partySlot = getPartySlot(localPlayer, slotIndex);
+      const partyPokemon = partySlot?.pokemon;
+      const boxPokemon =
+        normalizedBoxIndex === null ? undefined : localPlayer.pokemonBox[normalizedBoxIndex];
+
+      if (!partyPokemon) {
+        return { ok: false, reason: "empty-slot" };
+      }
+
+      if (!boxPokemon || normalizedBoxIndex === null) {
+        return { ok: false, reason: "invalid-box-index" };
+      }
+
+      setCurrentLocalPlayer({
+        ...localPlayer,
+        party: localPlayer.party.map(slot =>
+          slot.slotIndex === slotIndex ? { ...slot, pokemon: boxPokemon } : slot,
+        ),
+        pokemonBox: localPlayer.pokemonBox.map((pokemon, index) =>
+          index === normalizedBoxIndex ? partyPokemon : pokemon,
+        ),
+      });
+
+      return { ok: true };
     },
     setActivePartySlot(slotIndex) {
       if (!isValidPartySlotIndex(slotIndex)) {
@@ -1604,6 +1722,28 @@ function getPartySlot(
   slotIndex: number,
 ): PlayerPokemonSlot<PlayerPokemon> | undefined {
   return localPlayer.party.find(slot => slot.slotIndex === slotIndex);
+}
+
+function compactPartySlots(
+  party: Array<PlayerPokemonSlot<PlayerPokemon>>,
+): Array<PlayerPokemonSlot<PlayerPokemon>> {
+  return party
+    .filter((slot): slot is PlayerPokemonSlot<PlayerPokemon> & { pokemon: PlayerPokemon } =>
+      Boolean(slot.pokemon),
+    )
+    .slice(0, PLAYER_PARTY_SLOT_COUNT)
+    .map((slot, slotIndex) => ({
+      ...slot,
+      slotIndex,
+    }));
+}
+
+function normalizeBoxIndex(boxIndex: number): number | null {
+  if (!Number.isFinite(boxIndex) || !Number.isInteger(boxIndex) || boxIndex < 0) {
+    return null;
+  }
+
+  return boxIndex;
 }
 
 function healPokemon(pokemon: PlayerPokemon): PlayerPokemon {

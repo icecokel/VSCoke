@@ -28,6 +28,7 @@ import {
   createTileStepTracker,
   type TileStepTracker,
 } from "../world/tileSteps";
+import { PLAYER_PARTY_SLOT_COUNT } from "../player/playerTypes";
 import {
   createWildEncounterLevelRange,
   rollWildEncounter,
@@ -101,6 +102,7 @@ const PLAYER_SIZE = FIELD_MAP.player.displaySize;
 const PLAYER_HITBOX = FIELD_MAP.player.hitbox;
 const SHOP_PANEL_SIZE = { width: 384, height: 268 } as const;
 const INVENTORY_PANEL_SIZE = { width: 560, height: 320 } as const;
+const PC_BOX_PANEL_SIZE = { width: 520, height: 320 } as const;
 const DICE_GAMBLE_PANEL_SIZE = { width: 408, height: 292 } as const;
 const SHORTCUT_GUIDE_PANEL_SIZE = { width: 420, height: 248 } as const;
 const POKEMON_STATUS_PANEL_SIZE = { width: 216, height: 142 } as const;
@@ -126,6 +128,7 @@ export const ROUND_DURATION_QUERY_PARAM = "roundMs";
 
 type ShopKind = "basic" | "premium";
 type KnownShopItemId = ShopItemId | PremiumShopItemId;
+type PcBoxFocus = "party" | "box";
 
 type CursorMap = Phaser.Types.Input.Keyboard.CursorKeys & {
   w: Phaser.Input.Keyboard.Key;
@@ -196,6 +199,15 @@ export interface WorldE2eSnapshot {
     maxHp: number | null;
     status: NonNullable<PlayerPokemon["status"]>;
   } | null;
+  pcBox: {
+    open: boolean;
+    focus: PcBoxFocus;
+    partySlotIndex: number;
+    boxIndex: number;
+    message: string;
+    partyCount: number;
+    boxCount: number;
+  };
 }
 
 export interface ResolvedWorldSpawn {
@@ -322,6 +334,7 @@ export class WorldScene extends Phaser.Scene {
   private premiumShopkeeperPosition: { x: number; y: number } | null = null;
   private gamehostPosition: { x: number; y: number } | null = null;
   private nursePosition: { x: number; y: number } | null = null;
+  private storagePcPosition: { x: number; y: number } | null = null;
   private nurseMessage = "";
   private nurseMessageObject: Phaser.GameObjects.Text | null = null;
   private shopOpen = false;
@@ -333,6 +346,12 @@ export class WorldScene extends Phaser.Scene {
   private inventorySelectedIndex = 0;
   private inventoryMessage = "";
   private inventoryUiObjects: Phaser.GameObjects.GameObject[] = [];
+  private pcBoxOpen = false;
+  private pcBoxFocus: PcBoxFocus = "party";
+  private pcBoxPartySlotIndex = 0;
+  private pcBoxBoxIndex = 0;
+  private pcBoxMessage = "";
+  private pcBoxUiObjects: Phaser.GameObjects.GameObject[] = [];
   private shortcutGuideOpen = false;
   private shortcutGuideUiObjects: Phaser.GameObjects.GameObject[] = [];
   private diceGambleOpen = false;
@@ -439,6 +458,12 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    if (this.pcBoxOpen) {
+      this.player.setVelocity(0, 0);
+      this.handlePcBoxKeyboardInput();
+      return;
+    }
+
     if (this.pokemonStatusPanelSlotIndex !== null) {
       this.player.setVelocity(0, 0);
       this.handlePokemonStatusPanelKeyboardInput();
@@ -492,6 +517,7 @@ export class WorldScene extends Phaser.Scene {
     this.partyHudObjects = [];
     this.closeShop();
     this.closeInventory();
+    this.closePcBox();
     this.closeShortcutGuide({ markViewed: false });
     this.closePokemonStatusPanel({ rerenderPartyHud: false });
     this.closeDiceGamble();
@@ -543,6 +569,7 @@ export class WorldScene extends Phaser.Scene {
       encounterLocked: this.encounterLocked,
       battleIntroPlaying: this.battleIntroPlaying,
       pokemonStatusPanel: this.getPokemonStatusPanelSnapshot(),
+      pcBox: this.getPcBoxSnapshot(),
     };
   }
 
@@ -638,6 +665,26 @@ export class WorldScene extends Phaser.Scene {
 
   isInventoryOpenForTest(): boolean {
     return this.inventoryOpen;
+  }
+
+  openPcBoxForTest(): void {
+    this.openPcBox();
+  }
+
+  closePcBoxForTest(): void {
+    this.closePcBox();
+  }
+
+  movePcBoxSelectionForTest(delta: number): void {
+    this.movePcBoxSelection(delta);
+  }
+
+  togglePcBoxFocusForTest(): void {
+    this.togglePcBoxFocus();
+  }
+
+  confirmPcBoxSelectionForTest(): void {
+    this.confirmPcBoxSelection();
   }
 
   moveInventorySelectionForTest(delta: number): void {
@@ -1231,6 +1278,7 @@ export class WorldScene extends Phaser.Scene {
       this.shortcutGuideOpen ||
       this.shopOpen ||
       this.inventoryOpen ||
+      this.pcBoxOpen ||
       this.diceGambleOpen ||
       this.battleIntroPlaying
     ) {
@@ -1481,6 +1529,10 @@ export class WorldScene extends Phaser.Scene {
         return "전투불능";
       case "poisoned":
         return "독";
+      case "burned":
+        return "화상";
+      case "paralyzed":
+        return "마비";
       case "normal":
       default:
         return "정상";
@@ -1527,6 +1579,10 @@ export class WorldScene extends Phaser.Scene {
 
       if (npcKey === "nurse") {
         this.nursePosition = { x: object.x, y: object.y };
+      }
+
+      if (npcKey === "storagePc") {
+        this.storagePcPosition = { x: object.x, y: object.y };
       }
     }
   }
@@ -2020,6 +2076,68 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  private handlePcBoxKeyboardInput(): void {
+    const keyboard = this.input.keyboard;
+
+    if (!keyboard) {
+      return;
+    }
+
+    this.ensureCursorKeys(keyboard);
+    this.ensureInteractionKeys(keyboard);
+    const interactionKeys = this.interactionKeys;
+
+    if (!interactionKeys) {
+      return;
+    }
+
+    if (
+      consumeVirtualGamepadPress("up") ||
+      Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
+      Phaser.Input.Keyboard.JustDown(this.cursors.w)
+    ) {
+      this.movePcBoxSelection(-1);
+      return;
+    }
+
+    if (
+      consumeVirtualGamepadPress("down") ||
+      Phaser.Input.Keyboard.JustDown(this.cursors.down) ||
+      Phaser.Input.Keyboard.JustDown(this.cursors.s)
+    ) {
+      this.movePcBoxSelection(1);
+      return;
+    }
+
+    if (
+      consumeVirtualGamepadPress("left") ||
+      consumeVirtualGamepadPress("right") ||
+      Phaser.Input.Keyboard.JustDown(this.cursors.left) ||
+      Phaser.Input.Keyboard.JustDown(this.cursors.right) ||
+      Phaser.Input.Keyboard.JustDown(this.cursors.a) ||
+      Phaser.Input.Keyboard.JustDown(this.cursors.d)
+    ) {
+      playBattleConfirmSound();
+      this.togglePcBoxFocus();
+      return;
+    }
+
+    if (consumeVirtualGamepadPress("confirm") || this.isConfirmJustDown()) {
+      playBattleConfirmSound();
+      this.confirmPcBoxSelection();
+      return;
+    }
+
+    if (
+      consumeVirtualGamepadPress("back") ||
+      Phaser.Input.Keyboard.JustDown(interactionKeys.esc) ||
+      Phaser.Input.Keyboard.JustDown(interactionKeys.backspace)
+    ) {
+      playBattleCancelSound();
+      this.closePcBox();
+    }
+  }
+
   private handleShopKeyboardInput(): void {
     const keyboard = this.input.keyboard;
 
@@ -2137,6 +2255,11 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    if (this.isPlayerNearStoragePc()) {
+      this.openPcBox();
+      return;
+    }
+
     if (this.isPlayerNearNurse()) {
       this.healAtNurse();
       return;
@@ -2193,6 +2316,19 @@ export class WorldScene extends Phaser.Scene {
 
     return (
       Math.hypot(this.player.x - this.nursePosition.x, this.player.y - this.nursePosition.y) <= 56
+    );
+  }
+
+  private isPlayerNearStoragePc(): boolean {
+    if (!this.storagePcPosition) {
+      return false;
+    }
+
+    return (
+      Math.hypot(
+        this.player.x - this.storagePcPosition.x,
+        this.player.y - this.storagePcPosition.y,
+      ) <= 42
     );
   }
 
@@ -2789,6 +2925,328 @@ export class WorldScene extends Phaser.Scene {
 
   private getAllInventoryItemIds(): KnownShopItemId[] {
     return [...SHOP_ITEM_IDS, ...PREMIUM_SHOP_ITEM_IDS];
+  }
+
+  private openPcBox(): void {
+    if (
+      this.shortcutGuideOpen ||
+      this.shopOpen ||
+      this.inventoryOpen ||
+      this.diceGambleOpen ||
+      this.battleIntroPlaying
+    ) {
+      return;
+    }
+
+    this.closePokemonStatusPanel({ rerenderPartyHud: false });
+    this.pcBoxOpen = true;
+    this.pcBoxFocus = "party";
+    this.pcBoxPartySlotIndex = clampSelectionIndex(
+      this.pcBoxPartySlotIndex,
+      PLAYER_PARTY_SLOT_COUNT,
+    );
+    this.pcBoxBoxIndex = clampSelectionIndex(
+      this.pcBoxBoxIndex,
+      Math.max(1, this.gameStateStore.getCurrentLocalPlayer().pokemonBox.length),
+    );
+    this.pcBoxMessage = "";
+    this.renderPcBoxUi();
+  }
+
+  private closePcBox(): void {
+    this.pcBoxOpen = false;
+    this.pcBoxMessage = "";
+    this.destroyPcBoxUi();
+  }
+
+  private movePcBoxSelection(delta: number): void {
+    const localPlayer = this.gameStateStore.getCurrentLocalPlayer();
+
+    if (this.pcBoxFocus === "party") {
+      this.pcBoxPartySlotIndex =
+        (this.pcBoxPartySlotIndex + delta + PLAYER_PARTY_SLOT_COUNT) % PLAYER_PARTY_SLOT_COUNT;
+    } else {
+      const boxItemCount = Math.max(1, localPlayer.pokemonBox.length);
+      this.pcBoxBoxIndex = (this.pcBoxBoxIndex + delta + boxItemCount) % boxItemCount;
+    }
+
+    this.pcBoxMessage = "";
+    this.renderPcBoxUi();
+  }
+
+  private togglePcBoxFocus(): void {
+    this.pcBoxFocus = this.pcBoxFocus === "party" ? "box" : "party";
+    this.pcBoxMessage = "";
+    this.renderPcBoxUi();
+  }
+
+  private confirmPcBoxSelection(): void {
+    const localPlayer = this.gameStateStore.getCurrentLocalPlayer();
+
+    if (this.pcBoxFocus === "party") {
+      const pokemon = this.getPartyPokemonBySlotIndex(this.pcBoxPartySlotIndex);
+      const result = this.gameStateStore.movePartyPokemonToBox(this.pcBoxPartySlotIndex);
+
+      if (result.ok) {
+        this.pcBoxMessage = `${pokemon?.name ?? "포켓몬"}을 PC 박스에 보관했다.`;
+        this.pcBoxPartySlotIndex = clampSelectionIndex(
+          this.pcBoxPartySlotIndex,
+          PLAYER_PARTY_SLOT_COUNT,
+        );
+        this.pcBoxBoxIndex = result.boxIndex;
+      } else {
+        this.pcBoxMessage =
+          result.reason === "last-pokemon"
+            ? "마지막 포켓몬은 보관할 수 없다."
+            : "선택한 파티 슬롯이 비어 있다.";
+      }
+
+      this.renderPartyHud();
+      this.renderPcBoxUi();
+      return;
+    }
+
+    const boxPokemon = localPlayer.pokemonBox[this.pcBoxBoxIndex];
+
+    if (!boxPokemon) {
+      this.pcBoxMessage = "박스가 비어 있다.";
+      this.renderPcBoxUi();
+      return;
+    }
+
+    const result = this.gameStateStore.moveBoxPokemonToParty(this.pcBoxBoxIndex);
+
+    if (result.ok) {
+      this.pcBoxMessage = `${boxPokemon.name}을 파티로 데려왔다.`;
+      this.pcBoxPartySlotIndex = result.slotIndex;
+      this.pcBoxBoxIndex = clampSelectionIndex(
+        this.pcBoxBoxIndex,
+        Math.max(1, this.gameStateStore.getCurrentLocalPlayer().pokemonBox.length),
+      );
+      this.renderPartyHud();
+      this.renderPcBoxUi();
+      return;
+    }
+
+    if (result.reason === "party-full") {
+      const swapResult = this.gameStateStore.swapPartyPokemonWithBox(
+        this.pcBoxPartySlotIndex,
+        this.pcBoxBoxIndex,
+      );
+
+      this.pcBoxMessage = swapResult.ok
+        ? `${boxPokemon.name}와 파티 포켓몬을 교체했다.`
+        : swapResult.reason === "empty-slot"
+          ? "교체할 파티 포켓몬을 선택해라."
+          : "선택한 박스 슬롯이 비어 있다.";
+      this.renderPartyHud();
+      this.renderPcBoxUi();
+      return;
+    }
+
+    this.pcBoxMessage = "선택한 박스 슬롯이 비어 있다.";
+    this.renderPcBoxUi();
+  }
+
+  private renderPcBoxUi(): void {
+    this.destroyPcBoxUi();
+
+    if (!this.pcBoxOpen) {
+      return;
+    }
+
+    const localPlayer = this.gameStateStore.getCurrentLocalPlayer();
+    const panelOrigin = getCenteredPanelOrigin(PC_BOX_PANEL_SIZE, this.getViewportSize());
+    const x = (offset: number) => panelOrigin.x + offset;
+    const y = (offset: number) => panelOrigin.y + offset;
+    const panel = this.add
+      .rectangle(
+        panelOrigin.x,
+        panelOrigin.y,
+        PC_BOX_PANEL_SIZE.width,
+        PC_BOX_PANEL_SIZE.height,
+        0xf8fbf0,
+        0.98,
+      )
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(2160);
+    panel.setStrokeStyle(3, 0x263238, 1);
+    this.pcBoxUiObjects.push(panel);
+
+    const divider = this.add
+      .rectangle(x(258), y(58), 2, 202, 0x607d6c, 0.36)
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(2161);
+    this.pcBoxUiObjects.push(
+      divider,
+      this.add
+        .text(
+          x(22),
+          y(14),
+          "PC 박스",
+          createGameTextStyle({
+            color: "#263238",
+            fontSize: "18px",
+          }),
+        )
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(2161),
+      this.add
+        .text(
+          x(22),
+          y(44),
+          this.pcBoxFocus === "party" ? "▶ 파티" : "  파티",
+          createGameTextStyle({
+            color: this.pcBoxFocus === "party" ? "#101820" : "#607d6c",
+            fontSize: "13px",
+          }),
+        )
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(2161),
+      this.add
+        .text(
+          x(284),
+          y(44),
+          this.pcBoxFocus === "box" ? "▶ 박스" : "  박스",
+          createGameTextStyle({
+            color: this.pcBoxFocus === "box" ? "#101820" : "#607d6c",
+            fontSize: "13px",
+          }),
+        )
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(2161),
+    );
+
+    for (let slotIndex = 0; slotIndex < PLAYER_PARTY_SLOT_COUNT; slotIndex += 1) {
+      const slot = localPlayer.party.find(candidate => candidate.slotIndex === slotIndex);
+      const pokemon = slot?.pokemon;
+      const selected = this.pcBoxFocus === "party" && slotIndex === this.pcBoxPartySlotIndex;
+      const rowY = y(72 + slotIndex * 28);
+
+      if (selected) {
+        const highlight = this.add
+          .rectangle(x(22), rowY - 4, 214, 24, 0xfff4a3, 0.95)
+          .setOrigin(0, 0)
+          .setScrollFactor(0)
+          .setDepth(2161);
+        highlight.setStrokeStyle(1, 0x263238, 0.65);
+        this.pcBoxUiObjects.push(highlight);
+      }
+
+      this.pcBoxUiObjects.push(
+        this.add
+          .text(
+            x(30),
+            rowY,
+            `${selected ? "▶" : " "} ${pokemon ? this.formatPcBoxPokemonLabel(pokemon) : "-"}`,
+            createGameTextStyle({
+              color: pokemon ? "#263238" : "#78909c",
+              fontSize: "12px",
+            }),
+          )
+          .setOrigin(0, 0)
+          .setScrollFactor(0)
+          .setDepth(2162),
+      );
+    }
+
+    const visibleBoxCount = 7;
+    const maxStartIndex = Math.max(0, localPlayer.pokemonBox.length - visibleBoxCount);
+    const startIndex = Math.min(Math.max(0, this.pcBoxBoxIndex - 3), maxStartIndex);
+
+    for (let index = 0; index < visibleBoxCount; index += 1) {
+      const boxIndex = startIndex + index;
+      const pokemon = localPlayer.pokemonBox[boxIndex];
+      const selected = this.pcBoxFocus === "box" && boxIndex === this.pcBoxBoxIndex;
+      const rowY = y(72 + index * 28);
+
+      if (selected) {
+        const highlight = this.add
+          .rectangle(x(284), rowY - 4, 214, 24, 0xfff4a3, 0.95)
+          .setOrigin(0, 0)
+          .setScrollFactor(0)
+          .setDepth(2161);
+        highlight.setStrokeStyle(1, 0x263238, 0.65);
+        this.pcBoxUiObjects.push(highlight);
+      }
+
+      this.pcBoxUiObjects.push(
+        this.add
+          .text(
+            x(292),
+            rowY,
+            `${selected ? "▶" : " "} ${pokemon ? this.formatPcBoxPokemonLabel(pokemon) : "-"}`,
+            createGameTextStyle({
+              color: pokemon ? "#263238" : "#78909c",
+              fontSize: "12px",
+            }),
+          )
+          .setOrigin(0, 0)
+          .setScrollFactor(0)
+          .setDepth(2162),
+      );
+    }
+
+    this.pcBoxUiObjects.push(
+      this.add
+        .text(
+          x(22),
+          y(264),
+          this.pcBoxMessage,
+          createGameTextStyle({
+            color:
+              this.pcBoxMessage.includes("없") || this.pcBoxMessage.includes("비어")
+                ? "#b71c1c"
+                : "#1b5e20",
+            fontSize: "12px",
+            wordWrap: { width: PC_BOX_PANEL_SIZE.width - 44 },
+          }),
+        )
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(2162),
+      this.add
+        .text(
+          x(22),
+          y(292),
+          "←→ 파티/박스 · ↑↓ 선택 · Enter 결정 · Esc 닫기",
+          createGameTextStyle({
+            color: "#607d6c",
+            fontSize: "10px",
+          }),
+        )
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(2162),
+    );
+  }
+
+  private destroyPcBoxUi(): void {
+    this.pcBoxUiObjects.forEach(object => object.destroy());
+    this.pcBoxUiObjects = [];
+  }
+
+  private getPcBoxSnapshot(): WorldE2eSnapshot["pcBox"] {
+    const localPlayer = this.gameStateStore.getCurrentLocalPlayer();
+
+    return {
+      open: this.pcBoxOpen,
+      focus: this.pcBoxFocus,
+      partySlotIndex: this.pcBoxPartySlotIndex,
+      boxIndex: this.pcBoxBoxIndex,
+      message: this.pcBoxMessage,
+      partyCount: localPlayer.party.filter(slot => slot.pokemon).length,
+      boxCount: localPlayer.pokemonBox.length,
+    };
+  }
+
+  private formatPcBoxPokemonLabel(pokemon: PlayerPokemon): string {
+    return `${pokemon.name} Lv.${pokemon.level} ${this.formatPokemonHp(pokemon)}`;
   }
 
   private showInitialShortcutGuideIfNeeded(): void {

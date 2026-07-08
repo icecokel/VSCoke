@@ -413,6 +413,11 @@ export function choosePlayerMove(
 
   for (const action of actions) {
     if (action.side === "player") {
+      if (isFullyParalyzed(playerPokemon, random)) {
+        messageQueue.push(`${withTopicParticle(playerPokemon.name)} 몸이 저려서 움직일 수 없다!`);
+        continue;
+      }
+
       playerPokemon = {
         ...playerPokemon,
         moves: spendMovePp(playerPokemon.moves, action.move.id),
@@ -478,6 +483,11 @@ export function choosePlayerMove(
         };
       }
 
+      continue;
+    }
+
+    if (isFullyParalyzed(opponentPokemon, random)) {
+      messageQueue.push(`${withTopicParticle(opponentPokemon.name)} 몸이 저려서 움직일 수 없다!`);
       continue;
     }
 
@@ -585,7 +595,14 @@ function resolveFailedRunTurn(
     BATTLE_RUN_FAILED_MESSAGE,
     `${opponentPokemon.name}의 ${opponentMove.name}!`,
   ];
-  const moveOutcome = resolveMoveOutcome(opponentPokemon, playerPokemon, opponentMove);
+  const moveOutcome = isFullyParalyzed(opponentPokemon)
+    ? {
+        damage: 0,
+        attacker: opponentPokemon,
+        defender: playerPokemon,
+        messages: [`${withTopicParticle(opponentPokemon.name)} 몸이 저려서 움직일 수 없다!`],
+      }
+    : resolveMoveOutcome(opponentPokemon, playerPokemon, opponentMove);
 
   messageQueue.push(...moveOutcome.messages);
   opponentPokemon = moveOutcome.attacker;
@@ -687,7 +704,14 @@ function resolveFailedCaptureTurn(
   };
   let playerPokemon = state.player.pokemon;
   const messageQueue = [...captureMessages, `${opponentPokemon.name}의 ${opponentMove.name}!`];
-  const moveOutcome = resolveMoveOutcome(opponentPokemon, playerPokemon, opponentMove);
+  const moveOutcome = isFullyParalyzed(opponentPokemon)
+    ? {
+        damage: 0,
+        attacker: opponentPokemon,
+        defender: playerPokemon,
+        messages: [`${withTopicParticle(opponentPokemon.name)} 몸이 저려서 움직일 수 없다!`],
+      }
+    : resolveMoveOutcome(opponentPokemon, playerPokemon, opponentMove);
 
   messageQueue.push(...moveOutcome.messages);
   opponentPokemon = moveOutcome.attacker;
@@ -783,7 +807,14 @@ function resolveOpponentTurnAfterPlayerMessages(
   };
   let playerPokemon = state.player.pokemon;
   const messageQueue = [...startingMessages, `${opponentPokemon.name}의 ${opponentMove.name}!`];
-  const moveOutcome = resolveMoveOutcome(opponentPokemon, playerPokemon, opponentMove);
+  const moveOutcome = isFullyParalyzed(opponentPokemon)
+    ? {
+        damage: 0,
+        attacker: opponentPokemon,
+        defender: playerPokemon,
+        messages: [`${withTopicParticle(opponentPokemon.name)} 몸이 저려서 움직일 수 없다!`],
+      }
+    : resolveMoveOutcome(opponentPokemon, playerPokemon, opponentMove);
 
   messageQueue.push(...moveOutcome.messages);
   opponentPokemon = moveOutcome.attacker;
@@ -1018,8 +1049,11 @@ function orderTurnActions(
       : [playerAction, opponentAction];
   }
 
-  if (opponent.speed !== player.speed) {
-    return opponent.speed > player.speed
+  const playerSpeed = calculateEffectiveBattleSpeed(player);
+  const opponentSpeed = calculateEffectiveBattleSpeed(opponent);
+
+  if (opponentSpeed !== playerSpeed) {
+    return opponentSpeed > playerSpeed
       ? [opponentAction, playerAction]
       : [playerAction, opponentAction];
   }
@@ -1074,7 +1108,10 @@ function resolveMoveOutcome(
       move.category === "status" || move.power <= 0 ? 100 : rollDamageRandomFactor(random),
     typeEffectiveness,
   });
-  const effectOutcome = resolveMoveEffect(attacker, defender, move);
+  const effectOutcome = resolveMoveEffect(attacker, defender, move, {
+    random,
+    damage,
+  });
   const typeMessage =
     move.category !== "status" && move.power > 0
       ? formatTypeEffectivenessMessage(typeEffectiveness)
@@ -1101,10 +1138,14 @@ function damageForMove(
 ): number {
   const attackerStages = normalizeBattleStatStages(attacker.statStages);
   const defenderStages = normalizeBattleStatStages(defender.statStages);
-  const offensiveStat =
+  const rawOffensiveStat =
     move.category === "special"
       ? calculateBattleStageModifiedStat(attacker.specialAttack, attackerStages.specialAttack)
       : calculateBattleStageModifiedStat(attacker.attack, attackerStages.attack);
+  const offensiveStat =
+    move.category === "physical" && attacker.status === "burned"
+      ? Math.max(1, Math.floor(rawOffensiveStat / 2))
+      : rawOffensiveStat;
   const defensiveStat =
     move.category === "special"
       ? calculateBattleStageModifiedStat(defender.specialDefense, defenderStages.specialDefense)
@@ -1151,9 +1192,22 @@ function resolveMoveEffect(
   attacker: BattlePokemon,
   defender: BattlePokemon,
   move: BattleMove,
+  options: { random: () => number; damage: number },
 ): MoveEffectOutcome {
   if (move.effectCode === 66) {
     return applyPoisonEffect(attacker, defender);
+  }
+
+  if (move.effectCode === 67) {
+    return applyParalysisEffect(attacker, defender);
+  }
+
+  if (move.effectCode === 4 && options.damage > 0 && randomUnit(options.random) < 0.1) {
+    return applyBurnEffect(attacker, defender);
+  }
+
+  if (move.effectCode === 6 && options.damage > 0 && randomUnit(options.random) < 0.1) {
+    return applyParalysisEffect(attacker, defender);
   }
 
   const statStageEffect = getStatStageEffect(move.effectCode);
@@ -1185,6 +1239,52 @@ function applyPoisonEffect(attacker: BattlePokemon, defender: BattlePokemon): Mo
       status: "poisoned",
     },
     messages: [`${withTopicParticle(defender.name)} 독에 걸렸다!`],
+  };
+}
+
+function applyBurnEffect(attacker: BattlePokemon, defender: BattlePokemon): MoveEffectOutcome {
+  if (defender.status === "fainted") {
+    return { attacker, defender, messages: [] };
+  }
+
+  if (defender.status !== "normal") {
+    return {
+      attacker,
+      defender,
+      messages: [`${withTopicParticle(defender.name)} 이미 상태 이상이다!`],
+    };
+  }
+
+  return {
+    attacker,
+    defender: {
+      ...defender,
+      status: "burned",
+    },
+    messages: [`${withTopicParticle(defender.name)} 화상을 입었다!`],
+  };
+}
+
+function applyParalysisEffect(attacker: BattlePokemon, defender: BattlePokemon): MoveEffectOutcome {
+  if (defender.status === "fainted") {
+    return { attacker, defender, messages: [] };
+  }
+
+  if (defender.status !== "normal") {
+    return {
+      attacker,
+      defender,
+      messages: [`${withTopicParticle(defender.name)} 이미 상태 이상이다!`],
+    };
+  }
+
+  return {
+    attacker,
+    defender: {
+      ...defender,
+      status: "paralyzed",
+    },
+    messages: [`${withTopicParticle(defender.name)} 마비되어 기술이 나오기 어려워졌다!`],
   };
 }
 
@@ -1247,10 +1347,16 @@ function applyEndOfTurnEffects(
   const playerPoison = applyPoisonResidualDamage(nextPlayerPokemon);
   nextPlayerPokemon = playerPoison.pokemon;
   messages.push(...playerPoison.messages);
+  const playerBurn = applyBurnResidualDamage(nextPlayerPokemon);
+  nextPlayerPokemon = playerBurn.pokemon;
+  messages.push(...playerBurn.messages);
 
   const opponentPoison = applyPoisonResidualDamage(nextOpponentPokemon);
   nextOpponentPokemon = opponentPoison.pokemon;
   messages.push(...opponentPoison.messages);
+  const opponentBurn = applyBurnResidualDamage(nextOpponentPokemon);
+  nextOpponentPokemon = opponentBurn.pokemon;
+  messages.push(...opponentBurn.messages);
 
   return {
     playerPokemon: nextPlayerPokemon,
@@ -1396,6 +1502,34 @@ function applyPoisonResidualDamage(pokemon: BattlePokemon): {
     pokemon: nextPokemon,
     messages: [`${withTopicParticle(pokemon.name)} 독 데미지를 입었다!`],
   };
+}
+
+function applyBurnResidualDamage(pokemon: BattlePokemon): {
+  pokemon: BattlePokemon;
+  messages: string[];
+} {
+  if (pokemon.status !== "burned" || pokemon.currentHp <= 0) {
+    return { pokemon, messages: [] };
+  }
+
+  const damage = Math.max(1, Math.floor(pokemon.maxHp / 8));
+  const nextPokemon = applyDamage(pokemon, damage);
+
+  return {
+    pokemon: nextPokemon,
+    messages: [`${withTopicParticle(pokemon.name)} 화상 데미지를 입었다!`],
+  };
+}
+
+function calculateEffectiveBattleSpeed(pokemon: BattlePokemon): number {
+  const stages = normalizeBattleStatStages(pokemon.statStages);
+  const stagedSpeed = calculateBattleStageModifiedStat(pokemon.speed, stages.speed);
+
+  return pokemon.status === "paralyzed" ? Math.max(1, Math.floor(stagedSpeed / 4)) : stagedSpeed;
+}
+
+function isFullyParalyzed(pokemon: BattlePokemon, random: () => number = Math.random): boolean {
+  return pokemon.status === "paralyzed" && randomUnit(random) < 0.25;
 }
 
 function getMovePriority(move: BattleMove): number {

@@ -48,9 +48,14 @@ import {
   createDefaultLocalPlayer,
   createGameStateStore,
 } from "../../src/components/poke-lounge/runtime/game/state/gameStateStore";
+import { FIELD_MAP } from "../../src/components/poke-lounge/runtime/game/world/fieldMap";
 import { selectWildEncounterConfig } from "../../src/components/poke-lounge/runtime/game/world/wildEncounterTables";
 import { WILD_ENCOUNTER_RATE } from "../../src/components/poke-lounge/runtime/game/world/wildEncounters";
 import { escapeRegExp, gotoWithRetry, resolveLocaleAndMessages } from "./test-helpers";
+
+const POKE_LOUNGE_TOWN_MAP_PATH = "/maps/pokemmo-reference/town.json";
+const POKE_LOUNGE_STORAGE_PC_ASSET_PATH =
+  "/assets/poke-lounge/textures/a_0_7_0_0093/tmfl04_door1.png";
 
 type PokeLoungeSceneKey = "world" | "battle";
 type PokeLoungeBattleScenario =
@@ -117,8 +122,13 @@ interface PokeLoungeGameStateSnapshot {
     string,
     {
       party: Array<{
+        slotIndex?: number;
         pokemon?: {
+          speciesId?: number;
+          name?: string;
+          level?: number;
           currentHp?: number;
+          maxHp?: number;
           status?: string;
           individualValues?: {
             hp: number;
@@ -129,6 +139,11 @@ interface PokeLoungeGameStateSnapshot {
             speed: number;
           };
         } | null;
+      }>;
+      pokemonBox?: Array<{
+        speciesId?: number;
+        name?: string;
+        level?: number;
       }>;
     }
   >;
@@ -165,6 +180,15 @@ interface PokeLoungeWorldSnapshot {
     maxHp: number | null;
     status: string;
   } | null;
+  pcBox: {
+    open: boolean;
+    focus: "party" | "box";
+    partySlotIndex: number;
+    boxIndex: number;
+    message: string;
+    partyCount: number;
+    boxCount: number;
+  };
 }
 
 interface PokeLoungeCanvasSnapshot {
@@ -177,6 +201,7 @@ interface PokeLoungeCanvasSnapshot {
 interface PokeLoungeE2eController {
   getActiveSceneKey(): PokeLoungeSceneKey | null;
   getBattleSnapshot(): PokeLoungeBattleSnapshot | null;
+  setCurrentLocalPlayerForTest(player: Record<string, unknown>): void;
   setBattleCommand(
     command: PokeLoungeBattleSnapshot["selectedCommand"],
   ): PokeLoungeBattleSnapshot | null;
@@ -184,6 +209,11 @@ interface PokeLoungeE2eController {
   confirmBattle(): PokeLoungeBattleSnapshot | null;
   drainBattleMessages(maxMessages?: number): PokeLoungeBattleSnapshot | null;
   getWorldSnapshot(): PokeLoungeWorldSnapshot | null;
+  openPcBoxForTest(): PokeLoungeWorldSnapshot | null;
+  movePcBoxSelectionForTest(delta: number): PokeLoungeWorldSnapshot | null;
+  togglePcBoxFocusForTest(): PokeLoungeWorldSnapshot | null;
+  confirmPcBoxSelectionForTest(): PokeLoungeWorldSnapshot | null;
+  closePcBoxForTest(): PokeLoungeWorldSnapshot | null;
   closeWorldShortcutGuide(): void;
   pressVirtualGamepad(
     button: "up" | "down" | "left" | "right" | "confirm" | "back" | "bag" | "help",
@@ -414,6 +444,68 @@ test.describe("Poke Lounge", () => {
         name: "치코리타",
       }),
     ]);
+  });
+
+  test("PC 박스는 파티 포켓몬 보관과 박스 포켓몬 인출을 안전하게 처리한다", () => {
+    const store = createGameStateStore();
+    const player = createDefaultLocalPlayer();
+
+    store.upsertLocalPlayer({
+      ...player,
+      party: [
+        { slotIndex: 0, pokemon: createStoredPokemonFixture(152, "치코리타") },
+        { slotIndex: 1, pokemon: createStoredPokemonFixture(155, "브케인") },
+      ],
+      pokemonBox: [createStoredPokemonFixture(158, "리아코")],
+    });
+
+    const depositResult = store.movePartyPokemonToBox(1);
+    expect(depositResult).toEqual({ ok: true, destination: "box", boxIndex: 1 });
+    expect(store.getCurrentLocalPlayer().party.map(slot => slot.pokemon?.name)).toEqual([
+      "치코리타",
+    ]);
+    expect(store.getCurrentLocalPlayer().pokemonBox.map(pokemon => pokemon.name)).toEqual([
+      "리아코",
+      "브케인",
+    ]);
+
+    const blockedDepositResult = store.movePartyPokemonToBox(0);
+    expect(blockedDepositResult).toEqual({ ok: false, reason: "last-pokemon" });
+
+    const withdrawResult = store.moveBoxPokemonToParty(0);
+    expect(withdrawResult).toEqual({ ok: true, destination: "party", slotIndex: 1 });
+    expect(store.getCurrentLocalPlayer().party.map(slot => slot.pokemon?.name)).toEqual([
+      "치코리타",
+      "리아코",
+    ]);
+    expect(store.getCurrentLocalPlayer().pokemonBox.map(pokemon => pokemon.name)).toEqual([
+      "브케인",
+    ]);
+  });
+
+  test("PC 박스는 파티가 가득 찼을 때 선택한 파티 포켓몬과 교체한다", () => {
+    const store = createGameStateStore();
+    const player = createDefaultLocalPlayer();
+
+    store.upsertLocalPlayer({
+      ...player,
+      activePartySlotIndex: 5,
+      party: Array.from({ length: PLAYER_PARTY_SLOT_COUNT }, (_, slotIndex) => ({
+        slotIndex,
+        pokemon: createStoredPokemonFixture(slotIndex + 1, `포켓몬 ${slotIndex + 1}`),
+      })),
+      pokemonBox: [createStoredPokemonFixture(152, "치코리타")],
+    });
+
+    expect(store.moveBoxPokemonToParty(0)).toEqual({ ok: false, reason: "party-full" });
+
+    const swapResult = store.swapPartyPokemonWithBox(5, 0);
+    const localPlayer = store.getCurrentLocalPlayer();
+
+    expect(swapResult).toEqual({ ok: true });
+    expect(localPlayer.party.find(slot => slot.slotIndex === 5)?.pokemon?.name).toBe("치코리타");
+    expect(localPlayer.pokemonBox[0]?.name).toBe("포켓몬 6");
+    expect(localPlayer.activePartySlotIndex).toBe(5);
   });
 
   test("기존 저장 데이터는 PC 박스를 빈 배열로 보정한다", () => {
@@ -766,6 +858,35 @@ test.describe("Poke Lounge", () => {
     });
   });
 
+  test("ROM 추출 PC 오브젝트는 회복 NPC 오른쪽에 배치된다", () => {
+    const townMap = readPublicJson(POKE_LOUNGE_TOWN_MAP_PATH) as {
+      layers?: Array<{
+        name?: string;
+        objects?: Array<{ name?: string; x?: number; y?: number; type?: string }>;
+      }>;
+    };
+    const npcObjects = townMap.layers?.find(layer => layer.name === "Npcs")?.objects ?? [];
+    const nurse = npcObjects.find(object => object.name === "nurse");
+    const storagePc = npcObjects.find(object => object.name === "storagePc");
+    const npcMap = FIELD_MAP.npcs as Record<string, { imageUrl: string; textureKey: string }>;
+
+    expect(fs.existsSync(readPublicFilePath(POKE_LOUNGE_STORAGE_PC_ASSET_PATH))).toBe(true);
+    expect(npcMap.storagePc).toEqual(
+      expect.objectContaining({
+        imageUrl: POKE_LOUNGE_STORAGE_PC_ASSET_PATH,
+        textureKey: "field-object-storage-pc",
+      }),
+    );
+    expect(storagePc).toEqual(
+      expect.objectContaining({
+        name: "storagePc",
+        type: "storage-pc",
+        x: (nurse?.x ?? 0) + 48,
+        y: nurse?.y,
+      }),
+    );
+  });
+
   test("야생 조우 설정은 지역별 encounter rate와 slot을 함께 선택한다", () => {
     const config = selectWildEncounterConfig(
       {
@@ -874,6 +995,174 @@ test.describe("Poke Lounge", () => {
     expect(resolved.opponent.pokemon.currentHp).toBeLessThan(
       battleState.opponent.pokemon.currentHp,
     );
+  });
+
+  test("전투 순서는 스피드 랭크 보정을 반영한다", () => {
+    const baseState = createSampleBattleState();
+    const tackle = createBattleMoveFixture({
+      accuracy: 100,
+      category: "physical",
+      effectCode: 0,
+      id: 33,
+      name: "몸통박치기",
+      power: 35,
+      type: "노말",
+      typeId: 0,
+    });
+    const battleState = {
+      ...baseState,
+      phase: "move-select" as const,
+      messageQueue: [],
+      player: {
+        ...baseState.player,
+        pokemon: {
+          ...baseState.player.pokemon,
+          speed: 40,
+          moves: [tackle],
+        },
+      },
+      opponent: {
+        ...baseState.opponent,
+        pokemon: {
+          ...baseState.opponent.pokemon,
+          speed: 100,
+          statStages: {
+            ...baseState.opponent.pokemon.statStages,
+            speed: -6,
+          },
+          moves: [tackle],
+        },
+      },
+    };
+
+    const resolved = choosePlayerMove(battleState, 0, {
+      random: createRandomSequence([0.99, 0.99, 0.99, 0.99, 0.99, 0.99]),
+    });
+
+    expect(resolved.messageQueue[0]).toBe("치코리타의 몸통박치기!");
+  });
+
+  test("불꽃 기술은 화상을 입히고 턴 종료 화상 데미지를 적용한다", () => {
+    const baseState = createSampleBattleState();
+    const ember = createBattleMoveFixture({
+      accuracy: 100,
+      category: "special",
+      effectCode: 4,
+      id: 52,
+      name: "불꽃세례",
+      power: 40,
+      type: "불꽃",
+      typeId: 10,
+    });
+    const battleState = {
+      ...baseState,
+      phase: "move-select" as const,
+      messageQueue: [],
+      player: {
+        ...baseState.player,
+        pokemon: {
+          ...baseState.player.pokemon,
+          typeIds: [10],
+          moves: [ember],
+        },
+      },
+      opponent: {
+        ...baseState.opponent,
+        pokemon: {
+          ...baseState.opponent.pokemon,
+          currentHp: baseState.opponent.pokemon.maxHp,
+          moves: [],
+        },
+      },
+    };
+
+    const resolved = choosePlayerMove(battleState, 0, {
+      random: createRandomSequence([0, 0.99, 0.99, 0]),
+    });
+
+    expect(resolved.opponent.pokemon.status).toBe("burned");
+    expect(resolved.messageQueue).toEqual(
+      expect.arrayContaining(["브케인은 화상을 입었다!", "브케인은 화상 데미지를 입었다!"]),
+    );
+  });
+
+  test("마비 상태는 스피드를 낮추고 일정 확률로 행동을 막는다", () => {
+    const baseState = createSampleBattleState();
+    const thunderWave = createBattleMoveFixture({
+      accuracy: 100,
+      category: "status",
+      effectCode: 67,
+      id: 86,
+      name: "전기자석파",
+      power: 0,
+      type: "전기",
+      typeId: 13,
+    });
+    const tackle = createBattleMoveFixture({
+      accuracy: 100,
+      category: "physical",
+      effectCode: 0,
+      id: 33,
+      name: "몸통박치기",
+      power: 35,
+      type: "노말",
+      typeId: 0,
+    });
+    const paralyzeState = {
+      ...baseState,
+      phase: "move-select" as const,
+      messageQueue: [],
+      player: {
+        ...baseState.player,
+        pokemon: {
+          ...baseState.player.pokemon,
+          speed: 40,
+          moves: [thunderWave],
+        },
+      },
+      opponent: {
+        ...baseState.opponent,
+        pokemon: {
+          ...baseState.opponent.pokemon,
+          speed: 100,
+          moves: [],
+        },
+      },
+    };
+    const paralyzed = choosePlayerMove(paralyzeState, 0, {
+      random: createRandomSequence([0]),
+    });
+
+    expect(paralyzed.opponent.pokemon.status).toBe("paralyzed");
+    expect(paralyzed.messageQueue).toContain("브케인은 마비되어 기술이 나오기 어려워졌다!");
+
+    const blockedState = {
+      ...paralyzed,
+      phase: "move-select" as const,
+      messageQueue: [],
+      player: {
+        ...paralyzed.player,
+        pokemon: {
+          ...paralyzed.player.pokemon,
+          speed: 40,
+          moves: [tackle],
+        },
+      },
+      opponent: {
+        ...paralyzed.opponent,
+        pokemon: {
+          ...paralyzed.opponent.pokemon,
+          speed: 100,
+          moves: [tackle],
+        },
+      },
+    };
+    const resolved = choosePlayerMove(blockedState, 0, {
+      random: createRandomSequence([0.99, 0.99, 0.99, 0]),
+    });
+
+    expect(resolved.messageQueue[0]).toBe("치코리타의 몸통박치기!");
+    expect(resolved.messageQueue).toContain("브케인은 몸이 저려서 움직일 수 없다!");
   });
 
   test("독가루는 상대를 독 상태로 만들고 턴 종료 독 데미지를 적용한다", () => {
@@ -1097,6 +1386,97 @@ test.describe("Poke Lounge", () => {
         maxHp: null,
         status: "normal",
       });
+
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("PC 박스 UI는 박스 포켓몬 이동과 마지막 파티 보관 차단을 처리한다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await startSoloGame(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
+    await waitForInitialWorldShortcutGuideIfAny(page);
+    await closeWorldShortcutGuideIfOpen(page);
+
+    await page.evaluate(() => {
+      const pokeWindow = window as PokeLoungeWindow;
+      const state = pokeWindow.__POKE_LOUNGE_E2E__?.getGameStateSnapshot();
+
+      if (!state) {
+        return;
+      }
+
+      const currentPlayer = state.playersById[state.currentPlayerId];
+
+      pokeWindow.__POKE_LOUNGE_E2E__?.setCurrentLocalPlayerForTest({
+        ...currentPlayer,
+        activePartySlotIndex: 0,
+        party: [
+          {
+            slotIndex: 0,
+            pokemon: {
+              speciesId: 152,
+              name: "치코리타",
+              level: 10,
+              maxHp: 30,
+              currentHp: 30,
+              status: "normal",
+            },
+          },
+        ],
+        pokemonBox: [
+          {
+            speciesId: 158,
+            name: "리아코",
+            level: 10,
+            maxHp: 32,
+            currentHp: 32,
+            status: "normal",
+          },
+        ],
+      });
+    });
+
+    await expect
+      .poll(() => page.evaluate(() => window.__POKE_LOUNGE_E2E__?.openPcBoxForTest()?.pcBox), {
+        timeout: 10000,
+      })
+      .toMatchObject({ open: true, partyCount: 1, boxCount: 1 });
+
+    await page.evaluate(() => {
+      const controller = (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__;
+
+      controller?.togglePcBoxFocusForTest();
+      controller?.confirmPcBoxSelectionForTest();
+    });
+
+    const afterWithdraw = await getGameStateSnapshot(page);
+    const currentPlayer = afterWithdraw?.playersById[afterWithdraw.currentPlayerId];
+    expect(currentPlayer?.party.map(slot => slot.pokemon?.name)).toEqual(["치코리타", "리아코"]);
+    expect(currentPlayer?.pokemonBox).toEqual([]);
+
+    await page.evaluate(() => {
+      const controller = (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__;
+
+      controller?.togglePcBoxFocusForTest();
+      controller?.confirmPcBoxSelectionForTest();
+      controller?.movePcBoxSelectionForTest(-1);
+      controller?.confirmPcBoxSelectionForTest();
+    });
+
+    const afterDeposit = await getGameStateSnapshot(page);
+    const afterDepositPlayer = afterDeposit?.playersById[afterDeposit.currentPlayerId];
+    const pcSnapshot = await getWorldSnapshot(page);
+
+    expect(afterDepositPlayer?.party.map(slot => slot.pokemon?.name)).toEqual(["치코리타"]);
+    expect(afterDepositPlayer?.pokemonBox?.map(pokemon => pokemon.name)).toEqual(["리아코"]);
+    expect(pcSnapshot?.pcBox).toMatchObject({
+      open: true,
+      focus: "party",
+      message: "마지막 포켓몬은 보관할 수 없다.",
+      partyCount: 1,
+      boxCount: 1,
+    });
 
     expect(browserErrors.join("\n")).toBe("");
   });
@@ -1780,7 +2160,7 @@ test.describe("Poke Lounge", () => {
 });
 
 function readPublicPngDimensions(publicPath: string): { width: number; height: number } {
-  const filePath = path.join(process.cwd(), "public", publicPath.replace(/^\//, ""));
+  const filePath = readPublicFilePath(publicPath);
   const header = fs.readFileSync(filePath).subarray(16, 24);
 
   return {
@@ -1790,8 +2170,11 @@ function readPublicPngDimensions(publicPath: string): { width: number; height: n
 }
 
 function readPublicJson(publicPath: string): unknown {
-  const filePath = path.join(process.cwd(), "public", publicPath.replace(/^\//, ""));
-  return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  return JSON.parse(fs.readFileSync(readPublicFilePath(publicPath), "utf8"));
+}
+
+function readPublicFilePath(publicPath: string): string {
+  return path.join(process.cwd(), "public", publicPath.replace(/^\//, ""));
 }
 
 function createRuntimeGameDataFetcher(fixtures: Record<string, unknown>) {

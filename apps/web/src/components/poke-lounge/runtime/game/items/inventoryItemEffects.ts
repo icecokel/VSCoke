@@ -9,7 +9,7 @@ export type InventoryItemEffectId =
   | "antidote"
   | "revive"
   | "rareCandy";
-export type InventoryItemTargetStatus = "normal" | "poisoned" | "fainted";
+export type InventoryItemTargetStatus = "normal" | "poisoned" | "burned" | "paralyzed" | "fainted";
 
 export interface InventoryItemTarget {
   name: string;

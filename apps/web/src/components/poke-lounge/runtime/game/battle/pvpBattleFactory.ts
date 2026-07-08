@@ -9,6 +9,7 @@ import type {
   BattleScreenState,
 } from "./battleTypes";
 import type { Gen4BaseStats } from "./gen4PokemonStats";
+import { createDefaultBattleStatStages } from "./battle-stat-stages";
 import { normalizeIndividualValues } from "./individual-values";
 
 export interface CreatePvpBattleStateInput {
@@ -113,6 +114,7 @@ function createBattlePokemon(pokemon: PlayerPokemon): BattlePokemon {
     specialAttack: baseStats.special_attack,
     specialDefense: baseStats.special_defense,
     speed: baseStats.speed,
+    statStages: createDefaultBattleStatStages(),
     typeIds: [DEFAULT_MOVE_TYPE_ID],
     status: currentHp <= 0 ? "fainted" : (pokemon.status ?? "normal"),
     frontSprite: assets.front,

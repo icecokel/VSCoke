@@ -3,6 +3,7 @@ import type { PlayerPokemon } from "../state/gameStateStore";
 import type { PlayerPokemonSlot } from "../player/playerTypes";
 import { getRuntimeWildBattleMoveSets } from "../data/game-data-json";
 import type { RomBattleMoveRecord } from "./battleRomData";
+import { createDefaultBattleStatStages } from "./battle-stat-stages";
 import { BATTLE_PARTY_SLOT_COUNT, createBattleParty } from "./battleParty";
 import { getBattlePokemonAssets } from "./battlePokemonAssets";
 import { getExperienceForLevel } from "./experience";
@@ -277,6 +278,7 @@ function createBattlePokemon({
     specialAttack: stats.specialAttack,
     specialDefense: stats.specialDefense,
     speed: stats.speed,
+    statStages: createDefaultBattleStatStages(),
     typeIds: uniqueTypeIds(personalRecord.types.primary, personalRecord.types.secondary),
     status:
       status === "fainted" || resolvedCurrentHp === 0

@@ -28,6 +28,7 @@ import {
   playWildBattleBgm,
   stopWildBattleBgm,
 } from "../battle/battleAudio";
+import { getExperienceForLevel } from "../battle/experience";
 import {
   BATTLE_END_CONFIRM_MESSAGE,
   chooseBattleBagItem,
@@ -43,7 +44,7 @@ import type {
   BattlePokemon,
   BattleScreenState,
 } from "../battle/battleTypes";
-import { applyLevelUpBattleMoves } from "../battle/levelUpMoves";
+import { planLevelUpBattleMoves } from "../battle/levelUpMoves";
 import {
   applyLevelUpEvolution,
   normalizePokemonEvolutionTable,
@@ -85,6 +86,7 @@ const BATTLE_HP_DECREASE_TWEEN_MS = 560;
 const BATTLE_HIT_TWEEN_MS = 300;
 const BATTLE_HIT_SHAKE_PIXELS = 4;
 const BATTLE_ENTRANCE_TWEEN_MS = 640;
+const BATTLE_EVOLUTION_TWEEN_MS = 1600;
 const BATTLE_BAG_PREMIUM_ITEM_IDS = [
   "hyperPotion",
   "revive",
@@ -93,7 +95,11 @@ const BATTLE_BAG_PREMIUM_ITEM_IDS = [
 
 type PremiumBattleBagItemId = (typeof BATTLE_BAG_PREMIUM_ITEM_IDS)[number];
 type BattleBagItemId = ShopItemId | PremiumBattleBagItemId;
-export type BattleE2eScenario = "wild-victory" | "wild-defeat" | "wild-evolution";
+export type BattleE2eScenario =
+  | "wild-victory"
+  | "wild-defeat"
+  | "wild-evolution"
+  | "wild-move-learning";
 
 export interface BattleE2eSnapshot {
   battleKind: BattleScreenState["battleKind"];
@@ -108,6 +114,11 @@ export interface BattleE2eSnapshot {
   selectedMoveName: string | null;
   selectedBagItemIndex: number;
   selectedPartySlotIndex: number;
+  moveReplacement: {
+    pokemonName: string;
+    newMoveName: string;
+    selectedMoveIndex: number;
+  } | null;
   result: BattleScreenState["result"];
   returnToWorld: BattleScreenState["returnToWorld"];
   battleEntrancePlaying: boolean;
@@ -116,6 +127,8 @@ export interface BattleE2eSnapshot {
   hpAnimationStartedCount: number;
   hitAnimationPlaying: boolean;
   hitAnimationStartedCount: number;
+  evolutionAnimationPlaying: boolean;
+  evolutionAnimationStartedCount: number;
   player: {
     name: string;
     level: number;
@@ -125,6 +138,7 @@ export interface BattleE2eSnapshot {
     hitAnimationStartedCount: number;
     status: string;
     activePartySlotIndex: number;
+    moves: Array<{ id: number; name: string }>;
   };
   opponent: {
     name: string;
@@ -135,6 +149,12 @@ export interface BattleE2eSnapshot {
     hitAnimationStartedCount: number;
     status: string;
   };
+}
+
+interface PendingMoveLearning {
+  slotIndex: number;
+  pokemonName: string;
+  newMove: BattleMove;
 }
 
 export interface WildBattleSceneData {
@@ -210,7 +230,8 @@ function isBattleE2eSceneData(data: unknown): data is BattleE2eSceneData {
     isRecord(data) &&
     (data.e2eScenario === "wild-victory" ||
       data.e2eScenario === "wild-defeat" ||
-      data.e2eScenario === "wild-evolution")
+      data.e2eScenario === "wild-evolution" ||
+      data.e2eScenario === "wild-move-learning")
   );
 }
 
@@ -315,8 +336,13 @@ export class BattleScene extends Phaser.Scene {
   private battleEntranceProgress = 1;
   private battleEntrancePlayed = false;
   private battleEntranceTween: Phaser.Tweens.Tween | null = null;
+  private evolutionAnimationPlaying = false;
+  private evolutionAnimationProgress = 1;
+  private evolutionAnimationTween: Phaser.Tweens.Tween | null = null;
+  private evolutionAnimationStartedCount = 0;
   private hpAnimationStartedCount = 0;
   private hitAnimationStartedCount = 0;
+  private pendingMoveLearnings: PendingMoveLearning[] = [];
 
   constructor(private readonly gameStateStore: GameStateStore = getDefaultGameStateStore()) {
     super("battle");
@@ -328,6 +354,12 @@ export class BattleScene extends Phaser.Scene {
     this.battleEntrancePlayed = false;
     this.hpAnimationStartedCount = 0;
     this.hitAnimationStartedCount = 0;
+    this.evolutionAnimationStartedCount = 0;
+    this.evolutionAnimationProgress = 1;
+    this.evolutionAnimationPlaying = false;
+    this.evolutionAnimationTween?.stop();
+    this.evolutionAnimationTween = null;
+    this.pendingMoveLearnings = [];
     this.cancelHpTweens();
     this.resetHitEffects();
     this.syncDisplayedHpToState();
@@ -356,6 +388,11 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.battleEntrancePlaying) {
+      resetVirtualGamepad();
+      return;
+    }
+
+    if (this.evolutionAnimationPlaying) {
       resetVirtualGamepad();
       return;
     }
@@ -417,6 +454,10 @@ export class BattleScene extends Phaser.Scene {
       this.updateMoveSelection();
     }
 
+    if (this.state.phase === "move-replace-select") {
+      this.updateMoveSelection();
+    }
+
     if (this.state.phase === "party-select") {
       this.updatePartySelection();
     }
@@ -447,6 +488,13 @@ export class BattleScene extends Phaser.Scene {
       selectedMoveName: selectedMove?.name ?? null,
       selectedBagItemIndex: this.selectedBagItemIndex,
       selectedPartySlotIndex: this.selectedPartySlotIndex,
+      moveReplacement: this.getCurrentPendingMoveLearning()
+        ? {
+            pokemonName: this.getCurrentPendingMoveLearning()?.pokemonName ?? "",
+            newMoveName: this.getCurrentPendingMoveLearning()?.newMove.name ?? "",
+            selectedMoveIndex: this.selectedMoveIndex,
+          }
+        : null,
       result: this.state.result ? { ...this.state.result } : null,
       returnToWorld: this.state.returnToWorld ? { ...this.state.returnToWorld } : undefined,
       battleEntrancePlaying: this.battleEntrancePlaying,
@@ -455,6 +503,8 @@ export class BattleScene extends Phaser.Scene {
       hpAnimationStartedCount: this.hpAnimationStartedCount,
       hitAnimationPlaying: this.isHitAnimationPlaying(),
       hitAnimationStartedCount: this.hitAnimationStartedCount,
+      evolutionAnimationPlaying: this.evolutionAnimationPlaying,
+      evolutionAnimationStartedCount: this.evolutionAnimationStartedCount,
       player: {
         name: this.state.player.pokemon.name,
         level: this.state.player.pokemon.level,
@@ -464,6 +514,7 @@ export class BattleScene extends Phaser.Scene {
         hitAnimationStartedCount: this.hitEffects.player.startedCount,
         status: this.state.player.pokemon.status,
         activePartySlotIndex: this.state.player.activePartySlotIndex,
+        moves: this.state.player.pokemon.moves.map(move => ({ id: move.id, name: move.name })),
       },
       opponent: {
         name: this.state.opponent.pokemon.name,
@@ -486,6 +537,12 @@ export class BattleScene extends Phaser.Scene {
     this.battleEntrancePlayed = false;
     this.hpAnimationStartedCount = 0;
     this.hitAnimationStartedCount = 0;
+    this.evolutionAnimationStartedCount = 0;
+    this.evolutionAnimationProgress = 1;
+    this.evolutionAnimationPlaying = false;
+    this.evolutionAnimationTween?.stop();
+    this.evolutionAnimationTween = null;
+    this.pendingMoveLearnings = [];
     this.state = createBattleScenarioStateForTest(scenario);
     this.cancelHpTweens();
     this.resetHitEffects();
@@ -581,6 +638,18 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.state.phase === "move-select" && this.state.messageQueue.length === 0) {
+      const moveIndex = getBattleOptionIndexAtPoint(battlePoint, BATTLE_LAYOUT.moveWindow);
+
+      if (moveIndex !== null) {
+        if (!this.state.player.pokemon.moves[moveIndex]) {
+          return;
+        }
+
+        this.selectedMoveIndex = moveIndex;
+      }
+    }
+
+    if (this.state.phase === "move-replace-select" && this.state.messageQueue.length === 0) {
       const moveIndex = getBattleOptionIndexAtPoint(battlePoint, BATTLE_LAYOUT.moveWindow);
 
       if (moveIndex !== null) {
@@ -716,6 +785,11 @@ export class BattleScene extends Phaser.Scene {
       this.setBattleState(
         this.applyLevelUpMoveLearning(choosePlayerMove(this.state, this.selectedMoveIndex)),
       );
+      return;
+    }
+
+    if (this.state.phase === "move-replace-select") {
+      this.confirmMoveReplacement();
     }
   }
 
@@ -874,6 +948,35 @@ export class BattleScene extends Phaser.Scene {
     this.battleEntranceTween = tween;
   }
 
+  private playEvolutionAnimation(): void {
+    this.evolutionAnimationTween?.stop();
+    this.evolutionAnimationProgress = 0;
+    this.evolutionAnimationPlaying = true;
+    this.evolutionAnimationStartedCount += 1;
+    const tweenState = { progress: 0 };
+
+    const tween = this.tweens.add({
+      targets: tweenState,
+      progress: 1,
+      duration: BATTLE_EVOLUTION_TWEEN_MS,
+      ease: "Sine.easeInOut",
+      onUpdate: () => {
+        this.evolutionAnimationProgress = tweenState.progress;
+        this.render();
+      },
+      onComplete: () => {
+        this.evolutionAnimationProgress = 1;
+        this.evolutionAnimationPlaying = false;
+        if (this.evolutionAnimationTween === tween) {
+          this.evolutionAnimationTween = null;
+        }
+        this.render();
+      },
+    });
+
+    this.evolutionAnimationTween = tween;
+  }
+
   private returnToWorld(): void {
     if (!this.state.returnToWorld || this.returningToWorld) {
       return;
@@ -885,6 +988,13 @@ export class BattleScene extends Phaser.Scene {
       animateHpDecrease: false,
       render: false,
     });
+
+    if (this.state.phase === "move-replace-select") {
+      this.returningToWorld = false;
+      this.render();
+      return;
+    }
+
     const returnToWorld = this.state.returnToWorld;
 
     if (!returnToWorld) {
@@ -991,6 +1101,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private applyLevelUpMoveLearning(state: BattleScreenState): BattleScreenState {
+    if (this.pendingMoveLearnings.length > 0) {
+      return state;
+    }
+
     if (
       state.battleKind !== "wild" ||
       state.result?.reason !== "faint" ||
@@ -1024,6 +1138,7 @@ export class BattleScene extends Phaser.Scene {
     const learningMessages: string[] = [];
     let activePokemon = state.player.pokemon;
     let activeSlotSeen = false;
+    let shouldPlayEvolutionAnimation = false;
 
     const party = state.player.party.map(slot => {
       if (!slot.pokemon) {
@@ -1046,7 +1161,7 @@ export class BattleScene extends Phaser.Scene {
         return slot;
       }
 
-      const moveLearningResult = applyLevelUpBattleMoves({
+      const moveLearningResult = planLevelUpBattleMoves({
         pokemon: slot.pokemon,
         previousLevel,
         moveRecords,
@@ -1057,12 +1172,24 @@ export class BattleScene extends Phaser.Scene {
         pokemon: moveLearningResult.pokemon,
         previousLevel,
       });
+      shouldPlayEvolutionAnimation = shouldPlayEvolutionAnimation || evolutionResult.evolved;
 
-      if (moveLearningResult.messages.length === 0 && evolutionResult.messages.length === 0) {
+      if (
+        moveLearningResult.messages.length === 0 &&
+        moveLearningResult.pendingMoves.length === 0 &&
+        evolutionResult.messages.length === 0
+      ) {
         return slot;
       }
 
       learningMessages.push(...moveLearningResult.messages, ...evolutionResult.messages);
+      moveLearningResult.pendingMoves.forEach(move => {
+        this.pendingMoveLearnings.push({
+          slotIndex: slot.slotIndex,
+          pokemonName: evolutionResult.pokemon.name,
+          newMove: move,
+        });
+      });
 
       if (slot.slotIndex === state.player.activePartySlotIndex) {
         activePokemon = evolutionResult.pokemon;
@@ -1079,7 +1206,7 @@ export class BattleScene extends Phaser.Scene {
         1,
         state.player.pokemon.level - (state.result.levelsGained ?? 0),
       );
-      const moveLearningResult = applyLevelUpBattleMoves({
+      const moveLearningResult = planLevelUpBattleMoves({
         pokemon: state.player.pokemon,
         previousLevel,
         moveRecords,
@@ -1090,18 +1217,31 @@ export class BattleScene extends Phaser.Scene {
         pokemon: moveLearningResult.pokemon,
         previousLevel,
       });
+      shouldPlayEvolutionAnimation = shouldPlayEvolutionAnimation || evolutionResult.evolved;
 
       if (moveLearningResult.messages.length > 0 || evolutionResult.messages.length > 0) {
         activePokemon = evolutionResult.pokemon;
         learningMessages.push(...moveLearningResult.messages, ...evolutionResult.messages);
       }
+
+      moveLearningResult.pendingMoves.forEach(move => {
+        this.pendingMoveLearnings.push({
+          slotIndex: state.player.activePartySlotIndex,
+          pokemonName: evolutionResult.pokemon.name,
+          newMove: move,
+        });
+      });
     }
 
-    if (learningMessages.length === 0) {
+    if (learningMessages.length === 0 && this.pendingMoveLearnings.length === 0) {
       return state;
     }
 
-    return {
+    if (shouldPlayEvolutionAnimation) {
+      this.playEvolutionAnimation();
+    }
+
+    const nextState = {
       ...state,
       player: {
         ...state.player,
@@ -1110,14 +1250,103 @@ export class BattleScene extends Phaser.Scene {
       },
       messageQueue: insertMessagesBeforeBattleEndConfirm(state.messageQueue, learningMessages),
     };
+
+    if (this.pendingMoveLearnings.length > 0) {
+      this.selectedMoveIndex = 0;
+
+      return {
+        ...nextState,
+        phase: "move-replace-select" as const,
+        messageQueue: [],
+      };
+    }
+
+    return {
+      ...nextState,
+    };
+  }
+
+  private confirmMoveReplacement(): void {
+    const pending = this.pendingMoveLearnings.shift();
+
+    if (!pending) {
+      this.setBattleState({ ...this.state, phase: "ended" });
+      return;
+    }
+
+    const targetSlot = this.state.player.party.find(slot => slot.slotIndex === pending.slotIndex);
+    const targetPokemon = targetSlot?.pokemon ?? this.state.player.pokemon;
+    const replacedMove = targetPokemon.moves[this.selectedMoveIndex];
+
+    if (!replacedMove) {
+      this.skipMoveReplacement(pending);
+      return;
+    }
+
+    const nextPokemon = {
+      ...targetPokemon,
+      moves: targetPokemon.moves.map((move, index) =>
+        index === this.selectedMoveIndex ? pending.newMove : move,
+      ),
+    };
+    const nextParty = this.state.player.party.map(slot =>
+      slot.slotIndex === pending.slotIndex ? { ...slot, pokemon: nextPokemon } : slot,
+    );
+    const nextActivePokemon =
+      pending.slotIndex === this.state.player.activePartySlotIndex
+        ? nextPokemon
+        : this.state.player.pokemon;
+    const message = `${pending.pokemonName}은 ${replacedMove.name}을 잊고 ${pending.newMove.name}를 배웠다!`;
+
+    this.selectedMoveIndex = 0;
+    this.setBattleState({
+      ...this.state,
+      phase: this.pendingMoveLearnings.length > 0 ? "move-replace-select" : "ended",
+      player: {
+        ...this.state.player,
+        pokemon: nextActivePokemon,
+        party: nextParty,
+      },
+      messageQueue:
+        this.pendingMoveLearnings.length > 0 ? [message] : appendBattleEndConfirmMessage([message]),
+    });
+  }
+
+  private skipMoveReplacement(pending = this.pendingMoveLearnings.shift()): void {
+    if (!pending) {
+      this.setBattleState({ ...this.state, phase: "ended" });
+      return;
+    }
+
+    this.selectedMoveIndex = 0;
+    this.setBattleState({
+      ...this.state,
+      phase: this.pendingMoveLearnings.length > 0 ? "move-replace-select" : "ended",
+      messageQueue:
+        this.pendingMoveLearnings.length > 0
+          ? [`${pending.pokemonName}은 ${pending.newMove.name}을 배우지 않았다!`]
+          : appendBattleEndConfirmMessage([
+              `${pending.pokemonName}은 ${pending.newMove.name}을 배우지 않았다!`,
+            ]),
+    });
+  }
+
+  private getCurrentPendingMoveLearning(): PendingMoveLearning | null {
+    return this.pendingMoveLearnings[0] ?? null;
   }
 
   private goBack(): void {
     if (
       this.state.phase === "move-select" ||
+      this.state.phase === "move-replace-select" ||
       this.state.phase === "party-select" ||
       this.state.phase === "bag-select"
     ) {
+      if (this.state.phase === "move-replace-select") {
+        this.skipMoveReplacement();
+        return;
+      }
+
       this.setBattleState({ ...this.state, phase: "command" });
     }
   }
@@ -1249,10 +1478,18 @@ export class BattleScene extends Phaser.Scene {
     this.drawPokemon();
     this.drawHpPanel(BATTLE_LAYOUT.opponentHpPanel, this.state.opponent.pokemon, "opponent", false);
     this.drawHpPanel(BATTLE_LAYOUT.playerHpPanel, this.state.player.pokemon, "player", true);
+    this.drawEvolutionOverlay();
     this.publishE2eSnapshot();
 
     if (this.state.phase === "move-select") {
       this.drawMoveWindow();
+      this.drawShortcutGuideIfOpen();
+      this.drawBattleEntranceOverlay();
+      return;
+    }
+
+    if (this.state.phase === "move-replace-select") {
+      this.drawMoveReplacementWindow();
       this.drawShortcutGuideIfOpen();
       this.drawBattleEntranceOverlay();
       return;
@@ -1298,6 +1535,7 @@ export class BattleScene extends Phaser.Scene {
     const entranceAlpha = 0.35 + entranceProgress * 0.65;
     const opponentHit = this.getHitRenderEffect("opponent");
     const playerHit = this.getHitRenderEffect("player");
+    const playerEvolution = this.getEvolutionRenderEffect();
     const opponentRenderBox = getVisibleBoundsAlignedBattleSpriteRenderBox(
       opponent,
       this.resolveBattleSpriteVisibleBounds(this.state.opponent.pokemon.frontSprite.assetKey),
@@ -1317,7 +1555,7 @@ export class BattleScene extends Phaser.Scene {
       )
       .setDisplaySize(opponentRenderBox.width, opponentRenderBox.height)
       .setAlpha(entranceAlpha * opponentHit.alpha);
-    this.add
+    const playerImage = this.add
       .image(
         playerRenderBox.x - entranceOffset + playerHit.offsetX,
         playerRenderBox.y,
@@ -1330,7 +1568,11 @@ export class BattleScene extends Phaser.Scene {
         BATTLE_SPRITE_CROP.height,
       )
       .setDisplaySize(playerRenderBox.width, playerRenderBox.height)
-      .setAlpha(entranceAlpha * playerHit.alpha);
+      .setAlpha(entranceAlpha * playerHit.alpha * playerEvolution.alpha);
+
+    if (playerEvolution.tint !== null) {
+      playerImage.setTint(playerEvolution.tint);
+    }
   }
 
   private getHitRenderEffect(side: BattleHpSide): { alpha: number; offsetX: number } {
@@ -1349,6 +1591,40 @@ export class BattleScene extends Phaser.Scene {
       alpha: flashAlpha,
       offsetX: Math.round(shake * direction),
     };
+  }
+
+  private getEvolutionRenderEffect(): { alpha: number; tint: number | null } {
+    if (!this.evolutionAnimationPlaying && this.evolutionAnimationProgress >= 1) {
+      return { alpha: 1, tint: null };
+    }
+
+    const progress = Phaser.Math.Clamp(this.evolutionAnimationProgress, 0, 1);
+    const pulse = Math.abs(Math.sin(progress * Math.PI * 8));
+
+    return {
+      alpha: 0.52 + pulse * 0.48,
+      tint: pulse > 0.38 ? 0xffffff : null,
+    };
+  }
+
+  private drawEvolutionOverlay(): void {
+    if (!this.evolutionAnimationPlaying && this.evolutionAnimationProgress >= 1) {
+      return;
+    }
+
+    const progress = Phaser.Math.Clamp(this.evolutionAnimationProgress, 0, 1);
+    const pulse = Math.abs(Math.sin(progress * Math.PI * 8));
+    const alpha = pulse * 0.24 * (1 - progress * 0.3);
+
+    if (alpha <= 0.01) {
+      return;
+    }
+
+    this.add
+      .graphics()
+      .setDepth(9_000)
+      .fillStyle(0xffffff, alpha)
+      .fillRect(0, 0, BATTLE_BASE_SIZE.width, BATTLE_BASE_SIZE.height);
   }
 
   private resolveBattleSpriteVisibleBounds(assetKey: string): BattleSpriteVisibleBounds {
@@ -1532,6 +1808,51 @@ export class BattleScene extends Phaser.Scene {
           }),
         );
       }
+    });
+  }
+
+  private drawMoveReplacementWindow(): void {
+    const rect = BATTLE_LAYOUT.moveWindow;
+    const pending = this.getCurrentPendingMoveLearning();
+
+    this.drawRomWindow(rect, { radius: 0, includeFrameMarker: false });
+
+    if (!pending) {
+      this.drawMessageWindow(BATTLE_END_CONFIRM_MESSAGE);
+      return;
+    }
+
+    this.add.text(
+      rect.x + 10,
+      rect.y + 5,
+      `${pending.newMove.name}을 배우려면 잊을 기술 선택`,
+      createGameTextStyle({
+        color: "#17201a",
+        fontSize: "7px",
+      }),
+    );
+
+    resolveBattleOptionSlotRects({
+      ...rect,
+      y: rect.y + 18,
+      height: rect.height - 18,
+    }).forEach((slot, index) => {
+      const move = this.state.player.pokemon.moves[index] ?? null;
+      const disabled = !move;
+
+      this.drawBattleOptionSlot(slot, {
+        selected: index === this.selectedMoveIndex && !disabled,
+        disabled,
+      });
+      this.add.text(
+        slot.x + 10,
+        slot.y + 3,
+        move ? `${index === this.selectedMoveIndex ? "▶ " : ""}${move.name}` : "-",
+        createGameTextStyle({
+          color: disabled ? "#7a827c" : "#17201a",
+          fontSize: "7px",
+        }),
+      );
     });
   }
 
@@ -1823,6 +2144,10 @@ function insertMessagesBeforeBattleEndConfirm(
   ];
 }
 
+function appendBattleEndConfirmMessage(messages: string[]): string[] {
+  return [...messages, BATTLE_END_CONFIRM_MESSAGE];
+}
+
 function isRomRefinedMoveCollection(value: unknown): value is RomRefinedMoveCollection {
   return isRecord(value) && "moves" in value;
 }
@@ -1855,7 +2180,11 @@ function createBattleScenarioStateForTest(scenario: BattleE2eScenario): BattleSc
   const playerPokemon = cloneBattlePokemon(baseState.player.pokemon);
   const opponentPokemon = cloneBattlePokemon(baseState.opponent.pokemon);
 
-  if (scenario === "wild-victory" || scenario === "wild-evolution") {
+  if (
+    scenario === "wild-victory" ||
+    scenario === "wild-evolution" ||
+    scenario === "wild-move-learning"
+  ) {
     playerPokemon.speed = Math.max(playerPokemon.speed, opponentPokemon.speed + 1);
     playerPokemon.moves = playerPokemon.moves.map((move, index) =>
       index === 0 ? { ...move, accuracy: 100 } : move,
@@ -1866,6 +2195,52 @@ function createBattleScenarioStateForTest(scenario: BattleE2eScenario): BattleSc
       playerPokemon.speciesId = 152;
       playerPokemon.name = "치코리타";
       playerPokemon.level = 15;
+      opponentPokemon.baseExpYield = 500;
+    }
+
+    if (scenario === "wild-move-learning") {
+      playerPokemon.speciesId = 155;
+      playerPokemon.name = "브케인";
+      playerPokemon.level = 18;
+      playerPokemon.experience = getExperienceForLevel(18, playerPokemon.growthRate);
+      playerPokemon.baseStats = { ...opponentPokemon.baseStats };
+      playerPokemon.typeIds = [10];
+      playerPokemon.frontSprite = { ...opponentPokemon.frontSprite };
+      playerPokemon.backSprite = { ...opponentPokemon.backSprite };
+      playerPokemon.moves = [
+        createBattleMoveForTest(52, "불꽃세례", {
+          accuracy: 100,
+          category: "special",
+          effectCode: 4,
+          power: 40,
+          type: "불꽃",
+          typeId: 10,
+        }),
+        createBattleMoveForTest(108, "연막", {
+          accuracy: 100,
+          category: "status",
+          effectCode: 23,
+          power: 0,
+          type: "노말",
+          typeId: 0,
+        }),
+        createBattleMoveForTest(98, "전광석화", {
+          accuracy: 100,
+          category: "physical",
+          effectCode: 103,
+          power: 40,
+          type: "노말",
+          typeId: 0,
+        }),
+        createBattleMoveForTest(45, "울음소리", {
+          accuracy: 100,
+          category: "status",
+          effectCode: 18,
+          power: 0,
+          type: "노말",
+          typeId: 0,
+        }),
+      ];
       opponentPokemon.baseExpYield = 500;
     }
   } else {
@@ -1905,6 +2280,21 @@ function cloneBattlePokemon(pokemon: BattlePokemon): BattlePokemon {
     backSprite: { ...pokemon.backSprite },
     baseStats: { ...pokemon.baseStats },
     individualValues: { ...pokemon.individualValues },
+    statStages: { ...pokemon.statStages },
+  };
+}
+
+function createBattleMoveForTest(
+  id: number,
+  name: string,
+  input: Omit<BattleMove, "id" | "name" | "pp" | "maxPp">,
+): BattleMove {
+  return {
+    id,
+    name,
+    pp: 20,
+    maxPp: 20,
+    ...input,
   };
 }
 

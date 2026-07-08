@@ -1,8 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { expect, type Page, test } from "@playwright/test";
-import { choosePlayerMove } from "../../src/components/poke-lounge/runtime/game/battle/battleLogic";
-import { applyLevelUpPlayerMoves } from "../../src/components/poke-lounge/runtime/game/battle/levelUpMoves";
+import {
+  chooseBattleBagItem,
+  choosePlayerMove,
+} from "../../src/components/poke-lounge/runtime/game/battle/battleLogic";
+import {
+  applyLevelUpPlayerMoves,
+  planLevelUpBattleMoves,
+} from "../../src/components/poke-lounge/runtime/game/battle/levelUpMoves";
 import { createSampleBattleState } from "../../src/components/poke-lounge/runtime/game/battle/battleSampleState";
 import { createWildBattleState } from "../../src/components/poke-lounge/runtime/game/battle/wildBattleFactory";
 import type { BattleMove } from "../../src/components/poke-lounge/runtime/game/battle/battleTypes";
@@ -31,18 +37,27 @@ import {
   getBattleOptionIndexAtPoint,
   resolveBattleOptionSlotRects,
 } from "../../src/components/poke-lounge/runtime/game/battle/battleLayout";
+import { PLAYER_PARTY_SLOT_COUNT } from "../../src/components/poke-lounge/runtime/game/player/playerTypes";
 import {
   createDefaultRoundState,
   DEFAULT_PREPARATION_DURATION_MS,
   getRoundRemainingMs,
   startPreparationRound,
 } from "../../src/components/poke-lounge/runtime/game/round/roundState";
+import {
+  createDefaultLocalPlayer,
+  createGameStateStore,
+} from "../../src/components/poke-lounge/runtime/game/state/gameStateStore";
 import { selectWildEncounterConfig } from "../../src/components/poke-lounge/runtime/game/world/wildEncounterTables";
 import { WILD_ENCOUNTER_RATE } from "../../src/components/poke-lounge/runtime/game/world/wildEncounters";
 import { escapeRegExp, gotoWithRetry, resolveLocaleAndMessages } from "./test-helpers";
 
 type PokeLoungeSceneKey = "world" | "battle";
-type PokeLoungeBattleScenario = "wild-victory" | "wild-defeat" | "wild-evolution";
+type PokeLoungeBattleScenario =
+  | "wild-victory"
+  | "wild-defeat"
+  | "wild-evolution"
+  | "wild-move-learning";
 type PokeLoungeBattleResultReason = "faint" | "timeout" | "forfeit" | "run" | "capture";
 
 interface PokeLoungeBattleSnapshot {
@@ -51,6 +66,7 @@ interface PokeLoungeBattleSnapshot {
     | "intro"
     | "command"
     | "move-select"
+    | "move-replace-select"
     | "party-select"
     | "bag-select"
     | "resolving"
@@ -70,6 +86,8 @@ interface PokeLoungeBattleSnapshot {
   hpAnimationStartedCount: number;
   hitAnimationPlaying: boolean;
   hitAnimationStartedCount: number;
+  evolutionAnimationPlaying: boolean;
+  evolutionAnimationStartedCount: number;
   player: {
     name: string;
     level: number;
@@ -78,7 +96,13 @@ interface PokeLoungeBattleSnapshot {
     displayedCurrentHp: number;
     hitAnimationStartedCount: number;
     status: string;
+    moves: Array<{ id: number; name: string }>;
   };
+  moveReplacement: {
+    pokemonName: string;
+    newMoveName: string;
+    selectedMoveIndex: number;
+  } | null;
   opponent: {
     currentHp: number;
     maxHp: number;
@@ -367,6 +391,48 @@ test.describe("Poke Lounge", () => {
     });
   });
 
+  test("파티가 가득 찬 상태에서 포획한 포켓몬은 PC 박스에 저장한다", () => {
+    const store = createGameStateStore();
+    const player = createDefaultLocalPlayer();
+
+    store.upsertLocalPlayer({
+      ...player,
+      party: Array.from({ length: PLAYER_PARTY_SLOT_COUNT }, (_, slotIndex) => ({
+        slotIndex,
+        pokemon: createStoredPokemonFixture(slotIndex + 1, `포켓몬 ${slotIndex + 1}`),
+      })),
+    });
+
+    const result = store.addPokemonToParty(createStoredPokemonFixture(152, "치코리타"));
+    const localPlayer = store.getCurrentLocalPlayer();
+
+    expect(result).toEqual({ ok: true, destination: "box", boxIndex: 0 });
+    expect(localPlayer.party).toHaveLength(PLAYER_PARTY_SLOT_COUNT);
+    expect(localPlayer.pokemonBox).toEqual([
+      expect.objectContaining({
+        speciesId: 152,
+        name: "치코리타",
+      }),
+    ]);
+  });
+
+  test("기존 저장 데이터는 PC 박스를 빈 배열로 보정한다", () => {
+    const legacyPlayer = createDefaultLocalPlayer();
+    const store = createGameStateStore({
+      initialState: {
+        ...createGameStateStore().getState(),
+        playersById: {
+          [legacyPlayer.playerId]: {
+            ...legacyPlayer,
+            pokemonBox: undefined,
+          } as unknown as typeof legacyPlayer,
+        },
+      },
+    });
+
+    expect(store.getCurrentLocalPlayer().pokemonBox).toEqual([]);
+  });
+
   test("레벨업 진화 조건을 만족하면 ROM 데이터 기준으로 종족과 전투 스탯을 갱신한다", () => {
     const pokemonData = readPublicJson(POKEMON_DATA_JSON_PATH);
     const evolutionTable = normalizePokemonEvolutionTable(pokemonData);
@@ -437,6 +503,66 @@ test.describe("Poke Lounge", () => {
       "치코리타는 베이리프로 진화했다!",
     ]);
     expect(result.evolved).toBe(true);
+  });
+
+  test("레벨업 기술 계획은 4개 보유 시 자동 삭제 대신 교체 후보를 반환한다", () => {
+    const basePokemon = createSampleBattleState().player.pokemon;
+    const planned = planLevelUpBattleMoves({
+      pokemon: {
+        ...basePokemon,
+        speciesId: 155,
+        name: "브케인",
+        level: 19,
+        moves: [
+          createBattleMoveFixture({
+            accuracy: 100,
+            category: "special",
+            effectCode: 4,
+            id: 52,
+            name: "불꽃세례",
+            power: 40,
+            type: "불꽃",
+            typeId: 10,
+          }),
+          createBattleMoveFixture({
+            accuracy: 100,
+            category: "status",
+            effectCode: 23,
+            id: 108,
+            name: "연막",
+            power: 0,
+            type: "노말",
+            typeId: 0,
+          }),
+          createBattleMoveFixture({
+            accuracy: 100,
+            category: "physical",
+            effectCode: 103,
+            id: 98,
+            name: "전광석화",
+            power: 40,
+            type: "노말",
+            typeId: 0,
+          }),
+          createBattleMoveFixture({
+            accuracy: 100,
+            category: "status",
+            effectCode: 18,
+            id: 45,
+            name: "울음소리",
+            power: 0,
+            type: "노말",
+            typeId: 0,
+          }),
+        ],
+      },
+      previousLevel: 18,
+      moveRecords: createTestMoveRecords([45, 52, 98, 108, 172]),
+    });
+
+    expect(planned.pokemon.moves.map(move => move.id)).toEqual([52, 108, 98, 45]);
+    expect(planned.pendingMoves.map(move => move.id)).toEqual([172]);
+    expect(planned.messages).toEqual([]);
   });
 
   test("startup-loaded runtime game data는 유효한 species만 JSON을 우선하고 누락/오염 species는 fallback한다", async () => {
@@ -750,6 +876,144 @@ test.describe("Poke Lounge", () => {
     );
   });
 
+  test("독가루는 상대를 독 상태로 만들고 턴 종료 독 데미지를 적용한다", () => {
+    const baseState = createSampleBattleState();
+    const poisonPowder = createBattleMoveFixture({
+      accuracy: 75,
+      category: "status",
+      effectCode: 66,
+      id: 77,
+      name: "독가루",
+      power: 0,
+      type: "독",
+      typeId: 3,
+    });
+    const battleState = {
+      ...baseState,
+      phase: "move-select" as const,
+      messageQueue: [],
+      player: {
+        ...baseState.player,
+        pokemon: {
+          ...baseState.player.pokemon,
+          speed: 100,
+          moves: [poisonPowder],
+        },
+      },
+      opponent: {
+        ...baseState.opponent,
+        pokemon: {
+          ...baseState.opponent.pokemon,
+          currentHp: baseState.opponent.pokemon.maxHp,
+          moves: [],
+        },
+      },
+    };
+
+    const resolved = choosePlayerMove(battleState, 0, {
+      random: createRandomSequence([0.01, 0.01]),
+    });
+
+    expect(resolved.opponent.pokemon.status).toBe("poisoned");
+    expect(resolved.opponent.pokemon.currentHp).toBe(
+      battleState.opponent.pokemon.maxHp -
+        Math.max(1, Math.floor(battleState.opponent.pokemon.maxHp / 8)),
+    );
+    expect(resolved.messageQueue).toEqual(
+      expect.arrayContaining(["브케인은 독에 걸렸다!", "브케인은 독 데미지를 입었다!"]),
+    );
+  });
+
+  test("연막은 상대 명중률 랭크를 낮추고 다음 명중 판정에 반영한다", () => {
+    const baseState = createSampleBattleState();
+    const smokescreen = createBattleMoveFixture({
+      accuracy: 100,
+      category: "status",
+      effectCode: 23,
+      id: 108,
+      name: "연막",
+      power: 0,
+      type: "노말",
+      typeId: 0,
+    });
+    const tackle = createBattleMoveFixture({
+      accuracy: 100,
+      category: "physical",
+      effectCode: 0,
+      id: 33,
+      name: "몸통박치기",
+      power: 35,
+      type: "노말",
+      typeId: 0,
+    });
+    const battleState = {
+      ...baseState,
+      phase: "move-select" as const,
+      messageQueue: [],
+      player: {
+        ...baseState.player,
+        pokemon: {
+          ...baseState.player.pokemon,
+          speed: 100,
+          moves: [smokescreen],
+        },
+      },
+      opponent: {
+        ...baseState.opponent,
+        pokemon: {
+          ...baseState.opponent.pokemon,
+          speed: 1,
+          moves: [tackle],
+        },
+      },
+    };
+
+    const resolved = choosePlayerMove(battleState, 0, {
+      random: createRandomSequence([0.01, 0.01, 0.99]),
+    });
+
+    expect(resolved.opponent.pokemon.statStages.accuracy).toBe(-1);
+    expect(resolved.player.pokemon.currentHp).toBe(battleState.player.pokemon.currentHp);
+    expect(resolved.messageQueue).toEqual(
+      expect.arrayContaining(["브케인의 명중률이 떨어졌다!", "브케인의 공격은 빗나갔다!"]),
+    );
+  });
+
+  test("아이템 사용 턴에도 턴 종료 독 데미지를 적용한다", () => {
+    const baseState = createSampleBattleState();
+    const battleState = {
+      ...baseState,
+      phase: "bag-select" as const,
+      messageQueue: [],
+      player: {
+        ...baseState.player,
+        pokemon: {
+          ...baseState.player.pokemon,
+          currentHp: Math.max(1, baseState.player.pokemon.maxHp - 10),
+        },
+      },
+      opponent: {
+        ...baseState.opponent,
+        pokemon: {
+          ...baseState.opponent.pokemon,
+          currentHp: baseState.opponent.pokemon.maxHp,
+          status: "poisoned" as const,
+          moves: [],
+        },
+      },
+    };
+
+    const resolved = chooseBattleBagItem(battleState, "potion", {
+      itemCount: 1,
+    });
+
+    expect(resolved.opponent.pokemon.currentHp).toBe(
+      battleState.opponent.pokemon.maxHp -
+        Math.max(1, Math.floor(battleState.opponent.pokemon.maxHp / 8)),
+    );
+    expect(resolved.messageQueue).toEqual(expect.arrayContaining(["브케인은 독 데미지를 입었다!"]));
+  });
+
   test("토너먼트 사이 기본 준비 시간은 5분이다", () => {
     const startedRound = startPreparationRound(createDefaultRoundState(), 1_000);
 
@@ -951,6 +1215,59 @@ test.describe("Poke Lounge", () => {
     expect(snapshot?.player.level).toBe(16);
     expect(snapshot?.messageQueue).toEqual(
       expect.arrayContaining(["어라? 치코리타의 모습이...!", "치코리타는 베이리프로 진화했다!"]),
+    );
+    expect(snapshot?.evolutionAnimationStartedCount).toBeGreaterThan(0);
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("레벨업 후 기술이 4개면 잊을 기술 선택 후 새 기술을 배운다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await startBattleScenario(page, "wild-move-learning");
+    await chooseFightCommand(page);
+    await page.evaluate(() => {
+      const pokeWindow = window as PokeLoungeWindow;
+
+      pokeWindow.__POKE_LOUNGE_E2E__?.setBattleMoveIndex(0);
+      pokeWindow.__POKE_LOUNGE_E2E__?.confirmBattle();
+    });
+
+    await expect
+      .poll(() => getBattleSnapshot(page).then(snapshot => snapshot?.phase ?? null), {
+        timeout: 30000,
+      })
+      .toBe("move-replace-select");
+
+    let snapshot = await getBattleSnapshot(page);
+    expect(snapshot?.moveReplacement).toEqual({
+      pokemonName: "마그케인",
+      newMoveName: "화염자동차",
+      selectedMoveIndex: 0,
+    });
+    expect(snapshot?.player.moves.map(move => move.name)).toEqual([
+      "불꽃세례",
+      "연막",
+      "전광석화",
+      "울음소리",
+    ]);
+
+    await page.evaluate(() => {
+      const pokeWindow = window as PokeLoungeWindow;
+
+      pokeWindow.__POKE_LOUNGE_E2E__?.setBattleMoveIndex(1);
+      pokeWindow.__POKE_LOUNGE_E2E__?.confirmBattle();
+    });
+
+    snapshot = await getBattleSnapshot(page);
+    expect(snapshot?.phase).toBe("ended");
+    expect(snapshot?.player.moves.map(move => move.name)).toEqual([
+      "불꽃세례",
+      "화염자동차",
+      "전광석화",
+      "울음소리",
+    ]);
+    expect(snapshot?.messageQueue).toEqual(
+      expect.arrayContaining(["마그케인은 연막을 잊고 화염자동차를 배웠다!"]),
     );
     expect(browserErrors.join("\n")).toBe("");
   });
@@ -1503,6 +1820,18 @@ function createBattleMoveFixture(input: Omit<BattleMove, "pp" | "maxPp">): Battl
     ...input,
     pp: 20,
     maxPp: 20,
+  };
+}
+
+function createStoredPokemonFixture(speciesId: number, name: string) {
+  return {
+    speciesId,
+    name,
+    level: 10,
+    maxHp: 30,
+    currentHp: 30,
+    status: "normal" as const,
+    moves: [{ id: 33, name: "몸통박치기", pp: 35, maxPp: 35 }],
   };
 }
 

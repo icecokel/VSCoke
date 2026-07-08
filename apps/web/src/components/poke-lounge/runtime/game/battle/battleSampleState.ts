@@ -1,4 +1,5 @@
 import type { BattleMove, BattlePokemon, BattleScreenState, BattleSpriteRef } from "./battleTypes";
+import { createDefaultBattleStatStages } from "./battle-stat-stages";
 import { normalizeRomMoveRecord, type RomBattleMoveRecord } from "./battleRomData";
 import { createBattleParty } from "./battleParty";
 import { getExperienceForLevel } from "./experience";
@@ -150,6 +151,7 @@ export function createSampleBattleState(): BattleScreenState {
     specialAttack: 27,
     specialDefense: 31,
     speed: 25,
+    statStages: createDefaultBattleStatStages(),
     typeIds: [12],
     status: "normal",
     frontSprite: CHIKORITA_FRONT,
@@ -173,6 +175,7 @@ export function createSampleBattleState(): BattleScreenState {
     specialAttack: 32,
     specialDefense: 28,
     speed: 31,
+    statStages: createDefaultBattleStatStages(),
     typeIds: [10],
     status: "normal",
     frontSprite: CYNDAQUIL_FRONT,

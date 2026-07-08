@@ -75,6 +75,7 @@ export interface LocalPlayerState {
   playerId: string;
   displayName: string;
   party: Array<PlayerPokemonSlot<PlayerPokemon>>;
+  pokemonBox: PlayerPokemon[];
   activePartySlotIndex: number;
   wallet: PlayerWallet;
   inventory: PlayerInventory;
@@ -176,8 +177,8 @@ export type UseInventoryItemOnPartySlotResult =
     };
 
 export type AddPokemonToPartyResult =
-  | { ok: true; slotIndex: number }
-  | { ok: false; reason: "party-full" };
+  | { ok: true; destination: "party"; slotIndex: number }
+  | { ok: true; destination: "box"; boxIndex: number };
 
 export type SetActivePartySlotResult =
   | { ok: true }
@@ -737,7 +738,14 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
       const localPlayer = getCurrentLocalPlayer(state);
 
       if (localPlayer.party.length >= PLAYER_PARTY_SLOT_COUNT) {
-        return { ok: false, reason: "party-full" };
+        const boxIndex = localPlayer.pokemonBox.length;
+
+        setCurrentLocalPlayer({
+          ...localPlayer,
+          pokemonBox: [...localPlayer.pokemonBox, pokemon],
+        });
+
+        return { ok: true, destination: "box", boxIndex };
       }
 
       const slotIndex = localPlayer.party.length;
@@ -752,7 +760,7 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
         ],
       });
 
-      return { ok: true, slotIndex };
+      return { ok: true, destination: "party", slotIndex };
     },
     setActivePartySlot(slotIndex) {
       if (!isValidPartySlotIndex(slotIndex)) {
@@ -1201,6 +1209,7 @@ export function createDefaultLocalPlayer(playerId = "player-1"): LocalPlayerStat
     playerId,
     displayName: formatDefaultPlayerName(playerId),
     party: createEmptyParty(),
+    pokemonBox: [],
     activePartySlotIndex: 0,
     wallet: createDefaultPlayerWallet(),
     inventory: createDefaultPlayerInventory(),
@@ -1301,6 +1310,7 @@ function ensureLocalPlayerDefaults(localPlayer: LocalPlayerState): LocalPlayerSt
       pokeDollars: normalizePokeDollars(localPlayer.wallet?.pokeDollars ?? 0),
     },
     inventory: normalizeInventory(localPlayer.inventory ?? createDefaultPlayerInventory()),
+    pokemonBox: normalizePokemonBox(localPlayer.pokemonBox),
     competitive: normalizeCompetitiveStats(
       localPlayer.competitive ?? createDefaultCompetitiveStats(),
     ),
@@ -1331,6 +1341,32 @@ function normalizeInventory(inventory: Record<string, unknown>): PlayerInventory
       )
       .filter(([, quantity]) => Number.isFinite(quantity) && quantity >= 1)
       .map(([itemId, quantity]) => [itemId, Math.floor(quantity)]),
+  );
+}
+
+function normalizePokemonBox(pokemonBox: unknown): PlayerPokemon[] {
+  if (!Array.isArray(pokemonBox)) {
+    return [];
+  }
+
+  return pokemonBox.filter((pokemon): pokemon is PlayerPokemon => isPlayerPokemonRecord(pokemon));
+}
+
+function isPlayerPokemonRecord(value: unknown): value is PlayerPokemon {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const pokemon = value as Partial<PlayerPokemon>;
+
+  return (
+    typeof pokemon.speciesId === "number" &&
+    Number.isInteger(pokemon.speciesId) &&
+    pokemon.speciesId > 0 &&
+    typeof pokemon.name === "string" &&
+    pokemon.name.trim().length > 0 &&
+    typeof pokemon.level === "number" &&
+    Number.isFinite(pokemon.level)
   );
 }
 

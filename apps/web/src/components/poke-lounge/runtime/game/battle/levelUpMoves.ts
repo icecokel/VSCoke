@@ -29,6 +29,12 @@ export interface ApplyLevelUpMovesResult<TPokemon, TMove> {
   messages: string[];
 }
 
+export interface PlanLevelUpBattleMovesResult {
+  pokemon: BattlePokemon;
+  pendingMoves: BattleMove[];
+  messages: string[];
+}
+
 interface ApplyMoveListLearningInput<TMove extends { id: number; name: string }> {
   pokemonName: string;
   moves: TMove[];
@@ -188,6 +194,32 @@ export function applyLevelUpBattleMoves({
   };
 }
 
+export function planLevelUpBattleMoves({
+  pokemon,
+  previousLevel,
+  moveRecords,
+}: {
+  pokemon: BattlePokemon;
+  previousLevel: number;
+  moveRecords: RomRefinedMoveCollection;
+}): PlanLevelUpBattleMovesResult {
+  const planning = planMoveListLearning({
+    pokemonName: pokemon.name,
+    moves: pokemon.moves,
+    moveDefinitions: getLevelUpMovesForSpecies(pokemon.speciesId, previousLevel, pokemon.level),
+    createMove: moveId => createBattleMoveFromRom(moveId, moveRecords),
+  });
+
+  return {
+    pokemon: {
+      ...pokemon,
+      moves: planning.moves,
+    },
+    pendingMoves: planning.pendingMoves,
+    messages: planning.messages,
+  };
+}
+
 export function applyLevelUpPlayerMoves({
   pokemon,
   previousLevel,
@@ -259,6 +291,43 @@ function applyMoveListLearning<TMove extends { id: number; name: string }>({
   return {
     moves,
     changes,
+    messages,
+  };
+}
+
+function planMoveListLearning<TMove extends { id: number; name: string }>({
+  pokemonName,
+  moves: initialMoves,
+  moveDefinitions,
+  createMove,
+}: ApplyMoveListLearningInput<TMove>): {
+  moves: TMove[];
+  pendingMoves: TMove[];
+  messages: string[];
+} {
+  let moves = initialMoves.slice(0, MAX_POKEMON_MOVE_COUNT);
+  const pendingMoves: TMove[] = [];
+  const messages: string[] = [];
+
+  for (const definition of moveDefinitions) {
+    if (moves.some(move => move.id === definition.moveId)) {
+      continue;
+    }
+
+    const move = createMove(definition.moveId);
+
+    if (moves.length < MAX_POKEMON_MOVE_COUNT) {
+      moves = [...moves, move];
+      messages.push(formatLearnedMoveMessage(pokemonName, move.name));
+      continue;
+    }
+
+    pendingMoves.push(move);
+  }
+
+  return {
+    moves,
+    pendingMoves,
     messages,
   };
 }

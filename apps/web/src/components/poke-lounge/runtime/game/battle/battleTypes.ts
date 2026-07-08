@@ -1,4 +1,5 @@
 import type { PlayerPokemonSlot } from "../player/playerTypes";
+import type { BattleStatStages } from "./battle-stat-stages";
 import type { Gen4BaseStats } from "./gen4PokemonStats";
 import type { PokemonIndividualValues } from "./individual-values";
 
@@ -6,6 +7,7 @@ export type BattlePhase =
   | "intro"
   | "command"
   | "move-select"
+  | "move-replace-select"
   | "party-select"
   | "bag-select"
   | "resolving"
@@ -54,6 +56,7 @@ export interface BattlePokemon {
   specialAttack: number;
   specialDefense: number;
   speed: number;
+  statStages: BattleStatStages;
   typeIds: number[];
   status: BattlePokemonStatus;
   frontSprite: BattleSpriteRef;

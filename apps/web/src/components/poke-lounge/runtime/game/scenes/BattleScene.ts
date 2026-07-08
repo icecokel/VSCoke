@@ -44,6 +44,11 @@ import type {
   BattleScreenState,
 } from "../battle/battleTypes";
 import { applyLevelUpBattleMoves } from "../battle/levelUpMoves";
+import {
+  applyLevelUpEvolution,
+  normalizePokemonEvolutionTable,
+  type PokemonEvolutionTable,
+} from "../battle/pokemon-evolution";
 import { BATTLE_BASE_SIZE, getBattleCameraZoom } from "../gameViewport";
 import { getDefaultGameStateStore } from "../state/defaultGameStateStore";
 import {
@@ -88,7 +93,7 @@ const BATTLE_BAG_PREMIUM_ITEM_IDS = [
 
 type PremiumBattleBagItemId = (typeof BATTLE_BAG_PREMIUM_ITEM_IDS)[number];
 type BattleBagItemId = ShopItemId | PremiumBattleBagItemId;
-export type BattleE2eScenario = "wild-victory" | "wild-defeat";
+export type BattleE2eScenario = "wild-victory" | "wild-defeat" | "wild-evolution";
 
 export interface BattleE2eSnapshot {
   battleKind: BattleScreenState["battleKind"];
@@ -202,7 +207,10 @@ export function isTrainerBattleSceneData(data: unknown): data is TrainerBattleSc
 
 function isBattleE2eSceneData(data: unknown): data is BattleE2eSceneData {
   return (
-    isRecord(data) && (data.e2eScenario === "wild-victory" || data.e2eScenario === "wild-defeat")
+    isRecord(data) &&
+    (data.e2eScenario === "wild-victory" ||
+      data.e2eScenario === "wild-defeat" ||
+      data.e2eScenario === "wild-evolution")
   );
 }
 
@@ -998,8 +1006,13 @@ export class BattleScene extends Phaser.Scene {
     }
 
     const moveRecords = this.cache.json.get("romRefinedBattleRecords");
+    const personalRecords = this.cache.json.get("romPersonalData");
+    const evolutionTable = normalizePokemonEvolutionTable(this.cache.json.get("pokemonData"));
 
-    if (!isRomRefinedMoveCollection(moveRecords)) {
+    if (
+      !isRomRefinedMoveCollection(moveRecords) ||
+      !isRomPersonalRecordCollection(personalRecords)
+    ) {
       return state;
     }
 
@@ -1033,25 +1046,31 @@ export class BattleScene extends Phaser.Scene {
         return slot;
       }
 
-      const result = applyLevelUpBattleMoves({
+      const moveLearningResult = applyLevelUpBattleMoves({
         pokemon: slot.pokemon,
         previousLevel,
         moveRecords,
       });
+      const evolutionResult = applyEvolutionAfterLevelUp({
+        evolutionTable,
+        personalRecords,
+        pokemon: moveLearningResult.pokemon,
+        previousLevel,
+      });
 
-      if (result.messages.length === 0) {
+      if (moveLearningResult.messages.length === 0 && evolutionResult.messages.length === 0) {
         return slot;
       }
 
-      learningMessages.push(...result.messages);
+      learningMessages.push(...moveLearningResult.messages, ...evolutionResult.messages);
 
       if (slot.slotIndex === state.player.activePartySlotIndex) {
-        activePokemon = result.pokemon;
+        activePokemon = evolutionResult.pokemon;
       }
 
       return {
         ...slot,
-        pokemon: result.pokemon,
+        pokemon: evolutionResult.pokemon,
       };
     });
 
@@ -1060,15 +1079,21 @@ export class BattleScene extends Phaser.Scene {
         1,
         state.player.pokemon.level - (state.result.levelsGained ?? 0),
       );
-      const result = applyLevelUpBattleMoves({
+      const moveLearningResult = applyLevelUpBattleMoves({
         pokemon: state.player.pokemon,
         previousLevel,
         moveRecords,
       });
+      const evolutionResult = applyEvolutionAfterLevelUp({
+        evolutionTable,
+        personalRecords,
+        pokemon: moveLearningResult.pokemon,
+        previousLevel,
+      });
 
-      if (result.messages.length > 0) {
-        activePokemon = result.pokemon;
-        learningMessages.push(...result.messages);
+      if (moveLearningResult.messages.length > 0 || evolutionResult.messages.length > 0) {
+        activePokemon = evolutionResult.pokemon;
+        learningMessages.push(...moveLearningResult.messages, ...evolutionResult.messages);
       }
     }
 
@@ -1728,6 +1753,7 @@ function toPlayerPokemon(pokemon: BattlePokemon): PlayerPokemon {
     experience: pokemon.experience,
     growthRate: pokemon.growthRate,
     status: pokemon.status,
+    individualValues: { ...pokemon.individualValues },
     moves: pokemon.moves.map(move => ({
       id: move.id,
       name: move.name,
@@ -1761,6 +1787,25 @@ function resolvePreviousBattleLevel({
   return pokemon.level;
 }
 
+function applyEvolutionAfterLevelUp({
+  evolutionTable,
+  personalRecords,
+  pokemon,
+  previousLevel,
+}: {
+  evolutionTable: PokemonEvolutionTable;
+  personalRecords: RomPersonalRecordCollection;
+  pokemon: BattlePokemon;
+  previousLevel: number;
+}): ReturnType<typeof applyLevelUpEvolution> {
+  return applyLevelUpEvolution({
+    evolutionTable,
+    personalRecords,
+    pokemon,
+    previousLevel,
+  });
+}
+
 function insertMessagesBeforeBattleEndConfirm(
   messageQueue: string[],
   messages: string[],
@@ -1780,6 +1825,10 @@ function insertMessagesBeforeBattleEndConfirm(
 
 function isRomRefinedMoveCollection(value: unknown): value is RomRefinedMoveCollection {
   return isRecord(value) && "moves" in value;
+}
+
+function isRomPersonalRecordCollection(value: unknown): value is RomPersonalRecordCollection {
+  return isRecord(value) && Array.isArray(value.records);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -1806,13 +1855,19 @@ function createBattleScenarioStateForTest(scenario: BattleE2eScenario): BattleSc
   const playerPokemon = cloneBattlePokemon(baseState.player.pokemon);
   const opponentPokemon = cloneBattlePokemon(baseState.opponent.pokemon);
 
-  if (scenario === "wild-victory") {
+  if (scenario === "wild-victory" || scenario === "wild-evolution") {
     playerPokemon.speed = Math.max(playerPokemon.speed, opponentPokemon.speed + 1);
     playerPokemon.moves = playerPokemon.moves.map((move, index) =>
       index === 0 ? { ...move, accuracy: 100 } : move,
     );
     opponentPokemon.currentHp = 1;
     opponentPokemon.status = "normal";
+    if (scenario === "wild-evolution") {
+      playerPokemon.speciesId = 152;
+      playerPokemon.name = "치코리타";
+      playerPokemon.level = 15;
+      opponentPokemon.baseExpYield = 500;
+    }
   } else {
     playerPokemon.currentHp = 1;
     playerPokemon.status = "normal";
@@ -1849,6 +1904,7 @@ function cloneBattlePokemon(pokemon: BattlePokemon): BattlePokemon {
     frontSprite: { ...pokemon.frontSprite },
     backSprite: { ...pokemon.backSprite },
     baseStats: { ...pokemon.baseStats },
+    individualValues: { ...pokemon.individualValues },
   };
 }
 

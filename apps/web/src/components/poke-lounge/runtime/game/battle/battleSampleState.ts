@@ -2,6 +2,7 @@ import type { BattleMove, BattlePokemon, BattleScreenState, BattleSpriteRef } fr
 import { normalizeRomMoveRecord, type RomBattleMoveRecord } from "./battleRomData";
 import { createBattleParty } from "./battleParty";
 import { getExperienceForLevel } from "./experience";
+import { createMaxIndividualValues } from "./individual-values";
 
 export const BATTLE_LOGICAL_SIZE = { width: 256, height: 192 } as const;
 
@@ -141,6 +142,7 @@ export function createSampleBattleState(): BattleScreenState {
     growthRate: 3,
     experience: getExperienceForLevel(15, 3),
     baseStats: CHIKORITA_BASE_STATS,
+    individualValues: createMaxIndividualValues(),
     maxHp: 45,
     currentHp: 45,
     attack: 28,
@@ -163,6 +165,7 @@ export function createSampleBattleState(): BattleScreenState {
     growthRate: 3,
     experience: getExperienceForLevel(15, 3),
     baseStats: CYNDAQUIL_BASE_STATS,
+    individualValues: createMaxIndividualValues(),
     maxHp: 43,
     currentHp: 43,
     attack: 29,

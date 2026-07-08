@@ -5,6 +5,7 @@ import {
   type PlayerPosition,
 } from "../player/playerTypes";
 import { applyInventoryItemEffect } from "../items/inventoryItemEffects";
+import type { PokemonIndividualValues } from "../battle/individual-values";
 import {
   createDefaultRoundState,
   startPreparationRound as startPreparationRoundState,
@@ -36,6 +37,7 @@ export interface PlayerPokemon {
   experience?: number;
   growthRate?: number;
   status?: PlayerPokemonStatus;
+  individualValues?: PokemonIndividualValues;
   moves?: PlayerPokemonMove[];
 }
 

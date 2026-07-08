@@ -11,6 +11,7 @@ import {
   getLevelUpMovesForSpecies,
   MAX_POKEMON_MOVE_COUNT,
 } from "./levelUpMoves";
+import { normalizeIndividualValues } from "./individual-values";
 import type {
   BattlePartySlot,
   BattleMove,
@@ -164,6 +165,7 @@ function createPlayerBattleSetup({
 
   const pokemon = createBattlePokemon({
     currentHp: playerPokemon?.currentHp,
+    individualValues: playerPokemon?.individualValues,
     storedExperience: playerPokemon?.experience,
     level: playerPokemon?.level ?? PLAYER_LEVEL,
     moveRecords,
@@ -197,6 +199,7 @@ function createStoredBattleParty({
       pokemon: storedPokemon
         ? createBattlePokemon({
             currentHp: storedPokemon.currentHp,
+            individualValues: storedPokemon.individualValues,
             storedExperience: storedPokemon.experience,
             level: storedPokemon.level,
             moveRecords,
@@ -230,6 +233,7 @@ function resolveStoredActivePartySlotIndex(
 function createBattlePokemon({
   level,
   currentHp,
+  individualValues: storedIndividualValues,
   storedExperience,
   moveRecords,
   name,
@@ -240,6 +244,7 @@ function createBattlePokemon({
 }: {
   level: number;
   currentHp?: number;
+  individualValues?: PlayerPokemon["individualValues"];
   storedExperience?: number;
   moveIds?: number[];
   moveRecords: RomRefinedMoveCollection;
@@ -249,7 +254,8 @@ function createBattlePokemon({
   status?: PlayerPokemon["status"];
 }): BattlePokemon {
   const personalRecord = findPersonalRecord(personalRecords, speciesId);
-  const stats = calculateGen4BattleStats(personalRecord.base_stats, level);
+  const individualValues = normalizeIndividualValues(storedIndividualValues);
+  const stats = calculateGen4BattleStats(personalRecord.base_stats, level, individualValues);
   const assets = getBattlePokemonAssets(speciesId);
   const growthRate = personalRecord.growth_rate;
   const resolvedCurrentHp = clampHp(currentHp ?? stats.maxHp, stats.maxHp);
@@ -263,6 +269,7 @@ function createBattlePokemon({
     growthRate,
     experience: resolveBattleExperience(level, growthRate, storedExperience),
     baseStats: personalRecord.base_stats,
+    individualValues,
     maxHp: stats.maxHp,
     currentHp: resolvedCurrentHp,
     attack: stats.attack,

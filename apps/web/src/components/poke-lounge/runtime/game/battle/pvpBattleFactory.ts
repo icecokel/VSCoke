@@ -9,6 +9,7 @@ import type {
   BattleScreenState,
 } from "./battleTypes";
 import type { Gen4BaseStats } from "./gen4PokemonStats";
+import { normalizeIndividualValues } from "./individual-values";
 
 export interface CreatePvpBattleStateInput {
   roundIndex: number;
@@ -92,6 +93,7 @@ function createBattlePokemon(pokemon: PlayerPokemon): BattlePokemon {
   const maxHp = resolveMaxHp(pokemon);
   const currentHp = clampHp(pokemon.currentHp ?? maxHp, maxHp);
   const baseStats = createDefaultBaseStats(maxHp, pokemon.level);
+  const individualValues = normalizeIndividualValues(pokemon.individualValues);
   const assets = getBattlePokemonAssets(pokemon.speciesId);
 
   return {
@@ -103,6 +105,7 @@ function createBattlePokemon(pokemon: PlayerPokemon): BattlePokemon {
     growthRate: pokemon.growthRate ?? 0,
     experience: pokemon.experience ?? 0,
     baseStats,
+    individualValues,
     maxHp,
     currentHp,
     attack: baseStats.attack,

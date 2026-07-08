@@ -5,6 +5,7 @@ import { bindPokeLoungeAudioPrimeListeners } from "./audio/poke-lounge-audio";
 import { createPokeLoungeGame, type PokeLoungeGameResult } from "./createPokeLoungeGame";
 import { loadRuntimeGameDataJson } from "./data/game-data-json";
 import { readInitialBattleE2eScenario, readInitialGameScene } from "./gameStartup";
+import { createRandomIndividualValues } from "./battle/individual-values";
 import {
   getBattleCameraZoom,
   resolveGameCanvasSize,
@@ -339,5 +340,6 @@ export function createStarterPlayerPokemon(starter: StarterPokemon, level = 10):
     speciesId: starter.speciesId,
     name: starter.displayName,
     level,
+    individualValues: createRandomIndividualValues(),
   };
 }

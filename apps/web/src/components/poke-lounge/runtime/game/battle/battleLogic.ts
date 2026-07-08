@@ -782,7 +782,11 @@ function applyWildVictoryExperience(
     };
   }
 
-  const nextStats = calculateGen4BattleStats(playerPokemon.baseStats, experienceResult.level);
+  const nextStats = calculateGen4BattleStats(
+    playerPokemon.baseStats,
+    experienceResult.level,
+    playerPokemon.individualValues,
+  );
   const maxHpIncrease = Math.max(0, nextStats.maxHp - playerPokemon.maxHp);
 
   return {

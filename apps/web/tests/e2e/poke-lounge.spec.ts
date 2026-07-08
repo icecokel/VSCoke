@@ -8,6 +8,10 @@ import { createWildBattleState } from "../../src/components/poke-lounge/runtime/
 import type { BattleMove } from "../../src/components/poke-lounge/runtime/game/battle/battleTypes";
 import { getBattlePokemonAssets } from "../../src/components/poke-lounge/runtime/game/battle/battlePokemonAssets";
 import {
+  applyLevelUpEvolution,
+  normalizePokemonEvolutionTable,
+} from "../../src/components/poke-lounge/runtime/game/battle/pokemon-evolution";
+import {
   createPartyHudSlotViews,
   PARTY_HUD_SLOT_GAP,
   PARTY_HUD_SLOT_SIZE,
@@ -38,7 +42,7 @@ import { WILD_ENCOUNTER_RATE } from "../../src/components/poke-lounge/runtime/ga
 import { escapeRegExp, gotoWithRetry, resolveLocaleAndMessages } from "./test-helpers";
 
 type PokeLoungeSceneKey = "world" | "battle";
-type PokeLoungeBattleScenario = "wild-victory" | "wild-defeat";
+type PokeLoungeBattleScenario = "wild-victory" | "wild-defeat" | "wild-evolution";
 type PokeLoungeBattleResultReason = "faint" | "timeout" | "forfeit" | "run" | "capture";
 
 interface PokeLoungeBattleSnapshot {
@@ -67,10 +71,13 @@ interface PokeLoungeBattleSnapshot {
   hitAnimationPlaying: boolean;
   hitAnimationStartedCount: number;
   player: {
+    name: string;
+    level: number;
     currentHp: number;
     maxHp: number;
     displayedCurrentHp: number;
     hitAnimationStartedCount: number;
+    status: string;
   };
   opponent: {
     currentHp: number;
@@ -89,6 +96,14 @@ interface PokeLoungeGameStateSnapshot {
         pokemon?: {
           currentHp?: number;
           status?: string;
+          individualValues?: {
+            hp: number;
+            attack: number;
+            defense: number;
+            specialAttack: number;
+            specialDefense: number;
+            speed: number;
+          };
         } | null;
       }>;
     }
@@ -182,6 +197,7 @@ test.describe("Poke Lounge", () => {
         {
           baseStats?: Record<string, number>;
           types?: { ids?: number[]; names?: string[] };
+          evolutions?: Array<{ method: number; parameter: number; targetSpeciesId: number }>;
           levelUpMoves?: Array<{ level: number; moveId: number }>;
         }
       >;
@@ -232,6 +248,9 @@ test.describe("Poke Lounge", () => {
         { level: 45, moveId: 76 },
       ]),
     );
+    expect(pokemonData.species?.["152"].evolutions).toEqual([
+      { method: 4, parameter: 16, targetSpeciesId: 153 },
+    ]);
     expect(Object.keys(levelUpMoveTable.species ?? {})).toHaveLength(500);
     expect(levelUpMoveTable.species?.["152"]).toEqual(
       expect.arrayContaining([
@@ -293,6 +312,131 @@ test.describe("Poke Lounge", () => {
     expect(wildBattleState.opponent.playerId).toBe("wild");
     expect(wildBattleState.opponent.displayName).toBe("야생 브케인");
     expect(wildBattleState.opponent.pokemon.moves.map(move => move.id)).toEqual([108, 52, 98, 172]);
+  });
+
+  test("전투 포켓몬은 0~31 범위의 개체값을 저장하고 스탯에 반영한다", () => {
+    const storedPlayerPokemon = {
+      speciesId: 152,
+      name: "치코리타",
+      level: 10,
+      individualValues: {
+        hp: 0,
+        attack: 1,
+        defense: 2,
+        specialAttack: 3,
+        specialDefense: 4,
+        speed: 5,
+      },
+    };
+    const wildBattleState = createWildBattleState({
+      encounter: {
+        mapKey: "test-map",
+        step: { from: { x: 0, y: 0 }, to: { x: 1, y: 0 } },
+        speciesId: 155,
+        name: "브케인",
+        level: 10,
+      },
+      personalRecords: createTestPersonalRecords([152, 155]),
+      moveRecords: createTestMoveRecords([33, 43, 45, 52, 98, 108, 172]),
+      playerPokemon: storedPlayerPokemon,
+    });
+
+    expect(wildBattleState.player.pokemon.individualValues).toEqual({
+      hp: 0,
+      attack: 1,
+      defense: 2,
+      specialAttack: 3,
+      specialDefense: 4,
+      speed: 5,
+    });
+    expect(wildBattleState.player.pokemon).toMatchObject({
+      maxHp: 29,
+      attack: 14,
+      defense: 15,
+      specialAttack: 18,
+      specialDefense: 18,
+      speed: 14,
+    });
+    expect(wildBattleState.opponent.pokemon.individualValues).toEqual({
+      hp: expect.any(Number),
+      attack: expect.any(Number),
+      defense: expect.any(Number),
+      specialAttack: expect.any(Number),
+      specialDefense: expect.any(Number),
+      speed: expect.any(Number),
+    });
+  });
+
+  test("레벨업 진화 조건을 만족하면 ROM 데이터 기준으로 종족과 전투 스탯을 갱신한다", () => {
+    const pokemonData = readPublicJson(POKEMON_DATA_JSON_PATH);
+    const evolutionTable = normalizePokemonEvolutionTable(pokemonData);
+    const basePokemon = createSampleBattleState().player.pokemon;
+
+    const result = applyLevelUpEvolution({
+      evolutionTable,
+      personalRecords: createTestPersonalRecords([152, 153], {
+        152: {
+          base_stats: {
+            hp: 45,
+            attack: 49,
+            defense: 65,
+            special_attack: 49,
+            special_defense: 65,
+            speed: 45,
+          },
+          base_exp: 64,
+          types: { primary: 12, secondary: null },
+        },
+        153: {
+          base_stats: {
+            hp: 60,
+            attack: 62,
+            defense: 80,
+            special_attack: 63,
+            special_defense: 80,
+            speed: 60,
+          },
+          base_exp: 141,
+          types: { primary: 12, secondary: null },
+        },
+      }),
+      pokemon: {
+        ...basePokemon,
+        speciesId: 152,
+        name: "치코리타",
+        level: 16,
+        maxHp: 45,
+        currentHp: 45,
+      },
+      previousLevel: 15,
+    });
+
+    expect(result.pokemon).toMatchObject({
+      speciesId: 153,
+      name: "베이리프",
+      baseExpYield: 141,
+      maxHp: 50,
+      currentHp: 50,
+      attack: 29,
+      defense: 35,
+      specialAttack: 30,
+      specialDefense: 35,
+      speed: 29,
+      typeIds: [12],
+    });
+    expect(result.pokemon.baseStats).toEqual({
+      hp: 60,
+      attack: 62,
+      defense: 80,
+      special_attack: 63,
+      special_defense: 80,
+      speed: 60,
+    });
+    expect(result.messages).toEqual([
+      "어라? 치코리타의 모습이...!",
+      "치코리타는 베이리프로 진화했다!",
+    ]);
+    expect(result.evolved).toBe(true);
   });
 
   test("startup-loaded runtime game data는 유효한 species만 JSON을 우선하고 누락/오염 species는 fallback한다", async () => {
@@ -647,6 +791,23 @@ test.describe("Poke Lounge", () => {
     await expect(page.locator("#game-root canvas")).toBeVisible();
     await expectActiveScene(page, "world");
 
+    const gameState = await getGameStateSnapshot(page);
+    const starterPokemon =
+      gameState?.playersById[gameState.currentPlayerId]?.party[0]?.pokemon ?? null;
+    expect(starterPokemon?.individualValues).toEqual({
+      hp: expect.any(Number),
+      attack: expect.any(Number),
+      defense: expect.any(Number),
+      specialAttack: expect.any(Number),
+      specialDefense: expect.any(Number),
+      speed: expect.any(Number),
+    });
+    expect(
+      Object.values(starterPokemon?.individualValues ?? {}).every(
+        value => value >= 0 && value <= 31,
+      ),
+    ).toBe(true);
+
     expect(browserErrors.join("\n")).toBe("");
   });
 
@@ -773,6 +934,24 @@ test.describe("Poke Lounge", () => {
     expect(result?.reason).toBe("faint");
     expect(result?.winnerPlayerId).not.toBe("wild");
     await expectActiveScene(page, "battle");
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("wild-evolution battle scenario는 레벨업 후 진화 상태를 battle result에 반영한다", async ({
+    page,
+  }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await startBattleScenario(page, "wild-evolution");
+    const result = await resolveBattleResult(page);
+    const snapshot = await getBattleSnapshot(page);
+
+    expect(result?.reason).toBe("faint");
+    expect(snapshot?.player.name).toBe("베이리프");
+    expect(snapshot?.player.level).toBe(16);
+    expect(snapshot?.messageQueue).toEqual(
+      expect.arrayContaining(["어라? 치코리타의 모습이...!", "치코리타는 베이리프로 진화했다!"]),
+    );
     expect(browserErrors.join("\n")).toBe("");
   });
 
@@ -1359,23 +1538,58 @@ function createTestMoveRecords(moveIds: number[]) {
   };
 }
 
-function createTestPersonalRecords(speciesIds: number[]) {
-  return {
-    records: speciesIds.map(speciesId => ({
-      index: speciesId,
-      catch_rate: 45,
-      base_exp: 65,
-      growth_rate: 3,
+function createTestPersonalRecords(
+  speciesIds: number[],
+  overrides: Record<
+    number,
+    Partial<{
+      catch_rate: number;
+      base_exp: number;
+      growth_rate: number;
       base_stats: {
-        hp: 45,
-        attack: 49,
-        defense: 49,
-        special_attack: 65,
-        special_defense: 65,
-        speed: 45,
-      },
-      types: { primary: 10, secondary: null },
-    })),
+        hp: number;
+        attack: number;
+        defense: number;
+        special_attack: number;
+        special_defense: number;
+        speed: number;
+      };
+      types: { primary: number; secondary?: number | null };
+    }>
+  > = {},
+) {
+  return {
+    records: speciesIds.map(speciesId => {
+      const override = overrides[speciesId] ?? {};
+      const defaultRecord = {
+        index: speciesId,
+        catch_rate: 45,
+        base_exp: 65,
+        growth_rate: 3,
+        base_stats: {
+          hp: 45,
+          attack: 49,
+          defense: 49,
+          special_attack: 65,
+          special_defense: 65,
+          speed: 45,
+        },
+        types: { primary: 10, secondary: null },
+      };
+
+      return {
+        ...defaultRecord,
+        ...override,
+        base_stats: {
+          ...defaultRecord.base_stats,
+          ...override.base_stats,
+        },
+        types: {
+          ...defaultRecord.types,
+          ...override.types,
+        },
+      };
+    }),
   };
 }
 

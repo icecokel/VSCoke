@@ -1,5 +1,6 @@
 import type { PlayerPokemonSlot } from "../player/playerTypes";
 import type { Gen4BaseStats } from "./gen4PokemonStats";
+import type { PokemonIndividualValues } from "./individual-values";
 
 export type BattlePhase =
   | "intro"
@@ -45,6 +46,7 @@ export interface BattlePokemon {
   growthRate: number;
   experience: number;
   baseStats: Gen4BaseStats;
+  individualValues: PokemonIndividualValues;
   maxHp: number;
   currentHp: number;
   attack: number;

@@ -183,9 +183,7 @@ test.describe("Poke Lounge server multiplayer", () => {
     });
     await hostPage.locator("[data-room-entry-server-create]").click();
     await chooseStarterIfNeeded(hostPage);
-    await expect(hostPage).toHaveURL(new RegExp(`network=server&room=${ROOM_CODE}`), {
-      timeout: 30000,
-    });
+    await expectServerRoomUrl(hostPage);
     await expect
       .poll(() => getRoomSnapshot(hostPage).then(snapshot => snapshot?.roomId ?? null), {
         timeout: 30000,
@@ -198,9 +196,7 @@ test.describe("Poke Lounge server multiplayer", () => {
     });
     await guestPage.locator("[data-room-entry-server-code]").fill("srv001");
     await guestPage.locator("[data-room-entry-server-join]").click();
-    await expect(guestPage).toHaveURL(new RegExp(`network=server&room=${ROOM_CODE}`), {
-      timeout: 30000,
-    });
+    await expectServerRoomUrl(guestPage);
     await chooseStarterIfNeeded(guestPage);
     await expect
       .poll(() => getRoomSnapshot(guestPage).then(snapshot => snapshot?.roomId ?? null), {
@@ -391,6 +387,19 @@ async function getCurrentPlayerId(page: Page): Promise<string | null> {
 
     return pokeWindow.__POKE_LOUNGE_E2E__?.getGameStateSnapshot().currentPlayerId ?? null;
   });
+}
+
+async function expectServerRoomUrl(page: Page): Promise<void> {
+  await expect
+    .poll(
+      () => {
+        const url = new URL(page.url());
+
+        return `${url.searchParams.get("network")}:${url.searchParams.get("room")}`;
+      },
+      { timeout: 30000 },
+    )
+    .toBe(`server:${ROOM_CODE}`);
 }
 
 async function mockServerRoom(

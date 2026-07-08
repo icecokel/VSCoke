@@ -95,6 +95,7 @@ export function PokeLoungeGame() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fullscreenActive, setFullscreenActive] = useState(false);
   const [touchGameDevice, setTouchGameDevice] = useState(false);
+  const [gameCanvasMounted, setGameCanvasMounted] = useState(false);
   const [volumeLevelIndex, setVolumeLevelIndex] = useState(POKE_LOUNGE_VOLUME_STEPS.length - 1);
   const [uiSize, setUiSize] = useState<PokeLoungeUiSize>("large");
   const [roomShareStatus, setRoomShareStatus] = useState<PokeLoungeRoomShareStatus>("idle");
@@ -172,6 +173,27 @@ export function PokeLoungeGame() {
         userAgent: navigator.userAgent ?? "",
       }),
     );
+  }, []);
+
+  useEffect(() => {
+    const gameRoot = pageRef.current?.querySelector("#game-root");
+
+    if (!gameRoot) {
+      return;
+    }
+
+    const syncGameCanvasState = () => {
+      setGameCanvasMounted(Boolean(gameRoot.querySelector("canvas")));
+    };
+
+    syncGameCanvasState();
+
+    const observer = new MutationObserver(syncGameCanvasState);
+    observer.observe(gameRoot, { childList: true, subtree: true });
+
+    return () => {
+      observer.disconnect();
+    };
   }, []);
 
   useEffect(() => {
@@ -314,6 +336,7 @@ export function PokeLoungeGame() {
       delete pokeWindow.__POKE_LOUNGE_CLEANUP_FOR_TEST__;
       delete pokeWindow.__POKE_LOUNGE_E2E__;
       delete document.documentElement.dataset.pokeLoungeE2eBattle;
+      setGameCanvasMounted(false);
       pageRef.current?.classList.remove("is-game-fullscreen-fallback");
       document.body.classList.remove("is-game-fullscreen-fallback-active");
       document.querySelector<HTMLElement>("#game-root")?.replaceChildren();
@@ -404,7 +427,7 @@ export function PokeLoungeGame() {
     >
       <div className={styles.gameFrame} data-poke-lounge-game-frame="true">
         <div id="game-root" data-testid="poke-lounge-game-root" />
-        {touchGameDevice ? (
+        {touchGameDevice && gameCanvasMounted ? (
           <button
             type="button"
             className="fullscreen-toggle-button fullscreen-toggle-button--mobile"

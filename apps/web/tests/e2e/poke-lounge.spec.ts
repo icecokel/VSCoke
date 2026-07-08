@@ -490,6 +490,7 @@ test.describe("Poke Lounge", () => {
   });
 
   test("게임 센터 카드와 world scene 직접 진입을 검증한다", async ({ page }) => {
+    await mockUnauthenticatedSession(page);
     const browserErrors = collectBrowserErrors(page);
     const { locale, messages } = await resolveLocaleAndMessages(page);
     const localeRegex = escapeRegExp(locale);
@@ -1076,14 +1077,32 @@ test.describe("Poke Lounge", () => {
   test("mobile room entry와 starter 선택 UI가 뷰포트 폭을 넘지 않는다", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
 
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "maxTouchPoints", {
+        configurable: true,
+        get: () => 5,
+      });
+      Object.defineProperty(navigator, "platform", {
+        configurable: true,
+        get: () => "iPhone",
+      });
+      Object.defineProperty(navigator, "userAgent", {
+        configurable: true,
+        get: () =>
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+      });
+    });
+
     await page.setViewportSize({ width: 360, height: 780 });
     await gotoWithRetry(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
     await continueToRoomEntry(page);
     await expectNoViewportOverflow(page);
+    await expect(page.locator("[data-fullscreen-toggle-placement='mobile']")).toHaveCount(0);
 
     await page.locator("[data-room-entry-solo]").click();
     await expect(page.locator("[data-screen='starter-selection']")).toBeVisible({ timeout: 30000 });
     await expectNoViewportOverflow(page);
+    await expect(page.locator("[data-fullscreen-toggle-placement='mobile']")).toHaveCount(0);
 
     expect(browserErrors.join("\n")).toBe("");
   });
@@ -2056,6 +2075,16 @@ async function mockAuthenticatedSession(page: Page): Promise<void> {
         idToken: createTestJwt(),
         idTokenExpiresAt: Math.floor(Date.now() / 1000) + 60 * 60,
       }),
+    });
+  });
+}
+
+async function mockUnauthenticatedSession(page: Page): Promise<void> {
+  await page.route("**/api/auth/session", async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({}),
     });
   });
 }

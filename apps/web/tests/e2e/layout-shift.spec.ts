@@ -153,13 +153,6 @@ test.describe("레이아웃 쉬프트 회귀", () => {
         await expect(page.getByRole("heading", { name: "Fish Drift" })).toBeVisible();
       },
     },
-    {
-      path: "/ko-KR/doom",
-      maxCls: 0.01,
-      assertReady: async page => {
-        await expect(page.locator('[data-testid="doom-frame"]')).toBeVisible();
-      },
-    },
   ];
 
   for (const pageCase of cases) {

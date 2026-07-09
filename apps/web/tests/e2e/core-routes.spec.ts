@@ -212,7 +212,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await expect(mailLink).toHaveCount(1);
     await expect(telLink).toHaveCount(1);
     await expect(page.locator('a[href="https://github.com/icecokel"]')).toBeVisible();
-    await expect(page.locator('a[href="https://icecokel.tistory.com"]')).toBeVisible();
+    await expect(page.locator(`a[href="${messages.resume.links[2]}"]`)).toBeVisible();
 
     const phoneRow = page
       .locator('a[href^="tel:"]')
@@ -328,11 +328,12 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await expect(page.getByRole("button", { name: /Sky Drop/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Fish Drift/ })).toBeVisible();
     await expect(
-      page.getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.doomTitle)) }),
+      page.getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.pokeLoungeTitle)) }),
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.wordleTitle)) }),
     ).toBeVisible();
+    await expect(page.getByRole("button", { name: /doom|둠/i })).toHaveCount(0);
 
     await page
       .getByRole("button", { name: /Sky Drop/i })
@@ -360,32 +361,6 @@ test.describe("코어 라우트 CTA 시나리오", () => {
       .first()
       .click();
     await expectPath(page, new RegExp(`^/${localeRegex}/game$`));
-
-    await page
-      .getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.doomTitle)) })
-      .click();
-    await expectPath(page, new RegExp(`^/${localeRegex}/doom$`), 30000);
-
-    const muteToggle = page
-      .getByRole("button", {
-        name: new RegExp(
-          `${escapeRegExp(messages.Doom.soundOn)}|${escapeRegExp(messages.Doom.soundOff)}`,
-        ),
-      })
-      .first();
-    await expect(muteToggle).toBeVisible();
-    const beforeMuteLabel = (await muteToggle.textContent())?.trim();
-    await muteToggle.click();
-    const afterMuteLabel = (await muteToggle.textContent())?.trim();
-    expect(afterMuteLabel).not.toBe(beforeMuteLabel);
-
-    await expect(
-      page.getByRole("button", {
-        name: new RegExp(
-          `${escapeRegExp(messages.Doom.buttonLoading)}|${escapeRegExp(messages.Doom.buttonStart)}`,
-        ),
-      }),
-    ).toBeVisible();
 
     await visit(page, `/${locale}/game`);
     await page

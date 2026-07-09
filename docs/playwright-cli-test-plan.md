@@ -50,7 +50,7 @@
 | 네비게이션     | 메뉴바, 사이드바, 탐색기, 검색 패널                        | 커버 중      |
 | README/Resume  | 프로필 진입, 상세 이력서 이동, 뒤로 이동, 공유 버튼        | 커버 중      |
 | Blog           | 목록 진입, 상세 진입, 대시보드 검색                        | 커버 중      |
-| Game Dashboard | Sky Drop, Fish Drift, Doom, Wordle 진입                    | 커버 중      |
+| Game Dashboard | Sky Drop, Fish Drift, Poke Lounge, Wordle 진입             | 커버 중      |
 | Package        | 패키지 화면 렌더링                                         | 간접 커버 중 |
 | 핵심 복구      | 404 복구, history 탭, 새로고침 상태 유지                   | 커버 중      |
 

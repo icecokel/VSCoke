@@ -20,9 +20,6 @@ test.describe("취미 게임 섹션", () => {
     await expect(page.getByRole("button", { name: /Sky Drop/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Fish Drift/ })).toBeVisible();
     await expect(
-      page.getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.doomTitle)) }),
-    ).toBeVisible();
-    await expect(
       page.getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.wordleTitle)) }),
     ).toBeVisible();
     await expect(
@@ -30,6 +27,7 @@ test.describe("취미 게임 섹션", () => {
         name: new RegExp(escapeRegExp(messages.Game.pokeLoungeTitle)),
       }),
     ).toBeVisible();
+    await expect(page.getByRole("button", { name: /doom|둠/i })).toHaveCount(0);
 
     await gotoWithRetry(page, `/${locale}/game/sky-drop`);
     await expect(page).toHaveURL(new RegExp(`/${localeRegex}/game/sky-drop$`));
@@ -44,17 +42,8 @@ test.describe("취미 게임 섹션", () => {
         .first(),
     ).toBeVisible({ timeout: 30000 });
 
-    await gotoWithRetry(page, `/${locale}/doom`);
-    await expect(page).toHaveURL(new RegExp(`/${localeRegex}/doom$`));
-    await expect(
-      page
-        .getByRole("button", {
-          name: new RegExp(
-            `${escapeRegExp(messages.Doom.soundOn)}|${escapeRegExp(messages.Doom.soundOff)}`,
-          ),
-        })
-        .first(),
-    ).toBeVisible({ timeout: 30000 });
+    const removedDoomResponse = await gotoWithRetry(page, `/${locale}/doom`, 1, false);
+    expect(removedDoomResponse?.status()).toBe(404);
 
     await mockWordleWord(page);
     await gotoWithRetry(page, `/${locale}/game/wordle`);

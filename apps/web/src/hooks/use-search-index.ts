@@ -66,7 +66,6 @@ export const useSearchIndex = (): SearchItem[] => {
   const tResume = useTranslations("resume");
   const tResumeRag = useTranslations("resumeRag");
   const tGame = useTranslations("Game");
-  const tDoom = useTranslations("Doom");
   const tHobbyRecipes = useTranslations("hobby.recipes");
   const tHobbyEspresso = useTranslations("hobby.espresso");
   const [hobbyItems, setHobbyItems] = useState<SearchItem[]>([]);
@@ -288,15 +287,6 @@ export const useSearchIndex = (): SearchItem[] => {
         featured: true,
         priority: 390,
       },
-      {
-        id: "game:doom",
-        type: "game",
-        title: tGame("doomTitle"),
-        description: `${tGame("doomDesc")} ${tDoom("subtitle")}`,
-        keywords: uniqueStrings([tDoom("title"), tDoom("controls"), "doom", "fps"]),
-        path: "/doom",
-        priority: 380,
-      },
     ];
 
     return [
@@ -315,7 +305,6 @@ export const useSearchIndex = (): SearchItem[] => {
     hobbyItems,
     posts,
     tBlog,
-    tDoom,
     tGame,
     tHobbyEspresso,
     tHobbyRecipes,

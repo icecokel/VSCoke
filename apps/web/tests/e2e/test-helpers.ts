@@ -54,7 +54,6 @@ export interface AppMessages {
     leaderboardEmpty: string;
     loadFailed: string;
     notEnoughLetters: string;
-    doomTitle: string;
     wordleTitle: string;
     pokeLoungeTitle: string;
     pokeLoungeDesc: string;
@@ -65,12 +64,7 @@ export interface AppMessages {
   resume: {
     viewDescription: string;
     backToResume: string;
-  };
-  Doom: {
-    soundOn: string;
-    soundOff: string;
-    buttonLoading: string;
-    buttonStart: string;
+    links: string[];
   };
 }
 

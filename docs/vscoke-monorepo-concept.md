@@ -43,15 +43,15 @@ vscoke/
 
 현재 주요 라우트:
 
-| 영역           | 라우트                                                                                                         |
-| -------------- | -------------------------------------------------------------------------------------------------------------- |
-| 홈             | `/:locale`                                                                                                     |
-| 문서/이력      | `/:locale/readme`, `/:locale/resume/:slug`, `/:locale/package`                                                 |
-| 블로그         | `/:locale/blog`, `/:locale/blog/:slug`, `/:locale/blog/dashboard`                                              |
-| 게임           | `/:locale/game`, `/:locale/game/sky-drop`, `/:locale/game/fish-drift`, `/:locale/game/wordle`, `/:locale/doom` |
-| 취미           | `/:locale/hobby/espresso`, `/:locale/hobby/espresso/:beanId`, `/:locale/hobby/recipes`                         |
-| 공유           | `/:locale/share/:id`                                                                                           |
-| Next API route | `/api/auth/[...nextauth]`, `/api/hobby-search-index`                                                           |
+| 영역           | 라우트                                                                                                                     |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 홈             | `/:locale`                                                                                                                 |
+| 문서/이력      | `/:locale/readme`, `/:locale/resume/:slug`, `/:locale/package`                                                             |
+| 블로그         | `/:locale/blog`, `/:locale/blog/:slug`, `/:locale/blog/dashboard`                                                          |
+| 게임           | `/:locale/game`, `/:locale/game/sky-drop`, `/:locale/game/fish-drift`, `/:locale/game/poke-lounge`, `/:locale/game/wordle` |
+| 취미           | `/:locale/hobby/espresso`, `/:locale/hobby/espresso/:beanId`, `/:locale/hobby/recipes`                                     |
+| 공유           | `/:locale/share/:id`                                                                                                       |
+| Next API route | `/api/auth/[...nextauth]`, `/api/hobby-search-index`                                                                       |
 
 웹은 API 코드를 직접 import하지 않는다. 브라우저에서 필요한 API 주소는 `NEXT_PUBLIC_API_URL`로 주입한다.
 

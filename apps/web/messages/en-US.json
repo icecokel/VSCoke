@@ -318,13 +318,18 @@
     "empty": "Ask a question and the answer will appear here.",
     "emptyTitle": "What would you like to know?",
     "emptyDescription": "Start with a suggested question or type your own.",
+    "introTitle": "Check this resume quickly through questions",
+    "introDescription": "Ask about role fit, key projects, technical strengths, and working style.",
+    "topicsLabel": "What to check",
     "suggestionsLabel": "Suggested questions",
     "composerLabel": "Question input",
     "sourceLabel": "Evidence",
+    "evidenceLabel": "Resume evidence referenced",
+    "groundedBadge": "Based on resume evidence",
     "readmeEntry": {
-      "title": "Ask about this resume",
-      "description": "Ask while reading the README and the answer will be prepared.",
-      "placeholder": "Ask a question while reading the README.",
+      "title": "Have a question while reading the README?",
+      "description": "I will find resume evidence and prepare an answer.",
+      "placeholder": "Ask what you want to know while reading the README.",
       "submit": "Prepare answer",
       "submitting": "Preparing",
       "submittingHint": "Searching resume evidence and preparing an answer.",
@@ -338,6 +343,44 @@
       "Describe your healthcare domain experience",
       "What is your CI/CD and deployment experience?",
       "What are your frontend strengths?"
+    ],
+    "questionTopics": [
+      {
+        "title": "Role fit",
+        "description": "Check experience and strengths for the position.",
+        "questions": [
+          "Explain why you are a fit for frontend product development roles.",
+          "What are your strengths across healthcare, commerce, and back-office work?",
+          "What evidence shows you can work as a product-minded developer?"
+        ]
+      },
+      {
+        "title": "Key projects",
+        "description": "Check real problems solved and the role taken.",
+        "questions": [
+          "Describe your most representative project and your role.",
+          "Summarize the problem you solved and your contribution at Oprimed.",
+          "What outcomes came from your operations tools or automation projects?"
+        ]
+      },
+      {
+        "title": "Technical strengths",
+        "description": "Check frontend, testing, and deployment experience.",
+        "questions": [
+          "How have you used React and Next.js in real work?",
+          "Describe your testing and deployment automation experience.",
+          "How have you handled state management and API integration?"
+        ]
+      },
+      {
+        "title": "Working style",
+        "description": "Check planning, quality, automation, and collaboration.",
+        "questions": [
+          "How do you clarify ambiguous requirements?",
+          "What have you done to improve quality and maintainability?",
+          "Tell me about a case where you automated repetitive work."
+        ]
+      }
     ],
     "placeholder": "Ask about the resume.",
     "loginPlaceholder": "Login to ask a question.",

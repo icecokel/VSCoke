@@ -49,6 +49,41 @@ type ChatMessage =
       sources: ResumeRagSource[];
     };
 
+type QuestionTopic = {
+  title: string;
+  description: string;
+  questions: string[];
+};
+
+const isQuestionTopic = (value: unknown): value is QuestionTopic => {
+  if (!value || typeof value !== "object") return false;
+
+  const topic = value as Partial<QuestionTopic>;
+
+  return (
+    typeof topic.title === "string" &&
+    typeof topic.description === "string" &&
+    Array.isArray(topic.questions) &&
+    topic.questions.every((question): question is string => typeof question === "string")
+  );
+};
+
+const readQuestionTopics = (value: unknown, fallbackSuggestions: string[]): QuestionTopic[] => {
+  if (Array.isArray(value)) {
+    return value.filter(isQuestionTopic);
+  }
+
+  if (fallbackSuggestions.length === 0) return [];
+
+  return [
+    {
+      title: "Questions",
+      description: "",
+      questions: fallbackSuggestions,
+    },
+  ];
+};
+
 const getFailureState = (caught: unknown, question: string): FailureState => {
   if (caught instanceof ResumeRagContractError) {
     return { kind: "contract", question };
@@ -192,7 +227,7 @@ const SourceList = ({ sources }: { sources: ResumeRagSource[] }) => {
     <div className="mt-4 border-t border-gray-800 pt-3">
       <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-medium text-gray-400">
         <FileText className="size-3.5 text-blue-300" />
-        <span>{t("sourceLabel")}</span>
+        <span>{t("evidenceLabel")}</span>
         <span className="text-gray-600">/</span>
         <span className="text-gray-500">{t("sources", { count: sources.length })}</span>
       </div>
@@ -250,13 +285,15 @@ const GroundingNotice = ({ grounded }: { grounded: boolean }) => {
 };
 
 const EmptyChatState = ({
-  suggestions,
+  questionTopics,
   onSelectSuggestion,
 }: {
-  suggestions: string[];
+  questionTopics: QuestionTopic[];
   onSelectSuggestion: (suggestion: string) => void;
 }) => {
   const t = useTranslations("resumeRag");
+  const [activeTopicIndex, setActiveTopicIndex] = useState<number | null>(null);
+  const activeTopic = activeTopicIndex === null ? null : questionTopics[activeTopicIndex];
 
   return (
     <div className="min-h-72 overflow-hidden border border-gray-800 bg-gray-950/70 text-gray-100">
@@ -266,29 +303,58 @@ const EmptyChatState = ({
       </div>
       <div className="p-4 md:p-6">
         <div className="max-w-2xl">
-          <div className="text-sm font-semibold text-gray-100">{t("emptyTitle")}</div>
-          <p className="mt-2 text-sm leading-6 text-gray-400">{t("emptyDescription")}</p>
+          <div className="text-base font-semibold text-gray-100">{t("introTitle")}</div>
+          <p className="mt-2 text-sm leading-6 text-gray-400">{t("introDescription")}</p>
         </div>
 
         <div className="mt-5">
-          <div className="mb-2 text-xs font-medium uppercase text-gray-500">
-            {t("suggestionsLabel")}
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {suggestions.map(suggestion => (
+          <div className="mb-2 text-xs font-medium uppercase text-gray-500">{t("topicsLabel")}</div>
+          <div className="grid gap-2 md:grid-cols-2">
+            {questionTopics.map((topic, index) => (
               <Button
-                key={suggestion}
+                key={topic.title}
                 type="button"
                 variant="outline"
-                size="sm"
-                className="h-auto min-h-10 w-full justify-start whitespace-normal border-gray-700 bg-gray-900/60 px-3 py-2 text-left text-gray-200 hover:bg-gray-800 hover:text-gray-50"
-                onClick={() => onSelectSuggestion(suggestion)}
+                aria-expanded={activeTopicIndex === index}
+                className={`h-auto min-h-16 w-full justify-start whitespace-normal border-gray-700 px-3 py-3 text-left hover:bg-gray-800 hover:text-gray-50 ${
+                  activeTopicIndex === index
+                    ? "bg-blue-300/10 text-blue-50"
+                    : "bg-gray-900/60 text-gray-200"
+                }`}
+                onClick={() => setActiveTopicIndex(current => (current === index ? null : index))}
               >
                 <ChevronRight className="mt-0.5 size-3.5 text-blue-300" />
-                <span className="min-w-0">{suggestion}</span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium">{topic.title}</span>
+                  <span className="mt-1 block text-xs leading-5 text-gray-400">
+                    {topic.description}
+                  </span>
+                </span>
               </Button>
             ))}
           </div>
+          {activeTopic ? (
+            <div className="mt-4 border-l border-blue-300/40 bg-blue-300/10 px-3 py-3">
+              <div className="mb-2 text-xs font-medium uppercase text-blue-100/80">
+                {t("suggestionsLabel")}
+              </div>
+              <div className="space-y-2">
+                {activeTopic.questions.map(question => (
+                  <Button
+                    key={question}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-auto min-h-10 w-full justify-start whitespace-normal border-gray-700 bg-gray-950/80 px-3 py-2 text-left text-gray-200 hover:bg-gray-800 hover:text-gray-50"
+                    onClick={() => onSelectSuggestion(question)}
+                  >
+                    <ChevronRight className="mt-0.5 size-3.5 text-blue-300" />
+                    <span className="min-w-0">{question}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
@@ -306,6 +372,7 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
   const suggestions = Array.isArray(rawSuggestions)
     ? rawSuggestions.filter((suggestion): suggestion is string => typeof suggestion === "string")
     : [];
+  const questionTopics = readQuestionTopics(t.raw("questionTopics"), suggestions);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -387,7 +454,7 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
     <section className="flex min-h-[calc(100svh-15rem)] flex-col">
       <div className="flex-1 space-y-5 overflow-y-auto pb-4">
         {messages.length === 0 ? (
-          <EmptyChatState suggestions={suggestions} onSelectSuggestion={setQuestion} />
+          <EmptyChatState questionTopics={questionTopics} onSelectSuggestion={setQuestion} />
         ) : (
           messages.map(message => (
             <div
@@ -400,8 +467,17 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
                 </div>
               ) : (
                 <div className="w-full max-w-3xl overflow-hidden border border-gray-700 bg-gray-950/80 text-gray-100">
-                  <div className="border-b border-gray-800 bg-gray-900 px-3 py-2 text-xs text-gray-500">
-                    codex.response
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-800 bg-gray-900 px-3 py-2 text-xs text-gray-500">
+                    <span>codex.response</span>
+                    <span
+                      className={
+                        message.grounded
+                          ? "border border-blue-300/30 bg-blue-300/10 px-2 py-0.5 text-blue-100"
+                          : "border border-amber-600/40 bg-amber-950/30 px-2 py-0.5 text-amber-100"
+                      }
+                    >
+                      {message.grounded ? t("groundedBadge") : t("noEvidence.title")}
+                    </span>
                   </div>
                   <div className="px-3 py-3 text-sm leading-6 break-words whitespace-pre-wrap">
                     {message.content}

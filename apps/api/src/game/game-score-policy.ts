@@ -10,7 +10,7 @@ export type GameScorePolicy = {
   maxScorePerSecond: number;
 };
 
-export const GAME_SCORE_POLICIES: Record<GameType, GameScorePolicy> = {
+const GAME_SCORE_POLICIES: Record<GameType, GameScorePolicy> = {
   [GameType.SKY_DROP]: {
     minScore: 1,
     maxScore: 100000,
@@ -26,8 +26,6 @@ export const GAME_SCORE_POLICIES: Record<GameType, GameScorePolicy> = {
     maxScorePerSecond: 1000,
   },
 };
-
-export const SKY_DROP_SCORE_POLICY = GAME_SCORE_POLICIES[GameType.SKY_DROP];
 
 export const getGameScorePolicy = (gameType: GameType): GameScorePolicy => {
   const policy = GAME_SCORE_POLICIES[gameType];

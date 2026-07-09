@@ -21,14 +21,11 @@ export class MainScene extends Phaser.Scene {
   private isGameOver: boolean = false;
   private score: number = 0;
   private scoreText: Phaser.GameObjects.Text | null = null;
-  private startButton: Phaser.GameObjects.Text | null = null;
 
   // 콤보 시스템
   private comboCount: number = 0;
   private lastMatchTime: number = 0;
   private comboText: Phaser.GameObjects.Text | null = null;
-  private startButtonBg: Phaser.GameObjects.Rectangle | null = null;
-  private isGameRunning: boolean = false;
 
   // UI 참조
   private colBgs: Phaser.GameObjects.Graphics[] = [];
@@ -39,7 +36,6 @@ export class MainScene extends Phaser.Scene {
   private readonly COLS = 3;
   private readonly BASE_BLOCK_WIDTH = 80;
   private readonly BASE_BLOCK_HEIGHT = 32;
-  private readonly BASE_BLOCK_SPACING_X = 20;
   private readonly BASE_BLOCK_SPACING_Y = 4;
 
   // 실제 현재 크기 (스케일링 적용됨)
@@ -430,7 +426,6 @@ export class MainScene extends Phaser.Scene {
 
   private handleColumnClick(colIdx: number) {
     if (this.isGameOver) return;
-    // 이제 게임이 즉시 시작되므로 isGameRunning 확인이 필요 없거나 항상 true로 가정
 
     // ... 로직 계속 ...
     const col = this.columns[colIdx];

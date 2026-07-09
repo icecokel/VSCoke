@@ -2,6 +2,12 @@ import { ServiceUnavailableException } from '@nestjs/common';
 import { ResumeRagService } from './resume-rag.service';
 import type { ChatProvider } from './ai/chat-provider';
 import type { ResumeRagRetrieverService } from './resume-rag-retriever.service';
+import type { ResumeRagKeywordService } from './resume-rag-keyword.service';
+
+const createKeywordService = (inScope = true): ResumeRagKeywordService =>
+  ({
+    isQuestionInScope: jest.fn().mockResolvedValue(inScope),
+  }) as unknown as ResumeRagKeywordService;
 
 describe('ResumeRagService', () => {
   it('returns a fixed out-of-scope message without retrieving or calling AI', async () => {
@@ -14,7 +20,15 @@ describe('ResumeRagService', () => {
       answer,
     } as unknown as ChatProvider;
 
-    const service = new ResumeRagService(retriever, chatProvider);
+    const isQuestionInScope = jest.fn().mockResolvedValue(false);
+    const keywordService = {
+      isQuestionInScope,
+    } as unknown as ResumeRagKeywordService;
+    const service = new ResumeRagService(
+      retriever,
+      chatProvider,
+      keywordService,
+    );
 
     await expect(
       service.answer({ question: '오늘 날씨 어때?', locale: 'ko-KR' }),
@@ -26,6 +40,7 @@ describe('ResumeRagService', () => {
     });
     expect(retrieve).not.toHaveBeenCalled();
     expect(answer).not.toHaveBeenCalled();
+    expect(isQuestionInScope).toHaveBeenCalledWith('오늘 날씨 어때?');
   });
 
   it('returns grounded false when no chunks are retrieved', async () => {
@@ -37,7 +52,11 @@ describe('ResumeRagService', () => {
       answer,
     } as unknown as ChatProvider;
 
-    const service = new ResumeRagService(retriever, chatProvider);
+    const service = new ResumeRagService(
+      retriever,
+      chatProvider,
+      createKeywordService(),
+    );
 
     await expect(
       service.answer({ question: 'Oprimed에 없는 내용?', locale: 'ko-KR' }),
@@ -66,7 +85,11 @@ describe('ResumeRagService', () => {
     const answer = jest.fn().mockResolvedValue('근거 기반 답변');
     const chatProvider: ChatProvider = { answer };
 
-    const service = new ResumeRagService(retriever, chatProvider);
+    const service = new ResumeRagService(
+      retriever,
+      chatProvider,
+      createKeywordService(),
+    );
 
     await expect(
       service.answer({
@@ -113,7 +136,11 @@ describe('ResumeRagService', () => {
         .mockRejectedValue(new Error('RAG_CHAT_PROVIDER missing')),
     };
 
-    const service = new ResumeRagService(retriever, chatProvider);
+    const service = new ResumeRagService(
+      retriever,
+      chatProvider,
+      createKeywordService(),
+    );
 
     await expect(
       service.answer({ question: 'Oprimed 업무 질문', locale: 'ko-KR' }),

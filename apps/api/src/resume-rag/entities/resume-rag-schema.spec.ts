@@ -1,6 +1,8 @@
 import 'reflect-metadata';
 import { getMetadataArgsStorage } from 'typeorm';
 import { ResumeImportBatch } from './resume-import-batch.entity';
+import { ResumeRagKeywordGroupEntity } from './resume-rag-keyword-group.entity';
+import { ResumeRagKeywordTerm } from './resume-rag-keyword-term.entity';
 import { ResumeSourceItem } from './resume-source-item.entity';
 import { ResumeVectorChunk } from './resume-vector-chunk.entity';
 
@@ -18,6 +20,10 @@ const columnNamesFor = (target: EntityClass) =>
 describe('Resume RAG schema entities', () => {
   it('uses DB-source oriented table names', () => {
     expect(tableNameFor(ResumeImportBatch)).toBe('resume_import_batches');
+    expect(tableNameFor(ResumeRagKeywordGroupEntity)).toBe(
+      'resume_rag_keyword_groups',
+    );
+    expect(tableNameFor(ResumeRagKeywordTerm)).toBe('resume_rag_keyword_terms');
     expect(tableNameFor(ResumeSourceItem)).toBe('resume_source_items');
     expect(tableNameFor(ResumeVectorChunk)).toBe('resume_vector_chunks');
   });
@@ -46,6 +52,23 @@ describe('Resume RAG schema entities', () => {
         'embeddingModel',
         'embeddingDimensions',
         'embedding',
+      ]),
+    );
+  });
+
+  it('stores keyword aliases and search expansions as editable rows', () => {
+    expect(columnNamesFor(ResumeRagKeywordGroupEntity)).toEqual(
+      expect.arrayContaining(['id', 'weight', 'enabled', 'sortOrder']),
+    );
+    expect(columnNamesFor(ResumeRagKeywordTerm)).toEqual(
+      expect.arrayContaining([
+        'groupId',
+        'termType',
+        'term',
+        'locale',
+        'enabled',
+        'sortOrder',
+        'source',
       ]),
     );
   });

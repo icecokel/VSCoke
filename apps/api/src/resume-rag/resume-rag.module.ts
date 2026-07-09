@@ -13,6 +13,8 @@ import {
   createEmbeddingProvider,
 } from './ai/resume-rag-ai-provider.factory';
 import { ResumeImportBatch } from './entities/resume-import-batch.entity';
+import { ResumeRagKeywordGroupEntity } from './entities/resume-rag-keyword-group.entity';
+import { ResumeRagKeywordTerm } from './entities/resume-rag-keyword-term.entity';
 import { ResumeSourceItem } from './entities/resume-source-item.entity';
 import { ResumeVectorChunk } from './entities/resume-vector-chunk.entity';
 import { ResumeSourceItemImportService } from './import/resume-source-item-import.service';
@@ -24,6 +26,7 @@ import {
   getResumeRagConfig,
 } from './resume-rag.config';
 import { ResumeRagController } from './resume-rag.controller';
+import { ResumeRagKeywordService } from './resume-rag-keyword.service';
 import { ResumeRagOriginGuard } from './resume-rag-origin.guard';
 import { ResumeRagRetrieverService } from './resume-rag-retriever.service';
 import { ResumeRagService } from './resume-rag.service';
@@ -32,6 +35,8 @@ import { ResumeRagService } from './resume-rag.service';
   imports: [
     TypeOrmModule.forFeature([
       ResumeImportBatch,
+      ResumeRagKeywordGroupEntity,
+      ResumeRagKeywordTerm,
       ResumeSourceItem,
       ResumeVectorChunk,
     ]),
@@ -42,6 +47,7 @@ import { ResumeRagService } from './resume-rag.service';
     ResumeSourceItemImportService,
     ResumeSourceItemChunker,
     ResumeVectorIndexerService,
+    ResumeRagKeywordService,
     ResumeRagRetrieverService,
     ResumeRagService,
     {

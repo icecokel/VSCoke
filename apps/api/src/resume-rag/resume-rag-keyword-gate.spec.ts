@@ -27,6 +27,11 @@ describe('resume-rag keyword gate', () => {
     expect(isResumeRagQuestionInScope('어드민 관리자 화면')).toBe(true);
   });
 
+  it('allows compact variants of multi-word resume keywords', () => {
+    expect(isResumeRagQuestionInScope('타입모델링')).toBe(true);
+    expect(isResumeRagQuestionInScope('webvitals')).toBe(true);
+  });
+
   it('blocks unrelated questions before AI processing', () => {
     expect(isResumeRagQuestionInScope('오늘 날씨 어때?')).toBe(false);
     expect(isResumeRagQuestionInScope('비트코인 가격 알려줘')).toBe(false);

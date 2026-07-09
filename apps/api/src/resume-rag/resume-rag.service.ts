@@ -10,10 +10,8 @@ import {
   type RetrievedResumeChunk,
 } from './resume-rag-retriever.service';
 import type { ResumeRagChatResponseDto } from './dto/resume-rag-chat-response.dto';
-import {
-  getResumeRagOutOfScopeAnswer,
-  isResumeRagQuestionInScope,
-} from './resume-rag-keyword-gate';
+import { getResumeRagOutOfScopeAnswer } from './resume-rag-keyword-gate';
+import { ResumeRagKeywordService } from './resume-rag-keyword.service';
 
 type AnswerRequest = {
   question: string;
@@ -54,10 +52,11 @@ export class ResumeRagService {
     private readonly retriever: ResumeRagRetrieverService,
     @Inject(RESUME_RAG_CHAT_PROVIDER)
     private readonly chatProvider: ChatProvider,
+    private readonly keywordService: ResumeRagKeywordService,
   ) {}
 
   async answer(request: AnswerRequest): Promise<ResumeRagChatResponseDto> {
-    if (!isResumeRagQuestionInScope(request.question)) {
+    if (!(await this.keywordService.isQuestionInScope(request.question))) {
       return {
         answer: getResumeRagOutOfScopeAnswer(request.locale),
         grounded: false,

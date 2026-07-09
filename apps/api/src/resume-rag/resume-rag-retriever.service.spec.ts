@@ -1,6 +1,8 @@
 import { DataSource } from 'typeorm';
 import { ResumeRagRetrieverService } from './resume-rag-retriever.service';
 import type { ResumeRagConfig } from './resume-rag.config';
+import type { ResumeRagKeywordService } from './resume-rag-keyword.service';
+import { createResumeRagSearchTokens } from './resume-rag-keyword-gate';
 
 const createConfig = (
   overrides: Partial<ResumeRagConfig> = {},
@@ -17,8 +19,13 @@ const createConfig = (
 const createService = (
   dataSource: DataSource,
   config: ResumeRagConfig,
+  keywordService: ResumeRagKeywordService = {
+    createSearchTokens: jest.fn((question: string) =>
+      Promise.resolve(createResumeRagSearchTokens(question)),
+    ),
+  } as unknown as ResumeRagKeywordService,
 ): ResumeRagRetrieverService =>
-  new ResumeRagRetrieverService(dataSource, config);
+  new ResumeRagRetrieverService(dataSource, config, keywordService);
 
 describe('ResumeRagRetrieverService', () => {
   it('queries source items directly without embedding configuration', async () => {
@@ -138,6 +145,40 @@ describe('ResumeRagRetrieverService', () => {
         title: '프론트엔드 CI/CD 및 배포 환경 정리',
       }),
     );
+  });
+
+  it('uses database-backed keyword expansions when scoring source items', async () => {
+    const query = jest.fn().mockResolvedValue([
+      {
+        id: 'item-1',
+        title: '배포 검증 흐름',
+        bodyText:
+          'GitHub Actions와 pre-push 검증으로 배포 신뢰도를 높였습니다.',
+        sourcePath: 'resume/delivery.md',
+        sourceKey: 'delivery#verification',
+        metadata: {},
+      },
+    ]);
+    const dataSource = { query } as unknown as DataSource;
+    const createSearchTokens = jest
+      .fn()
+      .mockResolvedValue(['운영키워드', '배포', '검증']);
+    const keywordService = {
+      createSearchTokens,
+    } as unknown as ResumeRagKeywordService;
+    const service = createService(
+      dataSource,
+      createConfig({ topK: 1, minSimilarity: 0.1 }),
+      keywordService,
+    );
+
+    const result = await service.retrieve({
+      question: '운영키워드',
+      locale: 'ko-KR',
+    });
+
+    expect(result).toContainEqual(expect.objectContaining({ id: 'item-1' }));
+    expect(createSearchTokens).toHaveBeenCalledWith('운영키워드');
   });
 
   it('expands source-backed domain keywords for compact Korean questions', async () => {

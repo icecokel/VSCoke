@@ -64,6 +64,9 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm --filter @vscoke/web exec playwright install --with-deps chromium
 
+      - name: Verify local API contract types
+        run: pnpm check:api-contract
+
       - name: Run web type check
         run: pnpm type:check:web
 

@@ -44,7 +44,9 @@
     "poke-lounge:audio:verify": "node scripts/poke-lounge/verify-audio-assets.mjs",
     "smoke:api:remote": "node scripts/check-api-health.mjs",
     "knip": "pnpm --filter @vscoke/web knip",
-    "generate:types": "pnpm --filter @vscoke/web generate:types",
+    "generate:openapi": "pnpm --filter @vscoke/api openapi:generate",
+    "generate:types": "pnpm generate:openapi && prettier --write apps/api/openapi.json && pnpm --filter @vscoke/web generate:types && prettier --write apps/web/src/types/api.d.ts",
+    "check:api-contract": "pnpm generate:types && git diff --exit-code apps/api/openapi.json apps/web/src/types/api.d.ts",
     "prepare": "husky"
   },
   "devDependencies": {

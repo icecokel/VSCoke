@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { GameType } from '../enums/game-type.enum';
 
 export class GameHistoryUserDto {
@@ -32,35 +32,35 @@ export class GameHistoryResponseDto {
   @ApiProperty({ description: '사용자 정보', type: GameHistoryUserDto })
   user: GameHistoryUserDto;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: '현재 등수 (1부터 시작, 랭킹 외 시 null)',
     example: 1,
-    required: false,
     nullable: true,
+    type: Number,
   })
   rank?: number | null;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: '유저의 역대 최고 점수',
     example: 1200,
-    required: false,
     nullable: true,
+    type: Number,
   })
-  bestScore?: number;
+  bestScore?: number | null;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: '전체 기간 랭킹',
     example: 42,
-    required: false,
     nullable: true,
+    type: Number,
   })
-  allTimeRank?: number;
+  allTimeRank?: number | null;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: '금주 랭킹 (KST 월요일 0시 ~ 일요일 24시 기준)',
     example: 5,
-    required: false,
     nullable: true,
+    type: Number,
   })
-  weeklyRank?: number;
+  weeklyRank?: number | null;
 }

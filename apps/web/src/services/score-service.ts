@@ -6,7 +6,7 @@ import { isRecoverableReadError, logRecoverableReadError } from "@/services/api-
 export type CreateGameHistoryDto = components["schemas"]["CreateGameHistoryDto"];
 export type GameHistoryResponseDto = components["schemas"]["GameHistoryResponseDto"];
 export type GameHistoryUserDto = components["schemas"]["GameHistoryUserDto"];
-export type GameHistory = components["schemas"]["GameHistory"];
+export type GameHistory = components["schemas"]["GameRankingHistoryDto"];
 
 // 내부 사용 인터페이스
 export interface ScoreSubmissionResult {

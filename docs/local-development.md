@@ -23,21 +23,22 @@ apps/api -> NestJS backend
 
 루트 스크립트는 workspace 명령을 감싸는 진입점이다.
 
-| 목적              | 명령                  |
-| ----------------- | --------------------- |
-| 웹 개발           | `pnpm dev:web`        |
-| API 개발          | `pnpm dev:api`        |
-| 전체 빌드         | `pnpm build`          |
-| 웹 빌드           | `pnpm build:web`      |
-| API 빌드          | `pnpm build:api`      |
-| 웹 lint           | `pnpm lint:web`       |
-| 전체 lint         | `pnpm lint`           |
-| 웹 타입 체크      | `pnpm type:check:web` |
-| API test          | `pnpm test:api`       |
-| API E2E test      | `pnpm test:api:e2e`   |
-| 웹 E2E            | `pnpm e2e`            |
-| 웹 E2E smoke      | `pnpm e2e:smoke`      |
-| unused code check | `pnpm knip`           |
+| 목적              | 명령                      |
+| ----------------- | ------------------------- |
+| 웹 개발           | `pnpm dev:web`            |
+| API 개발          | `pnpm dev:api`            |
+| 전체 빌드         | `pnpm build`              |
+| 웹 빌드           | `pnpm build:web`          |
+| API 빌드          | `pnpm build:api`          |
+| 웹 lint           | `pnpm lint:web`           |
+| 전체 lint         | `pnpm lint`               |
+| 웹 타입 체크      | `pnpm type:check:web`     |
+| API test          | `pnpm test:api`           |
+| API E2E test      | `pnpm test:api:e2e`       |
+| 웹 E2E            | `pnpm e2e`                |
+| 웹 E2E smoke      | `pnpm e2e:smoke`          |
+| unused code check | `pnpm knip`               |
+| API 계약 확인     | `pnpm check:api-contract` |
 
 ## 환경 변수 준비
 
@@ -149,7 +150,7 @@ Mac localhost:5432 -> cloudflared access tcp -> PostgreSQL on Ubuntu host
 
 ## API 타입 갱신
 
-프론트 타입은 공개 Swagger JSON에서 생성한다.
+프론트 타입은 현재 커밋의 API controller/DTO에서 생성한 로컬 OpenAPI JSON에서 생성한다. 운영 `https://api.icecoke.kr/api-json`은 배포된 API 확인용이며, 개발/CI 타입 생성 기준으로 사용하지 않는다.
 
 ```bash
 pnpm generate:types
@@ -157,10 +158,10 @@ pnpm generate:types
 
 API DTO나 controller 응답이 바뀌면 다음 순서로 확인한다.
 
-1. API를 배포하거나 로컬 Swagger가 최신인지 확인한다.
-2. `pnpm generate:types`를 실행한다.
-3. `apps/web/src/types/api.d.ts` 변경을 확인한다.
-4. 프론트 서비스와 화면 사용처를 함께 수정한다.
+1. `pnpm generate:types`를 실행해 `apps/api/openapi.json`과 `apps/web/src/types/api.d.ts`를 갱신한다.
+2. 생성된 OpenAPI 계약과 타입 diff를 확인한다.
+3. 프론트 서비스와 화면 사용처를 함께 수정한다.
+4. `pnpm check:api-contract`로 생성 파일 누락 갱신이 없는지 확인한다.
 
 ## 검증 명령
 

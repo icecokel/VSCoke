@@ -21,6 +21,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** API 헬스 체크 */
+    get: operations["AppController_getHealth"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/espresso-history/beans": {
     parameters: {
       query?: never;
@@ -72,6 +89,24 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/game/poke-lounge/state": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Poke Lounge 상태 조회 */
+    get: operations["GameController_getPokeLoungeState"];
+    /** Poke Lounge 상태 저장 */
+    put: operations["GameController_savePokeLoungeState"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/game/ranking": {
     parameters: {
       query?: never;
@@ -106,6 +141,118 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/poke-lounge/rooms": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["PokeLoungeController_createRoom"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/poke-lounge/rooms/{roomCode}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["PokeLoungeController_getRoom"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/poke-lounge/rooms/{roomCode}/join": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["PokeLoungeController_joinRoom"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/poke-lounge/rooms/{roomCode}/ready": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["PokeLoungeController_setReady"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/poke-lounge/rooms/{roomCode}/party-snapshot": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["PokeLoungeController_updatePartySnapshot"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/poke-lounge/rooms/{roomCode}/result": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["PokeLoungeController_submitResult"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/poke-lounge/rooms/{roomCode}/leave": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["PokeLoungeController_leaveRoom"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/recipes": {
     parameters: {
       query?: never;
@@ -134,6 +281,23 @@ export interface paths {
     get: operations["RecipeController_getRecipeById"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/resume-rag/chat": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 이력 RAG 질문 답변 */
+    post: operations["ResumeRagController_chat"];
     delete?: never;
     options?: never;
     head?: never;
@@ -178,6 +342,20 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    HealthCheckResponseDto: {
+      /** @example ok */
+      status: string;
+      /**
+       * @description API process uptime in seconds
+       * @example 123.45
+       */
+      uptime: number;
+      /**
+       * @description Health check response time in ISO 8601 format
+       * @example 2026-07-05T00:00:00.000Z
+       */
+      timestamp: string;
+    };
     EspressoEquipmentDto: {
       /**
        * @description 에스프레소 머신
@@ -387,11 +565,27 @@ export interface components {
       /** @description 추출 로그 */
       logs: components["schemas"]["EspressoLogResponseDto"][];
     };
+    /**
+     * @description 서버에 등록된 게임 타입. 게임별 점수 정책은 서버에서 적용된다.
+     * @enum {string}
+     */
+    GameType: "SKY_DROP" | "POKE_LOUNGE";
     CreateGameHistoryDto: {
+      /**
+       * @description 게임별 서버 정책으로 최종 검증되는 정수 점수. DTO는 전체 게임 타입의 제출 envelope만 검증한다.
+       * @example 8500
+       */
       score: number;
+      /**
+       * @description 플레이 시간(초). 제출되면 게임별 서버 정책의 점수 대비 비정상 속도 검증에 사용된다.
+       * @example 120
+       */
       playTime?: number;
-      /** @enum {string} */
-      gameType: "SKY_DROP" | "POKE_LOUNGE";
+      /**
+       * @description 서버에 등록된 게임 타입. 게임별 점수 정책은 서버에서 적용된다.
+       * @example SKY_DROP
+       */
+      gameType: components["schemas"]["GameType"];
     };
     GameHistoryUserDto: {
       /**
@@ -446,25 +640,310 @@ export interface components {
        */
       weeklyRank?: number | null;
     };
-    /** @enum {string} */
-    GameType: "SKY_DROP" | "POKE_LOUNGE";
-    User: {
-      id: string;
-      email: string;
-      firstName: string;
-      lastName: string;
-      accessToken: string;
+    SavePokeLoungeStateDto: {
+      /**
+       * @description Poke Lounge 클라이언트의 현재 저장 상태
+       * @example {
+       *       "trainer": {
+       *         "x": 12,
+       *         "y": 3
+       *       },
+       *       "party": [
+       *         "pikachu",
+       *         "eevee"
+       *       ]
+       *     }
+       */
+      state: {
+        [key: string]: unknown;
+      };
+      /**
+       * @description 클라이언트 기준 상태 갱신 시각
+       * @example 2026-07-08T12:00:00.000Z
+       */
+      clientUpdatedAt?: string;
     };
-    GameHistory: {
+    PokeLoungeStateResponseDto: {
+      /**
+       * @description Poke Lounge 상태 저장 ID
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
       id: string;
-      score: number;
-      /** @enum {string} */
-      gameType: "SKY_DROP" | "POKE_LOUNGE";
-      playTime?: number;
-      /** Format: date-time */
-      createdAt: string;
+      /**
+       * @description 상태를 저장한 사용자 ID
+       * @example google-sub-id
+       */
       userId: string;
-      user: components["schemas"]["User"];
+      /** @description Poke Lounge 클라이언트의 저장 상태 */
+      state: {
+        [key: string]: unknown;
+      };
+      /**
+       * Format: date-time
+       * @description 서버 저장 생성 시각
+       * @example 2026-07-08T12:00:01.000Z
+       */
+      createdAt: string;
+      /**
+       * Format: date-time
+       * @description 서버 저장 갱신 시각
+       * @example 2026-07-08T12:00:02.000Z
+       */
+      updatedAt: string;
+      /**
+       * @description 클라이언트 기준 상태 갱신 시각
+       * @example 2026-07-08T12:00:00.000Z
+       */
+      clientUpdatedAt?: Record<string, never> | null;
+    };
+    GameRankingUserDto: {
+      /** @description 사용자 Google ID */
+      id: string;
+      /** @description 사용자 이메일 */
+      email: string;
+      /**
+       * @description 사용자 이름
+       * @example Gil
+       */
+      firstName: string;
+      /**
+       * @description 사용자 성
+       * @example Dong
+       */
+      lastName: string;
+    };
+    GameRankingHistoryDto: {
+      /**
+       * @description 게임 기록 ID (UUID)
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      id: string;
+      /**
+       * @description 점수
+       * @example 100
+       */
+      score: number;
+      /**
+       * @description 게임 타입
+       * @example SKY_DROP
+       * @enum {string}
+       */
+      gameType: "SKY_DROP" | "POKE_LOUNGE";
+      /**
+       * @description 플레이 시간(ms)
+       * @example 60000
+       */
+      playTime?: number;
+      /**
+       * Format: date-time
+       * @description 생성 일시
+       * @example 2024-01-30T12:00:00.000Z
+       */
+      createdAt: string;
+      /** @description 사용자 ID */
+      userId: string;
+      /** @description 사용자 정보 */
+      user: components["schemas"]["GameRankingUserDto"];
+    };
+    CreatePokeLoungeRoomDto: {
+      /** @example player-a */
+      playerId?: string;
+      /** @example session-a */
+      sessionId: string;
+      /** @example user-123 */
+      userId?: string;
+      /** @example Player A */
+      displayName?: string;
+      /** @example 60000 */
+      roundDurationMs?: number;
+      /** @example 1720000000000 */
+      nowMs?: number;
+    };
+    PokeLoungeRepresentativePokemonDto: {
+      /** @example 25 */
+      speciesId: number;
+      /** @example Pikachu */
+      name: string;
+      /** @example 12 */
+      level: number;
+      /** @example 18 */
+      currentHp: number;
+      /** @example 30 */
+      maxHp: number;
+    };
+    PokeLoungePartySnapshotDto: {
+      /** @example player-a */
+      playerId: string;
+      /** @example Player A */
+      displayName?: string;
+      representativePokemon?: components["schemas"]["PokeLoungeRepresentativePokemonDto"];
+      /** @example 1720000002000 */
+      updatedAtMs: number;
+    };
+    PokeLoungeRoomParticipantDto: {
+      /** @example player-a */
+      playerId: string;
+      /** @example user-123 */
+      userId?: string;
+      /** @example Player A */
+      displayName: string;
+      /**
+       * @example participant
+       * @enum {string}
+       */
+      role: "participant" | "spectator";
+      /** @example true */
+      ready: boolean;
+      /** @example true */
+      connected: boolean;
+      /** @example 1720000000000 */
+      joinedAtMs: number;
+      /** @example 1720000005000 */
+      leftAtMs?: number;
+    };
+    PokeLoungeRoundDto: {
+      /** @example 1 */
+      index: number;
+      /**
+       * @example waiting
+       * @enum {string}
+       */
+      phase: "waiting" | "round-started" | "tournament" | "completed";
+      /** @example 60000 */
+      durationMs: number;
+      /** @example 1720000000000 */
+      startedAtMs: Record<string, never> | null;
+      /** @example 1720000060000 */
+      endsAtMs: Record<string, never> | null;
+    };
+    PokeLoungeTournamentMatchDto: {
+      /** @example round-1-match-1 */
+      matchId: string;
+      /**
+       * @example [
+       *       "player-a",
+       *       "player-b"
+       *     ]
+       */
+      participantIds: string[];
+      /**
+       * @example pending
+       * @enum {string}
+       */
+      status: "pending" | "completed";
+      /** @example player-a */
+      winnerPlayerId?: string;
+      /** @example player-b */
+      loserPlayerId?: string;
+      /**
+       * @example faint
+       * @enum {string}
+       */
+      resultReason?: "faint" | "timeout" | "forfeit" | "run" | "capture";
+      /** @example 1720000060000 */
+      completedAtMs?: number;
+    };
+    PokeLoungeTournamentDto: {
+      matches: components["schemas"]["PokeLoungeTournamentMatchDto"][];
+      /**
+       * @example {
+       *       "player-a": 100,
+       *       "player-b": 50
+       *     }
+       */
+      cumulativeScores: {
+        [key: string]: number;
+      };
+    };
+    PokeLoungeFinalStandingDto: {
+      /** @example player-a */
+      playerId: string;
+      /** @example Player A */
+      displayName: string;
+      /** @example 1 */
+      rank: number;
+      /** @example 100 */
+      score: number;
+    };
+    PokeLoungeRoomResponseDto: {
+      /** @example ROOM01 */
+      roomCode: string;
+      /**
+       * @example waiting
+       * @enum {string}
+       */
+      status: "waiting" | "round-started" | "tournament" | "completed" | "closed";
+      /** @example 1720000000000 */
+      createdAtMs: number;
+      /** @example 1720000001000 */
+      updatedAtMs: number;
+      participants: components["schemas"]["PokeLoungeRoomParticipantDto"][];
+      partySnapshots: {
+        [key: string]: components["schemas"]["PokeLoungePartySnapshotDto"];
+      };
+      round: components["schemas"]["PokeLoungeRoundDto"];
+      tournament: components["schemas"]["PokeLoungeTournamentDto"];
+      finalStandings: components["schemas"]["PokeLoungeFinalStandingDto"][];
+    };
+    JoinPokeLoungeRoomDto: {
+      /** @example player-b */
+      playerId?: string;
+      /** @example session-b */
+      sessionId: string;
+      /** @example user-456 */
+      userId?: string;
+      /** @example Player B */
+      displayName?: string;
+      /** @example 1720000001000 */
+      nowMs?: number;
+    };
+    SetPokeLoungeReadyDto: {
+      /** @example player-a */
+      playerId: string;
+      /** @example session-a */
+      sessionId: string;
+      /** @example true */
+      ready: boolean;
+      /** @example 1720000002000 */
+      nowMs?: number;
+    };
+    UpdatePokeLoungePartySnapshotDto: {
+      /** @example player-a */
+      playerId: string;
+      /** @example session-a */
+      sessionId: string;
+      /** @example Player A */
+      displayName?: string;
+      representativePokemon?: components["schemas"]["PokeLoungeRepresentativePokemonDto"];
+      /** @example 1720000002000 */
+      nowMs?: number;
+    };
+    SubmitPokeLoungeMatchResultDto: {
+      /** @example player-a */
+      reportingPlayerId: string;
+      /** @example session-a */
+      reportingSessionId: string;
+      /** @example round-1-match-1 */
+      matchId: string;
+      /** @example player-a */
+      winnerPlayerId: string;
+      /** @example player-b */
+      loserPlayerId: string;
+      /**
+       * @example faint
+       * @enum {string}
+       */
+      reason: "faint" | "timeout" | "forfeit" | "run" | "capture";
+      /** @example 1720000003000 */
+      nowMs?: number;
+    };
+    LeavePokeLoungeRoomDto: {
+      /** @example player-a */
+      playerId: string;
+      /** @example session-a */
+      sessionId: string;
+      /** @example 1720000004000 */
+      nowMs?: number;
     };
     RecipeSourceDto: {
       /**
@@ -510,6 +989,30 @@ export interface components {
        * @example 2026-06-16T12:00:00.000Z
        */
       updatedAt: string;
+    };
+    ResumeRagChatRequestDto: {
+      /** @example 어떤 의료 도메인 프로젝트 경험이 있나요? */
+      question: string;
+      /**
+       * @example ko-KR
+       * @enum {string}
+       */
+      locale: "ko-KR" | "en-US" | "ja-JP";
+    };
+    ResumeRagSourceDto: {
+      title: string;
+      sourcePath: string;
+      sourceKey: string;
+      sectionPath?: string;
+      version?: string;
+      caveats?: string[];
+      excerpt: string;
+      similarity: number;
+    };
+    ResumeRagChatResponseDto: {
+      answer: string;
+      grounded: boolean;
+      sources: components["schemas"]["ResumeRagSourceDto"][];
     };
     WordResponseDto: {
       /**
@@ -557,6 +1060,26 @@ export interface operations {
         };
         content: {
           "application/json": string;
+        };
+      };
+    };
+  };
+  AppController_getHealth: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description API 프로세스가 정상적으로 요청을 처리할 수 있는 상태 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HealthCheckResponseDto"];
         };
       };
     };
@@ -634,6 +1157,55 @@ export interface operations {
       };
     };
   };
+  GameController_getPokeLoungeState: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PokeLoungeStateResponseDto"];
+        };
+      };
+      /** @description 저장된 Poke Lounge 상태가 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  GameController_savePokeLoungeState: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SavePokeLoungeStateDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PokeLoungeStateResponseDto"];
+        };
+      };
+    };
+  };
   GameController_getRanking: {
     parameters: {
       query: {
@@ -651,7 +1223,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GameHistory"][];
+          "application/json": components["schemas"]["GameRankingHistoryDto"][];
         };
       };
     };
@@ -674,6 +1246,177 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["GameHistoryResponseDto"];
+        };
+      };
+    };
+  };
+  PokeLoungeController_createRoom: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreatePokeLoungeRoomDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
+        };
+      };
+    };
+  };
+  PokeLoungeController_getRoom: {
+    parameters: {
+      query: {
+        nowMs: string;
+      };
+      header?: never;
+      path: {
+        roomCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
+        };
+      };
+    };
+  };
+  PokeLoungeController_joinRoom: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        roomCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["JoinPokeLoungeRoomDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
+        };
+      };
+    };
+  };
+  PokeLoungeController_setReady: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        roomCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SetPokeLoungeReadyDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
+        };
+      };
+    };
+  };
+  PokeLoungeController_updatePartySnapshot: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        roomCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdatePokeLoungePartySnapshotDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
+        };
+      };
+    };
+  };
+  PokeLoungeController_submitResult: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        roomCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SubmitPokeLoungeMatchResultDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
+        };
+      };
+    };
+  };
+  PokeLoungeController_leaveRoom: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        roomCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["LeavePokeLoungeRoomDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
         };
       };
     };
@@ -728,6 +1471,36 @@ export interface operations {
       };
       /** @description 해당 레시피가 존재하지 않음 */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ResumeRagController_chat: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ResumeRagChatRequestDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ResumeRagChatResponseDto"];
+        };
+      };
+      /** @description 허용된 VSCoke 웹 origin이 아닌 요청 */
+      403: {
         headers: {
           [name: string]: unknown;
         };

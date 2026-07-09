@@ -23,6 +23,7 @@ import { Request } from 'express';
 import { GameService } from './game.service';
 import { CreateGameHistoryDto } from './dto/create-game-history.dto';
 import { GameHistoryResponseDto } from './dto/game-history-response.dto';
+import { GameRankingHistoryDto } from './dto/game-ranking-history.dto';
 import { PokeLoungeStateResponseDto } from './dto/poke-lounge-state-response.dto';
 import { SavePokeLoungeStateDto } from './dto/save-poke-lounge-state.dto';
 import { GoogleAuthGuard } from '../auth/google-auth.guard';
@@ -187,6 +188,7 @@ export class GameController {
     enumName: 'GameType',
     description: '조회할 게임 타입',
   })
+  @ApiOkResponse({ type: GameRankingHistoryDto, isArray: true })
   async getRanking(
     @Query('gameType', new ParseEnumPipe(GameType)) gameType: GameType,
   ) {

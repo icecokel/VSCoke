@@ -1,5 +1,5 @@
 import { INestApplication } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 import { NextFunction, Request, Response } from 'express';
 
 const noCache = (_req: Request, res: Response, next: NextFunction) => {
@@ -12,7 +12,7 @@ const noCache = (_req: Request, res: Response, next: NextFunction) => {
   next();
 };
 
-export const setupApiDocumentation = (app: INestApplication): void => {
+export const createApiDocument = (app: INestApplication): OpenAPIObject => {
   const config = new DocumentBuilder()
     .setTitle('VSCoke API')
     .setDescription('VSCoke API 문서입니다.')
@@ -20,9 +20,13 @@ export const setupApiDocumentation = (app: INestApplication): void => {
     .addBearerAuth()
     .build();
 
+  return SwaggerModule.createDocument(app, config);
+};
+
+export const setupApiDocumentation = (app: INestApplication): void => {
   app.use('/api', noCache);
   app.use('/api-json', noCache);
 
-  const document = SwaggerModule.createDocument(app, config);
+  const document = createApiDocument(app);
   SwaggerModule.setup('api', app, document);
 };

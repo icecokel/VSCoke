@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import {
   BATTLE_LAYOUT,
+  getBattleStatusBadgeView,
   getBattleOptionIndexAtPoint,
   hpRatio,
   resolveBattleOptionSlotRects,
@@ -99,7 +100,8 @@ export type BattleE2eScenario =
   | "wild-victory"
   | "wild-defeat"
   | "wild-evolution"
-  | "wild-move-learning";
+  | "wild-move-learning"
+  | "wild-status-badge";
 
 export interface BattleE2eSnapshot {
   battleKind: BattleScreenState["battleKind"];
@@ -137,6 +139,7 @@ export interface BattleE2eSnapshot {
     displayedCurrentHp: number;
     hitAnimationStartedCount: number;
     status: string;
+    statusBadgeLabel: string | null;
     activePartySlotIndex: number;
     moves: Array<{ id: number; name: string }>;
   };
@@ -148,6 +151,7 @@ export interface BattleE2eSnapshot {
     displayedCurrentHp: number;
     hitAnimationStartedCount: number;
     status: string;
+    statusBadgeLabel: string | null;
   };
 }
 
@@ -231,7 +235,8 @@ function isBattleE2eSceneData(data: unknown): data is BattleE2eSceneData {
     (data.e2eScenario === "wild-victory" ||
       data.e2eScenario === "wild-defeat" ||
       data.e2eScenario === "wild-evolution" ||
-      data.e2eScenario === "wild-move-learning")
+      data.e2eScenario === "wild-move-learning" ||
+      data.e2eScenario === "wild-status-badge")
   );
 }
 
@@ -513,6 +518,7 @@ export class BattleScene extends Phaser.Scene {
         displayedCurrentHp: Math.round(this.displayedHp.player),
         hitAnimationStartedCount: this.hitEffects.player.startedCount,
         status: this.state.player.pokemon.status,
+        statusBadgeLabel: getBattleStatusBadgeView(this.state.player.pokemon.status)?.label ?? null,
         activePartySlotIndex: this.state.player.activePartySlotIndex,
         moves: this.state.player.pokemon.moves.map(move => ({ id: move.id, name: move.name })),
       },
@@ -524,6 +530,8 @@ export class BattleScene extends Phaser.Scene {
         displayedCurrentHp: Math.round(this.displayedHp.opponent),
         hitAnimationStartedCount: this.hitEffects.opponent.startedCount,
         status: this.state.opponent.pokemon.status,
+        statusBadgeLabel:
+          getBattleStatusBadgeView(this.state.opponent.pokemon.status)?.label ?? null,
       },
     };
   }
@@ -1693,13 +1701,39 @@ export class BattleScene extends Phaser.Scene {
       }),
     );
 
-    const barWidth = rect.width - 20;
+    const statusBadge = getBattleStatusBadgeView(pokemon.status);
     const barX = rect.x + 10;
     const barY = rect.y + rect.height - 10;
+    const badgeHeight = 9;
+    const badgeWidth = statusBadge ? Math.max(14, statusBadge.label.length * 7 + 6) : 0;
+    const badgeX = rect.x + rect.width - badgeWidth - 8;
+    const badgeY = barY - Math.ceil((badgeHeight - 4) / 2);
+    const barWidth = statusBadge ? Math.max(28, badgeX - barX - 4) : rect.width - 20;
+
     graphics.fillStyle(BATTLE_SCENE_WINDOW_STYLE.hpBack, 1).fillRect(barX, barY, barWidth, 4);
     graphics
       .fillStyle(BATTLE_SCENE_WINDOW_STYLE.hpGood, 1)
       .fillRect(barX, barY, Math.round(barWidth * hpRatio(displayedCurrentHp, pokemon.maxHp)), 4);
+
+    if (statusBadge) {
+      graphics
+        .fillStyle(statusBadge.fillColor, 1)
+        .fillRect(badgeX, badgeY, badgeWidth, badgeHeight)
+        .lineStyle(1, statusBadge.borderColor, 1)
+        .strokeRect(badgeX, badgeY, badgeWidth, badgeHeight);
+      this.add
+        .text(
+          badgeX + badgeWidth / 2,
+          badgeY + 1,
+          statusBadge.label,
+          createGameTextStyle({
+            align: "center",
+            color: statusBadge.textColor,
+            fontSize: "5px",
+          }),
+        )
+        .setOrigin(0.5, 0);
+    }
   }
 
   private drawBattleEntranceOverlay(): void {
@@ -2183,7 +2217,8 @@ function createBattleScenarioStateForTest(scenario: BattleE2eScenario): BattleSc
   if (
     scenario === "wild-victory" ||
     scenario === "wild-evolution" ||
-    scenario === "wild-move-learning"
+    scenario === "wild-move-learning" ||
+    scenario === "wild-status-badge"
   ) {
     playerPokemon.speed = Math.max(playerPokemon.speed, opponentPokemon.speed + 1);
     playerPokemon.moves = playerPokemon.moves.map((move, index) =>
@@ -2191,6 +2226,12 @@ function createBattleScenarioStateForTest(scenario: BattleE2eScenario): BattleSc
     );
     opponentPokemon.currentHp = 1;
     opponentPokemon.status = "normal";
+    if (scenario === "wild-status-badge") {
+      playerPokemon.status = "paralyzed";
+      opponentPokemon.status = "burned";
+      opponentPokemon.currentHp = Math.max(1, Math.floor(opponentPokemon.maxHp / 2));
+    }
+
     if (scenario === "wild-evolution") {
       playerPokemon.speciesId = 152;
       playerPokemon.name = "치코리타";

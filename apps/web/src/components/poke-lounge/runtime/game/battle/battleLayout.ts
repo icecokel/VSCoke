@@ -1,3 +1,5 @@
+import type { BattlePokemonStatus } from "./battleTypes";
+
 export interface BattleRect {
   x: number;
   y: number;
@@ -26,6 +28,51 @@ export const BATTLE_OPTION_GRID = {
   padding: 6,
   gap: 4,
 } as const;
+
+export interface BattleStatusBadgeView {
+  label: string;
+  fillColor: number;
+  textColor: string;
+  borderColor: number;
+}
+
+export function getBattleStatusBadgeView(
+  status: BattlePokemonStatus,
+): BattleStatusBadgeView | null {
+  switch (status) {
+    case "poisoned":
+      return {
+        label: "독",
+        fillColor: 0x7a5a9e,
+        textColor: "#f8fbf0",
+        borderColor: 0x2b3742,
+      };
+    case "burned":
+      return {
+        label: "화상",
+        fillColor: 0xb65c43,
+        textColor: "#f8fbf0",
+        borderColor: 0x2b3742,
+      };
+    case "paralyzed":
+      return {
+        label: "마비",
+        fillColor: 0xd8bd45,
+        textColor: "#17201a",
+        borderColor: 0x2b3742,
+      };
+    case "fainted":
+      return {
+        label: "전투불능",
+        fillColor: 0x2b3742,
+        textColor: "#f8fbf0",
+        borderColor: 0x8b9588,
+      };
+    case "normal":
+    default:
+      return null;
+  }
+}
 
 export function rectRight(rect: BattleRect): number {
   return rect.x + rect.width;

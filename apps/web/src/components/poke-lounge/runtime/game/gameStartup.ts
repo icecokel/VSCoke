@@ -3,7 +3,8 @@ export type InitialBattleE2eScenario =
   | "wild-victory"
   | "wild-defeat"
   | "wild-evolution"
-  | "wild-move-learning";
+  | "wild-move-learning"
+  | "wild-status-badge";
 
 export function readInitialGameScene(location: Pick<URL, "searchParams">): InitialGameScene {
   return location.searchParams.get("scene") === "battle" ? "battle" : "world";
@@ -17,7 +18,8 @@ export function readInitialBattleE2eScenario(
   return scenario === "wild-victory" ||
     scenario === "wild-defeat" ||
     scenario === "wild-evolution" ||
-    scenario === "wild-move-learning"
+    scenario === "wild-move-learning" ||
+    scenario === "wild-status-badge"
     ? scenario
     : null;
 }

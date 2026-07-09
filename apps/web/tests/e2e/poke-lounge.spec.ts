@@ -33,6 +33,7 @@ import {
   resetRuntimeGameDataJsonStateForTest,
 } from "../../src/components/poke-lounge/runtime/game/data/game-data-json";
 import {
+  getBattleStatusBadgeView,
   BATTLE_LAYOUT,
   getBattleOptionIndexAtPoint,
   resolveBattleOptionSlotRects,
@@ -62,7 +63,8 @@ type PokeLoungeBattleScenario =
   | "wild-victory"
   | "wild-defeat"
   | "wild-evolution"
-  | "wild-move-learning";
+  | "wild-move-learning"
+  | "wild-status-badge";
 type PokeLoungeBattleResultReason = "faint" | "timeout" | "forfeit" | "run" | "capture";
 
 interface PokeLoungeBattleSnapshot {
@@ -101,6 +103,7 @@ interface PokeLoungeBattleSnapshot {
     displayedCurrentHp: number;
     hitAnimationStartedCount: number;
     status: string;
+    statusBadgeLabel: string | null;
     moves: Array<{ id: number; name: string }>;
   };
   moveReplacement: {
@@ -113,6 +116,8 @@ interface PokeLoungeBattleSnapshot {
     maxHp: number;
     displayedCurrentHp: number;
     hitAnimationStartedCount: number;
+    status: string;
+    statusBadgeLabel: string | null;
   };
 }
 
@@ -818,6 +823,27 @@ test.describe("Poke Lounge", () => {
     expect(getBattleOptionIndexAtPoint({ x: 192, y: 156 }, BATTLE_LAYOUT.bottomWindow)).toBe(1);
     expect(getBattleOptionIndexAtPoint({ x: 64, y: 180 }, BATTLE_LAYOUT.bottomWindow)).toBe(2);
     expect(getBattleOptionIndexAtPoint({ x: 192, y: 180 }, BATTLE_LAYOUT.bottomWindow)).toBe(3);
+  });
+
+  test("전투 HP 패널 상태 배지는 정상 상태를 숨기고 상태 이상 라벨을 제공한다", () => {
+    expect(getBattleStatusBadgeView("normal")).toBeNull();
+    expect(getBattleStatusBadgeView("poisoned")).toMatchObject({ label: "독" });
+    expect(getBattleStatusBadgeView("burned")).toMatchObject({ label: "화상" });
+    expect(getBattleStatusBadgeView("paralyzed")).toMatchObject({ label: "마비" });
+    expect(getBattleStatusBadgeView("fainted")).toMatchObject({ label: "전투불능" });
+  });
+
+  test("전투 HP 패널은 상태 이상 배지 라벨을 스냅샷에 반영한다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await startBattleScenario(page, "wild-status-badge");
+    const snapshot = await getBattleSnapshot(page);
+
+    expect(snapshot?.player.status).toBe("paralyzed");
+    expect(snapshot?.player.statusBadgeLabel).toBe("마비");
+    expect(snapshot?.opponent.status).toBe("burned");
+    expect(snapshot?.opponent.statusBadgeLabel).toBe("화상");
+    expect(browserErrors.join("\n")).toBe("");
   });
 
   test("브케인 상대 스프라이트는 160x80 front sheet를 사용한다", () => {

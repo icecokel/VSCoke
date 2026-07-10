@@ -525,10 +525,12 @@ test.describe("Poke Lounge server multiplayer", () => {
       )
       .toBeGreaterThanOrEqual(2);
 
-    const [first, retry] = server.commandHeaders.filter(
-      headers => headers.suffix === "/party-snapshot",
+    const [first, retry] = server.commandRequests.filter(
+      request => request.suffix === "/party-snapshot",
     );
     expect(retry).toMatchObject({
+      method: first.method,
+      body: first.body,
       idempotencyKey: first.idempotencyKey,
       revision: first.revision,
     });

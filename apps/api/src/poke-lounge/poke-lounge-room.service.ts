@@ -590,16 +590,19 @@ function createAnonymousJoinActorPlayerId(sessionId: string): string {
 }
 
 function createNextParticipantId(room: PokeLoungeRoomState): string {
-  const highestPlayerNumber = room.participants.reduce(
-    (highest, participant) => {
-      const match = /^player-(\d+)$/.exec(participant.playerId);
-
-      return match ? Math.max(highest, Number(match[1])) : highest;
-    },
-    0,
+  const playerIds = new Set(
+    room.participants.map((participant) => participant.playerId),
   );
 
-  return `player-${highestPlayerNumber + 1}`;
+  for (let index = 1; index <= room.participants.length + 1; index += 1) {
+    const playerId = `player-${index}`;
+
+    if (!playerIds.has(playerId)) {
+      return playerId;
+    }
+  }
+
+  throw new Error('Unable to allocate Poke Lounge participant id');
 }
 
 function requireSessionId(sessionId: string | undefined): string {

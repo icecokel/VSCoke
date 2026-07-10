@@ -211,6 +211,52 @@ describe('PokeLoungeRoomService', () => {
     );
   });
 
+  it('finds the first free player id without parsing unsafe or arbitrary participant suffixes', async () => {
+    const seeded = createSnapshot();
+    seeded.participants.push(
+      {
+        playerId: 'player-2',
+        sessionId: 'session-2',
+        displayName: 'Player 2',
+        role: 'participant',
+        ready: false,
+        connected: true,
+        joinedAtMs: 0,
+      },
+      {
+        playerId: 'player-9007199254740992',
+        sessionId: 'session-large',
+        displayName: 'Large Player',
+        role: 'participant',
+        ready: false,
+        connected: true,
+        joinedAtMs: 0,
+      },
+      {
+        playerId: 'player-not-a-number',
+        sessionId: 'session-arbitrary',
+        displayName: 'Arbitrary Player',
+        role: 'spectator',
+        ready: false,
+        connected: true,
+        joinedAtMs: 0,
+      },
+    );
+    repository.seed(seeded);
+
+    const joined = await service.joinRoom(
+      'ROOM01',
+      { sessionId: 'anonymous-session', nowMs: 1 },
+      command(0, 2),
+    );
+    const playerIds = joined.participants.map(
+      (participant) => participant.playerId,
+    );
+
+    expect(playerIds).toContain('player-3');
+    expect(new Set(playerIds).size).toBe(playerIds.length);
+  });
+
   it('stores party snapshots and validates participant sessions and pokemon values', async () => {
     await createRoom();
 

@@ -1,13 +1,6 @@
 import * as Phaser from "phaser";
-import { playBattleTransitionSound } from "../battle/battleAudio";
 import { playPokeLoungeBgm, stopPokeLoungeBgm } from "../audio/poke-lounge-audio";
 import { GAME_VIEWPORT_SIZE } from "../gameViewport";
-import {
-  BATTLE_INTRO_STRIPE_COUNT,
-  BATTLE_INTRO_TIMING,
-  createBattleIntroStripes,
-  getBattleIntroDurationMs,
-} from "../battle/battleIntro";
 import {
   createLocalPreviewRoom,
   type MultiplayerRoom,
@@ -17,26 +10,10 @@ import {
   type RoomMessage,
   type RoomUnsubscribe,
 } from "../network/localPreviewRoom";
-import { FIELD_MAP, resolveFieldEncounterAreaId } from "../world/fieldMap";
-import {
-  consumeCompletedTileStep,
-  createTileStepTracker,
-  type TileStepTracker,
-} from "../world/tileSteps";
-import {
-  createWildEncounterLevelRange,
-  rollWildEncounter,
-  type WildEncounterCandidate,
-  type WildEncounterLevelRange,
-  type WildEncounterSlot,
-} from "../world/wildEncounters";
-import {
-  WILD_ENCOUNTER_TABLES_JSON_ASSET,
-  selectWildEncounterConfig,
-} from "../world/wildEncounterTables";
+import { FIELD_MAP } from "../world/fieldMap";
+import { WILD_ENCOUNTER_TABLES_JSON_ASSET } from "../world/wildEncounterTables";
 import { getDefaultGameStateStore } from "../state/defaultGameStateStore";
 import {
-  calculateOccupiedPartyAverageLevel,
   type GameStateStore,
   type LocalPlayerState,
   type PlayerPokemon,
@@ -59,14 +36,22 @@ import {
   type WorldSceneTournamentController,
   type WorldTournamentBattleResult,
 } from "./world-scene-tournament";
+import {
+  createWorldSceneEncounters,
+  type WildBattleStartInput,
+  type WorldSceneEncounterController,
+} from "./world-scene-encounters";
 
 export { formatPokeDollars, formatRankScoreHud } from "./world-scene-hud";
+export {
+  readWildEncounterRateOverride,
+  WILD_ENCOUNTER_RATE_QUERY_PARAM,
+} from "./world-scene-encounters";
 export type { WorldTournamentBattleResult } from "./world-scene-tournament";
 
 const PLAYER_SPEED = 104;
 const PLAYER_SIZE = FIELD_MAP.player.displaySize;
 const PLAYER_HITBOX = FIELD_MAP.player.hitbox;
-export const WILD_ENCOUNTER_RATE_QUERY_PARAM = "wildEncounterRate";
 export const ROUND_DURATION_QUERY_PARAM = "roundMs";
 
 type PcBoxFocus = "party" | "box";
@@ -77,13 +62,6 @@ type CursorMap = Phaser.Types.Input.Keyboard.CursorKeys & {
   s: Phaser.Input.Keyboard.Key;
   d: Phaser.Input.Keyboard.Key;
 };
-
-interface WildBattleStartInput {
-  encounter: WildEncounterCandidate;
-  x: number;
-  y: number;
-  facing: PlayerFacing;
-}
 
 export interface WorldSpawnPosition {
   x: number;
@@ -138,22 +116,6 @@ export interface ResolvedWorldSpawn {
   x: number;
   y: number;
   facing?: PlayerFacing;
-}
-
-export function readWildEncounterRateOverride(url: URL): number | undefined {
-  const rawRate = url.searchParams.get(WILD_ENCOUNTER_RATE_QUERY_PARAM);
-
-  if (rawRate === null) {
-    return undefined;
-  }
-
-  const parsedRate = Number(rawRate);
-
-  if (!Number.isFinite(parsedRate) || parsedRate < 0 || parsedRate > 1) {
-    return undefined;
-  }
-
-  return parsedRate;
 }
 
 export function readRoundDurationOverride(url: URL): number | null {
@@ -220,10 +182,7 @@ export class WorldScene extends Phaser.Scene {
   private facing: PlayerFacing = "front";
   private lastSentAt = 0;
   private lastSent = { x: 0, y: 0 };
-  private stepTracker: TileStepTracker | null = null;
-  private encounterLocked = false;
-  private battleIntroPlaying = false;
-  private wildEncounterRateOverride: number | undefined;
+  private readonly encounters: WorldSceneEncounterController;
   private readonly interactions: WorldSceneInteractions;
   private readonly competitiveRoundsEnabled: boolean;
 
@@ -234,6 +193,30 @@ export class WorldScene extends Phaser.Scene {
   ) {
     super("world");
     this.competitiveRoundsEnabled = options.competitiveRoundsEnabled ?? true;
+    this.encounters = createWorldSceneEncounters({
+      gameStateStore: this.gameStateStore,
+      getPlayerPosition: () =>
+        this.player
+          ? {
+              x: this.player.x,
+              y: this.player.y,
+            }
+          : null,
+      getPlayerFacing: () => this.facing,
+      stopPlayer: () => this.player?.setVelocity(0, 0),
+      getLocationUrl: () => new URL(window.location.href),
+      getEncounterTableData: () => this.cache.json.get(WILD_ENCOUNTER_TABLES_JSON_ASSET[0]),
+      getViewportSize: () => this.getViewportSize(),
+      createRectangle: (...args) => this.add.rectangle(...args),
+      shakeCamera: (duration, intensity) => this.cameras.main.shake(duration, intensity),
+      addTween: config => {
+        this.tweens.add(config);
+      },
+      delay: (ms, onComplete) => {
+        this.time.delayedCall(ms, onComplete);
+      },
+      startBattle: data => this.scene.start("battle", data),
+    });
     this.interactions = createWorldSceneInteractions({
       gameStateStore: this.gameStateStore,
       getGameObjectFactory: () => this.add,
@@ -253,7 +236,7 @@ export class WorldScene extends Phaser.Scene {
         this.ensureCursorKeys(keyboard);
         return this.cursors;
       },
-      isBattleIntroPlaying: () => this.battleIntroPlaying,
+      isBattleIntroPlaying: () => this.encounters.isBattleIntroPlaying(),
       renderPartyHud: () => this.hud.render(),
       closePokemonStatusPanel: options => this.hud.closePokemonStatusPanel(options),
       getPartyPokemonBySlotIndex: slotIndex => this.hud.getPartyPokemonBySlotIndex(slotIndex),
@@ -276,7 +259,7 @@ export class WorldScene extends Phaser.Scene {
     });
     this.tournament = createWorldSceneTournament({
       gameStateStore: this.gameStateStore,
-      isBattleIntroPlaying: () => this.battleIntroPlaying,
+      isBattleIntroPlaying: () => this.encounters.isBattleIntroPlaying(),
       hasWorldPlayer: () => Boolean(this.player),
       isRoomTournamentHost: () => this.isRoomTournamentHost(),
       getRemotePlayerSnapshots: () => [...this.remotePlayerSnapshots.values()],
@@ -324,8 +307,6 @@ export class WorldScene extends Phaser.Scene {
     this.aboveLayer?.setDepth(40);
     this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
-    this.wildEncounterRateOverride = readWildEncounterRateOverride(new URL(window.location.href));
-
     this.createCurrencyHud();
     this.createRankScoreHud();
     if (this.competitiveRoundsEnabled) {
@@ -357,7 +338,7 @@ export class WorldScene extends Phaser.Scene {
 
     this.updateRoundClock(Date.now());
 
-    if (this.battleIntroPlaying) {
+    if (this.encounters.isBattleIntroPlaying()) {
       this.player.setVelocity(0, 0);
       return;
     }
@@ -374,7 +355,7 @@ export class WorldScene extends Phaser.Scene {
       this.facing = velocity.facing;
       this.player.anims.play(FIELD_MAP.player.walkAnimationKeys[this.facing], true);
       this.maybeSendMovement(time);
-      this.checkWildEncounterAfterMovement();
+      this.encounters.afterMovement();
       return;
     }
 
@@ -401,6 +382,7 @@ export class WorldScene extends Phaser.Scene {
     this.hud.destroy();
     this.tournament?.destroy();
     this.tournament = null;
+    this.encounters.destroy();
     this.roomConnected = false;
     this.pendingRoomMessages = [];
     this.remotePlayerSnapshots.clear();
@@ -419,11 +401,12 @@ export class WorldScene extends Phaser.Scene {
   }
 
   startWildBattleForTest(input: WildBattleStartInput): void {
-    this.startWildBattle(input);
+    this.encounters.startWildBattleForTest(input);
   }
 
   getE2eSnapshotForTest(): WorldE2eSnapshot {
     const interactionSnapshot = this.interactions.getE2eSnapshot();
+    const encounterSnapshot = this.encounters.getE2eSnapshot();
 
     return {
       player: this.player
@@ -439,15 +422,15 @@ export class WorldScene extends Phaser.Scene {
         zoom: Number(this.cameras.main.zoom.toFixed(2)),
       },
       shortcutGuideOpen: interactionSnapshot.shortcutGuideOpen,
-      encounterLocked: this.encounterLocked,
-      battleIntroPlaying: this.battleIntroPlaying,
+      encounterLocked: encounterSnapshot.encounterLocked,
+      battleIntroPlaying: encounterSnapshot.battleIntroPlaying,
       pokemonStatusPanel: interactionSnapshot.pokemonStatusPanel,
       pcBox: interactionSnapshot.pcBox,
     };
   }
 
   initializeEncounterTrackingForTest(position: { x: number; y: number }): void {
-    this.initializeEncounterTracking(position);
+    this.encounters.initialize(position);
   }
 
   createStaticNpcsForTest(map: ObjectLayerLookup): void {
@@ -665,7 +648,6 @@ export class WorldScene extends Phaser.Scene {
     const y = Math.round(this.player.y);
     const facing = this.facing;
 
-    this.battleIntroPlaying = true;
     this.player.setVelocity(0, 0);
 
     const battleData = {
@@ -683,8 +665,7 @@ export class WorldScene extends Phaser.Scene {
       },
     } as const;
 
-    playBattleTransitionSound();
-    this.playBattleIntroTransition(() => {
+    this.encounters.playBattleIntroTransition(() => {
       this.scene.start("battle", battleData);
     });
   }
@@ -730,13 +711,7 @@ export class WorldScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.roundPixels = true;
     this.lastSent = { x: this.player.x, y: this.player.y };
-    this.initializeEncounterTracking({ x: this.player.x, y: this.player.y });
-  }
-
-  private initializeEncounterTracking(position: { x: number; y: number }): void {
-    this.stepTracker = createTileStepTracker(position);
-    this.encounterLocked = false;
-    this.battleIntroPlaying = false;
+    this.encounters.initialize({ x: this.player.x, y: this.player.y });
   }
 
   private bindRoom(): void {
@@ -1100,162 +1075,6 @@ export class WorldScene extends Phaser.Scene {
     this.lastSentAt = time;
   }
 
-  private checkWildEncounterAfterMovement(): void {
-    if (!this.stepTracker || this.encounterLocked) {
-      return;
-    }
-
-    const step = consumeCompletedTileStep(this.stepTracker, {
-      x: this.player.x,
-      y: this.player.y,
-    });
-
-    if (!step) {
-      return;
-    }
-
-    if (!hasBattleCapablePartyPokemon(this.gameStateStore.getCurrentLocalPlayer())) {
-      return;
-    }
-
-    const encounter = rollWildEncounter({
-      ...this.getWildEncounterLevelRangeInput(),
-      ...this.getWildEncounterConfigInput(),
-      mapKey: FIELD_MAP.key,
-      step,
-      random: () => Math.random(),
-    });
-
-    if (!encounter) {
-      return;
-    }
-
-    this.startWildBattle({
-      encounter,
-      x: Math.round(this.player.x),
-      y: Math.round(this.player.y),
-      facing: this.facing,
-    });
-  }
-
-  private getWildEncounterLevelRangeInput(): { levelRange?: WildEncounterLevelRange } {
-    const averageLevel = calculateOccupiedPartyAverageLevel(
-      this.gameStateStore.getCurrentLocalPlayer().party,
-    );
-
-    return averageLevel === null ? {} : { levelRange: createWildEncounterLevelRange(averageLevel) };
-  }
-
-  private getWildEncounterConfigInput(): {
-    rate?: number;
-    slots?: ReadonlyArray<WildEncounterSlot>;
-  } {
-    const areaId = resolveFieldEncounterAreaId({
-      x: this.player.x,
-      y: this.player.y,
-    });
-    const config = selectWildEncounterConfig(
-      this.cache.json.get(WILD_ENCOUNTER_TABLES_JSON_ASSET[0]),
-      FIELD_MAP.key,
-      areaId,
-    );
-
-    return {
-      ...(this.wildEncounterRateOverride !== undefined
-        ? { rate: this.wildEncounterRateOverride }
-        : config?.encounterRate !== undefined
-          ? { rate: config.encounterRate }
-          : {}),
-      ...(config?.slots ? { slots: config.slots } : {}),
-    };
-  }
-
-  private startWildBattle({ encounter, facing, x, y }: WildBattleStartInput): void {
-    if (!hasBattleCapablePartyPokemon(this.gameStateStore.getCurrentLocalPlayer())) {
-      return;
-    }
-
-    this.encounterLocked = true;
-    this.battleIntroPlaying = true;
-    this.player.setVelocity(0, 0);
-    this.gameStateStore.setLocalPlayerPosition({
-      mapKey: FIELD_MAP.key,
-      x,
-      y,
-      facing,
-    });
-    const battleData = {
-      battleKind: "wild",
-      encounter,
-      returnToWorld: {
-        mapKey: FIELD_MAP.key,
-        x,
-        y,
-        facing,
-      },
-    } as const;
-
-    playBattleTransitionSound();
-    this.playBattleIntroTransition(() => {
-      this.scene.start("battle", battleData);
-    });
-  }
-
-  private playBattleIntroTransition(onComplete: () => void): void {
-    const { width, height } = this.getViewportSize();
-    const depth = 10_000;
-    const flash = this.add
-      .rectangle(0, 0, width, height, 0xf8fbf0, 0.86)
-      .setOrigin(0, 0)
-      .setScrollFactor(0)
-      .setDepth(depth);
-
-    this.cameras.main.shake(BATTLE_INTRO_TIMING.flashMs, 0.004);
-    this.tweens.add({
-      targets: flash,
-      alpha: 0,
-      duration: BATTLE_INTRO_TIMING.flashMs,
-      ease: "Quad.easeOut",
-      onComplete: () => flash.destroy(),
-    });
-
-    createBattleIntroStripes({
-      width,
-      height,
-      stripeCount: BATTLE_INTRO_STRIPE_COUNT,
-    }).forEach((stripe, index) => {
-      const delayMs = BATTLE_INTRO_TIMING.flashMs + index * 16;
-      const stripeBlock = this.add
-        .rectangle(stripe.x, stripe.y, stripe.width, stripe.height, 0x101820, 1)
-        .setOrigin(0, 0)
-        .setScrollFactor(0)
-        .setDepth(depth + 1 + index);
-
-      this.tweens.add({
-        targets: stripeBlock,
-        x: 0,
-        delay: delayMs,
-        duration: Math.max(120, BATTLE_INTRO_TIMING.stripeMs - index * 16),
-        ease: "Cubic.easeOut",
-      });
-    });
-
-    const fade = this.add
-      .rectangle(0, 0, width, height, 0x101820, 0)
-      .setOrigin(0, 0)
-      .setScrollFactor(0)
-      .setDepth(depth + BATTLE_INTRO_STRIPE_COUNT + 1);
-
-    this.tweens.add({
-      targets: fade,
-      alpha: 1,
-      delay: BATTLE_INTRO_TIMING.flashMs + BATTLE_INTRO_TIMING.stripeMs,
-      duration: BATTLE_INTRO_TIMING.fadeMs,
-      ease: "Linear",
-    });
-    this.time.delayedCall(getBattleIntroDurationMs(), onComplete);
-  }
-
   private createLocalPlayerSnapshot(): PlayerSnapshot {
     if (!this.player) {
       return createLocalPlayerSnapshot(
@@ -1370,22 +1189,6 @@ function findObject(
   objectName: string,
 ): SpawnObject | null {
   return map.getObjectLayer(layerName)?.objects.find(object => object.name === objectName) ?? null;
-}
-
-function hasBattleCapablePartyPokemon(player: LocalPlayerState): boolean {
-  return player.party.some(slot => {
-    const pokemon = slot.pokemon;
-
-    if (!pokemon || pokemon.status === "fainted") {
-      return false;
-    }
-
-    if (typeof pokemon.currentHp === "number" && pokemon.currentHp <= 0) {
-      return false;
-    }
-
-    return true;
-  });
 }
 
 function hasTileLayer(map: Phaser.Tilemaps.Tilemap, layerName: string): boolean {

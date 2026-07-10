@@ -111,13 +111,16 @@ export interface WorldSceneInteractionsTestFacade {
 }
 
 export interface WorldSceneInteractions {
-  readonly test: Readonly<WorldSceneInteractionsTestFacade>;
   handleInput(): boolean;
   destroy(): void;
   getE2eSnapshot(): Pick<WorldE2eSnapshot, "pokemonStatusPanel" | "pcBox" | "shortcutGuideOpen">;
+}
+
+export interface WorldSceneInteractionsController extends WorldSceneInteractions {
   canOpenPokemonStatusPanel(): boolean;
   createStaticNpcs(map: ObjectLayerLookup): void;
   showInitialShortcutGuideIfNeeded(): void;
+  readonly test: Readonly<WorldSceneInteractionsTestFacade>;
 }
 
 export interface WorldSceneInteractionsDependencies {
@@ -139,7 +142,7 @@ export interface WorldSceneInteractionsDependencies {
 
 export function createWorldSceneInteractions(
   dependencies: WorldSceneInteractionsDependencies,
-): WorldSceneInteractions {
+): WorldSceneInteractionsController {
   return new DefaultWorldSceneInteractions(dependencies);
 }
 
@@ -164,7 +167,7 @@ function clampSelectionIndex(index: number, itemCount: number): number {
   return Math.max(0, Math.min(itemCount - 1, index));
 }
 
-class DefaultWorldSceneInteractions implements WorldSceneInteractions {
+class DefaultWorldSceneInteractions implements WorldSceneInteractionsController {
   private cursors!: WorldSceneCursorMap;
   private interactionKeys: InteractionKeys | null = null;
   private shopkeeperPosition: { x: number; y: number } | null = null;

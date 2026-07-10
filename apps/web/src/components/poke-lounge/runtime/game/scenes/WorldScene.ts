@@ -28,7 +28,7 @@ import { isVirtualGamepadPressed } from "../input/virtualGamepad";
 import { createWorldSceneHud, type WorldSceneHudController } from "./world-scene-hud";
 import {
   createWorldSceneInteractions,
-  type WorldSceneInteractions,
+  type WorldSceneInteractionsController,
 } from "./world-scene-interactions";
 import {
   createWorldSceneTournament,
@@ -183,7 +183,7 @@ export class WorldScene extends Phaser.Scene {
   private lastSentAt = 0;
   private lastSent = { x: 0, y: 0 };
   private readonly encounters: WorldSceneEncounterController;
-  private readonly interactions: WorldSceneInteractions;
+  private readonly interactions: WorldSceneInteractionsController;
   private readonly competitiveRoundsEnabled: boolean;
 
   constructor(
@@ -249,7 +249,7 @@ export class WorldScene extends Phaser.Scene {
   create(data: WorldSceneCreateData = {}): void {
     this.shutdownComplete = false;
     this.hud = createWorldSceneHud({
-      scene: this,
+      getGameObjectFactory: () => this.add,
       gameStateStore: this.gameStateStore,
       competitiveRoundsEnabled: this.competitiveRoundsEnabled,
       addUnsubscriber: unsubscribe => this.unsubscribers.push(unsubscribe),

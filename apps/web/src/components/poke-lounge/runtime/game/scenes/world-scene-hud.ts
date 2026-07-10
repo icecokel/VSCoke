@@ -1,5 +1,4 @@
 import * as Phaser from "phaser";
-import { consumeVirtualGamepadPress } from "../input/virtualGamepad";
 import {
   DEFAULT_PREPARATION_DURATION_MS,
   formatRoundTimer,
@@ -36,7 +35,7 @@ export interface PokemonStatusPanelSnapshot {
 }
 
 export interface WorldSceneHudDependencies {
-  scene: Phaser.Scene;
+  getGameObjectFactory(): Phaser.GameObjects.GameObjectFactory;
   gameStateStore: GameStateStore;
   competitiveRoundsEnabled: boolean;
   addUnsubscriber(unsubscribe: () => void): void;
@@ -75,10 +74,14 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
 
   constructor(private readonly dependencies: WorldSceneHudDependencies) {}
 
-  createCurrencyHud(): void {
-    const { gameStateStore, scene } = this.dependencies;
+  private get add(): Phaser.GameObjects.GameObjectFactory {
+    return this.dependencies.getGameObjectFactory();
+  }
 
-    this.currencyHudText = scene.add
+  createCurrencyHud(): void {
+    const { gameStateStore } = this.dependencies;
+
+    this.currencyHudText = this.add
       .text(
         12,
         10,
@@ -104,9 +107,9 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
   }
 
   createRankScoreHud(): void {
-    const { gameStateStore, scene } = this.dependencies;
+    const { gameStateStore } = this.dependencies;
 
-    this.rankScoreHudText = scene.add
+    this.rankScoreHudText = this.add
       .text(
         this.dependencies.getViewportSize().width - 12,
         10,
@@ -135,14 +138,14 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
   }
 
   createRoundHud(nowMs: number, preparationDurationMs = DEFAULT_PREPARATION_DURATION_MS): void {
-    const { gameStateStore, scene } = this.dependencies;
+    const { gameStateStore } = this.dependencies;
 
     if (gameStateStore.getState().round.phase === "waiting") {
       gameStateStore.startPreparationRound(nowMs, preparationDurationMs);
     }
 
     const hudText = this.formatRoundHudText(nowMs);
-    this.roundHudText = scene.add
+    this.roundHudText = this.add
       .text(
         Math.round(this.dependencies.getViewportSize().width / 2),
         10,
@@ -236,8 +239,7 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
   }
 
   private renderPartyHudSlot(slot: PartyHudSlotView): void {
-    const { scene } = this.dependencies;
-    const background = scene.add
+    const background = this.add
       .rectangle(
         slot.x,
         slot.y,
@@ -260,7 +262,7 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
     );
     this.partyHudObjects.push(background);
     if (slot.occupied) {
-      const hitZone = scene.add
+      const hitZone = this.add
         .zone(slot.x, slot.y, PARTY_HUD_SLOT_SIZE.width, PARTY_HUD_SLOT_SIZE.height)
         .setOrigin(0, 0)
         .setScrollFactor(0)
@@ -274,7 +276,7 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
     }
 
     if (!slot.pokemon) {
-      const emptySlotText = scene.add
+      const emptySlotText = this.add
         .text(
           slot.x + 28,
           slot.y + 9,
@@ -291,7 +293,7 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
       return;
     }
 
-    const sprite = scene.add
+    const sprite = this.add
       .image(slot.x + 18, slot.y + 17, slot.pokemon.spriteKey)
       .setOrigin(0.5, 0.5)
       .setCrop(
@@ -303,7 +305,7 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
       .setDisplaySize(28, 28)
       .setScrollFactor(0)
       .setDepth(902);
-    const name = scene.add
+    const name = this.add
       .text(
         slot.x + 34,
         slot.y + 6,
@@ -316,7 +318,7 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
       .setOrigin(0, 0)
       .setScrollFactor(0)
       .setDepth(902);
-    const level = scene.add
+    const level = this.add
       .text(
         slot.x + 34,
         slot.y + 20,
@@ -388,8 +390,7 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
     const origin = this.getPokemonStatusPanelOrigin(slot);
     const x = (offset: number) => origin.x + offset;
     const y = (offset: number) => origin.y + offset;
-    const { scene } = this.dependencies;
-    const panel = scene.add
+    const panel = this.add
       .rectangle(
         origin.x,
         origin.y,
@@ -404,7 +405,7 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
     panel.setStrokeStyle(3, 0x263238, 1);
     panel.setInteractive();
 
-    const sprite = scene.add
+    const sprite = this.add
       .image(x(30), y(48), slot.pokemon.spriteKey)
       .setOrigin(0.5, 0.5)
       .setCrop(
@@ -420,7 +421,7 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
     this.pokemonStatusPanelObjects.push(
       panel,
       sprite,
-      scene.add
+      this.add
         .text(
           x(58),
           y(16),
@@ -433,7 +434,7 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(2141),
-      scene.add
+      this.add
         .text(
           x(58),
           y(38),
@@ -446,12 +447,12 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(2141),
-      scene.add
+      this.add
         .rectangle(x(14), y(68), POKEMON_STATUS_PANEL_SIZE.width - 28, 2, 0x607d6c, 0.42)
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(2141),
-      scene.add
+      this.add
         .text(
           x(18),
           y(82),
@@ -464,7 +465,7 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(2141),
-      scene.add
+      this.add
         .text(
           x(18),
           y(104),
@@ -477,7 +478,7 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(2141),
-      scene.add
+      this.add
         .text(
           x(18),
           y(124),

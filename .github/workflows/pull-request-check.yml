@@ -12,6 +12,22 @@ jobs:
   api:
     name: API
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vscoke_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d vscoke_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/vscoke_test
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,17 +45,32 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install pgvector in PostgreSQL service
+        run: |
+          docker exec "${{ job.services.postgres.id }}" sh -c '
+            set -eu
+            apt-get update
+            apt-get install -y --no-install-recommends postgresql-16-pgvector
+            rm -rf /var/lib/apt/lists/*
+          '
+
       - name: Run API lint
         run: pnpm --filter @vscoke/api lint
 
       - name: Run API unit tests
         run: pnpm test:api
 
-      - name: Run API E2E tests
-        run: pnpm test:api:e2e
-
       - name: Build API
         run: pnpm build:api
+
+      - name: Show API test migrations
+        run: pnpm --filter @vscoke/api migration:show:test
+
+      - name: Run API test migrations
+        run: pnpm --filter @vscoke/api migration:run:test
+
+      - name: Run API PostgreSQL integration and E2E tests
+        run: pnpm test:api:e2e
 
   web:
     name: Web

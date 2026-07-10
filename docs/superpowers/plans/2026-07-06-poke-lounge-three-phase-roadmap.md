@@ -420,3 +420,4 @@ Phase 3 인계 결정 사항:
 - REST polling 기반 server-authoritative MVP는 유지되고, WebSocket은 이번 작업에서도 범위 밖이다.
 - server room 생성/입장 UX는 query 기반 MVP 수준이며 운영형 lobby UX는 별도 작업이다.
 - `pnpm generate:types`는 여전히 원격 `https://api.icecoke.kr/api-json` 기준이라 로컬 미배포 API 차이를 자동 반영하지 않는다.
+- Phase 3의 REST polling server-authoritative 구현은 기술적 MVP다. `pnpm check:poke-lounge-provenance`가 승인된 manifest로 통과하기 전에는 Poke Lounge route와 public asset을 공개 배포 승인 상태로 취급하지 않는다. 현재 manifest의 모든 행은 의도적으로 `blocked`다.

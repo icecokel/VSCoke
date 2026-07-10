@@ -42,6 +42,7 @@
     "poke-lounge:audio:convert": "python3 scripts/poke-lounge/render-audio-cues.py --mode convert",
     "poke-lounge:audio:build": "python3 scripts/poke-lounge/render-audio-cues.py --mode all",
     "poke-lounge:audio:verify": "node scripts/poke-lounge/verify-audio-assets.mjs",
+    "check:poke-lounge-provenance": "node scripts/poke-lounge/check-asset-provenance.mjs",
     "smoke:api:remote": "node scripts/check-api-health.mjs",
     "knip": "pnpm --filter @vscoke/web knip",
     "generate:openapi": "pnpm --filter @vscoke/api openapi:generate",

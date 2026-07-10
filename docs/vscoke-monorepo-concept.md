@@ -129,6 +129,12 @@ Poke Lounge는 세 가지 서버 접점이 있다.
 - `GET/PUT /game/poke-lounge/state`: 로그인 사용자의 자동 저장 상태
 - `/poke-lounge/rooms/**`: 서버 권위 멀티플레이 룸 상태
 
+### Poke Lounge 공개 배포 제한
+
+Poke Lounge의 현재 구현과 서버 API는 기술적 MVP로 저장소에 존재하지만, 공개 배포와 배포 산출물의 외부 배포 승인 게이트는 차단 상태다. 공개 에셋에는 ROM-derived로 확인된 오디오/게임 데이터와 출처가 확인되지 않은 Pokémon 스프라이트, 텍스처, 맵이 포함되어 있다. 인간 소유자가 Pokémon 이름/표장, ROM-derived 자료, 지도 자료의 권리 결정을 기록하고, 각 공개 파일의 출처·권한·SHA-256 검증을 완료하기 전에는 이 라우트를 공개 배포하지 않는다.
+
+`pnpm check:poke-lounge-provenance`는 이 공개 배포 게이트를 검증한다. 현재 모든 행이 `blocked`이므로 이 명령의 실패는 의도된 차단 증거이며, Phase 3의 기술적 MVP 완료 또는 서버 권위 검증 통과를 공개 배포 승인으로 해석하지 않는다. 상세 인벤토리와 manifest 규격은 [Poke Lounge Asset Provenance](./poke-lounge-asset-provenance.md)를 따른다. 이 제한은 기술적 provenance audit 결과이며 법률 자문이 아니다.
+
 ## 로컬 실행 기준
 
 기본 명령은 저장소 루트에서 실행한다.

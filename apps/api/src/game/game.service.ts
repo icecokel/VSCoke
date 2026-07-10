@@ -8,11 +8,13 @@ import { CreateGameHistoryDto } from './dto/create-game-history.dto';
 import { SavePokeLoungeStateDto } from './dto/save-poke-lounge-state.dto';
 import { GameType } from './enums/game-type.enum';
 import {
+  GameSubmissionTrust,
   buildNamedValidScoreCondition,
   buildPositionalValidScoreCondition,
   getGameScorePolicy,
   getGameScorePolicyParams,
   getGameScorePolicyValues,
+  isPublicRankingEligible as isScorePublicRankingEligible,
   validateGameScoreSubmission,
 } from './game-score-policy';
 
@@ -27,6 +29,8 @@ type RankingIdRow = {
 type RankCountRow = {
   count: string | number;
 };
+
+const GENERIC_GAME_SUBMISSION_TRUST: GameSubmissionTrust = 'client-asserted';
 
 /**
  * 게임 비즈니스 로직을 처리하는 서비스
@@ -86,10 +90,22 @@ export class GameService {
     return this.gameHistoryRepository.save(history);
   }
 
+  isPublicRankingEligible(gameType: GameType): boolean {
+    return isScorePublicRankingEligible(
+      gameType,
+      GENERIC_GAME_SUBMISSION_TRUST,
+    );
+  }
+
   /**
    * 게임별 랭킹 목록을 조회함 (유저별 최고 점수 기준 Top 10)
    */
   async getRanking(gameType: GameType): Promise<GameHistory[]> {
+    // Generic Poke Lounge results are client-asserted until verified room trust is persisted.
+    if (!this.isPublicRankingEligible(gameType)) {
+      return [];
+    }
+
     const policy = getGameScorePolicy(gameType);
 
     // 유저별 최고 점수 1건만 추린 뒤 전체 상위 10건을 구함
@@ -219,7 +235,11 @@ export class GameService {
     score: number,
     gameType: GameType,
     dateRange?: { start: Date; end: Date },
-  ): Promise<number> {
+  ): Promise<number | null> {
+    if (!this.isPublicRankingEligible(gameType)) {
+      return null;
+    }
+
     const policy = getGameScorePolicy(gameType);
     const policyValues = getGameScorePolicyValues(policy);
 

@@ -302,15 +302,13 @@ describe('GameService', () => {
       expect(repository.find).not.toHaveBeenCalled();
     });
 
-    it('Poke Lounge 정책 값으로 랭킹을 조회해야 함', async () => {
-      repository.query.mockResolvedValue([]);
-
-      await service.getRanking(GameType.POKE_LOUNGE);
-
-      expect(repository.query).toHaveBeenCalledWith(
-        expect.stringContaining('gh.score BETWEEN $2 AND $3'),
-        [GameType.POKE_LOUNGE, 1, 1000, 1, 86400, 1000],
+    it('Poke Lounge의 미검증 제출물은 공개 랭킹에서 제외해야 함', async () => {
+      await expect(service.getRanking(GameType.POKE_LOUNGE)).resolves.toEqual(
+        [],
       );
+
+      expect(repository.query).not.toHaveBeenCalled();
+      expect(repository.find).not.toHaveBeenCalled();
     });
   });
 
@@ -447,20 +445,14 @@ describe('GameService', () => {
       );
     });
 
-    it('Poke Lounge 정책 값으로 유저 등수를 조회해야 함', async () => {
+    it('Poke Lounge의 미검증 제출물에는 공개 등수를 계산하지 않아야 함', async () => {
       repository.query.mockResolvedValue([{ count: '2' }]);
 
-      const result = await service.getUserRank(
-        'user1',
-        300,
-        GameType.POKE_LOUNGE,
-      );
+      await expect(
+        service.getUserRank('user1', 300, GameType.POKE_LOUNGE),
+      ).resolves.toBeNull();
 
-      expect(result).toBe(3);
-      expect(repository.query).toHaveBeenCalledWith(
-        expect.stringContaining('score BETWEEN $3 AND $4'),
-        [GameType.POKE_LOUNGE, 300, 1, 1000, 1, 86400, 1000],
-      );
+      expect(repository.query).not.toHaveBeenCalled();
     });
   });
 

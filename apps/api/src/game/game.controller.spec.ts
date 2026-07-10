@@ -24,6 +24,7 @@ type MockGameService = jest.Mocked<
     | 'getUserBestScore'
   >
 > & {
+  isPublicRankingEligible: jest.Mock;
   savePokeLoungeState: jest.Mock;
   findPokeLoungeState: jest.Mock;
 };
@@ -87,6 +88,7 @@ const mockGameService = (): MockGameService => ({
   findHistoryById: jest.fn(),
   getUserRank: jest.fn(),
   getUserBestScore: jest.fn(),
+  isPublicRankingEligible: jest.fn(),
   savePokeLoungeState: jest.fn(),
   findPokeLoungeState: jest.fn(),
 });
@@ -117,6 +119,7 @@ describe('GameController', () => {
 
     controller = module.get<GameController>(GameController);
     service = module.get<MockGameService>(GameService);
+    service.isPublicRankingEligible.mockReturnValue(true);
   });
 
   it('should be defined', () => {
@@ -210,7 +213,7 @@ describe('GameController', () => {
       expect(result).toEqual(expectedResult);
     });
 
-    it('should create a Poke Lounge game result with ranking metadata', async () => {
+    it('should create a Poke Lounge game result without public ranking metadata', async () => {
       const dto: CreateGameHistoryDto = {
         score: 300,
         gameType: GameType.POKE_LOUNGE,
@@ -227,10 +230,7 @@ describe('GameController', () => {
       });
 
       service.createHistory.mockResolvedValue(createdHistory);
-      service.getUserRank
-        .mockResolvedValueOnce(2)
-        .mockResolvedValueOnce(1)
-        .mockResolvedValueOnce(2);
+      service.isPublicRankingEligible.mockReturnValue(false);
       service.getUserBestScore.mockResolvedValue(300);
 
       const result = await controller.createResult(req, dto);
@@ -240,19 +240,16 @@ describe('GameController', () => {
         req.user.id,
         GameType.POKE_LOUNGE,
       );
-      expect(service.getUserRank).toHaveBeenCalledWith(
-        req.user.id,
-        createdHistory.score,
-        GameType.POKE_LOUNGE,
-      );
+      expect(service.getUserBestScore).toHaveBeenCalledTimes(1);
+      expect(service.getUserRank).not.toHaveBeenCalled();
       expect(result).toEqual(
         expect.objectContaining({
           id: createdHistory.id,
           score: 300,
           gameType: GameType.POKE_LOUNGE,
-          allTimeRank: 2,
-          weeklyRank: 1,
-          rank: 2,
+          allTimeRank: null,
+          weeklyRank: null,
+          rank: null,
           bestScore: 300,
         }),
       );
@@ -334,14 +331,13 @@ describe('GameController', () => {
       expect(result).toEqual([]);
     });
 
-    it('should return Poke Lounge ranking list', async () => {
-      const expectedResult = [{ score: 300, gameType: GameType.POKE_LOUNGE }];
-      service.getRanking.mockResolvedValue(expectedResult);
+    it('should preserve the plain empty-array contract for Poke Lounge rankings', async () => {
+      service.getRanking.mockResolvedValue([]);
 
       const result = await controller.getRanking(GameType.POKE_LOUNGE);
 
       expect(service.getRanking).toHaveBeenCalledWith(GameType.POKE_LOUNGE);
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual([]);
     });
   });
 

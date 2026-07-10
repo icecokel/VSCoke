@@ -64,6 +64,22 @@ export class GameController {
       history.gameType,
     );
 
+    if (!this.gameService.isPublicRankingEligible(history.gameType)) {
+      return {
+        id: history.id,
+        score: history.score,
+        gameType: history.gameType,
+        createdAt: history.createdAt,
+        user: {
+          displayName: `${history.user.firstName} ${history.user.lastName}`,
+        },
+        rank: null,
+        bestScore,
+        allTimeRank: null,
+        weeklyRank: null,
+      };
+    }
+
     // 전체 랭킹 (내 최고 점수 기준)
     const allTimeRank = await this.gameService.getUserRank(
       req.user.id,
@@ -180,7 +196,11 @@ export class GameController {
    * 게임별 랭킹 목록 조회 (Top 10)
    */
   @Get('ranking')
-  @ApiOperation({ summary: '게임별 Top 10 랭킹 조회' })
+  @ApiOperation({
+    summary: '게임별 Top 10 랭킹 조회',
+    description:
+      'POKE_LOUNGE 결과는 현재 미검증 상태이므로 빈 배열을 반환합니다. 응답은 항상 랭킹 배열입니다.',
+  })
   @ApiQuery({
     name: 'gameType',
     required: true,

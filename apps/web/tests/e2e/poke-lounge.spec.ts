@@ -2225,16 +2225,7 @@ test.describe("Poke Lounge", () => {
     const submittedPayloads: unknown[] = [];
 
     await mockAuthenticatedSession(page);
-    await page.route("**/game/poke-lounge/state", async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          success: true,
-          data: route.request().method() === "GET" ? null : {},
-        }),
-      });
-    });
+    await mockAuthenticatedPokeLoungeStatePrerequisites(page);
     await page.route("**/game/result", async route => {
       const request = route.request();
       submittedPayloads.push(request.postDataJSON());
@@ -3267,6 +3258,31 @@ async function mockAuthenticatedSession(page: Page): Promise<void> {
         idTokenExpiresAt: Math.floor(Date.now() / 1000) + 60 * 60,
       }),
     });
+  });
+}
+
+async function mockAuthenticatedPokeLoungeStatePrerequisites(page: Page): Promise<void> {
+  // Task 2 hydrates authenticated state before this score-submission flow starts.
+  await page.route("**/game/poke-lounge/state", async route => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, data: null }),
+      });
+      return;
+    }
+
+    if (route.request().method() === "PUT") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, data: {} }),
+      });
+      return;
+    }
+
+    await route.fallback();
   });
 }
 

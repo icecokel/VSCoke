@@ -4,7 +4,10 @@ import {
   POKE_LOUNGE_SAVE_SNAPSHOT_VERSION,
 } from "../../src/components/poke-lounge/runtime/game/state/poke-lounge-save-snapshot";
 import { createGameStateStore } from "../../src/components/poke-lounge/runtime/game/state/gameStateStore";
-import { startPokeLoungeAutosave } from "../../src/components/poke-lounge/poke-lounge-autosave";
+import {
+  createPokeLoungeAutosaveLifecycle,
+  startPokeLoungeAutosave,
+} from "../../src/components/poke-lounge/poke-lounge-autosave";
 import {
   loadPokeLoungeState,
   savePokeLoungeState,
@@ -205,6 +208,56 @@ test.describe("Poke Lounge autosave", () => {
     });
 
     expect(result).toEqual({ success: true, snapshot: null });
+  });
+
+  test("재수화 중 token A 자동 저장 cleanup은 token B GET 실패 전 PUT하지 않는다", async () => {
+    const calls: string[] = [];
+    const tokenBGet = createDeferred<unknown>();
+    const store = createGameStateStore();
+    const autosave = startPokeLoungeAutosave({
+      gameStateStore: store,
+      token: "token-a",
+      saveState: async payload => {
+        calls.push(`PUT:${payload.token}`);
+        return { success: true };
+      },
+    });
+    const lifecycle = createPokeLoungeAutosaveLifecycle(autosave);
+
+    store.setStarterPokemon(createStarterPokemon());
+    const nextHydration = loadPokeLoungeState("token-b", {
+      get: async () => {
+        calls.push("GET:token-b");
+        return tokenBGet.promise;
+      },
+    });
+
+    await lifecycle.disposeForRehydration();
+
+    expect(calls).toEqual(["GET:token-b"]);
+
+    tokenBGet.reject(new Error("network unavailable"));
+    await expect(nextHydration).resolves.toMatchObject({ success: false, unavailable: true });
+    expect(calls).toEqual(["GET:token-b"]);
+  });
+
+  test("정상 unmount lifecycle은 마지막 자동 저장을 유지한다", async () => {
+    const store = createGameStateStore();
+    const saves: string[] = [];
+    const autosave = startPokeLoungeAutosave({
+      gameStateStore: store,
+      token: "token-a",
+      saveState: async payload => {
+        saves.push(payload.token);
+        return { success: true };
+      },
+    });
+    const lifecycle = createPokeLoungeAutosaveLifecycle(autosave);
+
+    store.setStarterPokemon(createStarterPokemon());
+    await lifecycle.disposeForUnmount();
+
+    expect(saves).toEqual(["token-a"]);
   });
 
   test("저장 서비스는 토큰이 없으면 요청을 보내지 않고 조용히 건너뛴다", async () => {

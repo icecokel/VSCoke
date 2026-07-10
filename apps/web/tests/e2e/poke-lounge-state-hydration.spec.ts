@@ -14,6 +14,32 @@ test.describe("Poke Lounge state hydration", () => {
     expect(sanitizeLocalPlayersSaveState({ currentPlayerId: 3, playersById: [] })).toBeNull();
   });
 
+  test("dangerous local player keys are rejected before record construction", () => {
+    const state = buildPokeLoungeSaveSnapshot(createGameStateStore()).state;
+    const player = state.playersById["player-1"];
+
+    for (const playerId of ["__proto__", "prototype", "constructor"]) {
+      const playersById = Object.create(null) as Record<string, unknown>;
+      Object.defineProperty(playersById, playerId, {
+        value: { ...player, playerId },
+        enumerable: true,
+      });
+
+      expect(sanitizeLocalPlayersSaveState({ currentPlayerId: playerId, playersById })).toBeNull();
+    }
+  });
+
+  test("current player ID must exactly match an own player record key", () => {
+    const state = buildPokeLoungeSaveSnapshot(createGameStateStore()).state;
+
+    expect(
+      sanitizeLocalPlayersSaveState({
+        currentPlayerId: " player-1",
+        playersById: state.playersById,
+      }),
+    ).toBeNull();
+  });
+
   test("valid snapshots retain only local player state", () => {
     const store = createGameStateStore();
     store.setStarterPokemon({

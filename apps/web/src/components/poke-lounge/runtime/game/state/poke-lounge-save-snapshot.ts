@@ -61,14 +61,14 @@ export function sanitizeLocalPlayersSaveState(value: unknown): LocalPlayersSaveS
     return null;
   }
 
-  const currentPlayerId = value.currentPlayerId.trim();
-  if (!currentPlayerId) {
+  const currentPlayerId = value.currentPlayerId;
+  if (!isNonEmptyString(currentPlayerId) || isDangerousRecordKey(currentPlayerId)) {
     return null;
   }
 
-  const playersById: Record<string, LocalPlayerState> = {};
+  const playersById = Object.create(null) as Record<string, LocalPlayerState>;
   for (const [playerId, player] of Object.entries(value.playersById)) {
-    if (!playerId || !isRecord(player)) {
+    if (!isNonEmptyString(playerId) || isDangerousRecordKey(playerId) || !isRecord(player)) {
       return null;
     }
 
@@ -77,10 +77,15 @@ export function sanitizeLocalPlayersSaveState(value: unknown): LocalPlayersSaveS
       return null;
     }
 
-    playersById[playerId] = sanitizedPlayer;
+    Object.defineProperty(playersById, playerId, {
+      value: sanitizedPlayer,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
   }
 
-  if (!playersById[currentPlayerId]) {
+  if (!Object.hasOwn(playersById, currentPlayerId)) {
     return null;
   }
 
@@ -278,6 +283,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function isDangerousRecordKey(value: string): boolean {
+  return value === "__proto__" || value === "prototype" || value === "constructor";
 }
 
 function isSafeInteger(value: unknown): value is number {

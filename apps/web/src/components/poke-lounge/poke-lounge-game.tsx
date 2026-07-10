@@ -7,7 +7,7 @@ import { useGame } from "@/contexts/game-context";
 import { getSessionApiIdToken, isAuthSessionError, type ApiTokenSession } from "@/lib/auth-token";
 import { submitScore } from "@/services/score-service";
 import { loadPokeLoungeState } from "@/services/poke-lounge-state-service";
-import { startPokeLoungeAutosave } from "./poke-lounge-autosave";
+import { createPokeLoungeAutosaveLifecycle, startPokeLoungeAutosave } from "./poke-lounge-autosave";
 import { setPokeLoungeMasterVolume } from "./runtime/game/audio/poke-lounge-audio";
 import { getDefaultGameStateStore } from "./runtime/game/state/defaultGameStateStore";
 import { detectTouchGameDevice } from "./runtime/game/input/mobileTouchControls";
@@ -93,6 +93,7 @@ export function PokeLoungeGame() {
   const pageRef = useRef<HTMLElement>(null);
   const gamePageHandleRef = useRef<PokeLoungeGamePageHandle | null>(null);
   const startedAtMsRef = useRef(Date.now());
+  const isUnmountingRef = useRef(false);
   const [finalResult, setFinalResult] = useState<FinalResultState | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fullscreenActive, setFullscreenActive] = useState(false);
@@ -341,6 +342,14 @@ export function PokeLoungeGame() {
   }, [session, stateHydrationAttempt, status]);
 
   useEffect(() => {
+    isUnmountingRef.current = false;
+
+    return () => {
+      isUnmountingRef.current = true;
+    };
+  }, []);
+
+  useEffect(() => {
     const apiSession = session as ApiTokenSession | null;
     const token = getSessionApiIdToken(apiSession);
 
@@ -357,9 +366,12 @@ export function PokeLoungeGame() {
       gameStateStore: getDefaultGameStateStore(),
       token,
     });
+    const autosaveLifecycle = createPokeLoungeAutosaveLifecycle(autosave);
 
     return () => {
-      void autosave.dispose();
+      void (isUnmountingRef.current
+        ? autosaveLifecycle.disposeForUnmount()
+        : autosaveLifecycle.disposeForRehydration());
     };
   }, [session, stateHydrationStatus, status]);
 

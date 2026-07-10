@@ -40,6 +40,24 @@ export interface PokeLoungeAutosaveController {
   dispose(options?: { flush?: boolean }): Promise<void>;
 }
 
+export interface PokeLoungeAutosaveLifecycle {
+  disposeForRehydration(): Promise<void>;
+  disposeForUnmount(): Promise<void>;
+}
+
+export function createPokeLoungeAutosaveLifecycle(
+  autosave: PokeLoungeAutosaveController,
+): PokeLoungeAutosaveLifecycle {
+  return {
+    disposeForRehydration() {
+      return autosave.dispose({ flush: false });
+    },
+    disposeForUnmount() {
+      return autosave.dispose();
+    },
+  };
+}
+
 export function startPokeLoungeAutosave({
   gameStateStore,
   token,

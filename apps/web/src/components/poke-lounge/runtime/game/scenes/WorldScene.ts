@@ -1,7 +1,6 @@
 import * as Phaser from "phaser";
 import { playBattleTransitionSound } from "../battle/battleAudio";
 import { playPokeLoungeBgm, stopPokeLoungeBgm } from "../audio/poke-lounge-audio";
-import type { BattleResultReason } from "../battle/battleTypes";
 import { GAME_VIEWPORT_SIZE } from "../gameViewport";
 import {
   BATTLE_INTRO_STRIPE_COUNT,
@@ -38,38 +37,31 @@ import {
 import { getDefaultGameStateStore } from "../state/defaultGameStateStore";
 import {
   calculateOccupiedPartyAverageLevel,
-  type GameState,
   type GameStateStore,
   type LocalPlayerState,
   type PlayerPokemon,
   type RemotePlayerState,
-  createDefaultLocalPlayer,
 } from "../state/gameStateStore";
+import type { TournamentMatch } from "../tournament/tournamentState";
+import type { TournamentSession } from "../tournament/tournamentSession";
 import { type DiceGambleNumber, type DiceGamblePrediction } from "../gamble/diceGamble";
 import { createGameTextStyle } from "../ui/gameTextStyle";
 import { DEFAULT_PREPARATION_DURATION_MS } from "../round/roundState";
-import type { TournamentMatch, TournamentStanding } from "../tournament/tournamentState";
-import {
-  getTournamentSessionStandings,
-  type TournamentSession,
-} from "../tournament/tournamentSession";
-import {
-  createTournamentResultPanelViewModel,
-  formatTournamentResultRow,
-} from "../tournament/tournamentResultViewModel";
-import {
-  createRoundScoreUpdatedAuthorityPayloads,
-  createTournamentCompletedAuthorityPayload,
-  createTournamentMatchResultAuthorityPayload,
-} from "../network/tournamentAuthority";
 import { isVirtualGamepadPressed } from "../input/virtualGamepad";
 import { createWorldSceneHud, type WorldSceneHudController } from "./world-scene-hud";
 import {
   createWorldSceneInteractions,
   type WorldSceneInteractions,
 } from "./world-scene-interactions";
+import {
+  createWorldSceneTournament,
+  isWorldTournamentBattleResult,
+  type WorldSceneTournamentController,
+  type WorldTournamentBattleResult,
+} from "./world-scene-tournament";
 
 export { formatPokeDollars, formatRankScoreHud } from "./world-scene-hud";
+export type { WorldTournamentBattleResult } from "./world-scene-tournament";
 
 const PLAYER_SPEED = 104;
 const PLAYER_SIZE = FIELD_MAP.player.displaySize;
@@ -107,13 +99,6 @@ export interface WorldSceneCreateData {
 
 export interface WorldSceneOptions {
   competitiveRoundsEnabled?: boolean;
-}
-
-export interface WorldTournamentBattleResult {
-  matchId: string;
-  winnerPlayerId: string;
-  loserPlayerId: string;
-  reason: BattleResultReason;
 }
 
 export interface WorldE2eSnapshot {
@@ -230,15 +215,14 @@ export class WorldScene extends Phaser.Scene {
   private pendingRoomMessages: Array<{ type: RoomMessage; payload: RoomEvent[RoomMessage] }> = [];
   private lastLocalSnapshotSyncKey = "";
   private shutdownComplete = false;
-  private roundAnnouncementText: Phaser.GameObjects.Text | null = null;
   private hud!: WorldSceneHudController;
+  private tournament: WorldSceneTournamentController | null = null;
   private facing: PlayerFacing = "front";
   private lastSentAt = 0;
   private lastSent = { x: 0, y: 0 };
   private stepTracker: TileStepTracker | null = null;
   private encounterLocked = false;
   private battleIntroPlaying = false;
-  private tournamentBattleStarting = false;
   private wildEncounterRateOverride: number | undefined;
   private readonly interactions: WorldSceneInteractions;
   private readonly competitiveRoundsEnabled: boolean;
@@ -289,6 +273,26 @@ export class WorldScene extends Phaser.Scene {
       canOpenPokemonStatusPanel: () => this.interactions.canOpenPokemonStatusPanel(),
       getViewportSize: () => this.getViewportSize(),
       isShutdownComplete: () => this.shutdownComplete,
+    });
+    this.tournament = createWorldSceneTournament({
+      gameStateStore: this.gameStateStore,
+      isBattleIntroPlaying: () => this.battleIntroPlaying,
+      hasWorldPlayer: () => Boolean(this.player),
+      isRoomTournamentHost: () => this.isRoomTournamentHost(),
+      getRemotePlayerSnapshots: () => [...this.remotePlayerSnapshots.values()],
+      startTrainerBattle: (match, player, opponent) =>
+        this.startTournamentBattle(match, player, opponent),
+      getRoomHostPlayerId: () => this.getRoomHostPlayerId(),
+      sendTournamentStarted: session => this.sendTournamentStartedMessage(session),
+      sendTournamentMatchResult: payload =>
+        this.sendRoomMessage("TOURNAMENT_MATCH_RESULT", payload),
+      sendTournamentCompleted: payload => this.sendRoomMessage("TOURNAMENT_COMPLETED", payload),
+      sendRoundScoreUpdates: payloads => {
+        for (const payload of payloads) {
+          this.sendRoomMessage("ROUND_SCORE_UPDATED", payload);
+        }
+      },
+      createAnnouncement: (text, fontSize) => this.createTournamentAnnouncement(text, fontSize),
     });
     this.registerLifecycleCleanup();
     this.applyReturnedTournamentResult(data);
@@ -395,9 +399,8 @@ export class WorldScene extends Phaser.Scene {
     this.hud.destroyPartyHud();
     this.interactions.destroy();
     this.hud.destroy();
-    this.roundAnnouncementText?.destroy();
-    this.roundAnnouncementText = null;
-    this.tournamentBattleStarting = false;
+    this.tournament?.destroy();
+    this.tournament = null;
     this.roomConnected = false;
     this.pendingRoomMessages = [];
     this.remotePlayerSnapshots.clear();
@@ -618,7 +621,7 @@ export class WorldScene extends Phaser.Scene {
     preparationDurationMs = DEFAULT_PREPARATION_DURATION_MS,
   ): void {
     this.hud.createRoundHud(nowMs, preparationDurationMs);
-    this.showTournamentResultMessageIfNeeded();
+    this.tournament?.showResultPresentationIfNeeded();
   }
 
   private updateRoundClock(nowMs: number): void {
@@ -628,72 +631,14 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
-    if (this.gameStateStore.getState().round.phase === "tournament") {
-      if (this.tryStartTournamentBattle()) {
-        return;
-      }
-
-      this.showTournamentPendingMessage();
-      return;
-    }
-
-    this.showTournamentResultMessageIfNeeded();
+    this.tournament?.update(nowMs);
   }
 
-  private showTournamentPendingMessage(): void {
-    if (this.roundAnnouncementText) {
-      return;
-    }
-
-    this.roundAnnouncementText = this.add
-      .text(
-        Math.round(this.getViewportSize().width / 2),
-        56,
-        "준비 시간이 끝났다.\n토너먼트 대기 중",
-        createGameTextStyle({
-          align: "center",
-          color: "#fff9dd",
-          fontSize: "16px",
-          stroke: "#263238",
-          strokeThickness: 5,
-        }),
-      )
-      .setOrigin(0.5, 0)
-      .setScrollFactor(0)
-      .setDepth(1001);
-  }
-
-  private showTournamentResultMessageIfNeeded(): void {
-    const state = this.gameStateStore.getState();
-
-    if (
-      this.roundAnnouncementText ||
-      (state.round.phase !== "round-result" && state.round.phase !== "game-result")
-    ) {
-      return;
-    }
-
-    const standings = createVisibleTournamentStandings(state);
-
-    if (standings.length === 0) {
-      return;
-    }
-
-    const panel = createTournamentResultPanelViewModel({
-      roundIndex: state.round.roundIndex,
-      totalRounds: state.round.totalRounds,
-      final: state.round.phase === "game-result",
-      standings,
-      roundScores: state.tournament.lastRoundScores,
-      cumulativeScores: state.tournament.scoresByPlayerId,
-    });
-    const text = [
-      panel.title,
-      ...panel.rows.map(formatTournamentResultRow),
-      panel.nextActionLabel,
-    ].join("\n");
-
-    this.roundAnnouncementText = this.add
+  private createTournamentAnnouncement(
+    text: string,
+    fontSize: "14px" | "16px",
+  ): Phaser.GameObjects.Text {
+    return this.add
       .text(
         Math.round(this.getViewportSize().width / 2),
         56,
@@ -701,7 +646,7 @@ export class WorldScene extends Phaser.Scene {
         createGameTextStyle({
           align: "center",
           color: "#fff9dd",
-          fontSize: "14px",
+          fontSize,
           stroke: "#263238",
           strokeThickness: 5,
         }),
@@ -709,108 +654,6 @@ export class WorldScene extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setScrollFactor(0)
       .setDepth(1001);
-  }
-
-  private tryStartTournamentBattle(): boolean {
-    if (this.battleIntroPlaying || this.tournamentBattleStarting || !this.player) {
-      return false;
-    }
-
-    const state = this.gameStateStore.getState();
-    const session = state.tournament.session;
-
-    if (
-      !session ||
-      session.status !== "in-progress" ||
-      session.roundIndex !== state.round.roundIndex
-    ) {
-      if (!this.isRoomTournamentHost()) {
-        return false;
-      }
-
-      const tournamentPlayers = this.getEligibleTournamentPlayers();
-
-      if (tournamentPlayers.length < 2) {
-        return false;
-      }
-
-      const started = this.gameStateStore.startTournamentSession(
-        tournamentPlayers.map(player => ({
-          playerId: player.playerId,
-          displayName: player.displayName,
-        })),
-      );
-
-      if (!started.ok) {
-        return false;
-      }
-
-      this.sendTournamentStartedMessage(started.session);
-    }
-
-    if (!this.isRoomTournamentHost()) {
-      return false;
-    }
-
-    const match = this.gameStateStore.getCurrentTournamentMatch();
-
-    if (!match) {
-      return false;
-    }
-
-    const player = this.getTournamentBattlePlayer(match.participantA.playerId);
-    const opponent = this.getTournamentBattlePlayer(match.participantB.playerId);
-
-    if (
-      !player ||
-      !opponent ||
-      !hasActiveTournamentPokemon(player) ||
-      !hasActiveTournamentPokemon(opponent)
-    ) {
-      return false;
-    }
-
-    this.startTournamentBattle(match, player, opponent);
-
-    return true;
-  }
-
-  private getEligibleTournamentPlayers(): LocalPlayerState[] {
-    const state = this.gameStateStore.getState();
-    const currentPlayer = state.playersById[state.currentPlayerId];
-    const otherPlayers = Object.values(state.playersById)
-      .filter(player => player.playerId !== state.currentPlayerId)
-      .sort((left, right) =>
-        left.playerId.localeCompare(right.playerId, undefined, { numeric: true }),
-      );
-    const localPlayers = [currentPlayer, ...otherPlayers].filter(
-      (player): player is LocalPlayerState => Boolean(player),
-    );
-    const usedPlayerIds = new Set(localPlayers.map(player => player.playerId));
-    const remotePlayers = [...this.remotePlayerSnapshots.values()]
-      .map(snapshot => {
-        const preferredPlayerId = snapshot.playerId?.trim() || snapshot.sessionId;
-        const playerId = usedPlayerIds.has(preferredPlayerId)
-          ? snapshot.sessionId
-          : preferredPlayerId;
-        const player = toTournamentLocalPlayerFromSnapshot(snapshot, playerId);
-
-        if (player) {
-          usedPlayerIds.add(player.playerId);
-        }
-
-        return player;
-      })
-      .filter((player): player is LocalPlayerState => Boolean(player))
-      .sort((left, right) =>
-        left.playerId.localeCompare(right.playerId, undefined, { numeric: true }),
-      );
-
-    return [...localPlayers, ...remotePlayers].filter(hasActiveTournamentPokemon).slice(0, 6);
-  }
-
-  private getTournamentBattlePlayer(playerId: string): LocalPlayerState | undefined {
-    return this.getEligibleTournamentPlayers().find(player => player.playerId === playerId);
   }
 
   private startTournamentBattle(
@@ -822,7 +665,6 @@ export class WorldScene extends Phaser.Scene {
     const y = Math.round(this.player.y);
     const facing = this.facing;
 
-    this.tournamentBattleStarting = true;
     this.battleIntroPlaying = true;
     this.player.setVelocity(0, 0);
 
@@ -848,59 +690,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private applyReturnedTournamentResult(data: WorldSceneCreateData): void {
-    if (!isWorldTournamentBattleResult(data.tournamentResult)) {
-      return;
-    }
-
-    const previousSession = this.gameStateStore.getState().tournament.session;
-    const result = this.gameStateStore.recordTournamentMatchResult(
-      data.tournamentResult.matchId,
-      data.tournamentResult.winnerPlayerId,
-      Date.now(),
-    );
-
-    const hostPlayerId = this.getRoomHostPlayerId();
-
-    if (!previousSession || !hostPlayerId || !result.ok) {
-      return;
-    }
-
-    const matchPayload = createTournamentMatchResultAuthorityPayload({
-      hostPlayerId,
-      session: previousSession,
-      matchId: data.tournamentResult.matchId,
-      winnerPlayerId: data.tournamentResult.winnerPlayerId,
-    });
-
-    if (matchPayload) {
-      this.sendRoomMessage("TOURNAMENT_MATCH_RESULT", matchPayload);
-    }
-
-    if (!result.completed) {
-      return;
-    }
-
-    const standings = result.standings.map(standing => ({
-      playerId: standing.playerId,
-      rank: standing.rank,
-      score: standing.score,
-    }));
-    const completedPayload = createTournamentCompletedAuthorityPayload({
-      hostPlayerId,
-      session: result.session,
-      standings,
-    });
-
-    if (completedPayload) {
-      this.sendRoomMessage("TOURNAMENT_COMPLETED", completedPayload);
-    }
-
-    for (const payload of createRoundScoreUpdatedAuthorityPayloads({
-      roundIndex: result.session.roundIndex,
-      hostPlayerId,
-      standings,
-    })) {
-      this.sendRoomMessage("ROUND_SCORE_UPDATED", payload);
+    if (isWorldTournamentBattleResult(data.tournamentResult)) {
+      this.tournament?.applyReturnedResult(data.tournamentResult);
     }
   }
 
@@ -946,7 +737,6 @@ export class WorldScene extends Phaser.Scene {
     this.stepTracker = createTileStepTracker(position);
     this.encounterLocked = false;
     this.battleIntroPlaying = false;
-    this.tournamentBattleStarting = false;
   }
 
   private bindRoom(): void {
@@ -1008,8 +798,7 @@ export class WorldScene extends Phaser.Scene {
           },
           Date.now(),
         );
-        this.roundAnnouncementText?.destroy();
-        this.roundAnnouncementText = null;
+        this.tournament?.clearPresentation();
       }),
       this.room.on("TOURNAMENT_MATCH_RESULT", payload => {
         if (!this.canApplyTournamentPayloadFromRoom(payload.hostPlayerId)) {
@@ -1045,9 +834,8 @@ export class WorldScene extends Phaser.Scene {
           },
           Date.now(),
         );
-        this.roundAnnouncementText?.destroy();
-        this.roundAnnouncementText = null;
-        this.showTournamentResultMessageIfNeeded();
+        this.tournament?.clearPresentation();
+        this.tournament?.showResultPresentationIfNeeded();
       }),
       this.room.on("ROUND_SCORE_UPDATED", payload => {
         if (!this.canApplyTournamentPayloadFromRoom(payload.hostPlayerId)) {
@@ -1552,38 +1340,6 @@ export function toRemotePlayerState(snapshot: PlayerSnapshot): RemotePlayerState
   };
 }
 
-export function toTournamentLocalPlayerFromSnapshot(
-  snapshot: PlayerSnapshot,
-  playerIdOverride?: string,
-): LocalPlayerState | null {
-  const playerId = playerIdOverride?.trim() || snapshot.playerId?.trim() || snapshot.sessionId;
-  const party = cloneSnapshotParty(snapshot.party);
-  const activePartySlotIndex = normalizeSnapshotActivePartySlotIndex(
-    snapshot.activePartySlotIndex,
-    party,
-  );
-
-  if (activePartySlotIndex === null) {
-    return null;
-  }
-
-  const defaultPlayer = createDefaultLocalPlayer(playerId);
-
-  return {
-    ...defaultPlayer,
-    playerId,
-    displayName: snapshot.displayName?.trim() || playerId,
-    party,
-    activePartySlotIndex,
-    position: {
-      mapKey: snapshot.map,
-      x: snapshot.x,
-      y: snapshot.y,
-      facing: snapshot.facing,
-    },
-  };
-}
-
 function clonePlayerSnapshot(snapshot: PlayerSnapshot): PlayerSnapshot {
   return {
     ...snapshot,
@@ -1608,59 +1364,12 @@ function cloneSnapshotParty(
   );
 }
 
-function normalizeSnapshotActivePartySlotIndex(
-  activePartySlotIndex: number | undefined,
-  party: NonNullable<PlayerSnapshot["party"]>,
-): number | null {
-  const requestedSlotIndex =
-    typeof activePartySlotIndex === "number" && Number.isInteger(activePartySlotIndex)
-      ? activePartySlotIndex
-      : 0;
-
-  if (party.some(slot => slot.slotIndex === requestedSlotIndex && slot.pokemon)) {
-    return requestedSlotIndex;
-  }
-
-  return party.find(slot => slot.pokemon)?.slotIndex ?? null;
-}
-
-function createVisibleTournamentStandings(state: GameState): TournamentStanding[] {
-  if (state.tournament.session?.status === "completed") {
-    return getTournamentSessionStandings(state.tournament.session);
-  }
-
-  return state.tournament.standings.map(standing => ({
-    playerId: standing.playerId,
-    displayName: standing.displayName,
-    seed: standing.seed,
-    rank: standing.rank,
-    champion: standing.rank === 1,
-    eliminatedRoundNumber: standing.rank === 1 ? null : state.round.roundIndex,
-  }));
-}
-
 function findObject(
   map: ObjectLayerLookup,
   layerName: string,
   objectName: string,
 ): SpawnObject | null {
   return map.getObjectLayer(layerName)?.objects.find(object => object.name === objectName) ?? null;
-}
-
-function hasActiveTournamentPokemon(player: LocalPlayerState): boolean {
-  const activePokemon = player.party.find(
-    slot => slot.slotIndex === player.activePartySlotIndex,
-  )?.pokemon;
-
-  if (!activePokemon || activePokemon.status === "fainted") {
-    return false;
-  }
-
-  if (typeof activePokemon.currentHp === "number" && activePokemon.currentHp <= 0) {
-    return false;
-  }
-
-  return true;
 }
 
 function hasBattleCapablePartyPokemon(player: LocalPlayerState): boolean {
@@ -1677,17 +1386,6 @@ function hasBattleCapablePartyPokemon(player: LocalPlayerState): boolean {
 
     return true;
   });
-}
-
-function isWorldTournamentBattleResult(value: unknown): value is WorldTournamentBattleResult {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as WorldTournamentBattleResult).matchId === "string" &&
-    typeof (value as WorldTournamentBattleResult).winnerPlayerId === "string" &&
-    typeof (value as WorldTournamentBattleResult).loserPlayerId === "string" &&
-    typeof (value as WorldTournamentBattleResult).reason === "string"
-  );
 }
 
 function hasTileLayer(map: Phaser.Tilemaps.Tilemap, layerName: string): boolean {

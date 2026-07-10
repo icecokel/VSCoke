@@ -27,6 +27,9 @@ export function requireTestDatabaseUrl(
     environment.DATABASE_URL,
     environment.DB_URL,
   ].filter((value): value is string => Boolean(value?.trim()));
+
+  regularDatabaseUrls.forEach(assertRegularDatabaseUrlHasNoQuery);
+
   const testDatabaseTarget = databaseTarget(parsedTestUrl);
 
   if (
@@ -87,6 +90,12 @@ function parsePostgresUrl(value: string): URL {
   }
 
   return parsedUrl;
+}
+
+function assertRegularDatabaseUrlHasNoQuery(value: string): void {
+  if (value.trim().includes('?')) {
+    throw new Error('Regular database URLs must not include query parameters');
+  }
 }
 
 function regularDatabaseTarget(value: string): string {

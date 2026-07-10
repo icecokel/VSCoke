@@ -11,6 +11,7 @@ describe('Poke Lounge test data source', () => {
     };
     delete process.env.TEST_DATABASE_URL;
     delete process.env.DATABASE_URL;
+    delete process.env.DB_URL;
     delete process.env.DB_DATABASE;
   });
 
@@ -80,10 +81,47 @@ describe('Poke Lounge test data source', () => {
     process.env.TEST_DATABASE_URL =
       'postgresql://test-user:test-pass@127.0.0.1:5432/vscoke_test';
     process.env.DATABASE_URL =
-      'postgres://regular-user:regular-pass@127.0.0.1/vscoke_test?sslmode=require';
+      'postgres://regular-user:regular-pass@127.0.0.1/vscoke_test';
 
     expect(() => loadTestDataSource()).toThrow(
       'TEST_DATABASE_URL must not equal the regular database URL',
+    );
+  });
+
+  it.each([
+    [
+      'DATABASE_URL',
+      'postgresql://regular:regular@regular-db.invalid:6543/vscoke_test?host=127.0.0.1&port=5432',
+    ],
+    [
+      'DATABASE_URL',
+      'postgresql://regular:regular@regular-db.invalid:6543/vscoke?sslmode=require',
+    ],
+    [
+      'DB_URL',
+      'postgresql://regular:regular@regular-db.invalid:6543/vscoke?application_name=test',
+    ],
+  ] as const)(
+    'rejects query parameters in configured regular %s',
+    (environmentName, url) => {
+      process.env.TEST_DATABASE_URL =
+        'postgresql://postgres:postgres@127.0.0.1:5432/vscoke_test';
+      process.env[environmentName] = url;
+
+      expect(() => loadTestDataSource()).toThrow(
+        'Regular database URLs must not include query parameters',
+      );
+    },
+  );
+
+  it('blocks rerouted DATABASE_URL before Jest support can construct or truncate', () => {
+    process.env.TEST_DATABASE_URL =
+      'postgresql://postgres:postgres@127.0.0.1:5432/vscoke_test';
+    process.env.DATABASE_URL =
+      'postgresql://regular:regular@regular-db.invalid:6543/vscoke_test?host=127.0.0.1&port=5432';
+
+    expect(() => loadTestDatabaseSupport()).toThrow(
+      'Regular database URLs must not include query parameters',
     );
   });
 
@@ -135,4 +173,10 @@ function loadTestDataSource(): DataSource {
   }
 
   return dataSource;
+}
+
+function loadTestDatabaseSupport(): void {
+  jest.isolateModules(() => {
+    jest.requireActual('../test/support/poke-lounge-test-database');
+  });
 }

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const PUBLIC_ROOT = join(REPO_ROOT, "apps/web/public");
 const MANIFEST_PATH = join(REPO_ROOT, "docs/poke-lounge-asset-provenance.json");
+const STRICT_GATE_ENV = "POKE_LOUNGE_PROVENANCE_STRICT";
 const AUDITED_ROOTS = [
   "assets/poke-lounge",
   "assets/pokemon",
@@ -109,10 +110,34 @@ export function validateManifest(rows, publicFiles = getPublicFiles()) {
   }
 }
 
-function run() {
+export function runStrictGate() {
   const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
   validateManifest(manifest.assets);
-  console.log(`Poke Lounge provenance gate passed for ${manifest.assets.length} public files.`);
+  return manifest.assets.length;
+}
+
+export function runDeploymentGate(environment = process.env) {
+  if (environment.VERCEL !== "1" && environment[STRICT_GATE_ENV] !== "1") {
+    return false;
+  }
+
+  runStrictGate();
+  return true;
+}
+
+function run() {
+  const deploymentMode = process.argv.includes("--deployment-gate");
+  const enforced = deploymentMode ? runDeploymentGate() : true;
+
+  if (!enforced) {
+    console.log("Poke Lounge provenance deployment gate skipped for local build.");
+    return;
+  }
+
+  const assetCount = deploymentMode
+    ? JSON.parse(readFileSync(MANIFEST_PATH, "utf8")).assets.length
+    : runStrictGate();
+  console.log(`Poke Lounge provenance gate passed for ${assetCount} public files.`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

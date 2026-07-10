@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { getPublicFiles, validateManifest } from "./check-asset-provenance.mjs";
+import {
+  getPublicFiles,
+  runDeploymentGate,
+  runStrictGate,
+  validateManifest,
+} from "./check-asset-provenance.mjs";
 
 assert.throws(
   () =>
@@ -29,3 +34,7 @@ assert.throws(
   () => validateManifest([{ ...validRow, sha256: "0".repeat(64) }], [publicFile]),
   /SHA-256 mismatch/,
 );
+
+assert.throws(() => runStrictGate(), /must be approved/);
+assert.throws(() => runDeploymentGate({ VERCEL: "1" }), /must be approved/);
+assert.equal(runDeploymentGate({}), false);

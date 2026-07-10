@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node ../../scripts/poke-lounge/check-asset-provenance.mjs --deployment-gate && next build",
     "start": "next start",
     "e2e": "node scripts/playwright-runner.mjs test",
     "e2e:codegen": "node scripts/playwright-runner.mjs codegen",

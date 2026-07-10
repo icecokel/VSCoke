@@ -12,6 +12,14 @@ The `/[locale]/game/poke-lounge` route and every Poke Lounge public asset remain
 
 The checker intentionally fails now because every audited manifest row is `"rightsStatus": "blocked"`. Do not mask that failure with `|| true` in release CI.
 
+## Release owner sign-off
+
+| Release owner | Final release decision | Signed/approved at |
+| ------------- | ---------------------- | ------------------ |
+| Unassigned    | BLOCKED                | Unsigned           |
+
+No release owner, approval, or signed date is recorded. The table must remain unsigned until the strict provenance command passes with approved rows and a human release owner makes the final decision.
+
 ## Confirmed ROM-derived MP3 files
 
 - `apps/web/public/assets/poke-lounge/audio/sfx/button-confirm.mp3`
@@ -38,11 +46,11 @@ All entries below are blocked. The full per-file inventory and SHA-256 values ar
 
 ## Approval table
 
-| Required approval | Evidence required | Current state |
-| --- | --- | --- |
-| Pokémon name/marks and gameplay data | Owner/legal distribution decision | Pending |
-| ROM-derived audio and extracted data | Written authorization or replacement/removal record | Pending |
-| Sprites, textures, atlas, PokeMMO/Tuxmon map material | Original source, license/permission, required attribution | Pending |
-| VSCoke Poke Lounge ported code | Owner/contributor authorization and outbound code-license decision | Pending |
+| Required approval                                     | Evidence required                                                  | Current state |
+| ----------------------------------------------------- | ------------------------------------------------------------------ | ------------- |
+| Pokémon name/marks and gameplay data                  | Owner/legal distribution decision                                  | Pending       |
+| ROM-derived audio and extracted data                  | Written authorization or replacement/removal record                | Pending       |
+| Sprites, textures, atlas, PokeMMO/Tuxmon map material | Original source, license/permission, required attribution          | Pending       |
+| VSCoke Poke Lounge ported code                        | Owner/contributor authorization and outbound code-license decision | Pending       |
 
 Only a release owner may set a manifest row to `"rightsStatus": "approved"`; the row must then have a matching SHA-256, nonempty source, reviewer, approval timestamp, and any required attribution.

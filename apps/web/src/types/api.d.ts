@@ -114,7 +114,10 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** 게임별 Top 10 랭킹 조회 */
+    /**
+     * 게임별 Top 10 랭킹 조회
+     * @description POKE_LOUNGE 결과는 현재 미검증 상태이므로 빈 배열을 반환합니다. 응답은 항상 랭킹 배열입니다.
+     */
     get: operations["GameController_getRanking"];
     put?: never;
     post?: never;
@@ -877,6 +880,10 @@ export interface components {
       createdAtMs: number;
       /** @example 1720000001000 */
       updatedAtMs: number;
+      /** @example 3 */
+      revision: number;
+      /** @example 1720001800000 */
+      expiresAtMs: number;
       participants: components["schemas"]["PokeLoungeRoomParticipantDto"][];
       partySnapshots: {
         [key: string]: components["schemas"]["PokeLoungePartySnapshotDto"];
@@ -884,6 +891,15 @@ export interface components {
       round: components["schemas"]["PokeLoungeRoundDto"];
       tournament: components["schemas"]["PokeLoungeTournamentDto"];
       finalStandings: components["schemas"]["PokeLoungeFinalStandingDto"][];
+    };
+    PokeLoungeRoomConflictResponseDto: {
+      /** @example 409 */
+      statusCode: number;
+      /** @enum {string} */
+      code: "POKE_LOUNGE_REVISION_CONFLICT" | "POKE_LOUNGE_IDEMPOTENCY_CONFLICT";
+      /** @example Poke Lounge room revision conflict */
+      message: string;
+      snapshot: components["schemas"]["PokeLoungeRoomResponseDto"];
     };
     JoinPokeLoungeRoomDto: {
       /** @example player-b */
@@ -1253,7 +1269,10 @@ export interface operations {
   PokeLoungeController_createRoom: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        "If-Match-Revision": string;
+        "X-Idempotency-Key": string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -1269,6 +1288,14 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PokeLoungeRoomConflictResponseDto"];
         };
       };
     };
@@ -1299,7 +1326,10 @@ export interface operations {
   PokeLoungeController_joinRoom: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        "If-Match-Revision": string;
+        "X-Idempotency-Key": string;
+      };
       path: {
         roomCode: string;
       };
@@ -1319,12 +1349,23 @@ export interface operations {
           "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
         };
       };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PokeLoungeRoomConflictResponseDto"];
+        };
+      };
     };
   };
   PokeLoungeController_setReady: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        "If-Match-Revision": string;
+        "X-Idempotency-Key": string;
+      };
       path: {
         roomCode: string;
       };
@@ -1344,12 +1385,23 @@ export interface operations {
           "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
         };
       };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PokeLoungeRoomConflictResponseDto"];
+        };
+      };
     };
   };
   PokeLoungeController_updatePartySnapshot: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        "If-Match-Revision": string;
+        "X-Idempotency-Key": string;
+      };
       path: {
         roomCode: string;
       };
@@ -1369,12 +1421,23 @@ export interface operations {
           "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
         };
       };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PokeLoungeRoomConflictResponseDto"];
+        };
+      };
     };
   };
   PokeLoungeController_submitResult: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        "If-Match-Revision": string;
+        "X-Idempotency-Key": string;
+      };
       path: {
         roomCode: string;
       };
@@ -1394,12 +1457,23 @@ export interface operations {
           "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
         };
       };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PokeLoungeRoomConflictResponseDto"];
+        };
+      };
     };
   };
   PokeLoungeController_leaveRoom: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        "If-Match-Revision": string;
+        "X-Idempotency-Key": string;
+      };
       path: {
         roomCode: string;
       };
@@ -1417,6 +1491,14 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PokeLoungeRoomConflictResponseDto"];
         };
       };
     };

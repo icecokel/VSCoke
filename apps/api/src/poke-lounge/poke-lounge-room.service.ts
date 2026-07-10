@@ -1,18 +1,40 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
+  Logger,
   NotFoundException,
   Optional,
 } from '@nestjs/common';
+import {
+  hashPokeLoungeRoomCommand,
+  type PokeLoungeRoomCommandContext,
+  type PokeLoungeRoomOperation,
+} from './poke-lounge-room-command';
+import { PokeLoungeRoomConflict } from './poke-lounge-room-conflict';
+import {
+  POKE_LOUNGE_ROOM_EVENT_PUBLISHER,
+  type PokeLoungeRoomCommittedEvent,
+  type PokeLoungeRoomEventPublisher,
+} from './poke-lounge-room-event.publisher';
+import { getPokeLoungeRoomExpiresAtMs } from './poke-lounge-room-policy';
+import {
+  POKE_LOUNGE_ROOM_REPOSITORY,
+  type PokeLoungeRepositoryResult,
+  type PokeLoungeRoomRepository,
+  type PokeLoungeRoomSnapshot,
+} from './poke-lounge-room.repository';
 import type {
   CreatePokeLoungeRoomInput,
   JoinPokeLoungeRoomInput,
+  LeavePokeLoungeRoomInput,
   PokeLoungeFinalStanding,
-  PokeLoungePartySnapshot,
   PokeLoungeMatchResultReason,
+  PokeLoungePartySnapshot,
   PokeLoungeRoomParticipant,
   PokeLoungeRoomState,
   PokeLoungeTournamentMatch,
+  SetPokeLoungeReadyInput,
   SubmitPokeLoungeMatchResultInput,
   UpdatePokeLoungePartySnapshotInput,
 } from './poke-lounge-room.types';
@@ -21,9 +43,6 @@ const DEFAULT_ROUND_DURATION_MS = 60_000;
 const MIN_ROUND_DURATION_MS = 1;
 const MAX_ROUND_DURATION_MS = 3_600_000;
 const MAX_PARTICIPANTS = 6;
-const MAX_ROOMS = 200;
-const WAITING_ROOM_TTL_MS = 30 * 60_000;
-const FINISHED_ROOM_RETENTION_MS = 10 * 60_000;
 const WIN_SCORE = 100;
 const LOSS_SCORE = 50;
 const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -35,495 +54,435 @@ const MATCH_RESULT_REASONS = new Set<PokeLoungeMatchResultReason>([
   'capture',
 ]);
 
+type MutationInput = {
+  operation: Exclude<PokeLoungeRoomOperation, 'create'>;
+  roomCode: string;
+  actorPlayerId: string;
+  command: PokeLoungeRoomCommandContext;
+  nowMs: number;
+  body: unknown;
+  apply: (room: PokeLoungeRoomSnapshot) => PokeLoungeRoomSnapshot;
+};
+
 @Injectable()
 export class PokeLoungeRoomService {
-  private readonly rooms = new Map<string, PokeLoungeRoomState>();
+  private readonly logger = new Logger(PokeLoungeRoomService.name);
 
   constructor(
-    @Optional() private roomCodeFactory: () => string = createRoomCode,
-    @Optional() private nowFactory: () => number = () => Date.now(),
+    @Inject(POKE_LOUNGE_ROOM_REPOSITORY)
+    private readonly repository: PokeLoungeRoomRepository,
+    @Inject(POKE_LOUNGE_ROOM_EVENT_PUBLISHER)
+    private readonly eventPublisher: PokeLoungeRoomEventPublisher,
+    @Optional() private readonly roomCodeFactory: () => string = createRoomCode,
+    @Optional() private readonly nowFactory: () => number = () => Date.now(),
   ) {}
 
-  createRoom(input: CreatePokeLoungeRoomInput): PokeLoungeRoomState {
-    const nowMs = this.normalizeNow(input.nowMs);
-    this.pruneRooms(nowMs);
-
-    if (this.rooms.size >= MAX_ROOMS) {
-      throw new BadRequestException('Poke Lounge room capacity reached');
-    }
-
-    const roomCode = this.createUniqueRoomCode();
-    const participant = createParticipant(input, 'participant', nowMs, 1);
-    const room: PokeLoungeRoomState = {
-      roomCode,
-      status: 'waiting',
-      createdAtMs: nowMs,
-      updatedAtMs: nowMs,
-      participants: [participant],
-      partySnapshots: {},
-      round: {
-        index: 1,
-        phase: 'waiting',
-        durationMs: normalizeRoundDuration(input.roundDurationMs),
-        startedAtMs: null,
-        endsAtMs: null,
-      },
-      tournament: {
-        matches: [],
-        cumulativeScores: {},
-      },
-      finalStandings: [],
-    };
-
-    this.rooms.set(roomCode, room);
-
-    return cloneRoom(room);
-  }
-
-  joinRoom(
-    roomCode: string,
-    input: JoinPokeLoungeRoomInput,
-  ): PokeLoungeRoomState {
-    const nowMs = this.normalizeNow(input.nowMs);
-    const room = this.findRoom(roomCode, nowMs);
-    const existing = room.participants.find(
-      (row) => row.playerId === input.playerId,
-    );
-
-    if (existing) {
-      this.assertExistingParticipantRejoinable(room);
-      assertParticipantSession(
-        existing,
-        input.sessionId,
-        'Join sessionId does not match this participant',
-      );
-      existing.connected = true;
-      existing.leftAtMs = undefined;
-      existing.ready = existing.role === 'participant' ? existing.ready : false;
-      room.updatedAtMs = nowMs;
-      return cloneRoom(room);
-    }
-
-    this.assertRoomJoinable(room);
-
-    const participantCount = room.participants.filter(
-      (row) => row.role === 'participant',
-    ).length;
-    const role =
-      participantCount < MAX_PARTICIPANTS ? 'participant' : 'spectator';
-    room.participants.push(
-      createParticipant(input, role, nowMs, room.participants.length + 1),
-    );
-    room.updatedAtMs = nowMs;
-
-    return cloneRoom(room);
-  }
-
-  getRoom(roomCode: string, nowMs?: number): PokeLoungeRoomState {
-    const currentMs = this.normalizeNow(nowMs);
-    const room = this.findRoom(roomCode, currentMs);
-    this.advanceRoomClock(room, currentMs);
-
-    return cloneRoom(room);
-  }
-
-  setReady(
-    roomCode: string,
-    playerId: string,
-    sessionId: string | undefined,
-    ready: boolean,
-    nowMs?: number,
-  ): PokeLoungeRoomState {
-    const currentMs = this.normalizeNow(nowMs);
-    const room = this.findRoom(roomCode, currentMs);
-    const participant = this.findParticipant(room, playerId);
-
-    assertParticipantSession(
-      participant,
-      sessionId,
-      'Ready sessionId does not match this participant',
-    );
-
-    if (participant.role !== 'participant') {
-      throw new BadRequestException('Spectators cannot become ready');
-    }
-
-    participant.ready = ready;
-    room.updatedAtMs = currentMs;
-
-    if (this.canStartRound(room)) {
-      room.status = 'round-started';
-      room.round.phase = 'round-started';
-      room.round.startedAtMs = currentMs;
-      room.round.endsAtMs = currentMs + room.round.durationMs;
-    }
-
-    return cloneRoom(room);
-  }
-
-  updatePartySnapshot(
-    roomCode: string,
-    input: UpdatePokeLoungePartySnapshotInput,
-  ): PokeLoungeRoomState {
-    const currentMs = this.normalizeNow(input.nowMs);
-    const room = this.findRoom(roomCode, currentMs);
-    const participant = this.findParticipant(room, input.playerId);
-
-    assertParticipantSession(
-      participant,
-      input.sessionId,
-      'Party snapshot sessionId does not match this participant',
-    );
-
-    if (participant.role !== 'participant') {
+  async createRoom(
+    input: CreatePokeLoungeRoomInput,
+    command: PokeLoungeRoomCommandContext,
+  ): Promise<PokeLoungeRoomSnapshot> {
+    if (command.expectedRevision !== 0) {
       throw new BadRequestException(
-        'Spectators cannot update tournament party snapshots',
+        'If-Match-Revision must be 0 when creating a room',
       );
     }
 
-    const representativePokemon = normalizeRepresentativePokemon(
-      input.representativePokemon,
-    );
+    const normalized = normalizeCreateInput(input);
+    const nowMs = this.normalizeNow(input.nowMs);
+    const requestHash = hashPokeLoungeRoomCommand({
+      operation: 'create',
+      body: normalizedCommandBody(normalized, input.nowMs),
+    });
 
-    room.partySnapshots[participant.playerId] = {
-      playerId: participant.playerId,
-      ...(input.displayName?.trim()
-        ? { displayName: input.displayName.trim() }
-        : participant.displayName
-          ? { displayName: participant.displayName }
-          : {}),
-      ...(representativePokemon ? { representativePokemon } : {}),
-      updatedAtMs: currentMs,
-    };
-    room.updatedAtMs = currentMs;
-
-    return cloneRoom(room);
-  }
-
-  submitMatchResult(
-    roomCode: string,
-    input: SubmitPokeLoungeMatchResultInput,
-  ): PokeLoungeRoomState {
-    const currentMs = this.normalizeNow(input.nowMs);
-    const room = this.findRoom(roomCode, currentMs);
-    this.advanceRoomClock(room, currentMs);
-
-    if (room.status !== 'tournament') {
-      throw new BadRequestException('Room is not accepting tournament results');
-    }
-
-    const match = this.findPendingMatch(room, input.matchId);
-    this.assertValidMatchResult(room, match, input);
-    this.completeMatch(
-      room,
-      match,
-      input.winnerPlayerId,
-      input.loserPlayerId,
-      input.reason,
-      input.nowMs,
-    );
-
-    return cloneRoom(room);
-  }
-
-  leaveRoom(
-    roomCode: string,
-    playerId: string,
-    sessionId: string | undefined,
-    nowMs?: number,
-  ): PokeLoungeRoomState {
-    const currentMs = this.normalizeNow(nowMs);
-    const room = this.findRoom(roomCode, currentMs);
-    const participant = this.findParticipant(room, playerId);
-
-    assertParticipantSession(
-      participant,
-      sessionId,
-      'Leave sessionId does not match this participant',
-    );
-
-    participant.connected = false;
-    participant.ready = false;
-    participant.leftAtMs = currentMs;
-    room.updatedAtMs = currentMs;
-
-    if (room.status === 'waiting') {
-      room.participants = room.participants.filter(
-        (row) => row.playerId !== playerId,
-      );
-      delete room.partySnapshots[playerId];
-    }
-
-    if (participant.role === 'participant') {
-      this.completeParticipantLeaveAsForfeit(room, playerId, currentMs);
-    }
-
-    if (!room.participants.some((row) => row.connected)) {
-      room.status = 'closed';
-      room.round.phase = 'completed';
-    }
-
-    return cloneRoom(room);
-  }
-
-  resetForTest(
-    roomCodeFactory: () => string = createRoomCode,
-    nowFactory: () => number = () => Date.now(),
-  ): void {
-    this.rooms.clear();
-    this.roomCodeFactory = roomCodeFactory;
-    this.nowFactory = nowFactory;
-  }
-
-  private createUniqueRoomCode(): string {
     for (let attempt = 0; attempt < 20; attempt += 1) {
-      const roomCode = this.roomCodeFactory();
-      if (!this.rooms.has(roomCode)) {
-        return roomCode;
+      const room: PokeLoungeRoomSnapshot = {
+        roomCode: this.roomCodeFactory(),
+        status: 'waiting',
+        createdAtMs: nowMs,
+        updatedAtMs: nowMs,
+        participants: [createParticipant(normalized, 'participant', nowMs)],
+        partySnapshots: {},
+        round: {
+          index: 1,
+          phase: 'waiting',
+          durationMs: normalized.roundDurationMs,
+          startedAtMs: null,
+          endsAtMs: null,
+        },
+        tournament: {
+          matches: [],
+          cumulativeScores: {},
+        },
+        finalStandings: [],
+        revision: 0,
+        expiresAtMs: 0,
+      };
+      room.expiresAtMs = getPokeLoungeRoomExpiresAtMs(room);
+
+      const result = await this.repository.create({
+        room,
+        actorPlayerId: normalized.playerId,
+        idempotencyKey: command.idempotencyKey,
+        requestHash,
+        nowMs,
+      });
+
+      if (result.outcome === 'room-code-collision') {
+        continue;
       }
+
+      if (result.outcome === 'capacity-reached') {
+        throw new BadRequestException('Poke Lounge room capacity reached');
+      }
+
+      if (!('snapshot' in result)) {
+        continue;
+      }
+
+      if (result.committedChange) {
+        await this.publish('room-created', result.snapshot);
+      }
+
+      this.throwForConflict(result);
+
+      return structuredClone(result.snapshot);
     }
 
     throw new BadRequestException('Unable to create a unique room code');
   }
 
-  private findRoom(roomCode: string, nowMs: number): PokeLoungeRoomState {
-    this.pruneRooms(nowMs);
-    const normalizedRoomCode = normalizeRoomCode(roomCode);
-    const room = this.rooms.get(normalizedRoomCode);
+  async getRoom(
+    roomCode: string,
+    nowMs?: number,
+  ): Promise<PokeLoungeRoomSnapshot> {
+    const result = await this.repository.getAndAdvance(
+      normalizeRoomCode(roomCode),
+      this.normalizeNow(nowMs),
+    );
 
-    if (!room) {
+    if (!result.snapshot) {
       throw new NotFoundException('Poke Lounge room not found');
     }
 
-    return room;
+    if (result.committedChange) {
+      await this.publish('room-clock-advanced', result.snapshot);
+    }
+
+    return structuredClone(result.snapshot);
   }
 
-  private pruneRooms(nowMs: number): void {
-    for (const [roomCode, room] of this.rooms.entries()) {
-      if (this.isRoomStale(room, nowMs)) {
-        this.rooms.delete(roomCode);
-      }
-    }
-  }
+  async joinRoom(
+    roomCode: string,
+    input: JoinPokeLoungeRoomInput,
+    command: PokeLoungeRoomCommandContext,
+  ): Promise<PokeLoungeRoomSnapshot> {
+    const normalized = normalizeJoinInput(input);
+    const nowMs = this.normalizeNow(input.nowMs);
 
-  private isRoomStale(room: PokeLoungeRoomState, nowMs: number): boolean {
-    const ageMs = nowMs - room.updatedAtMs;
-
-    if (room.status === 'waiting') {
-      return ageMs > WAITING_ROOM_TTL_MS;
-    }
-
-    if (room.status === 'closed' || room.status === 'completed') {
-      return ageMs > FINISHED_ROOM_RETENTION_MS;
-    }
-
-    return false;
-  }
-
-  private findParticipant(
-    room: PokeLoungeRoomState,
-    playerId: string,
-  ): PokeLoungeRoomParticipant {
-    const participant = room.participants.find(
-      (row) => row.playerId === playerId,
-    );
-
-    if (!participant) {
-      throw new BadRequestException('Player is not in this room');
-    }
-
-    return participant;
-  }
-
-  private assertRoomJoinable(room: PokeLoungeRoomState): void {
-    if (room.status !== 'waiting') {
-      throw new BadRequestException('Room is not joinable');
-    }
-  }
-
-  private assertExistingParticipantRejoinable(room: PokeLoungeRoomState): void {
-    if (room.status !== 'waiting' && room.status !== 'round-started') {
-      throw new BadRequestException('Room is not joinable');
-    }
-  }
-
-  private canStartRound(room: PokeLoungeRoomState): boolean {
-    if (room.status !== 'waiting' || room.round.phase !== 'waiting') {
-      return false;
-    }
-
-    const participants = room.participants.filter(
-      (row) => row.role === 'participant' && row.connected,
-    );
-
-    return (
-      participants.length >= 2 &&
-      participants.every((row) => row.ready && row.connected)
-    );
-  }
-
-  private advanceRoomClock(room: PokeLoungeRoomState, nowMs: number): void {
-    if (
-      room.status !== 'round-started' ||
-      room.round.phase !== 'round-started' ||
-      room.round.endsAtMs === null ||
-      nowMs < room.round.endsAtMs
-    ) {
-      return;
-    }
-
-    room.status = 'tournament';
-    room.round.phase = 'tournament';
-    room.updatedAtMs = nowMs;
-    room.tournament.matches = createTournamentMatches(room);
-  }
-
-  private findPendingMatch(
-    room: PokeLoungeRoomState,
-    matchId: string,
-  ): PokeLoungeTournamentMatch {
-    const match = room.tournament.matches.find(
-      (candidate) => candidate.matchId === matchId,
-    );
-
-    if (!match) {
-      throw new BadRequestException('Match not found');
-    }
-
-    if (match.status !== 'pending') {
-      throw new BadRequestException('Match result is already completed');
-    }
-
-    return match;
-  }
-
-  private assertValidMatchResult(
-    room: PokeLoungeRoomState,
-    match: PokeLoungeTournamentMatch,
-    input: SubmitPokeLoungeMatchResultInput,
-  ): void {
-    const participantIds = new Set(match.participantIds);
-
-    if (!participantIds.has(input.reportingPlayerId)) {
-      throw new BadRequestException(
-        'Reporting player is not assigned to this match',
-      );
-    }
-
-    const reportingParticipant = this.findParticipant(
-      room,
-      input.reportingPlayerId,
-    );
-    assertParticipantSession(
-      reportingParticipant,
-      input.reportingSessionId,
-      'Match result sessionId does not match this participant',
-    );
-
-    if (!isMatchResultReason(input.reason)) {
-      throw new BadRequestException('Unsupported match result reason');
-    }
-
-    if (
-      !participantIds.has(input.winnerPlayerId) ||
-      !participantIds.has(input.loserPlayerId) ||
-      input.winnerPlayerId === input.loserPlayerId
-    ) {
-      throw new BadRequestException(
-        'Winner and loser must be match participants',
-      );
-    }
-  }
-
-  private completeMatch(
-    room: PokeLoungeRoomState,
-    match: PokeLoungeTournamentMatch,
-    winnerPlayerId: string,
-    loserPlayerId: string,
-    reason: PokeLoungeMatchResultReason,
-    nowMs?: number,
-  ): void {
-    const currentMs = this.normalizeNow(nowMs);
-    match.status = 'completed';
-    match.winnerPlayerId = winnerPlayerId;
-    match.loserPlayerId = loserPlayerId;
-    match.resultReason = reason;
-    match.completedAtMs = currentMs;
-    room.tournament.cumulativeScores[winnerPlayerId] =
-      (room.tournament.cumulativeScores[winnerPlayerId] ?? 0) + WIN_SCORE;
-    room.tournament.cumulativeScores[loserPlayerId] =
-      (room.tournament.cumulativeScores[loserPlayerId] ?? 0) + LOSS_SCORE;
-    room.updatedAtMs = currentMs;
-
-    if (
-      room.tournament.matches.every(
-        (candidate) => candidate.status === 'completed',
-      )
-    ) {
-      room.status = 'completed';
-      room.round.phase = 'completed';
-      room.finalStandings = createFinalStandings(room);
-    }
-  }
-
-  private completeParticipantLeaveAsForfeit(
-    room: PokeLoungeRoomState,
-    playerId: string,
-    nowMs: number,
-  ): void {
-    if (room.status === 'tournament') {
-      const match = room.tournament.matches.find(
-        (candidate) =>
-          candidate.status === 'pending' &&
-          candidate.participantIds.includes(playerId),
-      );
-      const opponentId = match?.participantIds.find((id) => id !== playerId);
-
-      if (match && opponentId) {
-        this.completeMatch(room, match, opponentId, playerId, 'forfeit', nowMs);
-      }
-
-      return;
-    }
-
-    if (room.status !== 'round-started') {
-      return;
-    }
-
-    const opponents = room.participants.filter(
-      (row) =>
-        row.role === 'participant' &&
-        row.connected &&
-        row.playerId !== playerId,
-    );
-
-    if (opponents.length !== 1) {
-      return;
-    }
-
-    const [opponent] = opponents;
-
-    const participantIds = createParticipantIdsForForfeit(room, [
-      playerId,
-      opponent.playerId,
-    ]);
-    const match: PokeLoungeTournamentMatch = {
-      matchId: `round-${room.round.index}-match-${room.tournament.matches.length + 1}`,
-      participantIds,
-      status: 'pending',
-    };
-
-    room.status = 'tournament';
-    room.round.phase = 'tournament';
-    room.tournament.matches.push(match);
-    this.completeMatch(
-      room,
-      match,
-      opponent.playerId,
-      playerId,
-      'forfeit',
+    return this.mutateRoom({
+      operation: 'join',
+      roomCode,
+      actorPlayerId: normalized.playerId,
+      command,
       nowMs,
-    );
+      body: normalizedCommandBody(normalized, input.nowMs),
+      apply: (room) => {
+        const existing = room.participants.find(
+          (participant) => participant.playerId === normalized.playerId,
+        );
+
+        if (existing) {
+          assertExistingParticipantRejoinable(room);
+          assertParticipantSession(
+            existing,
+            normalized.sessionId,
+            'Join sessionId does not match this participant',
+          );
+          existing.connected = true;
+          existing.leftAtMs = undefined;
+          existing.ready =
+            existing.role === 'participant' ? existing.ready : false;
+          room.updatedAtMs = nowMs;
+          return room;
+        }
+
+        assertRoomJoinable(room);
+        const participantCount = room.participants.filter(
+          (participant) => participant.role === 'participant',
+        ).length;
+        const role =
+          participantCount < MAX_PARTICIPANTS ? 'participant' : 'spectator';
+        room.participants.push(createParticipant(normalized, role, nowMs));
+        room.updatedAtMs = nowMs;
+
+        return room;
+      },
+    });
+  }
+
+  async setReady(
+    roomCode: string,
+    input: SetPokeLoungeReadyInput,
+    command: PokeLoungeRoomCommandContext,
+  ): Promise<PokeLoungeRoomSnapshot> {
+    const normalized = {
+      playerId: input.playerId.trim(),
+      sessionId: input.sessionId?.trim(),
+      ready: input.ready,
+    };
+    const nowMs = this.normalizeNow(input.nowMs);
+
+    return this.mutateRoom({
+      operation: 'ready',
+      roomCode,
+      actorPlayerId: normalized.playerId,
+      command,
+      nowMs,
+      body: normalizedCommandBody(normalized, input.nowMs),
+      apply: (room) => {
+        const participant = findParticipant(room, normalized.playerId);
+        assertParticipantSession(
+          participant,
+          normalized.sessionId,
+          'Ready sessionId does not match this participant',
+        );
+
+        if (participant.role !== 'participant') {
+          throw new BadRequestException('Spectators cannot become ready');
+        }
+
+        participant.ready = normalized.ready;
+        room.updatedAtMs = nowMs;
+
+        if (canStartRound(room)) {
+          room.status = 'round-started';
+          room.round.phase = 'round-started';
+          room.round.startedAtMs = nowMs;
+          room.round.endsAtMs = nowMs + room.round.durationMs;
+        }
+
+        return room;
+      },
+    });
+  }
+
+  async updatePartySnapshot(
+    roomCode: string,
+    input: UpdatePokeLoungePartySnapshotInput,
+    command: PokeLoungeRoomCommandContext,
+  ): Promise<PokeLoungeRoomSnapshot> {
+    const normalized = {
+      playerId: input.playerId.trim(),
+      sessionId: input.sessionId.trim(),
+      ...(input.displayName?.trim()
+        ? { displayName: input.displayName.trim() }
+        : {}),
+      ...(input.representativePokemon
+        ? {
+            representativePokemon: normalizeRepresentativePokemon(
+              input.representativePokemon,
+            ),
+          }
+        : {}),
+    };
+    const nowMs = this.normalizeNow(input.nowMs);
+
+    return this.mutateRoom({
+      operation: 'party-snapshot',
+      roomCode,
+      actorPlayerId: normalized.playerId,
+      command,
+      nowMs,
+      body: normalizedCommandBody(normalized, input.nowMs),
+      apply: (room) => {
+        const participant = findParticipant(room, normalized.playerId);
+        assertParticipantSession(
+          participant,
+          normalized.sessionId,
+          'Party snapshot sessionId does not match this participant',
+        );
+
+        if (participant.role !== 'participant') {
+          throw new BadRequestException(
+            'Spectators cannot update tournament party snapshots',
+          );
+        }
+
+        room.partySnapshots[participant.playerId] = {
+          playerId: participant.playerId,
+          ...(normalized.displayName
+            ? { displayName: normalized.displayName }
+            : participant.displayName
+              ? { displayName: participant.displayName }
+              : {}),
+          ...(normalized.representativePokemon
+            ? { representativePokemon: normalized.representativePokemon }
+            : {}),
+          updatedAtMs: nowMs,
+        };
+        room.updatedAtMs = nowMs;
+
+        return room;
+      },
+    });
+  }
+
+  async submitMatchResult(
+    roomCode: string,
+    input: SubmitPokeLoungeMatchResultInput,
+    command: PokeLoungeRoomCommandContext,
+  ): Promise<PokeLoungeRoomSnapshot> {
+    const normalized = {
+      reportingPlayerId: input.reportingPlayerId.trim(),
+      reportingSessionId: input.reportingSessionId?.trim(),
+      matchId: input.matchId.trim(),
+      winnerPlayerId: input.winnerPlayerId.trim(),
+      loserPlayerId: input.loserPlayerId.trim(),
+      reason: input.reason,
+    };
+    const nowMs = this.normalizeNow(input.nowMs);
+
+    return this.mutateRoom({
+      operation: 'result',
+      roomCode,
+      actorPlayerId: normalized.reportingPlayerId,
+      command,
+      nowMs,
+      body: normalizedCommandBody(normalized, input.nowMs),
+      apply: (room) => {
+        if (room.status !== 'tournament') {
+          throw new BadRequestException(
+            'Room is not accepting tournament results',
+          );
+        }
+
+        const match = findPendingMatch(room, normalized.matchId);
+        assertValidMatchResult(room, match, normalized);
+        completeMatch(
+          room,
+          match,
+          normalized.winnerPlayerId,
+          normalized.loserPlayerId,
+          normalized.reason,
+          nowMs,
+        );
+
+        return room;
+      },
+    });
+  }
+
+  async leaveRoom(
+    roomCode: string,
+    input: LeavePokeLoungeRoomInput,
+    command: PokeLoungeRoomCommandContext,
+  ): Promise<PokeLoungeRoomSnapshot> {
+    const normalized = {
+      playerId: input.playerId?.trim() ?? '',
+      sessionId: input.sessionId?.trim(),
+    };
+    const nowMs = this.normalizeNow(input.nowMs);
+
+    return this.mutateRoom({
+      operation: 'leave',
+      roomCode,
+      actorPlayerId: normalized.playerId,
+      command,
+      nowMs,
+      body: normalizedCommandBody(normalized, input.nowMs),
+      apply: (room) => {
+        const participant = findParticipant(room, normalized.playerId);
+        assertParticipantSession(
+          participant,
+          normalized.sessionId,
+          'Leave sessionId does not match this participant',
+        );
+
+        participant.connected = false;
+        participant.ready = false;
+        participant.leftAtMs = nowMs;
+        room.updatedAtMs = nowMs;
+
+        if (room.status === 'waiting') {
+          room.participants = room.participants.filter(
+            (row) => row.playerId !== normalized.playerId,
+          );
+          delete room.partySnapshots[normalized.playerId];
+        }
+
+        if (participant.role === 'participant') {
+          completeParticipantLeaveAsForfeit(room, normalized.playerId, nowMs);
+        }
+
+        if (!room.participants.some((row) => row.connected)) {
+          room.status = 'closed';
+          room.round.phase = 'completed';
+        }
+
+        return room;
+      },
+    });
+  }
+
+  private async mutateRoom(
+    input: MutationInput,
+  ): Promise<PokeLoungeRoomSnapshot> {
+    const normalizedRoomCode = normalizeRoomCode(input.roomCode);
+    const result = await this.repository.mutate({
+      roomCode: normalizedRoomCode,
+      actorPlayerId: input.actorPlayerId,
+      idempotencyKey: input.command.idempotencyKey,
+      requestHash: hashPokeLoungeRoomCommand({
+        operation: input.operation,
+        roomCode: normalizedRoomCode,
+        body: input.body,
+      }),
+      expectedRevision: input.command.expectedRevision,
+      nowMs: input.nowMs,
+      apply: input.apply,
+    });
+
+    if (!result) {
+      throw new NotFoundException('Poke Lounge room not found');
+    }
+
+    if (result.committedChange) {
+      await this.publish(
+        result.outcome === 'committed' ? 'room-updated' : 'room-clock-advanced',
+        result.snapshot,
+      );
+    }
+
+    this.throwForConflict(result);
+
+    return structuredClone(result.snapshot);
+  }
+
+  private throwForConflict(result: PokeLoungeRepositoryResult): void {
+    if (result.outcome === 'revision-conflict') {
+      throw new PokeLoungeRoomConflict('revision', result.snapshot);
+    }
+
+    if (result.outcome === 'idempotency-conflict') {
+      throw new PokeLoungeRoomConflict('idempotency', result.snapshot);
+    }
+  }
+
+  private async publish(
+    type: PokeLoungeRoomCommittedEvent['type'],
+    snapshot: PokeLoungeRoomSnapshot,
+  ): Promise<void> {
+    try {
+      await this.eventPublisher.publish({
+        type,
+        snapshot: structuredClone(snapshot),
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to publish committed Poke Lounge room event for ${snapshot.roomCode}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   private normalizeNow(nowMs: number | undefined): number {
@@ -531,24 +490,66 @@ export class PokeLoungeRoomService {
   }
 }
 
-function createParticipant(
-  input: CreatePokeLoungeRoomInput | JoinPokeLoungeRoomInput,
-  role: PokeLoungeRoomParticipant['role'],
-  nowMs: number,
-  index: number,
-): PokeLoungeRoomParticipant {
-  const playerId = input.playerId?.trim() || `player-${index}`;
-  const sessionId = input.sessionId?.trim();
+type NormalizedParticipantInput = {
+  playerId: string;
+  sessionId: string;
+  userId?: string;
+  displayName: string;
+};
 
-  if (!sessionId) {
-    throw new BadRequestException('sessionId is required');
-  }
+type NormalizedCreateInput = NormalizedParticipantInput & {
+  roundDurationMs: number;
+};
+
+function normalizeCreateInput(
+  input: CreatePokeLoungeRoomInput,
+): NormalizedCreateInput {
+  const playerId = input.playerId?.trim() || 'player-1';
 
   return {
-    sessionId,
     playerId,
+    sessionId: requireSessionId(input.sessionId),
     ...(input.userId?.trim() ? { userId: input.userId.trim() } : {}),
     displayName: input.displayName?.trim() || formatDefaultPlayerName(playerId),
+    roundDurationMs: normalizeRoundDuration(input.roundDurationMs),
+  };
+}
+
+function normalizeJoinInput(
+  input: JoinPokeLoungeRoomInput,
+): NormalizedParticipantInput {
+  const playerId = input.playerId?.trim() || 'player-1';
+
+  return {
+    playerId,
+    sessionId: requireSessionId(input.sessionId),
+    ...(input.userId?.trim() ? { userId: input.userId.trim() } : {}),
+    displayName: input.displayName?.trim() || formatDefaultPlayerName(playerId),
+  };
+}
+
+function normalizedCommandBody<T extends Record<string, unknown>>(
+  normalized: T,
+  nowMs: number | undefined,
+): T & { nowMs?: number } {
+  return {
+    ...normalized,
+    ...(typeof nowMs === 'number' && Number.isFinite(nowMs)
+      ? { nowMs: normalizeNow(nowMs) }
+      : {}),
+  };
+}
+
+function createParticipant(
+  input: NormalizedParticipantInput,
+  role: PokeLoungeRoomParticipant['role'],
+  nowMs: number,
+): PokeLoungeRoomParticipant {
+  return {
+    sessionId: input.sessionId,
+    playerId: input.playerId,
+    ...(input.userId ? { userId: input.userId } : {}),
+    displayName: input.displayName,
     role,
     ready: false,
     connected: true,
@@ -556,42 +557,208 @@ function createParticipant(
   };
 }
 
+function requireSessionId(sessionId: string | undefined): string {
+  const normalized = sessionId?.trim();
+
+  if (!normalized) {
+    throw new BadRequestException('sessionId is required');
+  }
+
+  return normalized;
+}
+
 function assertParticipantSession(
   participant: PokeLoungeRoomParticipant,
   sessionId: string | undefined,
   message: string,
 ): void {
-  const requestSessionId = sessionId?.trim();
-
-  if (!requestSessionId || participant.sessionId !== requestSessionId) {
+  if (!sessionId || participant.sessionId !== sessionId) {
     throw new BadRequestException(message);
   }
 }
 
-function createTournamentMatches(
+function findParticipant(
   room: PokeLoungeRoomState,
-): PokeLoungeTournamentMatch[] {
-  const participants = room.participants
-    .filter((row) => row.role === 'participant' && row.connected)
-    .sort(
-      (left, right) =>
-        left.joinedAtMs - right.joinedAtMs ||
-        left.playerId.localeCompare(right.playerId),
-    );
-  const matches: PokeLoungeTournamentMatch[] = [];
+  playerId: string,
+): PokeLoungeRoomParticipant {
+  const participant = room.participants.find(
+    (candidate) => candidate.playerId === playerId,
+  );
 
-  for (let index = 0; index + 1 < participants.length; index += 2) {
-    matches.push({
-      matchId: `round-${room.round.index}-match-${matches.length + 1}`,
-      participantIds: [
-        participants[index].playerId,
-        participants[index + 1].playerId,
-      ],
-      status: 'pending',
-    });
+  if (!participant) {
+    throw new BadRequestException('Player is not in this room');
   }
 
-  return matches;
+  return participant;
+}
+
+function assertRoomJoinable(room: PokeLoungeRoomState): void {
+  if (room.status !== 'waiting') {
+    throw new BadRequestException('Room is not joinable');
+  }
+}
+
+function assertExistingParticipantRejoinable(room: PokeLoungeRoomState): void {
+  if (room.status !== 'waiting' && room.status !== 'round-started') {
+    throw new BadRequestException('Room is not joinable');
+  }
+}
+
+function canStartRound(room: PokeLoungeRoomState): boolean {
+  if (room.status !== 'waiting' || room.round.phase !== 'waiting') {
+    return false;
+  }
+
+  const participants = room.participants.filter(
+    (participant) =>
+      participant.role === 'participant' && participant.connected,
+  );
+
+  return (
+    participants.length >= 2 &&
+    participants.every((participant) => participant.ready)
+  );
+}
+
+function findPendingMatch(
+  room: PokeLoungeRoomState,
+  matchId: string,
+): PokeLoungeTournamentMatch {
+  const match = room.tournament.matches.find(
+    (candidate) => candidate.matchId === matchId,
+  );
+
+  if (!match) {
+    throw new BadRequestException('Match not found');
+  }
+
+  if (match.status !== 'pending') {
+    throw new BadRequestException('Match result is already completed');
+  }
+
+  return match;
+}
+
+function assertValidMatchResult(
+  room: PokeLoungeRoomState,
+  match: PokeLoungeTournamentMatch,
+  input: {
+    reportingPlayerId: string;
+    reportingSessionId?: string;
+    winnerPlayerId: string;
+    loserPlayerId: string;
+    reason: PokeLoungeMatchResultReason;
+  },
+): void {
+  const participantIds = new Set(match.participantIds);
+
+  if (!participantIds.has(input.reportingPlayerId)) {
+    throw new BadRequestException(
+      'Reporting player is not assigned to this match',
+    );
+  }
+
+  const reportingParticipant = findParticipant(room, input.reportingPlayerId);
+  assertParticipantSession(
+    reportingParticipant,
+    input.reportingSessionId,
+    'Match result sessionId does not match this participant',
+  );
+
+  if (!isMatchResultReason(input.reason)) {
+    throw new BadRequestException('Unsupported match result reason');
+  }
+
+  if (
+    !participantIds.has(input.winnerPlayerId) ||
+    !participantIds.has(input.loserPlayerId) ||
+    input.winnerPlayerId === input.loserPlayerId
+  ) {
+    throw new BadRequestException(
+      'Winner and loser must be match participants',
+    );
+  }
+}
+
+function completeMatch(
+  room: PokeLoungeRoomState,
+  match: PokeLoungeTournamentMatch,
+  winnerPlayerId: string,
+  loserPlayerId: string,
+  reason: PokeLoungeMatchResultReason,
+  nowMs: number,
+): void {
+  match.status = 'completed';
+  match.winnerPlayerId = winnerPlayerId;
+  match.loserPlayerId = loserPlayerId;
+  match.resultReason = reason;
+  match.completedAtMs = nowMs;
+  room.tournament.cumulativeScores[winnerPlayerId] =
+    (room.tournament.cumulativeScores[winnerPlayerId] ?? 0) + WIN_SCORE;
+  room.tournament.cumulativeScores[loserPlayerId] =
+    (room.tournament.cumulativeScores[loserPlayerId] ?? 0) + LOSS_SCORE;
+  room.updatedAtMs = nowMs;
+
+  if (
+    room.tournament.matches.every(
+      (candidate) => candidate.status === 'completed',
+    )
+  ) {
+    room.status = 'completed';
+    room.round.phase = 'completed';
+    room.finalStandings = createFinalStandings(room);
+  }
+}
+
+function completeParticipantLeaveAsForfeit(
+  room: PokeLoungeRoomState,
+  playerId: string,
+  nowMs: number,
+): void {
+  if (room.status === 'tournament') {
+    const match = room.tournament.matches.find(
+      (candidate) =>
+        candidate.status === 'pending' &&
+        candidate.participantIds.includes(playerId),
+    );
+    const opponentId = match?.participantIds.find((id) => id !== playerId);
+
+    if (match && opponentId) {
+      completeMatch(room, match, opponentId, playerId, 'forfeit', nowMs);
+    }
+
+    return;
+  }
+
+  if (room.status !== 'round-started') {
+    return;
+  }
+
+  const opponents = room.participants.filter(
+    (participant) =>
+      participant.role === 'participant' &&
+      participant.connected &&
+      participant.playerId !== playerId,
+  );
+
+  if (opponents.length !== 1) {
+    return;
+  }
+
+  const [opponent] = opponents;
+  const match: PokeLoungeTournamentMatch = {
+    matchId: `round-${room.round.index}-match-${room.tournament.matches.length + 1}`,
+    participantIds: createParticipantIdsForForfeit(room, [
+      playerId,
+      opponent.playerId,
+    ]),
+    status: 'pending',
+  };
+
+  room.status = 'tournament';
+  room.round.phase = 'tournament';
+  room.tournament.matches.push(match);
+  completeMatch(room, match, opponent.playerId, playerId, 'forfeit', nowMs);
 }
 
 function createParticipantIdsForForfeit(
@@ -600,13 +767,13 @@ function createParticipantIdsForForfeit(
 ): [string, string] {
   const playerIdSet = new Set(playerIds);
   const orderedIds = room.participants
-    .filter((row) => playerIdSet.has(row.playerId))
+    .filter((participant) => playerIdSet.has(participant.playerId))
     .sort(
       (left, right) =>
         left.joinedAtMs - right.joinedAtMs ||
         left.playerId.localeCompare(right.playerId),
     )
-    .map((row) => row.playerId);
+    .map((participant) => participant.playerId);
 
   return orderedIds.length === 2 ? [orderedIds[0], orderedIds[1]] : playerIds;
 }
@@ -615,75 +782,29 @@ function createFinalStandings(
   room: PokeLoungeRoomState,
 ): PokeLoungeFinalStanding[] {
   return room.participants
-    .filter((row) => row.role === 'participant')
-    .map((row) => ({
-      playerId: row.playerId,
-      displayName: row.displayName,
-      score: room.tournament.cumulativeScores[row.playerId] ?? 0,
+    .filter((participant) => participant.role === 'participant')
+    .map((participant) => ({
+      playerId: participant.playerId,
+      displayName: participant.displayName,
+      score: room.tournament.cumulativeScores[participant.playerId] ?? 0,
       rank: 0,
     }))
     .sort(
       (left, right) =>
         right.score - left.score || left.playerId.localeCompare(right.playerId),
     )
-    .map((row, index, rows) => ({
-      ...row,
+    .map((standing, index, standings) => ({
+      ...standing,
       rank:
-        index > 0 && rows[index - 1].score === row.score
-          ? rows[index - 1].rank
+        index > 0 && standings[index - 1].score === standing.score
+          ? standings[index - 1].rank
           : index + 1,
     }));
 }
 
-function normalizeRoomCode(roomCode: string): string {
-  return roomCode.trim().toUpperCase();
-}
-
-function isMatchResultReason(
-  value: unknown,
-): value is PokeLoungeMatchResultReason {
-  return (
-    typeof value === 'string' &&
-    MATCH_RESULT_REASONS.has(value as PokeLoungeMatchResultReason)
-  );
-}
-
-function normalizeRoundDuration(roundDurationMs: number | undefined): number {
-  if (
-    typeof roundDurationMs !== 'number' ||
-    !Number.isFinite(roundDurationMs)
-  ) {
-    return DEFAULT_ROUND_DURATION_MS;
-  }
-
-  return Math.max(
-    MIN_ROUND_DURATION_MS,
-    Math.min(MAX_ROUND_DURATION_MS, Math.floor(roundDurationMs)),
-  );
-}
-
-function normalizeNow(
-  nowMs: number | undefined,
-  nowFactory: () => number = () => Date.now(),
-): number {
-  return typeof nowMs === 'number' && Number.isFinite(nowMs)
-    ? Math.max(0, Math.floor(nowMs))
-    : nowFactory();
-}
-
-function formatDefaultPlayerName(playerId: string): string {
-  const match = /^player-(\d+)$/.exec(playerId);
-
-  return match ? `Player ${match[1]}` : playerId;
-}
-
-function cloneRoom(room: PokeLoungeRoomState): PokeLoungeRoomState {
-  return structuredClone(room);
-}
-
 function normalizeRepresentativePokemon(
-  value: PokeLoungePartySnapshot['representativePokemon'] | undefined,
-): PokeLoungePartySnapshot['representativePokemon'] | undefined {
+  value: PokeLoungePartySnapshot['representativePokemon'],
+): PokeLoungePartySnapshot['representativePokemon'] {
   if (!value) {
     return undefined;
   }
@@ -723,6 +844,48 @@ function normalizeNonNegativeInteger(
   }
 
   return value;
+}
+
+function normalizeRoundDuration(roundDurationMs: number | undefined): number {
+  if (
+    typeof roundDurationMs !== 'number' ||
+    !Number.isFinite(roundDurationMs)
+  ) {
+    return DEFAULT_ROUND_DURATION_MS;
+  }
+
+  return Math.max(
+    MIN_ROUND_DURATION_MS,
+    Math.min(MAX_ROUND_DURATION_MS, Math.floor(roundDurationMs)),
+  );
+}
+
+function normalizeNow(
+  nowMs: number | undefined,
+  nowFactory: () => number = () => Date.now(),
+): number {
+  return typeof nowMs === 'number' && Number.isFinite(nowMs)
+    ? Math.max(0, Math.floor(nowMs))
+    : nowFactory();
+}
+
+function normalizeRoomCode(roomCode: string): string {
+  return roomCode.trim().toUpperCase();
+}
+
+function isMatchResultReason(
+  value: unknown,
+): value is PokeLoungeMatchResultReason {
+  return (
+    typeof value === 'string' &&
+    MATCH_RESULT_REASONS.has(value as PokeLoungeMatchResultReason)
+  );
+}
+
+function formatDefaultPlayerName(playerId: string): string {
+  const match = /^player-(\d+)$/.exec(playerId);
+
+  return match ? `Player ${match[1]}` : playerId;
 }
 
 function createRoomCode(): string {

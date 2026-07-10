@@ -12,6 +12,18 @@ type ContractResponse = {
   content?: Record<string, { schema?: ContractSchema }>;
 };
 
+type ContractOperation = {
+  parameters?: Array<{
+    in?: string;
+    name?: string;
+    required?: boolean;
+  }>;
+  requestBody?: {
+    content?: Record<string, { schema?: ContractSchema & { $ref?: string } }>;
+  };
+  responses?: Record<string, ContractResponse>;
+};
+
 type ContractComponentSchema = {
   properties?: Record<string, ContractSchema>;
 };
@@ -86,5 +98,65 @@ describe('Local OpenAPI contract generation', () => {
         nullable: true,
       }),
     );
+
+    const roomSchema = document.components?.schemas
+      ?.PokeLoungeRoomResponseDto as ContractComponentSchema | undefined;
+    const conflictSchema = document.components?.schemas
+      ?.PokeLoungeRoomConflictResponseDto as
+      | ContractComponentSchema
+      | undefined;
+
+    expect(roomSchema?.properties?.revision?.type).toBe('number');
+    expect(roomSchema?.properties?.expiresAtMs?.type).toBe('number');
+    expect(conflictSchema?.properties?.statusCode?.type).toBe('number');
+    expect(Object.keys(conflictSchema?.properties ?? {})).toEqual(
+      expect.arrayContaining(['statusCode', 'code', 'message', 'snapshot']),
+    );
+
+    for (const [operation, requestDto] of [
+      [document.paths?.['/poke-lounge/rooms']?.post, 'CreatePokeLoungeRoomDto'],
+      [
+        document.paths?.['/poke-lounge/rooms/{roomCode}/join']?.post,
+        'JoinPokeLoungeRoomDto',
+      ],
+      [
+        document.paths?.['/poke-lounge/rooms/{roomCode}/ready']?.post,
+        'SetPokeLoungeReadyDto',
+      ],
+      [
+        document.paths?.['/poke-lounge/rooms/{roomCode}/party-snapshot']?.post,
+        'UpdatePokeLoungePartySnapshotDto',
+      ],
+      [
+        document.paths?.['/poke-lounge/rooms/{roomCode}/result']?.post,
+        'SubmitPokeLoungeMatchResultDto',
+      ],
+      [
+        document.paths?.['/poke-lounge/rooms/{roomCode}/leave']?.post,
+        'LeavePokeLoungeRoomDto',
+      ],
+    ] as const) {
+      const roomOperation = operation as ContractOperation | undefined;
+
+      expect(roomOperation).toBeDefined();
+      expect(roomOperation?.parameters).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            in: 'header',
+            name: 'X-Idempotency-Key',
+            required: true,
+          }),
+          expect.objectContaining({
+            in: 'header',
+            name: 'If-Match-Revision',
+            required: true,
+          }),
+        ]),
+      );
+      expect(
+        roomOperation?.requestBody?.content?.['application/json']?.schema?.$ref,
+      ).toBe(`#/components/schemas/${requestDto}`);
+      expect(roomOperation?.responses?.['409']).toBeDefined();
+    }
   });
 });

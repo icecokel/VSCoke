@@ -11,6 +11,7 @@ const mockForFeature = jest.fn(() => ({
 }));
 
 jest.mock('@nestjs/typeorm', () => ({
+  InjectDataSource: () => () => undefined,
   InjectRepository: () => () => undefined,
   TypeOrmModule: {
     forRootAsync: mockForRootAsync,

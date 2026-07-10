@@ -18,6 +18,7 @@ type PokeLoungeWindow = Window & {
 
 const LOCALE = "ko-KR";
 const ROOM_CODE = "SRV001";
+const ROOM_EXPIRES_AT_MS = 253402300799999;
 
 test.describe("Poke Lounge server multiplayer", () => {
   test("network=server room은 wrapped 서버 상태의 final score를 서버 확정 점수로 사용한다", async ({
@@ -67,6 +68,11 @@ test.describe("Poke Lounge server multiplayer", () => {
 
     await mockServerRoom(page, server, { rejectResult: true });
     await startServerRoom(page);
+    await expect
+      .poll(() =>
+        Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+      )
+      .toBe(true);
 
     await page.evaluate(() => {
       window.dispatchEvent(
@@ -103,6 +109,11 @@ test.describe("Poke Lounge server multiplayer", () => {
     await expect
       .poll(() => Promise.resolve(server.joinedParticipants.length), { timeout: 30000 })
       .toBeGreaterThanOrEqual(1);
+    await expect
+      .poll(() =>
+        Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+      )
+      .toBe(true);
 
     const localPlayerId = await getCurrentPlayerId(page);
     const [joinedParticipant] = server.joinedParticipants;
@@ -125,15 +136,18 @@ test.describe("Poke Lounge server multiplayer", () => {
       );
     }, localPlayerId ?? "player-1");
 
-    await expect(page.getByTestId("poke-lounge-result-score")).toHaveText("100", {
-      timeout: 30000,
-    });
-    await expect.poll(() => Promise.resolve(server.resultBodies.length)).toBe(1);
+    await expect
+      .poll(() => Promise.resolve(server.resultBodies.length), { timeout: 30000 })
+      .toBe(1);
     expect(server.resultBodies[0]).toMatchObject({
       reportingPlayerId: joinedParticipant.playerId,
       reportingSessionId: joinedParticipant.sessionId,
       winnerPlayerId: joinedParticipant.playerId,
       loserPlayerId: "player-2",
+    });
+    expect(server.resultAccepted).toBe(true);
+    await expect(page.getByTestId("poke-lounge-result-score")).toHaveText("100", {
+      timeout: 30000,
     });
   });
 
@@ -327,6 +341,102 @@ test.describe("Poke Lounge server multiplayer", () => {
       },
     });
   });
+
+  test("server room revision conflict 재시도는 idempotency key를 유지하고 revision만 갱신한다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, {
+      revisionConflictSuffix: "/ready",
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+
+    await expect
+      .poll(
+        () =>
+          Promise.resolve(
+            server.commandHeaders.filter(headers => headers.suffix === "/ready").length,
+          ),
+        { timeout: 30000 },
+      )
+      .toBe(2);
+
+    const readyHeaders = server.commandHeaders.filter(headers => headers.suffix === "/ready");
+    expect(readyHeaders[0].idempotencyKey).toBe(readyHeaders[1].idempotencyKey);
+    expect(readyHeaders[0].revision).not.toBe(readyHeaders[1].revision);
+    expect(readyHeaders[1].revision).toBe(String(server.conflictRevision));
+  });
+
+  test("server room network 재시도는 같은 command header를 재사용한다", async ({ page }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, {
+      networkFailureSuffix: "/party-snapshot",
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+
+    await expect
+      .poll(
+        () =>
+          Promise.resolve(
+            server.commandHeaders.filter(headers => headers.suffix === "/party-snapshot").length,
+          ),
+        { timeout: 30000 },
+      )
+      .toBeGreaterThanOrEqual(2);
+
+    const [first, retry] = server.commandHeaders.filter(
+      headers => headers.suffix === "/party-snapshot",
+    );
+    expect(retry).toMatchObject({
+      idempotencyKey: first.idempotencyKey,
+      revision: first.revision,
+    });
+  });
+
+  test("server room mutation queue는 동시에 발생한 POST를 직렬화한다", async ({ page }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, {
+      mutationDelayMs: 100,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+    await expect.poll(() => Promise.resolve(server.activeMutations), { timeout: 30000 }).toBe(0);
+    const initialSnapshots = server.partySnapshotBodies.length;
+    server.maxConcurrentMutations = 0;
+
+    await page.evaluate(() => {
+      const game = (window as Window & { __POKE_LOUNGE_GAME__?: unknown }).__POKE_LOUNGE_GAME__ as {
+        scene?: {
+          getScene?: (key: string) => {
+            createLocalPlayerSnapshot?: () => unknown;
+            sendRoomMessage?: (type: "PLAYER_CHANGED_MAP", payload: unknown) => void;
+          };
+        };
+      };
+      const worldScene = game.scene?.getScene?.("world");
+      const snapshot = worldScene?.createLocalPlayerSnapshot?.();
+
+      if (!snapshot || !worldScene?.sendRoomMessage) {
+        return;
+      }
+
+      worldScene.sendRoomMessage("PLAYER_CHANGED_MAP", snapshot);
+      worldScene.sendRoomMessage("PLAYER_CHANGED_MAP", snapshot);
+    });
+
+    await expect
+      .poll(() => Promise.resolve(server.partySnapshotBodies.length), { timeout: 30000 })
+      .toBeGreaterThanOrEqual(initialSnapshots + 2);
+    expect(server.maxConcurrentMutations).toBe(1);
+  });
 });
 
 async function startServerRoom(
@@ -408,7 +518,10 @@ async function mockServerRoom(
   server: MockServerState,
   options: {
     completeOnGet?: boolean;
+    mutationDelayMs?: number;
+    networkFailureSuffix?: string;
     rejectResult?: boolean;
+    revisionConflictSuffix?: string;
     waitForResult?: boolean;
     wrapped?: boolean;
   } = {},
@@ -418,59 +531,123 @@ async function mockServerRoom(
     const url = new URL(request.url());
     const method = request.method();
     const suffix = url.pathname.replace(`/poke-lounge/rooms/${ROOM_CODE}`, "");
+    const mutation = method === "POST";
 
     server.calls.push(`${method} ${url.pathname}`);
 
-    if (method === "POST" && url.pathname === "/poke-lounge/rooms") {
-      await recordJoinedIdentity(request, server);
-      await route.fulfill({
-        status: 201,
-        contentType: "application/json",
-        body: stringifyResponse(createWaitingRoomState(server), options),
-      });
-      return;
-    }
+    if (mutation) {
+      const idempotencyKey = request.headers()["x-idempotency-key"];
+      const revision = request.headers()["if-match-revision"];
 
-    if (method === "POST" && suffix === "/join") {
-      await recordJoinedIdentity(request, server);
-    }
-
-    if (method === "POST" && suffix === "/party-snapshot") {
-      server.partySnapshotBodies.push(
-        (await request.postDataJSON()) as MockServerState["partySnapshotBodies"][number],
+      expect(idempotencyKey).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
       );
+      expect(revision).toMatch(/^(0|[1-9][0-9]*)$/);
+      server.commandHeaders.push({ suffix, idempotencyKey, revision });
+      server.activeMutations += 1;
+      server.maxConcurrentMutations = Math.max(
+        server.maxConcurrentMutations,
+        server.activeMutations,
+      );
+
+      if (options.mutationDelayMs) {
+        await new Promise(resolve => setTimeout(resolve, options.mutationDelayMs));
+      }
     }
 
-    if (method === "POST" && suffix === "/result") {
-      const body = (await request.postDataJSON()) as MockServerState["resultBodies"][number];
-      server.resultBodies.push(body);
-      const resultError = validateResultBody(body, server);
+    try {
+      if (mutation && suffix === options.networkFailureSuffix && !server.networkFailureReturned) {
+        server.networkFailureReturned = true;
+        await route.abort("failed");
+        return;
+      }
+
+      if (
+        mutation &&
+        suffix === options.revisionConflictSuffix &&
+        !server.revisionConflictReturned
+      ) {
+        server.revisionConflictReturned = true;
+        server.revision += 1;
+        server.conflictRevision = server.revision;
+        await route.fulfill({
+          status: 409,
+          contentType: "application/json",
+          body: JSON.stringify({
+            statusCode: 409,
+            code: "POKE_LOUNGE_REVISION_CONFLICT",
+            message: "Poke Lounge room revision conflict",
+            snapshot: createWaitingRoomState(server),
+          }),
+        });
+        return;
+      }
+
+      if (method === "POST" && url.pathname === "/poke-lounge/rooms") {
+        expect(request.headers()["if-match-revision"]).toBe("0");
+        server.revision = 0;
+        await recordJoinedIdentity(request, server);
+        await route.fulfill({
+          status: 201,
+          contentType: "application/json",
+          body: stringifyResponse(createWaitingRoomState(server), options),
+        });
+        return;
+      }
+
+      if (method === "POST" && suffix === "/join") {
+        await recordJoinedIdentity(request, server);
+      }
+
+      if (method === "POST" && suffix === "/party-snapshot") {
+        server.partySnapshotBodies.push(
+          (await request.postDataJSON()) as MockServerState["partySnapshotBodies"][number],
+        );
+      }
+
+      if (method === "POST" && suffix === "/result") {
+        const body = (await request.postDataJSON()) as MockServerState["resultBodies"][number];
+        server.resultBodies.push(body);
+        const resultError = validateResultBody(body, server);
+
+        if (!options.rejectResult && !resultError) {
+          server.revision += 1;
+        }
+
+        await route.fulfill({
+          status: options.rejectResult || resultError ? 400 : 201,
+          contentType: "application/json",
+          body: stringifyResponse(
+            options.rejectResult || resultError
+              ? { message: resultError ?? "Invalid match result" }
+              : markResultAccepted(server),
+            options,
+          ),
+        });
+        return;
+      }
+
+      if (mutation) {
+        server.revision += 1;
+      }
 
       await route.fulfill({
-        status: options.rejectResult || resultError ? 400 : 201,
+        status: method === "GET" ? 200 : 201,
         contentType: "application/json",
         body: stringifyResponse(
-          options.rejectResult || resultError
-            ? { message: resultError ?? "Invalid match result" }
-            : markResultAccepted(server),
+          options.rejectResult ||
+            (options.completeOnGet && method !== "GET") ||
+            (options.waitForResult && !server.resultAccepted)
+            ? createTournamentRoomState(server)
+            : createCompletedRoomState(server),
           options,
         ),
       });
-      return;
+    } finally {
+      if (mutation) {
+        server.activeMutations -= 1;
+      }
     }
-
-    await route.fulfill({
-      status: method === "GET" ? 200 : 201,
-      contentType: "application/json",
-      body: stringifyResponse(
-        options.rejectResult ||
-          (options.completeOnGet && method !== "GET") ||
-          (options.waitForResult && !server.resultAccepted)
-          ? createTournamentRoomState(server)
-          : createCompletedRoomState(server),
-        options,
-      ),
-    });
   });
 }
 
@@ -488,7 +665,16 @@ async function newMockedPage(
 }
 
 interface MockServerState {
+  activeMutations: number;
   calls: string[];
+  commandHeaders: Array<{
+    suffix: string;
+    idempotencyKey: string;
+    revision: string;
+  }>;
+  conflictRevision: number | null;
+  maxConcurrentMutations: number;
+  networkFailureReturned: boolean;
   partySnapshotBodies: Array<{
     playerId?: string;
     sessionId?: string;
@@ -510,21 +696,31 @@ interface MockServerState {
     reason?: string;
   }>;
   resultAccepted: boolean;
+  revision: number;
+  revisionConflictReturned: boolean;
   joinedPlayerIds: Set<string>;
   joinedSessionIds: Set<string>;
   joinedParticipants: Array<{
     playerId: string;
     sessionId: string;
     displayName?: string;
+    joinedAtMs: number;
   }>;
 }
 
 function createMockServerState(): MockServerState {
   return {
+    activeMutations: 0,
     calls: [],
+    commandHeaders: [],
+    conflictRevision: null,
+    maxConcurrentMutations: 0,
+    networkFailureReturned: false,
     partySnapshotBodies: [],
     resultBodies: [],
     resultAccepted: false,
+    revision: 0,
+    revisionConflictReturned: false,
     joinedPlayerIds: new Set(),
     joinedSessionIds: new Set(),
     joinedParticipants: [],
@@ -550,6 +746,7 @@ async function recordJoinedIdentity(request: Request, server: MockServerState) {
       playerId: body.playerId,
       sessionId: body.sessionId,
       displayName: body.displayName,
+      joinedAtMs: server.joinedParticipants.length,
     });
   }
 }
@@ -640,6 +837,8 @@ function createCompletedRoomState(server?: MockServerState) {
 
   return {
     roomCode: ROOM_CODE,
+    revision: server?.revision ?? 0,
+    expiresAtMs: ROOM_EXPIRES_AT_MS,
     status: "completed",
     participants: [
       {
@@ -648,6 +847,7 @@ function createCompletedRoomState(server?: MockServerState) {
         role: "participant",
         ready: true,
         connected: true,
+        joinedAtMs: first.joinedAtMs,
       },
       {
         playerId: second.playerId,
@@ -655,6 +855,7 @@ function createCompletedRoomState(server?: MockServerState) {
         role: "participant",
         ready: true,
         connected: true,
+        joinedAtMs: second.joinedAtMs,
       },
     ],
     partySnapshots: createPartySnapshots(server),
@@ -724,11 +925,13 @@ function getStateParticipants(server?: MockServerState) {
     sessionId: "server-session-1",
     playerId: "player-1",
     displayName: "Player 1",
+    joinedAtMs: 0,
   };
   const second = server?.joinedParticipants[1] ?? {
     sessionId: "server-session-2",
     playerId: "player-2",
     displayName: "Player 2",
+    joinedAtMs: 1,
   };
 
   return [first, second] as const;

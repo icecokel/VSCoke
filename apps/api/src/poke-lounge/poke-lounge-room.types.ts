@@ -91,6 +91,8 @@ export type PokeLoungePublicRoomState = Omit<
   'participants'
 > & {
   participants: PokeLoungePublicRoomParticipant[];
+  revision: number;
+  expiresAtMs: number;
 };
 
 export interface CreatePokeLoungeRoomInput {
@@ -107,6 +109,13 @@ export interface JoinPokeLoungeRoomInput {
   sessionId: string;
   userId?: string;
   displayName?: string;
+  nowMs?: number;
+}
+
+export interface SetPokeLoungeReadyInput {
+  playerId: string;
+  sessionId?: string;
+  ready: boolean;
   nowMs?: number;
 }
 

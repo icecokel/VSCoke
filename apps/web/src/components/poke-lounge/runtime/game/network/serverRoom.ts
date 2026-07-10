@@ -35,6 +35,8 @@ interface ServerPartySnapshot {
 
 interface ServerRoomState {
   roomCode: string;
+  revision: number;
+  expiresAtMs: number;
   status: "waiting" | "round-started" | "tournament" | "completed" | "closed";
   participants: ServerParticipant[];
   partySnapshots: Record<string, ServerPartySnapshot>;
@@ -64,6 +66,24 @@ const SERVER_IDENTITY_STORAGE_KEY = "poke-lounge:server-room-identity";
 const DEFAULT_POLL_INTERVAL_MS = 750;
 const CLIENT_FINAL_ROUND_INDEX = 3;
 const PENDING_ROOM_ID = "server-pending";
+const REVISION_CONFLICT_CODE = "POKE_LOUNGE_REVISION_CONFLICT";
+const IDEMPOTENCY_CONFLICT_CODE = "POKE_LOUNGE_IDEMPOTENCY_CONFLICT";
+
+interface ServerRoomConflictResponse {
+  statusCode: 409;
+  code: typeof REVISION_CONFLICT_CODE | typeof IDEMPOTENCY_CONFLICT_CODE;
+  message: string;
+  snapshot: ServerRoomState;
+}
+
+class ServerRoomRequestError extends Error {
+  constructor(
+    readonly status: number,
+    readonly responseBody: unknown,
+  ) {
+    super(`Poke Lounge server room request failed: ${status}`);
+  }
+}
 
 export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   const identity = resolveServerIdentity(options);
@@ -76,6 +96,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   let disposed = false;
   let pollTimer: number | null = null;
   let latestState: ServerRoomState | null = null;
+  let mutationQueue: Promise<void> = Promise.resolve();
   let announcedTournament = false;
   let announcedCompletion = false;
 
@@ -85,7 +106,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     }
   };
 
-  const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
+  const requestRoom = async (path: string, init?: RequestInit): Promise<ServerRoomState> => {
     const response = await fetch(`${getApiBaseUrl()}${path}`, {
       ...init,
       headers: {
@@ -93,12 +114,76 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         ...init?.headers,
       },
     });
+    const responseBody = await response.json();
+    const unwrapped = unwrapApiResponse<unknown>(responseBody);
 
     if (!response.ok) {
-      throw new Error(`Poke Lounge server room request failed: ${response.status}`);
+      throw new ServerRoomRequestError(response.status, unwrapped);
     }
 
-    return unwrapApiResponse<T>(await response.json());
+    return parseServerRoomState(unwrapped);
+  };
+
+  const enqueueMutation = <T>(operation: () => Promise<T>): Promise<T> => {
+    const pending = mutationQueue.then(operation);
+    mutationQueue = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+
+    return pending;
+  };
+
+  const mutateRoom = (
+    path: string,
+    body: unknown | (() => unknown | Promise<unknown>),
+    revisionResolver: () => number | Promise<number>,
+  ): Promise<ServerRoomState> => {
+    const idempotencyKey = createIdempotencyKey();
+
+    return enqueueMutation(async () => {
+      const resolvedBody = typeof body === "function" ? await body() : body;
+      let expectedRevision = await revisionResolver();
+      const send = (revision: number) =>
+        requestRoom(path, {
+          method: "POST",
+          headers: {
+            "X-Idempotency-Key": idempotencyKey,
+            "If-Match-Revision": String(revision),
+          },
+          body: JSON.stringify(resolvedBody),
+        });
+
+      try {
+        return await retryOneNetworkFailure(() => send(expectedRevision));
+      } catch (error) {
+        const conflict = getServerRoomConflict(error);
+
+        if (!conflict) {
+          throw error;
+        }
+
+        applyServerState(conflict.snapshot);
+
+        if (conflict.code === IDEMPOTENCY_CONFLICT_CODE) {
+          throw error;
+        }
+
+        expectedRevision = conflict.snapshot.revision;
+
+        try {
+          return await retryOneNetworkFailure(() => send(expectedRevision));
+        } catch (retryError) {
+          const retryConflict = getServerRoomConflict(retryError);
+
+          if (retryConflict) {
+            applyServerState(retryConflict.snapshot);
+          }
+
+          throw retryError;
+        }
+      }
+    });
   };
 
   const schedulePoll = () => {
@@ -118,7 +203,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     }
 
     try {
-      applyServerState(await request<ServerRoomState>(`/poke-lounge/rooms/${activeRoomId}`));
+      applyServerState(await requestRoom(`/poke-lounge/rooms/${activeRoomId}`));
     } finally {
       if (!disposed && latestState?.status !== "completed" && latestState?.status !== "closed") {
         schedulePoll();
@@ -127,6 +212,10 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   };
 
   const applyServerState = (state: ServerRoomState) => {
+    if (latestState?.roomCode === state.roomCode && state.revision < latestState.revision) {
+      return;
+    }
+
     latestState = state;
     activeRoomId = state.roomCode;
     emit("CURRENT_PLAYERS", {
@@ -184,42 +273,43 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     loserPlayerId?: string;
     reason?: "faint" | "timeout" | "forfeit" | "run" | "capture";
   }) => {
-    const match = latestState?.tournament.matches.find(row => row.matchId === payload.matchId);
-    const winnerPlayerId = mapLocalPlayerIdForServer(payload.winnerPlayerId);
-    const loserPlayerId =
-      (payload.loserPlayerId ? mapLocalPlayerIdForServer(payload.loserPlayerId) : undefined) ??
-      match?.participantIds.find(candidate => candidate !== winnerPlayerId);
+    const nextState = await mutateRoom(
+      `/poke-lounge/rooms/${activeRoomId}/result`,
+      () => {
+        const match = latestState?.tournament.matches.find(row => row.matchId === payload.matchId);
+        const winnerPlayerId = mapLocalPlayerIdForServer(payload.winnerPlayerId);
+        const loserPlayerId =
+          (payload.loserPlayerId ? mapLocalPlayerIdForServer(payload.loserPlayerId) : undefined) ??
+          match?.participantIds.find(candidate => candidate !== winnerPlayerId);
 
-    if (!loserPlayerId) {
-      return;
-    }
+        if (!loserPlayerId) {
+          throw new Error("Poke Lounge server match opponent is unavailable");
+        }
 
-    const nextState = await request<ServerRoomState>(`/poke-lounge/rooms/${activeRoomId}/result`, {
-      method: "POST",
-      body: JSON.stringify({
-        reportingPlayerId: serverPlayerId,
-        reportingSessionId: sessionId,
-        matchId: payload.matchId,
-        winnerPlayerId,
-        loserPlayerId,
-        reason: payload.reason ?? "faint",
-      }),
-    });
+        return {
+          reportingPlayerId: serverPlayerId,
+          reportingSessionId: sessionId,
+          matchId: payload.matchId,
+          winnerPlayerId,
+          loserPlayerId,
+          reason: payload.reason ?? "faint",
+        };
+      },
+      getLatestRevision,
+    );
     applyServerState(nextState);
   };
 
   const submitPartySnapshot = async (snapshot: PlayerSnapshot) => {
-    const nextState = await request<ServerRoomState>(
+    const nextState = await mutateRoom(
       `/poke-lounge/rooms/${activeRoomId}/party-snapshot`,
       {
-        method: "POST",
-        body: JSON.stringify({
-          playerId: serverPlayerId,
-          sessionId,
-          displayName: snapshot.displayName,
-          representativePokemon: toRepresentativePokemonSnapshot(snapshot),
-        }),
+        playerId: serverPlayerId,
+        sessionId,
+        displayName: snapshot.displayName,
+        representativePokemon: toRepresentativePokemonSnapshot(snapshot),
       },
+      getLatestRevision,
     );
 
     applyServerState(nextState);
@@ -261,14 +351,15 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
           return submitPartySnapshot(snapshot);
         })
         .then(() =>
-          request<ServerRoomState>(`/poke-lounge/rooms/${activeRoomId}/ready`, {
-            method: "POST",
-            body: JSON.stringify({
+          mutateRoom(
+            `/poke-lounge/rooms/${activeRoomId}/ready`,
+            {
               playerId: serverPlayerId,
               sessionId,
               ready: true,
-            }),
-          }),
+            },
+            getLatestRevision,
+          ),
         )
         .then(applyServerState)
         .then(poll)
@@ -287,10 +378,11 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         pollTimer = null;
       }
       window.removeEventListener("poke-lounge:e2e-server-result", e2eResultHandler);
-      void request<ServerRoomState>(`/poke-lounge/rooms/${activeRoomId}/leave`, {
-        method: "POST",
-        body: JSON.stringify({ playerId: serverPlayerId, sessionId }),
-      }).catch(() => {});
+      void mutateRoom(
+        `/poke-lounge/rooms/${activeRoomId}/leave`,
+        { playerId: serverPlayerId, sessionId },
+        getLatestRevision,
+      ).catch(() => {});
       handlers.clear();
     },
     send(type, payload) {
@@ -323,20 +415,27 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     });
 
     if (options.createRoom) {
-      return request<ServerRoomState>("/poke-lounge/rooms", {
-        method: "POST",
-        body,
-      }).then(state => {
+      return mutateRoom("/poke-lounge/rooms", JSON.parse(body), () => 0).then(state => {
         applyCreatedRoomToLocation(state.roomCode);
 
         return state;
       });
     }
 
-    return request<ServerRoomState>(`/poke-lounge/rooms/${activeRoomId}/join`, {
-      method: "POST",
-      body,
+    return mutateRoom(`/poke-lounge/rooms/${activeRoomId}/join`, JSON.parse(body), async () => {
+      const current = await requestRoom(`/poke-lounge/rooms/${activeRoomId}`);
+      applyServerState(current);
+
+      return current.revision;
     });
+  }
+
+  function getLatestRevision(): number {
+    if (!latestState) {
+      throw new Error("Poke Lounge room revision is unavailable");
+    }
+
+    return latestState.revision;
   }
 
   function mapServerPlayerIdForLocalStore(playerId: string): string {
@@ -438,6 +537,84 @@ function isResultDetail(value: unknown): value is {
 
 function isE2eEnabled(): boolean {
   return typeof window !== "undefined" && new URLSearchParams(window.location.search).has("e2e");
+}
+
+async function retryOneNetworkFailure<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (error instanceof ServerRoomRequestError) {
+      throw error;
+    }
+
+    return operation();
+  }
+}
+
+function getServerRoomConflict(error: unknown): ServerRoomConflictResponse | null {
+  if (!(error instanceof ServerRoomRequestError) || error.status !== 409) {
+    return null;
+  }
+
+  const value = error.responseBody;
+
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (
+    record.statusCode !== 409 ||
+    (record.code !== REVISION_CONFLICT_CODE && record.code !== IDEMPOTENCY_CONFLICT_CODE) ||
+    typeof record.message !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    statusCode: 409,
+    code: record.code,
+    message: record.message,
+    snapshot: parseServerRoomState(record.snapshot),
+  };
+}
+
+function parseServerRoomState(value: unknown): ServerRoomState {
+  if (!value || typeof value !== "object") {
+    throw new Error("Poke Lounge room response is malformed");
+  }
+
+  const room = value as Record<string, unknown>;
+
+  if (
+    typeof room.roomCode !== "string" ||
+    !Number.isSafeInteger(room.revision) ||
+    (room.revision as number) < 0 ||
+    typeof room.expiresAtMs !== "number" ||
+    !Number.isFinite(room.expiresAtMs) ||
+    typeof room.status !== "string" ||
+    !Array.isArray(room.participants) ||
+    !room.partySnapshots ||
+    typeof room.partySnapshots !== "object" ||
+    !room.round ||
+    typeof room.round !== "object" ||
+    !room.tournament ||
+    typeof room.tournament !== "object" ||
+    !Array.isArray(room.finalStandings)
+  ) {
+    throw new Error("Poke Lounge room response is malformed");
+  }
+
+  return value as ServerRoomState;
+}
+
+function createIdempotencyKey(): string {
+  if (typeof crypto === "undefined" || !("randomUUID" in crypto)) {
+    throw new Error("crypto.randomUUID is required for Poke Lounge room commands");
+  }
+
+  return crypto.randomUUID();
 }
 
 function unwrapApiResponse<T>(value: unknown): T {

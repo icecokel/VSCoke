@@ -66,7 +66,7 @@ import { isVirtualGamepadPressed } from "../input/virtualGamepad";
 import { createWorldSceneHud, type WorldSceneHudController } from "./world-scene-hud";
 import {
   createWorldSceneInteractions,
-  type WorldSceneInteractionsController,
+  type WorldSceneInteractions,
 } from "./world-scene-interactions";
 
 export { formatPokeDollars, formatRankScoreHud } from "./world-scene-hud";
@@ -221,6 +221,7 @@ export class WorldScene extends Phaser.Scene {
   private worldLayer!: Phaser.Tilemaps.TilemapLayer;
   private aboveLayer: Phaser.Tilemaps.TilemapLayer | null = null;
   private player!: Phaser.Physics.Arcade.Sprite;
+  private staticNpcs: Phaser.Physics.Arcade.StaticGroup | null = null;
   private remotePlayers = new Map<string, Phaser.Physics.Arcade.Sprite>();
   private remoteLabels = new Map<string, Phaser.GameObjects.Text>();
   private remotePlayerSnapshots = new Map<string, PlayerSnapshot>();
@@ -239,7 +240,7 @@ export class WorldScene extends Phaser.Scene {
   private battleIntroPlaying = false;
   private tournamentBattleStarting = false;
   private wildEncounterRateOverride: number | undefined;
-  private readonly interactions: WorldSceneInteractionsController;
+  private readonly interactions: WorldSceneInteractions;
   private readonly competitiveRoundsEnabled: boolean;
 
   constructor(
@@ -250,9 +251,20 @@ export class WorldScene extends Phaser.Scene {
     super("world");
     this.competitiveRoundsEnabled = options.competitiveRoundsEnabled ?? true;
     this.interactions = createWorldSceneInteractions({
-      scene: this,
       gameStateStore: this.gameStateStore,
-      getPlayer: () => this.player,
+      getGameObjectFactory: () => this.add,
+      getInputPlugin: () => this.input,
+      createStaticGroup: () => this.physics.add.staticGroup(),
+      registerStaticNpcs: staticNpcs => {
+        this.staticNpcs = staticNpcs;
+      },
+      getPlayerPosition: () =>
+        this.player
+          ? {
+              x: this.player.x,
+              y: this.player.y,
+            }
+          : null,
       ensureCursorKeys: keyboard => {
         this.ensureCursorKeys(keyboard);
         return this.cursors;
@@ -471,15 +483,15 @@ export class WorldScene extends Phaser.Scene {
   }
 
   handleConfirmInteractionForTest(): void {
-    this.interactions.handleConfirmInteractionForTest();
+    this.interactions.test.handleConfirmInteraction();
   }
 
   getNurseMessageForTest(): string {
-    return this.interactions.getNurseMessageForTest();
+    return this.interactions.test.getNurseMessage();
   }
 
   handleFieldInteractionInputForTest(): void {
-    this.interactions.handleFieldInteractionInputForTest();
+    this.interactions.test.handleFieldInteractionInput();
   }
 
   private getViewportSize(): { width: number; height: number } {
@@ -490,107 +502,107 @@ export class WorldScene extends Phaser.Scene {
   }
 
   openShopForTest(): void {
-    this.interactions.openShopForTest();
+    this.interactions.test.openShop();
   }
 
   openPremiumShopForTest(): void {
-    this.interactions.openPremiumShopForTest();
+    this.interactions.test.openPremiumShop();
   }
 
   closeShopForTest(): void {
-    this.interactions.closeShopForTest();
+    this.interactions.test.closeShop();
   }
 
   confirmShopSelectionForTest(): void {
-    this.interactions.confirmShopSelectionForTest();
+    this.interactions.test.confirmShopSelection();
   }
 
   isShopOpenForTest(): boolean {
-    return this.interactions.isShopOpenForTest();
+    return this.interactions.test.isShopOpen();
   }
 
   getShopMessageForTest(): string {
-    return this.interactions.getShopMessageForTest();
+    return this.interactions.test.getShopMessage();
   }
 
   openInventoryForTest(): void {
-    this.interactions.openInventoryForTest();
+    this.interactions.test.openInventory();
   }
 
   closeInventoryForTest(): void {
-    this.interactions.closeInventoryForTest();
+    this.interactions.test.closeInventory();
   }
 
   isInventoryOpenForTest(): boolean {
-    return this.interactions.isInventoryOpenForTest();
+    return this.interactions.test.isInventoryOpen();
   }
 
   openPcBoxForTest(): void {
-    this.interactions.openPcBoxForTest();
+    this.interactions.test.openPcBox();
   }
 
   closePcBoxForTest(): void {
-    this.interactions.closePcBoxForTest();
+    this.interactions.test.closePcBox();
   }
 
   movePcBoxSelectionForTest(delta: number): void {
-    this.interactions.movePcBoxSelectionForTest(delta);
+    this.interactions.test.movePcBoxSelection(delta);
   }
 
   togglePcBoxFocusForTest(): void {
-    this.interactions.togglePcBoxFocusForTest();
+    this.interactions.test.togglePcBoxFocus();
   }
 
   confirmPcBoxSelectionForTest(): void {
-    this.interactions.confirmPcBoxSelectionForTest();
+    this.interactions.test.confirmPcBoxSelection();
   }
 
   moveInventorySelectionForTest(delta: number): void {
-    this.interactions.moveInventorySelectionForTest(delta);
+    this.interactions.test.moveInventorySelection(delta);
   }
 
   confirmInventorySelectionForTest(): void {
-    this.interactions.confirmInventorySelectionForTest();
+    this.interactions.test.confirmInventorySelection();
   }
 
   showInitialShortcutGuideForTest(): void {
-    this.interactions.showInitialShortcutGuideForTest();
+    this.interactions.test.showInitialShortcutGuide();
   }
 
   openShortcutGuideForTest(): void {
-    this.interactions.openShortcutGuideForTest();
+    this.interactions.test.openShortcutGuide();
   }
 
   closeShortcutGuideForTest(): void {
-    this.interactions.closeShortcutGuideForTest();
+    this.interactions.test.closeShortcutGuide();
   }
 
   isShortcutGuideOpenForTest(): boolean {
-    return this.interactions.isShortcutGuideOpenForTest();
+    return this.interactions.test.isShortcutGuideOpen();
   }
 
   openDiceGambleForTest(targetNumber?: DiceGambleNumber): void {
-    this.interactions.openDiceGambleForTest(targetNumber);
+    this.interactions.test.openDiceGamble(targetNumber);
   }
 
   closeDiceGambleForTest(): void {
-    this.interactions.closeDiceGambleForTest();
+    this.interactions.test.closeDiceGamble();
   }
 
   selectDiceGamblePredictionForTest(prediction: DiceGamblePrediction): void {
-    this.interactions.selectDiceGamblePredictionForTest(prediction);
+    this.interactions.test.selectDiceGamblePrediction(prediction);
   }
 
   confirmDiceGambleSelectionForTest(rolledNumber?: DiceGambleNumber): void {
-    this.interactions.confirmDiceGambleSelectionForTest(rolledNumber);
+    this.interactions.test.confirmDiceGambleSelection(rolledNumber);
   }
 
   isDiceGambleOpenForTest(): boolean {
-    return this.interactions.isDiceGambleOpenForTest();
+    return this.interactions.test.isDiceGambleOpen();
   }
 
   getDiceGambleMessageForTest(): string {
-    return this.interactions.getDiceGambleMessageForTest();
+    return this.interactions.test.getDiceGambleMessage();
   }
 
   private createCurrencyHud(): void {
@@ -921,7 +933,9 @@ export class WorldScene extends Phaser.Scene {
     this.player.body?.setOffset(PLAYER_HITBOX.offsetX, PLAYER_HITBOX.offsetY);
     this.player.setCollideWorldBounds(true);
     this.physics.add.collider(this.player, this.worldLayer);
-    this.interactions.addNpcCollider(this.player);
+    if (this.staticNpcs) {
+      this.physics.add.collider(this.player, this.staticNpcs);
+    }
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.roundPixels = true;
     this.lastSent = { x: this.player.x, y: this.player.y };
@@ -1098,7 +1112,9 @@ export class WorldScene extends Phaser.Scene {
       sprite.body?.setSize(PLAYER_HITBOX.width, PLAYER_HITBOX.height);
       sprite.body?.setOffset(PLAYER_HITBOX.offsetX, PLAYER_HITBOX.offsetY);
       this.physics.add.collider(sprite, this.worldLayer);
-      this.interactions.addNpcCollider(sprite);
+      if (this.staticNpcs) {
+        this.physics.add.collider(sprite, this.staticNpcs);
+      }
       this.remotePlayers.set(snapshot.sessionId, sprite);
     }
 

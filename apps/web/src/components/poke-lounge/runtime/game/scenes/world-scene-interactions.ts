@@ -73,16 +73,60 @@ interface InteractionKeys {
   help: Phaser.Input.Keyboard.Key;
 }
 
+export interface WorldScenePlayerPosition {
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface WorldSceneInteractionsTestFacade {
+  handleConfirmInteraction(): void;
+  getNurseMessage(): string;
+  handleFieldInteractionInput(): void;
+  openShop(): void;
+  openPremiumShop(): void;
+  closeShop(): void;
+  confirmShopSelection(): void;
+  isShopOpen(): boolean;
+  getShopMessage(): string;
+  openInventory(): void;
+  closeInventory(): void;
+  isInventoryOpen(): boolean;
+  moveInventorySelection(delta: number): void;
+  confirmInventorySelection(): void;
+  openPcBox(): void;
+  closePcBox(): void;
+  movePcBoxSelection(delta: number): void;
+  togglePcBoxFocus(): void;
+  confirmPcBoxSelection(): void;
+  showInitialShortcutGuide(): void;
+  openShortcutGuide(): void;
+  closeShortcutGuide(): void;
+  isShortcutGuideOpen(): boolean;
+  openDiceGamble(targetNumber?: DiceGambleNumber): void;
+  closeDiceGamble(): void;
+  selectDiceGamblePrediction(prediction: DiceGamblePrediction): void;
+  confirmDiceGambleSelection(rolledNumber?: DiceGambleNumber): void;
+  isDiceGambleOpen(): boolean;
+  getDiceGambleMessage(): string;
+}
+
 export interface WorldSceneInteractions {
+  readonly test: Readonly<WorldSceneInteractionsTestFacade>;
   handleInput(): boolean;
   destroy(): void;
   getE2eSnapshot(): Pick<WorldE2eSnapshot, "pokemonStatusPanel" | "pcBox" | "shortcutGuideOpen">;
+  canOpenPokemonStatusPanel(): boolean;
+  createStaticNpcs(map: ObjectLayerLookup): void;
+  showInitialShortcutGuideIfNeeded(): void;
 }
 
 export interface WorldSceneInteractionsDependencies {
-  scene: Phaser.Scene;
   gameStateStore: GameStateStore;
-  getPlayer(): Phaser.Physics.Arcade.Sprite | undefined;
+  getGameObjectFactory(): Phaser.GameObjects.GameObjectFactory;
+  getInputPlugin(): Phaser.Input.InputPlugin;
+  createStaticGroup(): Phaser.Physics.Arcade.StaticGroup;
+  registerStaticNpcs(staticNpcs: Phaser.Physics.Arcade.StaticGroup): void;
+  getPlayerPosition(): WorldScenePlayerPosition | null;
   ensureCursorKeys(keyboard: Phaser.Input.Keyboard.KeyboardPlugin): WorldSceneCursorMap;
   isBattleIntroPlaying(): boolean;
   renderPartyHud(): void;
@@ -93,45 +137,9 @@ export interface WorldSceneInteractionsDependencies {
   getViewportSize(): { width: number; height: number };
 }
 
-export interface WorldSceneInteractionsController extends WorldSceneInteractions {
-  canOpenPokemonStatusPanel(): boolean;
-  addNpcCollider(sprite: Phaser.Physics.Arcade.Sprite): void;
-  createStaticNpcs(map: ObjectLayerLookup): void;
-  showInitialShortcutGuideIfNeeded(): void;
-  handleConfirmInteractionForTest(): void;
-  getNurseMessageForTest(): string;
-  handleFieldInteractionInputForTest(): void;
-  openShopForTest(): void;
-  openPremiumShopForTest(): void;
-  closeShopForTest(): void;
-  confirmShopSelectionForTest(): void;
-  isShopOpenForTest(): boolean;
-  getShopMessageForTest(): string;
-  openInventoryForTest(): void;
-  closeInventoryForTest(): void;
-  isInventoryOpenForTest(): boolean;
-  moveInventorySelectionForTest(delta: number): void;
-  confirmInventorySelectionForTest(): void;
-  openPcBoxForTest(): void;
-  closePcBoxForTest(): void;
-  movePcBoxSelectionForTest(delta: number): void;
-  togglePcBoxFocusForTest(): void;
-  confirmPcBoxSelectionForTest(): void;
-  showInitialShortcutGuideForTest(): void;
-  openShortcutGuideForTest(): void;
-  closeShortcutGuideForTest(): void;
-  isShortcutGuideOpenForTest(): boolean;
-  openDiceGambleForTest(targetNumber?: DiceGambleNumber): void;
-  closeDiceGambleForTest(): void;
-  selectDiceGamblePredictionForTest(prediction: DiceGamblePrediction): void;
-  confirmDiceGambleSelectionForTest(rolledNumber?: DiceGambleNumber): void;
-  isDiceGambleOpenForTest(): boolean;
-  getDiceGambleMessageForTest(): string;
-}
-
 export function createWorldSceneInteractions(
   dependencies: WorldSceneInteractionsDependencies,
-): WorldSceneInteractionsController {
+): WorldSceneInteractions {
   return new DefaultWorldSceneInteractions(dependencies);
 }
 
@@ -156,10 +164,9 @@ function clampSelectionIndex(index: number, itemCount: number): number {
   return Math.max(0, Math.min(itemCount - 1, index));
 }
 
-class DefaultWorldSceneInteractions implements WorldSceneInteractionsController {
+class DefaultWorldSceneInteractions implements WorldSceneInteractions {
   private cursors!: WorldSceneCursorMap;
   private interactionKeys: InteractionKeys | null = null;
-  private staticNpcs: Phaser.Physics.Arcade.StaticGroup | null = null;
   private shopkeeperPosition: { x: number; y: number } | null = null;
   private premiumShopkeeperPosition: { x: number; y: number } | null = null;
   private gamehostPosition: { x: number; y: number } | null = null;
@@ -190,26 +197,52 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   private diceGambleMessage = "";
   private diceGambleUiObjects: Phaser.GameObjects.GameObject[] = [];
 
-  constructor(private readonly dependencies: WorldSceneInteractionsDependencies) {}
+  readonly test: Readonly<WorldSceneInteractionsTestFacade>;
 
-  private get add() {
-    return this.dependencies.scene.add;
+  constructor(private readonly dependencies: WorldSceneInteractionsDependencies) {
+    this.test = Object.freeze<WorldSceneInteractionsTestFacade>({
+      handleConfirmInteraction: () => this.handleConfirmInteraction(),
+      getNurseMessage: () => this.nurseMessage,
+      handleFieldInteractionInput: () => this.handleFieldInteractionInput(),
+      openShop: () => this.openShop(),
+      openPremiumShop: () => this.openShop("premium"),
+      closeShop: () => this.closeShop(),
+      confirmShopSelection: () => this.confirmShopSelection(),
+      isShopOpen: () => this.shopOpen,
+      getShopMessage: () => this.shopMessage,
+      openInventory: () => this.openInventory(),
+      closeInventory: () => this.closeInventory(),
+      isInventoryOpen: () => this.inventoryOpen,
+      moveInventorySelection: delta => this.moveInventorySelection(delta),
+      confirmInventorySelection: () => this.confirmInventorySelection(),
+      openPcBox: () => this.openPcBox(),
+      closePcBox: () => this.closePcBox(),
+      movePcBoxSelection: delta => this.movePcBoxSelection(delta),
+      togglePcBoxFocus: () => this.togglePcBoxFocus(),
+      confirmPcBoxSelection: () => this.confirmPcBoxSelection(),
+      showInitialShortcutGuide: () => this.showInitialShortcutGuideIfNeeded(),
+      openShortcutGuide: () => this.openShortcutGuide(),
+      closeShortcutGuide: () => this.closeShortcutGuide(),
+      isShortcutGuideOpen: () => this.shortcutGuideOpen,
+      openDiceGamble: targetNumber => this.openDiceGamble(targetNumber),
+      closeDiceGamble: () => this.closeDiceGamble(),
+      selectDiceGamblePrediction: prediction => this.selectDiceGamblePrediction(prediction),
+      confirmDiceGambleSelection: rolledNumber => this.confirmDiceGambleSelection(rolledNumber),
+      isDiceGambleOpen: () => this.diceGambleOpen,
+      getDiceGambleMessage: () => this.diceGambleMessage,
+    });
   }
 
-  private get input() {
-    return this.dependencies.scene.input;
+  private get add(): Phaser.GameObjects.GameObjectFactory {
+    return this.dependencies.getGameObjectFactory();
   }
 
-  private get physics() {
-    return this.dependencies.scene.physics;
+  private get input(): Phaser.Input.InputPlugin {
+    return this.dependencies.getInputPlugin();
   }
 
   private get gameStateStore(): GameStateStore {
     return this.dependencies.gameStateStore;
-  }
-
-  private get player(): Phaser.Physics.Arcade.Sprite {
-    return this.dependencies.getPlayer()!;
   }
 
   private get battleIntroPlaying(): boolean {
@@ -279,12 +312,6 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     };
   }
 
-  addNpcCollider(sprite: Phaser.Physics.Arcade.Sprite): void {
-    if (this.staticNpcs) {
-      this.physics.add.collider(sprite, this.staticNpcs);
-    }
-  }
-
   destroy(): void {
     this.closeShop();
     this.closeInventory();
@@ -297,107 +324,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     this.nurseMessage = "";
   }
 
-  handleConfirmInteractionForTest(): void {
-    this.handleConfirmInteraction();
-  }
-
-  getNurseMessageForTest(): string {
-    return this.nurseMessage;
-  }
-
-  handleFieldInteractionInputForTest(): void {
-    this.handleFieldInteractionInput();
-  }
-
-  openShopForTest(): void {
-    this.openShop();
-  }
-
-  openPremiumShopForTest(): void {
-    this.openShop("premium");
-  }
-
-  closeShopForTest(): void {
-    this.closeShop();
-  }
-
-  confirmShopSelectionForTest(): void {
-    this.confirmShopSelection();
-  }
-
-  isShopOpenForTest(): boolean {
-    return this.shopOpen;
-  }
-
-  getShopMessageForTest(): string {
-    return this.shopMessage;
-  }
-
-  openInventoryForTest(): void {
-    this.openInventory();
-  }
-
-  closeInventoryForTest(): void {
-    this.closeInventory();
-  }
-
-  isInventoryOpenForTest(): boolean {
-    return this.inventoryOpen;
-  }
-
-  moveInventorySelectionForTest(delta: number): void {
-    this.moveInventorySelection(delta);
-  }
-
-  confirmInventorySelectionForTest(): void {
-    this.confirmInventorySelection();
-  }
-
-  openPcBoxForTest(): void {
-    this.openPcBox();
-  }
-
-  closePcBoxForTest(): void {
-    this.closePcBox();
-  }
-
-  movePcBoxSelectionForTest(delta: number): void {
-    this.movePcBoxSelection(delta);
-  }
-
-  togglePcBoxFocusForTest(): void {
-    this.togglePcBoxFocus();
-  }
-
-  confirmPcBoxSelectionForTest(): void {
-    this.confirmPcBoxSelection();
-  }
-
-  showInitialShortcutGuideForTest(): void {
-    this.showInitialShortcutGuideIfNeeded();
-  }
-
-  openShortcutGuideForTest(): void {
-    this.openShortcutGuide();
-  }
-
-  closeShortcutGuideForTest(): void {
-    this.closeShortcutGuide();
-  }
-
-  isShortcutGuideOpenForTest(): boolean {
-    return this.shortcutGuideOpen;
-  }
-
-  openDiceGambleForTest(targetNumber?: DiceGambleNumber): void {
-    this.openDiceGamble(targetNumber);
-  }
-
-  closeDiceGambleForTest(): void {
-    this.closeDiceGamble();
-  }
-
-  selectDiceGamblePredictionForTest(prediction: DiceGamblePrediction): void {
+  private selectDiceGamblePrediction(prediction: DiceGamblePrediction): void {
     const index = DICE_GAMBLE_PREDICTIONS.indexOf(prediction);
 
     if (index < 0) {
@@ -407,18 +334,6 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     this.diceGambleSelectedIndex = index;
     this.diceGambleMessage = "";
     this.renderDiceGambleUi();
-  }
-
-  confirmDiceGambleSelectionForTest(rolledNumber?: DiceGambleNumber): void {
-    this.confirmDiceGambleSelection(rolledNumber);
-  }
-
-  isDiceGambleOpenForTest(): boolean {
-    return this.diceGambleOpen;
-  }
-
-  getDiceGambleMessageForTest(): string {
-    return this.diceGambleMessage;
   }
 
   private renderPartyHud(): void {
@@ -458,9 +373,11 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   private formatPokemonHp(pokemon: PlayerPokemon): string {
     return formatPokemonHp(pokemon);
   }
+
   createStaticNpcs(map: ObjectLayerLookup): void {
     const npcObjects = map.getObjectLayer("Npcs")?.objects ?? [];
-    this.staticNpcs = this.physics.add.staticGroup();
+    const staticNpcs = this.dependencies.createStaticGroup();
+    this.dependencies.registerStaticNpcs(staticNpcs);
 
     for (const object of npcObjects) {
       const npcKey = object.name as keyof typeof FIELD_MAP.npcs | undefined;
@@ -470,7 +387,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
         continue;
       }
 
-      const sprite = this.staticNpcs.create(
+      const sprite = staticNpcs.create(
         object.x,
         object.y,
         npc.textureKey,
@@ -794,93 +711,98 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   }
 
   private handleConfirmInteraction(): void {
-    if (!this.player) {
+    const playerPosition = this.dependencies.getPlayerPosition();
+
+    if (!playerPosition) {
       return;
     }
 
-    if (this.isPlayerNearShopkeeper()) {
+    if (this.isPlayerNearShopkeeper(playerPosition)) {
       this.openShop("basic");
       return;
     }
 
-    if (this.isPlayerNearPremiumShopkeeper()) {
+    if (this.isPlayerNearPremiumShopkeeper(playerPosition)) {
       this.openShop("premium");
       return;
     }
 
-    if (this.isPlayerNearStoragePc()) {
+    if (this.isPlayerNearStoragePc(playerPosition)) {
       this.openPcBox();
       return;
     }
 
-    if (this.isPlayerNearNurse()) {
+    if (this.isPlayerNearNurse(playerPosition)) {
       this.healAtNurse();
       return;
     }
 
-    if (this.isPlayerNearGamehost()) {
+    if (this.isPlayerNearGamehost(playerPosition)) {
       this.openDiceGamble();
     }
   }
 
-  private isPlayerNearShopkeeper(): boolean {
+  private isPlayerNearShopkeeper(playerPosition: WorldScenePlayerPosition): boolean {
     if (!this.shopkeeperPosition) {
       return false;
     }
 
     return (
       Math.hypot(
-        this.player.x - this.shopkeeperPosition.x,
-        this.player.y - this.shopkeeperPosition.y,
+        playerPosition.x - this.shopkeeperPosition.x,
+        playerPosition.y - this.shopkeeperPosition.y,
       ) <= 56
     );
   }
 
-  private isPlayerNearPremiumShopkeeper(): boolean {
+  private isPlayerNearPremiumShopkeeper(playerPosition: WorldScenePlayerPosition): boolean {
     if (!this.premiumShopkeeperPosition) {
       return false;
     }
 
     return (
       Math.hypot(
-        this.player.x - this.premiumShopkeeperPosition.x,
-        this.player.y - this.premiumShopkeeperPosition.y,
+        playerPosition.x - this.premiumShopkeeperPosition.x,
+        playerPosition.y - this.premiumShopkeeperPosition.y,
       ) <= 56
     );
   }
 
-  private isPlayerNearGamehost(): boolean {
+  private isPlayerNearGamehost(playerPosition: WorldScenePlayerPosition): boolean {
     if (!this.gamehostPosition) {
       return false;
     }
 
     return (
       Math.hypot(
-        this.player.x - this.gamehostPosition.x,
-        this.player.y - this.gamehostPosition.y,
+        playerPosition.x - this.gamehostPosition.x,
+        playerPosition.y - this.gamehostPosition.y,
       ) <= 56
     );
   }
 
-  private isPlayerNearNurse(): boolean {
+  private isPlayerNearNurse(playerPosition: WorldScenePlayerPosition): boolean {
     if (!this.nursePosition) {
       return false;
     }
 
     return (
-      Math.hypot(this.player.x - this.nursePosition.x, this.player.y - this.nursePosition.y) <= 56
+      Math.hypot(
+        playerPosition.x - this.nursePosition.x,
+        playerPosition.y - this.nursePosition.y,
+      ) <= 56
     );
   }
 
-  private isPlayerNearStoragePc(): boolean {
+  private isPlayerNearStoragePc(playerPosition: WorldScenePlayerPosition): boolean {
     if (!this.storagePcPosition) {
       return false;
     }
 
     return (
       Math.hypot(
-        this.player.x - this.storagePcPosition.x,
-        this.player.y - this.storagePcPosition.y,
+        playerPosition.x - this.storagePcPosition.x,
+        playerPosition.y - this.storagePcPosition.y,
       ) <= 42
     );
   }

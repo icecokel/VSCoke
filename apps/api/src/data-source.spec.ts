@@ -41,8 +41,11 @@ describe('TypeORM migration data source', () => {
       expect.stringContaining('*.entity{.ts,.js}'),
     ]);
     expect(dataSource.options.migrations).toEqual([
-      expect.stringContaining('migrations'),
+      expect.stringMatching(/[\\/]migrations[\\/]\*\.\{ts,js\}$/),
     ]);
+    expect(dataSource.options.migrations).not.toEqual(
+      expect.arrayContaining([expect.stringContaining('test-migrations')]),
+    );
   });
 
   it('fails fast when production enables DB_SYNCHRONIZE', () => {

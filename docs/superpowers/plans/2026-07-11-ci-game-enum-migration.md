@@ -76,3 +76,65 @@ git add apps/api/src/migrations/1793664000000-add-poke-lounge-game-type.ts \
   .superpowers/sdd/task-5-ci-migration-report.md
 git commit -m "fix(api):신규 DB 게임 enum 마이그레이션 보강"
 ```
+
+### Task 2: Bootstrap test-only legacy core schema
+
+**Files:**
+
+- Create: `apps/api/src/test-migrations/1759999999999-create-legacy-core-schema.ts`
+- Create: `apps/api/src/test-migrations/1759999999999-create-legacy-core-schema.spec.ts`
+- Modify: `apps/api/src/test-data-source.ts`
+- Modify: `apps/api/src/test-data-source.spec.ts`
+- Modify: `apps/api/src/data-source.spec.ts`
+- Modify: `.superpowers/sdd/task-5-ci-migration-report.md`
+
+**Interfaces:**
+
+- Consumes: `User`, `GameHistory`, and `GameType` entity contracts plus `createTestDataSourceOptions()`.
+- Produces: a test-only migration path ordered before `src/migrations`, creating the historical `user` table, `game_history_gametype_enum` with `SKY_DROP`, and `game_history` with its user foreign key and query indexes.
+
+- [x] **Step 1: Write failing data-source and SQL-shape specs**
+
+```ts
+expect(testDataSource.options.migrations).toEqual([
+  expect.stringContaining("test-migrations"),
+  expect.stringContaining("migrations"),
+]);
+expect(productionDataSource.options.migrations).not.toEqual(
+  expect.arrayContaining([expect.stringContaining("test-migrations")]),
+);
+```
+
+- [x] **Step 2: Run focused specs and verify they fail**
+
+Run: `pnpm --filter @vscoke/api test -- test-data-source.spec.ts 1759999999999-create-legacy-core-schema.spec.ts data-source.spec.ts --runInBand`
+
+Expected: FAIL because no test bootstrap migration path or baseline migration exists.
+
+- [x] **Step 3: Implement the test-only migration and ordered data-source path**
+
+```ts
+migrations: [
+  join(__dirname, 'test-migrations', '*.{ts,js}'),
+  join(__dirname, 'migrations', '*.{ts,js}'),
+],
+```
+
+The migration creates only `user`, `game_history_gametype_enum` with `SKY_DROP`, and `game_history` with the entity columns, defaults, foreign key, and indexes.
+
+- [x] **Step 4: Run non-DB API verification**
+
+Run: focused specs, `pnpm test:api`, `pnpm --filter @vscoke/api lint`, `pnpm build:api`, and `git diff --check`.
+
+Expected: all commands exit 0 without `migration:run:test` or an E2E database connection.
+
+- [x] **Step 5: Append CI evidence and commit**
+
+```bash
+git add apps/api/src/test-migrations/1759999999999-create-legacy-core-schema.ts \
+  apps/api/src/test-migrations/1759999999999-create-legacy-core-schema.spec.ts \
+  apps/api/src/test-data-source.ts apps/api/src/test-data-source.spec.ts \
+  apps/api/src/data-source.spec.ts docs/superpowers/plans/2026-07-11-ci-game-enum-migration.md
+git add -f .superpowers/sdd/task-5-ci-migration-report.md
+git commit -m "test(api):신규 DB 레거시 스키마 준비"
+```

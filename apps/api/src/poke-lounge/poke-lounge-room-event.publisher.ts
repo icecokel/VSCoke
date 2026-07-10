@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { PokeLoungeRoomSnapshot } from './poke-lounge-room.repository';
+import type { PokeLoungePublicRoomState } from './poke-lounge-room.types';
 
 export const POKE_LOUNGE_ROOM_EVENT_PUBLISHER = Symbol(
   'POKE_LOUNGE_ROOM_EVENT_PUBLISHER',
@@ -7,7 +7,7 @@ export const POKE_LOUNGE_ROOM_EVENT_PUBLISHER = Symbol(
 
 export interface PokeLoungeRoomCommittedEvent {
   type: 'room-created' | 'room-updated' | 'room-clock-advanced';
-  snapshot: PokeLoungeRoomSnapshot;
+  snapshot: PokeLoungePublicRoomState;
 }
 
 export interface PokeLoungeRoomEventPublisher {

@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { FakePokeLoungeRoomRepository } from '../../test/support/fake-poke-lounge-room.repository';
 import type { PokeLoungeRoomEventPublisher } from './poke-lounge-room-event.publisher';
-import type { PokeLoungeRoomRepository } from './poke-lounge-room.repository';
+import type {
+  PokeLoungeRoomRepository,
+  PokeLoungeRoomSnapshot,
+} from './poke-lounge-room.repository';
 import { PokeLoungeRoomService } from './poke-lounge-room.service';
 
 describe('PokeLoungeRoomService', () => {
@@ -53,9 +56,20 @@ describe('PokeLoungeRoomService', () => {
         },
       ],
     });
-    expect(publisher.publish.mock.calls).toContainEqual([
-      { type: 'room-created', snapshot: room },
-    ]);
+    expectPublicEvent(publisher, 'room-created', room);
+  });
+
+  it('publishes a redacted snapshot after a room update', async () => {
+    await createRoom();
+    publisher.publish.mockClear();
+
+    const room = await service.joinRoom(
+      'ROOM01',
+      { playerId: 'player-2', sessionId: 'session-2', nowMs: 1 },
+      command(0, 2),
+    );
+
+    expectPublicEvent(publisher, 'room-updated', room);
   });
 
   it('retries room-code collisions and preserves the capacity error', async () => {
@@ -164,9 +178,37 @@ describe('PokeLoungeRoomService', () => {
         ],
       },
     });
-    expect(publisher.publish.mock.calls).toContainEqual([
-      { type: 'room-clock-advanced', snapshot: tournament },
-    ]);
+    expectPublicEvent(publisher, 'room-clock-advanced', tournament);
+  });
+
+  it('assigns the next participant id for an anonymous join and uses a stable opaque receipt actor', async () => {
+    await createRoom();
+    const mutateSpy = jest.spyOn(repository, 'mutate');
+
+    const joined = await service.joinRoom(
+      'ROOM01',
+      { sessionId: 'guest-session', nowMs: 1 },
+      command(0, 2),
+    );
+    const replay = await service.joinRoom(
+      'ROOM01',
+      { sessionId: 'guest-session', nowMs: 1 },
+      command(joined.revision, 2),
+    );
+
+    expect(
+      joined.participants.map((participant) => participant.playerId),
+    ).toEqual(['player-1', 'player-2']);
+    expect(replay).toEqual(joined);
+    expect(mutateSpy.mock.calls[0]?.[0].actorPlayerId).toMatch(
+      /^join-session-[0-9a-f]{64}$/,
+    );
+    expect(mutateSpy.mock.calls[0]?.[0].actorPlayerId).not.toContain(
+      'guest-session',
+    );
+    expect(mutateSpy.mock.calls[0]?.[0].actorPlayerId).toBe(
+      mutateSpy.mock.calls[1]?.[0].actorPlayerId,
+    );
   });
 
   it('stores party snapshots and validates participant sessions and pokemon values', async () => {
@@ -523,6 +565,26 @@ function createSnapshot() {
     revision: 0,
     expiresAtMs: 30 * 60_000,
   };
+}
+
+function expectPublicEvent(
+  publisher: jest.Mocked<PokeLoungeRoomEventPublisher>,
+  type: 'room-created' | 'room-updated' | 'room-clock-advanced',
+  room: PokeLoungeRoomSnapshot,
+): void {
+  const [event] = publisher.publish.mock.calls.at(-1) ?? [];
+
+  expect(event).toMatchObject({
+    type,
+    snapshot: {
+      roomCode: room.roomCode,
+      revision: room.revision,
+      expiresAtMs: room.expiresAtMs,
+    },
+  });
+  expect(JSON.stringify(event)).not.toContain('session-1');
+  expect(JSON.stringify(event)).not.toContain('session-2');
+  expect(JSON.stringify(event)).not.toContain('sessionId');
 }
 
 async function captureConflict(

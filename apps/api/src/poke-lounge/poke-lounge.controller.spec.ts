@@ -199,6 +199,20 @@ describe('PokeLoungeController', () => {
     }
   });
 
+  it('preserves an omitted join playerId for the service to assign inside the locked room', async () => {
+    await controller.joinRoom(
+      'ROOM01',
+      { sessionId: 'session-b' },
+      commandRequest(3),
+    );
+
+    expect(service.joinRoom.mock.calls).toContainEqual([
+      'ROOM01',
+      { sessionId: 'session-b' },
+      { idempotencyKey: IDEMPOTENCY_KEY, expectedRevision: 3 },
+    ]);
+  });
+
   it('redacts session ids while retaining revision and expiry in public responses', async () => {
     const response = await controller.getRoom('ROOM01', '100');
 

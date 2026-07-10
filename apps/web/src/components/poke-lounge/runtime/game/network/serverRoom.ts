@@ -99,6 +99,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   let mutationQueue: Promise<void> = Promise.resolve();
   let announcedTournament = false;
   let announcedCompletion = false;
+  let leaveSent = false;
 
   const emit = <T extends RoomMessage>(type: T, payload: RoomEvent[T]) => {
     for (const handler of handlers.get(type) ?? []) {
@@ -169,7 +170,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
           throw error;
         }
 
-        expectedRevision = conflict.snapshot.revision;
+        expectedRevision = getLatestRevision();
 
         try {
           return await retryOneNetworkFailure(() => send(expectedRevision));
@@ -345,27 +346,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
 
       const snapshot = initialSnapshot ?? createDefaultSnapshot(sessionId, localPlayerId);
       localPlayerId = snapshot.playerId?.trim() || localPlayerId;
-      void openServerRoom(snapshot)
-        .then(state => {
-          applyServerState(state);
-          return submitPartySnapshot(snapshot);
-        })
-        .then(() =>
-          mutateRoom(
-            `/poke-lounge/rooms/${activeRoomId}/ready`,
-            {
-              playerId: serverPlayerId,
-              sessionId,
-              ready: true,
-            },
-            getLatestRevision,
-          ),
-        )
-        .then(applyServerState)
-        .then(poll)
-        .catch(() => {
-          schedulePoll();
-        });
+      void connectServerRoom(snapshot);
     },
     dispose() {
       if (disposed) {
@@ -378,14 +359,14 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         pollTimer = null;
       }
       window.removeEventListener("poke-lounge:e2e-server-result", e2eResultHandler);
-      void mutateRoom(
-        `/poke-lounge/rooms/${activeRoomId}/leave`,
-        { playerId: serverPlayerId, sessionId },
-        getLatestRevision,
-      ).catch(() => {});
+      requestLeave();
       handlers.clear();
     },
     send(type, payload) {
+      if (disposed) {
+        return;
+      }
+
       if (type === "PLAYER_CHANGED_MAP") {
         void submitPartySnapshot(payload as PlayerSnapshot).catch(() => {});
         return;
@@ -416,7 +397,9 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
 
     if (options.createRoom) {
       return mutateRoom("/poke-lounge/rooms", JSON.parse(body), () => 0).then(state => {
-        applyCreatedRoomToLocation(state.roomCode);
+        if (!disposed) {
+          applyCreatedRoomToLocation(state.roomCode);
+        }
 
         return state;
       });
@@ -426,8 +409,66 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       const current = await requestRoom(`/poke-lounge/rooms/${activeRoomId}`);
       applyServerState(current);
 
-      return current.revision;
+      return getLatestRevision();
     });
+  }
+
+  async function connectServerRoom(snapshot: PlayerSnapshot): Promise<void> {
+    try {
+      const opened = await openServerRoom(snapshot);
+      applyServerState(opened);
+
+      if (disposed) {
+        requestLeave();
+        return;
+      }
+
+      await submitPartySnapshot(snapshot);
+
+      if (disposed) {
+        requestLeave();
+        return;
+      }
+
+      const ready = await mutateRoom(
+        `/poke-lounge/rooms/${activeRoomId}/ready`,
+        {
+          playerId: serverPlayerId,
+          sessionId,
+          ready: true,
+        },
+        getLatestRevision,
+      );
+      applyServerState(ready);
+
+      if (disposed) {
+        requestLeave();
+        return;
+      }
+
+      await poll();
+
+      if (disposed) {
+        requestLeave();
+      }
+    } catch {
+      if (!disposed) {
+        schedulePoll();
+      }
+    }
+  }
+
+  function requestLeave(): void {
+    if (leaveSent || activeRoomId === PENDING_ROOM_ID || !latestState) {
+      return;
+    }
+
+    leaveSent = true;
+    void mutateRoom(
+      `/poke-lounge/rooms/${activeRoomId}/leave`,
+      { playerId: serverPlayerId, sessionId },
+      getLatestRevision,
+    ).catch(() => {});
   }
 
   function getLatestRevision(): number {

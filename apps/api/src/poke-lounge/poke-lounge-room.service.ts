@@ -6,12 +6,16 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import {
   hashPokeLoungeRoomCommand,
   type PokeLoungeRoomCommandContext,
   type PokeLoungeRoomOperation,
 } from './poke-lounge-room-command';
-import { PokeLoungeRoomConflict } from './poke-lounge-room-conflict';
+import {
+  PokeLoungeRoomConflict,
+  toPokeLoungePublicRoomState,
+} from './poke-lounge-room-conflict';
 import {
   POKE_LOUNGE_ROOM_EVENT_PUBLISHER,
   type PokeLoungeRoomCommittedEvent,
@@ -182,13 +186,16 @@ export class PokeLoungeRoomService {
     return this.mutateRoom({
       operation: 'join',
       roomCode,
-      actorPlayerId: normalized.playerId,
+      actorPlayerId:
+        normalized.playerId ??
+        createAnonymousJoinActorPlayerId(normalized.sessionId),
       command,
       nowMs,
       body: normalizedCommandBody(normalized, input.nowMs),
       apply: (room) => {
+        const playerId = normalized.playerId ?? createNextParticipantId(room);
         const existing = room.participants.find(
-          (participant) => participant.playerId === normalized.playerId,
+          (participant) => participant.playerId === playerId,
         );
 
         if (existing) {
@@ -212,7 +219,18 @@ export class PokeLoungeRoomService {
         ).length;
         const role =
           participantCount < MAX_PARTICIPANTS ? 'participant' : 'spectator';
-        room.participants.push(createParticipant(normalized, role, nowMs));
+        room.participants.push(
+          createParticipant(
+            {
+              ...normalized,
+              playerId,
+              displayName:
+                normalized.displayName ?? formatDefaultPlayerName(playerId),
+            },
+            role,
+            nowMs,
+          ),
+        );
         room.updatedAtMs = nowMs;
 
         return room;
@@ -475,7 +493,7 @@ export class PokeLoungeRoomService {
     try {
       await this.eventPublisher.publish({
         type,
-        snapshot: structuredClone(snapshot),
+        snapshot: toPokeLoungePublicRoomState(snapshot),
       });
     } catch (error) {
       this.logger.error(
@@ -495,6 +513,14 @@ type NormalizedParticipantInput = {
   sessionId: string;
   userId?: string;
   displayName: string;
+};
+
+type NormalizedJoinInput = Omit<
+  NormalizedParticipantInput,
+  'playerId' | 'displayName'
+> & {
+  playerId?: string;
+  displayName?: string;
 };
 
 type NormalizedCreateInput = NormalizedParticipantInput & {
@@ -517,14 +543,16 @@ function normalizeCreateInput(
 
 function normalizeJoinInput(
   input: JoinPokeLoungeRoomInput,
-): NormalizedParticipantInput {
-  const playerId = input.playerId?.trim() || 'player-1';
+): NormalizedJoinInput {
+  const playerId = input.playerId?.trim();
 
   return {
-    playerId,
+    ...(playerId ? { playerId } : {}),
     sessionId: requireSessionId(input.sessionId),
     ...(input.userId?.trim() ? { userId: input.userId.trim() } : {}),
-    displayName: input.displayName?.trim() || formatDefaultPlayerName(playerId),
+    ...(input.displayName?.trim()
+      ? { displayName: input.displayName.trim() }
+      : {}),
   };
 }
 
@@ -555,6 +583,23 @@ function createParticipant(
     connected: true,
     joinedAtMs: nowMs,
   };
+}
+
+function createAnonymousJoinActorPlayerId(sessionId: string): string {
+  return `join-session-${createHash('sha256').update(sessionId).digest('hex')}`;
+}
+
+function createNextParticipantId(room: PokeLoungeRoomState): string {
+  const highestPlayerNumber = room.participants.reduce(
+    (highest, participant) => {
+      const match = /^player-(\d+)$/.exec(participant.playerId);
+
+      return match ? Math.max(highest, Number(match[1])) : highest;
+    },
+    0,
+  );
+
+  return `player-${highestPlayerNumber + 1}`;
 }
 
 function requireSessionId(sessionId: string | undefined): string {

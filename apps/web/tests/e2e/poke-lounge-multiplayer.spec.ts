@@ -185,6 +185,42 @@ test.describe("Poke Lounge server multiplayer", () => {
       .toBe(true);
   });
 
+  test("create 응답 전 dispose는 pending leave 없이 실제 방에 한 번만 leave를 전송한다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, {
+      deferCreateResponse: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await gotoWithRetry(page, `/${LOCALE}/game/poke-lounge?e2e=1`);
+    await page.locator("[data-room-entry-server-create]").click();
+    await chooseStarterIfNeeded(page);
+    await expect.poll(() => Promise.resolve(server.createRequestReceived)).toBe(true);
+
+    await disposeServerRoom(page);
+    expect(server.calls).not.toContain("POST /poke-lounge/rooms/server-pending/leave");
+
+    server.resolveCreateResponse?.();
+    await expect
+      .poll(
+        () =>
+          Promise.resolve(
+            server.calls.filter(call => call === `POST /poke-lounge/rooms/${ROOM_CODE}/leave`)
+              .length,
+          ),
+        { timeout: 5000 },
+      )
+      .toBe(1);
+    await page.waitForTimeout(1000);
+
+    expect(server.calls).not.toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/party-snapshot`);
+    expect(server.calls).not.toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`);
+    expect(server.calls).not.toContain(`GET /poke-lounge/rooms/${ROOM_CODE}`);
+  });
+
   test("server room create는 URL을 room code로 갱신하고 join input으로 참가한 두 컨텍스트는 서로 다른 identity를 유지한다", async ({
     browser,
   }) => {
@@ -370,6 +406,105 @@ test.describe("Poke Lounge server multiplayer", () => {
     expect(readyHeaders[1].revision).toBe(String(server.conflictRevision));
   });
 
+  test("stale conflict보다 최신 polling 상태를 사용해 같은 POST를 한 번만 재시도한다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, {
+      advanceRevisionOnGetAfterConflict: true,
+      revisionConflictDelayMs: 1000,
+      revisionConflictAttempt: 2,
+      revisionConflictSuffix: "/party-snapshot",
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+    await expect
+      .poll(() =>
+        Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+      )
+      .toBe(true);
+    await page.waitForTimeout(800);
+    const partyRequestsBefore = server.commandRequests.filter(
+      request => request.suffix === "/party-snapshot",
+    ).length;
+
+    await sendPartySnapshot(page);
+
+    await expect
+      .poll(
+        () =>
+          Promise.resolve(
+            server.commandRequests.filter(request => request.suffix === "/party-snapshot").length,
+          ),
+        { timeout: 5000 },
+      )
+      .toBe(partyRequestsBefore + 2);
+    expect(server.concurrentPollRevision).not.toBeNull();
+    const [first, retry] = server.commandRequests
+      .filter(request => request.suffix === "/party-snapshot")
+      .slice(-2);
+
+    expect(retry).toMatchObject({
+      method: "POST",
+      body: first.body,
+      idempotencyKey: first.idempotencyKey,
+      revision: String(server.concurrentPollRevision),
+    });
+  });
+
+  test("idempotency conflict snapshot은 적용하고 동일 command를 재시도하지 않는다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, {
+      idempotencyConflictSuffix: "/ready",
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+
+    await expect
+      .poll(() =>
+        Promise.resolve(
+          server.commandRequests.filter(request => request.suffix === "/ready").length,
+        ),
+      )
+      .toBe(1);
+    await expect(page.getByTestId("poke-lounge-result-score")).toHaveText("100", {
+      timeout: 5000,
+    });
+  });
+
+  test("join preflight의 오래된 GET은 이미 적용한 최신 revision을 덮어쓰지 않는다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, { waitForResult: true, wrapped: true });
+    await startServerRoom(page);
+    await expect
+      .poll(() =>
+        Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+      )
+      .toBe(true);
+    const expectedRevision = server.revision;
+    server.returnStaleGet = true;
+
+    expect(await reconnectServerRoom(page)).toBe(true);
+    await expect
+      .poll(() =>
+        Promise.resolve(server.commandHeaders.filter(header => header.suffix === "/join").length),
+      )
+      .toBe(2);
+
+    expect(server.commandHeaders.filter(header => header.suffix === "/join")[1]).toMatchObject({
+      revision: String(expectedRevision),
+    });
+  });
+
   test("server room network 재시도는 같은 command header를 재사용한다", async ({ page }) => {
     const server = createMockServerState();
 
@@ -500,6 +635,62 @@ async function getCurrentPlayerId(page: Page): Promise<string | null> {
   });
 }
 
+async function disposeServerRoom(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const game = (window as Window & { __POKE_LOUNGE_GAME__?: unknown }).__POKE_LOUNGE_GAME__ as {
+      scene?: {
+        getScene?: (key: string) => {
+          room?: { dispose: () => void };
+        };
+      };
+    };
+
+    game.scene?.getScene?.("world")?.room?.dispose();
+  });
+}
+
+async function sendPartySnapshot(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const game = (window as Window & { __POKE_LOUNGE_GAME__?: unknown }).__POKE_LOUNGE_GAME__ as {
+      scene?: {
+        getScene?: (key: string) => {
+          createLocalPlayerSnapshot?: () => unknown;
+          sendRoomMessage?: (type: "PLAYER_CHANGED_MAP", payload: unknown) => void;
+        };
+      };
+    };
+    const worldScene = game.scene?.getScene?.("world");
+    const snapshot = worldScene?.createLocalPlayerSnapshot?.();
+
+    if (snapshot && worldScene?.sendRoomMessage) {
+      worldScene.sendRoomMessage("PLAYER_CHANGED_MAP", snapshot);
+    }
+  });
+}
+
+async function reconnectServerRoom(page: Page): Promise<boolean> {
+  return page.evaluate(() => {
+    const game = (window as Window & { __POKE_LOUNGE_GAME__?: unknown }).__POKE_LOUNGE_GAME__ as {
+      scene?: {
+        getScene?: (key: string) => {
+          createLocalPlayerSnapshot?: () => unknown;
+          room?: { connect: (snapshot: unknown) => void };
+        };
+      };
+    };
+    const worldScene = game.scene?.getScene?.("world");
+    const snapshot = worldScene?.createLocalPlayerSnapshot?.();
+
+    if (!snapshot || !worldScene?.room) {
+      return false;
+    }
+
+    worldScene.room.connect(snapshot);
+
+    return true;
+  });
+}
+
 async function expectServerRoomUrl(page: Page): Promise<void> {
   await expect
     .poll(
@@ -517,10 +708,15 @@ async function mockServerRoom(
   page: Page,
   server: MockServerState,
   options: {
+    advanceRevisionOnGetAfterConflict?: boolean;
     completeOnGet?: boolean;
+    deferCreateResponse?: boolean;
+    idempotencyConflictSuffix?: string;
     mutationDelayMs?: number;
     networkFailureSuffix?: string;
     rejectResult?: boolean;
+    revisionConflictAttempt?: number;
+    revisionConflictDelayMs?: number;
     revisionConflictSuffix?: string;
     waitForResult?: boolean;
     wrapped?: boolean;
@@ -544,6 +740,13 @@ async function mockServerRoom(
       );
       expect(revision).toMatch(/^(0|[1-9][0-9]*)$/);
       server.commandHeaders.push({ suffix, idempotencyKey, revision });
+      server.commandRequests.push({
+        body: request.postData() ?? "",
+        idempotencyKey,
+        method,
+        revision,
+        suffix,
+      });
       server.activeMutations += 1;
       server.maxConcurrentMutations = Math.max(
         server.maxConcurrentMutations,
@@ -565,11 +768,19 @@ async function mockServerRoom(
       if (
         mutation &&
         suffix === options.revisionConflictSuffix &&
+        server.commandRequests.filter(request => request.suffix === suffix).length ===
+          (options.revisionConflictAttempt ?? 1) &&
         !server.revisionConflictReturned
       ) {
         server.revisionConflictReturned = true;
         server.revision += 1;
         server.conflictRevision = server.revision;
+        const snapshot = createWaitingRoomState(server);
+
+        if (options.revisionConflictDelayMs) {
+          await new Promise(resolve => setTimeout(resolve, options.revisionConflictDelayMs));
+        }
+
         await route.fulfill({
           status: 409,
           contentType: "application/json",
@@ -577,7 +788,27 @@ async function mockServerRoom(
             statusCode: 409,
             code: "POKE_LOUNGE_REVISION_CONFLICT",
             message: "Poke Lounge room revision conflict",
-            snapshot: createWaitingRoomState(server),
+            snapshot,
+          }),
+        });
+        return;
+      }
+
+      if (
+        mutation &&
+        suffix === options.idempotencyConflictSuffix &&
+        !server.idempotencyConflictReturned
+      ) {
+        server.idempotencyConflictReturned = true;
+        server.revision += 1;
+        await route.fulfill({
+          status: 409,
+          contentType: "application/json",
+          body: JSON.stringify({
+            statusCode: 409,
+            code: "POKE_LOUNGE_IDEMPOTENCY_CONFLICT",
+            message: "Poke Lounge room idempotency conflict",
+            snapshot: createCompletedRoomState(server),
           }),
         });
         return;
@@ -587,6 +818,12 @@ async function mockServerRoom(
         expect(request.headers()["if-match-revision"]).toBe("0");
         server.revision = 0;
         await recordJoinedIdentity(request, server);
+        if (options.deferCreateResponse) {
+          server.createRequestReceived = true;
+          await new Promise<void>(resolve => {
+            server.resolveCreateResponse = resolve;
+          });
+        }
         await route.fulfill({
           status: 201,
           contentType: "application/json",
@@ -631,17 +868,39 @@ async function mockServerRoom(
         server.revision += 1;
       }
 
+      if (
+        method === "GET" &&
+        options.advanceRevisionOnGetAfterConflict &&
+        server.revisionConflictReturned &&
+        !server.concurrentPollRevision
+      ) {
+        server.revision += 1;
+        server.concurrentPollRevision = server.revision;
+      }
+
+      let responseState =
+        options.advanceRevisionOnGetAfterConflict &&
+        method === "GET" &&
+        server.concurrentPollRevision
+          ? createTournamentRoomState(server)
+          : options.rejectResult ||
+              (options.completeOnGet && method !== "GET") ||
+              (options.waitForResult && !server.resultAccepted)
+            ? createTournamentRoomState(server)
+            : createCompletedRoomState(server);
+
+      if (method === "GET" && server.returnStaleGet) {
+        server.returnStaleGet = false;
+        responseState = {
+          ...createTournamentRoomState(server),
+          revision: Math.max(0, server.revision - 1),
+        };
+      }
+
       await route.fulfill({
         status: method === "GET" ? 200 : 201,
         contentType: "application/json",
-        body: stringifyResponse(
-          options.rejectResult ||
-            (options.completeOnGet && method !== "GET") ||
-            (options.waitForResult && !server.resultAccepted)
-            ? createTournamentRoomState(server)
-            : createCompletedRoomState(server),
-          options,
-        ),
+        body: stringifyResponse(responseState, options),
       });
     } finally {
       if (mutation) {
@@ -667,12 +926,23 @@ async function newMockedPage(
 interface MockServerState {
   activeMutations: number;
   calls: string[];
+  commandRequests: Array<{
+    body: string;
+    idempotencyKey: string;
+    method: string;
+    revision: string;
+    suffix: string;
+  }>;
   commandHeaders: Array<{
     suffix: string;
     idempotencyKey: string;
     revision: string;
   }>;
   conflictRevision: number | null;
+  concurrentPollRevision: number | null;
+  createRequestReceived: boolean;
+  resolveCreateResponse?: () => void;
+  idempotencyConflictReturned: boolean;
   maxConcurrentMutations: number;
   networkFailureReturned: boolean;
   partySnapshotBodies: Array<{
@@ -698,6 +968,7 @@ interface MockServerState {
   resultAccepted: boolean;
   revision: number;
   revisionConflictReturned: boolean;
+  returnStaleGet: boolean;
   joinedPlayerIds: Set<string>;
   joinedSessionIds: Set<string>;
   joinedParticipants: Array<{
@@ -712,8 +983,12 @@ function createMockServerState(): MockServerState {
   return {
     activeMutations: 0,
     calls: [],
+    commandRequests: [],
     commandHeaders: [],
     conflictRevision: null,
+    concurrentPollRevision: null,
+    createRequestReceived: false,
+    idempotencyConflictReturned: false,
     maxConcurrentMutations: 0,
     networkFailureReturned: false,
     partySnapshotBodies: [],
@@ -721,6 +996,7 @@ function createMockServerState(): MockServerState {
     resultAccepted: false,
     revision: 0,
     revisionConflictReturned: false,
+    returnStaleGet: false,
     joinedPlayerIds: new Set(),
     joinedSessionIds: new Set(),
     joinedParticipants: [],

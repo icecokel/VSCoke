@@ -5,7 +5,16 @@ export class AddPokeLoungeGameType1793664000000 implements MigrationInterface {
 
   async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TYPE "game_history_gametype_enum" ADD VALUE IF NOT EXISTS 'POKE_LOUNGE'`,
+      `
+        DO $$
+        BEGIN
+          IF to_regtype('game_history_gametype_enum') IS NULL THEN
+            CREATE TYPE "game_history_gametype_enum" AS ENUM ('SKY_DROP', 'POKE_LOUNGE');
+          ELSE
+            ALTER TYPE "game_history_gametype_enum" ADD VALUE IF NOT EXISTS 'POKE_LOUNGE';
+          END IF;
+        END $$;
+      `,
     );
   }
 

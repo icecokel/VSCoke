@@ -342,6 +342,7 @@ export interface GameStateStore {
   canChooseStarter(): boolean;
   hasCurrentLocalPlayerViewedShortcutGuide(): boolean;
   subscribe(listener: GameStateListener): GameStateUnsubscribe;
+  hydrateLocalPlayers(localPlayers: LocalPlayersSaveState): void;
   setCurrentPlayer(playerId: string): void;
   upsertLocalPlayer(localPlayer: LocalPlayerState): void;
   setLocalPlayerPokeDollars(pokeDollars: number): void;
@@ -534,6 +535,9 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
       return () => {
         listeners.delete(listener);
       };
+    },
+    hydrateLocalPlayers(localPlayers) {
+      setLocalPlayers(localPlayers);
     },
     setCurrentPlayer(playerId) {
       setLocalPlayers({

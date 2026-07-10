@@ -5,7 +5,11 @@ import {
 } from "../../src/components/poke-lounge/runtime/game/state/poke-lounge-save-snapshot";
 import { createGameStateStore } from "../../src/components/poke-lounge/runtime/game/state/gameStateStore";
 import { startPokeLoungeAutosave } from "../../src/components/poke-lounge/poke-lounge-autosave";
-import { savePokeLoungeState } from "../../src/services/poke-lounge-state-service";
+import {
+  loadPokeLoungeState,
+  savePokeLoungeState,
+} from "../../src/services/poke-lounge-state-service";
+import { ApiError } from "../../src/lib/api-client";
 
 const CLIENT_UPDATED_AT = "2026-07-08T12:00:00.000Z";
 
@@ -144,6 +148,63 @@ test.describe("Poke Lounge autosave", () => {
         },
       ],
     ]);
+  });
+
+  test("인증된 GET이 완료되기 전에는 첫 PUT을 시작하지 않는다", async () => {
+    const calls: string[] = [];
+    const deferredGet = createDeferred<unknown>();
+    const store = createGameStateStore();
+    const snapshot = buildPokeLoungeSaveSnapshot(store);
+    const manualScheduler = createManualScheduler();
+
+    const startAfterHydration = async () => {
+      const loaded = await loadPokeLoungeState("id-token", {
+        get: async () => {
+          calls.push("GET");
+          return deferredGet.promise;
+        },
+      });
+
+      if (!loaded.success) {
+        return;
+      }
+
+      if (loaded.snapshot) {
+        store.hydrateLocalPlayers(loaded.snapshot.state);
+      }
+
+      const autosave = startPokeLoungeAutosave({
+        gameStateStore: store,
+        token: "id-token",
+        scheduler: manualScheduler.scheduler,
+        saveState: async () => {
+          calls.push("PUT");
+          return { success: true };
+        },
+      });
+
+      await autosave.flush();
+      await autosave.dispose({ flush: false });
+    };
+
+    const startPromise = startAfterHydration();
+
+    expect(calls).toEqual(["GET"]);
+
+    deferredGet.resolve({ state: snapshot });
+    await startPromise;
+
+    expect(calls).toEqual(["GET", "PUT"]);
+  });
+
+  test("404 상태 조회는 빈 저장 상태로 정규화한다", async () => {
+    const result = await loadPokeLoungeState("id-token", {
+      get: async () => {
+        throw new ApiError(404, "Poke Lounge state not found");
+      },
+    });
+
+    expect(result).toEqual({ success: true, snapshot: null });
   });
 
   test("저장 서비스는 토큰이 없으면 요청을 보내지 않고 조용히 건너뛴다", async () => {

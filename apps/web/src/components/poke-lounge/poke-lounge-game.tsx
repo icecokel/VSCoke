@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useGame } from "@/contexts/game-context";
 import { getSessionApiIdToken, isAuthSessionError, type ApiTokenSession } from "@/lib/auth-token";
 import { submitScore } from "@/services/score-service";
+import { loadPokeLoungeState } from "@/services/poke-lounge-state-service";
 import { startPokeLoungeAutosave } from "./poke-lounge-autosave";
 import { setPokeLoungeMasterVolume } from "./runtime/game/audio/poke-lounge-audio";
 import { getDefaultGameStateStore } from "./runtime/game/state/defaultGameStateStore";
@@ -44,6 +45,7 @@ type PokeLoungeGamePageHandle = {
   setViewportSize(viewportSize: GameViewportDisplaySize): void;
 };
 type PokeLoungeRoomShareStatus = "idle" | "success" | "error";
+type PokeLoungeStateHydrationStatus = "pending" | "ready" | "unavailable";
 
 function isEditableEventTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -103,6 +105,10 @@ export function PokeLoungeGame() {
     "idle" | "submitting" | "success" | "auth" | "error"
   >("idle");
   const [submitMessage, setSubmitMessage] = useState<string>("");
+  const [stateHydrationStatus, setStateHydrationStatus] =
+    useState<PokeLoungeStateHydrationStatus>("pending");
+  const [stateHydrationMessage, setStateHydrationMessage] = useState("");
+  const [stateHydrationAttempt, setStateHydrationAttempt] = useState(0);
   const volumeLevel = volumeLevelIndex + 1;
   const uiSizeLabel = uiSize === "large" ? "UI 크게" : "UI 보통";
   const roomShareUrl = settingsOpen ? createPokeLoungeRoomShareUrlFromLocation() : null;
@@ -296,7 +302,54 @@ export function PokeLoungeGame() {
     const apiSession = session as ApiTokenSession | null;
     const token = getSessionApiIdToken(apiSession);
 
+    if (status === "loading") {
+      setStateHydrationStatus("pending");
+      return;
+    }
+
     if (status !== "authenticated" || !token || isAuthSessionError(apiSession?.error)) {
+      setStateHydrationStatus("ready");
+      setStateHydrationMessage("");
+      return;
+    }
+
+    let cancelled = false;
+    setStateHydrationStatus("pending");
+    setStateHydrationMessage("");
+
+    void loadPokeLoungeState(token).then(result => {
+      if (cancelled) {
+        return;
+      }
+
+      if (!result.success) {
+        setStateHydrationStatus("unavailable");
+        setStateHydrationMessage(result.message);
+        return;
+      }
+
+      if (result.snapshot) {
+        getDefaultGameStateStore().hydrateLocalPlayers(result.snapshot.state);
+      }
+
+      setStateHydrationStatus("ready");
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session, stateHydrationAttempt, status]);
+
+  useEffect(() => {
+    const apiSession = session as ApiTokenSession | null;
+    const token = getSessionApiIdToken(apiSession);
+
+    if (
+      stateHydrationStatus !== "ready" ||
+      status !== "authenticated" ||
+      !token ||
+      isAuthSessionError(apiSession?.error)
+    ) {
       return;
     }
 
@@ -308,9 +361,13 @@ export function PokeLoungeGame() {
     return () => {
       void autosave.dispose();
     };
-  }, [session, status]);
+  }, [session, stateHydrationStatus, status]);
 
   useEffect(() => {
+    if (stateHydrationStatus === "pending") {
+      return;
+    }
+
     let cancelled = false;
     let cleanedUp = false;
     let destroyGamePage: (() => void) | null = null;
@@ -376,7 +433,7 @@ export function PokeLoungeGame() {
     });
 
     return cleanupGamePage;
-  }, [setGamePlaying]);
+  }, [setGamePlaying, stateHydrationStatus]);
 
   const handleSubmitResult = useCallback(async () => {
     if (!finalResult || submitStatus === "submitting" || submitStatus === "success") {
@@ -442,6 +499,20 @@ export function PokeLoungeGame() {
           </button>
         ) : null}
       </div>
+      {stateHydrationStatus === "unavailable" ? (
+        <section className={styles.resultOverlay} data-testid="poke-lounge-state-hydration-error">
+          <p className={styles.resultStatus} aria-live="polite">
+            {stateHydrationMessage}
+          </p>
+          <Button
+            type="button"
+            onClick={() => setStateHydrationAttempt(attempt => attempt + 1)}
+            data-testid="poke-lounge-state-hydration-retry"
+          >
+            저장 상태 다시 불러오기
+          </Button>
+        </section>
+      ) : null}
       {settingsOpen ? (
         <section
           className={styles.settingsOverlay}

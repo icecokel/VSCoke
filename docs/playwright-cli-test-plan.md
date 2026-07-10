@@ -51,6 +51,7 @@
 | README/Resume  | 프로필 진입, 상세 이력서 이동, 뒤로 이동, 공유 버튼        | 커버 중      |
 | Blog           | 목록 진입, 상세 진입, 대시보드 검색                        | 커버 중      |
 | Game Dashboard | Sky Drop, Fish Drift, Poke Lounge, Wordle 진입             | 커버 중      |
+| Resume RAG     | README 질문 진입, `/resume/question` 공개 chat UI          | 커버 중      |
 | Package        | 패키지 화면 렌더링                                         | 간접 커버 중 |
 | 핵심 복구      | 404 복구, history 탭, 새로고침 상태 유지                   | 커버 중      |
 
@@ -60,13 +61,16 @@ P0 범위는 최소 `pnpm e2e`에서 안정적으로 검증되어야 한다.
 
 기능 품질을 높이기 위한 보강 범위다.
 
-| 범주      | 범위                                              | 현재 상태 |
-| --------- | ------------------------------------------------- | --------- |
-| 장애 대응 | 랭킹 API 실패, 단어 API 실패, capability fallback | 커버 중   |
-| 접근성    | 키보드 전용 조작                                  | 커버 중   |
-| 모바일    | 사이즈별 동작, 모바일 전용 트리거                 | 커버 중   |
-| 딥링크    | 상세 라우트 직접 진입                             | 커버 중   |
-| 시각 회귀 | 홈, 블로그, 대시보드, 게임, 패키지 화면           | 커버 중   |
+| 범주            | 범위                                                                   | 현재 상태 |
+| --------------- | ---------------------------------------------------------------------- | --------- |
+| 장애 대응       | 랭킹 API 실패, 단어 API 실패, capability fallback, 서버 route fallback | 커버 중   |
+| API/client 계약 | API read error, auth token, OpenAPI 기반 서비스 호출                   | 커버 중   |
+| 접근성          | 키보드 전용 조작                                                       | 커버 중   |
+| 모바일          | 사이즈별 동작, 모바일 전용 트리거                                      | 커버 중   |
+| 딥링크          | 상세 라우트 직접 진입                                                  | 커버 중   |
+| 시각/레이아웃   | 홈, 블로그, 대시보드, 게임, 패키지 화면, layout shift                  | 커버 중   |
+| Analytics       | GA4 직접 연결, GTM 렌더링                                              | 커버 중   |
+| Poke Lounge     | 게임 로직, 자동 저장, 로컬/서버 멀티플레이, 점수 제출                  | 커버 중   |
 
 P1은 기능 배포 직전 또는 UI 변경 시 반드시 확인하는 범위다.
 
@@ -77,7 +81,7 @@ P1은 기능 배포 직전 또는 UI 변경 시 반드시 확인하는 범위다
 | 범주                 | 범위                                                 | 필요 작업                                                     |
 | -------------------- | ---------------------------------------------------- | ------------------------------------------------------------- |
 | 공유 결과 페이지     | `/{locale}/share/[id]` 진입 및 fallback              | 서버 사이드 API mocking 전략 필요                             |
-| 실제 인증 연동       | 로그인 상태에 따른 점수 제출                         | 인증 세션 제어 전략 필요                                      |
+| 실제 OAuth 연동      | Google 로그인 상태에 따른 점수 제출                  | 인증 세션 제어 전략 필요                                      |
 | 교차 브라우저 정례화 | WebKit, Firefox 상시 회귀                            | 실행 시간과 flaky 관리 기준 필요                              |
 | CI 확장              | 전체 E2E, visual regression, cross-browser 자동 회귀 | 기본 PR focused workflow는 구현됨. 확장 범위만 별도 결정 필요 |
 
@@ -99,22 +103,32 @@ P2는 1차 도입 완료 조건에 포함하지 않는다.
 
 현재 존재하는 E2E 파일 기준 커버리지는 아래와 같다.
 
-| 파일                          | 책임 범위                                       |
-| ----------------------------- | ----------------------------------------------- |
-| `i18n-integrity.spec.ts`      | 로케일 전환 및 유지                             |
-| `core-routes.spec.ts`         | 홈, 메뉴, 사이드바, README, Blog, Game 주요 CTA |
-| `deep-link.spec.ts`           | 주요 상세 페이지 직접 진입                      |
-| `error-fallback.spec.ts`      | API 오류 fallback                               |
-| `capability-fallback.spec.ts` | 브라우저 capability fallback                    |
-| `history-tabs.spec.ts`        | 탭 상태머신                                     |
-| `hobby-games.spec.ts`         | 게임 센터와 주요 게임 라우트 진입               |
-| `hobby-recipes.spec.ts`       | 취미 레시피 페이지                              |
-| `hobby-espresso.spec.ts`      | 에스프레소 기록 페이지                          |
-| `state-persistence.spec.ts`   | 로컬 상태 복원                                  |
-| `not-found-recovery.spec.ts`  | 404 자동 복구                                   |
-| `keyboard-only.spec.ts`       | 키보드 조작                                     |
-| `mobile-behavior.spec.ts`     | 모바일 전용 동작                                |
-| `visual-regression.spec.ts`   | 비주얼 기준선                                   |
+| 파일                              | 책임 범위                                       |
+| --------------------------------- | ----------------------------------------------- |
+| `i18n-integrity.spec.ts`          | 로케일 전환 및 유지                             |
+| `api-read-error.spec.ts`          | API read 오류 판별과 recoverable 처리           |
+| `auth-token.spec.ts`              | Auth token 추출/전달 유틸                       |
+| `core-routes.spec.ts`             | 홈, 메뉴, 사이드바, README, Blog, Game 주요 CTA |
+| `deep-link.spec.ts`               | 주요 상세 페이지 직접 진입                      |
+| `error-fallback.spec.ts`          | API 오류 fallback                               |
+| `capability-fallback.spec.ts`     | 브라우저 capability fallback                    |
+| `google-analytics.spec.ts`        | GA4 직접 연결 렌더링                            |
+| `google-tag-manager.spec.ts`      | GTM script/noscript 렌더링                      |
+| `history-tabs.spec.ts`            | 탭 상태머신                                     |
+| `hobby-games.spec.ts`             | 게임 센터와 주요 게임 라우트 진입               |
+| `hobby-recipes.spec.ts`           | 취미 레시피 페이지                              |
+| `hobby-espresso.spec.ts`          | 에스프레소 기록 페이지                          |
+| `layout-shift.spec.ts`            | 레이아웃 이동 회귀                              |
+| `state-persistence.spec.ts`       | 로컬 상태 복원                                  |
+| `not-found-recovery.spec.ts`      | 404 자동 복구                                   |
+| `keyboard-only.spec.ts`           | 키보드 조작                                     |
+| `mobile-behavior.spec.ts`         | 모바일 전용 동작                                |
+| `poke-lounge.spec.ts`             | Poke Lounge 게임 로직과 브라우저 흐름           |
+| `poke-lounge-autosave.spec.ts`    | Poke Lounge 저장 snapshot과 자동 저장           |
+| `poke-lounge-multiplayer.spec.ts` | Poke Lounge 서버 룸 멀티플레이                  |
+| `resume-rag-chat-public.spec.ts`  | 공개 이력 질문 UI와 README 질문 진입            |
+| `server-route-fallback.spec.ts`   | 서버 route fallback 처리                        |
+| `visual-regression.spec.ts`       | 비주얼 기준선                                   |
 
 즉, P0와 P1의 상당 부분은 이미 구현되어 있고, 이번 작업계획의 핵심은 이를 운영 기준으로 고정하고 남은 공백을 분리하는 것이다.
 

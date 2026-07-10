@@ -1,6 +1,6 @@
 # VSCoke Monorepo Concept
 
-확인 기준일: 2026-07-06
+확인 기준일: 2026-07-10
 
 이 문서는 현재 구현된 VSCoke monorepo의 구조, 실행 방식, 테스트, 배포 흐름을 한눈에 보기 위한 기준 문서다. 프론트엔드, 백엔드, 테스트, hook 작업을 시작할 때는 이 문서를 먼저 확인한다.
 
@@ -16,8 +16,8 @@ vscoke/
 │  ├─ web/      -> Next.js 15 App Router frontend
 │  └─ api/      -> NestJS 11 backend
 ├─ packages/
-│  ├─ api-types/  -> future shared package placeholder
-│  └─ config/     -> future shared package placeholder
+│  ├─ api-types/  -> shared package placeholder (.gitkeep only)
+│  └─ config/     -> shared package placeholder (.gitkeep only)
 ├─ docs/
 ├─ scripts/
 ├─ package.json
@@ -25,7 +25,7 @@ vscoke/
 └─ pnpm-workspace.yaml
 ```
 
-`pnpm-workspace.yaml`은 `apps/*`, `packages/*`를 workspace로 묶는다. 현재 `packages/api-types`, `packages/config`는 자리 표시자만 있고 실제 공유 패키지 구현은 없다.
+`pnpm-workspace.yaml`은 `apps/*`, `packages/*`를 workspace로 묶는다. 현재 `packages/api-types`, `packages/config`는 `.gitkeep`만 있는 자리 표시자이며 실제 공유 패키지 구현은 없다.
 
 ## 앱 책임
 
@@ -39,6 +39,7 @@ vscoke/
 - next-intl 기반 `ko-KR`, `en-US` 라우팅
 - Tailwind CSS 4
 - Auth.js / Google OAuth
+- 선택적 GA4/GTM 클라이언트 계측
 - Playwright E2E
 
 현재 주요 라우트:
@@ -46,7 +47,7 @@ vscoke/
 | 영역           | 라우트                                                                                                                     |
 | -------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | 홈             | `/:locale`                                                                                                                 |
-| 문서/이력      | `/:locale/readme`, `/:locale/resume/:slug`, `/:locale/package`                                                             |
+| 문서/이력      | `/:locale/readme`, `/:locale/resume/:slug`, `/:locale/resume/question`, `/:locale/package`                                 |
 | 블로그         | `/:locale/blog`, `/:locale/blog/:slug`, `/:locale/blog/dashboard`                                                          |
 | 게임           | `/:locale/game`, `/:locale/game/sky-drop`, `/:locale/game/fish-drift`, `/:locale/game/poke-lounge`, `/:locale/game/wordle` |
 | 취미           | `/:locale/hobby/espresso`, `/:locale/hobby/espresso/:beanId`, `/:locale/hobby/recipes`                                     |
@@ -67,16 +68,19 @@ API는 Ubuntu 호스트에서 PM2로 실행되는 NestJS 앱이다.
 - Winston logging
 - Google ID token 기반 API 인증 guard
 - 개발 환경 전용 auth bypass 옵션
+- 공개 origin allowlist 기반 Resume RAG guard
 
 현재 API 모듈:
 
-| 모듈            | 주요 endpoint                                                    | 설명                            |
-| --------------- | ---------------------------------------------------------------- | ------------------------------- |
-| App             | `GET /`                                                          | 기본 상태 확인                  |
-| Recipe          | `GET /recipes`, `GET /recipes/:id`                               | 취미 레시피 목록/상세           |
-| EspressoHistory | `GET /espresso-history/beans`, `GET /espresso-history/beans/:id` | 에스프레소 원두/라운드 기록     |
-| Game            | `POST /game/result`, `GET /game/ranking`, `GET /game/result/:id` | 게임 점수 저장, 랭킹, 공유 조회 |
-| Wordle          | `GET /wordle/word`, `POST /wordle/check`                         | Wordle 단어 조회/검증           |
+| 모듈            | 주요 endpoint                                                                                             | 설명                             |
+| --------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| App             | `GET /`, `GET /health`                                                                                    | 기본 상태와 health 확인          |
+| Recipe          | `GET /recipes`, `GET /recipes/:id`                                                                        | 취미 레시피 목록/상세            |
+| EspressoHistory | `GET /espresso-history/beans`, `GET /espresso-history/beans/:id`                                          | 에스프레소 원두/라운드 기록      |
+| Game            | `POST /game/result`, `GET /game/ranking`, `GET /game/result/:id`, `GET/PUT /game/poke-lounge/state`       | 게임 점수, 랭킹, 공유, 저장 상태 |
+| PokeLounge      | `POST /poke-lounge/rooms`, `GET /poke-lounge/rooms/:roomCode`, join/ready/snapshot/result/leave room APIs | Poke Lounge 서버 룸 상태         |
+| ResumeRag       | `POST /resume-rag/chat`                                                                                   | 공개 이력 질문 답변              |
+| Wordle          | `GET /wordle/word`, `POST /wordle/check`                                                                  | Wordle 단어 조회/검증            |
 
 DB 연결은 API 런타임에서만 관리한다. 웹은 DB에 직접 접근하지 않는다.
 
@@ -108,6 +112,23 @@ SearchPanel
 -> apps/api
 ```
 
+이력 질문은 로그인 없이 동작하지만 API는 허용된 브라우저 origin만 받는다.
+
+```txt
+/:locale/readme composer or /:locale/resume/question
+-> apps/web resume-rag service
+-> POST /resume-rag/chat
+-> apps/api ResumeRagModule
+-> resume_source_items DB text search
+-> Codex app-server answer generation
+```
+
+Poke Lounge는 세 가지 서버 접점이 있다.
+
+- `POST /game/result`, `GET /game/ranking`: 정식 점수와 랭킹
+- `GET/PUT /game/poke-lounge/state`: 로그인 사용자의 자동 저장 상태
+- `/poke-lounge/rooms/**`: 서버 권위 멀티플레이 룸 상태
+
 ## 로컬 실행 기준
 
 기본 명령은 저장소 루트에서 실행한다.
@@ -131,10 +152,11 @@ pnpm install
 | 웹 typecheck      | `pnpm type:check:web`     |
 | API unit test     | `pnpm test:api`           |
 | API E2E test      | `pnpm test:api:e2e`       |
+| OpenAPI 생성      | `pnpm generate:types`     |
+| API 계약 확인     | `pnpm check:api-contract` |
 | 웹 E2E smoke      | `pnpm e2e:smoke`          |
 | 웹 E2E 전체       | `pnpm e2e`                |
 | unused code check | `pnpm knip`               |
-| API 계약 확인     | `pnpm check:api-contract` |
 | 공개 API health   | `pnpm smoke:api:remote`   |
 
 API와 웹을 동시에 로컬에서 볼 때는 터미널을 나눈다.
@@ -156,8 +178,8 @@ NEXT_PUBLIC_API_URL=http://localhost:3001 pnpm dev:web
 
 중요한 값:
 
-- Web: `NEXT_PUBLIC_API_URL`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET`, optional `AUTH_URL`
-- API: `PORT`, `CORS_ORIGINS`, `GOOGLE_CLIENT_ID`, `DB_*`, `DB_SYNCHRONIZE`, optional notify env
+- Web: `NEXT_PUBLIC_API_URL`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET`, optional `AUTH_URL`, optional GA4/GTM env
+- API: `PORT`, `CORS_ORIGINS`, `GOOGLE_CLIENT_ID`, `DB_*`, `DB_SYNCHRONIZE`, Resume RAG env, optional notify env
 - 개발 전용: `ENABLE_DEV_AUTH_BYPASS`, `DEV_AUTH_TOKEN`, `CLOUDFLARE_DB_HOST`
 
 운영 API에서는 `DB_SYNCHRONIZE=false`를 명시한다.
@@ -174,10 +196,10 @@ NEXT_PUBLIC_API_URL=http://localhost:3001 pnpm dev:web
 
 PR 자동 검증은 `.github/workflows/pull-request-check.yml`이 담당한다.
 
-| Job | 주요 검증                                            |
-| --- | ---------------------------------------------------- |
-| API | API lint, unit test, E2E test, build                 |
-| Web | typecheck, lint, knip, build, focused Playwright E2E |
+| Job | 주요 검증                                                                         |
+| --- | --------------------------------------------------------------------------------- |
+| API | API lint, unit test, E2E test, build                                              |
+| Web | local OpenAPI contract diff, typecheck, lint, knip, build, focused Playwright E2E |
 
 PR의 focused E2E는 현재 `i18n-integrity`, `hobby-games`, `keyboard-only`를 Chromium에서 실행한다. 전체 Playwright 회귀는 로컬에서 필요에 따라 `pnpm e2e` 또는 `pnpm e2e:cross-browser`로 실행한다.
 

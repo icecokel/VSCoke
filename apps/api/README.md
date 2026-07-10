@@ -1,65 +1,54 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
-
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
 # VSCoke API
 
-이 프로젝트는 [VSCoke](https://github.com/icecokel/VSCoke) 모노레포의 백엔드 앱입니다.
-VSCode와 유사한 웹 IDE 경험을 제공하기 위한 서버 측 로직과 API를 담당합니다.
+`apps/api`는 VSCoke monorepo의 NestJS 백엔드 앱이다. 웹 앱(`apps/web`)이 사용하는 공개 API, 게임 점수/랭킹, 취미 데이터, Poke Lounge 서버 룸, 이력 RAG chat API를 제공한다.
 
-## 🔗 Related Project
+## 기술 스택
 
-- **Frontend**: [VSCoke (Web IDE Client)](https://github.com/icecokel/VSCoke)
+- Node.js 20 이상
+- NestJS 11
+- TypeScript
+- TypeORM + PostgreSQL
+- Swagger UI `/api`, OpenAPI JSON `/api-json`
+- Winston logging
+- Google ID token 인증 guard
 
-## 🛠 Tech Stack
+## 주요 모듈
 
-### Framework & Runtime
+| 모듈            | 주요 endpoint                                                                                             |
+| --------------- | --------------------------------------------------------------------------------------------------------- |
+| App             | `GET /`, `GET /health`                                                                                    |
+| Recipe          | `GET /recipes`, `GET /recipes/:id`                                                                        |
+| EspressoHistory | `GET /espresso-history/beans`, `GET /espresso-history/beans/:id`                                          |
+| Game            | `POST /game/result`, `GET /game/ranking`, `GET /game/result/:id`, `GET/PUT /game/poke-lounge/state`       |
+| PokeLounge      | `POST /poke-lounge/rooms`, `GET /poke-lounge/rooms/:roomCode`, room join/ready/snapshot/result/leave APIs |
+| Resume RAG      | `POST /resume-rag/chat`                                                                                   |
+| Wordle          | `GET /wordle/word`, `POST /wordle/check`                                                                  |
 
-- **Node.js**: Server Runtime
-- **NestJS**: Main Backend Framework (TypeScript)
+## 로컬 준비
 
-### Database & ORM
-
-- **PostgreSQL**: Relational Database
-- **ORM**: (TypeORM 또는 Prisma 등 사용 예정, 현재는 ORM 사용 명시)
-
-## Project setup
+저장소 루트에서 의존성을 설치한다.
 
 ```bash
-$ pnpm install
+corepack enable
+corepack prepare pnpm@9.12.0 --activate
+pnpm install
 ```
 
-## Environment Variables
+환경 변수는 예시 파일을 복사해 구성한다.
 
-`apps/api/.env.example`을 `apps/api/.env`로 복사한 뒤 실제 값을 채웁니다. 운영 환경 변수 기준은 [Deployment and Environment Plan](../../docs/deployment-and-env.md)을 따릅니다.
+```bash
+cp apps/api/.env.example apps/api/.env
+```
 
-최소한 아래 값은 실제 환경에 맞게 설정해야 합니다.
+최소 실행 값:
 
 ```env
-GOOGLE_CLIENT_ID=<google-oauth-client-id>
+GOOGLE_CLIENT_ID=replace-with-google-client-id
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=replace-with-db-password
+DB_DATABASE=vscoke
 DB_SYNCHRONIZE=false
 ```
 
@@ -67,65 +56,87 @@ DB_SYNCHRONIZE=false
 
 ```env
 ENABLE_DEV_AUTH_BYPASS=true
-DEV_AUTH_TOKEN=<local-dev-token>
+DEV_AUTH_TOKEN=replace-with-local-token
 ```
 
-## Compile and run the project
+운영 환경 변수 기준은 [Deployment and Environment Plan](../../docs/deployment-and-env.md)을 따른다.
+
+## 실행 명령
+
+루트에서 실행:
 
 ```bash
-# development
-$ pnpm --filter @vscoke/api start
-
-# watch mode
-$ pnpm --filter @vscoke/api start:dev
-
-# production mode
-$ pnpm --filter @vscoke/api start:prod
+PORT=3001 pnpm dev:api
+pnpm build:api
+pnpm test:api
+pnpm test:api:e2e
 ```
 
-## Run tests
+API 앱 필터를 직접 사용할 수도 있다.
 
 ```bash
-# unit tests
-$ pnpm --filter @vscoke/api test
-
-# e2e tests
-$ pnpm --filter @vscoke/api test:e2e
-
-# test coverage
-$ pnpm --filter @vscoke/api test:cov
+pnpm --filter @vscoke/api start:dev
+pnpm --filter @vscoke/api build
+pnpm --filter @vscoke/api test
+pnpm --filter @vscoke/api test:e2e
 ```
 
-## Deployment
+Swagger 확인:
 
-VSCoke API는 GitHub Actions로 Termux 서버에 배포하고 PM2로 실행합니다.
+```txt
+http://localhost:3001/api
+http://localhost:3001/api-json
+```
 
-- API 배포 가이드: [DEPLOY.md](DEPLOY.md)
-- Monorepo 배포/환경 변수 기준: [Deployment and Environment Plan](../../docs/deployment-and-env.md)
+## OpenAPI 계약
 
-## Resources
+프론트 타입은 현재 커밋의 controller/DTO에서 생성한 로컬 OpenAPI 계약을 기준으로 한다.
 
-Check out a few resources that may come in handy when working with NestJS:
+```bash
+pnpm generate:types
+pnpm check:api-contract
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+`pnpm generate:types`는 `apps/api/openapi.json`을 생성하고 `apps/web/src/types/api.d.ts`를 갱신한다. API DTO나 controller 응답이 바뀌면 두 파일의 diff를 함께 확인한다.
 
-## Support
+## DB와 migration
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+운영에서는 `DB_SYNCHRONIZE=false`를 유지하고 schema 변경은 TypeORM migration으로 반영한다.
 
-## Stay in touch
+```bash
+pnpm --filter @vscoke/api migration:create src/migrations/<kebab-summary>
+pnpm --filter @vscoke/api migration:generate src/migrations/<kebab-summary>
+pnpm --filter @vscoke/api migration:show
+pnpm --filter @vscoke/api migration:run
+pnpm --filter @vscoke/api migration:revert
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Mac 로컬에서 운영 DB 확인이 필요하면 Cloudflare Access TCP tunnel을 먼저 실행한다.
 
-## License
+```bash
+pnpm --filter @vscoke/api db:tunnel
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## Resume RAG 운영 메모
+
+운영 chat은 `resume_source_items`의 DB 텍스트를 keyword/text search로 검색하고, 검색된 근거를 Codex app-server에 전달해 답변만 생성한다. 운영 chat runtime에는 OpenAI/API 임베딩 키가 필요하지 않다.
+
+필수 기준값:
+
+```env
+RAG_CHAT_PROVIDER=codex-app-server
+RAG_CODEX_APP_SERVER_URL=ws://127.0.0.1:14561
+RAG_CODEX_CWD=/home/icenux/projects/vscoke-api
+RAG_PUBLIC_CHAT_ORIGINS=https://vscoke.vercel.app
+```
+
+## 배포
+
+API는 `.github/workflows/deploy-api.yml`이 Ubuntu host의 GitHub Actions self-hosted runner에서 배포한다.
+
+- 배포 경로: `/home/icenux/projects/vscoke-api`
+- PM2 앱 이름: `vscoke-api`
+- entrypoint: `apps/api/dist/src/main.js`
+- 공개 health: `https://api.icecoke.kr/health`
+
+세부 절차는 [DEPLOY.md](DEPLOY.md)와 [Operations Runbook](../../docs/operations-runbook.md)을 따른다.

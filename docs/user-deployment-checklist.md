@@ -68,7 +68,7 @@ Ubuntu host의 운영 디렉터리를 확인한다.
   - [x] `DEV_AUTH_TOKEN`
 - [ ] 운영 에러 알림을 사용할지 결정한다.
   - [ ] 사용할 경우 `NOTIFY_SERVICE_URL`, `NOTIFY_SERVICE_USER`, `NOTIFY_SERVICE_PASSWORD`를 설정한다.
-  - [ ] 사용하지 않을 경우 현재 localhost fallback 동작을 허용할지 별도 이슈에서 결정한다.
+  - [ ] 사용하지 않을 경우 세 값을 비워 두어 알림 전송을 생략한다.
 
 검증:
 

@@ -5,7 +5,7 @@
 - 대상 앱: `apps/web`
 - 대상 도메인: `Recipe`, `EspressoHistory`
 - 백엔드 기준 문서: [Hobby API Swagger Concept](./hobby-api-swagger-concept.md)
-- 확인 기준일: 2026-06-16
+- 확인 기준일: 2026-07-10
 
 이 문서는 취미 영역 프론트가 백엔드 API 계약을 놓치지 않고 소비하기 위한 타입/스키마 관리 기준 문서다.
 
@@ -14,8 +14,9 @@
 프론트의 취미 타입은 raw JSON 파일 구조가 아니라 백엔드 API 응답 계약을 기준으로 유지한다.
 
 ```txt
-Backend Swagger
--> generated OpenAPI types or contract-matched local types
+Backend controller/DTO
+-> local OpenAPI contract
+-> generated OpenAPI types
 -> service layer
 -> page/component props
 ```
@@ -26,17 +27,17 @@ Backend Swagger
 2. API 호출은 `apps/web/src/services/*`에 둔다.
 3. 컴포넌트는 서비스 응답 타입을 props로 받아 렌더링한다.
 4. API 응답 필드는 프론트에서 사용하지 않더라도 계약 타입에 포함한다.
-5. 수동 타입을 유지하는 동안에는 백엔드 DTO와 필드명, optional, nullable을 맞춘다.
-6. OpenAPI generated 타입이 갱신되면 수동 타입을 generated schema alias로 대체한다.
+5. 취미 도메인 타입은 `apps/web/src/types/api.d.ts`의 `components["schemas"]` alias로 유지한다.
+6. API DTO가 바뀌면 `pnpm generate:types`와 `pnpm check:api-contract`를 함께 실행한다.
 
 ## 현재 구조
 
 ```txt
 apps/web/src/services/recipe-service.ts
-└─ Recipe[]
+└─ Recipe[] = components["schemas"]["RecipeResponseDto"][]
 
 apps/web/src/services/espresso-history-service.ts
-└─ EspressoBean[]
+└─ EspressoBean[] = components["schemas"]["EspressoBeanResponseDto"][]
 
 apps/web/src/features/hobby/
 ├─ types/
@@ -84,6 +85,8 @@ SearchPanel
 작업 후 다음을 확인한다.
 
 ```bash
+pnpm generate:types
+pnpm check:api-contract
 pnpm --filter @vscoke/web type:check
 pnpm --filter @vscoke/web e2e -- tests/e2e/hobby-recipes.spec.ts tests/e2e/hobby-espresso.spec.ts --project=chromium
 ```
@@ -94,8 +97,6 @@ API 문서와 타입을 같이 바꾼 경우 다음도 확인한다.
 pnpm --filter @vscoke/api build
 ```
 
-## 향후 전환 기준
+## 타입 갱신 기준
 
-운영 API 또는 로컬 API에서 `/api-json`이 안정적으로 갱신되면 취미 타입도 `apps/web/src/types/api.d.ts`의 `components["schemas"]` alias로 전환한다.
-
-그 전까지는 수동 타입을 허용하되, 백엔드 DTO와의 차이를 남기지 않는다.
+취미 타입은 이미 generated schema alias를 사용한다. 운영 API Swagger는 배포 상태 확인용으로만 보고, 개발/CI의 타입 source of truth는 현재 커밋에서 생성한 `apps/api/openapi.json`이다.

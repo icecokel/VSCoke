@@ -5,20 +5,20 @@
 - 대상 앱: `apps/api`
 - 대상 도메인: `Recipe`, `EspressoHistory`
 - 공개 문서: `/api`, `/api-json`
-- 확인 기준일: 2026-06-16
+- 확인 기준일: 2026-07-10
 
 이 문서는 취미 영역 API를 추가하거나 수정할 때 Swagger 계약을 빠뜨리지 않기 위한 기준 문서다. 상세 작성 규칙은 [Swagger 작성 규칙과 가이드](./swagger-style-guide.md)를 따른다.
 
 ## 목표
 
-취미 API의 Swagger는 프론트가 타입을 생성하거나 수동 타입을 대조할 수 있을 만큼 구체적인 HTTP 계약이어야 한다.
+취미 API의 Swagger는 프론트가 generated OpenAPI 타입으로 소비할 수 있을 만큼 구체적인 HTTP 계약이어야 한다.
 
 ```txt
 NestJS controller
 -> Response DTO
--> /api-json
+-> local OpenAPI contract apps/api/openapi.json
 -> openapi-typescript
--> apps/web service schema
+-> apps/web generated schema aliases
 ```
 
 ## 대상 API
@@ -79,11 +79,13 @@ EspressoBeanResponseDto
 작업 후 다음을 확인한다.
 
 ```bash
+pnpm generate:types
+pnpm check:api-contract
 pnpm --filter @vscoke/api build
 pnpm --filter @vscoke/api test -- --runInBand
 ```
 
-DB 연결이 가능한 환경에서는 `/api-json`을 조회해 다음을 확인한다.
+DB 연결이 가능한 환경에서는 `/api-json`을 조회해 다음을 확인한다. 개발/CI 타입 생성 기준은 운영 `/api-json`이 아니라 현재 커밋에서 생성한 `apps/api/openapi.json`이다.
 
 - `/recipes`, `/recipes/{id}`가 존재한다.
 - `/espresso-history/beans`, `/espresso-history/beans/{id}`가 존재한다.

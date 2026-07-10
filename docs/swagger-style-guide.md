@@ -4,9 +4,10 @@
 
 - 운영 Swagger: [https://api.icecoke.kr/api](https://api.icecoke.kr/api)
 - OpenAPI JSON: [https://api.icecoke.kr/api-json](https://api.icecoke.kr/api-json)
-- 확인 기준일: 2026-04-15
+- 로컬 계약 파일: `apps/api/openapi.json`
+- 확인 기준일: 2026-07-10
 
-이 문서는 `api.icecoke.kr`의 현재 노출 스펙을 기준으로, 앞으로 Swagger를 일관되게 유지하기 위한 작성 규칙과 실무 가이드를 정리합니다.
+이 문서는 VSCoke API Swagger/OpenAPI를 일관되게 유지하기 위한 작성 규칙과 실무 가이드를 정리합니다. 개발/CI의 타입 생성 기준은 운영 Swagger가 아니라 현재 커밋의 controller/DTO에서 생성한 `apps/api/openapi.json`입니다.
 
 ## 1. 기본 원칙
 
@@ -84,7 +85,7 @@ export class RecipeController {}
 ### 4-2. 숫자 타입
 
 - 개수, 페이지, 랭크처럼 정수 의미가 분명한 값은 가능하면 `integer`로 문서화합니다.
-- 현재 운영 스펙의 `limit`은 `number`로 노출되어 있으므로, 백엔드가 정수만 허용한다면 Swagger도 `integer/int32`로 맞춰 갱신합니다.
+- `@IsInt()`처럼 정수 validation을 적용한 필드는 Swagger도 `integer/int32`로 맞춰 갱신합니다.
 
 ### 4-3. 필수값
 
@@ -185,20 +186,19 @@ getRecipes() {
 }
 ```
 
-## 9. 현재 운영 Swagger 기준 개선 포인트
+## 9. 현재 Swagger 개선 포인트
 
-2026-04-15 기준 확인 결과:
+2026-07-10 기준 확인 결과:
 
 - 루트 `tags` 메타데이터가 비어 있습니다.
-- 일부 응답의 `description`이 비어 있습니다.
-- `limit`이 의미상 정수인데 `number`로만 노출됩니다.
-- 오류 응답 스키마가 충분히 드러나지 않습니다.
+- 일부 4xx/5xx 오류 응답 스키마가 충분히 드러나지 않습니다.
+- 정수 의미의 숫자 필드는 validation과 OpenAPI `integer` 노출 여부를 함께 점검해야 합니다.
 
 우선순위:
 
 1. 응답 설명 채우기
 2. 태그 메타데이터 채우기
-3. `limit` 같은 수량 파라미터를 `integer`로 정리
+3. 점수, 시간, 랭크 같은 정수 필드를 `integer`로 정리
 4. 공통 에러 DTO와 상태 코드 문서화
 
 ## 10. 배포 전 체크리스트
@@ -210,3 +210,4 @@ getRecipes() {
 - [ ] enum, date-time, array item DTO가 정확한가
 - [ ] 200/201/4xx/5xx 응답 설명이 비어 있지 않은가
 - [ ] Swagger UI와 `api-json`에서 동일하게 확인되는가
+- [ ] API 계약 변경 후 `pnpm generate:types`와 `pnpm check:api-contract`가 통과하는가

@@ -38,6 +38,20 @@ describe('Poke Lounge test data source', () => {
   });
 
   it.each([
+    'postgresql://postgres:postgres@127.0.0.1:5432/vscoke_test?host=production-db',
+    'postgresql://postgres:postgres@127.0.0.1:5432/vscoke_test?port=6543',
+    'postgresql://postgres:postgres@127.0.0.1:5432/vscoke_test?HOST=production-db',
+    'postgresql://postgres:postgres@127.0.0.1:5432/vscoke_test?%68ost=production-db',
+    'postgresql://postgres:postgres@127.0.0.1:5432/vscoke_test?%70ort=6543',
+  ])('rejects test database URL query parameters in %s', (url) => {
+    process.env.TEST_DATABASE_URL = url;
+
+    expect(() => loadTestDataSource()).toThrow(
+      'TEST_DATABASE_URL must not include query parameters',
+    );
+  });
+
+  it.each([
     [
       'postgresql:///vscoke_test',
       'TEST_DATABASE_URL must include a database host',

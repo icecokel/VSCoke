@@ -74,6 +74,10 @@ function parsePostgresUrl(value: string): URL {
     throw new Error('TEST_DATABASE_URL must be a PostgreSQL URL');
   }
 
+  if (parsedUrl.search) {
+    throw new Error('TEST_DATABASE_URL must not include query parameters');
+  }
+
   if (!parsedUrl.hostname) {
     throw new Error('TEST_DATABASE_URL must include a database host');
   }

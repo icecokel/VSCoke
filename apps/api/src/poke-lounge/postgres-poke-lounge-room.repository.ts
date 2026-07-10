@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import {
@@ -23,6 +24,12 @@ import type {
 import type { PokeLoungeRoomState } from './poke-lounge-room.types';
 
 const ROOM_CODE_CONSTRAINT = 'UQ_poke_lounge_room_room_code';
+const COMMAND_RECEIPT_CONSTRAINTS = [
+  'UQ_poke_lounge_room_command_actor_key',
+  'UQ_poke_lounge_room_command_room_actor_key',
+] as const;
+type CreateRoomInput = Parameters<PokeLoungeRoomRepository['create']>[0];
+type MutateRoomInput = Parameters<PokeLoungeRoomRepository['mutate']>[0];
 
 @Injectable()
 export class PostgresPokeLoungeRoomRepository implements PokeLoungeRoomRepository {
@@ -31,85 +38,21 @@ export class PostgresPokeLoungeRoomRepository implements PokeLoungeRoomRepositor
     private readonly dataSource: DataSource,
   ) {}
 
-  async create(input: {
-    room: PokeLoungeRoomSnapshot;
-    actorPlayerId: string;
-    idempotencyKey: string;
-    requestHash: string;
-    nowMs: number;
-  }): Promise<PokeLoungeCreateResult> {
-    try {
-      return await this.dataSource.transaction(async (manager) => {
-        await manager.query('SELECT pg_advisory_xact_lock($1)', [
-          POKE_LOUNGE_CREATION_ADVISORY_LOCK,
-        ]);
-
-        const commandRepository = manager.getRepository(PokeLoungeRoomCommand);
-        const existingCommand = await commandRepository.findOne({
-          where: {
-            actorPlayerId: input.actorPlayerId,
-            idempotencyKey: input.idempotencyKey,
-          },
-        });
-
-        if (existingCommand) {
-          if (existingCommand.requestHash === input.requestHash) {
-            return createResult(
-              receiptSnapshot(existingCommand),
-              'replayed',
-              false,
-            );
-          }
-
-          const currentRoom = await this.lockRoomById(
-            manager,
-            existingCommand.roomId,
-          );
-          const snapshot = currentRoom
-            ? snapshotFromEntity(currentRoom)
-            : receiptSnapshot(existingCommand);
-
-          return createResult(snapshot, 'idempotency-conflict', false);
+  async create(input: CreateRoomInput): Promise<PokeLoungeCreateResult> {
+    for (;;) {
+      try {
+        return await this.createInTransaction(input);
+      } catch (error) {
+        if (isUniqueConstraintViolation(error, ROOM_CODE_CONSTRAINT)) {
+          return { outcome: 'room-code-collision' };
         }
 
-        await purgeExpiredWithManager(manager, input.nowMs);
-
-        const roomRepository = manager.getRepository(PokeLoungeRoom);
-        const roomCount = await roomRepository.count();
-
-        if (roomCount >= POKE_LOUNGE_ROOM_CAPACITY) {
-          return { outcome: 'capacity-reached' };
+        if (isCommandReceiptUniqueViolation(error)) {
+          continue;
         }
 
-        const snapshot = prepareCreatedSnapshot(input.room);
-        const room = await roomRepository.save(
-          roomRepository.create({
-            roomCode: snapshot.roomCode,
-            state: storedStateFromSnapshot(snapshot),
-            revision: snapshot.revision,
-            expiresAt: new Date(snapshot.expiresAtMs),
-          }),
-        );
-
-        await commandRepository.save(
-          commandRepository.create({
-            roomId: room.id,
-            actorPlayerId: input.actorPlayerId,
-            idempotencyKey: input.idempotencyKey,
-            requestHash: input.requestHash,
-            responseState: structuredClone(snapshot),
-            responseRevision: snapshot.revision,
-          }),
-        );
-
-        return createResult(snapshot, 'committed', true);
-      });
-    } catch (error) {
-      if (isUniqueConstraintViolation(error, ROOM_CODE_CONSTRAINT)) {
-        return { outcome: 'room-code-collision' };
+        throw error;
       }
-
-      throw error;
     }
   }
 
@@ -144,16 +87,112 @@ export class PostgresPokeLoungeRoomRepository implements PokeLoungeRoomRepositor
     });
   }
 
-  async mutate(input: {
-    roomCode: string;
-    actorPlayerId: string;
-    idempotencyKey: string;
-    requestHash: string;
-    expectedRevision: number;
-    nowMs: number;
-    apply: (room: PokeLoungeRoomSnapshot) => PokeLoungeRoomSnapshot;
-  }): Promise<PokeLoungeRepositoryResult | null> {
+  async mutate(
+    input: MutateRoomInput,
+  ): Promise<PokeLoungeRepositoryResult | null> {
+    for (;;) {
+      try {
+        return await this.mutateInTransaction(input);
+      } catch (error) {
+        if (isCommandReceiptUniqueViolation(error)) {
+          continue;
+        }
+
+        throw error;
+      }
+    }
+  }
+
+  async purgeExpired(nowMs: number): Promise<number> {
     return this.dataSource.transaction(async (manager) => {
+      return purgeExpiredWithManager(manager, nowMs);
+    });
+  }
+
+  private createInTransaction(
+    input: CreateRoomInput,
+  ): Promise<PokeLoungeCreateResult> {
+    return this.dataSource.transaction(async (manager) => {
+      await lockCommandReceiptKey(
+        manager,
+        input.actorPlayerId,
+        input.idempotencyKey,
+      );
+      await manager.query('SELECT pg_advisory_xact_lock($1)', [
+        POKE_LOUNGE_CREATION_ADVISORY_LOCK,
+      ]);
+
+      const commandRepository = manager.getRepository(PokeLoungeRoomCommand);
+      const existingCommand = await commandRepository.findOne({
+        where: {
+          actorPlayerId: input.actorPlayerId,
+          idempotencyKey: input.idempotencyKey,
+        },
+      });
+
+      if (existingCommand) {
+        if (existingCommand.requestHash === input.requestHash) {
+          return createResult(
+            receiptSnapshot(existingCommand),
+            'replayed',
+            false,
+          );
+        }
+
+        const currentRoom = await this.lockRoomById(
+          manager,
+          existingCommand.roomId,
+        );
+        const snapshot = currentRoom
+          ? snapshotFromEntity(currentRoom)
+          : receiptSnapshot(existingCommand);
+
+        return createResult(snapshot, 'idempotency-conflict', false);
+      }
+
+      await purgeExpiredWithManager(manager, input.nowMs);
+
+      const roomRepository = manager.getRepository(PokeLoungeRoom);
+      const roomCount = await roomRepository.count();
+
+      if (roomCount >= POKE_LOUNGE_ROOM_CAPACITY) {
+        return { outcome: 'capacity-reached' };
+      }
+
+      const snapshot = prepareCreatedSnapshot(input.room);
+      const room = await roomRepository.save(
+        roomRepository.create({
+          roomCode: snapshot.roomCode,
+          state: storedStateFromSnapshot(snapshot),
+          revision: snapshot.revision,
+          expiresAt: new Date(snapshot.expiresAtMs),
+        }),
+      );
+
+      await commandRepository.save(
+        commandRepository.create({
+          roomId: room.id,
+          actorPlayerId: input.actorPlayerId,
+          idempotencyKey: input.idempotencyKey,
+          requestHash: input.requestHash,
+          responseState: structuredClone(snapshot),
+          responseRevision: snapshot.revision,
+        }),
+      );
+
+      return createResult(snapshot, 'committed', true);
+    });
+  }
+
+  private mutateInTransaction(
+    input: MutateRoomInput,
+  ): Promise<PokeLoungeRepositoryResult | null> {
+    return this.dataSource.transaction(async (manager) => {
+      await lockCommandReceiptKey(
+        manager,
+        input.actorPlayerId,
+        input.idempotencyKey,
+      );
       await purgeExpiredWithManager(manager, input.nowMs);
       const room = await this.lockRoomByCode(manager, input.roomCode);
 
@@ -220,12 +259,6 @@ export class PostgresPokeLoungeRoomRepository implements PokeLoungeRoomRepositor
       );
 
       return createResult(nextSnapshot, 'committed', true);
-    });
-  }
-
-  async purgeExpired(nowMs: number): Promise<number> {
-    return this.dataSource.transaction(async (manager) => {
-      return purgeExpiredWithManager(manager, nowMs);
     });
   }
 
@@ -327,6 +360,23 @@ async function saveSnapshot(
   await manager.getRepository(PokeLoungeRoom).save(room);
 }
 
+async function lockCommandReceiptKey(
+  manager: EntityManager,
+  actorPlayerId: string,
+  idempotencyKey: string,
+): Promise<void> {
+  const digest = createHash('sha256')
+    .update(actorPlayerId)
+    .update('\0')
+    .update(idempotencyKey)
+    .digest();
+
+  await manager.query('SELECT pg_advisory_xact_lock($1, $2)', [
+    digest.readInt32BE(0),
+    digest.readInt32BE(4),
+  ]);
+}
+
 async function purgeExpiredWithManager(
   manager: EntityManager,
   nowMs: number,
@@ -371,4 +421,10 @@ function isUniqueConstraintViolation(
   };
 
   return driverError.code === '23505' && driverError.constraint === constraint;
+}
+
+function isCommandReceiptUniqueViolation(error: unknown): boolean {
+  return COMMAND_RECEIPT_CONSTRAINTS.some((constraint) => {
+    return isUniqueConstraintViolation(error, constraint);
+  });
 }

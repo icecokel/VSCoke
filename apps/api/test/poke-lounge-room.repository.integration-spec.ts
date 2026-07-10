@@ -242,6 +242,45 @@ describe('PostgresPokeLoungeRoomRepository', () => {
     expect(results.map((result) => result?.snapshot.revision)).toEqual([1, 1]);
   });
 
+  it('serializes one actor and idempotency key across different rooms', async () => {
+    await createRoom(repository, createSnapshot({ roomCode: 'ROOM01' }));
+    await createRoom(repository, createSnapshot({ roomCode: 'ROOM02' }));
+    const idempotencyKey = randomUUID();
+    const actorPlayerId = 'shared-player';
+
+    const results = await Promise.all([
+      repository.mutate({
+        roomCode: 'ROOM01',
+        actorPlayerId,
+        idempotencyKey,
+        requestHash: 'a'.repeat(64),
+        expectedRevision: 0,
+        nowMs: 2_000,
+        apply: (room) => ({ ...room, updatedAtMs: 2_000 }),
+      }),
+      repository.mutate({
+        roomCode: 'ROOM02',
+        actorPlayerId,
+        idempotencyKey,
+        requestHash: 'b'.repeat(64),
+        expectedRevision: 0,
+        nowMs: 2_001,
+        apply: (room) => ({ ...room, updatedAtMs: 2_001 }),
+      }),
+    ]);
+
+    expect(results.map((result) => result?.outcome).sort()).toEqual([
+      'committed',
+      'idempotency-conflict',
+    ]);
+    expect(
+      await dataSource.getRepository(PokeLoungeRoomCommand).countBy({
+        actorPlayerId,
+        idempotencyKey,
+      }),
+    ).toBe(1);
+  });
+
   it('commits one automatic clock advancement across concurrent reads', async () => {
     const room = createSnapshot({
       status: 'round-started',

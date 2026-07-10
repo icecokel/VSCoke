@@ -235,6 +235,13 @@ interface PokeLoungeE2eController {
   completeTournamentForTest?(): void;
 }
 
+type PokeLoungeWorldSceneProbe = {
+  closeShopForTest?(): void;
+  getShopMessageForTest?(): string;
+  isShopOpenForTest?(): boolean;
+  openShopForTest?(): void;
+};
+
 type PokeLoungeWindow = Window & {
   __POKE_LOUNGE_E2E__?: PokeLoungeE2eController;
   __POKE_LOUNGE_COPIED_TEXT__?: string;
@@ -1507,6 +1514,85 @@ test.describe("Poke Lounge", () => {
     expect(browserErrors.join("\n")).toBe("");
   });
 
+  test("world scene은 상점, PC, 단축키, 야생 전투, 토너먼트 결과 probe를 유지한다", async ({
+    page,
+  }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await startSoloGame(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?wildEncounterRate=1&e2e=1`);
+    await waitForInitialWorldShortcutGuideIfAny(page);
+
+    const initialSnapshot = await getWorldSnapshot(page);
+    expect(initialSnapshot).toMatchObject({
+      player: {
+        x: expect.any(Number),
+        y: expect.any(Number),
+        facing: expect.any(String),
+        displayWidth: expect.any(Number),
+        displayHeight: expect.any(Number),
+      },
+      camera: { zoom: expect.any(Number) },
+      shortcutGuideOpen: true,
+      encounterLocked: false,
+      battleIntroPlaying: false,
+      pokemonStatusPanel: null,
+      pcBox: {
+        open: false,
+        focus: "party",
+        partySlotIndex: 0,
+        boxIndex: 0,
+        message: "",
+        partyCount: 1,
+        boxCount: 0,
+      },
+    });
+
+    await closeWorldShortcutGuideIfOpen(page);
+
+    const shopProbe = await page.evaluate(() => {
+      const pokeWindow = window as PokeLoungeWindow;
+      const worldScene = pokeWindow.__POKE_LOUNGE_GAME__?.scene?.getScene("world") as unknown as
+        | PokeLoungeWorldSceneProbe
+        | undefined;
+
+      worldScene?.openShopForTest?.();
+      const probe = {
+        open: worldScene?.isShopOpenForTest?.() ?? false,
+        message: worldScene?.getShopMessageForTest?.() ?? null,
+      };
+      worldScene?.closeShopForTest?.();
+
+      return probe;
+    });
+    expect(shopProbe).toEqual({ open: true, message: "" });
+
+    const pcProbe = await page.evaluate(() =>
+      (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__?.openPcBoxForTest(),
+    );
+    expect(pcProbe?.pcBox).toMatchObject({
+      open: true,
+      focus: "party",
+      partyCount: 1,
+      boxCount: 0,
+    });
+    await page.evaluate(() => {
+      (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__?.closePcBoxForTest();
+    });
+
+    await moveUntilWildBattle(page);
+    expect(await getActiveSceneKey(page)).toBe("battle");
+    expect(await getBattleSnapshot(page)).toMatchObject({ battleKind: "wild" });
+
+    await page.evaluate(() => {
+      (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__?.completeTournamentForTest?.();
+    });
+    await expect(page.getByTestId("poke-lounge-result-score")).toHaveText("300", {
+      timeout: 10000,
+    });
+
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
   test("사용자 입력 후 Poke Lounge 효과음 asset을 요청한다", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
     const audioRequests: string[] = [];
@@ -2139,6 +2225,16 @@ test.describe("Poke Lounge", () => {
     const submittedPayloads: unknown[] = [];
 
     await mockAuthenticatedSession(page);
+    await page.route("**/game/poke-lounge/state", async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: route.request().method() === "GET" ? null : {},
+        }),
+      });
+    });
     await page.route("**/game/result", async route => {
       const request = route.request();
       submittedPayloads.push(request.postDataJSON());

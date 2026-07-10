@@ -36,6 +36,7 @@ test.describe("Poke Lounge server multiplayer", () => {
     await expect(page.getByTestId("poke-lounge-result-score")).toHaveText("100", {
       timeout: 30000,
     });
+    expect(await getRoundPhase(page)).toBe("game-result");
 
     expect(server.calls).toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/join`);
     await expect

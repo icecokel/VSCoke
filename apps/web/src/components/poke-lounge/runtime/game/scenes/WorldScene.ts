@@ -46,7 +46,6 @@ import {
   type GameState,
   type GameStateStore,
   type LocalPlayerState,
-  type PlayerCompetitiveStats,
   type PlayerPokemon,
   type RemotePlayerState,
   createDefaultLocalPlayer,
@@ -68,18 +67,9 @@ import {
   type DiceGamblePrediction,
   type DiceGambleRound,
 } from "../gamble/diceGamble";
-import {
-  createPartyHudSlotViews,
-  PARTY_HUD_SLOT_SIZE,
-  type PartyHudSlotView,
-} from "../ui/partyHud";
 import { createGameTextStyle } from "../ui/gameTextStyle";
 import { createShortcutGuideRows, createShortcutGuideTitle } from "../ui/shortcutGuide";
-import {
-  DEFAULT_PREPARATION_DURATION_MS,
-  formatRoundTimer,
-  getRoundRemainingMs,
-} from "../round/roundState";
+import { DEFAULT_PREPARATION_DURATION_MS } from "../round/roundState";
 import type { TournamentMatch, TournamentStanding } from "../tournament/tournamentState";
 import {
   getTournamentSessionStandings,
@@ -96,6 +86,15 @@ import {
 } from "../network/tournamentAuthority";
 import { consumeVirtualGamepadPress, isVirtualGamepadPressed } from "../input/virtualGamepad";
 import { setShortcutGuideTouchControlsSuppressed } from "../input/mobileTouchControlsVisibility";
+import {
+  createWorldSceneHud,
+  formatPokemonHp,
+  formatPokeDollars,
+  formatRankScoreHud,
+  type WorldSceneHudController,
+} from "./world-scene-hud";
+
+export { formatPokeDollars, formatRankScoreHud } from "./world-scene-hud";
 
 const PLAYER_SPEED = 104;
 const PLAYER_SIZE = FIELD_MAP.player.displaySize;
@@ -105,8 +104,6 @@ const INVENTORY_PANEL_SIZE = { width: 560, height: 320 } as const;
 const PC_BOX_PANEL_SIZE = { width: 520, height: 320 } as const;
 const DICE_GAMBLE_PANEL_SIZE = { width: 408, height: 292 } as const;
 const SHORTCUT_GUIDE_PANEL_SIZE = { width: 420, height: 248 } as const;
-const POKEMON_STATUS_PANEL_SIZE = { width: 216, height: 142 } as const;
-const POKEMON_STATUS_PANEL_GAP = 8;
 const DICE_GAMBLE_LABELS: Record<DiceGamblePrediction, string> = {
   lower: "낮다",
   equal: "같다",
@@ -312,15 +309,8 @@ export class WorldScene extends Phaser.Scene {
   private pendingRoomMessages: Array<{ type: RoomMessage; payload: RoomEvent[RoomMessage] }> = [];
   private lastLocalSnapshotSyncKey = "";
   private shutdownComplete = false;
-  private currencyHudText: Phaser.GameObjects.Text | null = null;
-  private rankScoreHudText: Phaser.GameObjects.Text | null = null;
-  private roundHudText: Phaser.GameObjects.Text | null = null;
   private roundAnnouncementText: Phaser.GameObjects.Text | null = null;
-  private lastRenderedRoundHudText = "";
-  private partyHudObjects: Phaser.GameObjects.GameObject[] = [];
-  private partyHudSubscribed = false;
-  private pokemonStatusPanelSlotIndex: number | null = null;
-  private pokemonStatusPanelObjects: Phaser.GameObjects.GameObject[] = [];
+  private hud!: WorldSceneHudController;
   private facing: PlayerFacing = "front";
   private lastSentAt = 0;
   private lastSent = { x: 0, y: 0 };
@@ -372,6 +362,21 @@ export class WorldScene extends Phaser.Scene {
 
   create(data: WorldSceneCreateData = {}): void {
     this.shutdownComplete = false;
+    this.hud = createWorldSceneHud({
+      scene: this,
+      gameStateStore: this.gameStateStore,
+      competitiveRoundsEnabled: this.competitiveRoundsEnabled,
+      addUnsubscriber: unsubscribe => this.unsubscribers.push(unsubscribe),
+      canOpenPokemonStatusPanel: () =>
+        !this.shortcutGuideOpen &&
+        !this.shopOpen &&
+        !this.inventoryOpen &&
+        !this.pcBoxOpen &&
+        !this.diceGambleOpen &&
+        !this.battleIntroPlaying,
+      getViewportSize: () => this.getViewportSize(),
+      isShutdownComplete: () => this.shutdownComplete,
+    });
     this.registerLifecycleCleanup();
     this.applyReturnedTournamentResult(data);
     if (!this.competitiveRoundsEnabled) {
@@ -464,7 +469,7 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
-    if (this.pokemonStatusPanelSlotIndex !== null) {
+    if (this.hud.isPokemonStatusPanelOpen()) {
       this.player.setVelocity(0, 0);
       this.handlePokemonStatusPanelKeyboardInput();
       return;
@@ -512,9 +517,7 @@ export class WorldScene extends Phaser.Scene {
       unsubscribe();
     }
     this.unsubscribers = [];
-    this.partyHudSubscribed = false;
-    this.partyHudObjects.forEach(object => object.destroy());
-    this.partyHudObjects = [];
+    this.hud.destroyPartyHud();
     this.closeShop();
     this.closeInventory();
     this.closePcBox();
@@ -524,11 +527,9 @@ export class WorldScene extends Phaser.Scene {
     this.nurseMessageObject?.destroy();
     this.nurseMessageObject = null;
     this.nurseMessage = "";
-    this.roundHudText?.destroy();
+    this.hud.destroy();
     this.roundAnnouncementText?.destroy();
-    this.roundHudText = null;
     this.roundAnnouncementText = null;
-    this.lastRenderedRoundHudText = "";
     this.tournamentBattleStarting = false;
     this.roomConnected = false;
     this.pendingRoomMessages = [];
@@ -568,7 +569,7 @@ export class WorldScene extends Phaser.Scene {
       shortcutGuideOpen: this.shortcutGuideOpen,
       encounterLocked: this.encounterLocked,
       battleIntroPlaying: this.battleIntroPlaying,
-      pokemonStatusPanel: this.getPokemonStatusPanelSnapshot(),
+      pokemonStatusPanel: this.hud?.getPokemonStatusPanelSnapshot() ?? null,
       pcBox: this.getPcBoxSnapshot(),
     };
   }
@@ -744,101 +745,26 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createCurrencyHud(): void {
-    this.currencyHudText = this.add
-      .text(
-        12,
-        10,
-        formatPokeDollars(this.gameStateStore.getCurrentLocalPlayer().wallet.pokeDollars),
-        createGameTextStyle({
-          color: "#f8fbf0",
-          fontSize: "14px",
-          stroke: "#263238",
-          strokeThickness: 4,
-        }),
-      )
-      .setOrigin(0, 0)
-      .setScrollFactor(0)
-      .setDepth(1000);
-
-    this.unsubscribers.push(
-      this.gameStateStore.subscribe(state => {
-        const currentPlayer = state.playersById[state.currentPlayerId];
-
-        this.currencyHudText?.setText(formatPokeDollars(currentPlayer?.wallet.pokeDollars ?? 0));
-      }),
-    );
+    this.hud.createCurrencyHud();
   }
 
   private createRankScoreHud(): void {
-    this.rankScoreHudText = this.add
-      .text(
-        this.getViewportSize().width - 12,
-        10,
-        formatRankScoreHud(this.gameStateStore.getCurrentLocalPlayer().competitive),
-        createGameTextStyle({
-          align: "right",
-          color: "#f8fbf0",
-          fontSize: "12px",
-          stroke: "#263238",
-          strokeThickness: 4,
-        }),
-      )
-      .setOrigin(1, 0)
-      .setScrollFactor(0)
-      .setDepth(1000);
-
-    this.unsubscribers.push(
-      this.gameStateStore.subscribe(state => {
-        const currentPlayer = state.playersById[state.currentPlayerId];
-
-        this.rankScoreHudText?.setText(
-          formatRankScoreHud(currentPlayer?.competitive ?? { rank: null, score: 0 }),
-        );
-      }),
-    );
+    this.hud.createRankScoreHud();
   }
 
   private createRoundHud(
     nowMs: number,
     preparationDurationMs = DEFAULT_PREPARATION_DURATION_MS,
   ): void {
-    if (this.gameStateStore.getState().round.phase === "waiting") {
-      this.gameStateStore.startPreparationRound(nowMs, preparationDurationMs);
-    }
-
-    const hudText = this.formatRoundHudText(nowMs);
-    this.roundHudText = this.add
-      .text(
-        Math.round(this.getViewportSize().width / 2),
-        10,
-        hudText,
-        createGameTextStyle({
-          align: "center",
-          color: "#f8fbf0",
-          fontSize: "12px",
-          stroke: "#263238",
-          strokeThickness: 4,
-        }),
-      )
-      .setOrigin(0.5, 0)
-      .setScrollFactor(0)
-      .setDepth(1000);
-
-    this.lastRenderedRoundHudText = hudText;
+    this.hud.createRoundHud(nowMs, preparationDurationMs);
     this.showTournamentResultMessageIfNeeded();
   }
 
   private updateRoundClock(nowMs: number): void {
+    this.hud.updateRound(nowMs);
+
     if (!this.competitiveRoundsEnabled) {
       return;
-    }
-
-    this.gameStateStore.advanceRoundClock(nowMs);
-    const nextText = this.formatRoundHudText(nowMs);
-
-    if (nextText !== this.lastRenderedRoundHudText) {
-      this.roundHudText?.setText(nextText);
-      this.lastRenderedRoundHudText = nextText;
     }
 
     if (this.gameStateStore.getState().round.phase === "tournament") {
@@ -851,31 +777,6 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.showTournamentResultMessageIfNeeded();
-  }
-
-  private formatRoundHudText(nowMs: number): string {
-    const round = this.gameStateStore.getState().round;
-    const visibleRound = Math.max(1, round.roundIndex);
-
-    if (round.phase === "preparation") {
-      return `Round ${visibleRound}/${round.totalRounds}\n${formatRoundTimer(
-        getRoundRemainingMs(round, nowMs),
-      )}`;
-    }
-
-    if (round.phase === "tournament") {
-      return `Round ${visibleRound}/${round.totalRounds}\nTournament`;
-    }
-
-    if (round.phase === "round-result") {
-      return `Round ${visibleRound}/${round.totalRounds}\nResult`;
-    }
-
-    if (round.phase === "game-result") {
-      return "Game Result";
-    }
-
-    return "Round 대기";
   }
 
   private showTournamentPendingMessage(): void {
@@ -1143,165 +1044,15 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createPartyHud(): void {
-    this.renderPartyHud();
-
-    if (this.partyHudSubscribed) {
-      return;
-    }
-
-    this.partyHudSubscribed = true;
-    this.unsubscribers.push(
-      this.gameStateStore.subscribe(() => {
-        this.renderPartyHud();
-      }),
-    );
+    this.hud.createPartyHud();
   }
 
   private renderPartyHud(): void {
-    this.partyHudObjects.forEach(object => object.destroy());
-    this.partyHudObjects = [];
-
-    const localPlayer = this.gameStateStore.getCurrentLocalPlayer();
-    const slots = createPartyHudSlotViews({
-      activePartySlotIndex: localPlayer.activePartySlotIndex,
-      anchor: "middle-left",
-      party: localPlayer.party,
-      screenSize: this.getViewportSize(),
-    });
-
-    for (const slot of slots) {
-      this.renderPartyHudSlot(slot);
-    }
-
-    this.renderPokemonStatusPanel();
-  }
-
-  private renderPartyHudSlot(slot: PartyHudSlotView): void {
-    const background = this.add
-      .rectangle(
-        slot.x,
-        slot.y,
-        PARTY_HUD_SLOT_SIZE.width,
-        PARTY_HUD_SLOT_SIZE.height,
-        this.pokemonStatusPanelSlotIndex === slot.slotIndex || slot.active ? 0xfff4a3 : 0xf8fbf0,
-        0.88,
-      )
-      .setOrigin(0, 0)
-      .setScrollFactor(0)
-      .setDepth(900);
-    background.setStrokeStyle(
-      this.pokemonStatusPanelSlotIndex === slot.slotIndex ? 2 : 1,
-      this.pokemonStatusPanelSlotIndex === slot.slotIndex
-        ? 0x101820
-        : slot.active
-          ? 0x355c7d
-          : 0x263238,
-      0.95,
-    );
-    this.partyHudObjects.push(background);
-    if (slot.occupied) {
-      const hitZone = this.add
-        .zone(slot.x, slot.y, PARTY_HUD_SLOT_SIZE.width, PARTY_HUD_SLOT_SIZE.height)
-        .setOrigin(0, 0)
-        .setScrollFactor(0)
-        .setDepth(904)
-        .setInteractive({ useHandCursor: true });
-      hitZone.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-        pointer.event?.preventDefault();
-        this.openPokemonStatusPanel(slot.slotIndex);
-      });
-      this.partyHudObjects.push(hitZone);
-    }
-
-    if (!slot.pokemon) {
-      const emptySlotText = this.add
-        .text(
-          slot.x + 28,
-          slot.y + 9,
-          "-",
-          createGameTextStyle({
-            color: "#607d6c",
-            fontSize: "14px",
-          }),
-        )
-        .setOrigin(0.5, 0)
-        .setScrollFactor(0)
-        .setDepth(902);
-      this.partyHudObjects.push(emptySlotText);
-      return;
-    }
-
-    const sprite = this.add
-      .image(slot.x + 18, slot.y + 17, slot.pokemon.spriteKey)
-      .setOrigin(0.5, 0.5)
-      .setCrop(
-        slot.pokemon.spriteCrop.x,
-        slot.pokemon.spriteCrop.y,
-        slot.pokemon.spriteCrop.width,
-        slot.pokemon.spriteCrop.height,
-      )
-      .setDisplaySize(28, 28)
-      .setScrollFactor(0)
-      .setDepth(902);
-    const name = this.add
-      .text(
-        slot.x + 34,
-        slot.y + 6,
-        slot.pokemon.name,
-        createGameTextStyle({
-          color: "#263238",
-          fontSize: "8px",
-        }),
-      )
-      .setOrigin(0, 0)
-      .setScrollFactor(0)
-      .setDepth(902);
-    const level = this.add
-      .text(
-        slot.x + 34,
-        slot.y + 20,
-        `Lv.${slot.pokemon.level}`,
-        createGameTextStyle({
-          color: "#263238",
-          fontSize: "8px",
-        }),
-      )
-      .setOrigin(0, 0)
-      .setScrollFactor(0)
-      .setDepth(902);
-
-    this.partyHudObjects.push(sprite, name, level);
-  }
-
-  private openPokemonStatusPanel(slotIndex: number): void {
-    if (
-      this.shortcutGuideOpen ||
-      this.shopOpen ||
-      this.inventoryOpen ||
-      this.pcBoxOpen ||
-      this.diceGambleOpen ||
-      this.battleIntroPlaying
-    ) {
-      return;
-    }
-
-    if (!this.getPartyPokemonBySlotIndex(slotIndex)) {
-      return;
-    }
-
-    this.pokemonStatusPanelSlotIndex = slotIndex;
-    this.renderPartyHud();
+    this.hud.render();
   }
 
   private closePokemonStatusPanel(options: { rerenderPartyHud?: boolean } = {}): void {
-    const rerenderPartyHud = options.rerenderPartyHud ?? true;
-
-    this.pokemonStatusPanelSlotIndex = null;
-    this.destroyPokemonStatusPanelUi();
-
-    if (rerenderPartyHud && !this.shutdownComplete) {
-      this.renderPartyHud();
-    }
+    this.hud.closePokemonStatusPanel(options);
   }
 
   private handlePokemonStatusPanelKeyboardInput(): void {
@@ -1326,219 +1077,13 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  private renderPokemonStatusPanel(): void {
-    this.destroyPokemonStatusPanelUi();
-
-    const slotIndex = this.pokemonStatusPanelSlotIndex;
-
-    if (slotIndex === null) {
-      return;
-    }
-
-    const localPlayer = this.gameStateStore.getCurrentLocalPlayer();
-    const slots = createPartyHudSlotViews({
-      activePartySlotIndex: localPlayer.activePartySlotIndex,
-      anchor: "middle-left",
-      party: localPlayer.party,
-      screenSize: this.getViewportSize(),
-    });
-    const slot = slots.find(candidate => candidate.slotIndex === slotIndex);
-    const pokemon = this.getPartyPokemonBySlotIndex(slotIndex);
-
-    if (!slot || !pokemon || !slot.pokemon) {
-      this.pokemonStatusPanelSlotIndex = null;
-      return;
-    }
-
-    const origin = this.getPokemonStatusPanelOrigin(slot);
-    const x = (offset: number) => origin.x + offset;
-    const y = (offset: number) => origin.y + offset;
-    const panel = this.add
-      .rectangle(
-        origin.x,
-        origin.y,
-        POKEMON_STATUS_PANEL_SIZE.width,
-        POKEMON_STATUS_PANEL_SIZE.height,
-        0xf8fbf0,
-        0.97,
-      )
-      .setOrigin(0, 0)
-      .setScrollFactor(0)
-      .setDepth(2140);
-    panel.setStrokeStyle(3, 0x263238, 1);
-    panel.setInteractive();
-
-    const sprite = this.add
-      .image(x(30), y(48), slot.pokemon.spriteKey)
-      .setOrigin(0.5, 0.5)
-      .setCrop(
-        slot.pokemon.spriteCrop.x,
-        slot.pokemon.spriteCrop.y,
-        slot.pokemon.spriteCrop.width,
-        slot.pokemon.spriteCrop.height,
-      )
-      .setDisplaySize(42, 42)
-      .setScrollFactor(0)
-      .setDepth(2141);
-
-    this.pokemonStatusPanelObjects.push(
-      panel,
-      sprite,
-      this.add
-        .text(
-          x(58),
-          y(16),
-          slot.pokemon.name,
-          createGameTextStyle({
-            color: "#263238",
-            fontSize: "14px",
-          }),
-        )
-        .setOrigin(0, 0)
-        .setScrollFactor(0)
-        .setDepth(2141),
-      this.add
-        .text(
-          x(58),
-          y(38),
-          `Lv.${slot.pokemon.level}`,
-          createGameTextStyle({
-            color: "#455a64",
-            fontSize: "12px",
-          }),
-        )
-        .setOrigin(0, 0)
-        .setScrollFactor(0)
-        .setDepth(2141),
-      this.add
-        .rectangle(x(14), y(68), POKEMON_STATUS_PANEL_SIZE.width - 28, 2, 0x607d6c, 0.42)
-        .setOrigin(0, 0)
-        .setScrollFactor(0)
-        .setDepth(2141),
-      this.add
-        .text(
-          x(18),
-          y(82),
-          `HP ${this.formatPokemonHp(pokemon)}`,
-          createGameTextStyle({
-            color: "#263238",
-            fontSize: "12px",
-          }),
-        )
-        .setOrigin(0, 0)
-        .setScrollFactor(0)
-        .setDepth(2141),
-      this.add
-        .text(
-          x(18),
-          y(104),
-          `상태 ${this.formatPokemonStatusLabel(pokemon.status ?? "normal")}`,
-          createGameTextStyle({
-            color: "#263238",
-            fontSize: "12px",
-          }),
-        )
-        .setOrigin(0, 0)
-        .setScrollFactor(0)
-        .setDepth(2141),
-      this.add
-        .text(
-          x(18),
-          y(124),
-          "Enter / Backspace 닫기",
-          createGameTextStyle({
-            color: "#607d6c",
-            fontSize: "9px",
-          }),
-        )
-        .setOrigin(0, 0)
-        .setScrollFactor(0)
-        .setDepth(2141),
-    );
-  }
-
-  private destroyPokemonStatusPanelUi(): void {
-    this.pokemonStatusPanelObjects.forEach(object => object.destroy());
-    this.pokemonStatusPanelObjects = [];
-  }
-
-  private getPokemonStatusPanelOrigin(slot: PartyHudSlotView): { x: number; y: number } {
-    const viewport = this.getViewportSize();
-    const minMargin = 10;
-    const preferredX = slot.x + PARTY_HUD_SLOT_SIZE.width + POKEMON_STATUS_PANEL_GAP;
-    const preferredY = slot.y - 6;
-
-    return {
-      x: Math.min(
-        Math.max(minMargin, preferredX),
-        viewport.width - POKEMON_STATUS_PANEL_SIZE.width - minMargin,
-      ),
-      y: Math.min(
-        Math.max(minMargin, preferredY),
-        viewport.height - POKEMON_STATUS_PANEL_SIZE.height - minMargin,
-      ),
-    };
-  }
-
-  private getPokemonStatusPanelSnapshot(): WorldE2eSnapshot["pokemonStatusPanel"] {
-    const slotIndex = this.pokemonStatusPanelSlotIndex;
-
-    if (slotIndex === null) {
-      return null;
-    }
-
-    const pokemon = this.getPartyPokemonBySlotIndex(slotIndex);
-
-    if (!pokemon) {
-      return null;
-    }
-
-    return {
-      slotIndex,
-      name: pokemon.name,
-      level: pokemon.level,
-      currentHp: this.normalizeOptionalPokemonHp(pokemon.currentHp),
-      maxHp: this.normalizeOptionalPokemonHp(pokemon.maxHp),
-      status: pokemon.status ?? "normal",
-    };
-  }
-
   private getPartyPokemonBySlotIndex(slotIndex: number): PlayerPokemon | null {
-    return (
-      this.gameStateStore.getCurrentLocalPlayer().party.find(slot => slot.slotIndex === slotIndex)
-        ?.pokemon ?? null
-    );
-  }
-
-  private normalizeOptionalPokemonHp(value: unknown): number | null {
-    return typeof value === "number" && Number.isFinite(value)
-      ? Math.max(0, Math.floor(value))
-      : null;
+    return this.hud.getPartyPokemonBySlotIndex(slotIndex);
   }
 
   private formatPokemonHp(pokemon: PlayerPokemon): string {
-    const currentHp = this.normalizeOptionalPokemonHp(pokemon.currentHp);
-    const maxHp = this.normalizeOptionalPokemonHp(pokemon.maxHp);
-
-    return currentHp === null || maxHp === null ? "- / -" : `${currentHp} / ${maxHp}`;
+    return formatPokemonHp(pokemon);
   }
-
-  private formatPokemonStatusLabel(status: PlayerPokemon["status"] | "normal"): string {
-    switch (status) {
-      case "fainted":
-        return "전투불능";
-      case "poisoned":
-        return "독";
-      case "burned":
-        return "화상";
-      case "paralyzed":
-        return "마비";
-      case "normal":
-      default:
-        return "정상";
-    }
-  }
-
   private createStaticNpcs(map: ObjectLayerLookup): void {
     const npcObjects = map.getObjectLayer("Npcs")?.objects ?? [];
     this.staticNpcs = this.physics.add.staticGroup();
@@ -3976,16 +3521,6 @@ function createVisibleTournamentStandings(state: GameState): TournamentStanding[
     champion: standing.rank === 1,
     eliminatedRoundNumber: standing.rank === 1 ? null : state.round.roundIndex,
   }));
-}
-
-export function formatPokeDollars(pokeDollars: number): string {
-  return `₽ ${Math.max(0, Math.floor(pokeDollars)).toLocaleString("en-US")}`;
-}
-
-export function formatRankScoreHud({ rank, score }: PlayerCompetitiveStats): string {
-  const rankLabel = rank === null ? "-" : rank.toLocaleString("en-US");
-
-  return `Rank ${rankLabel}\nScore ${Math.max(0, Math.floor(score)).toLocaleString("en-US")}`;
 }
 
 function findObject(

@@ -352,9 +352,31 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     expect(receipts[0].resolvedAt).toEqual(receipts[1].resolvedAt);
     expect(receipts[0].response).toEqual(resolvedResponse);
     expect(receipts[1].response).toEqual(resolvedResponse);
+    await dataSource.query(
+      'UPDATE "poke_lounge_competitive_match" SET "ruleset_hash" = $1 WHERE "match_id" = $2',
+      ['0'.repeat(64), assignment.matchId],
+    );
+    publish.mockClear();
+    const revisionBeforeReplay = (
+      await dataSource.getRepository(PokeLoungeRoom).findOneByOrFail({
+        roomCode: 'ROOM05',
+      })
+    ).revision;
     await expect(service.submitAction(firstInput)).resolves.toEqual(
       resolvedResponse,
     );
+    await expect(
+      service.submitAction({
+        ...firstInput,
+        action: { kind: 'switch', slotIndex: 1 },
+      }),
+    ).rejects.toThrow('Competitive action conflict');
+    await expect(
+      dataSource.getRepository(PokeLoungeRoom).findOneByOrFail({
+        roomCode: 'ROOM05',
+      }),
+    ).resolves.toMatchObject({ revision: revisionBeforeReplay });
+    expect(publish.mock.calls).toHaveLength(0);
 
     await dataSource.destroy();
     dataSource = createDataSource(testDatabaseUrl);
@@ -394,31 +416,45 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     if (!assignment) {
       throw new Error('Expected competitive assignment');
     }
+    const pendingInput = {
+      ...actionInput(assignment.matchId, 'account-a'),
+      roomCode: 'ROOM06',
+    };
+    const pendingResponse = await service.submitAction(pendingInput);
     publish.mockClear();
     await dataSource.query(
       'UPDATE "poke_lounge_competitive_match" SET "ruleset_hash" = $1 WHERE "match_id" = $2',
       ['0'.repeat(64), assignment.matchId],
     );
 
+    await expect(service.submitAction(pendingInput)).resolves.toEqual(
+      pendingResponse,
+    );
     await expect(
       service.submitAction({
-        ...actionInput(assignment.matchId, 'account-a'),
-        roomCode: 'ROOM06',
+        ...pendingInput,
+        action: { kind: 'switch', slotIndex: 1 },
+      }),
+    ).rejects.toThrow('Competitive action conflict');
+    await expect(
+      service.submitAction({
+        ...pendingInput,
+        clientCommandId: '00000000-0000-4000-8000-000000000006',
       }),
     ).rejects.toThrow('Competitive action conflict');
     await expect(
       dataSource.getRepository(PokeLoungeCompetitiveAction).count(),
-    ).resolves.toBe(0);
+    ).resolves.toBe(1);
     await expect(
       dataSource.getRepository(PokeLoungeCompetitiveMatch).findOneByOrFail({
         matchId: assignment.matchId,
       }),
-    ).resolves.toMatchObject({ currentTurn: 0, status: 'pending' });
+    ).resolves.toMatchObject({ currentTurn: 0, status: 'active' });
     await expect(
       dataSource.getRepository(PokeLoungeRoom).findOneByOrFail({
         roomCode: 'ROOM06',
       }),
-    ).resolves.toMatchObject({ revision: 5 });
+    ).resolves.toMatchObject({ revision: 6 });
     expect(publish.mock.calls).toHaveLength(0);
   });
 

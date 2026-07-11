@@ -42,9 +42,6 @@ export class PostgresCompetitiveActionRepository implements CompetitiveActionRep
       if (!match) {
         return { outcome: 'match-not-found' };
       }
-      if (!isSupportedCompetitiveRuleset(match)) {
-        return { outcome: 'ruleset-mismatch' };
-      }
 
       const actor = match.playerAccounts.find(
         (candidate) => candidate.accountId === input.accountId,
@@ -80,6 +77,9 @@ export class PostgresCompetitiveActionRepository implements CompetitiveActionRep
           room: snapshotFromEntity(room),
           committed: false,
         };
+      }
+      if (!isSupportedCompetitiveRuleset(match)) {
+        return { outcome: 'ruleset-mismatch' };
       }
 
       if (match.status === 'completed' || match.currentState.terminal) {

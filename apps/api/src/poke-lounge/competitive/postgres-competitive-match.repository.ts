@@ -14,6 +14,8 @@ import {
   planCompetitiveSeatBinding,
 } from './competitive-match.repository';
 import type { CompetitiveMatchAssignment } from './competitive-match.types';
+import { toCompetitiveProjection } from './competitive-projection.service';
+import type { PokeLoungeRoomSnapshot } from '../poke-lounge-room.repository';
 
 @Injectable()
 export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepository {
@@ -87,6 +89,9 @@ export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepos
           outcome: 'already-assigned',
           assignment: existingAssignment,
           eligible: true,
+          committed: false,
+          room: snapshotFromEntity(room),
+          projection: toCompetitiveProjection(existingMatch!, []),
         };
       }
 
@@ -108,14 +113,21 @@ export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepos
         assignmentRevision: 1,
         players: plan.assignmentPlayers,
       });
-      const saved = await matchRepository.save(
-        matchRepository.create(assignment),
-      );
+      await matchRepository.save(matchRepository.create(assignment));
+      room.revision += 1;
+      room.state.updatedAtMs = Date.now();
+      await manager.getRepository(PokeLoungeRoom).save(room);
 
       return {
         outcome: 'assigned',
-        assignment: assignmentFromEntity(saved),
+        assignment: structuredClone(assignment),
         eligible: true,
+        committed: true,
+        room: snapshotFromEntity(room),
+        projection: toCompetitiveProjection(
+          matchRepository.create(assignment),
+          [],
+        ),
       };
     });
   }
@@ -196,4 +208,13 @@ function assignmentFromEntity(
 
 function normalizeRoomCode(roomCode: string): string {
   return roomCode.trim().toUpperCase();
+}
+
+function snapshotFromEntity(room: PokeLoungeRoom): PokeLoungeRoomSnapshot {
+  return {
+    ...structuredClone(room.state),
+    roomCode: room.roomCode,
+    revision: room.revision,
+    expiresAtMs: room.expiresAt.getTime(),
+  };
 }

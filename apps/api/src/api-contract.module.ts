@@ -9,6 +9,7 @@ import { EspressoHistoryService } from './espresso-history/espresso-history.serv
 import { GameController } from './game/game.controller';
 import { GameService } from './game/game.service';
 import { PokeLoungeController } from './poke-lounge/poke-lounge.controller';
+import { CompetitiveMatchService } from './poke-lounge/competitive/competitive-match.service';
 import { PokeLoungeRoomService } from './poke-lounge/poke-lounge-room.service';
 import { RecipeController } from './recipe/recipe.controller';
 import { RecipeService } from './recipe/recipe.service';
@@ -45,6 +46,7 @@ const contractGuardStubProvider = (provide: InjectionToken): Provider => ({
     contractStubProvider(EspressoHistoryService),
     contractStubProvider(GameService),
     contractStubProvider(PokeLoungeRoomService),
+    contractStubProvider(CompetitiveMatchService),
     contractStubProvider(RecipeService),
     contractStubProvider(getRepositoryToken(User)),
     contractGuardStubProvider(GoogleAuthGuard),

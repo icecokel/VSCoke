@@ -1,4 +1,5 @@
 import type { DataSource, EntityManager } from 'typeorm';
+import { createInitialBattleState } from '@vscoke/poke-lounge-battle';
 import { PostgresCompetitiveMatchRepository } from './postgres-competitive-match.repository';
 
 type SeatRow = {
@@ -22,6 +23,7 @@ describe('PostgresCompetitiveMatchRepository', () => {
       roomCode: 'ROOM01',
       state: roomState(),
       revision: 7,
+      expiresAt: new Date('2026-07-11T01:00:00.000Z'),
     };
     const existingSeats: SeatRow[] = [
       {
@@ -56,12 +58,14 @@ describe('PostgresCompetitiveMatchRepository', () => {
       createQueryBuilder: jest.fn<ScriptedQueryBuilder, []>(
         () => roomQueryBuilder,
       ),
+      save: jest.fn().mockResolvedValue(room),
     };
     const getRepository = jest
       .fn<unknown, [unknown]>()
       .mockReturnValueOnce(roomRepository)
       .mockReturnValueOnce(seatRepository)
-      .mockReturnValueOnce(matchRepository);
+      .mockReturnValueOnce(matchRepository)
+      .mockReturnValueOnce(roomRepository);
     const manager = {
       getRepository,
     } as unknown as EntityManager;
@@ -79,6 +83,7 @@ describe('PostgresCompetitiveMatchRepository', () => {
     expect(roomQueryBuilder.setLock).toHaveBeenCalledWith('pessimistic_write');
     expect(seatRepository.save).toHaveBeenCalledTimes(1);
     expect(matchRepository.save).toHaveBeenCalledTimes(1);
+    expect(roomRepository.save).toHaveBeenCalledTimes(1);
     expect(calls.indexOf('seat-save')).toBeLessThan(
       calls.indexOf('match-save'),
     );
@@ -317,13 +322,7 @@ function assignment(context: {
     string,
     string,
   ];
-  const state = {
-    rulesetVersion: 1 as const,
-    turn: 0,
-    participantIds,
-    playersById: {},
-    terminal: null,
-  };
+  const state = createInitialBattleState(participantIds);
   return {
     ...context,
     matchId: '00000000-0000-4000-8000-000000000001',

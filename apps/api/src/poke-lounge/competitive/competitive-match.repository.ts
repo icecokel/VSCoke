@@ -1,4 +1,6 @@
 import type { PokeLoungeRoomState } from '../poke-lounge-room.types';
+import type { PokeLoungeRoomSnapshot } from '../poke-lounge-room.repository';
+import type { CompetitiveActionProjection } from './competitive-action.types';
 import type {
   CompetitiveAssignmentCreateContext,
   CompetitiveMatchAssignment,
@@ -31,6 +33,9 @@ export type CompetitiveSeatBindingResult =
       outcome: 'assigned' | 'already-assigned';
       assignment: CompetitiveMatchAssignment;
       eligible: true;
+      committed: boolean;
+      room: PokeLoungeRoomSnapshot;
+      projection: CompetitiveActionProjection;
     };
 
 export interface CompetitiveMatchRepository {

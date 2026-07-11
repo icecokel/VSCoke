@@ -2,6 +2,7 @@ import type {
   CanonicalBattleState,
   CanonicalTerminalResult,
 } from '@vscoke/poke-lounge-battle';
+import type { PublicCompetitiveBattleState } from './competitive-action.types';
 
 export type CompetitiveMatchStatus = 'pending' | 'active' | 'completed';
 
@@ -37,6 +38,10 @@ export interface CompetitiveAssignmentProjection {
   currentTurn: number;
   status: CompetitiveMatchStatus;
   playerIds: [string, string];
+  currentState: PublicCompetitiveBattleState;
+  stateHash: string;
+  submittedPlayerIds: string[];
+  terminal: CanonicalTerminalResult | null;
 }
 
 export interface CompetitiveAssignmentCreateContext {

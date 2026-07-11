@@ -344,6 +344,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "afterRevision",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "number"
+            }
           }
         ],
         "responses": {
@@ -353,6 +362,90 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PokeLoungeRoomResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["poke-lounge"]
+      }
+    },
+    "/poke-lounge/rooms/{roomCode}/competitive-seat": {
+      "post": {
+        "operationId": "PokeLoungeController_bindCompetitiveSeat",
+        "parameters": [
+          {
+            "name": "roomCode",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BindCompetitiveSeatDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompetitiveAssignmentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["poke-lounge"]
+      }
+    },
+    "/poke-lounge/rooms/{roomCode}/matches/{matchId}/actions": {
+      "post": {
+        "operationId": "PokeLoungeController_submitCompetitiveAction",
+        "parameters": [
+          {
+            "name": "roomCode",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "matchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitCompetitiveActionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompetitiveActionResponseDto"
                 }
               }
             }
@@ -558,6 +651,7 @@
     },
     "/poke-lounge/rooms/{roomCode}/result": {
       "post": {
+        "description": "Client-reported room results remain unverified and cannot create verified trust or public ranking entries.",
         "operationId": "PokeLoungeController_submitResult",
         "parameters": [
           {
@@ -618,6 +712,7 @@
             }
           }
         },
+        "summary": "Submit a casual Poke Lounge result",
         "tags": ["poke-lounge"]
       }
     },
@@ -1601,10 +1696,6 @@
             "type": "string",
             "example": "player-a"
           },
-          "userId": {
-            "type": "string",
-            "example": "user-123"
-          },
           "displayName": {
             "type": "string",
             "example": "Player A"
@@ -1754,6 +1845,200 @@
         },
         "required": ["playerId", "displayName", "rank", "score"]
       },
+      "CompetitiveMoveStateDto": {
+        "type": "object",
+        "properties": {
+          "moveId": {
+            "type": "string"
+          },
+          "pp": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": ["moveId", "pp"]
+      },
+      "CompetitiveCombatantStateDto": {
+        "type": "object",
+        "properties": {
+          "speciesId": {
+            "type": "string"
+          },
+          "maxHp": {
+            "type": "number",
+            "minimum": 1
+          },
+          "currentHp": {
+            "type": "number",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": ["none", "paralyzed"]
+          },
+          "moves": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompetitiveMoveStateDto"
+            }
+          }
+        },
+        "required": ["speciesId", "maxHp", "currentHp", "status", "moves"]
+      },
+      "CompetitivePlayerStateDto": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "type": "string"
+          },
+          "activeSlotIndex": {
+            "type": "number",
+            "minimum": 0
+          },
+          "team": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompetitiveCombatantStateDto"
+            }
+          }
+        },
+        "required": ["playerId", "activeSlotIndex", "team"]
+      },
+      "CompetitiveTerminalResultDto": {
+        "type": "object",
+        "properties": {
+          "winnerPlayerId": {
+            "type": "string"
+          },
+          "loserPlayerId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "enum": ["faint", "forfeit", "timeout"]
+          },
+          "scoreByPlayerId": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number",
+              "enum": [50, 100]
+            }
+          }
+        },
+        "required": [
+          "winnerPlayerId",
+          "loserPlayerId",
+          "reason",
+          "scoreByPlayerId"
+        ]
+      },
+      "CompetitiveBattleStateDto": {
+        "type": "object",
+        "properties": {
+          "rulesetVersion": {
+            "type": "number",
+            "example": 1
+          },
+          "turn": {
+            "type": "number",
+            "minimum": 0
+          },
+          "participantIds": {
+            "minItems": 2,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "playersById": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CompetitivePlayerStateDto"
+            }
+          },
+          "terminal": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CompetitiveTerminalResultDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "rulesetVersion",
+          "turn",
+          "participantIds",
+          "playersById",
+          "terminal"
+        ]
+      },
+      "CompetitiveActionResponseDto": {
+        "type": "object",
+        "properties": {
+          "matchId": {
+            "type": "string"
+          },
+          "assignmentRevision": {
+            "type": "number"
+          },
+          "rulesetVersion": {
+            "type": "number"
+          },
+          "rulesetHash": {
+            "type": "string"
+          },
+          "currentTurn": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "active", "completed"]
+          },
+          "playerIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "stateHash": {
+            "type": "string"
+          },
+          "currentState": {
+            "$ref": "#/components/schemas/CompetitiveBattleStateDto"
+          },
+          "submittedPlayerIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "terminal": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CompetitiveTerminalResultDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "matchId",
+          "assignmentRevision",
+          "rulesetVersion",
+          "rulesetHash",
+          "currentTurn",
+          "status",
+          "playerIds",
+          "stateHash",
+          "currentState",
+          "submittedPlayerIds",
+          "terminal"
+        ]
+      },
       "PokeLoungeRoomResponseDto": {
         "type": "object",
         "properties": {
@@ -1812,6 +2097,9 @@
             "items": {
               "$ref": "#/components/schemas/PokeLoungeFinalStandingDto"
             }
+          },
+          "competitive": {
+            "$ref": "#/components/schemas/CompetitiveActionResponseDto"
           }
         },
         "required": [
@@ -1851,6 +2139,120 @@
           }
         },
         "required": ["statusCode", "code", "message", "snapshot"]
+      },
+      "BindCompetitiveSeatDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "example": "session-a",
+            "maxLength": 256
+          }
+        },
+        "required": ["sessionId"]
+      },
+      "CompetitiveAssignmentResponseDto": {
+        "type": "object",
+        "properties": {
+          "matchId": {
+            "type": "string"
+          },
+          "assignmentRevision": {
+            "type": "number"
+          },
+          "rulesetVersion": {
+            "type": "number"
+          },
+          "rulesetHash": {
+            "type": "string"
+          },
+          "currentTurn": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "active", "completed"]
+          },
+          "playerIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "stateHash": {
+            "type": "string"
+          },
+          "currentState": {
+            "$ref": "#/components/schemas/CompetitiveBattleStateDto"
+          },
+          "submittedPlayerIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "terminal": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CompetitiveTerminalResultDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "matchId",
+          "assignmentRevision",
+          "rulesetVersion",
+          "rulesetHash",
+          "currentTurn",
+          "status",
+          "playerIds",
+          "stateHash",
+          "currentState",
+          "submittedPlayerIds",
+          "terminal"
+        ]
+      },
+      "CompetitiveActionDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["move", "switch"]
+          },
+          "moveId": {
+            "type": "string",
+            "example": "steady-strike"
+          },
+          "slotIndex": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": ["kind"]
+      },
+      "SubmitCompetitiveActionDto": {
+        "type": "object",
+        "properties": {
+          "assignmentRevision": {
+            "type": "number",
+            "minimum": 0
+          },
+          "turn": {
+            "type": "number",
+            "minimum": 0
+          },
+          "clientCommandId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "$ref": "#/components/schemas/CompetitiveActionDto"
+          }
+        },
+        "required": ["assignmentRevision", "turn", "clientCommandId", "action"]
       },
       "JoinPokeLoungeRoomDto": {
         "type": "object",

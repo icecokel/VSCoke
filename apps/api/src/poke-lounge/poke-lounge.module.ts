@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
+import { GameModule } from '../game/game.module';
 import { CompetitiveMatchService } from './competitive/competitive-match.service';
 import { COMPETITIVE_MATCH_REPOSITORY } from './competitive/competitive-match.repository';
 import { PostgresCompetitiveMatchRepository } from './competitive/postgres-competitive-match.repository';
@@ -18,10 +19,12 @@ import { POKE_LOUNGE_ROOM_REPOSITORY } from './poke-lounge-room.repository';
 import { PokeLoungeGateway } from './poke-lounge.gateway';
 import { PokeLoungeController } from './poke-lounge.controller';
 import { PokeLoungeRoomService } from './poke-lounge-room.service';
+import { CompetitiveProjectionService } from './competitive/competitive-projection.service';
 
 @Module({
   imports: [
     AuthModule,
+    GameModule,
     TypeOrmModule.forFeature([
       PokeLoungeRoom,
       PokeLoungeRoomCommand,
@@ -35,6 +38,7 @@ import { PokeLoungeRoomService } from './poke-lounge-room.service';
     PostgresPokeLoungeRoomRepository,
     PostgresCompetitiveMatchRepository,
     PostgresCompetitiveActionRepository,
+    CompetitiveProjectionService,
     {
       provide: COMPETITIVE_ACTION_REPOSITORY,
       useExisting: PostgresCompetitiveActionRepository,

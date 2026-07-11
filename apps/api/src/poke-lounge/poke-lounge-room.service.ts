@@ -43,6 +43,7 @@ import type {
   SubmitPokeLoungeMatchResultInput,
   UpdatePokeLoungePartySnapshotInput,
 } from './poke-lounge-room.types';
+import { CompetitiveProjectionService } from './competitive/competitive-projection.service';
 
 const DEFAULT_ROUND_DURATION_MS = 60_000;
 const MIN_ROUND_DURATION_MS = 1;
@@ -78,6 +79,7 @@ export class PokeLoungeRoomService {
     private readonly repository: PokeLoungeRoomRepository,
     @Inject(POKE_LOUNGE_ROOM_EVENT_PUBLISHER)
     private readonly eventPublisher: PokeLoungeRoomEventPublisher,
+    private readonly competitiveProjection: CompetitiveProjectionService,
     @Optional() private readonly roomCodeFactory: () => string = createRoomCode,
     @Optional() private readonly nowFactory: () => number = () => Date.now(),
   ) {}
@@ -144,13 +146,14 @@ export class PokeLoungeRoomService {
         continue;
       }
 
+      const snapshot = await this.withCompetitive(result.snapshot);
       if (result.committedChange) {
-        await this.publish('room-created', result.snapshot);
+        await this.publish('room-created', snapshot);
       }
 
-      this.throwForConflict(result);
+      this.throwForConflict({ ...result, snapshot });
 
-      return structuredClone(result.snapshot);
+      return structuredClone(snapshot);
     }
 
     throw new BadRequestException('Unable to create a unique room code');
@@ -169,11 +172,12 @@ export class PokeLoungeRoomService {
       throw new NotFoundException('Poke Lounge room not found');
     }
 
+    const snapshot = await this.withCompetitive(result.snapshot);
     if (result.committedChange) {
-      await this.publish('room-clock-advanced', result.snapshot);
+      await this.publish('room-clock-advanced', snapshot);
     }
 
-    return structuredClone(result.snapshot);
+    return structuredClone(snapshot);
   }
 
   async authorizeSubscription(
@@ -186,19 +190,22 @@ export class PokeLoungeRoomService {
       this.normalizeNow(undefined),
     );
 
-    if (result.snapshot && result.committedChange) {
-      await this.publish('room-clock-advanced', result.snapshot);
+    const snapshot = result.snapshot
+      ? await this.withCompetitive(result.snapshot)
+      : null;
+    if (snapshot && result.committedChange) {
+      await this.publish('room-clock-advanced', snapshot);
     }
 
-    const participant = result.snapshot?.participants.find(
+    const participant = snapshot?.participants.find(
       (candidate) => candidate.playerId === playerId,
     );
 
-    if (!result.snapshot || participant?.sessionId !== sessionId) {
+    if (!snapshot || participant?.sessionId !== sessionId) {
       throw new BadRequestException('Poke Lounge room subscription rejected');
     }
 
-    return structuredClone(toPokeLoungePublicRoomState(result.snapshot));
+    return structuredClone(toPokeLoungePublicRoomState(snapshot));
   }
 
   async joinRoom(
@@ -490,16 +497,18 @@ export class PokeLoungeRoomService {
       throw new NotFoundException('Poke Lounge room not found');
     }
 
+    const snapshot = await this.withCompetitive(result.snapshot);
+    const enrichedResult = { ...result, snapshot };
     if (result.committedChange) {
       await this.publish(
         result.outcome === 'committed' ? 'room-updated' : 'room-clock-advanced',
-        result.snapshot,
+        snapshot,
       );
     }
 
-    this.throwForConflict(result);
+    this.throwForConflict(enrichedResult);
 
-    return structuredClone(result.snapshot);
+    return structuredClone(snapshot);
   }
 
   private throwForConflict(result: PokeLoungeRepositoryResult): void {
@@ -527,6 +536,18 @@ export class PokeLoungeRoomService {
         error instanceof Error ? error.stack : String(error),
       );
     }
+  }
+
+  private async withCompetitive(
+    snapshot: PokeLoungeRoomSnapshot,
+  ): Promise<PokeLoungeRoomSnapshot> {
+    const competitive = await this.competitiveProjection.findForRoomCode(
+      snapshot.roomCode,
+    );
+    return {
+      ...structuredClone(snapshot),
+      ...(competitive ? { competitive } : {}),
+    };
   }
 
   private normalizeNow(nowMs: number | undefined): number {

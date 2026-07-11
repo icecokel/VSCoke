@@ -9,6 +9,7 @@ export interface PokeLoungeRoomCommittedEvent {
     | 'room-created'
     | 'room-updated'
     | 'room-clock-advanced'
+    | 'competitive-assignment-committed'
     | 'competitive-action-committed';
   snapshot: PokeLoungePublicRoomState;
 }

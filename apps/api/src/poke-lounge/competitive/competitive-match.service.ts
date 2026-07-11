@@ -33,6 +33,7 @@ import {
   type PokeLoungeRoomEventPublisher,
 } from '../poke-lounge-room-event.publisher';
 import { toPokeLoungePublicRoomState } from '../poke-lounge-room-conflict';
+import { toCompetitiveProjection } from './competitive-projection.service';
 
 @Injectable()
 export class CompetitiveMatchService {
@@ -72,7 +73,28 @@ export class CompetitiveMatchService {
       });
     }
 
-    return result.assignment ? toPublicAssignment(result.assignment) : null;
+    if (!result.assignment) {
+      return null;
+    }
+
+    if (result.committed) {
+      try {
+        await this.eventPublisher.publish({
+          type: 'competitive-assignment-committed',
+          snapshot: {
+            ...toPokeLoungePublicRoomState(result.room),
+            competitive: result.projection,
+          },
+        });
+      } catch (error) {
+        this.logger.error(
+          `Failed to publish committed competitive assignment for ${result.assignment.matchId}`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
+    }
+
+    return toPublicAssignment(result.assignment);
   }
 
   async submitAction(input: SubmitCompetitiveActionInput) {
@@ -151,18 +173,7 @@ function createAssignment(
 function toPublicAssignment(
   assignment: CompetitiveMatchAssignment,
 ): CompetitiveAssignmentProjection {
-  return {
-    matchId: assignment.matchId,
-    assignmentRevision: assignment.assignmentRevision,
-    rulesetVersion: assignment.rulesetVersion,
-    rulesetHash: assignment.rulesetHash,
-    currentTurn: assignment.currentTurn,
-    status: assignment.status,
-    playerIds: [
-      assignment.initialState.participantIds[0],
-      assignment.initialState.participantIds[1],
-    ],
-  };
+  return toCompetitiveProjection(assignment, []);
 }
 
 function throwBindingError(outcome: CompetitiveSeatBindingFailure): never {

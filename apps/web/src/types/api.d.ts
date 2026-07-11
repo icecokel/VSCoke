@@ -176,6 +176,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/poke-lounge/rooms/{roomCode}/competitive-seat": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["PokeLoungeController_bindCompetitiveSeat"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/poke-lounge/rooms/{roomCode}/matches/{matchId}/actions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["PokeLoungeController_submitCompetitiveAction"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/poke-lounge/rooms/{roomCode}/join": {
     parameters: {
       query?: never;
@@ -233,6 +265,10 @@ export interface paths {
     };
     get?: never;
     put?: never;
+    /**
+     * Submit a casual Poke Lounge result
+     * @description Client-reported room results remain unverified and cannot create verified trust or public ranking entries.
+     */
     post: operations["PokeLoungeController_submitResult"];
     delete?: never;
     options?: never;
@@ -786,8 +822,6 @@ export interface components {
     PokeLoungeRoomParticipantDto: {
       /** @example player-a */
       playerId: string;
-      /** @example user-123 */
-      userId?: string;
       /** @example Player A */
       displayName: string;
       /**
@@ -868,6 +902,56 @@ export interface components {
       /** @example 100 */
       score: number;
     };
+    CompetitiveMoveStateDto: {
+      moveId: string;
+      pp: number;
+    };
+    CompetitiveCombatantStateDto: {
+      speciesId: string;
+      maxHp: number;
+      currentHp: number;
+      /** @enum {string} */
+      status: "none" | "paralyzed";
+      moves: components["schemas"]["CompetitiveMoveStateDto"][];
+    };
+    CompetitivePlayerStateDto: {
+      playerId: string;
+      activeSlotIndex: number;
+      team: components["schemas"]["CompetitiveCombatantStateDto"][];
+    };
+    CompetitiveTerminalResultDto: {
+      winnerPlayerId: string;
+      loserPlayerId: string;
+      /** @enum {string} */
+      reason: "faint" | "forfeit" | "timeout";
+      scoreByPlayerId: {
+        [key: string]: 50 | 100;
+      };
+    };
+    CompetitiveBattleStateDto: {
+      /** @example 1 */
+      rulesetVersion: number;
+      turn: number;
+      participantIds: string[];
+      playersById: {
+        [key: string]: components["schemas"]["CompetitivePlayerStateDto"];
+      };
+      terminal: components["schemas"]["CompetitiveTerminalResultDto"] | null;
+    };
+    CompetitiveActionResponseDto: {
+      matchId: string;
+      assignmentRevision: number;
+      rulesetVersion: number;
+      rulesetHash: string;
+      currentTurn: number;
+      /** @enum {string} */
+      status: "pending" | "active" | "completed";
+      playerIds: string[];
+      stateHash: string;
+      currentState: components["schemas"]["CompetitiveBattleStateDto"];
+      submittedPlayerIds: string[];
+      terminal: components["schemas"]["CompetitiveTerminalResultDto"] | null;
+    };
     PokeLoungeRoomResponseDto: {
       /** @example ROOM01 */
       roomCode: string;
@@ -891,6 +975,7 @@ export interface components {
       round: components["schemas"]["PokeLoungeRoundDto"];
       tournament: components["schemas"]["PokeLoungeTournamentDto"];
       finalStandings: components["schemas"]["PokeLoungeFinalStandingDto"][];
+      competitive?: components["schemas"]["CompetitiveActionResponseDto"];
     };
     PokeLoungeRoomConflictResponseDto: {
       /** @example 409 */
@@ -900,6 +985,38 @@ export interface components {
       /** @example Poke Lounge room revision conflict */
       message: string;
       snapshot: components["schemas"]["PokeLoungeRoomResponseDto"];
+    };
+    BindCompetitiveSeatDto: {
+      /** @example session-a */
+      sessionId: string;
+    };
+    CompetitiveAssignmentResponseDto: {
+      matchId: string;
+      assignmentRevision: number;
+      rulesetVersion: number;
+      rulesetHash: string;
+      currentTurn: number;
+      /** @enum {string} */
+      status: "pending" | "active" | "completed";
+      playerIds: string[];
+      stateHash: string;
+      currentState: components["schemas"]["CompetitiveBattleStateDto"];
+      submittedPlayerIds: string[];
+      terminal: components["schemas"]["CompetitiveTerminalResultDto"] | null;
+    };
+    CompetitiveActionDto: {
+      /** @enum {string} */
+      kind: "move" | "switch";
+      /** @example steady-strike */
+      moveId?: string;
+      slotIndex?: number;
+    };
+    SubmitCompetitiveActionDto: {
+      assignmentRevision: number;
+      turn: number;
+      /** Format: uuid */
+      clientCommandId: string;
+      action: components["schemas"]["CompetitiveActionDto"];
     };
     JoinPokeLoungeRoomDto: {
       /** @example player-b */
@@ -1304,6 +1421,7 @@ export interface operations {
     parameters: {
       query: {
         nowMs: string;
+        afterRevision?: number;
       };
       header?: never;
       path: {
@@ -1319,6 +1437,57 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
+        };
+      };
+    };
+  };
+  PokeLoungeController_bindCompetitiveSeat: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        roomCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["BindCompetitiveSeatDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CompetitiveAssignmentResponseDto"];
+        };
+      };
+    };
+  };
+  PokeLoungeController_submitCompetitiveAction: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        roomCode: string;
+        matchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SubmitCompetitiveActionDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CompetitiveActionResponseDto"];
         };
       };
     };

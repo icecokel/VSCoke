@@ -7,8 +7,18 @@ import { COMPETITIVE_ACTION_REPOSITORY } from './competitive/competitive-action.
 import { POKE_LOUNGE_ROOM_EVENT_PUBLISHER } from './poke-lounge-room-event.publisher';
 import { PokeLoungeGateway } from './poke-lounge.gateway';
 import { PokeLoungeModule } from './poke-lounge.module';
+import { GameModule } from '../game/game.module';
 
 describe('PokeLoungeModule', () => {
+  it('imports the game writer module without redefining its provider', () => {
+    const imports = Reflect.getMetadata(
+      'imports',
+      PokeLoungeModule,
+    ) as object[];
+
+    expect(imports).toContain(GameModule);
+  });
+
   it('binds committed room events to the Socket.IO gateway publisher', () => {
     const providers = Reflect.getMetadata(
       'providers',

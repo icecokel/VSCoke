@@ -19,6 +19,9 @@ describe('PokeLoungeRoomService', () => {
   let service: PokeLoungeRoomService;
   let currentTimeMs: number;
   let roomCodes: string[];
+  const competitiveProjection = {
+    findForRoomCode: jest.fn().mockResolvedValue(null),
+  };
 
   beforeEach(() => {
     currentTimeMs = 0;
@@ -28,6 +31,7 @@ describe('PokeLoungeRoomService', () => {
     service = new PokeLoungeRoomService(
       repository,
       publisher,
+      competitiveProjection as never,
       () => roomCodes.shift() ?? 'ROOM99',
       () => currentTimeMs,
     );
@@ -534,6 +538,7 @@ describe('PokeLoungeRoomService', () => {
     const deferredService = new PokeLoungeRoomService(
       deferredRepository,
       publisher,
+      competitiveProjection as never,
       () => 'ROOM01',
       () => 0,
     );

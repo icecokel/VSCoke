@@ -1,4 +1,5 @@
 import type { PokeLoungeRoomState } from './poke-lounge-room.types';
+import type { CompetitiveActionProjection } from './competitive/competitive-action.types';
 
 export const POKE_LOUNGE_ROOM_REPOSITORY = Symbol(
   'POKE_LOUNGE_ROOM_REPOSITORY',
@@ -7,6 +8,7 @@ export const POKE_LOUNGE_ROOM_REPOSITORY = Symbol(
 export type PokeLoungeRoomSnapshot = PokeLoungeRoomState & {
   revision: number;
   expiresAtMs: number;
+  competitive?: CompetitiveActionProjection;
 };
 
 export type PokeLoungeRepositoryResult = {

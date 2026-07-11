@@ -16,6 +16,7 @@ import type {
   PokeLoungeRoundPhase,
   PokeLoungeTournamentMatch,
 } from './../poke-lounge-room.types';
+import { CompetitiveActionResponseDto } from './competitive-action-response.dto';
 
 const participantRoles: PokeLoungeParticipantRole[] = [
   'participant',
@@ -211,4 +212,7 @@ export class PokeLoungeRoomResponseDto implements PokeLoungePublicRoomState {
 
   @ApiProperty({ type: [PokeLoungeFinalStandingDto] })
   finalStandings!: PokeLoungeFinalStandingDto[];
+
+  @ApiPropertyOptional({ type: CompetitiveActionResponseDto })
+  competitive?: CompetitiveActionResponseDto;
 }

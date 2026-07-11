@@ -17,6 +17,10 @@ import type {
   CompetitivePlayerAccount,
 } from '../competitive/competitive-match.types';
 
+export interface CompetitiveHistoryPublication {
+  historyIdByAccountId: Record<string, string>;
+}
+
 @Entity('poke_lounge_competitive_match')
 @Unique('UQ_poke_lounge_competitive_match_room', ['roomId'])
 @Unique('UQ_poke_lounge_competitive_match_room_match', ['roomId', 'matchId'])
@@ -92,6 +96,14 @@ export class PokeLoungeCompetitiveMatch {
     select: false,
   })
   terminalResult: CanonicalTerminalResult | null;
+
+  @Column({
+    name: 'history_publication',
+    type: 'jsonb',
+    nullable: true,
+    select: false,
+  })
+  historyPublication: CompetitiveHistoryPublication | null;
 
   @Column({ name: 'completed_at', type: 'timestamptz', nullable: true })
   completedAt: Date | null;

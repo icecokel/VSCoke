@@ -12,6 +12,8 @@ import {
   type CanonicalCompetitiveAction,
 } from '@vscoke/poke-lounge-battle';
 import { DataSource, type EntityManager } from 'typeorm';
+import { VerifiedPokeLoungeHistoryWriter } from '../../game/verified-poke-lounge-history-writer.service';
+import { GameType } from '../../game/enums/game-type.enum';
 import { PokeLoungeRoom } from '../entities/poke-lounge-room.entity';
 import { PokeLoungeCompetitiveMatch } from '../entities/poke-lounge-competitive-match.entity';
 import type { PokeLoungeRoomSnapshot } from '../poke-lounge-room.repository';
@@ -24,10 +26,14 @@ import type {
   CompetitiveActionProjection,
   SubmitCompetitiveActionInput,
 } from './competitive-action.types';
+import { toCompetitiveProjection } from './competitive-projection.service';
 
 @Injectable()
 export class PostgresCompetitiveActionRepository implements CompetitiveActionRepository {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly historyWriter: VerifiedPokeLoungeHistoryWriter,
+  ) {}
 
   submit(
     input: SubmitCompetitiveActionInput,
@@ -119,9 +125,11 @@ export class PostgresCompetitiveActionRepository implements CompetitiveActionRep
       const canonicalAction = canonicalize(input.action);
       if (turnActions.length === 0) {
         match.status = 'active';
-        await manager.getRepository(PokeLoungeCompetitiveMatch).save(match);
+        await manager
+          .getRepository(PokeLoungeCompetitiveMatch)
+          .save({ ...match }, { reload: false });
         await markRoomUpdated(manager, room);
-        const response = toProjection(match, input.turn);
+        const response = toProjection(match, [actor.playerId]);
         await actionRepository.save(
           actionRepository.create({
             matchId: match.matchId,
@@ -173,10 +181,25 @@ export class PostgresCompetitiveActionRepository implements CompetitiveActionRep
       match.terminalResult = resolved.terminal;
       match.status = resolved.terminal ? 'completed' : 'active';
       match.completedAt = resolved.terminal ? new Date() : null;
-      await manager.getRepository(PokeLoungeCompetitiveMatch).save(match);
+      if (resolved.terminal) {
+        const histories = await this.historyWriter.write(manager, {
+          gameType: GameType.POKE_LOUNGE,
+          terminalResult: resolved.terminal,
+          playerAccounts: match.playerAccounts,
+          source: { roomId: room.id, matchId: match.matchId },
+        });
+        match.historyPublication = {
+          historyIdByAccountId: Object.fromEntries(
+            histories.map((history) => [history.userId, history.id]),
+          ),
+        };
+      }
+      await manager
+        .getRepository(PokeLoungeCompetitiveMatch)
+        .save({ ...match }, { reload: false });
       await markRoomUpdated(manager, room);
 
-      const response = toProjection(match, input.turn);
+      const response = toProjection(match, []);
       const resolvedAt = new Date();
       const resolvedReceipt = actionRepository.create({
         matchId: match.matchId,
@@ -253,21 +276,9 @@ export function resolveTurnReceipts(
 
 function toProjection(
   match: PokeLoungeCompetitiveMatch,
-  submittedTurn: number,
+  submittedPlayerIds: readonly string[],
 ): CompetitiveActionProjection {
-  return {
-    matchId: match.matchId,
-    assignmentRevision: match.assignmentRevision,
-    submittedTurn,
-    currentTurn: match.currentTurn,
-    status: match.status,
-    playerIds: [
-      match.currentState.participantIds[0],
-      match.currentState.participantIds[1],
-    ],
-    stateHash: match.currentStateHash,
-    terminal: structuredClone(match.terminalResult),
-  };
+  return toCompetitiveProjection(match, submittedPlayerIds);
 }
 
 function lockRoom(
@@ -298,6 +309,7 @@ function lockMatch(
       'match.initialState',
       'match.currentState',
       'match.terminalResult',
+      'match.historyPublication',
     ])
     .where('match.roomId = :roomId', { roomId })
     .andWhere('match.matchId = :matchId', { matchId })

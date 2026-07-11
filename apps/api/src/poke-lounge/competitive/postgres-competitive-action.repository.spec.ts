@@ -7,9 +7,12 @@ import type { PokeLoungeCompetitiveAction } from './competitive-action.entity';
 import {
   COMPETITIVE_RULESET_HASH,
   COMPETITIVE_RULESET_VERSION,
+  createInitialBattleState,
 } from '@vscoke/poke-lounge-battle';
 import type { DataSource } from 'typeorm';
 import { PostgresCompetitiveActionRepository } from './postgres-competitive-action.repository';
+import { getMetadataArgsStorage } from 'typeorm';
+import { PokeLoungeCompetitiveMatch } from '../entities/poke-lounge-competitive-match.entity';
 
 describe('hashCompetitiveActionRequest', () => {
   it('is canonical for the same command and changes with authoritative fields', () => {
@@ -35,6 +38,21 @@ describe('hashCompetitiveActionRequest', () => {
 });
 
 describe('competitive action resolution guards', () => {
+  it('stores terminal history IDs in a private nullable JSONB match column', () => {
+    const column = getMetadataArgsStorage().columns.find(
+      (candidate) =>
+        candidate.target === PokeLoungeCompetitiveMatch &&
+        candidate.propertyName === 'historyPublication',
+    );
+
+    expect(column?.options).toMatchObject({
+      name: 'history_publication',
+      type: 'jsonb',
+      nullable: true,
+      select: false,
+    });
+  });
+
   it('updates both turn receipts with one resolved response and timestamp', () => {
     const receipts = [
       { status: 'pending', response: { currentTurn: 0 }, resolvedAt: null },
@@ -81,11 +99,14 @@ describe('PostgresCompetitiveActionRepository command replay ordering', () => {
       const response = {
         matchId: input.matchId,
         assignmentRevision: 1,
-        submittedTurn: 0,
+        rulesetVersion: COMPETITIVE_RULESET_VERSION,
+        rulesetHash: COMPETITIVE_RULESET_HASH,
         currentTurn: status === 'pending' ? 0 : 1,
         status: status === 'pending' ? 'active' : 'completed',
         playerIds: ['player-a', 'player-b'] as [string, string],
+        currentState: createInitialBattleState(['player-a', 'player-b']),
         stateHash: 'b'.repeat(64),
+        submittedPlayerIds: status === 'pending' ? ['player-a'] : [],
         terminal: null,
       };
       const { repository, actionEntityRepository } = repositoryWithReceipt({
@@ -183,7 +204,9 @@ function repositoryWithReceipt(receipt: {
   } as unknown as DataSource;
 
   return {
-    repository: new PostgresCompetitiveActionRepository(dataSource),
+    repository: new PostgresCompetitiveActionRepository(dataSource, {
+      write: jest.fn().mockResolvedValue([]),
+    }),
     actionEntityRepository,
   };
 }

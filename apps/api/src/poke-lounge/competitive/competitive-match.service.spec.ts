@@ -74,16 +74,75 @@ describe('CompetitiveMatchService', () => {
       currentTurn: 0,
       status: 'pending',
       playerIds: ['player-a', 'player-b'],
+      submittedPlayerIds: [],
+      currentState: {
+        turn: 0,
+        participantIds: ['player-a', 'player-b'],
+      },
     });
     expect(JSON.stringify(result)).not.toContain('account-a');
     expect(JSON.stringify(result)).not.toContain('session-a');
     expect(JSON.stringify(result)).not.toContain('serverSeed');
-    expect(JSON.stringify(result)).not.toContain('playersById');
+    expect(JSON.stringify(result)).not.toContain('clientCommandId');
     expect(repository.bindSeatAndAssign.mock.calls[0]?.[0]).toMatchObject({
       roomCode: 'ROOM01',
       sessionId: 'session-a',
       accountId: 'account-a',
     });
+  });
+
+  it('publishes the durable assignment projection after the second seat commits', async () => {
+    const state = createInitialBattleState(['player-a', 'player-b']);
+    repository.bindSeatAndAssign.mockResolvedValue({
+      outcome: 'assigned',
+      eligible: true,
+      committed: true,
+      room: roomSnapshot(),
+      projection: {
+        ...actionProjection(),
+        status: 'pending',
+        submittedPlayerIds: [],
+      },
+      assignment: {
+        roomId: 'room-id',
+        roomCode: 'ROOM01',
+        matchId: 'match-1',
+        assignmentRevision: 1,
+        playerAccounts: [
+          { playerId: 'player-a', accountId: 'account-a' },
+          { playerId: 'player-b', accountId: 'account-b' },
+        ],
+        rulesetVersion: COMPETITIVE_RULESET_VERSION,
+        rulesetHash: COMPETITIVE_RULESET_HASH,
+        serverSeed: 'secret-seed',
+        initialState: state,
+        initialStateHash: hashCanonicalState(state),
+        currentState: state,
+        currentStateHash: hashCanonicalState(state),
+        currentTurn: 0,
+        status: 'pending',
+        terminalResult: null,
+        completedAt: null,
+      },
+    } as never);
+
+    await service.bindSeat('ROOM01', 'session-b', 'account-b');
+
+    expect(publisher.publish.mock.calls).toHaveLength(1);
+    expect(publisher.publish.mock.calls[0]?.[0]).toMatchObject({
+      type: 'competitive-assignment-committed',
+      snapshot: {
+        competitive: {
+          matchId: 'match-1',
+          currentState: state,
+          submittedPlayerIds: [],
+        },
+      },
+    });
+    const serialized = JSON.stringify(publisher.publish.mock.calls);
+    expect(serialized).not.toContain('account-a');
+    expect(serialized).not.toContain('session-b');
+    expect(serialized).not.toContain('secret-seed');
   });
 
   it.each([
@@ -177,7 +236,7 @@ describe('CompetitiveMatchService', () => {
     );
     expect(JSON.stringify(publisher.publish.mock.calls)).not.toContain('seed');
     expect(JSON.stringify(publisher.publish.mock.calls)).not.toContain(
-      'playersById',
+      'clientCommandId',
     );
     expect(order).toEqual(['transaction-committed', 'event-published']);
   });
@@ -231,14 +290,18 @@ function actionInput() {
 }
 
 function actionProjection() {
+  const currentState = createInitialBattleState(['player-a', 'player-b']);
   return {
     matchId: 'match-1',
     assignmentRevision: 1,
-    submittedTurn: 0,
+    rulesetVersion: COMPETITIVE_RULESET_VERSION,
+    rulesetHash: COMPETITIVE_RULESET_HASH,
     currentTurn: 0,
     status: 'active' as const,
     playerIds: ['player-a', 'player-b'] as [string, string],
+    currentState,
     stateHash: 'a'.repeat(64),
+    submittedPlayerIds: ['player-a'],
     terminal: null,
   };
 }

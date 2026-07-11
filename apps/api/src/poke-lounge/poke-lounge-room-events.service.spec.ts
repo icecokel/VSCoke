@@ -37,11 +37,20 @@ describe('PokeLoungeRoomEventsService', () => {
     room.competitive = {
       matchId: 'match-1',
       assignmentRevision: 1,
-      submittedTurn: 0,
+      rulesetVersion: 1,
+      rulesetHash: 'b'.repeat(64),
       currentTurn: 1,
       status: 'active',
       playerIds: ['player-a', 'player-b'],
+      currentState: {
+        rulesetVersion: 1,
+        turn: 1,
+        participantIds: ['player-a', 'player-b'],
+        playersById: {},
+        terminal: null,
+      },
       stateHash: 'a'.repeat(64),
+      submittedPlayerIds: [],
       terminal: null,
     };
     service.subscribe(listener);
@@ -56,7 +65,6 @@ describe('PokeLoungeRoomEventsService', () => {
     expect(serialized).not.toContain('accountId');
     expect(serialized).not.toContain('sessionId');
     expect(serialized).not.toContain('serverSeed');
-    expect(serialized).not.toContain('playersById');
     expect(serialized).not.toContain('clientCommandId');
   });
 });

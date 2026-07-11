@@ -36,6 +36,8 @@
 
 `verified-room`은 서버 전용 `VerifiedPokeLoungeHistoryWriter`만 기록한다. writer는 호출자가 제공한 임의 키를 받지 않고 서버의 `roomId`, `matchId`, 바인딩된 `userId`로 `roomId:matchId:userId` 형식의 `sourceKey`를 만든다. 같은 source key 재시도는 기존 행을 재사용하며, 기존 점수와 달라지면 충돌로 실패한다.
 
+경쟁 액션 엔진이 종료 결과를 확정한 경우에만 두 계정의 이력을 액션 영수증, 매치 종료 상태, 비공개 history ID 감사 매핑과 같은 `EntityManager` 트랜잭션에서 발행한다. writer 실패나 source 충돌은 이 변경 전체를 롤백하며 Socket 이벤트는 commit 이후에만 발행한다. 캐주얼 룸 `/result`는 이 경로를 호출하지 않는다.
+
 Poke Lounge 랭킹과 등수 쿼리는 각 사용자 최고 점수를 고르는 window 또는 집계 안에서 먼저 `resultTrust = 'verified-room'`을 적용한다. 따라서 더 높은 `client-asserted` 점수가 같은 사용자에게 있어도 최고 점수나 등수에 영향을 주지 않는다.
 
 신뢰도 migration은 기존 `POKE_LOUNGE` 행 중 `resultTrust IS NULL`인 행만 `client-asserted`로 채운다. 다른 게임 행은 `NULL`로 유지하고 이미 분류된 값을 덮어쓰지 않는다.

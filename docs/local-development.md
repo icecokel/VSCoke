@@ -101,6 +101,8 @@ API 개발 서버:
 PORT=3001 pnpm dev:api
 ```
 
+루트 명령은 `@vscoke/poke-lounge-battle`을 먼저 빌드한 뒤 battle TypeScript watch와 Nest watch를 함께 실행한다. 공유 배틀 엔진 소스를 수정하면 `dist`가 갱신되고 API가 다시 컴파일된다.
+
 Swagger 확인:
 
 ```txt

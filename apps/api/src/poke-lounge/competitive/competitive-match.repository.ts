@@ -23,8 +23,14 @@ export type CompetitiveSeatBindingFailure =
 export type CompetitiveSeatBindingResult =
   | { outcome: CompetitiveSeatBindingFailure }
   | {
-      outcome: 'bound-casual' | 'assigned' | 'already-assigned';
-      assignment: CompetitiveMatchAssignment | null;
+      outcome: 'bound-casual' | 'bound-ineligible';
+      assignment: null;
+      eligible: false;
+    }
+  | {
+      outcome: 'assigned' | 'already-assigned';
+      assignment: CompetitiveMatchAssignment;
+      eligible: true;
     };
 
 export interface CompetitiveMatchRepository {
@@ -36,9 +42,22 @@ export interface CompetitiveMatchRepository {
       context: CompetitiveAssignmentCreateContext,
     ) => CompetitiveMatchAssignment;
   }): Promise<CompetitiveSeatBindingResult>;
-  findAssignmentByRoomCode(
-    roomCode: string,
-  ): Promise<CompetitiveMatchAssignment | null>;
+  findAssignmentForParticipant(input: {
+    roomCode: string;
+    playerId: string;
+    accountId: string;
+  }): Promise<CompetitiveMatchAssignment | null>;
+}
+
+export function isCompetitiveAssignmentMember(
+  assignment: Pick<CompetitiveMatchAssignment, 'playerAccounts'>,
+  identity: CompetitivePlayerAccount,
+): boolean {
+  return assignment.playerAccounts.some(
+    (member) =>
+      member.playerId === identity.playerId &&
+      member.accountId === identity.accountId,
+  );
 }
 
 export type CompetitiveSeatBindingPlan =

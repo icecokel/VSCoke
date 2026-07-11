@@ -84,6 +84,197 @@ describe('PostgresCompetitiveMatchRepository', () => {
     );
     expect(result).toMatchObject({ outcome: 'assigned' });
   });
+
+  it('keeps a third participant seat casual without returning the existing assignment', async () => {
+    const calls: string[] = [];
+    const existingAssignment = assignment({
+      roomId: 'room-id',
+      roomCode: 'ROOM01',
+      assignmentRevision: 1,
+      players: [
+        { playerId: 'player-a', accountId: 'account-a' },
+        { playerId: 'player-b', accountId: 'account-b' },
+      ],
+    });
+    const seats: SeatRow[] = [
+      {
+        sessionId: 'session-a',
+        playerId: 'player-a',
+        accountId: 'account-a',
+      },
+      {
+        sessionId: 'session-b',
+        playerId: 'player-b',
+        accountId: 'account-b',
+      },
+    ];
+    const seatRepository = {
+      find: jest.fn<Promise<SeatRow[]>, []>(() => Promise.resolve(seats)),
+      create: jest.fn<SeatRow, [SeatRow]>((value) => value),
+      save: jest.fn<Promise<SeatRow>, [SeatRow]>((value) =>
+        Promise.resolve(value),
+      ),
+    };
+    const matchRepository = {
+      createQueryBuilder: jest.fn<ScriptedQueryBuilder, []>(() =>
+        chainQueryBuilder(existingAssignment, calls),
+      ),
+    };
+    const roomRepository = {
+      createQueryBuilder: jest.fn<ScriptedQueryBuilder, []>(() =>
+        chainQueryBuilder(
+          {
+            id: 'room-id',
+            roomCode: 'ROOM01',
+            state: roomState(['player-a', 'player-b', 'player-c']),
+          },
+          calls,
+          true,
+        ),
+      ),
+    };
+    const manager = {
+      getRepository: jest
+        .fn<unknown, [unknown]>()
+        .mockReturnValueOnce(roomRepository)
+        .mockReturnValueOnce(seatRepository)
+        .mockReturnValueOnce(matchRepository),
+    } as unknown as EntityManager;
+    const repository = new PostgresCompetitiveMatchRepository(
+      managerDataSource(manager),
+    );
+
+    const result = await repository.bindSeatAndAssign({
+      roomCode: 'ROOM01',
+      sessionId: 'session-c',
+      accountId: 'account-c',
+      createAssignment: (context) => assignment(context),
+    });
+
+    expect(seatRepository.save).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      outcome: 'bound-ineligible',
+      assignment: null,
+      eligible: false,
+    });
+    expect(JSON.stringify(result)).not.toContain(existingAssignment.matchId);
+  });
+
+  it('fails assignment lookup closed unless both player and account are members', async () => {
+    const existingAssignment = assignment({
+      roomId: 'room-id',
+      roomCode: 'ROOM01',
+      assignmentRevision: 1,
+      players: [
+        { playerId: 'player-a', accountId: 'account-a' },
+        { playerId: 'player-b', accountId: 'account-b' },
+      ],
+    });
+    const repository = new PostgresCompetitiveMatchRepository({
+      getRepository: () => ({
+        createQueryBuilder: () => chainQueryBuilder(existingAssignment, []),
+      }),
+    } as unknown as DataSource);
+    const lookup = repository as unknown as {
+      findAssignmentForParticipant(input: {
+        roomCode: string;
+        playerId: string;
+        accountId: string;
+      }): Promise<unknown>;
+    };
+
+    await expect(
+      lookup.findAssignmentForParticipant({
+        roomCode: 'ROOM01',
+        playerId: 'player-a',
+        accountId: 'account-a',
+      }),
+    ).resolves.toMatchObject({ matchId: existingAssignment.matchId });
+    await expect(
+      lookup.findAssignmentForParticipant({
+        roomCode: 'ROOM01',
+        playerId: 'player-c',
+        accountId: 'account-c',
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      lookup.findAssignmentForParticipant({
+        roomCode: 'ROOM01',
+        playerId: 'player-a',
+        accountId: 'account-c',
+      }),
+    ).resolves.toBeNull();
+  });
+
+  it('returns eligible false before binding when a third player reuses an assigned account', async () => {
+    const calls: string[] = [];
+    const existingAssignment = assignment({
+      roomId: 'room-id',
+      roomCode: 'ROOM01',
+      assignmentRevision: 1,
+      players: [
+        { playerId: 'player-a', accountId: 'account-a' },
+        { playerId: 'player-b', accountId: 'account-b' },
+      ],
+    });
+    const seatSave = jest.fn<Promise<SeatRow>, [SeatRow]>((value) =>
+      Promise.resolve(value),
+    );
+    const manager = {
+      getRepository: jest
+        .fn<unknown, [unknown]>()
+        .mockReturnValueOnce({
+          createQueryBuilder: () =>
+            chainQueryBuilder(
+              {
+                id: 'room-id',
+                roomCode: 'ROOM01',
+                state: roomState(['player-a', 'player-b', 'player-c']),
+              },
+              calls,
+              true,
+            ),
+        })
+        .mockReturnValueOnce({
+          find: () =>
+            Promise.resolve([
+              {
+                sessionId: 'session-a',
+                playerId: 'player-a',
+                accountId: 'account-a',
+              },
+              {
+                sessionId: 'session-b',
+                playerId: 'player-b',
+                accountId: 'account-b',
+              },
+            ]),
+          create: (value: SeatRow) => value,
+          save: seatSave,
+        })
+        .mockReturnValueOnce({
+          createQueryBuilder: () =>
+            chainQueryBuilder(existingAssignment, calls),
+        }),
+    } as unknown as EntityManager;
+    const repository = new PostgresCompetitiveMatchRepository(
+      managerDataSource(manager),
+    );
+
+    await expect(
+      repository.bindSeatAndAssign({
+        roomCode: 'ROOM01',
+        sessionId: 'session-c',
+        accountId: 'account-a',
+        createAssignment: (context) => assignment(context),
+      }),
+    ).resolves.toEqual({
+      outcome: 'bound-ineligible',
+      assignment: null,
+      eligible: false,
+    });
+    expect(seatSave).not.toHaveBeenCalled();
+  });
 });
 
 function chainQueryBuilder(
@@ -151,16 +342,15 @@ function assignment(context: {
   };
 }
 
-function roomState() {
+function roomState(playerIds = ['player-a', 'player-b']) {
   return {
     roomCode: 'ROOM01',
     status: 'waiting' as const,
     createdAtMs: 0,
     updatedAtMs: 0,
-    participants: [
-      participant('session-a', 'player-a'),
-      participant('session-b', 'player-b'),
-    ],
+    participants: playerIds.map((playerId, index) =>
+      participant(`session-${String.fromCharCode(97 + index)}`, playerId),
+    ),
     partySnapshots: {},
     round: {
       index: 1,

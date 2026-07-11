@@ -45,6 +45,15 @@ export class CompetitiveMatchService {
       throwBindingError(result.outcome);
     }
 
+    if (result.outcome === 'bound-ineligible') {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'POKE_LOUNGE_COMPETITIVE_ASSIGNMENT_INELIGIBLE',
+        message: 'Account is not eligible for this competitive assignment',
+        eligible: false,
+      });
+    }
+
     return result.assignment ? toPublicAssignment(result.assignment) : null;
   }
 }

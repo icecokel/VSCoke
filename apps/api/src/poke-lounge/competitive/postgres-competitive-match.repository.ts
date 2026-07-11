@@ -1,14 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, type EntityManager } from 'typeorm';
+import { DataSource, type EntityManager, type Repository } from 'typeorm';
 import { PokeLoungeCompetitiveMatch } from '../entities/poke-lounge-competitive-match.entity';
 import { PokeLoungeCompetitiveSeat } from '../entities/poke-lounge-competitive-seat.entity';
 import { PokeLoungeRoom } from '../entities/poke-lounge-room.entity';
 import type {
   CompetitiveMatchRepository,
+  CompetitiveSeatRecord,
   CompetitiveSeatBindingResult,
 } from './competitive-match.repository';
-import { planCompetitiveSeatBinding } from './competitive-match.repository';
+import {
+  isCompetitiveAssignmentMember,
+  planCompetitiveSeatBinding,
+} from './competitive-match.repository';
 import type { CompetitiveMatchAssignment } from './competitive-match.types';
 
 @Injectable()
@@ -32,17 +36,6 @@ export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepos
         sessionId: input.sessionId,
         accountId: input.accountId,
       });
-
-      if (!('assignmentPlayers' in plan)) {
-        return plan;
-      }
-
-      if (plan.outcome === 'bind') {
-        await seatRepository.save(
-          seatRepository.create({ roomId: room.id, ...plan.seat }),
-        );
-      }
-
       const matchRepository = manager.getRepository(PokeLoungeCompetitiveMatch);
       const existingMatch = await matchRepository
         .createQueryBuilder('match')
@@ -54,15 +47,59 @@ export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepos
         ])
         .where('match.roomId = :roomId', { roomId: room.id })
         .getOne();
+      const requestedParticipant = room.state.participants.find(
+        (participant) => participant.sessionId === input.sessionId,
+      );
+      const existingAssignment = existingMatch
+        ? assignmentFromEntity(existingMatch)
+        : null;
 
-      if (existingMatch) {
+      if (
+        existingAssignment &&
+        requestedParticipant?.role === 'participant' &&
+        requestedParticipant.connected &&
+        !isCompetitiveAssignmentMember(existingAssignment, {
+          playerId: requestedParticipant.playerId,
+          accountId: input.accountId,
+        })
+      ) {
+        if ('assignmentPlayers' in plan && plan.outcome === 'bind') {
+          await saveSeat(seatRepository, room.id, plan.seat);
+        }
+
         return {
-          outcome: 'already-assigned',
-          assignment: assignmentFromEntity(existingMatch),
+          outcome: 'bound-ineligible',
+          assignment: null,
+          eligible: false,
         };
       }
+
+      if (!('assignmentPlayers' in plan)) {
+        return plan;
+      }
+
+      if (existingAssignment) {
+        if (plan.outcome === 'bind') {
+          await saveSeat(seatRepository, room.id, plan.seat);
+        }
+
+        return {
+          outcome: 'already-assigned',
+          assignment: existingAssignment,
+          eligible: true,
+        };
+      }
+
+      if (plan.outcome === 'bind') {
+        await saveSeat(seatRepository, room.id, plan.seat);
+      }
+
       if (!plan.assignmentPlayers) {
-        return { outcome: 'bound-casual', assignment: null };
+        return {
+          outcome: 'bound-casual',
+          assignment: null,
+          eligible: false,
+        };
       }
 
       const assignment = input.createAssignment({
@@ -75,13 +112,19 @@ export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepos
         matchRepository.create(assignment),
       );
 
-      return { outcome: 'assigned', assignment: assignmentFromEntity(saved) };
+      return {
+        outcome: 'assigned',
+        assignment: assignmentFromEntity(saved),
+        eligible: true,
+      };
     });
   }
 
-  async findAssignmentByRoomCode(
-    roomCode: string,
-  ): Promise<CompetitiveMatchAssignment | null> {
+  async findAssignmentForParticipant(input: {
+    roomCode: string;
+    playerId: string;
+    accountId: string;
+  }): Promise<CompetitiveMatchAssignment | null> {
     const match = await this.dataSource
       .getRepository(PokeLoungeCompetitiveMatch)
       .createQueryBuilder('match')
@@ -92,12 +135,26 @@ export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepos
         'match.terminalResult',
       ])
       .where('match.roomCode = :roomCode', {
-        roomCode: normalizeRoomCode(roomCode),
+        roomCode: normalizeRoomCode(input.roomCode),
       })
       .getOne();
 
-    return match ? assignmentFromEntity(match) : null;
+    if (!match) {
+      return null;
+    }
+
+    const assignment = assignmentFromEntity(match);
+
+    return isCompetitiveAssignmentMember(assignment, input) ? assignment : null;
   }
+}
+
+async function saveSeat(
+  repository: Repository<PokeLoungeCompetitiveSeat>,
+  roomId: string,
+  seat: CompetitiveSeatRecord,
+): Promise<void> {
+  await repository.save(repository.create({ roomId, ...seat }));
 }
 
 function lockRoom(

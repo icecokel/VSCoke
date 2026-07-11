@@ -15,7 +15,7 @@ describe('CompetitiveMatchService', () => {
   beforeEach(() => {
     repository = {
       bindSeatAndAssign: jest.fn(),
-      findAssignmentByRoomCode: jest.fn(),
+      findAssignmentForParticipant: jest.fn(),
     };
     service = new CompetitiveMatchService(repository);
   });
@@ -47,7 +47,11 @@ describe('CompetitiveMatchService', () => {
         { playerId: 'player-b', accountId: 'account-b' },
       ]);
 
-      return Promise.resolve({ outcome: 'assigned', assignment: match });
+      return Promise.resolve({
+        outcome: 'assigned',
+        assignment: match,
+        eligible: true,
+      });
     });
 
     const result = await service.bindSeat('room01', ' session-a ', 'account-a');
@@ -90,10 +94,32 @@ describe('CompetitiveMatchService', () => {
     repository.bindSeatAndAssign.mockResolvedValue({
       outcome: 'bound-casual',
       assignment: null,
+      eligible: false,
     });
 
     await expect(
       service.bindSeat('ROOM01', 'session-a', 'account-a'),
     ).resolves.toBeNull();
+  });
+
+  it('returns an eligible false conflict without exposing an existing assignment to a third participant', async () => {
+    repository.bindSeatAndAssign.mockResolvedValue({
+      outcome: 'bound-ineligible',
+      assignment: null,
+      eligible: false,
+    });
+
+    try {
+      await service.bindSeat('ROOM01', 'session-c', 'account-c');
+      throw new Error('Expected third participant binding to conflict');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConflictException);
+      expect((error as ConflictException).getResponse()).toEqual({
+        statusCode: 409,
+        code: 'POKE_LOUNGE_COMPETITIVE_ASSIGNMENT_INELIGIBLE',
+        message: 'Account is not eligible for this competitive assignment',
+        eligible: false,
+      });
+    }
   });
 });

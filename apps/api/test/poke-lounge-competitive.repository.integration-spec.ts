@@ -79,7 +79,11 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
       dataSource.getRepository(PokeLoungeCompetitiveSeat).count(),
     ).resolves.toBe(2);
 
-    const original = await repository.findAssignmentByRoomCode('ROOM01');
+    const original = await repository.findAssignmentForParticipant({
+      roomCode: 'ROOM01',
+      playerId: 'player-a',
+      accountId: 'account-a',
+    });
     expect(original).toMatchObject({
       assignmentRevision: 1,
       currentTurn: 0,
@@ -101,7 +105,11 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     await dataSource.initialize();
     resetServices();
 
-    const reloaded = await repository.findAssignmentByRoomCode('ROOM01');
+    const reloaded = await repository.findAssignmentForParticipant({
+      roomCode: 'ROOM01',
+      playerId: 'player-a',
+      accountId: 'account-a',
+    });
     expect(reloaded).toEqual(original);
     expect(JSON.stringify(reloaded?.initialState)).not.toContain(
       'Mutated browser party',
@@ -146,6 +154,84 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     ).resolves.toBe(0);
   });
 
+  it('keeps post-assignment third participants ineligible under duplicate and concurrent binds', async () => {
+    await insertRoom('ROOM04', ['player-a', 'player-b']);
+    await service.bindSeat('ROOM04', 'session-a', 'account-a');
+    const assignment = await service.bindSeat(
+      'ROOM04',
+      'session-b',
+      'account-b',
+    );
+    await appendParticipants('ROOM04', ['player-c', 'player-d']);
+
+    try {
+      await service.bindSeat('ROOM04', 'session-c', 'account-a');
+      throw new Error('Expected assigned account reuse to conflict');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConflictException);
+      expect((error as ConflictException).getResponse()).toMatchObject({
+        code: 'POKE_LOUNGE_COMPETITIVE_ASSIGNMENT_INELIGIBLE',
+        eligible: false,
+      });
+    }
+
+    try {
+      await service.bindSeat('ROOM04', 'session-c', 'account-c');
+      throw new Error('Expected third participant binding to conflict');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConflictException);
+      expect((error as ConflictException).getResponse()).toMatchObject({
+        code: 'POKE_LOUNGE_COMPETITIVE_ASSIGNMENT_INELIGIBLE',
+        eligible: false,
+      });
+    }
+
+    await expect(
+      repository.findAssignmentForParticipant({
+        roomCode: 'ROOM04',
+        playerId: 'player-c',
+        accountId: 'account-c',
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      repository.findAssignmentForParticipant({
+        roomCode: 'ROOM04',
+        playerId: 'player-a',
+        accountId: 'account-c',
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      repository.findAssignmentForParticipant({
+        roomCode: 'ROOM04',
+        playerId: 'player-a',
+        accountId: 'account-a',
+      }),
+    ).resolves.toMatchObject({ matchId: assignment?.matchId });
+
+    const concurrent = await Promise.allSettled([
+      service.bindSeat('ROOM04', 'session-d', 'account-d'),
+      service.bindSeat('ROOM04', 'session-d', 'account-e'),
+    ]);
+    expect(concurrent.every((result) => result.status === 'rejected')).toBe(
+      true,
+    );
+    expect(
+      concurrent.every(
+        (result) =>
+          result.status === 'rejected' &&
+          result.reason instanceof ConflictException &&
+          (result.reason.getResponse() as { eligible?: unknown }).eligible ===
+            false,
+      ),
+    ).toBe(true);
+    await expect(
+      dataSource.getRepository(PokeLoungeCompetitiveSeat).count(),
+    ).resolves.toBe(4);
+    await expect(
+      dataSource.getRepository(PokeLoungeCompetitiveMatch).count(),
+    ).resolves.toBe(1);
+  });
+
   function resetServices() {
     repository = new PostgresCompetitiveMatchRepository(dataSource);
     service = new CompetitiveMatchService(repository);
@@ -158,6 +244,26 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
       revision: 5,
       expiresAt: new Date(Date.now() + 60_000),
     });
+  }
+
+  async function appendParticipants(roomCode: string, playerIds: string[]) {
+    const roomRepository = dataSource.getRepository(PokeLoungeRoom);
+    const room = await roomRepository.findOneByOrFail({ roomCode });
+
+    for (const playerId of playerIds) {
+      const suffix = playerId.slice(-1);
+      room.state.participants.push({
+        sessionId: `session-${suffix}`,
+        playerId,
+        displayName: playerId,
+        role: 'participant',
+        ready: false,
+        connected: true,
+        joinedAtMs: room.state.participants.length,
+      });
+    }
+
+    await roomRepository.save(room);
   }
 });
 

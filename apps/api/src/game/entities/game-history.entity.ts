@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { User } from '../../auth/entities/user.entity';
 import { GameType } from '../enums/game-type.enum';
+import type { GameSubmissionTrust } from '../game-score-policy';
 
 @Entity()
 export class GameHistory {
@@ -25,6 +26,12 @@ export class GameHistory {
 
   @Column({ type: 'int', nullable: true })
   playTime?: number;
+
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  resultTrust: GameSubmissionTrust | null;
+
+  @Column({ type: 'varchar', length: 512, nullable: true })
+  sourceKey: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

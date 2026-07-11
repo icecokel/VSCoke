@@ -86,6 +86,11 @@ export class GameService {
     const history = this.gameHistoryRepository.create({
       ...createGameHistoryDto,
       user: user,
+      resultTrust:
+        createGameHistoryDto.gameType === GameType.POKE_LOUNGE
+          ? GENERIC_GAME_SUBMISSION_TRUST
+          : null,
+      sourceKey: null,
     });
     return this.gameHistoryRepository.save(history);
   }
@@ -101,12 +106,16 @@ export class GameService {
    * 게임별 랭킹 목록을 조회함 (유저별 최고 점수 기준 Top 10)
    */
   async getRanking(gameType: GameType): Promise<GameHistory[]> {
-    // Generic Poke Lounge results are client-asserted until verified room trust is persisted.
-    if (!this.isPublicRankingEligible(gameType)) {
-      return [];
-    }
-
     const policy = getGameScorePolicy(gameType);
+    const policyValues = getGameScorePolicyValues(policy);
+    const trustCondition =
+      gameType === GameType.POKE_LOUNGE
+        ? `AND gh."resultTrust" = $${policyValues.length + 2}`
+        : '';
+    const queryValues: Array<string | number> = [gameType, ...policyValues];
+    if (gameType === GameType.POKE_LOUNGE) {
+      queryValues.push('verified-room');
+    }
 
     // 유저별 최고 점수 1건만 추린 뒤 전체 상위 10건을 구함
     const ids = await this.gameHistoryRepository.query<RankingIdRow[]>(
@@ -125,12 +134,13 @@ export class GameService {
         FROM game_history gh
         WHERE gh."gameType" = $1
           AND ${buildPositionalValidScoreCondition('gh', 2)}
+          ${trustCondition}
       ) AS ranked
       WHERE ranked.row_num = 1
       ORDER BY ranked.score DESC, ranked."createdAt" ASC
       LIMIT 10
       `,
-      [gameType, ...getGameScorePolicyValues(policy)],
+      queryValues,
     );
 
     const rankingIds = ids.map((row) => row.id);
@@ -236,12 +246,23 @@ export class GameService {
     gameType: GameType,
     dateRange?: { start: Date; end: Date },
   ): Promise<number | null> {
-    if (!this.isPublicRankingEligible(gameType)) {
-      return null;
-    }
-
     const policy = getGameScorePolicy(gameType);
     const policyValues = getGameScorePolicyValues(policy);
+    const queryValues: Array<string | number | Date> = [
+      gameType,
+      score,
+      ...policyValues,
+    ];
+    const trustCondition =
+      gameType === GameType.POKE_LOUNGE
+        ? `AND "resultTrust" = $${queryValues.push('verified-room')}`
+        : '';
+    let dateRangeCondition = '';
+    if (dateRange) {
+      const startIndex = queryValues.push(dateRange.start);
+      const endIndex = queryValues.push(dateRange.end);
+      dateRangeCondition = `AND "createdAt" BETWEEN $${startIndex} AND $${endIndex}`;
+    }
 
     // 유저별 최고 점수가 현재 점수보다 높은 경우만 카운트
     // 서브쿼리로 각 유저의 최고 점수 계산 후 비교
@@ -253,14 +274,13 @@ export class GameService {
         FROM game_history
         WHERE "gameType" = $1
         AND ${buildPositionalValidScoreCondition(undefined, 3)}
-        ${dateRange ? 'AND "createdAt" BETWEEN $8 AND $9' : ''}
+        ${trustCondition}
+        ${dateRangeCondition}
         GROUP BY "userId"
       ) AS user_scores
       WHERE max_score > $2
       `,
-      dateRange
-        ? [gameType, score, ...policyValues, dateRange.start, dateRange.end]
-        : [gameType, score, ...policyValues],
+      queryValues,
     );
 
     // (나보다 높은 유저 수) + 1 = 현재 나의 등수

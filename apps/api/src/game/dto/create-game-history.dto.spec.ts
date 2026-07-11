@@ -1,4 +1,5 @@
 import { validate } from 'class-validator';
+import { ValidationPipe } from '@nestjs/common';
 import { CreateGameHistoryDto } from './create-game-history.dto';
 import { GameType } from '../enums/game-type.enum';
 
@@ -56,4 +57,32 @@ describe('CreateGameHistoryDto', () => {
     expect(errors[0]?.property).toBe('playTime');
     expect(errors[0]?.constraints).toHaveProperty('min');
   });
+
+  it.each(['resultTrust', 'sourceKey'])(
+    'generic result DTO는 서버 전용 %s 필드를 거절해야 함',
+    async (field) => {
+      const pipe = new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      });
+
+      try {
+        await pipe.transform(
+          {
+            score: 300,
+            gameType: GameType.POKE_LOUNGE,
+            [field]: field === 'resultTrust' ? 'verified-room' : 'forged',
+          },
+          { type: 'body', metatype: CreateGameHistoryDto },
+        );
+        throw new Error(`Expected ${field} to be rejected`);
+      } catch (error) {
+        expect(
+          (error as { getResponse(): { message: string[] } }).getResponse()
+            .message,
+        ).toContain(`property ${field} should not exist`);
+      }
+    },
+  );
 });

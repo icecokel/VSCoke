@@ -1,6 +1,6 @@
 # Game Score Policy
 
-확인 기준일: 2026-07-10
+확인 기준일: 2026-07-11
 
 이 문서는 `POST /game/result`로 저장되는 공개 랭킹 점수의 서버 검증 기준을 정리한다. 현재 정책의 source of truth는 `apps/api/src/game/game-score-policy.ts`다.
 
@@ -21,6 +21,24 @@
 - `playTime`이 제출되면 `score / playTime`이 게임별 초당 최대 점수를 넘을 수 없다.
 - 정책이 등록되지 않은 `gameType`은 저장을 거부한다.
 - 랭킹, 최고 점수, 등수 산정은 위 정책에 맞는 기존 기록만 사용한다.
+
+## Poke Lounge 결과 신뢰도
+
+`game_history.resultTrust`는 Poke Lounge 결과의 생성 경계를 구분한다.
+
+| 값                | 의미                                                              | Poke Lounge 공개 랭킹 |
+| ----------------- | ----------------------------------------------------------------- | --------------------- |
+| `client-asserted` | 일반 `POST /game/result`로 저장한 클라이언트 주장 결과            | 제외                  |
+| `verified-room`   | 서버가 확정한 룸 종료 결과를 서버 전용 writer가 트랜잭션으로 기록 | 포함                  |
+| `NULL`            | 신뢰도 분류를 적용하지 않는 다른 게임의 기존 동작                 | 기존 정책 유지        |
+
+일반 게임 결과 DTO는 `resultTrust`와 `sourceKey`를 받지 않는다. `GameService.createHistory`는 Poke Lounge 일반 제출을 항상 `client-asserted`, `sourceKey = NULL`로 저장한다. 이 결과는 저장과 공유가 가능하지만 공개 Poke Lounge 랭킹에는 포함되지 않는다.
+
+`verified-room`은 서버 전용 `VerifiedPokeLoungeHistoryWriter`만 기록한다. writer는 호출자가 제공한 임의 키를 받지 않고 서버의 `roomId`, `matchId`, 바인딩된 `userId`로 `roomId:matchId:userId` 형식의 `sourceKey`를 만든다. 같은 source key 재시도는 기존 행을 재사용하며, 기존 점수와 달라지면 충돌로 실패한다.
+
+Poke Lounge 랭킹과 등수 쿼리는 각 사용자 최고 점수를 고르는 window 또는 집계 안에서 먼저 `resultTrust = 'verified-room'`을 적용한다. 따라서 더 높은 `client-asserted` 점수가 같은 사용자에게 있어도 최고 점수나 등수에 영향을 주지 않는다.
+
+신뢰도 migration은 기존 `POKE_LOUNGE` 행 중 `resultTrust IS NULL`인 행만 `client-asserted`로 채운다. 다른 게임 행은 `NULL`로 유지하고 이미 분류된 값을 덮어쓰지 않는다.
 
 ## 운영 정리 기준
 

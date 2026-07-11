@@ -225,6 +225,25 @@ legacy core baseline이 `Legacy core schema is partial` 또는 `Legacy core sche
 
 baseline `down`은 destructive rollback 방지를 위해 의도적으로 실패한다. rollback이 필요하다는 이유로 운영의 `user`, `game_history`, enum을 삭제해서는 안 된다.
 
+### 게임 결과 신뢰도 migration rollback
+
+`AddGameResultTrust1794268800000`은 `game_history`에 `resultTrust` 또는 `sourceKey`가 하나라도 남아 있으면 `down`을 의도적으로 실패시킨다. 기존 Poke Lounge 행은 `up`에서 `client-asserted`로 backfill되므로, 데이터가 있는 운영 DB에서 일반적인 migration revert는 허용되지 않는다. 이 동작은 신뢰도와 서버 결과의 멱등성 키를 조용히 삭제하는 rollback을 막는다.
+
+상태 확인:
+
+```sql
+SELECT "gameType", "resultTrust", count(*)
+FROM game_history
+GROUP BY "gameType", "resultTrust"
+ORDER BY "gameType", "resultTrust";
+
+SELECT count(*) AS server_verified_rows
+FROM game_history
+WHERE "sourceKey" IS NOT NULL;
+```
+
+rollback이 필요하면 먼저 전체 DB backup을 만들고, `resultTrust`와 `sourceKey`를 보존할 별도 migration을 설계한다. 운영 데이터에서 두 열을 `NULL`로 일괄 변경하거나 writer가 만든 행을 삭제해서 기존 `down`을 통과시키면 안 된다. 빈 신규 환경에서 두 열 모두 데이터가 없을 때만 `down`이 index, constraint, column 순서로 제거를 진행한다.
+
 ## 환경 변수 변경
 
 웹 환경 변수:

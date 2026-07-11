@@ -96,6 +96,8 @@ describe('GameService', () => {
       expect(repository.create).toHaveBeenCalledWith({
         ...createDto,
         user,
+        resultTrust: null,
+        sourceKey: null,
       });
       expect(repository.save).toHaveBeenCalledWith(savedHistory);
       expect(result).toEqual(savedHistory);
@@ -166,6 +168,8 @@ describe('GameService', () => {
       expect(repository.create).toHaveBeenCalledWith({
         ...createDto,
         user,
+        resultTrust: null,
+        sourceKey: null,
       });
       expect(repository.save).toHaveBeenCalledWith(savedHistory);
       expect(result).toEqual(savedHistory);
@@ -189,6 +193,8 @@ describe('GameService', () => {
       expect(repository.create).toHaveBeenCalledWith({
         ...createDto,
         user,
+        resultTrust: 'client-asserted',
+        sourceKey: null,
       });
       expect(repository.save).toHaveBeenCalledWith(savedHistory);
       expect(result).toEqual(savedHistory);
@@ -302,13 +308,29 @@ describe('GameService', () => {
       expect(repository.find).not.toHaveBeenCalled();
     });
 
-    it('Poke Lounge의 미검증 제출물은 공개 랭킹에서 제외해야 함', async () => {
+    it('Poke Lounge는 유저별 최고 점수를 고르기 전에 검증 결과만 필터링해야 함', async () => {
+      repository.query.mockResolvedValue([]);
+
       await expect(service.getRanking(GameType.POKE_LOUNGE)).resolves.toEqual(
         [],
       );
 
-      expect(repository.query).not.toHaveBeenCalled();
-      expect(repository.find).not.toHaveBeenCalled();
+      const [sql, params] = repository.query.mock.calls[0] as unknown as [
+        string,
+        unknown[],
+      ];
+      expect(sql).toMatch(
+        /ROW_NUMBER\(\)[\s\S]*FROM game_history gh[\s\S]*gh\."resultTrust" = \$7/,
+      );
+      expect(params).toEqual([
+        GameType.POKE_LOUNGE,
+        1,
+        1000,
+        1,
+        86400,
+        1000,
+        'verified-room',
+      ]);
     });
   });
 
@@ -445,14 +467,19 @@ describe('GameService', () => {
       );
     });
 
-    it('Poke Lounge의 미검증 제출물에는 공개 등수를 계산하지 않아야 함', async () => {
+    it('Poke Lounge 등수는 사용자별 최고 점수를 집계하기 전에 검증 결과만 필터링해야 함', async () => {
       repository.query.mockResolvedValue([{ count: '2' }]);
 
       await expect(
         service.getUserRank('user1', 300, GameType.POKE_LOUNGE),
-      ).resolves.toBeNull();
+      ).resolves.toBe(3);
 
-      expect(repository.query).not.toHaveBeenCalled();
+      expect(repository.query).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /FROM game_history[\s\S]*"resultTrust" = \$8[\s\S]*GROUP BY "userId"/,
+        ),
+        [GameType.POKE_LOUNGE, 300, 1, 1000, 1, 86400, 1000, 'verified-room'],
+      );
     });
   });
 

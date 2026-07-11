@@ -5,6 +5,7 @@ import { GameService } from './game.service';
 import { GameHistory } from './entities/game-history.entity';
 import { GamePokeLoungeState } from './entities/game-poke-lounge-state.entity';
 import { AuthModule } from '../auth/auth.module';
+import { VerifiedPokeLoungeHistoryWriter } from './verified-poke-lounge-history-writer.service';
 
 /**
  * 게임 결과 및 랭킹 기능을 담당하는 모듈
@@ -16,6 +17,7 @@ import { AuthModule } from '../auth/auth.module';
     AuthModule,
   ],
   controllers: [GameController],
-  providers: [GameService],
+  providers: [GameService, VerifiedPokeLoungeHistoryWriter],
+  exports: [VerifiedPokeLoungeHistoryWriter],
 })
 export class GameModule {}

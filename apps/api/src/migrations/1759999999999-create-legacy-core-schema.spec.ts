@@ -5,12 +5,19 @@ describe('CreateLegacyCoreSchema1759999999999 SQL contract', () => {
   it('creates the canonical historical schema only when all core objects are absent', async () => {
     const query = await captureMigrationQuery('up');
 
-    expect(query).toContain('CREATE TABLE "user"');
+    expect(query).not.toContain('set_config');
     expect(query).toContain(
-      `CREATE TYPE "game_history_gametype_enum" AS ENUM ('SKY_DROP')`,
+      'CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA public',
     );
-    expect(query).toContain('CREATE TABLE "game_history"');
-    expect(query).toContain('CREATE INDEX "IDX_game_history_user_id"');
+    expect(query).toContain('CREATE TABLE public."user"');
+    expect(query).toContain(
+      `CREATE TYPE public.game_history_gametype_enum AS ENUM ('SKY_DROP')`,
+    );
+    expect(query).toContain('CREATE TABLE public.game_history');
+    expect(query).toContain('REFERENCES public."user" ("id")');
+    expect(query).toContain(
+      'CREATE INDEX "IDX_game_history_user_id"\n            ON public.game_history',
+    );
   });
 
   it('rejects partial objects and validates an exact existing schema', async () => {
@@ -18,7 +25,16 @@ describe('CreateLegacyCoreSchema1759999999999 SQL contract', () => {
 
     expect(query).toContain('Legacy core schema is partial');
     expect(query).toContain('information_schema.columns');
+    expect(query).toContain('bool_and(COALESCE(');
     expect(query).toContain('pg_catalog.pg_constraint');
+    expect(query).toContain('constraint_record.convalidated');
+    expect(query).toContain('NOT constraint_record.condeferrable');
+    expect(query).toContain('NOT constraint_record.condeferred');
+    expect(query).toContain(`constraint_record.confmatchtype = 's'`);
+    expect(query).toContain('pg_catalog.pg_index');
+    expect(query).toContain('NOT index_record.indisunique');
+    expect(query).toContain('index_record.indpred IS NULL');
+    expect(query).toContain('index_record.indexprs IS NULL');
     expect(query).toContain('pg_catalog.pg_enum');
     expect(query).toContain(`ARRAY['SKY_DROP', 'POKE_LOUNGE']::text[]`);
     expect(query).toContain('Legacy core schema mismatch');

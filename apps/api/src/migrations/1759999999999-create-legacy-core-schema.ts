@@ -11,8 +11,8 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
         schema_matches boolean;
       BEGIN
         SELECT
-          (CASE WHEN to_regclass('public."user"') IS NOT NULL THEN 1 ELSE 0 END) +
-          (CASE WHEN to_regclass('public.game_history') IS NOT NULL THEN 1 ELSE 0 END) +
+          (CASE WHEN pg_catalog.to_regclass('public."user"') IS NOT NULL THEN 1 ELSE 0 END) +
+          (CASE WHEN pg_catalog.to_regclass('public.game_history') IS NOT NULL THEN 1 ELSE 0 END) +
           (CASE WHEN EXISTS (
             SELECT 1
             FROM pg_catalog.pg_type type_record
@@ -24,9 +24,9 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
         INTO core_object_count;
 
         IF core_object_count = 0 THEN
-          CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+          CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA public;
 
-          CREATE TABLE "user" (
+          CREATE TABLE public."user" (
             "id" varchar PRIMARY KEY,
             "email" varchar NOT NULL,
             "firstName" varchar NOT NULL,
@@ -34,22 +34,22 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
             "accessToken" varchar
           );
 
-          CREATE TYPE "game_history_gametype_enum" AS ENUM ('SKY_DROP');
+          CREATE TYPE public.game_history_gametype_enum AS ENUM ('SKY_DROP');
 
-          CREATE TABLE "game_history" (
-            "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          CREATE TABLE public.game_history (
+            "id" uuid PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
             "score" integer NOT NULL,
-            "gameType" "game_history_gametype_enum" NOT NULL DEFAULT 'SKY_DROP',
+            "gameType" public.game_history_gametype_enum NOT NULL DEFAULT 'SKY_DROP',
             "playTime" integer,
-            "createdAt" timestamp NOT NULL DEFAULT now(),
+            "createdAt" timestamp NOT NULL DEFAULT pg_catalog.now(),
             "userId" varchar NOT NULL,
             CONSTRAINT "FK_game_history_user_id"
-              FOREIGN KEY ("userId") REFERENCES "user" ("id")
+              FOREIGN KEY ("userId") REFERENCES public."user" ("id")
               ON DELETE NO ACTION ON UPDATE NO ACTION
           );
 
           CREATE INDEX "IDX_game_history_user_id"
-            ON "game_history" ("userId");
+            ON public.game_history ("userId");
 
           RETURN;
         END IF;
@@ -59,7 +59,7 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
             'Legacy core schema is partial: expected public.user, public.game_history, and public.game_history_gametype_enum to be all absent or all present';
         END IF;
 
-        SELECT count(*) = 5 AND bool_and(
+        SELECT count(*) = 5 AND bool_and(COALESCE(
           CASE column_name
             WHEN 'id' THEN
               data_type = 'character varying' AND udt_schema = 'pg_catalog' AND
@@ -82,22 +82,23 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
               udt_name = 'varchar' AND character_maximum_length IS NULL AND
               is_nullable = 'YES' AND column_default IS NULL
             ELSE false
-          END
-        )
+          END,
+          false
+        ))
         INTO schema_matches
         FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'user';
 
-        IF NOT schema_matches THEN
+        IF NOT COALESCE(schema_matches, false) THEN
           RAISE EXCEPTION 'Legacy core schema mismatch: public.user columns, types, nullability, or defaults differ from the canonical schema';
         END IF;
 
-        SELECT count(*) = 6 AND bool_and(
+        SELECT count(*) = 6 AND bool_and(COALESCE(
           CASE column_name
             WHEN 'id' THEN
               data_type = 'uuid' AND udt_schema = 'pg_catalog' AND
               udt_name = 'uuid' AND is_nullable = 'NO' AND
-              column_default ~ '^(gen_random_uuid|uuid_generate_v4)\\(\\)$'
+              column_default ~ '^((pg_catalog|public)\\.)?(gen_random_uuid|uuid_generate_v4)\\(\\)$'
             WHEN 'score' THEN
               data_type = 'integer' AND udt_schema = 'pg_catalog' AND
               udt_name = 'int4' AND is_nullable = 'NO' AND
@@ -115,23 +116,31 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
               data_type = 'timestamp without time zone' AND
               udt_schema = 'pg_catalog' AND udt_name = 'timestamp' AND
               is_nullable = 'NO' AND
-              column_default IN ('now()', 'CURRENT_TIMESTAMP')
+              column_default IN (
+                'now()',
+                'pg_catalog.now()',
+                'CURRENT_TIMESTAMP'
+              )
             WHEN 'userId' THEN
               data_type = 'character varying' AND udt_schema = 'pg_catalog' AND
               udt_name = 'varchar' AND character_maximum_length IS NULL AND
               is_nullable = 'NO' AND column_default IS NULL
             ELSE false
-          END
-        )
+          END,
+          false
+        ))
         INTO schema_matches
         FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'game_history';
 
-        IF NOT schema_matches THEN
+        IF NOT COALESCE(schema_matches, false) THEN
           RAISE EXCEPTION 'Legacy core schema mismatch: public.game_history columns, types, nullability, or defaults differ from the canonical schema';
         END IF;
 
         SELECT count(*) = 1 AND bool_and(
+          constraint_record.convalidated AND
+          NOT constraint_record.condeferrable AND
+          NOT constraint_record.condeferred AND
           (
             SELECT array_agg(attribute.attname ORDER BY key.ordinality)
             FROM unnest(constraint_record.conkey)
@@ -146,11 +155,14 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
         WHERE constraint_record.conrelid = 'public."user"'::regclass
           AND constraint_record.contype = 'p';
 
-        IF NOT schema_matches THEN
+        IF NOT COALESCE(schema_matches, false) THEN
           RAISE EXCEPTION 'Legacy core schema mismatch: public.user must have only id as its primary key';
         END IF;
 
         SELECT count(*) = 1 AND bool_and(
+          constraint_record.convalidated AND
+          NOT constraint_record.condeferrable AND
+          NOT constraint_record.condeferred AND
           (
             SELECT array_agg(attribute.attname ORDER BY key.ordinality)
             FROM unnest(constraint_record.conkey)
@@ -165,7 +177,7 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
         WHERE constraint_record.conrelid = 'public.game_history'::regclass
           AND constraint_record.contype = 'p';
 
-        IF NOT schema_matches THEN
+        IF NOT COALESCE(schema_matches, false) THEN
           RAISE EXCEPTION 'Legacy core schema mismatch: public.game_history must have only id as its primary key';
         END IF;
 
@@ -173,6 +185,10 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
           constraint_record.confrelid = 'public."user"'::regclass AND
           constraint_record.confdeltype = 'a' AND
           constraint_record.confupdtype = 'a' AND
+          constraint_record.confmatchtype = 's' AND
+          constraint_record.convalidated AND
+          NOT constraint_record.condeferrable AND
+          NOT constraint_record.condeferred AND
           (
             SELECT array_agg(attribute.attname ORDER BY key.ordinality)
             FROM unnest(constraint_record.conkey)
@@ -195,8 +211,35 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
         WHERE constraint_record.conrelid = 'public.game_history'::regclass
           AND constraint_record.contype = 'f';
 
-        IF NOT schema_matches THEN
+        IF NOT COALESCE(schema_matches, false) THEN
           RAISE EXCEPTION 'Legacy core schema mismatch: public.game_history must have the canonical userId foreign key';
+        END IF;
+
+        SELECT count(*) = 1
+        INTO schema_matches
+        FROM pg_catalog.pg_index index_record
+        WHERE index_record.indrelid = 'public.game_history'::regclass
+          AND NOT index_record.indisprimary
+          AND NOT index_record.indisunique
+          AND index_record.indisvalid
+          AND index_record.indisready
+          AND index_record.indislive
+          AND index_record.indnkeyatts = 1
+          AND index_record.indnatts = 1
+          AND index_record.indpred IS NULL
+          AND index_record.indexprs IS NULL
+          AND (
+            SELECT array_agg(attribute.attname ORDER BY key.ordinality)
+            FROM unnest(index_record.indkey::smallint[])
+              WITH ORDINALITY AS key(attnum, ordinality)
+            JOIN pg_catalog.pg_attribute attribute
+              ON attribute.attrelid = index_record.indrelid
+              AND attribute.attnum = key.attnum
+            WHERE key.ordinality <= index_record.indnkeyatts
+          ) = ARRAY['userId']::name[];
+
+        IF NOT COALESCE(schema_matches, false) THEN
+          RAISE EXCEPTION 'Legacy core schema mismatch: public.game_history must have one exact non-unique userId index';
         END IF;
 
         SELECT array_agg(enum_value.enumlabel::text ORDER BY enum_value.enumsortorder) IN (
@@ -210,7 +253,7 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
         WHERE namespace.nspname = 'public'
           AND type_record.typname = 'game_history_gametype_enum';
 
-        IF NOT schema_matches THEN
+        IF NOT COALESCE(schema_matches, false) THEN
           RAISE EXCEPTION 'Legacy core schema mismatch: public.game_history_gametype_enum must contain SKY_DROP, optionally followed by POKE_LOUNGE';
         END IF;
       END $$;

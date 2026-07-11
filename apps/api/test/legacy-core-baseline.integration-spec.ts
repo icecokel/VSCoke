@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { DataSource } from 'typeorm';
+import { DataSource, MigrationExecutor } from 'typeorm';
 import { CreateLegacyCoreSchema1759999999999 } from '../src/migrations/1759999999999-create-legacy-core-schema';
 import { requireTestDatabaseUrl } from '../src/test-data-source';
 
@@ -33,9 +33,15 @@ describe('legacy core production baseline migration', () => {
   });
 
   beforeEach(async () => {
-    await dataSource.query('DROP TABLE IF EXISTS "game_history" CASCADE');
-    await dataSource.query('DROP TABLE IF EXISTS "user" CASCADE');
-    await dataSource.query('DROP TYPE IF EXISTS "game_history_gametype_enum"');
+    await dataSource.query('SET search_path TO public');
+    await dataSource.query('DROP TABLE IF EXISTS public.migrations');
+    await dataSource.query('DROP TABLE IF EXISTS public.typeorm_metadata');
+    await dataSource.query('DROP TABLE IF EXISTS public.game_history CASCADE');
+    await dataSource.query('DROP TABLE IF EXISTS public."user" CASCADE');
+    await dataSource.query(
+      'DROP TYPE IF EXISTS public.game_history_gametype_enum',
+    );
+    await dataSource.query('DROP SCHEMA IF EXISTS tenant CASCADE');
   });
 
   afterAll(async () => {
@@ -85,30 +91,111 @@ describe('legacy core production baseline migration', () => {
   it('adopts an exact schema without changing existing data', async () => {
     await runBaseline(dataSource);
     await dataSource.query(`
-      ALTER TYPE "game_history_gametype_enum" ADD VALUE 'POKE_LOUNGE'
+      ALTER TYPE public.game_history_gametype_enum ADD VALUE 'POKE_LOUNGE'
     `);
     await dataSource.query(`
-      INSERT INTO "user" ("id", "email", "firstName", "lastName")
+      ALTER TABLE public."user"
+        RENAME CONSTRAINT "user_pkey" TO "legacy_user_primary"
+    `);
+    await dataSource.query(`
+      ALTER TABLE public.game_history
+        RENAME CONSTRAINT "game_history_pkey" TO "legacy_game_primary"
+    `);
+    await dataSource.query(`
+      ALTER TABLE public.game_history
+        RENAME CONSTRAINT "FK_game_history_user_id" TO "legacy_game_user_fk"
+    `);
+    await dataSource.query(`
+      ALTER INDEX public."IDX_game_history_user_id"
+        RENAME TO "legacy_game_user_idx"
+    `);
+    await dataSource.query(`
+      INSERT INTO public."user" ("id", "email", "firstName", "lastName")
       VALUES ('legacy-user', 'legacy@example.com', 'Legacy', 'User')
     `);
     await dataSource.query(`
-      INSERT INTO "game_history" ("score", "gameType", "userId")
+      INSERT INTO public.game_history ("score", "gameType", "userId")
       VALUES (42, 'POKE_LOUNGE', 'legacy-user')
     `);
 
     await runBaseline(dataSource);
 
     const users = await dataSource.query<Array<{ id: string }>>(
-      'SELECT "id" FROM "user"',
+      'SELECT "id" FROM public."user"',
     );
     const games = await dataSource.query<
       Array<{ score: number; gameType: string; userId: string }>
-    >('SELECT "score", "gameType", "userId" FROM "game_history"');
+    >('SELECT "score", "gameType", "userId" FROM public.game_history');
 
     expect(users).toEqual([{ id: 'legacy-user' }]);
     expect(games).toEqual([
       { score: 42, gameType: 'POKE_LOUNGE', userId: 'legacy-user' },
     ]);
+  });
+
+  it.each([
+    {
+      label: 'missing generated UUID default',
+      mutation:
+        'ALTER TABLE public.game_history ALTER COLUMN "id" DROP DEFAULT',
+    },
+    {
+      label: 'wrong createdAt default',
+      mutation: `ALTER TABLE public.game_history ALTER COLUMN "createdAt" SET DEFAULT TIMESTAMP '2000-01-01 00:00:00'`,
+    },
+  ])('rejects $label', async ({ mutation }) => {
+    await runBaseline(dataSource);
+    await dataSource.query(mutation);
+
+    await expect(runBaseline(dataSource)).rejects.toThrow(
+      'Legacy core schema mismatch',
+    );
+  });
+
+  it('creates only public objects when tenant precedes public in search_path', async () => {
+    const queryRunner = dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      await queryRunner.query('CREATE SCHEMA tenant');
+      await queryRunner.query('SET LOCAL search_path TO tenant, public');
+      await new CreateLegacyCoreSchema1759999999999().up(queryRunner);
+
+      const [presence] = await queryRunner.query<
+        Array<{
+          public_user: boolean;
+          public_game: boolean;
+          public_enum: boolean;
+          public_index: boolean;
+          tenant_user: boolean;
+          tenant_game: boolean;
+          tenant_enum: boolean;
+        }>
+      >(`
+        SELECT
+          to_regclass('public."user"') IS NOT NULL AS public_user,
+          to_regclass('public.game_history') IS NOT NULL AS public_game,
+          to_regtype('public.game_history_gametype_enum') IS NOT NULL AS public_enum,
+          to_regclass('public."IDX_game_history_user_id"') IS NOT NULL AS public_index,
+          to_regclass('tenant."user"') IS NOT NULL AS tenant_user,
+          to_regclass('tenant.game_history') IS NOT NULL AS tenant_game,
+          to_regtype('tenant.game_history_gametype_enum') IS NOT NULL AS tenant_enum
+      `);
+
+      expect(presence).toEqual({
+        public_user: true,
+        public_game: true,
+        public_enum: true,
+        public_index: true,
+        tenant_user: false,
+        tenant_game: false,
+        tenant_enum: false,
+      });
+    } finally {
+      await queryRunner.rollbackTransaction();
+      await queryRunner.release();
+    }
   });
 
   it('rejects a partial schema without creating the missing objects', async () => {
@@ -137,11 +224,11 @@ describe('legacy core production baseline migration', () => {
   it('rejects a mismatch without repairing schema or deleting data', async () => {
     await runBaseline(dataSource);
     await dataSource.query(`
-      INSERT INTO "user" ("id", "email", "firstName", "lastName")
+      INSERT INTO public."user" ("id", "email", "firstName", "lastName")
       VALUES ('preserved-user', 'preserved@example.com', 'Preserved', 'User')
     `);
     await dataSource.query(
-      'ALTER TABLE "game_history" ALTER COLUMN "score" DROP NOT NULL',
+      'ALTER TABLE public.game_history ALTER COLUMN "score" DROP NOT NULL',
     );
 
     await expect(runBaseline(dataSource)).rejects.toThrow(
@@ -156,11 +243,149 @@ describe('legacy core production baseline migration', () => {
         AND column_name = 'score'
     `);
     const users = await dataSource.query<Array<{ id: string }>>(
-      'SELECT "id" FROM "user"',
+      'SELECT "id" FROM public."user"',
     );
 
     expect(scoreColumn).toEqual([{ is_nullable: 'YES' }]);
     expect(users).toEqual([{ id: 'preserved-user' }]);
+  });
+
+  it.each([
+    {
+      label: 'deferrable primary key',
+      mutate: async () => {
+        await dataSource.query(`
+          ALTER TABLE public.game_history
+            DROP CONSTRAINT "game_history_pkey",
+            ADD CONSTRAINT "legacy_game_pk" PRIMARY KEY ("id")
+              DEFERRABLE INITIALLY DEFERRED
+        `);
+      },
+    },
+    {
+      label: 'unvalidated deferred MATCH FULL foreign key',
+      mutate: async () => {
+        await dataSource.query(`
+          ALTER TABLE public.game_history
+            DROP CONSTRAINT "FK_game_history_user_id",
+            ADD CONSTRAINT "legacy_game_user_fk"
+              FOREIGN KEY ("userId") REFERENCES public."user" ("id")
+              MATCH FULL ON DELETE NO ACTION ON UPDATE NO ACTION
+              DEFERRABLE INITIALLY DEFERRED NOT VALID
+        `);
+      },
+    },
+  ])('rejects $label semantics', async ({ mutate }) => {
+    await runBaseline(dataSource);
+    await mutate();
+
+    await expect(runBaseline(dataSource)).rejects.toThrow(
+      'Legacy core schema mismatch',
+    );
+  });
+
+  it.each([
+    {
+      label: 'missing userId index',
+      replacement: '',
+    },
+    {
+      label: 'unique userId index',
+      replacement:
+        'CREATE UNIQUE INDEX "legacy_user_idx" ON public.game_history ("userId")',
+    },
+    {
+      label: 'partial userId index',
+      replacement:
+        'CREATE INDEX "legacy_user_idx" ON public.game_history ("userId") WHERE "score" > 0',
+    },
+    {
+      label: 'expression userId index',
+      replacement:
+        'CREATE INDEX "legacy_user_idx" ON public.game_history (lower("userId"))',
+    },
+    {
+      label: 'multi-column userId index',
+      replacement:
+        'CREATE INDEX "legacy_user_idx" ON public.game_history ("userId", "score")',
+    },
+  ])('rejects $label', async ({ replacement }) => {
+    await runBaseline(dataSource);
+    await dataSource.query('DROP INDEX public."IDX_game_history_user_id"');
+    if (replacement) {
+      await dataSource.query(replacement);
+    }
+
+    await expect(runBaseline(dataSource)).rejects.toThrow(
+      'Legacy core schema mismatch',
+    );
+  });
+
+  it('executes and records only the pending older baseline through MigrationExecutor', async () => {
+    await runBaseline(dataSource);
+    await dataSource.query(`
+      ALTER TYPE public.game_history_gametype_enum ADD VALUE 'POKE_LOUNGE'
+    `);
+    await dataSource.query(`
+      INSERT INTO public."user" ("id", "email", "firstName", "lastName")
+      VALUES ('ledger-user', 'ledger@example.com', 'Ledger', 'User')
+    `);
+    await dataSource.query(`
+      INSERT INTO public.game_history ("score", "gameType", "userId")
+      VALUES (77, 'POKE_LOUNGE', 'ledger-user')
+    `);
+
+    const ledgerDataSource = new DataSource({
+      type: 'postgres',
+      url: disposableUrl.toString(),
+      migrations: [CreateLegacyCoreSchema1759999999999],
+      migrationsTableName: 'migrations',
+      synchronize: false,
+    });
+    await ledgerDataSource.initialize();
+
+    try {
+      const migrationExecutor = new MigrationExecutor(ledgerDataSource);
+      await migrationExecutor.showMigrations();
+      await ledgerDataSource.query(`
+        INSERT INTO public.migrations ("timestamp", "name")
+        VALUES (1793664000000, 'AddPokeLoungeGameType1793664000000')
+      `);
+
+      const executed = await migrationExecutor.executePendingMigrations();
+      const ledger = await ledgerDataSource.query<
+        Array<{ timestamp: string; name: string }>
+      >(`
+        SELECT "timestamp"::text, "name"
+        FROM public.migrations
+        ORDER BY "timestamp"
+      `);
+      const games = await ledgerDataSource.query<
+        Array<{ score: number; gameType: string; userId: string }>
+      >(`
+        SELECT "score", "gameType", "userId"
+        FROM public.game_history
+      `);
+
+      expect(executed.map((migration) => migration.name)).toEqual([
+        'CreateLegacyCoreSchema1759999999999',
+      ]);
+      expect(ledger).toEqual([
+        {
+          timestamp: '1759999999999',
+          name: 'CreateLegacyCoreSchema1759999999999',
+        },
+        {
+          timestamp: '1793664000000',
+          name: 'AddPokeLoungeGameType1793664000000',
+        },
+      ]);
+      expect(games).toEqual([
+        { score: 77, gameType: 'POKE_LOUNGE', userId: 'ledger-user' },
+      ]);
+    } finally {
+      await ledgerDataSource.destroy();
+    }
   });
 
   it('fails explicitly when asked to roll back the baseline', async () => {

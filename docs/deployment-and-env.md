@@ -208,7 +208,7 @@ Resume RAG 운영 chat은 `resume_source_items`의 기존 DB 텍스트를 keywor
 
 ### 운영 DB migration onboarding
 
-`CreateLegacyCoreSchema1759999999999`는 tracked migration보다 먼저 외부에서 생성됐던 `public.user`, `public.game_history`, `public.game_history_gametype_enum`을 production migration ledger에 편입한다. 세 객체가 모두 없으면 historical schema를 생성하고, 모두 있으면 알려진 정확한 schema만 채택한다. 일부만 있거나 열, 타입, nullability, PK, FK, enum label, default가 허용 형태와 다르면 아무것도 수정하지 않고 실패한다.
+`CreateLegacyCoreSchema1759999999999`는 tracked migration보다 먼저 외부에서 생성됐던 `public.user`, `public.game_history`, `public.game_history_gametype_enum`을 production migration ledger에 편입한다. 세 객체가 모두 없으면 `public`에 historical schema를 생성하고, 모두 있으면 알려진 정확한 schema만 채택한다. 일부만 있거나 열, 타입, nullability, default, PK/FK의 validated/deferrable/match 의미, enum label, required `userId` index가 허용 형태와 다르면 아무것도 수정하지 않고 실패한다. 호출 세션의 search path에서 다른 schema가 `public`보다 앞서더라도 baseline의 생성과 참조 대상은 `public`으로 고정된다.
 
 운영 최초 적용 순서:
 

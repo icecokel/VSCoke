@@ -166,3 +166,14 @@ git commit -m "test(api):신규 DB 레거시 스키마 준비"
 - [x] **Step 5: Document manual production onboarding and migration-ledger risk without changing deploy automation**
 - [x] **Step 6: Run final API test, lint, build, and available PostgreSQL verification**
 - [x] **Step 7: Commit with `fix(api):운영 레거시 스키마 기준선 추가`**
+
+#### Task 7 Review Hardening
+
+- [x] Make required default validation NULL-safe with `COALESCE(..., false)`.
+- [x] Pin every baseline DDL target and reference to `public` without mutating the caller's search path.
+- [x] Validate PK/FK validated, non-deferrable, not-deferred, and FK MATCH SIMPLE semantics without requiring canonical names.
+- [x] Validate one exact valid, ready, live, non-unique, non-partial, non-expression `userId` index while allowing its name to differ.
+- [x] Add PostgreSQL cases for missing/wrong defaults, tenant-first search path, constraint/index mismatches, and data preservation.
+- [x] Add a TypeORM `MigrationExecutor` case for an older pending baseline with a newer existing ledger row.
+- [ ] Run the PostgreSQL workflow and record the result.
+- [ ] Commit with `fix(api):레거시 기준선 검증 강화`.

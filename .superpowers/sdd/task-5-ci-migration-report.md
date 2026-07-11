@@ -84,3 +84,20 @@ git diff --check: passed
 An additional `tsc --noEmit -p apps/api/tsconfig.json` attempt remains red on pre-existing test fixture typing errors in auth, game, espresso, Poke Lounge, API contract, app, and Wordle specs. It reported no error in the new baseline migration or integration spec; the repository's supported API build succeeds because `tsconfig.build.json` excludes specs and test files.
 
 The deploy workflow intentionally remains unchanged and does not run migrations automatically. `docs/deployment-and-env.md` and `docs/operations-runbook.md` record backup, schema/ledger inspection, manual maintenance execution, and mismatch stop conditions for production onboarding.
+
+## Task 7 Review Hardening
+
+The baseline validation now treats a missing required default as `false` instead of allowing PostgreSQL `bool_and` to ignore its `NULL` comparison result. Every creation target and reference is explicitly pinned to `public`; the migration does not mutate the caller's search path or leak session state into later migrations in the same transaction.
+
+Adoption additionally requires validated, non-deferrable, not-deferred primary/foreign keys, `MATCH SIMPLE` for the user foreign key, and one exact valid non-unique `userId` index without a predicate, expression, included column, or extra key column. Constraint and index names remain unrestricted.
+
+The disposable PostgreSQL suite now covers missing and invalid defaults, `tenant, public` search path isolation, PK/FK semantic mismatches, missing/unique/partial/expression/multi-column indexes, and renamed valid constraints/indexes. A TypeORM `MigrationExecutor` scenario seeds a newer ledger row, executes only the older pending baseline, verifies the baseline ledger row, and checks that legacy data is preserved. The production onboarding warning about missing/out-of-order ledger rows remains unchanged.
+
+Local non-DB verification before PostgreSQL CI:
+
+```text
+pnpm test:api: 38 suites, 222 tests passed
+pnpm --filter @vscoke/api lint: passed
+pnpm build:api: passed
+git diff --check: passed
+```

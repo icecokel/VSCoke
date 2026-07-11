@@ -8,6 +8,8 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
       DO $$
       DECLARE
         core_object_count integer;
+        enum_labels text[];
+        later_enum_migration_applied boolean := false;
         schema_matches boolean;
       BEGIN
         SELECT
@@ -271,19 +273,34 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
           RAISE EXCEPTION 'Legacy core schema mismatch: public.game_history must have one canonical btree userId index';
         END IF;
 
-        SELECT array_agg(enum_value.enumlabel::text ORDER BY enum_value.enumsortorder) IN (
-          ARRAY['SKY_DROP']::text[],
-          ARRAY['SKY_DROP', 'POKE_LOUNGE']::text[]
-        )
-        INTO schema_matches
+        SELECT array_agg(enum_value.enumlabel::text ORDER BY enum_value.enumsortorder)
+        INTO enum_labels
         FROM pg_catalog.pg_enum enum_value
         JOIN pg_catalog.pg_type type_record ON type_record.oid = enum_value.enumtypid
         JOIN pg_catalog.pg_namespace namespace ON namespace.oid = type_record.typnamespace
         WHERE namespace.nspname = 'public'
           AND type_record.typname = 'game_history_gametype_enum';
 
-        IF NOT COALESCE(schema_matches, false) THEN
+        IF NOT COALESCE(enum_labels IN (
+          ARRAY['SKY_DROP']::text[],
+          ARRAY['SKY_DROP', 'POKE_LOUNGE']::text[]
+        ), false) THEN
           RAISE EXCEPTION 'Legacy core schema mismatch: public.game_history_gametype_enum must contain SKY_DROP, optionally followed by POKE_LOUNGE';
+        END IF;
+
+        IF pg_catalog.to_regclass('public."migrations"') IS NOT NULL THEN
+          EXECUTE
+            'SELECT EXISTS (
+              SELECT 1
+              FROM public."migrations"
+              WHERE "name" = $1
+            )'
+          INTO later_enum_migration_applied
+          USING 'AddPokeLoungeGameType1793664000000';
+        END IF;
+
+        IF later_enum_migration_applied AND enum_labels <> ARRAY['SKY_DROP', 'POKE_LOUNGE']::text[] THEN
+          RAISE EXCEPTION 'Legacy core schema/ledger mismatch: AddPokeLoungeGameType1793664000000 is recorded in public.migrations but public.game_history_gametype_enum does not contain POKE_LOUNGE';
         END IF;
       END $$;
     `);

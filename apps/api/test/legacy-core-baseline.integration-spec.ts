@@ -134,6 +134,46 @@ describe('legacy core production baseline migration', () => {
     ]);
   });
 
+  it('adopts SKY_DROP-only when the migrations ledger is absent', async () => {
+    await runBaseline(dataSource);
+
+    await expect(runBaseline(dataSource)).resolves.toBeUndefined();
+    await expect(readEnumLabels(dataSource)).resolves.toEqual(['SKY_DROP']);
+  });
+
+  it('adopts SKY_DROP-only when the later enum migration is not recorded', async () => {
+    await runBaseline(dataSource);
+    await createMigrationLedger(dataSource);
+
+    await expect(runBaseline(dataSource)).resolves.toBeUndefined();
+    await expect(readEnumLabels(dataSource)).resolves.toEqual(['SKY_DROP']);
+  });
+
+  it('adopts an already-added POKE_LOUNGE when the later enum migration is not recorded', async () => {
+    await runBaseline(dataSource);
+    await dataSource.query(`
+      ALTER TYPE public.game_history_gametype_enum ADD VALUE 'POKE_LOUNGE'
+    `);
+    await createMigrationLedger(dataSource);
+
+    await expect(runBaseline(dataSource)).resolves.toBeUndefined();
+    await expect(readEnumLabels(dataSource)).resolves.toEqual([
+      'SKY_DROP',
+      'POKE_LOUNGE',
+    ]);
+  });
+
+  it('rejects unknown enum labels even when the later migration is not recorded', async () => {
+    await runBaseline(dataSource);
+    await dataSource.query(`
+      ALTER TYPE public.game_history_gametype_enum ADD VALUE 'UNKNOWN_GAME'
+    `);
+
+    await expect(runBaseline(dataSource)).rejects.toThrow(
+      'Legacy core schema mismatch',
+    );
+  });
+
   it.each([
     {
       label: 'missing generated UUID default',
@@ -475,6 +515,61 @@ describe('legacy core production baseline migration', () => {
     }
   });
 
+  it('rejects a pending baseline when the later enum ledger row contradicts SKY_DROP-only', async () => {
+    await runBaseline(dataSource);
+    await dataSource.query(`
+      INSERT INTO public."user" ("id", "email", "firstName", "lastName")
+      VALUES ('ledger-mismatch-user', 'mismatch@example.com', 'Ledger', 'Mismatch')
+    `);
+
+    const ledgerDataSource = new DataSource({
+      type: 'postgres',
+      url: disposableUrl.toString(),
+      migrations: [CreateLegacyCoreSchema1759999999999],
+      migrationsTableName: 'migrations',
+      synchronize: false,
+    });
+    await ledgerDataSource.initialize();
+
+    try {
+      const migrationExecutor = new MigrationExecutor(ledgerDataSource);
+      await migrationExecutor.showMigrations();
+      await ledgerDataSource.query(`
+        INSERT INTO public.migrations ("timestamp", "name")
+        VALUES (1793664000000, 'AddPokeLoungeGameType1793664000000')
+      `);
+
+      await expect(
+        migrationExecutor.executePendingMigrations(),
+      ).rejects.toThrow('Legacy core schema/ledger mismatch');
+
+      const ledger = await ledgerDataSource.query<
+        Array<{ timestamp: string; name: string }>
+      >(`
+        SELECT "timestamp"::text, "name"
+        FROM public.migrations
+        ORDER BY "timestamp"
+      `);
+      const users = await ledgerDataSource.query<Array<{ id: string }>>(`
+        SELECT "id"
+        FROM public."user"
+      `);
+
+      expect(ledger).toEqual([
+        {
+          timestamp: '1793664000000',
+          name: 'AddPokeLoungeGameType1793664000000',
+        },
+      ]);
+      expect(users).toEqual([{ id: 'ledger-mismatch-user' }]);
+      await expect(readEnumLabels(ledgerDataSource)).resolves.toEqual([
+        'SKY_DROP',
+      ]);
+    } finally {
+      await ledgerDataSource.destroy();
+    }
+  });
+
   it('fails explicitly when asked to roll back the baseline', async () => {
     const queryRunner = dataSource.createQueryRunner();
 
@@ -496,6 +591,16 @@ async function runBaseline(dataSource: DataSource): Promise<void> {
   } finally {
     await queryRunner.release();
   }
+}
+
+async function createMigrationLedger(dataSource: DataSource): Promise<void> {
+  await dataSource.query(`
+    CREATE TABLE public.migrations (
+      "id" serial PRIMARY KEY,
+      "timestamp" bigint NOT NULL,
+      "name" varchar NOT NULL
+    )
+  `);
 }
 
 async function readEnumLabels(dataSource: DataSource): Promise<string[]> {

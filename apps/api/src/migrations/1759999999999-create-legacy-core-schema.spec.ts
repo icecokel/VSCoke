@@ -44,6 +44,11 @@ describe('CreateLegacyCoreSchema1759999999999 SQL contract', () => {
     expect(query).toContain('index_record.indexprs IS NULL');
     expect(query).toContain('pg_catalog.pg_enum');
     expect(query).toContain(`ARRAY['SKY_DROP', 'POKE_LOUNGE']::text[]`);
+    expect(query).toContain(`pg_catalog.to_regclass('public."migrations"')`);
+    expect(query).toContain(`FROM public."migrations"`);
+    expect(query).toContain(`WHERE "name" = $1`);
+    expect(query).toContain('AddPokeLoungeGameType1793664000000');
+    expect(query).toContain('Legacy core schema/ledger mismatch');
     expect(query).toContain('Legacy core schema mismatch');
     expect(query).not.toMatch(/\bDROP\b|\bALTER\b/);
   });

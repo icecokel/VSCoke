@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import {
   canonicalize,
+  createCanonicalIdRecord,
   type CanonicalBattleState,
   type CanonicalPlayerState,
 } from "./canonical-state";
@@ -135,27 +136,29 @@ export function createInitialBattleState(
   }
 
   const canonicalParticipantIds = [...participantIds].sort() as [string, string];
-  const playersById: Record<string, CanonicalPlayerState> = {};
-  for (const playerId of canonicalParticipantIds) {
-    playersById[playerId] = {
+  const playersById = createCanonicalIdRecord<CanonicalPlayerState>(
+    canonicalParticipantIds.map(playerId => [
       playerId,
-      activeSlotIndex: 0,
-      team: APPROVED_COMPETITIVE_RULESET_V1.loadout.map(template => ({
-        speciesId: template.speciesId,
-        level: template.level,
-        maxHp: template.maxHp,
-        currentHp: template.maxHp,
-        attack: template.attack,
-        defense: template.defense,
-        speed: template.speed,
-        status: "none",
-        moves: template.moveIds.map(moveId => ({
-          moveId,
-          pp: APPROVED_COMPETITIVE_RULESET_V1.moves[moveId].maxPp,
+      {
+        playerId,
+        activeSlotIndex: 0,
+        team: APPROVED_COMPETITIVE_RULESET_V1.loadout.map(template => ({
+          speciesId: template.speciesId,
+          level: template.level,
+          maxHp: template.maxHp,
+          currentHp: template.maxHp,
+          attack: template.attack,
+          defense: template.defense,
+          speed: template.speed,
+          status: "none",
+          moves: template.moveIds.map(moveId => ({
+            moveId,
+            pp: APPROVED_COMPETITIVE_RULESET_V1.moves[moveId].maxPp,
+          })),
         })),
-      })),
-    };
-  }
+      },
+    ]),
+  );
 
   return {
     rulesetVersion: COMPETITIVE_RULESET_VERSION,

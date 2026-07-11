@@ -112,6 +112,45 @@ describe("resolveTurn", () => {
     expect(result.state.turn).toBe(1);
   });
 
+  it.each(["__proto__", "constructor", "prototype"])(
+    "preserves prototype-sensitive participant ID %p through a terminal turn",
+    protectedPlayerId => {
+      const otherPlayerId = "safe-player";
+      const state = createInitialBattleState([protectedPlayerId, otherPlayerId]);
+
+      expect(Object.getPrototypeOf(state.playersById)).toBeNull();
+      expect(Object.hasOwn(state.playersById, protectedPlayerId)).toBe(true);
+
+      const otherPlayer = state.playersById[otherPlayerId]!;
+      otherPlayer.team[0]!.currentHp = 1;
+      otherPlayer.team[1]!.currentHp = 0;
+
+      const protectedActions = Object.create(null) as Record<string, CanonicalCompetitiveAction>;
+      protectedActions[protectedPlayerId] = {
+        kind: "move",
+        moveId: "steady-strike",
+      };
+      protectedActions[otherPlayerId] = {
+        kind: "move",
+        moveId: "steady-strike",
+      };
+
+      const result = resolveTurn({
+        state,
+        actionsByPlayerId: protectedActions,
+        random: new ScriptedRandom([0, 0, 0.5, 0.5]),
+      });
+
+      expect(result.terminal?.winnerPlayerId).toBe(protectedPlayerId);
+      expect(Object.getPrototypeOf(result.state.playersById)).toBeNull();
+      expect(Object.hasOwn(result.state.playersById, protectedPlayerId)).toBe(true);
+      expect(Object.getPrototypeOf(result.terminal?.scoreByPlayerId)).toBeNull();
+      expect(Object.hasOwn(result.terminal!.scoreByPlayerId, protectedPlayerId)).toBe(true);
+      expect(result.terminal?.scoreByPlayerId[protectedPlayerId]).toBe(100);
+      expect(canonicalize(result)).toContain(`"${protectedPlayerId}"`);
+    },
+  );
+
   it.each([-1, 0.5, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER + 1])(
     "rejects turn outside the resolvable safe nonnegative range: %p",
     turn => {

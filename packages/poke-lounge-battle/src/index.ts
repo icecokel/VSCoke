@@ -1,10 +1,12 @@
 export type { CanonicalCompetitiveAction } from "./actions";
 export {
   canonicalize,
+  createCanonicalIdRecord,
   hashCanonicalState,
   type CanonicalBattleState,
   type CanonicalBattleStatus,
   type CanonicalCombatantState,
+  type CanonicalIdRecord,
   type CanonicalMoveState,
   type CanonicalPlayerState,
   type CanonicalTerminalResult,

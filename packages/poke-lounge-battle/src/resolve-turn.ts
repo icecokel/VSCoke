@@ -1,8 +1,10 @@
 import type { CanonicalCompetitiveAction } from "./actions";
 import {
+  createCanonicalIdRecord,
   hashCanonicalState,
   type CanonicalBattleState,
   type CanonicalCombatantState,
+  type CanonicalIdRecord,
   type CanonicalPlayerState,
   type CanonicalTerminalResult,
 } from "./canonical-state";
@@ -117,18 +119,22 @@ function cloneState(
   state: CanonicalBattleState,
   participantIds: readonly [string, string],
 ): CanonicalBattleState {
-  const playersById: Record<string, CanonicalPlayerState> = {};
-  for (const playerId of participantIds) {
-    const player = state.playersById[playerId]!;
-    playersById[playerId] = {
-      playerId,
-      activeSlotIndex: player.activeSlotIndex,
-      team: player.team.map(member => ({
-        ...member,
-        moves: member.moves.map(move => ({ ...move })),
-      })),
-    };
-  }
+  const playersById = createCanonicalIdRecord<CanonicalPlayerState>(
+    participantIds.map(playerId => {
+      const player = state.playersById[playerId]!;
+      return [
+        playerId,
+        {
+          playerId,
+          activeSlotIndex: player.activeSlotIndex,
+          team: player.team.map(member => ({
+            ...member,
+            moves: member.moves.map(move => ({ ...move })),
+          })),
+        },
+      ];
+    }),
+  );
 
   return {
     rulesetVersion: COMPETITIVE_RULESET_VERSION,
@@ -138,7 +144,7 @@ function cloneState(
     terminal: state.terminal
       ? {
           ...state.terminal,
-          scoreByPlayerId: { ...state.terminal.scoreByPlayerId },
+          scoreByPlayerId: createCanonicalIdRecord(Object.entries(state.terminal.scoreByPlayerId)),
         }
       : null,
   };
@@ -220,13 +226,14 @@ function terminalForFaint(
   winnerPlayerId: string,
   loserPlayerId: string,
 ): CanonicalTerminalResult {
-  const scoreByPlayerId: Record<string, 50 | 100> = {};
-  for (const playerId of participantIds) {
-    scoreByPlayerId[playerId] =
+  const scoreByPlayerId = createCanonicalIdRecord<50 | 100>(
+    participantIds.map(playerId => [
+      playerId,
       playerId === winnerPlayerId
         ? APPROVED_COMPETITIVE_RULESET_V1.scores.win
-        : APPROVED_COMPETITIVE_RULESET_V1.scores.loss;
-  }
+        : APPROVED_COMPETITIVE_RULESET_V1.scores.loss,
+    ]),
+  );
   return {
     winnerPlayerId,
     loserPlayerId,
@@ -309,19 +316,33 @@ function orderedMoveActors(
 
 export function resolveTurn(input: {
   state: CanonicalBattleState;
-  actionsByPlayerId: Readonly<Record<string, CanonicalCompetitiveAction>>;
+  actionsByPlayerId: CanonicalIdRecord<CanonicalCompetitiveAction>;
   random: SeededRandom;
 }): ResolvedTurnV1 {
-  if (input.state.terminal) {
+  const stateWithSafeRecords: CanonicalBattleState = {
+    ...input.state,
+    playersById: createCanonicalIdRecord(Object.entries(input.state.playersById)),
+    terminal: input.state.terminal
+      ? {
+          ...input.state.terminal,
+          scoreByPlayerId: createCanonicalIdRecord(
+            Object.entries(input.state.terminal.scoreByPlayerId),
+          ),
+        }
+      : null,
+  };
+  const actionsByPlayerId = createCanonicalIdRecord(Object.entries(input.actionsByPlayerId));
+
+  if (stateWithSafeRecords.terminal) {
     throw new Error("Cannot resolve actions after a terminal result");
   }
 
-  const participantIds = sortedParticipantIds(input.state);
+  const participantIds = sortedParticipantIds(stateWithSafeRecords);
   for (const playerId of participantIds) {
-    validatePlayer(playerId, input.state.playersById[playerId]!);
+    validatePlayer(playerId, stateWithSafeRecords.playersById[playerId]!);
   }
 
-  const actionPlayerIds = Object.keys(input.actionsByPlayerId).sort();
+  const actionPlayerIds = Object.keys(actionsByPlayerId).sort();
   if (
     actionPlayerIds.length !== 2 ||
     actionPlayerIds.some((playerId, index) => playerId !== participantIds[index])
@@ -329,23 +350,18 @@ export function resolveTurn(input: {
     throw new Error("A turn requires exactly one action from each participant");
   }
   for (const playerId of participantIds) {
-    validateAction(input.state, playerId, input.actionsByPlayerId[playerId]!);
+    validateAction(stateWithSafeRecords, playerId, actionsByPlayerId[playerId]!);
   }
 
-  const state = cloneState(input.state, participantIds);
+  const state = cloneState(stateWithSafeRecords, participantIds);
   for (const playerId of participantIds) {
-    const action = input.actionsByPlayerId[playerId]!;
+    const action = actionsByPlayerId[playerId]!;
     if (action.kind === "switch") {
       state.playersById[playerId]!.activeSlotIndex = action.slotIndex;
     }
   }
 
-  const moveActors = orderedMoveActors(
-    state,
-    participantIds,
-    input.actionsByPlayerId,
-    input.random,
-  );
+  const moveActors = orderedMoveActors(state, participantIds, actionsByPlayerId, input.random);
   for (const actorPlayerId of moveActors) {
     if (state.terminal) {
       break;
@@ -354,10 +370,7 @@ export function resolveTurn(input: {
       state,
       participantIds,
       actorPlayerId,
-      input.actionsByPlayerId[actorPlayerId] as Extract<
-        CanonicalCompetitiveAction,
-        { kind: "move" }
-      >,
+      actionsByPlayerId[actorPlayerId] as Extract<CanonicalCompetitiveAction, { kind: "move" }>,
       input.random,
     );
   }

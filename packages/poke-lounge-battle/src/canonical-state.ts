@@ -2,6 +2,18 @@ import { createHash } from "node:crypto";
 
 export type CanonicalBattleStatus = "none" | "paralyzed";
 
+export type CanonicalIdRecord<T> = Readonly<Record<string, T>>;
+
+export function createCanonicalIdRecord<T>(
+  entries: Iterable<readonly [string, T]>,
+): CanonicalIdRecord<T> {
+  const record = Object.create(null) as Record<string, T>;
+  for (const [key, value] of entries) {
+    record[key] = value;
+  }
+  return record;
+}
+
 export interface CanonicalMoveState {
   moveId: string;
   pp: number;
@@ -29,14 +41,14 @@ export interface CanonicalTerminalResult {
   winnerPlayerId: string;
   loserPlayerId: string;
   reason: "faint" | "forfeit" | "timeout";
-  scoreByPlayerId: Readonly<Record<string, 50 | 100>>;
+  scoreByPlayerId: CanonicalIdRecord<50 | 100>;
 }
 
 export interface CanonicalBattleState {
   rulesetVersion: 1;
   turn: number;
   participantIds: readonly [string, string];
-  playersById: Readonly<Record<string, CanonicalPlayerState>>;
+  playersById: CanonicalIdRecord<CanonicalPlayerState>;
   terminal: CanonicalTerminalResult | null;
 }
 

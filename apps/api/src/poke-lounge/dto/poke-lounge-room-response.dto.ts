@@ -49,9 +49,6 @@ class PokeLoungeRoomParticipantDto implements PokeLoungePublicRoomParticipant {
   @ApiProperty({ example: 'player-a' })
   playerId!: string;
 
-  @ApiPropertyOptional({ example: 'user-123' })
-  userId?: string;
-
   @ApiProperty({ example: 'Player A' })
   displayName!: string;
 

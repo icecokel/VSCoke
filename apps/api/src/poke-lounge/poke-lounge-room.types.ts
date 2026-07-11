@@ -32,7 +32,7 @@ export interface PokeLoungeRoomParticipant {
 
 export type PokeLoungePublicRoomParticipant = Omit<
   PokeLoungeRoomParticipant,
-  'sessionId'
+  'sessionId' | 'userId'
 >;
 
 export interface PokeLoungeTournamentMatch {

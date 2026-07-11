@@ -7,6 +7,7 @@ import {
   Post,
   Query,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBody,
@@ -18,6 +19,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
+import { GoogleAuthGuard } from '../auth/google-auth.guard';
+import { CompetitiveMatchService } from './competitive/competitive-match.service';
+import { BindCompetitiveSeatDto } from './dto/bind-competitive-seat.dto';
+import { CompetitiveAssignmentResponseDto } from './dto/competitive-assignment-response.dto';
 import { CreatePokeLoungeRoomDto } from './dto/create-poke-lounge-room.dto';
 import { JoinPokeLoungeRoomDto } from './dto/join-poke-lounge-room.dto';
 import { LeavePokeLoungeRoomDto } from './dto/leave-poke-lounge-room.dto';
@@ -41,7 +46,10 @@ const REVISION_PATTERN = /^(0|[1-9][0-9]*)$/;
 @ApiTags('poke-lounge')
 @Controller('poke-lounge')
 export class PokeLoungeController {
-  constructor(private readonly roomService: PokeLoungeRoomService) {}
+  constructor(
+    private readonly roomService: PokeLoungeRoomService,
+    private readonly competitiveMatchService: CompetitiveMatchService,
+  ) {}
 
   @Post('rooms')
   @ApiHeader({ name: IDEMPOTENCY_HEADER, required: true })
@@ -83,6 +91,26 @@ export class PokeLoungeController {
 
     return toPokeLoungePublicRoomState(
       await this.roomService.getRoom(roomCode, parseOptionalNumber(nowMs)),
+    );
+  }
+
+  @Post('rooms/:roomCode/competitive-seat')
+  @UseGuards(GoogleAuthGuard)
+  @ApiBody({ type: BindCompetitiveSeatDto })
+  @ApiCreatedResponse({ type: CompetitiveAssignmentResponseDto })
+  async bindCompetitiveSeat(
+    @Param('roomCode') roomCode: string,
+    @Body() body: BindCompetitiveSeatDto,
+    @Req() request: AuthenticatedPokeLoungeRequest,
+  ) {
+    if (!request.user?.id) {
+      throw new BadRequestException('Authenticated account is required');
+    }
+
+    return this.competitiveMatchService.bindSeat(
+      roomCode,
+      body.sessionId,
+      request.user.id,
     );
   }
 
@@ -212,6 +240,10 @@ export class PokeLoungeController {
     );
   }
 }
+
+type AuthenticatedPokeLoungeRequest = Request & {
+  user?: { id: string };
+};
 
 function parseOptionalRevision(value: string | undefined): number | undefined {
   if (value === undefined) {

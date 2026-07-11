@@ -1,4 +1,7 @@
 import { PokeLoungeRoomEventsService } from './poke-lounge-room-events.service';
+import { CompetitiveMatchService } from './competitive/competitive-match.service';
+import { COMPETITIVE_MATCH_REPOSITORY } from './competitive/competitive-match.repository';
+import { PostgresCompetitiveMatchRepository } from './competitive/postgres-competitive-match.repository';
 import { POKE_LOUNGE_ROOM_EVENT_PUBLISHER } from './poke-lounge-room-event.publisher';
 import { PokeLoungeGateway } from './poke-lounge.gateway';
 import { PokeLoungeModule } from './poke-lounge.module';
@@ -12,6 +15,12 @@ describe('PokeLoungeModule', () => {
 
     expect(providers).toContain(PokeLoungeRoomEventsService);
     expect(providers).toContain(PokeLoungeGateway);
+    expect(providers).toContain(CompetitiveMatchService);
+    expect(providers).toContain(PostgresCompetitiveMatchRepository);
+    expect(providers).toContainEqual({
+      provide: COMPETITIVE_MATCH_REPOSITORY,
+      useExisting: PostgresCompetitiveMatchRepository,
+    });
     expect(providers).toContainEqual({
       provide: POKE_LOUNGE_ROOM_EVENT_PUBLISHER,
       useExisting: PokeLoungeRoomEventsService,

@@ -90,6 +90,7 @@ describe('PokeLoungeRoomService', () => {
 
     expect(room).toMatchObject({ roomCode: 'ROOM01', revision: 0 });
     expect(JSON.stringify(room)).not.toContain('sessionId');
+    expect(JSON.stringify(room)).not.toContain('userId');
     expect(JSON.stringify(room)).not.toContain('session-1');
   });
 

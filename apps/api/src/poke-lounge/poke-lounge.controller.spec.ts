@@ -1,13 +1,17 @@
 import { BadRequestException } from '@nestjs/common';
+import { GUARDS_METADATA } from '@nestjs/common/constants';
 import type { Request } from 'express';
+import { GoogleAuthGuard } from '../auth/google-auth.guard';
 import type { PokeLoungeRoomSnapshot } from './poke-lounge-room.repository';
 import type { PokeLoungeRoomService } from './poke-lounge-room.service';
+import type { CompetitiveMatchService } from './competitive/competitive-match.service';
 import { PokeLoungeController } from './poke-lounge.controller';
 
 const IDEMPOTENCY_KEY = '00000000-0000-4000-8000-000000000001';
 
 describe('PokeLoungeController', () => {
   let service: jest.Mocked<PokeLoungeRoomService>;
+  let competitiveService: jest.Mocked<CompetitiveMatchService>;
   let controller: PokeLoungeController;
 
   beforeEach(() => {
@@ -20,7 +24,10 @@ describe('PokeLoungeController', () => {
       submitMatchResult: jest.fn().mockResolvedValue(snapshot()),
       leaveRoom: jest.fn().mockResolvedValue(snapshot()),
     } as unknown as jest.Mocked<PokeLoungeRoomService>;
-    controller = new PokeLoungeController(service);
+    competitiveService = {
+      bindSeat: jest.fn().mockResolvedValue(null),
+    } as unknown as jest.Mocked<CompetitiveMatchService>;
+    controller = new PokeLoungeController(service, competitiveService);
   });
 
   it('requires one canonical UUID v4 and one non-negative safe revision on every POST', async () => {
@@ -226,6 +233,31 @@ describe('PokeLoungeController', () => {
     expect(JSON.stringify(response)).not.toContain('sessionId');
   });
 
+  it('binds a competitive seat from req.user.id without accepting an actor id', async () => {
+    await controller.bindCompetitiveSeat('room01', { sessionId: 'session-a' }, {
+      user: { id: 'account-a' },
+    } as never);
+
+    expect(competitiveService.bindSeat.mock.calls[0]).toEqual([
+      'room01',
+      'session-a',
+      'account-a',
+    ]);
+  });
+
+  it('guards competitive seat binding with GoogleAuthGuard', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      PokeLoungeController.prototype,
+      'bindCompetitiveSeat',
+    );
+    expect(descriptor?.value).toBeDefined();
+    const guards = Reflect.getMetadata(
+      GUARDS_METADATA,
+      descriptor?.value as object,
+    ) as unknown[];
+    expect(guards).toContain(GoogleAuthGuard);
+  });
+
   it('validates the optional REST recovery revision cursor', async () => {
     const getRoom = (
       controller as unknown as {
@@ -276,6 +308,7 @@ function snapshot(): PokeLoungeRoomSnapshot {
       {
         sessionId: 'session-a',
         playerId: 'player-a',
+        userId: 'private-account-a',
         displayName: 'Player A',
         role: 'participant',
         ready: false,

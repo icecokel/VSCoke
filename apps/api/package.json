@@ -32,6 +32,7 @@
     "db:tunnel": "sh scripts/connect-db.sh"
   },
   "dependencies": {
+    "@vscoke/poke-lounge-battle": "workspace:*",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",

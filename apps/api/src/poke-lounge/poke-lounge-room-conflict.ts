@@ -49,7 +49,6 @@ export function toPokeLoungePublicRoomState(
     ...room,
     participants: room.participants.map((participant) => ({
       playerId: participant.playerId,
-      ...(participant.userId ? { userId: participant.userId } : {}),
       displayName: participant.displayName,
       role: participant.role,
       ready: participant.ready,

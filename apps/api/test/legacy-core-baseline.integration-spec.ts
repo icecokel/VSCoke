@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { DataSource, MigrationExecutor } from 'typeorm';
 import { CreateLegacyCoreSchema1759999999999 } from '../src/migrations/1759999999999-create-legacy-core-schema';
+import { AddPokeLoungeGameType1793664000000 } from '../src/migrations/1793664000000-add-poke-lounge-game-type';
 import { requireTestDatabaseUrl } from '../src/test-data-source';
 
 describe('legacy core production baseline migration', () => {
@@ -198,6 +199,65 @@ describe('legacy core production baseline migration', () => {
     }
   });
 
+  it('adds POKE_LOUNGE only to public through the migration chain with a tenant enum shadow', async () => {
+    const chainDataSource = new DataSource({
+      type: 'postgres',
+      url: disposableUrl.toString(),
+      schema: 'public',
+      migrations: [
+        CreateLegacyCoreSchema1759999999999,
+        AddPokeLoungeGameType1793664000000,
+      ],
+      migrationsTableName: 'migrations',
+      synchronize: false,
+    });
+    await chainDataSource.initialize();
+    const queryRunner = chainDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      await queryRunner.query('CREATE SCHEMA tenant');
+      await queryRunner.query(`
+        CREATE TYPE tenant.game_history_gametype_enum AS ENUM ('SKY_DROP')
+      `);
+      await queryRunner.query('SET LOCAL search_path TO tenant, public');
+
+      const migrationExecutor = new MigrationExecutor(
+        chainDataSource,
+        queryRunner,
+      );
+      const executed = await migrationExecutor.executePendingMigrations();
+      const labels = await queryRunner.query<
+        Array<{ schema: string; label: string }>
+      >(`
+        SELECT namespace.nspname AS schema, enum_value.enumlabel AS label
+        FROM pg_catalog.pg_enum enum_value
+        JOIN pg_catalog.pg_type type_record
+          ON type_record.oid = enum_value.enumtypid
+        JOIN pg_catalog.pg_namespace namespace
+          ON namespace.oid = type_record.typnamespace
+        WHERE namespace.nspname IN ('public', 'tenant')
+          AND type_record.typname = 'game_history_gametype_enum'
+        ORDER BY namespace.nspname, enum_value.enumsortorder
+      `);
+
+      expect(executed.map((migration) => migration.name)).toEqual([
+        'CreateLegacyCoreSchema1759999999999',
+        'AddPokeLoungeGameType1793664000000',
+      ]);
+      expect(labels).toEqual([
+        { schema: 'public', label: 'SKY_DROP' },
+        { schema: 'public', label: 'POKE_LOUNGE' },
+        { schema: 'tenant', label: 'SKY_DROP' },
+      ]);
+    } finally {
+      await queryRunner.rollbackTransaction();
+      await queryRunner.release();
+      await chainDataSource.destroy();
+    }
+  });
+
   it('rejects a partial schema without creating the missing objects', async () => {
     await dataSource.query(`
       CREATE TABLE "user" (
@@ -308,6 +368,26 @@ describe('legacy core production baseline migration', () => {
       label: 'multi-column userId index',
       replacement:
         'CREATE INDEX "legacy_user_idx" ON public.game_history ("userId", "score")',
+    },
+    {
+      label: 'hash userId index',
+      replacement:
+        'CREATE INDEX "legacy_user_idx" ON public.game_history USING hash ("userId")',
+    },
+    {
+      label: 'non-default userId opclass',
+      replacement:
+        'CREATE INDEX "legacy_user_idx" ON public.game_history ("userId" varchar_pattern_ops)',
+    },
+    {
+      label: 'non-default userId collation',
+      replacement:
+        'CREATE INDEX "legacy_user_idx" ON public.game_history ("userId" COLLATE "C")',
+    },
+    {
+      label: 'descending nulls-first userId index',
+      replacement:
+        'CREATE INDEX "legacy_user_idx" ON public.game_history ("userId" DESC NULLS FIRST)',
     },
   ])('rejects $label', async ({ replacement }) => {
     await runBaseline(dataSource);

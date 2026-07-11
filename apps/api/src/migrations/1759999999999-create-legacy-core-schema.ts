@@ -218,7 +218,12 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
         SELECT count(*) = 1
         INTO schema_matches
         FROM pg_catalog.pg_index index_record
+        JOIN pg_catalog.pg_class index_relation
+          ON index_relation.oid = index_record.indexrelid
+        JOIN pg_catalog.pg_am access_method
+          ON access_method.oid = index_relation.relam
         WHERE index_record.indrelid = 'public.game_history'::regclass
+          AND access_method.amname = 'btree'
           AND NOT index_record.indisprimary
           AND NOT index_record.indisunique
           AND index_record.indisvalid
@@ -229,17 +234,41 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
           AND index_record.indpred IS NULL
           AND index_record.indexprs IS NULL
           AND (
-            SELECT array_agg(attribute.attname ORDER BY key.ordinality)
-            FROM unnest(index_record.indkey::smallint[])
-              WITH ORDINALITY AS key(attnum, ordinality)
+            SELECT count(*) = 1 AND bool_and(
+              attribute.attname = 'userId' AND
+              operator_class.opcdefault AND
+              operator_class.opcmethod = access_method.oid AND
+              collation.oid = attribute.attcollation AND
+              collation_namespace.nspname = 'pg_catalog' AND
+              collation.collname = 'default' AND
+              key.option = 0
+            )
+            FROM unnest(
+              index_record.indkey::smallint[],
+              index_record.indclass::oid[],
+              index_record.indcollation::oid[],
+              index_record.indoption::smallint[]
+            ) WITH ORDINALITY AS key(
+              attnum,
+              opclass_oid,
+              collation_oid,
+              option,
+              ordinality
+            )
             JOIN pg_catalog.pg_attribute attribute
               ON attribute.attrelid = index_record.indrelid
               AND attribute.attnum = key.attnum
+            JOIN pg_catalog.pg_opclass operator_class
+              ON operator_class.oid = key.opclass_oid
+            JOIN pg_catalog.pg_collation collation
+              ON collation.oid = key.collation_oid
+            JOIN pg_catalog.pg_namespace collation_namespace
+              ON collation_namespace.oid = collation.collnamespace
             WHERE key.ordinality <= index_record.indnkeyatts
-          ) = ARRAY['userId']::name[];
+          );
 
         IF NOT COALESCE(schema_matches, false) THEN
-          RAISE EXCEPTION 'Legacy core schema mismatch: public.game_history must have one exact non-unique userId index';
+          RAISE EXCEPTION 'Legacy core schema mismatch: public.game_history must have one canonical btree userId index';
         END IF;
 
         SELECT array_agg(enum_value.enumlabel::text ORDER BY enum_value.enumsortorder) IN (

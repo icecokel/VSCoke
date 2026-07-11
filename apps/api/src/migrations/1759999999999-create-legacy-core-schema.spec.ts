@@ -32,6 +32,13 @@ describe('CreateLegacyCoreSchema1759999999999 SQL contract', () => {
     expect(query).toContain('NOT constraint_record.condeferred');
     expect(query).toContain(`constraint_record.confmatchtype = 's'`);
     expect(query).toContain('pg_catalog.pg_index');
+    expect(query).toContain('pg_catalog.pg_am');
+    expect(query).toContain(`access_method.amname = 'btree'`);
+    expect(query).toContain('pg_catalog.pg_opclass');
+    expect(query).toContain('operator_class.opcdefault');
+    expect(query).toContain('pg_catalog.pg_collation');
+    expect(query).toContain(`collation.collname = 'default'`);
+    expect(query).toContain('index_record.indoption');
     expect(query).toContain('NOT index_record.indisunique');
     expect(query).toContain('index_record.indpred IS NULL');
     expect(query).toContain('index_record.indexprs IS NULL');

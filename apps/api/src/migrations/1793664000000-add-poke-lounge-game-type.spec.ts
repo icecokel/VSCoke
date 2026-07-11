@@ -8,7 +8,7 @@ describe('AddPokeLoungeGameType1793664000000', () => {
 
     expect(query).toMatch(
       new RegExp(
-        `CREATE TYPE "game_history_gametype_enum" AS ENUM \\(${Object.values(
+        `CREATE TYPE public\\.game_history_gametype_enum AS ENUM \\(${Object.values(
           GameType,
         )
           .map((value) => `'${value}'`)
@@ -21,7 +21,15 @@ describe('AddPokeLoungeGameType1793664000000', () => {
     const query = await captureUpQuery();
 
     expect(query).toMatch(
-      /ELSE\s+ALTER TYPE "game_history_gametype_enum" ADD VALUE IF NOT EXISTS 'POKE_LOUNGE'/,
+      /ELSE\s+ALTER TYPE public\.game_history_gametype_enum ADD VALUE IF NOT EXISTS 'POKE_LOUNGE'/,
+    );
+  });
+
+  it('looks up only the public enum regardless of search_path', async () => {
+    const query = await captureUpQuery();
+
+    expect(query).toContain(
+      `pg_catalog.to_regtype('public.game_history_gametype_enum')`,
     );
   });
 });

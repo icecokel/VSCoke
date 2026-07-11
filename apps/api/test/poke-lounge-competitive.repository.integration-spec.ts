@@ -2,8 +2,11 @@ import { ConflictException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { CreatePokeLoungeRoomStorage1794096000000 } from '../src/migrations/1794096000000-create-poke-lounge-room-storage';
 import { CreatePokeLoungeCompetitiveAssignment1794182400000 } from '../src/migrations/1794182400000-create-poke-lounge-competitive-assignment';
+import { CreatePokeLoungeCompetitiveAction1794268800000 } from '../src/migrations/1794268800000-create-poke-lounge-competitive-action';
 import { CompetitiveMatchService } from '../src/poke-lounge/competitive/competitive-match.service';
 import { PostgresCompetitiveMatchRepository } from '../src/poke-lounge/competitive/postgres-competitive-match.repository';
+import { PostgresCompetitiveActionRepository } from '../src/poke-lounge/competitive/postgres-competitive-action.repository';
+import { PokeLoungeCompetitiveAction } from '../src/poke-lounge/competitive/competitive-action.entity';
 import { PokeLoungeCompetitiveMatch } from '../src/poke-lounge/entities/poke-lounge-competitive-match.entity';
 import { PokeLoungeCompetitiveSeat } from '../src/poke-lounge/entities/poke-lounge-competitive-seat.entity';
 import { PokeLoungeRoomCommand } from '../src/poke-lounge/entities/poke-lounge-room-command.entity';
@@ -17,6 +20,7 @@ const describePostgres = process.env.TEST_DATABASE_URL
 describePostgres('PostgresCompetitiveMatchRepository', () => {
   let dataSource: DataSource;
   let repository: PostgresCompetitiveMatchRepository;
+  let actionRepository: PostgresCompetitiveActionRepository;
   let service: CompetitiveMatchService;
   let testDatabaseUrl: string;
 
@@ -41,7 +45,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
 
   beforeEach(async () => {
     await dataSource.query(
-      'TRUNCATE TABLE "poke_lounge_competitive_match", "poke_lounge_competitive_seat", "poke_lounge_room_command", "poke_lounge_room" RESTART IDENTITY CASCADE',
+      'TRUNCATE TABLE "poke_lounge_competitive_action", "poke_lounge_competitive_match", "poke_lounge_competitive_seat", "poke_lounge_room_command", "poke_lounge_room" RESTART IDENTITY CASCADE',
     );
   });
 
@@ -232,9 +236,139 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     ).resolves.toBe(1);
   });
 
+  it('persists idempotent actions, resolves one concurrent second action, and reloads receipts', async () => {
+    await insertRoom('ROOM05', ['player-a', 'player-b']);
+    await service.bindSeat('ROOM05', 'session-a', 'account-a');
+    const assignment = await service.bindSeat(
+      'ROOM05',
+      'session-b',
+      'account-b',
+    );
+    if (!assignment) {
+      throw new Error('Expected competitive assignment');
+    }
+
+    await expect(
+      service.submitAction(actionInput(assignment.matchId, 'forged-account')),
+    ).rejects.toThrow('Competitive action conflict');
+    await expect(
+      service.submitAction({
+        ...actionInput(assignment.matchId, 'account-a'),
+        assignmentRevision: 2,
+      }),
+    ).rejects.toThrow('Competitive action conflict');
+    await expect(
+      service.submitAction({
+        ...actionInput(assignment.matchId, 'account-a'),
+        turn: 1,
+      }),
+    ).rejects.toThrow('Competitive action conflict');
+    await expect(
+      service.submitAction({
+        ...actionInput(assignment.matchId, 'account-a'),
+        action: { kind: 'move', moveId: 'forged-move' },
+      }),
+    ).rejects.toThrow('Competitive action is illegal');
+
+    const firstInput = actionInput(assignment.matchId, 'account-a');
+    const pending = await service.submitAction(firstInput);
+    await expect(service.submitAction(firstInput)).resolves.toEqual(pending);
+    await expect(
+      service.submitAction({
+        ...firstInput,
+        action: { kind: 'switch', slotIndex: 1 },
+      }),
+    ).rejects.toThrow('Competitive action conflict');
+    await expect(
+      service.submitAction({
+        ...firstInput,
+        clientCommandId: '00000000-0000-4000-8000-000000000005',
+      }),
+    ).rejects.toThrow('Competitive action conflict');
+
+    const secondInputs = [
+      actionInput(
+        assignment.matchId,
+        'account-b',
+        '00000000-0000-4000-8000-000000000002',
+      ),
+      actionInput(
+        assignment.matchId,
+        'account-b',
+        '00000000-0000-4000-8000-000000000003',
+      ),
+    ];
+    const concurrent = await Promise.allSettled(
+      secondInputs.map((input) => service.submitAction(input)),
+    );
+    const resolvedIndex = concurrent.findIndex(
+      (result) => result.status === 'fulfilled',
+    );
+    expect(resolvedIndex).toBeGreaterThanOrEqual(0);
+    expect(
+      concurrent.filter((result) => result.status === 'fulfilled'),
+    ).toHaveLength(1);
+    expect(
+      concurrent.filter((result) => result.status === 'rejected'),
+    ).toHaveLength(1);
+    expect(
+      concurrent[resolvedIndex] as PromiseFulfilledResult<{
+        currentTurn: number;
+      }>,
+    ).toMatchObject({ value: { currentTurn: 1 } });
+    await expect(
+      dataSource.getRepository(PokeLoungeCompetitiveAction).count(),
+    ).resolves.toBe(2);
+    await expect(
+      dataSource.getRepository(PokeLoungeRoom).findOneByOrFail({
+        roomCode: 'ROOM05',
+      }),
+    ).resolves.toMatchObject({ revision: 7 });
+
+    const persisted = await repository.findAssignmentForParticipant({
+      roomCode: 'ROOM05',
+      playerId: 'player-a',
+      accountId: 'account-a',
+    });
+    expect(persisted).toMatchObject({ currentTurn: 1, status: 'active' });
+
+    const resolvedInput = secondInputs[resolvedIndex];
+    const resolvedResponse = (
+      concurrent[resolvedIndex] as PromiseFulfilledResult<unknown>
+    ).value;
+    await dataSource.destroy();
+    dataSource = createDataSource(testDatabaseUrl);
+    await dataSource.initialize();
+    resetServices();
+
+    await expect(service.submitAction(resolvedInput)).resolves.toEqual(
+      resolvedResponse,
+    );
+    await expect(
+      dataSource.getRepository(PokeLoungeCompetitiveAction).count(),
+    ).resolves.toBe(2);
+
+    await dataSource
+      .getRepository(PokeLoungeCompetitiveMatch)
+      .update({ matchId: assignment.matchId }, { status: 'completed' });
+    await expect(
+      service.submitAction({
+        ...actionInput(
+          assignment.matchId,
+          'account-a',
+          '00000000-0000-4000-8000-000000000004',
+        ),
+        turn: 1,
+      }),
+    ).rejects.toThrow('Competitive action conflict');
+  });
+
   function resetServices() {
     repository = new PostgresCompetitiveMatchRepository(dataSource);
-    service = new CompetitiveMatchService(repository);
+    actionRepository = new PostgresCompetitiveActionRepository(dataSource);
+    service = new CompetitiveMatchService(repository, actionRepository, {
+      publish: () => Promise.resolve(),
+    });
   }
 
   async function insertRoom(roomCode: string, playerIds: string[]) {
@@ -276,13 +410,31 @@ function createDataSource(testDatabaseUrl: string): DataSource {
       PokeLoungeRoomCommand,
       PokeLoungeCompetitiveSeat,
       PokeLoungeCompetitiveMatch,
+      PokeLoungeCompetitiveAction,
     ],
     migrations: [
       CreatePokeLoungeRoomStorage1794096000000,
       CreatePokeLoungeCompetitiveAssignment1794182400000,
+      CreatePokeLoungeCompetitiveAction1794268800000,
     ],
     synchronize: false,
   });
+}
+
+function actionInput(
+  matchId: string,
+  accountId: string,
+  clientCommandId = '00000000-0000-4000-8000-000000000001',
+) {
+  return {
+    roomCode: 'ROOM05',
+    matchId,
+    accountId,
+    assignmentRevision: 1,
+    turn: 0,
+    clientCommandId,
+    action: { kind: 'move' as const, moveId: 'steady-strike' },
+  };
 }
 
 function roomState(roomCode: string, playerIds: string[]): PokeLoungeRoomState {

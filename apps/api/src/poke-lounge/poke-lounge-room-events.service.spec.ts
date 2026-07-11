@@ -29,6 +29,36 @@ describe('PokeLoungeRoomEventsService', () => {
 
     expect(listener).not.toHaveBeenCalled();
   });
+
+  it('delivers only the sanitized competitive projection through the room socket path', async () => {
+    const service = new PokeLoungeRoomEventsService();
+    const listener = jest.fn();
+    const room = publicRoom();
+    room.competitive = {
+      matchId: 'match-1',
+      assignmentRevision: 1,
+      submittedTurn: 0,
+      currentTurn: 1,
+      status: 'active',
+      playerIds: ['player-a', 'player-b'],
+      stateHash: 'a'.repeat(64),
+      terminal: null,
+    };
+    service.subscribe(listener);
+
+    await service.publish({
+      type: 'competitive-action-committed',
+      snapshot: room,
+    });
+
+    const serialized = JSON.stringify(listener.mock.calls);
+    expect(serialized).toContain('match-1');
+    expect(serialized).not.toContain('accountId');
+    expect(serialized).not.toContain('sessionId');
+    expect(serialized).not.toContain('serverSeed');
+    expect(serialized).not.toContain('playersById');
+    expect(serialized).not.toContain('clientCommandId');
+  });
 });
 
 function committedEvent(

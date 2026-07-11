@@ -20,4 +20,9 @@ export {
   type CompetitiveLoadoutEntry,
   type CompetitiveMoveDefinition,
 } from "./ruleset";
-export { resolveTurn, type CompetitiveAssignmentV1, type ResolvedTurnV1 } from "./resolve-turn";
+export {
+  resolveTurn,
+  validateCompetitiveAction,
+  type CompetitiveAssignmentV1,
+  type ResolvedTurnV1,
+} from "./resolve-turn";

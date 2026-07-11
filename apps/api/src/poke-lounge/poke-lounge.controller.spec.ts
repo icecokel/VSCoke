@@ -26,6 +26,7 @@ describe('PokeLoungeController', () => {
     } as unknown as jest.Mocked<PokeLoungeRoomService>;
     competitiveService = {
       bindSeat: jest.fn().mockResolvedValue(null),
+      submitAction: jest.fn().mockResolvedValue({ matchId: 'match-1' }),
     } as unknown as jest.Mocked<CompetitiveMatchService>;
     controller = new PokeLoungeController(service, competitiveService);
   });
@@ -256,6 +257,53 @@ describe('PokeLoungeController', () => {
       descriptor?.value as object,
     ) as unknown[];
     expect(guards).toContain(GoogleAuthGuard);
+  });
+
+  it('submits a competitive action with req.user.id as the only actor source', async () => {
+    await controller.submitCompetitiveAction(
+      'room01',
+      'match-1',
+      {
+        assignmentRevision: 1,
+        turn: 0,
+        clientCommandId: '00000000-0000-4000-8000-000000000001',
+        action: { kind: 'move', moveId: 'steady-strike' },
+      },
+      { user: { id: 'account-a' } } as never,
+    );
+
+    expect(competitiveService.submitAction.mock.calls[0]?.[0]).toMatchObject({
+      roomCode: 'room01',
+      matchId: 'match-1',
+      accountId: 'account-a',
+    });
+  });
+
+  it('guards competitive action submission with GoogleAuthGuard', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      PokeLoungeController.prototype,
+      'submitCompetitiveAction',
+    );
+    const guards = Reflect.getMetadata(
+      GUARDS_METADATA,
+      descriptor?.value as object,
+    ) as unknown[];
+    expect(guards).toContain(GoogleAuthGuard);
+  });
+
+  it('documents the legacy room result endpoint as casual and unverified', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      PokeLoungeController.prototype,
+      'submitResult',
+    );
+    const operation = Reflect.getMetadata(
+      'swagger/apiOperation',
+      descriptor?.value as object,
+    ) as { summary?: string; description?: string };
+
+    expect(operation.summary).toContain('casual');
+    expect(operation.description).toContain('unverified');
+    expect(operation.description).toContain('ranking');
   });
 
   it('validates the optional REST recovery revision cursor', async () => {

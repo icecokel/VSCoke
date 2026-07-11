@@ -15,6 +15,7 @@ import {
   ApiCreatedResponse,
   ApiHeader,
   ApiOkResponse,
+  ApiOperation,
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
@@ -23,6 +24,11 @@ import { GoogleAuthGuard } from '../auth/google-auth.guard';
 import { CompetitiveMatchService } from './competitive/competitive-match.service';
 import { BindCompetitiveSeatDto } from './dto/bind-competitive-seat.dto';
 import { CompetitiveAssignmentResponseDto } from './dto/competitive-assignment-response.dto';
+import { CompetitiveActionResponseDto } from './dto/competitive-action-response.dto';
+import {
+  SubmitCompetitiveActionDto,
+  toCanonicalCompetitiveAction,
+} from './dto/submit-competitive-action.dto';
 import { CreatePokeLoungeRoomDto } from './dto/create-poke-lounge-room.dto';
 import { JoinPokeLoungeRoomDto } from './dto/join-poke-lounge-room.dto';
 import { LeavePokeLoungeRoomDto } from './dto/leave-poke-lounge-room.dto';
@@ -114,6 +120,31 @@ export class PokeLoungeController {
     );
   }
 
+  @Post('rooms/:roomCode/matches/:matchId/actions')
+  @UseGuards(GoogleAuthGuard)
+  @ApiBody({ type: SubmitCompetitiveActionDto })
+  @ApiCreatedResponse({ type: CompetitiveActionResponseDto })
+  async submitCompetitiveAction(
+    @Param('roomCode') roomCode: string,
+    @Param('matchId') matchId: string,
+    @Body() body: SubmitCompetitiveActionDto,
+    @Req() request: AuthenticatedPokeLoungeRequest,
+  ) {
+    if (!request.user?.id) {
+      throw new BadRequestException('Authenticated account is required');
+    }
+
+    return this.competitiveMatchService.submitAction({
+      roomCode,
+      matchId,
+      accountId: request.user.id,
+      assignmentRevision: body.assignmentRevision,
+      turn: body.turn,
+      clientCommandId: body.clientCommandId,
+      action: toCanonicalCompetitiveAction(body.action),
+    });
+  }
+
   @Post('rooms/:roomCode/join')
   @ApiHeader({ name: IDEMPOTENCY_HEADER, required: true })
   @ApiHeader({ name: REVISION_HEADER, required: true, example: '0' })
@@ -186,6 +217,11 @@ export class PokeLoungeController {
   }
 
   @Post('rooms/:roomCode/result')
+  @ApiOperation({
+    summary: 'Submit a casual Poke Lounge result',
+    description:
+      'Client-reported room results remain unverified and cannot create verified trust or public ranking entries.',
+  })
   @ApiHeader({ name: IDEMPOTENCY_HEADER, required: true })
   @ApiHeader({ name: REVISION_HEADER, required: true, example: '0' })
   @ApiBody({ type: SubmitPokeLoungeMatchResultDto })

@@ -93,6 +93,7 @@ export type PokeLoungePublicRoomState = Omit<
   participants: PokeLoungePublicRoomParticipant[];
   revision: number;
   expiresAtMs: number;
+  competitive?: CompetitiveActionProjection;
 };
 
 export interface CreatePokeLoungeRoomInput {
@@ -142,3 +143,4 @@ export interface UpdatePokeLoungePartySnapshotInput {
   representativePokemon?: PokeLoungePartySnapshot['representativePokemon'];
   nowMs?: number;
 }
+import type { CompetitiveActionProjection } from './competitive/competitive-action.types';

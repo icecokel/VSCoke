@@ -314,6 +314,26 @@ function orderedMoveActors(
   return firstSpeed > secondSpeed ? actors : [actors[1]!, actors[0]!];
 }
 
+export function validateCompetitiveAction(input: {
+  state: CanonicalBattleState;
+  playerId: string;
+  action: CanonicalCompetitiveAction;
+}): void {
+  if (input.state.terminal) {
+    throw new Error("Cannot submit an action after a terminal result");
+  }
+
+  const participantIds = sortedParticipantIds(input.state);
+  for (const playerId of participantIds) {
+    validatePlayer(playerId, input.state.playersById[playerId]!);
+  }
+  if (!participantIds.includes(input.playerId)) {
+    throw new Error("Competitive action actor is not a participant");
+  }
+
+  validateAction(input.state, input.playerId, input.action);
+}
+
 export function resolveTurn(input: {
   state: CanonicalBattleState;
   actionsByPlayerId: CanonicalIdRecord<CanonicalCompetitiveAction>;

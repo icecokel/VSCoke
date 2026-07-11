@@ -5,7 +5,11 @@ export const POKE_LOUNGE_ROOM_EVENT_PUBLISHER = Symbol(
 );
 
 export interface PokeLoungeRoomCommittedEvent {
-  type: 'room-created' | 'room-updated' | 'room-clock-advanced';
+  type:
+    | 'room-created'
+    | 'room-updated'
+    | 'room-clock-advanced'
+    | 'competitive-action-committed';
   snapshot: PokeLoungePublicRoomState;
 }
 

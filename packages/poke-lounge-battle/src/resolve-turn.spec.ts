@@ -5,6 +5,7 @@ import {
   createSeededRandom,
   hashCanonicalState,
   resolveTurn,
+  validateCompetitiveAction,
   type CanonicalBattleState,
   type CanonicalCombatantState,
   type CanonicalCompetitiveAction,
@@ -99,6 +100,35 @@ class ScriptedRandom implements SeededRandom {
     return value;
   }
 }
+
+describe("validateCompetitiveAction", () => {
+  it("accepts a legal persisted actor action", () => {
+    expect(() =>
+      validateCompetitiveAction({
+        state: battleState(),
+        playerId: PLAYER_A,
+        action: { kind: "move", moveId: "steady-strike" },
+      }),
+    ).not.toThrow();
+  });
+
+  it("rejects unknown actors and illegal actions before turn resolution", () => {
+    expect(() =>
+      validateCompetitiveAction({
+        state: battleState(),
+        playerId: "forged-player",
+        action: { kind: "move", moveId: "steady-strike" },
+      }),
+    ).toThrow("Competitive action actor is not a participant");
+    expect(() =>
+      validateCompetitiveAction({
+        state: battleState(),
+        playerId: PLAYER_A,
+        action: { kind: "move", moveId: "forged-move" },
+      }),
+    ).toThrow("Cannot use an invalid move");
+  });
+});
 
 describe("resolveTurn", () => {
   it("resolves initial turn zero into turn one", () => {

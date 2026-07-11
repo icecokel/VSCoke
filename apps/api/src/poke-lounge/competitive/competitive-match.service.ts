@@ -4,6 +4,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 import {
   COMPETITIVE_RULESET_HASH,
@@ -21,12 +22,29 @@ import type {
   CompetitiveAssignmentProjection,
   CompetitiveMatchAssignment,
 } from './competitive-match.types';
+import {
+  COMPETITIVE_ACTION_REPOSITORY,
+  type CompetitiveActionFailure,
+  type CompetitiveActionRepository,
+} from './competitive-action.repository';
+import type { SubmitCompetitiveActionInput } from './competitive-action.types';
+import {
+  POKE_LOUNGE_ROOM_EVENT_PUBLISHER,
+  type PokeLoungeRoomEventPublisher,
+} from '../poke-lounge-room-event.publisher';
+import { toPokeLoungePublicRoomState } from '../poke-lounge-room-conflict';
 
 @Injectable()
 export class CompetitiveMatchService {
+  private readonly logger = new Logger(CompetitiveMatchService.name);
+
   constructor(
     @Inject(COMPETITIVE_MATCH_REPOSITORY)
     private readonly repository: CompetitiveMatchRepository,
+    @Inject(COMPETITIVE_ACTION_REPOSITORY)
+    private readonly actionRepository: CompetitiveActionRepository,
+    @Inject(POKE_LOUNGE_ROOM_EVENT_PUBLISHER)
+    private readonly eventPublisher: PokeLoungeRoomEventPublisher,
   ) {}
 
   async bindSeat(
@@ -56,6 +74,52 @@ export class CompetitiveMatchService {
 
     return result.assignment ? toPublicAssignment(result.assignment) : null;
   }
+
+  async submitAction(input: SubmitCompetitiveActionInput) {
+    const result = await this.actionRepository.submit({
+      ...input,
+      roomCode: input.roomCode.trim().toUpperCase(),
+      accountId: input.accountId.trim(),
+    });
+
+    if (!('response' in result)) {
+      throwActionError(result.outcome);
+    }
+
+    if (result.committed) {
+      try {
+        await this.eventPublisher.publish({
+          type: 'competitive-action-committed',
+          snapshot: {
+            ...toPokeLoungePublicRoomState(result.room),
+            competitive: result.response,
+          },
+        });
+      } catch (error) {
+        this.logger.error(
+          `Failed to publish committed competitive action for ${input.matchId}`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
+    }
+
+    return structuredClone(result.response);
+  }
+}
+
+function throwActionError(outcome: CompetitiveActionFailure): never {
+  if (outcome === 'illegal-action') {
+    throw new BadRequestException('Competitive action is illegal');
+  }
+  if (outcome === 'room-not-found' || outcome === 'match-not-found') {
+    throw new BadRequestException('Competitive match not found');
+  }
+
+  throw new ConflictException({
+    statusCode: 409,
+    code: `POKE_LOUNGE_COMPETITIVE_${outcome.replaceAll('-', '_').toUpperCase()}`,
+    message: 'Competitive action conflict',
+  });
 }
 
 function createAssignment(

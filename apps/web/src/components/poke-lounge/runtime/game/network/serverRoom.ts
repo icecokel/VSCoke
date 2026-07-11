@@ -159,6 +159,10 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   let recoveryAttempt = 0;
   let recoveryInFlight = false;
   let recoveryQueued = false;
+  let competitiveActionRecoveryTimer: number | null = null;
+  let competitiveActionRecoveryAttempt = 0;
+  let competitiveActionRecoveryInFlight = false;
+  let competitiveActionRecoveryMatchId: string | null = null;
   let latestState: ServerRoomState | null = null;
   let lastAppliedRevision = -1;
   let roomSocket: ServerRoomSocket | null = null;
@@ -308,6 +312,16 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     if (resetAttempt) {
       recoveryAttempt = 0;
     }
+  };
+
+  const clearCompetitiveActionRecovery = () => {
+    if (competitiveActionRecoveryTimer !== null) {
+      window.clearTimeout(competitiveActionRecoveryTimer);
+      competitiveActionRecoveryTimer = null;
+    }
+
+    competitiveActionRecoveryAttempt = 0;
+    competitiveActionRecoveryMatchId = null;
   };
 
   const isTerminalState = () =>
@@ -538,12 +552,14 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
 
     if (isTerminalState()) {
       clearRecoveryTimer();
+      clearCompetitiveActionRecovery();
     }
 
     return true;
   };
 
   const applyCompetitiveProjection = (projection: CompetitiveProjection) => {
+    clearCompetitiveActionRecovery();
     const payload = { projection, ownPlayerId: serverPlayerId };
     const assignmentKey = `${projection.matchId}:${projection.assignmentRevision}`;
 
@@ -552,6 +568,51 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       emit("COMPETITIVE_ASSIGNMENT", payload);
     }
     emit("COMPETITIVE_STATE", payload);
+  };
+
+  const scheduleCompetitiveActionRecovery = (matchId: string) => {
+    competitiveActionRecoveryMatchId = matchId;
+    if (
+      disposed ||
+      isTerminalState() ||
+      activeRoomId === PENDING_ROOM_ID ||
+      competitiveActionRecoveryTimer !== null ||
+      competitiveActionRecoveryInFlight
+    ) {
+      return;
+    }
+
+    const delayMs = Math.min(
+      RECOVERY_INITIAL_DELAY_MS * 2 ** competitiveActionRecoveryAttempt,
+      RECOVERY_MAX_DELAY_MS,
+    );
+    competitiveActionRecoveryAttempt += 1;
+    competitiveActionRecoveryTimer = window.setTimeout(() => {
+      competitiveActionRecoveryTimer = null;
+      void runCompetitiveActionRecovery();
+    }, delayMs);
+  };
+
+  const runCompetitiveActionRecovery = async () => {
+    const matchId = competitiveActionRecoveryMatchId;
+    if (disposed || !matchId || isTerminalState() || activeRoomId === PENDING_ROOM_ID) {
+      return;
+    }
+
+    competitiveActionRecoveryInFlight = true;
+    let recovered = false;
+    try {
+      const room = await requestRoom(`/poke-lounge/rooms/${activeRoomId}`);
+      applySnapshot(room);
+      recovered = room.competitive?.matchId === matchId;
+    } catch {
+      // Retry below with bounded backoff until a current projection is available.
+    } finally {
+      competitiveActionRecoveryInFlight = false;
+      if (!recovered) {
+        scheduleCompetitiveActionRecovery(matchId);
+      }
+    }
   };
 
   const submitPartySnapshot = async (snapshot: PlayerSnapshot) => {
@@ -612,20 +673,12 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     try {
       applyCompetitiveProjection(await retryOneNetworkFailure(send));
     } catch (error) {
-      if (
-        error instanceof ServerRoomRequestError ||
-        error instanceof CompetitiveProjectionSchemaError
-      ) {
-        emit("COMPETITIVE_ACTION_FAILED", {
-          matchId: command.matchId,
-          status: error instanceof ServerRoomRequestError ? error.status : null,
-          message: "서버 상태를 다시 불러오는 중...",
-        });
-        const room = await requestRoom(`/poke-lounge/rooms/${activeRoomId}`);
-        applySnapshot(room);
-        return;
-      }
-      throw error;
+      emit("COMPETITIVE_ACTION_FAILED", {
+        matchId: command.matchId,
+        status: error instanceof ServerRoomRequestError ? error.status : null,
+        message: "서버 상태를 다시 불러오는 중...",
+      });
+      scheduleCompetitiveActionRecovery(command.matchId);
     }
   };
 
@@ -651,6 +704,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
 
       disposed = true;
       clearRecoveryTimer();
+      clearCompetitiveActionRecovery();
       if (roomSocket) {
         roomSocket.off("connect", handleSocketConnect);
         roomSocket.off("connect_error", handleSocketConnectError);
@@ -675,7 +729,11 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       }
 
       if (type === "COMPETITIVE_ACTION") {
-        void submitCompetitiveAction(payload as RoomEvent["COMPETITIVE_ACTION"]).catch(() => {});
+        void submitCompetitiveAction(payload as RoomEvent["COMPETITIVE_ACTION"]).catch(error => {
+          reportTransportError(
+            error instanceof Error ? error : new ServerRoomTransportError(error),
+          );
+        });
         return;
       }
 

@@ -38,6 +38,7 @@ export function isLegalAuthoritativeAction(
     const activePokemon = player.team[player.activeSlotIndex];
     return Boolean(
       activePokemon &&
+      activePokemon.currentHp > 0 &&
       typeof action.moveId === "string" &&
       activePokemon.moves.some(move => move.moveId === action.moveId && move.pp > 0),
     );

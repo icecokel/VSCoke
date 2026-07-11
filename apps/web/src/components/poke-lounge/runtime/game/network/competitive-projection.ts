@@ -3,6 +3,9 @@ import type { CompetitiveProjection } from "./localPreviewRoom";
 const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const HASH_PATTERN = /^[0-9a-f]{64}$/;
 const PLAYER_ID_MAX_LENGTH = 256;
+const MAX_COMPETITIVE_PROJECTION_DEPTH = 6;
+const MAX_COMPETITIVE_RECORD_KEYS = 16;
+const MAX_COMPETITIVE_ARRAY_ITEMS = 2;
 
 export const APPROVED_COMPETITIVE_LOADOUT = [
   {
@@ -32,19 +35,23 @@ export class CompetitiveProjectionSchemaError extends Error {
 }
 
 export function parseCompetitiveProjection(value: unknown): CompetitiveProjection {
-  const projection = requireRecord(value, [
-    "assignmentRevision",
-    "currentState",
-    "currentTurn",
-    "matchId",
-    "playerIds",
-    "rulesetHash",
-    "rulesetVersion",
-    "stateHash",
-    "status",
-    "submittedPlayerIds",
-    "terminal",
-  ]);
+  const projection = requireRecord(
+    value,
+    [
+      "assignmentRevision",
+      "currentState",
+      "currentTurn",
+      "matchId",
+      "playerIds",
+      "rulesetHash",
+      "rulesetVersion",
+      "stateHash",
+      "status",
+      "submittedPlayerIds",
+      "terminal",
+    ],
+    0,
+  );
   const matchId = requireString(projection.matchId);
   const assignmentRevision = requireNonnegativeSafeInteger(projection.assignmentRevision);
   const currentTurn = requireNonnegativeSafeInteger(projection.currentTurn);
@@ -60,8 +67,8 @@ export function parseCompetitiveProjection(value: unknown): CompetitiveProjectio
   }
 
   const currentState = parseCurrentState(projection.currentState, playerIds, currentTurn);
-  const terminal = parseTerminal(projection.terminal, playerIds);
-  const stateTerminal = parseTerminal(currentState.terminal, playerIds);
+  const terminal = parseTerminal(projection.terminal, playerIds, 1);
+  const stateTerminal = parseTerminal(currentState.terminal, playerIds, 1);
 
   if (
     JSON.stringify(terminal) !== JSON.stringify(stateTerminal) ||
@@ -90,13 +97,11 @@ function parseCurrentState(
   playerIds: [string, string],
   currentTurn: number,
 ): CompetitiveProjection["currentState"] {
-  const state = requireRecord(value, [
-    "participantIds",
-    "playersById",
-    "rulesetVersion",
-    "terminal",
-    "turn",
-  ]);
+  const state = requireRecord(
+    value,
+    ["participantIds", "playersById", "rulesetVersion", "terminal", "turn"],
+    1,
+  );
   const participantIds = parsePlayerIds(state.participantIds);
   const turn = requireNonnegativeSafeInteger(state.turn);
   if (
@@ -108,7 +113,7 @@ function parseCurrentState(
     throw schemaError();
   }
 
-  const playersById = requireRecord(state.playersById, playerIds);
+  const playersById = requireRecord(state.playersById, playerIds, 2);
   const parsedPlayers = Object.fromEntries(
     playerIds.map(playerId => [playerId, parsePlayer(playersById[playerId], playerId)] as const),
   );
@@ -126,7 +131,7 @@ function parsePlayer(
   value: unknown,
   expectedPlayerId: string,
 ): CompetitiveProjection["currentState"]["playersById"][string] {
-  const player = requireRecord(value, ["activeSlotIndex", "playerId", "team"]);
+  const player = requireRecord(value, ["activeSlotIndex", "playerId", "team"], 3);
   const playerId = requireString(player.playerId);
   const activeSlotIndex = requireNonnegativeSafeInteger(player.activeSlotIndex);
   if (
@@ -151,7 +156,7 @@ function parsePokemon(
   value: unknown,
   approved: (typeof APPROVED_COMPETITIVE_LOADOUT)[number],
 ): CompetitiveProjection["currentState"]["playersById"][string]["team"][number] {
-  const pokemon = requireRecord(value, ["currentHp", "maxHp", "moves", "speciesId", "status"]);
+  const pokemon = requireRecord(value, ["currentHp", "maxHp", "moves", "speciesId", "status"], 4);
   const maxHp = requireNonnegativeSafeInteger(pokemon.maxHp);
   const currentHp = requireNonnegativeSafeInteger(pokemon.currentHp);
   if (
@@ -178,7 +183,7 @@ function parseMove(
   value: unknown,
   approved: (typeof APPROVED_COMPETITIVE_LOADOUT)[number]["moves"][number],
 ): CompetitiveProjection["currentState"]["playersById"][string]["team"][number]["moves"][number] {
-  const move = requireRecord(value, ["moveId", "pp"]);
+  const move = requireRecord(value, ["moveId", "pp"], 5);
   const pp = requireNonnegativeSafeInteger(move.pp);
   if (move.moveId !== approved.moveId || pp > approved.maxPp) {
     throw schemaError();
@@ -199,7 +204,7 @@ function parsePlayerIds(value: unknown): [string, string] {
 }
 
 function parseSubmittedPlayerIds(value: unknown, playerIds: [string, string]): string[] {
-  if (!Array.isArray(value)) {
+  if (!Array.isArray(value) || value.length > MAX_COMPETITIVE_ARRAY_ITEMS) {
     throw schemaError();
   }
   const submitted = value.map(requirePlayerId);
@@ -212,19 +217,22 @@ function parseSubmittedPlayerIds(value: unknown, playerIds: [string, string]): s
   return submitted;
 }
 
-function parseTerminal(value: unknown, playerIds: [string, string]): CompetitiveTerminal | null {
+function parseTerminal(
+  value: unknown,
+  playerIds: [string, string],
+  depth: number,
+): CompetitiveTerminal | null {
   if (value === null) {
     return null;
   }
-  const terminal = requireRecord(value, [
-    "loserPlayerId",
-    "reason",
-    "scoreByPlayerId",
-    "winnerPlayerId",
-  ]);
+  const terminal = requireRecord(
+    value,
+    ["loserPlayerId", "reason", "scoreByPlayerId", "winnerPlayerId"],
+    depth,
+  );
   const winnerPlayerId = requirePlayerId(terminal.winnerPlayerId);
   const loserPlayerId = requirePlayerId(terminal.loserPlayerId);
-  const scoreByPlayerId = requireRecord(terminal.scoreByPlayerId, playerIds);
+  const scoreByPlayerId = requireRecord(terminal.scoreByPlayerId, playerIds, depth + 1);
   if (
     winnerPlayerId === loserPlayerId ||
     !playerIds.includes(winnerPlayerId) ||
@@ -249,17 +257,29 @@ function parseTerminal(value: unknown, playerIds: [string, string]): Competitive
   };
 }
 
-function requireRecord(value: unknown, exactKeys: readonly string[]): Record<string, unknown> {
+function requireRecord(
+  value: unknown,
+  exactKeys: readonly string[],
+  depth: number,
+): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw schemaError();
   }
+  if (depth > MAX_COMPETITIVE_PROJECTION_DEPTH || exactKeys.length > MAX_COMPETITIVE_RECORD_KEYS) {
+    throw schemaError();
+  }
   const prototype = Object.getPrototypeOf(value) as object | null;
-  const keys = Object.keys(value).sort();
+  const keys = Object.keys(value);
   if (
     (prototype !== Object.prototype && prototype !== null) ||
     keys.length !== exactKeys.length ||
-    keys.some((key, index) => key !== [...exactKeys].sort()[index])
+    keys.length > MAX_COMPETITIVE_RECORD_KEYS
   ) {
+    throw schemaError();
+  }
+  keys.sort();
+  const sortedExpectedKeys = [...exactKeys].sort();
+  if (keys.some((key, index) => key !== sortedExpectedKeys[index])) {
     throw schemaError();
   }
   return value as Record<string, unknown>;

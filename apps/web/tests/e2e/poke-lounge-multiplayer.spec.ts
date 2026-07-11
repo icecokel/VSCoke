@@ -183,6 +183,18 @@ test.describe("Poke Lounge authoritative battle adapter", () => {
     ).toBe(false);
   });
 
+  test("active Pokemon의 HP가 0이면 PP가 남은 move도 제출 불가다", () => {
+    const projection = createCompetitiveProjection();
+    projection.currentState.playersById["player-a"].team[1].currentHp = 0;
+
+    expect(
+      isLegalAuthoritativeAction(projection, "player-a", {
+        kind: "move",
+        moveId: "heavy-blow",
+      }),
+    ).toBe(false);
+  });
+
   test("자신이 현재 턴을 제출한 projection은 reconnect에서도 waiting으로 복원한다", () => {
     const projection = createCompetitiveProjection({ submittedPlayerIds: ["player-a"] });
 
@@ -306,6 +318,27 @@ test.describe("Poke Lounge competitive projection parser", () => {
     scorePrototypeKey.terminal = validTerminal;
     scorePrototypeKey.currentState.terminal = validTerminal;
     expect(() => parseCompetitiveProjection(scorePrototypeKey)).toThrow();
+  });
+
+  test("oversized record는 key 정렬 전에 거부한다", () => {
+    const oversized = createCompetitiveProjection() as unknown as Record<string, unknown>;
+    for (let index = 0; index < 100; index += 1) {
+      oversized[`unexpected-${index}`] = index;
+    }
+    const originalSort = Array.prototype.sort;
+    let sortCalls = 0;
+    Array.prototype.sort = function <T>(this: T[], compareFn?: (left: T, right: T) => number): T[] {
+      sortCalls += 1;
+      return originalSort.call(this, compareFn);
+    };
+
+    try {
+      expect(() => parseCompetitiveProjection(oversized)).toThrow();
+    } finally {
+      Array.prototype.sort = originalSort;
+    }
+
+    expect(sortCalls).toBe(0);
   });
 });
 
@@ -647,6 +680,48 @@ test.describe("Poke Lounge server multiplayer", () => {
 
     await expect.poll(() => Promise.resolve(server.competitiveActionBodies.length)).toBe(2);
     expect(server.competitiveActionBodies[1]).toEqual(server.competitiveActionBodies[0]);
+  });
+
+  test("competitive action transport가 두 번 실패하면 REST 복구 후 새 UUID 재입력을 허용한다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+    const pageErrors: string[] = [];
+    page.on("pageerror", error => pageErrors.push(error.message));
+
+    await mockAuthenticatedPokeSession(page);
+    await mockServerRoom(page, server, {
+      competitive: true,
+      competitiveActionNetworkFailureCount: 2,
+      competitiveImmediately: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    await waitForBattleReady(page);
+
+    await confirmBattle(page);
+    await setBattleMoveIndex(page, 1);
+    await confirmBattle(page);
+
+    await expect.poll(() => Promise.resolve(server.competitiveActionBodies.length)).toBe(2);
+    expect(server.competitiveActionBodies[1]?.clientCommandId).toBe(
+      server.competitiveActionBodies[0]?.clientCommandId,
+    );
+    await expect.poll(() => getBattleSnapshot(page).then(snapshot => snapshot?.turn)).toBe(4);
+    await expect
+      .poll(() => getBattleSnapshot(page).then(snapshot => snapshot?.phase))
+      .toBe("command");
+
+    await confirmBattle(page);
+    await setBattleMoveIndex(page, 1);
+    await confirmBattle(page);
+    await expect.poll(() => Promise.resolve(server.competitiveActionBodies.length)).toBe(3);
+    expect(server.competitiveActionBodies[2]?.clientCommandId).not.toBe(
+      server.competitiveActionBodies[0]?.clientCommandId,
+    );
+    expect(pageErrors).toEqual([]);
   });
 
   test("stale turn 409는 REST snapshot으로 resync하고 로컬 결과를 만들지 않는다", async ({
@@ -1929,6 +2004,7 @@ async function mockServerRoom(
     completeOnGet?: boolean;
     competitive?: boolean;
     competitiveActionNetworkFailure?: boolean;
+    competitiveActionNetworkFailureCount?: number;
     competitiveActionRejected?: boolean;
     competitiveActionStaleConflict?: boolean;
     competitiveImmediately?: boolean;
@@ -2196,11 +2272,19 @@ async function mockServerRoom(
           });
           return;
         }
-        if (
-          options.competitiveActionNetworkFailure &&
-          !server.competitiveActionNetworkFailureReturned
-        ) {
+        const networkFailureCount =
+          options.competitiveActionNetworkFailureCount ??
+          (options.competitiveActionNetworkFailure ? 1 : 0);
+        if (server.competitiveActionNetworkFailuresReturned < networkFailureCount) {
+          server.competitiveActionNetworkFailuresReturned += 1;
           server.competitiveActionNetworkFailureReturned = true;
+          if (
+            networkFailureCount > 1 &&
+            server.competitiveActionNetworkFailuresReturned === networkFailureCount
+          ) {
+            server.competitiveResyncRequested = true;
+            server.revision += 1;
+          }
           await route.abort("failed");
           return;
         }
@@ -2220,13 +2304,20 @@ async function mockServerRoom(
           return;
         }
         const ownPlayerId = getStateParticipants(server)[0].playerId;
+        const projection = createServerCompetitiveProjection(server, {
+          submittedPlayerIds: [ownPlayerId],
+        });
+        const responseProjection = server.competitiveResyncRequested
+          ? {
+              ...projection,
+              currentTurn: 4,
+              currentState: { ...projection.currentState, turn: 4 },
+            }
+          : projection;
         await route.fulfill({
           status: 201,
           contentType: "application/json",
-          body: stringifyResponse(
-            createServerCompetitiveProjection(server, { submittedPlayerIds: [ownPlayerId] }),
-            options,
-          ),
+          body: stringifyResponse(responseProjection, options),
         });
         return;
       }
@@ -2349,6 +2440,7 @@ interface MockServerState {
     action?: { kind?: string; moveId?: string; slotIndex?: number };
   }>;
   competitiveActionNetworkFailureReturned: boolean;
+  competitiveActionNetworkFailuresReturned: number;
   competitiveActionStaleReturned: boolean;
   competitiveResyncRequested: boolean;
   competitiveSeatBodies: Array<{ sessionId?: string }>;
@@ -2408,6 +2500,7 @@ function createMockServerState(): MockServerState {
     competitiveActionAuthHeaders: [],
     competitiveActionBodies: [],
     competitiveActionNetworkFailureReturned: false,
+    competitiveActionNetworkFailuresReturned: 0,
     competitiveActionStaleReturned: false,
     competitiveResyncRequested: false,
     competitiveSeatBodies: [],

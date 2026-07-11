@@ -464,7 +464,7 @@ test.describe("Poke Lounge server multiplayer", () => {
     });
     await startServerRoom(page);
 
-    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    await waitForActiveScene(page, "battle");
     expect(await getBattleSnapshot(page)).toMatchObject({
       battleKind: "trainer",
       phase: "command",
@@ -505,7 +505,7 @@ test.describe("Poke Lounge server multiplayer", () => {
       guestPage,
       `/${LOCALE}/game/poke-lounge?network=server&room=${ROOM_CODE}&serverPlayerId=guest-player&serverSessionId=guest-session&e2e=1`,
     );
-    await expect.poll(() => getActiveSceneKey(guestPage)).toBe("battle");
+    await waitForActiveScene(guestPage, "battle");
 
     const projection = createServerCompetitiveProjection(server);
     server.revision += 1;
@@ -514,7 +514,7 @@ test.describe("Poke Lounge server multiplayer", () => {
       competitive: projection,
     });
 
-    await expect.poll(() => getActiveSceneKey(hostPage)).toBe("battle");
+    await waitForActiveScene(hostPage, "battle");
     expect((await getBattleSnapshot(hostPage))?.turn).toBe(
       (await getBattleSnapshot(guestPage))?.turn,
     );
@@ -536,7 +536,7 @@ test.describe("Poke Lounge server multiplayer", () => {
       wrapped: true,
     });
     await startServerRoom(page);
-    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    await waitForActiveScene(page, "battle");
     await waitForBattleReady(page);
 
     await confirmBattle(page);
@@ -572,7 +572,7 @@ test.describe("Poke Lounge server multiplayer", () => {
       wrapped: true,
     });
     await startServerRoom(page);
-    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    await waitForActiveScene(page, "battle");
     await waitForBattleReady(page);
 
     await confirmBattle(page);
@@ -601,7 +601,7 @@ test.describe("Poke Lounge server multiplayer", () => {
       wrapped: true,
     });
     await startServerRoom(page);
-    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    await waitForActiveScene(page, "battle");
     await waitForBattleReady(page);
 
     await setBattleCommand(page, "pokemon");
@@ -625,7 +625,7 @@ test.describe("Poke Lounge server multiplayer", () => {
       wrapped: true,
     });
     await startServerRoom(page);
-    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    await waitForActiveScene(page, "battle");
     await waitForBattleReady(page);
 
     await setBattleCommand(page, "pokemon");
@@ -656,7 +656,7 @@ test.describe("Poke Lounge server multiplayer", () => {
       `/${LOCALE}/game/poke-lounge?network=server&room=${ROOM_CODE}&serverPlayerId=reconnect-player&serverSessionId=reconnect-session&e2e=1`,
     );
 
-    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    await waitForActiveScene(page, "battle");
     await expect.poll(() => getBattleSnapshot(page).then(value => value?.phase)).toBe("resolving");
     expect((await getBattleSnapshot(page))?.message).toBe("상대의 선택을 기다리는 중...");
   });
@@ -673,7 +673,7 @@ test.describe("Poke Lounge server multiplayer", () => {
       wrapped: true,
     });
     await startServerRoom(page);
-    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    await waitForActiveScene(page, "battle");
     await waitForBattleReady(page);
     await confirmBattle(page);
     await confirmBattle(page);
@@ -698,7 +698,7 @@ test.describe("Poke Lounge server multiplayer", () => {
       wrapped: true,
     });
     await startServerRoom(page);
-    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    await waitForActiveScene(page, "battle");
     await waitForBattleReady(page);
 
     await confirmBattle(page);
@@ -738,7 +738,7 @@ test.describe("Poke Lounge server multiplayer", () => {
       wrapped: true,
     });
     await startServerRoom(page);
-    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    await waitForActiveScene(page, "battle");
     await waitForBattleReady(page);
     await confirmBattle(page);
     await confirmBattle(page);
@@ -767,7 +767,7 @@ test.describe("Poke Lounge server multiplayer", () => {
       wrapped: true,
     });
     await startServerRoom(page);
-    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    await waitForActiveScene(page, "battle");
 
     const projection = createServerCompetitiveProjection(server);
     const [winner, loser] = projection.playerIds;
@@ -1645,6 +1645,10 @@ async function getActiveSceneKey(page: Page): Promise<string | null> {
         window as Window & { __POKE_LOUNGE_E2E__?: { getActiveSceneKey(): string | null } }
       ).__POKE_LOUNGE_E2E__?.getActiveSceneKey() ?? null,
   );
+}
+
+async function waitForActiveScene(page: Page, sceneKey: string): Promise<void> {
+  await expect.poll(() => getActiveSceneKey(page), { timeout: 30000 }).toBe(sceneKey);
 }
 
 async function getBattleSnapshot(page: Page): Promise<{

@@ -1,11 +1,19 @@
 import type { QueryRunner } from 'typeorm';
-import { AddGameResultTrust1794268800000 } from './1794268800000-add-game-result-trust';
+import { AddGameResultTrust1794355200000 } from './1794355200000-add-game-result-trust';
 
-describe('AddGameResultTrust1794268800000', () => {
+describe('AddGameResultTrust1794355200000', () => {
+  it('runs after the reserved competitive action migration timestamp', () => {
+    const migration = new AddGameResultTrust1794355200000();
+
+    expect(Number(migration.name.match(/(\d{13})$/)?.[1])).toBeGreaterThan(
+      1794268800000,
+    );
+  });
+
   it('adds constrained trust, server source uniqueness, scoped backfill, and ranking index', async () => {
     const query = jest.fn().mockResolvedValue(undefined);
 
-    await new AddGameResultTrust1794268800000().up({
+    await new AddGameResultTrust1794355200000().up({
       query,
     } as unknown as QueryRunner);
 
@@ -27,7 +35,7 @@ describe('AddGameResultTrust1794268800000', () => {
   it('fails closed before dropping columns that contain trust or source identity', async () => {
     const query = jest.fn().mockResolvedValue(undefined);
 
-    await new AddGameResultTrust1794268800000().down({
+    await new AddGameResultTrust1794355200000().down({
       query,
     } as unknown as QueryRunner);
 

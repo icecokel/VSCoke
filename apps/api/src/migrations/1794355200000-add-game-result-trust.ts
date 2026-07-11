@@ -1,7 +1,7 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddGameResultTrust1794268800000 implements MigrationInterface {
-  name = 'AddGameResultTrust1794268800000';
+export class AddGameResultTrust1794355200000 implements MigrationInterface {
+  name = 'AddGameResultTrust1794355200000';
 
   async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

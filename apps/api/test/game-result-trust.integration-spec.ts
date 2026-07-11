@@ -9,7 +9,7 @@ import { GameService } from '../src/game/game.service';
 import { VerifiedPokeLoungeHistoryWriter } from '../src/game/verified-poke-lounge-history-writer.service';
 import { CreateLegacyCoreSchema1759999999999 } from '../src/migrations/1759999999999-create-legacy-core-schema';
 import { AddPokeLoungeGameType1793664000000 } from '../src/migrations/1793664000000-add-poke-lounge-game-type';
-import { AddGameResultTrust1794268800000 } from '../src/migrations/1794268800000-add-game-result-trust';
+import { AddGameResultTrust1794355200000 } from '../src/migrations/1794355200000-add-game-result-trust';
 import { requireTestDatabaseUrl } from '../src/test-data-source';
 
 describe('game result trust PostgreSQL integration', () => {
@@ -17,7 +17,7 @@ describe('game result trust PostgreSQL integration', () => {
   const databaseName = `vscoke_game_trust_${randomUUID().replaceAll('-', '')}_test`;
   const adminUrl = new URL(guardedTestUrl);
   const disposableUrl = new URL(guardedTestUrl);
-  const migration = new AddGameResultTrust1794268800000();
+  const migration = new AddGameResultTrust1794355200000();
   const writer = new VerifiedPokeLoungeHistoryWriter();
   let adminDataSource: DataSource;
   let dataSource: DataSource;
@@ -229,7 +229,7 @@ async function resetLegacySchema(dataSource: DataSource): Promise<void> {
 async function runUp(dataSource: DataSource): Promise<void> {
   const queryRunner = dataSource.createQueryRunner();
   try {
-    await new AddGameResultTrust1794268800000().up(queryRunner);
+    await new AddGameResultTrust1794355200000().up(queryRunner);
   } finally {
     await queryRunner.release();
   }

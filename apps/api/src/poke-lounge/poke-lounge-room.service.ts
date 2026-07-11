@@ -35,6 +35,7 @@ import type {
   PokeLoungeFinalStanding,
   PokeLoungeMatchResultReason,
   PokeLoungePartySnapshot,
+  PokeLoungePublicRoomState,
   PokeLoungeRoomParticipant,
   PokeLoungeRoomState,
   PokeLoungeTournamentMatch,
@@ -173,6 +174,31 @@ export class PokeLoungeRoomService {
     }
 
     return structuredClone(result.snapshot);
+  }
+
+  async authorizeSubscription(
+    roomCode: string,
+    playerId: string,
+    sessionId: string,
+  ): Promise<PokeLoungePublicRoomState> {
+    const result = await this.repository.getAndAdvance(
+      normalizeRoomCode(roomCode),
+      this.normalizeNow(undefined),
+    );
+
+    if (result.snapshot && result.committedChange) {
+      await this.publish('room-clock-advanced', result.snapshot);
+    }
+
+    const participant = result.snapshot?.participants.find(
+      (candidate) => candidate.playerId === playerId,
+    );
+
+    if (!result.snapshot || participant?.sessionId !== sessionId) {
+      throw new BadRequestException('Poke Lounge room subscription rejected');
+    }
+
+    return structuredClone(toPokeLoungePublicRoomState(result.snapshot));
   }
 
   async joinRoom(

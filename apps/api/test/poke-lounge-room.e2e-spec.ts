@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Server } from 'node:http';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
+import { io, type Socket as ClientSocket } from 'socket.io-client';
 import { PokeLoungeModule } from './../src/poke-lounge/poke-lounge.module';
 import type { PokeLoungePublicRoomState } from './../src/poke-lounge/poke-lounge-room.types';
 import {
@@ -22,13 +23,17 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
   let app: INestApplication;
   let httpServer: Server;
   let dataSource: DataSource;
+  let baseUrl: string;
+  let sockets: ClientSocket[];
 
   beforeEach(async () => {
-    ({ app, httpServer, dataSource } = await createTestApplication());
+    ({ app, httpServer, dataSource, baseUrl } = await createTestApplication());
+    sockets = [];
     await truncatePokeLoungeRoomStorage(dataSource);
   });
 
   afterEach(async () => {
+    sockets.forEach((socket) => socket.disconnect());
     await app.close();
   });
 
@@ -220,6 +225,104 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
     expect(JSON.stringify(staleBody)).not.toContain('sessionId');
   });
 
+  it('broadcasts one committed public revision to two authorized subscribers', async () => {
+    const created = await createRoom(1);
+    const joinedResponse = await request(httpServer)
+      .post(`/poke-lounge/rooms/${created.roomCode}/join`)
+      .set(commandHeaders(2, created.revision))
+      .send({
+        playerId: 'player-b',
+        sessionId: 'session-b',
+        displayName: 'Player B',
+        nowMs: 10,
+      })
+      .expect(201);
+    const joined = joinedResponse.body as PokeLoungePublicRoomState;
+    const hostSocket = await connectSocket();
+    const guestSocket = await connectSocket();
+    const hostInitial = waitForSnapshot(hostSocket, joined.revision);
+    const guestInitial = waitForSnapshot(guestSocket, joined.revision);
+
+    hostSocket.emit('room.subscribe', {
+      roomCode: created.roomCode,
+      playerId: 'player-a',
+      sessionId: 'session-a',
+      afterRevision: joined.revision,
+    });
+    guestSocket.emit('room.subscribe', {
+      roomCode: created.roomCode,
+      playerId: 'player-b',
+      sessionId: 'session-b',
+      afterRevision: joined.revision,
+    });
+
+    const [hostSubscribed, guestSubscribed] = await Promise.all([
+      hostInitial,
+      guestInitial,
+    ]);
+    expect(hostSubscribed).toEqual(guestSubscribed);
+
+    const nextRevision = joined.revision + 1;
+    const hostCommitted = waitForSnapshot(hostSocket, nextRevision);
+    const guestCommitted = waitForSnapshot(guestSocket, nextRevision);
+    await request(httpServer)
+      .post(`/poke-lounge/rooms/${created.roomCode}/party-snapshot`)
+      .set(commandHeaders(3, joined.revision))
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-a',
+        displayName: 'Player A',
+        nowMs: 20,
+      })
+      .expect(201);
+
+    const [hostRoom, guestRoom] = await Promise.all([
+      hostCommitted,
+      guestCommitted,
+    ]);
+    expect(hostRoom).toEqual(guestRoom);
+    expect(hostRoom.revision).toBe(nextRevision);
+    expect(JSON.stringify(hostRoom)).not.toContain('sessionId');
+    expect(JSON.stringify(hostRoom)).not.toContain('session-a');
+
+    const noSnapshot = expectNoSnapshot(hostSocket, 300);
+    await request(httpServer)
+      .post(`/poke-lounge/rooms/${created.roomCode}/ready`)
+      .set(commandHeaders(4, joined.revision))
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-a',
+        ready: true,
+        nowMs: 30,
+      })
+      .expect(409);
+    await noSnapshot;
+  });
+
+  it('rejects a wrong subscription session without disclosing room credentials', async () => {
+    const created = await createRoom(1);
+    const socket = await connectSocket();
+    const rejection = waitForSocketEvent<{
+      code: string;
+      message: string;
+    }>(socket, 'room.subscription-error');
+
+    socket.emit('room.subscribe', {
+      roomCode: created.roomCode,
+      playerId: 'player-a',
+      sessionId: 'wrong-session',
+      afterRevision: created.revision,
+    });
+
+    const error = await rejection;
+    expect(error).toEqual({
+      code: 'POKE_LOUNGE_SUBSCRIPTION_REJECTED',
+      message: 'Poke Lounge room subscription rejected',
+    });
+    expect(JSON.stringify(error)).not.toContain(created.roomCode);
+    expect(JSON.stringify(error)).not.toContain('wrong-session');
+  });
+
   it('persists a room after closing and recreating the Nest application', async () => {
     const created = await createRoom(1);
 
@@ -243,12 +346,26 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
 
     return response.body as PokeLoungePublicRoomState;
   }
+
+  async function connectSocket(): Promise<ClientSocket> {
+    const socket = io(`${baseUrl}/poke-lounge`, {
+      path: '/socket.io',
+      transports: ['websocket'],
+      reconnection: false,
+      forceNew: true,
+    });
+    sockets.push(socket);
+    await waitForSocketEvent(socket, 'connect');
+
+    return socket;
+  }
 });
 
 async function createTestApplication(): Promise<{
   app: INestApplication;
   httpServer: Server;
   dataSource: DataSource;
+  baseUrl: string;
 }> {
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [
@@ -264,13 +381,75 @@ async function createTestApplication(): Promise<{
       transform: true,
     }),
   );
-  await app.init();
+  await app.listen(0, '127.0.0.1');
 
   return {
     app,
     httpServer: app.getHttpServer() as Server,
     dataSource: app.get(DataSource),
+    baseUrl: await app.getUrl(),
   };
+}
+
+function waitForSnapshot(
+  socket: ClientSocket,
+  revision: number,
+): Promise<PokeLoungePublicRoomState> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      socket.off('room.snapshot', handleSnapshot);
+      reject(new Error(`Timed out waiting for room revision ${revision}`));
+    }, 5000);
+    const handleSnapshot = (event: { room?: PokeLoungePublicRoomState }) => {
+      if (event.room?.revision !== revision) {
+        return;
+      }
+
+      clearTimeout(timeout);
+      socket.off('room.snapshot', handleSnapshot);
+      resolve(event.room);
+    };
+
+    socket.on('room.snapshot', handleSnapshot);
+  });
+}
+
+function waitForSocketEvent<T = void>(
+  socket: ClientSocket,
+  eventName: string,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      socket.off(eventName, handleEvent);
+      reject(new Error(`Timed out waiting for ${eventName}`));
+    }, 5000);
+    const handleEvent = (value: T) => {
+      clearTimeout(timeout);
+      socket.off(eventName, handleEvent);
+      resolve(value);
+    };
+
+    socket.on(eventName, handleEvent);
+  });
+}
+
+function expectNoSnapshot(
+  socket: ClientSocket,
+  durationMs: number,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const handleSnapshot = (event: unknown) => {
+      clearTimeout(timeout);
+      socket.off('room.snapshot', handleSnapshot);
+      reject(new Error(`Unexpected room snapshot: ${JSON.stringify(event)}`));
+    };
+    const timeout = setTimeout(() => {
+      socket.off('room.snapshot', handleSnapshot);
+      resolve();
+    }, durationMs);
+
+    socket.on('room.snapshot', handleSnapshot);
+  });
 }
 
 function createBody() {

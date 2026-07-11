@@ -225,6 +225,32 @@ describe('PokeLoungeController', () => {
     expect(JSON.stringify(response)).not.toContain('session-a');
     expect(JSON.stringify(response)).not.toContain('sessionId');
   });
+
+  it('validates the optional REST recovery revision cursor', async () => {
+    const getRoom = (
+      controller as unknown as {
+        getRoom(
+          roomCode: string,
+          nowMs?: string,
+          afterRevision?: string,
+        ): Promise<unknown>;
+      }
+    ).getRoom.bind(controller);
+
+    await expect(getRoom('ROOM01', undefined, '7')).resolves.toBeDefined();
+
+    for (const value of [
+      '-1',
+      '+1',
+      '1.0',
+      '01',
+      String(Number.MAX_SAFE_INTEGER + 1),
+    ]) {
+      await expect(getRoom('ROOM01', undefined, value)).rejects.toThrow(
+        BadRequestException,
+      );
+    }
+  });
 });
 
 function commandRequest(revision: number): Request {

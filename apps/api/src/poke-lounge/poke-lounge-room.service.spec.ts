@@ -11,6 +11,7 @@ import type {
   PokeLoungeRoomSnapshot,
 } from './poke-lounge-room.repository';
 import { PokeLoungeRoomService } from './poke-lounge-room.service';
+import type { PokeLoungePublicRoomState } from './poke-lounge-room.types';
 
 describe('PokeLoungeRoomService', () => {
   let repository: FakePokeLoungeRoomRepository;
@@ -71,6 +72,53 @@ describe('PokeLoungeRoomService', () => {
 
     expectPublicEvent(publisher, 'room-updated', room);
   });
+
+  it('authorizes a durable participant session and returns only the public snapshot', async () => {
+    await createRoom();
+
+    const room = await Promise.resolve().then(() =>
+      (
+        service as unknown as {
+          authorizeSubscription(
+            roomCode: string,
+            playerId: string,
+            sessionId: string,
+          ): Promise<PokeLoungePublicRoomState>;
+        }
+      ).authorizeSubscription(' room01 ', 'player-1', 'session-1'),
+    );
+
+    expect(room).toMatchObject({ roomCode: 'ROOM01', revision: 0 });
+    expect(JSON.stringify(room)).not.toContain('sessionId');
+    expect(JSON.stringify(room)).not.toContain('session-1');
+  });
+
+  it.each([
+    ['ROOM99', 'player-1', 'session-1'],
+    ['ROOM01', 'unknown-player', 'session-1'],
+    ['ROOM01', 'player-1', 'wrong-session'],
+  ])(
+    'rejects subscription credentials without disclosing which value failed (%s)',
+    async (roomCode, playerId, sessionId) => {
+      await createRoom();
+
+      const attempt = Promise.resolve().then(() =>
+        (
+          service as unknown as {
+            authorizeSubscription(
+              roomCode: string,
+              playerId: string,
+              sessionId: string,
+            ): Promise<PokeLoungePublicRoomState>;
+          }
+        ).authorizeSubscription(roomCode, playerId, sessionId),
+      );
+
+      await expect(attempt).rejects.toMatchObject({
+        message: 'Poke Lounge room subscription rejected',
+      });
+    },
+  );
 
   it('retries room-code collisions and preserves the capacity error', async () => {
     await createRoom();

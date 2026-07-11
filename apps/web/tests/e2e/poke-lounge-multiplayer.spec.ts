@@ -14,7 +14,25 @@ type PokeLoungeWindow = Window & {
       };
     };
   };
+  __POKE_LOUNGE_SOCKET_TEST__?: PokeLoungeSocketTestControl;
 };
+
+interface PokeLoungeSocketTestControl {
+  createdCount(): number;
+  connected(): boolean;
+  disconnect(): void;
+  emitRevisionConflict(room: unknown): void;
+  emitSnapshot(room: unknown): void;
+  emitSubscriptionError(): void;
+  reconnect(): void;
+  subscriptions(): Array<{
+    roomCode: string;
+    playerId: string;
+    sessionId: string;
+    afterRevision: number;
+  }>;
+  transportErrors(): string[];
+}
 
 const LOCALE = "ko-KR";
 const ROOM_CODE = "SRV001";
@@ -59,6 +77,108 @@ test.describe("Poke Lounge server multiplayer", () => {
     await expect(page.getByTestId("poke-lounge-result-score")).toHaveText("100", {
       timeout: 30000,
     });
+  });
+
+  test("newer socket revision은 지연된 stale REST recovery보다 우선한다", async ({ page }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, {
+      deferRecoveryGet: true,
+      recoveryGetRevision: 99,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+    await expect.poll(() => getSocketState(page).then(state => state.createdCount)).toBe(1);
+    await expect.poll(() => Promise.resolve(server.recoveryAfterRevisions.length)).toBe(1);
+
+    server.revision = 100;
+    await emitSocketSnapshot(page, createCompletedRoomState(server));
+    server.resolveRecoveryGet?.();
+    await expect(page.getByTestId("poke-lounge-result-score")).toHaveText("100", {
+      timeout: 5000,
+    });
+
+    const requestCount = server.commandRequests.length;
+    await sendPartySnapshot(page);
+    await expect
+      .poll(() => Promise.resolve(server.commandRequests.length))
+      .toBeGreaterThan(requestCount);
+    expect(server.commandRequests.at(-1)?.revision).toBe("100");
+  });
+
+  test("disconnect와 reconnect는 한 socket에서 REST recovery와 재구독을 수행한다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, { waitForResult: true, wrapped: true });
+    await startServerRoom(page);
+    await expect.poll(() => getSocketState(page).then(state => state.subscriptions.length)).toBe(1);
+
+    await emitSocketSnapshot(page, createTournamentRoomState(server));
+    const recoveryBeforeDisconnect = server.recoveryAfterRevisions.length;
+    await disconnectSocket(page);
+    await expect
+      .poll(() => Promise.resolve(server.recoveryAfterRevisions.length), { timeout: 3000 })
+      .toBeGreaterThan(recoveryBeforeDisconnect);
+    expect(server.calls).not.toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/leave`);
+
+    await reconnectSocket(page);
+    await expect.poll(() => getSocketState(page).then(state => state.subscriptions.length)).toBe(2);
+    await expect.poll(() => getSocketState(page).then(state => state.createdCount)).toBe(1);
+    expect((await getSocketState(page)).subscriptions.at(-1)?.afterRevision).toBe(server.revision);
+
+    server.revision += 1;
+    await emitSocketSnapshot(page, createTournamentRoomState(server));
+    const recoveryAfterSubscribedSnapshot = server.recoveryAfterRevisions.length;
+    await page.waitForTimeout(750);
+    expect(server.recoveryAfterRevisions).toHaveLength(recoveryAfterSubscribedSnapshot);
+  });
+
+  test("subscription 실패 recovery는 유효한 snapshot에서 timer를 정리한다", async ({ page }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, { waitForResult: true, wrapped: true });
+    await startServerRoom(page);
+    await expect.poll(() => getSocketState(page).then(state => state.connected)).toBe(true);
+    const recoveryBeforeFailure = server.recoveryAfterRevisions.length;
+
+    await emitSocketSubscriptionError(page);
+    await expect
+      .poll(() => Promise.resolve(server.recoveryAfterRevisions.length), { timeout: 3000 })
+      .toBeGreaterThan(recoveryBeforeFailure);
+    await emitSocketSnapshot(page, createTournamentRoomState(server));
+    await page.waitForTimeout(300);
+    const recoveryAfterSnapshot = server.recoveryAfterRevisions.length;
+    await page.waitForTimeout(750);
+
+    expect(server.recoveryAfterRevisions).toHaveLength(recoveryAfterSnapshot);
+  });
+
+  test("cursor regression은 lower snapshot을 적용하지 않고 recovery를 중단한다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, { waitForResult: true, wrapped: true });
+    await startServerRoom(page);
+    await expect.poll(() => getSocketState(page).then(state => state.connected)).toBe(true);
+    server.revision = 20;
+    await emitSocketSnapshot(page, createCompletedRoomState(server));
+    await emitSocketRevisionConflict(page, {
+      ...createTournamentRoomState(server),
+      revision: 19,
+    });
+
+    await expect.poll(() => getSocketState(page).then(state => state.connected)).toBe(false);
+    await expect
+      .poll(() => getSocketState(page).then(state => state.transportErrors.join("\n")))
+      .toContain("fresh room session");
+    const recoveryAfterConflict = server.recoveryAfterRevisions.length;
+    await page.waitForTimeout(750);
+    expect(server.recoveryAfterRevisions).toHaveLength(recoveryAfterConflict);
+    await expect(page.getByTestId("poke-lounge-result-score")).toHaveText("100");
   });
 
   test("server room result submit이 거부되면 클라이언트는 토너먼트 결과를 임의 성공 처리하지 않는다", async ({
@@ -378,7 +498,7 @@ test.describe("Poke Lounge server multiplayer", () => {
     });
   });
 
-  test("server room revision conflict 재시도는 idempotency key를 유지하고 revision만 갱신한다", async ({
+  test("server room revision conflict는 snapshot만 반영하고 command를 자동 재시도하지 않는다", async ({
     page,
   }) => {
     const server = createMockServerState();
@@ -398,21 +518,20 @@ test.describe("Poke Lounge server multiplayer", () => {
           ),
         { timeout: 30000 },
       )
-      .toBe(2);
+      .toBe(1);
+    await page.waitForTimeout(500);
 
     const readyHeaders = server.commandHeaders.filter(headers => headers.suffix === "/ready");
-    expect(readyHeaders[0].idempotencyKey).toBe(readyHeaders[1].idempotencyKey);
-    expect(readyHeaders[0].revision).not.toBe(readyHeaders[1].revision);
-    expect(readyHeaders[1].revision).toBe(String(server.conflictRevision));
+    expect(readyHeaders).toHaveLength(1);
+    expect(readyHeaders[0].revision).not.toBe(String(server.conflictRevision));
   });
 
-  test("stale conflict보다 최신 polling 상태를 사용해 같은 POST를 한 번만 재시도한다", async ({
+  test("stale conflict snapshot은 최신 socket revision을 덮거나 POST를 재시도하지 않는다", async ({
     page,
   }) => {
     const server = createMockServerState();
 
     await mockServerRoom(page, server, {
-      advanceRevisionOnGetAfterConflict: true,
       revisionConflictDelayMs: 1000,
       revisionConflictAttempt: 2,
       revisionConflictSuffix: "/party-snapshot",
@@ -440,18 +559,27 @@ test.describe("Poke Lounge server multiplayer", () => {
           ),
         { timeout: 5000 },
       )
-      .toBe(partyRequestsBefore + 2);
-    expect(server.concurrentPollRevision).not.toBeNull();
-    const [first, retry] = server.commandRequests
-      .filter(request => request.suffix === "/party-snapshot")
-      .slice(-2);
+      .toBe(partyRequestsBefore + 1);
+    server.revision += 2;
+    await emitSocketSnapshot(page, createTournamentRoomState(server));
+    const socketRevision = server.revision;
+    await page.waitForTimeout(1200);
 
-    expect(retry).toMatchObject({
+    const [request] = server.commandRequests
+      .filter(request => request.suffix === "/party-snapshot")
+      .slice(-1);
+
+    expect(request).toMatchObject({
       method: "POST",
-      body: first.body,
-      idempotencyKey: first.idempotencyKey,
-      revision: String(server.concurrentPollRevision),
     });
+    expect(Number(request.revision)).toBeLessThan(socketRevision);
+
+    const commandCount = server.commandRequests.length;
+    await sendPartySnapshot(page);
+    await expect
+      .poll(() => Promise.resolve(server.commandRequests.length))
+      .toBeGreaterThan(commandCount);
+    expect(server.commandRequests.at(-1)?.revision).toBe(String(socketRevision));
   });
 
   test("idempotency conflict snapshot은 적용하고 동일 command를 재시도하지 않는다", async ({
@@ -478,7 +606,7 @@ test.describe("Poke Lounge server multiplayer", () => {
     });
   });
 
-  test("join preflight의 오래된 GET은 이미 적용한 최신 revision을 덮어쓰지 않는다", async ({
+  test("room connect 재호출은 같은 identity의 join과 socket을 추가 생성하지 않는다", async ({
     page,
   }) => {
     const server = createMockServerState();
@@ -490,19 +618,15 @@ test.describe("Poke Lounge server multiplayer", () => {
         Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
       )
       .toBe(true);
-    const expectedRevision = server.revision;
-    server.returnStaleGet = true;
+    const joinCount = server.commandHeaders.filter(header => header.suffix === "/join").length;
 
     expect(await reconnectServerRoom(page)).toBe(true);
-    await expect
-      .poll(() =>
-        Promise.resolve(server.commandHeaders.filter(header => header.suffix === "/join").length),
-      )
-      .toBe(2);
+    await page.waitForTimeout(500);
 
-    expect(server.commandHeaders.filter(header => header.suffix === "/join")[1]).toMatchObject({
-      revision: String(expectedRevision),
-    });
+    expect(server.commandHeaders.filter(header => header.suffix === "/join")).toHaveLength(
+      joinCount,
+    );
+    expect((await getSocketState(page)).createdCount).toBe(1);
   });
 
   test("server room network 재시도는 같은 command header를 재사용한다", async ({ page }) => {
@@ -693,6 +817,54 @@ async function reconnectServerRoom(page: Page): Promise<boolean> {
   });
 }
 
+async function getSocketState(page: Page): Promise<{
+  connected: boolean;
+  createdCount: number;
+  subscriptions: ReturnType<PokeLoungeSocketTestControl["subscriptions"]>;
+  transportErrors: string[];
+}> {
+  return page.evaluate(() => {
+    const control = (window as PokeLoungeWindow).__POKE_LOUNGE_SOCKET_TEST__;
+
+    return {
+      connected: control?.connected() ?? false,
+      createdCount: control?.createdCount() ?? 0,
+      subscriptions: control?.subscriptions() ?? [],
+      transportErrors: control?.transportErrors() ?? [],
+    };
+  });
+}
+
+async function emitSocketSnapshot(page: Page, room: unknown): Promise<void> {
+  await page.evaluate(value => {
+    (window as PokeLoungeWindow).__POKE_LOUNGE_SOCKET_TEST__?.emitSnapshot(value);
+  }, room);
+}
+
+async function emitSocketRevisionConflict(page: Page, room: unknown): Promise<void> {
+  await page.evaluate(value => {
+    (window as PokeLoungeWindow).__POKE_LOUNGE_SOCKET_TEST__?.emitRevisionConflict(value);
+  }, room);
+}
+
+async function emitSocketSubscriptionError(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    (window as PokeLoungeWindow).__POKE_LOUNGE_SOCKET_TEST__?.emitSubscriptionError();
+  });
+}
+
+async function disconnectSocket(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    (window as PokeLoungeWindow).__POKE_LOUNGE_SOCKET_TEST__?.disconnect();
+  });
+}
+
+async function reconnectSocket(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    (window as PokeLoungeWindow).__POKE_LOUNGE_SOCKET_TEST__?.reconnect();
+  });
+}
+
 async function expectServerRoomUrl(page: Page): Promise<void> {
   await expect
     .poll(
@@ -706,6 +878,112 @@ async function expectServerRoomUrl(page: Page): Promise<void> {
     .toBe(`server:${ROOM_CODE}`);
 }
 
+async function installSocketFixture(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    type Listener = (...args: unknown[]) => void;
+    type Subscription = {
+      roomCode: string;
+      playerId: string;
+      sessionId: string;
+      afterRevision: number;
+    };
+
+    const sockets: FixtureSocket[] = [];
+    const subscriptions: Subscription[] = [];
+    const transportErrors: string[] = [];
+    window.addEventListener("poke-lounge:server-room-error", event => {
+      const detail = (event as CustomEvent<{ message?: unknown }>).detail;
+
+      if (typeof detail?.message === "string") {
+        transportErrors.push(detail.message);
+      }
+    });
+
+    class FixtureSocket {
+      connected = false;
+      private readonly listeners = new Map<string, Set<Listener>>();
+
+      on(eventName: string, listener: Listener): this {
+        const eventListeners = this.listeners.get(eventName) ?? new Set<Listener>();
+        eventListeners.add(listener);
+        this.listeners.set(eventName, eventListeners);
+        return this;
+      }
+
+      off(eventName: string, listener?: Listener): this {
+        if (listener) {
+          this.listeners.get(eventName)?.delete(listener);
+        } else {
+          this.listeners.delete(eventName);
+        }
+        return this;
+      }
+
+      emit(eventName: string, payload?: unknown): this {
+        if (eventName === "room.subscribe" && payload && typeof payload === "object") {
+          subscriptions.push(structuredClone(payload) as Subscription);
+        }
+        return this;
+      }
+
+      disconnect(): this {
+        this.disconnectFromServer("io client disconnect");
+        return this;
+      }
+
+      connectFromServer(): void {
+        if (this.connected) {
+          return;
+        }
+        this.connected = true;
+        this.dispatch("connect");
+      }
+
+      disconnectFromServer(reason: string): void {
+        if (!this.connected) {
+          return;
+        }
+        this.connected = false;
+        this.dispatch("disconnect", reason);
+      }
+
+      dispatch(eventName: string, ...args: unknown[]): void {
+        for (const listener of this.listeners.get(eventName) ?? []) {
+          listener(...args);
+        }
+      }
+    }
+
+    const fixtureWindow = window as Window & {
+      __POKE_LOUNGE_E2E_SOCKET_FACTORY__?: () => FixtureSocket;
+      __POKE_LOUNGE_SOCKET_TEST__?: PokeLoungeSocketTestControl;
+    };
+    const latestSocket = () => sockets.at(-1);
+
+    fixtureWindow.__POKE_LOUNGE_E2E_SOCKET_FACTORY__ = () => {
+      const socket = new FixtureSocket();
+      sockets.push(socket);
+      queueMicrotask(() => socket.connectFromServer());
+      return socket;
+    };
+    fixtureWindow.__POKE_LOUNGE_SOCKET_TEST__ = {
+      createdCount: () => sockets.length,
+      connected: () => latestSocket()?.connected ?? false,
+      subscriptions: () => structuredClone(subscriptions),
+      transportErrors: () => [...transportErrors],
+      disconnect: () => latestSocket()?.disconnectFromServer("transport close"),
+      reconnect: () => latestSocket()?.connectFromServer(),
+      emitSnapshot: room => latestSocket()?.dispatch("room.snapshot", { room }),
+      emitRevisionConflict: room => latestSocket()?.dispatch("room.revision-conflict", { room }),
+      emitSubscriptionError: () =>
+        latestSocket()?.dispatch("room.subscription-error", {
+          code: "POKE_LOUNGE_SUBSCRIPTION_REJECTED",
+          message: "Poke Lounge room subscription rejected",
+        }),
+    };
+  });
+}
+
 async function mockServerRoom(
   page: Page,
   server: MockServerState,
@@ -713,10 +991,12 @@ async function mockServerRoom(
     advanceRevisionOnGetAfterConflict?: boolean;
     completeOnGet?: boolean;
     deferCreateResponse?: boolean;
+    deferRecoveryGet?: boolean;
     idempotencyConflictSuffix?: string;
     mutationDelayMs?: number;
     networkFailureSuffix?: string;
     rejectResult?: boolean;
+    recoveryGetRevision?: number;
     revisionConflictAttempt?: number;
     revisionConflictDelayMs?: number;
     revisionConflictSuffix?: string;
@@ -724,6 +1004,7 @@ async function mockServerRoom(
     wrapped?: boolean;
   } = {},
 ): Promise<void> {
+  await installSocketFixture(page);
   await page.route("**/poke-lounge/rooms**", async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -732,6 +1013,31 @@ async function mockServerRoom(
     const mutation = method === "POST";
 
     server.calls.push(`${method} ${url.pathname}`);
+
+    const afterRevision = url.searchParams.get("afterRevision");
+
+    if (method === "GET" && afterRevision !== null) {
+      server.recoveryAfterRevisions.push(Number(afterRevision));
+
+      if (options.deferRecoveryGet && !server.recoveryGetDeferred) {
+        server.recoveryGetDeferred = true;
+        await new Promise<void>(resolve => {
+          server.resolveRecoveryGet = resolve;
+        });
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: stringifyResponse(
+            {
+              ...createTournamentRoomState(server),
+              revision: options.recoveryGetRevision ?? Math.max(0, server.revision - 1),
+            },
+            options,
+          ),
+        });
+        return;
+      }
+    }
 
     if (mutation) {
       const idempotencyKey = request.headers()["x-idempotency-key"];
@@ -947,6 +1253,9 @@ interface MockServerState {
   idempotencyConflictReturned: boolean;
   maxConcurrentMutations: number;
   networkFailureReturned: boolean;
+  recoveryAfterRevisions: number[];
+  recoveryGetDeferred: boolean;
+  resolveRecoveryGet?: () => void;
   partySnapshotBodies: Array<{
     playerId?: string;
     sessionId?: string;
@@ -993,6 +1302,8 @@ function createMockServerState(): MockServerState {
     idempotencyConflictReturned: false,
     maxConcurrentMutations: 0,
     networkFailureReturned: false,
+    recoveryAfterRevisions: [],
+    recoveryGetDeferred: false,
     partySnapshotBodies: [],
     resultBodies: [],
     resultAccepted: false,

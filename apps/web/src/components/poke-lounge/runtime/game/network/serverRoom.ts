@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from "@/lib/constants";
+import { io } from "socket.io-client";
 import type { MultiplayerRoom, PlayerSnapshot, RoomEvent, RoomMessage } from "./localPreviewRoom";
 
 type Handler<T extends RoomMessage> = (payload: RoomEvent[T]) => void;
@@ -59,11 +60,31 @@ export interface ServerRoomOptions {
   sessionId?: string;
   playerId?: string;
   createRoom?: boolean;
-  pollIntervalMs?: number;
+  onTransportError?: (error: Error) => void;
 }
 
+interface ServerRoomSocket {
+  readonly connected: boolean;
+  on(eventName: string, listener: ServerRoomSocketListener): ServerRoomSocket;
+  off(eventName: string, listener: ServerRoomSocketListener): ServerRoomSocket;
+  emit(eventName: string, payload: unknown): ServerRoomSocket;
+  disconnect(): ServerRoomSocket;
+}
+
+type ServerRoomSocketListener = (() => void) | ((event: unknown) => void);
+
+type ServerRoomSocketFactory = (
+  url: string,
+  options: {
+    path: "/socket.io";
+    transports: ["websocket"];
+    reconnection: true;
+  },
+) => ServerRoomSocket;
+
 const SERVER_IDENTITY_STORAGE_KEY = "poke-lounge:server-room-identity";
-const DEFAULT_POLL_INTERVAL_MS = 750;
+const RECOVERY_INITIAL_DELAY_MS = 250;
+const RECOVERY_MAX_DELAY_MS = 5000;
 const CLIENT_FINAL_ROUND_INDEX = 3;
 const PENDING_ROOM_ID = "server-pending";
 const REVISION_CONFLICT_CODE = "POKE_LOUNGE_REVISION_CONFLICT";
@@ -91,11 +112,20 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   const serverPlayerId = identity.playerId;
   let localPlayerId = serverPlayerId;
   let activeRoomId = options.roomId ?? PENDING_ROOM_ID;
-  const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
+  const socketFactory = resolveServerRoomSocketFactory();
   const handlers = new Map<RoomMessage, Set<Handler<RoomMessage>>>();
   let disposed = false;
-  let pollTimer: number | null = null;
+  let recoveryTimer: number | null = null;
+  let recoveryAttempt = 0;
+  let recoveryInFlight = false;
+  let recoveryQueued = false;
   let latestState: ServerRoomState | null = null;
+  let lastAppliedRevision = -1;
+  let roomSocket: ServerRoomSocket | null = null;
+  let socketConnected = false;
+  let subscriptionFailed = false;
+  let cursorRegression = false;
+  let connectStarted = false;
   let mutationQueue: Promise<void> = Promise.resolve();
   let announcedTournament = false;
   let announcedCompletion = false;
@@ -105,6 +135,20 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     for (const handler of handlers.get(type) ?? []) {
       handler(payload as RoomEvent[RoomMessage]);
     }
+  };
+
+  const reportTransportError = (error: Error) => {
+    if (options.onTransportError) {
+      options.onTransportError(error);
+    } else {
+      console.error(error);
+    }
+
+    window.dispatchEvent(
+      new CustomEvent("poke-lounge:server-room-error", {
+        detail: { code: "CURSOR_REGRESSION", message: error.message },
+      }),
+    );
   };
 
   const requestRoom = async (path: string, init?: RequestInit): Promise<ServerRoomState> => {
@@ -144,7 +188,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
 
     return enqueueMutation(async () => {
       const resolvedBody = typeof body === "function" ? await body() : body;
-      let expectedRevision = await revisionResolver();
+      const expectedRevision = await revisionResolver();
       const send = (revision: number) =>
         requestRoom(path, {
           method: "POST",
@@ -164,60 +208,185 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
           throw error;
         }
 
-        applyServerState(conflict.snapshot);
+        applySnapshot(conflict.snapshot);
 
-        if (conflict.code === IDEMPOTENCY_CONFLICT_CODE) {
-          throw error;
-        }
-
-        expectedRevision = getLatestRevision();
-
-        try {
-          return await retryOneNetworkFailure(() => send(expectedRevision));
-        } catch (retryError) {
-          const retryConflict = getServerRoomConflict(retryError);
-
-          if (retryConflict) {
-            applyServerState(retryConflict.snapshot);
-          }
-
-          throw retryError;
-        }
+        throw error;
       }
     });
   };
 
-  const schedulePoll = () => {
-    if (disposed || pollTimer) {
-      return;
+  const clearRecoveryTimer = (resetAttempt = true) => {
+    if (recoveryTimer !== null) {
+      window.clearTimeout(recoveryTimer);
+      recoveryTimer = null;
     }
 
-    pollTimer = window.setTimeout(() => {
-      pollTimer = null;
-      void poll();
-    }, pollIntervalMs);
+    if (resetAttempt) {
+      recoveryAttempt = 0;
+    }
   };
 
-  const poll = async () => {
-    if (disposed) {
+  const isTerminalState = () =>
+    latestState?.status === "completed" || latestState?.status === "closed";
+
+  const shouldContinueRecovery = () =>
+    !disposed &&
+    !cursorRegression &&
+    !isTerminalState() &&
+    (!socketConnected || subscriptionFailed);
+
+  const scheduleRecovery = () => {
+    if (!shouldContinueRecovery() || recoveryTimer !== null || recoveryInFlight) {
       return;
     }
+
+    const delayMs = Math.min(
+      RECOVERY_INITIAL_DELAY_MS * 2 ** recoveryAttempt,
+      RECOVERY_MAX_DELAY_MS,
+    );
+    recoveryAttempt += 1;
+    recoveryTimer = window.setTimeout(() => {
+      recoveryTimer = null;
+      void runRecovery();
+    }, delayMs);
+  };
+
+  const runRecovery = async () => {
+    if (disposed || cursorRegression || activeRoomId === PENDING_ROOM_ID) {
+      return;
+    }
+
+    if (recoveryInFlight) {
+      recoveryQueued = true;
+      return;
+    }
+
+    recoveryInFlight = true;
+    try {
+      const room = await requestRoom(
+        `/poke-lounge/rooms/${activeRoomId}?afterRevision=${lastAppliedRevision}`,
+      );
+      applySnapshot(room);
+    } catch {
+      subscriptionFailed = socketConnected;
+    } finally {
+      recoveryInFlight = false;
+
+      if (recoveryQueued) {
+        recoveryQueued = false;
+        void runRecovery();
+        return;
+      }
+
+      scheduleRecovery();
+    }
+  };
+
+  const handleSocketConnect = () => {
+    if (disposed || cursorRegression || !roomSocket || activeRoomId === PENDING_ROOM_ID) {
+      return;
+    }
+
+    socketConnected = true;
+    subscriptionFailed = false;
+    clearRecoveryTimer();
+    roomSocket.emit("room.subscribe", {
+      roomCode: activeRoomId,
+      playerId: serverPlayerId,
+      sessionId,
+      afterRevision: lastAppliedRevision,
+    });
+    void runRecovery();
+  };
+
+  const handleSocketDisconnect = () => {
+    socketConnected = false;
+    scheduleRecovery();
+  };
+
+  const handleSocketSnapshot = (event: unknown) => {
+    let room: ServerRoomState;
 
     try {
-      applyServerState(await requestRoom(`/poke-lounge/rooms/${activeRoomId}`));
-    } finally {
-      if (!disposed && latestState?.status !== "completed" && latestState?.status !== "closed") {
-        schedulePoll();
-      }
+      room = parseSocketRoomEvent(event);
+    } catch {
+      subscriptionFailed = true;
+      scheduleRecovery();
+      return;
+    }
+
+    const applied = applySnapshot(room);
+
+    if (applied && socketConnected) {
+      subscriptionFailed = false;
+      clearRecoveryTimer();
     }
   };
 
-  const applyServerState = (state: ServerRoomState) => {
-    if (latestState?.roomCode === state.roomCode && state.revision < latestState.revision) {
+  const handleSubscriptionError = () => {
+    if (disposed || cursorRegression) {
       return;
+    }
+
+    subscriptionFailed = true;
+    scheduleRecovery();
+  };
+
+  const handleRevisionConflict = (event: unknown) => {
+    let room: ServerRoomState;
+
+    try {
+      room = parseSocketRoomEvent(event);
+    } catch {
+      return;
+    }
+
+    if (room.roomCode !== activeRoomId || room.revision >= lastAppliedRevision) {
+      return;
+    }
+
+    cursorRegression = true;
+    subscriptionFailed = false;
+    clearRecoveryTimer();
+    reportTransportError(
+      new Error("Poke Lounge room cursor regressed; a fresh room session is required"),
+    );
+    roomSocket?.disconnect();
+  };
+
+  const ensureSocket = () => {
+    if (roomSocket || disposed || cursorRegression || activeRoomId === PENDING_ROOM_ID) {
+      return;
+    }
+
+    roomSocket = socketFactory(`${getApiBaseUrl().replace(/\/$/, "")}/poke-lounge`, {
+      path: "/socket.io",
+      transports: ["websocket"],
+      reconnection: true,
+    });
+    roomSocket.on("connect", handleSocketConnect);
+    roomSocket.on("disconnect", handleSocketDisconnect);
+    roomSocket.on("room.snapshot", handleSocketSnapshot);
+    roomSocket.on("room.subscription-error", handleSubscriptionError);
+    roomSocket.on("room.revision-conflict", handleRevisionConflict);
+
+    if (roomSocket.connected) {
+      handleSocketConnect();
+    }
+  };
+
+  const applySnapshot = (state: ServerRoomState): boolean => {
+    const acceptsCreatedRoom = activeRoomId === PENDING_ROOM_ID;
+
+    if (
+      (!acceptsCreatedRoom && state.roomCode !== activeRoomId) ||
+      state.revision < lastAppliedRevision
+    ) {
+      return false;
     }
 
     latestState = state;
+    lastAppliedRevision = state.revision;
     activeRoomId = state.roomCode;
     emit("CURRENT_PLAYERS", {
       players: Object.fromEntries(
@@ -252,20 +421,24 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       announcedCompletion = true;
       const champion = state.finalStandings.find(standing => standing.rank === 1);
 
-      if (!champion) {
-        return;
+      if (champion) {
+        emit("TOURNAMENT_COMPLETED", {
+          roundIndex: Math.max(state.round.index, CLIENT_FINAL_ROUND_INDEX),
+          hostPlayerId: getHostPlayerIdForLocalStore(state),
+          championPlayerId: mapServerPlayerIdForLocalStore(champion.playerId),
+          standings: state.finalStandings.map(standing => ({
+            ...standing,
+            playerId: mapServerPlayerIdForLocalStore(standing.playerId),
+          })),
+        });
       }
-
-      emit("TOURNAMENT_COMPLETED", {
-        roundIndex: Math.max(state.round.index, CLIENT_FINAL_ROUND_INDEX),
-        hostPlayerId: getHostPlayerIdForLocalStore(state),
-        championPlayerId: mapServerPlayerIdForLocalStore(champion.playerId),
-        standings: state.finalStandings.map(standing => ({
-          ...standing,
-          playerId: mapServerPlayerIdForLocalStore(standing.playerId),
-        })),
-      });
     }
+
+    if (isTerminalState()) {
+      clearRecoveryTimer();
+    }
+
+    return true;
   };
 
   const submitMatchResult = async (payload: {
@@ -298,7 +471,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       },
       getLatestRevision,
     );
-    applyServerState(nextState);
+    applySnapshot(nextState);
   };
 
   const submitPartySnapshot = async (snapshot: PlayerSnapshot) => {
@@ -313,7 +486,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       getLatestRevision,
     );
 
-    applyServerState(nextState);
+    applySnapshot(nextState);
   };
 
   const e2eResultHandler = (event: Event) => {
@@ -340,10 +513,11 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     },
     sessionId,
     connect(initialSnapshot) {
-      if (disposed) {
+      if (disposed || connectStarted) {
         return;
       }
 
+      connectStarted = true;
       const snapshot = initialSnapshot ?? createDefaultSnapshot(sessionId, localPlayerId);
       localPlayerId = snapshot.playerId?.trim() || localPlayerId;
       void connectServerRoom(snapshot);
@@ -354,9 +528,15 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       }
 
       disposed = true;
-      if (pollTimer) {
-        window.clearTimeout(pollTimer);
-        pollTimer = null;
+      clearRecoveryTimer();
+      if (roomSocket) {
+        roomSocket.off("connect", handleSocketConnect);
+        roomSocket.off("disconnect", handleSocketDisconnect);
+        roomSocket.off("room.snapshot", handleSocketSnapshot);
+        roomSocket.off("room.subscription-error", handleSubscriptionError);
+        roomSocket.off("room.revision-conflict", handleRevisionConflict);
+        roomSocket.disconnect();
+        roomSocket = null;
       }
       window.removeEventListener("poke-lounge:e2e-server-result", e2eResultHandler);
       requestLeave();
@@ -407,7 +587,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
 
     return mutateRoom(`/poke-lounge/rooms/${activeRoomId}/join`, JSON.parse(body), async () => {
       const current = await requestRoom(`/poke-lounge/rooms/${activeRoomId}`);
-      applyServerState(current);
+      applySnapshot(current);
 
       return getLatestRevision();
     });
@@ -416,12 +596,14 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   async function connectServerRoom(snapshot: PlayerSnapshot): Promise<void> {
     try {
       const opened = await openServerRoom(snapshot);
-      applyServerState(opened);
+      applySnapshot(opened);
 
       if (disposed) {
         requestLeave();
         return;
       }
+
+      ensureSocket();
 
       await submitPartySnapshot(snapshot);
 
@@ -439,21 +621,15 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         },
         getLatestRevision,
       );
-      applyServerState(ready);
+      applySnapshot(ready);
 
       if (disposed) {
         requestLeave();
         return;
       }
-
-      await poll();
-
-      if (disposed) {
-        requestLeave();
-      }
     } catch {
-      if (!disposed) {
-        schedulePoll();
+      if (!disposed && activeRoomId !== PENDING_ROOM_ID) {
+        scheduleRecovery();
       }
     }
   }
@@ -648,6 +824,30 @@ function parseServerRoomState(value: unknown): ServerRoomState {
   }
 
   return value as ServerRoomState;
+}
+
+function parseSocketRoomEvent(value: unknown): ServerRoomState {
+  if (!value || typeof value !== "object" || !("room" in value)) {
+    throw new Error("Poke Lounge socket room event is malformed");
+  }
+
+  return parseServerRoomState((value as { room: unknown }).room);
+}
+
+function resolveServerRoomSocketFactory(): ServerRoomSocketFactory {
+  if (typeof window !== "undefined" && isE2eEnabled()) {
+    const e2eFactory = (
+      window as Window & {
+        __POKE_LOUNGE_E2E_SOCKET_FACTORY__?: ServerRoomSocketFactory;
+      }
+    ).__POKE_LOUNGE_E2E_SOCKET_FACTORY__;
+
+    if (e2eFactory) {
+      return e2eFactory;
+    }
+  }
+
+  return (url, options) => io(url, options) as unknown as ServerRoomSocket;
 }
 
 function createIdempotencyKey(): string {

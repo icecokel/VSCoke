@@ -14,6 +14,7 @@ import {
   ApiCreatedResponse,
   ApiHeader,
   ApiOkResponse,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
@@ -67,10 +68,19 @@ export class PokeLoungeController {
 
   @Get('rooms/:roomCode')
   @ApiOkResponse({ type: PokeLoungeRoomResponseDto })
+  @ApiQuery({
+    name: 'afterRevision',
+    required: false,
+    type: Number,
+    minimum: 0,
+  })
   async getRoom(
     @Param('roomCode') roomCode: string,
     @Query('nowMs') nowMs?: string,
+    @Query('afterRevision') afterRevision?: string,
   ) {
+    parseOptionalRevision(afterRevision);
+
     return toPokeLoungePublicRoomState(
       await this.roomService.getRoom(roomCode, parseOptionalNumber(nowMs)),
     );
@@ -201,6 +211,28 @@ export class PokeLoungeController {
       ),
     );
   }
+}
+
+function parseOptionalRevision(value: string | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!REVISION_PATTERN.test(value)) {
+    throw new BadRequestException(
+      'afterRevision must be a non-negative safe integer',
+    );
+  }
+
+  const revision = Number(value);
+
+  if (!Number.isSafeInteger(revision)) {
+    throw new BadRequestException(
+      'afterRevision must be a non-negative safe integer',
+    );
+  }
+
+  return revision;
 }
 
 function parseRoomCommandHeaders(

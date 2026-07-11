@@ -97,11 +97,14 @@ export function createPokeLoungeGame(
       new WorldScene(gameStateStore, options.multiplayerRoom, {
         competitiveRoundsEnabled: options.competitiveRoundsEnabled,
       }),
-      new BattleScene(gameStateStore),
+      new BattleScene(gameStateStore, options.multiplayerRoom),
     ],
   });
   const unsubscribeGameResult = subscribeToFinalGameResult(gameStateStore, options.onGameResult);
-  game.events.once(Phaser.Core.Events.DESTROY, unsubscribeGameResult);
+  game.events.once(Phaser.Core.Events.DESTROY, () => {
+    unsubscribeGameResult();
+    options.multiplayerRoom?.dispose();
+  });
 
   if (shouldExposePokeLoungeE2eGlobals()) {
     window.__POKE_LOUNGE_GAME__ = game;

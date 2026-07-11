@@ -185,6 +185,8 @@ export class WorldScene extends Phaser.Scene {
   private readonly encounters: WorldSceneEncounterController;
   private readonly interactions: WorldSceneInteractionsController;
   private readonly competitiveRoundsEnabled: boolean;
+  private launchedCompetitiveAssignmentKey: string | null = null;
+  private preserveRoomForBattle = false;
 
   constructor(
     private readonly gameStateStore: GameStateStore = getDefaultGameStateStore(),
@@ -248,6 +250,7 @@ export class WorldScene extends Phaser.Scene {
 
   create(data: WorldSceneCreateData = {}): void {
     this.shutdownComplete = false;
+    this.preserveRoomForBattle = false;
     this.hud = createWorldSceneHud({
       getGameObjectFactory: () => this.add,
       gameStateStore: this.gameStateStore,
@@ -387,12 +390,14 @@ export class WorldScene extends Phaser.Scene {
     this.pendingRoomMessages = [];
     this.remotePlayerSnapshots.clear();
     this.lastLocalSnapshotSyncKey = "";
-    this.room.dispose();
-    this.gameStateStore.setSession({
-      sessionId: null,
-      roomId: null,
-      connectionStatus: "offline",
-    });
+    if (!this.preserveRoomForBattle) {
+      this.room.dispose();
+      this.gameStateStore.setSession({
+        sessionId: null,
+        roomId: null,
+        connectionStatus: "offline",
+      });
+    }
   }
 
   private registerLifecycleCleanup(): void {
@@ -774,6 +779,28 @@ export class WorldScene extends Phaser.Scene {
           Date.now(),
         );
         this.tournament?.clearPresentation();
+      }),
+      this.room.on("COMPETITIVE_ASSIGNMENT", payload => {
+        const { projection, ownPlayerId } = payload;
+        const assignmentKey = `${projection.matchId}:${projection.assignmentRevision}`;
+
+        if (
+          this.launchedCompetitiveAssignmentKey === assignmentKey ||
+          !projection.playerIds.includes(ownPlayerId)
+        ) {
+          return;
+        }
+
+        this.launchedCompetitiveAssignmentKey = assignmentKey;
+        this.preserveRoomForBattle = true;
+        this.player.setVelocity(0, 0);
+        this.encounters.playBattleIntroTransition(() => {
+          this.scene.start("battle", {
+            battleKind: "authoritative",
+            ownPlayerId,
+            projection,
+          });
+        });
       }),
       this.room.on("TOURNAMENT_MATCH_RESULT", payload => {
         if (!this.canApplyTournamentPayloadFromRoom(payload.hostPlayerId)) {

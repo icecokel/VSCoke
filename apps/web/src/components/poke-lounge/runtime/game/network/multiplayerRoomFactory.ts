@@ -5,6 +5,7 @@ import { createServerRoom } from "./serverRoom";
 export interface MultiplayerRoomFactoryOptions {
   searchParams: Pick<URLSearchParams, "get">;
   createWebRtcRoom?: () => MultiplayerRoom;
+  idToken?: string;
 }
 
 export function createMultiplayerRoom(options: MultiplayerRoomFactoryOptions): MultiplayerRoom {
@@ -24,6 +25,7 @@ export function createMultiplayerRoom(options: MultiplayerRoomFactoryOptions): M
       sessionId: options.searchParams.get("serverSessionId") ?? undefined,
       playerId: options.searchParams.get("serverPlayerId") ?? undefined,
       createRoom: roomEntry.createRoom === true,
+      idToken: options.idToken,
     });
   }
 

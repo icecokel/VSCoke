@@ -1,6 +1,12 @@
 import { getApiBaseUrl } from "@/lib/constants";
 import { io } from "socket.io-client";
-import type { MultiplayerRoom, PlayerSnapshot, RoomEvent, RoomMessage } from "./localPreviewRoom";
+import type {
+  CompetitiveProjection,
+  MultiplayerRoom,
+  PlayerSnapshot,
+  RoomEvent,
+  RoomMessage,
+} from "./localPreviewRoom";
 
 type Handler<T extends RoomMessage> = (payload: RoomEvent[T]) => void;
 
@@ -53,6 +59,7 @@ interface ServerRoomState {
     rank: number;
     score: number;
   }>;
+  competitive?: CompetitiveProjection;
 }
 
 export interface ServerRoomOptions {
@@ -60,7 +67,10 @@ export interface ServerRoomOptions {
   sessionId?: string;
   playerId?: string;
   createRoom?: boolean;
+  fetch?: typeof fetch;
+  idToken?: string;
   onTransportError?: (error: Error) => void;
+  socketFactory?: ServerRoomSocketFactory;
 }
 
 export const POKE_LOUNGE_FRESH_SESSION_REQUIRED_EVENT =
@@ -137,7 +147,8 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   const serverPlayerId = identity.playerId;
   let localPlayerId = serverPlayerId;
   let activeRoomId = options.roomId ?? PENDING_ROOM_ID;
-  const socketFactory = resolveServerRoomSocketFactory();
+  const fetchImpl = options.fetch ?? fetch;
+  const socketFactory = options.socketFactory ?? resolveServerRoomSocketFactory();
   const handlers = new Map<RoomMessage, Set<Handler<RoomMessage>>>();
   let disposed = false;
   let recoveryTimer: number | null = null;
@@ -154,6 +165,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   let mutationQueue: Promise<void> = Promise.resolve();
   let announcedTournament = false;
   let announcedCompletion = false;
+  let announcedCompetitiveAssignmentKey: string | null = null;
   let leaveSent = false;
   let leavePromise: Promise<void> | null = null;
 
@@ -181,7 +193,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     let response: Response;
 
     try {
-      response = await fetch(`${getApiBaseUrl()}${path}`, {
+      response = await fetchImpl(`${getApiBaseUrl()}${path}`, {
         ...init,
         headers: {
           "Content-Type": "application/json",
@@ -200,6 +212,41 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     }
 
     return parseServerRoomState(unwrapped);
+  };
+
+  const requestCompetitiveSeat = async (): Promise<CompetitiveProjection | null> => {
+    if (!options.idToken) {
+      return null;
+    }
+
+    let response: Response;
+    try {
+      response = await fetchImpl(
+        `${getApiBaseUrl()}/poke-lounge/rooms/${activeRoomId}/competitive-seat`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${options.idToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ sessionId }),
+        },
+      );
+    } catch (error) {
+      throw new ServerRoomFetchError(error);
+    }
+
+    const responseBody = unwrapApiResponse<unknown>(
+      parseResponseJson(await readResponseBody(response)),
+    );
+    if (!response.ok) {
+      throw new ServerRoomRequestError(response.status, responseBody);
+    }
+    if (responseBody === null) {
+      return null;
+    }
+
+    return parseCompetitiveProjection(responseBody);
   };
 
   const enqueueMutation = <T>(operation: () => Promise<T>): Promise<T> => {
@@ -452,6 +499,10 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       ),
     });
 
+    if (state.competitive) {
+      applyCompetitiveProjection(state.competitive);
+    }
+
     if (!announcedTournament && (state.status === "tournament" || state.status === "completed")) {
       announcedTournament = true;
       emit("TOURNAMENT_STARTED", {
@@ -488,37 +539,15 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     return true;
   };
 
-  const submitMatchResult = async (payload: {
-    matchId: string;
-    winnerPlayerId: string;
-    loserPlayerId?: string;
-    reason?: "faint" | "timeout" | "forfeit" | "run" | "capture";
-  }) => {
-    const nextState = await mutateRoom(
-      `/poke-lounge/rooms/${activeRoomId}/result`,
-      () => {
-        const match = latestState?.tournament.matches.find(row => row.matchId === payload.matchId);
-        const winnerPlayerId = mapLocalPlayerIdForServer(payload.winnerPlayerId);
-        const loserPlayerId =
-          (payload.loserPlayerId ? mapLocalPlayerIdForServer(payload.loserPlayerId) : undefined) ??
-          match?.participantIds.find(candidate => candidate !== winnerPlayerId);
+  const applyCompetitiveProjection = (projection: CompetitiveProjection) => {
+    const payload = { projection, ownPlayerId: serverPlayerId };
+    const assignmentKey = `${projection.matchId}:${projection.assignmentRevision}`;
 
-        if (!loserPlayerId) {
-          throw new Error("Poke Lounge server match opponent is unavailable");
-        }
-
-        return {
-          reportingPlayerId: serverPlayerId,
-          reportingSessionId: sessionId,
-          matchId: payload.matchId,
-          winnerPlayerId,
-          loserPlayerId,
-          reason: payload.reason ?? "faint",
-        };
-      },
-      getLatestRevision,
-    );
-    applySnapshot(nextState);
+    if (announcedCompetitiveAssignmentKey !== assignmentKey) {
+      announcedCompetitiveAssignmentKey = assignmentKey;
+      emit("COMPETITIVE_ASSIGNMENT", payload);
+    }
+    emit("COMPETITIVE_STATE", payload);
   };
 
   const submitPartySnapshot = async (snapshot: PlayerSnapshot) => {
@@ -536,23 +565,61 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     applySnapshot(nextState);
   };
 
-  const e2eResultHandler = (event: Event) => {
-    if (!isE2eEnabled()) {
+  const submitCompetitiveAction = async (
+    command: RoomEvent["COMPETITIVE_ACTION"],
+  ): Promise<void> => {
+    if (!options.idToken) {
       return;
     }
 
-    const detail = (event as CustomEvent<unknown>).detail;
+    const body = JSON.stringify({
+      assignmentRevision: command.assignmentRevision,
+      turn: command.turn,
+      clientCommandId: command.clientCommandId,
+      action: command.action,
+    });
+    const send = async (): Promise<CompetitiveProjection> => {
+      let response: Response;
+      try {
+        response = await fetchImpl(
+          `${getApiBaseUrl()}/poke-lounge/rooms/${activeRoomId}/matches/${command.matchId}/actions`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${options.idToken}`,
+              "Content-Type": "application/json",
+            },
+            body,
+          },
+        );
+      } catch (error) {
+        throw new ServerRoomFetchError(error);
+      }
 
-    if (!isResultDetail(detail)) {
-      return;
+      const responseBody = unwrapApiResponse<unknown>(
+        parseResponseJson(await readResponseBody(response)),
+      );
+      if (!response.ok) {
+        throw new ServerRoomRequestError(response.status, responseBody);
+      }
+      return parseCompetitiveProjection(responseBody);
+    };
+
+    try {
+      applyCompetitiveProjection(await retryOneNetworkFailure(send));
+    } catch (error) {
+      if (error instanceof ServerRoomRequestError && error.status === 409) {
+        emit("COMPETITIVE_RESYNC", {
+          matchId: command.matchId,
+          message: "서버 상태를 다시 불러오는 중...",
+        });
+        const room = await requestRoom(`/poke-lounge/rooms/${activeRoomId}`);
+        applySnapshot(room);
+        return;
+      }
+      throw error;
     }
-
-    void submitMatchResult(detail).catch(() => {});
   };
-
-  if (typeof window !== "undefined") {
-    window.addEventListener("poke-lounge:e2e-server-result", e2eResultHandler);
-  }
 
   return {
     get roomId() {
@@ -586,7 +653,6 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         roomSocket.disconnect();
         roomSocket = null;
       }
-      window.removeEventListener("poke-lounge:e2e-server-result", e2eResultHandler);
       void requestLeave();
       handlers.clear();
     },
@@ -600,9 +666,12 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         return;
       }
 
-      if (type === "TOURNAMENT_MATCH_RESULT") {
-        void submitMatchResult(payload as RoomEvent["TOURNAMENT_MATCH_RESULT"]).catch(() => {});
+      if (type === "COMPETITIVE_ACTION") {
+        void submitCompetitiveAction(payload as RoomEvent["COMPETITIVE_ACTION"]).catch(() => {});
+        return;
       }
+
+      // Server rooms never accept client-asserted tournament results.
     },
     on(type, handler) {
       const typedHandler = handler as Handler<RoomMessage>;
@@ -652,6 +721,22 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       }
 
       ensureSocket();
+
+      if (options.idToken) {
+        try {
+          const assignment = await requestCompetitiveSeat();
+          if (assignment) {
+            applyCompetitiveProjection(assignment);
+          }
+        } catch (error) {
+          if (
+            !(error instanceof ServerRoomRequestError) ||
+            ![401, 403, 409].includes(error.status)
+          ) {
+            throw error;
+          }
+        }
+      }
 
       await submitPartySnapshot(snapshot);
 
@@ -710,10 +795,6 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
 
   function mapServerPlayerIdForLocalStore(playerId: string): string {
     return playerId === serverPlayerId ? localPlayerId : playerId;
-  }
-
-  function mapLocalPlayerIdForServer(playerId: string): string {
-    return playerId === localPlayerId ? serverPlayerId : playerId;
   }
 
   function getHostPlayerIdForLocalStore(state: ServerRoomState): string {
@@ -788,21 +869,6 @@ function toRepresentativePokemonSnapshot(
     currentHp,
     maxHp,
   };
-}
-
-function isResultDetail(value: unknown): value is {
-  matchId: string;
-  winnerPlayerId: string;
-  loserPlayerId?: string;
-  reason?: "faint" | "timeout" | "forfeit" | "run" | "capture";
-} {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const record = value as Record<string, unknown>;
-
-  return typeof record.matchId === "string" && typeof record.winnerPlayerId === "string";
 }
 
 function isE2eEnabled(): boolean {
@@ -904,7 +970,38 @@ function parseServerRoomState(value: unknown): ServerRoomState {
     throw new ServerRoomSchemaError();
   }
 
-  return value as ServerRoomState;
+  const parsed = value as ServerRoomState;
+  if (parsed.competitive !== undefined) {
+    parsed.competitive = parseCompetitiveProjection(parsed.competitive);
+  }
+
+  return parsed;
+}
+
+function parseCompetitiveProjection(value: unknown): CompetitiveProjection {
+  if (!value || typeof value !== "object") {
+    throw new ServerRoomSchemaError();
+  }
+
+  const projection = value as Record<string, unknown>;
+  const currentState = projection.currentState;
+  if (
+    typeof projection.matchId !== "string" ||
+    !Number.isSafeInteger(projection.assignmentRevision) ||
+    !Number.isSafeInteger(projection.currentTurn) ||
+    typeof projection.rulesetVersion !== "number" ||
+    typeof projection.rulesetHash !== "string" ||
+    typeof projection.stateHash !== "string" ||
+    !Array.isArray(projection.playerIds) ||
+    projection.playerIds.length !== 2 ||
+    !Array.isArray(projection.submittedPlayerIds) ||
+    !currentState ||
+    typeof currentState !== "object"
+  ) {
+    throw new ServerRoomSchemaError();
+  }
+
+  return value as CompetitiveProjection;
 }
 
 function parseSocketRoomEvent(value: unknown): ServerRoomState {

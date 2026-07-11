@@ -38,6 +38,7 @@ export interface StartGamePageDependencies {
   createMultiplayerRoom?: typeof createMultiplayerRoom;
   createPokeLoungeGame?: typeof createPokeLoungeGame;
   gameStateStore?: GameStateStore;
+  idToken?: string;
   loadBootstrapData?: () => Promise<GameBootstrapData>;
   renderRoomEntryScreen?: typeof renderRoomEntryScreen;
   renderWebRtcSignalingPanel?: typeof renderWebRtcSignalingPanel;
@@ -123,6 +124,7 @@ export async function startGamePage(
     const roomEntry = readRoomEntryFromLocation(gameUrl);
     const multiplayerRoom = (dependencies.createMultiplayerRoom ?? createMultiplayerRoom)({
       createWebRtcRoom,
+      idToken: dependencies.idToken,
       searchParams: gameUrl.searchParams,
     });
     const competitiveRoundsEnabled = isCompetitiveRoomEntryMode(roomEntry.mode);
@@ -134,7 +136,7 @@ export async function startGamePage(
       gameStateStore,
       initialScene,
       multiplayerRoom,
-      onGameResult: dependencies.onGameResult,
+      onGameResult: roomEntry.mode === "server-room" ? undefined : dependencies.onGameResult,
       viewportSize: activeViewportSize,
     });
     activeGame = game;

@@ -69,6 +69,12 @@ import { createShortcutGuideRows, createShortcutGuideTitle } from "../ui/shortcu
 import { consumeVirtualGamepadPress, resetVirtualGamepad } from "../input/virtualGamepad";
 import { setShortcutGuideTouchControlsSuppressed } from "../input/mobileTouchControlsVisibility";
 import type { WildEncounterCandidate } from "../world/wildEncounters";
+import { toAuthoritativeBattleState } from "../battle/authoritative-battle-adapter";
+import type {
+  CompetitiveProjection,
+  MultiplayerRoom,
+  RoomUnsubscribe,
+} from "../network/localPreviewRoom";
 
 export const BATTLE_COMMAND_LABELS = ["싸운다", "가방", "포켓몬", "도망"] as const;
 export const BATTLE_SPRITE_CROP = { x: 0, y: 0, width: 80, height: 80 } as const;
@@ -181,6 +187,12 @@ interface BattleE2eSceneData {
   e2eScenario: BattleE2eScenario;
 }
 
+export interface AuthoritativeBattleSceneData {
+  battleKind: "authoritative";
+  ownPlayerId: string;
+  projection: CompetitiveProjection;
+}
+
 interface LogicalCanvasPointInput {
   clientX: number;
   clientY: number;
@@ -237,6 +249,15 @@ function isBattleE2eSceneData(data: unknown): data is BattleE2eSceneData {
       data.e2eScenario === "wild-evolution" ||
       data.e2eScenario === "wild-move-learning" ||
       data.e2eScenario === "wild-status-badge")
+  );
+}
+
+function isAuthoritativeBattleSceneData(data: unknown): data is AuthoritativeBattleSceneData {
+  return (
+    isRecord(data) &&
+    data.battleKind === "authoritative" &&
+    typeof data.ownPlayerId === "string" &&
+    isRecord(data.projection)
   );
 }
 
@@ -348,12 +369,32 @@ export class BattleScene extends Phaser.Scene {
   private hpAnimationStartedCount = 0;
   private hitAnimationStartedCount = 0;
   private pendingMoveLearnings: PendingMoveLearning[] = [];
+  private authoritativeProjection: CompetitiveProjection | null = null;
+  private authoritativeOwnPlayerId: string | null = null;
+  private authoritativeInputPending = false;
+  private authoritativeUnsubscribers: RoomUnsubscribe[] = [];
 
-  constructor(private readonly gameStateStore: GameStateStore = getDefaultGameStateStore()) {
+  constructor(
+    private readonly gameStateStore: GameStateStore = getDefaultGameStateStore(),
+    private readonly multiplayerRoom?: MultiplayerRoom,
+  ) {
     super("battle");
   }
 
   create(data: unknown = {}): void {
+    this.clearAuthoritativeSubscriptions();
+    if (isAuthoritativeBattleSceneData(data)) {
+      this.authoritativeProjection = data.projection;
+      this.authoritativeOwnPlayerId = data.ownPlayerId;
+      this.authoritativeInputPending = data.projection.submittedPlayerIds.includes(
+        data.ownPlayerId,
+      );
+      this.bindAuthoritativeRoom();
+    } else {
+      this.authoritativeProjection = null;
+      this.authoritativeOwnPlayerId = null;
+      this.authoritativeInputPending = false;
+    }
     this.state = this.createInitialState(data);
     this.returningToWorld = false;
     this.battleEntrancePlayed = false;
@@ -376,7 +417,10 @@ export class BattleScene extends Phaser.Scene {
     this.render();
     playBattleStartSound();
     playWildBattleBgm();
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => stopWildBattleBgm());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      stopWildBattleBgm();
+      this.clearAuthoritativeSubscriptions();
+    });
     this.events.once(Phaser.Scenes.Events.DESTROY, () => stopWildBattleBgm());
     this.playBattleEntranceAnimation();
   }
@@ -695,6 +739,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private createInitialState(data: unknown): BattleScreenState {
+    if (isAuthoritativeBattleSceneData(data)) {
+      return toAuthoritativeBattleState(data.projection, data.ownPlayerId);
+    }
+
     if (isBattleE2eSceneData(data)) {
       return createBattleScenarioStateForTest(data.e2eScenario);
     }
@@ -731,6 +779,11 @@ export class BattleScene extends Phaser.Scene {
 
   private confirmSelection(): void {
     if (this.battleEntrancePlaying) {
+      return;
+    }
+
+    if (this.authoritativeProjection && this.authoritativeOwnPlayerId) {
+      this.confirmAuthoritativeSelection();
       return;
     }
 
@@ -799,6 +852,122 @@ export class BattleScene extends Phaser.Scene {
     if (this.state.phase === "move-replace-select") {
       this.confirmMoveReplacement();
     }
+  }
+
+  private confirmAuthoritativeSelection(): void {
+    const projection = this.authoritativeProjection;
+    const ownPlayerId = this.authoritativeOwnPlayerId;
+
+    if (
+      !projection ||
+      !ownPlayerId ||
+      this.authoritativeInputPending ||
+      this.state.phase === "ended"
+    ) {
+      return;
+    }
+
+    if (this.state.messageQueue.length > 0) {
+      this.state = { ...this.state, phase: "command", messageQueue: [] };
+      this.render();
+      return;
+    }
+
+    if (this.state.phase === "command") {
+      const command = COMMANDS[this.selectedCommandIndex]?.command ?? "fight";
+      if (command === "fight") {
+        this.state = { ...this.state, phase: "move-select" };
+      } else if (command === "pokemon") {
+        this.selectedPartySlotIndex = this.state.player.activePartySlotIndex;
+        this.state = { ...this.state, phase: "party-select" };
+      } else {
+        this.state = {
+          ...this.state,
+          messageQueue: ["서버 대전에서는 사용할 수 없습니다."],
+        };
+      }
+      this.render();
+      return;
+    }
+
+    if (this.state.phase === "move-select") {
+      const player = projection.currentState.playersById[ownPlayerId];
+      const moveId = player?.team[player.activeSlotIndex]?.moves[this.selectedMoveIndex]?.moveId;
+      if (moveId) {
+        this.submitAuthoritativeAction({ kind: "move", moveId });
+      }
+      return;
+    }
+
+    if (this.state.phase === "party-select") {
+      this.submitAuthoritativeAction({ kind: "switch", slotIndex: this.selectedPartySlotIndex });
+    }
+  }
+
+  private submitAuthoritativeAction(
+    action: { kind: "move"; moveId: string } | { kind: "switch"; slotIndex: number },
+  ): void {
+    const projection = this.authoritativeProjection;
+    const ownPlayerId = this.authoritativeOwnPlayerId;
+    if (!projection || !ownPlayerId || !this.multiplayerRoom || this.authoritativeInputPending) {
+      return;
+    }
+    if (typeof crypto === "undefined" || !("randomUUID" in crypto)) {
+      throw new Error("crypto.randomUUID is required for competitive battle commands");
+    }
+
+    this.authoritativeInputPending = true;
+    this.state = {
+      ...this.state,
+      phase: "resolving",
+      messageQueue: ["상대의 선택을 기다리는 중..."],
+    };
+    this.render();
+    this.multiplayerRoom.send("COMPETITIVE_ACTION", {
+      matchId: projection.matchId,
+      assignmentRevision: projection.assignmentRevision,
+      turn: projection.currentTurn,
+      clientCommandId: crypto.randomUUID(),
+      action,
+    });
+  }
+
+  private bindAuthoritativeRoom(): void {
+    if (!this.multiplayerRoom) {
+      return;
+    }
+
+    this.authoritativeUnsubscribers.push(
+      this.multiplayerRoom.on("COMPETITIVE_STATE", ({ projection, ownPlayerId }) => {
+        const current = this.authoritativeProjection;
+        if (
+          !current ||
+          projection.matchId !== current.matchId ||
+          projection.assignmentRevision !== current.assignmentRevision ||
+          projection.currentTurn < current.currentTurn
+        ) {
+          return;
+        }
+
+        this.authoritativeProjection = projection;
+        this.authoritativeOwnPlayerId = ownPlayerId;
+        this.authoritativeInputPending = projection.submittedPlayerIds.includes(ownPlayerId);
+        this.setBattleState(toAuthoritativeBattleState(projection, ownPlayerId));
+      }),
+      this.multiplayerRoom.on("COMPETITIVE_RESYNC", ({ matchId, message }) => {
+        if (matchId !== this.authoritativeProjection?.matchId) {
+          return;
+        }
+        this.authoritativeInputPending = true;
+        this.state = { ...this.state, phase: "resolving", messageQueue: [message] };
+        this.render();
+      }),
+    );
+  }
+
+  private clearAuthoritativeSubscriptions(): void {
+    this.authoritativeUnsubscribers.forEach(unsubscribe => unsubscribe());
+    this.authoritativeUnsubscribers = [];
   }
 
   private setBattleState(

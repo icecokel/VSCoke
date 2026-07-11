@@ -1,4 +1,6 @@
 import { expect, type Browser, type Page, type Request, test } from "@playwright/test";
+import { toAuthoritativeBattleState } from "../../src/components/poke-lounge/runtime/game/battle/authoritative-battle-adapter";
+import type { CompetitiveProjection } from "../../src/components/poke-lounge/runtime/game/network/localPreviewRoom";
 import { gotoWithRetry } from "./test-helpers";
 
 type PokeLoungeWindow = Window & {
@@ -38,9 +40,432 @@ interface PokeLoungeSocketTestControl {
 const LOCALE = "ko-KR";
 const ROOM_CODE = "SRV001";
 const ROOM_EXPIRES_AT_MS = 253402300799999;
+const AUTH_ID_TOKEN = `${Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url")}.${Buffer.from(JSON.stringify({ exp: 4_102_444_800 })).toString("base64url")}.signature`;
+
+const createCompetitiveProjection = (
+  overrides: Partial<CompetitiveProjection> = {},
+): CompetitiveProjection => ({
+  matchId: "11111111-1111-4111-8111-111111111111",
+  assignmentRevision: 7,
+  rulesetVersion: 1,
+  rulesetHash: "ruleset-hash",
+  currentTurn: 3,
+  status: "active",
+  playerIds: ["player-a", "player-b"],
+  stateHash: "state-hash",
+  currentState: {
+    rulesetVersion: 1,
+    turn: 3,
+    participantIds: ["player-a", "player-b"],
+    playersById: {
+      "player-a": {
+        playerId: "player-a",
+        activeSlotIndex: 1,
+        team: [
+          {
+            speciesId: "vscoke-alpha",
+            maxHp: 120,
+            currentHp: 0,
+            status: "none",
+            moves: [{ moveId: "steady-strike", pp: 18 }],
+          },
+          {
+            speciesId: "vscoke-beta",
+            maxHp: 140,
+            currentHp: 91,
+            status: "paralyzed",
+            moves: [{ moveId: "heavy-blow", pp: 7 }],
+          },
+        ],
+      },
+      "player-b": {
+        playerId: "player-b",
+        activeSlotIndex: 0,
+        team: [
+          {
+            speciesId: "vscoke-alpha",
+            maxHp: 120,
+            currentHp: 44,
+            status: "none",
+            moves: [{ moveId: "stun-spark", pp: 9 }],
+          },
+        ],
+      },
+    },
+    terminal: null,
+  },
+  submittedPlayerIds: [],
+  terminal: null,
+  ...overrides,
+});
+
+function createServerCompetitiveProjection(
+  server: MockServerState,
+  overrides: Partial<CompetitiveProjection> = {},
+): CompetitiveProjection {
+  const [first, second] = getStateParticipants(server);
+  const template = createCompetitiveProjection();
+  const firstState = template.currentState.playersById["player-a"];
+  const secondState = template.currentState.playersById["player-b"];
+
+  return {
+    ...template,
+    playerIds: [first.playerId, second.playerId],
+    currentState: {
+      ...template.currentState,
+      participantIds: [first.playerId, second.playerId],
+      playersById: {
+        [first.playerId]: { ...firstState, playerId: first.playerId },
+        [second.playerId]: { ...secondState, playerId: second.playerId },
+      },
+    },
+    ...overrides,
+  };
+}
+
+test.describe("Poke Lounge authoritative battle adapter", () => {
+  test("socket projection의 active slot HP와 PP를 canonical 값 그대로 렌더 상태로 옮긴다", () => {
+    const state = toAuthoritativeBattleState(createCompetitiveProjection(), "player-a");
+
+    expect(state.phase).toBe("command");
+    expect(state.turn).toBe(3);
+    expect(state.player.activePartySlotIndex).toBe(1);
+    expect(state.player.pokemon).toMatchObject({ currentHp: 91, maxHp: 140, status: "paralyzed" });
+    expect(state.player.pokemon.moves[0]).toMatchObject({ name: "강타", pp: 7 });
+    expect(state.opponent.pokemon).toMatchObject({ currentHp: 44, maxHp: 120 });
+    expect(state.opponent.pokemon.moves[0]).toMatchObject({ name: "마비 불꽃", pp: 9 });
+  });
+
+  test("자신이 현재 턴을 제출한 projection은 reconnect에서도 waiting으로 복원한다", () => {
+    const projection = createCompetitiveProjection({ submittedPlayerIds: ["player-a"] });
+
+    const state = toAuthoritativeBattleState(projection, "player-a");
+
+    expect(state.phase).toBe("resolving");
+    expect(state.messageQueue).toEqual(["상대의 선택을 기다리는 중..."]);
+  });
+
+  test("terminal winner와 loser는 서버 projection만 사용한다", () => {
+    const terminal = {
+      winnerPlayerId: "player-b",
+      loserPlayerId: "player-a",
+      reason: "faint" as const,
+      scoreByPlayerId: { "player-a": 50 as const, "player-b": 100 as const },
+    };
+    const projection = createCompetitiveProjection({
+      status: "completed",
+      terminal,
+      currentState: {
+        ...createCompetitiveProjection().currentState,
+        terminal,
+      },
+    });
+
+    const state = toAuthoritativeBattleState(projection, "player-a");
+
+    expect(state.phase).toBe("ended");
+    expect(state.result).toEqual({
+      winnerPlayerId: "player-b",
+      loserPlayerId: "player-a",
+      reason: "faint",
+    });
+    expect(state.messageQueue).toEqual(["패배했습니다."]);
+  });
+});
 
 test.describe("Poke Lounge server multiplayer", () => {
-  test("network=server room은 wrapped 서버 상태의 final score를 서버 확정 점수로 사용한다", async ({
+  test("authenticated server room은 메모리 ID token으로 competitive seat를 연결하고 저장하지 않는다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockAuthenticatedPokeSession(page);
+    await mockServerRoom(page, server, { competitive: true, waitForResult: true, wrapped: true });
+    await startServerRoom(page);
+
+    await expect.poll(() => Promise.resolve(server.competitiveSeatBodies.length)).toBe(1);
+    expect(server.competitiveSeatBodies[0]).toEqual({
+      sessionId: server.joinedParticipants[0]?.sessionId,
+    });
+    expect(server.competitiveAuthHeaders).toEqual([`Bearer ${AUTH_ID_TOKEN}`]);
+
+    const storedValues = await page.evaluate(() => [
+      ...Object.values(sessionStorage),
+      ...Object.values(localStorage),
+    ]);
+    expect(storedValues).not.toContain(AUTH_ID_TOKEN);
+  });
+
+  test("competitive seat가 ineligible이면 server room은 casual world로 계속된다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockAuthenticatedPokeSession(page);
+    await mockServerRoom(page, server, {
+      competitiveSeatIneligible: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+
+    await expect.poll(() => Promise.resolve(server.competitiveSeatBodies.length)).toBe(1);
+    expect(await getActiveSceneKey(page)).toBe("world");
+    await expect(page.locator("#game-root canvas")).toBeVisible();
+  });
+
+  test("competitive assignment는 host 여부와 무관하게 authoritative battle을 시작한다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockAuthenticatedPokeSession(page);
+    await mockServerRoom(page, server, {
+      competitive: true,
+      competitiveImmediately: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+
+    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    expect(await getBattleSnapshot(page)).toMatchObject({
+      battleKind: "trainer",
+      phase: "command",
+      turn: 3,
+    });
+  });
+
+  test("assignment 생성 알림은 첫 참가자와 두 번째 참가자 모두 같은 battle을 시작한다", async ({
+    browser,
+  }) => {
+    const server = createMockServerState();
+    const hostContext = await browser.newContext();
+    const guestContext = await browser.newContext();
+    const hostPage = await hostContext.newPage();
+    const guestPage = await guestContext.newPage();
+
+    await mockAuthenticatedPokeSession(hostPage);
+    await mockAuthenticatedPokeSession(guestPage);
+    await mockServerRoom(hostPage, server, {
+      competitive: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await mockServerRoom(guestPage, server, {
+      competitive: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+
+    await startServerRoom(
+      hostPage,
+      `/${LOCALE}/game/poke-lounge?network=server&room=${ROOM_CODE}&serverPlayerId=host-player&serverSessionId=host-session&e2e=1`,
+    );
+    await expect.poll(() => Promise.resolve(server.competitiveSeatBodies.length)).toBe(1);
+    expect(await getActiveSceneKey(hostPage)).toBe("world");
+
+    await startServerRoom(
+      guestPage,
+      `/${LOCALE}/game/poke-lounge?network=server&room=${ROOM_CODE}&serverPlayerId=guest-player&serverSessionId=guest-session&e2e=1`,
+    );
+    await expect.poll(() => getActiveSceneKey(guestPage)).toBe("battle");
+
+    const projection = createServerCompetitiveProjection(server);
+    server.revision += 1;
+    await emitSocketSnapshot(hostPage, {
+      ...createTournamentRoomState(server),
+      competitive: projection,
+    });
+
+    await expect.poll(() => getActiveSceneKey(hostPage)).toBe("battle");
+    expect((await getBattleSnapshot(hostPage))?.turn).toBe(
+      (await getBattleSnapshot(guestPage))?.turn,
+    );
+
+    await hostContext.close();
+    await guestContext.close();
+  });
+
+  test("authoritative move는 UUIDv4 command로 한 번만 제출하고 waiting으로 전환한다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockAuthenticatedPokeSession(page);
+    await mockServerRoom(page, server, {
+      competitive: true,
+      competitiveImmediately: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    await waitForBattleReady(page);
+
+    await confirmBattle(page);
+    await setBattleMoveIndex(page, 0);
+    await confirmBattle(page);
+    await confirmBattle(page);
+
+    await expect.poll(() => Promise.resolve(server.competitiveActionBodies.length)).toBe(1);
+    expect(server.competitiveActionBodies[0]).toMatchObject({
+      assignmentRevision: 7,
+      turn: 3,
+      action: { kind: "move", moveId: "heavy-blow" },
+    });
+    expect(server.competitiveActionBodies[0]?.clientCommandId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(server.competitiveActionAuthHeaders).toEqual([`Bearer ${AUTH_ID_TOKEN}`]);
+    await expect.poll(() => getBattleSnapshot(page).then(value => value?.phase)).toBe("resolving");
+    expect((await getBattleSnapshot(page))?.message).toBe("상대의 선택을 기다리는 중...");
+  });
+
+  test("authoritative switch는 선택한 slot만 제출한다", async ({ page }) => {
+    const server = createMockServerState();
+
+    await mockAuthenticatedPokeSession(page);
+    await mockServerRoom(page, server, {
+      competitive: true,
+      competitiveImmediately: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    await waitForBattleReady(page);
+
+    await setBattleCommand(page, "pokemon");
+    await confirmBattle(page);
+    await setBattlePartySlot(page, 0);
+    await confirmBattle(page);
+
+    await expect.poll(() => Promise.resolve(server.competitiveActionBodies.length)).toBe(1);
+    expect(server.competitiveActionBodies[0]?.action).toEqual({ kind: "switch", slotIndex: 0 });
+  });
+
+  test("reconnect projection의 submittedPlayerIds는 자신의 waiting 상태를 복원한다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockAuthenticatedPokeSession(page);
+    await mockServerRoom(page, server, {
+      competitive: true,
+      competitiveImmediately: true,
+      competitivePendingImmediately: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(
+      page,
+      `/${LOCALE}/game/poke-lounge?network=server&room=${ROOM_CODE}&serverPlayerId=reconnect-player&serverSessionId=reconnect-session&e2e=1`,
+    );
+
+    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    await expect.poll(() => getBattleSnapshot(page).then(value => value?.phase)).toBe("resolving");
+    expect((await getBattleSnapshot(page))?.message).toBe("상대의 선택을 기다리는 중...");
+  });
+
+  test("competitive action network retry는 같은 UUID command를 재사용한다", async ({ page }) => {
+    const server = createMockServerState();
+
+    await mockAuthenticatedPokeSession(page);
+    await mockServerRoom(page, server, {
+      competitive: true,
+      competitiveActionNetworkFailure: true,
+      competitiveImmediately: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    await waitForBattleReady(page);
+    await confirmBattle(page);
+    await confirmBattle(page);
+
+    await expect.poll(() => Promise.resolve(server.competitiveActionBodies.length)).toBe(2);
+    expect(server.competitiveActionBodies[1]).toEqual(server.competitiveActionBodies[0]);
+  });
+
+  test("stale turn 409는 REST snapshot으로 resync하고 로컬 결과를 만들지 않는다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockAuthenticatedPokeSession(page);
+    await mockServerRoom(page, server, {
+      competitive: true,
+      competitiveActionStaleConflict: true,
+      competitiveImmediately: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    await waitForBattleReady(page);
+    await confirmBattle(page);
+    await confirmBattle(page);
+
+    await expect.poll(() => getBattleSnapshot(page).then(value => value?.turn)).toBe(4);
+    await expect.poll(() => getBattleSnapshot(page).then(value => value?.phase)).toBe("command");
+    expect(server.calls).toContain(`GET /poke-lounge/rooms/${ROOM_CODE}`);
+    expect(server.calls).not.toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/result`);
+    await expect(page.getByTestId("poke-lounge-result-panel")).toBeHidden();
+  });
+
+  test("authoritative terminal은 서버 winner/loser만 렌더하고 score API를 호출하지 않는다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+    const scoreRequests: string[] = [];
+    page.on("request", request => {
+      if (new URL(request.url()).pathname === "/game/result") scoreRequests.push(request.url());
+    });
+
+    await mockAuthenticatedPokeSession(page);
+    await mockServerRoom(page, server, {
+      competitive: true,
+      competitiveImmediately: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+
+    const projection = createServerCompetitiveProjection(server);
+    const [winner, loser] = projection.playerIds;
+    const terminal = {
+      winnerPlayerId: winner,
+      loserPlayerId: loser,
+      reason: "faint" as const,
+      scoreByPlayerId: { [winner]: 100 as const, [loser]: 50 as const },
+    };
+    server.revision += 1;
+    await emitSocketSnapshot(page, {
+      ...createTournamentRoomState(server),
+      competitive: {
+        ...projection,
+        status: "completed",
+        terminal,
+        currentState: { ...projection.currentState, terminal },
+      },
+    });
+
+    await expect.poll(() => getBattleSnapshot(page).then(value => value?.phase)).toBe("ended");
+    expect((await getBattleSnapshot(page))?.result).toEqual({
+      winnerPlayerId: winner,
+      loserPlayerId: loser,
+      reason: "faint",
+    });
+    expect((await getBattleSnapshot(page))?.message).toBe("승리했습니다.");
+    await expect(page.getByTestId("poke-lounge-result-panel")).toBeHidden();
+    expect(scoreRequests).toEqual([]);
+    expect(server.calls).not.toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/result`);
+  });
+
+  test("network=server room 완료 상태는 generic score overlay를 노출하지 않는다", async ({
     page,
   }) => {
     const server = createMockServerState();
@@ -53,10 +478,9 @@ test.describe("Poke Lounge server multiplayer", () => {
         timeout: 30000,
       })
       .toBe(ROOM_CODE);
-    await expect(page.getByTestId("poke-lounge-result-score")).toHaveText("100", {
-      timeout: 30000,
-    });
-    expect(await getRoundPhase(page)).toBe("game-result");
+    await expect.poll(() => getRoundPhase(page)).toBe("game-result");
+    await expect(page.getByTestId("poke-lounge-result-panel")).toBeHidden();
+    expect(server.calls).not.toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/result`);
 
     expect(server.calls).toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/join`);
     await expect
@@ -75,9 +499,8 @@ test.describe("Poke Lounge server multiplayer", () => {
     await expect
       .poll(() => Promise.resolve(server.calls), { timeout: 30000 })
       .toContain(`GET /poke-lounge/rooms/${ROOM_CODE}`);
-    await expect(page.getByTestId("poke-lounge-result-score")).toHaveText("100", {
-      timeout: 30000,
-    });
+    await expect.poll(() => getRoundPhase(page)).toBe("game-result");
+    await expect(page.getByTestId("poke-lounge-result-panel")).toBeHidden();
   });
 
   test("newer socket revision은 지연된 stale REST recovery보다 우선한다", async ({ page }) => {
@@ -96,9 +519,8 @@ test.describe("Poke Lounge server multiplayer", () => {
     server.revision = 100;
     await emitSocketSnapshot(page, createCompletedRoomState(server));
     server.resolveRecoveryGet?.();
-    await expect(page.getByTestId("poke-lounge-result-score")).toHaveText("100", {
-      timeout: 5000,
-    });
+    await expect.poll(() => getRoundPhase(page)).toBe("game-result");
+    await expect(page.getByTestId("poke-lounge-result-panel")).toBeHidden();
 
     const requestCount = server.commandRequests.length;
     await sendPartySnapshot(page);
@@ -321,9 +743,7 @@ test.describe("Poke Lounge server multiplayer", () => {
     });
   }
 
-  test("server room result submit이 거부되면 클라이언트는 토너먼트 결과를 임의 성공 처리하지 않는다", async ({
-    page,
-  }) => {
+  test("server room은 client-asserted tournament result 이벤트를 무시한다", async ({ page }) => {
     const server = createMockServerState();
 
     await mockServerRoom(page, server, { rejectResult: true });
@@ -353,10 +773,10 @@ test.describe("Poke Lounge server multiplayer", () => {
         timeout: 3000,
       })
       .not.toBe("game-result");
-    expect(server.calls).toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/result`);
+    expect(server.calls).not.toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/result`);
   });
 
-  test("server room result submit은 로컬 player id를 서버 participant id로 변환한다", async ({
+  test("server room은 로컬 player id를 legacy result payload로 변환하지 않는다", async ({
     page,
   }) => {
     const server = createMockServerState();
@@ -396,19 +816,10 @@ test.describe("Poke Lounge server multiplayer", () => {
       );
     }, localPlayerId ?? "player-1");
 
-    await expect
-      .poll(() => Promise.resolve(server.resultBodies.length), { timeout: 30000 })
-      .toBe(1);
-    expect(server.resultBodies[0]).toMatchObject({
-      reportingPlayerId: joinedParticipant.playerId,
-      reportingSessionId: joinedParticipant.sessionId,
-      winnerPlayerId: joinedParticipant.playerId,
-      loserPlayerId: "player-2",
-    });
-    expect(server.resultAccepted).toBe(true);
-    await expect(page.getByTestId("poke-lounge-result-score")).toHaveText("100", {
-      timeout: 30000,
-    });
+    await page.waitForTimeout(300);
+    expect(server.resultBodies).toEqual([]);
+    expect(server.calls).not.toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/result`);
+    await expect(page.getByTestId("poke-lounge-result-panel")).toBeHidden();
   });
 
   test("server room cleanup은 e2e global 없이도 unmount 시 leave를 전송한다", async ({ page }) => {
@@ -741,9 +1152,8 @@ test.describe("Poke Lounge server multiplayer", () => {
         ),
       )
       .toBe(1);
-    await expect(page.getByTestId("poke-lounge-result-score")).toHaveText("100", {
-      timeout: 5000,
-    });
+    await expect.poll(() => getRoundPhase(page)).toBe("game-result");
+    await expect(page.getByTestId("poke-lounge-result-panel")).toBeHidden();
   });
 
   test("room connect 재호출은 같은 identity의 join과 socket을 추가 생성하지 않는다", async ({
@@ -891,6 +1301,85 @@ async function getRoundPhase(page: Page): Promise<string | null> {
 
     return pokeWindow.__POKE_LOUNGE_E2E__?.getGameStateSnapshot().round.phase ?? null;
   });
+}
+
+async function getActiveSceneKey(page: Page): Promise<string | null> {
+  return page.evaluate(
+    () =>
+      (
+        window as Window & { __POKE_LOUNGE_E2E__?: { getActiveSceneKey(): string | null } }
+      ).__POKE_LOUNGE_E2E__?.getActiveSceneKey() ?? null,
+  );
+}
+
+async function getBattleSnapshot(page: Page): Promise<{
+  phase: string;
+  message: string | null;
+  battleKind: string;
+  battleEntrancePlaying: boolean;
+  result: { winnerPlayerId: string; loserPlayerId: string; reason: string } | null;
+  turn: number;
+} | null> {
+  return page.evaluate(
+    () =>
+      (
+        window as Window & {
+          __POKE_LOUNGE_E2E__?: {
+            getBattleSnapshot(): {
+              phase: string;
+              message: string | null;
+              battleKind: string;
+              battleEntrancePlaying: boolean;
+              result: { winnerPlayerId: string; loserPlayerId: string; reason: string } | null;
+              turn: number;
+            } | null;
+          };
+        }
+      ).__POKE_LOUNGE_E2E__?.getBattleSnapshot() ?? null,
+  );
+}
+
+async function waitForBattleReady(page: Page): Promise<void> {
+  await expect
+    .poll(() => getBattleSnapshot(page).then(value => value?.battleEntrancePlaying))
+    .toBe(false);
+}
+
+async function confirmBattle(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    (
+      window as Window & { __POKE_LOUNGE_E2E__?: { confirmBattle(): unknown } }
+    ).__POKE_LOUNGE_E2E__?.confirmBattle();
+  });
+}
+
+async function setBattleMoveIndex(page: Page, index: number): Promise<void> {
+  await page.evaluate(value => {
+    (
+      window as Window & { __POKE_LOUNGE_E2E__?: { setBattleMoveIndex(index: number): unknown } }
+    ).__POKE_LOUNGE_E2E__?.setBattleMoveIndex(value);
+  }, index);
+}
+
+async function setBattleCommand(page: Page, command: "pokemon"): Promise<void> {
+  await page.evaluate(value => {
+    (
+      window as Window & {
+        __POKE_LOUNGE_E2E__?: { setBattleCommand(command: "pokemon"): unknown };
+      }
+    ).__POKE_LOUNGE_E2E__?.setBattleCommand(value);
+  }, command);
+}
+
+async function setBattlePartySlot(page: Page, slotIndex: number): Promise<void> {
+  await page.evaluate(value => {
+    const game = (window as Window & { __POKE_LOUNGE_GAME__?: unknown }).__POKE_LOUNGE_GAME__ as {
+      scene?: {
+        getScene?(key: string): { setSelectedPartySlotIndexForTest?(index: number): void };
+      };
+    };
+    game.scene?.getScene?.("battle")?.setSelectedPartySlotIndexForTest?.(value);
+  }, slotIndex);
 }
 
 async function getCurrentPlayerId(page: Page): Promise<string | null> {
@@ -1178,6 +1667,12 @@ async function mockServerRoom(
     advanceRevisionOnGetAfterConflict?: boolean;
     bodyReadFailureSuffix?: string;
     completeOnGet?: boolean;
+    competitive?: boolean;
+    competitiveActionNetworkFailure?: boolean;
+    competitiveActionStaleConflict?: boolean;
+    competitiveImmediately?: boolean;
+    competitivePendingImmediately?: boolean;
+    competitiveSeatIneligible?: boolean;
     deferCreateResponse?: boolean;
     deferLeaveResponse?: boolean;
     deferRecoveryGet?: boolean;
@@ -1207,7 +1702,8 @@ async function mockServerRoom(
     const url = new URL(request.url());
     const method = request.method();
     const suffix = url.pathname.replace(`/poke-lounge/rooms/${ROOM_CODE}`, "");
-    const mutation = method === "POST";
+    const mutation =
+      method === "POST" && suffix !== "/competitive-seat" && !suffix.includes("/actions");
 
     server.calls.push(`${method} ${url.pathname}`);
 
@@ -1371,6 +1867,80 @@ async function mockServerRoom(
         );
       }
 
+      if (method === "POST" && suffix === "/competitive-seat") {
+        server.competitiveAuthHeaders.push(request.headers().authorization ?? "");
+        server.competitiveSeatBodies.push((await request.postDataJSON()) as { sessionId?: string });
+        if (options.competitiveSeatIneligible) {
+          await route.fulfill({
+            status: 409,
+            contentType: "application/json",
+            body: JSON.stringify({
+              statusCode: 409,
+              code: "POKE_LOUNGE_COMPETITIVE_ASSIGNMENT_INELIGIBLE",
+              message: "Account is not eligible for this competitive assignment",
+              eligible: false,
+            }),
+          });
+          return;
+        }
+        await route.fulfill({
+          status: 201,
+          contentType: "application/json",
+          body: stringifyResponse(
+            options.competitive &&
+              (options.competitiveImmediately || server.joinedParticipants.length >= 2)
+              ? createServerCompetitiveProjection(server, {
+                  submittedPlayerIds: options.competitivePendingImmediately
+                    ? [getStateParticipants(server)[0].playerId]
+                    : [],
+                })
+              : null,
+            options,
+          ),
+        });
+        return;
+      }
+
+      if (method === "POST" && suffix.includes("/actions")) {
+        server.competitiveActionAuthHeaders.push(request.headers().authorization ?? "");
+        const body =
+          (await request.postDataJSON()) as MockServerState["competitiveActionBodies"][number];
+        server.competitiveActionBodies.push(body);
+        if (
+          options.competitiveActionNetworkFailure &&
+          !server.competitiveActionNetworkFailureReturned
+        ) {
+          server.competitiveActionNetworkFailureReturned = true;
+          await route.abort("failed");
+          return;
+        }
+        if (options.competitiveActionStaleConflict && !server.competitiveActionStaleReturned) {
+          server.competitiveActionStaleReturned = true;
+          server.competitiveResyncRequested = true;
+          server.revision += 1;
+          await route.fulfill({
+            status: 409,
+            contentType: "application/json",
+            body: JSON.stringify({
+              statusCode: 409,
+              code: "POKE_LOUNGE_COMPETITIVE_STALE_TURN",
+              message: "Competitive action conflict",
+            }),
+          });
+          return;
+        }
+        const ownPlayerId = getStateParticipants(server)[0].playerId;
+        await route.fulfill({
+          status: 201,
+          contentType: "application/json",
+          body: stringifyResponse(
+            createServerCompetitiveProjection(server, { submittedPlayerIds: [ownPlayerId] }),
+            options,
+          ),
+        });
+        return;
+      }
+
       if (method === "POST" && suffix === "/result") {
         const body = (await request.postDataJSON()) as MockServerState["resultBodies"][number];
         server.resultBodies.push(body);
@@ -1407,7 +1977,7 @@ async function mockServerRoom(
         server.concurrentPollRevision = server.revision;
       }
 
-      let responseState =
+      let responseState: Record<string, unknown> =
         options.advanceRevisionOnGetAfterConflict &&
         method === "GET" &&
         server.concurrentPollRevision
@@ -1417,6 +1987,19 @@ async function mockServerRoom(
               (options.waitForResult && !server.resultAccepted)
             ? createTournamentRoomState(server)
             : createCompletedRoomState(server);
+
+      if (method === "GET" && server.competitiveResyncRequested) {
+        const projection = createServerCompetitiveProjection(server);
+        responseState = {
+          ...createTournamentRoomState(server),
+          competitive: {
+            ...projection,
+            currentTurn: 4,
+            currentState: { ...projection.currentState, turn: 4 },
+            submittedPlayerIds: [],
+          },
+        };
+      }
 
       if (method === "GET" && server.returnStaleGet) {
         server.returnStaleGet = false;
@@ -1467,6 +2050,18 @@ interface MockServerState {
     idempotencyKey: string;
     revision: string;
   }>;
+  competitiveAuthHeaders: string[];
+  competitiveActionAuthHeaders: string[];
+  competitiveActionBodies: Array<{
+    assignmentRevision?: number;
+    turn?: number;
+    clientCommandId?: string;
+    action?: { kind?: string; moveId?: string; slotIndex?: number };
+  }>;
+  competitiveActionNetworkFailureReturned: boolean;
+  competitiveActionStaleReturned: boolean;
+  competitiveResyncRequested: boolean;
+  competitiveSeatBodies: Array<{ sessionId?: string }>;
   conflictRevision: number | null;
   concurrentPollRevision: number | null;
   createRequestReceived: boolean;
@@ -1519,6 +2114,13 @@ function createMockServerState(): MockServerState {
     calls: [],
     commandRequests: [],
     commandHeaders: [],
+    competitiveAuthHeaders: [],
+    competitiveActionAuthHeaders: [],
+    competitiveActionBodies: [],
+    competitiveActionNetworkFailureReturned: false,
+    competitiveActionStaleReturned: false,
+    competitiveResyncRequested: false,
+    competitiveSeatBodies: [],
     conflictRevision: null,
     concurrentPollRevision: null,
     createRequestReceived: false,
@@ -1538,6 +2140,28 @@ function createMockServerState(): MockServerState {
     joinedSessionIds: new Set(),
     joinedParticipants: [],
   };
+}
+
+async function mockAuthenticatedPokeSession(page: Page): Promise<void> {
+  await page.route("**/api/auth/session", route =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        user: { id: "account-a", name: "Player A" },
+        expires: "2100-01-01T00:00:00.000Z",
+        idToken: AUTH_ID_TOKEN,
+        idTokenExpiresAt: 4_102_444_800,
+      }),
+    }),
+  );
+  await page.route("**/game/poke-lounge/state", route =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true, data: null }),
+    }),
+  );
 }
 
 async function recordJoinedIdentity(request: Request, server: MockServerState) {

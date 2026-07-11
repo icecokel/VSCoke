@@ -8,6 +8,22 @@ import {
 } from "./tournamentRoomProtocol";
 import type { PlayerPokemonSlot } from "../player/playerTypes";
 import type { PlayerPokemon } from "../state/gameStateStore";
+import type { components } from "@/types/api";
+
+export type CompetitiveProjection = components["schemas"]["CompetitiveActionResponseDto"];
+export type CompetitiveAction = components["schemas"]["CompetitiveActionDto"];
+export interface CompetitiveActionCommand {
+  matchId: string;
+  assignmentRevision: number;
+  turn: number;
+  clientCommandId: string;
+  action: CompetitiveAction;
+}
+
+export interface CompetitiveRoomProjectionEvent {
+  projection: CompetitiveProjection;
+  ownPlayerId: string;
+}
 
 export type PlayerFacing = "front" | "back" | "left" | "right";
 
@@ -39,6 +55,10 @@ export interface RoomEvent {
   TOURNAMENT_MATCH_RESULT: TournamentMatchResultRoomPayload;
   TOURNAMENT_COMPLETED: TournamentCompletedRoomPayload;
   ROUND_SCORE_UPDATED: RoundScoreUpdatedRoomPayload;
+  COMPETITIVE_ASSIGNMENT: CompetitiveRoomProjectionEvent;
+  COMPETITIVE_STATE: CompetitiveRoomProjectionEvent;
+  COMPETITIVE_ACTION: CompetitiveActionCommand;
+  COMPETITIVE_RESYNC: { matchId: string; message: string };
 }
 
 export type RoomMessage = keyof RoomEvent;
@@ -101,6 +121,10 @@ const ROOM_MESSAGES = new Set<RoomMessage>([
   "TOURNAMENT_MATCH_RESULT",
   "TOURNAMENT_COMPLETED",
   "ROUND_SCORE_UPDATED",
+  "COMPETITIVE_ASSIGNMENT",
+  "COMPETITIVE_STATE",
+  "COMPETITIVE_ACTION",
+  "COMPETITIVE_RESYNC",
 ]);
 const SNAPSHOT_EVENTS = new Set<RoomMessage>([
   "PLAYER_JOINED",

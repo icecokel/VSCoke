@@ -383,6 +383,11 @@ export function PokeLoungeGame() {
     let cancelled = false;
     let cleanedUp = false;
     let destroyGamePage: (() => void) | null = null;
+    const apiSession = session as ApiTokenSession | null;
+    const idToken =
+      status === "authenticated" && !isAuthSessionError(apiSession?.error)
+        ? getSessionApiIdToken(apiSession)
+        : undefined;
     setGamePlaying(true);
     startedAtMsRef.current = Date.now();
     const pokeWindow = window as PokeLoungeWindow;
@@ -418,6 +423,7 @@ export function PokeLoungeGame() {
     void import("./runtime/game-page").then(async ({ startGamePageFromDocument }) => {
       if (!cancelled) {
         const gamePage = await startGamePageFromDocument(document, new URL(window.location.href), {
+          idToken,
           onGameResult: result => {
             setFinalResult({
               score: result.score,
@@ -445,7 +451,7 @@ export function PokeLoungeGame() {
     });
 
     return cleanupGamePage;
-  }, [setGamePlaying, stateHydrationStatus]);
+  }, [session, setGamePlaying, stateHydrationStatus, status]);
 
   const handleSubmitResult = useCallback(async () => {
     if (!finalResult || submitStatus === "submitting" || submitStatus === "success") {

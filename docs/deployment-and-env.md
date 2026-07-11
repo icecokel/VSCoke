@@ -196,6 +196,7 @@ Resume RAG 운영 chat은 `resume_source_items`의 기존 DB 텍스트를 keywor
 
 - `ENABLE_DEV_AUTH_BYPASS`와 `DEV_AUTH_TOKEN`은 운영 `.env`에 넣지 않는다.
 - `DB_SYNCHRONIZE=false`를 명시한다. 코드 기본값도 `false`이며, 운영에서 `DB_SYNCHRONIZE=true`면 API가 fail-fast 한다.
+- API 배포 workflow는 migration을 자동 실행하지 않는다. 운영 DB migration은 백업과 ledger 확인 후 별도 maintenance 작업으로 실행한다.
 - `RAG_CHAT_PROVIDER=codex-app-server`를 명시한다.
 - Ubuntu host에서는 `RAG_CODEX_APP_SERVER_URL=ws://127.0.0.1:14561`, `RAG_CODEX_CWD=/home/icenux/projects/vscoke-api`를 기준값으로 둔다.
 - 공개 이력 질문은 사용자 로그인 없이 동작하되, `RAG_PUBLIC_CHAT_ORIGINS=https://vscoke.vercel.app` 기준으로 공식 운영 웹 origin에서 온 브라우저 요청만 허용한다.
@@ -204,6 +205,20 @@ Resume RAG 운영 chat은 `resume_source_items`의 기존 DB 텍스트를 keywor
 - Vercel preview에서 production API 직접 호출이 필요하면 preview origin을 `CORS_ORIGINS`에 명시한다. wildcard, path 포함 URL, http/https가 아닌 값은 허용 목록에서 제외된다.
 - 운영 에러 알림은 `NOTIFY_SERVICE_URL`, `NOTIFY_SERVICE_USER`, `NOTIFY_SERVICE_PASSWORD`가 모두 설정된 경우에만 전역 예외 필터가 전송한다. 기본 endpoint나 기본 계정 fallback은 없다.
 - `.env`만 변경한 경우 코드 배포 없이 PM2 재시작이 필요하다.
+
+### 운영 DB migration onboarding
+
+`CreateLegacyCoreSchema1759999999999`는 tracked migration보다 먼저 외부에서 생성됐던 `public.user`, `public.game_history`, `public.game_history_gametype_enum`을 production migration ledger에 편입한다. 세 객체가 모두 없으면 historical schema를 생성하고, 모두 있으면 알려진 정확한 schema만 채택한다. 일부만 있거나 열, 타입, nullability, PK, FK, enum label, default가 허용 형태와 다르면 아무것도 수정하지 않고 실패한다.
+
+운영 최초 적용 순서:
+
+1. PostgreSQL backup을 만들고 복구 가능 여부를 확인한다.
+2. `public.user`, `public.game_history`, `public.game_history_gametype_enum`의 schema와 TypeORM `migrations` ledger를 함께 덤프한다.
+3. 배포 artifact에서 `pnpm --filter @vscoke/api migration:show`로 pending migration을 확인한다.
+4. maintenance window에서 `pnpm --filter @vscoke/api migration:run`을 수동 실행한다.
+5. baseline과 후속 `AddPokeLoungeGameType1793664000000`이 ledger에 기록됐는지 다시 확인한다.
+
+이미 후속 enum migration이 기록된 운영 DB를 고려해 baseline은 enum label을 `SKY_DROP` 또는 순서가 고정된 `SKY_DROP, POKE_LOUNGE`만 허용한다. 신규 DB에서는 baseline이 `SKY_DROP`만 생성하고 후속 migration이 `POKE_LOUNGE`를 추가한다. baseline 실패 시 drop, alter, 자동 repair 또는 migration ledger 수동 삽입을 진행하지 말고 schema/ledger 차이를 먼저 검토한다. `down`은 기존 객체와 데이터를 삭제할 수 있어 명시적으로 실패하는 irreversible 정책이다.
 
 ```bash
 scp .env icenux-external:/home/icenux/projects/vscoke-api/.env

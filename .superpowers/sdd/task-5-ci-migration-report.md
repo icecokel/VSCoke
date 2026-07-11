@@ -47,22 +47,40 @@ git diff --check: passed
 
 No local PostgreSQL connection, migration execution, integration test, or E2E test was run, by request. The actual PostgreSQL parser and fresh-database migration sequence must rerun in GitHub Actions before this result can be considered fully verified.
 
-## Follow-up: Legacy Core Baseline
+## Task 7: Production Legacy Core Baseline
 
 GitHub Actions run `29106614573` passed the enum migration, then failed in `CreateGamePokeLoungeState1793750400000` with PostgreSQL error `42P01` because its foreign key references the absent `user` table. The historical `user` and `game_history` schema was created outside tracked migrations.
 
-The test data source now prepends a test-only migration glob. Its timestamped baseline creates the legacy `user` table, the historical `game_history_gametype_enum` containing only `SKY_DROP`, and the minimal `game_history` table with its UUID default, user foreign key, and user-ID index. Production `data-source.ts` continues to load only `src/migrations` and does not include the bootstrap.
+The temporary test-only baseline is replaced by `src/migrations/1759999999999-create-legacy-core-schema.ts`, so production and fresh PostgreSQL CI execute the same chain. The test datasource now registers only the production migration glob, and both datasources keep `synchronize: false`.
 
-The existing enum migration remains unchanged: after the baseline it adds `POKE_LOUNGE`, and it still creates the current enum values when a type is otherwise absent.
+The baseline applies a strict policy:
 
-Local non-DB verification for this follow-up passed:
+- If `public.user`, `public.game_history`, and `public.game_history_gametype_enum` are all absent, create the canonical historical schema with enum label `SKY_DROP` only.
+- If all are present, validate the exact columns, PostgreSQL types, nullability, PKs, game-history FK, known default forms, and enum labels before doing nothing.
+- The accepted enum states are exactly `SKY_DROP` or `SKY_DROP, POKE_LOUNGE`, covering production databases where the later enum migration is already recorded.
+- If objects are partial or mismatched, raise an exception without drop, alter, or repair.
+- `down` raises an irreversible exception instead of deleting possibly adopted production data.
+
+`AddPokeLoungeGameType1793664000000` remains the owner of adding `POKE_LOUNGE` after a fresh baseline.
+
+The SQL contract and datasource tests were written first and failed because the production baseline did not exist and the test datasource still registered the test-only migration. After implementation, the focused verification passed:
 
 ```text
-Focused data-source and baseline tests: 3 suites, 20 tests passed
-pnpm test:api: 38 suites, 220 tests passed
+Focused production baseline/data-source tests: 3 suites, 22 tests passed
+```
+
+The guarded integration spec creates a random `_test` database on the `TEST_DATABASE_URL` server and covers fresh create, exact evolved-schema adopt, partial reject, mismatch reject, data preservation, and irreversible rollback. Local execution is unavailable because `TEST_DATABASE_URL` is unset and the installed Docker client has no running daemon; GitHub Actions PostgreSQL must execute this spec and the full production migration chain.
+
+Final local verification:
+
+```text
+pnpm test:api: 38 suites, 222 tests passed
 pnpm --filter @vscoke/api lint: passed
 pnpm build:api: passed
+built production baseline artifact: confirmed
 git diff --check: passed
 ```
 
-The fresh PostgreSQL migration run and integration/E2E stages still require a GitHub Actions rerun.
+An additional `tsc --noEmit -p apps/api/tsconfig.json` attempt remains red on pre-existing test fixture typing errors in auth, game, espresso, Poke Lounge, API contract, app, and Wordle specs. It reported no error in the new baseline migration or integration spec; the repository's supported API build succeeds because `tsconfig.build.json` excludes specs and test files.
+
+The deploy workflow intentionally remains unchanged and does not run migrations automatically. `docs/deployment-and-env.md` and `docs/operations-runbook.md` record backup, schema/ledger inspection, manual maintenance execution, and mismatch stop conditions for production onboarding.

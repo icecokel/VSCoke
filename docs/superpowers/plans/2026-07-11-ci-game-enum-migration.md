@@ -2,18 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the Poke Lounge game enum migration run on an empty PostgreSQL database without changing existing production enum values.
+**Goal:** Make the production migration chain create or strictly adopt the historical user/game schema before adding the Poke Lounge enum value.
 
-**Architecture:** Keep the historical migration identifier so production databases that already recorded it remain compatible. Its SQL will branch inside PostgreSQL: create the enum from the current `GameType` values when absent, otherwise perform the additive `POKE_LOUNGE` update. A query-runner capture unit spec will lock down both SQL branches without opening a database connection.
+**Architecture:** A production baseline earlier than every tracked migration creates the historical core only when all three objects are absent, or validates and adopts the exact known schema when all are present. The test datasource runs the same production chain, while the later enum migration remains responsible for adding `POKE_LOUNGE`.
 
 **Tech Stack:** NestJS, TypeORM migrations, PostgreSQL SQL, Jest, TypeScript
 
 ## Global Constraints
 
 - Work only in `/Users/smlee/vscoke/worktrees/fix/poke-lounge-test-migration`.
-- Do not enable `synchronize`, use an implicit database, connect to a local database, or recreate production schema objects.
+- Do not enable `synchronize`, use an implicit database, or repair/drop existing production schema objects.
 - Preserve `GameType` values exactly: `SKY_DROP`, `POKE_LOUNGE`.
-- Commit exactly `fix(api):신규 DB 게임 enum 마이그레이션 보강`.
+- Commit Task 7 exactly as `fix(api):운영 레거시 스키마 기준선 추가`.
 - Record the CI rerun risk in `.superpowers/sdd/task-5-ci-migration-report.md`.
 
 ---
@@ -138,3 +138,31 @@ git add apps/api/src/test-migrations/1759999999999-create-legacy-core-schema.ts 
 git add -f .superpowers/sdd/task-5-ci-migration-report.md
 git commit -m "test(api):신규 DB 레거시 스키마 준비"
 ```
+
+### Task 7: Promote the legacy core baseline to production
+
+**Files:**
+
+- Create: `apps/api/src/migrations/1759999999999-create-legacy-core-schema.ts`
+- Create: `apps/api/src/migrations/1759999999999-create-legacy-core-schema.spec.ts`
+- Create: `apps/api/test/legacy-core-baseline.integration-spec.ts`
+- Delete: `apps/api/src/test-migrations/1759999999999-create-legacy-core-schema.ts`
+- Delete: `apps/api/src/test-migrations/1759999999999-create-legacy-core-schema.spec.ts`
+- Modify: `apps/api/src/test-data-source.ts`
+- Modify: `apps/api/src/test-data-source.spec.ts`
+- Modify: `docs/deployment-and-env.md`
+- Modify: `docs/operations-runbook.md`
+- Modify: `.superpowers/sdd/task-5-ci-migration-report.md`
+
+**Interfaces:**
+
+- Produces: `CreateLegacyCoreSchema1759999999999`, loaded by both production and test datasources before `1760000000000`.
+- Guarantees: all-absent create, exact all-present adopt, partial/mismatch rejection, no repair, irreversible `down`.
+
+- [x] **Step 1: Add failing production SQL and datasource contract tests**
+- [x] **Step 2: Verify RED for the missing production baseline and duplicated test migration glob**
+- [x] **Step 3: Implement strict adopt-or-create and remove the test-only baseline registration**
+- [x] **Step 4: Add guarded disposable PostgreSQL integration coverage for create, adopt, partial reject, mismatch reject, preservation, and irreversible down**
+- [x] **Step 5: Document manual production onboarding and migration-ledger risk without changing deploy automation**
+- [x] **Step 6: Run final API test, lint, build, and available PostgreSQL verification**
+- [x] **Step 7: Commit with `fix(api):운영 레거시 스키마 기준선 추가`**

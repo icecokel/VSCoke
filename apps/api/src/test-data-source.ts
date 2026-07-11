@@ -56,10 +56,7 @@ export function createTestDataSourceOptions(
     type: 'postgres',
     url: requireTestDatabaseUrl(environment),
     entities: [join(__dirname, '**', '*.entity{.ts,.js}')],
-    migrations: [
-      join(__dirname, 'test-migrations', '*.{ts,js}'),
-      join(__dirname, 'migrations', '*.{ts,js}'),
-    ],
+    migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
     synchronize: false,
   };
 }

@@ -154,7 +154,6 @@ describe('Poke Lounge test data source', () => {
       expect.stringContaining('*.entity{.ts,.js}'),
     ]);
     expect(dataSource.options.migrations).toEqual([
-      expect.stringMatching(/[\\/]test-migrations[\\/]\*\.\{ts,js\}$/),
       expect.stringMatching(/[\\/]migrations[\\/]\*\.\{ts,js\}$/),
     ]);
   });

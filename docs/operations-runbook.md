@@ -211,6 +211,20 @@ pnpm --filter @vscoke/api db:tunnel
 3. tunnel 터미널이 계속 실행 중인지 확인한다.
 4. API 실행 터미널과 tunnel 실행 터미널을 분리한다.
 
+## DB migration 실패
+
+API 배포 workflow는 migration을 자동 실행하지 않는다. 운영 migration은 backup을 확인한 maintenance window에서만 수동 실행한다.
+
+legacy core baseline이 `Legacy core schema is partial` 또는 `Legacy core schema mismatch`로 실패하면 migration이 기존 객체를 drop, alter, repair하지 않은 상태다. 다음 순서로 대응한다.
+
+1. 재실행 전에 `public.user`, `public.game_history`, `public.game_history_gametype_enum` schema와 TypeORM `migrations` ledger를 덤프한다.
+2. 세 객체의 존재 상태와 baseline/후속 migration 기록 상태를 함께 비교한다.
+3. schema 차이를 확인하지 않은 채 ledger row를 수동 삽입하거나 객체를 수정하지 않는다.
+4. 원인이 확인되기 전에는 API 재배포에 migration 자동 실행 단계를 추가하지 않는다.
+5. 복구가 필요하면 사전 backup으로 되돌린 뒤 별도 검증 DB에서 같은 migration 순서를 재현한다.
+
+baseline `down`은 destructive rollback 방지를 위해 의도적으로 실패한다. rollback이 필요하다는 이유로 운영의 `user`, `game_history`, enum을 삭제해서는 안 된다.
+
 ## 환경 변수 변경
 
 웹 환경 변수:

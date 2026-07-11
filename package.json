@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "pnpm --filter @vscoke/web dev",
     "dev:web": "pnpm --filter @vscoke/web dev",
-    "dev:api": "pnpm --filter @vscoke/api start:dev",
+    "dev:api": "pnpm build:poke-lounge-battle && pnpm --parallel --stream --filter @vscoke/poke-lounge-battle --filter @vscoke/api dev",
     "build": "pnpm --filter @vscoke/poke-lounge-battle build && pnpm --filter @vscoke/web build && pnpm --filter @vscoke/api build",
     "build:poke-lounge-battle": "pnpm --filter @vscoke/poke-lounge-battle build",
     "check:poke-lounge-battle-resolution": "node scripts/check-poke-lounge-battle-resolution.mjs types && pnpm build:poke-lounge-battle && node scripts/check-poke-lounge-battle-resolution.mjs runtime",

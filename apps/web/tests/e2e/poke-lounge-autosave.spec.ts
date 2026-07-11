@@ -7,6 +7,7 @@ import { createGameStateStore } from "../../src/components/poke-lounge/runtime/g
 import {
   createPokeLoungeAutosaveLifecycle,
   createPokeLoungeTokenLifecycle,
+  getPokeLoungeTokenLifecycle,
   startPokeLoungeAutosave,
 } from "../../src/components/poke-lounge/poke-lounge-autosave";
 import {
@@ -326,6 +327,48 @@ test.describe("Poke Lounge autosave", () => {
     });
 
     expect(calls).toEqual(["PUT:token-a", "GET:token-a"]);
+  });
+
+  test("실제 remount hydration은 이전 인스턴스의 진행 중 PUT과 unmount flush를 기다린다", async () => {
+    const calls: string[] = [];
+    const store = createGameStateStore();
+    const firstPut = createDeferred<{ success: true }>();
+    const finalPut = createDeferred<{ success: true }>();
+    let putCount = 0;
+    const firstInstanceLifecycle = getPokeLoungeTokenLifecycle();
+    const autosave = startPokeLoungeAutosave({
+      gameStateStore: store,
+      token: "token-a",
+      saveState: async () => {
+        putCount += 1;
+        calls.push(`PUT:${putCount}`);
+        return putCount === 1 ? firstPut.promise : finalPut.promise;
+      },
+    });
+    const autosaveLifecycle = createPokeLoungeAutosaveLifecycle(autosave);
+    firstInstanceLifecycle.registerAutosave(autosaveLifecycle);
+
+    store.setStarterPokemon(createStarterPokemon("리아코"));
+    const inFlightPut = autosave.flush();
+    store.updateActivePokemon(createStarterPokemon("치코리타"));
+    firstInstanceLifecycle.disposeForUnmount(autosaveLifecycle);
+
+    const remountedInstanceLifecycle = getPokeLoungeTokenLifecycle();
+    const hydration = remountedInstanceLifecycle.runHydration(async () => {
+      calls.push("GET:token-a");
+    });
+
+    await Promise.resolve();
+    expect(calls).toEqual(["PUT:1"]);
+
+    firstPut.resolve({ success: true });
+    await inFlightPut;
+    await expect.poll(() => calls).toEqual(["PUT:1", "PUT:2"]);
+
+    finalPut.resolve({ success: true });
+    await hydration;
+
+    expect(calls).toEqual(["PUT:1", "PUT:2", "GET:token-a"]);
   });
 
   test("dispose 대기 중 취소된 hydration은 GET 없이 끝나고 다음 hydration을 막지 않는다", async () => {

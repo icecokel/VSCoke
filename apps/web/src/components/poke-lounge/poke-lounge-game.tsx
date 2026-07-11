@@ -9,7 +9,7 @@ import { submitScore } from "@/services/score-service";
 import { loadPokeLoungeState } from "@/services/poke-lounge-state-service";
 import {
   createPokeLoungeAutosaveLifecycle,
-  createPokeLoungeTokenLifecycle,
+  getPokeLoungeTokenLifecycle,
   startPokeLoungeAutosave,
 } from "./poke-lounge-autosave";
 import { setPokeLoungeMasterVolume } from "./runtime/game/audio/poke-lounge-audio";
@@ -98,12 +98,7 @@ export function PokeLoungeGame() {
   const gamePageHandleRef = useRef<PokeLoungeGamePageHandle | null>(null);
   const startedAtMsRef = useRef(Date.now());
   const isUnmountingRef = useRef(false);
-  const tokenLifecycleRef = useRef<ReturnType<typeof createPokeLoungeTokenLifecycle> | null>(null);
-  let tokenLifecycle = tokenLifecycleRef.current;
-  if (!tokenLifecycle) {
-    tokenLifecycle = createPokeLoungeTokenLifecycle();
-    tokenLifecycleRef.current = tokenLifecycle;
-  }
+  const tokenLifecycle = getPokeLoungeTokenLifecycle();
   const [finalResult, setFinalResult] = useState<FinalResultState | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fullscreenActive, setFullscreenActive] = useState(false);

@@ -107,6 +107,12 @@ export function createPokeLoungeTokenLifecycle(): PokeLoungeTokenLifecycle {
   };
 }
 
+const pokeLoungeTokenLifecycle = createPokeLoungeTokenLifecycle();
+
+export function getPokeLoungeTokenLifecycle(): PokeLoungeTokenLifecycle {
+  return pokeLoungeTokenLifecycle;
+}
+
 export function startPokeLoungeAutosave({
   gameStateStore,
   token,

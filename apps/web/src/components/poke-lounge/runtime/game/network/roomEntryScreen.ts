@@ -44,6 +44,12 @@ export function renderRoomEntryScreen(
   const title = document.createElement("h1");
   title.textContent = "방 접속";
 
+  const fanNotice = document.createElement("p");
+  fanNotice.className = "room-entry-notice";
+  fanNotice.setAttribute("data-poke-lounge-fan-notice", "true");
+  fanNotice.textContent =
+    "Poke Lounge는 친구들과 함께 즐기기 위해 만든 비공식 팬 게임입니다. Pokémon 관련 권리는 각 권리자에게 있습니다.";
+
   const soloButton = createButton("혼자 시작", "data-room-entry-solo");
   const newStartButton = createButton("새로 시작", "data-room-entry-new-start");
   const createButtonElement = createButton("로컬 방 만들기", "data-room-entry-create");
@@ -172,6 +178,7 @@ export function renderRoomEntryScreen(
 
   panel.append(
     title,
+    fanNotice,
     soloButton,
     newStartButton,
     roundDurationPicker,

@@ -619,6 +619,18 @@
   box-shadow: 0 8px 0 #17231c;
 }
 
+.page :global(.room-entry-notice) {
+  margin: 0;
+  padding: 10px;
+  border: 2px solid #4f653f;
+  border-radius: 4px;
+  background: #eef4df;
+  color: #294123;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
 .page :global(.room-entry-panel button),
 .page :global(.room-entry-panel input) {
   width: 100%;

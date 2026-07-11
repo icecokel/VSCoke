@@ -1370,6 +1370,9 @@ test.describe("Poke Lounge", () => {
 
     await gotoWithRetry(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
     await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30000 });
+    await expect(page.locator("[data-poke-lounge-fan-notice='true']")).toContainText(
+      "친구들과 함께 즐기기 위해 만든 비공식 팬 게임",
+    );
     await expect(page.locator("[data-screen='starter-selection']")).toBeHidden();
     await page.locator("[data-room-entry-solo]").click();
     await chooseStarter(page);

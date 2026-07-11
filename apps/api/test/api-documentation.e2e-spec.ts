@@ -51,8 +51,10 @@ const requiredOpenApiPaths = [
 describe('API documentation (e2e)', () => {
   let app: INestApplication;
   let httpServer: Server;
+  let gameService: { getRanking: jest.Mock };
 
   beforeEach(async () => {
+    gameService = { getRanking: jest.fn() };
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [
         AppController,
@@ -70,7 +72,7 @@ describe('API documentation (e2e)', () => {
         },
         {
           provide: GameService,
-          useValue: {},
+          useValue: gameService,
         },
         {
           provide: RecipeService,
@@ -121,6 +123,44 @@ describe('API documentation (e2e)', () => {
 
     expect(body.components?.schemas?.GameType?.enum).toEqual(
       expect.arrayContaining(['POKE_LOUNGE']),
+    );
+  });
+
+  it('/game/ranking (GET) serializes only the public ranking projection', async () => {
+    gameService.getRanking.mockResolvedValue([
+      {
+        id: 'sentinel-history-id',
+        score: 100,
+        rank: 1,
+        gameType: 'POKE_LOUNGE',
+        playTime: 30,
+        createdAt: new Date('2026-07-11T00:00:00.000Z'),
+        userId: 'sentinel-user-id',
+        resultTrust: 'verified-room',
+        sourceKey: 'sentinel-source-key',
+        user: {
+          id: 'sentinel-user-id',
+          displayName: 'Gil Dong',
+          email: 'sentinel@example.com',
+          accessToken: 'sentinel-access-token',
+        },
+      },
+    ]);
+
+    const response = await request(httpServer)
+      .get('/game/ranking?gameType=POKE_LOUNGE')
+      .expect(200);
+
+    expect(response.body).toEqual([
+      {
+        score: 100,
+        rank: 1,
+        createdAt: '2026-07-11T00:00:00.000Z',
+        user: { displayName: 'Gil Dong' },
+      },
+    ]);
+    expect(JSON.stringify(response.body)).not.toMatch(
+      /resultTrust|sourceKey|email|accessToken|sentinel/,
     );
   });
 });

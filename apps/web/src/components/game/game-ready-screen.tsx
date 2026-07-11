@@ -72,9 +72,7 @@ const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
   }, [t]);
 
   const getDisplayName = (player: GameHistory["user"]) => {
-    const fullName = `${player.lastName ?? ""}${player.firstName ?? ""}`.trim();
-    if (fullName) return fullName;
-    return player.firstName || t("unknownPlayer");
+    return player.displayName.trim() || t("unknownPlayer");
   };
 
   return (
@@ -119,13 +117,13 @@ const GameReadyScreen = ({ onStart, isMobile }: GameReadyScreenProps) => {
           <p className="text-sm text-gray-400">{t("leaderboardEmpty")}</p>
         ) : (
           <ul className="space-y-2">
-            {topRanking.map((entry, index) => (
+            {topRanking.map(entry => (
               <li
-                key={entry.id}
+                key={`${entry.rank}-${entry.createdAt}`}
                 className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2"
               >
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="text-sm">{rankBadges[index] ?? `#${index + 1}`}</span>
+                  <span className="text-sm">{rankBadges[entry.rank - 1] ?? `#${entry.rank}`}</span>
                   <span className="truncate text-sm text-white">{getDisplayName(entry.user)}</span>
                 </div>
                 <span className="text-sm font-bold text-amber-300">

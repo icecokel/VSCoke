@@ -235,29 +235,20 @@ describe('GameService', () => {
 
   describe('getRanking', () => {
     it('유저별 최고 점수만 반환해야 함 (gameType 필터 있음)', async () => {
-      const mockUser1 = { id: 'user1', firstName: '홍길', lastName: '동' };
-      const mockUser2 = { id: 'user2', firstName: '김철', lastName: '수' };
-
-      repository.query.mockResolvedValue([{ id: '1' }, { id: '2' }]);
-      const mockRankings = [
+      repository.query.mockResolvedValue([
         {
-          id: '2',
-          score: 150,
-          gameType: GameType.SKY_DROP,
-          userId: 'user2',
-          user: mockUser2,
-          createdAt: new Date('2024-01-02'),
-        },
-        {
-          id: '1',
           score: 200,
-          gameType: GameType.SKY_DROP,
-          userId: 'user1',
-          user: mockUser1,
+          firstName: '홍길',
+          lastName: '동',
           createdAt: new Date('2024-01-01'),
         },
-      ];
-      repository.find.mockResolvedValue(mockRankings as any);
+        {
+          score: 150,
+          firstName: '김철',
+          lastName: '수',
+          createdAt: new Date('2024-01-02'),
+        },
+      ]);
 
       const result = await service.getRanking(GameType.SKY_DROP);
 
@@ -265,30 +256,34 @@ describe('GameService', () => {
         expect.stringContaining('gh.score BETWEEN $2 AND $3'),
         [GameType.SKY_DROP, 1, 100000, 1, 86400, 2000],
       );
-      expect(repository.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          relations: ['user'],
-        }),
-      );
-      expect(result.map((row) => row.id)).toEqual(['1', '2']);
-      expect(result).toHaveLength(2);
+      expect(result).toEqual([
+        {
+          score: 200,
+          rank: 1,
+          createdAt: new Date('2024-01-01'),
+          user: { displayName: '홍길 동' },
+        },
+        {
+          score: 150,
+          rank: 2,
+          createdAt: new Date('2024-01-02'),
+          user: { displayName: '김철 수' },
+        },
+      ]);
+      expect(repository.find).not.toHaveBeenCalled();
     });
 
     it('게임 타입별 유저 최고 점수만 필터링해야 함', async () => {
-      const mockUser = { id: 'user1', firstName: '홍길', lastName: '동' };
-      const mockRankings = [
+      const rows = [
         {
-          id: '1',
           score: 200,
-          gameType: GameType.SKY_DROP,
-          userId: 'user1',
-          user: mockUser,
+          firstName: '홍길',
+          lastName: '동',
           createdAt: new Date('2024-01-01'),
         },
       ];
 
-      repository.query.mockResolvedValue([{ id: '1' }]);
-      repository.find.mockResolvedValue(mockRankings as any);
+      repository.query.mockResolvedValue(rows);
 
       const result = await service.getRanking(GameType.SKY_DROP);
 
@@ -296,7 +291,14 @@ describe('GameService', () => {
         expect.stringContaining('gh.score BETWEEN $2 AND $3'),
         [GameType.SKY_DROP, 1, 100000, 1, 86400, 2000],
       );
-      expect(result).toEqual(mockRankings);
+      expect(result).toEqual([
+        {
+          score: 200,
+          rank: 1,
+          createdAt: new Date('2024-01-01'),
+          user: { displayName: '홍길 동' },
+        },
+      ]);
     });
 
     it('랭킹 대상이 없으면 빈 배열을 반환해야 함', async () => {
@@ -331,6 +333,37 @@ describe('GameService', () => {
         1000,
         'verified-room',
       ]);
+    });
+
+    it('공개 랭킹은 저장 엔티티의 비공개 필드를 제거한 plain projection만 반환해야 함', async () => {
+      const createdAt = new Date('2026-07-11T00:00:00.000Z');
+      repository.query.mockResolvedValue([
+        {
+          score: 100,
+          createdAt,
+          firstName: 'Gil',
+          lastName: 'Dong',
+          resultTrust: 'verified-room',
+          sourceKey: 'sentinel-source-key',
+          email: 'sentinel@example.com',
+          accessToken: 'sentinel-access-token',
+        },
+      ]);
+
+      const result = await service.getRanking(GameType.POKE_LOUNGE);
+
+      expect(result).toEqual([
+        {
+          score: 100,
+          rank: 1,
+          createdAt,
+          user: { displayName: 'Gil Dong' },
+        },
+      ]);
+      expect(JSON.stringify(result)).not.toMatch(
+        /resultTrust|sourceKey|email|accessToken|sentinel/,
+      );
+      expect(repository.find).not.toHaveBeenCalled();
     });
   });
 

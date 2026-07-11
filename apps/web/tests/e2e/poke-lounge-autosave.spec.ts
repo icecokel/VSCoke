@@ -6,6 +6,7 @@ import {
 import { createGameStateStore } from "../../src/components/poke-lounge/runtime/game/state/gameStateStore";
 import {
   createPokeLoungeAutosaveLifecycle,
+  createPokeLoungeTokenLifecycle,
   startPokeLoungeAutosave,
 } from "../../src/components/poke-lounge/poke-lounge-autosave";
 import {
@@ -241,6 +242,49 @@ test.describe("Poke Lounge autosave", () => {
     expect(calls).toEqual(["GET:token-b"]);
   });
 
+  test("token B hydration은 token A의 진행 중인 PUT이 끝난 뒤 최종 서버 상태를 조회한다", async () => {
+    const calls: string[] = [];
+    const store = createGameStateStore();
+    const tokenAPut = createDeferred<{ success: true }>();
+    let serverSnapshot = buildPokeLoungeSaveSnapshot(store);
+    const autosave = startPokeLoungeAutosave({
+      gameStateStore: store,
+      token: "token-a",
+      saveState: async payload => {
+        calls.push("PUT:token-a");
+        await tokenAPut.promise;
+        serverSnapshot = payload.snapshot;
+        return { success: true };
+      },
+    });
+    const lifecycle = createPokeLoungeAutosaveLifecycle(autosave);
+    const tokenLifecycle = createPokeLoungeTokenLifecycle();
+
+    store.setStarterPokemon(createStarterPokemon("리아코"));
+    const putPromise = autosave.flush();
+    tokenLifecycle.disposeForRehydration(lifecycle);
+
+    store.updateActivePokemon(createStarterPokemon("치코리타"));
+    const hydrationPromise = tokenLifecycle.runHydration(async () => {
+      calls.push("GET:token-b");
+      const loaded = await loadPokeLoungeState("token-b", {
+        get: async () => ({ state: serverSnapshot }),
+      });
+      if (loaded.success && loaded.snapshot) {
+        store.hydrateLocalPlayers(loaded.snapshot.state);
+      }
+    });
+
+    await Promise.resolve();
+    expect(calls).toEqual(["PUT:token-a"]);
+
+    tokenAPut.resolve({ success: true });
+    await Promise.all([putPromise, hydrationPromise]);
+
+    expect(calls).toEqual(["PUT:token-a", "GET:token-b"]);
+    expect(store.getState().playersById["player-1"]?.party[0]?.pokemon?.name).toBe("리아코");
+  });
+
   test("정상 unmount lifecycle은 마지막 자동 저장을 유지한다", async () => {
     const store = createGameStateStore();
     const saves: string[] = [];
@@ -258,6 +302,57 @@ test.describe("Poke Lounge autosave", () => {
     await lifecycle.disposeForUnmount();
 
     expect(saves).toEqual(["token-a"]);
+  });
+
+  test("StrictMode 재실행 hydration은 unmount cleanup의 마지막 flush를 기다린다", async () => {
+    const calls: string[] = [];
+    const store = createGameStateStore();
+    const autosave = startPokeLoungeAutosave({
+      gameStateStore: store,
+      token: "token-a",
+      saveState: async () => {
+        calls.push("PUT:token-a");
+        return { success: true };
+      },
+    });
+    const lifecycle = createPokeLoungeAutosaveLifecycle(autosave);
+    const tokenLifecycle = createPokeLoungeTokenLifecycle();
+    tokenLifecycle.registerAutosave(lifecycle);
+    store.setStarterPokemon(createStarterPokemon());
+
+    tokenLifecycle.disposeForUnmount(lifecycle);
+    await tokenLifecycle.runHydration(async () => {
+      calls.push("GET:token-a");
+    });
+
+    expect(calls).toEqual(["PUT:token-a", "GET:token-a"]);
+  });
+
+  test("dispose 대기 중 취소된 hydration은 GET 없이 끝나고 다음 hydration을 막지 않는다", async () => {
+    const calls: string[] = [];
+    const disposal = createDeferred<void>();
+    const tokenLifecycle = createPokeLoungeTokenLifecycle();
+    const lifecycle = {
+      disposeForRehydration: () => disposal.promise,
+      disposeForUnmount: () => disposal.promise,
+    };
+    let cancelled = false;
+    tokenLifecycle.registerAutosave(lifecycle);
+
+    const cancelledHydration = tokenLifecycle.runHydration(async () => {
+      if (!cancelled) {
+        calls.push("GET:cancelled");
+      }
+    });
+    cancelled = true;
+    const nextHydration = tokenLifecycle.runHydration(async () => {
+      calls.push("GET:next");
+    });
+
+    disposal.resolve();
+    await Promise.all([cancelledHydration, nextHydration]);
+
+    expect(calls).toEqual(["GET:next"]);
   });
 
   test("저장 서비스는 토큰이 없으면 요청을 보내지 않고 조용히 건너뛴다", async () => {

@@ -3,6 +3,8 @@ import { createLocalOpenApiDocument } from './../src/api-contract';
 type ContractSchema = {
   type?: string;
   nullable?: boolean;
+  $ref?: string;
+  allOf?: Array<{ $ref?: string }>;
   items?: {
     $ref?: string;
   };
@@ -13,6 +15,7 @@ type ContractResponse = {
 };
 
 type ContractOperation = {
+  description?: string;
   parameters?: Array<{
     in?: string;
     name?: string;
@@ -83,6 +86,10 @@ describe('Local OpenAPI contract generation', () => {
     const rankingResponse = document.paths?.['/game/ranking']?.get?.responses?.[
       '200'
     ] as ContractResponse | undefined;
+    const rankingOperation = document.paths?.['/game/ranking']
+      ?.get as ContractOperation;
+    const rankingSchema = document.components?.schemas
+      ?.GameRankingHistoryDto as ContractComponentSchema | undefined;
     const gameHistoryResponseSchema = document.components?.schemas
       ?.GameHistoryResponseDto as ContractComponentSchema | undefined;
 
@@ -92,6 +99,18 @@ describe('Local OpenAPI contract generation', () => {
         $ref: '#/components/schemas/GameRankingHistoryDto',
       },
     });
+    expect(Object.keys(rankingSchema?.properties ?? {}).sort()).toEqual([
+      'createdAt',
+      'rank',
+      'score',
+      'user',
+    ]);
+    expect(rankingSchema?.properties?.user?.allOf?.[0]?.$ref).toBe(
+      '#/components/schemas/GameHistoryUserDto',
+    );
+    expect(rankingOperation.description).toContain(
+      '서버에서 검증된 대전 결과만 포함',
+    );
     expect(gameHistoryResponseSchema?.properties?.rank).toEqual(
       expect.objectContaining({
         type: 'number',

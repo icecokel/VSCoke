@@ -88,8 +88,11 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
       service.bindSeat('ROOM01', 'session-b', 'account-c'),
     ]);
     const fulfilled = concurrent.filter(
-      (result): result is PromiseFulfilledResult<unknown> =>
-        result.status === 'fulfilled',
+      (
+        result,
+      ): result is PromiseFulfilledResult<
+        Awaited<ReturnType<CompetitiveMatchService['bindSeat']>>
+      > => result.status === 'fulfilled',
     );
     const rejected = concurrent.filter(
       (result): result is PromiseRejectedResult => result.status === 'rejected',
@@ -105,17 +108,12 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
       dataSource.getRepository(PokeLoungeCompetitiveSeat).count(),
     ).resolves.toBe(2);
 
-    const original = await repository.findAssignmentForParticipant({
-      roomCode: 'ROOM01',
-      playerId: 'player-a',
-      accountId: 'account-a',
-    });
+    const original = fulfilled[0].value;
     expect(original).toMatchObject({
       assignmentRevision: 1,
       currentTurn: 0,
       status: 'pending',
     });
-    expect(original?.serverSeed).toMatch(/^[0-9a-f]{64}$/);
 
     const roomRepository = dataSource.getRepository(PokeLoungeRoom);
     const room = await roomRepository.findOneByOrFail({ roomCode: 'ROOM01' });
@@ -131,18 +129,14 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     await dataSource.initialize();
     resetServices();
 
-    const reloaded = await repository.findAssignmentForParticipant({
-      roomCode: 'ROOM01',
-      playerId: 'player-a',
-      accountId: 'account-a',
-    });
+    const reloaded = await service.bindSeat('ROOM01', 'session-a', 'account-a');
     expect(reloaded).toEqual(original);
-    expect(JSON.stringify(reloaded?.initialState)).not.toContain(
+    expect(JSON.stringify(reloaded?.currentState)).not.toContain(
       'Mutated browser party',
     );
     await expect(
       service.bindSeat('ROOM01', 'session-a', 'account-a'),
-    ).resolves.toMatchObject({ matchId: original?.matchId });
+    ).resolves.toMatchObject({ matchId: reloaded?.matchId });
     await expect(
       dataSource.getRepository(PokeLoungeCompetitiveSeat).count(),
     ).resolves.toBe(2);
@@ -183,11 +177,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
   it('keeps post-assignment third participants ineligible under duplicate and concurrent binds', async () => {
     await insertRoom('ROOM04', ['player-a', 'player-b']);
     await service.bindSeat('ROOM04', 'session-a', 'account-a');
-    const assignment = await service.bindSeat(
-      'ROOM04',
-      'session-b',
-      'account-b',
-    );
+    await service.bindSeat('ROOM04', 'session-b', 'account-b');
     await appendParticipants('ROOM04', ['player-c', 'player-d']);
 
     try {
@@ -211,28 +201,6 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
         eligible: false,
       });
     }
-
-    await expect(
-      repository.findAssignmentForParticipant({
-        roomCode: 'ROOM04',
-        playerId: 'player-c',
-        accountId: 'account-c',
-      }),
-    ).resolves.toBeNull();
-    await expect(
-      repository.findAssignmentForParticipant({
-        roomCode: 'ROOM04',
-        playerId: 'player-a',
-        accountId: 'account-c',
-      }),
-    ).resolves.toBeNull();
-    await expect(
-      repository.findAssignmentForParticipant({
-        roomCode: 'ROOM04',
-        playerId: 'player-a',
-        accountId: 'account-a',
-      }),
-    ).resolves.toMatchObject({ matchId: assignment?.matchId });
 
     const concurrent = await Promise.allSettled([
       service.bindSeat('ROOM04', 'session-d', 'account-d'),
@@ -355,12 +323,9 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
       }),
     ).resolves.toMatchObject({ revision: 8 });
 
-    const persisted = await repository.findAssignmentForParticipant({
-      roomCode: 'ROOM05',
-      playerId: 'player-a',
-      accountId: 'account-a',
-    });
-    expect(persisted).toMatchObject({ currentTurn: 1, status: 'active' });
+    await expect(
+      service.bindSeat('ROOM05', 'session-a', 'account-a'),
+    ).resolves.toMatchObject({ currentTurn: 1, status: 'active' });
 
     const resolvedInput = secondInputs[resolvedIndex];
     const resolvedResponse = (
@@ -941,10 +906,15 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
       rankingDataSource.getRepository(GamePokeLoungeState),
     ).getRanking(GameType.POKE_LOUNGE);
     await rankingDataSource.destroy();
-    expect(ranking.map(({ userId, score }) => ({ userId, score }))).toEqual([
-      { userId: 'account-a', score: 100 },
-      { userId: 'account-b', score: 50 },
+    expect(
+      ranking.map(({ rank, score, user }) => ({ rank, score, user })),
+    ).toEqual([
+      { rank: 1, score: 100, user: { displayName: 'Test User' } },
+      { rank: 2, score: 50, user: { displayName: 'Test User' } },
     ]);
+    expect(JSON.stringify(ranking)).not.toMatch(
+      /resultTrust|sourceKey|email|accessToken/,
+    );
 
     await dataSource.destroy();
     dataSource = createDataSource(testDatabaseUrl);

@@ -183,6 +183,9 @@ describe('game result trust PostgreSQL integration', () => {
 
   it('ranks only verified Poke results before selecting each user best score', async () => {
     await seedUsers(dataSource, ['account-a', 'account-b', 'account-c']);
+    await dataSource.query(
+      `UPDATE "user" SET "accessToken" = 'sentinel-access-token'`,
+    );
     await runUp(dataSource);
     await dataSource.transaction((manager) =>
       writer.write(manager, verifiedInput()),
@@ -201,10 +204,13 @@ describe('game result trust PostgreSQL integration', () => {
     );
 
     const ranking = await service.getRanking(GameType.POKE_LOUNGE);
-    expect(ranking.map(({ userId, score }) => ({ userId, score }))).toEqual([
-      { userId: 'account-a', score: 100 },
-      { userId: 'account-b', score: 50 },
+    expect(ranking).toEqual([
+      expect.objectContaining({ score: 100, rank: 1 }),
+      expect.objectContaining({ score: 50, rank: 2 }),
     ]);
+    expect(JSON.stringify(ranking)).not.toMatch(
+      /resultTrust|sourceKey|email|accessToken|sentinel/,
+    );
     await expect(
       service.getUserRank('account-b', 50, GameType.POKE_LOUNGE),
     ).resolves.toBe(2);

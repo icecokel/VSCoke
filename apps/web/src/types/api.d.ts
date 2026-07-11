@@ -116,7 +116,7 @@ export interface paths {
     };
     /**
      * 게임별 Top 10 랭킹 조회
-     * @description POKE_LOUNGE 결과는 현재 미검증 상태이므로 빈 배열을 반환합니다. 응답은 항상 랭킹 배열입니다.
+     * @description POKE_LOUNGE는 서버에서 검증된 대전 결과만 포함합니다. 응답은 항상 랭킹 배열입니다.
      */
     get: operations["GameController_getRanking"];
     put?: never;
@@ -735,54 +735,25 @@ export interface components {
        */
       clientUpdatedAt?: Record<string, never> | null;
     };
-    GameRankingUserDto: {
-      /** @description 사용자 Google ID */
-      id: string;
-      /** @description 사용자 이메일 */
-      email: string;
-      /**
-       * @description 사용자 이름
-       * @example Gil
-       */
-      firstName: string;
-      /**
-       * @description 사용자 성
-       * @example Dong
-       */
-      lastName: string;
-    };
     GameRankingHistoryDto: {
-      /**
-       * @description 게임 기록 ID (UUID)
-       * @example 123e4567-e89b-12d3-a456-426614174000
-       */
-      id: string;
       /**
        * @description 점수
        * @example 100
        */
       score: number;
       /**
-       * @description 게임 타입
-       * @example SKY_DROP
-       * @enum {string}
+       * @description 순위
+       * @example 1
        */
-      gameType: "SKY_DROP" | "POKE_LOUNGE";
-      /**
-       * @description 플레이 시간(ms)
-       * @example 60000
-       */
-      playTime?: number;
+      rank: number;
       /**
        * Format: date-time
        * @description 생성 일시
        * @example 2024-01-30T12:00:00.000Z
        */
       createdAt: string;
-      /** @description 사용자 ID */
-      userId: string;
-      /** @description 사용자 정보 */
-      user: components["schemas"]["GameRankingUserDto"];
+      /** @description 공개 사용자 정보 */
+      user: components["schemas"]["GameHistoryUserDto"];
     };
     CreatePokeLoungeRoomDto: {
       /** @example player-a */

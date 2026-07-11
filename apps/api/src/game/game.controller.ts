@@ -199,7 +199,7 @@ export class GameController {
   @ApiOperation({
     summary: '게임별 Top 10 랭킹 조회',
     description:
-      'POKE_LOUNGE 결과는 현재 미검증 상태이므로 빈 배열을 반환합니다. 응답은 항상 랭킹 배열입니다.',
+      'POKE_LOUNGE는 서버에서 검증된 대전 결과만 포함합니다. 응답은 항상 랭킹 배열입니다.',
   })
   @ApiQuery({
     name: 'gameType',
@@ -211,8 +211,17 @@ export class GameController {
   @ApiOkResponse({ type: GameRankingHistoryDto, isArray: true })
   async getRanking(
     @Query('gameType', new ParseEnumPipe(GameType)) gameType: GameType,
-  ) {
-    return this.gameService.getRanking(gameType);
+  ): Promise<GameRankingHistoryDto[]> {
+    const rankings = await this.gameService.getRanking(gameType);
+
+    return rankings.map((ranking) => ({
+      score: ranking.score,
+      rank: ranking.rank,
+      createdAt: ranking.createdAt,
+      user: {
+        displayName: ranking.user.displayName,
+      },
+    }));
   }
 
   /**

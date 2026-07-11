@@ -1,11 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { GameHistory } from './entities/game-history.entity';
 import { GamePokeLoungeState } from './entities/game-poke-lounge-state.entity';
 import { User } from '../auth/entities/user.entity';
 import { CreateGameHistoryDto } from './dto/create-game-history.dto';
 import { SavePokeLoungeStateDto } from './dto/save-poke-lounge-state.dto';
+import { GameRankingHistoryDto } from './dto/game-ranking-history.dto';
 import { GameType } from './enums/game-type.enum';
 import {
   GameSubmissionTrust,
@@ -22,8 +23,11 @@ type MaxScoreRow = {
   maxScore: string | number | null;
 };
 
-type RankingIdRow = {
-  id: string;
+type RankingProjectionRow = {
+  score: string | number;
+  createdAt: Date | string;
+  firstName: string;
+  lastName: string;
 };
 
 type RankCountRow = {
@@ -105,7 +109,7 @@ export class GameService {
   /**
    * 게임별 랭킹 목록을 조회함 (유저별 최고 점수 기준 Top 10)
    */
-  async getRanking(gameType: GameType): Promise<GameHistory[]> {
+  async getRanking(gameType: GameType): Promise<GameRankingHistoryDto[]> {
     const policy = getGameScorePolicy(gameType);
     const policyValues = getGameScorePolicyValues(policy);
     const trustCondition =
@@ -118,20 +122,25 @@ export class GameService {
     }
 
     // 유저별 최고 점수 1건만 추린 뒤 전체 상위 10건을 구함
-    const ids = await this.gameHistoryRepository.query<RankingIdRow[]>(
+    const rows = await this.gameHistoryRepository.query<RankingProjectionRow[]>(
       `
-      SELECT ranked.id
+      SELECT
+        ranked.score,
+        ranked."createdAt",
+        ranked."firstName",
+        ranked."lastName"
       FROM (
         SELECT
-          gh.id,
-          gh."userId",
           gh.score,
           gh."createdAt",
+          user_record."firstName",
+          user_record."lastName",
           ROW_NUMBER() OVER (
             PARTITION BY gh."userId"
             ORDER BY gh.score DESC, gh."createdAt" ASC, gh.id ASC
           ) AS row_num
         FROM game_history gh
+        INNER JOIN "user" user_record ON user_record.id = gh."userId"
         WHERE gh."gameType" = $1
           AND ${buildPositionalValidScoreCondition('gh', 2)}
           ${trustCondition}
@@ -143,22 +152,15 @@ export class GameService {
       queryValues,
     );
 
-    const rankingIds = ids.map((row) => row.id);
-    if (rankingIds.length === 0) {
-      return [];
-    }
-
-    const histories = await this.gameHistoryRepository.find({
-      where: { id: In(rankingIds) },
-      relations: ['user'],
-    });
-
-    const historyById = new Map(
-      histories.map((history) => [history.id, history]),
-    );
-    return rankingIds
-      .map((id) => historyById.get(id))
-      .filter((history): history is GameHistory => Boolean(history));
+    return rows.map((row, index) => ({
+      score: Number(row.score),
+      rank: index + 1,
+      createdAt:
+        row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt),
+      user: {
+        displayName: `${row.firstName} ${row.lastName}`.trim(),
+      },
+    }));
   }
 
   /**

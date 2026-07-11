@@ -165,52 +165,6 @@ describe('PostgresCompetitiveMatchRepository', () => {
     expect(JSON.stringify(result)).not.toContain(existingAssignment.matchId);
   });
 
-  it('fails assignment lookup closed unless both player and account are members', async () => {
-    const existingAssignment = assignment({
-      roomId: 'room-id',
-      roomCode: 'ROOM01',
-      assignmentRevision: 1,
-      players: [
-        { playerId: 'player-a', accountId: 'account-a' },
-        { playerId: 'player-b', accountId: 'account-b' },
-      ],
-    });
-    const repository = new PostgresCompetitiveMatchRepository({
-      getRepository: () => ({
-        createQueryBuilder: () => chainQueryBuilder(existingAssignment, []),
-      }),
-    } as unknown as DataSource);
-    const lookup = repository as unknown as {
-      findAssignmentForParticipant(input: {
-        roomCode: string;
-        playerId: string;
-        accountId: string;
-      }): Promise<unknown>;
-    };
-
-    await expect(
-      lookup.findAssignmentForParticipant({
-        roomCode: 'ROOM01',
-        playerId: 'player-a',
-        accountId: 'account-a',
-      }),
-    ).resolves.toMatchObject({ matchId: existingAssignment.matchId });
-    await expect(
-      lookup.findAssignmentForParticipant({
-        roomCode: 'ROOM01',
-        playerId: 'player-c',
-        accountId: 'account-c',
-      }),
-    ).resolves.toBeNull();
-    await expect(
-      lookup.findAssignmentForParticipant({
-        roomCode: 'ROOM01',
-        playerId: 'player-a',
-        accountId: 'account-c',
-      }),
-    ).resolves.toBeNull();
-  });
-
   it('returns eligible false before binding when a third player reuses an assigned account', async () => {
     const calls: string[] = [];
     const existingAssignment = assignment({

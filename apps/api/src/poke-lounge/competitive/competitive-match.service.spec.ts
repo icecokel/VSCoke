@@ -19,7 +19,6 @@ describe('CompetitiveMatchService', () => {
   beforeEach(() => {
     repository = {
       bindSeatAndAssign: jest.fn(),
-      findAssignmentForParticipant: jest.fn(),
     };
     actionRepository = { submit: jest.fn() };
     publisher = { publish: jest.fn().mockResolvedValue(undefined) };

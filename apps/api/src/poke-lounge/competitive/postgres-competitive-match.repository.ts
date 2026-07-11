@@ -131,34 +131,6 @@ export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepos
       };
     });
   }
-
-  async findAssignmentForParticipant(input: {
-    roomCode: string;
-    playerId: string;
-    accountId: string;
-  }): Promise<CompetitiveMatchAssignment | null> {
-    const match = await this.dataSource
-      .getRepository(PokeLoungeCompetitiveMatch)
-      .createQueryBuilder('match')
-      .addSelect([
-        'match.serverSeed',
-        'match.initialState',
-        'match.currentState',
-        'match.terminalResult',
-      ])
-      .where('match.roomCode = :roomCode', {
-        roomCode: normalizeRoomCode(input.roomCode),
-      })
-      .getOne();
-
-    if (!match) {
-      return null;
-    }
-
-    const assignment = assignmentFromEntity(match);
-
-    return isCompetitiveAssignmentMember(assignment, input) ? assignment : null;
-  }
 }
 
 async function saveSeat(

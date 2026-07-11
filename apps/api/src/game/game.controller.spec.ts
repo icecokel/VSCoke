@@ -295,7 +295,14 @@ describe('GameController', () => {
 
   describe('getRanking', () => {
     it('should return ranking list for required gameType', async () => {
-      const expectedResult = [{ score: 100, gameType: GameType.SKY_DROP }];
+      const expectedResult = [
+        {
+          score: 100,
+          rank: 1,
+          createdAt: new Date('2026-07-11T00:00:00.000Z'),
+          user: { displayName: 'Gil Dong' },
+        },
+      ];
       service.getRanking.mockResolvedValue(expectedResult);
 
       const result = await controller.getRanking(GameType.SKY_DROP);
@@ -305,7 +312,14 @@ describe('GameController', () => {
     });
 
     it('should return ranking list filtered by gameType', async () => {
-      const expectedResult = [{ score: 200, gameType: GameType.SKY_DROP }];
+      const expectedResult = [
+        {
+          score: 200,
+          rank: 1,
+          createdAt: new Date('2026-07-11T00:00:00.000Z'),
+          user: { displayName: 'Gil Dong' },
+        },
+      ];
       service.getRanking.mockResolvedValue(expectedResult);
 
       const result = await controller.getRanking(GameType.SKY_DROP);

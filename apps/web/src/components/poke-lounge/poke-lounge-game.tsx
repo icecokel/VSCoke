@@ -7,7 +7,11 @@ import { useGame } from "@/contexts/game-context";
 import { getSessionApiIdToken, isAuthSessionError, type ApiTokenSession } from "@/lib/auth-token";
 import { submitScore } from "@/services/score-service";
 import { loadPokeLoungeState } from "@/services/poke-lounge-state-service";
-import { createPokeLoungeAutosaveLifecycle, startPokeLoungeAutosave } from "./poke-lounge-autosave";
+import {
+  createPokeLoungeAutosaveLifecycle,
+  createPokeLoungeTokenLifecycle,
+  startPokeLoungeAutosave,
+} from "./poke-lounge-autosave";
 import { setPokeLoungeMasterVolume } from "./runtime/game/audio/poke-lounge-audio";
 import { getDefaultGameStateStore } from "./runtime/game/state/defaultGameStateStore";
 import { detectTouchGameDevice } from "./runtime/game/input/mobileTouchControls";
@@ -94,6 +98,12 @@ export function PokeLoungeGame() {
   const gamePageHandleRef = useRef<PokeLoungeGamePageHandle | null>(null);
   const startedAtMsRef = useRef(Date.now());
   const isUnmountingRef = useRef(false);
+  const tokenLifecycleRef = useRef<ReturnType<typeof createPokeLoungeTokenLifecycle> | null>(null);
+  let tokenLifecycle = tokenLifecycleRef.current;
+  if (!tokenLifecycle) {
+    tokenLifecycle = createPokeLoungeTokenLifecycle();
+    tokenLifecycleRef.current = tokenLifecycle;
+  }
   const [finalResult, setFinalResult] = useState<FinalResultState | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fullscreenActive, setFullscreenActive] = useState(false);
@@ -110,6 +120,7 @@ export function PokeLoungeGame() {
     useState<PokeLoungeStateHydrationStatus>("pending");
   const [stateHydrationMessage, setStateHydrationMessage] = useState("");
   const [stateHydrationAttempt, setStateHydrationAttempt] = useState(0);
+  const [hydratedToken, setHydratedToken] = useState<string | null>(null);
   const volumeLevel = volumeLevelIndex + 1;
   const uiSizeLabel = uiSize === "large" ? "UI 크게" : "UI 보통";
   const roomShareUrl = settingsOpen ? createPokeLoungeRoomShareUrlFromLocation() : null;
@@ -305,20 +316,28 @@ export function PokeLoungeGame() {
 
     if (status === "loading") {
       setStateHydrationStatus("pending");
+      setHydratedToken(null);
       return;
     }
 
     if (status !== "authenticated" || !token || isAuthSessionError(apiSession?.error)) {
       setStateHydrationStatus("ready");
       setStateHydrationMessage("");
+      setHydratedToken(null);
       return;
     }
 
     let cancelled = false;
     setStateHydrationStatus("pending");
     setStateHydrationMessage("");
+    setHydratedToken(null);
 
-    void loadPokeLoungeState(token).then(result => {
+    void tokenLifecycle.runHydration(async () => {
+      if (cancelled) {
+        return;
+      }
+
+      const result = await loadPokeLoungeState(token);
       if (cancelled) {
         return;
       }
@@ -326,6 +345,7 @@ export function PokeLoungeGame() {
       if (!result.success) {
         setStateHydrationStatus("unavailable");
         setStateHydrationMessage(result.message);
+        setHydratedToken(null);
         return;
       }
 
@@ -334,12 +354,13 @@ export function PokeLoungeGame() {
       }
 
       setStateHydrationStatus("ready");
+      setHydratedToken(token);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [session, stateHydrationAttempt, status]);
+  }, [session, stateHydrationAttempt, status, tokenLifecycle]);
 
   useEffect(() => {
     isUnmountingRef.current = false;
@@ -355,6 +376,7 @@ export function PokeLoungeGame() {
 
     if (
       stateHydrationStatus !== "ready" ||
+      hydratedToken !== token ||
       status !== "authenticated" ||
       !token ||
       isAuthSessionError(apiSession?.error)
@@ -367,13 +389,16 @@ export function PokeLoungeGame() {
       token,
     });
     const autosaveLifecycle = createPokeLoungeAutosaveLifecycle(autosave);
+    tokenLifecycle.registerAutosave(autosaveLifecycle);
 
     return () => {
-      void (isUnmountingRef.current
-        ? autosaveLifecycle.disposeForUnmount()
-        : autosaveLifecycle.disposeForRehydration());
+      if (isUnmountingRef.current) {
+        tokenLifecycle.disposeForUnmount(autosaveLifecycle);
+      } else {
+        tokenLifecycle.disposeForRehydration(autosaveLifecycle);
+      }
     };
-  }, [session, stateHydrationStatus, status]);
+  }, [hydratedToken, session, stateHydrationStatus, status, tokenLifecycle]);
 
   useEffect(() => {
     if (stateHydrationStatus === "pending") {

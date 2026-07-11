@@ -45,6 +45,13 @@ export interface PokeLoungeAutosaveLifecycle {
   disposeForUnmount(): Promise<void>;
 }
 
+export interface PokeLoungeTokenLifecycle {
+  registerAutosave(autosave: PokeLoungeAutosaveLifecycle): void;
+  disposeForRehydration(autosave: PokeLoungeAutosaveLifecycle): void;
+  disposeForUnmount(autosave: PokeLoungeAutosaveLifecycle): void;
+  runHydration<T>(hydrate: () => Promise<T>): Promise<T>;
+}
+
 export function createPokeLoungeAutosaveLifecycle(
   autosave: PokeLoungeAutosaveController,
 ): PokeLoungeAutosaveLifecycle {
@@ -54,6 +61,48 @@ export function createPokeLoungeAutosaveLifecycle(
     },
     disposeForUnmount() {
       return autosave.dispose();
+    },
+  };
+}
+
+export function createPokeLoungeTokenLifecycle(): PokeLoungeTokenLifecycle {
+  let activeAutosave: PokeLoungeAutosaveLifecycle | null = null;
+  let disposalBarrier = Promise.resolve();
+  const queuedDisposals = new WeakSet<PokeLoungeAutosaveLifecycle>();
+
+  const queueDisposal = (autosave: PokeLoungeAutosaveLifecycle, dispose: () => Promise<void>) => {
+    if (activeAutosave === autosave) {
+      activeAutosave = null;
+    }
+    if (queuedDisposals.has(autosave)) {
+      return;
+    }
+
+    queuedDisposals.add(autosave);
+    const disposal = disposalBarrier.then(dispose);
+    disposalBarrier = disposal.catch(() => undefined);
+  };
+
+  return {
+    registerAutosave(autosave) {
+      if (activeAutosave && activeAutosave !== autosave) {
+        const previousAutosave = activeAutosave;
+        queueDisposal(previousAutosave, () => previousAutosave.disposeForRehydration());
+      }
+      activeAutosave = autosave;
+    },
+    disposeForRehydration(autosave) {
+      queueDisposal(autosave, () => autosave.disposeForRehydration());
+    },
+    disposeForUnmount(autosave) {
+      queueDisposal(autosave, () => autosave.disposeForUnmount());
+    },
+    runHydration(hydrate) {
+      if (activeAutosave) {
+        const autosave = activeAutosave;
+        queueDisposal(autosave, () => autosave.disposeForRehydration());
+      }
+      return disposalBarrier.then(hydrate);
     },
   };
 }

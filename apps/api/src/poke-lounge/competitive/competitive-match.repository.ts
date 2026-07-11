@@ -47,11 +47,6 @@ export interface CompetitiveMatchRepository {
       context: CompetitiveAssignmentCreateContext,
     ) => CompetitiveMatchAssignment;
   }): Promise<CompetitiveSeatBindingResult>;
-  findAssignmentForParticipant(input: {
-    roomCode: string;
-    playerId: string;
-    accountId: string;
-  }): Promise<CompetitiveMatchAssignment | null>;
 }
 
 export function isCompetitiveAssignmentMember(

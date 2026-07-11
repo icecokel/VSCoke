@@ -226,7 +226,8 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
   });
 
   it('broadcasts one committed public revision to two authorized subscribers', async () => {
-    const created = await createRoom(1);
+    const nowMs = Date.now();
+    const created = await createRoom(1, nowMs);
     const joinedResponse = await request(httpServer)
       .post(`/poke-lounge/rooms/${created.roomCode}/join`)
       .set(commandHeaders(2, created.revision))
@@ -234,7 +235,7 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
         playerId: 'player-b',
         sessionId: 'session-b',
         displayName: 'Player B',
-        nowMs: 10,
+        nowMs: nowMs + 10,
       })
       .expect(201);
     const joined = joinedResponse.body as PokeLoungePublicRoomState;
@@ -272,7 +273,7 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
         playerId: 'player-a',
         sessionId: 'session-a',
         displayName: 'Player A',
-        nowMs: 20,
+        nowMs: nowMs + 20,
       })
       .expect(201);
 
@@ -293,7 +294,7 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
         playerId: 'player-a',
         sessionId: 'session-a',
         ready: true,
-        nowMs: 30,
+        nowMs: nowMs + 30,
       })
       .expect(409);
     await noSnapshot;
@@ -337,11 +338,14 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
     expect(reloaded.body).toEqual(created);
   });
 
-  async function createRoom(index: number): Promise<PokeLoungePublicRoomState> {
+  async function createRoom(
+    index: number,
+    nowMs = 0,
+  ): Promise<PokeLoungePublicRoomState> {
     const response = await request(httpServer)
       .post('/poke-lounge/rooms')
       .set(commandHeaders(index, 0))
-      .send(createBody())
+      .send(createBody(nowMs))
       .expect(201);
 
     return response.body as PokeLoungePublicRoomState;
@@ -452,13 +456,13 @@ function expectNoSnapshot(
   });
 }
 
-function createBody() {
+function createBody(nowMs = 0) {
   return {
     playerId: 'player-a',
     sessionId: 'session-a',
     displayName: 'Player A',
     roundDurationMs: 1000,
-    nowMs: 0,
+    nowMs,
   };
 }
 

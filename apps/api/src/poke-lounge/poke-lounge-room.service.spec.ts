@@ -502,6 +502,69 @@ describe('PokeLoungeRoomService', () => {
     });
   });
 
+  it('preserves a committed command snapshot when the room advances before enrichment', async () => {
+    const revisionOne = {
+      ...createSnapshot(),
+      revision: 1,
+      updatedAtMs: 1,
+    };
+    const revisionTwo = {
+      ...revisionOne,
+      revision: 2,
+      updatedAtMs: 2,
+      competitive: { matchId: 'match-2' },
+    } as unknown as PokeLoungeRoomSnapshot;
+    jest.spyOn(repository, 'mutate').mockResolvedValueOnce({
+      snapshot: revisionOne,
+      outcome: 'committed',
+      committedChange: true,
+    });
+    competitiveProjection.findRoomSnapshot.mockResolvedValueOnce(revisionTwo);
+
+    const committed = await service.joinRoom(
+      'ROOM01',
+      { playerId: 'player-2', sessionId: 'session-2' },
+      command(0, 20),
+    );
+
+    expect(committed).toEqual(revisionOne);
+    expect(publisher.publish.mock.calls).toHaveLength(1);
+    expect(publisher.publish.mock.calls[0][0].snapshot).toMatchObject({
+      revision: 1,
+    });
+    expect(
+      publisher.publish.mock.calls[0][0].snapshot.competitive,
+    ).toBeUndefined();
+
+    jest.spyOn(repository, 'mutate').mockResolvedValueOnce({
+      snapshot: revisionOne,
+      outcome: 'replayed',
+      committedChange: false,
+    });
+    publisher.publish.mockClear();
+    competitiveProjection.findRoomSnapshot.mockClear();
+    competitiveProjection.findRoomSnapshot.mockResolvedValue(revisionTwo);
+
+    const replay = await service.joinRoom(
+      'ROOM01',
+      { playerId: 'player-2', sessionId: 'session-2' },
+      command(999, 20),
+    );
+
+    expect(replay).toEqual(revisionOne);
+    expect(competitiveProjection.findRoomSnapshot.mock.calls).toHaveLength(0);
+    expect(publisher.publish.mock.calls).toHaveLength(0);
+
+    jest.spyOn(repository, 'getAndAdvance').mockResolvedValueOnce({
+      snapshot: revisionTwo,
+      committedChange: false,
+    });
+    const latest = await service.getRoom('ROOM01');
+
+    expect(latest).toEqual(revisionTwo);
+    expect(publisher.publish.mock.calls).toHaveLength(0);
+  });
+
   it('hashes explicit nowMs but keeps omitted nowMs stable across server clock changes', async () => {
     const createSpy = jest.spyOn(repository, 'create');
 

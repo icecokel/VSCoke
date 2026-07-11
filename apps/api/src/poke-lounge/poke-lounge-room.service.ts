@@ -146,7 +146,9 @@ export class PokeLoungeRoomService {
         continue;
       }
 
-      const snapshot = await this.withCompetitive(result.snapshot);
+      const snapshot = result.committedChange
+        ? await this.enrichCommandSnapshot(result.snapshot)
+        : structuredClone(result.snapshot);
       if (result.committedChange) {
         await this.publish('room-created', snapshot);
       }
@@ -172,9 +174,12 @@ export class PokeLoungeRoomService {
       throw new NotFoundException('Poke Lounge room not found');
     }
 
-    const snapshot = await this.withCompetitive(result.snapshot);
+    const snapshot = await this.readCurrentSnapshot(result.snapshot.roomCode);
     if (result.committedChange) {
-      await this.publish('room-clock-advanced', snapshot);
+      await this.publish(
+        'room-clock-advanced',
+        attachProjectionAtSameRevision(result.snapshot, snapshot),
+      );
     }
 
     return structuredClone(snapshot);
@@ -191,10 +196,13 @@ export class PokeLoungeRoomService {
     );
 
     const snapshot = result.snapshot
-      ? await this.withCompetitive(result.snapshot)
+      ? await this.readCurrentSnapshot(result.snapshot.roomCode)
       : null;
     if (snapshot && result.committedChange) {
-      await this.publish('room-clock-advanced', snapshot);
+      await this.publish(
+        'room-clock-advanced',
+        attachProjectionAtSameRevision(result.snapshot!, snapshot),
+      );
     }
 
     const participant = snapshot?.participants.find(
@@ -497,7 +505,9 @@ export class PokeLoungeRoomService {
       throw new NotFoundException('Poke Lounge room not found');
     }
 
-    const snapshot = await this.withCompetitive(result.snapshot);
+    const snapshot = result.committedChange
+      ? await this.enrichCommandSnapshot(result.snapshot)
+      : structuredClone(result.snapshot);
     const enrichedResult = { ...result, snapshot };
     if (result.committedChange) {
       await this.publish(
@@ -538,12 +548,23 @@ export class PokeLoungeRoomService {
     }
   }
 
-  private async withCompetitive(
+  private async enrichCommandSnapshot(
     snapshot: PokeLoungeRoomSnapshot,
   ): Promise<PokeLoungeRoomSnapshot> {
     const consistent = await this.competitiveProjection.findRoomSnapshot(
       snapshot.roomCode,
     );
+    if (!consistent || consistent.revision !== snapshot.revision) {
+      return structuredClone(snapshot);
+    }
+    return attachProjectionAtSameRevision(snapshot, consistent);
+  }
+
+  private async readCurrentSnapshot(
+    roomCode: string,
+  ): Promise<PokeLoungeRoomSnapshot> {
+    const consistent =
+      await this.competitiveProjection.findRoomSnapshot(roomCode);
     if (!consistent) {
       throw new NotFoundException('Poke Lounge room not found');
     }
@@ -553,6 +574,19 @@ export class PokeLoungeRoomService {
   private normalizeNow(nowMs: number | undefined): number {
     return normalizeNow(nowMs, this.nowFactory);
   }
+}
+
+function attachProjectionAtSameRevision(
+  snapshot: PokeLoungeRoomSnapshot,
+  consistent: PokeLoungeRoomSnapshot,
+): PokeLoungeRoomSnapshot {
+  if (snapshot.revision !== consistent.revision || !consistent.competitive) {
+    return structuredClone(snapshot);
+  }
+  return {
+    ...structuredClone(snapshot),
+    competitive: structuredClone(consistent.competitive),
+  };
 }
 
 type NormalizedParticipantInput = {

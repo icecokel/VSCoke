@@ -27,6 +27,7 @@ import { PokeLoungeRoom } from '../src/poke-lounge/entities/poke-lounge-room.ent
 import { PostgresPokeLoungeRoomRepository } from '../src/poke-lounge/postgres-poke-lounge-room.repository';
 import { PokeLoungeRoomService } from '../src/poke-lounge/poke-lounge-room.service';
 import type { PokeLoungeRoomState } from '../src/poke-lounge/poke-lounge-room.types';
+import type { PokeLoungeRoomRepository } from '../src/poke-lounge/poke-lounge-room.repository';
 import type { PokeLoungeRoomCommittedEvent } from '../src/poke-lounge/poke-lounge-room-event.publisher';
 
 const describePostgres = process.env.TEST_DATABASE_URL
@@ -483,6 +484,114 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
       }),
     ).resolves.toMatchObject({ revision: 7 });
     expect(publish.mock.calls).toHaveLength(0);
+  });
+
+  it('preserves command revision and stored replay when a later casual commit wins enrichment', async () => {
+    await insertRoom('ROOM13', ['player-a', 'player-b']);
+    await service.bindSeat('ROOM13', 'session-a', 'account-a');
+    await service.bindSeat('ROOM13', 'session-b', 'account-b');
+    const baseRepository = new PostgresPokeLoungeRoomRepository(dataSource);
+    const roomPublish = jest.fn<Promise<void>, [PokeLoungeRoomCommittedEvent]>(
+      () => Promise.resolve(),
+    );
+    const projection = new CompetitiveProjectionService(dataSource);
+    const laterService = new PokeLoungeRoomService(
+      baseRepository,
+      { publish: roomPublish },
+      projection,
+      () => 'UNUSED',
+      () => 0,
+    );
+    let laterCommitted = false;
+    const wrappingRepository: PokeLoungeRoomRepository = {
+      create: (input) => baseRepository.create(input),
+      getAndAdvance: (roomCode, nowMs) =>
+        baseRepository.getAndAdvance(roomCode, nowMs),
+      purgeExpired: (nowMs) => baseRepository.purgeExpired(nowMs),
+      mutate: async (input) => {
+        const result = await baseRepository.mutate(input);
+        if (
+          result?.outcome === 'committed' &&
+          !laterCommitted &&
+          result.snapshot.revision === 7
+        ) {
+          laterCommitted = true;
+          await laterService.setReady(
+            'ROOM13',
+            {
+              playerId: 'player-b',
+              sessionId: 'session-b',
+              ready: true,
+              nowMs: 2,
+            },
+            roomCommand(7, 15),
+          );
+        }
+        return result;
+      },
+    };
+    const commandService = new PokeLoungeRoomService(
+      wrappingRepository,
+      { publish: roomPublish },
+      projection,
+      () => 'UNUSED',
+      () => 0,
+    );
+    roomPublish.mockClear();
+    const firstCommand = roomCommand(6, 14);
+
+    const revisionOne = await commandService.setReady(
+      'ROOM13',
+      {
+        playerId: 'player-a',
+        sessionId: 'session-a',
+        ready: true,
+        nowMs: 1,
+      },
+      firstCommand,
+    );
+
+    expect(revisionOne).toMatchObject({
+      revision: 7,
+      participants: [
+        { playerId: 'player-a', ready: true },
+        { playerId: 'player-b', ready: false },
+      ],
+    });
+    expect(revisionOne.competitive).toBeUndefined();
+    expect(
+      roomPublish.mock.calls.map(([event]) => event.snapshot.revision),
+    ).toEqual([8, 7]);
+    expect(
+      roomPublish.mock.calls.filter(([event]) => event.snapshot.revision === 8),
+    ).toHaveLength(1);
+    expect(roomPublish.mock.calls[1][0].snapshot.competitive).toBeUndefined();
+
+    roomPublish.mockClear();
+    const replay = await commandService.setReady(
+      'ROOM13',
+      {
+        playerId: 'player-a',
+        sessionId: 'session-a',
+        ready: true,
+        nowMs: 1,
+      },
+      { ...firstCommand, expectedRevision: 999 },
+    );
+
+    expect(replay).toEqual(revisionOne);
+    expect(roomPublish).not.toHaveBeenCalled();
+
+    const latest = await commandService.getRoom('ROOM13', 0);
+    expect(latest).toMatchObject({
+      revision: 8,
+      participants: [
+        { playerId: 'player-a', ready: true },
+        { playerId: 'player-b', ready: true },
+      ],
+      competitive: { submittedPlayerIds: [] },
+    });
+    expect(roomPublish).not.toHaveBeenCalled();
   });
 
   it('returns an old-all repeatable-read snapshot when an action commits between room and match reads', async () => {
@@ -974,6 +1083,13 @@ function actionInput(
     turn: 0,
     clientCommandId,
     action: { kind: 'move' as const, moveId: 'steady-strike' },
+  };
+}
+
+function roomCommand(expectedRevision: number, index: number) {
+  return {
+    expectedRevision,
+    idempotencyKey: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
   };
 }
 

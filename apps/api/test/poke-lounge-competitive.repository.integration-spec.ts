@@ -561,11 +561,16 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     expect(revisionOne.competitive).toBeUndefined();
     expect(
       roomPublish.mock.calls.map(([event]) => event.snapshot.revision),
-    ).toEqual([8, 7]);
+    ).toEqual([8, 8]);
     expect(
       roomPublish.mock.calls.filter(([event]) => event.snapshot.revision === 8),
-    ).toHaveLength(1);
-    expect(roomPublish.mock.calls[1][0].snapshot.competitive).toBeUndefined();
+    ).toHaveLength(2);
+    expect(
+      roomPublish.mock.calls.some(([event]) => event.snapshot.revision === 7),
+    ).toBe(false);
+    expect(roomPublish.mock.calls[1][0].snapshot.competitive).toMatchObject({
+      submittedPlayerIds: [],
+    });
 
     roomPublish.mockClear();
     const replay = await commandService.setReady(

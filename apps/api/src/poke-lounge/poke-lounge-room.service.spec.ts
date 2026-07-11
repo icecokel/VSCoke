@@ -530,11 +530,10 @@ describe('PokeLoungeRoomService', () => {
     expect(committed).toEqual(revisionOne);
     expect(publisher.publish.mock.calls).toHaveLength(1);
     expect(publisher.publish.mock.calls[0][0].snapshot).toMatchObject({
-      revision: 1,
+      revision: 2,
+      updatedAtMs: 2,
+      competitive: { matchId: 'match-2' },
     });
-    expect(
-      publisher.publish.mock.calls[0][0].snapshot.competitive,
-    ).toBeUndefined();
 
     jest.spyOn(repository, 'mutate').mockResolvedValueOnce({
       snapshot: revisionOne,
@@ -642,6 +641,13 @@ describe('PokeLoungeRoomService', () => {
     ).resolves.toMatchObject({ roomCode: 'ROOM02' });
     expect(loggerError.mock.calls[0]?.[0]).toContain('ROOM02');
     expect(loggerError.mock.calls[0]?.[1]).toContain('publisher unavailable');
+    await expect(service.getRoom('ROOM02', 1)).resolves.toMatchObject({
+      roomCode: 'ROOM02',
+      revision: 0,
+    });
+    await expect(
+      service.authorizeSubscription('ROOM02', 'player-2', 'session-2'),
+    ).resolves.toMatchObject({ roomCode: 'ROOM02', revision: 0 });
     loggerError.mockRestore();
   });
 

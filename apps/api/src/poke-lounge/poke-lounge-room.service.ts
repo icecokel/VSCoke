@@ -146,11 +146,12 @@ export class PokeLoungeRoomService {
         continue;
       }
 
-      const snapshot = result.committedChange
-        ? await this.enrichCommandSnapshot(result.snapshot)
-        : structuredClone(result.snapshot);
+      const snapshot = structuredClone(result.snapshot);
       if (result.committedChange) {
-        await this.publish('room-created', snapshot);
+        await this.publish(
+          'room-created',
+          await this.commandEventSnapshot(result.snapshot),
+        );
       }
 
       this.throwForConflict({ ...result, snapshot });
@@ -178,7 +179,7 @@ export class PokeLoungeRoomService {
     if (result.committedChange) {
       await this.publish(
         'room-clock-advanced',
-        attachProjectionAtSameRevision(result.snapshot, snapshot),
+        selectEventSnapshot(result.snapshot, snapshot),
       );
     }
 
@@ -201,7 +202,7 @@ export class PokeLoungeRoomService {
     if (snapshot && result.committedChange) {
       await this.publish(
         'room-clock-advanced',
-        attachProjectionAtSameRevision(result.snapshot!, snapshot),
+        selectEventSnapshot(result.snapshot!, snapshot),
       );
     }
 
@@ -505,14 +506,12 @@ export class PokeLoungeRoomService {
       throw new NotFoundException('Poke Lounge room not found');
     }
 
-    const snapshot = result.committedChange
-      ? await this.enrichCommandSnapshot(result.snapshot)
-      : structuredClone(result.snapshot);
+    const snapshot = structuredClone(result.snapshot);
     const enrichedResult = { ...result, snapshot };
     if (result.committedChange) {
       await this.publish(
         result.outcome === 'committed' ? 'room-updated' : 'room-clock-advanced',
-        snapshot,
+        await this.commandEventSnapshot(result.snapshot),
       );
     }
 
@@ -548,16 +547,16 @@ export class PokeLoungeRoomService {
     }
   }
 
-  private async enrichCommandSnapshot(
+  private async commandEventSnapshot(
     snapshot: PokeLoungeRoomSnapshot,
   ): Promise<PokeLoungeRoomSnapshot> {
     const consistent = await this.competitiveProjection.findRoomSnapshot(
       snapshot.roomCode,
     );
-    if (!consistent || consistent.revision !== snapshot.revision) {
+    if (!consistent) {
       return structuredClone(snapshot);
     }
-    return attachProjectionAtSameRevision(snapshot, consistent);
+    return selectEventSnapshot(snapshot, consistent);
   }
 
   private async readCurrentSnapshot(
@@ -576,10 +575,13 @@ export class PokeLoungeRoomService {
   }
 }
 
-function attachProjectionAtSameRevision(
+function selectEventSnapshot(
   snapshot: PokeLoungeRoomSnapshot,
   consistent: PokeLoungeRoomSnapshot,
 ): PokeLoungeRoomSnapshot {
+  if (consistent.revision > snapshot.revision) {
+    return structuredClone(consistent);
+  }
   if (snapshot.revision !== consistent.revision || !consistent.competitive) {
     return structuredClone(snapshot);
   }

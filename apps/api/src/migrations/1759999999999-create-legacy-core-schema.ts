@@ -12,6 +12,17 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
         later_enum_migration_applied boolean := false;
         schema_matches boolean;
       BEGIN
+        IF pg_catalog.to_regclass('public."migrations"') IS NOT NULL THEN
+          EXECUTE
+            'SELECT EXISTS (
+              SELECT 1
+              FROM public."migrations"
+              WHERE "name" = $1
+            )'
+          INTO later_enum_migration_applied
+          USING 'AddPokeLoungeGameType1793664000000';
+        END IF;
+
         SELECT
           (CASE WHEN pg_catalog.to_regclass('public."user"') IS NOT NULL THEN 1 ELSE 0 END) +
           (CASE WHEN pg_catalog.to_regclass('public.game_history') IS NOT NULL THEN 1 ELSE 0 END) +
@@ -24,6 +35,10 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
               AND type_record.typname = 'game_history_gametype_enum'
           ) THEN 1 ELSE 0 END)
         INTO core_object_count;
+
+        IF later_enum_migration_applied AND core_object_count <> 3 THEN
+          RAISE EXCEPTION 'Legacy core schema/ledger mismatch: AddPokeLoungeGameType1793664000000 is recorded in public.migrations but required public legacy core objects are missing';
+        END IF;
 
         IF core_object_count = 0 THEN
           CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA public;
@@ -286,17 +301,6 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
           ARRAY['SKY_DROP', 'POKE_LOUNGE']::text[]
         ), false) THEN
           RAISE EXCEPTION 'Legacy core schema mismatch: public.game_history_gametype_enum must contain SKY_DROP, optionally followed by POKE_LOUNGE';
-        END IF;
-
-        IF pg_catalog.to_regclass('public."migrations"') IS NOT NULL THEN
-          EXECUTE
-            'SELECT EXISTS (
-              SELECT 1
-              FROM public."migrations"
-              WHERE "name" = $1
-            )'
-          INTO later_enum_migration_applied
-          USING 'AddPokeLoungeGameType1793664000000';
         END IF;
 
         IF later_enum_migration_applied AND enum_labels <> ARRAY['SKY_DROP', 'POKE_LOUNGE']::text[] THEN

@@ -89,6 +89,51 @@ describe('legacy core production baseline migration', () => {
     expect(enumLabels).toEqual(['SKY_DROP']);
   });
 
+  it('rejects an all-absent schema when the later enum migration is already recorded', async () => {
+    await createMigrationLedger(dataSource);
+    await dataSource.query(`
+      INSERT INTO public.migrations ("timestamp", "name")
+      VALUES (1793664000000, 'AddPokeLoungeGameType1793664000000')
+    `);
+
+    const ledgerDataSource = new DataSource({
+      type: 'postgres',
+      url: disposableUrl.toString(),
+      migrations: [CreateLegacyCoreSchema1759999999999],
+      migrationsTableName: 'migrations',
+      synchronize: false,
+    });
+    await ledgerDataSource.initialize();
+
+    try {
+      const migrationExecutor = new MigrationExecutor(ledgerDataSource);
+
+      await expect(
+        migrationExecutor.executePendingMigrations(),
+      ).rejects.toThrow('Legacy core schema/ledger mismatch');
+
+      await expect(readCoreObjectPresence(ledgerDataSource)).resolves.toEqual({
+        user_table: false,
+        game_table: false,
+        enum: false,
+      });
+      await expect(
+        ledgerDataSource.query<Array<{ timestamp: string; name: string }>>(`
+          SELECT "timestamp"::text, "name"
+          FROM public.migrations
+          ORDER BY "timestamp"
+        `),
+      ).resolves.toEqual([
+        {
+          timestamp: '1793664000000',
+          name: 'AddPokeLoungeGameType1793664000000',
+        },
+      ]);
+    } finally {
+      await ledgerDataSource.destroy();
+    }
+  });
+
   it('adopts an exact schema without changing existing data', async () => {
     await runBaseline(dataSource);
     await dataSource.query(`

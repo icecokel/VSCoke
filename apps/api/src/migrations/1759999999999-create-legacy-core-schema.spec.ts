@@ -18,6 +18,9 @@ describe('CreateLegacyCoreSchema1759999999999 SQL contract', () => {
     expect(query).toContain(
       'CREATE INDEX "IDX_game_history_user_id"\n            ON public.game_history',
     );
+    expect(query.indexOf(`FROM public."migrations"`)).toBeLessThan(
+      query.indexOf('IF core_object_count = 0 THEN'),
+    );
   });
 
   it('rejects partial objects and validates an exact existing schema', async () => {

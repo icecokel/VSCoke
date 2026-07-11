@@ -45,6 +45,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify shared package resolution
+        run: pnpm check:poke-lounge-battle-resolution
+
       - name: Install pgvector in PostgreSQL service
         run: |
           docker exec "${{ job.services.postgres.id }}" sh -c '

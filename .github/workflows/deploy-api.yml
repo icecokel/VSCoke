@@ -6,6 +6,7 @@ on:
     branches: ["main"]
     paths:
       - "apps/api/**"
+      - "packages/poke-lounge-battle/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -55,7 +56,8 @@ jobs:
       - name: Install dependencies and build API
         run: |
           pnpm install --frozen-lockfile
-          pnpm --filter @vscoke/api build
+          pnpm build:api
+          test -f packages/poke-lounge-battle/dist/index.js
           test -f apps/api/dist/src/main.js
 
       - name: Create staged release
@@ -63,15 +65,20 @@ jobs:
           RELEASE_DIR="$API_DEPLOY_DIR/.next-release"
           rm -rf "$RELEASE_DIR"
           mkdir -p "$RELEASE_DIR/apps/api"
+          mkdir -p "$RELEASE_DIR/packages/poke-lounge-battle"
 
           rsync -a apps/api/dist "$RELEASE_DIR/apps/api/"
+          rsync -a packages/poke-lounge-battle/dist "$RELEASE_DIR/packages/poke-lounge-battle/"
           cp apps/api/package.json "$RELEASE_DIR/apps/api/package.json"
+          cp packages/poke-lounge-battle/package.json "$RELEASE_DIR/packages/poke-lounge-battle/package.json"
           cp package.json pnpm-lock.yaml pnpm-workspace.yaml "$RELEASE_DIR/"
 
           cd "$RELEASE_DIR"
           pnpm --filter @vscoke/api install --prod --frozen-lockfile --ignore-scripts
           test -f apps/api/dist/src/main.js
           test -f apps/api/package.json
+          test -f packages/poke-lounge-battle/dist/index.js
+          pnpm --filter @vscoke/api exec node -e "require('@vscoke/poke-lounge-battle')"
 
       - name: Promote release
         run: |

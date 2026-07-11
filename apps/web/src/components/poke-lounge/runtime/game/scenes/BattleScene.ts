@@ -69,7 +69,10 @@ import { createShortcutGuideRows, createShortcutGuideTitle } from "../ui/shortcu
 import { consumeVirtualGamepadPress, resetVirtualGamepad } from "../input/virtualGamepad";
 import { setShortcutGuideTouchControlsSuppressed } from "../input/mobileTouchControlsVisibility";
 import type { WildEncounterCandidate } from "../world/wildEncounters";
-import { toAuthoritativeBattleState } from "../battle/authoritative-battle-adapter";
+import {
+  isLegalAuthoritativeAction,
+  toAuthoritativeBattleState,
+} from "../battle/authoritative-battle-adapter";
 import type {
   CompetitiveProjection,
   MultiplayerRoom,
@@ -912,6 +915,15 @@ export class BattleScene extends Phaser.Scene {
     if (!projection || !ownPlayerId || !this.multiplayerRoom || this.authoritativeInputPending) {
       return;
     }
+    if (!isLegalAuthoritativeAction(projection, ownPlayerId, action)) {
+      this.state = {
+        ...this.state,
+        phase: "command",
+        messageQueue: ["선택한 행동을 사용할 수 없습니다."],
+      };
+      this.render();
+      return;
+    }
     if (typeof crypto === "undefined" || !("randomUUID" in crypto)) {
       throw new Error("crypto.randomUUID is required for competitive battle commands");
     }
@@ -954,7 +966,7 @@ export class BattleScene extends Phaser.Scene {
         this.authoritativeInputPending = projection.submittedPlayerIds.includes(ownPlayerId);
         this.setBattleState(toAuthoritativeBattleState(projection, ownPlayerId));
       }),
-      this.multiplayerRoom.on("COMPETITIVE_RESYNC", ({ matchId, message }) => {
+      this.multiplayerRoom.on("COMPETITIVE_ACTION_FAILED", ({ matchId, message }) => {
         if (matchId !== this.authoritativeProjection?.matchId) {
           return;
         }

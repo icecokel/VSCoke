@@ -1,4 +1,4 @@
-import type { CompetitiveProjection } from "../network/localPreviewRoom";
+import type { CompetitiveAction, CompetitiveProjection } from "../network/localPreviewRoom";
 import { createDefaultBattleStatStages } from "./battle-stat-stages";
 import { getBattlePokemonAssets } from "./battlePokemonAssets";
 import { normalizeIndividualValues } from "./individual-values";
@@ -19,16 +19,41 @@ const SPECIES_VIEW = {
 } as const;
 
 const MOVE_VIEW = {
-  "steady-strike": { id: 1, name: "안정 타격", power: 40, accuracy: 100 },
-  "stun-spark": { id: 2, name: "마비 불꽃", power: 30, accuracy: 90 },
-  "heavy-blow": { id: 3, name: "강타", power: 60, accuracy: 80 },
+  "steady-strike": { id: 1, name: "안정 타격", power: 40, accuracy: 100, maxPp: 20 },
+  "stun-spark": { id: 2, name: "마비 불꽃", power: 30, accuracy: 90, maxPp: 15 },
+  "heavy-blow": { id: 3, name: "강타", power: 60, accuracy: 80, maxPp: 10 },
 } as const;
 
-const MOVE_MAX_PP = {
-  "steady-strike": 20,
-  "stun-spark": 15,
-  "heavy-blow": 10,
-} as const;
+export function isLegalAuthoritativeAction(
+  projection: CompetitiveProjection,
+  ownPlayerId: string,
+  action: CompetitiveAction,
+): boolean {
+  const player = projection.currentState.playersById[ownPlayerId];
+  if (!player || projection.terminal) {
+    return false;
+  }
+
+  if (action.kind === "move") {
+    const activePokemon = player.team[player.activeSlotIndex];
+    return Boolean(
+      activePokemon &&
+      typeof action.moveId === "string" &&
+      activePokemon.moves.some(move => move.moveId === action.moveId && move.pp > 0),
+    );
+  }
+
+  if (action.kind === "switch") {
+    if (!Number.isSafeInteger(action.slotIndex)) {
+      return false;
+    }
+    const slotIndex = action.slotIndex as number;
+    const target = player.team[slotIndex];
+    return slotIndex !== player.activeSlotIndex && Boolean(target && target.currentHp > 0);
+  }
+
+  return false;
+}
 
 export function toAuthoritativeBattleState(
   projection: CompetitiveProjection,
@@ -96,8 +121,7 @@ function toBattleParticipant(player: CompetitivePlayer, fallbackName: string): B
 }
 
 function toBattlePokemon(pokemon: CompetitivePokemon): BattlePokemon {
-  const species =
-    SPECIES_VIEW[pokemon.speciesId as keyof typeof SPECIES_VIEW] ?? SPECIES_VIEW["vscoke-alpha"];
+  const species = getSpeciesView(pokemon.speciesId);
   const assets = getBattlePokemonAssets(species.speciesId);
   const status =
     pokemon.currentHp <= 0 ? "fainted" : pokemon.status === "paralyzed" ? "paralyzed" : "normal";
@@ -136,14 +160,13 @@ function toBattlePokemon(pokemon: CompetitivePokemon): BattlePokemon {
 }
 
 function toBattleMove(move: CompetitivePokemon["moves"][number]): BattleMove {
-  const view = MOVE_VIEW[move.moveId as keyof typeof MOVE_VIEW] ?? MOVE_VIEW["steady-strike"];
-  const maxPp = MOVE_MAX_PP[move.moveId as keyof typeof MOVE_MAX_PP] ?? move.pp;
+  const view = getMoveView(move.moveId);
 
   return {
     id: view.id,
     name: view.name,
     pp: move.pp,
-    maxPp,
+    maxPp: view.maxPp,
     type: "normal",
     typeId: 0,
     category: "physical",
@@ -151,4 +174,18 @@ function toBattleMove(move: CompetitivePokemon["moves"][number]): BattleMove {
     accuracy: view.accuracy,
     power: view.power,
   };
+}
+
+function getSpeciesView(speciesId: string): (typeof SPECIES_VIEW)[keyof typeof SPECIES_VIEW] {
+  if (speciesId === "vscoke-alpha" || speciesId === "vscoke-beta") {
+    return SPECIES_VIEW[speciesId];
+  }
+  throw new Error(`Unsupported competitive species: ${speciesId}`);
+}
+
+function getMoveView(moveId: string): (typeof MOVE_VIEW)[keyof typeof MOVE_VIEW] {
+  if (moveId === "steady-strike" || moveId === "stun-spark" || moveId === "heavy-blow") {
+    return MOVE_VIEW[moveId];
+  }
+  throw new Error(`Unsupported competitive move: ${moveId}`);
 }

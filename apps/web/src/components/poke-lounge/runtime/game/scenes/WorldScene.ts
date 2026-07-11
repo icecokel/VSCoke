@@ -41,6 +41,7 @@ import {
   type WildBattleStartInput,
   type WorldSceneEncounterController,
 } from "./world-scene-encounters";
+import { createCompetitiveBattleLaunchCache } from "./competitive-battle-launch";
 
 export { formatPokeDollars, formatRankScoreHud } from "./world-scene-hud";
 export {
@@ -185,7 +186,7 @@ export class WorldScene extends Phaser.Scene {
   private readonly encounters: WorldSceneEncounterController;
   private readonly interactions: WorldSceneInteractionsController;
   private readonly competitiveRoundsEnabled: boolean;
-  private launchedCompetitiveAssignmentKey: string | null = null;
+  private readonly competitiveBattleLaunchCache = createCompetitiveBattleLaunchCache();
   private preserveRoomForBattle = false;
 
   constructor(
@@ -782,25 +783,33 @@ export class WorldScene extends Phaser.Scene {
       }),
       this.room.on("COMPETITIVE_ASSIGNMENT", payload => {
         const { projection, ownPlayerId } = payload;
-        const assignmentKey = `${projection.matchId}:${projection.assignmentRevision}`;
 
         if (
-          this.launchedCompetitiveAssignmentKey === assignmentKey ||
-          !projection.playerIds.includes(ownPlayerId)
+          !projection.playerIds.includes(ownPlayerId) ||
+          !this.competitiveBattleLaunchCache.begin(payload)
         ) {
           return;
         }
 
-        this.launchedCompetitiveAssignmentKey = assignmentKey;
         this.preserveRoomForBattle = true;
         this.player.setVelocity(0, 0);
         this.encounters.playBattleIntroTransition(() => {
+          const latest = this.competitiveBattleLaunchCache.get(
+            projection.matchId,
+            projection.assignmentRevision,
+          );
+          if (!latest) {
+            return;
+          }
           this.scene.start("battle", {
             battleKind: "authoritative",
-            ownPlayerId,
-            projection,
+            ownPlayerId: latest.ownPlayerId,
+            projection: latest.projection,
           });
         });
+      }),
+      this.room.on("COMPETITIVE_STATE", payload => {
+        this.competitiveBattleLaunchCache.update(payload);
       }),
       this.room.on("TOURNAMENT_MATCH_RESULT", payload => {
         if (!this.canApplyTournamentPayloadFromRoom(payload.hostPlayerId)) {

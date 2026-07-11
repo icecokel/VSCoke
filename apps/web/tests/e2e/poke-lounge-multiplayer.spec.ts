@@ -1,5 +1,10 @@
 import { expect, type Browser, type Page, type Request, test } from "@playwright/test";
-import { toAuthoritativeBattleState } from "../../src/components/poke-lounge/runtime/game/battle/authoritative-battle-adapter";
+import {
+  isLegalAuthoritativeAction,
+  toAuthoritativeBattleState,
+} from "../../src/components/poke-lounge/runtime/game/battle/authoritative-battle-adapter";
+import { parseCompetitiveProjection } from "../../src/components/poke-lounge/runtime/game/network/competitive-projection";
+import { createCompetitiveBattleLaunchCache } from "../../src/components/poke-lounge/runtime/game/scenes/competitive-battle-launch";
 import type { CompetitiveProjection } from "../../src/components/poke-lounge/runtime/game/network/localPreviewRoom";
 import { gotoWithRetry } from "./test-helpers";
 
@@ -48,11 +53,11 @@ const createCompetitiveProjection = (
   matchId: "11111111-1111-4111-8111-111111111111",
   assignmentRevision: 7,
   rulesetVersion: 1,
-  rulesetHash: "ruleset-hash",
+  rulesetHash: "a".repeat(64),
   currentTurn: 3,
   status: "active",
   playerIds: ["player-a", "player-b"],
-  stateHash: "state-hash",
+  stateHash: "b".repeat(64),
   currentState: {
     rulesetVersion: 1,
     turn: 3,
@@ -65,16 +70,22 @@ const createCompetitiveProjection = (
           {
             speciesId: "vscoke-alpha",
             maxHp: 120,
-            currentHp: 0,
+            currentHp: 60,
             status: "none",
-            moves: [{ moveId: "steady-strike", pp: 18 }],
+            moves: [
+              { moveId: "steady-strike", pp: 18 },
+              { moveId: "stun-spark", pp: 9 },
+            ],
           },
           {
             speciesId: "vscoke-beta",
             maxHp: 140,
             currentHp: 91,
             status: "paralyzed",
-            moves: [{ moveId: "heavy-blow", pp: 7 }],
+            moves: [
+              { moveId: "steady-strike", pp: 19 },
+              { moveId: "heavy-blow", pp: 7 },
+            ],
           },
         ],
       },
@@ -87,7 +98,20 @@ const createCompetitiveProjection = (
             maxHp: 120,
             currentHp: 44,
             status: "none",
-            moves: [{ moveId: "stun-spark", pp: 9 }],
+            moves: [
+              { moveId: "steady-strike", pp: 17 },
+              { moveId: "stun-spark", pp: 9 },
+            ],
+          },
+          {
+            speciesId: "vscoke-beta",
+            maxHp: 140,
+            currentHp: 140,
+            status: "none",
+            moves: [
+              { moveId: "steady-strike", pp: 20 },
+              { moveId: "heavy-blow", pp: 10 },
+            ],
           },
         ],
       },
@@ -131,9 +155,32 @@ test.describe("Poke Lounge authoritative battle adapter", () => {
     expect(state.turn).toBe(3);
     expect(state.player.activePartySlotIndex).toBe(1);
     expect(state.player.pokemon).toMatchObject({ currentHp: 91, maxHp: 140, status: "paralyzed" });
-    expect(state.player.pokemon.moves[0]).toMatchObject({ name: "강타", pp: 7 });
+    expect(state.player.pokemon.moves[1]).toMatchObject({ name: "강타", pp: 7 });
     expect(state.opponent.pokemon).toMatchObject({ currentHp: 44, maxHp: 120 });
-    expect(state.opponent.pokemon.moves[0]).toMatchObject({ name: "마비 불꽃", pp: 9 });
+    expect(state.opponent.pokemon.moves[1]).toMatchObject({ name: "마비 불꽃", pp: 9 });
+  });
+
+  test("PP가 없거나 현재 슬롯인 교체 대상과 전투불능 슬롯은 제출 불가다", () => {
+    const projection = createCompetitiveProjection();
+    const player = projection.currentState.playersById["player-a"];
+    player.team[player.activeSlotIndex].moves[1].pp = 0;
+    player.team[0].currentHp = 0;
+
+    expect(
+      isLegalAuthoritativeAction(projection, "player-a", {
+        kind: "move",
+        moveId: "heavy-blow",
+      }),
+    ).toBe(false);
+    expect(
+      isLegalAuthoritativeAction(projection, "player-a", { kind: "switch", slotIndex: 1 }),
+    ).toBe(false);
+    expect(
+      isLegalAuthoritativeAction(projection, "player-a", { kind: "switch", slotIndex: 0 }),
+    ).toBe(false);
+    expect(
+      isLegalAuthoritativeAction(projection, "player-a", { kind: "switch", slotIndex: 2 }),
+    ).toBe(false);
   });
 
   test("자신이 현재 턴을 제출한 projection은 reconnect에서도 waiting으로 복원한다", () => {
@@ -170,6 +217,137 @@ test.describe("Poke Lounge authoritative battle adapter", () => {
       reason: "faint",
     });
     expect(state.messageQueue).toEqual(["패배했습니다."]);
+  });
+});
+
+test.describe("Poke Lounge competitive projection parser", () => {
+  test("revision과 state turn 불일치 및 participant 위조를 거부한다", () => {
+    expect(() =>
+      parseCompetitiveProjection(createCompetitiveProjection({ assignmentRevision: -1 })),
+    ).toThrow();
+    expect(() =>
+      parseCompetitiveProjection({
+        ...createCompetitiveProjection(),
+        currentState: { ...createCompetitiveProjection().currentState, turn: 2 },
+      }),
+    ).toThrow();
+    expect(() =>
+      parseCompetitiveProjection(
+        createCompetitiveProjection({ playerIds: ["player-a", "player-a"] }),
+      ),
+    ).toThrow();
+    expect(() =>
+      parseCompetitiveProjection(createCompetitiveProjection({ playerIds: ["player-a", ""] })),
+    ).toThrow();
+    expect(() =>
+      parseCompetitiveProjection(
+        createCompetitiveProjection({ submittedPlayerIds: ["unknown-player"] }),
+      ),
+    ).toThrow();
+  });
+
+  test("team active slot과 승인되지 않은 species/move 및 HP/PP 범위를 거부한다", () => {
+    const invalidActive = structuredClone(createCompetitiveProjection());
+    invalidActive.currentState.playersById["player-a"].activeSlotIndex = 3;
+    expect(() => parseCompetitiveProjection(invalidActive)).toThrow();
+
+    const invalidTeamSize = structuredClone(createCompetitiveProjection());
+    invalidTeamSize.currentState.playersById["player-a"].team.pop();
+    expect(() => parseCompetitiveProjection(invalidTeamSize)).toThrow();
+
+    const invalidSpecies = structuredClone(createCompetitiveProjection());
+    invalidSpecies.currentState.playersById["player-a"].team[0].speciesId = "unknown";
+    expect(() => parseCompetitiveProjection(invalidSpecies)).toThrow();
+
+    const invalidMove = structuredClone(createCompetitiveProjection());
+    invalidMove.currentState.playersById["player-a"].team[0].moves[0].moveId = "unknown";
+    expect(() => parseCompetitiveProjection(invalidMove)).toThrow();
+
+    const invalidHp = structuredClone(createCompetitiveProjection());
+    invalidHp.currentState.playersById["player-a"].team[0].currentHp = 121;
+    expect(() => parseCompetitiveProjection(invalidHp)).toThrow();
+
+    const invalidPp = structuredClone(createCompetitiveProjection());
+    invalidPp.currentState.playersById["player-a"].team[0].moves[0].pp = 21;
+    expect(() => parseCompetitiveProjection(invalidPp)).toThrow();
+  });
+
+  test("playersById prototype key와 terminal 참가자/점수 위조를 거부한다", () => {
+    const prototypeKey = structuredClone(createCompetitiveProjection());
+    Object.defineProperty(prototypeKey.currentState.playersById, "__proto__", {
+      value: prototypeKey.currentState.playersById["player-a"],
+      enumerable: true,
+    });
+    expect(() => parseCompetitiveProjection(prototypeKey)).toThrow();
+
+    const invalidTerminal = structuredClone(createCompetitiveProjection());
+    invalidTerminal.status = "completed";
+    invalidTerminal.terminal = {
+      winnerPlayerId: "player-a",
+      loserPlayerId: "unknown-player",
+      reason: "faint",
+      scoreByPlayerId: { "player-a": 100, "unknown-player": 50 },
+    };
+    invalidTerminal.currentState.terminal = invalidTerminal.terminal;
+    expect(() => parseCompetitiveProjection(invalidTerminal)).toThrow();
+
+    const scorePrototypeKey = structuredClone(createCompetitiveProjection());
+    const validTerminal = {
+      winnerPlayerId: "player-a",
+      loserPlayerId: "player-b",
+      reason: "faint" as const,
+      scoreByPlayerId: { "player-a": 100 as const, "player-b": 50 as const },
+    };
+    Object.defineProperty(validTerminal.scoreByPlayerId, "__proto__", {
+      value: 100,
+      enumerable: true,
+    });
+    scorePrototypeKey.status = "completed";
+    scorePrototypeKey.terminal = validTerminal;
+    scorePrototypeKey.currentState.terminal = validTerminal;
+    expect(() => parseCompetitiveProjection(scorePrototypeKey)).toThrow();
+  });
+});
+
+test.describe("Poke Lounge competitive battle launch cache", () => {
+  test("intro 도중 도착한 최신 turn projection을 launch 시점에 반환한다", () => {
+    const cache = createCompetitiveBattleLaunchCache();
+    const initial = createCompetitiveProjection();
+    const latest = {
+      ...initial,
+      currentTurn: 4,
+      currentState: { ...initial.currentState, turn: 4 },
+    };
+
+    expect(cache.begin({ projection: initial, ownPlayerId: "player-a" })).toBe(true);
+    cache.update({ projection: latest, ownPlayerId: "player-a" });
+
+    expect(cache.get(initial.matchId, initial.assignmentRevision)?.projection.currentTurn).toBe(4);
+  });
+
+  test("intro 도중 terminal projection이 오면 interactive command 상태를 열지 않는다", () => {
+    const cache = createCompetitiveBattleLaunchCache();
+    const initial = createCompetitiveProjection();
+    const terminal = {
+      winnerPlayerId: "player-b",
+      loserPlayerId: "player-a",
+      reason: "faint" as const,
+      scoreByPlayerId: { "player-a": 50 as const, "player-b": 100 as const },
+    };
+    const completed = {
+      ...initial,
+      status: "completed" as const,
+      terminal,
+      currentState: { ...initial.currentState, terminal },
+    };
+
+    cache.begin({ projection: initial, ownPlayerId: "player-a" });
+    cache.update({ projection: completed, ownPlayerId: "player-a" });
+    cache.update({ projection: initial, ownPlayerId: "player-a" });
+    const launch = cache.get(initial.matchId, initial.assignmentRevision);
+
+    expect(launch).not.toBeNull();
+    expect(toAuthoritativeBattleState(launch!.projection, launch!.ownPlayerId).phase).toBe("ended");
   });
 });
 
@@ -212,6 +390,31 @@ test.describe("Poke Lounge server multiplayer", () => {
     await expect.poll(() => Promise.resolve(server.competitiveSeatBodies.length)).toBe(1);
     expect(await getActiveSceneKey(page)).toBe("world");
     await expect(page.locator("#game-root canvas")).toBeVisible();
+  });
+
+  test("malformed competitive seat projection은 battle로 열지 않고 REST recovery한다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockAuthenticatedPokeSession(page);
+    await mockServerRoom(page, server, {
+      competitive: true,
+      malformedCompetitiveSeat: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+
+    await expect.poll(() => Promise.resolve(server.competitiveSeatBodies.length)).toBe(1);
+    await expect
+      .poll(() =>
+        Promise.resolve(
+          server.calls.filter(call => call === `GET /poke-lounge/rooms/${ROOM_CODE}`).length,
+        ),
+      )
+      .toBeGreaterThanOrEqual(3);
+    expect(await getActiveSceneKey(page)).toBe("world");
   });
 
   test("competitive assignment는 host 여부와 무관하게 authoritative battle을 시작한다", async ({
@@ -304,7 +507,7 @@ test.describe("Poke Lounge server multiplayer", () => {
     await waitForBattleReady(page);
 
     await confirmBattle(page);
-    await setBattleMoveIndex(page, 0);
+    await setBattleMoveIndex(page, 1);
     await confirmBattle(page);
     await confirmBattle(page);
 
@@ -320,6 +523,38 @@ test.describe("Poke Lounge server multiplayer", () => {
     expect(server.competitiveActionAuthHeaders).toEqual([`Bearer ${AUTH_ID_TOKEN}`]);
     await expect.poll(() => getBattleSnapshot(page).then(value => value?.phase)).toBe("resolving");
     expect((await getBattleSnapshot(page))?.message).toBe("상대의 선택을 기다리는 중...");
+  });
+
+  test("authoritative action 400 응답 후 fresh projection에서 입력을 다시 허용한다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockAuthenticatedPokeSession(page);
+    await mockServerRoom(page, server, {
+      competitive: true,
+      competitiveActionRejected: true,
+      competitiveImmediately: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    await waitForBattleReady(page);
+
+    await confirmBattle(page);
+    await setBattleMoveIndex(page, 1);
+    await confirmBattle(page);
+
+    await expect.poll(() => Promise.resolve(server.competitiveActionBodies.length)).toBe(1);
+    await expect
+      .poll(() => getBattleSnapshot(page).then(snapshot => snapshot?.phase))
+      .toBe("command");
+
+    await confirmBattle(page);
+    await setBattleMoveIndex(page, 1);
+    await confirmBattle(page);
+    await expect.poll(() => Promise.resolve(server.competitiveActionBodies.length)).toBe(2);
   });
 
   test("authoritative switch는 선택한 slot만 제출한다", async ({ page }) => {
@@ -343,6 +578,31 @@ test.describe("Poke Lounge server multiplayer", () => {
 
     await expect.poll(() => Promise.resolve(server.competitiveActionBodies.length)).toBe(1);
     expect(server.competitiveActionBodies[0]?.action).toEqual({ kind: "switch", slotIndex: 0 });
+  });
+
+  test("authoritative switch는 HP 0 슬롯을 제출하지 않는다", async ({ page }) => {
+    const server = createMockServerState();
+
+    await mockAuthenticatedPokeSession(page);
+    await mockServerRoom(page, server, {
+      competitive: true,
+      competitiveFaintedSwitchSlot: true,
+      competitiveImmediately: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+    await expect.poll(() => getActiveSceneKey(page)).toBe("battle");
+    await waitForBattleReady(page);
+
+    await setBattleCommand(page, "pokemon");
+    await confirmBattle(page);
+    await setBattlePartySlot(page, 0);
+    await confirmBattle(page);
+    await page.waitForTimeout(300);
+
+    expect(server.competitiveActionBodies).toEqual([]);
+    expect((await getBattleSnapshot(page))?.message).toBe("선택한 행동을 사용할 수 없습니다.");
   });
 
   test("reconnect projection의 submittedPlayerIds는 자신의 waiting 상태를 복원한다", async ({
@@ -1669,8 +1929,10 @@ async function mockServerRoom(
     completeOnGet?: boolean;
     competitive?: boolean;
     competitiveActionNetworkFailure?: boolean;
+    competitiveActionRejected?: boolean;
     competitiveActionStaleConflict?: boolean;
     competitiveImmediately?: boolean;
+    competitiveFaintedSwitchSlot?: boolean;
     competitivePendingImmediately?: boolean;
     competitiveSeatIneligible?: boolean;
     deferCreateResponse?: boolean;
@@ -1679,6 +1941,7 @@ async function mockServerRoom(
     idempotencyConflictSuffix?: string;
     malformedSuccessSuffix?: string;
     malformedSuccessType?: "json" | "schema";
+    malformedCompetitiveSeat?: boolean;
     mutationDelayMs?: number;
     networkFailureSuffix?: string;
     rejectLeave?: boolean;
@@ -1883,20 +2146,34 @@ async function mockServerRoom(
           });
           return;
         }
+        if (options.malformedCompetitiveSeat) {
+          await route.fulfill({
+            status: 201,
+            contentType: "application/json",
+            body: stringifyResponse(
+              createServerCompetitiveProjection(server, { currentTurn: -1 }),
+              options,
+            ),
+          });
+          return;
+        }
+        const seatProjection =
+          options.competitive &&
+          (options.competitiveImmediately || server.joinedParticipants.length >= 2)
+            ? createServerCompetitiveProjection(server, {
+                submittedPlayerIds: options.competitivePendingImmediately
+                  ? [getStateParticipants(server)[0].playerId]
+                  : [],
+              })
+            : null;
+        if (seatProjection && options.competitiveFaintedSwitchSlot) {
+          const ownPlayerId = getStateParticipants(server)[0].playerId;
+          seatProjection.currentState.playersById[ownPlayerId].team[0].currentHp = 0;
+        }
         await route.fulfill({
           status: 201,
           contentType: "application/json",
-          body: stringifyResponse(
-            options.competitive &&
-              (options.competitiveImmediately || server.joinedParticipants.length >= 2)
-              ? createServerCompetitiveProjection(server, {
-                  submittedPlayerIds: options.competitivePendingImmediately
-                    ? [getStateParticipants(server)[0].playerId]
-                    : [],
-                })
-              : null,
-            options,
-          ),
+          body: stringifyResponse(seatProjection, options),
         });
         return;
       }
@@ -1906,6 +2183,19 @@ async function mockServerRoom(
         const body =
           (await request.postDataJSON()) as MockServerState["competitiveActionBodies"][number];
         server.competitiveActionBodies.push(body);
+        if (options.competitiveActionRejected && server.competitiveActionBodies.length === 1) {
+          server.competitiveResyncRequested = true;
+          server.revision += 1;
+          await route.fulfill({
+            status: 400,
+            contentType: "application/json",
+            body: JSON.stringify({
+              statusCode: 400,
+              message: "Competitive action is illegal",
+            }),
+          });
+          return;
+        }
         if (
           options.competitiveActionNetworkFailure &&
           !server.competitiveActionNetworkFailureReturned

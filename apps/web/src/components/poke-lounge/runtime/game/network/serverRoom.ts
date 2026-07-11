@@ -7,6 +7,10 @@ import type {
   RoomEvent,
   RoomMessage,
 } from "./localPreviewRoom";
+import {
+  CompetitiveProjectionSchemaError,
+  parseCompetitiveProjection,
+} from "./competitive-projection";
 
 type Handler<T extends RoomMessage> = (payload: RoomEvent[T]) => void;
 
@@ -608,9 +612,13 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     try {
       applyCompetitiveProjection(await retryOneNetworkFailure(send));
     } catch (error) {
-      if (error instanceof ServerRoomRequestError && error.status === 409) {
-        emit("COMPETITIVE_RESYNC", {
+      if (
+        error instanceof ServerRoomRequestError ||
+        error instanceof CompetitiveProjectionSchemaError
+      ) {
+        emit("COMPETITIVE_ACTION_FAILED", {
           matchId: command.matchId,
+          status: error instanceof ServerRoomRequestError ? error.status : null,
           message: "서버 상태를 다시 불러오는 중...",
         });
         const room = await requestRoom(`/poke-lounge/rooms/${activeRoomId}`);
@@ -729,7 +737,10 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
             applyCompetitiveProjection(assignment);
           }
         } catch (error) {
-          if (
+          if (error instanceof CompetitiveProjectionSchemaError) {
+            const recovered = await requestRoom(`/poke-lounge/rooms/${activeRoomId}`);
+            applySnapshot(recovered);
+          } else if (
             !(error instanceof ServerRoomRequestError) ||
             ![401, 403, 409].includes(error.status)
           ) {
@@ -976,32 +987,6 @@ function parseServerRoomState(value: unknown): ServerRoomState {
   }
 
   return parsed;
-}
-
-function parseCompetitiveProjection(value: unknown): CompetitiveProjection {
-  if (!value || typeof value !== "object") {
-    throw new ServerRoomSchemaError();
-  }
-
-  const projection = value as Record<string, unknown>;
-  const currentState = projection.currentState;
-  if (
-    typeof projection.matchId !== "string" ||
-    !Number.isSafeInteger(projection.assignmentRevision) ||
-    !Number.isSafeInteger(projection.currentTurn) ||
-    typeof projection.rulesetVersion !== "number" ||
-    typeof projection.rulesetHash !== "string" ||
-    typeof projection.stateHash !== "string" ||
-    !Array.isArray(projection.playerIds) ||
-    projection.playerIds.length !== 2 ||
-    !Array.isArray(projection.submittedPlayerIds) ||
-    !currentState ||
-    typeof currentState !== "object"
-  ) {
-    throw new ServerRoomSchemaError();
-  }
-
-  return value as CompetitiveProjection;
 }
 
 function parseSocketRoomEvent(value: unknown): ServerRoomState {

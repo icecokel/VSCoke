@@ -58,7 +58,7 @@ export interface RoomEvent {
   COMPETITIVE_ASSIGNMENT: CompetitiveRoomProjectionEvent;
   COMPETITIVE_STATE: CompetitiveRoomProjectionEvent;
   COMPETITIVE_ACTION: CompetitiveActionCommand;
-  COMPETITIVE_RESYNC: { matchId: string; message: string };
+  COMPETITIVE_ACTION_FAILED: { matchId: string; status: number | null; message: string };
 }
 
 export type RoomMessage = keyof RoomEvent;
@@ -124,7 +124,7 @@ const ROOM_MESSAGES = new Set<RoomMessage>([
   "COMPETITIVE_ASSIGNMENT",
   "COMPETITIVE_STATE",
   "COMPETITIVE_ACTION",
-  "COMPETITIVE_RESYNC",
+  "COMPETITIVE_ACTION_FAILED",
 ]);
 const SNAPSHOT_EVENTS = new Set<RoomMessage>([
   "PLAYER_JOINED",

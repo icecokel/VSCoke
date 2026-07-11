@@ -485,6 +485,200 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     expect(publish.mock.calls).toHaveLength(0);
   });
 
+  it('returns an old-all repeatable-read snapshot when an action commits between room and match reads', async () => {
+    await insertRoom('ROOM10', ['player-a', 'player-b']);
+    await service.bindSeat('ROOM10', 'session-a', 'account-a');
+    const assignment = await service.bindSeat(
+      'ROOM10',
+      'session-b',
+      'account-b',
+    );
+    if (!assignment) {
+      throw new Error('Expected competitive assignment');
+    }
+    const firstInput = {
+      ...actionInput(
+        assignment.matchId,
+        'account-a',
+        '00000000-0000-4000-8000-000000000010',
+      ),
+      roomCode: 'ROOM10',
+    };
+    const secondInput = {
+      ...actionInput(
+        assignment.matchId,
+        'account-b',
+        '00000000-0000-4000-8000-000000000011',
+      ),
+      roomCode: 'ROOM10',
+    };
+    const pending = await service.submitAction(firstInput);
+
+    class RacingProjectionService extends CompetitiveProjectionService {
+      protected override afterRoomRead(): Promise<void> {
+        return service.submitAction(secondInput).then(() => undefined);
+      }
+    }
+    const racingReader = new RacingProjectionService(dataSource);
+
+    const raced = await racingReader.findRoomSnapshot('ROOM10');
+
+    expect(raced).toMatchObject({
+      revision: 7,
+      competitive: {
+        currentTurn: 0,
+        stateHash: pending.stateHash,
+        submittedPlayerIds: ['player-a'],
+      },
+    });
+    const fresh = await new CompetitiveProjectionService(
+      dataSource,
+    ).findRoomSnapshot('ROOM10');
+    expect(fresh).toMatchObject({
+      revision: 8,
+      competitive: { currentTurn: 1, submittedPlayerIds: [] },
+    });
+  });
+
+  it('rolls back terminal action publication on a changed source score and recovers after correction', async () => {
+    await seedUsers(['account-a', 'account-b']);
+    await insertRoom('ROOM11', ['player-a', 'player-b']);
+    await service.bindSeat('ROOM11', 'session-a', 'account-a');
+    const assignment = await service.bindSeat(
+      'ROOM11',
+      'session-b',
+      'account-b',
+    );
+    if (!assignment) {
+      throw new Error('Expected competitive assignment');
+    }
+    await prepareTerminalTurn(assignment.matchId, 'player-b');
+    const room = await dataSource
+      .getRepository(PokeLoungeRoom)
+      .findOneByOrFail({ roomCode: 'ROOM11' });
+    const conflictingSourceKey = `${room.id}:${assignment.matchId}:account-a`;
+    const [{ id: conflictingHistoryId }] = await dataSource.query<
+      Array<{ id: string }>
+    >(
+      `
+      INSERT INTO game_history
+        (score, "gameType", "userId", "resultTrust", "sourceKey")
+      VALUES (50, 'POKE_LOUNGE', 'account-a', 'verified-room', $1)
+      RETURNING id
+      `,
+      [conflictingSourceKey],
+    );
+    const firstInput = {
+      ...actionInput(
+        assignment.matchId,
+        'account-a',
+        '00000000-0000-4000-8000-000000000012',
+      ),
+      roomCode: 'ROOM11',
+    };
+    const secondInput = {
+      ...actionInput(
+        assignment.matchId,
+        'account-b',
+        '00000000-0000-4000-8000-000000000013',
+      ),
+      roomCode: 'ROOM11',
+    };
+    await service.submitAction(firstInput);
+    publish.mockClear();
+
+    await expect(service.submitAction(secondInput)).rejects.toThrow(
+      /conflicts with the persisted server result/,
+    );
+    await expect(
+      dataSource.query(
+        `
+        SELECT current_turn, status, terminal_result, history_publication
+        FROM poke_lounge_competitive_match
+        WHERE match_id = $1
+        `,
+        [assignment.matchId],
+      ),
+    ).resolves.toEqual([
+      {
+        current_turn: 0,
+        status: 'active',
+        terminal_result: null,
+        history_publication: null,
+      },
+    ]);
+    await expect(
+      dataSource.query(
+        `SELECT status, resolved_at FROM poke_lounge_competitive_action ORDER BY actor_player_id`,
+      ),
+    ).resolves.toEqual([{ status: 'pending', resolved_at: null }]);
+    await expect(historyCount()).resolves.toBe(1);
+    await expect(
+      dataSource.getRepository(PokeLoungeRoom).findOneByOrFail({
+        roomCode: 'ROOM11',
+      }),
+    ).resolves.toMatchObject({ revision: 7 });
+    expect(publish).not.toHaveBeenCalled();
+
+    await dataSource.query(
+      `UPDATE game_history SET score = 100 WHERE id = $1`,
+      [conflictingHistoryId],
+    );
+    await expect(service.submitAction(secondInput)).resolves.toMatchObject({
+      status: 'completed',
+      terminal: { winnerPlayerId: 'player-a', loserPlayerId: 'player-b' },
+    });
+    await expect(historyCount()).resolves.toBe(2);
+    await expect(
+      dataSource.query(`SELECT id FROM game_history WHERE "sourceKey" = $1`, [
+        conflictingSourceKey,
+      ]),
+    ).resolves.toEqual([{ id: conflictingHistoryId }]);
+    expect(publish.mock.calls).toHaveLength(1);
+  });
+
+  it('preserves a populated history publication column when migration down is attempted', async () => {
+    await insertRoom('ROOM12', ['player-a', 'player-b']);
+    await service.bindSeat('ROOM12', 'session-a', 'account-a');
+    const assignment = await service.bindSeat(
+      'ROOM12',
+      'session-b',
+      'account-b',
+    );
+    if (!assignment) {
+      throw new Error('Expected competitive assignment');
+    }
+    const publication = {
+      historyIdByAccountId: {
+        'account-a': '11111111-1111-4111-8111-111111111111',
+      },
+    };
+    await dataSource.query(
+      `UPDATE poke_lounge_competitive_match SET history_publication = $1 WHERE match_id = $2`,
+      [publication, assignment.matchId],
+    );
+    const queryRunner = dataSource.createQueryRunner();
+    try {
+      await expect(
+        new AddCompetitiveHistoryPublication1794441600000().down(queryRunner),
+      ).rejects.toThrow(/Cannot remove competitive history publication/);
+    } finally {
+      await queryRunner.release();
+    }
+
+    await expect(
+      dataSource.query(
+        `SELECT history_publication FROM poke_lounge_competitive_match WHERE match_id = $1`,
+        [assignment.matchId],
+      ),
+    ).resolves.toEqual([{ history_publication: publication }]);
+    await expect(
+      dataSource.query(
+        `SELECT data_type FROM information_schema.columns WHERE table_name = 'poke_lounge_competitive_match' AND column_name = 'history_publication'`,
+      ),
+    ).resolves.toEqual([{ data_type: 'jsonb' }]);
+  });
+
   it('atomically publishes terminal histories, retries once, and replays after restart without republishing', async () => {
     await seedUsers(['account-a', 'account-b']);
     await insertRoom('ROOM07', ['player-a', 'player-b']);

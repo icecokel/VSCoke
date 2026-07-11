@@ -541,13 +541,13 @@ export class PokeLoungeRoomService {
   private async withCompetitive(
     snapshot: PokeLoungeRoomSnapshot,
   ): Promise<PokeLoungeRoomSnapshot> {
-    const competitive = await this.competitiveProjection.findForRoomCode(
+    const consistent = await this.competitiveProjection.findRoomSnapshot(
       snapshot.roomCode,
     );
-    return {
-      ...structuredClone(snapshot),
-      ...(competitive ? { competitive } : {}),
-    };
+    if (!consistent) {
+      throw new NotFoundException('Poke Lounge room not found');
+    }
+    return consistent;
   }
 
   private normalizeNow(nowMs: number | undefined): number {

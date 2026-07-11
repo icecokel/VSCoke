@@ -19,14 +19,19 @@ describe('PokeLoungeRoomService', () => {
   let service: PokeLoungeRoomService;
   let currentTimeMs: number;
   let roomCodes: string[];
-  const competitiveProjection = {
-    findForRoomCode: jest.fn().mockResolvedValue(null),
+  let competitiveProjection: {
+    findRoomSnapshot: jest.Mock;
   };
 
   beforeEach(() => {
     currentTimeMs = 0;
     roomCodes = ['ROOM01'];
     repository = new FakePokeLoungeRoomRepository();
+    competitiveProjection = {
+      findRoomSnapshot: jest.fn((roomCode: string) =>
+        Promise.resolve(repository.snapshot(roomCode)),
+      ),
+    };
     publisher = { publish: jest.fn().mockResolvedValue(undefined) };
     service = new PokeLoungeRoomService(
       repository,

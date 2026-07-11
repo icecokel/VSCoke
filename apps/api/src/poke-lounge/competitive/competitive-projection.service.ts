@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import type { CanonicalBattleState } from '@vscoke/poke-lounge-battle';
-import { DataSource } from 'typeorm';
+import { DataSource, type EntityManager } from 'typeorm';
 import { PokeLoungeCompetitiveMatch } from '../entities/poke-lounge-competitive-match.entity';
+import { PokeLoungeRoom } from '../entities/poke-lounge-room.entity';
+import type { PokeLoungeRoomSnapshot } from '../poke-lounge-room.repository';
 import { PokeLoungeCompetitiveAction } from './competitive-action.entity';
 import type {
   CompetitiveActionProjection,
@@ -13,22 +15,40 @@ import type {
 export class CompetitiveProjectionService {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
-  async findForRoomCode(
+  findRoomSnapshot(roomCode: string): Promise<PokeLoungeRoomSnapshot | null> {
+    return this.dataSource.transaction('REPEATABLE READ', (manager) =>
+      this.findRoomSnapshotWithManager(manager, roomCode),
+    );
+  }
+
+  private async findRoomSnapshotWithManager(
+    manager: EntityManager,
     roomCode: string,
-  ): Promise<CompetitiveActionProjection | null> {
-    const match = await this.dataSource
+  ): Promise<PokeLoungeRoomSnapshot | null> {
+    const normalizedRoomCode = roomCode.trim().toUpperCase();
+    const room = await manager
+      .getRepository(PokeLoungeRoom)
+      .createQueryBuilder('room')
+      .where('room.roomCode = :roomCode', { roomCode: normalizedRoomCode })
+      .getOne();
+    if (!room) {
+      return null;
+    }
+    await this.afterRoomRead();
+
+    const match = await manager
       .getRepository(PokeLoungeCompetitiveMatch)
       .createQueryBuilder('match')
       .addSelect(['match.currentState', 'match.terminalResult'])
       .where('match.roomCode = :roomCode', {
-        roomCode: roomCode.trim().toUpperCase(),
+        roomCode: normalizedRoomCode,
       })
       .getOne();
     if (!match) {
-      return null;
+      return snapshotFromEntity(room);
     }
 
-    const receipts = await this.dataSource
+    const receipts = await manager
       .getRepository(PokeLoungeCompetitiveAction)
       .find({
         select: { actorPlayerId: true },
@@ -36,11 +56,27 @@ export class CompetitiveProjectionService {
         order: { actorPlayerId: 'ASC' },
       });
 
-    return toCompetitiveProjection(
-      match,
-      receipts.map((receipt) => receipt.actorPlayerId),
-    );
+    return {
+      ...snapshotFromEntity(room),
+      competitive: toCompetitiveProjection(
+        match,
+        receipts.map((receipt) => receipt.actorPlayerId),
+      ),
+    };
   }
+
+  protected afterRoomRead(): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
+function snapshotFromEntity(room: PokeLoungeRoom): PokeLoungeRoomSnapshot {
+  return {
+    ...structuredClone(room.state),
+    roomCode: room.roomCode,
+    revision: room.revision,
+    expiresAtMs: room.expiresAt.getTime(),
+  };
 }
 
 export function toCompetitiveProjection(

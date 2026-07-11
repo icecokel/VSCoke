@@ -63,6 +63,9 @@ export interface ServerRoomOptions {
   onTransportError?: (error: Error) => void;
 }
 
+export const POKE_LOUNGE_FRESH_SESSION_REQUIRED_EVENT =
+  "poke-lounge:server-room-fresh-session-required";
+
 interface ServerRoomSocket {
   readonly connected: boolean;
   on(eventName: string, listener: ServerRoomSocketListener): ServerRoomSocket;
@@ -106,6 +109,12 @@ class ServerRoomRequestError extends Error {
   }
 }
 
+class ServerRoomTransportError extends Error {
+  constructor(readonly transportCause: unknown) {
+    super("Poke Lounge server room transport failed");
+  }
+}
+
 export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   const identity = resolveServerIdentity(options);
   const sessionId = identity.sessionId;
@@ -130,6 +139,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   let announcedTournament = false;
   let announcedCompletion = false;
   let leaveSent = false;
+  let leavePromise: Promise<void> | null = null;
 
   const emit = <T extends RoomMessage>(type: T, payload: RoomEvent[T]) => {
     for (const handler of handlers.get(type) ?? []) {
@@ -152,13 +162,19 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   };
 
   const requestRoom = async (path: string, init?: RequestInit): Promise<ServerRoomState> => {
-    const response = await fetch(`${getApiBaseUrl()}${path}`, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...init?.headers,
-      },
-    });
+    let response: Response;
+
+    try {
+      response = await fetch(`${getApiBaseUrl()}${path}`, {
+        ...init,
+        headers: {
+          "Content-Type": "application/json",
+          ...init?.headers,
+        },
+      });
+    } catch (error) {
+      throw new ServerRoomTransportError(error);
+    }
     const responseBody = await response.json();
     const unwrapped = unwrapApiResponse<unknown>(responseBody);
 
@@ -304,6 +320,12 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     scheduleRecovery();
   };
 
+  const handleSocketConnectError = () => {
+    socketConnected = false;
+    subscriptionFailed = true;
+    scheduleRecovery();
+  };
+
   const handleSocketSnapshot = (event: unknown) => {
     let room: ServerRoomState;
 
@@ -348,10 +370,22 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     cursorRegression = true;
     subscriptionFailed = false;
     clearRecoveryTimer();
-    reportTransportError(
-      new Error("Poke Lounge room cursor regressed; a fresh room session is required"),
-    );
     roomSocket?.disconnect();
+    void requestLeave().then(() => {
+      if (disposed) {
+        return;
+      }
+
+      clearStoredServerIdentity();
+      reportTransportError(
+        new Error("Poke Lounge room cursor regressed; a fresh room session is required"),
+      );
+      window.dispatchEvent(
+        new CustomEvent(POKE_LOUNGE_FRESH_SESSION_REQUIRED_EVENT, {
+          detail: { roomCode: activeRoomId },
+        }),
+      );
+    });
   };
 
   const ensureSocket = () => {
@@ -365,6 +399,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       reconnection: true,
     });
     roomSocket.on("connect", handleSocketConnect);
+    roomSocket.on("connect_error", handleSocketConnectError);
     roomSocket.on("disconnect", handleSocketDisconnect);
     roomSocket.on("room.snapshot", handleSocketSnapshot);
     roomSocket.on("room.subscription-error", handleSubscriptionError);
@@ -531,6 +566,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       clearRecoveryTimer();
       if (roomSocket) {
         roomSocket.off("connect", handleSocketConnect);
+        roomSocket.off("connect_error", handleSocketConnectError);
         roomSocket.off("disconnect", handleSocketDisconnect);
         roomSocket.off("room.snapshot", handleSocketSnapshot);
         roomSocket.off("room.subscription-error", handleSubscriptionError);
@@ -539,7 +575,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         roomSocket = null;
       }
       window.removeEventListener("poke-lounge:e2e-server-result", e2eResultHandler);
-      requestLeave();
+      void requestLeave();
       handlers.clear();
     },
     send(type, payload) {
@@ -599,7 +635,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       applySnapshot(opened);
 
       if (disposed) {
-        requestLeave();
+        void requestLeave();
         return;
       }
 
@@ -608,7 +644,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       await submitPartySnapshot(snapshot);
 
       if (disposed) {
-        requestLeave();
+        void requestLeave();
         return;
       }
 
@@ -624,7 +660,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       applySnapshot(ready);
 
       if (disposed) {
-        requestLeave();
+        void requestLeave();
         return;
       }
     } catch {
@@ -634,17 +670,22 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     }
   }
 
-  function requestLeave(): void {
+  function requestLeave(): Promise<void> {
     if (leaveSent || activeRoomId === PENDING_ROOM_ID || !latestState) {
-      return;
+      return leavePromise ?? Promise.resolve();
     }
 
     leaveSent = true;
-    void mutateRoom(
+    leavePromise = mutateRoom(
       `/poke-lounge/rooms/${activeRoomId}/leave`,
       { playerId: serverPlayerId, sessionId },
       getLatestRevision,
-    ).catch(() => {});
+    ).then(
+      () => undefined,
+      () => undefined,
+    );
+
+    return leavePromise;
   }
 
   function getLatestRevision(): number {
@@ -760,11 +801,23 @@ async function retryOneNetworkFailure<T>(operation: () => Promise<T>): Promise<T
   try {
     return await operation();
   } catch (error) {
-    if (error instanceof ServerRoomRequestError) {
+    if (!(error instanceof ServerRoomTransportError)) {
       throw error;
     }
 
     return operation();
+  }
+}
+
+function clearStoredServerIdentity(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.removeItem(SERVER_IDENTITY_STORAGE_KEY);
+  } catch {
+    // A fresh identity is still generated when storage is unavailable.
   }
 }
 

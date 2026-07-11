@@ -14,6 +14,7 @@ import {
 import { renderMobileSettingsToggle } from "./input/settings-toggle";
 import { renderMobileTouchControls } from "./input/mobileTouchControls";
 import { createMultiplayerRoom } from "./network/multiplayerRoomFactory";
+import { POKE_LOUNGE_FRESH_SESSION_REQUIRED_EVENT } from "./network/serverRoom";
 import {
   applyRoomRoundDurationSearchParam,
   readRoomEntryFromLocation,
@@ -68,6 +69,7 @@ export async function startGamePage(
   let destroyed = false;
   let roomEntrySelectionPending = false;
   let starterSelectionRequestId = 0;
+  let removeFreshSessionListener: (() => void) | null = null;
   let removeAudioPrimeListeners: (() => void) | null = bindPokeLoungeAudioPrimeListeners(mount);
 
   const handle: GamePageHandle = {
@@ -79,6 +81,8 @@ export async function startGamePage(
       destroyed = true;
       removeAudioPrimeListeners?.();
       removeAudioPrimeListeners = null;
+      removeFreshSessionListener?.();
+      removeFreshSessionListener = null;
       if (activeGame) {
         activeGame.destroy(true);
       } else {
@@ -139,6 +143,8 @@ export async function startGamePage(
       renderMobileSettingsToggle(mount);
     }
     const returnToRoomEntry = () => {
+      removeFreshSessionListener?.();
+      removeFreshSessionListener = null;
       multiplayerRoom.dispose();
       gameStateStore.setSession({
         sessionId: null,
@@ -148,6 +154,8 @@ export async function startGamePage(
       currentUrl.searchParams.delete("create");
       currentUrl.searchParams.delete("network");
       currentUrl.searchParams.delete("room");
+      currentUrl.searchParams.delete("serverPlayerId");
+      currentUrl.searchParams.delete("serverSessionId");
       replaceBrowserUrl(currentUrl);
       game?.destroy(true);
       if (activeGame === game) {
@@ -157,6 +165,16 @@ export async function startGamePage(
         activeMultiplayerRoom = null;
       }
       showRoomEntry();
+    };
+    const handleFreshSessionRequired = () => {
+      returnToRoomEntry();
+    };
+    window.addEventListener(POKE_LOUNGE_FRESH_SESSION_REQUIRED_EVENT, handleFreshSessionRequired);
+    removeFreshSessionListener = () => {
+      window.removeEventListener(
+        POKE_LOUNGE_FRESH_SESSION_REQUIRED_EVENT,
+        handleFreshSessionRequired,
+      );
     };
 
     if (competitiveRoundsEnabled) {

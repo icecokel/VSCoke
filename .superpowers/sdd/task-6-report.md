@@ -77,3 +77,38 @@ explicit disposable `_test` PostgreSQL URL, matching the Task 5 local safety
 constraint. The Socket.IO PostgreSQL E2E cases remain pending an explicit test
 database or the repository PostgreSQL 16 CI job; no fake repository fallback was
 introduced.
+
+## Review Hardening Follow-up
+
+Commit target: `fix(poke-lounge):웹소켓 복구 경로 보강`
+
+- Added `connect_error` handling to the same bounded recovery scheduler used for
+  disconnect/subscription failures. The listener is removed during dispose, and
+  browser coverage proves no recovery request is created after cleanup.
+- Closed the gateway subscribe race by joining after the first private durable
+  authorization, then re-authorizing/reloading the committed snapshot before the
+  direct `room.snapshot`. A commit between snapshot N and `socket.join` is now
+  observed either by the joined broadcast or the post-join reload. If the
+  participant/session changes during that window, the gateway leaves the joined
+  room and returns only the generic subscription error.
+- Cursor regression now disconnects the stale socket, stops recovery, completes
+  a best-effort REST leave with the old identity, clears the stored server
+  identity, removes identity/room URL parameters, and emits a page-consumed
+  fresh-session event. The game returns to room entry and creates a new identity
+  only after an explicit create/join action; it never automatically subscribes
+  the stale identity again.
+- Mutation retry now classifies only a rejected `fetch` as an ambiguous transport
+  failure. HTTP responses with invalid JSON or invalid room schema are surfaced
+  without retrying the command.
+
+### Follow-up Verification
+
+- API focused unit: PASS, 5 suites / 50 tests.
+- API gateway race unit: PASS, 12 tests.
+- New targeted web transport E2E: PASS, 4 Chromium tests.
+- Full multiplayer E2E: PASS, 21 Chromium tests.
+- Full API unit: PASS.
+- Web typecheck and full API/web lint: PASS.
+- Full web/API build: PASS.
+- PostgreSQL API E2E was retried and remains environment-blocked before app
+  initialization because `TEST_DATABASE_URL` is not set.

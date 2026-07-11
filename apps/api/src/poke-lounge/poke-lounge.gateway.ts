@@ -71,6 +71,7 @@ export class PokeLoungeGateway implements OnGatewayInit, OnModuleDestroy {
     @MessageBody() input: unknown,
   ): Promise<void> {
     const subscription = parseSubscription(input);
+    let joinedRoomName: string | null = null;
 
     if (!subscription) {
       rejectSubscription(socket);
@@ -103,10 +104,26 @@ export class PokeLoungeGateway implements OnGatewayInit, OnModuleDestroy {
       }
 
       await socket.join(nextRoomName);
+      joinedRoomName = nextRoomName;
+      const committedRoom = await this.roomService.authorizeSubscription(
+        subscription.roomCode,
+        subscription.playerId,
+        subscription.sessionId,
+      );
       socketData.pokeLoungeRoomName = nextRoomName;
       socketData.pokeLoungePlayerId = subscription.playerId;
-      socket.emit('room.snapshot', { room });
+      socket.emit('room.snapshot', { room: committedRoom });
     } catch {
+      if (joinedRoomName) {
+        try {
+          await socket.leave(joinedRoomName);
+        } catch {
+          // The generic rejection below must still reach the client.
+        }
+      }
+      const socketData = socket.data as PokeLoungeSocketData;
+      delete socketData.pokeLoungeRoomName;
+      delete socketData.pokeLoungePlayerId;
       rejectSubscription(socket);
     }
   }

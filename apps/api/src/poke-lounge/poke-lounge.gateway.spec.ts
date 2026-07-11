@@ -77,6 +77,45 @@ describe('PokeLoungeGateway', () => {
     );
   });
 
+  it('reloads the durable snapshot after join so a concurrent commit cannot be missed', async () => {
+    roomService.authorizeSubscription
+      .mockResolvedValueOnce(publicRoom({ revision: 7 }))
+      .mockResolvedValueOnce(publicRoom({ revision: 8 }));
+    const client = socket();
+
+    await gateway.subscribe(client.value, validSubscription());
+
+    expect(roomService.authorizeSubscription).toHaveBeenCalledTimes(2);
+    expect(client.join.mock.invocationCallOrder[0]).toBeLessThan(
+      roomService.authorizeSubscription.mock.invocationCallOrder[1],
+    );
+    expect(client.emit).toHaveBeenCalledWith('room.snapshot', {
+      room: publicRoom({ revision: 8 }),
+    });
+  });
+
+  it('leaves the joined room when the durable identity changes during subscription', async () => {
+    roomService.authorizeSubscription
+      .mockResolvedValueOnce(publicRoom({ revision: 7 }))
+      .mockRejectedValueOnce(
+        new BadRequestException('Poke Lounge room subscription rejected'),
+      );
+    const client = socket();
+
+    await gateway.subscribe(client.value, validSubscription());
+
+    expect(client.join).toHaveBeenCalledWith('room:ROOM01');
+    expect(client.leave).toHaveBeenCalledWith('room:ROOM01');
+    expect(client.emit).not.toHaveBeenCalledWith(
+      'room.snapshot',
+      expect.anything(),
+    );
+    expect(client.emit).toHaveBeenCalledWith('room.subscription-error', {
+      code: 'POKE_LOUNGE_SUBSCRIPTION_REJECTED',
+      message: 'Poke Lounge room subscription rejected',
+    });
+  });
+
   it.each([
     { ...validSubscription(), roomCode: 'SHORT' },
     { ...validSubscription(), playerId: ' ' },

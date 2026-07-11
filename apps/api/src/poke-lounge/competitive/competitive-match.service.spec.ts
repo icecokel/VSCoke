@@ -169,6 +169,9 @@ describe('CompetitiveMatchService', () => {
         competitive: response,
       },
     });
+    expect(actionRepository.submit.mock.calls[0]?.[0]).toMatchObject({
+      roomCode: 'ROOM01',
+    });
     expect(JSON.stringify(publisher.publish.mock.calls)).not.toContain(
       'account-a',
     );
@@ -198,6 +201,7 @@ describe('CompetitiveMatchService', () => {
 
   it.each([
     'actor-not-assigned',
+    'ruleset-mismatch',
     'assignment-revision-conflict',
     'turn-conflict',
     'command-conflict',

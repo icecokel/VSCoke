@@ -262,7 +262,7 @@ describe('PokeLoungeController', () => {
   it('submits a competitive action with req.user.id as the only actor source', async () => {
     await controller.submitCompetitiveAction(
       'room01',
-      'match-1',
+      '00000000-0000-4000-8000-000000000010',
       {
         assignmentRevision: 1,
         turn: 0,
@@ -273,8 +273,8 @@ describe('PokeLoungeController', () => {
     );
 
     expect(competitiveService.submitAction.mock.calls[0]?.[0]).toMatchObject({
-      roomCode: 'room01',
-      matchId: 'match-1',
+      roomCode: 'ROOM01',
+      matchId: '00000000-0000-4000-8000-000000000010',
       accountId: 'account-a',
     });
   });
@@ -289,6 +289,23 @@ describe('PokeLoungeController', () => {
       descriptor?.value as object,
     ) as unknown[];
     expect(guards).toContain(GoogleAuthGuard);
+  });
+
+  it('rejects malformed competitive match ids before calling the service', async () => {
+    await expect(
+      controller.submitCompetitiveAction(
+        ' room01 ',
+        'not-a-uuid',
+        {
+          assignmentRevision: 1,
+          turn: 0,
+          clientCommandId: '00000000-0000-4000-8000-000000000001',
+          action: { kind: 'move', moveId: 'steady-strike' },
+        },
+        { user: { id: 'account-a' } } as never,
+      ),
+    ).rejects.toThrow(BadRequestException);
+    expect(competitiveService.submitAction.mock.calls).toHaveLength(0);
   });
 
   it('documents the legacy room result endpoint as casual and unverified', () => {

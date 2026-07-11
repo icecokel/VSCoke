@@ -23,6 +23,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
   let actionRepository: PostgresCompetitiveActionRepository;
   let service: CompetitiveMatchService;
   let testDatabaseUrl: string;
+  const publish = jest.fn<Promise<void>, [unknown]>(() => Promise.resolve());
 
   beforeAll(async () => {
     const configuredUrl = process.env.TEST_DATABASE_URL;
@@ -44,6 +45,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
   });
 
   beforeEach(async () => {
+    publish.mockClear();
     await dataSource.query(
       'TRUNCATE TABLE "poke_lounge_competitive_action", "poke_lounge_competitive_match", "poke_lounge_competitive_seat", "poke_lounge_room_command", "poke_lounge_room" RESTART IDENTITY CASCADE',
     );
@@ -336,6 +338,24 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     const resolvedResponse = (
       concurrent[resolvedIndex] as PromiseFulfilledResult<unknown>
     ).value;
+    const receipts = await dataSource
+      .getRepository(PokeLoungeCompetitiveAction)
+      .createQueryBuilder('action')
+      .addSelect(['action.response'])
+      .where('action.matchId = :matchId', { matchId: assignment.matchId })
+      .orderBy('action.actorPlayerId', 'ASC')
+      .getMany();
+    expect(receipts.map((receipt) => receipt.status)).toEqual([
+      'resolved',
+      'resolved',
+    ]);
+    expect(receipts[0].resolvedAt).toEqual(receipts[1].resolvedAt);
+    expect(receipts[0].response).toEqual(resolvedResponse);
+    expect(receipts[1].response).toEqual(resolvedResponse);
+    await expect(service.submitAction(firstInput)).resolves.toEqual(
+      resolvedResponse,
+    );
+
     await dataSource.destroy();
     dataSource = createDataSource(testDatabaseUrl);
     await dataSource.initialize();
@@ -363,11 +383,50 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     ).rejects.toThrow('Competitive action conflict');
   });
 
+  it('fails closed on unsupported persisted rulesets without mutation or events', async () => {
+    await insertRoom('ROOM06', ['player-a', 'player-b']);
+    await service.bindSeat('ROOM06', 'session-a', 'account-a');
+    const assignment = await service.bindSeat(
+      'ROOM06',
+      'session-b',
+      'account-b',
+    );
+    if (!assignment) {
+      throw new Error('Expected competitive assignment');
+    }
+    publish.mockClear();
+    await dataSource.query(
+      'UPDATE "poke_lounge_competitive_match" SET "ruleset_hash" = $1 WHERE "match_id" = $2',
+      ['0'.repeat(64), assignment.matchId],
+    );
+
+    await expect(
+      service.submitAction({
+        ...actionInput(assignment.matchId, 'account-a'),
+        roomCode: 'ROOM06',
+      }),
+    ).rejects.toThrow('Competitive action conflict');
+    await expect(
+      dataSource.getRepository(PokeLoungeCompetitiveAction).count(),
+    ).resolves.toBe(0);
+    await expect(
+      dataSource.getRepository(PokeLoungeCompetitiveMatch).findOneByOrFail({
+        matchId: assignment.matchId,
+      }),
+    ).resolves.toMatchObject({ currentTurn: 0, status: 'pending' });
+    await expect(
+      dataSource.getRepository(PokeLoungeRoom).findOneByOrFail({
+        roomCode: 'ROOM06',
+      }),
+    ).resolves.toMatchObject({ revision: 5 });
+    expect(publish.mock.calls).toHaveLength(0);
+  });
+
   function resetServices() {
     repository = new PostgresCompetitiveMatchRepository(dataSource);
     actionRepository = new PostgresCompetitiveActionRepository(dataSource);
     service = new CompetitiveMatchService(repository, actionRepository, {
-      publish: () => Promise.resolve(),
+      publish,
     });
   }
 

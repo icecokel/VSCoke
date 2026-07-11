@@ -11,6 +11,7 @@ export const COMPETITIVE_ACTION_REPOSITORY = Symbol(
 export type CompetitiveActionFailure =
   | 'room-not-found'
   | 'match-not-found'
+  | 'ruleset-mismatch'
   | 'actor-not-assigned'
   | 'assignment-revision-conflict'
   | 'turn-conflict'

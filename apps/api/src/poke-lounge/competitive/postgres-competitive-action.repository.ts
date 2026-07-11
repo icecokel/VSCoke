@@ -3,6 +3,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import {
   canonicalize,
+  COMPETITIVE_RULESET_HASH,
+  COMPETITIVE_RULESET_VERSION,
   createCanonicalIdRecord,
   createSeededRandom,
   resolveTurn,
@@ -39,6 +41,9 @@ export class PostgresCompetitiveActionRepository implements CompetitiveActionRep
       const match = await lockMatch(manager, room.id, input.matchId);
       if (!match) {
         return { outcome: 'match-not-found' };
+      }
+      if (!isSupportedCompetitiveRuleset(match)) {
+        return { outcome: 'ruleset-mismatch' };
       }
 
       const actor = match.playerAccounts.find(
@@ -172,22 +177,27 @@ export class PostgresCompetitiveActionRepository implements CompetitiveActionRep
       await markRoomUpdated(manager, room);
 
       const response = toProjection(match, input.turn);
-      await actionRepository.save(
-        actionRepository.create({
-          matchId: match.matchId,
-          roomId: room.id,
-          turn: input.turn,
-          actorPlayerId: actor.playerId,
-          actorAccountId: actor.accountId,
-          clientCommandId: input.clientCommandId,
-          action: input.action,
-          canonicalAction,
-          requestHash,
-          status: 'resolved',
-          response,
-          resolvedAt: new Date(),
-        }),
+      const resolvedAt = new Date();
+      const resolvedReceipt = actionRepository.create({
+        matchId: match.matchId,
+        roomId: room.id,
+        turn: input.turn,
+        actorPlayerId: actor.playerId,
+        actorAccountId: actor.accountId,
+        clientCommandId: input.clientCommandId,
+        action: input.action,
+        canonicalAction,
+        requestHash,
+        status: 'resolved',
+        response,
+        resolvedAt,
+      });
+      resolveTurnReceipts(
+        [turnActions[0], resolvedReceipt],
+        response,
+        resolvedAt,
       );
+      await actionRepository.save([turnActions[0], resolvedReceipt]);
 
       return {
         outcome: 'accepted',
@@ -217,6 +227,28 @@ export function hashCompetitiveActionRequest(
       'utf8',
     )
     .digest('hex');
+}
+
+export function isSupportedCompetitiveRuleset(input: {
+  rulesetVersion: number;
+  rulesetHash: string;
+}): boolean {
+  return (
+    input.rulesetVersion === COMPETITIVE_RULESET_VERSION &&
+    input.rulesetHash === COMPETITIVE_RULESET_HASH
+  );
+}
+
+export function resolveTurnReceipts(
+  receipts: [PokeLoungeCompetitiveAction, PokeLoungeCompetitiveAction],
+  response: CompetitiveActionProjection,
+  resolvedAt: Date,
+): void {
+  for (const receipt of receipts) {
+    receipt.status = 'resolved';
+    receipt.response = structuredClone(response);
+    receipt.resolvedAt = resolvedAt;
+  }
 }
 
 function toProjection(

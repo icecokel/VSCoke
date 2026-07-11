@@ -48,6 +48,8 @@ const REVISION_HEADER = 'If-Match-Revision';
 const UUID_V4_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const REVISION_PATTERN = /^(0|[1-9][0-9]*)$/;
+const UUID_V4_PATH_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 @ApiTags('poke-lounge')
 @Controller('poke-lounge')
@@ -134,9 +136,13 @@ export class PokeLoungeController {
       throw new BadRequestException('Authenticated account is required');
     }
 
+    if (!UUID_V4_PATH_PATTERN.test(matchId)) {
+      throw new BadRequestException('matchId must be a canonical UUID v4');
+    }
+
     return this.competitiveMatchService.submitAction({
-      roomCode,
-      matchId,
+      roomCode: roomCode.trim().toUpperCase(),
+      matchId: matchId.toLowerCase(),
       accountId: request.user.id,
       assignmentRevision: body.assignmentRevision,
       turn: body.turn,

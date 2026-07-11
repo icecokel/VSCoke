@@ -221,6 +221,13 @@ describe('legacy core production baseline migration', () => {
       await queryRunner.query(`
         CREATE TYPE tenant.game_history_gametype_enum AS ENUM ('SKY_DROP')
       `);
+      await queryRunner.query(`
+        CREATE TABLE public.migrations (
+          "id" serial PRIMARY KEY,
+          "timestamp" bigint NOT NULL,
+          "name" varchar NOT NULL
+        )
+      `);
       await queryRunner.query('SET LOCAL search_path TO tenant, public');
 
       const migrationExecutor = new MigrationExecutor(

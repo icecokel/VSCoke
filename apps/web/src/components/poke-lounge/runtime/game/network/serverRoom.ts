@@ -115,6 +115,22 @@ class ServerRoomTransportError extends Error {
   }
 }
 
+class ServerRoomFetchError extends ServerRoomTransportError {}
+
+class ServerRoomBodyReadError extends ServerRoomTransportError {}
+
+class ServerRoomJsonParseError extends Error {
+  constructor(readonly parseCause: unknown) {
+    super("Poke Lounge server room response JSON is malformed");
+  }
+}
+
+class ServerRoomSchemaError extends Error {
+  constructor() {
+    super("Poke Lounge room response is malformed");
+  }
+}
+
 export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   const identity = resolveServerIdentity(options);
   const sessionId = identity.sessionId;
@@ -173,9 +189,10 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         },
       });
     } catch (error) {
-      throw new ServerRoomTransportError(error);
+      throw new ServerRoomFetchError(error);
     }
-    const responseBody = await response.json();
+    const responseText = await readResponseBody(response);
+    const responseBody = parseResponseJson(responseText);
     const unwrapped = unwrapApiResponse<unknown>(responseBody);
 
     if (!response.ok) {
@@ -371,21 +388,16 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     subscriptionFailed = false;
     clearRecoveryTimer();
     roomSocket?.disconnect();
-    void requestLeave().then(() => {
-      if (disposed) {
-        return;
-      }
-
-      clearStoredServerIdentity();
-      reportTransportError(
-        new Error("Poke Lounge room cursor regressed; a fresh room session is required"),
-      );
-      window.dispatchEvent(
-        new CustomEvent(POKE_LOUNGE_FRESH_SESSION_REQUIRED_EVENT, {
-          detail: { roomCode: activeRoomId },
-        }),
-      );
-    });
+    clearStoredServerIdentity();
+    reportTransportError(
+      new Error("Poke Lounge room cursor regressed; a fresh room session is required"),
+    );
+    window.dispatchEvent(
+      new CustomEvent(POKE_LOUNGE_FRESH_SESSION_REQUIRED_EVENT, {
+        detail: { roomCode: activeRoomId },
+      }),
+    );
+    void requestLeave();
   };
 
   const ensureSocket = () => {
@@ -809,6 +821,22 @@ async function retryOneNetworkFailure<T>(operation: () => Promise<T>): Promise<T
   }
 }
 
+async function readResponseBody(response: Response): Promise<string> {
+  try {
+    return await response.text();
+  } catch (error) {
+    throw new ServerRoomBodyReadError(error);
+  }
+}
+
+function parseResponseJson(responseText: string): unknown {
+  try {
+    return JSON.parse(responseText) as unknown;
+  } catch (error) {
+    throw new ServerRoomJsonParseError(error);
+  }
+}
+
 function clearStoredServerIdentity(): void {
   if (typeof window === "undefined") {
     return;
@@ -852,7 +880,7 @@ function getServerRoomConflict(error: unknown): ServerRoomConflictResponse | nul
 
 function parseServerRoomState(value: unknown): ServerRoomState {
   if (!value || typeof value !== "object") {
-    throw new Error("Poke Lounge room response is malformed");
+    throw new ServerRoomSchemaError();
   }
 
   const room = value as Record<string, unknown>;
@@ -873,7 +901,7 @@ function parseServerRoomState(value: unknown): ServerRoomState {
     typeof room.tournament !== "object" ||
     !Array.isArray(room.finalStandings)
   ) {
-    throw new Error("Poke Lounge room response is malformed");
+    throw new ServerRoomSchemaError();
   }
 
   return value as ServerRoomState;

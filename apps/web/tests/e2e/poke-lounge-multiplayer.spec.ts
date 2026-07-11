@@ -188,7 +188,11 @@ test.describe("Poke Lounge server multiplayer", () => {
   }) => {
     const server = createMockServerState();
 
-    await mockServerRoom(page, server, { waitForResult: true, wrapped: true });
+    await mockServerRoom(page, server, {
+      deferLeaveResponse: true,
+      waitForResult: true,
+      wrapped: true,
+    });
     await startServerRoom(
       page,
       `/${LOCALE}/game/poke-lounge?network=server&room=${ROOM_CODE}&serverPlayerId=stale-player&serverSessionId=stale-session&e2e=1`,
@@ -206,6 +210,7 @@ test.describe("Poke Lounge server multiplayer", () => {
       .poll(() => getSocketState(page).then(state => state.transportErrors.join("\n")))
       .toContain("fresh room session");
     await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible();
+    expect(server.leaveRequestDeferred).toBe(true);
     await expect
       .poll(() =>
         Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/leave`)),
@@ -217,6 +222,7 @@ test.describe("Poke Lounge server multiplayer", () => {
     expect(url.searchParams.has("room")).toBe(false);
     expect(url.searchParams.has("serverPlayerId")).toBe(false);
     expect(url.searchParams.has("serverSessionId")).toBe(false);
+    server.resolveLeaveResponse?.();
 
     const recoveryAfterConflict = server.recoveryAfterRevisions.length;
     const subscriptionsAfterConflict = (await getSocketState(page)).subscriptions.length;
@@ -231,6 +237,60 @@ test.describe("Poke Lounge server multiplayer", () => {
       playerId: "stale-player",
       sessionId: "stale-session",
     });
+  });
+
+  test("cursor regression leave reject는 fresh 전환을 막거나 rejection을 누수하지 않는다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+    const pageErrors: string[] = [];
+    page.on("pageerror", error => pageErrors.push(error.message));
+
+    await mockServerRoom(page, server, {
+      rejectLeave: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+    await expect.poll(() => getSocketState(page).then(state => state.connected)).toBe(true);
+    server.revision = 20;
+    await emitSocketSnapshot(page, createCompletedRoomState(server));
+    await emitSocketRevisionConflict(page, {
+      ...createTournamentRoomState(server),
+      revision: 19,
+    });
+
+    await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible();
+    const recoveryAfterTransition = server.recoveryAfterRevisions.length;
+    await page.waitForTimeout(750);
+
+    expect(pageErrors).toEqual([]);
+    expect(server.recoveryAfterRevisions).toHaveLength(recoveryAfterTransition);
+  });
+
+  test("response body stream read failure는 동일 command를 한 번만 재시도한다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, {
+      bodyReadFailureSuffix: "/party-snapshot",
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+    await expect
+      .poll(() =>
+        Promise.resolve(
+          server.commandRequests.filter(request => request.suffix === "/party-snapshot").length,
+        ),
+      )
+      .toBe(2);
+    const [first, retry] = server.commandRequests.filter(
+      request => request.suffix === "/party-snapshot",
+    );
+
+    expect(retry).toEqual(first);
   });
 
   for (const responseFailure of ["json", "schema"] as const) {
@@ -964,9 +1024,13 @@ async function expectServerRoomUrl(page: Page): Promise<void> {
     .toBe(`server:${ROOM_CODE}`);
 }
 
-async function installSocketFixture(page: Page, autoConnect = true): Promise<void> {
+async function installSocketFixture(
+  page: Page,
+  autoConnect = true,
+  bodyReadFailureSuffix?: string,
+): Promise<void> {
   await page.addInitScript(
-    ({ autoConnect }) => {
+    ({ autoConnect, bodyReadFailureSuffix }) => {
       type Listener = (...args: unknown[]) => void;
       type Subscription = {
         roomCode: string;
@@ -978,6 +1042,37 @@ async function installSocketFixture(page: Page, autoConnect = true): Promise<voi
       const sockets: FixtureSocket[] = [];
       const subscriptions: Subscription[] = [];
       const transportErrors: string[] = [];
+      const nativeFetch = window.fetch.bind(window);
+      let bodyReadFailed = false;
+      window.fetch = async (...args): Promise<Response> => {
+        const response = await nativeFetch(...args);
+        const requestUrl =
+          typeof args[0] === "string"
+            ? args[0]
+            : args[0] instanceof URL
+              ? args[0].href
+              : args[0].url;
+
+        if (
+          !bodyReadFailed &&
+          bodyReadFailureSuffix &&
+          new URL(requestUrl, window.location.href).pathname.endsWith(bodyReadFailureSuffix)
+        ) {
+          bodyReadFailed = true;
+          return new Proxy(response, {
+            get(target, property) {
+              if (property === "text") {
+                return () => Promise.reject(new TypeError("response body stream failed"));
+              }
+
+              const value = Reflect.get(target, property, target) as unknown;
+              return typeof value === "function" ? value.bind(target) : value;
+            },
+          });
+        }
+
+        return response;
+      };
       window.addEventListener("poke-lounge:server-room-error", event => {
         const detail = (event as CustomEvent<{ message?: unknown }>).detail;
 
@@ -1072,7 +1167,7 @@ async function installSocketFixture(page: Page, autoConnect = true): Promise<voi
           }),
       };
     },
-    { autoConnect },
+    { autoConnect, bodyReadFailureSuffix },
   );
 }
 
@@ -1081,14 +1176,17 @@ async function mockServerRoom(
   server: MockServerState,
   options: {
     advanceRevisionOnGetAfterConflict?: boolean;
+    bodyReadFailureSuffix?: string;
     completeOnGet?: boolean;
     deferCreateResponse?: boolean;
+    deferLeaveResponse?: boolean;
     deferRecoveryGet?: boolean;
     idempotencyConflictSuffix?: string;
     malformedSuccessSuffix?: string;
     malformedSuccessType?: "json" | "schema";
     mutationDelayMs?: number;
     networkFailureSuffix?: string;
+    rejectLeave?: boolean;
     rejectResult?: boolean;
     recoveryGetRevision?: number;
     revisionConflictAttempt?: number;
@@ -1099,7 +1197,11 @@ async function mockServerRoom(
     wrapped?: boolean;
   } = {},
 ): Promise<void> {
-  await installSocketFixture(page, options.socketAutoConnect !== false);
+  await installSocketFixture(
+    page,
+    options.socketAutoConnect !== false,
+    options.bodyReadFailureSuffix,
+  );
   await page.route("**/poke-lounge/rooms**", async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -1162,6 +1264,18 @@ async function mockServerRoom(
     }
 
     try {
+      if (mutation && suffix === "/leave" && options.deferLeaveResponse) {
+        server.leaveRequestDeferred = true;
+        await new Promise<void>(resolve => {
+          server.resolveLeaveResponse = resolve;
+        });
+      }
+
+      if (mutation && suffix === "/leave" && options.rejectLeave) {
+        await route.abort("failed");
+        return;
+      }
+
       if (mutation && suffix === options.networkFailureSuffix && !server.networkFailureReturned) {
         server.networkFailureReturned = true;
         await route.abort("failed");
@@ -1358,11 +1472,13 @@ interface MockServerState {
   createRequestReceived: boolean;
   resolveCreateResponse?: () => void;
   idempotencyConflictReturned: boolean;
+  leaveRequestDeferred: boolean;
   maxConcurrentMutations: number;
   networkFailureReturned: boolean;
   recoveryAfterRevisions: number[];
   recoveryGetDeferred: boolean;
   resolveRecoveryGet?: () => void;
+  resolveLeaveResponse?: () => void;
   partySnapshotBodies: Array<{
     playerId?: string;
     sessionId?: string;
@@ -1407,6 +1523,7 @@ function createMockServerState(): MockServerState {
     concurrentPollRevision: null,
     createRequestReceived: false,
     idempotencyConflictReturned: false,
+    leaveRequestDeferred: false,
     maxConcurrentMutations: 0,
     networkFailureReturned: false,
     recoveryAfterRevisions: [],

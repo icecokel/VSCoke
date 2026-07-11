@@ -112,3 +112,25 @@ Commit target: `fix(poke-lounge):웹소켓 복구 경로 보강`
 - Full web/API build: PASS.
 - PostgreSQL API E2E was retried and remains environment-blocked before app
   initialization because `TEST_DATABASE_URL` is not set.
+
+## Second Review Hardening Follow-up
+
+Commit target: `fix(poke-lounge):웹소켓 전환 지연 제거`
+
+- Cursor regression now clears the local identity and emits the diagnostic and
+  fresh-session events synchronously after disconnect. REST leave starts only as
+  best-effort background cleanup through the already rejection-safe mutation
+  queue, so a pending or rejected leave cannot delay room entry.
+- Added pending-leave and repeated transport-rejection coverage. Both cases prove
+  immediate fresh-session UI, no stale recovery timer, and no unhandled page
+  rejection.
+- Split response handling into explicit fetch transport, response-body read,
+  JSON parse, and room-schema boundaries. Fetch rejection and body stream read
+  rejection retry the exact command once; JSON syntax and schema errors do not
+  retry.
+
+### Second Follow-up Verification
+
+- New transition/body-read focused E2E: PASS, 5 Chromium tests.
+- Full multiplayer E2E: PASS, 23 Chromium tests.
+- Full API unit, web typecheck, full API/web lint, and web/API build: PASS.

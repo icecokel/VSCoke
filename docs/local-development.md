@@ -23,23 +23,24 @@ apps/api -> NestJS backend
 
 루트 스크립트는 workspace 명령을 감싸는 진입점이다.
 
-| 목적              | 명령                      |
-| ----------------- | ------------------------- |
-| 웹 개발           | `pnpm dev:web`            |
-| API 개발          | `pnpm dev:api`            |
-| 전체 빌드         | `pnpm build`              |
-| 웹 빌드           | `pnpm build:web`          |
-| API 빌드          | `pnpm build:api`          |
-| 웹 lint           | `pnpm lint:web`           |
-| 전체 lint         | `pnpm lint`               |
-| 웹 타입 체크      | `pnpm type:check:web`     |
-| API test          | `pnpm test:api`           |
-| API E2E test      | `pnpm test:api:e2e`       |
-| OpenAPI 타입 생성 | `pnpm generate:types`     |
-| API 계약 확인     | `pnpm check:api-contract` |
-| 웹 E2E            | `pnpm e2e`                |
-| 웹 E2E smoke      | `pnpm e2e:smoke`          |
-| unused code check | `pnpm knip`               |
+| 목적               | 명령                           |
+| ------------------ | ------------------------------ |
+| 웹 개발            | `pnpm dev:web`                 |
+| API 개발           | `pnpm dev:api`                 |
+| 전체 빌드          | `pnpm build`                   |
+| 웹 빌드            | `pnpm build:web`               |
+| API 빌드           | `pnpm build:api`               |
+| 웹 lint            | `pnpm lint:web`                |
+| 전체 lint          | `pnpm lint`                    |
+| 웹 타입 체크       | `pnpm type:check:web`          |
+| API test           | `pnpm test:api`                |
+| API E2E test       | `pnpm test:api:e2e`            |
+| battle engine test | `pnpm test:poke-lounge-battle` |
+| OpenAPI 타입 생성  | `pnpm generate:types`          |
+| API 계약 확인      | `pnpm check:api-contract`      |
+| 웹 E2E             | `pnpm e2e`                     |
+| 웹 E2E smoke       | `pnpm e2e:smoke`               |
+| unused code check  | `pnpm knip`                    |
 
 ## 환경 변수 준비
 
@@ -109,14 +110,14 @@ http://localhost:3001/api-json
 
 주요 API surface:
 
-| 영역            | endpoint                                                                                             |
-| --------------- | ---------------------------------------------------------------------------------------------------- |
-| Health          | `GET /health`                                                                                        |
-| Hobby           | `GET /recipes`, `GET /recipes/:id`, `GET /espresso-history/beans`, `GET /espresso-history/beans/:id` |
-| Game            | `POST /game/result`, `GET /game/ranking`, `GET /game/result/:id`, `GET/PUT /game/poke-lounge/state`  |
-| Poke Lounge     | `/poke-lounge/rooms/**`                                                                              |
-| Resume question | `POST /resume-rag/chat`                                                                              |
-| Wordle          | `GET /wordle/word`, `POST /wordle/check`                                                             |
+| 영역            | endpoint                                                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------------------------ |
+| Health          | `GET /health`                                                                                                |
+| Hobby           | `GET /recipes`, `GET /recipes/:id`, `GET /espresso-history/beans`, `GET /espresso-history/beans/:id`         |
+| Game            | `POST /game/result`, `GET /game/ranking`, `GET /game/result/:id`, `GET/PUT /game/poke-lounge/state`          |
+| Poke Lounge     | durable room commands, competitive seat/action, `GET /poke-lounge/rooms/:roomCode`, Socket.IO `/poke-lounge` |
+| Resume question | `POST /resume-rag/chat`                                                                                      |
+| Wordle          | `GET /wordle/word`, `POST /wordle/check`                                                                     |
 
 API 빌드:
 
@@ -129,6 +130,38 @@ API 테스트:
 ```bash
 pnpm test:api
 ```
+
+Poke Lounge PostgreSQL integration/E2E에는 별도 test DB가 필요하다. 이름이 `_test`로 끝나지 않거나 regular DB 환경 변수와 같은 대상을 가리키면 test data source가 실행 전에 실패한다.
+
+```bash
+TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/vscoke_test \
+  pnpm --filter @vscoke/api migration:run:test
+TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/vscoke_test \
+  pnpm test:api:e2e
+```
+
+공유 경쟁 엔진은 별도로 검증한다.
+
+```bash
+pnpm test:poke-lounge-battle
+```
+
+## Poke Lounge 로컬 흐름
+
+로그인 Web은 `Authorization: Bearer <Google ID token>`으로 `GET /game/poke-lounge/state`를 먼저 호출한다. version 1 snapshot 검증과 local-player hydration이 끝난 뒤 Phaser와 `PUT /game/poke-lounge/state` autosave를 시작한다. 로그인하지 않았거나 서버 snapshot이 없으면 versioned `sessionStorage` 상태를 사용한다. GET 오류 시 게임은 local fallback으로 열리지만 원격 autosave는 retry 전까지 비활성 상태다.
+
+서버 room mutation에는 다음 두 header가 필수다.
+
+```http
+X-Idempotency-Key: 00000000-0000-4000-8000-000000000000
+If-Match-Revision: 0
+```
+
+`X-Idempotency-Key`는 canonical UUID v4이고 같은 network retry는 같은 key를 재사용한다. `If-Match-Revision`은 마지막 적용 revision이며 create는 `0`이다. stale mutation은 committed room snapshot을 포함한 `409` conflict로 복구한다.
+
+Web은 `GET /poke-lounge/rooms/:roomCode?afterRevision=<revision>`으로 초기/복구 snapshot을 읽고 Socket.IO `/poke-lounge` namespace에 `room.subscribe`를 보낸다. 정상 상태는 commit 이후 `room.snapshot`으로 전달된다. Socket outage나 `room.revision-conflict`에서는 bounded REST retry를 사용하며 상시 750 ms polling은 하지 않는다.
+
+경쟁 API인 `POST /poke-lounge/rooms/:roomCode/competitive-seat`와 `POST /poke-lounge/rooms/:roomCode/matches/:matchId/actions`도 bearer 인증이 필수다. 서로 다른 인증 계정 두 개가 좌석을 가져야 하며 각 클라이언트는 자기 action만 제출한다. casual `/result`나 일반 `/game/result`는 server room 결과 제출 경로가 아니다.
 
 ## 웹과 API 같이 실행
 

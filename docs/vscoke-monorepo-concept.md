@@ -1,6 +1,6 @@
 # VSCoke Monorepo Concept
 
-확인 기준일: 2026-07-10
+확인 기준일: 2026-07-11
 
 이 문서는 현재 구현된 VSCoke monorepo의 구조, 실행 방식, 테스트, 배포 흐름을 한눈에 보기 위한 기준 문서다. 프론트엔드, 백엔드, 테스트, hook 작업을 시작할 때는 이 문서를 먼저 확인한다.
 
@@ -17,7 +17,8 @@ vscoke/
 │  └─ api/      -> NestJS 11 backend
 ├─ packages/
 │  ├─ api-types/  -> shared package placeholder (.gitkeep only)
-│  └─ config/     -> shared package placeholder (.gitkeep only)
+│  ├─ config/     -> shared package placeholder (.gitkeep only)
+│  └─ poke-lounge-battle/ -> shared deterministic competitive battle engine
 ├─ docs/
 ├─ scripts/
 ├─ package.json
@@ -25,7 +26,7 @@ vscoke/
 └─ pnpm-workspace.yaml
 ```
 
-`pnpm-workspace.yaml`은 `apps/*`, `packages/*`를 workspace로 묶는다. 현재 `packages/api-types`, `packages/config`는 `.gitkeep`만 있는 자리 표시자이며 실제 공유 패키지 구현은 없다.
+`pnpm-workspace.yaml`은 `apps/*`, `packages/*`를 workspace로 묶는다. `@vscoke/poke-lounge-battle`은 Web과 API가 함께 사용하는 결정론적 경쟁 전투 규칙, canonical state, PRNG와 turn resolver를 제공한다. `packages/api-types`, `packages/config`는 `.gitkeep`만 있는 자리 표시자다.
 
 ## 앱 책임
 
@@ -123,11 +124,34 @@ SearchPanel
 -> Codex app-server answer generation
 ```
 
-Poke Lounge는 세 가지 서버 접점이 있다.
+Poke Lounge는 저장 상태, durable room, 인증 경쟁 경로를 분리한다.
 
-- `POST /game/result`, `GET /game/ranking`: 정식 점수와 랭킹
-- `GET/PUT /game/poke-lounge/state`: 로그인 사용자의 자동 저장 상태
-- `/poke-lounge/rooms/**`: 서버 권위 멀티플레이 룸 상태
+```txt
+authenticated Web
+-> GET /game/poke-lounge/state
+-> validate versioned snapshot
+-> hydrate local-player store
+-> start Phaser and autosave PUT
+```
+
+서버 GET이 없거나 로그인하지 않은 경우 Phaser는 versioned `sessionStorage` local-player snapshot으로 시작한다. 인증 GET이 실패하면 로컬 상태로 게임을 시작하되 원격 autosave는 재시도 전까지 열지 않아 서버 상태를 덮어쓰지 않는다. `localStorage`의 legacy key는 제거한다.
+
+```txt
+room mutation + X-Idempotency-Key + If-Match-Revision
+-> PostgreSQL transaction
+-> poke_lounge_room snapshot/revision/TTL
+-> poke_lounge_room_command durable receipt
+-> commit
+-> Socket.IO /poke-lounge room.snapshot
+```
+
+Web은 REST GET으로 room을 초기화하고 Socket.IO committed snapshot을 적용한다. 연결 장애, 재연결, revision conflict에서는 REST GET을 복구 경로로 사용한다. 750 ms 상시 polling이나 API 프로세스 메모리 Map은 현재 구조가 아니다.
+
+경쟁 mode는 서로 다른 인증 계정 두 개가 각각 하나의 좌석을 바인딩해야 시작한다. 각 계정은 자기 action만 제출할 수 있고 서버는 `@vscoke/poke-lounge-battle`의 서버 seed, canonical state와 turn을 전진시킨다. terminal 시 서버가 승자 100점, 패자 50점을 확정하고 durable action receipt, match 종료, `resultTrust = 'verified-room'`, 서버 생성 `sourceKey` 이력을 한 트랜잭션으로 기록한다. 공개 Poke Lounge 랭킹은 verified row만 사용한다.
+
+익명 참가자, 추가 참가자, 기존 multi-player tournament와 solo flow는 casual client-asserted unranked 경로다. 일반 `POST /game/result`와 casual room `/result`는 저장·공유가 가능하지만 server room의 경쟁 결과 권위가 아니며 공개 Poke Lounge 랭킹에 반영되지 않는다.
+
+Phaser `WorldScene`은 orchestration 경계로 남고 HUD, interactions, tournament, encounters를 `world-scene-*.ts` collaborator로 분리했다. 상세 계약과 구현 결과는 [Poke Lounge Hardening Report](./poke-lounge-hardening-report.md)를 따른다.
 
 ### Poke Lounge 공개 배포 제한
 
@@ -204,7 +228,7 @@ PR 자동 검증은 `.github/workflows/pull-request-check.yml`이 담당한다.
 
 | Job | 주요 검증                                                                         |
 | --- | --------------------------------------------------------------------------------- |
-| API | API lint, unit test, E2E test, build                                              |
+| API | PostgreSQL 16 service, test migration, API lint/unit/integration/E2E, build       |
 | Web | local OpenAPI contract diff, typecheck, lint, knip, build, focused Playwright E2E |
 
 PR의 focused E2E는 현재 `i18n-integrity`, `hobby-games`, `keyboard-only`를 Chromium에서 실행한다. 전체 Playwright 회귀는 로컬에서 필요에 따라 `pnpm e2e` 또는 `pnpm e2e:cross-browser`로 실행한다.
@@ -275,3 +299,5 @@ pnpm --filter @vscoke/api db:tunnel
 - [Hobby API Swagger Concept](./hobby-api-swagger-concept.md)
 - [Hobby Frontend Schema Concept](./hobby-frontend-schema-concept.md)
 - [Playwright CLI Test Spec](./playwright-cli-test-spec.md)
+- [Poke Lounge Hardening Report](./poke-lounge-hardening-report.md)
+- [Poke Lounge Release Gate](./poke-lounge-release-gate.md)

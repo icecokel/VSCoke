@@ -1,5 +1,7 @@
 # Poke Lounge Remaining Work Implementation Plan
 
+> Historical implementation plan. Its REST polling and possible memory-only room statements describe the 2026-07-07 scope and are superseded by the PostgreSQL + Socket.IO architecture in [Poke Lounge Hardening Report](../../poke-lounge-hardening-report.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Finish the remaining Poke Lounge work in VSCoke after the initial port, API result integration, and server-room MVP, using the latest source Poke Lounge documents as the governing scope.

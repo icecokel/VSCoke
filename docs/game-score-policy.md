@@ -38,6 +38,17 @@
 
 경쟁 액션 엔진이 종료 결과를 확정한 경우에만 두 계정의 이력을 액션 영수증, 매치 종료 상태, 비공개 history ID 감사 매핑과 같은 `EntityManager` 트랜잭션에서 발행한다. writer 실패나 source 충돌은 이 변경 전체를 롤백하며 Socket 이벤트는 commit 이후에만 발행한다. 캐주얼 룸 `/result`는 이 경로를 호출하지 않는다.
 
+경쟁 match는 다음 조건을 모두 만족해야 한다.
+
+1. 정확히 두 개의 서로 다른 room participant/session이 있어야 한다.
+2. 두 participant는 각각 서로 다른 인증 계정으로 competitive seat를 바인딩해야 한다.
+3. 서버가 seed, ruleset version/hash, canonical state와 turn을 만들고 보관한다.
+4. 각 인증 계정은 자기 player의 현재 turn action만 제출할 수 있다. 상대 action, 과거/미래 turn, 잘못된 assignment revision, 재사용된 command는 거부하거나 durable receipt로 재생한다.
+5. Web과 API가 공유하는 `@vscoke/poke-lounge-battle` 결정론 엔진만 state를 전진시킨다. 클라이언트 winner, score, elapsed time, terminal 주장은 입력으로 받지 않는다.
+6. 엔진 terminal에서 승자는 100점, 패자는 50점으로 서버가 확정한다. 두 verified history와 match/action receipt는 같은 PostgreSQL 트랜잭션에서 발행된다.
+
+인증되지 않은 참가자, 세 번째 이상 참가자, 기존 multi-player tournament, solo play는 이 정확한 2-seat 경쟁 모델 밖이다. 해당 흐름은 casual client-asserted unranked이며 저장·공유는 가능해도 공개 Poke Lounge 랭킹의 근거가 아니다. server room 경쟁 결과를 일반 `POST /game/result`나 casual `POST /poke-lounge/rooms/:roomCode/result`로 제출해서는 안 된다.
+
 Poke Lounge 랭킹과 등수 쿼리는 각 사용자 최고 점수를 고르는 window 또는 집계 안에서 먼저 `resultTrust = 'verified-room'`을 적용한다. 따라서 더 높은 `client-asserted` 점수가 같은 사용자에게 있어도 최고 점수나 등수에 영향을 주지 않는다.
 
 신뢰도 migration은 기존 `POKE_LOUNGE` 행 중 `resultTrust IS NULL`인 행만 `client-asserted`로 채운다. 다른 게임 행은 `NULL`로 유지하고 이미 분류된 값을 덮어쓰지 않는다.
@@ -105,4 +116,4 @@ WHERE p.game_type IS NULL
 
 ## 한계
 
-이 정책은 명백한 조작값과 기존 오염 기록의 랭킹 반영을 막는 1차 방어선이다. 클라이언트 위조 자체를 더 강하게 줄이려면 서버 발급 게임 세션, nonce, challenge 검증을 별도 기능으로 설계해야 한다.
+일반 `POST /game/result`의 범위/속도 정책은 client-asserted 입력에 대한 1차 plausibility 방어선이며 경쟁 증명이 아니다. Poke Lounge verified ranking은 위 2-seat 서버 엔진 경로에서만 생성된다. 현재 경쟁 모델은 정확히 두 명만 지원하고, 익명·추가 참가자·multi tournament·solo는 의도적으로 unranked다.

@@ -26,10 +26,12 @@ PR은 배포 전에 `.github/workflows/pull-request-check.yml`로 검증한다. 
 
 | Job | 실행 내용                                                                                                                               |
 | --- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| API | `pnpm --filter @vscoke/api lint`, `pnpm test:api`, `pnpm test:api:e2e`, `pnpm build:api`                                                |
+| API | PostgreSQL 16 + pgvector, test migration show/run, API lint/unit/PostgreSQL integration/E2E, API build                                  |
 | Web | Playwright Chromium 설치, `pnpm check:api-contract`, `pnpm type:check:web`, `pnpm lint:web`, `pnpm knip`, `pnpm build:web`, focused E2E |
 
 현재 focused E2E는 `i18n-integrity.spec.ts`, `hobby-games.spec.ts`, `keyboard-only.spec.ts`를 Chromium에서 실행한다. 전체 E2E와 cross-browser 회귀는 실행 시간이 크므로 기본 PR workflow에는 넣지 않고 필요 시 로컬 또는 별도 workflow에서 실행한다.
+
+API job은 `TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/vscoke_test`를 사용한다. test data source는 `_test` suffix와 regular DB target 분리를 강제하고 `synchronize: false`로 migration을 증거로 삼는다. Poke Lounge room, 경쟁 action/history publication의 PostgreSQL integration test가 이 job에 포함된다.
 
 ### Web: Vercel
 
@@ -219,6 +221,8 @@ Resume RAG 운영 chat은 `resume_source_items`의 기존 DB 텍스트를 keywor
 5. baseline과 후속 `AddPokeLoungeGameType1793664000000`이 ledger에 기록됐는지 다시 확인한다.
 
 이미 후속 enum migration이 기록된 운영 DB를 고려해 baseline은 enum label을 `SKY_DROP` 또는 순서가 고정된 `SKY_DROP, POKE_LOUNGE`만 허용한다. 신규 DB에서는 baseline이 `SKY_DROP`만 생성하고 후속 migration이 `POKE_LOUNGE`를 추가한다. baseline 실패 시 drop, alter, 자동 repair 또는 migration ledger 수동 삽입을 진행하지 말고 schema/ledger 차이를 먼저 검토한다. `down`은 기존 객체와 데이터를 삭제할 수 있어 명시적으로 실패하는 irreversible 정책이다.
+
+Poke Lounge hardening의 기술 검증과 운영 migration 적용은 공개 배포 승인이 아니다. route와 asset release는 [Poke Lounge Release Gate](./poke-lounge-release-gate.md)가 계속 `BLOCKED`이며, owner/legal review와 서명된 권리 결정이 별도로 필요하다.
 
 ```bash
 scp .env icenux-external:/home/icenux/projects/vscoke-api/.env

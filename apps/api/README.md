@@ -14,15 +14,15 @@
 
 ## 주요 모듈
 
-| 모듈            | 주요 endpoint                                                                                             |
-| --------------- | --------------------------------------------------------------------------------------------------------- |
-| App             | `GET /`, `GET /health`                                                                                    |
-| Recipe          | `GET /recipes`, `GET /recipes/:id`                                                                        |
-| EspressoHistory | `GET /espresso-history/beans`, `GET /espresso-history/beans/:id`                                          |
-| Game            | `POST /game/result`, `GET /game/ranking`, `GET /game/result/:id`, `GET/PUT /game/poke-lounge/state`       |
-| PokeLounge      | `POST /poke-lounge/rooms`, `GET /poke-lounge/rooms/:roomCode`, room join/ready/snapshot/result/leave APIs |
-| Resume RAG      | `POST /resume-rag/chat`                                                                                   |
-| Wordle          | `GET /wordle/word`, `POST /wordle/check`                                                                  |
+| 모듈            | 주요 endpoint                                                                                                     |
+| --------------- | ----------------------------------------------------------------------------------------------------------------- |
+| App             | `GET /`, `GET /health`                                                                                            |
+| Recipe          | `GET /recipes`, `GET /recipes/:id`                                                                                |
+| EspressoHistory | `GET /espresso-history/beans`, `GET /espresso-history/beans/:id`                                                  |
+| Game            | `POST /game/result`, `GET /game/ranking`, `GET /game/result/:id`, `GET/PUT /game/poke-lounge/state`               |
+| PokeLounge      | durable room commands, competitive seat/action APIs, `GET /poke-lounge/rooms/:roomCode`, Socket.IO `/poke-lounge` |
+| Resume RAG      | `POST /resume-rag/chat`                                                                                           |
+| Wordle          | `GET /wordle/word`, `POST /wordle/check`                                                                          |
 
 ## 로컬 준비
 
@@ -70,6 +70,7 @@ PORT=3001 pnpm dev:api
 pnpm build:api
 pnpm test:api
 pnpm test:api:e2e
+pnpm test:poke-lounge-battle
 ```
 
 API 앱 필터를 직접 사용할 수도 있다.
@@ -110,6 +111,23 @@ pnpm --filter @vscoke/api migration:show
 pnpm --filter @vscoke/api migration:run
 pnpm --filter @vscoke/api migration:revert
 ```
+
+`CreateLegacyCoreSchema1759999999999`는 legacy core 객체가 모두 없을 때만 canonical schema를 만들고, 모두 있을 때는 정확히 일치하는 schema만 migration ledger에 채택한다. 일부 객체만 있거나 schema/ledger가 다르면 자동 수리 없이 실패한다. 이 baseline의 `down`은 기존 데이터 삭제를 막기 위해 의도적으로 실패한다.
+
+PostgreSQL 테스트에는 운영 DB와 분리된 `TEST_DATABASE_URL`이 필수다. 데이터베이스 이름은 `_test`로 끝나야 하고 `DATABASE_URL`, `DB_URL`, `DB_DATABASE`와 같은 대상을 가리킬 수 없다. CI는 PostgreSQL 16 service에서 test migration을 먼저 실행한 뒤 integration/E2E를 수행한다. 운영 배포 workflow는 migration을 자동 실행하지 않으며, backup과 ledger 확인 후 maintenance window에서 수동 실행한다.
+
+## Poke Lounge 계약
+
+룸 상태는 PostgreSQL의 `poke_lounge_room` JSONB snapshot, monotonic `revision`, TTL과 `poke_lounge_room_command` 영수증으로 유지된다. mutation은 같은 트랜잭션에서 revision 비교, 상태 저장, 명령 영수증 저장을 완료한다. API 프로세스 재시작 뒤에도 room과 idempotent response가 복구되며 Redis나 메모리 fallback은 없다.
+
+- `POST /poke-lounge/rooms`와 `POST /poke-lounge/rooms/:roomCode/{join,ready,party-snapshot,result,leave}`는 `X-Idempotency-Key: <UUID v4>`와 `If-Match-Revision: <non-negative integer>`를 각각 정확히 한 번 요구한다. create의 revision은 `0`이어야 한다.
+- `GET /poke-lounge/rooms/:roomCode?afterRevision=<revision>`은 초기 hydration과 Socket 장애 복구용 committed snapshot을 반환한다.
+- Socket.IO namespace `/poke-lounge`는 `room.subscribe`를 받고 `room.snapshot` 또는 `room.revision-conflict`를 보낸다. 구독에는 `roomCode`, `playerId`, `sessionId`, `afterRevision`이 필요하다.
+- `POST /poke-lounge/rooms/:roomCode/competitive-seat`와 `POST /poke-lounge/rooms/:roomCode/matches/:matchId/actions`는 `Authorization: Bearer <Google ID token>` 인증이 필요하다.
+- 경쟁 좌석은 서로 다른 인증 계정 두 개에만 배정된다. 각 계정은 자기 player action만 제출하고, 서버가 `@vscoke/poke-lounge-battle`의 seed/state/turn을 전진시킨다.
+- casual room `POST .../result`와 일반 `POST /game/result`는 client-asserted unranked 경로다. 서버 경쟁 room의 결과를 일반 score 제출로 대체하지 않는다.
+
+상세 데이터 흐름과 운영 제약은 [Poke Lounge Hardening Report](../../docs/poke-lounge-hardening-report.md), 랭킹 정책은 [Game Score Policy](../../docs/game-score-policy.md)를 따른다.
 
 Mac 로컬에서 운영 DB 확인이 필요하면 Cloudflare Access TCP tunnel을 먼저 실행한다.
 

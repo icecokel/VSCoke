@@ -1,5 +1,7 @@
 # Poke Lounge Three Phase Roadmap
 
+> Historical roadmap. The phase descriptions and completion logs below preserve their dates and are not current architecture claims. The 2026-07-10 hardening supersedes the memory-only room, REST polling, generic Poke Lounge ranking and client-result authority conclusions. See [Poke Lounge Hardening Report](../../poke-lounge-hardening-report.md) for current state.
+
 이 문서는 `feature/poke-lounge` 브랜치에서 Poke Lounge를 VSCoke에 완전히 붙이기 위한 남은 작업을 3단계로 나눈다.
 
 기준 문서:
@@ -421,3 +423,18 @@ Phase 3 인계 결정 사항:
 - server room 생성/입장 UX는 query 기반 MVP 수준이며 운영형 lobby UX는 별도 작업이다.
 - `pnpm generate:types`는 여전히 원격 `https://api.icecoke.kr/api-json` 기준이라 로컬 미배포 API 차이를 자동 반영하지 않는다.
 - Phase 3의 REST polling server-authoritative 구현은 기술적 MVP다. `pnpm check:poke-lounge-provenance`가 승인된 manifest로 통과하기 전에는 Poke Lounge route와 public asset을 공개 배포 승인 상태로 취급하지 않는다. 현재 manifest의 모든 행은 의도적으로 `blocked`다.
+
+### Hardening 완료: 2026-07-11
+
+2026-07-10 계획의 Tasks 1-7 구현과 Task 8 문서 감사를 거쳐 다음 항목이 현재 기준이 됐다.
+
+- 로그인 GET hydration과 versioned local fallback이 Phaser/autosave보다 먼저 실행된다.
+- PostgreSQL이 room snapshot, revision, TTL, command receipt의 source of truth다.
+- Socket.IO `/poke-lounge`가 committed snapshot을 전송하고 REST GET은 initial/outage/conflict recovery를 담당한다.
+- `WorldScene`은 HUD, interactions, tournament, encounters collaborator를 조합한다.
+- 정확히 두 개의 서로 다른 인증 seat가 각자 자기 action만 제출하며, 공유 `@vscoke/poke-lounge-battle` 엔진을 API가 전진시킨다.
+- terminal 승자 100점/패자 50점, durable action receipt, verified history와 publication mapping은 한 transaction에서 기록된다.
+- 일반 `/game/result`, casual room `/result`, anonymous/extra/multi tournament/solo는 client-asserted unranked다. 공개 Poke Lounge ranking은 `verified-room`만 사용한다.
+- strict adopt-or-create legacy baseline, `_test` DB safety와 PostgreSQL CI migration/integration evidence가 추가됐다. 운영 migration은 backup/ledger 확인 뒤 수동 적용한다.
+
+검증 명령과 알려진 제약은 [Poke Lounge Hardening Report](../../poke-lounge-hardening-report.md)에 모았다. 공개 release는 기술 완료와 무관하게 [Poke Lounge Release Gate](../../poke-lounge-release-gate.md)의 `BLOCKED` 상태를 유지하며 owner/legal review가 필요하다.

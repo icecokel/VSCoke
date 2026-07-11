@@ -19,8 +19,9 @@ vscoke/
 │  ├─ web/      # Next.js frontend
 │  └─ api/      # NestJS backend
 ├─ packages/
-│  ├─ api-types/ # shared package placeholder (.gitkeep only)
-│  └─ config/    # shared package placeholder (.gitkeep only)
+│  ├─ poke-lounge-battle/ # shared deterministic competitive battle engine
+│  ├─ api-types/          # shared package placeholder (.gitkeep only)
+│  └─ config/             # shared package placeholder (.gitkeep only)
 ├─ docs/
 ├─ package.json
 └─ pnpm-workspace.yaml
@@ -72,6 +73,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3001 pnpm dev:web
 pnpm build
 pnpm lint
 pnpm test:api
+pnpm test:poke-lounge-battle
 pnpm e2e:smoke
 pnpm generate:types
 pnpm check:api-contract
@@ -107,6 +109,8 @@ NEXT_PUBLIC_API_URL=http://127.0.0.1:65535 pnpm build
 - [Operations Runbook](docs/operations-runbook.md): 배포 실패와 운영 장애 대응
 - [Deployment and Environment Plan](docs/deployment-and-env.md): 배포/환경 변수 상세 기준
 - [Game Score Policy](docs/game-score-policy.md): 게임 점수 저장/랭킹 검증 정책
+- [Poke Lounge Hardening Report](docs/poke-lounge-hardening-report.md): 영속화, 실시간 복구, 경쟁 서버 권위 구현 결과
+- [Poke Lounge Release Gate](docs/poke-lounge-release-gate.md): 공개 배포 차단과 소유자 승인 조건
 - [API Git History Report](docs/api-git-history-report.md): 기존 API 저장소 이력 이전 검토
 
 ## 테스트

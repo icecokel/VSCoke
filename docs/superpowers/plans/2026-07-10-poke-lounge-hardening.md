@@ -4,7 +4,7 @@
 
 **Goal:** Make Poke Lounge persistence, multiplayer state, transport, and competitive results durable, recoverable, and safe to operate while keeping the route blocked from public release until asset rights are cleared.
 
-**Architecture:** The browser hydrates a versioned, validated local-player snapshot before it may autosave. A PostgreSQL TypeORM repository replaces the API-process room map and persists revisioned room snapshots plus idempotent mutation receipts. Socket.IO delivers committed revisioned snapshots; REST remains the initial snapshot and reconnect-recovery path. Competitive results are accepted only after a server replay verifies an assigned match proof, while solo submissions remain explicitly client-asserted and are not publicly ranked.
+**Architecture:** The browser hydrates a versioned, validated local-player snapshot before it may autosave. A PostgreSQL TypeORM repository replaces the API-process room map and persists revisioned room snapshots plus idempotent mutation receipts. Socket.IO delivers committed revisioned snapshots; REST remains the initial snapshot and reconnect-recovery path. Exactly two authenticated seats submit only their own actions while the API advances the shared deterministic battle engine; solo and other casual modes remain explicitly client-asserted and unranked.
 
 **Tech Stack:** Next.js 15, React 19, Phaser, NestJS 11, TypeORM, PostgreSQL, Socket.IO, Jest, Supertest, Playwright, pnpm 9.12.0.
 
@@ -36,8 +36,24 @@
 | `apps/api/src/poke-lounge/poke-lounge-room.repository.ts`                                                         | Transactional PostgreSQL room load/save/prune abstraction.                                                    |
 | `apps/api/src/poke-lounge/poke-lounge-room-events.service.ts`                                                     | Emits only committed room snapshots to transports.                                                            |
 | `apps/api/src/poke-lounge/poke-lounge.gateway.ts`                                                                 | Socket.IO room subscription and revisioned snapshot transport.                                                |
-| `apps/api/src/poke-lounge/competitive/poke-lounge-result-verifier.service.ts`                                     | Deterministic replay of an assigned competitive match proof.                                                  |
+| `packages/poke-lounge-battle/`                                                                                    | Shared canonical state, PRNG, action types, and deterministic turn resolver.                                  |
+| `apps/api/src/poke-lounge/competitive/`                                                                           | Authenticated seat binding, durable action receipts, server state advancement, and terminal publication.      |
 | `apps/api/src/migrations/1794096000000-create-poke-lounge-room-storage.ts`                                        | PostgreSQL room and command tables, constraints, indexes, and expiry index.                                   |
+
+## Execution Status
+
+| Task                                | Status                        | Actual result                                                                                                                                        |
+| ----------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Provenance/release gate          | Complete                      | Machine-checkable manifest exists; public release intentionally remains `BLOCKED`.                                                                   |
+| 2. Hydration before autosave        | Complete                      | Authenticated GET hydration precedes Phaser and PUT; versioned `sessionStorage` is the local fallback.                                               |
+| 3. Ranking containment              | Complete                      | Client-asserted Poke Lounge rows are unranked; verified-room rows alone feed ranking.                                                                |
+| 4. WorldScene decomposition         | Complete                      | HUD, interactions, tournament, and encounters are collaborator modules behind the scene orchestrator.                                                |
+| 5. PostgreSQL room durability       | Complete                      | Room revisions, TTL and idempotent command receipts are transactional and durable.                                                                   |
+| 6. Socket transport/REST recovery   | Complete                      | `/poke-lounge` emits committed snapshots; REST handles initial and outage/conflict recovery.                                                         |
+| 7. Competitive authority            | Complete with design revision | The shipped model uses two authenticated seats and durable own-action submission to a shared deterministic server engine, not a client proof replay. |
+| 8. Final documentation/verification | Complete                      | Current docs, report, stale-claim audit, links, formatting, unit tests and contract diff were verified; provenance remains intentionally blocked.    |
+
+Current implementation details and constraints are consolidated in [Poke Lounge Hardening Report](../../poke-lounge-hardening-report.md). The original unchecked steps below are retained as the execution plan, not as current-state assertions; this status table and the final report supersede planned details that changed during implementation.
 
 ---
 
@@ -461,73 +477,32 @@ git commit -m "feat(poke-lounge):웹소켓 방 동기화 추가"
 
 ### Task 7: Verify Competitive Results Server-Side and Define Solo Trust
 
-**Files:**
+**Status:** Complete with an implementation design revision. The client-proof replay proposal was replaced by incremental durable own-action submission so the server owns state throughout the match rather than validating a client-composed terminal log afterward.
 
-- Create: `apps/api/src/poke-lounge/competitive/poke-lounge-result-verifier.service.ts`
-- Create: `apps/api/src/poke-lounge/competitive/poke-lounge-match-proof.types.ts`
-- Create: `apps/api/src/poke-lounge/competitive/poke-lounge-result-verifier.service.spec.ts`
-- Modify: `apps/api/src/poke-lounge/poke-lounge-room.types.ts`
-- Modify: `apps/api/src/poke-lounge/poke-lounge-room.service.ts`
-- Modify: `apps/api/src/poke-lounge/dto/submit-poke-lounge-match-result.dto.ts`
-- Modify: `apps/api/src/game/game-score-policy.ts`
-- Modify: `apps/api/src/game/game.service.ts`
-- Modify: `apps/api/src/game/entities/game-history.entity.ts`
-- Create: `apps/api/src/migrations/1794182400000-add-game-result-trust.ts`
-- Modify: `apps/api/src/game/game.service.spec.ts`
-- Modify: `apps/api/test/poke-lounge-room.e2e-spec.ts`
-- Modify: `apps/web/src/components/poke-lounge/runtime/game/network/serverRoom.ts`
+**Implemented files:**
 
-**Interfaces:**
+- `packages/poke-lounge-battle/`: shared canonical state, action types, PRNG and deterministic turn resolver
+- `apps/api/src/poke-lounge/competitive/`: authenticated seat binding, action authorization, durable receipts, projection and terminal publication
+- `apps/api/src/poke-lounge/entities/poke-lounge-competitive-{seat,match}.entity.ts`
+- `apps/api/src/poke-lounge/competitive/competitive-action.entity.ts`
+- `apps/api/src/game/verified-poke-lounge-history-writer.service.ts`
+- `apps/api/src/migrations/1794182400000-create-poke-lounge-competitive-assignment.ts`
+- `apps/api/src/migrations/1794268800000-create-poke-lounge-competitive-action.ts`
+- `apps/api/src/migrations/1794355200000-add-game-result-trust.ts`
+- `apps/api/src/migrations/1794441600000-add-competitive-history-publication.ts`
+- `apps/web/src/components/poke-lounge/runtime/game/battle/authoritative-battle-adapter.ts`
 
-```ts
-export interface PokeLoungeMatchProof {
-  proofVersion: 1;
-  matchId: string;
-  assignmentRevision: number;
-  seed: string;
-  initialPartyHash: string;
-  turns: Array<{ turn: number; actorPlayerId: string; moveId: number; targetPlayerId: string }>;
-}
-export interface VerifiedPokeLoungeMatchResult { winnerPlayerId: string; loserPlayerId: string; scoreByPlayerId: Record<string, number>; }
-verify(input: { assignment: PokeLoungeMatchAssignment; proof: PokeLoungeMatchProof }): VerifiedPokeLoungeMatchResult;
-```
+**Actual contract:**
 
-- [ ] **Step 1: Write failing proof and trust tests**
+1. A competitive assignment is created only when exactly two connected participants bind two distinct authenticated accounts.
+2. The server stores seed, ruleset version/hash, immutable player/account bindings, initial/current canonical state and current turn.
+3. An account may submit only its bound player's current-turn action with the assignment revision and a client command UUID.
+4. PostgreSQL receipts reject conflicting replay and preserve pending/resolved responses across process restart.
+5. The shared deterministic engine advances state only after both legal actions exist. Client winner, score, elapsed time or terminal claims are not accepted.
+6. Server terminal publishes winner 100 and loser 50 with `resultTrust = "verified-room"`, server-generated `sourceKey`, match publication mapping and resolved receipts in one transaction.
+7. General Poke Lounge result submission remains `client-asserted`; only verified-room rows are ranking eligible.
 
-```ts
-expect(() =>
-  verifier.verify({ assignment, proof: { ...proof, initialPartyHash: "tampered" } }),
-).toThrow(/party hash/);
-expect(() => verifier.verify({ assignment, proof: { ...proof, turns: illegalTurns } })).toThrow(
-  /illegal move/,
-);
-expect(isPublicRankingEligible(GameType.POKE_LOUNGE, "verified-room")).toBe(true);
-```
-
-- [ ] **Step 2: Run red result tests**
-
-Run: `pnpm --filter @vscoke/api test -- poke-lounge/competitive/poke-lounge-result-verifier.service.spec.ts game/game.service.spec.ts --runInBand && pnpm --filter @vscoke/api test:e2e -- poke-lounge-room.e2e-spec.ts --runInBand`
-
-Expected: FAIL because `submitMatchResult` currently accepts a reporting participant's requested winner and loser.
-
-- [ ] **Step 3: Implement authoritative proof verification**
-
-At match assignment, persist a server-generated seed, assignment revision, immutable participant IDs, and SHA-256 hashes of server-validated party snapshots. Replace the winner/loser request body with `proof`. The verifier must replay every submitted turn from that assignment using API-owned deterministic battle rules and approved data, reject wrong seed/version/hash, out-of-turn actors, unavailable moves, illegal targets, impossible HP, incomplete logs, and any client-supplied score. It returns the winner, loser, and scores; only this result completes the match and publishes standings. Record `resultTrust = "verified-room"` on game-history rows created from final room standings.
-
-Add a nullable `resultTrust` column through the migration, backfill all existing Poke Lounge rows to `client-asserted`, and make the ranking query include only `verified-room` Poke Lounge rows. Keep solo UI submission, storage, and sharing, but set `resultTrust = "client-asserted"` server-side regardless of request payload and label it as unranked in the web result UI.
-
-- [ ] **Step 4: Run green authority tests**
-
-Run: `pnpm --filter @vscoke/api migration:run && pnpm --filter @vscoke/api test -- poke-lounge/competitive/poke-lounge-result-verifier.service.spec.ts poke-lounge/poke-lounge-room.service.spec.ts game/game.service.spec.ts --runInBand && pnpm --filter @vscoke/api test:e2e -- poke-lounge-room.e2e-spec.ts --runInBand && pnpm build:api`
-
-Expected: PASS; forged winner, score, seed, party, and action logs are rejected, while a legal assigned replay is ranked as `verified-room`.
-
-- [ ] **Step 5: Commit competitive authority**
-
-```bash
-git add apps/api/src/poke-lounge apps/api/src/game apps/api/src/migrations/1794182400000-add-game-result-trust.ts apps/api/test/poke-lounge-room.e2e-spec.ts apps/web/src/components/poke-lounge/runtime/game/network/serverRoom.ts
-git commit -m "feat(poke-lounge):대전 결과 서버 검증 추가"
-```
+Verification evidence and remaining constraints are recorded in [Poke Lounge Stage 4B Report](../../poke-lounge-stage-4b-report.md) and [Poke Lounge Hardening Report](../../poke-lounge-hardening-report.md).
 
 ### Task 8: Final Documentation, Contract Generation, and Complete Verification
 
@@ -542,7 +517,7 @@ git commit -m "feat(poke-lounge):대전 결과 서버 검증 추가"
 
 **Interfaces:**
 
-- Consumes: the versioned persistence API, revisioned REST/WebSocket room contract, `PokeLoungeMatchProof`, and `resultTrust` policy from Tasks 2-7.
+- Consumes: the versioned persistence API, revisioned REST/WebSocket room contract, authenticated competitive action protocol, shared deterministic engine, and `resultTrust` policy from Tasks 2-7.
 - Produces: an accurate current-state record with commands run, known gaps, release state, API contract, and explicit ownership handoff.
 
 - [ ] **Step 1: Write failing documentation assertions**
@@ -561,7 +536,7 @@ Expected: FAIL until the current-state documentation is updated.
 
 - [ ] **Step 3: Generate contracts and record operational decisions**
 
-Run `pnpm generate:types`, then document the exact REST headers, Socket.IO namespace/events, revision conflict response, reconnect sequence, PostgreSQL expiry behavior, proof rejection rules, and the solo `client-asserted` policy. Append the actual passing command output and remaining gaps to the roadmap. Keep the release status `BLOCKED` unless Task 1's provenance checker passes with real approvals; technical hardening alone does not change it.
+Run `pnpm generate:types`, then document the exact REST headers, Socket.IO namespace/events, revision conflict response, reconnect sequence, PostgreSQL expiry behavior, competitive action rejection rules, and the solo `client-asserted` policy. Append the actual passing command output and remaining gaps to the roadmap. Keep the release status `BLOCKED` unless Task 1's provenance checker passes with real approvals; technical hardening alone does not change it.
 
 - [ ] **Step 4: Run full verification**
 
@@ -600,6 +575,6 @@ git commit -m "docs(poke-lounge):하드닝 완료 기준 기록"
 - Placeholder scan: no TBD, TODO, or deferred implementation steps are used. The only intentionally failing command is the explicitly documented provenance release gate for unresolved assets.
 - Type consistency: `PokeLoungeRoomSnapshot.revision` is the monotonic value used by repository mutations, REST conflicts, socket events, and browser stale-response rejection. `resultTrust` has exactly two values, and only `verified-room` is ranking eligible for `POKE_LOUNGE`.
 
-## Execution Handoff
+## Final Record
 
-Plan complete and saved to `docs/superpowers/plans/2026-07-10-poke-lounge-hardening.md`. Execute it task-by-task with `superpowers:subagent-driven-development` or `superpowers:executing-plans`; do not start implementation until the release-gate decision and the deterministic server battle-rules source are accepted by the owner.
+Implementation was completed directly on `codex/feat/poke-lounge-hardening`. The final documentation audit is recorded in [Poke Lounge Hardening Report](../../poke-lounge-hardening-report.md); the release gate remains a separate blocked owner/legal decision.

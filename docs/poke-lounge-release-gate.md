@@ -1,6 +1,6 @@
 # Poke Lounge Release Gate
 
-**Audit date:** 2026-07-10
+**Audit date:** 2026-07-11
 **Audit evidence:** `.superpowers/sdd/ip-audit-report.md` (`DONE_WITH_CONCERNS`)
 **Scope:** technical provenance audit based on local evidence only; not legal advice.
 
@@ -11,6 +11,8 @@ Status: BLOCKED
 The `/[locale]/game/poke-lounge` route and every Poke Lounge public asset remain ineligible for public deployment. A release owner may change this status only after `pnpm check:poke-lounge-provenance` passes and signs the approval table below.
 
 The checker intentionally fails now because every audited manifest row is `"rightsStatus": "blocked"`. Do not mask that failure with `|| true` in release CI.
+
+Persistence, Socket recovery, deterministic server competition, verified-only ranking, migration, CI, test, or documentation completion does not change this decision. The technical implementation is recorded in [Poke Lounge Hardening Report](./poke-lounge-hardening-report.md), but it does not establish ownership, permission, license compatibility, trademark clearance, or any other legal conclusion. A human owner and appropriate legal reviewer must review the unresolved items and record the release decision.
 
 ## Release owner sign-off
 

@@ -244,6 +244,41 @@ WHERE "sourceKey" IS NOT NULL;
 
 rollback이 필요하면 먼저 전체 DB backup을 만들고, `resultTrust`와 `sourceKey`를 보존할 별도 migration을 설계한다. 운영 데이터에서 두 열을 `NULL`로 일괄 변경하거나 writer가 만든 행을 삭제해서 기존 `down`을 통과시키면 안 된다. 빈 신규 환경에서 두 열 모두 데이터가 없을 때만 `down`이 index, constraint, column 순서로 제거를 진행한다.
 
+## Poke Lounge room/경쟁 장애
+
+room 상태와 mutation receipt는 PostgreSQL의 `poke_lounge_room`, `poke_lounge_room_command`에 저장된다. API 재시작 후 room이 사라지거나 같은 idempotency key가 새 command처럼 처리되면 메모리 상태를 복구하려 하지 말고 migration ledger, DB 연결 대상과 해당 두 테이블을 먼저 확인한다.
+
+```sql
+SELECT room_code, revision, expires_at, updated_at
+FROM poke_lounge_room
+ORDER BY updated_at DESC
+LIMIT 20;
+
+SELECT room_id, actor_player_id, idempotency_key, response_revision, created_at
+FROM poke_lounge_room_command
+ORDER BY created_at DESC
+LIMIT 20;
+```
+
+Web은 REST GET으로 room을 초기화하고 Socket.IO `/poke-lounge`의 committed `room.snapshot`을 적용한다. Socket 연결이 끊기거나 `room.revision-conflict`가 오면 `GET /poke-lounge/rooms/:roomCode?afterRevision=<lastRevision>`으로 복구한다. 지속적인 750 ms polling을 정상 상태로 되살리지 않는다. mutation 재시도는 동일 payload, 동일 `X-Idempotency-Key`, 마지막 committed `If-Match-Revision` 조합만 사용한다.
+
+경쟁 match는 서로 다른 인증 계정 두 개의 seat binding, 각 계정의 자기 action 제출, 서버 결정론 엔진의 terminal 확정 순서로 진행된다. terminal에서 승자 100점과 패자 50점, action receipts, match publication mapping, verified histories가 한 트랜잭션으로 기록된다. 일부만 남았다면 수동 score 삽입이나 ledger 수정 대신 실패 트랜잭션과 source key 충돌을 조사한다.
+
+```sql
+SELECT status, turn, history_publication
+FROM poke_lounge_competitive_match
+ORDER BY updated_at DESC
+LIMIT 20;
+
+SELECT "gameType", "resultTrust", "sourceKey", score, "userId"
+FROM game_history
+WHERE "gameType" = 'POKE_LOUNGE'
+ORDER BY "createdAt" DESC
+LIMIT 50;
+```
+
+익명/추가 참가자, 기존 multi-player tournament와 solo는 casual client-asserted unranked 경로다. server room 결과 장애를 `POST /game/result` 또는 casual room `/result`로 보정하면 verified provenance가 생기지 않으므로 사용하지 않는다.
+
 ## 환경 변수 변경
 
 웹 환경 변수:
@@ -282,13 +317,17 @@ pnpm smoke:api:remote
 
 1. Vercel deployment 상태가 `Ready`인지 확인한다.
 2. 주요 페이지가 로드되는지 확인한다.
-3. 로그인, 게임 점수 제출, Wordle, Poke Lounge 자동 저장/랭킹, 이력 질문처럼 API를 호출하는 화면을 확인한다.
+3. 로그인, 게임 점수 제출, Wordle, Poke Lounge GET hydration/자동 저장/room 복구/verified-only 랭킹, 이력 질문처럼 API를 호출하는 화면을 확인한다.
 4. 브라우저 네트워크 탭에서 API URL이 `NEXT_PUBLIC_API_URL`과 일치하는지 확인한다.
 
 API 계약 변경을 포함한 배포라면 로컬 또는 PR 검증에서 `pnpm check:api-contract`가 통과했는지도 같이 확인한다.
+
+Poke Lounge 기술 검증이 통과해도 공개 route/asset release는 승인되지 않는다. [Poke Lounge Release Gate](./poke-lounge-release-gate.md)는 owner/legal review와 provenance 승인 전까지 `BLOCKED`다.
 
 ## 관련 문서
 
 - [Monorepo Concept](./vscoke-monorepo-concept.md)
 - [Deployment and Environment Plan](./deployment-and-env.md)
 - [Local Development](./local-development.md)
+- [Poke Lounge Hardening Report](./poke-lounge-hardening-report.md)
+- [Poke Lounge Release Gate](./poke-lounge-release-gate.md)

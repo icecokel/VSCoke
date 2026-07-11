@@ -37,7 +37,7 @@ describe('CreateLegacyCoreSchema1759999999999 SQL contract', () => {
     expect(query).toContain('pg_catalog.pg_opclass');
     expect(query).toContain('operator_class.opcdefault');
     expect(query).toContain('pg_catalog.pg_collation');
-    expect(query).toContain(`collation.collname = 'default'`);
+    expect(query).toContain(`collation_record.collname = 'default'`);
     expect(query).toContain('index_record.indoption');
     expect(query).toContain('NOT index_record.indisunique');
     expect(query).toContain('index_record.indpred IS NULL');

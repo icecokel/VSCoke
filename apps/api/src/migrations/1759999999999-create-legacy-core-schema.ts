@@ -238,9 +238,9 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
               attribute.attname = 'userId' AND
               operator_class.opcdefault AND
               operator_class.opcmethod = access_method.oid AND
-              collation.oid = attribute.attcollation AND
+              collation_record.oid = attribute.attcollation AND
               collation_namespace.nspname = 'pg_catalog' AND
-              collation.collname = 'default' AND
+              collation_record.collname = 'default' AND
               key.option = 0
             )
             FROM unnest(
@@ -260,10 +260,10 @@ export class CreateLegacyCoreSchema1759999999999 implements MigrationInterface {
               AND attribute.attnum = key.attnum
             JOIN pg_catalog.pg_opclass operator_class
               ON operator_class.oid = key.opclass_oid
-            JOIN pg_catalog.pg_collation collation
-              ON collation.oid = key.collation_oid
+            JOIN pg_catalog.pg_collation collation_record
+              ON collation_record.oid = key.collation_oid
             JOIN pg_catalog.pg_namespace collation_namespace
-              ON collation_namespace.oid = collation.collnamespace
+              ON collation_namespace.oid = collation_record.collnamespace
             WHERE key.ordinality <= index_record.indnkeyatts
           );
 

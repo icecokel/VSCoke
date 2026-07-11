@@ -11,6 +11,7 @@ import {
   APPROVED_COMPETITIVE_RULESET_V1,
   COMPETITIVE_RULESET_VERSION,
   getCompetitiveMoveDefinition,
+  type CompetitiveLoadoutEntry,
   type CompetitiveMoveDefinition,
 } from "./ruleset";
 
@@ -42,8 +43,12 @@ function sortedParticipantIds(state: CanonicalBattleState): readonly [string, st
   if (state.rulesetVersion !== COMPETITIVE_RULESET_VERSION) {
     throw new Error("Unsupported competitive ruleset version");
   }
-  if (!Number.isInteger(state.turn) || state.turn < 1) {
-    throw new Error("Battle turn must be a positive integer");
+  if (
+    !Number.isSafeInteger(state.turn) ||
+    state.turn < 0 ||
+    state.turn >= Number.MAX_SAFE_INTEGER
+  ) {
+    throw new Error("Battle turn must be a safe nonnegative integer below Number.MAX_SAFE_INTEGER");
   }
 
   const ids = [...state.participantIds].sort();
@@ -59,39 +64,37 @@ function sortedParticipantIds(state: CanonicalBattleState): readonly [string, st
   return [ids[0], ids[1]];
 }
 
-function validateCombatant(combatant: CanonicalCombatantState): void {
+function validateCombatant(
+  combatant: CanonicalCombatantState,
+  template: CompetitiveLoadoutEntry,
+): void {
   if (
-    !Number.isInteger(combatant.level) ||
-    combatant.level < 1 ||
-    !Number.isInteger(combatant.maxHp) ||
-    combatant.maxHp < 1 ||
+    combatant.speciesId !== template.speciesId ||
+    combatant.level !== template.level ||
+    combatant.maxHp !== template.maxHp ||
+    combatant.attack !== template.attack ||
+    combatant.defense !== template.defense ||
+    combatant.speed !== template.speed ||
+    combatant.moves.length !== template.moveIds.length ||
+    combatant.moves.some((move, index) => move.moveId !== template.moveIds[index])
+  ) {
+    throw new Error("Canonical combatant does not match the approved loadout");
+  }
+
+  if (
     !Number.isInteger(combatant.currentHp) ||
     combatant.currentHp < 0 ||
     combatant.currentHp > combatant.maxHp ||
-    !Number.isInteger(combatant.attack) ||
-    combatant.attack < 1 ||
-    !Number.isInteger(combatant.defense) ||
-    combatant.defense < 1 ||
-    !Number.isInteger(combatant.speed) ||
-    combatant.speed < 1 ||
     !["none", "paralyzed"].includes(combatant.status)
   ) {
     throw new Error("Invalid canonical combatant state");
   }
 
-  const moveIds = new Set<string>();
   for (const move of combatant.moves) {
     const definition = getCompetitiveMoveDefinition(move.moveId);
-    if (
-      !definition ||
-      moveIds.has(move.moveId) ||
-      !Number.isInteger(move.pp) ||
-      move.pp < 0 ||
-      move.pp > definition.maxPp
-    ) {
+    if (!definition || !Number.isInteger(move.pp) || move.pp < 0 || move.pp > definition.maxPp) {
       throw new Error("Invalid canonical move state");
     }
-    moveIds.add(move.moveId);
   }
 }
 
@@ -105,7 +108,9 @@ function validatePlayer(playerId: string, player: CanonicalPlayerState): void {
   ) {
     throw new Error("Invalid canonical player state");
   }
-  player.team.forEach(validateCombatant);
+  player.team.forEach((combatant, index) =>
+    validateCombatant(combatant, APPROVED_COMPETITIVE_RULESET_V1.loadout[index]!),
+  );
 }
 
 function cloneState(
@@ -144,6 +149,11 @@ function activeCombatant(state: CanonicalBattleState, playerId: string): Canonic
   return player.team[player.activeSlotIndex]!;
 }
 
+function rejectUnsupportedAction(action: never): never {
+  const runtimeKind = (action as { kind?: unknown }).kind;
+  throw new Error(`Unsupported competitive action kind: ${String(runtimeKind)}`);
+}
+
 function validateAction(
   state: CanonicalBattleState,
   playerId: string,
@@ -152,32 +162,38 @@ function validateAction(
   const player = state.playersById[playerId]!;
   const active = activeCombatant(state, playerId);
 
-  if (action.kind === "move") {
-    if (active.currentHp === 0) {
-      throw new Error("Cannot use a move while the active combatant is fainted");
+  switch (action.kind) {
+    case "move": {
+      if (active.currentHp === 0) {
+        throw new Error("Cannot use a move while the active combatant is fainted");
+      }
+      const move = active.moves.find(candidate => candidate.moveId === action.moveId);
+      if (!move || !getCompetitiveMoveDefinition(action.moveId)) {
+        throw new Error("Cannot use an invalid move");
+      }
+      if (move.pp === 0) {
+        throw new Error("Cannot use a move with zero PP");
+      }
+      return;
     }
-    const move = active.moves.find(candidate => candidate.moveId === action.moveId);
-    if (!move || !getCompetitiveMoveDefinition(action.moveId)) {
-      throw new Error("Cannot use an invalid move");
+    case "switch": {
+      if (
+        !Number.isInteger(action.slotIndex) ||
+        action.slotIndex < 0 ||
+        action.slotIndex >= player.team.length
+      ) {
+        throw new Error("Switch slot is out of range");
+      }
+      if (action.slotIndex === player.activeSlotIndex) {
+        throw new Error("Cannot switch to the active slot");
+      }
+      if (player.team[action.slotIndex]!.currentHp === 0) {
+        throw new Error("Cannot switch to a fainted slot");
+      }
+      return;
     }
-    if (move.pp === 0) {
-      throw new Error("Cannot use a move with zero PP");
-    }
-    return;
-  }
-
-  if (
-    !Number.isInteger(action.slotIndex) ||
-    action.slotIndex < 0 ||
-    action.slotIndex >= player.team.length
-  ) {
-    throw new Error("Switch slot is out of range");
-  }
-  if (action.slotIndex === player.activeSlotIndex) {
-    throw new Error("Cannot switch to the active slot");
-  }
-  if (player.team[action.slotIndex]!.currentHp === 0) {
-    throw new Error("Cannot switch to a fainted slot");
+    default:
+      return rejectUnsupportedAction(action);
   }
 }
 

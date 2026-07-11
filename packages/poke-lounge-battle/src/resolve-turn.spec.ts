@@ -1,6 +1,7 @@
 import {
   COMPETITIVE_RULESET_HASH,
   canonicalize,
+  createInitialBattleState,
   createSeededRandom,
   hashCanonicalState,
   resolveTurn,
@@ -13,27 +14,6 @@ import {
 const PLAYER_A = "player-a";
 const PLAYER_B = "player-b";
 
-function combatant(
-  speciesId: string,
-  overrides: Partial<CanonicalCombatantState> = {},
-): CanonicalCombatantState {
-  return {
-    speciesId,
-    level: 50,
-    maxHp: 100,
-    currentHp: 100,
-    attack: 80,
-    defense: 80,
-    speed: 80,
-    status: "none",
-    moves: [
-      { moveId: "steady-strike", pp: 20 },
-      { moveId: "stun-spark", pp: 15 },
-    ],
-    ...overrides,
-  };
-}
-
 function battleState(
   overrides: {
     playerAActive?: Partial<CanonicalCombatantState>;
@@ -42,28 +22,34 @@ function battleState(
     terminal?: CanonicalBattleState["terminal"];
   } = {},
 ): CanonicalBattleState {
+  const initialState = createInitialBattleState([PLAYER_A, PLAYER_B]);
+  const playerA = initialState.playersById[PLAYER_A]!;
+  const playerB = initialState.playersById[PLAYER_B]!;
+  const withOverrides = (
+    combatant: CanonicalCombatantState,
+    combatantOverrides: Partial<CanonicalCombatantState> = {},
+  ): CanonicalCombatantState => ({
+    ...combatant,
+    moves: combatant.moves.map(move => ({ ...move })),
+    ...combatantOverrides,
+  });
+
   return {
-    rulesetVersion: 1,
+    ...initialState,
     turn: 1,
-    participantIds: [PLAYER_A, PLAYER_B],
     playersById: {
       [PLAYER_A]: {
-        playerId: PLAYER_A,
-        activeSlotIndex: 0,
+        ...playerA,
         team: [
-          combatant("vscoke-alpha", overrides.playerAActive),
-          combatant("vscoke-beta", { speed: 70 }),
+          withOverrides(playerA.team[0]!, overrides.playerAActive),
+          withOverrides(playerA.team[1]!),
         ],
       },
       [PLAYER_B]: {
-        playerId: PLAYER_B,
-        activeSlotIndex: 0,
+        ...playerB,
         team: [
-          combatant("vscoke-alpha", overrides.playerBActive),
-          combatant("vscoke-beta", {
-            speed: 70,
-            ...overrides.playerBBench,
-          }),
+          withOverrides(playerB.team[0]!, overrides.playerBActive),
+          withOverrides(playerB.team[1]!, overrides.playerBBench),
         ],
       },
     },
@@ -84,6 +70,21 @@ function actions(
   return { [PLAYER_A]: actionA, [PLAYER_B]: actionB };
 }
 
+function withSwappedPlayerATeam(): CanonicalBattleState {
+  const state = battleState();
+  const player = state.playersById[PLAYER_A]!;
+  return {
+    ...state,
+    playersById: {
+      ...state.playersById,
+      [PLAYER_A]: {
+        ...player,
+        team: [player.team[1]!, player.team[0]!],
+      },
+    },
+  };
+}
+
 class ScriptedRandom implements SeededRandom {
   index = 0;
 
@@ -100,10 +101,33 @@ class ScriptedRandom implements SeededRandom {
 }
 
 describe("resolveTurn", () => {
+  it("resolves initial turn zero into turn one", () => {
+    const result = resolveTurn({
+      state: createInitialBattleState([PLAYER_B, PLAYER_A]),
+      actionsByPlayerId: actions(),
+      random: createSeededRandom("initial-turn-zero"),
+    });
+
+    expect(result.turn).toBe(0);
+    expect(result.state.turn).toBe(1);
+  });
+
+  it.each([-1, 0.5, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER + 1])(
+    "rejects turn outside the resolvable safe nonnegative range: %p",
+    turn => {
+      expect(() =>
+        resolveTurn({
+          state: { ...battleState(), turn },
+          actionsByPlayerId: actions(),
+          random: createSeededRandom("invalid-turn"),
+        }),
+      ).toThrow("safe nonnegative integer");
+    },
+  );
+
   it("replays a terminal turn byte-for-byte without Math.random", () => {
     const state = battleState({
-      playerAActive: { speed: 100 },
-      playerBActive: { currentHp: 1, speed: 80 },
+      playerBActive: { currentHp: 1 },
       playerBBench: { currentHp: 0 },
     });
     const turnActions = actions();
@@ -115,12 +139,12 @@ describe("resolveTurn", () => {
       const first = resolveTurn({
         state,
         actionsByPlayerId: turnActions,
-        random: createSeededRandom("assignment-7:turn-1"),
+        random: createSeededRandom("server-owned-seed"),
       });
       const second = resolveTurn({
         state,
         actionsByPlayerId: turnActions,
-        random: createSeededRandom("assignment-7:turn-1"),
+        random: createSeededRandom("server-owned-seed"),
       });
 
       expect(canonicalize(first)).toBe(canonicalize(second));
@@ -168,19 +192,16 @@ describe("resolveTurn", () => {
     });
 
     expect(random.index).toBe(10);
-    expect(result.state.playersById[PLAYER_A]?.team[0]?.currentHp).toBe(85);
-    expect(result.state.playersById[PLAYER_B]?.team[0]?.currentHp).toBe(82);
+    expect(result.state.playersById[PLAYER_A]?.team[0]?.currentHp).toBe(104);
+    expect(result.state.playersById[PLAYER_B]?.team[0]?.currentHp).toBe(100);
     expect(result.state.playersById[PLAYER_A]?.team[0]?.moves[1]?.pp).toBe(14);
     expect(result.state.playersById[PLAYER_B]?.team[0]?.moves[1]?.pp).toBe(14);
   });
 
   it("applies a successful secondary status and advances the turn", () => {
-    const random = new ScriptedRandom([0, 0.5, 0.5, 0.1, 0, 0.5, 0.5]);
+    const random = new ScriptedRandom([0, 0.5, 0.5, 0.1, 0, 0.5, 0.5, 0.5, 0.5]);
     const result = resolveTurn({
-      state: battleState({
-        playerAActive: { speed: 100 },
-        playerBActive: { speed: 80 },
-      }),
+      state: battleState(),
       actionsByPlayerId: actions(
         { kind: "move", moveId: "stun-spark" },
         { kind: "move", moveId: "steady-strike" },
@@ -194,7 +215,7 @@ describe("resolveTurn", () => {
   });
 
   it("resolves switches before moves and attacks the switched-in slot", () => {
-    const state = battleState({ playerBActive: { speed: 100 } });
+    const state = battleState();
     const random = new ScriptedRandom([0, 0.5, 0.5]);
 
     const result = resolveTurn({
@@ -207,15 +228,12 @@ describe("resolveTurn", () => {
     });
 
     expect(result.state.playersById[PLAYER_A]?.activeSlotIndex).toBe(1);
-    expect(result.state.playersById[PLAYER_A]?.team[0]?.currentHp).toBe(100);
-    expect(result.state.playersById[PLAYER_A]?.team[1]?.currentHp).toBeLessThan(100);
+    expect(result.state.playersById[PLAYER_A]?.team[0]?.currentHp).toBe(120);
+    expect(result.state.playersById[PLAYER_A]?.team[1]?.currentHp).toBeLessThan(140);
   });
 
   it("is independent of action record and player record insertion order", () => {
-    const original = battleState({
-      playerAActive: { speed: 100 },
-      playerBActive: { speed: 80 },
-    });
+    const original = battleState();
     const reversed: CanonicalBattleState = {
       ...original,
       playersById: {
@@ -244,6 +262,35 @@ describe("resolveTurn", () => {
   });
 
   it.each([
+    ["species", battleState({ playerAActive: { speciesId: "forged-species" } })],
+    ["level", battleState({ playerAActive: { level: 51 } })],
+    ["max HP", battleState({ playerAActive: { maxHp: 121, currentHp: 120 } })],
+    ["attack", battleState({ playerAActive: { attack: 86 } })],
+    ["defense", battleState({ playerAActive: { defense: 81 } })],
+    ["speed", battleState({ playerAActive: { speed: 91 } })],
+    [
+      "species move IDs",
+      battleState({
+        playerAActive: {
+          moves: [
+            { moveId: "steady-strike", pp: 20 },
+            { moveId: "heavy-blow", pp: 10 },
+          ],
+        },
+      }),
+    ],
+    ["team composition", withSwappedPlayerATeam()],
+  ])("rejects forged approved-loadout %s", (_field, state) => {
+    expect(() =>
+      resolveTurn({
+        state: state as CanonicalBattleState,
+        actionsByPlayerId: actions(),
+        random: createSeededRandom("forged-loadout"),
+      }),
+    ).toThrow("approved loadout");
+  });
+
+  it.each([
     [
       "an unknown move",
       battleState(),
@@ -254,7 +301,10 @@ describe("resolveTurn", () => {
       "a zero-PP move",
       battleState({
         playerAActive: {
-          moves: [{ moveId: "steady-strike", pp: 0 }],
+          moves: [
+            { moveId: "steady-strike", pp: 0 },
+            { moveId: "stun-spark", pp: 15 },
+          ],
         },
       }),
       actions(),
@@ -330,6 +380,20 @@ describe("resolveTurn", () => {
         random: createSeededRandom("extra-action"),
       }),
     ).toThrow("exactly one action");
+  });
+
+  it("explicitly rejects an unknown runtime action kind", () => {
+    const bogusAction = {
+      kind: "forfeit",
+    } as unknown as CanonicalCompetitiveAction;
+
+    expect(() =>
+      resolveTurn({
+        state: battleState(),
+        actionsByPlayerId: actions(bogusAction),
+        random: createSeededRandom("unknown-action-kind"),
+      }),
+    ).toThrow("Unsupported competitive action kind");
   });
 
   it("rejects a post-terminal action", () => {

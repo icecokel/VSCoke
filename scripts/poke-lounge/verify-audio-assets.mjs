@@ -22,6 +22,28 @@ function fail(message) {
   process.exit(1);
 }
 
+function verifySource(item) {
+  const source = item.source;
+
+  if (!source || typeof source !== "object") {
+    fail(`${item.id} must include source metadata`);
+  }
+
+  for (const key of ["title", "creator", "sourceUrl", "sourceFile"]) {
+    if (typeof source[key] !== "string" || !source[key].trim()) {
+      fail(`${item.id} source.${key} must be nonempty`);
+    }
+  }
+
+  if (source.license !== "CC0-1.0") {
+    fail(`${item.id} must use an approved CC0-1.0 source`);
+  }
+
+  if (!source.sourceUrl.startsWith("https://")) {
+    fail(`${item.id} sourceUrl must use HTTPS`);
+  }
+}
+
 if (!fs.existsSync(manifestPath)) {
   fail(`missing manifest at ${path.relative(repoRoot, manifestPath)}`);
 }
@@ -52,6 +74,8 @@ for (const expectedId of expectedBgmIds) {
 }
 
 for (const item of manifest.sfx) {
+  verifySource(item);
+
   if (!expectedIds.has(item.id)) {
     fail(`unexpected SFX id ${item.id}`);
   }
@@ -94,6 +118,8 @@ for (const item of manifest.sfx) {
 }
 
 for (const item of manifest.bgm) {
+  verifySource(item);
+
   if (!expectedBgmIds.has(item.id)) {
     fail(`unexpected BGM id ${item.id}`);
   }

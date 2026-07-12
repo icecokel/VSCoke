@@ -10,7 +10,7 @@ Status: BLOCKED
 
 The `/[locale]/game/poke-lounge` route and every Poke Lounge public asset remain ineligible for public deployment. A release owner may change this status only after `pnpm check:poke-lounge-provenance` passes and signs the approval table below.
 
-The checker intentionally fails now because every audited manifest row is `"rightsStatus": "blocked"`. Do not mask that failure with `|| true` in release CI.
+The checker intentionally fails now because 57 non-audio manifest rows remain `"rightsStatus": "blocked"`. The nine audio rows have reviewed CC0 source records. Do not mask the remaining failure with `|| true` in release CI.
 
 Persistence, Socket recovery, deterministic server competition, verified-only ranking, migration, CI, test, or documentation completion does not change this decision. The technical implementation is recorded in [Poke Lounge Hardening Report](./poke-lounge-hardening-report.md), but it does not establish ownership, permission, license compatibility, trademark clearance, or any other legal conclusion. A human owner and appropriate legal reviewer must review the unresolved items and record the release decision.
 
@@ -22,7 +22,7 @@ Persistence, Socket recovery, deterministic server competition, verified-only ra
 
 No release owner, approval, or signed date is recorded. The table must remain unsigned until the strict provenance command passes with approved rows and a human release owner makes the final decision.
 
-## Confirmed ROM-derived MP3 files
+## Replaced CC0 audio
 
 - `apps/web/public/assets/poke-lounge/audio/sfx/button-confirm.mp3`
 - `apps/web/public/assets/poke-lounge/audio/sfx/button-cancel.mp3`
@@ -33,7 +33,7 @@ No release owner, approval, or signed date is recorded. The table must remain un
 - `apps/web/public/assets/poke-lounge/audio/bgm/field-day.mp3`
 - `apps/web/public/assets/poke-lounge/audio/bgm/wild-battle.mp3`
 
-Evidence: `scripts/poke-lounge/audio-cues.json` names `data/roms/포켓몬스터 하트골드(K).nds`; `scripts/poke-lounge/render-audio-cues.py` reads the NDS ROM/SDAT and generates the public MP3 files. `apps/web/public/assets/poke-lounge/audio/audio-manifest.json` retains the SDAT sequence identifiers.
+All files above were replaced on 2026-07-12. Field and battle music use OpenGameArt CC0 tracks; interface and battle effects use Kenney CC0 packs. The current audio manifest contains creator, license, source page, and original filename metadata, and the old ROM/SDAT renderer and cue configuration were removed. See [Poke Lounge Audio Sources](./poke-lounge-audio-sources.md).
 
 ## Unknown or unresolved public assets
 
@@ -51,7 +51,8 @@ All entries below are blocked. The full per-file inventory and SHA-256 values ar
 | Required approval                                     | Evidence required                                                  | Current state |
 | ----------------------------------------------------- | ------------------------------------------------------------------ | ------------- |
 | Pokémon name/marks and gameplay data                  | Owner/legal distribution decision                                  | Pending       |
-| ROM-derived audio and extracted data                  | Written authorization or replacement/removal record                | Pending       |
+| Runtime audio                                         | CC0 source, original filename, hash, and reviewer record            | Completed     |
+| ROM-derived extracted data                            | Written authorization or replacement/removal record                | Pending       |
 | Sprites, textures, atlas, PokeMMO/Tuxmon map material | Original source, license/permission, required attribution          | Pending       |
 | VSCoke Poke Lounge ported code                        | Owner/contributor authorization and outbound code-license decision | Pending       |
 

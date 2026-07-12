@@ -96,6 +96,9 @@ next-env.d.ts
 !/docs/operations-runbook.md
 !/docs/playwright-cli-test-plan.md
 !/docs/playwright-cli-test-spec.md
+!/docs/poke-lounge-audio-sources.md
+!/docs/licenses/
+!/docs/licenses/kenney-audio-cc0.txt
 !/docs/swagger-style-guide.md
 !/docs/user-deployment-checklist.md
 !/docs/vscoke-monorepo-concept.md

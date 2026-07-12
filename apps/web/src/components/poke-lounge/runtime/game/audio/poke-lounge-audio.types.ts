@@ -8,12 +8,21 @@ export type PokeLoungeSfxId =
 
 export type PokeLoungeBgmId = "field-day" | "wild-battle";
 
+export interface PokeLoungeAudioSource {
+  title: string;
+  creator: string;
+  license: "CC0-1.0";
+  sourceUrl: string;
+  sourceFile: string;
+}
+
 export interface PokeLoungeSfxManifestItem {
   id: PokeLoungeSfxId;
   src: string;
   durationMs: number;
   sizeBytes: number;
   defaultVolume: number;
+  source: PokeLoungeAudioSource;
 }
 
 export interface PokeLoungeBgmManifestItem {
@@ -22,6 +31,7 @@ export interface PokeLoungeBgmManifestItem {
   durationMs: number;
   sizeBytes: number;
   defaultVolume: number;
+  source: PokeLoungeAudioSource;
 }
 
 export interface PokeLoungeAudioManifest {

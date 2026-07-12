@@ -2,25 +2,29 @@
   "bgm": [
     {
       "defaultVolume": 0.24,
-      "durationMs": 30000,
+      "durationMs": 30224,
       "id": "field-day",
-      "sizeBytes": 300714,
+      "sizeBytes": 242251,
       "source": {
-        "sdatPath": "data/sound/gs_sound_data.sdat",
-        "sequenceIndex": 1028,
-        "sequenceName": "SEQ_GS_R_1_29"
+        "creator": "Bobjt",
+        "license": "CC0-1.0",
+        "sourceFile": "peaceful_ville_2023_0.mp3",
+        "sourceUrl": "https://opengameart.org/content/peacefull-ville",
+        "title": "Peacefull Ville"
       },
       "src": "/assets/poke-lounge/audio/bgm/field-day.mp3"
     },
     {
       "defaultVolume": 0.28,
-      "durationMs": 30000,
+      "durationMs": 26650,
       "id": "wild-battle",
-      "sizeBytes": 300714,
+      "sizeBytes": 213830,
       "source": {
-        "sdatPath": "data/sound/gs_sound_data.sdat",
-        "sequenceIndex": 1116,
-        "sequenceName": "SEQ_GS_VS_NORAPOKE"
+        "creator": "Wolfgang_",
+        "license": "CC0-1.0",
+        "sourceFile": "8BitBattleLoop_0.ogg",
+        "sourceUrl": "https://opengameart.org/content/8-bit-battle-loop",
+        "title": "8-Bit Battle Loop"
       },
       "src": "/assets/poke-lounge/audio/bgm/wild-battle.mp3"
     }
@@ -28,76 +32,88 @@
   "sfx": [
     {
       "defaultVolume": 0.58,
-      "durationMs": 420,
+      "durationMs": 290,
       "id": "button-confirm",
-      "sizeBytes": 4014,
+      "sizeBytes": 2969,
       "source": {
-        "sdatPath": "data/sound/gs_sound_data.sdat",
-        "sequenceIndex": 1394,
-        "sequenceName": "SEQ_SE_PL_BUTTON"
+        "creator": "Kenney",
+        "license": "CC0-1.0",
+        "sourceFile": "Audio/confirmation_001.ogg",
+        "sourceUrl": "https://kenney.nl/assets/interface-sounds",
+        "title": "Interface Sounds"
       },
       "src": "/assets/poke-lounge/audio/sfx/button-confirm.mp3"
     },
     {
       "defaultVolume": 0.5,
-      "durationMs": 520,
+      "durationMs": 61,
       "id": "button-cancel",
-      "sizeBytes": 4641,
+      "sizeBytes": 1088,
       "source": {
-        "sdatPath": "data/sound/gs_sound_data.sdat",
-        "sequenceIndex": 2368,
-        "sequenceName": "SEQ_SE_GS_GEARCANCEL"
+        "creator": "Kenney",
+        "license": "CC0-1.0",
+        "sourceFile": "Audio/back_001.ogg",
+        "sourceUrl": "https://kenney.nl/assets/interface-sounds",
+        "title": "Interface Sounds"
       },
       "src": "/assets/poke-lounge/audio/sfx/button-cancel.mp3"
     },
     {
       "defaultVolume": 0.55,
-      "durationMs": 1180,
+      "durationMs": 467,
       "id": "battle-transition",
-      "sizeBytes": 12584,
+      "sizeBytes": 4223,
       "source": {
-        "sdatPath": "data/sound/gs_sound_data.sdat",
-        "sequenceIndex": 1390,
-        "sequenceName": "SEQ_SE_PL_WARP"
+        "creator": "Kenney",
+        "license": "CC0-1.0",
+        "sourceFile": "Audio/phaseJump1.ogg",
+        "sourceUrl": "https://kenney.nl/assets/digital-audio",
+        "title": "Digital Audio"
       },
       "src": "/assets/poke-lounge/audio/sfx/battle-transition.mp3"
     },
     {
       "defaultVolume": 0.58,
-      "durationMs": 760,
+      "durationMs": 650,
       "id": "battle-start",
-      "sizeBytes": 8404,
+      "sizeBytes": 5686,
       "source": {
-        "sdatPath": "data/sound/gs_sound_data.sdat",
-        "sequenceIndex": 1815,
-        "sequenceName": "SEQ_SE_DP_VSDEMO03"
+        "creator": "Kenney",
+        "license": "CC0-1.0",
+        "sourceFile": "Audio/powerUp10.ogg",
+        "sourceUrl": "https://kenney.nl/assets/digital-audio",
+        "title": "Digital Audio"
       },
       "src": "/assets/poke-lounge/audio/sfx/battle-start.mp3"
     },
     {
       "defaultVolume": 0.56,
-      "durationMs": 520,
+      "durationMs": 431,
       "id": "battle-hit",
-      "sizeBytes": 4641,
+      "sizeBytes": 4014,
       "source": {
-        "sdatPath": "data/sound/gs_sound_data.sdat",
-        "sequenceIndex": 2256,
-        "sequenceName": "SEQ_SE_GS_TACKLEHIT"
+        "creator": "Kenney",
+        "license": "CC0-1.0",
+        "sourceFile": "Audio/impactPunch_medium_000.ogg",
+        "sourceUrl": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds"
       },
       "src": "/assets/poke-lounge/audio/sfx/battle-hit.mp3"
     },
     {
       "defaultVolume": 0.5,
-      "durationMs": 760,
+      "durationMs": 781,
       "id": "pokemon-faint",
       "sizeBytes": 6731,
       "source": {
-        "sdatPath": "data/sound/gs_sound_data.sdat",
-        "sequenceIndex": 1796,
-        "sequenceName": "SEQ_SE_DP_HINSI"
+        "creator": "Kenney",
+        "license": "CC0-1.0",
+        "sourceFile": "Audio/lowDown.ogg",
+        "sourceUrl": "https://kenney.nl/assets/digital-audio",
+        "title": "Digital Audio"
       },
       "src": "/assets/poke-lounge/audio/sfx/pokemon-faint.mp3"
     }
   ],
-  "version": 1
+  "version": 2
 }

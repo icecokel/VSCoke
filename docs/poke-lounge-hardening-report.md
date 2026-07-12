@@ -110,12 +110,12 @@ Known constraints:
 - Poke Lounge Chromium E2E: autosave/hydration/game 70 tests와 multiplayer 48 tests 통과; 실제 unmount/remount와 400 응답 후 fresh projection 복구 회귀 포함
 - 전체 tracked Markdown/README와 이 보고서의 상대 링크 target 검사: 63 files 통과
 - 변경 문서 Prettier와 `git diff --check`: 통과
-- `pnpm check:poke-lounge-provenance`: 의도대로 실패; 첫 미승인 항목은 `assets/poke-lounge/audio/audio-manifest.json`
+- `pnpm check:poke-lounge-provenance`: 오디오 9개 행은 CC0 교체 후 승인됐고, 나머지 57개 비오디오 항목 때문에 의도대로 실패
 
 로컬 database 재검증은 Homebrew PostgreSQL 17.10에서 수행했다. PR workflow의 PostgreSQL 16 service와 pgvector 설치 절차는 유지되며, 버전별 migration 근거는 [Stage 4B 검증 기록](./poke-lounge-stage-4b-report.md)과 CI에서 함께 확인한다.
 
 ## Release 상태
 
-[Poke Lounge Release Gate](./poke-lounge-release-gate.md)는 계속 `Status: BLOCKED`다. 이 보고서는 법률 결론을 내리지 않는다. Pokémon 이름/표장, ROM-derived audio/data, 출처 불명 sprite/texture/map, ported code의 권리 상태는 owner/legal review가 필요하다. 모든 asset row의 승인 근거와 SHA-256, reviewer/date/attribution, release-owner sign-off가 기록되기 전에는 route와 asset을 공개 배포하지 않는다.
+[Poke Lounge Release Gate](./poke-lounge-release-gate.md)는 계속 `Status: BLOCKED`다. 이 보고서는 법률 결론을 내리지 않는다. 런타임 오디오는 CC0 소스로 교체했지만 Pokémon 이름/표장, ROM-derived data, 출처 불명 sprite/texture/map, ported code의 권리 상태는 owner/legal review가 필요하다. 모든 asset row의 승인 근거와 SHA-256, reviewer/date/attribution, release-owner sign-off가 기록되기 전에는 route와 asset을 공개 배포하지 않는다.
 
 구현 작업의 계획 대비 상태는 [Poke Lounge Hardening Implementation Plan](./superpowers/plans/2026-07-10-poke-lounge-hardening.md)에 기록한다.

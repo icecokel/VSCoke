@@ -95,7 +95,7 @@ Known constraints:
 - PostgreSQL은 room/receipt source of truth지만 multi-instance Socket fan-out adapter는 없다.
 - 운영형 lobby/matchmaking UX는 구현 범위가 아니다.
 - 운영 migration은 자동 deploy step이 아니라 수동 maintenance posture다.
-- provenance checker의 실패는 의도된 release blocker다.
+- provenance checker는 명시적 strict 환경에서만 release blocker다.
 
 ### Final documentation audit
 
@@ -116,6 +116,6 @@ Known constraints:
 
 ## Release 상태
 
-[Poke Lounge Release Gate](./poke-lounge-release-gate.md)는 계속 `Status: BLOCKED`다. 이 보고서는 법률 결론을 내리지 않는다. 런타임 오디오는 CC0 소스로 교체했지만 Pokémon 이름/표장, ROM-derived data, 출처 불명 sprite/texture/map, ported code의 권리 상태는 owner/legal review가 필요하다. 모든 asset row의 승인 근거와 SHA-256, reviewer/date/attribution, release-owner sign-off가 기록되기 전에는 route와 asset을 공개 배포하지 않는다.
+[Poke Lounge Release Gate](./poke-lounge-release-gate.md)의 provenance 상태는 계속 `UNRESOLVED`다. 기본 Vercel 빌드는 이 상태로 자동 차단하지 않지만, 이는 법률 결론이나 권리 승인이 아니다. 런타임 오디오는 CC0 소스로 교체했으며 Pokémon 이름/표장, ROM-derived data, 출처 불명 sprite/texture/map, ported code의 권리 상태는 owner/legal review가 필요하다.
 
 구현 작업의 계획 대비 상태는 [Poke Lounge Hardening Implementation Plan](./superpowers/plans/2026-07-10-poke-lounge-hardening.md)에 기록한다.

@@ -2,11 +2,11 @@
 
 ## Status
 
-**Public release is blocked.** Poke Lounge must not be publicly deployed or distributed until the human owner records a rights decision for the Pokémon name/marks, ROM-derived material, game data, and third-party-labelled map material, and every shipped asset has a reviewed provenance record.
+**Public release risk is unresolved.** The default Vercel build does not enforce this audit, but Poke Lounge still has unresolved rights records for Pokémon names/marks, ROM-derived game data, and third-party-labelled visual and map material.
 
 This document is a technical provenance audit based on local repository evidence. It is not legal advice and does not clear any asset for use or distribution.
 
-The completed server-authority and durability work in [Poke Lounge Hardening Report](./poke-lounge-hardening-report.md) has no effect on this status. Only documented owner decisions, appropriate legal review, approved per-file evidence, and release-owner sign-off can change the release gate.
+The completed server-authority and durability work in [Poke Lounge Hardening Report](./poke-lounge-hardening-report.md) has no effect on the provenance status. Only documented owner decisions, appropriate legal review, approved per-file evidence, and release-owner sign-off can resolve it.
 
 ## Evidence status
 
@@ -35,7 +35,7 @@ The completed server-authority and durability work in [Poke Lounge Hardening Rep
 
 ## Machine-checkable release manifest
 
-`docs/poke-lounge-asset-provenance.json` records all 66 audited public files with local SHA-256 values. The nine audio rows are approved from documented CC0 sources; the other 57 rows remain `blocked`. `pnpm check:poke-lounge-provenance` validates the public-file coverage, hashes, source record, approval fields, and attribution fields. Its current failure is intentional because unresolved non-audio assets still block release.
+`docs/poke-lounge-asset-provenance.json` records all 66 audited public files with local SHA-256 values. The nine audio rows are approved from documented CC0 sources; the other 57 rows remain `blocked`. `pnpm check:poke-lounge-provenance` validates the public-file coverage, hashes, source record, approval fields, and attribution fields. The command remains intentionally strict, but the default Vercel build only enforces it when `POKE_LOUNGE_PROVENANCE_STRICT=1` is set.
 
 After the owner makes decisions, define `docs/poke-lounge-asset-provenance.schema.json` and validate the manifest against it. A minimum JSON Schema shape is:
 

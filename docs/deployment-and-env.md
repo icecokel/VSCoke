@@ -222,7 +222,7 @@ Resume RAG 운영 chat은 `resume_source_items`의 기존 DB 텍스트를 keywor
 
 이미 후속 enum migration이 기록된 운영 DB를 고려해 baseline은 enum label을 `SKY_DROP` 또는 순서가 고정된 `SKY_DROP, POKE_LOUNGE`만 허용한다. 신규 DB에서는 baseline이 `SKY_DROP`만 생성하고 후속 migration이 `POKE_LOUNGE`를 추가한다. baseline 실패 시 drop, alter, 자동 repair 또는 migration ledger 수동 삽입을 진행하지 말고 schema/ledger 차이를 먼저 검토한다. `down`은 기존 객체와 데이터를 삭제할 수 있어 명시적으로 실패하는 irreversible 정책이다.
 
-Poke Lounge hardening의 기술 검증과 운영 migration 적용은 공개 배포 승인이 아니다. route와 asset release는 [Poke Lounge Release Gate](./poke-lounge-release-gate.md)가 계속 `BLOCKED`이며, owner/legal review와 서명된 권리 결정이 별도로 필요하다.
+Poke Lounge hardening의 기술 검증과 운영 migration 적용은 공개 배포의 권리 승인이 아니다. 기본 Vercel 빌드는 provenance를 자동 차단하지 않지만 [Poke Lounge Release Gate](./poke-lounge-release-gate.md)의 권리 상태는 `UNRESOLVED`이며, owner/legal review와 서명된 권리 결정이 별도로 필요하다. 엄격한 차단이 필요한 환경에는 `POKE_LOUNGE_PROVENANCE_STRICT=1`을 설정한다.
 
 ```bash
 scp .env icenux-external:/home/icenux/projects/vscoke-api/.env

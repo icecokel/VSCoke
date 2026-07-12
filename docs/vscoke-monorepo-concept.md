@@ -155,9 +155,9 @@ Phaser `WorldScene`은 orchestration 경계로 남고 HUD, interactions, tournam
 
 ### Poke Lounge 공개 배포 제한
 
-Poke Lounge의 현재 구현과 서버 API는 기술적 MVP로 저장소에 존재하지만, 공개 배포와 배포 산출물의 외부 배포 승인 게이트는 차단 상태다. 런타임 오디오는 2026-07-12에 출처와 CC0 라이선스가 확인된 자료로 교체했다. 다만 공개 에셋에는 ROM-derived로 확인된 게임 데이터와 출처가 확인되지 않은 Pokémon 스프라이트, 텍스처, 맵이 남아 있다. 인간 소유자가 Pokémon 이름/표장, ROM-derived 자료, 지도 자료의 권리 결정을 기록하고, 각 공개 파일의 출처·권한·SHA-256 검증을 완료하기 전에는 이 라우트를 공개 배포하지 않는다.
+Poke Lounge의 현재 구현과 서버 API는 기술적 MVP로 저장소에 존재한다. 런타임 오디오는 2026-07-12에 출처와 CC0 라이선스가 확인된 자료로 교체했다. 다만 공개 에셋에는 ROM-derived로 확인된 게임 데이터와 출처가 확인되지 않은 Pokémon 스프라이트, 텍스처, 맵이 남아 있으므로 공개 배포의 권리 위험은 해결되지 않았다.
 
-`pnpm check:poke-lounge-provenance`는 이 공개 배포 게이트를 검증한다. 오디오 9개 행은 승인됐지만 나머지 57개 행이 `blocked`이므로 이 명령의 실패는 의도된 차단 증거이며, Phase 3의 기술적 MVP 완료 또는 서버 권위 검증 통과를 공개 배포 승인으로 해석하지 않는다. 상세 인벤토리와 manifest 규격은 [Poke Lounge Asset Provenance](./poke-lounge-asset-provenance.md)를 따른다. 이 제한은 기술적 provenance audit 결과이며 법률 자문이 아니다.
+`pnpm check:poke-lounge-provenance`는 이 권리 상태를 엄격하게 검증한다. 오디오 9개 행은 승인됐지만 나머지 57개 행이 `blocked`이므로 명령은 계속 실패한다. 기본 Vercel 빌드는 이를 자동 차단하지 않으며, `POKE_LOUNGE_PROVENANCE_STRICT=1`일 때만 배포 빌드에서 강제한다. Phase 3의 기술적 MVP 완료, 서버 권위 검증 통과 또는 배포 성공을 권리 승인으로 해석하지 않는다. 상세 인벤토리는 [Poke Lounge Asset Provenance](./poke-lounge-asset-provenance.md)를 따른다.
 
 ## 로컬 실행 기준
 

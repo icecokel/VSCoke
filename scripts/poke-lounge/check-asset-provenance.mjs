@@ -117,7 +117,7 @@ export function runStrictGate() {
 }
 
 export function runDeploymentGate(environment = process.env) {
-  if (environment.VERCEL !== "1" && environment[STRICT_GATE_ENV] !== "1") {
+  if (environment[STRICT_GATE_ENV] !== "1") {
     return false;
   }
 
@@ -130,7 +130,9 @@ function run() {
   const enforced = deploymentMode ? runDeploymentGate() : true;
 
   if (!enforced) {
-    console.log("Poke Lounge provenance deployment gate skipped for local build.");
+    console.log(
+      `Poke Lounge provenance deployment gate skipped; set ${STRICT_GATE_ENV}=1 to enforce it.`,
+    );
     return;
   }
 

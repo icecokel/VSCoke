@@ -322,7 +322,7 @@ pnpm smoke:api:remote
 
 API 계약 변경을 포함한 배포라면 로컬 또는 PR 검증에서 `pnpm check:api-contract`가 통과했는지도 같이 확인한다.
 
-Poke Lounge 기술 검증이 통과해도 공개 route/asset release는 승인되지 않는다. [Poke Lounge Release Gate](./poke-lounge-release-gate.md)는 owner/legal review와 provenance 승인 전까지 `BLOCKED`다.
+Poke Lounge 기술 검증이나 배포가 통과해도 공개 route/asset의 권리가 승인된 것은 아니다. [Poke Lounge Release Gate](./poke-lounge-release-gate.md)는 owner/legal review와 provenance 승인 전까지 `UNRESOLVED`다. 기본 배포는 경고 상태로 진행하며, 엄격한 환경은 `POKE_LOUNGE_PROVENANCE_STRICT=1`로 차단한다.
 
 ## 관련 문서
 

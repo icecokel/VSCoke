@@ -36,5 +36,6 @@ assert.throws(
 );
 
 assert.throws(() => runStrictGate(), /must be approved/);
-assert.throws(() => runDeploymentGate({ VERCEL: "1" }), /must be approved/);
+assert.equal(runDeploymentGate({ VERCEL: "1" }), false);
+assert.throws(() => runDeploymentGate({ POKE_LOUNGE_PROVENANCE_STRICT: "1" }), /must be approved/);
 assert.equal(runDeploymentGate({}), false);

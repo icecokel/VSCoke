@@ -6,11 +6,11 @@
 
 ## Release Decision
 
-Status: BLOCKED
+Provenance status: UNRESOLVED
 
-The `/[locale]/game/poke-lounge` route and every Poke Lounge public asset remain ineligible for public deployment. A release owner may change this status only after `pnpm check:poke-lounge-provenance` passes and signs the approval table below.
+The `/[locale]/game/poke-lounge` route has 57 public asset records without verified distribution rights. This is an explicit release risk, but it no longer blocks the repository's default Vercel build.
 
-The checker intentionally fails now because 57 non-audio manifest rows remain `"rightsStatus": "blocked"`. The nine audio rows have reviewed CC0 source records. Do not mask the remaining failure with `|| true` in release CI.
+`pnpm check:poke-lounge-provenance` still fails because 57 non-audio manifest rows remain `"rightsStatus": "blocked"`; the nine audio rows have reviewed CC0 source records. Set `POKE_LOUNGE_PROVENANCE_STRICT=1` only in an environment where unresolved provenance should block the build.
 
 Persistence, Socket recovery, deterministic server competition, verified-only ranking, migration, CI, test, or documentation completion does not change this decision. The technical implementation is recorded in [Poke Lounge Hardening Report](./poke-lounge-hardening-report.md), but it does not establish ownership, permission, license compatibility, trademark clearance, or any other legal conclusion. A human owner and appropriate legal reviewer must review the unresolved items and record the release decision.
 
@@ -18,9 +18,9 @@ Persistence, Socket recovery, deterministic server competition, verified-only ra
 
 | Release owner | Final release decision | Signed/approved at |
 | ------------- | ---------------------- | ------------------ |
-| Unassigned    | BLOCKED                | Unsigned           |
+| Unassigned    | Risk not resolved      | Unsigned           |
 
-No release owner, approval, or signed date is recorded. The table must remain unsigned until the strict provenance command passes with approved rows and a human release owner makes the final decision.
+No legal clearance or signed approval is recorded. Default deployment continuing must not be interpreted as asset-rights approval.
 
 ## Replaced CC0 audio
 

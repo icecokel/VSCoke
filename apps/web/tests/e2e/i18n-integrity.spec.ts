@@ -106,72 +106,63 @@ test.describe("i18n 무결성", () => {
     const jaMessages = loadMessages("ja-JP") as AppMessages & ResumeCopyMessages;
 
     expect(koMessages.resume.introduction).toEqual([
-      "서비스 개발을 중심으로, 제품과 운영에 필요한 도구를 함께 만들어 왔습니다.",
-      "AI 트렌드에 맞춰 LLM Wiki를 설정하고, 프로젝트별 AI 워크플로우를 업무에 맞게 세팅하고 있습니다.",
+      "커머스와 의료·임상 분석 제품을 개발하며, 사용자가 경험하는 화면과 운영자가 일하는 도구를 함께 만들어 왔습니다.",
+      "AI 활용을 개인의 생산성에 머물지 않고, 팀의 개발과 운영 방식으로 확장하고 있습니다.",
     ]);
     expect(enMessages.resume.introduction).toEqual([
-      "I have focused on service development while building tools needed for products and operations.",
-      "I set up LLM Wiki and configure project-specific AI workflows to fit each team's work.",
+      "I have developed commerce and medical and clinical analysis products, building both the screens users experience and the tools operators use.",
+      "I am extending AI use beyond individual productivity into the team's development and operational practices.",
     ]);
     expect(jaMessages.resume.introduction).toEqual([
-      "サービス開発を中心に、プロダクトと運用に必要なツールもあわせて作ってきました。",
-      "AIの潮流に合わせてLLM Wikiを整備し、プロジェクトごとのAIワークフローを業務に合う形で設定しています。",
+      "コマースおよび医療・臨床分析プロダクトを開発し、ユーザーが使う画面と運用者が使うツールの両方を作ってきました。",
+      "AIの活用を個人の生産性にとどめず、チームの開発・運用の進め方へ広げています。",
     ]);
 
     expect(
       koMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions.map(
         description => description.subtitle,
       ),
-    ).toEqual(["의료·임상 분석 제품 화면과 분석 데이터", "개발 환경과 검증 시스템"]);
+    ).toEqual(["의료·임상 분석 제품 화면과 분석 데이터", "팀 운영과 개발·검증 기준"]);
     expect(
       enMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions.map(
         description => description.subtitle,
       ),
     ).toEqual([
       "Medical and Clinical Analysis Product Screens and Analysis Data",
-      "Development Environment and Verification System",
+      "Team Operations and Development and Verification Standards",
     ]);
     expect(
       jaMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions.map(
         description => description.subtitle,
       ),
-    ).toEqual(["医療・臨床分析プロダクト画面と分析データ", "開発環境と検証システム"]);
+    ).toEqual(["医療・臨床分析プロダクト画面と分析データ", "チーム運営と開発・検証基準"]);
 
     expect(koMessages.resume.careers.codecrayon.projects.commerceBackoffice.title).toBe(
-      "커머스·백오피스 개발",
+      "커머스·백오피스",
     );
     expect(koMessages.resume.careers.codecrayon.projects.subtitleSystem.title).toBe(
-      "자막 번역 관리 도구로 콘텐츠 운영 자동화",
+      "AI 자막 번역과 콘텐츠 운영 자동화",
     );
     expect(koMessages.resume.careers.codecrayon.projects.shortimePlayground.title).toBe(
-      "모바일 웹뷰 Playground 기획·구축",
-    );
-    expect(koMessages.resume.careers.codecrayon.projects.freebootingFinder.title).toBe(
-      "무단 도용 콘텐츠 검색 도구",
+      "모바일 웹뷰 제품",
     );
     expect(enMessages.resume.careers.codecrayon.projects.commerceBackoffice.title).toBe(
-      "Commerce and Back-office Development",
+      "Commerce and Back-office",
     );
     expect(enMessages.resume.careers.codecrayon.projects.subtitleSystem.title).toBe(
-      "Content Operations Automation with a Subtitle Translation Management Tool",
+      "AI Subtitle Translation and Content Operations Automation",
     );
     expect(enMessages.resume.careers.codecrayon.projects.shortimePlayground.title).toBe(
-      "Mobile WebView Playground Planning and Implementation",
-    );
-    expect(enMessages.resume.careers.codecrayon.projects.freebootingFinder.title).toBe(
-      "Unauthorized Content Search Tool",
+      "Mobile WebView Product",
     );
     expect(jaMessages.resume.careers.codecrayon.projects.commerceBackoffice.title).toBe(
-      "コマース・バックオフィス開発",
+      "コマース・バックオフィス",
     );
     expect(jaMessages.resume.careers.codecrayon.projects.subtitleSystem.title).toBe(
-      "字幕翻訳管理ツールによるコンテンツ運用の自動化",
+      "AI字幕翻訳とコンテンツ運用の自動化",
     );
     expect(jaMessages.resume.careers.codecrayon.projects.shortimePlayground.title).toBe(
-      "モバイルWebView Playgroundの企画・構築",
-    );
-    expect(jaMessages.resume.careers.codecrayon.projects.freebootingFinder.title).toBe(
-      "無断転載コンテンツ検索ツール",
+      "モバイルWebViewプロダクト",
     );
 
     expect(koMessages.resume.careers.allofthem.projects.insuranceSubscription.title).toBe(

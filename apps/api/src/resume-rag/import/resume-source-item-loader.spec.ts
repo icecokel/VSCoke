@@ -23,7 +23,7 @@ describe('resume source item loader', () => {
           visibility: 'public',
         }),
         expect.objectContaining({
-          path: '/resume/docs/base-resume-final-v30-2026-07-13.md',
+          path: '/resume/docs/base-resume-final-v35-2026-07-13.md',
           itemType: 'final_resume_section',
           vectorize: true,
           visibility: 'public',
@@ -37,7 +37,7 @@ describe('resume source item loader', () => {
       ]),
     );
     const currentResume = manifest.find((entry) =>
-      entry.path.endsWith('base-resume-final-v30-2026-07-13.md'),
+      entry.path.endsWith('base-resume-final-v35-2026-07-13.md'),
     );
     const publicEvidence = manifest.find((entry) =>
       entry.path.endsWith('public-resume-rag-source-v1-2026-07-13.md'),

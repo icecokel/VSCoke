@@ -460,8 +460,8 @@
       "email": "red9runge@gmail.com"
     },
     "introduction": [
-      "I have focused on service development while building tools needed for products and operations.",
-      "I set up LLM Wiki and configure project-specific AI workflows to fit each team's work."
+      "I have developed commerce and medical and clinical analysis products, building both the screens users experience and the tools operators use.",
+      "I am extending AI use beyond individual productivity into the team's development and operational practices."
     ],
     "totalExperience": "7 years 4 months",
     "viewDescription": "Career Description",
@@ -471,33 +471,32 @@
         "company": "Oprimed Co., Ltd.",
         "period": "2026.02 - Present (6 months)",
         "employmentType": "Full-time",
-        "achievement": "Worked on medical and clinical analysis product screens, charts, analysis-data save/read flows, development environment, and verification systems.",
+        "achievement": "Developed medical and clinical analysis product screens and data flows while also leading team operations and deployment and verification standards.",
         "projects": {
           "medicalFrontendProductization": {
             "title": "Medical and Clinical Analysis Product Screens and Analysis Data",
             "descriptions": [
               {
                 "subtitle": "Medical and Clinical Analysis Product Screens and Analysis Data",
-                "detail": "Worked on input screens, result screens, charts, and analysis-data save/read flows for a medical and clinical analysis product. Beyond screen implementation, I designed structures that prevent invalid analysis requests and let users re-enter screens with the same data basis.",
-                "skills": "React, Next.js, TypeScript, CSS, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Playwright, GitHub Actions, Husky, Docker, Shell Script",
+                "detail": "Developed input and result screens and data save and retrieval flows for a medical and clinical analysis product.",
+                "skills": "Next.js, React, TypeScript, Tailwind CSS, Radix UI, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Vitest, Playwright, Sharp, GitHub Actions, Husky, Docker, Bash",
                 "tasks": [
-                  "Developed product screens including analysis input, result screens, charts, file upload, and file download.",
-                  "Removed 6 direct disease-list calls left in screens and hooks, and managed the same lookup basis in one place.",
-                  "Designed the server-save structure for analysis task data and the client cache strategy so screen navigation and re-entry use the same data basis.",
-                  "Strengthened missing validation and error cases, and processed data uploads in chunks.",
-                  "Converted image-based UI into shared components and CSS to reduce unnecessary image requests and change cost.",
-                  "Reduced Lighthouse LCP from 1.3s to 1.0s and Speed Index from 3.4s to 0.7s."
+                  "Saved analysis data to the server and separated caches by task so the same results and conditions are restored after re-entry or refresh.",
+                  "Strengthened validation and error cases and processed data uploads in chunks.",
+                  "Replaced image-based UI with code-based components and moved buttons, icons, and toggles to shared structures. Migrated 529 direct color codes into design tokens.",
+                  "Generated static images as viewport-specific WebP files at build time and regenerated and verified only changed assets, reducing transfer size by about 95%.",
+                  "Reduced Lighthouse LCP from 1.3 seconds to 1.0 seconds and Speed Index from 3.4 seconds to 0.7 seconds."
                 ]
               },
               {
-                "subtitle": "Development Environment and Verification System",
-                "detail": "Aligned project-specific execution and deployment methods so failures could be caught earlier before changes were pushed. I also worked on E2E tests for key browsers and viewport sizes, and on an AI-based development environment.",
+                "subtitle": "Team Operations and Development and Verification Standards",
+                "detail": "Alongside frontend development, handled scheduling, work allocation, code reviews, and one-on-ones while establishing development and verification standards the team could reuse.",
                 "tasks": [
-                  "Unified the execution and deployment methods across 4 frontend projects.",
-                  "Organized GitHub Actions-based deployment and verification flows.",
-                  "Made type errors and build failures visible before pushing changes, preventing failed changes from reaching remote branches.",
-                  "Built a test system that checks core screen flows across key browsers and viewport sizes.",
-                  "Preserved project context through task-specific skills, execution hooks, LLM Wiki, and PR checks so AI tools would not arbitrarily interpret difficult domain terms or screen states."
+                  "Directly supported blocked implementation work and high-schedule-risk areas.",
+                  "Replaced FTP-based manual deployments, which were slow and location-bound, with GitHub Actions CI/CD.",
+                  "Unified execution and deployment specifications across 4 frontend projects that had different conventions and frameworks.",
+                  "Automated core user-flow verification with Playwright E2E tests across Chrome, Edge, Safari (WebKit), and key viewport sizes, and used Husky pre-push checks to block typecheck and build failures from reaching remote branches.",
+                  "Distributed project guidance and concept documents to the team and connected them with repository skills, hooks, and PR rules so the team could develop and review against the same standards."
                 ]
               }
             ]
@@ -510,49 +509,51 @@
         "employmentType": "Full-time",
         "projects": {
           "commerceBackoffice": {
-            "title": "Commerce and Back-office Development",
+            "title": "Commerce and Back-office",
             "period": "2023.05 - 2025.07",
             "descriptions": [
               {
-                "subtitle": "Operations Automation, Mobile WebView, Commerce, and Back-office Development",
-                "detail": "Joined as an early member and developed commerce, a video platform, mobile webviews, a back office, and operations automation tools. I worked on both customer-facing screens and operator work screens, and moved repetitive content operations work into web tools.",
-                "skills": "Next.js, React, TypeScript, MUI, Tailwind CSS, Jotai, SWR, React Hook Form",
+                "subtitle": "Customer-facing services and operator tools",
+                "detail": "As an early member, developed both customer-facing services and operator tools.",
+                "skills": "Next.js, React, TypeScript, MUI, Tailwind CSS, Jotai, SWR, React Hook Form, i18next, GA4, Google Tag Manager, Google Sheets API",
                 "tasks": [
-                  "Developed multilingual, payment, gifting, draw, product, order, and my-page screens.",
-                  "Moved the existing back office into a new frontend structure and developed order, product, seller, settlement, event, and inquiry management screens.",
-                  "Applied search reset, file export, drag-and-drop sorting, shared tables, dialogs, and form components."
+                  "Developed product, order, payment, gifting, draw, and account flows for a multilingual commerce service, and connected view, favorite, signup, and purchase actions to GA4 and GTM events.",
+                  "Collected translation keys for four languages from code and synchronized Google Sheets with translation files in both directions.",
+                  "Migrated a Flutter Web back office to Next.js and developed product and seller approval, order and claim, settlement, and inquiry flows.",
+                  "Applied search reset, CSV and Excel export, drag sorting, and shared table and dialog components."
                 ]
               }
             ]
           },
           "subtitleSystem": {
-            "title": "Content Operations Automation with a Subtitle Translation Management Tool",
+            "title": "AI Subtitle Translation and Content Operations Automation",
             "period": "2025.02 - 2025.07",
             "descriptions": [
               {
-                "subtitle": "Moved CLI-based subtitle translation into a web management tool",
-                "detail": "Moved subtitle translation from a CLI workflow into a web management tool so operators could process it directly.",
-                "skills": "TypeScript, AWS Bedrock, OpenAI API, Google Cloud Translate, Express",
+                "subtitle": "Moved repetitive operations into web tools",
+                "detail": "Turned repetitive operational work into web tools that operators continue to use.",
+                "skills": "Node.js, TypeScript, Express, AWS Bedrock, OpenAI API, Google Cloud Translation, Axios, Cheerio, Vercel Serverless Functions",
                 "tasks": [
-                  "Handled subtitle file processing, language-specific prompts, translation review, and character matching in the management screen.",
-                  "Reduced team resources spent on repetitive translation work by over 90% and increased productivity by more than 10x.",
-                  "Enabled operators to process 6-8 works per day."
+                  "Moved subtitle translation from a CLI to a web management tool so operators could handle files, prompts, review, and character matching.",
+                  "Applied chunked and parallel translation, retry handling, and checks for subtitle counts, omissions, and timing.",
+                  "Changed translation throughput from 3 people handling 1-2 works a day to 1 person handling 6-8 works a day; the system is still in use.",
+                  "Moved browser-blocked search to a Node.js server and automated searches across three platforms with similar-title filtering, reducing a daily check from 50 minutes to under 10 minutes."
                 ]
               }
             ]
           },
           "shortimePlayground": {
-            "title": "Mobile WebView Playground Planning and Implementation",
+            "title": "Mobile WebView Product",
             "period": "2024.09 - 2025.04",
             "descriptions": [
               {
-                "subtitle": "Built a webview area for event and game-style content without app releases",
-                "detail": "Planned and built a webview area where event and game-style content could be opened and updated without an app release.",
-                "skills": "Next.js, React, TypeScript, Phaser, Tailwind CSS, shadcn/ui, Flutter bridge, Airbridge",
+                "subtitle": "An independently deployable content-update structure",
+                "detail": "Designed and developed a Playground from the start so events and games could be updated independently of app releases.",
+                "skills": "Next.js, React, TypeScript, Tailwind CSS, Phaser, Next Intl, Flutter InAppWebView, Web Audio API, Airbridge, Branch.io",
                 "tasks": [
-                  "Developed different content types such as events, fortune content, games, and draws as separate domains in a Next.js-based webview area.",
-                  "Handled Phaser games, ranking/result submission, banner and sound control, and Flutter bridge integration.",
-                  "Connected deep links and marketing SDKs to entry flows inside and outside the app."
+                  "Separated events, fortune content, games, and draws into domain units so content could be added independently of app releases.",
+                  "Connected Flutter WebView communication, deep links, and reward ads, and controlled duplicate input and screen state during game-result submission.",
+                  "Handled keyboard, focus, safe-area, theme, and audio differences across Chrome, Safari, and Samsung Internet."
                 ]
               }
             ]

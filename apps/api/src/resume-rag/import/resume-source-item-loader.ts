@@ -51,9 +51,10 @@ const APP_RESUME_DETAIL_FILES = [
 ];
 
 const RESUME_WORKSPACE_VECTOR_FILES = [
-  'docs/base-resume-final-v22-r15-2026-07-01.md',
+  'docs/base-resume-final-v30-2026-07-13.md',
   'docs/base-resume-ai-workflow-v1-2026-06-29.md',
   'docs/oprimed-public-resume-final.md',
+  'docs/public-resume-rag-source-v1-2026-07-13.md',
   'docs/public-resume-page.md',
   'docs/resume-writing-concept-v7-2026-06-30.md',
   'docs/wanted-resume-map.json',
@@ -279,17 +280,24 @@ export const createResumeImportManifest = ({
       ? ('json' as const)
       : ('markdown' as const),
     sourceType: 'resume_workspace',
-    itemType: fileName.includes('/raw/')
-      ? 'raw_work_unit'
-      : fileName.includes('wanted')
-        ? 'wanted_mapping'
-        : 'final_resume_section',
+    itemType: fileName.includes('public-resume-rag-source')
+      ? 'public_rag_evidence'
+      : fileName.includes('/raw/')
+        ? 'raw_work_unit'
+        : fileName.includes('wanted')
+          ? 'wanted_mapping'
+          : 'final_resume_section',
     title: basename(fileName),
     status: 'active',
-    visibility: fileName.includes('public') ? 'public' : 'private',
+    visibility:
+      fileName.includes('public') || fileName.includes('base-resume-final-v30')
+        ? 'public'
+        : 'private',
     vectorize: true,
     metadata: {
-      version: fileName.includes('v22-r15') ? 'current' : 'supporting',
+      version: fileName.includes('base-resume-final-v30')
+        ? 'current'
+        : 'supporting',
     },
   }));
 

@@ -380,6 +380,18 @@
           "What have you done to improve quality and maintainability?",
           "Tell me about a case where you automated repetitive work."
         ]
+      },
+      {
+        "title": "Expanded career evidence",
+        "description": "Check concrete evidence for performance, shared UI, data recovery, browser behavior, and product analytics.",
+        "questions": [
+          "Explain the build-time image optimization and transfer-size reduction evidence.",
+          "Explain the scope of the shared UI and design-token migration.",
+          "How did you handle task-scoped caching and result restoration?",
+          "How did you apply GA4 behavioral analytics events at Code Crayon?",
+          "How did you handle Safari and WebKit differences in a mobile WebView?",
+          "How did you prevent duplicate input and control state transitions during game result submission?"
+        ]
       }
     ],
     "placeholder": "Ask about the resume.",

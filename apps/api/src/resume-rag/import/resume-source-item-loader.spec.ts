@@ -22,8 +22,33 @@ describe('resume source item loader', () => {
           vectorize: true,
           visibility: 'public',
         }),
+        expect.objectContaining({
+          path: '/resume/docs/base-resume-final-v30-2026-07-13.md',
+          itemType: 'final_resume_section',
+          vectorize: true,
+          visibility: 'public',
+        }),
+        expect.objectContaining({
+          path: '/resume/docs/public-resume-rag-source-v1-2026-07-13.md',
+          itemType: 'public_rag_evidence',
+          vectorize: true,
+          visibility: 'public',
+        }),
       ]),
     );
+    const currentResume = manifest.find((entry) =>
+      entry.path.endsWith('base-resume-final-v30-2026-07-13.md'),
+    );
+    const publicEvidence = manifest.find((entry) =>
+      entry.path.endsWith('public-resume-rag-source-v1-2026-07-13.md'),
+    );
+    expect(currentResume?.metadata.version).toBe('current');
+    expect(publicEvidence?.metadata.version).toBe('supporting');
+    expect(
+      manifest.some((entry) =>
+        entry.path.endsWith('base-resume-final-v22-r15-2026-07-01.md'),
+      ),
+    ).toBe(false);
   });
 
   it('splits markdown headings into source items with stable metadata', () => {

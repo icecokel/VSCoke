@@ -1,4 +1,5 @@
 import {
+  createResumeRagSearchTokens,
   getResumeRagOutOfScopeAnswer,
   isResumeRagQuestionInScope,
 } from './resume-rag-keyword-gate';
@@ -30,6 +31,49 @@ describe('resume-rag keyword gate', () => {
   it('allows compact variants of multi-word resume keywords', () => {
     expect(isResumeRagQuestionInScope('타입모델링')).toBe(true);
     expect(isResumeRagQuestionInScope('webvitals')).toBe(true);
+  });
+
+  it('allows keywords from the latest imported resume evidence', () => {
+    expect(isResumeRagQuestionInScope('디자인 토큰 전환 범위')).toBe(true);
+    expect(isResumeRagQuestionInScope('이미지 최적화 전송량 절감')).toBe(true);
+    expect(isResumeRagQuestionInScope('작업별 캐시와 결과 복원')).toBe(true);
+    expect(isResumeRagQuestionInScope('PDF 페이지 분할')).toBe(true);
+    expect(isResumeRagQuestionInScope('Web Audio 화면 이탈 대응')).toBe(true);
+    expect(isResumeRagQuestionInScope('GA4 행동 이벤트')).toBe(true);
+    expect(isResumeRagQuestionInScope('게임 결과 중복 입력 제어')).toBe(true);
+  });
+
+  it('expands latest resume evidence keywords into focused search tokens', () => {
+    expect(
+      createResumeRagSearchTokens('디자인 토큰과 아이콘 레지스트리'),
+    ).toEqual(
+      expect.arrayContaining(['디자인', '토큰', '아이콘', 'svg', '컴포넌트']),
+    );
+    expect(createResumeRagSearchTokens('이미지 최적화 artifact hash')).toEqual(
+      expect.arrayContaining(['webp', 'artifact', 'hash', '전송량', '검증']),
+    );
+    expect(createResumeRagSearchTokens('작업별 캐시와 결과 복원')).toEqual(
+      expect.arrayContaining(['task', '캐시', '복원', '새로고침', '재진입']),
+    );
+    expect(createResumeRagSearchTokens('PDF 페이지 분할')).toEqual(
+      expect.arrayContaining(['pdf', 'html', '페이지', '분할', '다운로드']),
+    );
+    expect(createResumeRagSearchTokens('Web Audio 화면 이탈')).toEqual(
+      expect.arrayContaining([
+        'web',
+        'audio',
+        'webkit',
+        'safari',
+        '오디오',
+        '화면',
+      ]),
+    );
+    expect(createResumeRagSearchTokens('GA4 행동 이벤트')).toEqual(
+      expect.arrayContaining(['ga4', 'gtm', '상품', '구매', '환불']),
+    );
+    expect(createResumeRagSearchTokens('게임 결과 중복 입력')).toEqual(
+      expect.arrayContaining(['게임', '점수', '중복', '입력', '결과', '제출']),
+    );
   });
 
   it('blocks unrelated questions before AI processing', () => {

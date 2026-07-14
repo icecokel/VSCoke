@@ -36,6 +36,9 @@ interface ResumeCopyMessages {
         projects: {
           commerceBackoffice: {
             title: string;
+            descriptions: Array<{
+              tasks?: string[];
+            }>;
           };
           subtitleSystem: {
             title: string;
@@ -137,6 +140,19 @@ test.describe("i18n 무결성", () => {
       ),
     ).toEqual(["医療・臨床分析プロダクト画面と分析データ", "チーム運営と開発・検証基準"]);
 
+    expect(
+      koMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions[1]
+        ?.detail,
+    ).toContain("프로젝트 컨벤션과 구현 일관성");
+    expect(
+      enMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions[1]
+        ?.detail,
+    ).toContain("project conventions and implementation consistency");
+    expect(
+      jaMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions[1]
+        ?.detail,
+    ).toContain("プロジェクトの規約と実装の一貫性");
+
     expect(koMessages.resume.careers.codecrayon.projects.commerceBackoffice.title).toBe(
       "커머스·백오피스",
     );
@@ -164,6 +180,16 @@ test.describe("i18n 무결성", () => {
     expect(jaMessages.resume.careers.codecrayon.projects.shortimePlayground.title).toBe(
       "モバイルWebViewプロダクト",
     );
+
+    expect(
+      koMessages.resume.careers.codecrayon.projects.commerceBackoffice.descriptions[0]?.tasks?.[0],
+    ).toContain("PC에서도 모바일 싱글 컬럼");
+    expect(
+      enMessages.resume.careers.codecrayon.projects.commerceBackoffice.descriptions[0]?.tasks?.[0],
+    ).toContain("single-column layout");
+    expect(
+      jaMessages.resume.careers.codecrayon.projects.commerceBackoffice.descriptions[0]?.tasks?.[0],
+    ).toContain("PCでもモバイルのシングルカラム");
 
     expect(koMessages.resume.careers.allofthem.projects.insuranceSubscription.title).toBe(
       "보험 가입 웹 성능 개선",

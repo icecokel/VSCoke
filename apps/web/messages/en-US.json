@@ -490,7 +490,7 @@
               },
               {
                 "subtitle": "Team Operations and Development and Verification Standards",
-                "detail": "Alongside frontend development, handled scheduling, work allocation, code reviews, and one-on-ones while establishing development and verification standards the team could reuse.",
+                "detail": "Alongside frontend development, handled scheduling, work allocation, and one-on-ones, while code review focused on project conventions and implementation consistency.",
                 "tasks": [
                   "Directly supported blocked implementation work and high-schedule-risk areas.",
                   "Replaced FTP-based manual deployments, which were slow and location-bound, with GitHub Actions CI/CD.",
@@ -517,7 +517,7 @@
                 "detail": "As an early member, developed both customer-facing services and operator tools.",
                 "skills": "Next.js, React, TypeScript, MUI, Tailwind CSS, Jotai, SWR, React Hook Form, i18next, GA4, Google Tag Manager, Google Sheets API",
                 "tasks": [
-                  "Developed product, order, payment, gifting, draw, and account flows for a multilingual commerce service, and connected view, favorite, signup, and purchase actions to GA4 and GTM events.",
+                  "Shifted the customer-facing web experience to a mobile-first structure with a single-column layout and top and bottom navigation even on desktop, while keeping the operator dashboard on its existing desktop layout. Developed product, order, payment, gifting, draw, and account flows and connected view, favorite, signup, and purchase actions to GA4 and GTM events.",
                   "Collected translation keys for four languages from code and synchronized Google Sheets with translation files in both directions.",
                   "Migrated a Flutter Web back office to Next.js and developed product and seller approval, order and claim, settlement, and inquiry flows.",
                   "Applied search reset, CSV and Excel export, drag sorting, and shared table and dialog components."

@@ -83,13 +83,13 @@ describe('resume-rag keyword gate', () => {
 
   it('returns a fixed localized out-of-scope message', () => {
     expect(getResumeRagOutOfScopeAnswer('ko-KR')).toBe(
-      '이 질문은 제 이력 범위를 벗어난 것 같아요. 프로젝트, 기술 경험, 업무 성과, 강점처럼 이력과 관련된 내용으로 다시 물어봐 주세요.',
+      '이 질문은 제 이력 범위를 벗어난 것 같아요. 프로젝트, 기술 경험, 업무 성과, 강점처럼 이력과 관련된 내용으로 다시 물어봐 주세요.\n\n추천 키워드: Oprimed, 의료 도메인, CI/CD와 배포, 프론트엔드 강점',
     );
     expect(getResumeRagOutOfScopeAnswer('en-US')).toBe(
-      'This question seems outside the scope of my resume. Please ask about resume-related topics such as projects, technical experience, work impact, or strengths.',
+      'This question seems outside the scope of my resume. Please ask about resume-related topics such as projects, technical experience, work impact, or strengths.\n\nSuggested topics: Oprimed, healthcare domain, CI/CD and deployment, frontend strengths',
     );
     expect(getResumeRagOutOfScopeAnswer('ja-JP')).toBe(
-      'この質問は私の履歴の範囲から外れているようです。プロジェクト、技術経験、業務成果、強みなど履歴に関連する内容で質問してください。',
+      'この質問は私の履歴の範囲から外れているようです。プロジェクト、技術経験、業務成果、強みなど履歴に関連する内容で質問してください。\n\nおすすめのキーワード: Oprimed、医療ドメイン、CI/CDとデプロイ、フロントエンドの強み',
     );
     expect(getResumeRagOutOfScopeAnswer('unknown')).toBe(
       getResumeRagOutOfScopeAnswer('ko-KR'),

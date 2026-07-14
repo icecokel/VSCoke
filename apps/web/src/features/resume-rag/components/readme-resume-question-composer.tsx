@@ -82,14 +82,14 @@ export const ReadmeResumeQuestionComposer = () => {
     <aside className="pointer-events-none fixed right-3 bottom-3 left-3 z-40 mx-auto max-w-2xl md:right-5 md:bottom-5 md:left-auto md:w-[32rem]">
       <form
         onSubmit={handleSubmit}
-        className="pointer-events-auto overflow-hidden rounded-lg border border-gray-700 bg-gray-950/95 text-gray-100 shadow-2xl shadow-black/40 backdrop-blur"
+        className="pointer-events-auto overflow-hidden rounded-lg border border-gray-600 bg-gray-800/95 text-gray-50 shadow-2xl shadow-black/40 backdrop-blur"
       >
-        <div className="border-b border-gray-800 bg-gray-900 px-3 py-2">
-          <div className="text-sm font-semibold text-gray-100">{t("title")}</div>
-          <p className="mt-0.5 text-xs leading-5 text-gray-400">{t("description")}</p>
+        <div className="border-b border-gray-700 bg-gray-750 px-3 py-2">
+          <div className="text-sm font-semibold text-gray-50">{t("title")}</div>
+          <p className="mt-0.5 text-xs leading-5 text-gray-200">{t("description")}</p>
         </div>
         <div className="p-2">
-          <div className="flex items-end gap-2 rounded-md border border-gray-700 bg-gray-900/80 p-2 transition-colors focus-within:border-blue-300/70">
+          <div className="flex items-end gap-2 rounded-md border border-gray-600 bg-gray-900 p-2 transition-colors focus-within:border-blue-300/70">
             <Textarea
               value={question}
               onChange={event => {
@@ -103,7 +103,7 @@ export const ReadmeResumeQuestionComposer = () => {
               aria-label={t("placeholder")}
               rows={1}
               disabled={isSubmitting}
-              className="max-h-28 min-h-10 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-sm text-gray-100 shadow-none placeholder:text-gray-500 focus-visible:border-transparent focus-visible:ring-0"
+              className="max-h-28 min-h-10 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-sm text-gray-50 shadow-none placeholder:text-gray-400 focus-visible:border-transparent focus-visible:ring-0"
             />
             {isReady ? (
               <Button

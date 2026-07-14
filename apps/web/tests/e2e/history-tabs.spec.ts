@@ -140,4 +140,28 @@ test.describe("히스토리 탭 상태머신", () => {
 
     await expect(page.getByText(messages.menu.file, { exact: true })).toBeVisible();
   });
+
+  test("휠 클릭으로 탭을 스마트 닫기한다", async ({ page }) => {
+    await installHistoryFixture(page, []);
+
+    const { locale } = await resolveLocaleAndMessages(page);
+    const localeRegex = escapeRegExp(locale);
+
+    await visit(page, `/${locale}/readme`);
+    await visit(page, `/${locale}/blog`);
+
+    await waitForHistoryHydration(page);
+    await waitForHistoryPaths(page, ["/readme", "/blog"]);
+
+    const blogTab = page.locator("div[id='/blog']").first();
+    await blogTab.click({ button: "middle" });
+
+    await expect(page).toHaveURL(new RegExp(`/${localeRegex}/readme$`));
+    await expect
+      .poll(async () => {
+        const current = await getHistorySnapshot(page);
+        return current.some((item: { path: string }) => item.path.endsWith("/blog"));
+      })
+      .toBe(false);
+  });
 });

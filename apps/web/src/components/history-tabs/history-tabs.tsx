@@ -27,6 +27,19 @@ export const HistoryTabs = ({ children }: TParentNode) => {
 
   const handleClickTab = change;
 
+  const handleAuxClickTab = (event: React.MouseEvent<HTMLDivElement>, item: IHistoryItem) => {
+    if (event.button !== 1) return;
+
+    event.preventDefault();
+    handleSmartClose(event, item);
+  };
+
+  const handleMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.button === 1) {
+      event.preventDefault();
+    }
+  };
+
   const [dragStartPath, setDragStartPath] = useState<string>();
   const [dragEnterPath, setEnterPath] = useState<string>();
 
@@ -175,6 +188,8 @@ export const HistoryTabs = ({ children }: TParentNode) => {
                       item.isActive ? "bg-gray-800 border-b-0" : "hover:bg-gray-600",
                     )}
                     onClick={() => handleClickTab(item)}
+                    onMouseDown={handleMouseDown}
+                    onAuxClick={event => handleAuxClickTab(event, item)}
                     onDragStart={handleDragStart}
                     onDragEnterCapture={handleDragEnter}
                     onDragEnd={handleDragEnd}

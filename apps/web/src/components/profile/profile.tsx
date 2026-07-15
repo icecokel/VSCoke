@@ -37,7 +37,8 @@ const Profile = () => {
       <div className="flex items-center flex-col gap-1 md:flex-row md:gap-3 md:items-start">
         <Avatar
           className="h-[180px] w-[180px] border-4 border-yellow-200 md:h-[200px] md:w-[200px]"
-          src={"profile-image.svg"}
+          src="profile-image.jpg"
+          alt={t("developerName")}
           size={180}
         />
         <div className="md:ml-3 mt-[25px] md:mt-0">

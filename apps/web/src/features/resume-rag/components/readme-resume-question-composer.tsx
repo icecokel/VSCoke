@@ -82,14 +82,14 @@ export const ReadmeResumeQuestionComposer = () => {
     <aside className="pointer-events-none fixed right-3 bottom-3 left-3 z-40 mx-auto max-w-2xl md:right-5 md:bottom-5 md:left-auto md:w-[32rem]">
       <form
         onSubmit={handleSubmit}
-        className="pointer-events-auto overflow-hidden rounded-lg border border-gray-600 bg-gray-800/95 text-gray-50 shadow-2xl shadow-black/40 backdrop-blur"
+        className="pointer-events-auto overflow-hidden rounded-lg border border-gray-300 border-t-4 border-t-blue-300 bg-white/90 text-gray-900 shadow-2xl shadow-black/50"
       >
-        <div className="border-b border-gray-700 bg-gray-750 px-3 py-2">
-          <div className="text-sm font-semibold text-gray-50">{t("title")}</div>
-          <p className="mt-0.5 text-xs leading-5 text-gray-200">{t("description")}</p>
+        <div className="border-b border-gray-200 px-3 py-2">
+          <div className="text-sm font-semibold text-gray-900">{t("title")}</div>
+          <p className="mt-0.5 text-xs leading-5 text-gray-500">{t("description")}</p>
         </div>
         <div className="p-2">
-          <div className="flex items-end gap-2 rounded-md border border-gray-600 bg-gray-900 p-2 transition-colors focus-within:border-blue-300/70">
+          <div className="flex items-end gap-2 rounded-md border border-blue-300 bg-white p-2 transition-colors focus-within:border-blue-300">
             <Textarea
               value={question}
               onChange={event => {
@@ -103,13 +103,13 @@ export const ReadmeResumeQuestionComposer = () => {
               aria-label={t("placeholder")}
               rows={1}
               disabled={isSubmitting}
-              className="max-h-28 min-h-10 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-sm text-gray-50 shadow-none placeholder:text-gray-400 focus-visible:border-transparent focus-visible:ring-0"
+              className="max-h-28 min-h-10 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-sm text-gray-900 shadow-none placeholder:text-gray-500 focus-visible:border-transparent focus-visible:ring-0 dark:bg-white"
             />
             {isReady ? (
               <Button
                 type="button"
                 onClick={handleViewAnswer}
-                className="h-10 shrink-0 bg-yellow-200 px-3 text-gray-950 hover:bg-yellow-100"
+                className="h-10 shrink-0 border border-blue-300 bg-blue-300 px-3 text-white hover:bg-blue-400"
               >
                 <ArrowRight />
                 {t("ready")}
@@ -118,24 +118,24 @@ export const ReadmeResumeQuestionComposer = () => {
               <Button
                 type="submit"
                 disabled={!canSubmit}
-                className="h-10 shrink-0 bg-blue-300 px-3 text-gray-950 hover:bg-blue-200"
+                className="h-10 shrink-0 border border-blue-300 bg-blue-300 px-3 text-white hover:bg-blue-400 disabled:border-gray-200 disabled:bg-gray-200 disabled:text-gray-700 disabled:opacity-100"
               >
                 {isSubmitting ? <Loader2 className="animate-spin" /> : <Send />}
                 {isSubmitting ? t("submitting") : t("submit")}
               </Button>
             )}
           </div>
-          <div aria-live="polite" className="min-h-6 px-1 pt-2 text-xs">
-            {isSubmitting ? <span className="text-blue-100/80">{t("submittingHint")}</span> : null}
-            {isReady ? <span className="text-yellow-100/90">{t("readyHint")}</span> : null}
+          <div aria-live="polite" className="min-h-6 px-1 pt-2 text-xs text-gray-700">
+            {isSubmitting ? <span>{t("submittingHint")}</span> : null}
+            {isReady ? <span>{t("readyHint")}</span> : null}
             {isError ? (
-              <div className="flex flex-wrap items-center gap-2 text-red-100">
+              <div className="flex flex-wrap items-center gap-2 text-red-400">
                 <span>{t("error")}</span>
                 <Button
                   type="submit"
                   size="sm"
                   variant="outline"
-                  className="h-7 border-red-800 bg-red-950/20 px-2 text-xs text-red-100 hover:bg-red-900/30 hover:text-red-50"
+                  className="h-7 border-red-400 bg-white px-2 text-xs text-red-400 hover:bg-gray-50 hover:text-red-400"
                 >
                   <RefreshCw className="size-3" />
                   {t("retry")}

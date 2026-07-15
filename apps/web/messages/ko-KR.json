@@ -455,6 +455,7 @@
   },
   "resume": {
     "name": "이상민",
+    "title": "서비스를 만들고, 팀의 고통을 줄이는 개발자",
     "contact": {
       "phone": "+821020809652",
       "email": "red9runge@gmail.com"
@@ -471,32 +472,33 @@
         "company": "주식회사오프리메드",
         "period": "2026.02 - 재직 중 (6개월)",
         "employmentType": "정규직",
-        "achievement": "의료·임상 분석 제품의 화면과 분석 데이터 흐름을 개발하고, 팀 운영과 배포·검증 기준도 함께 맡았습니다.",
+        "role": "서비스 개발자 · 팀장",
         "projects": {
           "medicalFrontendProductization": {
             "title": "의료·임상 분석 제품 화면과 분석 데이터",
             "descriptions": [
               {
                 "subtitle": "의료·임상 분석 제품 화면과 분석 데이터",
-                "detail": "의료·임상 분석 제품의 입력·결과 화면과 데이터 저장·조회 흐름을 개발했습니다.",
-                "skills": "Next.js, React, TypeScript, Tailwind CSS, Radix UI, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Vitest, Playwright, Sharp, GitHub Actions, Husky, Docker, Bash",
+                "detail": "의료·임상 분석 제품의 입력·결과 화면과 데이터 저장·조회 흐름을 담당했습니다.",
                 "tasks": [
                   "분석 데이터를 서버에 저장하고 작업별 캐시를 분리해, 재진입과 새로고침 후에도 같은 결과와 조건을 복원했습니다.",
-                  "유효성 검사와 에러 케이스를 보완하고 데이터 업로드를 청크 처리했습니다.",
-                  "이미지 UI를 코드 기반 컴포넌트로 바꾸고 버튼·아이콘·토글을 공통 구조로 전환했습니다. 직접 색상 코드 529건은 디자인 토큰으로 옮겼습니다.",
+                  "입력 검증과 에러 케이스를 보완하고 데이터 업로드를 청크 처리했습니다.",
+                  "이미지로 표현하던 UI를 코드 기반 컴포넌트로 바꾸고 버튼·아이콘·토글을 공통 구조로 전환했으며, 직접 색상 코드 사용을 529건 줄였습니다.",
                   "정적 이미지를 빌드 시 화면 크기별 WebP로 만들고 변경분만 재생성·검증해 전송 용량을 약 95% 줄였습니다.",
                   "Lighthouse 기준 LCP를 1.3초에서 1.0초로, Speed Index를 3.4초에서 0.7초로 낮췄습니다."
                 ]
               },
               {
                 "subtitle": "팀 운영과 개발·검증 기준",
-                "detail": "프론트엔드 개발과 함께 일정·업무 배분·면담을 맡고, 코드 리뷰에서는 프로젝트 컨벤션과 구현 일관성을 확인했습니다.",
+                "detail": "프론트엔드 개발과 함께 일정·업무 배분·면담을 맡고, 코드 리뷰에서 프로젝트 컨벤션과 구현 일관성을 확인했습니다.",
+                "skills": "Next.js, React, TypeScript, Tailwind CSS, Radix UI, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Vitest, Playwright, Sharp, GitHub Actions, Husky, Docker, Bash",
                 "tasks": [
                   "팀원이 막힌 구현과 일정 위험이 큰 구간을 직접 지원했습니다.",
                   "배포마다 시간이 오래 걸리고 작업 장소가 제한되던 FTP 수동 배포를 GitHub Actions CI/CD로 전환했습니다.",
-                  "서로 다른 컨벤션과 프레임워크를 사용하던 4개 프론트엔드 프로젝트의 실행·배포 스펙을 통일했습니다.",
-                  "Playwright E2E 테스트로 Chrome, Edge, Safari(WebKit)와 주요 화면 크기의 핵심 사용자 흐름을 자동 검증하고, Husky pre-push에서 typecheck·build 실패가 원격 브랜치에 올라가지 않도록 차단했습니다.",
-                  "프로젝트별 지침·컨셉 문서를 팀에 배포하고, 저장소의 Skill·Hook과 PR 규칙에 연결해 팀원이 같은 기준으로 개발·검토할 수 있게 했습니다."
+                  "서로 다른 컨벤션과 프레임워크를 사용하던 4개 프론트엔드 프로젝트의 실행·배포 스펙을 통일해, 팀원이 다른 프로젝트에 합류할 때 확인할 기준을 남겼습니다.",
+                  "Playwright E2E 테스트로 Chrome, Edge, Safari(WebKit)와 주요 화면 크기의 핵심 사용자 흐름을 자동 검증했습니다.",
+                  "Husky pre-push에서 typecheck·build 실패가 원격 브랜치에 올라가지 않도록 차단했습니다.",
+                  "프로젝트별 지침·컨셉 문서를 저장소의 Skill·Hook과 PR 규칙에 연결해 팀원이 같은 기준으로 개발·검토할 수 있게 했습니다."
                 ]
               }
             ]
@@ -507,6 +509,7 @@
         "company": "주식회사 코드크레용",
         "period": "2023.05 - 2025.07 (2년 3개월)",
         "employmentType": "정규직",
+        "role": "프론트엔드 개발자",
         "projects": {
           "commerceBackoffice": {
             "title": "커머스·백오피스",
@@ -514,13 +517,14 @@
             "descriptions": [
               {
                 "subtitle": "고객용 서비스와 운영자 도구 개발",
-                "detail": "초기 멤버로 고객용 서비스와 운영자 도구를 함께 개발했습니다.",
+                "detail": "초기 멤버로 고객용 서비스와 운영자 도구를 함께 맡았습니다.",
                 "skills": "Next.js, React, TypeScript, MUI, Tailwind CSS, Jotai, SWR, React Hook Form, i18next, GA4, Google Tag Manager, Google Sheets API",
                 "tasks": [
-                  "고객용 웹을 PC에서도 모바일 싱글 컬럼과 상·하단 내비게이션을 사용하는 구조로 전환하고, 운영자 대시보드는 기존 데스크톱 레이아웃을 유지하도록 분리했습니다. 상품·주문·결제·선물·드로우·마이페이지를 개발하고 조회·찜·가입·구매를 GA4/GTM 이벤트로 연결했습니다.",
+                  "PC·모바일 반응형이던 고객용 웹을 PC에서도 모바일 싱글 컬럼과 상·하단 내비게이션을 사용하는 구조로 전환하고, 운영자 대시보드는 기존 데스크톱 레이아웃을 유지하도록 분리했습니다.",
+                  "상품·주문·결제·선물·드로우·마이페이지를 담당하고, 조회·찜·가입·구매를 GA4/GTM 이벤트로 연결했습니다.",
                   "4개 언어의 번역 키를 코드에서 수집해 Google Sheets와 번역 파일을 양방향 동기화했습니다.",
-                  "Flutter Web 백오피스를 Next.js로 전환하고 상품·셀러 승인, 주문·클레임, 정산과 문의를 개발했습니다.",
-                  "검색 초기화, CSV·Excel 내보내기, 드래그 정렬과 공통 테이블·다이얼로그를 적용했습니다."
+                  "Flutter Web 백오피스를 Next.js로 전환했습니다.",
+                  "상품·셀러 승인·주문·클레임·정산·문의 화면에 검색 초기화, CSV·Excel 내보내기, 드래그 정렬과 공통 테이블·다이얼로그를 적용했습니다."
                 ]
               }
             ]
@@ -531,13 +535,13 @@
             "descriptions": [
               {
                 "subtitle": "반복 운영 업무를 웹 도구로 전환",
-                "detail": "반복 운영 업무를 운영자가 계속 사용하는 웹 도구로 전환했습니다.",
+                "detail": "반복 운영 업무를 운영자가 직접 사용하는 웹 도구로 전환했습니다.",
                 "skills": "Node.js, TypeScript, Express, AWS Bedrock, OpenAI API, Google Cloud Translation, Axios, Cheerio, Vercel Serverless Functions",
                 "tasks": [
-                  "자막 번역 CLI를 웹 관리 도구로 전환해 운영자가 파일·프롬프트·검수·캐릭터 매칭을 처리하게 했습니다.",
+                  "개발자가 실행하던 자막 번역 CLI를 운영자가 파일·프롬프트·검수·캐릭터 매칭까지 처리하는 웹 도구로 전환했습니다.",
                   "청크·병렬 번역, 실패 재요청과 자막 수·누락·시간 검증을 적용했습니다.",
                   "도입 전 3명이 하루 1~2개 처리하던 번역을 도입 후 1명이 하루 6~8개 처리할 수 있게 했으며, 해당 시스템은 현재도 사용되고 있습니다.",
-                  "브라우저에서 차단되던 검색을 Node.js 서버로 옮기고, 3개 플랫폼의 검색과 유사 제목 필터링을 자동화해 하루 50분을 10분 이내로 줄였습니다."
+                  "브라우저에서 차단되던 검색을 Node.js 서버로 옮기고 3개 플랫폼 검색과 유사 제목 필터링을 자동화해, 하루 50분 걸리던 확인 업무를 10분 이내로 줄였습니다."
                 ]
               }
             ]
@@ -548,11 +552,11 @@
             "descriptions": [
               {
                 "subtitle": "앱 배포와 독립된 콘텐츠 업데이트 구조",
-                "detail": "앱 배포와 별개로 이벤트와 게임을 업데이트할 수 있는 Playground를 초기 설계부터 개발했습니다.",
+                "detail": "앱 배포와 별개로 이벤트·운세·게임·드로우를 추가할 수 있는 Playground를 초기 설계했습니다.",
                 "skills": "Next.js, React, TypeScript, Tailwind CSS, Phaser, Next Intl, Flutter InAppWebView, Web Audio API, Airbridge, Branch.io",
                 "tasks": [
-                  "이벤트·운세·게임·드로우를 도메인 단위로 나눠 앱 배포와 독립적으로 콘텐츠를 추가할 수 있게 했습니다.",
-                  "Flutter WebView 통신, 딥링크와 리워드 광고를 연결하고, 게임 결과 제출 중 중복 입력과 화면 상태를 제어했습니다.",
+                  "기능을 도메인 단위로 나눠 콘텐츠를 앱 배포와 독립적으로 업데이트하게 했습니다.",
+                  "Flutter WebView 통신, 딥링크와 리워드 광고를 연결하고, 게임 결과 제출 중 중복 입력과 비정상 응답 이후의 화면 전환을 막았습니다.",
                   "Chrome, Safari와 Samsung Internet의 키보드·포커스·화면 안전 영역·테마·오디오 차이에 대응했습니다."
                 ]
               }
@@ -577,38 +581,36 @@
         }
       },
       "allofthem": {
-        "company": "allofthem",
+        "company": "All of Them",
         "period": "2021.07 - 2023.04 (1년 10개월)",
         "employmentType": "정규직",
+        "role": "프론트엔드 개발자",
         "projects": {
           "insuranceSubscription": {
-            "title": "보험 가입 웹 성능 개선",
+            "title": "보험 가입 웹 성능",
             "period": "2023.03 - 2023.04",
             "descriptions": [
               {
-                "subtitle": "초기 화면 표시 지연을 줄인 보험 가입 화면",
-                "detail": "보험 가입 화면에서 초기 화면 완성까지 최대 5초 걸리던 구간을 줄였습니다.",
+                "subtitle": "보험 가입 웹 성능",
                 "skills": "React, Next.js, TypeScript, Redux, Context API",
                 "tasks": [
-                  "중첩 콜백을 제거하고 데이터 준비, 상태 반영, 렌더링 순서를 단순화했습니다.",
-                  "React 기반 화면을 Next.js 구조로 전환해 라우팅과 렌더링 기준을 다시 잡았습니다.",
-                  "가입 화면에서 LCP 기준 1.2초를 달성했습니다."
+                  "초기 렌더링이 최대 5초 걸리던 React 가입 화면에서 중첩 콜백을 제거하고 Next.js로 전환해 LCP 1.2초를 달성했습니다."
                 ]
               }
             ]
           },
           "insuranceResponsive": {
-            "title": "보험 가입·결제와 관리자 화면 개발",
+            "title": "가입·결제와 관리자 화면",
             "period": "2022.10 - 2023.03",
             "descriptions": [
               {
-                "subtitle": "보험 가입, 결제, 관리자 화면 개발",
-                "detail": "보험 가입, 결제, 관리자 화면을 개발했습니다.",
+                "subtitle": "가입·결제와 관리자 화면",
+                "detail": "보험 가입·결제와 관리자 화면을 담당했습니다.",
                 "skills": "React, Next.js, TypeScript, GraphQL, DynamoDB, Sass, GitLab CI/CD",
                 "tasks": [
-                  "반응형 보험 가입 화면과 결제 정보 입력 흐름을 만들었습니다.",
-                  "가입 목록, 상세, 통계 차트, 리포트 다운로드, 파일 업로드·다운로드 기능을 만들었습니다.",
-                  "업로드·다운로드 처리와 타입을 공통화해 관리자 화면의 유지보수 부담을 줄였습니다."
+                  "반응형 보험 가입과 결제 정보 입력 화면을 담당했습니다.",
+                  "가입 목록·상세, 통계 차트, 리포트와 파일 업로드·다운로드 화면을 담당했습니다.",
+                  "화면별 업로드·다운로드 처리와 타입을 공통화했습니다."
                 ]
               }
             ]
@@ -777,19 +779,19 @@
         "company": "데이터로직스",
         "period": "2020.08 - 2021.07 (1년)",
         "employmentType": "정규직",
+        "role": "운영/유지보수 및 개발",
         "projects": {
           "consularCallCenter": {
-            "title": "운영 중인 서비스의 유지보수, API 개발, 장애 대응",
+            "title": "운영 서비스 개발과 장애 대응",
             "period": "2020.09 - 2021.07",
             "descriptions": [
               {
-                "subtitle": "운영 중인 서비스의 유지보수와 개발 업무",
-                "detail": "운영 중인 서비스의 유지보수와 개발 업무를 수행했습니다. 사용자 영향, 재현 가능성, 수정 범위를 기준으로 이슈를 분리하고 운영팀과 공유했습니다.",
-                "skills": "Linux, Network, Security, API, JavaScript, HTML, CSS",
+                "subtitle": "운영 서비스 개발과 장애 대응",
+                "detail": "운영 서비스의 유지보수와 개발을 맡았습니다.",
+                "skills": "Java, JavaScript, eGovFrame, MyBatis, MariaDB, Oracle, Linux, HTML, CSS",
                 "tasks": [
-                  "오류와 변경 요청을 재현하고, 수정·검증이 필요한 범위를 분리했습니다.",
-                  "인프라·보안 관점에서 장애 원인과 사용자 영향을 확인하고 운영팀에 공유했습니다.",
-                  "API 개발과 일부 페이지 구현을 수행하며 개발과 운영이 이어지는 방식을 경험했습니다."
+                  "오류와 변경 요청을 재현하고 수정 범위와 사용자 영향을 공유했습니다.",
+                  "운영 서비스의 API와 일부 페이지를 담당했습니다."
                 ]
               }
             ]
@@ -799,13 +801,13 @@
             "period": "2020.08 - 2020.09",
             "descriptions": [
               {
-                "subtitle": "다른 데이터베이스와 실행 환경을 위한 전환 작업",
-                "detail": "기존 소프트웨어를 다른 데이터베이스와 실행 환경에서도 사용할 수 있도록 데이터 전환과 환경 확장 작업을 수행했습니다.",
-                "skills": "Java, JavaScript, eGovFrame, MyBatis, MariaDB, Oracle",
+                "subtitle": "데이터 마이그레이션과 실행 환경 전환",
+                "detail": "Oracle·Linux 환경에 맞춰져 있던 기존 소프트웨어를 MariaDB·Windows에서도 사용할 수 있도록 전환했습니다.",
+                "skills": "Java, JavaScript, eGovFrame, MyBatis, MariaDB, Oracle, Linux, HTML, CSS",
                 "tasks": [
-                  "Oracle 기반 쿼리와 Linux 중심 기능을 MariaDB, Windows 환경에서도 동작하도록 맞췄습니다.",
-                  "라이브러리 전환과 실행 환경 확장을 통해 기존 소프트웨어의 사용 가능 환경을 넓혔습니다.",
-                  "Windows 환경 기능 추가와 매뉴얼 작성으로 운영자가 전환된 환경을 사용할 수 있도록 지원했습니다."
+                  "Oracle 기반 쿼리를 MariaDB에서도 동작하도록 바꿨습니다.",
+                  "Linux 중심 기능과 라이브러리를 Windows 환경에서도 사용할 수 있도록 전환했습니다.",
+                  "Windows 기능과 운영 매뉴얼을 추가해 운영자가 전환된 환경을 사용할 수 있게 했습니다."
                 ]
               }
             ]
@@ -813,23 +815,22 @@
         }
       },
       "datalogicsInfra": {
-        "company": "데이터로직스(인프라)",
+        "company": "데이터로직스",
         "period": "2017.08 - 2019.05 (1년 10개월)",
         "employmentType": "정규직",
+        "role": "인프라 엔지니어",
         "projects": {
           "policyCoordination": {
             "title": "국무조정실 운영 및 유지보수",
             "period": "2018.05 - 2019.06",
             "descriptions": [
               {
-                "subtitle": "운영 및 유지보수 인프라 파트",
+                "subtitle": "국무조정실 운영 및 유지보수",
+                "skills": "Linux, Server, Network, L2/L3, Firewall, IPS, TMS, Backup",
                 "tasks": [
-                  "세종 및 서울 국무조정실 인프라 관리",
-                  "서버 및 네트워크 (L2, L3, BB) 장비 관리 및 트러블 슈팅",
-                  "보안장비(FW, IPS, TMS)및 솔루션 관리",
-                  "자원관리 및 백업 작업",
-                  "사무실 세팅 및 국정감사 인프라 세팅",
-                  "보안감사 대응"
+                  "세종·서울 국무조정실의 서버, L2·L3 네트워크 장비, 방화벽·IPS·TMS 보안 장비, 백업과 자원을 운영했습니다.",
+                  "장애 원인을 추적해 장비·네트워크·보안 영역의 복구를 지원했습니다.",
+                  "보안 감사와 국정감사 인프라 준비에 대응했습니다."
                 ]
               }
             ]
@@ -839,8 +840,8 @@
             "period": "2018.01 - 2018.02",
             "descriptions": [
               {
-                "subtitle": "고도화 사업 인프라파트",
-                "tasks": ["장비 검수 및 마운팅", "설치 테스트 및 모니터링(설치 테스트)"]
+                "subtitle": "사회보장정보원 고도화 사업",
+                "tasks": ["장비 검수·마운팅·설치 테스트를 맡았습니다."]
               }
             ]
           },
@@ -849,11 +850,8 @@
             "period": "2017.08 - 2017.12",
             "descriptions": [
               {
-                "subtitle": "아동보호 전문기관 콜센터 유지보수 인프라 파트 업무 진행",
-                "tasks": ["유지보수 및 사무실 이전 작업", "장비 해제 및 재설치"]
-              },
-              {
-                "subtitle": "노원아동보호전문 기관 구축"
+                "subtitle": "아동보호전문기관 구축 및 유지보수",
+                "tasks": ["콜센터 이전 과정에서 장비 해제·재설치와 신규 기관 구축을 맡았습니다."]
               }
             ]
           }

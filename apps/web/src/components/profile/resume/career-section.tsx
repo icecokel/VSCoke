@@ -35,6 +35,11 @@ export const CareerSection = ({ careerData, index }: CareerSectionProps) => {
         <BaseText type="body1" className="text-gray-300 mt-2">
           {t("period")} · {t("employmentType")}
         </BaseText>
+        {t.has("role") && (
+          <BaseText type="body2" className="text-gray-400 mt-1">
+            {t("role")}
+          </BaseText>
+        )}
       </div>
 
       {careerData.projects.map(projectData => {

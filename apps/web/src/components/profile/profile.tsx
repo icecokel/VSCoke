@@ -43,8 +43,7 @@ const Profile = () => {
         />
         <div className="md:ml-3 mt-[25px] md:mt-0">
           <BaseText type="h5" className="text-center">
-            {t("notOnlyCoding")} <br className="md:hidden" />
-            {t("developerName")}
+            {tResume("title")}
           </BaseText>
           <div className="mt-5 w-full max-w-sm bg-blue-100/20 rounded-sm p-4 gap-4 flex flex-col">
             <Tooltip>

@@ -18,9 +18,11 @@ const LANGUAGE_LABEL_KEYS: Record<Locale, keyof AppMessages["common"]> = {
 
 interface ResumeCopyMessages {
   resume: {
+    title: string;
     introduction: string[];
     careers: {
       oprimed: {
+        role: string;
         projects: {
           medicalFrontendProductization: {
             title: string;
@@ -33,6 +35,7 @@ interface ResumeCopyMessages {
         };
       };
       codecrayon: {
+        role: string;
         projects: {
           commerceBackoffice: {
             title: string;
@@ -52,6 +55,7 @@ interface ResumeCopyMessages {
         };
       };
       allofthem: {
+        role: string;
         projects: {
           insuranceSubscription: {
             title: string;
@@ -62,6 +66,7 @@ interface ResumeCopyMessages {
         };
       };
       datalogics: {
+        role: string;
         projects: {
           consularCallCenter: {
             title: string;
@@ -108,6 +113,12 @@ test.describe("i18n 무결성", () => {
     const enMessages = loadMessages("en-US") as AppMessages & ResumeCopyMessages;
     const jaMessages = loadMessages("ja-JP") as AppMessages & ResumeCopyMessages;
 
+    expect(koMessages.resume.title).toBe("서비스를 만들고, 팀의 고통을 줄이는 개발자");
+    expect(enMessages.resume.title).toBe(
+      "A developer who builds services and reduces the team's pain",
+    );
+    expect(jaMessages.resume.title).toBe("サービスを作り、チームの痛みを減らす開発者");
+
     expect(koMessages.resume.introduction).toEqual([
       "커머스와 의료·임상 분석 제품을 개발하며, 사용자가 경험하는 화면과 운영자가 일하는 도구를 함께 만들어 왔습니다.",
       "AI 활용을 개인의 생산성에 머물지 않고, 팀의 개발과 운영 방식으로 확장하고 있습니다.",
@@ -152,6 +163,9 @@ test.describe("i18n 무결성", () => {
       jaMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions[1]
         ?.detail,
     ).toContain("プロジェクトの規約と実装の一貫性");
+    expect(koMessages.resume.careers.oprimed.role).toBe("서비스 개발자 · 팀장");
+    expect(enMessages.resume.careers.oprimed.role).toBe("Service Developer · Team Lead");
+    expect(jaMessages.resume.careers.oprimed.role).toBe("サービス開発者 · チームリーダー");
 
     expect(koMessages.resume.careers.codecrayon.projects.commerceBackoffice.title).toBe(
       "커머스·백오피스",
@@ -192,38 +206,38 @@ test.describe("i18n 무결성", () => {
     ).toContain("PCでもモバイルのシングルカラム");
 
     expect(koMessages.resume.careers.allofthem.projects.insuranceSubscription.title).toBe(
-      "보험 가입 웹 성능 개선",
+      "보험 가입 웹 성능",
     );
     expect(koMessages.resume.careers.allofthem.projects.insuranceResponsive.title).toBe(
-      "보험 가입·결제와 관리자 화면 개발",
+      "가입·결제와 관리자 화면",
     );
     expect(enMessages.resume.careers.allofthem.projects.insuranceSubscription.title).toBe(
-      "Insurance Subscription Web Performance Improvement",
+      "Insurance Subscription Web Performance",
     );
     expect(enMessages.resume.careers.allofthem.projects.insuranceResponsive.title).toBe(
-      "Insurance Subscription, Payment, and Admin Screen Development",
+      "Subscription, Payment, and Admin Screens",
     );
     expect(jaMessages.resume.careers.allofthem.projects.insuranceSubscription.title).toBe(
-      "保険加入Webのパフォーマンス改善",
+      "保険加入Webのパフォーマンス",
     );
     expect(jaMessages.resume.careers.allofthem.projects.insuranceResponsive.title).toBe(
-      "保険加入・決済と管理画面の開発",
+      "加入・決済と管理画面",
     );
 
     expect(koMessages.resume.careers.datalogics.projects.consularCallCenter.title).toBe(
-      "운영 중인 서비스의 유지보수, API 개발, 장애 대응",
+      "운영 서비스 개발과 장애 대응",
     );
     expect(koMessages.resume.careers.datalogics.projects.smartDis.title).toBe(
       "데이터 마이그레이션과 실행 환경 전환",
     );
     expect(enMessages.resume.careers.datalogics.projects.consularCallCenter.title).toBe(
-      "Maintenance, API Development, and Incident Response for a Live Service",
+      "Live Service Development and Incident Response",
     );
     expect(enMessages.resume.careers.datalogics.projects.smartDis.title).toBe(
       "Data Migration and Runtime Environment Transition",
     );
     expect(jaMessages.resume.careers.datalogics.projects.consularCallCenter.title).toBe(
-      "稼働中サービスの保守、API開発、障害対応",
+      "運用サービスの開発と障害対応",
     );
     expect(jaMessages.resume.careers.datalogics.projects.smartDis.title).toBe(
       "データ移行と実行環境の切り替え",
@@ -235,6 +249,18 @@ test.describe("i18n 무결성", () => {
       await visit(page, `/${locale}`);
       await expectPath(page, new RegExp(`^/${escapeRegExp(locale)}(?:/)?$`));
     }
+  });
+
+  test("공개 이력서에 Wanted 제목과 회사별 역할이 표시된다", async ({ page }) => {
+    await visit(page, "/ko-KR/readme");
+
+    await expect(
+      page.getByRole("heading", { name: "서비스를 만들고, 팀의 고통을 줄이는 개발자" }),
+    ).toBeVisible();
+    await expect(page.getByText("서비스 개발자 · 팀장")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "운영 서비스 개발과 장애 대응", exact: true }),
+    ).toBeVisible();
   });
 
   test("언어 전환 후 URL/쿠키/새로고침/루트 리다이렉트가 일치한다", async ({ page }) => {

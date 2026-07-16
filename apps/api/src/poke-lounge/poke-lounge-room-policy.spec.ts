@@ -4,6 +4,7 @@ import {
   advancePokeLoungeRoomClock,
   getPokeLoungeRoomExpiresAtMs,
   isPokeLoungeRoomExpired,
+  normalizeLegacyPokeLoungeRoomSnapshot,
 } from './poke-lounge-room-policy';
 
 const MINUTE_MS = 60_000;
@@ -73,19 +74,81 @@ describe('PokeLoungeRoomPolicy', () => {
       expiresAtMs: POKE_LOUNGE_ACTIVE_ROOM_EXPIRES_AT_MS,
       round: { phase: 'tournament' },
       tournament: {
-        matches: [
-          {
-            matchId: 'round-2-match-1',
-            participantIds: ['player-a', 'player-b'],
-            status: 'pending',
+        version: 2,
+        activeMatchId: 'game-round-2-bracket-1-match-1',
+        activeMatchAuthority: 'casual',
+        bracket: {
+          currentRound: {
+            matches: [
+              {
+                matchId: 'game-round-2-bracket-1-match-1',
+                participantIds: ['player-b', 'player-c'],
+                status: 'ready',
+              },
+            ],
+            byes: [
+              {
+                entrant: { playerId: 'player-a' },
+              },
+            ],
           },
-        ],
+        },
       },
     });
     expect(room).toMatchObject({
       status: 'round-started',
       revision: 7,
-      tournament: { matches: [] },
+      tournament: { bracket: null },
+    });
+  });
+
+  it('includes all five players as one match and three byes', () => {
+    const room = createSnapshot({
+      status: 'round-started',
+      participants: Array.from({ length: 5 }, (_, index) =>
+        createParticipant(`player-${index + 1}`, index + 1),
+      ),
+      round: {
+        index: 1,
+        phase: 'round-started',
+        durationMs: 1_000,
+        startedAtMs: 0,
+        endsAtMs: 1_000,
+      },
+    });
+
+    const advanced = advancePokeLoungeRoomClock(room, 1_000);
+
+    expect(advanced?.tournament.bracket?.currentRound?.matches).toEqual([
+      expect.objectContaining({ participantIds: ['player-4', 'player-5'] }),
+    ]);
+    expect(
+      advanced?.tournament.bracket?.currentRound?.byes.map(
+        (bye) => bye.entrant.playerId,
+      ),
+    ).toEqual(['player-1', 'player-3', 'player-2']);
+  });
+
+  it('closes progressed legacy rooms with a finite restart-required expiry', () => {
+    const legacy = createSnapshot({ status: 'tournament' });
+    (legacy as unknown as { tournament: unknown }).tournament = {
+      matches: [{ status: 'completed' }],
+      cumulativeScores: { 'player-1': 100 },
+    };
+
+    const normalized = normalizeLegacyPokeLoungeRoomSnapshot(legacy, 2_000);
+
+    expect(normalized).toMatchObject({
+      status: 'closed',
+      closeReason: 'legacy-room-restart-required',
+      revision: 1,
+      expiresAtMs: 2_000 + 10 * MINUTE_MS,
+      tournament: {
+        version: 2,
+        bracket: null,
+        activeMatchId: null,
+        cumulativeScores: { 'player-1': 100 },
+      },
     });
   });
 
@@ -129,7 +192,10 @@ function createSnapshot(
       endsAtMs: null,
     },
     tournament: {
-      matches: [],
+      version: 2,
+      bracket: null,
+      activeMatchId: null,
+      activeMatchAuthority: null,
       cumulativeScores: {},
     },
     finalStandings: [],

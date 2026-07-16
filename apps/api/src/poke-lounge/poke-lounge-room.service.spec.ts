@@ -103,6 +103,25 @@ describe('PokeLoungeRoomService', () => {
     expect(JSON.stringify(room)).not.toContain('session-1');
   });
 
+  it('forwards the optional recovery cursor for REST reads and subscription authorization', async () => {
+    await createRoom();
+    competitiveProjection.findRoomSnapshot.mockClear();
+
+    await service.getRoom('ROOM01', 0, 7);
+    await service.authorizeSubscription('ROOM01', 'player-1', 'session-1', 8);
+
+    expect(competitiveProjection.findRoomSnapshot).toHaveBeenNthCalledWith(
+      1,
+      'ROOM01',
+      7,
+    );
+    expect(competitiveProjection.findRoomSnapshot).toHaveBeenNthCalledWith(
+      2,
+      'ROOM01',
+      8,
+    );
+  });
+
   it.each([
     ['ROOM99', 'player-1', 'session-1'],
     ['ROOM01', 'unknown-player', 'session-1'],
@@ -228,15 +247,108 @@ describe('PokeLoungeRoomService', () => {
       status: 'tournament',
       revision: 4,
       tournament: {
-        matches: [
-          {
-            matchId: 'round-1-match-1',
-            participantIds: ['player-1', 'player-2'],
+        version: 2,
+        activeMatchId: 'game-round-1-bracket-1-match-1',
+        bracket: {
+          currentRound: {
+            matches: [
+              {
+                matchId: 'game-round-1-bracket-1-match-1',
+                participantIds: ['player-1', 'player-2'],
+              },
+            ],
           },
-        ],
+        },
       },
     });
     expectPublicEvent(publisher, 'room-clock-advanced', tournament);
+  });
+
+  it('accepts late participants during preparation without extending the deadline', async () => {
+    await createRoom({ roundDurationMs: 1000 });
+    await service.joinRoom(
+      'ROOM01',
+      { playerId: 'player-2', sessionId: 'session-2', nowMs: 10 },
+      command(0, 2),
+    );
+    await service.setReady(
+      'ROOM01',
+      { playerId: 'player-1', sessionId: 'session-1', ready: true, nowMs: 100 },
+      command(1, 3),
+    );
+    const started = await service.setReady(
+      'ROOM01',
+      { playerId: 'player-2', sessionId: 'session-2', ready: true, nowMs: 200 },
+      command(2, 4),
+    );
+
+    const joined = await service.joinRoom(
+      'ROOM01',
+      { playerId: 'player-3', sessionId: 'session-3', nowMs: 300 },
+      command(started.revision, 5),
+    );
+    const ready = await service.setReady(
+      'ROOM01',
+      { playerId: 'player-3', sessionId: 'session-3', ready: true, nowMs: 400 },
+      command(joined.revision, 6),
+    );
+
+    expect(joined).toMatchObject({
+      status: 'round-started',
+      round: { startedAtMs: 200, endsAtMs: 1200 },
+    });
+    expect(ready.round).toMatchObject({ startedAtMs: 200, endsAtMs: 1200 });
+
+    const tournament = await service.getRoom('ROOM01', 1200);
+    expect(tournament).toMatchObject({
+      status: 'tournament',
+      tournament: {
+        bracket: {
+          participants: [
+            { playerId: 'player-1' },
+            { playerId: 'player-2' },
+            { playerId: 'player-3' },
+          ],
+        },
+      },
+    });
+    await expect(
+      service.joinRoom(
+        'ROOM01',
+        { playerId: 'player-4', sessionId: 'session-4', nowMs: 1201 },
+        command(tournament.revision, 7),
+      ),
+    ).rejects.toThrow('Room is not joinable');
+  });
+
+  it('allows an existing player with the same session to reconnect during a tournament', async () => {
+    const tournament = await createTournament();
+
+    const rejoined = await service.joinRoom(
+      'ROOM01',
+      { playerId: 'player-1', sessionId: 'session-1', nowMs: 1201 },
+      command(tournament.revision, 10),
+    );
+
+    expect(rejoined).toMatchObject({
+      status: 'tournament',
+      revision: tournament.revision + 1,
+      tournament: { activeMatchId: tournament.tournament.activeMatchId },
+    });
+    await expect(
+      service.joinRoom(
+        'ROOM01',
+        { playerId: 'player-1', sessionId: 'wrong', nowMs: 1202 },
+        command(rejoined.revision, 11),
+      ),
+    ).rejects.toThrow('Join sessionId does not match this participant');
+    await expect(
+      service.joinRoom(
+        'ROOM01',
+        { playerId: 'player-3', sessionId: 'session-3', nowMs: 1202 },
+        command(rejoined.revision, 12),
+      ),
+    ).rejects.toThrow('Room is not joinable');
   });
 
   it('assigns the next participant id for an anonymous join and uses a stable opaque receipt actor', async () => {
@@ -376,7 +488,7 @@ describe('PokeLoungeRoomService', () => {
       {
         reportingPlayerId: 'player-1',
         reportingSessionId: 'session-1',
-        matchId: tournament.tournament.matches[0].matchId,
+        matchId: tournament.tournament.activeMatchId!,
         winnerPlayerId: 'player-1',
         loserPlayerId: 'player-2',
         reason: 'faint',
@@ -390,8 +502,45 @@ describe('PokeLoungeRoomService', () => {
       revision: tournament.revision + 1,
       finalStandings: [
         { playerId: 'player-1', rank: 1, score: 100 },
-        { playerId: 'player-2', rank: 2, score: 50 },
+        { playerId: 'player-2', rank: 2, score: 70 },
       ],
+    });
+    publisher.publish.mockClear();
+    await expect(
+      service.submitMatchResult(
+        'ROOM01',
+        {
+          reportingPlayerId: 'player-1',
+          reportingSessionId: 'session-1',
+          matchId: tournament.tournament.activeMatchId!,
+          winnerPlayerId: 'player-1',
+          loserPlayerId: 'player-2',
+          reason: 'faint',
+          nowMs: 1201,
+        },
+        command(999, 5),
+      ),
+    ).resolves.toEqual(completed);
+    expect(publisher.publish.mock.calls).toHaveLength(0);
+
+    const changedNowMs = await captureConflict(
+      service.submitMatchResult(
+        'ROOM01',
+        {
+          reportingPlayerId: 'player-1',
+          reportingSessionId: 'session-1',
+          matchId: tournament.tournament.activeMatchId!,
+          winnerPlayerId: 'player-1',
+          loserPlayerId: 'player-2',
+          reason: 'faint',
+          nowMs: 1202,
+        },
+        command(completed.revision, 5),
+      ),
+    );
+    expect(changedNowMs.getResponse()).toMatchObject({
+      code: 'POKE_LOUNGE_IDEMPOTENCY_CONFLICT',
+      snapshot: { revision: completed.revision },
     });
     await expect(
       service.submitMatchResult(
@@ -399,7 +548,7 @@ describe('PokeLoungeRoomService', () => {
         {
           reportingPlayerId: 'player-1',
           reportingSessionId: 'session-1',
-          matchId: tournament.tournament.matches[0].matchId,
+          matchId: tournament.tournament.activeMatchId!,
           winnerPlayerId: 'player-1',
           loserPlayerId: 'player-2',
           reason: 'faint',
@@ -422,16 +571,46 @@ describe('PokeLoungeRoomService', () => {
     expect(completed).toMatchObject({
       status: 'completed',
       tournament: {
-        matches: [
-          {
-            status: 'completed',
-            winnerPlayerId: 'player-2',
-            loserPlayerId: 'player-1',
-            resultReason: 'forfeit',
-          },
-        ],
+        bracket: {
+          completedRounds: [
+            {
+              matches: [
+                {
+                  status: 'completed',
+                  winnerPlayerId: 'player-2',
+                  loserPlayerId: 'player-1',
+                  resultReason: 'forfeit',
+                },
+              ],
+            },
+          ],
+        },
       },
     });
+  });
+
+  it('rejects casual results for a server-authoritative active match', async () => {
+    const tournament = await createTournament();
+    tournament.tournament.activeMatchAuthority = 'server';
+    repository.seed(tournament);
+
+    await expect(
+      service.submitMatchResult(
+        'ROOM01',
+        {
+          reportingPlayerId: 'player-1',
+          reportingSessionId: 'session-1',
+          matchId: tournament.tournament.activeMatchId!,
+          winnerPlayerId: 'player-1',
+          loserPlayerId: 'player-2',
+          reason: 'faint',
+          nowMs: 1201,
+        },
+        command(tournament.revision, 50),
+      ),
+    ).rejects.toThrow(
+      'Server-authoritative matches only accept competitive actions',
+    );
   });
 
   it('returns fully redacted current snapshots for stale revisions', async () => {
@@ -507,12 +686,20 @@ describe('PokeLoungeRoomService', () => {
       ...createSnapshot(),
       revision: 1,
       updatedAtMs: 1,
-    };
+      competitiveTransitions: [
+        {
+          terminalEventId: '00000000-0000-4000-8000-000000000001',
+          terminalRoomRevision: 1,
+          projection: { matchId: 'completed-match-1' },
+        },
+      ],
+    } as unknown as PokeLoungeRoomSnapshot;
     const revisionTwo = {
       ...revisionOne,
       revision: 2,
       updatedAtMs: 2,
       competitive: { matchId: 'match-2' },
+      competitiveTransitions: [],
     } as unknown as PokeLoungeRoomSnapshot;
     jest.spyOn(repository, 'mutate').mockResolvedValueOnce({
       snapshot: revisionOne,
@@ -532,6 +719,12 @@ describe('PokeLoungeRoomService', () => {
     expect(publisher.publish.mock.calls[0][0].snapshot).toMatchObject({
       revision: 2,
       updatedAtMs: 2,
+      competitiveTransitions: [
+        {
+          terminalEventId: '00000000-0000-4000-8000-000000000001',
+          projection: { matchId: 'completed-match-1' },
+        },
+      ],
       competitive: { matchId: 'match-2' },
     });
 
@@ -734,7 +927,13 @@ function createSnapshot() {
       startedAtMs: null,
       endsAtMs: null,
     },
-    tournament: { matches: [], cumulativeScores: {} },
+    tournament: {
+      version: 2 as const,
+      bracket: null,
+      activeMatchId: null,
+      activeMatchAuthority: null,
+      cumulativeScores: {},
+    },
     finalStandings: [],
     revision: 0,
     expiresAtMs: 30 * 60_000,

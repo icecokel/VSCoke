@@ -26,3 +26,33 @@ export {
   type CompetitiveAssignmentV1,
   type ResolvedTurnV1,
 } from "./resolve-turn";
+export {
+  createTournamentBracketState,
+  getReadyTournamentMatches,
+  getTournamentStandings,
+  recordTournamentMatchResult,
+  TOURNAMENT_MAX_PARTICIPANT_COUNT,
+  TOURNAMENT_MIN_PARTICIPANT_COUNT,
+  type TournamentBracketState,
+  type TournamentBye,
+  type TournamentElimination,
+  type TournamentMatch,
+  type TournamentMatchResultReason,
+  type TournamentMatchStatus,
+  type TournamentParticipant,
+  type TournamentParticipantInput,
+  type TournamentRound,
+  type TournamentRoundSlot,
+  type TournamentStanding,
+  type TournamentStatus,
+} from "./tournament-bracket";
+export {
+  accumulateTournamentScores,
+  DEFAULT_TOURNAMENT_SCORE_BY_RANK,
+  rankCumulativeTournamentScores,
+  scoreTournamentStandings,
+  type CumulativeTournamentScoreRank,
+  type TournamentRoundScore,
+  type TournamentScoreByPlayerId,
+  type TournamentScoreByRank,
+} from "./tournament-scoring";

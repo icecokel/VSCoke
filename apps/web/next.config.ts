@@ -12,30 +12,54 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const monorepoRoot = path.resolve(process.cwd(), "../..");
 const productionApiOrigin = "https://api.icecoke.kr";
 
-const normalizeConnectSource = (value: string | undefined) => {
+export const normalizeConnectSource = (value: string | undefined) => {
   if (!value) return undefined;
 
   try {
-    return new URL(value).origin;
+    const url = new URL(value);
+
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return undefined;
+    }
+
+    return url.origin;
   } catch {
     return undefined;
   }
 };
 
-const connectSources = Array.from(
-  new Set(
-    [
-      "'self'",
-      productionApiOrigin,
-      normalizeConnectSource(process.env.NEXT_PUBLIC_API_URL),
-      "https://www.google-analytics.com",
-      "https://region1.google-analytics.com",
-      "https://analytics.google.com",
-      "https://stats.g.doubleclick.net",
-      "https://www.googletagmanager.com",
-    ].filter((source): source is string => Boolean(source)),
-  ),
-);
+export const toWebSocketConnectSource = (value: string | undefined) => {
+  const origin = normalizeConnectSource(value);
+
+  if (!origin) return undefined;
+
+  const url = new URL(origin);
+  url.protocol = url.protocol === "http:" ? "ws:" : "wss:";
+
+  return url.origin;
+};
+
+export const createConnectSources = (apiUrl: string | undefined) => {
+  const apiOrigins = [productionApiOrigin, normalizeConnectSource(apiUrl)].filter(
+    (source): source is string => Boolean(source),
+  );
+
+  return Array.from(
+    new Set(
+      [
+        "'self'",
+        ...apiOrigins.flatMap(origin => [origin, toWebSocketConnectSource(origin)]),
+        "https://www.google-analytics.com",
+        "https://region1.google-analytics.com",
+        "https://analytics.google.com",
+        "https://stats.g.doubleclick.net",
+        "https://www.googletagmanager.com",
+      ].filter((source): source is string => Boolean(source)),
+    ),
+  );
+};
+
+const connectSources = createConnectSources(process.env.NEXT_PUBLIC_API_URL);
 
 const contentSecurityPolicy = `connect-src ${connectSources.join(" ")};`;
 
@@ -52,6 +76,14 @@ const nextConfig: NextConfig = {
 
   // 모노레포 루트를 명시해 workspace package 참조와 lockfile 탐지를 안정화한다.
   outputFileTracingRoot: monorepoRoot,
+  transpilePackages: ["@vscoke/poke-lounge-battle"],
+  webpack(config) {
+    config.resolve.alias["@vscoke/poke-lounge-battle"] = path.join(
+      monorepoRoot,
+      "packages/poke-lounge-battle/src/browser.ts",
+    );
+    return config;
+  },
 
   // 외부 이미지 도메인 허용 설정 (next/image 컴포넌트용)
   images: {

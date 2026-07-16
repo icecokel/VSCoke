@@ -1,6 +1,6 @@
 # Game Score Policy
 
-확인 기준일: 2026-07-11
+확인 기준일: 2026-07-16
 
 이 문서는 `POST /game/result`로 저장되는 공개 랭킹 점수의 서버 검증 기준을 정리한다. 현재 정책의 source of truth는 `apps/api/src/game/game-score-policy.ts`다.
 
@@ -47,7 +47,9 @@
 5. Web과 API가 공유하는 `@vscoke/poke-lounge-battle` 결정론 엔진만 state를 전진시킨다. 클라이언트 winner, score, elapsed time, terminal 주장은 입력으로 받지 않는다.
 6. 엔진 terminal에서 승자는 100점, 패자는 50점으로 서버가 확정한다. 두 verified history와 match/action receipt는 같은 PostgreSQL 트랜잭션에서 발행된다.
 
-인증되지 않은 참가자, 세 번째 이상 참가자, 기존 multi-player tournament, solo play는 이 정확한 2-seat 경쟁 모델 밖이다. 해당 흐름은 casual client-asserted unranked이며 저장·공유는 가능해도 공개 Poke Lounge 랭킹의 근거가 아니다. server room 경쟁 결과를 일반 `POST /game/result`나 casual `POST /poke-lounge/rooms/:roomCode/result`로 제출해서는 안 된다.
+정확히 2명의 `ranked-head-to-head`만 위 verified 점수를 발행한다. 3~6인 server tournament는 여러 2인 match를 순차 진행한다. 두 인증 좌석이 준비된 `tournament-unranked` match는 서버가 action과 terminal을 권위 있게 확정하고 bracket을 전진시키지만 `game_history`와 공개 랭킹 점수를 만들지 않는다. authority가 없는 casual match는 `/poke-lounge/rooms/:roomCode/result`로 전진하며 역시 unranked다. 같은 active match에서 authority action과 casual result를 함께 제출해서는 안 된다.
+
+인증되지 않은 참가자, casual tournament와 solo play도 client-asserted unranked이며 저장·공유는 가능해도 공개 Poke Lounge 랭킹의 근거가 아니다. server authority 결과를 일반 `POST /game/result`나 casual `/result`로 중복 제출해서는 안 된다.
 
 Poke Lounge 랭킹과 등수 쿼리는 각 사용자 최고 점수를 고르는 window 또는 집계 안에서 먼저 `resultTrust = 'verified-room'`을 적용한다. 따라서 더 높은 `client-asserted` 점수가 같은 사용자에게 있어도 최고 점수나 등수에 영향을 주지 않는다.
 
@@ -116,4 +118,4 @@ WHERE p.game_type IS NULL
 
 ## 한계
 
-일반 `POST /game/result`의 범위/속도 정책은 client-asserted 입력에 대한 1차 plausibility 방어선이며 경쟁 증명이 아니다. Poke Lounge verified ranking은 위 2-seat 서버 엔진 경로에서만 생성된다. 현재 경쟁 모델은 정확히 두 명만 지원하고, 익명·추가 참가자·multi tournament·solo는 의도적으로 unranked다.
+일반 `POST /game/result`의 범위/속도 정책은 client-asserted 입력에 대한 1차 plausibility 방어선이며 경쟁 증명이 아니다. Poke Lounge verified ranking은 정확히 두 명의 `ranked-head-to-head` 서버 엔진 경로에서만 생성된다. 다인 tournament는 서버 권위 match를 사용할 수 있어도 의도적으로 unranked이며, 익명·casual tournament·solo도 공개 랭킹에서 제외한다.

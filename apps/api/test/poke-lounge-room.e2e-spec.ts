@@ -324,6 +324,119 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
     expect(JSON.stringify(error)).not.toContain('wrong-session');
   });
 
+  it('admits five sequential players before the fixed preparation deadline and supports tournament reconnect', async () => {
+    const created = await createRoom(20, 0);
+    const joinedSecond = await request(httpServer)
+      .post(`/poke-lounge/rooms/${created.roomCode}/join`)
+      .set(commandHeaders(21, created.revision))
+      .send({
+        playerId: 'player-b',
+        sessionId: 'session-b',
+        nowMs: 10,
+      })
+      .expect(201);
+    const joinedSecondRoom = joinedSecond.body as PokeLoungePublicRoomState;
+    const readyHost = await request(httpServer)
+      .post(`/poke-lounge/rooms/${created.roomCode}/ready`)
+      .set(commandHeaders(22, joinedSecondRoom.revision))
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-a',
+        ready: true,
+        nowMs: 100,
+      })
+      .expect(201);
+    const readyHostRoom = readyHost.body as PokeLoungePublicRoomState;
+    const started = await request(httpServer)
+      .post(`/poke-lounge/rooms/${created.roomCode}/ready`)
+      .set(commandHeaders(23, readyHostRoom.revision))
+      .send({
+        playerId: 'player-b',
+        sessionId: 'session-b',
+        ready: true,
+        nowMs: 200,
+      })
+      .expect(201);
+    const startedRoom = started.body as PokeLoungePublicRoomState;
+
+    expect(startedRoom).toMatchObject({
+      status: 'round-started',
+      round: { startedAtMs: 200, endsAtMs: 1200 },
+    });
+
+    let revision = startedRoom.revision;
+    for (const [index, suffix] of ['c', 'd', 'e'].entries()) {
+      const joined = await request(httpServer)
+        .post(`/poke-lounge/rooms/${created.roomCode}/join`)
+        .set(commandHeaders(24 + index * 2, revision))
+        .send({
+          playerId: `player-${suffix}`,
+          sessionId: `session-${suffix}`,
+          nowMs: 300 + index * 100,
+        })
+        .expect(201);
+      const joinedRoom = joined.body as PokeLoungePublicRoomState;
+      expect(joinedRoom).toMatchObject({
+        status: 'round-started',
+        round: { startedAtMs: 200, endsAtMs: 1200 },
+      });
+      revision = joinedRoom.revision;
+
+      const ready = await request(httpServer)
+        .post(`/poke-lounge/rooms/${created.roomCode}/ready`)
+        .set(commandHeaders(25 + index * 2, revision))
+        .send({
+          playerId: `player-${suffix}`,
+          sessionId: `session-${suffix}`,
+          ready: true,
+          nowMs: 350 + index * 100,
+        })
+        .expect(201);
+      const readyRoom = ready.body as PokeLoungePublicRoomState;
+      expect(readyRoom.round).toMatchObject({
+        startedAtMs: 200,
+        endsAtMs: 1200,
+      });
+      revision = readyRoom.revision;
+    }
+
+    const tournamentResponse = await request(httpServer)
+      .get(`/poke-lounge/rooms/${created.roomCode}`)
+      .query({ nowMs: 1200 })
+      .expect(200);
+    const tournament = tournamentResponse.body as PokeLoungePublicRoomState;
+    expect(tournament).toMatchObject({
+      status: 'tournament',
+      revision: revision + 1,
+      tournament: {
+        activeMatchId: 'game-round-1-bracket-1-match-1',
+      },
+    });
+    expect(tournament.tournament.bracket?.participants).toHaveLength(5);
+
+    const rejoined = await request(httpServer)
+      .post(`/poke-lounge/rooms/${created.roomCode}/join`)
+      .set(commandHeaders(30, tournament.revision))
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-a',
+        nowMs: 1201,
+      })
+      .expect(201);
+    const rejoinedRoom = rejoined.body as PokeLoungePublicRoomState;
+    expect(rejoinedRoom).toMatchObject({ status: 'tournament' });
+
+    await request(httpServer)
+      .post(`/poke-lounge/rooms/${created.roomCode}/join`)
+      .set(commandHeaders(31, rejoinedRoom.revision))
+      .send({
+        playerId: 'player-f',
+        sessionId: 'session-f',
+        nowMs: 1202,
+      })
+      .expect(400);
+  });
+
   it('persists a room after closing and recreating the Nest application', async () => {
     const created = await createRoom(1);
 

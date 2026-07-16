@@ -182,6 +182,7 @@ export function PokeLoungeGame() {
     setTouchGameDevice(
       detectTouchGameDevice({
         maxTouchPoints: navigator.maxTouchPoints ?? 0,
+        coarsePointer: window.matchMedia?.("(pointer: coarse)").matches ?? false,
         platform: navigator.platform ?? "",
         userAgent: navigator.userAgent ?? "",
       }),

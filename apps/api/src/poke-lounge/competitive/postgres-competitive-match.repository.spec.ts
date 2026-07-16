@@ -1,5 +1,8 @@
 import type { DataSource, EntityManager } from 'typeorm';
-import { createInitialBattleState } from '@vscoke/poke-lounge-battle';
+import {
+  createInitialBattleState,
+  createTournamentBracketState,
+} from '@vscoke/poke-lounge-battle';
 import { PostgresCompetitiveMatchRepository } from './postgres-competitive-match.repository';
 
 type SeatRow = {
@@ -16,12 +19,12 @@ type ScriptedQueryBuilder = {
 };
 
 describe('PostgresCompetitiveMatchRepository', () => {
-  it('locks the room and stores the second seat and assignment in one transaction', async () => {
+  it('locks the activated room and stores a late second seat and assignment in one transaction', async () => {
     const calls: string[] = [];
     const room = {
       id: 'room-id',
       roomCode: 'ROOM01',
-      state: roomState(),
+      state: activatedRoomState(),
       revision: 7,
       expiresAt: new Date('2026-07-11T01:00:00.000Z'),
     };
@@ -84,6 +87,7 @@ describe('PostgresCompetitiveMatchRepository', () => {
     expect(seatRepository.save).toHaveBeenCalledTimes(1);
     expect(matchRepository.save).toHaveBeenCalledTimes(1);
     expect(roomRepository.save).toHaveBeenCalledTimes(1);
+    expect(room.state.tournament.activeMatchAuthority).toBe('server');
     expect(calls.indexOf('seat-save')).toBeLessThan(
       calls.indexOf('match-save'),
     );
@@ -131,7 +135,7 @@ describe('PostgresCompetitiveMatchRepository', () => {
           {
             id: 'room-id',
             roomCode: 'ROOM01',
-            state: roomState(['player-a', 'player-b', 'player-c']),
+            state: activatedRoomState(['player-a', 'player-b', 'player-c']),
           },
           calls,
           true,
@@ -188,7 +192,7 @@ describe('PostgresCompetitiveMatchRepository', () => {
               {
                 id: 'room-id',
                 roomCode: 'ROOM01',
-                state: roomState(['player-a', 'player-b', 'player-c']),
+                state: activatedRoomState(['player-a', 'player-b', 'player-c']),
               },
               calls,
               true,
@@ -312,8 +316,43 @@ function roomState(playerIds = ['player-a', 'player-b']) {
       startedAtMs: null,
       endsAtMs: null,
     },
-    tournament: { matches: [], cumulativeScores: {} },
+    tournament: {
+      version: 2,
+      bracket: null,
+      activeMatchId: null,
+      activeMatchAuthority: null,
+      cumulativeScores: {},
+    },
     finalStandings: [],
+  };
+}
+
+function activatedRoomState(playerIds = ['player-a', 'player-b']) {
+  const room = roomState(playerIds);
+  const bracket = createTournamentBracketState(
+    room.participants.map(({ playerId, displayName }) => ({
+      playerId,
+      displayName,
+    })),
+    room.round.index,
+  );
+
+  return {
+    ...room,
+    status: 'tournament' as const,
+    round: {
+      ...room.round,
+      phase: 'tournament' as const,
+      startedAtMs: 0,
+      endsAtMs: 1000,
+    },
+    tournament: {
+      version: 2 as const,
+      bracket,
+      activeMatchId: bracket.currentRound!.matches[0].matchId,
+      activeMatchAuthority: 'casual' as const,
+      cumulativeScores: {},
+    },
   };
 }
 

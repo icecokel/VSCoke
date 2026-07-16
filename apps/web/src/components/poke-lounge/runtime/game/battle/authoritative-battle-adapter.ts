@@ -59,6 +59,7 @@ export function isLegalAuthoritativeAction(
 export function toAuthoritativeBattleState(
   projection: CompetitiveProjection,
   ownPlayerId: string,
+  returnToWorld?: BattleScreenState["returnToWorld"],
 ): BattleScreenState {
   const ownPlayer = projection.currentState.playersById[ownPlayerId];
   const opponentId = projection.playerIds.find(playerId => playerId !== ownPlayerId);
@@ -95,6 +96,7 @@ export function toAuthoritativeBattleState(
     selectedMoveId: null,
     tournamentMatchId: projection.matchId,
     result,
+    ...(returnToWorld ? { returnToWorld } : {}),
   };
 }
 

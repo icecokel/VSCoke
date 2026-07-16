@@ -240,6 +240,82 @@ describe('CompetitiveMatchService', () => {
     expect(order).toEqual(['transaction-committed', 'event-published']);
   });
 
+  it('publishes one composite snapshot with the completed old match before the next tournament assignment', async () => {
+    const terminalEventId = '00000000-0000-4000-8000-000000000050';
+    const terminalRoomRevision = 50;
+    const completed = {
+      ...actionProjection('match-1', 'game-round-1-bracket-1-match-1'),
+      status: 'completed' as const,
+      terminalEventId,
+      terminalRoomRevision,
+      terminal: {
+        winnerPlayerId: 'player-a',
+        loserPlayerId: 'player-b',
+        reason: 'faint' as const,
+        scoreByPlayerId: { 'player-a': 100, 'player-b': 50 },
+      },
+    };
+    const next = actionProjection('match-2', 'game-round-1-bracket-2-match-1');
+    actionRepository.submit.mockResolvedValue({
+      outcome: 'accepted',
+      response: completed,
+      room: {
+        ...roomSnapshot(),
+        status: 'tournament',
+        round: {
+          ...roomSnapshot().round,
+          phase: 'tournament',
+        },
+        tournament: {
+          ...roomSnapshot().tournament,
+          activeMatchId: next.bracketMatchId,
+          activeMatchAuthority: 'server',
+        },
+        revision: terminalRoomRevision,
+        competitiveTransitions: [
+          {
+            terminalEventId,
+            terminalRoomRevision,
+            projection: completed,
+          },
+        ],
+        competitive: next,
+      },
+      committed: true,
+    } as never);
+
+    await expect(service.submitAction(actionInput())).resolves.toEqual(
+      completed,
+    );
+    expect(publisher.publish.mock.calls).toHaveLength(1);
+    expect(publisher.publish.mock.calls[0]?.[0]).toMatchObject({
+      type: 'competitive-action-committed',
+      snapshot: {
+        revision: terminalRoomRevision,
+        tournament: { activeMatchId: next.bracketMatchId },
+        competitiveTransitions: [
+          {
+            terminalEventId,
+            terminalRoomRevision,
+            projection: {
+              matchId: completed.matchId,
+              status: 'completed',
+              terminalEventId,
+              terminalRoomRevision,
+              terminal: {
+                winnerPlayerId: 'player-a',
+                loserPlayerId: 'player-b',
+                reason: 'faint',
+                scoreByPlayerId: { 'player-a': 100, 'player-b': 50 },
+              },
+            },
+          },
+        ],
+        competitive: next,
+      },
+    });
+  });
+
   it('does not publish replayed receipts or failed transactions', async () => {
     actionRepository.submit.mockResolvedValueOnce({
       outcome: 'replayed',
@@ -288,15 +364,22 @@ function actionInput() {
   };
 }
 
-function actionProjection() {
+function actionProjection(
+  matchId = 'match-1',
+  bracketMatchId = 'game-round-1-bracket-1-match-1',
+) {
   const currentState = createInitialBattleState(['player-a', 'player-b']);
   return {
-    matchId: 'match-1',
+    matchId,
+    bracketMatchId,
+    kind: 'tournament-unranked' as const,
     assignmentRevision: 1,
     rulesetVersion: COMPETITIVE_RULESET_VERSION,
     rulesetHash: COMPETITIVE_RULESET_HASH,
     currentTurn: 0,
     status: 'active' as const,
+    terminalEventId: null,
+    terminalRoomRevision: null,
     playerIds: ['player-a', 'player-b'] as [string, string],
     currentState,
     stateHash: 'a'.repeat(64),
@@ -320,7 +403,13 @@ function roomSnapshot() {
       startedAtMs: null,
       endsAtMs: null,
     },
-    tournament: { matches: [], cumulativeScores: {} },
+    tournament: {
+      version: 2,
+      bracket: null,
+      activeMatchId: null,
+      activeMatchAuthority: null,
+      cumulativeScores: {},
+    },
     finalStandings: [],
     revision: 1,
     expiresAtMs: 60_000,

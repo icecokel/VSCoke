@@ -47,6 +47,7 @@ export function toPokeLoungePublicRoomState(
 ): PokeLoungePublicRoomState {
   return {
     ...room,
+    competitiveTransitions: structuredClone(room.competitiveTransitions ?? []),
     participants: room.participants.map((participant) => ({
       playerId: participant.playerId,
       displayName: participant.displayName,

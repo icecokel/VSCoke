@@ -16,6 +16,7 @@ export interface TournamentMatchResultRoomPayload {
   hostPlayerId?: string;
   matchId: string;
   winnerPlayerId: string;
+  reason: "faint" | "timeout" | "forfeit" | "run" | "capture";
 }
 
 export interface TournamentCompletedRoomPayload {
@@ -126,8 +127,15 @@ function normalizeTournamentMatchResultPayload(
   const hostPlayerId = normalizeOptionalId(payload.hostPlayerId);
   const matchId = normalizeId(payload.matchId);
   const winnerPlayerId = normalizeId(payload.winnerPlayerId);
+  const reason = normalizeMatchResultReason(payload.reason);
 
-  if (roundIndex === null || hostPlayerId === null || matchId === null || winnerPlayerId === null) {
+  if (
+    roundIndex === null ||
+    hostPlayerId === null ||
+    matchId === null ||
+    winnerPlayerId === null ||
+    reason === null
+  ) {
     return null;
   }
 
@@ -136,6 +144,7 @@ function normalizeTournamentMatchResultPayload(
     ...(hostPlayerId ? { hostPlayerId } : {}),
     matchId,
     winnerPlayerId,
+    reason,
   };
 }
 
@@ -298,6 +307,18 @@ function normalizeInteger(value: unknown, min: number): number | null {
   }
 
   return Math.max(min, Math.trunc(value));
+}
+
+function normalizeMatchResultReason(
+  value: unknown,
+): TournamentMatchResultRoomPayload["reason"] | null {
+  return value === "faint" ||
+    value === "timeout" ||
+    value === "forfeit" ||
+    value === "run" ||
+    value === "capture"
+    ? value
+    : null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

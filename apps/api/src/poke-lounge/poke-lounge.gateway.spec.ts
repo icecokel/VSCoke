@@ -54,6 +54,7 @@ describe('PokeLoungeGateway', () => {
       'ROOM01',
       'player-1',
       'session-1',
+      7,
     );
     expect(first.join).toHaveBeenCalledWith('room:ROOM01');
     expect(second.join).toHaveBeenCalledWith('room:ROOM01');
@@ -64,6 +65,25 @@ describe('PokeLoungeGateway', () => {
       room: publicRoom(),
     });
     expect(JSON.stringify(first.emit.mock.calls)).not.toContain('sessionId');
+  });
+
+  it('accepts an initial subscription without a recovery cursor', async () => {
+    const client = socket();
+
+    await gateway.subscribe(client.value, {
+      roomCode: 'ROOM01',
+      playerId: 'player-1',
+      sessionId: 'session-1',
+    });
+
+    expect(roomService.authorizeSubscription).toHaveBeenNthCalledWith(
+      1,
+      'ROOM01',
+      'player-1',
+      'session-1',
+      undefined,
+    );
+    expect(client.join).toHaveBeenCalledWith('room:ROOM01');
   });
 
   it('leaves a previous Poke Lounge room before joining the authorized room', async () => {
@@ -236,10 +256,17 @@ function publicRoom(
       startedAtMs: null,
       endsAtMs: null,
     },
-    tournament: { matches: [], cumulativeScores: {} },
+    tournament: {
+      version: 2,
+      bracket: null,
+      activeMatchId: null,
+      activeMatchAuthority: null,
+      cumulativeScores: {},
+    },
     finalStandings: [],
     revision: 7,
     expiresAtMs: 30 * 60_000,
+    competitiveTransitions: [],
     ...overrides,
   };
 }

@@ -5,6 +5,10 @@ import { BootScene } from "./scenes/BootScene";
 import { BattleScene, type BattleE2eScenario, type BattleE2eSnapshot } from "./scenes/BattleScene";
 import { WorldScene, type WorldE2eSnapshot } from "./scenes/WorldScene";
 import type { MultiplayerRoom } from "./network/localPreviewRoom";
+import {
+  getServerRoomTransportDiagnosticsForE2e,
+  type ServerRoomTransportDiagnostics,
+} from "./network/serverRoom";
 import { getDefaultGameStateStore } from "./state/defaultGameStateStore";
 import type { GameState, GameStateStore, LocalPlayerState } from "./state/gameStateStore";
 import { isDevelopmentRuntime } from "../runtimeEnvironment";
@@ -50,6 +54,7 @@ export interface PokeLoungeE2eController {
     roomId: string | null;
     sessionId: string | null;
   };
+  getRoomTransportDiagnostics?(): ServerRoomTransportDiagnostics | null;
   completeTournamentForTest(): void;
 }
 
@@ -162,6 +167,10 @@ function shouldExposePokeLoungeE2eGlobals(): boolean {
     hostname === "::1";
 
   return isLocalHost && new URLSearchParams(search).has("e2eBattle");
+}
+
+function hasPokeLoungeE2eQuery(): boolean {
+  return typeof window !== "undefined" && new URLSearchParams(window.location.search).has("e2e");
 }
 
 function createPokeLoungeE2eController(
@@ -339,6 +348,13 @@ function createPokeLoungeE2eController(
         sessionId: multiplayerRoom?.sessionId ?? gameStateStore.getState().session.sessionId,
       };
     },
+    ...(hasPokeLoungeE2eQuery()
+      ? {
+          getRoomTransportDiagnostics() {
+            return getServerRoomTransportDiagnosticsForE2e(multiplayerRoom);
+          },
+        }
+      : {}),
     completeTournamentForTest() {
       const state = gameStateStore.getState();
       const playerId = state.currentPlayerId;

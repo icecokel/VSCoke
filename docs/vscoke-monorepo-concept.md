@@ -1,6 +1,6 @@
 # VSCoke Monorepo Concept
 
-확인 기준일: 2026-07-11
+확인 기준일: 2026-07-16
 
 이 문서는 현재 구현된 VSCoke monorepo의 구조, 실행 방식, 테스트, 배포 흐름을 한눈에 보기 위한 기준 문서다. 프론트엔드, 백엔드, 테스트, hook 작업을 시작할 때는 이 문서를 먼저 확인한다.
 
@@ -26,7 +26,7 @@ vscoke/
 └─ pnpm-workspace.yaml
 ```
 
-`pnpm-workspace.yaml`은 `apps/*`, `packages/*`를 workspace로 묶는다. `@vscoke/poke-lounge-battle`은 Web과 API가 함께 사용하는 결정론적 경쟁 전투 규칙, canonical state, PRNG와 turn resolver를 제공한다. `packages/api-types`, `packages/config`는 `.gitkeep`만 있는 자리 표시자다.
+`pnpm-workspace.yaml`은 `apps/*`, `packages/*`를 workspace로 묶는다. `@vscoke/poke-lounge-battle`은 Web과 API가 함께 사용하는 결정론적 경쟁 전투 규칙, canonical state, PRNG, turn resolver와 2~6인 토너먼트 bracket/bye 규칙을 제공한다. `packages/api-types`, `packages/config`는 `.gitkeep`만 있는 자리 표시자다.
 
 ## 앱 책임
 
@@ -147,9 +147,15 @@ room mutation + X-Idempotency-Key + If-Match-Revision
 
 Web은 REST GET으로 room을 초기화하고 Socket.IO committed snapshot을 적용한다. 연결 장애, 재연결, revision conflict에서는 REST GET을 복구 경로로 사용한다. 750 ms 상시 polling이나 API 프로세스 메모리 Map은 현재 구조가 아니다.
 
-경쟁 mode는 서로 다른 인증 계정 두 개가 각각 하나의 좌석을 바인딩해야 시작한다. 각 계정은 자기 action만 제출할 수 있고 서버는 `@vscoke/poke-lounge-battle`의 서버 seed, canonical state와 turn을 전진시킨다. terminal 시 서버가 승자 100점, 패자 50점을 확정하고 durable action receipt, match 종료, `resultTrust = 'verified-room'`, 서버 생성 `sourceKey` 이력을 한 트랜잭션으로 기록한다. 공개 Poke Lounge 랭킹은 verified row만 사용한다.
+authority terminal은 한 public snapshot 안에서 완료된 이전 match와 현재 assignment를 분리한다. `competitiveTransitions`는 terminal event ID/revision을 가진 완료 projection만 담고, optional `competitive`는 현재 assignment만 담는다. 서버는 terminal metadata, bracket 전진, 다음 assignment와 receipt를 한 transaction으로 commit한 뒤 composite snapshot 하나를 발행한다. `competitive`가 없을 때는 필드를 생략하며 `null`로 만들지 않는다.
 
-익명 참가자, 추가 참가자, 기존 multi-player tournament와 solo flow는 casual client-asserted unranked 경로다. 일반 `POST /game/result`와 casual room `/result`는 저장·공유가 가능하지만 server room의 경쟁 결과 권위가 아니며 공개 Poke Lounge 랭킹에 반영되지 않는다.
+Web은 current assignment cache, 최근 terminal transition cache, room cursor, terminal cursor를 별도로 유지한다. terminal transition은 event ID/match ID로 dedup하여 current assignment보다 먼저 적용하고, 성공한 뒤에만 terminal cursor를 전진시킨다. 같은 페이지의 Socket reconnect와 mismatch recovery는 이 cursor를 `afterRevision`으로 전송해 순서대로 복구한다. full reload는 initial room revision을 새 baseline으로 사용하며 persisted cursor를 복원하지 않는다. CSP `connect-src`는 허용한 HTTP(S) API origin과 대응 WS(S) origin을 함께 허용해 Socket.IO WebSocket transport를 지원한다.
+
+서버 room의 `tournament.version = 2` snapshot은 공통 package가 만든 bracket, bye, stable `activeMatchId`와 match authority를 함께 보관한다. 참가자 seed는 join 순서와 player ID로 서버에서 확정하며 Web은 참가자 배열로 대진을 다시 만들지 않는다. 5인 첫 bracket은 `seed 4 vs 5`와 `seed 1/3/2 bye`로 시작한다. 여러 2인 경기는 동시에 열지 않고 서버가 한 match씩 순차 활성화한다.
+
+서로 다른 인증 계정이 좌석을 바인딩한 active match에서는 각 계정이 자기 action만 제출할 수 있고 서버는 `@vscoke/poke-lounge-battle`의 서버 seed, canonical state와 turn을 전진시킨다. 정확히 2명인 `ranked-head-to-head` terminal은 승자 100점, 패자 50점의 `verified-room` 이력을 한 트랜잭션으로 기록한다. 3~6인 bracket의 `tournament-unranked` authority match는 같은 결정론적 전투와 durable receipt를 사용하지만 bracket만 전진시키고 공개 랭킹 이력을 만들지 않는다.
+
+authority assignment가 없는 casual active match는 `POST /poke-lounge/rooms/:roomCode/result`로 진행한다. 이 결과와 solo/일반 `POST /game/result`는 client-asserted unranked이며 공개 Poke Lounge 랭킹에 반영되지 않는다. Web은 `activeMatchAuthority`에 따라 authority action과 casual result transport를 배타적으로 선택한다.
 
 Phaser `WorldScene`은 orchestration 경계로 남고 HUD, interactions, tournament, encounters를 `world-scene-*.ts` collaborator로 분리했다. 상세 계약과 구현 결과는 [Poke Lounge Hardening Report](./poke-lounge-hardening-report.md)를 따른다.
 
@@ -171,23 +177,24 @@ pnpm install
 
 주요 루트 스크립트:
 
-| 목적              | 명령                      |
-| ----------------- | ------------------------- |
-| 웹 개발           | `pnpm dev:web`            |
-| API 개발          | `pnpm dev:api`            |
-| 전체 빌드         | `pnpm build`              |
-| 웹 빌드           | `pnpm build:web`          |
-| API 빌드          | `pnpm build:api`          |
-| 전체 lint         | `pnpm lint`               |
-| 웹 typecheck      | `pnpm type:check:web`     |
-| API unit test     | `pnpm test:api`           |
-| API E2E test      | `pnpm test:api:e2e`       |
-| OpenAPI 생성      | `pnpm generate:types`     |
-| API 계약 확인     | `pnpm check:api-contract` |
-| 웹 E2E smoke      | `pnpm e2e:smoke`          |
-| 웹 E2E 전체       | `pnpm e2e`                |
-| unused code check | `pnpm knip`               |
-| 공개 API health   | `pnpm smoke:api:remote`   |
+| 목적              | 명령                                        |
+| ----------------- | ------------------------------------------- |
+| 웹 개발           | `pnpm dev:web`                              |
+| API 개발          | `pnpm dev:api`                              |
+| 전체 빌드         | `pnpm build`                                |
+| 웹 빌드           | `pnpm build:web`                            |
+| API 빌드          | `pnpm build:api`                            |
+| 전체 lint         | `pnpm lint`                                 |
+| 웹 typecheck      | `pnpm type:check:web`                       |
+| API unit test     | `pnpm test:api`                             |
+| API E2E test      | `pnpm test:api:e2e`                         |
+| OpenAPI 생성      | `pnpm generate:types`                       |
+| API 계약 확인     | `pnpm check:api-contract`                   |
+| 웹 E2E smoke      | `pnpm e2e:smoke`                            |
+| 웹 E2E 전체       | `pnpm e2e`                                  |
+| 5인 통합 E2E      | `pnpm --filter @vscoke/web e2e:integration` |
+| unused code check | `pnpm knip`                                 |
+| 공개 API health   | `pnpm smoke:api:remote`                     |
 
 API와 웹을 동시에 로컬에서 볼 때는 터미널을 나눈다.
 
@@ -231,7 +238,17 @@ PR 자동 검증은 `.github/workflows/pull-request-check.yml`이 담당한다.
 | API | PostgreSQL 16 service, test migration, API lint/unit/integration/E2E, build       |
 | Web | local OpenAPI contract diff, typecheck, lint, knip, build, focused Playwright E2E |
 
-PR의 focused E2E는 현재 `i18n-integrity`, `hobby-games`, `keyboard-only`를 Chromium에서 실행한다. 전체 Playwright 회귀는 로컬에서 필요에 따라 `pnpm e2e` 또는 `pnpm e2e:cross-browser`로 실행한다.
+PR의 focused E2E는 `i18n-integrity`, `hobby-games`, `keyboard-only`, `poke-lounge-multiplayer`를 Chromium에서 실행한다. Chromium/WebKit mobile의 Poke Lounge spec 수집 수가 각각 정확히 1건인지 별도 preflight로 확인한다. 실제 API, PostgreSQL, Socket.IO와 Desktop Chromium/Firefox/WebKit, Mobile Chromium/WebKit의 5개 context를 함께 여는 통합 E2E는 격리 `_test` DB가 필요한 로컬 release gate다.
+
+```bash
+PLAYWRIGHT_WORKERS=1 \
+PLAYWRIGHT_ENABLE_CROSS_BROWSER=1 \
+TEST_DATABASE_URL="$TEST_DATABASE_URL" \
+pnpm --filter @vscoke/web e2e:integration -- \
+  tests/e2e/poke-lounge-five-player-tournament.spec.ts
+```
+
+전용 runner는 migration을 적용하고 테스트 전용 Nest TestingModule에서만 다섯 bearer identity를 제공한다. room/action REST와 Socket.IO는 mock하지 않으며 `/api/auth/session`만 context별 Web session 경계로 대체한다. 결과와 환경 probe는 `output/playwright/poke-lounge-five-player/<run-id>/`에 기록하며 runner/API 로그에서는 테스트 DB URL·비밀번호와 E2E token/session을 제거한다.
 
 ## 배포 구조
 

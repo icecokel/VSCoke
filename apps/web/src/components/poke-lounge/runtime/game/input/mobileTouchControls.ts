@@ -24,6 +24,7 @@ const CONTROL_BUTTONS: ReadonlyArray<{
 
 export interface TouchGameDeviceEnvironment {
   maxTouchPoints: number;
+  coarsePointer: boolean;
   platform: string;
   userAgent: string;
 }
@@ -33,22 +34,17 @@ export interface MobileTouchControlsOptions {
 }
 
 export function detectTouchGameDevice(environment: TouchGameDeviceEnvironment): boolean {
-  if (environment.maxTouchPoints <= 0) {
-    return false;
-  }
-
   const userAgent = environment.userAgent;
   const platform = environment.platform;
-  const isAppleTouchDevice =
+  const isAppleMobilePlatform =
     /\b(iPad|iPhone|iPod)\b/i.test(userAgent) ||
-    (platform === "MacIntel" &&
-      environment.maxTouchPoints > 1 &&
-      /Mobile\/|Safari\//i.test(userAgent));
+    /\b(iPad|iPhone|iPod)\b/i.test(platform) ||
+    (platform === "MacIntel" && /Mobile\//i.test(userAgent));
+  const isMobilePlatform =
+    isAppleMobilePlatform ||
+    /Android|Windows Phone|webOS|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
 
-  return (
-    isAppleTouchDevice ||
-    /Android|Windows Phone|webOS|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)
-  );
+  return isMobilePlatform && (environment.maxTouchPoints > 0 || environment.coarsePointer);
 }
 
 export function renderMobileTouchControls(
@@ -148,6 +144,7 @@ export function renderMobileTouchControls(
 function readTouchGameDeviceEnvironment(): TouchGameDeviceEnvironment {
   return {
     maxTouchPoints: navigator.maxTouchPoints ?? 0,
+    coarsePointer: window.matchMedia?.("(pointer: coarse)").matches ?? false,
     platform: navigator.platform ?? "",
     userAgent: navigator.userAgent ?? "",
   };

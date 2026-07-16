@@ -76,7 +76,7 @@ export function createTournamentStartedAuthorityPayload({
     return null;
   }
 
-  const tournament = createTournamentState(roster.participants);
+  const tournament = createTournamentState(roster.participants, roundIndex);
 
   return normalizeTournamentRoomPayload("TOURNAMENT_STARTED", {
     roundIndex,
@@ -111,11 +111,13 @@ export function createTournamentMatchResultAuthorityPayload({
   session,
   matchId,
   winnerPlayerId,
+  reason,
 }: {
   hostPlayerId: string;
   session: TournamentSession;
   matchId: string;
   winnerPlayerId: string;
+  reason: TournamentMatchResultRoomPayload["reason"];
 }): TournamentMatchResultRoomPayload | null {
   const normalizedHostPlayerId = normalizeId(hostPlayerId);
   const normalizedWinnerPlayerId = normalizeId(winnerPlayerId);
@@ -136,6 +138,7 @@ export function createTournamentMatchResultAuthorityPayload({
     hostPlayerId: normalizedHostPlayerId,
     matchId: match.matchId,
     winnerPlayerId: normalizedWinnerPlayerId,
+    reason,
   });
 }
 

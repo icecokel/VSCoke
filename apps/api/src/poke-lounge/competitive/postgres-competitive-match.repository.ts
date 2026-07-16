@@ -47,7 +47,10 @@ export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepos
           'match.currentState',
           'match.terminalResult',
         ])
-        .where('match.roomId = :roomId', { roomId: room.id })
+        .where('match.roomId = :roomId AND match.status IN (:...statuses)', {
+          roomId: room.id,
+          statuses: ['pending', 'active'],
+        })
         .getOne();
       const requestedParticipant = room.state.participants.find(
         (participant) => participant.sessionId === input.sessionId,
@@ -55,12 +58,16 @@ export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepos
       const existingAssignment = existingMatch
         ? assignmentFromEntity(existingMatch)
         : null;
+      const activeAssignment =
+        room.state.status === 'waiting' || room.state.status === 'round-started'
+          ? null
+          : existingAssignment;
 
       if (
-        existingAssignment &&
+        activeAssignment &&
         requestedParticipant?.role === 'participant' &&
         requestedParticipant.connected &&
-        !isCompetitiveAssignmentMember(existingAssignment, {
+        !isCompetitiveAssignmentMember(activeAssignment, {
           playerId: requestedParticipant.playerId,
           accountId: input.accountId,
         })
@@ -80,14 +87,14 @@ export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepos
         return plan;
       }
 
-      if (existingAssignment) {
+      if (activeAssignment) {
         if (plan.outcome === 'bind') {
           await saveSeat(seatRepository, room.id, plan.seat);
         }
 
         return {
           outcome: 'already-assigned',
-          assignment: existingAssignment,
+          assignment: activeAssignment,
           eligible: true,
           committed: false,
           room: snapshotFromEntity(room),
@@ -112,10 +119,13 @@ export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepos
         roomCode: room.roomCode,
         assignmentRevision: 1,
         players: plan.assignmentPlayers,
+        bracketMatchId: plan.assignmentBracketMatchId!,
+        kind: plan.assignmentKind!,
       });
       await matchRepository.save(matchRepository.create(assignment));
       room.revision += 1;
       room.state.updatedAtMs = Date.now();
+      room.state.tournament.activeMatchAuthority = 'server';
       await manager.getRepository(PokeLoungeRoom).save(room);
 
       return {
@@ -162,6 +172,8 @@ function assignmentFromEntity(
     roomId: match.roomId,
     roomCode: match.roomCode,
     matchId: match.matchId,
+    bracketMatchId: match.bracketMatchId,
+    kind: match.kind,
     assignmentRevision: match.assignmentRevision,
     playerAccounts: structuredClone(match.playerAccounts),
     rulesetVersion: match.rulesetVersion,
@@ -173,6 +185,8 @@ function assignmentFromEntity(
     currentStateHash: match.currentStateHash,
     currentTurn: match.currentTurn,
     status: match.status,
+    terminalEventId: match.terminalEventId ?? null,
+    terminalRoomRevision: match.terminalRoomRevision ?? null,
     terminalResult: structuredClone(match.terminalResult),
     completedAt: match.completedAt,
   };

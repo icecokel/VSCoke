@@ -113,5 +113,24 @@ jobs:
       - name: Build web
         run: pnpm build:web
 
+      - name: Verify Poke Lounge integration environment isolation
+        run: node --test apps/web/scripts/playwright-integration-environment.test.mjs
+
+      - name: Verify Poke Lounge mobile test collection
+        run: |
+          chromium_collection="$(pnpm --dir apps/web exec playwright test tests/e2e/poke-lounge-mobile.spec.ts --project=chromium-mobile-md --list)"
+          printf '%s\n' "$chromium_collection"
+          printf '%s\n' "$chromium_collection" | grep -Fq 'Total: 1 test in 1 file'
+
+          webkit_collection="$(PLAYWRIGHT_ENABLE_CROSS_BROWSER=1 pnpm --dir apps/web exec playwright test tests/e2e/poke-lounge-mobile.spec.ts --project=webkit-mobile-lg --list)"
+          printf '%s\n' "$webkit_collection"
+          printf '%s\n' "$webkit_collection" | grep -Fq 'Total: 1 test in 1 file'
+
+      - name: Verify Poke Lounge five-browser integration test collection
+        run: |
+          integration_collection="$(PLAYWRIGHT_ENABLE_CROSS_BROWSER=1 pnpm --dir apps/web exec playwright test tests/e2e/poke-lounge-five-player-tournament.spec.ts --project=poke-lounge-five-browser-integration --list)"
+          printf '%s\n' "$integration_collection"
+          printf '%s\n' "$integration_collection" | grep -Fq 'Total: 1 test in 1 file'
+
       - name: Run focused web E2E tests
-        run: pnpm --filter @vscoke/web e2e -- tests/e2e/i18n-integrity.spec.ts tests/e2e/hobby-games.spec.ts tests/e2e/keyboard-only.spec.ts --project=chromium
+        run: pnpm --filter @vscoke/web e2e -- tests/e2e/i18n-integrity.spec.ts tests/e2e/hobby-games.spec.ts tests/e2e/keyboard-only.spec.ts tests/e2e/poke-lounge-multiplayer.spec.ts --project=chromium

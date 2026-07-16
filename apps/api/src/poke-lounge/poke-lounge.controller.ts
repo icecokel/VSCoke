@@ -95,10 +95,14 @@ export class PokeLoungeController {
     @Query('nowMs') nowMs?: string,
     @Query('afterRevision') afterRevision?: string,
   ) {
-    parseOptionalRevision(afterRevision);
+    const parsedAfterRevision = parseOptionalRevision(afterRevision);
 
     return toPokeLoungePublicRoomState(
-      await this.roomService.getRoom(roomCode, parseOptionalNumber(nowMs)),
+      await this.roomService.getRoom(
+        roomCode,
+        parseOptionalNumber(nowMs),
+        parsedAfterRevision,
+      ),
     );
   }
 

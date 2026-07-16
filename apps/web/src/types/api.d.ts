@@ -790,89 +790,6 @@ export interface components {
       /** @example 1720000002000 */
       updatedAtMs: number;
     };
-    PokeLoungeRoomParticipantDto: {
-      /** @example player-a */
-      playerId: string;
-      /** @example Player A */
-      displayName: string;
-      /**
-       * @example participant
-       * @enum {string}
-       */
-      role: "participant" | "spectator";
-      /** @example true */
-      ready: boolean;
-      /** @example true */
-      connected: boolean;
-      /** @example 1720000000000 */
-      joinedAtMs: number;
-      /** @example 1720000005000 */
-      leftAtMs?: number;
-    };
-    PokeLoungeRoundDto: {
-      /** @example 1 */
-      index: number;
-      /**
-       * @example waiting
-       * @enum {string}
-       */
-      phase: "waiting" | "round-started" | "tournament" | "completed";
-      /** @example 60000 */
-      durationMs: number;
-      /** @example 1720000000000 */
-      startedAtMs: Record<string, never> | null;
-      /** @example 1720000060000 */
-      endsAtMs: Record<string, never> | null;
-    };
-    PokeLoungeTournamentMatchDto: {
-      /** @example round-1-match-1 */
-      matchId: string;
-      /**
-       * @example [
-       *       "player-a",
-       *       "player-b"
-       *     ]
-       */
-      participantIds: string[];
-      /**
-       * @example pending
-       * @enum {string}
-       */
-      status: "pending" | "completed";
-      /** @example player-a */
-      winnerPlayerId?: string;
-      /** @example player-b */
-      loserPlayerId?: string;
-      /**
-       * @example faint
-       * @enum {string}
-       */
-      resultReason?: "faint" | "timeout" | "forfeit" | "run" | "capture";
-      /** @example 1720000060000 */
-      completedAtMs?: number;
-    };
-    PokeLoungeTournamentDto: {
-      matches: components["schemas"]["PokeLoungeTournamentMatchDto"][];
-      /**
-       * @example {
-       *       "player-a": 100,
-       *       "player-b": 50
-       *     }
-       */
-      cumulativeScores: {
-        [key: string]: number;
-      };
-    };
-    PokeLoungeFinalStandingDto: {
-      /** @example player-a */
-      playerId: string;
-      /** @example Player A */
-      displayName: string;
-      /** @example 1 */
-      rank: number;
-      /** @example 100 */
-      score: number;
-    };
     CompetitiveMoveStateDto: {
       moveId: string;
       pp: number;
@@ -911,17 +828,191 @@ export interface components {
     };
     CompetitiveActionResponseDto: {
       matchId: string;
+      /** @example game-round-1-bracket-1-match-1 */
+      bracketMatchId: string;
+      /** @enum {string} */
+      kind: "ranked-head-to-head" | "tournament-unranked";
       assignmentRevision: number;
       rulesetVersion: number;
       rulesetHash: string;
       currentTurn: number;
       /** @enum {string} */
       status: "pending" | "active" | "completed";
+      /** Format: uuid */
+      terminalEventId: string | null;
+      terminalRoomRevision: number | null;
       playerIds: string[];
       stateHash: string;
       currentState: components["schemas"]["CompetitiveBattleStateDto"];
       submittedPlayerIds: string[];
       terminal: components["schemas"]["CompetitiveTerminalResultDto"] | null;
+    };
+    CompetitiveTerminalTransitionDto: {
+      /** Format: uuid */
+      terminalEventId: string;
+      terminalRoomRevision: number;
+      projection: components["schemas"]["CompetitiveActionResponseDto"];
+    };
+    PokeLoungeRoomParticipantDto: {
+      /** @example player-a */
+      playerId: string;
+      /** @example Player A */
+      displayName: string;
+      /**
+       * @example participant
+       * @enum {string}
+       */
+      role: "participant" | "spectator";
+      /** @example true */
+      ready: boolean;
+      /** @example true */
+      connected: boolean;
+      /** @example 1720000000000 */
+      joinedAtMs: number;
+      /** @example 1720000005000 */
+      leftAtMs?: number;
+    };
+    PokeLoungeRoundDto: {
+      /** @example 1 */
+      index: number;
+      /**
+       * @example waiting
+       * @enum {string}
+       */
+      phase: "waiting" | "round-started" | "tournament" | "completed";
+      /** @example 60000 */
+      durationMs: number;
+      /** @example 1720000000000 */
+      startedAtMs: number | null;
+      /** @example 1720000060000 */
+      endsAtMs: number | null;
+    };
+    PokeLoungeTournamentParticipantDto: {
+      /** @example player-a */
+      playerId: string;
+      /** @example Player A */
+      displayName: string;
+      /** @example 1 */
+      seed: number;
+    };
+    PokeLoungeTournamentMatchDto: {
+      /** @example game-round-1-bracket-1-match-1 */
+      matchId: string;
+      /** @example 1 */
+      roundNumber: number;
+      /** @example 1 */
+      matchNumber: number;
+      participantA: components["schemas"]["PokeLoungeTournamentParticipantDto"];
+      participantB: components["schemas"]["PokeLoungeTournamentParticipantDto"];
+      /**
+       * @example [
+       *       "player-a",
+       *       "player-b"
+       *     ]
+       */
+      participantIds: string[];
+      /**
+       * @example ready
+       * @enum {string}
+       */
+      status: "ready" | "completed";
+      /** @example player-a */
+      winnerPlayerId: string | null;
+      /** @example player-b */
+      loserPlayerId: string | null;
+      /**
+       * @example faint
+       * @enum {string|null}
+       */
+      resultReason: "faint" | "timeout" | "forfeit" | "run" | "capture" | null;
+      /** @example 1720000060000 */
+      completedAtMs: number | null;
+    };
+    PokeLoungeTournamentByeDto: {
+      /** @example game-round-1-bracket-1-bye-1 */
+      byeId: string;
+      /** @example 1 */
+      roundNumber: number;
+      /** @example 1 */
+      slotNumber: number;
+      entrant: components["schemas"]["PokeLoungeTournamentParticipantDto"];
+    };
+    PokeLoungeTournamentRoundSlotDto: {
+      /** @enum {string} */
+      kind: "match" | "bye";
+      /** @example game-round-1-bracket-1-match-1 */
+      matchId?: string;
+      /** @example game-round-1-bracket-1-bye-1 */
+      byeId?: string;
+    };
+    PokeLoungeTournamentRoundDto: {
+      /** @example 1 */
+      roundNumber: number;
+      matches: components["schemas"]["PokeLoungeTournamentMatchDto"][];
+      byes: components["schemas"]["PokeLoungeTournamentByeDto"][];
+      slots: components["schemas"]["PokeLoungeTournamentRoundSlotDto"][];
+    };
+    PokeLoungeTournamentEliminationDto: {
+      /** @example player-b */
+      playerId: string;
+      /** @example Player B */
+      displayName: string;
+      /** @example 2 */
+      seed: number;
+      /** @example 1 */
+      roundNumber: number;
+      /** @example game-round-1-bracket-1-match-1 */
+      matchId: string;
+      /** @example 1 */
+      order: number;
+    };
+    PokeLoungeTournamentBracketDto: {
+      /**
+       * @example 1
+       * @enum {number}
+       */
+      version: 1;
+      /** @example 1 */
+      gameRoundIndex: number;
+      /** @enum {string} */
+      status: "in-progress" | "completed";
+      participants: components["schemas"]["PokeLoungeTournamentParticipantDto"][];
+      currentRound: components["schemas"]["PokeLoungeTournamentRoundDto"] | null;
+      completedRounds: components["schemas"]["PokeLoungeTournamentRoundDto"][];
+      eliminations: components["schemas"]["PokeLoungeTournamentEliminationDto"][];
+      /** @example player-a */
+      championPlayerId: string | null;
+    };
+    PokeLoungeTournamentDto: {
+      /**
+       * @example 2
+       * @enum {number}
+       */
+      version: 2;
+      bracket: components["schemas"]["PokeLoungeTournamentBracketDto"] | null;
+      /** @example game-round-1-bracket-1-match-1 */
+      activeMatchId: string | null;
+      /** @enum {string|null} */
+      activeMatchAuthority: "casual" | "server" | null;
+      /**
+       * @example {
+       *       "player-a": 100,
+       *       "player-b": 50
+       *     }
+       */
+      cumulativeScores: {
+        [key: string]: number;
+      };
+    };
+    PokeLoungeFinalStandingDto: {
+      /** @example player-a */
+      playerId: string;
+      /** @example Player A */
+      displayName: string;
+      /** @example 1 */
+      rank: number;
+      /** @example 100 */
+      score: number;
     };
     PokeLoungeRoomResponseDto: {
       /** @example ROOM01 */
@@ -931,6 +1022,11 @@ export interface components {
        * @enum {string}
        */
       status: "waiting" | "round-started" | "tournament" | "completed" | "closed";
+      /**
+       * @example legacy-room-restart-required
+       * @enum {string}
+       */
+      closeReason?: "legacy-room-restart-required";
       /** @example 1720000000000 */
       createdAtMs: number;
       /** @example 1720000001000 */
@@ -946,6 +1042,7 @@ export interface components {
       round: components["schemas"]["PokeLoungeRoundDto"];
       tournament: components["schemas"]["PokeLoungeTournamentDto"];
       finalStandings: components["schemas"]["PokeLoungeFinalStandingDto"][];
+      competitiveTransitions: components["schemas"]["CompetitiveTerminalTransitionDto"][];
       competitive?: components["schemas"]["CompetitiveActionResponseDto"];
     };
     PokeLoungeRoomConflictResponseDto: {
@@ -963,12 +1060,19 @@ export interface components {
     };
     CompetitiveAssignmentResponseDto: {
       matchId: string;
+      /** @example game-round-1-bracket-1-match-1 */
+      bracketMatchId: string;
+      /** @enum {string} */
+      kind: "ranked-head-to-head" | "tournament-unranked";
       assignmentRevision: number;
       rulesetVersion: number;
       rulesetHash: string;
       currentTurn: number;
       /** @enum {string} */
       status: "pending" | "active" | "completed";
+      /** Format: uuid */
+      terminalEventId: string | null;
+      terminalRoomRevision: number | null;
       playerIds: string[];
       stateHash: string;
       currentState: components["schemas"]["CompetitiveBattleStateDto"];
@@ -1027,7 +1131,7 @@ export interface components {
       reportingPlayerId: string;
       /** @example session-a */
       reportingSessionId: string;
-      /** @example round-1-match-1 */
+      /** @example game-round-1-bracket-1-match-1 */
       matchId: string;
       /** @example player-a */
       winnerPlayerId: string;

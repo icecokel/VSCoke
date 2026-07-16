@@ -1,7 +1,9 @@
 import { getApiBaseUrl } from "@/lib/constants";
+import type { components } from "@/types/api";
 import { io } from "socket.io-client";
 import type {
   CompetitiveProjection,
+  CompetitiveTerminalTransition,
   MultiplayerRoom,
   PlayerSnapshot,
   RoomEvent,
@@ -10,59 +12,37 @@ import type {
 import {
   CompetitiveProjectionSchemaError,
   parseCompetitiveProjection,
+  parseCompetitiveProjectionContract,
+  parseCompetitiveRoomSnapshotContract,
 } from "./competitive-projection";
+import {
+  findCurrentMatch,
+  mapServerTournamentPlayerIds,
+  parseServerTournamentState,
+  type ServerTournamentState,
+  TournamentProjectionSchemaError,
+  type TournamentStateRoomPayload,
+} from "./tournament-projection";
 
 type Handler<T extends RoomMessage> = (payload: RoomEvent[T]) => void;
 
-interface ServerParticipant {
-  playerId: string;
-  displayName?: string;
-  role: "participant" | "spectator";
-  connected: boolean;
-  joinedAtMs: number;
-}
-
-interface ServerMatch {
-  matchId: string;
-  participantIds: [string, string];
-  status: "pending" | "completed";
-  winnerPlayerId?: string;
-  loserPlayerId?: string;
-  resultReason?: "faint" | "timeout" | "forfeit" | "run" | "capture";
-}
-
-interface ServerPartySnapshot {
-  playerId: string;
-  displayName?: string;
-  representativePokemon?: {
-    speciesId: number;
-    name: string;
-    level: number;
-    currentHp: number;
-    maxHp: number;
-  };
-  updatedAtMs: number;
-}
+type ApiServerRoom = components["schemas"]["PokeLoungeRoomResponseDto"];
+type ServerParticipant = ApiServerRoom["participants"][number];
+type ServerPartySnapshot = components["schemas"]["PokeLoungePartySnapshotDto"];
 
 interface ServerRoomState {
   roomCode: string;
   revision: number;
   expiresAtMs: number;
-  status: "waiting" | "round-started" | "tournament" | "completed" | "closed";
+  status: ApiServerRoom["status"];
   participants: ServerParticipant[];
   partySnapshots: Record<string, ServerPartySnapshot>;
   round: {
     index: number;
   };
-  tournament: {
-    matches: ServerMatch[];
-    cumulativeScores: Record<string, number>;
-  };
-  finalStandings: Array<{
-    playerId: string;
-    rank: number;
-    score: number;
-  }>;
+  tournament: ServerTournamentState;
+  finalStandings: ApiServerRoom["finalStandings"];
+  competitiveTransitions: CompetitiveTerminalTransition[];
   competitive?: CompetitiveProjection;
 }
 
@@ -99,10 +79,57 @@ type ServerRoomSocketFactory = (
   },
 ) => ServerRoomSocket;
 
+export type ServerRoomTransportDiagnostics = {
+  socketConnected: boolean;
+  transportState: "not-created" | "connected" | "disconnected";
+  recoveryAttempt: number;
+  recoveryInFlight: boolean;
+  recoveryTimerScheduled: boolean;
+  subscriptionFailed: boolean;
+  lastAppliedTerminalRevision: number | null;
+  lastSocketErrorKind:
+    | "connect_error"
+    | "disconnect"
+    | "subscription_error"
+    | "invalid_snapshot"
+    | null;
+  lastSocketConnectErrorClass:
+    | "websocket_error"
+    | "timeout"
+    | "server_reject"
+    | "cors"
+    | "unknown"
+    | null;
+  lastRecoveryFailureKind:
+    | "canonical_mismatch"
+    | "transition_merge"
+    | "recovery_parse"
+    | "unknown"
+    | null;
+};
+
+type RecoveryFailureKind = NonNullable<ServerRoomTransportDiagnostics["lastRecoveryFailureKind"]>;
+
+interface ServerRoomE2eDiagnosticsReader {
+  getRoomTransportDiagnosticsForE2e?(): ServerRoomTransportDiagnostics;
+}
+
+export function getServerRoomTransportDiagnosticsForE2e(
+  room: MultiplayerRoom | undefined,
+): ServerRoomTransportDiagnostics | null {
+  if (!isE2eEnabled()) {
+    return null;
+  }
+
+  const reader = room as (MultiplayerRoom & ServerRoomE2eDiagnosticsReader) | undefined;
+
+  return reader?.getRoomTransportDiagnosticsForE2e?.() ?? null;
+}
+
 const SERVER_IDENTITY_STORAGE_KEY = "poke-lounge:server-room-identity";
 const RECOVERY_INITIAL_DELAY_MS = 250;
 const RECOVERY_MAX_DELAY_MS = 5000;
-const CLIENT_FINAL_ROUND_INDEX = 3;
+const MAX_RECENT_TERMINAL_PROJECTIONS = 8;
 const PENDING_ROOM_ID = "server-pending";
 const REVISION_CONFLICT_CODE = "POKE_LOUNGE_REVISION_CONFLICT";
 const IDEMPOTENCY_CONFLICT_CODE = "POKE_LOUNGE_IDEMPOTENCY_CONFLICT";
@@ -158,22 +185,36 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   let recoveryTimer: number | null = null;
   let recoveryAttempt = 0;
   let recoveryInFlight = false;
-  let recoveryQueued = false;
+  let recoveryRetryQueued = false;
+  let recoveryDrainQueued = false;
   let competitiveActionRecoveryTimer: number | null = null;
   let competitiveActionRecoveryAttempt = 0;
   let competitiveActionRecoveryInFlight = false;
   let competitiveActionRecoveryMatchId: string | null = null;
   let latestState: ServerRoomState | null = null;
-  let lastAppliedRevision = -1;
+  let currentAssignmentProjection: CompetitiveProjection | null = null;
+  let recentTerminalProjections: CompetitiveTerminalTransition[] = [];
+  const terminalEventIds = new Set<string>();
+  const terminalMatchIds = new Set<string>();
+  const completedBracketRecoveryMatchIds = new Set<string>();
+  let lastAppliedRoomRevision = -1;
+  let lastAppliedTerminalRevision = -1;
+  let freshTerminalBaselineInitialized = false;
   let roomSocket: ServerRoomSocket | null = null;
   let socketConnected = false;
   let subscriptionFailed = false;
+  let lastSocketErrorKind: ServerRoomTransportDiagnostics["lastSocketErrorKind"] = null;
+  let lastSocketConnectErrorClass: ServerRoomTransportDiagnostics["lastSocketConnectErrorClass"] =
+    null;
+  let lastRecoveryFailureKind: ServerRoomTransportDiagnostics["lastRecoveryFailureKind"] = null;
   let cursorRegression = false;
   let connectStarted = false;
   let mutationQueue: Promise<void> = Promise.resolve();
-  let announcedTournament = false;
-  let announcedCompletion = false;
   let announcedCompetitiveAssignmentKey: string | null = null;
+  let resultSync: TournamentStateRoomPayload["resultSync"] = {
+    matchId: null,
+    status: "idle",
+  };
   let leaveSent = false;
   let leavePromise: Promise<void> | null = null;
 
@@ -345,6 +386,9 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     recoveryAttempt += 1;
     recoveryTimer = window.setTimeout(() => {
       recoveryTimer = null;
+      if (!shouldContinueRecovery()) {
+        return;
+      }
       void runRecovery();
     }, delayMs);
   };
@@ -355,29 +399,65 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     }
 
     if (recoveryInFlight) {
-      recoveryQueued = true;
+      recoveryRetryQueued = true;
       return;
     }
 
     recoveryInFlight = true;
     try {
+      const terminalRevisionBeforeRecovery = lastAppliedTerminalRevision;
       const room = await requestRoom(
-        `/poke-lounge/rooms/${activeRoomId}?afterRevision=${lastAppliedRevision}`,
+        `/poke-lounge/rooms/${activeRoomId}?afterRevision=${Math.max(0, lastAppliedTerminalRevision)}`,
       );
-      applySnapshot(room);
-    } catch {
+      const applied = applySnapshot(room);
+      const terminalCursorAdvanced = lastAppliedTerminalRevision > terminalRevisionBeforeRecovery;
+
+      if ((applied || terminalCursorAdvanced) && !recoveryRetryQueued) {
+        subscriptionFailed = false;
+        lastRecoveryFailureKind = null;
+        if (!shouldContinueRecovery()) {
+          clearRecoveryTimer();
+        }
+      }
+      if (
+        !recoveryRetryQueued &&
+        room.competitiveTransitions.length === MAX_RECENT_TERMINAL_PROJECTIONS &&
+        terminalCursorAdvanced
+      ) {
+        recoveryDrainQueued = true;
+      }
+    } catch (error) {
+      lastRecoveryFailureKind = classifyRecoveryFailure(error);
       subscriptionFailed = socketConnected;
     } finally {
       recoveryInFlight = false;
 
-      if (recoveryQueued) {
-        recoveryQueued = false;
+      if (recoveryDrainQueued) {
+        recoveryDrainQueued = false;
         void runRecovery();
         return;
       }
 
+      if (recoveryRetryQueued) {
+        recoveryRetryQueued = false;
+      }
+
       scheduleRecovery();
     }
+  };
+
+  const requestTerminalRecovery = (failureKind: RecoveryFailureKind = "unknown") => {
+    if (disposed || cursorRegression || activeRoomId === PENDING_ROOM_ID) {
+      return;
+    }
+
+    lastRecoveryFailureKind = failureKind;
+    subscriptionFailed = true;
+    if (recoveryInFlight) {
+      recoveryRetryQueued = true;
+      return;
+    }
+    void runRecovery();
   };
 
   const handleSocketConnect = () => {
@@ -392,19 +472,22 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       roomCode: activeRoomId,
       playerId: serverPlayerId,
       sessionId,
-      afterRevision: lastAppliedRevision,
+      afterRevision: Math.max(0, lastAppliedTerminalRevision),
     });
     void runRecovery();
   };
 
   const handleSocketDisconnect = () => {
     socketConnected = false;
+    lastSocketErrorKind = "disconnect";
     scheduleRecovery();
   };
 
-  const handleSocketConnectError = () => {
+  const handleSocketConnectError = (error: unknown) => {
     socketConnected = false;
     subscriptionFailed = true;
+    lastSocketErrorKind = "connect_error";
+    lastSocketConnectErrorClass = classifySocketConnectError(error);
     scheduleRecovery();
   };
 
@@ -415,14 +498,20 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       room = parseSocketRoomEvent(event);
     } catch {
       subscriptionFailed = true;
+      lastSocketErrorKind = "invalid_snapshot";
       scheduleRecovery();
       return;
     }
 
+    const terminalRevisionBeforeSnapshot = lastAppliedTerminalRevision;
     const applied = applySnapshot(room);
 
-    if (applied && socketConnected) {
+    if (
+      socketConnected &&
+      (applied || lastAppliedTerminalRevision > terminalRevisionBeforeSnapshot)
+    ) {
       subscriptionFailed = false;
+      lastRecoveryFailureKind = null;
       clearRecoveryTimer();
     }
   };
@@ -433,6 +522,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     }
 
     subscriptionFailed = true;
+    lastSocketErrorKind = "subscription_error";
     scheduleRecovery();
   };
 
@@ -445,7 +535,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       return;
     }
 
-    if (room.roomCode !== activeRoomId || room.revision >= lastAppliedRevision) {
+    if (room.roomCode !== activeRoomId || room.revision >= lastAppliedRoomRevision) {
       return;
     }
 
@@ -490,64 +580,66 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   const applySnapshot = (state: ServerRoomState): boolean => {
     const acceptsCreatedRoom = activeRoomId === PENDING_ROOM_ID;
 
-    if (
-      (!acceptsCreatedRoom && state.roomCode !== activeRoomId) ||
-      state.revision < lastAppliedRevision
-    ) {
+    if (!acceptsCreatedRoom && state.roomCode !== activeRoomId) {
       return false;
     }
 
-    latestState = state;
-    lastAppliedRevision = state.revision;
-    activeRoomId = state.roomCode;
-    emit("CURRENT_PLAYERS", {
-      players: Object.fromEntries(
-        state.participants
-          .filter(participant => participant.connected)
-          .map(participant => {
-            const snapshot = toPlayerSnapshot(
-              participant,
-              serverPlayerId,
-              sessionId,
-              localPlayerId,
-            );
+    if (
+      latestState &&
+      state.revision === lastAppliedRoomRevision &&
+      !hasSameCanonicalRoomProjection(latestState, state)
+    ) {
+      requestTerminalRecovery("canonical_mismatch");
+      return false;
+    }
 
-            return [snapshot.sessionId, snapshot] as const;
-          }),
-      ),
-    });
+    if (!freshTerminalBaselineInitialized) {
+      lastAppliedTerminalRevision = state.revision;
+      freshTerminalBaselineInitialized = true;
+    }
+
+    try {
+      applyTerminalTransitions(state.competitiveTransitions);
+    } catch {
+      requestTerminalRecovery("transition_merge");
+      return false;
+    }
+
+    if (state.revision < lastAppliedRoomRevision) {
+      return false;
+    }
+
+    const previousAssignment = currentAssignmentProjection;
+    latestState = state;
+    lastAppliedRoomRevision = state.revision;
+    activeRoomId = state.roomCode;
+
+    if (
+      resultSync.matchId &&
+      state.tournament.activeMatchId !== resultSync.matchId &&
+      resultSync.status !== "error"
+    ) {
+      resultSync = { matchId: null, status: "idle" };
+    }
+
+    emit("CURRENT_PLAYERS", createCurrentPlayersPayload(state));
 
     if (state.competitive) {
-      applyCompetitiveProjection(state.competitive);
+      applyCurrentAssignmentProjection(state.competitive);
+    } else {
+      currentAssignmentProjection = null;
     }
 
-    if (!announcedTournament && (state.status === "tournament" || state.status === "completed")) {
-      announcedTournament = true;
-      emit("TOURNAMENT_STARTED", {
-        roundIndex: state.round.index,
-        hostPlayerId: getHostPlayerIdForLocalStore(state),
-        participantIds: state.participants
-          .filter(participant => participant.role === "participant")
-          .map(participant => mapServerPlayerIdForLocalStore(participant.playerId)),
-        matchIds: state.tournament.matches.map(match => match.matchId),
-      });
-    }
+    emitTournamentProjection(state);
 
-    if (!announcedCompletion && state.status === "completed" && state.finalStandings.length > 0) {
-      announcedCompletion = true;
-      const champion = state.finalStandings.find(standing => standing.rank === 1);
-
-      if (champion) {
-        emit("TOURNAMENT_COMPLETED", {
-          roundIndex: Math.max(state.round.index, CLIENT_FINAL_ROUND_INDEX),
-          hostPlayerId: getHostPlayerIdForLocalStore(state),
-          championPlayerId: mapServerPlayerIdForLocalStore(champion.playerId),
-          standings: state.finalStandings.map(standing => ({
-            ...standing,
-            playerId: mapServerPlayerIdForLocalStore(standing.playerId),
-          })),
-        });
-      }
+    if (
+      previousAssignment &&
+      !terminalMatchIds.has(previousAssignment.matchId) &&
+      hasCompletedBracketMatch(state, previousAssignment.bracketMatchId) &&
+      !completedBracketRecoveryMatchIds.has(previousAssignment.matchId)
+    ) {
+      completedBracketRecoveryMatchIds.add(previousAssignment.matchId);
+      requestTerminalRecovery();
     }
 
     if (isTerminalState()) {
@@ -558,8 +650,84 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     return true;
   };
 
-  const applyCompetitiveProjection = (projection: CompetitiveProjection) => {
+  const applyTerminalTransitions = (transitions: CompetitiveTerminalTransition[]) => {
+    for (const transition of transitions) {
+      if (transition.terminalRoomRevision <= lastAppliedTerminalRevision) {
+        continue;
+      }
+
+      mergeTerminalTransition(transition);
+      lastAppliedTerminalRevision = transition.terminalRoomRevision;
+    }
+  };
+
+  const mergeTerminalTransition = (transition: CompetitiveTerminalTransition): boolean => {
+    const cachedByEvent = recentTerminalProjections.find(
+      cached => cached.terminalEventId === transition.terminalEventId,
+    );
+    const cachedByMatch = recentTerminalProjections.find(
+      cached => cached.projection.matchId === transition.projection.matchId,
+    );
+
+    if (cachedByEvent || cachedByMatch) {
+      if (
+        cachedByEvent?.projection.matchId !== transition.projection.matchId ||
+        cachedByMatch?.terminalEventId !== transition.terminalEventId
+      ) {
+        throw new CompetitiveProjectionSchemaError();
+      }
+      return false;
+    }
+
+    const previousCache = recentTerminalProjections;
+    recentTerminalProjections = [...recentTerminalProjections, transition]
+      .sort(compareTerminalTransitions)
+      .slice(-MAX_RECENT_TERMINAL_PROJECTIONS);
+    rebuildTerminalCacheKeys();
+
+    try {
+      emit("COMPETITIVE_STATE", createCompetitivePayload(transition.projection));
+    } catch (error) {
+      recentTerminalProjections = previousCache;
+      rebuildTerminalCacheKeys();
+      throw error;
+    }
+
+    if (competitiveActionRecoveryMatchId === transition.projection.matchId) {
+      clearCompetitiveActionRecovery();
+    }
+
+    return true;
+  };
+
+  const rebuildTerminalCacheKeys = () => {
+    terminalEventIds.clear();
+    terminalMatchIds.clear();
+    for (const transition of recentTerminalProjections) {
+      terminalEventIds.add(transition.terminalEventId);
+      terminalMatchIds.add(transition.projection.matchId);
+    }
+  };
+
+  const createCurrentPlayersPayload = (state: ServerRoomState): RoomEvent["CURRENT_PLAYERS"] => ({
+    players: Object.fromEntries(
+      state.participants
+        .filter(participant => participant.connected)
+        .map(participant => {
+          const snapshot = toPlayerSnapshot(participant, serverPlayerId, sessionId, localPlayerId);
+
+          return [snapshot.sessionId, snapshot] as const;
+        }),
+    ),
+  });
+
+  const applyCurrentAssignmentProjection = (projection: CompetitiveProjection) => {
+    if (!canApplyCurrentAssignmentProjection(projection)) {
+      return;
+    }
+
     clearCompetitiveActionRecovery();
+    currentAssignmentProjection = projection;
     const payload = { projection, ownPlayerId: serverPlayerId };
     const assignmentKey = `${projection.matchId}:${projection.assignmentRevision}`;
 
@@ -568,6 +736,87 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       emit("COMPETITIVE_ASSIGNMENT", payload);
     }
     emit("COMPETITIVE_STATE", payload);
+  };
+
+  const canApplyCurrentAssignmentProjection = (projection: CompetitiveProjection): boolean =>
+    projection.status !== "completed" &&
+    latestState?.tournament.activeMatchAuthority === "server" &&
+    latestState.tournament.activeMatchId === projection.bracketMatchId;
+
+  const createTournamentProjectionPayload = (
+    state: ServerRoomState,
+  ): RoomEvent["TOURNAMENT_STATE"] => {
+    const tournament = mapServerTournamentPlayerIds(
+      state.tournament,
+      mapServerPlayerIdForLocalStore,
+    );
+    const activeMatchTransport =
+      tournament.activeMatchAuthority === "casual"
+        ? "casual"
+        : tournament.activeMatchAuthority === "server" &&
+            state.competitive?.bracketMatchId === tournament.activeMatchId
+          ? "authority"
+          : "awaiting-authority";
+
+    return {
+      revision: state.revision,
+      roundIndex: state.round.index,
+      roomStatus: state.status,
+      tournament,
+      ownPlayerId: localPlayerId,
+      activeMatchTransport,
+      finalStandings: state.finalStandings.map(standing => ({
+        ...standing,
+        playerId: mapServerPlayerIdForLocalStore(standing.playerId),
+      })),
+      resultSync,
+    };
+  };
+
+  const emitTournamentProjection = (state: ServerRoomState) => {
+    emit("TOURNAMENT_STATE", createTournamentProjectionPayload(state));
+  };
+
+  const createCompetitivePayload = (
+    projection: CompetitiveProjection,
+  ): RoomEvent["COMPETITIVE_STATE"] => ({
+    projection,
+    ownPlayerId: serverPlayerId,
+  });
+
+  const canReplayCompetitiveAssignment = (projection: CompetitiveProjection): boolean =>
+    projection.status !== "completed" &&
+    latestState?.tournament.activeMatchAuthority === "server" &&
+    latestState.tournament.activeMatchId === projection.bracketMatchId;
+
+  const replayLatestEvent = (type: RoomMessage, handler: Handler<RoomMessage>) => {
+    if (latestState && type === "CURRENT_PLAYERS") {
+      handler(createCurrentPlayersPayload(latestState));
+      return;
+    }
+
+    if (latestState && type === "TOURNAMENT_STATE") {
+      handler(createTournamentProjectionPayload(latestState));
+      return;
+    }
+
+    if (type === "COMPETITIVE_STATE") {
+      for (const transition of recentTerminalProjections) {
+        handler(createCompetitivePayload(transition.projection));
+      }
+      if (currentAssignmentProjection) {
+        handler(createCompetitivePayload(currentAssignmentProjection));
+      }
+      return;
+    }
+
+    if (
+      currentAssignmentProjection &&
+      type === "COMPETITIVE_ASSIGNMENT" &&
+      canReplayCompetitiveAssignment(currentAssignmentProjection)
+    ) {
+      handler(createCompetitivePayload(currentAssignmentProjection));
+    }
   };
 
   const scheduleCompetitiveActionRecovery = (matchId: string) => {
@@ -602,9 +851,11 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     competitiveActionRecoveryInFlight = true;
     let recovered = false;
     try {
-      const room = await requestRoom(`/poke-lounge/rooms/${activeRoomId}`);
+      const room = await requestRoom(
+        `/poke-lounge/rooms/${activeRoomId}?afterRevision=${Math.max(0, lastAppliedTerminalRevision)}`,
+      );
       applySnapshot(room);
-      recovered = room.competitive?.matchId === matchId;
+      recovered = room.competitive?.matchId === matchId || terminalMatchIds.has(matchId);
     } catch {
       // Retry below with bounded backoff until a current projection is available.
     } finally {
@@ -643,7 +894,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       clientCommandId: command.clientCommandId,
       action: command.action,
     });
-    const send = async (): Promise<CompetitiveProjection> => {
+    const send = async () => {
       let response: Response;
       try {
         response = await fetchImpl(
@@ -667,11 +918,47 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       if (!response.ok) {
         throw new ServerRoomRequestError(response.status, responseBody);
       }
-      return parseCompetitiveProjection(responseBody);
+      return parseCompetitiveProjectionContract(responseBody);
     };
 
     try {
-      applyCompetitiveProjection(await retryOneNetworkFailure(send));
+      const parsed = await retryOneNetworkFailure(send);
+      const projection = parsed.projection;
+
+      if (
+        projection.matchId !== command.matchId ||
+        projection.assignmentRevision !== command.assignmentRevision
+      ) {
+        throw new CompetitiveProjectionSchemaError();
+      }
+
+      if (projection.status !== "completed") {
+        applyCurrentAssignmentProjection(projection);
+        return;
+      }
+
+      if (parsed.terminalMetadataState === "legacy-recovery-required") {
+        requestTerminalRecovery();
+        return;
+      }
+
+      if (
+        parsed.terminalMetadataState !== "stable" ||
+        typeof projection.terminalEventId !== "string" ||
+        typeof projection.terminalRoomRevision !== "number"
+      ) {
+        throw new CompetitiveProjectionSchemaError();
+      }
+
+      mergeTerminalTransition({
+        terminalEventId: projection.terminalEventId,
+        terminalRoomRevision: projection.terminalRoomRevision,
+        projection,
+      });
+      lastAppliedTerminalRevision = Math.max(
+        lastAppliedTerminalRevision,
+        projection.terminalRoomRevision,
+      );
     } catch (error) {
       emit("COMPETITIVE_ACTION_FAILED", {
         matchId: command.matchId,
@@ -681,6 +968,92 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       scheduleCompetitiveActionRecovery(command.matchId);
     }
   };
+
+  const submitCasualTournamentResult = async (
+    command: RoomEvent["TOURNAMENT_MATCH_RESULT"],
+  ): Promise<void> => {
+    const state = latestState;
+    const activeMatch = findCurrentMatch(
+      state?.tournament.bracket ?? null,
+      state?.tournament.activeMatchId ?? null,
+    );
+
+    if (
+      !state ||
+      !activeMatch ||
+      state.tournament.activeMatchAuthority !== "casual" ||
+      command.matchId !== activeMatch.matchId ||
+      !activeMatch.participantIds.includes(serverPlayerId)
+    ) {
+      return;
+    }
+
+    const winnerPlayerId =
+      command.winnerPlayerId === localPlayerId ? serverPlayerId : command.winnerPlayerId;
+    const loserPlayerId = activeMatch.participantIds.find(playerId => playerId !== winnerPlayerId);
+
+    if (!activeMatch.participantIds.includes(winnerPlayerId) || !loserPlayerId) {
+      return;
+    }
+
+    const body = {
+      reportingPlayerId: serverPlayerId,
+      reportingSessionId: sessionId,
+      matchId: activeMatch.matchId,
+      winnerPlayerId,
+      loserPlayerId,
+      reason: command.reason,
+      nowMs: Date.now(),
+    };
+    resultSync = { matchId: activeMatch.matchId, status: "submitting" };
+    emitTournamentProjection(state);
+
+    try {
+      const nextState = await mutateRoom(
+        `/poke-lounge/rooms/${activeRoomId}/result`,
+        body,
+        getLatestRevision,
+      );
+      resultSync = { matchId: null, status: "idle" };
+      applySnapshot(nextState);
+    } catch (error) {
+      resultSync = { matchId: activeMatch.matchId, status: "recovering" };
+      if (latestState) {
+        emitTournamentProjection(latestState);
+      }
+
+      try {
+        const recovered = await requestRoom(`/poke-lounge/rooms/${activeRoomId}`);
+        applySnapshot(recovered);
+      } catch {
+        scheduleRecovery();
+      }
+
+      const currentState = latestState;
+      if (currentState?.tournament.activeMatchId === activeMatch.matchId) {
+        resultSync = { matchId: activeMatch.matchId, status: "error" };
+        emitTournamentProjection(currentState);
+      }
+
+      throw error;
+    }
+  };
+
+  const getRoomTransportDiagnosticsForE2e = (): ServerRoomTransportDiagnostics => ({
+    socketConnected,
+    transportState:
+      roomSocket === null ? "not-created" : socketConnected ? "connected" : "disconnected",
+    recoveryAttempt,
+    recoveryInFlight,
+    recoveryTimerScheduled: recoveryTimer !== null,
+    subscriptionFailed,
+    lastAppliedTerminalRevision: freshTerminalBaselineInitialized
+      ? lastAppliedTerminalRevision
+      : null,
+    lastSocketErrorKind,
+    lastSocketConnectErrorClass,
+    lastRecoveryFailureKind,
+  });
 
   return {
     get roomId() {
@@ -737,18 +1110,28 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         return;
       }
 
-      // Server rooms never accept client-asserted tournament results.
+      if (type === "TOURNAMENT_MATCH_RESULT") {
+        void submitCasualTournamentResult(payload as RoomEvent["TOURNAMENT_MATCH_RESULT"]).catch(
+          error => {
+            reportTransportError(
+              error instanceof Error ? error : new ServerRoomTransportError(error),
+            );
+          },
+        );
+      }
     },
     on(type, handler) {
       const typedHandler = handler as Handler<RoomMessage>;
       const nextHandlers = handlers.get(type) ?? new Set<Handler<RoomMessage>>();
       nextHandlers.add(typedHandler);
       handlers.set(type, nextHandlers);
+      replayLatestEvent(type, typedHandler);
 
       return () => {
         nextHandlers.delete(typedHandler);
       };
     },
+    ...(isE2eEnabled() ? { getRoomTransportDiagnosticsForE2e } : {}),
   };
 
   function openServerRoom(snapshot: PlayerSnapshot): Promise<ServerRoomState> {
@@ -792,7 +1175,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         try {
           const assignment = await requestCompetitiveSeat();
           if (assignment) {
-            applyCompetitiveProjection(assignment);
+            applyCurrentAssignmentProjection(assignment);
           }
         } catch (error) {
           if (error instanceof CompetitiveProjectionSchemaError) {
@@ -865,17 +1248,6 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   function mapServerPlayerIdForLocalStore(playerId: string): string {
     return playerId === serverPlayerId ? localPlayerId : playerId;
   }
-
-  function getHostPlayerIdForLocalStore(state: ServerRoomState): string {
-    const host = [...state.participants]
-      .filter(participant => participant.connected)
-      .sort(
-        (left, right) =>
-          left.joinedAtMs - right.joinedAtMs || left.playerId.localeCompare(right.playerId),
-      )[0];
-
-    return host ? mapServerPlayerIdForLocalStore(host.playerId) : localPlayerId;
-  }
 }
 
 function toPlayerSnapshot(
@@ -942,6 +1314,58 @@ function toRepresentativePokemonSnapshot(
 
 function isE2eEnabled(): boolean {
   return typeof window !== "undefined" && new URLSearchParams(window.location.search).has("e2e");
+}
+
+function classifySocketConnectError(
+  error: unknown,
+): NonNullable<ServerRoomTransportDiagnostics["lastSocketConnectErrorClass"]> {
+  const record = error && typeof error === "object" ? (error as Record<string, unknown>) : null;
+  const details = [
+    error instanceof Error ? error.name : undefined,
+    error instanceof Error ? error.message : undefined,
+    record?.name,
+    record?.message,
+    record?.description,
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ")
+    .toLowerCase();
+
+  if (details.includes("cors") || details.includes("cross-origin") || details.includes("origin")) {
+    return "cors";
+  }
+
+  if (details.includes("timeout") || details.includes("timed out")) {
+    return "timeout";
+  }
+
+  if (details.includes("websocket")) {
+    return "websocket_error";
+  }
+
+  if (
+    details.includes("reject") ||
+    details.includes("forbidden") ||
+    details.includes("unauthorized") ||
+    details.includes("invalid namespace")
+  ) {
+    return "server_reject";
+  }
+
+  return "unknown";
+}
+
+function classifyRecoveryFailure(error: unknown): RecoveryFailureKind {
+  if (
+    error instanceof ServerRoomJsonParseError ||
+    error instanceof ServerRoomSchemaError ||
+    error instanceof TournamentProjectionSchemaError ||
+    error instanceof CompetitiveProjectionSchemaError
+  ) {
+    return "recovery_parse";
+  }
+
+  return "unknown";
 }
 
 async function retryOneNetworkFailure<T>(operation: () => Promise<T>): Promise<T> {
@@ -1039,9 +1463,30 @@ function parseServerRoomState(value: unknown): ServerRoomState {
     throw new ServerRoomSchemaError();
   }
 
-  const parsed = value as ServerRoomState;
-  if (parsed.competitive !== undefined) {
-    parsed.competitive = parseCompetitiveProjection(parsed.competitive);
+  const tournament = parseServerTournamentState(
+    room.tournament,
+    (room.round as { index: number }).index,
+  );
+  const competitiveContract = parseCompetitiveRoomSnapshotContract(room);
+  const parsed: ServerRoomState = {
+    ...(value as ServerRoomState),
+    tournament,
+    competitiveTransitions: competitiveContract.competitiveTransitions,
+  };
+
+  if (competitiveContract.competitive) {
+    parsed.competitive = competitiveContract.competitive;
+  } else {
+    delete parsed.competitive;
+  }
+
+  if (
+    (parsed.competitive && !isCurrentAssignmentConsistentWithRoom(parsed)) ||
+    parsed.competitiveTransitions.some(
+      transition => !isTerminalTransitionConsistentWithRoom(parsed, transition),
+    )
+  ) {
+    throw new ServerRoomSchemaError();
   }
 
   return parsed;
@@ -1053,6 +1498,116 @@ function parseSocketRoomEvent(value: unknown): ServerRoomState {
   }
 
   return parseServerRoomState((value as { room: unknown }).room);
+}
+
+function hasSameCanonicalRoomProjection(left: ServerRoomState, right: ServerRoomState): boolean {
+  return (
+    left.roomCode === right.roomCode &&
+    left.status === right.status &&
+    stableJsonStringify(left.participants) === stableJsonStringify(right.participants) &&
+    stableJsonStringify(left.partySnapshots) === stableJsonStringify(right.partySnapshots) &&
+    stableJsonStringify(left.round) === stableJsonStringify(right.round) &&
+    stableJsonStringify(left.tournament) === stableJsonStringify(right.tournament) &&
+    stableJsonStringify(left.finalStandings) === stableJsonStringify(right.finalStandings) &&
+    stableJsonStringify(left.competitive) === stableJsonStringify(right.competitive)
+  );
+}
+
+function stableJsonStringify(value: unknown): string | undefined {
+  const sortedObjects = new WeakMap<object, Record<string, unknown>>();
+
+  return JSON.stringify(value, (_key, nestedValue: unknown) => {
+    if (!isPlainJsonObject(nestedValue)) {
+      return nestedValue;
+    }
+
+    const existing = sortedObjects.get(nestedValue);
+    if (existing) {
+      return existing;
+    }
+
+    const sorted = Object.create(null) as Record<string, unknown>;
+    sortedObjects.set(nestedValue, sorted);
+    for (const key of Object.keys(nestedValue).sort()) {
+      sorted[key] = nestedValue[key];
+    }
+    return sorted;
+  });
+}
+
+function isPlainJsonObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+
+  return prototype === Object.prototype || prototype === null;
+}
+
+function compareTerminalTransitions(
+  left: CompetitiveTerminalTransition,
+  right: CompetitiveTerminalTransition,
+): number {
+  return (
+    left.terminalRoomRevision - right.terminalRoomRevision ||
+    left.terminalEventId.localeCompare(right.terminalEventId)
+  );
+}
+
+function hasCompletedBracketMatch(state: ServerRoomState, bracketMatchId: string): boolean {
+  return findBracketMatch(state, bracketMatchId)?.status === "completed";
+}
+
+function isCurrentAssignmentConsistentWithRoom(state: ServerRoomState): boolean {
+  const projection = state.competitive;
+  const activeMatch = findCurrentMatch(state.tournament.bracket, state.tournament.activeMatchId);
+
+  return Boolean(
+    projection &&
+    state.tournament.activeMatchAuthority === "server" &&
+    activeMatch &&
+    projection.bracketMatchId === activeMatch.matchId &&
+    hasSamePlayerIds(projection.playerIds, activeMatch.participantIds),
+  );
+}
+
+function isTerminalTransitionConsistentWithRoom(
+  state: ServerRoomState,
+  transition: CompetitiveTerminalTransition,
+): boolean {
+  const projection = transition.projection;
+  const terminal = projection.terminal;
+  const bracketMatch = findBracketMatch(state, projection.bracketMatchId);
+
+  return Boolean(
+    terminal &&
+    bracketMatch?.status === "completed" &&
+    hasSamePlayerIds(projection.playerIds, bracketMatch.participantIds) &&
+    terminal.winnerPlayerId === bracketMatch.winnerPlayerId &&
+    terminal.loserPlayerId === bracketMatch.loserPlayerId &&
+    terminal.reason === bracketMatch.resultReason,
+  );
+}
+
+function findBracketMatch(state: ServerRoomState, bracketMatchId: string) {
+  const bracket = state.tournament.bracket;
+
+  return (
+    bracket?.currentRound?.matches.find(match => match.matchId === bracketMatchId) ??
+    bracket?.completedRounds
+      .flatMap(round => round.matches)
+      .find(match => match.matchId === bracketMatchId) ??
+    null
+  );
+}
+
+function hasSamePlayerIds(left: ReadonlyArray<string>, right: ReadonlyArray<string>): boolean {
+  return (
+    left.length === right.length &&
+    left.every(playerId => right.includes(playerId)) &&
+    right.every(playerId => left.includes(playerId))
+  );
 }
 
 function resolveServerRoomSocketFactory(): ServerRoomSocketFactory {

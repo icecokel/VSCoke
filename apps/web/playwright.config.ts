@@ -6,18 +6,25 @@ const playwrightPort =
 const playwrightWorkers = Number.parseInt(process.env.PLAYWRIGHT_WORKERS ?? "", 10) || 1;
 const enableCrossBrowser = process.env.PLAYWRIGHT_ENABLE_CROSS_BROWSER === "1";
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${playwrightPort}`;
-const mobileTestMatch = /mobile-behavior\.spec\.ts$/;
+const configuredRetries = Number.parseInt(process.env.PLAYWRIGHT_RETRIES ?? "", 10);
+const mobileTestMatch = /(mobile-behavior|poke-lounge-mobile)\.spec\.ts$/;
+const integrationTestMatch = /poke-lounge-five-player-tournament\.spec\.ts$/;
 const visualRegressionTestMatch = /visual-regression\.spec\.ts$/;
+const playwrightOutputRoot = process.env.PLAYWRIGHT_OUTPUT_DIR ?? "../../output/playwright";
 
 export default defineConfig({
   testDir: "./tests/e2e",
   globalSetup: "./tests/e2e/global-setup.ts",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: Number.isFinite(configuredRetries) ? configuredRetries : process.env.CI ? 2 : 0,
   timeout: 60_000,
   workers: process.env.CI ? 1 : playwrightWorkers,
-  reporter: [["list"], ["html", { open: "never" }]],
+  outputDir: `${playwrightOutputRoot}/test-results`,
+  reporter: [
+    ["list"],
+    ["html", { open: "never", outputFolder: `${playwrightOutputRoot}/html-report` }],
+  ],
   expect: {
     toHaveScreenshot: {
       pathTemplate: "tests/e2e/{testFilePath}-snapshots/{arg}{-projectName}{ext}",
@@ -32,19 +39,19 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      testIgnore: mobileTestMatch,
+      testIgnore: [mobileTestMatch, integrationTestMatch],
       use: { ...devices["Desktop Chrome"] },
     },
     ...(enableCrossBrowser
       ? [
           {
             name: "webkit",
-            testIgnore: [mobileTestMatch, visualRegressionTestMatch],
+            testIgnore: [mobileTestMatch, integrationTestMatch, visualRegressionTestMatch],
             use: { ...devices["Desktop Safari"] },
           },
           {
             name: "firefox",
-            testIgnore: [mobileTestMatch, visualRegressionTestMatch],
+            testIgnore: [mobileTestMatch, integrationTestMatch, visualRegressionTestMatch],
             use: { ...devices["Desktop Firefox"] },
           },
         ]
@@ -158,6 +165,11 @@ export default defineConfig({
               hasTouch: true,
               deviceScaleFactor: 2,
             },
+          },
+          {
+            name: "poke-lounge-five-browser-integration",
+            testMatch: integrationTestMatch,
+            use: { browserName: "chromium" as const },
           },
         ]
       : []),

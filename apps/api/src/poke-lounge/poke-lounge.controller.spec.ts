@@ -335,6 +335,7 @@ describe('PokeLoungeController', () => {
     ).getRoom.bind(controller);
 
     await expect(getRoom('ROOM01', undefined, '7')).resolves.toBeDefined();
+    expect(service.getRoom.mock.calls.at(-1)).toEqual(['ROOM01', undefined, 7]);
 
     for (const value of [
       '-1',
@@ -347,6 +348,13 @@ describe('PokeLoungeController', () => {
         BadRequestException,
       );
     }
+
+    await expect(getRoom('ROOM01')).resolves.toBeDefined();
+    expect(service.getRoom.mock.calls.at(-1)).toEqual([
+      'ROOM01',
+      undefined,
+      undefined,
+    ]);
   });
 });
 
@@ -389,7 +397,13 @@ function snapshot(): PokeLoungeRoomSnapshot {
       startedAtMs: null,
       endsAtMs: null,
     },
-    tournament: { matches: [], cumulativeScores: {} },
+    tournament: {
+      version: 2,
+      bracket: null,
+      activeMatchId: null,
+      activeMatchAuthority: null,
+      cumulativeScores: {},
+    },
     finalStandings: [],
     revision: 3,
     expiresAtMs: 30 * 60_000,

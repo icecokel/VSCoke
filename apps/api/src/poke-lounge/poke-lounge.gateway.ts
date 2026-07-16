@@ -23,7 +23,7 @@ type PokeLoungeRoomSubscription = {
   roomCode: string;
   playerId: string;
   sessionId: string;
-  afterRevision: number;
+  afterRevision?: number;
 };
 
 type PokeLoungeSocketData = {
@@ -84,6 +84,7 @@ export class PokeLoungeGateway implements OnGatewayInit, OnModuleDestroy {
         subscription.roomCode,
         subscription.playerId,
         subscription.sessionId,
+        subscription.afterRevision,
       );
       const nextRoomName = roomName(room.roomCode);
       const previousRoomName = socketData.pokeLoungeRoomName;
@@ -91,14 +92,18 @@ export class PokeLoungeGateway implements OnGatewayInit, OnModuleDestroy {
       if (
         previousRoomName &&
         (previousRoomName !== nextRoomName ||
-          room.revision < subscription.afterRevision)
+          (subscription.afterRevision !== undefined &&
+            room.revision < subscription.afterRevision))
       ) {
         await socket.leave(previousRoomName);
         delete socketData.pokeLoungeRoomName;
         delete socketData.pokeLoungePlayerId;
       }
 
-      if (room.revision < subscription.afterRevision) {
+      if (
+        subscription.afterRevision !== undefined &&
+        room.revision < subscription.afterRevision
+      ) {
         socket.emit('room.revision-conflict', { room });
         return;
       }
@@ -109,6 +114,7 @@ export class PokeLoungeGateway implements OnGatewayInit, OnModuleDestroy {
         subscription.roomCode,
         subscription.playerId,
         subscription.sessionId,
+        subscription.afterRevision,
       );
       socketData.pokeLoungeRoomName = nextRoomName;
       socketData.pokeLoungePlayerId = subscription.playerId;
@@ -145,8 +151,8 @@ function parseSubscription(input: unknown): PokeLoungeRoomSubscription | null {
     !ROOM_CODE_PATTERN.test(roomCode) ||
     !playerId ||
     !sessionId ||
-    !Number.isSafeInteger(afterRevision) ||
-    (afterRevision as number) < 0
+    (afterRevision !== undefined &&
+      (!Number.isSafeInteger(afterRevision) || (afterRevision as number) < 0))
   ) {
     return null;
   }
@@ -155,7 +161,9 @@ function parseSubscription(input: unknown): PokeLoungeRoomSubscription | null {
     roomCode,
     playerId,
     sessionId,
-    afterRevision: afterRevision as number,
+    ...(afterRevision === undefined
+      ? {}
+      : { afterRevision: afterRevision as number }),
   };
 }
 

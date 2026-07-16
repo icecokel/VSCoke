@@ -31,7 +31,7 @@ export class SubmitPokeLoungeMatchResultDto implements SubmitPokeLoungeMatchResu
   @IsNotEmpty()
   reportingSessionId!: string;
 
-  @ApiProperty({ example: 'round-1-match-1' })
+  @ApiProperty({ example: 'game-round-1-bracket-1-match-1' })
   @IsString()
   @IsNotEmpty()
   matchId!: string;

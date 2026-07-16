@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import {
@@ -16,7 +16,10 @@ import { VerifiedPokeLoungeHistoryWriter } from '../../game/verified-poke-lounge
 import { GameType } from '../../game/enums/game-type.enum';
 import { PokeLoungeRoom } from '../entities/poke-lounge-room.entity';
 import { PokeLoungeCompetitiveMatch } from '../entities/poke-lounge-competitive-match.entity';
+import { PokeLoungeCompetitiveSeat } from '../entities/poke-lounge-competitive-seat.entity';
+import { completePokeLoungeTournamentMatch } from '../poke-lounge-room-policy';
 import type { PokeLoungeRoomSnapshot } from '../poke-lounge-room.repository';
+import type { PokeLoungeRoomState } from '../poke-lounge-room.types';
 import { PokeLoungeCompetitiveAction } from './competitive-action.entity';
 import type {
   CompetitiveActionRepository,
@@ -26,7 +29,12 @@ import type {
   CompetitiveActionProjection,
   SubmitCompetitiveActionInput,
 } from './competitive-action.types';
-import { toCompetitiveProjection } from './competitive-projection.service';
+import {
+  toCompetitiveProjection,
+  toCompetitiveTerminalTransition,
+} from './competitive-projection.service';
+import { createCompetitiveAssignment } from './competitive-match.service';
+import type { CompetitiveMatchKind } from './competitive-match.types';
 
 @Injectable()
 export class PostgresCompetitiveActionRepository implements CompetitiveActionRepository {
@@ -150,7 +158,10 @@ export class PostgresCompetitiveActionRepository implements CompetitiveActionRep
         return {
           outcome: 'accepted',
           response,
-          room: snapshotFromEntity(room),
+          room: {
+            ...snapshotFromEntity(room),
+            competitive: response,
+          },
           committed: true,
         };
       }
@@ -181,25 +192,26 @@ export class PostgresCompetitiveActionRepository implements CompetitiveActionRep
       match.terminalResult = resolved.terminal;
       match.status = resolved.terminal ? 'completed' : 'active';
       match.completedAt = resolved.terminal ? new Date() : null;
+      let nextCompetitive: CompetitiveActionProjection | null = null;
+      let response: CompetitiveActionProjection;
       if (resolved.terminal) {
-        const histories = await this.historyWriter.write(manager, {
-          gameType: GameType.POKE_LOUNGE,
-          terminalResult: resolved.terminal,
-          playerAccounts: match.playerAccounts,
-          source: { roomId: room.id, matchId: match.matchId },
-        });
-        match.historyPublication = {
-          historyIdByAccountId: Object.fromEntries(
-            histories.map((history) => [history.userId, history.id]),
-          ),
-        };
+        const finalized = await finalizeCompetitiveTerminalMatch(
+          manager,
+          room,
+          match,
+          room.revision + 1,
+          this.historyWriter,
+        );
+        response = finalized.projection;
+        nextCompetitive = finalized.nextCompetitive;
+      } else {
+        await manager
+          .getRepository(PokeLoungeCompetitiveMatch)
+          .save({ ...match }, { reload: false });
+        response = toProjection(match, []);
       }
-      await manager
-        .getRepository(PokeLoungeCompetitiveMatch)
-        .save({ ...match }, { reload: false });
       await markRoomUpdated(manager, room);
 
-      const response = toProjection(match, []);
       const resolvedAt = new Date();
       const resolvedReceipt = actionRepository.create({
         matchId: match.matchId,
@@ -222,14 +234,157 @@ export class PostgresCompetitiveActionRepository implements CompetitiveActionRep
       );
       await actionRepository.save([turnActions[0], resolvedReceipt]);
 
+      const roomSnapshot = snapshotFromEntity(room);
+      if (resolved.terminal) {
+        roomSnapshot.competitiveTransitions = [
+          toCompetitiveTerminalTransition(response),
+        ];
+      } else {
+        roomSnapshot.competitive = response;
+      }
+      if (nextCompetitive !== null) {
+        roomSnapshot.competitive = nextCompetitive;
+      }
+
       return {
         outcome: 'accepted',
         response,
-        room: snapshotFromEntity(room),
+        room: roomSnapshot,
         committed: true,
       };
     });
   }
+}
+
+export async function finalizeCompetitiveTerminalMatch(
+  manager: EntityManager,
+  room: PokeLoungeRoom,
+  match: PokeLoungeCompetitiveMatch,
+  terminalRoomRevision: number,
+  historyWriter: VerifiedPokeLoungeHistoryWriter,
+  state: PokeLoungeRoomState = room.state,
+): Promise<{
+  projection: CompetitiveActionProjection;
+  nextCompetitive: CompetitiveActionProjection | null;
+}> {
+  const terminal = match.terminalResult;
+  if (
+    match.status !== 'completed' ||
+    !terminal ||
+    !match.currentState.terminal ||
+    !match.completedAt
+  ) {
+    throw new Error('Competitive terminal finalization requires a result');
+  }
+  if (!Number.isSafeInteger(terminalRoomRevision) || terminalRoomRevision < 0) {
+    throw new Error('Competitive terminal room revision is invalid');
+  }
+
+  const hasEventId = match.terminalEventId !== null;
+  const hasRoomRevision = match.terminalRoomRevision !== null;
+  if (hasEventId !== hasRoomRevision) {
+    throw new Error('Competitive terminal metadata pair is incomplete');
+  }
+  if (!hasEventId) {
+    match.terminalEventId = randomUUID();
+    match.terminalRoomRevision = terminalRoomRevision;
+  } else if (match.terminalRoomRevision !== terminalRoomRevision) {
+    throw new Error('Competitive terminal metadata revision is immutable');
+  }
+
+  if (
+    shouldPublishVerifiedHistory(match.kind) &&
+    match.historyPublication === null
+  ) {
+    const histories = await historyWriter.write(manager, {
+      gameType: GameType.POKE_LOUNGE,
+      terminalResult: terminal,
+      playerAccounts: match.playerAccounts,
+      source: { roomId: room.id, matchId: match.matchId },
+    });
+    match.historyPublication = {
+      historyIdByAccountId: Object.fromEntries(
+        histories.map((history) => [history.userId, history.id]),
+      ),
+    };
+  }
+
+  await manager
+    .getRepository(PokeLoungeCompetitiveMatch)
+    .save({ ...match }, { reload: false });
+
+  const nextCompetitive =
+    state.tournament.activeMatchId === match.bracketMatchId
+      ? await advanceTournamentAuthorityMatch(manager, room, match, state)
+      : null;
+
+  return {
+    projection: toProjection(match, []),
+    nextCompetitive,
+  };
+}
+
+export async function advanceTournamentAuthorityMatch(
+  manager: EntityManager,
+  room: PokeLoungeRoom,
+  completedMatch: PokeLoungeCompetitiveMatch,
+  state: PokeLoungeRoomState = room.state,
+): Promise<CompetitiveActionProjection | null> {
+  const terminal = completedMatch.terminalResult;
+  if (!terminal) {
+    throw new Error('Tournament authority match completed without a result');
+  }
+  if (state.tournament.activeMatchId !== completedMatch.bracketMatchId) {
+    throw new Error(
+      'Tournament authority match is not the active bracket match',
+    );
+  }
+
+  completePokeLoungeTournamentMatch(
+    state,
+    completedMatch.bracketMatchId,
+    terminal.winnerPlayerId,
+    terminal.reason,
+    completedMatch.completedAt?.getTime() ?? Date.now(),
+  );
+
+  const bracketMatchId = state.tournament.activeMatchId;
+  const nextBracketMatch = state.tournament.bracket?.currentRound?.matches.find(
+    (match) => match.matchId === bracketMatchId,
+  );
+  if (!nextBracketMatch || !bracketMatchId) {
+    return null;
+  }
+
+  const seats = await manager
+    .getRepository(PokeLoungeCompetitiveSeat)
+    .find({ where: { roomId: room.id } });
+  const players = nextBracketMatch.participantIds.map((playerId) => {
+    const seat = seats.find((candidate) => candidate.playerId === playerId);
+    return seat ? { playerId: seat.playerId, accountId: seat.accountId } : null;
+  });
+  if (!players[0] || !players[1]) {
+    return null;
+  }
+
+  const matchRepository = manager.getRepository(PokeLoungeCompetitiveMatch);
+  const assignment = createCompetitiveAssignment({
+    roomId: room.id,
+    roomCode: room.roomCode,
+    bracketMatchId,
+    kind: 'tournament-unranked',
+    assignmentRevision: 1,
+    players: [players[0], players[1]],
+  });
+  await matchRepository.save(matchRepository.create(assignment));
+  state.tournament.activeMatchAuthority = 'server';
+  return toCompetitiveProjection(assignment, []);
+}
+
+export function shouldPublishVerifiedHistory(
+  kind: CompetitiveMatchKind,
+): boolean {
+  return kind === 'ranked-head-to-head';
 }
 
 export function hashCompetitiveActionRequest(
@@ -263,7 +418,7 @@ export function isSupportedCompetitiveRuleset(input: {
 }
 
 export function resolveTurnReceipts(
-  receipts: [PokeLoungeCompetitiveAction, PokeLoungeCompetitiveAction],
+  receipts: readonly PokeLoungeCompetitiveAction[],
   response: CompetitiveActionProjection,
   resolvedAt: Date,
 ): void {

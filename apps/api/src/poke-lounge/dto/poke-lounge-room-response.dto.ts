@@ -4,6 +4,15 @@ import {
   ApiPropertyOptional,
 } from '@nestjs/swagger';
 import type {
+  TournamentBracketState,
+  TournamentBye,
+  TournamentElimination,
+  TournamentMatch,
+  TournamentParticipant,
+  TournamentRound,
+} from '@vscoke/poke-lounge-battle';
+import type {
+  CompetitiveTerminalTransition,
   PokeLoungeFinalStanding,
   PokeLoungeMatchResultReason,
   PokeLoungeMatchStatus,
@@ -35,7 +44,7 @@ const roundPhases: PokeLoungeRoundPhase[] = [
   'tournament',
   'completed',
 ];
-const matchStatuses: PokeLoungeMatchStatus[] = ['pending', 'completed'];
+const matchStatuses: PokeLoungeMatchStatus[] = ['ready', 'completed'];
 const matchResultReasons: PokeLoungeMatchResultReason[] = [
   'faint',
   'timeout',
@@ -70,8 +79,20 @@ class PokeLoungeRoomParticipantDto implements PokeLoungePublicRoomParticipant {
 }
 
 class PokeLoungeTournamentMatchDto implements PokeLoungeTournamentMatch {
-  @ApiProperty({ example: 'round-1-match-1' })
+  @ApiProperty({ example: 'game-round-1-bracket-1-match-1' })
   matchId!: string;
+
+  @ApiProperty({ example: 1 })
+  roundNumber!: number;
+
+  @ApiProperty({ example: 1 })
+  matchNumber!: number;
+
+  @ApiProperty({ type: () => PokeLoungeTournamentParticipantDto })
+  participantA!: TournamentParticipant;
+
+  @ApiProperty({ type: () => PokeLoungeTournamentParticipantDto })
+  participantB!: TournamentParticipant;
 
   @ApiProperty({
     type: [String],
@@ -81,20 +102,116 @@ class PokeLoungeTournamentMatchDto implements PokeLoungeTournamentMatch {
   })
   participantIds!: [string, string];
 
-  @ApiProperty({ enum: matchStatuses, example: 'pending' })
+  @ApiProperty({ enum: matchStatuses, example: 'ready' })
   status!: PokeLoungeMatchStatus;
 
-  @ApiPropertyOptional({ example: 'player-a' })
-  winnerPlayerId?: string;
+  @ApiProperty({ type: String, example: 'player-a', nullable: true })
+  winnerPlayerId!: string | null;
 
-  @ApiPropertyOptional({ example: 'player-b' })
-  loserPlayerId?: string;
+  @ApiProperty({ type: String, example: 'player-b', nullable: true })
+  loserPlayerId!: string | null;
 
-  @ApiPropertyOptional({ enum: matchResultReasons, example: 'faint' })
-  resultReason?: PokeLoungeMatchResultReason;
+  @ApiProperty({ enum: matchResultReasons, example: 'faint', nullable: true })
+  resultReason!: PokeLoungeMatchResultReason | null;
 
-  @ApiPropertyOptional({ example: 1720000060000 })
-  completedAtMs?: number;
+  @ApiProperty({ type: Number, example: 1720000060000, nullable: true })
+  completedAtMs!: number | null;
+}
+
+class PokeLoungeTournamentParticipantDto implements TournamentParticipant {
+  @ApiProperty({ example: 'player-a' })
+  playerId!: string;
+
+  @ApiProperty({ example: 'Player A' })
+  displayName!: string;
+
+  @ApiProperty({ example: 1 })
+  seed!: number;
+}
+
+class PokeLoungeTournamentByeDto implements TournamentBye {
+  @ApiProperty({ example: 'game-round-1-bracket-1-bye-1' })
+  byeId!: string;
+
+  @ApiProperty({ example: 1 })
+  roundNumber!: number;
+
+  @ApiProperty({ example: 1 })
+  slotNumber!: number;
+
+  @ApiProperty({ type: PokeLoungeTournamentParticipantDto })
+  entrant!: TournamentParticipant;
+}
+
+class PokeLoungeTournamentRoundSlotDto {
+  @ApiProperty({ enum: ['match', 'bye'] })
+  kind!: 'match' | 'bye';
+
+  @ApiPropertyOptional({ example: 'game-round-1-bracket-1-match-1' })
+  matchId?: string;
+
+  @ApiPropertyOptional({ example: 'game-round-1-bracket-1-bye-1' })
+  byeId?: string;
+}
+
+class PokeLoungeTournamentRoundDto implements TournamentRound {
+  @ApiProperty({ example: 1 })
+  roundNumber!: number;
+
+  @ApiProperty({ type: [PokeLoungeTournamentMatchDto] })
+  matches!: TournamentMatch[];
+
+  @ApiProperty({ type: [PokeLoungeTournamentByeDto] })
+  byes!: TournamentBye[];
+
+  @ApiProperty({ type: [PokeLoungeTournamentRoundSlotDto] })
+  slots!: TournamentRound['slots'];
+}
+
+class PokeLoungeTournamentEliminationDto implements TournamentElimination {
+  @ApiProperty({ example: 'player-b' })
+  playerId!: string;
+
+  @ApiProperty({ example: 'Player B' })
+  displayName!: string;
+
+  @ApiProperty({ example: 2 })
+  seed!: number;
+
+  @ApiProperty({ example: 1 })
+  roundNumber!: number;
+
+  @ApiProperty({ example: 'game-round-1-bracket-1-match-1' })
+  matchId!: string;
+
+  @ApiProperty({ example: 1 })
+  order!: number;
+}
+
+class PokeLoungeTournamentBracketDto implements TournamentBracketState {
+  @ApiProperty({ example: 1, enum: [1] })
+  version!: 1;
+
+  @ApiProperty({ example: 1 })
+  gameRoundIndex!: number;
+
+  @ApiProperty({ enum: ['in-progress', 'completed'] })
+  status!: TournamentBracketState['status'];
+
+  @ApiProperty({ type: [PokeLoungeTournamentParticipantDto] })
+  participants!: TournamentParticipant[];
+
+  @ApiProperty({ type: PokeLoungeTournamentRoundDto, nullable: true })
+  currentRound!: TournamentRound | null;
+
+  @ApiProperty({ type: [PokeLoungeTournamentRoundDto] })
+  completedRounds!: TournamentRound[];
+
+  @ApiProperty({ type: [PokeLoungeTournamentEliminationDto] })
+  eliminations!: TournamentElimination[];
+
+  @ApiProperty({ type: String, example: 'player-a', nullable: true })
+  championPlayerId!: string | null;
 }
 
 class PokeLoungeFinalStandingDto implements PokeLoungeFinalStanding {
@@ -154,16 +271,29 @@ class PokeLoungeRoundDto implements PokeLoungeRoundState {
   @ApiProperty({ example: 60000 })
   durationMs!: number;
 
-  @ApiProperty({ example: 1720000000000, nullable: true })
+  @ApiProperty({ type: Number, example: 1720000000000, nullable: true })
   startedAtMs!: number | null;
 
-  @ApiProperty({ example: 1720000060000, nullable: true })
+  @ApiProperty({ type: Number, example: 1720000060000, nullable: true })
   endsAtMs!: number | null;
 }
 
 class PokeLoungeTournamentDto implements PokeLoungeTournamentState {
-  @ApiProperty({ type: [PokeLoungeTournamentMatchDto] })
-  matches!: PokeLoungeTournamentMatchDto[];
+  @ApiProperty({ example: 2, enum: [2] })
+  version!: 2;
+
+  @ApiProperty({ type: PokeLoungeTournamentBracketDto, nullable: true })
+  bracket!: TournamentBracketState | null;
+
+  @ApiProperty({
+    type: String,
+    example: 'game-round-1-bracket-1-match-1',
+    nullable: true,
+  })
+  activeMatchId!: string | null;
+
+  @ApiProperty({ enum: ['casual', 'server'], nullable: true })
+  activeMatchAuthority!: PokeLoungeTournamentState['activeMatchAuthority'];
 
   @ApiProperty({
     type: 'object',
@@ -173,13 +303,35 @@ class PokeLoungeTournamentDto implements PokeLoungeTournamentState {
   cumulativeScores!: Record<string, number>;
 }
 
-@ApiExtraModels(PokeLoungePartySnapshotDto, PokeLoungeRepresentativePokemonDto)
+class CompetitiveTerminalTransitionDto implements CompetitiveTerminalTransition {
+  @ApiProperty({ type: String, format: 'uuid' })
+  terminalEventId!: string;
+
+  @ApiProperty({ type: Number, minimum: 0 })
+  terminalRoomRevision!: number;
+
+  @ApiProperty({ type: CompetitiveActionResponseDto })
+  projection!: CompetitiveActionResponseDto;
+}
+
+@ApiExtraModels(
+  PokeLoungePartySnapshotDto,
+  PokeLoungeRepresentativePokemonDto,
+  CompetitiveActionResponseDto,
+  CompetitiveTerminalTransitionDto,
+)
 export class PokeLoungeRoomResponseDto implements PokeLoungePublicRoomState {
   @ApiProperty({ example: 'ROOM01' })
   roomCode!: string;
 
   @ApiProperty({ enum: roomStatuses, example: 'waiting' })
   status!: PokeLoungeRoomStatus;
+
+  @ApiPropertyOptional({
+    enum: ['legacy-room-restart-required'],
+    example: 'legacy-room-restart-required',
+  })
+  closeReason?: PokeLoungeRoomState['closeReason'];
 
   @ApiProperty({ example: 1720000000000 })
   createdAtMs!: number;
@@ -212,6 +364,9 @@ export class PokeLoungeRoomResponseDto implements PokeLoungePublicRoomState {
 
   @ApiProperty({ type: [PokeLoungeFinalStandingDto] })
   finalStandings!: PokeLoungeFinalStandingDto[];
+
+  @ApiProperty({ type: [CompetitiveTerminalTransitionDto], maxItems: 8 })
+  competitiveTransitions!: CompetitiveTerminalTransitionDto[];
 
   @ApiPropertyOptional({ type: CompetitiveActionResponseDto })
   competitive?: CompetitiveActionResponseDto;

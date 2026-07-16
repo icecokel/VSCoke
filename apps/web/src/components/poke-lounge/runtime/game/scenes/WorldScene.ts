@@ -41,7 +41,10 @@ import {
   type WildBattleStartInput,
   type WorldSceneEncounterController,
 } from "./world-scene-encounters";
-import { createCompetitiveBattleLaunchCache } from "./competitive-battle-launch";
+import {
+  createCompetitiveBattleLaunchCache,
+  type CompetitiveBattleLaunchKey,
+} from "./competitive-battle-launch";
 
 export { formatPokeDollars, formatRankScoreHud } from "./world-scene-hud";
 export {
@@ -74,6 +77,7 @@ export interface WorldSceneCreateData {
   spawnPointName?: string;
   spawnPosition?: WorldSpawnPosition;
   tournamentResult?: WorldTournamentBattleResult;
+  completedCompetitiveBattle?: CompetitiveBattleLaunchKey;
 }
 
 export interface WorldSceneOptions {
@@ -250,6 +254,12 @@ export class WorldScene extends Phaser.Scene {
   }
 
   create(data: WorldSceneCreateData = {}): void {
+    if (data.completedCompetitiveBattle) {
+      this.competitiveBattleLaunchCache.complete(
+        data.completedCompetitiveBattle.matchId,
+        data.completedCompetitiveBattle.assignmentRevision,
+      );
+    }
     this.shutdownComplete = false;
     this.preserveRoomForBattle = false;
     this.hud = createWorldSceneHud({
@@ -654,6 +664,7 @@ export class WorldScene extends Phaser.Scene {
     const y = Math.round(this.player.y);
     const facing = this.facing;
 
+    this.preserveRoomForBattle = true;
     this.player.setVelocity(0, 0);
 
     const battleData = {
@@ -765,6 +776,18 @@ export class WorldScene extends Phaser.Scene {
         this.remotePlayerSnapshots.delete(sessionId);
         this.gameStateStore.removeRemotePlayer(sessionId);
       }),
+      this.room.on("TOURNAMENT_STATE", payload => {
+        const applied = this.gameStateStore.applyTournamentSnapshotFromRoom(payload, Date.now());
+
+        if (!applied.ok) {
+          return;
+        }
+
+        this.tournament?.clearPresentation();
+        if (payload.roomStatus === "completed") {
+          this.tournament?.showResultPresentationIfNeeded();
+        }
+      }),
       this.room.on("TOURNAMENT_STARTED", payload => {
         if (!this.canApplyTournamentPayloadFromRoom(payload.hostPlayerId)) {
           return;
@@ -805,6 +828,12 @@ export class WorldScene extends Phaser.Scene {
             battleKind: "authoritative",
             ownPlayerId: latest.ownPlayerId,
             projection: latest.projection,
+            returnToWorld: {
+              mapKey: FIELD_MAP.key,
+              x: Math.round(this.player.x),
+              y: Math.round(this.player.y),
+              facing: this.facing,
+            },
           });
         });
       }),

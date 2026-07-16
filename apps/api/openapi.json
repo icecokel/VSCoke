@@ -1650,162 +1650,6 @@
         },
         "required": ["playerId", "updatedAtMs"]
       },
-      "PokeLoungeRoomParticipantDto": {
-        "type": "object",
-        "properties": {
-          "playerId": {
-            "type": "string",
-            "example": "player-a"
-          },
-          "displayName": {
-            "type": "string",
-            "example": "Player A"
-          },
-          "role": {
-            "type": "string",
-            "enum": ["participant", "spectator"],
-            "example": "participant"
-          },
-          "ready": {
-            "type": "boolean",
-            "example": true
-          },
-          "connected": {
-            "type": "boolean",
-            "example": true
-          },
-          "joinedAtMs": {
-            "type": "number",
-            "example": 1720000000000
-          },
-          "leftAtMs": {
-            "type": "number",
-            "example": 1720000005000
-          }
-        },
-        "required": [
-          "playerId",
-          "displayName",
-          "role",
-          "ready",
-          "connected",
-          "joinedAtMs"
-        ]
-      },
-      "PokeLoungeRoundDto": {
-        "type": "object",
-        "properties": {
-          "index": {
-            "type": "number",
-            "example": 1
-          },
-          "phase": {
-            "type": "string",
-            "enum": ["waiting", "round-started", "tournament", "completed"],
-            "example": "waiting"
-          },
-          "durationMs": {
-            "type": "number",
-            "example": 60000
-          },
-          "startedAtMs": {
-            "type": "object",
-            "example": 1720000000000,
-            "nullable": true
-          },
-          "endsAtMs": {
-            "type": "object",
-            "example": 1720000060000,
-            "nullable": true
-          }
-        },
-        "required": ["index", "phase", "durationMs", "startedAtMs", "endsAtMs"]
-      },
-      "PokeLoungeTournamentMatchDto": {
-        "type": "object",
-        "properties": {
-          "matchId": {
-            "type": "string",
-            "example": "round-1-match-1"
-          },
-          "participantIds": {
-            "example": ["player-a", "player-b"],
-            "minItems": 2,
-            "maxItems": 2,
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "status": {
-            "type": "string",
-            "enum": ["pending", "completed"],
-            "example": "pending"
-          },
-          "winnerPlayerId": {
-            "type": "string",
-            "example": "player-a"
-          },
-          "loserPlayerId": {
-            "type": "string",
-            "example": "player-b"
-          },
-          "resultReason": {
-            "type": "string",
-            "enum": ["faint", "timeout", "forfeit", "run", "capture"],
-            "example": "faint"
-          },
-          "completedAtMs": {
-            "type": "number",
-            "example": 1720000060000
-          }
-        },
-        "required": ["matchId", "participantIds", "status"]
-      },
-      "PokeLoungeTournamentDto": {
-        "type": "object",
-        "properties": {
-          "matches": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PokeLoungeTournamentMatchDto"
-            }
-          },
-          "cumulativeScores": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "number"
-            },
-            "example": {
-              "player-a": 100,
-              "player-b": 50
-            }
-          }
-        },
-        "required": ["matches", "cumulativeScores"]
-      },
-      "PokeLoungeFinalStandingDto": {
-        "type": "object",
-        "properties": {
-          "playerId": {
-            "type": "string",
-            "example": "player-a"
-          },
-          "displayName": {
-            "type": "string",
-            "example": "Player A"
-          },
-          "rank": {
-            "type": "number",
-            "example": 1
-          },
-          "score": {
-            "type": "number",
-            "example": 100
-          }
-        },
-        "required": ["playerId", "displayName", "rank", "score"]
-      },
       "CompetitiveMoveStateDto": {
         "type": "object",
         "properties": {
@@ -1942,6 +1786,14 @@
           "matchId": {
             "type": "string"
           },
+          "bracketMatchId": {
+            "type": "string",
+            "example": "game-round-1-bracket-1-match-1"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["ranked-head-to-head", "tournament-unranked"]
+          },
           "assignmentRevision": {
             "type": "number"
           },
@@ -1957,6 +1809,16 @@
           "status": {
             "type": "string",
             "enum": ["pending", "active", "completed"]
+          },
+          "terminalEventId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "terminalRoomRevision": {
+            "type": "number",
+            "minimum": 0,
+            "nullable": true
           },
           "playerIds": {
             "type": "array",
@@ -1988,17 +1850,430 @@
         },
         "required": [
           "matchId",
+          "bracketMatchId",
+          "kind",
           "assignmentRevision",
           "rulesetVersion",
           "rulesetHash",
           "currentTurn",
           "status",
+          "terminalEventId",
+          "terminalRoomRevision",
           "playerIds",
           "stateHash",
           "currentState",
           "submittedPlayerIds",
           "terminal"
         ]
+      },
+      "CompetitiveTerminalTransitionDto": {
+        "type": "object",
+        "properties": {
+          "terminalEventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "terminalRoomRevision": {
+            "type": "number",
+            "minimum": 0
+          },
+          "projection": {
+            "$ref": "#/components/schemas/CompetitiveActionResponseDto"
+          }
+        },
+        "required": ["terminalEventId", "terminalRoomRevision", "projection"]
+      },
+      "PokeLoungeRoomParticipantDto": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "type": "string",
+            "example": "player-a"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Player A"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["participant", "spectator"],
+            "example": "participant"
+          },
+          "ready": {
+            "type": "boolean",
+            "example": true
+          },
+          "connected": {
+            "type": "boolean",
+            "example": true
+          },
+          "joinedAtMs": {
+            "type": "number",
+            "example": 1720000000000
+          },
+          "leftAtMs": {
+            "type": "number",
+            "example": 1720000005000
+          }
+        },
+        "required": [
+          "playerId",
+          "displayName",
+          "role",
+          "ready",
+          "connected",
+          "joinedAtMs"
+        ]
+      },
+      "PokeLoungeRoundDto": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "number",
+            "example": 1
+          },
+          "phase": {
+            "type": "string",
+            "enum": ["waiting", "round-started", "tournament", "completed"],
+            "example": "waiting"
+          },
+          "durationMs": {
+            "type": "number",
+            "example": 60000
+          },
+          "startedAtMs": {
+            "type": "number",
+            "example": 1720000000000,
+            "nullable": true
+          },
+          "endsAtMs": {
+            "type": "number",
+            "example": 1720000060000,
+            "nullable": true
+          }
+        },
+        "required": ["index", "phase", "durationMs", "startedAtMs", "endsAtMs"]
+      },
+      "PokeLoungeTournamentParticipantDto": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "type": "string",
+            "example": "player-a"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Player A"
+          },
+          "seed": {
+            "type": "number",
+            "example": 1
+          }
+        },
+        "required": ["playerId", "displayName", "seed"]
+      },
+      "PokeLoungeTournamentMatchDto": {
+        "type": "object",
+        "properties": {
+          "matchId": {
+            "type": "string",
+            "example": "game-round-1-bracket-1-match-1"
+          },
+          "roundNumber": {
+            "type": "number",
+            "example": 1
+          },
+          "matchNumber": {
+            "type": "number",
+            "example": 1
+          },
+          "participantA": {
+            "$ref": "#/components/schemas/PokeLoungeTournamentParticipantDto"
+          },
+          "participantB": {
+            "$ref": "#/components/schemas/PokeLoungeTournamentParticipantDto"
+          },
+          "participantIds": {
+            "example": ["player-a", "player-b"],
+            "minItems": 2,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ready", "completed"],
+            "example": "ready"
+          },
+          "winnerPlayerId": {
+            "type": "string",
+            "example": "player-a",
+            "nullable": true
+          },
+          "loserPlayerId": {
+            "type": "string",
+            "example": "player-b",
+            "nullable": true
+          },
+          "resultReason": {
+            "type": "string",
+            "enum": ["faint", "timeout", "forfeit", "run", "capture"],
+            "example": "faint",
+            "nullable": true
+          },
+          "completedAtMs": {
+            "type": "number",
+            "example": 1720000060000,
+            "nullable": true
+          }
+        },
+        "required": [
+          "matchId",
+          "roundNumber",
+          "matchNumber",
+          "participantA",
+          "participantB",
+          "participantIds",
+          "status",
+          "winnerPlayerId",
+          "loserPlayerId",
+          "resultReason",
+          "completedAtMs"
+        ]
+      },
+      "PokeLoungeTournamentByeDto": {
+        "type": "object",
+        "properties": {
+          "byeId": {
+            "type": "string",
+            "example": "game-round-1-bracket-1-bye-1"
+          },
+          "roundNumber": {
+            "type": "number",
+            "example": 1
+          },
+          "slotNumber": {
+            "type": "number",
+            "example": 1
+          },
+          "entrant": {
+            "$ref": "#/components/schemas/PokeLoungeTournamentParticipantDto"
+          }
+        },
+        "required": ["byeId", "roundNumber", "slotNumber", "entrant"]
+      },
+      "PokeLoungeTournamentRoundSlotDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["match", "bye"]
+          },
+          "matchId": {
+            "type": "string",
+            "example": "game-round-1-bracket-1-match-1"
+          },
+          "byeId": {
+            "type": "string",
+            "example": "game-round-1-bracket-1-bye-1"
+          }
+        },
+        "required": ["kind"]
+      },
+      "PokeLoungeTournamentRoundDto": {
+        "type": "object",
+        "properties": {
+          "roundNumber": {
+            "type": "number",
+            "example": 1
+          },
+          "matches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PokeLoungeTournamentMatchDto"
+            }
+          },
+          "byes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PokeLoungeTournamentByeDto"
+            }
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PokeLoungeTournamentRoundSlotDto"
+            }
+          }
+        },
+        "required": ["roundNumber", "matches", "byes", "slots"]
+      },
+      "PokeLoungeTournamentEliminationDto": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "type": "string",
+            "example": "player-b"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Player B"
+          },
+          "seed": {
+            "type": "number",
+            "example": 2
+          },
+          "roundNumber": {
+            "type": "number",
+            "example": 1
+          },
+          "matchId": {
+            "type": "string",
+            "example": "game-round-1-bracket-1-match-1"
+          },
+          "order": {
+            "type": "number",
+            "example": 1
+          }
+        },
+        "required": [
+          "playerId",
+          "displayName",
+          "seed",
+          "roundNumber",
+          "matchId",
+          "order"
+        ]
+      },
+      "PokeLoungeTournamentBracketDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "example": 1,
+            "enum": [1]
+          },
+          "gameRoundIndex": {
+            "type": "number",
+            "example": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["in-progress", "completed"]
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PokeLoungeTournamentParticipantDto"
+            }
+          },
+          "currentRound": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PokeLoungeTournamentRoundDto"
+              }
+            ]
+          },
+          "completedRounds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PokeLoungeTournamentRoundDto"
+            }
+          },
+          "eliminations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PokeLoungeTournamentEliminationDto"
+            }
+          },
+          "championPlayerId": {
+            "type": "string",
+            "example": "player-a",
+            "nullable": true
+          }
+        },
+        "required": [
+          "version",
+          "gameRoundIndex",
+          "status",
+          "participants",
+          "currentRound",
+          "completedRounds",
+          "eliminations",
+          "championPlayerId"
+        ]
+      },
+      "PokeLoungeTournamentDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "example": 2,
+            "enum": [2]
+          },
+          "bracket": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PokeLoungeTournamentBracketDto"
+              }
+            ]
+          },
+          "activeMatchId": {
+            "type": "string",
+            "example": "game-round-1-bracket-1-match-1",
+            "nullable": true
+          },
+          "activeMatchAuthority": {
+            "type": "string",
+            "enum": ["casual", "server"],
+            "nullable": true
+          },
+          "cumulativeScores": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "example": {
+              "player-a": 100,
+              "player-b": 50
+            }
+          }
+        },
+        "required": [
+          "version",
+          "bracket",
+          "activeMatchId",
+          "activeMatchAuthority",
+          "cumulativeScores"
+        ]
+      },
+      "PokeLoungeFinalStandingDto": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "type": "string",
+            "example": "player-a"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Player A"
+          },
+          "rank": {
+            "type": "number",
+            "example": 1
+          },
+          "score": {
+            "type": "number",
+            "example": 100
+          }
+        },
+        "required": ["playerId", "displayName", "rank", "score"]
       },
       "PokeLoungeRoomResponseDto": {
         "type": "object",
@@ -2017,6 +2292,11 @@
               "closed"
             ],
             "example": "waiting"
+          },
+          "closeReason": {
+            "type": "string",
+            "enum": ["legacy-room-restart-required"],
+            "example": "legacy-room-restart-required"
           },
           "createdAtMs": {
             "type": "number",
@@ -2059,6 +2339,13 @@
               "$ref": "#/components/schemas/PokeLoungeFinalStandingDto"
             }
           },
+          "competitiveTransitions": {
+            "maxItems": 8,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompetitiveTerminalTransitionDto"
+            }
+          },
           "competitive": {
             "$ref": "#/components/schemas/CompetitiveActionResponseDto"
           }
@@ -2074,7 +2361,8 @@
           "partySnapshots",
           "round",
           "tournament",
-          "finalStandings"
+          "finalStandings",
+          "competitiveTransitions"
         ]
       },
       "PokeLoungeRoomConflictResponseDto": {
@@ -2118,6 +2406,14 @@
           "matchId": {
             "type": "string"
           },
+          "bracketMatchId": {
+            "type": "string",
+            "example": "game-round-1-bracket-1-match-1"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["ranked-head-to-head", "tournament-unranked"]
+          },
           "assignmentRevision": {
             "type": "number"
           },
@@ -2133,6 +2429,16 @@
           "status": {
             "type": "string",
             "enum": ["pending", "active", "completed"]
+          },
+          "terminalEventId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "terminalRoomRevision": {
+            "type": "number",
+            "minimum": 0,
+            "nullable": true
           },
           "playerIds": {
             "type": "array",
@@ -2164,11 +2470,15 @@
         },
         "required": [
           "matchId",
+          "bracketMatchId",
+          "kind",
           "assignmentRevision",
           "rulesetVersion",
           "rulesetHash",
           "currentTurn",
           "status",
+          "terminalEventId",
+          "terminalRoomRevision",
           "playerIds",
           "stateHash",
           "currentState",
@@ -2301,7 +2611,7 @@
           },
           "matchId": {
             "type": "string",
-            "example": "round-1-match-1"
+            "example": "game-round-1-bracket-1-match-1"
           },
           "winnerPlayerId": {
             "type": "string",

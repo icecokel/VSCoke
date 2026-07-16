@@ -78,6 +78,7 @@ import type {
   MultiplayerRoom,
   RoomUnsubscribe,
 } from "../network/localPreviewRoom";
+import type { CompetitiveBattleLaunchKey } from "./competitive-battle-launch";
 
 export const BATTLE_COMMAND_LABELS = ["싸운다", "가방", "포켓몬", "도망"] as const;
 export const BATTLE_SPRITE_CROP = { x: 0, y: 0, width: 80, height: 80 } as const;
@@ -194,6 +195,7 @@ export interface AuthoritativeBattleSceneData {
   battleKind: "authoritative";
   ownPlayerId: string;
   projection: CompetitiveProjection;
+  returnToWorld: BattleScreenState["returnToWorld"];
 }
 
 interface LogicalCanvasPointInput {
@@ -260,7 +262,8 @@ function isAuthoritativeBattleSceneData(data: unknown): data is AuthoritativeBat
     isRecord(data) &&
     data.battleKind === "authoritative" &&
     typeof data.ownPlayerId === "string" &&
-    isRecord(data.projection)
+    isRecord(data.projection) &&
+    isRecord(data.returnToWorld)
   );
 }
 
@@ -386,6 +389,7 @@ export class BattleScene extends Phaser.Scene {
 
   create(data: unknown = {}): void {
     this.clearAuthoritativeSubscriptions();
+    this.state = this.createInitialState(data);
     if (isAuthoritativeBattleSceneData(data)) {
       this.authoritativeProjection = data.projection;
       this.authoritativeOwnPlayerId = data.ownPlayerId;
@@ -398,7 +402,6 @@ export class BattleScene extends Phaser.Scene {
       this.authoritativeOwnPlayerId = null;
       this.authoritativeInputPending = false;
     }
-    this.state = this.createInitialState(data);
     this.returningToWorld = false;
     this.battleEntrancePlayed = false;
     this.hpAnimationStartedCount = 0;
@@ -743,7 +746,7 @@ export class BattleScene extends Phaser.Scene {
 
   private createInitialState(data: unknown): BattleScreenState {
     if (isAuthoritativeBattleSceneData(data)) {
-      return toAuthoritativeBattleState(data.projection, data.ownPlayerId);
+      return toAuthoritativeBattleState(data.projection, data.ownPlayerId, data.returnToWorld);
     }
 
     if (isBattleE2eSceneData(data)) {
@@ -782,6 +785,24 @@ export class BattleScene extends Phaser.Scene {
 
   private confirmSelection(): void {
     if (this.battleEntrancePlaying) {
+      return;
+    }
+
+    if (
+      this.authoritativeProjection?.status === "completed" &&
+      this.authoritativeOwnPlayerId &&
+      this.state.phase === "ended" &&
+      this.state.returnToWorld
+    ) {
+      const completedCompetitiveBattle: CompetitiveBattleLaunchKey = {
+        matchId: this.authoritativeProjection.matchId,
+        assignmentRevision: this.authoritativeProjection.assignmentRevision,
+      };
+      this.clearAuthoritativeSubscriptions();
+      this.authoritativeInputPending = false;
+      this.authoritativeProjection = null;
+      this.authoritativeOwnPlayerId = null;
+      this.returnToWorld(completedCompetitiveBattle);
       return;
     }
 
@@ -950,6 +971,9 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.authoritativeUnsubscribers.push(
+      this.multiplayerRoom.on("TOURNAMENT_STATE", payload => {
+        this.gameStateStore.applyTournamentSnapshotFromRoom(payload, Date.now());
+      }),
       this.multiplayerRoom.on("COMPETITIVE_STATE", ({ projection, ownPlayerId }) => {
         const current = this.authoritativeProjection;
         if (
@@ -964,7 +988,9 @@ export class BattleScene extends Phaser.Scene {
         this.authoritativeProjection = projection;
         this.authoritativeOwnPlayerId = ownPlayerId;
         this.authoritativeInputPending = projection.submittedPlayerIds.includes(ownPlayerId);
-        this.setBattleState(toAuthoritativeBattleState(projection, ownPlayerId));
+        this.setBattleState(
+          toAuthoritativeBattleState(projection, ownPlayerId, this.state.returnToWorld),
+        );
       }),
       this.multiplayerRoom.on("COMPETITIVE_ACTION_FAILED", ({ matchId, message }) => {
         if (matchId !== this.authoritativeProjection?.matchId) {
@@ -1166,7 +1192,7 @@ export class BattleScene extends Phaser.Scene {
     this.evolutionAnimationTween = tween;
   }
 
-  private returnToWorld(): void {
+  private returnToWorld(completedCompetitiveBattle?: CompetitiveBattleLaunchKey): void {
     if (!this.state.returnToWorld || this.returningToWorld) {
       return;
     }
@@ -1261,6 +1287,7 @@ export class BattleScene extends Phaser.Scene {
             },
           }
         : {}),
+      ...(completedCompetitiveBattle ? { completedCompetitiveBattle } : {}),
     });
   }
 

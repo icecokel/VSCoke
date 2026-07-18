@@ -67,4 +67,5 @@ pnpm check:api-contract
 - [Monorepo Concept](docs/vscoke-monorepo-concept.md): 앱의 책임과 데이터 흐름
 - [Local Development](docs/local-development.md): 로컬 실행과 환경 변수
 - [Game Score Policy](docs/game-score-policy.md): 게임 결과와 랭킹 검증 기준
+- [Poke Lounge Game Concept](docs/poke-lounge-game-concept.md): 게임 경험, 규칙과 멀티플레이 컨셉
 - [Poke Lounge Release Gate](docs/poke-lounge-release-gate.md): Poke Lounge 공개 배포 조건

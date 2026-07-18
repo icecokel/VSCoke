@@ -316,5 +316,6 @@ pnpm --filter @vscoke/api db:tunnel
 - [Hobby API Swagger Concept](./hobby-api-swagger-concept.md)
 - [Hobby Frontend Schema Concept](./hobby-frontend-schema-concept.md)
 - [Playwright CLI Test Spec](./playwright-cli-test-spec.md)
+- [Poke Lounge Game Concept](./poke-lounge-game-concept.md)
 - [Poke Lounge Hardening Report](./poke-lounge-hardening-report.md)
 - [Poke Lounge Release Gate](./poke-lounge-release-gate.md)

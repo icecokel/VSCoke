@@ -97,6 +97,7 @@ next-env.d.ts
 !/docs/playwright-cli-test-plan.md
 !/docs/playwright-cli-test-spec.md
 !/docs/poke-lounge-audio-sources.md
+!/docs/poke-lounge-game-concept.md
 !/docs/licenses/
 !/docs/licenses/kenney-audio-cc0.txt
 !/docs/swagger-style-guide.md

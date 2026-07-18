@@ -132,15 +132,14 @@ export const HistoryTabs = ({ children }: TParentNode) => {
     const existingTab = history.find(item => item.path === pathname);
 
     if (existingTab) {
-      // 이미 존재하는 탭이면 활성화만 변경
-      if (!existingTab.isActive) {
-        setHistory(prev =>
-          prev.map(item => ({
-            ...item,
-            isActive: item.path === pathname,
-          })),
-        );
-      }
+      // 이미 존재하는 탭이면 활성화하고 TTL 기준 시각을 갱신
+      setHistory(prev =>
+        prev.map(item => ({
+          ...item,
+          isActive: item.path === pathname,
+          lastAccessedAt: item.path === pathname ? Date.now() : item.lastAccessedAt,
+        })),
+      );
     } else {
       // 탭이 없을 때만 새로 추가
       const fallbackTitle = pathname === "/" ? "Home" : pathname.split("/").pop() || pathname;

@@ -18,7 +18,7 @@ const installHistoryFixture = async (
     path: string;
     title: string;
     isActive: boolean;
-    lastAccessedAt: number;
+    lastAccessedAt?: number;
   }>,
 ) => {
   await page.addInitScript(items => {
@@ -31,6 +31,53 @@ const installHistoryFixture = async (
 };
 
 test.describe("히스토리 탭 상태머신", () => {
+  test("마지막 접근 값이 없거나 3일 지난 탭은 만료된다", async ({ page }) => {
+    const locale = getTestLocale();
+    const expiredAt = Date.now() - 4 * 24 * 60 * 60 * 1000;
+
+    await installHistoryFixture(page, [
+      {
+        path: "/blog",
+        title: "blog",
+        isActive: true,
+        lastAccessedAt: expiredAt,
+      },
+      {
+        path: "/readme",
+        title: "readme",
+        isActive: false,
+        lastAccessedAt: Date.now(),
+      },
+      {
+        path: "/package",
+        title: "package",
+        isActive: false,
+      },
+    ]);
+
+    await visit(page, `/${locale}/game`);
+    await waitForHistoryHydration(page);
+
+    await expect
+      .poll(async () => {
+        const current = await getHistorySnapshot(page);
+        const paths = current.map((item: { path: string }) => item.path);
+
+        return {
+          hasExpiredTab: paths.includes("/blog"),
+          hasLegacyTab: paths.includes("/package"),
+          hasRecentTab: paths.includes("/readme"),
+          activePath: current.find((item: { isActive: boolean }) => item.isActive)?.path,
+        };
+      })
+      .toEqual({
+        hasExpiredTab: false,
+        hasLegacyTab: false,
+        hasRecentTab: true,
+        activePath: "/game",
+      });
+  });
+
   test("빈 히스토리 상태에서도 탭 영역 높이를 예약한다", async ({ page }) => {
     await installHistoryFixture(page, []);
 

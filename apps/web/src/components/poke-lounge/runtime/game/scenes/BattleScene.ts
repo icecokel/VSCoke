@@ -65,7 +65,16 @@ import {
   type ShopItemId,
 } from "../state/gameStateStore";
 import { createGameTextStyle } from "../ui/gameTextStyle";
-import { createShortcutGuideRows, createShortcutGuideTitle } from "../ui/shortcutGuide";
+import {
+  dispatchPokeLoungeAccessibleStatus,
+  dispatchPokeLoungeNotice,
+} from "../ui/poke-lounge-ui-events";
+import {
+  createShortcutGuideFooter,
+  createShortcutGuideRows,
+  createShortcutGuideTitle,
+  type ShortcutGuideInputMode,
+} from "../ui/shortcutGuide";
 import { consumeVirtualGamepadPress, resetVirtualGamepad } from "../input/virtualGamepad";
 import { setShortcutGuideTouchControlsSuppressed } from "../input/mobileTouchControlsVisibility";
 import type { WildEncounterCandidate } from "../world/wildEncounters";
@@ -379,6 +388,7 @@ export class BattleScene extends Phaser.Scene {
   private authoritativeOwnPlayerId: string | null = null;
   private authoritativeInputPending = false;
   private authoritativeUnsubscribers: RoomUnsubscribe[] = [];
+  private lastAccessibleStatus = "";
 
   constructor(
     private readonly gameStateStore: GameStateStore = getDefaultGameStateStore(),
@@ -412,6 +422,7 @@ export class BattleScene extends Phaser.Scene {
     this.evolutionAnimationTween?.stop();
     this.evolutionAnimationTween = null;
     this.pendingMoveLearnings = [];
+    this.lastAccessibleStatus = "";
     this.cancelHpTweens();
     this.resetHitEffects();
     this.syncDisplayedHpToState();
@@ -426,6 +437,7 @@ export class BattleScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       stopWildBattleBgm();
       this.clearAuthoritativeSubscriptions();
+      dispatchPokeLoungeAccessibleStatus(this.game.canvas.ownerDocument, "필드 탐색");
     });
     this.events.once(Phaser.Scenes.Events.DESTROY, () => stopWildBattleBgm());
     this.playBattleEntranceAnimation();
@@ -971,6 +983,13 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.authoritativeUnsubscribers.push(
+      this.multiplayerRoom.on("CONNECTION_STATUS", ({ connectionStatus }) => {
+        this.gameStateStore.setSession({
+          sessionId: this.multiplayerRoom?.sessionId ?? null,
+          roomId: this.multiplayerRoom?.roomId ?? null,
+          connectionStatus,
+        });
+      }),
       this.multiplayerRoom.on("TOURNAMENT_STATE", payload => {
         this.gameStateStore.applyTournamentSnapshotFromRoom(payload, Date.now());
       }),
@@ -1250,7 +1269,15 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.state.result?.reason === "capture" && this.state.result.capturedPokemon) {
-      this.gameStateStore.addPokemonToParty(toPlayerPokemon(this.state.result.capturedPokemon));
+      const capturedPokemon = toPlayerPokemon(this.state.result.capturedPokemon);
+      const placement = this.gameStateStore.addPokemonToParty(capturedPokemon);
+
+      if (placement.destination === "box") {
+        dispatchPokeLoungeNotice(this.game.canvas.ownerDocument, {
+          message: `포획한 ${capturedPokemon.name}, 파티가 가득 차 PC 박스로 전송했습니다.`,
+          tone: "info",
+        });
+      }
     }
 
     if (
@@ -1696,6 +1723,7 @@ export class BattleScene extends Phaser.Scene {
     this.drawHpPanel(BATTLE_LAYOUT.playerHpPanel, this.state.player.pokemon, "player", true);
     this.drawEvolutionOverlay();
     this.publishE2eSnapshot();
+    this.publishAccessibleStatus();
 
     if (this.state.phase === "move-select") {
       this.drawMoveWindow();
@@ -1735,6 +1763,54 @@ export class BattleScene extends Phaser.Scene {
     this.drawMessageWindow(this.state.messageQueue[0] ?? BATTLE_END_CONFIRM_MESSAGE);
     this.drawShortcutGuideIfOpen();
     this.drawBattleEntranceOverlay();
+  }
+
+  private publishAccessibleStatus(): void {
+    const playerPokemon = this.state.player.pokemon;
+    const opponentPokemon = this.state.opponent.pokemon;
+    const healthSummary = `내 ${playerPokemon.name} HP ${playerPokemon.currentHp}/${playerPokemon.maxHp}. 상대 ${opponentPokemon.name} HP ${opponentPokemon.currentHp}/${opponentPokemon.maxHp}.`;
+    const queuedMessage = this.state.messageQueue[0];
+    let interactionSummary = queuedMessage ?? "";
+
+    if (!queuedMessage && this.state.phase === "command") {
+      interactionSummary = `전투 명령 ${COMMANDS[this.selectedCommandIndex]?.label ?? "싸운다"} 선택.`;
+    } else if (!queuedMessage && this.state.phase === "move-select") {
+      const move = playerPokemon.moves[this.selectedMoveIndex];
+      interactionSummary = move
+        ? `기술 ${move.name} 선택. PP ${move.pp}/${move.maxPp}.`
+        : "사용할 기술을 선택하세요.";
+    } else if (!queuedMessage && this.state.phase === "move-replace-select") {
+      const pending = this.getCurrentPendingMoveLearning();
+      const move = playerPokemon.moves[this.selectedMoveIndex];
+      interactionSummary = pending
+        ? `${pending.newMove.name}을 배우기 위해 ${move?.name ?? "기존 기술"}을 잊도록 선택했습니다.`
+        : "기술 교체를 확인하는 중입니다.";
+    } else if (!queuedMessage && this.state.phase === "party-select") {
+      const pokemon = this.state.player.party.find(
+        slot => slot.slotIndex === this.selectedPartySlotIndex,
+      )?.pokemon;
+      interactionSummary = pokemon
+        ? `교체 대상 ${pokemon.name}, HP ${pokemon.currentHp}/${pokemon.maxHp}.`
+        : "교체할 포켓몬을 선택하세요.";
+    } else if (!queuedMessage && this.state.phase === "bag-select") {
+      const itemId = this.getBattleBagItemIds()[this.selectedBagItemIndex];
+      const item = itemId ? getShopItemById(itemId) : undefined;
+      const quantity = itemId
+        ? (this.gameStateStore.getCurrentLocalPlayer().inventory[itemId] ?? 0)
+        : 0;
+      interactionSummary = item
+        ? `가방 ${item.displayName} 선택. 보유 ${quantity}개.`
+        : "사용할 아이템을 선택하세요.";
+    }
+
+    const nextStatus = `${healthSummary} ${interactionSummary}`.trim();
+
+    if (nextStatus === this.lastAccessibleStatus) {
+      return;
+    }
+
+    this.lastAccessibleStatus = nextStatus;
+    dispatchPokeLoungeAccessibleStatus(this.game.canvas.ownerDocument, nextStatus);
   }
 
   private drawBackground(): void {
@@ -2207,19 +2283,24 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    const inputMode: ShortcutGuideInputMode = this.game.canvas.ownerDocument.querySelector(
+      ".has-touch-game-device [data-mobile-touch-controls]",
+    )
+      ? "touch"
+      : "keyboard";
     const rect = { x: 48, y: 30, width: 198, height: 132 };
     this.drawRomWindow(rect, { radius: 0, includeFrameMarker: true });
     this.add.text(
       rect.x + 12,
       rect.y + 10,
-      createShortcutGuideTitle("battle"),
+      createShortcutGuideTitle("battle", inputMode),
       createGameTextStyle({
         color: "#17201a",
         fontSize: "10px",
       }),
     );
 
-    createShortcutGuideRows("battle").forEach((row, index) => {
+    createShortcutGuideRows("battle", inputMode).forEach((row, index) => {
       const rowY = rect.y + 30 + index * 17;
 
       this.add.text(
@@ -2245,7 +2326,7 @@ export class BattleScene extends Phaser.Scene {
     this.add.text(
       rect.x + 12,
       rect.y + rect.height - 16,
-      "Enter / H / Esc 닫기",
+      createShortcutGuideFooter(inputMode),
       createGameTextStyle({
         color: "#4b554f",
         fontSize: "7px",

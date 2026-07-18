@@ -72,6 +72,9 @@ export interface PlayerSnapshot {
 }
 
 export interface RoomEvent {
+  CONNECTION_STATUS: {
+    connectionStatus: "offline" | "connecting" | "online";
+  };
   CURRENT_PLAYERS: { players: Record<string, PlayerSnapshot> };
   PLAYER_JOINED: PlayerSnapshot;
   PLAYER_MOVED: PlayerSnapshot;
@@ -178,11 +181,23 @@ export function createLocalPreviewRoom(options: LocalPreviewRoomOptions = {}): M
   let connected = false;
   let disposed = false;
   let localSnapshot: PlayerSnapshot | null = null;
+  let connectionStatus: RoomEvent["CONNECTION_STATUS"]["connectionStatus"] = "offline";
+  let connectionStatusAnnounced = false;
 
   const emit = <T extends RoomMessage>(type: T, payload: RoomEvent[T]) => {
     for (const handler of handlers.get(type) ?? []) {
       handler(payload as RoomEvent[RoomMessage]);
     }
+  };
+
+  const emitConnectionStatus = (nextStatus: RoomEvent["CONNECTION_STATUS"]["connectionStatus"]) => {
+    if (connectionStatusAnnounced && connectionStatus === nextStatus) {
+      return;
+    }
+
+    connectionStatus = nextStatus;
+    connectionStatusAnnounced = true;
+    emit("CONNECTION_STATUS", { connectionStatus });
   };
 
   const postChannelMessage = (message: LocalPreviewChannelMessageBody) => {
@@ -292,8 +307,10 @@ export function createLocalPreviewRoom(options: LocalPreviewRoomOptions = {}): M
         return;
       }
 
+      emitConnectionStatus("connecting");
       ensureTransport();
       connected = true;
+      emitConnectionStatus("online");
       localSnapshot = normalizeLocalSnapshot(sessionId, initialSnapshot);
       players[sessionId] = localSnapshot;
       emit("CURRENT_PLAYERS", { players: clonePlayers(players) });
@@ -320,6 +337,7 @@ export function createLocalPreviewRoom(options: LocalPreviewRoomOptions = {}): M
         emit("PLAYER_LEFT", payload);
       }
 
+      emitConnectionStatus("offline");
       disposed = true;
       delete players[sessionId];
       transport?.close();
@@ -357,6 +375,10 @@ export function createLocalPreviewRoom(options: LocalPreviewRoomOptions = {}): M
       const nextHandlers = handlers.get(type) ?? new Set<Handler<RoomMessage>>();
       nextHandlers.add(typedHandler);
       handlers.set(type, nextHandlers);
+
+      if (type === "CONNECTION_STATUS" && connectionStatusAnnounced) {
+        typedHandler({ connectionStatus } as RoomEvent[RoomMessage]);
+      }
 
       return () => {
         nextHandlers.delete(typedHandler);

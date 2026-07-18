@@ -20,6 +20,7 @@ import {
   mapServerTournamentPlayerIds,
   parseServerTournamentState,
   type ServerTournamentState,
+  type TournamentCompetitionKind,
   TournamentProjectionSchemaError,
   type TournamentStateRoomPayload,
 } from "./tournament-projection";
@@ -37,9 +38,7 @@ interface ServerRoomState {
   status: ApiServerRoom["status"];
   participants: ServerParticipant[];
   partySnapshots: Record<string, ServerPartySnapshot>;
-  round: {
-    index: number;
-  };
+  round: ApiServerRoom["round"];
   tournament: ServerTournamentState;
   finalStandings: ApiServerRoom["finalStandings"];
   competitiveTransitions: CompetitiveTerminalTransition[];
@@ -202,6 +201,8 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   let freshTerminalBaselineInitialized = false;
   let roomSocket: ServerRoomSocket | null = null;
   let socketConnected = false;
+  let connectionStatus: RoomEvent["CONNECTION_STATUS"]["connectionStatus"] = "offline";
+  let connectionStatusAnnounced = false;
   let subscriptionFailed = false;
   let lastSocketErrorKind: ServerRoomTransportDiagnostics["lastSocketErrorKind"] = null;
   let lastSocketConnectErrorClass: ServerRoomTransportDiagnostics["lastSocketConnectErrorClass"] =
@@ -211,6 +212,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   let connectStarted = false;
   let mutationQueue: Promise<void> = Promise.resolve();
   let announcedCompetitiveAssignmentKey: string | null = null;
+  let latestCompetitionKind: TournamentCompetitionKind = null;
   let resultSync: TournamentStateRoomPayload["resultSync"] = {
     matchId: null,
     status: "idle",
@@ -222,6 +224,16 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     for (const handler of handlers.get(type) ?? []) {
       handler(payload as RoomEvent[RoomMessage]);
     }
+  };
+
+  const emitConnectionStatus = (nextStatus: RoomEvent["CONNECTION_STATUS"]["connectionStatus"]) => {
+    if (connectionStatusAnnounced && connectionStatus === nextStatus) {
+      return;
+    }
+
+    connectionStatus = nextStatus;
+    connectionStatusAnnounced = true;
+    emit("CONNECTION_STATUS", { connectionStatus });
   };
 
   const reportTransportError = (error: Error) => {
@@ -466,6 +478,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     }
 
     socketConnected = true;
+    emitConnectionStatus("online");
     subscriptionFailed = false;
     clearRecoveryTimer();
     roomSocket.emit("room.subscribe", {
@@ -479,12 +492,14 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
 
   const handleSocketDisconnect = () => {
     socketConnected = false;
+    emitConnectionStatus("offline");
     lastSocketErrorKind = "disconnect";
     scheduleRecovery();
   };
 
   const handleSocketConnectError = (error: unknown) => {
     socketConnected = false;
+    emitConnectionStatus("offline");
     subscriptionFailed = true;
     lastSocketErrorKind = "connect_error";
     lastSocketConnectErrorClass = classifySocketConnectError(error);
@@ -613,6 +628,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     latestState = state;
     lastAppliedRoomRevision = state.revision;
     activeRoomId = state.roomCode;
+    latestCompetitionKind = resolveCompetitionKind(state, latestCompetitionKind);
 
     if (
       resultSync.matchId &&
@@ -727,6 +743,8 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     }
 
     clearCompetitiveActionRecovery();
+    const previousCompetitionKind = latestCompetitionKind;
+    latestCompetitionKind = projection.kind;
     currentAssignmentProjection = projection;
     const payload = { projection, ownPlayerId: serverPlayerId };
     const assignmentKey = `${projection.matchId}:${projection.assignmentRevision}`;
@@ -736,6 +754,10 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       emit("COMPETITIVE_ASSIGNMENT", payload);
     }
     emit("COMPETITIVE_STATE", payload);
+
+    if (latestState && previousCompetitionKind !== latestCompetitionKind) {
+      emitTournamentProjection(latestState);
+    }
   };
 
   const canApplyCurrentAssignmentProjection = (projection: CompetitiveProjection): boolean =>
@@ -754,17 +776,38 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       tournament.activeMatchAuthority === "casual"
         ? "casual"
         : tournament.activeMatchAuthority === "server" &&
-            state.competitive?.bracketMatchId === tournament.activeMatchId
+            currentAssignmentProjection?.bracketMatchId === tournament.activeMatchId
           ? "authority"
           : "awaiting-authority";
+    const seedByPlayerId = new Map(
+      tournament.bracket?.participants.map(participant => [
+        participant.playerId,
+        participant.seed,
+      ]) ?? [],
+    );
 
     return {
       revision: state.revision,
+      roomCode: state.roomCode,
       roundIndex: state.round.index,
       roomStatus: state.status,
+      roomRound: { ...state.round },
+      participants: state.participants.map(participant => {
+        const playerId = mapServerPlayerIdForLocalStore(participant.playerId);
+
+        return {
+          playerId,
+          displayName: participant.displayName,
+          role: participant.role,
+          ready: participant.ready,
+          connected: participant.connected,
+          seed: seedByPlayerId.get(playerId) ?? null,
+        };
+      }),
       tournament,
       ownPlayerId: localPlayerId,
       activeMatchTransport,
+      competitionKind: latestCompetitionKind,
       finalStandings: state.finalStandings.map(standing => ({
         ...standing,
         playerId: mapServerPlayerIdForLocalStore(standing.playerId),
@@ -790,6 +833,11 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     latestState.tournament.activeMatchId === projection.bracketMatchId;
 
   const replayLatestEvent = (type: RoomMessage, handler: Handler<RoomMessage>) => {
+    if (type === "CONNECTION_STATUS" && connectionStatusAnnounced) {
+      handler({ connectionStatus });
+      return;
+    }
+
     if (latestState && type === "CURRENT_PLAYERS") {
       handler(createCurrentPlayersPayload(latestState));
       return;
@@ -1066,6 +1114,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       }
 
       connectStarted = true;
+      emitConnectionStatus("connecting");
       const snapshot = initialSnapshot ?? createDefaultSnapshot(sessionId, localPlayerId);
       localPlayerId = snapshot.playerId?.trim() || localPlayerId;
       void connectServerRoom(snapshot);
@@ -1076,6 +1125,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       }
 
       disposed = true;
+      emitConnectionStatus("offline");
       clearRecoveryTimer();
       clearCompetitiveActionRecovery();
       if (roomSocket) {
@@ -1450,7 +1500,7 @@ function parseServerRoomState(value: unknown): ServerRoomState {
     (room.revision as number) < 0 ||
     typeof room.expiresAtMs !== "number" ||
     !Number.isFinite(room.expiresAtMs) ||
-    typeof room.status !== "string" ||
+    !isServerRoomStatus(room.status) ||
     !Array.isArray(room.participants) ||
     !room.partySnapshots ||
     typeof room.partySnapshots !== "object" ||
@@ -1463,13 +1513,14 @@ function parseServerRoomState(value: unknown): ServerRoomState {
     throw new ServerRoomSchemaError();
   }
 
-  const tournament = parseServerTournamentState(
-    room.tournament,
-    (room.round as { index: number }).index,
-  );
+  const participants = parseServerRoomParticipants(room.participants);
+  const round = parseServerRoomRound(room.round);
+  const tournament = parseServerTournamentState(room.tournament, round.index);
   const competitiveContract = parseCompetitiveRoomSnapshotContract(room);
   const parsed: ServerRoomState = {
     ...(value as ServerRoomState),
+    participants,
+    round,
     tournament,
     competitiveTransitions: competitiveContract.competitiveTransitions,
   };
@@ -1490,6 +1541,77 @@ function parseServerRoomState(value: unknown): ServerRoomState {
   }
 
   return parsed;
+}
+
+function isServerRoomStatus(value: unknown): value is ServerRoomState["status"] {
+  return (
+    value === "waiting" ||
+    value === "round-started" ||
+    value === "tournament" ||
+    value === "completed" ||
+    value === "closed"
+  );
+}
+
+function parseServerRoomParticipants(value: unknown[]): ServerParticipant[] {
+  const playerIds = new Set<string>();
+
+  return value.map(candidate => {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+      throw new ServerRoomSchemaError();
+    }
+
+    const participant = candidate as Record<string, unknown>;
+
+    if (
+      typeof participant.playerId !== "string" ||
+      !participant.playerId.trim() ||
+      playerIds.has(participant.playerId) ||
+      typeof participant.displayName !== "string" ||
+      !participant.displayName.trim() ||
+      (participant.role !== "participant" && participant.role !== "spectator") ||
+      typeof participant.ready !== "boolean" ||
+      typeof participant.connected !== "boolean" ||
+      !isNonnegativeTimestamp(participant.joinedAtMs) ||
+      (participant.leftAtMs !== undefined && !isNonnegativeTimestamp(participant.leftAtMs))
+    ) {
+      throw new ServerRoomSchemaError();
+    }
+
+    playerIds.add(participant.playerId);
+    return candidate as ServerParticipant;
+  });
+}
+
+function parseServerRoomRound(value: unknown): ServerRoomState["round"] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new ServerRoomSchemaError();
+  }
+
+  const round = value as Record<string, unknown>;
+  const validPhase =
+    round.phase === "waiting" ||
+    round.phase === "round-started" ||
+    round.phase === "tournament" ||
+    round.phase === "completed";
+
+  if (
+    !Number.isSafeInteger(round.index) ||
+    (round.index as number) < 1 ||
+    !validPhase ||
+    !Number.isSafeInteger(round.durationMs) ||
+    (round.durationMs as number) < 1 ||
+    (round.startedAtMs !== null && !isNonnegativeTimestamp(round.startedAtMs)) ||
+    (round.endsAtMs !== null && !isNonnegativeTimestamp(round.endsAtMs))
+  ) {
+    throw new ServerRoomSchemaError();
+  }
+
+  return value as ServerRoomState["round"];
+}
+
+function isNonnegativeTimestamp(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
 function parseSocketRoomEvent(value: unknown): ServerRoomState {
@@ -1553,6 +1675,30 @@ function compareTerminalTransitions(
     left.terminalRoomRevision - right.terminalRoomRevision ||
     left.terminalEventId.localeCompare(right.terminalEventId)
   );
+}
+
+function resolveCompetitionKind(
+  state: ServerRoomState,
+  previousKind: TournamentCompetitionKind,
+): TournamentCompetitionKind {
+  const projectedKind =
+    state.competitive?.kind ?? state.competitiveTransitions.at(-1)?.projection.kind;
+
+  if (projectedKind) {
+    return projectedKind;
+  }
+
+  if (state.tournament.activeMatchAuthority === "casual") {
+    return "casual-unranked";
+  }
+
+  if (state.tournament.activeMatchAuthority === "server") {
+    return state.tournament.bracket?.participants.length === 2
+      ? "ranked-head-to-head"
+      : "tournament-unranked";
+  }
+
+  return previousKind;
 }
 
 function hasCompletedBracketMatch(state: ServerRoomState, bracketMatchId: string): boolean {

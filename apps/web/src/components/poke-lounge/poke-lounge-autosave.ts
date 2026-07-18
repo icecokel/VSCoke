@@ -32,7 +32,10 @@ export interface StartPokeLoungeAutosaveOptions {
   scheduler?: PokeLoungeAutosaveScheduler;
   getClientUpdatedAt?: () => string;
   saveState?: (payload: PokeLoungeAutosavePayload) => Promise<PokeLoungeStateSaveResult>;
+  onStatusChange?: (status: PokeLoungeAutosaveStatus) => void;
 }
+
+export type PokeLoungeAutosaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
 
 export interface PokeLoungeAutosaveController {
   flush(): Promise<void>;
@@ -121,11 +124,13 @@ export function startPokeLoungeAutosave({
   scheduler = createDefaultScheduler(),
   getClientUpdatedAt = () => new Date().toISOString(),
   saveState = savePokeLoungeAutosavePayload,
+  onStatusChange,
 }: StartPokeLoungeAutosaveOptions): PokeLoungeAutosaveController {
   let dirty = true;
   let disposed = false;
   let debounceHandle: unknown = null;
   let inFlight: Promise<void> | null = null;
+  onStatusChange?.("idle");
 
   const clearDebounce = () => {
     if (debounceHandle === null) {
@@ -143,10 +148,20 @@ export function startPokeLoungeAutosave({
   });
 
   const savePayload = async (payload: PokeLoungeAutosavePayload) => {
+    onStatusChange?.("saving");
     inFlight = (async () => {
-      const result = await saveState(payload);
-      if (!result.success) {
+      try {
+        const result = await saveState(payload);
+        if (!result.success) {
+          dirty = true;
+          onStatusChange?.("error");
+          return;
+        }
+
+        onStatusChange?.(dirty ? "pending" : "saved");
+      } catch {
         dirty = true;
+        onStatusChange?.("error");
       }
     })();
 
@@ -189,6 +204,7 @@ export function startPokeLoungeAutosave({
 
   const unsubscribe = gameStateStore.subscribe(() => {
     dirty = true;
+    onStatusChange?.("pending");
     scheduleDebouncedFlush();
   });
 

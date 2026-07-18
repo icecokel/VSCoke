@@ -13,6 +13,34 @@ export interface RoomEntryIntent {
   createRoom?: boolean;
 }
 
+export interface ServerRoomEntryCapability {
+  enabled: boolean;
+  disabledReason?: string;
+}
+
+export interface ResolvedServerRoomEntryCapability {
+  enabled: boolean;
+  disabledReason: string | null;
+}
+
+const DEFAULT_SERVER_ROOM_DISABLED_REASON = "로그인 후 서버 경쟁전을 이용할 수 있습니다.";
+
+export function resolveServerRoomEntryCapability(
+  capability?: ServerRoomEntryCapability,
+): ResolvedServerRoomEntryCapability {
+  if (capability?.enabled !== false) {
+    return {
+      enabled: true,
+      disabledReason: null,
+    };
+  }
+
+  return {
+    enabled: false,
+    disabledReason: capability.disabledReason?.trim() || DEFAULT_SERVER_ROOM_DISABLED_REASON,
+  };
+}
+
 export function normalizeRoomCode(value: string): string | null {
   const normalized = value
     .toUpperCase()

@@ -29,12 +29,15 @@ export interface CreateTournamentResultTitleInput {
 }
 
 export type CreateTournamentResultPanelViewModelInput = CreateTournamentResultRowsInput &
-  CreateTournamentResultTitleInput;
+  CreateTournamentResultTitleInput & {
+    publicRankingIncluded?: boolean;
+  };
 
 export interface TournamentResultPanelViewModel {
   title: string;
   final: boolean;
   nextActionLabel: string;
+  rankingLabel: string;
   rows: TournamentResultRow[];
 }
 
@@ -54,12 +57,12 @@ export function createTournamentResultRows({
 
     return {
       displayName: standing.displayName,
-      rankLabel: `#${standing.rank}`,
-      rankTieLabel: tiedRanks.has(standing.rank) ? "Tie" : null,
+      rankLabel: `${standing.rank}위`,
+      rankTieLabel: tiedRanks.has(standing.rank) ? "공동" : null,
       roundScore,
-      roundScoreLabel: `+${roundScore}`,
+      roundScoreLabel: `이번 +${roundScore}`,
       cumulativeScore,
-      cumulativeScoreLabel: `Total ${cumulativeScore}`,
+      cumulativeScoreLabel: `방 점수 ${cumulativeScore}`,
       champion: standing.champion,
     };
   });
@@ -69,6 +72,7 @@ export function createTournamentResultPanelViewModel({
   roundIndex,
   totalRounds,
   final,
+  publicRankingIncluded = false,
   standings,
   roundScores,
   cumulativeScores,
@@ -76,7 +80,8 @@ export function createTournamentResultPanelViewModel({
   return {
     title: createTournamentResultTitle({ roundIndex, totalRounds, final }),
     final,
-    nextActionLabel: final ? "Finish Tournament" : "Start Next Round",
+    nextActionLabel: final ? "토너먼트 종료" : "다음 라운드 시작",
+    rankingLabel: publicRankingIncluded ? "공개 랭킹 반영" : "공개 랭킹 미반영",
     rows: createTournamentResultRows({ standings, roundScores, cumulativeScores }),
   };
 }
@@ -87,16 +92,24 @@ export function createTournamentResultTitle({
   final,
 }: CreateTournamentResultTitleInput): string {
   if (final) {
-    return "Final Result";
+    return "최종 결과";
   }
 
   const visibleRound = Math.max(1, roundIndex);
 
-  return `Round ${visibleRound}/${totalRounds} Result`;
+  return `라운드 ${visibleRound}/${totalRounds} 결과`;
 }
 
 export function formatTournamentResultRow(row: TournamentResultRow): string {
-  return `${row.rankLabel} ${row.displayName} +${row.roundScore} / ${row.cumulativeScore}`;
+  const tieLabel = row.rankTieLabel ? `${row.rankTieLabel} ` : "";
+
+  return `${tieLabel}${row.rankLabel} ${truncateDisplayName(row.displayName)} · ${row.roundScoreLabel} · ${row.cumulativeScoreLabel}`;
+}
+
+function truncateDisplayName(displayName: string): string {
+  const characters = Array.from(displayName);
+
+  return characters.length <= 12 ? displayName : `${characters.slice(0, 11).join("")}…`;
 }
 
 function createTiedRankSet(standings: ReadonlyArray<TournamentStanding>): ReadonlySet<number> {

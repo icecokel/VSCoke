@@ -11,6 +11,8 @@ import type {
 
 type ApiTournamentState = components["schemas"]["PokeLoungeTournamentDto"];
 type ApiRoomStatus = components["schemas"]["PokeLoungeRoomResponseDto"]["status"];
+type ApiRoomParticipant = components["schemas"]["PokeLoungeRoomParticipantDto"];
+type ApiRoomRound = components["schemas"]["PokeLoungeRoundDto"];
 
 const MAX_PARTICIPANTS = 6;
 const MAX_BRACKET_ROUNDS = 4;
@@ -34,16 +36,43 @@ export interface ServerTournamentState {
 
 export type TournamentMatchTransport = "casual" | "authority" | "awaiting-authority";
 export type TournamentResultSyncStatus = "idle" | "submitting" | "recovering" | "error";
+export type TournamentCompetitionKind =
+  | "ranked-head-to-head"
+  | "tournament-unranked"
+  | "casual-unranked"
+  | null;
+
+export interface TournamentRoomParticipant {
+  playerId: string;
+  displayName: string;
+  role: ApiRoomParticipant["role"];
+  ready: boolean;
+  connected: boolean;
+  seed: number | null;
+}
+
+export interface TournamentRoomRound {
+  index: number;
+  phase: ApiRoomRound["phase"];
+  durationMs: number;
+  startedAtMs: number | null;
+  endsAtMs: number | null;
+}
 
 export interface TournamentStateRoomPayload {
   revision: number;
+  roomCode: string;
   roundIndex: number;
   roomStatus: ApiRoomStatus;
+  roomRound: TournamentRoomRound;
+  participants: TournamentRoomParticipant[];
   tournament: ServerTournamentState;
   ownPlayerId: string;
   activeMatchTransport: TournamentMatchTransport;
+  competitionKind: TournamentCompetitionKind;
   finalStandings: Array<{
     playerId: string;
+    displayName: string;
     rank: number;
     score: number;
   }>;

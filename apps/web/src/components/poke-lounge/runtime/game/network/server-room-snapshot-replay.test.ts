@@ -174,7 +174,13 @@ function createRoomSnapshots() {
       status: "tournament",
       participants,
       partySnapshots: {},
-      round: { index: 1 },
+      round: {
+        index: 1,
+        phase: "tournament",
+        durationMs: 300_000,
+        startedAtMs: 1_000,
+        endsAtMs: 301_000,
+      },
       tournament: {
         version: 2,
         bracket,
@@ -385,7 +391,13 @@ function createEightTerminalTransitionPage() {
     status: "tournament",
     participants,
     partySnapshots: {},
-    round: { index: 1 },
+    round: {
+      index: 1,
+      phase: "tournament",
+      durationMs: 300_000,
+      startedAtMs: 1_000,
+      endsAtMs: 301_000,
+    },
     tournament: {
       version: 2,
       bracket: pagedBracket,
@@ -524,6 +536,21 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
       fetch: fetchFixture,
       socketFactory: () => socket,
     });
+    const connectionStore = createGameStateStore();
+    connectionStore.setSession({
+      sessionId: room.sessionId,
+      roomId: room.roomId,
+      connectionStatus: "connecting",
+    });
+    const connectionStatuses: RoomEvent["CONNECTION_STATUS"]["connectionStatus"][] = [];
+    room.on("CONNECTION_STATUS", ({ connectionStatus }) => {
+      connectionStatuses.push(connectionStatus);
+      connectionStore.setSession({
+        sessionId: room?.sessionId ?? null,
+        roomId: room?.roomId ?? null,
+        connectionStatus,
+      });
+    });
     assert.equal(getServerRoomTransportDiagnosticsForE2e(room)?.lastAppliedTerminalRevision, null);
     room.connect(createPlayerSnapshot());
     await waitFor(() => ready && socket.subscriptions().length > 0);
@@ -544,6 +571,8 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
       lastSocketConnectErrorClass: null,
       lastRecoveryFailureKind: null,
     });
+    assert.deepEqual(connectionStatuses, ["connecting", "online"]);
+    assert.equal(connectionStore.getState().session.connectionStatus, "online");
 
     socket.pushSnapshot(snapshots.transitionLatest);
     assert.equal(
@@ -568,6 +597,8 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
       lastSocketConnectErrorClass: "websocket_error",
       lastRecoveryFailureKind: null,
     });
+    assert.equal(connectionStatuses.at(-1), "offline");
+    assert.equal(connectionStore.getState().session.connectionStatus, "offline");
 
     socket.reconnectFromServer();
     await waitFor(() => {
@@ -586,6 +617,8 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
       lastSocketConnectErrorClass: "websocket_error",
       lastRecoveryFailureKind: null,
     });
+    assert.equal(connectionStatuses.at(-1), "online");
+    assert.equal(connectionStore.getState().session.connectionStatus, "online");
 
     const additionalConnectErrorClasses: Array<
       [error: unknown, expected: "timeout" | "server_reject" | "cors" | "unknown"]
@@ -613,6 +646,8 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     }
 
     socket.disconnectFromServer();
+    assert.equal(connectionStatuses.at(-1), "offline");
+    assert.equal(connectionStore.getState().session.connectionStatus, "offline");
     assert.deepEqual(getServerRoomTransportDiagnosticsForE2e(room), {
       socketConnected: false,
       transportState: "disconnected",
@@ -1217,6 +1252,23 @@ test("BattleScene은 최신 snapshot을 적용하고 WorldScene 재구독에도 
     });
     await waitFor(() => calls.some(path => path.endsWith("/ready")));
     assert.equal(store.getState().tournament.serverProjection?.revision, 15);
+    assert.equal(store.getState().tournament.serverProjection?.roomCode, "ROOM01");
+    assert.deepEqual(store.getState().tournament.serverProjection?.roomRound, {
+      index: 1,
+      phase: "tournament",
+      durationMs: 300_000,
+      startedAtMs: 1_000,
+      endsAtMs: 301_000,
+    });
+    assert.deepEqual(store.getState().tournament.serverProjection?.participants[0], {
+      playerId: "player-1",
+      displayName: "Player 1",
+      role: "participant",
+      ready: true,
+      connected: true,
+      seed: 1,
+    });
+    assert.equal(store.getState().tournament.serverProjection?.competitionKind, "casual-unranked");
 
     const battleStore = createGameStateStore();
     const unsubscribeBattle = room.on("TOURNAMENT_STATE", payload => {
@@ -1228,6 +1280,10 @@ test("BattleScene은 최신 snapshot을 적용하고 WorldScene 재구독에도 
     socket.pushSnapshot(snapshots.latest);
     assert.equal(store.getState().tournament.serverProjection?.revision, 15);
     assert.equal(battleStore.getState().tournament.serverProjection?.revision, 50);
+    assert.equal(
+      battleStore.getState().tournament.serverProjection?.competitionKind,
+      "tournament-unranked",
+    );
     unsubscribeBattle();
 
     room.on("TOURNAMENT_STATE", applyProjection);

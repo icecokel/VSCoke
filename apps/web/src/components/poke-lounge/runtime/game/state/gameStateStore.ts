@@ -1024,6 +1024,10 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
       notify();
     },
     advanceRoundClock(nowMs) {
+      if (state.tournament.serverProjection) {
+        return;
+      }
+
       const nextRound = transitionPreparationIfExpired(state.round, nowMs);
 
       if (nextRound === state.round) {
@@ -1201,6 +1205,7 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
         input.revision < 0 ||
         !Number.isSafeInteger(input.roundIndex) ||
         input.roundIndex < 0 ||
+        input.roomRound.index !== input.roundIndex ||
         input.tournament.version !== 2 ||
         (bracket !== null && (bracket.version !== 1 || bracket.gameRoundIndex !== input.roundIndex))
       ) {
@@ -1236,8 +1241,13 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
           ...state.round,
           phase: roundPhase,
           roundIndex: input.roundIndex,
-          phaseStartedAtMs: projectionAdvanced ? normalizedNowMs : state.round.phaseStartedAtMs,
-          preparationEndsAtMs: null,
+          totalRounds: 1,
+          preparationDurationMs: input.roomRound.durationMs,
+          phaseStartedAtMs:
+            input.roomRound.startedAtMs ??
+            (projectionAdvanced ? normalizedNowMs : state.round.phaseStartedAtMs),
+          preparationEndsAtMs:
+            input.roomStatus === "round-started" ? input.roomRound.endsAtMs : null,
         },
         tournament: {
           ...state.tournament,
@@ -1694,7 +1704,10 @@ function hasSameCanonicalTournamentProjection(
 ): boolean {
   return (
     left.roundIndex === right.roundIndex &&
+    left.roomCode === right.roomCode &&
     left.roomStatus === right.roomStatus &&
+    JSON.stringify(left.roomRound) === JSON.stringify(right.roomRound) &&
+    JSON.stringify(left.participants) === JSON.stringify(right.participants) &&
     JSON.stringify(left.tournament) === JSON.stringify(right.tournament) &&
     JSON.stringify(left.finalStandings) === JSON.stringify(right.finalStandings)
   );

@@ -20,11 +20,20 @@ import {
   readRoomEntryFromLocation,
   type RoomEntryMode,
 } from "./network/roomEntry";
-import { renderRoomEntryScreen, type RoomEntrySelection } from "./network/roomEntryScreen";
+import {
+  renderRoomEntryScreen,
+  shouldResetRoomEntrySession,
+  type RoomEntrySelection,
+} from "./network/roomEntryScreen";
 import { renderWebRtcSignalingPanel } from "./network/webRtcSignalingPanel";
 import { createWebRtcRoom, isWebRtcRoom } from "./network/webRtcRoom";
 import { getDefaultGameStateStore } from "./state/defaultGameStateStore";
 import type { GameStateStore, PlayerPokemon } from "./state/gameStateStore";
+import {
+  dispatchPokeLoungeNotice,
+  POKE_LOUNGE_ROOM_LEAVE_REQUEST_EVENT,
+  type PokeLoungeRoomLeaveRequestDetail,
+} from "./ui/poke-lounge-ui-events";
 
 type GamePageLocation = URL;
 type PokeLoungeGameInstance = ReturnType<typeof createPokeLoungeGame>;
@@ -169,6 +178,11 @@ export async function startGamePage(
       showRoomEntry();
     };
     const handleFreshSessionRequired = () => {
+      dispatchPokeLoungeNotice(mount.ownerDocument, {
+        message:
+          "방 연결 정보가 만료되어 입장 화면으로 돌아왔습니다. 방 코드를 다시 확인해 주세요.",
+        tone: "warning",
+      });
       returnToRoomEntry();
     };
     window.addEventListener(POKE_LOUNGE_FRESH_SESSION_REQUIRED_EVENT, handleFreshSessionRequired);
@@ -180,7 +194,21 @@ export async function startGamePage(
     };
 
     if (competitiveRoundsEnabled) {
-      renderRoomLeaveButton(mount, returnToRoomEntry);
+      renderRoomLeaveButton(mount, returnToRoomEntry, () => {
+        const phase = gameStateStore.getState().round.phase;
+
+        if (phase === "tournament") {
+          return {
+            title: "경기에서 나갈까요?",
+            description: "지금 나가면 진행 중인 경기가 기권 처리될 수 있습니다.",
+          };
+        }
+
+        return {
+          title: "방에서 나갈까요?",
+          description: "현재 준비 상태와 방 연결이 해제됩니다.",
+        };
+      });
     }
 
     if (isWebRtcRoom(multiplayerRoom)) {
@@ -231,6 +259,14 @@ export async function startGamePage(
     roomEntrySelectionPending = false;
     renderEntryScreen(mount, {
       currentUrl: new URL(currentUrl.href),
+      serverRoomCapability:
+        dependencies.idToken || isLocalE2eUrl(currentUrl)
+          ? { enabled: true }
+          : {
+              enabled: false,
+              disabledReason:
+                "서버 경쟁전은 로그인한 플레이어만 이용할 수 있습니다. 로그인 후 다시 열어 주세요.",
+            },
       onSelect: selection => {
         if (destroyed || roomEntrySelectionPending) {
           return;
@@ -241,7 +277,7 @@ export async function startGamePage(
         applyRoomEntrySelection(currentUrl, selection);
         replaceBrowserUrl(currentUrl);
 
-        if (selection.resetSession) {
+        if (shouldResetRoomEntrySession(selection)) {
           gameStateStore.reset();
         }
 
@@ -251,6 +287,19 @@ export async function startGamePage(
   };
   const continueToSelectedRoomOrEntry = () => {
     const roomEntry = readRoomEntryFromLocation(currentUrl);
+
+    if (roomEntry.mode === "server-room" && !dependencies.idToken && !isLocalE2eUrl(currentUrl)) {
+      currentUrl.searchParams.delete("create");
+      currentUrl.searchParams.delete("network");
+      currentUrl.searchParams.delete("room");
+      replaceBrowserUrl(currentUrl);
+      dispatchPokeLoungeNotice(mount.ownerDocument, {
+        message: "서버 경쟁전 초대는 로그인 후 참가할 수 있습니다.",
+        tone: "warning",
+      });
+      showRoomEntry();
+      return;
+    }
 
     if (isCompetitiveRoomEntryMode(roomEntry.mode)) {
       startGameAfterStarterSelection(currentUrl);
@@ -262,6 +311,13 @@ export async function startGamePage(
 
   continueToSelectedRoomOrEntry();
   return handle;
+}
+
+function isLocalE2eUrl(url: URL): boolean {
+  return (
+    url.searchParams.has("e2e") &&
+    (url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "::1")
+  );
 }
 
 function isCompetitiveRoomEntryMode(mode: RoomEntryMode): boolean {
@@ -341,7 +397,11 @@ function setRoomEntryScreenPending(mount: HTMLElement): void {
   }
 }
 
-function renderRoomLeaveButton(mount: HTMLElement, onLeave: () => void): HTMLButtonElement {
+function renderRoomLeaveButton(
+  mount: HTMLElement,
+  onLeave: () => void,
+  getCopy: () => Pick<PokeLoungeRoomLeaveRequestDetail, "title" | "description">,
+): HTMLButtonElement {
   mount.querySelector("[data-room-leave]")?.remove();
 
   const button = document.createElement("button");
@@ -349,7 +409,24 @@ function renderRoomLeaveButton(mount: HTMLElement, onLeave: () => void): HTMLBut
   button.className = "room-leave-button";
   button.textContent = "방 나가기";
   button.setAttribute("data-room-leave", "true");
-  button.addEventListener("click", onLeave);
+  button.addEventListener("click", () => {
+    const detail: PokeLoungeRoomLeaveRequestDetail = {
+      ...getCopy(),
+      confirm: onLeave,
+    };
+    const request = new CustomEvent<PokeLoungeRoomLeaveRequestDetail>(
+      POKE_LOUNGE_ROOM_LEAVE_REQUEST_EVENT,
+      {
+        cancelable: true,
+        detail,
+      },
+    );
+
+    mount.ownerDocument.dispatchEvent(request);
+    if (!request.defaultPrevented) {
+      onLeave();
+    }
+  });
   mount.appendChild(button);
 
   return button;

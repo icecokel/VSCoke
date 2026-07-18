@@ -186,7 +186,11 @@ export class WorldScene extends Phaser.Scene {
   private tournament: WorldSceneTournamentController | null = null;
   private facing: PlayerFacing = "front";
   private lastSentAt = 0;
-  private lastSent = { x: 0, y: 0 };
+  private lastSent: { x: number; y: number; facing: PlayerFacing } = {
+    x: 0,
+    y: 0,
+    facing: "front",
+  };
   private readonly encounters: WorldSceneEncounterController;
   private readonly interactions: WorldSceneInteractionsController;
   private readonly competitiveRoundsEnabled: boolean;
@@ -727,18 +731,20 @@ export class WorldScene extends Phaser.Scene {
     }
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.roundPixels = true;
-    this.lastSent = { x: this.player.x, y: this.player.y };
+    this.lastSent = { x: this.player.x, y: this.player.y, facing: this.facing };
     this.encounters.initialize({ x: this.player.x, y: this.player.y });
   }
 
   private bindRoom(): void {
     this.unsubscribers.push(
-      this.room.on("CURRENT_PLAYERS", ({ players }) => {
+      this.room.on("CONNECTION_STATUS", ({ connectionStatus }) => {
         this.gameStateStore.setSession({
           sessionId: this.room.sessionId,
           roomId: this.room.roomId,
-          connectionStatus: "online",
+          connectionStatus,
         });
+      }),
+      this.room.on("CURRENT_PLAYERS", ({ players }) => {
         Object.values(players)
           .filter(player => player.sessionId !== this.room.sessionId)
           .forEach(player => this.upsertRemotePlayer(player));
@@ -1109,20 +1115,16 @@ export class WorldScene extends Phaser.Scene {
 
     if (
       Math.abs(this.player.x - this.lastSent.x) < 1 &&
-      Math.abs(this.player.y - this.lastSent.y) < 1
+      Math.abs(this.player.y - this.lastSent.y) < 1 &&
+      this.facing === this.lastSent.facing
     ) {
       return;
     }
 
     this.sendRoomMessage("PLAYER_MOVED", this.createLocalPlayerSnapshot());
-    this.gameStateStore.setLocalPlayerPosition({
-      mapKey: FIELD_MAP.key,
-      x: Math.round(this.player.x),
-      y: Math.round(this.player.y),
-      facing: this.facing,
-    });
+    this.persistLocalPlayerPositionIfChanged();
     this.lastSentAt = time;
-    this.lastSent = { x: this.player.x, y: this.player.y };
+    this.lastSent = { x: this.player.x, y: this.player.y, facing: this.facing };
   }
 
   private maybeSendMovementEnd(time: number): void {
@@ -1131,13 +1133,25 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.sendRoomMessage("PLAYER_MOVEMENT_ENDED", this.createLocalPlayerSnapshot());
-    this.gameStateStore.setLocalPlayerPosition({
+    this.persistLocalPlayerPositionIfChanged();
+    this.lastSentAt = time;
+  }
+
+  private persistLocalPlayerPositionIfChanged(): boolean {
+    const nextPosition = {
       mapKey: FIELD_MAP.key,
       x: Math.round(this.player.x),
       y: Math.round(this.player.y),
       facing: this.facing,
-    });
-    this.lastSentAt = time;
+    };
+    const currentPosition = this.gameStateStore.getCurrentLocalPlayer().position;
+
+    if (!hasPlayerPositionChanged(currentPosition, nextPosition)) {
+      return false;
+    }
+
+    this.gameStateStore.setLocalPlayerPosition(nextPosition);
+    return true;
   }
 
   private createLocalPlayerSnapshot(): PlayerSnapshot {
@@ -1172,6 +1186,18 @@ export class WorldScene extends Phaser.Scene {
 
     this.room.send(type, payload);
   }
+}
+
+export function hasPlayerPositionChanged(
+  currentPosition: { mapKey: string; x: number; y: number; facing: PlayerFacing },
+  nextPosition: { mapKey: string; x: number; y: number; facing: PlayerFacing },
+): boolean {
+  return (
+    currentPosition.mapKey !== nextPosition.mapKey ||
+    currentPosition.x !== nextPosition.x ||
+    currentPosition.y !== nextPosition.y ||
+    currentPosition.facing !== nextPosition.facing
+  );
 }
 
 export function createLocalPlayerSnapshot(

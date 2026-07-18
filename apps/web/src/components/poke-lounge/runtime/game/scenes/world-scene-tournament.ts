@@ -6,6 +6,11 @@ import {
 } from "../network/tournamentAuthority";
 import type { PlayerSnapshot } from "../network/localPreviewRoom";
 import {
+  findCurrentMatch,
+  type TournamentCompetitionKind,
+  type TournamentStateRoomPayload,
+} from "../network/tournament-projection";
+import {
   createDefaultLocalPlayer,
   type GameState,
   type GameStateStore,
@@ -80,17 +85,26 @@ export function createWorldSceneTournament(
 
 class DefaultWorldSceneTournament implements WorldSceneTournamentController {
   private announcement: TournamentAnnouncement | null = null;
+  private announcementText: string | null = null;
   private tournamentBattleStarting = false;
   private submittedServerMatchId: string | null = null;
 
   constructor(private readonly dependencies: WorldSceneTournamentDependencies) {}
 
   update(nowMs: number): void {
-    void nowMs;
     const state = this.dependencies.gameStateStore.getState();
+    const serverProjection = state.tournament.serverProjection;
+
+    if (
+      serverProjection &&
+      (state.round.phase === "waiting" || state.round.phase === "preparation")
+    ) {
+      this.showServerTournamentMessage(serverProjection, nowMs);
+      return;
+    }
 
     if (state.round.phase === "tournament") {
-      const activeMatchId = state.tournament.serverProjection?.tournament.activeMatchId ?? null;
+      const activeMatchId = serverProjection?.tournament.activeMatchId ?? null;
       if (this.submittedServerMatchId && this.submittedServerMatchId !== activeMatchId) {
         this.submittedServerMatchId = null;
       }
@@ -99,7 +113,7 @@ class DefaultWorldSceneTournament implements WorldSceneTournamentController {
         return;
       }
 
-      this.showTournamentPendingMessage();
+      this.showTournamentPendingMessage(nowMs);
       return;
     }
 
@@ -188,6 +202,7 @@ class DefaultWorldSceneTournament implements WorldSceneTournamentController {
   clearPresentation(): void {
     this.announcement?.destroy();
     this.announcement = null;
+    this.announcementText = null;
   }
 
   showResultPresentationIfNeeded(): void {
@@ -213,9 +228,21 @@ class DefaultWorldSceneTournament implements WorldSceneTournamentController {
       standings,
       roundScores: state.tournament.lastRoundScores,
       cumulativeScores: state.tournament.scoresByPlayerId,
+      publicRankingIncluded:
+        state.tournament.serverProjection?.competitionKind === "ranked-head-to-head",
     });
-    this.announcement = this.dependencies.createAnnouncement(
-      [panel.title, ...panel.rows.map(formatTournamentResultRow), panel.nextActionLabel].join("\n"),
+    const title = state.tournament.serverProjection
+      ? `${panel.title} · 방 ${state.tournament.serverProjection.roomCode}`
+      : panel.title;
+    this.setAnnouncement(
+      [
+        title,
+        ...panel.rows.map(formatTournamentResultRow),
+        panel.rankingLabel,
+        panel.nextActionLabel,
+      ]
+        .filter((line): line is string => Boolean(line))
+        .join("\n"),
       "14px",
     );
   }
@@ -226,12 +253,15 @@ class DefaultWorldSceneTournament implements WorldSceneTournamentController {
     this.submittedServerMatchId = null;
   }
 
-  private showTournamentPendingMessage(): void {
-    if (this.announcement) {
+  private showTournamentPendingMessage(nowMs: number): void {
+    const projection = this.dependencies.gameStateStore.getState().tournament.serverProjection;
+
+    if (projection) {
+      this.showServerTournamentMessage(projection, nowMs);
       return;
     }
 
-    this.announcement = this.dependencies.createAnnouncement(this.getPendingMessage(), "16px");
+    this.setAnnouncement("준비 시간이 끝났습니다\n토너먼트 대기 중", "16px");
   }
 
   private tryStartTournamentBattle(): boolean {
@@ -386,57 +416,253 @@ class DefaultWorldSceneTournament implements WorldSceneTournamentController {
     return true;
   }
 
-  private getPendingMessage(): string {
-    const state = this.dependencies.gameStateStore.getState();
-    const projection = state.tournament.serverProjection;
-
-    if (!projection) {
-      return "준비 시간이 끝났다.\n토너먼트 대기 중";
-    }
-
+  private showServerTournamentMessage(projection: TournamentStateRoomPayload, nowMs: number): void {
     if (projection.resultSync.matchId === projection.tournament.activeMatchId) {
       if (projection.resultSync.status === "submitting") {
-        return "경기 결과 전송 중";
+        this.setAnnouncement("경기 결과 전송 중", "16px");
+        return;
       }
 
       if (projection.resultSync.status === "recovering") {
-        return "경기 결과 확인 중\n서버 상태를 복구하고 있습니다";
+        this.setAnnouncement("경기 결과 확인 중\n서버 상태를 복구하고 있습니다", "16px");
+        return;
       }
 
       if (projection.resultSync.status === "error") {
-        return "경기 결과 동기화 실패\n서버 상태를 다시 불러오고 있습니다";
+        this.setAnnouncement("경기 결과 동기화 실패\n서버 상태를 다시 불러오고 있습니다", "16px");
+        return;
       }
     }
 
-    const bracket = projection.tournament.bracket;
-    const ownPlayerId = projection.ownPlayerId;
+    this.setAnnouncement(
+      createServerTournamentAnnouncementText({
+        projection,
+        nowMs,
+        casualBattleAvailable: this.isCurrentCasualBattleAvailable(projection),
+      }),
+      "14px",
+    );
+  }
 
-    if (bracket?.status === "completed") {
-      return "토너먼트 완료";
+  private isCurrentCasualBattleAvailable(projection: TournamentStateRoomPayload): boolean | null {
+    if (projection.activeMatchTransport !== "casual") {
+      return null;
     }
 
-    if (bracket?.currentRound?.byes.some(bye => bye.entrant.playerId === ownPlayerId)) {
-      return "부전승 — 다음 대진을 기다리는 중";
-    }
-
-    const activeMatch = bracket?.currentRound?.matches.find(
-      match => match.matchId === projection.tournament.activeMatchId,
+    const match = findCurrentMatch(
+      projection.tournament.bracket,
+      projection.tournament.activeMatchId,
     );
 
-    if (activeMatch && getMatchParticipantIds(activeMatch).includes(ownPlayerId)) {
-      if (projection.activeMatchTransport === "awaiting-authority") {
-        return "상대 연결 대기 중";
-      }
-
-      return "현재 경기 연결 중";
+    if (!match || !getMatchParticipantIds(match).includes(projection.ownPlayerId)) {
+      return null;
     }
 
-    if (activeMatch) {
-      return "현재 경기 진행 중 — 다음 대진을 기다리는 중";
-    }
+    const opponentPlayerId = getMatchParticipantIds(match).find(
+      playerId => playerId !== projection.ownPlayerId,
+    );
+    const player = this.getTournamentBattlePlayer(projection.ownPlayerId);
+    const opponent = opponentPlayerId
+      ? this.getTournamentBattlePlayer(opponentPlayerId)
+      : undefined;
 
-    return "다음 대진을 기다리는 중";
+    return Boolean(
+      player &&
+      opponent &&
+      hasActiveTournamentPokemon(player) &&
+      hasActiveTournamentPokemon(opponent),
+    );
   }
+
+  private setAnnouncement(text: string, fontSize: "14px" | "16px"): void {
+    if (this.announcement && this.announcementText === text) {
+      return;
+    }
+
+    this.announcement?.destroy();
+    this.announcement = this.dependencies.createAnnouncement(text, fontSize);
+    this.announcementText = text;
+  }
+}
+
+interface CreateServerTournamentAnnouncementTextInput {
+  projection: TournamentStateRoomPayload;
+  nowMs: number;
+  casualBattleAvailable: boolean | null;
+}
+
+export function createServerTournamentAnnouncementText({
+  projection,
+  nowMs,
+  casualBattleAvailable,
+}: CreateServerTournamentAnnouncementTextInput): string {
+  const participants = projection.participants;
+  const tournamentParticipants = participants.filter(
+    participant => participant.role === "participant",
+  );
+  const spectators = participants.filter(participant => participant.role === "spectator");
+  const readyCount = tournamentParticipants.filter(participant => participant.ready).length;
+  const connectedCount = participants.filter(participant => participant.connected).length;
+  const bracket = projection.tournament.bracket;
+  const activeMatch = findCurrentMatch(bracket, projection.tournament.activeMatchId);
+  const lines = [
+    `서버 토너먼트 · 방 ${projection.roomCode}`,
+    createServerRoomStageLabel(projection, nowMs),
+    `참가 ${tournamentParticipants.length}/6 · 준비 ${readyCount}/${tournamentParticipants.length} · 접속 ${connectedCount}/${participants.length} · 관전 ${spectators.length}`,
+  ];
+
+  if (activeMatch) {
+    lines.push(`현재 경기 · ${formatMatchParticipants(activeMatch)}`);
+  }
+
+  const ownStatus = createOwnTournamentStatusLabel(projection, activeMatch);
+
+  if (ownStatus) {
+    lines.push(ownStatus);
+  }
+
+  lines.push(createCompetitionKindLabel(projection.competitionKind));
+
+  if (
+    projection.competitionKind === "ranked-head-to-head" ||
+    projection.competitionKind === "tournament-unranked"
+  ) {
+    lines.push("전투 규칙 · 고정 Lv.50 · 2마리");
+  }
+
+  if (casualBattleAvailable === false) {
+    lines.push("원격 캐주얼전 미지원 · 로그인 후 재참가 또는 방 나가기");
+  }
+
+  return lines.join("\n");
+}
+
+function createServerRoomStageLabel(projection: TournamentStateRoomPayload, nowMs: number): string {
+  if (projection.roomStatus === "waiting") {
+    return "대기실 · 참가자 2명 이상 모두 준비하면 시작";
+  }
+
+  if (projection.roomStatus === "round-started") {
+    const remainingMs = Math.max(0, (projection.roomRound.endsAtMs ?? nowMs) - nowMs);
+
+    return `준비 중 · ${formatRemainingTime(remainingMs)}`;
+  }
+
+  if (projection.roomStatus === "completed") {
+    return "토너먼트 완료";
+  }
+
+  if (projection.roomStatus === "closed") {
+    return "방이 종료되었습니다";
+  }
+
+  const currentRoundNumber = projection.tournament.bracket?.currentRound?.roundNumber;
+
+  return currentRoundNumber ? `토너먼트 진행 · 대진 ${currentRoundNumber}` : "대진 준비 중";
+}
+
+function createOwnTournamentStatusLabel(
+  projection: TournamentStateRoomPayload,
+  activeMatch: TournamentMatch | null,
+): string | null {
+  const ownPlayerId = projection.ownPlayerId;
+  const ownParticipant = projection.participants.find(
+    participant => participant.playerId === ownPlayerId,
+  );
+  const bracket = projection.tournament.bracket;
+  const ownIdentity = ownParticipant
+    ? `${ownParticipant.seed ? `#${ownParticipant.seed} ` : ""}${truncateDisplayName(ownParticipant.displayName)}`
+    : "참가 정보 확인 중";
+
+  if (ownParticipant?.role === "spectator") {
+    return `내 상태 · ${ownIdentity} · 관전 · ${ownParticipant.connected ? "접속" : "연결 끊김"}`;
+  }
+
+  if (!bracket) {
+    if (!ownParticipant) {
+      return null;
+    }
+
+    return `내 상태 · ${ownIdentity} · 참가 · ${ownParticipant.ready ? "준비" : "준비 전"} · ${ownParticipant.connected ? "접속" : "연결 끊김"}`;
+  }
+
+  if (bracket.championPlayerId === ownPlayerId) {
+    return `내 상태 · ${ownIdentity} · 우승`;
+  }
+
+  if (bracket.eliminations.some(elimination => elimination.playerId === ownPlayerId)) {
+    return `내 상태 · ${ownIdentity} · 탈락 · 최종 순위 확정 대기`;
+  }
+
+  const completedOwnMatches = [
+    ...bracket.completedRounds.flatMap(round => round.matches),
+    ...(bracket.currentRound?.matches.filter(match => match.status === "completed") ?? []),
+  ].filter(match => match.participantIds.includes(ownPlayerId));
+  const lastOwnMatch = completedOwnMatches.at(-1);
+  const progressionLabel = lastOwnMatch?.winnerPlayerId === ownPlayerId ? "진출 · " : "";
+
+  if (activeMatch?.participantIds.includes(ownPlayerId)) {
+    return `내 상태 · ${ownIdentity} · ${progressionLabel}상대 ${formatOpponent(activeMatch, ownPlayerId)}`;
+  }
+
+  const nextMatch = bracket.currentRound?.matches.find(
+    match => match.status === "ready" && match.participantIds.includes(ownPlayerId),
+  );
+
+  if (nextMatch) {
+    return `내 상태 · ${ownIdentity} · ${progressionLabel}다음 상대 ${formatOpponent(nextMatch, ownPlayerId)}`;
+  }
+
+  if (bracket.currentRound?.byes.some(bye => bye.entrant.playerId === ownPlayerId)) {
+    return `내 상태 · ${ownIdentity} · 부전승 진출 · 다음 대진 대기`;
+  }
+
+  if (lastOwnMatch?.winnerPlayerId === ownPlayerId) {
+    return `내 상태 · ${ownIdentity} · 진출 · 다음 대진 대기`;
+  }
+
+  return `내 상태 · ${ownIdentity} · 다음 대진 대기`;
+}
+
+function createCompetitionKindLabel(kind: TournamentCompetitionKind): string {
+  if (kind === "ranked-head-to-head") {
+    return "서버 권위전 · 공개 랭킹 반영";
+  }
+
+  if (kind === "tournament-unranked") {
+    return "서버 권위전 · 공개 랭킹 미반영";
+  }
+
+  if (kind === "casual-unranked") {
+    return "캐주얼전 · 공개 랭킹 미반영";
+  }
+
+  return "경기 권위 확정 대기 · 공개 랭킹 반영 여부 확인 중";
+}
+
+function formatRemainingTime(remainingMs: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1_000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function formatMatchParticipants(match: TournamentMatch): string {
+  return `#${match.participantA.seed} ${truncateDisplayName(match.participantA.displayName)} vs #${match.participantB.seed} ${truncateDisplayName(match.participantB.displayName)}`;
+}
+
+function formatOpponent(match: TournamentMatch, ownPlayerId: string): string {
+  const opponent =
+    match.participantA.playerId === ownPlayerId ? match.participantB : match.participantA;
+
+  return `#${opponent.seed} ${truncateDisplayName(opponent.displayName)}`;
+}
+
+function truncateDisplayName(displayName: string): string {
+  const characters = Array.from(displayName);
+
+  return characters.length <= 12 ? displayName : `${characters.slice(0, 11).join("")}…`;
 }
 
 function getMatchParticipantIds(match: TournamentMatch): [string, string] {

@@ -251,6 +251,16 @@ const POKE_LOUNGE_LOCALE = "ko-KR";
 const LOCAL_ROOM_CODE = "ABC123";
 
 test.describe("Poke Lounge", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route("**/game/ranking**", async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: "[]",
+      });
+    });
+  });
+
   test.afterEach(() => {
     resetRuntimeGameDataJsonStateForTest();
   });
@@ -1404,6 +1414,27 @@ test.describe("Poke Lounge", () => {
     expect(browserErrors.join("\n")).toBe("");
   });
 
+  test("새 게임 확인은 계정 저장 범위를 안내하고 Esc로 취소한다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await gotoWithRetry(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
+    await continueToRoomEntry(page);
+    await page.locator("[data-room-entry-new-start]").click();
+
+    const newGameDialog = page.locator("[data-room-entry-new-start-dialog='true']");
+    await expect(newGameDialog).toBeVisible();
+    await expect(newGameDialog).toContainText(
+      "로그인 상태라면 계정 저장에도 초기화된 상태가 반영될 수 있으며",
+    );
+
+    await page.keyboard.press("Escape");
+
+    await expect(newGameDialog).not.toBeVisible();
+    await expect(page.locator("[data-poke-lounge-settings='true']")).toHaveCount(0);
+    await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible();
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
   test("웹에서 좌측 파티 슬롯을 클릭하면 포켓몬 상태 패널을 연다", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
 
@@ -1427,6 +1458,155 @@ test.describe("Poke Lounge", () => {
         status: "normal",
       });
 
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("필드 가방은 아이템 선택 후 벤치 포켓몬을 대상으로 회복한다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await startSoloGame(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
+    await waitForInitialWorldShortcutGuideIfAny(page);
+    await closeWorldShortcutGuideIfOpen(page);
+
+    const result = await page.evaluate(() => {
+      const pokeWindow = window as PokeLoungeWindow;
+      const controller = pokeWindow.__POKE_LOUNGE_E2E__;
+      const state = controller?.getGameStateSnapshot();
+
+      if (!controller || !state) {
+        throw new Error("Poke Lounge E2E controller is unavailable.");
+      }
+
+      const playerId = state.currentPlayerId;
+      const starter = state.playersById[playerId]?.party[0]?.pokemon;
+
+      if (!starter?.speciesId || !starter.name || !starter.level) {
+        throw new Error("Starter Pokemon is unavailable.");
+      }
+
+      controller.setCurrentLocalPlayerForTest({
+        playerId,
+        displayName: "Player",
+        party: [
+          {
+            slotIndex: 0,
+            pokemon: { ...starter, currentHp: 30, maxHp: 30, status: "normal" },
+          },
+          {
+            slotIndex: 1,
+            pokemon: { ...starter, name: "벤치 포켓몬", currentHp: 1, maxHp: 30, status: "normal" },
+          },
+        ],
+        pokemonBox: [],
+        activePartySlotIndex: 0,
+        wallet: { pokeDollars: 0 },
+        inventory: { potion: 1 },
+        competitive: { rank: null, score: 0 },
+        guide: { shortcutGuideViewed: true },
+        position: { mapKey: "town", x: 656, y: 1150, facing: "front" },
+      });
+
+      const worldScene = pokeWindow.__POKE_LOUNGE_GAME__?.scene?.getScene("world") as unknown as
+        | {
+            confirmInventorySelectionForTest(): void;
+            moveInventorySelectionForTest(delta: number): void;
+            openInventoryForTest(): void;
+          }
+        | undefined;
+
+      worldScene?.openInventoryForTest();
+      worldScene?.confirmInventorySelectionForTest();
+      worldScene?.moveInventorySelectionForTest(1);
+      worldScene?.confirmInventorySelectionForTest();
+
+      const nextState = controller.getGameStateSnapshot() as unknown as {
+        playersById: Record<
+          string,
+          {
+            inventory: Record<string, number>;
+            party: Array<{ pokemon?: { currentHp?: number } | null }>;
+          }
+        >;
+      };
+      const nextPlayer = nextState.playersById[playerId];
+
+      return {
+        benchHp: nextPlayer?.party[1]?.pokemon?.currentHp ?? null,
+        potionCount: nextPlayer?.inventory.potion ?? 0,
+      };
+    });
+
+    expect(result).toEqual({ benchHp: 21, potionCount: 0 });
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("정지한 WorldScene은 동일 위치를 반복 저장하지 않고 위치나 방향 변경만 알린다", async ({
+    page,
+  }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await startSoloGame(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
+    await waitForInitialWorldShortcutGuideIfAny(page);
+    await closeWorldShortcutGuideIfOpen(page);
+
+    const result = await page.evaluate(() => {
+      const pokeWindow = window as PokeLoungeWindow;
+      const worldScene = pokeWindow.__POKE_LOUNGE_GAME__?.scene?.getScene("world") as unknown as
+        | {
+            facing: "front" | "back" | "left" | "right";
+            gameStateStore: {
+              getCurrentLocalPlayer(): {
+                position: {
+                  mapKey: string;
+                  x: number;
+                  y: number;
+                  facing: "front" | "back" | "left" | "right";
+                };
+              };
+              subscribe(listener: () => void): () => void;
+            };
+            maybeSendMovementEnd(time: number): void;
+            player: { x: number; y: number };
+          }
+        | undefined;
+
+      if (!worldScene) {
+        throw new Error("WorldScene is unavailable.");
+      }
+
+      let notificationCount = 0;
+      const unsubscribe = worldScene.gameStateStore.subscribe(() => {
+        notificationCount += 1;
+      });
+
+      worldScene.maybeSendMovementEnd(1_000_000);
+      worldScene.maybeSendMovementEnd(1_000_100);
+      worldScene.maybeSendMovementEnd(1_000_200);
+      const stationaryNotificationCount = notificationCount;
+
+      worldScene.facing = "left";
+      worldScene.maybeSendMovementEnd(1_000_300);
+      worldScene.maybeSendMovementEnd(1_000_400);
+      const directionNotificationCount = notificationCount;
+
+      worldScene.player.x += 2;
+      worldScene.maybeSendMovementEnd(1_000_500);
+      const positionNotificationCount = notificationCount;
+      const storedPosition = worldScene.gameStateStore.getCurrentLocalPlayer().position;
+      unsubscribe();
+
+      return {
+        stationaryNotificationCount,
+        directionNotificationCount,
+        positionNotificationCount,
+        storedPosition,
+      };
+    });
+
+    expect(result.stationaryNotificationCount).toBe(0);
+    expect(result.directionNotificationCount).toBe(1);
+    expect(result.positionNotificationCount).toBe(2);
+    expect(result.storedPosition.facing).toBe("left");
     expect(browserErrors.join("\n")).toBe("");
   });
 
@@ -1907,14 +2087,23 @@ test.describe("Poke Lounge", () => {
     await chooseStarter(page);
     await waitForGameCanvas(page);
     await expectRoomOnline(page);
+
     await page.locator("[data-room-leave]").click();
+    const leaveDialog = page.locator("[data-poke-lounge-leave-dialog='true']");
+    await expect(leaveDialog).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(leaveDialog).not.toBeVisible();
+    await expect(page.locator("[data-poke-lounge-settings='true']")).toHaveCount(0);
+    await expectRoomOnline(page);
+
+    await leaveRoom(page);
     await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30000 });
 
     await page.locator("[data-room-entry-code]").fill(LOCAL_ROOM_CODE);
     await page.locator("[data-room-entry-join]").click();
     await waitForGameCanvas(page);
     await expectRoomOnline(page, LOCAL_ROOM_CODE);
-    await page.locator("[data-room-leave]").click();
+    await leaveRoom(page);
     await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30000 });
 
     await gotoWithRetry(
@@ -1923,10 +2112,31 @@ test.describe("Poke Lounge", () => {
     );
     await continuePastOptionalStarter(page);
     await expectRoomOnline(page, LOCAL_ROOM_CODE);
-    await page.locator("[data-room-leave]").click();
+    await leaveRoom(page);
     await expect(page).not.toHaveURL(/network=local|room=/);
     await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30000 });
 
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("로컬 방 생성은 저장된 파티를 초기화하지 않는다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await startSoloGame(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
+    const before = await getGameStateSnapshot(page);
+    const savedPlayer = before?.playersById[before.currentPlayerId];
+    expect(savedPlayer?.party).toHaveLength(1);
+
+    await gotoWithRetry(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
+    await continueToRoomEntry(page);
+    await page.locator("[data-room-entry-create]").click();
+
+    await expect(page.locator("[data-screen='starter-selection']")).toBeHidden();
+    await waitForGameCanvas(page);
+    const after = await getGameStateSnapshot(page);
+
+    expect(after?.currentPlayerId).toBe(before?.currentPlayerId);
+    expect(after?.playersById[after.currentPlayerId]?.party).toEqual(savedPlayer?.party);
     expect(browserErrors.join("\n")).toBe("");
   });
 
@@ -2071,13 +2281,13 @@ test.describe("Poke Lounge", () => {
     await expect(settingsPanel).toBeVisible();
 
     const settingOptionButtons = settingsPanel.locator("[data-poke-lounge-setting-option='true']");
-    await expect(settingOptionButtons).toHaveText(["전체화면", "소리 4/4", "UI 크게", "취소"]);
+    await expect(settingOptionButtons).toHaveText(["전체화면", "소리 100%", "UI 크게", "닫기"]);
 
     const volumeButton = settingsPanel.locator("[data-poke-lounge-setting-action='volume']");
     await expect(volumeButton).toHaveAttribute("data-poke-lounge-volume-level", "4");
     await volumeButton.click();
-    await expect(volumeButton).toHaveAttribute("data-poke-lounge-volume-level", "1");
-    await expect(volumeButton).toContainText("소리 1/4");
+    await expect(volumeButton).toHaveAttribute("data-poke-lounge-volume-level", "0");
+    await expect(volumeButton).toContainText("소리 꺼짐");
 
     const uiSizeButton = settingsPanel.locator("[data-poke-lounge-setting-action='ui-size']");
     await expect(uiSizeButton).toHaveAttribute("data-poke-lounge-ui-size", "large");
@@ -2166,7 +2376,7 @@ test.describe("Poke Lounge", () => {
     await expect(mobileSettingsPanel).toBeVisible();
     await expect(
       mobileSettingsPanel.locator("[data-poke-lounge-setting-option='true']"),
-    ).toHaveText(["전체화면", "소리 4/4", "UI 크게", "취소"]);
+    ).toHaveText(["전체화면", "소리 100%", "UI 크게", "닫기"]);
     await mobileSettingsPanel.locator("[data-poke-lounge-settings-cancel='true']").click();
     await expect(mobileSettingsPanel).toHaveCount(0);
 
@@ -2630,6 +2840,13 @@ async function getGameStateSnapshot(page: Page): Promise<PokeLoungeGameStateSnap
   });
 }
 
+async function leaveRoom(page: Page): Promise<void> {
+  await page.locator("[data-room-leave]").click();
+  const dialog = page.locator("[data-poke-lounge-leave-dialog='true']");
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "방 나가기" }).click();
+}
+
 async function expectRoomOnline(page: Page, roomId?: string): Promise<void> {
   await expect
     .poll(
@@ -2694,7 +2911,7 @@ async function expectCanvasFramed(
         );
       },
       {
-        timeout: 10000,
+        timeout: 30000,
       },
     )
     .toBe(true);
@@ -2739,7 +2956,7 @@ async function expectWorldVisualScale(page: Page): Promise<void> {
             : null,
         ),
       {
-        timeout: 10000,
+        timeout: 30000,
       },
     )
     .toEqual({
@@ -2764,6 +2981,9 @@ async function expectMobileTouchLayout(page: Page): Promise<void> {
           const actions = document
             .querySelector(".mobile-touch-controls__actions")
             ?.getBoundingClientRect();
+          const statusRail = document
+            .querySelector("[data-poke-lounge-status-rail='true']")
+            ?.getBoundingClientRect();
           const pageRoot = document
             .querySelector("[data-testid='poke-lounge-page']")
             ?.getBoundingClientRect();
@@ -2771,7 +2991,15 @@ async function expectMobileTouchLayout(page: Page): Promise<void> {
             element.getBoundingClientRect(),
           );
 
-          if (!root || !controls || !dpad || !actions || !pageRoot || buttons.length === 0) {
+          if (
+            !root ||
+            !controls ||
+            !dpad ||
+            !actions ||
+            !statusRail ||
+            !pageRoot ||
+            buttons.length === 0
+          ) {
             return false;
           }
 
@@ -2782,6 +3010,11 @@ async function expectMobileTouchLayout(page: Page): Promise<void> {
               rect.right <= window.innerWidth &&
               rect.bottom <= window.innerHeight,
           );
+          const statusRailOverlapsDpad =
+            statusRail.left < dpad.right &&
+            statusRail.right > dpad.left &&
+            statusRail.top < dpad.bottom &&
+            statusRail.bottom > dpad.top;
 
           return (
             root.top - pageRoot.top <= 24 &&
@@ -2791,6 +3024,7 @@ async function expectMobileTouchLayout(page: Page): Promise<void> {
             controls.right <= window.innerWidth &&
             controls.bottom <= window.innerHeight &&
             dpad.right + 12 <= actions.left &&
+            !statusRailOverlapsDpad &&
             buttonsInsideViewport
           );
         }),

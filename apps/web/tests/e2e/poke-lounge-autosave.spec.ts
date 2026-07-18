@@ -484,6 +484,47 @@ test.describe("Poke Lounge autosave", () => {
     });
   });
 
+  test("자동 저장 상태를 대기·저장 중·완료 순서로 알린다", async () => {
+    const store = createGameStateStore();
+    const manualScheduler = createManualScheduler();
+    const statuses: string[] = [];
+    const autosave = startPokeLoungeAutosave({
+      gameStateStore: store,
+      token: "id-token",
+      scheduler: manualScheduler.scheduler,
+      saveState: async () => ({ success: true }),
+      onStatusChange: status => statuses.push(status),
+    });
+
+    expect(statuses).toEqual(["idle"]);
+
+    store.setStarterPokemon(createStarterPokemon());
+    expect(statuses).toEqual(["idle", "pending"]);
+
+    manualScheduler.runNextTimeout();
+    await autosave.waitForIdle();
+
+    expect(statuses).toEqual(["idle", "pending", "saving", "saved"]);
+    await autosave.dispose({ flush: false });
+  });
+
+  test("자동 저장 요청 예외는 실패 상태로 알리고 다음 저장 대상으로 유지한다", async () => {
+    const store = createGameStateStore();
+    const statuses: string[] = [];
+    const autosave = startPokeLoungeAutosave({
+      gameStateStore: store,
+      token: "id-token",
+      saveState: async () => {
+        throw new Error("network unavailable");
+      },
+      onStatusChange: status => statuses.push(status),
+    });
+
+    await expect(autosave.flush()).resolves.toBeUndefined();
+    expect(statuses).toEqual(["idle", "saving", "error"]);
+    await autosave.dispose({ flush: false });
+  });
+
   test("in-flight 저장 중 dispose하면 dispose 시점 스냅샷을 마지막으로 저장한다", async () => {
     const store = createGameStateStore();
     const manualScheduler = createManualScheduler();

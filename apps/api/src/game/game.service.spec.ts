@@ -1,3 +1,4 @@
+import { ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { GameService } from './game.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -38,6 +39,7 @@ const mockGameHistoryRepository = () => ({
 });
 
 const mockPokeLoungeStateRepository = () => ({
+  create: jest.fn(),
   query: jest.fn(),
   findOne: jest.fn(),
 });
@@ -526,6 +528,7 @@ describe('GameService', () => {
           trainer: { x: 12, y: 3 },
           party: ['pikachu', 'eevee'],
         },
+        expectedRevision: 0,
         clientUpdatedAt,
       };
       const savedState = {
@@ -533,31 +536,98 @@ describe('GameService', () => {
         userId: user.id,
         user,
         state: dto.state,
+        revision: 1,
         clientUpdatedAt: new Date(clientUpdatedAt),
         createdAt: new Date('2026-07-08T12:00:01.000Z'),
         updatedAt: new Date('2026-07-08T12:00:02.000Z'),
       } as GamePokeLoungeState;
 
-      pokeLoungeStateRepository.findOne
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(savedState);
+      pokeLoungeStateRepository.query.mockResolvedValue([savedState]);
+      pokeLoungeStateRepository.create.mockReturnValue(savedState);
 
       const result = await service.savePokeLoungeState(user, dto);
 
       expect(pokeLoungeStateRepository.query).toHaveBeenCalledWith(
-        expect.stringContaining('ON CONFLICT ("userId") DO UPDATE'),
-        [user.id, JSON.stringify(dto.state), new Date(clientUpdatedAt)],
+        expect.stringContaining('"revision" = "revision" + 1'),
+        [user.id, JSON.stringify(dto.state), new Date(clientUpdatedAt), 0],
       );
       expect(pokeLoungeStateRepository.query).toHaveBeenCalledWith(
-        expect.stringContaining(
-          '"game_poke_lounge_state"."clientUpdatedAt" <= EXCLUDED."clientUpdatedAt"',
+        expect.stringContaining('AND "revision" = $4::integer'),
+        expect.any(Array),
+      );
+      expect(pokeLoungeStateRepository.create).toHaveBeenCalledWith({
+        ...savedState,
+        user,
+      });
+      expect(result).toEqual(savedState);
+    });
+
+    it('구버전 Web 저장은 신규 행 또는 revision 0 행만 revision 1로 전환해야 함', async () => {
+      const user = new User();
+      user.id = 'legacy-poke-user';
+      const dto: SavePokeLoungeStateDto = {
+        state: { marker: 'legacy-web' },
+        clientUpdatedAt: '2099-01-01T00:00:00.000Z',
+      };
+      const savedState = {
+        id: 'legacy-state-id',
+        userId: user.id,
+        user,
+        state: dto.state,
+        revision: 1,
+        clientUpdatedAt: new Date(dto.clientUpdatedAt),
+        createdAt: new Date('2026-07-08T12:00:01.000Z'),
+        updatedAt: new Date('2026-07-08T12:00:02.000Z'),
+      } as GamePokeLoungeState;
+
+      pokeLoungeStateRepository.query.mockResolvedValue([savedState]);
+      pokeLoungeStateRepository.create.mockReturnValue(savedState);
+
+      await expect(service.savePokeLoungeState(user, dto)).resolves.toEqual(
+        savedState,
+      );
+      expect(pokeLoungeStateRepository.query).toHaveBeenCalledWith(
+        expect.stringContaining('ON CONFLICT ("userId") DO UPDATE'),
+        [user.id, JSON.stringify(dto.state), new Date(dto.clientUpdatedAt)],
+      );
+      expect(pokeLoungeStateRepository.query).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /"revision" = "game_poke_lounge_state"\."revision" \+ 1[\s\S]*WHERE "game_poke_lounge_state"\."revision" = 0[\s\S]*RETURNING \*/,
         ),
         expect.any(Array),
       );
-      expect(pokeLoungeStateRepository.findOne).toHaveBeenLastCalledWith({
-        where: { userId: user.id },
-      });
-      expect(result).toEqual(savedState);
+      expect(pokeLoungeStateRepository.query).toHaveBeenCalledWith(
+        expect.not.stringMatching(/clientUpdatedAt"\s*(?:>=|<=)/),
+        expect.any(Array),
+      );
+    });
+
+    it('리비전 적용 행에 대한 구버전 Web 저장은 미래 clientUpdatedAt이어도 409로 거절해야 함', async () => {
+      const user = new User();
+      user.id = 'revision-aware-user';
+      const dto: SavePokeLoungeStateDto = {
+        state: { marker: 'legacy-overwrite' },
+        clientUpdatedAt: '2099-01-01T00:00:00.000Z',
+      };
+      pokeLoungeStateRepository.query.mockResolvedValue([]);
+
+      const error = await service
+        .savePokeLoungeState(user, dto)
+        .catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(ConflictException);
+      expect((error as ConflictException).getStatus()).toBe(409);
+      expect(pokeLoungeStateRepository.query).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /ON CONFLICT \("userId"\) DO UPDATE[\s\S]*WHERE "game_poke_lounge_state"\."revision" = 0[\s\S]*RETURNING \*/,
+        ),
+        [user.id, JSON.stringify(dto.state), new Date(dto.clientUpdatedAt)],
+      );
+      expect(pokeLoungeStateRepository.query).toHaveBeenCalledWith(
+        expect.not.stringMatching(/clientUpdatedAt"\s*(?:>=|<=)/),
+        expect.any(Array),
+      );
+      expect(pokeLoungeStateRepository.create).not.toHaveBeenCalled();
     });
 
     it('clientUpdatedAt이 없으면 null로 저장해야 함', async () => {
@@ -567,57 +637,93 @@ describe('GameService', () => {
         state: {
           room: 'LOUNGE',
         },
+        expectedRevision: 0,
       };
       const savedState = {
         id: 'state-id',
         userId: user.id,
         user,
         state: dto.state,
+        revision: 1,
         clientUpdatedAt: null,
         createdAt: new Date('2026-07-08T12:00:01.000Z'),
         updatedAt: new Date('2026-07-08T12:00:02.000Z'),
       } as GamePokeLoungeState;
 
-      pokeLoungeStateRepository.findOne
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(savedState);
+      pokeLoungeStateRepository.query.mockResolvedValue([savedState]);
+      pokeLoungeStateRepository.create.mockReturnValue(savedState);
 
       const result = await service.savePokeLoungeState(user, dto);
 
       expect(pokeLoungeStateRepository.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO "game_poke_lounge_state"'),
-        [user.id, JSON.stringify(dto.state), null],
+        [user.id, JSON.stringify(dto.state), null, 0],
       );
       expect(result).toEqual(savedState);
     });
 
-    it('이미 저장된 상태보다 오래된 clientUpdatedAt 요청은 덮어쓰지 않아야 함', async () => {
+    it('미래 clientUpdatedAt과 무관하게 서버 revision으로 다음 저장을 허용해야 함', async () => {
       const user = new User();
       user.id = 'poke-user';
-      const existingState = {
+      const savedState = {
         id: 'state-id',
         userId: user.id,
         user,
         state: {
-          marker: 'latest',
+          marker: 'next',
         },
-        clientUpdatedAt: new Date('2026-07-08T12:00:10.000Z'),
+        revision: 8,
+        clientUpdatedAt: new Date('2026-07-08T12:00:00.000Z'),
         createdAt: new Date('2026-07-08T12:00:01.000Z'),
-        updatedAt: new Date('2026-07-08T12:00:10.000Z'),
+        updatedAt: new Date('2026-07-08T12:00:20.000Z'),
       } as GamePokeLoungeState;
       const dto: SavePokeLoungeStateDto = {
         state: {
-          marker: 'stale',
+          marker: 'next',
         },
+        expectedRevision: 7,
         clientUpdatedAt: '2026-07-08T12:00:00.000Z',
       };
 
-      pokeLoungeStateRepository.findOne.mockResolvedValue(existingState);
+      pokeLoungeStateRepository.query.mockResolvedValue([savedState]);
+      pokeLoungeStateRepository.create.mockReturnValue(savedState);
 
       const result = await service.savePokeLoungeState(user, dto);
 
-      expect(pokeLoungeStateRepository.query).not.toHaveBeenCalled();
-      expect(result).toEqual(existingState);
+      expect(pokeLoungeStateRepository.query).toHaveBeenCalledWith(
+        expect.not.stringContaining('clientUpdatedAt" <='),
+        [user.id, JSON.stringify(dto.state), new Date(dto.clientUpdatedAt!), 7],
+      );
+      expect(result).toEqual(savedState);
+    });
+
+    it('expectedRevision이 현재 서버 revision과 다르면 충돌을 반환해야 함', async () => {
+      const user = new User();
+      user.id = 'poke-user';
+      pokeLoungeStateRepository.query.mockResolvedValue([]);
+
+      await expect(
+        service.savePokeLoungeState(user, {
+          state: { marker: 'stale-device' },
+          expectedRevision: 2,
+          clientUpdatedAt: '2099-01-01T00:00:00.000Z',
+        }),
+      ).rejects.toThrow('Poke Lounge state revision conflict');
+      expect(pokeLoungeStateRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('CTE가 요청보다 큰 revision을 반환하면 다른 저장 결과로 간주해 거절해야 함', async () => {
+      const user = new User();
+      user.id = 'poke-user';
+      pokeLoungeStateRepository.query.mockResolvedValue([{ revision: 4 }]);
+
+      await expect(
+        service.savePokeLoungeState(user, {
+          state: { marker: 'concurrent-save' },
+          expectedRevision: 2,
+        }),
+      ).rejects.toThrow('Poke Lounge state revision conflict');
+      expect(pokeLoungeStateRepository.create).not.toHaveBeenCalled();
     });
   });
 
@@ -630,6 +736,7 @@ describe('GameService', () => {
         state: {
           room: 'LOUNGE',
         },
+        revision: 4,
         clientUpdatedAt: null,
         createdAt: new Date('2026-07-08T12:00:01.000Z'),
         updatedAt: new Date('2026-07-08T12:00:02.000Z'),

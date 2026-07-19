@@ -21,6 +21,13 @@ export class PokeLoungeStateResponseDto {
   state: Record<string, unknown>;
 
   @ApiProperty({
+    description: '서버가 원자적으로 증가시키는 저장 revision',
+    example: 4,
+    minimum: 0,
+  })
+  revision: number;
+
+  @ApiProperty({
     description: '서버 저장 생성 시각',
     example: '2026-07-08T12:00:01.000Z',
   })

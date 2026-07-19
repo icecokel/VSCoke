@@ -1,6 +1,9 @@
 import { ApiExtraModels, ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import type { CompetitiveActionProjection } from '../competitive/competitive-action.types';
-import type { CompetitiveMatchStatus } from '../competitive/competitive-match.types';
+import type {
+  CompetitiveMatchKind,
+  CompetitiveMatchStatus,
+} from '../competitive/competitive-match.types';
 
 class CompetitiveMoveStateDto {
   @ApiProperty()
@@ -86,6 +89,14 @@ export class CompetitiveActionResponseDto implements CompetitiveActionProjection
   @ApiProperty()
   matchId!: string;
 
+  @ApiProperty({ example: 'game-round-1-bracket-1-match-1' })
+  bracketMatchId!: string;
+
+  @ApiProperty({
+    enum: ['ranked-head-to-head', 'tournament-unranked'],
+  })
+  kind!: CompetitiveMatchKind;
+
   @ApiProperty()
   assignmentRevision!: number;
 
@@ -100,6 +111,12 @@ export class CompetitiveActionResponseDto implements CompetitiveActionProjection
 
   @ApiProperty({ enum: ['pending', 'active', 'completed'] })
   status!: CompetitiveMatchStatus;
+
+  @ApiProperty({ type: String, format: 'uuid', nullable: true })
+  terminalEventId!: string | null;
+
+  @ApiProperty({ type: Number, minimum: 0, nullable: true })
+  terminalRoomRevision!: number | null;
 
   @ApiProperty({ type: [String] })
   playerIds!: [string, string];

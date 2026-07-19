@@ -22,7 +22,7 @@ describe('AddGameResultTrust1794355200000', () => {
     expect(sql).toContain('"sourceKey" varchar(512)');
     expect(sql).toContain("IN ('client-asserted', 'verified-room')");
     expect(sql).toMatch(
-      /UPDATE "game_history"[\s\S]*"gameType" = 'POKE_LOUNGE'[\s\S]*"resultTrust" IS NULL/,
+      /UPDATE "game_history"[\s\S]*"gameType"::text = 'POKE_LOUNGE'[\s\S]*"resultTrust" IS NULL/,
     );
     expect(sql).toMatch(
       /CREATE UNIQUE INDEX[\s\S]*\("sourceKey"\)[\s\S]*WHERE "sourceKey" IS NOT NULL/,

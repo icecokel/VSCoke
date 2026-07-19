@@ -10,13 +10,11 @@ export type PokeLoungeRoundPhase =
   | 'round-started'
   | 'tournament'
   | 'completed';
-export type PokeLoungeMatchStatus = 'pending' | 'completed';
-export type PokeLoungeMatchResultReason =
-  | 'faint'
-  | 'timeout'
-  | 'forfeit'
-  | 'run'
-  | 'capture';
+export type PokeLoungeMatchStatus = TournamentMatch['status'];
+export type PokeLoungeMatchResultReason = TournamentMatchResultReason;
+export type PokeLoungeTournamentMatch = TournamentMatch;
+export type PokeLoungeActiveMatchAuthority = 'casual' | 'server';
+export type PokeLoungeRoomCloseReason = 'legacy-room-restart-required';
 
 export interface PokeLoungeRoomParticipant {
   sessionId: string;
@@ -26,24 +24,16 @@ export interface PokeLoungeRoomParticipant {
   role: PokeLoungeParticipantRole;
   ready: boolean;
   connected: boolean;
+  presencePendingUntilMs?: number;
+  presenceEpoch?: string;
   joinedAtMs: number;
   leftAtMs?: number;
 }
 
 export type PokeLoungePublicRoomParticipant = Omit<
   PokeLoungeRoomParticipant,
-  'sessionId' | 'userId'
+  'sessionId' | 'userId' | 'presencePendingUntilMs' | 'presenceEpoch'
 >;
-
-export interface PokeLoungeTournamentMatch {
-  matchId: string;
-  participantIds: [string, string];
-  status: PokeLoungeMatchStatus;
-  winnerPlayerId?: string;
-  loserPlayerId?: string;
-  resultReason?: PokeLoungeMatchResultReason;
-  completedAtMs?: number;
-}
 
 export interface PokeLoungeFinalStanding {
   playerId: string;
@@ -68,6 +58,7 @@ export interface PokeLoungePartySnapshot {
 export interface PokeLoungeRoomState {
   roomCode: string;
   status: PokeLoungeRoomStatus;
+  closeReason?: PokeLoungeRoomCloseReason;
   createdAtMs: number;
   updatedAtMs: number;
   participants: PokeLoungeRoomParticipant[];
@@ -80,10 +71,19 @@ export interface PokeLoungeRoomState {
     endsAtMs: number | null;
   };
   tournament: {
-    matches: PokeLoungeTournamentMatch[];
+    version: 2;
+    bracket: TournamentBracketState | null;
+    activeMatchId: string | null;
+    activeMatchAuthority: PokeLoungeActiveMatchAuthority | null;
     cumulativeScores: Record<string, number>;
   };
   finalStandings: PokeLoungeFinalStanding[];
+}
+
+export interface CompetitiveTerminalTransition {
+  terminalEventId: string;
+  terminalRoomRevision: number;
+  projection: CompetitiveActionProjection;
 }
 
 export type PokeLoungePublicRoomState = Omit<
@@ -93,6 +93,7 @@ export type PokeLoungePublicRoomState = Omit<
   participants: PokeLoungePublicRoomParticipant[];
   revision: number;
   expiresAtMs: number;
+  competitiveTransitions: CompetitiveTerminalTransition[];
   competitive?: CompetitiveActionProjection;
 };
 
@@ -143,4 +144,9 @@ export interface UpdatePokeLoungePartySnapshotInput {
   representativePokemon?: PokeLoungePartySnapshot['representativePokemon'];
   nowMs?: number;
 }
+import type {
+  TournamentBracketState,
+  TournamentMatch,
+  TournamentMatchResultReason,
+} from '@vscoke/poke-lounge-battle';
 import type { CompetitiveActionProjection } from './competitive/competitive-action.types';

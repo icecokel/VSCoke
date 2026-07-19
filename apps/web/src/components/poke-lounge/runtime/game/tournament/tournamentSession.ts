@@ -32,7 +32,7 @@ export function createTournamentSession({
   return {
     roundIndex,
     status: "in-progress",
-    tournament: createTournamentState(participants),
+    tournament: createTournamentState(participants, roundIndex),
     completedAtMs: null,
   };
 }

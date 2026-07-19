@@ -3,7 +3,11 @@ import type {
   CanonicalCompetitiveAction,
   CanonicalTerminalResult,
 } from '@vscoke/poke-lounge-battle';
-import type { CompetitiveMatchStatus } from './competitive-match.types';
+import type {
+  CompetitiveMatchKind,
+  CompetitiveMatchStatus,
+  CompetitiveTerminalMetadata,
+} from './competitive-match.types';
 
 export type CompetitiveActionReceiptStatus = 'pending' | 'resolved';
 
@@ -30,8 +34,10 @@ export interface PublicCompetitiveBattleState {
   terminal: CanonicalTerminalResult | null;
 }
 
-export interface CompetitiveActionProjection {
+export interface CompetitiveActionProjection extends CompetitiveTerminalMetadata {
   matchId: string;
+  bracketMatchId: string;
+  kind: CompetitiveMatchKind;
   assignmentRevision: number;
   rulesetVersion: number;
   rulesetHash: string;

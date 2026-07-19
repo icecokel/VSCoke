@@ -5,16 +5,26 @@ import type {
 import type { PublicCompetitiveBattleState } from './competitive-action.types';
 
 export type CompetitiveMatchStatus = 'pending' | 'active' | 'completed';
+export type CompetitiveMatchKind =
+  | 'ranked-head-to-head'
+  | 'tournament-unranked';
+
+export interface CompetitiveTerminalMetadata {
+  terminalEventId: string | null;
+  terminalRoomRevision: number | null;
+}
 
 export interface CompetitivePlayerAccount {
   playerId: string;
   accountId: string;
 }
 
-export interface CompetitiveMatchAssignment {
+export interface CompetitiveMatchAssignment extends CompetitiveTerminalMetadata {
   roomId: string;
   roomCode: string;
   matchId: string;
+  bracketMatchId: string;
+  kind: CompetitiveMatchKind;
   assignmentRevision: number;
   playerAccounts: [CompetitivePlayerAccount, CompetitivePlayerAccount];
   rulesetVersion: number;
@@ -30,8 +40,10 @@ export interface CompetitiveMatchAssignment {
   completedAt: Date | null;
 }
 
-export interface CompetitiveAssignmentProjection {
+export interface CompetitiveAssignmentProjection extends CompetitiveTerminalMetadata {
   matchId: string;
+  bracketMatchId: string;
+  kind: CompetitiveMatchKind;
   assignmentRevision: number;
   rulesetVersion: number;
   rulesetHash: string;
@@ -47,6 +59,8 @@ export interface CompetitiveAssignmentProjection {
 export interface CompetitiveAssignmentCreateContext {
   roomId: string;
   roomCode: string;
+  bracketMatchId: string;
+  kind: CompetitiveMatchKind;
   assignmentRevision: number;
   players: [CompetitivePlayerAccount, CompetitivePlayerAccount];
 }

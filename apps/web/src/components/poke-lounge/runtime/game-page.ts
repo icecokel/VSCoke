@@ -6,7 +6,9 @@ export async function startGamePageFromDocument(
   documentRef: Document = document,
   location: URL = new URL(window.location.href),
   options: {
+    accountId?: string;
     idToken?: string;
+    getIdToken?: () => string | undefined;
     onGameResult?: (result: PokeLoungeGameResult) => void;
     viewportSize?: GameViewportDisplaySize;
   } = {},
@@ -18,7 +20,9 @@ export async function startGamePageFromDocument(
   }
 
   return startGamePage(mount, location, {
+    accountId: options.accountId,
     idToken: options.idToken,
+    getIdToken: options.getIdToken,
     onGameResult: options.onGameResult,
     viewportSize: options.viewportSize,
   });

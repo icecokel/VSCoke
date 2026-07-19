@@ -39,6 +39,7 @@ type PokeLoungeStateRecord = {
   id: string;
   userId: string;
   state: PokeLoungeStatePayload;
+  revision: number;
   createdAt: Date;
   updatedAt: Date;
   clientUpdatedAt: Date | null;
@@ -46,6 +47,7 @@ type PokeLoungeStateRecord = {
 
 type SavePokeLoungeStateDtoLike = {
   state: PokeLoungeStatePayload;
+  expectedRevision?: number;
   clientUpdatedAt?: string;
 };
 
@@ -483,12 +485,14 @@ describe('GameController', () => {
           trainer: { x: 12, y: 3 },
           party: ['pikachu', 'eevee'],
         },
+        expectedRevision: 0,
         clientUpdatedAt,
       };
       const savedState: PokeLoungeStateRecord = {
         id: 'state-id',
         userId: req.user.id,
         state: body.state,
+        revision: 1,
         clientUpdatedAt: new Date(clientUpdatedAt),
         createdAt: new Date('2026-07-08T12:00:01.000Z'),
         updatedAt: new Date('2026-07-08T12:00:02.000Z'),
@@ -515,6 +519,7 @@ describe('GameController', () => {
           room: 'LOUNGE',
           inventory: { potion: 2 },
         },
+        revision: 3,
         clientUpdatedAt: null,
         createdAt: new Date('2026-07-08T12:00:01.000Z'),
         updatedAt: new Date('2026-07-08T12:00:02.000Z'),

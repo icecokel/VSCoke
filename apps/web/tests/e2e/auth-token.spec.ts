@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { getSessionApiIdToken, getJwtExpiresAt, isIdTokenUsable } from "../../src/lib/auth-token";
+import {
+  getJwtExpiresAt,
+  getJwtSubject,
+  getSessionApiAccountId,
+  getSessionApiIdToken,
+  isIdTokenUsable,
+} from "../../src/lib/auth-token";
 
 const encodeBase64Url = (value: unknown) =>
   Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
@@ -12,6 +18,15 @@ test.describe("auth token contract", () => {
     const token = createJwt({ exp: 12345 });
 
     expect(getJwtExpiresAt(token)).toBe(12345);
+  });
+
+  test("JWT sub를 계정별 저장 범위 식별자로 읽는다", () => {
+    expect(getJwtSubject(createJwt({ sub: "account-a" }))).toBe("account-a");
+    expect(getJwtSubject(createJwt({ sub: "" }))).toBeUndefined();
+  });
+
+  test("테스트·서버 세션은 user id를 계정 저장 범위 식별자로 사용할 수 있다", () => {
+    expect(getSessionApiAccountId({ user: { id: "account-b" } }, "opaque-token")).toBe("account-b");
   });
 
   test("만료된 ID 토큰은 API 제출 토큰으로 사용하지 않는다", () => {

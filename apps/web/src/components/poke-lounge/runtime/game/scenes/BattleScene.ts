@@ -65,7 +65,16 @@ import {
   type ShopItemId,
 } from "../state/gameStateStore";
 import { createGameTextStyle } from "../ui/gameTextStyle";
-import { createShortcutGuideRows, createShortcutGuideTitle } from "../ui/shortcutGuide";
+import {
+  dispatchPokeLoungeAccessibleStatus,
+  dispatchPokeLoungeNotice,
+} from "../ui/poke-lounge-ui-events";
+import {
+  createShortcutGuideFooter,
+  createShortcutGuideRows,
+  createShortcutGuideTitle,
+  type ShortcutGuideInputMode,
+} from "../ui/shortcutGuide";
 import { consumeVirtualGamepadPress, resetVirtualGamepad } from "../input/virtualGamepad";
 import { setShortcutGuideTouchControlsSuppressed } from "../input/mobileTouchControlsVisibility";
 import type { WildEncounterCandidate } from "../world/wildEncounters";
@@ -78,6 +87,7 @@ import type {
   MultiplayerRoom,
   RoomUnsubscribe,
 } from "../network/localPreviewRoom";
+import type { CompetitiveBattleLaunchKey } from "./competitive-battle-launch";
 
 export const BATTLE_COMMAND_LABELS = ["싸운다", "가방", "포켓몬", "도망"] as const;
 export const BATTLE_SPRITE_CROP = { x: 0, y: 0, width: 80, height: 80 } as const;
@@ -194,6 +204,7 @@ export interface AuthoritativeBattleSceneData {
   battleKind: "authoritative";
   ownPlayerId: string;
   projection: CompetitiveProjection;
+  returnToWorld: BattleScreenState["returnToWorld"];
 }
 
 interface LogicalCanvasPointInput {
@@ -260,7 +271,8 @@ function isAuthoritativeBattleSceneData(data: unknown): data is AuthoritativeBat
     isRecord(data) &&
     data.battleKind === "authoritative" &&
     typeof data.ownPlayerId === "string" &&
-    isRecord(data.projection)
+    isRecord(data.projection) &&
+    isRecord(data.returnToWorld)
   );
 }
 
@@ -376,6 +388,7 @@ export class BattleScene extends Phaser.Scene {
   private authoritativeOwnPlayerId: string | null = null;
   private authoritativeInputPending = false;
   private authoritativeUnsubscribers: RoomUnsubscribe[] = [];
+  private lastAccessibleStatus = "";
 
   constructor(
     private readonly gameStateStore: GameStateStore = getDefaultGameStateStore(),
@@ -386,6 +399,7 @@ export class BattleScene extends Phaser.Scene {
 
   create(data: unknown = {}): void {
     this.clearAuthoritativeSubscriptions();
+    this.state = this.createInitialState(data);
     if (isAuthoritativeBattleSceneData(data)) {
       this.authoritativeProjection = data.projection;
       this.authoritativeOwnPlayerId = data.ownPlayerId;
@@ -398,7 +412,6 @@ export class BattleScene extends Phaser.Scene {
       this.authoritativeOwnPlayerId = null;
       this.authoritativeInputPending = false;
     }
-    this.state = this.createInitialState(data);
     this.returningToWorld = false;
     this.battleEntrancePlayed = false;
     this.hpAnimationStartedCount = 0;
@@ -409,6 +422,7 @@ export class BattleScene extends Phaser.Scene {
     this.evolutionAnimationTween?.stop();
     this.evolutionAnimationTween = null;
     this.pendingMoveLearnings = [];
+    this.lastAccessibleStatus = "";
     this.cancelHpTweens();
     this.resetHitEffects();
     this.syncDisplayedHpToState();
@@ -423,9 +437,15 @@ export class BattleScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       stopWildBattleBgm();
       this.clearAuthoritativeSubscriptions();
+      dispatchPokeLoungeAccessibleStatus(this.game.canvas.ownerDocument, "필드 탐색");
     });
     this.events.once(Phaser.Scenes.Events.DESTROY, () => stopWildBattleBgm());
-    this.playBattleEntranceAnimation();
+    if (this.authoritativeProjection?.status === "completed") {
+      this.finishBattleEntranceAnimation();
+      this.render();
+    } else {
+      this.playBattleEntranceAnimation();
+    }
   }
 
   update(): void {
@@ -743,7 +763,7 @@ export class BattleScene extends Phaser.Scene {
 
   private createInitialState(data: unknown): BattleScreenState {
     if (isAuthoritativeBattleSceneData(data)) {
-      return toAuthoritativeBattleState(data.projection, data.ownPlayerId);
+      return toAuthoritativeBattleState(data.projection, data.ownPlayerId, data.returnToWorld);
     }
 
     if (isBattleE2eSceneData(data)) {
@@ -782,6 +802,24 @@ export class BattleScene extends Phaser.Scene {
 
   private confirmSelection(): void {
     if (this.battleEntrancePlaying) {
+      return;
+    }
+
+    if (
+      this.authoritativeProjection?.status === "completed" &&
+      this.authoritativeOwnPlayerId &&
+      this.state.phase === "ended" &&
+      this.state.returnToWorld
+    ) {
+      const completedCompetitiveBattle: CompetitiveBattleLaunchKey = {
+        matchId: this.authoritativeProjection.matchId,
+        assignmentRevision: this.authoritativeProjection.assignmentRevision,
+      };
+      this.clearAuthoritativeSubscriptions();
+      this.authoritativeInputPending = false;
+      this.authoritativeProjection = null;
+      this.authoritativeOwnPlayerId = null;
+      this.returnToWorld(completedCompetitiveBattle);
       return;
     }
 
@@ -950,6 +988,16 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.authoritativeUnsubscribers.push(
+      this.multiplayerRoom.on("CONNECTION_STATUS", ({ connectionStatus }) => {
+        this.gameStateStore.setSession({
+          sessionId: this.multiplayerRoom?.sessionId ?? null,
+          roomId: this.multiplayerRoom?.roomId ?? null,
+          connectionStatus,
+        });
+      }),
+      this.multiplayerRoom.on("TOURNAMENT_STATE", payload => {
+        this.gameStateStore.applyTournamentSnapshotFromRoom(payload, Date.now());
+      }),
       this.multiplayerRoom.on("COMPETITIVE_STATE", ({ projection, ownPlayerId }) => {
         const current = this.authoritativeProjection;
         if (
@@ -964,7 +1012,12 @@ export class BattleScene extends Phaser.Scene {
         this.authoritativeProjection = projection;
         this.authoritativeOwnPlayerId = ownPlayerId;
         this.authoritativeInputPending = projection.submittedPlayerIds.includes(ownPlayerId);
-        this.setBattleState(toAuthoritativeBattleState(projection, ownPlayerId));
+        if (projection.status === "completed") {
+          this.finishBattleEntranceAnimation();
+        }
+        this.setBattleState(
+          toAuthoritativeBattleState(projection, ownPlayerId, this.state.returnToWorld),
+        );
       }),
       this.multiplayerRoom.on("COMPETITIVE_ACTION_FAILED", ({ matchId, message }) => {
         if (matchId !== this.authoritativeProjection?.matchId) {
@@ -1137,6 +1190,13 @@ export class BattleScene extends Phaser.Scene {
     this.battleEntranceTween = tween;
   }
 
+  private finishBattleEntranceAnimation(): void {
+    this.battleEntranceTween?.stop();
+    this.battleEntranceTween = null;
+    this.battleEntranceProgress = 1;
+    this.battleEntrancePlaying = false;
+  }
+
   private playEvolutionAnimation(): void {
     this.evolutionAnimationTween?.stop();
     this.evolutionAnimationProgress = 0;
@@ -1166,7 +1226,7 @@ export class BattleScene extends Phaser.Scene {
     this.evolutionAnimationTween = tween;
   }
 
-  private returnToWorld(): void {
+  private returnToWorld(completedCompetitiveBattle?: CompetitiveBattleLaunchKey): void {
     if (!this.state.returnToWorld || this.returningToWorld) {
       return;
     }
@@ -1224,7 +1284,15 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.state.result?.reason === "capture" && this.state.result.capturedPokemon) {
-      this.gameStateStore.addPokemonToParty(toPlayerPokemon(this.state.result.capturedPokemon));
+      const capturedPokemon = toPlayerPokemon(this.state.result.capturedPokemon);
+      const placement = this.gameStateStore.addPokemonToParty(capturedPokemon);
+
+      if (placement.destination === "box") {
+        dispatchPokeLoungeNotice(this.game.canvas.ownerDocument, {
+          message: `포획한 ${capturedPokemon.name}, 파티가 가득 차 PC 박스로 전송했습니다.`,
+          tone: "info",
+        });
+      }
     }
 
     if (
@@ -1261,6 +1329,7 @@ export class BattleScene extends Phaser.Scene {
             },
           }
         : {}),
+      ...(completedCompetitiveBattle ? { completedCompetitiveBattle } : {}),
     });
   }
 
@@ -1669,6 +1738,7 @@ export class BattleScene extends Phaser.Scene {
     this.drawHpPanel(BATTLE_LAYOUT.playerHpPanel, this.state.player.pokemon, "player", true);
     this.drawEvolutionOverlay();
     this.publishE2eSnapshot();
+    this.publishAccessibleStatus();
 
     if (this.state.phase === "move-select") {
       this.drawMoveWindow();
@@ -1708,6 +1778,54 @@ export class BattleScene extends Phaser.Scene {
     this.drawMessageWindow(this.state.messageQueue[0] ?? BATTLE_END_CONFIRM_MESSAGE);
     this.drawShortcutGuideIfOpen();
     this.drawBattleEntranceOverlay();
+  }
+
+  private publishAccessibleStatus(): void {
+    const playerPokemon = this.state.player.pokemon;
+    const opponentPokemon = this.state.opponent.pokemon;
+    const healthSummary = `내 ${playerPokemon.name} HP ${playerPokemon.currentHp}/${playerPokemon.maxHp}. 상대 ${opponentPokemon.name} HP ${opponentPokemon.currentHp}/${opponentPokemon.maxHp}.`;
+    const queuedMessage = this.state.messageQueue[0];
+    let interactionSummary = queuedMessage ?? "";
+
+    if (!queuedMessage && this.state.phase === "command") {
+      interactionSummary = `전투 명령 ${COMMANDS[this.selectedCommandIndex]?.label ?? "싸운다"} 선택.`;
+    } else if (!queuedMessage && this.state.phase === "move-select") {
+      const move = playerPokemon.moves[this.selectedMoveIndex];
+      interactionSummary = move
+        ? `기술 ${move.name} 선택. PP ${move.pp}/${move.maxPp}.`
+        : "사용할 기술을 선택하세요.";
+    } else if (!queuedMessage && this.state.phase === "move-replace-select") {
+      const pending = this.getCurrentPendingMoveLearning();
+      const move = playerPokemon.moves[this.selectedMoveIndex];
+      interactionSummary = pending
+        ? `${pending.newMove.name}을 배우기 위해 ${move?.name ?? "기존 기술"}을 잊도록 선택했습니다.`
+        : "기술 교체를 확인하는 중입니다.";
+    } else if (!queuedMessage && this.state.phase === "party-select") {
+      const pokemon = this.state.player.party.find(
+        slot => slot.slotIndex === this.selectedPartySlotIndex,
+      )?.pokemon;
+      interactionSummary = pokemon
+        ? `교체 대상 ${pokemon.name}, HP ${pokemon.currentHp}/${pokemon.maxHp}.`
+        : "교체할 포켓몬을 선택하세요.";
+    } else if (!queuedMessage && this.state.phase === "bag-select") {
+      const itemId = this.getBattleBagItemIds()[this.selectedBagItemIndex];
+      const item = itemId ? getShopItemById(itemId) : undefined;
+      const quantity = itemId
+        ? (this.gameStateStore.getCurrentLocalPlayer().inventory[itemId] ?? 0)
+        : 0;
+      interactionSummary = item
+        ? `가방 ${item.displayName} 선택. 보유 ${quantity}개.`
+        : "사용할 아이템을 선택하세요.";
+    }
+
+    const nextStatus = `${healthSummary} ${interactionSummary}`.trim();
+
+    if (nextStatus === this.lastAccessibleStatus) {
+      return;
+    }
+
+    this.lastAccessibleStatus = nextStatus;
+    dispatchPokeLoungeAccessibleStatus(this.game.canvas.ownerDocument, nextStatus);
   }
 
   private drawBackground(): void {
@@ -2180,19 +2298,24 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    const inputMode: ShortcutGuideInputMode = this.game.canvas.ownerDocument.querySelector(
+      ".has-touch-game-device [data-mobile-touch-controls]",
+    )
+      ? "touch"
+      : "keyboard";
     const rect = { x: 48, y: 30, width: 198, height: 132 };
     this.drawRomWindow(rect, { radius: 0, includeFrameMarker: true });
     this.add.text(
       rect.x + 12,
       rect.y + 10,
-      createShortcutGuideTitle("battle"),
+      createShortcutGuideTitle("battle", inputMode),
       createGameTextStyle({
         color: "#17201a",
         fontSize: "10px",
       }),
     );
 
-    createShortcutGuideRows("battle").forEach((row, index) => {
+    createShortcutGuideRows("battle", inputMode).forEach((row, index) => {
       const rowY = rect.y + 30 + index * 17;
 
       this.add.text(
@@ -2218,7 +2341,7 @@ export class BattleScene extends Phaser.Scene {
     this.add.text(
       rect.x + 12,
       rect.y + rect.height - 16,
-      "Enter / H / Esc 닫기",
+      createShortcutGuideFooter(inputMode),
       createGameTextStyle({
         color: "#4b554f",
         fontSize: "7px",

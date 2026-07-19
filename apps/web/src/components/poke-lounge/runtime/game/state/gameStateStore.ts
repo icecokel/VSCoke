@@ -26,7 +26,15 @@ import {
   recordTournamentSessionMatchResult,
   type TournamentSession,
 } from "../tournament/tournamentSession";
-import type { TournamentMatch, TournamentParticipantInput } from "../tournament/tournamentState";
+import type {
+  TournamentMatch,
+  TournamentParticipant,
+  TournamentParticipantInput,
+} from "../tournament/tournamentState";
+import {
+  findCurrentMatch,
+  type TournamentStateRoomPayload,
+} from "../network/tournament-projection";
 
 export interface PlayerPokemon {
   speciesId: number;
@@ -103,6 +111,7 @@ export interface MultiplayerSessionState {
 
 export interface GameTournamentState {
   session: TournamentSession | null;
+  serverProjection: TournamentStateRoomPayload | null;
   scoresByPlayerId: Record<string, number>;
   lastRoundScores: TournamentRoundScore[];
   standings: CumulativeTournamentScoreRank[];
@@ -245,6 +254,10 @@ export type ApplyTournamentRoomEventResult =
   | { ok: true }
   | { ok: false; reason: "invalid-round" | "invalid-participants" | "invalid-standings" };
 
+export type ApplyTournamentSnapshotFromRoomResult =
+  | { ok: true }
+  | { ok: false; reason: "invalid-projection" | "stale-revision" };
+
 export const SHOP_ITEM_CATALOG = {
   potion: {
     id: "potion",
@@ -342,6 +355,7 @@ export interface GameStateStore {
   canChooseStarter(): boolean;
   hasCurrentLocalPlayerViewedShortcutGuide(): boolean;
   subscribe(listener: GameStateListener): GameStateUnsubscribe;
+  reloadLocalPlayersFromStorage(): boolean;
   hydrateLocalPlayers(localPlayers: LocalPlayersSaveState): void;
   setCurrentPlayer(playerId: string): void;
   upsertLocalPlayer(localPlayer: LocalPlayerState): void;
@@ -386,6 +400,10 @@ export interface GameStateStore {
     winnerPlayerId: string,
     nowMs: number,
   ): RecordTournamentMatchResultResult;
+  applyTournamentSnapshotFromRoom(
+    input: TournamentStateRoomPayload,
+    nowMs: number,
+  ): ApplyTournamentSnapshotFromRoomResult;
   applyTournamentStartedFromRoom(
     input: ApplyTournamentStartedFromRoomInput,
     nowMs: number,
@@ -429,17 +447,27 @@ export function createDefaultGameState(): GameState {
 export function createGameStateStore(options: CreateGameStateStoreOptions = {}): GameStateStore {
   const { storage } = options;
   const defaultState = options.initialState ?? createDefaultGameState();
-  const persistedLocalPlayers = storage?.loadLocalPlayers() ?? null;
-  let state: GameState = ensureCurrentPlayerExists({
-    ...defaultState,
-    ...(persistedLocalPlayers ?? {
-      currentPlayerId: defaultState.currentPlayerId,
-      playersById: defaultState.playersById,
-    }),
-    remotePlayers: {},
-    round: defaultState.round ?? createDefaultRoundState(),
-    tournament: defaultState.tournament ?? createDefaultGameTournamentState(),
-  });
+  const loadStateFromStorage = (): { state: GameState; restored: boolean } => {
+    const persistedLocalPlayers = storage?.loadLocalPlayers() ?? null;
+
+    return {
+      state: ensureCurrentPlayerExists({
+        ...defaultState,
+        ...(persistedLocalPlayers ?? {
+          currentPlayerId: defaultState.currentPlayerId,
+          playersById: defaultState.playersById,
+        }),
+        remotePlayers: {},
+        round: defaultState.round ?? createDefaultRoundState(),
+        tournament: {
+          ...createDefaultGameTournamentState(),
+          ...(defaultState.tournament ?? {}),
+        },
+      }),
+      restored: persistedLocalPlayers !== null,
+    };
+  };
+  let state = loadStateFromStorage().state;
   const listeners = new Set<GameStateListener>();
 
   const notify = () => {
@@ -535,6 +563,12 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
       return () => {
         listeners.delete(listener);
       };
+    },
+    reloadLocalPlayersFromStorage() {
+      const loaded = loadStateFromStorage();
+      state = loaded.state;
+      notify();
+      return loaded.restored;
     },
     hydrateLocalPlayers(localPlayers) {
       setLocalPlayers(localPlayers);
@@ -1004,6 +1038,10 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
       notify();
     },
     advanceRoundClock(nowMs) {
+      if (state.tournament.serverProjection) {
+        return;
+      }
+
       const nextRound = transitionPreparationIfExpired(state.round, nowMs);
 
       if (nextRound === state.round) {
@@ -1049,6 +1087,7 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
         tournament: {
           ...state.tournament,
           session,
+          serverProjection: null,
           lastRoundScores: [],
         },
       };
@@ -1059,11 +1098,22 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
     getCurrentTournamentMatch() {
       const session = state.tournament.session;
 
+      if (state.tournament.serverProjection) {
+        return findCurrentMatch(
+          state.tournament.serverProjection.tournament.bracket,
+          state.tournament.serverProjection.tournament.activeMatchId,
+        );
+      }
+
       return session && session.status === "in-progress"
         ? getCurrentTournamentSessionMatch(session)
         : null;
     },
     recordTournamentMatchResult(matchId, winnerPlayerId, nowMs) {
+      if (state.tournament.serverProjection) {
+        return { ok: false, reason: "invalid-result", message: "Server projection is canonical." };
+      }
+
       const session = state.tournament.session;
 
       if (!session || session.status !== "in-progress") {
@@ -1147,6 +1197,88 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
         standings,
       };
     },
+    applyTournamentSnapshotFromRoom(input, nowMs) {
+      const previousProjection = state.tournament.serverProjection;
+
+      if (previousProjection && input.revision < previousProjection.revision) {
+        return { ok: false, reason: "stale-revision" };
+      }
+
+      if (
+        previousProjection &&
+        input.revision === previousProjection.revision &&
+        !hasSameCanonicalTournamentProjection(previousProjection, input)
+      ) {
+        return { ok: false, reason: "invalid-projection" };
+      }
+
+      const bracket = input.tournament.bracket;
+
+      if (
+        !Number.isSafeInteger(input.revision) ||
+        input.revision < 0 ||
+        !Number.isSafeInteger(input.roundIndex) ||
+        input.roundIndex < 0 ||
+        input.roomRound.index !== input.roundIndex ||
+        input.tournament.version !== 2 ||
+        (bracket !== null && (bracket.version !== 1 || bracket.gameRoundIndex !== input.roundIndex))
+      ) {
+        return { ok: false, reason: "invalid-projection" };
+      }
+
+      const normalizedNowMs = normalizeTimestampMs(nowMs);
+      const session: TournamentSession | null = bracket
+        ? {
+            roundIndex: input.roundIndex,
+            status: bracket.status,
+            tournament: bracket,
+            completedAtMs: bracket.status === "completed" ? normalizedNowMs : null,
+          }
+        : null;
+      const rows = normalizeRoomTournamentStandingRows(
+        state,
+        input.finalStandings,
+        bracket?.participants,
+      );
+
+      if (input.finalStandings.length > 0 && !rows) {
+        return { ok: false, reason: "invalid-projection" };
+      }
+
+      const projectionAdvanced =
+        !previousProjection || input.revision > previousProjection.revision;
+      const roundPhase = resolveServerTournamentRoundPhase(input);
+
+      state = {
+        ...state,
+        round: {
+          ...state.round,
+          phase: roundPhase,
+          roundIndex: input.roundIndex,
+          totalRounds: 1,
+          preparationDurationMs: input.roomRound.durationMs,
+          phaseStartedAtMs:
+            input.roomRound.startedAtMs ??
+            (projectionAdvanced ? normalizedNowMs : state.round.phaseStartedAtMs),
+          preparationEndsAtMs:
+            input.roomStatus === "round-started" ? input.roomRound.endsAtMs : null,
+        },
+        tournament: {
+          ...state.tournament,
+          session,
+          serverProjection: input,
+          scoresByPlayerId: { ...input.tournament.cumulativeScores },
+          standings: rows ?? state.tournament.standings,
+          lastRoundScores:
+            bracket?.status === "completed" && rows
+              ? createRoundScoresFromCumulativeRows(state.tournament.scoresByPlayerId, rows)
+              : state.tournament.lastRoundScores,
+        },
+      };
+      notify();
+
+      return { ok: true };
+    },
     applyTournamentStartedFromRoom(input, nowMs) {
       const roundIndex = normalizePositiveInteger(input.roundIndex);
 
@@ -1186,6 +1318,7 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
         tournament: {
           ...state.tournament,
           session,
+          serverProjection: null,
           lastRoundScores: [],
         },
       };
@@ -1232,6 +1365,7 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
         tournament: {
           ...state.tournament,
           session: null,
+          serverProjection: null,
           scoresByPlayerId,
           lastRoundScores: roundScores,
           standings: rows,
@@ -1320,6 +1454,7 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
 export function createDefaultGameTournamentState(): GameTournamentState {
   return {
     session: null,
+    serverProjection: null,
     scoresByPlayerId: {},
     lastRoundScores: [],
     standings: [],
@@ -1559,6 +1694,39 @@ function normalizeTimestampMs(nowMs: number): number {
   return Math.max(0, Math.trunc(Number.isFinite(nowMs) ? nowMs : 0));
 }
 
+function resolveServerTournamentRoundPhase(
+  input: TournamentStateRoomPayload,
+): GameRoundState["phase"] {
+  if (input.roomStatus === "tournament") {
+    return "tournament";
+  }
+
+  if (input.roomStatus === "completed") {
+    return "game-result";
+  }
+
+  if (input.roomStatus === "round-started") {
+    return "preparation";
+  }
+
+  return "waiting";
+}
+
+function hasSameCanonicalTournamentProjection(
+  left: TournamentStateRoomPayload,
+  right: TournamentStateRoomPayload,
+): boolean {
+  return (
+    left.roundIndex === right.roundIndex &&
+    left.roomCode === right.roomCode &&
+    left.roomStatus === right.roomStatus &&
+    JSON.stringify(left.roomRound) === JSON.stringify(right.roomRound) &&
+    JSON.stringify(left.participants) === JSON.stringify(right.participants) &&
+    JSON.stringify(left.tournament) === JSON.stringify(right.tournament) &&
+    JSON.stringify(left.finalStandings) === JSON.stringify(right.finalStandings)
+  );
+}
+
 function normalizeUniquePlayerIds(
   playerIds: unknown,
   minCount: number,
@@ -1596,6 +1764,7 @@ function normalizeUniquePlayerIds(
 function normalizeRoomTournamentStandingRows(
   state: GameState,
   standings: ApplyTournamentCompletedFromRoomInput["standings"],
+  canonicalParticipants?: ReadonlyArray<TournamentParticipant>,
 ): CumulativeTournamentScoreRank[] | null {
   if (!Array.isArray(standings) || standings.length < 2 || standings.length > 6) {
     return null;
@@ -1612,11 +1781,20 @@ function normalizeRoomTournamentStandingRows(
       return null;
     }
 
+    const canonicalParticipant = canonicalParticipants?.find(
+      participant => participant.playerId === playerId,
+    );
+
+    if (canonicalParticipants && !canonicalParticipant) {
+      return null;
+    }
+
     seenPlayerIds.add(playerId);
     rows.push({
       playerId,
-      displayName: resolvePlayerDisplayName(state, playerId),
-      seed: readExistingTournamentSeed(state, playerId) || index + 1,
+      displayName: canonicalParticipant?.displayName ?? resolvePlayerDisplayName(state, playerId),
+      seed:
+        canonicalParticipant?.seed ?? (readExistingTournamentSeed(state, playerId) || index + 1),
       rank,
       score: normalizeScore(standing.score),
     });

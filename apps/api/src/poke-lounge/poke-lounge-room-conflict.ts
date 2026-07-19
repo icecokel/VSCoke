@@ -47,12 +47,15 @@ export function toPokeLoungePublicRoomState(
 ): PokeLoungePublicRoomState {
   return {
     ...room,
+    competitiveTransitions: structuredClone(room.competitiveTransitions ?? []),
     participants: room.participants.map((participant) => ({
       playerId: participant.playerId,
       displayName: participant.displayName,
       role: participant.role,
       ready: participant.ready,
-      connected: participant.connected,
+      connected:
+        participant.connected &&
+        participant.presencePendingUntilMs === undefined,
       joinedAtMs: participant.joinedAtMs,
       ...(participant.leftAtMs === undefined
         ? {}

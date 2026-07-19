@@ -4,8 +4,10 @@ import { createServerRoom } from "./serverRoom";
 
 export interface MultiplayerRoomFactoryOptions {
   searchParams: Pick<URLSearchParams, "get">;
+  accountId?: string;
   createWebRtcRoom?: () => MultiplayerRoom;
   idToken?: string;
+  getIdToken?: () => string | undefined;
 }
 
 export function createMultiplayerRoom(options: MultiplayerRoomFactoryOptions): MultiplayerRoom {
@@ -21,11 +23,13 @@ export function createMultiplayerRoom(options: MultiplayerRoomFactoryOptions): M
 
   if (roomEntry.mode === "server-room") {
     return createServerRoom({
+      accountId: options.accountId,
       roomId: roomEntry.roomCode ?? undefined,
       sessionId: options.searchParams.get("serverSessionId") ?? undefined,
       playerId: options.searchParams.get("serverPlayerId") ?? undefined,
       createRoom: roomEntry.createRoom === true,
       idToken: options.idToken,
+      getIdToken: options.getIdToken,
     });
   }
 

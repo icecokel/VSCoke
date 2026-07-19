@@ -14,7 +14,9 @@ export const POKE_LOUNGE_AUTOSAVE_DEBOUNCE_MS = 2_000;
 export interface PokeLoungeAutosavePayload {
   token: string;
   snapshot: PokeLoungeSaveSnapshot;
+  expectedRevision: number;
   clientUpdatedAt: string;
+  keepalive: boolean;
 }
 
 export interface PokeLoungeAutosaveScheduler {
@@ -27,15 +29,21 @@ export interface PokeLoungeAutosaveScheduler {
 export interface StartPokeLoungeAutosaveOptions {
   gameStateStore: Pick<GameStateStore, "getState" | "subscribe">;
   token: string;
+  getToken?: () => string;
+  initialRevision?: number;
   intervalMs?: number;
   debounceMs?: number;
   scheduler?: PokeLoungeAutosaveScheduler;
   getClientUpdatedAt?: () => string;
   saveState?: (payload: PokeLoungeAutosavePayload) => Promise<PokeLoungeStateSaveResult>;
+  onStatusChange?: (status: PokeLoungeAutosaveStatus) => void;
+  onRevisionConflict?: () => void;
 }
 
+export type PokeLoungeAutosaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
+
 export interface PokeLoungeAutosaveController {
-  flush(): Promise<void>;
+  flush(options?: { keepalive?: boolean }): Promise<void>;
   waitForIdle(): Promise<void>;
   dispose(options?: { flush?: boolean }): Promise<void>;
 }
@@ -57,7 +65,7 @@ export function createPokeLoungeAutosaveLifecycle(
 ): PokeLoungeAutosaveLifecycle {
   return {
     disposeForRehydration() {
-      return autosave.dispose({ flush: false });
+      return autosave.dispose();
     },
     disposeForUnmount() {
       return autosave.dispose();
@@ -116,16 +124,27 @@ export function getPokeLoungeTokenLifecycle(): PokeLoungeTokenLifecycle {
 export function startPokeLoungeAutosave({
   gameStateStore,
   token,
+  getToken = () => token,
+  initialRevision = 0,
   intervalMs = POKE_LOUNGE_AUTOSAVE_INTERVAL_MS,
   debounceMs = POKE_LOUNGE_AUTOSAVE_DEBOUNCE_MS,
   scheduler = createDefaultScheduler(),
   getClientUpdatedAt = () => new Date().toISOString(),
   saveState = savePokeLoungeAutosavePayload,
+  onStatusChange,
+  onRevisionConflict,
 }: StartPokeLoungeAutosaveOptions): PokeLoungeAutosaveController {
   let dirty = true;
   let disposed = false;
+  let revisionConflicted = false;
   let debounceHandle: unknown = null;
   let inFlight: Promise<void> | null = null;
+  let currentRevision = initialRevision;
+  onStatusChange?.("idle");
+
+  if (!Number.isSafeInteger(currentRevision) || currentRevision < 0) {
+    throw new Error("Poke Lounge autosave initialRevision must be a non-negative safe integer");
+  }
 
   const clearDebounce = () => {
     if (debounceHandle === null) {
@@ -136,17 +155,57 @@ export function startPokeLoungeAutosave({
     debounceHandle = null;
   };
 
-  const createPayload = (): PokeLoungeAutosavePayload => ({
-    token,
-    snapshot: buildPokeLoungeSaveSnapshot(gameStateStore),
-    clientUpdatedAt: getClientUpdatedAt(),
+  const createPayload = (
+    snapshot = buildPokeLoungeSaveSnapshot(gameStateStore),
+    clientUpdatedAt = getClientUpdatedAt(),
+    keepalive = false,
+  ): PokeLoungeAutosavePayload => ({
+    token: getToken(),
+    snapshot,
+    expectedRevision: currentRevision,
+    clientUpdatedAt,
+    keepalive,
   });
 
+  const stopForRevisionConflict = () => {
+    if (revisionConflicted) {
+      return;
+    }
+
+    revisionConflicted = true;
+    dirty = false;
+    clearDebounce();
+    onStatusChange?.("error");
+    onRevisionConflict?.();
+  };
+
   const savePayload = async (payload: PokeLoungeAutosavePayload) => {
+    onStatusChange?.("saving");
     inFlight = (async () => {
-      const result = await saveState(payload);
-      if (!result.success) {
+      try {
+        const result = await saveState(payload);
+        if (!result.success) {
+          if (result.conflict) {
+            stopForRevisionConflict();
+            return;
+          }
+
+          dirty = true;
+          onStatusChange?.("error");
+          return;
+        }
+
+        if (result.revision !== payload.expectedRevision + 1) {
+          stopForRevisionConflict();
+          return;
+        }
+
+        currentRevision = result.revision;
+
+        onStatusChange?.(dirty ? "pending" : "saved");
+      } catch {
         dirty = true;
+        onStatusChange?.("error");
       }
     })();
 
@@ -157,10 +216,10 @@ export function startPokeLoungeAutosave({
     }
   };
 
-  const flush = async () => {
+  const flush = async ({ keepalive = false }: { keepalive?: boolean } = {}) => {
     clearDebounce();
 
-    if (!dirty) {
+    if (!dirty || revisionConflicted) {
       return;
     }
 
@@ -172,7 +231,7 @@ export function startPokeLoungeAutosave({
     }
 
     dirty = false;
-    await savePayload(createPayload());
+    await savePayload(createPayload(undefined, undefined, keepalive));
   };
 
   const scheduleDebouncedFlush = () => {
@@ -188,7 +247,12 @@ export function startPokeLoungeAutosave({
   };
 
   const unsubscribe = gameStateStore.subscribe(() => {
+    if (revisionConflicted) {
+      return;
+    }
+
     dirty = true;
+    onStatusChange?.("pending");
     scheduleDebouncedFlush();
   });
 
@@ -211,16 +275,17 @@ export function startPokeLoungeAutosave({
         return;
       }
 
-      const finalPayload = shouldFlush ? createPayload() : null;
+      const finalSnapshot = shouldFlush ? buildPokeLoungeSaveSnapshot(gameStateStore) : null;
+      const finalClientUpdatedAt = shouldFlush ? getClientUpdatedAt() : null;
       disposed = true;
       clearDebounce();
       scheduler.clearInterval(intervalHandle);
       unsubscribe();
 
-      if (finalPayload) {
+      if (finalSnapshot && finalClientUpdatedAt && !revisionConflicted) {
         await waitForIdle();
         dirty = false;
-        await savePayload(finalPayload);
+        await savePayload(createPayload(finalSnapshot, finalClientUpdatedAt));
         return;
       }
 
@@ -232,14 +297,19 @@ export function startPokeLoungeAutosave({
 function savePokeLoungeAutosavePayload({
   token,
   snapshot,
+  expectedRevision,
   clientUpdatedAt,
+  keepalive,
 }: PokeLoungeAutosavePayload): Promise<PokeLoungeStateSaveResult> {
   return savePokeLoungeState(
     {
       state: snapshot,
+      expectedRevision,
       clientUpdatedAt,
     },
     token,
+    {},
+    { keepalive },
   );
 }
 

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { CanonicalTerminalResult } from '@vscoke/poke-lounge-battle';
+import { ConflictException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { User } from '../src/auth/entities/user.entity';
 import { GameHistory } from '../src/game/entities/game-history.entity';
@@ -9,7 +10,9 @@ import { GameService } from '../src/game/game.service';
 import { VerifiedPokeLoungeHistoryWriter } from '../src/game/verified-poke-lounge-history-writer.service';
 import { CreateLegacyCoreSchema1759999999999 } from '../src/migrations/1759999999999-create-legacy-core-schema';
 import { AddPokeLoungeGameType1793664000000 } from '../src/migrations/1793664000000-add-poke-lounge-game-type';
+import { CreateGamePokeLoungeState1793750400000 } from '../src/migrations/1793750400000-create-game-poke-lounge-state';
 import { AddGameResultTrust1794355200000 } from '../src/migrations/1794355200000-add-game-result-trust';
+import { AddGamePokeLoungeStateRevision1794700800000 } from '../src/migrations/1794700800000-add-game-poke-lounge-state-revision';
 import { requireTestDatabaseUrl } from '../src/test-data-source';
 
 describe('game result trust PostgreSQL integration', () => {
@@ -215,6 +218,161 @@ describe('game result trust PostgreSQL integration', () => {
       service.getUserRank('account-b', 50, GameType.POKE_LOUNGE),
     ).resolves.toBe(2);
   });
+
+  it('allows exactly one concurrent state save for the same expected revision', async () => {
+    await seedUsers(dataSource, ['account-a']);
+    await runUp(dataSource);
+    const user = await dataSource.getRepository(User).findOneByOrFail({
+      id: 'account-a',
+    });
+    const service = new GameService(
+      dataSource.getRepository(GameHistory),
+      dataSource.getRepository(GamePokeLoungeState),
+    );
+
+    const concurrent = await Promise.allSettled([
+      service.savePokeLoungeState(user, {
+        state: { marker: 'device-a' },
+        expectedRevision: 0,
+      }),
+      service.savePokeLoungeState(user, {
+        state: { marker: 'device-b' },
+        expectedRevision: 0,
+      }),
+    ]);
+
+    expect(
+      concurrent.filter((result) => result.status === 'fulfilled'),
+    ).toHaveLength(1);
+    expect(
+      concurrent.filter((result) => result.status === 'rejected'),
+    ).toHaveLength(1);
+    const stored = await dataSource
+      .getRepository(GamePokeLoungeState)
+      .findOneByOrFail({ userId: user.id });
+    expect(stored.revision).toBe(1);
+    expect(['device-a', 'device-b']).toContain(stored.state.marker);
+
+    await expect(
+      service.savePokeLoungeState(user, {
+        state: { marker: 'device-c' },
+        expectedRevision: 1,
+      }),
+    ).resolves.toMatchObject({ revision: 2, state: { marker: 'device-c' } });
+  });
+
+  it('allows a legacy insert but rejects a later legacy overwrite regardless of clientUpdatedAt', async () => {
+    await seedUsers(dataSource, ['account-a']);
+    await runUp(dataSource);
+    const user = await dataSource.getRepository(User).findOneByOrFail({
+      id: 'account-a',
+    });
+    const service = new GameService(
+      dataSource.getRepository(GameHistory),
+      dataSource.getRepository(GamePokeLoungeState),
+    );
+
+    await expect(
+      service.savePokeLoungeState(user, {
+        state: { marker: 'legacy-first' },
+        clientUpdatedAt: '2099-01-01T00:00:00.000Z',
+      }),
+    ).resolves.toMatchObject({
+      revision: 1,
+      state: { marker: 'legacy-first' },
+    });
+
+    const conflict = await service
+      .savePokeLoungeState(user, {
+        state: { marker: 'legacy-future-overwrite' },
+        clientUpdatedAt: '2199-01-01T00:00:00.000Z',
+      })
+      .catch((caught: unknown) => caught);
+    expect(conflict).toBeInstanceOf(ConflictException);
+    expect((conflict as ConflictException).getStatus()).toBe(409);
+
+    await expect(
+      dataSource
+        .getRepository(GamePokeLoungeState)
+        .findOneByOrFail({ userId: user.id }),
+    ).resolves.toMatchObject({
+      revision: 1,
+      state: { marker: 'legacy-first' },
+      clientUpdatedAt: new Date('2099-01-01T00:00:00.000Z'),
+    });
+  });
+
+  it('atomically lets only one legacy or CAS writer transition a migrated revision 0 row', async () => {
+    await seedUsers(dataSource, ['account-a']);
+    await dataSource.query(`
+      INSERT INTO game_poke_lounge_state
+        ("userId", "state", "clientUpdatedAt")
+      VALUES
+        ('account-a', '{"marker":"pre-revision"}'::jsonb, '2026-07-19T00:00:00.000Z')
+    `);
+    await runUp(dataSource);
+    const user = await dataSource.getRepository(User).findOneByOrFail({
+      id: 'account-a',
+    });
+    const repository = dataSource.getRepository(GamePokeLoungeState);
+    const service = new GameService(
+      dataSource.getRepository(GameHistory),
+      repository,
+    );
+    await expect(
+      repository.findOneByOrFail({ userId: user.id }),
+    ).resolves.toMatchObject({
+      revision: 0,
+      state: { marker: 'pre-revision' },
+    });
+
+    const concurrent = await Promise.allSettled([
+      service.savePokeLoungeState(user, {
+        state: { marker: 'legacy-writer' },
+        clientUpdatedAt: '2199-01-01T00:00:00.000Z',
+      }),
+      service.savePokeLoungeState(user, {
+        state: { marker: 'cas-writer' },
+        expectedRevision: 0,
+        clientUpdatedAt: '2026-07-19T00:00:01.000Z',
+      }),
+    ]);
+
+    const fulfilled = concurrent.filter(
+      (result): result is PromiseFulfilledResult<GamePokeLoungeState> =>
+        result.status === 'fulfilled',
+    );
+    const rejected = concurrent.filter(
+      (result): result is PromiseRejectedResult => result.status === 'rejected',
+    );
+    expect(fulfilled).toHaveLength(1);
+    expect(fulfilled[0]?.value.revision).toBe(1);
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0]?.reason).toBeInstanceOf(ConflictException);
+    expect((rejected[0]?.reason as ConflictException).getStatus()).toBe(409);
+
+    const storedAfterRace = await repository.findOneByOrFail({
+      userId: user.id,
+    });
+    expect(storedAfterRace.revision).toBe(1);
+    expect(['legacy-writer', 'cas-writer']).toContain(
+      storedAfterRace.state.marker,
+    );
+
+    await expect(
+      service.savePokeLoungeState(user, {
+        state: { marker: 'future-legacy-retry' },
+        clientUpdatedAt: '2299-01-01T00:00:00.000Z',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      repository.findOneByOrFail({ userId: user.id }),
+    ).resolves.toMatchObject({
+      revision: 1,
+      state: storedAfterRace.state,
+      clientUpdatedAt: storedAfterRace.clientUpdatedAt,
+    });
+  });
 });
 
 async function resetLegacySchema(dataSource: DataSource): Promise<void> {
@@ -227,6 +385,7 @@ async function resetLegacySchema(dataSource: DataSource): Promise<void> {
   try {
     await new CreateLegacyCoreSchema1759999999999().up(queryRunner);
     await new AddPokeLoungeGameType1793664000000().up(queryRunner);
+    await new CreateGamePokeLoungeState1793750400000().up(queryRunner);
   } finally {
     await queryRunner.release();
   }
@@ -236,6 +395,7 @@ async function runUp(dataSource: DataSource): Promise<void> {
   const queryRunner = dataSource.createQueryRunner();
   try {
     await new AddGameResultTrust1794355200000().up(queryRunner);
+    await new AddGamePokeLoungeStateRevision1794700800000().up(queryRunner);
   } finally {
     await queryRunner.release();
   }

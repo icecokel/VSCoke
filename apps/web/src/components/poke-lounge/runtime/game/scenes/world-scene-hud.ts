@@ -1,4 +1,6 @@
 import * as Phaser from "phaser";
+import { ROM_BATTLE_WINDOW_STYLE } from "../battle/battleDesign";
+import { getExperienceForLevel } from "../battle/experience";
 import {
   DEFAULT_PREPARATION_DURATION_MS,
   formatRoundTimer,
@@ -16,8 +18,9 @@ import {
   type PartyHudSlotView,
 } from "../ui/partyHud";
 
-const POKEMON_STATUS_PANEL_SIZE = { width: 216, height: 142 } as const;
+const POKEMON_STATUS_PANEL_SIZE = { width: 300, height: 310 } as const;
 const POKEMON_STATUS_PANEL_GAP = 8;
+const POKEMON_STATUS_BAR_WIDTH = POKEMON_STATUS_PANEL_SIZE.width - 36;
 
 export interface WorldSceneHud {
   render(): void;
@@ -113,7 +116,10 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
       .text(
         this.dependencies.getViewportSize().width - 12,
         10,
-        formatRankScoreHud(gameStateStore.getCurrentLocalPlayer().competitive),
+        formatRankScoreHud(
+          gameStateStore.getCurrentLocalPlayer().competitive,
+          this.dependencies.competitiveRoundsEnabled ? "competitive" : "solo",
+        ),
         createGameTextStyle({
           align: "right",
           color: "#f8fbf0",
@@ -131,7 +137,10 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
         const currentPlayer = state.playersById[state.currentPlayerId];
 
         this.rankScoreHudText?.setText(
-          formatRankScoreHud(currentPlayer?.competitive ?? { rank: null, score: 0 }),
+          formatRankScoreHud(
+            currentPlayer?.competitive ?? { rank: null, score: 0 },
+            this.dependencies.competitiveRoundsEnabled ? "competitive" : "solo",
+          ),
         );
       }),
     );
@@ -390,6 +399,18 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
     const origin = this.getPokemonStatusPanelOrigin(slot);
     const x = (offset: number) => origin.x + offset;
     const y = (offset: number) => origin.y + offset;
+    const hpRatio = getPokemonHpRatio(pokemon);
+    const experience = getPokemonExperienceProgress(pokemon);
+    const isActive = localPlayer.activePartySlotIndex === slotIndex;
+    const occupiedPartyCount = localPlayer.party.filter(candidate => candidate.pokemon).length;
+    const canSetAsLead = !isActive && pokemon.status !== "fainted";
+    const leadActionLabel = isActive
+      ? occupiedPartyCount <= 1
+        ? "마지막 포켓몬 · 현재 선두"
+        : "현재 선두"
+      : pokemon.status === "fainted"
+        ? "전투불능 · 선두 지정 불가"
+        : "Enter / A · 선두로 지정";
     const panel = this.add
       .rectangle(
         origin.x,
@@ -406,7 +427,7 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
     panel.setInteractive();
 
     const sprite = this.add
-      .image(x(30), y(48), slot.pokemon.spriteKey)
+      .image(x(36), y(43), slot.pokemon.spriteKey)
       .setOrigin(0.5, 0.5)
       .setCrop(
         slot.pokemon.spriteCrop.x,
@@ -417,13 +438,73 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
       .setDisplaySize(42, 42)
       .setScrollFactor(0)
       .setDepth(2141);
+    const hpBack = this.add
+      .rectangle(x(18), y(98), POKEMON_STATUS_BAR_WIDTH, 6, ROM_BATTLE_WINDOW_STYLE.hpBack, 1)
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(2141);
+    const hpFill = this.add
+      .rectangle(
+        x(18),
+        y(98),
+        Math.round(POKEMON_STATUS_BAR_WIDTH * hpRatio),
+        6,
+        ROM_BATTLE_WINDOW_STYLE.hpGood,
+        1,
+      )
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(2142);
+    const experienceBack = this.add
+      .rectangle(x(18), y(132), POKEMON_STATUS_BAR_WIDTH, 5, ROM_BATTLE_WINDOW_STYLE.hpBack, 1)
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(2141);
+    const experienceFill = this.add
+      .rectangle(
+        x(18),
+        y(132),
+        Math.round(POKEMON_STATUS_BAR_WIDTH * experience.ratio),
+        5,
+        0xfff4a3,
+        1,
+      )
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(2142);
+    const leadAction = this.add
+      .rectangle(
+        x(18),
+        y(258),
+        POKEMON_STATUS_PANEL_SIZE.width - 36,
+        24,
+        canSetAsLead ? 0xfff4a3 : 0xe9eee1,
+        0.95,
+      )
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(2141);
+    leadAction.setStrokeStyle(1, canSetAsLead ? 0x263238 : 0x9aa690, canSetAsLead ? 0.85 : 0.5);
+
+    if (canSetAsLead) {
+      leadAction.setInteractive({ useHandCursor: true });
+      leadAction.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+        pointer.event?.preventDefault();
+        this.dependencies.gameStateStore.setActivePartySlot(slotIndex);
+      });
+    }
 
     this.pokemonStatusPanelObjects.push(
       panel,
       sprite,
+      hpBack,
+      hpFill,
+      experienceBack,
+      experienceFill,
+      leadAction,
       this.add
         .text(
-          x(58),
+          x(66),
           y(16),
           slot.pokemon.name,
           createGameTextStyle({
@@ -436,7 +517,7 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
         .setDepth(2141),
       this.add
         .text(
-          x(58),
+          x(66),
           y(38),
           `Lv.${slot.pokemon.level}`,
           createGameTextStyle({
@@ -455,7 +536,7 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
       this.add
         .text(
           x(18),
-          y(82),
+          y(78),
           `HP ${formatPokemonHp(pokemon)}`,
           createGameTextStyle({
             color: "#263238",
@@ -468,7 +549,20 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
       this.add
         .text(
           x(18),
-          y(104),
+          y(112),
+          experience.atMaxLevel ? "EXP MAX" : `EXP ${experience.current} / ${experience.required}`,
+          createGameTextStyle({
+            color: "#263238",
+            fontSize: "11px",
+          }),
+        )
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(2141),
+      this.add
+        .text(
+          x(18),
+          y(145),
           `상태 ${formatPokemonStatusLabel(pokemon.status ?? "normal")}`,
           createGameTextStyle({
             color: "#263238",
@@ -479,10 +573,71 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
         .setScrollFactor(0)
         .setDepth(2141),
       this.add
+        .rectangle(x(14), y(166), POKEMON_STATUS_PANEL_SIZE.width - 28, 2, 0x607d6c, 0.42)
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(2141),
+      this.add
         .text(
           x(18),
-          y(124),
-          "Enter / Backspace 닫기",
+          y(175),
+          "기술",
+          createGameTextStyle({
+            color: "#607d6c",
+            fontSize: "10px",
+          }),
+        )
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(2141),
+      ...createPokemonMoveLabels(pokemon).flatMap((move, index) => [
+        this.add
+          .text(
+            x(22),
+            y(192 + index * 16),
+            move.name,
+            createGameTextStyle({
+              color: "#263238",
+              fontSize: "10px",
+            }),
+          )
+          .setOrigin(0, 0)
+          .setScrollFactor(0)
+          .setDepth(2141),
+        this.add
+          .text(
+            x(278),
+            y(192 + index * 16),
+            move.pp,
+            createGameTextStyle({
+              align: "right",
+              color: "#455a64",
+              fontSize: "10px",
+            }),
+          )
+          .setOrigin(1, 0)
+          .setScrollFactor(0)
+          .setDepth(2141),
+      ]),
+      this.add
+        .text(
+          x(150),
+          y(264),
+          leadActionLabel,
+          createGameTextStyle({
+            align: "center",
+            color: canSetAsLead ? "#101820" : "#607d6c",
+            fontSize: "10px",
+          }),
+        )
+        .setOrigin(0.5, 0)
+        .setScrollFactor(0)
+        .setDepth(2142),
+      this.add
+        .text(
+          x(18),
+          y(292),
+          "Esc / Backspace / B 닫기",
           createGameTextStyle({
             color: "#607d6c",
             fontSize: "9px",
@@ -577,6 +732,61 @@ export function formatPokemonHp(pokemon: PlayerPokemon): string {
   return currentHp === null || maxHp === null ? "- / -" : `${currentHp} / ${maxHp}`;
 }
 
+export function getPokemonHpRatio(pokemon: PlayerPokemon): number {
+  const currentHp = normalizeOptionalPokemonHp(pokemon.currentHp);
+  const maxHp = normalizeOptionalPokemonHp(pokemon.maxHp);
+
+  if (currentHp === null || maxHp === null || maxHp <= 0) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(1, currentHp / maxHp));
+}
+
+export interface PokemonExperienceProgress {
+  current: number;
+  required: number;
+  ratio: number;
+  atMaxLevel: boolean;
+}
+
+export function getPokemonExperienceProgress(pokemon: PlayerPokemon): PokemonExperienceProgress {
+  const level = Math.max(1, Math.min(100, Math.floor(pokemon.level)));
+
+  if (level >= 100) {
+    return { current: 0, required: 0, ratio: 1, atMaxLevel: true };
+  }
+
+  const growthRate = pokemon.growthRate ?? 0;
+  const levelStart = getExperienceForLevel(level, growthRate);
+  const nextLevel = getExperienceForLevel(level + 1, growthRate);
+  const required = Math.max(1, nextLevel - levelStart);
+  const totalExperience = Number.isFinite(pokemon.experience)
+    ? Math.max(levelStart, Math.floor(pokemon.experience ?? levelStart))
+    : levelStart;
+  const current = Math.min(required, Math.max(0, totalExperience - levelStart));
+
+  return {
+    current,
+    required,
+    ratio: current / required,
+    atMaxLevel: false,
+  };
+}
+
+function createPokemonMoveLabels(pokemon: PlayerPokemon): Array<{ name: string; pp: string }> {
+  const moves = pokemon.moves?.slice(0, 4) ?? [];
+
+  if (moves.length === 0) {
+    return [{ name: "기술 정보 없음", pp: "- / -" }];
+  }
+
+  return moves.map(move => ({
+    name: move.name,
+    pp: `${Math.max(0, Math.floor(move.pp))} / ${Math.max(0, Math.floor(move.maxPp))}`,
+  }));
+}
+
 function formatPokemonStatusLabel(status: PlayerPokemon["status"] | "normal"): string {
   switch (status) {
     case "fainted":
@@ -597,8 +807,14 @@ export function formatPokeDollars(pokeDollars: number): string {
   return `₽ ${Math.max(0, Math.floor(pokeDollars)).toLocaleString("en-US")}`;
 }
 
-export function formatRankScoreHud({ rank, score }: PlayerCompetitiveStats): string {
+export function formatRankScoreHud(
+  { rank, score }: PlayerCompetitiveStats,
+  mode: "solo" | "competitive" = "competitive",
+): string {
   const rankLabel = rank === null ? "-" : rank.toLocaleString("en-US");
+  const scoreLabel = Math.max(0, Math.floor(score)).toLocaleString("en-US");
 
-  return `Rank ${rankLabel}\nScore ${Math.max(0, Math.floor(score)).toLocaleString("en-US")}`;
+  return mode === "solo"
+    ? "솔로 모드\n랭킹 미반영"
+    : `계정 기록\n랭크 ${rankLabel} · 점수 ${scoreLabel}`;
 }

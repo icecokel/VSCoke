@@ -1,5 +1,7 @@
 import type { PokeLoungeRoomState } from './poke-lounge-room.types';
 import type { CompetitiveActionProjection } from './competitive/competitive-action.types';
+import type { CompetitiveTerminalTransition } from './poke-lounge-room.types';
+import type { PokeLoungeRoomOperation } from './poke-lounge-room-command';
 
 export const POKE_LOUNGE_ROOM_REPOSITORY = Symbol(
   'POKE_LOUNGE_ROOM_REPOSITORY',
@@ -8,6 +10,7 @@ export const POKE_LOUNGE_ROOM_REPOSITORY = Symbol(
 export type PokeLoungeRoomSnapshot = PokeLoungeRoomState & {
   revision: number;
   expiresAtMs: number;
+  competitiveTransitions?: CompetitiveTerminalTransition[];
   competitive?: CompetitiveActionProjection;
 };
 
@@ -41,6 +44,7 @@ export interface PokeLoungeRoomRepository {
     committedChange: boolean;
   }>;
   mutate(input: {
+    operation?: Exclude<PokeLoungeRoomOperation, 'create'>;
     roomCode: string;
     actorPlayerId: string;
     idempotencyKey: string;

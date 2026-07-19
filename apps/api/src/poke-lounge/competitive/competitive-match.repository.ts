@@ -68,6 +68,8 @@ export type CompetitiveSeatBindingPlan =
       assignmentPlayers:
         | [CompetitivePlayerAccount, CompetitivePlayerAccount]
         | null;
+      assignmentBracketMatchId: string | null;
+      assignmentKind: 'ranked-head-to-head' | 'tournament-unranked' | null;
     };
 
 export function planCompetitiveSeatBinding(input: {
@@ -113,25 +115,37 @@ export function planCompetitiveSeatBinding(input: {
   const resultingSeats = existingSeat
     ? [...input.seats]
     : [...input.seats, seat];
-  const activeParticipants = input.room.participants.filter(
-    (candidate) => candidate.role === 'participant' && candidate.connected,
-  );
-  const assignmentPlayers =
-    activeParticipants.length === 2 &&
-    resultingSeats.length === 2 &&
-    activeParticipants.every((candidate) =>
-      resultingSeats.some((bound) => bound.playerId === candidate.playerId),
-    )
-      ? (resultingSeats
-          .map(({ playerId, accountId }) => ({ playerId, accountId }))
-          .sort((left, right) =>
-            left.playerId.localeCompare(right.playerId),
-          ) as [CompetitivePlayerAccount, CompetitivePlayerAccount])
-      : null;
+  const activeBracketMatch =
+    input.room.tournament.bracket?.currentRound?.matches.find(
+      (match) => match.matchId === input.room.tournament.activeMatchId,
+    );
+  const tournamentPlayers = activeBracketMatch
+    ? activeBracketMatch.participantIds.map((playerId) =>
+        resultingSeats.find((seat) => seat.playerId === playerId),
+      )
+    : [];
+  const hasTournamentPlayers =
+    tournamentPlayers.length === 2 && tournamentPlayers.every(Boolean);
+  const assignmentPlayers = hasTournamentPlayers
+    ? (tournamentPlayers.map((seat) => ({
+        playerId: seat!.playerId,
+        accountId: seat!.accountId,
+      })) as [CompetitivePlayerAccount, CompetitivePlayerAccount])
+    : null;
+  const assignmentBracketMatchId = hasTournamentPlayers
+    ? activeBracketMatch!.matchId
+    : null;
+  const assignmentKind = hasTournamentPlayers
+    ? input.room.tournament.bracket?.participants.length === 2
+      ? 'ranked-head-to-head'
+      : 'tournament-unranked'
+    : null;
 
   return {
     outcome: existingSeat ? 'already-bound' : 'bind',
     seat,
     assignmentPlayers,
+    assignmentBracketMatchId,
+    assignmentKind,
   };
 }

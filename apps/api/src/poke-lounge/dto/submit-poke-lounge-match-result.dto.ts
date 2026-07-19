@@ -1,12 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsIn,
-  IsInt,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  Min,
-} from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsIn, IsNotEmpty, IsString } from 'class-validator';
 import type {
   PokeLoungeMatchResultReason,
   SubmitPokeLoungeMatchResultInput,
@@ -31,7 +24,7 @@ export class SubmitPokeLoungeMatchResultDto implements SubmitPokeLoungeMatchResu
   @IsNotEmpty()
   reportingSessionId!: string;
 
-  @ApiProperty({ example: 'round-1-match-1' })
+  @ApiProperty({ example: 'game-round-1-bracket-1-match-1' })
   @IsString()
   @IsNotEmpty()
   matchId!: string;
@@ -49,10 +42,4 @@ export class SubmitPokeLoungeMatchResultDto implements SubmitPokeLoungeMatchResu
   @ApiProperty({ enum: matchResultReasons, example: 'faint' })
   @IsIn(matchResultReasons)
   reason!: PokeLoungeMatchResultReason;
-
-  @ApiPropertyOptional({ example: 1720000003000 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  nowMs?: number;
 }

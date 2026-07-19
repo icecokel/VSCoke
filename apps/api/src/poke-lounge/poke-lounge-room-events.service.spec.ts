@@ -99,9 +99,19 @@ function publicRoom(): PokeLoungePublicRoomState {
       startedAtMs: null,
       endsAtMs: null,
     },
-    tournament: { matches: [], cumulativeScores: {} },
+    tournament: emptyTournament(),
     finalStandings: [],
     revision: 3,
     expiresAtMs: 30 * 60_000,
+  };
+}
+
+function emptyTournament() {
+  return {
+    version: 2 as const,
+    bracket: null,
+    activeMatchId: null,
+    activeMatchAuthority: null,
+    cumulativeScores: {},
   };
 }

@@ -1,4 +1,5 @@
 import type { PokeLoungeRoomState } from '../poke-lounge-room.types';
+import { createTournamentBracketState } from '@vscoke/poke-lounge-battle';
 import { planCompetitiveSeatBinding } from './competitive-match.repository';
 
 describe('planCompetitiveSeatBinding', () => {
@@ -37,7 +38,7 @@ describe('planCompetitiveSeatBinding', () => {
     ).toEqual({ outcome: 'duplicate-account' });
   });
 
-  it('is idempotent for the same account and creates one assignment at exactly two bound seats', () => {
+  it('is idempotent and keeps lobby seat binding assignment-free', () => {
     const room = roomState();
     const first = plan(room, [], 'session-a', 'account-a');
 
@@ -52,10 +53,9 @@ describe('planCompetitiveSeatBinding', () => {
     expect(second).toEqual({
       outcome: 'bind',
       seat: seat('session-b', 'player-b', 'account-b'),
-      assignmentPlayers: [
-        { playerId: 'player-a', accountId: 'account-a' },
-        { playerId: 'player-b', accountId: 'account-b' },
-      ],
+      assignmentPlayers: null,
+      assignmentBracketMatchId: null,
+      assignmentKind: null,
     });
 
     const replay = plan(
@@ -69,8 +69,8 @@ describe('planCompetitiveSeatBinding', () => {
     );
     expect(replay.outcome).toBe('already-bound');
     expect(
-      'assignmentPlayers' in replay && Array.isArray(replay.assignmentPlayers),
-    ).toBe(true);
+      'assignmentPlayers' in replay && replay.assignmentPlayers,
+    ).toBeNull();
   });
 
   it('keeps rooms with more than two active participants casual', () => {
@@ -94,7 +94,114 @@ describe('planCompetitiveSeatBinding', () => {
       ),
     ).toMatchObject({ outcome: 'bind', assignmentPlayers: null });
   });
+
+  it('creates a ranked assignment for an activated two-player bracket', () => {
+    const room = roomState();
+    const bracket = createTournamentBracketState(
+      room.participants.map(({ playerId, displayName }) => ({
+        playerId,
+        displayName,
+      })),
+      room.round.index,
+    );
+    room.status = 'tournament';
+    room.round.phase = 'tournament';
+    room.tournament = {
+      version: 2,
+      bracket,
+      activeMatchId: bracket.currentRound!.matches[0].matchId,
+      activeMatchAuthority: 'casual',
+      cumulativeScores: {},
+    };
+    const seats = [
+      seat('session-a', 'player-a', 'account-a'),
+      seat('session-b', 'player-b', 'account-b'),
+    ];
+
+    expect(plan(room, seats, 'session-a', 'account-a')).toMatchObject({
+      assignmentPlayers: [
+        { playerId: 'player-a', accountId: 'account-a' },
+        { playerId: 'player-b', accountId: 'account-b' },
+      ],
+      assignmentBracketMatchId: 'game-round-1-bracket-1-match-1',
+      assignmentKind: 'ranked-head-to-head',
+    });
+  });
+
+  it('assigns only the active bracket pair when all five seats are bound', () => {
+    const room = roomState();
+    room.participants.push(
+      participant('c'),
+      participant('d'),
+      participant('e'),
+    );
+    room.status = 'tournament';
+    room.round.phase = 'tournament';
+    room.tournament = {
+      version: 2,
+      bracket: {
+        version: 1,
+        gameRoundIndex: 1,
+        status: 'in-progress',
+        participants: room.participants.map((row, index) => ({
+          playerId: row.playerId,
+          displayName: row.displayName,
+          seed: index + 1,
+        })),
+        currentRound: {
+          roundNumber: 1,
+          matches: [
+            {
+              matchId: 'game-round-1-bracket-1-match-1',
+              roundNumber: 1,
+              matchNumber: 1,
+              participantA: { playerId: 'player-d', displayName: 'D', seed: 4 },
+              participantB: { playerId: 'player-e', displayName: 'E', seed: 5 },
+              participantIds: ['player-d', 'player-e'],
+              status: 'ready',
+              winnerPlayerId: null,
+              loserPlayerId: null,
+              resultReason: null,
+              completedAtMs: null,
+            },
+          ],
+          byes: [],
+          slots: [{ kind: 'match', matchId: 'game-round-1-bracket-1-match-1' }],
+        },
+        completedRounds: [],
+        eliminations: [],
+        championPlayerId: null,
+      },
+      activeMatchId: 'game-round-1-bracket-1-match-1',
+      activeMatchAuthority: 'casual',
+      cumulativeScores: {},
+    };
+    const seats = ['a', 'b', 'c', 'd', 'e'].map((suffix) =>
+      seat(`session-${suffix}`, `player-${suffix}`, `account-${suffix}`),
+    );
+
+    expect(plan(room, seats, 'session-a', 'account-a')).toMatchObject({
+      assignmentPlayers: [
+        { playerId: 'player-d', accountId: 'account-d' },
+        { playerId: 'player-e', accountId: 'account-e' },
+      ],
+      assignmentBracketMatchId: 'game-round-1-bracket-1-match-1',
+      assignmentKind: 'tournament-unranked',
+    });
+  });
 });
+
+function participant(suffix: string) {
+  return {
+    sessionId: `session-${suffix}`,
+    playerId: `player-${suffix}`,
+    displayName: suffix.toUpperCase(),
+    role: 'participant' as const,
+    ready: true,
+    connected: true,
+    joinedAtMs: suffix.charCodeAt(0),
+  };
+}
 
 function plan(
   room: PokeLoungeRoomState,
@@ -143,7 +250,13 @@ function roomState(): PokeLoungeRoomState {
       startedAtMs: null,
       endsAtMs: null,
     },
-    tournament: { matches: [], cumulativeScores: {} },
+    tournament: {
+      version: 2,
+      bracket: null,
+      activeMatchId: null,
+      activeMatchAuthority: null,
+      cumulativeScores: {},
+    },
     finalStandings: [],
   };
 }

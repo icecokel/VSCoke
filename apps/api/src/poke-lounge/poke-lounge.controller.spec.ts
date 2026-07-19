@@ -153,6 +153,7 @@ describe('PokeLoungeController', () => {
     expect(service.createRoom.mock.calls).toContainEqual([
       { playerId: 'player-a', sessionId: 'session-a' },
       { idempotencyKey: IDEMPOTENCY_KEY, expectedRevision: 0 },
+      { requireSocketAcknowledgement: true },
     ]);
   });
 
@@ -218,11 +219,87 @@ describe('PokeLoungeController', () => {
       'ROOM01',
       { sessionId: 'session-b' },
       { idempotencyKey: IDEMPOTENCY_KEY, expectedRevision: 3 },
+      { requireSocketAcknowledgement: true },
     ]);
   });
 
+  it('never forwards client-provided mutation clocks to the room service', async () => {
+    const clientNowMs = 253_402_300_800_000;
+    const rawRequest = commandRequest(0);
+
+    await controller.createRoom(
+      withClientNowMs(
+        { playerId: 'player-a', sessionId: 'session-a' },
+        clientNowMs,
+      ),
+      rawRequest,
+    );
+    await controller.joinRoom(
+      'ROOM01',
+      withClientNowMs(
+        { playerId: 'player-b', sessionId: 'session-b' },
+        clientNowMs,
+      ),
+      rawRequest,
+    );
+    await controller.setReady(
+      'ROOM01',
+      withClientNowMs(
+        {
+          playerId: 'player-a',
+          sessionId: 'session-a',
+          ready: true,
+        },
+        clientNowMs,
+      ),
+      rawRequest,
+    );
+    await controller.updatePartySnapshot(
+      'ROOM01',
+      withClientNowMs(
+        { playerId: 'player-a', sessionId: 'session-a' },
+        clientNowMs,
+      ),
+      rawRequest,
+    );
+    await controller.submitResult(
+      'ROOM01',
+      withClientNowMs(
+        {
+          reportingPlayerId: 'player-a',
+          reportingSessionId: 'session-a',
+          matchId: 'match-1',
+          winnerPlayerId: 'player-a',
+          loserPlayerId: 'player-b',
+          reason: 'faint' as const,
+        },
+        clientNowMs,
+      ),
+      rawRequest,
+    );
+    await controller.leaveRoom(
+      'ROOM01',
+      withClientNowMs(
+        { playerId: 'player-a', sessionId: 'session-a' },
+        clientNowMs,
+      ),
+      rawRequest,
+    );
+
+    for (const input of [
+      service.createRoom.mock.calls[0]?.[0],
+      service.joinRoom.mock.calls[0]?.[1],
+      service.setReady.mock.calls[0]?.[1],
+      service.updatePartySnapshot.mock.calls[0]?.[1],
+      service.submitMatchResult.mock.calls[0]?.[1],
+      service.leaveRoom.mock.calls[0]?.[1],
+    ]) {
+      expect(input).not.toHaveProperty('nowMs');
+    }
+  });
+
   it('redacts session ids while retaining revision and expiry in public responses', async () => {
-    const response = await controller.getRoom('ROOM01', '100');
+    const response = await controller.getRoom('ROOM01');
 
     expect(response).toMatchObject({
       roomCode: 'ROOM01',
@@ -326,15 +403,12 @@ describe('PokeLoungeController', () => {
   it('validates the optional REST recovery revision cursor', async () => {
     const getRoom = (
       controller as unknown as {
-        getRoom(
-          roomCode: string,
-          nowMs?: string,
-          afterRevision?: string,
-        ): Promise<unknown>;
+        getRoom(roomCode: string, afterRevision?: string): Promise<unknown>;
       }
     ).getRoom.bind(controller);
 
-    await expect(getRoom('ROOM01', undefined, '7')).resolves.toBeDefined();
+    await expect(getRoom('ROOM01', '7')).resolves.toBeDefined();
+    expect(service.getRoom.mock.calls.at(-1)).toEqual(['ROOM01', 7]);
 
     for (const value of [
       '-1',
@@ -343,12 +417,19 @@ describe('PokeLoungeController', () => {
       '01',
       String(Number.MAX_SAFE_INTEGER + 1),
     ]) {
-      await expect(getRoom('ROOM01', undefined, value)).rejects.toThrow(
+      await expect(getRoom('ROOM01', value)).rejects.toThrow(
         BadRequestException,
       );
     }
+
+    await expect(getRoom('ROOM01')).resolves.toBeDefined();
+    expect(service.getRoom.mock.calls.at(-1)).toEqual(['ROOM01', undefined]);
   });
 });
+
+function withClientNowMs<T extends object>(input: T, nowMs: number): T {
+  return { ...input, nowMs };
+}
 
 function commandRequest(revision: number): Request {
   return request([
@@ -389,7 +470,13 @@ function snapshot(): PokeLoungeRoomSnapshot {
       startedAtMs: null,
       endsAtMs: null,
     },
-    tournament: { matches: [], cumulativeScores: {} },
+    tournament: {
+      version: 2,
+      bracket: null,
+      activeMatchId: null,
+      activeMatchAuthority: null,
+      cumulativeScores: {},
+    },
     finalStandings: [],
     revision: 3,
     expiresAtMs: 30 * 60_000,

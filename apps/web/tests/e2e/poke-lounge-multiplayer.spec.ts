@@ -1,11 +1,18 @@
 import { expect, type Browser, type Page, type Request, test } from "@playwright/test";
 import {
+  createTournamentBracketState,
+  getReadyTournamentMatches,
+  recordTournamentMatchResult,
+} from "@vscoke/poke-lounge-battle";
+import {
   isLegalAuthoritativeAction,
   toAuthoritativeBattleState,
 } from "../../src/components/poke-lounge/runtime/game/battle/authoritative-battle-adapter";
 import { parseCompetitiveProjection } from "../../src/components/poke-lounge/runtime/game/network/competitive-projection";
 import { createCompetitiveBattleLaunchCache } from "../../src/components/poke-lounge/runtime/game/scenes/competitive-battle-launch";
 import type { CompetitiveProjection } from "../../src/components/poke-lounge/runtime/game/network/localPreviewRoom";
+import { createGameStateStore } from "../../src/components/poke-lounge/runtime/game/state/gameStateStore";
+import { buildPokeLoungeSaveSnapshot } from "../../src/components/poke-lounge/runtime/game/state/poke-lounge-save-snapshot";
 import { gotoWithRetry } from "./test-helpers";
 
 type PokeLoungeWindow = Window & {
@@ -18,6 +25,9 @@ type PokeLoungeWindow = Window & {
       currentPlayerId: string;
       round: {
         phase: string;
+      };
+      session: {
+        connectionStatus: "offline" | "connecting" | "online";
       };
     };
   };
@@ -44,13 +54,17 @@ interface PokeLoungeSocketTestControl {
 
 const LOCALE = "ko-KR";
 const ROOM_CODE = "SRV001";
+const BRACKET_MATCH_ID = "game-round-1-bracket-1-match-1";
 const ROOM_EXPIRES_AT_MS = 253402300799999;
-const AUTH_ID_TOKEN = `${Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url")}.${Buffer.from(JSON.stringify({ exp: 4_102_444_800 })).toString("base64url")}.signature`;
+const AUTH_ID_TOKEN_EXPIRES_AT = Math.floor(Date.now() / 1000) + 60 * 60;
+const AUTH_ID_TOKEN = `${Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url")}.${Buffer.from(JSON.stringify({ exp: AUTH_ID_TOKEN_EXPIRES_AT })).toString("base64url")}.signature`;
 
 const createCompetitiveProjection = (
   overrides: Partial<CompetitiveProjection> = {},
 ): CompetitiveProjection => ({
   matchId: "11111111-1111-4111-8111-111111111111",
+  bracketMatchId: "game-round-1-bracket-1-match-1",
+  kind: "ranked-head-to-head",
   assignmentRevision: 7,
   rulesetVersion: 1,
   rulesetHash: "a".repeat(64),
@@ -141,6 +155,28 @@ function createServerCompetitiveProjection(
       playersById: {
         [first.playerId]: { ...firstState, playerId: first.playerId },
         [second.playerId]: { ...secondState, playerId: second.playerId },
+      },
+    },
+    ...overrides,
+  };
+}
+
+function createCompetitiveProjectionForPlayers(
+  playerIds: [string, string],
+  overrides: Partial<CompetitiveProjection> = {},
+): CompetitiveProjection {
+  const template = createCompetitiveProjection();
+  const [firstState, secondState] = Object.values(template.currentState.playersById);
+
+  return {
+    ...template,
+    playerIds,
+    currentState: {
+      ...template.currentState,
+      participantIds: playerIds,
+      playersById: {
+        [playerIds[0]]: { ...firstState, playerId: playerIds[0] },
+        [playerIds[1]]: { ...secondState, playerId: playerIds[1] },
       },
     },
     ...overrides,
@@ -390,10 +426,11 @@ test.describe("Poke Lounge server multiplayer", () => {
   }) => {
     const server = createMockServerState();
 
-    await mockAuthenticatedPokeSession(page);
+    const authSession = await mockAuthenticatedPokeSession(page);
     await mockServerRoom(page, server, { competitive: true, waitForResult: true, wrapped: true });
     await startServerRoom(page);
 
+    expect(authSession.requestCount()).toBeGreaterThan(0);
     await expect.poll(() => Promise.resolve(server.competitiveSeatBodies.length)).toBe(1);
     expect(server.competitiveSeatBodies[0]).toEqual({
       sessionId: server.joinedParticipants[0]?.sessionId,
@@ -412,7 +449,7 @@ test.describe("Poke Lounge server multiplayer", () => {
   }) => {
     const server = createMockServerState();
 
-    await mockAuthenticatedPokeSession(page);
+    const authSession = await mockAuthenticatedPokeSession(page);
     await mockServerRoom(page, server, {
       competitiveSeatIneligible: true,
       waitForResult: true,
@@ -420,6 +457,7 @@ test.describe("Poke Lounge server multiplayer", () => {
     });
     await startServerRoom(page);
 
+    expect(authSession.requestCount()).toBeGreaterThan(0);
     await expect.poll(() => Promise.resolve(server.competitiveSeatBodies.length)).toBe(1);
     expect(await getActiveSceneKey(page)).toBe("world");
     await expect(page.locator("#game-root canvas")).toBeVisible();
@@ -777,15 +815,30 @@ test.describe("Poke Lounge server multiplayer", () => {
       reason: "faint" as const,
       scoreByPlayerId: { [winner]: 100 as const, [loser]: 50 as const },
     };
-    server.revision += 1;
-    await emitSocketSnapshot(page, {
-      ...createTournamentRoomState(server),
-      competitive: {
-        ...projection,
-        status: "completed",
+    const terminalRevision = server.revision + 1;
+    const completedProjection = {
+      ...projection,
+      currentTurn: projection.currentTurn + 1,
+      status: "completed" as const,
+      currentState: {
+        ...projection.currentState,
+        turn: projection.currentTurn + 1,
         terminal,
-        currentState: { ...projection.currentState, terminal },
       },
+      terminal,
+      terminalEventId: `terminal-authoritative-${terminalRevision}`,
+      terminalRoomRevision: terminalRevision,
+    };
+    server.revision = terminalRevision;
+    await emitSocketSnapshot(page, {
+      ...createCompletedRoomStateForWinner(server, winner),
+      competitiveTransitions: [
+        {
+          terminalEventId: completedProjection.terminalEventId,
+          terminalRoomRevision: completedProjection.terminalRoomRevision,
+          projection: completedProjection,
+        },
+      ],
     });
 
     await expect.poll(() => getBattleSnapshot(page).then(value => value?.phase)).toBe("ended");
@@ -799,6 +852,111 @@ test.describe("Poke Lounge server multiplayer", () => {
     expect(scoreRequests).toEqual([]);
     expect(server.calls).not.toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/result`);
   });
+
+  for (const role of ["winner", "loser"] as const) {
+    test(`terminal transition ${role}는 결과 확인 후 WorldScene으로 돌아간다`, async ({ page }) => {
+      const server = createMockServerState();
+
+      await mockAuthenticatedPokeSession(page);
+      await mockServerRoom(page, server, {
+        competitive: true,
+        competitiveImmediately: true,
+        waitForResult: true,
+        wrapped: true,
+      });
+      await startServerRoom(page);
+      await waitForActiveScene(page, "battle");
+
+      const projection = createServerCompetitiveProjection(server);
+      const ownPlayerId = projection.playerIds[0];
+      const opponentPlayerId = projection.playerIds[1];
+      const winnerPlayerId = role === "winner" ? ownPlayerId : opponentPlayerId;
+      const loserPlayerId = role === "winner" ? opponentPlayerId : ownPlayerId;
+      const terminal = {
+        winnerPlayerId,
+        loserPlayerId,
+        reason: "faint" as const,
+        scoreByPlayerId: { [winnerPlayerId]: 100 as const, [loserPlayerId]: 50 as const },
+      };
+      const terminalRevision = server.revision + 1;
+      const completedProjection = {
+        ...projection,
+        currentTurn: projection.currentTurn + 1,
+        status: "completed" as const,
+        currentState: {
+          ...projection.currentState,
+          turn: projection.currentTurn + 1,
+          terminal,
+        },
+        terminal,
+        terminalEventId: `terminal-${role}-${terminalRevision}`,
+        terminalRoomRevision: terminalRevision,
+      };
+      server.revision = terminalRevision;
+
+      await emitSocketSnapshot(page, {
+        ...createCompletedRoomStateForWinner(server, winnerPlayerId),
+        competitiveTransitions: [
+          {
+            terminalEventId: completedProjection.terminalEventId,
+            terminalRoomRevision: completedProjection.terminalRoomRevision,
+            projection: completedProjection,
+          },
+        ],
+      });
+
+      await expect.poll(() => getBattleSnapshot(page).then(value => value?.phase)).toBe("ended");
+      expect((await getBattleSnapshot(page))?.battleEntrancePlaying).toBe(false);
+      expect((await getBattleSnapshot(page))?.result).toMatchObject({
+        winnerPlayerId,
+        loserPlayerId,
+      });
+
+      await confirmBattle(page);
+      await waitForActiveScene(page, "world");
+    });
+  }
+
+  for (const role of ["winner", "loser"] as const) {
+    test(`next assignment ${role}는 이전 결과 확인 후 올바른 scene에 남는다`, async ({ page }) => {
+      const server = createMockServerState();
+
+      await mockAuthenticatedPokeSession(page);
+      await mockServerRoom(page, server, {
+        competitive: true,
+        competitiveImmediately: true,
+        waitForResult: true,
+        wrapped: true,
+      });
+      await startServerRoom(page);
+      await waitForActiveScene(page, "battle");
+
+      const fixture = createNextAssignmentRoomState(server, role);
+      await emitSocketSnapshot(page, fixture.room);
+
+      await expect.poll(() => getBattleSnapshot(page).then(value => value?.phase)).toBe("ended");
+      await trackWorldBattleStarts(page);
+      await confirmBattle(page);
+
+      if (role === "winner") {
+        await expect
+          .poll(() => getAuthoritativeBattleMatchId(page), { timeout: 30000 })
+          .toBe(fixture.nextMatchId);
+        await expect
+          .poll(() => getTrackedWorldBattleStarts(page), { timeout: 30000 })
+          .toEqual([fixture.nextMatchId]);
+
+        await emitSocketSnapshot(page, fixture.room);
+        await page.waitForTimeout(250);
+        expect(await getTrackedWorldBattleStarts(page)).toEqual([fixture.nextMatchId]);
+        return;
+      }
+
+      await waitForActiveScene(page, "world");
+      await page.waitForTimeout(250);
+      expect(await getTrackedWorldBattleStarts(page)).toEqual([]);
+    });
+  }
 
   test("network=server room 완료 상태는 generic score overlay를 노출하지 않는다", async ({
     page,
@@ -819,8 +977,9 @@ test.describe("Poke Lounge server multiplayer", () => {
 
     expect(server.calls).toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/join`);
     await expect
-      .poll(() =>
-        Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+      .poll(
+        () => Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+        { timeout: 30000 },
       )
       .toBe(true);
   });
@@ -832,8 +991,8 @@ test.describe("Poke Lounge server multiplayer", () => {
     await startServerRoom(page);
 
     await expect
-      .poll(() => Promise.resolve(server.calls), { timeout: 30000 })
-      .toContain(`GET /poke-lounge/rooms/${ROOM_CODE}`);
+      .poll(() => Promise.resolve(server.recoveryAfterRevisions.length), { timeout: 30000 })
+      .toBeGreaterThan(0);
     await expect.poll(() => getRoundPhase(page)).toBe("game-result");
     await expect(page.getByTestId("poke-lounge-result-panel")).toBeHidden();
   });
@@ -873,6 +1032,9 @@ test.describe("Poke Lounge server multiplayer", () => {
     await mockServerRoom(page, server, { waitForResult: true, wrapped: true });
     await startServerRoom(page);
     await expect.poll(() => getSocketState(page).then(state => state.subscriptions.length)).toBe(1);
+    const terminalCursorBeforeDisconnect = (await getSocketState(page)).subscriptions.at(
+      -1,
+    )?.afterRevision;
 
     await emitSocketSnapshot(page, createTournamentRoomState(server));
     const recoveryBeforeDisconnect = server.recoveryAfterRevisions.length;
@@ -885,7 +1047,9 @@ test.describe("Poke Lounge server multiplayer", () => {
     await reconnectSocket(page);
     await expect.poll(() => getSocketState(page).then(state => state.subscriptions.length)).toBe(2);
     await expect.poll(() => getSocketState(page).then(state => state.createdCount)).toBe(1);
-    expect((await getSocketState(page)).subscriptions.at(-1)?.afterRevision).toBe(server.revision);
+    expect((await getSocketState(page)).subscriptions.at(-1)?.afterRevision).toBe(
+      terminalCursorBeforeDisconnect,
+    );
 
     server.revision += 1;
     await emitSocketSnapshot(page, createTournamentRoomState(server));
@@ -927,12 +1091,18 @@ test.describe("Poke Lounge server multiplayer", () => {
     await startServerRoom(page);
     await expect.poll(() => getSocketState(page).then(state => state.connected)).toBe(true);
     const recoveryBeforeFailure = server.recoveryAfterRevisions.length;
+    const subscriptionsBeforeFailure = (await getSocketState(page)).subscriptions.length;
 
     await emitSocketSubscriptionError(page);
+    await expect.poll(() => getConnectionStatus(page)).toBe("connecting");
     await expect
       .poll(() => Promise.resolve(server.recoveryAfterRevisions.length), { timeout: 3000 })
       .toBeGreaterThan(recoveryBeforeFailure);
+    await expect
+      .poll(() => getSocketState(page).then(state => state.subscriptions.length), { timeout: 3000 })
+      .toBeGreaterThan(subscriptionsBeforeFailure);
     await emitSocketSnapshot(page, createTournamentRoomState(server));
+    await expect.poll(() => getConnectionStatus(page)).toBe("online");
     await page.waitForTimeout(300);
     const recoveryAfterSnapshot = server.recoveryAfterRevisions.length;
     await page.waitForTimeout(750);
@@ -1089,18 +1259,18 @@ test.describe("Poke Lounge server multiplayer", () => {
       )
       .toBe(true);
 
-    await page.evaluate(() => {
+    await page.evaluate((matchId: string) => {
       window.dispatchEvent(
         new CustomEvent("poke-lounge:e2e-server-result", {
           detail: {
-            matchId: "round-1-match-1",
+            matchId,
             winnerPlayerId: "player-1",
             loserPlayerId: "player-2",
             reason: "faint",
           },
         }),
       );
-    });
+    }, BRACKET_MATCH_ID);
 
     await expect(page.getByTestId("poke-lounge-result-panel")).toBeHidden({ timeout: 3000 });
     await expect
@@ -1139,17 +1309,20 @@ test.describe("Poke Lounge server multiplayer", () => {
     });
     expect(localPlayerId).not.toBe(joinedParticipant.playerId);
 
-    await page.evaluate((winnerPlayerId: string) => {
-      window.dispatchEvent(
-        new CustomEvent("poke-lounge:e2e-server-result", {
-          detail: {
-            matchId: "round-1-match-1",
-            winnerPlayerId,
-            reason: "faint",
-          },
-        }),
-      );
-    }, localPlayerId ?? "player-1");
+    await page.evaluate(
+      ({ matchId, winnerPlayerId }: { matchId: string; winnerPlayerId: string }) => {
+        window.dispatchEvent(
+          new CustomEvent("poke-lounge:e2e-server-result", {
+            detail: {
+              matchId,
+              winnerPlayerId,
+              reason: "faint",
+            },
+          }),
+        );
+      },
+      { matchId: BRACKET_MATCH_ID, winnerPlayerId: localPlayerId ?? "player-1" },
+    );
 
     await page.waitForTimeout(300);
     expect(server.resultBodies).toEqual([]);
@@ -1157,7 +1330,61 @@ test.describe("Poke Lounge server multiplayer", () => {
     await expect(page.getByTestId("poke-lounge-result-panel")).toBeHidden();
   });
 
-  test("server room cleanup은 e2e global 없이도 unmount 시 leave를 전송한다", async ({ page }) => {
+  test("명시적인 server room 나가기는 확인 뒤 leave를 한 번 전송한다", async ({ page }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, {
+      deferLeaveResponse: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+    await expect
+      .poll(() =>
+        Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+      )
+      .toBe(true);
+    const firstIdentity = server.joinedParticipants.at(-1);
+    if (!firstIdentity) {
+      throw new Error("Expected the first server room identity");
+    }
+
+    await page.locator("[data-room-leave='true']").click();
+    const leaveDialog = page.locator("[data-poke-lounge-leave-dialog='true']");
+    await expect(leaveDialog).toBeVisible();
+    await leaveDialog.getByRole("button", { name: "방 나가기", exact: true }).click();
+
+    await expect
+      .poll(() =>
+        Promise.resolve(
+          server.calls.filter(call => call === `POST /poke-lounge/rooms/${ROOM_CODE}/leave`).length,
+        ),
+      )
+      .toBe(1);
+    await expect.poll(() => Promise.resolve(server.leaveRequestDeferred)).toBe(true);
+    await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible();
+
+    const joinedCountBeforeRejoin = server.joinedParticipants.length;
+    await page.locator("[data-room-entry-server-code]").fill(ROOM_CODE);
+    await page.locator("[data-room-entry-server-join]").click();
+    await chooseStarterIfNeeded(page);
+    await expect
+      .poll(() => Promise.resolve(server.joinedParticipants.length))
+      .toBeGreaterThan(joinedCountBeforeRejoin);
+    const rejoinedIdentity = server.joinedParticipants.at(-1);
+    if (!rejoinedIdentity) {
+      throw new Error("Expected a new server room identity after explicit leave");
+    }
+    expect(rejoinedIdentity.playerId).not.toBe(firstIdentity.playerId);
+    expect(rejoinedIdentity.sessionId).not.toBe(firstIdentity.sessionId);
+
+    server.resolveLeaveResponse?.();
+    await expect.poll(() => Promise.resolve(server.activeMutations)).toBe(0);
+  });
+
+  test("server room cleanup은 e2e global 없이도 unmount 시 leave를 전송하지 않는다", async ({
+    page,
+  }) => {
     const server = createMockServerState();
 
     await mockServerRoom(page, server, { waitForResult: true, wrapped: true });
@@ -1183,15 +1410,12 @@ test.describe("Poke Lounge server multiplayer", () => {
       ).__POKE_LOUNGE_CLEANUP_FOR_TEST__?.();
     });
 
-    await expect
-      .poll(
-        () => Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/leave`)),
-        { timeout: 5000 },
-      )
-      .toBe(true);
+    await page.waitForTimeout(750);
+    expect(server.calls).not.toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/leave`);
+    await expect.poll(() => getSocketState(page).then(state => state.connected)).toBe(false);
   });
 
-  test("create 응답 전 dispose는 pending leave 없이 실제 방에 한 번만 leave를 전송한다", async ({
+  test("create 응답 전 dispose는 pending 방과 실제 방 모두에 leave를 전송하지 않는다", async ({
     page,
   }) => {
     const server = createMockServerState();
@@ -1210,18 +1434,9 @@ test.describe("Poke Lounge server multiplayer", () => {
     expect(server.calls).not.toContain("POST /poke-lounge/rooms/server-pending/leave");
 
     server.resolveCreateResponse?.();
-    await expect
-      .poll(
-        () =>
-          Promise.resolve(
-            server.calls.filter(call => call === `POST /poke-lounge/rooms/${ROOM_CODE}/leave`)
-              .length,
-          ),
-        { timeout: 5000 },
-      )
-      .toBe(1);
     await page.waitForTimeout(1000);
 
+    expect(server.calls).not.toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/leave`);
     expect(server.calls).not.toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/party-snapshot`);
     expect(server.calls).not.toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`);
     expect(server.calls).not.toContain(`GET /poke-lounge/rooms/${ROOM_CODE}`);
@@ -1358,12 +1573,14 @@ test.describe("Poke Lounge server multiplayer", () => {
     });
 
     await expect
-      .poll(() =>
-        Promise.resolve(
-          server.calls.filter(
-            call => call === `POST /poke-lounge/rooms/${ROOM_CODE}/party-snapshot`,
-          ).length,
-        ),
+      .poll(
+        () =>
+          Promise.resolve(
+            server.calls.filter(
+              call => call === `POST /poke-lounge/rooms/${ROOM_CODE}/party-snapshot`,
+            ).length,
+          ),
+        { timeout: 30000 },
       )
       .toBeGreaterThanOrEqual(2);
 
@@ -1384,9 +1601,7 @@ test.describe("Poke Lounge server multiplayer", () => {
     });
   });
 
-  test("server room revision conflict는 snapshot만 반영하고 command를 자동 재시도하지 않는다", async ({
-    page,
-  }) => {
+  test("초기 ready revision conflict는 최신 snapshot부터 workflow를 재개한다", async ({ page }) => {
     const server = createMockServerState();
 
     await mockServerRoom(page, server, {
@@ -1404,12 +1619,14 @@ test.describe("Poke Lounge server multiplayer", () => {
           ),
         { timeout: 30000 },
       )
-      .toBe(1);
+      .toBe(2);
     await page.waitForTimeout(500);
 
     const readyHeaders = server.commandHeaders.filter(headers => headers.suffix === "/ready");
-    expect(readyHeaders).toHaveLength(1);
+    expect(readyHeaders).toHaveLength(2);
     expect(readyHeaders[0].revision).not.toBe(String(server.conflictRevision));
+    expect(readyHeaders[1].revision).toBe(String(server.conflictRevision));
+    expect(readyHeaders[1].idempotencyKey).not.toBe(readyHeaders[0].idempotencyKey);
   });
 
   test("stale conflict snapshot은 최신 socket revision을 덮거나 POST를 재시도하지 않는다", async ({
@@ -1647,6 +1864,62 @@ async function getActiveSceneKey(page: Page): Promise<string | null> {
   );
 }
 
+async function getAuthoritativeBattleMatchId(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const game = (window as Window & { __POKE_LOUNGE_GAME__?: unknown }).__POKE_LOUNGE_GAME__ as {
+      scene?: {
+        getScene?(key: string): {
+          authoritativeProjection?: { matchId?: unknown } | null;
+        };
+      };
+    };
+    const matchId = game.scene?.getScene?.("battle")?.authoritativeProjection?.matchId;
+
+    return typeof matchId === "string" ? matchId : null;
+  });
+}
+
+async function trackWorldBattleStarts(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const pokeWindow = window as Window & { __POKE_LOUNGE_WORLD_BATTLE_STARTS__?: string[] };
+    const game = (window as Window & { __POKE_LOUNGE_GAME__?: unknown }).__POKE_LOUNGE_GAME__ as {
+      scene?: {
+        getScene?(key: string): {
+          scene: {
+            start(key: string, data?: unknown): unknown;
+          };
+        };
+      };
+    };
+    const scenePlugin = game.scene?.getScene?.("world")?.scene;
+
+    if (!scenePlugin) {
+      throw new Error("WorldScene is unavailable");
+    }
+
+    pokeWindow.__POKE_LOUNGE_WORLD_BATTLE_STARTS__ = [];
+    const originalStart = scenePlugin.start.bind(scenePlugin);
+    scenePlugin.start = (key: string, data?: unknown) => {
+      if (key === "battle") {
+        const matchId = (data as { projection?: { matchId?: unknown } } | undefined)?.projection
+          ?.matchId;
+        pokeWindow.__POKE_LOUNGE_WORLD_BATTLE_STARTS__?.push(
+          typeof matchId === "string" ? matchId : "unknown",
+        );
+      }
+
+      return originalStart(key, data);
+    };
+  });
+}
+
+async function getTrackedWorldBattleStarts(page: Page): Promise<string[]> {
+  return page.evaluate(() => [
+    ...((window as Window & { __POKE_LOUNGE_WORLD_BATTLE_STARTS__?: string[] })
+      .__POKE_LOUNGE_WORLD_BATTLE_STARTS__ ?? []),
+  ]);
+}
+
 async function waitForActiveScene(page: Page, sceneKey: string): Promise<void> {
   await expect.poll(() => getActiveSceneKey(page), { timeout: 30000 }).toBe(sceneKey);
 }
@@ -1726,6 +1999,16 @@ async function getCurrentPlayerId(page: Page): Promise<string | null> {
     const pokeWindow = window as PokeLoungeWindow;
 
     return pokeWindow.__POKE_LOUNGE_E2E__?.getGameStateSnapshot().currentPlayerId ?? null;
+  });
+}
+
+async function getConnectionStatus(
+  page: Page,
+): Promise<"offline" | "connecting" | "online" | null> {
+  return page.evaluate(() => {
+    const pokeWindow = window as PokeLoungeWindow;
+
+    return pokeWindow.__POKE_LOUNGE_E2E__?.getGameStateSnapshot().session.connectionStatus ?? null;
   });
 }
 
@@ -2035,11 +2318,15 @@ async function mockServerRoom(
     wrapped?: boolean;
   } = {},
 ): Promise<void> {
+  if (options.competitive) {
+    server.activeMatchAuthority = "server";
+  }
   await installSocketFixture(
     page,
     options.socketAutoConnect !== false,
     options.bodyReadFailureSuffix,
   );
+  let completedOnRecoveryGet = false;
   await page.route("**/poke-lounge/rooms**", async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -2072,6 +2359,11 @@ async function mockServerRoom(
           ),
         });
         return;
+      }
+
+      if (options.completeOnGet && !completedOnRecoveryGet) {
+        server.revision += 1;
+        completedOnRecoveryGet = true;
       }
     }
 
@@ -2368,7 +2660,7 @@ async function mockServerRoom(
         server.concurrentPollRevision
           ? createTournamentRoomState(server)
           : options.rejectResult ||
-              (options.completeOnGet && method !== "GET") ||
+              (options.completeOnGet && !completedOnRecoveryGet) ||
               (options.waitForResult && !server.resultAccepted)
             ? createTournamentRoomState(server)
             : createCompletedRoomState(server);
@@ -2421,6 +2713,7 @@ async function newMockedPage(
 }
 
 interface MockServerState {
+  activeMatchAuthority: "casual" | "server";
   activeMutations: number;
   calls: string[];
   commandRequests: Array<{
@@ -2496,6 +2789,7 @@ interface MockServerState {
 
 function createMockServerState(): MockServerState {
   return {
+    activeMatchAuthority: "casual",
     activeMutations: 0,
     calls: [],
     commandRequests: [],
@@ -2529,26 +2823,43 @@ function createMockServerState(): MockServerState {
   };
 }
 
-async function mockAuthenticatedPokeSession(page: Page): Promise<void> {
-  await page.route("**/api/auth/session", route =>
-    route.fulfill({
+async function mockAuthenticatedPokeSession(page: Page): Promise<{ requestCount(): number }> {
+  let requestCount = 0;
+  const snapshot = buildPokeLoungeSaveSnapshot(createGameStateStore());
+  await page.route("**/api/auth/session", route => {
+    requestCount += 1;
+    return route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
-        user: { id: "account-a", name: "Player A" },
-        expires: "2100-01-01T00:00:00.000Z",
+        user: { id: "account-a", name: "Player A", email: "player-a@example.test" },
+        expires: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
         idToken: AUTH_ID_TOKEN,
-        idTokenExpiresAt: 4_102_444_800,
+        idTokenExpiresAt: AUTH_ID_TOKEN_EXPIRES_AT,
       }),
-    }),
-  );
-  await page.route("**/game/poke-lounge/state", route =>
-    route.fulfill({
+    });
+  });
+  await page.route("**/game/poke-lounge/state", async route => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, data: { state: snapshot, revision: 0 } }),
+      });
+      return;
+    }
+
+    const body = route.request().postDataJSON() as { expectedRevision?: number };
+    await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ success: true, data: null }),
-    }),
-  );
+      body: JSON.stringify({
+        success: true,
+        data: { revision: (body.expectedRevision ?? 0) + 1 },
+      }),
+    });
+  });
+  return { requestCount: () => requestCount };
 }
 
 async function recordJoinedIdentity(request: Request, server: MockServerState) {
@@ -2600,7 +2911,7 @@ function validateResultBody(
   }
 
   if (
-    body.matchId !== "round-1-match-1" ||
+    body.matchId !== BRACKET_MATCH_ID ||
     !body.winnerPlayerId ||
     !body.loserPlayerId ||
     body.winnerPlayerId === body.loserPlayerId ||
@@ -2625,7 +2936,10 @@ function createWaitingRoomState(server: MockServerState) {
       endsAtMs: null,
     },
     tournament: {
-      matches: [],
+      version: 2,
+      bracket: null,
+      activeMatchId: null,
+      activeMatchAuthority: null,
       cumulativeScores: {},
     },
     finalStandings: [],
@@ -2636,19 +2950,26 @@ function createWaitingRoomState(server: MockServerState) {
 function createTournamentRoomState(server: MockServerState) {
   const completed = createCompletedRoomState(server);
   const [first, second] = getStateParticipants(server);
+  const participants = createBracketParticipants(first, second);
+  const currentRound = createBracketRound(participants, false);
 
   return {
     ...completed,
     status: "tournament",
     tournament: {
-      ...completed.tournament,
-      matches: [
-        {
-          matchId: "round-1-match-1",
-          participantIds: [first.playerId, second.playerId],
-          status: "pending",
-        },
-      ],
+      version: 2,
+      bracket: {
+        version: 1,
+        gameRoundIndex: 1,
+        status: "in-progress",
+        participants,
+        currentRound,
+        completedRounds: [],
+        eliminations: [],
+        championPlayerId: null,
+      },
+      activeMatchId: BRACKET_MATCH_ID,
+      activeMatchAuthority: server.activeMatchAuthority,
       cumulativeScores: {},
     },
     finalStandings: [],
@@ -2656,8 +2977,108 @@ function createTournamentRoomState(server: MockServerState) {
   };
 }
 
+function createNextAssignmentRoomState(server: MockServerState, role: "winner" | "loser") {
+  const [ownParticipant, opponentParticipant] = getStateParticipants(server);
+  const seedOne = {
+    playerId: "seed-one-player",
+    displayName: "Seed One",
+    role: "participant",
+    ready: true,
+    connected: true,
+    joinedAtMs: 2,
+  } as const;
+  const bracket = createTournamentBracketState(
+    [
+      { playerId: seedOne.playerId, displayName: seedOne.displayName },
+      {
+        playerId: ownParticipant.playerId,
+        displayName: ownParticipant.displayName ?? "Player 1",
+      },
+      {
+        playerId: opponentParticipant.playerId,
+        displayName: opponentParticipant.displayName ?? "Player 2",
+      },
+    ],
+    1,
+  );
+  const completedMatch = getReadyTournamentMatches(bracket)[0];
+  const winnerPlayerId = role === "winner" ? ownParticipant.playerId : opponentParticipant.playerId;
+  const loserPlayerId = role === "winner" ? opponentParticipant.playerId : ownParticipant.playerId;
+  const advancedBracket = recordTournamentMatchResult(
+    bracket,
+    completedMatch.matchId,
+    winnerPlayerId,
+    { reason: "faint", completedAtMs: 1000 },
+  );
+  const nextMatch = getReadyTournamentMatches(advancedBracket)[0];
+  const activeProjection = createServerCompetitiveProjection(server, {
+    bracketMatchId: completedMatch.matchId,
+    kind: "tournament-unranked",
+  });
+  const terminalRevision = server.revision + 1;
+  const terminal = {
+    winnerPlayerId,
+    loserPlayerId,
+    reason: "faint" as const,
+    scoreByPlayerId: { [winnerPlayerId]: 100 as const, [loserPlayerId]: 50 as const },
+  };
+  const completedProjection: CompetitiveProjection = {
+    ...activeProjection,
+    currentTurn: activeProjection.currentTurn + 1,
+    status: "completed",
+    currentState: {
+      ...activeProjection.currentState,
+      turn: activeProjection.currentTurn + 1,
+      terminal,
+    },
+    terminal,
+    terminalEventId: `terminal-next-${role}-${terminalRevision}`,
+    terminalRoomRevision: terminalRevision,
+  };
+  const nextProjection = createCompetitiveProjectionForPlayers(
+    [nextMatch.participantIds[0], nextMatch.participantIds[1]],
+    {
+      matchId: "22222222-2222-4222-8222-222222222222",
+      bracketMatchId: nextMatch.matchId,
+      kind: "tournament-unranked",
+      assignmentRevision: activeProjection.assignmentRevision + 1,
+    },
+  );
+  server.revision = terminalRevision;
+  const room = createTournamentRoomState(server);
+
+  return {
+    nextMatchId: nextProjection.matchId,
+    room: {
+      ...room,
+      participants: [...room.participants, seedOne],
+      tournament: {
+        version: 2,
+        bracket: advancedBracket,
+        activeMatchId: nextMatch.matchId,
+        activeMatchAuthority: "server",
+        cumulativeScores: {
+          [winnerPlayerId]: 100,
+          [loserPlayerId]: 50,
+          [seedOne.playerId]: 0,
+        },
+      },
+      competitiveTransitions: [
+        {
+          terminalEventId: completedProjection.terminalEventId,
+          terminalRoomRevision: completedProjection.terminalRoomRevision,
+          projection: completedProjection,
+        },
+      ],
+      competitive: nextProjection,
+    },
+  };
+}
+
 function createCompletedRoomState(server?: MockServerState) {
   const [first, second] = getStateParticipants(server);
+  const participants = createBracketParticipants(first, second);
+  const completedRound = createBracketRound(participants, true);
 
   return {
     roomCode: ROOM_CODE,
@@ -2691,16 +3112,28 @@ function createCompletedRoomState(server?: MockServerState) {
       endsAtMs: 1000,
     },
     tournament: {
-      matches: [
-        {
-          matchId: "round-1-match-1",
-          participantIds: [first.playerId, second.playerId],
-          status: "completed",
-          winnerPlayerId: first.playerId,
-          loserPlayerId: second.playerId,
-          resultReason: "faint",
-        },
-      ],
+      version: 2,
+      bracket: {
+        version: 1,
+        gameRoundIndex: 1,
+        status: "completed",
+        participants,
+        currentRound: null,
+        completedRounds: [completedRound],
+        eliminations: [
+          {
+            playerId: second.playerId,
+            displayName: second.displayName ?? "Player 2",
+            seed: 2,
+            roundNumber: 1,
+            matchId: BRACKET_MATCH_ID,
+            order: 1,
+          },
+        ],
+        championPlayerId: first.playerId,
+      },
+      activeMatchId: null,
+      activeMatchAuthority: null,
       cumulativeScores: {
         [first.playerId]: 100,
         [second.playerId]: 50,
@@ -2720,6 +3153,93 @@ function createCompletedRoomState(server?: MockServerState) {
         score: 50,
       },
     ],
+  };
+}
+
+function createCompletedRoomStateForWinner(server: MockServerState, winnerPlayerId: string) {
+  const state = createCompletedRoomState(server);
+  const [first, second] = getStateParticipants(server);
+  const winner = winnerPlayerId === first.playerId ? first : second;
+  const loser = winnerPlayerId === first.playerId ? second : first;
+  const match = state.tournament.bracket.completedRounds[0].matches[0];
+
+  match.winnerPlayerId = winner.playerId;
+  match.loserPlayerId = loser.playerId;
+  state.tournament.bracket.championPlayerId = winner.playerId;
+  state.tournament.bracket.eliminations = [
+    {
+      playerId: loser.playerId,
+      displayName: loser.displayName ?? loser.playerId,
+      seed: winnerPlayerId === first.playerId ? 2 : 1,
+      roundNumber: 1,
+      matchId: BRACKET_MATCH_ID,
+      order: 1,
+    },
+  ];
+  state.tournament.cumulativeScores = {
+    [winner.playerId]: 100,
+    [loser.playerId]: 50,
+  };
+  state.finalStandings = [
+    {
+      playerId: winner.playerId,
+      displayName: winner.displayName ?? winner.playerId,
+      rank: 1,
+      score: 100,
+    },
+    {
+      playerId: loser.playerId,
+      displayName: loser.displayName ?? loser.playerId,
+      rank: 2,
+      score: 50,
+    },
+  ];
+
+  return state;
+}
+
+function createBracketParticipants(
+  first: ReturnType<typeof getStateParticipants>[0],
+  second: ReturnType<typeof getStateParticipants>[1],
+) {
+  return [
+    {
+      playerId: first.playerId,
+      displayName: first.displayName ?? "Player 1",
+      seed: 1,
+    },
+    {
+      playerId: second.playerId,
+      displayName: second.displayName ?? "Player 2",
+      seed: 2,
+    },
+  ] as const;
+}
+
+function createBracketRound(
+  participants: ReturnType<typeof createBracketParticipants>,
+  completed: boolean,
+) {
+  const [first, second] = participants;
+  return {
+    roundNumber: 1,
+    matches: [
+      {
+        matchId: BRACKET_MATCH_ID,
+        roundNumber: 1,
+        matchNumber: 1,
+        participantA: first,
+        participantB: second,
+        participantIds: [first.playerId, second.playerId],
+        status: completed ? "completed" : "ready",
+        winnerPlayerId: completed ? first.playerId : null,
+        loserPlayerId: completed ? second.playerId : null,
+        resultReason: completed ? "faint" : null,
+        completedAtMs: completed ? 1000 : null,
+      },
+    ],
+    byes: [],
+    slots: [{ kind: "match", matchId: BRACKET_MATCH_ID }],
   };
 }
 

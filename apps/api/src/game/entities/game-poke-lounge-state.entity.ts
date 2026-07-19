@@ -26,6 +26,9 @@ export class GamePokeLoungeState {
   @Column({ type: 'jsonb' })
   state: Record<string, unknown>;
 
+  @Column({ type: 'integer', default: 0 })
+  revision: number;
+
   @Column({ type: 'timestamptz', nullable: true })
   clientUpdatedAt: Date | null;
 

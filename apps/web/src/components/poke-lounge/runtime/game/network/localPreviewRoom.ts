@@ -9,8 +9,35 @@ import {
 import type { PlayerPokemonSlot } from "../player/playerTypes";
 import type { PlayerPokemon } from "../state/gameStateStore";
 import type { components } from "@/types/api";
+import type { TournamentStateRoomPayload } from "./tournament-projection";
 
-export type CompetitiveProjection = components["schemas"]["CompetitiveActionResponseDto"];
+type GeneratedCompetitiveProjection = components["schemas"]["CompetitiveActionResponseDto"];
+
+export type CompetitiveProjection = Omit<
+  GeneratedCompetitiveProjection,
+  "terminalEventId" | "terminalRoomRevision"
+> & {
+  terminalEventId?: string | null;
+  terminalRoomRevision?: number | null;
+};
+export type CompetitiveTerminalMetadataState =
+  | "not-terminal"
+  | "stable"
+  | "legacy-recovery-required";
+export interface CompetitiveProjectionParseResult {
+  projection: CompetitiveProjection;
+  terminalMetadataState: CompetitiveTerminalMetadataState;
+}
+export interface CompetitiveTerminalTransition {
+  terminalEventId: string;
+  terminalRoomRevision: number;
+  projection: CompetitiveProjection;
+}
+export interface CompetitiveRoomSnapshotContract {
+  revision: number;
+  competitiveTransitions: CompetitiveTerminalTransition[];
+  competitive?: CompetitiveProjection;
+}
 export type CompetitiveAction = components["schemas"]["CompetitiveActionDto"];
 export interface CompetitiveActionCommand {
   matchId: string;
@@ -45,6 +72,9 @@ export interface PlayerSnapshot {
 }
 
 export interface RoomEvent {
+  CONNECTION_STATUS: {
+    connectionStatus: "offline" | "connecting" | "online";
+  };
   CURRENT_PLAYERS: { players: Record<string, PlayerSnapshot> };
   PLAYER_JOINED: PlayerSnapshot;
   PLAYER_MOVED: PlayerSnapshot;
@@ -52,6 +82,7 @@ export interface RoomEvent {
   PLAYER_CHANGED_MAP: PlayerSnapshot;
   PLAYER_LEFT: { sessionId: string };
   TOURNAMENT_STARTED: TournamentStartedRoomPayload;
+  TOURNAMENT_STATE: TournamentStateRoomPayload;
   TOURNAMENT_MATCH_RESULT: TournamentMatchResultRoomPayload;
   TOURNAMENT_COMPLETED: TournamentCompletedRoomPayload;
   ROUND_SCORE_UPDATED: RoundScoreUpdatedRoomPayload;
@@ -68,6 +99,7 @@ export interface MultiplayerRoom {
   roomId: string;
   sessionId: string;
   connect(initialSnapshot?: PlayerSnapshot): void;
+  leave?(): void;
   dispose(): void;
   send<T extends RoomMessage>(type: T, payload: RoomEvent[T]): void;
   on<T extends RoomMessage>(type: T, handler: (payload: RoomEvent[T]) => void): RoomUnsubscribe;
@@ -118,6 +150,7 @@ const ROOM_MESSAGES = new Set<RoomMessage>([
   "PLAYER_CHANGED_MAP",
   "PLAYER_LEFT",
   "TOURNAMENT_STARTED",
+  "TOURNAMENT_STATE",
   "TOURNAMENT_MATCH_RESULT",
   "TOURNAMENT_COMPLETED",
   "ROUND_SCORE_UPDATED",
@@ -149,11 +182,23 @@ export function createLocalPreviewRoom(options: LocalPreviewRoomOptions = {}): M
   let connected = false;
   let disposed = false;
   let localSnapshot: PlayerSnapshot | null = null;
+  let connectionStatus: RoomEvent["CONNECTION_STATUS"]["connectionStatus"] = "offline";
+  let connectionStatusAnnounced = false;
 
   const emit = <T extends RoomMessage>(type: T, payload: RoomEvent[T]) => {
     for (const handler of handlers.get(type) ?? []) {
       handler(payload as RoomEvent[RoomMessage]);
     }
+  };
+
+  const emitConnectionStatus = (nextStatus: RoomEvent["CONNECTION_STATUS"]["connectionStatus"]) => {
+    if (connectionStatusAnnounced && connectionStatus === nextStatus) {
+      return;
+    }
+
+    connectionStatus = nextStatus;
+    connectionStatusAnnounced = true;
+    emit("CONNECTION_STATUS", { connectionStatus });
   };
 
   const postChannelMessage = (message: LocalPreviewChannelMessageBody) => {
@@ -263,8 +308,10 @@ export function createLocalPreviewRoom(options: LocalPreviewRoomOptions = {}): M
         return;
       }
 
+      emitConnectionStatus("connecting");
       ensureTransport();
       connected = true;
+      emitConnectionStatus("online");
       localSnapshot = normalizeLocalSnapshot(sessionId, initialSnapshot);
       players[sessionId] = localSnapshot;
       emit("CURRENT_PLAYERS", { players: clonePlayers(players) });
@@ -291,6 +338,7 @@ export function createLocalPreviewRoom(options: LocalPreviewRoomOptions = {}): M
         emit("PLAYER_LEFT", payload);
       }
 
+      emitConnectionStatus("offline");
       disposed = true;
       delete players[sessionId];
       transport?.close();
@@ -328,6 +376,10 @@ export function createLocalPreviewRoom(options: LocalPreviewRoomOptions = {}): M
       const nextHandlers = handlers.get(type) ?? new Set<Handler<RoomMessage>>();
       nextHandlers.add(typedHandler);
       handlers.set(type, nextHandlers);
+
+      if (type === "CONNECTION_STATUS" && connectionStatusAnnounced) {
+        typedHandler({ connectionStatus } as RoomEvent[RoomMessage]);
+      }
 
       return () => {
         nextHandlers.delete(typedHandler);

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import type { JoinPokeLoungeRoomInput } from './../poke-lounge-room.types';
 
 export class JoinPokeLoungeRoomDto implements JoinPokeLoungeRoomInput {
@@ -22,10 +22,4 @@ export class JoinPokeLoungeRoomDto implements JoinPokeLoungeRoomInput {
   @IsOptional()
   @IsString()
   displayName?: string;
-
-  @ApiPropertyOptional({ example: 1720000001000 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  nowMs?: number;
 }

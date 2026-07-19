@@ -129,28 +129,56 @@ test.describe("Poke Lounge autosave", () => {
     const result = await savePokeLoungeState(
       {
         state,
+        expectedRevision: 4,
         clientUpdatedAt: CLIENT_UPDATED_AT,
       },
       "id-token",
       {
         put: async (...args) => {
           calls.push(args);
-          return { saved: true };
+          return { revision: 5 };
         },
       },
     );
 
-    expect(result).toEqual({ success: true });
+    expect(result).toEqual({ success: true, revision: 5 });
     expect(calls).toEqual([
       [
         "/game/poke-lounge/state",
         {
           state,
+          expectedRevision: 4,
           clientUpdatedAt: CLIENT_UPDATED_AT,
         },
         {
           token: "id-token",
+          signal: expect.any(AbortSignal),
         },
+      ],
+    ]);
+  });
+
+  test("저장 서비스는 page exit 요청에 fetch keepalive를 전달한다", async () => {
+    const calls: unknown[] = [];
+
+    const result = await savePokeLoungeState(
+      { state: { marker: "page-exit" }, expectedRevision: 0 },
+      "id-token",
+      {
+        put: async (...args) => {
+          calls.push(args);
+          return { revision: 1 };
+        },
+      },
+      { keepalive: true },
+    );
+
+    expect(result).toEqual({ success: true, revision: 1 });
+    expect(calls).toEqual([
+      [
+        "/game/poke-lounge/state",
+        { state: { marker: "page-exit" }, expectedRevision: 0 },
+        { token: "id-token", keepalive: true, signal: expect.any(AbortSignal) },
       ],
     ]);
   });
@@ -181,10 +209,11 @@ test.describe("Poke Lounge autosave", () => {
       const autosave = startPokeLoungeAutosave({
         gameStateStore: store,
         token: "id-token",
+        initialRevision: loaded.revision,
         scheduler: manualScheduler.scheduler,
-        saveState: async () => {
+        saveState: async payload => {
           calls.push("PUT");
-          return { success: true };
+          return { success: true, revision: payload.expectedRevision + 1 };
         },
       });
 
@@ -196,7 +225,7 @@ test.describe("Poke Lounge autosave", () => {
 
     expect(calls).toEqual(["GET"]);
 
-    deferredGet.resolve({ state: snapshot });
+    deferredGet.resolve({ state: snapshot, revision: 3 });
     await startPromise;
 
     expect(calls).toEqual(["GET", "PUT"]);
@@ -209,10 +238,128 @@ test.describe("Poke Lounge autosave", () => {
       },
     });
 
-    expect(result).toEqual({ success: true, snapshot: null });
+    expect(result).toEqual({ success: true, snapshot: null, revision: 0 });
   });
 
-  test("재수화 중 token A 자동 저장 cleanup은 token B GET 실패 전 PUT하지 않는다", async () => {
+  test("revision이 없는 빈 성공 응답은 저장 없음으로 오인하지 않는다", async () => {
+    const result = await loadPokeLoungeState("id-token", {
+      get: async () => ({}),
+    });
+
+    expect(result).toEqual({
+      success: false,
+      unavailable: true,
+      message: "저장된 Poke Lounge revision 형식이 올바르지 않습니다.",
+    });
+  });
+
+  test("2xx state null 응답은 초기 상태로 대체하지 않고 계약 오류로 처리한다", async () => {
+    const result = await loadPokeLoungeState("id-token", {
+      get: async () => ({ state: null, revision: 5 }),
+    });
+
+    expect(result).toEqual({
+      success: false,
+      unavailable: true,
+      message: "저장된 Poke Lounge 상태가 응답에 없습니다.",
+    });
+  });
+
+  test("저장 revision 충돌은 409로 명시해 덮어쓰기를 막는다", async () => {
+    const result = await savePokeLoungeState(
+      {
+        state: { marker: "stale-device" },
+        expectedRevision: 2,
+      },
+      "id-token",
+      {
+        put: async () => {
+          throw new ApiError(409, "Poke Lounge state revision conflict");
+        },
+      },
+    );
+
+    expect(result).toMatchObject({
+      success: false,
+      conflict: true,
+      unavailable: true,
+      status: 409,
+    });
+  });
+
+  test("자동 저장 409는 stale revision 재시도를 중단하고 재수화를 한 번 요청한다", async () => {
+    const store = createGameStateStore();
+    const manualScheduler = createManualScheduler();
+    const revisions: number[] = [];
+    let conflicts = 0;
+    const autosave = startPokeLoungeAutosave({
+      gameStateStore: store,
+      token: "id-token",
+      initialRevision: 2,
+      scheduler: manualScheduler.scheduler,
+      saveState: async payload => {
+        revisions.push(payload.expectedRevision);
+        return { success: false, conflict: true, status: 409 };
+      },
+      onRevisionConflict: () => {
+        conflicts += 1;
+      },
+    });
+
+    await autosave.flush();
+    store.setStarterPokemon(createStarterPokemon());
+    manualScheduler.runNextTimeout();
+    await autosave.waitForIdle();
+
+    expect(revisions).toEqual([2]);
+    expect(conflicts).toBe(1);
+    expect(manualScheduler.timeouts).toHaveLength(0);
+    await autosave.dispose();
+    expect(revisions).toEqual([2]);
+  });
+
+  test("page exit flush는 keepalive 요청으로 마지막 상태를 전송한다", async () => {
+    const store = createGameStateStore();
+    const keepaliveValues: boolean[] = [];
+    const autosave = startPokeLoungeAutosave({
+      gameStateStore: store,
+      token: "id-token",
+      saveState: async payload => {
+        keepaliveValues.push(payload.keepalive);
+        return { success: true, revision: payload.expectedRevision + 1 };
+      },
+    });
+
+    await autosave.flush({ keepalive: true });
+    await autosave.dispose({ flush: false });
+
+    expect(keepaliveValues).toEqual([true]);
+  });
+
+  test("동일 계정 토큰 갱신은 재수화 없이 다음 저장부터 새 토큰을 사용한다", async () => {
+    const store = createGameStateStore();
+    const tokens: string[] = [];
+    let currentToken = "token-a";
+    const autosave = startPokeLoungeAutosave({
+      gameStateStore: store,
+      token: currentToken,
+      getToken: () => currentToken,
+      saveState: async payload => {
+        tokens.push(payload.token);
+        return { success: true, revision: payload.expectedRevision + 1 };
+      },
+    });
+
+    await autosave.flush();
+    currentToken = "token-a-refreshed";
+    store.setStarterPokemon(createStarterPokemon());
+    await autosave.flush();
+    await autosave.dispose({ flush: false });
+
+    expect(tokens).toEqual(["token-a", "token-a-refreshed"]);
+  });
+
+  test("계정 전환은 token A 마지막 저장을 마친 뒤 token B 상태를 조회한다", async () => {
     const calls: string[] = [];
     const tokenBGet = createDeferred<unknown>();
     const store = createGameStateStore();
@@ -221,32 +368,34 @@ test.describe("Poke Lounge autosave", () => {
       token: "token-a",
       saveState: async payload => {
         calls.push(`PUT:${payload.token}`);
-        return { success: true };
+        return { success: true, revision: payload.expectedRevision + 1 };
       },
     });
     const lifecycle = createPokeLoungeAutosaveLifecycle(autosave);
+    const tokenLifecycle = createPokeLoungeTokenLifecycle();
+    tokenLifecycle.registerAutosave(lifecycle);
 
     store.setStarterPokemon(createStarterPokemon());
-    const nextHydration = loadPokeLoungeState("token-b", {
-      get: async () => {
-        calls.push("GET:token-b");
-        return tokenBGet.promise;
-      },
+    const nextHydration = tokenLifecycle.runHydration(async () => {
+      return loadPokeLoungeState("token-b", {
+        get: async () => {
+          calls.push("GET:token-b");
+          return tokenBGet.promise;
+        },
+      });
     });
 
-    await lifecycle.disposeForRehydration();
-
-    expect(calls).toEqual(["GET:token-b"]);
+    await expect.poll(() => calls).toEqual(["PUT:token-a", "GET:token-b"]);
 
     tokenBGet.reject(new Error("network unavailable"));
     await expect(nextHydration).resolves.toMatchObject({ success: false, unavailable: true });
-    expect(calls).toEqual(["GET:token-b"]);
+    expect(calls).toEqual(["PUT:token-a", "GET:token-b"]);
   });
 
   test("token B hydration은 token A의 진행 중인 PUT이 끝난 뒤 최종 서버 상태를 조회한다", async () => {
     const calls: string[] = [];
     const store = createGameStateStore();
-    const tokenAPut = createDeferred<{ success: true }>();
+    const tokenAPut = createDeferred<{ success: true; revision: number }>();
     let serverSnapshot = buildPokeLoungeSaveSnapshot(store);
     const autosave = startPokeLoungeAutosave({
       gameStateStore: store,
@@ -255,7 +404,7 @@ test.describe("Poke Lounge autosave", () => {
         calls.push("PUT:token-a");
         await tokenAPut.promise;
         serverSnapshot = payload.snapshot;
-        return { success: true };
+        return { success: true, revision: payload.expectedRevision + 1 };
       },
     });
     const lifecycle = createPokeLoungeAutosaveLifecycle(autosave);
@@ -269,7 +418,7 @@ test.describe("Poke Lounge autosave", () => {
     const hydrationPromise = tokenLifecycle.runHydration(async () => {
       calls.push("GET:token-b");
       const loaded = await loadPokeLoungeState("token-b", {
-        get: async () => ({ state: serverSnapshot }),
+        get: async () => ({ state: serverSnapshot, revision: 1 }),
       });
       if (loaded.success && loaded.snapshot) {
         store.hydrateLocalPlayers(loaded.snapshot.state);
@@ -279,11 +428,11 @@ test.describe("Poke Lounge autosave", () => {
     await Promise.resolve();
     expect(calls).toEqual(["PUT:token-a"]);
 
-    tokenAPut.resolve({ success: true });
+    tokenAPut.resolve({ success: true, revision: 1 });
     await Promise.all([putPromise, hydrationPromise]);
 
-    expect(calls).toEqual(["PUT:token-a", "GET:token-b"]);
-    expect(store.getState().playersById["player-1"]?.party[0]?.pokemon?.name).toBe("리아코");
+    expect(calls).toEqual(["PUT:token-a", "PUT:token-a", "GET:token-b"]);
+    expect(store.getState().playersById["player-1"]?.party[0]?.pokemon?.name).toBe("치코리타");
   });
 
   test("정상 unmount lifecycle은 마지막 자동 저장을 유지한다", async () => {
@@ -294,7 +443,7 @@ test.describe("Poke Lounge autosave", () => {
       token: "token-a",
       saveState: async payload => {
         saves.push(payload.token);
-        return { success: true };
+        return { success: true, revision: payload.expectedRevision + 1 };
       },
     });
     const lifecycle = createPokeLoungeAutosaveLifecycle(autosave);
@@ -311,9 +460,9 @@ test.describe("Poke Lounge autosave", () => {
     const autosave = startPokeLoungeAutosave({
       gameStateStore: store,
       token: "token-a",
-      saveState: async () => {
+      saveState: async payload => {
         calls.push("PUT:token-a");
-        return { success: true };
+        return { success: true, revision: payload.expectedRevision + 1 };
       },
     });
     const lifecycle = createPokeLoungeAutosaveLifecycle(autosave);
@@ -332,8 +481,8 @@ test.describe("Poke Lounge autosave", () => {
   test("실제 remount hydration은 이전 인스턴스의 진행 중 PUT과 unmount flush를 기다린다", async () => {
     const calls: string[] = [];
     const store = createGameStateStore();
-    const firstPut = createDeferred<{ success: true }>();
-    const finalPut = createDeferred<{ success: true }>();
+    const firstPut = createDeferred<{ success: true; revision: number }>();
+    const finalPut = createDeferred<{ success: true; revision: number }>();
     let putCount = 0;
     const firstInstanceLifecycle = getPokeLoungeTokenLifecycle();
     const autosave = startPokeLoungeAutosave({
@@ -361,11 +510,11 @@ test.describe("Poke Lounge autosave", () => {
     await Promise.resolve();
     expect(calls).toEqual(["PUT:1"]);
 
-    firstPut.resolve({ success: true });
+    firstPut.resolve({ success: true, revision: 1 });
     await inFlightPut;
     await expect.poll(() => calls).toEqual(["PUT:1", "PUT:2"]);
 
-    finalPut.resolve({ success: true });
+    finalPut.resolve({ success: true, revision: 2 });
     await hydration;
 
     expect(calls).toEqual(["PUT:1", "PUT:2", "GET:token-a"]);
@@ -408,6 +557,7 @@ test.describe("Poke Lounge autosave", () => {
           game: "poke-lounge",
           state: { currentPlayerId: "player-1" },
         },
+        expectedRevision: 0,
         clientUpdatedAt: CLIENT_UPDATED_AT,
       },
       undefined,
@@ -436,7 +586,7 @@ test.describe("Poke Lounge autosave", () => {
       getClientUpdatedAt: () => CLIENT_UPDATED_AT,
       saveState: async payload => {
         saves.push(payload);
-        return { success: true };
+        return { success: true, revision: payload.expectedRevision + 1 };
       },
     });
 
@@ -452,6 +602,7 @@ test.describe("Poke Lounge autosave", () => {
     expect(saves).toHaveLength(1);
     expect(saves[0]).toMatchObject({
       token: "id-token",
+      expectedRevision: 0,
       clientUpdatedAt: CLIENT_UPDATED_AT,
       snapshot: {
         version: POKE_LOUNGE_SAVE_SNAPSHOT_VERSION,
@@ -465,6 +616,7 @@ test.describe("Poke Lounge autosave", () => {
     expect(saves).toHaveLength(2);
     expect(saves[1]).toMatchObject({
       token: "id-token",
+      expectedRevision: 1,
       clientUpdatedAt: CLIENT_UPDATED_AT,
       snapshot: {
         state: {
@@ -484,10 +636,54 @@ test.describe("Poke Lounge autosave", () => {
     });
   });
 
+  test("자동 저장 상태를 대기·저장 중·완료 순서로 알린다", async () => {
+    const store = createGameStateStore();
+    const manualScheduler = createManualScheduler();
+    const statuses: string[] = [];
+    const autosave = startPokeLoungeAutosave({
+      gameStateStore: store,
+      token: "id-token",
+      scheduler: manualScheduler.scheduler,
+      saveState: async payload => ({
+        success: true,
+        revision: payload.expectedRevision + 1,
+      }),
+      onStatusChange: status => statuses.push(status),
+    });
+
+    expect(statuses).toEqual(["idle"]);
+
+    store.setStarterPokemon(createStarterPokemon());
+    expect(statuses).toEqual(["idle", "pending"]);
+
+    manualScheduler.runNextTimeout();
+    await autosave.waitForIdle();
+
+    expect(statuses).toEqual(["idle", "pending", "saving", "saved"]);
+    await autosave.dispose({ flush: false });
+  });
+
+  test("자동 저장 요청 예외는 실패 상태로 알리고 다음 저장 대상으로 유지한다", async () => {
+    const store = createGameStateStore();
+    const statuses: string[] = [];
+    const autosave = startPokeLoungeAutosave({
+      gameStateStore: store,
+      token: "id-token",
+      saveState: async () => {
+        throw new Error("network unavailable");
+      },
+      onStatusChange: status => statuses.push(status),
+    });
+
+    await expect(autosave.flush()).resolves.toBeUndefined();
+    expect(statuses).toEqual(["idle", "saving", "error"]);
+    await autosave.dispose({ flush: false });
+  });
+
   test("in-flight 저장 중 dispose하면 dispose 시점 스냅샷을 마지막으로 저장한다", async () => {
     const store = createGameStateStore();
     const manualScheduler = createManualScheduler();
-    const firstSave = createDeferred<{ success: true }>();
+    const firstSave = createDeferred<{ success: true; revision: number }>();
     const saves: unknown[] = [];
     const autosave = startPokeLoungeAutosave({
       gameStateStore: store,
@@ -498,7 +694,9 @@ test.describe("Poke Lounge autosave", () => {
       getClientUpdatedAt: () => CLIENT_UPDATED_AT,
       saveState: payload => {
         saves.push(payload);
-        return saves.length === 1 ? firstSave.promise : Promise.resolve({ success: true });
+        return saves.length === 1
+          ? firstSave.promise
+          : Promise.resolve({ success: true, revision: payload.expectedRevision + 1 });
       },
     });
 
@@ -509,11 +707,12 @@ test.describe("Poke Lounge autosave", () => {
     const disposePromise = autosave.dispose();
 
     store.updateActivePokemon(createStarterPokemon("치코리타"));
-    firstSave.resolve({ success: true });
+    firstSave.resolve({ success: true, revision: 1 });
     await disposePromise;
 
     expect(saves).toHaveLength(2);
     expect(saves[1]).toMatchObject({
+      expectedRevision: 1,
       snapshot: {
         state: {
           playersById: {

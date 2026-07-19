@@ -57,7 +57,7 @@ export class CompetitiveMatchService {
       roomCode: roomCode.trim().toUpperCase(),
       sessionId: sessionId.trim(),
       accountId: accountId.trim(),
-      createAssignment,
+      createAssignment: createCompetitiveAssignment,
     });
 
     if (!('assignment' in result)) {
@@ -110,12 +110,19 @@ export class CompetitiveMatchService {
 
     if (result.committed) {
       try {
+        const snapshot = toPokeLoungePublicRoomState(result.room);
+        if (
+          !snapshot.competitive &&
+          result.response.status !== 'completed' &&
+          (snapshot.tournament.activeMatchId === null ||
+            snapshot.tournament.activeMatchId ===
+              result.response.bracketMatchId)
+        ) {
+          snapshot.competitive = result.response;
+        }
         await this.eventPublisher.publish({
           type: 'competitive-action-committed',
-          snapshot: {
-            ...toPokeLoungePublicRoomState(result.room),
-            competitive: result.response,
-          },
+          snapshot,
         });
       } catch (error) {
         this.logger.error(
@@ -144,7 +151,7 @@ function throwActionError(outcome: CompetitiveActionFailure): never {
   });
 }
 
-function createAssignment(
+export function createCompetitiveAssignment(
   context: CompetitiveAssignmentCreateContext,
 ): CompetitiveMatchAssignment {
   const initialState = createInitialBattleState(
@@ -165,6 +172,8 @@ function createAssignment(
     currentStateHash: initialStateHash,
     currentTurn: initialState.turn,
     status: 'pending',
+    terminalEventId: null,
+    terminalRoomRevision: null,
     terminalResult: null,
     completedAt: null,
   };

@@ -25,8 +25,15 @@ import {
   type ShopItemId,
 } from "../state/gameStateStore";
 import { createGameTextStyle } from "../ui/gameTextStyle";
-import { createShortcutGuideRows, createShortcutGuideTitle } from "../ui/shortcutGuide";
-import { FIELD_MAP } from "../world/fieldMap";
+import { dispatchPokeLoungeAccessibleStatus } from "../ui/poke-lounge-ui-events";
+import {
+  createInventoryControlFooter,
+  createShortcutGuideFooter,
+  createShortcutGuideRows,
+  createShortcutGuideTitle,
+  type ShortcutGuideInputMode,
+} from "../ui/shortcutGuide";
+import { FIELD_MAP, resolveFieldEncounterAreaId } from "../world/fieldMap";
 import { formatPokemonHp, formatPokeDollars } from "./world-scene-hud";
 import type { ObjectLayerLookup, WorldE2eSnapshot } from "./WorldScene";
 
@@ -55,6 +62,14 @@ const INVENTORY_ITEM_CATEGORIES: Record<string, (typeof INVENTORY_CATEGORY_LABEL
 type ShopKind = "basic" | "premium";
 type KnownShopItemId = ShopItemId | PremiumShopItemId;
 type PcBoxFocus = "party" | "box";
+type InventoryFocus = "items" | "party";
+
+const FIELD_AREA_LABELS: Record<string, string> = {
+  "town-west-field": "라운지 마을 · 서쪽 야생초원",
+  "town-plaza-field": "라운지 마을 · 중앙 광장",
+  "town-south-field": "라운지 마을 · 남쪽 산책로",
+};
+const FIELD_AREA_ANNOUNCEMENT_DURATION_MS = 1_800;
 
 export type WorldSceneCursorMap = Phaser.Types.Input.Keyboard.CursorKeys & {
   w: Phaser.Input.Keyboard.Key;
@@ -167,6 +182,16 @@ function clampSelectionIndex(index: number, itemCount: number): number {
   return Math.max(0, Math.min(itemCount - 1, index));
 }
 
+export function getShortcutGuideInputMode(): ShortcutGuideInputMode {
+  if (typeof document === "undefined") {
+    return "keyboard";
+  }
+
+  return document.querySelector(".has-touch-game-device [data-mobile-touch-controls]")
+    ? "touch"
+    : "keyboard";
+}
+
 class DefaultWorldSceneInteractions implements WorldSceneInteractionsController {
   private cursors!: WorldSceneCursorMap;
   private interactionKeys: InteractionKeys | null = null;
@@ -183,7 +208,9 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   private shopMessage = "";
   private shopUiObjects: Phaser.GameObjects.GameObject[] = [];
   private inventoryOpen = false;
+  private inventoryFocus: InventoryFocus = "items";
   private inventorySelectedIndex = 0;
+  private inventoryPartySlotIndex = 0;
   private inventoryMessage = "";
   private inventoryUiObjects: Phaser.GameObjects.GameObject[] = [];
   private pcBoxOpen = false;
@@ -199,6 +226,11 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   private diceGambleSelectedIndex = 0;
   private diceGambleMessage = "";
   private diceGambleUiObjects: Phaser.GameObjects.GameObject[] = [];
+  private fieldHintText = "";
+  private fieldHintObject: Phaser.GameObjects.Text | null = null;
+  private lastEncounterAreaId: string | null | undefined;
+  private areaAnnouncementExpiresAt = 0;
+  private areaAnnouncementObject: Phaser.GameObjects.Text | null = null;
 
   readonly test: Readonly<WorldSceneInteractionsTestFacade>;
 
@@ -325,6 +357,13 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     this.nurseMessageObject?.destroy();
     this.nurseMessageObject = null;
     this.nurseMessage = "";
+    this.fieldHintObject?.destroy();
+    this.fieldHintObject = null;
+    this.fieldHintText = "";
+    this.areaAnnouncementObject?.destroy();
+    this.areaAnnouncementObject = null;
+    this.areaAnnouncementExpiresAt = 0;
+    this.lastEncounterAreaId = undefined;
   }
 
   private selectDiceGamblePrediction(prediction: DiceGamblePrediction): void {
@@ -356,16 +395,43 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
 
     const interactionKeys = this.interactionKeys;
     const closeRequested =
-      consumeVirtualGamepadPress("confirm") ||
       consumeVirtualGamepadPress("back") ||
       (interactionKeys &&
-        (Phaser.Input.Keyboard.JustDown(interactionKeys.enter) ||
-          Phaser.Input.Keyboard.JustDown(interactionKeys.space) ||
-          Phaser.Input.Keyboard.JustDown(interactionKeys.z) ||
+        (Phaser.Input.Keyboard.JustDown(interactionKeys.esc) ||
           Phaser.Input.Keyboard.JustDown(interactionKeys.backspace)));
 
     if (closeRequested) {
+      playBattleCancelSound();
       this.closePokemonStatusPanel();
+      return;
+    }
+
+    const confirmRequested =
+      consumeVirtualGamepadPress("confirm") ||
+      (interactionKeys &&
+        (Phaser.Input.Keyboard.JustDown(interactionKeys.enter) ||
+          Phaser.Input.Keyboard.JustDown(interactionKeys.space) ||
+          Phaser.Input.Keyboard.JustDown(interactionKeys.z)));
+
+    if (!confirmRequested) {
+      return;
+    }
+
+    const snapshot = this.dependencies.getPokemonStatusPanelSnapshot();
+
+    if (!snapshot) {
+      return;
+    }
+
+    const localPlayer = this.gameStateStore.getCurrentLocalPlayer();
+
+    if (
+      snapshot.slotIndex !== localPlayer.activePartySlotIndex &&
+      snapshot.status !== "fainted" &&
+      this.gameStateStore.setActivePartySlot(snapshot.slotIndex).ok
+    ) {
+      playBattleConfirmSound();
+      this.renderPartyHud();
     }
   }
 
@@ -443,6 +509,8 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   }
 
   private handleFieldInteractionInput(): void {
+    this.updateFieldGuidance();
+
     const keyboard = this.input.keyboard;
 
     if (keyboard) {
@@ -539,13 +607,20 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
 
     if (
       consumeVirtualGamepadPress("bag") ||
+      Phaser.Input.Keyboard.JustDown(interactionKeys.inventory)
+    ) {
+      playBattleCancelSound();
+      this.closeInventory();
+      return;
+    }
+
+    if (
       consumeVirtualGamepadPress("back") ||
-      Phaser.Input.Keyboard.JustDown(interactionKeys.inventory) ||
       Phaser.Input.Keyboard.JustDown(interactionKeys.esc) ||
       Phaser.Input.Keyboard.JustDown(interactionKeys.backspace)
     ) {
       playBattleCancelSound();
-      this.closeInventory();
+      this.cancelInventorySelection();
     }
   }
 
@@ -743,6 +818,109 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     if (this.isPlayerNearGamehost(playerPosition)) {
       this.openDiceGamble();
     }
+  }
+
+  private updateFieldGuidance(nowMs = Date.now()): void {
+    const playerPosition = this.dependencies.getPlayerPosition();
+
+    if (!playerPosition) {
+      this.renderFieldHint("");
+      return;
+    }
+
+    if (this.areaAnnouncementObject && nowMs >= this.areaAnnouncementExpiresAt) {
+      this.areaAnnouncementObject.destroy();
+      this.areaAnnouncementObject = null;
+      this.areaAnnouncementExpiresAt = 0;
+    }
+
+    const areaId = resolveFieldEncounterAreaId(playerPosition);
+
+    if (areaId !== this.lastEncounterAreaId) {
+      this.lastEncounterAreaId = areaId;
+
+      if (areaId && FIELD_AREA_LABELS[areaId]) {
+        this.renderAreaAnnouncement(FIELD_AREA_LABELS[areaId], nowMs);
+      }
+    }
+
+    this.renderFieldHint(this.getNearbyInteractionHint(playerPosition));
+  }
+
+  private getNearbyInteractionHint(playerPosition: WorldScenePlayerPosition): string {
+    if (this.isPlayerNearShopkeeper(playerPosition)) {
+      return "A / Enter · 기본 상점";
+    }
+
+    if (this.isPlayerNearPremiumShopkeeper(playerPosition)) {
+      return "A / Enter · 희귀 상점";
+    }
+
+    if (this.isPlayerNearStoragePc(playerPosition)) {
+      return "A / Enter · PC 박스";
+    }
+
+    if (this.isPlayerNearNurse(playerPosition)) {
+      return "A / Enter · 파티 회복";
+    }
+
+    if (this.isPlayerNearGamehost(playerPosition)) {
+      return "A / Enter · 주사위 겜블";
+    }
+
+    return "";
+  }
+
+  private renderFieldHint(nextText: string): void {
+    if (this.fieldHintText === nextText) {
+      return;
+    }
+
+    this.fieldHintObject?.destroy();
+    this.fieldHintObject = null;
+    this.fieldHintText = nextText;
+
+    if (!nextText) {
+      return;
+    }
+
+    this.fieldHintObject = this.add
+      .text(
+        Math.round(this.getViewportSize().width / 2),
+        this.getViewportSize().height - 44,
+        nextText,
+        createGameTextStyle({
+          align: "center",
+          color: "#fff9dd",
+          fontSize: "12px",
+          stroke: "#263238",
+          strokeThickness: 5,
+        }),
+      )
+      .setOrigin(0.5, 0)
+      .setScrollFactor(0)
+      .setDepth(1750);
+  }
+
+  private renderAreaAnnouncement(label: string, nowMs: number): void {
+    this.areaAnnouncementObject?.destroy();
+    this.areaAnnouncementExpiresAt = nowMs + FIELD_AREA_ANNOUNCEMENT_DURATION_MS;
+    this.areaAnnouncementObject = this.add
+      .text(
+        Math.round(this.getViewportSize().width / 2),
+        78,
+        label,
+        createGameTextStyle({
+          align: "center",
+          color: "#fff9dd",
+          fontSize: "14px",
+          stroke: "#263238",
+          strokeThickness: 5,
+        }),
+      )
+      .setOrigin(0.5, 0)
+      .setScrollFactor(0)
+      .setDepth(1760);
   }
 
   private isPlayerNearShopkeeper(playerPosition: WorldScenePlayerPosition): boolean {
@@ -1075,19 +1253,55 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
 
   private openInventory(): void {
     this.inventoryOpen = true;
+    this.inventoryFocus = "items";
     this.inventorySelectedIndex = 0;
+    this.inventoryPartySlotIndex = this.gameStateStore.getCurrentLocalPlayer().activePartySlotIndex;
     this.inventoryMessage = "";
     this.renderInventoryUi();
   }
 
   private closeInventory(): void {
     this.inventoryOpen = false;
+    this.inventoryFocus = "items";
     this.inventoryMessage = "";
     this.destroyInventoryUi();
+    dispatchPokeLoungeAccessibleStatus(document, "필드 탐색");
+  }
+
+  private cancelInventorySelection(): void {
+    if (this.inventoryFocus === "party") {
+      this.inventoryFocus = "items";
+      this.inventoryMessage = "";
+      this.renderInventoryUi();
+      return;
+    }
+
+    this.closeInventory();
   }
 
   private moveInventorySelection(delta: number): void {
+    if (this.inventoryFocus === "party") {
+      const targetSlotIndices = this.getInventoryTargetSlotIndices();
+
+      if (targetSlotIndices.length === 0) {
+        return;
+      }
+
+      const currentIndex = Math.max(0, targetSlotIndices.indexOf(this.inventoryPartySlotIndex));
+      const nextIndex =
+        (currentIndex + delta + targetSlotIndices.length) % targetSlotIndices.length;
+      this.inventoryPartySlotIndex = targetSlotIndices[nextIndex];
+      this.inventoryMessage = "";
+      this.renderInventoryUi();
+      return;
+    }
+
     const itemIds = this.getInventoryItemIds();
+
+    if (itemIds.length === 0) {
+      return;
+    }
+
     this.inventorySelectedIndex =
       (this.inventorySelectedIndex + delta + itemIds.length) % itemIds.length;
     this.inventoryMessage = "";
@@ -1098,13 +1312,56 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     const itemIds = this.getInventoryItemIds();
     const itemId = itemIds[this.inventorySelectedIndex] ?? itemIds[0];
     const localPlayer = this.gameStateStore.getCurrentLocalPlayer();
+
+    if (!itemId) {
+      this.inventoryMessage = "사용할 아이템이 없다.";
+      this.renderInventoryUi();
+      return;
+    }
+
+    const item = this.getKnownShopItem(itemId);
+
+    if (this.inventoryFocus === "items") {
+      if ((localPlayer.inventory[itemId] ?? 0) <= 0) {
+        this.inventoryMessage = `${item?.displayName ?? "아이템"}이 없다!`;
+        this.renderInventoryUi();
+        return;
+      }
+
+      const targetSlotIndices = this.getInventoryTargetSlotIndices();
+
+      if (targetSlotIndices.length === 0) {
+        this.inventoryMessage = "대상 포켓몬이 없다.";
+        this.renderInventoryUi();
+        return;
+      }
+
+      this.inventoryFocus = "party";
+      this.inventoryPartySlotIndex = targetSlotIndices.includes(localPlayer.activePartySlotIndex)
+        ? localPlayer.activePartySlotIndex
+        : targetSlotIndices[0];
+      this.inventoryMessage = `${item?.displayName ?? "아이템"}을 사용할 대상을 선택해라.`;
+      this.renderInventoryUi();
+      return;
+    }
+
     const result = this.gameStateStore.useInventoryItemOnPartySlot(
       itemId,
-      localPlayer.activePartySlotIndex,
+      this.inventoryPartySlotIndex,
     );
 
     this.inventoryMessage = result.ok ? (result.messages.at(-1) ?? "") : result.message;
+    if (result.ok) {
+      this.renderPartyHud();
+    }
     this.renderInventoryUi();
+  }
+
+  private getInventoryTargetSlotIndices(): number[] {
+    return this.gameStateStore
+      .getCurrentLocalPlayer()
+      .party.filter(slot => slot.pokemon)
+      .map(slot => slot.slotIndex);
   }
 
   private renderInventoryUi(): void {
@@ -1288,7 +1545,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
         .text(
           x(392),
           y(82),
-          "선택 항목",
+          this.inventoryFocus === "party" ? "대상 포켓몬" : "선택 항목",
           createGameTextStyle({
             color: "#607d6c",
             fontSize: "10px",
@@ -1328,7 +1585,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
         .text(
           x(392),
           y(140),
-          selectedItem?.description ?? "",
+          this.inventoryFocus === "items" ? (selectedItem?.description ?? "") : "",
           createGameTextStyle({
             color: "#263238",
             fontSize: "11px",
@@ -1342,20 +1599,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
         .text(
           x(22),
           y(INVENTORY_PANEL_SIZE.height - 30),
-          "I 닫기 · ↑↓ 선택",
-          createGameTextStyle({
-            color: "#607d6c",
-            fontSize: "11px",
-          }),
-        )
-        .setOrigin(0, 0)
-        .setScrollFactor(0)
-        .setDepth(2102),
-      this.add
-        .text(
-          x(188),
-          y(INVENTORY_PANEL_SIZE.height - 30),
-          "Enter 사용",
+          createInventoryControlFooter(this.inventoryFocus, getShortcutGuideInputMode()),
           createGameTextStyle({
             color: "#607d6c",
             fontSize: "11px",
@@ -1381,6 +1625,73 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(2102),
+    );
+
+    if (this.inventoryFocus === "party") {
+      this.getInventoryTargetSlotIndices().forEach((slotIndex, index) => {
+        const pokemon = this.getPartyPokemonBySlotIndex(slotIndex);
+
+        if (!pokemon) {
+          return;
+        }
+
+        const selected = slotIndex === this.inventoryPartySlotIndex;
+        const rowY = y(140 + index * 17);
+
+        if (selected) {
+          const targetHighlight = this.add
+            .rectangle(x(382), rowY - 3, 144, 16, 0xfff4a3, 0.95)
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(2101);
+          targetHighlight.setStrokeStyle(1, 0x263238, 0.65);
+          this.inventoryUiObjects.push(targetHighlight);
+        }
+
+        this.inventoryUiObjects.push(
+          this.add
+            .text(
+              x(388),
+              rowY,
+              `${selected ? "▶" : " "} ${pokemon.name}`,
+              createGameTextStyle({
+                color: selected ? "#101820" : "#263238",
+                fontSize: "9px",
+              }),
+            )
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(2102),
+          this.add
+            .text(
+              x(522),
+              rowY,
+              this.formatPokemonHp(pokemon),
+              createGameTextStyle({
+                align: "right",
+                color: pokemon.status === "fainted" ? "#b71c1c" : "#455a64",
+                fontSize: "8px",
+              }),
+            )
+            .setOrigin(1, 0)
+            .setScrollFactor(0)
+            .setDepth(2102),
+        );
+      });
+    }
+
+    const selectedTarget =
+      this.inventoryFocus === "party"
+        ? this.getPartyPokemonBySlotIndex(this.inventoryPartySlotIndex)
+        : null;
+    const accessibleSelection = selectedTarget
+      ? `가방 대상 ${selectedTarget.name}, HP ${formatPokemonHp(selectedTarget)}.`
+      : selectedItem
+        ? `가방 ${selectedItem.displayName}, 보유 ${localPlayer.inventory[selectedItem.id] ?? 0}개.`
+        : "가방에 사용할 아이템이 없습니다.";
+    dispatchPokeLoungeAccessibleStatus(
+      document,
+      `${accessibleSelection} ${this.inventoryMessage}`.trim(),
     );
   }
 
@@ -1766,6 +2077,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     this.destroyShortcutGuideUi();
 
     const viewport = this.getViewportSize();
+    const inputMode = getShortcutGuideInputMode();
     const panelOrigin = getCenteredPanelOrigin(SHORTCUT_GUIDE_PANEL_SIZE, viewport);
     const x = (offset: number) => panelOrigin.x + offset;
     const y = (offset: number) => panelOrigin.y + offset;
@@ -1794,7 +2106,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
         .text(
           x(24),
           y(18),
-          createShortcutGuideTitle("world"),
+          createShortcutGuideTitle("world", inputMode),
           createGameTextStyle({
             color: "#263238",
             fontSize: "18px",
@@ -1810,7 +2122,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
         .setDepth(2202),
     );
 
-    createShortcutGuideRows("world").forEach((row, index) => {
+    createShortcutGuideRows("world", inputMode).forEach((row, index) => {
       const rowY = y(72 + index * 28);
 
       this.shortcutGuideUiObjects.push(
@@ -1848,7 +2160,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
         .text(
           x(24),
           y(SHORTCUT_GUIDE_PANEL_SIZE.height - 34),
-          "클릭 / Enter / H 닫기",
+          createShortcutGuideFooter(inputMode),
           createGameTextStyle({
             color: "#607d6c",
             fontSize: "11px",

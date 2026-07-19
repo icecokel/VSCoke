@@ -497,7 +497,7 @@
                   "Unified execution and deployment specifications across 4 frontend projects with different conventions and frameworks, leaving a shared reference for teammates joining another project.",
                   "Automated core user-flow verification with Playwright E2E tests across Chrome, Edge, Safari (WebKit), and key viewport sizes.",
                   "Used Husky pre-push checks to block typecheck and build failures from reaching remote branches.",
-                  "Connected project guidance and concept documents to repository skills, hooks, and PR rules so the team could develop and review against the same standards."
+                  "Connected project-specific guidance and concept documents with repository Skills, Hooks, PR review, and automated validation so AI development assistants would not arbitrarily interpret medical and clinical terms or screen state."
                 ]
               }
             ]
@@ -522,39 +522,40 @@
                   "Shifted the responsive customer-facing web to a mobile single-column layout with top and bottom navigation even on desktop, while keeping the operator dashboard on its existing desktop layout.",
                   "Handled product, order, payment, gifting, draw, and account flows and connected view, favorite, signup, and purchase actions to GA4 and GTM events.",
                   "Collected translation keys for four languages from code and synchronized Google Sheets with translation files in both directions.",
-                  "Migrated a Flutter Web back office to Next.js.",
+                  "The existing Flutter Web back office made web operations requests and follow-up difficult, and a frontend handoff became necessary as the app developer focused on a new app. I solely handled the frontend implementation of the Next.js migration, moved product and seller-approval features, and later added banner and search-keyword management.",
                   "Applied search reset, CSV and Excel export, drag sorting, and shared table and dialog components to product, seller approval, order, claim, settlement, and inquiry screens."
                 ]
               }
             ]
           },
           "subtitleSystem": {
-            "title": "AI Subtitle Translation and Content Operations Automation",
+            "title": "Moved Repetitive Content Operations into Web Tools",
             "period": "2025.02 - 2025.07",
             "descriptions": [
               {
-                "subtitle": "Moved repetitive operations into web tools",
-                "detail": "Turned repetitive operational work into web tools that operators use directly.",
+                "subtitle": "Moved repetitive content operations into web tools",
+                "detail": "Turned repetitive subtitle translation and unauthorized-content checks into web tools that operators could run directly and review the results in.",
                 "skills": "Node.js, TypeScript, Express, AWS Bedrock, OpenAI API, Google Cloud Translation, Axios, Cheerio, Vercel Serverless Functions",
                 "tasks": [
-                  "Moved a developer-run subtitle translation CLI to a web tool where operators could handle files, prompts, review, and character matching end to end.",
-                  "Applied chunked and parallel translation, retry handling, and checks for subtitle counts, omissions, and timing.",
+                  "Moved a developer-run AI subtitle translation CLI into the Shortime back office as a web tool where the operations team could handle files, prompts, review, and character matching end to end.",
+                  "Translated subtitles in parallel chunks, retried failed targets, and checked subtitle counts, omissions, timelines, and response formats.",
                   "Changed translation throughput from 3 people handling 1-2 works a day to 1 person handling 6-8 works a day; the system is still in use.",
-                  "Moved browser-blocked search to a Node.js server and automated search across three platforms with similar-title filtering, reducing a 50-minute daily check to under 10 minutes."
+                  "Replaced the operations team's daily repetition of platform-by-platform keyword searches with a web tool for keyword registration and batch search across three platforms. Reviewing similar-title candidates on one screen reduced a roughly 50-minute daily check to under 10 minutes."
                 ]
               }
             ]
           },
           "shortimePlayground": {
-            "title": "Mobile WebView Product",
+            "title": "Mobile WebView Playground Decoupled from App Release Cycles",
             "period": "2024.09 - 2025.04",
             "descriptions": [
               {
-                "subtitle": "An independently deployable content-update structure",
-                "detail": "Designed a Playground from the start so events, fortune content, games, and draws could be added independently of app releases.",
+                "subtitle": "Mobile WebView Playground decoupled from app release cycles",
+                "detail": "The app needed reasons for users to return between video releases, but patches to event and entertainment pages were tied to the app release cycle. I researched related references, proposed a WebView-based event and game area, and the game flow demonstrated in the prototype was adopted as a real feature.",
                 "skills": "Next.js, React, TypeScript, Tailwind CSS, Phaser, Next Intl, Flutter InAppWebView, Web Audio API, Airbridge, Branch.io",
                 "tasks": [
-                  "Separated features into domain units so content could be updated independently of app releases.",
+                  "Owned product planning and frontend project setup, development, and operations, and first migrated the existing fortune and event features. I collaborated with the responsible developers on the Flutter event bridge and game API.",
+                  "About 2,500-3,000 people participated in games each week according to the weekly ranking.",
                   "Connected Flutter WebView communication, deep links, and reward ads, and blocked duplicate input and screen transitions after abnormal responses during game-result submission.",
                   "Handled keyboard, focus, safe-area, theme, and audio differences across Chrome, Safari, and Samsung Internet."
                 ]
@@ -586,14 +587,16 @@
         "role": "Frontend Developer",
         "projects": {
           "insuranceSubscription": {
-            "title": "Insurance Subscription Web Performance",
+            "title": "Insurance Subscription Performance Migration Driven by Customer Signals",
             "period": "2023.03 - 2023.04",
             "descriptions": [
               {
-                "subtitle": "Insurance Subscription Web Performance",
+                "subtitle": "Insurance subscription performance migration driven by customer signals",
+                "detail": "A loader and blank screen persisted for about five seconds when entering an insurance subscription modal distributed to multiple customers by CDN in the Japanese environment.",
                 "skills": "React, Next.js, TypeScript, Redux, Context API",
                 "tasks": [
-                  "Removed nested callbacks from a React subscription screen that took up to 5 seconds to render, migrated it to Next.js, and achieved a 1.2-second LCP."
+                  "Treated a Japanese customer's request for improvement as a potential drop-off risk before subscription began. I first removed nested callbacks, then migrated the subscription flow I owned to Next.js based on its room for further improvement and low migration cost.",
+                  "Compared FCP and LCP locally in Korea and confirmed a 1.2-second LCP for the migrated version, then deployed after re-verification by the team in Japan and confirmation from the customer."
                 ]
               }
             ]

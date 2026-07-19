@@ -62,7 +62,10 @@ test.describe("딥링크 직접 진입", () => {
       page.getByText("결과 제출 중에는 게임 터치 입력을 막아", { exact: false }),
     ).toBeVisible();
     await expect(
-      page.getByText("게임 배포 약 2주 뒤 한 주 동안 약 1,000명", { exact: false }),
+      page.getByText("프로토타입으로 시연한 게임 흐름이 실제 기능으로 채택", { exact: false }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("주간 랭킹 기준 매주 약 2,500~3,000명", { exact: false }),
     ).toBeVisible();
   });
 });

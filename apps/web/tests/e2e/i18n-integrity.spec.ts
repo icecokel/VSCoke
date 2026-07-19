@@ -48,6 +48,9 @@ interface ResumeCopyMessages {
           };
           shortimePlayground: {
             title: string;
+            descriptions: Array<{
+              tasks?: string[];
+            }>;
           };
           freebootingFinder: {
             title: string;
@@ -166,33 +169,38 @@ test.describe("i18n 무결성", () => {
     expect(koMessages.resume.careers.oprimed.role).toBe("서비스 개발자 · 팀장");
     expect(enMessages.resume.careers.oprimed.role).toBe("Service Developer · Team Lead");
     expect(jaMessages.resume.careers.oprimed.role).toBe("サービス開発者 · チームリーダー");
+    expect(
+      koMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions[1]?.tasks?.at(
+        -1,
+      ),
+    ).toContain("의료·임상 용어와 화면 상태");
 
     expect(koMessages.resume.careers.codecrayon.projects.commerceBackoffice.title).toBe(
       "커머스·백오피스",
     );
     expect(koMessages.resume.careers.codecrayon.projects.subtitleSystem.title).toBe(
-      "AI 자막 번역과 콘텐츠 운영 자동화",
+      "운영팀의 반복 콘텐츠 업무를 웹 도구로 전환",
     );
     expect(koMessages.resume.careers.codecrayon.projects.shortimePlayground.title).toBe(
-      "모바일 웹뷰 제품",
+      "앱 배포 주기와 분리한 모바일 WebView Playground",
     );
     expect(enMessages.resume.careers.codecrayon.projects.commerceBackoffice.title).toBe(
       "Commerce and Back-office",
     );
     expect(enMessages.resume.careers.codecrayon.projects.subtitleSystem.title).toBe(
-      "AI Subtitle Translation and Content Operations Automation",
+      "Moved Repetitive Content Operations into Web Tools",
     );
     expect(enMessages.resume.careers.codecrayon.projects.shortimePlayground.title).toBe(
-      "Mobile WebView Product",
+      "Mobile WebView Playground Decoupled from App Release Cycles",
     );
     expect(jaMessages.resume.careers.codecrayon.projects.commerceBackoffice.title).toBe(
       "コマース・バックオフィス",
     );
     expect(jaMessages.resume.careers.codecrayon.projects.subtitleSystem.title).toBe(
-      "AI字幕翻訳とコンテンツ運用の自動化",
+      "運用チームの反復的なコンテンツ業務をWebツールへ移行",
     );
     expect(jaMessages.resume.careers.codecrayon.projects.shortimePlayground.title).toBe(
-      "モバイルWebViewプロダクト",
+      "アプリ配布サイクルから分離したモバイルWebView Playground",
     );
 
     expect(
@@ -204,21 +212,27 @@ test.describe("i18n 무결성", () => {
     expect(
       jaMessages.resume.careers.codecrayon.projects.commerceBackoffice.descriptions[0]?.tasks?.[0],
     ).toContain("PCでもモバイルのシングルカラム");
+    expect(
+      koMessages.resume.careers.codecrayon.projects.commerceBackoffice.descriptions[0]?.tasks?.[3],
+    ).toContain("프론트엔드 구현을 단독으로 맡고");
+    expect(
+      koMessages.resume.careers.codecrayon.projects.shortimePlayground.descriptions[0]?.tasks?.[1],
+    ).toContain("2,500~3,000명");
 
     expect(koMessages.resume.careers.allofthem.projects.insuranceSubscription.title).toBe(
-      "보험 가입 웹 성능",
+      "고객 신호를 반영한 보험 가입 성능 전환",
     );
     expect(koMessages.resume.careers.allofthem.projects.insuranceResponsive.title).toBe(
       "가입·결제와 관리자 화면",
     );
     expect(enMessages.resume.careers.allofthem.projects.insuranceSubscription.title).toBe(
-      "Insurance Subscription Web Performance",
+      "Insurance Subscription Performance Migration Driven by Customer Signals",
     );
     expect(enMessages.resume.careers.allofthem.projects.insuranceResponsive.title).toBe(
       "Subscription, Payment, and Admin Screens",
     );
     expect(jaMessages.resume.careers.allofthem.projects.insuranceSubscription.title).toBe(
-      "保険加入Webのパフォーマンス",
+      "顧客のシグナルを反映した保険加入パフォーマンス移行",
     );
     expect(jaMessages.resume.careers.allofthem.projects.insuranceResponsive.title).toBe(
       "加入・決済と管理画面",

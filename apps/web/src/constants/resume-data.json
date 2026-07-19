@@ -12,16 +12,16 @@
     "id": "codecrayon",
     "projects": [
       {
-        "id": "commerceBackoffice",
-        "fileRef": "commerce-backoffice-product"
-      },
-      {
         "id": "subtitleSystem",
         "fileRef": "translate"
       },
       {
         "id": "shortimePlayground",
         "fileRef": "shortime-playground"
+      },
+      {
+        "id": "commerceBackoffice",
+        "fileRef": "commerce-backoffice-product"
       }
     ]
   },

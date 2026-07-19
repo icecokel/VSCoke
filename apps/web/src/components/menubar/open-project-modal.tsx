@@ -36,13 +36,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
     () => [
       {
         label: "Portfolio",
-        items: [
-          { label: "VSCOKE", link: "https://vscoke.vercel.app" },
-          {
-            label: t("projectInProgress"),
-            link: "https://icecokel.github.io/black-white-chef-game/",
-          },
-        ],
+        items: [{ label: "VSCOKE", link: "https://vscoke.vercel.app" }],
       },
       { label: "Users", items: [{ label: "Test", link: "" }] },
     ],

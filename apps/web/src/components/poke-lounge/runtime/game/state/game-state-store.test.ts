@@ -2,7 +2,49 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createTournamentBracketState } from "@vscoke/poke-lounge-battle";
 import type { TournamentStateRoomPayload } from "../network/tournament-projection";
-import { createGameStateStore } from "./gameStateStore";
+import {
+  createDefaultLocalPlayer,
+  createGameStateStore,
+  type GameStateStorage,
+  type LocalPlayersSaveState,
+} from "./gameStateStore";
+
+test("storage scope 전환은 저장 데이터를 지우지 않고 대상 scope 상태를 다시 읽는다", () => {
+  let persistedLocalPlayers: LocalPlayersSaveState | null = null;
+  let clearCount = 0;
+  const storage: GameStateStorage = {
+    loadLocalPlayers: () => persistedLocalPlayers,
+    saveLocalPlayers: localPlayers => {
+      persistedLocalPlayers = localPlayers;
+    },
+    clear: () => {
+      clearCount += 1;
+      persistedLocalPlayers = null;
+    },
+  };
+  const store = createGameStateStore({ storage });
+  const accountPlayer = {
+    ...createDefaultLocalPlayer("account-player"),
+    wallet: { pokeDollars: 4321 },
+  };
+  persistedLocalPlayers = {
+    currentPlayerId: accountPlayer.playerId,
+    playersById: { [accountPlayer.playerId]: accountPlayer },
+  };
+
+  assert.equal(store.reloadLocalPlayersFromStorage(), true);
+
+  assert.equal(store.getState().currentPlayerId, accountPlayer.playerId);
+  assert.equal(store.getCurrentLocalPlayer().wallet.pokeDollars, 4321);
+  assert.equal(store.getState().session.connectionStatus, "offline");
+  assert.equal(clearCount, 0);
+
+  persistedLocalPlayers = null;
+  assert.equal(store.reloadLocalPlayersFromStorage(), false);
+
+  assert.equal(store.getState().currentPlayerId, "player-1");
+  assert.equal(clearCount, 0);
+});
 
 function createProjection(revision: number): TournamentStateRoomPayload {
   const bracket = createTournamentBracketState(

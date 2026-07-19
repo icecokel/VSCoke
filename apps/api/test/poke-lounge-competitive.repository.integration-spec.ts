@@ -20,6 +20,7 @@ import { AddGameResultTrust1794355200000 } from '../src/migrations/1794355200000
 import { AddCompetitiveHistoryPublication1794441600000 } from '../src/migrations/1794441600000-add-competitive-history-publication';
 import { SupportPokeLoungeTournamentMatches1794528000000 } from '../src/migrations/1794528000000-support-poke-lounge-tournament-matches';
 import { AddPokeLoungeCompetitiveTransitionMetadata1794614400000 } from '../src/migrations/1794614400000-add-poke-lounge-competitive-transition-metadata';
+import { EnforcePokeLoungeActiveRoomLease1794787200000 } from '../src/migrations/1794787200000-enforce-poke-lounge-active-room-lease';
 import { CompetitiveMatchService } from '../src/poke-lounge/competitive/competitive-match.service';
 import { PostgresCompetitiveMatchRepository } from '../src/poke-lounge/competitive/postgres-competitive-match.repository';
 import { PostgresCompetitiveActionRepository } from '../src/poke-lounge/competitive/postgres-competitive-action.repository';
@@ -31,7 +32,10 @@ import { PokeLoungeRoomCommand } from '../src/poke-lounge/entities/poke-lounge-r
 import { PokeLoungeRoom } from '../src/poke-lounge/entities/poke-lounge-room.entity';
 import { PostgresPokeLoungeRoomRepository } from '../src/poke-lounge/postgres-poke-lounge-room.repository';
 import { PokeLoungeRoomService } from '../src/poke-lounge/poke-lounge-room.service';
-import { completePokeLoungeTournamentMatch } from '../src/poke-lounge/poke-lounge-room-policy';
+import {
+  completePokeLoungeTournamentMatch,
+  getPokeLoungeRoomExpiresAtMs,
+} from '../src/poke-lounge/poke-lounge-room-policy';
 import type { PokeLoungeRoomState } from '../src/poke-lounge/poke-lounge-room.types';
 import type { PokeLoungeRoomRepository } from '../src/poke-lounge/poke-lounge-room.repository';
 import type { PokeLoungeRoomCommittedEvent } from '../src/poke-lounge/poke-lounge-room-event.publisher';
@@ -149,6 +153,24 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     ).resolves.toBe(2);
   });
 
+  it('rejects seat binding after the room lease expires without creating durable records', async () => {
+    await insertRoom('ROOM21', ['player-a', 'player-b']);
+    await dataSource.query(
+      `UPDATE poke_lounge_room SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 second' WHERE room_code = $1`,
+      ['ROOM21'],
+    );
+
+    await expect(
+      service.bindSeat('ROOM21', 'session-a', 'account-a'),
+    ).rejects.toThrow('Competitive seat binding rejected');
+    await expect(
+      dataSource.getRepository(PokeLoungeCompetitiveSeat).count(),
+    ).resolves.toBe(0);
+    await expect(
+      dataSource.getRepository(PokeLoungeCompetitiveMatch).count(),
+    ).resolves.toBe(0);
+  });
+
   it('rejects forged sessions, duplicate accounts, and account overwrites durably', async () => {
     await insertRoom('ROOM02', ['player-a', 'player-b']);
 
@@ -196,18 +218,12 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
 
     const roomRepository = dataSource.getRepository(PokeLoungeRoom);
     const room = await roomRepository.findOneByOrFail({ roomCode: 'ROOM15' });
-    room.state.status = 'round-started';
-    room.state.round.phase = 'round-started';
-    room.state.round.startedAtMs = 1;
-    room.state.round.endsAtMs = 2;
-    room.state.participants.forEach((participant) => {
-      participant.ready = true;
-    });
+    const deadlineMs = stageRoomForImmediateTournament(room);
     await roomRepository.save(room);
 
     const advanced = await new PostgresPokeLoungeRoomRepository(
       dataSource,
-    ).getAndAdvance('ROOM15', 2);
+    ).getAndAdvance('ROOM15', deadlineMs);
     const match = await dataSource
       .getRepository(PokeLoungeCompetitiveMatch)
       .findOneByOrFail({ roomId: room.id });
@@ -244,18 +260,12 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     const room = await roomEntityRepository.findOneByOrFail({
       roomCode: 'ROOM14',
     });
-    room.state.status = 'round-started';
-    room.state.round.phase = 'round-started';
-    room.state.round.startedAtMs = 1;
-    room.state.round.endsAtMs = 2;
-    room.state.participants.forEach((participant) => {
-      participant.ready = true;
-    });
+    const deadlineMs = stageRoomForImmediateTournament(room);
     await roomEntityRepository.save(room);
 
     const advanced = await new PostgresPokeLoungeRoomRepository(
       dataSource,
-    ).getAndAdvance('ROOM14', 2);
+    ).getAndAdvance('ROOM14', deadlineMs);
     const match = await dataSource
       .getRepository(PokeLoungeCompetitiveMatch)
       .findOneByOrFail({ roomId: room.id });
@@ -292,17 +302,11 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
 
     const roomRepository = dataSource.getRepository(PokeLoungeRoom);
     const room = await roomRepository.findOneByOrFail({ roomCode: 'ROOM16' });
-    room.state.status = 'round-started';
-    room.state.round.phase = 'round-started';
-    room.state.round.startedAtMs = 1;
-    room.state.round.endsAtMs = 2;
-    room.state.participants.forEach((participant) => {
-      participant.ready = true;
-    });
+    const deadlineMs = stageRoomForImmediateTournament(room);
     await roomRepository.save(room);
     await new PostgresPokeLoungeRoomRepository(dataSource).getAndAdvance(
       'ROOM16',
-      2,
+      deadlineMs,
     );
 
     const matchRepository = dataSource.getRepository(
@@ -409,6 +413,109 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     await expect(
       projection.findRoomSnapshot('ROOM16', terminal.terminalRoomRevision!),
     ).resolves.toMatchObject({ competitiveTransitions: [] });
+    await expect(historyCount()).resolves.toBe(0);
+  });
+
+  it('converges a disconnected bye through later server-authority matches and completes the tournament', async () => {
+    const { room } = await activateFivePlayerTournament('ROOM23');
+    const roomService = createRoomService();
+    const matchRepository = dataSource.getRepository(
+      PokeLoungeCompetitiveMatch,
+    );
+    const openingMatch = await matchRepository.findOneByOrFail({
+      roomId: room.id,
+      bracketMatchId: 'game-round-1-bracket-1-match-1',
+    });
+    const beforeLeave = await dataSource
+      .getRepository(PokeLoungeRoom)
+      .findOneByOrFail({ id: room.id });
+    const left = await roomService.leaveRoom(
+      'ROOM23',
+      { playerId: 'player-a', sessionId: 'session-a', nowMs: Date.now() },
+      roomCommand(beforeLeave.revision, 230),
+    );
+    expect(left.tournament.activeMatchId).toBe(
+      'game-round-1-bracket-1-match-1',
+    );
+
+    await completeAuthorityTurn(
+      'ROOM23',
+      openingMatch.matchId,
+      'player-d',
+      'account-d',
+      'player-e',
+      'account-e',
+      231,
+    );
+    const afterOpening = await dataSource
+      .getRepository(PokeLoungeRoom)
+      .findOneByOrFail({ id: room.id });
+    expect(afterOpening.state.tournament).toMatchObject({
+      activeMatchId: 'game-round-1-bracket-2-match-2',
+      activeMatchAuthority: 'server',
+      bracket: {
+        currentRound: {
+          matches: [
+            {
+              participantIds: ['player-a', 'player-d'],
+              status: 'completed',
+              winnerPlayerId: 'player-d',
+              loserPlayerId: 'player-a',
+              resultReason: 'forfeit',
+            },
+            {
+              participantIds: ['player-c', 'player-b'],
+              status: 'ready',
+            },
+          ],
+        },
+      },
+    });
+
+    const semifinal = await matchRepository.findOneByOrFail({
+      roomId: room.id,
+      bracketMatchId: 'game-round-1-bracket-2-match-2',
+    });
+    await completeAuthorityTurn(
+      'ROOM23',
+      semifinal.matchId,
+      'player-c',
+      'account-c',
+      'player-b',
+      'account-b',
+      233,
+    );
+    const final = await matchRepository.findOneByOrFail({
+      roomId: room.id,
+      bracketMatchId: 'game-round-1-bracket-3-match-1',
+    });
+    await completeAuthorityTurn(
+      'ROOM23',
+      final.matchId,
+      'player-d',
+      'account-d',
+      'player-c',
+      'account-c',
+      235,
+    );
+
+    const completedRoom = await dataSource
+      .getRepository(PokeLoungeRoom)
+      .findOneByOrFail({ id: room.id });
+    expect(completedRoom.state).toMatchObject({
+      status: 'completed',
+      tournament: {
+        activeMatchId: null,
+        activeMatchAuthority: null,
+        bracket: { status: 'completed', championPlayerId: 'player-d' },
+      },
+    });
+    const matches = await matchRepository.findBy({ roomId: room.id });
+    expect(matches).toHaveLength(3);
+    expect(matches.every((match) => match.status === 'completed')).toBe(true);
+    await expect(
+      dataSource.getRepository(PokeLoungeCompetitiveAction).count(),
+    ).resolves.toBe(6);
     await expect(historyCount()).resolves.toBe(0);
   });
 
@@ -532,6 +639,69 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     );
     expect(replayed).toEqual(left);
     expect(publish).toHaveBeenCalledTimes(1);
+    await expect(historyCount()).resolves.toBe(0);
+  });
+
+  it('expires an unacknowledged tournament presence as a durable server-authority forfeit', async () => {
+    const { room } = await activateFivePlayerTournament('ROOM24');
+    const roomRepository = dataSource.getRepository(PokeLoungeRoom);
+    const stored = await roomRepository.findOneByOrFail({ id: room.id });
+    const pending = stored.state.participants.find(
+      (participant) => participant.playerId === 'player-e',
+    );
+    if (!pending) {
+      throw new Error('Expected active participant');
+    }
+    const nowMs = Date.now();
+    pending.presencePendingUntilMs = nowMs - 1;
+    await roomRepository.save(stored);
+
+    const advanced = await new PostgresPokeLoungeRoomRepository(
+      dataSource,
+    ).getAndAdvance('ROOM24', nowMs);
+
+    expect(advanced.committedChange).toBe(true);
+    expect(advanced.snapshot).toMatchObject({
+      tournament: {
+        activeMatchId: 'game-round-1-bracket-2-match-1',
+        activeMatchAuthority: 'server',
+      },
+      participants: [
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        {
+          playerId: 'player-e',
+          connected: false,
+          ready: false,
+          leftAtMs: nowMs,
+        },
+      ],
+    });
+    expect(
+      advanced.snapshot?.participants.find(
+        (participant) => participant.playerId === 'player-e',
+      ),
+    ).not.toHaveProperty('presencePendingUntilMs');
+    const opening = await dataSource
+      .getRepository(PokeLoungeCompetitiveMatch)
+      .createQueryBuilder('match')
+      .addSelect(['match.terminalResult'])
+      .where('match.roomId = :roomId', { roomId: room.id })
+      .andWhere('match.bracketMatchId = :bracketMatchId', {
+        bracketMatchId: 'game-round-1-bracket-1-match-1',
+      })
+      .getOneOrFail();
+    expect(opening).toMatchObject({
+      status: 'completed',
+      terminalResult: {
+        winnerPlayerId: 'player-d',
+        loserPlayerId: 'player-e',
+        reason: 'forfeit',
+      },
+      terminalRoomRevision: advanced.snapshot?.revision,
+    });
     await expect(historyCount()).resolves.toBe(0);
   });
 
@@ -1092,7 +1262,9 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
         { playerId: 'player-b', ready: false },
       ],
     });
-    expect(revisionOne.competitive).toBeUndefined();
+    expect(revisionOne.competitive).toMatchObject({
+      submittedPlayerIds: [],
+    });
     expect(
       roomPublish.mock.calls.map(([event]) => event.snapshot.revision),
     ).toEqual([8, 8]);
@@ -1121,7 +1293,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     expect(replay).toEqual(revisionOne);
     expect(roomPublish).not.toHaveBeenCalled();
 
-    const latest = await commandService.getRoom('ROOM13', 0);
+    const latest = await commandService.getRoom('ROOM13');
     expect(latest).toMatchObject({
       revision: 8,
       participants: [
@@ -1327,6 +1499,61 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     ).resolves.toEqual([{ data_type: 'jsonb' }]);
   });
 
+  it('rejects a terminal action after lease expiry without publishing verified history', async () => {
+    await seedUsers(['account-a', 'account-b']);
+    await insertActivatedRoom('ROOM22', ['player-a', 'player-b']);
+    await service.bindSeat('ROOM22', 'session-a', 'account-a');
+    const assignment = await service.bindSeat(
+      'ROOM22',
+      'session-b',
+      'account-b',
+    );
+    if (!assignment) {
+      throw new Error('Expected competitive assignment');
+    }
+    await prepareTerminalTurn(assignment.matchId, 'player-b');
+    await service.submitAction({
+      ...actionInput(
+        assignment.matchId,
+        'account-a',
+        '00000000-0000-4000-8000-000000000021',
+      ),
+      roomCode: 'ROOM22',
+    });
+    await dataSource.query(
+      `UPDATE poke_lounge_room SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 second' WHERE room_code = $1`,
+      ['ROOM22'],
+    );
+    publish.mockClear();
+
+    await expect(
+      service.submitAction({
+        ...actionInput(
+          assignment.matchId,
+          'account-b',
+          '00000000-0000-4000-8000-000000000022',
+        ),
+        roomCode: 'ROOM22',
+      }),
+    ).rejects.toThrow('Competitive match not found');
+    await expect(historyCount()).resolves.toBe(0);
+    await expect(
+      dataSource.getRepository(PokeLoungeCompetitiveAction).count(),
+    ).resolves.toBe(1);
+    const persistedMatch = await dataSource
+      .getRepository(PokeLoungeCompetitiveMatch)
+      .createQueryBuilder('match')
+      .addSelect(['match.terminalResult'])
+      .where('match.matchId = :matchId', { matchId: assignment.matchId })
+      .getOneOrFail();
+    expect(persistedMatch).toMatchObject({
+      status: 'active',
+      terminalResult: null,
+      terminalEventId: null,
+    });
+    expect(publish).not.toHaveBeenCalled();
+  });
+
   it('atomically publishes terminal histories, retries once, and replays after restart without republishing', async () => {
     await seedUsers(['account-a', 'account-b']);
     await insertActivatedRoom('ROOM07', ['player-a', 'player-b']);
@@ -1500,7 +1727,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
       () => 'UNUSED',
       () => 0,
     );
-    const recovered = await recoveryService.getRoom('ROOM07', 0);
+    const recovered = await recoveryService.getRoom('ROOM07');
     expect(recovered.competitive).toBeUndefined();
 
     await expect(service.submitAction(secondInput)).resolves.toEqual(
@@ -1551,17 +1778,11 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
 
     const roomRepository = dataSource.getRepository(PokeLoungeRoom);
     const room = await roomRepository.findOneByOrFail({ roomCode });
-    room.state.status = 'round-started';
-    room.state.round.phase = 'round-started';
-    room.state.round.startedAtMs = 1;
-    room.state.round.endsAtMs = 2;
-    room.state.participants.forEach((participant) => {
-      participant.ready = true;
-    });
+    const deadlineMs = stageRoomForImmediateTournament(room);
     await roomRepository.save(room);
     const result = await new PostgresPokeLoungeRoomRepository(
       dataSource,
-    ).getAndAdvance(roomCode, 2);
+    ).getAndAdvance(roomCode, deadlineMs);
     if (!result.snapshot) {
       throw new Error('Five-player tournament did not activate');
     }
@@ -1578,8 +1799,23 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     });
   }
 
+  function stageRoomForImmediateTournament(room: PokeLoungeRoom): number {
+    const startedAtMs = Date.now();
+    const endsAtMs = startedAtMs + 1;
+    room.state.status = 'round-started';
+    room.state.updatedAtMs = startedAtMs;
+    room.state.round.phase = 'round-started';
+    room.state.round.startedAtMs = startedAtMs;
+    room.state.round.endsAtMs = endsAtMs;
+    room.state.participants.forEach((participant) => {
+      participant.ready = true;
+    });
+    return endsAtMs;
+  }
+
   async function insertActivatedRoom(roomCode: string, playerIds: string[]) {
     const state = roomState(roomCode, playerIds);
+    const nowMs = Date.now();
     const bracket = createTournamentBracketState(
       state.participants.map(({ playerId, displayName }) => ({
         playerId,
@@ -1588,6 +1824,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
       state.round.index,
     );
     state.status = 'tournament';
+    state.updatedAtMs = nowMs;
     state.round.phase = 'tournament';
     state.round.startedAtMs = 0;
     state.round.endsAtMs = 1;
@@ -1603,7 +1840,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
       roomCode,
       state,
       revision: 5,
-      expiresAt: new Date('9999-12-31T23:59:59.999Z'),
+      expiresAt: new Date(getPokeLoungeRoomExpiresAtMs(state)),
     });
   }
 
@@ -1657,6 +1894,31 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     match.currentStateHash = hashCanonicalState(match.currentState);
     await dataSource.getRepository(PokeLoungeCompetitiveMatch).save(match);
   }
+
+  async function completeAuthorityTurn(
+    roomCode: string,
+    matchId: string,
+    winnerPlayerId: string,
+    winnerAccountId: string,
+    loserPlayerId: string,
+    loserAccountId: string,
+    commandIndex: number,
+  ) {
+    await prepareTerminalTurn(matchId, loserPlayerId);
+    await service.submitAction({
+      ...actionInput(matchId, winnerAccountId, commandUuid(commandIndex)),
+      roomCode,
+    });
+    const terminal = await service.submitAction({
+      ...actionInput(matchId, loserAccountId, commandUuid(commandIndex + 1)),
+      roomCode,
+    });
+    expect(terminal.terminal).toMatchObject({
+      winnerPlayerId,
+      loserPlayerId,
+    });
+    return terminal;
+  }
 });
 
 function createDataSource(testDatabaseUrl: string): DataSource {
@@ -1681,6 +1943,7 @@ function createDataSource(testDatabaseUrl: string): DataSource {
       AddCompetitiveHistoryPublication1794441600000,
       SupportPokeLoungeTournamentMatches1794528000000,
       AddPokeLoungeCompetitiveTransitionMetadata1794614400000,
+      EnforcePokeLoungeActiveRoomLease1794787200000,
     ],
     synchronize: false,
     migrationsTransactionMode: 'each',
@@ -1708,6 +1971,10 @@ function roomCommand(expectedRevision: number, index: number) {
     expectedRevision,
     idempotencyKey: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
   };
+}
+
+function commandUuid(index: number): string {
+  return `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`;
 }
 
 function roomState(roomCode: string, playerIds: string[]): PokeLoungeRoomState {

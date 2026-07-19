@@ -338,14 +338,6 @@
             }
           },
           {
-            "name": "nowMs",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "afterRevision",
             "required": false,
             "in": "query",
@@ -1496,9 +1488,15 @@
               "party": ["pikachu", "eevee"]
             }
           },
+          "expectedRevision": {
+            "type": "number",
+            "description": "마지막으로 조회하거나 저장한 서버 revision. 신규 저장은 0이며, 값이 일치할 때만 갱신됩니다. 생략은 구버전 Web의 신규 저장 또는 revision 0 마이그레이션 행의 1회 전환에만 허용됩니다.",
+            "example": 3,
+            "minimum": 0
+          },
           "clientUpdatedAt": {
             "type": "string",
-            "description": "클라이언트 기준 상태 갱신 시각",
+            "description": "진단용 클라이언트 갱신 시각. 저장 순서 판정에는 사용하지 않습니다.",
             "example": "2026-07-08T12:00:00.000Z"
           }
         },
@@ -1522,6 +1520,12 @@
             "description": "Poke Lounge 클라이언트의 저장 상태",
             "additionalProperties": true
           },
+          "revision": {
+            "type": "number",
+            "description": "서버가 원자적으로 증가시키는 저장 revision",
+            "example": 4,
+            "minimum": 0
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string",
@@ -1541,7 +1545,14 @@
             "nullable": true
           }
         },
-        "required": ["id", "userId", "state", "createdAt", "updatedAt"]
+        "required": [
+          "id",
+          "userId",
+          "state",
+          "revision",
+          "createdAt",
+          "updatedAt"
+        ]
       },
       "GameRankingHistoryDto": {
         "type": "object",
@@ -1595,10 +1606,6 @@
           "roundDurationMs": {
             "type": "number",
             "example": 60000
-          },
-          "nowMs": {
-            "type": "number",
-            "example": 1720000000000
           }
         },
         "required": ["sessionId"]
@@ -2543,10 +2550,6 @@
           "displayName": {
             "type": "string",
             "example": "Player B"
-          },
-          "nowMs": {
-            "type": "number",
-            "example": 1720000001000
           }
         },
         "required": ["sessionId"]
@@ -2565,10 +2568,6 @@
           "ready": {
             "type": "boolean",
             "example": true
-          },
-          "nowMs": {
-            "type": "number",
-            "example": 1720000002000
           }
         },
         "required": ["playerId", "sessionId", "ready"]
@@ -2590,10 +2589,6 @@
           },
           "representativePokemon": {
             "$ref": "#/components/schemas/PokeLoungeRepresentativePokemonDto"
-          },
-          "nowMs": {
-            "type": "number",
-            "example": 1720000002000
           }
         },
         "required": ["playerId", "sessionId"]
@@ -2625,10 +2620,6 @@
             "type": "string",
             "enum": ["faint", "timeout", "forfeit", "run", "capture"],
             "example": "faint"
-          },
-          "nowMs": {
-            "type": "number",
-            "example": 1720000003000
           }
         },
         "required": [
@@ -2650,10 +2641,6 @@
           "sessionId": {
             "type": "string",
             "example": "session-a"
-          },
-          "nowMs": {
-            "type": "number",
-            "example": 1720000004000
           }
         },
         "required": ["playerId", "sessionId"]

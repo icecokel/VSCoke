@@ -9,6 +9,7 @@ import {
 import {
   DataSource,
   EntityManager,
+  In,
   QueryFailedError,
   type DeleteResult,
 } from 'typeorm';
@@ -24,9 +25,12 @@ import {
   resolveTurnReceipts,
 } from './competitive/postgres-competitive-action.repository';
 import type { CompetitiveActionProjection } from './competitive/competitive-action.types';
+import { toCompetitiveProjection } from './competitive/competitive-projection.service';
 import {
   advancePokeLoungeRoomClock,
   completePokeLoungeTournamentMatch,
+  convergeOfflinePokeLoungeTournamentMatches,
+  expirePendingPokeLoungePresence,
   getPokeLoungeRoomExpiresAtMs,
   normalizeLegacyPokeLoungeRoomSnapshot,
   POKE_LOUNGE_CREATION_ADVISORY_LOCK,
@@ -100,7 +104,19 @@ export class PostgresPokeLoungeRoomRepository implements PokeLoungeRoomRepositor
         return { snapshot: currentSnapshot, committedChange: false };
       }
 
-      await ensureActiveTournamentAssignment(manager, room, advancedSnapshot);
+      await deleteRemovedParticipantSeats(
+        manager,
+        room.id,
+        currentSnapshot,
+        advancedSnapshot,
+      );
+      await ensureActiveTournamentAssignment(
+        manager,
+        room,
+        advancedSnapshot,
+        this.historyWriter,
+      );
+      await attachActiveCompetitiveProjection(manager, room, advancedSnapshot);
       await saveSnapshot(manager, room, advancedSnapshot);
 
       return { snapshot: advancedSnapshot, committedChange: true };
@@ -243,7 +259,23 @@ export class PostgresPokeLoungeRoomRepository implements PokeLoungeRoomRepositor
       );
 
       if (advancedSnapshot) {
-        await ensureActiveTournamentAssignment(manager, room, advancedSnapshot);
+        await deleteRemovedParticipantSeats(
+          manager,
+          room.id,
+          currentSnapshot,
+          advancedSnapshot,
+        );
+        await ensureActiveTournamentAssignment(
+          manager,
+          room,
+          advancedSnapshot,
+          this.historyWriter,
+        );
+        await attachActiveCompetitiveProjection(
+          manager,
+          room,
+          advancedSnapshot,
+        );
         await saveSnapshot(manager, room, advancedSnapshot);
 
         return createResult(
@@ -252,6 +284,8 @@ export class PostgresPokeLoungeRoomRepository implements PokeLoungeRoomRepositor
           true,
         );
       }
+
+      await attachActiveCompetitiveProjection(manager, room, currentSnapshot);
 
       if (existingCommand) {
         return createResult(currentSnapshot, 'idempotency-conflict', false);
@@ -266,6 +300,12 @@ export class PostgresPokeLoungeRoomRepository implements PokeLoungeRoomRepositor
         currentSnapshot,
         appliedSnapshot,
       );
+      await deleteRemovedParticipantSeats(
+        manager,
+        room.id,
+        currentSnapshot,
+        nextSnapshot,
+      );
 
       if (input.operation === 'leave') {
         await completeServerAuthorityParticipantLeave(
@@ -278,7 +318,13 @@ export class PostgresPokeLoungeRoomRepository implements PokeLoungeRoomRepositor
           this.historyWriter,
         );
       }
-      await ensureActiveTournamentAssignment(manager, room, nextSnapshot);
+      await ensureActiveTournamentAssignment(
+        manager,
+        room,
+        nextSnapshot,
+        this.historyWriter,
+      );
+      await attachActiveCompetitiveProjection(manager, room, nextSnapshot);
       await saveSnapshot(manager, room, nextSnapshot);
       await commandRepository.save(
         commandRepository.create({
@@ -326,6 +372,7 @@ export async function ensureActiveTournamentAssignment(
   manager: EntityManager,
   room: PokeLoungeRoom,
   snapshot: PokeLoungeRoomSnapshot,
+  historyWriter: VerifiedPokeLoungeHistoryWriter = new VerifiedPokeLoungeHistoryWriter(),
 ): Promise<void> {
   const bracketMatchId = snapshot.tournament.activeMatchId;
   const bracketMatch = snapshot.tournament.bracket?.currentRound?.matches.find(
@@ -407,9 +454,46 @@ export async function ensureActiveTournamentAssignment(
           existing.terminalResult.reason,
           existing.completedAt?.getTime() ?? nowFromSnapshot(snapshot),
         );
+        await ensureActiveTournamentAssignment(
+          manager,
+          room,
+          snapshot,
+          historyWriter,
+        );
+        return;
+      }
+      const offlinePlayerId = selectOfflineMatchLoser(
+        snapshot,
+        bracketMatch.participantIds,
+      );
+      if (offlinePlayerId) {
+        await completeServerAuthorityParticipantLeave(
+          manager,
+          room,
+          snapshot,
+          snapshot,
+          offlinePlayerId,
+          nowFromSnapshot(snapshot),
+          historyWriter,
+        );
       }
       return;
     }
+  }
+
+  if (
+    convergeOfflinePokeLoungeTournamentMatches(
+      snapshot,
+      nowFromSnapshot(snapshot),
+    ).length > 0
+  ) {
+    await ensureActiveTournamentAssignment(
+      manager,
+      room,
+      snapshot,
+      historyWriter,
+    );
+    return;
   }
 
   const assignment = createCompetitiveAssignment({
@@ -531,6 +615,69 @@ export async function completeServerAuthorityParticipantLeave(
   }
 }
 
+async function attachActiveCompetitiveProjection(
+  manager: EntityManager,
+  room: PokeLoungeRoom,
+  snapshot: PokeLoungeRoomSnapshot,
+): Promise<void> {
+  delete snapshot.competitive;
+  const bracketMatchId = snapshot.tournament.activeMatchId;
+  if (
+    !bracketMatchId ||
+    snapshot.tournament.activeMatchAuthority !== 'server'
+  ) {
+    return;
+  }
+
+  const match = await manager
+    .getRepository(PokeLoungeCompetitiveMatch)
+    .createQueryBuilder('match')
+    .addSelect(['match.currentState', 'match.terminalResult'])
+    .where('match.roomId = :roomId', { roomId: room.id })
+    .andWhere('match.bracketMatchId = :bracketMatchId', { bracketMatchId })
+    .andWhere('match.status IN (:...statuses)', {
+      statuses: ['pending', 'active'],
+    })
+    .getOne();
+  if (!match) {
+    return;
+  }
+
+  const receipts = await manager
+    .getRepository(PokeLoungeCompetitiveAction)
+    .find({
+      select: { actorPlayerId: true },
+      where: { matchId: match.matchId, turn: match.currentTurn },
+      order: { actorPlayerId: 'ASC' },
+    });
+  snapshot.competitive = toCompetitiveProjection(
+    match,
+    receipts.map((receipt) => receipt.actorPlayerId),
+  );
+}
+
+async function deleteRemovedParticipantSeats(
+  manager: EntityManager,
+  roomId: string,
+  previous: PokeLoungeRoomSnapshot,
+  next: PokeLoungeRoomSnapshot,
+): Promise<void> {
+  const remainingPlayerIds = new Set(
+    next.participants.map((participant) => participant.playerId),
+  );
+  const removedPlayerIds = previous.participants
+    .map((participant) => participant.playerId)
+    .filter((playerId) => !remainingPlayerIds.has(playerId));
+  if (removedPlayerIds.length === 0) {
+    return;
+  }
+
+  await manager.getRepository(PokeLoungeCompetitiveSeat).delete({
+    roomId,
+    playerId: In(removedPlayerIds),
+  });
+}
+
 export function findCompletedCompetitiveMatchesAfterRevision(
   manager: EntityManager,
   roomId: string,
@@ -602,16 +749,56 @@ function normalizeAndAdvanceSnapshot(
   currentSnapshot: PokeLoungeRoomSnapshot,
   nowMs: number,
 ): PokeLoungeRoomSnapshot | null {
-  const normalized = normalizeLegacyPokeLoungeRoomSnapshot(
+  const presenceExpired = expirePendingPokeLoungePresence(
     currentSnapshot,
+    nowMs,
+  );
+  const presenceInput = presenceExpired
+    ? { ...presenceExpired, revision: currentSnapshot.revision }
+    : currentSnapshot;
+  const normalized = normalizeLegacyPokeLoungeRoomSnapshot(
+    presenceInput,
     nowMs,
   );
   const clockInput = normalized
     ? { ...normalized, revision: currentSnapshot.revision }
-    : currentSnapshot;
+    : presenceInput;
   const advanced = advancePokeLoungeRoomClock(clockInput, nowMs);
 
-  return advanced ?? normalized;
+  return advanced ?? normalized ?? presenceExpired;
+}
+
+function selectOfflineMatchLoser(
+  snapshot: PokeLoungeRoomSnapshot,
+  participantIds: readonly [string, string],
+): string | null {
+  const participants = participantIds.map((playerId) =>
+    snapshot.participants.find(
+      (participant) => participant.playerId === playerId,
+    ),
+  );
+  const offline = participants.filter(
+    (participant) =>
+      participant !== undefined &&
+      (!participant.connected ||
+        participant.presencePendingUntilMs !== undefined),
+  );
+  if (offline.length === 0) {
+    return null;
+  }
+  if (offline.length === 1) {
+    return offline[0]?.playerId ?? participantIds[0];
+  }
+
+  const [participantA, participantB] = participants;
+  const leftAtA = participantA?.leftAtMs ?? Number.NEGATIVE_INFINITY;
+  const leftAtB = participantB?.leftAtMs ?? Number.NEGATIVE_INFINITY;
+  if (leftAtA !== leftAtB) {
+    return leftAtA < leftAtB ? participantIds[0] : participantIds[1];
+  }
+  return [...participantIds].sort((left, right) =>
+    right.localeCompare(left),
+  )[0];
 }
 
 function prepareCreatedSnapshot(
@@ -678,6 +865,7 @@ async function saveSnapshot(
   room: PokeLoungeRoom,
   snapshot: PokeLoungeRoomSnapshot,
 ): Promise<void> {
+  snapshot.expiresAtMs = getPokeLoungeRoomExpiresAtMs(snapshot);
   room.roomCode = snapshot.roomCode;
   room.state = storedStateFromSnapshot(snapshot);
   room.revision = snapshot.revision;

@@ -12,28 +12,44 @@ import type { PokeLoungeRoomState } from './poke-lounge-room.types';
 import type { PokeLoungeMatchResultReason } from './poke-lounge-room.types';
 
 const MINUTE_MS = 60_000;
+const HOUR_MS = 60 * MINUTE_MS;
 
 export const POKE_LOUNGE_ROOM_CAPACITY = 200;
 export const POKE_LOUNGE_CREATION_ADVISORY_LOCK = 742198451;
-export const POKE_LOUNGE_ACTIVE_ROOM_EXPIRES_AT_MS = Date.UTC(
-  9999,
-  11,
-  31,
-  23,
-  59,
-  59,
-  999,
-);
+export const POKE_LOUNGE_ACTIVE_ROOM_LEASE_MS = 2 * HOUR_MS;
+export const POKE_LOUNGE_PENDING_PRESENCE_LEASE_MS = 15_000;
+const MAX_TOURNAMENT_WALKOVERS = 12;
 
 export function getPokeLoungeRoomExpiresAtMs(
-  room: Pick<PokeLoungeRoomState, 'status' | 'updatedAtMs'>,
+  room: Pick<PokeLoungeRoomState, 'status' | 'updatedAtMs'> &
+    Partial<Pick<PokeLoungeRoomState, 'participants'>>,
 ): number {
   switch (room.status) {
-    case 'waiting':
-      return room.updatedAtMs + 30 * MINUTE_MS;
+    case 'waiting': {
+      const waitingExpiryMs = room.updatedAtMs + 30 * MINUTE_MS;
+      if (
+        !room.participants ||
+        room.participants.some(
+          (participant) =>
+            participant.connected &&
+            participant.presencePendingUntilMs === undefined,
+        )
+      ) {
+        return waitingExpiryMs;
+      }
+
+      const pendingExpiries = room.participants.flatMap((participant) =>
+        participant.presencePendingUntilMs === undefined
+          ? []
+          : [participant.presencePendingUntilMs],
+      );
+      return pendingExpiries.length > 0
+        ? Math.min(waitingExpiryMs, ...pendingExpiries)
+        : waitingExpiryMs;
+    }
     case 'round-started':
     case 'tournament':
-      return POKE_LOUNGE_ACTIVE_ROOM_EXPIRES_AT_MS;
+      return room.updatedAtMs + POKE_LOUNGE_ACTIVE_ROOM_LEASE_MS;
     case 'completed':
     case 'closed':
       return room.updatedAtMs + 10 * MINUTE_MS;
@@ -71,12 +87,75 @@ export function advancePokeLoungeRoomClock(
   return advanced;
 }
 
+export function expirePendingPokeLoungePresence(
+  room: PokeLoungeRoomSnapshot,
+  nowMs: number,
+): PokeLoungeRoomSnapshot | null {
+  const expiredPlayerIds = new Set(
+    room.participants
+      .filter(
+        (participant) =>
+          participant.presencePendingUntilMs !== undefined &&
+          participant.presencePendingUntilMs <= nowMs,
+      )
+      .map((participant) => participant.playerId),
+  );
+  if (expiredPlayerIds.size === 0) {
+    return null;
+  }
+
+  const expired = structuredClone(room);
+  if (expired.status === 'waiting' || expired.status === 'round-started') {
+    expired.participants = expired.participants.filter(
+      (participant) => !expiredPlayerIds.has(participant.playerId),
+    );
+    for (const playerId of expiredPlayerIds) {
+      delete expired.partySnapshots[playerId];
+    }
+  } else {
+    for (const participant of expired.participants) {
+      if (expiredPlayerIds.has(participant.playerId)) {
+        participant.connected = false;
+        participant.ready = false;
+        participant.leftAtMs = nowMs;
+        delete participant.presencePendingUntilMs;
+      }
+    }
+    if (
+      expired.status === 'tournament' &&
+      expired.tournament.activeMatchAuthority !== 'server'
+    ) {
+      convergeOfflinePokeLoungeTournamentMatches(expired, nowMs);
+    }
+  }
+
+  expired.updatedAtMs = nowMs;
+  expired.revision = room.revision + 1;
+  if (
+    (expired.status === 'waiting' || expired.status === 'round-started') &&
+    !expired.participants.some(
+      (participant) =>
+        participant.connected &&
+        participant.presencePendingUntilMs === undefined,
+    )
+  ) {
+    expired.status = 'closed';
+    expired.round.phase = 'completed';
+  }
+  expired.expiresAtMs = getPokeLoungeRoomExpiresAtMs(expired);
+  return expired;
+}
+
 export function createTournamentState(
   room: PokeLoungeRoomState,
 ): PokeLoungeRoomState['tournament'] {
   const participants = room.participants
     .filter((participant) => {
-      return participant.role === 'participant' && participant.connected;
+      return (
+        participant.role === 'participant' &&
+        participant.connected &&
+        participant.presencePendingUntilMs === undefined
+      );
     })
     .sort((left, right) => {
       return (
@@ -189,4 +268,100 @@ export function completePokeLoungeTournamentMatch(
   room.tournament.activeMatchAuthority = room.tournament.activeMatchId
     ? 'casual'
     : null;
+}
+
+export type PokeLoungeOfflineForfeit = {
+  matchId: string;
+  winnerPlayerId: string;
+  loserPlayerId: string;
+};
+
+export function convergeOfflinePokeLoungeTournamentMatches(
+  room: PokeLoungeRoomState,
+  nowMs: number,
+): PokeLoungeOfflineForfeit[] {
+  const completed: PokeLoungeOfflineForfeit[] = [];
+
+  for (let attempt = 0; attempt < MAX_TOURNAMENT_WALKOVERS; attempt += 1) {
+    if (room.status !== 'tournament' || !room.tournament.activeMatchId) {
+      return completed;
+    }
+    const match = room.tournament.bracket?.currentRound?.matches.find(
+      (candidate) =>
+        candidate.matchId === room.tournament.activeMatchId &&
+        candidate.status === 'ready',
+    );
+    if (!match) {
+      return completed;
+    }
+
+    const [participantA, participantB] = match.participantIds.map((playerId) =>
+      room.participants.find(
+        (participant) => participant.playerId === playerId,
+      ),
+    );
+    if (
+      isParticipantPresenceActive(participantA) &&
+      isParticipantPresenceActive(participantB)
+    ) {
+      return completed;
+    }
+
+    const winnerPlayerId = selectWalkoverWinner(
+      match.participantIds,
+      participantA,
+      participantB,
+    );
+    const loserPlayerId = match.participantIds.find(
+      (playerId) => playerId !== winnerPlayerId,
+    );
+    if (!loserPlayerId) {
+      return completed;
+    }
+    completePokeLoungeTournamentMatch(
+      room,
+      match.matchId,
+      winnerPlayerId,
+      'forfeit',
+      nowMs,
+    );
+    completed.push({
+      matchId: match.matchId,
+      winnerPlayerId,
+      loserPlayerId,
+    });
+  }
+
+  throw new Error('Tournament offline-forfeit convergence exceeded its bound');
+}
+
+function selectWalkoverWinner(
+  participantIds: readonly [string, string],
+  participantA: PokeLoungeRoomState['participants'][number] | undefined,
+  participantB: PokeLoungeRoomState['participants'][number] | undefined,
+): string {
+  if (isParticipantPresenceActive(participantA)) {
+    return participantIds[0];
+  }
+  if (isParticipantPresenceActive(participantB)) {
+    return participantIds[1];
+  }
+
+  const leftAtA = participantA?.leftAtMs ?? Number.NEGATIVE_INFINITY;
+  const leftAtB = participantB?.leftAtMs ?? Number.NEGATIVE_INFINITY;
+  if (leftAtA !== leftAtB) {
+    return leftAtA > leftAtB ? participantIds[0] : participantIds[1];
+  }
+  return [...participantIds].sort((left, right) =>
+    left.localeCompare(right),
+  )[0];
+}
+
+function isParticipantPresenceActive(
+  participant: PokeLoungeRoomState['participants'][number] | undefined,
+): boolean {
+  return (
+    participant === undefined ||
+    (participant.connected && participant.presencePendingUntilMs === undefined)
+  );
 }

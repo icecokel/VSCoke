@@ -22,6 +22,7 @@ import { PokeLoungeRoom } from '../entities/poke-lounge-room.entity';
 import type { PokeLoungeRoomSnapshot } from '../poke-lounge-room.repository';
 import type { CompetitiveActionResult } from './competitive-action.repository';
 import type { CompetitiveActionProjection } from './competitive-action.types';
+import { POKE_LOUNGE_ACTIVE_ROOM_LEASE_MS } from '../poke-lounge-room-policy';
 
 describe('hashCompetitiveActionRequest', () => {
   it('is canonical for the same command and changes with authoritative fields', () => {
@@ -161,7 +162,7 @@ describe('PostgresCompetitiveActionRepository command replay ordering', () => {
 
 describe('PostgresCompetitiveActionRepository terminal convergence contract', () => {
   it('returns explicit null terminal metadata for the first pending action', async () => {
-    const { pending } = await terminalTournamentEvidence();
+    const { harness, pending } = await terminalTournamentEvidence();
 
     expect(pending).toMatchObject({
       outcome: 'accepted',
@@ -173,6 +174,9 @@ describe('PostgresCompetitiveActionRepository terminal convergence contract', ()
         terminalRoomRevision: null,
       },
     });
+    expect(harness.room.expiresAt.getTime()).toBe(
+      harness.room.state.updatedAtMs + POKE_LOUNGE_ACTIVE_ROOM_LEASE_MS,
+    );
   });
 
   it('returns the completed old match and next assignment in one composite terminal snapshot', async () => {
@@ -581,6 +585,7 @@ function terminalTournamentRepository() {
     createQueryBuilder: jest.fn(() => ({
       setLock: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
       getOne: jest.fn().mockResolvedValue(room),
     })),
     save: jest.fn((value: PokeLoungeRoom) => Promise.resolve(value)),
@@ -650,6 +655,7 @@ function terminalTournamentRepository() {
     terminalRevision: 51,
     actionRows,
     historyWriter,
+    room,
   };
 }
 

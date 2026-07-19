@@ -4,6 +4,10 @@ import {
   createTournamentBracketState,
 } from '@vscoke/poke-lounge-battle';
 import { PostgresCompetitiveMatchRepository } from './postgres-competitive-match.repository';
+import {
+  POKE_LOUNGE_ACTIVE_ROOM_LEASE_MS,
+  POKE_LOUNGE_PENDING_PRESENCE_LEASE_MS,
+} from '../poke-lounge-room-policy';
 
 type SeatRow = {
   sessionId: string;
@@ -15,6 +19,7 @@ type ScriptedQueryBuilder = {
   setLock: jest.Mock<ScriptedQueryBuilder, [string]>;
   addSelect: jest.Mock<ScriptedQueryBuilder, [string[]]>;
   where: jest.Mock<ScriptedQueryBuilder, [string, Record<string, unknown>]>;
+  andWhere: jest.Mock<ScriptedQueryBuilder, [string]>;
   getOne: jest.Mock<Promise<unknown>, []>;
 };
 
@@ -84,14 +89,149 @@ describe('PostgresCompetitiveMatchRepository', () => {
     });
 
     expect(roomQueryBuilder.setLock).toHaveBeenCalledWith('pessimistic_write');
+    expect(roomQueryBuilder.andWhere).toHaveBeenCalledWith(
+      'room.expiresAt >= CURRENT_TIMESTAMP',
+    );
     expect(seatRepository.save).toHaveBeenCalledTimes(1);
     expect(matchRepository.save).toHaveBeenCalledTimes(1);
     expect(roomRepository.save).toHaveBeenCalledTimes(1);
     expect(room.state.tournament.activeMatchAuthority).toBe('server');
+    expect(room.expiresAt.getTime()).toBe(
+      room.state.updatedAtMs + POKE_LOUNGE_ACTIVE_ROOM_LEASE_MS,
+    );
     expect(calls.indexOf('seat-save')).toBeLessThan(
       calls.indexOf('match-save'),
     );
     expect(result).toMatchObject({ outcome: 'assigned' });
+  });
+
+  it('renews the operational lease for a newly bound seat before assignment without advancing the room revision', async () => {
+    const calls: string[] = [];
+    const room = {
+      id: 'room-id',
+      roomCode: 'ROOM01',
+      state: activatedRoomState(),
+      revision: 7,
+      expiresAt: new Date(1),
+      updatedAt: new Date(0),
+    };
+    const seatRepository = {
+      find: jest.fn<Promise<SeatRow[]>, []>().mockResolvedValue([]),
+      create: jest.fn<SeatRow, [SeatRow]>((value) => value),
+      save: jest.fn<Promise<SeatRow>, [SeatRow]>((value) =>
+        Promise.resolve(value),
+      ),
+    };
+    const matchRepository = {
+      createQueryBuilder: jest.fn<ScriptedQueryBuilder, []>(() =>
+        chainQueryBuilder(null, calls),
+      ),
+    };
+    const roomRepository = {
+      createQueryBuilder: jest.fn<ScriptedQueryBuilder, []>(() =>
+        chainQueryBuilder(room, calls, true),
+      ),
+      save: jest.fn().mockResolvedValue(room),
+    };
+    const manager = {
+      getRepository: jest
+        .fn<unknown, [unknown]>()
+        .mockReturnValueOnce(roomRepository)
+        .mockReturnValueOnce(seatRepository)
+        .mockReturnValueOnce(matchRepository)
+        .mockReturnValueOnce(roomRepository),
+    } as unknown as EntityManager;
+    const repository = new PostgresCompetitiveMatchRepository(
+      managerDataSource(manager),
+    );
+    const leaseWindowStartedAt = Date.now();
+
+    const result = await repository.bindSeatAndAssign({
+      roomCode: 'ROOM01',
+      sessionId: 'session-a',
+      accountId: 'account-a',
+      createAssignment: (context) => assignment(context),
+    });
+
+    const leaseWindowEndedAt = Date.now();
+    expect(result).toEqual({
+      outcome: 'bound-casual',
+      assignment: null,
+      eligible: false,
+    });
+    expect(seatRepository.save).toHaveBeenCalledTimes(1);
+    expect(roomRepository.save).toHaveBeenCalledTimes(1);
+    expect(room.revision).toBe(7);
+    expect(room.state.updatedAtMs).toBe(0);
+    expect(room.expiresAt.getTime()).toBeGreaterThanOrEqual(
+      leaseWindowStartedAt + POKE_LOUNGE_ACTIVE_ROOM_LEASE_MS,
+    );
+    expect(room.expiresAt.getTime()).toBeLessThanOrEqual(
+      leaseWindowEndedAt + POKE_LOUNGE_ACTIVE_ROOM_LEASE_MS,
+    );
+  });
+
+  it('does not extend a pending-only room lease when binding its competitive seat', async () => {
+    const calls: string[] = [];
+    const pendingUntilMs = Date.now() + POKE_LOUNGE_PENDING_PRESENCE_LEASE_MS;
+    const state = {
+      ...roomState(['player-a']),
+      participants: [
+        {
+          ...participant('session-a', 'player-a'),
+          presencePendingUntilMs: pendingUntilMs,
+        },
+      ],
+    };
+    const room = {
+      id: 'room-id',
+      roomCode: 'ROOM01',
+      state,
+      revision: 0,
+      expiresAt: new Date(pendingUntilMs),
+      updatedAt: new Date(state.updatedAtMs),
+    };
+    const seatRepository = {
+      find: jest.fn<Promise<SeatRow[]>, []>().mockResolvedValue([]),
+      create: jest.fn<SeatRow, [SeatRow]>((value) => value),
+      save: jest.fn<Promise<SeatRow>, [SeatRow]>((value) =>
+        Promise.resolve(value),
+      ),
+    };
+    const matchRepository = {
+      createQueryBuilder: jest.fn<ScriptedQueryBuilder, []>(() =>
+        chainQueryBuilder(null, calls),
+      ),
+    };
+    const roomRepository = {
+      createQueryBuilder: jest.fn<ScriptedQueryBuilder, []>(() =>
+        chainQueryBuilder(room, calls, true),
+      ),
+      save: jest.fn().mockResolvedValue(room),
+    };
+    const manager = {
+      getRepository: jest
+        .fn<unknown, [unknown]>()
+        .mockReturnValueOnce(roomRepository)
+        .mockReturnValueOnce(seatRepository)
+        .mockReturnValueOnce(matchRepository)
+        .mockReturnValueOnce(roomRepository),
+    } as unknown as EntityManager;
+    const repository = new PostgresCompetitiveMatchRepository(
+      managerDataSource(manager),
+    );
+
+    await expect(
+      repository.bindSeatAndAssign({
+        roomCode: 'ROOM01',
+        sessionId: 'session-a',
+        accountId: 'account-a',
+        createAssignment: (context) => assignment(context),
+      }),
+    ).resolves.toMatchObject({ outcome: 'bound-casual' });
+
+    expect(room.expiresAt.getTime()).toBe(pendingUntilMs);
+    expect(room.revision).toBe(0);
   });
 
   it('keeps a third participant seat casual without returning the existing assignment', async () => {
@@ -129,25 +269,27 @@ describe('PostgresCompetitiveMatchRepository', () => {
         chainQueryBuilder(existingAssignment, calls),
       ),
     };
+    const room = {
+      id: 'room-id',
+      roomCode: 'ROOM01',
+      state: activatedRoomState(['player-a', 'player-b', 'player-c']),
+      revision: 7,
+      expiresAt: new Date(1),
+      updatedAt: new Date(0),
+    };
     const roomRepository = {
       createQueryBuilder: jest.fn<ScriptedQueryBuilder, []>(() =>
-        chainQueryBuilder(
-          {
-            id: 'room-id',
-            roomCode: 'ROOM01',
-            state: activatedRoomState(['player-a', 'player-b', 'player-c']),
-          },
-          calls,
-          true,
-        ),
+        chainQueryBuilder(room, calls, true),
       ),
+      save: jest.fn().mockResolvedValue(room),
     };
     const manager = {
       getRepository: jest
         .fn<unknown, [unknown]>()
         .mockReturnValueOnce(roomRepository)
         .mockReturnValueOnce(seatRepository)
-        .mockReturnValueOnce(matchRepository),
+        .mockReturnValueOnce(matchRepository)
+        .mockReturnValueOnce(roomRepository),
     } as unknown as EntityManager;
     const repository = new PostgresCompetitiveMatchRepository(
       managerDataSource(manager),
@@ -161,6 +303,7 @@ describe('PostgresCompetitiveMatchRepository', () => {
     });
 
     expect(seatRepository.save).toHaveBeenCalledTimes(1);
+    expect(roomRepository.save).toHaveBeenCalledTimes(1);
     expect(result).toEqual({
       outcome: 'bound-ineligible',
       assignment: null,
@@ -252,6 +395,7 @@ function chainQueryBuilder(
     ScriptedQueryBuilder,
     [string, Record<string, unknown>]
   >(() => builder);
+  builder.andWhere = jest.fn<ScriptedQueryBuilder, [string]>(() => builder);
   builder.getOne = jest.fn<Promise<unknown>, []>(() => {
     calls.push(room ? 'room-lock' : 'match-read');
     return Promise.resolve(result);

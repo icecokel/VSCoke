@@ -6,6 +6,8 @@ import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { io, type Socket as ClientSocket } from 'socket.io-client';
 import { PokeLoungeModule } from './../src/poke-lounge/poke-lounge.module';
+import { PokeLoungeRoom } from './../src/poke-lounge/entities/poke-lounge-room.entity';
+import { POKE_LOUNGE_PENDING_PRESENCE_LEASE_MS } from './../src/poke-lounge/poke-lounge-room-policy';
 import type { PokeLoungePublicRoomState } from './../src/poke-lounge/poke-lounge-room.types';
 import {
   getPokeLoungeTestTypeOrmOptions,
@@ -68,7 +70,6 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
         body: {
           playerId: 'player-b',
           sessionId: 'session-b',
-          nowMs: 1,
         },
       },
       {
@@ -77,7 +78,6 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
           playerId: 'player-a',
           sessionId: 'session-a',
           ready: true,
-          nowMs: 1,
         },
       },
       {
@@ -85,7 +85,6 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
         body: {
           playerId: 'player-a',
           sessionId: 'session-a',
-          nowMs: 1,
         },
       },
       {
@@ -97,7 +96,6 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
           winnerPlayerId: 'player-a',
           loserPlayerId: 'player-b',
           reason: 'faint',
-          nowMs: 1,
         },
       },
       {
@@ -105,7 +103,6 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
         body: {
           playerId: 'player-a',
           sessionId: 'session-a',
-          nowMs: 1,
         },
       },
     ];
@@ -117,18 +114,21 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
 
   it('returns revisions and expiry, redacts sessions, and replays exact commands', async () => {
     const body = createBody();
+    const earliestExpiryMs = Date.now() + POKE_LOUNGE_PENDING_PRESENCE_LEASE_MS;
     const createdResponse = await request(httpServer)
       .post('/poke-lounge/rooms')
       .set(commandHeaders(1, 0))
       .send(body)
       .expect(201);
     const created = createdResponse.body as PokeLoungePublicRoomState;
+    const latestExpiryMs = Date.now() + POKE_LOUNGE_PENDING_PRESENCE_LEASE_MS;
 
     expect(created).toMatchObject({
       status: 'waiting',
       revision: 0,
-      expiresAtMs: 30 * 60_000,
     });
+    expect(created.expiresAtMs).toBeGreaterThanOrEqual(earliestExpiryMs);
+    expect(created.expiresAtMs).toBeLessThanOrEqual(latestExpiryMs);
     expect(JSON.stringify(created)).not.toContain('sessionId');
     expect(JSON.stringify(created)).not.toContain('session-a');
 
@@ -147,7 +147,6 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
         playerId: 'player-b',
         sessionId: 'session-b',
         displayName: 'Player B',
-        nowMs: 10,
       })
       .expect(201);
     const joined = joinedResponse.body as PokeLoungePublicRoomState;
@@ -162,7 +161,6 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
         playerId: 'player-b',
         sessionId: 'session-b',
         displayName: 'Player B',
-        nowMs: 10,
       })
       .expect(201);
 
@@ -202,7 +200,6 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
       .send({
         playerId: 'player-b',
         sessionId: 'session-b',
-        nowMs: 10,
       })
       .expect(409);
     const staleBody = stale.body as ConflictBody;
@@ -226,8 +223,7 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
   });
 
   it('broadcasts one committed public revision to two authorized subscribers', async () => {
-    const nowMs = Date.now();
-    const created = await createRoom(1, nowMs);
+    const created = await createRoom(1);
     const joinedResponse = await request(httpServer)
       .post(`/poke-lounge/rooms/${created.roomCode}/join`)
       .set(commandHeaders(2, created.revision))
@@ -235,14 +231,12 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
         playerId: 'player-b',
         sessionId: 'session-b',
         displayName: 'Player B',
-        nowMs: nowMs + 10,
       })
       .expect(201);
     const joined = joinedResponse.body as PokeLoungePublicRoomState;
     const hostSocket = await connectSocket();
     const guestSocket = await connectSocket();
-    const hostInitial = waitForSnapshot(hostSocket, joined.revision);
-    const guestInitial = waitForSnapshot(guestSocket, joined.revision);
+    const hostInitial = waitForSnapshot(hostSocket, joined.revision + 1);
 
     hostSocket.emit('room.subscribe', {
       roomCode: created.roomCode,
@@ -250,30 +244,33 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
       sessionId: 'session-a',
       afterRevision: joined.revision,
     });
+    const hostSubscribed = await hostInitial;
+    const latestRevision = hostSubscribed.revision + 1;
+    const hostAfterGuest = waitForSnapshot(hostSocket, latestRevision);
+    const guestInitial = waitForSnapshot(guestSocket, latestRevision);
     guestSocket.emit('room.subscribe', {
       roomCode: created.roomCode,
       playerId: 'player-b',
       sessionId: 'session-b',
-      afterRevision: joined.revision,
+      afterRevision: hostSubscribed.revision,
     });
 
-    const [hostSubscribed, guestSubscribed] = await Promise.all([
-      hostInitial,
+    const [hostLatest, guestSubscribed] = await Promise.all([
+      hostAfterGuest,
       guestInitial,
     ]);
-    expect(hostSubscribed).toEqual(guestSubscribed);
+    expect(hostLatest).toEqual(guestSubscribed);
 
-    const nextRevision = joined.revision + 1;
+    const nextRevision = guestSubscribed.revision + 1;
     const hostCommitted = waitForSnapshot(hostSocket, nextRevision);
     const guestCommitted = waitForSnapshot(guestSocket, nextRevision);
     await request(httpServer)
       .post(`/poke-lounge/rooms/${created.roomCode}/party-snapshot`)
-      .set(commandHeaders(3, joined.revision))
+      .set(commandHeaders(3, guestSubscribed.revision))
       .send({
         playerId: 'player-a',
         sessionId: 'session-a',
         displayName: 'Player A',
-        nowMs: nowMs + 20,
       })
       .expect(201);
 
@@ -294,7 +291,6 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
         playerId: 'player-a',
         sessionId: 'session-a',
         ready: true,
-        nowMs: nowMs + 30,
       })
       .expect(409);
     await noSnapshot;
@@ -324,29 +320,99 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
     expect(JSON.stringify(error)).not.toContain('wrong-session');
   });
 
+  it('keeps HTTP-only ready participants out of the tournament and expires their pending leases', async () => {
+    const created = await createRoom(40);
+    expect(created.participants).toEqual([
+      expect.objectContaining({ playerId: 'player-a', connected: false }),
+    ]);
+    const joinedResponse = await request(httpServer)
+      .post(`/poke-lounge/rooms/${created.roomCode}/join`)
+      .set(commandHeaders(41, created.revision))
+      .send({ playerId: 'player-b', sessionId: 'session-b' })
+      .expect(201);
+    const joined = joinedResponse.body as PokeLoungePublicRoomState;
+    const hostReadyResponse = await request(httpServer)
+      .post(`/poke-lounge/rooms/${created.roomCode}/ready`)
+      .set(commandHeaders(42, joined.revision))
+      .send({
+        playerId: 'player-a',
+        sessionId: 'session-a',
+        ready: true,
+      })
+      .expect(201);
+    const hostReady = hostReadyResponse.body as PokeLoungePublicRoomState;
+    const bothReadyResponse = await request(httpServer)
+      .post(`/poke-lounge/rooms/${created.roomCode}/ready`)
+      .set(commandHeaders(43, hostReady.revision))
+      .send({
+        playerId: 'player-b',
+        sessionId: 'session-b',
+        ready: true,
+      })
+      .expect(201);
+    const bothReady = bothReadyResponse.body as PokeLoungePublicRoomState;
+    expect(bothReady).toMatchObject({
+      status: 'waiting',
+      participants: [
+        { playerId: 'player-a', ready: true, connected: false },
+        { playerId: 'player-b', ready: true, connected: false },
+      ],
+      tournament: { bracket: null },
+    });
+
+    const stored = await dataSource
+      .getRepository(PokeLoungeRoom)
+      .findOneByOrFail({ roomCode: created.roomCode });
+    stored.state.participants.forEach((participant) => {
+      participant.presencePendingUntilMs = Date.now() - 1;
+    });
+    await dataSource.getRepository(PokeLoungeRoom).save(stored);
+
+    const expiredResponse = await request(httpServer)
+      .get(`/poke-lounge/rooms/${created.roomCode}`)
+      .expect(200);
+    expect(expiredResponse.body).toMatchObject({
+      status: 'closed',
+      revision: bothReady.revision + 1,
+      participants: [],
+      tournament: { bracket: null },
+    });
+  });
+
   it('admits five sequential players before the fixed preparation deadline and supports tournament reconnect', async () => {
-    const created = await createRoom(20, 0);
+    const created = await createRoom(20);
     const joinedSecond = await request(httpServer)
       .post(`/poke-lounge/rooms/${created.roomCode}/join`)
       .set(commandHeaders(21, created.revision))
       .send({
         playerId: 'player-b',
         sessionId: 'session-b',
-        nowMs: 10,
       })
       .expect(201);
     const joinedSecondRoom = joinedSecond.body as PokeLoungePublicRoomState;
+    const hostAcknowledged = await acknowledgePendingPresence(
+      created.roomCode,
+      'player-a',
+      'session-a',
+      joinedSecondRoom.revision,
+    );
+    const guestAcknowledged = await acknowledgePendingPresence(
+      created.roomCode,
+      'player-b',
+      'session-b',
+      hostAcknowledged.revision,
+    );
     const readyHost = await request(httpServer)
       .post(`/poke-lounge/rooms/${created.roomCode}/ready`)
-      .set(commandHeaders(22, joinedSecondRoom.revision))
+      .set(commandHeaders(22, guestAcknowledged.revision))
       .send({
         playerId: 'player-a',
         sessionId: 'session-a',
         ready: true,
-        nowMs: 100,
       })
       .expect(201);
     const readyHostRoom = readyHost.body as PokeLoungePublicRoomState;
+    const earliestStartedAtMs = Date.now();
     const started = await request(httpServer)
       .post(`/poke-lounge/rooms/${created.roomCode}/ready`)
       .set(commandHeaders(23, readyHostRoom.revision))
@@ -354,15 +420,21 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
         playerId: 'player-b',
         sessionId: 'session-b',
         ready: true,
-        nowMs: 200,
       })
       .expect(201);
     const startedRoom = started.body as PokeLoungePublicRoomState;
+    const latestStartedAtMs = Date.now();
 
-    expect(startedRoom).toMatchObject({
-      status: 'round-started',
-      round: { startedAtMs: 200, endsAtMs: 1200 },
-    });
+    expect(startedRoom.status).toBe('round-started');
+    expect(startedRoom.round.startedAtMs).toBeGreaterThanOrEqual(
+      earliestStartedAtMs,
+    );
+    expect(startedRoom.round.startedAtMs).toBeLessThanOrEqual(
+      latestStartedAtMs,
+    );
+    expect(startedRoom.round.endsAtMs).toBe(
+      startedRoom.round.startedAtMs! + 1000,
+    );
 
     let revision = startedRoom.revision;
     for (const [index, suffix] of ['c', 'd', 'e'].entries()) {
@@ -372,15 +444,23 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
         .send({
           playerId: `player-${suffix}`,
           sessionId: `session-${suffix}`,
-          nowMs: 300 + index * 100,
         })
         .expect(201);
       const joinedRoom = joined.body as PokeLoungePublicRoomState;
       expect(joinedRoom).toMatchObject({
         status: 'round-started',
-        round: { startedAtMs: 200, endsAtMs: 1200 },
+        round: {
+          startedAtMs: startedRoom.round.startedAtMs,
+          endsAtMs: startedRoom.round.endsAtMs,
+        },
       });
-      revision = joinedRoom.revision;
+      const acknowledged = await acknowledgePendingPresence(
+        created.roomCode,
+        `player-${suffix}`,
+        `session-${suffix}`,
+        joinedRoom.revision,
+      );
+      revision = acknowledged.revision;
 
       const ready = await request(httpServer)
         .post(`/poke-lounge/rooms/${created.roomCode}/ready`)
@@ -389,20 +469,19 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
           playerId: `player-${suffix}`,
           sessionId: `session-${suffix}`,
           ready: true,
-          nowMs: 350 + index * 100,
         })
         .expect(201);
       const readyRoom = ready.body as PokeLoungePublicRoomState;
       expect(readyRoom.round).toMatchObject({
-        startedAtMs: 200,
-        endsAtMs: 1200,
+        startedAtMs: startedRoom.round.startedAtMs,
+        endsAtMs: startedRoom.round.endsAtMs,
       });
       revision = readyRoom.revision;
     }
 
+    await waitForServerDeadline(startedRoom.round.endsAtMs!);
     const tournamentResponse = await request(httpServer)
       .get(`/poke-lounge/rooms/${created.roomCode}`)
-      .query({ nowMs: 1200 })
       .expect(200);
     const tournament = tournamentResponse.body as PokeLoungePublicRoomState;
     expect(tournament).toMatchObject({
@@ -420,7 +499,6 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
       .send({
         playerId: 'player-a',
         sessionId: 'session-a',
-        nowMs: 1201,
       })
       .expect(201);
     const rejoinedRoom = rejoined.body as PokeLoungePublicRoomState;
@@ -432,7 +510,6 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
       .send({
         playerId: 'player-f',
         sessionId: 'session-f',
-        nowMs: 1202,
       })
       .expect(400);
   });
@@ -445,20 +522,16 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
 
     const reloaded = await request(httpServer)
       .get(`/poke-lounge/rooms/${created.roomCode}`)
-      .query({ nowMs: 0 })
       .expect(200);
 
     expect(reloaded.body).toEqual(created);
   });
 
-  async function createRoom(
-    index: number,
-    nowMs = 0,
-  ): Promise<PokeLoungePublicRoomState> {
+  async function createRoom(index: number): Promise<PokeLoungePublicRoomState> {
     const response = await request(httpServer)
       .post('/poke-lounge/rooms')
       .set(commandHeaders(index, 0))
-      .send(createBody(nowMs))
+      .send(createBody())
       .expect(201);
 
     return response.body as PokeLoungePublicRoomState;
@@ -475,6 +548,23 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
     await waitForSocketEvent(socket, 'connect');
 
     return socket;
+  }
+
+  async function acknowledgePendingPresence(
+    roomCode: string,
+    playerId: string,
+    sessionId: string,
+    afterRevision: number,
+  ): Promise<PokeLoungePublicRoomState> {
+    const socket = await connectSocket();
+    const snapshot = waitForSnapshot(socket, afterRevision + 1);
+    socket.emit('room.subscribe', {
+      roomCode,
+      playerId,
+      sessionId,
+      afterRevision,
+    });
+    return snapshot;
   }
 });
 
@@ -569,14 +659,18 @@ function expectNoSnapshot(
   });
 }
 
-function createBody(nowMs = 0) {
+function createBody() {
   return {
     playerId: 'player-a',
     sessionId: 'session-a',
     displayName: 'Player A',
     roundDurationMs: 1000,
-    nowMs,
   };
+}
+
+async function waitForServerDeadline(deadlineMs: number): Promise<void> {
+  const remainingMs = Math.max(0, deadlineMs - Date.now());
+  await new Promise((resolve) => setTimeout(resolve, remainingMs + 25));
 }
 
 function commandHeaders(index: number, revision: number) {

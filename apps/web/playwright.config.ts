@@ -169,7 +169,10 @@ export default defineConfig({
           {
             name: "poke-lounge-five-browser-integration",
             testMatch: integrationTestMatch,
-            use: { browserName: "chromium" as const },
+            use: {
+              browserName: "chromium" as const,
+              screenshot: "off" as const,
+            },
           },
         ]
       : []),

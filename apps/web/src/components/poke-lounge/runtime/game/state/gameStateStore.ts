@@ -355,6 +355,7 @@ export interface GameStateStore {
   canChooseStarter(): boolean;
   hasCurrentLocalPlayerViewedShortcutGuide(): boolean;
   subscribe(listener: GameStateListener): GameStateUnsubscribe;
+  reloadLocalPlayersFromStorage(): boolean;
   hydrateLocalPlayers(localPlayers: LocalPlayersSaveState): void;
   setCurrentPlayer(playerId: string): void;
   upsertLocalPlayer(localPlayer: LocalPlayerState): void;
@@ -446,20 +447,27 @@ export function createDefaultGameState(): GameState {
 export function createGameStateStore(options: CreateGameStateStoreOptions = {}): GameStateStore {
   const { storage } = options;
   const defaultState = options.initialState ?? createDefaultGameState();
-  const persistedLocalPlayers = storage?.loadLocalPlayers() ?? null;
-  let state: GameState = ensureCurrentPlayerExists({
-    ...defaultState,
-    ...(persistedLocalPlayers ?? {
-      currentPlayerId: defaultState.currentPlayerId,
-      playersById: defaultState.playersById,
-    }),
-    remotePlayers: {},
-    round: defaultState.round ?? createDefaultRoundState(),
-    tournament: {
-      ...createDefaultGameTournamentState(),
-      ...(defaultState.tournament ?? {}),
-    },
-  });
+  const loadStateFromStorage = (): { state: GameState; restored: boolean } => {
+    const persistedLocalPlayers = storage?.loadLocalPlayers() ?? null;
+
+    return {
+      state: ensureCurrentPlayerExists({
+        ...defaultState,
+        ...(persistedLocalPlayers ?? {
+          currentPlayerId: defaultState.currentPlayerId,
+          playersById: defaultState.playersById,
+        }),
+        remotePlayers: {},
+        round: defaultState.round ?? createDefaultRoundState(),
+        tournament: {
+          ...createDefaultGameTournamentState(),
+          ...(defaultState.tournament ?? {}),
+        },
+      }),
+      restored: persistedLocalPlayers !== null,
+    };
+  };
+  let state = loadStateFromStorage().state;
   const listeners = new Set<GameStateListener>();
 
   const notify = () => {
@@ -555,6 +563,12 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
       return () => {
         listeners.delete(listener);
       };
+    },
+    reloadLocalPlayersFromStorage() {
+      const loaded = loadStateFromStorage();
+      state = loaded.state;
+      notify();
+      return loaded.restored;
     },
     hydrateLocalPlayers(localPlayers) {
       setLocalPlayers(localPlayers);

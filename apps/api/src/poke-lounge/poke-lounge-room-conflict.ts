@@ -53,7 +53,9 @@ export function toPokeLoungePublicRoomState(
       displayName: participant.displayName,
       role: participant.role,
       ready: participant.ready,
-      connected: participant.connected,
+      connected:
+        participant.connected &&
+        participant.presencePendingUntilMs === undefined,
       joinedAtMs: participant.joinedAtMs,
       ...(participant.leftAtMs === undefined
         ? {}

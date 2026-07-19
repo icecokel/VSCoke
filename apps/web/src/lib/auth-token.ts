@@ -6,6 +6,7 @@ export const AUTH_SESSION_ERRORS_REQUIRING_LOGIN = new Set([
 const ID_TOKEN_EXPIRY_BUFFER_SECONDS = 60;
 
 export type ApiTokenSession = {
+  user?: { id?: unknown } | null;
   idToken?: unknown;
   idTokenExpiresAt?: unknown;
   accessToken?: unknown;
@@ -23,17 +24,27 @@ const decodeBase64Url = (value: string): string => {
 };
 
 export const getJwtExpiresAt = (token?: unknown): number | undefined => {
-  if (typeof token !== "string") return undefined;
+  const payload = getJwtPayload(token);
+  return typeof payload?.exp === "number" ? payload.exp : undefined;
+};
 
-  const [, payload] = token.split(".");
-  if (!payload) return undefined;
+export const getJwtSubject = (token?: unknown): string | undefined => {
+  const payload = getJwtPayload(token);
+  return typeof payload?.sub === "string" && payload.sub.trim() ? payload.sub : undefined;
+};
 
-  try {
-    const decoded = JSON.parse(decodeBase64Url(payload)) as { exp?: unknown };
-    return typeof decoded.exp === "number" ? decoded.exp : undefined;
-  } catch {
-    return undefined;
+export const getSessionApiAccountId = (
+  session?: ApiTokenSession | null,
+  idToken?: unknown,
+): string | undefined => {
+  const tokenSubject = getJwtSubject(idToken);
+  if (tokenSubject) {
+    return tokenSubject;
   }
+
+  return typeof session?.user?.id === "string" && session.user.id.trim()
+    ? session.user.id
+    : undefined;
 };
 
 export const isIdTokenUsable = (
@@ -63,3 +74,19 @@ export const getSessionApiIdToken = (
     ? session.idToken
     : undefined;
 };
+
+function getJwtPayload(token?: unknown): Record<string, unknown> | undefined {
+  if (typeof token !== "string") return undefined;
+
+  const [, payload] = token.split(".");
+  if (!payload) return undefined;
+
+  try {
+    const decoded: unknown = JSON.parse(decodeBase64Url(payload));
+    return typeof decoded === "object" && decoded !== null && !Array.isArray(decoded)
+      ? (decoded as Record<string, unknown>)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}

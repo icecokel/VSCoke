@@ -17,7 +17,11 @@ import { GameType } from '../../game/enums/game-type.enum';
 import { PokeLoungeRoom } from '../entities/poke-lounge-room.entity';
 import { PokeLoungeCompetitiveMatch } from '../entities/poke-lounge-competitive-match.entity';
 import { PokeLoungeCompetitiveSeat } from '../entities/poke-lounge-competitive-seat.entity';
-import { completePokeLoungeTournamentMatch } from '../poke-lounge-room-policy';
+import {
+  completePokeLoungeTournamentMatch,
+  convergeOfflinePokeLoungeTournamentMatches,
+  getPokeLoungeRoomExpiresAtMs,
+} from '../poke-lounge-room-policy';
 import type { PokeLoungeRoomSnapshot } from '../poke-lounge-room.repository';
 import type { PokeLoungeRoomState } from '../poke-lounge-room.types';
 import { PokeLoungeCompetitiveAction } from './competitive-action.entity';
@@ -347,6 +351,10 @@ export async function advanceTournamentAuthorityMatch(
     terminal.reason,
     completedMatch.completedAt?.getTime() ?? Date.now(),
   );
+  convergeOfflinePokeLoungeTournamentMatches(
+    state,
+    completedMatch.completedAt?.getTime() ?? Date.now(),
+  );
 
   const bracketMatchId = state.tournament.activeMatchId;
   const nextBracketMatch = state.tournament.bracket?.currentRound?.matches.find(
@@ -447,6 +455,7 @@ function lockRoom(
     .where('room.roomCode = :roomCode', {
       roomCode: roomCode.trim().toUpperCase(),
     })
+    .andWhere('room.expiresAt >= CURRENT_TIMESTAMP')
     .getOne();
 }
 
@@ -487,6 +496,7 @@ async function markRoomUpdated(
   const committedAt = new Date();
   room.revision += 1;
   room.state.updatedAtMs = committedAt.getTime();
+  room.expiresAt = new Date(getPokeLoungeRoomExpiresAtMs(room.state));
   room.updatedAt = committedAt;
   await manager.getRepository(PokeLoungeRoom).save(room);
 }

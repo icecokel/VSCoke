@@ -1,12 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsBoolean,
-  IsInt,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  Min,
-} from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsBoolean, IsNotEmpty, IsString } from 'class-validator';
 
 export class SetPokeLoungeReadyDto {
   @ApiProperty({ example: 'player-a' })
@@ -22,10 +15,4 @@ export class SetPokeLoungeReadyDto {
   @ApiProperty({ example: true })
   @IsBoolean()
   ready!: boolean;
-
-  @ApiPropertyOptional({ example: 1720000002000 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  nowMs?: number;
 }

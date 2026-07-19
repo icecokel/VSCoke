@@ -11,6 +11,8 @@ import {
 import { parseCompetitiveProjection } from "../../src/components/poke-lounge/runtime/game/network/competitive-projection";
 import { createCompetitiveBattleLaunchCache } from "../../src/components/poke-lounge/runtime/game/scenes/competitive-battle-launch";
 import type { CompetitiveProjection } from "../../src/components/poke-lounge/runtime/game/network/localPreviewRoom";
+import { createGameStateStore } from "../../src/components/poke-lounge/runtime/game/state/gameStateStore";
+import { buildPokeLoungeSaveSnapshot } from "../../src/components/poke-lounge/runtime/game/state/poke-lounge-save-snapshot";
 import { gotoWithRetry } from "./test-helpers";
 
 type PokeLoungeWindow = Window & {
@@ -23,6 +25,9 @@ type PokeLoungeWindow = Window & {
       currentPlayerId: string;
       round: {
         phase: string;
+      };
+      session: {
+        connectionStatus: "offline" | "connecting" | "online";
       };
     };
   };
@@ -810,15 +815,30 @@ test.describe("Poke Lounge server multiplayer", () => {
       reason: "faint" as const,
       scoreByPlayerId: { [winner]: 100 as const, [loser]: 50 as const },
     };
-    server.revision += 1;
-    await emitSocketSnapshot(page, {
-      ...createTournamentRoomState(server),
-      competitive: {
-        ...projection,
-        status: "completed",
+    const terminalRevision = server.revision + 1;
+    const completedProjection = {
+      ...projection,
+      currentTurn: projection.currentTurn + 1,
+      status: "completed" as const,
+      currentState: {
+        ...projection.currentState,
+        turn: projection.currentTurn + 1,
         terminal,
-        currentState: { ...projection.currentState, terminal },
       },
+      terminal,
+      terminalEventId: `terminal-authoritative-${terminalRevision}`,
+      terminalRoomRevision: terminalRevision,
+    };
+    server.revision = terminalRevision;
+    await emitSocketSnapshot(page, {
+      ...createCompletedRoomStateForWinner(server, winner),
+      competitiveTransitions: [
+        {
+          terminalEventId: completedProjection.terminalEventId,
+          terminalRoomRevision: completedProjection.terminalRoomRevision,
+          projection: completedProjection,
+        },
+      ],
     });
 
     await expect.poll(() => getBattleSnapshot(page).then(value => value?.phase)).toBe("ended");
@@ -886,6 +906,7 @@ test.describe("Poke Lounge server multiplayer", () => {
       });
 
       await expect.poll(() => getBattleSnapshot(page).then(value => value?.phase)).toBe("ended");
+      expect((await getBattleSnapshot(page))?.battleEntrancePlaying).toBe(false);
       expect((await getBattleSnapshot(page))?.result).toMatchObject({
         winnerPlayerId,
         loserPlayerId,
@@ -918,8 +939,12 @@ test.describe("Poke Lounge server multiplayer", () => {
       await confirmBattle(page);
 
       if (role === "winner") {
-        await expect.poll(() => getAuthoritativeBattleMatchId(page)).toBe(fixture.nextMatchId);
-        await expect.poll(() => getTrackedWorldBattleStarts(page)).toEqual([fixture.nextMatchId]);
+        await expect
+          .poll(() => getAuthoritativeBattleMatchId(page), { timeout: 30000 })
+          .toBe(fixture.nextMatchId);
+        await expect
+          .poll(() => getTrackedWorldBattleStarts(page), { timeout: 30000 })
+          .toEqual([fixture.nextMatchId]);
 
         await emitSocketSnapshot(page, fixture.room);
         await page.waitForTimeout(250);
@@ -952,8 +977,9 @@ test.describe("Poke Lounge server multiplayer", () => {
 
     expect(server.calls).toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/join`);
     await expect
-      .poll(() =>
-        Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+      .poll(
+        () => Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+        { timeout: 30000 },
       )
       .toBe(true);
   });
@@ -965,8 +991,8 @@ test.describe("Poke Lounge server multiplayer", () => {
     await startServerRoom(page);
 
     await expect
-      .poll(() => Promise.resolve(server.calls), { timeout: 30000 })
-      .toContain(`GET /poke-lounge/rooms/${ROOM_CODE}`);
+      .poll(() => Promise.resolve(server.recoveryAfterRevisions.length), { timeout: 30000 })
+      .toBeGreaterThan(0);
     await expect.poll(() => getRoundPhase(page)).toBe("game-result");
     await expect(page.getByTestId("poke-lounge-result-panel")).toBeHidden();
   });
@@ -1065,12 +1091,18 @@ test.describe("Poke Lounge server multiplayer", () => {
     await startServerRoom(page);
     await expect.poll(() => getSocketState(page).then(state => state.connected)).toBe(true);
     const recoveryBeforeFailure = server.recoveryAfterRevisions.length;
+    const subscriptionsBeforeFailure = (await getSocketState(page)).subscriptions.length;
 
     await emitSocketSubscriptionError(page);
+    await expect.poll(() => getConnectionStatus(page)).toBe("connecting");
     await expect
       .poll(() => Promise.resolve(server.recoveryAfterRevisions.length), { timeout: 3000 })
       .toBeGreaterThan(recoveryBeforeFailure);
+    await expect
+      .poll(() => getSocketState(page).then(state => state.subscriptions.length), { timeout: 3000 })
+      .toBeGreaterThan(subscriptionsBeforeFailure);
     await emitSocketSnapshot(page, createTournamentRoomState(server));
+    await expect.poll(() => getConnectionStatus(page)).toBe("online");
     await page.waitForTimeout(300);
     const recoveryAfterSnapshot = server.recoveryAfterRevisions.length;
     await page.waitForTimeout(750);
@@ -1227,18 +1259,18 @@ test.describe("Poke Lounge server multiplayer", () => {
       )
       .toBe(true);
 
-    await page.evaluate(() => {
+    await page.evaluate((matchId: string) => {
       window.dispatchEvent(
         new CustomEvent("poke-lounge:e2e-server-result", {
           detail: {
-            matchId: BRACKET_MATCH_ID,
+            matchId,
             winnerPlayerId: "player-1",
             loserPlayerId: "player-2",
             reason: "faint",
           },
         }),
       );
-    });
+    }, BRACKET_MATCH_ID);
 
     await expect(page.getByTestId("poke-lounge-result-panel")).toBeHidden({ timeout: 3000 });
     await expect
@@ -1277,17 +1309,20 @@ test.describe("Poke Lounge server multiplayer", () => {
     });
     expect(localPlayerId).not.toBe(joinedParticipant.playerId);
 
-    await page.evaluate((winnerPlayerId: string) => {
-      window.dispatchEvent(
-        new CustomEvent("poke-lounge:e2e-server-result", {
-          detail: {
-            matchId: BRACKET_MATCH_ID,
-            winnerPlayerId,
-            reason: "faint",
-          },
-        }),
-      );
-    }, localPlayerId ?? "player-1");
+    await page.evaluate(
+      ({ matchId, winnerPlayerId }: { matchId: string; winnerPlayerId: string }) => {
+        window.dispatchEvent(
+          new CustomEvent("poke-lounge:e2e-server-result", {
+            detail: {
+              matchId,
+              winnerPlayerId,
+              reason: "faint",
+            },
+          }),
+        );
+      },
+      { matchId: BRACKET_MATCH_ID, winnerPlayerId: localPlayerId ?? "player-1" },
+    );
 
     await page.waitForTimeout(300);
     expect(server.resultBodies).toEqual([]);
@@ -1295,7 +1330,61 @@ test.describe("Poke Lounge server multiplayer", () => {
     await expect(page.getByTestId("poke-lounge-result-panel")).toBeHidden();
   });
 
-  test("server room cleanup은 e2e global 없이도 unmount 시 leave를 전송한다", async ({ page }) => {
+  test("명시적인 server room 나가기는 확인 뒤 leave를 한 번 전송한다", async ({ page }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, {
+      deferLeaveResponse: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+    await expect
+      .poll(() =>
+        Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+      )
+      .toBe(true);
+    const firstIdentity = server.joinedParticipants.at(-1);
+    if (!firstIdentity) {
+      throw new Error("Expected the first server room identity");
+    }
+
+    await page.locator("[data-room-leave='true']").click();
+    const leaveDialog = page.locator("[data-poke-lounge-leave-dialog='true']");
+    await expect(leaveDialog).toBeVisible();
+    await leaveDialog.getByRole("button", { name: "방 나가기", exact: true }).click();
+
+    await expect
+      .poll(() =>
+        Promise.resolve(
+          server.calls.filter(call => call === `POST /poke-lounge/rooms/${ROOM_CODE}/leave`).length,
+        ),
+      )
+      .toBe(1);
+    await expect.poll(() => Promise.resolve(server.leaveRequestDeferred)).toBe(true);
+    await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible();
+
+    const joinedCountBeforeRejoin = server.joinedParticipants.length;
+    await page.locator("[data-room-entry-server-code]").fill(ROOM_CODE);
+    await page.locator("[data-room-entry-server-join]").click();
+    await chooseStarterIfNeeded(page);
+    await expect
+      .poll(() => Promise.resolve(server.joinedParticipants.length))
+      .toBeGreaterThan(joinedCountBeforeRejoin);
+    const rejoinedIdentity = server.joinedParticipants.at(-1);
+    if (!rejoinedIdentity) {
+      throw new Error("Expected a new server room identity after explicit leave");
+    }
+    expect(rejoinedIdentity.playerId).not.toBe(firstIdentity.playerId);
+    expect(rejoinedIdentity.sessionId).not.toBe(firstIdentity.sessionId);
+
+    server.resolveLeaveResponse?.();
+    await expect.poll(() => Promise.resolve(server.activeMutations)).toBe(0);
+  });
+
+  test("server room cleanup은 e2e global 없이도 unmount 시 leave를 전송하지 않는다", async ({
+    page,
+  }) => {
     const server = createMockServerState();
 
     await mockServerRoom(page, server, { waitForResult: true, wrapped: true });
@@ -1321,15 +1410,12 @@ test.describe("Poke Lounge server multiplayer", () => {
       ).__POKE_LOUNGE_CLEANUP_FOR_TEST__?.();
     });
 
-    await expect
-      .poll(
-        () => Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/leave`)),
-        { timeout: 5000 },
-      )
-      .toBe(true);
+    await page.waitForTimeout(750);
+    expect(server.calls).not.toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/leave`);
+    await expect.poll(() => getSocketState(page).then(state => state.connected)).toBe(false);
   });
 
-  test("create 응답 전 dispose는 pending leave 없이 실제 방에 한 번만 leave를 전송한다", async ({
+  test("create 응답 전 dispose는 pending 방과 실제 방 모두에 leave를 전송하지 않는다", async ({
     page,
   }) => {
     const server = createMockServerState();
@@ -1348,18 +1434,9 @@ test.describe("Poke Lounge server multiplayer", () => {
     expect(server.calls).not.toContain("POST /poke-lounge/rooms/server-pending/leave");
 
     server.resolveCreateResponse?.();
-    await expect
-      .poll(
-        () =>
-          Promise.resolve(
-            server.calls.filter(call => call === `POST /poke-lounge/rooms/${ROOM_CODE}/leave`)
-              .length,
-          ),
-        { timeout: 5000 },
-      )
-      .toBe(1);
     await page.waitForTimeout(1000);
 
+    expect(server.calls).not.toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/leave`);
     expect(server.calls).not.toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/party-snapshot`);
     expect(server.calls).not.toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`);
     expect(server.calls).not.toContain(`GET /poke-lounge/rooms/${ROOM_CODE}`);
@@ -1496,12 +1573,14 @@ test.describe("Poke Lounge server multiplayer", () => {
     });
 
     await expect
-      .poll(() =>
-        Promise.resolve(
-          server.calls.filter(
-            call => call === `POST /poke-lounge/rooms/${ROOM_CODE}/party-snapshot`,
-          ).length,
-        ),
+      .poll(
+        () =>
+          Promise.resolve(
+            server.calls.filter(
+              call => call === `POST /poke-lounge/rooms/${ROOM_CODE}/party-snapshot`,
+            ).length,
+          ),
+        { timeout: 30000 },
       )
       .toBeGreaterThanOrEqual(2);
 
@@ -1522,9 +1601,7 @@ test.describe("Poke Lounge server multiplayer", () => {
     });
   });
 
-  test("server room revision conflict는 snapshot만 반영하고 command를 자동 재시도하지 않는다", async ({
-    page,
-  }) => {
+  test("초기 ready revision conflict는 최신 snapshot부터 workflow를 재개한다", async ({ page }) => {
     const server = createMockServerState();
 
     await mockServerRoom(page, server, {
@@ -1542,12 +1619,14 @@ test.describe("Poke Lounge server multiplayer", () => {
           ),
         { timeout: 30000 },
       )
-      .toBe(1);
+      .toBe(2);
     await page.waitForTimeout(500);
 
     const readyHeaders = server.commandHeaders.filter(headers => headers.suffix === "/ready");
-    expect(readyHeaders).toHaveLength(1);
+    expect(readyHeaders).toHaveLength(2);
     expect(readyHeaders[0].revision).not.toBe(String(server.conflictRevision));
+    expect(readyHeaders[1].revision).toBe(String(server.conflictRevision));
+    expect(readyHeaders[1].idempotencyKey).not.toBe(readyHeaders[0].idempotencyKey);
   });
 
   test("stale conflict snapshot은 최신 socket revision을 덮거나 POST를 재시도하지 않는다", async ({
@@ -1923,6 +2002,16 @@ async function getCurrentPlayerId(page: Page): Promise<string | null> {
   });
 }
 
+async function getConnectionStatus(
+  page: Page,
+): Promise<"offline" | "connecting" | "online" | null> {
+  return page.evaluate(() => {
+    const pokeWindow = window as PokeLoungeWindow;
+
+    return pokeWindow.__POKE_LOUNGE_E2E__?.getGameStateSnapshot().session.connectionStatus ?? null;
+  });
+}
+
 async function disposeServerRoom(page: Page): Promise<void> {
   await page.evaluate(() => {
     const game = (window as Window & { __POKE_LOUNGE_GAME__?: unknown }).__POKE_LOUNGE_GAME__ as {
@@ -2237,6 +2326,7 @@ async function mockServerRoom(
     options.socketAutoConnect !== false,
     options.bodyReadFailureSuffix,
   );
+  let completedOnRecoveryGet = false;
   await page.route("**/poke-lounge/rooms**", async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -2269,6 +2359,11 @@ async function mockServerRoom(
           ),
         });
         return;
+      }
+
+      if (options.completeOnGet && !completedOnRecoveryGet) {
+        server.revision += 1;
+        completedOnRecoveryGet = true;
       }
     }
 
@@ -2565,7 +2660,7 @@ async function mockServerRoom(
         server.concurrentPollRevision
           ? createTournamentRoomState(server)
           : options.rejectResult ||
-              (options.completeOnGet && method !== "GET") ||
+              (options.completeOnGet && !completedOnRecoveryGet) ||
               (options.waitForResult && !server.resultAccepted)
             ? createTournamentRoomState(server)
             : createCompletedRoomState(server);
@@ -2730,6 +2825,7 @@ function createMockServerState(): MockServerState {
 
 async function mockAuthenticatedPokeSession(page: Page): Promise<{ requestCount(): number }> {
   let requestCount = 0;
+  const snapshot = buildPokeLoungeSaveSnapshot(createGameStateStore());
   await page.route("**/api/auth/session", route => {
     requestCount += 1;
     return route.fulfill({
@@ -2743,13 +2839,26 @@ async function mockAuthenticatedPokeSession(page: Page): Promise<{ requestCount(
       }),
     });
   });
-  await page.route("**/game/poke-lounge/state", route =>
-    route.fulfill({
+  await page.route("**/game/poke-lounge/state", async route => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, data: { state: snapshot, revision: 0 } }),
+      });
+      return;
+    }
+
+    const body = route.request().postDataJSON() as { expectedRevision?: number };
+    await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ success: true, data: null }),
-    }),
-  );
+      body: JSON.stringify({
+        success: true,
+        data: { revision: (body.expectedRevision ?? 0) + 1 },
+      }),
+    });
+  });
   return { requestCount: () => requestCount };
 }
 

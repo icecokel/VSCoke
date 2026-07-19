@@ -257,6 +257,7 @@ function toPokeLoungeStateResponse(
     id: savedState.id,
     userId: savedState.userId,
     state: savedState.state,
+    revision: savedState.revision,
     createdAt: savedState.createdAt,
     updatedAt: savedState.updatedAt,
     clientUpdatedAt: savedState.clientUpdatedAt,

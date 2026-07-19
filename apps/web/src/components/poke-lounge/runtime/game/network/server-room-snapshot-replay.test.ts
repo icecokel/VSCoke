@@ -256,6 +256,39 @@ function createRoomSnapshots() {
   };
 }
 
+function createRoundStartedRoomSnapshot(
+  base: ReturnType<typeof createRoomSnapshots>["initial"],
+  revision: number,
+  endsAtMs: number,
+) {
+  return {
+    ...base,
+    revision,
+    status: "round-started" as const,
+    round: {
+      ...base.round,
+      phase: "round-started" as const,
+      startedAtMs: Math.max(0, endsAtMs - base.round.durationMs),
+      endsAtMs,
+    },
+  };
+}
+
+function createCompletedRoomSnapshot(
+  base: ReturnType<typeof createRoundStartedRoomSnapshot>,
+  revision: number,
+) {
+  return {
+    ...base,
+    revision,
+    status: "completed" as const,
+    round: {
+      ...base.round,
+      phase: "completed" as const,
+    },
+  };
+}
+
 function reverseNestedObjectKeyOrder<T>(value: T): T {
   if (Array.isArray(value)) {
     return value.map(reverseNestedObjectKeyOrder) as T;
@@ -489,6 +522,53 @@ async function flushAsyncWork(): Promise<void> {
   await new Promise<void>(resolve => setImmediate(resolve));
 }
 
+test("서버 방 신원은 기존 값을 현재 계정으로 이전하고 계정별로 격리한다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const values = new Map<string, string>([
+    [
+      "poke-lounge:server-room-identity",
+      JSON.stringify({ sessionId: "legacy-session", playerId: "legacy-player" }),
+    ],
+  ]);
+
+  try {
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: {
+        location: { href: "http://web.test/game", search: "" },
+        sessionStorage: {
+          getItem(key: string) {
+            return values.get(key) ?? null;
+          },
+          setItem(key: string, value: string) {
+            values.set(key, value);
+          },
+          removeItem(key: string) {
+            values.delete(key);
+          },
+        },
+      },
+    });
+    const { createServerRoom } = await import("./serverRoom");
+    const accountARoom = createServerRoom({ roomId: "ROOM01", accountId: "account-a" });
+    const accountASessionId = accountARoom.sessionId;
+    accountARoom.dispose();
+
+    const accountBRoom = createServerRoom({ roomId: "ROOM01", accountId: "account-b" });
+    assert.notEqual(accountBRoom.sessionId, accountASessionId);
+    accountBRoom.dispose();
+
+    const restoredAccountARoom = createServerRoom({ roomId: "ROOM01", accountId: "account-a" });
+    assert.equal(accountASessionId, "legacy-session");
+    assert.equal(restoredAccountARoom.sessionId, accountASessionId);
+    assert.equal(values.has("poke-lounge:server-room-identity"), false);
+    restoredAccountARoom.dispose();
+  } finally {
+    restoreWindow(originalWindow);
+  }
+});
+
 test("E2E socket transport diagnostics는 query guard와 sanitized state transition을 유지한다", async () => {
   process.env.NEXT_PUBLIC_API_URL = "http://api.test";
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
@@ -523,6 +603,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     });
     const socket = createSocket();
     const snapshots = createRoomSnapshots();
+    let configuredTransports: string[] | null = null;
     let ready = false;
     const fetchFixture: typeof fetch = async input => {
       const url = new URL(typeof input === "string" ? input : input.toString());
@@ -534,7 +615,10 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
       playerId: "player-1",
       sessionId: "session-1",
       fetch: fetchFixture,
-      socketFactory: () => socket,
+      socketFactory: (_url, socketOptions) => {
+        configuredTransports = [...socketOptions.transports];
+        return socket;
+      },
     });
     const connectionStore = createGameStateStore();
     connectionStore.setSession({
@@ -554,6 +638,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     assert.equal(getServerRoomTransportDiagnosticsForE2e(room)?.lastAppliedTerminalRevision, null);
     room.connect(createPlayerSnapshot());
     await waitFor(() => ready && socket.subscriptions().length > 0);
+    assert.deepEqual(configuredTransports, ["polling", "websocket"]);
     await waitFor(() => {
       const diagnostics = getServerRoomTransportDiagnosticsForE2e(room ?? undefined);
       return diagnostics?.socketConnected === true && diagnostics.recoveryInFlight === false;
@@ -694,6 +779,282 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     ]) {
       assert.equal(serializedDiagnostics.includes(rawValue), false);
     }
+  } finally {
+    room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
+test("round 종료 시각이 되면 authoritative GET으로 완료 상태를 반영한다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const timers = createManualRecoveryTimers();
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: timers.window,
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const socket = createSocket();
+    const snapshots = createRoomSnapshots();
+    const deadline = Date.now() + 10_000;
+    const roundStarted = createRoundStartedRoomSnapshot(snapshots.initial, 16, deadline);
+    const completed = createCompletedRoomSnapshot(roundStarted, 17);
+    let ready = false;
+    let clockArmed = false;
+    let clockRefreshes = 0;
+    let latestRoundPhase: RoomEvent["TOURNAMENT_STATE"]["roomRound"]["phase"] | null = null;
+    const fetchFixture: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      ready ||= url.pathname.endsWith("/ready");
+      const isClockRefresh =
+        clockArmed && (init?.method ?? "GET") === "GET" && !url.searchParams.has("afterRevision");
+
+      if (isClockRefresh) {
+        clockRefreshes += 1;
+        return jsonResponse(completed);
+      }
+
+      return jsonResponse(snapshots.initial);
+    };
+    room = createServerRoom({
+      roomId: "ROOM01",
+      playerId: "player-1",
+      sessionId: "session-1",
+      fetch: fetchFixture,
+      socketFactory: () => socket,
+    });
+    room.on("TOURNAMENT_STATE", ({ roomRound }) => {
+      latestRoundPhase = roomRound.phase;
+    });
+    room.connect(createPlayerSnapshot());
+    await waitFor(() => ready && socket.subscriptions().length > 0);
+    await flushAsyncWork();
+
+    clockArmed = true;
+    socket.pushSnapshot(roundStarted);
+    const scheduledDelay = timers.nextDelay();
+    assert.notEqual(scheduledDelay, null);
+    assert.ok((scheduledDelay ?? 0) > 0 && (scheduledDelay ?? 0) <= 10_000);
+
+    await timers.runNext();
+
+    assert.equal(clockRefreshes, 1);
+    assert.equal(latestRoundPhase, "completed");
+    assert.equal(timers.nextDelay(), null);
+  } finally {
+    room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
+test("round 종료 GET이 같은 상태를 반환하면 bounded backoff로 다시 확인한다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const timers = createManualRecoveryTimers();
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: timers.window,
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const socket = createSocket();
+    const snapshots = createRoomSnapshots();
+    const roundStarted = createRoundStartedRoomSnapshot(snapshots.initial, 16, Date.now());
+    let ready = false;
+    let clockArmed = false;
+    let clockRefreshes = 0;
+    const fetchFixture: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      ready ||= url.pathname.endsWith("/ready");
+      const isClockRefresh =
+        clockArmed && (init?.method ?? "GET") === "GET" && !url.searchParams.has("afterRevision");
+
+      if (isClockRefresh) {
+        clockRefreshes += 1;
+        return jsonResponse(roundStarted);
+      }
+
+      return jsonResponse(snapshots.initial);
+    };
+    room = createServerRoom({
+      roomId: "ROOM01",
+      playerId: "player-1",
+      sessionId: "session-1",
+      fetch: fetchFixture,
+      socketFactory: () => socket,
+    });
+    room.connect(createPlayerSnapshot());
+    await waitFor(() => ready && socket.subscriptions().length > 0);
+    await flushAsyncWork();
+
+    clockArmed = true;
+    socket.pushSnapshot(roundStarted);
+    assert.equal(timers.nextDelay(), 0);
+    await timers.runNext();
+    assert.equal(clockRefreshes, 1);
+    assert.equal(timers.nextDelay(), 250);
+
+    await timers.runNext();
+    assert.equal(clockRefreshes, 2);
+    assert.equal(timers.nextDelay(), 500);
+  } finally {
+    room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
+test("긴 round 대기는 30초로 제한되고 dispose는 stale callback도 무시한다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const timers = createManualRecoveryTimers();
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: timers.window,
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const socket = createSocket();
+    const snapshots = createRoomSnapshots();
+    const roundStarted = createRoundStartedRoomSnapshot(
+      snapshots.initial,
+      16,
+      Date.now() + 120_000,
+    );
+    let ready = false;
+    let clockArmed = false;
+    let clockRefreshes = 0;
+    const fetchFixture: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      ready ||= url.pathname.endsWith("/ready");
+      if (
+        clockArmed &&
+        (init?.method ?? "GET") === "GET" &&
+        !url.searchParams.has("afterRevision")
+      ) {
+        clockRefreshes += 1;
+      }
+      return jsonResponse(snapshots.initial);
+    };
+    room = createServerRoom({
+      roomId: "ROOM01",
+      playerId: "player-1",
+      sessionId: "session-1",
+      fetch: fetchFixture,
+      socketFactory: () => socket,
+    });
+    room.connect(createPlayerSnapshot());
+    await waitFor(() => ready && socket.subscriptions().length > 0);
+    await flushAsyncWork();
+
+    clockArmed = true;
+    socket.pushSnapshot(roundStarted);
+    assert.equal(timers.nextDelay(), 30_000);
+    const staleCallback = timers.captureNextCallback();
+    room.dispose();
+    staleCallback();
+    await flushAsyncWork();
+
+    assert.equal(clockRefreshes, 0);
+    assert.equal(timers.nextDelay(), null);
+  } finally {
+    room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
+test("응답 없는 server room fetch는 제한 시간 뒤 중단되고 재시도 대기 상태가 된다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const timers = createManualRecoveryTimers();
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: timers.window,
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const request = { signal: null as AbortSignal | null };
+    const fetchFixture: typeof fetch = async (_input, init) => {
+      request.signal = init?.signal ?? null;
+      return await new Promise<Response>(() => {});
+    };
+    room = createServerRoom({
+      roomId: "ROOM01",
+      playerId: "player-1",
+      sessionId: "session-1",
+      fetch: fetchFixture,
+      requestTimeoutMs: 25,
+      socketFactory: () => createSocket(),
+    });
+    room.connect(createPlayerSnapshot());
+
+    await waitFor(() => timers.nextDelay() === 25);
+    await timers.runNext();
+
+    assert.equal(request.signal?.aborted, true);
+    assert.equal(timers.nextDelay(), 250);
+    room.dispose();
+    assert.equal(timers.nextDelay(), null);
+  } finally {
+    room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
+test("header 뒤 멈춘 response body도 같은 제한 시간으로 중단한다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const timers = createManualRecoveryTimers();
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: timers.window,
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const request = { signal: null as AbortSignal | null };
+    let bodyReadStarted = false;
+    const stalledResponse = new Response(null, {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+    Object.defineProperty(stalledResponse, "text", {
+      configurable: true,
+      value: () => {
+        bodyReadStarted = true;
+        return new Promise<string>(() => {});
+      },
+    });
+    const fetchFixture: typeof fetch = async (_input, init) => {
+      request.signal = init?.signal ?? null;
+      return stalledResponse;
+    };
+    room = createServerRoom({
+      roomId: "ROOM01",
+      playerId: "player-1",
+      sessionId: "session-1",
+      fetch: fetchFixture,
+      requestTimeoutMs: 25,
+      socketFactory: () => createSocket(),
+    });
+    room.connect(createPlayerSnapshot());
+
+    await waitFor(() => bodyReadStarted && timers.nextDelay() === 25);
+    await timers.runNext();
+
+    assert.equal(request.signal?.aborted, true);
+    assert.equal(timers.nextDelay(), 250);
+    room.dispose();
+    assert.equal(timers.nextDelay(), null);
   } finally {
     room?.dispose();
     restoreWindow(originalWindow);
@@ -848,7 +1209,7 @@ test("8개 terminal transition 페이지는 cursor 전진 시 즉시 다음 페�
     assert.equal(timers.nextDelay(), 250);
     await timers.runNext();
     await waitFor(() => recoveryRequests === 2);
-    assert.equal(timers.nextDelay(), null);
+    assert.equal(timers.nextDelay(), 10_000);
   } finally {
     room?.dispose();
     restoreWindow(originalWindow);
@@ -910,7 +1271,8 @@ test("외부 terminal recovery가 대기 중이면 8개 페이지도 backoff로 
     await waitFor(() => releaseFirstRecovery !== undefined);
     socket.pushSnapshot(mismatchedInitial);
     releaseFirstRecovery?.();
-    await waitFor(() => timers.nextDelay() !== null);
+    await flushAsyncWork();
+    await waitFor(() => timers.nextDelay() === 500);
 
     assert.equal(recoveryRequests, 1);
     assert.equal(timers.nextDelay(), 500);
@@ -1195,6 +1557,209 @@ test("same-revision 중첩 record key 순서 차이는 recovery를 시작하지 
     assert.equal(timers.nextDelay(), null);
     assert.equal(diagnostics?.recoveryTimerScheduled, false);
     assert.equal(diagnostics?.subscriptionFailed, false);
+  } finally {
+    room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
+test("같은 room revision의 경쟁전 제출과 turn 전진을 정상 적용한다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      location: { href: "http://web.test/game", search: "" },
+      setTimeout,
+      clearTimeout,
+    },
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const socket = createSocket();
+    const snapshots = createRoomSnapshots();
+    let ready = false;
+    let recoveryRequests = 0;
+    const fetchFixture: typeof fetch = async input => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      ready ||= url.pathname.endsWith("/ready");
+      if (url.searchParams.has("afterRevision")) {
+        recoveryRequests += 1;
+      }
+      return jsonResponse(snapshots.initial);
+    };
+    room = createServerRoom({
+      roomId: "ROOM01",
+      playerId: "player-1",
+      sessionId: "session-1",
+      fetch: fetchFixture,
+      socketFactory: () => socket,
+    });
+    const received: RoomEvent["COMPETITIVE_STATE"][] = [];
+    room.on("COMPETITIVE_STATE", payload => received.push(payload));
+    room.connect(createPlayerSnapshot());
+    await waitFor(() => ready && socket.subscriptions().length > 0);
+    await flushAsyncWork();
+
+    socket.pushSnapshot(snapshots.activeOld);
+    const recoveryRequestsBeforeAdvance = recoveryRequests;
+    const submittedPlayerId = snapshots.activeOld.competitive!.playerIds[0];
+    const submitted = {
+      ...snapshots.activeOld,
+      competitive: {
+        ...snapshots.activeOld.competitive!,
+        submittedPlayerIds: [submittedPlayerId],
+      },
+    };
+    socket.pushSnapshot(submitted);
+    socket.pushSnapshot({
+      ...submitted,
+      competitive: {
+        ...submitted.competitive,
+        currentTurn: 1,
+        currentState: { ...submitted.competitive.currentState, turn: 1 },
+        stateHash: "c".repeat(64),
+        submittedPlayerIds: [],
+      },
+    });
+    await flushAsyncWork();
+
+    assert.deepEqual(
+      received.map(({ projection }) => [projection.currentTurn, projection.submittedPlayerIds]),
+      [
+        [0, []],
+        [0, [submittedPlayerId]],
+        [1, []],
+      ],
+    );
+    assert.equal(recoveryRequests, recoveryRequestsBeforeAdvance);
+  } finally {
+    room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
+test("지연된 경쟁전 projection은 최신 assignment와 turn 및 제출 상태를 덮지 않는다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      location: { href: "http://web.test/game", search: "" },
+      setTimeout,
+      clearTimeout,
+    },
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const socket = createSocket();
+    const snapshots = createRoomSnapshots();
+    let ready = false;
+    const fetchFixture: typeof fetch = async input => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      ready ||= url.pathname.endsWith("/ready");
+      return jsonResponse(snapshots.initial);
+    };
+    room = createServerRoom({
+      roomId: "ROOM01",
+      playerId: "player-1",
+      sessionId: "session-1",
+      fetch: fetchFixture,
+      socketFactory: () => socket,
+    });
+    room.connect(createPlayerSnapshot());
+    await waitFor(() => ready && socket.subscriptions().length > 0);
+
+    const turnOne = {
+      ...snapshots.activeOld,
+      competitive: {
+        ...snapshots.activeOld.competitive!,
+        currentTurn: 1,
+        currentState: { ...snapshots.activeOld.competitive!.currentState, turn: 1 },
+        stateHash: "c".repeat(64),
+        submittedPlayerIds: [],
+      },
+    };
+    const turnOneSubmitted = {
+      ...turnOne,
+      competitive: {
+        ...turnOne.competitive,
+        submittedPlayerIds: [turnOne.competitive.playerIds[0]],
+      },
+    };
+    socket.pushSnapshot(turnOne);
+    socket.pushSnapshot(turnOneSubmitted);
+
+    const received: RoomEvent["COMPETITIVE_STATE"][] = [];
+    const unsubscribe = room.on("COMPETITIVE_STATE", payload => received.push(payload));
+    received.length = 0;
+
+    const withoutCompetitive: Record<string, unknown> = { ...turnOneSubmitted };
+    delete withoutCompetitive.competitive;
+    socket.pushSnapshot(withoutCompetitive);
+    socket.pushSnapshot(turnOne);
+    socket.pushSnapshot({
+      ...turnOneSubmitted,
+      competitive: {
+        ...turnOneSubmitted.competitive,
+        status: "pending" as const,
+      },
+    });
+    socket.pushSnapshot({
+      ...turnOneSubmitted,
+      competitive: {
+        ...turnOneSubmitted.competitive,
+        stateHash: "e".repeat(64),
+      },
+    });
+    socket.pushSnapshot(snapshots.activeOld);
+
+    const nextAssignment = {
+      ...turnOneSubmitted,
+      competitive: {
+        ...snapshots.activeOld.competitive!,
+        matchId: "223e4567-e89b-42d3-a456-426614174000",
+        assignmentRevision: 2,
+        status: "pending" as const,
+      },
+    };
+    socket.pushSnapshot(nextAssignment);
+    socket.pushSnapshot({
+      ...turnOneSubmitted,
+      competitive: {
+        ...turnOneSubmitted.competitive,
+        currentTurn: 99,
+        currentState: { ...turnOneSubmitted.competitive.currentState, turn: 99 },
+        stateHash: "d".repeat(64),
+      },
+    });
+
+    assert.deepEqual(
+      received.map(({ projection }) => [
+        projection.matchId,
+        projection.assignmentRevision,
+        projection.currentTurn,
+        projection.status,
+        projection.submittedPlayerIds,
+      ]),
+      [[nextAssignment.competitive.matchId, 2, 0, "pending", []]],
+    );
+    unsubscribe();
+
+    const replayed: RoomEvent["COMPETITIVE_STATE"][] = [];
+    room.on("COMPETITIVE_STATE", payload => replayed.push(payload));
+    assert.deepEqual(
+      replayed.map(({ projection }) => [
+        projection.matchId,
+        projection.assignmentRevision,
+        projection.currentTurn,
+      ]),
+      [[nextAssignment.competitive.matchId, 2, 0]],
+    );
   } finally {
     room?.dispose();
     restoreWindow(originalWindow);
@@ -1765,6 +2330,201 @@ test("legacy terminal metadata 응답은 current cache를 덮지 않고 room rec
         [snapshots.latest.competitive?.matchId, "active"],
       ],
     );
+  } finally {
+    room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
+test("초기 ready revision conflict 뒤 단계 workflow를 재개한다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const timers = createManualRecoveryTimers();
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: timers.window,
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const socket = createSocket();
+    const snapshots = createRoomSnapshots();
+    const readyIdempotencyKeys: string[] = [];
+    let readyRequests = 0;
+    const fetchFixture: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (!url.pathname.endsWith("/ready")) {
+        return jsonResponse(snapshots.initial);
+      }
+
+      readyRequests += 1;
+      readyIdempotencyKeys.push(new Headers(init?.headers).get("X-Idempotency-Key") ?? "");
+      if (readyRequests === 1) {
+        return jsonResponse(
+          {
+            statusCode: 409,
+            code: "POKE_LOUNGE_REVISION_CONFLICT",
+            message: "revision conflict",
+            snapshot: snapshots.initial,
+          },
+          409,
+        );
+      }
+
+      return jsonResponse(snapshots.initial);
+    };
+    room = createServerRoom({
+      roomId: "ROOM01",
+      playerId: "player-1",
+      sessionId: "session-1",
+      fetch: fetchFixture,
+      socketFactory: () => socket,
+    });
+
+    room.connect(createPlayerSnapshot());
+    await waitFor(() => readyRequests === 1);
+    assert.equal(timers.nextDelay(), 250);
+
+    await timers.runNext();
+    await waitFor(() => readyRequests === 2);
+
+    assert.notEqual(readyIdempotencyKeys[0], "");
+    assert.notEqual(readyIdempotencyKeys[1], "");
+    assert.notEqual(readyIdempotencyKeys[0], readyIdempotencyKeys[1]);
+  } finally {
+    room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
+test("create 응답 전 transport 실패는 같은 idempotency key로 방 생성을 복구한다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const timers = createManualRecoveryTimers("?create=1&network=server");
+  const fixtureWindow = timers.window as typeof timers.window & {
+    history: { state: null; replaceState(state: unknown, title: string, url?: string | URL): void };
+  };
+  fixtureWindow.history = {
+    state: null,
+    replaceState(_state, _title, url) {
+      if (url) {
+        fixtureWindow.location.href = String(url);
+      }
+    },
+  };
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: fixtureWindow,
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const socket = createSocket();
+    const snapshots = createRoomSnapshots();
+    const createIdempotencyKeys: string[] = [];
+    let createRequests = 0;
+    let ready = false;
+    const fetchFixture: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/poke-lounge/rooms") {
+        createRequests += 1;
+        createIdempotencyKeys.push(new Headers(init?.headers).get("X-Idempotency-Key") ?? "");
+        if (createRequests <= 2) {
+          throw new TypeError("connection reset after commit");
+        }
+      }
+      ready ||= url.pathname.endsWith("/ready");
+      return jsonResponse(snapshots.initial);
+    };
+    room = createServerRoom({
+      createRoom: true,
+      playerId: "player-1",
+      sessionId: "session-1",
+      fetch: fetchFixture,
+      socketFactory: () => socket,
+    });
+
+    room.connect(createPlayerSnapshot());
+    await waitFor(() => createRequests === 2);
+    assert.equal(timers.nextDelay(), 250);
+
+    await timers.runNext();
+    await waitFor(() => createRequests === 3 && ready);
+
+    assert.equal(new Set(createIdempotencyKeys).size, 1);
+    assert.notEqual(createIdempotencyKeys[0], "");
+    assert.equal(room.roomId, snapshots.initial.roomCode);
+  } finally {
+    room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
+test("casual result 복구 재전송은 최초 body와 idempotency key를 그대로 재사용한다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const timers = createManualRecoveryTimers();
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: timers.window,
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const socket = createSocket();
+    const snapshots = createRoomSnapshots();
+    const activeMatch = getReadyTournamentMatches(snapshots.initial.tournament.bracket)[0];
+    if (!activeMatch) {
+      throw new Error("Expected an active casual match");
+    }
+    const [winnerPlayerId] = activeMatch.participantIds;
+    const resultRequests: Array<{ body: string; idempotencyKey: string }> = [];
+    let ready = false;
+    const fetchFixture: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      ready ||= url.pathname.endsWith("/ready");
+      if (!url.pathname.endsWith("/result")) {
+        return jsonResponse(snapshots.initial);
+      }
+
+      resultRequests.push({
+        body: typeof init?.body === "string" ? init.body : "",
+        idempotencyKey: new Headers(init?.headers).get("X-Idempotency-Key") ?? "",
+      });
+      if (resultRequests.length <= 2) {
+        throw new TypeError("result response lost");
+      }
+
+      return jsonResponse(snapshots.latest);
+    };
+    room = createServerRoom({
+      roomId: "ROOM01",
+      playerId: winnerPlayerId,
+      sessionId: `session-${winnerPlayerId}`,
+      fetch: fetchFixture,
+      socketFactory: () => socket,
+    });
+    room.connect({
+      ...createPlayerSnapshot(),
+      playerId: winnerPlayerId,
+      sessionId: `session-${winnerPlayerId}`,
+    });
+    await waitFor(() => ready);
+
+    room.send("TOURNAMENT_MATCH_RESULT", {
+      roundIndex: snapshots.initial.round.index,
+      matchId: activeMatch.matchId,
+      winnerPlayerId,
+      reason: "faint",
+    });
+    await waitFor(() => resultRequests.length === 3);
+
+    assert.equal(new Set(resultRequests.map(request => request.body)).size, 1);
+    assert.equal(new Set(resultRequests.map(request => request.idempotencyKey)).size, 1);
+    assert.notEqual(resultRequests[0]?.idempotencyKey, "");
   } finally {
     room?.dispose();
     restoreWindow(originalWindow);

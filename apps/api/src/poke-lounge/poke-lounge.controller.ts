@@ -78,7 +78,11 @@ export class PokeLoungeController {
     }
 
     return toPokeLoungePublicRoomState(
-      await this.roomService.createRoom(body ?? { sessionId: '' }, command),
+      await this.roomService.createRoom(
+        withoutClientNowMs(body ?? { sessionId: '' }),
+        command,
+        { requireSocketAcknowledgement: true },
+      ),
     );
   }
 
@@ -92,17 +96,12 @@ export class PokeLoungeController {
   })
   async getRoom(
     @Param('roomCode') roomCode: string,
-    @Query('nowMs') nowMs?: string,
     @Query('afterRevision') afterRevision?: string,
   ) {
     const parsedAfterRevision = parseOptionalRevision(afterRevision);
 
     return toPokeLoungePublicRoomState(
-      await this.roomService.getRoom(
-        roomCode,
-        parseOptionalNumber(nowMs),
-        parsedAfterRevision,
-      ),
+      await this.roomService.getRoom(roomCode, parsedAfterRevision),
     );
   }
 
@@ -171,8 +170,9 @@ export class PokeLoungeController {
     return toPokeLoungePublicRoomState(
       await this.roomService.joinRoom(
         roomCode,
-        body ?? { sessionId: '' },
+        withoutClientNowMs(body ?? { sessionId: '' }),
         command,
+        { requireSocketAcknowledgement: true },
       ),
     );
   }
@@ -197,7 +197,6 @@ export class PokeLoungeController {
           playerId: body?.playerId ?? '',
           sessionId: body?.sessionId,
           ready: Boolean(body?.ready),
-          nowMs: body?.nowMs,
         },
         command,
       ),
@@ -220,7 +219,7 @@ export class PokeLoungeController {
     return toPokeLoungePublicRoomState(
       await this.roomService.updatePartySnapshot(
         roomCode,
-        body ?? { playerId: '', sessionId: '' },
+        withoutClientNowMs(body ?? { playerId: '', sessionId: '' }),
         command,
       ),
     );
@@ -247,14 +246,16 @@ export class PokeLoungeController {
     return toPokeLoungePublicRoomState(
       await this.roomService.submitMatchResult(
         roomCode,
-        body ?? {
-          reportingPlayerId: '',
-          reportingSessionId: '',
-          matchId: '',
-          winnerPlayerId: '',
-          loserPlayerId: '',
-          reason: 'faint',
-        },
+        withoutClientNowMs(
+          body ?? {
+            reportingPlayerId: '',
+            reportingSessionId: '',
+            matchId: '',
+            winnerPlayerId: '',
+            loserPlayerId: '',
+            reason: 'faint' as const,
+          },
+        ),
         command,
       ),
     );
@@ -279,7 +280,6 @@ export class PokeLoungeController {
         {
           playerId: body?.playerId ?? '',
           sessionId: body?.sessionId,
-          nowMs: body?.nowMs,
         },
         command,
       ),
@@ -360,12 +360,8 @@ function readSingleRawHeader(request: Request, headerName: string): string {
   return values[0];
 }
 
-function parseOptionalNumber(value: string | undefined): number | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  const parsed = Number(value);
-
-  return Number.isFinite(parsed) ? parsed : undefined;
+function withoutClientNowMs<T extends object>(input: T): Omit<T, 'nowMs'> {
+  const serverTimedInput = { ...input } as T & { nowMs?: unknown };
+  delete serverTimedInput.nowMs;
+  return serverTimedInput;
 }

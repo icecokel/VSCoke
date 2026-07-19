@@ -28,10 +28,4 @@ export class CreatePokeLoungeRoomDto implements CreatePokeLoungeRoomInput {
   @IsInt()
   @Min(1)
   roundDurationMs?: number;
-
-  @ApiPropertyOptional({ example: 1720000000000 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  nowMs?: number;
 }

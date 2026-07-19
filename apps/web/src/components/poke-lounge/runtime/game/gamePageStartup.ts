@@ -14,7 +14,11 @@ import {
 import { renderMobileSettingsToggle } from "./input/settings-toggle";
 import { renderMobileTouchControls } from "./input/mobileTouchControls";
 import { createMultiplayerRoom } from "./network/multiplayerRoomFactory";
-import { POKE_LOUNGE_FRESH_SESSION_REQUIRED_EVENT } from "./network/serverRoom";
+import {
+  POKE_LOUNGE_FRESH_SESSION_REQUIRED_EVENT,
+  POKE_LOUNGE_SERVER_ROOM_ERROR_EVENT,
+  type PokeLoungeServerRoomErrorDetail,
+} from "./network/serverRoom";
 import {
   applyRoomRoundDurationSearchParam,
   readRoomEntryFromLocation,
@@ -34,6 +38,8 @@ import {
   POKE_LOUNGE_ROOM_LEAVE_REQUEST_EVENT,
   type PokeLoungeRoomLeaveRequestDetail,
 } from "./ui/poke-lounge-ui-events";
+import { getPokeLoungeCopyForUrl, type PokeLoungeCopy } from "../../poke-lounge-copy";
+import { getServerRoomErrorMessage } from "./server-room-error-copy";
 
 type GamePageLocation = URL;
 type PokeLoungeGameInstance = ReturnType<typeof createPokeLoungeGame>;
@@ -44,10 +50,12 @@ export interface GamePageHandle {
 }
 
 export interface StartGamePageDependencies {
+  accountId?: string;
   createMultiplayerRoom?: typeof createMultiplayerRoom;
   createPokeLoungeGame?: typeof createPokeLoungeGame;
   gameStateStore?: GameStateStore;
   idToken?: string;
+  getIdToken?: () => string | undefined;
   loadBootstrapData?: () => Promise<GameBootstrapData>;
   renderRoomEntryScreen?: typeof renderRoomEntryScreen;
   renderWebRtcSignalingPanel?: typeof renderWebRtcSignalingPanel;
@@ -67,12 +75,13 @@ export async function startGamePage(
   dependencies: StartGamePageDependencies = {},
 ): Promise<GamePageHandle> {
   const gameStateStore = dependencies.gameStateStore ?? getDefaultGameStateStore();
-  const runtimeGameDataPromise = loadRuntimeGameDataJson();
   const initialScene = readInitialGameScene(location);
   const battleE2eScenario = readInitialBattleE2eScenario(location);
   const currentUrl = new URL(location.href);
+  const copy = getPokeLoungeCopyForUrl(currentUrl);
   const renderEntryScreen = dependencies.renderRoomEntryScreen ?? renderRoomEntryScreen;
   const renderSelection = dependencies.renderStarterSelectionScreen ?? renderStarterSelectionScreen;
+  let runtimeGameDataPromise: Promise<void> | null = null;
   let activeGame: PokeLoungeGameInstance | null = null;
   let activeMultiplayerRoom: ReturnType<typeof createMultiplayerRoom> | null = null;
   let activeViewportSize = dependencies.viewportSize;
@@ -80,7 +89,20 @@ export async function startGamePage(
   let roomEntrySelectionPending = false;
   let starterSelectionRequestId = 0;
   let removeFreshSessionListener: (() => void) | null = null;
+  let removeServerRoomErrorListener: (() => void) | null = null;
+  let removeServerRoomStatusListener: (() => void) | null = null;
   let removeAudioPrimeListeners: (() => void) | null = bindPokeLoungeAudioPrimeListeners(mount);
+
+  const loadRuntimeGameData = async () => {
+    runtimeGameDataPromise ??= loadRuntimeGameDataJson();
+
+    try {
+      await runtimeGameDataPromise;
+    } catch (error) {
+      runtimeGameDataPromise = null;
+      throw error;
+    }
+  };
 
   const handle: GamePageHandle = {
     destroy() {
@@ -93,6 +115,10 @@ export async function startGamePage(
       removeAudioPrimeListeners = null;
       removeFreshSessionListener?.();
       removeFreshSessionListener = null;
+      removeServerRoomErrorListener?.();
+      removeServerRoomErrorListener = null;
+      removeServerRoomStatusListener?.();
+      removeServerRoomStatusListener = null;
       if (activeGame) {
         activeGame.destroy(true);
       } else {
@@ -125,15 +151,17 @@ export async function startGamePage(
   };
 
   const startGame = async (gameUrl: URL) => {
-    await runtimeGameDataPromise;
+    await loadRuntimeGameData();
     if (destroyed) {
       return;
     }
 
     const roomEntry = readRoomEntryFromLocation(gameUrl);
     const multiplayerRoom = (dependencies.createMultiplayerRoom ?? createMultiplayerRoom)({
+      accountId: dependencies.accountId,
       createWebRtcRoom,
       idToken: dependencies.idToken,
+      getIdToken: dependencies.getIdToken,
       searchParams: gameUrl.searchParams,
     });
     const competitiveRoundsEnabled = isCompetitiveRoomEntryMode(roomEntry.mode);
@@ -156,17 +184,17 @@ export async function startGamePage(
     const returnToRoomEntry = () => {
       removeFreshSessionListener?.();
       removeFreshSessionListener = null;
+      removeServerRoomErrorListener?.();
+      removeServerRoomErrorListener = null;
+      removeServerRoomStatusListener?.();
+      removeServerRoomStatusListener = null;
       multiplayerRoom.dispose();
       gameStateStore.setSession({
         sessionId: null,
         roomId: null,
         connectionStatus: "offline",
       });
-      currentUrl.searchParams.delete("create");
-      currentUrl.searchParams.delete("network");
-      currentUrl.searchParams.delete("room");
-      currentUrl.searchParams.delete("serverPlayerId");
-      currentUrl.searchParams.delete("serverSessionId");
+      clearRoomEntrySearchParams(currentUrl);
       replaceBrowserUrl(currentUrl);
       game?.destroy(true);
       if (activeGame === game) {
@@ -177,10 +205,13 @@ export async function startGamePage(
       }
       showRoomEntry();
     };
+    const leaveAndReturnToRoomEntry = () => {
+      multiplayerRoom.leave?.();
+      returnToRoomEntry();
+    };
     const handleFreshSessionRequired = () => {
       dispatchPokeLoungeNotice(mount.ownerDocument, {
-        message:
-          "방 연결 정보가 만료되어 입장 화면으로 돌아왔습니다. 방 코드를 다시 확인해 주세요.",
+        message: copy.roomEntry.freshSession,
         tone: "warning",
       });
       returnToRoomEntry();
@@ -192,32 +223,85 @@ export async function startGamePage(
         handleFreshSessionRequired,
       );
     };
+    const handleServerRoomError = (event: Event) => {
+      const detail = (event as CustomEvent<PokeLoungeServerRoomErrorDetail>).detail;
+
+      if (!detail || readRoomEntryFromLocation(gameUrl).mode !== "server-room") {
+        return;
+      }
+
+      renderServerRoomError(mount, copy, detail);
+    };
+    window.addEventListener(POKE_LOUNGE_SERVER_ROOM_ERROR_EVENT, handleServerRoomError);
+    removeServerRoomErrorListener = () => {
+      window.removeEventListener(POKE_LOUNGE_SERVER_ROOM_ERROR_EVENT, handleServerRoomError);
+    };
+    removeServerRoomStatusListener = multiplayerRoom.on(
+      "CONNECTION_STATUS",
+      ({ connectionStatus }) => {
+        if (connectionStatus === "online") {
+          mount.querySelector("[data-server-room-error='true']")?.remove();
+        }
+      },
+    );
 
     if (competitiveRoundsEnabled) {
-      renderRoomLeaveButton(mount, returnToRoomEntry, () => {
-        const phase = gameStateStore.getState().round.phase;
+      renderRoomLeaveButton(
+        mount,
+        leaveAndReturnToRoomEntry,
+        () => {
+          const phase = gameStateStore.getState().round.phase;
 
-        if (phase === "tournament") {
+          if (phase === "tournament") {
+            return {
+              title: copy.roomEntry.leaveTournamentTitle,
+              description: copy.roomEntry.leaveTournamentDescription,
+            };
+          }
+
           return {
-            title: "경기에서 나갈까요?",
-            description: "지금 나가면 진행 중인 경기가 기권 처리될 수 있습니다.",
+            title: copy.roomEntry.leaveRoomTitle,
+            description: copy.roomEntry.leaveRoomDescription,
           };
-        }
-
-        return {
-          title: "방에서 나갈까요?",
-          description: "현재 준비 상태와 방 연결이 해제됩니다.",
-        };
-      });
+        },
+        copy.roomEntry.leaveRoom,
+      );
     }
 
     if (isWebRtcRoom(multiplayerRoom)) {
       const renderSignalingPanel =
         dependencies.renderWebRtcSignalingPanel ?? renderWebRtcSignalingPanel;
       renderSignalingPanel(mount, multiplayerRoom, {
-        onLeave: returnToRoomEntry,
+        onLeave: leaveAndReturnToRoomEntry,
       });
     }
+  };
+  const showStartupError = (retry: () => void) => {
+    if (destroyed) {
+      return;
+    }
+
+    roomEntrySelectionPending = false;
+    if (activeGame) {
+      activeGame.destroy(true);
+    } else {
+      activeMultiplayerRoom?.dispose();
+    }
+    activeGame = null;
+    activeMultiplayerRoom = null;
+    gameStateStore.setSession({
+      sessionId: null,
+      roomId: null,
+      connectionStatus: "offline",
+    });
+    renderGameStartupError(mount, copy, {
+      onRetry: retry,
+      onReturnToEntry: () => {
+        clearRoomEntrySearchParams(currentUrl);
+        replaceBrowserUrl(currentUrl);
+        showRoomEntry();
+      },
+    });
   };
   const showStarterSelection = async (afterSelection: () => void) => {
     const requestId = (starterSelectionRequestId += 1);
@@ -243,12 +327,18 @@ export async function startGamePage(
   };
   const startGameAfterStarterSelection = (gameUrl: URL) => {
     if (!gameStateStore.canChooseStarter()) {
-      void startGame(gameUrl);
+      void startGame(gameUrl).catch(() => {
+        showStartupError(() => startGameAfterStarterSelection(gameUrl));
+      });
       return;
     }
 
     void showStarterSelection(() => {
-      void startGame(gameUrl);
+      void startGame(gameUrl).catch(() => {
+        showStartupError(() => startGameAfterStarterSelection(gameUrl));
+      });
+    }).catch(() => {
+      showStartupError(() => startGameAfterStarterSelection(gameUrl));
     });
   };
   const showRoomEntry = () => {
@@ -260,12 +350,11 @@ export async function startGamePage(
     renderEntryScreen(mount, {
       currentUrl: new URL(currentUrl.href),
       serverRoomCapability:
-        dependencies.idToken || isLocalE2eUrl(currentUrl)
+        dependencies.getIdToken?.() || dependencies.idToken || isLocalE2eUrl(currentUrl)
           ? { enabled: true }
           : {
               enabled: false,
-              disabledReason:
-                "서버 경쟁전은 로그인한 플레이어만 이용할 수 있습니다. 로그인 후 다시 열어 주세요.",
+              disabledReason: copy.roomEntry.serverDisabled,
             },
       onSelect: selection => {
         if (destroyed || roomEntrySelectionPending) {
@@ -273,7 +362,7 @@ export async function startGamePage(
         }
 
         roomEntrySelectionPending = true;
-        setRoomEntryScreenPending(mount);
+        setRoomEntryScreenPending(mount, copy.roomEntry.preparing);
         applyRoomEntrySelection(currentUrl, selection);
         replaceBrowserUrl(currentUrl);
 
@@ -294,7 +383,7 @@ export async function startGamePage(
       currentUrl.searchParams.delete("room");
       replaceBrowserUrl(currentUrl);
       dispatchPokeLoungeNotice(mount.ownerDocument, {
-        message: "서버 경쟁전 초대는 로그인 후 참가할 수 있습니다.",
+        message: copy.roomEntry.serverInviteRequiresLogin,
         tone: "warning",
       });
       showRoomEntry();
@@ -368,6 +457,14 @@ function applyRoomEntrySelection(url: URL, selection: RoomEntrySelection): void 
   }
 }
 
+function clearRoomEntrySearchParams(url: URL): void {
+  url.searchParams.delete("create");
+  url.searchParams.delete("network");
+  url.searchParams.delete("room");
+  url.searchParams.delete("serverPlayerId");
+  url.searchParams.delete("serverSessionId");
+}
+
 function replaceBrowserUrl(url: URL): void {
   if (typeof window === "undefined") {
     return;
@@ -376,7 +473,7 @@ function replaceBrowserUrl(url: URL): void {
   window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
-function setRoomEntryScreenPending(mount: HTMLElement): void {
+function setRoomEntryScreenPending(mount: HTMLElement, messageText: string): void {
   const screen = mount.querySelector<HTMLElement>("[data-room-entry-screen='true']");
 
   if (!screen) {
@@ -393,7 +490,7 @@ function setRoomEntryScreenPending(mount: HTMLElement): void {
   const message = screen.querySelector<HTMLElement>("[data-room-entry-message='true']");
 
   if (message) {
-    message.textContent = "준비 중...";
+    message.textContent = messageText;
   }
 }
 
@@ -401,13 +498,14 @@ function renderRoomLeaveButton(
   mount: HTMLElement,
   onLeave: () => void,
   getCopy: () => Pick<PokeLoungeRoomLeaveRequestDetail, "title" | "description">,
+  label: string,
 ): HTMLButtonElement {
   mount.querySelector("[data-room-leave]")?.remove();
 
   const button = document.createElement("button");
   button.type = "button";
   button.className = "room-leave-button";
-  button.textContent = "방 나가기";
+  button.textContent = label;
   button.setAttribute("data-room-leave", "true");
   button.addEventListener("click", () => {
     const detail: PokeLoungeRoomLeaveRequestDetail = {
@@ -428,6 +526,126 @@ function renderRoomLeaveButton(
     }
   });
   mount.appendChild(button);
+
+  return button;
+}
+
+interface GameStartupErrorOptions {
+  onRetry(): void;
+  onReturnToEntry(): void;
+}
+
+export function renderGameStartupError(
+  mount: HTMLElement,
+  copy: PokeLoungeCopy,
+  options: GameStartupErrorOptions,
+): HTMLElement {
+  const screen = createStartupErrorScreen(mount.ownerDocument, copy, copy.startup.description);
+  const actions = screen.querySelector<HTMLElement>("[data-game-startup-error-actions='true']");
+  const retryButton = createStartupErrorButton(
+    mount.ownerDocument,
+    copy.startup.retry,
+    "data-game-startup-retry",
+  );
+  const returnButton = createStartupErrorButton(
+    mount.ownerDocument,
+    copy.startup.lobby,
+    "data-game-startup-return",
+  );
+
+  retryButton.addEventListener("click", () => {
+    retryButton.disabled = true;
+    returnButton.disabled = true;
+    retryButton.textContent = copy.startup.retrying;
+    options.onRetry();
+  });
+  returnButton.addEventListener("click", options.onReturnToEntry);
+  actions?.append(retryButton, returnButton);
+  mount.replaceChildren(screen);
+  retryButton.focus();
+
+  return screen;
+}
+
+function renderServerRoomError(
+  mount: HTMLElement,
+  copy: PokeLoungeCopy,
+  detail: PokeLoungeServerRoomErrorDetail,
+): HTMLElement {
+  mount.querySelector("[data-server-room-error='true']")?.remove();
+
+  const screen = createStartupErrorScreen(
+    mount.ownerDocument,
+    copy,
+    getServerRoomErrorMessage(copy.locale, detail.code),
+  );
+  screen.classList.add("game-server-error");
+  screen.setAttribute("data-server-room-error", "true");
+  screen.setAttribute("data-server-room-error-code", detail.code);
+  const actions = screen.querySelector<HTMLElement>("[data-game-startup-error-actions='true']");
+
+  if (detail.recoverable && detail.retry) {
+    const retryButton = createStartupErrorButton(
+      mount.ownerDocument,
+      copy.startup.retry,
+      "data-server-room-error-retry",
+    );
+    retryButton.addEventListener("click", () => {
+      screen.remove();
+      detail.retry?.();
+    });
+    actions?.appendChild(retryButton);
+  }
+
+  const returnButton = createStartupErrorButton(
+    mount.ownerDocument,
+    copy.startup.lobby,
+    "data-server-room-error-return",
+  );
+  returnButton.addEventListener("click", detail.cancel);
+  actions?.appendChild(returnButton);
+  mount.appendChild(screen);
+  screen.querySelector<HTMLButtonElement>("button")?.focus();
+
+  return screen;
+}
+
+function createStartupErrorScreen(
+  documentRef: Document,
+  copy: PokeLoungeCopy,
+  descriptionText: string,
+): HTMLElement {
+  const screen = documentRef.createElement("section");
+  screen.className = "room-entry-screen game-startup-screen";
+  screen.setAttribute("data-game-startup-error", "true");
+  screen.setAttribute("role", "alert");
+  screen.setAttribute("aria-live", "assertive");
+
+  const panel = documentRef.createElement("div");
+  panel.className = "room-entry-panel game-startup-panel";
+  const title = documentRef.createElement("h1");
+  title.textContent = copy.startup.title;
+  const description = documentRef.createElement("p");
+  description.className = "room-entry-mode-copy";
+  description.textContent = descriptionText || copy.startup.description;
+  const actions = documentRef.createElement("div");
+  actions.className = "room-entry-mode-actions";
+  actions.setAttribute("data-game-startup-error-actions", "true");
+  panel.append(title, description, actions);
+  screen.appendChild(panel);
+
+  return screen;
+}
+
+function createStartupErrorButton(
+  documentRef: Document,
+  label: string,
+  dataAttribute: string,
+): HTMLButtonElement {
+  const button = documentRef.createElement("button");
+  button.type = "button";
+  button.textContent = label;
+  button.setAttribute(dataAttribute, "true");
 
   return button;
 }

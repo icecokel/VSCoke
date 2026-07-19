@@ -4,6 +4,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { createTournamentBracketState } from '@vscoke/poke-lounge-battle';
 import { FakePokeLoungeRoomRepository } from '../../test/support/fake-poke-lounge-room.repository';
 import type { PokeLoungeRoomEventPublisher } from './poke-lounge-room-event.publisher';
 import type {
@@ -107,7 +108,7 @@ describe('PokeLoungeRoomService', () => {
     await createRoom();
     competitiveProjection.findRoomSnapshot.mockClear();
 
-    await service.getRoom('ROOM01', 0, 7);
+    await service.getRoom('ROOM01', 7);
     await service.authorizeSubscription('ROOM01', 'player-1', 'session-1', 8);
 
     expect(competitiveProjection.findRoomSnapshot).toHaveBeenNthCalledWith(
@@ -120,6 +121,297 @@ describe('PokeLoungeRoomService', () => {
       'ROOM01',
       8,
     );
+  });
+
+  it('uses only the injected server clock when reading and purging rooms', async () => {
+    await createRoom();
+    const getAndAdvance = jest.spyOn(repository, 'getAndAdvance');
+    currentTimeMs = 42_000;
+
+    await service.getRoom('ROOM01');
+
+    expect(getAndAdvance).toHaveBeenCalledWith('ROOM01', 42_000);
+  });
+
+  it('keeps ready commands pending until socket acknowledgement and starts only after both acknowledgements', async () => {
+    const created = await service.createRoom(
+      { playerId: 'player-1', sessionId: 'session-1', nowMs: 0 },
+      command(0, 1),
+      { requireSocketAcknowledgement: true },
+    );
+    const joined = await service.joinRoom(
+      'ROOM01',
+      { playerId: 'player-2', sessionId: 'session-2', nowMs: 1 },
+      command(created.revision, 2),
+      { requireSocketAcknowledgement: true },
+    );
+    const hostReady = await service.setReady(
+      'ROOM01',
+      { playerId: 'player-1', sessionId: 'session-1', ready: true, nowMs: 2 },
+      command(joined.revision, 3),
+    );
+    const bothReady = await service.setReady(
+      'ROOM01',
+      { playerId: 'player-2', sessionId: 'session-2', ready: true, nowMs: 3 },
+      command(hostReady.revision, 4),
+    );
+
+    expect(bothReady.status).toBe('waiting');
+    const hostAcknowledged = await service.acknowledgeParticipantPresence(
+      'ROOM01',
+      'player-1',
+      'session-1',
+      bothReady.revision,
+    );
+    expect(hostAcknowledged.status).toBe('waiting');
+    const guestAcknowledged = await service.acknowledgeParticipantPresence(
+      'ROOM01',
+      'player-2',
+      'session-2',
+      hostAcknowledged.revision,
+    );
+
+    expect(guestAcknowledged).toMatchObject({
+      status: 'round-started',
+      round: { startedAtMs: 0, endsAtMs: 60_000 },
+      participants: [
+        { playerId: 'player-1', ready: true, connected: true },
+        { playerId: 'player-2', ready: true, connected: true },
+      ],
+    });
+    expect(JSON.stringify(guestAcknowledged)).not.toContain(
+      'presencePendingUntilMs',
+    );
+  });
+
+  it('expires an unacknowledged HTTP participant and does not expose the pending lease', async () => {
+    const created = await service.createRoom(
+      { playerId: 'player-1', sessionId: 'session-1', nowMs: 0 },
+      command(0, 1),
+      { requireSocketAcknowledgement: true },
+    );
+
+    expect(created.participants[0]).toMatchObject({
+      connected: true,
+      presencePendingUntilMs: 15_000,
+    });
+    const published = publisher.publish.mock.calls.at(-1)?.[0].snapshot;
+    expect(published?.participants[0]).toMatchObject({ connected: false });
+    expect(JSON.stringify(published)).not.toContain('presencePendingUntilMs');
+
+    currentTimeMs = 15_000;
+    await expect(service.getRoom('ROOM01')).resolves.toMatchObject({
+      status: 'closed',
+      revision: 1,
+      participants: [],
+    });
+  });
+
+  it('does not replace an already acknowledged session with a pending lease', async () => {
+    await createRoom();
+
+    await service.joinRoom(
+      'ROOM01',
+      { playerId: 'player-1', sessionId: 'session-1', nowMs: 1 },
+      command(0, 2),
+      { requireSocketAcknowledgement: true },
+    );
+    currentTimeMs = 20_000;
+
+    await expect(service.getRoom('ROOM01')).resolves.toMatchObject({
+      status: 'waiting',
+      revision: 1,
+      participants: [{ playerId: 'player-1', connected: true }],
+    });
+    expect(repository.snapshot('ROOM01')?.participants[0]).not.toHaveProperty(
+      'presencePendingUntilMs',
+    );
+  });
+
+  it('expires a still-connected participant through a revision-checked leave', async () => {
+    await createRoom();
+    currentTimeMs = 42_000;
+
+    await service.expireParticipantPresence(
+      ' room01 ',
+      ' player-1 ',
+      ' session-1 ',
+    );
+
+    expect(repository.snapshot('ROOM01')).toMatchObject({
+      status: 'closed',
+      revision: 1,
+      participants: [],
+      round: { phase: 'completed' },
+    });
+  });
+
+  it('does not mutate presence for a stale session or an already absent participant', async () => {
+    await createRoom();
+
+    await service.expireParticipantPresence(
+      'ROOM01',
+      'player-1',
+      'stale-session',
+    );
+    await service.expireParticipantPresence(
+      'ROOM01',
+      'missing-player',
+      'session-1',
+    );
+
+    expect(repository.snapshot('ROOM01')).toMatchObject({
+      status: 'waiting',
+      revision: 0,
+      participants: [{ playerId: 'player-1', connected: true }],
+    });
+  });
+
+  it('does not let a stale disconnect epoch remove a reconnected participant', async () => {
+    await createRoom();
+    await service.acknowledgeParticipantPresence(
+      'ROOM01',
+      'player-1',
+      'session-1',
+      undefined,
+      'presence-epoch-old',
+    );
+    const mutate = repository.mutate.bind(repository);
+    let reconnectCommitted = false;
+    jest.spyOn(repository, 'mutate').mockImplementation(async (input) => {
+      if (input.operation === 'leave' && !reconnectCommitted) {
+        reconnectCommitted = true;
+        await service.acknowledgeParticipantPresence(
+          'ROOM01',
+          'player-1',
+          'session-1',
+          undefined,
+          'presence-epoch-new',
+        );
+      }
+
+      return mutate(input);
+    });
+
+    await service.expireParticipantPresence(
+      'ROOM01',
+      'player-1',
+      'session-1',
+      'presence-epoch-old',
+    );
+
+    expect(reconnectCommitted).toBe(true);
+    expect(repository.snapshot('ROOM01')).toMatchObject({
+      status: 'waiting',
+      revision: 2,
+      participants: [
+        {
+          playerId: 'player-1',
+          sessionId: 'session-1',
+          connected: true,
+          presenceEpoch: 'presence-epoch-new',
+        },
+      ],
+    });
+    await expect(
+      service.authorizeSubscription('ROOM01', 'player-1', 'session-1'),
+    ).resolves.not.toHaveProperty('participants.0.presenceEpoch');
+  });
+
+  it('cancels an in-flight expiry before its repository apply after reconnect', async () => {
+    await createRoom();
+    await service.acknowledgeParticipantPresence(
+      'ROOM01',
+      'player-1',
+      'session-1',
+      undefined,
+      'presence-epoch-old',
+    );
+    const controller = new AbortController();
+    const mutate = repository.mutate.bind(repository);
+    jest.spyOn(repository, 'mutate').mockImplementation(async (input) => {
+      if (input.operation === 'leave') {
+        controller.abort();
+      }
+      return mutate(input);
+    });
+
+    await service.expireParticipantPresence(
+      'ROOM01',
+      'player-1',
+      'session-1',
+      'presence-epoch-old',
+      controller.signal,
+    );
+
+    expect(repository.snapshot('ROOM01')).toMatchObject({
+      status: 'waiting',
+      revision: 1,
+      participants: [
+        {
+          playerId: 'player-1',
+          connected: true,
+          presenceEpoch: 'presence-epoch-old',
+        },
+      ],
+    });
+  });
+
+  it('cancels an old acknowledgement after a zero-socket reconnect epoch wins', async () => {
+    await createRoom();
+    const mutate = repository.mutate.bind(repository);
+    let releaseOldMutation: (() => void) | undefined;
+    let oldMutationStarted: (() => void) | undefined;
+    const oldMutationReady = new Promise<void>((resolve) => {
+      oldMutationStarted = resolve;
+    });
+    let oldMutationHeld = false;
+    jest.spyOn(repository, 'mutate').mockImplementation(async (input) => {
+      if (input.operation === 'presence' && !oldMutationHeld) {
+        oldMutationHeld = true;
+        oldMutationStarted?.();
+        await new Promise<void>((resolve) => {
+          releaseOldMutation = resolve;
+        });
+      }
+      return mutate(input);
+    });
+    const oldController = new AbortController();
+    const oldAcknowledgement = service.acknowledgeParticipantPresence(
+      'ROOM01',
+      'player-1',
+      'session-1',
+      undefined,
+      'presence-epoch-old',
+      oldController.signal,
+    );
+    await oldMutationReady;
+
+    oldController.abort();
+    await service.acknowledgeParticipantPresence(
+      'ROOM01',
+      'player-1',
+      'session-1',
+      undefined,
+      'presence-epoch-new',
+      new AbortController().signal,
+    );
+    const cancelled = expect(oldAcknowledgement).rejects.toThrow(
+      'Poke Lounge presence mutation cancelled',
+    );
+    releaseOldMutation?.();
+    await cancelled;
+
+    expect(repository.snapshot('ROOM01')).toMatchObject({
+      revision: 1,
+      participants: [
+        {
+          playerId: 'player-1',
+          connected: true,
+          presenceEpoch: 'presence-epoch-new',
+        },
+      ],
+    });
   });
 
   it.each([
@@ -195,7 +487,8 @@ describe('PokeLoungeRoomService', () => {
       );
     }
 
-    const room = await service.getRoom('ROOM01', 10);
+    currentTimeMs = 10;
+    const room = await service.getRoom('ROOM01');
 
     expect(
       room.participants.filter((row) => row.role === 'participant'),
@@ -241,7 +534,8 @@ describe('PokeLoungeRoomService', () => {
     });
 
     publisher.publish.mockClear();
-    const tournament = await service.getRoom('room01', 1200);
+    currentTimeMs = 1200;
+    const tournament = await service.getRoom('room01');
 
     expect(tournament).toMatchObject({
       status: 'tournament',
@@ -299,7 +593,8 @@ describe('PokeLoungeRoomService', () => {
     });
     expect(ready.round).toMatchObject({ startedAtMs: 200, endsAtMs: 1200 });
 
-    const tournament = await service.getRoom('ROOM01', 1200);
+    currentTimeMs = 1200;
+    const tournament = await service.getRoom('ROOM01');
     expect(tournament).toMatchObject({
       status: 'tournament',
       tournament: {
@@ -589,6 +884,111 @@ describe('PokeLoungeRoomService', () => {
     });
   });
 
+  it('converges a casual five-player bye disconnect when that player reaches a later match', async () => {
+    const room = createSnapshot();
+    room.status = 'tournament';
+    room.round.phase = 'tournament';
+    room.participants = Array.from({ length: 5 }, (_, index) => ({
+      playerId: `player-${index + 1}`,
+      sessionId: `session-${index + 1}`,
+      displayName: `Player ${index + 1}`,
+      role: 'participant' as const,
+      ready: true,
+      connected: true,
+      joinedAtMs: index,
+    }));
+    const bracket = createTournamentBracketState(
+      room.participants.map(({ playerId, displayName }) => ({
+        playerId,
+        displayName,
+      })),
+      1,
+    );
+    room.tournament = {
+      version: 2,
+      bracket,
+      activeMatchId: bracket.currentRound!.matches[0].matchId,
+      activeMatchAuthority: 'casual',
+      cumulativeScores: {},
+    };
+    repository.seed(room);
+
+    const left = await service.leaveRoom(
+      'ROOM01',
+      { playerId: 'player-1', sessionId: 'session-1', nowMs: 5 },
+      command(0, 70),
+    );
+    const afterOpening = await service.submitMatchResult(
+      'ROOM01',
+      {
+        reportingPlayerId: 'player-4',
+        reportingSessionId: 'session-4',
+        matchId: 'game-round-1-bracket-1-match-1',
+        winnerPlayerId: 'player-4',
+        loserPlayerId: 'player-5',
+        reason: 'faint',
+        nowMs: 10,
+      },
+      command(left.revision, 71),
+    );
+
+    expect(afterOpening.tournament).toMatchObject({
+      activeMatchId: 'game-round-1-bracket-2-match-2',
+      bracket: {
+        currentRound: {
+          matches: [
+            {
+              participantIds: ['player-1', 'player-4'],
+              status: 'completed',
+              winnerPlayerId: 'player-4',
+              loserPlayerId: 'player-1',
+              resultReason: 'forfeit',
+            },
+            {
+              participantIds: ['player-3', 'player-2'],
+              status: 'ready',
+            },
+          ],
+        },
+      },
+    });
+
+    const afterSemifinal = await service.submitMatchResult(
+      'ROOM01',
+      {
+        reportingPlayerId: 'player-3',
+        reportingSessionId: 'session-3',
+        matchId: afterOpening.tournament.activeMatchId!,
+        winnerPlayerId: 'player-3',
+        loserPlayerId: 'player-2',
+        reason: 'faint',
+        nowMs: 20,
+      },
+      command(afterOpening.revision, 72),
+    );
+    const completed = await service.submitMatchResult(
+      'ROOM01',
+      {
+        reportingPlayerId: 'player-4',
+        reportingSessionId: 'session-4',
+        matchId: afterSemifinal.tournament.activeMatchId!,
+        winnerPlayerId: 'player-4',
+        loserPlayerId: 'player-3',
+        reason: 'faint',
+        nowMs: 30,
+      },
+      command(afterSemifinal.revision, 73),
+    );
+
+    expect(completed).toMatchObject({
+      status: 'completed',
+      tournament: {
+        activeMatchId: null,
+        bracket: { championPlayerId: 'player-4' },
+      },
+    });
+  });
+
   it('rejects casual results for a server-authoritative active match', async () => {
     const tournament = await createTournament();
     tournament.tournament.activeMatchAuthority = 'server';
@@ -834,7 +1234,8 @@ describe('PokeLoungeRoomService', () => {
     ).resolves.toMatchObject({ roomCode: 'ROOM02' });
     expect(loggerError.mock.calls[0]?.[0]).toContain('ROOM02');
     expect(loggerError.mock.calls[0]?.[1]).toContain('publisher unavailable');
-    await expect(service.getRoom('ROOM02', 1)).resolves.toMatchObject({
+    currentTimeMs = 1;
+    await expect(service.getRoom('ROOM02')).resolves.toMatchObject({
       roomCode: 'ROOM02',
       revision: 0,
     });
@@ -847,9 +1248,8 @@ describe('PokeLoungeRoomService', () => {
   it('returns not found for expired repository state', async () => {
     await createRoom({ nowMs: 0 });
 
-    await expect(service.getRoom('ROOM01', 30 * 60_000 + 1)).rejects.toThrow(
-      NotFoundException,
-    );
+    currentTimeMs = 30 * 60_000 + 1;
+    await expect(service.getRoom('ROOM01')).rejects.toThrow(NotFoundException);
   });
 
   async function createRoom(
@@ -891,7 +1291,8 @@ describe('PokeLoungeRoomService', () => {
       command(2, 4),
     );
 
-    return service.getRoom('ROOM01', 1200);
+    currentTimeMs = 1200;
+    return service.getRoom('ROOM01');
   }
 });
 

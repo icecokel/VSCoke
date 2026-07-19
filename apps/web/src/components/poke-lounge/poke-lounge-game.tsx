@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocale } from "next-intl";
 import { useSession } from "next-auth/react";
 import {
   AlertDialog,
@@ -21,7 +22,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useGame } from "@/contexts/game-context";
-import { getSessionApiIdToken, isAuthSessionError, type ApiTokenSession } from "@/lib/auth-token";
+import { useCustomRouter } from "@/hooks/use-custom-router";
+import {
+  getSessionApiAccountId,
+  getSessionApiIdToken,
+  isAuthSessionError,
+  type ApiTokenSession,
+} from "@/lib/auth-token";
 import { getGameRanking, submitScore, type GameHistory } from "@/services/score-service";
 import { loadPokeLoungeState } from "@/services/poke-lounge-state-service";
 import {
@@ -32,9 +39,23 @@ import {
 } from "./poke-lounge-autosave";
 import { usePokeLoungeAccessibleStatus } from "./use-poke-lounge-accessible-status";
 import { setPokeLoungeMasterVolume } from "./runtime/game/audio/poke-lounge-audio";
-import { getDefaultGameStateStore } from "./runtime/game/state/defaultGameStateStore";
+import {
+  createAuthenticatedGameStateStorageScope,
+  getDefaultGameStateStore,
+  setDefaultGameStateStorageScope,
+} from "./runtime/game/state/defaultGameStateStore";
+import { ANONYMOUS_GAME_STATE_STORAGE_SCOPE } from "./runtime/game/state/gameStateStorage";
+import {
+  buildPokeLoungeSaveSnapshot,
+  type PokeLoungeSaveSnapshot,
+} from "./runtime/game/state/poke-lounge-save-snapshot";
+import { hasSamePokeLoungeLocalProgress } from "./runtime/game/state/poke-lounge-save-conflict";
 import { detectTouchGameDevice } from "./runtime/game/input/mobileTouchControls";
 import { GAME_SETTINGS_OPEN_EVENT } from "./runtime/game/input/settings-toggle";
+import {
+  pressVirtualGamepadButton,
+  releaseVirtualGamepadButton,
+} from "./runtime/game/input/virtualGamepad";
 import {
   GAME_VIEWPORT_SIZE_PRESETS,
   type GameViewportDisplaySize,
@@ -51,6 +72,11 @@ import {
   type PokeLoungeNoticeDetail,
   type PokeLoungeRoomLeaveRequestDetail,
 } from "./runtime/game/ui/poke-lounge-ui-events";
+import { getPokeLoungeCopy } from "./poke-lounge-copy";
+import {
+  createPokeLoungeRoomEntryUrl,
+  isPokeLoungeMultiplayerResultUrl,
+} from "./poke-lounge-result-navigation";
 import styles from "./poke-lounge.module.css";
 
 type PokeLoungeWindow = Window & {
@@ -64,11 +90,18 @@ interface FinalResultState {
   playTime: number;
 }
 
+interface PendingHydrationResolution {
+  accountId: string;
+  revision: number;
+  snapshot: PokeLoungeSaveSnapshot;
+}
+
 const POKE_LOUNGE_VOLUME_STEPS = [0, 0.25, 0.5, 0.75, 1] as const;
 const POKE_LOUNGE_CONTAINER_WIDTH_VAR = "--poke-lounge-container-width";
 const POKE_LOUNGE_CONTAINER_HEIGHT_VAR = "--poke-lounge-container-height";
 const POKE_LOUNGE_VOLUME_STORAGE_KEY = "poke-lounge:volume-level";
 const POKE_LOUNGE_UI_SIZE_STORAGE_KEY = "poke-lounge:ui-size";
+let activeGameStateStorageScope: string = ANONYMOUS_GAME_STATE_STORAGE_SCOPE;
 const OPEN_MODAL_DIALOG_SELECTOR = [
   "dialog[open]",
   '[role="dialog"][data-state="open"]',
@@ -81,7 +114,12 @@ type PokeLoungeGamePageHandle = {
   setViewportSize(viewportSize: GameViewportDisplaySize): void;
 };
 type PokeLoungeRoomShareStatus = "idle" | "success" | "error";
-type PokeLoungeStateHydrationStatus = "pending" | "ready" | "unavailable";
+type PokeLoungeStateHydrationStatus =
+  | "pending"
+  | "ready"
+  | "local-ready"
+  | "conflict"
+  | "unavailable";
 type PokeLoungeRankingStatus = "idle" | "loading" | "ready" | "error";
 type PokeLoungeConnectionSummary = {
   connectionStatus: "offline" | "connecting" | "online";
@@ -103,6 +141,10 @@ function isEditableEventTarget(target: EventTarget | null): boolean {
 
 function hasOpenModalDialog(ownerDocument: Document): boolean {
   return ownerDocument.querySelector(OPEN_MODAL_DIALOG_SELECTOR) !== null;
+}
+
+function isShortcutGuideOpen(ownerDocument: Document): boolean {
+  return ownerDocument.body.classList.contains("is-shortcut-guide-open");
 }
 
 function createPokeLoungeRoomShareUrlFromLocation(): string | null {
@@ -156,16 +198,32 @@ function readStoredUiSize(): PokeLoungeUiSize | null {
   return stored === "normal" || stored === "large" ? stored : null;
 }
 
-function getRankingDisplayName(entry: GameHistory): string {
-  return entry.user.displayName.trim() || "이름 없는 트레이너";
+function getRankingDisplayName(entry: GameHistory, fallbackName: string): string {
+  return entry.user.displayName.trim() || fallbackName;
 }
 
 export function PokeLoungeGame() {
   const { setGamePlaying } = useGame();
+  const locale = useLocale();
+  const router = useCustomRouter();
   const { data: session, status } = useSession();
-  const accessibleGameStatus = usePokeLoungeAccessibleStatus();
+  const apiSession = session as ApiTokenSession | null;
+  const sessionToken = getSessionApiIdToken(apiSession);
+  const accountId = sessionToken
+    ? (getSessionApiAccountId(apiSession, sessionToken) ?? null)
+    : null;
+  const copy = getPokeLoungeCopy(locale);
+  const accessibleGameStatus = usePokeLoungeAccessibleStatus(locale);
   const pageRef = useRef<HTMLElement>(null);
   const gamePageHandleRef = useRef<PokeLoungeGamePageHandle | null>(null);
+  const gameStateStorageScopeRef = useRef(activeGameStateStorageScope);
+  const accountTokensRef = useRef(new Map<string, string>());
+  const latestAccountIdRef = useRef(accountId);
+  const flushRecoveredLocalStateRef = useRef(false);
+  latestAccountIdRef.current = accountId;
+  if (accountId && sessionToken) {
+    accountTokensRef.current.set(accountId, sessionToken);
+  }
   const startedAtMsRef = useRef(Date.now());
   const isUnmountingRef = useRef(false);
   const tokenLifecycle = getPokeLoungeTokenLifecycle();
@@ -185,7 +243,11 @@ export function PokeLoungeGame() {
     useState<PokeLoungeStateHydrationStatus>("pending");
   const [stateHydrationMessage, setStateHydrationMessage] = useState("");
   const [stateHydrationAttempt, setStateHydrationAttempt] = useState(0);
-  const [hydratedToken, setHydratedToken] = useState<string | null>(null);
+  const [stateHydrationRetrying, setStateHydrationRetrying] = useState(false);
+  const [pendingHydrationResolution, setPendingHydrationResolution] =
+    useState<PendingHydrationResolution | null>(null);
+  const [hydratedAccountId, setHydratedAccountId] = useState<string | null>(null);
+  const [hydratedRevision, setHydratedRevision] = useState(0);
   const [autosaveStatus, setAutosaveStatus] = useState<PokeLoungeAutosaveStatus>("idle");
   const [connectionSummary, setConnectionSummary] = useState<PokeLoungeConnectionSummary>({
     connectionStatus: "offline",
@@ -196,33 +258,54 @@ export function PokeLoungeGame() {
   const [rankingStatus, setRankingStatus] = useState<PokeLoungeRankingStatus>("idle");
   const [rankingAttempt, setRankingAttempt] = useState(0);
   const [ranking, setRanking] = useState<GameHistory[]>([]);
+  const [gameStartupAttempt, setGameStartupAttempt] = useState(0);
+  const [gameStartupError, setGameStartupError] = useState(false);
   const volumeValue = POKE_LOUNGE_VOLUME_STEPS[volumeLevelIndex];
   const volumePercent = Math.round(volumeValue * 100);
-  const volumeLabel = volumePercent === 0 ? "소리 꺼짐" : `소리 ${volumePercent}%`;
-  const uiSizeLabel = uiSize === "large" ? "UI 크게" : "UI 보통";
+  const volumeLabel = volumePercent === 0 ? copy.volumeMuted : copy.volumeLabel(volumePercent);
+  const uiSizeLabel = uiSize === "large" ? copy.uiLarge : copy.uiNormal;
   const roomShareUrl = settingsOpen ? createPokeLoungeRoomShareUrlFromLocation() : null;
+  const localRoomShare =
+    Boolean(roomShareUrl) &&
+    typeof window !== "undefined" &&
+    new URL(window.location.href).searchParams.get("network") === "local";
   const multiplayerRoomId =
     connectionSummary.roomId && connectionSummary.roomId !== "local-preview"
       ? connectionSummary.roomId
       : null;
   const connectionLabel =
     connectionSummary.connectionStatus === "online"
-      ? "방 연결됨"
+      ? copy.connectionConnected
       : connectionSummary.connectionStatus === "connecting"
-        ? "방 연결 중"
-        : "방 연결 끊김";
-  const autosaveLabel =
-    status !== "authenticated"
-      ? "현재 탭에 자동 저장"
+        ? copy.connectionConnecting
+        : copy.connectionDisconnected;
+  const usingLocalHydrationFallback =
+    stateHydrationStatus === "local-ready" || stateHydrationStatus === "conflict";
+  const expectedGameStateStorageScope = accountId
+    ? createAuthenticatedGameStateStorageScope(accountId)
+    : ANONYMOUS_GAME_STATE_STORAGE_SCOPE;
+  const gameHydrationReady =
+    (stateHydrationStatus === "ready" || stateHydrationStatus === "local-ready") &&
+    gameStateStorageScopeRef.current === expectedGameStateStorageScope;
+  const autosaveLabel = usingLocalHydrationFallback
+    ? copy.autosaveLocalFallback
+    : status !== "authenticated"
+      ? copy.autosaveLocal
       : autosaveStatus === "saving"
-        ? "계정에 저장 중"
+        ? copy.autosaveSaving
         : autosaveStatus === "error"
-          ? "저장 실패 · 재시도 대기"
+          ? copy.autosaveError
           : autosaveStatus === "pending"
-            ? "변경사항 저장 대기"
+            ? copy.autosavePending
             : autosaveStatus === "saved"
-              ? "계정에 저장됨"
-              : "계정 저장 준비됨";
+              ? copy.autosaveSaved
+              : copy.autosaveReady;
+  const resultRequiresAuthentication =
+    status !== "authenticated" || !sessionToken || isAuthSessionError(apiSession?.error);
+  const resultReturnsToRoomEntry =
+    Boolean(finalResult) &&
+    typeof window !== "undefined" &&
+    isPokeLoungeMultiplayerResultUrl(new URL(window.location.href));
 
   const syncFullscreenState = useCallback(() => {
     const page = pageRef.current;
@@ -245,6 +328,117 @@ export function PokeLoungeGame() {
   const handleUiSizeToggle = useCallback(() => {
     setUiSize(currentSize => (currentSize === "large" ? "normal" : "large"));
   }, []);
+
+  const handleStateHydrationRetry = useCallback(() => {
+    if (stateHydrationStatus !== "local-ready") {
+      setStateHydrationAttempt(attempt => attempt + 1);
+      return;
+    }
+
+    if (multiplayerRoomId) {
+      return;
+    }
+
+    const retryAccountId = accountId;
+    const token = retryAccountId ? accountTokensRef.current.get(retryAccountId) : undefined;
+    if (
+      status !== "authenticated" ||
+      !retryAccountId ||
+      !token ||
+      isAuthSessionError(apiSession?.error)
+    ) {
+      setStateHydrationAttempt(attempt => attempt + 1);
+      return;
+    }
+
+    const retryStorageScope = createAuthenticatedGameStateStorageScope(retryAccountId);
+    setStateHydrationRetrying(true);
+    void tokenLifecycle
+      .runHydration(() => loadPokeLoungeState(token))
+      .then(result => {
+        if (
+          latestAccountIdRef.current !== retryAccountId ||
+          gameStateStorageScopeRef.current !== retryStorageScope
+        ) {
+          return;
+        }
+
+        if (!result.success) {
+          setStateHydrationMessage(copy.hydrationLocalFallback);
+          return;
+        }
+
+        const localSnapshot = buildPokeLoungeSaveSnapshot(getDefaultGameStateStore());
+        if (result.snapshot && !hasSamePokeLoungeLocalProgress(localSnapshot, result.snapshot)) {
+          setPendingHydrationResolution({
+            accountId: retryAccountId,
+            revision: result.revision,
+            snapshot: result.snapshot,
+          });
+          return;
+        }
+
+        flushRecoveredLocalStateRef.current = true;
+        setHydratedAccountId(retryAccountId);
+        setHydratedRevision(result.revision);
+        setStateHydrationMessage("");
+        setStateHydrationStatus("ready");
+      })
+      .finally(() => {
+        if (latestAccountIdRef.current === retryAccountId) {
+          setStateHydrationRetrying(false);
+        }
+      });
+  }, [
+    accountId,
+    apiSession?.error,
+    copy.hydrationLocalFallback,
+    multiplayerRoomId,
+    stateHydrationStatus,
+    status,
+    tokenLifecycle,
+  ]);
+
+  const handleUseServerHydration = useCallback(() => {
+    if (
+      !pendingHydrationResolution ||
+      latestAccountIdRef.current !== pendingHydrationResolution.accountId
+    ) {
+      setPendingHydrationResolution(null);
+      return;
+    }
+
+    getDefaultGameStateStore().hydrateLocalPlayers(pendingHydrationResolution.snapshot.state);
+    flushRecoveredLocalStateRef.current = false;
+    setHydratedAccountId(pendingHydrationResolution.accountId);
+    setHydratedRevision(pendingHydrationResolution.revision);
+    setStateHydrationMessage("");
+    setStateHydrationStatus("ready");
+    setPendingHydrationResolution(null);
+  }, [pendingHydrationResolution]);
+
+  const handleUseLocalHydration = useCallback(() => {
+    if (
+      !pendingHydrationResolution ||
+      latestAccountIdRef.current !== pendingHydrationResolution.accountId
+    ) {
+      setPendingHydrationResolution(null);
+      return;
+    }
+
+    flushRecoveredLocalStateRef.current = true;
+    setHydratedAccountId(pendingHydrationResolution.accountId);
+    setHydratedRevision(pendingHydrationResolution.revision);
+    setStateHydrationMessage("");
+    setStateHydrationStatus("ready");
+    setPendingHydrationResolution(null);
+  }, [pendingHydrationResolution]);
+
+  const handleDeferHydrationResolution = useCallback(() => {
+    setPendingHydrationResolution(null);
+    setStateHydrationMessage(copy.hydrationLocalFallback);
+    setStateHydrationStatus("local-ready");
+  }, [copy.hydrationLocalFallback]);
 
   const handleRoomShare = useCallback(async () => {
     const shareUrl = createPokeLoungeRoomShareUrlFromLocation();
@@ -385,7 +579,24 @@ export function PokeLoungeGame() {
     }
 
     const syncGameCanvasState = () => {
-      setGameCanvasMounted(Boolean(gameRoot.querySelector("canvas")));
+      const canvas = gameRoot.querySelector("canvas");
+      setGameCanvasMounted(Boolean(canvas));
+
+      if (!canvas) {
+        return;
+      }
+
+      canvas.setAttribute("role", "img");
+      canvas.setAttribute("aria-label", copy.gameCanvasLabel);
+      canvas.setAttribute("aria-describedby", "poke-lounge-accessible-status");
+      canvas.setAttribute(
+        "aria-keyshortcuts",
+        "ArrowUp ArrowDown ArrowLeft ArrowRight Enter Space H Escape",
+      );
+      canvas.tabIndex = 0;
+      if (canvas.textContent !== copy.gameCanvasFallback) {
+        canvas.textContent = copy.gameCanvasFallback;
+      }
     };
 
     syncGameCanvasState();
@@ -396,7 +607,7 @@ export function PokeLoungeGame() {
     return () => {
       observer.disconnect();
     };
-  }, []);
+  }, [copy]);
 
   useEffect(() => {
     const page = pageRef.current;
@@ -467,24 +678,45 @@ export function PokeLoungeGame() {
   }, [syncFullscreenState]);
 
   useEffect(() => {
+    let pendingSettingsOpen: number | null = null;
+
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && isShortcutGuideOpen(document)) {
+        pressVirtualGamepadButton("back");
+        releaseVirtualGamepadButton("back");
+        return;
+      }
+
       if (
         event.key !== "Escape" ||
         isEditableEventTarget(event.target) ||
-        hasOpenModalDialog(document)
+        hasOpenModalDialog(document) ||
+        !pageRef.current?.querySelector("canvas")
       ) {
         return;
       }
 
-      event.preventDefault();
-      event.stopPropagation();
-      setSettingsOpen(open => !open);
+      // Radix dialogs also handle Escape during this event's bubble phase.
+      // Mounting the settings dialog synchronously here would let the same
+      // keydown immediately close the newly mounted dialog.
+      if (pendingSettingsOpen !== null) {
+        window.clearTimeout(pendingSettingsOpen);
+      }
+      pendingSettingsOpen = window.setTimeout(() => {
+        pendingSettingsOpen = null;
+        if (!hasOpenModalDialog(document) && pageRef.current?.querySelector("canvas")) {
+          setSettingsOpen(true);
+        }
+      }, 0);
     };
 
     window.addEventListener("keydown", handleKeyDown, true);
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown, true);
+      if (pendingSettingsOpen !== null) {
+        window.clearTimeout(pendingSettingsOpen);
+      }
     };
   }, []);
 
@@ -499,31 +731,63 @@ export function PokeLoungeGame() {
   }, []);
 
   useEffect(() => {
-    const apiSession = session as ApiTokenSession | null;
-    const token = getSessionApiIdToken(apiSession);
-
     if (status === "loading") {
       setStateHydrationStatus("pending");
-      setHydratedToken(null);
-      return;
-    }
-
-    if (status !== "authenticated" || !token || isAuthSessionError(apiSession?.error)) {
-      setStateHydrationStatus("ready");
-      setStateHydrationMessage("");
-      setHydratedToken(null);
+      setStateHydrationRetrying(false);
+      setHydratedAccountId(null);
+      setHydratedRevision(0);
       return;
     }
 
     let cancelled = false;
     setStateHydrationStatus("pending");
     setStateHydrationMessage("");
-    setHydratedToken(null);
+    setStateHydrationRetrying(false);
+    setPendingHydrationResolution(null);
+    setHydratedAccountId(null);
+    setHydratedRevision(0);
 
     void tokenLifecycle.runHydration(async () => {
       if (cancelled) {
         return;
       }
+
+      const authenticatedSession =
+        status === "authenticated" && !isAuthSessionError(apiSession?.error);
+      if (!authenticatedSession) {
+        setDefaultGameStateStorageScope(ANONYMOUS_GAME_STATE_STORAGE_SCOPE);
+        if (gameStateStorageScopeRef.current !== ANONYMOUS_GAME_STATE_STORAGE_SCOPE) {
+          getDefaultGameStateStore().reloadLocalPlayersFromStorage();
+        }
+        gameStateStorageScopeRef.current = ANONYMOUS_GAME_STATE_STORAGE_SCOPE;
+        activeGameStateStorageScope = ANONYMOUS_GAME_STATE_STORAGE_SCOPE;
+        setStateHydrationStatus("ready");
+        return;
+      }
+
+      const token = accountId ? accountTokensRef.current.get(accountId) : undefined;
+      if (!accountId || !token) {
+        setDefaultGameStateStorageScope(ANONYMOUS_GAME_STATE_STORAGE_SCOPE);
+        if (gameStateStorageScopeRef.current !== ANONYMOUS_GAME_STATE_STORAGE_SCOPE) {
+          getDefaultGameStateStore().reloadLocalPlayersFromStorage();
+        }
+        gameStateStorageScopeRef.current = ANONYMOUS_GAME_STATE_STORAGE_SCOPE;
+        activeGameStateStorageScope = ANONYMOUS_GAME_STATE_STORAGE_SCOPE;
+        setStateHydrationStatus("unavailable");
+        setStateHydrationMessage(copy.hydrationIdentityError);
+        return;
+      }
+
+      const authenticatedStorageScope = createAuthenticatedGameStateStorageScope(accountId);
+      const alreadyUsingAuthenticatedScope =
+        gameStateStorageScopeRef.current === authenticatedStorageScope;
+      setDefaultGameStateStorageScope(authenticatedStorageScope);
+      const store = getDefaultGameStateStore();
+      const restoredLocalProgress = alreadyUsingAuthenticatedScope
+        ? true
+        : store.reloadLocalPlayersFromStorage();
+      gameStateStorageScopeRef.current = authenticatedStorageScope;
+      activeGameStateStorageScope = authenticatedStorageScope;
 
       const result = await loadPokeLoungeState(token);
       if (cancelled) {
@@ -531,24 +795,52 @@ export function PokeLoungeGame() {
       }
 
       if (!result.success) {
-        setStateHydrationStatus("unavailable");
-        setStateHydrationMessage(result.message);
-        setHydratedToken(null);
+        setStateHydrationStatus("local-ready");
+        setStateHydrationMessage(copy.hydrationLocalFallback);
+        setHydratedAccountId(null);
+        setHydratedRevision(0);
         return;
       }
 
       if (result.snapshot) {
-        getDefaultGameStateStore().hydrateLocalPlayers(result.snapshot.state);
+        const localSnapshot = buildPokeLoungeSaveSnapshot(store);
+        if (
+          restoredLocalProgress &&
+          !hasSamePokeLoungeLocalProgress(localSnapshot, result.snapshot)
+        ) {
+          setPendingHydrationResolution({
+            accountId,
+            revision: result.revision,
+            snapshot: result.snapshot,
+          });
+          setStateHydrationStatus("conflict");
+          setStateHydrationMessage(copy.hydrationConflictDescription);
+          return;
+        }
+
+        store.hydrateLocalPlayers(result.snapshot.state);
+      } else if (restoredLocalProgress) {
+        flushRecoveredLocalStateRef.current = true;
       }
 
       setStateHydrationStatus("ready");
-      setHydratedToken(token);
+      setHydratedAccountId(accountId);
+      setHydratedRevision(result.revision);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [session, stateHydrationAttempt, status, tokenLifecycle]);
+  }, [
+    accountId,
+    apiSession?.error,
+    copy.hydrationIdentityError,
+    copy.hydrationConflictDescription,
+    copy.hydrationLocalFallback,
+    stateHydrationAttempt,
+    status,
+    tokenLifecycle,
+  ]);
 
   useEffect(() => {
     isUnmountingRef.current = false;
@@ -559,49 +851,81 @@ export function PokeLoungeGame() {
   }, []);
 
   useEffect(() => {
-    const apiSession = session as ApiTokenSession | null;
-    const token = getSessionApiIdToken(apiSession);
-
     if (
       stateHydrationStatus !== "ready" ||
-      hydratedToken !== token ||
+      hydratedAccountId !== accountId ||
       status !== "authenticated" ||
-      !token ||
+      !accountId ||
       isAuthSessionError(apiSession?.error)
     ) {
+      return;
+    }
+
+    const token = accountTokensRef.current.get(accountId);
+    if (!token) {
       return;
     }
 
     const autosave = startPokeLoungeAutosave({
       gameStateStore: getDefaultGameStateStore(),
       token,
+      getToken: () => accountTokensRef.current.get(accountId) ?? token,
+      initialRevision: hydratedRevision,
       onStatusChange: setAutosaveStatus,
+      onRevisionConflict: () => {
+        setHydratedAccountId(null);
+        setHydratedRevision(0);
+        setStateHydrationMessage(copy.hydrationLocalFallback);
+        setStateHydrationStatus("local-ready");
+      },
     });
     const autosaveLifecycle = createPokeLoungeAutosaveLifecycle(autosave);
     tokenLifecycle.registerAutosave(autosaveLifecycle);
+    if (flushRecoveredLocalStateRef.current) {
+      flushRecoveredLocalStateRef.current = false;
+      void autosave.flush();
+    }
+    const flushForPageExit = () => {
+      void autosave.flush({ keepalive: true });
+    };
+    const flushWhenHidden = () => {
+      if (document.visibilityState === "hidden") {
+        flushForPageExit();
+      }
+    };
+    window.addEventListener("pagehide", flushForPageExit);
+    document.addEventListener("visibilitychange", flushWhenHidden);
 
     return () => {
+      window.removeEventListener("pagehide", flushForPageExit);
+      document.removeEventListener("visibilitychange", flushWhenHidden);
       if (isUnmountingRef.current) {
         tokenLifecycle.disposeForUnmount(autosaveLifecycle);
       } else {
         tokenLifecycle.disposeForRehydration(autosaveLifecycle);
       }
     };
-  }, [hydratedToken, session, stateHydrationStatus, status, tokenLifecycle]);
+  }, [
+    accountId,
+    apiSession?.error,
+    copy.hydrationLocalFallback,
+    hydratedAccountId,
+    hydratedRevision,
+    stateHydrationStatus,
+    status,
+    tokenLifecycle,
+  ]);
 
   useEffect(() => {
-    if (stateHydrationStatus === "pending") {
+    if (!gameHydrationReady) {
       return;
     }
 
     let cancelled = false;
     let cleanedUp = false;
     let destroyGamePage: (() => void) | null = null;
-    const apiSession = session as ApiTokenSession | null;
-    const idToken =
-      status === "authenticated" && !isAuthSessionError(apiSession?.error)
-        ? getSessionApiIdToken(apiSession)
-        : undefined;
+    const idToken = accountId ? accountTokensRef.current.get(accountId) : undefined;
+    setGameStartupError(false);
     setGamePlaying(true);
     startedAtMsRef.current = Date.now();
     const pokeWindow = window as PokeLoungeWindow;
@@ -634,10 +958,18 @@ export function PokeLoungeGame() {
       pokeWindow.__POKE_LOUNGE_CLEANUP_FOR_TEST__ = cleanupGamePage;
     }
 
-    void import("./runtime/game-page").then(async ({ startGamePageFromDocument }) => {
-      if (!cancelled) {
+    void (async () => {
+      try {
+        const { startGamePageFromDocument } = await import("./runtime/game-page");
+        if (cancelled) {
+          return;
+        }
+
         const gamePage = await startGamePageFromDocument(document, new URL(window.location.href), {
+          accountId: accountId ?? undefined,
           idToken,
+          getIdToken: () =>
+            accountId ? (accountTokensRef.current.get(accountId) ?? idToken) : undefined,
           onGameResult: result => {
             setFinalResult({
               score: result.score,
@@ -661,11 +993,16 @@ export function PokeLoungeGame() {
           }
           gamePage.destroy();
         };
+      } catch {
+        if (!cancelled) {
+          setGameStartupError(true);
+          setGamePlaying(false);
+        }
       }
-    });
+    })();
 
     return cleanupGamePage;
-  }, [session, setGamePlaying, stateHydrationStatus, status]);
+  }, [accountId, gameHydrationReady, gameStartupAttempt, setGamePlaying]);
 
   const handleSubmitResult = useCallback(async () => {
     if (!finalResult || submitStatus === "submitting" || submitStatus === "success") {
@@ -677,12 +1014,12 @@ export function PokeLoungeGame() {
 
     if (status !== "authenticated" || !token || isAuthSessionError(apiSession?.error)) {
       setSubmitStatus("auth");
-      setSubmitMessage("로그인 후 점수를 기록할 수 있습니다.");
+      setSubmitMessage(copy.resultAuthRequired);
       return;
     }
 
     setSubmitStatus("submitting");
-    setSubmitMessage("점수를 기록하는 중입니다.");
+    setSubmitMessage(copy.resultSubmitting);
 
     const result = await submitScore(
       {
@@ -695,17 +1032,41 @@ export function PokeLoungeGame() {
 
     if (result.success) {
       setSubmitStatus("success");
-      setSubmitMessage("Poke Lounge 점수가 기록되었습니다.");
+      setSubmitMessage(copy.resultSaved);
       return;
     }
 
     setSubmitStatus(result.requiresAuth ? "auth" : "error");
-    setSubmitMessage(
-      result.requiresAuth
-        ? "로그인 후 점수를 기록할 수 있습니다."
-        : (result.message ?? "점수 기록에 실패했습니다."),
-    );
-  }, [finalResult, session, status, submitStatus]);
+    setSubmitMessage(result.requiresAuth ? copy.resultAuthRequired : copy.resultSaveFailed);
+  }, [copy, finalResult, session, status, submitStatus]);
+
+  const handleResultRetry = useCallback(() => {
+    const currentUrl = new URL(window.location.href);
+    const returnsToRoomEntry = isPokeLoungeMultiplayerResultUrl(currentUrl);
+
+    if (returnsToRoomEntry) {
+      const roomEntryUrl = createPokeLoungeRoomEntryUrl(currentUrl);
+      window.history.replaceState(
+        null,
+        "",
+        `${roomEntryUrl.pathname}${roomEntryUrl.search}${roomEntryUrl.hash}`,
+      );
+      gamePageHandleRef.current?.destroy();
+      gamePageHandleRef.current = null;
+    }
+
+    getDefaultGameStateStore().resetCompetitiveSession();
+    setFinalResult(null);
+    setSubmitStatus("idle");
+    setSubmitMessage("");
+    if (returnsToRoomEntry) {
+      setGameStartupAttempt(attempt => attempt + 1);
+    }
+  }, []);
+
+  const handleResultLobby = useCallback(() => {
+    router.push("/game");
+  }, [router]);
 
   return (
     <main
@@ -722,7 +1083,7 @@ export function PokeLoungeGame() {
         <div
           id="game-root"
           role="region"
-          aria-label="Poke Lounge 게임 화면"
+          aria-label={copy.gameRegionLabel}
           aria-describedby="poke-lounge-accessible-status"
           data-testid="poke-lounge-game-root"
         />
@@ -731,7 +1092,7 @@ export function PokeLoungeGame() {
             type="button"
             className={styles.desktopSettingsButton}
             onClick={() => setSettingsOpen(true)}
-            aria-label="Poke Lounge 설정 열기"
+            aria-label={copy.settingsOpenLabel}
             data-poke-lounge-desktop-settings-toggle="true"
           >
             ⚙
@@ -742,7 +1103,7 @@ export function PokeLoungeGame() {
             type="button"
             className="fullscreen-toggle-button fullscreen-toggle-button--mobile"
             onClick={handleFullscreenToggle}
-            aria-label={fullscreenActive ? "전체화면 끄기" : "전체화면 켜기"}
+            aria-label={fullscreenActive ? copy.fullscreenOff : copy.fullscreenOn}
             aria-pressed={fullscreenActive}
             data-fullscreen-toggle="true"
             data-fullscreen-toggle-placement="mobile"
@@ -755,7 +1116,7 @@ export function PokeLoungeGame() {
       {stateHydrationStatus === "pending" ? (
         <section className={styles.loadingOverlay} role="status" aria-live="polite">
           <p className={styles.resultEyebrow}>Poke Lounge</p>
-          <p className={styles.resultStatus}>저장된 모험을 불러오는 중입니다.</p>
+          <p className={styles.resultStatus}>{copy.hydrationLoading}</p>
         </section>
       ) : null}
       {stateHydrationStatus === "unavailable" ? (
@@ -765,17 +1126,40 @@ export function PokeLoungeGame() {
           </p>
           <Button
             type="button"
-            onClick={() => setStateHydrationAttempt(attempt => attempt + 1)}
+            onClick={handleStateHydrationRetry}
             data-testid="poke-lounge-state-hydration-retry"
           >
-            저장 상태 다시 불러오기
+            {copy.hydrationRetry}
           </Button>
+        </section>
+      ) : null}
+      {gameStartupError ? (
+        <section
+          className={styles.loadingOverlay}
+          role="alert"
+          data-testid="poke-lounge-startup-error"
+        >
+          <p className={styles.resultEyebrow}>Poke Lounge</p>
+          <h2 className={styles.startupErrorTitle}>{copy.startup.title}</h2>
+          <p className={styles.resultStatus}>{copy.startup.description}</p>
+          <div className={styles.resultActions}>
+            <Button
+              type="button"
+              onClick={() => setGameStartupAttempt(attempt => attempt + 1)}
+              data-testid="poke-lounge-startup-retry"
+            >
+              {copy.startup.retry}
+            </Button>
+            <Button type="button" variant="outline" onClick={handleResultLobby}>
+              {copy.resultLobby}
+            </Button>
+          </div>
         </section>
       ) : null}
       {gameCanvasMounted ? (
         <aside
           className={styles.statusRail}
-          aria-label="게임 저장과 연결 상태"
+          aria-label={copy.statusRailLabel}
           data-poke-lounge-status-rail="true"
         >
           {multiplayerRoomId ? (
@@ -789,11 +1173,44 @@ export function PokeLoungeGame() {
           ) : null}
           <p
             className={styles.statusChip}
-            data-tone={autosaveStatus === "error" ? "error" : "neutral"}
-            data-poke-lounge-save-status={status === "authenticated" ? autosaveStatus : "local"}
+            data-tone={
+              usingLocalHydrationFallback
+                ? "warning"
+                : autosaveStatus === "error"
+                  ? "error"
+                  : "neutral"
+            }
+            data-poke-lounge-save-status={
+              usingLocalHydrationFallback || status !== "authenticated" ? "local" : autosaveStatus
+            }
           >
             {autosaveLabel}
           </p>
+          {usingLocalHydrationFallback ? (
+            <div
+              className={`${styles.statusChip} ${styles.hydrationFallbackChip}`}
+              data-tone="warning"
+              role="status"
+              data-testid="poke-lounge-state-hydration-local-fallback"
+            >
+              <span>{stateHydrationMessage}</span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className={styles.hydrationFallbackRetry}
+                onClick={handleStateHydrationRetry}
+                disabled={stateHydrationRetrying || Boolean(multiplayerRoomId)}
+                data-testid="poke-lounge-state-hydration-retry"
+              >
+                {multiplayerRoomId
+                  ? copy.hydrationRetryAfterRoom
+                  : stateHydrationRetrying
+                    ? copy.hydrationRetrying
+                    : copy.hydrationRetry}
+              </Button>
+            </div>
+          ) : null}
         </aside>
       ) : null}
       {notice ? (
@@ -805,7 +1222,7 @@ export function PokeLoungeGame() {
         >
           <p>{notice.message}</p>
           <Button type="button" variant="outline" onClick={() => setNotice(null)}>
-            확인
+            {copy.noticeConfirm}
           </Button>
         </aside>
       ) : null}
@@ -816,9 +1233,9 @@ export function PokeLoungeGame() {
           data-poke-lounge-settings="true"
         >
           <DialogHeader className={styles.settingsHeader}>
-            <DialogTitle className={styles.settingsTitle}>설정과 검증 랭킹</DialogTitle>
+            <DialogTitle className={styles.settingsTitle}>{copy.settingsTitle}</DialogTitle>
             <DialogDescription className={styles.settingsDescription}>
-              화면과 소리를 조절하고 현재 방·저장 상태를 확인합니다.
+              {copy.settingsDescription}
             </DialogDescription>
           </DialogHeader>
           <div className={styles.settingsOptions}>
@@ -827,21 +1244,21 @@ export function PokeLoungeGame() {
               variant="outline"
               className={styles.settingsOptionButton}
               onClick={handleFullscreenToggle}
-              aria-label={fullscreenActive ? "전체화면 끄기" : "전체화면 켜기"}
+              aria-label={fullscreenActive ? copy.fullscreenOff : copy.fullscreenOn}
               aria-pressed={fullscreenActive}
               data-fullscreen-toggle="true"
               data-fullscreen-toggle-placement="settings"
               data-poke-lounge-setting-option="true"
               data-poke-lounge-setting-action="fullscreen"
             >
-              전체화면
+              {copy.settingsFullscreen}
             </Button>
             <Button
               type="button"
               variant="outline"
               className={styles.settingsOptionButton}
               onClick={handleVolumeCycle}
-              aria-label={volumePercent === 0 ? "소리 음소거" : `소리 볼륨 ${volumePercent}퍼센트`}
+              aria-label={copy.volumeAriaLabel(volumePercent)}
               data-poke-lounge-setting-option="true"
               data-poke-lounge-setting-action="volume"
               data-poke-lounge-volume-level={volumeLevelIndex}
@@ -853,7 +1270,7 @@ export function PokeLoungeGame() {
               variant="outline"
               className={styles.settingsOptionButton}
               onClick={handleUiSizeToggle}
-              aria-label="UI 사이즈 2단계"
+              aria-label={copy.settingsUiSizeAria}
               aria-pressed={uiSize === "large"}
               data-poke-lounge-setting-option="true"
               data-poke-lounge-setting-action="ui-size"
@@ -867,48 +1284,55 @@ export function PokeLoungeGame() {
                 variant="outline"
                 className={styles.settingsOptionButton}
                 onClick={handleRoomShare}
-                aria-label="방 링크 공유"
+                aria-label={localRoomShare ? copy.settingsLocalShare : copy.settingsShare}
                 data-poke-lounge-setting-option="true"
                 data-poke-lounge-setting-action="share-link"
               >
                 {roomShareStatus === "success"
-                  ? "링크 복사됨"
+                  ? copy.settingsShareCopied
                   : roomShareStatus === "error"
-                    ? "복사 실패"
-                    : "링크 공유"}
+                    ? copy.settingsShareFailed
+                    : localRoomShare
+                      ? copy.settingsLocalShare
+                      : copy.settingsShare}
               </Button>
             ) : null}
+            {localRoomShare ? (
+              <p className={styles.settingsDescription} data-poke-lounge-local-share-notice="true">
+                {copy.roomEntry.localDescription}
+              </p>
+            ) : null}
             <div className={styles.settingsStateSummary} aria-live="polite">
-              <span>{multiplayerRoomId ? connectionLabel : "솔로 플레이"}</span>
+              <span>{multiplayerRoomId ? connectionLabel : copy.settingsSolo}</span>
               <span>{autosaveLabel}</span>
             </div>
             <section className={styles.rankingSection} aria-labelledby="poke-lounge-ranking-title">
               <div className={styles.rankingHeader}>
-                <h3 id="poke-lounge-ranking-title">검증된 1:1 랭킹</h3>
-                <span>서버 검증 결과만 반영</span>
+                <h3 id="poke-lounge-ranking-title">{copy.settingsRankingTitle}</h3>
+                <span>{copy.settingsRankingCaption}</span>
               </div>
               {rankingStatus === "loading" ? (
-                <p className={styles.rankingEmpty}>랭킹을 불러오는 중입니다.</p>
+                <p className={styles.rankingEmpty}>{copy.settingsRankingLoading}</p>
               ) : rankingStatus === "error" ? (
                 <div className={styles.rankingEmpty}>
-                  <p>랭킹을 불러오지 못했습니다.</p>
+                  <p>{copy.settingsRankingError}</p>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => setRankingAttempt(attempt => attempt + 1)}
                   >
-                    다시 시도
+                    {copy.settingsRankingRetry}
                   </Button>
                 </div>
               ) : ranking.length === 0 ? (
-                <p className={styles.rankingEmpty}>아직 검증된 기록이 없습니다.</p>
+                <p className={styles.rankingEmpty}>{copy.settingsRankingEmpty}</p>
               ) : (
                 <ol className={styles.rankingList}>
                   {ranking.map(entry => (
                     <li key={`${entry.rank}-${entry.createdAt}`}>
                       <span>#{entry.rank}</span>
-                      <strong>{getRankingDisplayName(entry)}</strong>
-                      <b>{entry.score.toLocaleString("ko-KR")}</b>
+                      <strong>{getRankingDisplayName(entry, copy.unknownTrainer)}</strong>
+                      <b>{entry.score.toLocaleString(copy.locale)}</b>
                     </li>
                   ))}
                 </ol>
@@ -922,11 +1346,49 @@ export function PokeLoungeGame() {
               data-poke-lounge-setting-option="true"
               data-poke-lounge-settings-cancel="true"
             >
-              닫기
+              {copy.settingsClose}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+      <AlertDialog
+        open={Boolean(pendingHydrationResolution)}
+        onOpenChange={open => {
+          if (!open) {
+            handleDeferHydrationResolution();
+          }
+        }}
+      >
+        <AlertDialogContent
+          className={styles.confirmDialog}
+          data-testid="poke-lounge-state-hydration-conflict"
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>{copy.hydrationConflictTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{copy.hydrationConflictDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDeferHydrationResolution}>
+              {copy.hydrationDecideLater}
+            </AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleUseLocalHydration}
+              data-testid="poke-lounge-state-hydration-use-local"
+            >
+              {copy.hydrationUseLocal}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleUseServerHydration}
+              data-testid="poke-lounge-state-hydration-use-server"
+            >
+              {copy.hydrationUseServer}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog
         open={Boolean(leaveRequest)}
         onOpenChange={open => {
@@ -937,13 +1399,13 @@ export function PokeLoungeGame() {
       >
         <AlertDialogContent className={styles.confirmDialog} data-poke-lounge-leave-dialog="true">
           <AlertDialogHeader>
-            <AlertDialogTitle>{leaveRequest?.title ?? "방에서 나갈까요?"}</AlertDialogTitle>
+            <AlertDialogTitle>{leaveRequest?.title ?? copy.leaveTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              {leaveRequest?.description ?? "현재 방 연결이 해제됩니다."}
+              {leaveRequest?.description ?? copy.leaveDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>계속 플레이</AlertDialogCancel>
+            <AlertDialogCancel>{copy.leaveContinue}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
@@ -952,34 +1414,56 @@ export function PokeLoungeGame() {
                 request?.confirm();
               }}
             >
-              방 나가기
+              {copy.leaveConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       {finalResult ? (
         <section className={styles.resultOverlay} data-testid="poke-lounge-result-panel">
-          <p className={styles.resultEyebrow}>플레이 결과</p>
+          <p className={styles.resultEyebrow}>{copy.resultEyebrow}</p>
           <div className={styles.resultScore} data-testid="poke-lounge-result-score">
             {finalResult.score}
           </div>
-          <p className={styles.resultMeta}>플레이 시간 {finalResult.playTime}초</p>
-          <p className={styles.resultStatus}>일반 플레이 기록 · 공개 검증 랭킹 미반영</p>
+          <p className={styles.resultMeta}>{copy.resultPlayTime(finalResult.playTime)}</p>
+          <p className={styles.resultStatus}>{copy.resultUnranked}</p>
           <Button
             type="button"
             onClick={handleSubmitResult}
-            disabled={submitStatus === "submitting" || submitStatus === "success"}
+            disabled={
+              resultRequiresAuthentication ||
+              submitStatus === "submitting" ||
+              submitStatus === "success"
+            }
             data-testid="poke-lounge-result-submit"
           >
-            {submitStatus === "submitting" ? "기록 중" : "일반 기록 저장"}
+            {submitStatus === "submitting" ? copy.resultSaving : copy.resultSave}
           </Button>
           <p
             className={styles.resultStatus}
             data-testid="poke-lounge-result-status"
             aria-live="polite"
           >
-            {submitMessage}
+            {resultRequiresAuthentication ? copy.resultAuthRequired : submitMessage}
           </p>
+          <div className={styles.resultActions}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleResultRetry}
+              data-testid="poke-lounge-result-retry"
+            >
+              {resultReturnsToRoomEntry ? copy.resultRoomEntry : copy.resultRetry}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleResultLobby}
+              data-testid="poke-lounge-result-lobby"
+            >
+              {copy.resultLobby}
+            </Button>
+          </div>
         </section>
       ) : null}
       <div
@@ -989,7 +1473,7 @@ export function PokeLoungeGame() {
         aria-live="polite"
       >
         {accessibleGameStatus} {multiplayerRoomId ? `${connectionLabel}. ` : ""}
-        {autosaveLabel}. 게임 조작 도움말은 H 키 또는 물음표 버튼으로 열 수 있습니다.
+        {autosaveLabel}. {copy.accessibleHelp}
       </div>
     </main>
   );

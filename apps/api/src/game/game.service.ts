@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { GameHistory } from './entities/game-history.entity';
@@ -32,6 +36,16 @@ type RankingProjectionRow = {
 
 type RankCountRow = {
   count: string | number;
+};
+
+type PokeLoungeStateRow = {
+  id: string;
+  userId: string;
+  state: Record<string, unknown>;
+  revision: number;
+  clientUpdatedAt: Date | string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 };
 
 const GENERIC_GAME_SUBMISSION_TRUST: GameSubmissionTrust = 'client-asserted';
@@ -186,41 +200,79 @@ export class GameService {
     const clientUpdatedAt = dto.clientUpdatedAt
       ? new Date(dto.clientUpdatedAt)
       : null;
-    const existingState = await this.pokeLoungeStateRepository.findOne({
-      where: { userId: user.id },
-    });
-
-    if (isStalePokeLoungeStateSave(existingState, clientUpdatedAt)) {
-      return existingState;
-    }
-
-    await this.pokeLoungeStateRepository.query(
-      `
-      INSERT INTO "game_poke_lounge_state" ("userId", "state", "clientUpdatedAt")
-      VALUES ($1, $2::jsonb, $3::timestamptz)
-      ON CONFLICT ("userId") DO UPDATE
-      SET
-        "state" = EXCLUDED."state",
-        "clientUpdatedAt" = EXCLUDED."clientUpdatedAt",
-        "updatedAt" = now()
-      WHERE "game_poke_lounge_state"."clientUpdatedAt" IS NULL
-        OR (
-          EXCLUDED."clientUpdatedAt" IS NOT NULL
-          AND "game_poke_lounge_state"."clientUpdatedAt" <= EXCLUDED."clientUpdatedAt"
+    const legacySave = dto.expectedRevision === undefined;
+    const rows = legacySave
+      ? await this.pokeLoungeStateRepository.query<PokeLoungeStateRow[]>(
+          `
+          INSERT INTO "game_poke_lounge_state"
+            ("userId", "state", "clientUpdatedAt", "revision")
+          VALUES ($1, $2::jsonb, $3::timestamptz, 1)
+          ON CONFLICT ("userId") DO UPDATE SET
+            "state" = EXCLUDED."state",
+            "clientUpdatedAt" = EXCLUDED."clientUpdatedAt",
+            "revision" = "game_poke_lounge_state"."revision" + 1,
+            "updatedAt" = now()
+          WHERE "game_poke_lounge_state"."revision" = 0
+          RETURNING *
+          `,
+          [user.id, JSON.stringify(dto.state), clientUpdatedAt],
         )
+      : await this.pokeLoungeStateRepository.query<PokeLoungeStateRow[]>(
+          `
+      WITH updated AS (
+        UPDATE "game_poke_lounge_state"
+        SET
+          "state" = $2::jsonb,
+          "clientUpdatedAt" = $3::timestamptz,
+          "revision" = "revision" + 1,
+          "updatedAt" = now()
+        WHERE "userId" = $1
+          AND "revision" = $4::integer
+        RETURNING *
+      ),
+      inserted AS (
+        INSERT INTO "game_poke_lounge_state"
+          ("userId", "state", "clientUpdatedAt", "revision")
+        SELECT $1, $2::jsonb, $3::timestamptz, 1
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM "game_poke_lounge_state"
+          WHERE "userId" = $1
+        )
+          AND $4::integer = 0
+        ON CONFLICT ("userId") DO NOTHING
+        RETURNING *
+      )
+      SELECT * FROM updated
+      UNION ALL
+      SELECT * FROM inserted
       `,
-      [user.id, JSON.stringify(dto.state), clientUpdatedAt],
-    );
+          [
+            user.id,
+            JSON.stringify(dto.state),
+            clientUpdatedAt,
+            dto.expectedRevision,
+          ],
+        );
 
-    const savedState = await this.pokeLoungeStateRepository.findOne({
-      where: { userId: user.id },
-    });
-
-    if (!savedState) {
-      throw new NotFoundException('Poke Lounge state not found');
+    const savedRow = rows[0];
+    if (
+      rows.length !== 1 ||
+      !savedRow ||
+      savedRow.revision !== (legacySave ? 1 : dto.expectedRevision! + 1)
+    ) {
+      throw new ConflictException(
+        'Poke Lounge state revision conflict; reload the latest state',
+      );
     }
 
-    return savedState;
+    return this.pokeLoungeStateRepository.create({
+      ...savedRow,
+      user,
+      clientUpdatedAt: toDateOrNull(savedRow.clientUpdatedAt),
+      createdAt: toDate(savedRow.createdAt),
+      updatedAt: toDate(savedRow.updatedAt),
+    });
   }
 
   async findPokeLoungeState(userId: string): Promise<GamePokeLoungeState> {
@@ -290,17 +342,10 @@ export class GameService {
   }
 }
 
-function isStalePokeLoungeStateSave(
-  existingState: GamePokeLoungeState | null,
-  clientUpdatedAt: Date | null,
-): existingState is GamePokeLoungeState {
-  if (!existingState?.clientUpdatedAt) {
-    return false;
-  }
+function toDate(value: Date | string): Date {
+  return value instanceof Date ? value : new Date(value);
+}
 
-  if (!clientUpdatedAt) {
-    return true;
-  }
-
-  return existingState.clientUpdatedAt.getTime() > clientUpdatedAt.getTime();
+function toDateOrNull(value: Date | string | null): Date | null {
+  return value === null ? null : toDate(value);
 }

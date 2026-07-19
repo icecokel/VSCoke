@@ -99,6 +99,7 @@ export interface MultiplayerRoom {
   roomId: string;
   sessionId: string;
   connect(initialSnapshot?: PlayerSnapshot): void;
+  leave?(): void;
   dispose(): void;
   send<T extends RoomMessage>(type: T, payload: RoomEvent[T]): void;
   on<T extends RoomMessage>(type: T, handler: (payload: RoomEvent[T]) => void): RoomUnsubscribe;

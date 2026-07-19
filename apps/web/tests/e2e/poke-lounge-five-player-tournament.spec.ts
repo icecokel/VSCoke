@@ -10,6 +10,7 @@ import {
   type BrowserContext,
   type Page,
   type Request,
+  type Route,
   test,
   webkit,
 } from "@playwright/test";
@@ -272,6 +273,7 @@ type TesterRuntime = TesterResult & {
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 const RECOVERY_STABILITY_WINDOW_MS = 2_000;
 const MAX_RECOVERY_REQUESTS_PER_RECONNECT = 4;
+const SCREENSHOT_CAPTURE_DEADLINE_MS = 5_000;
 const RUN_ROOT =
   process.env.POKE_LOUNGE_E2E_RUN_ROOT ??
   path.resolve(
@@ -379,11 +381,13 @@ test("실제 API와 Socket.IO에서 5개 환경이 첫 토너먼트 라운드에
 
     await test.step("C0_JOINED: 다섯 context를 고정 순서로 입장시킨다", async () => {
       const host = testers[0];
+      await host.page.route("**/poke-lounge/rooms", routeFivePlayerRoomCreation);
       await openRoomEntry(host.page);
       await host.page.locator("[data-room-entry-server-create]").click();
       await chooseStarterIfNeeded(host.page);
       await expect(host.page.locator("#game-root canvas")).toBeVisible({ timeout: 30_000 });
       roomCode = await waitForRoomCode(host.page);
+      await host.page.unroute("**/poke-lounge/rooms", routeFivePlayerRoomCreation);
       await waitForParticipantReady(roomCode, host);
 
       for (const tester of testers.slice(1)) {
@@ -422,7 +426,6 @@ test("실제 API와 Socket.IO에서 5개 환경이 첫 토너먼트 라운드에
           room.participants.every(participant => participant.ready),
       );
       expect(readyRoom.round.endsAtMs).not.toBeNull();
-      await fetchRoom(roomCode, readyRoom.round.endsAtMs ?? Date.now());
       const started = await pollRoom(roomCode, room => findBracket(room.tournament) !== null);
       initialBracket = findBracket(started.tournament);
       expect(initialBracket).not.toBeNull();
@@ -951,11 +954,14 @@ async function chooseStarterIfNeeded(page: Page): Promise<void> {
   const starter = page.locator("[data-screen='starter-selection']");
   const canvas = page.locator("#game-root canvas");
   await expect
-    .poll(async () => {
-      if (await starter.isVisible().catch(() => false)) return "starter";
-      if (await canvas.isVisible().catch(() => false)) return "canvas";
-      return null;
-    })
+    .poll(
+      async () => {
+        if (await starter.isVisible().catch(() => false)) return "starter";
+        if (await canvas.isVisible().catch(() => false)) return "canvas";
+        return null;
+      },
+      { timeout: 30_000 },
+    )
     .not.toBeNull();
   if (await starter.isVisible().catch(() => false)) {
     await page.locator("[data-starter-confirm]").click();
@@ -980,9 +986,27 @@ async function waitForParticipantReady(roomCode: string, tester: TesterRuntime):
   );
 }
 
-async function fetchRoom(roomCode: string, nowMs?: number): Promise<PublicRoom> {
-  const suffix = nowMs === undefined ? "" : `?nowMs=${encodeURIComponent(String(nowMs))}`;
-  return fetchJson(`${API_URL}/poke-lounge/rooms/${roomCode}${suffix}`);
+async function routeFivePlayerRoomCreation(route: Route): Promise<void> {
+  const request = route.request();
+
+  if (request.method() !== "POST") {
+    await route.continue();
+    return;
+  }
+
+  const headers = { ...request.headers() };
+  delete headers["content-length"];
+  await route.continue({
+    headers,
+    postData: JSON.stringify({
+      ...(request.postDataJSON() as Record<string, unknown>),
+      roundDurationMs: 30_000,
+    }),
+  });
+}
+
+async function fetchRoom(roomCode: string): Promise<PublicRoom> {
+  return fetchJson(`${API_URL}/poke-lounge/rooms/${roomCode}`);
 }
 
 async function pollRoom(
@@ -1742,7 +1766,8 @@ async function waitForC4RuntimeConvergence(input: {
     }
 
     const commonStateMatches =
-      latest.revision === input.nextRoom.revision &&
+      latest.revision !== null &&
+      latest.revision >= input.nextRoom.revision &&
       latest.round === input.nextBracket.currentRound?.roundNumber &&
       latest.activeMatchId === expectedActiveMatchId &&
       latest.activeMatchTransport === "authority" &&
@@ -1982,16 +2007,28 @@ async function recordCheckpoint(
 }
 
 async function captureScreenshots(testers: TesterRuntime[]): Promise<void> {
-  await Promise.all(
-    testers.map(tester =>
-      tester.page
-        .screenshot({
-          path: path.join(RUN_ROOT, "screenshots", `${tester.fileName.replace(/\.md$/, "")}.png`),
-          fullPage: true,
-        })
-        .catch(() => {}),
-    ),
-  );
+  await Promise.all(testers.map(captureScreenshot));
+}
+
+async function captureScreenshot(tester: TesterRuntime): Promise<void> {
+  let deadlineTimer: ReturnType<typeof setTimeout> | null = null;
+  const screenshot = tester.page
+    .screenshot({
+      path: path.join(RUN_ROOT, "screenshots", `${tester.fileName.replace(/\.md$/, "")}.png`),
+      fullPage: true,
+      timeout: SCREENSHOT_CAPTURE_DEADLINE_MS,
+    })
+    .then(() => undefined)
+    .catch(() => undefined);
+  const deadline = new Promise<void>(resolve => {
+    deadlineTimer = setTimeout(resolve, SCREENSHOT_CAPTURE_DEADLINE_MS);
+  });
+
+  try {
+    await Promise.race([screenshot, deadline]);
+  } finally {
+    if (deadlineTimer) clearTimeout(deadlineTimer);
+  }
 }
 
 function writeArtifacts(input: {

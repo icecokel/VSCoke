@@ -5,6 +5,7 @@ export type PokeLoungeRoomOperation =
   | 'join'
   | 'ready'
   | 'party-snapshot'
+  | 'presence'
   | 'result'
   | 'leave';
 

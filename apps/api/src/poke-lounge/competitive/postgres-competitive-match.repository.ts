@@ -16,6 +16,7 @@ import {
 import type { CompetitiveMatchAssignment } from './competitive-match.types';
 import { toCompetitiveProjection } from './competitive-projection.service';
 import type { PokeLoungeRoomSnapshot } from '../poke-lounge-room.repository';
+import { getPokeLoungeRoomExpiresAtMs } from '../poke-lounge-room-policy';
 
 @Injectable()
 export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepository {
@@ -74,6 +75,7 @@ export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepos
       ) {
         if ('assignmentPlayers' in plan && plan.outcome === 'bind') {
           await saveSeat(seatRepository, room.id, plan.seat);
+          await renewRoomLease(manager, room);
         }
 
         return {
@@ -90,6 +92,7 @@ export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepos
       if (activeAssignment) {
         if (plan.outcome === 'bind') {
           await saveSeat(seatRepository, room.id, plan.seat);
+          await renewRoomLease(manager, room);
         }
 
         return {
@@ -107,6 +110,9 @@ export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepos
       }
 
       if (!plan.assignmentPlayers) {
+        if (plan.outcome === 'bind') {
+          await renewRoomLease(manager, room);
+        }
         return {
           outcome: 'bound-casual',
           assignment: null,
@@ -123,9 +129,12 @@ export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepos
         kind: plan.assignmentKind!,
       });
       await matchRepository.save(matchRepository.create(assignment));
+      const committedAt = new Date();
       room.revision += 1;
-      room.state.updatedAtMs = Date.now();
+      room.state.updatedAtMs = committedAt.getTime();
       room.state.tournament.activeMatchAuthority = 'server';
+      room.expiresAt = new Date(getPokeLoungeRoomExpiresAtMs(room.state));
+      room.updatedAt = committedAt;
       await manager.getRepository(PokeLoungeRoom).save(room);
 
       return {
@@ -151,6 +160,21 @@ async function saveSeat(
   await repository.save(repository.create({ roomId, ...seat }));
 }
 
+async function renewRoomLease(
+  manager: EntityManager,
+  room: PokeLoungeRoom,
+): Promise<void> {
+  const renewedAt = new Date();
+  room.expiresAt = new Date(
+    getPokeLoungeRoomExpiresAtMs({
+      ...room.state,
+      updatedAtMs: renewedAt.getTime(),
+    }),
+  );
+  room.updatedAt = renewedAt;
+  await manager.getRepository(PokeLoungeRoom).save(room);
+}
+
 function lockRoom(
   manager: EntityManager,
   roomCode: string,
@@ -162,6 +186,7 @@ function lockRoom(
     .where('room.roomCode = :roomCode', {
       roomCode: normalizeRoomCode(roomCode),
     })
+    .andWhere('room.expiresAt >= CURRENT_TIMESTAMP')
     .getOne();
 }
 

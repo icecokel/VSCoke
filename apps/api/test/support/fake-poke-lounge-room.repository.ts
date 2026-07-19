@@ -1,5 +1,6 @@
 import {
   advancePokeLoungeRoomClock,
+  expirePendingPokeLoungePresence,
   getPokeLoungeRoomExpiresAtMs,
   POKE_LOUNGE_ROOM_CAPACITY,
 } from '../../src/poke-lounge/poke-lounge-room-policy';
@@ -75,15 +76,22 @@ export class FakePokeLoungeRoomRepository implements PokeLoungeRoomRepository {
       return { snapshot: null, committedChange: false };
     }
 
-    const advanced = advancePokeLoungeRoomClock(current, nowMs);
+    const presenceExpired = expirePendingPokeLoungePresence(current, nowMs);
+    const advanced = advancePokeLoungeRoomClock(
+      presenceExpired
+        ? { ...presenceExpired, revision: current.revision }
+        : current,
+      nowMs,
+    );
+    const committed = advanced ?? presenceExpired;
 
-    if (!advanced) {
+    if (!committed) {
       return { snapshot: structuredClone(current), committedChange: false };
     }
 
-    this.rooms.set(advanced.roomCode, structuredClone(advanced));
+    this.rooms.set(committed.roomCode, structuredClone(committed));
 
-    return { snapshot: structuredClone(advanced), committedChange: true };
+    return { snapshot: structuredClone(committed), committedChange: true };
   }
 
   async mutate(
@@ -103,13 +111,23 @@ export class FakePokeLoungeRoomRepository implements PokeLoungeRoomRepository {
       return result(receipt.snapshot, 'replayed', false);
     }
 
-    const advanced = advancePokeLoungeRoomClock(current, input.nowMs);
+    const presenceExpired = expirePendingPokeLoungePresence(
+      current,
+      input.nowMs,
+    );
+    const advanced = advancePokeLoungeRoomClock(
+      presenceExpired
+        ? { ...presenceExpired, revision: current.revision }
+        : current,
+      input.nowMs,
+    );
+    const lifecycleAdvanced = advanced ?? presenceExpired;
 
-    if (advanced) {
-      this.rooms.set(normalizedRoomCode, structuredClone(advanced));
+    if (lifecycleAdvanced) {
+      this.rooms.set(normalizedRoomCode, structuredClone(lifecycleAdvanced));
 
       return result(
-        advanced,
+        lifecycleAdvanced,
         receipt ? 'idempotency-conflict' : 'revision-conflict',
         true,
       );

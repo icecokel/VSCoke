@@ -61,10 +61,4 @@ export class UpdatePokeLoungePartySnapshotDto implements UpdatePokeLoungePartySn
   @ValidateNested()
   @Type(() => PokeLoungeRepresentativePokemonDto)
   representativePokemon?: PokeLoungeRepresentativePokemonDto;
-
-  @ApiPropertyOptional({ example: 1720000002000 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  nowMs?: number;
 }

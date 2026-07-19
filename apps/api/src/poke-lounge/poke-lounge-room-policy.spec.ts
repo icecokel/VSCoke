@@ -1,7 +1,10 @@
 import type { PokeLoungeRoomSnapshot } from './poke-lounge-room.repository';
+import { createTournamentBracketState } from '@vscoke/poke-lounge-battle';
 import {
-  POKE_LOUNGE_ACTIVE_ROOM_EXPIRES_AT_MS,
+  POKE_LOUNGE_ACTIVE_ROOM_LEASE_MS,
+  POKE_LOUNGE_PENDING_PRESENCE_LEASE_MS,
   advancePokeLoungeRoomClock,
+  expirePendingPokeLoungePresence,
   getPokeLoungeRoomExpiresAtMs,
   isPokeLoungeRoomExpired,
   normalizeLegacyPokeLoungeRoomSnapshot,
@@ -24,13 +27,46 @@ describe('PokeLoungeRoomPolicy', () => {
   );
 
   it.each(['round-started', 'tournament'] as const)(
-    'keeps active %s rooms on a finite non-null expiry sentinel',
+    'expires inactive %s rooms after the active lease',
     (status) => {
-      expect(getPokeLoungeRoomExpiresAtMs(createSnapshot({ status }))).toBe(
-        POKE_LOUNGE_ACTIVE_ROOM_EXPIRES_AT_MS,
-      );
+      expect(
+        getPokeLoungeRoomExpiresAtMs(
+          createSnapshot({ status, updatedAtMs: 1_000 }),
+        ),
+      ).toBe(1_000 + POKE_LOUNGE_ACTIVE_ROOM_LEASE_MS);
     },
   );
+
+  it('keeps the active lease longer than the maximum preparation round', () => {
+    expect(POKE_LOUNGE_ACTIVE_ROOM_LEASE_MS).toBeGreaterThan(60 * MINUTE_MS);
+  });
+
+  it('expires a waiting room with only pending presence at the earliest lease', () => {
+    const room = createSnapshot({
+      updatedAtMs: 1_000,
+      participants: [
+        {
+          ...createParticipant('player-1', 1_000),
+          presencePendingUntilMs: 16_000,
+        },
+        {
+          ...createParticipant('player-2', 1_001),
+          presencePendingUntilMs: 17_000,
+        },
+      ],
+    });
+
+    expect(getPokeLoungeRoomExpiresAtMs(room)).toBe(16_000);
+    expect(
+      getPokeLoungeRoomExpiresAtMs({
+        ...room,
+        participants: [
+          ...room.participants,
+          createParticipant('player-3', 1_002),
+        ],
+      }),
+    ).toBe(1_000 + 30 * MINUTE_MS);
+  });
 
   it('uses a strict expiry boundary', () => {
     const room = createSnapshot({
@@ -45,6 +81,98 @@ describe('PokeLoungeRoomPolicy', () => {
     expect(
       isPokeLoungeRoomExpired({ ...room, expiresAtMs }, expiresAtMs + 1),
     ).toBe(true);
+  });
+
+  it('removes an unacknowledged ready participant when its pending lease expires', () => {
+    const pendingUntilMs = 1_000 + POKE_LOUNGE_PENDING_PRESENCE_LEASE_MS;
+    const room = createSnapshot({
+      participants: [
+        {
+          ...createParticipant('player-1', 1_000),
+          presencePendingUntilMs: pendingUntilMs,
+        },
+      ],
+    });
+
+    expect(
+      expirePendingPokeLoungePresence(room, pendingUntilMs - 1),
+    ).toBeNull();
+    expect(expirePendingPokeLoungePresence(room, pendingUntilMs)).toMatchObject(
+      {
+        status: 'closed',
+        revision: 1,
+        participants: [],
+        round: { phase: 'completed' },
+      },
+    );
+  });
+
+  it('turns an expired tournament rejoin lease offline and converges its casual match', () => {
+    const pendingUntilMs = 2_000;
+    const participants = [
+      {
+        ...createParticipant('player-1', 1),
+        presencePendingUntilMs: pendingUntilMs,
+      },
+      createParticipant('player-2', 2),
+    ];
+    const bracket = createTournamentBracketState(
+      participants.map(({ playerId, displayName }) => ({
+        playerId,
+        displayName,
+      })),
+      1,
+    );
+    const room = createSnapshot({
+      status: 'tournament',
+      participants,
+      round: {
+        index: 1,
+        phase: 'tournament',
+        durationMs: 1_000,
+        startedAtMs: 0,
+        endsAtMs: 1_000,
+      },
+      tournament: {
+        version: 2,
+        bracket,
+        activeMatchId: bracket.currentRound!.matches[0].matchId,
+        activeMatchAuthority: 'casual',
+        cumulativeScores: {},
+      },
+    });
+
+    expect(expirePendingPokeLoungePresence(room, pendingUntilMs)).toMatchObject(
+      {
+        status: 'completed',
+        participants: [
+          {
+            playerId: 'player-1',
+            connected: false,
+            ready: false,
+            leftAtMs: pendingUntilMs,
+          },
+          { playerId: 'player-2', connected: true },
+        ],
+        tournament: {
+          activeMatchId: null,
+          bracket: {
+            championPlayerId: 'player-2',
+            completedRounds: [
+              {
+                matches: [
+                  {
+                    winnerPlayerId: 'player-2',
+                    loserPlayerId: 'player-1',
+                    resultReason: 'forfeit',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    );
   });
 
   it('advances an elapsed round once with deterministic tournament matches', () => {
@@ -71,7 +199,7 @@ describe('PokeLoungeRoomPolicy', () => {
       status: 'tournament',
       revision: 8,
       updatedAtMs: 1_100,
-      expiresAtMs: POKE_LOUNGE_ACTIVE_ROOM_EXPIRES_AT_MS,
+      expiresAtMs: 1_100 + POKE_LOUNGE_ACTIVE_ROOM_LEASE_MS,
       round: { phase: 'tournament' },
       tournament: {
         version: 2,

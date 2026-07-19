@@ -24,13 +24,15 @@ export interface PokeLoungeRoomParticipant {
   role: PokeLoungeParticipantRole;
   ready: boolean;
   connected: boolean;
+  presencePendingUntilMs?: number;
+  presenceEpoch?: string;
   joinedAtMs: number;
   leftAtMs?: number;
 }
 
 export type PokeLoungePublicRoomParticipant = Omit<
   PokeLoungeRoomParticipant,
-  'sessionId' | 'userId'
+  'sessionId' | 'userId' | 'presencePendingUntilMs' | 'presenceEpoch'
 >;
 
 export interface PokeLoungeFinalStanding {

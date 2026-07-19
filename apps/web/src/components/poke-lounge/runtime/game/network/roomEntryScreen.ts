@@ -12,6 +12,7 @@ import {
   type ServerRoomEntryCapability,
 } from "./roomEntry";
 import { playPokeLoungeSfx, primePokeLoungeAudio } from "../audio/poke-lounge-audio";
+import { getPokeLoungeCopyForUrl, type PokeLoungeCopy } from "../../../poke-lounge-copy";
 
 const DEFAULT_SELECTED_ROUND_DURATION_MS = 300_000;
 const LOCAL_ROOM_CODE_INPUT_ID = "poke-lounge-local-room-code";
@@ -49,6 +50,7 @@ export function renderRoomEntryScreen(
 ): HTMLElement {
   mount.innerHTML = "";
 
+  const copy = getPokeLoungeCopyForUrl(options.currentUrl);
   const serverRoomCapability = resolveServerRoomEntryCapability(options.serverRoomCapability);
   const screen = document.createElement("section");
   screen.className = "room-entry-screen";
@@ -58,73 +60,83 @@ export function renderRoomEntryScreen(
   panel.className = "room-entry-panel";
 
   const title = document.createElement("h1");
-  title.textContent = "플레이 방식 선택";
+  title.textContent = copy.roomEntry.title;
 
   const fanNotice = document.createElement("p");
   fanNotice.className = "room-entry-notice";
   fanNotice.setAttribute("data-poke-lounge-fan-notice", "true");
-  fanNotice.textContent =
-    "Poke Lounge는 친구들과 함께 즐기기 위해 만든 비공식 팬 게임입니다. Pokémon 관련 권리는 각 권리자에게 있습니다.";
+  fanNotice.textContent = copy.roomEntry.fanNotice;
 
   const soloMode = createModeGroup(
     "solo",
-    "혼자 플레이",
-    "저장된 모험이 있으면 이어서 하고, 없으면 새 모험을 시작합니다.",
+    copy.roomEntry.soloTitle,
+    copy.roomEntry.soloDescription,
   );
   const soloActions = document.createElement("div");
   soloActions.className = "room-entry-mode-actions";
-  const soloButton = createButton("이어하기", "data-room-entry-solo");
-  const newStartButton = createButton("새 게임", "data-room-entry-new-start");
+  const soloButton = createButton(copy.roomEntry.continue, "data-room-entry-solo");
+  const newStartButton = createButton(copy.roomEntry.newGame, "data-room-entry-new-start");
   newStartButton.classList.add("room-entry-new-game-button");
   soloActions.append(soloButton, newStartButton);
   soloMode.content.appendChild(soloActions);
 
   let selectedRoundDurationMs = readInitialRoundDurationMs(options.currentUrl);
-  const roundDurationPicker = createRoundDurationPicker(selectedRoundDurationMs, durationMs => {
-    selectedRoundDurationMs = durationMs;
-  });
+  const roundDurationPicker = createRoundDurationPicker(
+    selectedRoundDurationMs,
+    durationMs => {
+      selectedRoundDurationMs = durationMs;
+    },
+    copy,
+  );
   const settingsGroup = document.createElement("section");
   settingsGroup.className = "room-entry-settings-group";
   settingsGroup.setAttribute("data-room-entry-settings", "true");
   const settingsTitle = document.createElement("h2");
-  settingsTitle.textContent = "대회 설정";
+  settingsTitle.textContent = copy.roomEntry.tournamentSettings;
   const settingsCopy = document.createElement("p");
   settingsCopy.className = "room-entry-settings-copy";
-  settingsCopy.textContent = "로컬 방과 서버 방을 만들 때 공통으로 적용됩니다.";
+  settingsCopy.textContent = copy.roomEntry.tournamentSettingsDescription;
   settingsGroup.append(settingsTitle, settingsCopy, roundDurationPicker);
 
   const localMode = createModeGroup(
     "local",
-    "로컬 멀티플레이",
-    "같은 브라우저 프로필에서 연 탭끼리 연결합니다. 다른 기기나 브라우저 프로필에서는 참가할 수 없습니다.",
+    copy.roomEntry.localTitle,
+    copy.roomEntry.localDescription,
   );
-  const createButtonElement = createButton("로컬 방 만들기", "data-room-entry-create");
+  const createButtonElement = createButton(copy.roomEntry.localCreate, "data-room-entry-create");
   const roomCodeInput = createRoomCodeInput(
     LOCAL_ROOM_CODE_INPUT_ID,
-    "방 코드",
+    copy.roomEntry.roomCodePlaceholder,
     "data-room-entry-code",
   );
-  const joinButton = createButton("코드로 입장", "data-room-entry-join");
+  const joinButton = createButton(copy.roomEntry.localJoin, "data-room-entry-join");
   const localJoinRow = createActionRow(roomCodeInput, joinButton);
-  const localCodeField = createLabeledField("로컬 방 코드", LOCAL_ROOM_CODE_INPUT_ID, localJoinRow);
+  const localCodeField = createLabeledField(
+    copy.roomEntry.localCodeLabel,
+    LOCAL_ROOM_CODE_INPUT_ID,
+    localJoinRow,
+  );
   localMode.content.append(createButtonElement, localCodeField);
 
   const serverMode = createModeGroup(
     "server",
-    "서버 경쟁전",
-    "로그인한 플레이어 전용입니다. 육성 파티 대신 고정 Lv.50 대전용 파티를 사용하며 2인은 랭킹전, 3~6인은 비랭킹 토너먼트로 진행합니다.",
+    copy.roomEntry.serverTitle,
+    copy.roomEntry.serverDescription,
     SERVER_MODE_DESCRIPTION_ID,
   );
-  const serverCreateButton = createButton("서버 방 만들기", "data-room-entry-server-create");
+  const serverCreateButton = createButton(
+    copy.roomEntry.serverCreate,
+    "data-room-entry-server-create",
+  );
   const serverRoomCodeInput = createRoomCodeInput(
     SERVER_ROOM_CODE_INPUT_ID,
-    "서버 방 코드",
+    copy.roomEntry.serverCodePlaceholder,
     "data-room-entry-server-code",
   );
-  const serverJoinButton = createButton("서버 코드로 입장", "data-room-entry-server-join");
+  const serverJoinButton = createButton(copy.roomEntry.serverJoin, "data-room-entry-server-join");
   const serverJoinRow = createActionRow(serverRoomCodeInput, serverJoinButton);
   const serverCodeField = createLabeledField(
-    "서버 방 코드",
+    copy.roomEntry.serverCodeLabel,
     SERVER_ROOM_CODE_INPUT_ID,
     serverJoinRow,
   );
@@ -157,7 +169,7 @@ export function renderRoomEntryScreen(
   inviteInput.id = INVITE_INPUT_ID;
   inviteInput.type = "text";
   inviteInput.readOnly = true;
-  inviteInput.placeholder = "방을 선택하면 초대 링크가 표시됩니다.";
+  inviteInput.placeholder = copy.roomEntry.invitePlaceholder;
   inviteInput.setAttribute("data-room-entry-invite", "true");
   inviteInput.setAttribute("aria-describedby", INVITE_DESCRIPTION_ID);
 
@@ -165,10 +177,9 @@ export function renderRoomEntryScreen(
   inviteDescription.id = INVITE_DESCRIPTION_ID;
   inviteDescription.className = "room-entry-field-copy";
   inviteDescription.setAttribute("data-room-entry-invite-description", "true");
-  inviteDescription.textContent =
-    "방을 만들거나 참가하면 같은 플레이 방식으로 초대할 수 있는 링크가 표시됩니다.";
+  inviteDescription.textContent = copy.roomEntry.inviteDescription;
   const inviteField = createLabeledField(
-    "초대 링크",
+    copy.roomEntry.inviteLabel,
     INVITE_INPUT_ID,
     inviteInput,
     inviteDescription,
@@ -182,7 +193,7 @@ export function renderRoomEntryScreen(
   message.setAttribute("aria-live", "assertive");
   message.setAttribute("aria-atomic", "true");
 
-  const newGameDialog = createNewGameConfirmationDialog(() => {
+  const newGameDialog = createNewGameConfirmationDialog(copy, () => {
     message.textContent = "";
     options.onSelect({
       mode: "solo",
@@ -264,7 +275,7 @@ export function renderRoomEntryScreen(
 
     if (!roomCode) {
       roomCodeInput.setAttribute("aria-invalid", "true");
-      message.textContent = "로컬 방 코드를 입력해 주세요.";
+      message.textContent = copy.roomEntry.localCodeRequired;
       return;
     }
 
@@ -282,7 +293,7 @@ export function renderRoomEntryScreen(
 
     if (!roomCode) {
       serverRoomCodeInput.setAttribute("aria-invalid", "true");
-      message.textContent = "서버 방 코드를 입력해 주세요.";
+      message.textContent = copy.roomEntry.serverCodeRequired;
       return;
     }
 
@@ -402,7 +413,10 @@ function createLabeledField(
   return field;
 }
 
-function createNewGameConfirmationDialog(onConfirm: () => void): {
+function createNewGameConfirmationDialog(
+  copy: PokeLoungeCopy,
+  onConfirm: () => void,
+): {
   dialog: HTMLDialogElement;
   cancelButton: HTMLButtonElement;
 } {
@@ -419,18 +433,20 @@ function createNewGameConfirmationDialog(onConfirm: () => void): {
 
   const title = document.createElement("h2");
   title.id = NEW_GAME_DIALOG_TITLE_ID;
-  title.textContent = "새 게임을 시작할까요?";
+  title.textContent = copy.roomEntry.newGameTitle;
 
   const description = document.createElement("p");
   description.id = NEW_GAME_DIALOG_DESCRIPTION_ID;
   description.className = "room-entry-confirm-dialog-copy";
-  description.textContent =
-    "현재 브라우저에 저장된 모험과 세션 진행 상황이 초기화됩니다. 로그인 상태라면 계정 저장에도 초기화된 상태가 반영될 수 있으며, 이 작업은 되돌릴 수 없습니다.";
+  description.textContent = copy.roomEntry.newGameDescription;
 
   const actions = document.createElement("div");
   actions.className = "room-entry-confirm-dialog-actions";
-  const cancelButton = createButton("취소", "data-room-entry-new-start-cancel");
-  const confirmButton = createButton("초기화 후 시작", "data-room-entry-new-start-confirm");
+  const cancelButton = createButton(copy.roomEntry.cancel, "data-room-entry-new-start-cancel");
+  const confirmButton = createButton(
+    copy.roomEntry.resetAndStart,
+    "data-room-entry-new-start-confirm",
+  );
   confirmButton.classList.add("room-entry-confirm-dialog-danger");
 
   cancelButton.addEventListener("click", () => {
@@ -481,6 +497,7 @@ function readInitialRoundDurationMs(url: URL): RoomRoundDurationMs {
 function createRoundDurationPicker(
   selectedDurationMs: RoomRoundDurationMs,
   onSelect: (durationMs: RoomRoundDurationMs) => void,
+  copy: PokeLoungeCopy,
 ): HTMLElement {
   let activeDurationMs = selectedDurationMs;
   const field = document.createElement("div");
@@ -488,17 +505,17 @@ function createRoundDurationPicker(
   field.setAttribute("data-room-entry-round-duration", "true");
 
   const label = document.createElement("p");
-  label.textContent = "대회 시작 전 준비 시간";
+  label.textContent = copy.roomEntry.preparationTime;
 
   const durationOptions = document.createElement("div");
   durationOptions.className = "room-entry-round-duration-options";
   durationOptions.setAttribute("role", "group");
-  durationOptions.setAttribute("aria-label", "대회 시작 전 준비 시간");
+  durationOptions.setAttribute("aria-label", copy.roomEntry.preparationTime);
 
   const buttons = ROOM_ROUND_DURATION_OPTIONS_MS.map(durationMs => {
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = `${durationMs / 60_000}분`;
+    button.textContent = copy.roomEntry.durationMinutes(durationMs / 60_000);
     button.setAttribute("data-room-entry-round-duration-option", String(durationMs));
 
     button.addEventListener("click", () => {

@@ -440,7 +440,12 @@ export class BattleScene extends Phaser.Scene {
       dispatchPokeLoungeAccessibleStatus(this.game.canvas.ownerDocument, "필드 탐색");
     });
     this.events.once(Phaser.Scenes.Events.DESTROY, () => stopWildBattleBgm());
-    this.playBattleEntranceAnimation();
+    if (this.authoritativeProjection?.status === "completed") {
+      this.finishBattleEntranceAnimation();
+      this.render();
+    } else {
+      this.playBattleEntranceAnimation();
+    }
   }
 
   update(): void {
@@ -1007,6 +1012,9 @@ export class BattleScene extends Phaser.Scene {
         this.authoritativeProjection = projection;
         this.authoritativeOwnPlayerId = ownPlayerId;
         this.authoritativeInputPending = projection.submittedPlayerIds.includes(ownPlayerId);
+        if (projection.status === "completed") {
+          this.finishBattleEntranceAnimation();
+        }
         this.setBattleState(
           toAuthoritativeBattleState(projection, ownPlayerId, this.state.returnToWorld),
         );
@@ -1180,6 +1188,13 @@ export class BattleScene extends Phaser.Scene {
       },
     });
     this.battleEntranceTween = tween;
+  }
+
+  private finishBattleEntranceAnimation(): void {
+    this.battleEntranceTween?.stop();
+    this.battleEntranceTween = null;
+    this.battleEntranceProgress = 1;
+    this.battleEntrancePlaying = false;
   }
 
   private playEvolutionAnimation(): void {

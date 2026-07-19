@@ -697,7 +697,12 @@ export interface components {
         [key: string]: unknown;
       };
       /**
-       * @description 클라이언트 기준 상태 갱신 시각
+       * @description 마지막으로 조회하거나 저장한 서버 revision. 신규 저장은 0이며, 값이 일치할 때만 갱신됩니다. 생략은 구버전 Web의 신규 저장 또는 revision 0 마이그레이션 행의 1회 전환에만 허용됩니다.
+       * @example 3
+       */
+      expectedRevision?: number;
+      /**
+       * @description 진단용 클라이언트 갱신 시각. 저장 순서 판정에는 사용하지 않습니다.
        * @example 2026-07-08T12:00:00.000Z
        */
       clientUpdatedAt?: string;
@@ -717,6 +722,11 @@ export interface components {
       state: {
         [key: string]: unknown;
       };
+      /**
+       * @description 서버가 원자적으로 증가시키는 저장 revision
+       * @example 4
+       */
+      revision: number;
       /**
        * Format: date-time
        * @description 서버 저장 생성 시각
@@ -766,8 +776,6 @@ export interface components {
       displayName?: string;
       /** @example 60000 */
       roundDurationMs?: number;
-      /** @example 1720000000000 */
-      nowMs?: number;
     };
     PokeLoungeRepresentativePokemonDto: {
       /** @example 25 */
@@ -1102,8 +1110,6 @@ export interface components {
       userId?: string;
       /** @example Player B */
       displayName?: string;
-      /** @example 1720000001000 */
-      nowMs?: number;
     };
     SetPokeLoungeReadyDto: {
       /** @example player-a */
@@ -1112,8 +1118,6 @@ export interface components {
       sessionId: string;
       /** @example true */
       ready: boolean;
-      /** @example 1720000002000 */
-      nowMs?: number;
     };
     UpdatePokeLoungePartySnapshotDto: {
       /** @example player-a */
@@ -1123,8 +1127,6 @@ export interface components {
       /** @example Player A */
       displayName?: string;
       representativePokemon?: components["schemas"]["PokeLoungeRepresentativePokemonDto"];
-      /** @example 1720000002000 */
-      nowMs?: number;
     };
     SubmitPokeLoungeMatchResultDto: {
       /** @example player-a */
@@ -1142,16 +1144,12 @@ export interface components {
        * @enum {string}
        */
       reason: "faint" | "timeout" | "forfeit" | "run" | "capture";
-      /** @example 1720000003000 */
-      nowMs?: number;
     };
     LeavePokeLoungeRoomDto: {
       /** @example player-a */
       playerId: string;
       /** @example session-a */
       sessionId: string;
-      /** @example 1720000004000 */
-      nowMs?: number;
     };
     RecipeSourceDto: {
       /**
@@ -1494,8 +1492,7 @@ export interface operations {
   };
   PokeLoungeController_getRoom: {
     parameters: {
-      query: {
-        nowMs: string;
+      query?: {
         afterRevision?: number;
       };
       header?: never;

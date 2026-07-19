@@ -2,6 +2,7 @@
   "entry": ["src/app/**/*.{ts,tsx}", "src/posts/**/*.mdx"],
   "project": ["src/**/*.{ts,tsx}"],
   "ignoreDependencies": [
+    "@vscoke/poke-lounge-battle",
     "eslint-config-next",
     "tailwindcss",
     "tw-animate-css",

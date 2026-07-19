@@ -17,7 +17,7 @@ export class AddGameResultTrust1794355200000 implements MigrationInterface {
     await queryRunner.query(`
       UPDATE "game_history"
       SET "resultTrust" = 'client-asserted'
-      WHERE "gameType" = 'POKE_LOUNGE'
+      WHERE "gameType"::text = 'POKE_LOUNGE'
         AND "resultTrust" IS NULL
     `);
     await queryRunner.query(`

@@ -33,11 +33,7 @@ description: 새로운 기능 개발을 위한 체계적인 워크플로우 (요
 ## 3. 브랜치 생성 및 작업 시작 (Execution)
 
 1. 사용자가 계획을 승인하면 작업에 적합한 **기능 브랜치**를 생성합니다.
-   - **네이밍 규칙**: `feature/[기능-이름]` (kebab-case 사용)
-   - **명령어**:
-     ```bash
-     git checkout -b feature/my-feature-name
-     ```
+   - 브랜치와 worktree 이름은 `docs/coding-convention.md`의 규칙을 따릅니다.
 2. `task_boundary` 툴을 사용하여 작업을 시작했음을 시스템에 알립니다.
 3. 계획에 따라 코딩 작업을 진행합니다.
 

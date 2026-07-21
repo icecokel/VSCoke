@@ -87,6 +87,7 @@ next-env.d.ts
 !/docs/superpowers/plans/
 !/docs/superpowers/plans/2026-06-13-monorepo-structure.md
 !/docs/api-git-history-report.md
+!/docs/coding-convention.md
 !/docs/deployment-and-env.md
 !/docs/game-score-policy.md
 !/docs/geeknews-api-schema.md

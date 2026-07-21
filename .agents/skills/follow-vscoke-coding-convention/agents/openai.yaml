@@ -1,0 +1,4 @@
+interface:
+  display_name: "VSCoke Coding Convention"
+  short_description: "VSCoke 코드 변경과 검토에 프로젝트 컨벤션을 적용합니다"
+  default_prompt: "Use $follow-vscoke-coding-convention to apply the VSCoke coding rules to this task."

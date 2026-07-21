@@ -126,7 +126,7 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:37123 pnpm --filter @vscoke/web exec playwr
 ### 8-1. 파일 규칙
 
 - 위치: `tests/e2e/<behavior>.spec.ts`
-- 파일명은 케밥 케이스를 사용한다.
+- 일반 파일명 규칙은 [VSCoke 코딩 컨벤션](./coding-convention.md)을 따른다.
 - 하나의 파일은 하나의 사용자 흐름 축을 담당한다.
 
 ### 8-2. 구현 규칙

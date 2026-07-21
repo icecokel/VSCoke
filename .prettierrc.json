@@ -5,5 +5,15 @@
   "proseWrap": "preserve",
   "trailingComma": "all",
   "bracketSpacing": true,
-  "arrowParens": "avoid"
+  "arrowParens": "avoid",
+  "overrides": [
+    {
+      "files": "apps/api/**/*.{js,mjs,cjs,ts}",
+      "options": {
+        "singleQuote": true,
+        "printWidth": 80,
+        "arrowParens": "always"
+      }
+    }
+  ]
 }

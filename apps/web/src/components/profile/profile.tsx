@@ -111,7 +111,7 @@ const Profile = () => {
 
       <ProfileItem title={t("education")}>
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center ">
-          <div className="mb-5 min-w-[140px]">2019.08 - 2020.03</div>
+          <div className="mb-5 min-w-[140px]">2020.03</div>
           <div className="mb-5">
             <BaseText type="h6">{t("hybridCourse")}</BaseText>
             <BaseText type="body2">

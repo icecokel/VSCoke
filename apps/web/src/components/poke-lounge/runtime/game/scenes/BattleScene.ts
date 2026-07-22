@@ -33,10 +33,12 @@ import {
 import { getExperienceForLevel } from "../battle/experience";
 import {
   BATTLE_END_CONFIRM_MESSAGE,
+  canPokemonBattle,
   chooseBattleBagItem,
   chooseBattleCommand,
   choosePartySlot,
   choosePlayerMove,
+  isForcedPartySwitch,
   popBattleMessage,
 } from "../battle/battleLogic";
 import type {
@@ -137,6 +139,7 @@ export interface BattleE2eSnapshot {
   selectedMoveName: string | null;
   selectedBagItemIndex: number;
   selectedPartySlotIndex: number;
+  isForcedPartySwitch: boolean;
   moveReplacement: {
     pokemonName: string;
     newMoveName: string;
@@ -562,6 +565,7 @@ export class BattleScene extends Phaser.Scene {
       selectedMoveName: selectedMove?.name ?? null,
       selectedBagItemIndex: this.selectedBagItemIndex,
       selectedPartySlotIndex: this.selectedPartySlotIndex,
+      isForcedPartySwitch: isForcedPartySwitch(this.state),
       moveReplacement: this.getCurrentPendingMoveLearning()
         ? {
             pokemonName: this.getCurrentPendingMoveLearning()?.pokemonName ?? "",
@@ -1041,6 +1045,19 @@ export class BattleScene extends Phaser.Scene {
     nextState: BattleScreenState,
     options: { animateHpDecrease?: boolean; render?: boolean } = {},
   ): void {
+    const isEnteringForcedPartySwitch =
+      isForcedPartySwitch(nextState) && !isForcedPartySwitch(this.state);
+
+    if (isEnteringForcedPartySwitch) {
+      this.selectedPartySlotIndex =
+        nextState.player.party.find(
+          slot =>
+            slot.slotIndex !== nextState.player.activePartySlotIndex &&
+            slot.pokemon !== null &&
+            canPokemonBattle(slot.pokemon),
+        )?.slotIndex ?? nextState.player.activePartySlotIndex;
+    }
+
     this.state = nextState;
     this.syncDisplayedHpTargets({
       animateHpDecrease: options.animateHpDecrease ?? true,
@@ -1596,6 +1613,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private goBack(): void {
+    if (isForcedPartySwitch(this.state)) {
+      return;
+    }
+
     if (
       this.state.phase === "move-select" ||
       this.state.phase === "move-replace-select" ||
@@ -1806,9 +1827,12 @@ export class BattleScene extends Phaser.Scene {
       const pokemon = this.state.player.party.find(
         slot => slot.slotIndex === this.selectedPartySlotIndex,
       )?.pokemon;
-      interactionSummary = pokemon
+      const selectionSummary = pokemon
         ? `교체 대상 ${pokemon.name}, HP ${pokemon.currentHp}/${pokemon.maxHp}.`
         : "교체할 포켓몬을 선택하세요.";
+      interactionSummary = isForcedPartySwitch(this.state)
+        ? `선두 포켓몬이 쓰러져 반드시 교체해야 합니다. ${selectionSummary}`
+        : selectionSummary;
     } else if (!queuedMessage && this.state.phase === "bag-select") {
       const itemId = this.getBattleBagItemIds()[this.selectedBagItemIndex];
       const item = itemId ? getShopItemById(itemId) : undefined;

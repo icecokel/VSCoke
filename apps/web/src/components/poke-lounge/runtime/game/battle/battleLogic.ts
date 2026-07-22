@@ -289,6 +289,10 @@ function chooseCaptureBallItem(
   return resolveFailedCaptureTurn(state, ball);
 }
 
+export function isForcedPartySwitch(state: BattleScreenState): boolean {
+  return state.phase === "party-select" && !canPokemonBattle(state.player.pokemon);
+}
+
 export function choosePartySlot(state: BattleScreenState, slotIndex: number): BattleScreenState {
   if (state.phase !== "party-select") {
     return state;
@@ -305,7 +309,7 @@ export function choosePartySlot(state: BattleScreenState, slotIndex: number): Ba
     return blockPartySwitch(state, "빈 슬롯이다.");
   }
 
-  if (pokemon.status === "fainted") {
+  if (!canPokemonBattle(pokemon)) {
     return blockPartySwitch(state, "쓰러진 포켓몬은 나올 수 없다.");
   }
 
@@ -313,8 +317,11 @@ export function choosePartySlot(state: BattleScreenState, slotIndex: number): Ba
     return blockPartySwitch(state, "이미 나와 있다.");
   }
 
+  const shouldSkipOpponentTurn = isForcedPartySwitch(state);
   const switchedState: BattleScreenState = {
     ...state,
+    phase: "resolving",
+    selectedMoveId: null,
     player: {
       ...state.player,
       pokemon,
@@ -323,9 +330,14 @@ export function choosePartySlot(state: BattleScreenState, slotIndex: number): Ba
         slot.slotIndex === slotIndex ? { ...slot, pokemon } : slot,
       ),
     },
+    messageQueue: [`${pokemon.name}, 부탁해!`],
+    usedInventoryItemId: null,
+    result: null,
   };
 
-  return resolveOpponentTurnAfterPlayerMessages(switchedState, [`${pokemon.name}, 부탁해!`], null);
+  return shouldSkipOpponentTurn
+    ? switchedState
+    : resolveOpponentTurnAfterPlayerMessages(switchedState, switchedState.messageQueue, null);
 }
 
 export function calculateRunChanceByte({
@@ -502,25 +514,15 @@ export function choosePlayerMove(
     playerPokemon = applyDamage(moveOutcome.defender, moveOutcome.damage);
 
     if (playerPokemon.status === "fainted") {
-      return {
-        ...state,
-        phase: "ended",
+      return createPlayerFaintState({
+        state,
+        playerPokemon,
+        opponentPokemon,
+        messageQueue,
         selectedMoveId: playerMove.id,
         turn: state.turn + 1,
-        player: syncActivePartyPokemon(state.player, playerPokemon),
-        opponent: syncActivePartyPokemon(state.opponent, opponentPokemon),
         usedInventoryItemId: null,
-        messageQueue: appendBattleEndConfirmMessage([
-          ...messageQueue,
-          `${withTopicParticle(playerPokemon.name)} 쓰러졌다!`,
-          "패배했다!",
-        ]),
-        result: {
-          winnerPlayerId: state.opponent.playerId,
-          loserPlayerId: state.player.playerId,
-          reason: "faint",
-        },
-      };
+      });
     }
   }
 
@@ -609,26 +611,16 @@ function resolveFailedRunTurn(
   playerPokemon = applyDamage(moveOutcome.defender, moveOutcome.damage);
 
   if (playerPokemon.status === "fainted") {
-    return {
-      ...state,
-      phase: "ended",
+    return createPlayerFaintState({
+      state,
+      playerPokemon,
+      opponentPokemon,
+      messageQueue,
       selectedMoveId: null,
       turn: state.turn + 1,
       runAttemptCount,
-      player: syncActivePartyPokemon(state.player, playerPokemon),
-      opponent: syncActivePartyPokemon(state.opponent, opponentPokemon),
       usedInventoryItemId: null,
-      messageQueue: appendBattleEndConfirmMessage([
-        ...messageQueue,
-        `${withTopicParticle(playerPokemon.name)} 쓰러졌다!`,
-        "패배했다!",
-      ]),
-      result: {
-        winnerPlayerId: state.opponent.playerId,
-        loserPlayerId: state.player.playerId,
-        reason: "faint",
-      },
-    };
+    });
   }
 
   const endOfTurn = resolveEndOfTurnEffects({
@@ -718,25 +710,15 @@ function resolveFailedCaptureTurn(
   playerPokemon = applyDamage(moveOutcome.defender, moveOutcome.damage);
 
   if (playerPokemon.status === "fainted") {
-    return {
-      ...state,
-      phase: "ended",
+    return createPlayerFaintState({
+      state,
+      playerPokemon,
+      opponentPokemon,
+      messageQueue,
       selectedMoveId: null,
       turn: state.turn + 1,
-      player: syncActivePartyPokemon(state.player, playerPokemon),
-      opponent: syncActivePartyPokemon(state.opponent, opponentPokemon),
-      messageQueue: appendBattleEndConfirmMessage([
-        ...messageQueue,
-        `${withTopicParticle(playerPokemon.name)} 쓰러졌다!`,
-        "패배했다!",
-      ]),
       usedInventoryItemId: ball.itemId,
-      result: {
-        winnerPlayerId: state.opponent.playerId,
-        loserPlayerId: state.player.playerId,
-        reason: "faint",
-      },
-    };
+    });
   }
 
   const endOfTurn = resolveEndOfTurnEffects({
@@ -821,25 +803,15 @@ function resolveOpponentTurnAfterPlayerMessages(
   playerPokemon = applyDamage(moveOutcome.defender, moveOutcome.damage);
 
   if (playerPokemon.status === "fainted") {
-    return {
-      ...state,
-      phase: "ended",
+    return createPlayerFaintState({
+      state,
+      playerPokemon,
+      opponentPokemon,
+      messageQueue,
       selectedMoveId: null,
       turn: state.turn + 1,
-      player: syncActivePartyPokemon(state.player, playerPokemon),
-      opponent: syncActivePartyPokemon(state.opponent, opponentPokemon),
-      messageQueue: appendBattleEndConfirmMessage([
-        ...messageQueue,
-        `${withTopicParticle(playerPokemon.name)} 쓰러졌다!`,
-        "패배했다!",
-      ]),
       usedInventoryItemId,
-      result: {
-        winnerPlayerId: state.opponent.playerId,
-        loserPlayerId: state.player.playerId,
-        reason: "faint",
-      },
-    };
+    });
   }
 
   const endOfTurn = resolveEndOfTurnEffects({
@@ -1462,29 +1434,63 @@ function createEndOfTurnFaintState(input: EndOfTurnResolutionInput): BattleScree
   }
 
   if (input.playerPokemon.status === "fainted") {
-    return {
-      ...input.state,
-      ...runAttemptPatch,
-      phase: "ended",
-      selectedMoveId: input.selectedMoveId,
-      turn: input.turn,
-      player: syncActivePartyPokemon(input.state.player, input.playerPokemon),
-      opponent: syncActivePartyPokemon(input.state.opponent, input.opponentPokemon),
-      usedInventoryItemId: input.usedInventoryItemId,
-      messageQueue: appendBattleEndConfirmMessage([
-        ...input.messageQueue,
-        `${withTopicParticle(input.playerPokemon.name)} 쓰러졌다!`,
-        "패배했다!",
-      ]),
-      result: {
-        winnerPlayerId: input.state.opponent.playerId,
-        loserPlayerId: input.state.player.playerId,
-        reason: "faint",
-      },
-    };
+    return createPlayerFaintState(input);
   }
 
   return null;
+}
+
+function createPlayerFaintState(input: EndOfTurnResolutionInput): BattleScreenState {
+  const runAttemptPatch =
+    input.runAttemptCount === undefined ? {} : { runAttemptCount: input.runAttemptCount };
+  const player = syncActivePartyPokemon(input.state.player, input.playerPokemon);
+  const opponent = syncActivePartyPokemon(input.state.opponent, input.opponentPokemon);
+  const faintMessages = [
+    ...input.messageQueue,
+    `${withTopicParticle(input.playerPokemon.name)} 쓰러졌다!`,
+  ];
+  const hasAvailableReplacement = player.party.some(
+    slot =>
+      slot.slotIndex !== player.activePartySlotIndex &&
+      slot.pokemon !== null &&
+      canPokemonBattle(slot.pokemon),
+  );
+
+  if (hasAvailableReplacement) {
+    return {
+      ...input.state,
+      ...runAttemptPatch,
+      phase: "party-select",
+      selectedMoveId: input.selectedMoveId,
+      turn: input.turn,
+      player,
+      opponent,
+      usedInventoryItemId: input.usedInventoryItemId,
+      messageQueue: [...faintMessages, "교체할 포켓몬을 선택해 주세요."],
+      result: null,
+    };
+  }
+
+  return {
+    ...input.state,
+    ...runAttemptPatch,
+    phase: "ended",
+    selectedMoveId: input.selectedMoveId,
+    turn: input.turn,
+    player,
+    opponent,
+    usedInventoryItemId: input.usedInventoryItemId,
+    messageQueue: appendBattleEndConfirmMessage([...faintMessages, "패배했다!"]),
+    result: {
+      winnerPlayerId: input.state.opponent.playerId,
+      loserPlayerId: input.state.player.playerId,
+      reason: "faint",
+    },
+  };
+}
+
+export function canPokemonBattle(pokemon: BattlePokemon): boolean {
+  return pokemon.status !== "fainted" && pokemon.currentHp > 0;
 }
 
 function applyPoisonResidualDamage(pokemon: BattlePokemon): {

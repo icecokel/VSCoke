@@ -104,6 +104,12 @@ jobs:
       - name: Run web type check
         run: pnpm type:check:web
 
+      - name: Run web unit tests
+        run: pnpm test:web
+
+      - name: Run local single test mode browser flow
+        run: pnpm e2e:local-test-mode
+
       - name: Run web lint
         run: pnpm lint:web
 

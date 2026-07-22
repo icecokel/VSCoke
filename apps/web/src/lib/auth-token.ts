@@ -9,9 +9,14 @@ export type ApiTokenSession = {
   user?: { id?: unknown } | null;
   idToken?: unknown;
   idTokenExpiresAt?: unknown;
+  localTestMode?: unknown;
   accessToken?: unknown;
   error?: unknown;
 };
+
+export interface SessionApiTokenOptions {
+  allowLocalTestMode?: boolean;
+}
 
 const decodeBase64Url = (value: string): string => {
   if (typeof Buffer !== "undefined") {
@@ -67,8 +72,15 @@ export const isAuthSessionError = (error?: unknown): boolean =>
 export const getSessionApiIdToken = (
   session?: ApiTokenSession | null,
   nowMs: number = Date.now(),
+  options: SessionApiTokenOptions = {},
 ): string | undefined => {
-  if (!session || isAuthSessionError(session.error)) return undefined;
+  if (
+    !session ||
+    isAuthSessionError(session.error) ||
+    (session.localTestMode === true && options.allowLocalTestMode !== true)
+  ) {
+    return undefined;
+  }
 
   return isIdTokenUsable(session.idToken, session.idTokenExpiresAt, nowMs)
     ? session.idToken

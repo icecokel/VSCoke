@@ -13,6 +13,16 @@ import {
 } from "./gameViewport";
 import { renderMobileSettingsToggle } from "./input/settings-toggle";
 import { renderMobileTouchControls } from "./input/mobileTouchControls";
+import {
+  LOCAL_TEST_MODE_START_QUERY_PARAM,
+  activateLocalTestMode,
+  createLocalTestModeSoloUrl,
+  createLocalTestModeStartUrl,
+  deactivateLocalTestMode,
+  loadLocalTestModeState,
+  resolveLocalTestModeState,
+  type LocalTestModeState,
+} from "./local-test-mode";
 import { createMultiplayerRoom } from "./network/multiplayerRoomFactory";
 import {
   POKE_LOUNGE_FRESH_SESSION_REQUIRED_EVENT,
@@ -51,12 +61,16 @@ export interface GamePageHandle {
 
 export interface StartGamePageDependencies {
   accountId?: string;
+  activateLocalTestMode?: typeof activateLocalTestMode;
   createMultiplayerRoom?: typeof createMultiplayerRoom;
   createPokeLoungeGame?: typeof createPokeLoungeGame;
+  deactivateLocalTestMode?: typeof deactivateLocalTestMode;
   gameStateStore?: GameStateStore;
   idToken?: string;
+  localTestModeActive?: boolean;
   getIdToken?: () => string | undefined;
   loadBootstrapData?: () => Promise<GameBootstrapData>;
+  loadLocalTestModeState?: typeof loadLocalTestModeState;
   renderRoomEntryScreen?: typeof renderRoomEntryScreen;
   renderWebRtcSignalingPanel?: typeof renderWebRtcSignalingPanel;
   renderStarterSelectionScreen?: (
@@ -79,12 +93,16 @@ export async function startGamePage(
   const battleE2eScenario = readInitialBattleE2eScenario(location);
   const currentUrl = new URL(location.href);
   const copy = getPokeLoungeCopyForUrl(currentUrl);
+  const activateTestMode = dependencies.activateLocalTestMode ?? activateLocalTestMode;
+  const deactivateTestMode = dependencies.deactivateLocalTestMode ?? deactivateLocalTestMode;
+  const loadTestModeState = dependencies.loadLocalTestModeState ?? loadLocalTestModeState;
   const renderEntryScreen = dependencies.renderRoomEntryScreen ?? renderRoomEntryScreen;
   const renderSelection = dependencies.renderStarterSelectionScreen ?? renderStarterSelectionScreen;
   let runtimeGameDataPromise: Promise<void> | null = null;
   let activeGame: PokeLoungeGameInstance | null = null;
   let activeMultiplayerRoom: ReturnType<typeof createMultiplayerRoom> | null = null;
   let activeViewportSize = dependencies.viewportSize;
+  let localTestModeState: LocalTestModeState = { available: false, active: false };
   let destroyed = false;
   let roomEntrySelectionPending = false;
   let starterSelectionRequestId = 0;
@@ -341,6 +359,22 @@ export async function startGamePage(
       showStartupError(() => startGameAfterStarterSelection(gameUrl));
     });
   };
+  const selectRoomEntry = (selection: RoomEntrySelection) => {
+    if (destroyed || roomEntrySelectionPending) {
+      return;
+    }
+
+    roomEntrySelectionPending = true;
+    setRoomEntryScreenPending(mount, copy.roomEntry.preparing);
+    applyRoomEntrySelection(currentUrl, selection);
+    replaceBrowserUrl(currentUrl);
+
+    if (shouldResetRoomEntrySession(selection)) {
+      gameStateStore.reset();
+    }
+
+    startGameAfterStarterSelection(currentUrl);
+  };
   const showRoomEntry = () => {
     if (destroyed) {
       return;
@@ -349,6 +383,77 @@ export async function startGamePage(
     roomEntrySelectionPending = false;
     renderEntryScreen(mount, {
       currentUrl: new URL(currentUrl.href),
+      localTestMode: localTestModeState.available
+        ? {
+            active: localTestModeState.active,
+            onStart: () => {
+              if (localTestModeState.active) {
+                selectRoomEntry({
+                  mode: "solo",
+                  roomCode: null,
+                  inviteUrl: null,
+                });
+                return;
+              }
+
+              if (destroyed || roomEntrySelectionPending) {
+                return;
+              }
+
+              roomEntrySelectionPending = true;
+              setRoomEntryScreenPending(mount, copy.roomEntry.preparing);
+              void activateTestMode(currentUrl)
+                .then(() => {
+                  if (destroyed || typeof window === "undefined") {
+                    return;
+                  }
+
+                  window.location.assign(createLocalTestModeStartUrl(currentUrl).href);
+                })
+                .catch(() => {
+                  if (destroyed) {
+                    return;
+                  }
+
+                  showRoomEntry();
+                  dispatchPokeLoungeNotice(mount.ownerDocument, {
+                    message: copy.roomEntry.localTestRequestFailed,
+                    tone: "warning",
+                  });
+                });
+            },
+            onExit: () => {
+              if (destroyed || roomEntrySelectionPending) {
+                return;
+              }
+
+              roomEntrySelectionPending = true;
+              setRoomEntryScreenPending(mount, copy.roomEntry.preparing);
+              void deactivateTestMode(currentUrl)
+                .then(() => {
+                  if (destroyed || typeof window === "undefined") {
+                    return;
+                  }
+
+                  const exitUrl = new URL(currentUrl.href);
+                  clearRoomEntrySearchParams(exitUrl);
+                  exitUrl.searchParams.delete(LOCAL_TEST_MODE_START_QUERY_PARAM);
+                  window.location.assign(exitUrl.href);
+                })
+                .catch(() => {
+                  if (destroyed) {
+                    return;
+                  }
+
+                  showRoomEntry();
+                  dispatchPokeLoungeNotice(mount.ownerDocument, {
+                    message: copy.roomEntry.localTestRequestFailed,
+                    tone: "warning",
+                  });
+                });
+            },
+          }
+        : undefined,
       serverRoomCapability:
         dependencies.getIdToken?.() || dependencies.idToken || isLocalE2eUrl(currentUrl)
           ? { enabled: true }
@@ -356,26 +461,39 @@ export async function startGamePage(
               enabled: false,
               disabledReason: copy.roomEntry.serverDisabled,
             },
-      onSelect: selection => {
-        if (destroyed || roomEntrySelectionPending) {
-          return;
-        }
-
-        roomEntrySelectionPending = true;
-        setRoomEntryScreenPending(mount, copy.roomEntry.preparing);
-        applyRoomEntrySelection(currentUrl, selection);
-        replaceBrowserUrl(currentUrl);
-
-        if (shouldResetRoomEntrySession(selection)) {
-          gameStateStore.reset();
-        }
-
-        startGameAfterStarterSelection(currentUrl);
-      },
+      onSelect: selectRoomEntry,
     });
   };
   const continueToSelectedRoomOrEntry = () => {
+    const localTestModeStartRequested =
+      currentUrl.searchParams.get(LOCAL_TEST_MODE_START_QUERY_PARAM) === "1";
+    if (localTestModeStartRequested) {
+      const soloUrl = createLocalTestModeSoloUrl(currentUrl);
+      currentUrl.search = soloUrl.search;
+      replaceBrowserUrl(currentUrl);
+
+      if (localTestModeState.active) {
+        startGameAfterStarterSelection(currentUrl);
+      } else {
+        showRoomEntry();
+      }
+      return;
+    }
+
+    if (currentUrl.searchParams.has(LOCAL_TEST_MODE_START_QUERY_PARAM)) {
+      currentUrl.searchParams.delete(LOCAL_TEST_MODE_START_QUERY_PARAM);
+      replaceBrowserUrl(currentUrl);
+    }
+
     const roomEntry = readRoomEntryFromLocation(currentUrl);
+
+    if (localTestModeState.active && isCompetitiveRoomEntryMode(roomEntry.mode)) {
+      clearRoomEntrySearchParams(currentUrl);
+      applyRoomRoundDurationSearchParam(currentUrl);
+      replaceBrowserUrl(currentUrl);
+      showRoomEntry();
+      return;
+    }
 
     if (roomEntry.mode === "server-room" && !dependencies.idToken && !isLocalE2eUrl(currentUrl)) {
       currentUrl.searchParams.delete("create");
@@ -398,7 +516,13 @@ export async function startGamePage(
     showRoomEntry();
   };
 
-  continueToSelectedRoomOrEntry();
+  localTestModeState = resolveLocalTestModeState(
+    await loadTestModeState(currentUrl),
+    dependencies.localTestModeActive === true,
+  );
+  if (!destroyed) {
+    continueToSelectedRoomOrEntry();
+  }
   return handle;
 }
 

@@ -84,6 +84,12 @@ export interface PokeLoungeCopy {
     soloDescription: string;
     continue: string;
     newGame: string;
+    localTestTitle: string;
+    localTestDescription: string;
+    localTestStart: string;
+    localTestContinue: string;
+    localTestExit: string;
+    localTestRequestFailed: string;
     tournamentSettings: string;
     tournamentSettingsDescription: string;
     localTitle: string;
@@ -210,6 +216,14 @@ const KOREAN_COPY: PokeLoungeCopy = {
     soloDescription: "저장된 모험이 있으면 이어서 하고, 없으면 새 모험을 시작합니다.",
     continue: "이어하기",
     newGame: "새 게임",
+    localTestTitle: "로컬 싱글 테스트",
+    localTestDescription:
+      "고정 테스트 계정에 진행도를 저장하며 전투, 상호작용, 이어하기 완성도를 반복 확인합니다. 멀티플레이 테스트에는 사용하지 않습니다.",
+    localTestStart: "테스트 모드로 시작",
+    localTestContinue: "테스트 모드 계속",
+    localTestExit: "테스트 모드 종료",
+    localTestRequestFailed:
+      "로컬 싱글 테스트 모드를 전환하지 못했습니다. 로컬 환경 설정을 확인한 뒤 다시 시도해 주세요.",
     tournamentSettings: "대회 설정",
     tournamentSettingsDescription: "로컬 방과 서버 방을 만들 때 공통으로 적용됩니다.",
     localTitle: "로컬 멀티플레이",
@@ -343,6 +357,14 @@ const ENGLISH_COPY: PokeLoungeCopy = {
     soloDescription: "Continue a saved adventure, or start a new one if no save exists.",
     continue: "Continue",
     newGame: "New game",
+    localTestTitle: "Local solo test",
+    localTestDescription:
+      "Save progress to a fixed test account while repeatedly checking battles, interactions, and continue behavior. This mode is not for multiplayer testing.",
+    localTestStart: "Start test mode",
+    localTestContinue: "Continue test mode",
+    localTestExit: "Exit test mode",
+    localTestRequestFailed:
+      "Could not switch local solo test mode. Check the local environment setup and try again.",
     tournamentSettings: "Tournament settings",
     tournamentSettingsDescription: "Used when creating both local and server rooms.",
     localTitle: "Local multiplayer",
@@ -477,6 +499,14 @@ const JAPANESE_COPY: PokeLoungeCopy = {
     soloDescription: "保存された冒険があれば続きから、なければ新しい冒険を始めます。",
     continue: "続きから",
     newGame: "ニューゲーム",
+    localTestTitle: "ローカルソロテスト",
+    localTestDescription:
+      "固定テストアカウントに進行を保存しながら、バトル、操作、続きからの完成度を繰り返し確認します。マルチプレイテストには使用しません。",
+    localTestStart: "テストモードで開始",
+    localTestContinue: "テストモードを続ける",
+    localTestExit: "テストモードを終了",
+    localTestRequestFailed:
+      "ローカルソロテストモードを切り替えられませんでした。ローカル環境の設定を確認して、もう一度お試しください。",
     tournamentSettings: "大会設定",
     tournamentSettingsDescription: "ローカルルームとサーバールームの作成時に共通で使用します。",
     localTitle: "ローカルマルチプレイ",

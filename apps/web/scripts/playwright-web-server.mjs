@@ -11,6 +11,10 @@ const nextTsconfigPath =
 
 const rootTsconfigPath = path.resolve("tsconfig.json");
 const resolvedNextTsconfigPath = path.resolve(nextTsconfigPath);
+const localTestAuthToken =
+  process.env.PLAYWRIGHT_ENABLE_LOCAL_TEST_MODE === "1"
+    ? "playwright_local_test_auth_token_0123456789abcdef"
+    : "";
 const rawTsconfig = JSON.parse(readFileSync(rootTsconfigPath, "utf8"));
 const sanitizedTsconfig = {
   ...rawTsconfig,
@@ -30,6 +34,7 @@ const serverEnv = {
   AUTH_URL: process.env.AUTH_URL ?? `http://${host}:${port}`,
   AUTH_SECRET: process.env.AUTH_SECRET ?? "e2e-auth-secret",
   HOSTNAME: host,
+  LOCAL_TEST_AUTH_TOKEN: localTestAuthToken,
   NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ?? "e2e-auth-secret",
   NEXTAUTH_URL: process.env.NEXTAUTH_URL ?? `http://${host}:${port}`,
   NEXT_DIST_DIR: nextDistDir,

@@ -208,7 +208,10 @@ export function PokeLoungeGame() {
   const router = useCustomRouter();
   const { data: session, status } = useSession();
   const apiSession = session as ApiTokenSession | null;
-  const sessionToken = getSessionApiIdToken(apiSession);
+  const localTestModeActive = apiSession?.localTestMode === true;
+  const sessionToken = getSessionApiIdToken(apiSession, Date.now(), {
+    allowLocalTestMode: true,
+  });
   const accountId = sessionToken
     ? (getSessionApiAccountId(apiSession, sessionToken) ?? null)
     : null;
@@ -968,6 +971,7 @@ export function PokeLoungeGame() {
         const gamePage = await startGamePageFromDocument(document, new URL(window.location.href), {
           accountId: accountId ?? undefined,
           idToken,
+          localTestModeActive,
           getIdToken: () =>
             accountId ? (accountTokensRef.current.get(accountId) ?? idToken) : undefined,
           onGameResult: result => {
@@ -1002,7 +1006,7 @@ export function PokeLoungeGame() {
     })();
 
     return cleanupGamePage;
-  }, [accountId, gameHydrationReady, gameStartupAttempt, setGamePlaying]);
+  }, [accountId, gameHydrationReady, gameStartupAttempt, localTestModeActive, setGamePlaying]);
 
   const handleSubmitResult = useCallback(async () => {
     if (!finalResult || submitStatus === "submitting" || submitStatus === "success") {
@@ -1010,7 +1014,9 @@ export function PokeLoungeGame() {
     }
 
     const apiSession = session as ApiTokenSession | null;
-    const token = getSessionApiIdToken(apiSession);
+    const token = getSessionApiIdToken(apiSession, Date.now(), {
+      allowLocalTestMode: true,
+    });
 
     if (status !== "authenticated" || !token || isAuthSessionError(apiSession?.error)) {
       setSubmitStatus("auth");

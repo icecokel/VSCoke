@@ -1,5 +1,5 @@
 {
-  "entry": ["src/app/**/*.{ts,tsx}", "src/posts/**/*.mdx"],
+  "entry": ["src/app/**/*.{ts,tsx}", "src/**/*.spec.{ts,tsx}", "src/posts/**/*.mdx"],
   "project": ["src/**/*.{ts,tsx}"],
   "ignoreDependencies": [
     "@vscoke/poke-lounge-battle",

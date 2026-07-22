@@ -40,6 +40,11 @@ export function shouldResetRoomEntrySession(selection: RoomEntrySelection): bool
 export interface RoomEntryScreenOptions {
   currentUrl: URL;
   createRoomCode?: () => string;
+  localTestMode?: {
+    active: boolean;
+    onExit(): void;
+    onStart(): void;
+  };
   serverRoomCapability?: ServerRoomEntryCapability;
   onSelect(selection: RoomEntrySelection): void;
 }
@@ -55,6 +60,7 @@ export function renderRoomEntryScreen(
   const screen = document.createElement("section");
   screen.className = "room-entry-screen";
   screen.setAttribute("data-room-entry-screen", "true");
+  screen.toggleAttribute("data-local-test-mode-active", options.localTestMode?.active === true);
 
   const panel = document.createElement("div");
   panel.className = "room-entry-panel";
@@ -79,6 +85,44 @@ export function renderRoomEntryScreen(
   newStartButton.classList.add("room-entry-new-game-button");
   soloActions.append(soloButton, newStartButton);
   soloMode.content.appendChild(soloActions);
+
+  let localTestStartButton: HTMLButtonElement | null = null;
+  let localTestExitButton: HTMLButtonElement | null = null;
+  if (options.localTestMode) {
+    const localTestMode = document.createElement("section");
+    localTestMode.className = "room-entry-local-test";
+    localTestMode.setAttribute("data-room-entry-local-test", "true");
+    localTestMode.toggleAttribute("data-local-test-mode-active", options.localTestMode.active);
+
+    const localTestTitle = document.createElement("h3");
+    localTestTitle.className = "room-entry-field-label";
+    localTestTitle.textContent = copy.roomEntry.localTestTitle;
+
+    const localTestDescription = document.createElement("p");
+    localTestDescription.className = "room-entry-field-copy";
+    localTestDescription.textContent = copy.roomEntry.localTestDescription;
+
+    const localTestActions = document.createElement("div");
+    localTestActions.className = "room-entry-local-test-actions";
+    localTestStartButton = createButton(
+      options.localTestMode.active
+        ? copy.roomEntry.localTestContinue
+        : copy.roomEntry.localTestStart,
+      "data-room-entry-local-test-start",
+    );
+    localTestActions.appendChild(localTestStartButton);
+
+    if (options.localTestMode.active) {
+      localTestExitButton = createButton(
+        copy.roomEntry.localTestExit,
+        "data-room-entry-local-test-exit",
+      );
+      localTestActions.appendChild(localTestExitButton);
+    }
+
+    localTestMode.append(localTestTitle, localTestDescription, localTestActions);
+    soloMode.content.appendChild(localTestMode);
+  }
 
   let selectedRoundDurationMs = readInitialRoundDurationMs(options.currentUrl);
   const roundDurationPicker = createRoundDurationPicker(
@@ -243,6 +287,18 @@ export function renderRoomEntryScreen(
     });
   });
 
+  localTestStartButton?.addEventListener("click", () => {
+    playRoomEntryConfirmSound();
+    message.textContent = "";
+    options.localTestMode?.onStart();
+  });
+
+  localTestExitButton?.addEventListener("click", () => {
+    playRoomEntryConfirmSound();
+    message.textContent = "";
+    options.localTestMode?.onExit();
+  });
+
   newStartButton.addEventListener("click", () => {
     playRoomEntryConfirmSound();
     openConfirmationDialog(newGameDialog.dialog, newGameDialog.cancelButton);
@@ -308,17 +364,11 @@ export function renderRoomEntryScreen(
     serverRoomCodeInput.removeAttribute("aria-invalid");
   });
 
-  panel.append(
-    title,
-    fanNotice,
-    soloMode.element,
-    settingsGroup,
-    localMode.element,
-    serverMode.element,
-    inviteField,
-    message,
-    newGameDialog.dialog,
-  );
+  panel.append(title, fanNotice, soloMode.element);
+  if (!options.localTestMode?.active) {
+    panel.append(settingsGroup, localMode.element, serverMode.element, inviteField);
+  }
+  panel.append(message, newGameDialog.dialog);
   screen.appendChild(panel);
   mount.appendChild(screen);
 

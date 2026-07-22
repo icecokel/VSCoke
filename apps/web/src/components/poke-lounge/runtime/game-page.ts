@@ -8,6 +8,7 @@ export async function startGamePageFromDocument(
   options: {
     accountId?: string;
     idToken?: string;
+    localTestModeActive?: boolean;
     getIdToken?: () => string | undefined;
     onGameResult?: (result: PokeLoungeGameResult) => void;
     viewportSize?: GameViewportDisplaySize;
@@ -22,6 +23,7 @@ export async function startGamePageFromDocument(
   return startGamePage(mount, location, {
     accountId: options.accountId,
     idToken: options.idToken,
+    localTestModeActive: options.localTestModeActive,
     getIdToken: options.getIdToken,
     onGameResult: options.onGameResult,
     viewportSize: options.viewportSize,

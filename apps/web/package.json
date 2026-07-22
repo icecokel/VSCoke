@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --hostname localhost",
     "build": "node ../../scripts/poke-lounge/check-asset-provenance.mjs --deployment-gate && next build",
     "start": "next start",
     "e2e": "node scripts/playwright-runner.mjs test",
@@ -12,6 +12,7 @@
     "e2e:headed": "node scripts/playwright-runner.mjs test --headed",
     "e2e:install": "playwright install chromium firefox webkit",
     "e2e:integration": "node scripts/playwright-integration-runner.mjs",
+    "e2e:local-test-mode": "node scripts/playwright-runner.mjs --local-test-mode test tests/e2e/poke-lounge-local-test-mode.spec.ts --project=chromium",
     "e2e:report": "playwright show-report",
     "e2e:server": "NEXT_DIST_DIR=.next-e2e PLAYWRIGHT_PORT=37123 node scripts/playwright-web-server.mjs",
     "e2e:smoke": "node scripts/playwright-runner.mjs test tests/e2e/i18n-integrity.spec.ts --project=chromium",
@@ -23,7 +24,7 @@
     "format:check": "prettier --check .",
     "type:check": "tsc --noEmit",
     "knip": "knip --no-progress --include files,dependencies,unlisted,unresolved",
-    "test:poke-lounge-unit": "tsx --test",
+    "test:poke-lounge-unit": "node scripts/web-unit-test-runner.mjs",
     "generate:types": "openapi-typescript ../api/openapi.json -o src/types/api.d.ts"
   },
   "dependencies": {

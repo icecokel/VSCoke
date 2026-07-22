@@ -1003,6 +1003,38 @@
   gap: 8px;
 }
 
+.page :global(.room-entry-local-test) {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 2px solid #4f653f;
+  border-radius: 4px;
+  background: #eef4df;
+}
+
+.page :global(.room-entry-local-test[data-local-test-mode-active]) {
+  border-color: #2f6548;
+  background: #dff3e5;
+}
+
+.page :global(.room-entry-local-test h3) {
+  margin: 0;
+}
+
+.page :global(.room-entry-local-test-actions) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.page :global(.room-entry-local-test-actions button) {
+  background: #f8fbf0;
+}
+
+.page :global(.room-entry-local-test-actions [data-room-entry-local-test-exit]) {
+  background: #fff9dd;
+}
+
 .page :global(.room-entry-field-label) {
   color: #17201a;
   font-size: 0.76rem;

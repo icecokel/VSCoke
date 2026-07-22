@@ -10,8 +10,17 @@ import { Repository } from 'typeorm';
 import { Request } from 'express';
 import { User } from './entities/user.entity';
 import { ErrorMessage } from '../common/constants/message.constant';
+import {
+  LOCAL_TEST_ACCOUNT_PROFILE,
+  isLocalTestAccountRequestAllowed,
+  resolveLocalTestAuthToken,
+} from './local-test-account';
 
 type AuthenticatedRequest = Request & { user?: User };
+type DevelopmentUserProfile = Pick<
+  User,
+  'id' | 'email' | 'firstName' | 'lastName'
+>;
 
 /**
  * 구글 ID 토큰을 검증하고 사용자를 인증하는 가드
@@ -39,8 +48,20 @@ export class GoogleAuthGuard implements CanActivate {
 
     // 개발 환경 인증 우회 로직 (명시적으로 활성화된 경우에만 허용)
     const isNonProduction = process.env.NODE_ENV !== 'production';
+    const localTestAuthToken = resolveLocalTestAuthToken();
     const isDevBypassEnabled = process.env.ENABLE_DEV_AUTH_BYPASS === 'true';
     const devAuthToken = process.env.DEV_AUTH_TOKEN;
+
+    if (localTestAuthToken && token === localTestAuthToken) {
+      if (!isLocalTestAccountRequestAllowed(request)) {
+        throw new UnauthorizedException(ErrorMessage.AUTH.INVALID_TOKEN);
+      }
+
+      request.user = await this.findOrCreateDevelopmentUser(
+        LOCAL_TEST_ACCOUNT_PROFILE,
+      );
+      return true;
+    }
 
     if (
       isNonProduction &&
@@ -48,23 +69,12 @@ export class GoogleAuthGuard implements CanActivate {
       devAuthToken &&
       token === devAuthToken
     ) {
-      // 더미 유저 생성 또는 조회
-      const devUserId = 'dev-user-id';
-      let user = await this.userRepository.findOne({
-        where: { id: devUserId },
+      request.user = await this.findOrCreateDevelopmentUser({
+        id: 'dev-user-id',
+        email: 'dev@example.com',
+        firstName: 'Dev',
+        lastName: 'User',
       });
-
-      if (!user) {
-        user = this.userRepository.create({
-          id: devUserId,
-          email: 'dev@example.com',
-          firstName: 'Dev',
-          lastName: 'User',
-        });
-        await this.userRepository.save(user);
-      }
-
-      request.user = user;
       return true;
     }
 
@@ -119,6 +129,21 @@ export class GoogleAuthGuard implements CanActivate {
         `${ErrorMessage.AUTH.INVALID_TOKEN}: ${errorMessage}`,
       );
     }
+  }
+
+  private async findOrCreateDevelopmentUser(
+    profile: DevelopmentUserProfile,
+  ): Promise<User> {
+    const existingUser = await this.userRepository.findOne({
+      where: { id: profile.id },
+    });
+
+    if (existingUser) {
+      return existingUser;
+    }
+
+    const user = this.userRepository.create(profile);
+    return this.userRepository.save(user);
   }
 
   /**

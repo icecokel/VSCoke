@@ -6,7 +6,11 @@
     "personalPath": "pbr/personal.narc",
     "movePath": "pbr/waza_tbl.narc",
     "learnsetPath": "a/0/3/3",
-    "evolutionPath": "a/0/3/4"
+    "evolutionPath": "a/0/3/4",
+    "messagePath": "a/0/2/7",
+    "pokemonNameMessageIndex": 233,
+    "characterMapPath": "data/str2uni.bin",
+    "battleSpritePath": "a/0/0/4"
   },
   "species": {
     "1": [

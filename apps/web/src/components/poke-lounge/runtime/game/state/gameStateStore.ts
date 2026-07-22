@@ -6,6 +6,7 @@ import {
 } from "../player/playerTypes";
 import { applyInventoryItemEffect } from "../items/inventoryItemEffects";
 import type { PokemonIndividualValues } from "../battle/individual-values";
+import { isSupportedPokemonSpeciesId } from "../battle/pokemon-species";
 import {
   createDefaultRoundState,
   startPreparationRound as startPreparationRoundState,
@@ -199,7 +200,10 @@ export type MoveBoxPokemonToPartyResult =
 
 export type SwapPartyPokemonWithBoxResult =
   | { ok: true }
-  | { ok: false; reason: "invalid-slot" | "empty-slot" | "invalid-box-index" };
+  | {
+      ok: false;
+      reason: "invalid-slot" | "empty-slot" | "invalid-box-index" | "fainted-active-replacement";
+    };
 
 export type SetActivePartySlotResult =
   | { ok: true }
@@ -906,6 +910,14 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
         return { ok: false, reason: "invalid-box-index" };
       }
 
+      if (
+        slotIndex === localPlayer.activePartySlotIndex &&
+        (boxPokemon.status === "fainted" ||
+          (typeof boxPokemon.currentHp === "number" && boxPokemon.currentHp <= 0))
+      ) {
+        return { ok: false, reason: "fainted-active-replacement" };
+      }
+
       setCurrentLocalPlayer({
         ...localPlayer,
         party: localPlayer.party.map(slot =>
@@ -1559,8 +1571,17 @@ function ensureCurrentPlayerExists(state: GameState): GameState {
 }
 
 function ensureLocalPlayerDefaults(localPlayer: LocalPlayerState): LocalPlayerState {
+  const activePokemon = findSupportedActivePartyPokemon(
+    localPlayer.party,
+    localPlayer.activePartySlotIndex,
+  );
+  const party = normalizePokemonParty(localPlayer.party);
+
   return {
     ...localPlayer,
+    party,
+    activePartySlotIndex:
+      party.find(slot => slot.pokemon === activePokemon)?.slotIndex ?? party[0]?.slotIndex ?? 0,
     wallet: {
       ...createDefaultPlayerWallet(),
       ...(localPlayer.wallet ?? {}),
@@ -1609,6 +1630,45 @@ function normalizePokemonBox(pokemonBox: unknown): PlayerPokemon[] {
   return pokemonBox.filter((pokemon): pokemon is PlayerPokemon => isPlayerPokemonRecord(pokemon));
 }
 
+function normalizePokemonParty(party: unknown): Array<PlayerPokemonSlot<PlayerPokemon>> {
+  if (!Array.isArray(party)) {
+    return [];
+  }
+
+  const supportedPokemon = party.flatMap(slot => {
+    if (typeof slot !== "object" || slot === null || !("pokemon" in slot)) {
+      return [];
+    }
+
+    return isPlayerPokemonRecord(slot.pokemon) ? [{ slotIndex: 0, pokemon: slot.pokemon }] : [];
+  });
+
+  return compactPartySlots(supportedPokemon);
+}
+
+function findSupportedActivePartyPokemon(
+  party: unknown,
+  activePartySlotIndex: unknown,
+): PlayerPokemon | null {
+  if (!Array.isArray(party)) {
+    return null;
+  }
+
+  const activeSlot = party.find(
+    slot =>
+      typeof slot === "object" &&
+      slot !== null &&
+      "slotIndex" in slot &&
+      slot.slotIndex === activePartySlotIndex,
+  );
+
+  if (!activeSlot || !("pokemon" in activeSlot)) {
+    return null;
+  }
+
+  return isPlayerPokemonRecord(activeSlot.pokemon) ? activeSlot.pokemon : null;
+}
+
 function isPlayerPokemonRecord(value: unknown): value is PlayerPokemon {
   if (typeof value !== "object" || value === null) {
     return false;
@@ -1617,9 +1677,7 @@ function isPlayerPokemonRecord(value: unknown): value is PlayerPokemon {
   const pokemon = value as Partial<PlayerPokemon>;
 
   return (
-    typeof pokemon.speciesId === "number" &&
-    Number.isInteger(pokemon.speciesId) &&
-    pokemon.speciesId > 0 &&
+    isSupportedPokemonSpeciesId(pokemon.speciesId) &&
     typeof pokemon.name === "string" &&
     pokemon.name.trim().length > 0 &&
     typeof pokemon.level === "number" &&

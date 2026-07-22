@@ -28,6 +28,7 @@ import { createGameTextStyle } from "../ui/gameTextStyle";
 import { dispatchPokeLoungeAccessibleStatus } from "../ui/poke-lounge-ui-events";
 import {
   createInventoryControlFooter,
+  createPcBoxControlFooter,
   createShortcutGuideFooter,
   createShortcutGuideRows,
   createShortcutGuideTitle,
@@ -39,7 +40,7 @@ import type { ObjectLayerLookup, WorldE2eSnapshot } from "./WorldScene";
 
 const SHOP_PANEL_SIZE = { width: 384, height: 268 } as const;
 const INVENTORY_PANEL_SIZE = { width: 560, height: 320 } as const;
-const PC_BOX_PANEL_SIZE = { width: 520, height: 320 } as const;
+const PC_BOX_PANEL_SIZE = { width: 496, height: 320 } as const;
 const DICE_GAMBLE_PANEL_SIZE = { width: 408, height: 292 } as const;
 const SHORTCUT_GUIDE_PANEL_SIZE = { width: 420, height: 248 } as const;
 const DICE_GAMBLE_LABELS: Record<DiceGamblePrediction, string> = {
@@ -1746,6 +1747,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     this.pcBoxOpen = false;
     this.pcBoxMessage = "";
     this.destroyPcBoxUi();
+    dispatchPokeLoungeAccessibleStatus(document, "필드 탐색");
   }
 
   private movePcBoxSelection(delta: number): void {
@@ -1827,7 +1829,9 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
         ? `${boxPokemon.name}와 파티 포켓몬을 교체했다.`
         : swapResult.reason === "empty-slot"
           ? "교체할 파티 포켓몬을 선택해라."
-          : "선택한 박스 슬롯이 비어 있다.";
+          : swapResult.reason === "fainted-active-replacement"
+            ? "기절한 포켓몬은 선두 슬롯으로 교체할 수 없다."
+            : "선택한 박스 슬롯이 비어 있다.";
       this.renderPartyHud();
       this.renderPcBoxUi();
       return;
@@ -1864,7 +1868,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     this.pcBoxUiObjects.push(panel);
 
     const divider = this.add
-      .rectangle(x(258), y(58), 2, 202, 0x607d6c, 0.36)
+      .rectangle(x(246), y(58), 2, 202, 0x607d6c, 0.36)
       .setOrigin(0, 0)
       .setScrollFactor(0)
       .setDepth(2161);
@@ -1898,9 +1902,11 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
         .setDepth(2161),
       this.add
         .text(
-          x(284),
+          x(260),
           y(44),
-          this.pcBoxFocus === "box" ? "▶ 박스" : "  박스",
+          `${this.pcBoxFocus === "box" ? "▶" : " "} 박스 ${
+            localPlayer.pokemonBox.length > 0 ? this.pcBoxBoxIndex + 1 : 0
+          }/${localPlayer.pokemonBox.length}`,
           createGameTextStyle({
             color: this.pcBoxFocus === "box" ? "#101820" : "#607d6c",
             fontSize: "13px",
@@ -1915,11 +1921,15 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
       const slot = localPlayer.party.find(candidate => candidate.slotIndex === slotIndex);
       const pokemon = slot?.pokemon;
       const selected = this.pcBoxFocus === "party" && slotIndex === this.pcBoxPartySlotIndex;
+      const isSwapTarget =
+        this.pcBoxFocus === "box" &&
+        localPlayer.party.length >= PLAYER_PARTY_SLOT_COUNT &&
+        slotIndex === this.pcBoxPartySlotIndex;
       const rowY = y(72 + slotIndex * 28);
 
-      if (selected) {
+      if (selected || isSwapTarget) {
         const highlight = this.add
-          .rectangle(x(22), rowY - 4, 214, 24, 0xfff4a3, 0.95)
+          .rectangle(x(22), rowY - 4, 214, 24, selected ? 0xfff4a3 : 0xd7eef5, 0.95)
           .setOrigin(0, 0)
           .setScrollFactor(0)
           .setDepth(2161);
@@ -1932,7 +1942,9 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
           .text(
             x(30),
             rowY,
-            `${selected ? "▶" : " "} ${pokemon ? this.formatPcBoxPokemonLabel(pokemon) : "-"}`,
+            `${selected ? "▶" : isSwapTarget ? "↔" : " "} ${
+              pokemon ? this.formatPcBoxPokemonLabel(pokemon) : "-"
+            }`,
             createGameTextStyle({
               color: pokemon ? "#263238" : "#78909c",
               fontSize: "12px",
@@ -1956,7 +1968,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
 
       if (selected) {
         const highlight = this.add
-          .rectangle(x(284), rowY - 4, 214, 24, 0xfff4a3, 0.95)
+          .rectangle(x(260), rowY - 4, 214, 24, 0xfff4a3, 0.95)
           .setOrigin(0, 0)
           .setScrollFactor(0)
           .setDepth(2161);
@@ -1967,7 +1979,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
       this.pcBoxUiObjects.push(
         this.add
           .text(
-            x(292),
+            x(268),
             rowY,
             `${selected ? "▶" : " "} ${pokemon ? this.formatPcBoxPokemonLabel(pokemon) : "-"}`,
             createGameTextStyle({
@@ -2003,7 +2015,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
         .text(
           x(22),
           y(292),
-          "←→ 파티/박스 · ↑↓ 선택 · Enter 결정 · Esc 닫기",
+          createPcBoxControlFooter(getShortcutGuideInputMode()),
           createGameTextStyle({
             color: "#607d6c",
             fontSize: "10px",
@@ -2012,6 +2024,23 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(2162),
+    );
+
+    const selectedPartyPokemon = this.getPartyPokemonBySlotIndex(this.pcBoxPartySlotIndex);
+    const selectedBoxPokemon = localPlayer.pokemonBox[this.pcBoxBoxIndex];
+    const accessibleSelection =
+      this.pcBoxFocus === "party"
+        ? `PC 파티 ${this.pcBoxPartySlotIndex + 1}번, ${selectedPartyPokemon?.name ?? "빈 슬롯"}.`
+        : `PC 박스 ${localPlayer.pokemonBox.length > 0 ? this.pcBoxBoxIndex + 1 : 0}/${
+            localPlayer.pokemonBox.length
+          }, ${selectedBoxPokemon?.name ?? "빈 슬롯"}.${
+            localPlayer.party.length >= PLAYER_PARTY_SLOT_COUNT
+              ? ` 교체 대상 ${selectedPartyPokemon?.name ?? "빈 슬롯"}.`
+              : ""
+          }`;
+    dispatchPokeLoungeAccessibleStatus(
+      document,
+      `${accessibleSelection} ${this.pcBoxMessage}`.trim(),
     );
   }
 

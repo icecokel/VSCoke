@@ -217,6 +217,7 @@ export class WorldScene extends Phaser.Scene {
       stopPlayer: () => this.player?.setVelocity(0, 0),
       getLocationUrl: () => new URL(window.location.href),
       getEncounterTableData: () => this.cache.json.get(WILD_ENCOUNTER_TABLES_JSON_ASSET[0]),
+      getPokemonData: () => this.cache.json.get("pokemonData"),
       getViewportSize: () => this.getViewportSize(),
       createRectangle: (...args) => this.add.rectangle(...args),
       shakeCamera: (duration, intensity) => this.cameras.main.shake(duration, intensity),

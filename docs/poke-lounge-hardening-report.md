@@ -158,12 +158,12 @@ Known constraints:
 - Poke Lounge Chromium E2E: autosave/hydration/game 70 tests와 multiplayer 48 tests 통과; 실제 unmount/remount와 400 응답 후 fresh projection 복구 회귀 포함
 - 전체 tracked Markdown/README와 이 보고서의 상대 링크 target 검사: 63 files 통과
 - 변경 문서 Prettier와 `git diff --check`: 통과
-- `pnpm check:poke-lounge-provenance`: 오디오 9개 행은 CC0 교체 후 승인됐고, 나머지 57개 비오디오 항목 때문에 의도대로 실패
+- `pnpm check:poke-lounge-provenance`: 오디오 9개 행은 CC0 교체 후 승인됐고, 나머지 61개 비오디오 항목 때문에 의도대로 실패
 
 로컬 database 재검증은 Homebrew PostgreSQL 17.10에서 수행했다. PR workflow의 PostgreSQL 16 service와 pgvector 설치 절차는 유지되며, 버전별 migration 근거는 [Stage 4B 검증 기록](./poke-lounge-stage-4b-report.md)과 CI에서 함께 확인한다.
 
 ## Release 상태
 
-[Poke Lounge Release Gate](./poke-lounge-release-gate.md)의 provenance 상태는 계속 `UNRESOLVED`다. 기본 Vercel 빌드는 이 상태로 자동 차단하지 않지만, 이는 법률 결론이나 권리 승인이 아니다. 런타임 오디오는 CC0 소스로 교체했으며 Pokémon 이름/표장, ROM-derived data, 출처 불명 sprite/texture/map, ported code의 권리 상태는 owner/legal review가 필요하다.
+[Poke Lounge Release Gate](./poke-lounge-release-gate.md)의 provenance 상태는 계속 `UNRESOLVED`다. 기본 Vercel 빌드는 이 상태로 자동 차단하지 않지만, 이는 법률 결론이나 권리 승인이 아니다. 런타임 오디오는 CC0 소스로 교체했으며 Pokémon 이름/표장, ROM-derived data와 sprite, 출처 불명 texture/map, ported code의 권리 상태는 owner/legal review가 필요하다.
 
 기존 hardening 범위의 계획 대비 상태는 [Poke Lounge Hardening Implementation Plan](./superpowers/plans/2026-07-10-poke-lounge-hardening.md)에 기록한다. 이번 terminal client convergence 수정의 Tasks 0~6 완료 상태와 release 근거는 [Poke Lounge Terminal Client Convergence Fix Implementation Plan](./superpowers/plans/2026-07-16-poke-lounge-terminal-client-convergence-fix.md)에 기록한다.

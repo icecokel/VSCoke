@@ -25,7 +25,7 @@ import {
   type WildEncounterLevelRange,
   type WildEncounterSlot,
 } from "../world/wildEncounters";
-import { selectWildEncounterConfig } from "../world/wildEncounterTables";
+import { selectWildEncounterConfig, type WildEncounterConfig } from "../world/wildEncounterTables";
 
 export const WILD_ENCOUNTER_RATE_QUERY_PARAM = "wildEncounterRate";
 
@@ -61,6 +61,7 @@ export interface WorldSceneEncountersDependencies {
   stopPlayer(): void;
   getLocationUrl(): URL;
   getEncounterTableData(): unknown;
+  getPokemonData(): unknown;
   getViewportSize(): { width: number; height: number };
   createRectangle(
     x: number,
@@ -103,6 +104,7 @@ class DefaultWorldSceneEncounters implements WorldSceneEncounterController {
   private encounterLocked = false;
   private battleIntroPlaying = false;
   private wildEncounterRateOverride: number | undefined;
+  private readonly wildEncounterConfigCache = new Map<string, WildEncounterConfig | undefined>();
 
   constructor(private readonly dependencies: WorldSceneEncountersDependencies) {}
 
@@ -110,6 +112,7 @@ class DefaultWorldSceneEncounters implements WorldSceneEncounterController {
     this.stepTracker = createTileStepTracker(position);
     this.encounterLocked = false;
     this.battleIntroPlaying = false;
+    this.wildEncounterConfigCache.clear();
     this.wildEncounterRateOverride = readWildEncounterRateOverride(
       this.dependencies.getLocationUrl(),
     );
@@ -228,6 +231,7 @@ class DefaultWorldSceneEncounters implements WorldSceneEncounterController {
     this.encounterLocked = false;
     this.battleIntroPlaying = false;
     this.wildEncounterRateOverride = undefined;
+    this.wildEncounterConfigCache.clear();
   }
 
   private getWildEncounterLevelRangeInput(): { levelRange?: WildEncounterLevelRange } {
@@ -243,11 +247,18 @@ class DefaultWorldSceneEncounters implements WorldSceneEncounterController {
     slots?: ReadonlyArray<WildEncounterSlot>;
   } {
     const areaId = resolveFieldEncounterAreaId(position);
-    const config = selectWildEncounterConfig(
-      this.dependencies.getEncounterTableData(),
-      FIELD_MAP.key,
-      areaId,
-    );
+    const configCacheKey = areaId ?? "";
+    let config = this.wildEncounterConfigCache.get(configCacheKey);
+
+    if (!this.wildEncounterConfigCache.has(configCacheKey)) {
+      config = selectWildEncounterConfig(
+        this.dependencies.getEncounterTableData(),
+        FIELD_MAP.key,
+        areaId,
+        this.dependencies.getPokemonData(),
+      );
+      this.wildEncounterConfigCache.set(configCacheKey, config);
+    }
 
     return {
       ...(this.wildEncounterRateOverride !== undefined

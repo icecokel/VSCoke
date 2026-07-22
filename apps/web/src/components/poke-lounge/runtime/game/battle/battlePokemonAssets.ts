@@ -1,9 +1,11 @@
 import {
-  getRuntimeBattlePokemonAssetManifest,
-  type BattlePokemonAssetRecord,
-  type BattlePokemonExtractedRangeRecord,
+  BATTLE_POKEMON_SPRITE_FRAME_SIZE,
+  BATTLE_POKEMON_SPRITE_SHEET_GRID_SIZE,
+  getRuntimeBattlePokemonSpriteSheetRanges,
+  type BattlePokemonSpriteSheetRangeRecord,
 } from "../data/game-data-json";
 import type { BattleSpriteRef } from "./battleTypes";
+import { isSupportedPokemonSpeciesId } from "./pokemon-species";
 
 export interface BattlePokemonAssetSet {
   speciesId: number;
@@ -11,196 +13,112 @@ export interface BattlePokemonAssetSet {
   back: BattleSpriteRef;
 }
 
-export const ROM_EXTRACTED_BATTLE_SPECIES_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16, 19] as const;
+export interface BattlePokemonPreloadAsset {
+  assetKey: string;
+  path: string;
+  frameWidth: number;
+  frameHeight: number;
+  endFrame: number;
+}
 
-export const ROM_BATTLE_POKEMON_ASSETS: readonly BattlePokemonAssetSet[] = [
-  {
-    speciesId: 152,
-    front: {
-      assetKey: "battle-pokemon-152-front",
-      path: "/assets/pokemon/front/152.png",
-      width: 160,
-      height: 80,
-    },
-    back: {
-      assetKey: "battle-pokemon-152-back",
-      path: "/assets/pokemon/battle/152/back-default-normal.png",
-      width: 160,
-      height: 80,
-    },
-  },
-  {
-    speciesId: 155,
-    front: {
-      assetKey: "battle-pokemon-155-front",
-      path: "/assets/pokemon/front/155.png",
-      width: 160,
-      height: 80,
-    },
-    back: {
-      assetKey: "battle-pokemon-155-back",
-      path: "/assets/pokemon/battle/155/back-default-normal.png",
-      width: 160,
-      height: 80,
-    },
-  },
-  {
-    speciesId: 158,
-    front: {
-      assetKey: "battle-pokemon-158-front",
-      path: "/assets/pokemon/front/158.png",
-      width: 160,
-      height: 80,
-    },
-    back: {
-      assetKey: "battle-pokemon-158-back",
-      path: "/assets/pokemon/back/158.png",
-      width: 160,
-      height: 80,
-    },
-  },
-];
+export const BATTLE_POKEMON_FRAME_SIZE = {
+  width: BATTLE_POKEMON_SPRITE_FRAME_SIZE,
+  height: BATTLE_POKEMON_SPRITE_FRAME_SIZE,
+} as const;
 
-const DEFAULT_ROM_EXTRACTED_BATTLE_SPECIES_RANGES: readonly BattlePokemonExtractedRangeRecord[] = [
-  createDefaultExtractedRange(1, 10),
-  createDefaultExtractedRange(16, 16),
-  createDefaultExtractedRange(19, 19),
-] as const;
+export const DEFAULT_BATTLE_POKEMON_SPRITE_SHEET_RANGES = [
+  createDefaultSpriteSheetRange(1, 256),
+  createDefaultSpriteSheetRange(257, 493),
+] as const satisfies readonly BattlePokemonSpriteSheetRangeRecord[];
 
 export function getBattlePokemonAssets(speciesId: number): BattlePokemonAssetSet {
-  const assetSet = getRegisteredBattlePokemonAssets().find(
-    assets => assets.speciesId === speciesId,
-  );
-
-  if (assetSet) {
-    return assetSet;
+  if (!isSupportedPokemonSpeciesId(speciesId)) {
+    throw new Error(`Missing battle Pokemon assets for species ${speciesId}`);
   }
 
-  const extractedRange = getExtractedBattlePokemonRanges().find(
-    range => speciesId >= range.startSpeciesId && speciesId <= range.endSpeciesId,
+  const range = getBattlePokemonSpriteSheetRanges().find(
+    candidate => speciesId >= candidate.startSpeciesId && speciesId <= candidate.endSpeciesId,
   );
 
-  if (extractedRange) {
-    return createExtractedBattlePokemonAssets(speciesId, extractedRange);
+  if (!range) {
+    throw new Error(`Missing battle Pokemon assets for species ${speciesId}`);
   }
 
-  throw new Error(`Missing battle Pokemon assets for species ${speciesId}`);
-}
+  const frame = speciesId - range.startSpeciesId;
 
-export function toBattlePokemonPreloadAssets(): ReadonlyArray<readonly [string, string]> {
-  const extractedAssetSets = getExtractedBattlePokemonRanges().flatMap(range =>
-    createSpeciesIdRange(range.startSpeciesId, range.endSpeciesId).map(speciesId =>
-      createExtractedBattlePokemonAssets(speciesId, range),
-    ),
-  );
-  const assetSets = [...extractedAssetSets, ...getRegisteredBattlePokemonAssets()];
-
-  return assetSets.flatMap(assetSet => [
-    [assetSet.front.assetKey, assetSet.front.path] as const,
-    [assetSet.back.assetKey, assetSet.back.path] as const,
-  ]);
-}
-
-function getRegisteredBattlePokemonAssets(): BattlePokemonAssetSet[] {
-  const manifest = getRuntimeBattlePokemonAssetManifest({
-    fallbackSpecies: Object.fromEntries(
-      ROM_BATTLE_POKEMON_ASSETS.map(assetSet => [assetSet.speciesId, toAssetRecord(assetSet)]),
-    ),
-    fallbackExtractedRanges: [...DEFAULT_ROM_EXTRACTED_BATTLE_SPECIES_RANGES],
-  });
-
-  return Object.values(manifest.species).map(createRegisteredBattlePokemonAssets);
-}
-
-function getExtractedBattlePokemonRanges(): BattlePokemonExtractedRangeRecord[] {
-  return getRuntimeBattlePokemonAssetManifest({
-    fallbackSpecies: Object.fromEntries(
-      ROM_BATTLE_POKEMON_ASSETS.map(assetSet => [assetSet.speciesId, toAssetRecord(assetSet)]),
-    ),
-    fallbackExtractedRanges: [...DEFAULT_ROM_EXTRACTED_BATTLE_SPECIES_RANGES],
-  }).extractedRanges;
-}
-
-function createRegisteredBattlePokemonAssets(
-  assetRecord: BattlePokemonAssetRecord,
-): BattlePokemonAssetSet {
-  return {
-    speciesId: assetRecord.speciesId,
-    front: {
-      assetKey: `battle-pokemon-${assetRecord.speciesId}-front`,
-      path: assetRecord.front.path,
-      width: assetRecord.front.width,
-      height: assetRecord.front.height,
-    },
-    back: {
-      assetKey: `battle-pokemon-${assetRecord.speciesId}-back`,
-      path: assetRecord.back.path,
-      width: assetRecord.back.width,
-      height: assetRecord.back.height,
-    },
-  };
-}
-
-function createExtractedBattlePokemonAssets(
-  speciesId: number,
-  extractedRange: BattlePokemonExtractedRangeRecord,
-): BattlePokemonAssetSet {
   return {
     speciesId,
-    front: {
-      assetKey: `battle-pokemon-${speciesId}-front`,
-      path: extractedRange.front.pathTemplate.replace("{speciesId}", String(speciesId)),
-      width: extractedRange.front.width,
-      height: extractedRange.front.height,
-    },
-    back: {
-      assetKey: `battle-pokemon-${speciesId}-back`,
-      path: extractedRange.back.pathTemplate.replace("{speciesId}", String(speciesId)),
-      width: extractedRange.back.width,
-      height: extractedRange.back.height,
-    },
+    front: createBattleSpriteRef(range, "front", frame),
+    back: createBattleSpriteRef(range, "back", frame),
   };
 }
 
-function createSpeciesIdRange(startSpeciesId: number, endSpeciesId: number): number[] {
-  return Array.from(
-    { length: endSpeciesId - startSpeciesId + 1 },
-    (_, index) => startSpeciesId + index,
+export function toBattlePokemonPreloadAssets(): BattlePokemonPreloadAsset[] {
+  const preloadAssets = getBattlePokemonSpriteSheetRanges().flatMap(range =>
+    (["front", "back"] as const).map(side => ({
+      assetKey: createSpriteSheetAssetKey(range, side),
+      path: range[side].path,
+      frameWidth: range.frameWidth,
+      frameHeight: range.frameHeight,
+      endFrame: range.endSpeciesId - range.startSpeciesId,
+    })),
   );
+  const uniqueAssets = new Map<string, BattlePokemonPreloadAsset>();
+
+  for (const asset of preloadAssets) {
+    const existing = uniqueAssets.get(asset.assetKey);
+
+    if (existing && existing.path !== asset.path) {
+      throw new Error(`Conflicting battle Pokemon sprite sheet key ${asset.assetKey}`);
+    }
+
+    uniqueAssets.set(asset.assetKey, asset);
+  }
+
+  return [...uniqueAssets.values()];
 }
 
-function createDefaultExtractedRange(
+function getBattlePokemonSpriteSheetRanges(): BattlePokemonSpriteSheetRangeRecord[] {
+  return getRuntimeBattlePokemonSpriteSheetRanges([...DEFAULT_BATTLE_POKEMON_SPRITE_SHEET_RANGES]);
+}
+
+function createBattleSpriteRef(
+  range: BattlePokemonSpriteSheetRangeRecord,
+  side: "front" | "back",
+  frame: number,
+): BattleSpriteRef {
+  return {
+    assetKey: createSpriteSheetAssetKey(range, side),
+    path: range[side].path,
+    frame,
+    width: range.frameWidth,
+    height: range.frameHeight,
+  };
+}
+
+function createSpriteSheetAssetKey(
+  range: BattlePokemonSpriteSheetRangeRecord,
+  side: "front" | "back",
+): string {
+  return `battle-pokemon-${side}-${range.startSpeciesId}-${range.endSpeciesId}`;
+}
+
+function createDefaultSpriteSheetRange(
   startSpeciesId: number,
   endSpeciesId: number,
-): BattlePokemonExtractedRangeRecord {
+): BattlePokemonSpriteSheetRangeRecord {
   return {
     startSpeciesId,
     endSpeciesId,
+    frameWidth: BATTLE_POKEMON_FRAME_SIZE.width,
+    frameHeight: BATTLE_POKEMON_FRAME_SIZE.height,
+    columns: BATTLE_POKEMON_SPRITE_SHEET_GRID_SIZE,
+    rows: BATTLE_POKEMON_SPRITE_SHEET_GRID_SIZE,
     front: {
-      pathTemplate: "/assets/pokemon/front/{speciesId}.png",
-      width: 160,
-      height: 80,
+      path: `/assets/pokemon/sheets/front-${startSpeciesId}-${endSpeciesId}.png`,
     },
     back: {
-      pathTemplate: "/assets/pokemon/back/{speciesId}.png",
-      width: 160,
-      height: 80,
-    },
-  };
-}
-
-function toAssetRecord(assetSet: BattlePokemonAssetSet): BattlePokemonAssetRecord {
-  return {
-    speciesId: assetSet.speciesId,
-    front: {
-      path: assetSet.front.path,
-      width: assetSet.front.width ?? 160,
-      height: assetSet.front.height ?? 80,
-    },
-    back: {
-      path: assetSet.back.path,
-      width: assetSet.back.width ?? 160,
-      height: assetSet.back.height ?? 80,
+      path: `/assets/pokemon/sheets/back-${startSpeciesId}-${endSpeciesId}.png`,
     },
   };
 }

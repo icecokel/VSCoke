@@ -4,6 +4,7 @@ import type { InitialGameScene } from "./gameStartup";
 import { BootScene } from "./scenes/BootScene";
 import { BattleScene, type BattleE2eScenario, type BattleE2eSnapshot } from "./scenes/BattleScene";
 import { WorldScene, type WorldE2eSnapshot } from "./scenes/WorldScene";
+import type { WildBattleStartInput } from "./scenes/world-scene-encounters";
 import type { MultiplayerRoom } from "./network/localPreviewRoom";
 import {
   getServerRoomTransportDiagnosticsForE2e,
@@ -31,9 +32,11 @@ export interface PokeLoungeE2eController {
   setBattleScenario(scenario: BattleE2eScenario): BattleE2eSnapshot | null;
   setBattleCommand(command: BattleE2eSnapshot["selectedCommand"]): BattleE2eSnapshot | null;
   setBattleMoveIndex(index: number): BattleE2eSnapshot | null;
+  setBattleBagItemIndex(index: number): BattleE2eSnapshot | null;
   confirmBattle(): BattleE2eSnapshot | null;
   drainBattleMessages(maxMessages?: number): BattleE2eSnapshot | null;
   getWorldSnapshot(): WorldE2eSnapshot | null;
+  startWildBattleForTest(input: WildBattleStartInput): WorldE2eSnapshot | null;
   closeWorldShortcutGuide(): void;
   setCurrentLocalPlayerForTest(player: LocalPlayerState): void;
   openPcBoxForTest(): WorldE2eSnapshot | null;
@@ -232,6 +235,16 @@ function createPokeLoungeE2eController(
       battleScene.setSelectedMoveIndexForTest(index);
       return battleScene.getE2eSnapshotForTest();
     },
+    setBattleBagItemIndex(index) {
+      const battleScene = getBattleScene();
+
+      if (!battleScene) {
+        return null;
+      }
+
+      battleScene.setSelectedBagItemIndexForTest(index);
+      return battleScene.getE2eSnapshotForTest();
+    },
     confirmBattle() {
       const battleScene = getBattleScene();
 
@@ -262,6 +275,16 @@ function createPokeLoungeE2eController(
     },
     getWorldSnapshot() {
       return getWorldScene()?.getE2eSnapshotForTest() ?? null;
+    },
+    startWildBattleForTest(input) {
+      const worldScene = getWorldScene();
+
+      if (!worldScene) {
+        return null;
+      }
+
+      worldScene.startWildBattleForTest(input);
+      return worldScene.getE2eSnapshotForTest();
     },
     closeWorldShortcutGuide() {
       getWorldScene()?.closeShortcutGuideForTest();

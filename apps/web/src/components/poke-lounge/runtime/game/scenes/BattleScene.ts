@@ -9,6 +9,7 @@ import {
   type BattleSpriteBox,
 } from "../battle/battleLayout";
 import { createSampleBattleState } from "../battle/battleSampleState";
+import { BATTLE_POKEMON_FRAME_SIZE } from "../battle/battlePokemonAssets";
 import {
   createWildBattleState,
   type RomPersonalRecordCollection,
@@ -44,6 +45,7 @@ import type {
   BattleParticipant,
   BattlePokemon,
   BattleScreenState,
+  BattleSpriteRef,
 } from "../battle/battleTypes";
 import { planLevelUpBattleMoves } from "../battle/levelUpMoves";
 import {
@@ -90,8 +92,8 @@ import type {
 import type { CompetitiveBattleLaunchKey } from "./competitive-battle-launch";
 
 export const BATTLE_COMMAND_LABELS = ["싸운다", "가방", "포켓몬", "도망"] as const;
-export const BATTLE_SPRITE_CROP = { x: 0, y: 0, width: 80, height: 80 } as const;
-export const BATTLE_SPRITE_SOURCE_SIZE = { width: 160, height: 80 } as const;
+export const BATTLE_SPRITE_CROP = { x: 0, y: 0, ...BATTLE_POKEMON_FRAME_SIZE } as const;
+export const BATTLE_SPRITE_SOURCE_SIZE = BATTLE_POKEMON_FRAME_SIZE;
 export const BATTLE_SPRITE_VISIBLE_ALPHA_THRESHOLD = 8;
 export const BATTLE_SCENE_BACKGROUND_KEY = BATTLE_BACKGROUND_ASSET_KEY;
 export const BATTLE_SCENE_WINDOW_FRAME_KEY = BATTLE_WINDOW_FRAME_ASSET_KEY;
@@ -1843,16 +1845,19 @@ export class BattleScene extends Phaser.Scene {
     const opponentHit = this.getHitRenderEffect("opponent");
     const playerHit = this.getHitRenderEffect("player");
     const playerEvolution = this.getEvolutionRenderEffect();
+    const opponentSprite = this.state.opponent.pokemon.frontSprite;
+    const playerSprite = this.state.player.pokemon.backSprite;
     const opponentRenderBox = getVisibleBoundsAlignedBattleSpriteRenderBox(
       opponent,
-      this.resolveBattleSpriteVisibleBounds(this.state.opponent.pokemon.frontSprite.assetKey),
+      this.resolveBattleSpriteVisibleBounds(opponentSprite),
     );
     const playerRenderBox = getCroppedBattleSpriteRenderBox(player);
     this.add
       .image(
         opponentRenderBox.x + entranceOffset + opponentHit.offsetX,
         opponentRenderBox.y,
-        this.state.opponent.pokemon.frontSprite.assetKey,
+        opponentSprite.assetKey,
+        opponentSprite.frame,
       )
       .setCrop(
         BATTLE_SPRITE_CROP.x,
@@ -1866,7 +1871,8 @@ export class BattleScene extends Phaser.Scene {
       .image(
         playerRenderBox.x - entranceOffset + playerHit.offsetX,
         playerRenderBox.y,
-        this.state.player.pokemon.backSprite.assetKey,
+        playerSprite.assetKey,
+        playerSprite.frame,
       )
       .setCrop(
         BATTLE_SPRITE_CROP.x,
@@ -1934,8 +1940,9 @@ export class BattleScene extends Phaser.Scene {
       .fillRect(0, 0, BATTLE_BASE_SIZE.width, BATTLE_BASE_SIZE.height);
   }
 
-  private resolveBattleSpriteVisibleBounds(assetKey: string): BattleSpriteVisibleBounds {
-    const cachedBounds = this.spriteVisibleBoundsCache.get(assetKey);
+  private resolveBattleSpriteVisibleBounds(sprite: BattleSpriteRef): BattleSpriteVisibleBounds {
+    const cacheKey = `${sprite.assetKey}:${sprite.frame}`;
+    const cachedBounds = this.spriteVisibleBoundsCache.get(cacheKey);
 
     if (cachedBounds) {
       return cachedBounds;
@@ -1958,7 +1965,7 @@ export class BattleScene extends Phaser.Scene {
 
     for (let y = BATTLE_SPRITE_CROP.y; y < BATTLE_SPRITE_CROP.y + BATTLE_SPRITE_CROP.height; y++) {
       for (let x = BATTLE_SPRITE_CROP.x; x < BATTLE_SPRITE_CROP.x + BATTLE_SPRITE_CROP.width; x++) {
-        const alpha = textureManager.getPixelAlpha(x, y, assetKey);
+        const alpha = textureManager.getPixelAlpha(x, y, sprite.assetKey, sprite.frame);
 
         if (typeof alpha === "number" && alpha > BATTLE_SPRITE_VISIBLE_ALPHA_THRESHOLD) {
           minX = Math.min(minX, x - BATTLE_SPRITE_CROP.x);
@@ -1974,7 +1981,7 @@ export class BattleScene extends Phaser.Scene {
         ? { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 }
         : BATTLE_SPRITE_CROP;
 
-    this.spriteVisibleBoundsCache.set(assetKey, bounds);
+    this.spriteVisibleBoundsCache.set(cacheKey, bounds);
     return bounds;
   }
 

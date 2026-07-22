@@ -13,13 +13,6 @@ import type { BattleE2eScenario } from "./BattleScene";
 import { FIELD_MAP } from "../world/fieldMap";
 import { WILD_ENCOUNTER_TABLES_JSON_ASSET } from "../world/wildEncounterTables";
 
-const SAMPLE_BATTLE_POKEMON_PRELOAD_ASSETS = [
-  ["battle-player-front", "/assets/pokemon/front/152.png"],
-  ["battle-player-back", "/assets/pokemon/battle/152/back-default-normal.png"],
-  ["battle-opponent-front", "/assets/pokemon/battle/155/front-default-normal.png"],
-  ["battle-opponent-back", "/assets/pokemon/battle/155/back-default-normal.png"],
-] as const;
-
 export const ROM_BATTLE_DATA_JSON_ASSETS = [
   ["romPersonalData", "/assets/poke-lounge/extraction/personal-data.json"],
   ["romGrowthTable", "/assets/poke-lounge/extraction/growth-table.json"],
@@ -53,11 +46,14 @@ export class BootScene extends Phaser.Scene {
     for (const [key, path] of GAME_DATA_JSON_ASSETS) {
       this.load.json(key, path);
     }
-    for (const [key, path] of [
-      ...SAMPLE_BATTLE_POKEMON_PRELOAD_ASSETS,
-      ...toBattlePokemonPreloadAssets(),
-      ...ROM_BATTLE_PRELOAD_ASSETS,
-    ] as const) {
+    for (const asset of toBattlePokemonPreloadAssets()) {
+      this.load.spritesheet(asset.assetKey, asset.path, {
+        frameWidth: asset.frameWidth,
+        frameHeight: asset.frameHeight,
+        endFrame: asset.endFrame,
+      });
+    }
+    for (const [key, path] of ROM_BATTLE_PRELOAD_ASSETS) {
       this.load.image(key, path);
     }
     this.load.image(FIELD_MAP.tilesetKey, FIELD_MAP.tilesetUrl);

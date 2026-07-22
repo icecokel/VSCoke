@@ -21,6 +21,14 @@ import {
 const POKEMON_STATUS_PANEL_SIZE = { width: 300, height: 310 } as const;
 const POKEMON_STATUS_PANEL_GAP = 8;
 const POKEMON_STATUS_BAR_WIDTH = POKEMON_STATUS_PANEL_SIZE.width - 36;
+const PARTY_HUD_SPRITE_SIZE = 28;
+const PARTY_HUD_NAME_OFFSET_X = 34;
+const PARTY_HUD_NAME_RIGHT_PADDING = 4;
+const PARTY_HUD_NAME_WIDTH =
+  PARTY_HUD_SLOT_SIZE.width - PARTY_HUD_NAME_OFFSET_X - PARTY_HUD_NAME_RIGHT_PADDING;
+const PARTY_HUD_NAME_HEIGHT = 12;
+const PARTY_HUD_NAME_MAX_CHARACTERS = 6;
+const POKEMON_STATUS_PANEL_SPRITE_SIZE = 42;
 
 export interface WorldSceneHud {
   render(): void;
@@ -303,28 +311,37 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
     }
 
     const sprite = this.add
-      .image(slot.x + 18, slot.y + 17, slot.pokemon.spriteKey)
-      .setOrigin(0.5, 0.5)
+      .image(
+        slot.x + 4,
+        slot.y + (PARTY_HUD_SLOT_SIZE.height - PARTY_HUD_SPRITE_SIZE) / 2,
+        slot.pokemon.spriteKey,
+        slot.pokemon.spriteFrame,
+      )
+      .setOrigin(0, 0)
       .setCrop(
         slot.pokemon.spriteCrop.x,
         slot.pokemon.spriteCrop.y,
         slot.pokemon.spriteCrop.width,
         slot.pokemon.spriteCrop.height,
       )
-      .setDisplaySize(28, 28)
+      .setScale(
+        PARTY_HUD_SPRITE_SIZE / slot.pokemon.spriteCrop.width,
+        PARTY_HUD_SPRITE_SIZE / slot.pokemon.spriteCrop.height,
+      )
       .setScrollFactor(0)
       .setDepth(902);
     const name = this.add
       .text(
-        slot.x + 34,
+        slot.x + PARTY_HUD_NAME_OFFSET_X,
         slot.y + 6,
-        slot.pokemon.name,
+        formatPartyHudPokemonName(slot.pokemon.name),
         createGameTextStyle({
           color: "#263238",
           fontSize: "8px",
         }),
       )
       .setOrigin(0, 0)
+      .setFixedSize(PARTY_HUD_NAME_WIDTH, PARTY_HUD_NAME_HEIGHT)
       .setScrollFactor(0)
       .setDepth(902);
     const level = this.add
@@ -427,15 +444,23 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
     panel.setInteractive();
 
     const sprite = this.add
-      .image(x(36), y(43), slot.pokemon.spriteKey)
-      .setOrigin(0.5, 0.5)
+      .image(
+        x(36 - POKEMON_STATUS_PANEL_SPRITE_SIZE / 2),
+        y(43 - POKEMON_STATUS_PANEL_SPRITE_SIZE / 2),
+        slot.pokemon.spriteKey,
+        slot.pokemon.spriteFrame,
+      )
+      .setOrigin(0, 0)
       .setCrop(
         slot.pokemon.spriteCrop.x,
         slot.pokemon.spriteCrop.y,
         slot.pokemon.spriteCrop.width,
         slot.pokemon.spriteCrop.height,
       )
-      .setDisplaySize(42, 42)
+      .setScale(
+        POKEMON_STATUS_PANEL_SPRITE_SIZE / slot.pokemon.spriteCrop.width,
+        POKEMON_STATUS_PANEL_SPRITE_SIZE / slot.pokemon.spriteCrop.height,
+      )
       .setScrollFactor(0)
       .setDepth(2141);
     const hpBack = this.add
@@ -717,6 +742,14 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
     this.lastRenderedRoundHudText = "";
     this.pokemonStatusPanelSlotIndex = null;
   }
+}
+
+export function formatPartyHudPokemonName(name: string): string {
+  const characters = Array.from(name);
+
+  return characters.length <= PARTY_HUD_NAME_MAX_CHARACTERS
+    ? name
+    : `${characters.slice(0, PARTY_HUD_NAME_MAX_CHARACTERS - 1).join("")}…`;
 }
 
 function normalizeOptionalPokemonHp(value: unknown): number | null {

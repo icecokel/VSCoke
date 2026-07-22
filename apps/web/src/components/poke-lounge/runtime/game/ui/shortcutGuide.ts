@@ -88,3 +88,9 @@ export function createInventoryControlFooter(
     ? "↑↓ 대상 · Enter 사용 · Esc 뒤로 · I 닫기"
     : "↑↓ 선택 · Enter 대상 선택 · I 닫기";
 }
+
+export function createPcBoxControlFooter(inputMode: ShortcutGuideInputMode): string {
+  return inputMode === "touch"
+    ? "D-pad 선택/전환 · A 결정 · B 닫기"
+    : "←→ 파티/박스 · ↑↓ 선택 · Enter 결정 · Esc 닫기";
+}

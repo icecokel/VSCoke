@@ -4,6 +4,7 @@ import {
   MIN_POKEMON_INDIVIDUAL_VALUE,
   type PokemonIndividualValues,
 } from "../battle/individual-values";
+import { isSupportedPokemonSpeciesId } from "../battle/pokemon-species";
 import type {
   GameState,
   GameStateStore,
@@ -196,7 +197,7 @@ function sanitizePokemonCollection(value: unknown[]): PlayerPokemon[] | null {
 
 function sanitizePokemon(value: Record<string, unknown>): PlayerPokemon | null {
   if (
-    !isPositiveInteger(value.speciesId) ||
+    !isSupportedPokemonSpeciesId(value.speciesId) ||
     !isNonEmptyString(value.name) ||
     !isPositiveInteger(value.level) ||
     !isOptionalNonNegativeInteger(value.maxHp) ||

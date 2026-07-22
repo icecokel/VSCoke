@@ -268,10 +268,18 @@ test.describe("Poke Lounge", () => {
 
   test("게임 데이터 JSON과 런타임 fallback이 문서화된 배틀 데이터를 유지한다", () => {
     const pokemonData = readPublicJson(POKEMON_DATA_JSON_PATH) as {
-      stats?: { pokemonRecords?: number; moveRecords?: number; learnsetSpecies?: number };
+      stats?: {
+        pokemonRecords?: number;
+        moveRecords?: number;
+        learnsetSpecies?: number;
+        encounterableSpecies?: number;
+        spriteSpecies?: number;
+      };
       species?: Record<
         string,
         {
+          name?: string;
+          encounterable?: boolean;
           baseStats?: Record<string, number>;
           types?: { ids?: number[]; names?: string[] };
           evolutions?: Array<{ method: number; parameter: number; targetSpeciesId: number }>;
@@ -307,9 +315,23 @@ test.describe("Poke Lounge", () => {
       pokemonRecords: 500,
       moveRecords: 471,
       learnsetSpecies: 500,
+      encounterableSpecies: 493,
+      spriteSpecies: 493,
     });
     expect(Object.keys(pokemonData.species ?? {})).toHaveLength(500);
     expect(Object.keys(pokemonData.moves ?? {})).toHaveLength(471);
+    expect(pokemonData.species?.["1"]).toMatchObject({
+      name: "이상해씨",
+      encounterable: true,
+    });
+    expect(pokemonData.species?.["493"]).toMatchObject({
+      name: "아르세우스",
+      encounterable: true,
+    });
+    expect(pokemonData.species?.["494"]).toMatchObject({
+      name: "알",
+      encounterable: false,
+    });
     expect(pokemonData.species?.["152"]).toMatchObject({
       baseStats: {
         hp: 45,
@@ -684,7 +706,7 @@ test.describe("Poke Lounge", () => {
     expect(planned.messages).toEqual([]);
   });
 
-  test("startup-loaded runtime game data는 유효한 species만 JSON을 우선하고 누락/오염 species는 fallback한다", async () => {
+  test("startup-loaded runtime game data는 완전한 sprite sheet range를 fallback 대신 사용한다", async () => {
     await loadRuntimeGameDataJson(
       createRuntimeGameDataFetcher({
         [POKEMON_DATA_JSON_PATH]: {
@@ -708,22 +730,29 @@ test.describe("Poke Lounge", () => {
           },
         },
         [BATTLE_POKEMON_ASSETS_JSON_PATH]: {
-          version: 1,
-          species: {
-            "155": {
-              front: { path: "/assets/pokemon/front/155-runtime.png", width: 161, height: 81 },
-              back: {
-                path: "/assets/pokemon/battle/155/back-runtime.png",
-                width: 162,
-                height: 82,
-              },
+          version: 2,
+          spriteSheetRanges: [
+            {
+              startSpeciesId: 1,
+              endSpeciesId: 256,
+              frameWidth: 80,
+              frameHeight: 80,
+              columns: 16,
+              rows: 16,
+              front: { path: "/assets/pokemon/sheets/front-1-256-runtime.png" },
+              back: { path: "/assets/pokemon/sheets/back-1-256-runtime.png" },
             },
-            "158": {
-              front: { path: "/broken/front.png", width: 160, height: 80 },
-              back: { path: "/assets/pokemon/back/158-runtime.png", width: 160, height: 80 },
+            {
+              startSpeciesId: 257,
+              endSpeciesId: 493,
+              frameWidth: 80,
+              frameHeight: 80,
+              columns: 16,
+              rows: 16,
+              front: { path: "/assets/pokemon/sheets/front-257-493-runtime.png" },
+              back: { path: "/assets/pokemon/sheets/back-257-493-runtime.png" },
             },
-          },
-          extractedRanges: [{ startSpeciesId: 1, endSpeciesId: 10, front: null, back: null }],
+          ],
         },
       }),
     );
@@ -791,41 +820,31 @@ test.describe("Poke Lounge", () => {
     expect(getBattlePokemonAssets(155)).toEqual(
       expect.objectContaining({
         front: expect.objectContaining({
-          path: "/assets/pokemon/front/155-runtime.png",
-          width: 161,
-          height: 81,
-        }),
-        back: expect.objectContaining({
-          path: "/assets/pokemon/battle/155/back-runtime.png",
-          width: 162,
-          height: 82,
-        }),
-      }),
-    );
-    expect(getBattlePokemonAssets(158)).toEqual(
-      expect.objectContaining({
-        front: expect.objectContaining({
-          path: "/assets/pokemon/front/158.png",
-          width: 160,
+          path: "/assets/pokemon/sheets/front-1-256-runtime.png",
+          frame: 154,
+          width: 80,
           height: 80,
         }),
         back: expect.objectContaining({
-          path: "/assets/pokemon/back/158.png",
-          width: 160,
+          path: "/assets/pokemon/sheets/back-1-256-runtime.png",
+          frame: 154,
+          width: 80,
           height: 80,
         }),
       }),
     );
-    expect(getBattlePokemonAssets(16)).toEqual(
+    expect(getBattlePokemonAssets(493)).toEqual(
       expect.objectContaining({
         front: expect.objectContaining({
-          path: "/assets/pokemon/front/16.png",
-          width: 160,
+          path: "/assets/pokemon/sheets/front-257-493-runtime.png",
+          frame: 236,
+          width: 80,
           height: 80,
         }),
         back: expect.objectContaining({
-          path: "/assets/pokemon/back/16.png",
-          width: 160,
+          path: "/assets/pokemon/sheets/back-257-493-runtime.png",
+          frame: 236,
+          width: 80,
           height: 80,
         }),
       }),
@@ -868,17 +887,18 @@ test.describe("Poke Lounge", () => {
     expect(browserErrors.join("\n")).toBe("");
   });
 
-  test("브케인 상대 스프라이트는 160x80 front sheet를 사용한다", () => {
+  test("브케인 상대 스프라이트는 1280x1280 front sheet의 고유 frame을 사용한다", () => {
     const assets = getBattlePokemonAssets(155);
 
     expect(assets.front).toEqual(
       expect.objectContaining({
-        path: "/assets/pokemon/front/155.png",
-        width: 160,
+        path: "/assets/pokemon/sheets/front-1-256.png",
+        frame: 154,
+        width: 80,
         height: 80,
       }),
     );
-    expect(readPublicPngDimensions(assets.front.path)).toEqual({ width: 160, height: 80 });
+    expect(readPublicPngDimensions(assets.front.path)).toEqual({ width: 1280, height: 1280 });
   });
 
   test("party HUD는 front sheet에서 포켓몬 한 프레임만 표시한다", () => {
@@ -904,6 +924,7 @@ test.describe("Poke Lounge", () => {
       width: 80,
       height: 80,
     });
+    expect((slot?.pokemon as { spriteFrame?: unknown } | null)?.spriteFrame).toBe(154);
   });
 
   test("ROM 추출 PC 오브젝트는 회복 NPC 오른쪽에 배치된다", () => {

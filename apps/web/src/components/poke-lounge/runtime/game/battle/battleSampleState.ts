@@ -1,31 +1,12 @@
-import type { BattleMove, BattlePokemon, BattleScreenState, BattleSpriteRef } from "./battleTypes";
+import type { BattleMove, BattlePokemon, BattleScreenState } from "./battleTypes";
 import { createDefaultBattleStatStages } from "./battle-stat-stages";
 import { normalizeRomMoveRecord, type RomBattleMoveRecord } from "./battleRomData";
 import { createBattleParty } from "./battleParty";
+import { getBattlePokemonAssets } from "./battlePokemonAssets";
 import { getExperienceForLevel } from "./experience";
 import { createMaxIndividualValues } from "./individual-values";
 
 export const BATTLE_LOGICAL_SIZE = { width: 256, height: 192 } as const;
-
-const CHIKORITA_FRONT: BattleSpriteRef = {
-  assetKey: "battle-player-front",
-  path: "/assets/pokemon/front/152.png",
-};
-
-const CHIKORITA_BACK: BattleSpriteRef = {
-  assetKey: "battle-player-back",
-  path: "/assets/pokemon/battle/152/back-default-normal.png",
-};
-
-const CYNDAQUIL_FRONT: BattleSpriteRef = {
-  assetKey: "battle-opponent-front",
-  path: "/assets/pokemon/battle/155/front-default-normal.png",
-};
-
-const CYNDAQUIL_BACK: BattleSpriteRef = {
-  assetKey: "battle-opponent-back",
-  path: "/assets/pokemon/battle/155/back-default-normal.png",
-};
 
 const CHIKORITA_BASE_STATS = {
   hp: 45,
@@ -134,6 +115,8 @@ function createBattleMove(moveId: number, name: string): BattleMove {
 }
 
 export function createSampleBattleState(): BattleScreenState {
+  const chikoritaAssets = getBattlePokemonAssets(152);
+  const cyndaquilAssets = getBattlePokemonAssets(155);
   const playerPokemon: BattlePokemon = {
     speciesId: 152,
     name: "치코리타",
@@ -154,8 +137,8 @@ export function createSampleBattleState(): BattleScreenState {
     statStages: createDefaultBattleStatStages(),
     typeIds: [12],
     status: "normal",
-    frontSprite: CHIKORITA_FRONT,
-    backSprite: CHIKORITA_BACK,
+    frontSprite: chikoritaAssets.front,
+    backSprite: chikoritaAssets.back,
     moves: PLAYER_MOVES,
   };
   const opponentPokemon: BattlePokemon = {
@@ -178,8 +161,8 @@ export function createSampleBattleState(): BattleScreenState {
     statStages: createDefaultBattleStatStages(),
     typeIds: [10],
     status: "normal",
-    frontSprite: CYNDAQUIL_FRONT,
-    backSprite: CYNDAQUIL_BACK,
+    frontSprite: cyndaquilAssets.front,
+    backSprite: cyndaquilAssets.back,
     moves: OPPONENT_MOVES,
   };
 

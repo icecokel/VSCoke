@@ -20,6 +20,7 @@ export type BattleCommand = "fight" | "bag" | "pokemon" | "run";
 export interface BattleSpriteRef {
   assetKey: string;
   path: string;
+  frame: number;
   width?: number;
   height?: number;
 }

@@ -9,6 +9,7 @@ export interface PokemonEvolutionRule {
   method: number;
   parameter: number;
   targetSpeciesId: number;
+  targetSpeciesName?: string;
 }
 
 export type PokemonEvolutionTable = Record<number, PokemonEvolutionRule[]>;
@@ -26,22 +27,25 @@ export interface ApplyLevelUpEvolutionResult {
   evolved: boolean;
 }
 
-const POKEMON_SPECIES_DISPLAY_NAMES: Record<number, string> = {
-  152: "치코리타",
-  153: "베이리프",
-  154: "메가니움",
-  155: "브케인",
-  156: "마그케인",
-  157: "블레이범",
-  158: "리아코",
-  159: "엘리게이",
-  160: "장크로다일",
-};
-
 export function normalizePokemonEvolutionTable(data: unknown): PokemonEvolutionTable {
   if (!isRecord(data) || data.version !== 1 || !isRecord(data.species)) {
     return {};
   }
+
+  const speciesNames = Object.entries(data.species).reduce<Record<number, string>>(
+    (accumulator, [speciesIdKey, value]) => {
+      const speciesId =
+        readPositiveInteger(speciesIdKey) ?? readPositiveInteger(value, "speciesId");
+      const speciesName = readNonEmptyString(value, "name");
+
+      if (speciesId && speciesName) {
+        accumulator[speciesId] = speciesName;
+      }
+
+      return accumulator;
+    },
+    {},
+  );
 
   return Object.entries(data.species).reduce<PokemonEvolutionTable>(
     (accumulator, [speciesIdKey, value]) => {
@@ -52,7 +56,7 @@ export function normalizePokemonEvolutionTable(data: unknown): PokemonEvolutionT
         return accumulator;
       }
 
-      const evolutions = normalizePokemonEvolutionRules(value.evolutions);
+      const evolutions = normalizePokemonEvolutionRules(value.evolutions, speciesNames);
 
       if (evolutions.length > 0) {
         accumulator[speciesId] = evolutions;
@@ -86,7 +90,7 @@ export function applyLevelUpEvolution({
     return { pokemon, messages: [], evolved: false };
   }
 
-  const evolvedName = getPokemonSpeciesDisplayName(rule.targetSpeciesId);
+  const evolvedName = getPokemonSpeciesDisplayName(rule);
   const evolvedStats = calculateGen4BattleStats(
     targetRecord.base_stats,
     pokemon.level,
@@ -123,17 +127,23 @@ export function applyLevelUpEvolution({
   };
 }
 
-function normalizePokemonEvolutionRules(data: unknown): PokemonEvolutionRule[] {
+function normalizePokemonEvolutionRules(
+  data: unknown,
+  speciesNames: Readonly<Record<number, string>>,
+): PokemonEvolutionRule[] {
   if (!Array.isArray(data)) {
     return [];
   }
 
   return data
-    .map(normalizePokemonEvolutionRule)
+    .map(value => normalizePokemonEvolutionRule(value, speciesNames))
     .filter((rule): rule is PokemonEvolutionRule => rule !== null);
 }
 
-function normalizePokemonEvolutionRule(data: unknown): PokemonEvolutionRule | null {
+function normalizePokemonEvolutionRule(
+  data: unknown,
+  speciesNames: Readonly<Record<number, string>>,
+): PokemonEvolutionRule | null {
   if (!isRecord(data)) {
     return null;
   }
@@ -146,7 +156,12 @@ function normalizePokemonEvolutionRule(data: unknown): PokemonEvolutionRule | nu
     return null;
   }
 
-  return { method, parameter, targetSpeciesId };
+  return {
+    method,
+    parameter,
+    targetSpeciesId,
+    targetSpeciesName: speciesNames[targetSpeciesId],
+  };
 }
 
 function findLevelUpEvolutionRule(
@@ -173,8 +188,8 @@ function findPersonalRecord(
   return collection.records.find(record => record.index === speciesId) ?? null;
 }
 
-function getPokemonSpeciesDisplayName(speciesId: number): string {
-  return POKEMON_SPECIES_DISPLAY_NAMES[speciesId] ?? `포켓몬 #${speciesId}`;
+function getPokemonSpeciesDisplayName(rule: PokemonEvolutionRule): string {
+  return rule.targetSpeciesName ?? `포켓몬 #${rule.targetSpeciesId}`;
 }
 
 function resolveBattlePokemonAssets(
@@ -213,6 +228,12 @@ function readNonNegativeInteger(value: unknown, key?: string): number | null {
   return typeof numberValue === "number" && Number.isInteger(numberValue) && numberValue >= 0
     ? numberValue
     : null;
+}
+
+function readNonEmptyString(value: unknown, key: string): string | null {
+  const candidate = isRecord(value) ? value[key] : undefined;
+
+  return typeof candidate === "string" && candidate.trim().length > 0 ? candidate.trim() : null;
 }
 
 function uniqueTypeIds(primary: number, secondary?: number | null): number[] {

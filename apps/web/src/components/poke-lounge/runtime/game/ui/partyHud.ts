@@ -1,4 +1,4 @@
-import { getBattlePokemonAssets } from "../battle/battlePokemonAssets";
+import { BATTLE_POKEMON_FRAME_SIZE, getBattlePokemonAssets } from "../battle/battlePokemonAssets";
 import type { BattleSpriteRef } from "../battle/battleTypes";
 import { PLAYER_PARTY_SLOT_COUNT, type PlayerPokemonSlot } from "../player/playerTypes";
 import type { PlayerPokemon } from "../state/gameStateStore";
@@ -26,6 +26,7 @@ export interface PartyHudPokemonView {
   name: string;
   level: number;
   spriteKey: string;
+  spriteFrame: number;
   spriteCrop: {
     x: number;
     y: number;
@@ -43,7 +44,7 @@ export interface PartyHudSlotView {
   pokemon: PartyHudPokemonView | null;
 }
 
-export const PARTY_HUD_SLOT_SIZE = { width: 64, height: 34 } as const;
+export const PARTY_HUD_SLOT_SIZE = { width: 88, height: 34 } as const;
 export const PARTY_HUD_SLOT_GAP = 6;
 const PARTY_HUD_MARGIN = 10;
 
@@ -116,6 +117,7 @@ function createPartyHudPokemonView(pokemon: PlayerPokemon): PartyHudPokemonView 
     name: pokemon.name,
     level: pokemon.level,
     spriteKey: sprite.assetKey,
+    spriteFrame: sprite.frame,
     spriteCrop: createPartyHudSpriteCrop(sprite),
   };
 }
@@ -124,7 +126,13 @@ function createPartyHudSpriteCrop(sprite: BattleSpriteRef): PartyHudPokemonView[
   return {
     x: 0,
     y: 0,
-    width: Math.min(sprite.width ?? 80, 80),
-    height: Math.min(sprite.height ?? 80, 80),
+    width: Math.min(
+      sprite.width ?? BATTLE_POKEMON_FRAME_SIZE.width,
+      BATTLE_POKEMON_FRAME_SIZE.width,
+    ),
+    height: Math.min(
+      sprite.height ?? BATTLE_POKEMON_FRAME_SIZE.height,
+      BATTLE_POKEMON_FRAME_SIZE.height,
+    ),
   };
 }

@@ -8,9 +8,9 @@
 
 Provenance status: UNRESOLVED
 
-The `/[locale]/game/poke-lounge` route has 57 public asset records without verified distribution rights. This is an explicit release risk, but it no longer blocks the repository's default Vercel build.
+The `/[locale]/game/poke-lounge` route has 61 public asset records without verified distribution rights. This is an explicit release risk, but it no longer blocks the repository's default Vercel build.
 
-`pnpm check:poke-lounge-provenance` still fails because 57 non-audio manifest rows remain `"rightsStatus": "blocked"`; the nine audio rows have reviewed CC0 source records. Set `POKE_LOUNGE_PROVENANCE_STRICT=1` only in an environment where unresolved provenance should block the build.
+`pnpm check:poke-lounge-provenance` still fails because 61 non-audio manifest rows remain `"rightsStatus": "blocked"`; the nine audio rows have reviewed CC0 source records. Set `POKE_LOUNGE_PROVENANCE_STRICT=1` only in an environment where unresolved provenance should block the build.
 
 Persistence, Socket recovery, deterministic server competition, verified-only ranking, migration, CI, test, or documentation completion does not change this decision. The technical implementation is recorded in [Poke Lounge Hardening Report](./poke-lounge-hardening-report.md), but it does not establish ownership, permission, license compatibility, trademark clearance, or any other legal conclusion. A human owner and appropriate legal reviewer must review the unresolved items and record the release decision.
 
@@ -39,12 +39,12 @@ All files above were replaced on 2026-07-12. Field and battle music use OpenGame
 
 All entries below are blocked. The full per-file inventory and SHA-256 values are in `docs/poke-lounge-asset-provenance.json`.
 
-- Pokémon sprites: every file below `apps/web/public/assets/pokemon/front/`, `apps/web/public/assets/pokemon/back/`, `apps/web/public/assets/pokemon/battle/`, and `apps/web/public/assets/pokemon/cataloged/`.
+- Pokémon sprites: every file below `apps/web/public/assets/pokemon/front/`, `apps/web/public/assets/pokemon/back/`, `apps/web/public/assets/pokemon/battle/`, `apps/web/public/assets/pokemon/cataloged/`, and `apps/web/public/assets/pokemon/sheets/`.
 - Archive-named visuals and character atlas: every file below `apps/web/public/assets/poke-lounge/dump/`, `apps/web/public/assets/poke-lounge/player/`, `apps/web/public/assets/poke-lounge/screens/`, and `apps/web/public/assets/poke-lounge/textures/`.
 - Map material: `apps/web/public/assets/pokemmo-reference/tilesets/tuxmon-sample-32px-extruded.png` and `apps/web/public/maps/pokemmo-reference/town.json`.
 - Game and extracted data: every file below `apps/web/public/assets/poke-lounge/extraction/` and `apps/web/public/game-data/`.
 
-`scripts/poke-lounge/extract-rom-game-data.py` provides ROM-extraction evidence for the extracted records, but no distribution-rights record exists. The audit found no local license, permission, or attribution proof for the remaining sprite, map, texture, atlas, or gameplay-data assets.
+`scripts/poke-lounge/extract-rom-game-data.py` provides ROM-extraction evidence for the extracted records and four sprite sheets. The generated sheets also match all 30 unique legacy front/back frames byte-for-byte. This confirms technical origin but does not provide distribution rights. The audit found no local license, permission, or attribution proof for the sprite, map, texture, atlas, or gameplay-data assets.
 
 ## Approval table
 

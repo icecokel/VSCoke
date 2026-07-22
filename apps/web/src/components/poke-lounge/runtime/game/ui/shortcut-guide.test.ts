@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createInventoryControlFooter,
+  createPcBoxControlFooter,
   createShortcutGuideFooter,
   createShortcutGuideRows,
   createShortcutGuideTitle,
@@ -14,6 +15,14 @@ test("키보드 단축키 안내는 기존 입력 설명을 유지한다", () =>
     keys: "WASD / 방향키",
   });
   assert.equal(createShortcutGuideFooter(), "클릭 / Enter / H 닫기");
+});
+
+test("PC 박스 안내 문구는 키보드와 터치 조작을 구분한다", () => {
+  assert.equal(
+    createPcBoxControlFooter("keyboard"),
+    "←→ 파티/박스 · ↑↓ 선택 · Enter 결정 · Esc 닫기",
+  );
+  assert.equal(createPcBoxControlFooter("touch"), "D-pad 선택/전환 · A 결정 · B 닫기");
 });
 
 test("터치 단축키 안내는 화면 버튼과 같은 D-pad/A/B/I/?를 설명한다", () => {

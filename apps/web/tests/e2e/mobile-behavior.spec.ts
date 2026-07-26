@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { gotoWithRetry, resolveLocaleAndMessages, visit } from "./test-helpers";
+import { gotoWithRetry, type Locale } from "./test-helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -15,9 +15,12 @@ const MOBILE_VIEWPORTS: Record<string, { width: number; height: number; browserN
   "firefox-mobile-lg": { width: 430, height: 932, browserName: "firefox" },
 };
 
+const getMobileTestLocale = (): Locale =>
+  (process.env.PLAYWRIGHT_LOCALE as Locale | undefined) ?? "ko-KR";
+
 test.describe("모바일 전용 동작", () => {
   test("브라우저·사이즈별로 트리거 규칙이 맞다", async ({ page }, testInfo) => {
-    const { locale } = await resolveLocaleAndMessages(page);
+    const locale = getMobileTestLocale();
     const project = MOBILE_VIEWPORTS[testInfo.project.name];
     if (!project) {
       throw new Error(`미지원 모바일 프로젝트입니다: ${testInfo.project.name}`);
@@ -30,7 +33,10 @@ test.describe("모바일 전용 동작", () => {
     expect(viewport).toMatchObject({ width: project.width, height: project.height });
     expect(page.context().browser()?.browserType().name()).toBe(project.browserName);
 
-    await visit(page, `/${locale}`);
+    await gotoWithRetry(page, `/${locale}`);
+    await expect(page.locator("#menubar")).toBeHidden();
+    await expect(page.getByTestId("history-tab-rail")).toBeHidden();
+
     const mobileTrigger = page.getByTestId("sidebar-trigger-mobile");
     await expect(mobileTrigger).toBeVisible();
 
@@ -50,7 +56,7 @@ test.describe("모바일 전용 동작", () => {
   });
 
   test("이력서 프리뷰에 상세 경력을 보이고 PDF 저장 버튼을 우측 상단에 둔다", async ({ page }) => {
-    const { locale } = await resolveLocaleAndMessages(page);
+    const locale = getMobileTestLocale();
 
     await gotoWithRetry(page, `/${locale}/resume/preview`);
 

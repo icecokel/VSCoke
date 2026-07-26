@@ -2137,3 +2137,96 @@
     --tile-size: clamp(18px, 6.25vw, 32px);
   }
 }
+
+@media (max-width: 760px) and (min-height: 560px) {
+  .page :global(.game-screen--starter-modal) {
+    align-items: center;
+    height: 100%;
+    min-height: 100%;
+    padding: 8px;
+    overflow: hidden;
+  }
+
+  .page :global(.starter-selection-modal) {
+    max-height: 100%;
+    overflow: hidden;
+  }
+
+  .page :global(.selection-header) {
+    min-height: 56px;
+    padding: 8px 12px;
+  }
+
+  .page :global(.title-block) {
+    gap: 4px;
+  }
+
+  .page :global(.kicker) {
+    margin: 0;
+    font-size: 0.7rem;
+  }
+
+  .page :global(h1) {
+    font-size: 1.35rem;
+  }
+
+  .page :global(.selection-body) {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .page :global(.starter-modal-preview) {
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 8px;
+    min-height: 0;
+    padding: 8px;
+  }
+
+  .page :global(.starter-preview-stage) {
+    min-height: 128px;
+  }
+
+  .page :global(.starter-preview-sprite) {
+    --sprite-frame-size: 88px;
+  }
+
+  .page :global(.starter-preview-meta) {
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .page :global(.starter-preview-name) {
+    font-size: 1.2rem;
+  }
+
+  .page :global(.starter-confirm-button) {
+    min-height: 42px;
+    padding: 7px 8px;
+    font-size: 0.86rem;
+  }
+
+  .page :global(.starter-grid) {
+    gap: 8px;
+  }
+
+  .page :global(.starter-card) {
+    grid-template-rows: 48px auto auto;
+    gap: 5px;
+    min-height: 120px;
+    padding: 8px 4px;
+  }
+
+  .page :global(.starter-sprite) {
+    --sprite-frame-size: 48px;
+  }
+
+  .page :global(.starter-name) {
+    font-size: 0.95rem;
+  }
+
+  .page :global(.starter-type) {
+    min-width: 0;
+    padding: 4px 6px;
+    font-size: 0.75rem;
+  }
+}

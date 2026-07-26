@@ -30,6 +30,7 @@ test("Poke Lounge 모바일 환경은 실제 probe와 터치 조작을 제공한
   await gotoWithRetry(page, "/ko-KR/game/poke-lounge?e2e=1");
   await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30_000 });
   await page.locator("[data-room-entry-solo]").click();
+  await expectStarterSelectionFitsMobileViewport(page);
   await chooseStarterIfNeeded(page);
   await expect(page.locator("#game-root canvas")).toBeVisible({ timeout: 30_000 });
 
@@ -123,6 +124,54 @@ async function chooseStarterIfNeeded(page: Page): Promise<void> {
   if (await starterSelection.isVisible().catch(() => false)) {
     await page.locator("[data-starter-confirm]").click();
   }
+}
+
+async function expectStarterSelectionFitsMobileViewport(page: Page): Promise<void> {
+  const starterSelection = page.locator("[data-screen='starter-selection']");
+  await expect(starterSelection).toBeVisible({ timeout: 30_000 });
+
+  const layout = await page.evaluate(() => {
+    const screen = document.querySelector(
+      "[data-screen='starter-selection']",
+    ) as HTMLElement | null;
+    const panel = document.querySelector(".starter-selection-modal") as HTMLElement | null;
+    const root = document.querySelector("#game-root");
+    const controls = [
+      document.querySelector("[data-starter-confirm]"),
+      ...document.querySelectorAll("[data-starter-card]"),
+    ];
+
+    if (!screen || !panel || !root || controls.some(control => !(control instanceof HTMLElement))) {
+      return null;
+    }
+
+    const rootRect = root.getBoundingClientRect();
+    const screenRect = screen.getBoundingClientRect();
+
+    return {
+      panelFits: panel.scrollHeight <= panel.clientHeight + 1,
+      screenFits: screen.scrollHeight <= screen.clientHeight + 1,
+      screenFitsRoot:
+        screenRect.top >= rootRect.top - 1 && screenRect.bottom <= rootRect.bottom + 1,
+      controlsFit: controls.every(control => {
+        const rect = (control as HTMLElement).getBoundingClientRect();
+
+        return (
+          rect.left >= 0 &&
+          rect.right <= window.innerWidth + 1 &&
+          rect.top >= 0 &&
+          rect.bottom <= window.innerHeight + 1
+        );
+      }),
+    };
+  });
+
+  expect(layout).toEqual({
+    panelFits: true,
+    screenFits: true,
+    screenFitsRoot: true,
+    controlsFit: true,
+  });
 }
 
 async function readWorldSnapshot(page: Page): Promise<WorldSnapshot | null> {

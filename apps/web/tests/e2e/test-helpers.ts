@@ -36,6 +36,11 @@ export interface AppMessages {
     closeOthers: string;
     closeAll: string;
   };
+  notFound: {
+    title: string;
+    descPrefix: string;
+    descSuffix: string;
+  };
   sidebar: {
     explorer: string;
     search: string;
@@ -127,40 +132,7 @@ export const visit = async (page: Page, routePath: string) => {
 };
 
 export const readFirstBlogSlug = (): string => {
-  const postsRoot = path.join(process.cwd(), "src", "posts");
-  const findFirstPost = (current: string): string | undefined => {
-    const entries = fs
-      .readdirSync(current, { withFileTypes: true })
-      .sort((left, right) => left.name.localeCompare(right.name));
-
-    for (const entry of entries) {
-      const absolutePath = path.join(current, entry.name);
-
-      if (entry.isDirectory()) {
-        const nestedPost = findFirstPost(absolutePath);
-        if (nestedPost) {
-          return nestedPost;
-        }
-        continue;
-      }
-
-      if (!entry.isFile() || !entry.name.endsWith(".mdx")) {
-        continue;
-      }
-
-      const relative = path.relative(postsRoot, absolutePath).replace(/\\/g, "/");
-      return relative.replace(/\.mdx$/, "");
-    }
-
-    return undefined;
-  };
-
-  const firstPost = findFirstPost(postsRoot);
-  if (firstPost) {
-    return firstPost;
-  }
-
-  throw new Error("블로그 포스트를 찾을 수 없습니다.");
+  return "journal/hello-world";
 };
 
 export const readFirstResumeSlug = (): string => {

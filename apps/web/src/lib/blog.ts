@@ -1,91 +1,14 @@
-import fs from "fs";
-import path from "path";
-import matter from "gray-matter";
-import readingTime from "reading-time";
-import type { Post, PostMeta, CategoryGroup, TagSummary } from "@/types/blog";
+import type { BlogPostDefinition, CategoryGroup, PostMeta, TagSummary } from "@/types/blog";
+import { getBlogPostDefinition, getRegisteredPostMetas } from "@/posts/blog-post-registry";
 
-const postsDirectory = path.join(process.cwd(), "src/posts");
-
-interface PostSlugInfo {
-  slug: string;
-  category: string;
-  filePath: string;
-}
-
-/**
- * 재귀적으로 posts 디렉토리를 탐색하여 모든 MDX 파일 정보를 반환
- */
-const getPostFiles = (dir: string = postsDirectory, category: string = ""): PostSlugInfo[] => {
-  if (!fs.existsSync(dir)) {
-    return [];
-  }
-
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  const posts: PostSlugInfo[] = [];
-
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-
-    if (entry.isDirectory()) {
-      // 하위 폴더 탐색 - 폴더명이 카테고리
-      posts.push(...getPostFiles(fullPath, entry.name));
-    } else if (entry.isFile() && entry.name.endsWith(".mdx")) {
-      const slug = entry.name.replace(/\.mdx$/, "");
-      posts.push({
-        slug: category ? `${category}/${slug}` : slug,
-        category: category || "uncategorized",
-        filePath: fullPath,
-      });
-    }
-  }
-
-  return posts;
-};
-
-const getPostSlugs = (): string[] => {
-  return getPostFiles().map(post => post.slug);
-};
-
-export const getPostBySlug = (slug: string): Post | null => {
-  const posts = getPostFiles();
-  const postInfo = posts.find(p => p.slug === slug);
-
-  if (!postInfo) {
-    return null;
-  }
-
-  const fileContents = fs.readFileSync(postInfo.filePath, "utf8");
-  const { data, content } = matter(fileContents);
-  const stats = readingTime(content);
-
-  return {
-    slug,
-    title: data.title || "",
-    date: data.date || "",
-    description: data.description || "",
-    tags: data.tags || [],
-    category: postInfo.category, // 폴더명에서 카테고리 추출
-    readingTime: stats.text,
-    published: data.published !== false,
-    content,
-  };
+export const getPostBySlug = (slug: string): BlogPostDefinition | null => {
+  return getBlogPostDefinition(slug);
 };
 
 export const getAllPosts = (includeUnpublished = false): PostMeta[] => {
-  const slugs = getPostSlugs();
-  const posts = slugs
-    .map(slug => {
-      const post = getPostBySlug(slug);
-      if (!post) return null;
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { content, ...meta } = post;
-      return meta;
-    })
-    .filter((post): post is PostMeta => post !== null)
+  return getRegisteredPostMetas()
     .filter(post => includeUnpublished || post.published)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-  return posts;
 };
 
 const TAG_LABEL_ALIASES: Record<string, string> = {

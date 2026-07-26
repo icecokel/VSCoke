@@ -38,6 +38,61 @@ test.describe("딥링크 직접 진입", () => {
     await expect(page.getByTestId("game-exit-button")).toBeVisible();
   });
 
+  test("TSX 블로그 포스트를 기존 URL과 공통 셸로 렌더링한다", async ({ page }) => {
+    const { locale } = await resolveLocaleAndMessages(page);
+
+    await gotoWithRetry(page, `/${locale}/blog/journal/hello-world`);
+
+    await expect(page.getByRole("heading", { name: "블로그를 시작하며" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "블로그를 시작합니다" })).toBeVisible();
+    await expect(page.getByText("좋은 개발자는 코드를 작성하는 것만큼")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Copy code" })).toBeVisible();
+  });
+
+  test("블로그 상세에 canonical BlogPosting JSON-LD를 노출한다", async ({ page }) => {
+    const { locale } = await resolveLocaleAndMessages(page);
+    const slug = "journal/hello-world";
+    const canonicalUrl = `https://vscoke.vercel.app/${locale}/blog/${slug}`;
+
+    await gotoWithRetry(page, `/${locale}/blog/${slug}`);
+
+    const jsonLdScript = page.locator('script[type="application/ld+json"]');
+    await expect(jsonLdScript).toHaveCount(1);
+
+    const jsonLd = JSON.parse((await jsonLdScript.textContent()) ?? "{}") as Record<
+      string,
+      unknown
+    >;
+
+    expect(jsonLd).toMatchObject({
+      "@type": "BlogPosting",
+      "@id": `${canonicalUrl}#blog-post`,
+      mainEntityOfPage: {
+        "@id": canonicalUrl,
+      },
+      url: canonicalUrl,
+      inLanguage: locale,
+    });
+  });
+
+  test("표·이미지·코드가 있는 TSX 블로그 포스트를 보존한다", async ({ page }) => {
+    const { locale } = await resolveLocaleAndMessages(page);
+
+    await gotoWithRetry(page, `/${locale}/blog/dev/html-mistakes-1`);
+
+    await expect(page.locator("article table")).toBeVisible();
+    await expect(page.locator("article img")).toHaveCount(3);
+    await expect(page.getByRole("button", { name: "Copy code" }).first()).toBeVisible();
+  });
+
+  test("존재하지 않는 블로그 slug는 404로 응답한다", async ({ page }) => {
+    const { locale, messages } = await resolveLocaleAndMessages(page);
+    const response = await page.goto(`/${locale}/blog/journal/not-a-real-post`);
+
+    expect(response?.status()).toBe(404);
+    await expect(page.getByRole("heading", { name: messages.notFound.title })).toBeVisible();
+  });
+
   test("Code Crayon 상세 경력기술서의 대표 근거를 렌더링한다", async ({ page }) => {
     const { locale } = await resolveLocaleAndMessages(page);
 
@@ -51,7 +106,9 @@ test.describe("딥링크 직접 진입", () => {
 
     await gotoWithRetry(page, `/${locale}/resume/translate`);
     await expect(
-      page.getByText("3명이 하루 1~2개 작품을 처리하던 번역 업무", { exact: false }),
+      page.getByText("재직 중 약 3개월 동안 3~4명의 운영자가 사용했습니다.", {
+        exact: false,
+      }),
     ).toBeVisible();
     await expect(
       page.getByText("키워드를 10개 단위로 묶어 병렬 검색", { exact: false }),
@@ -65,7 +122,7 @@ test.describe("딥링크 직접 진입", () => {
       page.getByText("프로토타입으로 시연한 게임 흐름이 실제 기능으로 채택", { exact: false }),
     ).toBeVisible();
     await expect(
-      page.getByText("주간 랭킹 기준 매주 약 2,500~3,000명", { exact: false }),
+      page.getByText("주간 고유 이용자 2,000~3,000명을 확인했습니다.", { exact: false }),
     ).toBeVisible();
   });
 });

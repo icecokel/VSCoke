@@ -9,7 +9,7 @@ import { ShareLinkButton } from "@/components/share/share-link-button";
 import { ShareQrDialog } from "@/components/share/share-qr-dialog";
 
 import { getResumeDetailBySlug, getAllResumeDetails } from "@/lib/resume-detail";
-import { mdxComponents } from "@/components/blog/mdx-components";
+import { mdxComponents } from "@/components/profile/resume/resume-mdx-components";
 
 interface ResumeDetailPageProps {
   params: Promise<{

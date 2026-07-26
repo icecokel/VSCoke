@@ -12,6 +12,7 @@ import ProfileItem from "./profile-item";
 import Resume from "./resume/resume";
 import { ShareLinkButton } from "@/components/share/share-link-button";
 import { ShareQrDialog } from "@/components/share/share-qr-dialog";
+import { CustomLink } from "@/components/custom-link";
 
 /**
  * 이력서 페이지
@@ -20,6 +21,7 @@ import { ShareQrDialog } from "@/components/share/share-qr-dialog";
 const Profile = () => {
   const t = useTranslations("profile");
   const tResume = useTranslations("resume");
+  const tPreview = useTranslations("resumePreview");
   const locale = useLocale();
   const introduction = tResume.raw("introduction") as string[];
   const contact = tResume.raw("contact");
@@ -29,6 +31,14 @@ const Profile = () => {
   return (
     <div className="p-3 flex flex-col gap-1 md:gap-5">
       <div className="flex justify-end gap-2">
+        <CustomLink
+          href="/resume/preview"
+          title={tPreview("metaTitle")}
+          className="inline-flex h-9 items-center gap-2 rounded-md border border-gray-600 px-3 text-sm font-medium text-gray-100 transition-colors hover:border-gray-400 hover:bg-gray-800"
+        >
+          <Icon kind="description" size={16} />
+          {tPreview("openPreview")}
+        </CustomLink>
         <ShareLinkButton />
         <ShareQrDialog />
       </div>

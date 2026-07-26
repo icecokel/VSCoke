@@ -452,6 +452,24 @@
       }
     }
   },
+  "resumePreview": {
+    "metaTitle": "Sangmin Lee Resume Preview",
+    "metaDescription": "A print-ready resume preview for Sangmin Lee.",
+    "openPreview": "PDF Preview",
+    "previewLabel": "A4 Resume Preview",
+    "saveHint": "Download this resume directly as a PDF file.",
+    "backToWebResume": "Web Resume",
+    "savePdf": "Save as PDF",
+    "savingPdf": "Creating PDF",
+    "savePdfFailed": "The PDF could not be created. Please try again.",
+    "documentType": "CURRICULUM VITAE",
+    "email": "Email",
+    "phone": "Phone",
+    "summary": "Summary",
+    "experience": "Experience",
+    "totalExperience": "{value} total experience",
+    "updatedAt": "Last updated · 2026.07"
+  },
   "resume": {
     "name": "Sangmin Lee",
     "title": "A developer who identifies product problems and solves them through technology choices and validation",

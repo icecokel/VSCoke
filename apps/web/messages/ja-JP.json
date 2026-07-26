@@ -452,6 +452,24 @@
       }
     }
   },
+  "resumePreview": {
+    "metaTitle": "イ・サンミン履歴書プレビュー",
+    "metaDescription": "印刷とPDF保存に対応したイ・サンミンの履歴書プレビューです。",
+    "openPreview": "PDFプレビュー",
+    "previewLabel": "A4履歴書プレビュー",
+    "saveHint": "ボタンを押すと、履歴書をPDFファイルとして直接ダウンロードできます。",
+    "backToWebResume": "Web履歴書",
+    "savePdf": "PDFとして保存",
+    "savingPdf": "PDFを作成中",
+    "savePdfFailed": "PDFファイルを作成できませんでした。もう一度お試しください。",
+    "documentType": "CURRICULUM VITAE",
+    "email": "メール",
+    "phone": "電話番号",
+    "summary": "概要",
+    "experience": "職務経歴",
+    "totalExperience": "経験 {value}",
+    "updatedAt": "最終更新 · 2026.07"
+  },
   "resume": {
     "name": "イ・サンミン",
     "title": "製品課題を見つけ、技術選定と検証で解決する開発者",

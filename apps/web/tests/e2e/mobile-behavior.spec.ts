@@ -48,4 +48,32 @@ test.describe("모바일 전용 동작", () => {
     await page.getByTestId("game-start-button").click();
     await expect(mobileTrigger).toBeHidden();
   });
+
+  test("이력서 프리뷰에 상세 경력을 보이고 PDF 저장 버튼을 우측 상단에 둔다", async ({ page }) => {
+    const { locale } = await resolveLocaleAndMessages(page);
+
+    await gotoWithRetry(page, `/${locale}/resume/preview`);
+
+    const resumeDocument = page.getByTestId("resume-preview-document");
+    const savePdfButton = page.getByTestId("resume-preview-save-pdf");
+    await expect(resumeDocument).toBeVisible();
+    await expect(savePdfButton).toBeVisible();
+    await expect(
+      page.getByText("작업 데이터를 서버에 저장하고 작업별 클라이언트 캐시를 분리해", {
+        exact: false,
+      }),
+    ).toBeVisible();
+
+    const [documentBox, buttonBox] = await Promise.all([
+      resumeDocument.boundingBox(),
+      savePdfButton.boundingBox(),
+    ]);
+    expect(documentBox).not.toBeNull();
+    expect(buttonBox).not.toBeNull();
+
+    expect(buttonBox!.y).toBeLessThan(documentBox!.y);
+    expect(
+      Math.abs(buttonBox!.x + buttonBox!.width - (documentBox!.x + documentBox!.width)),
+    ).toBeLessThanOrEqual(1);
+  });
 });

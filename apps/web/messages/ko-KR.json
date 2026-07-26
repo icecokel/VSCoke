@@ -452,6 +452,24 @@
       }
     }
   },
+  "resumePreview": {
+    "metaTitle": "이상민 이력서 미리보기",
+    "metaDescription": "인쇄와 PDF 저장에 맞춘 이상민 이력서 미리보기입니다.",
+    "openPreview": "PDF 미리보기",
+    "previewLabel": "A4 이력서 미리보기",
+    "saveHint": "버튼을 누르면 이력서가 PDF 파일로 바로 다운로드됩니다.",
+    "backToWebResume": "웹 이력서",
+    "savePdf": "PDF로 저장",
+    "savingPdf": "PDF 만드는 중",
+    "savePdfFailed": "PDF 파일을 만들지 못했습니다. 다시 시도해 주세요.",
+    "documentType": "CURRICULUM VITAE",
+    "email": "이메일",
+    "phone": "전화번호",
+    "summary": "소개",
+    "experience": "경력",
+    "totalExperience": "총 경력 {value}",
+    "updatedAt": "최종 업데이트 · 2026.07"
+  },
   "resume": {
     "name": "이상민",
     "title": "제품 문제를 발견하고 기술 선택과 검증으로 해결하는 개발자",

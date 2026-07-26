@@ -341,6 +341,116 @@ body {
   }
 }
 
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  #menubar,
+  [data-slot="sidebar"],
+  [data-testid="history-tab-rail"],
+  [data-testid="sidebar-trigger-mobile"],
+  .resume-preview-toolbar {
+    display: none !important;
+  }
+
+  html,
+  body,
+  [data-slot="sidebar-wrapper"],
+  [data-slot="sidebar-inset"],
+  #main-scroll-container,
+  .resume-preview-page {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  body,
+  .resume-preview-page {
+    background: #ffffff !important;
+  }
+
+  .resume-preview-page {
+    padding: 0 !important;
+  }
+
+  .resume-preview-document {
+    width: 210mm !important;
+    max-width: none !important;
+    min-height: 297mm;
+    padding: 8mm 12mm !important;
+    box-shadow: none !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .resume-preview-header {
+    padding-bottom: 12px !important;
+  }
+
+  .resume-preview-summary,
+  .resume-preview-experience {
+    padding-top: 16px !important;
+    padding-bottom: 16px !important;
+  }
+
+  .resume-preview-career {
+    break-inside: avoid;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+  }
+
+  .resume-preview-project,
+  .resume-preview-description {
+    break-inside: avoid;
+  }
+}
+
+.resume-preview-document--exporting {
+  width: 210mm !important;
+  max-width: none !important;
+  min-height: 297mm;
+  padding: 8mm 12mm !important;
+  box-shadow: none !important;
+}
+
+.resume-preview-document--exporting .resume-preview-header {
+  padding-bottom: 12px !important;
+}
+
+.resume-preview-document--exporting .resume-preview-summary,
+.resume-preview-document--exporting .resume-preview-experience {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+}
+
+.resume-preview-document--exporting .resume-preview-career {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
+.resume-preview-document--exporting .resume-preview-header-content,
+.resume-preview-document--exporting .resume-preview-career-heading {
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+}
+
+.resume-preview-document--exporting .resume-preview-header-content {
+  align-items: flex-end !important;
+}
+
+.resume-preview-document--exporting .resume-preview-contact {
+  text-align: right !important;
+}
+
+.resume-preview-document--exporting .resume-preview-project,
+.resume-preview-document--exporting .resume-preview-description {
+  break-inside: avoid;
+}
+
 @layer utilities {
   @keyframes flip {
     0% {

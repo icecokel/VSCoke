@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 import {
   escapeRegExp,
   gotoWithRetry,
@@ -26,6 +27,11 @@ test.describe("딥링크 직접 진입", () => {
     await expect(page.locator("article.prose")).toBeVisible();
     await expect(page.getByRole("heading", { level: 2 })).toBeVisible();
 
+    await gotoWithRetry(page, `/${locale}/resume/preview`);
+    await expect(page).toHaveURL(new RegExp(`/${localeRegex}/resume/preview$`));
+    await expect(page.getByTestId("resume-preview-document")).toBeVisible();
+    await expect(page.getByTestId("resume-preview-save-pdf")).toBeVisible();
+
     await gotoWithRetry(page, `/${locale}/game/wordle`);
     await expect(
       page.getByRole("heading", {
@@ -36,6 +42,23 @@ test.describe("딥링크 직접 진입", () => {
     await gotoWithRetry(page, `/${locale}/game/sky-drop`);
     await expect(page.getByTestId("game-start-button")).toBeVisible();
     await expect(page.getByTestId("game-exit-button")).toBeVisible();
+  });
+
+  test("이력서 프리뷰에서 PDF 파일을 내려받는다", async ({ page }) => {
+    const { locale } = await resolveLocaleAndMessages(page);
+
+    await gotoWithRetry(page, `/${locale}/resume/preview`);
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByTestId("resume-preview-save-pdf").click();
+    const download = await downloadPromise;
+    const downloadPath = await download.path();
+
+    expect(download.suggestedFilename()).toBe("sangmin-lee-resume.pdf");
+    expect(downloadPath).not.toBeNull();
+
+    const fileContents = await readFile(downloadPath!);
+    expect(fileContents.subarray(0, 4).toString()).toBe("%PDF");
   });
 
   test("TSX 블로그 포스트를 기존 URL과 공통 셸로 렌더링한다", async ({ page }) => {

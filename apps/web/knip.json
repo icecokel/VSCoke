@@ -1,11 +1,12 @@
 {
-  "entry": ["src/app/**/*.{ts,tsx}", "src/**/*.spec.{ts,tsx}", "src/posts/**/*.mdx"],
+  "entry": ["src/app/**/*.{ts,tsx}", "src/**/*.{spec,test}.{ts,tsx}"],
   "project": ["src/**/*.{ts,tsx}"],
   "ignoreDependencies": [
     "@vscoke/poke-lounge-battle",
     "eslint-config-next",
     "tailwindcss",
     "tw-animate-css",
-    "prettier-plugin-tailwindcss"
+    "prettier-plugin-tailwindcss",
+    "tsx"
   ]
 }

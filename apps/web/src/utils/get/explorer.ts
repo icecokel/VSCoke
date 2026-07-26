@@ -13,7 +13,7 @@ export const getExplorer = cache(async (): Promise<ITree[]> => {
     items: group.posts.map((post, postIndex) => ({
       icon: "article",
       id: `blog-post-${post.slug}`,
-      label: `${post.title}.mdx`,
+      label: `${post.title}.tsx`,
       path: `/blog/${post.slug}`,
       index: postIndex,
     })),

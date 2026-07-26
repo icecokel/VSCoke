@@ -1,0 +1,758 @@
+import { BlogPostDocument, type PostDocumentNode } from "@/components/blog/blog-post-document";
+
+const nodes = [
+  {
+    type: "heading",
+    depth: 1,
+    children: [
+      {
+        type: "text",
+        value: "드디어 안티그래비티에 스킬스가 추가되었습니다.",
+      },
+    ],
+  },
+  {
+    type: "heading",
+    depth: 2,
+    children: [
+      {
+        type: "text",
+        value: "1. 들어가며: 왜 스킬스(Skills)인가요?",
+      },
+    ],
+  },
+  {
+    type: "paragraph",
+    children: [
+      {
+        type: "text",
+        value:
+          '개발자 여러분, 혹시 AI 에이전트와 협업하면서 "이 에이전트가 내 프로젝트의 특정 컨텍스트나 복잡한 도구 사용법을 미리 알고 있다면 얼마나 좋을까?"라고 생각해보신 적 없으신가요?',
+      },
+    ],
+  },
+  {
+    type: "paragraph",
+    children: [
+      {
+        type: "text",
+        value:
+          "단순한 프롬프트 엔지니어링만으로는 반복적이고 정교한 작업을 매번 설명하기에 한계가 있습니다. 이를 해결하기 위해 ",
+      },
+      {
+        type: "strong",
+        children: [
+          {
+            type: "link",
+            url: "https://antigravity.google",
+            title: null,
+            children: [
+              {
+                type: "text",
+                value: "Antigravity",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: "text",
+        value: " 팀은 ",
+      },
+      {
+        type: "strong",
+        children: [
+          {
+            type: "text",
+            value: "Skills",
+          },
+        ],
+      },
+      {
+        type: "text",
+        value: "라는 새로운 개념을 도입했습니다.",
+      },
+    ],
+  },
+  {
+    type: "blockquote",
+    children: [
+      {
+        type: "paragraph",
+        children: [
+          {
+            type: "text",
+            value: '"Skills are an open standard designed to extend an agent\'s capabilities." - ',
+          },
+          {
+            type: "emphasis",
+            children: [
+              {
+                type: "text",
+                value: "Antigravity Official Docs",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    type: "heading",
+    depth: 2,
+    children: [
+      {
+        type: "text",
+        value: "2. 핵심 원리와 특징 (Deep Dive)",
+      },
+    ],
+  },
+  {
+    type: "paragraph",
+    children: [
+      {
+        type: "text",
+        value:
+          "공식 문서에 따르면, Skills는 단순한 명령어 모음이 아닌 에이전트의 능력을 확장하는 **개방형 표준(Open Standard)**입니다.",
+      },
+    ],
+  },
+  {
+    type: "heading",
+    depth: 3,
+    children: [
+      {
+        type: "text",
+        value: "2.1 파일 시스템 기반의 확장",
+      },
+    ],
+  },
+  {
+    type: "paragraph",
+    children: [
+      {
+        type: "text",
+        value:
+          "Antigravity의 스킬은 파일 시스템을 기반으로 동작하여 누구나 쉽게 만들고 공유할 수 있습니다.",
+      },
+    ],
+  },
+  {
+    type: "list",
+    ordered: false,
+    start: null,
+    children: [
+      {
+        type: "listItem",
+        children: [
+          {
+            type: "paragraph",
+            children: [
+              {
+                type: "strong",
+                children: [
+                  {
+                    type: "text",
+                    value: "구조",
+                  },
+                ],
+              },
+              {
+                type: "text",
+                value: ": 각 스킬은 하나의 디렉토리로 구성되며, 핵심인 ",
+              },
+              {
+                type: "inlineCode",
+                value: "SKILL.md",
+              },
+              {
+                type: "text",
+                value: " 파일을 포함합니다.",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: "listItem",
+        children: [
+          {
+            type: "paragraph",
+            children: [
+              {
+                type: "strong",
+                children: [
+                  {
+                    type: "text",
+                    value: "SKILL.md",
+                  },
+                ],
+              },
+              {
+                type: "text",
+                value:
+                  ": 스킬의 메타데이터(이름, 설명)와 상세한 작업 지침이 담긴 YAML Frontmatter 포함 마크다운 파일입니다.",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: "listItem",
+        children: [
+          {
+            type: "paragraph",
+            children: [
+              {
+                type: "strong",
+                children: [
+                  {
+                    type: "text",
+                    value: "리소스",
+                  },
+                ],
+              },
+              {
+                type: "text",
+                value:
+                  ": 스크립트, 템플릿 파일 등을 포함하여 에이전트가 단독으로 복잡한 작업을 수행할 수 있도록 지원합니다.",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    type: "heading",
+    depth: 3,
+    children: [
+      {
+        type: "text",
+        value: "2.2 점진적 공개 (Progressive Disclosure)",
+      },
+    ],
+  },
+  {
+    type: "paragraph",
+    children: [
+      {
+        type: "text",
+        value: "Skills의 가장 강력한 특징 중 하나는 ",
+      },
+      {
+        type: "strong",
+        children: [
+          {
+            type: "text",
+            value: "점진적 공개 패턴",
+          },
+        ],
+      },
+      {
+        type: "text",
+        value: "을 따른다는 점입니다.",
+      },
+    ],
+  },
+  {
+    type: "paragraph",
+    children: [
+      {
+        type: "text",
+        value:
+          "모든 지식을 한 번에 주입하면 에이전트의 컨텍스트 창이 포화 상태(Context Saturation)가 되어 성능이 저하될 수 있습니다. Antigravity는 이를 방지하기 위해 다음과 같이 동작합니다:",
+      },
+    ],
+  },
+  {
+    type: "list",
+    ordered: true,
+    start: 1,
+    children: [
+      {
+        type: "listItem",
+        children: [
+          {
+            type: "paragraph",
+            children: [
+              {
+                type: "strong",
+                children: [
+                  {
+                    type: "text",
+                    value: "Discovery",
+                  },
+                ],
+              },
+              {
+                type: "text",
+                value:
+                  ": 대화 시작 시 에이전트는 사용 가능한 스킬의 목록(이름, 설명)만 확인합니다.",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: "listItem",
+        children: [
+          {
+            type: "paragraph",
+            children: [
+              {
+                type: "strong",
+                children: [
+                  {
+                    type: "text",
+                    value: "Activation",
+                  },
+                ],
+              },
+              {
+                type: "text",
+                value: ": 사용자의 요청과 관련된 스킬이 발견되면, 그제야 해당 스킬의 전체 지침(",
+              },
+              {
+                type: "inlineCode",
+                value: "SKILL.md",
+              },
+              {
+                type: "text",
+                value: ")을 읽어들입니다.",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: "listItem",
+        children: [
+          {
+            type: "paragraph",
+            children: [
+              {
+                type: "strong",
+                children: [
+                  {
+                    type: "text",
+                    value: "Execution",
+                  },
+                ],
+              },
+              {
+                type: "text",
+                value: ": 로드된 지침을 바탕으로 작업을 수행합니다.",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    type: "heading",
+    depth: 3,
+    children: [
+      {
+        type: "text",
+        value: "2.3 유연한 스코프 (Scope)",
+      },
+    ],
+  },
+  {
+    type: "paragraph",
+    children: [
+      {
+        type: "text",
+        value: "스킬은 두 가지 레벨에서 관리될 수 있습니다.",
+      },
+    ],
+  },
+  {
+    type: "list",
+    ordered: false,
+    start: null,
+    children: [
+      {
+        type: "listItem",
+        children: [
+          {
+            type: "paragraph",
+            children: [
+              {
+                type: "strong",
+                children: [
+                  {
+                    type: "text",
+                    value: "Workspace Skills",
+                  },
+                ],
+              },
+              {
+                type: "text",
+                value: ": 프로젝트 루트의 ",
+              },
+              {
+                type: "inlineCode",
+                value: ".agent/skills/",
+              },
+              {
+                type: "text",
+                value: "에 위치하며, 해당 프로젝트에 특화된 워크플로우를 정의합니다.",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: "listItem",
+        children: [
+          {
+            type: "paragraph",
+            children: [
+              {
+                type: "strong",
+                children: [
+                  {
+                    type: "text",
+                    value: "Global Skills",
+                  },
+                ],
+              },
+              {
+                type: "text",
+                value: ": ",
+              },
+              {
+                type: "inlineCode",
+                value: "~/.gemini/antigravity/skills/",
+              },
+              {
+                type: "text",
+                value:
+                  "에 위치하며, 모든 프로젝트에서 공통으로 사용할 수 있는 개인용 유틸리티를 정의합니다.",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    type: "heading",
+    depth: 2,
+    children: [
+      {
+        type: "text",
+        value: "3. 실무 적용 가이드 (With Code)",
+      },
+    ],
+  },
+  {
+    type: "paragraph",
+    children: [
+      {
+        type: "text",
+        value:
+          "실제로 프로젝트에 스킬을 어떻게 적용하는지 살펴보겠습니다. 예를 들어, 복잡한 데이터 마이그레이션 작업을 수행하는 스킬을 만든다고 가정해 봅시다.",
+      },
+    ],
+  },
+  {
+    type: "heading",
+    depth: 3,
+    children: [
+      {
+        type: "text",
+        value: "1단계: 스킬 정의 (",
+      },
+      {
+        type: "inlineCode",
+        value: "SKILL.md",
+      },
+      {
+        type: "text",
+        value: ")",
+      },
+    ],
+  },
+  {
+    type: "paragraph",
+    children: [
+      {
+        type: "text",
+        value: "먼저 ",
+      },
+      {
+        type: "inlineCode",
+        value: ".agent/skills/migration-helper/SKILL.md",
+      },
+      {
+        type: "text",
+        value: " 파일을 생성합니다.",
+      },
+    ],
+  },
+  {
+    type: "code",
+    language: "markdown",
+    value:
+      "---\nname: Migration Helper\ndescription: 레거시 데이터베이스 스키마를 새로운 포맷으로 마이그레이션하는 것을 돕습니다.\n---\n\n# Migration Helper Guide\n\n이 스킬은 데이터 마이그레이션 시 안전한 절차를 보장하기 위해 설계되었습니다.\n작업 시작 전 다음 체크리스트를 반드시 확인하세요.\n\n1. 백업 확인\n2. 스키마 유효성 검사\n...",
+  },
+  {
+    type: "heading",
+    depth: 3,
+    children: [
+      {
+        type: "text",
+        value: "2단계: 에이전트에게 지시",
+      },
+    ],
+  },
+  {
+    type: "paragraph",
+    children: [
+      {
+        type: "text",
+        value: "이제 Antigravity에게 다음과 같이 말하기만 하면 됩니다.",
+      },
+    ],
+  },
+  {
+    type: "blockquote",
+    children: [
+      {
+        type: "paragraph",
+        children: [
+          {
+            type: "text",
+            value: '"Migration Helper 스킬을 사용해서 ',
+          },
+          {
+            type: "inlineCode",
+            value: "users",
+          },
+          {
+            type: "text",
+            value: ' 테이블 마이그레이션을 진행해줘."',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    type: "paragraph",
+    children: [
+      {
+        type: "text",
+        value: "에이전트는 이 요청을 인식하고 ",
+      },
+      {
+        type: "inlineCode",
+        value: "Migration Helper",
+      },
+      {
+        type: "text",
+        value: " 스킬을 ",
+      },
+      {
+        type: "strong",
+        children: [
+          {
+            type: "text",
+            value: "동적",
+          },
+        ],
+      },
+      {
+        type: "text",
+        value: "으로 로드하여, 명시된 절차대로 작업을 수행합니다.",
+      },
+    ],
+  },
+  {
+    type: "code",
+    language: "typescript",
+    value:
+      '// 에이전트가 스킬을 참고하여 생성한 마이그레이션 스크립트 예시\nimport { MigrationInterface, QueryRunner } from "typeorm";\n\nexport class UserMigration1234567890123 implements MigrationInterface {\n    name = \'UserMigration1234567890123\';\n\n    public async up(queryRunner: QueryRunner): Promise<void> {\n        // SKILL.md의 지침에 따라 안전하게 컬럼을 추가합니다.\n        await queryRunner.query(`ALTER TABLE "user" ADD "isActive" boolean NOT NULL DEFAULT true`);\n    }\n    // ...\n}',
+  },
+  {
+    type: "heading",
+    depth: 2,
+    children: [
+      {
+        type: "text",
+        value: "4. 주의사항 및 한계점",
+      },
+    ],
+  },
+  {
+    type: "paragraph",
+    children: [
+      {
+        type: "text",
+        value: "Skills 도입 시 몇 가지 주의할 점이 있습니다.",
+      },
+    ],
+  },
+  {
+    type: "list",
+    ordered: true,
+    start: 1,
+    children: [
+      {
+        type: "listItem",
+        children: [
+          {
+            type: "paragraph",
+            children: [
+              {
+                type: "strong",
+                children: [
+                  {
+                    type: "text",
+                    value: "지침의 명확성",
+                  },
+                ],
+              },
+              {
+                type: "text",
+                value: ": ",
+              },
+              {
+                type: "inlineCode",
+                value: "SKILL.md",
+              },
+              {
+                type: "text",
+                value:
+                  "의 지침이 모호하면 에이전트도 혼란스러워합니다. 사람에게 인수인계 문서를 작성하듯 구체적이고 명확해야 합니다.",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: "listItem",
+        children: [
+          {
+            type: "paragraph",
+            children: [
+              {
+                type: "strong",
+                children: [
+                  {
+                    type: "text",
+                    value: "의존성 관리",
+                  },
+                ],
+              },
+              {
+                type: "text",
+                value:
+                  ": 스킬 내에서 사용하는 외부 스크립트나 도구가 있다면, 실행 환경에 해당 의존성이 설치되어 있는지 확인해야 합니다.",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    type: "heading",
+    depth: 2,
+    children: [
+      {
+        type: "text",
+        value: "5. 마치며 (참고 자료)",
+      },
+    ],
+  },
+  {
+    type: "paragraph",
+    children: [
+      {
+        type: "text",
+        value: "Antigravity Skills는 에이전트를 단순한 코딩 조수에서 ",
+      },
+      {
+        type: "strong",
+        children: [
+          {
+            type: "text",
+            value: "특화된 전문가",
+          },
+        ],
+      },
+      {
+        type: "text",
+        value: "로 진화시키는 열쇠입니다. 더 자세한 내용은 공식 문서를 참고해 보세요.",
+      },
+    ],
+  },
+  {
+    type: "list",
+    ordered: false,
+    start: null,
+    children: [
+      {
+        type: "listItem",
+        children: [
+          {
+            type: "paragraph",
+            children: [
+              {
+                type: "link",
+                url: "https://antigravity.google",
+                title: null,
+                children: [
+                  {
+                    type: "text",
+                    value: "Antigravity 공식 문서 (Skills)",
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: "listItem",
+        children: [
+          {
+            type: "paragraph",
+            children: [
+              {
+                type: "link",
+                url: "https://antigravity.codes",
+                title: null,
+                children: [
+                  {
+                    type: "text",
+                    value: "Antigravity 소개",
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    type: "paragraph",
+    children: [
+      {
+        type: "text",
+        value: "이제 여러분만의 노하우를 스킬로 정의하고, 에이전트와 더 강력한 시너지를 내보세요!",
+      },
+    ],
+  },
+] satisfies PostDocumentNode[];
+
+const DevIntroducingSkillsToAntigravityPost = () => {
+  return <BlogPostDocument nodes={nodes} />;
+};
+
+export default DevIntroducingSkillsToAntigravityPost;

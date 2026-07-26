@@ -38,6 +38,35 @@ test.describe("딥링크 직접 진입", () => {
     await expect(page.getByTestId("game-exit-button")).toBeVisible();
   });
 
+  test("TSX 블로그 포스트를 기존 URL과 공통 셸로 렌더링한다", async ({ page }) => {
+    const { locale } = await resolveLocaleAndMessages(page);
+
+    await gotoWithRetry(page, `/${locale}/blog/journal/hello-world`);
+
+    await expect(page.getByRole("heading", { name: "블로그를 시작하며" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "블로그를 시작합니다" })).toBeVisible();
+    await expect(page.getByText("좋은 개발자는 코드를 작성하는 것만큼")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Copy code" })).toBeVisible();
+  });
+
+  test("표·이미지·코드가 있는 TSX 블로그 포스트를 보존한다", async ({ page }) => {
+    const { locale } = await resolveLocaleAndMessages(page);
+
+    await gotoWithRetry(page, `/${locale}/blog/dev/html-mistakes-1`);
+
+    await expect(page.locator("article table")).toBeVisible();
+    await expect(page.locator("article img")).toHaveCount(3);
+    await expect(page.getByRole("button", { name: "Copy code" }).first()).toBeVisible();
+  });
+
+  test("존재하지 않는 블로그 slug는 404로 응답한다", async ({ page }) => {
+    const { locale, messages } = await resolveLocaleAndMessages(page);
+    const response = await page.goto(`/${locale}/blog/journal/not-a-real-post`);
+
+    expect(response?.status()).toBe(404);
+    await expect(page.getByRole("heading", { name: messages.notFound.title })).toBeVisible();
+  });
+
   test("Code Crayon 상세 경력기술서의 대표 근거를 렌더링한다", async ({ page }) => {
     const { locale } = await resolveLocaleAndMessages(page);
 

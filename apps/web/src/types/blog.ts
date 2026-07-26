@@ -1,3 +1,5 @@
+import type { ComponentType } from "react";
+
 export interface PostMeta {
   title: string;
   date: string;
@@ -9,8 +11,12 @@ export interface PostMeta {
   published: boolean;
 }
 
-export interface Post extends PostMeta {
-  content: string;
+export interface BlogPostModule {
+  default: ComponentType;
+}
+
+export interface BlogPostDefinition extends PostMeta {
+  load: () => Promise<BlogPostModule>;
 }
 
 export interface CategoryGroup {

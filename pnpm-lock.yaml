@@ -224,9 +224,6 @@ importers:
       react-dom:
         specifier: ^19.2.7
         version: 19.2.7(react@19.2.7)
-      reading-time:
-        specifier: ^1.5.0
-        version: 1.5.0
       socket.io-client:
         specifier: ^4.8.1
         version: 4.8.3
@@ -8664,12 +8661,6 @@ packages:
       }
     engines: { node: ">= 14.18.0" }
 
-  reading-time@1.5.0:
-    resolution:
-      {
-        integrity: sha512-onYyVhBNr4CmAxFsKS7bz+uTLRakypIe4R+5A824vBSkQy/hB3fZepoVEf8OVAxzLvK+H/jm9TzpI3ETSm64Kg==,
-      }
-
   recma-build-jsx@1.0.0:
     resolution:
       {
@@ -16044,8 +16035,6 @@ snapshots:
       util-deprecate: 1.0.2
 
   readdirp@4.1.2: {}
-
-  reading-time@1.5.0: {}
 
   recma-build-jsx@1.0.0:
     dependencies:

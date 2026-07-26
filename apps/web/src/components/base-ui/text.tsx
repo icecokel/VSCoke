@@ -9,12 +9,12 @@ interface IBaseTextProps extends HTMLAttributes<HTMLElement> {
 }
 
 const textClasses: Record<TTextType, string> = {
-  h1: "text-[5rem] font-light leading-[1.167]",
-  h2: "text-[3.5rem] font-light leading-[1.2]",
-  h3: "text-[2.5rem] font-normal leading-[1.167]",
-  h4: "text-[1.75rem] font-bold leading-[1.235]",
-  h5: "text-2xl font-bold leading-[1.334]",
-  h6: "text-xl font-bold leading-[1.6]",
+  h1: "text-4xl font-light leading-[1.167] sm:text-5xl md:text-[5rem]",
+  h2: "text-3xl font-light leading-[1.2] sm:text-4xl md:text-[3.5rem]",
+  h3: "text-2xl font-normal leading-[1.167] sm:text-3xl md:text-[2.5rem]",
+  h4: "text-xl font-bold leading-[1.235] sm:text-2xl md:text-[1.75rem]",
+  h5: "text-xl font-bold leading-[1.334] md:text-2xl",
+  h6: "text-lg font-bold leading-[1.6] md:text-xl",
   body1: "leading-6 text-base",
   body2: "leading-6 text-sm",
   caption: "leading-6 text-xs",

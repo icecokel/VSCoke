@@ -49,6 +49,32 @@ test.describe("딥링크 직접 진입", () => {
     await expect(page.getByRole("button", { name: "Copy code" })).toBeVisible();
   });
 
+  test("블로그 상세에 canonical BlogPosting JSON-LD를 노출한다", async ({ page }) => {
+    const { locale } = await resolveLocaleAndMessages(page);
+    const slug = "journal/hello-world";
+    const canonicalUrl = `https://vscoke.vercel.app/${locale}/blog/${slug}`;
+
+    await gotoWithRetry(page, `/${locale}/blog/${slug}`);
+
+    const jsonLdScript = page.locator('script[type="application/ld+json"]');
+    await expect(jsonLdScript).toHaveCount(1);
+
+    const jsonLd = JSON.parse((await jsonLdScript.textContent()) ?? "{}") as Record<
+      string,
+      unknown
+    >;
+
+    expect(jsonLd).toMatchObject({
+      "@type": "BlogPosting",
+      "@id": `${canonicalUrl}#blog-post`,
+      mainEntityOfPage: {
+        "@id": canonicalUrl,
+      },
+      url: canonicalUrl,
+      inLanguage: locale,
+    });
+  });
+
   test("표·이미지·코드가 있는 TSX 블로그 포스트를 보존한다", async ({ page }) => {
     const { locale } = await resolveLocaleAndMessages(page);
 

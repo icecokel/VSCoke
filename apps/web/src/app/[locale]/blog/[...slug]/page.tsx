@@ -31,6 +31,9 @@ export const generateMetadata = async ({ params }: BlogPostPageProps): Promise<M
     title: post.title,
     description: post.description,
     keywords: post.tags,
+    alternates: {
+      canonical: url,
+    },
     openGraph: {
       title: post.title,
       description: post.description,
@@ -58,7 +61,7 @@ export const generateMetadata = async ({ params }: BlogPostPageProps): Promise<M
 };
 
 const BlogPostPage = async ({ params }: BlogPostPageProps) => {
-  const { slug } = await params;
+  const { slug, locale } = await params;
   const slugPath = slug.join("/");
   const post = getPostBySlug(slugPath);
   const t = await getTranslations("blog");
@@ -70,7 +73,12 @@ const BlogPostPage = async ({ params }: BlogPostPageProps) => {
   const { default: PostContent } = await post.load();
 
   return (
-    <BlogPostShell post={post} backToListLabel={t("backToList")}>
+    <BlogPostShell
+      post={post}
+      locale={locale}
+      canonicalUrl={`https://vscoke.vercel.app/${locale}/blog/${slugPath}`}
+      backToListLabel={t("backToList")}
+    >
       <PostContent />
     </BlogPostShell>
   );

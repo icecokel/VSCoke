@@ -6,34 +6,31 @@ import ScrollProgress from "@/components/blog/scroll-progress";
 import { CustomLink } from "@/components/custom-link";
 import { ShareLinkButton } from "@/components/share/share-link-button";
 import { ShareQrDialog } from "@/components/share/share-qr-dialog";
+import { createBlogPostJsonLd, serializeJsonLd } from "@/lib/blog-json-ld";
 import type { PostMeta } from "@/types/blog";
 
 interface BlogPostShellProps {
   backToListLabel: string;
+  canonicalUrl: string;
   children: ReactNode;
+  locale: string;
   post: PostMeta;
 }
 
-export const BlogPostShell = ({ backToListLabel, children, post }: BlogPostShellProps) => {
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BlogPosting",
-    headline: post.title,
-    description: post.description,
-    image: ["https://vscoke.vercel.app/og.png"],
-    datePublished: post.date,
-    author: {
-      "@type": "Person",
-      name: "icecokel",
-      url: "https://vscoke.vercel.app/ko/readme",
-    },
-  };
+export const BlogPostShell = ({
+  backToListLabel,
+  canonicalUrl,
+  children,
+  locale,
+  post,
+}: BlogPostShellProps) => {
+  const jsonLd = createBlogPostJsonLd({ canonicalUrl, locale, post });
 
   return (
     <div className="mx-auto max-w-4xl p-3 md:p-5">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <ScrollProgress />
       <CustomLink

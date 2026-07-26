@@ -234,6 +234,19 @@
   box-shadow: 0 2px 0 rgba(23, 35, 28, 0.86);
 }
 
+.page :global(#game-root[data-poke-lounge-active-scene="battle"]) + .desktopSettingsButton {
+  top: 10px;
+  bottom: auto;
+}
+
+.page[data-poke-lounge-active-scene="battle"] .statusChip[data-poke-lounge-save-status="idle"],
+.page[data-poke-lounge-active-scene="battle"] .statusChip[data-poke-lounge-save-status="saved"],
+.page[data-poke-lounge-active-scene="battle"] .statusChip[data-poke-lounge-save-status="local"],
+.page[data-poke-lounge-active-scene="battle"]
+  .statusChip[data-poke-lounge-connection-status="online"] {
+  display: none;
+}
+
 .loadingOverlay {
   position: absolute;
   top: 50%;

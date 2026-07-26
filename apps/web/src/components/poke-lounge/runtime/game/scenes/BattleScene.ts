@@ -1,13 +1,20 @@
 import * as Phaser from "phaser";
 import {
   BATTLE_LAYOUT,
-  getBattleStatusBadgeView,
   getBattleOptionIndexAtPoint,
+  getBattleStatusBadgeView,
   hpRatio,
   resolveBattleOptionSlotRects,
   type BattleRect,
   type BattleSpriteBox,
 } from "../battle/battleLayout";
+import {
+  createBattlePartySlotViews,
+  getFirstSwitchableBattlePartySlotIndex,
+  getBattlePartySlotIndexAtPoint,
+  moveBattlePartySelection,
+  type BattlePartySlotView,
+} from "../battle/battle-party-select";
 import { createSampleBattleState } from "../battle/battleSampleState";
 import { BATTLE_POKEMON_FRAME_SIZE } from "../battle/battlePokemonAssets";
 import {
@@ -33,7 +40,6 @@ import {
 import { getExperienceForLevel } from "../battle/experience";
 import {
   BATTLE_END_CONFIRM_MESSAGE,
-  canPokemonBattle,
   chooseBattleBagItem,
   chooseBattleCommand,
   choosePartySlot,
@@ -140,6 +146,20 @@ export interface BattleE2eSnapshot {
   selectedBagItemIndex: number;
   selectedPartySlotIndex: number;
   isForcedPartySwitch: boolean;
+  partySlots: Array<{
+    slotIndex: number;
+    rect: BattleRect;
+    name: string | null;
+    level: number | null;
+    currentHp: number | null;
+    maxHp: number | null;
+    status: string | null;
+    isSelected: boolean;
+    isCurrent: boolean;
+    isFainted: boolean;
+    isEmpty: boolean;
+    canSwitch: boolean;
+  }>;
   moveReplacement: {
     pokemonName: string;
     newMoveName: string;
@@ -348,6 +368,26 @@ export function getVisibleBoundsAlignedBattleSpriteRenderBox(
   };
 }
 
+export function getVisibleBoundsContainedBattleSpriteRenderBox(
+  container: BattleRect,
+  visibleBounds: BattleSpriteVisibleBounds,
+): BattleRect {
+  const visibleWidth = Math.max(1, visibleBounds.width);
+  const visibleHeight = Math.max(1, visibleBounds.height);
+  const scale = Math.min(container.width / visibleWidth, container.height / visibleHeight);
+  const sourceCenterX = BATTLE_SPRITE_SOURCE_SIZE.width / 2;
+  const sourceCenterY = BATTLE_SPRITE_SOURCE_SIZE.height / 2;
+  const visibleCenterX = visibleBounds.x + visibleBounds.width / 2;
+  const visibleBottomY = visibleBounds.y + visibleBounds.height;
+
+  return {
+    x: Math.round(container.x + container.width / 2 + (sourceCenterX - visibleCenterX) * scale),
+    y: Math.round(container.y + container.height + (sourceCenterY - visibleBottomY) * scale),
+    width: Math.max(1, Math.round(BATTLE_SPRITE_SOURCE_SIZE.width * scale)),
+    height: Math.max(1, Math.round(BATTLE_SPRITE_SOURCE_SIZE.height * scale)),
+  };
+}
+
 export function formatBattleMoveMeta(move: BattleMove): string {
   return `PP ${move.pp}/${move.maxPp} ${move.type}`;
 }
@@ -434,6 +474,7 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor("#d8e6d4");
     this.cameras.main.setBounds(0, 0, BATTLE_BASE_SIZE.width, BATTLE_BASE_SIZE.height);
     this.cameras.main.setZoom(getBattleCameraZoom(this.scale.width));
+    this.setBattleUiSceneMarker(true);
     this.bindKeys();
     this.bindPointerConfirm();
     this.render();
@@ -442,9 +483,13 @@ export class BattleScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       stopWildBattleBgm();
       this.clearAuthoritativeSubscriptions();
+      this.setBattleUiSceneMarker(false);
       dispatchPokeLoungeAccessibleStatus(this.game.canvas.ownerDocument, "필드 탐색");
     });
-    this.events.once(Phaser.Scenes.Events.DESTROY, () => stopWildBattleBgm());
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => {
+      stopWildBattleBgm();
+      this.setBattleUiSceneMarker(false);
+    });
     if (this.authoritativeProjection?.status === "completed") {
       this.finishBattleEntranceAnimation();
       this.render();
@@ -566,6 +611,20 @@ export class BattleScene extends Phaser.Scene {
       selectedBagItemIndex: this.selectedBagItemIndex,
       selectedPartySlotIndex: this.selectedPartySlotIndex,
       isForcedPartySwitch: isForcedPartySwitch(this.state),
+      partySlots: this.getBattlePartySlotViews().map(slot => ({
+        slotIndex: slot.slotIndex,
+        rect: { ...slot.rect },
+        name: slot.pokemon?.name ?? null,
+        level: slot.pokemon?.level ?? null,
+        currentHp: slot.pokemon?.currentHp ?? null,
+        maxHp: slot.pokemon?.maxHp ?? null,
+        status: slot.pokemon?.status ?? null,
+        isSelected: slot.isSelected,
+        isCurrent: slot.isCurrent,
+        isFainted: slot.isFainted,
+        isEmpty: slot.isEmpty,
+        canSwitch: slot.canSwitch,
+      })),
       moveReplacement: this.getCurrentPendingMoveLearning()
         ? {
             pokemonName: this.getCurrentPendingMoveLearning()?.pokemonName ?? "",
@@ -698,6 +757,32 @@ export class BattleScene extends Phaser.Scene {
     this.helpKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.H);
   }
 
+  private setBattleUiSceneMarker(active: boolean): void {
+    const gameRoot = this.game.canvas.parentElement;
+
+    if (!gameRoot) {
+      return;
+    }
+
+    const gamePage = gameRoot.closest<HTMLElement>("[data-testid='poke-lounge-page']");
+
+    if (active) {
+      gameRoot.dataset.pokeLoungeActiveScene = "battle";
+      if (gamePage) {
+        gamePage.dataset.pokeLoungeActiveScene = "battle";
+      }
+      return;
+    }
+
+    if (gameRoot.dataset.pokeLoungeActiveScene === "battle") {
+      delete gameRoot.dataset.pokeLoungeActiveScene;
+    }
+
+    if (gamePage?.dataset.pokeLoungeActiveScene === "battle") {
+      delete gamePage.dataset.pokeLoungeActiveScene;
+    }
+  }
+
   private bindPointerConfirm(): void {
     this.input.off("pointerdown", this.handlePointerConfirm, this);
     this.input.on("pointerdown", this.handlePointerConfirm, this);
@@ -740,6 +825,33 @@ export class BattleScene extends Phaser.Scene {
 
         this.selectedMoveIndex = moveIndex;
       }
+    }
+
+    if (this.state.phase === "party-select" && this.state.messageQueue.length === 0) {
+      const partySlotIndex = getBattlePartySlotIndexAtPoint(battlePoint, BATTLE_LAYOUT.partyWindow);
+
+      if (partySlotIndex === null) {
+        return;
+      }
+
+      this.selectedPartySlotIndex = partySlotIndex;
+      const slot = this.getBattlePartySlotViews()[partySlotIndex];
+
+      if (!slot?.canSwitch) {
+        playBattleCancelSound();
+
+        if (this.authoritativeProjection && this.authoritativeOwnPlayerId) {
+          this.render();
+          return;
+        }
+
+        this.confirmSelection();
+        return;
+      }
+
+      playBattleConfirmSound();
+      this.confirmSelection();
+      return;
     }
 
     playBattleConfirmSound();
@@ -858,7 +970,10 @@ export class BattleScene extends Phaser.Scene {
       const nextState = chooseBattleCommand(this.state, command);
 
       if (command === "pokemon") {
-        this.selectedPartySlotIndex = this.state.player.activePartySlotIndex;
+        this.selectedPartySlotIndex = getFirstSwitchableBattlePartySlotIndex(
+          this.state.player.party,
+          this.state.player.activePartySlotIndex,
+        );
       }
 
       if (command === "bag") {
@@ -925,7 +1040,10 @@ export class BattleScene extends Phaser.Scene {
       if (command === "fight") {
         this.state = { ...this.state, phase: "move-select" };
       } else if (command === "pokemon") {
-        this.selectedPartySlotIndex = this.state.player.activePartySlotIndex;
+        this.selectedPartySlotIndex = getFirstSwitchableBattlePartySlotIndex(
+          this.state.player.party,
+          this.state.player.activePartySlotIndex,
+        );
         this.state = { ...this.state, phase: "party-select" };
       } else {
         this.state = {
@@ -960,6 +1078,12 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     if (!isLegalAuthoritativeAction(projection, ownPlayerId, action)) {
+      if (action.kind === "switch") {
+        playBattleCancelSound();
+        this.render();
+        return;
+      }
+
       this.state = {
         ...this.state,
         phase: "command",
@@ -1049,13 +1173,10 @@ export class BattleScene extends Phaser.Scene {
       isForcedPartySwitch(nextState) && !isForcedPartySwitch(this.state);
 
     if (isEnteringForcedPartySwitch) {
-      this.selectedPartySlotIndex =
-        nextState.player.party.find(
-          slot =>
-            slot.slotIndex !== nextState.player.activePartySlotIndex &&
-            slot.pokemon !== null &&
-            canPokemonBattle(slot.pokemon),
-        )?.slotIndex ?? nextState.player.activePartySlotIndex;
+      this.selectedPartySlotIndex = getFirstSwitchableBattlePartySlotIndex(
+        nextState.player.party,
+        nextState.player.activePartySlotIndex,
+      );
     }
 
     this.state = nextState;
@@ -1703,14 +1824,29 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (consumeVirtualGamepadPress("left") || Phaser.Input.Keyboard.JustDown(this.cursors.left)) {
+      this.movePartySelection("left");
+    }
+    if (consumeVirtualGamepadPress("right") || Phaser.Input.Keyboard.JustDown(this.cursors.right)) {
+      this.movePartySelection("right");
+    }
     if (consumeVirtualGamepadPress("up") || Phaser.Input.Keyboard.JustDown(this.cursors.up)) {
-      this.selectedPartySlotIndex = Math.max(0, this.selectedPartySlotIndex - 1);
-      this.render();
+      this.movePartySelection("up");
     }
     if (consumeVirtualGamepadPress("down") || Phaser.Input.Keyboard.JustDown(this.cursors.down)) {
-      this.selectedPartySlotIndex = Math.min(5, this.selectedPartySlotIndex + 1);
-      this.render();
+      this.movePartySelection("down");
     }
+  }
+
+  private movePartySelection(direction: "up" | "down" | "left" | "right"): void {
+    const nextIndex = moveBattlePartySelection(this.selectedPartySlotIndex, direction);
+
+    if (nextIndex === this.selectedPartySlotIndex) {
+      return;
+    }
+
+    this.selectedPartySlotIndex = nextIndex;
+    this.render();
   }
 
   private updateBagSelection(): void {
@@ -2245,25 +2381,206 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private drawPartySelectWindow(): void {
-    const rect = BATTLE_LAYOUT.moveWindow;
-    this.drawRomWindow(rect, { radius: 0, includeFrameMarker: true });
+    const panel = BATTLE_LAYOUT.partyWindow;
+    const graphics = this.add.graphics();
 
-    Array.from({ length: 6 }, (_, slotIndex) => {
-      const slot = this.state.player.party.find(candidate => candidate.slotIndex === slotIndex);
-      const pokemon = slot?.pokemon;
-      const label = pokemon
-        ? `${pokemon.name} Lv.${pokemon.level} HP ${pokemon.currentHp}/${pokemon.maxHp}`
-        : "-";
+    graphics
+      .fillStyle(BATTLE_SCENE_WINDOW_STYLE.border, 0.68)
+      .fillRect(panel.x, panel.y, panel.width, panel.height)
+      .lineStyle(1, BATTLE_SCENE_WINDOW_STYLE.highlight, 0.54)
+      .strokeRect(panel.x + 1, panel.y + 1, panel.width - 2, panel.height - 2);
 
-      this.add.text(
-        rect.x + 10,
-        rect.y + 4 + slotIndex * 7,
-        `${slotIndex === this.selectedPartySlotIndex ? "▶" : " "} ${label}`,
+    this.add.text(
+      panel.x + 6,
+      panel.y + 3,
+      "교체할 포켓몬 선택",
+      createGameTextStyle({
+        color: "#f8fbf0",
+        fontSize: "6px",
+      }),
+    );
+    this.add
+      .text(
+        panel.x + panel.width - 6,
+        panel.y + 3,
+        isForcedPartySwitch(this.state) ? "필수 교체" : "B 돌아가기",
         createGameTextStyle({
-          color: "#17201a",
-          fontSize: "7px",
+          color: isForcedPartySwitch(this.state) ? "#fff4a3" : "#f8fbf0",
+          fontSize: "5px",
+        }),
+      )
+      .setOrigin(1, 0);
+
+    this.getBattlePartySlotViews().forEach(slot => this.drawBattlePartySlot(slot));
+  }
+
+  private drawBattlePartySlot(slot: BattlePartySlotView): void {
+    const graphics = this.add.graphics();
+    const fillColor = slot.isSelected
+      ? BATTLE_SCENE_WINDOW_STYLE.selectionFill
+      : BATTLE_SCENE_WINDOW_STYLE.fill;
+    const borderColor =
+      slot.isCurrent && !slot.isSelected
+        ? BATTLE_SCENE_WINDOW_STYLE.activeBorder
+        : BATTLE_SCENE_WINDOW_STYLE.border;
+    const fillAlpha = slot.isEmpty || slot.isFainted ? 0.7 : 0.98;
+
+    graphics
+      .fillStyle(BATTLE_SCENE_WINDOW_STYLE.shadow, slot.isSelected ? 0.64 : 0.4)
+      .fillRect(slot.rect.x + 1, slot.rect.y + 1, slot.rect.width, slot.rect.height)
+      .fillStyle(fillColor, fillAlpha)
+      .fillRect(slot.rect.x, slot.rect.y, slot.rect.width, slot.rect.height)
+      .lineStyle(1, BATTLE_SCENE_WINDOW_STYLE.highlight, 0.92)
+      .strokeRect(slot.rect.x + 1, slot.rect.y + 1, slot.rect.width - 2, slot.rect.height - 2)
+      .lineStyle(slot.isSelected ? 2 : 1, borderColor, 1)
+      .strokeRect(slot.rect.x + 2, slot.rect.y + 2, slot.rect.width - 4, slot.rect.height - 4);
+
+    if (slot.isSelected) {
+      graphics
+        .fillStyle(BATTLE_SCENE_WINDOW_STYLE.hpGood, 1)
+        .fillRect(slot.rect.x + 3, slot.rect.y + 3, 2, slot.rect.height - 6);
+    }
+
+    if (!slot.pokemon) {
+      this.add.text(
+        slot.rect.x + 20,
+        slot.rect.y + 5,
+        "-  빈 슬롯",
+        createGameTextStyle({
+          color: "#607d6c",
+          fontSize: "5px",
         }),
       );
+      return;
+    }
+
+    this.drawBattlePartyPokemonSprite(slot);
+
+    const textColor = slot.isFainted ? "#607d6c" : "#17201a";
+    this.add.text(
+      slot.rect.x + 19,
+      slot.rect.y + 2,
+      slot.displayName,
+      createGameTextStyle({
+        color: textColor,
+        fontSize: "5px",
+      }),
+    );
+    this.add
+      .text(
+        slot.rect.x + slot.rect.width - 4,
+        slot.rect.y + 2,
+        `Lv.${slot.pokemon.level}`,
+        createGameTextStyle({
+          color: textColor,
+          fontSize: "4px",
+        }),
+      )
+      .setOrigin(1, 0);
+
+    const hpBarX = slot.rect.x + 27;
+    const hpBarY = slot.rect.y + 13;
+    const hpBarWidth = 20;
+    graphics
+      .fillStyle(BATTLE_SCENE_WINDOW_STYLE.hpBack, 1)
+      .fillRect(hpBarX, hpBarY, hpBarWidth, 2)
+      .fillStyle(BATTLE_SCENE_WINDOW_STYLE.hpGood, 1)
+      .fillRect(hpBarX, hpBarY, Math.round(hpBarWidth * slot.hpRatio), 2);
+    this.add.text(
+      slot.rect.x + 19,
+      slot.rect.y + 10,
+      "HP",
+      createGameTextStyle({
+        color: textColor,
+        fontSize: "4px",
+      }),
+    );
+
+    if (slot.statusLabel) {
+      this.drawBattlePartyStatusLabel(slot);
+    }
+
+    this.add
+      .text(
+        slot.rect.x + slot.rect.width - 4,
+        slot.rect.y + 10,
+        `${slot.pokemon.currentHp}/${slot.pokemon.maxHp}`,
+        createGameTextStyle({
+          color: textColor,
+          fontSize: "4px",
+        }),
+      )
+      .setOrigin(1, 0);
+  }
+
+  private drawBattlePartyPokemonSprite(slot: BattlePartySlotView): void {
+    if (!slot.pokemon) {
+      return;
+    }
+
+    const sprite = slot.pokemon.frontSprite;
+    const renderBox = getVisibleBoundsContainedBattleSpriteRenderBox(
+      {
+        x: slot.rect.x + 3,
+        y: slot.rect.y + 2,
+        width: 14,
+        height: 14,
+      },
+      this.resolveBattleSpriteVisibleBounds(sprite),
+    );
+    const image = this.add
+      .image(renderBox.x, renderBox.y, sprite.assetKey, sprite.frame)
+      .setCrop(
+        BATTLE_SPRITE_CROP.x,
+        BATTLE_SPRITE_CROP.y,
+        BATTLE_SPRITE_CROP.width,
+        BATTLE_SPRITE_CROP.height,
+      )
+      .setDisplaySize(renderBox.width, renderBox.height)
+      .setAlpha(slot.isFainted ? 0.34 : slot.isCurrent ? 0.78 : 1);
+
+    if (slot.isFainted) {
+      image.setTint(0x7a827c);
+    }
+  }
+
+  private drawBattlePartyStatusLabel(slot: BattlePartySlotView): void {
+    if (!slot.pokemon || !slot.statusLabel) {
+      return;
+    }
+
+    const statusBadge = getBattleStatusBadgeView(slot.isFainted ? "fainted" : slot.pokemon.status);
+    const isCurrentLabel = slot.isCurrent && !statusBadge;
+    const compactLabel = slot.isFainted ? "기절" : isCurrentLabel ? "출전" : slot.statusLabel;
+    const fillColor = isCurrentLabel
+      ? BATTLE_SCENE_WINDOW_STYLE.activeBorder
+      : (statusBadge?.fillColor ?? BATTLE_SCENE_WINDOW_STYLE.border);
+    const textColor = isCurrentLabel ? "#f8fbf0" : (statusBadge?.textColor ?? "#f8fbf0");
+    const badgeWidth = Math.min(12, Math.max(8, compactLabel.length * 4 + 4));
+    const badgeX = slot.rect.x + 18 - badgeWidth;
+    const badgeY = slot.rect.y + 10;
+
+    this.add.graphics().fillStyle(fillColor, 1).fillRect(badgeX, badgeY, badgeWidth, 6);
+    this.add
+      .text(
+        badgeX + badgeWidth / 2,
+        badgeY,
+        compactLabel,
+        createGameTextStyle({
+          align: "center",
+          color: textColor,
+          fontSize: "4px",
+        }),
+      )
+      .setOrigin(0.5, 0);
+  }
+
+  private getBattlePartySlotViews(): BattlePartySlotView[] {
+    return createBattlePartySlotViews({
+      activePartySlotIndex: this.state.player.activePartySlotIndex,
+      panel: BATTLE_LAYOUT.partyWindow,
+      party: this.state.player.party,
+      selectedPartySlotIndex: this.selectedPartySlotIndex,
     });
   }
 

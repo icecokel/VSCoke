@@ -673,7 +673,11 @@ test.describe("Poke Lounge server multiplayer", () => {
     await page.waitForTimeout(300);
 
     expect(server.competitiveActionBodies).toEqual([]);
-    expect((await getBattleSnapshot(page))?.message).toBe("선택한 행동을 사용할 수 없습니다.");
+    expect(await getBattleSnapshot(page)).toMatchObject({
+      phase: "party-select",
+      message: null,
+      selectedPartySlotIndex: 0,
+    });
   });
 
   test("reconnect projection의 submittedPlayerIds는 자신의 waiting 상태를 복원한다", async ({

@@ -33,4 +33,6 @@ export const ROM_BATTLE_WINDOW_STYLE = {
   highlight: 0xffffff,
   hpBack: 0x2b3742,
   hpGood: 0x43b65c,
+  selectionFill: 0xfff4a3,
+  activeBorder: 0x355c7d,
 } as const;

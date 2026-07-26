@@ -38,6 +38,7 @@ import {
   getBattleOptionIndexAtPoint,
   resolveBattleOptionSlotRects,
 } from "../../src/components/poke-lounge/runtime/game/battle/battleLayout";
+import { BATTLE_BASE_SIZE } from "../../src/components/poke-lounge/runtime/game/gameViewport";
 import { PLAYER_PARTY_SLOT_COUNT } from "../../src/components/poke-lounge/runtime/game/player/playerTypes";
 import {
   createDefaultRoundState,
@@ -79,10 +80,28 @@ interface PokeLoungeBattleSnapshot {
     | "bag-select"
     | "resolving"
     | "ended";
+  turn: number;
   message: string | null;
   messageQueue: string[];
+  selectedCommandIndex: number;
   selectedCommand: "fight" | "bag" | "pokemon" | "run";
   selectedCommandLabel: string;
+  selectedPartySlotIndex: number;
+  isForcedPartySwitch: boolean;
+  partySlots: Array<{
+    slotIndex: number;
+    rect: { x: number; y: number; width: number; height: number };
+    name: string | null;
+    level: number | null;
+    currentHp: number | null;
+    maxHp: number | null;
+    status: string | null;
+    isSelected: boolean;
+    isCurrent: boolean;
+    isFainted: boolean;
+    isEmpty: boolean;
+    canSwitch: boolean;
+  }>;
   result: {
     winnerPlayerId: string;
     loserPlayerId: string;
@@ -105,6 +124,7 @@ interface PokeLoungeBattleSnapshot {
     hitAnimationStartedCount: number;
     status: string;
     statusBadgeLabel: string | null;
+    activePartySlotIndex: number;
     moves: Array<{ id: number; name: string }>;
   };
   moveReplacement: {
@@ -215,6 +235,18 @@ interface PokeLoungeE2eController {
   confirmBattle(): PokeLoungeBattleSnapshot | null;
   drainBattleMessages(maxMessages?: number): PokeLoungeBattleSnapshot | null;
   getWorldSnapshot(): PokeLoungeWorldSnapshot | null;
+  startWildBattleForTest(input: {
+    encounter: {
+      mapKey: string;
+      step: { from: { x: number; y: number }; to: { x: number; y: number } };
+      speciesId: number;
+      name: string;
+      level: number;
+    };
+    x: number;
+    y: number;
+    facing: "front" | "back" | "left" | "right";
+  }): PokeLoungeWorldSnapshot | null;
   openPcBoxForTest(): PokeLoungeWorldSnapshot | null;
   movePcBoxSelectionForTest(delta: number): PokeLoungeWorldSnapshot | null;
   togglePcBoxFocusForTest(): PokeLoungeWorldSnapshot | null;
@@ -2198,6 +2230,187 @@ test.describe("Poke Lounge", () => {
     expect(snapshot?.selectedCommand).toBe("fight");
     expect(snapshot?.selectedCommandLabel).toBe("싸운다");
     expect(snapshot?.phase).toBe("move-select");
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("HGSS 파티 트레이는 3x2 키 이동과 슬롯 직접 클릭 교체를 지원한다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await startSoloGame(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
+    await waitForInitialWorldShortcutGuideIfAny(page);
+    await closeWorldShortcutGuideIfOpen(page);
+
+    await page.evaluate(() => {
+      const pokeWindow = window as PokeLoungeWindow;
+      const controller = pokeWindow.__POKE_LOUNGE_E2E__;
+      const state = controller?.getGameStateSnapshot();
+
+      if (!controller || !state) {
+        throw new Error("Poke Lounge E2E controller is unavailable.");
+      }
+
+      const currentPlayer = state.playersById[state.currentPlayerId];
+      const starter = currentPlayer.party.find(slot => slot.pokemon)?.pokemon;
+
+      if (!starter) {
+        throw new Error("Starter Pokemon is unavailable.");
+      }
+
+      const createPokemon = (
+        speciesId: number,
+        name: string,
+        level: number,
+        currentHp: number,
+        maxHp: number,
+        status: string,
+      ) => ({ ...starter, speciesId, name, level, currentHp, maxHp, status });
+
+      controller.setCurrentLocalPlayerForTest({
+        ...currentPlayer,
+        activePartySlotIndex: 0,
+        guide: { shortcutGuideViewed: true },
+        party: [
+          { slotIndex: 0, pokemon: createPokemon(152, "치코리타", 18, 45, 45, "normal") },
+          { slotIndex: 1, pokemon: createPokemon(155, "브케인", 16, 21, 43, "normal") },
+          { slotIndex: 2, pokemon: createPokemon(158, "리아코", 17, 0, 47, "fainted") },
+          { slotIndex: 3, pokemon: createPokemon(25, "피카츄", 22, 19, 52, "poisoned") },
+          { slotIndex: 4, pokemon: createPokemon(133, "이브이", 20, 55, 55, "normal") },
+          { slotIndex: 5, pokemon: null },
+        ],
+      });
+      controller.startWildBattleForTest({
+        encounter: {
+          mapKey: "town",
+          step: { from: { x: 0, y: 0 }, to: { x: 1, y: 0 } },
+          speciesId: 19,
+          name: "꼬렛",
+          level: 5,
+        },
+        x: 656,
+        y: 1150,
+        facing: "front",
+      });
+    });
+
+    await expectActiveScene(page, "battle");
+    await expect
+      .poll(() => getBattleSnapshot(page).then(snapshot => snapshot?.battleEntrancePlaying ?? true))
+      .toBe(false);
+    await page.evaluate(() => {
+      const controller = (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__;
+      controller?.drainBattleMessages();
+      controller?.setBattleCommand("pokemon");
+      controller?.confirmBattle();
+    });
+
+    let snapshot = await getBattleSnapshot(page);
+    expect(snapshot?.phase).toBe("party-select");
+    expect(snapshot?.partySlots).toHaveLength(6);
+    expect(
+      snapshot?.partySlots.map(slot => [slot.isCurrent, slot.isFainted, slot.isEmpty]),
+    ).toEqual([
+      [true, false, false],
+      [false, false, false],
+      [false, true, false],
+      [false, false, false],
+      [false, false, false],
+      [false, false, true],
+    ]);
+
+    const canvas = page.locator("#game-root canvas");
+    const canvasBox = await canvas.boundingBox();
+
+    if (!canvasBox) {
+      throw new Error("Poke Lounge canvas is unavailable.");
+    }
+
+    const settingsButtonBox = await page
+      .locator("[data-poke-lounge-desktop-settings-toggle='true']")
+      .boundingBox();
+
+    if (!settingsButtonBox) {
+      throw new Error("Poke Lounge desktop settings button is unavailable.");
+    }
+
+    const partyPanelTop =
+      canvasBox.y + (BATTLE_LAYOUT.partyWindow.y / BATTLE_BASE_SIZE.height) * canvasBox.height;
+    expect(settingsButtonBox.y + settingsButtonBox.height).toBeLessThan(partyPanelTop);
+    await expect(page.locator("[data-poke-lounge-save-status='local']")).toBeHidden();
+
+    await canvas.click({
+      position: {
+        x: (128 / BATTLE_BASE_SIZE.width) * canvasBox.width,
+        y: (120 / BATTLE_BASE_SIZE.height) * canvasBox.height,
+      },
+    });
+    snapshot = await getBattleSnapshot(page);
+    expect(snapshot?.phase).toBe("party-select");
+    expect(snapshot?.message).toBeNull();
+    expect(snapshot?.selectedPartySlotIndex).toBe(1);
+
+    await canvas.focus();
+    await page.keyboard.press("ArrowRight", { delay: 80 });
+    await expect
+      .poll(() => getBattleSnapshot(page).then(value => value?.selectedPartySlotIndex ?? null))
+      .toBe(2);
+    await page.keyboard.press("ArrowDown", { delay: 80 });
+    await expect
+      .poll(() => getBattleSnapshot(page).then(value => value?.selectedPartySlotIndex ?? null))
+      .toBe(5);
+    await page.keyboard.press("Backspace", { delay: 80 });
+    await expect
+      .poll(() => getBattleSnapshot(page).then(value => value?.phase ?? null))
+      .toBe("command");
+
+    await page.evaluate(() => {
+      const controller = (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__;
+      controller?.setBattleCommand("pokemon");
+      controller?.confirmBattle();
+    });
+    snapshot = await getBattleSnapshot(page);
+    const faintedSlot = snapshot?.partySlots[2];
+
+    if (!faintedSlot) {
+      throw new Error("Fainted party slot is unavailable.");
+    }
+
+    await canvas.click({
+      position: {
+        x:
+          ((faintedSlot.rect.x + faintedSlot.rect.width / 2) / BATTLE_BASE_SIZE.width) *
+          canvasBox.width,
+        y:
+          ((faintedSlot.rect.y + faintedSlot.rect.height / 2) / BATTLE_BASE_SIZE.height) *
+          canvasBox.height,
+      },
+    });
+    snapshot = await getBattleSnapshot(page);
+    expect(snapshot?.message).toBe("쓰러진 포켓몬은 나올 수 없다.");
+    expect(snapshot?.player.activePartySlotIndex).toBe(0);
+
+    await page.evaluate(() => {
+      (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__?.drainBattleMessages();
+    });
+    snapshot = await getBattleSnapshot(page);
+    const healthySlot = snapshot?.partySlots[1];
+
+    if (!healthySlot) {
+      throw new Error("Healthy party slot is unavailable.");
+    }
+
+    await canvas.click({
+      position: {
+        x:
+          ((healthySlot.rect.x + healthySlot.rect.width / 2) / BATTLE_BASE_SIZE.width) *
+          canvasBox.width,
+        y:
+          ((healthySlot.rect.y + healthySlot.rect.height / 2) / BATTLE_BASE_SIZE.height) *
+          canvasBox.height,
+      },
+    });
+    snapshot = await getBattleSnapshot(page);
+    expect(snapshot?.player.activePartySlotIndex).toBe(1);
+    expect(snapshot?.player.name).toBe("브케인");
     expect(browserErrors.join("\n")).toBe("");
   });
 

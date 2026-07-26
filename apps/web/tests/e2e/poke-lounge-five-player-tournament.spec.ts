@@ -1933,7 +1933,7 @@ async function driveAuthoritativeTouchAction(
       return;
     }
     if (snapshot.phase === "party-select") {
-      await moveLinearSelection(page, snapshot.selectedPartySlotIndex, authority.nextAliveSlot);
+      await movePartyGridSelection(page, snapshot.selectedPartySlotIndex, authority.nextAliveSlot);
       await tapMobileControl(page, "confirm");
     }
     return;
@@ -1970,10 +1970,24 @@ async function moveCommandSelection(page: Page, from: number, to: number): Promi
   }
 }
 
-async function moveLinearSelection(page: Page, from: number, to: number): Promise<void> {
-  const direction = from < to ? "down" : "up";
-  for (let index = 0; index < Math.abs(to - from); index += 1) {
-    await tapMobileControl(page, direction);
+async function movePartyGridSelection(page: Page, from: number, to: number): Promise<void> {
+  let current = from;
+
+  while (Math.floor(current / 3) > Math.floor(to / 3)) {
+    await tapMobileControl(page, "up");
+    current -= 3;
+  }
+  while (Math.floor(current / 3) < Math.floor(to / 3)) {
+    await tapMobileControl(page, "down");
+    current += 3;
+  }
+  while (current % 3 > to % 3) {
+    await tapMobileControl(page, "left");
+    current -= 1;
+  }
+  while (current % 3 < to % 3) {
+    await tapMobileControl(page, "right");
+    current += 1;
   }
 }
 

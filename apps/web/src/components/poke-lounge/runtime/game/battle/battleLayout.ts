@@ -20,6 +20,7 @@ export const BATTLE_LAYOUT = {
   bottomWindow: { x: 0, y: 144, width: 256, height: 48 },
   commandWindow: { x: 0, y: 144, width: 256, height: 48 },
   moveWindow: { x: 0, y: 144, width: 256, height: 48 },
+  partyWindow: { x: 0, y: 138, width: 256, height: 54 },
 } as const;
 
 export const BATTLE_OPTION_GRID = {

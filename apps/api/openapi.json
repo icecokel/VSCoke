@@ -1545,14 +1545,7 @@
             "nullable": true
           }
         },
-        "required": [
-          "id",
-          "userId",
-          "state",
-          "revision",
-          "createdAt",
-          "updatedAt"
-        ]
+        "required": ["id", "userId", "state", "revision", "createdAt", "updatedAt"]
       },
       "GameRankingHistoryDto": {
         "type": "object",
@@ -1737,12 +1730,7 @@
             }
           }
         },
-        "required": [
-          "winnerPlayerId",
-          "loserPlayerId",
-          "reason",
-          "scoreByPlayerId"
-        ]
+        "required": ["winnerPlayerId", "loserPlayerId", "reason", "scoreByPlayerId"]
       },
       "CompetitiveBattleStateDto": {
         "type": "object",
@@ -1779,13 +1767,7 @@
             ]
           }
         },
-        "required": [
-          "rulesetVersion",
-          "turn",
-          "participantIds",
-          "playersById",
-          "terminal"
-        ]
+        "required": ["rulesetVersion", "turn", "participantIds", "playersById", "terminal"]
       },
       "CompetitiveActionResponseDto": {
         "type": "object",
@@ -1923,14 +1905,7 @@
             "example": 1720000005000
           }
         },
-        "required": [
-          "playerId",
-          "displayName",
-          "role",
-          "ready",
-          "connected",
-          "joinedAtMs"
-        ]
+        "required": ["playerId", "displayName", "role", "ready", "connected", "joinedAtMs"]
       },
       "PokeLoungeRoundDto": {
         "type": "object",
@@ -2145,14 +2120,7 @@
             "example": 1
           }
         },
-        "required": [
-          "playerId",
-          "displayName",
-          "seed",
-          "roundNumber",
-          "matchId",
-          "order"
-        ]
+        "required": ["playerId", "displayName", "seed", "roundNumber", "matchId", "order"]
       },
       "PokeLoungeTournamentBracketDto": {
         "type": "object",
@@ -2291,13 +2259,7 @@
           },
           "status": {
             "type": "string",
-            "enum": [
-              "waiting",
-              "round-started",
-              "tournament",
-              "completed",
-              "closed"
-            ],
+            "enum": ["waiting", "round-started", "tournament", "completed", "closed"],
             "example": "waiting"
           },
           "closeReason": {
@@ -2381,10 +2343,7 @@
           },
           "code": {
             "type": "string",
-            "enum": [
-              "POKE_LOUNGE_REVISION_CONFLICT",
-              "POKE_LOUNGE_IDEMPOTENCY_CONFLICT"
-            ]
+            "enum": ["POKE_LOUNGE_REVISION_CONFLICT", "POKE_LOUNGE_IDEMPOTENCY_CONFLICT"]
           },
           "message": {
             "type": "string",
@@ -2717,15 +2676,7 @@
             "example": "2026-06-16T12:00:00.000Z"
           }
         },
-        "required": [
-          "id",
-          "name",
-          "tags",
-          "ingredients",
-          "recipe",
-          "createdAt",
-          "updatedAt"
-        ]
+        "required": ["id", "name", "tags", "ingredients", "recipe", "createdAt", "updatedAt"]
       },
       "ResumeRagChatRequestDto": {
         "type": "object",
@@ -2775,13 +2726,7 @@
             "type": "number"
           }
         },
-        "required": [
-          "title",
-          "sourcePath",
-          "sourceKey",
-          "excerpt",
-          "similarity"
-        ]
+        "required": ["title", "sourcePath", "sourceKey", "excerpt", "similarity"]
       },
       "ResumeRagChatResponseDto": {
         "type": "object",

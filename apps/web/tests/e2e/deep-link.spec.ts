@@ -80,7 +80,9 @@ test.describe("딥링크 직접 진입", () => {
 
     await gotoWithRetry(page, `/${locale}/resume/translate`);
     await expect(
-      page.getByText("3명이 하루 1~2개 작품을 처리하던 번역 업무", { exact: false }),
+      page.getByText("재직 중 약 3개월 동안 3~4명의 운영자가 사용했습니다.", {
+        exact: false,
+      }),
     ).toBeVisible();
     await expect(
       page.getByText("키워드를 10개 단위로 묶어 병렬 검색", { exact: false }),
@@ -94,7 +96,7 @@ test.describe("딥링크 직접 진입", () => {
       page.getByText("프로토타입으로 시연한 게임 흐름이 실제 기능으로 채택", { exact: false }),
     ).toBeVisible();
     await expect(
-      page.getByText("주간 랭킹 기준 매주 약 2,500~3,000명", { exact: false }),
+      page.getByText("주간 고유 이용자 2,000~3,000명을 확인했습니다.", { exact: false }),
     ).toBeVisible();
   });
 });

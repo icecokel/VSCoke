@@ -10,6 +10,7 @@ import type {
   TdHTMLAttributes,
   ThHTMLAttributes,
 } from "react";
+import { PhotoIcon } from "@heroicons/react/24/outline";
 import BaseText from "@/components/base-ui/text";
 import { PreBlock } from "@/components/blog/pre-block";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,10 @@ interface PostImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, "alt"
   alt: string;
   src: string;
 }
+
+export const isLegacyBlogImageUrl = (src: string): boolean => {
+  return src.startsWith("https://blog.kakaocdn.net/");
+};
 
 export const PostHeading1 = ({ children }: PostElementProps) => (
   <BaseText type="h3" className="mt-8 mb-4 text-yellow-200">
@@ -135,18 +140,38 @@ export const PostEmphasis = ({ children }: PostElementProps) => (
   <em className="italic">{children}</em>
 );
 
-export const PostImage = ({ alt, className, src, ...props }: PostImageProps) => (
-  // 기존 블로그 원격 이미지는 크기 정보가 없어 이 경계에서만 native img를 유지한다.
-  // eslint-disable-next-line @next/next/no-img-element
-  <img
-    alt={alt}
-    className={cn("my-6 h-auto max-w-full rounded-lg", className)}
-    decoding="async"
-    loading="lazy"
-    src={src}
-    {...props}
-  />
+const PostLegacyImageNotice = ({ alt }: Pick<PostImageProps, "alt">) => (
+  <div className="my-6 flex items-start gap-3 rounded-lg border border-gray-700 bg-gray-800/70 p-4 text-gray-200">
+    <PhotoIcon aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-yellow-200" />
+    <div>
+      <p className="m-0 font-semibold text-white">이전 스크린샷 안내</p>
+      <p className="m-0 mt-1 text-sm leading-6">
+        원본 스크린샷은 만료된 외부 링크라 표시하지 않습니다. 본문의 명령과 설명을 기준으로 진행해
+        주세요.
+      </p>
+      {alt && <p className="m-0 mt-2 text-sm text-gray-400">설명: {alt}</p>}
+    </div>
+  </div>
 );
+
+export const PostImage = ({ alt, className, src, ...props }: PostImageProps) => {
+  if (isLegacyBlogImageUrl(src)) {
+    return <PostLegacyImageNotice alt={alt} />;
+  }
+
+  return (
+    // 기존 블로그 원격 이미지는 크기 정보가 없어 이 경계에서만 native img를 유지한다.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      alt={alt}
+      className={cn("my-6 h-auto max-w-full rounded-lg", className)}
+      decoding="async"
+      loading="lazy"
+      src={src}
+      {...props}
+    />
+  );
+};
 
 export const PostTable = ({
   children,

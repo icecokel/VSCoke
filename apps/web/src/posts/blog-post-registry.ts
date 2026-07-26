@@ -16,10 +16,10 @@ export const blogPostDefinitions = [
   {
     slug: "dev/centos8-mysql-install",
     category: "dev",
-    title: "CentOS8 에 MySQL 설치 및 세팅",
+    title: "CentOS 8 MySQL 설정 기록과 안전한 계정 생성",
     date: "2021-09-04",
     description:
-      "CentOS 8에 MySQL 8을 설치한 뒤 보안 설정, 데이터베이스 생성, 계정 권한 부여까지 한 번에 진행하는 과정을 정리합니다.",
+      "지원 종료된 CentOS 8 환경을 점검할 때 필요한 MySQL 상태 확인과 최소 권한 계정 생성 기준을 정리합니다.",
     tags: ["CentOS", "MySQL", "Linux", "Database", "Server"],
     readingTime: "5 min read",
     published: true,
@@ -208,9 +208,9 @@ export const blogPostDefinitions = [
     slug: "dev/react-nextjs-security-2025",
     category: "dev",
     title: "React&Next.js 보안 이슈: React2Shell 대응",
-    date: "2025-02-18",
+    date: "2025-12-11",
     description:
-      "최근 발견된 React/Next.js의 심각한 RCE 취약점(React2Shell)과 이에 대한 긴급 대응 방법, 그리고 Server Actions 보안 가이드를 정리합니다.",
+      "React Server Components 취약점 대응을 위해 영향을 확인하고 패치·검증하는 절차를 정리합니다.",
     tags: ["Security", "React", "Next.js", "CVE"],
     readingTime: "6 min read",
     published: true,
@@ -279,10 +279,10 @@ export const blogPostDefinitions = [
   {
     slug: "dev/typescript-express-setup",
     category: "dev",
-    title: "TypeSrcript를 사용하여 Express 세팅",
+    title: "TypeScript로 Express 서버 시작하기",
     date: "2021-08-22",
     description:
-      "TypeScript 기반 Express 서버를 처음 구성할 때 필요한 ts-node, nodemon, tsconfig 설정 흐름을 단계별로 정리합니다.",
+      "지원 중인 Node.js와 tsx를 기준으로 TypeScript Express 서버를 구성하는 방법을 정리합니다.",
     tags: ["TypeScript", "Express", "Node.js", "Backend", "Setup"],
     readingTime: "10 min read",
     published: true,

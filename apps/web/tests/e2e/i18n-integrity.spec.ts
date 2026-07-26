@@ -29,6 +29,7 @@ interface ResumeCopyMessages {
             descriptions: Array<{
               subtitle: string;
               detail?: string;
+              skills?: string;
               tasks?: string[];
             }>;
           };
@@ -179,6 +180,48 @@ test.describe("i18n 무결성", () => {
         -1,
       ),
     ).toContain("의료·임상 용어와 화면 동작");
+    expect(
+      koMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions[1]?.tasks?.some(
+        task => task.includes("접근성·회귀 검증"),
+      ),
+    ).toBe(true);
+    expect(
+      enMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions[1]?.tasks?.some(
+        task => task.includes("Accessibility and regression validation"),
+      ),
+    ).toBe(true);
+    expect(
+      jaMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions[1]?.tasks?.some(
+        task => task.includes("アクセシビリティと回帰検証"),
+      ),
+    ).toBe(true);
+    expect(
+      koMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions[1]?.tasks?.at(
+        -1,
+      ),
+    ).toContain("실행·미실행");
+    expect(
+      enMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions[1]?.tasks?.at(
+        -1,
+      ),
+    ).toContain("base/head diffs");
+    expect(
+      jaMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions[1]?.tasks?.at(
+        -1,
+      ),
+    ).toContain("実行・未実行");
+    expect(
+      koMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions[1]
+        ?.skills,
+    ).toContain("axe-core");
+    expect(
+      enMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions[1]
+        ?.skills,
+    ).toContain("axe-core");
+    expect(
+      jaMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions[1]
+        ?.skills,
+    ).toContain("axe-core");
 
     expect(koMessages.resume.careers.codecrayon.projects.commerceBackoffice.title).toBe(
       "셀렉터스 커머스와 관리자 프론트엔드",

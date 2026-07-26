@@ -487,12 +487,13 @@
               {
                 "subtitle": "마이그레이션과 팀의 실행·검증 기준",
                 "detail": "3명 프론트엔드 팀에서 약 6주간 공식 팀장을 맡아 일정·업무 배분·면담·코드 리뷰와 위험 구간 지원을 담당했습니다.",
-                "skills": "Next.js, React, TypeScript, Tailwind CSS, Radix UI, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Vitest, Playwright, Sharp, GitHub Actions, Husky, Docker, Bash",
+                "skills": "Next.js, React, TypeScript, Tailwind CSS, Radix UI, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Vitest, Playwright, axe-core, Sharp, GitHub Actions, Husky, Docker, Bash",
                 "tasks": [
                   "Portal 전환: Vite·React Router 기반 Portal을 Next.js App Router와 standalone Node 실행 구조로 옮기고, 다른 프론트엔드 프로젝트와 패키지·Docker 런타임·배포 스펙을 맞췄습니다. Portal의 기존 tar 배포 스크립트는 컨테이너 기동 여부에 더해 /healthz 응답까지 확인하게 했습니다.",
                   "Nexus FE 배포: Docker tar 생성·SFTP 전송·서버 load에 의존하던 배포를 self-hosted runner에서 실행하는 GitHub Actions로 전환했습니다. 환경별 Docker 이미지를 Git SHA로 빌드·교체하고, 새 컨테이너가 정해진 시간 안에 running 상태가 되지 않으면 직전 이미지를 다시 기동하게 했습니다.",
                   "변경 전파와 브라우저 검증: 출시 전 API 스키마·타입·파일명 전파 누락이 typecheck·test·build 오류로 드러나면 pre-commit과 pre-push에서 원격 반영 전에 중단했습니다. 별도 Playwright 시나리오로 Nexus TOP의 핵심 흐름을 Chrome·Edge·WebKit과 두 데스크톱 화면 크기에서 검증했습니다.",
-                  "팀의 개발 기준: AI 개발 보조 도구가 의료·임상 용어와 화면 동작을 임의로 해석하지 않도록 프로젝트별 콘셉트·에이전트 지침과 commit·PR 기준을 저장소에 남겼습니다. 다른 팀원이 자신의 작업에 맞게 보완해 재사용했습니다."
+                  "접근성·회귀 검증: Portal의 로그인·서비스 카드·세션 만료 모달에서 오류 연결, 시맨틱 구조, 포커스 격리·복원을 보완했습니다. axe·Playwright로 주요 상태를 검증하고, 변경 전후 8개 화면 상태를 RGBA로 비교해 기존 디자인이 바뀌지 않았음을 확인했습니다.",
+                  "팀의 개발 기준: AI 개발 보조 도구가 의료·임상 용어와 화면 동작을 임의로 해석하지 않도록 프로젝트별 콘셉트·에이전트 지침과 commit·PR 기준을 저장소에 남겼습니다. 세 프론트엔드 저장소의 PR 작성·리뷰 가이드에는 실제 base/head diff, 실행·미실행 검증, 읽기 전용 리뷰의 권한 경계를 명시했습니다. 기존 공용 기준은 다른 팀원이 자신의 작업에 맞게 보완해 재사용했습니다."
                 ]
               }
             ]
@@ -511,7 +512,7 @@
             "descriptions": [
               {
                 "subtitle": "셀렉터스 커머스와 관리자 프론트엔드",
-                "detail": "초기 멤버로 고객용 서비스와 운영자 도구를 함께 맡았습니다.",
+                "detail": "초기 멤버로 고객용 서비스와 운영팀이 직접 사용하는 도구를 함께 맡았습니다.",
                 "skills": "Next.js, React, TypeScript, MUI, Tailwind CSS, Jotai, SWR, React Hook Form, i18next, Toss Payments, PayPal, GA4, Google Tag Manager, Google Sheets API",
                 "tasks": [
                   "모바일 중심 UI: 고객용 웹을 PC에서도 모바일 싱글 컬럼과 상·하단 내비게이션을 사용하는 구조로 전환하고, 운영자 대시보드는 데스크톱 레이아웃으로 분리했습니다.",

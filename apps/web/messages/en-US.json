@@ -487,12 +487,13 @@
               {
                 "subtitle": "Migration and Team Execution/Validation Standards",
                 "detail": "I served as the formal lead of a three-person frontend team for about six weeks, handling schedules, task allocation, one-on-ones, code reviews, and support for high-risk areas.",
-                "skills": "Next.js, React, TypeScript, Tailwind CSS, Radix UI, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Vitest, Playwright, Sharp, GitHub Actions, Husky, Docker, Bash",
+                "skills": "Next.js, React, TypeScript, Tailwind CSS, Radix UI, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Vitest, Playwright, axe-core, Sharp, GitHub Actions, Husky, Docker, Bash",
                 "tasks": [
                   "Portal migration: I moved a Vite and React Router portal to Next.js App Router and a standalone Node runtime, aligning its packages, Docker runtime, and deployment specification with the other frontend projects. I also extended the portal's existing tar deployment script to verify the /healthz response in addition to container startup.",
                   "Nexus FE deployment: I replaced a deployment process based on Docker tar creation, SFTP transfer, and server-side load with GitHub Actions running on a self-hosted runner. Environment-specific Docker images are built and replaced by Git SHA, and the previous image is restarted if the new container does not reach running state within the allotted time.",
                   "Change propagation and browser validation: Before launch, missing API schema, type, or filename propagation was stopped before remote publication when typecheck, test, or build failed in pre-commit or pre-push. A separate Playwright scenario verified Nexus TOP's core flow in Chrome, Edge, and WebKit at two desktop viewport sizes.",
-                  "Team development standards: To prevent AI development assistants from arbitrarily interpreting medical and clinical terminology or screen behavior, I recorded project concepts, agent guidance, and commit and PR standards in the repository. Another teammate adapted and reused them for their own work."
+                  "Accessibility and regression validation: I improved error associations, semantic structure, and focus trapping and restoration for the Portal's login, service cards, and session-expiration modal. I validated key states with axe and Playwright, then compared eight before-and-after screen states in RGBA to confirm the existing design had not changed.",
+                  "Team development standards: To prevent AI development assistants from arbitrarily interpreting medical and clinical terminology or screen behavior, I recorded project concepts, agent guidance, and commit and PR standards in the repository. The PR authoring and review guide across the three frontend repositories specifies actual base/head diffs, validations that were and were not run, and permission boundaries for read-only reviews. Existing shared standards were adapted and reused by another teammate for their own work."
                 ]
               }
             ]

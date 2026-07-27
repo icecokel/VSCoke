@@ -17,6 +17,34 @@ type CanvasSnapshot = {
   clientHeight: number;
 };
 
+test("Poke Lounge 모바일 로딩이 멈춰도 게임 센터로 이탈할 수 있다", async ({ page }) => {
+  let releaseGameChunk: (() => void) | undefined;
+  const gameChunkGate = new Promise<void>(resolve => {
+    releaseGameChunk = resolve;
+  });
+  const gameChunkPattern =
+    "**/_next/static/chunks/_app-pages-browser_src_components_poke-lounge_poke-lounge-game_tsx.js";
+
+  await page.route(gameChunkPattern, async route => {
+    await gameChunkGate;
+    await route.continue().catch(() => {});
+  });
+
+  try {
+    await page.goto("/ko-KR/game/poke-lounge", { waitUntil: "commit" });
+
+    const exitButton = page.getByTestId("poke-lounge-loading-exit");
+    await expect(page.getByTestId("poke-lounge-loading-screen")).toBeVisible();
+    await expect(exitButton).toBeVisible();
+    await exitButton.click();
+    await expect(page).toHaveURL(/\/ko-KR\/game$/);
+    await expect(page.getByRole("heading", { name: "Game Center" })).toBeVisible();
+  } finally {
+    releaseGameChunk?.();
+    await page.unroute(gameChunkPattern);
+  }
+});
+
 test("Poke Lounge 모바일은 세로 필드와 전체 화면 메뉴를 제공한다", async ({ page }, testInfo) => {
   const probe = await readMobileEnvironment(page);
   await testInfo.attach("mobile-environment.json", {
@@ -156,6 +184,14 @@ test("Poke Lounge 모바일 전투는 하단 조작 도크에서 행동을 고�
     timeout: 30_000,
   });
   expect(await startMobileWildBattleForTest(page)).toBe(true);
+
+  const messageDeck = page.locator("[data-poke-lounge-mobile-deck='battle-message']");
+  const nextMessageButton = messageDeck.getByRole("button");
+  await expect(messageDeck).toBeVisible({ timeout: 30_000 });
+  await expect(nextMessageButton).toBeEnabled({ timeout: 30_000 });
+  await nextMessageButton.click();
+  await expect(nextMessageButton).toBeEnabled();
+  await nextMessageButton.click();
 
   const commandDeck = page.locator("[data-poke-lounge-mobile-deck='battle-command']");
   await expect(commandDeck).toBeVisible({ timeout: 30_000 });

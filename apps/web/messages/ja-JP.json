@@ -135,6 +135,7 @@
     "skyDropDesc": "落ちてくるブロックを合わせてスコアを獲得するパズルゲームです。",
     "fishDriftDesc": "ワンタッチの左右遊泳で海底の障害物を避け、魚の群れを集めるゲームです。",
     "pokeLoungeTitle": "ポケラウンジ",
+    "pokeLoungeLoading": "Poke Loungeを読み込んでいます...",
     "pokeLoungeDesc": "スターターを選び、ラウンジの世界とブラウザバトルを探索するファンゲームです。",
     "time": "時間: ",
     "share": "自慢する",

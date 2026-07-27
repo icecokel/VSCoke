@@ -7,6 +7,7 @@ export const POKE_LOUNGE_MOBILE_BATTLE_STATE_REQUEST_EVENT =
 
 export type MobileBattleDeckPhase = Extract<
   BattlePhase,
+  | "intro"
   | "command"
   | "move-select"
   | "move-replace-select"

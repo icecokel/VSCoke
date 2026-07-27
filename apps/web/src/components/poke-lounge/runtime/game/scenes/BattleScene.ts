@@ -950,6 +950,7 @@ export class BattleScene extends Phaser.Scene {
 
     const phase = this.state.phase;
     if (
+      phase !== "intro" &&
       phase !== "command" &&
       phase !== "move-select" &&
       phase !== "move-replace-select" &&

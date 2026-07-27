@@ -14,10 +14,12 @@ type PokeLoungeAudioManifestItem = PokeLoungeSfxManifestItem | PokeLoungeBgmMani
 
 let manifestPromise: Promise<PokeLoungeAudioManifest> | null = null;
 let audioContext: AudioContext | null = null;
+let masterGain: GainNode | null = null;
 let muted = false;
 let masterVolume = 1;
 const bufferPromises = new Map<PokeLoungeSfxId, Promise<AudioBuffer | null>>();
 const htmlAudioElements = new Map<PokeLoungeAudioItemId, HTMLAudioElement>();
+const htmlAudioGains = new WeakMap<HTMLAudioElement, GainNode>();
 let activeBgm: {
   id: PokeLoungeBgmId;
   audio: HTMLAudioElement;
@@ -112,6 +114,11 @@ export function setPokeLoungeAudioMuted(nextMuted: boolean): void {
 export function setPokeLoungeMasterVolume(nextVolume: number): void {
   masterVolume = clampVolume(nextVolume);
 
+  if (masterGain) {
+    masterGain.gain.value = masterVolume;
+    return;
+  }
+
   if (activeBgm) {
     activeBgm.audio.volume = resolveVolume(activeBgm.baseVolume, 1);
   }
@@ -162,7 +169,7 @@ async function playPokeLoungeBgmAsync(
   const audio = activeBgm?.id === id ? activeBgm.audio : getHtmlAudioElement(item);
   const baseVolume = options.volume ?? item.defaultVolume;
   audio.loop = true;
-  audio.volume = resolveVolume(baseVolume, 1);
+  setHtmlAudioElementVolume(audio, baseVolume);
 
   if (activeBgm?.id !== id) {
     audio.currentTime = 0;
@@ -221,10 +228,10 @@ async function playWithWebAudio(
 
   const source = context.createBufferSource();
   const gain = context.createGain();
-  gain.gain.value = resolveVolume(requestedVolume, item.defaultVolume);
+  gain.gain.value = clampVolume(requestedVolume ?? item.defaultVolume);
   source.buffer = buffer;
   source.connect(gain);
-  gain.connect(context.destination);
+  gain.connect(getMasterGain(context) ?? context.destination);
   source.start();
 
   return true;
@@ -271,8 +278,8 @@ async function playWithHtmlAudio(
   item: PokeLoungeSfxManifestItem,
   requestedVolume?: number,
 ): Promise<void> {
-  const audio = getHtmlAudioElement(item).cloneNode(true) as HTMLAudioElement;
-  audio.volume = resolveVolume(requestedVolume, item.defaultVolume);
+  const audio = createHtmlAudioElement(item);
+  setHtmlAudioElementVolume(audio, requestedVolume ?? item.defaultVolume);
   audio.currentTime = 0;
   await audio.play();
 }
@@ -283,12 +290,54 @@ function getHtmlAudioElement(item: PokeLoungeAudioManifestItem): HTMLAudioElemen
     return cached;
   }
 
-  const audio = new Audio(item.src);
-  audio.preload = "auto";
-  audio.volume = resolveVolume(undefined, item.defaultVolume);
+  const audio = createHtmlAudioElement(item);
   htmlAudioElements.set(item.id, audio);
 
   return audio;
+}
+
+function createHtmlAudioElement(item: PokeLoungeAudioManifestItem): HTMLAudioElement {
+  const audio = new Audio(item.src);
+  audio.preload = "auto";
+  setHtmlAudioElementVolume(audio, item.defaultVolume);
+
+  return audio;
+}
+
+function setHtmlAudioElementVolume(audio: HTMLAudioElement, baseVolume: number): void {
+  const gain = getHtmlAudioGain(audio);
+
+  if (gain) {
+    gain.gain.value = clampVolume(baseVolume);
+    audio.volume = 1;
+    return;
+  }
+
+  audio.volume = resolveVolume(baseVolume, 1);
+}
+
+function getHtmlAudioGain(audio: HTMLAudioElement): GainNode | null {
+  const cached = htmlAudioGains.get(audio);
+  if (cached) {
+    return cached;
+  }
+
+  const context = getAudioContext();
+  const gain = getMasterGain(context);
+  if (!context || !gain) {
+    return null;
+  }
+
+  try {
+    const audioGain = context.createGain();
+    context.createMediaElementSource(audio).connect(audioGain);
+    audioGain.connect(gain);
+    htmlAudioGains.set(audio, audioGain);
+
+    return audioGain;
+  } catch {
+    return null;
+  }
 }
 
 function getAudioContext(): AudioContext | null {
@@ -311,6 +360,20 @@ function getAudioContext(): AudioContext | null {
   audioContext = new AudioContextConstructor();
 
   return audioContext;
+}
+
+function getMasterGain(context = getAudioContext()): GainNode | null {
+  if (!context) {
+    return null;
+  }
+
+  if (!masterGain) {
+    masterGain = context.createGain();
+    masterGain.gain.value = masterVolume;
+    masterGain.connect(context.destination);
+  }
+
+  return masterGain;
 }
 
 function clampVolume(value: number): number {

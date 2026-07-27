@@ -326,6 +326,10 @@
     "sourceLabel": "Evidence",
     "evidenceLabel": "Resume evidence referenced",
     "groundedBadge": "Based on resume evidence",
+    "maintenance": {
+      "label": "Patching",
+      "message": "The resume chat feature is being patched. Please try again shortly."
+    },
     "readmeEntry": {
       "title": "Have a question while reading the README?",
       "description": "I will find resume evidence and prepare an answer.",

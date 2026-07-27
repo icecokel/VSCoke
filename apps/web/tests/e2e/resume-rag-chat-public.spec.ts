@@ -10,7 +10,7 @@ const typeTextareaValue = async (textarea: Locator, value: string) => {
 const getFailureAlert = (page: Page, title: string) =>
   page.getByRole("alert").filter({ hasText: title });
 
-test.describe("Resume RAG public chat", () => {
+test.describe.skip("Resume RAG public chat when enabled", () => {
   test("README에서 질문한 답변을 준비한 뒤 질문 페이지에서 바로 볼 수 있다", async ({ page }) => {
     await page.route(`${apiBaseUrl}/resume-rag/chat`, async route => {
       const request = route.request();

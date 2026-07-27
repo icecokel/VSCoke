@@ -787,11 +787,6 @@
   }
 }
 
-:global(.phaser-game-page:fullscreen) .shell,
-:global(.phaser-game-page.is-game-fullscreen-fallback) .shell {
-  display: none;
-}
-
 @media (max-width: 360px) {
   .topBar {
     padding-inline: 10px;

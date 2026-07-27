@@ -347,12 +347,6 @@ export function PokeLoungeGame() {
     setSettingsOpen(false);
   }, []);
 
-  const handleMobileSettingsFullscreenToggle = useCallback(() => {
-    resetVirtualGamepad();
-    setSettingsOpen(false);
-    handleFullscreenToggle();
-  }, [handleFullscreenToggle]);
-
   const handleVolumeCycle = useCallback(() => {
     setVolumeLevelIndex(currentIndex => (currentIndex + 1) % POKE_LOUNGE_VOLUME_STEPS.length);
   }, []);
@@ -1203,18 +1197,14 @@ export function PokeLoungeGame() {
         <MobileGameShell
           activeScene={activeGameScene}
           copy={copy}
-          fullscreenActive={fullscreenActive}
-          onFullscreenToggle={handleFullscreenToggle}
           onOpenSettings={handleMobileSettingsOpen}
           settings={{
             autosaveLabel,
             connectionLabel: multiplayerRoomId
               ? `${connectionLabel} · ${multiplayerRoomId}`
               : connectionLabel,
-            fullscreenActive,
             localRoomShare,
             onClose: handleMobileSettingsClose,
-            onFullscreenToggle: handleMobileSettingsFullscreenToggle,
             onRetryRanking: () => setRankingAttempt(attempt => attempt + 1),
             onRoomShare: handleRoomShare,
             onVolumeCycle: handleVolumeCycle,

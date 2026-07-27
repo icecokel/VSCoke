@@ -40,10 +40,8 @@ export interface MobileRankingEntry {
 interface MobileSettingsProps {
   autosaveLabel: string;
   connectionLabel: string;
-  fullscreenActive: boolean;
   localRoomShare: boolean;
   onClose(): void;
-  onFullscreenToggle(): void;
   onRoomShare(): void;
   onVolumeCycle(): void;
   onRetryRanking(): void;
@@ -59,8 +57,6 @@ interface MobileSettingsProps {
 export interface MobileGameShellProps {
   activeScene: MobileScene;
   copy: PokeLoungeCopy;
-  fullscreenActive: boolean;
-  onFullscreenToggle(): void;
   onOpenSettings(): void;
   settings: MobileSettingsProps;
 }
@@ -134,8 +130,6 @@ const getMobileJoystickKeyboardOffset = (
 export function MobileGameShell({
   activeScene,
   copy,
-  fullscreenActive,
-  onFullscreenToggle,
   onOpenSettings,
   settings,
 }: MobileGameShellProps) {
@@ -179,18 +173,6 @@ export function MobileGameShell({
             {activeScene === "battle" ? copy.mobile.battleDeckLabel : copy.mobile.exploreDeckLabel}
           </span>
           <div className={styles.utilityActions}>
-            <button
-              type="button"
-              className={styles.utilityButton}
-              onClick={onFullscreenToggle}
-              aria-label={fullscreenActive ? copy.fullscreenOff : copy.fullscreenOn}
-              aria-pressed={fullscreenActive}
-              data-fullscreen-toggle="true"
-              data-fullscreen-toggle-placement="mobile-dock"
-              data-poke-lounge-web-fullscreen-toggle="true"
-            >
-              ⛶
-            </button>
             <button
               type="button"
               className={styles.utilityButton}
@@ -788,16 +770,31 @@ function formatMobileHp(
 
 function MobileBattleDeck({ copy }: { copy: PokeLoungeCopy }) {
   const [battleState, setBattleState] = useState<MobileBattleUiState | null>(null);
+  const battleStateRef = useRef<MobileBattleUiState | null>(null);
 
   useEffect(() => {
+    let retryTimer: number | null = null;
     const handleState = (event: Event) => {
-      setBattleState((event as CustomEvent<MobileBattleUiState>).detail);
+      const nextBattleState = (event as CustomEvent<MobileBattleUiState>).detail;
+
+      battleStateRef.current = nextBattleState;
+      setBattleState(nextBattleState);
+    };
+    const requestBattleState = (): void => {
+      requestMobileBattleUiState(document);
+
+      if (!battleStateRef.current) {
+        retryTimer = window.setTimeout(requestBattleState, 120);
+      }
     };
 
     document.addEventListener(POKE_LOUNGE_MOBILE_BATTLE_STATE_EVENT, handleState);
-    requestMobileBattleUiState(document);
+    requestBattleState();
 
     return () => {
+      if (retryTimer !== null) {
+        window.clearTimeout(retryTimer);
+      }
       document.removeEventListener(POKE_LOUNGE_MOBILE_BATTLE_STATE_EVENT, handleState);
     };
   }, []);
@@ -967,10 +964,8 @@ function MobileSettingsScreen({
   autosaveLabel,
   connectionLabel,
   copy,
-  fullscreenActive,
   localRoomShare,
   onClose,
-  onFullscreenToggle,
   onRetryRanking,
   onRoomShare,
   onVolumeCycle,
@@ -1009,9 +1004,6 @@ function MobileSettingsScreen({
       </header>
       <p className={styles.settingsDescription}>{copy.settingsDescription}</p>
       <div className={styles.settingsOptions}>
-        <Button type="button" variant="outline" onClick={onFullscreenToggle}>
-          {fullscreenActive ? copy.fullscreenOff : copy.settingsFullscreen}
-        </Button>
         <Button type="button" variant="outline" onClick={onVolumeCycle}>
           {volumeLabel}
         </Button>

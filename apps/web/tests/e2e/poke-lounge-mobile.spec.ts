@@ -56,6 +56,7 @@ test("Poke Lounge 모바일은 세로 필드와 전체 화면 메뉴를 제공�
   await expect(controls).toBeVisible();
   await expect(controlDock).toBeVisible();
   await expect(directionalJoystick).toBeVisible();
+  await expect(page.locator("[data-poke-lounge-web-fullscreen-toggle='true']")).toHaveCount(0);
   await expect(directionalJoystick.locator("[data-mobile-control]")).toHaveCount(0);
   await expect(page.locator("[data-mobile-touch-controls='true']")).toHaveCount(0);
   await expectPortraitFieldAndControlDock(page, controlDock);
@@ -131,6 +132,7 @@ test("Poke Lounge 모바일은 세로 필드와 전체 화면 메뉴를 제공�
   await page.locator("[data-poke-lounge-mobile-menu='true']").click();
   const settingsScreen = page.locator("[data-poke-lounge-mobile-settings-screen='true']");
   await expectMobileFullscreenScene(page, settingsScreen);
+  await expect(settingsScreen.locator("[data-fullscreen-toggle]")).toHaveCount(0);
   await expect(settingsScreen.locator("[data-poke-lounge-party-slot]")).toHaveCount(6);
   await expect(settingsScreen.locator("[data-poke-lounge-party-slot='0']")).toHaveAttribute(
     "data-active",
@@ -144,12 +146,16 @@ test("Poke Lounge 모바일은 세로 필드와 전체 화면 메뉴를 제공�
 });
 
 test("Poke Lounge 모바일 전투는 하단 조작 도크에서 행동을 고른다", async ({ page }) => {
-  await gotoWithRetry(page, "/ko-KR/game/poke-lounge?scene=battle&e2eBattle=wild-victory&e2e=1");
+  await gotoWithRetry(page, "/ko-KR/game/poke-lounge?e2e=1&wildEncounterRate=0");
   await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30_000 });
   await page.locator("[data-room-entry-solo]").click();
   await chooseStarterIfNeeded(page);
   await expect(page.locator("#game-root canvas")).toBeVisible({ timeout: 30_000 });
   await expectMobileGameLogicalViewport(page);
+  await expect(page.locator("[data-poke-lounge-mobile-deck='explore']")).toBeVisible({
+    timeout: 30_000,
+  });
+  expect(await startMobileWildBattleForTest(page)).toBe(true);
 
   const commandDeck = page.locator("[data-poke-lounge-mobile-deck='battle-command']");
   await expect(commandDeck).toBeVisible({ timeout: 30_000 });
@@ -457,4 +463,51 @@ async function openMobileWorldSurfaceForTest(
 
     return true;
   }, surface);
+}
+
+async function startMobileWildBattleForTest(page: Page): Promise<boolean> {
+  return page.evaluate(() => {
+    const game = (
+      window as Window & {
+        __POKE_LOUNGE_GAME__?: {
+          scene?: { getScene(key: string): unknown };
+        };
+      }
+    ).__POKE_LOUNGE_GAME__;
+    const world = game?.scene?.getScene("world") as
+      | {
+          startWildBattleForTest?(input: {
+            encounter: {
+              level: number;
+              mapKey: string;
+              name: string;
+              speciesId: number;
+              step: { from: { x: number; y: number }; to: { x: number; y: number } };
+            };
+            facing: "front";
+            x: number;
+            y: number;
+          }): void;
+        }
+      | undefined;
+
+    if (!world?.startWildBattleForTest) {
+      return false;
+    }
+
+    world.startWildBattleForTest({
+      encounter: {
+        level: 8,
+        mapKey: "town",
+        name: "꼬리선",
+        speciesId: 19,
+        step: { from: { x: 687, y: 1151 }, to: { x: 688, y: 1151 } },
+      },
+      facing: "front",
+      x: 687,
+      y: 1151,
+    });
+
+    return true;
+  });
 }

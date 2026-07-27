@@ -12,6 +12,12 @@ export default function GameDashboard() {
 
   const games = [
     {
+      id: "poke-lounge",
+      title: "Poke Lounge",
+      description: t("pokeLoungeDesc"),
+      route: "/game/poke-lounge",
+    },
+    {
       id: "sky-drop",
       title: "Sky Drop",
       description: t("skyDropDesc"),
@@ -24,12 +30,6 @@ export default function GameDashboard() {
       route: "/game/fish-drift",
     },
     {
-      id: "poke-lounge",
-      title: t("pokeLoungeTitle"),
-      description: t("pokeLoungeDesc"),
-      route: "/game/poke-lounge",
-    },
-    {
       id: "wordle",
       title: t("wordleTitle"),
       description: t("wordleDesc"),
@@ -38,13 +38,13 @@ export default function GameDashboard() {
   ];
 
   useEffect(() => {
-    ["/game/sky-drop", "/game/fish-drift", "/game/poke-lounge", "/game/wordle"].forEach(path =>
+    ["/game/poke-lounge", "/game/sky-drop", "/game/fish-drift", "/game/wordle"].forEach(path =>
       prefetch(path),
     );
   }, [prefetch]);
 
   return (
-    <main className="flex min-h-screen w-full flex-col items-center justify-start md:justify-center bg-slate-900 px-4 py-8 md:p-4">
+    <main className="flex min-h-screen w-full flex-col items-center justify-start bg-slate-900 px-4 py-8 pb-[100px] md:justify-center md:p-4 md:pb-[100px]">
       <h1 className="mb-6 md:mb-12 text-2xl md:text-5xl font-bold text-white tracking-widest uppercase glow-text">
         Game Center
       </h1>

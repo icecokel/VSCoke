@@ -324,12 +324,12 @@ test.describe("코어 라우트 CTA 시나리오", () => {
 
     await expect(page.getByRole("heading", { name: messages.home.cards.gameTitle })).toBeVisible();
     await expect(page.locator("main button")).toHaveCount(4);
+    await expect(page.locator("main")).toHaveCSS("padding-bottom", "100px");
+    await expect(page.locator("main button").first()).toHaveAccessibleName(/Poke Lounge/);
 
     await expect(page.getByRole("button", { name: /Sky Drop/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Fish Drift/ })).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.pokeLoungeTitle)) }),
-    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /Poke Lounge/ })).toBeVisible();
     await expect(
       page.getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.wordleTitle)) }),
     ).toBeVisible();

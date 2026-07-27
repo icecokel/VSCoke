@@ -24,7 +24,7 @@ test.describe("취미 게임 섹션", () => {
     ).toBeVisible();
     await expect(
       page.getByRole("button", {
-        name: new RegExp(escapeRegExp(messages.Game.pokeLoungeTitle)),
+        name: /Poke Lounge/,
       }),
     ).toBeVisible();
     await expect(page.getByRole("button", { name: /doom|둠/i })).toHaveCount(0);

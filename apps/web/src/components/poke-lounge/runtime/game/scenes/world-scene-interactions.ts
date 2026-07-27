@@ -25,6 +25,18 @@ import {
   type ShopItemId,
 } from "../state/gameStateStore";
 import { createGameTextStyle } from "../ui/gameTextStyle";
+import {
+  hasPokeLoungeMobileFullscreenScene,
+  usesPokeLoungeMobileShell,
+} from "../ui/mobile-ui-capability";
+import {
+  createPokeLoungePartySlotSummaries,
+  dispatchMobileWorldUiState,
+  POKE_LOUNGE_MOBILE_WORLD_ACTION_EVENT,
+  POKE_LOUNGE_MOBILE_WORLD_STATE_REQUEST_EVENT,
+  type MobileWorldUiAction,
+  type MobileWorldUiScreen,
+} from "../ui/mobile-world-ui";
 import { dispatchPokeLoungeAccessibleStatus } from "../ui/poke-lounge-ui-events";
 import {
   createInventoryControlFooter,
@@ -141,6 +153,7 @@ export interface WorldSceneInteractionsController extends WorldSceneInteractions
 
 export interface WorldSceneInteractionsDependencies {
   gameStateStore: GameStateStore;
+  getDocument(): Document;
   getGameObjectFactory(): Phaser.GameObjects.GameObjectFactory;
   getInputPlugin(): Phaser.Input.InputPlugin;
   createStaticGroup(): Phaser.Physics.Arcade.StaticGroup;
@@ -188,7 +201,8 @@ export function getShortcutGuideInputMode(): ShortcutGuideInputMode {
     return "keyboard";
   }
 
-  return document.querySelector(".has-touch-game-device [data-mobile-touch-controls]")
+  return usesPokeLoungeMobileShell(document) ||
+    document.querySelector(".has-touch-game-device [data-mobile-touch-controls]")
     ? "touch"
     : "keyboard";
 }
@@ -227,6 +241,8 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   private diceGambleSelectedIndex = 0;
   private diceGambleMessage = "";
   private diceGambleUiObjects: Phaser.GameObjects.GameObject[] = [];
+  private mobileWorldView: "explore" | "party" = "explore";
+  private removeMobileWorldUiListeners: (() => void) | null = null;
   private fieldHintText = "";
   private fieldHintObject: Phaser.GameObjects.Text | null = null;
   private lastEncounterAreaId: string | null | undefined;
@@ -281,6 +297,10 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     return this.dependencies.gameStateStore;
   }
 
+  private get document(): Document {
+    return this.dependencies.getDocument();
+  }
+
   private get battleIntroPlaying(): boolean {
     return this.dependencies.isBattleIntroPlaying();
   }
@@ -293,7 +313,423 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     this.cursors = this.dependencies.ensureCursorKeys(keyboard);
   }
 
+  private usesMobileWorldDeck(): boolean {
+    return usesPokeLoungeMobileShell(this.document);
+  }
+
+  private bindMobileWorldUi(): void {
+    if (this.removeMobileWorldUiListeners) {
+      return;
+    }
+
+    const handleAction = (event: Event) => {
+      if (!this.usesMobileWorldDeck()) {
+        return;
+      }
+
+      const action = (event as CustomEvent<MobileWorldUiAction>).detail;
+
+      if (!action) {
+        return;
+      }
+
+      this.handleMobileWorldUiAction(action);
+    };
+    const handleStateRequest = () => this.publishMobileWorldUiState();
+
+    this.document.addEventListener(POKE_LOUNGE_MOBILE_WORLD_ACTION_EVENT, handleAction);
+    this.document.addEventListener(
+      POKE_LOUNGE_MOBILE_WORLD_STATE_REQUEST_EVENT,
+      handleStateRequest,
+    );
+    this.removeMobileWorldUiListeners = () => {
+      this.document.removeEventListener(POKE_LOUNGE_MOBILE_WORLD_ACTION_EVENT, handleAction);
+      this.document.removeEventListener(
+        POKE_LOUNGE_MOBILE_WORLD_STATE_REQUEST_EVENT,
+        handleStateRequest,
+      );
+    };
+  }
+
+  private handleMobileWorldUiAction(action: MobileWorldUiAction): void {
+    if (action.type === "open-inventory") {
+      if (!this.isMobileWorldSurfaceOpen() && !this.battleIntroPlaying) {
+        playBattleConfirmSound();
+        this.openInventory();
+      }
+      return;
+    }
+
+    if (action.type === "open-help") {
+      if (!this.isMobileWorldSurfaceOpen() && !this.battleIntroPlaying) {
+        playBattleConfirmSound();
+        this.openShortcutGuide();
+      }
+      return;
+    }
+
+    if (action.type === "open-party") {
+      if (!this.isMobileWorldSurfaceOpen() && !this.battleIntroPlaying) {
+        this.mobileWorldView = "party";
+        this.publishMobileWorldUiState();
+      }
+      return;
+    }
+
+    if (action.type === "close") {
+      this.closeMobileWorldSurface();
+      return;
+    }
+
+    if (action.type === "back") {
+      if (this.inventoryOpen) {
+        this.cancelInventorySelection();
+        return;
+      }
+
+      this.closeMobileWorldSurface();
+      return;
+    }
+
+    if (action.type === "select-inventory-item") {
+      if (!this.inventoryOpen || this.inventoryFocus !== "items") {
+        return;
+      }
+
+      this.inventorySelectedIndex = clampSelectionIndex(
+        action.index,
+        this.getInventoryItemIds().length,
+      );
+      this.inventoryMessage = "";
+      this.renderInventoryUi();
+      return;
+    }
+
+    if (action.type === "use-inventory-item") {
+      if (!this.inventoryOpen) {
+        return;
+      }
+
+      playBattleConfirmSound();
+      this.confirmInventorySelection();
+      return;
+    }
+
+    if (action.type === "select-inventory-party") {
+      if (!this.inventoryOpen || this.inventoryFocus !== "party") {
+        return;
+      }
+
+      if (!this.getInventoryTargetSlotIndices().includes(action.slotIndex)) {
+        return;
+      }
+
+      this.inventoryPartySlotIndex = action.slotIndex;
+      this.inventoryMessage = "";
+      this.renderInventoryUi();
+      return;
+    }
+
+    if (action.type === "select-shop-item") {
+      if (!this.shopOpen) {
+        return;
+      }
+
+      this.shopSelectedIndex = clampSelectionIndex(
+        action.index,
+        this.getCurrentShopItemIds().length,
+      );
+      this.shopMessage = "";
+      this.renderShopUi();
+      return;
+    }
+
+    if (action.type === "purchase-shop-item") {
+      if (!this.shopOpen) {
+        return;
+      }
+
+      playBattleConfirmSound();
+      this.confirmShopSelection();
+      return;
+    }
+
+    if (action.type === "select-pc-focus") {
+      if (!this.pcBoxOpen) {
+        return;
+      }
+
+      this.pcBoxFocus = action.focus;
+      this.pcBoxMessage = "";
+      this.renderPcBoxUi();
+      return;
+    }
+
+    if (action.type === "select-pc-party") {
+      if (!this.pcBoxOpen || action.slotIndex < 0 || action.slotIndex >= PLAYER_PARTY_SLOT_COUNT) {
+        return;
+      }
+
+      this.pcBoxFocus = "party";
+      this.pcBoxPartySlotIndex = action.slotIndex;
+      this.pcBoxMessage = "";
+      this.renderPcBoxUi();
+      return;
+    }
+
+    if (action.type === "select-pc-box") {
+      const boxCount = this.gameStateStore.getCurrentLocalPlayer().pokemonBox.length;
+
+      if (!this.pcBoxOpen || action.boxIndex < 0 || action.boxIndex >= boxCount) {
+        return;
+      }
+
+      this.pcBoxFocus = "box";
+      this.pcBoxBoxIndex = action.boxIndex;
+      this.pcBoxMessage = "";
+      this.renderPcBoxUi();
+      return;
+    }
+
+    if (action.type === "confirm-pc-selection") {
+      if (!this.pcBoxOpen) {
+        return;
+      }
+
+      playBattleConfirmSound();
+      this.confirmPcBoxSelection();
+      return;
+    }
+
+    if (action.type === "select-dice-prediction") {
+      if (!this.diceGambleOpen) {
+        return;
+      }
+
+      this.selectDiceGamblePrediction(action.prediction);
+      return;
+    }
+
+    if (action.type === "confirm-dice-selection") {
+      if (!this.diceGambleOpen) {
+        return;
+      }
+
+      playBattleConfirmSound();
+      this.confirmDiceGambleSelection();
+      return;
+    }
+
+    if (action.type === "set-party-lead") {
+      if (this.mobileWorldView !== "party") {
+        return;
+      }
+
+      const pokemon = this.getPartyPokemonBySlotIndex(action.slotIndex);
+      const localPlayer = this.gameStateStore.getCurrentLocalPlayer();
+
+      if (
+        !pokemon ||
+        pokemon.status === "fainted" ||
+        action.slotIndex === localPlayer.activePartySlotIndex
+      ) {
+        return;
+      }
+
+      if (this.gameStateStore.setActivePartySlot(action.slotIndex).ok) {
+        playBattleConfirmSound();
+        this.renderPartyHud();
+        this.publishMobileWorldUiState();
+      }
+    }
+  }
+
+  private isMobileWorldSurfaceOpen(): boolean {
+    return (
+      this.shortcutGuideOpen ||
+      this.shopOpen ||
+      this.inventoryOpen ||
+      this.pcBoxOpen ||
+      this.diceGambleOpen ||
+      this.mobileWorldView === "party"
+    );
+  }
+
+  private hasMobileFullscreenSceneOpen(): boolean {
+    return hasPokeLoungeMobileFullscreenScene(this.document);
+  }
+
+  private closeMobileWorldSurface(): void {
+    if (this.shortcutGuideOpen) {
+      this.closeShortcutGuide();
+      return;
+    }
+
+    if (this.shopOpen) {
+      this.closeShop();
+      return;
+    }
+
+    if (this.inventoryOpen) {
+      this.closeInventory();
+      return;
+    }
+
+    if (this.pcBoxOpen) {
+      this.closePcBox();
+      return;
+    }
+
+    if (this.diceGambleOpen) {
+      this.closeDiceGamble();
+      return;
+    }
+
+    if (this.mobileWorldView === "party") {
+      this.mobileWorldView = "explore";
+      this.publishMobileWorldUiState();
+    }
+  }
+
+  private publishMobileWorldUiState(): void {
+    if (!this.usesMobileWorldDeck()) {
+      return;
+    }
+
+    const localPlayer = this.gameStateStore.getCurrentLocalPlayer();
+    const inventoryItemIds = this.getInventoryItemIds();
+    const shopItemIds = this.getCurrentShopItemIds();
+
+    if (this.inventoryOpen) {
+      this.inventorySelectedIndex = clampSelectionIndex(
+        this.inventorySelectedIndex,
+        inventoryItemIds.length,
+      );
+    }
+
+    if (this.shopOpen) {
+      this.shopSelectedIndex = clampSelectionIndex(this.shopSelectedIndex, shopItemIds.length);
+    }
+
+    if (this.pcBoxOpen) {
+      this.pcBoxPartySlotIndex = clampSelectionIndex(
+        this.pcBoxPartySlotIndex,
+        PLAYER_PARTY_SLOT_COUNT,
+      );
+      this.pcBoxBoxIndex = clampSelectionIndex(
+        this.pcBoxBoxIndex,
+        Math.max(1, localPlayer.pokemonBox.length),
+      );
+    }
+
+    const activeItemIds = this.inventoryOpen ? inventoryItemIds : this.shopOpen ? shopItemIds : [];
+    const selectedIndex = this.inventoryOpen ? this.inventorySelectedIndex : this.shopSelectedIndex;
+    const items = activeItemIds.flatMap((itemId, index) => {
+      const item = this.getKnownShopItem(itemId);
+
+      if (!item) {
+        return [];
+      }
+
+      const count = localPlayer.inventory[item.id] ?? 0;
+
+      return [
+        {
+          count,
+          description: item.description,
+          disabled: false,
+          id: item.id,
+          index,
+          name: item.displayName,
+          price: this.shopOpen ? item.price : null,
+          selected: index === selectedIndex,
+        },
+      ];
+    });
+    const selectedItem = items.find(item => item.selected) ?? items[0];
+    const party = createPokeLoungePartySlotSummaries(localPlayer);
+    const box = localPlayer.pokemonBox.map((pokemon, boxIndex) => ({
+      boxIndex,
+      currentHp: pokemon.currentHp ?? null,
+      level: pokemon.level,
+      maxHp: pokemon.maxHp ?? null,
+      name: pokemon.name,
+      selected: this.pcBoxFocus === "box" && boxIndex === this.pcBoxBoxIndex,
+      status: pokemon.status ?? null,
+    }));
+    const dice = this.diceGambleRound
+      ? {
+          options: DICE_GAMBLE_PREDICTIONS.map((prediction, index) => {
+            const option = this.diceGambleRound?.options[prediction];
+
+            return {
+              disabled: !option || option.winningCaseCount <= 0,
+              label: DICE_GAMBLE_LABELS[prediction],
+              prediction,
+              rewardPokeDollars: option?.rewardPokeDollars ?? 0,
+              selected: index === this.diceGambleSelectedIndex,
+              winningCaseCount: option?.winningCaseCount ?? 0,
+            };
+          }),
+          stakePokeDollars: DICE_GAMBLE_STAKE_POKE_DOLLARS,
+          targetNumber: this.diceGambleRound.targetNumber,
+        }
+      : null;
+    let screen: MobileWorldUiScreen = "explore";
+    let title = "필드 조작";
+    let message = "";
+
+    if (this.shortcutGuideOpen) {
+      screen = "help";
+      title = "모바일 조작";
+    } else if (this.inventoryOpen) {
+      screen = this.inventoryFocus === "party" ? "inventory-party" : "inventory-items";
+      title = this.inventoryFocus === "party" ? "사용할 포켓몬" : "가방";
+      message = this.inventoryMessage;
+    } else if (this.shopOpen) {
+      screen = "shop";
+      title = this.getCurrentShopTitle();
+      message = this.shopMessage;
+    } else if (this.pcBoxOpen) {
+      screen = "pc";
+      title = "PC 박스";
+      message = this.pcBoxMessage;
+    } else if (this.diceGambleOpen) {
+      screen = "dice";
+      title = "주사위 겜블";
+      message = this.diceGambleMessage;
+    } else if (this.mobileWorldView === "party") {
+      screen = "party";
+      title = "파티";
+    }
+
+    dispatchMobileWorldUiState(this.document, {
+      box,
+      dice,
+      items,
+      message,
+      party,
+      pcFocus: this.pcBoxFocus,
+      screen,
+      selectedItemDescription: selectedItem?.description ?? "",
+      selectedItemName: selectedItem?.name ?? "",
+      selectedPartySlotIndex:
+        this.inventoryFocus === "party" ? this.inventoryPartySlotIndex : this.pcBoxPartySlotIndex,
+      title,
+      walletPokeDollars: localPlayer.wallet.pokeDollars,
+    });
+  }
+
   handleInput(): boolean {
+    this.bindMobileWorldUi();
+
+    if (
+      this.usesMobileWorldDeck() &&
+      (this.isMobileWorldSurfaceOpen() || this.hasMobileFullscreenSceneOpen())
+    ) {
+      return true;
+    }
+
     if (this.shortcutGuideOpen) {
       this.handleShortcutGuideKeyboardInput();
       return true;
@@ -326,11 +762,18 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
 
     this.handleFieldInteractionInput();
 
-    return this.shopOpen || this.diceGambleOpen;
+    return (
+      this.shopOpen ||
+      this.inventoryOpen ||
+      this.pcBoxOpen ||
+      this.diceGambleOpen ||
+      this.mobileWorldView === "party"
+    );
   }
 
   canOpenPokemonStatusPanel(): boolean {
     return (
+      !this.usesMobileWorldDeck() &&
       !this.shortcutGuideOpen &&
       !this.shopOpen &&
       !this.inventoryOpen &&
@@ -349,6 +792,8 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   }
 
   destroy(): void {
+    this.removeMobileWorldUiListeners?.();
+    this.removeMobileWorldUiListeners = null;
     this.closeShop();
     this.closeInventory();
     this.closePcBox();
@@ -849,24 +1294,26 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   }
 
   private getNearbyInteractionHint(playerPosition: WorldScenePlayerPosition): string {
+    const interactionKey = this.usesMobileWorldDeck() ? "A" : "A / Enter";
+
     if (this.isPlayerNearShopkeeper(playerPosition)) {
-      return "A / Enter · 기본 상점";
+      return `${interactionKey} · 기본 상점`;
     }
 
     if (this.isPlayerNearPremiumShopkeeper(playerPosition)) {
-      return "A / Enter · 희귀 상점";
+      return `${interactionKey} · 희귀 상점`;
     }
 
     if (this.isPlayerNearStoragePc(playerPosition)) {
-      return "A / Enter · PC 박스";
+      return `${interactionKey} · PC 박스`;
     }
 
     if (this.isPlayerNearNurse(playerPosition)) {
-      return "A / Enter · 파티 회복";
+      return `${interactionKey} · 파티 회복`;
     }
 
     if (this.isPlayerNearGamehost(playerPosition)) {
-      return "A / Enter · 주사위 겜블";
+      return `${interactionKey} · 주사위 겜블`;
     }
 
     return "";
@@ -1022,6 +1469,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   }
 
   private openShop(shopKind: ShopKind = "basic"): void {
+    this.mobileWorldView = "explore";
     this.activeShopKind = shopKind;
     this.shopOpen = true;
     this.shopSelectedIndex = 0;
@@ -1033,6 +1481,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     this.shopOpen = false;
     this.shopMessage = "";
     this.destroyShopUi();
+    this.publishMobileWorldUiState();
   }
 
   private moveShopSelection(delta: number): void {
@@ -1077,6 +1526,11 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
 
   private renderShopUi(): void {
     this.destroyShopUi();
+
+    if (this.usesMobileWorldDeck()) {
+      this.publishMobileWorldUiState();
+      return;
+    }
 
     const localPlayer = this.gameStateStore.getCurrentLocalPlayer();
     const shopItemIds = this.getCurrentShopItemIds();
@@ -1253,6 +1707,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   }
 
   private openInventory(): void {
+    this.mobileWorldView = "explore";
     this.inventoryOpen = true;
     this.inventoryFocus = "items";
     this.inventorySelectedIndex = 0;
@@ -1267,6 +1722,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     this.inventoryMessage = "";
     this.destroyInventoryUi();
     dispatchPokeLoungeAccessibleStatus(document, "필드 탐색");
+    this.publishMobileWorldUiState();
   }
 
   private cancelInventorySelection(): void {
@@ -1367,6 +1823,11 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
 
   private renderInventoryUi(): void {
     this.destroyInventoryUi();
+
+    if (this.usesMobileWorldDeck()) {
+      this.publishMobileWorldUiState();
+      return;
+    }
 
     const localPlayer = this.gameStateStore.getCurrentLocalPlayer();
     const itemIds = this.getInventoryItemIds();
@@ -1728,6 +2189,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
       return;
     }
 
+    this.mobileWorldView = "explore";
     this.closePokemonStatusPanel({ rerenderPartyHud: false });
     this.pcBoxOpen = true;
     this.pcBoxFocus = "party";
@@ -1748,6 +2210,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     this.pcBoxMessage = "";
     this.destroyPcBoxUi();
     dispatchPokeLoungeAccessibleStatus(document, "필드 탐색");
+    this.publishMobileWorldUiState();
   }
 
   private movePcBoxSelection(delta: number): void {
@@ -1843,6 +2306,11 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
 
   private renderPcBoxUi(): void {
     this.destroyPcBoxUi();
+
+    if (this.usesMobileWorldDeck()) {
+      this.publishMobileWorldUiState();
+      return;
+    }
 
     if (!this.pcBoxOpen) {
       return;
@@ -2068,12 +2536,29 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   }
 
   showInitialShortcutGuideIfNeeded(): void {
+    this.bindMobileWorldUi();
+
+    if (this.usesMobileWorldDeck()) {
+      if (!this.gameStateStore.hasCurrentLocalPlayerViewedShortcutGuide()) {
+        this.gameStateStore.markCurrentLocalPlayerShortcutGuideViewed();
+      }
+      this.publishMobileWorldUiState();
+      return;
+    }
+
     if (!this.gameStateStore.hasCurrentLocalPlayerViewedShortcutGuide()) {
       this.openShortcutGuide();
     }
   }
 
   private openShortcutGuide(): void {
+    if (this.usesMobileWorldDeck()) {
+      this.mobileWorldView = "explore";
+      this.shortcutGuideOpen = true;
+      this.publishMobileWorldUiState();
+      return;
+    }
+
     if (this.input.keyboard) {
       this.ensureInteractionKeys(this.input.keyboard);
     }
@@ -2096,6 +2581,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     setShortcutGuideTouchControlsSuppressed(false);
     this.input.off("pointerdown", this.handleShortcutGuidePointerDown, this);
     this.destroyShortcutGuideUi();
+    this.publishMobileWorldUiState();
   }
 
   private handleShortcutGuidePointerDown(): void {
@@ -2104,6 +2590,11 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
 
   private renderShortcutGuideUi(): void {
     this.destroyShortcutGuideUi();
+
+    if (this.usesMobileWorldDeck()) {
+      this.publishMobileWorldUiState();
+      return;
+    }
 
     const viewport = this.getViewportSize();
     const inputMode = getShortcutGuideInputMode();
@@ -2207,6 +2698,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   }
 
   private openDiceGamble(targetNumber = this.rollDiceGambleNumber()): void {
+    this.mobileWorldView = "explore";
     this.diceGambleOpen = true;
     this.diceGambleRound = createDiceGambleRound(targetNumber);
     this.diceGambleSelectedIndex = 0;
@@ -2219,6 +2711,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     this.diceGambleRound = null;
     this.diceGambleMessage = "";
     this.destroyDiceGambleUi();
+    this.publishMobileWorldUiState();
   }
 
   private moveDiceGambleSelection(delta: number): void {
@@ -2266,6 +2759,11 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
 
   private renderDiceGambleUi(): void {
     this.destroyDiceGambleUi();
+
+    if (this.usesMobileWorldDeck()) {
+      this.publishMobileWorldUiState();
+      return;
+    }
 
     if (!this.diceGambleRound) {
       return;

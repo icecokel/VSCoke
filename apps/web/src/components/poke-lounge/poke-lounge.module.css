@@ -132,6 +132,43 @@
   overflow: auto;
 }
 
+.mobileResultScreen,
+.mobileStateScreen {
+  position: absolute;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  align-content: center;
+  gap: 12px;
+  padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  background: #d8e6d4;
+  color: #17201a;
+  overflow: auto;
+}
+
+.mobileResultScreen {
+  justify-items: stretch;
+  text-align: center;
+}
+
+.mobileStateScreen {
+  justify-items: center;
+  text-align: center;
+}
+
+.touchGameDevice {
+  --poke-lounge-mobile-letterbox-top: max(16px, env(safe-area-inset-top, 0px));
+  --poke-lounge-mobile-letterbox-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+
+  background: #17201a;
+}
+
+.touchGameDevice .mobileResultScreen,
+.touchGameDevice .mobileStateScreen {
+  inset: var(--poke-lounge-mobile-letterbox-top) 0 var(--poke-lounge-mobile-letterbox-bottom);
+}
+
 .resultEyebrow {
   margin: 0;
   color: #4a5b4d;
@@ -204,6 +241,33 @@
 }
 
 .confirmDialog button {
+  border: 2px solid #17231c;
+  border-radius: 4px;
+  box-shadow: 0 3px 0 #17231c;
+  font-weight: 900;
+}
+
+.mobileDecisionSheet {
+  position: fixed !important;
+  right: 0;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  max-height: min(72dvh, 560px);
+  padding: 20px max(18px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom))
+    max(18px, env(safe-area-inset-left));
+  transform: none !important;
+  border: 3px solid #17231c;
+  border-bottom: 0;
+  border-radius: 16px 16px 0 0;
+  background: #f8fbf0;
+  box-shadow: 0 -6px 0 rgba(23, 35, 28, 0.28);
+  color: #17201a;
+  overflow: auto;
+}
+
+.mobileDecisionSheet button {
   border: 2px solid #17231c;
   border-radius: 4px;
   box-shadow: 0 3px 0 #17231c;
@@ -787,38 +851,51 @@
 
 @media (orientation: portrait) {
   .touchGameDevice {
-    --poke-lounge-frame-available-height: max(
+    --poke-lounge-mobile-screen-gap: clamp(6px, 1.5dvh, 12px);
+    --poke-lounge-mobile-available-inline-size: max(
       0px,
-      calc(var(--poke-lounge-container-height) - var(--poke-lounge-touch-controls-reserve))
+      calc(
+        var(--poke-lounge-container-width) - env(safe-area-inset-left, 0px) -
+          env(safe-area-inset-right, 0px)
+      )
     );
+    --poke-lounge-mobile-screen-width: var(--poke-lounge-mobile-available-inline-size);
+    --poke-lounge-mobile-screen-height: calc(var(--poke-lounge-mobile-screen-width) * 3 / 4);
+    --poke-lounge-frame-available-height: var(--poke-lounge-mobile-screen-height);
+
+    display: grid;
+    grid-template-columns: minmax(0, var(--poke-lounge-mobile-screen-width));
+    grid-template-rows:
+      var(--poke-lounge-mobile-screen-height)
+      minmax(0, 1fr);
+    align-content: stretch;
+    justify-content: center;
+    align-items: stretch;
+    gap: var(--poke-lounge-mobile-screen-gap);
+    padding: var(--poke-lounge-mobile-letterbox-top) env(safe-area-inset-right, 0px)
+      var(--poke-lounge-mobile-letterbox-bottom) env(safe-area-inset-left, 0px);
   }
 
   .touchGameDevice .gameFrame {
-    width: min(
-      100%,
-      var(--poke-lounge-container-width),
-      calc(var(--poke-lounge-frame-available-height) * 4 / 3),
-      var(--poke-lounge-max-display-width)
-    );
-    max-height: var(--poke-lounge-frame-available-height);
-    margin-top: max(8px, env(safe-area-inset-top));
-    align-self: start;
-    justify-self: center;
+    grid-column: 1;
+    grid-row: 1;
+    width: var(--poke-lounge-mobile-screen-width);
+    height: var(--poke-lounge-mobile-screen-height);
+    max-width: 100%;
+    max-height: var(--poke-lounge-mobile-screen-height);
+    margin: 0;
+    align-self: stretch;
+    justify-self: stretch;
   }
 
   .touchGameDevice .gameFrame[data-poke-lounge-canvas-mounted="false"] {
-    width: min(100%, var(--poke-lounge-container-width));
-    height: var(--poke-lounge-container-height);
-    max-height: var(--poke-lounge-container-height);
-    margin-top: 0;
-  }
-
-  .page:fullscreen.touchGameDevice .gameFrame,
-  .page:global(.is-game-fullscreen-fallback).touchGameDevice .gameFrame {
-    width: min(100vw, calc(100dvh * 4 / 3), var(--poke-lounge-max-display-width));
-    max-height: 100dvh;
-    margin-top: 0;
-    align-self: center;
+    position: absolute;
+    inset: var(--poke-lounge-mobile-letterbox-top) 0 var(--poke-lounge-mobile-letterbox-bottom);
+    width: auto;
+    height: auto;
+    max-width: none;
+    max-height: none;
+    margin: 0;
   }
 
   .page :global(.has-touch-game-device .mobile-touch-controls) {
@@ -838,16 +915,39 @@
   }
 }
 
-@media (orientation: landscape) {
-  .touchGameDevice :global(.fullscreen-toggle-button--mobile) {
-    top: auto;
-    bottom: max(12px, env(safe-area-inset-bottom));
-  }
+.page:fullscreen.touchGameDevice,
+.page:global(.is-game-fullscreen-fallback).touchGameDevice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-content: stretch;
+  justify-content: stretch;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+}
 
-  .page :global(.has-touch-game-device .mobile-settings-button--mobile) {
-    top: auto;
-    bottom: max(12px, env(safe-area-inset-bottom));
-  }
+.page:fullscreen.touchGameDevice .gameFrame,
+.page:global(.is-game-fullscreen-fallback).touchGameDevice .gameFrame {
+  grid-column: 1;
+  grid-row: 1;
+  width: min(100vw, calc(100dvh * 4 / 3), var(--poke-lounge-max-display-width));
+  height: auto;
+  max-height: 100dvh;
+  margin: 0;
+  align-self: center;
+  justify-self: center;
+}
+
+.page:fullscreen.touchGameDevice .gameFrame[data-poke-lounge-canvas-mounted="false"],
+.page:global(.is-game-fullscreen-fallback).touchGameDevice
+  .gameFrame[data-poke-lounge-canvas-mounted="false"] {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  aspect-ratio: auto;
+  align-self: stretch;
+  justify-self: stretch;
 }
 
 @media (max-width: 600px) {

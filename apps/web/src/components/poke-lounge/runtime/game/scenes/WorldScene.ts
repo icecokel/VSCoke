@@ -98,6 +98,7 @@ export interface WorldE2eSnapshot {
   shortcutGuideOpen: boolean;
   encounterLocked: boolean;
   battleIntroPlaying: boolean;
+  partyHudVisible: boolean;
   pokemonStatusPanel: {
     slotIndex: number;
     name: string;
@@ -231,6 +232,7 @@ export class WorldScene extends Phaser.Scene {
     });
     this.interactions = createWorldSceneInteractions({
       gameStateStore: this.gameStateStore,
+      getDocument: () => this.game.canvas.ownerDocument,
       getGameObjectFactory: () => this.add,
       getInputPlugin: () => this.input,
       createStaticGroup: () => this.physics.add.staticGroup(),
@@ -249,11 +251,12 @@ export class WorldScene extends Phaser.Scene {
         return this.cursors;
       },
       isBattleIntroPlaying: () => this.encounters.isBattleIntroPlaying(),
-      renderPartyHud: () => this.hud.render(),
-      closePokemonStatusPanel: options => this.hud.closePokemonStatusPanel(options),
-      getPartyPokemonBySlotIndex: slotIndex => this.hud.getPartyPokemonBySlotIndex(slotIndex),
+      renderPartyHud: () => this.hud?.render(),
+      closePokemonStatusPanel: options => this.hud?.closePokemonStatusPanel(options),
+      getPartyPokemonBySlotIndex: slotIndex =>
+        this.hud?.getPartyPokemonBySlotIndex(slotIndex) ?? null,
       getPokemonStatusPanelSnapshot: () => this.hud?.getPokemonStatusPanelSnapshot() ?? null,
-      isPokemonStatusPanelOpen: () => this.hud.isPokemonStatusPanelOpen(),
+      isPokemonStatusPanelOpen: () => this.hud?.isPokemonStatusPanelOpen() ?? false,
       getViewportSize: () => this.getViewportSize(),
     });
   }
@@ -268,6 +271,7 @@ export class WorldScene extends Phaser.Scene {
     this.shutdownComplete = false;
     this.preserveRoomForBattle = false;
     this.hud = createWorldSceneHud({
+      getDocument: () => this.game.canvas.ownerDocument,
       getGameObjectFactory: () => this.add,
       gameStateStore: this.gameStateStore,
       competitiveRoundsEnabled: this.competitiveRoundsEnabled,
@@ -445,6 +449,7 @@ export class WorldScene extends Phaser.Scene {
       shortcutGuideOpen: interactionSnapshot.shortcutGuideOpen,
       encounterLocked: encounterSnapshot.encounterLocked,
       battleIntroPlaying: encounterSnapshot.battleIntroPlaying,
+      partyHudVisible: this.hud?.isPartyHudVisible() ?? false,
       pokemonStatusPanel: interactionSnapshot.pokemonStatusPanel,
       pcBox: interactionSnapshot.pcBox,
     };

@@ -32,6 +32,7 @@ type ExpectedDependencyKeys =
   | "createStaticGroup"
   | "ensureCursorKeys"
   | "gameStateStore"
+  | "getDocument"
   | "getGameObjectFactory"
   | "getInputPlugin"
   | "getPartyPokemonBySlotIndex"
@@ -50,6 +51,7 @@ type ExpectedHudDependencyKeys =
   | "canOpenPokemonStatusPanel"
   | "competitiveRoundsEnabled"
   | "gameStateStore"
+  | "getDocument"
   | "getGameObjectFactory"
   | "getViewportSize"
   | "isShutdownComplete";

@@ -198,6 +198,7 @@ interface PokeLoungeWorldSnapshot {
   shortcutGuideOpen: boolean;
   encounterLocked: boolean;
   battleIntroPlaying: boolean;
+  partyHudVisible: boolean;
   pokemonStatusPanel: {
     slotIndex: number;
     name: string;
@@ -1662,6 +1663,12 @@ test.describe("Poke Lounge", () => {
     await waitForInitialWorldShortcutGuideIfAny(page);
     await closeWorldShortcutGuideIfOpen(page);
 
+    await expect
+      .poll(() => getWorldSnapshot(page).then(snapshot => snapshot?.partyHudVisible), {
+        timeout: 10000,
+      })
+      .toBe(true);
+
     await openPartyStatusPanelFromCanvas(page, 0);
 
     await expect
@@ -2698,6 +2705,11 @@ test.describe("Poke Lounge", () => {
 
     const settingsPanel = page.locator("[data-poke-lounge-settings='true']");
     await expect(settingsPanel).toBeVisible();
+    await expect(settingsPanel.locator("[data-poke-lounge-party-slot]")).toHaveCount(6);
+    await expect(settingsPanel.locator("[data-poke-lounge-party-slot='0']")).toHaveAttribute(
+      "data-active",
+      "true",
+    );
 
     const settingOptionButtons = settingsPanel.locator("[data-poke-lounge-setting-option='true']");
     await expect(settingOptionButtons).toHaveText(["전체화면", "소리 100%", "UI 크게", "닫기"]);

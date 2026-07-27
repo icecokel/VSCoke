@@ -12,6 +12,7 @@ import type {
   PlayerPokemon,
 } from "../state/gameStateStore";
 import { createGameTextStyle } from "../ui/gameTextStyle";
+import { usesPokeLoungeMobileShell } from "../ui/mobile-ui-capability";
 import {
   createPartyHudSlotViews,
   PARTY_HUD_SLOT_SIZE,
@@ -46,6 +47,7 @@ export interface PokemonStatusPanelSnapshot {
 }
 
 export interface WorldSceneHudDependencies {
+  getDocument(): Document;
   getGameObjectFactory(): Phaser.GameObjects.GameObjectFactory;
   gameStateStore: GameStateStore;
   competitiveRoundsEnabled: boolean;
@@ -65,6 +67,7 @@ export interface WorldSceneHudController extends WorldSceneHud {
   getPartyPokemonBySlotIndex(slotIndex: number): PlayerPokemon | null;
   getPokemonStatusPanelSnapshot(): PokemonStatusPanelSnapshot | null;
   isPokemonStatusPanelOpen(): boolean;
+  isPartyHudVisible(): boolean;
 }
 
 export function createWorldSceneHud(
@@ -240,6 +243,11 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
     this.partyHudObjects.forEach(object => object.destroy());
     this.partyHudObjects = [];
 
+    if (usesPokeLoungeMobileShell(this.dependencies.getDocument())) {
+      this.closePokemonStatusPanel({ rerenderPartyHud: false });
+      return;
+    }
+
     const localPlayer = this.dependencies.gameStateStore.getCurrentLocalPlayer();
     const slots = createPartyHudSlotViews({
       activePartySlotIndex: localPlayer.activePartySlotIndex,
@@ -278,7 +286,7 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
       0.95,
     );
     this.partyHudObjects.push(background);
-    if (slot.occupied) {
+    if (slot.occupied && !usesPokeLoungeMobileShell(this.dependencies.getDocument())) {
       const hitZone = this.add
         .zone(slot.x, slot.y, PARTY_HUD_SLOT_SIZE.width, PARTY_HUD_SLOT_SIZE.height)
         .setOrigin(0, 0)
@@ -362,6 +370,10 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
   }
 
   private openPokemonStatusPanel(slotIndex: number): void {
+    if (usesPokeLoungeMobileShell(this.dependencies.getDocument())) {
+      return;
+    }
+
     if (!this.dependencies.canOpenPokemonStatusPanel()) {
       return;
     }
@@ -391,6 +403,11 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
 
   private renderPokemonStatusPanel(): void {
     this.destroyPokemonStatusPanelUi();
+
+    if (usesPokeLoungeMobileShell(this.dependencies.getDocument())) {
+      this.pokemonStatusPanelSlotIndex = null;
+      return;
+    }
 
     const slotIndex = this.pokemonStatusPanelSlotIndex;
 
@@ -732,6 +749,10 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
     this.partyHudObjects.forEach(object => object.destroy());
     this.partyHudObjects = [];
     this.partyHudSubscribed = false;
+  }
+
+  isPartyHudVisible(): boolean {
+    return this.partyHudObjects.length > 0;
   }
 
   destroy(): void {

@@ -53,6 +53,10 @@ export interface PokeLoungeCopy {
   settingsRankingRetry: string;
   settingsRankingEmpty: string;
   settingsClose: string;
+  partySlotsTitle: string;
+  partySlotLabel(slot: number): string;
+  partySlotEmpty: string;
+  partySlotLead: string;
   leaveTitle: string;
   leaveDescription: string;
   leaveContinue: string;
@@ -70,6 +74,35 @@ export interface PokeLoungeCopy {
   resultSaved: string;
   resultSaveFailed: string;
   accessibleHelp: string;
+  mobile: {
+    exploreDeckLabel: string;
+    exploreHint: string;
+    battleDeckLabel: string;
+    interact: string;
+    bag: string;
+    menu: string;
+    next: string;
+    back: string;
+    fight: string;
+    party: string;
+    run: string;
+    chooseMove: string;
+    chooseParty: string;
+    chooseItem: string;
+    replaceMove: string;
+    help: string;
+    use: string;
+    buy: string;
+    deposit: string;
+    withdraw: string;
+    setLead: string;
+    roll: string;
+    pcParty: string;
+    pcBox: string;
+    wallet: string;
+    waiting: string;
+    preparing: string;
+  };
   startup: {
     title: string;
     description: string;
@@ -182,6 +215,10 @@ const KOREAN_COPY: PokeLoungeCopy = {
   settingsRankingRetry: "다시 시도",
   settingsRankingEmpty: "아직 검증된 기록이 없습니다.",
   settingsClose: "닫기",
+  partySlotsTitle: "파티 슬롯",
+  partySlotLabel: slot => `슬롯 ${slot}`,
+  partySlotEmpty: "비어 있음",
+  partySlotLead: "선두",
   leaveTitle: "방에서 나갈까요?",
   leaveDescription: "현재 방 연결이 해제됩니다.",
   leaveContinue: "계속 플레이",
@@ -200,6 +237,35 @@ const KOREAN_COPY: PokeLoungeCopy = {
   resultSaved: "Poke Lounge 점수가 기록되었습니다.",
   resultSaveFailed: "점수 기록에 실패했습니다.",
   accessibleHelp: "게임 조작 도움말은 H 키 또는 물음표 버튼으로 열 수 있습니다.",
+  mobile: {
+    exploreDeckLabel: "필드 조작",
+    exploreHint: "방향 이동 · A 상호작용",
+    battleDeckLabel: "전투 조작",
+    interact: "대화",
+    bag: "가방",
+    menu: "메뉴",
+    next: "다음",
+    back: "뒤로",
+    fight: "싸운다",
+    party: "포켓몬",
+    run: "도망",
+    chooseMove: "기술 선택",
+    chooseParty: "포켓몬 교체",
+    chooseItem: "아이템 선택",
+    replaceMove: "잊을 기술 선택",
+    help: "조작 안내",
+    use: "사용",
+    buy: "구매",
+    deposit: "보관",
+    withdraw: "데려오기",
+    setLead: "선두로 지정",
+    roll: "굴리기",
+    pcParty: "파티",
+    pcBox: "박스",
+    wallet: "보유",
+    waiting: "상대의 선택을 기다리는 중",
+    preparing: "전투 화면을 준비하는 중",
+  },
   startup: {
     title: "게임을 시작하지 못했습니다",
     description:
@@ -323,6 +389,10 @@ const ENGLISH_COPY: PokeLoungeCopy = {
   settingsRankingRetry: "Try again",
   settingsRankingEmpty: "No verified records yet.",
   settingsClose: "Close",
+  partySlotsTitle: "Party slots",
+  partySlotLabel: slot => `Slot ${slot}`,
+  partySlotEmpty: "Empty",
+  partySlotLead: "Lead",
   leaveTitle: "Leave the room?",
   leaveDescription: "Your current room connection will end.",
   leaveContinue: "Keep playing",
@@ -341,6 +411,35 @@ const ENGLISH_COPY: PokeLoungeCopy = {
   resultSaved: "Your Poke Lounge score was saved.",
   resultSaveFailed: "Could not save the score.",
   accessibleHelp: "Open the controls guide with H or the question-mark button.",
+  mobile: {
+    exploreDeckLabel: "Field controls",
+    exploreHint: "Move · A to interact",
+    battleDeckLabel: "Battle controls",
+    interact: "Talk",
+    bag: "Bag",
+    menu: "Menu",
+    next: "Next",
+    back: "Back",
+    fight: "Fight",
+    party: "Pokémon",
+    run: "Run",
+    chooseMove: "Choose a move",
+    chooseParty: "Choose Pokémon",
+    chooseItem: "Choose an item",
+    replaceMove: "Choose a move to forget",
+    help: "Controls",
+    use: "Use",
+    buy: "Buy",
+    deposit: "Store",
+    withdraw: "Take out",
+    setLead: "Set lead",
+    roll: "Roll",
+    pcParty: "Party",
+    pcBox: "Box",
+    wallet: "Wallet",
+    waiting: "Waiting for the other trainer",
+    preparing: "Preparing the battle screen",
+  },
   startup: {
     title: "Could not start the game",
     description:
@@ -465,6 +564,10 @@ const JAPANESE_COPY: PokeLoungeCopy = {
   settingsRankingRetry: "再試行",
   settingsRankingEmpty: "検証済み記録はまだありません。",
   settingsClose: "閉じる",
+  partySlotsTitle: "手持ちスロット",
+  partySlotLabel: slot => `スロット ${slot}`,
+  partySlotEmpty: "空き",
+  partySlotLead: "先頭",
   leaveTitle: "ルームから退出しますか？",
   leaveDescription: "現在のルーム接続が終了します。",
   leaveContinue: "プレイを続ける",
@@ -483,6 +586,35 @@ const JAPANESE_COPY: PokeLoungeCopy = {
   resultSaved: "ポケラウンジのスコアを記録しました。",
   resultSaveFailed: "スコアを記録できませんでした。",
   accessibleHelp: "Hキーまたは「？」ボタンで操作ガイドを開けます。",
+  mobile: {
+    exploreDeckLabel: "フィールド操作",
+    exploreHint: "方向で移動 · Aで話す",
+    battleDeckLabel: "バトル操作",
+    interact: "話す",
+    bag: "バッグ",
+    menu: "メニュー",
+    next: "次へ",
+    back: "戻る",
+    fight: "たたかう",
+    party: "ポケモン",
+    run: "にげる",
+    chooseMove: "わざを選ぶ",
+    chooseParty: "ポケモンを交代",
+    chooseItem: "どうぐを選ぶ",
+    replaceMove: "忘れるわざを選ぶ",
+    help: "操作ガイド",
+    use: "使う",
+    buy: "購入",
+    deposit: "預ける",
+    withdraw: "連れ出す",
+    setLead: "先頭にする",
+    roll: "振る",
+    pcParty: "手持ち",
+    pcBox: "ボックス",
+    wallet: "所持金",
+    waiting: "相手の選択を待っています",
+    preparing: "バトル画面を準備中",
+  },
   startup: {
     title: "ゲームを開始できませんでした",
     description:

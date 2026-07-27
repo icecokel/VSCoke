@@ -11,6 +11,7 @@ export async function startGamePageFromDocument(
     localTestModeActive?: boolean;
     getIdToken?: () => string | undefined;
     onGameResult?: (result: PokeLoungeGameResult) => void;
+    renderMobileControls?: boolean;
     viewportSize?: GameViewportDisplaySize;
   } = {},
 ): Promise<GamePageHandle> {
@@ -26,6 +27,7 @@ export async function startGamePageFromDocument(
     localTestModeActive: options.localTestModeActive,
     getIdToken: options.getIdToken,
     onGameResult: options.onGameResult,
+    renderMobileControls: options.renderMobileControls,
     viewportSize: options.viewportSize,
   });
 }

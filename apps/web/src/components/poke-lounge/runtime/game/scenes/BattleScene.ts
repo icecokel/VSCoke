@@ -80,6 +80,17 @@ import {
   dispatchPokeLoungeNotice,
 } from "../ui/poke-lounge-ui-events";
 import {
+  dispatchMobileBattleUiState,
+  POKE_LOUNGE_MOBILE_BATTLE_ACTION_EVENT,
+  POKE_LOUNGE_MOBILE_BATTLE_STATE_REQUEST_EVENT,
+  type MobileBattleUiAction,
+  type MobileBattleUiState,
+} from "../ui/mobile-battle-ui";
+import {
+  hasPokeLoungeMobileFullscreenScene,
+  usesPokeLoungeMobileShell,
+} from "../ui/mobile-ui-capability";
+import {
   createShortcutGuideFooter,
   createShortcutGuideRows,
   createShortcutGuideTitle,
@@ -434,6 +445,7 @@ export class BattleScene extends Phaser.Scene {
   private authoritativeInputPending = false;
   private authoritativeUnsubscribers: RoomUnsubscribe[] = [];
   private lastAccessibleStatus = "";
+  private removeMobileBattleUiListeners: (() => void) | null = null;
 
   constructor(
     private readonly gameStateStore: GameStateStore = getDefaultGameStateStore(),
@@ -477,17 +489,22 @@ export class BattleScene extends Phaser.Scene {
     this.setBattleUiSceneMarker(true);
     this.bindKeys();
     this.bindPointerConfirm();
+    this.bindMobileBattleUi();
     this.render();
     playBattleStartSound();
     playWildBattleBgm();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       stopWildBattleBgm();
       this.clearAuthoritativeSubscriptions();
+      this.removeMobileBattleUiListeners?.();
+      this.removeMobileBattleUiListeners = null;
       this.setBattleUiSceneMarker(false);
       dispatchPokeLoungeAccessibleStatus(this.game.canvas.ownerDocument, "필드 탐색");
     });
     this.events.once(Phaser.Scenes.Events.DESTROY, () => {
       stopWildBattleBgm();
+      this.removeMobileBattleUiListeners?.();
+      this.removeMobileBattleUiListeners = null;
       this.setBattleUiSceneMarker(false);
     });
     if (this.authoritativeProjection?.status === "completed") {
@@ -506,6 +523,15 @@ export class BattleScene extends Phaser.Scene {
       !this.backspaceKey ||
       !this.helpKey
     ) {
+      return;
+    }
+
+    const ownerDocument = this.game.canvas.ownerDocument;
+    if (
+      usesPokeLoungeMobileShell(ownerDocument) &&
+      hasPokeLoungeMobileFullscreenScene(ownerDocument)
+    ) {
+      resetVirtualGamepad();
       return;
     }
 
@@ -783,13 +809,233 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
+  private usesMobileBattleDeck(): boolean {
+    return (
+      this.game.canvas.parentElement?.closest<HTMLElement>(
+        "[data-poke-lounge-mobile-shell='true']",
+      ) !== null
+    );
+  }
+
+  private bindMobileBattleUi(): void {
+    this.removeMobileBattleUiListeners?.();
+
+    const documentRef = this.game.canvas.ownerDocument;
+    const handleAction = (event: Event) => {
+      if (!this.usesMobileBattleDeck()) {
+        return;
+      }
+
+      const action = (event as CustomEvent<MobileBattleUiAction>).detail;
+      if (!action) {
+        return;
+      }
+
+      this.handleMobileBattleUiAction(action);
+    };
+    const handleStateRequest = () => {
+      this.publishMobileBattleUiState();
+    };
+
+    documentRef.addEventListener(POKE_LOUNGE_MOBILE_BATTLE_ACTION_EVENT, handleAction);
+    documentRef.addEventListener(POKE_LOUNGE_MOBILE_BATTLE_STATE_REQUEST_EVENT, handleStateRequest);
+    this.removeMobileBattleUiListeners = () => {
+      documentRef.removeEventListener(POKE_LOUNGE_MOBILE_BATTLE_ACTION_EVENT, handleAction);
+      documentRef.removeEventListener(
+        POKE_LOUNGE_MOBILE_BATTLE_STATE_REQUEST_EVENT,
+        handleStateRequest,
+      );
+    };
+  }
+
+  private handleMobileBattleUiAction(action: MobileBattleUiAction): void {
+    if (
+      this.battleEntrancePlaying ||
+      this.evolutionAnimationPlaying ||
+      this.authoritativeInputPending ||
+      this.shortcutGuideOpen
+    ) {
+      return;
+    }
+
+    if (action.type === "confirm-message") {
+      if (this.state.messageQueue.length > 0) {
+        playBattleConfirmSound();
+        this.confirmSelection();
+      }
+      return;
+    }
+
+    if (action.type === "go-back") {
+      if (this.state.messageQueue.length === 0) {
+        playBattleCancelSound();
+        this.goBack();
+      }
+      return;
+    }
+
+    if (this.state.messageQueue.length > 0) {
+      return;
+    }
+
+    if (action.type === "select-command" && this.state.phase === "command") {
+      if (!COMMANDS[action.index]) {
+        return;
+      }
+
+      this.selectedCommandIndex = action.index;
+      playBattleConfirmSound();
+      this.confirmSelection();
+      return;
+    }
+
+    if (action.type === "select-move" && this.state.phase === "move-select") {
+      const move = this.state.player.pokemon.moves[action.index];
+      if (!move || move.pp <= 0) {
+        return;
+      }
+
+      this.selectedMoveIndex = action.index;
+      playBattleConfirmSound();
+      this.confirmSelection();
+      return;
+    }
+
+    if (
+      action.type === "select-move-replacement" &&
+      this.state.phase === "move-replace-select" &&
+      this.state.player.pokemon.moves[action.index]
+    ) {
+      this.selectedMoveIndex = action.index;
+      playBattleConfirmSound();
+      this.confirmSelection();
+      return;
+    }
+
+    if (action.type === "select-party" && this.state.phase === "party-select") {
+      const slot = this.getBattlePartySlotViews()[action.index];
+      if (!slot || !slot.canSwitch) {
+        playBattleCancelSound();
+        this.render();
+        return;
+      }
+
+      this.selectedPartySlotIndex = action.index;
+      playBattleConfirmSound();
+      this.confirmSelection();
+      return;
+    }
+
+    if (action.type === "select-item" && this.state.phase === "bag-select") {
+      const itemId = this.getBattleBagItemIds()[action.index];
+      const quantity = itemId
+        ? (this.gameStateStore.getCurrentLocalPlayer().inventory[itemId] ?? 0)
+        : 0;
+      if (!itemId || quantity <= 0) {
+        playBattleCancelSound();
+        this.render();
+        return;
+      }
+
+      this.selectedBagItemIndex = action.index;
+      playBattleConfirmSound();
+      this.confirmSelection();
+    }
+  }
+
+  private publishMobileBattleUiState(): void {
+    if (!this.usesMobileBattleDeck()) {
+      return;
+    }
+
+    const phase = this.state.phase;
+    if (
+      phase !== "command" &&
+      phase !== "move-select" &&
+      phase !== "move-replace-select" &&
+      phase !== "party-select" &&
+      phase !== "bag-select" &&
+      phase !== "resolving" &&
+      phase !== "ended"
+    ) {
+      return;
+    }
+
+    const inventory = this.gameStateStore.getCurrentLocalPlayer().inventory;
+    const pendingMoveLearning = this.getCurrentPendingMoveLearning();
+    const state: MobileBattleUiState = {
+      phase,
+      message: this.state.messageQueue[0] ?? null,
+      isInputLocked:
+        this.battleEntrancePlaying ||
+        this.evolutionAnimationPlaying ||
+        this.authoritativeInputPending ||
+        this.shortcutGuideOpen,
+      canGoBack:
+        this.state.messageQueue.length === 0 &&
+        !isForcedPartySwitch(this.state) &&
+        (phase === "move-select" ||
+          phase === "move-replace-select" ||
+          phase === "party-select" ||
+          phase === "bag-select"),
+      isForcedPartySwitch: isForcedPartySwitch(this.state),
+      commands: COMMANDS.map((command, index) => ({
+        id: command.command,
+        selected: index === this.selectedCommandIndex,
+      })),
+      moves: this.state.player.pokemon.moves.map((move, index) => ({
+        index,
+        name: move.name,
+        pp: move.pp,
+        maxPp: move.maxPp,
+        type: move.type,
+        selected: index === this.selectedMoveIndex,
+        disabled: move.pp <= 0,
+      })),
+      party: this.getBattlePartySlotViews().map(slot => ({
+        slotIndex: slot.slotIndex,
+        name: slot.pokemon?.name ?? "-",
+        level: slot.pokemon?.level ?? 0,
+        currentHp: slot.pokemon?.currentHp ?? 0,
+        maxHp: slot.pokemon?.maxHp ?? 0,
+        status: slot.pokemon?.status ?? null,
+        selected: slot.isSelected,
+        isCurrent: slot.isCurrent,
+        isFainted: slot.isFainted,
+        isEmpty: slot.isEmpty,
+        canSwitch: slot.canSwitch,
+      })),
+      items: this.getBattleBagItemIds().map((itemId, index) => {
+        const item = getShopItemById(itemId);
+        const count = inventory[itemId] ?? 0;
+
+        return {
+          index,
+          id: itemId,
+          name: item?.displayName ?? itemId,
+          count,
+          selected: index === this.selectedBagItemIndex,
+          disabled: count <= 0,
+        };
+      }),
+      moveReplacement: pendingMoveLearning
+        ? {
+            pokemonName: pendingMoveLearning.pokemonName,
+            newMoveName: pendingMoveLearning.newMove.name,
+          }
+        : null,
+    };
+
+    dispatchMobileBattleUiState(this.game.canvas.ownerDocument, state);
+  }
+
   private bindPointerConfirm(): void {
     this.input.off("pointerdown", this.handlePointerConfirm, this);
     this.input.on("pointerdown", this.handlePointerConfirm, this);
   }
 
   private handlePointerConfirm(pointer: Phaser.Input.Pointer): void {
-    if (this.battleEntrancePlaying) {
+    if (this.battleEntrancePlaying || this.usesMobileBattleDeck()) {
       return;
     }
 
@@ -1869,6 +2115,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private toggleShortcutGuide(): void {
+    if (this.usesMobileBattleDeck()) {
+      return;
+    }
+
     if (this.shortcutGuideOpen) {
       this.closeShortcutGuide();
       return;
@@ -1878,6 +2128,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private openShortcutGuide(): void {
+    if (this.usesMobileBattleDeck()) {
+      return;
+    }
+
     this.shortcutGuideOpen = true;
     setShortcutGuideTouchControlsSuppressed(true);
     this.render();
@@ -1897,7 +2151,22 @@ export class BattleScene extends Phaser.Scene {
     this.drawHpPanel(BATTLE_LAYOUT.playerHpPanel, this.state.player.pokemon, "player", true);
     this.drawEvolutionOverlay();
     this.publishE2eSnapshot();
+    this.publishMobileBattleUiState();
     this.publishAccessibleStatus();
+
+    if (
+      this.usesMobileBattleDeck() &&
+      this.state.messageQueue.length === 0 &&
+      (this.state.phase === "command" ||
+        this.state.phase === "move-select" ||
+        this.state.phase === "move-replace-select" ||
+        this.state.phase === "party-select" ||
+        this.state.phase === "bag-select")
+    ) {
+      this.drawMessageWindow("아래 터치 화면에서 행동을 선택하세요.");
+      this.drawBattleEntranceOverlay();
+      return;
+    }
 
     if (this.state.phase === "move-select") {
       this.drawMoveWindow();

@@ -80,6 +80,7 @@ export interface StartGamePageDependencies {
     options: StarterSelectionOptions,
   ) => void;
   onGameResult?: (result: PokeLoungeGameResult) => void;
+  renderMobileControls?: boolean;
   viewportSize?: GameViewportDisplaySize;
 }
 
@@ -195,9 +196,11 @@ export async function startGamePage(
       viewportSize: activeViewportSize,
     });
     activeGame = game;
-    renderMobileTouchControls(mount);
-    if (mount.classList.contains("has-touch-game-device")) {
-      renderMobileSettingsToggle(mount);
+    if (dependencies.renderMobileControls !== false) {
+      renderMobileTouchControls(mount);
+      if (mount.classList.contains("has-touch-game-device")) {
+        renderMobileSettingsToggle(mount);
+      }
     }
     const returnToRoomEntry = () => {
       removeFreshSessionListener?.();

@@ -82,4 +82,20 @@ test.describe("모바일 전용 동작", () => {
       Math.abs(buttonBox!.x + buttonBox!.width - (documentBox!.x + documentBox!.width)),
     ).toBeLessThanOrEqual(1);
   });
+
+  test("README 채팅은 모바일에서 아이콘과 첫 진입 안내로 표시한다", async ({ page }) => {
+    const locale = getMobileTestLocale();
+
+    await gotoWithRetry(page, `/${locale}/readme`);
+
+    const chatTrigger = page.getByTestId("resume-rag-chat-trigger");
+    const chatComposer = page.getByTestId("resume-rag-chat-composer");
+    const chatHint = page.getByTestId("resume-rag-mobile-hint");
+
+    await expect(chatTrigger).toBeVisible();
+    await expect(chatComposer).toBeHidden();
+    await expect(chatHint).toBeVisible();
+
+    await expect(chatHint).toBeHidden({ timeout: 5000 });
+  });
 });

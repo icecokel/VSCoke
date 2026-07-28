@@ -10,6 +10,7 @@ type SentCodexRequest = {
     ephemeral?: boolean;
     approvalPolicy?: string;
     sandbox?: string;
+    effort?: string;
     input?: Array<{ text: string }>;
   };
 };
@@ -99,6 +100,7 @@ const baseConfig: ResumeRagConfig = {
   codexAppServerUrl: 'ws://127.0.0.1:14561',
   codexCwd: '/srv/vscoke-api',
   codexTimeoutMs: 1000,
+  codexReasoningEffort: 'low',
   topK: 5,
   minSimilarity: 0.78,
   chunkSize: 1200,
@@ -153,6 +155,7 @@ describe('CodexAppServerProvider', () => {
       }),
     );
     const turnInput = sentMessages[2].params.input?.[0]?.text ?? '';
+    expect(sentMessages[2].params.effort).toBe('low');
     expect(turnInput).toContain('[1] 핵심 요약');
     expect(turnInput).toContain(
       '상민은 운영 자동화와 백오피스 개발 경험이 있다.',

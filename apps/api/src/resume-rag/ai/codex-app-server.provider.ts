@@ -316,6 +316,7 @@ export class CodexAppServerProvider implements ChatProvider {
         sandboxPolicy: { type: 'readOnly', networkAccess: false },
         environments: [],
         model: codexConfig.chatModel ?? null,
+        effort: codexConfig.codexReasoningEffort,
       });
 
       await completed;

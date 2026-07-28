@@ -66,9 +66,12 @@ ssh icenux-external
 RAG_CHAT_PROVIDER=codex-app-server
 RAG_CODEX_APP_SERVER_URL=ws://127.0.0.1:14561
 RAG_CODEX_CWD=/home/icenux/projects/vscoke-api
+RAG_CODEX_REASONING_EFFORT=low
 ```
 
 `RAG_AI_API_KEY`, `RAG_AI_BASE_URL`, `RAG_EMBEDDING_PROVIDER`, `RAG_EMBEDDING_MODEL`, `RAG_EMBEDDING_DIMENSIONS`는 선택적 legacy/future 벡터 인덱싱 경로에서만 설정합니다. 운영 chat만 배포할 때는 필수값으로 취급하지 않습니다.
+
+`RAG_CODEX_REASONING_EFFORT`는 이력 chat의 답변 생성 turn에만 적용됩니다. 기본값은 `low`이며, 지원 값은 `none`, `minimal`, `low`, `medium`, `high`, `xhigh`입니다.
 
 ## 3. DB schema 변경
 

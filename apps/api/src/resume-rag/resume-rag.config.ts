@@ -1,3 +1,14 @@
+export const codexReasoningEfforts = [
+  'none',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+] as const;
+
+export type CodexReasoningEffort = (typeof codexReasoningEfforts)[number];
+
 export type ResumeRagConfig = {
   embeddingProvider?: string;
   embeddingModel?: string;
@@ -8,6 +19,7 @@ export type ResumeRagConfig = {
   codexAppServerUrl?: string;
   codexCwd?: string;
   codexTimeoutMs: number;
+  codexReasoningEffort: CodexReasoningEffort;
   aiBaseUrl?: string;
   aiApiKey?: string;
   topK: number;
@@ -39,12 +51,14 @@ export type RequiredCodexAppServerConfig = {
   codexAppServerUrl: string;
   codexCwd?: string;
   codexTimeoutMs: number;
+  codexReasoningEffort: CodexReasoningEffort;
 };
 
 export const RESUME_RAG_CONFIG = 'RESUME_RAG_CONFIG';
 
 const DEFAULT_CODEX_APP_SERVER_URL = 'ws://127.0.0.1:14561';
 const DEFAULT_CODEX_TIMEOUT_MS = 120_000;
+const DEFAULT_CODEX_REASONING_EFFORT: CodexReasoningEffort = 'low';
 
 const parseOptionalInt = (value: string | undefined): number | undefined => {
   if (!value) return undefined;
@@ -56,6 +70,20 @@ const parseOptionalFloat = (value: string | undefined): number | undefined => {
   if (!value) return undefined;
   const parsed = Number.parseFloat(value);
   return Number.isNaN(parsed) ? undefined : parsed;
+};
+
+const parseCodexReasoningEffort = (
+  value: string | undefined,
+): CodexReasoningEffort => {
+  if (!value) return DEFAULT_CODEX_REASONING_EFFORT;
+
+  if (codexReasoningEfforts.includes(value as CodexReasoningEffort)) {
+    return value as CodexReasoningEffort;
+  }
+
+  throw new Error(
+    `Invalid RAG_CODEX_REASONING_EFFORT: ${value}. Expected one of ${codexReasoningEfforts.join(', ')}`,
+  );
 };
 
 const splitCsv = (value: string | undefined, fallback: string[]): string[] => {
@@ -81,6 +109,9 @@ export const getResumeRagConfig = (
   codexCwd: env.RAG_CODEX_CWD || undefined,
   codexTimeoutMs:
     parseOptionalInt(env.RAG_CODEX_TIMEOUT_MS) ?? DEFAULT_CODEX_TIMEOUT_MS,
+  codexReasoningEffort: parseCodexReasoningEffort(
+    env.RAG_CODEX_REASONING_EFFORT,
+  ),
   aiBaseUrl: env.RAG_AI_BASE_URL || undefined,
   aiApiKey: env.RAG_AI_API_KEY || undefined,
   topK: parseOptionalInt(env.RAG_TOP_K) ?? 5,
@@ -159,5 +190,6 @@ export const requireCodexAppServerConfig = (
     codexAppServerUrl: config.codexAppServerUrl,
     codexCwd: config.codexCwd,
     codexTimeoutMs: config.codexTimeoutMs,
+    codexReasoningEffort: config.codexReasoningEffort,
   };
 };

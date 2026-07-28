@@ -22,6 +22,12 @@ describe('resume rag config', () => {
     expect(config.minSimilarity).toBe(0.1);
   });
 
+  it('rejects an unsupported Codex reasoning effort', () => {
+    expect(() =>
+      getResumeRagConfig({ RAG_CODEX_REASONING_EFFORT: 'fast' }),
+    ).toThrow('RAG_CODEX_REASONING_EFFORT');
+  });
+
   it('parses numeric retrieval and model settings from strings', () => {
     const config = getResumeRagConfig({
       RAG_EMBEDDING_PROVIDER: 'openai-compatible',
@@ -32,6 +38,7 @@ describe('resume rag config', () => {
       RAG_CODEX_APP_SERVER_URL: 'ws://127.0.0.1:14561',
       RAG_CODEX_CWD: '/home/icenux/projects/vscoke-api',
       RAG_CODEX_TIMEOUT_MS: '45000',
+      RAG_CODEX_REASONING_EFFORT: 'low',
       RAG_TOP_K: '7',
       RAG_MIN_SIMILARITY: '0.73',
     });
@@ -42,6 +49,7 @@ describe('resume rag config', () => {
     expect(config.codexAppServerUrl).toBe('ws://127.0.0.1:14561');
     expect(config.codexCwd).toBe('/home/icenux/projects/vscoke-api');
     expect(config.codexTimeoutMs).toBe(45000);
+    expect(config.codexReasoningEffort).toBe('low');
     expect(config.topK).toBe(7);
     expect(config.minSimilarity).toBe(0.73);
   });

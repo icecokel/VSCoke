@@ -145,6 +145,7 @@ pnpm --filter @vscoke/api db:tunnel
 RAG_CHAT_PROVIDER=codex-app-server
 RAG_CODEX_APP_SERVER_URL=ws://127.0.0.1:14561
 RAG_CODEX_CWD=/home/icenux/projects/vscoke-api
+RAG_CODEX_REASONING_EFFORT=low
 RAG_PUBLIC_CHAT_ORIGINS=https://vscoke.vercel.app
 ```
 

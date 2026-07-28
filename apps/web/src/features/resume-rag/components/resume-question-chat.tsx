@@ -14,9 +14,7 @@ import {
   Send,
   ShieldAlert,
   WifiOff,
-  Wrench,
 } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,7 +35,6 @@ import {
   type ResumeRagRateLimit,
 } from "../lib/resume-rag-service";
 import { readResumeRagChat } from "../lib/resume-rag-chat-storage";
-import { isResumeRagChatAvailable } from "../lib/resume-rag-chat-availability";
 import type { ResumeRagSource } from "../types";
 import { ResumeRagRateLimitStatus } from "./resume-rag-rate-limit-status";
 
@@ -461,11 +458,6 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
   };
 
   const submitQuestion = async (rawQuestion: string, options: { appendUserMessage: boolean }) => {
-    if (!isResumeRagChatAvailable) {
-      toast.info(t("maintenance.message"), { id: "resume-rag-maintenance" });
-      return;
-    }
-
     const trimmedQuestion = rawQuestion.trim();
     if (!trimmedQuestion || isSubmitting) return;
 
@@ -600,31 +592,12 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
           />
           <Button
             type="submit"
-            disabled={isResumeRagChatAvailable && !canSubmit}
-            data-disabled={!isResumeRagChatAvailable}
-            aria-label={
-              isResumeRagChatAvailable
-                ? isSubmitting
-                  ? t("submitting")
-                  : t("submit")
-                : t("maintenance.label")
-            }
-            className={`h-10 shrink-0 rounded-md px-3 ${
-              isResumeRagChatAvailable
-                ? "bg-blue-300 text-gray-950 hover:bg-blue-200"
-                : "cursor-not-allowed bg-gray-700 text-gray-300 hover:bg-gray-700"
-            }`}
+            size="icon"
+            disabled={!canSubmit}
+            aria-label={isSubmitting ? t("submitting") : t("submit")}
+            className="size-10 shrink-0 rounded-md bg-blue-300 text-gray-950 hover:bg-blue-200"
           >
-            {isResumeRagChatAvailable && isSubmitting ? (
-              <Loader2 className="animate-spin" />
-            ) : isResumeRagChatAvailable ? (
-              <Send />
-            ) : (
-              <>
-                <Wrench />
-                {t("maintenance.label")}
-              </>
-            )}
+            {isSubmitting ? <Loader2 className="animate-spin" /> : <Send />}
           </Button>
         </div>
         <ResumeRagRateLimitStatus

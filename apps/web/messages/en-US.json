@@ -326,10 +326,6 @@
     "sourceLabel": "Evidence",
     "evidenceLabel": "Resume evidence referenced",
     "groundedBadge": "Based on resume evidence",
-    "maintenance": {
-      "label": "Patching",
-      "message": "The resume chat feature is being patched. Please try again shortly."
-    },
     "rateLimit": {
       "remaining": "{count} questions left",
       "nextAvailable": "Next question restored at {time}"

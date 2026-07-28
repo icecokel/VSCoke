@@ -326,10 +326,6 @@
     "sourceLabel": "根拠",
     "evidenceLabel": "参照した履歴根拠",
     "groundedBadge": "履歴根拠に基づく回答",
-    "maintenance": {
-      "label": "パッチ中",
-      "message": "履歴書チャット機能をパッチ中です。しばらくしてからもう一度お試しください。"
-    },
     "rateLimit": {
       "remaining": "残り質問数 {count} 回",
       "nextAvailable": "次の1回の復帰 {time}"

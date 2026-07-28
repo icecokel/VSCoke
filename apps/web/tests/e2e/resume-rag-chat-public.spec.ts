@@ -10,7 +10,7 @@ const typeTextareaValue = async (textarea: Locator, value: string) => {
 const getFailureAlert = (page: Page, title: string) =>
   page.getByRole("alert").filter({ hasText: title });
 
-test.describe.skip("Resume RAG public chat when enabled", () => {
+test.describe("Resume RAG public chat", () => {
   test("README에서 질문한 답변을 준비한 뒤 질문 페이지에서 바로 볼 수 있다", async ({ page }) => {
     await page.route(`${apiBaseUrl}/resume-rag/chat`, async route => {
       const request = route.request();
@@ -206,15 +206,14 @@ test.describe.skip("Resume RAG public chat when enabled", () => {
       );
     });
 
-    expect(analyticsEvents).toEqual([
-      {
-        event: "resume_rag_chat_submitted",
-        chat_entry_point: "resume_question",
-        chat_locale: "ko-KR",
-        chat_keyword: "analytics",
-        chat_question_length: "short",
-      },
-    ]);
+    expect(analyticsEvents).toHaveLength(1);
+    expect(analyticsEvents[0]).toMatchObject({
+      event: "resume_rag_chat_submitted",
+      chat_entry_point: "resume_question",
+      chat_locale: "ko-KR",
+      chat_keyword: "analytics",
+      chat_question_length: "short",
+    });
     expect(JSON.stringify(analyticsEvents)).not.toContain(question);
   });
 

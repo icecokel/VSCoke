@@ -3,7 +3,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowRight, Loader2, MessageCircle, RefreshCw, Send } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "@/i18n/navigation";
@@ -24,7 +23,6 @@ import {
   type ResumeRagRateLimit,
 } from "../lib/resume-rag-service";
 import { storeResumeRagChat } from "../lib/resume-rag-chat-storage";
-import { isResumeRagChatAvailable } from "../lib/resume-rag-chat-availability";
 import { ResumeRagRateLimitStatus } from "./resume-rag-rate-limit-status";
 
 type ComposerStatus = "idle" | "submitting" | "ready" | "error";
@@ -42,7 +40,6 @@ const createChatId = () => {
 
 export const ReadmeResumeQuestionComposer = () => {
   const t = useTranslations("resumeRag.readmeEntry");
-  const tResumeRag = useTranslations("resumeRag");
   const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -83,11 +80,6 @@ export const ReadmeResumeQuestionComposer = () => {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    if (!isResumeRagChatAvailable) {
-      toast.info(tResumeRag("maintenance.message"), { id: "resume-rag-maintenance" });
-      return;
-    }
 
     const trimmedQuestion = question.trim();
     if (trimmedQuestion.length < 2 || status === "submitting") return;
@@ -154,11 +146,6 @@ export const ReadmeResumeQuestionComposer = () => {
   };
 
   const handleMobileChatClick = () => {
-    if (!isResumeRagChatAvailable) {
-      toast.info(tResumeRag("maintenance.message"), { id: "resume-rag-maintenance" });
-      return;
-    }
-
     trackResumeRagChatOpened({ entryPoint: "readme", locale });
     router.push("/resume/question");
   };
@@ -232,24 +219,11 @@ export const ReadmeResumeQuestionComposer = () => {
               ) : (
                 <Button
                   type="submit"
-                  disabled={isResumeRagChatAvailable && !canSubmit}
-                  data-disabled={!isResumeRagChatAvailable}
-                  className={`h-10 shrink-0 border px-3 text-white disabled:border-gray-200 disabled:bg-gray-200 disabled:text-gray-700 disabled:opacity-100 ${
-                    isResumeRagChatAvailable
-                      ? "border-blue-300 bg-blue-300 hover:bg-blue-400"
-                      : "cursor-not-allowed border-gray-200 bg-gray-200 text-gray-700 hover:bg-gray-200"
-                  }`}
+                  disabled={!canSubmit}
+                  className="h-10 shrink-0 border border-blue-300 bg-blue-300 px-3 text-white hover:bg-blue-400 disabled:border-gray-200 disabled:bg-gray-200 disabled:text-gray-700 disabled:opacity-100"
                 >
-                  {isResumeRagChatAvailable && isSubmitting ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Send />
-                  )}
-                  {isResumeRagChatAvailable
-                    ? isSubmitting
-                      ? t("submitting")
-                      : t("submit")
-                    : tResumeRag("maintenance.label")}
+                  {isSubmitting ? <Loader2 className="animate-spin" /> : <Send />}
+                  {isSubmitting ? t("submitting") : t("submit")}
                 </Button>
               )}
             </div>

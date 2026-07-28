@@ -326,10 +326,6 @@
     "sourceLabel": "근거",
     "evidenceLabel": "참고한 이력서 근거",
     "groundedBadge": "이력서 근거 기반",
-    "maintenance": {
-      "label": "패치 중",
-      "message": "이력서 채팅 기능을 패치 중입니다. 잠시 후 다시 이용해 주세요."
-    },
     "rateLimit": {
       "remaining": "남은 질문 {count}회",
       "nextAvailable": "다음 1회 복구 {time}"

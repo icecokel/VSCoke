@@ -3,7 +3,7 @@ import type { CompletedTileStep } from "./tileSteps";
 export const WILD_ENCOUNTER_RATE = 0.15;
 export const MIN_POKEMON_LEVEL = 1;
 export const MAX_POKEMON_LEVEL = 100;
-export const WILD_ENCOUNTER_LEVEL_RADIUS = 5;
+export const WILD_ENCOUNTER_LEVEL_OFFSET = 5;
 
 export interface WildEncounterSlot {
   speciesId: number;
@@ -67,11 +67,11 @@ export const pickWeightedEncounterSlot = (
 
 export const createWildEncounterLevelRange = (
   averageLevel: number,
-  radius = WILD_ENCOUNTER_LEVEL_RADIUS,
+  lowerLevelOffset = WILD_ENCOUNTER_LEVEL_OFFSET,
 ): WildEncounterLevelRange =>
   normalizeLevelRange({
-    minLevel: averageLevel - radius,
-    maxLevel: averageLevel + radius,
+    minLevel: averageLevel - lowerLevelOffset,
+    maxLevel: averageLevel,
   });
 
 export const rollWildEncounter = ({

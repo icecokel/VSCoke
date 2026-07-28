@@ -63,8 +63,6 @@
     "cards": {
       "readmeTitle": "README",
       "readmeDesc": "Check profile and career summary.",
-      "blogTitle": "Blog",
-      "blogDesc": "Read development posts and journals.",
       "blogDashboardTitle": "Blog Dashboard",
       "blogDashboardDesc": "Review post list and search status.",
       "gameTitle": "Game Center",

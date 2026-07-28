@@ -63,8 +63,6 @@
     "cards": {
       "readmeTitle": "README",
       "readmeDesc": "プロフィールと経歴サマリーを確認します。",
-      "blogTitle": "Blog",
-      "blogDesc": "開発記事と振り返りを読みます。",
       "blogDashboardTitle": "Blog Dashboard",
       "blogDashboardDesc": "投稿一覧と検索状態を確認します。",
       "gameTitle": "Game Center",

@@ -63,8 +63,6 @@
     "cards": {
       "readmeTitle": "README",
       "readmeDesc": "프로필과 경력 요약을 확인합니다.",
-      "blogTitle": "Blog",
-      "blogDesc": "개발 글과 회고를 읽습니다.",
       "blogDashboardTitle": "Blog Dashboard",
       "blogDashboardDesc": "게시글 목록과 검색 상태를 점검합니다.",
       "gameTitle": "Game Center",

@@ -26,7 +26,6 @@ export interface AppMessages {
     secondaryCta: string;
     cards: {
       readmeTitle: string;
-      blogTitle: string;
       blogDashboardTitle: string;
       gameTitle: string;
     };

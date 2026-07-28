@@ -133,17 +133,20 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await visit(page, `/${locale}`);
 
     const quickLaunchGrid = page.locator(
-      "section div.grid.grid-cols-1.gap-3.sm\\:grid-cols-2.lg\\:grid-cols-4",
+      "section div.grid.grid-cols-1.gap-3.sm\\:grid-cols-2.lg\\:grid-cols-3",
     );
     await expect(quickLaunchGrid).toHaveCount(1);
-    await expect(quickLaunchGrid.locator("button")).toHaveCount(4);
+    await expect(quickLaunchGrid.locator("button")).toHaveCount(3);
 
     const quickCtaCases: Array<{ title: string; path: string }> = [
       { title: messages.home.cards.readmeTitle, path: "/readme" },
-      { title: messages.home.cards.blogTitle, path: "/blog" },
-      { title: messages.home.cards.blogDashboardTitle, path: "/blog/dashboard" },
       { title: messages.home.cards.gameTitle, path: "/game" },
+      { title: messages.home.cards.blogDashboardTitle, path: "/blog/dashboard" },
     ];
+
+    await expect(quickLaunchGrid.getByRole("heading")).toHaveText(
+      quickCtaCases.map(testCase => testCase.title),
+    );
 
     for (const testCase of quickCtaCases) {
       const cta = quickLaunchGrid

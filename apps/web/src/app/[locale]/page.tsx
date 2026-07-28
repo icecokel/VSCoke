@@ -16,10 +16,10 @@ const Home = () => {
       path: "/readme",
     },
     {
-      id: "blog",
-      title: t("cards.blogTitle"),
-      description: t("cards.blogDesc"),
-      path: "/blog",
+      id: "game",
+      title: t("cards.gameTitle"),
+      description: t("cards.gameDesc"),
+      path: "/game",
     },
     {
       id: "blog-dashboard",
@@ -27,22 +27,16 @@ const Home = () => {
       description: t("cards.blogDashboardDesc"),
       path: "/blog/dashboard",
     },
-    {
-      id: "game",
-      title: t("cards.gameTitle"),
-      description: t("cards.gameDesc"),
-      path: "/game",
-    },
   ];
 
   useEffect(() => {
-    const routesToPrefetch = ["/readme", "/game", "/blog", "/blog/dashboard"];
+    const routesToPrefetch = ["/readme", "/game", "/blog/dashboard"];
     routesToPrefetch.forEach(path => prefetch(path));
   }, [prefetch]);
 
   return (
     <div className="min-h-full bg-gray-800 text-gray-100">
-      <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-6 md:space-y-10 md:px-6 md:py-10">
+      <div className="mx-auto w-full max-w-6xl space-y-8 px-4 pt-6 pb-24 md:space-y-10 md:px-6 md:pt-10 md:pb-24">
         <section
           className="rounded-2xl border border-gray-700 bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-6 md:p-10"
           data-testid="home-hero"
@@ -86,7 +80,7 @@ const Home = () => {
             <p className="mt-2 text-sm text-gray-400 md:text-base">{t("quickLaunchDescription")}</p>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {quickLaunchCards.map(card => (
               <button
                 key={card.id}

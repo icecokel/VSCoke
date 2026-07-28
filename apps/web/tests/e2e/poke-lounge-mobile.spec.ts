@@ -249,16 +249,32 @@ test("Poke Lounge 모바일 전투는 하단 조작 도크에서 행동을 고�
     const verticalPadding =
       Number.parseFloat(gamePageStyles.paddingTop) +
       Number.parseFloat(gamePageStyles.paddingBottom);
+    const messageDeckStyles = window.getComputedStyle(messageDeck);
+    const messageDeckVerticalPadding =
+      Number.parseFloat(messageDeckStyles.paddingTop) +
+      Number.parseFloat(messageDeckStyles.paddingBottom);
 
     return {
-      expectedControlDockHeight: (gamePageBounds.height - verticalPadding) / 5,
+      expectedControlDockBottom:
+        gamePageBounds.bottom - Number.parseFloat(gamePageStyles.paddingBottom),
+      expectedControlDockHeight:
+        gamePageBounds.height -
+        verticalPadding -
+        gameFrameBounds.height -
+        Number.parseFloat(gamePageStyles.rowGap),
       controlDockHeight: controlDockBounds.height,
-      expectedControlDockTop: gameFrameBounds.bottom + Number.parseFloat(gamePageStyles.rowGap),
-      controlDockTop: controlDockBounds.top,
+      controlDockBottom: controlDockBounds.bottom,
       messageDeckCenterX: messageDeckBounds.left + messageDeckBounds.width / 2,
       messageDeckCenterY: messageDeckBounds.top + messageDeckBounds.height / 2,
       nextButtonCenterX: nextButtonBounds.left + nextButtonBounds.width / 2,
       nextButtonCenterY: nextButtonBounds.top + nextButtonBounds.height / 2,
+      expectedNextButtonHeight: Math.max(
+        72,
+        Math.min((messageDeckBounds.height - messageDeckVerticalPadding) / 5, 104),
+      ),
+      nextButtonHeight: nextButtonBounds.height,
+      expectedNextButtonWidth: Math.min(window.innerWidth * 0.48, 220),
+      nextButtonWidth: nextButtonBounds.width,
     };
   });
 
@@ -267,8 +283,8 @@ test("Poke Lounge 모바일 전투는 하단 조작 도크에서 행동을 고�
     singleActionLayout!.expectedControlDockHeight,
     1,
   );
-  expect(singleActionLayout!.controlDockTop).toBeCloseTo(
-    singleActionLayout!.expectedControlDockTop,
+  expect(singleActionLayout!.controlDockBottom).toBeCloseTo(
+    singleActionLayout!.expectedControlDockBottom,
     1,
   );
   expect(singleActionLayout!.nextButtonCenterX).toBeCloseTo(
@@ -277,6 +293,14 @@ test("Poke Lounge 모바일 전투는 하단 조작 도크에서 행동을 고�
   );
   expect(singleActionLayout!.nextButtonCenterY).toBeCloseTo(
     singleActionLayout!.messageDeckCenterY,
+    1,
+  );
+  expect(singleActionLayout!.nextButtonHeight).toBeCloseTo(
+    singleActionLayout!.expectedNextButtonHeight,
+    1,
+  );
+  expect(singleActionLayout!.nextButtonWidth).toBeCloseTo(
+    singleActionLayout!.expectedNextButtonWidth,
     1,
   );
   await nextMessageButton.click();

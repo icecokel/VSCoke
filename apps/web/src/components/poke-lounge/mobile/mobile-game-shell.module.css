@@ -422,12 +422,15 @@
 
 .nextButton {
   place-self: center;
-  min-height: 42px;
+  width: min(48vw, 220px);
+  height: min(20%, 104px);
+  min-height: 72px;
   padding: 8px 14px;
   border-radius: 11px;
   background: #e57a55;
   box-shadow: 0 3px 0 #17231c;
   color: #fffdf4;
+  font-size: clamp(1.05rem, 4.5vw, 1.3rem);
 }
 
 .nextButton span {

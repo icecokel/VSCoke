@@ -852,7 +852,6 @@
 @media (orientation: portrait) {
   .touchGameDevice {
     --poke-lounge-mobile-screen-gap: clamp(6px, 1.5dvh, 12px);
-    --poke-lounge-mobile-single-action-control-height: 20%;
     --poke-lounge-mobile-available-inline-size: max(
       0px,
       calc(
@@ -875,13 +874,6 @@
     gap: var(--poke-lounge-mobile-screen-gap);
     padding: var(--poke-lounge-mobile-letterbox-top) env(safe-area-inset-right, 0px)
       var(--poke-lounge-mobile-letterbox-bottom) env(safe-area-inset-left, 0px);
-  }
-
-  .touchGameDevice:has([data-poke-lounge-mobile-deck="battle-message"]) {
-    grid-template-rows:
-      var(--poke-lounge-mobile-screen-height)
-      minmax(0, var(--poke-lounge-mobile-single-action-control-height));
-    align-content: start;
   }
 
   .touchGameDevice .gameFrame {

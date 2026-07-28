@@ -2,12 +2,22 @@ import { ServiceUnavailableException } from '@nestjs/common';
 import { ResumeRagService } from './resume-rag.service';
 import type { ChatProvider } from './ai/chat-provider';
 import type { ResumeRagRetrieverService } from './resume-rag-retriever.service';
+import type { ResumeRagChatLogService } from './resume-rag-chat-log.service';
 import type { ResumeRagKeywordService } from './resume-rag-keyword.service';
 
 const createKeywordService = (inScope = true): ResumeRagKeywordService =>
   ({
     isQuestionInScope: jest.fn().mockResolvedValue(inScope),
   }) as unknown as ResumeRagKeywordService;
+
+const createChatLogService = () => {
+  const recordQuestion = jest.fn().mockResolvedValue(undefined);
+
+  return {
+    chatLogService: { recordQuestion } as unknown as ResumeRagChatLogService,
+    recordQuestion,
+  };
+};
 
 describe('ResumeRagService', () => {
   it('returns a fixed out-of-scope message without retrieving or calling AI', async () => {
@@ -24,10 +34,12 @@ describe('ResumeRagService', () => {
     const keywordService = {
       isQuestionInScope,
     } as unknown as ResumeRagKeywordService;
+    const { chatLogService, recordQuestion } = createChatLogService();
     const service = new ResumeRagService(
       retriever,
       chatProvider,
       keywordService,
+      chatLogService,
     );
 
     await expect(
@@ -41,6 +53,7 @@ describe('ResumeRagService', () => {
     expect(retrieve).not.toHaveBeenCalled();
     expect(answer).not.toHaveBeenCalled();
     expect(isQuestionInScope).toHaveBeenCalledWith('오늘 날씨 어때?');
+    expect(recordQuestion).toHaveBeenCalledWith('오늘 날씨 어때?', 'ko-KR');
   });
 
   it('returns grounded false when no chunks are retrieved', async () => {
@@ -56,6 +69,7 @@ describe('ResumeRagService', () => {
       retriever,
       chatProvider,
       createKeywordService(),
+      createChatLogService().chatLogService,
     );
 
     await expect(
@@ -89,6 +103,7 @@ describe('ResumeRagService', () => {
       retriever,
       chatProvider,
       createKeywordService(),
+      createChatLogService().chatLogService,
     );
 
     await expect(
@@ -140,6 +155,7 @@ describe('ResumeRagService', () => {
       retriever,
       chatProvider,
       createKeywordService(),
+      createChatLogService().chatLogService,
     );
 
     await expect(

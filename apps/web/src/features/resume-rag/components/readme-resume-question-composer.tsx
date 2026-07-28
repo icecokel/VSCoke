@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowRight, Loader2, MessageCircle, RefreshCw, Send } from "lucide-react";
 import { toast } from "sonner";
@@ -9,6 +9,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "@/i18n/navigation";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  trackResumeRagChatAnswerViewed,
+  trackResumeRagChatCompleted,
+  trackResumeRagChatComposerFocused,
+  trackResumeRagChatFailed,
+  trackResumeRagChatOpened,
+  trackResumeRagChatSubmitted,
+  type ResumeRagChatFailureReason,
+} from "../lib/resume-rag-chat-analytics";
 import { askResumeRag } from "../lib/resume-rag-service";
 import { storeResumeRagChat } from "../lib/resume-rag-chat-storage";
 import { isResumeRagChatAvailable } from "../lib/resume-rag-chat-availability";
@@ -36,6 +45,7 @@ export const ReadmeResumeQuestionComposer = () => {
   const [status, setStatus] = useState<ComposerStatus>("idle");
   const [readyChatId, setReadyChatId] = useState<string | null>(null);
   const [isMobileChatHintVisible, setIsMobileChatHintVisible] = useState(false);
+  const hasTrackedComposerFocus = useRef(false);
 
   useEffect(() => {
     if (!isMobile || window.sessionStorage.getItem(mobileChatHintStorageKey)) return;
@@ -55,6 +65,16 @@ export const ReadmeResumeQuestionComposer = () => {
     [question, status],
   );
 
+  const handleComposerFocus = () => {
+    if (hasTrackedComposerFocus.current) return;
+
+    hasTrackedComposerFocus.current = true;
+    trackResumeRagChatComposerFocused({
+      entryPoint: "readme",
+      locale,
+    });
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -70,6 +90,12 @@ export const ReadmeResumeQuestionComposer = () => {
 
     setReadyChatId(null);
     setStatus("submitting");
+    trackResumeRagChatSubmitted({
+      entryPoint: "readme",
+      locale,
+      question: trimmedQuestion,
+    });
+    let failureReason: ResumeRagChatFailureReason = "request";
 
     try {
       const response = await askResumeRag({
@@ -86,12 +112,26 @@ export const ReadmeResumeQuestionComposer = () => {
       });
 
       if (!stored) {
+        failureReason = "storage";
         throw new Error("Failed to store resume RAG chat.");
       }
 
+      trackResumeRagChatCompleted({
+        entryPoint: "readme",
+        locale,
+        question: trimmedQuestion,
+        grounded: response.grounded,
+        sourceCount: response.sources.length,
+      });
       setReadyChatId(chatId);
       setStatus("ready");
     } catch {
+      trackResumeRagChatFailed({
+        entryPoint: "readme",
+        locale,
+        question: trimmedQuestion,
+        failureReason,
+      });
       setStatus("error");
     }
   };
@@ -99,6 +139,7 @@ export const ReadmeResumeQuestionComposer = () => {
   const handleViewAnswer = () => {
     if (!readyChatId) return;
 
+    trackResumeRagChatAnswerViewed({ entryPoint: "readme", locale });
     router.push(`/resume/question?chatId=${encodeURIComponent(readyChatId)}`);
   };
 
@@ -108,6 +149,7 @@ export const ReadmeResumeQuestionComposer = () => {
       return;
     }
 
+    trackResumeRagChatOpened({ entryPoint: "readme", locale });
     router.push("/resume/question");
   };
 
@@ -154,6 +196,7 @@ export const ReadmeResumeQuestionComposer = () => {
             <div className="flex items-end gap-2 rounded-md border border-blue-300 bg-white p-2 transition-colors focus-within:border-blue-300">
               <Textarea
                 value={question}
+                onFocus={handleComposerFocus}
                 onChange={event => {
                   setQuestion(event.target.value);
                   if (status === "ready" || status === "error") {

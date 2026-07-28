@@ -171,6 +171,53 @@ test.describe.skip("Resume RAG public chat when enabled", () => {
     });
   });
 
+  test("질문 전송은 원문 없이 GTM용 채팅 집계 이벤트를 적재한다", async ({ page }) => {
+    const question = "GA4 행동 이벤트를 어떻게 적용했어?";
+
+    await page.route(`${apiBaseUrl}/resume-rag/chat`, async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: {
+            answer: "GA4 이벤트를 GTM으로 전송했습니다.",
+            grounded: true,
+            sources: [],
+          },
+        }),
+      });
+    });
+
+    await page.goto("/ko-KR/resume/question");
+    await page.evaluate(() => {
+      (window as Window & { dataLayer?: unknown[] }).dataLayer = [];
+    });
+    await typeTextareaValue(page.getByPlaceholder("이력에 대해 질문하세요."), question);
+    await page.getByRole("button", { name: "질문하기" }).click();
+
+    const analyticsEvents = await page.evaluate(() => {
+      const analyticsWindow = window as Window & {
+        dataLayer?: Array<Record<string, unknown>>;
+      };
+
+      return (analyticsWindow.dataLayer ?? []).filter(
+        event => event.event === "resume_rag_chat_submitted",
+      );
+    });
+
+    expect(analyticsEvents).toEqual([
+      {
+        event: "resume_rag_chat_submitted",
+        chat_entry_point: "resume_question",
+        chat_locale: "ko-KR",
+        chat_keyword: "analytics",
+        chat_question_length: "short",
+      },
+    ]);
+    expect(JSON.stringify(analyticsEvents)).not.toContain(question);
+  });
+
   test("근거가 부족한 답변은 낮은 신뢰 상태와 빈 근거로 표시한다", async ({ page }) => {
     await page.route(`${apiBaseUrl}/resume-rag/chat`, async route => {
       await route.fulfill({

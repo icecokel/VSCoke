@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   ChevronRight,
@@ -21,6 +21,15 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api-client";
+import {
+  trackResumeRagChatCompleted,
+  trackResumeRagChatComposerFocused,
+  trackResumeRagChatFailed,
+  trackResumeRagChatSubmitted,
+  trackResumeRagChatSuggestionSelected,
+  trackResumeRagChatTopicExpanded,
+  type ResumeRagChatFailureReason,
+} from "../lib/resume-rag-chat-analytics";
 import { askResumeRag, ResumeRagContractError } from "../lib/resume-rag-service";
 import { readResumeRagChat } from "../lib/resume-rag-chat-storage";
 import { isResumeRagChatAvailable } from "../lib/resume-rag-chat-availability";
@@ -107,6 +116,14 @@ const getFailureState = (caught: unknown, question: string): FailureState => {
   }
 
   return { kind: "request", question };
+};
+
+const toAnalyticsFailureReason = (kind: FailureKind): ResumeRagChatFailureReason => {
+  if (kind === "origin-blocked") return "origin_blocked";
+  if (kind === "service-unavailable") return "service_unavailable";
+  if (kind === "rate-limited") return "rate_limited";
+
+  return kind;
 };
 
 const FailureIcon = ({ kind }: { kind: FailureKind }) => {
@@ -295,8 +312,18 @@ const EmptyChatState = ({
   onSelectSuggestion: (suggestion: string) => void;
 }) => {
   const t = useTranslations("resumeRag");
+  const locale = useLocale();
   const [activeTopicIndex, setActiveTopicIndex] = useState<number | null>(null);
   const activeTopic = activeTopicIndex === null ? null : questionTopics[activeTopicIndex];
+
+  const handleTopicClick = (topicIndex: number) => {
+    const willOpen = activeTopicIndex !== topicIndex;
+    setActiveTopicIndex(willOpen ? topicIndex : null);
+
+    if (willOpen) {
+      trackResumeRagChatTopicExpanded({ locale, topicIndex });
+    }
+  };
 
   return (
     <div className="min-h-72 overflow-hidden border border-gray-800 bg-gray-950/70 text-gray-100">
@@ -324,7 +351,7 @@ const EmptyChatState = ({
                     ? "bg-blue-300/10 text-blue-50"
                     : "bg-gray-900/60 text-gray-200"
                 }`}
-                onClick={() => setActiveTopicIndex(current => (current === index ? null : index))}
+                onClick={() => handleTopicClick(index)}
               >
                 <ChevronRight className="mt-0.5 size-3.5 text-blue-300" />
                 <span className="min-w-0">
@@ -349,7 +376,13 @@ const EmptyChatState = ({
                     variant="outline"
                     size="sm"
                     className="h-auto min-h-10 w-full justify-start whitespace-normal border-gray-700 bg-gray-950/80 px-3 py-2 text-left text-gray-200 hover:bg-gray-800 hover:text-gray-50"
-                    onClick={() => onSelectSuggestion(question)}
+                    onClick={() => {
+                      trackResumeRagChatSuggestionSelected({
+                        locale,
+                        topicIndex: activeTopicIndex ?? 0,
+                      });
+                      onSelectSuggestion(question);
+                    }}
                   >
                     <ChevronRight className="mt-0.5 size-3.5 text-blue-300" />
                     <span className="min-w-0">{question}</span>
@@ -380,13 +413,13 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [failure, setFailure] = useState<FailureState | null>(null);
+  const hasTrackedComposerFocus = useRef(false);
 
   useEffect(() => {
     if (!initialChatId) return;
 
     const storedChat = readResumeRagChat(initialChatId);
     if (!storedChat) return;
-
     setMessages([
       {
         id: `${storedChat.id}-user`,
@@ -410,6 +443,16 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
     [isSubmitting, question],
   );
 
+  const handleComposerFocus = () => {
+    if (hasTrackedComposerFocus.current) return;
+
+    hasTrackedComposerFocus.current = true;
+    trackResumeRagChatComposerFocused({
+      entryPoint: "resume_question",
+      locale,
+    });
+  };
+
   const submitQuestion = async (rawQuestion: string, options: { appendUserMessage: boolean }) => {
     if (!isResumeRagChatAvailable) {
       toast.info(t("maintenance.message"), { id: "resume-rag-maintenance" });
@@ -430,6 +473,11 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
       setMessages(prev => [...prev, userMessage]);
     }
     setQuestion("");
+    trackResumeRagChatSubmitted({
+      entryPoint: "resume_question",
+      locale,
+      question: trimmedQuestion,
+    });
 
     try {
       const response = await askResumeRag({
@@ -446,8 +494,22 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
           sources: response.sources,
         },
       ]);
+      trackResumeRagChatCompleted({
+        entryPoint: "resume_question",
+        locale,
+        question: trimmedQuestion,
+        grounded: response.grounded,
+        sourceCount: response.sources.length,
+      });
     } catch (caught) {
-      setFailure(getFailureState(caught, trimmedQuestion));
+      const failureState = getFailureState(caught, trimmedQuestion);
+      trackResumeRagChatFailed({
+        entryPoint: "resume_question",
+        locale,
+        question: trimmedQuestion,
+        failureReason: toAnalyticsFailureReason(failureState.kind),
+      });
+      setFailure(failureState);
     } finally {
       setIsSubmitting(false);
     }
@@ -517,6 +579,7 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
         <div className="flex items-end gap-2 rounded-lg border border-gray-700 bg-gray-900/80 p-2 transition-colors focus-within:border-blue-300/70">
           <Textarea
             value={question}
+            onFocus={handleComposerFocus}
             onChange={event => setQuestion(event.target.value)}
             placeholder={t("placeholder")}
             aria-label={t("composerLabel")}

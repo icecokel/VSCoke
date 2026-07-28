@@ -1,4 +1,5 @@
 import Profile from "@/components/profile/profile";
+import { ResumeRagPageViewTracker } from "@/features/resume-rag/components/resume-rag-page-view-tracker";
 import { ReadmeResumeQuestionComposer } from "@/features/resume-rag/components/readme-resume-question-composer";
 import { NextPage } from "next";
 
@@ -8,6 +9,7 @@ import { NextPage } from "next";
 const ReadmePage: NextPage = () => {
   return (
     <>
+      <ResumeRagPageViewTracker surface="readme" />
       <Profile />
       <ReadmeResumeQuestionComposer />
     </>

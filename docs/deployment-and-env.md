@@ -148,6 +148,54 @@ PM2 운영 기준:
 NEXT_PUBLIC_API_URL=http://127.0.0.1:65535 pnpm build:web
 ```
 
+### Resume RAG 채팅 집계
+
+이력 질문과 이력 페이지는 브라우저의 `dataLayer`에 다음 GTM 커스텀 이벤트를 적재한다.
+
+| 이벤트                                | 발생 시점                          |
+| ------------------------------------- | ---------------------------------- |
+| `resume_readme_viewed`                | README 이력 페이지 진입            |
+| `resume_chat_page_viewed`             | 이력 질문 페이지 진입              |
+| `resume_rag_chat_composer_focused`    | 질문 입력창 첫 focus               |
+| `resume_rag_chat_opened`              | 모바일 README에서 질문 페이지 열기 |
+| `resume_rag_chat_topic_expanded`      | 추천 질문 주제 펼치기              |
+| `resume_rag_chat_suggestion_selected` | 추천 질문 선택                     |
+| `resume_rag_chat_submitted`           | 질문 API 전송                      |
+| `resume_rag_chat_completed`           | 답변 수신                          |
+| `resume_rag_chat_failed`              | API 또는 응답 계약 실패            |
+| `resume_rag_chat_answer_viewed`       | README에서 준비한 답변 보기        |
+
+채팅 이벤트의 공통 parameter는 `chat_entry_point`, `chat_locale`, `chat_keyword`,
+`chat_question_length`다. 완료 이벤트에는 `chat_evidence`, `chat_source_count`, 실패 이벤트에는
+`chat_failure_reason`, 추천 주제 이벤트에는 `chat_topic_index`가 추가된다. 질문 원문은 이메일 등
+개인정보가 포함될 수 있어 GA/GTM으로 보내지 않는다.
+
+GTM에서 위 이벤트별 Custom Event trigger와 같은 이름의 GA4 Event 태그를 만들고 Data Layer
+Variable을 event parameter로 매핑한다. GA4 관리 화면에서 `chat_keyword`, `chat_entry_point`,
+`chat_evidence`, `chat_failure_reason`을 event-scoped custom dimension으로 등록하면 이벤트 수와
+사용자 수를 탐색 보고서에서 집계할 수 있다. `NEXT_PUBLIC_GTM_ID`가 없고 직접 GA만 연결한 경우에는
+동일 이벤트를 `gtag`로 전송한다. GA와 GTM을 동시에 설정한 경우에는 GTM 경로만 사용한다.
+
+새 키워드가 필요하면 `resume-rag-chat-analytics.ts`의 허용 목록에 정규화한 값과 매처를 추가한다.
+점검 모드에서 차단된 전송은 전송·완료·실패 이벤트를 추가하지 않는다.
+
+### Resume RAG 질문 로그
+
+`resume_rag_chat_logs`에는 origin 검증과 DTO 검증을 통과한 질문을 답변 처리 전에 기록한다.
+질문 내용은 검토할 수 있도록 보관하되 이메일, 전화번호, Bearer/API key·token·secret 값은
+마스킹한다. IP 주소, 로그인 계정 식별자, 질문 원문을 GA/GTM으로 보내지 않는다.
+
+운영에서 최근 질문을 확인할 때는 다음 조회를 사용한다.
+
+```sql
+SELECT "createdAt", "locale", "questionText"
+FROM "resume_rag_chat_logs"
+ORDER BY "createdAt" DESC
+LIMIT 100;
+```
+
+동일하게 마스킹된 질문의 반복 수는 `questionHash`로 집계할 수 있다.
+
 ### API 환경 변수
 
 API 로컬 개발 값은 `apps/api/.env`에 둔다. 시작점은 `apps/api/.env.example`을 복사해 사용한다.

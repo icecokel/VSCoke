@@ -53,6 +53,7 @@ export interface PokeLoungeCopy {
   settingsRankingRetry: string;
   settingsRankingEmpty: string;
   settingsClose: string;
+  settingsExit: string;
   partySlotsTitle: string;
   partySlotLabel(slot: number): string;
   partySlotEmpty: string;
@@ -215,6 +216,7 @@ const KOREAN_COPY: PokeLoungeCopy = {
   settingsRankingRetry: "다시 시도",
   settingsRankingEmpty: "아직 검증된 기록이 없습니다.",
   settingsClose: "닫기",
+  settingsExit: "게임 종료",
   partySlotsTitle: "파티 슬롯",
   partySlotLabel: slot => `슬롯 ${slot}`,
   partySlotEmpty: "비어 있음",
@@ -389,6 +391,7 @@ const ENGLISH_COPY: PokeLoungeCopy = {
   settingsRankingRetry: "Try again",
   settingsRankingEmpty: "No verified records yet.",
   settingsClose: "Close",
+  settingsExit: "Exit game",
   partySlotsTitle: "Party slots",
   partySlotLabel: slot => `Slot ${slot}`,
   partySlotEmpty: "Empty",
@@ -564,6 +567,7 @@ const JAPANESE_COPY: PokeLoungeCopy = {
   settingsRankingRetry: "再試行",
   settingsRankingEmpty: "検証済み記録はまだありません。",
   settingsClose: "閉じる",
+  settingsExit: "ゲームを終了",
   partySlotsTitle: "手持ちスロット",
   partySlotLabel: slot => `スロット ${slot}`,
   partySlotEmpty: "空き",

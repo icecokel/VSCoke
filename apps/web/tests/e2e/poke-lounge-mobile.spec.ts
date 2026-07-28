@@ -45,6 +45,39 @@ test("Poke Lounge 모바일 로딩이 멈춰도 게임 센터로 이탈할 수 �
   }
 });
 
+test("Poke Lounge 모바일 새 게임 확인 버튼은 가로와 세로 중앙에 정렬된다", async ({ page }) => {
+  await gotoWithRetry(page, "/ko-KR/game/poke-lounge?e2e=1");
+  await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30_000 });
+  await page.locator("[data-room-entry-new-start]").click();
+
+  const actionButtons = page.locator(".room-entry-confirm-dialog-actions button");
+  await expect(actionButtons).toHaveCount(2);
+
+  for (const button of await actionButtons.all()) {
+    await expect(button).toHaveCSS("align-items", "center");
+    await expect(button).toHaveCSS("justify-items", "center");
+    await expect(button).toHaveCSS("text-align", "center");
+  }
+});
+
+test("Poke Lounge 모바일 메뉴에서 게임 센터로 나간다", async ({ page }) => {
+  await gotoWithRetry(page, "/ko-KR/game/poke-lounge?e2e=1&wildEncounterRate=0");
+  await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30_000 });
+  await page.locator("[data-room-entry-solo]").click();
+  await chooseStarterIfNeeded(page);
+  await expect(page.locator("#game-root canvas")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator("[data-poke-lounge-mobile-deck='explore']")).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await page.locator("[data-poke-lounge-mobile-menu='true']").click();
+  const exitButton = page.locator("[data-poke-lounge-mobile-game-exit='true']");
+  await expect(exitButton).toBeVisible();
+  await exitButton.click();
+
+  await expect(page).toHaveURL(/\/ko-KR\/game$/);
+});
+
 test("Poke Lounge 모바일은 세로 필드와 전체 화면 메뉴를 제공한다", async ({ page }, testInfo) => {
   const probe = await readMobileEnvironment(page);
   await testInfo.attach("mobile-environment.json", {
@@ -189,6 +222,63 @@ test("Poke Lounge 모바일 전투는 하단 조작 도크에서 행동을 고�
   const nextMessageButton = messageDeck.getByRole("button");
   await expect(messageDeck).toBeVisible({ timeout: 30_000 });
   await expect(nextMessageButton).toBeEnabled({ timeout: 30_000 });
+  await expect(messageDeck.locator("p")).toHaveCount(0);
+  await expect(nextMessageButton).toHaveAccessibleName(/다음/);
+
+  const singleActionLayout = await page.evaluate(() => {
+    const gamePage = document.querySelector<HTMLElement>("[data-testid='poke-lounge-page']");
+    const gameFrame = document.querySelector<HTMLElement>("[data-poke-lounge-game-frame='true']");
+    const controlDock = document.querySelector<HTMLElement>(
+      "[data-poke-lounge-mobile-control-dock='true']",
+    );
+    const messageDeck = document.querySelector<HTMLElement>(
+      "[data-poke-lounge-mobile-deck='battle-message']",
+    );
+    const nextButton = messageDeck?.querySelector<HTMLElement>("button");
+
+    if (!gamePage || !gameFrame || !controlDock || !messageDeck || !nextButton) {
+      return null;
+    }
+
+    const gamePageStyles = window.getComputedStyle(gamePage);
+    const gamePageBounds = gamePage.getBoundingClientRect();
+    const gameFrameBounds = gameFrame.getBoundingClientRect();
+    const controlDockBounds = controlDock.getBoundingClientRect();
+    const messageDeckBounds = messageDeck.getBoundingClientRect();
+    const nextButtonBounds = nextButton.getBoundingClientRect();
+    const verticalPadding =
+      Number.parseFloat(gamePageStyles.paddingTop) +
+      Number.parseFloat(gamePageStyles.paddingBottom);
+
+    return {
+      expectedControlDockHeight: (gamePageBounds.height - verticalPadding) / 5,
+      controlDockHeight: controlDockBounds.height,
+      expectedControlDockTop: gameFrameBounds.bottom + Number.parseFloat(gamePageStyles.rowGap),
+      controlDockTop: controlDockBounds.top,
+      messageDeckCenterX: messageDeckBounds.left + messageDeckBounds.width / 2,
+      messageDeckCenterY: messageDeckBounds.top + messageDeckBounds.height / 2,
+      nextButtonCenterX: nextButtonBounds.left + nextButtonBounds.width / 2,
+      nextButtonCenterY: nextButtonBounds.top + nextButtonBounds.height / 2,
+    };
+  });
+
+  expect(singleActionLayout).not.toBeNull();
+  expect(singleActionLayout!.controlDockHeight).toBeCloseTo(
+    singleActionLayout!.expectedControlDockHeight,
+    1,
+  );
+  expect(singleActionLayout!.controlDockTop).toBeCloseTo(
+    singleActionLayout!.expectedControlDockTop,
+    1,
+  );
+  expect(singleActionLayout!.nextButtonCenterX).toBeCloseTo(
+    singleActionLayout!.messageDeckCenterX,
+    1,
+  );
+  expect(singleActionLayout!.nextButtonCenterY).toBeCloseTo(
+    singleActionLayout!.messageDeckCenterY,
+    1,
+  );
   await nextMessageButton.click();
   await expect(nextMessageButton).toBeEnabled();
   await nextMessageButton.click();

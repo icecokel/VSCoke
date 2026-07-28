@@ -42,6 +42,7 @@ interface MobileSettingsProps {
   connectionLabel: string;
   localRoomShare: boolean;
   onClose(): void;
+  onExit(): void;
   onRoomShare(): void;
   onVolumeCycle(): void;
   onRetryRanking(): void;
@@ -811,10 +812,10 @@ function MobileBattleDeck({ copy }: { copy: PokeLoungeCopy }) {
   if (battleState.message) {
     return (
       <div className={styles.messageDeck} data-poke-lounge-mobile-deck="battle-message">
-        <p>{battleState.message}</p>
         <button
           type="button"
           className={styles.nextButton}
+          aria-label={`${battleState.message} ${copy.mobile.next}`}
           onClick={() => dispatchAction({ type: "confirm-message" })}
           disabled={battleState.isInputLocked}
         >
@@ -966,6 +967,7 @@ function MobileSettingsScreen({
   copy,
   localRoomShare,
   onClose,
+  onExit,
   onRetryRanking,
   onRoomShare,
   onVolumeCycle,
@@ -1018,6 +1020,15 @@ function MobileSettingsScreen({
                   : copy.settingsShare}
           </Button>
         ) : null}
+        <Button
+          type="button"
+          variant="destructive"
+          className={styles.settingsExitButton}
+          onClick={onExit}
+          data-poke-lounge-mobile-game-exit="true"
+        >
+          {copy.settingsExit}
+        </Button>
       </div>
       <div className={styles.settingsStatus} aria-live="polite">
         <span>{connectionLabel}</span>

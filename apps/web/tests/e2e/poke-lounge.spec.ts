@@ -2678,6 +2678,7 @@ test.describe("Poke Lounge", () => {
         configurable: true,
         value: undefined,
       });
+      window.localStorage.removeItem("poke-lounge:volume-level");
     });
 
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -2712,13 +2713,16 @@ test.describe("Poke Lounge", () => {
     );
 
     const settingOptionButtons = settingsPanel.locator("[data-poke-lounge-setting-option='true']");
-    await expect(settingOptionButtons).toHaveText(["전체화면", "소리 100%", "UI 크게", "닫기"]);
+    await expect(settingOptionButtons).toHaveText(["전체화면", "소리 80%", "UI 크게", "닫기"]);
 
     const volumeButton = settingsPanel.locator("[data-poke-lounge-setting-action='volume']");
     await expect(volumeButton).toHaveAttribute("data-poke-lounge-volume-level", "4");
     await volumeButton.click();
-    await expect(volumeButton).toHaveAttribute("data-poke-lounge-volume-level", "0");
-    await expect(volumeButton).toContainText("소리 꺼짐");
+    await expect(volumeButton).toHaveAttribute("data-poke-lounge-volume-level", "5");
+    await expect(volumeButton).toContainText("소리 100%");
+    await expect
+      .poll(() => page.evaluate(() => window.localStorage.getItem("poke-lounge:volume-level")))
+      .toBe("5");
 
     const uiSizeButton = settingsPanel.locator("[data-poke-lounge-setting-action='ui-size']");
     await expect(uiSizeButton).toHaveAttribute("data-poke-lounge-ui-size", "large");

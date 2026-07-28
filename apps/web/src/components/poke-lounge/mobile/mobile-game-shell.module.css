@@ -407,8 +407,7 @@
   display: grid;
   min-height: 0;
   height: 100%;
-  align-content: space-between;
-  gap: 14px;
+  place-items: center;
   padding: 18px;
 }
 
@@ -422,7 +421,7 @@
 }
 
 .nextButton {
-  justify-self: end;
+  place-self: center;
   min-height: 42px;
   padding: 8px 14px;
   border-radius: 11px;
@@ -703,6 +702,10 @@
 .settingsOptions button {
   min-height: 48px;
   white-space: normal;
+}
+
+.settingsExitButton {
+  grid-column: 1 / -1;
 }
 
 .settingsStatus {

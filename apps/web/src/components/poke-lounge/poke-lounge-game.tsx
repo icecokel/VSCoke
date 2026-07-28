@@ -106,7 +106,11 @@ interface PendingHydrationResolution {
   snapshot: PokeLoungeSaveSnapshot;
 }
 
-const POKE_LOUNGE_VOLUME_STEPS = [0, 0.25, 0.5, 0.75, 1] as const;
+const POKE_LOUNGE_DEFAULT_VOLUME = 0.8;
+const POKE_LOUNGE_VOLUME_STEPS = [0, 0.25, 0.5, 0.75, POKE_LOUNGE_DEFAULT_VOLUME, 1] as const;
+const POKE_LOUNGE_DEFAULT_VOLUME_LEVEL_INDEX = POKE_LOUNGE_VOLUME_STEPS.indexOf(
+  POKE_LOUNGE_DEFAULT_VOLUME,
+);
 const POKE_LOUNGE_CONTAINER_WIDTH_VAR = "--poke-lounge-container-width";
 const POKE_LOUNGE_CONTAINER_HEIGHT_VAR = "--poke-lounge-container-height";
 const POKE_LOUNGE_VOLUME_STORAGE_KEY = "poke-lounge:volume-level";
@@ -190,7 +194,7 @@ function readStoredVolumeLevelIndex(): number | null {
   }
 
   const parsed = Number.parseInt(
-    window.sessionStorage.getItem(POKE_LOUNGE_VOLUME_STORAGE_KEY) ?? "",
+    window.localStorage.getItem(POKE_LOUNGE_VOLUME_STORAGE_KEY) ?? "",
     10,
   );
 
@@ -248,7 +252,7 @@ export function PokeLoungeGame() {
   const [gameCanvasMounted, setGameCanvasMounted] = useState(false);
   const [activeGameScene, setActiveGameScene] = useState<"battle" | "world" | null>(null);
   const [settingsPartySlots, setSettingsPartySlots] = useState<PokeLoungePartySlotSummary[]>([]);
-  const [volumeLevelIndex, setVolumeLevelIndex] = useState(POKE_LOUNGE_VOLUME_STEPS.length - 1);
+  const [volumeLevelIndex, setVolumeLevelIndex] = useState(POKE_LOUNGE_DEFAULT_VOLUME_LEVEL_INDEX);
   const [uiSize, setUiSize] = useState<PokeLoungeUiSize>("large");
   const [roomShareStatus, setRoomShareStatus] = useState<PokeLoungeRoomShareStatus>("idle");
   const [submitStatus, setSubmitStatus] = useState<
@@ -502,7 +506,7 @@ export function PokeLoungeGame() {
 
   useEffect(() => {
     setPokeLoungeMasterVolume(POKE_LOUNGE_VOLUME_STEPS[volumeLevelIndex]);
-    window.sessionStorage.setItem(POKE_LOUNGE_VOLUME_STORAGE_KEY, String(volumeLevelIndex));
+    window.localStorage.setItem(POKE_LOUNGE_VOLUME_STORAGE_KEY, String(volumeLevelIndex));
   }, [volumeLevelIndex]);
 
   useEffect(() => {
@@ -1205,6 +1209,7 @@ export function PokeLoungeGame() {
               : connectionLabel,
             localRoomShare,
             onClose: handleMobileSettingsClose,
+            onExit: handleResultLobby,
             onRetryRanking: () => setRankingAttempt(attempt => attempt + 1),
             onRoomShare: handleRoomShare,
             onVolumeCycle: handleVolumeCycle,

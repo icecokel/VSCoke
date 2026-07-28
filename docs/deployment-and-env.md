@@ -251,6 +251,7 @@ Resume RAG 운영 chat은 `resume_source_items`의 기존 DB 텍스트를 keywor
 - `RAG_CHAT_PROVIDER=codex-app-server`를 명시한다.
 - Ubuntu host에서는 `RAG_CODEX_APP_SERVER_URL=ws://127.0.0.1:14561`, `RAG_CODEX_CWD=/home/icenux/projects/vscoke-api`를 기준값으로 둔다.
 - `RAG_CODEX_REASONING_EFFORT`는 기본값 `low`로 이력 chat turn에만 적용한다. 환경값을 바꾸면 PM2를 `--update-env` 옵션으로 재시작한다.
+- 공개 이력 채팅은 Cloudflare Tunnel을 통과한 원본 IP당 최근 1시간에 20회까지만 허용한다. API는 loopback proxy만 신뢰해 IP를 해석한다.
 - 공개 이력 질문은 사용자 로그인 없이 동작하되, `RAG_PUBLIC_CHAT_ORIGINS=https://vscoke.vercel.app` 기준으로 공식 운영 웹 origin에서 온 브라우저 요청만 허용한다.
 - 운영 chat만 사용할 때는 `RAG_AI_API_KEY`를 요구하지 않는다.
 - 기본 CORS 허용 origin은 production 웹 도메인과 로컬 개발 웹 도메인뿐이다.

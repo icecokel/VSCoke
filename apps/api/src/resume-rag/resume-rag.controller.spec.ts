@@ -15,6 +15,7 @@ describe('ResumeRagController', () => {
 
     expect(guards?.map((guard) => guard.name)).toEqual([
       'ResumeRagOriginGuard',
+      'ResumeRagRateLimitGuard',
     ]);
     expect(guards).not.toContain(GoogleAuthGuard);
   });

@@ -330,6 +330,10 @@
       "label": "パッチ中",
       "message": "履歴書チャット機能をパッチ中です。しばらくしてからもう一度お試しください。"
     },
+    "rateLimit": {
+      "remaining": "残り質問数 {count} 回",
+      "nextAvailable": "次の1回の復帰 {time}"
+    },
     "readmeEntry": {
       "title": "READMEを読みながら気になる点がありますか？",
       "description": "履歴根拠を探して回答を準備します。",

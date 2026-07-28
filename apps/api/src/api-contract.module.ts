@@ -15,6 +15,7 @@ import { RecipeController } from './recipe/recipe.controller';
 import { RecipeService } from './recipe/recipe.service';
 import { ResumeRagController } from './resume-rag/resume-rag.controller';
 import { ResumeRagOriginGuard } from './resume-rag/resume-rag-origin.guard';
+import { ResumeRagRateLimitGuard } from './resume-rag/resume-rag-rate-limit.guard';
 import { ResumeRagService } from './resume-rag/resume-rag.service';
 import { WordleController } from './wordle/wordle.controller';
 import { WordleService } from './wordle/wordle.service';
@@ -51,6 +52,7 @@ const contractGuardStubProvider = (provide: InjectionToken): Provider => ({
     contractStubProvider(getRepositoryToken(User)),
     contractGuardStubProvider(GoogleAuthGuard),
     contractGuardStubProvider(ResumeRagOriginGuard),
+    contractGuardStubProvider(ResumeRagRateLimitGuard),
     contractStubProvider(ResumeRagService),
     contractStubProvider(WordleService),
   ],

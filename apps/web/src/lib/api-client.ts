@@ -9,6 +9,7 @@ export class ApiError extends Error {
     public status: number,
     message: string,
     public data?: unknown,
+    public headers?: Headers,
   ) {
     super(message);
     this.name = "ApiError";
@@ -33,6 +34,11 @@ interface ApiResponse<T> {
   message?: string;
 }
 
+export type ApiClientResponse<T> = {
+  data: T;
+  headers: Headers;
+};
+
 /**
  * 공통 API 클라이언트
  *
@@ -52,6 +58,15 @@ export const apiClient = {
    * @throws {ApiError} HTTP 에러 발생 시
    */
   async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+    const response = await this.requestWithResponse<T>(endpoint, options);
+
+    return response.data;
+  },
+
+  async requestWithResponse<T>(
+    endpoint: string,
+    options: RequestOptions = {},
+  ): Promise<ApiClientResponse<T>> {
     const { token, body, ...fetchOptions } = options;
 
     const headers: HeadersInit = {
@@ -75,13 +90,17 @@ export const apiClient = {
         response.status,
         errorData?.message || `API 요청 실패 (${response.status})`,
         errorData,
+        response.headers,
       );
     }
 
     const json: ApiResponse<T> = await response.json();
 
     // API가 { success, data } 형태로 래핑된 경우 data 반환
-    return json.data !== undefined ? json.data : (json as unknown as T);
+    return {
+      data: json.data !== undefined ? json.data : (json as unknown as T),
+      headers: response.headers,
+    };
   },
 
   /**
@@ -96,6 +115,14 @@ export const apiClient = {
    */
   post<T>(endpoint: string, body?: unknown, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: "POST", body });
+  },
+
+  postWithResponse<T>(
+    endpoint: string,
+    body?: unknown,
+    options?: RequestOptions,
+  ): Promise<ApiClientResponse<T>> {
+    return this.requestWithResponse<T>(endpoint, { ...options, method: "POST", body });
   },
 
   /**

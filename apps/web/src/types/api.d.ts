@@ -1816,6 +1816,12 @@ export interface operations {
     responses: {
       200: {
         headers: {
+          /** @description IP당 1시간 이력 채팅 요청 최대 횟수 */
+          "X-RateLimit-Limit"?: number;
+          /** @description 현재 IP에서 남은 이력 채팅 요청 횟수 */
+          "X-RateLimit-Remaining"?: number;
+          /** @description 다음 이력 채팅 요청 횟수가 복구되는 Unix epoch 초 */
+          "X-RateLimit-Reset"?: number;
           [name: string]: unknown;
         };
         content: {
@@ -1825,6 +1831,19 @@ export interface operations {
       /** @description 허용된 VSCoke 웹 origin이 아닌 요청 */
       403: {
         headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description IP당 1시간에 허용된 이력 채팅 요청 횟수를 초과함 */
+      429: {
+        headers: {
+          /** @description IP당 1시간 이력 채팅 요청 최대 횟수 */
+          "X-RateLimit-Limit"?: number;
+          /** @description 현재 IP에서 남은 이력 채팅 요청 횟수 */
+          "X-RateLimit-Remaining"?: number;
+          /** @description 다음 이력 채팅 요청 횟수가 복구되는 Unix epoch 초 */
+          "X-RateLimit-Reset"?: number;
           [name: string]: unknown;
         };
         content?: never;

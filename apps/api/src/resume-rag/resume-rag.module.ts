@@ -30,6 +30,7 @@ import { ResumeRagController } from './resume-rag.controller';
 import { ResumeRagChatLogService } from './resume-rag-chat-log.service';
 import { ResumeRagKeywordService } from './resume-rag-keyword.service';
 import { ResumeRagOriginGuard } from './resume-rag-origin.guard';
+import { ResumeRagRateLimitGuard } from './resume-rag-rate-limit.guard';
 import { ResumeRagRetrieverService } from './resume-rag-retriever.service';
 import { ResumeRagService } from './resume-rag.service';
 
@@ -47,6 +48,7 @@ import { ResumeRagService } from './resume-rag.service';
   controllers: [ResumeRagController],
   providers: [
     ResumeRagOriginGuard,
+    ResumeRagRateLimitGuard,
     ResumeRagChatLogService,
     ResumeSourceItemImportService,
     ResumeSourceItemChunker,

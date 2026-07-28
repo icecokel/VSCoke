@@ -330,6 +330,10 @@
       "label": "패치 중",
       "message": "이력서 채팅 기능을 패치 중입니다. 잠시 후 다시 이용해 주세요."
     },
+    "rateLimit": {
+      "remaining": "남은 질문 {count}회",
+      "nextAvailable": "다음 1회 복구 {time}"
+    },
     "readmeEntry": {
       "title": "README를 읽다가 궁금한 점이 있나요?",
       "description": "이력서 근거를 찾아 답변을 준비합니다.",

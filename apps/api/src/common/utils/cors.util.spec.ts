@@ -38,7 +38,7 @@ describe('cors util', () => {
     ]);
   });
 
-  it('Nest CORS 옵션은 검증된 origin 배열과 credentials를 사용한다', () => {
+  it('Nest CORS 옵션은 검증된 origin, credentials, rate limit 헤더 노출을 사용한다', () => {
     expect(getCorsOptions('https://preview.example.com')).toEqual({
       origin: [
         'https://vscoke.vercel.app',
@@ -47,6 +47,11 @@ describe('cors util', () => {
         'https://preview.example.com',
       ],
       credentials: true,
+      exposedHeaders: [
+        'X-RateLimit-Limit',
+        'X-RateLimit-Remaining',
+        'X-RateLimit-Reset',
+      ],
     });
   });
 });

@@ -18,9 +18,14 @@ import {
   trackResumeRagChatSubmitted,
   type ResumeRagChatFailureReason,
 } from "../lib/resume-rag-chat-analytics";
-import { askResumeRag } from "../lib/resume-rag-service";
+import {
+  askResumeRag,
+  readResumeRagRateLimitFromError,
+  type ResumeRagRateLimit,
+} from "../lib/resume-rag-service";
 import { storeResumeRagChat } from "../lib/resume-rag-chat-storage";
 import { isResumeRagChatAvailable } from "../lib/resume-rag-chat-availability";
+import { ResumeRagRateLimitStatus } from "./resume-rag-rate-limit-status";
 
 type ComposerStatus = "idle" | "submitting" | "ready" | "error";
 
@@ -44,6 +49,7 @@ export const ReadmeResumeQuestionComposer = () => {
   const [question, setQuestion] = useState("");
   const [status, setStatus] = useState<ComposerStatus>("idle");
   const [readyChatId, setReadyChatId] = useState<string | null>(null);
+  const [rateLimit, setRateLimit] = useState<ResumeRagRateLimit>();
   const [isMobileChatHintVisible, setIsMobileChatHintVisible] = useState(false);
   const hasTrackedComposerFocus = useRef(false);
 
@@ -102,6 +108,7 @@ export const ReadmeResumeQuestionComposer = () => {
         question: trimmedQuestion,
         locale,
       });
+      setRateLimit(response.rateLimit);
       const stored = storeResumeRagChat({
         id: chatId,
         question: trimmedQuestion,
@@ -125,7 +132,10 @@ export const ReadmeResumeQuestionComposer = () => {
       });
       setReadyChatId(chatId);
       setStatus("ready");
-    } catch {
+    } catch (caught) {
+      const nextRateLimit = readResumeRagRateLimitFromError(caught);
+      if (nextRateLimit) setRateLimit(nextRateLimit);
+
       trackResumeRagChatFailed({
         entryPoint: "readme",
         locale,
@@ -261,6 +271,10 @@ export const ReadmeResumeQuestionComposer = () => {
                 </div>
               ) : null}
             </div>
+            <ResumeRagRateLimitStatus
+              rateLimit={rateLimit}
+              className="px-1 pb-1 text-xs text-gray-500"
+            />
           </div>
         </form>
       </aside>

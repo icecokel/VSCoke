@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -18,10 +19,11 @@ import {
  */
 async function bootstrap() {
   // NestJS 애플리케이션 인스턴스 생성 (Winston 로거 적용)
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: WinstonModule.createLogger(winstonConfig),
   });
 
+  app.set('trust proxy', 'loopback');
   app.enableCors(getCorsOptions(process.env.CORS_ORIGINS));
 
   // 전역 필터 및 인터셉터 등록

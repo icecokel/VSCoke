@@ -30,10 +30,16 @@ import {
   trackResumeRagChatTopicExpanded,
   type ResumeRagChatFailureReason,
 } from "../lib/resume-rag-chat-analytics";
-import { askResumeRag, ResumeRagContractError } from "../lib/resume-rag-service";
+import {
+  askResumeRag,
+  readResumeRagRateLimitFromError,
+  ResumeRagContractError,
+  type ResumeRagRateLimit,
+} from "../lib/resume-rag-service";
 import { readResumeRagChat } from "../lib/resume-rag-chat-storage";
 import { isResumeRagChatAvailable } from "../lib/resume-rag-chat-availability";
 import type { ResumeRagSource } from "../types";
+import { ResumeRagRateLimitStatus } from "./resume-rag-rate-limit-status";
 
 type FailureKind =
   | "origin-blocked"
@@ -413,6 +419,7 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [failure, setFailure] = useState<FailureState | null>(null);
+  const [rateLimit, setRateLimit] = useState<ResumeRagRateLimit>();
   const hasTrackedComposerFocus = useRef(false);
 
   useEffect(() => {
@@ -484,6 +491,7 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
         question: trimmedQuestion,
         locale,
       });
+      setRateLimit(response.rateLimit);
       setMessages(prev => [
         ...prev,
         {
@@ -502,6 +510,9 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
         sourceCount: response.sources.length,
       });
     } catch (caught) {
+      const nextRateLimit = readResumeRagRateLimitFromError(caught);
+      if (nextRateLimit) setRateLimit(nextRateLimit);
+
       const failureState = getFailureState(caught, trimmedQuestion);
       trackResumeRagChatFailed({
         entryPoint: "resume_question",
@@ -616,6 +627,10 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
             )}
           </Button>
         </div>
+        <ResumeRagRateLimitStatus
+          rateLimit={rateLimit}
+          className="px-1 pt-2 text-xs text-gray-500"
+        />
       </form>
     </section>
   );

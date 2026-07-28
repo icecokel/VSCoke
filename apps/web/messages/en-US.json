@@ -330,6 +330,10 @@
       "label": "Patching",
       "message": "The resume chat feature is being patched. Please try again shortly."
     },
+    "rateLimit": {
+      "remaining": "{count} questions left",
+      "nextAvailable": "Next question restored at {time}"
+    },
     "readmeEntry": {
       "title": "Have a question while reading the README?",
       "description": "I will find resume evidence and prepare an answer.",

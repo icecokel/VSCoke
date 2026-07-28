@@ -73,6 +73,8 @@ RAG_CODEX_REASONING_EFFORT=low
 
 `RAG_CODEX_REASONING_EFFORT`는 이력 chat의 답변 생성 turn에만 적용됩니다. 기본값은 `low`이며, 지원 값은 `none`, `minimal`, `low`, `medium`, `high`, `xhigh`입니다.
 
+`POST /resume-rag/chat`은 Cloudflare Tunnel을 거친 원본 IP당 최근 1시간에 20회까지만 허용합니다. API는 loopback proxy만 신뢰해 원본 IP를 해석하므로, 외부에서 임의로 `X-Forwarded-For`를 넣어 제한을 우회할 수 없습니다.
+
 ## 3. DB schema 변경
 
 운영 API는 `DB_SYNCHRONIZE=false`를 기본으로 유지합니다. schema 변경은 TypeORM migration 파일로 추적하고, 운영 DB에는 backup을 만든 뒤 migration 명령으로만 반영합니다. 운영 DB에서 `psql`로 직접 DDL을 실행하는 방식은 긴급 복구 상황이 아니면 사용하지 않습니다.

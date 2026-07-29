@@ -1,4 +1,10 @@
-import type { BattleCommand, BattleMove, BattlePokemon, BattleScreenState } from "./battleTypes";
+import type {
+  BattleCommand,
+  BattleMessageHpSnapshot,
+  BattleMove,
+  BattlePokemon,
+  BattleScreenState,
+} from "./battleTypes";
 import { applyInventoryItemEffect } from "../items/inventoryItemEffects";
 import { BATTLE_PARTY_SLOT_COUNT, syncActivePartyPokemon } from "./battleParty";
 import { calculateWildBattlePokeDollarReward, formatBattlePokeDollars } from "./battleRewards";
@@ -64,10 +70,12 @@ export function popBattleMessage(state: BattleScreenState): BattleScreenState {
   }
 
   const [, ...rest] = state.messageQueue;
+  const [, ...restHpSnapshots] = state.messageHpSnapshots ?? [];
 
   return {
     ...state,
     messageQueue: rest,
+    messageHpSnapshots: restHpSnapshots,
     phase:
       rest.length === 0 && (state.phase === "intro" || state.phase === "resolving")
         ? state.result
@@ -422,14 +430,17 @@ export function choosePlayerMove(
   let playerPokemon = state.player.pokemon;
   let opponentPokemon = state.opponent.pokemon;
   const messageQueue: string[] = [];
+  const messageHpSnapshots: BattleMessageHpSnapshot[] = [];
 
   for (const action of actions) {
     if (action.side === "player") {
       if (isFullyParalyzed(playerPokemon, random)) {
         messageQueue.push(`${withTopicParticle(playerPokemon.name)} 몸이 저려서 움직일 수 없다!`);
+        appendBattleMessageHpSnapshots(messageHpSnapshots, 1, playerPokemon, opponentPokemon);
         continue;
       }
 
+      const actionMessageStartIndex = messageQueue.length;
       playerPokemon = {
         ...playerPokemon,
         moves: spendMovePp(playerPokemon.moves, action.move.id),
@@ -439,6 +450,12 @@ export function choosePlayerMove(
       messageQueue.push(...moveOutcome.messages);
       playerPokemon = moveOutcome.attacker;
       opponentPokemon = applyDamage(moveOutcome.defender, moveOutcome.damage);
+      appendBattleMessageHpSnapshots(
+        messageHpSnapshots,
+        messageQueue.length - actionMessageStartIndex,
+        playerPokemon,
+        opponentPokemon,
+      );
 
       if (opponentPokemon.status === "fainted") {
         const wildVictoryExperience =
@@ -471,28 +488,31 @@ export function choosePlayerMove(
             ]
           : [...messageQueue, "상대 포켓몬은 쓰러졌다!", "승리했다!"];
 
-        return {
-          ...state,
-          phase: "ended",
-          selectedMoveId: playerMove.id,
-          turn: state.turn + 1,
-          player: syncActivePartyPokemon(state.player, resolvedPlayerPokemon),
-          opponent: syncActivePartyPokemon(state.opponent, opponentPokemon),
-          usedInventoryItemId: null,
-          messageQueue: appendBattleEndConfirmMessage(victoryMessages),
-          result: {
-            winnerPlayerId: state.player.playerId,
-            loserPlayerId: state.opponent.playerId,
-            reason: "faint",
-            ...(wildVictoryExperience
-              ? {
-                  experienceGained: wildVictoryExperience.experienceGained,
-                  levelsGained: wildVictoryExperience.levelsGained,
-                  rewardPokeDollars: wildVictoryRewardPokeDollars,
-                }
-              : {}),
+        return withBattleMessageHpSnapshots(
+          {
+            ...state,
+            phase: "ended",
+            selectedMoveId: playerMove.id,
+            turn: state.turn + 1,
+            player: syncActivePartyPokemon(state.player, resolvedPlayerPokemon),
+            opponent: syncActivePartyPokemon(state.opponent, opponentPokemon),
+            usedInventoryItemId: null,
+            messageQueue: appendBattleEndConfirmMessage(victoryMessages),
+            result: {
+              winnerPlayerId: state.player.playerId,
+              loserPlayerId: state.opponent.playerId,
+              reason: "faint",
+              ...(wildVictoryExperience
+                ? {
+                    experienceGained: wildVictoryExperience.experienceGained,
+                    levelsGained: wildVictoryExperience.levelsGained,
+                    rewardPokeDollars: wildVictoryRewardPokeDollars,
+                  }
+                : {}),
+            },
           },
-        };
+          messageHpSnapshots,
+        );
       }
 
       continue;
@@ -500,9 +520,11 @@ export function choosePlayerMove(
 
     if (isFullyParalyzed(opponentPokemon, random)) {
       messageQueue.push(`${withTopicParticle(opponentPokemon.name)} 몸이 저려서 움직일 수 없다!`);
+      appendBattleMessageHpSnapshots(messageHpSnapshots, 1, playerPokemon, opponentPokemon);
       continue;
     }
 
+    const actionMessageStartIndex = messageQueue.length;
     opponentPokemon = {
       ...opponentPokemon,
       moves: spendMovePp(opponentPokemon.moves, action.move.id),
@@ -512,17 +534,26 @@ export function choosePlayerMove(
     messageQueue.push(...moveOutcome.messages);
     opponentPokemon = moveOutcome.attacker;
     playerPokemon = applyDamage(moveOutcome.defender, moveOutcome.damage);
+    appendBattleMessageHpSnapshots(
+      messageHpSnapshots,
+      messageQueue.length - actionMessageStartIndex,
+      playerPokemon,
+      opponentPokemon,
+    );
 
     if (playerPokemon.status === "fainted") {
-      return createPlayerFaintState({
-        state,
-        playerPokemon,
-        opponentPokemon,
-        messageQueue,
-        selectedMoveId: playerMove.id,
-        turn: state.turn + 1,
-        usedInventoryItemId: null,
-      });
+      return withBattleMessageHpSnapshots(
+        createPlayerFaintState({
+          state,
+          playerPokemon,
+          opponentPokemon,
+          messageQueue,
+          selectedMoveId: playerMove.id,
+          turn: state.turn + 1,
+          usedInventoryItemId: null,
+        }),
+        messageHpSnapshots,
+      );
     }
   }
 
@@ -537,19 +568,22 @@ export function choosePlayerMove(
   });
 
   if (endOfTurn.faintState) {
-    return endOfTurn.faintState;
+    return withBattleMessageHpSnapshots(endOfTurn.faintState, messageHpSnapshots);
   }
 
-  return {
-    ...state,
-    phase: "resolving",
-    selectedMoveId: playerMove.id,
-    turn: state.turn + 1,
-    player: syncActivePartyPokemon(state.player, endOfTurn.playerPokemon),
-    opponent: syncActivePartyPokemon(state.opponent, endOfTurn.opponentPokemon),
-    messageQueue: endOfTurn.messageQueue,
-    usedInventoryItemId: null,
-  };
+  return withBattleMessageHpSnapshots(
+    {
+      ...state,
+      phase: "resolving",
+      selectedMoveId: playerMove.id,
+      turn: state.turn + 1,
+      player: syncActivePartyPokemon(state.player, endOfTurn.playerPokemon),
+      opponent: syncActivePartyPokemon(state.opponent, endOfTurn.opponentPokemon),
+      messageQueue: endOfTurn.messageQueue,
+      usedInventoryItemId: null,
+    },
+    messageHpSnapshots,
+  );
 }
 
 function resolveFailedRunTurn(
@@ -1048,6 +1082,46 @@ function randomUsableMove(
 
 function spendMovePp(moves: BattleMove[], moveId: number): BattleMove[] {
   return moves.map(move => (move.id === moveId ? { ...move, pp: Math.max(0, move.pp - 1) } : move));
+}
+
+function appendBattleMessageHpSnapshots(
+  snapshots: BattleMessageHpSnapshot[],
+  messageCount: number,
+  playerPokemon: BattlePokemon,
+  opponentPokemon: BattlePokemon,
+): void {
+  const snapshot = createBattleMessageHpSnapshot(playerPokemon, opponentPokemon);
+
+  for (let index = 0; index < messageCount; index += 1) {
+    snapshots.push(snapshot);
+  }
+}
+
+function withBattleMessageHpSnapshots(
+  state: BattleScreenState,
+  snapshots: BattleMessageHpSnapshot[],
+): BattleScreenState {
+  const messageHpSnapshots = snapshots.slice(0, state.messageQueue.length);
+  const finalSnapshot = createBattleMessageHpSnapshot(state.player.pokemon, state.opponent.pokemon);
+
+  while (messageHpSnapshots.length < state.messageQueue.length) {
+    messageHpSnapshots.push(finalSnapshot);
+  }
+
+  return {
+    ...state,
+    messageHpSnapshots,
+  };
+}
+
+function createBattleMessageHpSnapshot(
+  playerPokemon: BattlePokemon,
+  opponentPokemon: BattlePokemon,
+): BattleMessageHpSnapshot {
+  return {
+    playerCurrentHp: playerPokemon.currentHp,
+    opponentCurrentHp: opponentPokemon.currentHp,
+  };
 }
 
 interface MoveOutcome {

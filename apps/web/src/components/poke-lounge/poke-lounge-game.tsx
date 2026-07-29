@@ -632,13 +632,24 @@ export function PokeLoungeGame() {
 
     const syncGameCanvasState = () => {
       const canvas = gameRoot.querySelector("canvas");
-      setGameCanvasMounted(Boolean(canvas));
+      const resourceStatus = gameRoot.dataset.pokeLoungeResourceStatus;
+      const isGameReady = Boolean(canvas) && resourceStatus === "ready";
+      setGameCanvasMounted(isGameReady);
       setActiveGameScene(
-        canvas ? (gameRoot.dataset.pokeLoungeActiveScene === "battle" ? "battle" : "world") : null,
+        isGameReady
+          ? gameRoot.dataset.pokeLoungeActiveScene === "battle"
+            ? "battle"
+            : "world"
+          : null,
       );
 
       if (!canvas) {
         return;
+      }
+
+      if (resourceStatus === "error") {
+        setGameStartupError(true);
+        setGamePlaying(false);
       }
 
       canvas.setAttribute("role", "img");
@@ -659,7 +670,7 @@ export function PokeLoungeGame() {
     const observer = new MutationObserver(syncGameCanvasState);
     observer.observe(gameRoot, {
       attributes: true,
-      attributeFilter: ["data-poke-lounge-active-scene"],
+      attributeFilter: ["data-poke-lounge-active-scene", "data-poke-lounge-resource-status"],
       childList: true,
       subtree: true,
     });
@@ -667,7 +678,7 @@ export function PokeLoungeGame() {
     return () => {
       observer.disconnect();
     };
-  }, [copy]);
+  }, [copy, setGamePlaying]);
 
   useEffect(() => {
     const page = pageRef.current;

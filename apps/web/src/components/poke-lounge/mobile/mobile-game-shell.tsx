@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { PokeLoungePartySlotMenu } from "../party-slot-menu";
 import type { PokeLoungeCopy } from "../poke-lounge-copy";
@@ -29,6 +29,8 @@ import {
 import styles from "./mobile-game-shell.module.css";
 
 type MobileScene = "battle" | "world" | null;
+
+const mobileBattleGridSlotCount = 4;
 
 export interface MobileRankingEntry {
   id: string;
@@ -61,72 +63,6 @@ export interface MobileGameShellProps {
   onOpenSettings(): void;
   settings: MobileSettingsProps;
 }
-
-type MobileJoystickDirection = "up" | "down" | "left" | "right";
-
-type MobileJoystickOffset = {
-  x: number;
-  y: number;
-};
-
-const mobileJoystickDeadZoneRatio = 0.24;
-const mobileJoystickMaximumThumbOffsetRatio = 0.46;
-
-const emptyMobileJoystickOffset: MobileJoystickOffset = { x: 0, y: 0 };
-
-const resolveMobileJoystickDirection = (
-  offset: MobileJoystickOffset,
-  radius: number,
-): MobileJoystickDirection | null => {
-  const distance = Math.hypot(offset.x, offset.y);
-
-  if (distance < radius * mobileJoystickDeadZoneRatio) {
-    return null;
-  }
-
-  if (Math.abs(offset.x) > Math.abs(offset.y)) {
-    return offset.x < 0 ? "left" : "right";
-  }
-
-  return offset.y < 0 ? "up" : "down";
-};
-
-const clampMobileJoystickOffset = (
-  offset: MobileJoystickOffset,
-  radius: number,
-): MobileJoystickOffset => {
-  const distance = Math.hypot(offset.x, offset.y);
-  const maximumOffset = radius * mobileJoystickMaximumThumbOffsetRatio;
-
-  if (distance === 0 || distance <= maximumOffset) {
-    return offset;
-  }
-
-  const ratio = maximumOffset / distance;
-
-  return { x: offset.x * ratio, y: offset.y * ratio };
-};
-
-const getMobileJoystickKeyboardDirection = (key: string): MobileJoystickDirection | null => {
-  if (key === "ArrowUp") return "up";
-  if (key === "ArrowDown") return "down";
-  if (key === "ArrowLeft") return "left";
-  if (key === "ArrowRight") return "right";
-
-  return null;
-};
-
-const getMobileJoystickKeyboardOffset = (
-  direction: MobileJoystickDirection,
-): MobileJoystickOffset => {
-  const keyboardOffset = 32;
-
-  if (direction === "up") return { x: 0, y: -keyboardOffset };
-  if (direction === "down") return { x: 0, y: keyboardOffset };
-  if (direction === "left") return { x: -keyboardOffset, y: 0 };
-
-  return { x: keyboardOffset, y: 0 };
-};
 
 export function MobileGameShell({
   activeScene,
@@ -241,7 +177,7 @@ function MobileExploreDeck({
         ) : null}
       </div>
       <div className={styles.controlCluster}>
-        <MobileDirectionalJoystick ariaLabel={copy.mobile.exploreDeckLabel} />
+        <MobileDirectionalPad copy={copy} />
         <div className={styles.fieldActions}>
           <TouchHoldButton
             control="confirm"
@@ -274,121 +210,42 @@ function MobileExploreDeck({
   );
 }
 
-function MobileDirectionalJoystick({ ariaLabel }: { ariaLabel: string }) {
-  const [activeDirection, setActiveDirection] = useState<MobileJoystickDirection | null>(null);
-  const [isActive, setIsActive] = useState(false);
-  const [thumbOffset, setThumbOffset] = useState<MobileJoystickOffset>(emptyMobileJoystickOffset);
-  const activeDirectionRef = useRef<MobileJoystickDirection | null>(null);
-  const activePointerId = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (activeDirectionRef.current) {
-        releaseVirtualGamepadButton(activeDirectionRef.current);
-      }
-    };
-  }, []);
-
-  const setDirection = (direction: MobileJoystickDirection | null) => {
-    if (activeDirectionRef.current === direction) {
-      return;
-    }
-
-    if (activeDirectionRef.current) {
-      releaseVirtualGamepadButton(activeDirectionRef.current);
-    }
-
-    activeDirectionRef.current = direction;
-    setActiveDirection(direction);
-
-    if (direction) {
-      pressVirtualGamepadButton(direction);
-    }
-  };
-
-  const release = (pointerId?: number) => {
-    if (pointerId !== undefined && activePointerId.current !== pointerId) {
-      return;
-    }
-
-    activePointerId.current = null;
-    setIsActive(false);
-    setThumbOffset(emptyMobileJoystickOffset);
-    setDirection(null);
-  };
-
-  const updateFromPointer = (target: HTMLDivElement, event: PointerEvent<HTMLDivElement>) => {
-    const rect = target.getBoundingClientRect();
-    const radius = Math.min(rect.width, rect.height) / 2;
-    const offset = {
-      x: event.clientX - (rect.left + rect.width / 2),
-      y: event.clientY - (rect.top + rect.height / 2),
-    };
-
-    setThumbOffset(clampMobileJoystickOffset(offset, radius));
-    setDirection(resolveMobileJoystickDirection(offset, radius));
-  };
-
+function MobileDirectionalPad({ copy }: { copy: PokeLoungeCopy }) {
   return (
     <div
-      className={styles.joystick}
+      className={styles.directionPad}
       role="group"
-      tabIndex={0}
-      aria-label={ariaLabel}
-      data-active={isActive || undefined}
-      data-direction={activeDirection ?? undefined}
-      data-poke-lounge-mobile-joystick="true"
-      onPointerDown={event => {
-        event.preventDefault();
-        activePointerId.current = event.pointerId;
-        try {
-          event.currentTarget.setPointerCapture(event.pointerId);
-        } catch {
-          // Synthetic events used by interaction tests cannot always capture pointers.
-        }
-        setIsActive(true);
-        void primePokeLoungeAudio();
-        updateFromPointer(event.currentTarget, event);
-      }}
-      onPointerMove={event => {
-        if (activePointerId.current === event.pointerId) {
-          updateFromPointer(event.currentTarget, event);
-        }
-      }}
-      onPointerUp={event => release(event.pointerId)}
-      onPointerCancel={event => release(event.pointerId)}
-      onLostPointerCapture={() => release()}
-      onBlur={() => release()}
-      onKeyDown={event => {
-        const direction = getMobileJoystickKeyboardDirection(event.key);
-
-        if (!direction) {
-          return;
-        }
-
-        event.preventDefault();
-        setIsActive(true);
-        setThumbOffset(getMobileJoystickKeyboardOffset(direction));
-        setDirection(direction);
-      }}
-      onKeyUp={event => {
-        const direction = getMobileJoystickKeyboardDirection(event.key);
-
-        if (!direction) {
-          return;
-        }
-
-        event.preventDefault();
-        release();
-      }}
+      aria-label={copy.mobile.exploreDeckLabel}
+      data-poke-lounge-mobile-direction-pad="true"
     >
-      <span
-        className={styles.joystickThumb}
-        aria-hidden="true"
-        style={{
-          transform: `translate(calc(-50% + ${thumbOffset.x}px), calc(-50% + ${thumbOffset.y}px))`,
-        }}
-      />
+      <TouchHoldButton
+        className={styles.directionButton}
+        control="up"
+        ariaLabel={copy.mobile.moveUp}
+      >
+        <span aria-hidden="true">▲</span>
+      </TouchHoldButton>
+      <TouchHoldButton
+        className={styles.directionButton}
+        control="left"
+        ariaLabel={copy.mobile.moveLeft}
+      >
+        <span aria-hidden="true">◀</span>
+      </TouchHoldButton>
+      <TouchHoldButton
+        className={styles.directionButton}
+        control="right"
+        ariaLabel={copy.mobile.moveRight}
+      >
+        <span aria-hidden="true">▶</span>
+      </TouchHoldButton>
+      <TouchHoldButton
+        className={styles.directionButton}
+        control="down"
+        ariaLabel={copy.mobile.moveDown}
+      >
+        <span aria-hidden="true">▼</span>
+      </TouchHoldButton>
     </div>
   );
 }
@@ -878,7 +735,7 @@ function MobileBattleDeck({ copy }: { copy: PokeLoungeCopy }) {
           <strong>{title}</strong>
           {backButton}
         </div>
-        <div className={styles.optionGrid}>
+        <div className={styles.optionGrid} data-poke-lounge-mobile-option-grid="moves">
           {battleState.moves.map(move => (
             <button
               key={move.index}
@@ -894,6 +751,7 @@ function MobileBattleDeck({ copy }: { copy: PokeLoungeCopy }) {
               </small>
             </button>
           ))}
+          <MobileBattleEmptySlots occupiedSlotCount={battleState.moves.length} />
         </div>
       </div>
     );
@@ -939,7 +797,7 @@ function MobileBattleDeck({ copy }: { copy: PokeLoungeCopy }) {
           <strong>{copy.mobile.chooseItem}</strong>
           {backButton}
         </div>
-        <div className={styles.itemList}>
+        <div className={styles.itemList} data-poke-lounge-mobile-option-grid="items">
           {battleState.items.map(item => (
             <button
               key={item.id}
@@ -953,12 +811,27 @@ function MobileBattleDeck({ copy }: { copy: PokeLoungeCopy }) {
               <small>×{item.count}</small>
             </button>
           ))}
+          <MobileBattleEmptySlots occupiedSlotCount={battleState.items.length} />
         </div>
       </div>
     );
   }
 
   return <p className={styles.deckNotice}>{copy.mobile.waiting}</p>;
+}
+
+function MobileBattleEmptySlots({ occupiedSlotCount }: { occupiedSlotCount: number }) {
+  return Array.from(
+    { length: Math.max(0, mobileBattleGridSlotCount - occupiedSlotCount) },
+    (_, index) => (
+      <div
+        key={`empty-battle-slot-${index}`}
+        aria-hidden="true"
+        className={styles.emptyOptionSlot}
+        data-poke-lounge-mobile-empty-slot="true"
+      />
+    ),
+  );
 }
 
 function MobileSettingsScreen({

@@ -545,6 +545,11 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.isHpAnimationPlaying() || this.isHitAnimationPlaying()) {
+      resetVirtualGamepad();
+      return;
+    }
+
     if (consumeVirtualGamepadPress("help") || Phaser.Input.Keyboard.JustDown(this.helpKey)) {
       playBattleConfirmSound();
       this.toggleShortcutGuide();
@@ -852,6 +857,8 @@ export class BattleScene extends Phaser.Scene {
     if (
       this.battleEntrancePlaying ||
       this.evolutionAnimationPlaying ||
+      this.isHpAnimationPlaying() ||
+      this.isHitAnimationPlaying() ||
       this.authoritativeInputPending ||
       this.shortcutGuideOpen
     ) {
@@ -970,6 +977,8 @@ export class BattleScene extends Phaser.Scene {
       isInputLocked:
         this.battleEntrancePlaying ||
         this.evolutionAnimationPlaying ||
+        this.isHpAnimationPlaying() ||
+        this.isHitAnimationPlaying() ||
         this.authoritativeInputPending ||
         this.shortcutGuideOpen,
       canGoBack:
@@ -1036,7 +1045,12 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private handlePointerConfirm(pointer: Phaser.Input.Pointer): void {
-    if (this.battleEntrancePlaying || this.usesMobileBattleDeck()) {
+    if (
+      this.battleEntrancePlaying ||
+      this.isHpAnimationPlaying() ||
+      this.isHitAnimationPlaying() ||
+      this.usesMobileBattleDeck()
+    ) {
       return;
     }
 
@@ -1445,7 +1459,7 @@ export class BattleScene extends Phaser.Scene {
 
   private syncDisplayedHpTargets({ animateHpDecrease }: { animateHpDecrease: boolean }): void {
     BATTLE_HP_SIDES.forEach(side => {
-      const targetHp = this.getStateHp(side);
+      const targetHp = this.getDisplayedHpTarget(side);
       const displayedHp = Number.isFinite(this.displayedHp[side])
         ? this.displayedHp[side]
         : targetHp;
@@ -1509,6 +1523,18 @@ export class BattleScene extends Phaser.Scene {
     return side === "player"
       ? this.state.player.pokemon.currentHp
       : this.state.opponent.pokemon.currentHp;
+  }
+
+  private getDisplayedHpTarget(side: BattleHpSide): number {
+    const messageHpSnapshot = this.state.messageHpSnapshots?.[0];
+
+    if (!messageHpSnapshot) {
+      return this.getStateHp(side);
+    }
+
+    return side === "player"
+      ? messageHpSnapshot.playerCurrentHp
+      : messageHpSnapshot.opponentCurrentHp;
   }
 
   private isHpAnimationPlaying(): boolean {

@@ -79,6 +79,10 @@ export interface PokeLoungeCopy {
     exploreDeckLabel: string;
     exploreHint: string;
     battleDeckLabel: string;
+    moveUp: string;
+    moveLeft: string;
+    moveRight: string;
+    moveDown: string;
     interact: string;
     bag: string;
     menu: string;
@@ -243,6 +247,10 @@ const KOREAN_COPY: PokeLoungeCopy = {
     exploreDeckLabel: "필드 조작",
     exploreHint: "방향 이동 · A 상호작용",
     battleDeckLabel: "전투 조작",
+    moveUp: "위로 이동",
+    moveLeft: "왼쪽으로 이동",
+    moveRight: "오른쪽으로 이동",
+    moveDown: "아래로 이동",
     interact: "대화",
     bag: "가방",
     menu: "메뉴",
@@ -418,6 +426,10 @@ const ENGLISH_COPY: PokeLoungeCopy = {
     exploreDeckLabel: "Field controls",
     exploreHint: "Move · A to interact",
     battleDeckLabel: "Battle controls",
+    moveUp: "Move up",
+    moveLeft: "Move left",
+    moveRight: "Move right",
+    moveDown: "Move down",
     interact: "Talk",
     bag: "Bag",
     menu: "Menu",
@@ -594,6 +606,10 @@ const JAPANESE_COPY: PokeLoungeCopy = {
     exploreDeckLabel: "フィールド操作",
     exploreHint: "方向で移動 · Aで話す",
     battleDeckLabel: "バトル操作",
+    moveUp: "上へ移動",
+    moveLeft: "左へ移動",
+    moveRight: "右へ移動",
+    moveDown: "下へ移動",
     interact: "話す",
     bag: "バッグ",
     menu: "メニュー",

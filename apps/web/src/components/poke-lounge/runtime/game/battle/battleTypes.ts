@@ -92,6 +92,11 @@ export interface BattleReturnToWorld {
   facing: "front" | "back" | "left" | "right";
 }
 
+export interface BattleMessageHpSnapshot {
+  playerCurrentHp: number;
+  opponentCurrentHp: number;
+}
+
 export interface BattleScreenState {
   battleKind: BattleKind;
   phase: BattlePhase;
@@ -102,6 +107,7 @@ export interface BattleScreenState {
   player: BattleParticipant;
   opponent: BattleParticipant;
   messageQueue: string[];
+  messageHpSnapshots?: BattleMessageHpSnapshot[];
   selectedMoveId: number | null;
   usedInventoryItemId?: string | null;
   tournamentMatchId?: string;

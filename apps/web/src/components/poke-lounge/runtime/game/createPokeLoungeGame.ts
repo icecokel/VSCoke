@@ -1,4 +1,9 @@
 import * as Phaser from "phaser";
+import {
+  getPokeLoungeAudioPlaybackSnapshotForTest,
+  stopAllPokeLoungeAudio,
+  type PokeLoungeAudioPlaybackSnapshot,
+} from "./audio/poke-lounge-audio";
 import { resolveGameCanvasSize, type GameViewportDisplaySize } from "./gameViewport";
 import type { InitialGameScene } from "./gameStartup";
 import { BootScene } from "./scenes/BootScene";
@@ -28,6 +33,7 @@ declare global {
 
 export interface PokeLoungeE2eController {
   getActiveSceneKey(): string | null;
+  getAudioPlaybackSnapshot(): PokeLoungeAudioPlaybackSnapshot;
   getBattleSnapshot(): BattleE2eSnapshot | null;
   setBattleScenario(scenario: BattleE2eScenario): BattleE2eSnapshot | null;
   setBattleCommand(command: BattleE2eSnapshot["selectedCommand"]): BattleE2eSnapshot | null;
@@ -110,6 +116,7 @@ export function createPokeLoungeGame(
   });
   const unsubscribeGameResult = subscribeToFinalGameResult(gameStateStore, options.onGameResult);
   game.events.once(Phaser.Core.Events.DESTROY, () => {
+    stopAllPokeLoungeAudio();
     unsubscribeGameResult();
     options.multiplayerRoom?.dispose();
   });
@@ -203,6 +210,9 @@ function createPokeLoungeE2eController(
       const activeScene = sceneManager?.getScenes(true)[0];
 
       return activeScene?.scene.key ?? null;
+    },
+    getAudioPlaybackSnapshot() {
+      return getPokeLoungeAudioPlaybackSnapshotForTest();
     },
     getBattleSnapshot,
     setBattleScenario(scenario) {

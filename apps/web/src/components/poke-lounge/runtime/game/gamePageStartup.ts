@@ -1,7 +1,10 @@
 import { loadBootstrapData } from "../bootstrap";
 import { renderStarterSelectionScreen, type StarterSelectionOptions } from "../starter-selection";
 import type { GameBootstrapData, StarterPokemon } from "../types";
-import { bindPokeLoungeAudioPrimeListeners } from "./audio/poke-lounge-audio";
+import {
+  bindPokeLoungeAudioPrimeListeners,
+  stopAllPokeLoungeAudio,
+} from "./audio/poke-lounge-audio";
 import { createPokeLoungeGame, type PokeLoungeGameResult } from "./createPokeLoungeGame";
 import { loadRuntimeGameDataJson } from "./data/game-data-json";
 import { readInitialBattleE2eScenario, readInitialGameScene } from "./gameStartup";
@@ -130,6 +133,7 @@ export async function startGamePage(
       }
 
       destroyed = true;
+      stopAllPokeLoungeAudio();
       removeAudioPrimeListeners?.();
       removeAudioPrimeListeners = null;
       removeFreshSessionListener?.();
@@ -151,6 +155,7 @@ export async function startGamePage(
         connectionStatus: "offline",
       });
       mount.replaceChildren();
+      delete mount.dataset.pokeLoungeResourceStatus;
     },
     setViewportSize(nextViewportSize: GameViewportDisplaySize) {
       activeViewportSize = nextViewportSize;
@@ -186,6 +191,7 @@ export async function startGamePage(
     const competitiveRoundsEnabled = isCompetitiveRoomEntryMode(roomEntry.mode);
     activeMultiplayerRoom = multiplayerRoom;
     mount.innerHTML = "";
+    mount.dataset.pokeLoungeResourceStatus = "loading";
     const game = (dependencies.createPokeLoungeGame ?? createPokeLoungeGame)(mount, {
       ...(battleE2eScenario ? { battleE2eScenario } : {}),
       competitiveRoundsEnabled,

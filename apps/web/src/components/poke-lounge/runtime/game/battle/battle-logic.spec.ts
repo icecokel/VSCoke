@@ -29,7 +29,30 @@ test("기술 우선도가 같으면 스피드가 빠른 포켓몬이 먼저 행�
   });
 
   assert.equal(playerFirstResult.messageQueue[0], "치코리타의 몸통박치기!");
+  assert.deepEqual(playerFirstResult.messageHpSnapshots?.[0], {
+    playerCurrentHp: fasterPlayerState.player.pokemon.currentHp,
+    opponentCurrentHp: playerFirstResult.opponent.pokemon.currentHp,
+  });
+  assert.deepEqual(playerFirstResult.messageHpSnapshots?.[1], {
+    playerCurrentHp: playerFirstResult.player.pokemon.currentHp,
+    opponentCurrentHp: playerFirstResult.opponent.pokemon.currentHp,
+  });
   assert.equal(opponentFirstResult.messageQueue[0], "브케인의 몸통박치기!");
+  assert.deepEqual(opponentFirstResult.messageHpSnapshots?.[0], {
+    playerCurrentHp: opponentFirstResult.player.pokemon.currentHp,
+    opponentCurrentHp: fasterOpponentState.opponent.pokemon.currentHp,
+  });
+  assert.deepEqual(opponentFirstResult.messageHpSnapshots?.[1], {
+    playerCurrentHp: opponentFirstResult.player.pokemon.currentHp,
+    opponentCurrentHp: opponentFirstResult.opponent.pokemon.currentHp,
+  });
+
+  const afterFirstMessage = popBattleMessage(opponentFirstResult);
+  assert.equal(afterFirstMessage.messageQueue[0], "치코리타의 몸통박치기!");
+  assert.deepEqual(
+    afterFirstMessage.messageHpSnapshots?.[0],
+    opponentFirstResult.messageHpSnapshots?.[1],
+  );
 });
 
 test("선두가 쓰러지고 생존한 벤치가 있으면 패배 대신 강제 교체로 진행한다", () => {

@@ -3,7 +3,7 @@
   z-index: 40;
   display: grid;
   min-height: 0;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: 52px minmax(0, 1fr);
   color: #17201a;
   overflow: hidden;
   background:
@@ -17,12 +17,11 @@
 
 .topBar {
   display: flex;
-  min-height: 48px;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 7px 14px 6px;
-  border-bottom: 1px solid rgba(23, 35, 28, 0.24);
+  padding: 7px 14px;
+  border-bottom: 2px solid rgba(23, 35, 28, 0.42);
   background: rgba(248, 251, 240, 0.64);
 }
 
@@ -53,6 +52,7 @@
 .itemButton,
 .nextButton,
 .backButton,
+.directionButton,
 .sceneBack,
 .panelAction,
 .panelActionPrimary,
@@ -137,76 +137,56 @@
 
 .controlCluster {
   display: flex;
-  width: min(100%, 420px);
+  width: min(100%, 400px);
+  min-height: 0;
   align-self: end;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
-  gap: clamp(18px, 8vw, 40px);
+  gap: clamp(14px, 5vw, 24px);
   margin: 0 auto;
 }
 
-.joystick {
-  position: relative;
+.directionPad {
   display: grid;
-  width: clamp(126px, 37vw, 150px);
+  width: clamp(144px, 42vw, 164px);
   aspect-ratio: 1;
   flex: 0 0 auto;
-  isolation: isolate;
+  grid-template-areas:
+    ". up ."
+    "left . right"
+    ". down .";
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.directionButton {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
   place-items: center;
-  border: 3px solid #17231c;
-  border-radius: 50%;
-  background: radial-gradient(circle at center, #e9f1df 0 36%, #d6e5d1 37% 100%);
-  box-shadow:
-    inset 0 0 0 6px rgba(248, 251, 240, 0.42),
-    0 3px 0 #17231c;
-  cursor: pointer;
-  touch-action: none;
-  transition:
-    background 120ms ease,
-    box-shadow 120ms ease;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  -webkit-user-select: none;
-}
-
-.joystick::before {
-  position: absolute;
-  inset: 16%;
-  z-index: 0;
-  content: "";
-  border: 1px solid rgba(23, 35, 28, 0.36);
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-.joystick:focus-visible {
-  outline: 3px solid #42713d;
-  outline-offset: 3px;
-}
-
-.joystickThumb {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  z-index: 1;
-  width: 42%;
-  aspect-ratio: 1;
-  border: 3px solid #17231c;
-  border-radius: 50%;
+  border-radius: 12px;
   background: #f8fbf0;
-  box-shadow: 0 2px 0 #17231c;
-  pointer-events: none;
-  transition:
-    transform 70ms ease-out,
-    background 120ms ease;
+  box-shadow: 0 3px 0 #17231c;
+  font-size: 1.1rem;
+  touch-action: none;
 }
 
-.joystick[data-active="true"] {
-  background: radial-gradient(circle at center, #f8fbf0 0 36%, #b7d897 37% 100%);
+.directionButton[data-mobile-control="up"] {
+  grid-area: up;
 }
 
-.joystick[data-active="true"] .joystickThumb {
-  background: #b7d897;
+.directionButton[data-mobile-control="left"] {
+  grid-area: left;
+}
+
+.directionButton[data-mobile-control="right"] {
+  grid-area: right;
+}
+
+.directionButton[data-mobile-control="down"] {
+  grid-area: down;
 }
 
 .fieldActions {
@@ -220,7 +200,7 @@
 .secondaryAction,
 .partyAction {
   display: grid;
-  min-height: 56px;
+  min-height: 60px;
   align-content: center;
   justify-items: center;
   gap: 2px;
@@ -229,7 +209,7 @@
 }
 
 .primaryAction {
-  min-height: 66px;
+  min-height: 72px;
   grid-column: 1 / -1;
   background: #e57a55;
   color: #fffdf4;
@@ -259,6 +239,7 @@
 .primaryAction[data-pressed="true"],
 .secondaryAction[data-pressed="true"],
 .partyAction:active,
+.directionButton:active,
 .utilityButton:active,
 .commandButton:active,
 .moveButton:active,
@@ -279,12 +260,13 @@
   min-height: 0;
   height: 100%;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  padding: 14px;
+  padding: 12px 14px 14px;
 }
 
 .commandButton {
-  min-height: 64px;
+  min-height: 0;
   border-radius: 13px;
   background: #f8fbf0;
   box-shadow: 0 3px 0 #17231c;
@@ -306,6 +288,7 @@
   display: grid;
   min-height: 0;
   height: 100%;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 9px;
   padding: 12px 14px 14px;
 }
@@ -335,7 +318,9 @@
   display: grid;
   min-height: 0;
   gap: 7px;
+  grid-auto-rows: minmax(0, 1fr);
   overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .optionGrid,
@@ -343,15 +328,17 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.optionGrid,
 .itemList {
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
 }
 
 .moveButton,
 .partyButton,
 .itemButton {
   display: grid;
-  min-height: 48px;
+  min-height: 0;
   align-content: center;
   justify-items: start;
   gap: 2px;
@@ -360,6 +347,14 @@
   background: #f8fbf0;
   box-shadow: 0 2px 0 #17231c;
   text-align: left;
+}
+
+.emptyOptionSlot {
+  min-width: 0;
+  min-height: 0;
+  border: 2px dashed rgba(23, 35, 28, 0.28);
+  border-radius: 10px;
+  background: rgba(248, 251, 240, 0.34);
 }
 
 .moveButton span,
@@ -422,9 +417,8 @@
 
 .nextButton {
   place-self: center;
-  width: min(48vw, 220px);
-  height: min(20%, 104px);
-  min-height: 72px;
+  width: min(62vw, 240px);
+  height: clamp(80px, 22%, 112px);
   padding: 8px 14px;
   border-radius: 11px;
   background: #e57a55;
@@ -786,7 +780,7 @@
     grid-column: 1;
     grid-row: 2;
     width: var(--poke-lounge-mobile-screen-width);
-    height: 100%;
+    min-height: 0;
     margin: 0;
     align-self: stretch;
     justify-self: stretch;
@@ -804,6 +798,10 @@
 
   .controlCluster {
     gap: 14px;
+  }
+
+  .directionPad {
+    width: min(42vw, 152px);
   }
 
   .fieldActions {

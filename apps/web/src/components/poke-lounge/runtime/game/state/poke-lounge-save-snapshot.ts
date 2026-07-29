@@ -204,6 +204,7 @@ function sanitizePokemon(value: Record<string, unknown>): PlayerPokemon | null {
     !isOptionalNonNegativeInteger(value.currentHp) ||
     !isOptionalNonNegativeInteger(value.experience) ||
     !isOptionalNonNegativeInteger(value.growthRate) ||
+    !isOptionalPokemonGender(value.gender) ||
     !isOptionalPokemonStatus(value.status) ||
     !isOptionalIndividualValues(value.individualValues) ||
     !isOptionalMoves(value.moves)
@@ -227,6 +228,7 @@ function sanitizePokemon(value: Record<string, unknown>): PlayerPokemon | null {
     ...(value.currentHp === undefined ? {} : { currentHp: value.currentHp }),
     ...(value.experience === undefined ? {} : { experience: value.experience }),
     ...(value.growthRate === undefined ? {} : { growthRate: value.growthRate }),
+    ...(value.gender === undefined ? {} : { gender: value.gender }),
     ...(value.status === undefined ? {} : { status: value.status }),
     ...(value.individualValues === undefined ? {} : { individualValues: value.individualValues }),
     ...(value.moves === undefined ? {} : { moves: value.moves.map(sanitizeMove) }),
@@ -323,6 +325,10 @@ function isOptionalPokemonStatus(value: unknown): value is PlayerPokemonStatus |
     value === "paralyzed" ||
     value === "fainted"
   );
+}
+
+function isOptionalPokemonGender(value: unknown): value is PlayerPokemon["gender"] {
+  return value === undefined || value === "male" || value === "female" || value === "genderless";
 }
 
 function isOptionalIndividualValues(value: unknown): value is PokemonIndividualValues | undefined {

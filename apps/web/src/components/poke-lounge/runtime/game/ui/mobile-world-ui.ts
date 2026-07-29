@@ -11,6 +11,7 @@ export type MobileWorldUiScreen =
   | "explore"
   | "help"
   | "inventory-items"
+  | "inventory-move-replace"
   | "inventory-party"
   | "shop"
   | "pc"
@@ -42,6 +43,19 @@ export interface PokeLoungePartySlotSummary {
 
 export type MobileWorldPartyOption = PokeLoungePartySlotSummary;
 
+export interface MobileWorldMoveOption {
+  id: number;
+  index: number;
+  name: string;
+  selected: boolean;
+}
+
+export interface MobileWorldMoveReplacementState {
+  moves: MobileWorldMoveOption[];
+  newMoveName: string;
+  pokemonName: string;
+}
+
 export interface MobileWorldBoxOption {
   boxIndex: number;
   currentHp: number | null;
@@ -71,6 +85,7 @@ export interface MobileWorldUiState {
   box: MobileWorldBoxOption[];
   items: MobileWorldItemOption[];
   message: string;
+  moveReplacement: MobileWorldMoveReplacementState | null;
   party: MobileWorldPartyOption[];
   pcFocus: "party" | "box";
   screen: MobileWorldUiScreen;
@@ -89,7 +104,9 @@ export type MobileWorldUiAction =
   | { type: "close" }
   | { type: "back" }
   | { type: "select-inventory-item"; index: number }
+  | { type: "select-inventory-move"; index: number }
   | { type: "use-inventory-item" }
+  | { type: "skip-inventory-move" }
   | { type: "select-inventory-party"; slotIndex: number }
   | { type: "select-shop-item"; index: number }
   | { type: "purchase-shop-item" }

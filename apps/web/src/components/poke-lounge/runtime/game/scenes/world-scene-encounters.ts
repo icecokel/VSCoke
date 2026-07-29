@@ -7,6 +7,7 @@ import {
   getBattleIntroDurationMs,
 } from "../battle/battleIntro";
 import type { PlayerFacing } from "../network/localPreviewRoom";
+import type { PlayerPosition } from "../player/playerTypes";
 import {
   calculateOccupiedPartyAverageLevel,
   type GameStateStore,
@@ -62,6 +63,7 @@ export interface WorldSceneEncountersDependencies {
   getLocationUrl(): URL;
   getEncounterTableData(): unknown;
   getPokemonData(): unknown;
+  persistPlayerPosition(position: PlayerPosition): void;
   getViewportSize(): { width: number; height: number };
   createRectangle(
     x: number,
@@ -277,7 +279,7 @@ class DefaultWorldSceneEncounters implements WorldSceneEncounterController {
 
     this.encounterLocked = true;
     this.dependencies.stopPlayer();
-    this.dependencies.gameStateStore.setLocalPlayerPosition({
+    this.dependencies.persistPlayerPosition({
       mapKey: FIELD_MAP.key,
       x,
       y,

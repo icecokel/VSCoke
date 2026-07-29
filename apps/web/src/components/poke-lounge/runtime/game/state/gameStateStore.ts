@@ -5,7 +5,9 @@ import {
   type PlayerPosition,
 } from "../player/playerTypes";
 import { applyInventoryItemEffect } from "../items/inventoryItemEffects";
+import { EVOLUTION_STONE_CATALOG } from "../items/evolution-stones";
 import type { PokemonIndividualValues } from "../battle/individual-values";
+import type { PokemonGender } from "../battle/pokemon-gender";
 import { isSupportedPokemonSpeciesId } from "../battle/pokemon-species";
 import {
   createDefaultRoundState,
@@ -41,6 +43,7 @@ export interface PlayerPokemon {
   speciesId: number;
   name: string;
   level: number;
+  gender?: PokemonGender;
   maxHp?: number;
   currentHp?: number;
   experience?: number;
@@ -173,6 +176,7 @@ export type UseInventoryItemOnPartySlotResult =
       itemId: string;
       messages: string[];
       pokemon: PlayerPokemon;
+      pendingMoveReplacements: PlayerPokemonMove[];
     }
   | {
       ok: false;
@@ -181,6 +185,7 @@ export type UseInventoryItemOnPartySlotResult =
         | "unknown-item"
         | "invalid-target"
         | "insufficient-quantity"
+        | "invalid-move-replacements"
         | "no-effect"
         | "unsupported-item";
       message: string;
@@ -298,6 +303,51 @@ export const SHOP_ITEM_IDS = ["potion", "pokeball", "antidote", "superPotion"] a
 export type ShopItemId = (typeof SHOP_ITEM_IDS)[number];
 
 export const PREMIUM_SHOP_ITEM_CATALOG = {
+  sunStone: {
+    ...EVOLUTION_STONE_CATALOG.sunStone,
+    price: 2100,
+    unlockRank: 0,
+  },
+  moonStone: {
+    ...EVOLUTION_STONE_CATALOG.moonStone,
+    price: 2100,
+    unlockRank: 0,
+  },
+  fireStone: {
+    ...EVOLUTION_STONE_CATALOG.fireStone,
+    price: 2100,
+    unlockRank: 0,
+  },
+  thunderStone: {
+    ...EVOLUTION_STONE_CATALOG.thunderStone,
+    price: 2100,
+    unlockRank: 0,
+  },
+  waterStone: {
+    ...EVOLUTION_STONE_CATALOG.waterStone,
+    price: 2100,
+    unlockRank: 0,
+  },
+  leafStone: {
+    ...EVOLUTION_STONE_CATALOG.leafStone,
+    price: 2100,
+    unlockRank: 0,
+  },
+  shinyStone: {
+    ...EVOLUTION_STONE_CATALOG.shinyStone,
+    price: 2100,
+    unlockRank: 0,
+  },
+  duskStone: {
+    ...EVOLUTION_STONE_CATALOG.duskStone,
+    price: 2100,
+    unlockRank: 0,
+  },
+  dawnStone: {
+    ...EVOLUTION_STONE_CATALOG.dawnStone,
+    price: 2100,
+    unlockRank: 0,
+  },
   hyperPotion: {
     id: "hyperPotion",
     displayName: "고급상처약",
@@ -328,7 +378,21 @@ export const PREMIUM_SHOP_ITEM_CATALOG = {
   },
 } as const satisfies Record<string, ShopItem>;
 
-export const PREMIUM_SHOP_ITEM_IDS = ["hyperPotion", "revive", "ultraBall", "rareCandy"] as const;
+export const PREMIUM_SHOP_ITEM_IDS = [
+  "sunStone",
+  "moonStone",
+  "fireStone",
+  "thunderStone",
+  "waterStone",
+  "leafStone",
+  "shinyStone",
+  "duskStone",
+  "dawnStone",
+  "hyperPotion",
+  "revive",
+  "ultraBall",
+  "rareCandy",
+] as const;
 
 export type PremiumShopItemId = (typeof PREMIUM_SHOP_ITEM_IDS)[number];
 
@@ -370,6 +434,11 @@ export interface GameStateStore {
   buyPremiumShopItem(itemId: string, quantity: number): BuyShopItemResult;
   consumeInventoryItem(itemId: string, quantity: number): ConsumeInventoryItemResult;
   useInventoryItemOnPartySlot(itemId: string, slotIndex: number): UseInventoryItemOnPartySlotResult;
+  resolveInventoryItemMoveReplacements(
+    itemId: string,
+    slotIndex: number,
+    decisions: ReadonlyArray<number | null>,
+  ): UseInventoryItemOnPartySlotResult;
   healCurrentParty(): void;
   settleDiceGambleResult(input: DiceGambleSettlementInput): DiceGambleSettlementResult;
   setStarterPokemon(pokemon: PlayerPokemon): void;
@@ -707,6 +776,16 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
         };
       }
 
+      if (itemResult.pendingMoveReplacements.length > 0) {
+        return {
+          ok: true,
+          itemId,
+          messages: itemResult.messages,
+          pokemon: itemResult.pokemon,
+          pendingMoveReplacements: itemResult.pendingMoveReplacements,
+        };
+      }
+
       const nextQuantity = quantity - 1;
       const nextInventory = { ...localPlayer.inventory };
 
@@ -731,6 +810,123 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
         itemId,
         messages: itemResult.messages,
         pokemon: nextPokemon,
+        pendingMoveReplacements: itemResult.pendingMoveReplacements,
+      };
+    },
+    resolveInventoryItemMoveReplacements(itemId, slotIndex, decisions) {
+      const item = getShopItemById(itemId);
+
+      if (!item) {
+        return {
+          ok: false,
+          itemId,
+          reason: "unknown-item",
+          message: "사용할 수 없는 아이템이다.",
+        };
+      }
+
+      const localPlayer = getCurrentLocalPlayer(state);
+      const quantity = localPlayer.inventory[itemId] ?? 0;
+
+      if (quantity <= 0) {
+        return {
+          ok: false,
+          itemId,
+          reason: "insufficient-quantity",
+          message: `${item.displayName}이 없다!`,
+        };
+      }
+
+      const partySlot = localPlayer.party.find(slot => slot.slotIndex === slotIndex);
+
+      if (!partySlot?.pokemon) {
+        return {
+          ok: false,
+          itemId,
+          reason: "invalid-target",
+          message: "대상 포켓몬이 없다.",
+        };
+      }
+
+      const itemResult = applyInventoryItemEffect(itemId, partySlot.pokemon);
+
+      if (!itemResult.ok) {
+        return {
+          ok: false,
+          itemId,
+          reason: itemResult.reason,
+          message: itemResult.message,
+        };
+      }
+
+      if (
+        itemResult.pendingMoveReplacements.length === 0 ||
+        decisions.length !== itemResult.pendingMoveReplacements.length ||
+        decisions.some(decision => decision !== null && !isValidMoveIndex(decision))
+      ) {
+        return {
+          ok: false,
+          itemId,
+          reason: "invalid-move-replacements",
+          message: "기술 교체 선택을 완료할 수 없다.",
+        };
+      }
+
+      let nextPokemon = itemResult.pokemon;
+      const replacementMessages: string[] = [];
+
+      for (const [index, pendingMove] of itemResult.pendingMoveReplacements.entries()) {
+        const moveIndex = decisions[index];
+
+        if (moveIndex === null || moveIndex === undefined) {
+          replacementMessages.push(`${pendingMove.name} 습득을 취소했다.`);
+          continue;
+        }
+
+        const currentMoves = nextPokemon.moves ?? [];
+        const replacedMove = currentMoves[moveIndex];
+
+        if (!replacedMove) {
+          return {
+            ok: false,
+            itemId,
+            reason: "invalid-move-replacements",
+            message: "기술 교체 선택을 완료할 수 없다.",
+          };
+        }
+
+        nextPokemon = {
+          ...nextPokemon,
+          moves: currentMoves.map((move, currentIndex) =>
+            currentIndex === moveIndex ? pendingMove : move,
+          ),
+        };
+        replacementMessages.push(`기술이 ${replacedMove.name}에서 ${pendingMove.name}로 바뀌었다!`);
+      }
+
+      const nextQuantity = quantity - 1;
+      const nextInventory = { ...localPlayer.inventory };
+
+      if (nextQuantity > 0) {
+        nextInventory[itemId] = nextQuantity;
+      } else {
+        delete nextInventory[itemId];
+      }
+
+      setCurrentLocalPlayer({
+        ...localPlayer,
+        inventory: nextInventory,
+        party: localPlayer.party.map(slot =>
+          slot.slotIndex === slotIndex ? { ...slot, pokemon: nextPokemon } : slot,
+        ),
+      });
+
+      return {
+        ok: true,
+        itemId,
+        messages: [...itemResult.messages, ...replacementMessages],
+        pokemon: nextPokemon,
+        pendingMoveReplacements: [],
       };
     },
     healCurrentParty() {

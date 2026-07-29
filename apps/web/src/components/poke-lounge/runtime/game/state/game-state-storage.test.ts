@@ -51,6 +51,41 @@ test("session storage save는 anonymous와 authenticated scope 사이에서 노�
   assert.equal(adapter.loadLocalPlayers()?.currentPlayerId, "account-b-player");
 });
 
+test("포켓몬 성별은 저장하고 구버전의 성별 없는 포켓몬도 그대로 복원한다", () => {
+  const storage = createMemoryStorage();
+  const adapter = createWebStorageGameStateStorage({ storage });
+  const player = createDefaultLocalPlayer();
+  player.party = [
+    {
+      slotIndex: 0,
+      pokemon: {
+        speciesId: 281,
+        name: "킬리아",
+        level: 30,
+        gender: "male",
+      },
+    },
+    {
+      slotIndex: 1,
+      pokemon: {
+        speciesId: 361,
+        name: "눈꼬마",
+        level: 30,
+      },
+    },
+  ];
+
+  adapter.saveLocalPlayers({
+    currentPlayerId: player.playerId,
+    playersById: { [player.playerId]: player },
+  });
+
+  const loadedParty = adapter.loadLocalPlayers()?.playersById[player.playerId]?.party;
+
+  assert.equal(loadedParty?.[0]?.pokemon?.gender, "male");
+  assert.equal(loadedParty?.[1]?.pokemon?.gender, undefined);
+});
+
 function createMemoryStorage(): Storage {
   const values = new Map<string, string>();
 

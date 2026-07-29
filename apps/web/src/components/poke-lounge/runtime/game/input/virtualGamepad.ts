@@ -23,6 +23,17 @@ export function releaseVirtualGamepadButton(button: VirtualGamepadButton): void 
   pressedButtons.delete(button);
 }
 
+export function setVirtualGamepadButtonHeld(button: VirtualGamepadButton, isHeld: boolean): void {
+  pendingPresses.delete(button);
+
+  if (isHeld) {
+    pressedButtons.add(button);
+    return;
+  }
+
+  pressedButtons.delete(button);
+}
+
 export function isVirtualGamepadPressed(button: VirtualGamepadButton): boolean {
   return pressedButtons.has(button);
 }

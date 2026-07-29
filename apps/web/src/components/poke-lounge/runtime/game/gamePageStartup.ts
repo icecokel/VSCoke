@@ -5,8 +5,12 @@ import {
   bindPokeLoungeAudioPrimeListeners,
   stopAllPokeLoungeAudio,
 } from "./audio/poke-lounge-audio";
+import { createPokemonGenderFromRatio } from "./battle/pokemon-gender";
 import { createPokeLoungeGame, type PokeLoungeGameResult } from "./createPokeLoungeGame";
-import { loadRuntimeGameDataJson } from "./data/game-data-json";
+import {
+  getRuntimePokemonSpeciesGenderRatio,
+  loadRuntimeGameDataJson,
+} from "./data/game-data-json";
 import { readInitialBattleE2eScenario, readInitialGameScene } from "./gameStartup";
 import { createRandomIndividualValues } from "./battle/individual-values";
 import {
@@ -59,6 +63,7 @@ type PokeLoungeGameInstance = ReturnType<typeof createPokeLoungeGame>;
 
 export interface GamePageHandle {
   destroy(): void;
+  requestRoomLeave(): boolean;
   setViewportSize(viewportSize: GameViewportDisplaySize): void;
 }
 
@@ -156,6 +161,16 @@ export async function startGamePage(
       });
       mount.replaceChildren();
       delete mount.dataset.pokeLoungeResourceStatus;
+    },
+    requestRoomLeave() {
+      const leaveButton = mount.querySelector<HTMLButtonElement>("[data-room-leave='true']");
+
+      if (!leaveButton) {
+        return false;
+      }
+
+      leaveButton.click();
+      return true;
     },
     setViewportSize(nextViewportSize: GameViewportDisplaySize) {
       activeViewportSize = nextViewportSize;
@@ -783,11 +798,21 @@ function createStartupErrorButton(
   return button;
 }
 
-export function createStarterPlayerPokemon(starter: StarterPokemon, level = 10): PlayerPokemon {
+export function createStarterPlayerPokemon(
+  starter: StarterPokemon,
+  level = 10,
+  random: () => number = Math.random,
+): PlayerPokemon {
+  const gender = createPokemonGenderFromRatio(
+    getRuntimePokemonSpeciesGenderRatio(starter.speciesId),
+    random,
+  );
+
   return {
     speciesId: starter.speciesId,
     name: starter.displayName,
     level,
+    ...(gender ? { gender } : {}),
     individualValues: createRandomIndividualValues(),
   };
 }

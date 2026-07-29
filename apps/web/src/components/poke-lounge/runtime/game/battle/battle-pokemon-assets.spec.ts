@@ -11,6 +11,9 @@ import {
 } from "./battlePokemonAssets";
 import {
   BATTLE_POKEMON_ASSETS_JSON_PATH,
+  LEVEL_UP_MOVE_TABLE_JSON_PATH,
+  POKEMON_DATA_JSON_PATH,
+  WILD_BATTLE_MOVE_SETS_JSON_PATH,
   getRuntimeBattlePokemonSpriteSheetRanges,
   loadRuntimeGameDataJson,
   normalizeBattlePokemonAssetManifest,
@@ -205,11 +208,23 @@ const createRuntimeGameDataFetcher =
           ? input.pathname
           : new URL(input.url).pathname;
 
-    if (requestPath !== BATTLE_POKEMON_ASSETS_JSON_PATH) {
+    if (
+      requestPath !== BATTLE_POKEMON_ASSETS_JSON_PATH &&
+      requestPath !== POKEMON_DATA_JSON_PATH &&
+      requestPath !== LEVEL_UP_MOVE_TABLE_JSON_PATH &&
+      requestPath !== WILD_BATTLE_MOVE_SETS_JSON_PATH
+    ) {
       return new Response(null, { status: 404 });
     }
 
-    return new Response(JSON.stringify(battlePokemonAssetManifest), {
+    const responseData =
+      requestPath === BATTLE_POKEMON_ASSETS_JSON_PATH
+        ? battlePokemonAssetManifest
+        : JSON.parse(
+            fs.readFileSync(path.join(webRoot, "public", requestPath.replace(/^\//, "")), "utf8"),
+          );
+
+    return new Response(JSON.stringify(responseData), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

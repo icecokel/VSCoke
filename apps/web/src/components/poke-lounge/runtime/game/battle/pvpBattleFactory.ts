@@ -101,6 +101,7 @@ function createBattlePokemon(pokemon: PlayerPokemon): BattlePokemon {
     speciesId: pokemon.speciesId,
     name: pokemon.name,
     level: pokemon.level,
+    gender: pokemon.gender,
     catchRate: 0,
     baseExpYield: 0,
     growthRate: pokemon.growthRate ?? 0,

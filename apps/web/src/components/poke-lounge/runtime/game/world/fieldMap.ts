@@ -87,6 +87,11 @@ export const FIELD_MAP = {
     x: 656,
     y: 1150,
   },
+  recoverySpawn: {
+    x: 640,
+    y: 1008,
+    facing: "back",
+  },
   encounterAreas: [
     {
       id: "town-west-field",

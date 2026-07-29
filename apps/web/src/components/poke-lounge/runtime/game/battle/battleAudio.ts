@@ -20,6 +20,10 @@ export function playBattleStartSound(): void {
   playPokeLoungeSfx("battle-start");
 }
 
+export function playPartyHealSound(): void {
+  playPokeLoungeSfx("battle-start", { volume: 0.65 });
+}
+
 export function playBattleHitSound(): void {
   playPokeLoungeSfx("battle-hit");
 }

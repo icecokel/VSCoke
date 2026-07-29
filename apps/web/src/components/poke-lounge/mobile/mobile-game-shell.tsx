@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { PokeLoungePartySlotMenu } from "../party-slot-menu";
 import type { PokeLoungeCopy } from "../poke-lounge-copy";
@@ -24,6 +24,7 @@ import {
   pressVirtualGamepadButton,
   releaseVirtualGamepadButton,
   resetVirtualGamepad,
+  setVirtualGamepadButtonHeld,
   type VirtualGamepadButton,
 } from "../runtime/game/input/virtualGamepad";
 import styles from "./mobile-game-shell.module.css";
@@ -31,6 +32,71 @@ import styles from "./mobile-game-shell.module.css";
 type MobileScene = "battle" | "world" | null;
 
 const mobileBattleGridSlotCount = 4;
+
+type MobileJoystickDirection = "up" | "down" | "left" | "right";
+
+type MobileJoystickOffset = {
+  x: number;
+  y: number;
+};
+
+const mobileJoystickDeadZoneRatio = 0.24;
+const mobileJoystickMaximumThumbOffsetRatio = 0.46;
+const emptyMobileJoystickOffset: MobileJoystickOffset = { x: 0, y: 0 };
+
+const resolveMobileJoystickDirection = (
+  offset: MobileJoystickOffset,
+  radius: number,
+): MobileJoystickDirection | null => {
+  const distance = Math.hypot(offset.x, offset.y);
+
+  if (distance < radius * mobileJoystickDeadZoneRatio) {
+    return null;
+  }
+
+  if (Math.abs(offset.x) > Math.abs(offset.y)) {
+    return offset.x < 0 ? "left" : "right";
+  }
+
+  return offset.y < 0 ? "up" : "down";
+};
+
+const clampMobileJoystickOffset = (
+  offset: MobileJoystickOffset,
+  radius: number,
+): MobileJoystickOffset => {
+  const distance = Math.hypot(offset.x, offset.y);
+  const maximumOffset = radius * mobileJoystickMaximumThumbOffsetRatio;
+
+  if (distance === 0 || distance <= maximumOffset) {
+    return offset;
+  }
+
+  const ratio = maximumOffset / distance;
+
+  return { x: offset.x * ratio, y: offset.y * ratio };
+};
+
+const getMobileJoystickKeyboardDirection = (key: string): MobileJoystickDirection | null => {
+  if (key === "ArrowUp") return "up";
+  if (key === "ArrowDown") return "down";
+  if (key === "ArrowLeft") return "left";
+  if (key === "ArrowRight") return "right";
+
+  return null;
+};
+
+const getMobileJoystickKeyboardOffset = (
+  direction: MobileJoystickDirection,
+): MobileJoystickOffset => {
+  const keyboardOffset = 32;
+
+  if (direction === "up") return { x: 0, y: -keyboardOffset };
+  if (direction === "down") return { x: 0, y: keyboardOffset };
+  if (direction === "left") return { x: -keyboardOffset, y: 0 };
+
+  return { x: keyboardOffset, y: 0 };
+};
 
 export interface MobileRankingEntry {
   id: string;
@@ -177,7 +243,7 @@ function MobileExploreDeck({
         ) : null}
       </div>
       <div className={styles.controlCluster}>
-        <MobileDirectionalPad copy={copy} />
+        <MobileDirectionalJoystick ariaLabel={copy.mobile.exploreDeckLabel} />
         <div className={styles.fieldActions}>
           <TouchHoldButton
             control="confirm"
@@ -210,42 +276,123 @@ function MobileExploreDeck({
   );
 }
 
-function MobileDirectionalPad({ copy }: { copy: PokeLoungeCopy }) {
+function MobileDirectionalJoystick({ ariaLabel }: { ariaLabel: string }) {
+  const [activeDirection, setActiveDirection] = useState<MobileJoystickDirection | null>(null);
+  const [isActive, setIsActive] = useState(false);
+  const [thumbOffset, setThumbOffset] = useState<MobileJoystickOffset>(emptyMobileJoystickOffset);
+  const activeDirectionRef = useRef<MobileJoystickDirection | null>(null);
+  const activePointerId = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (activeDirectionRef.current) {
+        setVirtualGamepadButtonHeld(activeDirectionRef.current, false);
+      }
+    };
+  }, []);
+
+  const setDirection = (direction: MobileJoystickDirection | null) => {
+    if (activeDirectionRef.current === direction) {
+      return;
+    }
+
+    if (activeDirectionRef.current) {
+      setVirtualGamepadButtonHeld(activeDirectionRef.current, false);
+    }
+
+    activeDirectionRef.current = direction;
+    setActiveDirection(direction);
+
+    if (direction) {
+      setVirtualGamepadButtonHeld(direction, true);
+    }
+  };
+
+  const release = (pointerId?: number) => {
+    if (pointerId !== undefined && activePointerId.current !== pointerId) {
+      return;
+    }
+
+    activePointerId.current = null;
+    setIsActive(false);
+    setThumbOffset(emptyMobileJoystickOffset);
+    setDirection(null);
+  };
+
+  const updateFromPointer = (target: HTMLDivElement, event: PointerEvent<HTMLDivElement>) => {
+    const rect = target.getBoundingClientRect();
+    const radius = Math.min(rect.width, rect.height) / 2;
+    const offset = {
+      x: event.clientX - (rect.left + rect.width / 2),
+      y: event.clientY - (rect.top + rect.height / 2),
+    };
+
+    setThumbOffset(clampMobileJoystickOffset(offset, radius));
+    setDirection(resolveMobileJoystickDirection(offset, radius));
+  };
+
   return (
     <div
-      className={styles.directionPad}
+      className={styles.joystick}
       role="group"
-      aria-label={copy.mobile.exploreDeckLabel}
-      data-poke-lounge-mobile-direction-pad="true"
+      tabIndex={0}
+      aria-label={ariaLabel}
+      data-active={isActive || undefined}
+      data-direction={activeDirection ?? undefined}
+      data-poke-lounge-mobile-joystick="true"
+      onPointerDown={event => {
+        event.preventDefault();
+        activePointerId.current = event.pointerId;
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        } catch {
+          // Synthetic events used by interaction tests cannot always capture pointers.
+        }
+        setIsActive(true);
+        void primePokeLoungeAudio();
+        updateFromPointer(event.currentTarget, event);
+      }}
+      onPointerMove={event => {
+        if (activePointerId.current === event.pointerId) {
+          updateFromPointer(event.currentTarget, event);
+        }
+      }}
+      onPointerUp={event => release(event.pointerId)}
+      onPointerCancel={event => release(event.pointerId)}
+      onLostPointerCapture={() => release()}
+      onBlur={() => release()}
+      onKeyDown={event => {
+        const direction = getMobileJoystickKeyboardDirection(event.key);
+
+        if (!direction) {
+          return;
+        }
+
+        event.preventDefault();
+        setIsActive(true);
+        setThumbOffset(getMobileJoystickKeyboardOffset(direction));
+        setDirection(direction);
+      }}
+      onKeyUp={event => {
+        const direction = getMobileJoystickKeyboardDirection(event.key);
+
+        if (!direction) {
+          return;
+        }
+
+        event.preventDefault();
+        if (activeDirectionRef.current === direction) {
+          release();
+        }
+      }}
     >
-      <TouchHoldButton
-        className={styles.directionButton}
-        control="up"
-        ariaLabel={copy.mobile.moveUp}
-      >
-        <span aria-hidden="true">▲</span>
-      </TouchHoldButton>
-      <TouchHoldButton
-        className={styles.directionButton}
-        control="left"
-        ariaLabel={copy.mobile.moveLeft}
-      >
-        <span aria-hidden="true">◀</span>
-      </TouchHoldButton>
-      <TouchHoldButton
-        className={styles.directionButton}
-        control="right"
-        ariaLabel={copy.mobile.moveRight}
-      >
-        <span aria-hidden="true">▶</span>
-      </TouchHoldButton>
-      <TouchHoldButton
-        className={styles.directionButton}
-        control="down"
-        ariaLabel={copy.mobile.moveDown}
-      >
-        <span aria-hidden="true">▼</span>
-      </TouchHoldButton>
+      <span
+        className={styles.joystickThumb}
+        aria-hidden="true"
+        style={{
+          transform: `translate(calc(-50% + ${thumbOffset.x}px), calc(-50% + ${thumbOffset.y}px))`,
+        }}
+      />
     </div>
   );
 }
@@ -347,6 +494,43 @@ function MobileWorldScreen({
         onBack={back}
         onConfirm={() => onAction({ type: "use-inventory-item" })}
         confirmLabel={copy.mobile.use}
+      />
+    );
+  } else if (state.screen === "inventory-move-replace") {
+    content = state.moveReplacement ? (
+      <>
+        <p className={styles.detailText}>
+          {copy.mobile.moveReplacementPrompt(
+            state.moveReplacement.pokemonName,
+            state.moveReplacement.newMoveName,
+          )}
+        </p>
+        <div className={styles.compactList}>
+          {state.moveReplacement.moves.map(move => (
+            <button
+              key={move.id}
+              type="button"
+              className={styles.listButton}
+              data-selected={move.selected}
+              onClick={() => onAction({ type: "select-inventory-move", index: move.index })}
+            >
+              <span>{move.name}</span>
+              <small>{move.selected ? copy.mobile.forgetMove : ""}</small>
+            </button>
+          ))}
+        </div>
+        <MobileWorldMessage message={state.message} />
+      </>
+    ) : (
+      <MobileWorldMessage message="기술 교체 정보를 불러올 수 없습니다." />
+    );
+    footer = (
+      <MobileWorldSceneFooter
+        backLabel={copy.mobile.doNotLearnMove}
+        copy={copy}
+        onBack={() => onAction({ type: "skip-inventory-move" })}
+        onConfirm={() => onAction({ type: "use-inventory-item" })}
+        confirmLabel={copy.mobile.confirmMoveReplacement}
       />
     );
   } else if (state.screen === "shop") {
@@ -533,6 +717,7 @@ function MobileWorldScreen({
       <MobileWorldSceneHeader
         copy={copy}
         onClose={close}
+        showClose={state.screen !== "inventory-move-replace"}
         title={state.title}
         walletPokeDollars={state.walletPokeDollars}
       />
@@ -545,26 +730,32 @@ function MobileWorldScreen({
 function MobileWorldSceneHeader({
   copy,
   onClose,
+  showClose,
   title,
   walletPokeDollars,
 }: {
   copy: PokeLoungeCopy;
   onClose(): void;
+  showClose: boolean;
   title: string;
   walletPokeDollars: number;
 }) {
   return (
     <header className={styles.worldSceneHeader}>
-      <button
-        type="button"
-        className={styles.sceneBack}
-        onClick={onClose}
-        aria-label={copy.mobile.back}
-        data-poke-lounge-mobile-deck-close="true"
-      >
-        <span aria-hidden="true">‹</span>
-        <span>{copy.mobile.back}</span>
-      </button>
+      {showClose ? (
+        <button
+          type="button"
+          className={styles.sceneBack}
+          onClick={onClose}
+          aria-label={copy.mobile.back}
+          data-poke-lounge-mobile-deck-close="true"
+        >
+          <span aria-hidden="true">‹</span>
+          <span>{copy.mobile.back}</span>
+        </button>
+      ) : (
+        <span aria-hidden="true" />
+      )}
       <strong id="poke-lounge-mobile-world-scene-title" className={styles.worldSceneTitle}>
         {title}
       </strong>
@@ -574,11 +765,13 @@ function MobileWorldSceneHeader({
 }
 
 function MobileWorldSceneFooter({
+  backLabel,
   confirmLabel,
   copy,
   onBack,
   onConfirm,
 }: {
+  backLabel?: string;
   confirmLabel: string;
   copy: PokeLoungeCopy;
   onBack(): void;
@@ -587,7 +780,7 @@ function MobileWorldSceneFooter({
   return (
     <footer className={styles.deckFooter}>
       <button type="button" className={styles.panelAction} onClick={onBack}>
-        ‹ {copy.mobile.back}
+        ‹ {backLabel ?? copy.mobile.back}
       </button>
       <button type="button" className={styles.panelActionPrimary} onClick={onConfirm}>
         {confirmLabel}
@@ -691,8 +884,12 @@ function MobileBattleDeck({ copy }: { copy: PokeLoungeCopy }) {
       type="button"
       className={styles.backButton}
       onClick={() => dispatchAction({ type: "go-back" })}
+      aria-label={
+        battleState.phase === "move-replace-select" ? copy.mobile.doNotLearnMove : copy.mobile.back
+      }
     >
-      ‹ {copy.mobile.back}
+      ‹{" "}
+      {battleState.phase === "move-replace-select" ? copy.mobile.doNotLearnMove : copy.mobile.back}
     </button>
   ) : null;
 

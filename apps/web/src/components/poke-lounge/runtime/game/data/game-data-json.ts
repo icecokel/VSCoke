@@ -17,6 +17,12 @@ export interface LevelUpMoveRow {
   moveId: number;
 }
 
+export interface RuntimePokemonMoveSummary {
+  id: number;
+  name: string;
+  pp: number;
+}
+
 export interface BattlePokemonSpriteSheetAssetRecord {
   path: string;
 }
@@ -33,6 +39,7 @@ export interface BattlePokemonSpriteSheetRangeRecord {
 }
 
 interface RuntimeGameDataJsonState {
+  pokemonData: unknown | null;
   pokemonDataRecordCount: number | null;
   moveNames: Record<number, string> | null;
   levelUpMoveTable: Record<number, LevelUpMoveRow[]> | null;
@@ -41,6 +48,7 @@ interface RuntimeGameDataJsonState {
 }
 
 const runtimeGameDataJsonState: RuntimeGameDataJsonState = {
+  pokemonData: null,
   pokemonDataRecordCount: null,
   moveNames: null,
   levelUpMoveTable: null,
@@ -57,12 +65,33 @@ export async function loadRuntimeGameDataJson(fetcher: typeof fetch = fetch): Pr
       fetchJson(fetcher, BATTLE_POKEMON_ASSETS_JSON_PATH),
     ]);
 
-  runtimeGameDataJsonState.pokemonDataRecordCount = normalizePokemonDataRecordCount(pokemonData);
-  runtimeGameDataJsonState.moveNames = normalizePokemonMoveNames(pokemonData);
-  runtimeGameDataJsonState.levelUpMoveTable = normalizeLevelUpMoveTable(levelUpMoveTable);
-  runtimeGameDataJsonState.wildBattleMoveSets = normalizeWildBattleMoveSets(wildBattleMoveSets);
-  runtimeGameDataJsonState.battlePokemonAssets =
-    normalizeBattlePokemonAssetManifest(battlePokemonAssets);
+  const normalizedPokemonData = isPokemonDataJson(pokemonData) ? pokemonData : null;
+  const pokemonDataRecordCount = normalizePokemonDataRecordCount(pokemonData);
+  const moveNames = normalizePokemonMoveNames(pokemonData);
+  const normalizedLevelUpMoveTable = normalizeLevelUpMoveTable(levelUpMoveTable);
+  const normalizedWildBattleMoveSets = normalizeWildBattleMoveSets(wildBattleMoveSets);
+  const normalizedBattlePokemonAssets = normalizeBattlePokemonAssetManifest(battlePokemonAssets);
+
+  if (
+    !normalizedPokemonData ||
+    !pokemonDataRecordCount ||
+    !moveNames ||
+    !normalizedLevelUpMoveTable ||
+    !normalizedWildBattleMoveSets ||
+    !normalizedBattlePokemonAssets ||
+    !hasCompleteSupportedPokemonCoverage(normalizedPokemonData) ||
+    !hasCompleteLevelUpMoveCoverage(normalizedLevelUpMoveTable, moveNames)
+  ) {
+    resetRuntimeGameDataJsonState();
+    throw new Error("Required Poke Lounge runtime game data is incomplete.");
+  }
+
+  runtimeGameDataJsonState.pokemonData = normalizedPokemonData;
+  runtimeGameDataJsonState.pokemonDataRecordCount = pokemonDataRecordCount;
+  runtimeGameDataJsonState.moveNames = moveNames;
+  runtimeGameDataJsonState.levelUpMoveTable = normalizedLevelUpMoveTable;
+  runtimeGameDataJsonState.wildBattleMoveSets = normalizedWildBattleMoveSets;
+  runtimeGameDataJsonState.battlePokemonAssets = normalizedBattlePokemonAssets;
 }
 
 export function getRuntimeLevelUpMoveTable(
@@ -101,11 +130,91 @@ export function getRuntimePokemonDataRecordCountForTest(): number | null {
   return runtimeGameDataJsonState.pokemonDataRecordCount;
 }
 
+export function getRuntimePokemonData(): unknown | null {
+  return runtimeGameDataJsonState.pokemonData;
+}
+
+export function getRuntimePokemonMoveSummary(moveId: number): RuntimePokemonMoveSummary | null {
+  const pokemonData = runtimeGameDataJsonState.pokemonData;
+
+  if (!isRecord(pokemonData) || !isRecord(pokemonData.moves)) {
+    return null;
+  }
+
+  const move = pokemonData.moves[String(moveId)];
+
+  if (!isRecord(move)) {
+    return null;
+  }
+
+  const id = readPositiveInteger(move.id);
+  const name = typeof move.name === "string" ? move.name.trim() : "";
+  const pp = readPositiveInteger(move.pp);
+
+  if (id !== moveId || !name || !pp) {
+    return null;
+  }
+
+  return {
+    id,
+    name,
+    pp,
+  };
+}
+
+export function getRuntimePokemonSpeciesGrowthRate(speciesId: number): number | null {
+  const pokemonData = runtimeGameDataJsonState.pokemonData;
+
+  if (!isRecord(pokemonData) || !isRecord(pokemonData.species)) {
+    return null;
+  }
+
+  const species = pokemonData.species[String(speciesId)];
+
+  if (!isRecord(species)) {
+    return null;
+  }
+
+  const growthRate = species.growthRate;
+
+  return typeof growthRate === "number" && Number.isInteger(growthRate) && growthRate >= 0
+    ? growthRate
+    : null;
+}
+
+export function getRuntimePokemonSpeciesGenderRatio(speciesId: number): number | null {
+  const pokemonData = runtimeGameDataJsonState.pokemonData;
+
+  if (!isRecord(pokemonData) || !isRecord(pokemonData.species)) {
+    return null;
+  }
+
+  const species = pokemonData.species[String(speciesId)];
+
+  if (!isRecord(species)) {
+    return null;
+  }
+
+  const genderRatio = species.genderRatio;
+
+  return typeof genderRatio === "number" &&
+    Number.isInteger(genderRatio) &&
+    genderRatio >= 0 &&
+    genderRatio <= 255
+    ? genderRatio
+    : null;
+}
+
 export function getRuntimeMoveName(moveId: number, fallbackName: string): string {
   return runtimeGameDataJsonState.moveNames?.[moveId] ?? fallbackName;
 }
 
 export function resetRuntimeGameDataJsonStateForTest(): void {
+  resetRuntimeGameDataJsonState();
+}
+
+function resetRuntimeGameDataJsonState(): void {
+  runtimeGameDataJsonState.pokemonData = null;
   runtimeGameDataJsonState.pokemonDataRecordCount = null;
   runtimeGameDataJsonState.moveNames = null;
   runtimeGameDataJsonState.levelUpMoveTable = null;
@@ -252,9 +361,54 @@ function normalizeLevelUpMoveRows(data: unknown): LevelUpMoveRow[] {
     uniqueRows.set(`${level}:${moveId}`, { level, moveId });
   }
 
-  return [...uniqueRows.values()].sort(
-    (left, right) => left.level - right.level || left.moveId - right.moveId,
-  );
+  return [...uniqueRows.values()].sort((left, right) => left.level - right.level);
+}
+
+function isPokemonDataJson(data: unknown): boolean {
+  return isRecord(data) && data.version === 1 && isRecord(data.species);
+}
+
+function hasCompleteSupportedPokemonCoverage(data: unknown): boolean {
+  if (!isRecord(data) || !isRecord(data.species)) {
+    return false;
+  }
+
+  for (
+    let speciesId = MIN_SUPPORTED_POKEMON_SPECIES_ID;
+    speciesId <= MAX_SUPPORTED_POKEMON_SPECIES_ID;
+    speciesId += 1
+  ) {
+    const species = data.species[String(speciesId)];
+
+    if (
+      !isRecord(species) ||
+      readPositiveInteger(species.speciesId) !== speciesId ||
+      !isRecord(species.baseStats)
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function hasCompleteLevelUpMoveCoverage(
+  levelUpMoveTable: Record<number, LevelUpMoveRow[]>,
+  moveNames: Record<number, string>,
+): boolean {
+  for (
+    let speciesId = MIN_SUPPORTED_POKEMON_SPECIES_ID;
+    speciesId <= MAX_SUPPORTED_POKEMON_SPECIES_ID;
+    speciesId += 1
+  ) {
+    const rows = levelUpMoveTable[speciesId];
+
+    if (!rows?.length || rows.some(row => !moveNames[row.moveId])) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 function normalizeWildBattleMoveSet(data: unknown): number[] {

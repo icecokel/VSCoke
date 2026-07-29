@@ -1,5 +1,9 @@
 import type { PlayerPokemon, PlayerPokemonMove } from "../state/gameStateStore";
-import { getRuntimeLevelUpMoveTable, getRuntimeMoveName } from "../data/game-data-json";
+import {
+  getRuntimeLevelUpMoveTable,
+  getRuntimeMoveName,
+  getRuntimePokemonMoveSummary,
+} from "../data/game-data-json";
 import { normalizeRomMoveRecord, type RomBattleMoveRecord } from "./battleRomData";
 import type { BattleMove, BattlePokemon } from "./battleTypes";
 import type { RomRefinedMoveCollection } from "./wildBattleFactory";
@@ -32,6 +36,12 @@ export interface ApplyLevelUpMovesResult<TPokemon, TMove> {
 export interface PlanLevelUpBattleMovesResult {
   pokemon: BattlePokemon;
   pendingMoves: BattleMove[];
+  messages: string[];
+}
+
+export interface PlanLevelUpPlayerMovesResult<TPokemon extends PlayerPokemon = PlayerPokemon> {
+  pokemon: TPokemon;
+  pendingMoves: PlayerPokemonMove[];
   messages: string[];
 }
 
@@ -196,10 +206,12 @@ export function applyLevelUpBattleMoves({
 }
 
 export function planLevelUpBattleMoves({
+  currentLevel,
   pokemon,
   previousLevel,
   moveRecords,
 }: {
+  currentLevel?: number;
   pokemon: BattlePokemon;
   previousLevel: number;
   moveRecords: RomRefinedMoveCollection;
@@ -207,7 +219,11 @@ export function planLevelUpBattleMoves({
   const planning = planMoveListLearning({
     pokemonName: pokemon.name,
     moves: pokemon.moves,
-    moveDefinitions: getLevelUpMovesForSpecies(pokemon.speciesId, previousLevel, pokemon.level),
+    moveDefinitions: getLevelUpMovesForSpecies(
+      pokemon.speciesId,
+      previousLevel,
+      currentLevel ?? pokemon.level,
+    ),
     createMove: moveId => createBattleMoveFromRom(moveId, moveRecords),
   });
 
@@ -244,6 +260,36 @@ export function applyLevelUpPlayerMoves({
     },
     changes: learning.changes,
     messages: learning.messages,
+  };
+}
+
+export function planLevelUpPlayerMoves<TPokemon extends PlayerPokemon>({
+  currentLevel,
+  pokemon,
+  previousLevel,
+}: {
+  currentLevel?: number;
+  pokemon: TPokemon;
+  previousLevel: number;
+}): PlanLevelUpPlayerMovesResult<TPokemon> {
+  const planning = planMoveListLearning({
+    pokemonName: pokemon.name,
+    moves: pokemon.moves ?? [],
+    moveDefinitions: getLevelUpMovesForSpecies(
+      pokemon.speciesId,
+      previousLevel,
+      currentLevel ?? pokemon.level,
+    ),
+    createMove: createPlayerPokemonMoveFromRuntimeData,
+  });
+
+  return {
+    pokemon: {
+      ...pokemon,
+      moves: planning.moves,
+    },
+    pendingMoves: planning.pendingMoves,
+    messages: planning.messages,
   };
 }
 
@@ -311,7 +357,10 @@ function planMoveListLearning<TMove extends { id: number; name: string }>({
   const messages: string[] = [];
 
   for (const definition of moveDefinitions) {
-    if (moves.some(move => move.id === definition.moveId)) {
+    if (
+      moves.some(move => move.id === definition.moveId) ||
+      pendingMoves.some(move => move.id === definition.moveId)
+    ) {
       continue;
     }
 
@@ -356,16 +405,35 @@ function findMoveRecord(collection: RomRefinedMoveCollection, moveId: number): R
   return record;
 }
 
+function createPlayerPokemonMoveFromRuntimeData(moveId: number): PlayerPokemonMove {
+  const move = getRuntimePokemonMoveSummary(moveId);
+
+  if (!move) {
+    throw new Error(`Missing runtime move record for move ${moveId}`);
+  }
+
+  return {
+    id: move.id,
+    name: move.name,
+    pp: move.pp,
+    maxPp: move.pp,
+  };
+}
+
 function formatLearnedMoveMessage(pokemonName: string, moveName: string): string {
   return `${pokemonName}${topicParticle(pokemonName)} ${moveName}${objectParticle(moveName)} 배웠다!`;
 }
 
-function formatReplacedMoveMessage(
+export function formatReplacedMoveMessage(
   pokemonName: string,
   replacedMoveName: string,
   moveName: string,
 ): string {
   return `${pokemonName}${topicParticle(pokemonName)} ${replacedMoveName}${objectParticle(replacedMoveName)} 잊고 ${moveName}${objectParticle(moveName)} 배웠다!`;
+}
+
+export function formatSkippedMoveMessage(pokemonName: string, moveName: string): string {
+  return `${pokemonName}${topicParticle(pokemonName)} ${moveName}${objectParticle(moveName)} 배우지 않았다!`;
 }
 
 function topicParticle(value: string): "은" | "는" {

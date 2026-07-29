@@ -1,5 +1,9 @@
 import * as Phaser from "phaser";
-import { playBattleCancelSound, playBattleConfirmSound } from "../battle/battleAudio";
+import {
+  playBattleCancelSound,
+  playBattleConfirmSound,
+  playPartyHealSound,
+} from "../battle/battleAudio";
 import {
   DICE_GAMBLE_PREDICTIONS,
   DICE_GAMBLE_STAKE_POKE_DOLLARS,
@@ -20,6 +24,7 @@ import {
   SHOP_ITEM_IDS,
   type GameStateStore,
   type PlayerPokemon,
+  type PlayerPokemonMove,
   type PremiumShopItemId,
   type ShopItem,
   type ShopItemId,
@@ -55,6 +60,8 @@ const INVENTORY_PANEL_SIZE = { width: 560, height: 320 } as const;
 const PC_BOX_PANEL_SIZE = { width: 496, height: 320 } as const;
 const DICE_GAMBLE_PANEL_SIZE = { width: 408, height: 292 } as const;
 const SHORTCUT_GUIDE_PANEL_SIZE = { width: 420, height: 248 } as const;
+const SHOP_VISIBLE_ITEM_COUNT = 4;
+const INVENTORY_VISIBLE_ITEM_COUNT = 8;
 const DICE_GAMBLE_LABELS: Record<DiceGamblePrediction, string> = {
   lower: "낮다",
   equal: "같다",
@@ -63,19 +70,28 @@ const DICE_GAMBLE_LABELS: Record<DiceGamblePrediction, string> = {
 const INVENTORY_CATEGORY_LABELS = ["도구", "볼", "회복", "기타"] as const;
 const INVENTORY_ITEM_CATEGORIES: Record<string, (typeof INVENTORY_CATEGORY_LABELS)[number]> = {
   antidote: "도구",
+  dawnStone: "도구",
+  duskStone: "도구",
+  fireStone: "도구",
   hyperPotion: "회복",
+  leafStone: "도구",
+  moonStone: "도구",
   pokeball: "볼",
   potion: "회복",
   rareCandy: "도구",
   revive: "회복",
+  shinyStone: "도구",
+  sunStone: "도구",
   superPotion: "회복",
+  thunderStone: "도구",
   ultraBall: "볼",
+  waterStone: "도구",
 };
 
 type ShopKind = "basic" | "premium";
 type KnownShopItemId = ShopItemId | PremiumShopItemId;
 type PcBoxFocus = "party" | "box";
-type InventoryFocus = "items" | "party";
+type InventoryFocus = "items" | "move-replace" | "party";
 
 const FIELD_AREA_LABELS: Record<string, string> = {
   "town-west-field": "라운지 마을 · 서쪽 야생초원",
@@ -108,6 +124,7 @@ export interface WorldScenePlayerPosition {
 
 export interface WorldSceneInteractionsTestFacade {
   handleConfirmInteraction(): void;
+  healAtNurse(): void;
   getNurseMessage(): string;
   handleFieldInteractionInput(): void;
   openShop(): void;
@@ -141,7 +158,10 @@ export interface WorldSceneInteractionsTestFacade {
 export interface WorldSceneInteractions {
   handleInput(): boolean;
   destroy(): void;
-  getE2eSnapshot(): Pick<WorldE2eSnapshot, "pokemonStatusPanel" | "pcBox" | "shortcutGuideOpen">;
+  getE2eSnapshot(): Pick<
+    WorldE2eSnapshot,
+    "pokemonStatusPanel" | "pcBox" | "shortcutGuideOpen" | "nurseHealing"
+  >;
 }
 
 export interface WorldSceneInteractionsController extends WorldSceneInteractions {
@@ -159,6 +179,7 @@ export interface WorldSceneInteractionsDependencies {
   createStaticGroup(): Phaser.Physics.Arcade.StaticGroup;
   registerStaticNpcs(staticNpcs: Phaser.Physics.Arcade.StaticGroup): void;
   getPlayerPosition(): WorldScenePlayerPosition | null;
+  playNurseHealingEffect(nursePosition: WorldScenePlayerPosition, onComplete: () => void): void;
   ensureCursorKeys(keyboard: Phaser.Input.Keyboard.KeyboardPlugin): WorldSceneCursorMap;
   isBattleIntroPlaying(): boolean;
   renderPartyHud(): void;
@@ -196,6 +217,27 @@ function clampSelectionIndex(index: number, itemCount: number): number {
   return Math.max(0, Math.min(itemCount - 1, index));
 }
 
+function getVisibleSelectionWindow<T>(
+  items: readonly T[],
+  selectedIndex: number,
+  visibleItemCount: number,
+): { items: readonly T[]; startIndex: number; page: number; pageCount: number } {
+  if (items.length === 0) {
+    return { items: [], startIndex: 0, page: 0, pageCount: 0 };
+  }
+
+  const pageCount = Math.ceil(items.length / visibleItemCount);
+  const page = Math.min(pageCount - 1, Math.floor(selectedIndex / visibleItemCount));
+  const startIndex = page * visibleItemCount;
+
+  return {
+    items: items.slice(startIndex, startIndex + visibleItemCount),
+    startIndex,
+    page,
+    pageCount,
+  };
+}
+
 export function getShortcutGuideInputMode(): ShortcutGuideInputMode {
   if (typeof document === "undefined") {
     return "keyboard";
@@ -217,6 +259,8 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   private storagePcPosition: { x: number; y: number } | null = null;
   private nurseMessage = "";
   private nurseMessageObject: Phaser.GameObjects.Text | null = null;
+  private nurseHealing = false;
+  private nurseHealingEffectCount = 0;
   private shopOpen = false;
   private activeShopKind: ShopKind = "basic";
   private shopSelectedIndex = 0;
@@ -226,6 +270,12 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   private inventoryFocus: InventoryFocus = "items";
   private inventorySelectedIndex = 0;
   private inventoryPartySlotIndex = 0;
+  private inventoryMoveReplaceIndex = 0;
+  private inventoryMoveReplacementDecisions: Array<number | null> = [];
+  private inventoryTargetItemId: KnownShopItemId | null = null;
+  private pendingInventoryItemId: string | null = null;
+  private pendingInventoryMovePokemon: PlayerPokemon | null = null;
+  private pendingInventoryMoveReplacements: PlayerPokemonMove[] = [];
   private inventoryMessage = "";
   private inventoryUiObjects: Phaser.GameObjects.GameObject[] = [];
   private pcBoxOpen = false;
@@ -254,6 +304,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   constructor(private readonly dependencies: WorldSceneInteractionsDependencies) {
     this.test = Object.freeze<WorldSceneInteractionsTestFacade>({
       handleConfirmInteraction: () => this.handleConfirmInteraction(),
+      healAtNurse: () => this.healAtNurse(),
       getNurseMessage: () => this.nurseMessage,
       handleFieldInteractionInput: () => this.handleFieldInteractionInput(),
       openShop: () => this.openShop(),
@@ -400,7 +451,22 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
         action.index,
         this.getInventoryItemIds().length,
       );
+      this.inventoryTargetItemId = null;
       this.inventoryMessage = "";
+      this.renderInventoryUi();
+      return;
+    }
+
+    if (action.type === "select-inventory-move") {
+      if (!this.inventoryOpen || this.inventoryFocus !== "move-replace") {
+        return;
+      }
+
+      const pokemon = this.getInventoryMoveReplacementPokemon();
+      this.inventoryMoveReplaceIndex = clampSelectionIndex(
+        action.index,
+        pokemon?.moves?.length ?? 0,
+      );
       this.renderInventoryUi();
       return;
     }
@@ -412,6 +478,16 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
 
       playBattleConfirmSound();
       this.confirmInventorySelection();
+      return;
+    }
+
+    if (action.type === "skip-inventory-move") {
+      if (!this.inventoryOpen || this.inventoryFocus !== "move-replace") {
+        return;
+      }
+
+      playBattleCancelSound();
+      this.skipInventoryMoveReplacement();
       return;
     }
 
@@ -648,6 +724,21 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     });
     const selectedItem = items.find(item => item.selected) ?? items[0];
     const party = createPokeLoungePartySlotSummaries(localPlayer);
+    const moveReplacementPokemon = this.getInventoryMoveReplacementPokemon();
+    const pendingMoveReplacement = this.pendingInventoryMoveReplacements[0] ?? null;
+    const moveReplacement =
+      this.inventoryFocus === "move-replace" && moveReplacementPokemon && pendingMoveReplacement
+        ? {
+            moves: (moveReplacementPokemon.moves ?? []).map((move, index) => ({
+              id: move.id,
+              index,
+              name: move.name,
+              selected: index === this.inventoryMoveReplaceIndex,
+            })),
+            newMoveName: pendingMoveReplacement.name,
+            pokemonName: moveReplacementPokemon.name,
+          }
+        : null;
     const box = localPlayer.pokemonBox.map((pokemon, boxIndex) => ({
       boxIndex,
       currentHp: pokemon.currentHp ?? null,
@@ -683,8 +774,18 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
       screen = "help";
       title = "모바일 조작";
     } else if (this.inventoryOpen) {
-      screen = this.inventoryFocus === "party" ? "inventory-party" : "inventory-items";
-      title = this.inventoryFocus === "party" ? "사용할 포켓몬" : "가방";
+      screen =
+        this.inventoryFocus === "move-replace"
+          ? "inventory-move-replace"
+          : this.inventoryFocus === "party"
+            ? "inventory-party"
+            : "inventory-items";
+      title =
+        this.inventoryFocus === "move-replace"
+          ? "기술 교체"
+          : this.inventoryFocus === "party"
+            ? "사용할 포켓몬"
+            : "가방";
       message = this.inventoryMessage;
     } else if (this.shopOpen) {
       screen = "shop";
@@ -708,13 +809,16 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
       dice,
       items,
       message,
+      moveReplacement,
       party,
       pcFocus: this.pcBoxFocus,
       screen,
       selectedItemDescription: selectedItem?.description ?? "",
       selectedItemName: selectedItem?.name ?? "",
       selectedPartySlotIndex:
-        this.inventoryFocus === "party" ? this.inventoryPartySlotIndex : this.pcBoxPartySlotIndex,
+        this.inventoryFocus === "party" || this.inventoryFocus === "move-replace"
+          ? this.inventoryPartySlotIndex
+          : this.pcBoxPartySlotIndex,
       title,
       walletPokeDollars: localPlayer.wallet.pokeDollars,
     });
@@ -783,11 +887,18 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     );
   }
 
-  getE2eSnapshot(): Pick<WorldE2eSnapshot, "pokemonStatusPanel" | "pcBox" | "shortcutGuideOpen"> {
+  getE2eSnapshot(): Pick<
+    WorldE2eSnapshot,
+    "pokemonStatusPanel" | "pcBox" | "shortcutGuideOpen" | "nurseHealing"
+  > {
     return {
       shortcutGuideOpen: this.shortcutGuideOpen,
       pokemonStatusPanel: this.dependencies.getPokemonStatusPanelSnapshot(),
       pcBox: this.getPcBoxSnapshot(),
+      nurseHealing: {
+        active: this.nurseHealing,
+        effectCount: this.nurseHealingEffectCount,
+      },
     };
   }
 
@@ -803,6 +914,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     this.nurseMessageObject?.destroy();
     this.nurseMessageObject = null;
     this.nurseMessage = "";
+    this.nurseHealing = false;
     this.fieldHintObject?.destroy();
     this.fieldHintObject = null;
     this.fieldHintText = "";
@@ -1056,7 +1168,11 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
       Phaser.Input.Keyboard.JustDown(interactionKeys.inventory)
     ) {
       playBattleCancelSound();
-      this.closeInventory();
+      if (this.inventoryFocus === "move-replace") {
+        this.skipInventoryMoveReplacement();
+      } else {
+        this.closeInventory();
+      }
       return;
     }
 
@@ -1437,9 +1553,20 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   }
 
   private healAtNurse(): void {
+    if (!this.nursePosition || this.nurseHealing) {
+      return;
+    }
+
     this.gameStateStore.healCurrentParty();
+    this.renderPartyHud();
+    playPartyHealSound();
     this.nurseMessage = "포켓몬이 모두 회복됐다.";
     this.renderNurseMessage();
+    this.nurseHealing = true;
+    this.nurseHealingEffectCount += 1;
+    this.dependencies.playNurseHealingEffect(this.nursePosition, () => {
+      this.nurseHealing = false;
+    });
   }
 
   private renderNurseMessage(): void {
@@ -1536,6 +1663,11 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     const shopItemIds = this.getCurrentShopItemIds();
     this.shopSelectedIndex = clampSelectionIndex(this.shopSelectedIndex, shopItemIds.length);
     const selectedItem = this.getKnownShopItem(shopItemIds[this.shopSelectedIndex]);
+    const visibleItems = getVisibleSelectionWindow(
+      shopItemIds,
+      this.shopSelectedIndex,
+      SHOP_VISIBLE_ITEM_COUNT,
+    );
     const panelOrigin = getCenteredPanelOrigin(SHOP_PANEL_SIZE, this.getViewportSize());
     const x = (offset: number) => panelOrigin.x + offset;
     const y = (offset: number) => panelOrigin.y + offset;
@@ -1572,7 +1704,9 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
         .text(
           x(364),
           y(8),
-          formatPokeDollars(localPlayer.wallet.pokeDollars),
+          `${visibleItems.page + 1}/${visibleItems.pageCount} · ${formatPokeDollars(
+            localPlayer.wallet.pokeDollars,
+          )}`,
           createGameTextStyle({
             align: "right",
             color: "#263238",
@@ -1584,14 +1718,15 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
         .setDepth(2001),
     );
 
-    shopItemIds.forEach((itemId, index) => {
+    visibleItems.items.forEach((itemId, visibleIndex) => {
       const item = this.getKnownShopItem(itemId);
 
       if (!item) {
         return;
       }
 
-      const rowY = y(44 + index * 28);
+      const index = visibleItems.startIndex + visibleIndex;
+      const rowY = y(44 + visibleIndex * 28);
       const selected = index === this.shopSelectedIndex;
 
       this.shopUiObjects.push(
@@ -1712,6 +1847,12 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     this.inventoryFocus = "items";
     this.inventorySelectedIndex = 0;
     this.inventoryPartySlotIndex = this.gameStateStore.getCurrentLocalPlayer().activePartySlotIndex;
+    this.inventoryMoveReplaceIndex = 0;
+    this.inventoryMoveReplacementDecisions = [];
+    this.inventoryTargetItemId = null;
+    this.pendingInventoryItemId = null;
+    this.pendingInventoryMovePokemon = null;
+    this.pendingInventoryMoveReplacements = [];
     this.inventoryMessage = "";
     this.renderInventoryUi();
   }
@@ -1719,6 +1860,12 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   private closeInventory(): void {
     this.inventoryOpen = false;
     this.inventoryFocus = "items";
+    this.inventoryMoveReplaceIndex = 0;
+    this.inventoryMoveReplacementDecisions = [];
+    this.inventoryTargetItemId = null;
+    this.pendingInventoryItemId = null;
+    this.pendingInventoryMovePokemon = null;
+    this.pendingInventoryMoveReplacements = [];
     this.inventoryMessage = "";
     this.destroyInventoryUi();
     dispatchPokeLoungeAccessibleStatus(document, "필드 탐색");
@@ -1726,8 +1873,14 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   }
 
   private cancelInventorySelection(): void {
+    if (this.inventoryFocus === "move-replace") {
+      this.skipInventoryMoveReplacement();
+      return;
+    }
+
     if (this.inventoryFocus === "party") {
       this.inventoryFocus = "items";
+      this.inventoryTargetItemId = null;
       this.inventoryMessage = "";
       this.renderInventoryUi();
       return;
@@ -1737,6 +1890,20 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   }
 
   private moveInventorySelection(delta: number): void {
+    if (this.inventoryFocus === "move-replace") {
+      const pokemon = this.getInventoryMoveReplacementPokemon();
+      const moveCount = pokemon?.moves?.length ?? 0;
+
+      if (moveCount === 0) {
+        return;
+      }
+
+      this.inventoryMoveReplaceIndex =
+        (this.inventoryMoveReplaceIndex + delta + moveCount) % moveCount;
+      this.renderInventoryUi();
+      return;
+    }
+
     if (this.inventoryFocus === "party") {
       const targetSlotIndices = this.getInventoryTargetSlotIndices();
 
@@ -1766,20 +1933,25 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   }
 
   private confirmInventorySelection(): void {
+    if (this.inventoryFocus === "move-replace") {
+      this.confirmInventoryMoveReplacement();
+      return;
+    }
+
     const itemIds = this.getInventoryItemIds();
-    const itemId = itemIds[this.inventorySelectedIndex] ?? itemIds[0];
+    const selectedItemId = itemIds[this.inventorySelectedIndex] ?? itemIds[0];
     const localPlayer = this.gameStateStore.getCurrentLocalPlayer();
 
-    if (!itemId) {
+    if (!selectedItemId && this.inventoryFocus === "items") {
       this.inventoryMessage = "사용할 아이템이 없다.";
       this.renderInventoryUi();
       return;
     }
 
-    const item = this.getKnownShopItem(itemId);
-
     if (this.inventoryFocus === "items") {
-      if ((localPlayer.inventory[itemId] ?? 0) <= 0) {
+      const item = this.getKnownShopItem(selectedItemId);
+
+      if (!selectedItemId || (localPlayer.inventory[selectedItemId] ?? 0) <= 0) {
         this.inventoryMessage = `${item?.displayName ?? "아이템"}이 없다!`;
         this.renderInventoryUi();
         return;
@@ -1794,10 +1966,20 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
       }
 
       this.inventoryFocus = "party";
+      this.inventoryTargetItemId = selectedItemId;
       this.inventoryPartySlotIndex = targetSlotIndices.includes(localPlayer.activePartySlotIndex)
         ? localPlayer.activePartySlotIndex
         : targetSlotIndices[0];
       this.inventoryMessage = `${item?.displayName ?? "아이템"}을 사용할 대상을 선택해라.`;
+      this.renderInventoryUi();
+      return;
+    }
+
+    const itemId = this.inventoryTargetItemId;
+
+    if (!itemId) {
+      this.inventoryFocus = "items";
+      this.inventoryMessage = "사용할 아이템을 다시 선택해라.";
       this.renderInventoryUi();
       return;
     }
@@ -1807,11 +1989,148 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
       this.inventoryPartySlotIndex,
     );
 
-    this.inventoryMessage = result.ok ? (result.messages.at(-1) ?? "") : result.message;
+    this.inventoryMessage = result.ok ? result.messages.join(" ") : result.message;
     if (result.ok) {
+      this.pendingInventoryMoveReplacements = [...result.pendingMoveReplacements];
+      if (this.pendingInventoryMoveReplacements.length > 0) {
+        this.inventoryFocus = "move-replace";
+        this.inventoryMoveReplaceIndex = 0;
+        this.inventoryMoveReplacementDecisions = [];
+        this.pendingInventoryItemId = itemId;
+        this.pendingInventoryMovePokemon = result.pokemon;
+        this.showPendingInventoryMoveReplacement(this.inventoryMessage);
+        return;
+      }
+
       this.renderPartyHud();
+      this.finishInventoryItemUse(itemId);
+      return;
     }
     this.renderInventoryUi();
+  }
+
+  private confirmInventoryMoveReplacement(): void {
+    const pokemon = this.getInventoryMoveReplacementPokemon();
+    const pendingMove = this.pendingInventoryMoveReplacements[0];
+    const replacedMove = pokemon?.moves?.[this.inventoryMoveReplaceIndex];
+
+    if (!pokemon || !pendingMove || !replacedMove) {
+      this.cancelInventoryMoveReplacement("기술 교체를 완료할 수 없다.");
+      return;
+    }
+
+    this.pendingInventoryMovePokemon = {
+      ...pokemon,
+      moves: (pokemon.moves ?? []).map((move, index) =>
+        index === this.inventoryMoveReplaceIndex ? pendingMove : move,
+      ),
+    };
+    this.inventoryMoveReplacementDecisions.push(this.inventoryMoveReplaceIndex);
+    this.pendingInventoryMoveReplacements.shift();
+    const outcomeMessage = `기술이 ${replacedMove.name}에서 ${pendingMove.name}로 바뀌었다!`;
+
+    if (this.pendingInventoryMoveReplacements.length > 0) {
+      this.inventoryMoveReplaceIndex = 0;
+      this.showPendingInventoryMoveReplacement(outcomeMessage);
+      return;
+    }
+
+    this.completeInventoryMoveReplacement(outcomeMessage);
+  }
+
+  private skipInventoryMoveReplacement(): void {
+    const skippedMove = this.pendingInventoryMoveReplacements.shift();
+
+    if (!skippedMove) {
+      this.cancelInventoryMoveReplacement("");
+      return;
+    }
+
+    this.inventoryMoveReplacementDecisions.push(null);
+    const outcomeMessage = `${skippedMove.name} 습득을 취소했다.`;
+
+    if (this.pendingInventoryMoveReplacements.length > 0) {
+      this.inventoryMoveReplaceIndex = 0;
+      this.showPendingInventoryMoveReplacement(outcomeMessage);
+      return;
+    }
+
+    this.completeInventoryMoveReplacement(outcomeMessage);
+  }
+
+  private showPendingInventoryMoveReplacement(prefix = ""): void {
+    const pokemon = this.getInventoryMoveReplacementPokemon();
+    const pendingMove = this.pendingInventoryMoveReplacements[0];
+
+    if (!pokemon || !pendingMove) {
+      this.cancelInventoryMoveReplacement(prefix);
+      return;
+    }
+
+    this.inventoryMessage = prefix;
+    this.renderInventoryUi();
+  }
+
+  private completeInventoryMoveReplacement(fallbackMessage: string): void {
+    const itemId = this.pendingInventoryItemId;
+    const result = itemId
+      ? this.gameStateStore.resolveInventoryItemMoveReplacements(
+          itemId,
+          this.inventoryPartySlotIndex,
+          this.inventoryMoveReplacementDecisions,
+        )
+      : null;
+    const message = result?.ok
+      ? (result.messages.at(-1) ?? fallbackMessage)
+      : (result?.message ?? "기술 교체를 완료할 수 없다.");
+
+    this.resetPendingInventoryMoveReplacement();
+    this.inventoryMessage = message;
+    if (result?.ok && itemId) {
+      this.renderPartyHud();
+      this.finishInventoryItemUse(itemId);
+      return;
+    }
+
+    this.inventoryFocus = "party";
+    this.renderInventoryUi();
+  }
+
+  private cancelInventoryMoveReplacement(message: string): void {
+    this.resetPendingInventoryMoveReplacement();
+    this.inventoryFocus = "party";
+    this.inventoryMessage = message;
+    this.renderInventoryUi();
+  }
+
+  private finishInventoryItemUse(itemId: string): void {
+    if ((this.gameStateStore.getCurrentLocalPlayer().inventory[itemId] ?? 0) <= 0) {
+      this.inventoryFocus = "items";
+      this.inventoryTargetItemId = null;
+      this.inventorySelectedIndex = clampSelectionIndex(
+        this.inventorySelectedIndex,
+        this.getInventoryItemIds().length,
+      );
+    } else {
+      this.inventoryFocus = "party";
+    }
+
+    this.renderInventoryUi();
+  }
+
+  private resetPendingInventoryMoveReplacement(): void {
+    this.inventoryMoveReplacementDecisions = [];
+    this.pendingInventoryItemId = null;
+    this.pendingInventoryMovePokemon = null;
+    this.pendingInventoryMoveReplacements = [];
+    this.inventoryMoveReplaceIndex = 0;
+  }
+
+  private getInventoryMoveReplacementPokemon(): PlayerPokemon | null {
+    return (
+      this.pendingInventoryMovePokemon ??
+      this.getPartyPokemonBySlotIndex(this.inventoryPartySlotIndex)
+    );
   }
 
   private getInventoryTargetSlotIndices(): number[] {
@@ -1829,11 +2148,21 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
       return;
     }
 
+    if (this.inventoryFocus === "move-replace") {
+      this.renderInventoryMoveReplacementUi();
+      return;
+    }
+
     const localPlayer = this.gameStateStore.getCurrentLocalPlayer();
     const itemIds = this.getInventoryItemIds();
     this.inventorySelectedIndex = clampSelectionIndex(this.inventorySelectedIndex, itemIds.length);
     const selectedItemId = itemIds[this.inventorySelectedIndex] ?? itemIds[0];
     const selectedItem = this.getKnownShopItem(selectedItemId);
+    const visibleItems = getVisibleSelectionWindow(
+      itemIds,
+      this.inventorySelectedIndex,
+      INVENTORY_VISIBLE_ITEM_COUNT,
+    );
     const selectedCategory = selectedItem
       ? (INVENTORY_ITEM_CATEGORIES[selectedItem.id] ?? "기타")
       : "기타";
@@ -1937,15 +2266,16 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
       );
     });
 
-    itemIds.forEach((itemId, index) => {
+    visibleItems.items.forEach((itemId, visibleIndex) => {
       const item = this.getKnownShopItem(itemId);
 
       if (!item) {
         return;
       }
 
+      const index = visibleItems.startIndex + visibleIndex;
       const selected = index === this.inventorySelectedIndex;
-      const rowY = y(76 + index * 24);
+      const rowY = y(76 + visibleIndex * 24);
       const quantity = localPlayer.inventory[item.id] ?? 0;
 
       if (selected) {
@@ -2061,7 +2391,10 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
         .text(
           x(22),
           y(INVENTORY_PANEL_SIZE.height - 30),
-          createInventoryControlFooter(this.inventoryFocus, getShortcutGuideInputMode()),
+          createInventoryControlFooter(
+            this.inventoryFocus === "party" ? "party" : "items",
+            getShortcutGuideInputMode(),
+          ),
           createGameTextStyle({
             color: "#607d6c",
             fontSize: "11px",
@@ -2154,6 +2487,151 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     dispatchPokeLoungeAccessibleStatus(
       document,
       `${accessibleSelection} ${this.inventoryMessage}`.trim(),
+    );
+  }
+
+  private renderInventoryMoveReplacementUi(): void {
+    const pokemon = this.getInventoryMoveReplacementPokemon();
+    const pendingMove = this.pendingInventoryMoveReplacements[0];
+
+    if (!pokemon || !pendingMove) {
+      this.cancelInventoryMoveReplacement("");
+      return;
+    }
+
+    const moves = pokemon.moves ?? [];
+    this.inventoryMoveReplaceIndex = clampSelectionIndex(
+      this.inventoryMoveReplaceIndex,
+      moves.length,
+    );
+    const panelOrigin = getCenteredPanelOrigin(INVENTORY_PANEL_SIZE, this.getViewportSize());
+    const x = (offset: number) => panelOrigin.x + offset;
+    const y = (offset: number) => panelOrigin.y + offset;
+    const panel = this.add
+      .rectangle(
+        panelOrigin.x,
+        panelOrigin.y,
+        INVENTORY_PANEL_SIZE.width,
+        INVENTORY_PANEL_SIZE.height,
+        0xf8fbf0,
+        0.98,
+      )
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(2100);
+    panel.setStrokeStyle(3, 0x263238, 1);
+    this.inventoryUiObjects.push(panel);
+    this.inventoryUiObjects.push(
+      this.add
+        .text(
+          x(24),
+          y(18),
+          `${pokemon.name}의 기술 교체`,
+          createGameTextStyle({
+            color: "#263238",
+            fontSize: "18px",
+          }),
+        )
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(2101),
+      this.add
+        .text(
+          x(24),
+          y(52),
+          `새 기술: ${pendingMove.name}. 잊을 기술을 선택해라.`,
+          createGameTextStyle({
+            color: "#455a64",
+            fontSize: "12px",
+          }),
+        )
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(2101),
+    );
+
+    moves.forEach((move, index) => {
+      const selected = index === this.inventoryMoveReplaceIndex;
+      const rowY = y(84 + index * 42);
+      const row = this.add
+        .rectangle(
+          x(24),
+          rowY,
+          INVENTORY_PANEL_SIZE.width - 48,
+          32,
+          selected ? 0xfff4a3 : 0xe9eee1,
+          selected ? 0.98 : 0.82,
+        )
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(2101);
+      row.setStrokeStyle(1, selected ? 0x263238 : 0x9aa690, selected ? 0.9 : 0.45);
+      this.inventoryUiObjects.push(
+        row,
+        this.add
+          .text(
+            x(38),
+            rowY + 8,
+            `${selected ? "▶" : " "} ${move.name}`,
+            createGameTextStyle({
+              color: "#101820",
+              fontSize: "12px",
+            }),
+          )
+          .setOrigin(0, 0)
+          .setScrollFactor(0)
+          .setDepth(2102),
+        this.add
+          .text(
+            x(INVENTORY_PANEL_SIZE.width - 38),
+            rowY + 8,
+            `PP ${move.pp}/${move.maxPp}`,
+            createGameTextStyle({
+              align: "right",
+              color: "#455a64",
+              fontSize: "11px",
+            }),
+          )
+          .setOrigin(1, 0)
+          .setScrollFactor(0)
+          .setDepth(2102),
+      );
+    });
+
+    this.inventoryUiObjects.push(
+      this.add
+        .text(
+          x(24),
+          y(INVENTORY_PANEL_SIZE.height - 74),
+          this.inventoryMessage,
+          createGameTextStyle({
+            color: "#1b5e20",
+            fontSize: "11px",
+            wordWrap: { width: INVENTORY_PANEL_SIZE.width - 48 },
+          }),
+        )
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(2102),
+      this.add
+        .text(
+          x(24),
+          y(INVENTORY_PANEL_SIZE.height - 25),
+          getShortcutGuideInputMode() === "touch"
+            ? "D-pad 기술 선택 · A 교체 · B 배우지 않기"
+            : "↑↓ 기술 선택 · Enter 교체 · Esc 배우지 않기",
+          createGameTextStyle({
+            color: "#607d6c",
+            fontSize: "11px",
+          }),
+        )
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(2102),
+    );
+    dispatchPokeLoungeAccessibleStatus(
+      document,
+      `${pokemon.name}의 ${pendingMove.name} 기술 학습. ${moves[this.inventoryMoveReplaceIndex]?.name ?? "기존 기술"}을 잊도록 선택. ${this.inventoryMessage}`,
     );
   }
 

@@ -41,6 +41,7 @@ type ExpectedDependencyKeys =
   | "getViewportSize"
   | "isBattleIntroPlaying"
   | "isPokemonStatusPanelOpen"
+  | "playNurseHealingEffect"
   | "registerStaticNpcs"
   | "renderPartyHud";
 

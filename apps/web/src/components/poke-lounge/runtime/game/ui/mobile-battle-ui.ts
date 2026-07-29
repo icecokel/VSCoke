@@ -80,6 +80,10 @@ export type MobileBattleUiAction =
   | { type: "select-item"; index: number }
   | { type: "select-move-replacement"; index: number };
 
+export function isMobileBattleMoveDisabled(phase: MobileBattleDeckPhase, pp: number): boolean {
+  return phase === "move-select" && pp <= 0;
+}
+
 export function dispatchMobileBattleUiState(document: Document, state: MobileBattleUiState): void {
   document.dispatchEvent(
     new CustomEvent<MobileBattleUiState>(POKE_LOUNGE_MOBILE_BATTLE_STATE_EVENT, {

@@ -54,6 +54,10 @@ export interface PokeLoungeCopy {
   settingsRankingEmpty: string;
   settingsClose: string;
   settingsExit: string;
+  exitTitle: string;
+  exitDescription: string;
+  exitContinue: string;
+  exitConfirm: string;
   partySlotsTitle: string;
   partySlotLabel(slot: number): string;
   partySlotEmpty: string;
@@ -95,6 +99,10 @@ export interface PokeLoungeCopy {
     chooseParty: string;
     chooseItem: string;
     replaceMove: string;
+    moveReplacementPrompt(pokemonName: string, newMoveName: string): string;
+    forgetMove: string;
+    doNotLearnMove: string;
+    confirmMoveReplacement: string;
     help: string;
     use: string;
     buy: string;
@@ -221,6 +229,10 @@ const KOREAN_COPY: PokeLoungeCopy = {
   settingsRankingEmpty: "아직 검증된 기록이 없습니다.",
   settingsClose: "닫기",
   settingsExit: "게임 종료",
+  exitTitle: "게임을 종료할까요?",
+  exitDescription: "현재 진행은 저장되며 게임 센터로 이동합니다.",
+  exitContinue: "계속 플레이",
+  exitConfirm: "게임 종료",
   partySlotsTitle: "파티 슬롯",
   partySlotLabel: slot => `슬롯 ${slot}`,
   partySlotEmpty: "비어 있음",
@@ -263,6 +275,11 @@ const KOREAN_COPY: PokeLoungeCopy = {
     chooseParty: "포켓몬 교체",
     chooseItem: "아이템 선택",
     replaceMove: "잊을 기술 선택",
+    moveReplacementPrompt: (pokemonName, newMoveName) =>
+      `${pokemonName}의 새 기술 ${newMoveName}. 잊을 기술을 선택하세요.`,
+    forgetMove: "이 기술을 잊기",
+    doNotLearnMove: "배우지 않기",
+    confirmMoveReplacement: "선택한 기술 잊기",
     help: "조작 안내",
     use: "사용",
     buy: "구매",
@@ -400,6 +417,10 @@ const ENGLISH_COPY: PokeLoungeCopy = {
   settingsRankingEmpty: "No verified records yet.",
   settingsClose: "Close",
   settingsExit: "Exit game",
+  exitTitle: "Exit the game?",
+  exitDescription: "Your current progress will be saved before returning to the game center.",
+  exitContinue: "Keep playing",
+  exitConfirm: "Exit game",
   partySlotsTitle: "Party slots",
   partySlotLabel: slot => `Slot ${slot}`,
   partySlotEmpty: "Empty",
@@ -442,6 +463,11 @@ const ENGLISH_COPY: PokeLoungeCopy = {
     chooseParty: "Choose Pokémon",
     chooseItem: "Choose an item",
     replaceMove: "Choose a move to forget",
+    moveReplacementPrompt: (pokemonName, newMoveName) =>
+      `${pokemonName} can learn ${newMoveName}. Choose a move to forget.`,
+    forgetMove: "Forget this move",
+    doNotLearnMove: "Do not learn",
+    confirmMoveReplacement: "Forget selected move",
     help: "Controls",
     use: "Use",
     buy: "Buy",
@@ -580,6 +606,10 @@ const JAPANESE_COPY: PokeLoungeCopy = {
   settingsRankingEmpty: "検証済み記録はまだありません。",
   settingsClose: "閉じる",
   settingsExit: "ゲームを終了",
+  exitTitle: "ゲームを終了しますか？",
+  exitDescription: "現在の進行状況を保存してゲームセンターに戻ります。",
+  exitContinue: "プレイを続ける",
+  exitConfirm: "ゲームを終了",
   partySlotsTitle: "手持ちスロット",
   partySlotLabel: slot => `スロット ${slot}`,
   partySlotEmpty: "空き",
@@ -622,6 +652,11 @@ const JAPANESE_COPY: PokeLoungeCopy = {
     chooseParty: "ポケモンを交代",
     chooseItem: "どうぐを選ぶ",
     replaceMove: "忘れるわざを選ぶ",
+    moveReplacementPrompt: (pokemonName, newMoveName) =>
+      `${pokemonName}は${newMoveName}を覚えられます。忘れるわざを選んでください。`,
+    forgetMove: "このわざを忘れる",
+    doNotLearnMove: "覚えない",
+    confirmMoveReplacement: "選んだわざを忘れる",
     help: "操作ガイド",
     use: "使う",
     buy: "購入",

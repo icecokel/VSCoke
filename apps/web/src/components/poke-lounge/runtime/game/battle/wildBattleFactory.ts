@@ -1,5 +1,5 @@
 import type { WildEncounterCandidate } from "../world/wildEncounters";
-import type { PlayerPokemon } from "../state/gameStateStore";
+import type { PlayerPokemon, PlayerPokemonMove } from "../state/gameStateStore";
 import type { PlayerPokemonSlot } from "../player/playerTypes";
 import { getRuntimeWildBattleMoveSets } from "../data/game-data-json";
 import type { RomBattleMoveRecord } from "./battleRomData";
@@ -21,12 +21,14 @@ import type {
   BattleScreenState,
 } from "./battleTypes";
 import { calculateGen4BattleStats, type Gen4BaseStats } from "./gen4PokemonStats";
+import { createPokemonGenderFromRatio, type PokemonGender } from "./pokemon-gender";
 
 export interface RomPersonalRecord {
   index: number;
   catch_rate: number;
   base_exp: number;
   growth_rate: number;
+  gender_ratio?: number;
   base_stats: Gen4BaseStats;
   types: {
     primary: number;
@@ -166,8 +168,10 @@ function createPlayerBattleSetup({
 
   const pokemon = createBattlePokemon({
     currentHp: playerPokemon?.currentHp,
+    gender: playerPokemon?.gender,
     individualValues: playerPokemon?.individualValues,
     storedExperience: playerPokemon?.experience,
+    storedMoves: playerPokemon?.moves,
     level: playerPokemon?.level ?? PLAYER_LEVEL,
     moveRecords,
     name: playerPokemon?.name ?? PLAYER_NAME,
@@ -200,8 +204,10 @@ function createStoredBattleParty({
       pokemon: storedPokemon
         ? createBattlePokemon({
             currentHp: storedPokemon.currentHp,
+            gender: storedPokemon.gender,
             individualValues: storedPokemon.individualValues,
             storedExperience: storedPokemon.experience,
+            storedMoves: storedPokemon.moves,
             level: storedPokemon.level,
             moveRecords,
             name: storedPokemon.name,
@@ -234,8 +240,10 @@ function resolveStoredActivePartySlotIndex(
 function createBattlePokemon({
   level,
   currentHp,
+  gender: storedGender,
   individualValues: storedIndividualValues,
   storedExperience,
+  storedMoves,
   moveRecords,
   name,
   personalRecords,
@@ -245,8 +253,10 @@ function createBattlePokemon({
 }: {
   level: number;
   currentHp?: number;
+  gender?: PokemonGender;
   individualValues?: PlayerPokemon["individualValues"];
   storedExperience?: number;
+  storedMoves?: PlayerPokemonMove[];
   moveIds?: number[];
   moveRecords: RomRefinedMoveCollection;
   name: string;
@@ -265,6 +275,7 @@ function createBattlePokemon({
     speciesId,
     name,
     level,
+    gender: storedGender ?? createPokemonGenderFromRatio(personalRecord.gender_ratio),
     catchRate: personalRecord.catch_rate,
     baseExpYield: personalRecord.base_exp,
     growthRate,
@@ -288,7 +299,12 @@ function createBattlePokemon({
           : "normal",
     frontSprite: assets.front,
     backSprite: assets.back,
-    moves: createBattleMoves(moveIds ?? resolveDefaultBattleMoveIds(speciesId), moveRecords),
+    moves: createBattleMovesForPokemon({
+      canonicalMoveIds: moveIds ?? resolveWildBattleMoveIds(speciesId, level),
+      legacyDefaultMoveIds: resolveDefaultBattleMoveIds(speciesId),
+      moveRecords,
+      storedMoves,
+    }),
   };
 }
 
@@ -306,8 +322,64 @@ function clampHp(currentHp: number, maxHp: number): number {
   return Math.max(0, Math.min(maxHp, currentHp));
 }
 
-function createBattleMoves(moveIds: number[], moveRecords: RomRefinedMoveCollection): BattleMove[] {
-  return moveIds.map(moveId => createBattleMoveFromRom(moveId, moveRecords));
+function createBattleMovesForPokemon({
+  canonicalMoveIds,
+  legacyDefaultMoveIds,
+  moveRecords,
+  storedMoves,
+}: {
+  canonicalMoveIds: number[];
+  legacyDefaultMoveIds: number[];
+  moveRecords: RomRefinedMoveCollection;
+  storedMoves?: PlayerPokemonMove[];
+}): BattleMove[] {
+  const normalizedStoredMoves = (storedMoves ?? []).slice(0, MAX_POKEMON_MOVE_COUNT);
+  const shouldMigrateLegacyMoveSet =
+    normalizedStoredMoves.length > 0 &&
+    normalizedStoredMoves.length < Math.min(MAX_POKEMON_MOVE_COUNT, canonicalMoveIds.length) &&
+    normalizedStoredMoves.length === legacyDefaultMoveIds.length &&
+    normalizedStoredMoves.every((move, index) => move.id === legacyDefaultMoveIds[index]);
+
+  if (normalizedStoredMoves.length > 0 && !shouldMigrateLegacyMoveSet) {
+    const restoredMoves = normalizedStoredMoves
+      .map(move => restoreStoredBattleMove(move, moveRecords))
+      .filter((move): move is BattleMove => move !== null);
+
+    if (restoredMoves.length === normalizedStoredMoves.length) {
+      return restoredMoves;
+    }
+  }
+
+  const storedMoveById = new Map(normalizedStoredMoves.map(move => [move.id, move] as const));
+
+  return canonicalMoveIds.map(moveId => {
+    const move = createBattleMoveFromRom(moveId, moveRecords);
+    const storedMove = storedMoveById.get(moveId);
+
+    return storedMove ? restoreBattleMovePp(move, storedMove) : move;
+  });
+}
+
+function restoreStoredBattleMove(
+  storedMove: PlayerPokemonMove,
+  moveRecords: RomRefinedMoveCollection,
+): BattleMove | null {
+  try {
+    return restoreBattleMovePp(createBattleMoveFromRom(storedMove.id, moveRecords), storedMove);
+  } catch {
+    return null;
+  }
+}
+
+function restoreBattleMovePp(move: BattleMove, storedMove: PlayerPokemonMove): BattleMove {
+  const pp = Number.isFinite(storedMove.pp)
+    ? Math.max(0, Math.min(move.maxPp, Math.trunc(storedMove.pp)))
+    : move.pp;
+
+  return {
+    ...move,
+    pp,
+  };
 }
 
 function resolveWildBattleMoveIds(speciesId: number, level: number): number[] {

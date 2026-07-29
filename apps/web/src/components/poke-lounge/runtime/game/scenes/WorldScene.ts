@@ -36,6 +36,7 @@ import {
   type WorldSceneTournamentController,
   type WorldTournamentBattleResult,
 } from "./world-scene-tournament";
+import { resolvePersistedWorldSpawn, shouldPersistSoloWorldPosition } from "./world-scene-spawn";
 import {
   createWorldSceneEncounters,
   type WildBattleStartInput,
@@ -115,6 +116,10 @@ export interface WorldE2eSnapshot {
     message: string;
     partyCount: number;
     boxCount: number;
+  };
+  nurseHealing: {
+    active: boolean;
+    effectCount: number;
   };
 }
 
@@ -219,6 +224,11 @@ export class WorldScene extends Phaser.Scene {
       getLocationUrl: () => new URL(window.location.href),
       getEncounterTableData: () => this.cache.json.get(WILD_ENCOUNTER_TABLES_JSON_ASSET[0]),
       getPokemonData: () => this.cache.json.get("pokemonData"),
+      persistPlayerPosition: position => {
+        if (shouldPersistSoloWorldPosition(this.competitiveRoundsEnabled)) {
+          this.gameStateStore.setLocalPlayerPosition(position);
+        }
+      },
       getViewportSize: () => this.getViewportSize(),
       createRectangle: (...args) => this.add.rectangle(...args),
       shakeCamera: (duration, intensity) => this.cameras.main.shake(duration, intensity),
@@ -228,7 +238,11 @@ export class WorldScene extends Phaser.Scene {
       delay: (ms, onComplete) => {
         this.time.delayedCall(ms, onComplete);
       },
-      startBattle: data => this.scene.start("battle", data),
+      startBattle: data =>
+        this.scene.start("battle", {
+          ...data,
+          persistWorldPosition: shouldPersistSoloWorldPosition(this.competitiveRoundsEnabled),
+        }),
     });
     this.interactions = createWorldSceneInteractions({
       gameStateStore: this.gameStateStore,
@@ -246,6 +260,8 @@ export class WorldScene extends Phaser.Scene {
               y: this.player.y,
             }
           : null,
+      playNurseHealingEffect: (nursePosition, onComplete) =>
+        this.playNurseHealingEffect(nursePosition, onComplete),
       ensureCursorKeys: keyboard => {
         this.ensureCursorKeys(keyboard);
         return this.cursors;
@@ -340,7 +356,22 @@ export class WorldScene extends Phaser.Scene {
     }
     this.createPartyHud();
     this.interactions.createStaticNpcs(map);
-    this.createPlayer(map, data.spawnPointName ?? FIELD_MAP.defaultSpawn, data.spawnPosition);
+    const persistedSpawnPosition =
+      !this.competitiveRoundsEnabled && !data.spawnPosition
+        ? resolvePersistedWorldSpawn(
+            this.gameStateStore.getCurrentLocalPlayer().position,
+            FIELD_MAP.key,
+            {
+              width: map.widthInPixels,
+              height: map.heightInPixels,
+            },
+          )
+        : null;
+    this.createPlayer(
+      map,
+      data.spawnPointName ?? FIELD_MAP.defaultSpawn,
+      data.spawnPosition ?? persistedSpawnPosition ?? undefined,
+    );
     this.gameStateStore.setSession({
       sessionId: this.room.sessionId,
       roomId: this.room.roomId,
@@ -393,6 +424,9 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    if (this.player) {
+      this.persistLocalPlayerPositionIfChanged();
+    }
     this.shutdownComplete = true;
     stopPokeLoungeBgm("field-day");
 
@@ -452,6 +486,7 @@ export class WorldScene extends Phaser.Scene {
       partyHudVisible: this.hud?.isPartyHudVisible() ?? false,
       pokemonStatusPanel: interactionSnapshot.pokemonStatusPanel,
       pcBox: interactionSnapshot.pcBox,
+      nurseHealing: interactionSnapshot.nurseHealing,
     };
   }
 
@@ -495,6 +530,12 @@ export class WorldScene extends Phaser.Scene {
   }
 
   handleConfirmInteractionForTest(): void {
+    this.interactions.test.handleConfirmInteraction();
+  }
+
+  healAtNurseForTest(): void {
+    this.player.setPosition(FIELD_MAP.recoverySpawn.x, FIELD_MAP.recoverySpawn.y);
+    this.facing = FIELD_MAP.recoverySpawn.facing;
     this.interactions.test.handleConfirmInteraction();
   }
 
@@ -684,6 +725,7 @@ export class WorldScene extends Phaser.Scene {
       matchIndex: match.matchNumber,
       player,
       opponent,
+      persistWorldPosition: shouldPersistSoloWorldPosition(this.competitiveRoundsEnabled),
       returnToWorld: {
         mapKey: FIELD_MAP.key,
         x,
@@ -739,6 +781,42 @@ export class WorldScene extends Phaser.Scene {
     this.cameras.main.roundPixels = true;
     this.lastSent = { x: this.player.x, y: this.player.y, facing: this.facing };
     this.encounters.initialize({ x: this.player.x, y: this.player.y });
+  }
+
+  private playNurseHealingEffect(
+    nursePosition: { x: number; y: number },
+    onComplete: () => void,
+  ): void {
+    const particleOffsets = [
+      { x: -22, y: -24, color: 0xfff176 },
+      { x: -9, y: -39, color: 0x81d4fa },
+      { x: 9, y: -36, color: 0xf8bbd0 },
+      { x: 22, y: -21, color: 0xc5e1a5 },
+    ] as const;
+    const particles = particleOffsets.map(({ x, y, color }) =>
+      this.add
+        .rectangle(nursePosition.x + x, nursePosition.y + y, 7, 7, color, 0.95)
+        .setAngle(45)
+        .setDepth(42),
+    );
+    const halo = this.add
+      .circle(nursePosition.x, nursePosition.y - 22, 18, 0xffffff, 0.08)
+      .setStrokeStyle(3, 0xfff9c4, 0.9)
+      .setDepth(41);
+    const targets = [...particles, halo];
+
+    this.tweens.add({
+      targets,
+      y: "-=24",
+      alpha: 0,
+      scale: 1.8,
+      duration: 720,
+      ease: "Sine.easeOut",
+      onComplete: () => {
+        targets.forEach(target => target.destroy());
+        onComplete();
+      },
+    });
   }
 
   private bindRoom(): void {
@@ -839,6 +917,7 @@ export class WorldScene extends Phaser.Scene {
           this.scene.start("battle", {
             battleKind: "authoritative",
             ownPlayerId: latest.ownPlayerId,
+            persistWorldPosition: shouldPersistSoloWorldPosition(this.competitiveRoundsEnabled),
             projection: latest.projection,
             returnToWorld: {
               mapKey: FIELD_MAP.key,
@@ -1144,6 +1223,10 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private persistLocalPlayerPositionIfChanged(): boolean {
+    if (!shouldPersistSoloWorldPosition(this.competitiveRoundsEnabled)) {
+      return false;
+    }
+
     const nextPosition = {
       mapKey: FIELD_MAP.key,
       x: Math.round(this.player.x),

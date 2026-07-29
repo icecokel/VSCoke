@@ -1353,7 +1353,9 @@ test.describe("Poke Lounge server multiplayer", () => {
       throw new Error("Expected the first server room identity");
     }
 
-    await page.locator("[data-room-leave='true']").click();
+    await page.locator("[data-poke-lounge-desktop-settings-toggle='true']").click();
+    await page.locator("[data-poke-lounge-game-exit='true']").click();
+    await expect(page.locator("[data-poke-lounge-game-exit-dialog='true']")).toHaveCount(0);
     const leaveDialog = page.locator("[data-poke-lounge-leave-dialog='true']");
     await expect(leaveDialog).toBeVisible();
     await leaveDialog.getByRole("button", { name: "방 나가기", exact: true }).click();

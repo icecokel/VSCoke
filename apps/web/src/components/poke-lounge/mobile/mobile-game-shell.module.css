@@ -52,7 +52,6 @@
 .itemButton,
 .nextButton,
 .backButton,
-.directionButton,
 .sceneBack,
 .panelAction,
 .panelActionPrimary,
@@ -146,47 +145,68 @@
   margin: 0 auto;
 }
 
-.directionPad {
+.joystick {
+  position: relative;
   display: grid;
-  width: clamp(144px, 42vw, 164px);
+  width: clamp(126px, 37vw, 150px);
   aspect-ratio: 1;
   flex: 0 0 auto;
-  grid-template-areas:
-    ". up ."
-    "left . right"
-    ". down .";
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-template-rows: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.directionButton {
-  display: grid;
-  min-width: 0;
-  min-height: 0;
-  padding: 0;
+  isolation: isolate;
   place-items: center;
-  border-radius: 12px;
-  background: #f8fbf0;
-  box-shadow: 0 3px 0 #17231c;
-  font-size: 1.1rem;
+  border: 3px solid #17231c;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #e9f1df 0 36%, #d6e5d1 37% 100%);
+  box-shadow:
+    inset 0 0 0 6px rgba(248, 251, 240, 0.42),
+    0 3px 0 #17231c;
+  cursor: pointer;
   touch-action: none;
+  transition:
+    background 120ms ease,
+    box-shadow 120ms ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
 }
 
-.directionButton[data-mobile-control="up"] {
-  grid-area: up;
+.joystick::before {
+  position: absolute;
+  inset: 16%;
+  z-index: 0;
+  content: "";
+  border: 1px solid rgba(23, 35, 28, 0.36);
+  border-radius: 50%;
+  pointer-events: none;
 }
 
-.directionButton[data-mobile-control="left"] {
-  grid-area: left;
+.joystick:focus-visible {
+  outline: 3px solid #42713d;
+  outline-offset: 3px;
 }
 
-.directionButton[data-mobile-control="right"] {
-  grid-area: right;
+.joystickThumb {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  width: 42%;
+  aspect-ratio: 1;
+  border: 3px solid #17231c;
+  border-radius: 50%;
+  background: #f8fbf0;
+  box-shadow: 0 2px 0 #17231c;
+  pointer-events: none;
+  transition:
+    transform 70ms ease-out,
+    background 120ms ease;
 }
 
-.directionButton[data-mobile-control="down"] {
-  grid-area: down;
+.joystick[data-active="true"] {
+  background: radial-gradient(circle at center, #f8fbf0 0 36%, #b7d897 37% 100%);
+}
+
+.joystick[data-active="true"] .joystickThumb {
+  background: #b7d897;
 }
 
 .fieldActions {
@@ -239,7 +259,6 @@
 .primaryAction[data-pressed="true"],
 .secondaryAction[data-pressed="true"],
 .partyAction:active,
-.directionButton:active,
 .utilityButton:active,
 .commandButton:active,
 .moveButton:active,
@@ -798,10 +817,6 @@
 
   .controlCluster {
     gap: 14px;
-  }
-
-  .directionPad {
-    width: min(42vw, 152px);
   }
 
   .fieldActions {

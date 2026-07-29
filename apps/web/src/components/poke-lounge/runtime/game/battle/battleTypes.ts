@@ -2,6 +2,7 @@ import type { PlayerPokemonSlot } from "../player/playerTypes";
 import type { BattleStatStages } from "./battle-stat-stages";
 import type { Gen4BaseStats } from "./gen4PokemonStats";
 import type { PokemonIndividualValues } from "./individual-values";
+import type { PokemonGender } from "./pokemon-gender";
 
 export type BattlePhase =
   | "intro"
@@ -44,6 +45,7 @@ export interface BattlePokemon {
   speciesId: number;
   name: string;
   level: number;
+  gender?: PokemonGender;
   catchRate: number;
   baseExpYield: number;
   growthRate: number;

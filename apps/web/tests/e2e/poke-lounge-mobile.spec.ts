@@ -21,6 +21,7 @@ type AudioPlaybackSnapshot = {
   activeBgmId: "field-day" | "wild-battle" | null;
   activeBufferSourceCount: number;
   activeHtmlAudioElementCount: number;
+  lastSfxId: string | null;
 };
 
 test("Poke Lounge 모바일 로딩이 멈춰도 게임 센터로 이탈할 수 있다", async ({ page }) => {
@@ -181,6 +182,7 @@ test("Poke Lounge 화면에서 이탈하면 재생 중인 모든 오디오를 �
     activeBgmId: null,
     activeBufferSourceCount: 0,
     activeHtmlAudioElementCount: 0,
+    lastSfxId: null,
   });
 });
 
@@ -214,6 +216,18 @@ test("Poke Lounge 모바일 메뉴에서 게임 센터로 나간다", async ({ p
   await expect(exitButton).toBeVisible();
   await exitButton.click();
 
+  const exitDialog = page.locator("[data-poke-lounge-game-exit-dialog='true']");
+  await expect(exitDialog).toBeVisible();
+  await expect(page).toHaveURL(/\/ko-KR\/game\/poke-lounge/);
+  const [exitDialogBounds, viewport] = await Promise.all([
+    exitDialog.boundingBox(),
+    Promise.resolve(page.viewportSize()),
+  ]);
+  expect(exitDialogBounds).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  expect(exitDialogBounds!.x).toBeGreaterThanOrEqual(0);
+  expect(exitDialogBounds!.x + exitDialogBounds!.width).toBeLessThanOrEqual(viewport!.width + 1);
+  await page.locator("[data-poke-lounge-game-exit-confirm='true']").click();
   await expect(page).toHaveURL(/\/ko-KR\/game$/);
 });
 
@@ -252,12 +266,12 @@ test("Poke Lounge 모바일은 세로 필드와 전체 화면 메뉴를 제공�
 
   const controls = page.locator("[data-poke-lounge-mobile-deck='explore']");
   const controlDock = page.locator("[data-poke-lounge-mobile-control-dock='true']");
-  const directionalPad = page.locator("[data-poke-lounge-mobile-direction-pad='true']");
+  const directionalJoystick = page.locator("[data-poke-lounge-mobile-joystick='true']");
   await expect(controls).toBeVisible();
   await expect(controlDock).toBeVisible();
-  await expect(directionalPad).toBeVisible();
+  await expect(directionalJoystick).toBeVisible();
   await expect(page.locator("[data-poke-lounge-web-fullscreen-toggle='true']")).toHaveCount(0);
-  await expect(directionalPad.locator("[data-mobile-control]")).toHaveCount(4);
+  await expect(directionalJoystick.locator("[data-mobile-control]")).toHaveCount(0);
   await expect(page.locator("[data-mobile-touch-controls='true']")).toHaveCount(0);
   await expectPortraitFieldAndControlDock(page, controlDock);
 
@@ -272,17 +286,23 @@ test("Poke Lounge 모바일은 세로 필드와 전체 화면 메뉴를 제공�
     })
     .toBe(false);
   const before = await readWorldSnapshot(page);
-  const moveRight = directionalPad.locator("[data-mobile-control='right']");
+  const joystickBounds = await directionalJoystick.boundingBox();
 
-  await expect(moveRight).toHaveCount(1);
-  await moveRight.dispatchEvent("pointerdown", {
+  expect(joystickBounds).not.toBeNull();
+  await directionalJoystick.dispatchEvent("pointerdown", {
+    clientX: joystickBounds!.x + joystickBounds!.width * 0.84,
+    clientY: joystickBounds!.y + joystickBounds!.height / 2,
     pointerId: 1,
     pointerType: "touch",
   });
-  await expect(moveRight).toHaveAttribute("data-pressed", "true");
+  await expect(directionalJoystick).toHaveAttribute("data-active", "true");
+  await expect(directionalJoystick).toHaveAttribute("data-direction", "right");
   await page.waitForTimeout(300);
-  await moveRight.dispatchEvent("pointerup", { pointerId: 1, pointerType: "touch" });
-  await expect(moveRight).not.toHaveAttribute("data-pressed", "true");
+  await directionalJoystick.dispatchEvent("pointerup", {
+    pointerId: 1,
+    pointerType: "touch",
+  });
+  await expect(directionalJoystick).not.toHaveAttribute("data-active", "true");
   const after = await readWorldSnapshot(page);
 
   expect(before?.player).not.toBeNull();
@@ -453,7 +473,7 @@ test("Poke Lounge 모바일 전투는 하단 조작 도크에서 행동을 고�
     timeout: 10_000,
   });
   await expectControlDeckStaysBelowField(page, moveDeck);
-  const moveSlotGeometry = await expectFourSlotBattleGrid(moveDeck, "moves", 2);
+  const moveSlotGeometry = await expectFourSlotBattleGrid(moveDeck, "moves", 4);
 
   await moveDeck.getByRole("button", { name: /뒤로/ }).click();
   await expect(commandDeck).toBeVisible();
@@ -476,6 +496,120 @@ test("Poke Lounge 모바일 전투는 하단 조작 도크에서 행동을 고�
 
   expect(moveSlotGeometry).toEqual(partySlotGeometry);
   expect(itemSlotGeometry).toEqual(partySlotGeometry);
+});
+
+test("이상한사탕 레벨업은 모바일 가방에서 잊을 기술을 직접 선택한다", async ({ page }) => {
+  await gotoWithRetry(page, "/ko-KR/game/poke-lounge?e2e=1&wildEncounterRate=0");
+  await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30_000 });
+  await page.locator("[data-room-entry-solo]").click();
+  await chooseStarterIfNeeded(page);
+  await expect(page.locator("[data-poke-lounge-mobile-deck='explore']")).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await page.evaluate(() => {
+    const controller = (
+      window as Window & {
+        __POKE_LOUNGE_E2E__?: {
+          closeWorldShortcutGuide(): void;
+          getGameStateSnapshot(): {
+            currentPlayerId: string;
+            playersById: Record<string, Record<string, unknown>>;
+          };
+          setCurrentLocalPlayerForTest(player: Record<string, unknown>): void;
+        };
+      }
+    ).__POKE_LOUNGE_E2E__;
+
+    if (!controller) {
+      throw new Error("Poke Lounge E2E controller is unavailable");
+    }
+
+    controller.closeWorldShortcutGuide();
+    const state = controller.getGameStateSnapshot();
+    const currentPlayer = state.playersById[state.currentPlayerId];
+    controller.setCurrentLocalPlayerForTest({
+      ...currentPlayer,
+      activePartySlotIndex: 0,
+      inventory: { rareCandy: 1 },
+      party: [
+        {
+          slotIndex: 0,
+          pokemon: {
+            speciesId: 155,
+            name: "브케인",
+            level: 18,
+            moves: [
+              { id: 52, name: "불꽃세례", pp: 25, maxPp: 25 },
+              { id: 108, name: "연막", pp: 20, maxPp: 20 },
+              { id: 98, name: "전광석화", pp: 30, maxPp: 30 },
+              { id: 45, name: "울음소리", pp: 40, maxPp: 40 },
+            ],
+          },
+        },
+      ],
+    });
+  });
+
+  const bag = page.locator("[data-mobile-control='bag']");
+  await bag.dispatchEvent("pointerdown", { pointerId: 7, pointerType: "touch" });
+  await bag.dispatchEvent("pointerup", { pointerId: 7, pointerType: "touch" });
+  const itemScreen = page.locator("[data-poke-lounge-mobile-deck='world-inventory-items']");
+  await expect(itemScreen).toBeVisible();
+  await itemScreen.getByRole("button", { name: /이상한사탕/ }).click();
+  await itemScreen.getByRole("button", { name: "사용", exact: true }).click();
+
+  const partyScreen = page.locator("[data-poke-lounge-mobile-deck='world-inventory-party']");
+  await expect(partyScreen).toBeVisible();
+  await partyScreen.getByRole("button", { name: /브케인/ }).click();
+  await partyScreen.getByRole("button", { name: "사용", exact: true }).click();
+
+  const replacementScreen = page.locator(
+    "[data-poke-lounge-mobile-deck='world-inventory-move-replace']",
+  );
+  await expect(replacementScreen).toBeVisible();
+  await expect(replacementScreen).toContainText("화염자동차");
+  await replacementScreen.getByRole("button", { name: /연막/ }).click();
+  await replacementScreen.getByRole("button", { name: "선택한 기술 잊기" }).click();
+  await expect(itemScreen).toBeVisible();
+
+  const progress = await page.evaluate(() => {
+    const controller = (
+      window as Window & {
+        __POKE_LOUNGE_E2E__?: {
+          getGameStateSnapshot(): {
+            currentPlayerId: string;
+            playersById: Record<
+              string,
+              {
+                inventory: Record<string, number>;
+                party: Array<{
+                  pokemon?: {
+                    level?: number;
+                    moves?: Array<{ id: number }>;
+                  } | null;
+                }>;
+              }
+            >;
+          };
+        };
+      }
+    ).__POKE_LOUNGE_E2E__;
+    const state = controller?.getGameStateSnapshot();
+    const currentPlayer = state?.playersById[state.currentPlayerId];
+
+    return {
+      level: currentPlayer?.party[0]?.pokemon?.level ?? null,
+      moveIds: currentPlayer?.party[0]?.pokemon?.moves?.map(move => move.id) ?? [],
+      rareCandyCount: currentPlayer?.inventory.rareCandy ?? 0,
+    };
+  });
+
+  expect(progress).toEqual({
+    level: 19,
+    moveIds: [52, 172, 98, 45],
+    rareCandyCount: 0,
+  });
 });
 
 test("Poke Lounge 모바일 필드 시설은 전체 화면 씬에서 처리한다", async ({ page }) => {

@@ -1,3 +1,10 @@
+import { getExperienceForLevel } from "../battle/experience";
+import { planLevelUpPlayerProgression } from "../battle/level-up-progression";
+import { applyEvolutionStone, applyPlayerLevelUpStats } from "../battle/pokemon-evolution";
+import { getRuntimePokemonData, getRuntimePokemonSpeciesGrowthRate } from "../data/game-data-json";
+import type { PlayerPokemon, PlayerPokemonMove } from "../state/gameStateStore";
+import { isEvolutionStoneItemId, type EvolutionStoneItemId } from "./evolution-stones";
+
 export const POTION_HEAL_AMOUNT = 20;
 export const SUPER_POTION_HEAL_AMOUNT = 50;
 export const HYPER_POTION_HEAL_AMOUNT = 120;
@@ -8,7 +15,8 @@ export type InventoryItemEffectId =
   | "hyperPotion"
   | "antidote"
   | "revive"
-  | "rareCandy";
+  | "rareCandy"
+  | EvolutionStoneItemId;
 export type InventoryItemTargetStatus = "normal" | "poisoned" | "burned" | "paralyzed" | "fainted";
 
 export interface InventoryItemTarget {
@@ -25,6 +33,7 @@ export type ApplyInventoryItemEffectResult<TPokemon extends InventoryItemTarget>
       itemId: InventoryItemEffectId;
       messages: string[];
       pokemon: TPokemon;
+      pendingMoveReplacements: PlayerPokemonMove[];
     }
   | {
       ok: false;
@@ -76,12 +85,67 @@ export function applyInventoryItemEffect<TPokemon extends InventoryItemTarget>(
     return applyRareCandy(pokemon);
   }
 
+  if (isEvolutionStoneItemId(itemId)) {
+    return applyEvolutionStoneItem(itemId, pokemon);
+  }
+
   return {
     ok: false,
     itemId,
     reason: "unsupported-item",
     message: "지금은 쓸 수 없다.",
   };
+}
+
+function applyEvolutionStoneItem<TPokemon extends InventoryItemTarget>(
+  itemId: EvolutionStoneItemId,
+  pokemon: TPokemon,
+): ApplyInventoryItemEffectResult<TPokemon> {
+  if (!isPlayerPokemonTarget(pokemon)) {
+    return {
+      ok: false,
+      itemId,
+      reason: "no-effect",
+      message: "효과가 없다.",
+    };
+  }
+
+  const result = applyEvolutionStone({
+    itemId,
+    pokemon,
+    pokemonData: getRuntimePokemonData(),
+  });
+
+  if (!result.evolved) {
+    return {
+      ok: false,
+      itemId,
+      reason: "no-effect",
+      message: "효과가 없다.",
+    };
+  }
+
+  return {
+    ok: true,
+    itemId,
+    messages: result.messages,
+    pokemon: result.pokemon,
+    pendingMoveReplacements: [],
+  };
+}
+
+function isPlayerPokemonTarget<TPokemon extends InventoryItemTarget>(
+  pokemon: TPokemon,
+): pokemon is TPokemon & PlayerPokemon {
+  const speciesId = (pokemon as Partial<PlayerPokemon>).speciesId;
+
+  return (
+    typeof speciesId === "number" &&
+    Number.isInteger(speciesId) &&
+    speciesId > 0 &&
+    typeof pokemon.level === "number" &&
+    Number.isFinite(pokemon.level)
+  );
 }
 
 function applyHealingItem<TPokemon extends InventoryItemTarget>({
@@ -137,6 +201,7 @@ function applyHealingItem<TPokemon extends InventoryItemTarget>({
       currentHp: Math.min(maxHp, currentHp + healAmount),
       status: pokemon.status ?? "normal",
     },
+    pendingMoveReplacements: [],
   };
 }
 
@@ -164,6 +229,7 @@ function applyRevive<TPokemon extends InventoryItemTarget>(
       currentHp: Math.max(1, Math.floor(maxHp / 2)),
       status: "normal",
     },
+    pendingMoveReplacements: [],
   };
 }
 
@@ -181,14 +247,52 @@ function applyRareCandy<TPokemon extends InventoryItemTarget>(
     };
   }
 
+  const nextLevel = level + 1;
+  const leveledPokemon = {
+    ...pokemon,
+    level: nextLevel,
+  };
+  const baseMessages = [
+    `${pokemon.name}에게 이상한사탕을 사용했다!`,
+    `${pokemon.name}의 레벨이 올랐다!`,
+  ];
+
+  if (!isPlayerPokemonTarget(leveledPokemon)) {
+    return {
+      ok: true,
+      itemId: "rareCandy",
+      messages: baseMessages,
+      pokemon: leveledPokemon,
+      pendingMoveReplacements: [],
+    };
+  }
+
+  const growthRate = resolveGrowthRate(leveledPokemon);
+  const progressedPokemon = {
+    ...leveledPokemon,
+    growthRate,
+    experience: Math.max(
+      normalizeExperience(leveledPokemon.experience),
+      getExperienceForLevel(nextLevel, growthRate),
+    ),
+  };
+  const levelStatsPokemon = applyPlayerLevelUpStats({
+    pokemon: progressedPokemon,
+    previousLevel: level,
+    pokemonData: getRuntimePokemonData(),
+  });
+  const progression = planLevelUpPlayerProgression({
+    pokemon: levelStatsPokemon,
+    previousLevel: level,
+    pokemonData: getRuntimePokemonData(),
+  });
+
   return {
     ok: true,
     itemId: "rareCandy",
-    messages: [`${pokemon.name}에게 이상한사탕을 사용했다!`, `${pokemon.name}의 레벨이 올랐다!`],
-    pokemon: {
-      ...pokemon,
-      level: level + 1,
-    },
+    messages: [...baseMessages, ...progression.messages],
+    pokemon: progression.pokemon,
+    pendingMoveReplacements: progression.pendingMoveReplacements,
   };
 }
 
@@ -212,6 +316,7 @@ function applyAntidote<TPokemon extends InventoryItemTarget>(
       ...pokemon,
       status: "normal",
     },
+    pendingMoveReplacements: [],
   };
 }
 
@@ -229,4 +334,24 @@ function normalizeLevel(value: unknown): number | null {
   }
 
   return Math.max(1, Math.floor(value));
+}
+
+function normalizeExperience(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.floor(value));
+}
+
+function resolveGrowthRate(pokemon: PlayerPokemon): number {
+  if (
+    typeof pokemon.growthRate === "number" &&
+    Number.isInteger(pokemon.growthRate) &&
+    pokemon.growthRate >= 0
+  ) {
+    return pokemon.growthRate;
+  }
+
+  return getRuntimePokemonSpeciesGrowthRate(pokemon.speciesId) ?? 0;
 }

@@ -1,5 +1,7 @@
 import growthTableData from "./growthTable.json";
 
+export const WILD_BATTLE_EXPERIENCE_MULTIPLIER = 5;
+
 export interface WildBattleExpGainInput {
   baseExpYield: number;
   defeatedLevel: number;
@@ -40,7 +42,12 @@ export function calculateWildBattleExpGain({
     return 0;
   }
 
-  return Math.max(1, Math.floor((normalizedBaseExpYield * normalizedDefeatedLevel) / 7));
+  const baseExperience = Math.max(
+    1,
+    Math.floor((normalizedBaseExpYield * normalizedDefeatedLevel) / 7),
+  );
+
+  return baseExperience * WILD_BATTLE_EXPERIENCE_MULTIPLIER;
 }
 
 export function getExperienceForLevel(level: number, growthRate: number): number {

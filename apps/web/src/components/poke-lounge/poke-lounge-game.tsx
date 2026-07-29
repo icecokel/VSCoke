@@ -125,6 +125,7 @@ const OPEN_MODAL_DIALOG_SELECTOR = [
 type PokeLoungeUiSize = GameViewportSizePreset;
 type PokeLoungeGamePageHandle = {
   destroy(): void;
+  requestRoomLeave(): boolean;
   setViewportSize(viewportSize: GameViewportDisplaySize): void;
 };
 type PokeLoungeRoomShareStatus = "idle" | "success" | "error";
@@ -246,6 +247,7 @@ export function PokeLoungeGame() {
   const tokenLifecycle = getPokeLoungeTokenLifecycle();
   const [finalResult, setFinalResult] = useState<FinalResultState | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [exitConfirmationOpen, setExitConfirmationOpen] = useState(false);
   const [fullscreenActive, setFullscreenActive] = useState(false);
   const [touchGameDevice, setTouchGameDevice] = useState(false);
   const [touchGameDeviceResolved, setTouchGameDeviceResolved] = useState(false);
@@ -349,6 +351,17 @@ export function PokeLoungeGame() {
   const handleMobileSettingsClose = useCallback(() => {
     resetVirtualGamepad();
     setSettingsOpen(false);
+  }, []);
+
+  const handleGameExitRequest = useCallback(() => {
+    resetVirtualGamepad();
+    setSettingsOpen(false);
+
+    if (gamePageHandleRef.current?.requestRoomLeave()) {
+      return;
+    }
+
+    setExitConfirmationOpen(true);
   }, []);
 
   const handleVolumeCycle = useCallback(() => {
@@ -1175,6 +1188,12 @@ export function PokeLoungeGame() {
     router.push("/game");
   }, [router]);
 
+  const handleGameExitConfirm = useCallback(() => {
+    resetVirtualGamepad();
+    setExitConfirmationOpen(false);
+    handleResultLobby();
+  }, [handleResultLobby]);
+
   return (
     <main
       ref={pageRef}
@@ -1220,7 +1239,7 @@ export function PokeLoungeGame() {
               : connectionLabel,
             localRoomShare,
             onClose: handleMobileSettingsClose,
-            onExit: handleResultLobby,
+            onExit: handleGameExitRequest,
             onRetryRanking: () => setRankingAttempt(attempt => attempt + 1),
             onRoomShare: handleRoomShare,
             onVolumeCycle: handleVolumeCycle,
@@ -1477,6 +1496,16 @@ export function PokeLoungeGame() {
               </section>
               <Button
                 type="button"
+                variant="destructive"
+                className={styles.settingsOptionButton}
+                onClick={handleGameExitRequest}
+                data-poke-lounge-setting-option="true"
+                data-poke-lounge-game-exit="true"
+              >
+                {copy.settingsExit}
+              </Button>
+              <Button
+                type="button"
                 variant="outline"
                 className={styles.settingsOptionButton}
                 onClick={() => setSettingsOpen(false)}
@@ -1524,6 +1553,27 @@ export function PokeLoungeGame() {
             >
               {copy.hydrationUseServer}
             </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={exitConfirmationOpen} onOpenChange={setExitConfirmationOpen}>
+        <AlertDialogContent
+          className={touchGameDevice ? styles.mobileDecisionSheet : styles.confirmDialog}
+          data-poke-lounge-game-exit-dialog="true"
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>{copy.exitTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{copy.exitDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{copy.exitContinue}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={handleGameExitConfirm}
+              data-poke-lounge-game-exit-confirm="true"
+            >
+              {copy.exitConfirm}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

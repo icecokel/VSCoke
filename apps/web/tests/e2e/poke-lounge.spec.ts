@@ -147,6 +147,12 @@ interface PokeLoungeGameStateSnapshot {
   playersById: Record<
     string,
     {
+      position: {
+        mapKey: string;
+        x: number;
+        y: number;
+        facing: "front" | "back" | "left" | "right";
+      };
       party: Array<{
         slotIndex?: number;
         pokemon?: {
@@ -216,6 +222,10 @@ interface PokeLoungeWorldSnapshot {
     partyCount: number;
     boxCount: number;
   };
+  nurseHealing: {
+    active: boolean;
+    effectCount: number;
+  };
 }
 
 interface PokeLoungeCanvasSnapshot {
@@ -227,6 +237,12 @@ interface PokeLoungeCanvasSnapshot {
 
 interface PokeLoungeE2eController {
   getActiveSceneKey(): PokeLoungeSceneKey | null;
+  getAudioPlaybackSnapshot(): {
+    activeBgmId: string | null;
+    activeBufferSourceCount: number;
+    activeHtmlAudioElementCount: number;
+    lastSfxId: string | null;
+  };
   getBattleSnapshot(): PokeLoungeBattleSnapshot | null;
   setCurrentLocalPlayerForTest(player: Record<string, unknown>): void;
   setBattleCommand(
@@ -236,6 +252,7 @@ interface PokeLoungeE2eController {
   confirmBattle(): PokeLoungeBattleSnapshot | null;
   drainBattleMessages(maxMessages?: number): PokeLoungeBattleSnapshot | null;
   getWorldSnapshot(): PokeLoungeWorldSnapshot | null;
+  healAtNurseForTest(): PokeLoungeWorldSnapshot | null;
   startWildBattleForTest(input: {
     encounter: {
       mapKey: string;
@@ -1474,6 +1491,65 @@ test.describe("Poke Lounge", () => {
     expect(browserErrors.join("\n")).toBe("");
   });
 
+  test("솔로 종료 확인 후 이어하기는 저장된 필드 위치와 파티를 복원한다", async ({ page }) => {
+    const routePath = `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1&wildEncounterRate=0`;
+    await startSoloGame(page, routePath);
+    await waitForInitialWorldShortcutGuideIfAny(page);
+    await closeWorldShortcutGuideIfOpen(page);
+    await expect
+      .poll(() => getWorldSnapshot(page).then(snapshot => snapshot?.player ?? null), {
+        timeout: 30_000,
+      })
+      .not.toBeNull();
+
+    const beforeExit = await moveWorldPlayerAndStop(page);
+    const beforeExitState = await getGameStateSnapshot(page);
+    const beforeExitPlayer = beforeExitState?.playersById[beforeExitState.currentPlayerId];
+    expect(beforeExit?.player).not.toBeNull();
+    expect(beforeExitPlayer?.party[0]?.pokemon?.name).toBeTruthy();
+
+    await page.locator("[data-poke-lounge-desktop-settings-toggle='true']").click();
+    const desktopExit = page.locator("[data-poke-lounge-game-exit='true']");
+    await expect(desktopExit).toBeVisible();
+    await desktopExit.click();
+
+    const exitDialog = page.locator("[data-poke-lounge-game-exit-dialog='true']");
+    await expect(exitDialog).toBeVisible();
+    await expect(exitDialog).toContainText("현재 진행은 저장되며 게임 센터로 이동합니다.");
+    await exitDialog.getByRole("button", { name: "계속 플레이", exact: true }).click();
+    await expect(exitDialog).not.toBeVisible();
+    await expect(page.locator("#game-root canvas")).toBeVisible();
+
+    await page.locator("[data-poke-lounge-desktop-settings-toggle='true']").click();
+    await page.locator("[data-poke-lounge-game-exit='true']").click();
+    await page.locator("[data-poke-lounge-game-exit-confirm='true']").click();
+    await expect(page).toHaveURL(new RegExp(`/${POKE_LOUNGE_LOCALE}/game$`));
+
+    await gotoWithRetry(page, routePath);
+    await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30_000 });
+    await page.locator("[data-room-entry-solo]").click();
+    await expect(page.locator("[data-screen='starter-selection']")).toHaveCount(0);
+    await waitForGameCanvas(page);
+    await expect
+      .poll(() => getWorldSnapshot(page).then(snapshot => snapshot?.player ?? null), {
+        timeout: 30_000,
+      })
+      .not.toBeNull();
+
+    const continued = await getWorldSnapshot(page);
+    const continuedState = await getGameStateSnapshot(page);
+    const continuedPlayer = continuedState?.playersById[continuedState.currentPlayerId];
+
+    expect(continued?.player).toMatchObject({
+      x: beforeExit?.player?.x,
+      y: beforeExit?.player?.y,
+      facing: beforeExit?.player?.facing,
+    });
+    expect(continuedPlayer?.party[0]?.pokemon?.name).toBe(
+      beforeExitPlayer?.party[0]?.pokemon?.name,
+    );
+  });
+
   test("bootstrap 로드 실패는 재시도 가능한 오류 화면으로 복구한다", async ({ page }) => {
     let bootstrapAttempts = 0;
 
@@ -1927,6 +2003,71 @@ test.describe("Poke Lounge", () => {
     expect(browserErrors.join("\n")).toBe("");
   });
 
+  test("회복 NPC 상호작용은 파티 회복과 전용 빛 연출을 함께 실행한다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await startSoloGame(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
+    await waitForInitialWorldShortcutGuideIfAny(page);
+    await closeWorldShortcutGuideIfOpen(page);
+
+    const effectSnapshot = await page.evaluate(() => {
+      const controller = (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__;
+      const state = controller?.getGameStateSnapshot();
+
+      if (!controller || !state) {
+        return null;
+      }
+
+      const currentPlayer = state.playersById[state.currentPlayerId];
+      controller.setCurrentLocalPlayerForTest({
+        ...currentPlayer,
+        party: currentPlayer.party.map(slot => ({
+          ...slot,
+          pokemon: slot.pokemon
+            ? {
+                ...slot.pokemon,
+                currentHp: 1,
+                maxHp: slot.pokemon.maxHp ?? 30,
+                status: "poisoned",
+              }
+            : null,
+        })),
+      });
+
+      return controller.healAtNurseForTest();
+    });
+
+    expect(effectSnapshot?.nurseHealing).toEqual({ active: true, effectCount: 1 });
+    expect(
+      await page.evaluate(
+        () => (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__?.getAudioPlaybackSnapshot() ?? null,
+      ),
+    ).toMatchObject({ lastSfxId: "battle-start" });
+    expect(
+      await page.evaluate(
+        () => (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__?.healAtNurseForTest() ?? null,
+      ),
+    ).toMatchObject({ nurseHealing: { active: true, effectCount: 1 } });
+
+    await expect
+      .poll(() => getWorldSnapshot(page).then(snapshot => snapshot?.nurseHealing.active ?? true), {
+        timeout: 5000,
+      })
+      .toBe(false);
+
+    const gameState = await getGameStateSnapshot(page);
+    const localPlayer = gameState?.playersById[gameState.currentPlayerId];
+    const occupiedParty = localPlayer?.party.filter(slot => slot.pokemon) ?? [];
+
+    expect(occupiedParty.length).toBeGreaterThan(0);
+    expect(
+      occupiedParty.every(
+        slot => slot.pokemon?.status === "normal" && slot.pokemon.currentHp === slot.pokemon.maxHp,
+      ),
+    ).toBe(true);
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
   test("world scene은 상점, PC, 단축키, 야생 전투, 토너먼트 결과 probe를 유지한다", async ({
     page,
   }) => {
@@ -2144,6 +2285,23 @@ test.describe("Poke Lounge", () => {
       .toBe("move-replace-select");
 
     let snapshot = await getBattleSnapshot(page);
+    expect(snapshot?.messageQueue).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/경험치를 얻었다!/),
+        "승리했다!",
+        "전투가 종료되었다. 확인을 누르면 필드로 돌아간다.",
+      ]),
+    );
+
+    await page.evaluate(() => {
+      const pokeWindow = window as PokeLoungeWindow;
+
+      pokeWindow.__POKE_LOUNGE_E2E__?.drainBattleMessages();
+    });
+
+    snapshot = await getBattleSnapshot(page);
+    expect(snapshot?.phase).toBe("move-replace-select");
+    expect(snapshot?.messageQueue).toEqual([]);
     expect(snapshot?.moveReplacement).toEqual({
       pokemonName: "마그케인",
       newMoveName: "화염자동차",
@@ -2174,6 +2332,57 @@ test.describe("Poke Lounge", () => {
     expect(snapshot?.messageQueue).toEqual(
       expect.arrayContaining(["마그케인은 연막을 잊고 화염자동차를 배웠다!"]),
     );
+
+    await returnToWorldAfterBattleEnd(page);
+    await expectActiveScene(page, "world");
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("레벨업 기술을 배우지 않아도 같은 기술을 다시 묻지 않고 필드로 돌아간다", async ({
+    page,
+  }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await startBattleScenario(page, "wild-move-learning");
+    await chooseFightCommand(page);
+    await page.evaluate(() => {
+      const pokeWindow = window as PokeLoungeWindow;
+
+      pokeWindow.__POKE_LOUNGE_E2E__?.setBattleMoveIndex(0);
+      pokeWindow.__POKE_LOUNGE_E2E__?.confirmBattle();
+    });
+
+    await expect
+      .poll(() => getBattleSnapshot(page).then(snapshot => snapshot?.phase ?? null), {
+        timeout: 30000,
+      })
+      .toBe("move-replace-select");
+    await page.evaluate(() => {
+      const pokeWindow = window as PokeLoungeWindow;
+
+      pokeWindow.__POKE_LOUNGE_E2E__?.drainBattleMessages();
+    });
+    await expect
+      .poll(
+        () => getBattleSnapshot(page).then(snapshot => snapshot?.evolutionAnimationPlaying ?? true),
+        { timeout: 5000 },
+      )
+      .toBe(false);
+    await pressVirtualGamepad(page, "back");
+    await page.waitForTimeout(100);
+    await releaseVirtualGamepad(page, "back");
+
+    await expect
+      .poll(() => getBattleSnapshot(page).then(snapshot => snapshot?.phase ?? null), {
+        timeout: 5000,
+      })
+      .toBe("ended");
+    expect((await getBattleSnapshot(page))?.messageQueue).toEqual(
+      expect.arrayContaining(["마그케인은 화염자동차를 배우지 않았다!"]),
+    );
+
+    await returnToWorldAfterBattleEnd(page);
+    await expectActiveScene(page, "world");
     expect(browserErrors.join("\n")).toBe("");
   });
 
@@ -2210,6 +2419,13 @@ test.describe("Poke Lounge", () => {
         slot => slot.pokemon?.status === "fainted" || (slot.pokemon?.currentHp ?? 1) <= 0,
       ),
     ).toBe(true);
+    expect(localPlayer?.position).toEqual({
+      mapKey: FIELD_MAP.key,
+      ...FIELD_MAP.recoverySpawn,
+    });
+
+    const recoveryWorld = await getWorldSnapshot(page);
+    expect(recoveryWorld?.player).toMatchObject(FIELD_MAP.recoverySpawn);
 
     const afterMove = await moveWorldPlayerWithoutStartingBattle(page);
     expect(afterMove.player).not.toBeNull();
@@ -3739,6 +3955,51 @@ async function moveWorldPlayerWithoutStartingBattle(page: Page): Promise<PokeLou
   }
 
   throw new Error(`World player did not move after defeat: ${JSON.stringify(snapshots)}`);
+}
+
+async function moveWorldPlayerAndStop(page: Page): Promise<PokeLoungeWorldSnapshot> {
+  const directions = ["right", "left", "down", "up"] as const;
+
+  for (const direction of directions) {
+    const beforeMove = await getWorldSnapshot(page);
+    if (!beforeMove?.player) {
+      throw new Error("World player snapshot is unavailable before movement");
+    }
+
+    await pressVirtualGamepad(page, direction);
+    const moved = await expect
+      .poll(
+        () =>
+          getWorldSnapshot(page).then(snapshot =>
+            snapshot?.player &&
+            (snapshot.player.x !== beforeMove.player?.x ||
+              snapshot.player.y !== beforeMove.player?.y)
+              ? true
+              : false,
+          ),
+        { timeout: 1_000 },
+      )
+      .toBe(true)
+      .then(() => true)
+      .catch(() => false);
+
+    if (moved) {
+      await page.waitForTimeout(180);
+    }
+    await releaseVirtualGamepad(page, direction);
+
+    if (!moved) {
+      continue;
+    }
+
+    await page.waitForTimeout(120);
+    const snapshot = await getWorldSnapshot(page);
+    if (snapshot?.player) {
+      return snapshot;
+    }
+  }
+
+  throw new Error("World player did not move in any direction");
 }
 
 async function getWorldSnapshot(page: Page): Promise<PokeLoungeWorldSnapshot | null> {

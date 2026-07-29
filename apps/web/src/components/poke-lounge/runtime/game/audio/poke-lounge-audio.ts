@@ -37,6 +37,7 @@ export interface PokeLoungeAudioPlaybackSnapshot {
   activeBgmId: PokeLoungeBgmId | null;
   activeBufferSourceCount: number;
   activeHtmlAudioElementCount: number;
+  lastSfxId: PokeLoungeSfxId | null;
 }
 
 let manifestPromise: Promise<PokeLoungeAudioManifest> | null = null;
@@ -45,6 +46,7 @@ let masterGain: GainNode | null = null;
 let muted = false;
 let masterVolume = 1;
 let playbackGeneration = 0;
+let lastSfxId: PokeLoungeSfxId | null = null;
 const bufferPromises = new Map<PokeLoungeSfxId, Promise<AudioBuffer | null>>();
 const preloadedAudioBytes = new Map<PokeLoungeAudioItemId, ArrayBuffer>();
 const htmlAudioElements = new Map<PokeLoungeAudioItemId, HTMLAudioElement>();
@@ -110,6 +112,7 @@ export function playPokeLoungeSfx(id: PokeLoungeSfxId, options: { volume?: numbe
     return;
   }
 
+  lastSfxId = id;
   void playPokeLoungeSfxAsync(id, options, playbackGeneration);
 }
 
@@ -136,6 +139,7 @@ export function stopPokeLoungeBgm(id?: PokeLoungeBgmId): void {
 
 export function stopAllPokeLoungeAudio(): void {
   playbackGeneration += 1;
+  lastSfxId = null;
   stopPokeLoungeBgm();
 
   for (const source of activeBufferSources) {
@@ -189,6 +193,7 @@ export function getPokeLoungeAudioPlaybackSnapshotForTest(): PokeLoungeAudioPlay
     activeBgmId: activeBgm?.id ?? null,
     activeBufferSourceCount: activeBufferSources.size,
     activeHtmlAudioElementCount: activeHtmlAudioElements.size,
+    lastSfxId,
   };
 }
 

@@ -9,6 +9,7 @@
     "evolutionPath": "a/0/3/4",
     "messagePath": "a/0/2/7",
     "pokemonNameMessageIndex": 233,
+    "moveNameMessageIndex": 743,
     "characterMapPath": "data/str2uni.bin",
     "battleSpritePath": "a/0/0/4"
   },

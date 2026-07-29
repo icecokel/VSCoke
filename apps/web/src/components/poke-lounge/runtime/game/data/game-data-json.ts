@@ -34,6 +34,7 @@ export interface BattlePokemonSpriteSheetRangeRecord {
 
 interface RuntimeGameDataJsonState {
   pokemonDataRecordCount: number | null;
+  moveNames: Record<number, string> | null;
   levelUpMoveTable: Record<number, LevelUpMoveRow[]> | null;
   wildBattleMoveSets: Record<number, number[]> | null;
   battlePokemonAssets: { spriteSheetRanges: BattlePokemonSpriteSheetRangeRecord[] } | null;
@@ -41,6 +42,7 @@ interface RuntimeGameDataJsonState {
 
 const runtimeGameDataJsonState: RuntimeGameDataJsonState = {
   pokemonDataRecordCount: null,
+  moveNames: null,
   levelUpMoveTable: null,
   wildBattleMoveSets: null,
   battlePokemonAssets: null,
@@ -56,6 +58,7 @@ export async function loadRuntimeGameDataJson(fetcher: typeof fetch = fetch): Pr
     ]);
 
   runtimeGameDataJsonState.pokemonDataRecordCount = normalizePokemonDataRecordCount(pokemonData);
+  runtimeGameDataJsonState.moveNames = normalizePokemonMoveNames(pokemonData);
   runtimeGameDataJsonState.levelUpMoveTable = normalizeLevelUpMoveTable(levelUpMoveTable);
   runtimeGameDataJsonState.wildBattleMoveSets = normalizeWildBattleMoveSets(wildBattleMoveSets);
   runtimeGameDataJsonState.battlePokemonAssets =
@@ -98,8 +101,13 @@ export function getRuntimePokemonDataRecordCountForTest(): number | null {
   return runtimeGameDataJsonState.pokemonDataRecordCount;
 }
 
+export function getRuntimeMoveName(moveId: number, fallbackName: string): string {
+  return runtimeGameDataJsonState.moveNames?.[moveId] ?? fallbackName;
+}
+
 export function resetRuntimeGameDataJsonStateForTest(): void {
   runtimeGameDataJsonState.pokemonDataRecordCount = null;
+  runtimeGameDataJsonState.moveNames = null;
   runtimeGameDataJsonState.levelUpMoveTable = null;
   runtimeGameDataJsonState.wildBattleMoveSets = null;
   runtimeGameDataJsonState.battlePokemonAssets = null;
@@ -119,6 +127,34 @@ export function normalizePokemonDataRecordCount(data: unknown): number | null {
   }).length;
 
   return recordCount > 0 ? recordCount : null;
+}
+
+export function normalizePokemonMoveNames(data: unknown): Record<number, string> | null {
+  if (!isRecord(data) || data.version !== 1 || !isRecord(data.moves)) {
+    return null;
+  }
+
+  const moveNames = Object.entries(data.moves).reduce<Record<number, string>>(
+    (accumulator, [moveIdKey, value]) => {
+      const moveId = readPositiveInteger(moveIdKey);
+
+      if (!moveId || !isRecord(value) || readPositiveInteger(value.id) !== moveId) {
+        return accumulator;
+      }
+
+      const name = typeof value.name === "string" ? value.name.trim() : "";
+
+      if (!name) {
+        return accumulator;
+      }
+
+      accumulator[moveId] = name;
+      return accumulator;
+    },
+    {},
+  );
+
+  return Object.keys(moveNames).length > 0 ? moveNames : null;
 }
 
 export function normalizeLevelUpMoveTable(data: unknown): Record<number, LevelUpMoveRow[]> | null {

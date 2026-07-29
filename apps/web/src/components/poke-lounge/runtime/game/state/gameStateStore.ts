@@ -1513,7 +1513,9 @@ export function createDefaultPlayerWallet(): PlayerWallet {
 }
 
 export function createDefaultPlayerInventory(): PlayerInventory {
-  return {};
+  return {
+    pokeball: 10,
+  };
 }
 
 export function createEmptyParty(): Array<PlayerPokemonSlot<PlayerPokemon>> {

@@ -21,6 +21,14 @@ const createPokemon = (
   ...overrides,
 });
 
+test("새 플레이어는 몬스터볼 10개를 기본 지급받는다", () => {
+  const localPlayer = createDefaultLocalPlayer();
+
+  assert.deepEqual(localPlayer.inventory, {
+    pokeball: 10,
+  });
+});
+
 test("활성 슬롯은 기절한 박스 포켓몬과 교체하지 않는다", () => {
   const localPlayer = createDefaultLocalPlayer();
   localPlayer.party = [{ slotIndex: 0, pokemon: createPokemon(1, "이상해씨") }];

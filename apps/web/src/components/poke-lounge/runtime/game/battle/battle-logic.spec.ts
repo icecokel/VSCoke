@@ -11,6 +11,27 @@ import {
 import { createSampleBattleState } from "./battleSampleState";
 import type { BattlePokemon, BattleScreenState } from "./battleTypes";
 
+test("기술 우선도가 같으면 스피드가 빠른 포켓몬이 먼저 행동한다", () => {
+  const fasterPlayerState = createSpeedOrderBattleState({
+    playerSpeed: 100,
+    opponentSpeed: 10,
+  });
+  const fasterOpponentState = createSpeedOrderBattleState({
+    playerSpeed: 10,
+    opponentSpeed: 100,
+  });
+
+  const playerFirstResult = choosePlayerMove(fasterPlayerState, 0, {
+    random: () => 0.99,
+  });
+  const opponentFirstResult = choosePlayerMove(fasterOpponentState, 0, {
+    random: () => 0.99,
+  });
+
+  assert.equal(playerFirstResult.messageQueue[0], "치코리타의 몸통박치기!");
+  assert.equal(opponentFirstResult.messageQueue[0], "브케인의 몸통박치기!");
+});
+
 test("선두가 쓰러지고 생존한 벤치가 있으면 패배 대신 강제 교체로 진행한다", () => {
   const state = choosePlayerMove(createTwoPokemonBattleState(), 0, {
     random: () => 0.5,
@@ -174,6 +195,63 @@ function createTwoPokemonBattleState({ reserveHp = 43 } = {}): BattleScreenState
       pokemon: opponentPokemon,
       party: baseState.opponent.party.map(slot =>
         slot.slotIndex === 0 ? { ...slot, pokemon: opponentPokemon } : slot,
+      ),
+    },
+    selectedMoveId: null,
+    result: null,
+  };
+}
+
+function createSpeedOrderBattleState({
+  playerSpeed,
+  opponentSpeed,
+}: {
+  playerSpeed: number;
+  opponentSpeed: number;
+}): BattleScreenState {
+  const baseState = createSampleBattleState();
+  const tackle = {
+    ...baseState.player.pokemon.moves[0],
+    id: 33,
+    name: "몸통박치기",
+    effectCode: 0,
+    category: "physical" as const,
+    power: 1,
+    accuracy: 100,
+    pp: 35,
+    maxPp: 35,
+  };
+  const playerPokemon = {
+    ...clonePokemon(baseState.player.pokemon),
+    speed: playerSpeed,
+    moves: [{ ...tackle }],
+  };
+  const opponentPokemon = {
+    ...clonePokemon(baseState.opponent.pokemon),
+    speed: opponentSpeed,
+    moves: [{ ...tackle }],
+  };
+
+  return {
+    ...baseState,
+    phase: "move-select",
+    messageQueue: [],
+    player: {
+      ...baseState.player,
+      pokemon: playerPokemon,
+      party: baseState.player.party.map(slot =>
+        slot.slotIndex === baseState.player.activePartySlotIndex
+          ? { ...slot, pokemon: playerPokemon }
+          : slot,
+      ),
+    },
+    opponent: {
+      ...baseState.opponent,
+      pokemon: opponentPokemon,
+      party: baseState.opponent.party.map(slot =>
+        slot.slotIndex === baseState.opponent.activePartySlotIndex
+          ? { ...slot, pokemon: opponentPokemon }
+          : slot,
       ),
     },
     selectedMoveId: null,

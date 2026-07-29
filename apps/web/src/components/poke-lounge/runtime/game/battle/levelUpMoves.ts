@@ -1,5 +1,5 @@
 import type { PlayerPokemon, PlayerPokemonMove } from "../state/gameStateStore";
-import { getRuntimeLevelUpMoveTable } from "../data/game-data-json";
+import { getRuntimeLevelUpMoveTable, getRuntimeMoveName } from "../data/game-data-json";
 import { normalizeRomMoveRecord, type RomBattleMoveRecord } from "./battleRomData";
 import type { BattleMove, BattlePokemon } from "./battleTypes";
 import type { RomRefinedMoveCollection } from "./wildBattleFactory";
@@ -135,9 +135,10 @@ export function createBattleMoveFromRom(
   moveId: number,
   moveRecords: RomRefinedMoveCollection,
 ): BattleMove {
+  const fallbackName = MOVE_NAMES[moveId] ?? `Move ${moveId}`;
   const normalized = normalizeRomMoveRecord(
     findMoveRecord(moveRecords, moveId),
-    MOVE_NAMES[moveId] ?? `Move ${moveId}`,
+    getRuntimeMoveName(moveId, fallbackName),
   );
 
   return {
@@ -333,10 +334,12 @@ function planMoveListLearning<TMove extends { id: number; name: string }>({
 }
 
 function moveAtLevel(level: number, moveId: number): LevelUpMoveDefinition {
+  const fallbackName = MOVE_NAMES[moveId] ?? `Move ${moveId}`;
+
   return {
     level,
     moveId,
-    name: MOVE_NAMES[moveId] ?? `Move ${moveId}`,
+    name: getRuntimeMoveName(moveId, fallbackName),
   };
 }
 

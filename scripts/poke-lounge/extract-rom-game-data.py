@@ -37,6 +37,7 @@ LEARNSET_NARC_PATH = "a/0/3/3"
 EVOLUTION_NARC_PATH = "a/0/3/4"
 MESSAGE_NARC_PATH = "a/0/2/7"
 POKEMON_NAME_MESSAGE_INDEX = 233
+MOVE_NAME_MESSAGE_INDEX = 743
 KOREAN_CHARACTER_MAP_PATH = "data/str2uni.bin"
 BATTLE_SPRITE_NARC_PATH = "a/0/0/4"
 
@@ -50,6 +51,7 @@ EXPECTED_ARCHIVE_FILE_COUNTS = {
     BATTLE_SPRITE_NARC_PATH: 2964,
 }
 EXPECTED_POKEMON_NAME_COUNT = 496
+EXPECTED_MOVE_NAME_COUNT = 468
 EXPECTED_KOREAN_CHARACTER_COUNT = 2416
 EXPECTED_POKEMON_NAMES = {
     1: "이상해씨",
@@ -63,6 +65,14 @@ EXPECTED_POKEMON_NAMES = {
     494: "알",
     495: "불량알",
 }
+EXPECTED_MOVE_NAMES = {
+    1: "막치기",
+    33: "몸통박치기",
+    77: "독가루",
+    98: "전광석화",
+    345: "메지컬리프",
+    467: "섀도다이브",
+}
 
 NATIONAL_DEX_SPECIES_COUNT = 493
 KOREAN_CHARACTER_CODE_OFFSET = 0x401
@@ -70,8 +80,8 @@ MESSAGE_TABLE_KEY_MULTIPLIER = 0x2FD
 MESSAGE_STRING_KEY_MULTIPLIER = 0x91BD3
 MESSAGE_STRING_KEY_INCREMENT = 0x493D
 GEN4_STANDARD_NAME_CHARACTERS = {
-    0x123: "2",
-    0x144: "Z",
+    **{0x121 + index: str(index) for index in range(10)},
+    **{0x12B + index: chr(ord("A") + index) for index in range(26)},
     0x1BB: "♂",
     0x1BC: "♀",
 }
@@ -192,15 +202,26 @@ def main() -> None:
         )
 
     character_map_data = bytes(rom.getFileByName(KOREAN_CHARACTER_MAP_PATH))
-    pokemon_names = parse_pokemon_names(
+    pokemon_names = parse_message_names(
         bytes(messages.files[POKEMON_NAME_MESSAGE_INDEX]),
         character_map_data,
+        entry_label="Pokemon name",
+        expected_entry_count=EXPECTED_POKEMON_NAME_COUNT,
+        message_index=POKEMON_NAME_MESSAGE_INDEX,
     )
     validate_pokemon_names(pokemon_names)
+    move_names = parse_message_names(
+        bytes(messages.files[MOVE_NAME_MESSAGE_INDEX]),
+        character_map_data,
+        entry_label="move name",
+        expected_entry_count=EXPECTED_MOVE_NAME_COUNT,
+        message_index=MOVE_NAME_MESSAGE_INDEX,
+    )
+    validate_move_names(move_names)
 
     learnsets = parse_learnsets(learnset_narc)
     evolutions = parse_evolutions(evolution_narc)
-    move_records = parse_move_records(moves)
+    move_records = parse_move_records(moves, move_names)
     pokemon_records = parse_pokemon_records(
         personal,
         learnsets,
@@ -218,6 +239,7 @@ def main() -> None:
         "evolutionPath": EVOLUTION_NARC_PATH,
         "messagePath": MESSAGE_NARC_PATH,
         "pokemonNameMessageIndex": POKEMON_NAME_MESSAGE_INDEX,
+        "moveNameMessageIndex": MOVE_NAME_MESSAGE_INDEX,
         "characterMapPath": KOREAN_CHARACTER_MAP_PATH,
         "battleSpritePath": BATTLE_SPRITE_NARC_PATH,
     }
@@ -230,6 +252,7 @@ def main() -> None:
         "stats": {
             "pokemonRecords": len(pokemon_records),
             "moveRecords": len(move_records),
+            "moveNameRecords": len(move_names),
             "learnsetSpecies": sum(1 for record in pokemon_records if record["levelUpMoves"]),
             "encounterableSpecies": sum(
                 1 for record in pokemon_records if record["encounterable"]
@@ -344,7 +367,14 @@ def parse_pokemon_records(
     return records
 
 
-def parse_pokemon_names(message_data: bytes, character_map_data: bytes) -> dict[int, str]:
+def parse_message_names(
+    message_data: bytes,
+    character_map_data: bytes,
+    *,
+    entry_label: str,
+    expected_entry_count: int,
+    message_index: int,
+) -> dict[int, str]:
     if len(character_map_data) % 2 != 0:
         raise ValueError(
             f"{KOREAN_CHARACTER_MAP_PATH} has an odd byte length: "
@@ -363,44 +393,44 @@ def parse_pokemon_names(message_data: bytes, character_map_data: bytes) -> dict[
 
     if len(message_data) < 4:
         raise ValueError(
-            f"Pokemon name message {POKEMON_NAME_MESSAGE_INDEX} is too short: "
+            f"{entry_label} message {message_index} is too short: "
             f"{len(message_data)} bytes"
         )
 
     entry_count = read_u16le(message_data, 0)
     seed = read_u16le(message_data, 2)
     validate_exact_value(
-        f"Pokemon name message {POKEMON_NAME_MESSAGE_INDEX} entry count",
+        f"{entry_label} message {message_index} entry count",
         entry_count,
-        EXPECTED_POKEMON_NAME_COUNT,
+        expected_entry_count,
     )
 
     table_end = 4 + entry_count * 8
     if table_end > len(message_data):
         raise ValueError(
-            f"Pokemon name message table ends at {table_end}, "
+            f"{entry_label} message table ends at {table_end}, "
             f"past its {len(message_data)}-byte payload"
         )
 
     names: dict[int, str] = {}
     table_key_base = (seed * MESSAGE_TABLE_KEY_MULTIPLIER) & 0xFFFF
-    for species_id in range(1, entry_count):
-        table_offset = 4 + species_id * 8
-        table_key = (table_key_base * (species_id + 1)) & 0xFFFF
+    for entry_id in range(1, entry_count):
+        table_offset = 4 + entry_id * 8
+        table_key = (table_key_base * (entry_id + 1)) & 0xFFFF
         table_key_32 = table_key | (table_key << 16)
         string_offset = read_u32le(message_data, table_offset) ^ table_key_32
         string_length = read_u32le(message_data, table_offset + 4) ^ table_key_32
 
         if string_length <= 0:
-            raise ValueError(f"Pokemon name {species_id} has no encoded characters")
+            raise ValueError(f"{entry_label} {entry_id} has no encoded characters")
         if string_offset < table_end or string_offset + string_length * 2 > len(message_data):
             raise ValueError(
-                f"Pokemon name {species_id} points outside its message payload: "
+                f"{entry_label} {entry_id} points outside its message payload: "
                 f"offset={string_offset}, length={string_length}"
             )
 
         string_key = (
-            MESSAGE_STRING_KEY_MULTIPLIER * (species_id + 1)
+            MESSAGE_STRING_KEY_MULTIPLIER * (entry_id + 1)
         ) & 0xFFFF
         decoded_characters: list[str] = []
         found_terminator = False
@@ -417,7 +447,7 @@ def parse_pokemon_names(message_data: bytes, character_map_data: bytes) -> dict[
                 break
             if character_code == 0xF100:
                 raise ValueError(
-                    f"Pokemon name {species_id} unexpectedly uses compressed text"
+                    f"{entry_label} {entry_id} unexpectedly uses compressed text"
                 )
 
             standard_character = GEN4_STANDARD_NAME_CHARACTERS.get(character_code)
@@ -428,25 +458,25 @@ def parse_pokemon_names(message_data: bytes, character_map_data: bytes) -> dict[
             character_index = character_code - KOREAN_CHARACTER_CODE_OFFSET
             if not 0 <= character_index < len(character_map):
                 raise ValueError(
-                    f"Pokemon name {species_id} has unmapped character code "
+                    f"{entry_label} {entry_id} has unmapped character code "
                     f"0x{character_code:04x}"
                 )
 
             unicode_code_point = character_map[character_index]
             if unicode_code_point == 0:
                 raise ValueError(
-                    f"Pokemon name {species_id} maps character code "
+                    f"{entry_label} {entry_id} maps character code "
                     f"0x{character_code:04x} to U+0000"
                 )
             decoded_characters.append(chr(unicode_code_point))
 
         if not found_terminator:
-            raise ValueError(f"Pokemon name {species_id} has no terminator")
+            raise ValueError(f"{entry_label} {entry_id} has no terminator")
 
         name = "".join(decoded_characters)
         if not name:
-            raise ValueError(f"Pokemon name {species_id} decoded to an empty string")
-        names[species_id] = name
+            raise ValueError(f"{entry_label} {entry_id} decoded to an empty string")
+        names[entry_id] = name
 
     return names
 
@@ -461,6 +491,20 @@ def validate_pokemon_names(pokemon_names: dict[int, str]) -> None:
         validate_exact_value(
             f"Pokemon name {species_id}",
             pokemon_names.get(species_id),
+            expected_name,
+        )
+
+
+def validate_move_names(move_names: dict[int, str]) -> None:
+    validate_exact_value(
+        "decoded move name count",
+        len(move_names),
+        EXPECTED_MOVE_NAME_COUNT - 1,
+    )
+    for move_id, expected_name in EXPECTED_MOVE_NAMES.items():
+        validate_exact_value(
+            f"move name {move_id}",
+            move_names.get(move_id),
             expected_name,
         )
 
@@ -589,7 +633,10 @@ def decode_battle_sprite_palette(
     return palette
 
 
-def parse_move_records(moves: NARC) -> list[dict[str, Any]]:
+def parse_move_records(
+    moves: NARC,
+    move_names: dict[int, str],
+) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
 
     for move_id, file_data in enumerate(moves.files):
@@ -599,23 +646,25 @@ def parse_move_records(moves: NARC) -> list[dict[str, Any]]:
 
         type_id = data[4]
         category_id = data[2]
-        records.append(
-            {
-                "id": move_id,
-                "effectCode": read_u16le(data, 0),
-                "category": GEN4_MOVE_CATEGORY_NAMES.get(category_id, "status"),
-                "categoryId": category_id,
-                "power": data[3],
-                "typeId": type_id,
-                "typeName": (
-                    GEN4_TYPE_NAMES[type_id]
-                    if type_id < len(GEN4_TYPE_NAMES)
-                    else f"type-{type_id}"
-                ),
-                "accuracy": data[5],
-                "pp": data[6],
-            }
-        )
+        record = {
+            "id": move_id,
+            "effectCode": read_u16le(data, 0),
+            "category": GEN4_MOVE_CATEGORY_NAMES.get(category_id, "status"),
+            "categoryId": category_id,
+            "power": data[3],
+            "typeId": type_id,
+            "typeName": (
+                GEN4_TYPE_NAMES[type_id]
+                if type_id < len(GEN4_TYPE_NAMES)
+                else f"type-{type_id}"
+            ),
+            "accuracy": data[5],
+            "pp": data[6],
+        }
+        move_name = move_names.get(move_id)
+        if move_name:
+            record["name"] = move_name
+        records.append(record)
 
     return records
 

@@ -2919,15 +2919,17 @@ export class BattleScene extends Phaser.Scene {
         selected: index === this.selectedCommandIndex,
         disabled: false,
       });
-      this.add.text(
-        slot.x + 10,
-        slot.y + 4,
-        `${index === this.selectedCommandIndex ? "▶ " : ""}${item.label}`,
-        createGameTextStyle({
-          color: "#17201a",
-          fontSize: "8px",
-        }),
-      );
+      this.add
+        .text(
+          slot.x + 10,
+          slot.y + slot.height / 2,
+          `${index === this.selectedCommandIndex ? "▶ " : ""}${item.label}`,
+          createGameTextStyle({
+            color: "#17201a",
+            fontSize: "8px",
+          }),
+        )
+        .setOrigin(0, 0.5);
     });
   }
 
@@ -2943,26 +2945,30 @@ export class BattleScene extends Phaser.Scene {
         selected: index === this.selectedMoveIndex && !disabled,
         disabled,
       });
-      this.add.text(
-        slot.x + 10,
-        slot.y + 3,
-        move ? `${index === this.selectedMoveIndex ? "▶ " : ""}${move.name}` : "-",
-        createGameTextStyle({
-          color: disabled ? "#7a827c" : "#17201a",
-          fontSize: "7px",
-        }),
-      );
+      this.add
+        .text(
+          slot.x + 10,
+          slot.y + slot.height / 2,
+          move ? `${index === this.selectedMoveIndex ? "▶ " : ""}${move.name}` : "-",
+          createGameTextStyle({
+            color: disabled ? "#7a827c" : "#17201a",
+            fontSize: "7px",
+          }),
+        )
+        .setOrigin(0, 0.5);
 
       if (move) {
-        this.add.text(
-          slot.x + slot.width - 58,
-          slot.y + 5,
-          formatBattleMoveMeta(move),
-          createGameTextStyle({
-            color: "#7a827c",
-            fontSize: "5px",
-          }),
-        );
+        this.add
+          .text(
+            slot.x + slot.width - 58,
+            slot.y + slot.height / 2,
+            formatBattleMoveMeta(move),
+            createGameTextStyle({
+              color: "#7a827c",
+              fontSize: "5px",
+            }),
+          )
+          .setOrigin(0, 0.5);
       }
     });
   }
@@ -3000,15 +3006,17 @@ export class BattleScene extends Phaser.Scene {
         selected: index === this.selectedMoveIndex && !disabled,
         disabled,
       });
-      this.add.text(
-        slot.x + 10,
-        slot.y + 3,
-        move ? `${index === this.selectedMoveIndex ? "▶ " : ""}${move.name}` : "-",
-        createGameTextStyle({
-          color: disabled ? "#7a827c" : "#17201a",
-          fontSize: "7px",
-        }),
-      );
+      this.add
+        .text(
+          slot.x + 10,
+          slot.y + slot.height / 2,
+          move ? `${index === this.selectedMoveIndex ? "▶ " : ""}${move.name}` : "-",
+          createGameTextStyle({
+            color: disabled ? "#7a827c" : "#17201a",
+            fontSize: "7px",
+          }),
+        )
+        .setOrigin(0, 0.5);
     });
   }
 

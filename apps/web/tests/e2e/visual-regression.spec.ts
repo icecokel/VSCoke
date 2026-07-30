@@ -1,8 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { gotoWithRetry } from "./test-helpers";
 
-test.describe.configure({ mode: "serial" });
-
 test.describe("비주얼 회귀", () => {
   test.use({
     viewport: { width: 1440, height: 900 },

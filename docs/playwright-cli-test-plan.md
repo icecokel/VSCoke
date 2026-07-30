@@ -7,6 +7,7 @@
 참고 운영 규칙 문서:
 
 - `docs/playwright-cli-test-spec.md`
+- `docs/e2e-full-feature-test-scenarios.md`
 
 ## 2. 배경
 

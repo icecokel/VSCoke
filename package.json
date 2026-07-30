@@ -23,6 +23,7 @@
     "e2e:cross-browser": "pnpm --filter @vscoke/web e2e:cross-browser",
     "e2e:headed": "pnpm --filter @vscoke/web e2e:headed",
     "e2e:install": "pnpm --filter @vscoke/web e2e:install",
+    "e2e:integration": "pnpm --filter @vscoke/web e2e:integration",
     "e2e:local-test-mode": "pnpm --filter @vscoke/web e2e:local-test-mode",
     "e2e:report": "pnpm --filter @vscoke/web e2e:report",
     "e2e:server": "pnpm --filter @vscoke/web e2e:server",

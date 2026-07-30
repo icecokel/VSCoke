@@ -35,6 +35,7 @@ apps/api -> NestJS backend
 | 웹 타입 체크       | `pnpm type:check:web`          |
 | API test           | `pnpm test:api`                |
 | API E2E test       | `pnpm test:api:e2e`            |
+| Web/API 통합 E2E   | `pnpm e2e:integration`         |
 | battle engine test | `pnpm test:poke-lounge-battle` |
 | OpenAPI 타입 생성  | `pnpm generate:types`          |
 | API 계약 확인      | `pnpm check:api-contract`      |

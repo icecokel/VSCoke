@@ -78,6 +78,22 @@ jobs:
   web:
     name: Web
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vscoke_web_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d vscoke_web_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/vscoke_web_test
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -139,4 +155,9 @@ jobs:
           printf '%s\n' "$integration_collection" | grep -Fq 'Total: 1 test in 1 file'
 
       - name: Run focused web E2E tests
-        run: pnpm --filter @vscoke/web e2e -- tests/e2e/i18n-integrity.spec.ts tests/e2e/hobby-games.spec.ts tests/e2e/keyboard-only.spec.ts tests/e2e/poke-lounge-multiplayer.spec.ts --project=chromium
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:65535
+        run: pnpm --filter @vscoke/web e2e -- tests/e2e/i18n-integrity.spec.ts tests/e2e/hobby-games.spec.ts tests/e2e/keyboard-only.spec.ts tests/e2e/core-routes.spec.ts tests/e2e/not-found-recovery.spec.ts tests/e2e/server-route-fallback.spec.ts tests/e2e/poke-lounge-multiplayer.spec.ts --project=chromium
+
+      - name: Run integrated hobby web E2E tests
+        run: pnpm e2e:integration

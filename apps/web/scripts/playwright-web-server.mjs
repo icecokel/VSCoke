@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
@@ -11,6 +11,7 @@ const nextTsconfigPath =
 
 const rootTsconfigPath = path.resolve("tsconfig.json");
 const resolvedNextTsconfigPath = path.resolve(nextTsconfigPath);
+const resolvedNextDistDir = path.resolve(nextDistDir);
 const localTestAuthToken =
   process.env.PLAYWRIGHT_ENABLE_LOCAL_TEST_MODE === "1"
     ? "playwright_local_test_auth_token_0123456789abcdef"
@@ -75,9 +76,24 @@ const shutdown = () => {
   }
 };
 
+const removeArtifact = (artifactPath, recursive) => {
+  try {
+    rmSync(artifactPath, {
+      force: true,
+      maxRetries: 5,
+      recursive,
+      retryDelay: 100,
+    });
+  } catch (error) {
+    console.warn(`Failed to remove Playwright artifact ${artifactPath}:`, error);
+  }
+};
+
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 server.on("exit", code => {
+  removeArtifact(resolvedNextDistDir, true);
+  removeArtifact(resolvedNextTsconfigPath, false);
   process.exit(code ?? 0);
 });

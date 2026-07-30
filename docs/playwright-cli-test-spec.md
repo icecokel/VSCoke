@@ -10,6 +10,8 @@
 
 이 스펙은 현재 저장소에 이미 존재하는 Playwright 기반 구현을 정식 운영 규칙으로 고정하는 문서다.
 
+기능별 사전조건, 상세 절차, 기대 결과와 자동화 공백은 [VSCoke 전체 기능 E2E 테스트 시나리오](./e2e-full-feature-test-scenarios.md)를 따른다.
+
 ## 2. 현재 기준 구현
 
 - 설정 파일: `apps/web/playwright.config.ts`
@@ -44,6 +46,7 @@
 | 스모크 검증         | `pnpm e2e:smoke`            | 가장 빠른 핵심 검증            |
 | 전체 E2E            | `pnpm e2e`                  | 기본 회귀 검증                 |
 | 크로스 브라우저     | `pnpm e2e:cross-browser`    | WebKit, Firefox 포함           |
+| 실제 API 통합       | `pnpm e2e:integration`      | 테스트 DB 기반 취미 성공 경로  |
 | 헤디드 디버깅       | `pnpm e2e:headed`           | 로컬 재현용                    |
 | UI 모드             | `pnpm e2e:ui`               | 선택 실행 및 디버깅            |
 | 코드 생성기         | `pnpm e2e:codegen`          | 셀렉터 탐색용                  |

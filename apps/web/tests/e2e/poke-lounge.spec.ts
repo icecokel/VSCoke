@@ -167,6 +167,12 @@ interface PokeLoungeGameStateSnapshot {
           currentHp?: number;
           maxHp?: number;
           status?: string;
+          moves?: Array<{
+            id: number;
+            name: string;
+            pp: number;
+            maxPp: number;
+          }>;
           individualValues?: {
             hp: number;
             attack: number;
@@ -1481,6 +1487,13 @@ test.describe("Poke Lounge", () => {
     const gameState = await getGameStateSnapshot(page);
     const starterPokemon =
       gameState?.playersById[gameState.currentPlayerId]?.party[0]?.pokemon ?? null;
+    expect(starterPokemon?.level).toBe(10);
+    expect(starterPokemon?.moves).toEqual([
+      { id: 33, name: "몸통박치기", pp: 35, maxPp: 35 },
+      { id: 45, name: "울음소리", pp: 40, maxPp: 40 },
+      { id: 75, name: "잎날가르기", pp: 25, maxPp: 25 },
+      { id: 77, name: "독가루", pp: 35, maxPp: 35 },
+    ]);
     expect(starterPokemon?.individualValues).toEqual({
       hp: expect.any(Number),
       attack: expect.any(Number),

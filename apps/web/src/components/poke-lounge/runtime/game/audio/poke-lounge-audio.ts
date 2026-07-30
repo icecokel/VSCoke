@@ -44,6 +44,7 @@ export interface PokeLoungeAudioPlaybackSnapshot {
 let manifestPromise: Promise<PokeLoungeAudioManifest> | null = null;
 let audioContext: AudioContext | null = null;
 let masterGain: GainNode | null = null;
+const unlockedAudioContexts = new WeakSet<AudioContext>();
 let muted = false;
 let masterVolume = 1;
 let playbackGeneration = 0;
@@ -66,8 +67,11 @@ let activeBgm: {
 
 export function bindPokeLoungeAudioPrimeListeners(target: HTMLElement): () => void {
   const prime = () => {
-    void primePokeLoungeAudio();
-    remove();
+    void primePokeLoungeAudio().then(() => {
+      if (!audioContext || audioContext.state === "running") {
+        remove();
+      }
+    });
   };
   const remove = () => {
     target.removeEventListener("pointerdown", prime);
@@ -88,8 +92,14 @@ export async function primePokeLoungeAudio(): Promise<void> {
   }
 
   const context = getAudioContext();
-  if (context?.state === "suspended") {
-    await context.resume().catch(() => undefined);
+  if (context) {
+    const resumePromise =
+      context.state === "suspended" ? context.resume().catch(() => undefined) : Promise.resolve();
+    startSilentAudioUnlock(context);
+    await resumePromise;
+    if (context.state === "running") {
+      unlockedAudioContexts.add(context);
+    }
   }
 
   const manifest = await loadAudioManifest().catch(() => null);
@@ -105,6 +115,13 @@ export async function primePokeLoungeAudio(): Promise<void> {
     audioItems.forEach(item => {
       getHtmlAudioElement(item);
     });
+  }
+
+  if (
+    activeBgm &&
+    (!isActiveBgmPlaying() || (context?.state === "running" && activeBgm.audio !== null))
+  ) {
+    playPokeLoungeBgm(activeBgm.id, { volume: activeBgm.baseVolume });
   }
 }
 
@@ -533,9 +550,26 @@ function getHtmlAudioElement(item: PokeLoungeAudioManifestItem): HTMLAudioElemen
 function createHtmlAudioElement(item: PokeLoungeAudioManifestItem): HTMLAudioElement {
   const audio = new Audio(getPreloadedAudioSource(item));
   audio.preload = "auto";
+  audio.setAttribute("playsinline", "");
   setHtmlAudioElementVolume(audio, item.defaultVolume);
 
   return audio;
+}
+
+function startSilentAudioUnlock(context: AudioContext): void {
+  if (unlockedAudioContexts.has(context)) {
+    return;
+  }
+
+  try {
+    const source = context.createBufferSource();
+    source.buffer = context.createBuffer(1, 1, context.sampleRate);
+    source.connect(context.destination);
+    source.onended = () => source.disconnect();
+    source.start();
+  } catch {
+    // 일부 모바일 브라우저는 사용자 제스처 밖의 unlock source 생성을 거부한다.
+  }
 }
 
 function getPreloadedAudioSource(item: PokeLoungeAudioManifestItem): string {

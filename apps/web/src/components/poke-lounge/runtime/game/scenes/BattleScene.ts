@@ -2066,6 +2066,7 @@ export class BattleScene extends Phaser.Scene {
       return {
         ...nextState,
         phase: "move-replace-select" as const,
+        messageQueue: removeBattleEndConfirmMessage(nextState.messageQueue),
       };
     }
 
@@ -3469,6 +3470,10 @@ function insertMessagesBeforeBattleEndConfirm(
 
 function appendBattleEndConfirmMessage(messages: string[]): string[] {
   return [...messages, BATTLE_END_CONFIRM_MESSAGE];
+}
+
+function removeBattleEndConfirmMessage(messages: string[]): string[] {
+  return messages.filter(message => message !== BATTLE_END_CONFIRM_MESSAGE);
 }
 
 function isRomRefinedMoveCollection(value: unknown): value is RomRefinedMoveCollection {

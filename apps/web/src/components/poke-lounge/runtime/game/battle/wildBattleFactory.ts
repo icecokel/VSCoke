@@ -9,7 +9,7 @@ import { getBattlePokemonAssets } from "./battlePokemonAssets";
 import { getExperienceForLevel } from "./experience";
 import {
   createBattleMoveFromRom,
-  getLevelUpMovesForSpecies,
+  getMoveIdsForSpeciesAtLevel,
   MAX_POKEMON_MOVE_COUNT,
 } from "./levelUpMoves";
 import { normalizeIndividualValues } from "./individual-values";
@@ -383,9 +383,7 @@ function restoreBattleMovePp(move: BattleMove, storedMove: PlayerPokemonMove): B
 }
 
 function resolveWildBattleMoveIds(speciesId: number, level: number): number[] {
-  const levelUpMoveIds = selectRecentUniqueMoveIds(
-    getLevelUpMovesForSpecies(speciesId, 0, level).map(move => move.moveId),
-  );
+  const levelUpMoveIds = getMoveIdsForSpeciesAtLevel(speciesId, level);
 
   if (levelUpMoveIds.length > 0) {
     return levelUpMoveIds;
@@ -409,22 +407,6 @@ function findPersonalRecord(
   }
 
   return record;
-}
-
-function selectRecentUniqueMoveIds(moveIds: number[]): number[] {
-  const uniqueMoveIds: number[] = [];
-
-  for (const moveId of moveIds) {
-    const existingIndex = uniqueMoveIds.indexOf(moveId);
-
-    if (existingIndex >= 0) {
-      uniqueMoveIds.splice(existingIndex, 1);
-    }
-
-    uniqueMoveIds.push(moveId);
-  }
-
-  return uniqueMoveIds.slice(-MAX_POKEMON_MOVE_COUNT);
 }
 
 function formatWildAppearedMessage(name: string): string {

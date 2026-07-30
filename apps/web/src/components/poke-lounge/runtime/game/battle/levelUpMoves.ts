@@ -113,14 +113,30 @@ export const DEFAULT_LEVEL_UP_MOVE_TABLE: Record<number, LevelUpMoveDefinition[]
   16: [moveAtLevel(5, 28), moveAtLevel(9, 16), moveAtLevel(13, 98)],
   19: [moveAtLevel(4, 98), moveAtLevel(7, 39), moveAtLevel(13, 116)],
   152: [
+    moveAtLevel(1, 33),
+    moveAtLevel(1, 45),
     moveAtLevel(6, 75),
     moveAtLevel(9, 77),
     moveAtLevel(12, 235),
     moveAtLevel(17, 115),
     moveAtLevel(20, 345),
   ],
-  155: [moveAtLevel(6, 108), moveAtLevel(10, 52), moveAtLevel(13, 98), moveAtLevel(19, 172)],
-  158: [moveAtLevel(6, 55), moveAtLevel(8, 99), moveAtLevel(13, 44), moveAtLevel(15, 184)],
+  155: [
+    moveAtLevel(1, 33),
+    moveAtLevel(1, 43),
+    moveAtLevel(6, 108),
+    moveAtLevel(10, 52),
+    moveAtLevel(13, 98),
+    moveAtLevel(19, 172),
+  ],
+  158: [
+    moveAtLevel(1, 10),
+    moveAtLevel(1, 43),
+    moveAtLevel(6, 55),
+    moveAtLevel(8, 99),
+    moveAtLevel(13, 44),
+    moveAtLevel(15, 184),
+  ],
 };
 
 export const LEVEL_UP_MOVE_TABLE = DEFAULT_LEVEL_UP_MOVE_TABLE;
@@ -139,6 +155,29 @@ export function getLevelUpMovesForSpecies(
   return (levelUpMoveTable[speciesId] ?? [])
     .filter(move => move.level > previousLevel && move.level <= currentLevel)
     .map(move => moveAtLevel(move.level, move.moveId));
+}
+
+export function getMoveIdsForSpeciesAtLevel(speciesId: number, level: number): number[] {
+  const uniqueMoveIds: number[] = [];
+
+  for (const move of getLevelUpMovesForSpecies(speciesId, 0, level)) {
+    const existingIndex = uniqueMoveIds.indexOf(move.moveId);
+
+    if (existingIndex >= 0) {
+      uniqueMoveIds.splice(existingIndex, 1);
+    }
+
+    uniqueMoveIds.push(move.moveId);
+  }
+
+  return uniqueMoveIds.slice(-MAX_POKEMON_MOVE_COUNT);
+}
+
+export function createPlayerPokemonMovesForLevel(
+  speciesId: number,
+  level: number,
+): PlayerPokemonMove[] {
+  return getMoveIdsForSpeciesAtLevel(speciesId, level).map(createPlayerPokemonMoveFromRuntimeData);
 }
 
 export function createBattleMoveFromRom(

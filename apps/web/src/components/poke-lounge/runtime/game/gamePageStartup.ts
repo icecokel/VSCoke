@@ -6,6 +6,7 @@ import {
   stopAllPokeLoungeAudio,
 } from "./audio/poke-lounge-audio";
 import { createPokemonGenderFromRatio } from "./battle/pokemon-gender";
+import { createPlayerPokemonMovesForLevel } from "./battle/levelUpMoves";
 import { createPokeLoungeGame, type PokeLoungeGameResult } from "./createPokeLoungeGame";
 import {
   getRuntimePokemonSpeciesGenderRatio,
@@ -347,7 +348,10 @@ export async function startGamePage(
   };
   const showStarterSelection = async (afterSelection: () => void) => {
     const requestId = (starterSelectionRequestId += 1);
-    const bootstrap = await (dependencies.loadBootstrapData ?? loadBootstrapData)();
+    const [bootstrap] = await Promise.all([
+      (dependencies.loadBootstrapData ?? loadBootstrapData)(),
+      loadRuntimeGameData(),
+    ]);
     if (destroyed || requestId !== starterSelectionRequestId) {
       return;
     }
@@ -814,5 +818,6 @@ export function createStarterPlayerPokemon(
     level,
     ...(gender ? { gender } : {}),
     individualValues: createRandomIndividualValues(),
+    moves: createPlayerPokemonMovesForLevel(starter.speciesId, level),
   };
 }

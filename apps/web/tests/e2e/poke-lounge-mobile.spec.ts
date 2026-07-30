@@ -103,7 +103,11 @@ test("Poke Lounge는 오디오 로딩이 끝난 뒤 모바일 메인 씬을 연�
     });
     await expect
       .poll(() => readAudioPlaybackSnapshot(page), { timeout: 30_000 })
-      .toMatchObject({ activeBgmId: "field-day", isBgmPlaying: true });
+      .toMatchObject({
+        activeBgmId: "field-day",
+        activeBufferSourceCount: 1,
+        isBgmPlaying: true,
+      });
   } finally {
     releaseAudio?.();
     await page.unroute(fieldBgmPattern);
@@ -539,9 +543,11 @@ test("Poke Lounge 모바일은 새 기술 습득 결과를 조작 도크에 표�
     )
     .toBe(true);
 
-  await page.evaluate(() => {
+  const reachedMoveReplacementWithoutEndMessage = await page.evaluate(() => {
     type BattleSnapshot = {
       message: string | null;
+      moveReplacement: { newMoveName: string } | null;
+      phase: string;
     };
     const controller = (
       window as Window & {
@@ -557,9 +563,27 @@ test("Poke Lounge 모바일은 새 기술 습득 결과를 조작 도크에 표�
     controller?.setBattleCommand("fight");
     controller?.confirmBattle();
     controller?.setBattleMoveIndex(0);
-    controller?.confirmBattle();
-    controller?.drainBattleMessages();
+    let snapshot = controller?.confirmBattle() ?? null;
+
+    for (let remaining = 20; snapshot?.message && remaining > 0; remaining -= 1) {
+      if (
+        snapshot.phase === "move-replace-select" &&
+        snapshot.message === "전투가 종료되었다. 확인을 누르면 필드로 돌아간다."
+      ) {
+        return false;
+      }
+
+      snapshot = controller?.confirmBattle() ?? null;
+    }
+
+    return (
+      snapshot?.phase === "move-replace-select" &&
+      snapshot.message === null &&
+      snapshot.moveReplacement?.newMoveName === "화염자동차"
+    );
   });
+
+  expect(reachedMoveReplacementWithoutEndMessage).toBe(true);
 
   await expect
     .poll(

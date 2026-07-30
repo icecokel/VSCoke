@@ -13,17 +13,20 @@ interface Props {
 export const generateMetadata = async ({ params }: Props): Promise<Metadata> => {
   const { locale, id } = await params;
   const result = await getGameResult(id);
-  const t = await getTranslations({ locale, namespace: "Game" });
 
   if (!result) {
+    const notFoundT = await getTranslations({ locale, namespace: "Game" });
+
     return {
-      title: "Game Result Not Found",
+      title: notFoundT("resultNotFoundTitle"),
       robots: {
         index: false,
         follow: false,
       },
     };
   }
+
+  const t = await getTranslations({ locale, namespace: "Game" });
 
   const gameTitle =
     result.gameType === "SKY_DROP"

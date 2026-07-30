@@ -57,6 +57,7 @@ export interface AppMessages {
     apiUnavailable: string;
     leaderboardEmpty: string;
     loadFailed: string;
+    resultNotFoundTitle: string;
     notEnoughLetters: string;
     wordleTitle: string;
     pokeLoungeTitle: string;

@@ -2,14 +2,54 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   BATTLE_END_CONFIRM_MESSAGE,
+  chooseBattleBagItem,
   chooseBattleCommand,
   choosePartySlot,
   choosePlayerMove,
+  formatWildVictoryRewardMessage,
   isForcedPartySwitch,
   popBattleMessage,
 } from "./battleLogic";
 import { createSampleBattleState } from "./battleSampleState";
 import type { BattlePokemon, BattleScreenState } from "./battleTypes";
+
+test("야생 전투 경험치와 돈 보상은 한 문구로 안내한다", () => {
+  assert.equal(
+    formatWildVictoryRewardMessage("브케인", 500, 120),
+    "브케인은 경험치 500과 ₽ 120을 얻었다!",
+  );
+  assert.equal(formatWildVictoryRewardMessage("피카츄", 500, 0), "피카츄는 500 경험치를 얻었다!");
+});
+
+test("포획 판정은 애니메이션용 볼 종류와 실제 흔들림 횟수를 보존한다", () => {
+  const initialState = createSampleBattleState();
+  const bagState: BattleScreenState = {
+    ...initialState,
+    battleKind: "wild",
+    phase: "bag-select",
+    messageQueue: [],
+  };
+
+  const caughtState = chooseBattleBagItem(bagState, "pokeball", {
+    itemCount: 1,
+    captureRandom16: () => 0,
+  });
+  const escapedState = chooseBattleBagItem(bagState, "pokeball", {
+    itemCount: 1,
+    captureRandom16: () => 65_535,
+  });
+
+  assert.deepEqual(caughtState.captureAttempt, {
+    ballItemId: "pokeball",
+    caught: true,
+    shakes: 4,
+  });
+  assert.deepEqual(escapedState.captureAttempt, {
+    ballItemId: "pokeball",
+    caught: false,
+    shakes: 0,
+  });
+});
 
 test("기술 우선도가 같으면 스피드가 빠른 포켓몬이 먼저 행동한다", () => {
   const fasterPlayerState = createSpeedOrderBattleState({

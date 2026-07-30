@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 try:
+    from ndspy import lz10
     from ndspy.narc import NARC
     from ndspy.rom import NintendoDSRom
 except ImportError as error:
@@ -30,6 +31,9 @@ DEFAULT_LEVEL_UP_MOVE_TABLE_PATH = (
     REPO_ROOT / "apps/web/public/game-data/level-up-move-table.json"
 )
 DEFAULT_SPRITE_SHEET_DIRECTORY = REPO_ROOT / "apps/web/public/assets/pokemon/sheets"
+DEFAULT_EVOLUTION_BACKGROUND_PATH = (
+    REPO_ROOT / "apps/web/public/assets/pokemon/battle/evolution-background.png"
+)
 
 PERSONAL_NARC_PATH = "pbr/personal.narc"
 MOVE_NARC_PATH = "pbr/waza_tbl.narc"
@@ -40,6 +44,7 @@ POKEMON_NAME_MESSAGE_INDEX = 233
 MOVE_NAME_MESSAGE_INDEX = 743
 KOREAN_CHARACTER_MAP_PATH = "data/str2uni.bin"
 BATTLE_SPRITE_NARC_PATH = "a/0/0/4"
+EVOLUTION_PRESENTATION_NARC_PATH = "a/1/1/5"
 
 EXPECTED_ROM_SHA1 = "5834fb3a2d751c48501d47d6a56898d7af6ccf9e"
 EXPECTED_ARCHIVE_FILE_COUNTS = {
@@ -49,6 +54,7 @@ EXPECTED_ARCHIVE_FILE_COUNTS = {
     EVOLUTION_NARC_PATH: 508,
     MESSAGE_NARC_PATH: 822,
     BATTLE_SPRITE_NARC_PATH: 2964,
+    EVOLUTION_PRESENTATION_NARC_PATH: 11,
 }
 EXPECTED_POKEMON_NAME_COUNT = 496
 EXPECTED_MOVE_NAME_COUNT = 468
@@ -99,6 +105,10 @@ BATTLE_SPRITE_FRAME_SIZE = 80
 BATTLE_SPRITE_SHEET_COLUMNS = 16
 BATTLE_SPRITE_SHEET_SIZE = BATTLE_SPRITE_FRAME_SIZE * BATTLE_SPRITE_SHEET_COLUMNS
 BATTLE_SPRITE_SHEET_RANGES = ((1, 256), (257, NATIONAL_DEX_SPECIES_COUNT))
+EVOLUTION_BACKGROUND_CHARACTER_MEMBER = 0
+EVOLUTION_BACKGROUND_SCREEN_MEMBER = 1
+EVOLUTION_BACKGROUND_PALETTE_MEMBER = 8
+EVOLUTION_BACKGROUND_SIZE = (256, 192)
 
 EXTRA_FORM_SPECIES = {
     496: {
@@ -168,6 +178,11 @@ def main() -> None:
         type=Path,
         default=DEFAULT_SPRITE_SHEET_DIRECTORY,
     )
+    parser.add_argument(
+        "--evolution-background",
+        type=Path,
+        default=DEFAULT_EVOLUTION_BACKGROUND_PATH,
+    )
     args = parser.parse_args()
 
     rom_path = resolve_repo_path(args.rom)
@@ -185,6 +200,9 @@ def main() -> None:
     evolution_narc = NARC(bytes(rom.getFileByName(EVOLUTION_NARC_PATH)))
     messages = NARC(bytes(rom.getFileByName(MESSAGE_NARC_PATH)))
     battle_sprites = NARC(bytes(rom.getFileByName(BATTLE_SPRITE_NARC_PATH)))
+    evolution_presentation = NARC(
+        bytes(rom.getFileByName(EVOLUTION_PRESENTATION_NARC_PATH))
+    )
 
     archives = {
         PERSONAL_NARC_PATH: personal,
@@ -193,6 +211,7 @@ def main() -> None:
         EVOLUTION_NARC_PATH: evolution_narc,
         MESSAGE_NARC_PATH: messages,
         BATTLE_SPRITE_NARC_PATH: battle_sprites,
+        EVOLUTION_PRESENTATION_NARC_PATH: evolution_presentation,
     }
     for archive_path, archive in archives.items():
         validate_exact_value(
@@ -229,6 +248,7 @@ def main() -> None:
         pokemon_names,
     )
     sprite_sheets = build_battle_sprite_sheets(battle_sprites)
+    evolution_background = decode_evolution_background(evolution_presentation)
 
     source = {
         "romPath": str(rom_path.relative_to(REPO_ROOT)),
@@ -242,6 +262,12 @@ def main() -> None:
         "moveNameMessageIndex": MOVE_NAME_MESSAGE_INDEX,
         "characterMapPath": KOREAN_CHARACTER_MAP_PATH,
         "battleSpritePath": BATTLE_SPRITE_NARC_PATH,
+        "evolutionPresentationPath": EVOLUTION_PRESENTATION_NARC_PATH,
+        "evolutionBackgroundMembers": {
+            "character": EVOLUTION_BACKGROUND_CHARACTER_MEMBER,
+            "screen": EVOLUTION_BACKGROUND_SCREEN_MEMBER,
+            "palette": EVOLUTION_BACKGROUND_PALETTE_MEMBER,
+        },
     }
 
     pokemon_data = {
@@ -275,13 +301,14 @@ def main() -> None:
     write_json(resolve_repo_path(args.pokemon_data), pokemon_data)
     write_json(resolve_repo_path(args.level_up_table), level_up_move_table)
     write_sprite_sheets(resolve_repo_path(args.sprite_sheet_directory), sprite_sheets)
+    write_image(resolve_repo_path(args.evolution_background), evolution_background)
 
     print(
         "Extracted "
         f"{len(pokemon_records)} Pokemon records, "
         f"{len(move_records)} move records, "
         f"{len(level_up_move_table['species'])} level-up tables, and "
-        f"{len(sprite_sheets)} battle sprite sheets."
+        f"{len(sprite_sheets)} battle sprite sheets with the evolution background."
     )
 
 
@@ -537,6 +564,81 @@ def build_battle_sprite_sheets(battle_sprites: NARC) -> dict[str, Image.Image]:
     return sheets
 
 
+def decode_evolution_background(evolution_presentation: NARC) -> Image.Image:
+    character_data = lz10.decompress(
+        bytes(
+            evolution_presentation.files[
+                EVOLUTION_BACKGROUND_CHARACTER_MEMBER
+            ]
+        )
+    )
+    screen_data = lz10.decompress(
+        bytes(evolution_presentation.files[EVOLUTION_BACKGROUND_SCREEN_MEMBER])
+    )
+    palette_data = bytes(
+        evolution_presentation.files[EVOLUTION_BACKGROUND_PALETTE_MEMBER]
+    )
+
+    if character_data[:4] != b"RGCN" or character_data[16:20] != b"RAHC":
+        raise ValueError("Evolution background character data is not a supported NCGR")
+    if screen_data[:4] != b"RCSN" or screen_data[16:20] != b"NRCS":
+        raise ValueError("Evolution background screen data is not a supported NSCR")
+    if palette_data[:4] != b"RLCN" or palette_data[16:20] != b"TTLP":
+        raise ValueError("Evolution background palette data is not a supported NCLR")
+
+    character_pixels = character_data[0x30:]
+    screen_entries = screen_data[0x24:]
+    palette = decode_opaque_nitro_palette(palette_data[0x28:0x68])
+    width, height = EVOLUTION_BACKGROUND_SIZE
+    pixels: list[tuple[int, int, int, int]] = []
+
+    for y in range(height):
+        tile_y, source_pixel_y = divmod(y, 8)
+        for x in range(width):
+            tile_x, source_pixel_x = divmod(x, 8)
+            screen_offset = (tile_y * 32 + tile_x) * 2
+            screen_entry = read_u16le(screen_entries, screen_offset)
+            tile_index = screen_entry & 0x03FF
+            palette_index = screen_entry >> 12
+            pixel_x = 7 - source_pixel_x if screen_entry & 0x0400 else source_pixel_x
+            pixel_y = 7 - source_pixel_y if screen_entry & 0x0800 else source_pixel_y
+
+            tile_pixel_index = pixel_y * 8 + pixel_x
+            packed_pixel = character_pixels[tile_index * 32 + tile_pixel_index // 2]
+            color_index = (
+                packed_pixel & 0x0F
+                if tile_pixel_index % 2 == 0
+                else packed_pixel >> 4
+            )
+            pixels.append(palette[palette_index * 16 + color_index])
+
+    image = Image.new("RGBA", EVOLUTION_BACKGROUND_SIZE)
+    image.putdata(pixels)
+    return image
+
+
+def decode_opaque_nitro_palette(
+    palette_data: bytes,
+) -> list[tuple[int, int, int, int]]:
+    if len(palette_data) % 2 != 0:
+        raise ValueError(
+            f"Evolution background palette has an odd byte length: {len(palette_data)}"
+        )
+
+    return [
+        (
+            (color & 0x1F) << 3,
+            ((color >> 5) & 0x1F) << 3,
+            ((color >> 10) & 0x1F) << 3,
+            255,
+        )
+        for color in (
+            read_u16le(palette_data, offset)
+            for offset in range(0, len(palette_data), 2)
+        )
+    ]
+
+
 def decode_battle_sprite_frame(
     battle_sprites: NARC,
     species_id: int,
@@ -755,6 +857,11 @@ def write_sprite_sheets(directory: Path, sprite_sheets: dict[str, Image.Image]) 
     directory.mkdir(parents=True, exist_ok=True)
     for filename, sprite_sheet in sprite_sheets.items():
         sprite_sheet.save(directory / filename, format="PNG")
+
+
+def write_image(path: Path, image: Image.Image) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(path, format="PNG")
 
 
 if __name__ == "__main__":

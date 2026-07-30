@@ -87,6 +87,12 @@ export interface BattleResult {
   rewardPokeDollars?: number;
 }
 
+export interface BattleCaptureAttempt {
+  ballItemId: string;
+  caught: boolean;
+  shakes: number;
+}
+
 export interface BattleReturnToWorld {
   mapKey: string;
   x: number;
@@ -112,6 +118,7 @@ export interface BattleScreenState {
   messageHpSnapshots?: BattleMessageHpSnapshot[];
   selectedMoveId: number | null;
   usedInventoryItemId?: string | null;
+  captureAttempt?: BattleCaptureAttempt | null;
   tournamentMatchId?: string;
   result: BattleResult | null;
   returnToWorld?: BattleReturnToWorld;

@@ -862,6 +862,7 @@ function MobileBattleDeck({ copy }: { copy: PokeLoungeCopy }) {
   if (battleState.message) {
     return (
       <div className={styles.messageDeck} data-poke-lounge-mobile-deck="battle-message">
+        <p data-poke-lounge-mobile-battle-message="true">{battleState.message}</p>
         <button
           type="button"
           className={styles.nextButton}

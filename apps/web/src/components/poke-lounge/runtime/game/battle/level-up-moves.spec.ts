@@ -226,11 +226,11 @@ test("캐터피가 Lv.6에서 Lv.11이 되면 레벨별 기술 습득과 두 번
     );
     assert.deepEqual(progression.pendingMoveLearnings, []);
     assert.deepEqual(progression.messages, [
-      "어라? 캐터피의 모습이...!",
-      "캐터피는 단데기로 진화했다!",
+      "...오잉!?\n캐터피의 모습이...!",
+      "축하합니다! 캐터피\n단데기로 진화했습니다!",
       "단데기는 단단해지기를 배웠다!",
-      "어라? 단데기의 모습이...!",
-      "단데기는 버터플로 진화했다!",
+      "...오잉!?\n단데기의 모습이...!",
+      "축하합니다! 단데기\n버터플로 진화했습니다!",
       "버터플은 염동력을 배웠다!",
     ]);
   } finally {
@@ -274,8 +274,8 @@ test("이상해씨가 Lv.15에서 Lv.20이 되면 진화 후 이상해풀 기술
     );
     assert.deepEqual(progression.pendingMoveLearnings, []);
     assert.deepEqual(progression.messages, [
-      "어라? 이상해씨의 모습이...!",
-      "이상해씨는 이상해풀로 진화했다!",
+      "...오잉!?\n이상해씨의 모습이...!",
+      "축하합니다! 이상해씨\n이상해풀로 진화했습니다!",
       "이상해풀은 잎날가르기를 배웠다!",
     ]);
   } finally {

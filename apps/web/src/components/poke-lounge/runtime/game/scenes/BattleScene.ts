@@ -26,6 +26,7 @@ import { createPvpBattleState } from "../battle/pvpBattleFactory";
 import {
   BATTLE_BACKGROUND_ASSET_KEY,
   BATTLE_WINDOW_FRAME_ASSET_KEY,
+  EVOLUTION_BACKGROUND_ASSET_KEY,
   ROM_BATTLE_WINDOW_STYLE,
 } from "../battle/battleDesign";
 import {
@@ -48,6 +49,7 @@ import {
   popBattleMessage,
 } from "../battle/battleLogic";
 import type {
+  BattleCaptureAttempt,
   BattleCommand,
   BattleMove,
   BattleParticipant,
@@ -58,6 +60,11 @@ import type {
 import { formatReplacedMoveMessage, formatSkippedMoveMessage } from "../battle/levelUpMoves";
 import { planLevelUpBattleProgression } from "../battle/level-up-progression";
 import { normalizePokemonEvolutionTable } from "../battle/pokemon-evolution";
+import {
+  formatRomEvolutionStartMessage,
+  resolveRomEvolutionAnimationFrame,
+  ROM_EVOLUTION_ANIMATION_DURATION_MS,
+} from "../battle/evolution-presentation";
 import { BATTLE_BASE_SIZE, getBattleCameraZoom } from "../gameViewport";
 import { getDefaultGameStateStore } from "../state/defaultGameStateStore";
 import {
@@ -126,7 +133,7 @@ const BATTLE_HP_DECREASE_TWEEN_MS = 560;
 const BATTLE_HIT_TWEEN_MS = 300;
 const BATTLE_HIT_SHAKE_PIXELS = 4;
 const BATTLE_ENTRANCE_TWEEN_MS = 640;
-const BATTLE_EVOLUTION_TWEEN_MS = 1600;
+const BATTLE_CAPTURE_TWEEN_MS = 1_900;
 const E2E_SINGLE_LEVEL_BASE_EXP_YIELD = Math.ceil(500 / WILD_BATTLE_EXPERIENCE_MULTIPLIER);
 const BATTLE_BAG_PREMIUM_ITEM_IDS = [
   "hyperPotion",
@@ -184,8 +191,13 @@ export interface BattleE2eSnapshot {
   hpAnimationStartedCount: number;
   hitAnimationPlaying: boolean;
   hitAnimationStartedCount: number;
+  captureAnimationPlaying: boolean;
+  captureAnimationStartedCount: number;
+  captureAnimationShakes: number | null;
   evolutionAnimationPlaying: boolean;
   evolutionAnimationStartedCount: number;
+  evolutionFromSpeciesId: number | null;
+  evolutionToSpeciesId: number | null;
   player: {
     name: string;
     level: number;
@@ -214,6 +226,11 @@ interface PendingMoveLearning {
   slotIndex: number;
   pokemonName: string;
   newMove: BattleMove;
+}
+
+interface BattleEvolutionTransition {
+  fromPokemon: BattlePokemon;
+  toPokemon: BattlePokemon;
 }
 
 interface BattleWorldPositionPolicy {
@@ -437,10 +454,17 @@ export class BattleScene extends Phaser.Scene {
   private battleEntranceProgress = 1;
   private battleEntrancePlayed = false;
   private battleEntranceTween: Phaser.Tweens.Tween | null = null;
+  private captureAnimationPlaying = false;
+  private captureAnimationProgress = 1;
+  private captureAnimationTween: Phaser.Tweens.Tween | null = null;
+  private captureAnimationStartedCount = 0;
+  private captureAnimationAttempt: BattleCaptureAttempt | null = null;
   private evolutionAnimationPlaying = false;
   private evolutionAnimationProgress = 1;
   private evolutionAnimationTween: Phaser.Tweens.Tween | null = null;
   private evolutionAnimationStartedCount = 0;
+  private evolutionTransition: BattleEvolutionTransition | null = null;
+  private evolutionAnimationPending = false;
   private hpAnimationStartedCount = 0;
   private hitAnimationStartedCount = 0;
   private pendingMoveLearnings: PendingMoveLearning[] = [];
@@ -480,11 +504,19 @@ export class BattleScene extends Phaser.Scene {
     this.battleEntrancePlayed = false;
     this.hpAnimationStartedCount = 0;
     this.hitAnimationStartedCount = 0;
+    this.captureAnimationStartedCount = 0;
+    this.captureAnimationProgress = 1;
+    this.captureAnimationPlaying = false;
+    this.captureAnimationAttempt = null;
+    this.captureAnimationTween?.stop();
+    this.captureAnimationTween = null;
     this.evolutionAnimationStartedCount = 0;
     this.evolutionAnimationProgress = 1;
     this.evolutionAnimationPlaying = false;
     this.evolutionAnimationTween?.stop();
     this.evolutionAnimationTween = null;
+    this.evolutionTransition = null;
+    this.evolutionAnimationPending = false;
     this.pendingMoveLearnings = [];
     this.levelUpMoveLearningApplied = false;
     this.lastAccessibleStatus = "";
@@ -548,7 +580,7 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    if (this.evolutionAnimationPlaying) {
+    if (this.captureAnimationPlaying || this.evolutionAnimationPlaying) {
       resetVirtualGamepad();
       return;
     }
@@ -679,8 +711,13 @@ export class BattleScene extends Phaser.Scene {
       hpAnimationStartedCount: this.hpAnimationStartedCount,
       hitAnimationPlaying: this.isHitAnimationPlaying(),
       hitAnimationStartedCount: this.hitAnimationStartedCount,
+      captureAnimationPlaying: this.captureAnimationPlaying,
+      captureAnimationStartedCount: this.captureAnimationStartedCount,
+      captureAnimationShakes: this.captureAnimationAttempt?.shakes ?? null,
       evolutionAnimationPlaying: this.evolutionAnimationPlaying,
       evolutionAnimationStartedCount: this.evolutionAnimationStartedCount,
+      evolutionFromSpeciesId: this.evolutionTransition?.fromPokemon.speciesId ?? null,
+      evolutionToSpeciesId: this.evolutionTransition?.toPokemon.speciesId ?? null,
       player: {
         name: this.state.player.pokemon.name,
         level: this.state.player.pokemon.level,
@@ -716,11 +753,19 @@ export class BattleScene extends Phaser.Scene {
     this.battleEntrancePlayed = false;
     this.hpAnimationStartedCount = 0;
     this.hitAnimationStartedCount = 0;
+    this.captureAnimationStartedCount = 0;
+    this.captureAnimationProgress = 1;
+    this.captureAnimationPlaying = false;
+    this.captureAnimationAttempt = null;
+    this.captureAnimationTween?.stop();
+    this.captureAnimationTween = null;
     this.evolutionAnimationStartedCount = 0;
     this.evolutionAnimationProgress = 1;
     this.evolutionAnimationPlaying = false;
     this.evolutionAnimationTween?.stop();
     this.evolutionAnimationTween = null;
+    this.evolutionTransition = null;
+    this.evolutionAnimationPending = false;
     this.pendingMoveLearnings = [];
     this.levelUpMoveLearningApplied = false;
     this.persistWorldPositionOnReturn = true;
@@ -866,6 +911,7 @@ export class BattleScene extends Phaser.Scene {
   private handleMobileBattleUiAction(action: MobileBattleUiAction): void {
     if (
       this.battleEntrancePlaying ||
+      this.captureAnimationPlaying ||
       this.evolutionAnimationPlaying ||
       this.isHpAnimationPlaying() ||
       this.isHitAnimationPlaying() ||
@@ -986,6 +1032,7 @@ export class BattleScene extends Phaser.Scene {
       message: this.state.messageQueue[0] ?? null,
       isInputLocked:
         this.battleEntrancePlaying ||
+        this.captureAnimationPlaying ||
         this.evolutionAnimationPlaying ||
         this.isHpAnimationPlaying() ||
         this.isHitAnimationPlaying() ||
@@ -1057,6 +1104,8 @@ export class BattleScene extends Phaser.Scene {
   private handlePointerConfirm(pointer: Phaser.Input.Pointer): void {
     if (
       this.battleEntrancePlaying ||
+      this.captureAnimationPlaying ||
+      this.evolutionAnimationPlaying ||
       this.isHpAnimationPlaying() ||
       this.isHitAnimationPlaying() ||
       this.usesMobileBattleDeck()
@@ -1440,6 +1489,14 @@ export class BattleScene extends Phaser.Scene {
     nextState: BattleScreenState,
     options: { animateHpDecrease?: boolean; render?: boolean } = {},
   ): void {
+    const nextCaptureAttempt = nextState.captureAttempt ?? null;
+    const shouldPlayCaptureAnimation =
+      nextCaptureAttempt !== null && nextCaptureAttempt !== this.state.captureAttempt;
+    const shouldPlayEvolutionAnimation =
+      this.evolutionAnimationPending &&
+      this.evolutionTransition !== null &&
+      nextState.messageQueue[0] ===
+        formatRomEvolutionStartMessage(this.evolutionTransition.fromPokemon.name);
     const isEnteringForcedPartySwitch =
       isForcedPartySwitch(nextState) && !isForcedPartySwitch(this.state);
 
@@ -1451,6 +1508,15 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.state = nextState;
+    if (shouldPlayCaptureAnimation) {
+      this.playCaptureAnimation(nextCaptureAttempt);
+    }
+    if (shouldPlayEvolutionAnimation && this.evolutionTransition) {
+      this.playEvolutionAnimation(
+        this.evolutionTransition.fromPokemon,
+        this.evolutionTransition.toPokemon,
+      );
+    }
     this.syncDisplayedHpTargets({
       animateHpDecrease: options.animateHpDecrease ?? true,
     });
@@ -1620,8 +1686,40 @@ export class BattleScene extends Phaser.Scene {
     this.battleEntrancePlaying = false;
   }
 
-  private playEvolutionAnimation(): void {
+  private playCaptureAnimation(attempt: BattleCaptureAttempt): void {
+    this.captureAnimationTween?.stop();
+    this.captureAnimationAttempt = attempt;
+    this.captureAnimationProgress = 0;
+    this.captureAnimationPlaying = true;
+    this.captureAnimationStartedCount += 1;
+    const tweenState = { progress: 0 };
+
+    const tween = this.tweens.add({
+      targets: tweenState,
+      progress: 1,
+      duration: BATTLE_CAPTURE_TWEEN_MS,
+      ease: "Linear",
+      onUpdate: () => {
+        this.captureAnimationProgress = tweenState.progress;
+        this.render();
+      },
+      onComplete: () => {
+        this.captureAnimationProgress = 1;
+        this.captureAnimationPlaying = false;
+        if (this.captureAnimationTween === tween) {
+          this.captureAnimationTween = null;
+        }
+        this.render();
+      },
+    });
+
+    this.captureAnimationTween = tween;
+  }
+
+  private playEvolutionAnimation(fromPokemon: BattlePokemon, toPokemon: BattlePokemon): void {
     this.evolutionAnimationTween?.stop();
+    this.evolutionTransition = { fromPokemon, toPokemon };
+    this.evolutionAnimationPending = false;
     this.evolutionAnimationProgress = 0;
     this.evolutionAnimationPlaying = true;
     this.evolutionAnimationStartedCount += 1;
@@ -1630,8 +1728,8 @@ export class BattleScene extends Phaser.Scene {
     const tween = this.tweens.add({
       targets: tweenState,
       progress: 1,
-      duration: BATTLE_EVOLUTION_TWEEN_MS,
-      ease: "Sine.easeInOut",
+      duration: ROM_EVOLUTION_ANIMATION_DURATION_MS,
+      ease: "Linear",
       onUpdate: () => {
         this.evolutionAnimationProgress = tweenState.progress;
         this.render();
@@ -1844,7 +1942,7 @@ export class BattleScene extends Phaser.Scene {
     const learningMessages: string[] = [];
     let activePokemon = state.player.pokemon;
     let activeSlotSeen = false;
-    let shouldPlayEvolutionAnimation = false;
+    let activeEvolutionTransition: BattleEvolutionTransition | null = null;
 
     const party = state.player.party.map(slot => {
       if (!slot.pokemon) {
@@ -1874,7 +1972,6 @@ export class BattleScene extends Phaser.Scene {
         pokemon: slot.pokemon,
         previousLevel,
       });
-      shouldPlayEvolutionAnimation = shouldPlayEvolutionAnimation || progression.evolved;
 
       if (progression.messages.length === 0 && progression.pendingMoveLearnings.length === 0) {
         return slot;
@@ -1891,6 +1988,12 @@ export class BattleScene extends Phaser.Scene {
 
       if (slot.slotIndex === state.player.activePartySlotIndex) {
         activePokemon = progression.pokemon;
+        if (progression.evolved && slot.pokemon.speciesId !== progression.pokemon.speciesId) {
+          activeEvolutionTransition = {
+            fromPokemon: slot.pokemon,
+            toPokemon: progression.pokemon,
+          };
+        }
       }
 
       return {
@@ -1911,11 +2014,16 @@ export class BattleScene extends Phaser.Scene {
         pokemon: state.player.pokemon,
         previousLevel,
       });
-      shouldPlayEvolutionAnimation = shouldPlayEvolutionAnimation || progression.evolved;
 
       if (progression.messages.length > 0) {
         activePokemon = progression.pokemon;
         learningMessages.push(...progression.messages);
+      }
+      if (progression.evolved && state.player.pokemon.speciesId !== progression.pokemon.speciesId) {
+        activeEvolutionTransition = {
+          fromPokemon: state.player.pokemon,
+          toPokemon: progression.pokemon,
+        };
       }
 
       progression.pendingMoveLearnings.forEach(({ newMove }) => {
@@ -1931,8 +2039,9 @@ export class BattleScene extends Phaser.Scene {
       return state;
     }
 
-    if (shouldPlayEvolutionAnimation) {
-      this.playEvolutionAnimation();
+    if (activeEvolutionTransition) {
+      this.evolutionTransition = activeEvolutionTransition;
+      this.evolutionAnimationPending = true;
     }
 
     const nextState = {
@@ -2198,11 +2307,20 @@ export class BattleScene extends Phaser.Scene {
 
   private render(): void {
     this.children.removeAll(true);
-    this.drawBackground();
-    this.drawPokemon();
-    this.drawHpPanel(BATTLE_LAYOUT.opponentHpPanel, this.state.opponent.pokemon, "opponent", false);
-    this.drawHpPanel(BATTLE_LAYOUT.playerHpPanel, this.state.player.pokemon, "player", true);
-    this.drawEvolutionOverlay();
+    if (this.evolutionAnimationPlaying && this.evolutionTransition) {
+      this.drawEvolutionScene();
+    } else {
+      this.drawBackground();
+      this.drawPokemon();
+      this.drawCaptureAnimation();
+      this.drawHpPanel(
+        BATTLE_LAYOUT.opponentHpPanel,
+        this.state.opponent.pokemon,
+        "opponent",
+        false,
+      );
+      this.drawHpPanel(BATTLE_LAYOUT.playerHpPanel, this.state.player.pokemon, "player", true);
+    }
     this.publishE2eSnapshot();
     this.publishMobileBattleUiState();
     this.publishAccessibleStatus();
@@ -2318,6 +2436,99 @@ export class BattleScene extends Phaser.Scene {
       .setDisplaySize(BATTLE_BASE_SIZE.width, BATTLE_BASE_SIZE.height);
   }
 
+  private drawEvolutionScene(): void {
+    const transition = this.evolutionTransition;
+
+    if (!transition) {
+      return;
+    }
+
+    const progress = Phaser.Math.Clamp(this.evolutionAnimationProgress, 0, 1);
+    const frame = resolveRomEvolutionAnimationFrame(progress);
+    const pokemon = frame.pokemon === "from" ? transition.fromPokemon : transition.toPokemon;
+    const sprite = pokemon.frontSprite;
+    const renderBox = { x: 128, y: 80, width: 80, height: 80 };
+    const scaledRenderBox = {
+      ...renderBox,
+      width: renderBox.width * frame.scale,
+      height: renderBox.height * frame.scale,
+    };
+
+    this.add
+      .image(
+        BATTLE_BASE_SIZE.width / 2,
+        BATTLE_BASE_SIZE.height / 2,
+        EVOLUTION_BACKGROUND_ASSET_KEY,
+      )
+      .setDisplaySize(BATTLE_BASE_SIZE.width, BATTLE_BASE_SIZE.height);
+    this.drawEvolutionEnergyEffect(progress);
+    this.drawPlayerPokemonImage({
+      alpha: 1,
+      offsetX: 0,
+      renderBox: scaledRenderBox,
+      scale: 1,
+      sprite,
+      tint: null,
+    });
+
+    if (frame.silhouetteAlpha > 0) {
+      this.drawPlayerPokemonImage({
+        alpha: frame.silhouetteAlpha,
+        offsetX: 0,
+        renderBox: scaledRenderBox,
+        scale: 1,
+        sprite,
+        tint: 0xffffff,
+      });
+    }
+
+    if (frame.flashAlpha > 0) {
+      this.add
+        .graphics()
+        .fillStyle(0xffffff, frame.flashAlpha)
+        .fillRect(0, 0, BATTLE_BASE_SIZE.width, BATTLE_BASE_SIZE.height);
+    }
+  }
+
+  private drawEvolutionEnergyEffect(progress: number): void {
+    const startProgress = Phaser.Math.Clamp((progress - 0.17) / 0.65, 0, 1);
+    const endFade = Phaser.Math.Clamp((0.94 - progress) / 0.12, 0, 1);
+    const alpha = Math.min(startProgress * 1.6, endFade);
+
+    if (alpha <= 0) {
+      return;
+    }
+
+    const graphics = this.add.graphics();
+    const centerX = BATTLE_BASE_SIZE.width / 2;
+    const centerY = 82;
+    const rotation = progress * Math.PI * 1.5;
+    const innerRadius = 14 + startProgress * 8;
+    const outerRadius = 48 + startProgress * 20;
+
+    for (let index = 0; index < 12; index += 1) {
+      const angle = rotation + (Math.PI * 2 * index) / 12;
+      graphics
+        .lineStyle(1, 0xffffff, alpha * 0.52)
+        .beginPath()
+        .moveTo(
+          Math.round(centerX + Math.cos(angle) * innerRadius),
+          Math.round(centerY + Math.sin(angle) * innerRadius),
+        )
+        .lineTo(
+          Math.round(centerX + Math.cos(angle) * outerRadius),
+          Math.round(centerY + Math.sin(angle) * outerRadius),
+        )
+        .strokePath();
+    }
+
+    graphics
+      .lineStyle(2, 0xe9fff8, alpha * 0.58)
+      .strokeCircle(centerX, centerY, 20 + ((progress * 120) % 28))
+      .lineStyle(1, 0xffffff, alpha * 0.42)
+      .strokeCircle(centerX, centerY, 34 + ((progress * 180) % 32));
+  }
+
   private drawPokemon(): void {
     const opponent = BATTLE_LAYOUT.opponentSprite;
     const player = BATTLE_LAYOUT.playerSprite;
@@ -2326,14 +2537,13 @@ export class BattleScene extends Phaser.Scene {
     const entranceAlpha = 0.35 + entranceProgress * 0.65;
     const opponentHit = this.getHitRenderEffect("opponent");
     const playerHit = this.getHitRenderEffect("player");
-    const playerEvolution = this.getEvolutionRenderEffect();
     const opponentSprite = this.state.opponent.pokemon.frontSprite;
-    const playerSprite = this.state.player.pokemon.backSprite;
     const opponentRenderBox = getVisibleBoundsAlignedBattleSpriteRenderBox(
       opponent,
       this.resolveBattleSpriteVisibleBounds(opponentSprite),
     );
     const playerRenderBox = getCroppedBattleSpriteRenderBox(player);
+    const captureOpponent = this.getCaptureOpponentRenderEffect();
     this.add
       .image(
         opponentRenderBox.x + entranceOffset + opponentHit.offsetX,
@@ -2347,26 +2557,50 @@ export class BattleScene extends Phaser.Scene {
         BATTLE_SPRITE_CROP.width,
         BATTLE_SPRITE_CROP.height,
       )
-      .setDisplaySize(opponentRenderBox.width, opponentRenderBox.height)
-      .setAlpha(entranceAlpha * opponentHit.alpha);
-    const playerImage = this.add
-      .image(
-        playerRenderBox.x - entranceOffset + playerHit.offsetX,
-        playerRenderBox.y,
-        playerSprite.assetKey,
-        playerSprite.frame,
+      .setDisplaySize(
+        opponentRenderBox.width * captureOpponent.scale,
+        opponentRenderBox.height * captureOpponent.scale,
       )
+      .setAlpha(entranceAlpha * opponentHit.alpha * captureOpponent.alpha);
+
+    this.drawPlayerPokemonImage({
+      alpha: entranceAlpha * playerHit.alpha,
+      offsetX: -entranceOffset + playerHit.offsetX,
+      renderBox: playerRenderBox,
+      scale: 1,
+      sprite: this.state.player.pokemon.backSprite,
+      tint: null,
+    });
+  }
+
+  private drawPlayerPokemonImage({
+    alpha,
+    offsetX,
+    renderBox,
+    scale,
+    sprite,
+    tint,
+  }: {
+    alpha: number;
+    offsetX: number;
+    renderBox: BattleRect;
+    scale: number;
+    sprite: BattleSpriteRef;
+    tint: number | null;
+  }): void {
+    const playerImage = this.add
+      .image(renderBox.x + offsetX, renderBox.y, sprite.assetKey, sprite.frame)
       .setCrop(
         BATTLE_SPRITE_CROP.x,
         BATTLE_SPRITE_CROP.y,
         BATTLE_SPRITE_CROP.width,
         BATTLE_SPRITE_CROP.height,
       )
-      .setDisplaySize(playerRenderBox.width, playerRenderBox.height)
-      .setAlpha(entranceAlpha * playerHit.alpha * playerEvolution.alpha);
+      .setDisplaySize(renderBox.width * scale, renderBox.height * scale)
+      .setAlpha(alpha);
 
-    if (playerEvolution.tint !== null) {
-      playerImage.setTint(playerEvolution.tint);
+    if (tint !== null) {
+      playerImage.setTintFill(tint);
     }
   }
 
@@ -2388,38 +2622,131 @@ export class BattleScene extends Phaser.Scene {
     };
   }
 
-  private getEvolutionRenderEffect(): { alpha: number; tint: number | null } {
-    if (!this.evolutionAnimationPlaying && this.evolutionAnimationProgress >= 1) {
-      return { alpha: 1, tint: null };
+  private getCaptureOpponentRenderEffect(): { alpha: number; scale: number } {
+    const attempt = this.captureAnimationAttempt;
+    if (!attempt) {
+      return { alpha: 1, scale: 1 };
     }
 
-    const progress = Phaser.Math.Clamp(this.evolutionAnimationProgress, 0, 1);
-    const pulse = Math.abs(Math.sin(progress * Math.PI * 8));
+    const progress = Phaser.Math.Clamp(this.captureAnimationProgress, 0, 1);
+    if (progress < 0.3) {
+      return { alpha: 1, scale: 1 };
+    }
+    if (progress < 0.44) {
+      const absorbProgress = (progress - 0.3) / 0.14;
+      return {
+        alpha: 1 - absorbProgress,
+        scale: 1 - absorbProgress * 0.78,
+      };
+    }
+    if (attempt.caught) {
+      return { alpha: 0, scale: 0.2 };
+    }
+    if (progress < 0.84) {
+      return { alpha: 0, scale: 0.2 };
+    }
 
+    const escapeProgress = Phaser.Math.Clamp((progress - 0.84) / 0.12, 0, 1);
     return {
-      alpha: 0.52 + pulse * 0.48,
-      tint: pulse > 0.38 ? 0xffffff : null,
+      alpha: escapeProgress,
+      scale: 0.2 + escapeProgress * 0.8,
     };
   }
 
-  private drawEvolutionOverlay(): void {
-    if (!this.evolutionAnimationPlaying && this.evolutionAnimationProgress >= 1) {
+  private drawCaptureAnimation(): void {
+    const attempt = this.captureAnimationAttempt;
+    if (!attempt) {
       return;
     }
 
-    const progress = Phaser.Math.Clamp(this.evolutionAnimationProgress, 0, 1);
-    const pulse = Math.abs(Math.sin(progress * Math.PI * 8));
-    const alpha = pulse * 0.24 * (1 - progress * 0.3);
-
-    if (alpha <= 0.01) {
+    const progress = Phaser.Math.Clamp(this.captureAnimationProgress, 0, 1);
+    if (!attempt.caught && progress >= 1) {
       return;
     }
 
-    this.add
-      .graphics()
-      .setDepth(9_000)
-      .fillStyle(0xffffff, alpha)
-      .fillRect(0, 0, BATTLE_BASE_SIZE.width, BATTLE_BASE_SIZE.height);
+    const targetSprite = this.state.opponent.pokemon.frontSprite;
+    const targetBox = getVisibleBoundsAlignedBattleSpriteRenderBox(
+      BATTLE_LAYOUT.opponentSprite,
+      this.resolveBattleSpriteVisibleBounds(targetSprite),
+    );
+    const start = { x: 70, y: 126 };
+    const impact = { x: targetBox.x, y: targetBox.y - 2 };
+    const landed = { x: targetBox.x, y: targetBox.y + 34 };
+    let ballX = landed.x;
+    let ballY = landed.y;
+
+    if (progress < 0.3) {
+      const throwProgress = progress / 0.3;
+      ballX = Phaser.Math.Linear(start.x, impact.x, throwProgress);
+      ballY =
+        Phaser.Math.Linear(start.y, impact.y, throwProgress) -
+        Math.sin(throwProgress * Math.PI) * 54;
+    } else if (progress < 0.44) {
+      ballX = impact.x;
+      ballY = impact.y;
+    } else if (progress < 0.56) {
+      const fallProgress = (progress - 0.44) / 0.12;
+      ballX = Phaser.Math.Linear(impact.x, landed.x, fallProgress);
+      ballY = Phaser.Math.Linear(impact.y, landed.y, fallProgress);
+    } else if (progress < 0.88) {
+      const shakeProgress = (progress - 0.56) / 0.32;
+      const shakeCount = Math.max(1, attempt.shakes);
+      const shakeStrength = Math.max(0, 1 - shakeProgress) * (attempt.shakes > 0 ? 5 : 2);
+      ballX += Math.sin(shakeProgress * Math.PI * 2 * shakeCount) * shakeStrength;
+      ballY -= Math.abs(Math.sin(shakeProgress * Math.PI * shakeCount)) * 2;
+    }
+
+    const isEscaping = !attempt.caught && progress >= 0.88;
+    if (!isEscaping || progress < 0.95) {
+      this.drawCaptureBall(ballX, ballY, attempt.ballItemId);
+    }
+
+    if (progress < 0.88) {
+      return;
+    }
+
+    const resultProgress = Phaser.Math.Clamp((progress - 0.88) / 0.12, 0, 1);
+    const graphics = this.add.graphics().setDepth(500);
+    const rayColor = attempt.caught ? 0xf4cf58 : 0xffffff;
+
+    for (let index = 0; index < 8; index += 1) {
+      const angle = (Math.PI * 2 * index) / 8;
+      const distance = 7 + resultProgress * 13;
+      const size = attempt.caught ? 2 : 1.5;
+      graphics
+        .fillStyle(rayColor, 1 - resultProgress * 0.55)
+        .fillRect(
+          Math.round(landed.x + Math.cos(angle) * distance - size / 2),
+          Math.round(landed.y + Math.sin(angle) * distance - size / 2),
+          size,
+          size,
+        );
+    }
+  }
+
+  private drawCaptureBall(x: number, y: number, ballItemId: string): void {
+    const graphics = this.add.graphics().setDepth(510);
+    const topColor = ballItemId === "ultraBall" ? 0x303239 : 0xd94b43;
+    const accentColor = ballItemId === "ultraBall" ? 0xf4cf58 : 0xf7f4e8;
+    const left = Math.round(x) - 6;
+    const top = Math.round(y) - 6;
+
+    graphics
+      .fillStyle(0x1c262d, 1)
+      .fillRect(left + 2, top, 8, 12)
+      .fillRect(left, top + 2, 12, 8)
+      .fillStyle(topColor, 1)
+      .fillRect(left + 2, top + 1, 8, 4)
+      .fillRect(left + 1, top + 3, 10, 3)
+      .fillStyle(accentColor, 1)
+      .fillRect(left + 2, top + 7, 8, 4)
+      .fillRect(left + 3, top + 10, 6, 1)
+      .fillStyle(0x1c262d, 1)
+      .fillRect(left + 1, top + 6, 10, 2)
+      .fillStyle(accentColor, 1)
+      .fillRect(left + 5, top + 5, 3, 3)
+      .fillStyle(0x1c262d, 1)
+      .fillRect(left + 6, top + 6, 1, 1);
   }
 
   private resolveBattleSpriteVisibleBounds(sprite: BattleSpriteRef): BattleSpriteVisibleBounds {

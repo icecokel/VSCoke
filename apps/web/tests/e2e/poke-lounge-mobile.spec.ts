@@ -378,7 +378,10 @@ test("Poke Lounge 모바일 전투는 하단 조작 도크에서 행동을 고�
   const nextMessageButton = messageDeck.getByRole("button");
   await expect(messageDeck).toBeVisible({ timeout: 30_000 });
   await expect(nextMessageButton).toBeEnabled({ timeout: 30_000 });
-  await expect(messageDeck.locator("p")).toHaveCount(0);
+  await expect(
+    messageDeck.locator("[data-poke-lounge-mobile-battle-message='true']"),
+  ).toBeVisible();
+  await expect(messageDeck.locator("p")).not.toHaveText("");
   await expect(nextMessageButton).toHaveAccessibleName(/다음/);
 
   const singleActionLayout = await page.evaluate(() => {
@@ -496,6 +499,158 @@ test("Poke Lounge 모바일 전투는 하단 조작 도크에서 행동을 고�
 
   expect(moveSlotGeometry).toEqual(partySlotGeometry);
   expect(itemSlotGeometry).toEqual(partySlotGeometry);
+});
+
+test("Poke Lounge 모바일은 새 기술 습득 결과를 조작 도크에 표시한다", async ({ page }) => {
+  await gotoWithRetry(
+    page,
+    "/ko-KR/game/poke-lounge?scene=battle&e2eBattle=wild-move-learning&e2e=1",
+  );
+  await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30_000 });
+  await page.locator("[data-room-entry-solo]").click();
+  await chooseStarterIfNeeded(page);
+  await expect(page.locator("#game-root canvas")).toBeVisible({ timeout: 30_000 });
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const controller = (
+            window as Window & {
+              __POKE_LOUNGE_E2E__?: {
+                getActiveSceneKey(): string | null;
+                getBattleSnapshot(): {
+                  battleEntrancePlaying: boolean;
+                } | null;
+              };
+            }
+          ).__POKE_LOUNGE_E2E__;
+
+          return (
+            controller?.getActiveSceneKey() === "battle" &&
+            controller.getBattleSnapshot()?.battleEntrancePlaying === false
+          );
+        }),
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+
+  const learnedMessage = await page.evaluate(() => {
+    type BattleSnapshot = {
+      message: string | null;
+    };
+    const controller = (
+      window as Window & {
+        __POKE_LOUNGE_E2E__?: {
+          setBattleCommand(command: "fight"): BattleSnapshot | null;
+          setBattleMoveIndex(index: number): BattleSnapshot | null;
+          confirmBattle(): BattleSnapshot | null;
+          drainBattleMessages(): BattleSnapshot | null;
+        };
+      }
+    ).__POKE_LOUNGE_E2E__;
+
+    controller?.setBattleCommand("fight");
+    controller?.confirmBattle();
+    controller?.setBattleMoveIndex(0);
+    controller?.confirmBattle();
+    controller?.drainBattleMessages();
+    controller?.setBattleMoveIndex(1);
+    return controller?.confirmBattle()?.message ?? null;
+  });
+
+  expect(learnedMessage).toMatch(/배웠다!/);
+  await expect(page.locator("[data-poke-lounge-mobile-battle-message='true']")).toContainText(
+    /배웠다!/,
+  );
+});
+
+test("Poke Lounge 모바일 진화는 한국판 ROM 문구의 줄바꿈을 유지한다", async ({ page }) => {
+  await gotoWithRetry(page, "/ko-KR/game/poke-lounge?scene=battle&e2eBattle=wild-evolution&e2e=1");
+  await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30_000 });
+  await page.locator("[data-room-entry-solo]").click();
+  await chooseStarterIfNeeded(page);
+  await expect(page.locator("#game-root canvas")).toBeVisible({ timeout: 30_000 });
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const controller = (
+            window as Window & {
+              __POKE_LOUNGE_E2E__?: {
+                getBattleSnapshot(): {
+                  battleEntrancePlaying: boolean;
+                } | null;
+              };
+            }
+          ).__POKE_LOUNGE_E2E__;
+
+          return controller?.getBattleSnapshot()?.battleEntrancePlaying ?? true;
+        }),
+      { timeout: 30_000 },
+    )
+    .toBe(false);
+
+  await expect(page.locator("[data-poke-lounge-mobile-deck='battle-command']")).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.getByRole("button", { name: "싸운다", exact: true }).click();
+  const moveDeck = page.locator("[data-poke-lounge-mobile-deck='battle-moves']");
+
+  await expect(moveDeck).toBeVisible({ timeout: 30_000 });
+  await moveDeck
+    .locator("[data-poke-lounge-mobile-option-grid='moves']")
+    .getByRole("button")
+    .first()
+    .click();
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const controller = (
+            window as Window & {
+              __POKE_LOUNGE_E2E__?: {
+                getBattleSnapshot(): {
+                  result: unknown;
+                } | null;
+              };
+            }
+          ).__POKE_LOUNGE_E2E__;
+
+          return controller?.getBattleSnapshot()?.result ?? null;
+        }),
+      { timeout: 30_000 },
+    )
+    .not.toBeNull();
+
+  const evolutionSnapshot = await page.evaluate(() => {
+    type BattleSnapshot = {
+      evolutionAnimationPlaying: boolean;
+      message: string | null;
+    };
+    const controller = (
+      window as Window & {
+        __POKE_LOUNGE_E2E__?: {
+          getBattleSnapshot(): BattleSnapshot | null;
+          confirmBattle(): BattleSnapshot | null;
+        };
+      }
+    ).__POKE_LOUNGE_E2E__;
+    let snapshot = controller?.getBattleSnapshot() ?? null;
+
+    while (snapshot?.message && !snapshot.message.startsWith("...오잉!?")) {
+      snapshot = controller?.confirmBattle() ?? null;
+    }
+
+    return snapshot;
+  });
+  const message = page.locator("[data-poke-lounge-mobile-battle-message='true']");
+
+  expect(evolutionSnapshot?.message).toBe("...오잉!?\n치코리타의 모습이...!");
+  expect(evolutionSnapshot?.evolutionAnimationPlaying).toBe(true);
+  await expect(message).toHaveText("...오잉!?\n치코리타의 모습이...!");
+  expect(await message.evaluate(element => window.getComputedStyle(element).whiteSpace)).toBe(
+    "pre-line",
+  );
 });
 
 test("이상한사탕 레벨업은 모바일 가방에서 잊을 기술을 직접 선택한다", async ({ page }) => {

@@ -418,6 +418,7 @@
 }
 
 .messageDeck {
+  position: relative;
   display: grid;
   min-height: 0;
   height: 100%;
@@ -432,6 +433,17 @@
   font-size: 0.84rem;
   font-weight: 800;
   line-height: 1.45;
+}
+
+.messageDeck p {
+  position: absolute;
+  top: clamp(14px, 7%, 28px);
+  right: 18px;
+  left: 18px;
+  max-height: 4.35em;
+  overflow: hidden;
+  text-align: center;
+  white-space: pre-line;
 }
 
 .nextButton {

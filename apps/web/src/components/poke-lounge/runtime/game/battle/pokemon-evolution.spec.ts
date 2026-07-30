@@ -205,8 +205,8 @@ test("호환되는 진화의 돌은 종과 능력치를 바꾸고 기존 진행 
   assert.equal(result.pokemon.moves, moves);
   assert.deepEqual(result.messages, [
     "피카츄에게 천둥의돌을 사용했다!",
-    "어라? 피카츄의 모습이...!",
-    "피카츄는 라이츄로 진화했다!",
+    "...오잉!?\n피카츄의 모습이...!",
+    "축하합니다! 피카츄\n라이츄로 진화했습니다!",
   ]);
 });
 

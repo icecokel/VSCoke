@@ -1,4 +1,5 @@
 import type {
+  BattleCaptureAttempt,
   BattleCommand,
   BattleMessageHpSnapshot,
   BattleMove,
@@ -284,6 +285,11 @@ function chooseCaptureBallItem(
           : []),
       ]),
       usedInventoryItemId: ball.itemId,
+      captureAttempt: {
+        ballItemId: ball.itemId,
+        caught: true,
+        shakes: captureAttempt.shakes,
+      },
       result: {
         winnerPlayerId: state.player.playerId,
         loserPlayerId: state.opponent.playerId,
@@ -294,7 +300,11 @@ function chooseCaptureBallItem(
     };
   }
 
-  return resolveFailedCaptureTurn(state, ball);
+  return resolveFailedCaptureTurn(state, ball, {
+    ballItemId: ball.itemId,
+    caught: false,
+    shakes: captureAttempt.shakes,
+  });
 }
 
 export function isForcedPartySwitch(state: BattleScreenState): boolean {
@@ -475,14 +485,15 @@ export function choosePlayerMove(
           ? [
               ...messageQueue,
               "상대 포켓몬은 쓰러졌다!",
-              `${withTopicParticle(resolvedPlayerPokemon.name)} ${wildVictoryExperience.experienceGained} 경험치를 얻었다!`,
+              formatWildVictoryRewardMessage(
+                resolvedPlayerPokemon.name,
+                wildVictoryExperience.experienceGained,
+                wildVictoryRewardPokeDollars,
+              ),
               ...(wildVictoryExperience.levelsGained > 0
                 ? [
                     `${withTopicParticle(resolvedPlayerPokemon.name)} Lv.${resolvedPlayerPokemon.level}이 되었다!`,
                   ]
-                : []),
-              ...(wildVictoryRewardPokeDollars > 0
-                ? [`${formatBattlePokeDollars(wildVictoryRewardPokeDollars)}을 얻었다!`]
                 : []),
               "승리했다!",
             ]
@@ -689,6 +700,7 @@ function resolveFailedRunTurn(
 function resolveFailedCaptureTurn(
   state: BattleScreenState,
   ball: CaptureBallConfig,
+  captureAttempt: BattleCaptureAttempt,
 ): BattleScreenState {
   const opponentMove = randomUsableMove(state.opponent.pokemon.moves);
   const captureMessages = [
@@ -708,7 +720,7 @@ function resolveFailedCaptureTurn(
     });
 
     if (endOfTurn.faintState) {
-      return endOfTurn.faintState;
+      return { ...endOfTurn.faintState, captureAttempt };
     }
 
     return {
@@ -720,6 +732,7 @@ function resolveFailedCaptureTurn(
       opponent: syncActivePartyPokemon(state.opponent, endOfTurn.opponentPokemon),
       messageQueue: endOfTurn.messageQueue,
       usedInventoryItemId: ball.itemId,
+      captureAttempt,
       result: null,
     };
   }
@@ -744,15 +757,18 @@ function resolveFailedCaptureTurn(
   playerPokemon = applyDamage(moveOutcome.defender, moveOutcome.damage);
 
   if (playerPokemon.status === "fainted") {
-    return createPlayerFaintState({
-      state,
-      playerPokemon,
-      opponentPokemon,
-      messageQueue,
-      selectedMoveId: null,
-      turn: state.turn + 1,
-      usedInventoryItemId: ball.itemId,
-    });
+    return {
+      ...createPlayerFaintState({
+        state,
+        playerPokemon,
+        opponentPokemon,
+        messageQueue,
+        selectedMoveId: null,
+        turn: state.turn + 1,
+        usedInventoryItemId: ball.itemId,
+      }),
+      captureAttempt,
+    };
   }
 
   const endOfTurn = resolveEndOfTurnEffects({
@@ -766,7 +782,7 @@ function resolveFailedCaptureTurn(
   });
 
   if (endOfTurn.faintState) {
-    return endOfTurn.faintState;
+    return { ...endOfTurn.faintState, captureAttempt };
   }
 
   return {
@@ -778,6 +794,7 @@ function resolveFailedCaptureTurn(
     opponent: syncActivePartyPokemon(state.opponent, endOfTurn.opponentPokemon),
     messageQueue: endOfTurn.messageQueue,
     usedInventoryItemId: ball.itemId,
+    captureAttempt,
     result: null,
   };
 }
@@ -892,6 +909,21 @@ function appendBattleEndConfirmMessage(messages: string[]): string[] {
 
 function withTopicParticle(name: string): string {
   return `${name}${getTopicParticle(name)}`;
+}
+
+export function formatWildVictoryRewardMessage(
+  pokemonName: string,
+  experienceGained: number,
+  rewardPokeDollars: number,
+): string {
+  const subject = withTopicParticle(pokemonName);
+  const normalizedExperience = Math.max(0, Math.floor(experienceGained));
+
+  if (rewardPokeDollars <= 0) {
+    return `${subject} ${normalizedExperience} 경험치를 얻었다!`;
+  }
+
+  return `${subject} 경험치 ${normalizedExperience}과 ${formatBattlePokeDollars(rewardPokeDollars)}을 얻었다!`;
 }
 
 function getTopicParticle(name: string): "은" | "는" {
@@ -1469,14 +1501,15 @@ function createEndOfTurnFaintState(input: EndOfTurnResolutionInput): BattleScree
       ? [
           ...input.messageQueue,
           "상대 포켓몬은 쓰러졌다!",
-          `${withTopicParticle(resolvedPlayerPokemon.name)} ${wildVictoryExperience.experienceGained} 경험치를 얻었다!`,
+          formatWildVictoryRewardMessage(
+            resolvedPlayerPokemon.name,
+            wildVictoryExperience.experienceGained,
+            wildVictoryRewardPokeDollars,
+          ),
           ...(wildVictoryExperience.levelsGained > 0
             ? [
                 `${withTopicParticle(resolvedPlayerPokemon.name)} Lv.${resolvedPlayerPokemon.level}이 되었다!`,
               ]
-            : []),
-          ...(wildVictoryRewardPokeDollars > 0
-            ? [`${formatBattlePokeDollars(wildVictoryRewardPokeDollars)}을 얻었다!`]
             : []),
           "승리했다!",
         ]

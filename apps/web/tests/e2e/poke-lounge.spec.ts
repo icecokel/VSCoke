@@ -113,8 +113,13 @@ interface PokeLoungeBattleSnapshot {
   hpAnimationStartedCount: number;
   hitAnimationPlaying: boolean;
   hitAnimationStartedCount: number;
+  captureAnimationPlaying: boolean;
+  captureAnimationStartedCount: number;
+  captureAnimationShakes: number | null;
   evolutionAnimationPlaying: boolean;
   evolutionAnimationStartedCount: number;
+  evolutionFromSpeciesId: number | null;
+  evolutionToSpeciesId: number | null;
   player: {
     name: string;
     level: number;
@@ -249,6 +254,7 @@ interface PokeLoungeE2eController {
     command: PokeLoungeBattleSnapshot["selectedCommand"],
   ): PokeLoungeBattleSnapshot | null;
   setBattleMoveIndex(index: number): PokeLoungeBattleSnapshot | null;
+  setBattleBagItemIndex(index: number): PokeLoungeBattleSnapshot | null;
   confirmBattle(): PokeLoungeBattleSnapshot | null;
   drainBattleMessages(maxMessages?: number): PokeLoungeBattleSnapshot | null;
   getWorldSnapshot(): PokeLoungeWorldSnapshot | null;
@@ -690,8 +696,8 @@ test.describe("Poke Lounge", () => {
       speed: 60,
     });
     expect(result.messages).toEqual([
-      "어라? 치코리타의 모습이...!",
-      "치코리타는 베이리프로 진화했다!",
+      "...오잉!?\n치코리타의 모습이...!",
+      "축하합니다! 치코리타\n베이리프로 진화했습니다!",
     ]);
     expect(result.evolved).toBe(true);
   });
@@ -2254,15 +2260,59 @@ test.describe("Poke Lounge", () => {
 
     await startBattleScenario(page, "wild-evolution");
     const result = await resolveBattleResult(page);
+    const resultSnapshot = await getBattleSnapshot(page);
+    expect(resultSnapshot?.messageQueue).toEqual(
+      expect.arrayContaining([expect.stringMatching(/경험치 \d+과 ₽ [\d,]+을 얻었다!/)]),
+    );
+    expect(resultSnapshot?.messageQueue.filter(message => message.startsWith("₽ "))).toHaveLength(
+      0,
+    );
+    await page.evaluate(() => {
+      const controller = (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__;
+      let snapshot = controller?.getBattleSnapshot() ?? null;
+
+      while (snapshot?.message && !snapshot.message.startsWith("...오잉!?")) {
+        snapshot = controller?.confirmBattle() ?? null;
+      }
+    });
     const snapshot = await getBattleSnapshot(page);
 
     expect(result?.reason).toBe("faint");
     expect(snapshot?.player.name).toBe("베이리프");
     expect(snapshot?.player.level).toBe(16);
     expect(snapshot?.messageQueue).toEqual(
-      expect.arrayContaining(["어라? 치코리타의 모습이...!", "치코리타는 베이리프로 진화했다!"]),
+      expect.arrayContaining([
+        "...오잉!?\n치코리타의 모습이...!",
+        "축하합니다! 치코리타\n베이리프로 진화했습니다!",
+      ]),
     );
     expect(snapshot?.evolutionAnimationStartedCount).toBeGreaterThan(0);
+    expect(snapshot?.evolutionAnimationPlaying).toBe(true);
+    expect(snapshot?.evolutionFromSpeciesId).toBe(152);
+    expect(snapshot?.evolutionToSpeciesId).toBe(153);
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("몬스터볼 사용 시 실제 포획 판정에 맞춘 투척 애니메이션을 시작한다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await startBattleScenario(page, "wild-victory");
+    await expect
+      .poll(() => getBattleSnapshot(page).then(snapshot => snapshot?.battleEntrancePlaying ?? true))
+      .toBe(false);
+    const snapshot = await page.evaluate(() => {
+      const controller = (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__;
+
+      controller?.setBattleCommand("bag");
+      controller?.confirmBattle();
+      controller?.setBattleBagItemIndex(1);
+      return controller?.confirmBattle() ?? null;
+    });
+
+    expect(snapshot?.messageQueue[0]).toBe("몬스터볼을 던졌다!");
+    expect(snapshot?.captureAnimationStartedCount).toBeGreaterThan(0);
+    expect(snapshot?.captureAnimationPlaying).toBe(true);
+    expect(snapshot?.captureAnimationShakes).not.toBeNull();
     expect(browserErrors.join("\n")).toBe("");
   });
 

@@ -11,7 +11,13 @@
     "pokemonNameMessageIndex": 233,
     "moveNameMessageIndex": 743,
     "characterMapPath": "data/str2uni.bin",
-    "battleSpritePath": "a/0/0/4"
+    "battleSpritePath": "a/0/0/4",
+    "evolutionPresentationPath": "a/1/1/5",
+    "evolutionBackgroundMembers": {
+      "character": 0,
+      "screen": 1,
+      "palette": 8
+    }
   },
   "species": {
     "1": [

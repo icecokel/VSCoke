@@ -70,7 +70,9 @@ test("이상한사탕 레벨업은 경험치를 보정하고 레벨 진화를 �
     assert.deepEqual(result.pokemon.moves, pokemon.moves);
     assert.deepEqual(result.pendingMoveReplacements, []);
     assert.ok(
-      result.messages.some(message => message.includes("마그케인") && message.includes("진화했다")),
+      result.messages.some(
+        message => message.includes("마그케인") && message.includes("진화했습니다"),
+      ),
     );
   } finally {
     resetRuntimeGameDataJsonStateForTest();
@@ -123,10 +125,10 @@ test("Lv.9 캐터피에게 이상한사탕을 쓰면 버터플까지 연쇄 진�
     assert.deepEqual(result.messages, [
       "캐터피에게 이상한사탕을 사용했다!",
       "캐터피의 레벨이 올랐다!",
-      "어라? 캐터피의 모습이...!",
-      "캐터피는 단데기로 진화했다!",
-      "어라? 단데기의 모습이...!",
-      "단데기는 버터플로 진화했다!",
+      "...오잉!?\n캐터피의 모습이...!",
+      "축하합니다! 캐터피\n단데기로 진화했습니다!",
+      "...오잉!?\n단데기의 모습이...!",
+      "축하합니다! 단데기\n버터플로 진화했습니다!",
       "버터플은 염동력을 배웠다!",
     ]);
   } finally {

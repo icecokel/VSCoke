@@ -5,6 +5,7 @@ import { normalizeIndividualValues } from "./individual-values";
 import { EVOLUTION_STONE_CATALOG, type EvolutionStoneItemId } from "../items/evolution-stones";
 import type { PlayerPokemon } from "../state/gameStateStore";
 import type { RomPersonalRecord, RomPersonalRecordCollection } from "./wildBattleFactory";
+import { createRomEvolutionMessages } from "./evolution-presentation";
 
 export const LEVEL_UP_EVOLUTION_METHOD = 4;
 export const ITEM_EVOLUTION_METHOD = 7;
@@ -157,10 +158,7 @@ export function applyLevelUpEvolution({
       frontSprite: assets.front,
       backSprite: assets.back,
     },
-    messages: [
-      `어라? ${pokemon.name}의 모습이...!`,
-      `${pokemon.name}는 ${evolvedName}로 진화했다!`,
-    ],
+    messages: createRomEvolutionMessages(pokemon.name, evolvedName),
     evolved: true,
   };
 }
@@ -190,8 +188,7 @@ export function applyEvolutionStone<TPokemon extends PlayerPokemon>({
     rule,
     createMessages: evolvedName => [
       `${pokemon.name}에게 ${stone.displayName}을 사용했다!`,
-      `어라? ${pokemon.name}의 모습이...!`,
-      `${pokemon.name}는 ${evolvedName}로 진화했다!`,
+      ...createRomEvolutionMessages(pokemon.name, evolvedName),
     ],
   });
 }
@@ -236,10 +233,7 @@ export function applyPlayerLevelUpEvolution<TPokemon extends PlayerPokemon>({
     pokemon,
     pokemonData,
     rule,
-    createMessages: evolvedName => [
-      `어라? ${pokemon.name}의 모습이...!`,
-      `${pokemon.name}는 ${evolvedName}로 진화했다!`,
-    ],
+    createMessages: evolvedName => createRomEvolutionMessages(pokemon.name, evolvedName),
   });
 }
 

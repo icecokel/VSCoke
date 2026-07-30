@@ -15,6 +15,7 @@ export const MobileSidebarTrigger = () => {
 
   // Wordle 페이지인지 확인 (모바일에서 숨김)
   const isWordlePage = pathname?.includes("/game/wordle");
+  const isResumeQuestionPage = pathname?.includes("/resume/question");
 
   // 모바일이 아니거나, 사이드바가 열려있거나, 게임 진행 중이거나, Wordle 페이지일 때 숨김
   if (!isMobile || openMobile || isGamePlaying || isWordlePage) {
@@ -25,7 +26,9 @@ export const MobileSidebarTrigger = () => {
     <Button
       onClick={() => setOpenMobile(true)}
       size="icon"
-      className="fixed bottom-4 right-4 z-50 size-12 rounded-full shadow-lg"
+      className={`fixed right-4 z-50 size-12 rounded-full shadow-lg ${
+        isResumeQuestionPage ? "top-4" : "bottom-4"
+      }`}
       data-testid="sidebar-trigger-mobile"
     >
       <PanelLeftIcon className="size-6" />

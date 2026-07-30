@@ -114,6 +114,33 @@ test.describe("Resume RAG public chat", () => {
     expect(capturedRequests).toHaveLength(0);
   });
 
+  test("모바일에서는 입력창을 화면 하단에 고정하고 대화 영역만 스크롤한다", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/ko-KR/resume/question");
+
+    const composer = page.getByTestId("resume-rag-question-composer");
+    const scrollRegion = page.getByTestId("resume-rag-chat-scroll-region");
+
+    await expect(composer).toBeVisible();
+    await page.getByRole("button", { name: /보강된 경력 근거/ }).click();
+
+    const [viewport, composerBox, scrollState] = await Promise.all([
+      Promise.resolve(page.viewportSize()),
+      composer.boundingBox(),
+      scrollRegion.evaluate(element => ({
+        clientHeight: element.clientHeight,
+        scrollHeight: element.scrollHeight,
+      })),
+    ]);
+
+    expect(viewport).not.toBeNull();
+    expect(composerBox).not.toBeNull();
+    expect(Math.abs(composerBox!.y + composerBox!.height - viewport!.height)).toBeLessThanOrEqual(
+      1,
+    );
+    expect(scrollState.scrollHeight).toBeGreaterThan(scrollState.clientHeight);
+  });
+
   test("질문 전송은 로그인 토큰 없이 공개 API로 요청한다", async ({ page }) => {
     const capturedRequests: Array<{
       headers: Record<string, string>;

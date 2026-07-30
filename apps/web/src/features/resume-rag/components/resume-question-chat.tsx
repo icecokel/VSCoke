@@ -524,8 +524,14 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
   };
 
   return (
-    <section className="flex min-h-[calc(100svh-15rem)] flex-col">
-      <div className="flex-1 space-y-5 overflow-y-auto pb-4">
+    <section
+      className="flex min-h-0 flex-1 flex-col md:min-h-[calc(100svh-15rem)]"
+      data-testid="resume-rag-chat-shell"
+    >
+      <div
+        className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain pb-4"
+        data-testid="resume-rag-chat-scroll-region"
+      >
         {messages.length === 0 ? (
           <EmptyChatState questionTopics={questionTopics} onSelectSuggestion={setQuestion} />
         ) : (
@@ -577,7 +583,8 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
 
       <form
         onSubmit={handleSubmit}
-        className="border-t border-gray-800 bg-gray-950/85 pt-3 pb-3 backdrop-blur"
+        className="shrink-0 border-t border-gray-800 bg-gray-950/85 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur md:pb-3"
+        data-testid="resume-rag-question-composer"
       >
         <div className="flex items-end gap-2 rounded-lg border border-gray-700 bg-gray-900/80 p-2 transition-colors focus-within:border-blue-300/70">
           <Textarea

@@ -29,9 +29,9 @@ const ResumeQuestionPage = async ({ searchParams }: ResumeQuestionPageProps) => 
   const chatId = getSingleSearchParam(resolvedSearchParams?.chatId);
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col px-3 py-4 md:px-5">
+    <main className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col overflow-hidden px-3 pt-4 md:h-auto md:overflow-visible md:px-5 md:pb-4">
       <ResumeRagPageViewTracker surface="resume_question" />
-      <header className="mb-4 border-b border-gray-800 pb-4">
+      <header className="mb-4 shrink-0 border-b border-gray-800 pr-16 pb-4 md:pr-0">
         <h1 className="text-xl font-semibold text-gray-100">{t("title")}</h1>
         <p className="mt-1 text-sm text-gray-400">{t("subtitle")}</p>
       </header>

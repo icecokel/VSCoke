@@ -65,6 +65,10 @@ import {
   resolveRomEvolutionAnimationFrame,
   ROM_EVOLUTION_ANIMATION_DURATION_MS,
 } from "../battle/evolution-presentation";
+import {
+  resolveRomCaptureAnimationFrame,
+  ROM_CAPTURE_ANIMATION_DURATION_MS,
+} from "../battle/capture-presentation";
 import { BATTLE_BASE_SIZE, getBattleCameraZoom } from "../gameViewport";
 import { getDefaultGameStateStore } from "../state/defaultGameStateStore";
 import {
@@ -133,7 +137,6 @@ const BATTLE_HP_DECREASE_TWEEN_MS = 560;
 const BATTLE_HIT_TWEEN_MS = 300;
 const BATTLE_HIT_SHAKE_PIXELS = 4;
 const BATTLE_ENTRANCE_TWEEN_MS = 640;
-const BATTLE_CAPTURE_TWEEN_MS = 1_900;
 const E2E_SINGLE_LEVEL_BASE_EXP_YIELD = Math.ceil(500 / WILD_BATTLE_EXPERIENCE_MULTIPLIER);
 const BATTLE_BAG_PREMIUM_ITEM_IDS = [
   "hyperPotion",
@@ -1703,7 +1706,7 @@ export class BattleScene extends Phaser.Scene {
     const tween = this.tweens.add({
       targets: tweenState,
       progress: 1,
-      duration: BATTLE_CAPTURE_TWEEN_MS,
+      duration: ROM_CAPTURE_ANIMATION_DURATION_MS,
       ease: "Linear",
       onUpdate: () => {
         this.captureAnimationProgress = tweenState.progress;
@@ -2636,27 +2639,11 @@ export class BattleScene extends Phaser.Scene {
     }
 
     const progress = Phaser.Math.Clamp(this.captureAnimationProgress, 0, 1);
-    if (progress < 0.3) {
-      return { alpha: 1, scale: 1 };
-    }
-    if (progress < 0.44) {
-      const absorbProgress = (progress - 0.3) / 0.14;
-      return {
-        alpha: 1 - absorbProgress,
-        scale: 1 - absorbProgress * 0.78,
-      };
-    }
-    if (attempt.caught) {
-      return { alpha: 0, scale: 0.2 };
-    }
-    if (progress < 0.84) {
-      return { alpha: 0, scale: 0.2 };
-    }
+    const frame = resolveRomCaptureAnimationFrame(progress, attempt.shakes, attempt.caught);
 
-    const escapeProgress = Phaser.Math.Clamp((progress - 0.84) / 0.12, 0, 1);
     return {
-      alpha: escapeProgress,
-      scale: 0.2 + escapeProgress * 0.8,
+      alpha: frame.opponentAlpha,
+      scale: frame.opponentScale,
     };
   }
 
@@ -2679,40 +2666,37 @@ export class BattleScene extends Phaser.Scene {
     const start = { x: 70, y: 126 };
     const impact = { x: targetBox.x, y: targetBox.y - 2 };
     const landed = { x: targetBox.x, y: targetBox.y + 34 };
+    const frame = resolveRomCaptureAnimationFrame(progress, attempt.shakes, attempt.caught);
     let ballX = landed.x;
     let ballY = landed.y;
 
-    if (progress < 0.3) {
-      const throwProgress = progress / 0.3;
+    if (frame.stage === "throw") {
+      const throwProgress = 1 - (1 - frame.stageProgress) ** 3;
       ballX = Phaser.Math.Linear(start.x, impact.x, throwProgress);
       ballY =
         Phaser.Math.Linear(start.y, impact.y, throwProgress) -
-        Math.sin(throwProgress * Math.PI) * 54;
-    } else if (progress < 0.44) {
+        Math.sin(frame.stageProgress * Math.PI) * 42;
+    } else if (frame.stage === "absorb") {
       ballX = impact.x;
       ballY = impact.y;
-    } else if (progress < 0.56) {
-      const fallProgress = (progress - 0.44) / 0.12;
+    } else if (frame.stage === "fall") {
+      const fallProgress = frame.stageProgress ** 2;
       ballX = Phaser.Math.Linear(impact.x, landed.x, fallProgress);
       ballY = Phaser.Math.Linear(impact.y, landed.y, fallProgress);
-    } else if (progress < 0.88) {
-      const shakeProgress = (progress - 0.56) / 0.32;
-      const shakeCount = Math.max(1, attempt.shakes);
-      const shakeStrength = Math.max(0, 1 - shakeProgress) * (attempt.shakes > 0 ? 5 : 2);
-      ballX += Math.sin(shakeProgress * Math.PI * 2 * shakeCount) * shakeStrength;
-      ballY -= Math.abs(Math.sin(shakeProgress * Math.PI * shakeCount)) * 2;
+    } else {
+      ballX += frame.shakeOffsetX;
+      ballY += frame.bounceOffsetY + frame.shakeOffsetY;
     }
 
-    const isEscaping = !attempt.caught && progress >= 0.88;
-    if (!isEscaping || progress < 0.95) {
-      this.drawCaptureBall(ballX, ballY, attempt.ballItemId);
+    if (frame.showBall) {
+      this.drawCaptureBall(ballX, ballY, attempt.ballItemId, frame.ballRotation);
     }
 
-    if (progress < 0.88) {
+    if (frame.stage !== "result") {
       return;
     }
 
-    const resultProgress = Phaser.Math.Clamp((progress - 0.88) / 0.12, 0, 1);
+    const resultProgress = frame.resultProgress;
     const graphics = this.add.graphics().setDepth(500);
     const rayColor = attempt.caught ? 0xf4cf58 : 0xffffff;
 
@@ -2731,12 +2715,16 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
-  private drawCaptureBall(x: number, y: number, ballItemId: string): void {
-    const graphics = this.add.graphics().setDepth(510);
+  private drawCaptureBall(x: number, y: number, ballItemId: string, rotation: number): void {
+    const graphics = this.add
+      .graphics()
+      .setDepth(510)
+      .setPosition(Math.round(x), Math.round(y))
+      .setRotation(rotation);
     const topColor = ballItemId === "ultraBall" ? 0x303239 : 0xd94b43;
     const accentColor = ballItemId === "ultraBall" ? 0xf4cf58 : 0xf7f4e8;
-    const left = Math.round(x) - 6;
-    const top = Math.round(y) - 6;
+    const left = -6;
+    const top = -6;
 
     graphics
       .fillStyle(0x1c262d, 1)
@@ -2952,7 +2940,7 @@ export class BattleScene extends Phaser.Scene {
           move ? `${index === this.selectedMoveIndex ? "▶ " : ""}${move.name}` : "-",
           createGameTextStyle({
             color: disabled ? "#7a827c" : "#17201a",
-            fontSize: "7px",
+            fontSize: "8px",
           }),
         )
         .setOrigin(0, 0.5);
@@ -2965,7 +2953,7 @@ export class BattleScene extends Phaser.Scene {
             formatBattleMoveMeta(move),
             createGameTextStyle({
               color: "#7a827c",
-              fontSize: "5px",
+              fontSize: "6px",
             }),
           )
           .setOrigin(0, 0.5);
@@ -3013,7 +3001,7 @@ export class BattleScene extends Phaser.Scene {
           move ? `${index === this.selectedMoveIndex ? "▶ " : ""}${move.name}` : "-",
           createGameTextStyle({
             color: disabled ? "#7a827c" : "#17201a",
-            fontSize: "7px",
+            fontSize: "8px",
           }),
         )
         .setOrigin(0, 0.5);

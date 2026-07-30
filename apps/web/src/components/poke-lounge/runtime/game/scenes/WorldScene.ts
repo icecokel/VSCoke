@@ -11,6 +11,7 @@ import {
   type RoomUnsubscribe,
 } from "../network/localPreviewRoom";
 import { FIELD_MAP } from "../world/fieldMap";
+import { createTallGrassLayers } from "../world/tall-grass";
 import { WILD_ENCOUNTER_TABLES_JSON_ASSET } from "../world/wildEncounterTables";
 import { getDefaultGameStateStore } from "../state/defaultGameStateStore";
 import {
@@ -57,6 +58,9 @@ export type { WorldTournamentBattleResult } from "./world-scene-tournament";
 const PLAYER_SPEED = 104;
 const PLAYER_SIZE = FIELD_MAP.player.displaySize;
 const PLAYER_HITBOX = FIELD_MAP.player.hitbox;
+const PLAYER_DEPTH = 20;
+const TALL_GRASS_FOREGROUND_DEPTH = 30;
+const ABOVE_PLAYER_DEPTH = 40;
 export const ROUND_DURATION_QUERY_PARAM = "roundMs";
 
 type PcBoxFocus = "party" | "box";
@@ -177,6 +181,7 @@ export function resolveWorldSpawn(
 export class WorldScene extends Phaser.Scene {
   private cursors: CursorMap | null = null;
   private worldLayer!: Phaser.Tilemaps.TilemapLayer;
+  private tallGrassLayer: Phaser.Tilemaps.TilemapLayer | null = null;
   private aboveLayer: Phaser.Tilemaps.TilemapLayer | null = null;
   private player!: Phaser.Physics.Arcade.Sprite;
   private staticNpcs: Phaser.Physics.Arcade.StaticGroup | null = null;
@@ -220,6 +225,7 @@ export class WorldScene extends Phaser.Scene {
             }
           : null,
       getPlayerFacing: () => this.facing,
+      hasTallGrassAt: tile => this.tallGrassLayer?.hasTileAt(tile.x, tile.y) ?? false,
       stopPlayer: () => this.player?.setVelocity(0, 0),
       getLocationUrl: () => new URL(window.location.href),
       getEncounterTableData: () => this.cache.json.get(WILD_ENCOUNTER_TABLES_JSON_ASSET[0]),
@@ -331,9 +337,7 @@ export class WorldScene extends Phaser.Scene {
 
     map.createLayer("Below Player", tileset, 0, 0);
     const worldLayer = map.createLayer("World", tileset, 0, 0);
-    if (hasTileLayer(map, "Grass")) {
-      map.createLayer("Grass", tileset, 0, 0);
-    }
+    const tallGrassLayers = createTallGrassLayers(map, tileset, FIELD_MAP.tallGrass);
     this.aboveLayer = map.createLayer("Above Player", tileset, 0, 0);
 
     if (!worldLayer) {
@@ -341,8 +345,10 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.worldLayer = worldLayer;
+    this.tallGrassLayer = tallGrassLayers.baseLayer;
     this.worldLayer.setCollisionByProperty({ collides: true });
-    this.aboveLayer?.setDepth(40);
+    tallGrassLayers.foregroundLayer.setDepth(TALL_GRASS_FOREGROUND_DEPTH);
+    this.aboveLayer?.setDepth(ABOVE_PLAYER_DEPTH);
     this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     this.createCurrencyHud();
@@ -769,7 +775,7 @@ export class WorldScene extends Phaser.Scene {
       FIELD_MAP.player.frameNames[this.facing],
     );
     this.player.setDisplaySize(PLAYER_SIZE.width, PLAYER_SIZE.height);
-    this.player.setDepth(20);
+    this.player.setDepth(PLAYER_DEPTH);
     this.player.body?.setSize(PLAYER_HITBOX.width, PLAYER_HITBOX.height);
     this.player.body?.setOffset(PLAYER_HITBOX.offsetX, PLAYER_HITBOX.offsetY);
     this.player.setCollideWorldBounds(true);
@@ -1369,10 +1375,6 @@ function findObject(
   objectName: string,
 ): SpawnObject | null {
   return map.getObjectLayer(layerName)?.objects.find(object => object.name === objectName) ?? null;
-}
-
-function hasTileLayer(map: Phaser.Tilemaps.Tilemap, layerName: string): boolean {
-  return map.layers.some(layer => layer.name === layerName);
 }
 
 function getObjectPosition(object: SpawnObject): { x: number; y: number } {

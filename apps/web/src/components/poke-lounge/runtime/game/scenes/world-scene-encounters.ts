@@ -17,8 +17,10 @@ import { FIELD_MAP, resolveFieldEncounterAreaId } from "../world/fieldMap";
 import {
   consumeCompletedTileStep,
   createTileStepTracker,
+  type TileCoordinate,
   type TileStepTracker,
 } from "../world/tileSteps";
+import { isTallGrassStep } from "../world/tall-grass";
 import {
   createWildEncounterLevelRange,
   rollWildEncounter,
@@ -59,6 +61,7 @@ export interface WorldSceneEncountersDependencies {
   gameStateStore: GameStateStore;
   getPlayerPosition(): { x: number; y: number } | null;
   getPlayerFacing(): PlayerFacing;
+  hasTallGrassAt(tile: TileCoordinate): boolean;
   stopPlayer(): void;
   getLocationUrl(): URL;
   getEncounterTableData(): unknown;
@@ -130,7 +133,7 @@ class DefaultWorldSceneEncounters implements WorldSceneEncounterController {
     const step = consumeCompletedTileStep(this.stepTracker, position);
 
     if (
-      !step ||
+      !isTallGrassStep(step, this.dependencies.hasTallGrassAt) ||
       !hasBattleCapablePartyPokemon(this.dependencies.gameStateStore.getCurrentLocalPlayer())
     ) {
       return;

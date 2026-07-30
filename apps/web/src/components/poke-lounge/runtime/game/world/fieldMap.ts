@@ -17,6 +17,13 @@ export const FIELD_MAP = {
   tilesetKey: "tuxmon-sample-32px-extruded",
   tilesetName: "tuxmon-sample-32px-extruded",
   tilesetUrl: "/assets/pokemmo-reference/tilesets/tuxmon-sample-32px-extruded.png",
+  tallGrass: {
+    regionLayerName: "TallGrassZones",
+    baseLayerName: "Tall Grass",
+    foregroundLayerName: "Tall Grass Foreground",
+    baseTileIndex: 122,
+    foregroundTileIndex: 146,
+  },
   player: {
     textureKey: "currentPlayer",
     atlasUrl: "/assets/poke-lounge/player/hero-atlas.png",

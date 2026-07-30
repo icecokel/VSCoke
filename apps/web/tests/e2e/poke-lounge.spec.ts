@@ -919,15 +919,15 @@ test.describe("Poke Lounge", () => {
     expect(BATTLE_LAYOUT.commandWindow).toEqual(BATTLE_LAYOUT.bottomWindow);
     expect(BATTLE_LAYOUT.moveWindow).toEqual(BATTLE_LAYOUT.bottomWindow);
     expect(resolveBattleOptionSlotRects(BATTLE_LAYOUT.bottomWindow)).toEqual([
-      { x: 6, y: 150, width: 120, height: 16 },
-      { x: 130, y: 150, width: 120, height: 16 },
-      { x: 6, y: 170, width: 120, height: 16 },
-      { x: 130, y: 170, width: 120, height: 16 },
+      { x: 6, y: 140, width: 120, height: 21 },
+      { x: 130, y: 140, width: 120, height: 21 },
+      { x: 6, y: 165, width: 120, height: 21 },
+      { x: 130, y: 165, width: 120, height: 21 },
     ]);
-    expect(getBattleOptionIndexAtPoint({ x: 64, y: 156 }, BATTLE_LAYOUT.bottomWindow)).toBe(0);
-    expect(getBattleOptionIndexAtPoint({ x: 192, y: 156 }, BATTLE_LAYOUT.bottomWindow)).toBe(1);
-    expect(getBattleOptionIndexAtPoint({ x: 64, y: 180 }, BATTLE_LAYOUT.bottomWindow)).toBe(2);
-    expect(getBattleOptionIndexAtPoint({ x: 192, y: 180 }, BATTLE_LAYOUT.bottomWindow)).toBe(3);
+    expect(getBattleOptionIndexAtPoint({ x: 64, y: 150 }, BATTLE_LAYOUT.bottomWindow)).toBe(0);
+    expect(getBattleOptionIndexAtPoint({ x: 192, y: 150 }, BATTLE_LAYOUT.bottomWindow)).toBe(1);
+    expect(getBattleOptionIndexAtPoint({ x: 64, y: 175 }, BATTLE_LAYOUT.bottomWindow)).toBe(2);
+    expect(getBattleOptionIndexAtPoint({ x: 192, y: 175 }, BATTLE_LAYOUT.bottomWindow)).toBe(3);
   });
 
   test("전투 HP 패널 상태 배지는 정상 상태를 숨기고 상태 이상 라벨을 제공한다", () => {
@@ -2500,6 +2500,49 @@ test.describe("Poke Lounge", () => {
     expect(browserErrors.join("\n")).toBe("");
   });
 
+  test("전투 종료 후 실제 키보드 방향키로 필드를 다시 이동한다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await startSoloGame(
+      page,
+      `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?scene=world&e2e=1&wildEncounterRate=0`,
+    );
+    await closeWorldShortcutGuideIfOpen(page);
+    await page.evaluate(() => {
+      const controller = (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__;
+
+      controller?.startWildBattleForTest({
+        encounter: {
+          mapKey: "town",
+          step: { from: { x: 0, y: 0 }, to: { x: 1, y: 0 } },
+          speciesId: 19,
+          name: "꼬렛",
+          level: 5,
+        },
+        x: 656,
+        y: 1150,
+        facing: "front",
+      });
+    });
+
+    await expectActiveScene(page, "battle");
+    await page.evaluate(() => {
+      (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__?.setBattleScenario("wild-victory");
+    });
+    await expect
+      .poll(() => getBattleSnapshot(page).then(snapshot => snapshot?.battleEntrancePlaying ?? true))
+      .toBe(false);
+    await resolveBattleResult(page);
+    await returnToWorldAfterBattleEnd(page);
+    await closeWorldShortcutGuideIfOpen(page);
+
+    const afterMove = await moveWorldPlayerWithKeyboard(page);
+
+    expect(afterMove.player).not.toBeNull();
+    await expectActiveScene(page, "world", 2000);
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
   test("wildEncounterRate=1 필드 이동 후 야생 전투로 전환한다", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
 
@@ -4022,6 +4065,49 @@ async function moveWorldPlayerWithoutStartingBattle(page: Page): Promise<PokeLou
   }
 
   throw new Error(`World player did not move after defeat: ${JSON.stringify(snapshots)}`);
+}
+
+async function moveWorldPlayerWithKeyboard(page: Page): Promise<PokeLoungeWorldSnapshot> {
+  const directions = ["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"] as const;
+  const canvas = page.locator("#game-root canvas");
+
+  await canvas.focus();
+
+  for (const direction of directions) {
+    const beforeMove = await getWorldSnapshot(page);
+
+    if (!beforeMove?.player) {
+      throw new Error("World player snapshot is unavailable before keyboard movement");
+    }
+
+    await page.keyboard.down(direction);
+    const moved = await expect
+      .poll(
+        () =>
+          getWorldSnapshot(page).then(snapshot =>
+            snapshot?.player &&
+            (snapshot.player.x !== beforeMove.player?.x ||
+              snapshot.player.y !== beforeMove.player?.y)
+              ? snapshot
+              : null,
+          ),
+        { timeout: 1_000 },
+      )
+      .not.toBeNull()
+      .then(() => true)
+      .catch(() => false);
+    await page.keyboard.up(direction);
+
+    if (moved) {
+      const snapshot = await getWorldSnapshot(page);
+
+      if (snapshot) {
+        return snapshot;
+      }
+    }
+  }
+
+  throw new Error("World player did not move with keyboard after battle");
 }
 
 async function moveWorldPlayerAndStop(page: Page): Promise<PokeLoungeWorldSnapshot> {

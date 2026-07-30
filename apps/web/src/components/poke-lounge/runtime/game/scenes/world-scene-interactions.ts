@@ -250,7 +250,7 @@ export function getShortcutGuideInputMode(): ShortcutGuideInputMode {
 }
 
 class DefaultWorldSceneInteractions implements WorldSceneInteractionsController {
-  private cursors!: WorldSceneCursorMap;
+  private cursors: WorldSceneCursorMap | null = null;
   private interactionKeys: InteractionKeys | null = null;
   private shopkeeperPosition: { x: number; y: number } | null = null;
   private premiumShopkeeperPosition: { x: number; y: number } | null = null;
@@ -360,8 +360,9 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     return this.dependencies.getViewportSize();
   }
 
-  private ensureCursorKeys(keyboard: Phaser.Input.Keyboard.KeyboardPlugin): void {
+  private ensureCursorKeys(keyboard: Phaser.Input.Keyboard.KeyboardPlugin): WorldSceneCursorMap {
     this.cursors = this.dependencies.ensureCursorKeys(keyboard);
+    return this.cursors;
   }
 
   private usesMobileWorldDeck(): boolean {
@@ -905,6 +906,8 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   destroy(): void {
     this.removeMobileWorldUiListeners?.();
     this.removeMobileWorldUiListeners = null;
+    this.cursors = null;
+    this.interactionKeys = null;
     this.closeShop();
     this.closeInventory();
     this.closePcBox();
@@ -1131,7 +1134,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
       return;
     }
 
-    this.ensureCursorKeys(keyboard);
+    const cursors = this.ensureCursorKeys(keyboard);
     this.ensureInteractionKeys(keyboard);
     const interactionKeys = this.interactionKeys;
 
@@ -1141,8 +1144,8 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
 
     if (
       consumeVirtualGamepadPress("up") ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.w)
+      Phaser.Input.Keyboard.JustDown(cursors.up) ||
+      Phaser.Input.Keyboard.JustDown(cursors.w)
     ) {
       this.moveInventorySelection(-1);
       return;
@@ -1150,8 +1153,8 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
 
     if (
       consumeVirtualGamepadPress("down") ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.down) ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.s)
+      Phaser.Input.Keyboard.JustDown(cursors.down) ||
+      Phaser.Input.Keyboard.JustDown(cursors.s)
     ) {
       this.moveInventorySelection(1);
       return;
@@ -1193,7 +1196,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
       return;
     }
 
-    this.ensureCursorKeys(keyboard);
+    const cursors = this.ensureCursorKeys(keyboard);
     this.ensureInteractionKeys(keyboard);
     const interactionKeys = this.interactionKeys;
 
@@ -1203,8 +1206,8 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
 
     if (
       consumeVirtualGamepadPress("up") ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.w)
+      Phaser.Input.Keyboard.JustDown(cursors.up) ||
+      Phaser.Input.Keyboard.JustDown(cursors.w)
     ) {
       this.movePcBoxSelection(-1);
       return;
@@ -1212,8 +1215,8 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
 
     if (
       consumeVirtualGamepadPress("down") ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.down) ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.s)
+      Phaser.Input.Keyboard.JustDown(cursors.down) ||
+      Phaser.Input.Keyboard.JustDown(cursors.s)
     ) {
       this.movePcBoxSelection(1);
       return;
@@ -1222,10 +1225,10 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
     if (
       consumeVirtualGamepadPress("left") ||
       consumeVirtualGamepadPress("right") ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.left) ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.right) ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.a) ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.d)
+      Phaser.Input.Keyboard.JustDown(cursors.left) ||
+      Phaser.Input.Keyboard.JustDown(cursors.right) ||
+      Phaser.Input.Keyboard.JustDown(cursors.a) ||
+      Phaser.Input.Keyboard.JustDown(cursors.d)
     ) {
       playBattleConfirmSound();
       this.togglePcBoxFocus();
@@ -1255,13 +1258,13 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
       return;
     }
 
-    this.ensureCursorKeys(keyboard);
+    const cursors = this.ensureCursorKeys(keyboard);
     this.ensureInteractionKeys(keyboard);
 
     if (
       consumeVirtualGamepadPress("up") ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.w)
+      Phaser.Input.Keyboard.JustDown(cursors.up) ||
+      Phaser.Input.Keyboard.JustDown(cursors.w)
     ) {
       this.moveShopSelection(-1);
       return;
@@ -1269,8 +1272,8 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
 
     if (
       consumeVirtualGamepadPress("down") ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.down) ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.s)
+      Phaser.Input.Keyboard.JustDown(cursors.down) ||
+      Phaser.Input.Keyboard.JustDown(cursors.s)
     ) {
       this.moveShopSelection(1);
       return;
@@ -1300,13 +1303,13 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
       return;
     }
 
-    this.ensureCursorKeys(keyboard);
+    const cursors = this.ensureCursorKeys(keyboard);
     this.ensureInteractionKeys(keyboard);
 
     if (
       consumeVirtualGamepadPress("up") ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.w)
+      Phaser.Input.Keyboard.JustDown(cursors.up) ||
+      Phaser.Input.Keyboard.JustDown(cursors.w)
     ) {
       this.moveDiceGambleSelection(-1);
       return;
@@ -1314,8 +1317,8 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
 
     if (
       consumeVirtualGamepadPress("down") ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.down) ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.s)
+      Phaser.Input.Keyboard.JustDown(cursors.down) ||
+      Phaser.Input.Keyboard.JustDown(cursors.s)
     ) {
       this.moveDiceGambleSelection(1);
       return;

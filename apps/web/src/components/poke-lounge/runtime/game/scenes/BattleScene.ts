@@ -3020,14 +3020,8 @@ export class BattleScene extends Phaser.Scene {
     const fillAlpha = options.disabled ? 0.58 : 1;
 
     graphics
-      .fillStyle(BATTLE_SCENE_WINDOW_STYLE.shadow, options.selected ? 0.42 : 0.24)
-      .fillRect(rect.x + 1, rect.y + 1, rect.width, rect.height)
       .fillStyle(BATTLE_SCENE_WINDOW_STYLE.fill, fillAlpha)
-      .fillRect(rect.x, rect.y, rect.width, rect.height)
-      .lineStyle(1, BATTLE_SCENE_WINDOW_STYLE.highlight, 0.95)
-      .strokeRect(rect.x + 1, rect.y + 1, rect.width - 2, rect.height - 2)
-      .lineStyle(options.selected ? 2 : 1, BATTLE_SCENE_WINDOW_STYLE.border, 1)
-      .strokeRect(rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4);
+      .fillRect(rect.x, rect.y, rect.width, rect.height);
 
     if (options.selected) {
       graphics

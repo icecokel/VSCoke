@@ -12,14 +12,32 @@ export interface BattleSpriteBox extends BattleRect {
   originY: number;
 }
 
+const BATTLE_BOTTOM_WINDOW_HEIGHT = 58;
+const BATTLE_BOTTOM_WINDOW_Y = 192 - BATTLE_BOTTOM_WINDOW_HEIGHT;
+
 export const BATTLE_LAYOUT = {
   opponentHpPanel: { x: 8, y: 14, width: 104, height: 28 },
   playerHpPanel: { x: 142, y: 96, width: 106, height: 34 },
   opponentSprite: { x: 164, y: 43, width: 72, height: 72, originX: 0.5, originY: 0.5 },
   playerSprite: { x: 64, y: 104, width: 80, height: 80, originX: 0.5, originY: 0.5 },
-  bottomWindow: { x: 0, y: 144, width: 256, height: 48 },
-  commandWindow: { x: 0, y: 144, width: 256, height: 48 },
-  moveWindow: { x: 0, y: 144, width: 256, height: 48 },
+  bottomWindow: {
+    x: 0,
+    y: BATTLE_BOTTOM_WINDOW_Y,
+    width: 256,
+    height: BATTLE_BOTTOM_WINDOW_HEIGHT,
+  },
+  commandWindow: {
+    x: 0,
+    y: BATTLE_BOTTOM_WINDOW_Y,
+    width: 256,
+    height: BATTLE_BOTTOM_WINDOW_HEIGHT,
+  },
+  moveWindow: {
+    x: 0,
+    y: BATTLE_BOTTOM_WINDOW_Y,
+    width: 256,
+    height: BATTLE_BOTTOM_WINDOW_HEIGHT,
+  },
   partyWindow: { x: 0, y: 138, width: 256, height: 54 },
 } as const;
 

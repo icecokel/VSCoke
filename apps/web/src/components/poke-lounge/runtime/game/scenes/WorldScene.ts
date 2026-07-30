@@ -175,7 +175,7 @@ export function resolveWorldSpawn(
 }
 
 export class WorldScene extends Phaser.Scene {
-  private cursors!: CursorMap;
+  private cursors: CursorMap | null = null;
   private worldLayer!: Phaser.Tilemaps.TilemapLayer;
   private aboveLayer: Phaser.Tilemaps.TilemapLayer | null = null;
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -263,8 +263,7 @@ export class WorldScene extends Phaser.Scene {
       playNurseHealingEffect: (nursePosition, onComplete) =>
         this.playNurseHealingEffect(nursePosition, onComplete),
       ensureCursorKeys: keyboard => {
-        this.ensureCursorKeys(keyboard);
-        return this.cursors;
+        return this.ensureCursorKeys(keyboard);
       },
       isBattleIntroPlaying: () => this.encounters.isBattleIntroPlaying(),
       renderPartyHud: () => this.hud?.render(),
@@ -444,6 +443,7 @@ export class WorldScene extends Phaser.Scene {
     this.pendingRoomMessages = [];
     this.remotePlayerSnapshots.clear();
     this.lastLocalSnapshotSyncKey = "";
+    this.cursors = null;
     if (!this.preserveRoomForBattle) {
       this.room.dispose();
       this.gameStateStore.setSession({
@@ -1178,19 +1178,19 @@ export class WorldScene extends Phaser.Scene {
     };
   }
 
-  private ensureCursorKeys(keyboard: Phaser.Input.Keyboard.KeyboardPlugin): void {
-    if (this.cursors) {
-      return;
+  private ensureCursorKeys(keyboard: Phaser.Input.Keyboard.KeyboardPlugin): CursorMap {
+    if (!this.cursors) {
+      const cursorKeys = keyboard.createCursorKeys();
+      this.cursors = {
+        ...cursorKeys,
+        w: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+        a: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
+        s: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
+        d: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
+      } as CursorMap;
     }
 
-    const cursorKeys = keyboard.createCursorKeys();
-    this.cursors = {
-      ...cursorKeys,
-      w: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-      a: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-      s: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-      d: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
-    } as CursorMap;
+    return this.cursors;
   }
 
   private maybeSendMovement(time: number): void {

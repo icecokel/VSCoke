@@ -12,6 +12,7 @@ import {
 } from "./battleLogic";
 import { createSampleBattleState } from "./battleSampleState";
 import type { BattlePokemon, BattleScreenState } from "./battleTypes";
+import { getExperienceForLevel } from "./experience";
 
 test("야생 전투 경험치와 돈 보상은 한 문구로 안내한다", () => {
   assert.equal(
@@ -19,6 +20,65 @@ test("야생 전투 경험치와 돈 보상은 한 문구로 안내한다", () =
     "브케인은 경험치 500과 ₽ 120을 얻었다!",
   );
   assert.equal(formatWildVictoryRewardMessage("피카츄", 500, 0), "피카츄는 500 경험치를 얻었다!");
+});
+
+test("야생 전투 경험치와 레벨은 보상 문구가 표시될 때 적용한다", () => {
+  const initialState = createSampleBattleState();
+  const playerPokemon = {
+    ...clonePokemon(initialState.player.pokemon),
+    level: 10,
+    experience: getExperienceForLevel(11, initialState.player.pokemon.growthRate) - 1,
+    speed: 999,
+    moves: initialState.player.pokemon.moves.map((move, index) =>
+      index === 0 ? { ...move, accuracy: 100, power: 999 } : move,
+    ),
+  };
+  const opponentPokemon = {
+    ...clonePokemon(initialState.opponent.pokemon),
+    baseExpYield: 100,
+    currentHp: 1,
+    status: "normal" as const,
+  };
+  const battleState: BattleScreenState = {
+    ...initialState,
+    battleKind: "wild",
+    phase: "move-select",
+    messageQueue: [],
+    player: {
+      ...initialState.player,
+      pokemon: playerPokemon,
+      party: initialState.player.party.map(slot =>
+        slot.slotIndex === initialState.player.activePartySlotIndex
+          ? { ...slot, pokemon: playerPokemon }
+          : slot,
+      ),
+    },
+    opponent: {
+      ...initialState.opponent,
+      pokemon: opponentPokemon,
+      party: initialState.opponent.party.map(slot =>
+        slot.slotIndex === initialState.opponent.activePartySlotIndex
+          ? { ...slot, pokemon: opponentPokemon }
+          : slot,
+      ),
+    },
+  };
+
+  let resolvedState = choosePlayerMove(battleState, 0, { random: () => 0.5 });
+  const rewardMessage = resolvedState.pendingExperienceReward?.message;
+  const rewardedLevel = resolvedState.pendingExperienceReward?.pokemon.level ?? 10;
+
+  assert.ok(rewardMessage);
+  assert.equal(resolvedState.player.pokemon.level, 10);
+  assert.ok(rewardedLevel > 10);
+
+  while (resolvedState.messageQueue[0] !== rewardMessage) {
+    assert.equal(resolvedState.player.pokemon.level, 10);
+    resolvedState = popBattleMessage(resolvedState);
+  }
+
+  assert.equal(resolvedState.player.pokemon.level, rewardedLevel);
+  assert.equal(resolvedState.pendingExperienceReward, null);
 });
 
 test("포획 판정은 애니메이션용 볼 종류와 실제 흔들림 횟수를 보존한다", () => {

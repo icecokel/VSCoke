@@ -68,6 +68,9 @@ export interface MobileBattleUiState {
   moveReplacement: {
     pokemonName: string;
     newMoveName: string;
+    newMovePp: number;
+    newMoveMaxPp: number;
+    newMoveType: string;
   } | null;
 }
 

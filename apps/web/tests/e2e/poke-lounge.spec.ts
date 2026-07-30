@@ -246,6 +246,7 @@ interface PokeLoungeE2eController {
     activeBgmId: string | null;
     activeBufferSourceCount: number;
     activeHtmlAudioElementCount: number;
+    isBgmPlaying: boolean;
     lastSfxId: string | null;
   };
   getBattleSnapshot(): PokeLoungeBattleSnapshot | null;
@@ -2261,6 +2262,8 @@ test.describe("Poke Lounge", () => {
     await startBattleScenario(page, "wild-evolution");
     const result = await resolveBattleResult(page);
     const resultSnapshot = await getBattleSnapshot(page);
+    expect(resultSnapshot?.player.name).toBe("치코리타");
+    expect(resultSnapshot?.player.level).toBe(15);
     expect(resultSnapshot?.messageQueue).toEqual(
       expect.arrayContaining([expect.stringMatching(/경험치 \d+과 ₽ [\d,]+을 얻었다!/)]),
     );

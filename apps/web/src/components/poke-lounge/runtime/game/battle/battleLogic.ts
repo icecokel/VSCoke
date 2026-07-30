@@ -73,7 +73,7 @@ export function popBattleMessage(state: BattleScreenState): BattleScreenState {
   const [, ...rest] = state.messageQueue;
   const [, ...restHpSnapshots] = state.messageHpSnapshots ?? [];
 
-  return {
+  return applyPendingBattleExperienceReward({
     ...state,
     messageQueue: rest,
     messageHpSnapshots: restHpSnapshots,
@@ -83,6 +83,20 @@ export function popBattleMessage(state: BattleScreenState): BattleScreenState {
           ? "ended"
           : "command"
         : state.phase,
+  });
+}
+
+export function applyPendingBattleExperienceReward(state: BattleScreenState): BattleScreenState {
+  const reward = state.pendingExperienceReward;
+
+  if (!reward || state.messageQueue[0] !== reward.message) {
+    return state;
+  }
+
+  return {
+    ...state,
+    player: syncActivePartyPokemon(state.player, reward.pokemon),
+    pendingExperienceReward: null,
   };
 }
 
@@ -481,15 +495,18 @@ export function choosePlayerMove(
               })
             : 0;
         const resolvedPlayerPokemon = wildVictoryExperience?.pokemon ?? playerPokemon;
+        const wildVictoryRewardMessage = wildVictoryExperience
+          ? formatWildVictoryRewardMessage(
+              resolvedPlayerPokemon.name,
+              wildVictoryExperience.experienceGained,
+              wildVictoryRewardPokeDollars,
+            )
+          : "";
         const victoryMessages = wildVictoryExperience
           ? [
               ...messageQueue,
               "상대 포켓몬은 쓰러졌다!",
-              formatWildVictoryRewardMessage(
-                resolvedPlayerPokemon.name,
-                wildVictoryExperience.experienceGained,
-                wildVictoryRewardPokeDollars,
-              ),
+              wildVictoryRewardMessage,
               ...(wildVictoryExperience.levelsGained > 0
                 ? [
                     `${withTopicParticle(resolvedPlayerPokemon.name)} Lv.${resolvedPlayerPokemon.level}이 되었다!`,
@@ -505,10 +522,16 @@ export function choosePlayerMove(
             phase: "ended",
             selectedMoveId: playerMove.id,
             turn: state.turn + 1,
-            player: syncActivePartyPokemon(state.player, resolvedPlayerPokemon),
+            player: syncActivePartyPokemon(state.player, playerPokemon),
             opponent: syncActivePartyPokemon(state.opponent, opponentPokemon),
             usedInventoryItemId: null,
             messageQueue: appendBattleEndConfirmMessage(victoryMessages),
+            pendingExperienceReward: wildVictoryExperience
+              ? {
+                  message: wildVictoryRewardMessage,
+                  pokemon: resolvedPlayerPokemon,
+                }
+              : null,
             result: {
               winnerPlayerId: state.player.playerId,
               loserPlayerId: state.opponent.playerId,
@@ -1497,15 +1520,18 @@ function createEndOfTurnFaintState(input: EndOfTurnResolutionInput): BattleScree
           })
         : 0;
     const resolvedPlayerPokemon = wildVictoryExperience?.pokemon ?? input.playerPokemon;
+    const wildVictoryRewardMessage = wildVictoryExperience
+      ? formatWildVictoryRewardMessage(
+          resolvedPlayerPokemon.name,
+          wildVictoryExperience.experienceGained,
+          wildVictoryRewardPokeDollars,
+        )
+      : "";
     const victoryMessages = wildVictoryExperience
       ? [
           ...input.messageQueue,
           "상대 포켓몬은 쓰러졌다!",
-          formatWildVictoryRewardMessage(
-            resolvedPlayerPokemon.name,
-            wildVictoryExperience.experienceGained,
-            wildVictoryRewardPokeDollars,
-          ),
+          wildVictoryRewardMessage,
           ...(wildVictoryExperience.levelsGained > 0
             ? [
                 `${withTopicParticle(resolvedPlayerPokemon.name)} Lv.${resolvedPlayerPokemon.level}이 되었다!`,
@@ -1521,10 +1547,16 @@ function createEndOfTurnFaintState(input: EndOfTurnResolutionInput): BattleScree
       phase: "ended",
       selectedMoveId: input.selectedMoveId,
       turn: input.turn,
-      player: syncActivePartyPokemon(input.state.player, resolvedPlayerPokemon),
+      player: syncActivePartyPokemon(input.state.player, input.playerPokemon),
       opponent: syncActivePartyPokemon(input.state.opponent, input.opponentPokemon),
       usedInventoryItemId: input.usedInventoryItemId,
       messageQueue: appendBattleEndConfirmMessage(victoryMessages),
+      pendingExperienceReward: wildVictoryExperience
+        ? {
+            message: wildVictoryRewardMessage,
+            pokemon: resolvedPlayerPokemon,
+          }
+        : null,
       result: {
         winnerPlayerId: input.state.player.playerId,
         loserPlayerId: input.state.opponent.playerId,

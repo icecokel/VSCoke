@@ -922,15 +922,26 @@ function MobileBattleDeck({ copy }: { copy: PokeLoungeCopy }) {
   if (battleState.phase === "move-select" || battleState.phase === "move-replace-select") {
     const actionType =
       battleState.phase === "move-select" ? "select-move" : "select-move-replacement";
-    const title =
-      battleState.phase === "move-select"
-        ? copy.mobile.chooseMove
-        : `${battleState.moveReplacement?.newMoveName ?? ""} · ${copy.mobile.replaceMove}`;
+    const moveReplacement = battleState.moveReplacement;
+    const title = moveReplacement
+      ? copy.mobile.moveReplacementPrompt(moveReplacement.pokemonName, moveReplacement.newMoveName)
+      : copy.mobile.chooseMove;
 
     return (
       <div className={styles.selectionDeck} data-poke-lounge-mobile-deck="battle-moves">
         <div className={styles.deckHeading}>
-          <strong>{title}</strong>
+          <div
+            className={styles.moveReplacementSummary}
+            data-poke-lounge-mobile-move-replacement={moveReplacement ? "true" : undefined}
+          >
+            <strong>{title}</strong>
+            {moveReplacement ? (
+              <small>
+                {moveReplacement.newMoveName} · PP {moveReplacement.newMovePp}/
+                {moveReplacement.newMoveMaxPp} · {moveReplacement.newMoveType}
+              </small>
+            ) : null}
+          </div>
           {backButton}
         </div>
         <div className={styles.optionGrid} data-poke-lounge-mobile-option-grid="moves">
@@ -941,11 +952,17 @@ function MobileBattleDeck({ copy }: { copy: PokeLoungeCopy }) {
               className={styles.moveButton}
               data-selected={move.selected}
               disabled={move.disabled}
+              aria-label={
+                moveReplacement
+                  ? `${move.name} · ${copy.mobile.forgetMove} → ${moveReplacement.newMoveName}`
+                  : undefined
+              }
               onClick={() => dispatchAction({ type: actionType, index: move.index })}
             >
               <span>{move.name}</span>
               <small>
                 PP {move.pp}/{move.maxPp} · {move.type}
+                {moveReplacement ? ` · ${copy.mobile.forgetMove}` : ""}
               </small>
             </button>
           ))}

@@ -37,6 +37,7 @@ export interface PokeLoungeAudioPlaybackSnapshot {
   activeBgmId: PokeLoungeBgmId | null;
   activeBufferSourceCount: number;
   activeHtmlAudioElementCount: number;
+  isBgmPlaying: boolean;
   lastSfxId: PokeLoungeSfxId | null;
 }
 
@@ -46,8 +47,9 @@ let masterGain: GainNode | null = null;
 let muted = false;
 let masterVolume = 1;
 let playbackGeneration = 0;
+let bgmRequestGeneration = 0;
 let lastSfxId: PokeLoungeSfxId | null = null;
-const bufferPromises = new Map<PokeLoungeSfxId, Promise<AudioBuffer | null>>();
+const bufferPromises = new Map<PokeLoungeAudioItemId, Promise<AudioBuffer | null>>();
 const preloadedAudioBytes = new Map<PokeLoungeAudioItemId, ArrayBuffer>();
 const htmlAudioElements = new Map<PokeLoungeAudioItemId, HTMLAudioElement>();
 const htmlAudioGains = new WeakMap<HTMLAudioElement, GainNode>();
@@ -56,8 +58,10 @@ const activeBufferSources = new Set<AudioBufferSourceNode>();
 const activeHtmlAudioElements = new Set<HTMLAudioElement>();
 let activeBgm: {
   id: PokeLoungeBgmId;
-  audio: HTMLAudioElement;
   baseVolume: number;
+  audio: HTMLAudioElement | null;
+  gain: GainNode | null;
+  source: AudioBufferSourceNode | null;
 } | null = null;
 
 export function bindPokeLoungeAudioPrimeListeners(target: HTMLElement): () => void {
@@ -93,18 +97,15 @@ export async function primePokeLoungeAudio(): Promise<void> {
     return;
   }
 
-  const totalBytes = manifest.sfx.reduce((sum, item) => sum + item.sizeBytes, 0);
+  const audioItems = [...manifest.sfx, ...manifest.bgm];
+  const totalBytes = audioItems.reduce((sum, item) => sum + item.sizeBytes, 0);
   if (context && totalBytes <= MAX_PRELOADED_BYTES) {
-    await Promise.all(manifest.sfx.map(item => loadAudioBuffer(item))).catch(() => undefined);
+    await Promise.all(audioItems.map(item => loadAudioBuffer(item))).catch(() => undefined);
   } else {
-    manifest.sfx.forEach(item => {
+    audioItems.forEach(item => {
       getHtmlAudioElement(item);
     });
   }
-
-  manifest.bgm.forEach(item => {
-    getHtmlAudioElement(item);
-  });
 }
 
 export function playPokeLoungeSfx(id: PokeLoungeSfxId, options: { volume?: number } = {}): void {
@@ -121,10 +122,15 @@ export function playPokeLoungeBgm(id: PokeLoungeBgmId, options: { volume?: numbe
     return;
   }
 
-  void playPokeLoungeBgmAsync(id, options, playbackGeneration).catch(() => undefined);
+  const requestGeneration = (bgmRequestGeneration += 1);
+  void playPokeLoungeBgmAsync(id, options, playbackGeneration, requestGeneration).catch(
+    () => undefined,
+  );
 }
 
 export function stopPokeLoungeBgm(id?: PokeLoungeBgmId): void {
+  bgmRequestGeneration += 1;
+
   if (id && activeBgm?.id !== id) {
     return;
   }
@@ -133,8 +139,22 @@ export function stopPokeLoungeBgm(id?: PokeLoungeBgmId): void {
     return;
   }
 
-  stopHtmlAudioElement(activeBgm.audio);
+  const bgm = activeBgm;
   activeBgm = null;
+  if (bgm.source) {
+    bgm.source.onended = null;
+    try {
+      bgm.source.stop();
+    } catch {
+      // 이미 종료된 WebAudio BGM 소스는 다시 중지할 수 없다.
+    }
+    activeBufferSources.delete(bgm.source);
+    bgm.source.disconnect();
+    bgm.gain?.disconnect();
+  }
+  if (bgm.audio) {
+    stopHtmlAudioElement(bgm.audio);
+  }
 }
 
 export function stopAllPokeLoungeAudio(): void {
@@ -180,7 +200,9 @@ export function setPokeLoungeMasterVolume(nextVolume: number): void {
   }
 
   if (activeBgm) {
-    activeBgm.audio.volume = resolveVolume(activeBgm.baseVolume, 1);
+    if (activeBgm.audio) {
+      activeBgm.audio.volume = resolveVolume(activeBgm.baseVolume, 1);
+    }
   }
 }
 
@@ -193,6 +215,7 @@ export function getPokeLoungeAudioPlaybackSnapshotForTest(): PokeLoungeAudioPlay
     activeBgmId: activeBgm?.id ?? null,
     activeBufferSourceCount: activeBufferSources.size,
     activeHtmlAudioElementCount: activeHtmlAudioElements.size,
+    isBgmPlaying: isActiveBgmPlaying(),
     lastSfxId,
   };
 }
@@ -284,9 +307,10 @@ async function playPokeLoungeBgmAsync(
   id: PokeLoungeBgmId,
   options: { volume?: number },
   generation: number,
+  requestGeneration: number,
 ): Promise<void> {
   const item = await getManifestBgmItem(id);
-  if (!item || generation !== playbackGeneration) {
+  if (!item || generation !== playbackGeneration || requestGeneration !== bgmRequestGeneration) {
     return;
   }
 
@@ -294,24 +318,56 @@ async function playPokeLoungeBgmAsync(
   if (context?.state === "suspended") {
     await context.resume().catch(() => undefined);
   }
-  if (generation !== playbackGeneration) {
+  if (generation !== playbackGeneration || requestGeneration !== bgmRequestGeneration) {
     return;
   }
 
-  if (activeBgm?.id && activeBgm.id !== id) {
+  if (activeBgm?.id === id && isActiveBgmPlaying()) {
+    return;
+  }
+
+  const baseVolume = options.volume ?? item.defaultVolume;
+  if (context?.state === "running") {
+    const buffer = await loadAudioBuffer(item);
+    if (
+      !buffer ||
+      generation !== playbackGeneration ||
+      requestGeneration !== bgmRequestGeneration
+    ) {
+      return;
+    }
+
+    stopPokeLoungeBgm();
+    const source = context.createBufferSource();
+    const gain = context.createGain();
+    source.buffer = buffer;
+    source.loop = true;
+    gain.gain.value = clampVolume(baseVolume);
+    source.connect(gain);
+    gain.connect(getMasterGain(context) ?? context.destination);
+    activeBufferSources.add(source);
+    activeBgm = { id, audio: null, baseVolume, gain, source };
+    source.onended = () => {
+      activeBufferSources.delete(source);
+      source.disconnect();
+      gain.disconnect();
+      if (activeBgm?.source === source) {
+        activeBgm = null;
+      }
+    };
+    source.start();
+    return;
+  }
+
+  if (activeBgm) {
     stopPokeLoungeBgm();
   }
 
-  const audio = activeBgm?.id === id ? activeBgm.audio : getHtmlAudioElement(item);
-  const baseVolume = options.volume ?? item.defaultVolume;
+  const audio = getHtmlAudioElement(item);
   audio.loop = true;
+  audio.currentTime = 0;
   setHtmlAudioElementVolume(audio, baseVolume);
-
-  if (activeBgm?.id !== id) {
-    audio.currentTime = 0;
-  }
-
-  activeBgm = { id, audio, baseVolume };
+  activeBgm = { id, audio, baseVolume, gain: null, source: null };
   await audio.play();
 }
 
@@ -381,7 +437,7 @@ async function playWithWebAudio(
   return true;
 }
 
-function loadAudioBuffer(item: PokeLoungeSfxManifestItem): Promise<AudioBuffer | null> {
+function loadAudioBuffer(item: PokeLoungeAudioManifestItem): Promise<AudioBuffer | null> {
   const cached = bufferPromises.get(item.id);
   if (cached) {
     return cached;
@@ -404,6 +460,18 @@ function loadAudioBuffer(item: PokeLoungeSfxManifestItem): Promise<AudioBuffer |
   bufferPromises.set(item.id, promise);
 
   return promise;
+}
+
+function isActiveBgmPlaying(): boolean {
+  if (!activeBgm) {
+    return false;
+  }
+
+  if (activeBgm.source) {
+    return audioContext?.state === "running";
+  }
+
+  return activeBgm.audio ? !activeBgm.audio.paused : false;
 }
 
 function decodeAudioData(arrayBuffer: ArrayBuffer): Promise<AudioBuffer> {

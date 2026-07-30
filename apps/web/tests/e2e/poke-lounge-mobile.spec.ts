@@ -21,6 +21,7 @@ type AudioPlaybackSnapshot = {
   activeBgmId: "field-day" | "wild-battle" | null;
   activeBufferSourceCount: number;
   activeHtmlAudioElementCount: number;
+  isBgmPlaying: boolean;
   lastSfxId: string | null;
 };
 
@@ -100,6 +101,9 @@ test("Poke Lounge는 오디오 로딩이 끝난 뒤 모바일 메인 씬을 연�
     await expect(page.locator("[data-poke-lounge-mobile-deck='explore']")).toBeVisible({
       timeout: 30_000,
     });
+    await expect
+      .poll(() => readAudioPlaybackSnapshot(page), { timeout: 30_000 })
+      .toMatchObject({ activeBgmId: "field-day", isBgmPlaying: true });
   } finally {
     releaseAudio?.();
     await page.unroute(fieldBgmPattern);
@@ -182,6 +186,7 @@ test("Poke Lounge 화면에서 이탈하면 재생 중인 모든 오디오를 �
     activeBgmId: null,
     activeBufferSourceCount: 0,
     activeHtmlAudioElementCount: 0,
+    isBgmPlaying: false,
     lastSfxId: null,
   });
 });
@@ -534,7 +539,7 @@ test("Poke Lounge 모바일은 새 기술 습득 결과를 조작 도크에 표�
     )
     .toBe(true);
 
-  const learnedMessage = await page.evaluate(() => {
+  await page.evaluate(() => {
     type BattleSnapshot = {
       message: string | null;
     };
@@ -554,13 +559,38 @@ test("Poke Lounge 모바일은 새 기술 습득 결과를 조작 도크에 표�
     controller?.setBattleMoveIndex(0);
     controller?.confirmBattle();
     controller?.drainBattleMessages();
-    controller?.setBattleMoveIndex(1);
-    return controller?.confirmBattle()?.message ?? null;
   });
 
-  expect(learnedMessage).toMatch(/배웠다!/);
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            (
+              window as Window & {
+                __POKE_LOUNGE_E2E__?: {
+                  getBattleSnapshot(): { evolutionAnimationPlaying: boolean } | null;
+                };
+              }
+            ).__POKE_LOUNGE_E2E__?.getBattleSnapshot()?.evolutionAnimationPlaying ?? true,
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe(false);
+
+  const moveReplacement = page.locator("[data-poke-lounge-mobile-move-replacement='true']");
+  await expect(moveReplacement).toContainText(
+    "마그케인의 새 기술 화염자동차. 잊을 기술을 선택하세요.",
+  );
+  await expect(moveReplacement).toContainText("화염자동차 · PP 25/25 · 불꽃");
+
+  const replacementButton = page.getByRole("button", {
+    name: "연막 · 이 기술을 잊기 → 화염자동차",
+  });
+  await expect(replacementButton).toBeVisible();
+  await replacementButton.click();
   await expect(page.locator("[data-poke-lounge-mobile-battle-message='true']")).toContainText(
-    /배웠다!/,
+    "마그케인은 연막을 잊고 화염자동차를 배웠다!",
   );
 });
 

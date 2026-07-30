@@ -1089,6 +1089,9 @@ export class BattleScene extends Phaser.Scene {
         ? {
             pokemonName: pendingMoveLearning.pokemonName,
             newMoveName: pendingMoveLearning.newMove.name,
+            newMovePp: pendingMoveLearning.newMove.pp,
+            newMoveMaxPp: pendingMoveLearning.newMove.maxPp,
+            newMoveType: pendingMoveLearning.newMove.type,
           }
         : null,
     };
@@ -1276,7 +1279,12 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.state.messageQueue.length > 0) {
-      this.setBattleState(popBattleMessage(this.state));
+      const nextState = popBattleMessage(this.state);
+      this.setBattleState(
+        nextState.messageQueue[0] === BATTLE_END_CONFIRM_MESSAGE
+          ? this.applyLevelUpMoveLearning(nextState)
+          : nextState,
+      );
       return;
     }
 
@@ -1325,9 +1333,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.state.phase === "move-select") {
-      this.setBattleState(
-        this.applyLevelUpMoveLearning(choosePlayerMove(this.state, this.selectedMoveIndex)),
-      );
+      this.setBattleState(choosePlayerMove(this.state, this.selectedMoveIndex));
       return;
     }
 

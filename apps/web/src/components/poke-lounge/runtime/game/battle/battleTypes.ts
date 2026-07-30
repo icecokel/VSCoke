@@ -87,6 +87,11 @@ export interface BattleResult {
   rewardPokeDollars?: number;
 }
 
+export interface BattleExperienceReward {
+  message: string;
+  pokemon: BattlePokemon;
+}
+
 export interface BattleCaptureAttempt {
   ballItemId: string;
   caught: boolean;
@@ -116,6 +121,7 @@ export interface BattleScreenState {
   opponent: BattleParticipant;
   messageQueue: string[];
   messageHpSnapshots?: BattleMessageHpSnapshot[];
+  pendingExperienceReward?: BattleExperienceReward | null;
   selectedMoveId: number | null;
   usedInventoryItemId?: string | null;
   captureAttempt?: BattleCaptureAttempt | null;

@@ -34,25 +34,25 @@ export const isLegacyBlogImageUrl = (src: string): boolean => {
 };
 
 export const PostHeading1 = ({ children }: PostElementProps) => (
-  <BaseText type="h3" className="mt-8 mb-4 text-yellow-200">
+  <BaseText type="h3" className="mt-8 mb-4 text-yellow-200" data-blog-speech-segment>
     {children}
   </BaseText>
 );
 
 export const PostHeading2 = ({ children }: PostElementProps) => (
-  <BaseText type="h4" className="mt-6 mb-3 text-white/90">
+  <BaseText type="h4" className="mt-6 mb-3 text-white/90" data-blog-speech-segment>
     {children}
   </BaseText>
 );
 
 export const PostHeading3 = ({ children }: PostElementProps) => (
-  <BaseText type="h5" className="mt-4 mb-2 text-white/80">
+  <BaseText type="h5" className="mt-4 mb-2 text-white/80" data-blog-speech-segment>
     {children}
   </BaseText>
 );
 
 export const PostParagraph = ({ children }: PostElementProps) => (
-  <BaseText type="body1" className="mb-4 leading-relaxed text-gray-200/95">
+  <BaseText type="body1" className="mb-4 leading-relaxed text-gray-200/95" data-blog-speech-segment>
     {children}
   </BaseText>
 );
@@ -82,7 +82,7 @@ export const PostListItem = ({
   className,
   ...props
 }: LiHTMLAttributes<HTMLLIElement>) => (
-  <li className={cn("mb-1", className)} {...props}>
+  <li className={cn("mb-1", className)} data-blog-speech-segment {...props}>
     {children}
   </li>
 );
@@ -109,6 +109,7 @@ export const PostBlockquote = ({
 }: BlockquoteHTMLAttributes<HTMLQuoteElement>) => (
   <blockquote
     className={cn("my-4 border-l-4 border-yellow-200/50 pl-4 text-gray-300 italic", className)}
+    data-blog-speech-segment
     {...props}
   >
     {children}
@@ -141,7 +142,10 @@ export const PostEmphasis = ({ children }: PostElementProps) => (
 );
 
 const PostLegacyImageNotice = ({ alt }: Pick<PostImageProps, "alt">) => (
-  <div className="my-6 flex items-start gap-3 rounded-lg border border-gray-700 bg-gray-800/70 p-4 text-gray-200">
+  <div
+    className="my-6 flex items-start gap-3 rounded-lg border border-gray-700 bg-gray-800/70 p-4 text-gray-200"
+    data-blog-speech-exclude
+  >
     <PhotoIcon aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-yellow-200" />
     <div>
       <p className="m-0 font-semibold text-white">이전 스크린샷 안내</p>
@@ -203,7 +207,11 @@ export const PostTableHeader = ({
   className,
   ...props
 }: ThHTMLAttributes<HTMLTableCellElement>) => (
-  <th className={cn("px-3 py-2 font-bold text-white", className)} {...props}>
+  <th
+    className={cn("px-3 py-2 font-bold text-white", className)}
+    data-blog-speech-segment
+    {...props}
+  >
     {children}
   </th>
 );
@@ -213,7 +221,7 @@ export const PostTableCell = ({
   className,
   ...props
 }: TdHTMLAttributes<HTMLTableCellElement>) => (
-  <td className={cn("px-3 py-2 align-top", className)} {...props}>
+  <td className={cn("px-3 py-2 align-top", className)} data-blog-speech-segment {...props}>
     {children}
   </td>
 );

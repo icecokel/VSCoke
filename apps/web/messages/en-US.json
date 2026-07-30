@@ -111,7 +111,19 @@
     "dashboardDescription": "Admin dashboard for blog posts",
     "dashboardSearchPlaceholder": "Search by title...",
     "showAllTags": "+ Show all tags ({count})",
-    "hideAllTags": "Collapse"
+    "hideAllTags": "Collapse",
+    "speech": {
+      "read": "Listen to article",
+      "pause": "Pause",
+      "resume": "Resume",
+      "stop": "Stop",
+      "speed": "Reading speed {rate}x",
+      "unsupported": "Speech unavailable",
+      "experimentalHint": "This is an experimental feature and may vary by browser.",
+      "speakingStatus": "The blog article is being read aloud.",
+      "pausedStatus": "Speech playback is paused.",
+      "error": "Unable to start speech playback."
+    }
   },
   "Game": {
     "submitScore": "Submit Score",

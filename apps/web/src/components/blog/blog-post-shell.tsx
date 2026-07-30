@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import BaseText from "@/components/base-ui/text";
 import Chip from "@/components/base-ui/chip";
 import Icon from "@/components/base-ui/icon";
+import { BLOG_SPEECH_CONTENT_ID } from "@/components/blog/blog-speech";
+import { BlogSpeechControls } from "@/components/blog/blog-speech-controls";
 import ScrollProgress from "@/components/blog/scroll-progress";
 import { CustomLink } from "@/components/custom-link";
 import { ShareLinkButton } from "@/components/share/share-link-button";
@@ -42,7 +44,8 @@ export const BlogPostShell = ({
         <BaseText type="body2">{backToListLabel}</BaseText>
       </CustomLink>
 
-      <div className="mb-6 flex justify-end gap-2">
+      <div className="mb-6 flex flex-wrap items-center justify-end gap-2">
+        <BlogSpeechControls title={post.title} description={post.description} language="ko-KR" />
         <ShareLinkButton title={post.title} text={post.description} />
         <ShareQrDialog title={post.title} />
       </div>
@@ -71,7 +74,9 @@ export const BlogPostShell = ({
         </div>
       </header>
 
-      <article className="prose prose-invert max-w-none pb-20">{children}</article>
+      <article id={BLOG_SPEECH_CONTENT_ID} className="prose prose-invert max-w-none pb-20">
+        {children}
+      </article>
     </div>
   );
 };

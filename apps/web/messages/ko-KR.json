@@ -111,7 +111,19 @@
     "dashboardDescription": "블로그 게시글 관리자 페이지",
     "dashboardSearchPlaceholder": "제목으로 검색...",
     "showAllTags": "+ 태그 전체보기 ({count})",
-    "hideAllTags": "접기"
+    "hideAllTags": "접기",
+    "speech": {
+      "read": "음성으로 듣기",
+      "pause": "일시정지",
+      "resume": "계속 듣기",
+      "stop": "중지",
+      "speed": "읽기 속도 {rate}배",
+      "unsupported": "음성 읽기 미지원",
+      "experimentalHint": "브라우저 환경에 따라 동작이 다를 수 있는 테스트 기능입니다.",
+      "speakingStatus": "블로그 글을 읽고 있습니다.",
+      "pausedStatus": "음성 읽기를 일시정지했습니다.",
+      "error": "음성 읽기를 시작하지 못했습니다."
+    }
   },
   "Game": {
     "submitScore": "점수 기록하기",

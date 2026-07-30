@@ -111,7 +111,19 @@
     "dashboardDescription": "ブログ投稿の管理ページ",
     "dashboardSearchPlaceholder": "タイトルで検索...",
     "showAllTags": "+ すべてのタグを見る（{count}）",
-    "hideAllTags": "閉じる"
+    "hideAllTags": "閉じる",
+    "speech": {
+      "read": "音声で聞く",
+      "pause": "一時停止",
+      "resume": "再開",
+      "stop": "停止",
+      "speed": "読み上げ速度 {rate}倍",
+      "unsupported": "音声読み上げ非対応",
+      "experimentalHint": "ブラウザ環境によって動作が異なる場合があるテスト機能です。",
+      "speakingStatus": "ブログ記事を読み上げています。",
+      "pausedStatus": "音声読み上げを一時停止しました。",
+      "error": "音声読み上げを開始できませんでした。"
+    }
   },
   "Game": {
     "submitScore": "スコアを記録する",

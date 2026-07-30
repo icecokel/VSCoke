@@ -19,6 +19,7 @@ type CanvasSnapshot = {
 
 type AudioPlaybackSnapshot = {
   activeBgmId: "field-day" | "wild-battle" | null;
+  activeBgmPlayback: "html-audio" | "web-audio" | null;
   activeBufferSourceCount: number;
   activeHtmlAudioElementCount: number;
   isBgmPlaying: boolean;
@@ -105,7 +106,8 @@ test("Poke Lounge는 오디오 로딩이 끝난 뒤 모바일 메인 씬을 연�
       .poll(() => readAudioPlaybackSnapshot(page), { timeout: 30_000 })
       .toMatchObject({
         activeBgmId: "field-day",
-        activeBufferSourceCount: 1,
+        activeBgmPlayback: "html-audio",
+        activeBufferSourceCount: 0,
         isBgmPlaying: true,
       });
   } finally {
@@ -153,12 +155,12 @@ test("Poke Lounge 화면에서 이탈하면 재생 중인 모든 오디오를 �
 
   expect(await startMobileWildBattleForTest(page)).toBe(true);
   await expect
-    .poll(
-      () =>
-        readAudioPlaybackSnapshot(page).then(snapshot => snapshot?.activeBufferSourceCount ?? 0),
-      { timeout: 10_000 },
-    )
-    .toBeGreaterThan(0);
+    .poll(() => readAudioPlaybackSnapshot(page), { timeout: 10_000 })
+    .toMatchObject({
+      activeBgmId: "wild-battle",
+      activeBgmPlayback: "html-audio",
+      isBgmPlaying: true,
+    });
 
   const snapshots = await page.evaluate(async () => {
     const pokeWindow = window as Window & {
@@ -185,9 +187,10 @@ test("Poke Lounge 화면에서 이탈하면 재생 중인 모든 오디오를 �
   });
 
   expect(snapshots.before.activeBgmId).not.toBeNull();
-  expect(snapshots.before.activeBufferSourceCount).toBeGreaterThan(0);
+  expect(snapshots.before.activeBgmPlayback).toBe("html-audio");
   expect(snapshots.after).toEqual({
     activeBgmId: null,
+    activeBgmPlayback: null,
     activeBufferSourceCount: 0,
     activeHtmlAudioElementCount: 0,
     isBgmPlaying: false,

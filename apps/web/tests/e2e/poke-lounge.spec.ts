@@ -250,6 +250,7 @@ interface PokeLoungeE2eController {
   getActiveSceneKey(): PokeLoungeSceneKey | null;
   getAudioPlaybackSnapshot(): {
     activeBgmId: string | null;
+    activeBgmPlayback: "html-audio" | "web-audio" | null;
     activeBufferSourceCount: number;
     activeHtmlAudioElementCount: number;
     isBgmPlaying: boolean;

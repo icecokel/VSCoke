@@ -23,6 +23,9 @@ const POKE_LOUNGE_BGM_IDS = [
   "field-day",
   "wild-battle",
 ] as const satisfies readonly PokeLoungeBgmId[];
+const APPLE_MOBILE_UNLOCK_BGM_ID = "field-day";
+const APPLE_MOBILE_UNLOCK_BGM_SRC = "/assets/poke-lounge/audio/bgm/field-day.mp3";
+const APPLE_MOBILE_UNLOCK_BGM_VOLUME = 0.24;
 
 type PokeLoungeAudioItemId = PokeLoungeSfxId | PokeLoungeBgmId;
 type PokeLoungeAudioManifestItem = PokeLoungeSfxManifestItem | PokeLoungeBgmManifestItem;
@@ -35,6 +38,7 @@ export interface PokeLoungeAudioPreloadAsset {
 
 export interface PokeLoungeAudioPlaybackSnapshot {
   activeBgmId: PokeLoungeBgmId | null;
+  activeBgmPlayback: "html-audio" | "web-audio" | null;
   activeBufferSourceCount: number;
   activeHtmlAudioElementCount: number;
   isBgmPlaying: boolean;
@@ -57,6 +61,8 @@ const htmlAudioGains = new WeakMap<HTMLAudioElement, GainNode>();
 const audioObjectUrls = new Map<PokeLoungeAudioItemId, string>();
 const activeBufferSources = new Set<AudioBufferSourceNode>();
 const activeHtmlAudioElements = new Set<HTMLAudioElement>();
+let appleMobileBgmAudio: HTMLAudioElement | null = null;
+let appleMobileBgmSource: string | null = null;
 let activeBgm: {
   id: PokeLoungeBgmId;
   baseVolume: number;
@@ -68,7 +74,10 @@ let activeBgm: {
 export function bindPokeLoungeAudioPrimeListeners(target: HTMLElement): () => void {
   const prime = () => {
     void primePokeLoungeAudio().then(() => {
-      if (!audioContext || audioContext.state === "running") {
+      const isAppleMobileBgmReady =
+        !shouldPreferAppleMobileHtmlAudio() || (activeBgm?.audio !== null && isActiveBgmPlaying());
+
+      if ((!audioContext || audioContext.state === "running") && isAppleMobileBgmReady) {
         remove();
       }
     });
@@ -89,6 +98,11 @@ export function bindPokeLoungeAudioPrimeListeners(target: HTMLElement): () => vo
 export async function primePokeLoungeAudio(): Promise<void> {
   if (typeof window === "undefined") {
     return;
+  }
+
+  const prefersAppleMobileHtmlAudio = shouldPreferAppleMobileHtmlAudio();
+  if (prefersAppleMobileHtmlAudio) {
+    startAppleMobileBgmFromUserGesture();
   }
 
   const context = getAudioContext();
@@ -119,7 +133,8 @@ export async function primePokeLoungeAudio(): Promise<void> {
 
   if (
     activeBgm &&
-    (!isActiveBgmPlaying() || (context?.state === "running" && activeBgm.audio !== null))
+    (!isActiveBgmPlaying() ||
+      (!prefersAppleMobileHtmlAudio && context?.state === "running" && activeBgm.audio !== null))
   ) {
     playPokeLoungeBgm(activeBgm.id, { volume: activeBgm.baseVolume });
   }
@@ -230,6 +245,7 @@ export function getPokeLoungeAudioMuted(): boolean {
 export function getPokeLoungeAudioPlaybackSnapshotForTest(): PokeLoungeAudioPlaybackSnapshot {
   return {
     activeBgmId: activeBgm?.id ?? null,
+    activeBgmPlayback: activeBgm?.source ? "web-audio" : activeBgm?.audio ? "html-audio" : null,
     activeBufferSourceCount: activeBufferSources.size,
     activeHtmlAudioElementCount: activeHtmlAudioElements.size,
     isBgmPlaying: isActiveBgmPlaying(),
@@ -331,6 +347,11 @@ async function playPokeLoungeBgmAsync(
     return;
   }
 
+  if (shouldPreferAppleMobileHtmlAudio()) {
+    await playAppleMobileHtmlBgm(item, options.volume, generation);
+    return;
+  }
+
   const context = getAudioContext();
   if (context?.state === "suspended") {
     await context.resume().catch(() => undefined);
@@ -385,6 +406,37 @@ async function playPokeLoungeBgmAsync(
   audio.currentTime = 0;
   setHtmlAudioElementVolume(audio, baseVolume);
   activeBgm = { id, audio, baseVolume, gain: null, source: null };
+  await audio.play();
+}
+
+async function playAppleMobileHtmlBgm(
+  item: PokeLoungeBgmManifestItem,
+  requestedVolume: number | undefined,
+  generation: number,
+): Promise<void> {
+  if (activeBgm?.id === item.id && isActiveBgmPlaying()) {
+    return;
+  }
+
+  if (activeBgm) {
+    stopPokeLoungeBgm();
+  }
+  if (generation !== playbackGeneration) {
+    return;
+  }
+
+  const audio = getAppleMobileBgmAudio(item.src);
+  const baseVolume = requestedVolume ?? item.defaultVolume;
+  audio.loop = true;
+  audio.currentTime = 0;
+  setHtmlAudioElementVolume(audio, baseVolume);
+  activeBgm = {
+    id: item.id,
+    audio,
+    baseVolume,
+    gain: null,
+    source: null,
+  };
   await audio.play();
 }
 
@@ -556,6 +608,50 @@ function createHtmlAudioElement(item: PokeLoungeAudioManifestItem): HTMLAudioEle
   return audio;
 }
 
+function startAppleMobileBgmFromUserGesture(): void {
+  if (muted) {
+    return;
+  }
+
+  if (activeBgm?.audio) {
+    if (activeBgm.audio.paused) {
+      void activeBgm.audio.play().catch(() => undefined);
+    }
+    return;
+  }
+
+  if (activeBgm) {
+    stopPokeLoungeBgm();
+  }
+
+  const audio = getAppleMobileBgmAudio(APPLE_MOBILE_UNLOCK_BGM_SRC);
+  audio.loop = true;
+  setHtmlAudioElementVolume(audio, APPLE_MOBILE_UNLOCK_BGM_VOLUME);
+  activeBgm = {
+    id: APPLE_MOBILE_UNLOCK_BGM_ID,
+    audio,
+    baseVolume: APPLE_MOBILE_UNLOCK_BGM_VOLUME,
+    gain: null,
+    source: null,
+  };
+  void audio.play().catch(() => undefined);
+}
+
+function getAppleMobileBgmAudio(src: string): HTMLAudioElement {
+  appleMobileBgmAudio ??= new Audio(src);
+
+  if (appleMobileBgmSource !== src) {
+    appleMobileBgmAudio.src = src;
+    appleMobileBgmAudio.load();
+    appleMobileBgmSource = src;
+  }
+
+  appleMobileBgmAudio.preload = "auto";
+  appleMobileBgmAudio.setAttribute("playsinline", "");
+
+  return appleMobileBgmAudio;
+}
+
 function startSilentAudioUnlock(context: AudioContext): void {
   if (unlockedAudioContexts.has(context)) {
     return;
@@ -627,6 +723,10 @@ function setHtmlAudioElementVolume(audio: HTMLAudioElement, baseVolume: number):
 }
 
 function getHtmlAudioGain(audio: HTMLAudioElement): GainNode | null {
+  if (shouldPreferAppleMobileHtmlAudio()) {
+    return null;
+  }
+
   const cached = htmlAudioGains.get(audio);
   if (cached) {
     return cached;
@@ -670,6 +770,21 @@ function getAudioContext(): AudioContext | null {
   audioContext = new AudioContextConstructor();
 
   return audioContext;
+}
+
+function shouldPreferAppleMobileHtmlAudio(): boolean {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  const userAgent = navigator.userAgent ?? "";
+  const platform = navigator.platform ?? "";
+
+  return (
+    /\b(iPad|iPhone|iPod)\b/i.test(userAgent) ||
+    /\b(iPad|iPhone|iPod)\b/i.test(platform) ||
+    (platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
 }
 
 function getMasterGain(context = getAudioContext()): GainNode | null {

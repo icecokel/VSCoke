@@ -4,6 +4,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { requestIdMiddleware } from './common/middleware/request-id.middleware';
 
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/utils/winston.config';
@@ -24,6 +25,7 @@ async function bootstrap() {
   });
 
   app.set('trust proxy', 'loopback');
+  app.use(requestIdMiddleware);
   app.enableCors(getCorsOptions(process.env.CORS_ORIGINS));
 
   // 전역 필터 및 인터셉터 등록

@@ -142,6 +142,12 @@ pm2 list
 pm2 logs vscoke-api --lines 100
 ```
 
+모든 HTTP 응답은 `X-Request-Id`를 포함한다. `pm2 logs` 또는
+`/home/icenux/projects/vscoke-api/logs/combined-YYYY-MM-DD.log`에서 같은 ID를 찾아
+요청의 method, route template, statusCode, durationMs를 확인한다. access log에는 query,
+body, IP, 인증 정보, 이메일을 기록하지 않는다. 파일 로그는 일별·20MB 단위로 압축 회전하며
+180일 동안 보관한다.
+
 환경 변수 변경 후 재시작:
 
 ```bash

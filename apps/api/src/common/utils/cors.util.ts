@@ -37,6 +37,7 @@ export const getCorsOptions = (rawOrigins?: string): CorsOptions => ({
   origin: resolveCorsOrigins(rawOrigins),
   credentials: true,
   exposedHeaders: [
+    'X-Request-Id',
     'X-RateLimit-Limit',
     'X-RateLimit-Remaining',
     'X-RateLimit-Reset',

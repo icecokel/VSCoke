@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ErrorMessage } from '../constants/message.constant';
+import { createApiRequestLog } from '../logging/api-request-log';
 import { redactSensitiveValue } from '../utils/redact-sensitive';
 
 type ExceptionResponseWithMessage = {
@@ -49,13 +50,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
       ? exceptionResponse.message
       : exceptionResponse;
 
+    const accessLog = createApiRequestLog(request, status);
+    const errorLog = JSON.stringify({ ...accessLog, event: 'api.error' });
+
     // 로깅 처리 (500번대 에러는 error로, 그 외는 warn으로 기록)
     if (status >= Number(HttpStatus.INTERNAL_SERVER_ERROR)) {
       this.logger.error(
-        `[${request.method}] ${request.url}`,
+        errorLog,
         exception instanceof Error
-          ? exception.stack
-          : JSON.stringify(exception),
+          ? String(redactSensitiveValue(exception.stack ?? exception.message))
+          : JSON.stringify(redactSensitiveValue(exception)),
       );
 
       // 알림 전송 (Fire-and-forget)
@@ -64,9 +68,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         this.logger.error(`Failed to send notification: ${errorMessage}`);
       });
     } else {
-      this.logger.warn(
-        `[${request.method}] ${request.url} - ${status} - ${JSON.stringify(errorMessage)}`,
-      );
+      this.logger.warn(errorLog);
     }
 
     // 통일된 JSON 형식으로 에러 응답 반환
@@ -92,10 +94,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     // 에러 상세 정보 추출
-    const errorMessage =
-      exception instanceof Error ? exception.message : String(exception);
-    const stackTrace =
-      exception instanceof Error ? exception.stack : 'No stack trace available';
+    const errorMessage = String(
+      redactSensitiveValue(
+        exception instanceof Error ? exception.message : String(exception),
+      ),
+    );
+    const stackTrace = String(
+      redactSensitiveValue(
+        exception instanceof Error
+          ? (exception.stack ?? exception.message)
+          : 'No stack trace available',
+      ),
+    );
 
     // 요청 정보 추출
     const method = request.method;

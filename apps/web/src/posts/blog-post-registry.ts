@@ -489,6 +489,18 @@ export const blogPostDefinitions = [
     published: true,
     load: () => import("@/posts/journal/sidebar-ux-improvements"),
   },
+  {
+    slug: "journal/wiki-mcp-for-designers",
+    category: "journal",
+    title: "코드 저장소 밖의 동료를 위해 Wiki MCP를 만든 기록",
+    date: "2026-08-01",
+    description:
+      "개발팀의 저장소 지식을 디자이너도 Claude에서 활용할 수 있도록 Markdown 기반 읽기 전용 Wiki MCP를 설계하고 서버에 올린 과정을 기록합니다.",
+    tags: ["MCP", "Markdown", "Knowledge Management", "AI", "Retrospective"],
+    readingTime: "10 min read",
+    published: false,
+    load: () => import("@/posts/journal/wiki-mcp-for-designers"),
+  },
 ] satisfies BlogPostDefinition[];
 
 const definitionsBySlug = new Map(

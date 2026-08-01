@@ -35,5 +35,5 @@ test("TSX 블로그 레지스트리는 slug별 포스트 모듈을 로드한다"
   }
 
   assert.equal(getBlogPostDefinition("journal/not-a-real-post"), null);
-  assert.equal(blogPostDefinitions.length, 41);
+  assert.equal(blogPostDefinitions.length, 42);
 });

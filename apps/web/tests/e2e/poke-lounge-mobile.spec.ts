@@ -20,6 +20,7 @@ type CanvasSnapshot = {
 type AudioPlaybackSnapshot = {
   activeBgmId: "field-day" | "wild-battle" | null;
   activeBgmPlayback: "html-audio" | "web-audio" | null;
+  activeBgmVolume: number | null;
   activeBufferSourceCount: number;
   activeHtmlAudioElementCount: number;
   isBgmPlaying: boolean;
@@ -191,6 +192,7 @@ test("Poke Lounge 화면에서 이탈하면 재생 중인 모든 오디오를 �
   expect(snapshots.after).toEqual({
     activeBgmId: null,
     activeBgmPlayback: null,
+    activeBgmVolume: null,
     activeBufferSourceCount: 0,
     activeHtmlAudioElementCount: 0,
     isBgmPlaying: false,
@@ -367,6 +369,16 @@ test("Poke Lounge 모바일은 세로 필드와 전체 화면 메뉴를 제공�
     "data-active",
     "true",
   );
+  const volumeButton = settingsScreen.getByRole("button", { name: /소리/ });
+  await expect(volumeButton).toHaveText("소리 80%");
+  await volumeButton.click();
+  await expect(volumeButton).toHaveText("소리 100%");
+  await expect
+    .poll(async () => (await readAudioPlaybackSnapshot(page))?.activeBgmVolume)
+    .toBeCloseTo(0.24);
+  await volumeButton.click();
+  await expect(volumeButton).toHaveText("소리 끔");
+  await expect.poll(async () => (await readAudioPlaybackSnapshot(page))?.activeBgmVolume).toBe(0);
   await expectSceneOccludesControl(settingsScreen, controls);
   await expectNoModalDialog(page);
   await expectWorldInputIsLocked(page);

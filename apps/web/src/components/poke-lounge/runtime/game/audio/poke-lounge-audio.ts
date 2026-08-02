@@ -39,6 +39,7 @@ export interface PokeLoungeAudioPreloadAsset {
 export interface PokeLoungeAudioPlaybackSnapshot {
   activeBgmId: PokeLoungeBgmId | null;
   activeBgmPlayback: "html-audio" | "web-audio" | null;
+  activeBgmVolume: number | null;
   activeBufferSourceCount: number;
   activeHtmlAudioElementCount: number;
   isBgmPlaying: boolean;
@@ -228,13 +229,10 @@ export function setPokeLoungeMasterVolume(nextVolume: number): void {
 
   if (masterGain) {
     masterGain.gain.value = masterVolume;
-    return;
   }
 
-  if (activeBgm) {
-    if (activeBgm.audio) {
-      activeBgm.audio.volume = resolveVolume(activeBgm.baseVolume, 1);
-    }
+  if (activeBgm?.audio && !htmlAudioGains.has(activeBgm.audio)) {
+    activeBgm.audio.volume = resolveVolume(activeBgm.baseVolume, 1);
   }
 }
 
@@ -246,6 +244,7 @@ export function getPokeLoungeAudioPlaybackSnapshotForTest(): PokeLoungeAudioPlay
   return {
     activeBgmId: activeBgm?.id ?? null,
     activeBgmPlayback: activeBgm?.source ? "web-audio" : activeBgm?.audio ? "html-audio" : null,
+    activeBgmVolume: activeBgm?.audio?.volume ?? null,
     activeBufferSourceCount: activeBufferSources.size,
     activeHtmlAudioElementCount: activeHtmlAudioElements.size,
     isBgmPlaying: isActiveBgmPlaying(),

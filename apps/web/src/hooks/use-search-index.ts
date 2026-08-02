@@ -258,16 +258,6 @@ export const useSearchIndex = (): SearchItem[] => {
         priority: 400,
       },
       {
-        id: "game:fish-drift",
-        type: "game",
-        title: "Fish Drift",
-        description: tGame("fishDriftDesc"),
-        keywords: ["fish drift", "runner"],
-        path: "/game/fish-drift",
-        featured: true,
-        priority: 395,
-      },
-      {
         id: "game:poke-lounge",
         type: "game",
         title: tGame("pokeLoungeTitle"),

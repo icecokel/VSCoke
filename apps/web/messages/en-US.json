@@ -140,7 +140,6 @@
     "goBack": "Go Back",
     "exit": "Exit Game",
     "skyDropDesc": "A puzzle game where you match falling blocks to score points.",
-    "fishDriftDesc": "A one-touch swim runner where you dodge sea hazards and collect fish schools.",
     "pokeLoungeTitle": "Poke Lounge",
     "pokeLoungeLoading": "Loading Poke Lounge...",
     "pokeLoungeDesc": "Choose a starter and explore a lounge world with browser-based battles.",
@@ -182,11 +181,6 @@
     "leaderboardLoading": "Loading ranking...",
     "leaderboardEmpty": "No ranking records yet.",
     "unknownPlayer": "Anonymous Player",
-    "fishDriftReady": "Tap or press Space to weave through the current",
-    "fishDriftLoading": "Loading the sea...",
-    "fishDriftGuide": "The fish swims from bottom to top\nSwitch left/right swimming direction with each touch or Space press\nCollect color-coded fish schools to boost your score",
-    "fishDriftGameOver": "SWIM OVER",
-    "fishDriftSpeedUp": "Current speed up",
     "wordleWonTitle": "Correct! 🎉",
     "wordleWonDescription": "You guessed the answer!",
     "wordleLostTitle": "So close 😭",
@@ -206,8 +200,7 @@
     "copyLink": "Copy Link",
     "copied": "Link copied!",
     "shareFail": "Failed to share. Please try again.",
-    "wordleText": "Try VSCoke Wordle!",
-    "fishDriftText": "Try VSCoke Fish Drift! My score is {score}."
+    "wordleText": "Try VSCoke Wordle!"
   },
   "intro": {
     "title": "Welcome VSCoke",

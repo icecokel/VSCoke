@@ -6,7 +6,7 @@
 
 ## 현재 정책
 
-현재 API에 등록된 랭킹용 게임 타입은 `SKY_DROP`, `POKE_LOUNGE`다. Fish Drift와 Wordle은 웹 게임 라우트가 있지만 현재 `POST /game/result` 랭킹 저장 타입에는 포함되지 않는다.
+현재 API에 등록된 랭킹용 게임 타입은 `SKY_DROP`, `POKE_LOUNGE`다. Wordle은 웹 게임 라우트가 있지만 현재 `POST /game/result` 랭킹 저장 타입에는 포함되지 않는다.
 
 | gameType    | score min | score max | playTime min | playTime max | max score/sec |
 | ----------- | --------- | --------- | ------------ | ------------ | ------------- |

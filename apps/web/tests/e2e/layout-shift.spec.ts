@@ -146,13 +146,6 @@ test.describe("레이아웃 쉬프트 회귀", () => {
         await expect(page.getByRole("heading", { name: "Sky Drop" })).toBeVisible();
       },
     },
-    {
-      path: "/ko-KR/game/fish-drift",
-      maxCls: 0.01,
-      assertReady: async page => {
-        await expect(page.getByRole("heading", { name: "Fish Drift" })).toBeVisible();
-      },
-    },
   ];
 
   for (const pageCase of cases) {

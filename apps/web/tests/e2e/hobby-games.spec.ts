@@ -18,7 +18,6 @@ test.describe("취미 게임 섹션", () => {
 
     await expect(page.getByRole("heading", { name: messages.home.cards.gameTitle })).toBeVisible();
     await expect(page.getByRole("button", { name: /Sky Drop/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Fish Drift/ })).toBeVisible();
     await expect(
       page.getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.wordleTitle)) }),
     ).toBeVisible();
@@ -34,13 +33,13 @@ test.describe("취미 게임 섹션", () => {
     await expect(page.getByTestId("game-start-button")).toBeVisible({ timeout: 30000 });
     await expect(page.getByTestId("game-exit-button")).toBeVisible();
 
-    await gotoWithRetry(page, `/${locale}/game/fish-drift`);
-    await expect(page).toHaveURL(new RegExp(`/${localeRegex}/game/fish-drift$`));
-    await expect(
-      page
-        .locator("button", { hasText: new RegExp(`^${escapeRegExp(messages.Game.start)}$`) })
-        .first(),
-    ).toBeVisible({ timeout: 30000 });
+    const removedFishDriftResponse = await gotoWithRetry(
+      page,
+      `/${locale}/game/fish-drift`,
+      1,
+      false,
+    );
+    expect(removedFishDriftResponse?.status()).toBe(404);
 
     const removedDoomResponse = await gotoWithRetry(page, `/${locale}/doom`, 1, false);
     expect(removedDoomResponse?.status()).toBe(404);

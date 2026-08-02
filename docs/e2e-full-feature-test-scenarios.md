@@ -94,32 +94,31 @@ Web route:
 | 블로그          | `/:locale/blog`, `/:locale/blog/:slug`                       | 8              |
 | 블로그 대시보드 | `/:locale/blog/dashboard`                                    | 8              |
 | 게임 센터       | `/:locale/game`                                              | 11             |
-| Sky Drop        | `/:locale/game/sky-drop`                                     | 12, 20         |
-| Fish Drift      | `/:locale/game/fish-drift`                                   | 13             |
-| Wordle          | `/:locale/game/wordle`                                       | 14             |
-| Poke Lounge     | `/:locale/game/poke-lounge`                                  | 15~19          |
+| Sky Drop        | `/:locale/game/sky-drop`                                     | 12, 19         |
+| Wordle          | `/:locale/game/wordle`                                       | 13             |
+| Poke Lounge     | `/:locale/game/poke-lounge`                                  | 14~18          |
 | 에스프레소      | `/:locale/hobby/espresso`, `/:locale/hobby/espresso/:beanId` | 9              |
 | 레시피          | `/:locale/hobby/recipes`                                     | 10             |
-| 공유 결과       | `/:locale/share/:id`, `/:locale/share/:id/opengraph-image`   | 20, 23         |
-| Auth.js         | `/api/auth/[...nextauth]`                                    | 21             |
+| 공유 결과       | `/:locale/share/:id`, `/:locale/share/:id/opengraph-image`   | 19, 22         |
+| Auth.js         | `/api/auth/[...nextauth]`                                    | 20             |
 | 취미 검색 집계  | `/api/hobby-search-index`                                    | 5, 10          |
-| 검색엔진 파일   | `/robots.txt`, `/sitemap.xml`                                | 23             |
+| 검색엔진 파일   | `/robots.txt`, `/sitemap.xml`                                | 22             |
 
 API endpoint:
 
 | 모듈          | 경로                                                                                | 주요 검증 섹션 |
 | ------------- | ----------------------------------------------------------------------------------- | -------------- |
-| App           | `GET /`, `GET /health`                                                              | 22             |
-| OpenAPI       | `GET /api-json`                                                                     | 22             |
-| Recipe        | `GET /recipes`, `GET /recipes/:id`                                                  | 10, 22         |
-| Espresso      | `GET /espresso-history/beans`, `GET /espresso-history/beans/:id`                    | 9, 22          |
-| Wordle        | `GET /wordle/word`, `POST /wordle/check`                                            | 14, 22         |
-| Game result   | `POST /game/result`, `GET /game/ranking`, `GET /game/result/:id`                    | 11, 20, 22     |
-| Poke state    | `GET /game/poke-lounge/state`, `PUT /game/poke-lounge/state`                        | 18, 22         |
-| Poke room     | `POST /poke-lounge/rooms`, `GET /poke-lounge/rooms/:roomCode`                       | 19, 22         |
-| Poke mutation | `competitive-seat`, `actions`, `join`, `ready`, `party-snapshot`, `result`, `leave` | 19, 22         |
-| Poke Socket   | namespace `/poke-lounge`, snapshot subscribe/broadcast                              | 19, 22         |
-| Resume RAG    | `POST /resume-rag/chat`                                                             | 7, 22          |
+| App           | `GET /`, `GET /health`                                                              | 21             |
+| OpenAPI       | `GET /api-json`                                                                     | 21             |
+| Recipe        | `GET /recipes`, `GET /recipes/:id`                                                  | 10, 21         |
+| Espresso      | `GET /espresso-history/beans`, `GET /espresso-history/beans/:id`                    | 9, 21          |
+| Wordle        | `GET /wordle/word`, `POST /wordle/check`                                            | 13, 21         |
+| Game result   | `POST /game/result`, `GET /game/ranking`, `GET /game/result/:id`                    | 11, 19, 21     |
+| Poke state    | `GET /game/poke-lounge/state`, `PUT /game/poke-lounge/state`                        | 17, 21         |
+| Poke room     | `POST /poke-lounge/rooms`, `GET /poke-lounge/rooms/:roomCode`                       | 18, 21         |
+| Poke mutation | `competitive-seat`, `actions`, `join`, `ready`, `party-snapshot`, `result`, `leave` | 18, 21         |
+| Poke Socket   | namespace `/poke-lounge`, snapshot subscribe/broadcast                              | 18, 21         |
+| Resume RAG    | `POST /resume-rag/chat`                                                             | 7, 21          |
 
 ## 4. 공통 실행 명령
 
@@ -262,7 +261,7 @@ pnpm smoke:api:remote
 
 | ID         | 우선순위/상태 | 사전조건                         | 절차                           | 기대 결과                                                                        |
 | ---------- | ------------- | -------------------------------- | ------------------------------ | -------------------------------------------------------------------------------- |
-| `GAME-001` | P0/A          | `/game`                          | 4개 게임 카드 확인             | Sky Drop, Fish Drift, Poke Lounge, Wordle 카드와 설명이 표시된다.                |
+| `GAME-001` | P0/A          | `/game`                          | 3개 게임 카드 확인             | Sky Drop, Poke Lounge, Wordle 카드와 설명이 표시된다.                            |
 | `GAME-002` | P0/A          | Game Center                      | 각 카드 클릭 및 직접 URL 진입  | 대응 게임 화면이 locale을 유지해 열린다.                                         |
 | `GAME-003` | P1/N          | Sky Drop 결과 화면               | 점수 0, 양수, 최고점 상태 확인 | 제출·공유·메달·최고점 UI가 조건에 맞게 표시된다.                                 |
 | `GAME-004` | P0/P          | 비로그인 Sky Drop 결과           | 점수 제출 실행                 | 로그인 흐름이 시작되고 pending score가 보존된다.                                 |
@@ -293,26 +292,7 @@ pnpm smoke:api:remote
 
 현재 자동화는 진입과 공통 화면 중심이다. 실제 Phaser board 플레이 시나리오는 신규 test hook 또는 deterministic seed가 필요하다.
 
-## 13. Fish Drift
-
-| ID         | 우선순위/상태 | 사전조건         | 절차                               | 기대 결과                                                                                                         |
-| ---------- | ------------- | ---------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `FISH-001` | P0/P          | 게임 화면        | Start 또는 첫 입력                 | canvas가 로드되고 fish, obstacle, score UI가 초기화된다.                                                          |
-| `FISH-002` | P0/N          | 플레이 중        | Space를 눌러 진행 방향 전환        | fish의 좌우 대각선 진행 방향이 한 번 전환되고 key repeat는 추가 전환을 만들지 않는다.                             |
-| `FISH-003` | P1/N          | mobile           | canvas를 touch해 진행 방향 전환    | touch 한 번당 방향이 한 번 전환되고 page scroll과 충돌하지 않는다.                                                |
-| `FISH-004` | P1/N          | 플레이 중        | collectible 통과                   | 점수가 한 번 증가하고 collectible이 중복 처리되지 않는다.                                                         |
-| `FISH-005` | P0/N          | obstacle fixture | 충돌 발생                          | game over callback이 한 번 호출되고 final score가 결과 화면에 표시된다.                                           |
-| `FISH-006` | P1/N          | 장시간 fixture   | 시간 진행                          | 난이도/속도가 설계값대로 증가하고 frame이 멈추지 않는다.                                                          |
-| `FISH-007` | P0/N          | 결과 화면        | Restart                            | `restartToken`이 갱신되고 elapsed time, 난이도, score가 0에서 시작한다.                                           |
-| `FISH-008` | P1/N          | 결과 화면        | 빠르게 Restart 두 번               | Phaser scene이 중복 생성되지 않고 이벤트 listener가 하나만 남는다.                                                |
-| `FISH-009` | P1/N          | resize/rotate    | viewport 변경                      | game frame과 결과 overlay가 viewport 안에 유지된다.                                                               |
-| `FISH-010` | P1/N          | 결과 화면        | 공유 실행                          | Fish Drift 점수가 포함된 공유 문구와 현재 페이지 URL이 clipboard/Web Share로 전달되며 점수 API는 호출하지 않는다. |
-| `FISH-011` | P1/N          | page 이동        | 플레이 중 다른 탭으로 이동 후 복귀 | 이전 scene listener가 정리되고 새 게임이 정상 시작된다.                                                           |
-| `FISH-012` | P2/N          | Firefox/WebKit   | 핵심 플레이 1회                    | 이동, 충돌, restart가 브라우저별로 동일하다.                                                                      |
-
-현재 자동화는 Game Center와 직접 진입 확인 수준이다. 실제 게임 loop 전체는 신규 자동화가 필요하다.
-
-## 14. Wordle
+## 13. Wordle
 
 | ID         | 우선순위/상태 | 사전조건              | 절차                                      | 기대 결과                                                                                   |
 | ---------- | ------------- | --------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------- |
@@ -334,7 +314,7 @@ pnpm smoke:api:remote
 
 현재 자동화 매핑: `keyboard-only.spec.ts`, `error-fallback.spec.ts`, `wordle.e2e-spec.ts`. 승리·패배와 중복 문자 UI 자동화는 보강 대상이다.
 
-## 15. Poke Lounge: 진입·월드·로컬 상태
+## 14. Poke Lounge: 진입·월드·로컬 상태
 
 | ID               | 우선순위/상태 | 사전조건                      | 절차                                       | 기대 결과                                                           |
 | ---------------- | ------------- | ----------------------------- | ------------------------------------------ | ------------------------------------------------------------------- |
@@ -358,7 +338,7 @@ pnpm smoke:api:remote
 
 현재 자동화 매핑: `poke-lounge.spec.ts`, `poke-lounge-state-hydration.spec.ts`.
 
-## 16. Poke Lounge: 야생 전투·성장·오디오
+## 15. Poke Lounge: 야생 전투·성장·오디오
 
 | ID                | 우선순위/상태 | 사전조건                   | 절차                               | 기대 결과                                                             |
 | ----------------- | ------------- | -------------------------- | ---------------------------------- | --------------------------------------------------------------------- |
@@ -379,7 +359,7 @@ pnpm smoke:api:remote
 
 현재 자동화 매핑: `poke-lounge.spec.ts`, `poke-lounge:audio:verify`.
 
-## 17. Poke Lounge: 로컬 룸·토너먼트
+## 16. Poke Lounge: 로컬 룸·토너먼트
 
 | ID               | 우선순위/상태 | 사전조건        | 절차                          | 기대 결과                                                                    |
 | ---------------- | ------------- | --------------- | ----------------------------- | ---------------------------------------------------------------------------- |
@@ -395,7 +375,7 @@ pnpm smoke:api:remote
 
 현재 자동화 매핑: `poke-lounge.spec.ts`.
 
-## 18. Poke Lounge: 인증 저장·복원
+## 17. Poke Lounge: 인증 저장·복원
 
 | ID              | 우선순위/상태 | 사전조건        | 절차                             | 기대 결과                                                   |
 | --------------- | ------------- | --------------- | -------------------------------- | ----------------------------------------------------------- |
@@ -412,7 +392,7 @@ pnpm smoke:api:remote
 
 현재 자동화 매핑: `poke-lounge-autosave.spec.ts`. `POKE-SAVE-010`은 실제 PostgreSQL 통합 시나리오로 추가해야 한다.
 
-## 19. Poke Lounge: 서버 룸·2인 권위 경쟁전
+## 18. Poke Lounge: 서버 룸·2인 권위 경쟁전
 
 | ID             | 우선순위/상태 | 사전조건                          | 절차                            | 기대 결과                                                                              |
 | -------------- | ------------- | --------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------- |
@@ -446,7 +426,7 @@ pnpm smoke:api:remote
 
 현재 자동화 매핑: `poke-lounge-multiplayer.spec.ts`, `poke-lounge-room.e2e-spec.ts`, `poke-lounge-competitive.repository.integration-spec.ts`. `POKE-SRV-022`, `026`, `027`은 Web+실 API+DB를 묶는 상위 E2E suite로 추가해야 한다.
 
-## 20. 점수·랭킹·공유 상세
+## 19. 점수·랭킹·공유 상세
 
 | ID          | 우선순위/상태 | 사전조건                     | 절차                    | 기대 결과                                                                    |
 | ----------- | ------------- | ---------------------------- | ----------------------- | ---------------------------------------------------------------------------- |
@@ -463,7 +443,7 @@ pnpm smoke:api:remote
 
 현재 자동화 매핑: `api-read-error.spec.ts`, `error-fallback.spec.ts`, `not-found-recovery.spec.ts`, `server-route-fallback.spec.ts`, `history-tabs.spec.ts`, API `game-result-trust.integration-spec.ts`.
 
-## 21. 인증과 세션
+## 20. 인증과 세션
 
 | ID         | 우선순위/상태 | 사전조건               | 절차                         | 기대 결과                                                        |
 | ---------- | ------------- | ---------------------- | ---------------------------- | ---------------------------------------------------------------- |
@@ -478,7 +458,7 @@ pnpm smoke:api:remote
 
 현재 자동화 매핑: `auth-token.spec.ts`, API `google-auth.guard.spec.ts`. 실제 Google OAuth는 운영 수동 smoke 또는 별도 테스트 OAuth 프로젝트가 필요하다.
 
-## 22. API·PostgreSQL·Socket 통합
+## 21. API·PostgreSQL·Socket 통합
 
 | ID        | 우선순위/상태 | 사전조건             | 절차                                    | 기대 결과                                                            |
 | --------- | ------------- | -------------------- | --------------------------------------- | -------------------------------------------------------------------- |
@@ -505,7 +485,7 @@ pnpm smoke:api:remote
 
 현재 자동화 매핑: `apps/api/test` 전체와 API unit specs. Recipe, Espresso, game state, RAG의 실제 HTTP E2E는 보강해야 한다.
 
-## 23. 오류 복구·보안·비기능
+## 22. 오류 복구·보안·비기능
 
 | ID          | 우선순위/상태 | 사전조건             | 절차                                              | 기대 결과                                                             |
 | ----------- | ------------- | -------------------- | ------------------------------------------------- | --------------------------------------------------------------------- |
@@ -532,9 +512,9 @@ pnpm smoke:api:remote
 
 현재 자동화 매핑: `api-read-error.spec.ts`, `mobile-behavior.spec.ts`, `layout-shift.spec.ts`, `visual-regression.spec.ts`, `keyboard-only.spec.ts`, `google-analytics.spec.ts`, `google-tag-manager.spec.ts`.
 
-## 24. 실행 세트
+## 23. 실행 세트
 
-### 24.1 PR P0 세트
+### 23.1 PR P0 세트
 
 1. API contract, typecheck, lint, knip, build.
 2. API unit 및 PostgreSQL migration/E2E.
@@ -552,7 +532,7 @@ poke-lounge.spec.ts --grep "solo 선택|wild-victory|network=local"
 poke-lounge-multiplayer.spec.ts --grep "server room create|authoritative move|terminal"
 ```
 
-### 24.2 일일 P1 세트
+### 23.2 일일 P1 세트
 
 ```bash
 pnpm e2e
@@ -562,7 +542,7 @@ TEST_DATABASE_URL=postgresql://<user>@127.0.0.1:5432/vscoke_web_test pnpm e2e:in
 
 Chromium 전체 suite와 실제 PostgreSQL integration을 실행한다. 외부 운영 API에 의존하지 않도록 로컬 API와 테스트 DB를 사용한다.
 
-### 24.3 릴리즈 후보 세트
+### 23.3 릴리즈 후보 세트
 
 1. `pnpm e2e:cross-browser`로 Chromium, Firefox, WebKit 실행.
 2. mobile 360, 390, 430 viewport 실행.
@@ -572,21 +552,20 @@ Chromium 전체 suite와 실제 PostgreSQL integration을 실행한다. 외부 �
 6. visual baseline 및 CLS 확인.
 7. 운영 console error, failed request, CORS, Socket reconnect 확인.
 
-## 25. 자동화 구현 순서
+## 24. 자동화 구현 순서
 
-| 순서 | 작업                                           | 이유                                                |
-| ---- | ---------------------------------------------- | --------------------------------------------------- |
-| 1    | Sky Drop deterministic play hook 및 승패 E2E   | 현재 실제 플레이 검증이 가장 부족함                 |
-| 2    | Fish Drift deterministic collision/restart E2E | game loop와 listener 누수 검증 필요                 |
-| 3    | Wordle 승리·패배·중복 문자 E2E                 | 핵심 규칙 UI 누락 보완                              |
-| 4    | 점수 제출·랭킹·공유 Web+API 통합               | 게임 공통 사용자 가치 검증                          |
-| 5    | Recipe/Espresso/Game State/RAG HTTP E2E        | controller별 계약 공백 보완                         |
-| 6    | Poke Lounge 두 browser+실 API+DB 상위 E2E      | route interception과 repository test 사이 공백 제거 |
-| 7    | 전체 화면 axe와 metadata/asset smoke           | 비기능 release 기준 완성                            |
+| 순서 | 작업                                         | 이유                                                |
+| ---- | -------------------------------------------- | --------------------------------------------------- |
+| 1    | Sky Drop deterministic play hook 및 승패 E2E | 현재 실제 플레이 검증이 가장 부족함                 |
+| 2    | Wordle 승리·패배·중복 문자 E2E               | 핵심 규칙 UI 누락 보완                              |
+| 3    | 점수 제출·랭킹·공유 Web+API 통합             | 게임 공통 사용자 가치 검증                          |
+| 4    | Recipe/Espresso/Game State/RAG HTTP E2E      | controller별 계약 공백 보완                         |
+| 5    | Poke Lounge 두 browser+실 API+DB 상위 E2E    | route interception과 repository test 사이 공백 제거 |
+| 6    | 전체 화면 axe와 metadata/asset smoke         | 비기능 release 기준 완성                            |
 
 test hook은 production 동작을 바꾸지 않는 `e2e` query 또는 test-only adapter로 제한한다. 결과를 직접 주입해 화면만 통과시키기보다 seed, clock, encounter/collision 조건을 제어해 실제 domain logic을 실행해야 한다.
 
-## 26. 실패 증적과 분류
+## 25. 실패 증적과 분류
 
 각 실패는 다음 정보를 남긴다.
 
@@ -611,14 +590,14 @@ test hook은 production 동작을 바꾸지 않는 `e2e` query 또는 test-only 
 
 flaky 테스트는 단순 retry 성공으로 닫지 않는다. 최초 실패 trace를 확인하고 원인을 기록한다.
 
-## 27. 완료 기준
+## 26. 완료 기준
 
 전체 기능 E2E 검증 완료는 다음 조건을 모두 만족해야 한다.
 
 1. 모든 `P0` 시나리오가 Chromium과 API 통합 환경에서 통과한다.
 2. 사용자 입력이 있는 모든 공개 화면에 최소 한 개의 정상 경로 E2E가 있다.
 3. 각 외부 경계인 API, OAuth, PostgreSQL, Socket.IO, clipboard/share에 정상·실패 경로가 있다.
-4. Sky Drop, Fish Drift, Wordle, Poke Lounge가 각각 실제 시작→플레이→종료→재시작 흐름을 통과한다.
+4. Sky Drop, Wordle, Poke Lounge가 각각 실제 시작→플레이→종료→재시작 흐름을 통과한다.
 5. Poke Lounge는 익명 solo, local room, 인증 2인 server competition을 각각 통과한다.
 6. ko-KR, en-US, ja-JP route와 360/390/430 mobile 레이아웃이 통과한다.
 7. Firefox와 WebKit에서 P0 핵심 경로가 통과한다.
@@ -626,8 +605,8 @@ flaky 테스트는 단순 retry 성공으로 닫지 않는다. 최초 실패 tra
 9. 실패 artifact와 실행 결과가 commit SHA 기준으로 보존된다.
 10. 미자동화 또는 수동 항목은 담당자, 실행일, 결과가 릴리즈 기록에 남는다.
 
-## 28. 현재 결론
+## 27. 현재 결론
 
-현재 저장소는 route, 다국어, 취미 화면, 오류 fallback, Poke Lounge domain/저장/멀티플레이에 강한 자동화 기반이 있다. 반면 Sky Drop과 Fish Drift의 실제 플레이, Wordle 완주, 공통 점수 제출·공유, Recipe/Espresso의 실제 HTTP 계약, Google OAuth, Web+실 API+DB를 묶은 2인 Poke Lounge 경쟁전은 전체 기능 E2E 관점에서 보강이 필요하다.
+현재 저장소는 route, 다국어, 취미 화면, 오류 fallback, Poke Lounge domain/저장/멀티플레이에 강한 자동화 기반이 있다. 반면 Sky Drop의 실제 플레이, Wordle 완주, 공통 점수 제출·공유, Recipe/Espresso의 실제 HTTP 계약, Google OAuth, Web+실 API+DB를 묶은 2인 Poke Lounge 경쟁전은 전체 기능 E2E 관점에서 보강이 필요하다.
 
 따라서 기존 `pnpm e2e` 통과만으로 "모든 기능 테스트 완료"라고 판정하지 않는다. 이 문서의 `N`과 `P` 항목을 자동화하거나 릴리즈 후보 수동 결과로 증명한 뒤 완료로 판정한다.

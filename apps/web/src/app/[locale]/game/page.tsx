@@ -24,12 +24,6 @@ export default function GameDashboard() {
       route: "/game/sky-drop",
     },
     {
-      id: "fish-drift",
-      title: "Fish Drift",
-      description: t("fishDriftDesc"),
-      route: "/game/fish-drift",
-    },
-    {
       id: "wordle",
       title: t("wordleTitle"),
       description: t("wordleDesc"),
@@ -38,9 +32,7 @@ export default function GameDashboard() {
   ];
 
   useEffect(() => {
-    ["/game/poke-lounge", "/game/sky-drop", "/game/fish-drift", "/game/wordle"].forEach(path =>
-      prefetch(path),
-    );
+    ["/game/poke-lounge", "/game/sky-drop", "/game/wordle"].forEach(path => prefetch(path));
   }, [prefetch]);
 
   return (

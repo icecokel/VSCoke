@@ -140,7 +140,6 @@
     "goBack": "戻る",
     "exit": "終了",
     "skyDropDesc": "落ちてくるブロックを合わせてスコアを獲得するパズルゲームです。",
-    "fishDriftDesc": "ワンタッチの左右遊泳で海底の障害物を避け、魚の群れを集めるゲームです。",
     "pokeLoungeTitle": "ポケラウンジ",
     "pokeLoungeLoading": "Poke Loungeを読み込んでいます...",
     "pokeLoungeDesc": "スターターを選び、ラウンジの世界とブラウザバトルを探索するファンゲームです。",
@@ -182,11 +181,6 @@
     "leaderboardLoading": "ランキングを読み込んでいます...",
     "leaderboardEmpty": "まだランキング記録がありません。",
     "unknownPlayer": "匿名プレイヤー",
-    "fishDriftReady": "タップまたはSpaceで潮流を縫うように進む",
-    "fishDriftLoading": "海を読み込んでいます...",
-    "fishDriftGuide": "魚は下から上へ泳ぎます\nタッチまたはSpace入力ごとに左右の泳ぐ方向が切り替わります\n色ごとの魚の群れを集めるとスコアが大きく伸びます",
-    "fishDriftGameOver": "SWIM OVER",
-    "fishDriftSpeedUp": "潮流加速",
     "wordleWonTitle": "正解です！ 🎉",
     "wordleWonDescription": "答えを当てました！",
     "wordleLostTitle": "惜しいです 😭",
@@ -206,8 +200,7 @@
     "copyLink": "リンクをコピー",
     "copied": "リンクをコピーしました！",
     "shareFail": "共有に失敗しました。もう一度お試しください。",
-    "wordleText": "VSCoke Wordleに挑戦してみてください！",
-    "fishDriftText": "VSCoke Fish Driftに挑戦してみてください！私のスコアは{score}点です。"
+    "wordleText": "VSCoke Wordleに挑戦してみてください！"
   },
   "intro": {
     "title": "Welcome VSCoke",

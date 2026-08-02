@@ -326,12 +326,11 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await visit(page, `/${locale}/game`);
 
     await expect(page.getByRole("heading", { name: messages.home.cards.gameTitle })).toBeVisible();
-    await expect(page.locator("main button")).toHaveCount(4);
-    await expect(page.locator("main")).toHaveCSS("padding-bottom", "100px");
+    await expect(page.locator("main button")).toHaveCount(3);
+    await expect(page.locator("main.bg-slate-900")).toHaveCSS("padding-bottom", "100px");
     await expect(page.locator("main button").first()).toHaveAccessibleName(/Poke Lounge/);
 
     await expect(page.getByRole("button", { name: /Sky Drop/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Fish Drift/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Poke Lounge/ })).toBeVisible();
     await expect(
       page.getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.wordleTitle)) }),
@@ -349,21 +348,6 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await expect(skyDropExit).toBeVisible();
     await skyDropExit.click();
     await expectPath(page, new RegExp(`^/${localeRegex}/game$`), 30000);
-
-    await page.getByRole("button", { name: /Fish Drift/ }).click();
-    await expectPath(page, new RegExp(`^/${localeRegex}/game/fish-drift$`), 30000);
-
-    const fishStart = page
-      .locator("button", { hasText: new RegExp(`^${escapeRegExp(messages.Game.start)}$`) })
-      .first();
-    await expect(fishStart).toBeVisible();
-    await expect.poll(() => fishStart.isEnabled(), { timeout: 20000 }).toBe(true);
-
-    await page
-      .locator("button", { hasText: new RegExp(`^${escapeRegExp(messages.Game.exit)}$`) })
-      .first()
-      .click();
-    await expectPath(page, new RegExp(`^/${localeRegex}/game$`));
 
     await visit(page, `/${locale}/game`);
     await page

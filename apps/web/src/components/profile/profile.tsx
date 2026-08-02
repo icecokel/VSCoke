@@ -124,17 +124,9 @@ const Profile = () => {
           <div className="mb-5 min-w-[140px]">2020.03</div>
           <div className="mb-5">
             <BaseText type="h6">{t("hybridCourse")}</BaseText>
-            <BaseText type="body2">
-              {t("hybridDesc")} <br />
-              {t("hybridDesc2")}
-            </BaseText>
-          </div>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center ">
-          <div className="mb-5 min-w-[140px]">2010.03 - 2017.02</div>
-          <div className="mb-5">
-            <BaseText type="h6">{t("university")}</BaseText>
-            <BaseText type="body2">{t("major")}</BaseText>
+            <ul className="mt-2 ml-4 list-disc">
+              <li className="text-sm text-gray-300">{t("hybridDesc")}</li>
+            </ul>
           </div>
         </div>
       </ProfileItem>

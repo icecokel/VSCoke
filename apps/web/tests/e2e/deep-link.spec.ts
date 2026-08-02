@@ -120,32 +120,34 @@ test.describe("딥링크 직접 진입", () => {
     const { locale } = await resolveLocaleAndMessages(page);
 
     await gotoWithRetry(page, `/${locale}/resume/commerce-backoffice-product`);
+    await expect(page.getByRole("heading", { name: "커머스·백오피스", exact: true })).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "상품 카드와 판매 방식의 공통 구조" }),
+      page.getByText("한국어·일본어·영어·중국어 화면을 지원했습니다.", { exact: false }),
     ).toBeVisible();
     await expect(
-      page.getByText("고객용 웹은 PC에서도 최대 420px 싱글 컬럼", { exact: false }),
+      page.getByText("Flutter Web 백오피스를 Next.js로 마이그레이션", { exact: false }),
     ).toBeVisible();
 
     await gotoWithRetry(page, `/${locale}/resume/translate`);
     await expect(
-      page.getByText("재직 중 약 3개월 동안 3~4명의 운영자가 사용했습니다.", {
+      page.getByText("재직 중 약 3개월 동안 운영자 3~4명이 사용했습니다.", {
         exact: false,
       }),
     ).toBeVisible();
     await expect(
-      page.getByText("키워드를 10개 단위로 묶어 병렬 검색", { exact: false }),
+      page.getByText("셀렉터스 상품 블로그 초안 생성 프로토타입", { exact: false }),
     ).toBeVisible();
+    await expect(page.getByText("약 50분에서 10분 이내로 줄였고", { exact: false })).toBeVisible();
 
     await gotoWithRetry(page, `/${locale}/resume/shortime-playground`);
     await expect(
-      page.getByText("결과 제출 중에는 게임 터치 입력을 막아", { exact: false }),
+      page.getByText("WebView 영역을 제안하고 프로토타입으로 시연", { exact: false }),
     ).toBeVisible();
     await expect(
-      page.getByText("프로토타입으로 시연한 게임 흐름이 실제 기능으로 채택", { exact: false }),
+      page.getByText("결과 제출 중 중복 진행과 Safari 오디오 재생", { exact: false }),
     ).toBeVisible();
     await expect(
-      page.getByText("주간 고유 이용자 2,000~3,000명을 확인했습니다.", { exact: false }),
+      page.getByText("DB 기준 주간 고유 이용자 약 2,000~3,000명", { exact: false }),
     ).toBeVisible();
   });
 });

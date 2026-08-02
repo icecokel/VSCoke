@@ -1,5 +1,5 @@
 ---
-title: "CodeCrayon - 커머스 웹 전환과 백오피스"
+title: "CodeCrayon - 커머스·백오피스"
 startDate: "2023.05"
 endDate: "2025.07"
 ---
@@ -8,96 +8,16 @@ endDate: "2025.07"
 
 - 회사: 주식회사 코드크레용
 - 기간: 2023.05 - 2025.07
-- 고용 형태: 정규직
-- 핵심 포지션: 고객용 커머스와 운영자 도구 개발
-- 기술 스택: Next.js, React, TypeScript, MUI, Tailwind CSS, Jotai, SWR, React Hook Form, i18next, Toss Payments, PayPal, GA4, Google Tag Manager, Google Sheets API
+- 직무: 프론트엔드 개발
 
-초기 멤버로 고객용 커머스와 운영팀이 직접 사용하는 도구를 함께 맡았습니다. 고객용 웹은 PC·모바일 반응형 구조에서 모바일 사용 흐름 중심으로 전환했고, 운영자 대시보드는 넓은 화면에서 계속 사용할 수 있도록 레이아웃 기준을 분리했습니다.
+초기 멤버로 커머스·백오피스, 모바일 WebView·웹게임, 콘텐츠 운영 도구를 개발했습니다.
 
-## 1. 고객용 커머스 웹을 모바일 사용 흐름으로 전환
+## 커머스·백오피스
 
-### 문제
-
-- 고객용 웹은 PC와 모바일에서 내비게이션과 콘텐츠 배치가 달라 같은 기능을 사용하는 흐름이 기기마다 달라질 수 있었습니다.
-- 고객 화면은 모바일 중심으로 전환하되, 상품과 주문을 관리하는 운영자 대시보드는 기존 데스크톱 레이아웃을 유지해야 했습니다.
-- 일부 화면만 반응형으로 수정하는 방식으로는 헤더, 하단 내비게이션과 콘텐츠 폭을 일관되게 관리하기 어려웠습니다.
-
-### 변경
-
-- LayoutContext에서 고객용 웹과 운영자 대시보드를 구분하고, 화면 유형에 따라 콘텐츠 폭과 내비게이션을 다르게 적용했습니다.
-- 고객용 웹은 PC에서도 최대 420px 싱글 컬럼과 모바일 상·하단 내비게이션을 사용하게 했습니다.
-- 배너, 상품 목록·상세, 검색, 주문, 마이페이지와 고객지원 화면을 같은 레이아웃 기준으로 전환했습니다.
-- 운영자 대시보드는 기존 데스크톱 레이아웃과 넓은 작업 영역을 유지했습니다.
-
-<figure className="my-6">
-  <div className="grid gap-4 md:grid-cols-2">
-    <div className="overflow-hidden rounded-lg border border-gray-700 bg-gray-900/50">
-      <img
-        src="/images/resume/sellectors-desktop-layout-before.png"
-        alt="2024년 전체 폭 PC 웹 레이아웃의 Sellectors 고객용 커머스 화면"
-        className="h-auto w-full"
-      />
-      <div className="px-3 py-2 text-sm text-gray-300">
-        전환 전 · 2024-02-05 · 전체 폭 PC 웹 레이아웃
-      </div>
-    </div>
-    <div className="overflow-hidden rounded-lg border border-gray-700 bg-gray-900/50">
-      <img
-        src="/images/resume/sellectors-mobile-layout-after.jpg"
-        alt="2026년 데스크톱에서도 중앙 모바일 단일 컬럼으로 표시된 Sellectors 고객용 커머스 화면"
-        className="h-auto w-full"
-      />
-      <div className="px-3 py-2 text-sm text-gray-300">
-        전환 후 · 2026-07-14 · PC에서도 중앙 모바일 앱형 단일 컬럼
-      </div>
-    </div>
-  </div>
-  <figcaption className="mt-3 text-sm text-gray-400">
-    서비스 내용 변화가 아닌 고객용 웹 레이아웃 전환 비교입니다.
-  </figcaption>
-</figure>
-
-### 결과
-
-- 고객용 웹은 PC와 모바일에서 같은 탐색 구조와 콘텐츠 순서를 사용하게 됐습니다.
-- 고객 화면과 운영자 화면의 레이아웃 책임을 분리해 한쪽의 변경이 다른 화면 유형에 그대로 번지지 않게 했습니다.
-
-## 2. 국내외 결제 경로와 사용자 행동 데이터 연결
-
-### 국내외 결제 경로 분리
-
-- 국내 사용자에게는 국내 결제 경로를, 해외 사용자에게는 해외 카드·PayPal 경로를 제공했습니다.
-- 결제 수단과 사용자 지역에 따라 다음 단계가 섞이지 않도록 진입 경로를 분리했습니다.
-
-### 상품 카드와 판매 방식의 공통 구조
-
-- 상품 이미지, 정보, 라벨, 타이머와 provider를 공통 상품 카드로 옮겼습니다.
-- 상품 목록, 찜 목록과 셀러샵에서 같은 카드 경로를 사용하게 했습니다.
-- 공통 구조 안에서 일반 판매, 선착순과 드로우의 타이머·라벨·상태 차이는 별도 variant로 분리했습니다.
-
-### 사용자 행동 이벤트 연결
-
-- 상품 조회·회원가입·구매·환불 GA4 이벤트와 주요 클릭 GTM 이벤트를 정의했습니다.
-- 상품·주문·검색·회원 흐름의 실제 호출 지점에 이벤트를 연결했습니다.
-- 후속 수정에서 구매 금액, 오류 화면의 상품 조회와 회원가입 클릭 이벤트의 전송 시점을 보정했습니다.
-
-> 실제 분석 활용과 전환율 변화는 확인되지 않아, 사용자 행동을 기록할 수 있게 한 범위로만 설명합니다.
-
-## 3. 다국어 운영 자동화
-
-- 한국어·일본어·영어·중국어 번역 키를 코드에서 수집했습니다.
-- Google Sheets와 locale 파일을 양방향으로 동기화해 개발자와 운영자가 같은 번역 데이터를 사용하게 했습니다.
-- 번역 키 수집과 파일 갱신을 빌드·운영 흐름에서 반복할 수 있게 했습니다.
-
-## 4. 백오피스 마이그레이션과 운영자 화면
-
-- 기존 Flutter Web 백오피스에서는 웹 운영 요청을 담당 앱 개발자에게 전달하고 대응하는 과정에 불편이 있었습니다.
-- 담당 앱 개발자가 신규 앱 개발에 집중하면서 프론트엔드 이관이 필요해졌고, Next.js App Router 이관의 프론트엔드 구현을 단독으로 맡았습니다.
-- 상품·셀러 승인 기능을 먼저 옮기고, 후속으로 배너·검색 키워드 관리 기능을 추가했습니다.
-- 주문·클레임, 정산, 이벤트, 문의와 홈 운영 화면을 담당했습니다.
-- 검색 조건 초기화, CSV·Excel 내보내기와 드래그 정렬을 운영 화면에 적용했습니다.
-- 공통 테이블, 상세 다이얼로그, 폼과 이미지 업로드를 여러 관리 화면에서 재사용하게 했습니다.
+- 국내·외 사용자가 각자 맞는 언어와 결제 수단을 사용할 수 있도록 상품 탐색부터 주문·결제·마이페이지까지 개발하고, 한국어·일본어·영어·중국어 화면을 지원했습니다.
+- 모바일 고객과 데스크톱 판매자의 사용 방식에 맞춰 고객 화면은 모바일 중심 UI로 바꿔 작업속도를 올리고, 판매자 대시보드는 데스크톱 레이아웃을 유지했습니다.
+- 기존 담당자가 앱 개발로 이동한 뒤에도 운영 기능을 계속 개발할 수 있도록 Flutter Web 백오피스를 Next.js로 마이그레이션하고 상품·주문·정산·이벤트·문의 관리 기능을 옮겼습니다.
 
 ## 기술
 
-Next.js, React, TypeScript, MUI, Tailwind CSS, Jotai, SWR, React Hook Form, i18next, Toss Payments, PayPal, GA4, Google Tag Manager, Google Sheets API
+Next.js, React, TypeScript, MUI, Tailwind CSS, Jotai, SWR, React Hook Form, Toss Payments, PayPal, Phaser, Flutter InAppWebView, Branch.io, Airbridge, Node.js, Express, AWS Bedrock, OpenAI API, Google Cloud Translation, Axios, Cheerio

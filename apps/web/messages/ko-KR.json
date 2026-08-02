@@ -92,15 +92,12 @@
     "sendEmail": "이메일 보내기",
     "call": "전화하기",
     "copyPhone": "전화번호 복사",
-    "introduction": "간단 소개글",
+    "introduction": "간단 소개",
     "links": "링크",
-    "education": "학력 / 교육",
+    "education": "대외활동",
     "viewCareer": "경력 보러가기",
-    "hybridCourse": "하이브리드 앱개발(iOS&안드로이드) 및 웹 개발자 양성 과정",
-    "hybridDesc": "Java, Spring 기반의 웹 개발 기초 (스프링 기초, REST API)",
-    "hybridDesc2": "안드로이드, iOS 앱개발 기초",
-    "university": "서일대학교",
-    "major": "정보통신학과"
+    "hybridCourse": "하이브리드 앱 및 웹 개발자 양성과정",
+    "hybridDesc": "인프라에서 개발 직무로 전환하기 위해 Java·Spring 기반 웹과 REST API, Android·iOS 앱 개발 기초를 학습했습니다."
   },
   "blog": {
     "title": "블로그",
@@ -489,46 +486,55 @@
   },
   "resume": {
     "name": "이상민",
-    "title": "제품 문제를 발견하고 기술 선택과 검증으로 해결하는 개발자",
+    "title": "비즈니스 가치를 만들고, 팀의 고통을 줄이는 개발자",
     "contact": {
       "phone": "+821020809652",
       "email": "red9runge@gmail.com"
     },
     "introduction": [
-      "사용자가 겪는 불편과 팀원의 반복 업무를 제품과 도구로 해결해 왔습니다.",
-      "최근에는 개발 과정에 AI 워크플로우를 적용하고, 수동 배포를 CI/CD로 전환했습니다."
+      "안녕하세요. 프론트엔드를 중심으로 제품과 운영에 필요한 기능을 개발해 온 이상민입니다.",
+      "커머스·모바일 WebView·보험·의료·임상 분석 제품을 만들며, 앱 배포에 묶인 이벤트 영역을 독립 WebView 제품으로 제안하고 개발자가 실행하던 콘텐츠 업무를 운영자용 도구로 전환했습니다.",
+      "최근에는 의료·임상 분석 제품을 개발하며 화면의 반응형·접근성·성능뿐 아니라 배포와 로그 저장·요청 추적까지 제품에 필요한 작업을 직접 맡고 있습니다.",
+      "AI 개발 보조 도구는 코드 생성에만 사용하지 않습니다. 프로젝트별 지침·Skill·Hook·PR 검증 기준을 두었습니다. 기술 자체보다 그 선택이 사용자와 팀의 다음 작업을 어떻게 바꾸는지를 중요하게 생각합니다."
     ],
     "totalExperience": "7년 4개월",
     "viewDescription": "경력기술서",
     "backToResume": "이력서로 돌아가기",
     "careers": {
       "oprimed": {
-        "company": "주식회사오프리메드",
-        "period": "2026.02 - 재직 중 (6개월)",
+        "company": "오프리메드",
+        "period": "2026.02 - 재직 중",
         "employmentType": "정규직",
         "role": "서비스 개발자",
         "projects": {
           "medicalFrontendProductization": {
-            "title": "의료·임상 분석 제품의 연속성과 실행 제어",
+            "title": "의료·임상 분석 제품",
             "descriptions": [
               {
-                "subtitle": "의료·임상 분석 제품의 연속성과 실행 제어",
+                "subtitle": "의료·임상 분석 화면 개발",
+                "detail": "의료·임상 분석 제품의 화면 개발과 접근성·성능 개선, AI 개발 환경, CI/CD와 백엔드 로그 작업을 맡고 있습니다.",
                 "tasks": [
-                  "제품 흐름과 복원: 환자·질병·약물·분석 조건이 연결된 제품에서 기획·디자인·백엔드 담당자와 화면 순서와 API 계약을 협의했습니다. 작업 데이터를 서버에 저장하고 작업별 클라이언트 캐시를 분리해, 화면 이동·새로고침·재진입에도 같은 작업의 조건과 결과를 복원했습니다.",
-                  "분석 중단: 장시간 ML 분석에서 프론트 요청 중단, 서버 실행 중단 API 호출, 지연 응답 차단, 실행 상태 정리를 연결해 중단 뒤 남은 응답이 화면 상태를 다시 바꾸지 못하게 했습니다.",
-                  "UI·성능: 이미지 기반 프레임을 공통 컴포넌트로 전환해 런타임 PNG 요청 3건과 약 315 KiB payload를 제거했습니다. 정적 이미지는 hash 기준 변경분만 화면 크기별 WebP로 재생성·검증하고, 별도 Lighthouse 비교에서 LCP를 1.3초에서 1.0초로 낮췄습니다."
+                  "긴 분석 과정에서 입력과 결과가 끊기지 않도록 조건 설정, 작업 실행, 결과·리포트 화면을 개발했습니다. 기획에 없던 화면 크기별 반응형 기준과 오류·재진입 동작은 기획·디자인·백엔드 담당자와 협의해 반영했습니다.",
+                  "주요 화면을 키보드로도 사용할 수 있도록 기존 제품에 없던 접근성 기준을 추가하고, Playwright로 로그인·서비스 선택·세션 만료 화면을 점검했습니다.",
+                  "이미지 요청과 UI 수정 비용을 줄이기 위해 이미지 기반 UI를 공통 컴포넌트로 바꿨습니다. 정적 이미지는 빌드 시 화면 크기별 WebP로 변환하고 변경분만 재생성·검증해, 변환 후보의 계산상 전송 용량을 약 95% 줄였습니다. 별도 Lighthouse 비교에서 LCP는 1.3초에서 1.0초, Speed Index는 3.4초에서 0.7초로 줄었습니다.",
+                  "분석 결과를 차트로 보여주고 반복 조회를 줄이기 위해 ECharts·Plotly 차트를 개발하고, 질병 목록은 TanStack Query 캐시로 전환해 화면별 직접 호출을 제거했습니다."
                 ]
               },
               {
-                "subtitle": "마이그레이션과 팀의 실행·검증 기준",
-                "detail": "3명 프론트엔드 팀에서 약 6주간 공식 팀장을 맡아 일정·업무 배분·면담·코드 리뷰와 위험 구간 지원을 담당했습니다.",
-                "skills": "Next.js, React, TypeScript, Tailwind CSS, Radix UI, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Vitest, Playwright, axe-core, Sharp, GitHub Actions, Husky, Docker, Bash",
+                "subtitle": "AI 개발 도구 활용",
                 "tasks": [
-                  "Portal 전환: Vite·React Router 기반 Portal을 Next.js App Router와 standalone Node 실행 구조로 옮기고, 다른 프론트엔드 프로젝트와 패키지·Docker 런타임·배포 스펙을 맞췄습니다. Portal의 기존 tar 배포 스크립트는 컨테이너 기동 여부에 더해 /healthz 응답까지 확인하게 했습니다.",
-                  "Nexus FE 배포: Docker tar 생성·SFTP 전송·서버 load에 의존하던 배포를 self-hosted runner에서 실행하는 GitHub Actions로 전환했습니다. 환경별 Docker 이미지를 Git SHA로 빌드·교체하고, 새 컨테이너가 정해진 시간 안에 running 상태가 되지 않으면 직전 이미지를 다시 기동하게 했습니다.",
-                  "변경 전파와 브라우저 검증: 출시 전 API 스키마·타입·파일명 전파 누락이 typecheck·test·build 오류로 드러나면 pre-commit과 pre-push에서 원격 반영 전에 중단했습니다. 별도 Playwright 시나리오로 Nexus TOP의 핵심 흐름을 Chrome·Edge·WebKit과 두 데스크톱 화면 크기에서 검증했습니다.",
-                  "접근성·회귀 검증: Portal의 로그인·서비스 카드·세션 만료 모달에서 오류 연결, 시맨틱 구조, 포커스 격리·복원을 보완했습니다. axe·Playwright로 주요 상태를 검증하고, 변경 전후 8개 화면 상태를 RGBA로 비교해 기존 디자인이 바뀌지 않았음을 확인했습니다.",
-                  "팀의 개발 기준: AI 개발 보조 도구가 의료·임상 용어와 화면 동작을 임의로 해석하지 않도록 프로젝트별 콘셉트·에이전트 지침과 commit·PR 기준을 저장소에 남겼습니다. 세 프론트엔드 저장소의 PR 작성·리뷰 가이드에는 실제 base/head diff, 실행·미실행 검증, 읽기 전용 리뷰의 권한 경계를 명시했습니다. 기존 공용 기준은 다른 팀원이 자신의 작업에 맞게 보완해 재사용했습니다."
+                  "의료·임상 맥락을 잘못 해석하지 않도록 프로젝트별 지침, 작업별 Skill, 실행 Hook, PR 규칙을 저장소에 두고 Codex와 Claude가 참고하게 AI workflow를 작성했습니다.",
+                  "AI가 만든 변경을 사람이 확인하고 팀이 같은 기준을 사용할 수 있도록 diff를 검토하고 typecheck·test·build 결과를 확인했습니다. 팀원도 같은 지침과 Hook을 수정해 사용할 수 있게 했습니다."
+                ]
+              },
+              {
+                "subtitle": "인프라와 백엔드",
+                "skills": "Next.js, React, TypeScript, Tailwind CSS, Radix UI, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Vitest, Playwright, axe-core, GitHub Actions, Husky, Docker, Python, Django, Django REST Framework, PostgreSQL, Codex, Claude, MCP",
+                "tasks": [
+                  "프로젝트마다 달랐던 실행 환경을 맞추기 위해 Vite·React Router 기반 Portal을 Next.js로 옮기고, 패키지 버전·Docker 런타임·배포 방식을 다른 프론트엔드 프로젝트와 맞췄습니다.",
+                  "수동 배포와 변경 누락에서 생기는 실수를 줄이기 위해 Docker 배포를 GitHub Actions로 전환하고, Husky에서 typecheck·test·build를 실행했습니다. 주요 화면은 Playwright 시나리오로 별도 확인했습니다.",
+                  "업무 데이터와 로그를 분리하고 오류 요청을 쉽게 찾기 위해 세 백엔드에 로그 DB를 추가해 환경·서비스·요청 ID 기준으로 적재했습니다. Admin에는 로그 조회 API와 프론트엔드 오류 보고 API를 추가했습니다.",
+                  "GitHub Actions에서 실제 서버 상태를 확인할 수 있도록 헬스 체크를 추가했습니다. 백엔드의 HTTP 응답과 컨테이너 상태를 확인하고, 이상 시 Actions Summary와 로그를 남기게 했습니다."
                 ]
               }
             ]
@@ -542,46 +548,43 @@
         "role": "프론트엔드 개발",
         "projects": {
           "commerceBackoffice": {
-            "title": "셀렉터스 커머스와 관리자 프론트엔드",
-            "period": "2023.05 - 2025.07",
+            "title": "커머스·백오피스",
             "descriptions": [
               {
-                "subtitle": "셀렉터스 커머스와 관리자 프론트엔드",
-                "detail": "초기 멤버로 고객용 서비스와 운영팀이 직접 사용하는 도구를 함께 맡았습니다.",
-                "skills": "Next.js, React, TypeScript, MUI, Tailwind CSS, Jotai, SWR, React Hook Form, i18next, Toss Payments, PayPal, GA4, Google Tag Manager, Google Sheets API",
+                "subtitle": "커머스·백오피스",
+                "detail": "초기 멤버로 커머스·백오피스, 모바일 WebView·웹게임, 콘텐츠 운영 도구를 개발했습니다.",
                 "tasks": [
-                  "모바일 중심 UI: 고객용 웹을 PC에서도 모바일 싱글 컬럼과 상·하단 내비게이션을 사용하는 구조로 전환하고, 운영자 대시보드는 데스크톱 레이아웃으로 분리했습니다.",
-                  "결제·계측: 국내외 사용자에 따라 국내 결제와 해외 카드·PayPal 경로를 분리했습니다. 상품 조회·회원가입·구매·환불 GA4 이벤트와 주요 클릭 GTM 이벤트를 정의하고, 구매 금액·오류 화면의 상품 조회·회원가입 클릭 전송 시점을 보정했습니다.",
-                  "백오피스 이관: 운영 요청 전달의 불편과 기존 담당자가 신규 앱 개발로 이동하면서 인계가 필요해진 Flutter Web 백오피스의 Next.js 이관에서 프론트엔드 구현을 단독으로 맡았습니다. 상품·셀러 승인을 옮기고 배너·검색 키워드 관리를 추가했습니다."
+                  "국내·외 사용자가 각자 맞는 언어와 결제 수단을 사용할 수 있도록 상품 탐색부터 주문·결제·마이페이지까지 개발하고, 한국어·일본어·영어·중국어 화면을 지원했습니다.",
+                  "모바일 고객과 데스크톱 판매자의 사용 방식에 맞춰 고객 화면은 모바일 중심 UI로 바꿔 작업속도를 올리고, 판매자 대시보드는 데스크톱 레이아웃을 유지했습니다.",
+                  "기존 담당자가 앱 개발로 이동한 뒤에도 운영 기능을 계속 개발할 수 있도록 Flutter Web 백오피스를 Next.js로 마이그레이션하고 상품·주문·정산·이벤트·문의 관리 기능을 옮겼습니다."
                 ]
               }
             ]
           },
           "subtitleSystem": {
-            "title": "반복 콘텐츠 운영을 운영자 도구로 전환",
-            "period": "2025.02 - 2025.07",
+            "title": "AI 활용과 운영 도구",
             "descriptions": [
               {
-                "subtitle": "반복 콘텐츠 운영을 운영자 도구로 전환",
-                "skills": "Node.js, TypeScript, Express, AWS Bedrock, OpenAI API, Google Cloud Translation, Axios, Cheerio, Vercel Serverless Functions",
+                "subtitle": "AI 활용과 운영 도구",
+                "skills": "Next.js, React, TypeScript, MUI, Tailwind CSS, Jotai, SWR, React Hook Form, Toss Payments, PayPal, Phaser, Flutter InAppWebView, Branch.io, Airbridge, Node.js, Express, AWS Bedrock, OpenAI API, Google Cloud Translation, Axios, Cheerio",
                 "tasks": [
-                  "자막 번역 도구: 개발자가 실행하던 AI 자막 번역 CLI를 다중 파일·다국어 운영자 도구로 바꿔 숏타임 백오피스에 편입했습니다. 초기에는 빠른 내용 전달을 목표로 자막 형식·개수·누락·번역 실패·시간축 오류를 검사했고, 재직 중 약 3개월 동안 3~4명의 운영자가 사용했습니다.",
-                  "무단 유통 콘텐츠 검색: 운영팀이 매일 플랫폼별로 키워드를 반복 입력하던 업무를 키워드 등록과 3개 플랫폼 일괄 검색이 가능한 웹 도구로 바꿨습니다. 유사 제목 후보를 한 화면에서 검토하게 해 약 50분 걸리던 확인 업무를 10분 이내로 줄였습니다."
+                  "운영자가 개발자 없이 자막을 번역할 수 있도록 AI 자막 번역 CLI를 다중 파일·다국어 도구로 바꿔 백오피스에 추가했습니다. 재직 중 약 3개월 동안 운영자 3~4명이 사용했습니다.",
+                  "상품 블로그 초안을 AI로 만들 수 있는지 확인하기 위해 셀렉터스 상품 블로그 초안 생성 프로토타입을 제작했습니다.",
+                  "여러 영상 플랫폼의 반복 검색 시간을 줄이기 위해 세 플랫폼의 검색 결과를 한 화면에 모으는 도구를 만들었습니다. 운영팀의 확인 시간을 약 50분에서 10분 이내로 줄였고, 불법 여부는 운영자가 최종 판단하도록 했습니다."
                 ]
               }
             ]
           },
           "shortimePlayground": {
-            "title": "앱 배포 주기와 분리한 모바일 WebView Playground",
-            "period": "2024.09 - 2025.04",
+            "title": "WebView·웹게임",
             "descriptions": [
               {
-                "subtitle": "앱 배포 주기와 분리한 모바일 WebView Playground",
-                "skills": "Next.js, React, TypeScript, Tailwind CSS, Phaser, Next Intl, Flutter InAppWebView, Web Audio API, Airbridge, Branch.io",
+                "subtitle": "WebView·웹게임",
                 "tasks": [
-                  "제품 제안과 소유: 앱 배포에 묶여 있던 이벤트·게임 영역을 WebView로 제안하고 프로토타입으로 시연해 실제 기능으로 채택됐습니다. 제품 기획과 프론트엔드 구축·운영을 맡고 기존 운세·이벤트를 이전했으며, Flutter bridge와 게임 API는 담당 개발자들과 협업했습니다.",
-                  "후속 제품 흐름과 이용 결과: 플라잉팝 출시 뒤 팀이 이용자 수와 반응을 보며 후속 콘텐츠를 검토했고, 저는 선택된 열려라 참깨의 프론트엔드를 개발해 기존 보너스를 게임 진입 비용으로 연결했습니다. 두 게임의 중복 플레이를 제외한 주간 고유 이용자 2,000~3,000명을 확인했습니다.",
-                  "결과·재생 통제: 광고 완료 응답을 검증하고 결과 확정 전 중복 진행을 차단했으며, Safari 오디오 포맷과 화면 이탈 뒤 재생 문제를 처리했습니다."
+                  "앱 배포를 기다리지 않고 이벤트와 게임을 추가할 수 있도록 WebView 영역을 제안하고 프로토타입으로 시연했습니다. 채택된 뒤 프론트엔드 프로젝트를 개발·운영했습니다.",
+                  "반복 방문할 콘텐츠로 Phaser 기반 플라잉팝을 개발했습니다. 이후 적립한 보너스를 사용할 후속 게임이 필요해 열려라 참깨의 프론트엔드까지 맡고, 랭킹·결과 제출과 두 게임의 보너스 적립·사용을 연결했습니다. 중복 플레이를 제외한 DB 기준 주간 고유 이용자 약 2,000~3,000명을 확인했습니다.",
+                  "웹게임을 앱 기능과 서버에 연결하기 위해 Flutter bridge와 게임 API를 앱·백엔드 담당자와 협업해 연동했습니다. 앱의 공유·화면 이동과 게임 결과 제출을 연결했습니다.",
+                  "광고 완료 뒤 추가 플레이를 제공하고 공유 링크로 게임에 진입할 수 있도록 Branch 공유 링크·Airbridge 딥링크를 적용했습니다. WebView에서 드러난 결과 제출 중 중복 진행과 Safari 오디오 재생·화면 이탈 문제도 처리했습니다."
                 ]
               }
             ]
@@ -612,10 +615,10 @@
         "projects": {
           "insuranceSubscription": {
             "title": "공통 가입 진입과 성능 개선",
-            "period": "2023.03 - 2023.04",
             "descriptions": [
               {
                 "subtitle": "공통 가입 진입과 성능 개선",
+                "detail": "고객사 유입부터 가입·운영까지 이어지는 보험 제품",
                 "tasks": [
                   "여러 고객사 페이지에서 하나의 보험 가입 모달을 재사용할 수 있도록 공통 CDN SDK 안에서 API key·노출 옵션을 설정으로 받고, 상품별 화면 자산을 planId 기반 경로로 분리했습니다. 고객 정보 전달부터 가입 URL 연결까지 같은 흐름으로 처리했습니다.",
                   "일본 고객사가 가입 진입 시 흰 화면과 로더가 합쳐 약 5초간 보인다고 문의했습니다. 가입 전 이탈 가능성이 있는 문제로 판단해 바로 프레임워크부터 바꾸기보다 기존 React 화면의 초기 조회를 Promise.all로 묶고 고객 정보 조회를 첫 화면으로 앞당겼습니다.",
@@ -627,7 +630,6 @@
           },
           "insuranceResponsive": {
             "title": "가입·운영 시스템",
-            "period": "2022.10 - 2023.03",
             "descriptions": [
               {
                 "subtitle": "가입·운영 시스템",
@@ -808,13 +810,15 @@
         "role": "운영/유지보수 및 개발",
         "projects": {
           "consularCallCenter": {
-            "title": "외교부 영사콜센터 유지보수",
-            "period": "2020.09 - 2021.07",
+            "title": "외교부 영사콜센터 유지보수와 Smart-DIS ETL 개발",
             "descriptions": [
               {
-                "subtitle": "외교부 영사콜센터 유지보수",
+                "subtitle": "외교부 영사콜센터 유지보수와 Smart-DIS ETL 개발",
+                "skills": "Java, JavaScript, JSP, eGovFrame, MyBatis, MariaDB, Oracle, Linux, HTML, CSS",
                 "tasks": [
-                  "외교부 영사콜센터의 상담 애플리케이션을 운영·유지보수했습니다. 설문 조사용 일부 JSP 화면과 DB 배치 서버 연계 API를 개발하고, 기능 개선·버그 수정과 무료전화 앱 트러블슈팅을 맡았습니다."
+                  "외교부 영사콜센터의 상담 애플리케이션을 운영·유지보수했습니다. 설문 조사용 일부 JSP 화면과 DB 배치 서버 연계 API를 개발하고, 기능 개선·버그 수정과 무료전화 앱 트러블슈팅을 맡았습니다.",
+                  "데이터 통합·ETL 도구 Smart-DIS에서 데이터 마이그레이션 기능을 개발하고, Oracle 쿼리를 MariaDB에서도 동작하게 했습니다.",
+                  "Linux 전용 기능을 Windows에서도 사용할 수 있게 하고, 온라인 연결이 필요한 라이브러리를 인트라넷에서도 동작하는 대체재로 교체한 뒤 운영 매뉴얼을 작성했습니다."
                 ]
               }
             ]
@@ -843,13 +847,14 @@
         "projects": {
           "policyCoordination": {
             "title": "공공기관 인프라 구축과 운영",
-            "period": "2018.05 - 2019.06",
             "descriptions": [
               {
                 "subtitle": "공공기관 인프라 구축과 운영",
                 "skills": "Linux, Server, Network, L2/L3, Firewall, IPS, TMS, Backup",
                 "tasks": [
-                  "국무조정실 운영·유지보수에서 세종·서울의 서버, L2·L3 네트워크 장비, 방화벽·IPS·TMS 보안 장비와 백업을 운영하고, 장애 복구·보안 감사 대응·국정감사 준비를 맡았습니다."
+                  "국무조정실 운영·유지보수에서 세종·서울의 서버, L2·L3 네트워크 장비, 방화벽·IPS·TMS 보안 장비와 백업을 운영하고, 장애 복구·보안 감사 대응·국정감사 준비를 맡았습니다.",
+                  "사회보장정보원 고도화 사업에서 장비 검수·마운팅·설치 테스트를 맡았습니다.",
+                  "아동보호전문기관 구축·유지보수에서 콜센터 이전을 위한 장비 철거·재설치와 신규 기관 구축을 맡았습니다."
                 ]
               }
             ]

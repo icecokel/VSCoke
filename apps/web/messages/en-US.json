@@ -92,15 +92,12 @@
     "sendEmail": "Send Email",
     "call": "Call",
     "copyPhone": "Copy Phone Number",
-    "introduction": "Introduction",
+    "introduction": "About Me",
     "links": "Links",
-    "education": "Education",
+    "education": "External Activities",
     "viewCareer": "View Career",
-    "hybridCourse": "Hybrid App Development (iOS & Android) and Web Developer Training Course",
-    "hybridDesc": "Web development basics based on Java, Spring (Spring basics, REST API)",
-    "hybridDesc2": "Android, iOS app development basics",
-    "university": "Seoil University",
-    "major": "Information and Communication Engineering"
+    "hybridCourse": "Hybrid App and Web Developer Training Program",
+    "hybridDesc": "To transition from infrastructure to software development, I studied Java and Spring-based web development, REST APIs, and the fundamentals of Android and iOS app development."
   },
   "blog": {
     "title": "Blog",
@@ -489,46 +486,55 @@
   },
   "resume": {
     "name": "Sangmin Lee",
-    "title": "A developer who identifies product problems and solves them through technology choices and validation",
+    "title": "A developer who creates business value and reduces team pain points",
     "contact": {
       "phone": "+821020809652",
       "email": "red9runge@gmail.com"
     },
     "introduction": [
-      "I have solved user pain points and teammates' repetitive work through products and tools.",
-      "Recently, I have applied AI workflows to development and moved manual deployments to CI/CD."
+      "Hello, I'm Sangmin Lee. I have developed the product and operational features teams need, with a focus on frontend development.",
+      "Across commerce, mobile WebView, insurance, and medical and clinical analysis products, I proposed an app-release-bound event area as an independent WebView product and turned developer-run content operations into tools for operators.",
+      "More recently, while building medical and clinical analysis products, I have taken ownership not only of responsive design, accessibility, and performance, but also deployment, log storage, and request tracing.",
+      "I use AI development assistants for more than code generation. I established project-specific instructions, skills, hooks, and PR validation standards. I care more about how a technical choice changes the user's and team's next task than about the technology itself."
     ],
     "totalExperience": "7 years 4 months",
     "viewDescription": "Career Description",
     "backToResume": "Back to Resume",
     "careers": {
       "oprimed": {
-        "company": "Oprimed Co., Ltd.",
-        "period": "2026.02 - Present (6 months)",
+        "company": "Oprimed",
+        "period": "2026.02 - Present",
         "employmentType": "Full-time",
         "role": "Service Developer",
         "projects": {
           "medicalFrontendProductization": {
-            "title": "Continuity and Execution Control for Medical and Clinical Analysis Products",
+            "title": "Medical and Clinical Analysis Products",
             "descriptions": [
               {
-                "subtitle": "Continuity and Execution Control for Medical and Clinical Analysis Products",
+                "subtitle": "Medical and Clinical Analysis Screen Development",
+                "detail": "I work on screens, accessibility and performance improvements, AI development tooling, CI/CD, and backend logging for medical and clinical analysis products.",
                 "tasks": [
-                  "Product flow and restoration: In a product connecting patients, diseases, drugs, and analysis conditions, I coordinated screen order and API contracts with product, design, and backend teammates. I stored task data on the server and separated client caches by task so the same task's conditions and results could be restored after navigation, refresh, or re-entry.",
-                  "Analysis cancellation: For long-running ML analyses, I connected frontend request cancellation, the server-side cancellation API, stale-response rejection, and execution-state cleanup so responses arriving after cancellation could not change the screen state again.",
-                  "UI and performance: I replaced image-based frames with shared components, removing three runtime PNG requests and about 315 KiB of payload. Static images are regenerated and verified as viewport-specific WebP assets only when their hashes change, and a separate Lighthouse comparison reduced LCP from 1.3 seconds to 1.0 second."
+                  "I developed condition setup, job execution, results, and report screens so input and output remained connected throughout long-running analyses. I coordinated responsive breakpoints and error and re-entry behavior that were not in the original plan with product, design, and backend teammates.",
+                  "I introduced accessibility standards that the existing product did not have so key screens could be used with a keyboard, and checked login, service selection, and session-expiration screens with Playwright.",
+                  "To reduce image requests and UI maintenance cost, I replaced image-based UI with shared components. Static images are converted into viewport-specific WebP assets at build time and only changed assets are regenerated and verified, reducing the calculated transfer size of conversion candidates by about 95%. A separate Lighthouse comparison reduced LCP from 1.3 to 1.0 seconds and Speed Index from 3.4 to 0.7 seconds.",
+                  "To visualize analysis results and reduce repeated requests, I developed ECharts and Plotly charts and moved disease lists to a TanStack Query cache, removing direct calls from individual screens."
                 ]
               },
               {
-                "subtitle": "Migration and Team Execution/Validation Standards",
-                "detail": "I served as the formal lead of a three-person frontend team for about six weeks, handling schedules, task allocation, one-on-ones, code reviews, and support for high-risk areas.",
-                "skills": "Next.js, React, TypeScript, Tailwind CSS, Radix UI, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Vitest, Playwright, axe-core, Sharp, GitHub Actions, Husky, Docker, Bash",
+                "subtitle": "AI Development Tooling",
                 "tasks": [
-                  "Portal migration: I moved a Vite and React Router portal to Next.js App Router and a standalone Node runtime, aligning its packages, Docker runtime, and deployment specification with the other frontend projects. I also extended the portal's existing tar deployment script to verify the /healthz response in addition to container startup.",
-                  "Nexus FE deployment: I replaced a deployment process based on Docker tar creation, SFTP transfer, and server-side load with GitHub Actions running on a self-hosted runner. Environment-specific Docker images are built and replaced by Git SHA, and the previous image is restarted if the new container does not reach running state within the allotted time.",
-                  "Change propagation and browser validation: Before launch, missing API schema, type, or filename propagation was stopped before remote publication when typecheck, test, or build failed in pre-commit or pre-push. A separate Playwright scenario verified Nexus TOP's core flow in Chrome, Edge, and WebKit at two desktop viewport sizes.",
-                  "Accessibility and regression validation: I improved error associations, semantic structure, and focus trapping and restoration for the Portal's login, service cards, and session-expiration modal. I validated key states with axe and Playwright, then compared eight before-and-after screen states in RGBA to confirm the existing design had not changed.",
-                  "Team development standards: To prevent AI development assistants from arbitrarily interpreting medical and clinical terminology or screen behavior, I recorded project concepts, agent guidance, and commit and PR standards in the repository. The PR authoring and review guide across the three frontend repositories specifies actual base/head diffs, validations that were and were not run, and permission boundaries for read-only reviews. Existing shared standards were adapted and reused by another teammate for their own work."
+                  "To prevent incorrect interpretation of medical and clinical context, I created an AI workflow in which Codex and Claude reference project-specific instructions, task-specific skills, execution hooks, and PR rules stored in the repositories.",
+                  "I reviewed diffs and typecheck, test, and build results so people could verify AI-generated changes and the team could use the same standards. Teammates could also adapt and use the same instructions and hooks."
+                ]
+              },
+              {
+                "subtitle": "Infrastructure and Backend",
+                "skills": "Next.js, React, TypeScript, Tailwind CSS, Radix UI, TanStack Query, Zustand, React Hook Form, ECharts, Plotly, Vitest, Playwright, axe-core, GitHub Actions, Husky, Docker, Python, Django, Django REST Framework, PostgreSQL, Codex, Claude, MCP",
+                "tasks": [
+                  "To align different project runtime environments, I moved a Vite and React Router-based Portal to Next.js and aligned package versions, the Docker runtime, and deployment method with the other frontend projects.",
+                  "To reduce mistakes from manual deployment and missed changes, I moved Docker deployment to GitHub Actions and ran typecheck, test, and build through Husky. Key screens were checked separately through Playwright scenarios.",
+                  "To separate business data from logs and make error requests easier to find, I added log databases to three backends and stored entries by environment, service, and request ID. I also added log-query APIs and a frontend error-reporting API to Admin.",
+                  "I added health checks so GitHub Actions could inspect actual server state. They check backend HTTP responses and container status and leave an Actions Summary and logs when an issue is detected."
                 ]
               }
             ]
@@ -542,46 +548,43 @@
         "role": "Frontend Development",
         "projects": {
           "commerceBackoffice": {
-            "title": "Sellectors Commerce and Admin Frontend",
-            "period": "2023.05 - 2025.07",
+            "title": "Commerce and Back Office",
             "descriptions": [
               {
-                "subtitle": "Sellectors Commerce and Admin Frontend",
-                "detail": "As an early team member, I worked on both customer-facing services and tools used directly by the operations team.",
-                "skills": "Next.js, React, TypeScript, MUI, Tailwind CSS, Jotai, SWR, React Hook Form, i18next, Toss Payments, PayPal, GA4, Google Tag Manager, Google Sheets API",
+                "subtitle": "Commerce and Back Office",
+                "detail": "As an early team member, I developed commerce and back-office products, mobile WebView and web games, and content-operations tools.",
                 "tasks": [
-                  "Mobile-first UI: I moved the customer site to a mobile single-column layout with top and bottom navigation even on desktop, while separating the operator dashboard into a desktop layout.",
-                  "Payments and analytics: I separated domestic payments from international card and PayPal paths based on the user's region. I defined GA4 events for product views, signup, purchase, and refunds, plus GTM events for key clicks, and corrected purchase amounts and event timing for product views on error screens and signup clicks.",
-                  "Back-office migration: Because operations requests were awkward to relay and the existing owner was moving to a new app project, I independently handled the frontend implementation of the Flutter Web back office's migration to Next.js. I moved product and seller approvals and added banner and search-keyword management."
+                  "I developed product discovery, ordering, payment, and account features so domestic and international users could use the appropriate language and payment method, supporting Korean, Japanese, English, and Chinese screens.",
+                  "To match how mobile customers and desktop sellers work, I moved customer screens to a mobile-first UI while retaining a desktop layout for the seller dashboard.",
+                  "To keep operations features moving after the previous owner shifted to app development, I migrated the Flutter Web back office to Next.js and moved product, order, settlement, event, and inquiry management features."
                 ]
               }
             ]
           },
           "subtitleSystem": {
-            "title": "Moved Repetitive Content Operations into Operator Tools",
-            "period": "2025.02 - 2025.07",
+            "title": "AI Use and Operations Tools",
             "descriptions": [
               {
-                "subtitle": "Moved Repetitive Content Operations into Operator Tools",
-                "skills": "Node.js, TypeScript, Express, AWS Bedrock, OpenAI API, Google Cloud Translation, Axios, Cheerio, Vercel Serverless Functions",
+                "subtitle": "AI Use and Operations Tools",
+                "skills": "Next.js, React, TypeScript, MUI, Tailwind CSS, Jotai, SWR, React Hook Form, Toss Payments, PayPal, Phaser, Flutter InAppWebView, Branch.io, Airbridge, Node.js, Express, AWS Bedrock, OpenAI API, Google Cloud Translation, Axios, Cheerio",
                 "tasks": [
-                  "Subtitle translation tool: I turned a developer-run AI subtitle translation CLI into a multi-file, multilingual operator tool and integrated it into the Shortime back office. Initially focused on fast content delivery, it checked subtitle format, counts, omissions, translation failures, and timeline errors, and three to four operators used it for about three months while I was employed.",
-                  "Unauthorized distribution search: I replaced the operations team's repeated daily keyword searches on individual platforms with a web tool that stores keywords and searches three platforms at once. Reviewing similar-title candidates on one screen reduced a roughly 50-minute check to under 10 minutes."
+                  "So operators could translate subtitles without a developer, I turned an AI subtitle translation CLI into a multi-file, multilingual tool and added it to the back office. Three to four operators used it for about three months while I was employed.",
+                  "I built a prototype to test whether AI could produce initial drafts for Sellectors product blog posts.",
+                  "To reduce repeated searches across video platforms, I built a tool that brings results from three platforms into one screen. It reduced the operations team's review time from about 50 minutes to under 10 minutes, while operators retained final judgment on whether content was unauthorized."
                 ]
               }
             ]
           },
           "shortimePlayground": {
-            "title": "Mobile WebView Playground Decoupled from App Release Cycles",
-            "period": "2024.09 - 2025.04",
+            "title": "WebView and Web Games",
             "descriptions": [
               {
-                "subtitle": "Mobile WebView Playground decoupled from app release cycles",
-                "skills": "Next.js, React, TypeScript, Tailwind CSS, Phaser, Next Intl, Flutter InAppWebView, Web Audio API, Airbridge, Branch.io",
+                "subtitle": "WebView and Web Games",
                 "tasks": [
-                  "Product proposal and ownership: I proposed moving the app-bound event and game area into a WebView and demonstrated a prototype that was adopted as an actual feature. I owned product planning and frontend setup, development, and operation, migrated existing fortune and event content, and collaborated with the responsible developers on the Flutter bridge and game APIs.",
-                  "Follow-up product flow and usage: After Flying Pop launched, the team reviewed usage and reactions while considering follow-up content. I developed the frontend for the selected Open Sesame game and connected an existing bonus to its entry cost. Excluding duplicate play across the two games, we observed 2,000 to 3,000 unique weekly users.",
-                  "Result and playback control: I validated rewarded-ad completion responses, blocked duplicate progression before results were finalized, and handled Safari audio-format issues and playback continuing after users left the screen."
+                  "I proposed a WebView area and demonstrated a prototype so events and games could be added without waiting for an app release. After it was adopted, I developed and operated the frontend project.",
+                  "I developed the Phaser-based Flying Pop as repeat-visit content. When a follow-up game was needed to use accumulated bonuses, I also owned the Open Sesame frontend and connected rankings, result submission, and bonus accrual and spending across both games. Excluding duplicate play, we observed approximately 2,000 to 3,000 weekly unique users in the database.",
+                  "I worked with the app and backend developers to integrate the Flutter bridge and game APIs so the web games could connect to app features and the server. I connected app sharing and navigation with game result submission.",
+                  "I applied Branch share links and Airbridge deep links so users could receive extra play after ad completion and enter games through shared links. I also handled duplicate progression during result submission and Safari audio playback and screen-exit issues exposed in WebView."
                 ]
               }
             ]
@@ -612,10 +615,10 @@
         "projects": {
           "insuranceSubscription": {
             "title": "Shared Subscription Entry and Performance Improvement",
-            "period": "2023.03 - 2023.04",
             "descriptions": [
               {
                 "subtitle": "Shared Subscription Entry and Performance Improvement",
+                "detail": "Insurance products connecting client entry, subscription, and operations",
                 "tasks": [
                   "To reuse one insurance subscription modal across multiple client pages, the shared CDN SDK accepts an API key and display options as configuration and separates product-specific screen assets by planId. I handled customer-data transfer and the subscription URL connection within the same flow.",
                   "A Japanese client reported that a blank screen and loader remained visible for about five seconds on subscription entry. Treating this as a potential pre-subscription drop-off issue, I first grouped initial React data requests with Promise.all and moved customer-data loading into the first screen instead of immediately changing frameworks.",
@@ -627,7 +630,6 @@
           },
           "insuranceResponsive": {
             "title": "Subscription and Operations Systems",
-            "period": "2022.10 - 2023.03",
             "descriptions": [
               {
                 "subtitle": "Subscription and Operations Systems",
@@ -814,13 +816,15 @@
         "role": "Operations, Maintenance, and Development",
         "projects": {
           "consularCallCenter": {
-            "title": "Ministry of Foreign Affairs Consular Call Center Maintenance",
-            "period": "2020.09 - 2021.07",
+            "title": "Consular Call Center Maintenance and Smart-DIS ETL Development",
             "descriptions": [
               {
-                "subtitle": "Ministry of Foreign Affairs Consular Call Center Maintenance",
+                "subtitle": "Consular Call Center Maintenance and Smart-DIS ETL Development",
+                "skills": "Java, JavaScript, JSP, eGovFrame, MyBatis, MariaDB, Oracle, Linux, HTML, CSS",
                 "tasks": [
-                  "I operated and maintained the Ministry of Foreign Affairs Consular Call Center application. I developed selected JSP survey screens and an API connected to the database batch server, handled feature improvements and bug fixes, and troubleshot the toll-free calling app."
+                  "I operated and maintained the Ministry of Foreign Affairs Consular Call Center application. I developed selected JSP survey screens and an API connected to the database batch server, handled feature improvements and bug fixes, and troubleshot the toll-free calling app.",
+                  "I developed data-migration features for the Smart-DIS data integration and ETL tool and made Oracle queries work with MariaDB.",
+                  "I made Linux-only features available on Windows, replaced online-dependent libraries with alternatives that worked on the intranet, and then wrote the operations manual."
                 ]
               }
             ]
@@ -848,14 +852,15 @@
         "role": "Infrastructure Engineer",
         "projects": {
           "policyCoordination": {
-            "title": "Public-Sector Infrastructure Deployment and Operations",
-            "period": "2018.05 - 2019.06",
+            "title": "Public-Sector Infrastructure Build and Operations",
             "descriptions": [
               {
-                "subtitle": "Public-Sector Infrastructure Deployment and Operations",
+                "subtitle": "Public-Sector Infrastructure Build and Operations",
                 "skills": "Linux, Server, Network, L2/L3, Firewall, IPS, TMS, Backup",
                 "tasks": [
-                  "For operations and maintenance at the Office for Government Policy Coordination, I managed servers in Sejong and Seoul, L2 and L3 network equipment, firewall, IPS, and TMS security appliances, and backups, and handled incident recovery, security-audit responses, and preparation for National Assembly inspections."
+                  "For operations and maintenance at the Office for Government Policy Coordination, I managed servers in Sejong and Seoul, L2 and L3 network equipment, firewall, IPS, and TMS security appliances, and backups, and handled incident recovery, security-audit responses, and preparation for National Assembly inspections.",
+                  "For the Social Security Information Service advancement project, I handled equipment inspection, rack mounting, and installation testing.",
+                  "For child-protection agency builds and maintenance, I dismantled and reinstalled equipment for a call-center relocation and set up new agencies."
                 ]
               }
             ]

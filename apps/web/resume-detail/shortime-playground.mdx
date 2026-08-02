@@ -1,62 +1,24 @@
 ---
-title: "CodeCrayon - 앱 배포 주기와 분리한 모바일 WebView Playground"
-startDate: "2024.09"
-endDate: "2025.04"
+title: "CodeCrayon - WebView·웹게임"
+startDate: "2023.05"
+endDate: "2025.07"
 ---
 
 ## 기본 정보
 
 - 회사: 주식회사 코드크레용
-- 기간: 2024.09 - 2025.04
-- 고용 형태: 정규직
-- 핵심 포지션: 앱 배포 주기와 분리한 모바일 WebView Playground
-- 기술 스택: Next.js, React, TypeScript, Tailwind CSS, Phaser, Next Intl, Flutter InAppWebView, Web Audio API, Airbridge, Branch.io
+- 기간: 2023.05 - 2025.07
+- 직무: 프론트엔드 개발
 
-## 핵심 요약
+초기 멤버로 커머스·백오피스, 모바일 WebView·웹게임, 콘텐츠 운영 도구를 개발했습니다.
 
-영상 배급 사이에도 앱을 찾을 이유가 필요했지만 이벤트·엔터테인먼트 페이지의 패치는 앱 배포 주기에 묶여 있었습니다. 관련 레퍼런스를 조사해 WebView 기반 이벤트·게임 영역을 제안했고, 프로토타입으로 시연한 게임 흐름이 실제 기능으로 채택됐습니다. 제품 기획과 프론트엔드 프로젝트 구성·개발·운영을 맡았으며, Flutter event bridge와 게임 API는 담당 개발자들과 협업했습니다.
+## WebView·웹게임
 
-## 1. 제품 제안과 앱 배포 주기 분리
-
-- 영상 배급 사이의 반복 방문 문제와 앱 배포 주기에 묶인 이벤트 페이지 업데이트 문제를 함께 해결할 제품 영역을 검토했습니다.
-- 관련 레퍼런스를 조사해 WebView 기반 이벤트·게임 영역을 제안하고 게임 프로토타입으로 흐름을 시연했습니다.
-- 시연한 게임 흐름이 실제 기능으로 채택된 뒤 제품 기획과 프론트엔드 프로젝트 구성·개발·운영을 맡았습니다.
-- 기존 운세·이벤트를 먼저 이전해 단발성 페이지가 아닌 확장 가능한 제품 영역으로 전환했습니다.
-- 이벤트, 운세, 게임, 기프트 코드, 드로우와 설문을 도메인 단위로 나눴습니다.
-- 공통 앱바, 로더, 딥링크·공유 버튼과 다국어 리소스를 여러 콘텐츠에서 재사용하게 했습니다.
-- Next.js 화면과 Phaser 게임 사이에 이벤트 브리지를 두어 게임 점수와 종료 상태를 화면으로 전달했습니다.
-
-## 2. Flutter 앱과 웹뷰 연동
-
-- `window.flutter_inappwebview.callHandler`로 공유, 알림, 화면 이동, 광고, 진동과 프로필 갱신 이벤트를 앱에 전달했습니다.
-- Airbridge 딥링크와 친구 초대용 OG 메타데이터를 연결했습니다.
-- 리워드 광고가 끝난 뒤 게임 이벤트와 화면 상태가 순서대로 이어지게 했습니다.
-
-> 프론트엔드 WebView 연동을 담당했고, Flutter event bridge와 게임 API는 담당 개발자들과 협업했습니다.
-
-## 3. 게임 결과와 입력 상태 제어
-
-- Phaser 게임의 점수 제출, 사용자 기록, 주간 랭킹과 보상 상태를 Next.js 화면에 연결했습니다.
-- 결과 제출 중에는 게임 터치 입력을 막아 같은 결과가 중복 제출되지 않게 했습니다.
-- 서버가 허용하지 않은 점수 응답에서는 성공 화면이나 다음 상태가 그대로 이어지지 않게 했습니다.
-
-> 서버의 점수 검증 알고리즘을 개발한 것이 아니라, 프론트엔드에서 입력과 응답 이후 상태 전이를 통제한 범위입니다.
-
-## 4. 모바일 브라우저와 생명주기 대응
-
-- `env(safe-area-inset-bottom)`과 WebKit user-select·touch-callout 처리를 적용했습니다.
-- Web Audio API에서 `webkitAudioContext` fallback을 사용하고, 사용자 상호작용 뒤에 오디오가 시작되도록 Safari 정책에 대응했습니다.
-- `visibilitychange`에서 화면 이탈 시 오디오와 게임 상태를 멈추거나 초기화하고, 복귀 시 상태를 다시 맞췄습니다.
-- Chrome, Safari와 Samsung Internet에서 키보드·포커스, 화면 안전 영역, 테마와 오디오 차이를 확인했습니다.
-
-## 5. 결과
-
-- 앱 배포와 별개로 게임과 이벤트를 추가·수정할 수 있는 제품 영역을 만들었습니다.
-- 플라잉팝 출시 뒤 팀이 이용자 수와 반응을 보며 후속 콘텐츠를 검토했고, 선택된 열려라 참깨의 프론트엔드를 개발해 기존 보너스를 게임 진입 비용으로 연결했습니다.
-- 두 게임의 중복 플레이를 제외한 주간 고유 이용자 2,000~3,000명을 확인했습니다.
-
-> 주간 수치는 두 게임의 중복 플레이를 제외한 고유 이용자 규모입니다. 후속 게임 선정 근거나 재방문율·코호트 리텐션·전체 앱 WAU로 확대하지 않습니다.
+- 앱 배포를 기다리지 않고 이벤트와 게임을 추가할 수 있도록 WebView 영역을 제안하고 프로토타입으로 시연했습니다. 채택된 뒤 프론트엔드 프로젝트를 개발·운영했습니다.
+- 반복 방문할 콘텐츠로 Phaser 기반 플라잉팝을 개발했습니다. 이후 적립한 보너스를 사용할 후속 게임이 필요해 열려라 참깨의 프론트엔드까지 맡고, 랭킹·결과 제출과 두 게임의 보너스 적립·사용을 연결했습니다. 중복 플레이를 제외한 DB 기준 주간 고유 이용자 약 2,000~3,000명을 확인했습니다.
+- 웹게임을 앱 기능과 서버에 연결하기 위해 Flutter bridge와 게임 API를 앱·백엔드 담당자와 협업해 연동했습니다. 앱의 공유·화면 이동과 게임 결과 제출을 연결했습니다.
+- 광고 완료 뒤 추가 플레이를 제공하고 공유 링크로 게임에 진입할 수 있도록 Branch 공유 링크·Airbridge 딥링크를 적용했습니다. WebView에서 드러난 결과 제출 중 중복 진행과 Safari 오디오 재생·화면 이탈 문제도 처리했습니다.
 
 ## 기술
 
-Next.js, React, TypeScript, Tailwind CSS, Phaser, Next Intl, Flutter InAppWebView, Web Audio API, Airbridge, Branch.io
+Next.js, React, TypeScript, MUI, Tailwind CSS, Jotai, SWR, React Hook Form, Toss Payments, PayPal, Phaser, Flutter InAppWebView, Branch.io, Airbridge, Node.js, Express, AWS Bedrock, OpenAI API, Google Cloud Translation, Axios, Cheerio

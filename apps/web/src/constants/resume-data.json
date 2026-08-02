@@ -16,12 +16,12 @@
         "fileRef": "commerce-backoffice-product"
       },
       {
-        "id": "subtitleSystem",
-        "fileRef": "translate"
-      },
-      {
         "id": "shortimePlayground",
         "fileRef": "shortime-playground"
+      },
+      {
+        "id": "subtitleSystem",
+        "fileRef": "translate"
       }
     ]
   },
@@ -41,9 +41,6 @@
     "projects": [
       {
         "id": "consularCallCenter"
-      },
-      {
-        "id": "smartDis"
       }
     ]
   },
@@ -52,12 +49,6 @@
     "projects": [
       {
         "id": "policyCoordination"
-      },
-      {
-        "id": "socialSecurity"
-      },
-      {
-        "id": "childProtection"
       }
     ]
   }

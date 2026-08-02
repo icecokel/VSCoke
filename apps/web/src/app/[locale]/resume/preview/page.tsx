@@ -19,8 +19,9 @@ export const generateMetadata = async (): Promise<Metadata> => {
 };
 
 const ResumePreviewPage = async () => {
-  const [t, tResume] = await Promise.all([
+  const [t, tProfile, tResume] = await Promise.all([
     getTranslations("resumePreview"),
+    getTranslations("profile"),
     getTranslations("resume"),
   ]);
   const tDescription = await getTranslations("descriptionItem");
@@ -91,7 +92,7 @@ const ResumePreviewPage = async () => {
                         {tResume(`${careerKey}.company`)}
                       </h3>
                       <p className="mt-1 text-sm font-medium text-gray-700">
-                        {tResume(`${careerKey}.role`)} · {tResume(`${careerKey}.employmentType`)}
+                        {tResume(`${careerKey}.role`)}
                       </p>
                     </div>
                     <p className="shrink-0 text-sm text-gray-600">
@@ -162,6 +163,27 @@ const ResumePreviewPage = async () => {
                 </section>
               );
             })}
+          </div>
+        </section>
+
+        <section className="border-t border-gray-300 py-6">
+          <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-blue-500">
+            {tProfile("education")}
+          </h2>
+          <div className="mt-4 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">{tProfile("hybridCourse")}</h3>
+              <ul className="mt-2 text-sm leading-6 text-gray-700">
+                <li className="flex gap-2">
+                  <span
+                    className="mt-2.5 size-1 shrink-0 rounded-full bg-blue-400"
+                    aria-hidden="true"
+                  />
+                  <span>{tProfile("hybridDesc")}</span>
+                </li>
+              </ul>
+            </div>
+            <p className="shrink-0 text-sm text-gray-600">2020.03</p>
           </div>
         </section>
 

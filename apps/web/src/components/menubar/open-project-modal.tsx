@@ -14,6 +14,7 @@ import BaseText from "@/components/base-ui/text";
 import { useMemo, useState } from "react";
 import Icon, { TKind } from "@/components/base-ui/icon";
 import { useTranslations } from "next-intl";
+import { siteUrl } from "@/lib/site-url";
 
 interface IOpenProjectModalProps {
   open: boolean;
@@ -36,11 +37,11 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
     () => [
       {
         label: "Portfolio",
-        items: [{ label: "VSCOKE", link: "https://vscoke.vercel.app" }],
+        items: [{ label: "VSCOKE", link: siteUrl }],
       },
       { label: "Users", items: [{ label: "Test", link: "" }] },
     ],
-    [t],
+    [],
   );
   const sidebarSections = useMemo<
     { title: string; items: { icon: TKind; id: string; label: string }[] }[]

@@ -3,7 +3,7 @@ import { getCorsOptions, resolveCorsOrigins } from './cors.util';
 describe('cors util', () => {
   it('기본 origin은 production 웹과 로컬 개발 웹만 포함한다', () => {
     expect(resolveCorsOrigins()).toEqual([
-      'https://vscoke.vercel.app',
+      'https://vscoke.icecoke.kr',
       'http://localhost:3000',
       'http://127.0.0.1:3000',
     ]);
@@ -31,7 +31,7 @@ describe('cors util', () => {
         ].join(','),
       ),
     ).toEqual([
-      'https://vscoke.vercel.app',
+      'https://vscoke.icecoke.kr',
       'http://localhost:3000',
       'http://127.0.0.1:3000',
       'https://safe-preview.example.com',
@@ -41,7 +41,7 @@ describe('cors util', () => {
   it('Nest CORS 옵션은 검증된 origin, credentials, 요청 ID와 rate limit 헤더 노출을 사용한다', () => {
     expect(getCorsOptions('https://preview.example.com')).toEqual({
       origin: [
-        'https://vscoke.vercel.app',
+        'https://vscoke.icecoke.kr',
         'http://localhost:3000',
         'http://127.0.0.1:3000',
         'https://preview.example.com',

@@ -15,7 +15,7 @@ const post: PostMeta = {
 };
 
 test("블로그 JSON-LD는 canonical URL과 Article 권장 속성을 제공한다", () => {
-  const canonicalUrl = "https://vscoke.vercel.app/ko-KR/blog/dev/json-ld";
+  const canonicalUrl = "https://vscoke.icecoke.kr/ko-KR/blog/dev/json-ld";
   const jsonLd = createBlogPostJsonLd({ canonicalUrl, locale: "ko-KR", post });
 
   assert.equal(jsonLd["@type"], "BlogPosting");
@@ -23,7 +23,7 @@ test("블로그 JSON-LD는 canonical URL과 Article 권장 속성을 제공한�
   assert.equal(jsonLd.mainEntityOfPage["@id"], canonicalUrl);
   assert.equal(jsonLd.url, canonicalUrl);
   assert.equal(jsonLd.datePublished, post.date);
-  assert.equal(jsonLd.author[0]?.url, "https://vscoke.vercel.app/ko-KR/readme");
+  assert.equal(jsonLd.author[0]?.url, "https://vscoke.icecoke.kr/ko-KR/readme");
   assert.equal(jsonLd.articleSection, post.category);
   assert.equal(jsonLd.keywords, "SEO, JSON-LD");
   assert.equal(jsonLd.inLanguage, "ko-KR");
@@ -31,7 +31,7 @@ test("블로그 JSON-LD는 canonical URL과 Article 권장 속성을 제공한�
 
 test("JSON-LD 직렬화는 script 종료 문자열을 이스케이프한다", () => {
   const jsonLd = createBlogPostJsonLd({
-    canonicalUrl: "https://vscoke.vercel.app/ko-KR/blog/dev/json-ld",
+    canonicalUrl: "https://vscoke.icecoke.kr/ko-KR/blog/dev/json-ld",
     locale: "ko-KR",
     post,
   });

@@ -18,6 +18,12 @@ Vercel에서 `VSCoke` 웹 프로젝트 설정을 변경한다.
   - [x] `AUTH_SECRET`
 - [x] Preview 환경에서도 API 호출이나 Google Auth가 필요하면 같은 env를 등록한다.
 - [x] env 변경 후 새 Vercel deployment를 생성한다. 기존 deployment에는 env 변경이 소급되지 않는다.
+- [x] `vscoke.icecoke.kr`를 Vercel production 도메인에 연결한다.
+- [ ] 배포 후 `vscoke.vercel.app`이 동일 경로의 `vscoke.icecoke.kr`로 영구 리디렉션되는지 확인한다.
+- [ ] Google OAuth 승인 리디렉션 URI에 `https://vscoke.icecoke.kr/api/auth/callback/google`을 등록한다.
+- [ ] GA4 웹 데이터 스트림의 기본 URL을 `https://vscoke.icecoke.kr`로 변경한다.
+- [ ] Search Console에서 `https://vscoke.icecoke.kr/sitemap.xml`을 제출한다.
+- [ ] Wanted 프로필의 이력서 링크를 `https://vscoke.icecoke.kr/ko-KR/readme?utm_source=wanted&utm_medium=profile&utm_campaign=resume`로 변경한다.
 
 검증:
 
@@ -62,7 +68,8 @@ Ubuntu host의 운영 디렉터리를 확인한다.
   - [x] `DB_PASSWORD`
   - [x] `DB_DATABASE`
   - [x] `DB_SYNCHRONIZE=false`
-  - [x] `CORS_ORIGINS`
+  - [ ] `CORS_ORIGINS=https://vscoke.icecoke.kr`
+  - [ ] `RAG_PUBLIC_CHAT_ORIGINS=https://vscoke.icecoke.kr`
 - [x] 운영 `.env`에 개발 인증 우회 값을 넣지 않는다.
   - [x] `ENABLE_DEV_AUTH_BYPASS`
   - [x] `DEV_AUTH_TOKEN`

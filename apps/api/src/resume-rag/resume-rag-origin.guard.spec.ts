@@ -16,7 +16,7 @@ describe('ResumeRagOriginGuard', () => {
     const guard = new ResumeRagOriginGuard();
 
     expect(
-      guard.canActivate(createContext({ origin: 'https://vscoke.vercel.app' })),
+      guard.canActivate(createContext({ origin: 'https://vscoke.icecoke.kr' })),
     ).toBe(true);
   });
 
@@ -33,7 +33,7 @@ describe('ResumeRagOriginGuard', () => {
 
   it('production 기본값은 운영 웹 origin만 허용한다', () => {
     expect(resolveResumeRagPublicChatOrigins(undefined, 'production')).toEqual([
-      'https://vscoke.vercel.app',
+      'https://vscoke.icecoke.kr',
     ]);
   });
 
@@ -41,13 +41,13 @@ describe('ResumeRagOriginGuard', () => {
     expect(
       resolveResumeRagPublicChatOrigins(
         [
-          'https://vscoke.vercel.app/',
+          'https://vscoke.icecoke.kr/',
           'https://preview.example.com',
           'https://preview.example.com/path',
           'https://*.example.com',
         ].join(','),
         'production',
       ),
-    ).toEqual(['https://vscoke.vercel.app', 'https://preview.example.com']);
+    ).toEqual(['https://vscoke.icecoke.kr', 'https://preview.example.com']);
   });
 });

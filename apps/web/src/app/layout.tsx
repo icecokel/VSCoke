@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Noto_Sans_KR } from "next/font/google";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { GoogleTagManager } from "@/components/google-tag-manager";
+import { siteUrl } from "@/lib/site-url";
 import "./globals.css";
 
 const notoSansKr = Noto_Sans_KR({
@@ -10,7 +11,7 @@ const notoSansKr = Noto_Sans_KR({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://vscoke.vercel.app"),
+  metadataBase: new URL(siteUrl),
   title: "VSCOKE",
   description: "Developer Portfolio & Blog",
   keywords: [
@@ -30,7 +31,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "VSCOKE",
     description: "Developer Portfolio & Blog",
-    url: "https://vscoke.vercel.app",
+    url: siteUrl,
     siteName: "VSCOKE",
     locale: "ko_KR",
     type: "website",

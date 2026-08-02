@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createConnectSources, toWebSocketConnectSource } from "./next.config";
+import {
+  createConnectSources,
+  createProductionDomainRedirects,
+  toWebSocketConnectSource,
+} from "./next.config";
 
 test("API HTTP origin은 path와 credential 없이 같은 host와 port의 WebSocket origin으로 변환한다", () => {
   const apiUrl = "http://user:password@127.0.0.1:46001/api/poke-lounge?token=opaque-token";
@@ -33,4 +37,15 @@ test("HTTPS API와 production fallback은 정확한 WSS origin만 유지한다",
     assert.equal(fallbackSources.includes("ws:"), false);
     assert.equal(fallbackSources.includes("wss:"), false);
   }
+});
+
+test("기존 Vercel 도메인은 경로를 유지해 운영 도메인으로 영구 리디렉션한다", () => {
+  assert.deepEqual(createProductionDomainRedirects(), [
+    {
+      source: "/:path*",
+      has: [{ type: "host", value: "vscoke.vercel.app" }],
+      destination: "https://vscoke.icecoke.kr/:path*",
+      permanent: true,
+    },
+  ]);
 });

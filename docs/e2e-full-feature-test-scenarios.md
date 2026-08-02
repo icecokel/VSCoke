@@ -42,7 +42,7 @@
 | ---------- | ------------------------------- | --------------------------- | ----------------------------- | ----------------------- | ---------------------------- |
 | UI 격리    | 화면 상태와 오류 UI 검증        | 로컬 Next.js                | Playwright route interception | 없음                    | 없음                         |
 | 로컬 통합  | 실제 요청·저장·Socket 검증      | 로컬 Next.js                | 로컬 NestJS                   | 격리 PostgreSQL `_test` | Google 인증은 테스트 토큰    |
-| 운영 smoke | 배포·도메인·CORS·정적 에셋 확인 | `https://vscoke.vercel.app` | `https://api.icecoke.kr`      | 운영 DB                 | 실제 OAuth/Cloudflare/Vercel |
+| 운영 smoke | 배포·도메인·CORS·정적 에셋 확인 | `https://vscoke.icecoke.kr` | `https://api.icecoke.kr`      | 운영 DB                 | 실제 OAuth/Cloudflare/Vercel |
 
 UI 격리 테스트의 route interception은 오류 상태를 재현하기 위한 테스트 장치다. 실제 API 통합 성공을 대신하지 않는다. 전체 기능 완료 판정에는 로컬 통합 또는 운영 smoke 결과가 함께 있어야 한다.
 

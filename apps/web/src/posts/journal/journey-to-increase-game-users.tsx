@@ -106,14 +106,14 @@ const JournalJourneyToIncreaseGameUsersPost = () => {
           <PostParagraph>
             <PostStrong>Before</PostStrong>
             {": "}
-            <PostInlineCode>vscoke.vercel.app/game/sky-drop/share?score=5000</PostInlineCode>
+            <PostInlineCode>vscoke.icecoke.kr/game/sky-drop/share?score=5000</PostInlineCode>
           </PostParagraph>
         </PostListItem>
         <PostListItem>
           <PostParagraph>
             <PostStrong>After</PostStrong>
             {": "}
-            <PostInlineCode>vscoke.vercel.app/game/sky-drop/5000/share</PostInlineCode>
+            <PostInlineCode>vscoke.icecoke.kr/game/sky-drop/5000/share</PostInlineCode>
           </PostParagraph>
         </PostListItem>
       </PostUnorderedList>

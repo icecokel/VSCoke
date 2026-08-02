@@ -37,7 +37,7 @@ const JournalFixingRoutingRedirectsPost = () => {
       <PostParagraph>
         <PostStrong>&quot;첫 유저를 어디론가 랜딩 시켰을 때&quot;</PostStrong>
         {' 문제가 터졌습니다.\n예를 들어, 친구에게 "나 게임 만들었어! 해봐"라며 '}
-        <PostInlineCode>https:&#47;&#47;vscoke.vercel.app/game</PostInlineCode>
+        <PostInlineCode>https:&#47;&#47;vscoke.icecoke.kr/game</PostInlineCode>
         {" 링크를 공유했다고 가정해봅시다."}
       </PostParagraph>
       <PostOrderedList start={1}>

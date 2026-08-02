@@ -10,6 +10,7 @@ import { ShareQrDialog } from "@/components/share/share-qr-dialog";
 
 import { getResumeDetailBySlug, getAllResumeDetails } from "@/lib/resume-detail";
 import { mdxComponents } from "@/components/profile/resume/resume-mdx-components";
+import { siteUrl } from "@/lib/site-url";
 
 interface ResumeDetailPageProps {
   params: Promise<{
@@ -31,7 +32,7 @@ export const generateMetadata = async ({ params }: ResumeDetailPageProps): Promi
     return { title: "Resume Detail Not Found" };
   }
 
-  const url = `https://vscoke.vercel.app/${locale}/resume/${slug}`;
+  const url = `${siteUrl}/${locale}/resume/${slug}`;
 
   return {
     title: detail.title,
@@ -41,7 +42,7 @@ export const generateMetadata = async ({ params }: ResumeDetailPageProps): Promi
       url,
       images: [
         {
-          url: "https://vscoke.vercel.app/og.png",
+          url: `${siteUrl}/og.png`,
           width: 1200,
           height: 630,
           alt: detail.title,
@@ -67,7 +68,7 @@ const ResumeDetailPage = async ({ params }: ResumeDetailPageProps) => {
     author: {
       "@type": "Person",
       name: "icecokel",
-      url: `https://vscoke.vercel.app/${locale}/readme`,
+      url: `${siteUrl}/${locale}/readme`,
     },
   };
 

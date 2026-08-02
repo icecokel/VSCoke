@@ -15,6 +15,7 @@ import { Loader } from "@/components/loader";
 import { getExplorer } from "@/utils/get/explorer";
 import { getAllPosts } from "@/lib/blog";
 import { routing } from "@/i18n/routing";
+import { siteUrl } from "@/lib/site-url";
 
 const OPEN_GRAPH_LOCALES: Record<(typeof routing.locales)[number], string> = {
   "ko-KR": "ko_KR",
@@ -45,7 +46,7 @@ export async function generateMetadata({ params }: Props) {
     openGraph: {
       title: t("title"),
       description: t("description"),
-      url: "https://vscoke.vercel.app",
+      url: siteUrl,
       siteName: t("title"),
       locale: OPEN_GRAPH_LOCALES[locale as (typeof routing.locales)[number]] ?? "ko_KR",
       type: "website",

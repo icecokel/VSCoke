@@ -1,4 +1,5 @@
 import type { PostMeta } from "@/types/blog";
+import { siteUrl } from "@/lib/site-url";
 
 interface CreateBlogPostJsonLdOptions {
   canonicalUrl: string;
@@ -6,7 +7,6 @@ interface CreateBlogPostJsonLdOptions {
   post: PostMeta;
 }
 
-const siteUrl = "https://vscoke.vercel.app";
 const authorUrl = `${siteUrl}/ko-KR/readme`;
 
 export const createBlogPostJsonLd = ({

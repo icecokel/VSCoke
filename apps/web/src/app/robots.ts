@@ -1,9 +1,8 @@
 import { MetadataRoute } from "next";
 import { routing } from "@/i18n/routing";
+import { siteUrl } from "@/lib/site-url";
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = "https://vscoke.vercel.app";
-
   const localizedDisallow = routing.locales.flatMap(locale => [
     `/${locale}/share/`,
     `/${locale}/blog/dashboard`,
@@ -15,7 +14,7 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/api/", ...localizedDisallow],
     },
-    sitemap: `${baseUrl}/sitemap.xml`,
-    host: baseUrl,
+    sitemap: `${siteUrl}/sitemap.xml`,
+    host: siteUrl,
   };
 }

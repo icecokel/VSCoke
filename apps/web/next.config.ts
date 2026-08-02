@@ -6,6 +6,7 @@
 import path from "node:path";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { siteUrl } from "./src/lib/site-url";
 
 // next-intl 플러그인 설정 (i18n 요청 핸들러 경로 지정)
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
@@ -59,6 +60,15 @@ export const createConnectSources = (apiUrl: string | undefined) => {
   );
 };
 
+export const createProductionDomainRedirects = () => [
+  {
+    source: "/:path*",
+    has: [{ type: "host" as const, value: "vscoke.vercel.app" }],
+    destination: `${siteUrl}/:path*`,
+    permanent: true,
+  },
+];
+
 const connectSources = createConnectSources(process.env.NEXT_PUBLIC_API_URL);
 
 const contentSecurityPolicy = `connect-src ${connectSources.join(" ")};`;
@@ -96,6 +106,10 @@ const nextConfig: NextConfig = {
         pathname: "/images/**",
       },
     ],
+  },
+
+  async redirects() {
+    return createProductionDomainRedirects();
   },
 
   async headers() {

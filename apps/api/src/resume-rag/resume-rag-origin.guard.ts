@@ -8,7 +8,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 
-const PRODUCTION_WEB_ORIGIN = 'https://vscoke.vercel.app';
+const PRODUCTION_WEB_ORIGIN = 'https://vscoke.icecoke.kr';
 const LOCAL_WEB_ORIGINS = ['http://localhost:3000', 'http://127.0.0.1:3000'];
 
 const normalizeOrigin = (origin: string): string | undefined => {

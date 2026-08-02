@@ -44,6 +44,7 @@ Vercel 프로젝트는 monorepo 루트가 아니라 웹 앱 디렉터리를 루�
 | Build Command    | `pnpm build`                                          |
 | Install Command  | 기본값 유지, 필요 시 `pnpm install --frozen-lockfile` |
 | Node.js Version  | `22.x`                                                |
+| Primary Domain   | `vscoke.icecoke.kr`                                   |
 | Production env   | Web 환경 변수 표 참고                                 |
 
 - Vercel은 `apps/web/package.json`의 `build` 스크립트를 실행해야 한다.
@@ -53,6 +54,10 @@ Vercel 프로젝트는 monorepo 루트가 아니라 웹 앱 디렉터리를 루�
 - Preview 배포도 같은 Vercel 프로젝트에서 처리한다. Preview가 API를 호출해야 하면 `NEXT_PUBLIC_API_URL`을 preview 환경에도 설정한다.
 - Vercel 환경 변수 변경은 기존 배포에 소급 적용되지 않는다. 값을 바꾼 뒤에는 새 deployment를 생성한다.
 - 현재 Vercel Root Directory는 `apps/web`, Node.js Version은 `22.x` 기준으로 운영한다.
+- canonical URL은 `apps/web/src/lib/site-url.ts`의 `https://vscoke.icecoke.kr`를 기준으로 생성한다.
+- 이전 `vscoke.vercel.app` 요청은 같은 경로를 유지해 production 도메인으로 영구 리디렉션한다.
+- Google OAuth 승인 리디렉션 URI에는 `https://vscoke.icecoke.kr/api/auth/callback/google`을 등록한다.
+- GA4 웹 데이터 스트림의 기본 URL과 Search Console sitemap도 production 도메인을 기준으로 관리한다.
 
 참고:
 
@@ -228,7 +233,7 @@ API 운영 값은 Ubuntu host의 `/home/icenux/projects/vscoke-api/.env`에 둔�
 | `RAG_CODEX_REASONING_EFFORT` | 권장      | `low`                                  | 이력 chat 답변 turn의 reasoning effort. 지원 값: `none`, `minimal`, `low`, `medium`, `high`, `xhigh` |
 | `RAG_CHAT_MODEL`             | 선택      | 없음                                   | 비워두면 Codex app-server 기본 모델 사용                                                             |
 | `RAG_CODEX_MODEL_PROVIDER`   | 선택      | 없음                                   | Codex app-server provider 힌트. 비워두면 app-server 기본값 사용                                      |
-| `RAG_PUBLIC_CHAT_ORIGINS`    | 운영 권장 | `https://vscoke.vercel.app`            | 공개 이력 질문 API를 허용할 브라우저 origin 목록                                                     |
+| `RAG_PUBLIC_CHAT_ORIGINS`    | 운영 권장 | `https://vscoke.icecoke.kr`            | 공개 이력 질문 API를 허용할 브라우저 origin 목록                                                     |
 | `RAG_EMBEDDING_PROVIDER`     | 선택      | 없음                                   | 선택적 벡터 인덱싱용 embedding provider                                                              |
 | `RAG_EMBEDDING_MODEL`        | 선택      | 없음                                   | 선택적 벡터 인덱싱용 embedding model                                                                 |
 | `RAG_EMBEDDING_DIMENSIONS`   | 선택      | 없음                                   | 선택적 벡터 인덱싱용 embedding dimension                                                             |
@@ -253,7 +258,7 @@ Resume RAG 운영 chat은 `resume_source_items`의 기존 DB 텍스트를 keywor
 - Ubuntu host에서는 `RAG_CODEX_APP_SERVER_URL=ws://127.0.0.1:14561`, `RAG_CODEX_CWD=/home/icenux/projects/vscoke-api`를 기준값으로 둔다.
 - `RAG_CODEX_REASONING_EFFORT`는 기본값 `low`로 이력 chat turn에만 적용한다. 환경값을 바꾸면 PM2를 `--update-env` 옵션으로 재시작한다.
 - 공개 이력 채팅은 Cloudflare Tunnel을 통과한 원본 IP당 최근 1시간에 20회까지만 허용한다. API는 loopback proxy만 신뢰해 IP를 해석한다.
-- 공개 이력 질문은 사용자 로그인 없이 동작하되, `RAG_PUBLIC_CHAT_ORIGINS=https://vscoke.vercel.app` 기준으로 공식 운영 웹 origin에서 온 브라우저 요청만 허용한다.
+- 공개 이력 질문은 사용자 로그인 없이 동작하되, `RAG_PUBLIC_CHAT_ORIGINS=https://vscoke.icecoke.kr` 기준으로 공식 운영 웹 origin에서 온 브라우저 요청만 허용한다.
 - 운영 chat만 사용할 때는 `RAG_AI_API_KEY`를 요구하지 않는다.
 - 기본 CORS 허용 origin은 production 웹 도메인과 로컬 개발 웹 도메인뿐이다.
 - Vercel preview에서 production API 직접 호출이 필요하면 preview origin을 `CORS_ORIGINS`에 명시한다. wildcard, path 포함 URL, http/https가 아닌 값은 허용 목록에서 제외된다.

@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { getSkyDropMedal } from "@/utils/sky-drop-util";
 import { getGameResult } from "@/services/score-service";
+import { siteHost } from "@/lib/site-url";
 
 export const runtime = "edge";
 export const alt = "Game Result";
@@ -142,7 +143,7 @@ const OGImage = async ({ params }: { params: Promise<{ id: string }> }) => {
           color: "#6b7280",
         }}
       >
-        vscoke.vercel.app
+        {siteHost}
       </div>
     </div>,
     { ...size },

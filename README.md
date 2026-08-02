@@ -8,7 +8,7 @@ VS Code에서 영감을 받은 화면은 개발자라는 정체성을 드러내�
 
 ## 운영 페이지
 
-**[VSCoke 포트폴리오 바로가기](https://vscoke.vercel.app)**
+**[VSCoke 포트폴리오 바로가기](https://vscoke.icecoke.kr)**
 
 ## 포트폴리오에서 볼 수 있는 것
 

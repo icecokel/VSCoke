@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { BlogPostShell } from "@/components/blog/blog-post-shell";
+import { siteUrl } from "@/lib/site-url";
 
 interface BlogPostPageProps {
   params: Promise<{
@@ -25,7 +26,7 @@ export const generateMetadata = async ({ params }: BlogPostPageProps): Promise<M
     return { title: "Post Not Found" };
   }
 
-  const url = `https://vscoke.vercel.app/${locale}/blog/${slugPath}`;
+  const url = `${siteUrl}/${locale}/blog/${slugPath}`;
 
   return {
     title: post.title,
@@ -44,7 +45,7 @@ export const generateMetadata = async ({ params }: BlogPostPageProps): Promise<M
       tags: post.tags,
       images: [
         {
-          url: "https://vscoke.vercel.app/og.png", // Default OG Image
+          url: `${siteUrl}/og.png`, // Default OG Image
           width: 1200,
           height: 630,
           alt: post.title,
@@ -55,7 +56,7 @@ export const generateMetadata = async ({ params }: BlogPostPageProps): Promise<M
       card: "summary_large_image",
       title: post.title,
       description: post.description,
-      images: ["https://vscoke.vercel.app/og.png"],
+      images: [`${siteUrl}/og.png`],
     },
   };
 };
@@ -76,7 +77,7 @@ const BlogPostPage = async ({ params }: BlogPostPageProps) => {
     <BlogPostShell
       post={post}
       locale={locale}
-      canonicalUrl={`https://vscoke.vercel.app/${locale}/blog/${slugPath}`}
+      canonicalUrl={`${siteUrl}/${locale}/blog/${slugPath}`}
       backToListLabel={t("backToList")}
     >
       <PostContent />

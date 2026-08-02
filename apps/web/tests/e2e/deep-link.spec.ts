@@ -75,7 +75,7 @@ test.describe("딥링크 직접 진입", () => {
   test("블로그 상세에 canonical BlogPosting JSON-LD를 노출한다", async ({ page }) => {
     const { locale } = await resolveLocaleAndMessages(page);
     const slug = "journal/hello-world";
-    const canonicalUrl = `https://vscoke.vercel.app/${locale}/blog/${slug}`;
+    const canonicalUrl = `https://vscoke.icecoke.kr/${locale}/blog/${slug}`;
 
     await gotoWithRetry(page, `/${locale}/blog/${slug}`);
 

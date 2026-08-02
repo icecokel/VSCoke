@@ -3,9 +3,9 @@ import { getAllResumeDetails } from "@/lib/resume-detail";
 import { MetadataRoute } from "next";
 import { routing } from "@/i18n/routing";
 import { getEspressoBeans } from "@/services/espresso-history-service";
+import { siteUrl } from "@/lib/site-url";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = "https://vscoke.vercel.app";
   const posts = getAllPosts();
   const resumeDetails = getAllResumeDetails();
   const espressoBeans = await getEspressoBeans().catch(() => []);
@@ -23,28 +23,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
   const localizedStaticUrls = routing.locales.flatMap(locale =>
     staticRoutes.map(route => ({
-      url: `${baseUrl}/${locale}${route}`,
+      url: `${siteUrl}/${locale}${route}`,
       lastModified: new Date(),
     })),
   );
 
   const localizedPostUrls = routing.locales.flatMap(locale =>
     posts.map(post => ({
-      url: `${baseUrl}/${locale}/blog/${post.slug}`,
+      url: `${siteUrl}/${locale}/blog/${post.slug}`,
       lastModified: new Date(post.date),
     })),
   );
 
   const localizedResumeUrls = routing.locales.flatMap(locale =>
     resumeDetails.map(detail => ({
-      url: `${baseUrl}/${locale}/resume/${detail.slug}`,
+      url: `${siteUrl}/${locale}/resume/${detail.slug}`,
       lastModified: new Date(),
     })),
   );
 
   const localizedEspressoUrls = routing.locales.flatMap(locale =>
     espressoBeans.map(bean => ({
-      url: `${baseUrl}/${locale}/hobby/espresso/${bean.id}`,
+      url: `${siteUrl}/${locale}/hobby/espresso/${bean.id}`,
       lastModified: new Date(),
     })),
   );

@@ -13,6 +13,7 @@ import Resume from "./resume/resume";
 import { ShareLinkButton } from "@/components/share/share-link-button";
 import { ShareQrDialog } from "@/components/share/share-qr-dialog";
 import { CustomLink } from "@/components/custom-link";
+import { siteUrl as productionSiteUrl } from "@/lib/site-url";
 
 /**
  * 이력서 페이지
@@ -25,7 +26,7 @@ const Profile = () => {
   const locale = useLocale();
   const introduction = tResume.raw("introduction") as string[];
   const contact = tResume.raw("contact");
-  const siteUrl = `https://vscoke.vercel.app/${locale}`;
+  const siteUrl = `${productionSiteUrl}/${locale}`;
   const blogUrl = `${siteUrl}/blog/dashboard`;
 
   return (

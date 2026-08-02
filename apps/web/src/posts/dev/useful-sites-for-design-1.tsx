@@ -1,317 +1,109 @@
-import { BlogPostDocument, type PostDocumentNode } from "@/components/blog/blog-post-document";
-
-const nodes = [
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "안녕하세요. 오랜만에 블로그 포스팅을 진행합니다. 오늘은 개발할 때 반드시 필요하진 않지만, 알아두면 유용한 사이트 정보를 공유해 드리려고 합니다.",
-      },
-    ],
-  },
-  {
-    type: "thematicBreak",
-  },
-  {
-    type: "heading",
-    depth: 3,
-    children: [
-      {
-        type: "strong",
-        children: [
-          {
-            type: "text",
-            value: "1. Regexr.com",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "주소 : ",
-      },
-      {
-        type: "link",
-        url: "https://regexr.com/",
-        title: null,
-        children: [
-          {
-            type: "text",
-            value: "https://regexr.com/",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: " [RegExr: Learn, Build, & Test RegEx",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "RegExr is an online tool to learn, build, & test Regular Expressions (RegEx / RegExp).",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "regexr.com](https://regexr.com/)",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          " 해당 사이트는 정규식을 확인할 수 있는 사이트입니다. 개발을 진행하다 보면 정규식을 사용할 때가 종종 있는데, 자주 사용하지는 않다 보니, 매번 검색하게 되더라고요.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          " 위 사이트는 정규식을 미리 사용해 확인해 볼 수 있고, 또한 내가 원하는 값을 미리 대입시켜봐 좀 더 정확한 정규식을 작성할 수 있도록 도와주는 사이트입니다.  엄청 빈번하게 사용하지는 않지만 북마크 해두고 요긴하게 이용하는 사이트 이기도 합니다.",
-      },
-    ],
-  },
-  {
-    type: "thematicBreak",
-  },
-  {
-    type: "heading",
-    depth: 3,
-    children: [
-      {
-        type: "strong",
-        children: [
-          {
-            type: "text",
-            value: "2. Jsonlint.com",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "strong",
-        children: [
-          {
-            type: "text",
-            value: "주소 : ",
-          },
-          {
-            type: "link",
-            url: "https://jsonlint.com/",
-            title: null,
-            children: [
-              {
-                type: "text",
-                value: "https://jsonlint.com/",
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: " [The JSON Validator",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "JSONLint is the free online validator and reformatter tool for JSON, a lightweight data-interchange format.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "jsonlint.com](https://jsonlint.com/)",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          " 해당 사이트는 밉게 정리되어있는 JSON 형식을 보기 이쁘게 정리해주는 사이트입니다. 이 사이트 외에 몇몇 사이트를 사용해 봤지만, JSON안에 Array가 있어도 이쁘게 정리해주고, 정리된 JSON을 복사해도 정리된 상태를 유지해주는 사이트였던 것으로 기억합니다. ",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          " JSON 모양이 안 이뻐도 소스는 돌아가지만, 그걸 보는 사람 눈도 돌아갈 수 있죠. Jsonlint을 이용하여 가독성 좋은 코드를 짜보는 게 어떨까요?",
-      },
-    ],
-  },
-  {
-    type: "thematicBreak",
-  },
-  {
-    type: "heading",
-    depth: 3,
-    children: [
-      {
-        type: "strong",
-        children: [
-          {
-            type: "text",
-            value: "3. Sqlines.com",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "strong",
-        children: [
-          {
-            type: "text",
-            value: "주소 : ",
-          },
-          {
-            type: "link",
-            url: "http://www.sqlines.com/online",
-            title: null,
-            children: [
-              {
-                type: "text",
-                value: "http://www.sqlines.com/online",
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          " [SQLines - Online SQL Conversion - SQL Scripts, DDL, Queries, Views, Stored Procedures, Triggers, Embedded SQL",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "-- Please use the desktop version to convert large SQL scripts, -- or if there are any issues with Online conversion. -- Feel free to contact us at support@sqlines.com",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "www.sqlines.com](http://www.sqlines.com/online)",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          " 해당 사이트는 쿼리를 컨버터 해주는 사이트입니다. 100%의 정확도를 지녔다고는 말씀 못드리지만, 참고용으로 사용할 수 있는 사이트 입니다. Oracle에서 MySql 로 바꾸는 등 갑작스레 개발환경 또는 다른 목적에 의해 같은 쿼리를 다른 DBMS에서 동작되도록 짜야 할 때가 있을때 유용한 사이트 입니다. ",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "일부 쿼리들은 DBMS문법에 너무 종속되어 변환이 어려울 때가 있습니다. 그럴 때 참고하시면 좋을 것 같습니다.",
-      },
-    ],
-  },
-  {
-    type: "thematicBreak",
-  },
-  {
-    type: "heading",
-    depth: 3,
-    children: [
-      {
-        type: "strong",
-        children: [
-          {
-            type: "text",
-            value: "마침.",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "능력이 좋아 스스로 해결하는 것이 좋다고 생각됩니다만, 일이란 게 제 욕심과 같은 순 없죠. 때때로 툴이나, 도움을 주는 사이트를 이용하여 개발을 효율적으로 진행해보는 게 어떨까 싶습니다.",
-      },
-    ],
-  },
-] satisfies PostDocumentNode[];
+import {
+  PostHeading3,
+  PostHorizontalRule,
+  PostLink,
+  PostParagraph,
+  PostStrong,
+} from "@/components/blog/blog-post-elements";
 
 const DevUsefulSitesForDesign1Post = () => {
-  return <BlogPostDocument nodes={nodes} />;
+  return (
+    <>
+      <PostParagraph>
+        안녕하세요. 오랜만에 블로그 포스팅을 진행합니다. 오늘은 개발할 때 반드시 필요하진 않지만,
+        알아두면 유용한 사이트 정보를 공유해 드리려고 합니다.
+      </PostParagraph>
+      <PostHorizontalRule />
+      <PostHeading3>
+        <PostStrong>1. Regexr.com</PostStrong>
+      </PostHeading3>
+      <PostParagraph>
+        {"주소 : "}
+        <PostLink href={"https://regexr.com/"}>https:&#47;&#47;regexr.com/</PostLink>
+      </PostParagraph>
+      <PostParagraph>{" [RegExr: Learn, Build, & Test RegEx"}</PostParagraph>
+      <PostParagraph>
+        RegExr is an online tool to learn, build, &amp; test Regular Expressions (RegEx / RegExp).
+      </PostParagraph>
+      <PostParagraph>regexr.com](https:&#47;&#47;regexr.com/)</PostParagraph>
+      <PostParagraph>
+        {
+          " 해당 사이트는 정규식을 확인할 수 있는 사이트입니다. 개발을 진행하다 보면 정규식을 사용할 때가 종종 있는데, 자주 사용하지는 않다 보니, 매번 검색하게 되더라고요."
+        }
+      </PostParagraph>
+      <PostParagraph>
+        {
+          " 위 사이트는 정규식을 미리 사용해 확인해 볼 수 있고, 또한 내가 원하는 값을 미리 대입시켜봐 좀 더 정확한 정규식을 작성할 수 있도록 도와주는 사이트입니다.  엄청 빈번하게 사용하지는 않지만 북마크 해두고 요긴하게 이용하는 사이트 이기도 합니다."
+        }
+      </PostParagraph>
+      <PostHorizontalRule />
+      <PostHeading3>
+        <PostStrong>2. Jsonlint.com</PostStrong>
+      </PostHeading3>
+      <PostParagraph>
+        <PostStrong>
+          {"주소 : "}
+          <PostLink href={"https://jsonlint.com/"}>https:&#47;&#47;jsonlint.com/</PostLink>
+        </PostStrong>
+      </PostParagraph>
+      <PostParagraph>{" [The JSON Validator"}</PostParagraph>
+      <PostParagraph>
+        JSONLint is the free online validator and reformatter tool for JSON, a lightweight
+        data-interchange format.
+      </PostParagraph>
+      <PostParagraph>jsonlint.com](https:&#47;&#47;jsonlint.com/)</PostParagraph>
+      <PostParagraph>
+        {
+          " 해당 사이트는 밉게 정리되어있는 JSON 형식을 보기 이쁘게 정리해주는 사이트입니다. 이 사이트 외에 몇몇 사이트를 사용해 봤지만, JSON안에 Array가 있어도 이쁘게 정리해주고, 정리된 JSON을 복사해도 정리된 상태를 유지해주는 사이트였던 것으로 기억합니다. "
+        }
+      </PostParagraph>
+      <PostParagraph>
+        {
+          " JSON 모양이 안 이뻐도 소스는 돌아가지만, 그걸 보는 사람 눈도 돌아갈 수 있죠. Jsonlint을 이용하여 가독성 좋은 코드를 짜보는 게 어떨까요?"
+        }
+      </PostParagraph>
+      <PostHorizontalRule />
+      <PostHeading3>
+        <PostStrong>3. Sqlines.com</PostStrong>
+      </PostHeading3>
+      <PostParagraph>
+        <PostStrong>
+          {"주소 : "}
+          <PostLink href={"http://www.sqlines.com/online"}>
+            http:&#47;&#47;www.sqlines.com/online
+          </PostLink>
+        </PostStrong>
+      </PostParagraph>
+      <PostParagraph>
+        {
+          " [SQLines - Online SQL Conversion - SQL Scripts, DDL, Queries, Views, Stored Procedures, Triggers, Embedded SQL"
+        }
+      </PostParagraph>
+      <PostParagraph>
+        -- Please use the desktop version to convert large SQL scripts, -- or if there are any
+        issues with Online conversion. -- Feel free to contact us at support@sqlines.com
+      </PostParagraph>
+      <PostParagraph>www.sqlines.com](http:&#47;&#47;www.sqlines.com/online)</PostParagraph>
+      <PostParagraph>
+        {
+          " 해당 사이트는 쿼리를 컨버터 해주는 사이트입니다. 100%의 정확도를 지녔다고는 말씀 못드리지만, 참고용으로 사용할 수 있는 사이트 입니다. Oracle에서 MySql 로 바꾸는 등 갑작스레 개발환경 또는 다른 목적에 의해 같은 쿼리를 다른 DBMS에서 동작되도록 짜야 할 때가 있을때 유용한 사이트 입니다. "
+        }
+      </PostParagraph>
+      <PostParagraph>
+        일부 쿼리들은 DBMS문법에 너무 종속되어 변환이 어려울 때가 있습니다. 그럴 때 참고하시면 좋을
+        것 같습니다.
+      </PostParagraph>
+      <PostHorizontalRule />
+      <PostHeading3>
+        <PostStrong>마침.</PostStrong>
+      </PostHeading3>
+      <PostParagraph>
+        능력이 좋아 스스로 해결하는 것이 좋다고 생각됩니다만, 일이란 게 제 욕심과 같은 순 없죠.
+        때때로 툴이나, 도움을 주는 사이트를 이용하여 개발을 효율적으로 진행해보는 게 어떨까
+        싶습니다.
+      </PostParagraph>
+    </>
+  );
 };
 
 export default DevUsefulSitesForDesign1Post;

@@ -1,1537 +1,423 @@
-import { BlogPostDocument, type PostDocumentNode } from "@/components/blog/blog-post-document";
-
-const nodes = [
-  {
-    type: "heading",
-    depth: 1,
-    children: [
-      {
-        type: "text",
-        value: "이력서 RAG 채팅을 만들며 정리한 구조와 고민",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: '이번 작업의 목표는 단순히 "이력서 페이지에 AI 채팅을 붙인다"가 아니었습니다.',
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "내 이력과 프로젝트 데이터를 한곳에 모아두고, 방문자가 자연어로 질문하면 그 데이터 안에서 근거를 찾아 답변하는 페이지를 만드는 것이 목표였습니다. 처음에는 당연히 벡터 DB를 중심에 두고 생각했습니다. RAG라고 하면 보통 문서를 chunking하고, embedding을 만들고, vector similarity로 검색한 뒤 LLM에 넘기는 그림을 먼저 떠올리기 때문입니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "그런데 실제 작업을 진행하면서 중요한 질문이 생겼습니다.",
-      },
-    ],
-  },
-  {
-    type: "blockquote",
-    children: [
-      {
-        type: "paragraph",
-        children: [
-          {
-            type: "text",
-            value: "지금 데이터는 정말 벡터 검색이 먼저 필요한 데이터인가?",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "이번 글은 그 질문에서 출발해 구조를 다시 잡고, 기능을 운영 환경까지 붙이면서 했던 고민을 정리한 기록입니다.",
-      },
-    ],
-  },
-  {
-    type: "heading",
-    depth: 2,
-    children: [
-      {
-        type: "text",
-        value: "1. 처음 목표: 이력 데이터를 런타임의 진실로 만들기",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "가장 먼저 정리해야 했던 것은 데이터의 위치였습니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "기존 이력 데이터는 MDX, Markdown, JSON에 가까운 형태로 흩어져 있었습니다. 사람이 읽기에는 좋지만, 채팅 API가 요청을 받을 때마다 파일을 직접 읽는 구조는 목표와 맞지 않았습니다. 사용자가 원한 구조는 명확했습니다.",
-      },
-    ],
-  },
-  {
-    type: "list",
-    ordered: false,
-    start: null,
-    children: [
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "이력 정보는 DB에 모은다.",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "질문 응답은 DB에 들어간 데이터에서 근거를 찾는다.",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "AI 모델은 자연어 답변 생성 역할만 맡긴다.",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "모델은 아직 확정하지 않았으므로 교체 가능해야 한다.",
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: '그래서 런타임 구조는 "파일을 읽는 RAG"가 아니라 "DB를 읽는 RAG"로 잡았습니다.',
-      },
-    ],
-  },
-  {
-    type: "code",
-    language: "txt",
-    value:
-      "이력 원본 파일\n-> import pipeline\n-> resume_source_items\n-> chat API runtime retrieval\n-> answer generation\n-> web chat UI",
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "여기서 핵심은 원본 파일을 버리는 것이 아니라 역할을 제한하는 것이었습니다. 원본 파일은 import input이고, 런타임 질문 응답의 source of truth는 DB row입니다.",
-      },
-    ],
-  },
-  {
-    type: "heading",
-    depth: 2,
-    children: [
-      {
-        type: "text",
-        value: "2. 벡터 DB를 바로 쓰지 않은 이유",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "처음 설계에는 ",
-      },
-      {
-        type: "inlineCode",
-        value: "resume_vector_chunks",
-      },
-      {
-        type: "text",
-        value:
-          "와 embedding 설정도 포함했습니다. 하지만 운영 채팅을 붙이는 단계에서는 벡터 검색을 바로 중심에 두지 않았습니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "이유는 데이터 성격 때문입니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "이력서는 보통 다음과 같은 텍스트입니다.",
-      },
-    ],
-  },
-  {
-    type: "list",
-    ordered: false,
-    start: null,
-    children: [
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "회사명",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "프로젝트명",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "기술 스택",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "도메인 키워드",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "성과와 역할",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "업무 맥락",
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          '즉, "비슷한 의미의 긴 문단을 의미 공간에서 찾는 문제"이기도 하지만, 동시에 "정확한 키워드가 중요한 문제"이기도 합니다. 방문자는 보통 이렇게 묻습니다.',
-      },
-    ],
-  },
-  {
-    type: "blockquote",
-    children: [
-      {
-        type: "paragraph",
-        children: [
-          {
-            type: "text",
-            value: "Oprimed에서 어떤 일을 했어?",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "blockquote",
-    children: [
-      {
-        type: "paragraph",
-        children: [
-          {
-            type: "text",
-            value: "프론트엔드 강점은 뭐야?",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "blockquote",
-    children: [
-      {
-        type: "paragraph",
-        children: [
-          {
-            type: "text",
-            value: "CI/CD 경험 있어?",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "이런 질문은 embedding이 없어도 회사명, 기술명, 경험/성과/강점 같은 키워드만으로 꽤 높은 품질의 후보를 뽑을 수 있습니다. 반대로 처음부터 벡터 DB를 필수로 두면 다음 부담이 생깁니다.",
-      },
-    ],
-  },
-  {
-    type: "list",
-    ordered: false,
-    start: null,
-    children: [
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "embedding provider와 모델을 지금 결정해야 한다.",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "운영 환경에 API key와 dimensions 같은 설정이 추가된다.",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "vector index 재생성 절차가 필요하다.",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value:
-                  "검색 품질이 나빠도 원인이 chunking인지 embedding인지 retriever인지 분리하기 어렵다.",
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "그래서 결론은 이렇게 정리했습니다.",
-      },
-    ],
-  },
-  {
-    type: "code",
-    language: "txt",
-    value:
-      "현재 운영 채팅:\nDB text / keyword retrieval\n\n미래 확장:\noptional vector index pipeline",
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "벡터를 완전히 부정한 것이 아니라, 지금 문제에 필요한 가장 작은 검색 구조를 먼저 운영에 올린 것입니다. 이 결정 덕분에 AI 모델 선정도 뒤로 미룰 수 있었습니다.",
-      },
-    ],
-  },
-  {
-    type: "heading",
-    depth: 2,
-    children: [
-      {
-        type: "text",
-        value: "3. 자연어 처리는 모델이 아니라 경계로 먼저 정의했다",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          '처음에는 "OpenAI embedding을 어떻게 붙였냐"는 질문이 나왔지만, 실제 목표는 특정 모델을 붙이는 것이 아니었습니다. 모델은 바뀔 수 있고, 지금 당장 확정하지 않아도 되는 영역이었습니다.',
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "그래서 구조를 모델 중심이 아니라 provider boundary 중심으로 잡았습니다.",
-      },
-    ],
-  },
-  {
-    type: "code",
-    language: "txt",
-    value:
-      "ResumeRagService\n-> ResumeRagRetrieverService\n-> ChatProvider\n   -> CodexAppServerProvider\n   -> future OpenAI-compatible provider",
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "현재 자연어 답변 생성은 Codex app-server를 통해 처리하도록 했습니다. API 서버는 Codex app-server에 ephemeral thread를 만들고, 검색된 이력 context와 질문을 넘긴 뒤 답변만 받습니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "중요한 점은 Codex가 검색을 직접 하는 구조가 아니라는 점입니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "검색은 API가 합니다. Codex는 검색된 근거 안에서 자연어 답변을 만듭니다. 이 경계를 두지 않으면 나중에 문제가 생겼을 때 원인을 분리하기 어렵습니다.",
-      },
-    ],
-  },
-  {
-    type: "list",
-    ordered: false,
-    start: null,
-    children: [
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "검색 결과가 틀렸는가?",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "검색 결과는 맞는데 답변 생성이 과장됐는가?",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "모델 설정이 없는가?",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "Codex app-server가 죽었는가?",
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "이 질문에 답하려면 retriever와 answer generator가 분리되어 있어야 합니다.",
-      },
-    ],
-  },
-  {
-    type: "heading",
-    depth: 2,
-    children: [
-      {
-        type: "text",
-        value: "4. 공개 채팅에서 로그인은 강제하지 않는다",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          '이 기능은 "나를 궁금해하는 사람이 들어와서 질문하는 페이지"입니다. 그래서 로그인 강제는 사용자 흐름과 맞지 않았습니다.',
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "처음에는 인증을 붙이는 선택지도 있었지만, 곧 방향을 바꿨습니다.",
-      },
-    ],
-  },
-  {
-    type: "code",
-    language: "txt",
-    value:
-      "로그인 강제: 하지 않음\n운영 웹 origin 제한: 함\nCSP connect-src 정리: 함\n실패 UI: 명확히 보여줌",
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          '물론 Origin 제한이 완전한 보안 장치는 아닙니다. 서버 간 요청이나 조작된 요청까지 막는 인증 수단은 아닙니다. 하지만 브라우저 기반 공개 채팅에서 "운영 사이트에서 들어온 정상 흐름"만 받도록 줄이는 1차 가드로는 의미가 있습니다.',
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "여기서 중요한 것은 보안을 명목으로 사용자 흐름을 망치지 않는 것이었습니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "방문자는 질문을 하러 온 사람이지, 로그인하러 온 사람이 아닙니다.",
-      },
-    ],
-  },
-  {
-    type: "heading",
-    depth: 2,
-    children: [
-      {
-        type: "text",
-        value: "5. AI를 부르기 전에 질문 범위를 먼저 본다",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "운영에 붙인 뒤 또 하나의 고민이 생겼습니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "이 채팅은 이력서 질문을 위한 기능입니다. 그런데 사용자는 얼마든지 날씨, 코인 가격, 일반 지식 같은 질문을 보낼 수 있습니다. 이걸 모두 AI까지 보내는 것은 비용과 품질 양쪽에서 좋지 않았습니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "그래서 키워드 기반 scope gate를 먼저 두었습니다.",
-      },
-    ],
-  },
-  {
-    type: "code",
-    language: "txt",
-    value:
-      "question\n-> keyword scope gate\n-> in scope: retrieval + answer generation\n-> out of scope: fixed message",
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          '처음 문구는 "이력과 관련된 키워드가 없어 답변하지 않았습니다"에 가까웠습니다. 하지만 이 문구는 사용자 입장에서 너무 내부 구현을 드러냅니다. 방문자는 "키워드 판정"을 보러 온 것이 아니라 "이력에 대해 질문"하러 온 사람입니다.',
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "그래서 문구를 의도 중심으로 바꿨습니다.",
-      },
-    ],
-  },
-  {
-    type: "blockquote",
-    children: [
-      {
-        type: "paragraph",
-        children: [
-          {
-            type: "text",
-            value:
-              "이 질문은 제 이력 범위를 벗어난 것 같아요. 프로젝트, 기술 경험, 업무 성과, 강점처럼 이력과 관련된 내용으로 다시 물어봐 주세요.",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "작은 문구 변경이지만, 방향은 중요했습니다.",
-      },
-    ],
-  },
-  {
-    type: "list",
-    ordered: false,
-    start: null,
-    children: [
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "내부 구현: 키워드가 없다",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "사용자 관점: 이력 범위를 벗어났다",
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "RAG 품질은 검색 알고리즘만의 문제가 아닙니다. 사용자가 왜 답변을 받지 못했는지 이해할 수 있어야 전체 경험이 성립합니다.",
-      },
-    ],
-  },
-  {
-    type: "heading",
-    depth: 2,
-    children: [
-      {
-        type: "text",
-        value: "6. 실패 UI는 나중에 붙이는 장식이 아니었다",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "AI 기능은 실패 가능성이 많습니다.",
-      },
-    ],
-  },
-  {
-    type: "list",
-    ordered: false,
-    start: null,
-    children: [
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "운영 origin이 아니어서 막힘",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "Codex app-server 설정이 없음",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "rate limit",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "API 응답 contract 불일치",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "네트워크 실패",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "검색 근거 부족",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "질문 범위 벗어남",
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "그래서 UI를 만들 때 성공 응답만 보지 않았습니다. 실패 상태를 먼저 나눴고, 사용자가 무엇을 할 수 있는지도 다르게 처리했습니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "예를 들어 origin 차단은 사용자가 재시도한다고 해결되지 않습니다. 반면 네트워크 실패나 일시적인 서비스 오류는 재시도 버튼이 의미가 있습니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "또한 사용자 메시지는 일반 입력 박스처럼 보이면 채팅 흐름이 깨졌습니다. 마지막에는 사용자 질문을 오른쪽 말풍선으로 정리하고, 입력부도 큰 textarea가 아니라 일반적인 채팅 composer처럼 바꿨습니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "이 작업은 기능의 본질과 직접 연결됩니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: '사용자는 "폼을 제출했다"가 아니라 "대화를 시작했다"고 느껴야 합니다.',
-      },
-    ],
-  },
-  {
-    type: "heading",
-    depth: 2,
-    children: [
-      {
-        type: "text",
-        value: "7. 최종 구조",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "현재 구조를 단순화하면 다음과 같습니다.",
-      },
-    ],
-  },
-  {
-    type: "code",
-    language: "txt",
-    value:
-      "Web\n  /resume/question\n  - public chat UI\n  - suggested questions\n  - failure states\n  - source citations\n\nAPI\n  POST /resume-rag/chat\n  - public origin guard\n  - keyword scope gate\n  - DB text retriever\n  - Codex app-server chat provider\n  - grounded answer response\n\nData\n  resume_source_items\n  - runtime retrieval source\n  - imported from raw resume/career docs\n\nOptional Future\n  resume_vector_chunks\n  - embedding/vector search path\n  - not required for current production chat",
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "이 구조에서 각 계층의 책임은 꽤 명확합니다.",
-      },
-    ],
-  },
-  {
-    type: "list",
-    ordered: false,
-    start: null,
-    children: [
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "Web은 DB를 모른다.",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "API는 파일을 직접 읽지 않는다.",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "Retriever는 답변을 생성하지 않는다.",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "Chat provider는 검색하지 않는다.",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "Codex는 근거 밖의 답변을 만들지 않아야 한다.",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "Vector index는 현재 운영 필수가 아니라 확장 옵션이다.",
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "이렇게 나눠두니 문제를 작게 볼 수 있었습니다.",
-      },
-    ],
-  },
-  {
-    type: "heading",
-    depth: 2,
-    children: [
-      {
-        type: "text",
-        value: "8. 배포하면서 확인한 것들",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "운영에 반영하면서는 로컬 테스트만으로 끝내지 않았습니다.",
-      },
-    ],
-  },
-  {
-    type: "list",
-    ordered: false,
-    start: null,
-    children: [
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "API unit test",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "web typecheck / lint / build",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "smoke E2E",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "GitHub self-hosted runner 기반 API 배포",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "운영 API 직접 호출",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "운영 웹에서 실제 질문 전송",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "실패 UI 캡처 확인",
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          '특히 공개 채팅은 "로컬에서는 된다"가 충분하지 않습니다. 운영 origin, CSP, API CORS, 서버 환경 변수, Codex app-server 연결이 모두 맞아야 실제 사용자가 질문을 보낼 수 있습니다.',
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "이번 작업에서 운영 테스트를 계속 같이 한 이유도 여기에 있습니다.",
-      },
-    ],
-  },
-  {
-    type: "heading",
-    depth: 2,
-    children: [
-      {
-        type: "text",
-        value: "9. 남은 고민",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "아직 끝난 구조는 아닙니다. 오히려 이제 운영 가능한 첫 형태에 가깝습니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "남은 고민은 몇 가지가 있습니다.",
-      },
-    ],
-  },
-  {
-    type: "heading",
-    depth: 3,
-    children: [
-      {
-        type: "text",
-        value: "out-of-scope와 no-evidence 분리",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "현재는 ",
-      },
-      {
-        type: "inlineCode",
-        value: "grounded=false",
-      },
-      {
-        type: "text",
-        value:
-          "라는 값이 여러 의미를 가질 수 있습니다. 검색 근거가 부족한 경우와 질문 범위가 벗어난 경우는 UI에서 다르게 보여주는 것이 맞습니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "다음에는 API 응답에 ",
-      },
-      {
-        type: "inlineCode",
-        value: "reason",
-      },
-      {
-        type: "text",
-        value: " 같은 필드를 추가해 상태를 더 명확히 나눌 수 있습니다.",
-      },
-    ],
-  },
-  {
-    type: "heading",
-    depth: 3,
-    children: [
-      {
-        type: "text",
-        value: "벡터 검색 재도입 시점",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "지금은 텍스트/키워드 검색으로 충분하지만, 질문이 더 추상화되면 벡터 검색이 필요해질 수 있습니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "예를 들면 이런 질문입니다.",
-      },
-    ],
-  },
-  {
-    type: "blockquote",
-    children: [
-      {
-        type: "paragraph",
-        children: [
-          {
-            type: "text",
-            value: "복잡한 도메인을 제품화한 경험이 있어?",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "이 질문은 특정 회사명이나 기술명보다 문맥 유사도가 중요합니다. 이런 유형의 질문이 많아지면 ",
-      },
-      {
-        type: "inlineCode",
-        value: "resume_vector_chunks",
-      },
-      {
-        type: "text",
-        value: "를 다시 활성화할 이유가 생깁니다.",
-      },
-    ],
-  },
-  {
-    type: "heading",
-    depth: 3,
-    children: [
-      {
-        type: "text",
-        value: "모델 교체 가능성",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "현재는 Codex app-server를 사용하지만, 구조상 다른 OpenAI-compatible provider로 바꿀 여지를 남겨두었습니다. 중요한 것은 어떤 모델을 쓰느냐보다 모델 교체가 전체 구조를 흔들지 않게 하는 것입니다.",
-      },
-    ],
-  },
-  {
-    type: "heading",
-    depth: 2,
-    children: [
-      {
-        type: "text",
-        value: "마치며",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "이번 작업에서 가장 크게 느낀 것은 RAG라는 이름에 끌려 구조를 과하게 만들 필요는 없다는 점입니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "벡터 DB, embedding, LLM은 모두 강력한 도구입니다. 하지만 먼저 정해야 하는 것은 도구가 아니라 경계입니다.",
-      },
-    ],
-  },
-  {
-    type: "list",
-    ordered: false,
-    start: null,
-    children: [
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "어떤 데이터가 진실인가?",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "검색은 어디서 책임지는가?",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "자연어 생성은 어디까지 허용하는가?",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "사용자는 실패를 어떻게 이해하는가?",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "text",
-                value: "운영 환경에서는 무엇이 실제로 검증되어야 하는가?",
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "이 질문에 답하고 나니 구현은 오히려 단순해졌습니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "개인 이력서 RAG 채팅은 화려한 AI 기능이라기보다, 내 이력 데이터를 제품처럼 다루는 작은 시스템에 가까웠습니다. 그리고 그 시스템에서 가장 중요한 일은 AI를 붙이는 것이 아니라, AI가 움직일 수 있는 안전한 범위를 정하는 것이었습니다.",
-      },
-    ],
-  },
-] satisfies PostDocumentNode[];
+import {
+  PostBlockquote,
+  PostCodeBlock,
+  PostHeading1,
+  PostHeading2,
+  PostHeading3,
+  PostInlineCode,
+  PostListItem,
+  PostParagraph,
+  PostUnorderedList,
+} from "@/components/blog/blog-post-elements";
 
 const JournalResumeRagChatDesignDecisionsPost = () => {
-  return <BlogPostDocument nodes={nodes} />;
+  return (
+    <>
+      <PostHeading1>이력서 RAG 채팅을 만들며 정리한 구조와 고민</PostHeading1>
+      <PostParagraph>
+        이번 작업의 목표는 단순히 &quot;이력서 페이지에 AI 채팅을 붙인다&quot;가 아니었습니다.
+      </PostParagraph>
+      <PostParagraph>
+        내 이력과 프로젝트 데이터를 한곳에 모아두고, 방문자가 자연어로 질문하면 그 데이터 안에서
+        근거를 찾아 답변하는 페이지를 만드는 것이 목표였습니다. 처음에는 당연히 벡터 DB를 중심에
+        두고 생각했습니다. RAG라고 하면 보통 문서를 chunking하고, embedding을 만들고, vector
+        similarity로 검색한 뒤 LLM에 넘기는 그림을 먼저 떠올리기 때문입니다.
+      </PostParagraph>
+      <PostParagraph>그런데 실제 작업을 진행하면서 중요한 질문이 생겼습니다.</PostParagraph>
+      <PostBlockquote>
+        <PostParagraph>지금 데이터는 정말 벡터 검색이 먼저 필요한 데이터인가?</PostParagraph>
+      </PostBlockquote>
+      <PostParagraph>
+        이번 글은 그 질문에서 출발해 구조를 다시 잡고, 기능을 운영 환경까지 붙이면서 했던 고민을
+        정리한 기록입니다.
+      </PostParagraph>
+      <PostHeading2>1. 처음 목표: 이력 데이터를 런타임의 진실로 만들기</PostHeading2>
+      <PostParagraph>가장 먼저 정리해야 했던 것은 데이터의 위치였습니다.</PostParagraph>
+      <PostParagraph>
+        기존 이력 데이터는 MDX, Markdown, JSON에 가까운 형태로 흩어져 있었습니다. 사람이 읽기에는
+        좋지만, 채팅 API가 요청을 받을 때마다 파일을 직접 읽는 구조는 목표와 맞지 않았습니다.
+        사용자가 원한 구조는 명확했습니다.
+      </PostParagraph>
+      <PostUnorderedList>
+        <PostListItem>
+          <PostParagraph>이력 정보는 DB에 모은다.</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>질문 응답은 DB에 들어간 데이터에서 근거를 찾는다.</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>AI 모델은 자연어 답변 생성 역할만 맡긴다.</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>모델은 아직 확정하지 않았으므로 교체 가능해야 한다.</PostParagraph>
+        </PostListItem>
+      </PostUnorderedList>
+      <PostParagraph>
+        그래서 런타임 구조는 &quot;파일을 읽는 RAG&quot;가 아니라 &quot;DB를 읽는 RAG&quot;로
+        잡았습니다.
+      </PostParagraph>
+      <PostCodeBlock
+        code={
+          "이력 원본 파일\n-> import pipeline\n-> resume_source_items\n-> chat API runtime retrieval\n-> answer generation\n-> web chat UI"
+        }
+        language={"txt"}
+      />
+      <PostParagraph>
+        여기서 핵심은 원본 파일을 버리는 것이 아니라 역할을 제한하는 것이었습니다. 원본 파일은
+        import input이고, 런타임 질문 응답의 source of truth는 DB row입니다.
+      </PostParagraph>
+      <PostHeading2>2. 벡터 DB를 바로 쓰지 않은 이유</PostHeading2>
+      <PostParagraph>
+        {"처음 설계에는 "}
+        <PostInlineCode>resume_vector_chunks</PostInlineCode>와 embedding 설정도 포함했습니다.
+        하지만 운영 채팅을 붙이는 단계에서는 벡터 검색을 바로 중심에 두지 않았습니다.
+      </PostParagraph>
+      <PostParagraph>이유는 데이터 성격 때문입니다.</PostParagraph>
+      <PostParagraph>이력서는 보통 다음과 같은 텍스트입니다.</PostParagraph>
+      <PostUnorderedList>
+        <PostListItem>
+          <PostParagraph>회사명</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>프로젝트명</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>기술 스택</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>도메인 키워드</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>성과와 역할</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>업무 맥락</PostParagraph>
+        </PostListItem>
+      </PostUnorderedList>
+      <PostParagraph>
+        즉, &quot;비슷한 의미의 긴 문단을 의미 공간에서 찾는 문제&quot;이기도 하지만, 동시에
+        &quot;정확한 키워드가 중요한 문제&quot;이기도 합니다. 방문자는 보통 이렇게 묻습니다.
+      </PostParagraph>
+      <PostBlockquote>
+        <PostParagraph>Oprimed에서 어떤 일을 했어?</PostParagraph>
+      </PostBlockquote>
+      <PostBlockquote>
+        <PostParagraph>프론트엔드 강점은 뭐야?</PostParagraph>
+      </PostBlockquote>
+      <PostBlockquote>
+        <PostParagraph>CI/CD 경험 있어?</PostParagraph>
+      </PostBlockquote>
+      <PostParagraph>
+        이런 질문은 embedding이 없어도 회사명, 기술명, 경험/성과/강점 같은 키워드만으로 꽤 높은
+        품질의 후보를 뽑을 수 있습니다. 반대로 처음부터 벡터 DB를 필수로 두면 다음 부담이 생깁니다.
+      </PostParagraph>
+      <PostUnorderedList>
+        <PostListItem>
+          <PostParagraph>embedding provider와 모델을 지금 결정해야 한다.</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>운영 환경에 API key와 dimensions 같은 설정이 추가된다.</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>vector index 재생성 절차가 필요하다.</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>
+            검색 품질이 나빠도 원인이 chunking인지 embedding인지 retriever인지 분리하기 어렵다.
+          </PostParagraph>
+        </PostListItem>
+      </PostUnorderedList>
+      <PostParagraph>그래서 결론은 이렇게 정리했습니다.</PostParagraph>
+      <PostCodeBlock
+        code={
+          "현재 운영 채팅:\nDB text / keyword retrieval\n\n미래 확장:\noptional vector index pipeline"
+        }
+        language={"txt"}
+      />
+      <PostParagraph>
+        벡터를 완전히 부정한 것이 아니라, 지금 문제에 필요한 가장 작은 검색 구조를 먼저 운영에 올린
+        것입니다. 이 결정 덕분에 AI 모델 선정도 뒤로 미룰 수 있었습니다.
+      </PostParagraph>
+      <PostHeading2>3. 자연어 처리는 모델이 아니라 경계로 먼저 정의했다</PostHeading2>
+      <PostParagraph>
+        처음에는 &quot;OpenAI embedding을 어떻게 붙였냐&quot;는 질문이 나왔지만, 실제 목표는 특정
+        모델을 붙이는 것이 아니었습니다. 모델은 바뀔 수 있고, 지금 당장 확정하지 않아도 되는
+        영역이었습니다.
+      </PostParagraph>
+      <PostParagraph>
+        그래서 구조를 모델 중심이 아니라 provider boundary 중심으로 잡았습니다.
+      </PostParagraph>
+      <PostCodeBlock
+        code={
+          "ResumeRagService\n-> ResumeRagRetrieverService\n-> ChatProvider\n   -> CodexAppServerProvider\n   -> future OpenAI-compatible provider"
+        }
+        language={"txt"}
+      />
+      <PostParagraph>
+        현재 자연어 답변 생성은 Codex app-server를 통해 처리하도록 했습니다. API 서버는 Codex
+        app-server에 ephemeral thread를 만들고, 검색된 이력 context와 질문을 넘긴 뒤 답변만
+        받습니다.
+      </PostParagraph>
+      <PostParagraph>중요한 점은 Codex가 검색을 직접 하는 구조가 아니라는 점입니다.</PostParagraph>
+      <PostParagraph>
+        검색은 API가 합니다. Codex는 검색된 근거 안에서 자연어 답변을 만듭니다. 이 경계를 두지
+        않으면 나중에 문제가 생겼을 때 원인을 분리하기 어렵습니다.
+      </PostParagraph>
+      <PostUnorderedList>
+        <PostListItem>
+          <PostParagraph>검색 결과가 틀렸는가?</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>검색 결과는 맞는데 답변 생성이 과장됐는가?</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>모델 설정이 없는가?</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>Codex app-server가 죽었는가?</PostParagraph>
+        </PostListItem>
+      </PostUnorderedList>
+      <PostParagraph>
+        이 질문에 답하려면 retriever와 answer generator가 분리되어 있어야 합니다.
+      </PostParagraph>
+      <PostHeading2>4. 공개 채팅에서 로그인은 강제하지 않는다</PostHeading2>
+      <PostParagraph>
+        이 기능은 &quot;나를 궁금해하는 사람이 들어와서 질문하는 페이지&quot;입니다. 그래서 로그인
+        강제는 사용자 흐름과 맞지 않았습니다.
+      </PostParagraph>
+      <PostParagraph>처음에는 인증을 붙이는 선택지도 있었지만, 곧 방향을 바꿨습니다.</PostParagraph>
+      <PostCodeBlock
+        code={
+          "로그인 강제: 하지 않음\n운영 웹 origin 제한: 함\nCSP connect-src 정리: 함\n실패 UI: 명확히 보여줌"
+        }
+        language={"txt"}
+      />
+      <PostParagraph>
+        물론 Origin 제한이 완전한 보안 장치는 아닙니다. 서버 간 요청이나 조작된 요청까지 막는 인증
+        수단은 아닙니다. 하지만 브라우저 기반 공개 채팅에서 &quot;운영 사이트에서 들어온 정상
+        흐름&quot;만 받도록 줄이는 1차 가드로는 의미가 있습니다.
+      </PostParagraph>
+      <PostParagraph>
+        여기서 중요한 것은 보안을 명목으로 사용자 흐름을 망치지 않는 것이었습니다.
+      </PostParagraph>
+      <PostParagraph>
+        방문자는 질문을 하러 온 사람이지, 로그인하러 온 사람이 아닙니다.
+      </PostParagraph>
+      <PostHeading2>5. AI를 부르기 전에 질문 범위를 먼저 본다</PostHeading2>
+      <PostParagraph>운영에 붙인 뒤 또 하나의 고민이 생겼습니다.</PostParagraph>
+      <PostParagraph>
+        이 채팅은 이력서 질문을 위한 기능입니다. 그런데 사용자는 얼마든지 날씨, 코인 가격, 일반 지식
+        같은 질문을 보낼 수 있습니다. 이걸 모두 AI까지 보내는 것은 비용과 품질 양쪽에서 좋지
+        않았습니다.
+      </PostParagraph>
+      <PostParagraph>그래서 키워드 기반 scope gate를 먼저 두었습니다.</PostParagraph>
+      <PostCodeBlock
+        code={
+          "question\n-> keyword scope gate\n-> in scope: retrieval + answer generation\n-> out of scope: fixed message"
+        }
+        language={"txt"}
+      />
+      <PostParagraph>
+        처음 문구는 &quot;이력과 관련된 키워드가 없어 답변하지 않았습니다&quot;에 가까웠습니다.
+        하지만 이 문구는 사용자 입장에서 너무 내부 구현을 드러냅니다. 방문자는 &quot;키워드
+        판정&quot;을 보러 온 것이 아니라 &quot;이력에 대해 질문&quot;하러 온 사람입니다.
+      </PostParagraph>
+      <PostParagraph>그래서 문구를 의도 중심으로 바꿨습니다.</PostParagraph>
+      <PostBlockquote>
+        <PostParagraph>
+          이 질문은 제 이력 범위를 벗어난 것 같아요. 프로젝트, 기술 경험, 업무 성과, 강점처럼 이력과
+          관련된 내용으로 다시 물어봐 주세요.
+        </PostParagraph>
+      </PostBlockquote>
+      <PostParagraph>작은 문구 변경이지만, 방향은 중요했습니다.</PostParagraph>
+      <PostUnorderedList>
+        <PostListItem>
+          <PostParagraph>내부 구현: 키워드가 없다</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>사용자 관점: 이력 범위를 벗어났다</PostParagraph>
+        </PostListItem>
+      </PostUnorderedList>
+      <PostParagraph>
+        RAG 품질은 검색 알고리즘만의 문제가 아닙니다. 사용자가 왜 답변을 받지 못했는지 이해할 수
+        있어야 전체 경험이 성립합니다.
+      </PostParagraph>
+      <PostHeading2>6. 실패 UI는 나중에 붙이는 장식이 아니었다</PostHeading2>
+      <PostParagraph>AI 기능은 실패 가능성이 많습니다.</PostParagraph>
+      <PostUnorderedList>
+        <PostListItem>
+          <PostParagraph>운영 origin이 아니어서 막힘</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>Codex app-server 설정이 없음</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>rate limit</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>API 응답 contract 불일치</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>네트워크 실패</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>검색 근거 부족</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>질문 범위 벗어남</PostParagraph>
+        </PostListItem>
+      </PostUnorderedList>
+      <PostParagraph>
+        그래서 UI를 만들 때 성공 응답만 보지 않았습니다. 실패 상태를 먼저 나눴고, 사용자가 무엇을 할
+        수 있는지도 다르게 처리했습니다.
+      </PostParagraph>
+      <PostParagraph>
+        예를 들어 origin 차단은 사용자가 재시도한다고 해결되지 않습니다. 반면 네트워크 실패나
+        일시적인 서비스 오류는 재시도 버튼이 의미가 있습니다.
+      </PostParagraph>
+      <PostParagraph>
+        또한 사용자 메시지는 일반 입력 박스처럼 보이면 채팅 흐름이 깨졌습니다. 마지막에는 사용자
+        질문을 오른쪽 말풍선으로 정리하고, 입력부도 큰 textarea가 아니라 일반적인 채팅 composer처럼
+        바꿨습니다.
+      </PostParagraph>
+      <PostParagraph>이 작업은 기능의 본질과 직접 연결됩니다.</PostParagraph>
+      <PostParagraph>
+        사용자는 &quot;폼을 제출했다&quot;가 아니라 &quot;대화를 시작했다&quot;고 느껴야 합니다.
+      </PostParagraph>
+      <PostHeading2>7. 최종 구조</PostHeading2>
+      <PostParagraph>현재 구조를 단순화하면 다음과 같습니다.</PostParagraph>
+      <PostCodeBlock
+        code={
+          "Web\n  /resume/question\n  - public chat UI\n  - suggested questions\n  - failure states\n  - source citations\n\nAPI\n  POST /resume-rag/chat\n  - public origin guard\n  - keyword scope gate\n  - DB text retriever\n  - Codex app-server chat provider\n  - grounded answer response\n\nData\n  resume_source_items\n  - runtime retrieval source\n  - imported from raw resume/career docs\n\nOptional Future\n  resume_vector_chunks\n  - embedding/vector search path\n  - not required for current production chat"
+        }
+        language={"txt"}
+      />
+      <PostParagraph>이 구조에서 각 계층의 책임은 꽤 명확합니다.</PostParagraph>
+      <PostUnorderedList>
+        <PostListItem>
+          <PostParagraph>Web은 DB를 모른다.</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>API는 파일을 직접 읽지 않는다.</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>Retriever는 답변을 생성하지 않는다.</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>Chat provider는 검색하지 않는다.</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>Codex는 근거 밖의 답변을 만들지 않아야 한다.</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>Vector index는 현재 운영 필수가 아니라 확장 옵션이다.</PostParagraph>
+        </PostListItem>
+      </PostUnorderedList>
+      <PostParagraph>이렇게 나눠두니 문제를 작게 볼 수 있었습니다.</PostParagraph>
+      <PostHeading2>8. 배포하면서 확인한 것들</PostHeading2>
+      <PostParagraph>운영에 반영하면서는 로컬 테스트만으로 끝내지 않았습니다.</PostParagraph>
+      <PostUnorderedList>
+        <PostListItem>
+          <PostParagraph>API unit test</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>web typecheck / lint / build</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>smoke E2E</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>GitHub self-hosted runner 기반 API 배포</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>운영 API 직접 호출</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>운영 웹에서 실제 질문 전송</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>실패 UI 캡처 확인</PostParagraph>
+        </PostListItem>
+      </PostUnorderedList>
+      <PostParagraph>
+        특히 공개 채팅은 &quot;로컬에서는 된다&quot;가 충분하지 않습니다. 운영 origin, CSP, API
+        CORS, 서버 환경 변수, Codex app-server 연결이 모두 맞아야 실제 사용자가 질문을 보낼 수
+        있습니다.
+      </PostParagraph>
+      <PostParagraph>
+        이번 작업에서 운영 테스트를 계속 같이 한 이유도 여기에 있습니다.
+      </PostParagraph>
+      <PostHeading2>9. 남은 고민</PostHeading2>
+      <PostParagraph>
+        아직 끝난 구조는 아닙니다. 오히려 이제 운영 가능한 첫 형태에 가깝습니다.
+      </PostParagraph>
+      <PostParagraph>남은 고민은 몇 가지가 있습니다.</PostParagraph>
+      <PostHeading3>out-of-scope와 no-evidence 분리</PostHeading3>
+      <PostParagraph>
+        {"현재는 "}
+        <PostInlineCode>grounded=false</PostInlineCode>라는 값이 여러 의미를 가질 수 있습니다. 검색
+        근거가 부족한 경우와 질문 범위가 벗어난 경우는 UI에서 다르게 보여주는 것이 맞습니다.
+      </PostParagraph>
+      <PostParagraph>
+        {"다음에는 API 응답에 "}
+        <PostInlineCode>reason</PostInlineCode>
+        {" 같은 필드를 추가해 상태를 더 명확히 나눌 수 있습니다."}
+      </PostParagraph>
+      <PostHeading3>벡터 검색 재도입 시점</PostHeading3>
+      <PostParagraph>
+        지금은 텍스트/키워드 검색으로 충분하지만, 질문이 더 추상화되면 벡터 검색이 필요해질 수
+        있습니다.
+      </PostParagraph>
+      <PostParagraph>예를 들면 이런 질문입니다.</PostParagraph>
+      <PostBlockquote>
+        <PostParagraph>복잡한 도메인을 제품화한 경험이 있어?</PostParagraph>
+      </PostBlockquote>
+      <PostParagraph>
+        {
+          "이 질문은 특정 회사명이나 기술명보다 문맥 유사도가 중요합니다. 이런 유형의 질문이 많아지면 "
+        }
+        <PostInlineCode>resume_vector_chunks</PostInlineCode>를 다시 활성화할 이유가 생깁니다.
+      </PostParagraph>
+      <PostHeading3>모델 교체 가능성</PostHeading3>
+      <PostParagraph>
+        현재는 Codex app-server를 사용하지만, 구조상 다른 OpenAI-compatible provider로 바꿀 여지를
+        남겨두었습니다. 중요한 것은 어떤 모델을 쓰느냐보다 모델 교체가 전체 구조를 흔들지 않게 하는
+        것입니다.
+      </PostParagraph>
+      <PostHeading2>마치며</PostHeading2>
+      <PostParagraph>
+        이번 작업에서 가장 크게 느낀 것은 RAG라는 이름에 끌려 구조를 과하게 만들 필요는 없다는
+        점입니다.
+      </PostParagraph>
+      <PostParagraph>
+        벡터 DB, embedding, LLM은 모두 강력한 도구입니다. 하지만 먼저 정해야 하는 것은 도구가 아니라
+        경계입니다.
+      </PostParagraph>
+      <PostUnorderedList>
+        <PostListItem>
+          <PostParagraph>어떤 데이터가 진실인가?</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>검색은 어디서 책임지는가?</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>자연어 생성은 어디까지 허용하는가?</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>사용자는 실패를 어떻게 이해하는가?</PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>운영 환경에서는 무엇이 실제로 검증되어야 하는가?</PostParagraph>
+        </PostListItem>
+      </PostUnorderedList>
+      <PostParagraph>이 질문에 답하고 나니 구현은 오히려 단순해졌습니다.</PostParagraph>
+      <PostParagraph>
+        개인 이력서 RAG 채팅은 화려한 AI 기능이라기보다, 내 이력 데이터를 제품처럼 다루는 작은
+        시스템에 가까웠습니다. 그리고 그 시스템에서 가장 중요한 일은 AI를 붙이는 것이 아니라, AI가
+        움직일 수 있는 안전한 범위를 정하는 것이었습니다.
+      </PostParagraph>
+    </>
+  );
 };
 
 export default JournalResumeRagChatDesignDecisionsPost;

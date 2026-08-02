@@ -1,341 +1,139 @@
-import { BlogPostDocument, type PostDocumentNode } from "@/components/blog/blog-post-document";
-
-const nodes = [
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "안녕하세요. Array 메소드가 공부를 멈추면 어떤 문제를 해결할 때 제가 아는 범주에서만 생각하게 되는 듯 합니다. 문제는 해결 할 수 있지만, 성장이 더뎌지는 느낌이 나서 제가 몰라서 자주 사용하지 않았던 Javascript Array.reduce 에 대하여 알아 보도록 하겠습니다.",
-      },
-    ],
-  },
-  {
-    type: "thematicBreak",
-  },
-  {
-    type: "list",
-    ordered: true,
-    start: 1,
-    children: [
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "strong",
-                children: [
-                  {
-                    type: "text",
-                    value: "설명",
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "strong",
-                children: [
-                  {
-                    type: "text",
-                    value: "예시1",
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "listItem",
-        children: [
-          {
-            type: "paragraph",
-            children: [
-              {
-                type: "strong",
-                children: [
-                  {
-                    type: "text",
-                    value: "예시2",
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "thematicBreak",
-  },
-  {
-    type: "heading",
-    depth: 3,
-    children: [
-      {
-        type: "strong",
-        children: [
-          {
-            type: "text",
-            value: "1. 설명",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "heading",
-    depth: 1,
-    children: [
-      {
-        type: "text",
-        value: "Array.prototype.reduce()",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "strong",
-        children: [
-          {
-            type: "text",
-            value: "reduce()",
-          },
-        ],
-      },
-      {
-        type: "text",
-        value:
-          " 메서드는 배열의 각 요소에 대해 주어진 리듀서 (reducer) 함수를 실행하고, 하나의 결과값을 반환합니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "라고 mdn web doc에 나와있습니다. 값이 나열 되어있는 배열에서, 한 값을 도출 할 때 사용하면 유용하다 것으로 인식 하면 될 듯합니다",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "참고 : ",
-      },
-      {
-        type: "link",
-        url: "https://developer.mozilla.org/ko/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce",
-        title: null,
-        children: [
-          {
-            type: "text",
-            value:
-              "https://developer.mozilla.org/ko/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "thematicBreak",
-  },
-  {
-    type: "heading",
-    depth: 3,
-    children: [
-      {
-        type: "strong",
-        children: [
-          {
-            type: "text",
-            value: "2. 예시1",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "code",
-    language: null,
-    value:
-      "const array1 = [1, 2, 3, 4];\n\n// 0 + 1 + 2 + 3 + 4\nconst initialValue = 0;\nconst sumWithInitial = array1.reduce(\n  (accumulator, currentValue) => accumulator + currentValue,\n  initialValue\n);\n\nconsole.log(sumWithInitial);\n// Expected output: 10",
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "mdn에 있는 예제 코드입니다. 이코드는 데이터를 누적시켜 최종값을 도출하는 코드입니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "숫자로 이루어진 [1,2,3,4] 배열에서 합을 구하는 식입니다. reduce를 사용하지 않는다면 array1.length만큼 반복하는 for문을 작성해 모두 더하거나, array1.forEach를 사용해 모두 더하는 방식으로 작성했을 것 같습니다. ",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "물론 나쁜 코드거나 가독성이 떨어진다거나 하지않습니다만, reduce는 좀 더 복잡한 상황에서 간편하게 사용 할 수 있습니다.",
-      },
-    ],
-  },
-  {
-    type: "thematicBreak",
-  },
-  {
-    type: "heading",
-    depth: 3,
-    children: [
-      {
-        type: "strong",
-        children: [
-          {
-            type: "text",
-            value: "3. 예시2 (객체 배열)",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "code",
-    language: null,
-    value:
-      'const products = [\n  { name: "Product 1", price: 10 },\n  { name: "Product 2", price: 20 },\n  { name: "Product 3", price: 30 },\n  { name: "Product 4", price: 40 }\n];\n\nconst total = products.reduce((accumulator, currentValue) => {\n  return accumulator + currentValue.price;\n}, 0);\n\nconsole.log(total); // 100',
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "products 배열이 판매 된 상품 정보라고 예시 했을때, 총 매출울 구하려면 price을 모두 더 해야합니다. 앞서 기재 했듯이, for문 반복과 forEach를 사용해서 문제를 해결 할 수 있지만 reduce를 사용하여 좀 더 간소화 작업을 했습니다. ",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: "연산된 결과를 total(총 매출)에 바로 넣어 사용 할 수 있으니, 생각 보다 편리합니다. ",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "메소드 명인 reduce는 감소, 축소의 의미를 가지고 있습니다. 이름에 걸 맞게 배열을 원하는 값으로 도출할 때 사용 하면 유용하다고 생각합니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "아래 링크는 mdn 공식 페이지입니다. 더 많은 예제가 존재하고, 단순 누적이나 합산이 아닌, 객체를 분류 할 때도, groupBy할 때도 사용하는 예시가 있습니다. ",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "link",
-        url: "https://developer.mozilla.org/ko/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce",
-        title: null,
-        children: [
-          {
-            type: "text",
-            value:
-              "https://developer.mozilla.org/ko/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value: " [Array.prototype.reduce() - JavaScript | MDN",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "reduce() 메서드는 배열의 각 요소에 대해 주어진 리듀서 (reducer) 함수를 실행하고, 하나의 결과값을 반환합니다.",
-      },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "developer.mozilla.org](https://developer.mozilla.org/ko/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce)",
-      },
-    ],
-  },
-  {
-    type: "thematicBreak",
-  },
-  {
-    type: "paragraph",
-    children: [
-      {
-        type: "text",
-        value:
-          "reduce에 대해서 간단하게 기재했습니다. reduce모르고 작업을 했던 시간이 아까울 만큼 사용처가 많은 메소드 라고 생각합니다. Array.reduce말고 더 많은 메소드와 개발 방법이 존재한다고 생각하니까, 요즘 공부에 소홀했구나 라는 생각이 듭니다. 지식을 채운 만큼 효율적으로 코딩하긴 좋은 것은 부정 할 수 없군요..",
-      },
-    ],
-  },
-] satisfies PostDocumentNode[];
+import {
+  PostCodeBlock,
+  PostHeading1,
+  PostHeading3,
+  PostHorizontalRule,
+  PostLink,
+  PostListItem,
+  PostOrderedList,
+  PostParagraph,
+  PostStrong,
+} from "@/components/blog/blog-post-elements";
 
 const DevJavascriptArrayReducePost = () => {
-  return <BlogPostDocument nodes={nodes} />;
+  return (
+    <>
+      <PostParagraph>
+        안녕하세요. Array 메소드가 공부를 멈추면 어떤 문제를 해결할 때 제가 아는 범주에서만 생각하게
+        되는 듯 합니다. 문제는 해결 할 수 있지만, 성장이 더뎌지는 느낌이 나서 제가 몰라서 자주
+        사용하지 않았던 Javascript Array.reduce 에 대하여 알아 보도록 하겠습니다.
+      </PostParagraph>
+      <PostHorizontalRule />
+      <PostOrderedList start={1}>
+        <PostListItem>
+          <PostParagraph>
+            <PostStrong>설명</PostStrong>
+          </PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>
+            <PostStrong>예시1</PostStrong>
+          </PostParagraph>
+        </PostListItem>
+        <PostListItem>
+          <PostParagraph>
+            <PostStrong>예시2</PostStrong>
+          </PostParagraph>
+        </PostListItem>
+      </PostOrderedList>
+      <PostHorizontalRule />
+      <PostHeading3>
+        <PostStrong>1. 설명</PostStrong>
+      </PostHeading3>
+      <PostHeading1>Array.prototype.reduce()</PostHeading1>
+      <PostParagraph>
+        <PostStrong>reduce()</PostStrong>
+        {
+          " 메서드는 배열의 각 요소에 대해 주어진 리듀서 (reducer) 함수를 실행하고, 하나의 결과값을 반환합니다."
+        }
+      </PostParagraph>
+      <PostParagraph>
+        라고 mdn web doc에 나와있습니다. 값이 나열 되어있는 배열에서, 한 값을 도출 할 때 사용하면
+        유용하다 것으로 인식 하면 될 듯합니다
+      </PostParagraph>
+      <PostParagraph>
+        {"참고 : "}
+        <PostLink
+          href={
+            "https://developer.mozilla.org/ko/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce"
+          }
+        >
+          https:&#47;&#47;developer.mozilla.org/ko/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce
+        </PostLink>
+      </PostParagraph>
+      <PostHorizontalRule />
+      <PostHeading3>
+        <PostStrong>2. 예시1</PostStrong>
+      </PostHeading3>
+      <PostCodeBlock
+        code={
+          "const array1 = [1, 2, 3, 4];\n\n// 0 + 1 + 2 + 3 + 4\nconst initialValue = 0;\nconst sumWithInitial = array1.reduce(\n  (accumulator, currentValue) => accumulator + currentValue,\n  initialValue\n);\n\nconsole.log(sumWithInitial);\n// Expected output: 10"
+        }
+      />
+      <PostParagraph>
+        mdn에 있는 예제 코드입니다. 이코드는 데이터를 누적시켜 최종값을 도출하는 코드입니다.
+      </PostParagraph>
+      <PostParagraph>
+        {
+          "숫자로 이루어진 [1,2,3,4] 배열에서 합을 구하는 식입니다. reduce를 사용하지 않는다면 array1.length만큼 반복하는 for문을 작성해 모두 더하거나, array1.forEach를 사용해 모두 더하는 방식으로 작성했을 것 같습니다. "
+        }
+      </PostParagraph>
+      <PostParagraph>
+        물론 나쁜 코드거나 가독성이 떨어진다거나 하지않습니다만, reduce는 좀 더 복잡한 상황에서
+        간편하게 사용 할 수 있습니다.
+      </PostParagraph>
+      <PostHorizontalRule />
+      <PostHeading3>
+        <PostStrong>3. 예시2 (객체 배열)</PostStrong>
+      </PostHeading3>
+      <PostCodeBlock
+        code={
+          'const products = [\n  { name: "Product 1", price: 10 },\n  { name: "Product 2", price: 20 },\n  { name: "Product 3", price: 30 },\n  { name: "Product 4", price: 40 }\n];\n\nconst total = products.reduce((accumulator, currentValue) => {\n  return accumulator + currentValue.price;\n}, 0);\n\nconsole.log(total); // 100'
+        }
+      />
+      <PostParagraph>
+        {
+          "products 배열이 판매 된 상품 정보라고 예시 했을때, 총 매출울 구하려면 price을 모두 더 해야합니다. 앞서 기재 했듯이, for문 반복과 forEach를 사용해서 문제를 해결 할 수 있지만 reduce를 사용하여 좀 더 간소화 작업을 했습니다. "
+        }
+      </PostParagraph>
+      <PostParagraph>
+        {"연산된 결과를 total(총 매출)에 바로 넣어 사용 할 수 있으니, 생각 보다 편리합니다. "}
+      </PostParagraph>
+      <PostParagraph>
+        메소드 명인 reduce는 감소, 축소의 의미를 가지고 있습니다. 이름에 걸 맞게 배열을 원하는
+        값으로 도출할 때 사용 하면 유용하다고 생각합니다.
+      </PostParagraph>
+      <PostParagraph>
+        {
+          "아래 링크는 mdn 공식 페이지입니다. 더 많은 예제가 존재하고, 단순 누적이나 합산이 아닌, 객체를 분류 할 때도, groupBy할 때도 사용하는 예시가 있습니다. "
+        }
+      </PostParagraph>
+      <PostParagraph>
+        <PostLink
+          href={
+            "https://developer.mozilla.org/ko/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce"
+          }
+        >
+          https:&#47;&#47;developer.mozilla.org/ko/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce
+        </PostLink>
+      </PostParagraph>
+      <PostParagraph>{" [Array.prototype.reduce() - JavaScript | MDN"}</PostParagraph>
+      <PostParagraph>
+        reduce() 메서드는 배열의 각 요소에 대해 주어진 리듀서 (reducer) 함수를 실행하고, 하나의
+        결과값을 반환합니다.
+      </PostParagraph>
+      <PostParagraph>
+        developer.mozilla.org](https:&#47;&#47;developer.mozilla.org/ko/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce)
+      </PostParagraph>
+      <PostHorizontalRule />
+      <PostParagraph>
+        reduce에 대해서 간단하게 기재했습니다. reduce모르고 작업을 했던 시간이 아까울 만큼 사용처가
+        많은 메소드 라고 생각합니다. Array.reduce말고 더 많은 메소드와 개발 방법이 존재한다고
+        생각하니까, 요즘 공부에 소홀했구나 라는 생각이 듭니다. 지식을 채운 만큼 효율적으로 코딩하긴
+        좋은 것은 부정 할 수 없군요..
+      </PostParagraph>
+    </>
+  );
 };
 
 export default DevJavascriptArrayReducePost;

@@ -335,5 +335,4 @@ Poke Lounge 기술 검증이나 배포가 통과해도 공개 route/asset의 권
 - [Monorepo Concept](./vscoke-monorepo-concept.md)
 - [Deployment and Environment Plan](./deployment-and-env.md)
 - [Local Development](./local-development.md)
-- [Poke Lounge Hardening Report](./poke-lounge-hardening-report.md)
 - [Poke Lounge Release Gate](./poke-lounge-release-gate.md)

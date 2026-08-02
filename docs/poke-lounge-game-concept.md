@@ -371,7 +371,7 @@ targeted 1회와 fresh release 3회가 모두 5/5 통과했다. 다섯 context�
 | 주제                    | 기준 문서·코드                                                                                                    |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | 전체 모노레포 구조      | [VSCoke Monorepo Concept](./vscoke-monorepo-concept.md)                                                           |
-| 저장·룸·경쟁 구현       | [Poke Lounge Hardening Report](./poke-lounge-hardening-report.md)                                                 |
+| 저장·룸·경쟁 구현       | `apps/api/src/poke-lounge/`, `apps/web/src/components/poke-lounge/runtime/game/`                                  |
 | terminal 수렴 완료 상태 | [Terminal Client Convergence Plan](./superpowers/plans/2026-07-16-poke-lounge-terminal-client-convergence-fix.md) |
 | 점수와 공개 랭킹        | [Game Score Policy](./game-score-policy.md)                                                                       |
 | 공개 출시 권리          | [Poke Lounge Release Gate](./poke-lounge-release-gate.md)                                                         |
@@ -385,6 +385,6 @@ targeted 1회와 fresh release 3회가 모두 5/5 통과했다. 다섯 context�
 
 1. 현재 실행 코드와 migration
 2. 2026-07-16 terminal 수렴 완료 기록
-3. Poke Lounge Hardening Report와 Game Score Policy
+3. Game Score Policy
 4. 이 컨셉 문서
 5. 과거 port·roadmap·implementation plan

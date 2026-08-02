@@ -143,7 +143,6 @@ match 1이 완료되면 seed 1, match 1 승자, seed 3, seed 2가 다음 bracket
 ### 문서
 
 - Modify: `docs/vscoke-monorepo-concept.md`
-- Modify: `docs/poke-lounge-hardening-report.md`
 - Modify: `docs/game-score-policy.md`
 
 ---
@@ -544,7 +543,6 @@ pnpm --filter @vscoke/web e2e:integration -- \
 - [ ] PR Web job에 Chromium Poke Lounge focused test와 모바일 test collection을 포함한다.
 - [ ] 실제 5-browser 통합 E2E는 PostgreSQL과 브라우저 세 엔진이 있는 전용 job 또는 로컬 release gate로 둔다.
 - [ ] `docs/vscoke-monorepo-concept.md`의 Poke Lounge 흐름을 canonical bracket + sequential match queue로 갱신한다.
-- [ ] `docs/poke-lounge-hardening-report.md`에 5인 authority 범위와 tournament-unranked history 정책을 기록한다.
 - [ ] `docs/game-score-policy.md`에 casual tournament가 공개 랭킹 근거가 아님을 유지하면서 authority battle과 구분한다.
 - [ ] 이전 5인 테스터 보고서를 새 통합 E2E 결과로 교체한다.
 

@@ -204,7 +204,6 @@ If the terminal transition is missing but the canonical bracket proves the Battl
 | `apps/web/tests/e2e/poke-lounge-multiplayer.spec.ts`                                            | Focused mocked transition and scene lifecycle regression.                                  |
 | `apps/web/tests/e2e/poke-lounge-five-player-tournament.spec.ts`                                 | Implement C3T/C4T per-context observables and role gates.                                  |
 | `apps/web/scripts/playwright-integration-runner.mjs`                                            | Preserve DB environment isolation and targeted artifacts.                                  |
-| `docs/poke-lounge-hardening-report.md`                                                          | Record corrected S1 result, final contract, and verified reruns.                           |
 | `docs/vscoke-monorepo-concept.md`                                                               | Record the composite transition/current-assignment boundary.                               |
 
 ---

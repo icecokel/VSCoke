@@ -157,7 +157,7 @@ Web은 current assignment cache, 최근 terminal transition cache, room cursor, 
 
 authority assignment가 없는 casual active match는 `POST /poke-lounge/rooms/:roomCode/result`로 진행한다. 이 결과와 solo/일반 `POST /game/result`는 client-asserted unranked이며 공개 Poke Lounge 랭킹에 반영되지 않는다. Web은 `activeMatchAuthority`에 따라 authority action과 casual result transport를 배타적으로 선택한다.
 
-Phaser `WorldScene`은 orchestration 경계로 남고 HUD, interactions, tournament, encounters를 `world-scene-*.ts` collaborator로 분리했다. 상세 계약과 구현 결과는 [Poke Lounge Hardening Report](./poke-lounge-hardening-report.md)를 따른다.
+Phaser `WorldScene`은 orchestration 경계로 남고 HUD, interactions, tournament, encounters를 `world-scene-*.ts` collaborator로 분리했다.
 
 ### Poke Lounge 공개 배포 제한
 
@@ -318,5 +318,4 @@ pnpm --filter @vscoke/api db:tunnel
 - [Playwright CLI Test Spec](./playwright-cli-test-spec.md)
 - [Poke Lounge Game Concept](./poke-lounge-game-concept.md)
 - [Full Feature E2E Test Scenarios](./e2e-full-feature-test-scenarios.md)
-- [Poke Lounge Hardening Report](./poke-lounge-hardening-report.md)
 - [Poke Lounge Release Gate](./poke-lounge-release-gate.md)

@@ -1,6 +1,6 @@
 # Poke Lounge Three Phase Roadmap
 
-> Historical roadmap. The phase descriptions and completion logs below preserve their dates and are not current architecture claims. The 2026-07-10 hardening supersedes the memory-only room, REST polling, generic Poke Lounge ranking and client-result authority conclusions. See [Poke Lounge Hardening Report](../../poke-lounge-hardening-report.md) for current state.
+> Historical roadmap. The phase descriptions and completion logs below preserve their dates and are not current architecture claims. The 2026-07-10 hardening supersedes the memory-only room, REST polling, generic Poke Lounge ranking and client-result authority conclusions. See [VSCoke Monorepo Concept](../../vscoke-monorepo-concept.md) for current state.
 
 이 문서는 `feature/poke-lounge` 브랜치에서 Poke Lounge를 VSCoke에 완전히 붙이기 위한 남은 작업을 3단계로 나눈다.
 
@@ -437,4 +437,4 @@ Phase 3 인계 결정 사항:
 - 일반 `/game/result`, casual room `/result`, anonymous/extra/multi tournament/solo는 client-asserted unranked다. 공개 Poke Lounge ranking은 `verified-room`만 사용한다.
 - strict adopt-or-create legacy baseline, `_test` DB safety와 PostgreSQL CI migration/integration evidence가 추가됐다. 운영 migration은 backup/ledger 확인 뒤 수동 적용한다.
 
-검증 명령과 알려진 제약은 [Poke Lounge Hardening Report](../../poke-lounge-hardening-report.md)에 모았다. [Poke Lounge Release Gate](../../poke-lounge-release-gate.md)의 권리 상태는 `UNRESOLVED`이며 기본 배포 성공과 무관하게 owner/legal review가 필요하다.
+[Poke Lounge Release Gate](../../poke-lounge-release-gate.md)의 권리 상태는 `UNRESOLVED`이며 기본 배포 성공과 무관하게 owner/legal review가 필요하다.

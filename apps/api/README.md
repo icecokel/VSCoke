@@ -127,7 +127,7 @@ PostgreSQL 테스트에는 운영 DB와 분리된 `TEST_DATABASE_URL`이 필수�
 - 경쟁 좌석은 서로 다른 인증 계정 두 개에만 배정된다. 각 계정은 자기 player action만 제출하고, 서버가 `@vscoke/poke-lounge-battle`의 seed/state/turn을 전진시킨다.
 - casual room `POST .../result`와 일반 `POST /game/result`는 client-asserted unranked 경로다. 서버 경쟁 room의 결과를 일반 score 제출로 대체하지 않는다.
 
-상세 데이터 흐름과 운영 제약은 [Poke Lounge Hardening Report](../../docs/poke-lounge-hardening-report.md), 랭킹 정책은 [Game Score Policy](../../docs/game-score-policy.md)를 따른다.
+랭킹 정책은 [Game Score Policy](../../docs/game-score-policy.md)를 따른다.
 
 Mac 로컬에서 운영 DB 확인이 필요하면 Cloudflare Access TCP tunnel을 먼저 실행한다.
 

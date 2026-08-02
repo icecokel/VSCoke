@@ -53,7 +53,7 @@
 | 7. Competitive authority            | Complete with design revision | The shipped model uses two authenticated seats and durable own-action submission to a shared deterministic server engine, not a client proof replay. |
 | 8. Final documentation/verification | Complete                      | Current docs, report, stale-claim audit, links, formatting, unit tests and contract diff were verified; provenance remains intentionally blocked.    |
 
-Current implementation details and constraints are consolidated in [Poke Lounge Hardening Report](../../poke-lounge-hardening-report.md). The original unchecked steps below are retained as the execution plan, not as current-state assertions; this status table and the final report supersede planned details that changed during implementation.
+Current implementation details and constraints are reflected in the source code, [Poke Lounge Game Concept](../../poke-lounge-game-concept.md), and [Poke Lounge Release Gate](../../poke-lounge-release-gate.md). The original unchecked steps below are retained as the execution plan, not as current-state assertions; this status table supersedes planned details that changed during implementation.
 
 ---
 
@@ -502,7 +502,7 @@ git commit -m "feat(poke-lounge):웹소켓 방 동기화 추가"
 6. Server terminal publishes winner 100 and loser 50 with `resultTrust = "verified-room"`, server-generated `sourceKey`, match publication mapping and resolved receipts in one transaction.
 7. General Poke Lounge result submission remains `client-asserted`; only verified-room rows are ranking eligible.
 
-Verification evidence and remaining constraints are recorded in [Poke Lounge Stage 4B Report](../../poke-lounge-stage-4b-report.md) and [Poke Lounge Hardening Report](../../poke-lounge-hardening-report.md).
+Verification scope is recorded in this plan's task-level records. The separate public-release constraint remains in [Poke Lounge Release Gate](../../poke-lounge-release-gate.md).
 
 ### Task 8: Final Documentation, Contract Generation, and Complete Verification
 
@@ -577,4 +577,4 @@ git commit -m "docs(poke-lounge):하드닝 완료 기준 기록"
 
 ## Final Record
 
-Implementation was completed directly on `codex/feat/poke-lounge-hardening`. The final documentation audit is recorded in [Poke Lounge Hardening Report](../../poke-lounge-hardening-report.md); the release gate remains a separate blocked owner/legal decision.
+Implementation was completed directly on `codex/feat/poke-lounge-hardening`; the release gate remains a separate blocked owner/legal decision.

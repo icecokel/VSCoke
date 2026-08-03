@@ -66,7 +66,7 @@ test("authoritative terminal state는 기존 WorldScene 복귀 위치를 보존�
   const returnToWorld = {
     mapKey: "new-bark-town",
     x: 656,
-    y: 1150,
+    y: 446,
     facing: "front" as const,
   };
   const state = toAuthoritativeBattleState(

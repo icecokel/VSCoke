@@ -43,7 +43,7 @@ const createEncounterHarness = (
       },
     },
   });
-  let playerPosition = { x: 656, y: 1150 };
+  let playerPosition = { x: 656, y: 446 };
   let startedBattle: object | null = null;
 
   const controller = createWorldSceneEncounters({
@@ -98,7 +98,7 @@ const createEncounterHarness = (
 test("일반 바닥에서 이동을 완료해도 야생 조우를 시작하지 않는다", () => {
   const harness = createEncounterHarness(() => false);
 
-  harness.moveTo({ x: 688, y: 1150 });
+  harness.moveTo({ x: 688, y: 446 });
   harness.controller.afterMovement();
 
   assert.deepEqual(harness.controller.getE2eSnapshot(), {
@@ -109,9 +109,9 @@ test("일반 바닥에서 이동을 완료해도 야생 조우를 시작하지 �
 });
 
 test("긴 풀 타일에서 이동을 완료하면 야생 조우를 시작한다", () => {
-  const harness = createEncounterHarness(tile => tile.x === 21 && tile.y === 35);
+  const harness = createEncounterHarness(tile => tile.x === 21 && tile.y === 13);
 
-  harness.moveTo({ x: 688, y: 1150 });
+  harness.moveTo({ x: 688, y: 446 });
   harness.controller.afterMovement();
 
   assert.deepEqual(harness.controller.getE2eSnapshot(), {

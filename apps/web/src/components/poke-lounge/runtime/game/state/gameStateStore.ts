@@ -1683,7 +1683,7 @@ export function createDefaultLocalPlayer(playerId = "player-1"): LocalPlayerStat
     position: {
       mapKey: "town",
       x: 656,
-      y: 1150,
+      y: 446,
       facing: "front",
     },
   };

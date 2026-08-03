@@ -1680,7 +1680,7 @@ function toPlayerSnapshot(
     displayName: participant.displayName,
     map: "new-bark-town",
     x: local ? 656 : 704,
-    y: 1150,
+    y: 446,
     facing: "front",
   };
 }
@@ -1692,7 +1692,7 @@ function createDefaultSnapshot(sessionId: string, playerId: string): PlayerSnaps
     displayName: "Player 1",
     map: "new-bark-town",
     x: 656,
-    y: 1150,
+    y: 446,
     facing: "front",
   };
 }

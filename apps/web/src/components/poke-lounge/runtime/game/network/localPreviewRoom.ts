@@ -450,7 +450,7 @@ function createDefaultSnapshot(sessionId: string): PlayerSnapshot {
     sessionId,
     map: "town",
     x: 656,
-    y: 1150,
+    y: 446,
     facing: "front",
   };
 }

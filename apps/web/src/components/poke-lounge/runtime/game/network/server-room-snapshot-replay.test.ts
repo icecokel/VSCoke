@@ -1812,7 +1812,7 @@ test("BattleScene은 최신 snapshot을 적용하고 WorldScene 재구독에도 
       displayName: "Player 1",
       map: "new-bark-town",
       x: 656,
-      y: 1150,
+      y: 446,
       facing: "front",
     });
     await waitFor(() => calls.some(path => path.endsWith("/ready")));
@@ -2538,7 +2538,7 @@ function createPlayerSnapshot() {
     displayName: "Player 1",
     map: "new-bark-town",
     x: 656,
-    y: 1150,
+    y: 446,
     facing: "front" as const,
   };
 }

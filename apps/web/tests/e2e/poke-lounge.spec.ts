@@ -1826,7 +1826,7 @@ test.describe("Poke Lounge", () => {
         inventory: { potion: 1 },
         competitive: { rank: null, score: 0 },
         guide: { shortcutGuideViewed: true },
-        position: { mapKey: "town", x: 656, y: 1150, facing: "front" },
+        position: { mapKey: "town", x: 656, y: 446, facing: "front" },
       });
 
       const worldScene = pokeWindow.__POKE_LOUNGE_GAME__?.scene?.getScene("world") as unknown as
@@ -2520,7 +2520,7 @@ test.describe("Poke Lounge", () => {
           level: 5,
         },
         x: 656,
-        y: 1150,
+        y: 446,
         facing: "front",
       });
     });
@@ -2620,7 +2620,7 @@ test.describe("Poke Lounge", () => {
           level: 5,
         },
         x: 656,
-        y: 1150,
+        y: 446,
         facing: "front",
       });
     });

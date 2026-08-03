@@ -92,32 +92,32 @@ export const FIELD_MAP = {
   defaultSpawn: "Spawn Point",
   fallbackSpawn: {
     x: 656,
-    y: 1150,
+    y: 446,
   },
   recoverySpawn: {
     x: 640,
-    y: 1008,
+    y: 304,
     facing: "back",
   },
   encounterAreas: [
     {
       id: "town-west-field",
       x: 0,
-      y: 768,
+      y: 64,
       width: 640,
       height: 352,
     },
     {
       id: "town-plaza-field",
       x: 640,
-      y: 768,
+      y: 64,
       width: 512,
       height: 352,
     },
     {
       id: "town-south-field",
       x: 0,
-      y: 1120,
+      y: 416,
       width: 1280,
       height: 160,
     },

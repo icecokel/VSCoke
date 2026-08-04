@@ -15,8 +15,10 @@ import { playPokeLoungeSfx, primePokeLoungeAudio } from "../audio/poke-lounge-au
 import { getPokeLoungeCopyForUrl, type PokeLoungeCopy } from "../../../poke-lounge-copy";
 
 const DEFAULT_SELECTED_ROUND_DURATION_MS = 300_000;
+const MAX_MULTIPLAYER_DISPLAY_NAME_LENGTH = 12;
 const LOCAL_ROOM_CODE_INPUT_ID = "poke-lounge-local-room-code";
 const SERVER_ROOM_CODE_INPUT_ID = "poke-lounge-server-room-code";
+const MULTIPLAYER_DISPLAY_NAME_INPUT_ID = "poke-lounge-multiplayer-display-name";
 const INVITE_INPUT_ID = "poke-lounge-room-invite";
 const INVITE_DESCRIPTION_ID = "poke-lounge-room-invite-description";
 const SERVER_MODE_DESCRIPTION_ID = "poke-lounge-server-mode-description";
@@ -28,6 +30,7 @@ export interface RoomEntrySelection {
   mode: Exclude<RoomEntryMode, "unset">;
   roomCode: string | null;
   inviteUrl: string | null;
+  displayName?: string;
   createRoom?: boolean;
   roundDurationMs?: RoomRoundDurationMs;
   resetSession?: boolean;
@@ -40,6 +43,7 @@ export function shouldResetRoomEntrySession(selection: RoomEntrySelection): bool
 export interface RoomEntryScreenOptions {
   currentUrl: URL;
   createRoomCode?: () => string;
+  initialDisplayName?: string;
   localTestMode?: {
     active: boolean;
     onExit(): void;
@@ -72,6 +76,21 @@ export function renderRoomEntryScreen(
   fanNotice.className = "room-entry-notice";
   fanNotice.setAttribute("data-poke-lounge-fan-notice", "true");
   fanNotice.textContent = copy.roomEntry.fanNotice;
+
+  const multiplayerDisplayNameInput = createMultiplayerDisplayNameInput(
+    options.initialDisplayName,
+    copy.roomEntry.multiplayerNamePlaceholder,
+  );
+  const multiplayerDisplayNameDescription = document.createElement("p");
+  multiplayerDisplayNameDescription.className = "room-entry-field-copy";
+  multiplayerDisplayNameDescription.textContent = copy.roomEntry.multiplayerNameDescription;
+  const multiplayerDisplayNameField = createLabeledField(
+    copy.roomEntry.multiplayerNameLabel,
+    MULTIPLAYER_DISPLAY_NAME_INPUT_ID,
+    multiplayerDisplayNameInput,
+    multiplayerDisplayNameDescription,
+  );
+  multiplayerDisplayNameField.classList.add("room-entry-multiplayer-name");
 
   const soloMode = createModeGroup(
     "solo",
@@ -248,6 +267,16 @@ export function renderRoomEntryScreen(
   });
 
   const selectLocalRoom = (roomCode: string, roundDurationMs?: RoomRoundDurationMs) => {
+    const displayName = getMultiplayerDisplayName(
+      multiplayerDisplayNameInput,
+      message,
+      copy.roomEntry.multiplayerNameRequired,
+    );
+
+    if (!displayName) {
+      return;
+    }
+
     playRoomEntryConfirmSound();
     const inviteUrl = createInviteUrl(options.currentUrl, roomCode, roundDurationMs).href;
     inviteInput.value = inviteUrl;
@@ -256,6 +285,7 @@ export function renderRoomEntryScreen(
       mode: "local-room",
       roomCode,
       inviteUrl,
+      displayName,
       ...(roundDurationMs ? { roundDurationMs } : {}),
     });
   };
@@ -263,6 +293,16 @@ export function renderRoomEntryScreen(
   const selectServerRoom = (roomCode: string) => {
     if (!serverRoomCapability.enabled) {
       message.textContent = serverRoomCapability.disabledReason;
+      return;
+    }
+
+    const displayName = getMultiplayerDisplayName(
+      multiplayerDisplayNameInput,
+      message,
+      copy.roomEntry.multiplayerNameRequired,
+    );
+
+    if (!displayName) {
       return;
     }
 
@@ -274,6 +314,7 @@ export function renderRoomEntryScreen(
       mode: "server-room",
       roomCode,
       inviteUrl,
+      displayName,
     });
   };
 
@@ -314,6 +355,16 @@ export function renderRoomEntryScreen(
       return;
     }
 
+    const displayName = getMultiplayerDisplayName(
+      multiplayerDisplayNameInput,
+      message,
+      copy.roomEntry.multiplayerNameRequired,
+    );
+
+    if (!displayName) {
+      return;
+    }
+
     playRoomEntryConfirmSound();
     inviteInput.value = "";
     message.textContent = "";
@@ -321,6 +372,7 @@ export function renderRoomEntryScreen(
       mode: "server-room",
       roomCode: null,
       inviteUrl: null,
+      displayName,
       createRoom: true,
       roundDurationMs: selectedRoundDurationMs,
     });
@@ -366,7 +418,13 @@ export function renderRoomEntryScreen(
 
   panel.append(title, fanNotice, soloMode.element);
   if (!options.localTestMode?.active) {
-    panel.append(settingsGroup, localMode.element, serverMode.element, inviteField);
+    panel.append(
+      multiplayerDisplayNameField,
+      settingsGroup,
+      localMode.element,
+      serverMode.element,
+      inviteField,
+    );
   }
   panel.append(message, newGameDialog.dialog);
   screen.appendChild(panel);
@@ -431,6 +489,45 @@ function createRoomCodeInput(
   input.setAttribute(dataAttribute, "true");
 
   return input;
+}
+
+function createMultiplayerDisplayNameInput(
+  initialDisplayName: string | undefined,
+  placeholder: string,
+): HTMLInputElement {
+  const input = document.createElement("input");
+  input.id = MULTIPLAYER_DISPLAY_NAME_INPUT_ID;
+  input.type = "text";
+  input.autocomplete = "off";
+  input.maxLength = MAX_MULTIPLAYER_DISPLAY_NAME_LENGTH;
+  input.placeholder = placeholder;
+  input.value = normalizeMultiplayerDisplayName(initialDisplayName ?? "");
+  input.setAttribute("data-room-entry-display-name", "true");
+
+  return input;
+}
+
+function getMultiplayerDisplayName(
+  input: HTMLInputElement,
+  message: HTMLElement,
+  requiredMessage: string,
+): string | null {
+  const displayName = normalizeMultiplayerDisplayName(input.value);
+  input.value = displayName;
+
+  if (!displayName) {
+    input.setAttribute("aria-invalid", "true");
+    message.textContent = requiredMessage;
+    input.focus();
+    return null;
+  }
+
+  input.removeAttribute("aria-invalid");
+  return displayName;
+}
+
+export function normalizeMultiplayerDisplayName(value: string): string {
+  return Array.from(value.trim()).slice(0, MAX_MULTIPLAYER_DISPLAY_NAME_LENGTH).join("");
 }
 
 function createActionRow(input: HTMLInputElement, button: HTMLButtonElement): HTMLElement {

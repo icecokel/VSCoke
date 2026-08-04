@@ -136,6 +136,10 @@ export interface PokeLoungeCopy {
     localTestContinue: string;
     localTestExit: string;
     localTestRequestFailed: string;
+    multiplayerNameLabel: string;
+    multiplayerNameDescription: string;
+    multiplayerNamePlaceholder: string;
+    multiplayerNameRequired: string;
     tournamentSettings: string;
     tournamentSettingsDescription: string;
     localTitle: string;
@@ -317,6 +321,10 @@ const KOREAN_COPY: PokeLoungeCopy = {
     localTestExit: "테스트 모드 종료",
     localTestRequestFailed:
       "로컬 싱글 테스트 모드를 전환하지 못했습니다. 로컬 환경 설정을 확인한 뒤 다시 시도해 주세요.",
+    multiplayerNameLabel: "트레이너 닉네임",
+    multiplayerNameDescription: "같은 방의 플레이어와 대진 화면에 표시됩니다. 최대 12자",
+    multiplayerNamePlaceholder: "닉네임 입력",
+    multiplayerNameRequired: "멀티플레이에 사용할 닉네임을 입력해 주세요.",
     tournamentSettings: "대회 설정",
     tournamentSettingsDescription: "로컬 방과 서버 방을 만들 때 공통으로 적용됩니다.",
     localTitle: "로컬 멀티플레이",
@@ -505,6 +513,11 @@ const ENGLISH_COPY: PokeLoungeCopy = {
     localTestExit: "Exit test mode",
     localTestRequestFailed:
       "Could not switch local solo test mode. Check the local environment setup and try again.",
+    multiplayerNameLabel: "Trainer nickname",
+    multiplayerNameDescription:
+      "Shown to other players in the room and during matches. Up to 12 characters.",
+    multiplayerNamePlaceholder: "Enter a nickname",
+    multiplayerNameRequired: "Enter a nickname for multiplayer.",
     tournamentSettings: "Tournament settings",
     tournamentSettingsDescription: "Used when creating both local and server rooms.",
     localTitle: "Local multiplayer",
@@ -694,6 +707,10 @@ const JAPANESE_COPY: PokeLoungeCopy = {
     localTestExit: "テストモードを終了",
     localTestRequestFailed:
       "ローカルソロテストモードを切り替えられませんでした。ローカル環境の設定を確認して、もう一度お試しください。",
+    multiplayerNameLabel: "トレーナーニックネーム",
+    multiplayerNameDescription: "同じルームのプレイヤーと対戦画面に表示されます。最大12文字です。",
+    multiplayerNamePlaceholder: "ニックネームを入力",
+    multiplayerNameRequired: "マルチプレイ用のニックネームを入力してください。",
     tournamentSettings: "大会設定",
     tournamentSettingsDescription: "ローカルルームとサーバールームの作成時に共通で使用します。",
     localTitle: "ローカルマルチプレイ",

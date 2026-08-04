@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { resolveServerRoomEntryCapability } from "./roomEntry";
-import { shouldResetRoomEntrySession } from "./roomEntryScreen";
+import { normalizeMultiplayerDisplayName, shouldResetRoomEntrySession } from "./roomEntryScreen";
 
 test("명시적으로 선택한 솔로 새 게임만 저장 세션을 초기화한다", () => {
   assert.equal(
@@ -63,4 +63,9 @@ test("서버 방 차단 사유가 비어 있으면 로그인 안내를 사용한
     enabled: false,
     disabledReason: "로그인 후 서버 경쟁전을 이용할 수 있습니다.",
   });
+});
+
+test("멀티플레이 닉네임은 공백을 제거하고 최대 12자로 정리한다", () => {
+  assert.equal(normalizeMultiplayerDisplayName("  레드  "), "레드");
+  assert.equal(normalizeMultiplayerDisplayName("abcdefghijklmn"), "abcdefghijkl");
 });

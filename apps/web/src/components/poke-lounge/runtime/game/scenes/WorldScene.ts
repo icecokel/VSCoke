@@ -1047,7 +1047,7 @@ export class WorldScene extends Phaser.Scene {
       label = this.add.text(
         snapshot.x,
         snapshot.y - 22,
-        snapshot.sessionId,
+        getRemotePlayerDisplayName(snapshot),
         createGameTextStyle({
           color: "#f8fbf0",
           fontSize: "8px",
@@ -1061,6 +1061,7 @@ export class WorldScene extends Phaser.Scene {
     sprite.setPosition(snapshot.x, snapshot.y);
     sprite.setFrame(FIELD_MAP.player.frameNames[snapshot.facing]);
     label.setPosition(snapshot.x, snapshot.y - 22);
+    label.setText(getRemotePlayerDisplayName(snapshot));
   }
 
   private isRoomTournamentHost(): boolean {
@@ -1343,6 +1344,10 @@ export function toRemotePlayerState(snapshot: PlayerSnapshot): RemotePlayerState
     facing: snapshot.facing,
     activePokemon: snapshot.activePokemon,
   };
+}
+
+function getRemotePlayerDisplayName(snapshot: PlayerSnapshot): string {
+  return snapshot.displayName?.trim() || snapshot.playerId?.trim() || snapshot.sessionId;
 }
 
 function clonePlayerSnapshot(snapshot: PlayerSnapshot): PlayerSnapshot {

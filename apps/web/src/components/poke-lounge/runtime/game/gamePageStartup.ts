@@ -394,6 +394,15 @@ export async function startGamePage(
 
     roomEntrySelectionPending = true;
     setRoomEntryScreenPending(mount, copy.roomEntry.preparing);
+
+    if (selection.displayName) {
+      const localPlayer = gameStateStore.getCurrentLocalPlayer();
+      gameStateStore.upsertLocalPlayer({
+        ...localPlayer,
+        displayName: selection.displayName,
+      });
+    }
+
     applyRoomEntrySelection(currentUrl, selection);
     replaceBrowserUrl(currentUrl);
 
@@ -489,6 +498,7 @@ export async function startGamePage(
               enabled: false,
               disabledReason: copy.roomEntry.serverDisabled,
             },
+      initialDisplayName: gameStateStore.getCurrentLocalPlayer().displayName,
       onSelect: selectRoomEntry,
     });
   };

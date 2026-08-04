@@ -482,6 +482,9 @@ export class PokeLoungeRoomService {
           }
           existing.ready =
             existing.role === 'participant' ? existing.ready : false;
+          if (room.status === 'waiting' && normalized.displayName) {
+            existing.displayName = normalized.displayName;
+          }
           room.updatedAtMs = nowMs;
           return room;
         }

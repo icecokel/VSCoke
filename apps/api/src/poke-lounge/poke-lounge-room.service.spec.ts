@@ -70,6 +70,63 @@ describe('PokeLoungeRoomService', () => {
     expectPublicEvent(publisher, 'room-created', room);
   });
 
+  it('uses supplied nicknames for a room creator and a newly joined player', async () => {
+    const created = await service.createRoom(
+      {
+        playerId: 'player-1',
+        sessionId: 'session-1',
+        displayName: ' 레드 ',
+        nowMs: 0,
+      },
+      command(0, 1),
+    );
+    const joined = await service.joinRoom(
+      'ROOM01',
+      {
+        playerId: 'player-2',
+        sessionId: 'session-2',
+        displayName: ' 블루 ',
+        nowMs: 1,
+      },
+      command(created.revision, 2),
+    );
+
+    expect(joined.participants).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ playerId: 'player-1', displayName: '레드' }),
+        expect.objectContaining({ playerId: 'player-2', displayName: '블루' }),
+      ]),
+    );
+  });
+
+  it('updates a nickname when the same session rejoins a waiting room', async () => {
+    const created = await service.createRoom(
+      {
+        playerId: 'player-1',
+        sessionId: 'session-1',
+        displayName: '레드',
+        nowMs: 0,
+      },
+      command(0, 1),
+    );
+    const rejoined = await service.joinRoom(
+      'ROOM01',
+      {
+        playerId: 'player-1',
+        sessionId: 'session-1',
+        displayName: '블루',
+        nowMs: 1,
+      },
+      command(created.revision, 2),
+    );
+
+    expect(rejoined.participants).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ playerId: 'player-1', displayName: '블루' }),
+      ]),
+    );
+  });
+
   it('publishes a redacted snapshot after a room update', async () => {
     await createRoom();
     publisher.publish.mockClear();

@@ -54,6 +54,7 @@ import type {
   BattleMove,
   BattleParticipant,
   BattlePokemon,
+  BattleResult,
   BattleScreenState,
   BattleSpriteRef,
 } from "../battle/battleTypes";
@@ -69,6 +70,12 @@ import {
   resolveRomCaptureAnimationFrame,
   ROM_CAPTURE_ANIMATION_DURATION_MS,
 } from "../battle/capture-presentation";
+import {
+  BATTLE_END_ANIMATION_DURATION_MS,
+  resolveBattleConclusion,
+  resolveBattleEndPresentationFrame,
+  type BattleConclusion,
+} from "../battle/battle-end-presentation";
 import { BATTLE_BASE_SIZE, getBattleCameraZoom } from "../gameViewport";
 import { getDefaultGameStateStore } from "../state/defaultGameStateStore";
 import {
@@ -201,6 +208,9 @@ export interface BattleE2eSnapshot {
   evolutionAnimationStartedCount: number;
   evolutionFromSpeciesId: number | null;
   evolutionToSpeciesId: number | null;
+  battleEndAnimationPlaying: boolean;
+  battleEndAnimationStartedCount: number;
+  battleEndConclusion: BattleConclusion | null;
   player: {
     name: string;
     level: number;
@@ -436,6 +446,10 @@ const COMMANDS: Array<{ label: (typeof BATTLE_COMMAND_LABELS)[number]; command: 
   { label: "도망", command: "run" },
 ];
 
+function getBattleResultKey(result: BattleResult): string {
+  return `${result.winnerPlayerId}:${result.loserPlayerId}:${result.reason}`;
+}
+
 export class BattleScene extends Phaser.Scene {
   private state: BattleScreenState = createSampleBattleState();
   private selectedCommandIndex = 0;
@@ -462,6 +476,11 @@ export class BattleScene extends Phaser.Scene {
   private captureAnimationTween: Phaser.Tweens.Tween | null = null;
   private captureAnimationStartedCount = 0;
   private captureAnimationAttempt: BattleCaptureAttempt | null = null;
+  private battleEndAnimationPlaying = false;
+  private battleEndAnimationProgress = 1;
+  private battleEndAnimationTween: Phaser.Tweens.Tween | null = null;
+  private battleEndAnimationStartedCount = 0;
+  private battleEndAnimationResultKey: string | null = null;
   private evolutionAnimationPlaying = false;
   private evolutionAnimationProgress = 1;
   private evolutionAnimationTween: Phaser.Tweens.Tween | null = null;
@@ -513,6 +532,14 @@ export class BattleScene extends Phaser.Scene {
     this.captureAnimationAttempt = null;
     this.captureAnimationTween?.stop();
     this.captureAnimationTween = null;
+    this.battleEndAnimationStartedCount = 0;
+    this.battleEndAnimationProgress = 1;
+    this.battleEndAnimationPlaying = false;
+    this.battleEndAnimationTween?.stop();
+    this.battleEndAnimationTween = null;
+    this.battleEndAnimationResultKey = this.state.result
+      ? getBattleResultKey(this.state.result)
+      : null;
     this.evolutionAnimationStartedCount = 0;
     this.evolutionAnimationProgress = 1;
     this.evolutionAnimationPlaying = false;
@@ -583,7 +610,11 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    if (this.captureAnimationPlaying || this.evolutionAnimationPlaying) {
+    if (
+      this.captureAnimationPlaying ||
+      this.evolutionAnimationPlaying ||
+      this.battleEndAnimationPlaying
+    ) {
       resetVirtualGamepad();
       return;
     }
@@ -721,6 +752,9 @@ export class BattleScene extends Phaser.Scene {
       evolutionAnimationStartedCount: this.evolutionAnimationStartedCount,
       evolutionFromSpeciesId: this.evolutionTransition?.fromPokemon.speciesId ?? null,
       evolutionToSpeciesId: this.evolutionTransition?.toPokemon.speciesId ?? null,
+      battleEndAnimationPlaying: this.battleEndAnimationPlaying,
+      battleEndAnimationStartedCount: this.battleEndAnimationStartedCount,
+      battleEndConclusion: this.getBattleEndConclusion(),
       player: {
         name: this.state.player.pokemon.name,
         level: this.state.player.pokemon.level,
@@ -762,6 +796,12 @@ export class BattleScene extends Phaser.Scene {
     this.captureAnimationAttempt = null;
     this.captureAnimationTween?.stop();
     this.captureAnimationTween = null;
+    this.battleEndAnimationStartedCount = 0;
+    this.battleEndAnimationProgress = 1;
+    this.battleEndAnimationPlaying = false;
+    this.battleEndAnimationTween?.stop();
+    this.battleEndAnimationTween = null;
+    this.battleEndAnimationResultKey = null;
     this.evolutionAnimationStartedCount = 0;
     this.evolutionAnimationProgress = 1;
     this.evolutionAnimationPlaying = false;
@@ -916,6 +956,7 @@ export class BattleScene extends Phaser.Scene {
       this.battleEntrancePlaying ||
       this.captureAnimationPlaying ||
       this.evolutionAnimationPlaying ||
+      this.battleEndAnimationPlaying ||
       this.isHpAnimationPlaying() ||
       this.isHitAnimationPlaying() ||
       this.authoritativeInputPending ||
@@ -1037,6 +1078,7 @@ export class BattleScene extends Phaser.Scene {
         this.battleEntrancePlaying ||
         this.captureAnimationPlaying ||
         this.evolutionAnimationPlaying ||
+        this.battleEndAnimationPlaying ||
         this.isHpAnimationPlaying() ||
         this.isHitAnimationPlaying() ||
         this.authoritativeInputPending ||
@@ -1112,6 +1154,7 @@ export class BattleScene extends Phaser.Scene {
       this.battleEntrancePlaying ||
       this.captureAnimationPlaying ||
       this.evolutionAnimationPlaying ||
+      this.battleEndAnimationPlaying ||
       this.isHpAnimationPlaying() ||
       this.isHitAnimationPlaying() ||
       this.usesMobileBattleDeck()
@@ -1508,6 +1551,12 @@ export class BattleScene extends Phaser.Scene {
         formatRomEvolutionStartMessage(this.evolutionTransition.fromPokemon.name);
     const isEnteringForcedPartySwitch =
       isForcedPartySwitch(nextState) && !isForcedPartySwitch(this.state);
+    const nextBattleEndResultKey = nextState.result ? getBattleResultKey(nextState.result) : null;
+    const shouldPlayBattleEndAnimation =
+      nextState.result !== null &&
+      nextBattleEndResultKey !== this.battleEndAnimationResultKey &&
+      (nextState.messageQueue[0] === BATTLE_END_CONFIRM_MESSAGE ||
+        (this.authoritativeProjection !== null && this.state.result === null));
 
     if (isEnteringForcedPartySwitch) {
       this.selectedPartySlotIndex = getFirstSwitchableBattlePartySlotIndex(
@@ -1517,6 +1566,9 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.state = nextState;
+    if (!nextBattleEndResultKey) {
+      this.battleEndAnimationResultKey = null;
+    }
     if (shouldPlayCaptureAnimation) {
       this.playCaptureAnimation(nextCaptureAttempt);
     }
@@ -1525,6 +1577,9 @@ export class BattleScene extends Phaser.Scene {
         this.evolutionTransition.fromPokemon,
         this.evolutionTransition.toPokemon,
       );
+    }
+    if (shouldPlayBattleEndAnimation && nextState.result) {
+      this.playBattleEndAnimation(nextState.result);
     }
     this.syncDisplayedHpTargets({
       animateHpDecrease: options.animateHpDecrease ?? true,
@@ -1723,6 +1778,36 @@ export class BattleScene extends Phaser.Scene {
     });
 
     this.captureAnimationTween = tween;
+  }
+
+  private playBattleEndAnimation(result: BattleResult): void {
+    this.battleEndAnimationTween?.stop();
+    this.battleEndAnimationProgress = 0;
+    this.battleEndAnimationPlaying = true;
+    this.battleEndAnimationStartedCount += 1;
+    this.battleEndAnimationResultKey = getBattleResultKey(result);
+    const tweenState = { progress: 0 };
+
+    const tween = this.tweens.add({
+      targets: tweenState,
+      progress: 1,
+      duration: BATTLE_END_ANIMATION_DURATION_MS,
+      ease: "Cubic.easeOut",
+      onUpdate: () => {
+        this.battleEndAnimationProgress = tweenState.progress;
+        this.render();
+      },
+      onComplete: () => {
+        this.battleEndAnimationProgress = 1;
+        this.battleEndAnimationPlaying = false;
+        if (this.battleEndAnimationTween === tween) {
+          this.battleEndAnimationTween = null;
+        }
+        this.render();
+      },
+    });
+
+    this.battleEndAnimationTween = tween;
   }
 
   private playEvolutionAnimation(fromPokemon: BattlePokemon, toPokemon: BattlePokemon): void {
@@ -2330,6 +2415,7 @@ export class BattleScene extends Phaser.Scene {
         false,
       );
       this.drawHpPanel(BATTLE_LAYOUT.playerHpPanel, this.state.player.pokemon, "player", true);
+      this.drawBattleEndAnimation();
     }
     this.publishE2eSnapshot();
     this.publishMobileBattleUiState();
@@ -2554,10 +2640,12 @@ export class BattleScene extends Phaser.Scene {
     );
     const playerRenderBox = getCroppedBattleSpriteRenderBox(player);
     const captureOpponent = this.getCaptureOpponentRenderEffect();
+    const opponentBattleEnd = this.getBattleEndSpriteRenderEffect("opponent");
+    const playerBattleEnd = this.getBattleEndSpriteRenderEffect("player");
     this.add
       .image(
         opponentRenderBox.x + entranceOffset + opponentHit.offsetX,
-        opponentRenderBox.y,
+        opponentRenderBox.y + opponentBattleEnd.offsetY,
         opponentSprite.assetKey,
         opponentSprite.frame,
       )
@@ -2568,16 +2656,19 @@ export class BattleScene extends Phaser.Scene {
         BATTLE_SPRITE_CROP.height,
       )
       .setDisplaySize(
-        opponentRenderBox.width * captureOpponent.scale,
-        opponentRenderBox.height * captureOpponent.scale,
+        opponentRenderBox.width * captureOpponent.scale * opponentBattleEnd.scale,
+        opponentRenderBox.height * captureOpponent.scale * opponentBattleEnd.scale,
       )
-      .setAlpha(entranceAlpha * opponentHit.alpha * captureOpponent.alpha);
+      .setAlpha(
+        entranceAlpha * opponentHit.alpha * captureOpponent.alpha * opponentBattleEnd.alpha,
+      );
 
     this.drawPlayerPokemonImage({
-      alpha: entranceAlpha * playerHit.alpha,
+      alpha: entranceAlpha * playerHit.alpha * playerBattleEnd.alpha,
       offsetX: -entranceOffset + playerHit.offsetX,
+      offsetY: playerBattleEnd.offsetY,
       renderBox: playerRenderBox,
-      scale: 1,
+      scale: playerBattleEnd.scale,
       sprite: this.state.player.pokemon.backSprite,
       tint: null,
     });
@@ -2586,6 +2677,7 @@ export class BattleScene extends Phaser.Scene {
   private drawPlayerPokemonImage({
     alpha,
     offsetX,
+    offsetY = 0,
     renderBox,
     scale,
     sprite,
@@ -2593,13 +2685,14 @@ export class BattleScene extends Phaser.Scene {
   }: {
     alpha: number;
     offsetX: number;
+    offsetY?: number;
     renderBox: BattleRect;
     scale: number;
     sprite: BattleSpriteRef;
     tint: number | null;
   }): void {
     const playerImage = this.add
-      .image(renderBox.x + offsetX, renderBox.y, sprite.assetKey, sprite.frame)
+      .image(renderBox.x + offsetX, renderBox.y + offsetY, sprite.assetKey, sprite.frame)
       .setCrop(
         BATTLE_SPRITE_CROP.x,
         BATTLE_SPRITE_CROP.y,
@@ -2647,6 +2740,103 @@ export class BattleScene extends Phaser.Scene {
     };
   }
 
+  private getBattleEndConclusion(): BattleConclusion | null {
+    if (!this.state.result) {
+      return null;
+    }
+
+    return resolveBattleConclusion(this.state.result, this.state.player.playerId);
+  }
+
+  private getBattleEndSpriteRenderEffect(side: BattleHpSide): {
+    alpha: number;
+    offsetY: number;
+    scale: number;
+  } {
+    const result = this.state.result;
+
+    if (!result || !this.battleEndAnimationPlaying) {
+      return { alpha: 1, offsetY: 0, scale: 1 };
+    }
+
+    const conclusion = this.getBattleEndConclusion();
+    if (!conclusion) {
+      return { alpha: 1, offsetY: 0, scale: 1 };
+    }
+
+    const frame = resolveBattleEndPresentationFrame(this.battleEndAnimationProgress, conclusion);
+    const participant = side === "player" ? this.state.player : this.state.opponent;
+
+    if (participant.playerId === result.loserPlayerId) {
+      return {
+        alpha: frame.loserAlpha,
+        offsetY: frame.loserOffsetY,
+        scale: frame.loserScale,
+      };
+    }
+
+    if (participant.playerId === result.winnerPlayerId) {
+      return { alpha: 1, offsetY: 0, scale: frame.winnerScale };
+    }
+
+    return { alpha: 1, offsetY: 0, scale: 1 };
+  }
+
+  private drawBattleEndAnimation(): void {
+    if (!this.battleEndAnimationPlaying) {
+      return;
+    }
+
+    const conclusion = this.getBattleEndConclusion();
+    if (!conclusion) {
+      return;
+    }
+
+    const frame = resolveBattleEndPresentationFrame(this.battleEndAnimationProgress, conclusion);
+    const centerX = BATTLE_BASE_SIZE.width / 2;
+    const centerY = 86;
+    const graphics = this.add.graphics();
+
+    if (frame.flashAlpha > 0) {
+      graphics
+        .fillStyle(frame.accentColor, frame.flashAlpha)
+        .fillRect(0, 0, BATTLE_BASE_SIZE.width, 152);
+    }
+
+    graphics
+      .lineStyle(1, frame.accentColor, frame.particleAlpha)
+      .strokeCircle(centerX, centerY, frame.burstRadius);
+
+    for (let index = 0; index < 12; index += 1) {
+      const angle = (Math.PI * 2 * index) / 12 + this.battleEndAnimationProgress * Math.PI;
+      const distance = frame.burstRadius * (0.48 + (index % 3) * 0.16);
+      const size = index % 2 === 0 ? 3 : 2;
+      const x = Math.round(centerX + Math.cos(angle) * distance);
+      const y = Math.round(centerY + Math.sin(angle) * distance);
+
+      graphics
+        .fillStyle(index % 2 === 0 ? 0xffffff : frame.accentColor, frame.particleAlpha)
+        .fillRect(x - size / 2, y - size / 2, size, size);
+    }
+
+    if (frame.bannerAlpha > 0) {
+      this.add
+        .text(
+          BATTLE_BASE_SIZE.width - 72,
+          22 + frame.bannerOffsetY,
+          frame.bannerText,
+          createGameTextStyle({
+            color: "#fff8df",
+            fontSize: "10px",
+            stroke: "#22313d",
+            strokeThickness: 4,
+          }),
+        )
+        .setOrigin(0.5)
+        .setAlpha(frame.bannerAlpha);
+    }
+  }
+
   private drawCaptureAnimation(): void {
     const attempt = this.captureAnimationAttempt;
     if (!attempt) {
@@ -2689,7 +2879,13 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (frame.showBall) {
-      this.drawCaptureBall(ballX, ballY, attempt.ballItemId, frame.ballRotation);
+      if (frame.stage === "throw") {
+        this.drawCaptureThrowTrail(start, impact, frame.stageProgress, frame.trailAlpha);
+      }
+      if (frame.impactAlpha > 0) {
+        this.drawCaptureImpactPulse(impact.x, impact.y, frame.impactRadius, frame.impactAlpha);
+      }
+      this.drawCaptureBall(ballX, ballY, attempt.ballItemId, frame.ballRotation, frame.ballScale);
     }
 
     if (frame.stage !== "result") {
@@ -2715,12 +2911,86 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
-  private drawCaptureBall(x: number, y: number, ballItemId: string, rotation: number): void {
+  private drawCaptureThrowTrail(
+    start: { x: number; y: number },
+    impact: { x: number; y: number },
+    progress: number,
+    alpha: number,
+  ): void {
+    const graphics = this.add.graphics().setDepth(505);
+    const trailPoints: Array<{ x: number; y: number }> = [];
+
+    for (let index = 1; index <= 6; index += 1) {
+      const trailProgress = Phaser.Math.Clamp(progress - index * 0.065, 0, 1);
+
+      if (trailProgress <= 0) {
+        continue;
+      }
+
+      const x = Phaser.Math.Linear(start.x, impact.x, trailProgress);
+      const y =
+        Phaser.Math.Linear(start.y, impact.y, trailProgress) -
+        Math.sin(trailProgress * Math.PI) * 42;
+      const size = Math.max(2, 5 - Math.floor(index / 2));
+      trailPoints.push({ x, y });
+
+      graphics
+        .fillStyle(index % 2 === 0 ? 0xffdc72 : 0xe6fbff, alpha * (1 - index / 10))
+        .fillRect(Math.round(x - size / 2), Math.round(y - size / 2), size, size);
+    }
+
+    if (trailPoints.length < 2) {
+      return;
+    }
+
+    graphics.lineStyle(1, 0xffecae, alpha * 0.58).beginPath();
+    trailPoints.forEach((point, index) => {
+      if (index === 0) {
+        graphics.moveTo(point.x, point.y);
+        return;
+      }
+
+      graphics.lineTo(point.x, point.y);
+    });
+    graphics.strokePath();
+  }
+
+  private drawCaptureImpactPulse(x: number, y: number, radius: number, alpha: number): void {
+    const graphics = this.add.graphics().setDepth(506);
+
+    graphics
+      .lineStyle(1, 0xffffff, alpha)
+      .strokeCircle(x, y, radius)
+      .lineStyle(1, 0xf6c868, alpha * 0.78)
+      .strokeCircle(x, y, Math.max(2, radius * 0.58));
+
+    for (let index = 0; index < 8; index += 1) {
+      const angle = (Math.PI * 2 * index) / 8;
+      const innerRadius = Math.max(2, radius * 0.36);
+      const outerRadius = radius + 5;
+
+      graphics
+        .lineStyle(1, 0xffffff, alpha * 0.72)
+        .beginPath()
+        .moveTo(x + Math.cos(angle) * innerRadius, y + Math.sin(angle) * innerRadius)
+        .lineTo(x + Math.cos(angle) * outerRadius, y + Math.sin(angle) * outerRadius)
+        .strokePath();
+    }
+  }
+
+  private drawCaptureBall(
+    x: number,
+    y: number,
+    ballItemId: string,
+    rotation: number,
+    scale: number,
+  ): void {
     const graphics = this.add
       .graphics()
       .setDepth(510)
       .setPosition(Math.round(x), Math.round(y))
-      .setRotation(rotation);
+      .setRotation(rotation)
+      .setScale(scale);
     const topColor = ballItemId === "ultraBall" ? 0x303239 : 0xd94b43;
     const accentColor = ballItemId === "ultraBall" ? 0xf4cf58 : 0xf7f4e8;
     const left = -6;

@@ -482,6 +482,13 @@
   line-height: 0;
 }
 
+.nextButton:disabled {
+  cursor: wait;
+  opacity: 0.56;
+  transform: translateY(3px);
+  box-shadow: none;
+}
+
 .deckNotice {
   display: grid;
   min-height: 0;

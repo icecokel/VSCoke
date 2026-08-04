@@ -155,6 +155,7 @@ export interface PokeLoungeCopy {
     serverJoin: string;
     serverCodeLabel: string;
     serverDisabled: string;
+    serverTemporarilyUnavailable: string;
     serverInviteRequiresLogin: string;
     invitePlaceholder: string;
     inviteDescription: string;
@@ -343,6 +344,7 @@ const KOREAN_COPY: PokeLoungeCopy = {
     serverCodeLabel: "서버 방 코드",
     serverDisabled:
       "서버 경쟁전은 로그인한 플레이어만 이용할 수 있습니다. 로그인 후 다시 열어 주세요.",
+    serverTemporarilyUnavailable: "서버 경쟁전은 안정화 작업을 위해 임시 중단되었습니다.",
     serverInviteRequiresLogin: "서버 경쟁전 초대는 로그인 후 참가할 수 있습니다.",
     invitePlaceholder: "방을 선택하면 초대 링크가 표시됩니다.",
     inviteDescription:
@@ -536,6 +538,8 @@ const ENGLISH_COPY: PokeLoungeCopy = {
     serverCodeLabel: "Server room code",
     serverDisabled:
       "Server competition is available to signed-in players. Sign in and reopen this page.",
+    serverTemporarilyUnavailable:
+      "Server competition is temporarily unavailable while it is being stabilized.",
     serverInviteRequiresLogin: "Sign in before joining a server competition invite.",
     invitePlaceholder: "Choose a room to show its invite link.",
     inviteDescription:
@@ -729,6 +733,7 @@ const JAPANESE_COPY: PokeLoungeCopy = {
     serverCodeLabel: "サーバールームコード",
     serverDisabled:
       "サーバー対戦はログイン済みプレイヤー専用です。ログイン後にページを開き直してください。",
+    serverTemporarilyUnavailable: "サーバー対戦は安定化作業のため一時的に停止しています。",
     serverInviteRequiresLogin: "サーバー対戦の招待に参加するにはログインしてください。",
     invitePlaceholder: "ルームを選ぶと招待リンクが表示されます。",
     inviteDescription:

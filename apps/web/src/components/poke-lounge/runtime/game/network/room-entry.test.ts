@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveServerRoomEntryCapability } from "./roomEntry";
+import { isServerCompetitiveEntryEnabled, resolveServerRoomEntryCapability } from "./roomEntry";
 import { normalizeMultiplayerDisplayName, shouldResetRoomEntrySession } from "./roomEntryScreen";
 
 test("명시적으로 선택한 솔로 새 게임만 저장 세션을 초기화한다", () => {
@@ -43,6 +43,11 @@ test("서버 방 capability가 없으면 기존 서버 입장을 유지한다", 
     enabled: true,
     disabledReason: null,
   });
+});
+
+test("서버 경쟁전은 공개 클라이언트에서 임시 중단하고 로컬 E2E만 허용한다", () => {
+  assert.equal(isServerCompetitiveEntryEnabled(false), false);
+  assert.equal(isServerCompetitiveEntryEnabled(true), true);
 });
 
 test("서버 방 capability가 차단되면 제공된 사유를 정리해 노출한다", () => {

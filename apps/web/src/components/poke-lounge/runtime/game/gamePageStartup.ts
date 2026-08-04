@@ -39,6 +39,7 @@ import {
 } from "./network/serverRoom";
 import {
   applyRoomRoundDurationSearchParam,
+  isServerCompetitiveEntryEnabled,
   readRoomEntryFromLocation,
   type RoomEntryMode,
 } from "./network/roomEntry";
@@ -103,6 +104,7 @@ export async function startGamePage(
   const battleE2eScenario = readInitialBattleE2eScenario(location);
   const currentUrl = new URL(location.href);
   const copy = getPokeLoungeCopyForUrl(currentUrl);
+  const serverCompetitiveEntryEnabled = isServerCompetitiveEntryEnabled(isLocalE2eUrl(currentUrl));
   const activateTestMode = dependencies.activateLocalTestMode ?? activateLocalTestMode;
   const deactivateTestMode = dependencies.deactivateLocalTestMode ?? deactivateLocalTestMode;
   const loadTestModeState = dependencies.loadLocalTestModeState ?? loadLocalTestModeState;
@@ -392,6 +394,14 @@ export async function startGamePage(
       return;
     }
 
+    if (selection.mode === "server-room" && !serverCompetitiveEntryEnabled) {
+      dispatchPokeLoungeNotice(mount.ownerDocument, {
+        message: copy.roomEntry.serverTemporarilyUnavailable,
+        tone: "warning",
+      });
+      return;
+    }
+
     roomEntrySelectionPending = true;
     setRoomEntryScreenPending(mount, copy.roomEntry.preparing);
 
@@ -491,8 +501,12 @@ export async function startGamePage(
             },
           }
         : undefined,
-      serverRoomCapability:
-        dependencies.getIdToken?.() || dependencies.idToken || isLocalE2eUrl(currentUrl)
+      serverRoomCapability: !serverCompetitiveEntryEnabled
+        ? {
+            enabled: false,
+            disabledReason: copy.roomEntry.serverTemporarilyUnavailable,
+          }
+        : dependencies.getIdToken?.() || dependencies.idToken || isLocalE2eUrl(currentUrl)
           ? { enabled: true }
           : {
               enabled: false,
@@ -529,6 +543,18 @@ export async function startGamePage(
       clearRoomEntrySearchParams(currentUrl);
       applyRoomRoundDurationSearchParam(currentUrl);
       replaceBrowserUrl(currentUrl);
+      showRoomEntry();
+      return;
+    }
+
+    if (roomEntry.mode === "server-room" && !serverCompetitiveEntryEnabled) {
+      clearRoomEntrySearchParams(currentUrl);
+      applyRoomRoundDurationSearchParam(currentUrl);
+      replaceBrowserUrl(currentUrl);
+      dispatchPokeLoungeNotice(mount.ownerDocument, {
+        message: copy.roomEntry.serverTemporarilyUnavailable,
+        tone: "warning",
+      });
       showRoomEntry();
       return;
     }

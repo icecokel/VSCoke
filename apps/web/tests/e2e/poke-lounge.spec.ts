@@ -120,6 +120,9 @@ interface PokeLoungeBattleSnapshot {
   evolutionAnimationStartedCount: number;
   evolutionFromSpeciesId: number | null;
   evolutionToSpeciesId: number | null;
+  battleEndAnimationPlaying: boolean;
+  battleEndAnimationStartedCount: number;
+  battleEndConclusion: "victory" | "defeat" | "capture" | "escape" | null;
   player: {
     name: string;
     level: number;
@@ -2265,6 +2268,29 @@ test.describe("Poke Lounge", () => {
     expect(result?.reason).toBe("faint");
     expect(result?.winnerPlayerId).not.toBe("wild");
     await expectActiveScene(page, "battle");
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("전투 종료 확인 전 패배 정리 연출을 실행한다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await startBattleScenario(page, "wild-defeat");
+    const result = await resolveBattleResult(page);
+    const snapshot = await page.evaluate(() => {
+      const controller = (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__;
+      let current = controller?.getBattleSnapshot() ?? null;
+
+      while ((current?.messageQueue.length ?? 0) > 1) {
+        current = controller?.confirmBattle() ?? null;
+      }
+
+      return current;
+    });
+
+    expect(result?.winnerPlayerId).toBe("wild");
+    expect(snapshot?.battleEndAnimationStartedCount).toBeGreaterThan(0);
+    expect(snapshot?.battleEndAnimationPlaying).toBe(true);
+    expect(snapshot?.battleEndConclusion).toBe("defeat");
     expect(browserErrors.join("\n")).toBe("");
   });
 

@@ -437,7 +437,9 @@ export class WorldScene extends Phaser.Scene {
       this.persistLocalPlayerPositionIfChanged();
     }
     this.shutdownComplete = true;
-    stopPokeLoungeBgm("field-day");
+    if (!this.encounters.isBattleIntroPlaying() && !this.preserveRoomForBattle) {
+      stopPokeLoungeBgm("field-day");
+    }
 
     for (const unsubscribe of this.unsubscribers) {
       unsubscribe();

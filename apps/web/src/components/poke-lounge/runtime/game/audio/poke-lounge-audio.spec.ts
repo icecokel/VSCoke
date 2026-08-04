@@ -32,3 +32,50 @@ test("필수 음원이 빠진 오디오 매니페스트는 부트 완료 대상�
     null,
   );
 });
+
+test("ROM SDAT 출처가 있는 매니페스트를 파싱하고 잘못된 시퀀스 인덱스는 거부한다", () => {
+  const manifest = parsePokeLoungeAudioManifest(JSON.parse(fs.readFileSync(manifestPath, "utf8")));
+
+  assert.ok(manifest);
+  const fieldDayBgm = manifest.bgm.find(item => item.id === "field-day");
+
+  assert.ok(fieldDayBgm);
+  assert.deepEqual(fieldDayBgm.source, {
+    sdatPath: "data/sound/gs_sound_data.sdat",
+    sequenceIndex: 1028,
+    sequenceName: "SEQ_GS_R_1_29",
+  });
+
+  const createManifestWithFieldDaySource = (source: unknown): unknown => ({
+    ...manifest,
+    bgm: manifest.bgm.map(item => (item.id === "field-day" ? { ...item, source } : item)),
+  });
+
+  for (const malformedSource of [
+    {
+      sdatPath: "",
+      sequenceIndex: 1028,
+      sequenceName: "SEQ_GS_R_1_29",
+    },
+    {
+      sdatPath: "data/sound/gs_sound_data.sdat",
+      sequenceIndex: -1,
+      sequenceName: "SEQ_GS_R_1_29",
+    },
+    {
+      sdatPath: "data/sound/gs_sound_data.sdat",
+      sequenceIndex: 1028.5,
+      sequenceName: "SEQ_GS_R_1_29",
+    },
+    {
+      sdatPath: "data/sound/gs_sound_data.sdat",
+      sequenceIndex: 1028,
+      sequenceName: "",
+    },
+  ]) {
+    assert.equal(
+      parsePokeLoungeAudioManifest(createManifestWithFieldDaySource(malformedSource)),
+      null,
+    );
+  }
+});

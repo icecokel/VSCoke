@@ -25,23 +25,40 @@ function fail(message) {
 function verifySource(item) {
   const source = item.source;
 
-  if (!source || typeof source !== "object") {
+  if (!source || typeof source !== "object" || Array.isArray(source)) {
     fail(`${item.id} must include source metadata`);
   }
 
-  for (const key of ["title", "creator", "sourceUrl", "sourceFile"]) {
-    if (typeof source[key] !== "string" || !source[key].trim()) {
-      fail(`${item.id} source.${key} must be nonempty`);
-    }
+  if (isRomSdatSource(source) || isLegacyCc0Source(source)) {
+    return;
   }
 
-  if (source.license !== "CC0-1.0") {
-    fail(`${item.id} must use an approved CC0-1.0 source`);
-  }
+  fail(`${item.id} must use valid ROM SDAT or legacy CC0 source metadata`);
+}
 
-  if (!source.sourceUrl.startsWith("https://")) {
-    fail(`${item.id} sourceUrl must use HTTPS`);
-  }
+function isRomSdatSource(source) {
+  return (
+    typeof source.sdatPath === "string" &&
+    source.sdatPath.trim().length > 0 &&
+    Number.isInteger(source.sequenceIndex) &&
+    source.sequenceIndex >= 0 &&
+    typeof source.sequenceName === "string" &&
+    source.sequenceName.trim().length > 0
+  );
+}
+
+function isLegacyCc0Source(source) {
+  return (
+    typeof source.title === "string" &&
+    source.title.trim().length > 0 &&
+    typeof source.creator === "string" &&
+    source.creator.trim().length > 0 &&
+    source.license === "CC0-1.0" &&
+    typeof source.sourceUrl === "string" &&
+    source.sourceUrl.startsWith("https://") &&
+    typeof source.sourceFile === "string" &&
+    source.sourceFile.trim().length > 0
+  );
 }
 
 if (!fs.existsSync(manifestPath)) {

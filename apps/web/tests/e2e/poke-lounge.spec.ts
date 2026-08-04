@@ -369,11 +369,9 @@ test.describe("Poke Lounge", () => {
         sizeBytes: number;
         defaultVolume: number;
         source?: {
-          creator?: string;
-          license?: string;
-          sourceFile?: string;
-          sourceUrl?: string;
-          title?: string;
+          sdatPath?: string;
+          sequenceIndex?: number;
+          sequenceName?: string;
         };
       }>;
     };
@@ -432,14 +430,13 @@ test.describe("Poke Lounge", () => {
     expect(fieldDayBgm).toMatchObject({
       id: "field-day",
       src: "/assets/poke-lounge/audio/bgm/field-day.mp3",
-      durationMs: 30224,
+      durationMs: 30000,
+      sizeBytes: 300714,
       defaultVolume: 0.24,
       source: {
-        creator: "Bobjt",
-        license: "CC0-1.0",
-        sourceFile: "peaceful_ville_2023_0.mp3",
-        sourceUrl: "https://opengameart.org/content/peacefull-ville",
-        title: "Peacefull Ville",
+        sdatPath: "data/sound/gs_sound_data.sdat",
+        sequenceIndex: 1028,
+        sequenceName: "SEQ_GS_R_1_29",
       },
     });
     expect(fieldDayBgm?.sizeBytes).toBe(

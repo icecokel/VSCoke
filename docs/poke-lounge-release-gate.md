@@ -8,9 +8,9 @@
 
 Provenance status: UNRESOLVED
 
-The `/[locale]/game/poke-lounge` route has 61 public asset records without verified distribution rights. This is an explicit release risk, but it no longer blocks the repository's default Vercel build.
+The `/[locale]/game/poke-lounge` route has 70 public asset records without verified distribution rights. This is an explicit release risk, but it no longer blocks the repository's default Vercel build.
 
-`pnpm check:poke-lounge-provenance` still fails because 61 non-audio manifest rows remain `"rightsStatus": "blocked"`; the nine audio rows have reviewed CC0 source records. Set `POKE_LOUNGE_PROVENANCE_STRICT=1` only in an environment where unresolved provenance should block the build.
+`pnpm check:poke-lounge-provenance` still fails because all 70 manifest rows remain `"rightsStatus": "blocked"`. The first nine rows cover the ROM-derived audio manifest and eight runtime files. Set `POKE_LOUNGE_PROVENANCE_STRICT=1` only in an environment where unresolved provenance should block the build.
 
 Persistence, Socket recovery, deterministic server competition, verified-only ranking, migration, CI, test, or documentation completion does not change this decision. The technical implementation is recorded in [Poke Lounge Hardening Report](./poke-lounge-hardening-report.md), but it does not establish ownership, permission, license compatibility, trademark clearance, or any other legal conclusion. A human owner and appropriate legal reviewer must review the unresolved items and record the release decision.
 
@@ -22,7 +22,7 @@ Persistence, Socket recovery, deterministic server competition, verified-only ra
 
 No legal clearance or signed approval is recorded. Default deployment continuing must not be interpreted as asset-rights approval.
 
-## Replaced CC0 audio
+## ROM-derived runtime audio
 
 - `apps/web/public/assets/poke-lounge/audio/sfx/button-confirm.mp3`
 - `apps/web/public/assets/poke-lounge/audio/sfx/button-cancel.mp3`
@@ -33,7 +33,7 @@ No legal clearance or signed approval is recorded. Default deployment continuing
 - `apps/web/public/assets/poke-lounge/audio/bgm/field-day.mp3`
 - `apps/web/public/assets/poke-lounge/audio/bgm/wild-battle.mp3`
 
-All files above were replaced on 2026-07-12. Field and battle music use OpenGameArt CC0 tracks; interface and battle effects use Kenney CC0 packs. The current audio manifest contains creator, license, source page, and original filename metadata, and the old ROM/SDAT renderer and cue configuration were removed. See [Poke Lounge Audio Sources](./poke-lounge-audio-sources.md).
+The files above are rendered from `data/sound/gs_sound_data.sdat` in the ignored local HeartGold Korean ROM. `scripts/poke-lounge/audio-cues.json` records the SDAT sequence IDs and `scripts/poke-lounge/render-audio-cues.py` renders the MP3 files and their runtime manifest. This proves technical origin, not permission to use or distribute the files. The nine corresponding provenance rows remain `"rightsStatus": "blocked"` until a release owner records an appropriate rights decision. See [Poke Lounge Audio Sources](./poke-lounge-audio-sources.md).
 
 ## Unknown or unresolved public assets
 
@@ -51,7 +51,7 @@ All entries below are blocked. The full per-file inventory and SHA-256 values ar
 | Required approval                                     | Evidence required                                                  | Current state |
 | ----------------------------------------------------- | ------------------------------------------------------------------ | ------------- |
 | Pokémon name/marks and gameplay data                  | Owner/legal distribution decision                                  | Pending       |
-| Runtime audio                                         | CC0 source, original filename, hash, and reviewer record            | Completed     |
+| Runtime audio                                         | Distribution authorization or replacement/removal record, hash, and reviewer record | Pending       |
 | ROM-derived extracted data                            | Written authorization or replacement/removal record                | Pending       |
 | Sprites, textures, atlas, PokeMMO/Tuxmon map material | Original source, license/permission, required attribution          | Pending       |
 | VSCoke Poke Lounge ported code                        | Owner/contributor authorization and outbound code-license decision | Pending       |

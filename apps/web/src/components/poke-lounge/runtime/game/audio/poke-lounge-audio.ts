@@ -9,8 +9,10 @@ import type {
 
 export const POKE_LOUNGE_AUDIO_MANIFEST_CACHE_KEY = "pokeLoungeAudioManifest";
 export const POKE_LOUNGE_AUDIO_MANIFEST_PATH = "/assets/poke-lounge/audio/audio-manifest.json";
-const MAX_PRELOADED_BYTES = 500_000;
+const MAX_PRELOADED_BYTES = 750_000;
 const POKE_LOUNGE_AUDIO_MANIFEST_VERSION = 2;
+const BGM_CROSSFADE_DURATION_SECONDS = 0.18;
+const APPLE_MOBILE_BGM_FADE_DURATION_MS = 120;
 const POKE_LOUNGE_SFX_IDS = [
   "button-confirm",
   "button-cancel",
@@ -23,12 +25,18 @@ const POKE_LOUNGE_BGM_IDS = [
   "field-day",
   "wild-battle",
 ] as const satisfies readonly PokeLoungeBgmId[];
-const APPLE_MOBILE_UNLOCK_BGM_ID = "field-day";
 const APPLE_MOBILE_UNLOCK_BGM_SRC = "/assets/poke-lounge/audio/bgm/field-day.mp3";
-const APPLE_MOBILE_UNLOCK_BGM_VOLUME = 0.24;
 
 type PokeLoungeAudioItemId = PokeLoungeSfxId | PokeLoungeBgmId;
 type PokeLoungeAudioManifestItem = PokeLoungeSfxManifestItem | PokeLoungeBgmManifestItem;
+
+interface ActivePokeLoungeBgm {
+  id: PokeLoungeBgmId;
+  baseVolume: number;
+  audio: HTMLAudioElement | null;
+  gain: GainNode | null;
+  source: AudioBufferSourceNode | null;
+}
 
 export interface PokeLoungeAudioPreloadAsset {
   id: PokeLoungeAudioItemId;
@@ -54,6 +62,8 @@ let muted = false;
 let masterVolume = 1;
 let playbackGeneration = 0;
 let bgmRequestGeneration = 0;
+let pendingBgmId: PokeLoungeBgmId | null = null;
+let failedBgmRetry: { id: PokeLoungeBgmId; options: { volume?: number } } | null = null;
 let lastSfxId: PokeLoungeSfxId | null = null;
 const bufferPromises = new Map<PokeLoungeAudioItemId, Promise<AudioBuffer | null>>();
 const preloadedAudioBytes = new Map<PokeLoungeAudioItemId, ArrayBuffer>();
@@ -64,19 +74,15 @@ const activeBufferSources = new Set<AudioBufferSourceNode>();
 const activeHtmlAudioElements = new Set<HTMLAudioElement>();
 let appleMobileBgmAudio: HTMLAudioElement | null = null;
 let appleMobileBgmSource: string | null = null;
-let activeBgm: {
-  id: PokeLoungeBgmId;
-  baseVolume: number;
-  audio: HTMLAudioElement | null;
-  gain: GainNode | null;
-  source: AudioBufferSourceNode | null;
-} | null = null;
+let appleMobileBgmPrimed = false;
+let appleMobileBgmPrimeGeneration = 0;
+let appleMobileBgmFadeGeneration = 0;
+let activeBgm: ActivePokeLoungeBgm | null = null;
 
 export function bindPokeLoungeAudioPrimeListeners(target: HTMLElement): () => void {
   const prime = () => {
     void primePokeLoungeAudio().then(() => {
-      const isAppleMobileBgmReady =
-        !shouldPreferAppleMobileHtmlAudio() || (activeBgm?.audio !== null && isActiveBgmPlaying());
+      const isAppleMobileBgmReady = !shouldPreferAppleMobileHtmlAudio() || appleMobileBgmPrimed;
 
       if ((!audioContext || audioContext.state === "running") && isAppleMobileBgmReady) {
         remove();
@@ -103,7 +109,7 @@ export async function primePokeLoungeAudio(): Promise<void> {
 
   const prefersAppleMobileHtmlAudio = shouldPreferAppleMobileHtmlAudio();
   if (prefersAppleMobileHtmlAudio) {
-    startAppleMobileBgmFromUserGesture();
+    primeAppleMobileBgmFromUserGesture();
   }
 
   const context = getAudioContext();
@@ -132,7 +138,12 @@ export async function primePokeLoungeAudio(): Promise<void> {
     });
   }
 
-  if (
+  const failedRetry = failedBgmRetry;
+  if (failedRetry && !muted) {
+    failedBgmRetry = null;
+    playPokeLoungeBgm(failedRetry.id, failedRetry.options);
+  } else if (
+    pendingBgmId === null &&
     activeBgm &&
     (!isActiveBgmPlaying() ||
       (!prefersAppleMobileHtmlAudio && context?.state === "running" && activeBgm.audio !== null))
@@ -155,38 +166,34 @@ export function playPokeLoungeBgm(id: PokeLoungeBgmId, options: { volume?: numbe
     return;
   }
 
+  failedBgmRetry = null;
   const requestGeneration = (bgmRequestGeneration += 1);
+  pendingBgmId = id;
   void playPokeLoungeBgmAsync(id, options, playbackGeneration, requestGeneration).catch(
     () => undefined,
   );
 }
 
 export function stopPokeLoungeBgm(id?: PokeLoungeBgmId): void {
-  bgmRequestGeneration += 1;
-
-  if (id && activeBgm?.id !== id) {
+  const shouldStopActiveBgm = Boolean(activeBgm && (!id || activeBgm.id === id));
+  const shouldCancelPendingRequest = !id || pendingBgmId === id;
+  if (!shouldStopActiveBgm && !shouldCancelPendingRequest) {
     return;
   }
 
-  if (!activeBgm) {
-    return;
+  if (shouldCancelPendingRequest) {
+    bgmRequestGeneration += 1;
+    pendingBgmId = null;
+  }
+  if (!id || failedBgmRetry?.id === id) {
+    failedBgmRetry = null;
   }
 
-  const bgm = activeBgm;
-  activeBgm = null;
-  if (bgm.source) {
-    bgm.source.onended = null;
-    try {
-      bgm.source.stop();
-    } catch {
-      // 이미 종료된 WebAudio BGM 소스는 다시 중지할 수 없다.
+  if (shouldStopActiveBgm) {
+    const bgm = detachActiveBgm();
+    if (bgm) {
+      stopActiveBgmPlayback(bgm);
     }
-    activeBufferSources.delete(bgm.source);
-    bgm.source.disconnect();
-    bgm.gain?.disconnect();
-  }
-  if (bgm.audio) {
-    stopHtmlAudioElement(bgm.audio);
   }
 }
 
@@ -214,6 +221,12 @@ export function stopAllPokeLoungeAudio(): void {
   for (const audio of htmlAudioElements.values()) {
     stopHtmlAudioElement(audio);
   }
+
+  if (appleMobileBgmAudio) {
+    stopHtmlAudioElement(appleMobileBgmAudio);
+  }
+  appleMobileBgmPrimeGeneration += 1;
+  appleMobileBgmPrimed = false;
 }
 
 export function setPokeLoungeAudioMuted(nextMuted: boolean): void {
@@ -232,6 +245,9 @@ export function setPokeLoungeMasterVolume(nextVolume: number): void {
   }
 
   if (activeBgm?.audio && !htmlAudioGains.has(activeBgm.audio)) {
+    if (activeBgm.audio === appleMobileBgmAudio) {
+      appleMobileBgmFadeGeneration += 1;
+    }
     activeBgm.audio.volume = resolveVolume(activeBgm.baseVolume, 1);
   }
 }
@@ -347,7 +363,7 @@ async function playPokeLoungeBgmAsync(
   }
 
   if (shouldPreferAppleMobileHtmlAudio()) {
-    await playAppleMobileHtmlBgm(item, options.volume, generation);
+    await playAppleMobileHtmlBgm(item, options.volume, generation, requestGeneration);
     return;
   }
 
@@ -360,6 +376,7 @@ async function playPokeLoungeBgmAsync(
   }
 
   if (activeBgm?.id === id && isActiveBgmPlaying()) {
+    markBgmRequestCompleted(id, requestGeneration);
     return;
   }
 
@@ -374,12 +391,23 @@ async function playPokeLoungeBgmAsync(
       return;
     }
 
-    stopPokeLoungeBgm();
+    const previousBgm = detachActiveBgm();
+    if (previousBgm?.audio) {
+      stopActiveBgmPlayback(previousBgm);
+    }
+    if (previousBgm?.source) {
+      fadeOutWebAudioBgm(previousBgm, context);
+    }
+
     const source = context.createBufferSource();
     const gain = context.createGain();
     source.buffer = buffer;
     source.loop = true;
-    gain.gain.value = clampVolume(baseVolume);
+    gain.gain.setValueAtTime(0, context.currentTime);
+    gain.gain.linearRampToValueAtTime(
+      clampVolume(baseVolume),
+      context.currentTime + BGM_CROSSFADE_DURATION_SECONDS,
+    );
     source.connect(gain);
     gain.connect(getMasterGain(context) ?? context.destination);
     activeBufferSources.add(source);
@@ -393,50 +421,249 @@ async function playPokeLoungeBgmAsync(
       }
     };
     source.start();
+    markBgmRequestCompleted(id, requestGeneration);
     return;
   }
 
-  if (activeBgm) {
-    stopPokeLoungeBgm();
+  const previousBgm = detachActiveBgm();
+  if (previousBgm?.audio) {
+    const didFadeOut = await fadeOutAppleMobileBgm(previousBgm, requestGeneration);
+    if (!didFadeOut) {
+      return;
+    }
+  } else if (previousBgm) {
+    stopActiveBgmPlayback(previousBgm);
+  }
+  if (generation !== playbackGeneration || requestGeneration !== bgmRequestGeneration) {
+    return;
   }
 
   const audio = getHtmlAudioElement(item);
   audio.loop = true;
   audio.currentTime = 0;
   setHtmlAudioElementVolume(audio, baseVolume);
-  activeBgm = { id, audio, baseVolume, gain: null, source: null };
-  await audio.play();
+  const nextBgm: ActivePokeLoungeBgm = { id, audio, baseVolume, gain: null, source: null };
+  activeBgm = nextBgm;
+  try {
+    await audio.play();
+  } catch (error) {
+    if (activeBgm === nextBgm) {
+      activeBgm = null;
+      stopHtmlAudioElement(audio);
+    }
+    rememberFailedBgmRetry(id, options, generation, requestGeneration);
+    throw error;
+  }
+  if (
+    generation !== playbackGeneration ||
+    requestGeneration !== bgmRequestGeneration ||
+    activeBgm !== nextBgm
+  ) {
+    if (activeBgm === nextBgm) {
+      activeBgm = null;
+      stopHtmlAudioElement(audio);
+    }
+    return;
+  }
+
+  markBgmRequestCompleted(id, requestGeneration);
 }
 
 async function playAppleMobileHtmlBgm(
   item: PokeLoungeBgmManifestItem,
   requestedVolume: number | undefined,
   generation: number,
+  requestGeneration: number,
 ): Promise<void> {
   if (activeBgm?.id === item.id && isActiveBgmPlaying()) {
+    const currentAudio = activeBgm.audio;
+    if (currentAudio && currentAudio === appleMobileBgmAudio) {
+      // 단일 HTMLAudioElement를 쓰는 iOS 경로에서 이전 전환의 fade-out을 취소한다.
+      appleMobileBgmFadeGeneration += 1;
+      currentAudio.volume = resolveVolume(activeBgm.baseVolume, 1);
+    }
+    markBgmRequestCompleted(item.id, requestGeneration);
     return;
   }
 
-  if (activeBgm) {
-    stopPokeLoungeBgm();
+  const previousBgm = activeBgm;
+  if (previousBgm?.audio === appleMobileBgmAudio) {
+    const didFadeOut = await fadeOutAppleMobileBgm(previousBgm, requestGeneration);
+    if (
+      !didFadeOut ||
+      generation !== playbackGeneration ||
+      requestGeneration !== bgmRequestGeneration
+    ) {
+      return;
+    }
+    if (activeBgm === previousBgm) {
+      activeBgm = null;
+    }
+  } else if (previousBgm) {
+    if (activeBgm === previousBgm) {
+      activeBgm = null;
+    }
+    stopActiveBgmPlayback(previousBgm);
   }
-  if (generation !== playbackGeneration) {
+  if (generation !== playbackGeneration || requestGeneration !== bgmRequestGeneration) {
     return;
   }
 
   const audio = getAppleMobileBgmAudio(item.src);
   const baseVolume = requestedVolume ?? item.defaultVolume;
   audio.loop = true;
+  audio.muted = false;
   audio.currentTime = 0;
-  setHtmlAudioElementVolume(audio, baseVolume);
-  activeBgm = {
+  audio.volume = 0;
+  const nextBgm: ActivePokeLoungeBgm = {
     id: item.id,
     audio,
     baseVolume,
     gain: null,
     source: null,
   };
-  await audio.play();
+  activeBgm = nextBgm;
+  try {
+    await audio.play();
+  } catch (error) {
+    if (activeBgm === nextBgm) {
+      activeBgm = null;
+      stopHtmlAudioElement(audio);
+    }
+    rememberFailedBgmRetry(item.id, { volume: requestedVolume }, generation, requestGeneration);
+    throw error;
+  }
+  if (
+    generation !== playbackGeneration ||
+    requestGeneration !== bgmRequestGeneration ||
+    activeBgm !== nextBgm
+  ) {
+    if (activeBgm === nextBgm) {
+      activeBgm = null;
+      stopHtmlAudioElement(audio);
+    }
+    return;
+  }
+
+  markBgmRequestCompleted(item.id, requestGeneration);
+  fadeInAppleMobileBgm(audio, baseVolume);
+}
+
+async function fadeOutAppleMobileBgm(
+  bgm: ActivePokeLoungeBgm,
+  requestGeneration: number,
+): Promise<boolean> {
+  const audio = bgm.audio;
+  if (!audio || audio.paused) {
+    return true;
+  }
+
+  const fadeGeneration = (appleMobileBgmFadeGeneration += 1);
+  const completed = await fadeAppleMobileBgmVolume(audio, 0, fadeGeneration);
+  if (requestGeneration !== bgmRequestGeneration || !completed) {
+    return false;
+  }
+
+  stopHtmlAudioElement(audio);
+  return true;
+}
+
+function fadeInAppleMobileBgm(audio: HTMLAudioElement, baseVolume: number): void {
+  const fadeGeneration = (appleMobileBgmFadeGeneration += 1);
+  const targetVolume = resolveVolume(baseVolume, 1);
+
+  void fadeAppleMobileBgmVolume(audio, targetVolume, fadeGeneration);
+}
+
+function fadeAppleMobileBgmVolume(
+  audio: HTMLAudioElement,
+  targetVolume: number,
+  fadeGeneration: number,
+): Promise<boolean> {
+  const startVolume = audio.volume;
+  const startedAt = performance.now();
+
+  return new Promise(resolve => {
+    const update = (now: number) => {
+      if (fadeGeneration !== appleMobileBgmFadeGeneration || audio.paused) {
+        resolve(false);
+        return;
+      }
+
+      const progress = Math.min(1, (now - startedAt) / APPLE_MOBILE_BGM_FADE_DURATION_MS);
+      audio.volume = startVolume + (targetVolume - startVolume) * progress;
+      if (progress === 1) {
+        resolve(true);
+        return;
+      }
+
+      requestAnimationFrame(update);
+    };
+
+    requestAnimationFrame(update);
+  });
+}
+
+function markBgmRequestCompleted(id: PokeLoungeBgmId, requestGeneration: number): void {
+  if (requestGeneration === bgmRequestGeneration && pendingBgmId === id) {
+    pendingBgmId = null;
+  }
+}
+
+function rememberFailedBgmRetry(
+  id: PokeLoungeBgmId,
+  options: { volume?: number },
+  generation: number,
+  requestGeneration: number,
+): void {
+  if (generation === playbackGeneration && requestGeneration === bgmRequestGeneration) {
+    failedBgmRetry = { id, options: { ...options } };
+  }
+}
+
+function detachActiveBgm(): ActivePokeLoungeBgm | null {
+  const previousBgm = activeBgm;
+  activeBgm = null;
+
+  return previousBgm;
+}
+
+function fadeOutWebAudioBgm(bgm: ActivePokeLoungeBgm, context: AudioContext): void {
+  if (!bgm.source) {
+    return;
+  }
+
+  try {
+    const now = context.currentTime;
+    if (bgm.gain) {
+      bgm.gain.gain.cancelScheduledValues(now);
+      bgm.gain.gain.setValueAtTime(bgm.gain.gain.value, now);
+      bgm.gain.gain.linearRampToValueAtTime(0, now + BGM_CROSSFADE_DURATION_SECONDS);
+    }
+    bgm.source.stop(now + BGM_CROSSFADE_DURATION_SECONDS);
+  } catch {
+    stopActiveBgmPlayback(bgm);
+  }
+}
+
+function stopActiveBgmPlayback(bgm: ActivePokeLoungeBgm): void {
+  if (bgm.source) {
+    bgm.source.onended = null;
+    try {
+      bgm.source.stop();
+    } catch {
+      // 이미 종료된 WebAudio BGM 소스는 다시 중지할 수 없다.
+    }
+    activeBufferSources.delete(bgm.source);
+    bgm.source.disconnect();
+    bgm.gain?.disconnect();
+  }
+  if (bgm.audio) {
+    if (bgm.audio === appleMobileBgmAudio) {
+      appleMobileBgmFadeGeneration += 1;
+    }
+    stopHtmlAudioElement(bgm.audio);
+  }
 }
 
 async function getManifestItem(id: PokeLoungeSfxId): Promise<PokeLoungeSfxManifestItem | null> {
@@ -607,33 +834,28 @@ function createHtmlAudioElement(item: PokeLoungeAudioManifestItem): HTMLAudioEle
   return audio;
 }
 
-function startAppleMobileBgmFromUserGesture(): void {
+function primeAppleMobileBgmFromUserGesture(): void {
   if (muted) {
     return;
   }
 
-  if (activeBgm?.audio) {
-    if (activeBgm.audio.paused) {
-      void activeBgm.audio.play().catch(() => undefined);
-    }
+  if (appleMobileBgmPrimed) {
     return;
   }
 
-  if (activeBgm) {
-    stopPokeLoungeBgm();
-  }
-
+  const primeGeneration = (appleMobileBgmPrimeGeneration += 1);
   const audio = getAppleMobileBgmAudio(APPLE_MOBILE_UNLOCK_BGM_SRC);
   audio.loop = true;
-  setHtmlAudioElementVolume(audio, APPLE_MOBILE_UNLOCK_BGM_VOLUME);
-  activeBgm = {
-    id: APPLE_MOBILE_UNLOCK_BGM_ID,
-    audio,
-    baseVolume: APPLE_MOBILE_UNLOCK_BGM_VOLUME,
-    gain: null,
-    source: null,
-  };
-  void audio.play().catch(() => undefined);
+  audio.muted = true;
+  audio.volume = 0;
+  void audio
+    .play()
+    .then(() => {
+      if (primeGeneration === appleMobileBgmPrimeGeneration && !audio.paused) {
+        appleMobileBgmPrimed = true;
+      }
+    })
+    .catch(() => undefined);
 }
 
 function getAppleMobileBgmAudio(src: string): HTMLAudioElement {
@@ -837,6 +1059,10 @@ function isPokeLoungeAudioManifestItem(value: unknown): value is PokeLoungeAudio
 }
 
 function isPokeLoungeAudioSource(value: unknown): value is PokeLoungeAudioSource {
+  return isPokeLoungeCc0AudioSource(value) || isPokeLoungeRomAudioSource(value);
+}
+
+function isPokeLoungeCc0AudioSource(value: unknown): boolean {
   return (
     isRecord(value) &&
     typeof value.title === "string" &&
@@ -844,6 +1070,19 @@ function isPokeLoungeAudioSource(value: unknown): value is PokeLoungeAudioSource
     value.license === "CC0-1.0" &&
     typeof value.sourceUrl === "string" &&
     typeof value.sourceFile === "string"
+  );
+}
+
+function isPokeLoungeRomAudioSource(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.sdatPath === "string" &&
+    value.sdatPath.trim().length > 0 &&
+    typeof value.sequenceIndex === "number" &&
+    Number.isInteger(value.sequenceIndex) &&
+    value.sequenceIndex >= 0 &&
+    typeof value.sequenceName === "string" &&
+    value.sequenceName.trim().length > 0
   );
 }
 

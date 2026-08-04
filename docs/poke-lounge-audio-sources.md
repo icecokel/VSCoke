@@ -1,20 +1,46 @@
 # Poke Lounge Audio Sources
 
-All currently shipped Poke Lounge audio was replaced on 2026-07-12 with CC0
-sources. The runtime keeps the existing public paths, and the files are
-transcoded to MP3 for consistent browser playback.
+현재 Poke Lounge 런타임의 BGM 2개와 효과음 6개는 로컬 Pokémon HeartGold 한국어 ROM의
+`data/sound/gs_sound_data.sdat`에서 렌더링한 MP3입니다. 원본 ROM과 중간 산출물은 공개
+자산이 아니며, 이 문서는 기술적 출처와 재생성 경로만 기록합니다.
 
-| Runtime ID          | Source asset                                                           | Creator    | License | Original file                      |
-| ------------------- | ---------------------------------------------------------------------- | ---------- | ------- | ---------------------------------- |
-| `field-day`         | [Peacefull Ville](https://opengameart.org/content/peacefull-ville)     | Bobjt      | CC0 1.0 | `peaceful_ville_2023_0.mp3`        |
-| `wild-battle`       | [8-Bit Battle Loop](https://opengameart.org/content/8-bit-battle-loop) | Wolfgang\_ | CC0 1.0 | `8BitBattleLoop_0.ogg`             |
-| `button-confirm`    | [Interface Sounds](https://kenney.nl/assets/interface-sounds)          | Kenney     | CC0 1.0 | `Audio/confirmation_001.ogg`       |
-| `button-cancel`     | [Interface Sounds](https://kenney.nl/assets/interface-sounds)          | Kenney     | CC0 1.0 | `Audio/back_001.ogg`               |
-| `battle-transition` | [Digital Audio](https://kenney.nl/assets/digital-audio)                | Kenney     | CC0 1.0 | `Audio/phaseJump1.ogg`             |
-| `battle-start`      | [Digital Audio](https://kenney.nl/assets/digital-audio)                | Kenney     | CC0 1.0 | `Audio/powerUp10.ogg`              |
-| `battle-hit`        | [Impact Sounds](https://kenney.nl/assets/impact-sounds)                | Kenney     | CC0 1.0 | `Audio/impactPunch_medium_000.ogg` |
-| `pokemon-faint`     | [Digital Audio](https://kenney.nl/assets/digital-audio)                | Kenney     | CC0 1.0 | `Audio/lowDown.ogg`                |
+이 기록은 사용·배포 권한, 라이선스, 상표 또는 법적 허가를 확인하거나 부여하지 않습니다.
+각 파일의 배포 권리는 해결되지 않은 상태이며, 공개 배포 전에는 릴리스 소유자의 명시적
+결정과 필요한 검토가 필요합니다.
 
-Attribution is not required by CC0. Credits are retained here to make the
-source chain reviewable. The Kenney pack license evidence is stored in
-[`docs/licenses/kenney-audio-cc0.txt`](./licenses/kenney-audio-cc0.txt).
+## 렌더링 경로
+
+- ROM 입력: `data/roms/포켓몬스터 하트골드(K).nds` (무시되는 로컬 파일)
+- SDAT 입력: `data/sound/gs_sound_data.sdat`
+- 큐 정의: `scripts/poke-lounge/audio-cues.json`
+- 렌더러: `scripts/poke-lounge/render-audio-cues.py`
+- 공개 출력: `apps/web/public/assets/poke-lounge/audio/`
+
+로컬 ROM, `ndspy`, `ffmpeg`가 준비된 환경에서만 다음 명령으로 전체 파이프라인을 다시
+실행할 수 있습니다.
+
+```bash
+python3 scripts/poke-lounge/render-audio-cues.py --mode all
+```
+
+렌더러는 시퀀스별 WAV를 `data/processed/poke-lounge-audio/wav/`에 만들고, 정규화 후
+브라우저 재생용 MP3와 `audio-manifest.json`을 생성합니다. BGM에서는 SDAT의 시작 트랙,
+점프, 호출, 복귀 제어 흐름을 실행해 병렬 트랙을 함께 렌더링합니다. SDAT 시퀀스 정보는
+런타임 매니페스트에도 함께 기록됩니다.
+
+## 런타임 매핑
+
+| Runtime ID          | Kind | SDAT sequence                 | Public output               |
+| ------------------- | ---- | ----------------------------- | --------------------------- |
+| `field-day`         | BGM  | `1028` `SEQ_GS_R_1_29`        | `bgm/field-day.mp3`         |
+| `wild-battle`       | BGM  | `1116` `SEQ_GS_VS_NORAPOKE`   | `bgm/wild-battle.mp3`       |
+| `button-confirm`    | SFX  | `1394` `SEQ_SE_PL_BUTTON`     | `sfx/button-confirm.mp3`    |
+| `button-cancel`     | SFX  | `2368` `SEQ_SE_GS_GEARCANCEL` | `sfx/button-cancel.mp3`     |
+| `battle-transition` | SFX  | `1390` `SEQ_SE_PL_WARP`       | `sfx/battle-transition.mp3` |
+| `battle-start`      | SFX  | `1815` `SEQ_SE_DP_VSDEMO03`   | `sfx/battle-start.mp3`      |
+| `battle-hit`        | SFX  | `2256` `SEQ_SE_GS_TACKLEHIT`  | `sfx/battle-hit.mp3`        |
+| `pokemon-faint`     | SFX  | `1796` `SEQ_SE_DP_HINSI`      | `sfx/pokemon-faint.mp3`     |
+
+공개 파일의 현재 해시와 권리 상태는
+[`docs/poke-lounge-asset-provenance.json`](./poke-lounge-asset-provenance.json)에서
+추적합니다.

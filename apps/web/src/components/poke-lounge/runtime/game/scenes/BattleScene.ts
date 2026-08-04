@@ -564,7 +564,9 @@ export class BattleScene extends Phaser.Scene {
     playBattleStartSound();
     playWildBattleBgm();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      stopWildBattleBgm();
+      if (!this.returningToWorld) {
+        stopWildBattleBgm();
+      }
       this.clearAuthoritativeSubscriptions();
       this.removeMobileBattleUiListeners?.();
       this.removeMobileBattleUiListeners = null;
@@ -572,7 +574,9 @@ export class BattleScene extends Phaser.Scene {
       dispatchPokeLoungeAccessibleStatus(this.game.canvas.ownerDocument, "필드 탐색");
     });
     this.events.once(Phaser.Scenes.Events.DESTROY, () => {
-      stopWildBattleBgm();
+      if (!this.returningToWorld) {
+        stopWildBattleBgm();
+      }
       this.removeMobileBattleUiListeners?.();
       this.removeMobileBattleUiListeners = null;
       this.setBattleUiSceneMarker(false);
@@ -1942,7 +1946,6 @@ export class BattleScene extends Phaser.Scene {
       });
     }
 
-    stopWildBattleBgm();
     this.scene.start("world", {
       spawnPosition: {
         x,

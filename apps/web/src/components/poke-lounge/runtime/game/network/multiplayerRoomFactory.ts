@@ -1,5 +1,5 @@
 import { createLocalPreviewRoom, type MultiplayerRoom } from "./localPreviewRoom";
-import { readRoomEntryFromSearchParams } from "./roomEntry";
+import { readRoomEntryFromSearchParams, readRoomRoundDurationMs } from "./roomEntry";
 import { createServerRoom } from "./serverRoom";
 
 export interface MultiplayerRoomFactoryOptions {
@@ -28,6 +28,7 @@ export function createMultiplayerRoom(options: MultiplayerRoomFactoryOptions): M
       sessionId: options.searchParams.get("serverSessionId") ?? undefined,
       playerId: options.searchParams.get("serverPlayerId") ?? undefined,
       createRoom: roomEntry.createRoom === true,
+      roundDurationMs: readRoomRoundDurationMs(options.searchParams) ?? undefined,
       idToken: options.idToken,
       getIdToken: options.getIdToken,
     });

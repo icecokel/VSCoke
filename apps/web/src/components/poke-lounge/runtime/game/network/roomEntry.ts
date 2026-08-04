@@ -7,45 +7,10 @@ const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export type RoomEntryMode = "unset" | "solo" | "local-room" | "server-room" | "webrtc";
 export type RoomRoundDurationMs = (typeof ROOM_ROUND_DURATION_OPTIONS_MS)[number];
 
-// 서버 경쟁전 안정화가 끝날 때까지 공개 클라이언트의 새 방 생성·입장을 막는다.
-// 서버 연동 회귀 검증은 계속해야 하므로 로컬 E2E URL에서만 예외로 허용한다.
-export const SERVER_COMPETITIVE_ENTRY_ENABLED = false;
-
 export interface RoomEntryIntent {
   mode: RoomEntryMode;
   roomCode: string | null;
   createRoom?: boolean;
-}
-
-export interface ServerRoomEntryCapability {
-  enabled: boolean;
-  disabledReason?: string;
-}
-
-export interface ResolvedServerRoomEntryCapability {
-  enabled: boolean;
-  disabledReason: string | null;
-}
-
-const DEFAULT_SERVER_ROOM_DISABLED_REASON = "로그인 후 서버 경쟁전을 이용할 수 있습니다.";
-
-export const isServerCompetitiveEntryEnabled = (isLocalE2e: boolean): boolean =>
-  SERVER_COMPETITIVE_ENTRY_ENABLED || isLocalE2e;
-
-export function resolveServerRoomEntryCapability(
-  capability?: ServerRoomEntryCapability,
-): ResolvedServerRoomEntryCapability {
-  if (capability?.enabled !== false) {
-    return {
-      enabled: true,
-      disabledReason: null,
-    };
-  }
-
-  return {
-    enabled: false,
-    disabledReason: capability.disabledReason?.trim() || DEFAULT_SERVER_ROOM_DISABLED_REASON,
-  };
 }
 
 export function normalizeRoomCode(value: string): string | null {
@@ -100,6 +65,12 @@ export function normalizeRoomRoundDurationMs(value: unknown): RoomRoundDurationM
   const durationMs = Math.trunc(numericValue);
 
   return ROOM_ROUND_DURATION_OPTIONS_MS.find(option => option === durationMs) ?? null;
+}
+
+export function readRoomRoundDurationMs(
+  searchParams: Pick<URLSearchParams, "get">,
+): RoomRoundDurationMs | null {
+  return normalizeRoomRoundDurationMs(searchParams.get(ROOM_ROUND_DURATION_QUERY_PARAM));
 }
 
 export function applyRoomRoundDurationSearchParam(url: URL, roundDurationMs?: number): void {

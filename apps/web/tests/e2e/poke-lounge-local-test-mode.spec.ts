@@ -48,7 +48,7 @@ test("명시적 활성화로만 싱글 테스트 모드에 진입하고 멀티 �
   await expect(page).not.toHaveURL(/localTest=|network=|room=/);
   await expect(page.locator("#game-root canvas")).toBeHidden();
   await expect(page.locator("[data-room-entry-mode='local']")).toBeVisible();
-  await expect(page.locator("[data-room-entry-mode='server']")).toBeVisible();
+  await expect(page.locator("[data-room-entry-mode='server']")).toHaveCount(0);
 
   const initialSession = await page.evaluate(async () =>
     (await fetch("/api/auth/session", { cache: "no-store" })).json(),
@@ -83,7 +83,7 @@ test("명시적 활성화로만 싱글 테스트 모드에 진입하고 멀티 �
   await page.locator("[data-room-entry-local-test-exit]").click();
   await expect(roomEntry).toBeVisible({ timeout: 30_000 });
   await expect(page.locator("[data-room-entry-mode='local']")).toBeVisible();
-  await expect(page.locator("[data-room-entry-mode='server']")).toBeVisible();
+  await expect(page.locator("[data-room-entry-mode='server']")).toHaveCount(0);
 
   const exitedSession = await page.evaluate(async () =>
     (await fetch("/api/auth/session", { cache: "no-store" })).json(),

@@ -1168,18 +1168,6 @@
   min-width: 128px;
 }
 
-.page :global(.room-entry-server-capability) {
-  margin: 0;
-  padding: 8px;
-  border: 2px solid #8d2f24;
-  border-radius: 4px;
-  background: #ffd7d1;
-  color: #8d2f24;
-  font-size: 0.72rem;
-  font-weight: 900;
-  line-height: 1.45;
-}
-
 .page :global(.room-entry-invite-field) {
   padding-top: 10px;
   border-top: 2px solid rgba(96, 125, 108, 0.42);

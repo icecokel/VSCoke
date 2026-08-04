@@ -44,7 +44,7 @@ flowchart LR
   Result --> Next["다음 플레이 또는 새 방"]
 ```
 
-1. 사용자는 혼자 시작하거나 로컬·서버 방을 만들고 참가한다.
+1. 사용자는 혼자 시작하거나 로컬 방을 만들고 참가한다. 서버 방은 공개 선택 UI 대신 로그인한 사용자가 직접 URL로 생성·입장한다.
 2. 저장된 파티가 없다면 치코리타, 브케인, 리아코 중 Lv.10 스타터 한 마리를 고른다.
 3. 마을을 이동하며 야생 포켓몬과 싸우고, 포획하고, 경험치와 돈을 얻는다.
 4. 간호사, 상점, PC 박스와 주사위 게임을 이용해 파티와 자원을 정비한다.
@@ -68,7 +68,7 @@ flowchart LR
 
 서버 방은 캐주얼과 경쟁전으로 별도 생성되지 않는다. 현재 active match의 두 참가자가 서로 다른 인증 계정으로 경쟁 좌석을 모두 바인딩하면 그 매치만 서버 권위로 승격된다. 좌석이 준비되지 않은 매치에는 캐주얼 결과 제출 API가 적용되며, 두 결과 경로를 같은 active match에 동시에 제출할 수 없다. 다만 현재 서버 snapshot은 원격 참가자의 전투 파티를 전달하지 않아 Web 클라이언트가 캐주얼 원격전을 시작하는 종단 경로는 완성되지 않았다.
 
-서버 방 lifecycle은 `waiting → round-started(준비) → tournament → completed`다. 연결된 participant가 2명 이상이고 모두 ready이면 준비 시간이 시작된다. 생성 UI에서는 3·5·10·15분 중 선택하며 기본값은 5분이다. 토너먼트 중 active participant가 나가면 해당 match는 forfeit로 처리되고, 연결된 participant가 모두 사라지면 방은 `closed`로 전환된다.
+서버 방 lifecycle은 `waiting → round-started(준비) → tournament → completed`다. 연결된 participant가 2명 이상이고 모두 ready이면 준비 시간이 시작된다. 로컬 방 생성 UI에서는 3·5·10·15분 중 선택하며 기본값은 5분이다. 서버 방 생성 URL은 기본값 또는 `roundMs` 값으로 준비 시간을 정한다. 토너먼트 중 active participant가 나가면 해당 match는 forfeit로 처리되고, 연결된 participant가 모두 사라지면 방은 `closed`로 전환된다.
 
 ## 월드와 탐색
 

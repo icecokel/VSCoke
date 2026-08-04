@@ -51,6 +51,7 @@ export interface ServerRoomOptions {
   sessionId?: string;
   playerId?: string;
   createRoom?: boolean;
+  roundDurationMs?: number;
   fetch?: typeof fetch;
   idToken?: string;
   getIdToken?: () => string | undefined;
@@ -1482,30 +1483,30 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   };
 
   function openServerRoom(snapshot: PlayerSnapshot): Promise<ServerRoomState> {
-    const body = JSON.stringify({
+    const body = {
       playerId: serverPlayerId,
       sessionId,
       displayName: snapshot.displayName,
-    });
+      ...(options.createRoom && options.roundDurationMs
+        ? { roundDurationMs: options.roundDurationMs }
+        : {}),
+    };
 
     if (options.createRoom) {
-      return mutateRoom(
-        "/poke-lounge/rooms",
-        JSON.parse(body),
-        () => 0,
-        initialOpenIdempotencyKey,
-      ).then(state => {
-        if (!disposed) {
-          applyCreatedRoomToLocation(state.roomCode);
-        }
+      return mutateRoom("/poke-lounge/rooms", body, () => 0, initialOpenIdempotencyKey).then(
+        state => {
+          if (!disposed) {
+            applyCreatedRoomToLocation(state.roomCode);
+          }
 
-        return state;
-      });
+          return state;
+        },
+      );
     }
 
     return mutateRoom(
       `/poke-lounge/rooms/${activeRoomId}/join`,
-      JSON.parse(body),
+      body,
       async () => {
         const current = await requestRoom(`/poke-lounge/rooms/${activeRoomId}`);
         applySnapshot(current);

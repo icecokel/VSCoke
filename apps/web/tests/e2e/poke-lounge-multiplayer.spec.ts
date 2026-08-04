@@ -1161,8 +1161,7 @@ test.describe("Poke Lounge server multiplayer", () => {
     expect(server.recoveryAfterRevisions).toHaveLength(recoveryAfterConflict);
     expect((await getSocketState(page)).subscriptions).toHaveLength(subscriptionsAfterConflict);
 
-    await page.locator("[data-room-entry-server-create]").click();
-    await chooseStarterIfNeeded(page);
+    await startServerRoom(page, createServerRoomUrl());
     await expect.poll(() => Promise.resolve(server.joinedParticipants.length)).toBeGreaterThan(1);
     expect(server.joinedParticipants.at(-1)).not.toMatchObject({
       playerId: "stale-player",
@@ -1371,9 +1370,7 @@ test.describe("Poke Lounge server multiplayer", () => {
     await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible();
 
     const joinedCountBeforeRejoin = server.joinedParticipants.length;
-    await page.locator("[data-room-entry-server-code]").fill(ROOM_CODE);
-    await page.locator("[data-room-entry-server-join]").click();
-    await chooseStarterIfNeeded(page);
+    await startServerRoom(page, joinServerRoomUrl());
     await expect
       .poll(() => Promise.resolve(server.joinedParticipants.length))
       .toBeGreaterThan(joinedCountBeforeRejoin);
@@ -1431,9 +1428,7 @@ test.describe("Poke Lounge server multiplayer", () => {
       waitForResult: true,
       wrapped: true,
     });
-    await gotoWithRetry(page, `/${LOCALE}/game/poke-lounge?e2e=1`);
-    await page.locator("[data-room-entry-server-create]").click();
-    await chooseStarterIfNeeded(page);
+    await beginServerRoom(page, createServerRoomUrl());
     await expect.poll(() => Promise.resolve(server.createRequestReceived)).toBe(true);
 
     await disposeServerRoom(page);
@@ -1448,19 +1443,14 @@ test.describe("Poke Lounge server multiplayer", () => {
     expect(server.calls).not.toContain(`GET /poke-lounge/rooms/${ROOM_CODE}`);
   });
 
-  test("server room create는 URL을 room code로 갱신하고 join input으로 참가한 두 컨텍스트는 서로 다른 identity를 유지한다", async ({
+  test("server room direct URL은 닉네임과 준비 시간을 전달하고 두 컨텍스트 identity를 분리한다", async ({
     browser,
   }) => {
     const server = createMockServerState();
     const hostPage = await newMockedPage(browser, server, { wrapped: true });
     const guestPage = await newMockedPage(browser, server, { wrapped: true });
 
-    await gotoWithRetry(hostPage, `/${LOCALE}/game/poke-lounge?e2e=1`);
-    await expect(hostPage.locator("[data-room-entry-screen='true']")).toBeVisible({
-      timeout: 30000,
-    });
-    await hostPage.locator("[data-room-entry-server-create]").click();
-    await chooseStarterIfNeeded(hostPage);
+    await startServerRoom(hostPage, createServerRoomUrl(600_000), "레드");
     await expectServerRoomUrl(hostPage);
     await expect
       .poll(() => getRoomSnapshot(hostPage).then(snapshot => snapshot?.roomId ?? null), {
@@ -1468,14 +1458,8 @@ test.describe("Poke Lounge server multiplayer", () => {
       })
       .toBe(ROOM_CODE);
 
-    await gotoWithRetry(guestPage, `/${LOCALE}/game/poke-lounge?e2e=1`);
-    await expect(guestPage.locator("[data-room-entry-screen='true']")).toBeVisible({
-      timeout: 30000,
-    });
-    await guestPage.locator("[data-room-entry-server-code]").fill("srv001");
-    await guestPage.locator("[data-room-entry-server-join]").click();
+    await startServerRoom(guestPage, joinServerRoomUrl(), "그린");
     await expectServerRoomUrl(guestPage);
-    await chooseStarterIfNeeded(guestPage);
     await expect
       .poll(() => getRoomSnapshot(guestPage).then(snapshot => snapshot?.roomId ?? null), {
         timeout: 30000,
@@ -1496,6 +1480,18 @@ test.describe("Poke Lounge server multiplayer", () => {
       server.joinedParticipants[1]?.sessionId,
     );
     expect(server.joinedParticipants[0]?.playerId).not.toBe(server.joinedParticipants[1]?.playerId);
+    expect(server.joinedParticipants.map(participant => participant.displayName)).toEqual([
+      "레드",
+      "그린",
+    ]);
+    const createRequest = server.commandRequests.find(
+      request => request.suffix === "/poke-lounge/rooms",
+    );
+    expect(createRequest).toBeDefined();
+    expect(JSON.parse(createRequest?.body ?? "{}")).toMatchObject({
+      displayName: "레드",
+      roundDurationMs: 600_000,
+    });
 
     await hostPage.context().close();
     await guestPage.context().close();
@@ -1810,11 +1806,42 @@ test.describe("Poke Lounge server multiplayer", () => {
 
 async function startServerRoom(
   page: Page,
-  url = `/${LOCALE}/game/poke-lounge?network=server&room=${ROOM_CODE}&e2e=1`,
+  url = joinServerRoomUrl(),
+  displayName?: string,
 ): Promise<void> {
-  await gotoWithRetry(page, url);
-  await chooseStarterIfNeeded(page);
+  await beginServerRoom(page, url, displayName);
   await expect(page.locator("#game-root canvas")).toBeVisible({ timeout: 30000 });
+}
+
+async function beginServerRoom(page: Page, url: string, displayName?: string): Promise<void> {
+  await gotoWithRetry(page, url);
+  await confirmDirectMultiplayerEntry(page, displayName);
+  await chooseStarterIfNeeded(page);
+}
+
+function createServerRoomUrl(roundDurationMs?: number): string {
+  const searchParams = new URLSearchParams({ e2e: "1", network: "server", create: "1" });
+  if (roundDurationMs) {
+    searchParams.set("roundMs", String(roundDurationMs));
+  }
+
+  return `/${LOCALE}/game/poke-lounge?${searchParams.toString()}`;
+}
+
+function joinServerRoomUrl(roomCode = ROOM_CODE): string {
+  return `/${LOCALE}/game/poke-lounge?network=server&room=${roomCode}&e2e=1`;
+}
+
+async function confirmDirectMultiplayerEntry(page: Page, displayName?: string): Promise<void> {
+  const directEntry = page.locator("[data-room-entry-direct-multiplayer='true']");
+  await expect(directEntry).toBeVisible({ timeout: 30000 });
+
+  const nameInput = page.locator("[data-room-entry-direct-multiplayer-name='true']");
+  if (displayName) {
+    await nameInput.fill(displayName);
+  }
+
+  await page.locator("[data-room-entry-direct-multiplayer-submit='true']").click();
 }
 
 async function chooseStarterIfNeeded(page: Page): Promise<void> {

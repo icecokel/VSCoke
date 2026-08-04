@@ -39,11 +39,13 @@ import {
 } from "./network/serverRoom";
 import {
   applyRoomRoundDurationSearchParam,
-  isServerCompetitiveEntryEnabled,
   readRoomEntryFromLocation,
+  readRoomRoundDurationMs,
+  type RoomEntryIntent,
   type RoomEntryMode,
 } from "./network/roomEntry";
 import {
+  renderDirectMultiplayerEntryScreen,
   renderRoomEntryScreen,
   shouldResetRoomEntrySession,
   type RoomEntrySelection,
@@ -81,6 +83,7 @@ export interface StartGamePageDependencies {
   getIdToken?: () => string | undefined;
   loadBootstrapData?: () => Promise<GameBootstrapData>;
   loadLocalTestModeState?: typeof loadLocalTestModeState;
+  renderDirectMultiplayerEntryScreen?: typeof renderDirectMultiplayerEntryScreen;
   renderRoomEntryScreen?: typeof renderRoomEntryScreen;
   renderWebRtcSignalingPanel?: typeof renderWebRtcSignalingPanel;
   renderStarterSelectionScreen?: (
@@ -104,10 +107,11 @@ export async function startGamePage(
   const battleE2eScenario = readInitialBattleE2eScenario(location);
   const currentUrl = new URL(location.href);
   const copy = getPokeLoungeCopyForUrl(currentUrl);
-  const serverCompetitiveEntryEnabled = isServerCompetitiveEntryEnabled(isLocalE2eUrl(currentUrl));
   const activateTestMode = dependencies.activateLocalTestMode ?? activateLocalTestMode;
   const deactivateTestMode = dependencies.deactivateLocalTestMode ?? deactivateLocalTestMode;
   const loadTestModeState = dependencies.loadLocalTestModeState ?? loadLocalTestModeState;
+  const renderDirectMultiplayerEntry =
+    dependencies.renderDirectMultiplayerEntryScreen ?? renderDirectMultiplayerEntryScreen;
   const renderEntryScreen = dependencies.renderRoomEntryScreen ?? renderRoomEntryScreen;
   const renderSelection = dependencies.renderStarterSelectionScreen ?? renderStarterSelectionScreen;
   let runtimeGameDataPromise: Promise<void> | null = null;
@@ -394,14 +398,6 @@ export async function startGamePage(
       return;
     }
 
-    if (selection.mode === "server-room" && !serverCompetitiveEntryEnabled) {
-      dispatchPokeLoungeNotice(mount.ownerDocument, {
-        message: copy.roomEntry.serverTemporarilyUnavailable,
-        tone: "warning",
-      });
-      return;
-    }
-
     roomEntrySelectionPending = true;
     setRoomEntryScreenPending(mount, copy.roomEntry.preparing);
 
@@ -501,19 +497,30 @@ export async function startGamePage(
             },
           }
         : undefined,
-      serverRoomCapability: !serverCompetitiveEntryEnabled
-        ? {
-            enabled: false,
-            disabledReason: copy.roomEntry.serverTemporarilyUnavailable,
-          }
-        : dependencies.getIdToken?.() || dependencies.idToken || isLocalE2eUrl(currentUrl)
-          ? { enabled: true }
-          : {
-              enabled: false,
-              disabledReason: copy.roomEntry.serverDisabled,
-            },
       initialDisplayName: gameStateStore.getCurrentLocalPlayer().displayName,
       onSelect: selectRoomEntry,
+    });
+  };
+  const showDirectMultiplayerEntry = (roomEntry: RoomEntryIntent) => {
+    if (destroyed) {
+      return;
+    }
+
+    roomEntrySelectionPending = false;
+    const roundDurationMs = readRoomRoundDurationMs(currentUrl.searchParams);
+    renderDirectMultiplayerEntry(mount, {
+      currentUrl: new URL(currentUrl.href),
+      initialDisplayName: gameStateStore.getCurrentLocalPlayer().displayName,
+      onSubmit: displayName => {
+        selectRoomEntry({
+          mode: "server-room",
+          roomCode: roomEntry.roomCode,
+          inviteUrl: null,
+          displayName,
+          ...(roomEntry.createRoom ? { createRoom: true } : {}),
+          ...(roundDurationMs !== null ? { roundDurationMs } : {}),
+        });
+      },
     });
   };
   const continueToSelectedRoomOrEntry = () => {
@@ -547,18 +554,6 @@ export async function startGamePage(
       return;
     }
 
-    if (roomEntry.mode === "server-room" && !serverCompetitiveEntryEnabled) {
-      clearRoomEntrySearchParams(currentUrl);
-      applyRoomRoundDurationSearchParam(currentUrl);
-      replaceBrowserUrl(currentUrl);
-      dispatchPokeLoungeNotice(mount.ownerDocument, {
-        message: copy.roomEntry.serverTemporarilyUnavailable,
-        tone: "warning",
-      });
-      showRoomEntry();
-      return;
-    }
-
     if (roomEntry.mode === "server-room" && !dependencies.idToken && !isLocalE2eUrl(currentUrl)) {
       currentUrl.searchParams.delete("create");
       currentUrl.searchParams.delete("network");
@@ -569,6 +564,11 @@ export async function startGamePage(
         tone: "warning",
       });
       showRoomEntry();
+      return;
+    }
+
+    if (roomEntry.mode === "server-room") {
+      showDirectMultiplayerEntry(roomEntry);
       return;
     }
 

@@ -2,14 +2,11 @@ import {
   createInviteUrl,
   normalizeRoomRoundDurationMs,
   createRoomCode as defaultCreateRoomCode,
-  createServerInviteUrl,
   normalizeRoomCode,
-  resolveServerRoomEntryCapability,
   ROOM_ROUND_DURATION_OPTIONS_MS,
   ROOM_ROUND_DURATION_QUERY_PARAM,
   type RoomEntryMode,
   type RoomRoundDurationMs,
-  type ServerRoomEntryCapability,
 } from "./roomEntry";
 import { playPokeLoungeSfx, primePokeLoungeAudio } from "../audio/poke-lounge-audio";
 import { getPokeLoungeCopyForUrl, type PokeLoungeCopy } from "../../../poke-lounge-copy";
@@ -17,12 +14,9 @@ import { getPokeLoungeCopyForUrl, type PokeLoungeCopy } from "../../../poke-loun
 const DEFAULT_SELECTED_ROUND_DURATION_MS = 300_000;
 const MAX_MULTIPLAYER_DISPLAY_NAME_LENGTH = 12;
 const LOCAL_ROOM_CODE_INPUT_ID = "poke-lounge-local-room-code";
-const SERVER_ROOM_CODE_INPUT_ID = "poke-lounge-server-room-code";
 const MULTIPLAYER_DISPLAY_NAME_INPUT_ID = "poke-lounge-multiplayer-display-name";
 const INVITE_INPUT_ID = "poke-lounge-room-invite";
 const INVITE_DESCRIPTION_ID = "poke-lounge-room-invite-description";
-const SERVER_MODE_DESCRIPTION_ID = "poke-lounge-server-mode-description";
-const SERVER_CAPABILITY_MESSAGE_ID = "poke-lounge-server-capability-message";
 const NEW_GAME_DIALOG_TITLE_ID = "poke-lounge-new-game-dialog-title";
 const NEW_GAME_DIALOG_DESCRIPTION_ID = "poke-lounge-new-game-dialog-description";
 
@@ -49,8 +43,97 @@ export interface RoomEntryScreenOptions {
     onExit(): void;
     onStart(): void;
   };
-  serverRoomCapability?: ServerRoomEntryCapability;
   onSelect(selection: RoomEntrySelection): void;
+}
+
+export interface DirectMultiplayerEntryScreenOptions {
+  currentUrl: URL;
+  initialDisplayName?: string;
+  onSubmit(displayName: string): void;
+}
+
+export function renderDirectMultiplayerEntryScreen(
+  mount: HTMLElement,
+  options: DirectMultiplayerEntryScreenOptions,
+): HTMLElement {
+  mount.innerHTML = "";
+
+  const copy = getPokeLoungeCopyForUrl(options.currentUrl);
+  const screen = document.createElement("section");
+  screen.className = "room-entry-screen";
+  screen.setAttribute("data-room-entry-direct-multiplayer", "true");
+
+  const panel = document.createElement("div");
+  panel.className = "room-entry-panel";
+
+  const title = document.createElement("h1");
+  title.textContent = copy.roomEntry.multiplayerEntryTitle;
+
+  const fanNotice = document.createElement("p");
+  fanNotice.className = "room-entry-notice";
+  fanNotice.setAttribute("data-poke-lounge-fan-notice", "true");
+  fanNotice.textContent = copy.roomEntry.fanNotice;
+
+  const message = document.createElement("p");
+  message.className = "room-entry-message";
+  message.setAttribute("data-room-entry-message", "true");
+  message.setAttribute("role", "alert");
+  message.setAttribute("aria-live", "assertive");
+  message.setAttribute("aria-atomic", "true");
+
+  const multiplayerDisplayNameInput = createMultiplayerDisplayNameInput(
+    options.initialDisplayName,
+    copy.roomEntry.multiplayerNamePlaceholder,
+  );
+  multiplayerDisplayNameInput.setAttribute("data-room-entry-direct-multiplayer-name", "true");
+  const multiplayerDisplayNameDescription = document.createElement("p");
+  multiplayerDisplayNameDescription.className = "room-entry-field-copy";
+  multiplayerDisplayNameDescription.textContent = copy.roomEntry.multiplayerNameDescription;
+  const multiplayerDisplayNameField = createLabeledField(
+    copy.roomEntry.multiplayerNameLabel,
+    MULTIPLAYER_DISPLAY_NAME_INPUT_ID,
+    multiplayerDisplayNameInput,
+    multiplayerDisplayNameDescription,
+  );
+  multiplayerDisplayNameField.classList.add("room-entry-multiplayer-name");
+
+  const submit = () => {
+    const displayName = getMultiplayerDisplayName(
+      multiplayerDisplayNameInput,
+      message,
+      copy.roomEntry.multiplayerNameRequired,
+    );
+
+    if (!displayName) {
+      return;
+    }
+
+    playRoomEntryConfirmSound();
+    message.textContent = "";
+    options.onSubmit(displayName);
+  };
+  const submitButton = createButton(
+    copy.roomEntry.multiplayerEntrySubmit,
+    "data-room-entry-direct-multiplayer-submit",
+  );
+  submitButton.addEventListener("click", submit);
+  multiplayerDisplayNameInput.addEventListener("input", () => {
+    multiplayerDisplayNameInput.removeAttribute("aria-invalid");
+  });
+  multiplayerDisplayNameInput.addEventListener("keydown", event => {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    event.preventDefault();
+    submit();
+  });
+
+  panel.append(title, fanNotice, multiplayerDisplayNameField, submitButton, message);
+  screen.appendChild(panel);
+  mount.appendChild(screen);
+
+  return screen;
 }
 
 export function renderRoomEntryScreen(
@@ -60,7 +143,6 @@ export function renderRoomEntryScreen(
   mount.innerHTML = "";
 
   const copy = getPokeLoungeCopyForUrl(options.currentUrl);
-  const serverRoomCapability = resolveServerRoomEntryCapability(options.serverRoomCapability);
   const screen = document.createElement("section");
   screen.className = "room-entry-screen";
   screen.setAttribute("data-room-entry-screen", "true");
@@ -181,53 +263,6 @@ export function renderRoomEntryScreen(
   );
   localMode.content.append(createButtonElement, localCodeField);
 
-  const serverMode = createModeGroup(
-    "server",
-    copy.roomEntry.serverTitle,
-    copy.roomEntry.serverDescription,
-    SERVER_MODE_DESCRIPTION_ID,
-  );
-  const serverCreateButton = createButton(
-    copy.roomEntry.serverCreate,
-    "data-room-entry-server-create",
-  );
-  const serverRoomCodeInput = createRoomCodeInput(
-    SERVER_ROOM_CODE_INPUT_ID,
-    copy.roomEntry.serverCodePlaceholder,
-    "data-room-entry-server-code",
-  );
-  const serverJoinButton = createButton(copy.roomEntry.serverJoin, "data-room-entry-server-join");
-  const serverJoinRow = createActionRow(serverRoomCodeInput, serverJoinButton);
-  const serverCodeField = createLabeledField(
-    copy.roomEntry.serverCodeLabel,
-    SERVER_ROOM_CODE_INPUT_ID,
-    serverJoinRow,
-  );
-  serverMode.content.append(serverCreateButton, serverCodeField);
-
-  if (!serverRoomCapability.enabled) {
-    const capabilityMessage = document.createElement("p");
-    capabilityMessage.id = SERVER_CAPABILITY_MESSAGE_ID;
-    capabilityMessage.className = "room-entry-server-capability";
-    capabilityMessage.setAttribute("data-room-entry-server-disabled-reason", "true");
-    capabilityMessage.setAttribute("role", "status");
-    capabilityMessage.textContent = serverRoomCapability.disabledReason;
-    serverMode.content.appendChild(capabilityMessage);
-
-    const descriptionIds = `${SERVER_MODE_DESCRIPTION_ID} ${SERVER_CAPABILITY_MESSAGE_ID}`;
-    serverCreateButton.setAttribute("aria-describedby", descriptionIds);
-    serverRoomCodeInput.setAttribute("aria-describedby", descriptionIds);
-    serverJoinButton.setAttribute("aria-describedby", descriptionIds);
-  } else {
-    serverCreateButton.setAttribute("aria-describedby", SERVER_MODE_DESCRIPTION_ID);
-    serverRoomCodeInput.setAttribute("aria-describedby", SERVER_MODE_DESCRIPTION_ID);
-    serverJoinButton.setAttribute("aria-describedby", SERVER_MODE_DESCRIPTION_ID);
-  }
-
-  serverCreateButton.disabled = !serverRoomCapability.enabled;
-  serverRoomCodeInput.disabled = !serverRoomCapability.enabled;
-  serverJoinButton.disabled = !serverRoomCapability.enabled;
-
   const inviteInput = document.createElement("input");
   inviteInput.id = INVITE_INPUT_ID;
   inviteInput.type = "text";
@@ -290,34 +325,6 @@ export function renderRoomEntryScreen(
     });
   };
 
-  const selectServerRoom = (roomCode: string) => {
-    if (!serverRoomCapability.enabled) {
-      message.textContent = serverRoomCapability.disabledReason;
-      return;
-    }
-
-    const displayName = getMultiplayerDisplayName(
-      multiplayerDisplayNameInput,
-      message,
-      copy.roomEntry.multiplayerNameRequired,
-    );
-
-    if (!displayName) {
-      return;
-    }
-
-    playRoomEntryConfirmSound();
-    const inviteUrl = createServerInviteUrl(options.currentUrl, roomCode).href;
-    inviteInput.value = inviteUrl;
-    message.textContent = "";
-    options.onSelect({
-      mode: "server-room",
-      roomCode,
-      inviteUrl,
-      displayName,
-    });
-  };
-
   soloButton.addEventListener("click", () => {
     playRoomEntryConfirmSound();
     message.textContent = "";
@@ -349,35 +356,6 @@ export function renderRoomEntryScreen(
     selectLocalRoom((options.createRoomCode ?? defaultCreateRoomCode)(), selectedRoundDurationMs);
   });
 
-  serverCreateButton.addEventListener("click", () => {
-    if (!serverRoomCapability.enabled) {
-      message.textContent = serverRoomCapability.disabledReason;
-      return;
-    }
-
-    const displayName = getMultiplayerDisplayName(
-      multiplayerDisplayNameInput,
-      message,
-      copy.roomEntry.multiplayerNameRequired,
-    );
-
-    if (!displayName) {
-      return;
-    }
-
-    playRoomEntryConfirmSound();
-    inviteInput.value = "";
-    message.textContent = "";
-    options.onSelect({
-      mode: "server-room",
-      roomCode: null,
-      inviteUrl: null,
-      displayName,
-      createRoom: true,
-      roundDurationMs: selectedRoundDurationMs,
-    });
-  });
-
   joinButton.addEventListener("click", () => {
     const roomCode = normalizeRoomCode(roomCodeInput.value);
 
@@ -391,40 +369,13 @@ export function renderRoomEntryScreen(
     selectLocalRoom(roomCode);
   });
 
-  serverJoinButton.addEventListener("click", () => {
-    if (!serverRoomCapability.enabled) {
-      message.textContent = serverRoomCapability.disabledReason;
-      return;
-    }
-
-    const roomCode = normalizeRoomCode(serverRoomCodeInput.value);
-
-    if (!roomCode) {
-      serverRoomCodeInput.setAttribute("aria-invalid", "true");
-      message.textContent = copy.roomEntry.serverCodeRequired;
-      return;
-    }
-
-    serverRoomCodeInput.removeAttribute("aria-invalid");
-    selectServerRoom(roomCode);
-  });
-
   roomCodeInput.addEventListener("input", () => {
     roomCodeInput.removeAttribute("aria-invalid");
-  });
-  serverRoomCodeInput.addEventListener("input", () => {
-    serverRoomCodeInput.removeAttribute("aria-invalid");
   });
 
   panel.append(title, fanNotice, soloMode.element);
   if (!options.localTestMode?.active) {
-    panel.append(
-      multiplayerDisplayNameField,
-      settingsGroup,
-      localMode.element,
-      serverMode.element,
-      inviteField,
-    );
+    panel.append(multiplayerDisplayNameField, settingsGroup, localMode.element, inviteField);
   }
   panel.append(message, newGameDialog.dialog);
   screen.appendChild(panel);
@@ -448,7 +399,7 @@ function createButton(label: string, dataAttribute: string): HTMLButtonElement {
 }
 
 function createModeGroup(
-  mode: "solo" | "local" | "server",
+  mode: "solo" | "local",
   titleText: string,
   descriptionText: string,
   descriptionId = `poke-lounge-${mode}-mode-description`,

@@ -140,6 +140,8 @@ export interface PokeLoungeCopy {
     multiplayerNameDescription: string;
     multiplayerNamePlaceholder: string;
     multiplayerNameRequired: string;
+    multiplayerEntryTitle: string;
+    multiplayerEntrySubmit: string;
     tournamentSettings: string;
     tournamentSettingsDescription: string;
     localTitle: string;
@@ -148,20 +150,11 @@ export interface PokeLoungeCopy {
     roomCodePlaceholder: string;
     localJoin: string;
     localCodeLabel: string;
-    serverTitle: string;
-    serverDescription: string;
-    serverCreate: string;
-    serverCodePlaceholder: string;
-    serverJoin: string;
-    serverCodeLabel: string;
-    serverDisabled: string;
-    serverTemporarilyUnavailable: string;
     serverInviteRequiresLogin: string;
     invitePlaceholder: string;
     inviteDescription: string;
     inviteLabel: string;
     localCodeRequired: string;
-    serverCodeRequired: string;
     preparing: string;
     newGameTitle: string;
     newGameDescription: string;
@@ -326,8 +319,10 @@ const KOREAN_COPY: PokeLoungeCopy = {
     multiplayerNameDescription: "같은 방의 플레이어와 대진 화면에 표시됩니다. 최대 12자",
     multiplayerNamePlaceholder: "닉네임 입력",
     multiplayerNameRequired: "멀티플레이에 사용할 닉네임을 입력해 주세요.",
+    multiplayerEntryTitle: "멀티플레이 입장",
+    multiplayerEntrySubmit: "입장하기",
     tournamentSettings: "대회 설정",
-    tournamentSettingsDescription: "로컬 방과 서버 방을 만들 때 공통으로 적용됩니다.",
+    tournamentSettingsDescription: "로컬 방을 만들 때 적용됩니다.",
     localTitle: "로컬 멀티플레이",
     localDescription:
       "같은 기기의 같은 브라우저 프로필에서 연 다른 탭끼리만 연결됩니다. 다른 기기나 브라우저 프로필에서는 참가할 수 없습니다.",
@@ -335,23 +330,12 @@ const KOREAN_COPY: PokeLoungeCopy = {
     roomCodePlaceholder: "방 코드",
     localJoin: "코드로 입장",
     localCodeLabel: "로컬 방 코드",
-    serverTitle: "서버 경쟁전",
-    serverDescription:
-      "로그인한 플레이어 전용입니다. 고정 Lv.50 대전용 파티로 2인은 랭킹전, 3~6인은 비랭킹 토너먼트를 진행합니다.",
-    serverCreate: "서버 방 만들기",
-    serverCodePlaceholder: "서버 방 코드",
-    serverJoin: "서버 코드로 입장",
-    serverCodeLabel: "서버 방 코드",
-    serverDisabled:
-      "서버 경쟁전은 로그인한 플레이어만 이용할 수 있습니다. 로그인 후 다시 열어 주세요.",
-    serverTemporarilyUnavailable: "서버 경쟁전은 안정화 작업을 위해 임시 중단되었습니다.",
     serverInviteRequiresLogin: "서버 경쟁전 초대는 로그인 후 참가할 수 있습니다.",
     invitePlaceholder: "방을 선택하면 초대 링크가 표시됩니다.",
     inviteDescription:
-      "로컬 링크는 같은 기기의 같은 브라우저 프로필에서 연 다른 탭에서만 사용할 수 있습니다. 서버 링크는 로그인한 다른 기기에서도 사용할 수 있습니다.",
+      "로컬 링크는 같은 기기의 같은 브라우저 프로필에서 연 다른 탭에서만 사용할 수 있습니다.",
     inviteLabel: "초대 링크",
     localCodeRequired: "로컬 방 코드를 입력해 주세요.",
-    serverCodeRequired: "서버 방 코드를 입력해 주세요.",
     preparing: "준비 중...",
     newGameTitle: "새 게임을 시작할까요?",
     newGameDescription:
@@ -520,8 +504,10 @@ const ENGLISH_COPY: PokeLoungeCopy = {
       "Shown to other players in the room and during matches. Up to 12 characters.",
     multiplayerNamePlaceholder: "Enter a nickname",
     multiplayerNameRequired: "Enter a nickname for multiplayer.",
+    multiplayerEntryTitle: "Join multiplayer",
+    multiplayerEntrySubmit: "Join",
     tournamentSettings: "Tournament settings",
-    tournamentSettingsDescription: "Used when creating both local and server rooms.",
+    tournamentSettingsDescription: "Used when creating a local room.",
     localTitle: "Local multiplayer",
     localDescription:
       "Only tabs opened in the same browser profile on this device can connect. Other devices and browser profiles cannot join.",
@@ -529,24 +515,12 @@ const ENGLISH_COPY: PokeLoungeCopy = {
     roomCodePlaceholder: "Room code",
     localJoin: "Join by code",
     localCodeLabel: "Local room code",
-    serverTitle: "Server competition",
-    serverDescription:
-      "Signed-in players use fixed Lv.50 battle parties. Two players are ranked; three to six play an unranked tournament.",
-    serverCreate: "Create server room",
-    serverCodePlaceholder: "Server room code",
-    serverJoin: "Join server room",
-    serverCodeLabel: "Server room code",
-    serverDisabled:
-      "Server competition is available to signed-in players. Sign in and reopen this page.",
-    serverTemporarilyUnavailable:
-      "Server competition is temporarily unavailable while it is being stabilized.",
     serverInviteRequiresLogin: "Sign in before joining a server competition invite.",
     invitePlaceholder: "Choose a room to show its invite link.",
     inviteDescription:
-      "Local links work only in another tab in the same browser profile on this device. Server links work on other signed-in devices.",
+      "Local links work only in another tab in the same browser profile on this device.",
     inviteLabel: "Invite link",
     localCodeRequired: "Enter a local room code.",
-    serverCodeRequired: "Enter a server room code.",
     preparing: "Preparing...",
     newGameTitle: "Start a new game?",
     newGameDescription:
@@ -715,8 +689,10 @@ const JAPANESE_COPY: PokeLoungeCopy = {
     multiplayerNameDescription: "同じルームのプレイヤーと対戦画面に表示されます。最大12文字です。",
     multiplayerNamePlaceholder: "ニックネームを入力",
     multiplayerNameRequired: "マルチプレイ用のニックネームを入力してください。",
+    multiplayerEntryTitle: "マルチプレイに参加",
+    multiplayerEntrySubmit: "参加する",
     tournamentSettings: "大会設定",
-    tournamentSettingsDescription: "ローカルルームとサーバールームの作成時に共通で使用します。",
+    tournamentSettingsDescription: "ローカルルームの作成時に使用します。",
     localTitle: "ローカルマルチプレイ",
     localDescription:
       "この端末の同じブラウザプロファイルで開いた別タブ同士だけが接続できます。他の端末やプロファイルからは参加できません。",
@@ -724,23 +700,12 @@ const JAPANESE_COPY: PokeLoungeCopy = {
     roomCodePlaceholder: "ルームコード",
     localJoin: "コードで参加",
     localCodeLabel: "ローカルルームコード",
-    serverTitle: "サーバー対戦",
-    serverDescription:
-      "ログイン済みプレイヤーは固定Lv.50パーティを使用します。2人はランク戦、3〜6人は非ランクトーナメントです。",
-    serverCreate: "サーバールームを作成",
-    serverCodePlaceholder: "サーバールームコード",
-    serverJoin: "サーバールームに参加",
-    serverCodeLabel: "サーバールームコード",
-    serverDisabled:
-      "サーバー対戦はログイン済みプレイヤー専用です。ログイン後にページを開き直してください。",
-    serverTemporarilyUnavailable: "サーバー対戦は安定化作業のため一時的に停止しています。",
     serverInviteRequiresLogin: "サーバー対戦の招待に参加するにはログインしてください。",
     invitePlaceholder: "ルームを選ぶと招待リンクが表示されます。",
     inviteDescription:
-      "ローカルリンクは、この端末の同じブラウザプロファイルで開いた別タブだけで使えます。サーバーリンクはログイン済みの別端末でも使えます。",
+      "ローカルリンクは、この端末の同じブラウザプロファイルで開いた別タブだけで使えます。",
     inviteLabel: "招待リンク",
     localCodeRequired: "ローカルルームコードを入力してください。",
-    serverCodeRequired: "サーバールームコードを入力してください。",
     preparing: "準備中...",
     newGameTitle: "ニューゲームを始めますか？",
     newGameDescription:

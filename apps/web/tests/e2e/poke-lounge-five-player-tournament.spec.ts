@@ -382,8 +382,7 @@ test("실제 API와 Socket.IO에서 5개 환경이 첫 토너먼트 라운드에
     await test.step("C0_JOINED: 다섯 context를 고정 순서로 입장시킨다", async () => {
       const host = testers[0];
       await host.page.route("**/poke-lounge/rooms", routeFivePlayerRoomCreation);
-      await openRoomEntry(host.page);
-      await host.page.locator("[data-room-entry-server-create]").click();
+      await openServerRoom(host.page, undefined, `Tester ${host.id}`);
       await chooseStarterIfNeeded(host.page);
       await expect(host.page.locator("#game-root canvas")).toBeVisible({ timeout: 30_000 });
       roomCode = await waitForRoomCode(host.page);
@@ -391,9 +390,7 @@ test("실제 API와 Socket.IO에서 5개 환경이 첫 토너먼트 라운드에
       await waitForParticipantReady(roomCode, host);
 
       for (const tester of testers.slice(1)) {
-        await openRoomEntry(tester.page);
-        await tester.page.locator("[data-room-entry-server-code]").fill(roomCode);
-        await tester.page.locator("[data-room-entry-server-join]").click();
+        await openServerRoom(tester.page, roomCode, `Tester ${tester.id}`);
         await chooseStarterIfNeeded(tester.page);
         await expect(tester.page.locator("#game-root canvas")).toBeVisible({ timeout: 30_000 });
         await expect.poll(() => readRoomCode(tester.page), { timeout: 30_000 }).toBe(roomCode);
@@ -941,21 +938,30 @@ async function createTester(input: {
   return runtime;
 }
 
-async function openRoomEntry(page: Page): Promise<void> {
-  const response = await page.goto("/ko-KR/game/poke-lounge?e2e=1", {
+async function openServerRoom(page: Page, roomCode?: string, displayName?: string): Promise<void> {
+  const searchParams = new URLSearchParams({ e2e: "1", network: "server" });
+  if (roomCode) {
+    searchParams.set("room", roomCode);
+  } else {
+    searchParams.set("create", "1");
+  }
+
+  const response = await page.goto(`/ko-KR/game/poke-lounge?${searchParams.toString()}`, {
     waitUntil: "domcontentloaded",
   });
   expect(response?.status()).toBeLessThan(500);
   expect(response?.status()).toBeLessThan(400);
-  await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30_000 });
+  await confirmDirectMultiplayerEntry(page, displayName);
 }
 
 async function chooseStarterIfNeeded(page: Page): Promise<void> {
   const starter = page.locator("[data-screen='starter-selection']");
   const canvas = page.locator("#game-root canvas");
+  const directEntry = page.locator("[data-room-entry-direct-multiplayer='true']");
   await expect
     .poll(
       async () => {
+        if (await directEntry.isVisible().catch(() => false)) return "direct-entry";
         if (await starter.isVisible().catch(() => false)) return "starter";
         if (await canvas.isVisible().catch(() => false)) return "canvas";
         return null;
@@ -963,9 +969,25 @@ async function chooseStarterIfNeeded(page: Page): Promise<void> {
       { timeout: 30_000 },
     )
     .not.toBeNull();
+  if (await directEntry.isVisible().catch(() => false)) {
+    await confirmDirectMultiplayerEntry(page);
+    await chooseStarterIfNeeded(page);
+    return;
+  }
   if (await starter.isVisible().catch(() => false)) {
     await page.locator("[data-starter-confirm]").click();
   }
+}
+
+async function confirmDirectMultiplayerEntry(page: Page, displayName?: string): Promise<void> {
+  const directEntry = page.locator("[data-room-entry-direct-multiplayer='true']");
+  await expect(directEntry).toBeVisible({ timeout: 30_000 });
+
+  if (displayName) {
+    await page.locator("[data-room-entry-direct-multiplayer-name='true']").fill(displayName);
+  }
+
+  await page.locator("[data-room-entry-direct-multiplayer-submit='true']").click();
 }
 
 async function waitForRoomCode(page: Page): Promise<string> {

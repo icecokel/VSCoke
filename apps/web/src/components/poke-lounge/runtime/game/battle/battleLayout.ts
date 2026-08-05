@@ -48,44 +48,32 @@ export const BATTLE_OPTION_GRID = {
   gap: 4,
 } as const;
 
-export interface BattleStatusBadgeView {
+export interface BattleStatusTextView {
+  color: string;
   label: string;
-  fillColor: number;
-  textColor: string;
-  borderColor: number;
 }
 
-export function getBattleStatusBadgeView(
-  status: BattlePokemonStatus,
-): BattleStatusBadgeView | null {
+export function getBattleStatusTextView(status: BattlePokemonStatus): BattleStatusTextView | null {
   switch (status) {
     case "poisoned":
       return {
+        color: "#72548f",
         label: "독",
-        fillColor: 0x7a5a9e,
-        textColor: "#f8fbf0",
-        borderColor: 0x2b3742,
       };
     case "burned":
       return {
+        color: "#a94e38",
         label: "화상",
-        fillColor: 0xb65c43,
-        textColor: "#f8fbf0",
-        borderColor: 0x2b3742,
       };
     case "paralyzed":
       return {
+        color: "#806b18",
         label: "마비",
-        fillColor: 0xd8bd45,
-        textColor: "#17201a",
-        borderColor: 0x2b3742,
       };
     case "fainted":
       return {
+        color: "#4b554f",
         label: "전투불능",
-        fillColor: 0x2b3742,
-        textColor: "#f8fbf0",
-        borderColor: 0x8b9588,
       };
     case "normal":
     default:

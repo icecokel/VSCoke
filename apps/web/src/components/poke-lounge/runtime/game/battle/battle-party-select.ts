@@ -1,6 +1,6 @@
 import { PLAYER_PARTY_SLOT_COUNT } from "../player/playerTypes";
 import { canPokemonBattle } from "./battleLogic";
-import { getBattleStatusBadgeView, hpRatio, type BattleRect } from "./battleLayout";
+import { getBattleStatusTextView, hpRatio, type BattleRect } from "./battleLayout";
 import type { BattlePartySlot, BattlePokemon } from "./battleTypes";
 
 export const BATTLE_PARTY_SELECT_GRID = {
@@ -172,13 +172,13 @@ function resolveBattlePartyStatusLabel({
   }
 
   if (isFainted) {
-    return getBattleStatusBadgeView("fainted")?.label ?? "전투불능";
+    return getBattleStatusTextView("fainted")?.label ?? "전투불능";
   }
 
-  const statusBadge = getBattleStatusBadgeView(pokemon.status);
+  const statusText = getBattleStatusTextView(pokemon.status);
 
-  if (statusBadge) {
-    return statusBadge.label;
+  if (statusText) {
+    return statusText.label;
   }
 
   if (isCurrent) {

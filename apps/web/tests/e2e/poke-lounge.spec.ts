@@ -33,7 +33,7 @@ import {
   resetRuntimeGameDataJsonStateForTest,
 } from "../../src/components/poke-lounge/runtime/game/data/game-data-json";
 import {
-  getBattleStatusBadgeView,
+  getBattleStatusTextView,
   BATTLE_LAYOUT,
   getBattleOptionIndexAtPoint,
   resolveBattleOptionSlotRects,
@@ -66,7 +66,8 @@ type PokeLoungeBattleScenario =
   | "wild-defeat"
   | "wild-evolution"
   | "wild-move-learning"
-  | "wild-status-badge";
+  | "wild-status-badge"
+  | "wild-paralysis";
 type PokeLoungeBattleResultReason = "faint" | "timeout" | "forfeit" | "run" | "capture";
 
 interface PokeLoungeBattleSnapshot {
@@ -120,9 +121,6 @@ interface PokeLoungeBattleSnapshot {
   evolutionAnimationStartedCount: number;
   evolutionFromSpeciesId: number | null;
   evolutionToSpeciesId: number | null;
-  battleEndAnimationPlaying: boolean;
-  battleEndAnimationStartedCount: number;
-  battleEndConclusion: "victory" | "defeat" | "capture" | "escape" | null;
   player: {
     name: string;
     level: number;
@@ -131,7 +129,8 @@ interface PokeLoungeBattleSnapshot {
     displayedCurrentHp: number;
     hitAnimationStartedCount: number;
     status: string;
-    statusBadgeLabel: string | null;
+    displayedStatus: string;
+    statusTextLabel: string | null;
     activePartySlotIndex: number;
     moves: Array<{ id: number; name: string }>;
   };
@@ -146,7 +145,8 @@ interface PokeLoungeBattleSnapshot {
     displayedCurrentHp: number;
     hitAnimationStartedCount: number;
     status: string;
-    statusBadgeLabel: string | null;
+    displayedStatus: string;
+    statusTextLabel: string | null;
   };
 }
 
@@ -930,24 +930,24 @@ test.describe("Poke Lounge", () => {
     expect(getBattleOptionIndexAtPoint({ x: 192, y: 175 }, BATTLE_LAYOUT.bottomWindow)).toBe(3);
   });
 
-  test("전투 HP 패널 상태 배지는 정상 상태를 숨기고 상태 이상 라벨을 제공한다", () => {
-    expect(getBattleStatusBadgeView("normal")).toBeNull();
-    expect(getBattleStatusBadgeView("poisoned")).toMatchObject({ label: "독" });
-    expect(getBattleStatusBadgeView("burned")).toMatchObject({ label: "화상" });
-    expect(getBattleStatusBadgeView("paralyzed")).toMatchObject({ label: "마비" });
-    expect(getBattleStatusBadgeView("fainted")).toMatchObject({ label: "전투불능" });
+  test("전투 HP 패널 상태 텍스트는 정상 상태를 숨기고 상태 이상 라벨을 제공한다", () => {
+    expect(getBattleStatusTextView("normal")).toBeNull();
+    expect(getBattleStatusTextView("poisoned")).toMatchObject({ label: "독" });
+    expect(getBattleStatusTextView("burned")).toMatchObject({ label: "화상" });
+    expect(getBattleStatusTextView("paralyzed")).toMatchObject({ label: "마비" });
+    expect(getBattleStatusTextView("fainted")).toMatchObject({ label: "전투불능" });
   });
 
-  test("전투 HP 패널은 상태 이상 배지 라벨을 스냅샷에 반영한다", async ({ page }) => {
+  test("전투 HP 패널은 상태 이상 텍스트를 스냅샷에 반영한다", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
 
     await startBattleScenario(page, "wild-status-badge");
     const snapshot = await getBattleSnapshot(page);
 
     expect(snapshot?.player.status).toBe("paralyzed");
-    expect(snapshot?.player.statusBadgeLabel).toBe("마비");
+    expect(snapshot?.player.statusTextLabel).toBe("마비");
     expect(snapshot?.opponent.status).toBe("burned");
-    expect(snapshot?.opponent.statusBadgeLabel).toBe("화상");
+    expect(snapshot?.opponent.statusTextLabel).toBe("화상");
     expect(browserErrors.join("\n")).toBe("");
   });
 
@@ -2268,29 +2268,6 @@ test.describe("Poke Lounge", () => {
     expect(browserErrors.join("\n")).toBe("");
   });
 
-  test("전투 종료 확인 전 패배 정리 연출을 실행한다", async ({ page }) => {
-    const browserErrors = collectBrowserErrors(page);
-
-    await startBattleScenario(page, "wild-defeat");
-    const result = await resolveBattleResult(page);
-    const snapshot = await page.evaluate(() => {
-      const controller = (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__;
-      let current = controller?.getBattleSnapshot() ?? null;
-
-      while ((current?.messageQueue.length ?? 0) > 1) {
-        current = controller?.confirmBattle() ?? null;
-      }
-
-      return current;
-    });
-
-    expect(result?.winnerPlayerId).toBe("wild");
-    expect(snapshot?.battleEndAnimationStartedCount).toBeGreaterThan(0);
-    expect(snapshot?.battleEndAnimationPlaying).toBe(true);
-    expect(snapshot?.battleEndConclusion).toBe("defeat");
-    expect(browserErrors.join("\n")).toBe("");
-  });
-
   test("wild-evolution battle scenario는 레벨업 후 진화 상태를 battle result에 반영한다", async ({
     page,
   }) => {
@@ -2770,7 +2747,7 @@ test.describe("Poke Lounge", () => {
     expect(browserErrors.join("\n")).toBe("");
   });
 
-  test("battle 진입 연출과 HP 감소 및 피격 애니메이션을 노출한다", async ({ page }) => {
+  test("공격 타격음 뒤 HP 감소가 끝난 다음 전투불능 상태를 표시한다", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
 
     await startBattleScenario(page, "wild-victory");
@@ -2807,12 +2784,19 @@ test.describe("Poke Lounge", () => {
             snapshot.opponent.hitAnimationStartedCount >
               (before?.opponent.hitAnimationStartedCount ?? 0) &&
             snapshot.opponent.currentHp < (before?.opponent.currentHp ?? 0) &&
+            snapshot.opponent.status === "fainted" &&
+            snapshot.opponent.displayedStatus === "normal" &&
             snapshot.opponent.displayedCurrentHp >= snapshot.opponent.currentHp,
           );
         },
         { timeout: 2000 },
       )
       .toBe(true);
+    expect(
+      await page.evaluate(
+        () => (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__?.getAudioPlaybackSnapshot() ?? null,
+      ),
+    ).toMatchObject({ lastSfxId: "battle-hit" });
     await expect
       .poll(
         async () => {
@@ -2822,7 +2806,52 @@ test.describe("Poke Lounge", () => {
             snapshot &&
             !snapshot.hpAnimationPlaying &&
             !snapshot.hitAnimationPlaying &&
-            snapshot.opponent.displayedCurrentHp === snapshot.opponent.currentHp,
+            snapshot.opponent.displayedCurrentHp === snapshot.opponent.currentHp &&
+            snapshot.opponent.displayedStatus === "fainted",
+          );
+        },
+        { timeout: 5000 },
+      )
+      .toBe(true);
+    expect(
+      await page.evaluate(
+        () => (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__?.getAudioPlaybackSnapshot() ?? null,
+      ),
+    ).toMatchObject({ lastSfxId: "pokemon-faint" });
+
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("상태 기술은 타격음 없이 공격 메시지 뒤 마비 텍스트를 표시한다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await startBattleScenario(page, "wild-paralysis");
+    await chooseFightCommand(page);
+    const duringStatusCommit = await page.evaluate(() => {
+      const controller = (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__;
+
+      controller?.setBattleMoveIndex(0);
+      return controller?.confirmBattle() ?? null;
+    });
+
+    expect(duringStatusCommit?.opponent.status).toBe("paralyzed");
+    expect(duringStatusCommit?.opponent.displayedStatus).toBe("normal");
+    expect(duringStatusCommit?.opponent.statusTextLabel).toBeNull();
+    expect(
+      await page.evaluate(
+        () => (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__?.getAudioPlaybackSnapshot() ?? null,
+      ),
+    ).not.toMatchObject({ lastSfxId: "battle-hit" });
+
+    await expect
+      .poll(
+        async () => {
+          const snapshot = await getBattleSnapshot(page);
+
+          return Boolean(
+            snapshot &&
+            snapshot.opponent.displayedStatus === "paralyzed" &&
+            snapshot.opponent.statusTextLabel === "마비",
           );
         },
         { timeout: 5000 },
@@ -3062,16 +3091,22 @@ test.describe("Poke Lounge", () => {
     );
 
     const settingOptionButtons = settingsPanel.locator("[data-poke-lounge-setting-option='true']");
-    await expect(settingOptionButtons).toHaveText(["전체화면", "소리 80%", "UI 크게", "닫기"]);
+    await expect(settingOptionButtons).toHaveText([
+      "전체화면",
+      "소리 50%",
+      "UI 크게",
+      "게임 종료",
+      "닫기",
+    ]);
 
     const volumeButton = settingsPanel.locator("[data-poke-lounge-setting-action='volume']");
-    await expect(volumeButton).toHaveAttribute("data-poke-lounge-volume-level", "4");
+    await expect(volumeButton).toHaveAttribute("data-poke-lounge-volume-level", "2");
     await volumeButton.click();
-    await expect(volumeButton).toHaveAttribute("data-poke-lounge-volume-level", "5");
-    await expect(volumeButton).toContainText("소리 100%");
+    await expect(volumeButton).toHaveAttribute("data-poke-lounge-volume-level", "3");
+    await expect(volumeButton).toContainText("소리 75%");
     await expect
       .poll(() => page.evaluate(() => window.localStorage.getItem("poke-lounge:volume-level")))
-      .toBe("5");
+      .toBe("3");
 
     const uiSizeButton = settingsPanel.locator("[data-poke-lounge-setting-action='ui-size']");
     await expect(uiSizeButton).toHaveAttribute("data-poke-lounge-ui-size", "large");

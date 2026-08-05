@@ -25,10 +25,7 @@ export type RomCaptureAnimationStage =
 
 export interface RomCaptureAnimationFrame {
   ballRotation: number;
-  ballScale: number;
   bounceOffsetY: number;
-  impactAlpha: number;
-  impactRadius: number;
   opponentAlpha: number;
   opponentScale: number;
   resultProgress: number;
@@ -37,7 +34,6 @@ export interface RomCaptureAnimationFrame {
   showBall: boolean;
   stage: RomCaptureAnimationStage;
   stageProgress: number;
-  trailAlpha: number;
 }
 
 export function resolveRomCaptureAnimationFrame(
@@ -52,8 +48,6 @@ export function resolveRomCaptureAnimationFrame(
 
     return createFrame("throw", stageProgress, {
       ballRotation: stageProgress * Math.PI * 3,
-      ballScale: 0.72 + stageProgress * 0.28,
-      trailAlpha: 0.55 + stageProgress * 0.45,
     });
   }
 
@@ -61,9 +55,6 @@ export function resolveRomCaptureAnimationFrame(
     const stageProgress = (normalizedProgress - THROW_END) / (ABSORB_END - THROW_END);
 
     return createFrame("absorb", stageProgress, {
-      ballScale: 1.14 - stageProgress * 0.1,
-      impactAlpha: 0.92 - stageProgress * 0.42,
-      impactRadius: 6 + stageProgress * 24,
       opponentAlpha: 1 - stageProgress,
       opponentScale: 1 - stageProgress * 0.78,
     });
@@ -73,7 +64,6 @@ export function resolveRomCaptureAnimationFrame(
     const stageProgress = (normalizedProgress - ABSORB_END) / (FALL_END - ABSORB_END);
 
     return createFrame("fall", stageProgress, {
-      ballScale: 1.04 - stageProgress * 0.04,
       opponentAlpha: 0,
       opponentScale: 0.22,
     });
@@ -84,7 +74,6 @@ export function resolveRomCaptureAnimationFrame(
 
     return createFrame("bounce", stageProgress, {
       ballRotation: Math.sin(stageProgress * Math.PI) * 0.18,
-      ballScale: 1 + Math.sin(stageProgress * Math.PI) * 0.14,
       bounceOffsetY: -Math.sin(stageProgress * Math.PI) * 7,
       opponentAlpha: 0,
       opponentScale: 0.22,
@@ -114,7 +103,6 @@ export function resolveRomCaptureAnimationFrame(
 
     return createFrame("shake", stageProgress, {
       ballRotation: shakeWave * 0.2,
-      ballScale: 1 + Math.abs(shakeWave) * 0.06,
       opponentAlpha: 0,
       opponentScale: 0.22,
       shakeOffsetX: shakeWave * 4,
@@ -140,10 +128,7 @@ function createFrame(
 ): RomCaptureAnimationFrame {
   return {
     ballRotation: 0,
-    ballScale: 1,
     bounceOffsetY: 0,
-    impactAlpha: 0,
-    impactRadius: 0,
     opponentAlpha: 1,
     opponentScale: 1,
     resultProgress: 0,
@@ -152,7 +137,6 @@ function createFrame(
     showBall: true,
     stage,
     stageProgress,
-    trailAlpha: 0,
     ...overrides,
   };
 }

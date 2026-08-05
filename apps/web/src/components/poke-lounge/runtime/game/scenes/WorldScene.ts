@@ -47,10 +47,6 @@ import {
   createCompetitiveBattleLaunchCache,
   type CompetitiveBattleLaunchKey,
 } from "./competitive-battle-launch";
-import {
-  NURSE_HEALING_ANIMATION_DURATION_MS,
-  resolveNurseHealingPresentationFrame,
-} from "./nurse-healing-presentation";
 
 export { formatPokeDollars, formatRankScoreHud } from "./world-scene-hud";
 export {
@@ -799,122 +795,36 @@ export class WorldScene extends Phaser.Scene {
     nursePosition: { x: number; y: number },
     onComplete: () => void,
   ): void {
-    const playerPosition = this.player
-      ? { x: this.player.x, y: this.player.y }
-      : { ...nursePosition };
-    const graphics = this.add.graphics().setDepth(42);
-    const tweenState = { progress: 0 };
-
-    this.drawNurseHealingPresentation(graphics, nursePosition, playerPosition, 0);
+    const particleOffsets = [
+      { x: -22, y: -24, color: 0xfff176 },
+      { x: -9, y: -39, color: 0x81d4fa },
+      { x: 9, y: -36, color: 0xf8bbd0 },
+      { x: 22, y: -21, color: 0xc5e1a5 },
+    ] as const;
+    const particles = particleOffsets.map(({ x, y, color }) =>
+      this.add
+        .rectangle(nursePosition.x + x, nursePosition.y + y, 7, 7, color, 0.95)
+        .setAngle(45)
+        .setDepth(42),
+    );
+    const halo = this.add
+      .circle(nursePosition.x, nursePosition.y - 22, 18, 0xffffff, 0.08)
+      .setStrokeStyle(3, 0xfff9c4, 0.9)
+      .setDepth(41);
+    const targets = [...particles, halo];
 
     this.tweens.add({
-      targets: tweenState,
-      progress: 1,
-      duration: NURSE_HEALING_ANIMATION_DURATION_MS,
-      ease: "Linear",
-      onUpdate: () => {
-        this.drawNurseHealingPresentation(
-          graphics,
-          nursePosition,
-          playerPosition,
-          tweenState.progress,
-        );
-      },
+      targets,
+      y: "-=24",
+      alpha: 0,
+      scale: 1.8,
+      duration: 720,
+      ease: "Sine.easeOut",
       onComplete: () => {
-        graphics.destroy();
+        targets.forEach(target => target.destroy());
         onComplete();
       },
     });
-  }
-
-  private drawNurseHealingPresentation(
-    graphics: Phaser.GameObjects.Graphics,
-    nursePosition: { x: number; y: number },
-    playerPosition: { x: number; y: number },
-    progress: number,
-  ): void {
-    const frame = resolveNurseHealingPresentationFrame(progress);
-    const nurseAnchor = { x: nursePosition.x, y: nursePosition.y - 22 };
-    const playerAnchor = { x: playerPosition.x, y: playerPosition.y - 20 };
-    const rotation = progress * Math.PI * 3.5;
-
-    graphics.clear();
-    graphics
-      .fillStyle(0x3ce0d0, frame.nurseGlowAlpha * 0.12)
-      .fillCircle(nurseAnchor.x, nurseAnchor.y, frame.nurseGlowRadius)
-      .lineStyle(1, 0xbafff0, frame.nurseGlowAlpha)
-      .strokeCircle(nurseAnchor.x, nurseAnchor.y, frame.nurseGlowRadius);
-
-    for (let index = 0; index < 6; index += 1) {
-      const angle = rotation + (Math.PI * 2 * index) / 6;
-      const radius = Math.max(8, frame.nurseGlowRadius * 0.72);
-      const x = Math.round(nurseAnchor.x + Math.cos(angle) * radius);
-      const y = Math.round(nurseAnchor.y + Math.sin(angle) * radius);
-      const color = index % 2 === 0 ? 0x8ee8ff : 0xf7d87e;
-
-      graphics
-        .fillStyle(color, Math.min(1, frame.nurseGlowAlpha + 0.08))
-        .fillRect(x - 2, y - 2, 4, 4);
-    }
-
-    if (frame.linkAlpha > 0) {
-      graphics
-        .lineStyle(1, 0x9cfff3, frame.linkAlpha * 0.62)
-        .beginPath()
-        .moveTo(nurseAnchor.x, nurseAnchor.y)
-        .lineTo(playerAnchor.x, playerAnchor.y)
-        .strokePath();
-
-      for (let index = 0; index < 4; index += 1) {
-        const pulseProgress = Phaser.Math.Clamp(
-          (frame.transferProgress * 1.46 - index * 0.18) / 0.58,
-          0,
-          1,
-        );
-
-        if (pulseProgress <= 0 || pulseProgress >= 1) {
-          continue;
-        }
-
-        const x = Phaser.Math.Linear(nurseAnchor.x, playerAnchor.x, pulseProgress);
-        const y = Phaser.Math.Linear(nurseAnchor.y, playerAnchor.y, pulseProgress);
-        graphics
-          .fillStyle(index % 2 === 0 ? 0xffffff : 0x62e6d1, frame.linkAlpha)
-          .fillRect(Math.round(x) - 2, Math.round(y) - 2, 4, 4);
-      }
-    }
-
-    if (frame.playerAuraAlpha > 0) {
-      graphics
-        .fillStyle(0x4bdac9, frame.playerAuraAlpha * 0.18)
-        .fillCircle(playerAnchor.x, playerAnchor.y, frame.playerAuraRadius)
-        .lineStyle(2, 0xbafff0, frame.playerAuraAlpha)
-        .strokeCircle(playerAnchor.x, playerAnchor.y, frame.playerAuraRadius);
-    }
-
-    if (frame.shardProgress > 0) {
-      for (let index = 0; index < 10; index += 1) {
-        const angle = -Math.PI / 2 + (Math.PI * 2 * index) / 10 + rotation * 0.35;
-        const x = Math.round(playerAnchor.x + Math.cos(angle) * frame.shardDistance);
-        const y = Math.round(playerAnchor.y + Math.sin(angle) * frame.shardDistance);
-        const size = index % 2 === 0 ? 4 : 3;
-
-        graphics
-          .fillStyle(index % 2 === 0 ? 0xffffff : 0x83f1dc, frame.playerAuraAlpha)
-          .fillRect(x - size / 2, y - size / 2, size, size);
-      }
-    }
-
-    if (frame.completionAlpha > 0) {
-      graphics
-        .lineStyle(1, 0xffffff, frame.completionAlpha)
-        .beginPath()
-        .moveTo(playerAnchor.x - 8, playerAnchor.y)
-        .lineTo(playerAnchor.x + 8, playerAnchor.y)
-        .moveTo(playerAnchor.x, playerAnchor.y - 8)
-        .lineTo(playerAnchor.x, playerAnchor.y + 8)
-        .strokePath();
-    }
   }
 
   private bindRoom(): void {

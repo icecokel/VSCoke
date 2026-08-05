@@ -479,6 +479,7 @@ export function choosePlayerMove(
         messageQueue.length - actionMessageStartIndex,
         playerPokemon,
         opponentPokemon,
+        moveOutcome.damage > 0 ? "opponent" : null,
       );
 
       if (opponentPokemon.status === "fainted") {
@@ -573,6 +574,7 @@ export function choosePlayerMove(
       messageQueue.length - actionMessageStartIndex,
       playerPokemon,
       opponentPokemon,
+      moveOutcome.damage > 0 ? "player" : null,
     );
 
     if (playerPokemon.status === "fainted") {
@@ -625,13 +627,21 @@ function resolveFailedRunTurn(
   runAttemptCount: number,
 ): BattleScreenState {
   const opponentMove = randomUsableMove(state.opponent.pokemon.moves);
+  const messageHpSnapshots: BattleMessageHpSnapshot[] = [];
 
   if (!opponentMove) {
+    const messageQueue = [BATTLE_RUN_FAILED_MESSAGE];
+    appendBattleMessageHpSnapshots(
+      messageHpSnapshots,
+      messageQueue.length,
+      state.player.pokemon,
+      state.opponent.pokemon,
+    );
     const endOfTurn = resolveEndOfTurnEffects({
       state,
       playerPokemon: state.player.pokemon,
       opponentPokemon: state.opponent.pokemon,
-      messageQueue: [BATTLE_RUN_FAILED_MESSAGE],
+      messageQueue,
       selectedMoveId: null,
       turn: state.turn + 1,
       usedInventoryItemId: null,
@@ -639,21 +649,24 @@ function resolveFailedRunTurn(
     });
 
     if (endOfTurn.faintState) {
-      return endOfTurn.faintState;
+      return withBattleMessageHpSnapshots(endOfTurn.faintState, messageHpSnapshots);
     }
 
-    return {
-      ...state,
-      phase: "resolving",
-      turn: state.turn + 1,
-      runAttemptCount,
-      selectedMoveId: null,
-      player: syncActivePartyPokemon(state.player, endOfTurn.playerPokemon),
-      opponent: syncActivePartyPokemon(state.opponent, endOfTurn.opponentPokemon),
-      messageQueue: endOfTurn.messageQueue,
-      usedInventoryItemId: null,
-      result: null,
-    };
+    return withBattleMessageHpSnapshots(
+      {
+        ...state,
+        phase: "resolving",
+        turn: state.turn + 1,
+        runAttemptCount,
+        selectedMoveId: null,
+        player: syncActivePartyPokemon(state.player, endOfTurn.playerPokemon),
+        opponent: syncActivePartyPokemon(state.opponent, endOfTurn.opponentPokemon),
+        messageQueue: endOfTurn.messageQueue,
+        usedInventoryItemId: null,
+        result: null,
+      },
+      messageHpSnapshots,
+    );
   }
 
   let playerPokemon = state.player.pokemon;
@@ -661,10 +674,15 @@ function resolveFailedRunTurn(
     ...state.opponent.pokemon,
     moves: spendMovePp(state.opponent.pokemon.moves, opponentMove.id),
   };
-  const messageQueue = [
-    BATTLE_RUN_FAILED_MESSAGE,
-    `${opponentPokemon.name}의 ${opponentMove.name}!`,
-  ];
+  const messageQueue = [BATTLE_RUN_FAILED_MESSAGE];
+  appendBattleMessageHpSnapshots(
+    messageHpSnapshots,
+    messageQueue.length,
+    playerPokemon,
+    opponentPokemon,
+  );
+  const actionMessageStartIndex = messageQueue.length;
+  messageQueue.push(`${opponentPokemon.name}의 ${opponentMove.name}!`);
   const moveOutcome = isFullyParalyzed(opponentPokemon)
     ? {
         damage: 0,
@@ -677,18 +695,28 @@ function resolveFailedRunTurn(
   messageQueue.push(...moveOutcome.messages);
   opponentPokemon = moveOutcome.attacker;
   playerPokemon = applyDamage(moveOutcome.defender, moveOutcome.damage);
+  appendBattleMessageHpSnapshots(
+    messageHpSnapshots,
+    messageQueue.length - actionMessageStartIndex,
+    playerPokemon,
+    opponentPokemon,
+    moveOutcome.damage > 0 ? "player" : null,
+  );
 
   if (playerPokemon.status === "fainted") {
-    return createPlayerFaintState({
-      state,
-      playerPokemon,
-      opponentPokemon,
-      messageQueue,
-      selectedMoveId: null,
-      turn: state.turn + 1,
-      runAttemptCount,
-      usedInventoryItemId: null,
-    });
+    return withBattleMessageHpSnapshots(
+      createPlayerFaintState({
+        state,
+        playerPokemon,
+        opponentPokemon,
+        messageQueue,
+        selectedMoveId: null,
+        turn: state.turn + 1,
+        runAttemptCount,
+        usedInventoryItemId: null,
+      }),
+      messageHpSnapshots,
+    );
   }
 
   const endOfTurn = resolveEndOfTurnEffects({
@@ -703,21 +731,24 @@ function resolveFailedRunTurn(
   });
 
   if (endOfTurn.faintState) {
-    return endOfTurn.faintState;
+    return withBattleMessageHpSnapshots(endOfTurn.faintState, messageHpSnapshots);
   }
 
-  return {
-    ...state,
-    phase: "resolving",
-    selectedMoveId: null,
-    turn: state.turn + 1,
-    runAttemptCount,
-    player: syncActivePartyPokemon(state.player, endOfTurn.playerPokemon),
-    opponent: syncActivePartyPokemon(state.opponent, endOfTurn.opponentPokemon),
-    messageQueue: endOfTurn.messageQueue,
-    usedInventoryItemId: null,
-    result: null,
-  };
+  return withBattleMessageHpSnapshots(
+    {
+      ...state,
+      phase: "resolving",
+      selectedMoveId: null,
+      turn: state.turn + 1,
+      runAttemptCount,
+      player: syncActivePartyPokemon(state.player, endOfTurn.playerPokemon),
+      opponent: syncActivePartyPokemon(state.opponent, endOfTurn.opponentPokemon),
+      messageQueue: endOfTurn.messageQueue,
+      usedInventoryItemId: null,
+      result: null,
+    },
+    messageHpSnapshots,
+  );
 }
 
 function resolveFailedCaptureTurn(
@@ -730,6 +761,13 @@ function resolveFailedCaptureTurn(
     `${ball.displayName}을 던졌다!`,
     `${state.opponent.pokemon.name}이 볼에서 나왔다!`,
   ];
+  const messageHpSnapshots: BattleMessageHpSnapshot[] = [];
+  appendBattleMessageHpSnapshots(
+    messageHpSnapshots,
+    captureMessages.length,
+    state.player.pokemon,
+    state.opponent.pokemon,
+  );
 
   if (!opponentMove) {
     const endOfTurn = resolveEndOfTurnEffects({
@@ -743,21 +781,27 @@ function resolveFailedCaptureTurn(
     });
 
     if (endOfTurn.faintState) {
-      return { ...endOfTurn.faintState, captureAttempt };
+      return withBattleMessageHpSnapshots(
+        { ...endOfTurn.faintState, captureAttempt },
+        messageHpSnapshots,
+      );
     }
 
-    return {
-      ...state,
-      phase: "resolving",
-      selectedMoveId: null,
-      turn: state.turn + 1,
-      player: syncActivePartyPokemon(state.player, endOfTurn.playerPokemon),
-      opponent: syncActivePartyPokemon(state.opponent, endOfTurn.opponentPokemon),
-      messageQueue: endOfTurn.messageQueue,
-      usedInventoryItemId: ball.itemId,
-      captureAttempt,
-      result: null,
-    };
+    return withBattleMessageHpSnapshots(
+      {
+        ...state,
+        phase: "resolving",
+        selectedMoveId: null,
+        turn: state.turn + 1,
+        player: syncActivePartyPokemon(state.player, endOfTurn.playerPokemon),
+        opponent: syncActivePartyPokemon(state.opponent, endOfTurn.opponentPokemon),
+        messageQueue: endOfTurn.messageQueue,
+        usedInventoryItemId: ball.itemId,
+        captureAttempt,
+        result: null,
+      },
+      messageHpSnapshots,
+    );
   }
 
   let opponentPokemon = {
@@ -765,7 +809,9 @@ function resolveFailedCaptureTurn(
     moves: spendMovePp(state.opponent.pokemon.moves, opponentMove.id),
   };
   let playerPokemon = state.player.pokemon;
-  const messageQueue = [...captureMessages, `${opponentPokemon.name}의 ${opponentMove.name}!`];
+  const messageQueue = [...captureMessages];
+  const actionMessageStartIndex = messageQueue.length;
+  messageQueue.push(`${opponentPokemon.name}의 ${opponentMove.name}!`);
   const moveOutcome = isFullyParalyzed(opponentPokemon)
     ? {
         damage: 0,
@@ -778,20 +824,30 @@ function resolveFailedCaptureTurn(
   messageQueue.push(...moveOutcome.messages);
   opponentPokemon = moveOutcome.attacker;
   playerPokemon = applyDamage(moveOutcome.defender, moveOutcome.damage);
+  appendBattleMessageHpSnapshots(
+    messageHpSnapshots,
+    messageQueue.length - actionMessageStartIndex,
+    playerPokemon,
+    opponentPokemon,
+    moveOutcome.damage > 0 ? "player" : null,
+  );
 
   if (playerPokemon.status === "fainted") {
-    return {
-      ...createPlayerFaintState({
-        state,
-        playerPokemon,
-        opponentPokemon,
-        messageQueue,
-        selectedMoveId: null,
-        turn: state.turn + 1,
-        usedInventoryItemId: ball.itemId,
-      }),
-      captureAttempt,
-    };
+    return withBattleMessageHpSnapshots(
+      {
+        ...createPlayerFaintState({
+          state,
+          playerPokemon,
+          opponentPokemon,
+          messageQueue,
+          selectedMoveId: null,
+          turn: state.turn + 1,
+          usedInventoryItemId: ball.itemId,
+        }),
+        captureAttempt,
+      },
+      messageHpSnapshots,
+    );
   }
 
   const endOfTurn = resolveEndOfTurnEffects({
@@ -805,21 +861,27 @@ function resolveFailedCaptureTurn(
   });
 
   if (endOfTurn.faintState) {
-    return { ...endOfTurn.faintState, captureAttempt };
+    return withBattleMessageHpSnapshots(
+      { ...endOfTurn.faintState, captureAttempt },
+      messageHpSnapshots,
+    );
   }
 
-  return {
-    ...state,
-    phase: "resolving",
-    selectedMoveId: null,
-    turn: state.turn + 1,
-    player: syncActivePartyPokemon(state.player, endOfTurn.playerPokemon),
-    opponent: syncActivePartyPokemon(state.opponent, endOfTurn.opponentPokemon),
-    messageQueue: endOfTurn.messageQueue,
-    usedInventoryItemId: ball.itemId,
-    captureAttempt,
-    result: null,
-  };
+  return withBattleMessageHpSnapshots(
+    {
+      ...state,
+      phase: "resolving",
+      selectedMoveId: null,
+      turn: state.turn + 1,
+      player: syncActivePartyPokemon(state.player, endOfTurn.playerPokemon),
+      opponent: syncActivePartyPokemon(state.opponent, endOfTurn.opponentPokemon),
+      messageQueue: endOfTurn.messageQueue,
+      usedInventoryItemId: ball.itemId,
+      captureAttempt,
+      result: null,
+    },
+    messageHpSnapshots,
+  );
 }
 
 function resolveOpponentTurnAfterPlayerMessages(
@@ -828,6 +890,13 @@ function resolveOpponentTurnAfterPlayerMessages(
   usedInventoryItemId: string | null,
 ): BattleScreenState {
   const opponentMove = randomUsableMove(state.opponent.pokemon.moves);
+  const messageHpSnapshots: BattleMessageHpSnapshot[] = [];
+  appendBattleMessageHpSnapshots(
+    messageHpSnapshots,
+    startingMessages.length,
+    state.player.pokemon,
+    state.opponent.pokemon,
+  );
 
   if (!opponentMove) {
     const endOfTurn = resolveEndOfTurnEffects({
@@ -841,20 +910,23 @@ function resolveOpponentTurnAfterPlayerMessages(
     });
 
     if (endOfTurn.faintState) {
-      return endOfTurn.faintState;
+      return withBattleMessageHpSnapshots(endOfTurn.faintState, messageHpSnapshots);
     }
 
-    return {
-      ...state,
-      phase: "resolving",
-      selectedMoveId: null,
-      turn: state.turn + 1,
-      player: syncActivePartyPokemon(state.player, endOfTurn.playerPokemon),
-      opponent: syncActivePartyPokemon(state.opponent, endOfTurn.opponentPokemon),
-      messageQueue: endOfTurn.messageQueue,
-      usedInventoryItemId,
-      result: null,
-    };
+    return withBattleMessageHpSnapshots(
+      {
+        ...state,
+        phase: "resolving",
+        selectedMoveId: null,
+        turn: state.turn + 1,
+        player: syncActivePartyPokemon(state.player, endOfTurn.playerPokemon),
+        opponent: syncActivePartyPokemon(state.opponent, endOfTurn.opponentPokemon),
+        messageQueue: endOfTurn.messageQueue,
+        usedInventoryItemId,
+        result: null,
+      },
+      messageHpSnapshots,
+    );
   }
 
   let opponentPokemon = {
@@ -862,7 +934,9 @@ function resolveOpponentTurnAfterPlayerMessages(
     moves: spendMovePp(state.opponent.pokemon.moves, opponentMove.id),
   };
   let playerPokemon = state.player.pokemon;
-  const messageQueue = [...startingMessages, `${opponentPokemon.name}의 ${opponentMove.name}!`];
+  const messageQueue = [...startingMessages];
+  const actionMessageStartIndex = messageQueue.length;
+  messageQueue.push(`${opponentPokemon.name}의 ${opponentMove.name}!`);
   const moveOutcome = isFullyParalyzed(opponentPokemon)
     ? {
         damage: 0,
@@ -875,17 +949,27 @@ function resolveOpponentTurnAfterPlayerMessages(
   messageQueue.push(...moveOutcome.messages);
   opponentPokemon = moveOutcome.attacker;
   playerPokemon = applyDamage(moveOutcome.defender, moveOutcome.damage);
+  appendBattleMessageHpSnapshots(
+    messageHpSnapshots,
+    messageQueue.length - actionMessageStartIndex,
+    playerPokemon,
+    opponentPokemon,
+    moveOutcome.damage > 0 ? "player" : null,
+  );
 
   if (playerPokemon.status === "fainted") {
-    return createPlayerFaintState({
-      state,
-      playerPokemon,
-      opponentPokemon,
-      messageQueue,
-      selectedMoveId: null,
-      turn: state.turn + 1,
-      usedInventoryItemId,
-    });
+    return withBattleMessageHpSnapshots(
+      createPlayerFaintState({
+        state,
+        playerPokemon,
+        opponentPokemon,
+        messageQueue,
+        selectedMoveId: null,
+        turn: state.turn + 1,
+        usedInventoryItemId,
+      }),
+      messageHpSnapshots,
+    );
   }
 
   const endOfTurn = resolveEndOfTurnEffects({
@@ -899,20 +983,23 @@ function resolveOpponentTurnAfterPlayerMessages(
   });
 
   if (endOfTurn.faintState) {
-    return endOfTurn.faintState;
+    return withBattleMessageHpSnapshots(endOfTurn.faintState, messageHpSnapshots);
   }
 
-  return {
-    ...state,
-    phase: "resolving",
-    selectedMoveId: null,
-    turn: state.turn + 1,
-    player: syncActivePartyPokemon(state.player, endOfTurn.playerPokemon),
-    opponent: syncActivePartyPokemon(state.opponent, endOfTurn.opponentPokemon),
-    messageQueue: endOfTurn.messageQueue,
-    usedInventoryItemId,
-    result: null,
-  };
+  return withBattleMessageHpSnapshots(
+    {
+      ...state,
+      phase: "resolving",
+      selectedMoveId: null,
+      turn: state.turn + 1,
+      player: syncActivePartyPokemon(state.player, endOfTurn.playerPokemon),
+      opponent: syncActivePartyPokemon(state.opponent, endOfTurn.opponentPokemon),
+      messageQueue: endOfTurn.messageQueue,
+      usedInventoryItemId,
+      result: null,
+    },
+    messageHpSnapshots,
+  );
 }
 
 function blockPartySwitch(state: BattleScreenState, message: string): BattleScreenState {
@@ -1144,11 +1231,16 @@ function appendBattleMessageHpSnapshots(
   messageCount: number,
   playerPokemon: BattlePokemon,
   opponentPokemon: BattlePokemon,
+  attackHitTarget: BattleMessageHpSnapshot["attackHitTarget"] = null,
 ): void {
-  const snapshot = createBattleMessageHpSnapshot(playerPokemon, opponentPokemon);
-
   for (let index = 0; index < messageCount; index += 1) {
-    snapshots.push(snapshot);
+    snapshots.push(
+      createBattleMessageHpSnapshot(
+        playerPokemon,
+        opponentPokemon,
+        index === 0 ? attackHitTarget : null,
+      ),
+    );
   }
 }
 
@@ -1172,10 +1264,14 @@ function withBattleMessageHpSnapshots(
 function createBattleMessageHpSnapshot(
   playerPokemon: BattlePokemon,
   opponentPokemon: BattlePokemon,
+  attackHitTarget: BattleMessageHpSnapshot["attackHitTarget"] = null,
 ): BattleMessageHpSnapshot {
   return {
     playerCurrentHp: playerPokemon.currentHp,
+    playerStatus: playerPokemon.status,
     opponentCurrentHp: opponentPokemon.currentHp,
+    opponentStatus: opponentPokemon.status,
+    attackHitTarget,
   };
 }
 

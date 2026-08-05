@@ -2,7 +2,7 @@ import * as Phaser from "phaser";
 import {
   BATTLE_LAYOUT,
   getBattleOptionIndexAtPoint,
-  getBattleStatusBadgeView,
+  getBattleStatusTextView,
   hpRatio,
   resolveBattleOptionSlotRects,
   type BattleRect,
@@ -54,7 +54,7 @@ import type {
   BattleMove,
   BattleParticipant,
   BattlePokemon,
-  BattleResult,
+  BattlePokemonStatus,
   BattleScreenState,
   BattleSpriteRef,
 } from "../battle/battleTypes";
@@ -70,12 +70,6 @@ import {
   resolveRomCaptureAnimationFrame,
   ROM_CAPTURE_ANIMATION_DURATION_MS,
 } from "../battle/capture-presentation";
-import {
-  BATTLE_END_ANIMATION_DURATION_MS,
-  resolveBattleConclusion,
-  resolveBattleEndPresentationFrame,
-  type BattleConclusion,
-} from "../battle/battle-end-presentation";
 import { BATTLE_BASE_SIZE, getBattleCameraZoom } from "../gameViewport";
 import { getDefaultGameStateStore } from "../state/defaultGameStateStore";
 import {
@@ -158,7 +152,8 @@ export type BattleE2eScenario =
   | "wild-defeat"
   | "wild-evolution"
   | "wild-move-learning"
-  | "wild-status-badge";
+  | "wild-status-badge"
+  | "wild-paralysis";
 
 export interface BattleE2eSnapshot {
   battleKind: BattleScreenState["battleKind"];
@@ -208,9 +203,6 @@ export interface BattleE2eSnapshot {
   evolutionAnimationStartedCount: number;
   evolutionFromSpeciesId: number | null;
   evolutionToSpeciesId: number | null;
-  battleEndAnimationPlaying: boolean;
-  battleEndAnimationStartedCount: number;
-  battleEndConclusion: BattleConclusion | null;
   player: {
     name: string;
     level: number;
@@ -218,8 +210,9 @@ export interface BattleE2eSnapshot {
     maxHp: number;
     displayedCurrentHp: number;
     hitAnimationStartedCount: number;
-    status: string;
-    statusBadgeLabel: string | null;
+    status: BattlePokemonStatus;
+    displayedStatus: BattlePokemonStatus;
+    statusTextLabel: string | null;
     activePartySlotIndex: number;
     moves: Array<{ id: number; name: string }>;
   };
@@ -230,8 +223,9 @@ export interface BattleE2eSnapshot {
     maxHp: number;
     displayedCurrentHp: number;
     hitAnimationStartedCount: number;
-    status: string;
-    statusBadgeLabel: string | null;
+    status: BattlePokemonStatus;
+    displayedStatus: BattlePokemonStatus;
+    statusTextLabel: string | null;
   };
 }
 
@@ -286,6 +280,7 @@ interface LogicalCanvasPointInput {
 
 type BattleHpSide = "player" | "opponent";
 type BattleDisplayedHp = Record<BattleHpSide, number>;
+type BattleDisplayedStatus = Record<BattleHpSide, BattlePokemonStatus>;
 const BATTLE_HP_SIDES = ["player", "opponent"] as const satisfies readonly BattleHpSide[];
 
 interface BattleHitEffectState {
@@ -332,7 +327,8 @@ function isBattleE2eSceneData(data: unknown): data is BattleE2eSceneData {
       data.e2eScenario === "wild-defeat" ||
       data.e2eScenario === "wild-evolution" ||
       data.e2eScenario === "wild-move-learning" ||
-      data.e2eScenario === "wild-status-badge")
+      data.e2eScenario === "wild-status-badge" ||
+      data.e2eScenario === "wild-paralysis")
   );
 }
 
@@ -446,10 +442,6 @@ const COMMANDS: Array<{ label: (typeof BATTLE_COMMAND_LABELS)[number]; command: 
   { label: "도망", command: "run" },
 ];
 
-function getBattleResultKey(result: BattleResult): string {
-  return `${result.winnerPlayerId}:${result.loserPlayerId}:${result.reason}`;
-}
-
 export class BattleScene extends Phaser.Scene {
   private state: BattleScreenState = createSampleBattleState();
   private selectedCommandIndex = 0;
@@ -465,7 +457,9 @@ export class BattleScene extends Phaser.Scene {
   private shortcutGuideOpen = false;
   private returningToWorld = false;
   private displayedHp: BattleDisplayedHp = { player: 0, opponent: 0 };
+  private displayedStatus: BattleDisplayedStatus = { player: "normal", opponent: "normal" };
   private readonly hpTweens: Partial<Record<BattleHpSide, Phaser.Tweens.Tween>> = {};
+  private readonly statusCommitTweens: Partial<Record<BattleHpSide, Phaser.Tweens.Tween>> = {};
   private hitEffects: BattleHitEffects = createBattleHitEffects();
   private battleEntrancePlaying = false;
   private battleEntranceProgress = 1;
@@ -476,11 +470,6 @@ export class BattleScene extends Phaser.Scene {
   private captureAnimationTween: Phaser.Tweens.Tween | null = null;
   private captureAnimationStartedCount = 0;
   private captureAnimationAttempt: BattleCaptureAttempt | null = null;
-  private battleEndAnimationPlaying = false;
-  private battleEndAnimationProgress = 1;
-  private battleEndAnimationTween: Phaser.Tweens.Tween | null = null;
-  private battleEndAnimationStartedCount = 0;
-  private battleEndAnimationResultKey: string | null = null;
   private evolutionAnimationPlaying = false;
   private evolutionAnimationProgress = 1;
   private evolutionAnimationTween: Phaser.Tweens.Tween | null = null;
@@ -532,14 +521,6 @@ export class BattleScene extends Phaser.Scene {
     this.captureAnimationAttempt = null;
     this.captureAnimationTween?.stop();
     this.captureAnimationTween = null;
-    this.battleEndAnimationStartedCount = 0;
-    this.battleEndAnimationProgress = 1;
-    this.battleEndAnimationPlaying = false;
-    this.battleEndAnimationTween?.stop();
-    this.battleEndAnimationTween = null;
-    this.battleEndAnimationResultKey = this.state.result
-      ? getBattleResultKey(this.state.result)
-      : null;
     this.evolutionAnimationStartedCount = 0;
     this.evolutionAnimationProgress = 1;
     this.evolutionAnimationPlaying = false;
@@ -551,8 +532,10 @@ export class BattleScene extends Phaser.Scene {
     this.levelUpMoveLearningApplied = false;
     this.lastAccessibleStatus = "";
     this.cancelHpTweens();
+    this.cancelStatusCommitTweens();
     this.resetHitEffects();
     this.syncDisplayedHpToState();
+    this.syncDisplayedStatusToState();
     this.cameras.main.setBackgroundColor("#d8e6d4");
     this.cameras.main.setBounds(0, 0, BATTLE_BASE_SIZE.width, BATTLE_BASE_SIZE.height);
     this.cameras.main.setZoom(getBattleCameraZoom(this.scale.width));
@@ -614,16 +597,16 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    if (
-      this.captureAnimationPlaying ||
-      this.evolutionAnimationPlaying ||
-      this.battleEndAnimationPlaying
-    ) {
+    if (this.captureAnimationPlaying || this.evolutionAnimationPlaying) {
       resetVirtualGamepad();
       return;
     }
 
-    if (this.isHpAnimationPlaying() || this.isHitAnimationPlaying()) {
+    if (
+      this.isHpAnimationPlaying() ||
+      this.isHitAnimationPlaying() ||
+      this.isStatusCommitPlaying()
+    ) {
       resetVirtualGamepad();
       return;
     }
@@ -756,9 +739,6 @@ export class BattleScene extends Phaser.Scene {
       evolutionAnimationStartedCount: this.evolutionAnimationStartedCount,
       evolutionFromSpeciesId: this.evolutionTransition?.fromPokemon.speciesId ?? null,
       evolutionToSpeciesId: this.evolutionTransition?.toPokemon.speciesId ?? null,
-      battleEndAnimationPlaying: this.battleEndAnimationPlaying,
-      battleEndAnimationStartedCount: this.battleEndAnimationStartedCount,
-      battleEndConclusion: this.getBattleEndConclusion(),
       player: {
         name: this.state.player.pokemon.name,
         level: this.state.player.pokemon.level,
@@ -767,7 +747,8 @@ export class BattleScene extends Phaser.Scene {
         displayedCurrentHp: Math.round(this.displayedHp.player),
         hitAnimationStartedCount: this.hitEffects.player.startedCount,
         status: this.state.player.pokemon.status,
-        statusBadgeLabel: getBattleStatusBadgeView(this.state.player.pokemon.status)?.label ?? null,
+        displayedStatus: this.displayedStatus.player,
+        statusTextLabel: getBattleStatusTextView(this.displayedStatus.player)?.label ?? null,
         activePartySlotIndex: this.state.player.activePartySlotIndex,
         moves: this.state.player.pokemon.moves.map(move => ({ id: move.id, name: move.name })),
       },
@@ -779,8 +760,8 @@ export class BattleScene extends Phaser.Scene {
         displayedCurrentHp: Math.round(this.displayedHp.opponent),
         hitAnimationStartedCount: this.hitEffects.opponent.startedCount,
         status: this.state.opponent.pokemon.status,
-        statusBadgeLabel:
-          getBattleStatusBadgeView(this.state.opponent.pokemon.status)?.label ?? null,
+        displayedStatus: this.displayedStatus.opponent,
+        statusTextLabel: getBattleStatusTextView(this.displayedStatus.opponent)?.label ?? null,
       },
     };
   }
@@ -800,12 +781,6 @@ export class BattleScene extends Phaser.Scene {
     this.captureAnimationAttempt = null;
     this.captureAnimationTween?.stop();
     this.captureAnimationTween = null;
-    this.battleEndAnimationStartedCount = 0;
-    this.battleEndAnimationProgress = 1;
-    this.battleEndAnimationPlaying = false;
-    this.battleEndAnimationTween?.stop();
-    this.battleEndAnimationTween = null;
-    this.battleEndAnimationResultKey = null;
     this.evolutionAnimationStartedCount = 0;
     this.evolutionAnimationProgress = 1;
     this.evolutionAnimationPlaying = false;
@@ -818,8 +793,10 @@ export class BattleScene extends Phaser.Scene {
     this.persistWorldPositionOnReturn = true;
     this.state = createBattleScenarioStateForTest(scenario);
     this.cancelHpTweens();
+    this.cancelStatusCommitTweens();
     this.resetHitEffects();
     this.syncDisplayedHpToState();
+    this.syncDisplayedStatusToState();
     this.render();
     this.playBattleEntranceAnimation();
   }
@@ -960,9 +937,9 @@ export class BattleScene extends Phaser.Scene {
       this.battleEntrancePlaying ||
       this.captureAnimationPlaying ||
       this.evolutionAnimationPlaying ||
-      this.battleEndAnimationPlaying ||
       this.isHpAnimationPlaying() ||
       this.isHitAnimationPlaying() ||
+      this.isStatusCommitPlaying() ||
       this.authoritativeInputPending ||
       this.shortcutGuideOpen
     ) {
@@ -1082,9 +1059,9 @@ export class BattleScene extends Phaser.Scene {
         this.battleEntrancePlaying ||
         this.captureAnimationPlaying ||
         this.evolutionAnimationPlaying ||
-        this.battleEndAnimationPlaying ||
         this.isHpAnimationPlaying() ||
         this.isHitAnimationPlaying() ||
+        this.isStatusCommitPlaying() ||
         this.authoritativeInputPending ||
         this.shortcutGuideOpen,
       canGoBack:
@@ -1158,9 +1135,9 @@ export class BattleScene extends Phaser.Scene {
       this.battleEntrancePlaying ||
       this.captureAnimationPlaying ||
       this.evolutionAnimationPlaying ||
-      this.battleEndAnimationPlaying ||
       this.isHpAnimationPlaying() ||
       this.isHitAnimationPlaying() ||
+      this.isStatusCommitPlaying() ||
       this.usesMobileBattleDeck()
     ) {
       return;
@@ -1555,12 +1532,6 @@ export class BattleScene extends Phaser.Scene {
         formatRomEvolutionStartMessage(this.evolutionTransition.fromPokemon.name);
     const isEnteringForcedPartySwitch =
       isForcedPartySwitch(nextState) && !isForcedPartySwitch(this.state);
-    const nextBattleEndResultKey = nextState.result ? getBattleResultKey(nextState.result) : null;
-    const shouldPlayBattleEndAnimation =
-      nextState.result !== null &&
-      nextBattleEndResultKey !== this.battleEndAnimationResultKey &&
-      (nextState.messageQueue[0] === BATTLE_END_CONFIRM_MESSAGE ||
-        (this.authoritativeProjection !== null && this.state.result === null));
 
     if (isEnteringForcedPartySwitch) {
       this.selectedPartySlotIndex = getFirstSwitchableBattlePartySlotIndex(
@@ -1570,9 +1541,6 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.state = nextState;
-    if (!nextBattleEndResultKey) {
-      this.battleEndAnimationResultKey = null;
-    }
     if (shouldPlayCaptureAnimation) {
       this.playCaptureAnimation(nextCaptureAttempt);
     }
@@ -1581,9 +1549,6 @@ export class BattleScene extends Phaser.Scene {
         this.evolutionTransition.fromPokemon,
         this.evolutionTransition.toPokemon,
       );
-    }
-    if (shouldPlayBattleEndAnimation && nextState.result) {
-      this.playBattleEndAnimation(nextState.result);
     }
     this.syncDisplayedHpTargets({
       animateHpDecrease: options.animateHpDecrease ?? true,
@@ -1601,17 +1566,30 @@ export class BattleScene extends Phaser.Scene {
     };
   }
 
+  private syncDisplayedStatusToState(): void {
+    this.displayedStatus = {
+      player: this.getStateStatus("player"),
+      opponent: this.getStateStatus("opponent"),
+    };
+  }
+
   private syncDisplayedHpTargets({ animateHpDecrease }: { animateHpDecrease: boolean }): void {
     BATTLE_HP_SIDES.forEach(side => {
       const targetHp = this.getDisplayedHpTarget(side);
+      const targetStatus = this.getDisplayedStatusTarget(side);
       const displayedHp = Number.isFinite(this.displayedHp[side])
         ? this.displayedHp[side]
         : targetHp;
       const existingTween = this.hpTweens[side];
+      const existingStatusCommitTween = this.statusCommitTweens[side];
 
       if (existingTween) {
-        existingTween.stop();
         delete this.hpTweens[side];
+        existingTween.stop();
+      }
+      if (existingStatusCommitTween) {
+        delete this.statusCommitTweens[side];
+        existingStatusCommitTween.stop();
       }
 
       if (animateHpDecrease && targetHp < displayedHp) {
@@ -1619,37 +1597,83 @@ export class BattleScene extends Phaser.Scene {
 
         this.hpAnimationStartedCount += 1;
         this.playHitAnimation(side);
-        playBattleHitSound();
-        if (targetHp <= 0) {
-          playPokemonFaintSound();
+        if (this.shouldPlayAttackHitSound(side)) {
+          playBattleHitSound();
         }
-        this.hpTweens[side] = this.tweens.add({
+        const tween = this.tweens.add({
           targets: tweenState,
           value: targetHp,
           duration: BATTLE_HP_DECREASE_TWEEN_MS,
           ease: "Cubic.easeOut",
           onUpdate: () => {
+            if (this.hpTweens[side] !== tween) {
+              return;
+            }
+
             this.displayedHp[side] = tweenState.value;
             this.render();
           },
           onComplete: () => {
+            if (this.hpTweens[side] !== tween) {
+              return;
+            }
+
             this.displayedHp[side] = targetHp;
+            this.displayedStatus[side] = targetStatus;
+            if (targetHp <= 0) {
+              playPokemonFaintSound();
+            }
             delete this.hpTweens[side];
             this.render();
           },
         });
+        this.hpTweens[side] = tween;
         return;
       }
 
       this.displayedHp[side] = targetHp;
+      if (animateHpDecrease && targetStatus !== this.displayedStatus[side]) {
+        this.deferDisplayedStatus(side, targetStatus);
+        return;
+      }
+      this.displayedStatus[side] = targetStatus;
     });
   }
 
   private cancelHpTweens(): void {
     BATTLE_HP_SIDES.forEach(side => {
-      this.hpTweens[side]?.stop();
+      const tween = this.hpTweens[side];
       delete this.hpTweens[side];
+      tween?.stop();
     });
+  }
+
+  private cancelStatusCommitTweens(): void {
+    BATTLE_HP_SIDES.forEach(side => {
+      const tween = this.statusCommitTweens[side];
+      delete this.statusCommitTweens[side];
+      tween?.stop();
+    });
+  }
+
+  private deferDisplayedStatus(side: BattleHpSide, targetStatus: BattlePokemonStatus): void {
+    const tweenState = { progress: 0 };
+    const tween = this.tweens.add({
+      targets: tweenState,
+      progress: 1,
+      duration: BATTLE_HIT_TWEEN_MS,
+      onComplete: () => {
+        if (this.statusCommitTweens[side] !== tween) {
+          return;
+        }
+
+        this.displayedStatus[side] = targetStatus;
+        delete this.statusCommitTweens[side];
+        this.render();
+      },
+    });
+
+    this.statusCommitTweens[side] = tween;
   }
 
   private resetHitEffects(): void {
@@ -1669,6 +1693,12 @@ export class BattleScene extends Phaser.Scene {
       : this.state.opponent.pokemon.currentHp;
   }
 
+  private getStateStatus(side: BattleHpSide): BattlePokemonStatus {
+    return side === "player"
+      ? this.state.player.pokemon.status
+      : this.state.opponent.pokemon.status;
+  }
+
   private getDisplayedHpTarget(side: BattleHpSide): number {
     const messageHpSnapshot = this.state.messageHpSnapshots?.[0];
 
@@ -1681,8 +1711,28 @@ export class BattleScene extends Phaser.Scene {
       : messageHpSnapshot.opponentCurrentHp;
   }
 
+  private getDisplayedStatusTarget(side: BattleHpSide): BattlePokemonStatus {
+    const messageHpSnapshot = this.state.messageHpSnapshots?.[0];
+
+    if (!messageHpSnapshot) {
+      return this.getStateStatus(side);
+    }
+
+    return side === "player" ? messageHpSnapshot.playerStatus : messageHpSnapshot.opponentStatus;
+  }
+
+  private shouldPlayAttackHitSound(side: BattleHpSide): boolean {
+    const attackHitTarget = this.state.messageHpSnapshots?.[0]?.attackHitTarget;
+
+    return attackHitTarget === side;
+  }
+
   private isHpAnimationPlaying(): boolean {
     return BATTLE_HP_SIDES.some(side => Boolean(this.hpTweens[side]));
+  }
+
+  private isStatusCommitPlaying(): boolean {
+    return BATTLE_HP_SIDES.some(side => Boolean(this.statusCommitTweens[side]));
   }
 
   private isHitAnimationPlaying(): boolean {
@@ -1782,36 +1832,6 @@ export class BattleScene extends Phaser.Scene {
     });
 
     this.captureAnimationTween = tween;
-  }
-
-  private playBattleEndAnimation(result: BattleResult): void {
-    this.battleEndAnimationTween?.stop();
-    this.battleEndAnimationProgress = 0;
-    this.battleEndAnimationPlaying = true;
-    this.battleEndAnimationStartedCount += 1;
-    this.battleEndAnimationResultKey = getBattleResultKey(result);
-    const tweenState = { progress: 0 };
-
-    const tween = this.tweens.add({
-      targets: tweenState,
-      progress: 1,
-      duration: BATTLE_END_ANIMATION_DURATION_MS,
-      ease: "Cubic.easeOut",
-      onUpdate: () => {
-        this.battleEndAnimationProgress = tweenState.progress;
-        this.render();
-      },
-      onComplete: () => {
-        this.battleEndAnimationProgress = 1;
-        this.battleEndAnimationPlaying = false;
-        if (this.battleEndAnimationTween === tween) {
-          this.battleEndAnimationTween = null;
-        }
-        this.render();
-      },
-    });
-
-    this.battleEndAnimationTween = tween;
   }
 
   private playEvolutionAnimation(fromPokemon: BattlePokemon, toPokemon: BattlePokemon): void {
@@ -2418,7 +2438,6 @@ export class BattleScene extends Phaser.Scene {
         false,
       );
       this.drawHpPanel(BATTLE_LAYOUT.playerHpPanel, this.state.player.pokemon, "player", true);
-      this.drawBattleEndAnimation();
     }
     this.publishE2eSnapshot();
     this.publishMobileBattleUiState();
@@ -2643,12 +2662,10 @@ export class BattleScene extends Phaser.Scene {
     );
     const playerRenderBox = getCroppedBattleSpriteRenderBox(player);
     const captureOpponent = this.getCaptureOpponentRenderEffect();
-    const opponentBattleEnd = this.getBattleEndSpriteRenderEffect("opponent");
-    const playerBattleEnd = this.getBattleEndSpriteRenderEffect("player");
     this.add
       .image(
         opponentRenderBox.x + entranceOffset + opponentHit.offsetX,
-        opponentRenderBox.y + opponentBattleEnd.offsetY,
+        opponentRenderBox.y,
         opponentSprite.assetKey,
         opponentSprite.frame,
       )
@@ -2659,19 +2676,16 @@ export class BattleScene extends Phaser.Scene {
         BATTLE_SPRITE_CROP.height,
       )
       .setDisplaySize(
-        opponentRenderBox.width * captureOpponent.scale * opponentBattleEnd.scale,
-        opponentRenderBox.height * captureOpponent.scale * opponentBattleEnd.scale,
+        opponentRenderBox.width * captureOpponent.scale,
+        opponentRenderBox.height * captureOpponent.scale,
       )
-      .setAlpha(
-        entranceAlpha * opponentHit.alpha * captureOpponent.alpha * opponentBattleEnd.alpha,
-      );
+      .setAlpha(entranceAlpha * opponentHit.alpha * captureOpponent.alpha);
 
     this.drawPlayerPokemonImage({
-      alpha: entranceAlpha * playerHit.alpha * playerBattleEnd.alpha,
+      alpha: entranceAlpha * playerHit.alpha,
       offsetX: -entranceOffset + playerHit.offsetX,
-      offsetY: playerBattleEnd.offsetY,
       renderBox: playerRenderBox,
-      scale: playerBattleEnd.scale,
+      scale: 1,
       sprite: this.state.player.pokemon.backSprite,
       tint: null,
     });
@@ -2680,7 +2694,6 @@ export class BattleScene extends Phaser.Scene {
   private drawPlayerPokemonImage({
     alpha,
     offsetX,
-    offsetY = 0,
     renderBox,
     scale,
     sprite,
@@ -2688,14 +2701,13 @@ export class BattleScene extends Phaser.Scene {
   }: {
     alpha: number;
     offsetX: number;
-    offsetY?: number;
     renderBox: BattleRect;
     scale: number;
     sprite: BattleSpriteRef;
     tint: number | null;
   }): void {
     const playerImage = this.add
-      .image(renderBox.x + offsetX, renderBox.y + offsetY, sprite.assetKey, sprite.frame)
+      .image(renderBox.x + offsetX, renderBox.y, sprite.assetKey, sprite.frame)
       .setCrop(
         BATTLE_SPRITE_CROP.x,
         BATTLE_SPRITE_CROP.y,
@@ -2743,103 +2755,6 @@ export class BattleScene extends Phaser.Scene {
     };
   }
 
-  private getBattleEndConclusion(): BattleConclusion | null {
-    if (!this.state.result) {
-      return null;
-    }
-
-    return resolveBattleConclusion(this.state.result, this.state.player.playerId);
-  }
-
-  private getBattleEndSpriteRenderEffect(side: BattleHpSide): {
-    alpha: number;
-    offsetY: number;
-    scale: number;
-  } {
-    const result = this.state.result;
-
-    if (!result || !this.battleEndAnimationPlaying) {
-      return { alpha: 1, offsetY: 0, scale: 1 };
-    }
-
-    const conclusion = this.getBattleEndConclusion();
-    if (!conclusion) {
-      return { alpha: 1, offsetY: 0, scale: 1 };
-    }
-
-    const frame = resolveBattleEndPresentationFrame(this.battleEndAnimationProgress, conclusion);
-    const participant = side === "player" ? this.state.player : this.state.opponent;
-
-    if (participant.playerId === result.loserPlayerId) {
-      return {
-        alpha: frame.loserAlpha,
-        offsetY: frame.loserOffsetY,
-        scale: frame.loserScale,
-      };
-    }
-
-    if (participant.playerId === result.winnerPlayerId) {
-      return { alpha: 1, offsetY: 0, scale: frame.winnerScale };
-    }
-
-    return { alpha: 1, offsetY: 0, scale: 1 };
-  }
-
-  private drawBattleEndAnimation(): void {
-    if (!this.battleEndAnimationPlaying) {
-      return;
-    }
-
-    const conclusion = this.getBattleEndConclusion();
-    if (!conclusion) {
-      return;
-    }
-
-    const frame = resolveBattleEndPresentationFrame(this.battleEndAnimationProgress, conclusion);
-    const centerX = BATTLE_BASE_SIZE.width / 2;
-    const centerY = 86;
-    const graphics = this.add.graphics();
-
-    if (frame.flashAlpha > 0) {
-      graphics
-        .fillStyle(frame.accentColor, frame.flashAlpha)
-        .fillRect(0, 0, BATTLE_BASE_SIZE.width, 152);
-    }
-
-    graphics
-      .lineStyle(1, frame.accentColor, frame.particleAlpha)
-      .strokeCircle(centerX, centerY, frame.burstRadius);
-
-    for (let index = 0; index < 12; index += 1) {
-      const angle = (Math.PI * 2 * index) / 12 + this.battleEndAnimationProgress * Math.PI;
-      const distance = frame.burstRadius * (0.48 + (index % 3) * 0.16);
-      const size = index % 2 === 0 ? 3 : 2;
-      const x = Math.round(centerX + Math.cos(angle) * distance);
-      const y = Math.round(centerY + Math.sin(angle) * distance);
-
-      graphics
-        .fillStyle(index % 2 === 0 ? 0xffffff : frame.accentColor, frame.particleAlpha)
-        .fillRect(x - size / 2, y - size / 2, size, size);
-    }
-
-    if (frame.bannerAlpha > 0) {
-      this.add
-        .text(
-          BATTLE_BASE_SIZE.width - 72,
-          22 + frame.bannerOffsetY,
-          frame.bannerText,
-          createGameTextStyle({
-            color: "#fff8df",
-            fontSize: "10px",
-            stroke: "#22313d",
-            strokeThickness: 4,
-          }),
-        )
-        .setOrigin(0.5)
-        .setAlpha(frame.bannerAlpha);
-    }
-  }
-
   private drawCaptureAnimation(): void {
     const attempt = this.captureAnimationAttempt;
     if (!attempt) {
@@ -2882,13 +2797,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (frame.showBall) {
-      if (frame.stage === "throw") {
-        this.drawCaptureThrowTrail(start, impact, frame.stageProgress, frame.trailAlpha);
-      }
-      if (frame.impactAlpha > 0) {
-        this.drawCaptureImpactPulse(impact.x, impact.y, frame.impactRadius, frame.impactAlpha);
-      }
-      this.drawCaptureBall(ballX, ballY, attempt.ballItemId, frame.ballRotation, frame.ballScale);
+      this.drawCaptureBall(ballX, ballY, attempt.ballItemId, frame.ballRotation);
     }
 
     if (frame.stage !== "result") {
@@ -2914,86 +2823,12 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
-  private drawCaptureThrowTrail(
-    start: { x: number; y: number },
-    impact: { x: number; y: number },
-    progress: number,
-    alpha: number,
-  ): void {
-    const graphics = this.add.graphics().setDepth(505);
-    const trailPoints: Array<{ x: number; y: number }> = [];
-
-    for (let index = 1; index <= 6; index += 1) {
-      const trailProgress = Phaser.Math.Clamp(progress - index * 0.065, 0, 1);
-
-      if (trailProgress <= 0) {
-        continue;
-      }
-
-      const x = Phaser.Math.Linear(start.x, impact.x, trailProgress);
-      const y =
-        Phaser.Math.Linear(start.y, impact.y, trailProgress) -
-        Math.sin(trailProgress * Math.PI) * 42;
-      const size = Math.max(2, 5 - Math.floor(index / 2));
-      trailPoints.push({ x, y });
-
-      graphics
-        .fillStyle(index % 2 === 0 ? 0xffdc72 : 0xe6fbff, alpha * (1 - index / 10))
-        .fillRect(Math.round(x - size / 2), Math.round(y - size / 2), size, size);
-    }
-
-    if (trailPoints.length < 2) {
-      return;
-    }
-
-    graphics.lineStyle(1, 0xffecae, alpha * 0.58).beginPath();
-    trailPoints.forEach((point, index) => {
-      if (index === 0) {
-        graphics.moveTo(point.x, point.y);
-        return;
-      }
-
-      graphics.lineTo(point.x, point.y);
-    });
-    graphics.strokePath();
-  }
-
-  private drawCaptureImpactPulse(x: number, y: number, radius: number, alpha: number): void {
-    const graphics = this.add.graphics().setDepth(506);
-
-    graphics
-      .lineStyle(1, 0xffffff, alpha)
-      .strokeCircle(x, y, radius)
-      .lineStyle(1, 0xf6c868, alpha * 0.78)
-      .strokeCircle(x, y, Math.max(2, radius * 0.58));
-
-    for (let index = 0; index < 8; index += 1) {
-      const angle = (Math.PI * 2 * index) / 8;
-      const innerRadius = Math.max(2, radius * 0.36);
-      const outerRadius = radius + 5;
-
-      graphics
-        .lineStyle(1, 0xffffff, alpha * 0.72)
-        .beginPath()
-        .moveTo(x + Math.cos(angle) * innerRadius, y + Math.sin(angle) * innerRadius)
-        .lineTo(x + Math.cos(angle) * outerRadius, y + Math.sin(angle) * outerRadius)
-        .strokePath();
-    }
-  }
-
-  private drawCaptureBall(
-    x: number,
-    y: number,
-    ballItemId: string,
-    rotation: number,
-    scale: number,
-  ): void {
+  private drawCaptureBall(x: number, y: number, ballItemId: string, rotation: number): void {
     const graphics = this.add
       .graphics()
       .setDepth(510)
       .setPosition(Math.round(x), Math.round(y))
-      .setRotation(rotation)
-      .setScale(scale);
+      .setRotation(rotation);
     const topColor = ballItemId === "ultraBall" ? 0x303239 : 0xd94b43;
     const accentColor = ballItemId === "ultraBall" ? 0xf4cf58 : 0xf7f4e8;
     const left = -6;
@@ -3084,38 +2919,28 @@ export class BattleScene extends Phaser.Scene {
       }),
     );
 
-    const statusBadge = getBattleStatusBadgeView(pokemon.status);
+    const statusText = getBattleStatusTextView(this.displayedStatus[side]);
     const barX = rect.x + 10;
     const barY = rect.y + rect.height - 10;
-    const badgeHeight = 9;
-    const badgeWidth = statusBadge ? Math.max(14, statusBadge.label.length * 7 + 6) : 0;
-    const badgeX = rect.x + rect.width - badgeWidth - 8;
-    const badgeY = barY - Math.ceil((badgeHeight - 4) / 2);
-    const barWidth = statusBadge ? Math.max(28, badgeX - barX - 4) : rect.width - 20;
+    const barWidth = rect.width - 20;
 
     graphics.fillStyle(BATTLE_SCENE_WINDOW_STYLE.hpBack, 1).fillRect(barX, barY, barWidth, 4);
     graphics
       .fillStyle(BATTLE_SCENE_WINDOW_STYLE.hpGood, 1)
       .fillRect(barX, barY, Math.round(barWidth * hpRatio(displayedCurrentHp, pokemon.maxHp)), 4);
 
-    if (statusBadge) {
-      graphics
-        .fillStyle(statusBadge.fillColor, 1)
-        .fillRect(badgeX, badgeY, badgeWidth, badgeHeight)
-        .lineStyle(1, statusBadge.borderColor, 1)
-        .strokeRect(badgeX, badgeY, badgeWidth, badgeHeight);
+    if (statusText) {
       this.add
         .text(
-          badgeX + badgeWidth / 2,
-          badgeY + 1,
-          statusBadge.label,
+          rect.x + rect.width - 8,
+          barY - 7,
+          statusText.label,
           createGameTextStyle({
-            align: "center",
-            color: statusBadge.textColor,
+            color: statusText.color,
             fontSize: "5px",
           }),
         )
-        .setOrigin(0.5, 0);
+        .setOrigin(1, 0);
     }
   }
 
@@ -3468,30 +3293,22 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const statusBadge = getBattleStatusBadgeView(slot.isFainted ? "fainted" : slot.pokemon.status);
-    const isCurrentLabel = slot.isCurrent && !statusBadge;
+    const statusText = getBattleStatusTextView(slot.isFainted ? "fainted" : slot.pokemon.status);
+    const isCurrentLabel = slot.isCurrent && !statusText;
     const compactLabel = slot.isFainted ? "기절" : isCurrentLabel ? "출전" : slot.statusLabel;
-    const fillColor = isCurrentLabel
-      ? BATTLE_SCENE_WINDOW_STYLE.activeBorder
-      : (statusBadge?.fillColor ?? BATTLE_SCENE_WINDOW_STYLE.border);
-    const textColor = isCurrentLabel ? "#f8fbf0" : (statusBadge?.textColor ?? "#f8fbf0");
-    const badgeWidth = Math.min(12, Math.max(8, compactLabel.length * 4 + 4));
-    const badgeX = slot.rect.x + 18 - badgeWidth;
-    const badgeY = slot.rect.y + 10;
+    const textColor = isCurrentLabel ? "#355c7d" : (statusText?.color ?? "#4b554f");
 
-    this.add.graphics().fillStyle(fillColor, 1).fillRect(badgeX, badgeY, badgeWidth, 6);
     this.add
       .text(
-        badgeX + badgeWidth / 2,
-        badgeY,
+        slot.rect.x + 18,
+        slot.rect.y + 10,
         compactLabel,
         createGameTextStyle({
-          align: "center",
           color: textColor,
           fontSize: "4px",
         }),
       )
-      .setOrigin(0.5, 0);
+      .setOrigin(1, 0);
   }
 
   private getBattlePartySlotViews(): BattlePartySlotView[] {
@@ -3771,7 +3588,21 @@ function createBattleScenarioStateForTest(scenario: BattleE2eScenario): BattleSc
   const playerPokemon = cloneBattlePokemon(baseState.player.pokemon);
   const opponentPokemon = cloneBattlePokemon(baseState.opponent.pokemon);
 
-  if (
+  if (scenario === "wild-paralysis") {
+    playerPokemon.speed = Math.max(playerPokemon.speed, opponentPokemon.speed + 1);
+    playerPokemon.moves = [
+      createBattleMoveForTest(86, "전기자석파", {
+        accuracy: 100,
+        category: "status",
+        effectCode: 67,
+        power: 0,
+        type: "전기",
+        typeId: 12,
+      }),
+    ];
+    opponentPokemon.moves = [];
+    opponentPokemon.status = "normal";
+  } else if (
     scenario === "wild-victory" ||
     scenario === "wild-evolution" ||
     scenario === "wild-move-learning" ||
@@ -3787,6 +3618,10 @@ function createBattleScenarioStateForTest(scenario: BattleE2eScenario): BattleSc
       playerPokemon.status = "paralyzed";
       opponentPokemon.status = "burned";
       opponentPokemon.currentHp = Math.max(1, Math.floor(opponentPokemon.maxHp / 2));
+    }
+
+    if (scenario === "wild-victory") {
+      opponentPokemon.moves = [];
     }
 
     if (scenario === "wild-evolution") {

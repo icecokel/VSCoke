@@ -370,6 +370,13 @@ test("Poke Lounge 모바일은 세로 필드와 전체 화면 메뉴를 제공�
     "true",
   );
   const volumeButton = settingsScreen.getByRole("button", { name: /소리/ });
+  await expect(volumeButton).toHaveText("소리 50%");
+  await volumeButton.click();
+  await expect(volumeButton).toHaveText("소리 75%");
+  await expect
+    .poll(async () => (await readAudioPlaybackSnapshot(page))?.activeBgmVolume)
+    .toBeCloseTo(0.18);
+  await volumeButton.click();
   await expect(volumeButton).toHaveText("소리 80%");
   await volumeButton.click();
   await expect(volumeButton).toHaveText("소리 100%");
@@ -377,7 +384,7 @@ test("Poke Lounge 모바일은 세로 필드와 전체 화면 메뉴를 제공�
     .poll(async () => (await readAudioPlaybackSnapshot(page))?.activeBgmVolume)
     .toBeCloseTo(0.24);
   await volumeButton.click();
-  await expect(volumeButton).toHaveText("소리 끔");
+  await expect(volumeButton).toHaveText("소리 꺼짐");
   await expect.poll(async () => (await readAudioPlaybackSnapshot(page))?.activeBgmVolume).toBe(0);
   await expectSceneOccludesControl(settingsScreen, controls);
   await expectNoModalDialog(page);
@@ -523,153 +530,6 @@ test("Poke Lounge 모바일 전투는 하단 조작 도크에서 행동을 고�
 
   expect(moveSlotGeometry).toEqual(partySlotGeometry);
   expect(itemSlotGeometry).toEqual(partySlotGeometry);
-});
-
-test("Poke Lounge 모바일은 전투 종료 연출 중 다음 입력을 잠근다", async ({ page }) => {
-  await gotoWithRetry(page, "/ko-KR/game/poke-lounge?scene=battle&e2eBattle=wild-defeat&e2e=1");
-  await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30_000 });
-  await page.locator("[data-room-entry-solo]").click();
-  await chooseStarterIfNeeded(page);
-  await expect(page.locator("#game-root canvas")).toBeVisible({ timeout: 30_000 });
-
-  await expect
-    .poll(
-      () =>
-        page.evaluate(() => {
-          const controller = (
-            window as Window & {
-              __POKE_LOUNGE_E2E__?: {
-                getActiveSceneKey(): string | null;
-                getBattleSnapshot(): { battleEntrancePlaying: boolean; phase: string } | null;
-              };
-            }
-          ).__POKE_LOUNGE_E2E__;
-
-          return (
-            controller?.getActiveSceneKey() === "battle" &&
-            controller.getBattleSnapshot()?.phase === "command" &&
-            controller.getBattleSnapshot()?.battleEntrancePlaying === false
-          );
-        }),
-      { timeout: 30_000 },
-    )
-    .toBe(true);
-
-  await page.evaluate(() => {
-    const controller = (
-      window as Window & {
-        __POKE_LOUNGE_E2E__?: {
-          confirmBattle(): unknown;
-          setBattleCommand(command: "fight"): unknown;
-        };
-      }
-    ).__POKE_LOUNGE_E2E__;
-
-    controller?.setBattleCommand("fight");
-    controller?.confirmBattle();
-  });
-
-  await expect
-    .poll(
-      () =>
-        page.evaluate(
-          () =>
-            (
-              window as Window & {
-                __POKE_LOUNGE_E2E__?: {
-                  getBattleSnapshot(): { phase: string } | null;
-                };
-              }
-            ).__POKE_LOUNGE_E2E__?.getBattleSnapshot()?.phase ?? null,
-        ),
-      { timeout: 10_000 },
-    )
-    .toBe("move-select");
-
-  await page.evaluate(() => {
-    const controller = (
-      window as Window & {
-        __POKE_LOUNGE_E2E__?: {
-          confirmBattle(): unknown;
-          setBattleMoveIndex(index: number): unknown;
-        };
-      }
-    ).__POKE_LOUNGE_E2E__;
-
-    controller?.setBattleMoveIndex(0);
-    controller?.confirmBattle();
-  });
-
-  await expect
-    .poll(
-      () =>
-        page.evaluate(
-          () =>
-            (
-              window as Window & {
-                __POKE_LOUNGE_E2E__?: {
-                  getBattleSnapshot(): { result: unknown } | null;
-                };
-              }
-            ).__POKE_LOUNGE_E2E__?.getBattleSnapshot()?.result ?? null,
-        ),
-      { timeout: 10_000 },
-    )
-    .not.toBe(null);
-
-  const battleEndSnapshot = await page.evaluate(() => {
-    type BattleSnapshot = {
-      battleEndAnimationPlaying: boolean;
-      message: string | null;
-      messageQueue: string[];
-      phase: string;
-    };
-    const controller = (
-      window as Window & {
-        __POKE_LOUNGE_E2E__?: {
-          confirmBattle(): BattleSnapshot | null;
-          getBattleSnapshot(): BattleSnapshot | null;
-          setBattleCommand(command: "fight"): BattleSnapshot | null;
-          setBattleMoveIndex(index: number): BattleSnapshot | null;
-        };
-      }
-    ).__POKE_LOUNGE_E2E__;
-
-    let snapshot = controller?.getBattleSnapshot() ?? null;
-    while ((snapshot?.messageQueue.length ?? 0) > 1) {
-      snapshot = controller?.confirmBattle() ?? null;
-    }
-
-    return snapshot;
-  });
-
-  expect(battleEndSnapshot).toMatchObject({
-    battleEndAnimationPlaying: true,
-    phase: "ended",
-  });
-
-  const messageDeck = page.locator("[data-poke-lounge-mobile-deck='battle-message']");
-  const nextMessageButton = messageDeck.getByRole("button");
-  await expect(messageDeck).toBeVisible({ timeout: 10_000 });
-  await expect(nextMessageButton).toBeDisabled();
-
-  await expect
-    .poll(
-      () =>
-        page.evaluate(
-          () =>
-            (
-              window as Window & {
-                __POKE_LOUNGE_E2E__?: {
-                  getBattleSnapshot(): { battleEndAnimationPlaying: boolean } | null;
-                };
-              }
-            ).__POKE_LOUNGE_E2E__?.getBattleSnapshot()?.battleEndAnimationPlaying ?? true,
-        ),
-      { timeout: 5_000 },
-    )
-    .toBe(false);
-  await expect(nextMessageButton).toBeEnabled();
 });
 
 test("Poke Lounge 모바일은 새 기술 습득 결과를 조작 도크에 표시한다", async ({ page }) => {

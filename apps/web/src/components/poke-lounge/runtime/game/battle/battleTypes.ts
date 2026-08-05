@@ -107,7 +107,10 @@ export interface BattleReturnToWorld {
 
 export interface BattleMessageHpSnapshot {
   playerCurrentHp: number;
+  playerStatus: BattlePokemonStatus;
   opponentCurrentHp: number;
+  opponentStatus: BattlePokemonStatus;
+  attackHitTarget: "player" | "opponent" | null;
 }
 
 export interface BattleScreenState {

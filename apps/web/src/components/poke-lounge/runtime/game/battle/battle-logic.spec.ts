@@ -111,6 +111,59 @@ test("포획 판정은 애니메이션용 볼 종류와 실제 흔들림 횟수�
   });
 });
 
+test("도망·포획·가방 뒤 상대 공격은 공격 메시지에만 타격 대상을 남긴다", () => {
+  const failedRunState = createOpponentAttackBattleState("command");
+  const failedRun = chooseBattleCommand(failedRunState, "run", {
+    randomByte: () => 255,
+  });
+  const failedCaptureState = createOpponentAttackBattleState("bag-select");
+  const failedCapture = chooseBattleBagItem(failedCaptureState, "pokeball", {
+    itemCount: 1,
+    captureRandom16: () => 65_535,
+  });
+  const bagState = createOpponentAttackBattleState("bag-select");
+  bagState.player.pokemon = {
+    ...bagState.player.pokemon,
+    currentHp: Math.max(1, bagState.player.pokemon.maxHp - 10),
+  };
+  bagState.player.party[0] = { slotIndex: 0, pokemon: bagState.player.pokemon };
+  const afterBagUse = chooseBattleBagItem(bagState, "potion", { itemCount: 1 });
+
+  [failedRun, failedCapture, afterBagUse].forEach(state => {
+    const attackMessageIndex = state.messageQueue.findIndex(
+      message => message === "브케인의 검증공격!",
+    );
+
+    assert.ok(attackMessageIndex >= 0);
+    assert.ok(
+      state.messageHpSnapshots?.slice(0, attackMessageIndex).every(snapshot => {
+        return snapshot.attackHitTarget === null;
+      }),
+    );
+    assert.equal(state.messageHpSnapshots?.[attackMessageIndex]?.attackHitTarget, "player");
+  });
+});
+
+test("잔류 피해 메시지에는 타격 효과음 대상이 기록되지 않는다", () => {
+  const state = createOpponentAttackBattleState("command");
+  state.opponent.pokemon = {
+    ...state.opponent.pokemon,
+    moves: [],
+  };
+  state.opponent.party[0] = { slotIndex: 0, pokemon: state.opponent.pokemon };
+  state.player.pokemon = {
+    ...state.player.pokemon,
+    currentHp: Math.max(2, Math.floor(state.player.pokemon.maxHp / 2)),
+    status: "poisoned",
+  };
+  state.player.party[0] = { slotIndex: 0, pokemon: state.player.pokemon };
+
+  const failedRun = chooseBattleCommand(state, "run", { randomByte: () => 255 });
+
+  assert.equal(failedRun.messageQueue.includes("치코리타는 독 데미지를 입었다!"), true);
+  assert.ok(failedRun.messageHpSnapshots?.every(snapshot => snapshot.attackHitTarget === null));
+});
+
 test("기술 우선도가 같으면 스피드가 빠른 포켓몬이 먼저 행동한다", () => {
   const fasterPlayerState = createSpeedOrderBattleState({
     playerSpeed: 100,
@@ -131,20 +184,32 @@ test("기술 우선도가 같으면 스피드가 빠른 포켓몬이 먼저 행�
   assert.equal(playerFirstResult.messageQueue[0], "치코리타의 몸통박치기!");
   assert.deepEqual(playerFirstResult.messageHpSnapshots?.[0], {
     playerCurrentHp: fasterPlayerState.player.pokemon.currentHp,
+    playerStatus: fasterPlayerState.player.pokemon.status,
     opponentCurrentHp: playerFirstResult.opponent.pokemon.currentHp,
+    opponentStatus: playerFirstResult.opponent.pokemon.status,
+    attackHitTarget: "opponent",
   });
   assert.deepEqual(playerFirstResult.messageHpSnapshots?.[1], {
     playerCurrentHp: playerFirstResult.player.pokemon.currentHp,
+    playerStatus: playerFirstResult.player.pokemon.status,
     opponentCurrentHp: playerFirstResult.opponent.pokemon.currentHp,
+    opponentStatus: playerFirstResult.opponent.pokemon.status,
+    attackHitTarget: "player",
   });
   assert.equal(opponentFirstResult.messageQueue[0], "브케인의 몸통박치기!");
   assert.deepEqual(opponentFirstResult.messageHpSnapshots?.[0], {
     playerCurrentHp: opponentFirstResult.player.pokemon.currentHp,
+    playerStatus: opponentFirstResult.player.pokemon.status,
     opponentCurrentHp: fasterOpponentState.opponent.pokemon.currentHp,
+    opponentStatus: fasterOpponentState.opponent.pokemon.status,
+    attackHitTarget: "player",
   });
   assert.deepEqual(opponentFirstResult.messageHpSnapshots?.[1], {
     playerCurrentHp: opponentFirstResult.player.pokemon.currentHp,
+    playerStatus: opponentFirstResult.player.pokemon.status,
     opponentCurrentHp: opponentFirstResult.opponent.pokemon.currentHp,
+    opponentStatus: opponentFirstResult.opponent.pokemon.status,
+    attackHitTarget: "opponent",
   });
 
   const afterFirstMessage = popBattleMessage(opponentFirstResult);
@@ -322,6 +387,55 @@ function createTwoPokemonBattleState({ reserveHp = 43 } = {}): BattleScreenState
     },
     selectedMoveId: null,
     result: null,
+  };
+}
+
+function createOpponentAttackBattleState(
+  phase: Extract<BattleScreenState["phase"], "command" | "bag-select">,
+): BattleScreenState {
+  const state = createSampleBattleState();
+  const playerPokemon = {
+    ...clonePokemon(state.player.pokemon),
+    speed: 1,
+    status: "normal" as const,
+  };
+  const opponentPokemon = {
+    ...clonePokemon(state.opponent.pokemon),
+    speed: 999,
+    status: "normal" as const,
+    moves: state.opponent.pokemon.moves.slice(0, 1).map(move => ({
+      ...move,
+      accuracy: 100,
+      name: "검증공격",
+      power: 80,
+      pp: 10,
+      maxPp: 10,
+    })),
+  };
+
+  return {
+    ...state,
+    battleKind: "wild",
+    phase,
+    messageQueue: [],
+    player: {
+      ...state.player,
+      pokemon: playerPokemon,
+      party: state.player.party.map(slot =>
+        slot.slotIndex === state.player.activePartySlotIndex
+          ? { ...slot, pokemon: playerPokemon }
+          : slot,
+      ),
+    },
+    opponent: {
+      ...state.opponent,
+      pokemon: opponentPokemon,
+      party: state.opponent.party.map(slot =>
+        slot.slotIndex === state.opponent.activePartySlotIndex
+          ? { ...slot, pokemon: opponentPokemon }
+          : slot,
+      ),
+    },
   };
 }
 

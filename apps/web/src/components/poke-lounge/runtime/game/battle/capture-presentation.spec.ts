@@ -35,13 +35,3 @@ test("볼 흔들림 사이에는 정지 구간이 있고 포획 실패 시 볼�
   assert.equal(failedResult.opponentAlpha, 1);
   assert.equal(failedResult.opponentScale, 1);
 });
-
-test("투척과 흡수 단계는 절차적 잔상과 충격 파형을 제공한다", () => {
-  const throwFrame = resolveRomCaptureAnimationFrame(0.12, 4, true);
-  const absorbFrame = resolveRomCaptureAnimationFrame(0.3, 4, true);
-
-  assert.ok(throwFrame.trailAlpha > 0);
-  assert.ok(throwFrame.ballScale < 1);
-  assert.ok(absorbFrame.impactAlpha > 0);
-  assert.ok(absorbFrame.impactRadius > 0);
-});

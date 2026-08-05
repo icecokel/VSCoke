@@ -60,6 +60,18 @@ test("월드 맵의 긴 풀 구역은 타일 격자에 맞춰 정의한다", () 
     [
       {
         tileX: 4,
+        tileY: 2,
+        width: 5,
+        height: 3,
+      },
+      {
+        tileX: 13,
+        tileY: 2,
+        width: 5,
+        height: 3,
+      },
+      {
+        tileX: 4,
         tileY: 9,
         width: 6,
         height: 5,

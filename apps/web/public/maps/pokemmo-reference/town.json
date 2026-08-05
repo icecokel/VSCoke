@@ -372,6 +372,28 @@
       "name": "TallGrassZones",
       "objects": [
         {
+          "height": 96,
+          "id": 915,
+          "name": "north-west-tall-grass",
+          "rotation": 0,
+          "type": "wild-encounter-grass",
+          "visible": true,
+          "width": 160,
+          "x": 128,
+          "y": 64
+        },
+        {
+          "height": 96,
+          "id": 916,
+          "name": "north-east-tall-grass",
+          "rotation": 0,
+          "type": "wild-encounter-grass",
+          "visible": true,
+          "width": 160,
+          "x": 416,
+          "y": 64
+        },
+        {
           "height": 160,
           "id": 913,
           "name": "west-tall-grass",
@@ -402,7 +424,7 @@
     }
   ],
   "nextlayerid": 9,
-  "nextobjectid": 915,
+  "nextobjectid": 917,
   "orientation": "orthogonal",
   "properties": [
     {

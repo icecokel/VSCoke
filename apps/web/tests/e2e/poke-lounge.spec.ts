@@ -3093,7 +3093,7 @@ test.describe("Poke Lounge", () => {
     const settingOptionButtons = settingsPanel.locator("[data-poke-lounge-setting-option='true']");
     await expect(settingOptionButtons).toHaveText([
       "전체화면",
-      "소리 50%",
+      "소리 30%",
       "UI 크게",
       "게임 종료",
       "닫기",

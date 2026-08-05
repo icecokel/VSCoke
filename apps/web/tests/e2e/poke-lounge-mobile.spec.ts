@@ -370,7 +370,7 @@ test("Poke Lounge 모바일은 세로 필드와 전체 화면 메뉴를 제공�
     "true",
   );
   const volumeButton = settingsScreen.getByRole("button", { name: /소리/ });
-  await expect(volumeButton).toHaveText("소리 50%");
+  await expect(volumeButton).toHaveText("소리 30%");
   await volumeButton.click();
   await expect(volumeButton).toHaveText("소리 75%");
   await expect

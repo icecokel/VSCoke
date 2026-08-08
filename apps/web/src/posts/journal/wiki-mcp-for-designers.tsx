@@ -128,12 +128,12 @@ const JournalWikiMcpForDesignersPost = () => {
         </PostListItem>
       </PostUnorderedList>
       <PostParagraph>
-        무엇보다 아직 사용성이 검증되지 않았다. 디자이너가 실제로 자주 사용할지, 어떤 질문을 할지,
-        지금 모은 문서가 업무에 얼마나 도움이 될지 알 수 없는 상태였다.
+        무엇보다 현재 사용 인원이 많지 않았다. 디자이너가 실제로 얼마나 자주 사용할지, 어떤 질문을
+        할지, 지금 모은 문서가 업무에 얼마나 도움이 될지는 더 지켜볼 필요가 있었다.
       </PostParagraph>
       <PostParagraph>
-        사용되지 않을 수도 있는 기능에 처음부터 많은 자원을 투자하고 싶지는 않았다. 검색 기술을
-        고도화하기 전에 이 Wiki가 정말 필요한지부터 확인하는 편이 맞다고 판단했다.
+        사용 인원이 적은 초기 단계에서 벡터 검색 인프라와 운영에 더 많은 리소스를 투자할 필요는
+        없다고 판단했다. 현재 규모에서는 Markdown 기반 지식 저장소와 단순 검색만으로 충분했다.
       </PostParagraph>
       <PostHeading3>Markdown과 단순 검색으로 시작했다</PostHeading3>
       <PostParagraph>

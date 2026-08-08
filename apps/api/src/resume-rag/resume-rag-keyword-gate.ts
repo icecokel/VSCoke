@@ -5,8 +5,6 @@ export type ResumeRagKeywordGroup = {
   searchExpansions?: readonly string[];
 };
 
-const MIN_RESUME_RAG_KEYWORD_SCORE = 2;
-
 const KOREAN_PARTICLES = [
   '으로서',
   '으로써',
@@ -158,6 +156,25 @@ export const RESUME_RAG_KEYWORD_GROUPS: readonly ResumeRagKeywordGroup[] = [
     ],
   },
   {
+    id: 'work-philosophy',
+    weight: 2,
+    aliases: [
+      '개발 철학',
+      '작업 철학',
+      '일하는 방식',
+      '업무 방식',
+      '문제 판단',
+      '의사결정',
+      '주도성',
+      '리더십',
+      '리딩',
+      '팀장',
+      '협업 방식',
+      'work philosophy',
+      'leadership',
+    ],
+  },
+  {
     id: 'delivery',
     weight: 2,
     aliases: [
@@ -179,6 +196,26 @@ export const RESUME_RAG_KEYWORD_GROUPS: readonly ResumeRagKeywordGroup[] = [
       '브라우저 테스트',
       '자동 검증',
       '테스트 베드',
+    ],
+  },
+  {
+    id: 'accessibility',
+    weight: 2,
+    aliases: [
+      '접근성',
+      'a11y',
+      'aria',
+      'axe',
+      '키보드 접근',
+      '키보드 탐색',
+      '포커스 복원',
+      'focus trap',
+      'inert',
+      'pixel identical',
+      '픽셀 비교',
+      '시각 회귀',
+      '스크린리더',
+      'screen reader',
     ],
   },
   {
@@ -219,12 +256,41 @@ export const RESUME_RAG_KEYWORD_GROUPS: readonly ResumeRagKeywordGroup[] = [
     ],
   },
   {
+    id: 'backend-observability',
+    weight: 2,
+    aliases: [
+      '백엔드',
+      'backend',
+      '로그',
+      '로깅',
+      '로그 db',
+      'request id',
+      'x-request-id',
+      '요청 추적',
+      '관측성',
+      'observability',
+      'frontend error',
+      '프론트엔드 오류 수집',
+      'django',
+      'api 계약',
+      'swagger 계약',
+    ],
+  },
+  {
     id: 'automation-ai',
     weight: 2,
     aliases: [
       '자동화',
       'ai',
       'llm',
+      'mcp',
+      'llm wiki',
+      '온보딩',
+      '도메인 지식',
+      'agent rules',
+      'skill',
+      'hook',
+      'claude',
       'codex',
       'bedrock',
       'openai',
@@ -246,6 +312,10 @@ export const RESUME_RAG_KEYWORD_GROUPS: readonly ResumeRagKeywordGroup[] = [
       '무단 도용',
       'vtt',
       'hls',
+      '상품 블로그',
+      'ai 초안',
+      'seo',
+      '백링크',
     ],
   },
   {
@@ -281,6 +351,25 @@ export const RESUME_RAG_KEYWORD_GROUPS: readonly ResumeRagKeywordGroup[] = [
     ],
   },
   {
+    id: 'insurance-product',
+    weight: 2,
+    aliases: [
+      '보험',
+      '보험 가입',
+      '보험료',
+      '가입 모달',
+      '가입 성능',
+      '일본 고객사',
+      '고객 관리',
+      '계약 관리',
+      '결제 화면',
+      'modal sdk',
+      'cdn sdk',
+      'spring boot',
+      'doma2',
+    ],
+  },
+  {
     id: 'mobile-webview',
     weight: 2,
     aliases: [
@@ -288,6 +377,10 @@ export const RESUME_RAG_KEYWORD_GROUPS: readonly ResumeRagKeywordGroup[] = [
       '웹뷰',
       'webview',
       'playground',
+      '플라잉팝',
+      '열려라 참깨',
+      '웹게임',
+      '주간 고유 이용자',
       '딥링크',
       'deep link',
       'sdk',
@@ -466,11 +559,34 @@ export const RESUME_RAG_KEYWORD_GROUPS: readonly ResumeRagKeywordGroup[] = [
       '강점',
       '성과',
       '기여',
+      'vscoke',
+      '브이스코크',
+      '포트폴리오',
+      '대표 프로젝트',
+      '만든 서비스',
+      '개발한 서비스',
+      '뭘 만들',
+      '무엇을 만들',
+      '어떤 걸 만들',
+      '담당 역할',
+      '맡은 역할',
+      '사용 기술',
+      '기술 스택',
+      '구현 경험',
+      '개발 경험',
       'resume',
       'career',
       'experience',
       'strength',
       'project',
+      'portfolio',
+      'what did you build',
+      'what have you built',
+      'tech stack',
+      'ポートフォリオ',
+      '担当した役割',
+      '使用技術',
+      '開発経験',
     ],
   },
 ];
@@ -599,6 +715,21 @@ export const SEARCH_TOKEN_EXPANSIONS_BY_KEYWORD_GROUP: Record<
     '개선',
     '전환',
   ],
+  'work-philosophy': [
+    '개발 철학',
+    '일하는 방식',
+    '사용자 중단',
+    '운영자 반복',
+    '작은 검증',
+    '실제 환경',
+    'runtime',
+    '협업',
+    '리딩',
+    '팀장',
+    '코드 리뷰',
+    '의사결정',
+    '주도성',
+  ],
   delivery: [
     'ci/cd',
     'cicd',
@@ -625,6 +756,20 @@ export const SEARCH_TOKEN_EXPANSIONS_BY_KEYWORD_GROUP: Record<
     '브라우저 테스트',
     '자동 검증',
     '테스트 베드',
+  ],
+  accessibility: [
+    '접근성',
+    'a11y',
+    'aria',
+    'focus',
+    'inert',
+    'axe',
+    'playwright',
+    '키보드',
+    '포커스',
+    'pixel identical',
+    '시각 회귀',
+    'portal',
   ],
   'product-data-flow': [
     '분석',
@@ -662,10 +807,35 @@ export const SEARCH_TOKEN_EXPANSIONS_BY_KEYWORD_GROUP: Record<
     'swr',
     'jotai',
   ],
+  'backend-observability': [
+    '백엔드',
+    'backend',
+    '로그',
+    'log db',
+    'request id',
+    'x-request-id',
+    '환경',
+    '서비스',
+    'admin',
+    'frontend error',
+    'guardrail',
+    'django',
+    '관측성',
+    '요청 추적',
+  ],
   'automation-ai': [
     '자동화',
     'ai',
     'llm',
+    'mcp',
+    'llm wiki',
+    'markdown',
+    '온보딩',
+    '도메인 지식',
+    'agent rules',
+    'skill',
+    'hook',
+    'claude',
     'codex',
     'bedrock',
     'openai',
@@ -691,6 +861,10 @@ export const SEARCH_TOKEN_EXPANSIONS_BY_KEYWORD_GROUP: Record<
     '무단 도용',
     'vtt',
     'hls',
+    '상품 블로그',
+    'ai 초안',
+    'seo',
+    '백링크',
   ],
   'commerce-operations': [
     '커머스',
@@ -725,11 +899,33 @@ export const SEARCH_TOKEN_EXPANSIONS_BY_KEYWORD_GROUP: Record<
     '페이지네이션',
     '필터',
   ],
+  'insurance-product': [
+    'all of them',
+    'allofthem',
+    '올오브뎀',
+    '보험',
+    '가입',
+    '일본',
+    '고객사',
+    '성능',
+    'next.js',
+    'ssr',
+    'lcp',
+    'modal sdk',
+    'cdn sdk',
+    'spring',
+    's3',
+    '결제',
+  ],
   'mobile-webview': [
     '모바일',
     '웹뷰',
     'webview',
     'playground',
+    '플라잉팝',
+    '열려라 참깨',
+    '웹게임',
+    '주간 고유 이용자',
     '딥링크',
     'deep link',
     'sdk',
@@ -889,11 +1085,25 @@ export const SEARCH_TOKEN_EXPANSIONS_BY_KEYWORD_GROUP: Record<
     '강점',
     '성과',
     '기여',
+    'vscoke',
+    '포트폴리오',
+    '대표',
+    '역할',
+    '담당',
+    '기술',
+    '기술 스택',
+    '구현',
+    '개발',
     'resume',
     'career',
     'experience',
     'strength',
     'project',
+    'portfolio',
+    'build',
+    'built',
+    'role',
+    'tech stack',
     'impact',
   ],
 };
@@ -906,15 +1116,6 @@ const OUT_OF_SCOPE_ANSWER_BY_LOCALE: Record<string, string> = {
   'ja-JP':
     'この質問は私の履歴の範囲から外れているようです。プロジェクト、技術経験、業務成果、強みなど履歴に関連する内容で質問してください。\n\nおすすめのキーワード: Oprimed、医療ドメイン、CI/CDとデプロイ、フロントエンドの強み',
 };
-
-const normalizeKeywordText = (value: string): string =>
-  value
-    .normalize('NFKC')
-    .toLowerCase()
-    .replace(/[._/+-]+/g, ' ')
-    .replace(/[^\p{L}\p{N}#]+/gu, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
 
 const normalizeSearchText = (text: string): string =>
   text
@@ -964,29 +1165,6 @@ const keywordAliasMatches = (question: string, alias: string): boolean => {
   );
 };
 
-export const calculateResumeRagKeywordScore = (
-  question: string,
-  groups: readonly ResumeRagKeywordGroup[] = RESUME_RAG_KEYWORD_GROUPS,
-): number => {
-  const normalizedQuestion = normalizeKeywordText(question);
-  if (!normalizedQuestion) return 0;
-
-  return groups.reduce((score, group) => {
-    const matched = group.aliases.some((alias) =>
-      keywordAliasMatches(question, alias),
-    );
-
-    return matched ? score + group.weight : score;
-  }, 0);
-};
-
-export const isResumeRagQuestionInScope = (
-  question: string,
-  groups: readonly ResumeRagKeywordGroup[] = RESUME_RAG_KEYWORD_GROUPS,
-): boolean =>
-  calculateResumeRagKeywordScore(question, groups) >=
-  MIN_RESUME_RAG_KEYWORD_SCORE;
-
 export const createResumeRagSearchTokens = (
   text: string,
   groups: readonly ResumeRagKeywordGroup[] = RESUME_RAG_KEYWORD_GROUPS,
@@ -1015,6 +1193,6 @@ export const createResumeRagSearchTokens = (
   return [...uniqueTokens];
 };
 
-export const getResumeRagOutOfScopeAnswer = (locale: string): string =>
+export const getResumeRagNoEvidenceAnswer = (locale: string): string =>
   OUT_OF_SCOPE_ANSWER_BY_LOCALE[locale] ??
   OUT_OF_SCOPE_ANSWER_BY_LOCALE['ko-KR'];

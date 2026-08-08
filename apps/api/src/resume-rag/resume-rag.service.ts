@@ -11,18 +11,15 @@ import {
 } from './resume-rag-retriever.service';
 import type { ResumeRagChatResponseDto } from './dto/resume-rag-chat-response.dto';
 import { ResumeRagChatLogService } from './resume-rag-chat-log.service';
-import { getResumeRagOutOfScopeAnswer } from './resume-rag-keyword-gate';
-import { ResumeRagKeywordService } from './resume-rag-keyword.service';
+import { getResumeRagNoEvidenceAnswer } from './resume-rag-keyword-gate';
 
 type AnswerRequest = {
   question: string;
   locale: string;
 };
 
-const FALLBACK_BY_LOCALE: Record<string, string> = {
-  'ko-KR': '검색된 이력 근거가 부족해 답변할 수 없습니다.',
-  'en-US': 'I do not have enough retrieved resume evidence to answer.',
-  'ja-JP': '検索された履歴根拠が不足しているため回答できません。',
+type AnswerOptions = {
+  recordQuestion?: boolean;
 };
 
 const toStringArray = (value: unknown): string[] | undefined =>
@@ -53,19 +50,18 @@ export class ResumeRagService {
     private readonly retriever: ResumeRagRetrieverService,
     @Inject(RESUME_RAG_CHAT_PROVIDER)
     private readonly chatProvider: ChatProvider,
-    private readonly keywordService: ResumeRagKeywordService,
     private readonly chatLogService: ResumeRagChatLogService,
   ) {}
 
-  async answer(request: AnswerRequest): Promise<ResumeRagChatResponseDto> {
-    await this.chatLogService.recordQuestion(request.question, request.locale);
-
-    if (!(await this.keywordService.isQuestionInScope(request.question))) {
-      return {
-        answer: getResumeRagOutOfScopeAnswer(request.locale),
-        grounded: false,
-        sources: [],
-      };
+  async answer(
+    request: AnswerRequest,
+    options: AnswerOptions = {},
+  ): Promise<ResumeRagChatResponseDto> {
+    if (options.recordQuestion !== false) {
+      await this.chatLogService.recordQuestion(
+        request.question,
+        request.locale,
+      );
     }
 
     let chunks: RetrievedResumeChunk[];
@@ -79,8 +75,7 @@ export class ResumeRagService {
 
     if (chunks.length === 0) {
       return {
-        answer:
-          FALLBACK_BY_LOCALE[request.locale] ?? FALLBACK_BY_LOCALE['ko-KR'],
+        answer: getResumeRagNoEvidenceAnswer(request.locale),
         grounded: false,
         sources: [],
       };

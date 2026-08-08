@@ -51,20 +51,50 @@ const APP_RESUME_DETAIL_FILES = [
 ];
 
 const RESUME_WORKSPACE_VECTOR_FILES = [
-  'docs/base-resume-final-v35-2026-07-13.md',
+  'docs/base-resume-final-v61-2026-08-02.md',
   'docs/base-resume-ai-workflow-v1-2026-06-29.md',
   'docs/oprimed-public-resume-final.md',
-  'docs/public-resume-rag-source-v1-2026-07-13.md',
   'docs/public-resume-page.md',
   'docs/resume-writing-concept-v7-2026-06-30.md',
   'docs/wanted-resume-map.json',
+];
+
+const RESUME_WORKSPACE_PUBLIC_RAW_FILES = [
+  'docs/career-knowledge-map-v10-2026-08-02.json',
+  'docs/career-experience-ledger-v9-2026-08-02.md',
+  'docs/career-experience-category-raw-data-v5-2026-08-02.md',
+  'docs/developer-work-philosophy-v5-2026-07-30.md',
+  'docs/oprimed-backend-post-2026-07-14-audit-v2-2026-07-27.md',
   'docs/raw/codex-agent-workflow-raw-data-2026-06-29.md',
+  'docs/raw/oprimed-domain-onboarding-mcp-raw-data-v1-2026-07-30.md',
+  'docs/raw/oprimed-fresh-work-units-all-branches-2026-06-23/labs-config-admin-all-branches-raw-work-units.md',
   'docs/raw/oprimed-fresh-work-units-all-branches-2026-06-23/oprimed-ai-workflow-confirmed-work.md',
   'docs/raw/oprimed-fresh-work-units-all-branches-2026-06-23/oprimed-cicd-confirmed-work.md',
+  'docs/raw/oprimed-fresh-work-units-all-branches-2026-06-23/oprimed-incremental-and-quantified-evidence-2026-07-13.md',
   'docs/raw/oprimed-fresh-work-units-all-branches-2026-06-23/optivis-nexus-fe-all-branches-raw-work-units.md',
   'docs/raw/oprimed-fresh-work-units-all-branches-2026-06-23/portal-trial-all-branches-raw-work-units.md',
+  'docs/raw/code-crayon-fresh-work-units-all-branches-2026-06-23/automation-tools-all-branches-raw-work-units.md',
+  'docs/raw/code-crayon-fresh-work-units-all-branches-2026-06-23/code-crayon-evidence-supplement-2026-07-13.md',
   'docs/raw/code-crayon-fresh-work-units-all-branches-2026-06-23/selectors-all-branches-raw-work-units.md',
   'docs/raw/code-crayon-fresh-work-units-all-branches-2026-06-23/shortime-all-branches-raw-work-units.md',
+];
+
+const CAREER_KNOWLEDGE_MAP_KEYS = [
+  'artifact_roles',
+  'category_order',
+  'classification',
+  'current',
+  'current_numeric_truth',
+  'narrative_maturity',
+  'philosophy_tags',
+  'purpose',
+  'source_priority',
+];
+
+const RESUME_WORKSPACE_SUPERSEDED_FILES = [
+  'docs/base-resume-final-v35-2026-07-13.md',
+  'docs/public-resume-rag-source-v1-2026-07-13.md',
+  'docs/public-resume-rag-source-v2-2026-08-08.md',
 ];
 
 const RESUME_WORKSPACE_STORE_ONLY_FILES = [
@@ -290,12 +320,12 @@ export const createResumeImportManifest = ({
     title: basename(fileName),
     status: 'active',
     visibility:
-      fileName.includes('public') || fileName.includes('base-resume-final-v35')
+      fileName.includes('public') || fileName.includes('base-resume-final-v61')
         ? 'public'
         : 'private',
     vectorize: true,
     metadata: {
-      version: fileName.includes('base-resume-final-v35')
+      version: fileName.includes('base-resume-final-v61')
         ? 'current'
         : 'supporting',
     },
@@ -316,7 +346,50 @@ export const createResumeImportManifest = ({
     }),
   );
 
-  return [...appEntries, ...vectorEntries, ...storeOnlyEntries];
+  const publicRawEntries = RESUME_WORKSPACE_PUBLIC_RAW_FILES.map(
+    (fileName) => ({
+      id: `resume-workspace:${fileName}`,
+      path: join(resumeWorkspaceRoot, fileName),
+      parser: fileName.endsWith('.json')
+        ? ('json' as const)
+        : ('markdown' as const),
+      sourceType: 'resume_workspace',
+      itemType: 'raw_career_evidence',
+      title: basename(fileName),
+      status: 'active',
+      visibility: 'public',
+      vectorize: true,
+      metadata: { version: 'supporting', fidelity: 'raw-section' },
+      jsonKeys: fileName.endsWith('career-knowledge-map-v10-2026-08-02.json')
+        ? CAREER_KNOWLEDGE_MAP_KEYS
+        : undefined,
+    }),
+  );
+
+  const supersededEntries = RESUME_WORKSPACE_SUPERSEDED_FILES.map(
+    (fileName) => ({
+      id: `resume-workspace:${fileName}`,
+      path: join(resumeWorkspaceRoot, fileName),
+      parser: 'markdown' as const,
+      sourceType: 'resume_workspace',
+      itemType: fileName.includes('public')
+        ? 'public_rag_evidence'
+        : 'final_resume_section',
+      title: basename(fileName),
+      status: 'superseded',
+      visibility: 'public',
+      vectorize: false,
+      metadata: { version: 'superseded' },
+    }),
+  );
+
+  return [
+    ...appEntries,
+    ...vectorEntries,
+    ...publicRawEntries,
+    ...supersededEntries,
+    ...storeOnlyEntries,
+  ];
 };
 
 export const loadResumeSourceItemsFromEntry = (

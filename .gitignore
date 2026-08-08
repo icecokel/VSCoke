@@ -95,6 +95,7 @@ next-env.d.ts
 !/docs/hobby-api-swagger-concept.md
 !/docs/hobby-frontend-schema-concept.md
 !/docs/local-development.md
+!/docs/main-chat-ai-usage-guide.md
 !/docs/operations-runbook.md
 !/docs/playwright-cli-test-plan.md
 !/docs/playwright-cli-test-spec.md

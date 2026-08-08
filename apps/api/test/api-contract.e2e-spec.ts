@@ -72,6 +72,7 @@ describe('Local OpenAPI contract generation', () => {
         '/game/ranking',
         '/game/result',
         '/health',
+        '/main-chat',
         '/poke-lounge/rooms',
         '/poke-lounge/rooms/{roomCode}',
         '/recipes',

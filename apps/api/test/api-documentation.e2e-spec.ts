@@ -9,6 +9,8 @@ import { EspressoHistoryService } from './../src/espresso-history/espresso-histo
 import { GoogleAuthGuard } from './../src/auth/google-auth.guard';
 import { GameController } from './../src/game/game.controller';
 import { GameService } from './../src/game/game.service';
+import { MainChatController } from './../src/main-chat/main-chat.controller';
+import { MainChatService } from './../src/main-chat/main-chat.service';
 import { RecipeController } from './../src/recipe/recipe.controller';
 import { RecipeService } from './../src/recipe/recipe.service';
 import { ResumeRagController } from './../src/resume-rag/resume-rag.controller';
@@ -41,6 +43,7 @@ const requiredOpenApiPaths = [
   '/game/result',
   '/game/result/{id}',
   '/health',
+  '/main-chat',
   '/recipes',
   '/recipes/{id}',
   '/resume-rag/chat',
@@ -60,6 +63,7 @@ describe('API documentation (e2e)', () => {
         AppController,
         EspressoHistoryController,
         GameController,
+        MainChatController,
         RecipeController,
         ResumeRagController,
         WordleController,
@@ -73,6 +77,10 @@ describe('API documentation (e2e)', () => {
         {
           provide: GameService,
           useValue: gameService,
+        },
+        {
+          provide: MainChatService,
+          useValue: {},
         },
         {
           provide: RecipeService,

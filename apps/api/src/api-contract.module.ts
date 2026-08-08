@@ -8,6 +8,9 @@ import { EspressoHistoryController } from './espresso-history/espresso-history.c
 import { EspressoHistoryService } from './espresso-history/espresso-history.service';
 import { GameController } from './game/game.controller';
 import { GameService } from './game/game.service';
+import { MainChatController } from './main-chat/main-chat.controller';
+import { MainChatRateLimitGuard } from './main-chat/main-chat-rate-limit.guard';
+import { MainChatService } from './main-chat/main-chat.service';
 import { PokeLoungeController } from './poke-lounge/poke-lounge.controller';
 import { CompetitiveMatchService } from './poke-lounge/competitive/competitive-match.service';
 import { PokeLoungeRoomService } from './poke-lounge/poke-lounge-room.service';
@@ -37,6 +40,7 @@ const contractGuardStubProvider = (provide: InjectionToken): Provider => ({
     AppController,
     EspressoHistoryController,
     GameController,
+    MainChatController,
     PokeLoungeController,
     RecipeController,
     ResumeRagController,
@@ -46,6 +50,8 @@ const contractGuardStubProvider = (provide: InjectionToken): Provider => ({
     AppService,
     contractStubProvider(EspressoHistoryService),
     contractStubProvider(GameService),
+    contractGuardStubProvider(MainChatRateLimitGuard),
+    contractStubProvider(MainChatService),
     contractStubProvider(PokeLoungeRoomService),
     contractStubProvider(CompetitiveMatchService),
     contractStubProvider(RecipeService),

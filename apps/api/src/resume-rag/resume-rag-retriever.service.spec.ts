@@ -181,6 +181,33 @@ describe('ResumeRagRetrieverService', () => {
     expect(createSearchTokens).toHaveBeenCalledWith('운영키워드');
   });
 
+  it('질문을 사전 차단하지 않고 검색한 뒤 근거가 없으면 빈 결과를 반환한다', async () => {
+    const query = jest.fn().mockResolvedValue([
+      {
+        id: 'item-1',
+        title: '대표 프로젝트',
+        bodyText: 'VSCoke 메인 채팅과 이력 검색을 개발했습니다.',
+        sourcePath: 'resume/projects.md',
+        sourceKey: 'projects#vscoke',
+        metadata: {},
+      },
+    ]);
+    const createSearchTokens = jest
+      .fn()
+      .mockResolvedValue(['오늘', '날씨', '어때']);
+    const service = createService(
+      { query } as unknown as DataSource,
+      createConfig({ minSimilarity: 0.1 }),
+      { createSearchTokens } as unknown as ResumeRagKeywordService,
+    );
+
+    await expect(
+      service.retrieve({ question: '오늘 날씨 어때?', locale: 'ko-KR' }),
+    ).resolves.toEqual([]);
+    expect(createSearchTokens).toHaveBeenCalledWith('오늘 날씨 어때?');
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
   it('expands source-backed domain keywords for compact Korean questions', async () => {
     const query = jest.fn().mockResolvedValue([
       {

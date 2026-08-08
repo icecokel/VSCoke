@@ -84,7 +84,42 @@
       "postsHint": "Published blog post count",
       "gamesHint": "Currently playable games"
     },
-    "techTitle": "Core Tech Stack"
+    "techTitle": "Core Tech Stack",
+    "mainChat": {
+      "workspaceTitle": "Project · Career Chat",
+      "publicAccess": "GPT-5.6 Luna · xhigh",
+      "title": "Ask about projects and career",
+      "description": "Explore VSCOKE projects, technical experience, and resume details in natural language.",
+      "navigationLabel": "Main pages",
+      "navigation": {
+        "readme": "README",
+        "game": "Game Center",
+        "blog": "Blog Dashboard"
+      },
+      "guideTitle": "You can ask about",
+      "guide": {
+        "projects": "Project goals and responsibilities",
+        "tech": "Technologies used and why they were chosen",
+        "problemSolving": "Problem-solving process and outcomes",
+        "career": "Career background and role fit",
+        "collaboration": "Collaboration style and work experience"
+      },
+      "placeholder": "Ask about a project or career experience",
+      "send": "Send question",
+      "you": "You",
+      "pending": "Preparing an answer.",
+      "sources": "{count} sources",
+      "rateLimit": "{count} questions remaining · Available again {time}",
+      "retry": "Try again",
+      "failure": {
+        "invalid-request": "Check the question format and try again.",
+        "origin-blocked": "Chat is not available from this address.",
+        "rate-limited": "You can ask up to 30 questions per hour.",
+        "service-unavailable": "The answer service is temporarily unavailable.",
+        "contract": "The response format could not be verified. Try again.",
+        "request": "The request could not be completed. Check your connection and try again."
+      }
+    }
   },
   "profile": {
     "notOnlyCoding": "Not just coding,",

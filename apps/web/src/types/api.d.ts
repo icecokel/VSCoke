@@ -144,6 +144,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/main-chat": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 프로젝트와 이력서 통합 질문 답변 */
+    post: operations["MainChatController_chat"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/poke-lounge/rooms": {
     parameters: {
       query?: never;
@@ -765,6 +782,30 @@ export interface components {
       /** @description 공개 사용자 정보 */
       user: components["schemas"]["GameHistoryUserDto"];
     };
+    ResumeRagChatRequestDto: {
+      /** @example 어떤 의료 도메인 프로젝트 경험이 있나요? */
+      question: string;
+      /**
+       * @example ko-KR
+       * @enum {string}
+       */
+      locale: "ko-KR" | "en-US" | "ja-JP";
+    };
+    ResumeRagSourceDto: {
+      title: string;
+      sourcePath: string;
+      sourceKey: string;
+      sectionPath?: string;
+      version?: string;
+      caveats?: string[];
+      excerpt: string;
+      similarity: number;
+    };
+    ResumeRagChatResponseDto: {
+      answer: string;
+      grounded: boolean;
+      sources: components["schemas"]["ResumeRagSourceDto"][];
+    };
     CreatePokeLoungeRoomDto: {
       /** @example player-a */
       playerId?: string;
@@ -1196,30 +1237,6 @@ export interface components {
        */
       updatedAt: string;
     };
-    ResumeRagChatRequestDto: {
-      /** @example 어떤 의료 도메인 프로젝트 경험이 있나요? */
-      question: string;
-      /**
-       * @example ko-KR
-       * @enum {string}
-       */
-      locale: "ko-KR" | "en-US" | "ja-JP";
-    };
-    ResumeRagSourceDto: {
-      title: string;
-      sourcePath: string;
-      sourceKey: string;
-      sectionPath?: string;
-      version?: string;
-      caveats?: string[];
-      excerpt: string;
-      similarity: number;
-    };
-    ResumeRagChatResponseDto: {
-      answer: string;
-      grounded: boolean;
-      sources: components["schemas"]["ResumeRagSourceDto"][];
-    };
     WordResponseDto: {
       /**
        * @description 5글자 영단어
@@ -1453,6 +1470,76 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["GameHistoryResponseDto"];
         };
+      };
+    };
+  };
+  MainChatController_chat: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ResumeRagChatRequestDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          /** @description IP당 1시간 메인 채팅 요청 최대 횟수 */
+          "X-RateLimit-Limit"?: number;
+          /** @description 현재 IP에서 남은 메인 채팅 요청 횟수 */
+          "X-RateLimit-Remaining"?: number;
+          /** @description 다음 메인 채팅 요청 횟수가 복구되는 Unix epoch 초 */
+          "X-RateLimit-Reset"?: number;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ResumeRagChatResponseDto"];
+        };
+      };
+      /** @description 질문 길이 또는 locale 형식이 올바르지 않음 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description 허용된 VSCoke 웹 origin이 아닌 요청 */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description IP당 1시간에 허용된 메인 채팅 요청 횟수를 초과함 */
+      429: {
+        headers: {
+          /** @description IP당 1시간 메인 채팅 요청 최대 횟수 */
+          "X-RateLimit-Limit"?: number;
+          /** @description 현재 IP에서 남은 메인 채팅 요청 횟수 */
+          "X-RateLimit-Remaining"?: number;
+          /** @description 다음 메인 채팅 요청 횟수가 복구되는 Unix epoch 초 */
+          "X-RateLimit-Reset"?: number;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description 검색 또는 답변 생성 공급자를 사용할 수 없음 */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };

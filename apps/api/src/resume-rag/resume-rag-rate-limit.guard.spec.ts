@@ -103,7 +103,9 @@ describe('ResumeRagRateLimitGuard', () => {
 
     const { context, responseHeaders } = createContext('198.51.100.10');
 
-    expect(() => guard.canActivate(context)).toThrow(HttpException);
+    expect(() => guard.canActivate(context)).toThrow(
+      '이력 채팅은 IP당 1시간에 20회까지 사용할 수 있습니다.',
+    );
     expect(responseHeaders).toEqual(
       new Map([
         ['X-RateLimit-Limit', 20],

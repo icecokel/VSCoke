@@ -3,12 +3,6 @@ import { ResumeRagService } from './resume-rag.service';
 import type { ChatProvider } from './ai/chat-provider';
 import type { ResumeRagRetrieverService } from './resume-rag-retriever.service';
 import type { ResumeRagChatLogService } from './resume-rag-chat-log.service';
-import type { ResumeRagKeywordService } from './resume-rag-keyword.service';
-
-const createKeywordService = (inScope = true): ResumeRagKeywordService =>
-  ({
-    isQuestionInScope: jest.fn().mockResolvedValue(inScope),
-  }) as unknown as ResumeRagKeywordService;
 
 const createChatLogService = () => {
   const recordQuestion = jest.fn().mockResolvedValue(undefined);
@@ -20,8 +14,8 @@ const createChatLogService = () => {
 };
 
 describe('ResumeRagService', () => {
-  it('returns a fixed out-of-scope message without retrieving or calling AI', async () => {
-    const retrieve = jest.fn();
+  it('searches every question and recommends related topics when no evidence is found', async () => {
+    const retrieve = jest.fn().mockResolvedValue([]);
     const retriever = {
       retrieve,
     } as unknown as ResumeRagRetrieverService;
@@ -30,15 +24,10 @@ describe('ResumeRagService', () => {
       answer,
     } as unknown as ChatProvider;
 
-    const isQuestionInScope = jest.fn().mockResolvedValue(false);
-    const keywordService = {
-      isQuestionInScope,
-    } as unknown as ResumeRagKeywordService;
     const { chatLogService, recordQuestion } = createChatLogService();
     const service = new ResumeRagService(
       retriever,
       chatProvider,
-      keywordService,
       chatLogService,
     );
 
@@ -50,10 +39,30 @@ describe('ResumeRagService', () => {
       grounded: false,
       sources: [],
     });
-    expect(retrieve).not.toHaveBeenCalled();
+    expect(retrieve).toHaveBeenCalledWith({
+      question: '오늘 날씨 어때?',
+      locale: 'ko-KR',
+    });
     expect(answer).not.toHaveBeenCalled();
-    expect(isQuestionInScope).toHaveBeenCalledWith('오늘 날씨 어때?');
     expect(recordQuestion).toHaveBeenCalledWith('오늘 날씨 어때?', 'ko-KR');
+  });
+
+  it('can answer without recording a question for a memory-only chat surface', async () => {
+    const retrieve = jest.fn().mockResolvedValue([]);
+    const chatProvider = { answer: jest.fn() } as unknown as ChatProvider;
+    const { chatLogService, recordQuestion } = createChatLogService();
+    const service = new ResumeRagService(
+      { retrieve } as unknown as ResumeRagRetrieverService,
+      chatProvider,
+      chatLogService,
+    );
+
+    await service.answer(
+      { question: '오늘 날씨 어때?', locale: 'ko-KR' },
+      { recordQuestion: false },
+    );
+
+    expect(recordQuestion).not.toHaveBeenCalled();
   });
 
   it('returns grounded false when no chunks are retrieved', async () => {
@@ -68,14 +77,14 @@ describe('ResumeRagService', () => {
     const service = new ResumeRagService(
       retriever,
       chatProvider,
-      createKeywordService(),
       createChatLogService().chatLogService,
     );
 
     await expect(
       service.answer({ question: 'Oprimed에 없는 내용?', locale: 'ko-KR' }),
     ).resolves.toEqual({
-      answer: '검색된 이력 근거가 부족해 답변할 수 없습니다.',
+      answer:
+        '이 질문은 제 이력 범위를 벗어난 것 같아요. 프로젝트, 기술 경험, 업무 성과, 강점처럼 이력과 관련된 내용으로 다시 물어봐 주세요.\n\n추천 키워드: Oprimed, 의료 도메인, CI/CD와 배포, 프론트엔드 강점',
       grounded: false,
       sources: [],
     });
@@ -102,7 +111,6 @@ describe('ResumeRagService', () => {
     const service = new ResumeRagService(
       retriever,
       chatProvider,
-      createKeywordService(),
       createChatLogService().chatLogService,
     );
 
@@ -154,7 +162,6 @@ describe('ResumeRagService', () => {
     const service = new ResumeRagService(
       retriever,
       chatProvider,
-      createKeywordService(),
       createChatLogService().chatLogService,
     );
 

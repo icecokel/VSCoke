@@ -73,6 +73,11 @@ import { ResumeRagService } from './resume-rag.service';
       inject: [RESUME_RAG_CONFIG],
     },
   ],
-  exports: [ResumeSourceItemImportService, ResumeVectorIndexerService],
+  exports: [
+    ResumeRagOriginGuard,
+    ResumeRagService,
+    ResumeSourceItemImportService,
+    ResumeVectorIndexerService,
+  ],
 })
 export class ResumeRagModule {}

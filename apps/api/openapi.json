@@ -268,6 +268,95 @@
         "tags": ["Game"]
       }
     },
+    "/main-chat": {
+      "post": {
+        "operationId": "MainChatController_chat",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumeRagChatRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "IP당 1시간 메인 채팅 요청 최대 횟수",
+                "schema": {
+                  "type": "integer",
+                  "example": 30
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "현재 IP에서 남은 메인 채팅 요청 횟수",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "다음 메인 채팅 요청 횟수가 복구되는 Unix epoch 초",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeRagChatResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "질문 길이 또는 locale 형식이 올바르지 않음"
+          },
+          "403": {
+            "description": "허용된 VSCoke 웹 origin이 아닌 요청"
+          },
+          "429": {
+            "description": "IP당 1시간에 허용된 메인 채팅 요청 횟수를 초과함",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "IP당 1시간 메인 채팅 요청 최대 횟수",
+                "schema": {
+                  "type": "integer",
+                  "example": 30
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "현재 IP에서 남은 메인 채팅 요청 횟수",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "다음 메인 채팅 요청 횟수가 복구되는 Unix epoch 초",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "분류되지 않은 서버 오류"
+          },
+          "503": {
+            "description": "검색 또는 답변 생성 공급자를 사용할 수 없음"
+          }
+        },
+        "summary": "프로젝트와 이력서 통합 질문 답변",
+        "tags": ["Main Chat"]
+      }
+    },
     "/poke-lounge/rooms": {
       "post": {
         "operationId": "PokeLoungeController_createRoom",
@@ -1624,6 +1713,74 @@
         },
         "required": ["score", "rank", "createdAt", "user"]
       },
+      "ResumeRagChatRequestDto": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "example": "어떤 의료 도메인 프로젝트 경험이 있나요?",
+            "minLength": 2,
+            "maxLength": 1000
+          },
+          "locale": {
+            "type": "string",
+            "example": "ko-KR",
+            "enum": ["ko-KR", "en-US", "ja-JP"]
+          }
+        },
+        "required": ["question", "locale"]
+      },
+      "ResumeRagSourceDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "sourcePath": {
+            "type": "string"
+          },
+          "sourceKey": {
+            "type": "string"
+          },
+          "sectionPath": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "caveats": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "excerpt": {
+            "type": "string"
+          },
+          "similarity": {
+            "type": "number"
+          }
+        },
+        "required": ["title", "sourcePath", "sourceKey", "excerpt", "similarity"]
+      },
+      "ResumeRagChatResponseDto": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "grounded": {
+            "type": "boolean"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumeRagSourceDto"
+            }
+          }
+        },
+        "required": ["answer", "grounded", "sources"]
+      },
       "CreatePokeLoungeRoomDto": {
         "type": "object",
         "properties": {
@@ -2724,74 +2881,6 @@
           }
         },
         "required": ["id", "name", "tags", "ingredients", "recipe", "createdAt", "updatedAt"]
-      },
-      "ResumeRagChatRequestDto": {
-        "type": "object",
-        "properties": {
-          "question": {
-            "type": "string",
-            "example": "어떤 의료 도메인 프로젝트 경험이 있나요?",
-            "minLength": 2,
-            "maxLength": 1000
-          },
-          "locale": {
-            "type": "string",
-            "example": "ko-KR",
-            "enum": ["ko-KR", "en-US", "ja-JP"]
-          }
-        },
-        "required": ["question", "locale"]
-      },
-      "ResumeRagSourceDto": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string"
-          },
-          "sourcePath": {
-            "type": "string"
-          },
-          "sourceKey": {
-            "type": "string"
-          },
-          "sectionPath": {
-            "type": "string"
-          },
-          "version": {
-            "type": "string"
-          },
-          "caveats": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "excerpt": {
-            "type": "string"
-          },
-          "similarity": {
-            "type": "number"
-          }
-        },
-        "required": ["title", "sourcePath", "sourceKey", "excerpt", "similarity"]
-      },
-      "ResumeRagChatResponseDto": {
-        "type": "object",
-        "properties": {
-          "answer": {
-            "type": "string"
-          },
-          "grounded": {
-            "type": "boolean"
-          },
-          "sources": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ResumeRagSourceDto"
-            }
-          }
-        },
-        "required": ["answer", "grounded", "sources"]
       },
       "WordResponseDto": {
         "type": "object",

@@ -21,12 +21,9 @@ describe('ResumeRagKeywordService', () => {
       query,
     } as unknown as DataSource);
 
-    await expect(service.calculateKeywordScore('특수키워드')).resolves.toBe(2);
-    await expect(service.isQuestionInScope('특수키워드')).resolves.toBe(true);
     await expect(service.createSearchTokens('특수키워드')).resolves.toEqual(
       expect.arrayContaining(['특수키워드', '배포', '검증']),
     );
-    await expect(service.isQuestionInScope('cicd경험')).resolves.toBe(true);
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('resume_rag_keyword_terms'),
     );
@@ -41,7 +38,6 @@ describe('ResumeRagKeywordService', () => {
       query: jest.fn().mockRejectedValue(missingTableError),
     } as unknown as DataSource);
 
-    await expect(service.isQuestionInScope('cicd경험')).resolves.toBe(true);
     await expect(service.createSearchTokens('cicd경험')).resolves.toEqual(
       expect.arrayContaining(['github', 'actions', '배포', '검증']),
     );
@@ -52,9 +48,21 @@ describe('ResumeRagKeywordService', () => {
       query: jest.fn().mockResolvedValue([]),
     } as unknown as DataSource);
 
-    await expect(service.isQuestionInScope('웹뷰경험')).resolves.toBe(true);
     await expect(service.createSearchTokens('웹뷰경험')).resolves.toEqual(
       expect.arrayContaining(['모바일', '웹뷰', '콘텐츠']),
+    );
+  });
+
+  it('키워드 테이블 부재가 아닌 데이터베이스 오류는 숨기지 않는다', async () => {
+    const databaseError = Object.assign(new Error('connection refused'), {
+      code: '08006',
+    });
+    const service = new ResumeRagKeywordService({
+      query: jest.fn().mockRejectedValue(databaseError),
+    } as unknown as DataSource);
+
+    await expect(service.createSearchTokens('프로젝트')).rejects.toBe(
+      databaseError,
     );
   });
 });

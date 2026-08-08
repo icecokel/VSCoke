@@ -84,7 +84,42 @@
       "postsHint": "공개된 블로그 글 수",
       "gamesHint": "플레이 가능한 게임 수"
     },
-    "techTitle": "주요 기술 스택"
+    "techTitle": "주요 기술 스택",
+    "mainChat": {
+      "workspaceTitle": "프로젝트 · 경력 채팅",
+      "publicAccess": "GPT-5.6 Luna · xhigh",
+      "title": "프로젝트와 경력에 대해 물어보세요",
+      "description": "VSCOKE의 프로젝트, 기술 경험, 이력서 내용을 자연어로 확인할 수 있습니다.",
+      "navigationLabel": "주요 페이지",
+      "navigation": {
+        "readme": "README",
+        "game": "Game Center",
+        "blog": "Blog Dashboard"
+      },
+      "guideTitle": "이 채팅에서 확인할 수 있어요",
+      "guide": {
+        "projects": "프로젝트별 목적과 담당 역할",
+        "tech": "사용한 기술과 선택 이유",
+        "problemSolving": "문제 해결 과정과 성과",
+        "career": "경력과 직무 적합성",
+        "collaboration": "협업 방식과 업무 경험"
+      },
+      "placeholder": "프로젝트나 경력에 대해 질문해보세요",
+      "send": "질문 보내기",
+      "you": "나",
+      "pending": "답변을 준비하고 있습니다.",
+      "sources": "출처 {count}개",
+      "rateLimit": "오늘 남은 질문 {count}회 · 다음 이용 가능 {time}",
+      "retry": "다시 시도",
+      "failure": {
+        "invalid-request": "질문 형식을 확인한 뒤 다시 시도해주세요.",
+        "origin-blocked": "현재 주소에서는 채팅을 사용할 수 없습니다.",
+        "rate-limited": "1시간에 30회까지 질문할 수 있습니다.",
+        "service-unavailable": "답변 서비스를 일시적으로 사용할 수 없습니다.",
+        "contract": "응답 형식을 확인하지 못했습니다. 다시 시도해주세요.",
+        "request": "요청을 완료하지 못했습니다. 네트워크를 확인한 뒤 다시 시도해주세요."
+      }
+    }
   },
   "profile": {
     "notOnlyCoding": "코딩만 하지 않는",

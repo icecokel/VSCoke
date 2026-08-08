@@ -3,9 +3,7 @@ import { DataSource } from 'typeorm';
 import {
   RESUME_RAG_KEYWORD_GROUPS,
   SEARCH_TOKEN_EXPANSIONS_BY_KEYWORD_GROUP,
-  calculateResumeRagKeywordScore,
   createResumeRagSearchTokens,
-  isResumeRagQuestionInScope,
   type ResumeRagKeywordGroup,
 } from './resume-rag-keyword-gate';
 
@@ -165,17 +163,6 @@ const mergeKeywordGroups = (
 @Injectable()
 export class ResumeRagKeywordService {
   constructor(private readonly dataSource: DataSource) {}
-
-  async calculateKeywordScore(question: string): Promise<number> {
-    return calculateResumeRagKeywordScore(
-      question,
-      await this.loadKeywordGroups(),
-    );
-  }
-
-  async isQuestionInScope(question: string): Promise<boolean> {
-    return isResumeRagQuestionInScope(question, await this.loadKeywordGroups());
-  }
 
   async createSearchTokens(question: string): Promise<string[]> {
     return createResumeRagSearchTokens(

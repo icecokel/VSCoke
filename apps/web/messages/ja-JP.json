@@ -84,7 +84,42 @@
       "postsHint": "公開済みブログ記事数",
       "gamesHint": "プレイ可能なゲーム数"
     },
-    "techTitle": "主な技術スタック"
+    "techTitle": "主な技術スタック",
+    "mainChat": {
+      "workspaceTitle": "プロジェクト・経歴チャット",
+      "publicAccess": "GPT-5.6 Luna · xhigh",
+      "title": "プロジェクトと経歴について聞いてください",
+      "description": "VSCOKEのプロジェクト、技術経験、履歴書の内容を自然な言葉で確認できます。",
+      "navigationLabel": "主要ページ",
+      "navigation": {
+        "readme": "README",
+        "game": "Game Center",
+        "blog": "Blog Dashboard"
+      },
+      "guideTitle": "このチャットで確認できること",
+      "guide": {
+        "projects": "プロジェクトの目的と担当役割",
+        "tech": "使用技術と選定理由",
+        "problemSolving": "問題解決の過程と成果",
+        "career": "経歴と職務適性",
+        "collaboration": "協業方法と業務経験"
+      },
+      "placeholder": "プロジェクトや経歴について質問してください",
+      "send": "質問を送信",
+      "you": "あなた",
+      "pending": "回答を準備しています。",
+      "sources": "出典 {count}件",
+      "rateLimit": "残り {count} 回 · 次回利用可能 {time}",
+      "retry": "再試行",
+      "failure": {
+        "invalid-request": "質問の形式を確認して再試行してください。",
+        "origin-blocked": "このアドレスからはチャットを利用できません。",
+        "rate-limited": "1時間に30回まで質問できます。",
+        "service-unavailable": "回答サービスを一時的に利用できません。",
+        "contract": "応答形式を確認できませんでした。再試行してください。",
+        "request": "リクエストを完了できませんでした。接続を確認して再試行してください。"
+      }
+    }
   },
   "profile": {
     "notOnlyCoding": "コードを書くことだけにとどまらない",

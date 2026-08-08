@@ -1,46 +1,81 @@
 import {
   createResumeRagSearchTokens,
-  getResumeRagOutOfScopeAnswer,
-  isResumeRagQuestionInScope,
+  getResumeRagNoEvidenceAnswer,
 } from './resume-rag-keyword-gate';
 
-describe('resume-rag keyword gate', () => {
-  it('allows resume-related company and career questions', () => {
-    expect(isResumeRagQuestionInScope('Oprimed에서 어떤 업무를 했어?')).toBe(
-      true,
-    );
-    expect(isResumeRagQuestionInScope('프론트엔드 강점은 뭐야?')).toBe(true);
-    expect(isResumeRagQuestionInScope('What did you build with Next.js?')).toBe(
-      true,
+describe('resume-rag keyword search', () => {
+  it('이력 키워드가 없는 질문도 검색 토큰으로 변환한다', () => {
+    expect(createResumeRagSearchTokens('오늘 날씨 어때?')).toEqual(
+      expect.arrayContaining(['오늘', '날씨', '어때']),
     );
   });
 
-  it('allows resume domain keywords found in source documents', () => {
-    expect(isResumeRagQuestionInScope('웹뷰는 뭘 했어?')).toBe(true);
-    expect(isResumeRagQuestionInScope('자막 번역은?')).toBe(true);
-    expect(isResumeRagQuestionInScope('커머스 백오피스?')).toBe(true);
-    expect(isResumeRagQuestionInScope('성능 최적화?')).toBe(true);
-    expect(isResumeRagQuestionInScope('장애 대응?')).toBe(true);
-    expect(isResumeRagQuestionInScope('제품 문제 해결')).toBe(true);
-    expect(isResumeRagQuestionInScope('UX 사용성')).toBe(true);
-    expect(isResumeRagQuestionInScope('타입 모델링')).toBe(true);
-    expect(isResumeRagQuestionInScope('Web Vitals')).toBe(true);
-    expect(isResumeRagQuestionInScope('어드민 관리자 화면')).toBe(true);
+  it('expands project intent into retrieval tokens', () => {
+    expect(createResumeRagSearchTokens('대표 포트폴리오와 담당 역할')).toEqual(
+      expect.arrayContaining([
+        'vscoke',
+        '프로젝트',
+        '포트폴리오',
+        '역할',
+        '기술',
+        '구현',
+        '개발',
+      ]),
+    );
   });
 
-  it('allows compact variants of multi-word resume keywords', () => {
-    expect(isResumeRagQuestionInScope('타입모델링')).toBe(true);
-    expect(isResumeRagQuestionInScope('webvitals')).toBe(true);
-  });
-
-  it('allows keywords from the latest imported resume evidence', () => {
-    expect(isResumeRagQuestionInScope('디자인 토큰 전환 범위')).toBe(true);
-    expect(isResumeRagQuestionInScope('이미지 최적화 전송량 절감')).toBe(true);
-    expect(isResumeRagQuestionInScope('작업별 캐시와 결과 복원')).toBe(true);
-    expect(isResumeRagQuestionInScope('PDF 페이지 분할')).toBe(true);
-    expect(isResumeRagQuestionInScope('Web Audio 화면 이탈 대응')).toBe(true);
-    expect(isResumeRagQuestionInScope('GA4 행동 이벤트')).toBe(true);
-    expect(isResumeRagQuestionInScope('게임 결과 중복 입력 제어')).toBe(true);
+  it('expands latest career topics into focused search tokens', () => {
+    expect(createResumeRagSearchTokens('접근성과 포커스 복원')).toEqual(
+      expect.arrayContaining([
+        '접근성',
+        'aria',
+        'focus',
+        'inert',
+        'axe',
+        'portal',
+      ]),
+    );
+    expect(createResumeRagSearchTokens('MCP 온보딩')).toEqual(
+      expect.arrayContaining([
+        'mcp',
+        'llm',
+        'wiki',
+        'markdown',
+        'codex',
+        'claude',
+      ]),
+    );
+    expect(createResumeRagSearchTokens('백엔드 로그와 요청 추적')).toEqual(
+      expect.arrayContaining([
+        '백엔드',
+        '로그',
+        'request',
+        'id',
+        'admin',
+        'guardrail',
+      ]),
+    );
+    expect(createResumeRagSearchTokens('개발 철학과 일하는 방식')).toEqual(
+      expect.arrayContaining([
+        '사용자',
+        '운영자',
+        '작은',
+        '검증',
+        'runtime',
+        '협업',
+      ]),
+    );
+    expect(createResumeRagSearchTokens('보험 가입 성능')).toEqual(
+      expect.arrayContaining([
+        '보험',
+        '가입',
+        '일본',
+        'ssr',
+        'lcp',
+        'spring',
+        's3',
+      ]),
+    );
   });
 
   it('expands latest resume evidence keywords into focused search tokens', () => {
@@ -76,23 +111,18 @@ describe('resume-rag keyword gate', () => {
     );
   });
 
-  it('blocks unrelated questions before AI processing', () => {
-    expect(isResumeRagQuestionInScope('오늘 날씨 어때?')).toBe(false);
-    expect(isResumeRagQuestionInScope('비트코인 가격 알려줘')).toBe(false);
-  });
-
-  it('returns a fixed localized out-of-scope message', () => {
-    expect(getResumeRagOutOfScopeAnswer('ko-KR')).toBe(
+  it('returns a fixed localized no-evidence message', () => {
+    expect(getResumeRagNoEvidenceAnswer('ko-KR')).toBe(
       '이 질문은 제 이력 범위를 벗어난 것 같아요. 프로젝트, 기술 경험, 업무 성과, 강점처럼 이력과 관련된 내용으로 다시 물어봐 주세요.\n\n추천 키워드: Oprimed, 의료 도메인, CI/CD와 배포, 프론트엔드 강점',
     );
-    expect(getResumeRagOutOfScopeAnswer('en-US')).toBe(
+    expect(getResumeRagNoEvidenceAnswer('en-US')).toBe(
       'This question seems outside the scope of my resume. Please ask about resume-related topics such as projects, technical experience, work impact, or strengths.\n\nSuggested topics: Oprimed, healthcare domain, CI/CD and deployment, frontend strengths',
     );
-    expect(getResumeRagOutOfScopeAnswer('ja-JP')).toBe(
+    expect(getResumeRagNoEvidenceAnswer('ja-JP')).toBe(
       'この質問は私の履歴の範囲から外れているようです。プロジェクト、技術経験、業務成果、強みなど履歴に関連する内容で質問してください。\n\nおすすめのキーワード: Oprimed、医療ドメイン、CI/CDとデプロイ、フロントエンドの強み',
     );
-    expect(getResumeRagOutOfScopeAnswer('unknown')).toBe(
-      getResumeRagOutOfScopeAnswer('ko-KR'),
+    expect(getResumeRagNoEvidenceAnswer('unknown')).toBe(
+      getResumeRagNoEvidenceAnswer('ko-KR'),
     );
   });
 });

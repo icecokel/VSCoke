@@ -3172,6 +3172,13 @@ test.describe("Poke Lounge", () => {
 
     await page.locator("[data-room-entry-solo]").click();
     await expect(page.locator("[data-screen='starter-selection']")).toBeVisible({ timeout: 30000 });
+    const starterCards = page.locator("[data-starter-card]");
+    await expect(starterCards).toHaveCount(6);
+    expect(
+      await starterCards.evaluateAll(cards =>
+        cards.map(card => card.getAttribute("data-starter-card")),
+      ),
+    ).toEqual(["charmander", "bulbasaur", "squirtle", "chikorita", "cyndaquil", "totodile"]);
     await expectNoViewportOverflow(page);
     await expect(page.locator("[data-fullscreen-toggle-placement='mobile']")).toHaveCount(0);
 

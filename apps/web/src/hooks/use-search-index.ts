@@ -198,31 +198,14 @@ export const useSearchIndex = (): SearchItem[] => {
           : "";
 
         const descriptionTexts: string[] = [];
-        if (project.descriptions?.length) {
-          for (const descriptionRef of project.descriptions) {
-            const rawDescription = safeRaw(
-              () => tResume.raw(`${projectKey}.descriptions.${descriptionRef.id}`),
-              null,
-            );
+        const rawDescriptions = safeRaw(() => tResume.raw(`${projectKey}.descriptions`), []);
+        if (Array.isArray(rawDescriptions)) {
+          for (const rawDescription of rawDescriptions) {
             descriptionTexts.push(...collectDescriptionTexts(rawDescription));
-          }
-        } else {
-          const rawDescriptions = safeRaw(() => tResume.raw(`${projectKey}.descriptions`), []);
-          if (Array.isArray(rawDescriptions)) {
-            for (const rawDescription of rawDescriptions) {
-              descriptionTexts.push(...collectDescriptionTexts(rawDescription));
-            }
           }
         }
 
-        const linkedDescription = project.descriptions?.find(
-          description => description.fileRef,
-        )?.fileRef;
-        const path = project.fileRef
-          ? `/resume/${project.fileRef}`
-          : linkedDescription
-            ? `/resume/${linkedDescription}`
-            : "/readme";
+        const path = project.fileRef ? `/resume/${project.fileRef}` : "/readme";
 
         return {
           id: `profile:project:${career.id}:${project.id}`,

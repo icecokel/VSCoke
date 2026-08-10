@@ -6,20 +6,6 @@ export interface ResumeCareerData {
 export interface ResumeProjectData {
   id: string;
   fileRef?: string;
-  descriptions?: { id: string; fileRef?: string }[];
-}
-
-export interface Career {
-  company: string;
-  period: string;
-  employmentType: string;
-  projects: Project[];
-}
-
-export interface Project {
-  title: string;
-  period?: string;
-  descriptions?: Description[];
 }
 
 export interface Description {

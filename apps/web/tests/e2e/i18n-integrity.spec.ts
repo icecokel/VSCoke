@@ -222,6 +222,7 @@ test.describe("i18n 무결성", () => {
 
   test("공개 이력서에 최신 제목과 회사별 역할이 표시된다", async ({ page }) => {
     await visit(page, "/ko-KR/readme");
+    await page.setViewportSize({ width: 390, height: 844 });
 
     await expect(
       page.getByRole("heading", {
@@ -230,11 +231,33 @@ test.describe("i18n 무결성", () => {
     ).toBeVisible();
     await expect(page.getByText("서비스 개발자")).toBeVisible();
     await expect(
-      page.getByRole("heading", {
-        name: "외교부 영사콜센터 유지보수와 Smart-DIS ETL 개발",
-        exact: true,
-      }),
+      page
+        .getByRole("heading", {
+          name: "외교부 영사콜센터 유지보수와 Smart-DIS ETL 개발",
+          exact: true,
+        })
+        .first(),
     ).toBeVisible();
+
+    const descriptionSubtitle = page.getByRole("heading", {
+      name: "의료·임상 분석 화면 개발",
+      exact: true,
+    });
+    const descriptionDetail = page.getByText(
+      "의료·임상 분석 제품의 화면 개발과 접근성·성능 개선, AI 개발 환경, CI/CD와 백엔드 로그 작업을 맡고 있습니다.",
+      { exact: true },
+    );
+    const [subtitleBox, detailBox] = await Promise.all([
+      descriptionSubtitle.boundingBox(),
+      descriptionDetail.boundingBox(),
+    ]);
+
+    expect(subtitleBox).not.toBeNull();
+    expect(detailBox).not.toBeNull();
+    if (!subtitleBox || !detailBox) {
+      throw new Error("이력서 소제목과 본문 위치를 확인할 수 없습니다.");
+    }
+    expect(detailBox.y).toBeGreaterThanOrEqual(subtitleBox.y + subtitleBox.height);
   });
 
   test("언어 전환 후 URL/쿠키/새로고침/루트 리다이렉트가 일치한다", async ({ page }) => {

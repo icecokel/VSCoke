@@ -1,35 +1,30 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import Chip from "@/components/base-ui/chip";
-import BaseText from "@/components/base-ui/text";
+
 import AchievementBox from "./achievement-box";
-import { Description } from "./types";
+import type { Description } from "./types";
 
 interface DescriptionItemProps {
   description: Description;
 }
 
-import { useTranslations } from "next-intl";
-
 const DescriptionItem = ({ description }: DescriptionItemProps) => {
   const t = useTranslations("descriptionItem");
+
   return (
-    <div className="mb-4 ml-4">
-      <BaseText type="body1" className="text-white font-medium mb-2">
-        {description.subtitle}
-      </BaseText>
+    <section className="mb-4 ml-4">
+      <h6 className="mb-2 text-base font-medium leading-6 text-white">{description.subtitle}</h6>
 
       {description.detail && (
-        <BaseText type="body2" className="text-gray-300 mb-2">
-          {description.detail}
-        </BaseText>
+        <p className="mb-2 text-sm leading-6 text-gray-300">{description.detail}</p>
       )}
 
       {description.skills && (
         <div className="mb-3">
-          <BaseText type="body2" className="text-gray-400 mb-2">
-            {t("techStack")}
-          </BaseText>
+          <p className="mb-2 text-sm leading-6 text-gray-400">{t("techStack")}</p>
           <div className="flex flex-wrap gap-2 p-1">
             {description.skills.split(", ").map((skill, index) => (
               <Chip
@@ -53,7 +48,7 @@ const DescriptionItem = ({ description }: DescriptionItemProps) => {
       )}
 
       {description.achievement && <AchievementBox achievement={description.achievement} />}
-    </div>
+    </section>
   );
 };
 

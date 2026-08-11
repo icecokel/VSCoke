@@ -3158,6 +3158,41 @@ test.describe("Poke Lounge", () => {
     expect(browserErrors.join("\n")).toBe("");
   });
 
+  test("desktop starter 선택지는 게임 프레임 안에서 스크롤한다", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await gotoWithRetry(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
+    await continueToRoomEntry(page);
+    await page.locator("[data-room-entry-solo]").click();
+
+    const screen = page.locator("[data-screen='starter-selection']");
+    const starterGrid = page.locator(".starter-grid");
+    const starterCards = page.locator("[data-starter-card]");
+
+    await expect(screen).toBeVisible({ timeout: 30_000 });
+    await expect(starterCards).toHaveCount(6);
+    await expect
+      .poll(() => starterGrid.evaluate(grid => grid.scrollHeight > grid.clientHeight))
+      .toBe(true);
+
+    const screenFitsGameRoot = await page.evaluate(() => {
+      const screen = document.querySelector("[data-screen='starter-selection']");
+      const root = document.querySelector("#game-root");
+
+      if (!screen || !root) {
+        return false;
+      }
+
+      const screenRect = screen.getBoundingClientRect();
+      const rootRect = root.getBoundingClientRect();
+
+      return screenRect.top >= rootRect.top && screenRect.bottom <= rootRect.bottom;
+    });
+
+    expect(screenFitsGameRoot).toBe(true);
+    await starterCards.nth(5).scrollIntoViewIfNeeded();
+    await expect(starterCards.nth(5)).toBeInViewport();
+  });
+
   test("mobile room entry와 starter 선택 UI가 뷰포트 폭을 넘지 않는다", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
 

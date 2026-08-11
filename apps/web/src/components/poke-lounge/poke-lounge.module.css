@@ -1018,7 +1018,10 @@
 }
 
 .page :global(.game-screen--starter-modal) {
+  height: 100%;
+  min-height: 0;
   padding: 20px;
+  overflow: hidden;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 32%),
     var(--rom-screen-background);
@@ -1312,10 +1315,15 @@
 }
 
 .page :global(.starter-selection-modal) {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   width: min(94vw, 760px);
+  height: 100%;
   min-height: 0;
+  max-height: 100%;
   border-color: #17231c;
   background: #349a35;
+  overflow: hidden;
   box-shadow:
     0 0 0 4px #d9e3d7,
     0 12px 0 #17231c;
@@ -1401,6 +1409,7 @@
 
 .page :global(.selection-body) {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 14px;
   min-height: 0;
   padding: 16px;
@@ -1485,16 +1494,32 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(150px, 1fr));
   gap: 12px;
-  align-content: center;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
   padding: 0;
+}
+
+@media (min-width: 761px) and (max-height: 800px) {
+  .page :global(.starter-modal-preview) {
+    min-height: 180px;
+  }
+
+  .page :global(.starter-preview-stage) {
+    min-height: 150px;
+  }
+
+  .page :global(.starter-preview-sprite) {
+    --sprite-frame-size: 112px;
+  }
 }
 
 .page :global(.starter-card) {
   display: grid;
-  grid-template-rows: 84px auto auto auto;
+  grid-template-rows: 112px auto auto auto;
   justify-items: center;
   gap: 7px;
-  min-height: 168px;
+  min-height: 196px;
   padding: 12px 10px;
   border: 4px solid #2b3a31;
   border-radius: 6px;
@@ -1516,7 +1541,7 @@
 }
 
 .page :global(.starter-sprite) {
-  --sprite-frame-size: 74px;
+  --sprite-frame-size: 111px;
 
   display: block;
   width: var(--sprite-frame-size);

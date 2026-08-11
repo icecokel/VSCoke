@@ -5,6 +5,7 @@ import {
 } from "../audio/poke-lounge-audio";
 
 export function playBattleTransitionSound(): void {
+  stopPokeLoungeBgm("field-day");
   playPokeLoungeSfx("battle-transition");
 }
 
@@ -14,10 +15,6 @@ export function playWildBattleBgm(): void {
 
 export function stopWildBattleBgm(): void {
   stopPokeLoungeBgm("wild-battle");
-}
-
-export function playBattleStartSound(): void {
-  playPokeLoungeSfx("battle-start");
 }
 
 export function playPartyHealSound(): void {

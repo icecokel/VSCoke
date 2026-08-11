@@ -155,6 +155,10 @@ test("Poke Lounge 화면에서 이탈하면 재생 중인 모든 오디오를 �
     .toBe("field-day");
 
   expect(await startMobileWildBattleForTest(page)).toBe(true);
+  expect(await readAudioPlaybackSnapshot(page)).toMatchObject({
+    activeBgmId: null,
+    isBgmPlaying: false,
+  });
   await expect
     .poll(() => readAudioPlaybackSnapshot(page), { timeout: 10_000 })
     .toMatchObject({

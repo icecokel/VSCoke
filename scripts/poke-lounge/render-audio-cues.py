@@ -284,21 +284,22 @@ def render_wav_files(config, sdat):
     wav_dir = processed_dir / "wav"
     wav_dir.mkdir(parents=True, exist_ok=True)
 
-    for _, cue in iter_audio_cues(config):
+    for cue_kind, cue in iter_audio_cues(config):
         wav_path = wav_dir / f"{cue['id']}.wav"
-        samples = render_cue(sdat, cue)
-        write_wav(wav_path, samples)
+        stereo = cue_kind == "bgm"
+        samples = render_cue(sdat, cue, stereo=stereo)
+        write_wav(wav_path, samples, stereo=stereo)
         print(f"rendered {wav_path.relative_to(REPO_ROOT)}")
 
     return wav_dir
 
 
-def render_cue(sdat, cue):
+def render_cue(sdat, cue, stereo=False):
     _, sequence = get_sequence(sdat, cue)
     _, bank = sdat.banks[sequence.bankID]
     duration_seconds = cue["durationMs"] / 1000
     output_len = max(1, math.ceil(duration_seconds * OUTPUT_SAMPLE_RATE))
-    output = [0.0] * output_len
+    output = ([0.0] * output_len, [0.0] * output_len)
     default_tempo = find_default_tempo(sequence.events)
     track_start_indices, event_indices = get_sequence_track_start_indices(sequence.events)
 
@@ -315,7 +316,7 @@ def render_cue(sdat, cue):
             default_tempo=default_tempo,
         )
 
-    normalize_peak(output, target_peak=0.9)
+    normalize_peak(output, target_peak=0.9, stereo=stereo)
     apply_output_fade(output, fade_out_ms=int(cue.get("fadeOutMs", 40)))
     return output
 
@@ -379,12 +380,13 @@ def render_track(
     instrument_id = 0
     track_volume = 1.0
     expression = 1.0
+    pan = 64
     event_index = start_event_index
     call_return_indices = []
     max_event_steps = max(1_000, len(events) * 256)
     event_steps = 0
 
-    while seconds < len(output) / OUTPUT_SAMPLE_RATE and event_steps < max_event_steps:
+    while seconds < len(output[0]) / OUTPUT_SAMPLE_RATE and event_steps < max_event_steps:
         if not 0 <= event_index < len(events):
             break
 
@@ -400,12 +402,14 @@ def render_track(
             track_volume = event.value / 127
         elif class_name == "ExpressionSequenceEvent":
             expression = event.value / 127
+        elif class_name == "PanSequenceEvent":
+            pan = event.value
         elif class_name == "RestSequenceEvent":
             seconds += ticks_to_seconds(event.duration, tempo)
         elif class_name == "NoteSequenceEvent":
             note_seconds = ticks_to_seconds(event.duration, tempo)
             gain = sequence_volume * track_volume * expression * (event.velocity / 127) * cue_gain
-            mix_note(output, seconds, note_seconds, sdat, bank, instrument_id, event.type, gain)
+            mix_note(output, seconds, note_seconds, sdat, bank, instrument_id, event.type, gain, pan)
         elif class_name == "JumpSequenceEvent":
             destination_index = event_indices.get(id(event.destination))
             if destination_index is None:
@@ -459,7 +463,7 @@ def resolve_note_definition(bank, instrument_id, note):
     return None
 
 
-def mix_note(output, start_seconds, note_seconds, sdat, bank, instrument_id, note, gain):
+def mix_note(output, start_seconds, note_seconds, sdat, bank, instrument_id, note, gain, pan):
     note_definition = resolve_note_definition(bank, instrument_id, note)
     if note_definition is None or gain <= 0:
         return
@@ -487,15 +491,16 @@ def mix_note(output, start_seconds, note_seconds, sdat, bank, instrument_id, not
             wave_data["sample_rate"],
             ratio,
             gain,
+            pan,
         )
         return
 
     if note_type == "PSG_SQUARE_WAVE":
-        mix_square_note(output, start_seconds, note_seconds, note, note_definition.pitch, gain)
+        mix_square_note(output, start_seconds, note_seconds, note, note_definition.pitch, gain, pan)
         return
 
     if note_type == "PSG_WHITE_NOISE":
-        mix_noise_note(output, start_seconds, note_seconds, gain)
+        mix_noise_note(output, start_seconds, note_seconds, gain, pan)
 
 
 def decode_wave(wave_object):
@@ -549,17 +554,18 @@ def decode_adpcm(raw):
     return samples
 
 
-def mix_pcm_note(output, start_seconds, note_seconds, source, source_rate, pitch_ratio, gain):
+def mix_pcm_note(output, start_seconds, note_seconds, source, source_rate, pitch_ratio, gain, pan):
     start_index = max(0, int(start_seconds * OUTPUT_SAMPLE_RATE))
     source_duration = len(source) / source_rate / max(pitch_ratio, 0.01)
     render_duration = min(source_duration, max(note_seconds + 0.16, note_seconds * 1.35))
-    frame_count = min(len(output) - start_index, max(0, int(render_duration * OUTPUT_SAMPLE_RATE)))
+    frame_count = min(len(output[0]) - start_index, max(0, int(render_duration * OUTPUT_SAMPLE_RATE)))
 
     if frame_count <= 0:
         return
 
     fade_in_frames = max(1, int(0.002 * OUTPUT_SAMPLE_RATE))
     fade_out_frames = max(1, min(frame_count, int(0.018 * OUTPUT_SAMPLE_RATE)))
+    left_gain, right_gain = resolve_pan_gains(pan)
 
     for frame in range(frame_count):
         source_index = int(frame * source_rate * pitch_ratio / OUTPUT_SAMPLE_RATE)
@@ -572,17 +578,20 @@ def mix_pcm_note(output, start_seconds, note_seconds, source, source_rate, pitch
         if frame >= frame_count - fade_out_frames:
             envelope *= (frame_count - frame) / fade_out_frames
 
-        output[start_index + frame] += source[source_index] * gain * envelope
+        sample = source[source_index] * gain * envelope
+        output[0][start_index + frame] += sample * left_gain
+        output[1][start_index + frame] += sample * right_gain
 
 
-def mix_square_note(output, start_seconds, note_seconds, note, root_note, gain):
+def mix_square_note(output, start_seconds, note_seconds, note, root_note, gain, pan):
     start_index = max(0, int(start_seconds * OUTPUT_SAMPLE_RATE))
     frame_count = min(
-        len(output) - start_index,
+        len(output[0]) - start_index,
         max(0, int(max(note_seconds + 0.08, note_seconds * 1.2) * OUTPUT_SAMPLE_RATE)),
     )
     frequency = 440 * (2 ** ((note - 69) / 12))
     fade_out_frames = max(1, min(frame_count, int(0.025 * OUTPUT_SAMPLE_RATE)))
+    left_gain, right_gain = resolve_pan_gains(pan)
 
     for frame in range(frame_count):
         phase = (frame * frequency / OUTPUT_SAMPLE_RATE) % 1
@@ -590,52 +599,69 @@ def mix_square_note(output, start_seconds, note_seconds, note, root_note, gain):
         envelope = 1.0
         if frame >= frame_count - fade_out_frames:
             envelope *= (frame_count - frame) / fade_out_frames
-        output[start_index + frame] += sample * gain * envelope
+        sample *= gain * envelope
+        output[0][start_index + frame] += sample * left_gain
+        output[1][start_index + frame] += sample * right_gain
 
 
-def mix_noise_note(output, start_seconds, note_seconds, gain):
+def mix_noise_note(output, start_seconds, note_seconds, gain, pan):
     start_index = max(0, int(start_seconds * OUTPUT_SAMPLE_RATE))
     frame_count = min(
-        len(output) - start_index,
+        len(output[0]) - start_index,
         max(0, int(max(note_seconds + 0.06, note_seconds * 1.2) * OUTPUT_SAMPLE_RATE)),
     )
     rng = random.Random(0x504F4B45)
     fade_out_frames = max(1, min(frame_count, int(0.025 * OUTPUT_SAMPLE_RATE)))
+    left_gain, right_gain = resolve_pan_gains(pan)
 
     for frame in range(frame_count):
         envelope = 1.0
         if frame >= frame_count - fade_out_frames:
             envelope *= (frame_count - frame) / fade_out_frames
-        output[start_index + frame] += rng.uniform(-0.6, 0.6) * gain * envelope
+        sample = rng.uniform(-0.6, 0.6) * gain * envelope
+        output[0][start_index + frame] += sample * left_gain
+        output[1][start_index + frame] += sample * right_gain
 
 
-def normalize_peak(samples, target_peak):
-    peak = max((abs(sample) for sample in samples), default=0)
+def resolve_pan_gains(pan):
+    right_gain = max(0, min(127, pan)) / 127
+    return 1 - right_gain, right_gain
+
+
+def normalize_peak(samples, target_peak, stereo):
+    if stereo:
+        peak = max((abs(sample) for channel in samples for sample in channel), default=0)
+    else:
+        peak = max((abs(left + right) for left, right in zip(*samples)), default=0)
     if peak <= 0 or peak <= target_peak:
         return
 
     scale = target_peak / peak
-    for index, sample in enumerate(samples):
-        samples[index] = sample * scale
+    for channel in samples:
+        for index, sample in enumerate(channel):
+            channel[index] = sample * scale
 
 
 def apply_output_fade(samples, fade_out_ms):
-    fade_frames = max(1, min(len(samples), int((fade_out_ms / 1000) * OUTPUT_SAMPLE_RATE)))
-    for offset in range(fade_frames):
-        index = len(samples) - fade_frames + offset
-        samples[index] *= offset / fade_frames
+    fade_frames = max(1, min(len(samples[0]), int((fade_out_ms / 1000) * OUTPUT_SAMPLE_RATE)))
+    for channel in samples:
+        for offset in range(fade_frames):
+            index = len(channel) - fade_frames + offset
+            channel[index] *= offset / fade_frames
 
 
-def write_wav(path, samples):
+def write_wav(path, samples, stereo):
     path.parent.mkdir(parents=True, exist_ok=True)
     with wave.open(str(path), "wb") as wav_file:
-        wav_file.setnchannels(1)
+        wav_file.setnchannels(2 if stereo else 1)
         wav_file.setsampwidth(2)
         wav_file.setframerate(OUTPUT_SAMPLE_RATE)
         payload = bytearray()
-        for sample in samples:
-            value = max(-32768, min(32767, int(sample * 32767)))
-            payload.extend(struct.pack("<h", value))
+        for left, right in zip(*samples):
+            frame = (left, right) if stereo else (left + right,)
+            for sample in frame:
+                value = max(-32768, min(32767, int(sample * 32767)))
+                payload.extend(struct.pack("<h", value))
         wav_file.writeframes(bytes(payload))
 
 
@@ -674,7 +700,7 @@ def convert_mp3_files(config):
             "-af",
             "loudnorm=I=-18:LRA=11:TP=-1.5",
             "-ac",
-            "1",
+            "2" if cue_kind == "bgm" else "1",
             "-ar",
             str(OUTPUT_SAMPLE_RATE),
             "-codec:a",

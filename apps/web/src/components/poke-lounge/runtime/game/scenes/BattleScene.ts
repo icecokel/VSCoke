@@ -33,7 +33,6 @@ import {
   playBattleCancelSound,
   playBattleConfirmSound,
   playBattleHitSound,
-  playBattleStartSound,
   playPokemonFaintSound,
   playWildBattleBgm,
   stopWildBattleBgm,
@@ -544,7 +543,6 @@ export class BattleScene extends Phaser.Scene {
     this.bindPointerConfirm();
     this.bindMobileBattleUi();
     this.render();
-    playBattleStartSound();
     playWildBattleBgm();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       if (!this.returningToWorld) {

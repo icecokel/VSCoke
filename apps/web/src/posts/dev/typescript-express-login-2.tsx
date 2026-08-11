@@ -6,6 +6,7 @@ import {
   PostParagraph,
   PostUnorderedList,
 } from "@/components/blog/blog-post-elements";
+import { MermaidDiagram } from "@/components/blog/mermaid-diagram";
 
 const DevTypescriptExpressLogin2Post = () => {
   return (
@@ -23,6 +24,12 @@ const DevTypescriptExpressLogin2Post = () => {
           'router.post("/login", async (req, res, next) => {\n  const { email, password } = req.body;\n  const account = await accountRepository.findByEmail(email);\n  const isPasswordValid = account\n    ? await passwordHasher.verify(account.passwordHash, password)\n    : false;\n\n  if (!isPasswordValid) {\n    return res.status(401).send({ error: "invalid_credentials" });\n  }\n\n  return req.session.regenerate(error => {\n    if (error) return next(error);\n\n    req.session.userId = account.id;\n    return req.session.save(saveError => {\n      if (saveError) return next(saveError);\n      return res.send({ result: true });\n    });\n  });\n});'
         }
         language={"typescript"}
+      />
+      <MermaidDiagram
+        chart={
+          "sequenceDiagram\n  participant user as 사용자\n  participant api as POST /login\n  participant account as account repository\n  participant session as session store\n  user->>api: email과 password\n  api->>account: findByEmail\n  account-->>api: account와 password hash\n  api->>api: password hash 검증\n  alt 인증 실패\n    api-->>user: 401 invalid_credentials\n  else 인증 성공\n    api->>session: session ID 재발급\n    session-->>api: 새 session\n    api->>session: userId 저장\n    session-->>api: 저장 완료\n    api-->>user: result true\n  end"
+        }
+        description="로그인 요청의 계정 조회와 비밀번호 검증, 인증 실패 응답 또는 세션 재발급 후 성공 응답 흐름"
       />
       <PostParagraph>
         세션 재발급은 로그인 전에 공격자가 고정해 둔 세션 ID를 로그인 뒤에도 이어 쓰는 세션 고정

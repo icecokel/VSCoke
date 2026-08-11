@@ -13,6 +13,7 @@ import {
   PostStrong,
   PostUnorderedList,
 } from "@/components/blog/blog-post-elements";
+import { MermaidDiagram } from "@/components/blog/mermaid-diagram";
 
 const DevIntroducingSkillsToAntigravityPost = () => {
   return (
@@ -99,6 +100,12 @@ const DevIntroducingSkillsToAntigravityPost = () => {
           </PostParagraph>
         </PostListItem>
       </PostOrderedList>
+      <MermaidDiagram
+        chart={
+          'flowchart LR\n  discovery["Discovery: 이름·설명만 확인"] --> activation["Activation: 관련 SKILL.md 로드"] --> execution["Execution: 지침을 바탕으로 작업"]'
+        }
+        description="에이전트가 스킬 목록을 먼저 확인하고, 관련 SKILL.md만 읽은 뒤 작업하는 점진적 공개 흐름"
+      />
       <PostHeading3>2.3 유연한 스코프 (Scope)</PostHeading3>
       <PostParagraph>스킬은 두 가지 레벨에서 관리될 수 있습니다.</PostParagraph>
       <PostUnorderedList>

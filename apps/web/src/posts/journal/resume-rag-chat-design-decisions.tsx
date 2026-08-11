@@ -9,6 +9,7 @@ import {
   PostParagraph,
   PostUnorderedList,
 } from "@/components/blog/blog-post-elements";
+import { MermaidDiagram } from "@/components/blog/mermaid-diagram";
 
 const JournalResumeRagChatDesignDecisionsPost = () => {
   return (
@@ -56,11 +57,11 @@ const JournalResumeRagChatDesignDecisionsPost = () => {
         그래서 런타임 구조는 &quot;파일을 읽는 RAG&quot;가 아니라 &quot;DB를 읽는 RAG&quot;로
         잡았습니다.
       </PostParagraph>
-      <PostCodeBlock
-        code={
-          "이력 원본 파일\n-> import pipeline\n-> resume_source_items\n-> chat API runtime retrieval\n-> answer generation\n-> web chat UI"
+      <MermaidDiagram
+        chart={
+          'flowchart LR\n  source["이력 원본 파일"] --> import["import pipeline"] --> items["resume_source_items"] --> retrieval["chat API runtime retrieval"] --> answer["answer generation"] --> web["web chat UI"]'
         }
-        language={"txt"}
+        description="이력 원본 파일을 가져와 DB에 저장하고, 채팅 API가 검색과 답변 생성을 거쳐 웹 UI에 보여주는 흐름"
       />
       <PostParagraph>
         여기서 핵심은 원본 파일을 버리는 것이 아니라 역할을 제한하는 것이었습니다. 원본 파일은
@@ -128,11 +129,11 @@ const JournalResumeRagChatDesignDecisionsPost = () => {
         </PostListItem>
       </PostUnorderedList>
       <PostParagraph>그래서 결론은 이렇게 정리했습니다.</PostParagraph>
-      <PostCodeBlock
-        code={
-          "현재 운영 채팅:\nDB text / keyword retrieval\n\n미래 확장:\noptional vector index pipeline"
+      <MermaidDiagram
+        chart={
+          'flowchart LR\n  current["현재 운영 채팅"] --> text["DB text / keyword retrieval"]\n  future["미래 확장"] --> vector["optional vector index pipeline"]'
         }
-        language={"txt"}
+        description="현재는 DB 텍스트와 키워드 검색으로 운영하고, 벡터 인덱스는 미래 확장으로 남겨둔 구조"
       />
       <PostParagraph>
         벡터를 완전히 부정한 것이 아니라, 지금 문제에 필요한 가장 작은 검색 구조를 먼저 운영에 올린
@@ -147,11 +148,11 @@ const JournalResumeRagChatDesignDecisionsPost = () => {
       <PostParagraph>
         그래서 구조를 모델 중심이 아니라 provider boundary 중심으로 잡았습니다.
       </PostParagraph>
-      <PostCodeBlock
-        code={
-          "ResumeRagService\n-> ResumeRagRetrieverService\n-> ChatProvider\n   -> CodexAppServerProvider\n   -> future OpenAI-compatible provider"
+      <MermaidDiagram
+        chart={
+          'flowchart TD\n  service["ResumeRagService"] --> retriever["ResumeRagRetrieverService"] --> provider["ChatProvider"]\n  provider --> codex["CodexAppServerProvider"]\n  provider -. 미래 확장 .-> openai["OpenAI-compatible provider"]'
         }
-        language={"txt"}
+        description="검색 서비스와 ChatProvider를 분리하고, 현재 Codex app-server와 향후 OpenAI 호환 provider를 연결하는 구조"
       />
       <PostParagraph>
         현재 자연어 답변 생성은 Codex app-server를 통해 처리하도록 했습니다. API 서버는 Codex
@@ -211,11 +212,11 @@ const JournalResumeRagChatDesignDecisionsPost = () => {
         않았습니다.
       </PostParagraph>
       <PostParagraph>그래서 키워드 기반 scope gate를 먼저 두었습니다.</PostParagraph>
-      <PostCodeBlock
-        code={
-          "question\n-> keyword scope gate\n-> in scope: retrieval + answer generation\n-> out of scope: fixed message"
+      <MermaidDiagram
+        chart={
+          'flowchart TD\n  question["질문"] --> gate{"이력 범위인가?"}\n  gate -->|예| retrieval["검색"] --> answer["답변 생성"]\n  gate -->|아니오| message["고정 안내 문구"]'
         }
-        language={"txt"}
+        description="질문을 이력 범위로 먼저 판정해, 관련 질문만 검색과 답변 생성으로 보내는 흐름"
       />
       <PostParagraph>
         처음 문구는 &quot;이력과 관련된 키워드가 없어 답변하지 않았습니다&quot;에 가까웠습니다.
@@ -286,11 +287,11 @@ const JournalResumeRagChatDesignDecisionsPost = () => {
       </PostParagraph>
       <PostHeading2>7. 최종 구조</PostHeading2>
       <PostParagraph>현재 구조를 단순화하면 다음과 같습니다.</PostParagraph>
-      <PostCodeBlock
-        code={
-          "Web\n  /resume/question\n  - public chat UI\n  - suggested questions\n  - failure states\n  - source citations\n\nAPI\n  POST /resume-rag/chat\n  - public origin guard\n  - keyword scope gate\n  - DB text retriever\n  - Codex app-server chat provider\n  - grounded answer response\n\nData\n  resume_source_items\n  - runtime retrieval source\n  - imported from raw resume/career docs\n\nOptional Future\n  resume_vector_chunks\n  - embedding/vector search path\n  - not required for current production chat"
+      <MermaidDiagram
+        chart={
+          'flowchart LR\n  web["Web: /resume/question"] --> api["API: POST /resume-rag/chat"]\n  raw["원본 이력·경력 문서"] --> data["resume_source_items"]\n  api --> guard["origin guard + scope gate"] --> retriever["DB text retriever"]\n  data --> retriever\n  retriever --> provider["Codex app-server chat provider"] --> answer["근거 기반 응답"]\n  vector["Optional Future: resume_vector_chunks"] -. 확장 .-> retriever'
         }
-        language={"txt"}
+        description="웹 채팅, API의 보안과 범위 판정, DB 검색, Codex 답변 생성으로 이어지는 이력서 RAG의 최종 구조"
       />
       <PostParagraph>이 구조에서 각 계층의 책임은 꽤 명확합니다.</PostParagraph>
       <PostUnorderedList>

@@ -11,6 +11,7 @@ import {
   PostStrong,
   PostUnorderedList,
 } from "@/components/blog/blog-post-elements";
+import { MermaidDiagram } from "@/components/blog/mermaid-diagram";
 
 const JournalFixingRoutingRedirectsPost = () => {
   return (
@@ -185,11 +186,11 @@ const JournalFixingRoutingRedirectsPost = () => {
           </PostParagraph>
         </PostListItem>
       </PostOrderedList>
-      <PostCodeBlock
-        code={
-          "// 최종 로직 흐름\nUser Click -> router.push('/game') -> URL Change -> HistoryTabs useEffect -> Add Tab & Active"
+      <MermaidDiagram
+        chart={
+          'flowchart LR\n  click["사용자 클릭"] --> push["router.push(\'/game\')"] --> url["URL 변경"] --> effect["HistoryTabs useEffect"] --> tab["탭 추가와 활성화"]'
         }
-        language={"tsx"}
+        description="사용자 클릭이 URL 변경을 만들고 HistoryTabs가 그 URL에 맞춰 탭을 동기화하는 최종 흐름"
       />
       <PostHeading2>5. 후기</PostHeading2>
       <PostParagraph>

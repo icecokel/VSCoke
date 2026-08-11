@@ -10,6 +10,7 @@ import {
   PostStrong,
   PostUnorderedList,
 } from "@/components/blog/blog-post-elements";
+import { MermaidDiagram } from "@/components/blog/mermaid-diagram";
 
 const DevClickAntigravityWorkflowPost = () => {
   return (
@@ -72,6 +73,12 @@ const DevClickAntigravityWorkflowPost = () => {
           </PostUnorderedList>
         </PostListItem>
       </PostOrderedList>
+      <MermaidDiagram
+        chart={
+          'flowchart LR\n  definition["워크플로 정의: .agent/workflows/*.md"] --> command["사용자 /command"] --> load["워크플로 파일 로드"] --> reasoning["단계별 도구 선택과 추론"] --> result["작업 결과"]\n  turbo["// turbo"] -. 승인 없이 실행 .-> reasoning'
+        }
+        description="마크다운 워크플로를 정의하고 슬래시 커맨드로 불러와, 에이전트가 도구를 선택해 작업하는 흐름"
+      />
       <PostParagraph>
         이 구조 덕분에, &quot;블로그 글 작성&quot;처럼 창의성이 필요한 작업부터 &quot;프로젝트
         스캐폴딩&quot; 같은 기계적인 작업까지 폭넓게 커버할 수 있는 것이죠.

@@ -8,6 +8,7 @@ import {
   PostStrong,
   PostUnorderedList,
 } from "@/components/blog/blog-post-elements";
+import { MermaidDiagram } from "@/components/blog/mermaid-diagram";
 
 const JournalGameDevLogPost = () => {
   return (
@@ -40,6 +41,12 @@ const JournalGameDevLogPost = () => {
           "이라는 컴포넌트를 만들어 Phaser 인스턴스를 관리하도록 설계했습니다.\nReact의 State가 변할 때 게임에 이벤트를 전달하고, 반대로 게임 내에서 발생한 이벤트(Game Over 등)를 React로 끌어오는 구조를 잡는 데 집중했습니다.\n처음에는 단순히 하늘에서 떨어지는 블록을 피하는 아주 기초적인 메커니즘으로 시작했습니다."
         }
       </PostParagraph>
+      <MermaidDiagram
+        chart={
+          "sequenceDiagram\n  participant react as React UI\n  participant component as PhaserGame\n  participant phaser as Phaser\n  react->>component: state change\n  component->>phaser: game event\n  phaser-->>component: Game Over 등\n  component-->>react: UI state update"
+        }
+        description="React UI 상태를 Phaser 게임에 전달하고, 게임 이벤트를 다시 React UI로 돌려주는 흐름"
+      />
       <PostHeading2>2. 예상치 못한 난관들</PostHeading2>
       <PostHeading3>WebGL vs Canvas 호환성 문제</PostHeading3>
       <PostParagraph>

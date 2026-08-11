@@ -1178,6 +1178,7 @@
 }
 
 .page :global(.room-entry-confirm-dialog) {
+  margin: auto;
   width: min(420px, calc(100vw - 28px));
   padding: 0;
   border: 3px solid #17231c;

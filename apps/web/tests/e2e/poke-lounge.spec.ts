@@ -1744,6 +1744,19 @@ test.describe("Poke Lounge", () => {
       "로그인 상태라면 계정 저장에도 초기화된 상태가 반영될 수 있으며",
     );
 
+    const [dialogBox, viewport] = await Promise.all([
+      newGameDialog.boundingBox(),
+      page.viewportSize(),
+    ]);
+    expect(dialogBox).not.toBeNull();
+    expect(viewport).not.toBeNull();
+    expect(Math.abs(dialogBox!.x + dialogBox!.width / 2 - viewport!.width / 2)).toBeLessThanOrEqual(
+      1,
+    );
+    expect(
+      Math.abs(dialogBox!.y + dialogBox!.height / 2 - viewport!.height / 2),
+    ).toBeLessThanOrEqual(1);
+
     await page.keyboard.press("Escape");
 
     await expect(newGameDialog).not.toBeVisible();

@@ -9,6 +9,7 @@ import {
   PostParagraph,
   PostUnorderedList,
 } from "@/components/blog/blog-post-elements";
+import { MermaidDiagram } from "@/components/blog/mermaid-diagram";
 
 const JournalWikiMcpForDesignersPost = () => {
   return (
@@ -170,11 +171,11 @@ const JournalWikiMcpForDesignersPost = () => {
         LLM이나 챗봇이 아니다. AI 애플리케이션이 외부 데이터와 기능을 발견하고 사용할 수 있게 해주는
         연결 규격이다.
       </PostParagraph>
-      <PostCodeBlock
-        code={
-          "디자이너\n  ↓ 질문\nClaude와 같은 MCP Host\n  ↓ 관련 지식 검색\nWiki MCP 서버\n  ↓\nMarkdown 문서\n  ↑\n검색 결과와 원문\n  ↑\nAI가 문서를 바탕으로 답변"
+      <MermaidDiagram
+        chart={
+          "sequenceDiagram\n  actor designer as 디자이너\n  participant host as Claude와 같은 MCP Host\n  participant wiki as Wiki MCP 서버\n  participant markdown as Markdown 문서\n  designer->>host: 질문\n  host->>wiki: 관련 지식 검색\n  wiki->>markdown: 문서 조회\n  markdown-->>wiki: 검색 결과와 원문\n  wiki-->>host: 근거 문서\n  host-->>designer: 문서를 바탕으로 답변"
         }
-        language={"text"}
+        description="디자이너의 질문이 Claude와 같은 MCP Host, Wiki MCP 서버, Markdown 문서를 거쳐 근거 있는 답변으로 돌아오는 흐름"
       />
       <PostParagraph>
         실제 답변은 Claude나 Codex 같은 AI가 만들고, Wiki MCP는 답변에 필요한 문서를 찾고 읽을 수
@@ -233,11 +234,11 @@ const JournalWikiMcpForDesignersPost = () => {
         Tool은 어떤 문서를 볼지 찾는 역할을 맡는다. 검색 결과에는 문서 ID, 제목, 짧은 발췌문,
         수정일, Resource URI처럼 다음 탐색에 필요한 정보만 담는다.
       </PostParagraph>
-      <PostCodeBlock
-        code={
-          "search_knowledge\n  → 관련 문서 발견\n  → knowledge://documents/{id}\n  → Markdown 원문 열람\n  → 문서를 근거로 답변"
+      <MermaidDiagram
+        chart={
+          'flowchart LR\n  search[search_knowledge] --> found[관련 문서 발견] --> resource["knowledge://documents/{id}"] --> document[Markdown 원문 열람] --> answer[문서를 근거로 답변]'
         }
-        language={"text"}
+        description="search_knowledge로 문서를 찾고 Resource URI에서 원문을 읽어 답변하는 흐름"
       />
       <PostParagraph>
         Resource는 선택한 문서의 실제 내용을 읽는 역할을 맡는다. Tool과 Resource를 나누면서 검색
@@ -263,9 +264,11 @@ const JournalWikiMcpForDesignersPost = () => {
         중앙 서버에 연결하는 Streamable HTTP 방식을 선택했다. 정제된 Markdown과 MCP 서버를 한곳에
         두고, 사용자는 MCP 주소를 연결해 같은 지식에 접근하도록 했다.
       </PostParagraph>
-      <PostCodeBlock
-        code={"개발자 ─┐\n디자이너 ─┼─ HTTPS ─ Wiki MCP 서버 ─ Markdown\n기획자 ─┘"}
-        language={"text"}
+      <MermaidDiagram
+        chart={
+          "flowchart LR\n  developer[개발자] -->|HTTPS| server[Wiki MCP 서버]\n  designer[디자이너] -->|HTTPS| server\n  planner[기획자] -->|HTTPS| server\n  server --> markdown[Markdown]"
+        }
+        description="개발자, 디자이너, 기획자가 HTTPS로 Wiki MCP 서버에 연결하고 서버가 Markdown을 읽는 구조"
       />
       <PostParagraph>
         서버는 Markdown을 읽어 Frontmatter를 검증하고 문서 ID와 경로를 카탈로그로 만든다. 문서 갱신
@@ -303,11 +306,11 @@ const JournalWikiMcpForDesignersPost = () => {
         거대한 AI Wiki가 아니라, Markdown으로 관리하는 지식을 AI가 검색하고 읽을 수 있게 해주는 작은
         읽기 계층이었다.
       </PostParagraph>
-      <PostCodeBlock
-        code={
-          "기획서와 히스토리 문서\n  ↓ Markdown 정제\n지식 카탈로그\n  ↓ Tool로 검색\nResource로 원문 열람\n  ↓\nClaude와 Codex 같은 AI\n  ↓\n프로젝트 맥락을 포함한 답변"
+      <MermaidDiagram
+        chart={
+          "flowchart TD\n  documents[기획서와 히스토리 문서] --> markdown[Markdown 정제] --> catalog[지식 카탈로그] --> tools[Tool로 검색] --> resources[Resource로 원문 열람] --> ai[Claude와 Codex 같은 AI] --> answer[프로젝트 맥락을 포함한 답변]"
         }
-        language={"text"}
+        description="기획서와 히스토리 문서를 Markdown으로 정제해 AI가 프로젝트 맥락을 포함한 답변을 만드는 흐름"
       />
       <PostHorizontalRule />
       <PostHeading2>5. 후기: 아직은 성공보다 실험에 가깝다</PostHeading2>

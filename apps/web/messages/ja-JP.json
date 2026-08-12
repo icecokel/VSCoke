@@ -124,6 +124,9 @@
   "profile": {
     "notOnlyCoding": "コードを書くことだけにとどまらない",
     "developerName": "開発者のイ・サンミンです。",
+    "proposal": "オファーする",
+    "proposalTitle": "オファーする",
+    "proposalDescription": "メールまたは電話でお気軽にご連絡ください。",
     "sendEmail": "メールを送る",
     "call": "電話する",
     "copyPhone": "電話番号をコピー",

@@ -3,6 +3,15 @@
 import Avatar from "@/components/base-ui/avatar";
 import Icon from "@/components/base-ui/icon";
 import BaseText from "@/components/base-ui/text";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import Image from "next/image";
 import Github from "public/images/icons/github.svg";
@@ -31,7 +40,39 @@ const Profile = () => {
 
   return (
     <div className="p-3 flex flex-col gap-1 md:gap-5">
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button type="button" size="sm" className="bg-blue-300 text-gray-900 hover:bg-blue-200">
+              <Icon kind="mail" size={16} />
+              {t("proposal")}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="border-gray-600 bg-gray-800 text-gray-100 sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>{t("proposalTitle")}</DialogTitle>
+              <DialogDescription>{t("proposalDescription")}</DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-2">
+              <Button asChild className="bg-blue-300 text-gray-900 hover:bg-blue-200">
+                <a href={`mailto:${contact.email}`}>
+                  <Icon kind="mail" size={16} />
+                  {t("sendEmail")}
+                </a>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                className="border-gray-600 bg-gray-700 text-gray-100 hover:bg-gray-600 hover:text-gray-100"
+              >
+                <a href={`tel:${contact.phone}`}>
+                  <Icon kind="call" size={16} />
+                  {t("call")}
+                </a>
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
         <CustomLink
           href="/resume/preview"
           title={tPreview("metaTitle")}

@@ -64,6 +64,24 @@ test.describe("딥링크 직접 진입", () => {
     expect(fileContents.subarray(0, 4).toString()).toBe("%PDF");
   });
 
+  test("이력서에서 제안 연락 수단을 제공한다", async ({ page }) => {
+    const { locale, messages } = await resolveLocaleAndMessages(page);
+
+    await gotoWithRetry(page, `/${locale}/readme`);
+    await page.getByRole("button", { name: messages.profile.proposal }).click();
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("link", { name: messages.profile.sendEmail })).toHaveAttribute(
+      "href",
+      "mailto:red9runge@gmail.com",
+    );
+    await expect(dialog.getByRole("link", { name: messages.profile.call })).toHaveAttribute(
+      "href",
+      "tel:+821020809652",
+    );
+  });
+
   test("현재 이력서에 연결된 경력기술서를 포함해 PDF로 내려받는다", async ({ page }) => {
     const { locale } = await resolveLocaleAndMessages(page);
 

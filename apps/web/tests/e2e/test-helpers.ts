@@ -66,6 +66,11 @@ export interface AppMessages {
   blog: {
     backToList: string;
   };
+  profile: {
+    proposal: string;
+    sendEmail: string;
+    call: string;
+  };
   resume: {
     viewDescription: string;
     backToResume: string;

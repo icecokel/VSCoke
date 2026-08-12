@@ -124,6 +124,9 @@
   "profile": {
     "notOnlyCoding": "Not just coding,",
     "developerName": "I'm Sangmin Lee, a developer.",
+    "proposal": "Make an Offer",
+    "proposalTitle": "Make an Offer",
+    "proposalDescription": "Get in touch by email or phone.",
     "sendEmail": "Send Email",
     "call": "Call",
     "copyPhone": "Copy Phone Number",

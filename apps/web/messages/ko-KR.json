@@ -124,6 +124,9 @@
   "profile": {
     "notOnlyCoding": "코딩만 하지 않는",
     "developerName": "개발자 이상민입니다.",
+    "proposal": "제안하기",
+    "proposalTitle": "제안하기",
+    "proposalDescription": "이메일 또는 전화로 편하게 연락해주세요.",
     "sendEmail": "이메일 보내기",
     "call": "전화하기",
     "copyPhone": "전화번호 복사",

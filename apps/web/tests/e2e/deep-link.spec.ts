@@ -44,17 +44,49 @@ test.describe("딥링크 직접 진입", () => {
     await expect(page.getByTestId("game-exit-button")).toBeVisible();
   });
 
-  test("이력서 프리뷰에서 PDF 파일을 내려받는다", async ({ page }) => {
+  test("이력서 프리뷰에서 이력서만 PDF로 내려받는다", async ({ page }) => {
     const { locale } = await resolveLocaleAndMessages(page);
 
     await gotoWithRetry(page, `/${locale}/resume/preview`);
 
-    const downloadPromise = page.waitForEvent("download");
     await page.getByTestId("resume-preview-save-pdf").click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByTestId("resume-preview-download-resume-only").click();
     const download = await downloadPromise;
     const downloadPath = await download.path();
 
     expect(download.suggestedFilename()).toBe("sangmin-lee-resume.pdf");
+    expect(downloadPath).not.toBeNull();
+
+    const fileContents = await readFile(downloadPath!);
+    expect(fileContents.subarray(0, 4).toString()).toBe("%PDF");
+  });
+
+  test("현재 이력서에 연결된 경력기술서를 포함해 PDF로 내려받는다", async ({ page }) => {
+    const { locale } = await resolveLocaleAndMessages(page);
+
+    await gotoWithRetry(page, `/${locale}/resume/preview`);
+
+    const careerDetails = page.getByTestId("resume-preview-career-detail-document");
+    await expect(careerDetails).toHaveCount(4);
+    expect(await careerDetails.locator("h1").allTextContents()).toEqual([
+      "오프리메드 - 의료·임상 분석 제품",
+      "CodeCrayon - 커머스·백오피스",
+      "CodeCrayon - WebView·웹게임",
+      "CodeCrayon - AI 활용과 운영 도구",
+    ]);
+
+    await page.getByTestId("resume-preview-save-pdf").click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByTestId("resume-preview-download-with-career-details").click();
+    const download = await downloadPromise;
+    const downloadPath = await download.path();
+
+    expect(download.suggestedFilename()).toBe("sangmin-lee-resume-with-career-details.pdf");
     expect(downloadPath).not.toBeNull();
 
     const fileContents = await readFile(downloadPath!);

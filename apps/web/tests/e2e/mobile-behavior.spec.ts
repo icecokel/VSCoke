@@ -65,7 +65,7 @@ test.describe("모바일 전용 동작", () => {
     await expect(resumeDocument).toBeVisible();
     await expect(savePdfButton).toBeVisible();
     await expect(
-      page.getByText("작업 데이터를 서버에 저장하고 작업별 클라이언트 캐시를 분리해", {
+      resumeDocument.getByText("긴 분석 과정에서 입력과 결과가 끊기지 않도록", {
         exact: false,
       }),
     ).toBeVisible();
@@ -81,6 +81,24 @@ test.describe("모바일 전용 동작", () => {
     expect(
       Math.abs(buttonBox!.x + buttonBox!.width - (documentBox!.x + documentBox!.width)),
     ).toBeLessThanOrEqual(1);
+
+    await savePdfButton.click();
+    const downloadDialog = page.getByRole("dialog");
+    await expect(downloadDialog).toBeVisible();
+    await expect(page.getByTestId("resume-preview-download-resume-only")).toBeVisible();
+    await expect(page.getByTestId("resume-preview-download-with-career-details")).toBeVisible();
+
+    const dialogBox = await downloadDialog.boundingBox();
+    const viewport = page.viewportSize();
+    expect(dialogBox).not.toBeNull();
+    expect(viewport).not.toBeNull();
+    expect(dialogBox!.x).toBeGreaterThanOrEqual(0);
+    expect(dialogBox!.x + dialogBox!.width).toBeLessThanOrEqual(viewport!.width);
+    expect(dialogBox!.y).toBeGreaterThanOrEqual(0);
+    expect(dialogBox!.y + dialogBox!.height).toBeLessThanOrEqual(viewport!.height);
+
+    await page.keyboard.press("Escape");
+    await expect(downloadDialog).toBeHidden();
   });
 
   test("README 채팅은 모바일에서 아이콘과 첫 진입 안내로 표시한다", async ({ page }) => {

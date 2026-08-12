@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { MDXRemote } from "next-mdx-remote/rsc";
 import RESUME_DATA from "@/constants/resume-data.json";
 import type { Description } from "@/components/profile/resume/types";
 import { ResumePreviewActions } from "@/features/resume-preview/components/resume-preview-actions";
+import { getResumeDetailBySlug } from "@/lib/resume-detail";
 
 type ResumeContact = {
   email: string;
@@ -27,6 +29,16 @@ const ResumePreviewPage = async () => {
   const tDescription = await getTranslations("descriptionItem");
   const contact = tResume.raw("contact") as ResumeContact;
   const introduction = tResume.raw("introduction") as string[];
+  const careerDetails = RESUME_DATA.flatMap(career =>
+    career.projects.flatMap(project => {
+      if (!("fileRef" in project)) {
+        return [];
+      }
+
+      const detail = getResumeDetailBySlug(project.fileRef);
+      return detail ? [detail] : [];
+    }),
+  );
 
   return (
     <main className="resume-preview-page min-h-full bg-gray-800 px-3 py-4 text-gray-100 md:px-5 md:py-8">
@@ -191,6 +203,32 @@ const ResumePreviewPage = async () => {
           {t("updatedAt")}
         </footer>
       </article>
+
+      <div aria-hidden="true">
+        {careerDetails.map(detail => (
+          <article
+            key={detail.slug}
+            className="resume-preview-career-detail-document mx-auto w-full max-w-[210mm] bg-beige-400 px-6 py-8 text-gray-900 sm:px-10 sm:py-12"
+            data-testid="resume-preview-career-detail-document"
+          >
+            <header className="border-b-2 border-gray-900 pb-6">
+              <p className="text-xs font-bold tracking-[0.24em] text-blue-500">
+                {tResume("viewDescription")}
+              </p>
+              <h1 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">{detail.title}</h1>
+              {(detail.startDate || detail.endDate) && (
+                <p className="mt-2 text-sm text-gray-600">
+                  {detail.startDate} {detail.endDate ? `- ${detail.endDate}` : ""}
+                </p>
+              )}
+            </header>
+
+            <div className="resume-preview-career-detail-content mt-6 text-sm leading-6 text-gray-700 [&_h2]:mt-6 [&_h2]:border-b [&_h2]:border-gray-300 [&_h2]:pb-2 [&_h2]:text-base [&_h2]:font-bold [&_h2]:text-gray-900 [&_li]:list-disc [&_p]:mt-3 [&_strong]:font-semibold [&_strong]:text-gray-900 [&_ul]:mt-3 [&_ul]:space-y-1.5 [&_ul]:pl-5">
+              <MDXRemote source={detail.content} />
+            </div>
+          </article>
+        ))}
+      </div>
     </main>
   );
 };

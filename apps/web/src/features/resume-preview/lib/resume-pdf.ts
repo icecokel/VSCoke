@@ -1,4 +1,5 @@
 const resumePdfFileName = "sangmin-lee-resume.pdf";
+const resumeWithCareerDetailsPdfFileName = "sangmin-lee-resume-with-career-details.pdf";
 const exportBackgroundColor = "#f7f6f3";
 const pageMarginY = 8;
 
@@ -16,7 +17,7 @@ const getPageBreakCandidates = (resumeDocument: HTMLElement, canvas: HTMLCanvasE
 
   return Array.from(
     resumeDocument.querySelectorAll<HTMLElement>(
-      ".resume-preview-career, .resume-preview-project, .resume-preview-description, li",
+      ".resume-preview-career, .resume-preview-project, .resume-preview-description, .resume-preview-career-detail-content h2, .resume-preview-career-detail-content p, li",
     ),
   )
     .map(element => Math.round((element.getBoundingClientRect().top - documentBounds.top) * scale))
@@ -111,22 +112,17 @@ const createPageCanvas = (canvas: HTMLCanvasElement, sourceY: number, sourceHeig
   return pageCanvas;
 };
 
-export const downloadResumePdf = async (resumeDocument: HTMLElement) => {
-  resumeDocument.classList.add("resume-preview-document--exporting");
+export const downloadResumePdf = async (
+  resumeDocument: HTMLElement,
+  careerDetailDocuments: HTMLElement[] = [],
+) => {
+  const pdfDocuments = [resumeDocument, ...careerDetailDocuments];
 
   try {
-    await waitForNextPaint();
-
     const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
       import("html2canvas"),
       import("jspdf"),
     ]);
-    const canvas = await html2canvas(resumeDocument, {
-      backgroundColor: exportBackgroundColor,
-      logging: false,
-      scale: 2,
-      useCORS: true,
-    });
     const pdf = new jsPDF({
       compress: true,
       format: "a4",
@@ -136,37 +132,63 @@ export const downloadResumePdf = async (resumeDocument: HTMLElement) => {
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const printableHeight = pageHeight - pageMarginY * 2;
-    const maximumSourceHeight = Math.floor((printableHeight / pageWidth) * canvas.width);
-    const pageBreakCandidates = getPageBreakCandidates(resumeDocument, canvas);
-    let sourceY = 0;
     let pageIndex = 0;
 
-    while (sourceY < canvas.height) {
-      const sourceHeight = findPageBreak(canvas, sourceY, maximumSourceHeight, pageBreakCandidates);
-      const pageCanvas = createPageCanvas(canvas, sourceY, sourceHeight);
-      const imageHeight = (sourceHeight / canvas.width) * pageWidth;
+    for (const pdfDocument of pdfDocuments) {
+      pdfDocument.classList.add("resume-preview-document--exporting");
+      await waitForNextPaint();
 
-      if (pageIndex > 0) {
-        pdf.addPage();
+      const canvas = await html2canvas(pdfDocument, {
+        backgroundColor: exportBackgroundColor,
+        logging: false,
+        scale: 2,
+        useCORS: true,
+      });
+      const maximumSourceHeight = Math.floor((printableHeight / pageWidth) * canvas.width);
+      const pageBreakCandidates = getPageBreakCandidates(pdfDocument, canvas);
+      let sourceY = 0;
+
+      pdfDocument.classList.remove("resume-preview-document--exporting");
+
+      while (sourceY < canvas.height) {
+        const sourceHeight = findPageBreak(
+          canvas,
+          sourceY,
+          maximumSourceHeight,
+          pageBreakCandidates,
+        );
+        const pageCanvas = createPageCanvas(canvas, sourceY, sourceHeight);
+        const imageHeight = (sourceHeight / canvas.width) * pageWidth;
+
+        if (pageIndex > 0) {
+          pdf.addPage();
+        }
+
+        pdf.setFillColor(247, 246, 243);
+        pdf.rect(0, 0, pageWidth, pageHeight, "F");
+        pdf.addImage(
+          pageCanvas.toDataURL("image/png"),
+          "PNG",
+          0,
+          pageMarginY,
+          pageWidth,
+          imageHeight,
+        );
+
+        sourceY += sourceHeight;
+        pageIndex += 1;
       }
 
-      pdf.setFillColor(247, 246, 243);
-      pdf.rect(0, 0, pageWidth, pageHeight, "F");
-      pdf.addImage(
-        pageCanvas.toDataURL("image/png"),
-        "PNG",
-        0,
-        pageMarginY,
-        pageWidth,
-        imageHeight,
-      );
-
-      sourceY += sourceHeight;
-      pageIndex += 1;
+      canvas.width = 0;
+      canvas.height = 0;
     }
 
-    pdf.save(resumePdfFileName);
+    pdf.save(
+      careerDetailDocuments.length > 0 ? resumeWithCareerDetailsPdfFileName : resumePdfFileName,
+    );
   } finally {
-    resumeDocument.classList.remove("resume-preview-document--exporting");
+    pdfDocuments.forEach(pdfDocument => {
+      pdfDocument.classList.remove("resume-preview-document--exporting");
+    });
   }
 };

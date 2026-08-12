@@ -458,6 +458,15 @@ body {
   break-inside: avoid;
 }
 
+.resume-preview-career-detail-document {
+  display: none;
+}
+
+.resume-preview-career-detail-document.resume-preview-document--exporting {
+  display: block;
+  min-height: 0;
+}
+
 @layer utilities {
   @keyframes flip {
     0% {

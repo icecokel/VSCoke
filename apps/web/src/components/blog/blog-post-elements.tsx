@@ -52,9 +52,9 @@ export const PostHeading3 = ({ children }: PostElementProps) => (
 );
 
 export const PostParagraph = ({ children }: PostElementProps) => (
-  <BaseText type="body1" className="mb-4 leading-relaxed text-gray-200/95" data-blog-speech-segment>
+  <p className="mb-4 text-base leading-relaxed text-gray-200/95" data-blog-speech-segment>
     {children}
-  </BaseText>
+  </p>
 );
 
 export const PostUnorderedList = ({

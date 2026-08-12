@@ -12,6 +12,50 @@ const noCache = (_req: Request, res: Response, next: NextFunction) => {
   next();
 };
 
+const httpMethods = [
+  'get',
+  'put',
+  'post',
+  'delete',
+  'options',
+  'head',
+  'patch',
+  'trace',
+] as const;
+
+const wrapSuccessfulResponseSchemas = (document: OpenAPIObject): void => {
+  Object.values(document.paths).forEach((path) => {
+    httpMethods.forEach((method) => {
+      const operation = path[method];
+
+      if (!operation) {
+        return;
+      }
+
+      Object.entries(operation.responses).forEach(([statusCode, response]) => {
+        if (!response || !/^2\d\d$/.test(statusCode) || '$ref' in response) {
+          return;
+        }
+
+        const mediaType = response.content?.['application/json'];
+
+        if (!mediaType?.schema) {
+          return;
+        }
+
+        mediaType.schema = {
+          type: 'object',
+          required: ['success', 'data'],
+          properties: {
+            success: { type: 'boolean', enum: [true] },
+            data: mediaType.schema,
+          },
+        };
+      });
+    });
+  });
+};
+
 export const createApiDocument = (app: INestApplication): OpenAPIObject => {
   const config = new DocumentBuilder()
     .setTitle('VSCoke API')
@@ -20,7 +64,10 @@ export const createApiDocument = (app: INestApplication): OpenAPIObject => {
     .addBearerAuth()
     .build();
 
-  return SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, config);
+  wrapSuccessfulResponseSchemas(document);
+
+  return document;
 };
 
 export const setupApiDocumentation = (app: INestApplication): void => {

@@ -1,9 +1,10 @@
 import type { components, operations } from "@/types/api";
 
 type MainChatOperation = operations["MainChatController_chat"];
+type MainChatSuccessResponse = MainChatOperation["responses"][200]["content"]["application/json"];
 
 export type MainChatRequest = MainChatOperation["requestBody"]["content"]["application/json"];
-export type MainChatResponse = MainChatOperation["responses"][200]["content"]["application/json"];
+export type MainChatResponse = MainChatSuccessResponse["data"];
 export type MainChatSource = components["schemas"]["ResumeRagSourceDto"];
 
 export type MainChatRateLimit = {

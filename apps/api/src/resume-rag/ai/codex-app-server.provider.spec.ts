@@ -15,6 +15,12 @@ type SentCodexRequest = {
   };
 };
 
+type FakeCodexWebSocketBehavior =
+  | 'answer'
+  | 'connect-error'
+  | 'turn-start-error'
+  | 'turn-timeout';
+
 class FakeCodexWebSocket {
   static instances: FakeCodexWebSocket[] = [];
 
@@ -25,9 +31,19 @@ class FakeCodexWebSocket {
   sent: string[] = [];
   closed = false;
 
-  constructor(readonly url: string) {
+  constructor(
+    readonly url: string,
+    private readonly behavior: FakeCodexWebSocketBehavior = 'answer',
+  ) {
     FakeCodexWebSocket.instances.push(this);
-    queueMicrotask(() => this.onopen?.());
+    queueMicrotask(() => {
+      if (this.behavior === 'connect-error') {
+        this.onerror?.(new Error('asynchronous connection failure'));
+        return;
+      }
+
+      this.onopen?.();
+    });
   }
 
   send(data: string): void {
@@ -60,10 +76,22 @@ class FakeCodexWebSocket {
     }
 
     if (request.method === 'turn/start') {
+      if (this.behavior === 'turn-start-error') {
+        this.emit({
+          id: request.id,
+          error: { message: 'turn start failed' },
+        });
+        return;
+      }
+
       this.emit({
         id: request.id,
         result: { turn: { id: 'turn-1' } },
       });
+      if (this.behavior === 'turn-timeout') {
+        return;
+      }
+
       this.emit({
         method: 'item/agentMessage/delta',
         params: { delta: '근거 기반 ' },
@@ -91,6 +119,31 @@ class FakeCodexWebSocket {
 
 const parseSentRequest = (message: string): SentCodexRequest =>
   JSON.parse(message) as SentCodexRequest;
+
+const failureRequest = {
+  question: '상민의 강점은?',
+  locale: 'ko-KR',
+  contexts: [],
+};
+
+const expectNoAsyncLeaks = async (run: () => Promise<void>): Promise<void> => {
+  const unhandledRejections: unknown[] = [];
+  const handleUnhandledRejection = (reason: unknown) => {
+    unhandledRejections.push(reason);
+  };
+  process.on('unhandledRejection', handleUnhandledRejection);
+  jest.useFakeTimers({ doNotFake: ['queueMicrotask', 'setImmediate'] });
+
+  try {
+    await run();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(jest.getTimerCount()).toBe(0);
+    expect(unhandledRejections).toEqual([]);
+  } finally {
+    jest.useRealTimers();
+    process.off('unhandledRejection', handleUnhandledRejection);
+  }
+};
 
 const baseConfig: ResumeRagConfig = {
   embeddingProvider: 'openai-compatible',
@@ -161,5 +214,45 @@ describe('CodexAppServerProvider', () => {
       '상민은 운영 자동화와 백오피스 개발 경험이 있다.',
     );
     expect(turnInput).toContain('Question: 상민의 강점은?');
+  });
+
+  it('clears timers when connection fails asynchronously', async () => {
+    await expectNoAsyncLeaks(async () => {
+      const provider = new CodexAppServerProvider(baseConfig, {
+        createWebSocket: (url) => new FakeCodexWebSocket(url, 'connect-error'),
+      });
+
+      await expect(provider.answer(failureRequest)).rejects.toThrow(
+        'Codex app-server websocket error',
+      );
+    });
+  });
+
+  it('clears the completion timeout when turn start fails', async () => {
+    await expectNoAsyncLeaks(async () => {
+      const provider = new CodexAppServerProvider(baseConfig, {
+        createWebSocket: (url) =>
+          new FakeCodexWebSocket(url, 'turn-start-error'),
+      });
+
+      await expect(provider.answer(failureRequest)).rejects.toThrow(
+        'turn start failed',
+      );
+    });
+  });
+
+  it('clears timers after the turn completion timeout', async () => {
+    await expectNoAsyncLeaks(async () => {
+      const provider = new CodexAppServerProvider(baseConfig, {
+        createWebSocket: (url) => new FakeCodexWebSocket(url, 'turn-timeout'),
+      });
+      const answer = provider.answer(failureRequest);
+      const rejection = expect(answer).rejects.toThrow(
+        'Codex app-server turn timed out',
+      );
+
+      await jest.runAllTimersAsync();
+      await rejection;
+    });
   });
 });

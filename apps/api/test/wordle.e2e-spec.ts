@@ -59,7 +59,7 @@ describe('WordleController (e2e)', () => {
     return request(httpServer)
       .post('/wordle/check')
       .send({ word: 'apple' })
-      .expect(201)
+      .expect(200)
       .expect((res) => {
         const body = res.body as WordleCheckResponse;
         if (body.exists !== true) {
@@ -73,7 +73,7 @@ describe('WordleController (e2e)', () => {
     return request(httpServer)
       .post('/wordle/check')
       .send({ word: 'korea' })
-      .expect(201)
+      .expect(200)
       .expect((res) => {
         const body = res.body as WordleCheckResponse;
         if (body.exists !== false)

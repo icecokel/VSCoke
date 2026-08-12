@@ -124,11 +124,73 @@ describe('GameController', () => {
     service.isPublicRankingEligible.mockReturnValue(true);
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('should be defined', () => {
     expect(controller).toBeDefined();
   });
 
   describe('createResult', () => {
+    it.each([
+      {
+        now: '2026-08-09T14:59:59.999Z',
+        start: '2026-08-02T15:00:00.000Z',
+        end: '2026-08-09T14:59:59.999Z',
+      },
+      {
+        now: '2026-08-09T15:00:00.000Z',
+        start: '2026-08-09T15:00:00.000Z',
+        end: '2026-08-16T14:59:59.999Z',
+      },
+      {
+        now: '2024-02-29T03:00:00.000Z',
+        start: '2024-02-25T15:00:00.000Z',
+        end: '2024-03-03T14:59:59.999Z',
+      },
+      {
+        now: '2026-12-31T14:59:59.999Z',
+        start: '2026-12-27T15:00:00.000Z',
+        end: '2027-01-03T14:59:59.999Z',
+      },
+    ])(
+      'should query the KST week containing $now',
+      async ({ now, start, end }) => {
+        jest.useFakeTimers({ now: new Date(now) });
+        const dto: CreateGameHistoryDto = {
+          score: 100,
+          gameType: GameType.SKY_DROP,
+        };
+        const req: TestRequest = { user: createUser() };
+        service.createHistory.mockResolvedValue(
+          createGameHistory({ ...dto, user: req.user }),
+        );
+        service.getUserBestScore.mockResolvedValue(200);
+        service.getUserRank.mockResolvedValue(1);
+
+        await controller.createResult(req, dto);
+
+        const weeklyRange = {
+          start: new Date(start),
+          end: new Date(end),
+        };
+        expect(service.getUserBestScore).toHaveBeenNthCalledWith(
+          2,
+          req.user.id,
+          dto.gameType,
+          weeklyRange,
+        );
+        expect(service.getUserRank).toHaveBeenNthCalledWith(
+          2,
+          req.user.id,
+          200,
+          dto.gameType,
+          weeklyRange,
+        );
+      },
+    );
+
     it('should create a game result', async () => {
       const dto: CreateGameHistoryDto = {
         score: 100,

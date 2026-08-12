@@ -72,7 +72,7 @@ describe('ResumeRagController (e2e)', () => {
       .post('/resume-rag/chat')
       .set('Origin', publicOrigin)
       .send({ question: '프론트엔드 경력을 알려주세요.', locale: 'ko-KR' })
-      .expect(201)
+      .expect(200)
       .expect('X-RateLimit-Limit', '20')
       .expect('X-RateLimit-Remaining', '19');
     const body = response.body as SuccessResponse;
@@ -120,7 +120,7 @@ describe('ResumeRagController (e2e)', () => {
         .post('/resume-rag/chat')
         .set('Origin', publicOrigin)
         .send({ question: `이력 질문 ${count}`, locale: 'ko-KR' })
-        .expect(201)
+        .expect(200)
         .expect('X-RateLimit-Limit', '20')
         .expect('X-RateLimit-Remaining', String(20 - count));
     }

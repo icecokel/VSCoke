@@ -1282,7 +1282,12 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": string;
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            /** @example Hello World! */
+            data: string;
+          };
         };
       };
     };
@@ -1302,7 +1307,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["HealthCheckResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["HealthCheckResponseDto"];
+          };
         };
       };
     };
@@ -1322,7 +1331,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["EspressoBeanResponseDto"][];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["EspressoBeanResponseDto"][];
+          };
         };
       };
     };
@@ -1345,7 +1358,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["EspressoBeanResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["EspressoBeanResponseDto"];
+          };
         };
       };
       /** @description 해당 원두 기록이 존재하지 않음 */
@@ -1370,12 +1387,16 @@ export interface operations {
       };
     };
     responses: {
-      200: {
+      201: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GameHistoryResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["GameHistoryResponseDto"];
+          };
         };
       };
     };
@@ -1394,7 +1415,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PokeLoungeStateResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["PokeLoungeStateResponseDto"];
+          };
         };
       };
       /** @description 저장된 Poke Lounge 상태가 없음 */
@@ -1424,7 +1449,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PokeLoungeStateResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["PokeLoungeStateResponseDto"];
+          };
         };
       };
     };
@@ -1446,7 +1475,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GameRankingHistoryDto"][];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["GameRankingHistoryDto"][];
+          };
         };
       };
     };
@@ -1468,7 +1501,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GameHistoryResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["GameHistoryResponseDto"];
+          };
         };
       };
     };
@@ -1497,7 +1534,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ResumeRagChatResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["ResumeRagChatResponseDto"];
+          };
         };
       };
       /** @description 질문 길이 또는 locale 형식이 올바르지 않음 */
@@ -1564,7 +1605,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["PokeLoungeRoomResponseDto"];
+          };
         };
       };
       409: {
@@ -1595,7 +1640,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["PokeLoungeRoomResponseDto"];
+          };
         };
       };
     };
@@ -1620,7 +1669,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["CompetitiveAssignmentResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["CompetitiveAssignmentResponseDto"];
+          };
         };
       };
     };
@@ -1646,7 +1699,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["CompetitiveActionResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["CompetitiveActionResponseDto"];
+          };
         };
       };
     };
@@ -1674,7 +1731,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["PokeLoungeRoomResponseDto"];
+          };
         };
       };
       409: {
@@ -1710,7 +1771,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["PokeLoungeRoomResponseDto"];
+          };
         };
       };
       409: {
@@ -1746,7 +1811,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["PokeLoungeRoomResponseDto"];
+          };
         };
       };
       409: {
@@ -1782,7 +1851,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["PokeLoungeRoomResponseDto"];
+          };
         };
       };
       409: {
@@ -1818,7 +1891,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PokeLoungeRoomResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["PokeLoungeRoomResponseDto"];
+          };
         };
       };
       409: {
@@ -1846,7 +1923,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["RecipeResponseDto"][];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["RecipeResponseDto"][];
+          };
         };
       };
     };
@@ -1869,7 +1950,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["RecipeResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["RecipeResponseDto"];
+          };
         };
       };
       /** @description 레시피 ID가 UUID 형식이 아님 */
@@ -1912,7 +1997,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ResumeRagChatResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["ResumeRagChatResponseDto"];
+          };
         };
       };
       /** @description 허용된 VSCoke 웹 origin이 아닌 요청 */
@@ -1952,7 +2041,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["WordResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["WordResponseDto"];
+          };
         };
       };
     };
@@ -1976,7 +2069,11 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["CheckWordResponseDto"];
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["CheckWordResponseDto"];
+          };
         };
       };
     };

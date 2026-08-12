@@ -5,6 +5,7 @@ import { Server } from 'node:http';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { io, type Socket as ClientSocket } from 'socket.io-client';
+import { HttpExceptionFilter } from './../src/common/filters/http-exception.filter';
 import { PokeLoungeModule } from './../src/poke-lounge/poke-lounge.module';
 import { PokeLoungeRoom } from './../src/poke-lounge/entities/poke-lounge-room.entity';
 import { POKE_LOUNGE_PENDING_PRESENCE_LEASE_MS } from './../src/poke-lounge/poke-lounge-room-policy';
@@ -588,6 +589,7 @@ async function createTestApplication(): Promise<{
       transform: true,
     }),
   );
+  app.useGlobalFilters(new HttpExceptionFilter());
   await app.listen(0, '127.0.0.1');
 
   return {

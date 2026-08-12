@@ -1,4 +1,11 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+} from '@nestjs/common';
 import { ApiTags, ApiOkResponse, ApiOperation } from '@nestjs/swagger';
 import { WordleService } from './wordle.service';
 import { WordResponseDto } from './dto/word-response.dto';
@@ -31,6 +38,7 @@ export class WordleController {
    * 단어의 유효성을 검사함 (DB 존재 여부)
    */
   @Post('check')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '단어 유효성 검사' })
   @ApiOkResponse({
     description: '단어 존재 여부',

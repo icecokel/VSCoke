@@ -1,4 +1,11 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiForbiddenResponse,
   ApiOkResponse,
@@ -33,6 +40,7 @@ export class ResumeRagController {
   constructor(private readonly resumeRagService: ResumeRagService) {}
 
   @Post('chat')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(ResumeRagOriginGuard, ResumeRagRateLimitGuard)
   @ApiOperation({ summary: '이력 RAG 질문 답변' })
   @ApiOkResponse({

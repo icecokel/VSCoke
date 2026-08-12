@@ -18,6 +18,7 @@ import { ResumeRagService } from './../src/resume-rag/resume-rag.service';
 import { WordleController } from './../src/wordle/wordle.controller';
 import { WordleService } from './../src/wordle/wordle.service';
 import { setupApiDocumentation } from './../src/api-documentation';
+import { TransformInterceptor } from './../src/common/interceptors/transform.interceptor';
 
 type OpenApiDocument = {
   info?: {
@@ -103,6 +104,7 @@ describe('API documentation (e2e)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalInterceptors(new TransformInterceptor());
     setupApiDocumentation(app);
     await app.init();
     httpServer = app.getHttpServer() as Server;
@@ -159,14 +161,17 @@ describe('API documentation (e2e)', () => {
       .get('/game/ranking?gameType=POKE_LOUNGE')
       .expect(200);
 
-    expect(response.body).toEqual([
-      {
-        score: 100,
-        rank: 1,
-        createdAt: '2026-07-11T00:00:00.000Z',
-        user: { displayName: 'Gil Dong' },
-      },
-    ]);
+    expect(response.body).toEqual({
+      success: true,
+      data: [
+        {
+          score: 100,
+          rank: 1,
+          createdAt: '2026-07-11T00:00:00.000Z',
+          user: { displayName: 'Gil Dong' },
+        },
+      ],
+    });
     expect(JSON.stringify(response.body)).not.toMatch(
       /resultTrust|sourceKey|email|accessToken|sentinel/,
     );

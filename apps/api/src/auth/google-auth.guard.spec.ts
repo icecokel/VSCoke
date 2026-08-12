@@ -1,7 +1,7 @@
 import { GoogleAuthGuard } from './google-auth.guard';
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { LoginTicket, OAuth2Client, TokenPayload } from 'google-auth-library';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { ErrorMessage } from '../common/constants/message.constant';
 
@@ -169,6 +169,72 @@ describe('GoogleAuthGuard', () => {
       expect(mockRequest.user).toBeDefined();
       expect(mockRequest.user?.email).toBe(payload.email);
     });
+
+    it('should reuse a user inserted by a concurrent request', async () => {
+      const request: TestRequest = {
+        headers: { authorization: 'Bearer valid-token' },
+      };
+      const concurrentUser = createUser({ id: '123' });
+      mockClient.verifyIdToken.mockResolvedValue({
+        getPayload: (): TokenPayload => ({
+          sub: concurrentUser.id,
+          email: concurrentUser.email,
+        }),
+      });
+      mockUserRepository.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(concurrentUser);
+      mockUserRepository.create.mockReturnValue(concurrentUser);
+      mockUserRepository.save.mockRejectedValue(
+        databaseFailure('23505', 'duplicate key'),
+      );
+
+      await expect(
+        guard.canActivate(createExecutionContext(request)),
+      ).resolves.toBe(true);
+      expect(request.user).toBe(concurrentUser);
+      expect(mockUserRepository.findOne).toHaveBeenCalledTimes(2);
+    });
+
+    it.each([
+      {
+        caseName: 'the concurrent user is still missing',
+        saveError: databaseFailure('23505', 'duplicate key'),
+        findResults: [null, null],
+      },
+      {
+        caseName: 'the database failure is not a unique violation',
+        saveError: databaseFailure('08006', 'connection failure'),
+        findResults: [null],
+      },
+    ])(
+      'should surface the insert failure when $caseName',
+      async ({ saveError, findResults }) => {
+        const request: TestRequest = {
+          headers: { authorization: 'Bearer valid-token' },
+        };
+        const candidate = createUser({ id: '123' });
+        mockClient.verifyIdToken.mockResolvedValue({
+          getPayload: (): TokenPayload => ({
+            sub: candidate.id,
+            email: candidate.email,
+          }),
+        });
+        for (const result of findResults) {
+          mockUserRepository.findOne.mockResolvedValueOnce(result);
+        }
+        mockUserRepository.create.mockReturnValue(candidate);
+        mockUserRepository.save.mockRejectedValue(saveError);
+
+        await expect(
+          guard.canActivate(createExecutionContext(request)),
+        ).rejects.toThrow(saveError.message);
+        expect(mockUserRepository.findOne).toHaveBeenCalledTimes(
+          findResults.length,
+        );
+        expect(request.user).toBeUndefined();
+      },
+    );
 
     it('should allow bypass only when explicitly enabled', async () => {
       process.env.ENABLE_DEV_AUTH_BYPASS = 'true';
@@ -401,3 +467,11 @@ describe('GoogleAuthGuard', () => {
     });
   });
 });
+
+function databaseFailure(code: string, message: string): QueryFailedError {
+  const driverError = Object.assign(new Error(message), {
+    code,
+  });
+
+  return new QueryFailedError('INSERT', [], driverError);
+}

@@ -260,34 +260,7 @@ export class CodexAppServerProvider implements ChatProvider {
 
     let answerText = '';
     let completedAgentText = '';
-
-    const completed = new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Codex app-server turn timed out'));
-      }, codexConfig.codexTimeoutMs);
-
-      client.setNotificationHandler((message) => {
-        const delta = getNotificationDelta(message);
-        if (delta) {
-          answerText += delta;
-        }
-
-        const completedText = getCompletedAgentMessageText(message);
-        if (completedText) {
-          completedAgentText = completedText;
-        }
-
-        if (isTurnCompleted(message)) {
-          clearTimeout(timeout);
-          resolve();
-        }
-
-        if (message.method === 'error') {
-          clearTimeout(timeout);
-          reject(new Error('Codex app-server emitted an error notification'));
-        }
-      });
-    });
+    let completionTimeout: NodeJS.Timeout | undefined;
 
     try {
       await client.connect();
@@ -308,18 +281,48 @@ export class CodexAppServerProvider implements ChatProvider {
         ),
       );
 
-      await client.request('turn/start', {
-        threadId,
-        input: [{ type: 'text', text: buildPrompt(request) }],
-        cwd: codexConfig.codexCwd ?? process.cwd(),
-        approvalPolicy: 'never',
-        sandboxPolicy: { type: 'readOnly', networkAccess: false },
-        environments: [],
-        model: codexConfig.chatModel ?? null,
-        effort: codexConfig.codexReasoningEffort,
+      const completed = new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Codex app-server turn timed out'));
+        }, codexConfig.codexTimeoutMs);
+        completionTimeout = timeout;
+
+        client.setNotificationHandler((message) => {
+          const delta = getNotificationDelta(message);
+          if (delta) {
+            answerText += delta;
+          }
+
+          const completedText = getCompletedAgentMessageText(message);
+          if (completedText) {
+            completedAgentText = completedText;
+          }
+
+          if (isTurnCompleted(message)) {
+            clearTimeout(timeout);
+            resolve();
+          }
+
+          if (message.method === 'error') {
+            clearTimeout(timeout);
+            reject(new Error('Codex app-server emitted an error notification'));
+          }
+        });
       });
 
-      await completed;
+      await Promise.all([
+        client.request('turn/start', {
+          threadId,
+          input: [{ type: 'text', text: buildPrompt(request) }],
+          cwd: codexConfig.codexCwd ?? process.cwd(),
+          approvalPolicy: 'never',
+          sandboxPolicy: { type: 'readOnly', networkAccess: false },
+          environments: [],
+          model: codexConfig.chatModel ?? null,
+          effort: codexConfig.codexReasoningEffort,
+        }),
+        completed,
+      ]);
 
       const finalAnswer = (answerText || completedAgentText).trim();
       if (!finalAnswer) {
@@ -328,6 +331,9 @@ export class CodexAppServerProvider implements ChatProvider {
 
       return finalAnswer;
     } finally {
+      if (completionTimeout) {
+        clearTimeout(completionTimeout);
+      }
       client.close();
     }
   }

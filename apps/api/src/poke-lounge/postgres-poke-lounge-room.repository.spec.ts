@@ -25,6 +25,56 @@ const IDEMPOTENCY_KEY = '11111111-1111-4111-8111-111111111111';
 type CreateInput = Parameters<PostgresPokeLoungeRoomRepository['create']>[0];
 
 describe('PostgresPokeLoungeRoomRepository locking', () => {
+  it('persists a closed room reason in the stored state', async () => {
+    const savedStates: PokeLoungeRoom['state'][] = [];
+    const roomRepository = {
+      count: jest.fn().mockResolvedValue(0),
+      createQueryBuilder: jest
+        .fn()
+        .mockReturnValue(new FakeDeleteQueryBuilder()),
+      create: jest.fn((value: PokeLoungeRoom) => value),
+      save: jest.fn((value: PokeLoungeRoom) => {
+        savedStates.push(value.state);
+        return Promise.resolve({
+          ...value,
+          id: '00000000-0000-4000-8000-000000000001',
+        });
+      }),
+    };
+    const commandRepository = {
+      findOne: jest.fn().mockResolvedValue(null),
+      create: jest.fn((value: PokeLoungeRoomCommand) => value),
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    const manager = {
+      query: jest.fn().mockResolvedValue([]),
+      getRepository: jest.fn((entity: unknown) => {
+        if (entity === PokeLoungeRoom) {
+          return roomRepository;
+        }
+        if (entity === PokeLoungeRoomCommand) {
+          return commandRepository;
+        }
+        throw new Error('Unexpected repository requested');
+      }),
+    } as unknown as EntityManager;
+    const repository = new PostgresPokeLoungeRoomRepository(
+      managerDataSource(manager),
+    );
+    const room = snapshot();
+    room.status = 'closed';
+    room.closeReason = 'legacy-room-restart-required';
+
+    await repository.create(createInput({ room }));
+
+    expect(savedStates).toEqual([
+      expect.objectContaining({
+        status: 'closed',
+        closeReason: 'legacy-room-restart-required',
+      }),
+    ]);
+  });
+
   it('acquires the same actor/key lock before creation and room locks', async () => {
     const createEvents: string[] = [];
     const createCommandLockParameters: unknown[][] = [];

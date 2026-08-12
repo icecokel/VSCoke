@@ -11,13 +11,6 @@ import { ErrorMessage } from '../constants/message.constant';
 import { createApiRequestLog } from '../logging/api-request-log';
 import { redactSensitiveValue } from '../utils/redact-sensitive';
 
-type ExceptionResponseWithMessage = {
-  message: unknown;
-};
-
-const hasMessage = (value: unknown): value is ExceptionResponseWithMessage =>
-  typeof value === 'object' && value !== null && 'message' in value;
-
 /**
  * 전역 예외 필터: 발생하는 모든 예외를 캡처하여 일관된 형식의 응답을 반환함
  */
@@ -45,10 +38,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? exception.getResponse()
         : ErrorMessage.COMMON.INTERNAL_SERVER_ERROR;
 
-    // HttpException의 getResponse()가 객체일 경우(예: validation pipe) 처리
-    const errorMessage = hasMessage(exceptionResponse)
-      ? exceptionResponse.message
-      : exceptionResponse;
+    const errorResponse =
+      typeof exceptionResponse === 'object' &&
+      exceptionResponse !== null &&
+      !Array.isArray(exceptionResponse)
+        ? exceptionResponse
+        : { message: exceptionResponse };
 
     const accessLog = createApiRequestLog(request, status);
     const errorLog = JSON.stringify({ ...accessLog, event: 'api.error' });
@@ -73,9 +68,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     // 통일된 JSON 형식으로 에러 응답 반환
     response.status(status).json({
+      ...errorResponse,
       success: false,
       statusCode: status,
-      message: errorMessage,
       timestamp: new Date().toISOString(),
       path: request.url,
     });

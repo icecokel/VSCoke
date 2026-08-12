@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { OAuth2Client } from 'google-auth-library';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { Request } from 'express';
 import { User } from './entities/user.entity';
 import { ErrorMessage } from '../common/constants/message.constant';
@@ -17,10 +17,7 @@ import {
 } from './local-test-account';
 
 type AuthenticatedRequest = Request & { user?: User };
-type DevelopmentUserProfile = Pick<
-  User,
-  'id' | 'email' | 'firstName' | 'lastName'
->;
+type UserProfile = Pick<User, 'id' | 'email' | 'firstName' | 'lastName'>;
 
 /**
  * 구글 ID 토큰을 검증하고 사용자를 인증하는 가드
@@ -57,9 +54,7 @@ export class GoogleAuthGuard implements CanActivate {
         throw new UnauthorizedException(ErrorMessage.AUTH.INVALID_TOKEN);
       }
 
-      request.user = await this.findOrCreateDevelopmentUser(
-        LOCAL_TEST_ACCOUNT_PROFILE,
-      );
+      request.user = await this.findOrCreateUser(LOCAL_TEST_ACCOUNT_PROFILE);
       return true;
     }
 
@@ -69,7 +64,7 @@ export class GoogleAuthGuard implements CanActivate {
       devAuthToken &&
       token === devAuthToken
     ) {
-      request.user = await this.findOrCreateDevelopmentUser({
+      request.user = await this.findOrCreateUser({
         id: 'dev-user-id',
         email: 'dev@example.com',
         firstName: 'Dev',
@@ -101,20 +96,12 @@ export class GoogleAuthGuard implements CanActivate {
         throw new UnauthorizedException(ErrorMessage.AUTH.EMAIL_REQUIRED);
       }
 
-      // 사용자 조회 또는 생성 (Upsert 로직)
-      let user = await this.userRepository.findOne({ where: { id: sub } });
-
-      if (!user) {
-        user = this.userRepository.create({
-          id: sub, // Google ID(sub)를 서버의 고유 ID로 사용
-          email: email,
-          firstName: given_name || '',
-          lastName: family_name || '',
-        });
-        await this.userRepository.save(user);
-      } else {
-        // 기존 사용자의 정보 업데이트가 필요한 경우 여기에 추가 로직 작성 가능
-      }
+      const user = await this.findOrCreateUser({
+        id: sub,
+        email,
+        firstName: given_name || '',
+        lastName: family_name || '',
+      });
 
       // 요청 객체에 유저 정보 첨부
       request.user = user;
@@ -131,9 +118,7 @@ export class GoogleAuthGuard implements CanActivate {
     }
   }
 
-  private async findOrCreateDevelopmentUser(
-    profile: DevelopmentUserProfile,
-  ): Promise<User> {
+  private async findOrCreateUser(profile: UserProfile): Promise<User> {
     const existingUser = await this.userRepository.findOne({
       where: { id: profile.id },
     });
@@ -143,7 +128,22 @@ export class GoogleAuthGuard implements CanActivate {
     }
 
     const user = this.userRepository.create(profile);
-    return this.userRepository.save(user);
+    try {
+      return await this.userRepository.save(user);
+    } catch (error) {
+      if (!isUniqueViolation(error)) {
+        throw error;
+      }
+
+      const concurrentlyCreatedUser = await this.userRepository.findOne({
+        where: { id: profile.id },
+      });
+      if (!concurrentlyCreatedUser) {
+        throw error;
+      }
+
+      return concurrentlyCreatedUser;
+    }
   }
 
   /**
@@ -158,4 +158,13 @@ export class GoogleAuthGuard implements CanActivate {
     const [type, token] = authorization.split(' ');
     return type === 'Bearer' ? token : undefined;
   }
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  if (!(error instanceof QueryFailedError)) {
+    return false;
+  }
+
+  const driverError = error.driverError as { code?: string };
+  return driverError.code === '23505';
 }

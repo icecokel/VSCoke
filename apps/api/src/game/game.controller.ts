@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
   ApiTags,
   ApiOkResponse,
   ApiOperation,
@@ -33,11 +34,13 @@ import { GamePokeLoungeState } from './entities/game-poke-lounge-state.entity';
 
 type AuthenticatedRequest = Request & { user: User };
 
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
 /**
  * 게임 결과 관리 및 랭킹 조회를 담당하는 컨트롤러
  */
 @ApiTags('Game')
-@ApiBearerAuth()
 @Controller('game')
 export class GameController {
   constructor(private readonly gameService: GameService) {}
@@ -47,8 +50,9 @@ export class GameController {
    */
   @Post('result')
   @UseGuards(GoogleAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: '게임 결과 생성 및 랭킹 확인' })
-  @ApiOkResponse({ type: GameHistoryResponseDto })
+  @ApiCreatedResponse({ type: GameHistoryResponseDto })
   async createResult(
     @Req() req: AuthenticatedRequest,
     @Body() createGameHistoryDto: CreateGameHistoryDto,
@@ -136,6 +140,7 @@ export class GameController {
 
   @Put('poke-lounge/state')
   @UseGuards(GoogleAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Poke Lounge 상태 저장' })
   @ApiOkResponse({ type: PokeLoungeStateResponseDto })
   async savePokeLoungeState(
@@ -152,6 +157,7 @@ export class GameController {
 
   @Get('poke-lounge/state')
   @UseGuards(GoogleAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Poke Lounge 상태 조회' })
   @ApiOkResponse({ type: PokeLoungeStateResponseDto })
   @ApiNotFoundResponse({ description: '저장된 Poke Lounge 상태가 없음' })
@@ -167,27 +173,16 @@ export class GameController {
    * KST(UTC+9) 기준 이번 주 월요일 00:00:00 ~ 일요일 23:59:59의 Date 범위를 반환
    */
   private getWeeklyDateRangeKST(): { start: Date; end: Date } {
-    const now = new Date();
-    // UTC 시간을 KST로 변환 (밀리초 단위 계산)
-    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-    const kstOffset = 9 * 60 * 60 * 1000;
-    const kstNow = new Date(utc + kstOffset);
-
-    // 월요일 구하기 (0: 일요일, 1: 월요일, ..., 6: 토요일)
-    const currentDay = kstNow.getDay();
-    const diffToMonday = currentDay === 0 ? 6 : currentDay - 1; // 일요일이면 6일 전, 그 외는 day-1일 전
-
-    const kstMonday = new Date(kstNow);
-    kstMonday.setDate(kstNow.getDate() - diffToMonday);
-    kstMonday.setHours(0, 0, 0, 0);
-
-    const kstSunday = new Date(kstMonday);
-    kstSunday.setDate(kstMonday.getDate() + 6);
-    kstSunday.setHours(23, 59, 59, 999);
-
-    // 다시 UTC Date 객체로 변환하여 반환 (DB 쿼리용)
-    const start = new Date(kstMonday.getTime() - kstOffset);
-    const end = new Date(kstSunday.getTime() - kstOffset);
+    const kstNow = new Date(Date.now() + KST_OFFSET_MS);
+    const diffToMonday = (kstNow.getUTCDay() + 6) % 7;
+    const start = new Date(
+      Date.UTC(
+        kstNow.getUTCFullYear(),
+        kstNow.getUTCMonth(),
+        kstNow.getUTCDate() - diffToMonday,
+      ) - KST_OFFSET_MS,
+    );
+    const end = new Date(start.getTime() + WEEK_MS - 1);
 
     return { start, end };
   }

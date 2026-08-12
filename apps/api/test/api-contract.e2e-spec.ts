@@ -1,9 +1,23 @@
 import { createLocalOpenApiDocument } from './../src/api-contract';
 
+const httpMethods = [
+  'get',
+  'put',
+  'post',
+  'delete',
+  'options',
+  'head',
+  'patch',
+  'trace',
+] as const;
+
 type ContractSchema = {
   type?: string;
   nullable?: boolean;
   $ref?: string;
+  enum?: Array<string | number | boolean>;
+  required?: string[];
+  properties?: Record<string, ContractSchema>;
   allOf?: Array<{ $ref?: string }>;
   items?: {
     $ref?: string;
@@ -16,6 +30,7 @@ type ContractResponse = {
 
 type ContractOperation = {
   description?: string;
+  security?: Array<Record<string, string[]>>;
   parameters?: Array<{
     in?: string;
     name?: string;
@@ -94,10 +109,20 @@ describe('Local OpenAPI contract generation', () => {
     const gameHistoryResponseSchema = document.components?.schemas
       ?.GameHistoryResponseDto as ContractComponentSchema | undefined;
 
-    expect(rankingResponse?.content?.['application/json']?.schema).toEqual({
-      type: 'array',
-      items: {
-        $ref: '#/components/schemas/GameRankingHistoryDto',
+    const rankingResponseSchema =
+      rankingResponse?.content?.['application/json']?.schema;
+
+    expect(rankingResponseSchema).toEqual({
+      type: 'object',
+      required: ['success', 'data'],
+      properties: {
+        success: { type: 'boolean', enum: [true] },
+        data: {
+          type: 'array',
+          items: {
+            $ref: '#/components/schemas/GameRankingHistoryDto',
+          },
+        },
       },
     });
     expect(Object.keys(rankingSchema?.properties ?? {}).sort()).toEqual([
@@ -118,6 +143,38 @@ describe('Local OpenAPI contract generation', () => {
         nullable: true,
       }),
     );
+
+    const gameResultOperation = document.paths?.['/game/result']
+      ?.post as ContractOperation;
+    const savedStateGetOperation = document.paths?.['/game/poke-lounge/state']
+      ?.get as ContractOperation;
+    const savedStatePutOperation = document.paths?.['/game/poke-lounge/state']
+      ?.put as ContractOperation;
+    const publicResultOperation = document.paths?.['/game/result/{id}']
+      ?.get as ContractOperation;
+    const resumeChatOperation = document.paths?.['/resume-rag/chat']
+      ?.post as ContractOperation;
+    const wordleCheckOperation = document.paths?.['/wordle/check']
+      ?.post as ContractOperation;
+    const competitiveSeatOperation = document.paths?.[
+      '/poke-lounge/rooms/{roomCode}/competitive-seat'
+    ]?.post as ContractOperation;
+    const competitiveActionOperation = document.paths?.[
+      '/poke-lounge/rooms/{roomCode}/matches/{matchId}/actions'
+    ]?.post as ContractOperation;
+
+    expect(gameResultOperation.responses?.['201']).toBeDefined();
+    expect(gameResultOperation.security).toEqual([{ bearer: [] }]);
+    expect(savedStateGetOperation.security).toEqual([{ bearer: [] }]);
+    expect(savedStatePutOperation.security).toEqual([{ bearer: [] }]);
+    expect(rankingOperation.security).toBeUndefined();
+    expect(publicResultOperation.security).toBeUndefined();
+    expect(resumeChatOperation.responses?.['200']).toBeDefined();
+    expect(resumeChatOperation.responses?.['201']).toBeUndefined();
+    expect(wordleCheckOperation.responses?.['200']).toBeDefined();
+    expect(wordleCheckOperation.responses?.['201']).toBeUndefined();
+    expect(competitiveSeatOperation.security).toEqual([{ bearer: [] }]);
+    expect(competitiveActionOperation.security).toEqual([{ bearer: [] }]);
 
     const roomSchema = document.components?.schemas
       ?.PokeLoungeRoomResponseDto as ContractComponentSchema | undefined;
@@ -178,5 +235,70 @@ describe('Local OpenAPI contract generation', () => {
       ).toBe(`#/components/schemas/${requestDto}`);
       expect(roomOperation?.responses?.['409']).toBeDefined();
     }
+  });
+
+  it('documents every successful JSON response with the runtime envelope', async () => {
+    const document = await createLocalOpenApiDocument();
+    const documentedResponses: string[] = [];
+
+    Object.entries(document.paths).forEach(([path, pathItem]) => {
+      httpMethods.forEach((method) => {
+        const operation = pathItem[method];
+
+        if (!operation) {
+          return;
+        }
+
+        Object.entries(operation.responses).forEach(
+          ([statusCode, response]) => {
+            if (
+              !response ||
+              !/^2\d\d$/.test(statusCode) ||
+              '$ref' in response
+            ) {
+              return;
+            }
+
+            const schema = response.content?.['application/json']?.schema as
+              | ContractSchema
+              | undefined;
+
+            if (!schema) {
+              return;
+            }
+
+            const responseName = `${method.toUpperCase()} ${path} ${statusCode}`;
+            documentedResponses.push(responseName);
+            expect(schema.type).toBe('object');
+            expect(schema.required).toEqual(
+              expect.arrayContaining(['success', 'data']),
+            );
+            expect(schema.properties?.success).toEqual({
+              type: 'boolean',
+              enum: [true],
+            });
+            expect(schema.properties?.data).toBeDefined();
+          },
+        );
+      });
+    });
+
+    expect(documentedResponses.length).toBeGreaterThan(0);
+
+    const conflictSchema =
+      document.paths?.['/poke-lounge/rooms/{roomCode}/ready']?.post
+        ?.responses?.['409'];
+
+    expect(conflictSchema).toEqual(
+      expect.objectContaining({
+        content: {
+          'application/json': {
+            schema: {
+              $ref: '#/components/schemas/PokeLoungeRoomConflictResponseDto',
+            },
+          },
+        },
+      }),
+    );
   });
 });

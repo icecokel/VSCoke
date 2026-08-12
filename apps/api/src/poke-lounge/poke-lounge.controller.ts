@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiBody,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -66,7 +67,7 @@ export class PokeLoungeController {
   @ApiCreatedResponse({ type: PokeLoungeRoomResponseDto })
   @ApiConflictResponse({ type: PokeLoungeRoomConflictResponseDto })
   async createRoom(
-    @Body() body: CreatePokeLoungeRoomDto | undefined,
+    @Body() body: CreatePokeLoungeRoomDto,
     @Req() request: Request,
   ) {
     const command = parseRoomCommandHeaders(request);
@@ -78,11 +79,9 @@ export class PokeLoungeController {
     }
 
     return toPokeLoungePublicRoomState(
-      await this.roomService.createRoom(
-        withoutClientNowMs(body ?? { sessionId: '' }),
-        command,
-        { requireSocketAcknowledgement: true },
-      ),
+      await this.roomService.createRoom(withoutClientNowMs(body), command, {
+        requireSocketAcknowledgement: true,
+      }),
     );
   }
 
@@ -107,6 +106,7 @@ export class PokeLoungeController {
 
   @Post('rooms/:roomCode/competitive-seat')
   @UseGuards(GoogleAuthGuard)
+  @ApiBearerAuth()
   @ApiBody({ type: BindCompetitiveSeatDto })
   @ApiCreatedResponse({ type: CompetitiveAssignmentResponseDto })
   async bindCompetitiveSeat(
@@ -127,6 +127,7 @@ export class PokeLoungeController {
 
   @Post('rooms/:roomCode/matches/:matchId/actions')
   @UseGuards(GoogleAuthGuard)
+  @ApiBearerAuth()
   @ApiBody({ type: SubmitCompetitiveActionDto })
   @ApiCreatedResponse({ type: CompetitiveActionResponseDto })
   async submitCompetitiveAction(
@@ -162,7 +163,7 @@ export class PokeLoungeController {
   @ApiConflictResponse({ type: PokeLoungeRoomConflictResponseDto })
   async joinRoom(
     @Param('roomCode') roomCode: string,
-    @Body() body: JoinPokeLoungeRoomDto | undefined,
+    @Body() body: JoinPokeLoungeRoomDto,
     @Req() request: Request,
   ) {
     const command = parseRoomCommandHeaders(request);
@@ -170,7 +171,7 @@ export class PokeLoungeController {
     return toPokeLoungePublicRoomState(
       await this.roomService.joinRoom(
         roomCode,
-        withoutClientNowMs(body ?? { sessionId: '' }),
+        withoutClientNowMs(body),
         command,
         { requireSocketAcknowledgement: true },
       ),
@@ -185,7 +186,7 @@ export class PokeLoungeController {
   @ApiConflictResponse({ type: PokeLoungeRoomConflictResponseDto })
   async setReady(
     @Param('roomCode') roomCode: string,
-    @Body() body: SetPokeLoungeReadyDto | undefined,
+    @Body() body: SetPokeLoungeReadyDto,
     @Req() request: Request,
   ) {
     const command = parseRoomCommandHeaders(request);
@@ -194,9 +195,9 @@ export class PokeLoungeController {
       await this.roomService.setReady(
         roomCode,
         {
-          playerId: body?.playerId ?? '',
-          sessionId: body?.sessionId,
-          ready: Boolean(body?.ready),
+          playerId: body.playerId,
+          sessionId: body.sessionId,
+          ready: body.ready,
         },
         command,
       ),
@@ -211,7 +212,7 @@ export class PokeLoungeController {
   @ApiConflictResponse({ type: PokeLoungeRoomConflictResponseDto })
   async updatePartySnapshot(
     @Param('roomCode') roomCode: string,
-    @Body() body: UpdatePokeLoungePartySnapshotDto | undefined,
+    @Body() body: UpdatePokeLoungePartySnapshotDto,
     @Req() request: Request,
   ) {
     const command = parseRoomCommandHeaders(request);
@@ -219,7 +220,7 @@ export class PokeLoungeController {
     return toPokeLoungePublicRoomState(
       await this.roomService.updatePartySnapshot(
         roomCode,
-        withoutClientNowMs(body ?? { playerId: '', sessionId: '' }),
+        withoutClientNowMs(body),
         command,
       ),
     );
@@ -238,7 +239,7 @@ export class PokeLoungeController {
   @ApiConflictResponse({ type: PokeLoungeRoomConflictResponseDto })
   async submitResult(
     @Param('roomCode') roomCode: string,
-    @Body() body: SubmitPokeLoungeMatchResultDto | undefined,
+    @Body() body: SubmitPokeLoungeMatchResultDto,
     @Req() request: Request,
   ) {
     const command = parseRoomCommandHeaders(request);
@@ -246,16 +247,7 @@ export class PokeLoungeController {
     return toPokeLoungePublicRoomState(
       await this.roomService.submitMatchResult(
         roomCode,
-        withoutClientNowMs(
-          body ?? {
-            reportingPlayerId: '',
-            reportingSessionId: '',
-            matchId: '',
-            winnerPlayerId: '',
-            loserPlayerId: '',
-            reason: 'faint' as const,
-          },
-        ),
+        withoutClientNowMs(body),
         command,
       ),
     );
@@ -269,7 +261,7 @@ export class PokeLoungeController {
   @ApiConflictResponse({ type: PokeLoungeRoomConflictResponseDto })
   async leaveRoom(
     @Param('roomCode') roomCode: string,
-    @Body() body: LeavePokeLoungeRoomDto | undefined,
+    @Body() body: LeavePokeLoungeRoomDto,
     @Req() request: Request,
   ) {
     const command = parseRoomCommandHeaders(request);
@@ -278,8 +270,8 @@ export class PokeLoungeController {
       await this.roomService.leaveRoom(
         roomCode,
         {
-          playerId: body?.playerId ?? '',
-          sessionId: body?.sessionId,
+          playerId: body.playerId,
+          sessionId: body.sessionId,
         },
         command,
       ),

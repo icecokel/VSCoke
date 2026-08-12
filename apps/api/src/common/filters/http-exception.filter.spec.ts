@@ -7,7 +7,7 @@ import type { Request, Response } from 'express';
 import { HttpExceptionFilter } from './http-exception.filter';
 
 describe('HttpExceptionFilter', () => {
-  it('실패 로그에 요청 ID와 route template만 기록하고 사용자 입력은 제외한다', () => {
+  it('구조화된 예외 응답을 보존하고 로그에서는 사용자 입력을 제외한다', () => {
     const request = {
       method: 'POST',
       url: '/resume-rag/chat?question=person@example.com',
@@ -19,7 +19,10 @@ describe('HttpExceptionFilter', () => {
       body: { question: 'person@example.com' },
     } as unknown as Request;
     const status = jest.fn().mockReturnThis();
-    const json = jest.fn();
+    let responseBody: unknown;
+    const json = jest.fn((body: unknown) => {
+      responseBody = body;
+    });
     const response = { status, json } as unknown as Response;
     const host = {
       switchToHttp: () => ({
@@ -35,7 +38,15 @@ describe('HttpExceptionFilter', () => {
       });
 
     new HttpExceptionFilter().catch(
-      new BadRequestException('Invalid question'),
+      new BadRequestException({
+        code: 'STRUCTURED_ERROR',
+        message: 'Invalid question',
+        snapshot: { revision: 7 },
+        success: true,
+        statusCode: 418,
+        timestamp: 'forged-timestamp',
+        path: '/forged-path',
+      }),
       host,
     );
 
@@ -50,10 +61,16 @@ describe('HttpExceptionFilter', () => {
     expect(status).toHaveBeenCalledWith(400);
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({
+        code: 'STRUCTURED_ERROR',
+        message: 'Invalid question',
+        snapshot: { revision: 7 },
         success: false,
         statusCode: 400,
         path: '/resume-rag/chat?question=person@example.com',
       }),
+    );
+    expect(responseBody).not.toEqual(
+      expect.objectContaining({ timestamp: 'forged-timestamp' }),
     );
     warnSpy.mockRestore();
   });

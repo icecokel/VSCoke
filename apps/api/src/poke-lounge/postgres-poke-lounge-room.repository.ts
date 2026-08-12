@@ -850,6 +850,7 @@ function storedStateFromSnapshot(
   return {
     roomCode: state.roomCode,
     status: state.status,
+    closeReason: state.closeReason,
     createdAtMs: state.createdAtMs,
     updatedAtMs: state.updatedAtMs,
     participants: state.participants,

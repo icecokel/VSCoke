@@ -11,8 +11,18 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "string",
-                  "example": "Hello World!"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "type": "string",
+                      "example": "Hello World!"
+                    }
+                  }
                 }
               }
             }
@@ -32,7 +42,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HealthCheckResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/HealthCheckResponseDto"
+                    }
+                  }
                 }
               }
             }
@@ -52,9 +72,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EspressoBeanResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/EspressoBeanResponseDto"
+                      }
+                    }
                   }
                 }
               }
@@ -86,7 +116,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EspressoBeanResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/EspressoBeanResponseDto"
+                    }
+                  }
                 }
               }
             }
@@ -114,12 +154,22 @@
           }
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GameHistoryResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/GameHistoryResponseDto"
+                    }
+                  }
                 }
               }
             }
@@ -154,7 +204,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PokeLoungeStateResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PokeLoungeStateResponseDto"
+                    }
+                  }
                 }
               }
             }
@@ -177,7 +237,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PokeLoungeStateResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PokeLoungeStateResponseDto"
+                    }
+                  }
                 }
               }
             }
@@ -216,20 +286,25 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/GameRankingHistoryDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/GameRankingHistoryDto"
+                      }
+                    }
                   }
                 }
               }
             }
           }
         },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
         "summary": "게임별 Top 10 랭킹 조회",
         "tags": ["Game"]
       }
@@ -253,17 +328,22 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GameHistoryResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/GameHistoryResponseDto"
+                    }
+                  }
                 }
               }
             }
           }
         },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
         "summary": "게임 결과 상세 조회",
         "tags": ["Game"]
       }
@@ -310,7 +390,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResumeRagChatResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ResumeRagChatResponseDto"
+                    }
+                  }
                 }
               }
             }
@@ -395,7 +485,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PokeLoungeRoomResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PokeLoungeRoomResponseDto"
+                    }
+                  }
                 }
               }
             }
@@ -442,7 +542,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PokeLoungeRoomResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PokeLoungeRoomResponseDto"
+                    }
+                  }
                 }
               }
             }
@@ -480,12 +590,27 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CompetitiveAssignmentResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CompetitiveAssignmentResponseDto"
+                    }
+                  }
                 }
               }
             }
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": ["poke-lounge"]
       }
     },
@@ -526,12 +651,27 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CompetitiveActionResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CompetitiveActionResponseDto"
+                    }
+                  }
                 }
               }
             }
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": ["poke-lounge"]
       }
     },
@@ -581,7 +721,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PokeLoungeRoomResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PokeLoungeRoomResponseDto"
+                    }
+                  }
                 }
               }
             }
@@ -646,7 +796,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PokeLoungeRoomResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PokeLoungeRoomResponseDto"
+                    }
+                  }
                 }
               }
             }
@@ -711,7 +871,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PokeLoungeRoomResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PokeLoungeRoomResponseDto"
+                    }
+                  }
                 }
               }
             }
@@ -777,7 +947,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PokeLoungeRoomResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PokeLoungeRoomResponseDto"
+                    }
+                  }
                 }
               }
             }
@@ -843,7 +1023,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PokeLoungeRoomResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PokeLoungeRoomResponseDto"
+                    }
+                  }
                 }
               }
             }
@@ -872,9 +1062,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/RecipeResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RecipeResponseDto"
+                      }
+                    }
                   }
                 }
               }
@@ -906,7 +1106,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RecipeResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/RecipeResponseDto"
+                    }
+                  }
                 }
               }
             }
@@ -964,7 +1174,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResumeRagChatResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ResumeRagChatResponseDto"
+                    }
+                  }
                 }
               }
             }
@@ -1012,7 +1232,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WordResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/WordResponseDto"
+                    }
+                  }
                 }
               }
             }
@@ -1042,7 +1272,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CheckWordResponseDto"
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CheckWordResponseDto"
+                    }
+                  }
                 }
               }
             }

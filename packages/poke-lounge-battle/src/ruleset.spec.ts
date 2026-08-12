@@ -7,6 +7,10 @@ import {
   canonicalize,
   createInitialBattleState,
 } from "./index";
+import {
+  APPROVED_COMPETITIVE_RULESET_V1 as BROWSER_COMPETITIVE_RULESET,
+  COMPETITIVE_RULESET_HASH as BROWSER_COMPETITIVE_RULESET_HASH,
+} from "./browser";
 
 describe("approved competitive ruleset", () => {
   it("publishes one versioned server-owned minimal ruleset", () => {
@@ -42,6 +46,8 @@ describe("approved competitive ruleset", () => {
     expect(COMPETITIVE_RULESET_HASH).toBe(
       "f063fa4b9fc1df896c72e04d13eee02905c40f8c90c3663d87f24f5ed17ee7fd",
     );
+    expect(BROWSER_COMPETITIVE_RULESET).toBe(APPROVED_COMPETITIVE_RULESET_V1);
+    expect(BROWSER_COMPETITIVE_RULESET_HASH).toBe(COMPETITIVE_RULESET_HASH);
   });
 
   it("creates a canonical initial state from the approved loadout", () => {

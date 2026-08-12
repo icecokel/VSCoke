@@ -213,10 +213,65 @@ test.describe("i18n 무결성", () => {
     ).toContain("児童保護専門機関");
   });
 
-  test("지원 locale 라우트가 모두 렌더링된다", async ({ page }) => {
+  test("지원 locale 라우트가 올바른 server-rendered 언어로 렌더링된다", async ({ page }) => {
     for (const locale of SUPPORTED_LOCALES) {
+      const response = await page.request.get(`/${locale}`);
+
+      expect(response.status()).toBeLessThan(400);
+      expect(await response.text()).toContain(`<html lang="${locale}"`);
+
       await visit(page, `/${locale}`);
       await expectPath(page, new RegExp(`^/${escapeRegExp(locale)}(?:/)?$`));
+      await expect(page.locator("html")).toHaveAttribute("lang", locale);
+    }
+  });
+
+  test("취미 검색 설명이 현재 locale로 요청되고 표시된다", async ({ page }) => {
+    const descriptions: Record<Locale, string> = {
+      "ko-KR": "재료 2개 · 단계 3개",
+      "en-US": "2 ingredients · 3 steps",
+      "ja-JP": "材料2件 · 手順3件",
+    };
+
+    for (const locale of SUPPORTED_LOCALES) {
+      const title = `Hobby fixture ${locale}`;
+      let requestedLocale: string | null = null;
+
+      await page.route("**/api/hobby-search-index**", async route => {
+        requestedLocale = new URL(route.request().url()).searchParams.get("locale");
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            data: [
+              {
+                id: `hobby:${locale}`,
+                type: "hobby",
+                title,
+                description: descriptions[locale],
+                path: "/hobby/recipes",
+                priority: 210,
+              },
+            ],
+          }),
+        });
+      });
+
+      await visit(page, `/${locale}`);
+      const messages = loadMessages(locale);
+      await page
+        .getByRole("button", {
+          name: new RegExp(`^${escapeRegExp(messages.sidebar.search)}$`),
+        })
+        .first()
+        .click();
+
+      await expect.poll(() => requestedLocale).toBe(locale);
+      const searchInput = page.getByTestId("blog-dashboard-search-input");
+      await searchInput.fill(title);
+      await expect(page.getByText(descriptions[locale], { exact: true })).toBeVisible();
+
+      await page.unroute("**/api/hobby-search-index**");
     }
   });
 

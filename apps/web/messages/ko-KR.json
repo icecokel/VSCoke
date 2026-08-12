@@ -286,6 +286,8 @@
       "title": "원두 기록",
       "description": "원두별 에스프레소 추출 조건, 맛 변화, 다음 테스트 방향을 관리합니다.",
       "searchDescription": "에스프레소 원두별 추출 조건과 맛 기록",
+      "searchSummary": "{roaster} · {rounds}라운드",
+      "searchBeanFallback": "원두",
       "detailDescription": "에스프레소 추출 조건, 맛 변화, 다음 테스트 방향을 누적한 원두 기록입니다.",
       "total": "총 {count}개 원두",
       "empty": "원두 기록을 불러오지 못했거나 아직 등록된 원두가 없습니다.",

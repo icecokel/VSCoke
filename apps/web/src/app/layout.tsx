@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Noto_Sans_KR } from "next/font/google";
+import { getLocale } from "next-intl/server";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { GoogleTagManager } from "@/components/google-tag-manager";
 import { siteUrl } from "@/lib/site-url";
@@ -51,13 +52,15 @@ export const metadata: Metadata = {
 
 // ... existing code ...
 
-const RootLayout = ({
+const RootLayout = async ({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) => {
+  const locale = await getLocale();
+
   return (
-    <html className={`${notoSansKr.className} dark`}>
+    <html lang={locale} className={`${notoSansKr.className} dark`}>
       <body>
         <GoogleAnalytics measurementId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
         <GoogleTagManager containerId={process.env.NEXT_PUBLIC_GTM_ID} />

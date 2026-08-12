@@ -4,6 +4,11 @@ import type { EspressoBean } from "@/features/hobby/types/espresso";
 import type { Recipe } from "@/features/hobby/types/recipe";
 import type { SearchItem } from "@/types/search";
 
+type HobbySearchCopy = {
+  espressoSummary: (roaster: string | undefined, rounds: number) => string;
+  recipeSummary: (ingredients: number, steps: number) => string;
+};
+
 const isNonEmptyString = (value: unknown): value is string => {
   return typeof value === "string" && value.trim().length > 0;
 };
@@ -16,12 +21,13 @@ const uniqueStrings = (values: string[]): string[] => {
 export const buildHobbySearchItems = (
   recipes: Recipe[],
   espressoBeans: EspressoBean[],
+  copy: HobbySearchCopy,
 ): SearchItem[] => {
   const hobbyRecipeItems: SearchItem[] = recipes.map(recipe => ({
     id: `hobby:recipe:${recipe.name}`,
     type: "hobby",
     title: recipe.name,
-    description: `재료 ${recipe.ingredients.length}개 · 단계 ${recipe.recipe.length}개`,
+    description: copy.recipeSummary(recipe.ingredients.length, recipe.recipe.length),
     keywords: uniqueStrings([recipe.name, ...recipe.tags, getRecipeSearchText(recipe)]),
     path: "/hobby/recipes",
     priority: 210,
@@ -31,9 +37,7 @@ export const buildHobbySearchItems = (
     id: `hobby:espresso:${bean.id}`,
     type: "hobby",
     title: bean.name,
-    description: `${bean.roaster ?? "원두"} · 라운드 ${
-      bean.logs.flatMap(log => log.rounds).length
-    }개`,
+    description: copy.espressoSummary(bean.roaster, bean.logs.flatMap(log => log.rounds).length),
     keywords: uniqueStrings([
       bean.name,
       bean.roaster ?? "",

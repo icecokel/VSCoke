@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import {
+  APPROVED_COMPETITIVE_RULESET_V1,
+  COMPETITIVE_RULESET_HASH,
+} from "@vscoke/poke-lounge-battle";
 import { toAuthoritativeBattleState } from "../battle/authoritative-battle-adapter";
 import { APPROVED_COMPETITIVE_LOADOUT } from "../network/competitive-projection";
 import type {
@@ -19,7 +23,7 @@ function createProjection(
     kind: "tournament-unranked",
     assignmentRevision: 1,
     rulesetVersion: 1,
-    rulesetHash: "a".repeat(64),
+    rulesetHash: COMPETITIVE_RULESET_HASH,
     currentTurn: 0,
     status: "active",
     playerIds,
@@ -82,6 +86,20 @@ test("authoritative terminal state는 기존 WorldScene 복귀 위치를 보존�
 
   assert.equal(state.phase, "ended");
   assert.deepEqual(state.returnToWorld, returnToWorld);
+  assert.equal(state.player.pokemon.level, APPROVED_COMPETITIVE_RULESET_V1.loadout[0].level);
+  assert.equal(state.player.pokemon.attack, APPROVED_COMPETITIVE_RULESET_V1.loadout[0].attack);
+  assert.deepEqual(
+    state.player.pokemon.moves.map(move => ({
+      power: move.power,
+      accuracy: move.accuracy,
+      maxPp: move.maxPp,
+    })),
+    APPROVED_COMPETITIVE_RULESET_V1.loadout[0].moveIds.map(moveId => ({
+      power: APPROVED_COMPETITIVE_RULESET_V1.moves[moveId].power,
+      accuracy: Math.round(APPROVED_COMPETITIVE_RULESET_V1.moves[moveId].accuracy * 100),
+      maxPp: APPROVED_COMPETITIVE_RULESET_V1.moves[moveId].maxPp,
+    })),
+  );
 });
 
 test("WorldScene은 handed-off old key만 완료하고 next assignment를 한 번만 launch한다", () => {

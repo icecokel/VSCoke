@@ -80,6 +80,11 @@ export interface PokeLoungeServerRoomErrorDetail {
 
 interface ServerRoomSocket {
   readonly connected: boolean;
+  readonly io?: {
+    readonly engine?: {
+      readonly transport?: { readonly name?: unknown };
+    };
+  };
   on(eventName: string, listener: ServerRoomSocketListener): ServerRoomSocket;
   off(eventName: string, listener: ServerRoomSocketListener): ServerRoomSocket;
   emit(eventName: string, payload: unknown): ServerRoomSocket;
@@ -100,6 +105,7 @@ type ServerRoomSocketFactory = (
 export type ServerRoomTransportDiagnostics = {
   socketConnected: boolean;
   transportState: "not-created" | "connected" | "disconnected";
+  activeTransport: "polling" | "websocket" | "unknown" | null;
   recoveryAttempt: number;
   recoveryInFlight: boolean;
   recoveryTimerScheduled: boolean;
@@ -1383,6 +1389,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     socketConnected,
     transportState:
       roomSocket === null ? "not-created" : socketConnected ? "connected" : "disconnected",
+    activeTransport: readActiveSocketTransport(roomSocket, socketConnected),
     recoveryAttempt,
     recoveryInFlight,
     recoveryTimerScheduled: recoveryTimer !== null,
@@ -1731,6 +1738,18 @@ function toRepresentativePokemonSnapshot(
 
 function isE2eEnabled(): boolean {
   return typeof window !== "undefined" && new URLSearchParams(window.location.search).has("e2e");
+}
+
+function readActiveSocketTransport(
+  socket: ServerRoomSocket | null,
+  isConnected: boolean,
+): ServerRoomTransportDiagnostics["activeTransport"] {
+  if (!socket || !isConnected) {
+    return null;
+  }
+
+  const name = socket.io?.engine?.transport?.name;
+  return name === "polling" || name === "websocket" ? name : "unknown";
 }
 
 function classifySocketConnectError(

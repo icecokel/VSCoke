@@ -162,6 +162,47 @@ test("이력 질문 응답의 필수 필드가 잘못되면 계약 오류를 던
   }
 });
 
+test("이력 질문 출처 요소가 계약과 다르면 계약 오류를 던진다", async () => {
+  const { askResumeRag, ResumeRagContractError } = await loadResumeRagService();
+  const validSource = {
+    title: "출처",
+    sourcePath: "resume.md",
+    sourceKey: "resume",
+    sectionPath: "경력",
+    version: "1",
+    caveats: ["공개 범위만 포함"],
+    excerpt: "근거",
+    similarity: 0.9,
+    publicUrl: "https://example.com/resume",
+  };
+  const invalidSources = [
+    { title: "필수 필드가 부족한 출처" },
+    { ...validSource, similarity: Number.NaN },
+    { ...validSource, sectionPath: 1 },
+    { ...validSource, version: 1 },
+    { ...validSource, caveats: "배열이 아님" },
+    { ...validSource, caveats: ["올바른 값", 1] },
+    { ...validSource, publicUrl: 1 },
+  ];
+
+  for (const source of invalidSources) {
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify({
+          answer: "답변",
+          grounded: true,
+          sources: [source],
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+
+    await assert.rejects(
+      askResumeRag({ question: "프로젝트를 알려줘", locale: "ko-KR" }),
+      ResumeRagContractError,
+    );
+  }
+});
+
 test("이력 질문 네트워크 오류를 임의 답변으로 대체하지 않는다", async () => {
   const { askResumeRag } = await loadResumeRagService();
   const networkError = new TypeError("network unavailable");

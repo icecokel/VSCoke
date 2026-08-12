@@ -286,6 +286,8 @@
       "title": "Bean Log",
       "description": "Track espresso extraction settings, taste changes, and next test direction by bean.",
       "searchDescription": "Espresso bean extraction settings and taste notes",
+      "searchSummary": "{roaster} · {rounds} rounds",
+      "searchBeanFallback": "Bean",
       "detailDescription": "A bean log that accumulates espresso extraction settings, taste changes, and next test direction.",
       "total": "{count} beans",
       "empty": "Bean records could not be loaded or no beans have been added yet.",

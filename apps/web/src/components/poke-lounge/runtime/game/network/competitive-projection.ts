@@ -1,3 +1,8 @@
+import {
+  APPROVED_COMPETITIVE_RULESET_V1,
+  COMPETITIVE_RULESET_HASH,
+  COMPETITIVE_RULESET_VERSION,
+} from "@vscoke/poke-lounge-battle";
 import type {
   CompetitiveProjection,
   CompetitiveProjectionParseResult,
@@ -33,24 +38,16 @@ const COMPETITIVE_PROJECTION_KEYS = [
 ] as const;
 const COMPETITIVE_TERMINAL_METADATA_KEYS = ["terminalEventId", "terminalRoomRevision"] as const;
 
-export const APPROVED_COMPETITIVE_LOADOUT = [
-  {
-    speciesId: "vscoke-alpha",
-    maxHp: 120,
-    moves: [
-      { moveId: "steady-strike", maxPp: 20 },
-      { moveId: "stun-spark", maxPp: 15 },
-    ],
-  },
-  {
-    speciesId: "vscoke-beta",
-    maxHp: 140,
-    moves: [
-      { moveId: "steady-strike", maxPp: 20 },
-      { moveId: "heavy-blow", maxPp: 10 },
-    ],
-  },
-] as const;
+export const APPROVED_COMPETITIVE_LOADOUT = APPROVED_COMPETITIVE_RULESET_V1.loadout.map(
+  template => ({
+    speciesId: template.speciesId,
+    maxHp: template.maxHp,
+    moves: template.moveIds.map(moveId => ({
+      moveId,
+      maxPp: APPROVED_COMPETITIVE_RULESET_V1.moves[moveId].maxPp,
+    })),
+  }),
+);
 
 type CompetitiveTerminal = NonNullable<CompetitiveProjection["terminal"]>;
 
@@ -84,7 +81,8 @@ export function parseCompetitiveProjectionContract(
     !UUID_V4_PATTERN.test(matchId) ||
     !BRACKET_MATCH_ID_PATTERN.test(bracketMatchId) ||
     (kind !== "ranked-head-to-head" && kind !== "tournament-unranked") ||
-    rulesetVersion !== 1 ||
+    rulesetVersion !== COMPETITIVE_RULESET_VERSION ||
+    rulesetHash !== COMPETITIVE_RULESET_HASH ||
     !isCompetitiveStatus(status)
   ) {
     throw schemaError();
@@ -272,7 +270,7 @@ function parseCurrentState(
   const participantIds = parsePlayerIds(state.participantIds);
   const turn = requireNonnegativeSafeInteger(state.turn);
   if (
-    state.rulesetVersion !== 1 ||
+    state.rulesetVersion !== COMPETITIVE_RULESET_VERSION ||
     turn !== currentTurn ||
     participantIds[0] !== playerIds[0] ||
     participantIds[1] !== playerIds[1]
@@ -286,7 +284,7 @@ function parseCurrentState(
   );
 
   return {
-    rulesetVersion: 1,
+    rulesetVersion: COMPETITIVE_RULESET_VERSION,
     turn,
     participantIds,
     playersById: parsedPlayers,
@@ -407,8 +405,8 @@ function parseTerminal(
     (terminal.reason !== "faint" &&
       terminal.reason !== "forfeit" &&
       terminal.reason !== "timeout") ||
-    scoreByPlayerId[winnerPlayerId] !== 100 ||
-    scoreByPlayerId[loserPlayerId] !== 50
+    scoreByPlayerId[winnerPlayerId] !== APPROVED_COMPETITIVE_RULESET_V1.scores.win ||
+    scoreByPlayerId[loserPlayerId] !== APPROVED_COMPETITIVE_RULESET_V1.scores.loss
   ) {
     throw schemaError();
   }

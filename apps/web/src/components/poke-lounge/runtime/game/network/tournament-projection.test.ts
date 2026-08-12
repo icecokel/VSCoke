@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createTournamentBracketState } from "@vscoke/poke-lounge-battle";
+import {
+  createTournamentBracketState,
+  getReadyTournamentMatches,
+  recordTournamentMatchResult,
+} from "@vscoke/poke-lounge-battle";
 import {
   mapServerTournamentPlayerIds,
   parseServerTournamentState,
@@ -21,6 +25,26 @@ function createFivePlayerServerTournament() {
     bracket,
     activeMatchId: bracket.currentRound?.matches[0]?.matchId ?? null,
     activeMatchAuthority: "casual",
+    cumulativeScores: {},
+  };
+}
+
+function createCompletedServerTournament(result?: { reason: "faint"; completedAtMs: number }) {
+  let bracket = createTournamentBracketState(
+    [
+      { playerId: "player-1", displayName: "Player 1" },
+      { playerId: "player-2", displayName: "Player 2" },
+    ],
+    1,
+  );
+  const match = getReadyTournamentMatches(bracket)[0];
+  bracket = recordTournamentMatchResult(bracket, match.matchId, match.participantIds[0], result);
+
+  return {
+    version: 2,
+    bracket,
+    activeMatchId: null,
+    activeMatchAuthority: null,
     cumulativeScores: {},
   };
 }
@@ -58,6 +82,50 @@ test("5인 canonical projection은 seed 4/5 match와 seed 1/3/2 bye를 보존한
     tournament.bracket?.currentRound?.byes.map(bye => bye.entrant.playerId),
     ["player-1", "player-3", "player-2"],
   );
+});
+
+test("ready match의 결과 metadata는 둘 다 null이어야 한다", () => {
+  const tournament = structuredClone(createFivePlayerServerTournament());
+  const match = tournament.bracket.currentRound?.matches[0];
+
+  if (!match) {
+    throw new Error("Expected a ready tournament match");
+  }
+  match.resultReason = "faint";
+  match.completedAtMs = 1_000;
+
+  assert.throws(() => parseServerTournamentState(tournament, 1), TournamentProjectionSchemaError);
+});
+
+test("completed match는 legacy null metadata와 유효한 metadata pair를 모두 적용한다", () => {
+  const legacy = parseServerTournamentState(createCompletedServerTournament(), 1);
+  const current = parseServerTournamentState(
+    createCompletedServerTournament({ reason: "faint", completedAtMs: 1_000 }),
+    1,
+  );
+
+  assert.deepEqual(legacy.bracket?.completedRounds[0]?.matches[0]?.resultReason, null);
+  assert.deepEqual(legacy.bracket?.completedRounds[0]?.matches[0]?.completedAtMs, null);
+  assert.equal(current.bracket?.completedRounds[0]?.matches[0]?.resultReason, "faint");
+  assert.equal(current.bracket?.completedRounds[0]?.matches[0]?.completedAtMs, 1_000);
+});
+
+test("completed match의 한쪽만 있는 결과 metadata는 거부한다", () => {
+  for (const metadata of [
+    { resultReason: "faint", completedAtMs: null },
+    { resultReason: null, completedAtMs: 1_000 },
+  ] as const) {
+    const tournament = structuredClone(createCompletedServerTournament());
+    const match = tournament.bracket.completedRounds[0]?.matches[0];
+
+    if (!match) {
+      throw new Error("Expected a completed tournament match");
+    }
+    match.resultReason = metadata.resultReason;
+    match.completedAtMs = metadata.completedAtMs;
+
+    assert.throws(() => parseServerTournamentState(tournament, 1), TournamentProjectionSchemaError);
+  }
 });
 
 test("slot이 match를 참조하지 않는 projection은 거부한다", () => {

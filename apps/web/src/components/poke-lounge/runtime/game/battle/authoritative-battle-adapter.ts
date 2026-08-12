@@ -1,3 +1,4 @@
+import { APPROVED_COMPETITIVE_RULESET_V1 } from "@vscoke/poke-lounge-battle";
 import type { CompetitiveAction, CompetitiveProjection } from "../network/localPreviewRoom";
 import { createDefaultBattleStatStages } from "./battle-stat-stages";
 import { getBattlePokemonAssets } from "./battlePokemonAssets";
@@ -19,9 +20,9 @@ const SPECIES_VIEW = {
 } as const;
 
 const MOVE_VIEW = {
-  "steady-strike": { id: 1, name: "안정 타격", power: 40, accuracy: 100, maxPp: 20 },
-  "stun-spark": { id: 2, name: "마비 불꽃", power: 30, accuracy: 90, maxPp: 15 },
-  "heavy-blow": { id: 3, name: "강타", power: 60, accuracy: 80, maxPp: 10 },
+  "steady-strike": { id: 1, name: "안정 타격" },
+  "stun-spark": { id: 2, name: "마비 불꽃" },
+  "heavy-blow": { id: 3, name: "강타" },
 } as const;
 
 export function isLegalAuthoritativeAction(
@@ -125,6 +126,7 @@ function toBattleParticipant(player: CompetitivePlayer, fallbackName: string): B
 
 function toBattlePokemon(pokemon: CompetitivePokemon): BattlePokemon {
   const species = getSpeciesView(pokemon.speciesId);
+  const rules = species.rules;
   const assets = getBattlePokemonAssets(species.speciesId);
   const status =
     pokemon.currentHp <= 0 ? "fainted" : pokemon.status === "paralyzed" ? "paralyzed" : "normal";
@@ -132,27 +134,27 @@ function toBattlePokemon(pokemon: CompetitivePokemon): BattlePokemon {
   return {
     speciesId: species.speciesId,
     name: species.name,
-    level: 50,
+    level: rules.level,
     catchRate: 0,
     baseExpYield: 0,
     growthRate: 1_000_000,
     experience: 0,
     baseStats: {
-      hp: pokemon.maxHp,
-      attack: 80,
-      defense: 80,
-      speed: 80,
+      hp: rules.maxHp,
+      attack: rules.attack,
+      defense: rules.defense,
+      speed: rules.speed,
       special_attack: 80,
       special_defense: 80,
     },
     individualValues: normalizeIndividualValues({}, () => 0),
     maxHp: pokemon.maxHp,
     currentHp: pokemon.currentHp,
-    attack: 80,
-    defense: 80,
+    attack: rules.attack,
+    defense: rules.defense,
     specialAttack: 80,
     specialDefense: 80,
-    speed: 80,
+    speed: rules.speed,
     statStages: createDefaultBattleStatStages(),
     typeIds: [0],
     status,
@@ -164,31 +166,41 @@ function toBattlePokemon(pokemon: CompetitivePokemon): BattlePokemon {
 
 function toBattleMove(move: CompetitivePokemon["moves"][number]): BattleMove {
   const view = getMoveView(move.moveId);
+  const rules = view.rules;
 
   return {
     id: view.id,
     name: view.name,
     pp: move.pp,
-    maxPp: view.maxPp,
+    maxPp: rules.maxPp,
     type: "normal",
     typeId: 0,
     category: "physical",
     effectCode: 0,
-    accuracy: view.accuracy,
-    power: view.power,
+    accuracy: Math.round(rules.accuracy * 100),
+    power: rules.power,
   };
 }
 
-function getSpeciesView(speciesId: string): (typeof SPECIES_VIEW)[keyof typeof SPECIES_VIEW] {
+function getSpeciesView(speciesId: string) {
   if (speciesId === "vscoke-alpha" || speciesId === "vscoke-beta") {
-    return SPECIES_VIEW[speciesId];
+    const rules = APPROVED_COMPETITIVE_RULESET_V1.loadout.find(
+      candidate => candidate.speciesId === speciesId,
+    );
+
+    if (rules) {
+      return { ...SPECIES_VIEW[speciesId], rules };
+    }
   }
   throw new Error(`Unsupported competitive species: ${speciesId}`);
 }
 
-function getMoveView(moveId: string): (typeof MOVE_VIEW)[keyof typeof MOVE_VIEW] {
+function getMoveView(moveId: string) {
   if (moveId === "steady-strike" || moveId === "stun-spark" || moveId === "heavy-blow") {
-    return MOVE_VIEW[moveId];
+    return {
+      ...MOVE_VIEW[moveId],
+      rules: APPROVED_COMPETITIVE_RULESET_V1.moves[moveId],
+    };
   }
   throw new Error(`Unsupported competitive move: ${moveId}`);
 }

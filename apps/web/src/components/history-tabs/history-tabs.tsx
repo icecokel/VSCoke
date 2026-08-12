@@ -178,52 +178,57 @@ export const HistoryTabs = ({ children }: TParentNode) => {
         {history.map(item => (
           <ContextMenu key={`tab_${item.path}`}>
             <ContextMenuTrigger asChild>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div
-                    id={`${item.path}`}
-                    className={twMerge(
-                      "group border border-gray-300/60 border-l-0 h-8 truncate shrink-0",
-                      item.isActive ? "bg-gray-800 border-b-0" : "hover:bg-gray-600",
-                    )}
-                    onClick={() => handleClickTab(item)}
-                    onMouseDown={handleMouseDown}
-                    onAuxClick={event => handleAuxClickTab(event, item)}
-                    onDragStart={handleDragStart}
-                    onDragEnterCapture={handleDragEnter}
-                    onDragEnd={handleDragEnd}
-                    draggable
-                  >
-                    <BaseText
-                      className={twMerge(
-                        "text-gray-300/80 md:py-1.5 md:px-5 py-1 px-2 text-sm flex items-center",
-                        item.isActive &&
-                          "text-yellow-200/95 font-medium border-t pt-px border-t-blue-300 md:pt-[5px]",
-                      )}
+              <div
+                id={`${item.path}`}
+                className={twMerge(
+                  "group relative flex h-8 shrink-0 truncate border border-l-0 border-gray-300/60",
+                  item.isActive ? "border-b-0 bg-gray-800" : "hover:bg-gray-600",
+                )}
+                onMouseDown={handleMouseDown}
+                onAuxClick={event => handleAuxClickTab(event, item)}
+                onDragStart={handleDragStart}
+                onDragEnterCapture={handleDragEnter}
+                onDragEnd={handleDragEnd}
+                draggable
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-current={item.isActive ? "page" : undefined}
+                      onClick={() => handleClickTab(item)}
+                      className="h-full"
                     >
-                      {getTabTitle(item.path, item.title)}
-                      <span
+                      <BaseText
                         className={twMerge(
-                          "ml-1 -mr-1 md:ml-2 md:-mr-2 inline",
-                          !item.isActive && "hidden group-hover:inline-block",
+                          "flex items-center py-1 pr-7 pl-2 text-sm text-gray-300/80 md:px-9 md:py-1.5 md:pl-5",
+                          item.isActive &&
+                            "border-t border-t-blue-300 pt-px font-medium text-yellow-200/95 md:pt-[5px]",
                         )}
                       >
-                        <Icon
-                          kind="close"
-                          style={{ fontSize: "18px" }}
-                          onClick={e => handleSmartClose(e, item)}
-                        />
-                      </span>
-                    </BaseText>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent
-                  className="bg-gray-900 border-gray-700 text-white"
-                  showArrow={false}
+                        {getTabTitle(item.path, item.title)}
+                      </BaseText>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    className="border-gray-700 bg-gray-900 text-white"
+                    showArrow={false}
+                  >
+                    {item.path}
+                  </TooltipContent>
+                </Tooltip>
+                <button
+                  type="button"
+                  aria-label={`${t("close")}: ${getTabTitle(item.path, item.title)}`}
+                  className={twMerge(
+                    "absolute top-1/2 right-1 inline-flex -translate-y-1/2 rounded-sm text-gray-300/80 focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:outline-none",
+                    !item.isActive && "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
+                  )}
+                  onClick={event => handleSmartClose(event, item)}
                 >
-                  {item.path}
-                </TooltipContent>
-              </Tooltip>
+                  <Icon kind="close" size={18} aria-hidden="true" />
+                </button>
+              </div>
             </ContextMenuTrigger>
             <ContextMenuContent className="bg-gray-800 border-gray-700 text-white">
               <ContextMenuItem onClick={() => handleSmartClose(null, item)}>

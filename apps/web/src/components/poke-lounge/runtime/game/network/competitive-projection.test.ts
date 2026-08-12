@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { COMPETITIVE_RULESET_HASH } from "@vscoke/poke-lounge-battle";
 import {
   APPROVED_COMPETITIVE_LOADOUT,
   CompetitiveProjectionSchemaError,
@@ -33,7 +34,7 @@ function createProjection() {
     kind: "tournament-unranked",
     assignmentRevision: 1,
     rulesetVersion: 1,
-    rulesetHash: "a".repeat(64),
+    rulesetHash: COMPETITIVE_RULESET_HASH,
     currentTurn: 0,
     status: "active",
     playerIds,
@@ -87,6 +88,21 @@ test("authority projection은 UUID와 stable bracket match ID를 구분해 적�
   assert.equal(projection.matchId, "123e4567-e89b-42d3-a456-426614174000");
   assert.equal(projection.bracketMatchId, "game-round-1-bracket-1-match-1");
   assert.equal(projection.kind, "tournament-unranked");
+});
+
+test("authority projection은 브라우저가 공유하는 실제 ruleset hash만 적용한다", () => {
+  assert.equal(
+    parseCompetitiveProjection(createProjection()).rulesetHash,
+    "f063fa4b9fc1df896c72e04d13eee02905c40f8c90c3663d87f24f5ed17ee7fd",
+  );
+  assert.throws(
+    () =>
+      parseCompetitiveProjection({
+        ...createProjection(),
+        rulesetHash: "a".repeat(64),
+      }),
+    CompetitiveProjectionSchemaError,
+  );
 });
 
 test("bracket match ID가 빠진 authority projection은 거부한다", () => {

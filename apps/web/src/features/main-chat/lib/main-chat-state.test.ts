@@ -123,7 +123,7 @@ test("403, 503, 계약 오류, 네트워크 오류를 사용자 실패 상태로
   }
 });
 
-test("429는 제한 상태와 복구 시각을 보존하고 복구 전 제출을 차단한다", () => {
+test("429는 복구 시각까지 제출을 차단하고 reset action 뒤 다시 허용한다", () => {
   const submittingState = mainChatReducer(
     createInitialMainChatState(),
     submitQuestion("요청 제한을 확인할 질문"),
@@ -151,13 +151,41 @@ test("429는 제한 상태와 복구 시각을 보존하고 복구 전 제출을
 
   assert.equal(resumedState, rateLimitedState);
 
-  const resumedAfterResetState = mainChatReducer(rateLimitedState, {
+  const earlyResetState = mainChatReducer(rateLimitedState, {
+    type: "rate-limit-reset",
+    occurredAt: new Date("2026-08-08T01:59:59.000Z"),
+  });
+  const resetState = mainChatReducer(rateLimitedState, {
+    type: "rate-limit-reset",
+    occurredAt: new Date("2026-08-08T02:00:00.000Z"),
+  });
+
+  assert.equal(earlyResetState, rateLimitedState);
+  assert.equal(resetState.status, "failed");
+  assert.equal(canSubmitMainChat(resetState), true);
+
+  const resumedAfterResetState = mainChatReducer(resetState, {
     ...submitQuestion("제한 복구 후 질문", "user-2"),
     submittedAt: new Date("2026-08-08T02:00:00.000Z"),
   });
 
   assert.equal(resumedAfterResetState.status, "submitting");
   assert.equal(resumedAfterResetState.messages.length, 2);
+});
+
+test("429 응답에 복구 시각이 없으면 입력을 영구 차단하지 않는다", () => {
+  const submittingState = mainChatReducer(
+    createInitialMainChatState(),
+    submitQuestion("불완전한 요청 제한 응답"),
+  );
+  const failedState = mainChatReducer(submittingState, {
+    type: "reject",
+    error: new ApiError(429, "too many requests"),
+  });
+
+  assert.equal(failedState.status, "failed");
+  assert.equal(failedState.failure?.kind, "rate-limited");
+  assert.equal(canSubmitMainChat(failedState), true);
 });
 
 test("초기 상태는 호출마다 빈 메모리 상태를 새로 만든다", () => {

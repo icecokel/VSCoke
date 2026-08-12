@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useReducer, useRef, useState } from "react";
+import { FormEvent, useEffect, useReducer, useRef, useState } from "react";
 import { ArrowUp, ChevronRight, Clock, RefreshCw, Send, Sparkles } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,18 @@ export const MainChat = () => {
   const [question, setQuestion] = useState("");
   const isSubmittingRef = useRef(false);
   const canSubmit = question.trim().length >= 2 && canSubmitMainChat(state);
+
+  useEffect(() => {
+    if (state.status !== "rate-limited" || !state.rateLimit) return;
+
+    const { resetAt } = state.rateLimit;
+    const timeoutId = window.setTimeout(
+      () => dispatch({ type: "rate-limit-reset", occurredAt: resetAt }),
+      Math.max(0, resetAt.getTime() - Date.now()),
+    );
+
+    return () => window.clearTimeout(timeoutId);
+  }, [state.status, state.rateLimit]);
 
   const submitQuestion = async (rawQuestion: string) => {
     const trimmedQuestion = rawQuestion.trim();

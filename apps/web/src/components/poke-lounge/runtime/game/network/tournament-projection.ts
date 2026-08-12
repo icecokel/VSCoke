@@ -400,6 +400,13 @@ function parseMatch(
   const resultReason = parseResultReason(match.resultReason);
   const completedAtMs = parseTimestamp(match.completedAtMs);
 
+  if (
+    (match.status === "ready" && (resultReason !== null || completedAtMs !== null)) ||
+    (resultReason === null) !== (completedAtMs === null)
+  ) {
+    throw new TournamentProjectionSchemaError();
+  }
+
   return {
     matchId,
     roundNumber,

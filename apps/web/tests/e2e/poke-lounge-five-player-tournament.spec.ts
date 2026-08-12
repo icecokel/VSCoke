@@ -126,6 +126,7 @@ type TesterRuntimeState = {
 type TransportDiagnostics = {
   socketConnected: boolean;
   transportState: "not-created" | "connected" | "disconnected";
+  activeTransport: "polling" | "websocket" | "unknown" | null;
   recoveryAttempt: number;
   recoveryInFlight: boolean;
   recoveryTimerScheduled: boolean;
@@ -453,7 +454,7 @@ test("실제 API와 Socket.IO에서 5개 환경이 첫 토너먼트 라운드에
         await expect(tester.page.locator("[data-mobile-touch-controls='true']")).toBeVisible();
       }
 
-      await Promise.all(testers.map(tester => waitForSocketConnected(tester)));
+      await Promise.all(testers.map(tester => waitForWebSocketUpgrade(tester)));
 
       for (const tester of testers) {
         await expect
@@ -1278,21 +1279,23 @@ async function appendFailureTimeTransportRecord(
   return record;
 }
 
-async function waitForSocketConnected(tester: TesterRuntime): Promise<void> {
+async function waitForWebSocketUpgrade(tester: TesterRuntime): Promise<void> {
   try {
     await expect
       .poll(
         () =>
-          readTesterRuntimeState(tester.page).then(
-            runtime => runtime.transportDiagnostics?.socketConnected ?? false,
+          readTesterRuntimeState(tester.page).then(runtime =>
+            runtime.transportDiagnostics?.socketConnected === true
+              ? runtime.transportDiagnostics.activeTransport
+              : null,
           ),
         { timeout: 30_000 },
       )
-      .toBe(true);
+      .toBe("websocket");
   } catch {
-    const record = await appendFailureTimeTransportRecord(tester, "C1_SOCKET_CONNECT");
+    const record = await appendFailureTimeTransportRecord(tester, "C1_WEBSOCKET_UPGRADE");
     throw new Error(
-      `Tester ${tester.id} did not reach socketConnected=true before C1 stability; diagnostics=${JSON.stringify(record)}`,
+      `Tester ${tester.id} did not reach activeTransport=websocket before C1 stability; diagnostics=${JSON.stringify(record)}`,
     );
   }
 }
@@ -1309,6 +1312,7 @@ async function waitForHealthyRecoveryQuiescence(
             const diagnostics = runtime.transportDiagnostics;
             return (
               diagnostics?.socketConnected === true &&
+              diagnostics.activeTransport === "websocket" &&
               diagnostics.recoveryInFlight === false &&
               diagnostics.recoveryTimerScheduled === false &&
               diagnostics.subscriptionFailed === false &&
@@ -1330,6 +1334,7 @@ async function waitForHealthyRecoveryQuiescence(
   if (
     transportDiagnostics === null ||
     !transportDiagnostics.socketConnected ||
+    transportDiagnostics.activeTransport !== "websocket" ||
     transportDiagnostics.recoveryInFlight ||
     transportDiagnostics.recoveryTimerScheduled ||
     transportDiagnostics.subscriptionFailed ||
@@ -1556,6 +1561,12 @@ async function readTesterRuntimeState(page: Page): Promise<TesterRuntimeState> {
         (candidateRecord.transportState === "not-created" ||
           candidateRecord.transportState === "connected" ||
           candidateRecord.transportState === "disconnected");
+      const validActiveTransport =
+        candidateRecord !== null &&
+        (candidateRecord.activeTransport === null ||
+          candidateRecord.activeTransport === "polling" ||
+          candidateRecord.activeTransport === "websocket" ||
+          candidateRecord.activeTransport === "unknown");
       const validErrorKind =
         candidateRecord !== null &&
         (candidateRecord.lastSocketErrorKind === null ||
@@ -1586,6 +1597,7 @@ async function readTesterRuntimeState(page: Page): Promise<TesterRuntimeState> {
             candidateRecord.lastAppliedTerminalRevision >= 0));
       if (
         validTransportState &&
+        validActiveTransport &&
         validErrorKind &&
         validErrorClass &&
         validRecoveryFailureKind &&
@@ -1600,6 +1612,7 @@ async function readTesterRuntimeState(page: Page): Promise<TesterRuntimeState> {
         transportDiagnostics = {
           socketConnected: candidateRecord.socketConnected,
           transportState: candidateRecord.transportState,
+          activeTransport: candidateRecord.activeTransport,
           recoveryAttempt: candidateRecord.recoveryAttempt,
           recoveryInFlight: candidateRecord.recoveryInFlight,
           recoveryTimerScheduled: candidateRecord.recoveryTimerScheduled,
@@ -2133,12 +2146,12 @@ function writeArtifacts(input: {
   writeJson("socket-revisions.json", {
     evidenceModel: {
       transport:
-        "websocket-only-config: serverRoom socketFactory의 transports:['websocket'] 정적 설정; test-only controller getter가 sanitized transport diagnostics만 제공",
+        "polling→websocket: serverRoom의 transports:['polling','websocket'] 설정과 sanitized activeTransport='websocket' 런타임 진단을 모든 context에서 검증",
       recovery:
         "raw URL/body/header/response body 없이 roomCode, afterRevision, phase, request count, observed time, status만 집계",
       cursor:
         "같은 handleSocketConnect가 room.subscribe 직후 동일 lastAppliedTerminalRevision으로 recovery GET을 호출하는 코드 계약과 same-page reconnect의 live GET 증가/runtime 수렴을 결합",
-      limitation: "Socket.IO subscribe 원문 frame은 수집하거나 저장하지 않음",
+      limitation: "Socket.IO handshake와 subscribe 원문 frame은 수집하거나 저장하지 않음",
     },
     initialBracket: input.initialBracket,
     nextBracket: input.nextBracket,
@@ -2296,7 +2309,7 @@ function renderSummary(
 | Firefox reload 최초 500 없음 | ${gateStatus(firefoxReloadPassed && !input.networkErrors.some(error => error.tester === 2 && error.kind === "http-5xx"), firefoxReloadPassed || input.testers.some(tester => tester.checkpoints.some(checkpoint => checkpoint.checkpoint === "C2_ACTION_1")))} |
 | Firefox same-page Socket reconnect cursor 유지 | ${gateStatus(samePageReconnectPassed, firefoxReloadPassed)} |
 
-Socket reconnect 판정은 원문 subscribe frame이나 live WebSocket handshake를 저장하지 않는다. WebSocket-only transport는 \`serverRoom\`의 정적 \`transports:['websocket']\` 설정으로만 확인하고, 같은 \`handleSocketConnect\` 호출이 subscribe 직후 동일 \`lastAppliedTerminalRevision\`으로 수행하는 live recovery GET의 증가 및 runtime revision 수렴을 간접 증거로 사용한다.
+Socket.IO는 \`transports:['polling','websocket']\`으로 연결을 시작하고, 각 context의 sanitized runtime 진단이 실제 \`activeTransport='websocket'\`으로 업그레이드됐는지 확인한다. 원문 handshake나 subscribe frame은 저장하지 않으며, reconnect cursor는 live recovery GET 증가와 runtime revision 수렴을 함께 검증한다.
 
 ## 오류 또는 차단 사유
 

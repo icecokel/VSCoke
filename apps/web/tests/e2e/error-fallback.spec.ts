@@ -16,6 +16,41 @@ const clickWordleKey = async (page: Page, key: string) => {
 };
 
 test.describe("오류/네트워크 장애 fallback", () => {
+  test("메인 채팅 429 제한 시간이 지나면 입력창이 다시 활성화된다", async ({ page }) => {
+    const { locale } = await resolveLocaleAndMessages(page);
+
+    await page.route("**/main-chat", async route => {
+      const request = route.request();
+      const origin = request.headers().origin ?? "http://127.0.0.1";
+      const headers = {
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Expose-Headers":
+          "X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset",
+        "Content-Type": "application/json",
+        "X-RateLimit-Limit": "30",
+        "X-RateLimit-Remaining": "0",
+        "X-RateLimit-Reset": String(Math.ceil(Date.now() / 1000) + 2),
+      };
+
+      await route.fulfill({
+        status: request.method() === "OPTIONS" ? 204 : 429,
+        headers,
+        body: request.method() === "OPTIONS" ? undefined : JSON.stringify({ message: "limited" }),
+      });
+    });
+
+    await gotoWithRetry(page, `/${locale}`);
+
+    const question = page.locator("textarea");
+    await question.fill("테스트 질문");
+    await page.locator("button[type='submit']").click();
+
+    await expect(question).toBeDisabled();
+    await expect(question).toBeEnabled({ timeout: 5_000 });
+  });
+
   test("랭킹 API 실패 시 빈 상태 메시지로 fallback 된다", async ({ page }) => {
     const { locale, messages } = await resolveLocaleAndMessages(page);
 

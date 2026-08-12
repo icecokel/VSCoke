@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  COMPETITIVE_RULESET_HASH,
   createTournamentBracketState,
   getReadyTournamentMatches,
   recordTournamentMatchResult,
@@ -11,6 +12,7 @@ import type { CompetitiveProjection, RoomEvent } from "./localPreviewRoom";
 
 interface FixtureSocket {
   readonly connected: boolean;
+  readonly io: { readonly engine: { readonly transport: { readonly name: string } } };
   on(eventName: string, listener: (event?: unknown) => void): FixtureSocket;
   off(eventName: string, listener: (event?: unknown) => void): FixtureSocket;
   emit(eventName: string, payload: unknown): FixtureSocket;
@@ -20,6 +22,7 @@ interface FixtureSocket {
   failConnection(error?: unknown): void;
   pushSubscriptionError(): void;
   reconnectFromServer(): void;
+  setActiveTransport(name: string): void;
   subscriptions(): Array<{ afterRevision: number }>;
 }
 
@@ -27,6 +30,7 @@ function createSocket(initiallyConnected = true): FixtureSocket {
   const listeners = new Map<string, Set<(event?: unknown) => void>>();
   const recordedSubscriptions: Array<{ afterRevision: number }> = [];
   let connected = initiallyConnected;
+  let activeTransport = "polling";
 
   const dispatch = (eventName: string, event?: unknown) => {
     for (const listener of listeners.get(eventName) ?? []) {
@@ -37,6 +41,9 @@ function createSocket(initiallyConnected = true): FixtureSocket {
   return {
     get connected() {
       return connected;
+    },
+    get io() {
+      return { engine: { transport: { name: activeTransport } } };
     },
     on(eventName, listener) {
       const eventListeners = listeners.get(eventName) ?? new Set();
@@ -82,6 +89,9 @@ function createSocket(initiallyConnected = true): FixtureSocket {
         connected = true;
         dispatch("connect");
       }
+    },
+    setActiveTransport(name) {
+      activeTransport = name;
     },
     subscriptions() {
       return [...recordedSubscriptions];
@@ -454,7 +464,7 @@ function createCompetitiveProjection(
     kind: "tournament-unranked",
     assignmentRevision: 1,
     rulesetVersion: 1,
-    rulesetHash: "a".repeat(64),
+    rulesetHash: COMPETITIVE_RULESET_HASH,
     currentTurn: 0,
     status: "active",
     playerIds,
@@ -647,6 +657,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     assert.deepEqual(getServerRoomTransportDiagnosticsForE2e(room), {
       socketConnected: true,
       transportState: "connected",
+      activeTransport: "polling",
       recoveryAttempt: 0,
       recoveryInFlight: false,
       recoveryTimerScheduled: false,
@@ -656,6 +667,11 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
       lastSocketConnectErrorClass: null,
       lastRecoveryFailureKind: null,
     });
+    socket.setActiveTransport("websocket");
+    assert.equal(getServerRoomTransportDiagnosticsForE2e(room)?.activeTransport, "websocket");
+    socket.setActiveTransport("custom-transport-with-private-details");
+    assert.equal(getServerRoomTransportDiagnosticsForE2e(room)?.activeTransport, "unknown");
+    socket.setActiveTransport("websocket");
     assert.deepEqual(connectionStatuses, ["connecting", "online"]);
     assert.equal(connectionStore.getState().session.connectionStatus, "online");
 
@@ -673,6 +689,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     assert.deepEqual(getServerRoomTransportDiagnosticsForE2e(room), {
       socketConnected: false,
       transportState: "disconnected",
+      activeTransport: null,
       recoveryAttempt: 1,
       recoveryInFlight: false,
       recoveryTimerScheduled: true,
@@ -693,6 +710,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     assert.deepEqual(getServerRoomTransportDiagnosticsForE2e(room), {
       socketConnected: true,
       transportState: "connected",
+      activeTransport: "websocket",
       recoveryAttempt: 0,
       recoveryInFlight: false,
       recoveryTimerScheduled: false,
@@ -736,6 +754,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     assert.deepEqual(getServerRoomTransportDiagnosticsForE2e(room), {
       socketConnected: false,
       transportState: "disconnected",
+      activeTransport: null,
       recoveryAttempt: 1,
       recoveryInFlight: false,
       recoveryTimerScheduled: true,
@@ -755,6 +774,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     socket.pushSnapshot({ malformed: true });
     const invalidSnapshotDiagnostics = getServerRoomTransportDiagnosticsForE2e(room);
     assert.deepEqual(Object.keys(invalidSnapshotDiagnostics ?? {}).sort(), [
+      "activeTransport",
       "lastAppliedTerminalRevision",
       "lastRecoveryFailureKind",
       "lastSocketConnectErrorClass",
@@ -776,6 +796,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
       "api.test",
       "opaque-token",
       "SocketTransportError",
+      "custom-transport-with-private-details",
     ]) {
       assert.equal(serializedDiagnostics.includes(rawValue), false);
     }

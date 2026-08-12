@@ -1,5 +1,5 @@
 import { ApiError, apiClient } from "@/lib/api-client";
-import type { ResumeRagChatRequest, ResumeRagChatResponse } from "../types";
+import type { ResumeRagChatRequest, ResumeRagChatResponse, ResumeRagSource } from "../types";
 
 export type ResumeRagRateLimit = {
   limit: number;
@@ -18,6 +18,29 @@ export class ResumeRagContractError extends Error {
   }
 }
 
+const isOptionalString = (value: unknown): value is string | undefined =>
+  value === undefined || typeof value === "string";
+
+const isResumeRagSource = (value: unknown): value is ResumeRagSource => {
+  if (!value || typeof value !== "object") return false;
+
+  const source = value as Partial<ResumeRagSource>;
+
+  return (
+    typeof source.title === "string" &&
+    typeof source.sourcePath === "string" &&
+    typeof source.sourceKey === "string" &&
+    typeof source.excerpt === "string" &&
+    typeof source.similarity === "number" &&
+    Number.isFinite(source.similarity) &&
+    isOptionalString(source.sectionPath) &&
+    isOptionalString(source.version) &&
+    isOptionalString(source.publicUrl) &&
+    (source.caveats === undefined ||
+      (Array.isArray(source.caveats) && source.caveats.every(caveat => typeof caveat === "string")))
+  );
+};
+
 const isResumeRagChatResponse = (value: unknown): value is ResumeRagChatResponse => {
   if (!value || typeof value !== "object") return false;
 
@@ -26,7 +49,8 @@ const isResumeRagChatResponse = (value: unknown): value is ResumeRagChatResponse
   return (
     typeof response.answer === "string" &&
     typeof response.grounded === "boolean" &&
-    Array.isArray(response.sources)
+    Array.isArray(response.sources) &&
+    response.sources.every(isResumeRagSource)
   );
 };
 

@@ -1,5 +1,6 @@
 import { expect, type Browser, type Page, type Request, test } from "@playwright/test";
 import {
+  COMPETITIVE_RULESET_HASH,
   createTournamentBracketState,
   getReadyTournamentMatches,
   recordTournamentMatchResult,
@@ -67,7 +68,7 @@ const createCompetitiveProjection = (
   kind: "ranked-head-to-head",
   assignmentRevision: 7,
   rulesetVersion: 1,
-  rulesetHash: "a".repeat(64),
+  rulesetHash: COMPETITIVE_RULESET_HASH,
   currentTurn: 3,
   status: "active",
   playerIds: ["player-a", "player-b"],

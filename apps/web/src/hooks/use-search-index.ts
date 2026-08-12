@@ -1,7 +1,7 @@
 "use client";
 
 import { useContext, useEffect, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import RESUME_DATA from "@/constants/resume-data.json";
 import { SearchPostsContext } from "@/contexts/app-provider";
 import type { ResumeCareerData } from "@/components/profile/resume/types";
@@ -60,6 +60,7 @@ const uniqueStrings = (values: string[]): string[] => {
 };
 
 export const useSearchIndex = (): SearchItem[] => {
+  const locale = useLocale();
   const posts = useContext(SearchPostsContext);
   const tBlog = useTranslations("blog");
   const tProfile = useTranslations("profile");
@@ -73,7 +74,7 @@ export const useSearchIndex = (): SearchItem[] => {
   useEffect(() => {
     let isMounted = true;
 
-    fetch("/api/hobby-search-index", { cache: "no-store" })
+    fetch(`/api/hobby-search-index?locale=${encodeURIComponent(locale)}`, { cache: "no-store" })
       .then(response => {
         if (!response.ok) {
           throw new Error(`Search index request failed: ${response.status}`);
@@ -95,7 +96,7 @@ export const useSearchIndex = (): SearchItem[] => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [locale]);
 
   return useMemo(() => {
     const blogLanding: SearchItem = {

@@ -28,3 +28,10 @@ export {
   type TournamentScoreByPlayerId,
   type TournamentScoreByRank,
 } from "./tournament-scoring";
+export {
+  APPROVED_COMPETITIVE_RULESET_V1,
+  COMPETITIVE_RULESET_HASH,
+  COMPETITIVE_RULESET_VERSION,
+  type CompetitiveLoadoutEntry,
+  type CompetitiveMoveDefinition,
+} from "./ruleset-contract";

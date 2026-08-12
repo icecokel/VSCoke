@@ -18,6 +18,10 @@ type MainChatAction =
       type: "reject";
       error: unknown;
       rateLimit?: MainChatRateLimit;
+    }
+  | {
+      type: "rate-limit-reset";
+      occurredAt: Date;
     };
 
 export const createInitialMainChatState = (): MainChatState => ({
@@ -49,6 +53,14 @@ export const canSubmitMainChat = (state: MainChatState, now = new Date()): boole
 };
 
 export const mainChatReducer = (state: MainChatState, action: MainChatAction): MainChatState => {
+  if (action.type === "rate-limit-reset") {
+    if (state.status !== "rate-limited" || !canSubmitMainChat(state, action.occurredAt)) {
+      return state;
+    }
+
+    return { ...state, status: "failed" };
+  }
+
   if (action.type === "submit") {
     const question = action.question.trim();
 
@@ -84,7 +96,7 @@ export const mainChatReducer = (state: MainChatState, action: MainChatAction): M
   const failure = toMainChatFailure(action.error, state.pendingQuestion);
 
   return {
-    status: failure.kind === "rate-limited" ? "rate-limited" : "failed",
+    status: failure.kind === "rate-limited" && action.rateLimit ? "rate-limited" : "failed",
     messages: state.messages,
     rateLimit: action.rateLimit ?? state.rateLimit,
     failure,

@@ -286,6 +286,8 @@
       "title": "豆の記録",
       "description": "豆ごとのエスプレッソ抽出条件、味の変化、次のテスト方針を管理します。",
       "searchDescription": "エスプレッソ豆ごとの抽出条件と味の記録",
+      "searchSummary": "{roaster} · {rounds}ラウンド",
+      "searchBeanFallback": "豆",
       "detailDescription": "エスプレッソの抽出条件、味の変化、次のテスト方針を蓄積した豆の記録です。",
       "total": "全{count}件の豆",
       "empty": "豆の記録を読み込めなかったか、まだ登録された豆がありません。",

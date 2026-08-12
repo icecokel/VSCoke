@@ -1,16 +1,11 @@
-import type { LocalPlayerState, PlayerPokemon, PlayerPokemonMove } from "../state/gameStateStore";
+import type { LocalPlayerState } from "../state/gameStateStore";
 import { BATTLE_PARTY_SLOT_COUNT } from "./battleParty";
-import { getBattlePokemonAssets } from "./battlePokemonAssets";
-import type {
-  BattleMove,
-  BattleParticipant,
-  BattlePartySlot,
-  BattlePokemon,
-  BattleScreenState,
-} from "./battleTypes";
-import type { Gen4BaseStats } from "./gen4PokemonStats";
-import { createDefaultBattleStatStages } from "./battle-stat-stages";
-import { normalizeIndividualValues } from "./individual-values";
+import type { BattleParticipant, BattlePartySlot, BattleScreenState } from "./battleTypes";
+import {
+  createStoredBattlePokemon,
+  type RomPersonalRecordCollection,
+  type RomRefinedMoveCollection,
+} from "./wildBattleFactory";
 
 export interface CreatePvpBattleStateInput {
   roundIndex: number;
@@ -18,12 +13,9 @@ export interface CreatePvpBattleStateInput {
   matchId?: string;
   player: LocalPlayerState;
   opponent: LocalPlayerState;
+  personalRecords: RomPersonalRecordCollection;
+  moveRecords: RomRefinedMoveCollection;
 }
-
-const DEFAULT_MOVE_TYPE = "normal";
-const DEFAULT_MOVE_TYPE_ID = 0;
-const DEFAULT_MOVE_POWER = 40;
-const DEFAULT_MOVE_ACCURACY = 100;
 
 export function createPvpBattleState({
   roundIndex,
@@ -31,6 +23,8 @@ export function createPvpBattleState({
   matchId,
   player,
   opponent,
+  personalRecords,
+  moveRecords,
 }: CreatePvpBattleStateInput): BattleScreenState {
   return {
     battleKind: "trainer",
@@ -39,8 +33,8 @@ export function createPvpBattleState({
     matchIndex,
     turn: 1,
     runAttemptCount: 0,
-    player: createBattleParticipant(player, "Player"),
-    opponent: createBattleParticipant(opponent, "Opponent"),
+    player: createBattleParticipant(player, "Player", personalRecords, moveRecords),
+    opponent: createBattleParticipant(opponent, "Opponent", personalRecords, moveRecords),
     messageQueue: [
       `${opponent.displayName}가 ${getActivePokemonName(opponent)}을 내보냈다!`,
       `가랏! ${getActivePokemonName(player)}!`,
@@ -54,8 +48,10 @@ export function createPvpBattleState({
 function createBattleParticipant(
   localPlayer: LocalPlayerState,
   participantLabel: "Player" | "Opponent",
+  personalRecords: RomPersonalRecordCollection,
+  moveRecords: RomRefinedMoveCollection,
 ): BattleParticipant {
-  const party = createConvertedParty(localPlayer.party);
+  const party = createConvertedParty(localPlayer.party, personalRecords, moveRecords);
   const activePokemon = party.find(
     slot => slot.slotIndex === localPlayer.activePartySlotIndex,
   )?.pokemon;
@@ -79,87 +75,21 @@ function createBattleParticipant(
   };
 }
 
-function createConvertedParty(storedParty: LocalPlayerState["party"]): BattlePartySlot[] {
+function createConvertedParty(
+  storedParty: LocalPlayerState["party"],
+  personalRecords: RomPersonalRecordCollection,
+  moveRecords: RomRefinedMoveCollection,
+): BattlePartySlot[] {
   return Array.from({ length: BATTLE_PARTY_SLOT_COUNT }, (_, slotIndex) => {
     const storedPokemon = storedParty.find(slot => slot.slotIndex === slotIndex)?.pokemon;
 
     return {
       slotIndex,
-      pokemon: storedPokemon ? createBattlePokemon(storedPokemon) : null,
+      pokemon: storedPokemon
+        ? createStoredBattlePokemon({ pokemon: storedPokemon, personalRecords, moveRecords })
+        : null,
     };
   });
-}
-
-function createBattlePokemon(pokemon: PlayerPokemon): BattlePokemon {
-  const maxHp = resolveMaxHp(pokemon);
-  const currentHp = clampHp(pokemon.currentHp ?? maxHp, maxHp);
-  const baseStats = createDefaultBaseStats(maxHp, pokemon.level);
-  const individualValues = normalizeIndividualValues(pokemon.individualValues);
-  const assets = getBattlePokemonAssets(pokemon.speciesId);
-
-  return {
-    speciesId: pokemon.speciesId,
-    name: pokemon.name,
-    level: pokemon.level,
-    gender: pokemon.gender,
-    catchRate: 0,
-    baseExpYield: 0,
-    growthRate: pokemon.growthRate ?? 0,
-    experience: pokemon.experience ?? 0,
-    baseStats,
-    individualValues,
-    maxHp,
-    currentHp,
-    attack: baseStats.attack,
-    defense: baseStats.defense,
-    specialAttack: baseStats.special_attack,
-    specialDefense: baseStats.special_defense,
-    speed: baseStats.speed,
-    statStages: createDefaultBattleStatStages(),
-    typeIds: [DEFAULT_MOVE_TYPE_ID],
-    status: currentHp <= 0 ? "fainted" : (pokemon.status ?? "normal"),
-    frontSprite: assets.front,
-    backSprite: assets.back,
-    moves: pokemon.moves?.map(createBattleMove) ?? [],
-  };
-}
-
-function resolveMaxHp(pokemon: PlayerPokemon): number {
-  const levelBasedMaxHp = 20 + pokemon.level;
-
-  return pokemon.maxHp ?? Math.max(levelBasedMaxHp, pokemon.currentHp ?? 0);
-}
-
-function clampHp(currentHp: number, maxHp: number): number {
-  return Math.max(0, Math.min(maxHp, Math.trunc(Number.isFinite(currentHp) ? currentHp : maxHp)));
-}
-
-function createDefaultBaseStats(maxHp: number, level: number): Gen4BaseStats {
-  const defaultStat = Math.max(1, level);
-
-  return {
-    hp: maxHp,
-    attack: defaultStat,
-    defense: defaultStat,
-    special_attack: defaultStat,
-    special_defense: defaultStat,
-    speed: defaultStat,
-  };
-}
-
-function createBattleMove(move: PlayerPokemonMove): BattleMove {
-  return {
-    id: move.id,
-    name: move.name,
-    pp: move.pp,
-    maxPp: move.maxPp,
-    type: DEFAULT_MOVE_TYPE,
-    typeId: DEFAULT_MOVE_TYPE_ID,
-    category: "physical",
-    effectCode: 0,
-    accuracy: DEFAULT_MOVE_ACCURACY,
-    power: DEFAULT_MOVE_POWER,
-  };
 }
 
 function getActivePokemonName(localPlayer: LocalPlayerState): string {

@@ -265,6 +265,30 @@
           "width": 0,
           "x": 896,
           "y": 320
+        },
+        {
+          "height": 0,
+          "id": 913,
+          "name": "soloChallenger",
+          "point": true,
+          "properties": [
+            {
+              "name": "displayName",
+              "type": "string",
+              "value": "솔로 챌린저"
+            },
+            {
+              "name": "role",
+              "type": "string",
+              "value": "solo-challenge"
+            }
+          ],
+          "rotation": 0,
+          "type": "solo-challenge",
+          "visible": true,
+          "width": 0,
+          "x": 1024,
+          "y": 320
         }
       ],
       "opacity": 1,

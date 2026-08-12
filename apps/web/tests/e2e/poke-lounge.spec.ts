@@ -140,6 +140,8 @@ interface PokeLoungeBattleSnapshot {
     selectedMoveIndex: number;
   } | null;
   opponent: {
+    name: string;
+    level: number;
     currentHp: number;
     maxHp: number;
     displayedCurrentHp: number;
@@ -282,6 +284,7 @@ interface PokeLoungeE2eController {
     y: number;
     facing: "front" | "back" | "left" | "right";
   }): PokeLoungeWorldSnapshot | null;
+  startSoloChallengeForTest(): PokeLoungeWorldSnapshot | null;
   openPcBoxForTest(): PokeLoungeWorldSnapshot | null;
   movePcBoxSelectionForTest(delta: number): PokeLoungeWorldSnapshot | null;
   togglePcBoxFocusForTest(): PokeLoungeWorldSnapshot | null;
@@ -1001,6 +1004,7 @@ test.describe("Poke Lounge", () => {
     const npcObjects = townMap.layers?.find(layer => layer.name === "Npcs")?.objects ?? [];
     const nurse = npcObjects.find(object => object.name === "nurse");
     const storagePc = npcObjects.find(object => object.name === "storagePc");
+    const soloChallenger = npcObjects.find(object => object.name === "soloChallenger");
     const npcMap = FIELD_MAP.npcs as Record<string, { imageUrl: string; textureKey: string }>;
 
     expect(fs.existsSync(readPublicFilePath(POKE_LOUNGE_STORAGE_PC_ASSET_PATH))).toBe(true);
@@ -1016,6 +1020,17 @@ test.describe("Poke Lounge", () => {
         type: "storage-pc",
         x: (nurse?.x ?? 0) + 48,
         y: nurse?.y,
+      }),
+    );
+    expect(npcMap.soloChallenger).toEqual(
+      expect.objectContaining({ textureKey: "field-npc-solo-challenger" }),
+    );
+    expect(soloChallenger).toEqual(
+      expect.objectContaining({
+        name: "soloChallenger",
+        type: "solo-challenge",
+        x: 1024,
+        y: 320,
       }),
     );
   });
@@ -1509,6 +1524,62 @@ test.describe("Poke Lounge", () => {
       ),
     ).toBe(true);
 
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
+  test("솔로 챌린저는 성장 파티의 미러전을 끝내고 일반 결과를 표시한다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await startSoloGame(
+      page,
+      `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?scene=world&e2e=1&wildEncounterRate=0`,
+    );
+    await closeWorldShortcutGuideIfOpen(page);
+    const expectedPokemon = await page.evaluate(() => {
+      const controller = (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__;
+      const state = controller?.getGameStateSnapshot();
+      const playerId = state?.currentPlayerId;
+      const player = playerId ? state?.playersById[playerId] : undefined;
+      const occupiedSlot = player?.party.find(slot => slot.pokemon);
+
+      if (!controller || !playerId || !player || !occupiedSlot?.pokemon) {
+        throw new Error("솔로 챌린지용 파티를 준비하지 못했다.");
+      }
+
+      const level = 42;
+      controller.setCurrentLocalPlayerForTest({
+        ...player,
+        playerId,
+        activePartySlotIndex: occupiedSlot.slotIndex ?? 0,
+        party: player.party.map(slot => ({
+          ...slot,
+          pokemon: slot.pokemon ? { ...slot.pokemon, level, currentHp: 1, status: "normal" } : null,
+        })),
+      });
+      controller.startSoloChallengeForTest();
+
+      return {
+        playerId,
+        pokemon: { name: occupiedSlot.pokemon.name, level },
+      };
+    });
+
+    await expectActiveScene(page, "battle");
+    await expect
+      .poll(() => getBattleSnapshot(page).then(snapshot => snapshot?.battleEntrancePlaying ?? true))
+      .toBe(false);
+    const battle = await getBattleSnapshot(page);
+
+    expect(battle?.battleKind).toBe("trainer");
+    expect(battle?.player).toMatchObject(expectedPokemon.pokemon);
+    expect(battle?.opponent).toMatchObject(expectedPokemon.pokemon);
+    expect(battle?.partySlots[0]).toMatchObject({ level: 42, isCurrent: true });
+    const result = await resolveBattleResult(page);
+    const expectedScore = result?.winnerPlayerId === expectedPokemon.playerId ? "100" : "0";
+
+    await returnToWorldAfterBattleEnd(page);
+    await expect(page.getByTestId("poke-lounge-result-panel")).toBeVisible();
+    await expect(page.getByTestId("poke-lounge-result-score")).toHaveText(expectedScore);
     expect(browserErrors.join("\n")).toBe("");
   });
 
@@ -2359,27 +2430,17 @@ test.describe("Poke Lounge", () => {
     });
 
     await expect
-      .poll(() => getBattleSnapshot(page).then(snapshot => snapshot?.phase ?? null), {
-        timeout: 30000,
-      })
-      .toBe("move-replace-select");
+      .poll(
+        () =>
+          getBattleSnapshot(page).then(
+            snapshot =>
+              snapshot?.phase === "move-replace-select" && snapshot.messageQueue.length === 0,
+          ),
+        { timeout: 30000 },
+      )
+      .toBe(true);
 
     let snapshot = await getBattleSnapshot(page);
-    expect(snapshot?.messageQueue).toEqual(
-      expect.arrayContaining([
-        expect.stringMatching(/경험치를 얻었다!/),
-        "승리했다!",
-        "전투가 종료되었다. 확인을 누르면 필드로 돌아간다.",
-      ]),
-    );
-
-    await page.evaluate(() => {
-      const pokeWindow = window as PokeLoungeWindow;
-
-      pokeWindow.__POKE_LOUNGE_E2E__?.drainBattleMessages();
-    });
-
-    snapshot = await getBattleSnapshot(page);
     expect(snapshot?.phase).toBe("move-replace-select");
     expect(snapshot?.messageQueue).toEqual([]);
     expect(snapshot?.moveReplacement).toEqual({

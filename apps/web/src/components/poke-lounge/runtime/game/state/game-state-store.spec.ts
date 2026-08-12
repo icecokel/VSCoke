@@ -11,12 +11,10 @@ import {
   loadRuntimeGameDataJson,
   resetRuntimeGameDataJsonStateForTest,
 } from "../data/game-data-json";
-import { EVOLUTION_STONE_ITEM_IDS } from "../items/evolution-stones";
 import {
   createDefaultGameState,
   createDefaultLocalPlayer,
   createGameStateStore,
-  getUnlockedPremiumShopItemIds,
   type PlayerPokemon,
 } from "./gameStateStore";
 
@@ -44,11 +42,9 @@ test("새 플레이어는 몬스터볼 10개를 기본 지급받는다", () => {
   });
 });
 
-test("희귀 상점은 진화의 돌 9종을 판매한다", () => {
-  assert.deepEqual(getUnlockedPremiumShopItemIds(null), [...EVOLUTION_STONE_ITEM_IDS]);
-
+test("상점은 랭크와 무관하게 일반·희귀 품목을 판매한다", () => {
   const localPlayer = createDefaultLocalPlayer();
-  localPlayer.wallet.pokeDollars = 5_000;
+  localPlayer.wallet.pokeDollars = 15_000;
   const defaultState = createDefaultGameState();
   const store = createGameStateStore({
     initialState: {
@@ -60,9 +56,30 @@ test("희귀 상점은 진화의 돌 9종을 판매한다", () => {
 
   assert.deepEqual(store.buyPremiumShopItem("dawnStone", 1), { ok: true });
   assert.deepEqual(store.buyPremiumShopItem("thunderStone", 1), { ok: true });
-  assert.equal(store.getCurrentLocalPlayer().wallet.pokeDollars, 800);
+  assert.deepEqual(store.buyShopItem("antidote", 1), { ok: true });
+  assert.deepEqual(store.buyPremiumShopItem("rareCandy", 1), { ok: true });
+  assert.equal(store.getCurrentLocalPlayer().wallet.pokeDollars, 2_700);
   assert.equal(store.getCurrentLocalPlayer().inventory.dawnStone, 1);
   assert.equal(store.getCurrentLocalPlayer().inventory.thunderStone, 1);
+  assert.equal(store.getCurrentLocalPlayer().inventory.antidote, 1);
+  assert.equal(store.getCurrentLocalPlayer().inventory.rareCandy, 1);
+});
+
+test("솔로 챌린지 완료는 공개 경쟁 점수와 분리된 일반 결과를 만든다", () => {
+  const store = createGameStateStore();
+  const playerId = store.getState().currentPlayerId;
+
+  store.completeSoloChallenge(true, 1_234);
+
+  assert.equal(store.getState().round.phase, "game-result");
+  assert.equal(store.getState().round.phaseStartedAtMs, 1_234);
+  assert.equal(store.getState().tournament.scoresByPlayerId[playerId], 100);
+  assert.deepEqual(store.getCurrentLocalPlayer().competitive, { rank: null, score: 0 });
+
+  store.completeSoloChallenge(false, 2_345);
+
+  assert.equal(store.getState().tournament.scoresByPlayerId[playerId], 0);
+  assert.deepEqual(store.getCurrentLocalPlayer().competitive, { rank: null, score: 0 });
 });
 
 test("진화의 돌은 호환될 때만 적용하고 성공한 경우에만 한 개를 소비한다", async () => {

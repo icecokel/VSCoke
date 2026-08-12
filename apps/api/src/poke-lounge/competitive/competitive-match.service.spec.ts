@@ -20,7 +20,10 @@ describe('CompetitiveMatchService', () => {
     repository = {
       bindSeatAndAssign: jest.fn(),
     };
-    actionRepository = { submit: jest.fn() };
+    actionRepository = {
+      submit: jest.fn(),
+      expirePendingTurn: jest.fn(),
+    };
     publisher = { publish: jest.fn().mockResolvedValue(undefined) };
     service = new CompetitiveMatchService(
       repository,
@@ -238,6 +241,45 @@ describe('CompetitiveMatchService', () => {
       'clientCommandId',
     );
     expect(order).toEqual(['transaction-committed', 'event-published']);
+  });
+
+  it('keeps the original 60 second deadline when a pending command is replayed', async () => {
+    jest.useFakeTimers();
+    actionRepository.submit.mockResolvedValue({
+      outcome: 'accepted',
+      response: actionProjection(),
+      room: roomSnapshot(),
+      committed: true,
+    });
+    actionRepository.expirePendingTurn.mockResolvedValue({
+      outcome: 'ignored',
+    });
+
+    try {
+      await service.submitAction(actionInput());
+      await jest.advanceTimersByTimeAsync(30_000);
+      actionRepository.submit.mockResolvedValue({
+        outcome: 'replayed',
+        response: actionProjection(),
+        room: roomSnapshot(),
+        committed: false,
+      });
+      await service.submitAction(actionInput());
+      await jest.advanceTimersByTimeAsync(30_000);
+
+      expect(actionRepository.expirePendingTurn.mock.calls).toHaveLength(1);
+      const timeoutInput =
+        actionRepository.expirePendingTurn.mock.calls[0]?.[0];
+      expect(timeoutInput).toMatchObject({
+        roomCode: 'ROOM01',
+        matchId: 'match-1',
+        turn: 0,
+      });
+      expect(typeof timeoutInput?.nowMs).toBe('number');
+    } finally {
+      service.onModuleDestroy();
+      jest.useRealTimers();
+    }
   });
 
   it('publishes one composite snapshot with the completed old match before the next tournament assignment', async () => {

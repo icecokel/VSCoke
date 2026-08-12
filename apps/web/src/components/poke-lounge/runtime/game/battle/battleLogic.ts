@@ -25,6 +25,19 @@ export const BATTLE_END_CONFIRM_MESSAGE = "전투가 종료되었다. 확인을 
 export const BATTLE_RUN_FAILED_MESSAGE = "도망칠 수 없었다!";
 export const ULTRA_BALL_BONUS = 2;
 
+const STRUGGLE_MOVE: BattleMove = {
+  id: 165,
+  name: "발버둥",
+  pp: 1,
+  maxPp: 1,
+  type: "없음",
+  typeId: -1,
+  category: "physical",
+  effectCode: 254,
+  accuracy: 0,
+  power: 50,
+};
+
 const BATTLE_EFFECT_ITEM_IDS = [
   "potion",
   "superPotion",
@@ -52,6 +65,7 @@ export interface RunAttemptResult {
 
 export interface ChooseBattleCommandOptions {
   randomByte?: () => number;
+  random?: () => number;
 }
 
 export interface ChooseBattleBagItemOptions {
@@ -174,12 +188,16 @@ export function chooseBattleCommand(
     };
   }
 
-  return {
+  const moveSelectState: BattleScreenState = {
     ...state,
     phase: "move-select",
     messageQueue: [],
     usedInventoryItemId: null,
   };
+
+  return resolveStruggle(state.player.pokemon.moves)
+    ? choosePlayerMove(moveSelectState, 0, { random: options.random })
+    : moveSelectState;
 }
 
 export function chooseBattleBagItem(
@@ -434,9 +452,13 @@ export function choosePlayerMove(
   }
 
   const random = options.random ?? Math.random;
-  const playerMove = state.player.pokemon.moves[moveIndex];
+  const selectedMove = state.player.pokemon.moves[moveIndex];
+  const playerMove =
+    selectedMove && selectedMove.pp > 0
+      ? selectedMove
+      : resolveStruggle(state.player.pokemon.moves);
 
-  if (!playerMove || playerMove.pp <= 0) {
+  if (!playerMove) {
     return {
       ...state,
       messageQueue: ["그 기술은 사용할 수 없다."],
@@ -482,70 +504,62 @@ export function choosePlayerMove(
         moveOutcome.damage > 0 ? "opponent" : null,
       );
 
-      if (opponentPokemon.status === "fainted") {
-        const wildVictoryExperience =
-          state.battleKind === "wild"
-            ? applyWildVictoryExperience(playerPokemon, opponentPokemon)
-            : null;
-        const wildVictoryRewardPokeDollars =
-          state.battleKind === "wild"
-            ? calculateWildBattlePokeDollarReward({
-                baseExpYield: opponentPokemon.baseExpYield,
-                defeatedLevel: opponentPokemon.level,
-                outcome: "faint",
-              })
-            : 0;
-        const resolvedPlayerPokemon = wildVictoryExperience?.pokemon ?? playerPokemon;
-        const wildVictoryRewardMessage = wildVictoryExperience
-          ? formatWildVictoryRewardMessage(
-              resolvedPlayerPokemon.name,
-              wildVictoryExperience.experienceGained,
-              wildVictoryRewardPokeDollars,
-            )
-          : "";
-        const victoryMessages = wildVictoryExperience
-          ? [
-              ...messageQueue,
-              "상대 포켓몬은 쓰러졌다!",
-              wildVictoryRewardMessage,
-              ...(wildVictoryExperience.levelsGained > 0
-                ? [
-                    `${withTopicParticle(resolvedPlayerPokemon.name)} Lv.${resolvedPlayerPokemon.level}이 되었다!`,
-                  ]
-                : []),
-              "승리했다!",
-            ]
-          : [...messageQueue, "상대 포켓몬은 쓰러졌다!", "승리했다!"];
+      if (playerPokemon.status === "fainted" && opponentPokemon.status === "fainted") {
+        const hasPlayerReplacement = state.player.party.some(
+          slot =>
+            slot.slotIndex !== state.player.activePartySlotIndex &&
+            slot.pokemon !== null &&
+            canPokemonBattle(slot.pokemon),
+        );
+        const faintState = hasPlayerReplacement
+          ? createEndOfTurnFaintState({
+              state,
+              playerPokemon,
+              opponentPokemon,
+              messageQueue,
+              selectedMoveId: playerMove.id,
+              turn: state.turn + 1,
+              usedInventoryItemId: null,
+            })!
+          : createPlayerFaintState({
+              state,
+              playerPokemon,
+              opponentPokemon,
+              messageQueue,
+              selectedMoveId: playerMove.id,
+              turn: state.turn + 1,
+              usedInventoryItemId: null,
+            });
 
+        return withBattleMessageHpSnapshots(faintState, messageHpSnapshots);
+      }
+
+      if (playerPokemon.status === "fainted") {
         return withBattleMessageHpSnapshots(
-          {
-            ...state,
-            phase: "ended",
+          createPlayerFaintState({
+            state,
+            playerPokemon,
+            opponentPokemon,
+            messageQueue,
             selectedMoveId: playerMove.id,
             turn: state.turn + 1,
-            player: syncActivePartyPokemon(state.player, playerPokemon),
-            opponent: syncActivePartyPokemon(state.opponent, opponentPokemon),
             usedInventoryItemId: null,
-            messageQueue: appendBattleEndConfirmMessage(victoryMessages),
-            pendingExperienceReward: wildVictoryExperience
-              ? {
-                  message: wildVictoryRewardMessage,
-                  pokemon: resolvedPlayerPokemon,
-                }
-              : null,
-            result: {
-              winnerPlayerId: state.player.playerId,
-              loserPlayerId: state.opponent.playerId,
-              reason: "faint",
-              ...(wildVictoryExperience
-                ? {
-                    experienceGained: wildVictoryExperience.experienceGained,
-                    levelsGained: wildVictoryExperience.levelsGained,
-                    rewardPokeDollars: wildVictoryRewardPokeDollars,
-                  }
-                : {}),
-            },
-          },
+          }),
+          messageHpSnapshots,
+        );
+      }
+
+      if (opponentPokemon.status === "fainted") {
+        return withBattleMessageHpSnapshots(
+          createOpponentFaintState({
+            state,
+            playerPokemon,
+            opponentPokemon,
+            messageQueue,
+            selectedMoveId: playerMove.id,
+            turn: state.turn + 1,
+            usedInventoryItemId: null,
+          }),
           messageHpSnapshots,
         );
       }
@@ -576,6 +590,36 @@ export function choosePlayerMove(
       opponentPokemon,
       moveOutcome.damage > 0 ? "player" : null,
     );
+
+    if (playerPokemon.status === "fainted" && opponentPokemon.status === "fainted") {
+      return withBattleMessageHpSnapshots(
+        createEndOfTurnFaintState({
+          state,
+          playerPokemon,
+          opponentPokemon,
+          messageQueue,
+          selectedMoveId: playerMove.id,
+          turn: state.turn + 1,
+          usedInventoryItemId: null,
+        })!,
+        messageHpSnapshots,
+      );
+    }
+
+    if (opponentPokemon.status === "fainted") {
+      return withBattleMessageHpSnapshots(
+        createOpponentFaintState({
+          state,
+          playerPokemon,
+          opponentPokemon,
+          messageQueue,
+          selectedMoveId: playerMove.id,
+          turn: state.turn + 1,
+          usedInventoryItemId: null,
+        }),
+        messageHpSnapshots,
+      );
+    }
 
     if (playerPokemon.status === "fainted") {
       return withBattleMessageHpSnapshots(
@@ -703,20 +747,18 @@ function resolveFailedRunTurn(
     moveOutcome.damage > 0 ? "player" : null,
   );
 
-  if (playerPokemon.status === "fainted") {
-    return withBattleMessageHpSnapshots(
-      createPlayerFaintState({
-        state,
-        playerPokemon,
-        opponentPokemon,
-        messageQueue,
-        selectedMoveId: null,
-        turn: state.turn + 1,
-        runAttemptCount,
-        usedInventoryItemId: null,
-      }),
-      messageHpSnapshots,
-    );
+  const immediateFaintState = createEndOfTurnFaintState({
+    state,
+    playerPokemon,
+    opponentPokemon,
+    messageQueue,
+    selectedMoveId: null,
+    turn: state.turn + 1,
+    runAttemptCount,
+    usedInventoryItemId: null,
+  });
+  if (immediateFaintState) {
+    return withBattleMessageHpSnapshots(immediateFaintState, messageHpSnapshots);
   }
 
   const endOfTurn = resolveEndOfTurnEffects({
@@ -832,18 +874,19 @@ function resolveFailedCaptureTurn(
     moveOutcome.damage > 0 ? "player" : null,
   );
 
-  if (playerPokemon.status === "fainted") {
+  const immediateFaintState = createEndOfTurnFaintState({
+    state,
+    playerPokemon,
+    opponentPokemon,
+    messageQueue,
+    selectedMoveId: null,
+    turn: state.turn + 1,
+    usedInventoryItemId: ball.itemId,
+  });
+  if (immediateFaintState) {
     return withBattleMessageHpSnapshots(
       {
-        ...createPlayerFaintState({
-          state,
-          playerPokemon,
-          opponentPokemon,
-          messageQueue,
-          selectedMoveId: null,
-          turn: state.turn + 1,
-          usedInventoryItemId: ball.itemId,
-        }),
+        ...immediateFaintState,
         captureAttempt,
       },
       messageHpSnapshots,
@@ -957,19 +1000,17 @@ function resolveOpponentTurnAfterPlayerMessages(
     moveOutcome.damage > 0 ? "player" : null,
   );
 
-  if (playerPokemon.status === "fainted") {
-    return withBattleMessageHpSnapshots(
-      createPlayerFaintState({
-        state,
-        playerPokemon,
-        opponentPokemon,
-        messageQueue,
-        selectedMoveId: null,
-        turn: state.turn + 1,
-        usedInventoryItemId,
-      }),
-      messageHpSnapshots,
-    );
+  const immediateFaintState = createEndOfTurnFaintState({
+    state,
+    playerPokemon,
+    opponentPokemon,
+    messageQueue,
+    selectedMoveId: null,
+    turn: state.turn + 1,
+    usedInventoryItemId,
+  });
+  if (immediateFaintState) {
+    return withBattleMessageHpSnapshots(immediateFaintState, messageHpSnapshots);
   }
 
   const endOfTurn = resolveEndOfTurnEffects({
@@ -1216,10 +1257,14 @@ function randomUsableMove(
   const usableMoves = moves.filter(move => move.pp > 0);
 
   if (usableMoves.length === 0) {
-    return null;
+    return resolveStruggle(moves);
   }
 
   return usableMoves[Math.floor(randomUnit(random) * usableMoves.length)] ?? usableMoves[0];
+}
+
+function resolveStruggle(moves: BattleMove[]): BattleMove | null {
+  return moves.length > 0 && moves.every(move => move.pp <= 0) ? STRUGGLE_MOVE : null;
 }
 
 function spendMovePp(moves: BattleMove[], moveId: number): BattleMove[] {
@@ -1313,15 +1358,26 @@ function resolveMoveOutcome(
     move.category !== "status" && move.power > 0
       ? formatTypeEffectivenessMessage(typeEffectiveness)
       : null;
+  const struggleRecoil =
+    move.id === STRUGGLE_MOVE.id && damage > 0
+      ? Math.max(1, Math.floor(effectOutcome.attacker.maxHp / 4))
+      : 0;
+  const resolvedAttacker =
+    struggleRecoil > 0
+      ? applyDamage(effectOutcome.attacker, struggleRecoil)
+      : effectOutcome.attacker;
   const messages = [
     ...(critical && damage > 0 ? ["급소에 맞았다!"] : []),
     ...[typeMessage].filter(isString),
     ...effectOutcome.messages,
+    ...(struggleRecoil > 0
+      ? [`${withTopicParticle(resolvedAttacker.name)} 반동 데미지를 입었다!`]
+      : []),
   ];
 
   return {
     damage,
-    attacker: effectOutcome.attacker,
+    attacker: resolvedAttacker,
     defender: effectOutcome.defender,
     messages,
   };
@@ -1421,11 +1477,15 @@ function applyPoisonEffect(attacker: BattlePokemon, defender: BattlePokemon): Mo
     return { attacker, defender, messages: [] };
   }
 
-  if (defender.status === "poisoned") {
+  if (defender.status !== "normal") {
     return {
       attacker,
       defender,
-      messages: [`${withTopicParticle(defender.name)} 이미 독에 걸려 있다!`],
+      messages: [
+        defender.status === "poisoned"
+          ? `${withTopicParticle(defender.name)} 이미 독에 걸려 있다!`
+          : `${withTopicParticle(defender.name)} 이미 상태 이상이다!`,
+      ],
     };
   }
 
@@ -1599,73 +1659,21 @@ function resolveEndOfTurnEffects(input: EndOfTurnResolutionInput): EndOfTurnReso
 }
 
 function createEndOfTurnFaintState(input: EndOfTurnResolutionInput): BattleScreenState | null {
-  const runAttemptPatch =
-    input.runAttemptCount === undefined ? {} : { runAttemptCount: input.runAttemptCount };
+  if (input.opponentPokemon.status === "fainted" && input.playerPokemon.status === "fainted") {
+    const opponentFaintState = createOpponentFaintState(input);
+
+    if (!opponentFaintState.result) {
+      return createPlayerFaintState({
+        ...input,
+        state: opponentFaintState,
+        messageQueue: opponentFaintState.messageQueue,
+        opponentPokemon: opponentFaintState.opponent.pokemon,
+      });
+    }
+  }
 
   if (input.opponentPokemon.status === "fainted") {
-    const wildVictoryExperience =
-      input.state.battleKind === "wild"
-        ? applyWildVictoryExperience(input.playerPokemon, input.opponentPokemon)
-        : null;
-    const wildVictoryRewardPokeDollars =
-      input.state.battleKind === "wild"
-        ? calculateWildBattlePokeDollarReward({
-            baseExpYield: input.opponentPokemon.baseExpYield,
-            defeatedLevel: input.opponentPokemon.level,
-            outcome: "faint",
-          })
-        : 0;
-    const resolvedPlayerPokemon = wildVictoryExperience?.pokemon ?? input.playerPokemon;
-    const wildVictoryRewardMessage = wildVictoryExperience
-      ? formatWildVictoryRewardMessage(
-          resolvedPlayerPokemon.name,
-          wildVictoryExperience.experienceGained,
-          wildVictoryRewardPokeDollars,
-        )
-      : "";
-    const victoryMessages = wildVictoryExperience
-      ? [
-          ...input.messageQueue,
-          "상대 포켓몬은 쓰러졌다!",
-          wildVictoryRewardMessage,
-          ...(wildVictoryExperience.levelsGained > 0
-            ? [
-                `${withTopicParticle(resolvedPlayerPokemon.name)} Lv.${resolvedPlayerPokemon.level}이 되었다!`,
-              ]
-            : []),
-          "승리했다!",
-        ]
-      : [...input.messageQueue, "상대 포켓몬은 쓰러졌다!", "승리했다!"];
-
-    return {
-      ...input.state,
-      ...runAttemptPatch,
-      phase: "ended",
-      selectedMoveId: input.selectedMoveId,
-      turn: input.turn,
-      player: syncActivePartyPokemon(input.state.player, input.playerPokemon),
-      opponent: syncActivePartyPokemon(input.state.opponent, input.opponentPokemon),
-      usedInventoryItemId: input.usedInventoryItemId,
-      messageQueue: appendBattleEndConfirmMessage(victoryMessages),
-      pendingExperienceReward: wildVictoryExperience
-        ? {
-            message: wildVictoryRewardMessage,
-            pokemon: resolvedPlayerPokemon,
-          }
-        : null,
-      result: {
-        winnerPlayerId: input.state.player.playerId,
-        loserPlayerId: input.state.opponent.playerId,
-        reason: "faint",
-        ...(wildVictoryExperience
-          ? {
-              experienceGained: wildVictoryExperience.experienceGained,
-              levelsGained: wildVictoryExperience.levelsGained,
-              rewardPokeDollars: wildVictoryRewardPokeDollars,
-            }
-          : {}),
-      },
-    };
+    return createOpponentFaintState(input);
   }
 
   if (input.playerPokemon.status === "fainted") {
@@ -1673,6 +1681,105 @@ function createEndOfTurnFaintState(input: EndOfTurnResolutionInput): BattleScree
   }
 
   return null;
+}
+
+function createOpponentFaintState(input: EndOfTurnResolutionInput): BattleScreenState {
+  const runAttemptPatch =
+    input.runAttemptCount === undefined ? {} : { runAttemptCount: input.runAttemptCount };
+  const player = syncActivePartyPokemon(input.state.player, input.playerPokemon);
+  const opponent = syncActivePartyPokemon(input.state.opponent, input.opponentPokemon);
+  const faintMessages = [...input.messageQueue, "상대 포켓몬은 쓰러졌다!"];
+  const replacement = opponent.party.find(
+    slot =>
+      slot.slotIndex !== opponent.activePartySlotIndex &&
+      slot.pokemon !== null &&
+      canPokemonBattle(slot.pokemon),
+  );
+
+  if (replacement?.pokemon) {
+    return {
+      ...input.state,
+      ...runAttemptPatch,
+      phase: "resolving",
+      selectedMoveId: input.selectedMoveId,
+      turn: input.turn,
+      player,
+      opponent: {
+        ...opponent,
+        pokemon: replacement.pokemon,
+        activePartySlotIndex: replacement.slotIndex,
+      },
+      usedInventoryItemId: input.usedInventoryItemId,
+      messageQueue: [
+        ...faintMessages,
+        `${opponent.displayName}가 ${replacement.pokemon.name}을 내보냈다!`,
+      ],
+      result: null,
+    };
+  }
+
+  const wildVictoryExperience =
+    input.state.battleKind === "wild"
+      ? applyWildVictoryExperience(input.playerPokemon, input.opponentPokemon)
+      : null;
+  const wildVictoryRewardPokeDollars =
+    input.state.battleKind === "wild"
+      ? calculateWildBattlePokeDollarReward({
+          baseExpYield: input.opponentPokemon.baseExpYield,
+          defeatedLevel: input.opponentPokemon.level,
+          outcome: "faint",
+        })
+      : 0;
+  const resolvedPlayerPokemon = wildVictoryExperience?.pokemon ?? input.playerPokemon;
+  const wildVictoryRewardMessage = wildVictoryExperience
+    ? formatWildVictoryRewardMessage(
+        resolvedPlayerPokemon.name,
+        wildVictoryExperience.experienceGained,
+        wildVictoryRewardPokeDollars,
+      )
+    : "";
+  const victoryMessages = wildVictoryExperience
+    ? [
+        ...faintMessages,
+        wildVictoryRewardMessage,
+        ...(wildVictoryExperience.levelsGained > 0
+          ? [
+              `${withTopicParticle(resolvedPlayerPokemon.name)} Lv.${resolvedPlayerPokemon.level}이 되었다!`,
+            ]
+          : []),
+        "승리했다!",
+      ]
+    : [...faintMessages, "승리했다!"];
+
+  return {
+    ...input.state,
+    ...runAttemptPatch,
+    phase: "ended",
+    selectedMoveId: input.selectedMoveId,
+    turn: input.turn,
+    player,
+    opponent,
+    usedInventoryItemId: input.usedInventoryItemId,
+    messageQueue: appendBattleEndConfirmMessage(victoryMessages),
+    pendingExperienceReward: wildVictoryExperience
+      ? {
+          message: wildVictoryRewardMessage,
+          pokemon: resolvedPlayerPokemon,
+        }
+      : null,
+    result: {
+      winnerPlayerId: input.state.player.playerId,
+      loserPlayerId: input.state.opponent.playerId,
+      reason: "faint",
+      ...(wildVictoryExperience
+        ? {
+            experienceGained: wildVictoryExperience.experienceGained,
+            levelsGained: wildVictoryExperience.levelsGained,
+            rewardPokeDollars: wildVictoryRewardPokeDollars,
+          }
+        : {}),
+    },
+  };
 }
 
 function createPlayerFaintState(input: EndOfTurnResolutionInput): BattleScreenState {

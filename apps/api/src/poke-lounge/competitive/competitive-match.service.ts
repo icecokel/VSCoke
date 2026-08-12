@@ -5,6 +5,7 @@ import {
   Inject,
   Injectable,
   Logger,
+  type OnModuleDestroy,
 } from '@nestjs/common';
 import {
   COMPETITIVE_RULESET_HASH,
@@ -24,20 +25,29 @@ import type {
 } from './competitive-match.types';
 import {
   COMPETITIVE_ACTION_REPOSITORY,
+  COMPETITIVE_TURN_DEADLINE_MS,
   type CompetitiveActionFailure,
   type CompetitiveActionRepository,
 } from './competitive-action.repository';
-import type { SubmitCompetitiveActionInput } from './competitive-action.types';
+import type {
+  CompetitiveActionProjection,
+  SubmitCompetitiveActionInput,
+} from './competitive-action.types';
 import {
   POKE_LOUNGE_ROOM_EVENT_PUBLISHER,
   type PokeLoungeRoomEventPublisher,
 } from '../poke-lounge-room-event.publisher';
 import { toPokeLoungePublicRoomState } from '../poke-lounge-room-conflict';
+import type { PokeLoungeRoomSnapshot } from '../poke-lounge-room.repository';
 import { toCompetitiveProjection } from './competitive-projection.service';
 
 @Injectable()
-export class CompetitiveMatchService {
+export class CompetitiveMatchService implements OnModuleDestroy {
   private readonly logger = new Logger(CompetitiveMatchService.name);
+  private readonly turnTimeouts = new Map<
+    string,
+    ReturnType<typeof setTimeout>
+  >();
 
   constructor(
     @Inject(COMPETITIVE_MATCH_REPOSITORY)
@@ -47,6 +57,13 @@ export class CompetitiveMatchService {
     @Inject(POKE_LOUNGE_ROOM_EVENT_PUBLISHER)
     private readonly eventPublisher: PokeLoungeRoomEventPublisher,
   ) {}
+
+  onModuleDestroy(): void {
+    for (const timeout of this.turnTimeouts.values()) {
+      clearTimeout(timeout);
+    }
+    this.turnTimeouts.clear();
+  }
 
   async bindSeat(
     roomCode: string,
@@ -108,32 +125,128 @@ export class CompetitiveMatchService {
       throwActionError(result.outcome);
     }
 
+    const timeoutKey = competitiveTurnTimeoutKey(
+      input.roomCode,
+      input.matchId,
+      input.turn,
+    );
     if (result.committed) {
-      try {
-        const snapshot = toPokeLoungePublicRoomState(result.room);
-        if (
-          !snapshot.competitive &&
-          result.response.status !== 'completed' &&
-          (snapshot.tournament.activeMatchId === null ||
-            snapshot.tournament.activeMatchId ===
-              result.response.bracketMatchId)
-        ) {
-          snapshot.competitive = result.response;
-        }
-        await this.eventPublisher.publish({
-          type: 'competitive-action-committed',
-          snapshot,
-        });
-      } catch (error) {
-        this.logger.error(
-          `Failed to publish committed competitive action for ${input.matchId}`,
-          error instanceof Error ? error.stack : String(error),
+      this.clearTurnTimeout(timeoutKey);
+      if (
+        result.response.status !== 'completed' &&
+        result.response.currentTurn === input.turn &&
+        result.response.submittedPlayerIds.length === 1
+      ) {
+        this.scheduleTurnTimeout(
+          input.roomCode,
+          input.matchId,
+          input.turn,
+          Date.now() + COMPETITIVE_TURN_DEADLINE_MS,
         );
       }
     }
 
+    if (result.committed) {
+      await this.publishCommittedAction(
+        input.matchId,
+        result.response,
+        result.room,
+      );
+    }
+
     return structuredClone(result.response);
   }
+
+  private scheduleTurnTimeout(
+    roomCode: string,
+    matchId: string,
+    turn: number,
+    deadlineMs: number,
+  ): void {
+    const key = competitiveTurnTimeoutKey(roomCode, matchId, turn);
+    this.clearTurnTimeout(key);
+    const timeout = setTimeout(
+      () => {
+        this.turnTimeouts.delete(key);
+        void this.expireTurn(roomCode, matchId, turn);
+      },
+      Math.max(0, deadlineMs - Date.now()),
+    );
+    timeout.unref();
+    this.turnTimeouts.set(key, timeout);
+  }
+
+  private clearTurnTimeout(key: string): void {
+    const timeout = this.turnTimeouts.get(key);
+    if (timeout) {
+      clearTimeout(timeout);
+      this.turnTimeouts.delete(key);
+    }
+  }
+
+  private async expireTurn(
+    roomCode: string,
+    matchId: string,
+    turn: number,
+  ): Promise<void> {
+    try {
+      const result = await this.actionRepository.expirePendingTurn({
+        roomCode,
+        matchId,
+        turn,
+        nowMs: Date.now(),
+      });
+      if (result.outcome === 'not-due') {
+        this.scheduleTurnTimeout(roomCode, matchId, turn, result.retryAtMs);
+      } else if (result.outcome === 'completed') {
+        await this.publishCommittedAction(
+          matchId,
+          result.response,
+          result.room,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to expire competitive turn for ${matchId}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+  }
+
+  private async publishCommittedAction(
+    matchId: string,
+    response: CompetitiveActionProjection,
+    room: PokeLoungeRoomSnapshot,
+  ): Promise<void> {
+    try {
+      const snapshot = toPokeLoungePublicRoomState(room);
+      if (
+        !snapshot.competitive &&
+        response.status !== 'completed' &&
+        (snapshot.tournament.activeMatchId === null ||
+          snapshot.tournament.activeMatchId === response.bracketMatchId)
+      ) {
+        snapshot.competitive = response;
+      }
+      await this.eventPublisher.publish({
+        type: 'competitive-action-committed',
+        snapshot,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to publish committed competitive action for ${matchId}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+  }
+}
+
+function competitiveTurnTimeoutKey(
+  roomCode: string,
+  matchId: string,
+  turn: number,
+): string {
+  return `${roomCode.trim().toUpperCase()}:${matchId}:${turn}`;
 }
 
 function throwActionError(outcome: CompetitiveActionFailure): never {

@@ -11,7 +11,9 @@ import {
 import type { SeededRandom } from "./prng";
 import {
   APPROVED_COMPETITIVE_RULESET_V1,
+  canUseCompetitiveStruggle,
   COMPETITIVE_RULESET_VERSION,
+  COMPETITIVE_STRUGGLE_MOVE_ID,
   getCompetitiveMoveDefinition,
   type CompetitiveLoadoutEntry,
   type CompetitiveMoveDefinition,
@@ -173,6 +175,13 @@ function validateAction(
       if (active.currentHp === 0) {
         throw new Error("Cannot use a move while the active combatant is fainted");
       }
+      if (action.moveId === COMPETITIVE_STRUGGLE_MOVE_ID) {
+        if (!canUseCompetitiveStruggle(active.moves)) {
+          throw new Error("Cannot struggle while the active combatant has usable PP");
+        }
+        return;
+      }
+
       const move = active.moves.find(candidate => candidate.moveId === action.moveId);
       if (!move || !getCompetitiveMoveDefinition(action.moveId)) {
         throw new Error("Cannot use an invalid move");
@@ -242,6 +251,10 @@ function terminalForFaint(
   };
 }
 
+function hasFaintedTeam(state: CanonicalBattleState, playerId: string): boolean {
+  return state.playersById[playerId]!.team.every(member => member.currentHp === 0);
+}
+
 function executeMove(
   state: CanonicalBattleState,
   participantIds: readonly [string, string],
@@ -254,9 +267,12 @@ function executeMove(
     return;
   }
 
-  const moveState = attacker.moves.find(move => move.moveId === action.moveId)!;
+  const isStruggle = action.moveId === COMPETITIVE_STRUGGLE_MOVE_ID;
+  const moveState = isStruggle ? null : attacker.moves.find(move => move.moveId === action.moveId)!;
   const move = getCompetitiveMoveDefinition(action.moveId)!;
-  moveState.pp -= 1;
+  if (moveState) {
+    moveState.pp -= 1;
+  }
 
   if (
     attacker.status === "paralyzed" &&
@@ -278,11 +294,23 @@ function executeMove(
   const damage = calculateDamage(attacker, defender, move, criticalHit, rangePercent);
   defender.currentHp = Math.max(0, defender.currentHp - damage);
 
-  if (defender.currentHp === 0) {
-    const targetTeam = state.playersById[targetPlayerId]!.team;
-    if (targetTeam.every(member => member.currentHp === 0)) {
-      state.terminal = terminalForFaint(participantIds, actorPlayerId, targetPlayerId);
-    }
+  if (isStruggle) {
+    const recoil = Math.max(
+      1,
+      Math.floor(attacker.maxHp / APPROVED_COMPETITIVE_RULESET_V1.struggle.recoilMaxHpDivisor),
+    );
+    attacker.currentHp = Math.max(0, attacker.currentHp - recoil);
+  }
+
+  if (hasFaintedTeam(state, actorPlayerId)) {
+    state.terminal = terminalForFaint(participantIds, targetPlayerId, actorPlayerId);
+    return;
+  }
+  if (hasFaintedTeam(state, targetPlayerId)) {
+    state.terminal = terminalForFaint(participantIds, actorPlayerId, targetPlayerId);
+    return;
+  }
+  if (defender.currentHp === 0 || attacker.currentHp === 0) {
     return;
   }
 
@@ -393,6 +421,9 @@ export function resolveTurn(input: {
       actionsByPlayerId[actorPlayerId] as Extract<CanonicalCompetitiveAction, { kind: "move" }>,
       input.random,
     );
+    if (participantIds.some(playerId => activeCombatant(state, playerId).currentHp === 0)) {
+      break;
+    }
   }
 
   const resolvedTurn = state.turn;

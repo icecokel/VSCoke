@@ -147,14 +147,13 @@ export interface ShopItem {
   displayName: string;
   price: number;
   description: string;
-  unlockRank?: number;
 }
 
 export type BuyShopItemResult =
   | { ok: true }
   | {
       ok: false;
-      reason: "unknown-item" | "invalid-quantity" | "insufficient-funds" | "locked-item";
+      reason: "unknown-item" | "invalid-quantity" | "insufficient-funds";
     };
 
 export interface DiceGambleSettlementInput {
@@ -273,28 +272,24 @@ export const SHOP_ITEM_CATALOG = {
     displayName: "포션",
     price: 300,
     description: "포켓몬 1마리의 HP를 20 회복한다.",
-    unlockRank: 0,
   },
   pokeball: {
     id: "pokeball",
     displayName: "몬스터볼",
     price: 200,
     description: "야생 포켓몬을 잡기 위한 볼이다.",
-    unlockRank: 0,
   },
   antidote: {
     id: "antidote",
     displayName: "해독제",
     price: 100,
     description: "독 상태를 회복한다.",
-    unlockRank: 2,
   },
   superPotion: {
     id: "superPotion",
     displayName: "좋은상처약",
     price: 700,
     description: "포켓몬 1마리의 HP를 50 회복한다.",
-    unlockRank: 3,
   },
 } as const satisfies Record<string, ShopItem>;
 
@@ -306,75 +301,62 @@ export const PREMIUM_SHOP_ITEM_CATALOG = {
   sunStone: {
     ...EVOLUTION_STONE_CATALOG.sunStone,
     price: 2100,
-    unlockRank: 0,
   },
   moonStone: {
     ...EVOLUTION_STONE_CATALOG.moonStone,
     price: 2100,
-    unlockRank: 0,
   },
   fireStone: {
     ...EVOLUTION_STONE_CATALOG.fireStone,
     price: 2100,
-    unlockRank: 0,
   },
   thunderStone: {
     ...EVOLUTION_STONE_CATALOG.thunderStone,
     price: 2100,
-    unlockRank: 0,
   },
   waterStone: {
     ...EVOLUTION_STONE_CATALOG.waterStone,
     price: 2100,
-    unlockRank: 0,
   },
   leafStone: {
     ...EVOLUTION_STONE_CATALOG.leafStone,
     price: 2100,
-    unlockRank: 0,
   },
   shinyStone: {
     ...EVOLUTION_STONE_CATALOG.shinyStone,
     price: 2100,
-    unlockRank: 0,
   },
   duskStone: {
     ...EVOLUTION_STONE_CATALOG.duskStone,
     price: 2100,
-    unlockRank: 0,
   },
   dawnStone: {
     ...EVOLUTION_STONE_CATALOG.dawnStone,
     price: 2100,
-    unlockRank: 0,
   },
   hyperPotion: {
     id: "hyperPotion",
     displayName: "고급상처약",
     price: 1500,
     description: "포켓몬 1마리의 HP를 120 회복한다.",
-    unlockRank: 3,
   },
   revive: {
     id: "revive",
     displayName: "기력의조각",
     price: 3000,
     description: "쓰러진 포켓몬 1마리의 HP를 절반 회복한다.",
-    unlockRank: 4,
   },
   ultraBall: {
     id: "ultraBall",
     displayName: "하이퍼볼",
     price: 2500,
     description: "몬스터볼보다 포획률이 높은 고성능 볼이다.",
-    unlockRank: 4,
   },
   rareCandy: {
     id: "rareCandy",
     displayName: "이상한사탕",
     price: 8000,
     description: "포켓몬 1마리의 레벨을 1 올린다.",
-    unlockRank: 6,
   },
 } as const satisfies Record<string, ShopItem>;
 
@@ -396,25 +378,11 @@ export const PREMIUM_SHOP_ITEM_IDS = [
 
 export type PremiumShopItemId = (typeof PREMIUM_SHOP_ITEM_IDS)[number];
 
-export function getUnlockedShopItemIds(rank: number | null): ShopItemId[] {
-  return SHOP_ITEM_IDS.filter(itemId => isShopItemUnlocked(SHOP_ITEM_CATALOG[itemId], rank));
-}
-
-export function getUnlockedPremiumShopItemIds(rank: number | null): PremiumShopItemId[] {
-  return PREMIUM_SHOP_ITEM_IDS.filter(itemId =>
-    isShopItemUnlocked(PREMIUM_SHOP_ITEM_CATALOG[itemId], rank),
-  );
-}
-
 export function getShopItemById(itemId: string): ShopItem | undefined {
   return (
     (SHOP_ITEM_CATALOG as Record<string, ShopItem>)[itemId] ??
     (PREMIUM_SHOP_ITEM_CATALOG as Record<string, ShopItem>)[itemId]
   );
-}
-
-export function isShopItemUnlocked(item: ShopItem, rank: number | null): boolean {
-  return normalizeUnlockedRank(rank) >= (item.unlockRank ?? 0);
 }
 
 export interface GameStateStore {
@@ -464,6 +432,7 @@ export interface GameStateStore {
   startPreparationRound(nowMs: number, preparationDurationMs?: number): void;
   advanceRoundClock(nowMs: number): void;
   setRoundState(round: GameRoundState): void;
+  completeSoloChallenge(won: boolean, nowMs: number): void;
   startTournamentSession(
     participants: ReadonlyArray<TournamentParticipantInput>,
   ): StartTournamentSessionResult;
@@ -591,10 +560,6 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
     }
 
     const localPlayer = getCurrentLocalPlayer(state);
-
-    if (!isShopItemUnlocked(item, localPlayer.competitive.rank)) {
-      return { ok: false, reason: "locked-item" };
-    }
 
     const totalPrice = item.price * quantity;
 
@@ -1269,6 +1234,24 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
       };
       notify();
     },
+    completeSoloChallenge(won, nowMs) {
+      state = {
+        ...state,
+        round: {
+          ...state.round,
+          phase: "game-result",
+          phaseStartedAtMs: normalizeTimestampMs(nowMs),
+          preparationEndsAtMs: null,
+        },
+        tournament: {
+          ...createDefaultGameTournamentState(),
+          scoresByPlayerId: {
+            [state.currentPlayerId]: won ? 100 : 0,
+          },
+        },
+      };
+      notify();
+    },
     startTournamentSession(participants) {
       if (
         state.round.phase !== "tournament" ||
@@ -1914,14 +1897,6 @@ function normalizeRank(rank: unknown): number | null {
   const normalizedRank = Math.floor(parsedRank);
 
   return normalizedRank >= 1 ? normalizedRank : null;
-}
-
-function normalizeUnlockedRank(rank: number | null): number {
-  if (typeof rank !== "number" || !Number.isFinite(rank)) {
-    return 0;
-  }
-
-  return Math.max(0, Math.floor(rank));
 }
 
 function normalizeScore(score: unknown): number {

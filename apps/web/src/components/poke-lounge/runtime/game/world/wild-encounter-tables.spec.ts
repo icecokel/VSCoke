@@ -76,8 +76,14 @@ test("v2 종 범위는 포켓몬 원본의 이름과 포획률 등급으로 조�
   );
 });
 
-test("공개 v2 테이블은 전국도감 493종을 기본 및 세 지역에 빠짐없이 배치한다", () => {
-  const tableData = readPublicGameData("wild-encounter-tables.json");
+test("공개 v2 테이블은 세 지역의 기본 10종을 중심으로 493종 희귀 조우를 유지한다", () => {
+  const tableData = readPublicGameData("wild-encounter-tables.json") as {
+    tables: Array<{
+      areaIds?: string[];
+      commonNationalDexIds?: number[];
+      rarePoolWeight?: number;
+    }>;
+  };
   const pokemonData = readPublicGameData("pokemon-data.json") as PokemonDataFixture;
   const defaultConfig = selectWildEncounterConfig(tableData, "town", null, pokemonData);
   const areaConfigs = [
@@ -104,6 +110,30 @@ test("공개 v2 테이블은 전국도감 493종을 기본 및 세 지역에 빠
     [...new Set(areaConfigs.flatMap(config => config?.slots.map(slot => slot.speciesId) ?? []))],
     createIntegerRange(1, 493),
   );
+
+  for (const [index, config] of areaConfigs.entries()) {
+    assert.ok(config);
+    const areaTable = tableData.tables.find(candidate =>
+      candidate.areaIds?.includes(
+        ["town-west-field", "town-plaza-field", "town-south-field"][index],
+      ),
+    );
+    const commonNationalDexIds = new Set(areaTable?.commonNationalDexIds);
+    const commonWeight = config.slots.reduce(
+      (total, slot) => total + (commonNationalDexIds.has(slot.speciesId) ? slot.weight : 0),
+      0,
+    );
+    const rareWeight = config.slots.reduce(
+      (total, slot) => total + (commonNationalDexIds.has(slot.speciesId) ? 0 : slot.weight),
+      0,
+    );
+
+    assert.ok(areaTable);
+    assert.equal(commonNationalDexIds.size, 10);
+    assert.ok(config.slots.every(slot => slot.weight > 0));
+    assert.ok(Math.abs(rareWeight - (areaTable?.rarePoolWeight ?? 0)) < 1e-9);
+    assert.ok(commonWeight / (commonWeight + rareWeight) > 0.95);
+  }
 
   for (const slot of defaultConfig.slots) {
     const source = pokemonData.species[String(slot.speciesId)];

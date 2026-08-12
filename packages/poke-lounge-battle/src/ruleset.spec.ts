@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import {
   APPROVED_COMPETITIVE_RULESET_V1,
   COMPETITIVE_RULESET_HASH,
+  COMPETITIVE_STRUGGLE_MOVE_ID,
   COMPETITIVE_RULESET_VERSION,
   canonicalize,
   createInitialBattleState,
@@ -34,6 +35,12 @@ describe("approved competitive ruleset", () => {
       "steady-strike",
       "stun-spark",
     ]);
+    expect(APPROVED_COMPETITIVE_RULESET_V1.struggle).toMatchObject({
+      moveId: COMPETITIVE_STRUGGLE_MOVE_ID,
+      power: 50,
+      maxPp: 0,
+      recoilMaxHpDivisor: 4,
+    });
     expect(APPROVED_COMPETITIVE_RULESET_V1.loadout).toHaveLength(2);
   });
 
@@ -44,7 +51,7 @@ describe("approved competitive ruleset", () => {
 
     expect(COMPETITIVE_RULESET_HASH).toBe(expected);
     expect(COMPETITIVE_RULESET_HASH).toBe(
-      "f063fa4b9fc1df896c72e04d13eee02905c40f8c90c3663d87f24f5ed17ee7fd",
+      "06f455303f46369d1a31315db5fdfffa666164fde44f8ac20ac507a6fc9f9de7",
     );
     expect(BROWSER_COMPETITIVE_RULESET).toBe(APPROVED_COMPETITIVE_RULESET_V1);
     expect(BROWSER_COMPETITIVE_RULESET_HASH).toBe(COMPETITIVE_RULESET_HASH);

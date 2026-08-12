@@ -30,7 +30,9 @@ export {
 } from "./tournament-scoring";
 export {
   APPROVED_COMPETITIVE_RULESET_V1,
+  canUseCompetitiveStruggle,
   COMPETITIVE_RULESET_HASH,
+  COMPETITIVE_STRUGGLE_MOVE_ID,
   COMPETITIVE_RULESET_VERSION,
   type CompetitiveLoadoutEntry,
   type CompetitiveMoveDefinition,

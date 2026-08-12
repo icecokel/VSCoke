@@ -44,6 +44,7 @@ export interface PokeLoungeE2eController {
   getWorldSnapshot(): WorldE2eSnapshot | null;
   healAtNurseForTest(): WorldE2eSnapshot | null;
   startWildBattleForTest(input: WildBattleStartInput): WorldE2eSnapshot | null;
+  startSoloChallengeForTest(): WorldE2eSnapshot | null;
   closeWorldShortcutGuide(): void;
   setCurrentLocalPlayerForTest(player: LocalPlayerState): void;
   openPcBoxForTest(): WorldE2eSnapshot | null;
@@ -305,6 +306,16 @@ function createPokeLoungeE2eController(
       }
 
       worldScene.startWildBattleForTest(input);
+      return worldScene.getE2eSnapshotForTest();
+    },
+    startSoloChallengeForTest() {
+      const worldScene = getWorldScene();
+
+      if (!worldScene) {
+        return null;
+      }
+
+      worldScene.startSoloChallengeForTest();
       return worldScene.getE2eSnapshotForTest();
     },
     closeWorldShortcutGuide() {

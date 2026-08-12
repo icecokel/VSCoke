@@ -15,6 +15,7 @@ import { createTallGrassLayers } from "../world/tall-grass";
 import { WILD_ENCOUNTER_TABLES_JSON_ASSET } from "../world/wildEncounterTables";
 import { getDefaultGameStateStore } from "../state/defaultGameStateStore";
 import {
+  createDefaultLocalPlayer,
   type GameStateStore,
   type LocalPlayerState,
   type PlayerPokemon,
@@ -266,6 +267,12 @@ export class WorldScene extends Phaser.Scene {
               y: this.player.y,
             }
           : null,
+      canStartSoloChallenge: () =>
+        !this.competitiveRoundsEnabled &&
+        this.gameStateStore
+          .getCurrentLocalPlayer()
+          .party.some(slot => isBattleReadyPartySlot(slot)),
+      startSoloChallenge: () => this.startSoloChallenge(),
       playNurseHealingEffect: (nursePosition, onComplete) =>
         this.playNurseHealingEffect(nursePosition, onComplete),
       ensureCursorKeys: keyboard => {
@@ -469,6 +476,10 @@ export class WorldScene extends Phaser.Scene {
 
   startWildBattleForTest(input: WildBattleStartInput): void {
     this.encounters.startWildBattleForTest(input);
+  }
+
+  startSoloChallengeForTest(): void {
+    this.startSoloChallenge();
   }
 
   getE2eSnapshotForTest(): WorldE2eSnapshot {
@@ -744,6 +755,57 @@ export class WorldScene extends Phaser.Scene {
 
     this.encounters.playBattleIntroTransition(() => {
       this.scene.start("battle", battleData);
+    });
+  }
+
+  private startSoloChallenge(): void {
+    if (this.competitiveRoundsEnabled || this.encounters.isBattleIntroPlaying()) {
+      return;
+    }
+
+    let player = this.gameStateStore.getCurrentLocalPlayer();
+    const currentSlot = player.party.find(slot => slot.slotIndex === player.activePartySlotIndex);
+    const battleReadySlot = isBattleReadyPartySlot(currentSlot)
+      ? currentSlot
+      : player.party.find(slot => isBattleReadyPartySlot(slot));
+
+    if (!battleReadySlot) {
+      return;
+    }
+
+    if (battleReadySlot.slotIndex !== player.activePartySlotIndex) {
+      this.gameStateStore.setActivePartySlot(battleReadySlot.slotIndex);
+      player = this.gameStateStore.getCurrentLocalPlayer();
+    }
+
+    const x = Math.round(this.player.x);
+    const y = Math.round(this.player.y);
+    const facing = this.facing;
+    const opponent: LocalPlayerState = {
+      ...createDefaultLocalPlayer("solo-challenger"),
+      displayName: "미러 트레이너",
+      party: structuredClone(player.party),
+      activePartySlotIndex: player.activePartySlotIndex,
+    };
+
+    this.player.setVelocity(0, 0);
+    this.encounters.playBattleIntroTransition(() => {
+      this.scene.start("battle", {
+        battleKind: "trainer",
+        soloChallenge: true,
+        matchId: "solo-challenge",
+        roundIndex: 0,
+        matchIndex: 0,
+        player,
+        opponent,
+        persistWorldPosition: true,
+        returnToWorld: {
+          mapKey: FIELD_MAP.key,
+          x,
+          y,
+          facing,
+        },
+      });
     });
   }
 
@@ -1297,6 +1359,16 @@ export function hasPlayerPositionChanged(
     currentPosition.facing !== nextPosition.facing
   );
 }
+
+const isBattleReadyPartySlot = (slot: LocalPlayerState["party"][number] | undefined): boolean => {
+  const pokemon = slot?.pokemon;
+
+  return Boolean(
+    pokemon &&
+    pokemon.status !== "fainted" &&
+    (typeof pokemon.currentHp !== "number" || pokemon.currentHp > 0),
+  );
+};
 
 export function createLocalPlayerSnapshot(
   sessionId: string,

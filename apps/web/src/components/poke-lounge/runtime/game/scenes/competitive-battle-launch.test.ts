@@ -3,8 +3,12 @@ import test from "node:test";
 import {
   APPROVED_COMPETITIVE_RULESET_V1,
   COMPETITIVE_RULESET_HASH,
+  COMPETITIVE_STRUGGLE_MOVE_ID,
 } from "@vscoke/poke-lounge-battle";
-import { toAuthoritativeBattleState } from "../battle/authoritative-battle-adapter";
+import {
+  isLegalAuthoritativeAction,
+  toAuthoritativeBattleState,
+} from "../battle/authoritative-battle-adapter";
 import { APPROVED_COMPETITIVE_LOADOUT } from "../network/competitive-projection";
 import type {
   CompetitiveProjection,
@@ -99,6 +103,25 @@ test("authoritative terminal state는 기존 WorldScene 복귀 위치를 보존�
       accuracy: Math.round(APPROVED_COMPETITIVE_RULESET_V1.moves[moveId].accuracy * 100),
       maxPp: APPROVED_COMPETITIVE_RULESET_V1.moves[moveId].maxPp,
     })),
+  );
+});
+
+test("authoritative battle은 활성 포켓몬의 PP가 모두 0일 때만 발버둥을 허용한다", () => {
+  const projection = createProjection(
+    "11111111-1111-4111-8111-111111111111",
+    "game-round-1-bracket-1-match-1",
+    ["seed-4", "seed-5"],
+  );
+  const activePokemon = projection.currentState.playersById["seed-4"]?.team[0];
+  assert.ok(activePokemon);
+  activePokemon.moves = activePokemon.moves.map(move => ({ ...move, pp: 0 }));
+
+  assert.equal(
+    isLegalAuthoritativeAction(projection, "seed-4", {
+      kind: "move",
+      moveId: COMPETITIVE_STRUGGLE_MOVE_ID,
+    }),
+    true,
   );
 });
 

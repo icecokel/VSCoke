@@ -15,7 +15,7 @@ import {
 } from "../state/gameStateStore";
 import { FIELD_MAP, resolveFieldEncounterAreaId } from "../world/fieldMap";
 import {
-  consumeCompletedTileStep,
+  consumeCompletedTileSteps,
   createTileStepTracker,
   type TileCoordinate,
   type TileStepTracker,
@@ -130,33 +130,39 @@ class DefaultWorldSceneEncounters implements WorldSceneEncounterController {
       return;
     }
 
-    const step = consumeCompletedTileStep(this.stepTracker, position);
+    const steps = consumeCompletedTileSteps(this.stepTracker, position);
 
-    if (
-      !isTallGrassStep(step, this.dependencies.hasTallGrassAt) ||
-      !hasBattleCapablePartyPokemon(this.dependencies.gameStateStore.getCurrentLocalPlayer())
-    ) {
+    if (!hasBattleCapablePartyPokemon(this.dependencies.gameStateStore.getCurrentLocalPlayer())) {
       return;
     }
 
-    const encounter = rollWildEncounter({
-      ...this.getWildEncounterLevelRangeInput(),
-      ...this.getWildEncounterConfigInput(position),
-      mapKey: FIELD_MAP.key,
-      step,
-      random: () => Math.random(),
-    });
+    for (const step of steps) {
+      if (!isTallGrassStep(step, this.dependencies.hasTallGrassAt)) {
+        continue;
+      }
 
-    if (!encounter) {
-      return;
+      const tileSize = this.stepTracker.tileSize;
+      const encounter = rollWildEncounter({
+        ...this.getWildEncounterLevelRangeInput(),
+        ...this.getWildEncounterConfigInput({
+          x: (step.to.x + 0.5) * tileSize,
+          y: (step.to.y + 0.5) * tileSize,
+        }),
+        mapKey: FIELD_MAP.key,
+        step,
+        random: () => Math.random(),
+      });
+
+      if (encounter) {
+        this.startWildBattle({
+          encounter,
+          x: Math.round(position.x),
+          y: Math.round(position.y),
+          facing: this.dependencies.getPlayerFacing(),
+        });
+        return;
+      }
     }
-
-    this.startWildBattle({
-      encounter,
-      x: Math.round(position.x),
-      y: Math.round(position.y),
-      facing: this.dependencies.getPlayerFacing(),
-    });
   }
 
   isBattleIntroPlaying(): boolean {

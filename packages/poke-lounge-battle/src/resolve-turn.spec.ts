@@ -1,5 +1,6 @@
 import {
   COMPETITIVE_RULESET_HASH,
+  COMPETITIVE_STRUGGLE_MOVE_ID,
   canonicalize,
   createInitialBattleState,
   createSeededRandom,
@@ -128,6 +129,32 @@ describe("validateCompetitiveAction", () => {
       }),
     ).toThrow("Cannot use an invalid move");
   });
+
+  it("accepts struggle only when every active move has zero PP", () => {
+    const exhaustedState = battleState({
+      playerAActive: {
+        moves: [
+          { moveId: "steady-strike", pp: 0 },
+          { moveId: "stun-spark", pp: 0 },
+        ],
+      },
+    });
+
+    expect(() =>
+      validateCompetitiveAction({
+        state: exhaustedState,
+        playerId: PLAYER_A,
+        action: { kind: "move", moveId: COMPETITIVE_STRUGGLE_MOVE_ID },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      validateCompetitiveAction({
+        state: battleState(),
+        playerId: PLAYER_A,
+        action: { kind: "move", moveId: COMPETITIVE_STRUGGLE_MOVE_ID },
+      }),
+    ).toThrow("usable PP");
+  });
 });
 
 describe("resolveTurn", () => {
@@ -140,6 +167,34 @@ describe("resolveTurn", () => {
 
     expect(result.turn).toBe(0);
     expect(result.state.turn).toBe(1);
+  });
+
+  it("advances an exhausted combatant with deterministic struggle damage and recoil", () => {
+    const state = battleState({
+      playerAActive: {
+        moves: [
+          { moveId: "steady-strike", pp: 0 },
+          { moveId: "stun-spark", pp: 0 },
+        ],
+      },
+    });
+
+    const result = resolveTurn({
+      state,
+      actionsByPlayerId: actions(
+        { kind: "move", moveId: COMPETITIVE_STRUGGLE_MOVE_ID },
+        { kind: "switch", slotIndex: 1 },
+      ),
+      random: new ScriptedRandom([0, 0.5, 0.5]),
+    });
+
+    expect(result.state.turn).toBe(2);
+    expect(result.state.playersById[PLAYER_A]!.team[0]!.currentHp).toBe(90);
+    expect(result.state.playersById[PLAYER_A]!.team[0]!.moves.every(move => move.pp === 0)).toBe(
+      true,
+    );
+    expect(result.state.playersById[PLAYER_B]!.activeSlotIndex).toBe(1);
+    expect(result.state.playersById[PLAYER_B]!.team[1]!.currentHp).toBeLessThan(140);
   });
 
   it.each(["__proto__", "constructor", "prototype"])(

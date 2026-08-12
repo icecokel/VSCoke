@@ -1,5 +1,9 @@
 import * as Phaser from "phaser";
 import {
+  canUseCompetitiveStruggle,
+  COMPETITIVE_STRUGGLE_MOVE_ID,
+} from "@vscoke/poke-lounge-battle";
+import {
   BATTLE_LAYOUT,
   getBattleOptionIndexAtPoint,
   getBattleStatusTextView,
@@ -73,8 +77,6 @@ import { BATTLE_BASE_SIZE, getBattleCameraZoom } from "../gameViewport";
 import { getDefaultGameStateStore } from "../state/defaultGameStateStore";
 import {
   getShopItemById,
-  getUnlockedPremiumShopItemIds,
-  getUnlockedShopItemIds,
   SHOP_ITEM_IDS,
   type GameStateStore,
   type LocalPlayerState,
@@ -135,6 +137,7 @@ export const BATTLE_CONFIRM_KEY_CODES = [
 ] as const;
 const BATTLE_HP_DECREASE_TWEEN_MS = 560;
 const BATTLE_HIT_TWEEN_MS = 300;
+const BATTLE_MESSAGE_AUTO_ADVANCE_MS = 850;
 const BATTLE_HIT_SHAKE_PIXELS = 4;
 const BATTLE_ENTRANCE_TWEEN_MS = 640;
 const E2E_SINGLE_LEVEL_BASE_EXP_YIELD = Math.ceil(500 / WILD_BATTLE_EXPERIENCE_MULTIPLIER);
@@ -143,6 +146,7 @@ const BATTLE_BAG_PREMIUM_ITEM_IDS = [
   "revive",
   "ultraBall",
 ] as const satisfies readonly PremiumShopItemId[];
+const BATTLE_BAG_VISIBLE_ITEM_COUNT = 4;
 
 type PremiumBattleBagItemId = (typeof BATTLE_BAG_PREMIUM_ITEM_IDS)[number];
 type BattleBagItemId = ShopItemId | PremiumBattleBagItemId;
@@ -251,6 +255,7 @@ export interface WildBattleSceneData extends BattleWorldPositionPolicy {
 
 export interface TrainerBattleSceneData extends BattleWorldPositionPolicy {
   battleKind: "trainer";
+  soloChallenge?: boolean;
   matchId: string;
   roundIndex: number;
   matchIndex: number;
@@ -483,9 +488,11 @@ export class BattleScene extends Phaser.Scene {
   private authoritativeProjection: CompetitiveProjection | null = null;
   private authoritativeOwnPlayerId: string | null = null;
   private authoritativeInputPending = false;
+  private soloChallenge = false;
   private authoritativeUnsubscribers: RoomUnsubscribe[] = [];
   private lastAccessibleStatus = "";
   private removeMobileBattleUiListeners: (() => void) | null = null;
+  private messageAutoAdvanceTimer: Phaser.Time.TimerEvent | null = null;
 
   constructor(
     private readonly gameStateStore: GameStateStore = getDefaultGameStateStore(),
@@ -497,6 +504,7 @@ export class BattleScene extends Phaser.Scene {
   create(data: unknown = {}): void {
     this.clearAuthoritativeSubscriptions();
     this.state = this.createInitialState(data);
+    this.soloChallenge = isTrainerBattleSceneData(data) && data.soloChallenge === true;
     this.persistWorldPositionOnReturn = !isRecord(data) || data.persistWorldPosition !== false;
     if (isAuthoritativeBattleSceneData(data)) {
       this.authoritativeProjection = data.projection;
@@ -549,6 +557,8 @@ export class BattleScene extends Phaser.Scene {
         stopWildBattleBgm();
       }
       this.clearAuthoritativeSubscriptions();
+      this.messageAutoAdvanceTimer?.remove(false);
+      this.messageAutoAdvanceTimer = null;
       this.removeMobileBattleUiListeners?.();
       this.removeMobileBattleUiListeners = null;
       this.setBattleUiSceneMarker(false);
@@ -558,6 +568,8 @@ export class BattleScene extends Phaser.Scene {
       if (!this.returningToWorld) {
         stopWildBattleBgm();
       }
+      this.messageAutoAdvanceTimer?.remove(false);
+      this.messageAutoAdvanceTimer = null;
       this.removeMobileBattleUiListeners?.();
       this.removeMobileBattleUiListeners = null;
       this.setBattleUiSceneMarker(false);
@@ -568,6 +580,7 @@ export class BattleScene extends Phaser.Scene {
     } else {
       this.playBattleEntranceAnimation();
     }
+    this.scheduleBattleMessageAutoAdvance();
   }
 
   update(): void {
@@ -1202,6 +1215,25 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.state.phase === "bag-select" && this.state.messageQueue.length === 0) {
+      const rowHeight = 11;
+      const row = Math.floor((battlePoint.y - BATTLE_LAYOUT.moveWindow.y - 6) / rowHeight);
+      const pageStart =
+        Math.floor(this.selectedBagItemIndex / BATTLE_BAG_VISIBLE_ITEM_COUNT) *
+        BATTLE_BAG_VISIBLE_ITEM_COUNT;
+      const itemIndex = pageStart + row;
+
+      if (
+        row < 0 ||
+        row >= BATTLE_BAG_VISIBLE_ITEM_COUNT ||
+        !this.getBattleBagItemIds()[itemIndex]
+      ) {
+        return;
+      }
+
+      this.selectedBagItemIndex = itemIndex;
+    }
+
     playBattleConfirmSound();
     this.confirmSelection();
   }
@@ -1244,6 +1276,8 @@ export class BattleScene extends Phaser.Scene {
           matchId: data.matchId,
           player: data.player,
           opponent: data.opponent,
+          personalRecords: this.cache.json.get("romPersonalData") as RomPersonalRecordCollection,
+          moveRecords: this.cache.json.get("romRefinedBattleRecords") as RomRefinedMoveCollection,
         }),
         returnToWorld: data.returnToWorld,
       };
@@ -1304,12 +1338,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.state.messageQueue.length > 0) {
-      const nextState = popBattleMessage(this.state);
-      this.setBattleState(
-        nextState.messageQueue[0] === BATTLE_END_CONFIRM_MESSAGE
-          ? this.applyLevelUpMoveLearning(nextState)
-          : nextState,
-      );
+      this.advanceBattleMessage();
       return;
     }
 
@@ -1389,6 +1418,16 @@ export class BattleScene extends Phaser.Scene {
     if (this.state.phase === "command") {
       const command = COMMANDS[this.selectedCommandIndex]?.command ?? "fight";
       if (command === "fight") {
+        const player = projection.currentState.playersById[ownPlayerId];
+        const activePokemon = player?.team[player.activeSlotIndex];
+        if (activePokemon && canUseCompetitiveStruggle(activePokemon.moves)) {
+          this.submitAuthoritativeAction({
+            kind: "move",
+            moveId: COMPETITIVE_STRUGGLE_MOVE_ID,
+          });
+          return;
+        }
+
         this.state = { ...this.state, phase: "move-select" };
       } else if (command === "pokemon") {
         this.selectedPartySlotIndex = getFirstSwitchableBattlePartySlotIndex(
@@ -1408,7 +1447,10 @@ export class BattleScene extends Phaser.Scene {
 
     if (this.state.phase === "move-select") {
       const player = projection.currentState.playersById[ownPlayerId];
-      const moveId = player?.team[player.activeSlotIndex]?.moves[this.selectedMoveIndex]?.moveId;
+      const activePokemon = player?.team[player.activeSlotIndex];
+      const moveId = canUseCompetitiveStruggle(activePokemon?.moves ?? [])
+        ? COMPETITIVE_STRUGGLE_MOVE_ID
+        : activePokemon?.moves[this.selectedMoveIndex]?.moveId;
       if (moveId) {
         this.submitAuthoritativeAction({ kind: "move", moveId });
       }
@@ -1555,6 +1597,49 @@ export class BattleScene extends Phaser.Scene {
     if (options.render ?? true) {
       this.render();
     }
+    this.scheduleBattleMessageAutoAdvance();
+  }
+
+  private advanceBattleMessage(): void {
+    const nextState = popBattleMessage(this.state);
+    this.setBattleState(
+      nextState.messageQueue[0] === BATTLE_END_CONFIRM_MESSAGE
+        ? this.applyLevelUpMoveLearning(nextState)
+        : nextState,
+    );
+  }
+
+  private scheduleBattleMessageAutoAdvance(): void {
+    this.messageAutoAdvanceTimer?.remove(false);
+    this.messageAutoAdvanceTimer = null;
+
+    if (
+      this.authoritativeProjection ||
+      this.state.messageQueue.length === 0 ||
+      this.state.messageQueue[0] === BATTLE_END_CONFIRM_MESSAGE
+    ) {
+      return;
+    }
+
+    this.messageAutoAdvanceTimer = this.time.delayedCall(BATTLE_MESSAGE_AUTO_ADVANCE_MS, () => {
+      this.messageAutoAdvanceTimer = null;
+      if (
+        this.battleEntrancePlaying ||
+        this.captureAnimationPlaying ||
+        this.evolutionAnimationPlaying ||
+        this.isHpAnimationPlaying() ||
+        this.isHitAnimationPlaying() ||
+        this.isStatusCommitPlaying() ||
+        (usesPokeLoungeMobileShell(this.game.canvas.ownerDocument) &&
+          hasPokeLoungeMobileFullscreenScene(this.game.canvas.ownerDocument)) ||
+        this.shortcutGuideOpen
+      ) {
+        this.scheduleBattleMessageAutoAdvance();
+        return;
+      }
+
+      this.advanceBattleMessage();
+    });
   }
 
   private syncDisplayedHpToState(): void {
@@ -1964,13 +2049,23 @@ export class BattleScene extends Phaser.Scene {
       });
     }
 
+    if (this.soloChallenge && this.state.result) {
+      this.gameStateStore.completeSoloChallenge(
+        this.state.result.winnerPlayerId === localPlayer.playerId,
+        Date.now(),
+      );
+    }
+
     this.scene.start("world", {
       spawnPosition: {
         x,
         y,
         facing,
       },
-      ...(this.state.battleKind === "trainer" && this.state.tournamentMatchId && this.state.result
+      ...(!this.soloChallenge &&
+      this.state.battleKind === "trainer" &&
+      this.state.tournamentMatchId &&
+      this.state.result
         ? {
             tournamentResult: {
               matchId: this.state.tournamentMatchId,
@@ -3329,50 +3424,46 @@ export class BattleScene extends Phaser.Scene {
     );
     this.drawRomWindow(rect, { radius: 0, includeFrameMarker: true });
 
-    battleBagItemIds.forEach((itemId, index) => {
-      const item = getShopItemById(itemId);
+    const pageStart =
+      Math.floor(this.selectedBagItemIndex / BATTLE_BAG_VISIBLE_ITEM_COUNT) *
+      BATTLE_BAG_VISIBLE_ITEM_COUNT;
 
-      if (!item) {
-        return;
-      }
+    battleBagItemIds
+      .slice(pageStart, pageStart + BATTLE_BAG_VISIBLE_ITEM_COUNT)
+      .forEach((itemId, visibleIndex) => {
+        const item = getShopItemById(itemId);
 
-      const quantity = inventory[itemId] ?? 0;
-      const y = rect.y + 6 + index * 11;
+        if (!item) {
+          return;
+        }
 
-      this.add.text(
-        rect.x + 10,
-        y,
-        `${index === this.selectedBagItemIndex ? "▶" : " "} ${item.displayName}`,
-        createGameTextStyle({
-          color: quantity > 0 ? "#17201a" : "#7a827c",
-          fontSize: "8px",
-        }),
-      );
-      this.add.text(
-        rect.x + 148,
-        y,
-        `x${quantity}`,
-        createGameTextStyle({
-          color: quantity > 0 ? "#17201a" : "#7a827c",
-          fontSize: "8px",
-        }),
-      );
-    });
+        const quantity = inventory[itemId] ?? 0;
+        const index = pageStart + visibleIndex;
+        const y = rect.y + 6 + visibleIndex * 11;
+
+        this.add.text(
+          rect.x + 10,
+          y,
+          `${index === this.selectedBagItemIndex ? "▶" : " "} ${item.displayName}`,
+          createGameTextStyle({
+            color: quantity > 0 ? "#17201a" : "#7a827c",
+            fontSize: "8px",
+          }),
+        );
+        this.add.text(
+          rect.x + 148,
+          y,
+          `x${quantity}`,
+          createGameTextStyle({
+            color: quantity > 0 ? "#17201a" : "#7a827c",
+            fontSize: "8px",
+          }),
+        );
+      });
   }
 
   private getBattleBagItemIds(): BattleBagItemId[] {
-    const localPlayer = this.gameStateStore.getCurrentLocalPlayer();
-    const unlockedItemIds = getUnlockedShopItemIds(localPlayer.competitive.rank);
-    const unlockedPremiumItemIds = getUnlockedPremiumShopItemIds(localPlayer.competitive.rank);
-
-    const basicItemIds = SHOP_ITEM_IDS.filter(
-      itemId => unlockedItemIds.includes(itemId) || (localPlayer.inventory[itemId] ?? 0) > 0,
-    );
-    const premiumItemIds = BATTLE_BAG_PREMIUM_ITEM_IDS.filter(
-      itemId => unlockedPremiumItemIds.includes(itemId) || (localPlayer.inventory[itemId] ?? 0) > 0,
-    );
-
-    return [...basicItemIds, ...premiumItemIds];
+    return [...SHOP_ITEM_IDS, ...BATTLE_BAG_PREMIUM_ITEM_IDS];
   }
 
   private drawShortcutGuideIfOpen(): void {

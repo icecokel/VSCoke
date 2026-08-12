@@ -329,6 +329,174 @@ test("턴 종료 독 피해로 선두가 쓰러져도 생존한 벤치로 교체
   assert.equal(faintState.result, null);
 });
 
+test("양쪽 기술 PP가 모두 0이면 발버둥으로 턴을 계속한다", () => {
+  const state = createSpeedOrderBattleState({ playerSpeed: 100, opponentSpeed: 1 });
+  state.player.pokemon.moves = state.player.pokemon.moves.map(move => ({ ...move, pp: 0 }));
+  state.player.party[0] = { slotIndex: 0, pokemon: state.player.pokemon };
+  state.opponent.pokemon.moves = state.opponent.pokemon.moves.map(move => ({ ...move, pp: 0 }));
+  state.opponent.party[0] = { slotIndex: 0, pokemon: state.opponent.pokemon };
+  state.phase = "command";
+
+  const resolvedState = chooseBattleCommand(state, "fight", { random: () => 0.5 });
+
+  assert.notEqual(resolvedState.phase, "move-select");
+  assert.equal(resolvedState.selectedMoveId, 165);
+  assert.equal(resolvedState.messageQueue.includes("치코리타의 발버둥!"), true);
+  assert.equal(resolvedState.messageQueue.includes("브케인의 발버둥!"), true);
+  assert.equal(resolvedState.player.pokemon.moves[0]?.pp, 0);
+  assert.equal(resolvedState.opponent.pokemon.moves[0]?.pp, 0);
+  assert.equal(resolvedState.messageQueue.includes("치코리타는 반동 데미지를 입었다!"), true);
+  assert.ok(resolvedState.player.pokemon.currentHp < state.player.pokemon.currentHp);
+  assert.ok(resolvedState.opponent.pokemon.currentHp < state.opponent.pokemon.currentHp);
+});
+
+test("상대 발버둥은 도주·포획 실패와 가방 사용 뒤에도 반동과 승패를 적용한다", () => {
+  const createState = (phase: "command" | "bag-select") => {
+    const state = createOpponentAttackBattleState(phase);
+    state.opponent.pokemon = {
+      ...state.opponent.pokemon,
+      currentHp: 1,
+      moves: state.opponent.pokemon.moves.map(move => ({ ...move, pp: 0 })),
+    };
+    state.opponent.party[0] = { slotIndex: 0, pokemon: state.opponent.pokemon };
+    state.player.pokemon = {
+      ...state.player.pokemon,
+      currentHp: state.player.pokemon.maxHp - 10,
+    };
+    state.player.party[0] = { slotIndex: 0, pokemon: state.player.pokemon };
+    return state;
+  };
+  const resolvedStates = [
+    chooseBattleCommand(createState("command"), "run", { randomByte: () => 255 }),
+    chooseBattleBagItem(createState("bag-select"), "pokeball", {
+      itemCount: 1,
+      captureRandom16: () => 65_535,
+    }),
+    chooseBattleBagItem(createState("bag-select"), "potion", { itemCount: 1 }),
+  ];
+
+  for (const state of resolvedStates) {
+    assert.equal(state.opponent.pokemon.status, "fainted");
+    assert.equal(state.result?.winnerPlayerId, state.player.playerId);
+    assert.equal(
+      state.messageQueue.some(message => message.includes("반동 데미지")),
+      true,
+    );
+  }
+});
+
+test("턴 종료 양쪽이 동시에 쓰러지면 두 벤치 교체 상태를 모두 반영한다", () => {
+  const state = createTwoPokemonBattleState();
+  const opponentReserve = {
+    ...clonePokemon(state.opponent.pokemon),
+    name: "리아코",
+    status: "normal" as const,
+    currentHp: state.opponent.pokemon.maxHp,
+  };
+  state.phase = "move-select";
+  state.player.pokemon = {
+    ...state.player.pokemon,
+    status: "poisoned",
+    currentHp: 1,
+    speed: 999,
+  };
+  state.player.party[0] = { slotIndex: 0, pokemon: state.player.pokemon };
+  state.opponent.pokemon = {
+    ...state.opponent.pokemon,
+    status: "poisoned",
+    currentHp: 1,
+    moves: [],
+  };
+  state.opponent.party[0] = { slotIndex: 0, pokemon: state.opponent.pokemon };
+  state.opponent.party[1] = { slotIndex: 1, pokemon: opponentReserve };
+  state.player.pokemon.moves = state.player.pokemon.moves.map(move => ({
+    ...move,
+    category: "status" as const,
+    effectCode: 999,
+    power: 0,
+  }));
+
+  const resolvedState = choosePlayerMove(state, 0, { random: () => 0.5 });
+
+  assert.equal(resolvedState.phase, "party-select");
+  assert.equal(resolvedState.player.pokemon.status, "fainted");
+  assert.equal(resolvedState.opponent.activePartySlotIndex, 1);
+  assert.equal(resolvedState.opponent.party[1]?.pokemon?.name, "리아코");
+  assert.equal(resolvedState.opponent.pokemon.status, "normal");
+});
+
+test("플레이어 발버둥으로 양쪽 마지막 포켓몬이 쓰러지면 반동 사용자가 패배한다", () => {
+  const state = createSpeedOrderBattleState({ playerSpeed: 100, opponentSpeed: 1 });
+  state.phase = "command";
+  state.player.pokemon = {
+    ...state.player.pokemon,
+    currentHp: 1,
+    moves: state.player.pokemon.moves.map(move => ({ ...move, pp: 0 })),
+  };
+  state.player.party[0] = { slotIndex: 0, pokemon: state.player.pokemon };
+  state.opponent.pokemon = {
+    ...state.opponent.pokemon,
+    currentHp: 1,
+    moves: state.opponent.pokemon.moves.map(move => ({ ...move, pp: 0 })),
+  };
+  state.opponent.party[0] = { slotIndex: 0, pokemon: state.opponent.pokemon };
+
+  const resolvedState = chooseBattleCommand(state, "fight", { random: () => 0.5 });
+
+  assert.equal(resolvedState.player.pokemon.currentHp, 0);
+  assert.equal(resolvedState.opponent.pokemon.currentHp, 0);
+  assert.equal(resolvedState.result?.winnerPlayerId, state.opponent.playerId);
+});
+
+test("상대 선두가 쓰러져도 생존한 벤치가 있으면 교체하고 전투를 계속한다", () => {
+  const state = createSpeedOrderBattleState({ playerSpeed: 100, opponentSpeed: 1 });
+  const reservePokemon = {
+    ...clonePokemon(state.opponent.pokemon),
+    name: "리아코",
+    currentHp: state.opponent.pokemon.maxHp,
+    status: "normal" as const,
+  };
+  state.battleKind = "trainer";
+  state.player.pokemon.moves[0] = {
+    ...state.player.pokemon.moves[0],
+    power: 999,
+  };
+  state.opponent.pokemon.currentHp = 1;
+  state.opponent.party[0] = { slotIndex: 0, pokemon: state.opponent.pokemon };
+  state.opponent.party[1] = { slotIndex: 1, pokemon: reservePokemon };
+
+  const switchedState = choosePlayerMove(state, 0, { random: () => 0.5 });
+
+  assert.equal(switchedState.phase, "resolving");
+  assert.equal(switchedState.result, null);
+  assert.equal(switchedState.opponent.activePartySlotIndex, 1);
+  assert.equal(switchedState.opponent.pokemon.name, "리아코");
+  assert.equal(switchedState.messageQueue.includes("승리했다!"), false);
+  assert.equal(switchedState.messageQueue.includes(BATTLE_END_CONFIRM_MESSAGE), false);
+  assert.equal(drainBattleMessages(switchedState).phase, "command");
+});
+
+test("독 기술은 기존 화상이나 마비 상태를 덮어쓰지 않는다", () => {
+  for (const status of ["burned", "paralyzed"] as const) {
+    const state = createSpeedOrderBattleState({ playerSpeed: 100, opponentSpeed: 1 });
+    state.player.pokemon.moves[0] = {
+      ...state.player.pokemon.moves[0],
+      category: "status",
+      effectCode: 66,
+      power: 0,
+    };
+    state.player.party[0] = { slotIndex: 0, pokemon: state.player.pokemon };
+    state.opponent.pokemon.status = status;
+    state.opponent.pokemon.moves = [];
+    state.opponent.party[0] = { slotIndex: 0, pokemon: state.opponent.pokemon };
+
+    const resolvedState = choosePlayerMove(state, 0, { random: () => 0.5 });
+
+    assert.equal(resolvedState.opponent.pokemon.status, status);
+    assert.equal(resolvedState.messageQueue.includes(`브케인은 이미 상태 이상이다!`), true);
+  }
+});
+
 function createTwoPokemonBattleState({ reserveHp = 43 } = {}): BattleScreenState {
   const baseState = createSampleBattleState();
   const playerPokemon: BattlePokemon = {

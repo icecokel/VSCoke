@@ -16,7 +16,7 @@ export interface CompletedTileStep {
 }
 
 export interface TileStepTracker {
-  currentTile: TileCoordinate | null;
+  currentPosition: PixelPosition | null;
   tileSize: number;
 }
 
@@ -32,37 +32,92 @@ export const createTileStepTracker = (
   initialPosition?: PixelPosition,
   tileSize = FIELD_TILE_SIZE,
 ): TileStepTracker => ({
-  currentTile: initialPosition ? pixelToTile(initialPosition, tileSize) : null,
+  currentPosition: initialPosition ? { ...initialPosition } : null,
   tileSize,
 });
 
-export const consumeCompletedTileStep = (
+export const consumeCompletedTileSteps = (
   tracker: TileStepTracker,
   position: PixelPosition,
-): CompletedTileStep | null => {
-  const previousTile = tracker.currentTile;
+): CompletedTileStep[] => {
+  const previousPosition = tracker.currentPosition;
+  tracker.currentPosition = { ...position };
+
+  if (!previousPosition) {
+    return [];
+  }
+
+  const previousTile = pixelToTile(previousPosition, tracker.tileSize);
   const currentTile = pixelToTile(position, tracker.tileSize);
 
-  if (!previousTile) {
-    tracker.currentTile = currentTile;
-    return null;
-  }
-
   if (previousTile.x === currentTile.x && previousTile.y === currentTile.y) {
-    return null;
+    return [];
   }
 
-  tracker.currentTile = currentTile;
+  const deltaX = position.x - previousPosition.x;
+  const deltaY = position.y - previousPosition.y;
+  const crossings: Array<{
+    axis: "x" | "y";
+    direction: -1 | 1;
+    progress: number;
+  }> = [];
 
-  const deltaX = Math.abs(currentTile.x - previousTile.x);
-  const deltaY = Math.abs(currentTile.y - previousTile.y);
-
-  if (deltaX + deltaY !== 1) {
-    return null;
+  if (currentTile.x > previousTile.x) {
+    for (let tileX = previousTile.x + 1; tileX <= currentTile.x; tileX += 1) {
+      crossings.push({
+        axis: "x",
+        direction: 1,
+        progress: (tileX * tracker.tileSize - previousPosition.x) / deltaX,
+      });
+    }
+  } else if (currentTile.x < previousTile.x) {
+    for (let tileX = previousTile.x; tileX > currentTile.x; tileX -= 1) {
+      crossings.push({
+        axis: "x",
+        direction: -1,
+        progress: (tileX * tracker.tileSize - previousPosition.x) / deltaX,
+      });
+    }
   }
 
-  return {
-    from: previousTile,
-    to: currentTile,
-  };
+  if (currentTile.y > previousTile.y) {
+    for (let tileY = previousTile.y + 1; tileY <= currentTile.y; tileY += 1) {
+      crossings.push({
+        axis: "y",
+        direction: 1,
+        progress: (tileY * tracker.tileSize - previousPosition.y) / deltaY,
+      });
+    }
+  } else if (currentTile.y < previousTile.y) {
+    for (let tileY = previousTile.y; tileY > currentTile.y; tileY -= 1) {
+      crossings.push({
+        axis: "y",
+        direction: -1,
+        progress: (tileY * tracker.tileSize - previousPosition.y) / deltaY,
+      });
+    }
+  }
+
+  crossings.sort(
+    (left, right) => left.progress - right.progress || left.axis.localeCompare(right.axis),
+  );
+
+  const steps: CompletedTileStep[] = [];
+  let from = previousTile;
+
+  for (let index = 0; index < crossings.length; ) {
+    const progress = crossings[index].progress;
+    const to = { ...from };
+
+    while (index < crossings.length && Math.abs(crossings[index].progress - progress) < 1e-9) {
+      const crossing = crossings[index];
+      to[crossing.axis] += crossing.direction;
+      index += 1;
+    }
+
+    steps.push({ from, to });
+    from = to;
+  }
+
+  return steps;
 };

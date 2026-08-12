@@ -331,6 +331,32 @@ test("Poke Lounge 모바일은 세로 필드와 전체 화면 메뉴를 제공�
       after?.player?.facing === "right",
   ).toBe(true);
 
+  const beforeDiagonal = await readWorldSnapshot(page);
+  await directionalJoystick.dispatchEvent("pointerdown", {
+    clientX: joystickBounds!.x + joystickBounds!.width * 0.78,
+    clientY: joystickBounds!.y + joystickBounds!.height * 0.22,
+    pointerId: 4,
+    pointerType: "touch",
+  });
+  await expect(directionalJoystick).toHaveAttribute("data-direction", "up-right");
+  await expect
+    .poll(async () => {
+      const current = await readWorldSnapshot(page);
+
+      return Boolean(
+        beforeDiagonal?.player &&
+        current?.player &&
+        current.player.x > beforeDiagonal.player.x &&
+        current.player.y < beforeDiagonal.player.y,
+      );
+    })
+    .toBe(true);
+  await directionalJoystick.dispatchEvent("pointerup", {
+    pointerId: 4,
+    pointerType: "touch",
+  });
+  await expect(directionalJoystick).not.toHaveAttribute("data-direction");
+
   const confirm = page.locator("[data-mobile-control='confirm']");
   await confirm.dispatchEvent("pointerdown", { pointerId: 2, pointerType: "touch" });
   await expect(confirm).toHaveAttribute("data-pressed", "true");
@@ -511,7 +537,7 @@ test("Poke Lounge 모바일 전투는 하단 조작 도크에서 행동을 고�
     timeout: 10_000,
   });
   await expectControlDeckStaysBelowField(page, moveDeck);
-  const moveSlotGeometry = await expectFourSlotBattleGrid(moveDeck, "moves", 4);
+  const moveSlotGeometry = await expectBattleGrid(moveDeck, "moves", 4);
 
   await moveDeck.getByRole("button", { name: /뒤로/ }).click();
   await expect(commandDeck).toBeVisible();
@@ -520,7 +546,21 @@ test("Poke Lounge 모바일 전투는 하단 조작 도크에서 행동을 고�
   const itemDeck = page.locator("[data-poke-lounge-mobile-deck='battle-bag']");
   await expect(itemDeck).toBeVisible({ timeout: 10_000 });
   await expectControlDeckStaysBelowField(page, itemDeck);
-  const itemSlotGeometry = await expectFourSlotBattleGrid(itemDeck, "items", 2);
+  const itemSlotGeometry = await expectBattleGrid(itemDeck, "items", 7);
+  const itemGrid = itemDeck.locator("[data-poke-lounge-mobile-option-grid='items']");
+  const lastItem = itemGrid.getByRole("button").last();
+  await lastItem.scrollIntoViewIfNeeded();
+  const [itemGridBounds, lastItemBounds] = await Promise.all([
+    itemGrid.boundingBox(),
+    lastItem.boundingBox(),
+  ]);
+
+  expect(itemGridBounds).not.toBeNull();
+  expect(lastItemBounds).not.toBeNull();
+  expect(lastItemBounds!.y).toBeGreaterThanOrEqual(itemGridBounds!.y - 1);
+  expect(lastItemBounds!.y + lastItemBounds!.height).toBeLessThanOrEqual(
+    itemGridBounds!.y + itemGridBounds!.height + 1,
+  );
 
   await itemDeck.getByRole("button", { name: /뒤로/ }).click();
   await expect(commandDeck).toBeVisible();
@@ -1023,7 +1063,7 @@ async function expectControlDeckStaysBelowField(page: Page, deck: Locator): Prom
   );
 }
 
-async function expectFourSlotBattleGrid(
+async function expectBattleGrid(
   deck: Locator,
   gridName: "moves" | "items",
   optionCount: number,
@@ -1031,10 +1071,11 @@ async function expectFourSlotBattleGrid(
   const grid = deck.locator(`[data-poke-lounge-mobile-option-grid='${gridName}']`);
 
   await expect(grid).toBeVisible();
-  await expect(grid.locator(":scope > *")).toHaveCount(4);
+  const slotCount = Math.max(4, optionCount);
+  await expect(grid.locator(":scope > *")).toHaveCount(slotCount);
   await expect(grid.getByRole("button")).toHaveCount(optionCount);
   await expect(grid.locator("[data-poke-lounge-mobile-empty-slot='true']")).toHaveCount(
-    4 - optionCount,
+    slotCount - optionCount,
   );
 
   const layout = await grid.evaluate(element => {
@@ -1050,7 +1091,7 @@ async function expectFourSlotBattleGrid(
     };
   });
 
-  expect(layout).toEqual({ columns: 2, rows: 2 });
+  expect(layout).toEqual({ columns: 2, rows: Math.ceil(slotCount / 2) });
 
   return readBattleSlotGeometry(grid.locator(":scope > *").first());
 }

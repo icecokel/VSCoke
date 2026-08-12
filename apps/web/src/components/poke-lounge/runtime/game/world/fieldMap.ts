@@ -73,6 +73,11 @@ export const FIELD_MAP = {
       textureKey: "field-npc-gamehost",
       imageUrl: "/assets/poke-lounge/textures/a_0_8_1_0184/mania_5.png",
     },
+    soloChallenger: {
+      ...FIELD_NPC_BASE,
+      textureKey: "field-npc-solo-challenger",
+      imageUrl: "/assets/poke-lounge/textures/a_0_8_1_0039/gentleman_5.png",
+    },
     storagePc: {
       displaySize: {
         width: 40,

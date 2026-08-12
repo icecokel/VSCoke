@@ -34,6 +34,7 @@ type MobileScene = "battle" | "world" | null;
 const mobileBattleGridSlotCount = 4;
 
 type MobileJoystickDirection = "up" | "down" | "left" | "right";
+const mobileJoystickDirectionOrder = ["up", "down", "left", "right"] as const;
 
 type MobileJoystickOffset = {
   x: number;
@@ -44,21 +45,31 @@ const mobileJoystickDeadZoneRatio = 0.24;
 const mobileJoystickMaximumThumbOffsetRatio = 0.46;
 const emptyMobileJoystickOffset: MobileJoystickOffset = { x: 0, y: 0 };
 
-const resolveMobileJoystickDirection = (
+const resolveMobileJoystickDirections = (
   offset: MobileJoystickOffset,
   radius: number,
-): MobileJoystickDirection | null => {
+): MobileJoystickDirection[] => {
   const distance = Math.hypot(offset.x, offset.y);
 
   if (distance < radius * mobileJoystickDeadZoneRatio) {
-    return null;
+    return [];
   }
 
-  if (Math.abs(offset.x) > Math.abs(offset.y)) {
-    return offset.x < 0 ? "left" : "right";
+  const horizontalDirection = offset.x < 0 ? "left" : "right";
+  const verticalDirection = offset.y < 0 ? "up" : "down";
+  const horizontalMagnitude = Math.abs(offset.x);
+  const verticalMagnitude = Math.abs(offset.y);
+  const directions: MobileJoystickDirection[] = [];
+
+  if (verticalMagnitude >= horizontalMagnitude / 2) {
+    directions.push(verticalDirection);
   }
 
-  return offset.y < 0 ? "up" : "down";
+  if (horizontalMagnitude >= verticalMagnitude / 2) {
+    directions.push(horizontalDirection);
+  }
+
+  return directions;
 };
 
 const clampMobileJoystickOffset = (
@@ -87,15 +98,18 @@ const getMobileJoystickKeyboardDirection = (key: string): MobileJoystickDirectio
 };
 
 const getMobileJoystickKeyboardOffset = (
-  direction: MobileJoystickDirection,
+  directions: ReadonlyArray<MobileJoystickDirection>,
 ): MobileJoystickOffset => {
-  const keyboardOffset = 32;
+  const keyboardOffset = directions.length > 1 ? 24 : 32;
 
-  if (direction === "up") return { x: 0, y: -keyboardOffset };
-  if (direction === "down") return { x: 0, y: keyboardOffset };
-  if (direction === "left") return { x: -keyboardOffset, y: 0 };
-
-  return { x: keyboardOffset, y: 0 };
+  return {
+    x:
+      (directions.includes("right") ? keyboardOffset : 0) -
+      (directions.includes("left") ? keyboardOffset : 0),
+    y:
+      (directions.includes("down") ? keyboardOffset : 0) -
+      (directions.includes("up") ? keyboardOffset : 0),
+  };
 };
 
 export interface MobileRankingEntry {
@@ -277,35 +291,40 @@ function MobileExploreDeck({
 }
 
 function MobileDirectionalJoystick({ ariaLabel }: { ariaLabel: string }) {
-  const [activeDirection, setActiveDirection] = useState<MobileJoystickDirection | null>(null);
+  const [activeDirections, setActiveDirections] = useState<MobileJoystickDirection[]>([]);
   const [isActive, setIsActive] = useState(false);
   const [thumbOffset, setThumbOffset] = useState<MobileJoystickOffset>(emptyMobileJoystickOffset);
-  const activeDirectionRef = useRef<MobileJoystickDirection | null>(null);
+  const activeDirectionsRef = useRef(new Set<MobileJoystickDirection>());
   const activePointerId = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
-      if (activeDirectionRef.current) {
-        setVirtualGamepadButtonHeld(activeDirectionRef.current, false);
+      for (const direction of activeDirectionsRef.current) {
+        setVirtualGamepadButtonHeld(direction, false);
       }
     };
   }, []);
 
-  const setDirection = (direction: MobileJoystickDirection | null) => {
-    if (activeDirectionRef.current === direction) {
+  const holdDirections = (directions: ReadonlyArray<MobileJoystickDirection>) => {
+    const nextDirections = new Set(directions);
+
+    if (
+      activeDirectionsRef.current.size === nextDirections.size &&
+      [...nextDirections].every(direction => activeDirectionsRef.current.has(direction))
+    ) {
       return;
     }
 
-    if (activeDirectionRef.current) {
-      setVirtualGamepadButtonHeld(activeDirectionRef.current, false);
+    for (const direction of mobileJoystickDirectionOrder) {
+      if (activeDirectionsRef.current.has(direction) !== nextDirections.has(direction)) {
+        setVirtualGamepadButtonHeld(direction, nextDirections.has(direction));
+      }
     }
 
-    activeDirectionRef.current = direction;
-    setActiveDirection(direction);
-
-    if (direction) {
-      setVirtualGamepadButtonHeld(direction, true);
-    }
+    activeDirectionsRef.current = nextDirections;
+    setActiveDirections(
+      mobileJoystickDirectionOrder.filter(direction => nextDirections.has(direction)),
+    );
   };
 
   const release = (pointerId?: number) => {
@@ -316,7 +335,7 @@ function MobileDirectionalJoystick({ ariaLabel }: { ariaLabel: string }) {
     activePointerId.current = null;
     setIsActive(false);
     setThumbOffset(emptyMobileJoystickOffset);
-    setDirection(null);
+    holdDirections([]);
   };
 
   const updateFromPointer = (target: HTMLDivElement, event: PointerEvent<HTMLDivElement>) => {
@@ -328,7 +347,7 @@ function MobileDirectionalJoystick({ ariaLabel }: { ariaLabel: string }) {
     };
 
     setThumbOffset(clampMobileJoystickOffset(offset, radius));
-    setDirection(resolveMobileJoystickDirection(offset, radius));
+    holdDirections(resolveMobileJoystickDirections(offset, radius));
   };
 
   return (
@@ -338,7 +357,7 @@ function MobileDirectionalJoystick({ ariaLabel }: { ariaLabel: string }) {
       tabIndex={0}
       aria-label={ariaLabel}
       data-active={isActive || undefined}
-      data-direction={activeDirection ?? undefined}
+      data-direction={activeDirections.length > 0 ? activeDirections.join("-") : undefined}
       data-poke-lounge-mobile-joystick="true"
       onPointerDown={event => {
         event.preventDefault();
@@ -369,9 +388,13 @@ function MobileDirectionalJoystick({ ariaLabel }: { ariaLabel: string }) {
         }
 
         event.preventDefault();
+        const directions = mobileJoystickDirectionOrder.filter(
+          candidate => activeDirectionsRef.current.has(candidate) || candidate === direction,
+        );
+
         setIsActive(true);
-        setThumbOffset(getMobileJoystickKeyboardOffset(direction));
-        setDirection(direction);
+        setThumbOffset(getMobileJoystickKeyboardOffset(directions));
+        holdDirections(directions);
       }}
       onKeyUp={event => {
         const direction = getMobileJoystickKeyboardDirection(event.key);
@@ -381,9 +404,17 @@ function MobileDirectionalJoystick({ ariaLabel }: { ariaLabel: string }) {
         }
 
         event.preventDefault();
-        if (activeDirectionRef.current === direction) {
+        const directions = mobileJoystickDirectionOrder.filter(
+          candidate => candidate !== direction && activeDirectionsRef.current.has(candidate),
+        );
+
+        if (directions.length === 0) {
           release();
+          return;
         }
+
+        setThumbOffset(getMobileJoystickKeyboardOffset(directions));
+        holdDirections(directions);
       }}
     >
       <span

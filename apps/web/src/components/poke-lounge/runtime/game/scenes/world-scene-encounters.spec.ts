@@ -121,6 +121,19 @@ test("긴 풀 타일에서 이동을 완료하면 야생 조우를 시작한다"
   assert.ok(harness.getStartedBattle());
 });
 
+test("한 프레임에 여러 타일을 지나도 중간 긴 풀 타일의 조우를 판정한다", () => {
+  const harness = createEncounterHarness(tile => tile.x === 22 && tile.y === 13);
+
+  harness.moveTo({ x: 752, y: 446 });
+  harness.controller.afterMovement();
+
+  assert.deepEqual(harness.controller.getE2eSnapshot(), {
+    encounterLocked: true,
+    battleIntroPlaying: true,
+  });
+  assert.ok(harness.getStartedBattle());
+});
+
 const createRectangleStub = (): ReturnType<WorldSceneEncountersDependencies["createRectangle"]> => {
   const rectangle = {
     destroy: () => undefined,

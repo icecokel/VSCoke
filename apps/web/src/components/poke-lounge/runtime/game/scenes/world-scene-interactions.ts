@@ -18,8 +18,6 @@ import { setShortcutGuideTouchControlsSuppressed } from "../input/mobileTouchCon
 import { PLAYER_PARTY_SLOT_COUNT } from "../player/playerTypes";
 import {
   getShopItemById,
-  getUnlockedPremiumShopItemIds,
-  getUnlockedShopItemIds,
   PREMIUM_SHOP_ITEM_IDS,
   SHOP_ITEM_IDS,
   type GameStateStore,
@@ -179,6 +177,8 @@ export interface WorldSceneInteractionsDependencies {
   createStaticGroup(): Phaser.Physics.Arcade.StaticGroup;
   registerStaticNpcs(staticNpcs: Phaser.Physics.Arcade.StaticGroup): void;
   getPlayerPosition(): WorldScenePlayerPosition | null;
+  canStartSoloChallenge(): boolean;
+  startSoloChallenge(): void;
   playNurseHealingEffect(nursePosition: WorldScenePlayerPosition, onComplete: () => void): void;
   ensureCursorKeys(keyboard: Phaser.Input.Keyboard.KeyboardPlugin): WorldSceneCursorMap;
   isBattleIntroPlaying(): boolean;
@@ -255,6 +255,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   private shopkeeperPosition: { x: number; y: number } | null = null;
   private premiumShopkeeperPosition: { x: number; y: number } | null = null;
   private gamehostPosition: { x: number; y: number } | null = null;
+  private soloChallengerPosition: { x: number; y: number } | null = null;
   private nursePosition: { x: number; y: number } | null = null;
   private storagePcPosition: { x: number; y: number } | null = null;
   private nurseMessage = "";
@@ -628,6 +629,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
       this.inventoryOpen ||
       this.pcBoxOpen ||
       this.diceGambleOpen ||
+      this.battleIntroPlaying ||
       this.mobileWorldView === "party"
     );
   }
@@ -1043,6 +1045,10 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
         this.gamehostPosition = { x: object.x, y: object.y };
       }
 
+      if (npcKey === "soloChallenger") {
+        this.soloChallengerPosition = { x: object.x, y: object.y };
+      }
+
       if (npcKey === "nurse") {
         this.nursePosition = { x: object.x, y: object.y };
       }
@@ -1380,6 +1386,14 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
       return;
     }
 
+    if (
+      this.dependencies.canStartSoloChallenge() &&
+      this.isPlayerNearSoloChallenger(playerPosition)
+    ) {
+      this.dependencies.startSoloChallenge();
+      return;
+    }
+
     if (this.isPlayerNearGamehost(playerPosition)) {
       this.openDiceGamble();
     }
@@ -1429,6 +1443,13 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
 
     if (this.isPlayerNearNurse(playerPosition)) {
       return `${interactionKey} · 파티 회복`;
+    }
+
+    if (
+      this.dependencies.canStartSoloChallenge() &&
+      this.isPlayerNearSoloChallenger(playerPosition)
+    ) {
+      return `${interactionKey} · 솔로 챌린지`;
     }
 
     if (this.isPlayerNearGamehost(playerPosition)) {
@@ -1525,6 +1546,19 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
       Math.hypot(
         playerPosition.x - this.gamehostPosition.x,
         playerPosition.y - this.gamehostPosition.y,
+      ) <= 56
+    );
+  }
+
+  private isPlayerNearSoloChallenger(playerPosition: WorldScenePlayerPosition): boolean {
+    if (!this.soloChallengerPosition) {
+      return false;
+    }
+
+    return (
+      Math.hypot(
+        playerPosition.x - this.soloChallengerPosition.x,
+        playerPosition.y - this.soloChallengerPosition.y,
       ) <= 56
     );
   }
@@ -1793,7 +1827,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
         .text(
           x(24),
           y(160),
-          selectedItem?.description ?? "랭크 3부터 희귀 상품이 열린다.",
+          selectedItem?.description ?? "판매 중인 상품이 없다.",
           createGameTextStyle({
             color: "#263238",
             fontSize: "12px",
@@ -1825,11 +1859,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   }
 
   private getCurrentShopItemIds(): KnownShopItemId[] {
-    const rank = this.gameStateStore.getCurrentLocalPlayer().competitive.rank;
-
-    return this.activeShopKind === "premium"
-      ? getUnlockedPremiumShopItemIds(rank)
-      : getUnlockedShopItemIds(rank);
+    return this.activeShopKind === "premium" ? [...PREMIUM_SHOP_ITEM_IDS] : [...SHOP_ITEM_IDS];
   }
 
   private getCurrentShopTitle(): string {
@@ -2644,15 +2674,7 @@ class DefaultWorldSceneInteractions implements WorldSceneInteractionsController 
   }
 
   private getInventoryItemIds(): KnownShopItemId[] {
-    const localPlayer = this.gameStateStore.getCurrentLocalPlayer();
-    const unlockedItemIds = new Set<string>([
-      ...getUnlockedShopItemIds(localPlayer.competitive.rank),
-      ...getUnlockedPremiumShopItemIds(localPlayer.competitive.rank),
-    ]);
-
-    return this.getAllInventoryItemIds().filter(
-      itemId => unlockedItemIds.has(itemId) || (localPlayer.inventory[itemId] ?? 0) > 0,
-    );
+    return this.getAllInventoryItemIds();
   }
 
   private getAllInventoryItemIds(): KnownShopItemId[] {

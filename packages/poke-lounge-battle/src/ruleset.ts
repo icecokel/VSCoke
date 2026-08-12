@@ -5,13 +5,17 @@ import {
 } from "./canonical-state";
 import {
   APPROVED_COMPETITIVE_RULESET_V1,
+  canUseCompetitiveStruggle,
+  COMPETITIVE_STRUGGLE_MOVE_ID,
   COMPETITIVE_RULESET_VERSION,
   type CompetitiveMoveDefinition,
 } from "./ruleset-contract";
 
 export {
   APPROVED_COMPETITIVE_RULESET_V1,
+  canUseCompetitiveStruggle,
   COMPETITIVE_RULESET_HASH,
+  COMPETITIVE_STRUGGLE_MOVE_ID,
   COMPETITIVE_RULESET_VERSION,
   type CompetitiveLoadoutEntry,
   type CompetitiveMoveDefinition,
@@ -20,6 +24,10 @@ export {
 export function getCompetitiveMoveDefinition(
   moveId: string,
 ): CompetitiveMoveDefinition | undefined {
+  if (moveId === COMPETITIVE_STRUGGLE_MOVE_ID) {
+    return APPROVED_COMPETITIVE_RULESET_V1.struggle;
+  }
+
   const moves: Readonly<Record<string, CompetitiveMoveDefinition>> =
     APPROVED_COMPETITIVE_RULESET_V1.moves;
   return moves[moveId];

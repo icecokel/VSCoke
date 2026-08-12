@@ -1,4 +1,8 @@
-import { APPROVED_COMPETITIVE_RULESET_V1 } from "@vscoke/poke-lounge-battle";
+import {
+  APPROVED_COMPETITIVE_RULESET_V1,
+  canUseCompetitiveStruggle,
+  COMPETITIVE_STRUGGLE_MOVE_ID,
+} from "@vscoke/poke-lounge-battle";
 import type { CompetitiveAction, CompetitiveProjection } from "../network/localPreviewRoom";
 import { createDefaultBattleStatStages } from "./battle-stat-stages";
 import { getBattlePokemonAssets } from "./battlePokemonAssets";
@@ -41,7 +45,9 @@ export function isLegalAuthoritativeAction(
       activePokemon &&
       activePokemon.currentHp > 0 &&
       typeof action.moveId === "string" &&
-      activePokemon.moves.some(move => move.moveId === action.moveId && move.pp > 0),
+      (activePokemon.moves.some(move => move.moveId === action.moveId && move.pp > 0) ||
+        (action.moveId === COMPETITIVE_STRUGGLE_MOVE_ID &&
+          canUseCompetitiveStruggle(activePokemon.moves))),
     );
   }
 

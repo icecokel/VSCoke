@@ -371,6 +371,11 @@
   grid-template-rows: repeat(3, minmax(0, 1fr));
 }
 
+.itemList {
+  grid-template-rows: none;
+  grid-auto-rows: calc((100% - 14px) / 3);
+}
+
 .moveButton,
 .partyButton,
 .itemButton {

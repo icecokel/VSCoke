@@ -1,4 +1,5 @@
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
+import { COMPETITIVE_STRUGGLE_MOVE_ID } from '@vscoke/poke-lounge-battle';
 import { SubmitCompetitiveActionDto } from './submit-competitive-action.dto';
 
 describe('SubmitCompetitiveActionDto', () => {
@@ -10,6 +11,7 @@ describe('SubmitCompetitiveActionDto', () => {
 
   it.each([
     { kind: 'move', moveId: 'steady-strike' },
+    { kind: 'move', moveId: COMPETITIVE_STRUGGLE_MOVE_ID },
     { kind: 'switch', slotIndex: 1 },
   ])('accepts a strict legal action shape', async (action) => {
     await expect(transform(validBody(action))).resolves.toMatchObject({

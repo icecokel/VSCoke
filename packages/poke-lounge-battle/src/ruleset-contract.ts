@@ -1,4 +1,5 @@
 export const COMPETITIVE_RULESET_VERSION = 1;
+export const COMPETITIVE_STRUGGLE_MOVE_ID = "struggle";
 
 export interface CompetitiveMoveDefinition {
   moveId: string;
@@ -20,6 +21,10 @@ export interface CompetitiveLoadoutEntry {
   defense: number;
   speed: number;
   moveIds: readonly string[];
+}
+
+export function canUseCompetitiveStruggle(moves: readonly { pp: number }[]): boolean {
+  return moves.length > 0 && moves.every(move => move.pp === 0);
 }
 
 function deepFreeze<T>(value: T): Readonly<T> {
@@ -82,6 +87,15 @@ export const APPROVED_COMPETITIVE_RULESET_V1 = deepFreeze({
       secondaryEffect: null,
     },
   },
+  struggle: {
+    moveId: COMPETITIVE_STRUGGLE_MOVE_ID,
+    power: 50,
+    accuracy: 1,
+    criticalHitChance: 1 / 16,
+    maxPp: 0,
+    secondaryEffect: null,
+    recoilMaxHpDivisor: 4,
+  },
   loadout: [
     {
       speciesId: "vscoke-alpha",
@@ -106,4 +120,4 @@ export const APPROVED_COMPETITIVE_RULESET_V1 = deepFreeze({
 
 // Node crypto 없이 같은 계약을 브라우저에 제공하며 ruleset.spec.ts가 canonical hash를 검증한다.
 export const COMPETITIVE_RULESET_HASH =
-  "f063fa4b9fc1df896c72e04d13eee02905c40f8c90c3663d87f24f5ed17ee7fd";
+  "06f455303f46369d1a31315db5fdfffa666164fde44f8ac20ac507a6fc9f9de7";

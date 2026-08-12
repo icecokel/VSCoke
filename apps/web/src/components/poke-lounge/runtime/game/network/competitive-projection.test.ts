@@ -93,7 +93,7 @@ test("authority projection은 UUID와 stable bracket match ID를 구분해 적�
 test("authority projection은 브라우저가 공유하는 실제 ruleset hash만 적용한다", () => {
   assert.equal(
     parseCompetitiveProjection(createProjection()).rulesetHash,
-    "f063fa4b9fc1df896c72e04d13eee02905c40f8c90c3663d87f24f5ed17ee7fd",
+    COMPETITIVE_RULESET_HASH,
   );
   assert.throws(
     () =>

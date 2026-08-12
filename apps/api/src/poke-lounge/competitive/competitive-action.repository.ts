@@ -8,6 +8,8 @@ export const COMPETITIVE_ACTION_REPOSITORY = Symbol(
   'COMPETITIVE_ACTION_REPOSITORY',
 );
 
+export const COMPETITIVE_TURN_DEADLINE_MS = 60_000;
+
 export type CompetitiveActionFailure =
   | 'room-not-found'
   | 'match-not-found'
@@ -29,6 +31,21 @@ export type CompetitiveActionResult =
       committed: boolean;
     };
 
+export type CompetitiveTurnTimeoutResult =
+  | { outcome: 'ignored' }
+  | { outcome: 'not-due'; retryAtMs: number }
+  | {
+      outcome: 'completed';
+      response: CompetitiveActionProjection;
+      room: PokeLoungeRoomSnapshot;
+    };
+
 export interface CompetitiveActionRepository {
   submit(input: SubmitCompetitiveActionInput): Promise<CompetitiveActionResult>;
+  expirePendingTurn(input: {
+    roomCode: string;
+    matchId: string;
+    turn: number;
+    nowMs: number;
+  }): Promise<CompetitiveTurnTimeoutResult>;
 }

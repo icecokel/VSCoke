@@ -170,6 +170,46 @@ test("직접 구성한 3개 기술은 정규 기술표로 덮어쓰지 않는다
   }
 });
 
+test("화상·마비와 학습 기술을 보존하고 미지원 상태기술은 안전한 공격으로 해석한다", async () => {
+  await loadRuntimeGameData();
+
+  try {
+    for (const status of ["burned", "paralyzed"] as const) {
+      assert.equal(
+        createBattleState({ ...createPlayerPokemon(155, "브케인"), status }).player.pokemon.status,
+        status,
+      );
+    }
+
+    const dittoState = createBattleState({
+      ...createPlayerPokemon(132, "메타몽"),
+      moves: [{ id: 144, name: "변신", pp: 10, maxPp: 10 }],
+    });
+
+    assert.deepEqual(
+      dittoState.player.pokemon.moves.map(move => move.id),
+      [144],
+    );
+    assert.equal(dittoState.player.pokemon.moves[0]?.category, "physical");
+    assert.equal(dittoState.player.pokemon.moves[0]?.power, 40);
+
+    const mixedMoveState = createBattleState({
+      ...createPlayerPokemon(152, "치코리타"),
+      moves: [
+        { id: 33, name: "몸통박치기", pp: 35, maxPp: 35 },
+        { id: 235, name: "광합성", pp: 5, maxPp: 5 },
+      ],
+    });
+
+    assert.deepEqual(
+      mixedMoveState.player.pokemon.moves.map(move => move.id),
+      [33, 235],
+    );
+  } finally {
+    resetRuntimeGameDataJsonStateForTest();
+  }
+});
+
 function createPlayerPokemon(speciesId: number, name: string): PlayerPokemon {
   return {
     speciesId,

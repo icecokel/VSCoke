@@ -138,7 +138,12 @@ function normalizeWildEncounterTable(
   const slots =
     version === 1
       ? normalizeExplicitEncounterSlots(data.slots)
-      : expandEncounterSpeciesRanges(data.speciesRanges, pokemonRecords);
+      : expandEncounterSpeciesRanges(
+          data.speciesRanges,
+          pokemonRecords,
+          data.commonNationalDexIds,
+          data.rarePoolWeight,
+        );
 
   if (slots.length === 0) {
     return null;
@@ -172,6 +177,8 @@ function normalizeExplicitEncounterSlots(data: unknown): WildEncounterSlot[] {
 function expandEncounterSpeciesRanges(
   data: unknown,
   pokemonRecords: ReadonlyArray<EncounterPokemonRecord>,
+  commonNationalDexIdsData: unknown,
+  rarePoolWeightData: unknown,
 ): WildEncounterSlot[] {
   if (!Array.isArray(data)) {
     return [];
@@ -185,21 +192,39 @@ function expandEncounterSpeciesRanges(
     return [];
   }
 
-  return pokemonRecords
-    .filter(record =>
-      ranges.some(
-        range =>
-          record.nationalDexId >= range.startNationalDexId &&
-          record.nationalDexId <= range.endNationalDexId,
-      ),
-    )
-    .map(record => ({
-      speciesId: record.speciesId,
-      name: record.name,
-      minLevel: MIN_POKEMON_LEVEL,
-      maxLevel: MAX_POKEMON_LEVEL,
-      weight: resolveWildEncounterWeight(record.catchRate),
-    }));
+  const records = pokemonRecords.filter(record =>
+    ranges.some(
+      range =>
+        record.nationalDexId >= range.startNationalDexId &&
+        record.nationalDexId <= range.endNationalDexId,
+    ),
+  );
+  const commonNationalDexIds = Array.isArray(commonNationalDexIdsData)
+    ? new Set(commonNationalDexIdsData.filter(isPositiveInteger))
+    : null;
+  const rareRecords = commonNationalDexIds
+    ? records.filter(record => !commonNationalDexIds.has(record.nationalDexId))
+    : [];
+  const rareSlotWeight =
+    commonNationalDexIds &&
+    commonNationalDexIds.size > 0 &&
+    rareRecords.length > 0 &&
+    typeof rarePoolWeightData === "number" &&
+    Number.isFinite(rarePoolWeightData) &&
+    rarePoolWeightData > 0
+      ? rarePoolWeightData / rareRecords.length
+      : null;
+
+  return records.map(record => ({
+    speciesId: record.speciesId,
+    name: record.name,
+    minLevel: MIN_POKEMON_LEVEL,
+    maxLevel: MAX_POKEMON_LEVEL,
+    weight:
+      rareSlotWeight !== null && !commonNationalDexIds?.has(record.nationalDexId)
+        ? rareSlotWeight
+        : resolveWildEncounterWeight(record.catchRate),
+  }));
 }
 
 function normalizeEncounterSpeciesRange(data: unknown): WildEncounterSpeciesRange | null {

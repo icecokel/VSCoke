@@ -28,6 +28,7 @@ type ExpectedControllerKeys =
   | "test";
 
 type ExpectedDependencyKeys =
+  | "canStartSoloChallenge"
   | "closePokemonStatusPanel"
   | "createStaticGroup"
   | "ensureCursorKeys"
@@ -43,7 +44,8 @@ type ExpectedDependencyKeys =
   | "isPokemonStatusPanelOpen"
   | "playNurseHealingEffect"
   | "registerStaticNpcs"
-  | "renderPartyHud";
+  | "renderPartyHud"
+  | "startSoloChallenge";
 
 type ExpectedHudKeys = "destroy" | "render" | "updateRound";
 

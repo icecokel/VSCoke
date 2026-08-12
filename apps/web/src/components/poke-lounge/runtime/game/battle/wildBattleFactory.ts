@@ -202,21 +202,37 @@ function createStoredBattleParty({
     return {
       slotIndex,
       pokemon: storedPokemon
-        ? createBattlePokemon({
-            currentHp: storedPokemon.currentHp,
-            gender: storedPokemon.gender,
-            individualValues: storedPokemon.individualValues,
-            storedExperience: storedPokemon.experience,
-            storedMoves: storedPokemon.moves,
-            level: storedPokemon.level,
+        ? createStoredBattlePokemon({
             moveRecords,
-            name: storedPokemon.name,
             personalRecords,
-            speciesId: storedPokemon.speciesId,
-            status: storedPokemon.status,
+            pokemon: storedPokemon,
           })
         : null,
     };
+  });
+}
+
+export function createStoredBattlePokemon({
+  moveRecords,
+  personalRecords,
+  pokemon,
+}: {
+  moveRecords: RomRefinedMoveCollection;
+  personalRecords: RomPersonalRecordCollection;
+  pokemon: PlayerPokemon;
+}): BattlePokemon {
+  return createBattlePokemon({
+    currentHp: pokemon.currentHp,
+    gender: pokemon.gender,
+    individualValues: normalizeIndividualValues(pokemon.individualValues, () => 0.5),
+    storedExperience: pokemon.experience,
+    storedMoves: pokemon.moves,
+    level: pokemon.level,
+    moveRecords,
+    name: pokemon.name,
+    personalRecords,
+    speciesId: pokemon.speciesId,
+    status: pokemon.status,
   });
 }
 
@@ -291,12 +307,7 @@ function createBattlePokemon({
     speed: stats.speed,
     statStages: createDefaultBattleStatStages(),
     typeIds: uniqueTypeIds(personalRecord.types.primary, personalRecord.types.secondary),
-    status:
-      status === "fainted" || resolvedCurrentHp === 0
-        ? "fainted"
-        : status === "poisoned"
-          ? "poisoned"
-          : "normal",
+    status: status === "fainted" || resolvedCurrentHp === 0 ? "fainted" : (status ?? "normal"),
     frontSprite: assets.front,
     backSprite: assets.back,
     moves: createBattleMovesForPokemon({

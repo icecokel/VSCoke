@@ -21,6 +21,7 @@ import { PokeLoungeCompetitiveSeat } from '../entities/poke-lounge-competitive-s
 import { PokeLoungeRoom } from '../entities/poke-lounge-room.entity';
 import type { PokeLoungeRoomSnapshot } from '../poke-lounge-room.repository';
 import type { CompetitiveActionResult } from './competitive-action.repository';
+import { COMPETITIVE_TURN_DEADLINE_MS } from './competitive-action.repository';
 import type { CompetitiveActionProjection } from './competitive-action.types';
 import { POKE_LOUNGE_ACTIVE_ROOM_LEASE_MS } from '../poke-lounge-room-policy';
 
@@ -161,6 +162,81 @@ describe('PostgresCompetitiveActionRepository command replay ordering', () => {
 });
 
 describe('PostgresCompetitiveActionRepository terminal convergence contract', () => {
+  it('commits a timeout when the opponent misses the persisted receipt deadline', async () => {
+    const harness = terminalTournamentRepository();
+    await harness.repository.submit(harness.firstInput);
+    harness.actionQueryResults.splice(2, 0, {
+      getOne: () => harness.actionRows[0],
+    });
+    const deadlineMs =
+      harness.actionRows[0].createdAt.getTime() + COMPETITIVE_TURN_DEADLINE_MS;
+
+    const result = await harness.repository.expirePendingTurn({
+      roomCode: 'ROOM01',
+      matchId: harness.oldMatchId,
+      turn: 0,
+      nowMs: deadlineMs,
+    });
+
+    expect(result).toMatchObject({
+      outcome: 'completed',
+      response: {
+        status: 'completed',
+        terminal: {
+          winnerPlayerId: 'player-4',
+          loserPlayerId: 'player-5',
+          reason: 'timeout',
+        },
+      },
+    });
+    expect(harness.actionRows[0]).toMatchObject({
+      status: 'resolved',
+      resolvedAt: new Date(deadlineMs),
+    });
+  });
+
+  it('resolves a late second action as the same transactional timeout', async () => {
+    const harness = terminalTournamentRepository();
+    await harness.repository.submit(harness.firstInput);
+    harness.actionRows[0].createdAt = new Date(
+      Date.now() - COMPETITIVE_TURN_DEADLINE_MS,
+    );
+    const lateInput = {
+      ...harness.secondInput,
+      action: { kind: 'move' as const, moveId: 'unknown-move' },
+    };
+
+    const result = await harness.repository.submit(lateInput);
+
+    expect(result).toMatchObject({
+      outcome: 'accepted',
+      committed: true,
+      response: {
+        terminal: {
+          winnerPlayerId: 'player-4',
+          loserPlayerId: 'player-5',
+          reason: 'timeout',
+        },
+      },
+    });
+    expect(harness.actionRows).toHaveLength(2);
+    expect(harness.actionRows.map((receipt) => receipt.status)).toEqual([
+      'resolved',
+      'resolved',
+    ]);
+    await expect(harness.repository.submit(lateInput)).resolves.toMatchObject({
+      outcome: 'replayed',
+      committed: false,
+      response: {
+        terminal: {
+          winnerPlayerId: 'player-4',
+          loserPlayerId: 'player-5',
+          reason: 'timeout',
+        },
+      },
+    });
+  });
+
   it('returns explicit null terminal metadata for the first pending action', async () => {
     const { harness, pending } = await terminalTournamentEvidence();
 
@@ -575,7 +651,10 @@ function terminalTournamentRepository() {
         if (Array.isArray(value)) {
           actionRows.splice(0, actionRows.length, ...value);
         } else {
-          actionRows.push(value);
+          value.createdAt ??= new Date('2099-07-16T00:00:00.000Z');
+          if (!actionRows.includes(value)) {
+            actionRows.push(value);
+          }
         }
         return Promise.resolve(value);
       },
@@ -654,6 +733,7 @@ function terminalTournamentRepository() {
     oldMatchId,
     terminalRevision: 51,
     actionRows,
+    actionQueryResults,
     historyWriter,
     room,
   };

@@ -48,6 +48,7 @@ export interface PokeLoungeAudioPlaybackSnapshot {
   activeBgmId: PokeLoungeBgmId | null;
   activeBgmPlayback: "html-audio" | "web-audio" | null;
   activeBgmVolume: number | null;
+  isActiveBgmUsingMasterGain: boolean;
   activeBufferSourceCount: number;
   activeHtmlAudioElementCount: number;
   isBgmPlaying: boolean;
@@ -257,10 +258,16 @@ export function getPokeLoungeAudioMuted(): boolean {
 }
 
 export function getPokeLoungeAudioPlaybackSnapshotForTest(): PokeLoungeAudioPlaybackSnapshot {
+  const activeBgmVolume =
+    activeBgm?.audio && activeBgm.gain
+      ? clampVolume(activeBgm.gain.gain.value * (masterGain?.gain.value ?? masterVolume))
+      : (activeBgm?.audio?.volume ?? null);
+
   return {
     activeBgmId: activeBgm?.id ?? null,
     activeBgmPlayback: activeBgm?.source ? "web-audio" : activeBgm?.audio ? "html-audio" : null,
-    activeBgmVolume: activeBgm?.audio?.volume ?? null,
+    activeBgmVolume,
+    isActiveBgmUsingMasterGain: Boolean(activeBgm?.audio && activeBgm.gain),
     activeBufferSourceCount: activeBufferSources.size,
     activeHtmlAudioElementCount: activeHtmlAudioElements.size,
     isBgmPlaying: isActiveBgmPlaying(),
@@ -442,7 +449,13 @@ async function playPokeLoungeBgmAsync(
   audio.loop = true;
   audio.currentTime = 0;
   setHtmlAudioElementVolume(audio, baseVolume);
-  const nextBgm: ActivePokeLoungeBgm = { id, audio, baseVolume, gain: null, source: null };
+  const nextBgm: ActivePokeLoungeBgm = {
+    id,
+    audio,
+    baseVolume,
+    gain: htmlAudioGains.get(audio) ?? null,
+    source: null,
+  };
   activeBgm = nextBgm;
   try {
     await audio.play();
@@ -480,7 +493,7 @@ async function playAppleMobileHtmlBgm(
     if (currentAudio && currentAudio === appleMobileBgmAudio) {
       // 단일 HTMLAudioElement를 쓰는 iOS 경로에서 이전 전환의 fade-out을 취소한다.
       appleMobileBgmFadeGeneration += 1;
-      currentAudio.volume = resolveVolume(activeBgm.baseVolume, 1);
+      setHtmlAudioElementVolume(currentAudio, activeBgm.baseVolume);
     }
     markBgmRequestCompleted(item.id, requestGeneration);
     return;
@@ -514,12 +527,12 @@ async function playAppleMobileHtmlBgm(
   audio.loop = true;
   audio.muted = false;
   audio.currentTime = 0;
-  audio.volume = 0;
+  setHtmlAudioElementVolume(audio, 0);
   const nextBgm: ActivePokeLoungeBgm = {
     id: item.id,
     audio,
     baseVolume,
-    gain: null,
+    gain: htmlAudioGains.get(audio) ?? null,
     source: null,
   };
   activeBgm = nextBgm;
@@ -546,7 +559,7 @@ async function playAppleMobileHtmlBgm(
   }
 
   markBgmRequestCompleted(item.id, requestGeneration);
-  fadeInAppleMobileBgm(audio, baseVolume);
+  fadeInAppleMobileBgm(nextBgm);
 }
 
 async function fadeOutAppleMobileBgm(
@@ -559,7 +572,7 @@ async function fadeOutAppleMobileBgm(
   }
 
   const fadeGeneration = (appleMobileBgmFadeGeneration += 1);
-  const completed = await fadeAppleMobileBgmVolume(audio, 0, fadeGeneration);
+  const completed = await fadeAppleMobileBgmVolume(bgm, 0, fadeGeneration);
   if (requestGeneration !== bgmRequestGeneration || !completed) {
     return false;
   }
@@ -568,19 +581,24 @@ async function fadeOutAppleMobileBgm(
   return true;
 }
 
-function fadeInAppleMobileBgm(audio: HTMLAudioElement, baseVolume: number): void {
+function fadeInAppleMobileBgm(bgm: ActivePokeLoungeBgm): void {
   const fadeGeneration = (appleMobileBgmFadeGeneration += 1);
-  const targetVolume = resolveVolume(baseVolume, 1);
+  const targetVolume = bgm.gain ? clampVolume(bgm.baseVolume) : resolveVolume(bgm.baseVolume, 1);
 
-  void fadeAppleMobileBgmVolume(audio, targetVolume, fadeGeneration);
+  void fadeAppleMobileBgmVolume(bgm, targetVolume, fadeGeneration);
 }
 
 function fadeAppleMobileBgmVolume(
-  audio: HTMLAudioElement,
+  bgm: ActivePokeLoungeBgm,
   targetVolume: number,
   fadeGeneration: number,
 ): Promise<boolean> {
-  const startVolume = audio.volume;
+  const audio = bgm.audio;
+  if (!audio) {
+    return Promise.resolve(false);
+  }
+
+  const startVolume = bgm.gain?.gain.value ?? audio.volume;
   const startedAt = performance.now();
 
   return new Promise(resolve => {
@@ -591,7 +609,12 @@ function fadeAppleMobileBgmVolume(
       }
 
       const progress = Math.min(1, (now - startedAt) / APPLE_MOBILE_BGM_FADE_DURATION_MS);
-      audio.volume = startVolume + (targetVolume - startVolume) * progress;
+      const volume = startVolume + (targetVolume - startVolume) * progress;
+      if (bgm.gain) {
+        bgm.gain.gain.value = volume;
+      } else {
+        audio.volume = volume;
+      }
       if (progress === 1) {
         resolve(true);
         return;
@@ -847,7 +870,7 @@ function primeAppleMobileBgmFromUserGesture(): void {
   const audio = getAppleMobileBgmAudio(APPLE_MOBILE_UNLOCK_BGM_SRC);
   audio.loop = true;
   audio.muted = true;
-  audio.volume = 0;
+  setHtmlAudioElementVolume(audio, 0);
   void audio
     .play()
     .then(() => {
@@ -944,10 +967,6 @@ function setHtmlAudioElementVolume(audio: HTMLAudioElement, baseVolume: number):
 }
 
 function getHtmlAudioGain(audio: HTMLAudioElement): GainNode | null {
-  if (shouldPreferAppleMobileHtmlAudio()) {
-    return null;
-  }
-
   const cached = htmlAudioGains.get(audio);
   if (cached) {
     return cached;

@@ -21,6 +21,7 @@ type AudioPlaybackSnapshot = {
   activeBgmId: "field-day" | "wild-battle" | null;
   activeBgmPlayback: "html-audio" | "web-audio" | null;
   activeBgmVolume: number | null;
+  isActiveBgmUsingMasterGain: boolean;
   activeBufferSourceCount: number;
   activeHtmlAudioElementCount: number;
   isBgmPlaying: boolean;
@@ -197,6 +198,7 @@ test("Poke Lounge 화면에서 이탈하면 재생 중인 모든 오디오를 �
     activeBgmId: null,
     activeBgmPlayback: null,
     activeBgmVolume: null,
+    isActiveBgmUsingMasterGain: false,
     activeBufferSourceCount: 0,
     activeHtmlAudioElementCount: 0,
     isBgmPlaying: false,
@@ -400,6 +402,9 @@ test("Poke Lounge 모바일은 세로 필드와 전체 화면 메뉴를 제공�
     "true",
   );
   const volumeButton = settingsScreen.getByRole("button", { name: /소리/ });
+  await expect
+    .poll(async () => (await readAudioPlaybackSnapshot(page))?.isActiveBgmUsingMasterGain ?? false)
+    .toBe(true);
   await expect(volumeButton).toHaveText("소리 30%");
   await volumeButton.click();
   await expect(volumeButton).toHaveText("소리 75%");

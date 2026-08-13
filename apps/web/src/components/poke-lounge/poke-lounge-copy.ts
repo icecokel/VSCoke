@@ -104,6 +104,9 @@ export interface PokeLoungeCopy {
     doNotLearnMove: string;
     confirmMoveReplacement: string;
     help: string;
+    battleHelpChoose: string;
+    battleHelpAdvance: string;
+    battleHelpBack: string;
     use: string;
     buy: string;
     deposit: string;
@@ -279,6 +282,9 @@ const KOREAN_COPY: PokeLoungeCopy = {
     doNotLearnMove: "배우지 않기",
     confirmMoveReplacement: "선택한 기술 잊기",
     help: "조작 안내",
+    battleHelpChoose: "화면의 싸운다·가방·포켓몬·도망 버튼으로 행동을 선택합니다.",
+    battleHelpAdvance: "전투 문구를 확인한 뒤 다음 버튼을 누릅니다.",
+    battleHelpBack: "기술·가방·포켓몬 선택에서 이전 화면으로 돌아갑니다.",
     use: "사용",
     buy: "구매",
     deposit: "보관",
@@ -463,6 +469,9 @@ const ENGLISH_COPY: PokeLoungeCopy = {
     doNotLearnMove: "Do not learn",
     confirmMoveReplacement: "Forget selected move",
     help: "Controls",
+    battleHelpChoose: "Choose an action with the Fight, Bag, Pokémon, or Run buttons.",
+    battleHelpAdvance: "Read the battle message, then press Next.",
+    battleHelpBack: "Return from move, Bag, or Pokémon selection with Back.",
     use: "Use",
     buy: "Buy",
     deposit: "Store",
@@ -649,6 +658,9 @@ const JAPANESE_COPY: PokeLoungeCopy = {
     doNotLearnMove: "覚えない",
     confirmMoveReplacement: "選んだわざを忘れる",
     help: "操作ガイド",
+    battleHelpChoose: "「たたかう」「バッグ」「ポケモン」「にげる」のボタンで行動を選びます。",
+    battleHelpAdvance: "バトルメッセージを確認して「次へ」を押します。",
+    battleHelpBack: "わざ・バッグ・ポケモン選択から「戻る」で前の画面に戻ります。",
     use: "使う",
     buy: "購入",
     deposit: "預ける",

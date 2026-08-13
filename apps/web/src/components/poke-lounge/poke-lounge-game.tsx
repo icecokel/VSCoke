@@ -322,6 +322,12 @@ export function PokeLoungeGame() {
             : autosaveStatus === "saved"
               ? copy.autosaveSaved
               : copy.autosaveReady;
+  const hydrationRetryDisabled = stateHydrationRetrying || Boolean(multiplayerRoomId);
+  const hydrationRetryLabel = multiplayerRoomId
+    ? copy.hydrationRetryAfterRoom
+    : stateHydrationRetrying
+      ? copy.hydrationRetrying
+      : copy.hydrationRetry;
   const resultRequiresAuthentication =
     status !== "authenticated" || !sessionToken || isAuthSessionError(apiSession?.error);
   const resultReturnsToRoomEntry =
@@ -1237,9 +1243,13 @@ export function PokeLoungeGame() {
             connectionLabel: multiplayerRoomId
               ? `${connectionLabel} · ${multiplayerRoomId}`
               : connectionLabel,
+            hydrationFallbackMessage: usingLocalHydrationFallback ? stateHydrationMessage : null,
+            hydrationRetryDisabled,
+            hydrationRetryLabel,
             localRoomShare,
             onClose: handleMobileSettingsClose,
             onExit: handleGameExitRequest,
+            onRetryHydration: handleStateHydrationRetry,
             onRetryRanking: () => setRankingAttempt(attempt => attempt + 1),
             onRoomShare: handleRoomShare,
             onVolumeCycle: handleVolumeCycle,
@@ -1348,14 +1358,10 @@ export function PokeLoungeGame() {
                 variant="outline"
                 className={styles.hydrationFallbackRetry}
                 onClick={handleStateHydrationRetry}
-                disabled={stateHydrationRetrying || Boolean(multiplayerRoomId)}
+                disabled={hydrationRetryDisabled}
                 data-testid="poke-lounge-state-hydration-retry"
               >
-                {multiplayerRoomId
-                  ? copy.hydrationRetryAfterRoom
-                  : stateHydrationRetrying
-                    ? copy.hydrationRetrying
-                    : copy.hydrationRetry}
+                {hydrationRetryLabel}
               </Button>
             </div>
           ) : null}

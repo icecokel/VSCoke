@@ -706,6 +706,12 @@
   line-height: 1.35;
 }
 
+.battleHelpList {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
 .settingsScreen {
   z-index: 110;
   display: grid;

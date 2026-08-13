@@ -58,6 +58,7 @@ export interface MobileBattleItemOption {
 export interface MobileBattleUiState {
   phase: MobileBattleDeckPhase;
   message: string | null;
+  isHelpOpen: boolean;
   isInputLocked: boolean;
   canGoBack: boolean;
   isForcedPartySwitch: boolean;
@@ -77,6 +78,7 @@ export interface MobileBattleUiState {
 export type MobileBattleUiAction =
   | { type: "confirm-message" }
   | { type: "go-back" }
+  | { type: "toggle-help" }
   | { type: "select-command"; index: number }
   | { type: "select-move"; index: number }
   | { type: "select-party"; index: number }

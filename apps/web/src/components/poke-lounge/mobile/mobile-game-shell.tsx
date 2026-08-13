@@ -122,9 +122,13 @@ export interface MobileRankingEntry {
 interface MobileSettingsProps {
   autosaveLabel: string;
   connectionLabel: string;
+  hydrationFallbackMessage: string | null;
+  hydrationRetryDisabled: boolean;
+  hydrationRetryLabel: string;
   localRoomShare: boolean;
   onClose(): void;
   onExit(): void;
+  onRetryHydration(): void;
   onRoomShare(): void;
   onVolumeCycle(): void;
   onRetryRanking(): void;
@@ -202,11 +206,20 @@ export function MobileGameShell({
             >
               ☰
             </button>
-            {activeScene === "world" ? (
+            {activeScene ? (
               <button
                 type="button"
                 className={styles.utilityButton}
-                onClick={() => dispatchWorldAction({ type: "open-help" })}
+                onClick={() => {
+                  if (activeScene === "world") {
+                    dispatchWorldAction({ type: "open-help" });
+                    return;
+                  }
+
+                  resetVirtualGamepad();
+                  void primePokeLoungeAudio();
+                  dispatchMobileBattleUiAction(document, { type: "toggle-help" });
+                }}
                 aria-label={copy.mobile.help}
                 data-poke-lounge-mobile-help="true"
               >
@@ -890,6 +903,38 @@ function MobileBattleDeck({ copy }: { copy: PokeLoungeCopy }) {
     return <p className={styles.deckNotice}>{copy.mobile.preparing}</p>;
   }
 
+  if (battleState.isHelpOpen) {
+    return (
+      <div className={styles.selectionDeck} data-poke-lounge-mobile-deck="battle-help">
+        <div className={styles.deckHeading}>
+          <strong>{copy.mobile.help}</strong>
+          <button
+            type="button"
+            className={styles.backButton}
+            onClick={() => dispatchAction({ type: "toggle-help" })}
+            data-poke-lounge-mobile-battle-help-close="true"
+          >
+            {copy.settingsClose}
+          </button>
+        </div>
+        <ul className={`${styles.helpList} ${styles.battleHelpList}`}>
+          <li>
+            <b>{copy.mobile.battleDeckLabel}</b>
+            <span>{copy.mobile.battleHelpChoose}</span>
+          </li>
+          <li>
+            <b>{copy.mobile.next}</b>
+            <span>{copy.mobile.battleHelpAdvance}</span>
+          </li>
+          <li>
+            <b>{copy.mobile.back}</b>
+            <span>{copy.mobile.battleHelpBack}</span>
+          </li>
+        </ul>
+      </div>
+    );
+  }
+
   if (battleState.message) {
     return (
       <div className={styles.messageDeck} data-poke-lounge-mobile-deck="battle-message">
@@ -1084,9 +1129,13 @@ function MobileSettingsScreen({
   autosaveLabel,
   connectionLabel,
   copy,
+  hydrationFallbackMessage,
+  hydrationRetryDisabled,
+  hydrationRetryLabel,
   localRoomShare,
   onClose,
   onExit,
+  onRetryHydration,
   onRetryRanking,
   onRoomShare,
   onVolumeCycle,
@@ -1139,6 +1188,17 @@ function MobileSettingsScreen({
                   : copy.settingsShare}
           </Button>
         ) : null}
+        {hydrationFallbackMessage ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onRetryHydration}
+            disabled={hydrationRetryDisabled}
+            data-testid="poke-lounge-state-hydration-retry"
+          >
+            {hydrationRetryLabel}
+          </Button>
+        ) : null}
         <Button
           type="button"
           variant="destructive"
@@ -1152,6 +1212,11 @@ function MobileSettingsScreen({
       <div className={styles.settingsStatus} aria-live="polite">
         <span>{connectionLabel}</span>
         <span>{autosaveLabel}</span>
+        {hydrationFallbackMessage ? (
+          <span data-testid="poke-lounge-state-hydration-local-fallback">
+            {hydrationFallbackMessage}
+          </span>
+        ) : null}
       </div>
       <PokeLoungePartySlotMenu copy={copy} party={partySlots} />
       <section className={styles.rankingSection} aria-labelledby="poke-lounge-mobile-ranking-title">

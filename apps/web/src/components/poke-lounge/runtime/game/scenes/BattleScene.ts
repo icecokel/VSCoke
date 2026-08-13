@@ -561,6 +561,8 @@ export class BattleScene extends Phaser.Scene {
       this.messageAutoAdvanceTimer = null;
       this.removeMobileBattleUiListeners?.();
       this.removeMobileBattleUiListeners = null;
+      this.shortcutGuideOpen = false;
+      setShortcutGuideTouchControlsSuppressed(false);
       this.setBattleUiSceneMarker(false);
       dispatchPokeLoungeAccessibleStatus(this.game.canvas.ownerDocument, "필드 탐색");
     });
@@ -572,6 +574,8 @@ export class BattleScene extends Phaser.Scene {
       this.messageAutoAdvanceTimer = null;
       this.removeMobileBattleUiListeners?.();
       this.removeMobileBattleUiListeners = null;
+      this.shortcutGuideOpen = false;
+      setShortcutGuideTouchControlsSuppressed(false);
       this.setBattleUiSceneMarker(false);
     });
     if (this.authoritativeProjection?.status === "completed") {
@@ -950,10 +954,18 @@ export class BattleScene extends Phaser.Scene {
       this.evolutionAnimationPlaying ||
       this.isHpAnimationPlaying() ||
       this.isHitAnimationPlaying() ||
-      this.isStatusCommitPlaying() ||
-      this.authoritativeInputPending ||
-      this.shortcutGuideOpen
+      this.isStatusCommitPlaying()
     ) {
+      return;
+    }
+
+    if (action.type === "toggle-help") {
+      playBattleConfirmSound();
+      this.toggleShortcutGuide();
+      return;
+    }
+
+    if (this.authoritativeInputPending || this.shortcutGuideOpen) {
       return;
     }
 
@@ -1066,6 +1078,7 @@ export class BattleScene extends Phaser.Scene {
     const state: MobileBattleUiState = {
       phase,
       message: this.state.messageQueue[0] ?? null,
+      isHelpOpen: this.shortcutGuideOpen,
       isInputLocked:
         this.battleEntrancePlaying ||
         this.captureAnimationPlaying ||
@@ -2488,10 +2501,6 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private toggleShortcutGuide(): void {
-    if (this.usesMobileBattleDeck()) {
-      return;
-    }
-
     if (this.shortcutGuideOpen) {
       this.closeShortcutGuide();
       return;
@@ -2501,12 +2510,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private openShortcutGuide(): void {
-    if (this.usesMobileBattleDeck()) {
-      return;
-    }
-
     this.shortcutGuideOpen = true;
-    setShortcutGuideTouchControlsSuppressed(true);
+    if (!this.usesMobileBattleDeck()) {
+      setShortcutGuideTouchControlsSuppressed(true);
+    }
     this.render();
   }
 
@@ -3467,7 +3474,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private drawShortcutGuideIfOpen(): void {
-    if (!this.shortcutGuideOpen) {
+    if (!this.shortcutGuideOpen || this.usesMobileBattleDeck()) {
       return;
     }
 

@@ -2054,10 +2054,6 @@
             "type": "number",
             "example": 25
           },
-          "name": {
-            "type": "string",
-            "example": "Pikachu"
-          },
           "level": {
             "type": "number",
             "example": 12
@@ -2071,7 +2067,7 @@
             "example": 30
           }
         },
-        "required": ["speciesId", "name", "level", "currentHp", "maxHp"]
+        "required": ["speciesId", "level", "currentHp", "maxHp"]
       },
       "PokeLoungePartySnapshotDto": {
         "type": "object",
@@ -2087,18 +2083,30 @@
           "representativePokemon": {
             "$ref": "#/components/schemas/PokeLoungeRepresentativePokemonDto"
           },
+          "partySize": {
+            "type": "number",
+            "example": 1,
+            "minimum": 0
+          },
           "updatedAtMs": {
             "type": "number",
             "example": 1720000002000
           }
         },
-        "required": ["playerId", "updatedAtMs"]
+        "required": ["playerId", "partySize", "updatedAtMs"]
       },
       "CompetitiveMoveStateDto": {
         "type": "object",
         "properties": {
           "moveId": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
           },
           "pp": {
             "type": "number",
@@ -2111,7 +2119,34 @@
         "type": "object",
         "properties": {
           "speciesId": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "slotIndex": {
+            "type": "number",
+            "minimum": 0
+          },
+          "level": {
+            "type": "number",
+            "minimum": 1
+          },
+          "attack": {
+            "type": "number",
+            "minimum": 1
+          },
+          "defense": {
+            "type": "number",
+            "minimum": 1
+          },
+          "speed": {
+            "type": "number",
+            "minimum": 1
           },
           "maxHp": {
             "type": "number",
@@ -2181,7 +2216,7 @@
         "properties": {
           "rulesetVersion": {
             "type": "number",
-            "example": 1
+            "example": 2
           },
           "turn": {
             "type": "number",
@@ -2708,8 +2743,8 @@
           },
           "closeReason": {
             "type": "string",
-            "enum": ["legacy-room-restart-required"],
-            "example": "legacy-room-restart-required"
+            "enum": ["legacy-room-restart-required", "competitive-party-not-ready"],
+            "example": "competitive-party-not-ready"
           },
           "createdAtMs": {
             "type": "number",
@@ -2904,8 +2939,14 @@
             "enum": ["move", "switch"]
           },
           "moveId": {
-            "type": "string",
-            "example": "steady-strike"
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
           },
           "slotIndex": {
             "type": "number",
@@ -2975,6 +3016,92 @@
         },
         "required": ["playerId", "sessionId", "ready"]
       },
+      "PokeLoungePartyMoveDto": {
+        "type": "object",
+        "properties": {
+          "moveId": {
+            "type": "number",
+            "example": 33
+          },
+          "name": {
+            "type": "string",
+            "example": "Tackle"
+          },
+          "pp": {
+            "type": "number",
+            "example": 35
+          },
+          "maxPp": {
+            "type": "number",
+            "example": 35
+          }
+        },
+        "required": ["moveId", "name", "pp", "maxPp"]
+      },
+      "PokeLoungePartyPokemonDto": {
+        "type": "object",
+        "properties": {
+          "slotIndex": {
+            "type": "number",
+            "example": 0
+          },
+          "speciesId": {
+            "type": "number",
+            "example": 7
+          },
+          "name": {
+            "type": "string",
+            "example": "Squirtle"
+          },
+          "level": {
+            "type": "number",
+            "example": 11
+          },
+          "currentHp": {
+            "type": "number",
+            "example": 24
+          },
+          "maxHp": {
+            "type": "number",
+            "example": 30
+          },
+          "attack": {
+            "type": "number",
+            "example": 22
+          },
+          "defense": {
+            "type": "number",
+            "example": 25
+          },
+          "speed": {
+            "type": "number",
+            "example": 18
+          },
+          "status": {
+            "type": "string",
+            "example": "normal"
+          },
+          "moves": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PokeLoungePartyMoveDto"
+            }
+          }
+        },
+        "required": [
+          "slotIndex",
+          "speciesId",
+          "name",
+          "level",
+          "currentHp",
+          "maxHp",
+          "attack",
+          "defense",
+          "speed",
+          "status",
+          "moves"
+        ]
+      },
       "UpdatePokeLoungePartySnapshotDto": {
         "type": "object",
         "properties": {
@@ -2989,6 +3116,16 @@
           "displayName": {
             "type": "string",
             "example": "Player A"
+          },
+          "activePartySlotIndex": {
+            "type": "number",
+            "example": 0
+          },
+          "party": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PokeLoungePartyPokemonDto"
+            }
           },
           "representativePokemon": {
             "$ref": "#/components/schemas/PokeLoungeRepresentativePokemonDto"

@@ -47,6 +47,29 @@ export function toPokeLoungePublicRoomState(
 ): PokeLoungePublicRoomState {
   return {
     ...room,
+    partySnapshots: Object.fromEntries(
+      Object.entries(room.partySnapshots).map(([playerId, snapshot]) => [
+        playerId,
+        {
+          playerId: snapshot.playerId,
+          ...(snapshot.displayName
+            ? { displayName: snapshot.displayName }
+            : {}),
+          ...(snapshot.representativePokemon
+            ? {
+                representativePokemon: {
+                  speciesId: snapshot.representativePokemon.speciesId,
+                  level: snapshot.representativePokemon.level,
+                  currentHp: snapshot.representativePokemon.currentHp,
+                  maxHp: snapshot.representativePokemon.maxHp,
+                },
+              }
+            : {}),
+          partySize: snapshot.party?.length ?? 0,
+          updatedAtMs: snapshot.updatedAtMs,
+        },
+      ]),
+    ),
     competitiveTransitions: structuredClone(room.competitiveTransitions ?? []),
     participants: room.participants.map((participant) => ({
       playerId: participant.playerId,

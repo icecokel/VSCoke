@@ -18,8 +18,24 @@ const PLAYER_ID_MAX_LENGTH = 256;
 const MAX_COMPETITIVE_PROJECTION_DEPTH = 6;
 const MAX_COMPETITIVE_RECORD_KEYS = 16;
 const MAX_COMPETITIVE_ARRAY_ITEMS = 2;
+const MAX_COMPETITIVE_TEAM_ITEMS = 6;
 const MAX_COMPETITIVE_TRANSITIONS = 8;
 const MAX_ROOM_SNAPSHOT_KEYS = 32;
+
+/** Legacy fixture shape retained for old replay tests only. New projections are V2. */
+export const APPROVED_COMPETITIVE_LOADOUT = APPROVED_COMPETITIVE_RULESET_V1.loadout.map(
+  template => ({
+    speciesId: template.speciesId,
+    maxHp: template.maxHp,
+    moves: template.moveIds.map(moveId => ({
+      moveId,
+      maxPp:
+        APPROVED_COMPETITIVE_RULESET_V1.moves[
+          moveId as keyof typeof APPROVED_COMPETITIVE_RULESET_V1.moves
+        ].maxPp,
+    })),
+  }),
+);
 
 const COMPETITIVE_PROJECTION_KEYS = [
   "assignmentRevision",
@@ -37,17 +53,6 @@ const COMPETITIVE_PROJECTION_KEYS = [
   "terminal",
 ] as const;
 const COMPETITIVE_TERMINAL_METADATA_KEYS = ["terminalEventId", "terminalRoomRevision"] as const;
-
-export const APPROVED_COMPETITIVE_LOADOUT = APPROVED_COMPETITIVE_RULESET_V1.loadout.map(
-  template => ({
-    speciesId: template.speciesId,
-    maxHp: template.maxHp,
-    moves: template.moveIds.map(moveId => ({
-      moveId,
-      maxPp: APPROVED_COMPETITIVE_RULESET_V1.moves[moveId].maxPp,
-    })),
-  }),
-);
 
 type CompetitiveTerminal = NonNullable<CompetitiveProjection["terminal"]>;
 
@@ -71,7 +76,7 @@ export function parseCompetitiveProjectionContract(
   const assignmentRevision = requireNonnegativeSafeInteger(projection.assignmentRevision);
   const currentTurn = requireNonnegativeSafeInteger(projection.currentTurn);
   const rulesetVersion = projection.rulesetVersion;
-  const rulesetHash = requireHash(projection.rulesetHash);
+  const rulesetHash = requireString(projection.rulesetHash);
   const stateHash = requireHash(projection.stateHash);
   const status = projection.status;
   const playerIds = parsePlayerIds(projection.playerIds);
@@ -302,8 +307,9 @@ function parsePlayer(
   if (
     playerId !== expectedPlayerId ||
     !Array.isArray(player.team) ||
-    player.team.length !== APPROVED_COMPETITIVE_LOADOUT.length ||
-    activeSlotIndex >= player.team.length
+    player.team.length < 1 ||
+    player.team.length > MAX_COMPETITIVE_TEAM_ITEMS ||
+    activeSlotIndex >= 6
   ) {
     throw schemaError();
   }
@@ -311,50 +317,78 @@ function parsePlayer(
   return {
     playerId,
     activeSlotIndex,
-    team: player.team.map((pokemon, slotIndex) =>
-      parsePokemon(pokemon, APPROVED_COMPETITIVE_LOADOUT[slotIndex]),
-    ),
+    team: player.team.map(pokemon => parsePokemon(pokemon)),
   };
 }
 
 function parsePokemon(
   value: unknown,
-  approved: (typeof APPROVED_COMPETITIVE_LOADOUT)[number],
 ): CompetitiveProjection["currentState"]["playersById"][string]["team"][number] {
-  const pokemon = requireRecord(value, ["currentHp", "maxHp", "moves", "speciesId", "status"], 4);
+  const pokemon = requireRecord(
+    value,
+    [
+      "attack",
+      "currentHp",
+      "defense",
+      "level",
+      "maxHp",
+      "moves",
+      "slotIndex",
+      "speciesId",
+      "speed",
+      "status",
+    ],
+    4,
+  );
+  const speciesId = requireNonnegativeSafeInteger(pokemon.speciesId);
+  const slotIndex = requireNonnegativeSafeInteger(pokemon.slotIndex);
+  const level = requireNonnegativeSafeInteger(pokemon.level);
   const maxHp = requireNonnegativeSafeInteger(pokemon.maxHp);
   const currentHp = requireNonnegativeSafeInteger(pokemon.currentHp);
+  const attack = requireNonnegativeSafeInteger(pokemon.attack);
+  const defense = requireNonnegativeSafeInteger(pokemon.defense);
+  const speed = requireNonnegativeSafeInteger(pokemon.speed);
   if (
-    pokemon.speciesId !== approved.speciesId ||
-    maxHp !== approved.maxHp ||
+    speciesId < 1 ||
+    slotIndex > 5 ||
+    level < 1 ||
+    level > 100 ||
+    attack < 1 ||
+    defense < 1 ||
+    speed < 1 ||
     currentHp > maxHp ||
     (pokemon.status !== "none" && pokemon.status !== "paralyzed") ||
     !Array.isArray(pokemon.moves) ||
-    pokemon.moves.length !== approved.moves.length
+    pokemon.moves.length > 4
   ) {
     throw schemaError();
   }
 
   return {
-    speciesId: approved.speciesId,
+    speciesId,
+    slotIndex,
+    level,
+    attack,
+    defense,
+    speed,
     maxHp,
     currentHp,
     status: pokemon.status,
-    moves: pokemon.moves.map((move, index) => parseMove(move, approved.moves[index])),
+    moves: pokemon.moves.map(move => parseMove(move)),
   };
 }
 
 function parseMove(
   value: unknown,
-  approved: (typeof APPROVED_COMPETITIVE_LOADOUT)[number]["moves"][number],
 ): CompetitiveProjection["currentState"]["playersById"][string]["team"][number]["moves"][number] {
   const move = requireRecord(value, ["moveId", "pp"], 5);
+  const moveId = requireNonnegativeSafeInteger(move.moveId);
   const pp = requireNonnegativeSafeInteger(move.pp);
-  if (move.moveId !== approved.moveId || pp > approved.maxPp) {
+  if (moveId < 1 || moveId > 470 || pp > 99) {
     throw schemaError();
   }
 
-  return { moveId: approved.moveId, pp };
+  return { moveId, pp };
 }
 
 function parsePlayerIds(value: unknown): [string, string] {
@@ -405,8 +439,8 @@ function parseTerminal(
     (terminal.reason !== "faint" &&
       terminal.reason !== "forfeit" &&
       terminal.reason !== "timeout") ||
-    scoreByPlayerId[winnerPlayerId] !== APPROVED_COMPETITIVE_RULESET_V1.scores.win ||
-    scoreByPlayerId[loserPlayerId] !== APPROVED_COMPETITIVE_RULESET_V1.scores.loss
+    scoreByPlayerId[winnerPlayerId] !== 100 ||
+    scoreByPlayerId[loserPlayerId] !== 50
   ) {
     throw schemaError();
   }

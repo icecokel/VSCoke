@@ -1,8 +1,8 @@
-export const COMPETITIVE_RULESET_VERSION = 1;
-export const COMPETITIVE_STRUGGLE_MOVE_ID = "struggle";
+export const COMPETITIVE_RULESET_VERSION = 2;
+export const COMPETITIVE_STRUGGLE_MOVE_ID = 165;
 
 export interface CompetitiveMoveDefinition {
-  moveId: string;
+  moveId: number;
   power: number;
   accuracy: number;
   criticalHitChance: number;
@@ -14,17 +14,51 @@ export interface CompetitiveMoveDefinition {
 }
 
 export interface CompetitiveLoadoutEntry {
-  speciesId: string;
+  speciesId: number | string;
   level: number;
   maxHp: number;
   attack: number;
   defense: number;
   speed: number;
-  moveIds: readonly string[];
+  moveIds: readonly (number | string)[];
 }
 
-export function canUseCompetitiveStruggle(moves: readonly { pp: number }[]): boolean {
-  return moves.length > 0 && moves.every(move => move.pp === 0);
+export interface CompetitivePartyMemberInput {
+  slotIndex: number;
+  speciesId: number;
+  level: number;
+  maxHp: number;
+  currentHp: number;
+  attack: number;
+  defense: number;
+  speed: number;
+  status?: "none" | "paralyzed";
+  moves: readonly { moveId: number; pp: number; maxPp?: number }[];
+}
+
+export interface CompetitivePartyInput {
+  activeSlotIndex: number;
+  members: readonly CompetitivePartyMemberInput[];
+}
+
+export interface CompetitiveRulesetV2 {
+  version: 2;
+  participantCount: 2;
+  minTeamSize: 1;
+  maxTeamSize: 6;
+  scores: { win: 100; loss: 50 };
+  paralysisNoActionChance: number;
+  damageRangePercent: { minimum: number; maximum: number };
+  randomConsumptionOrder: readonly string[];
+  struggle: {
+    moveId: number;
+    power: number;
+    accuracy: number;
+    criticalHitChance: number;
+    maxPp: 0;
+    secondaryEffect: null;
+    recoilMaxHpDivisor: number;
+  };
 }
 
 function deepFreeze<T>(value: T): Readonly<T> {
@@ -37,19 +71,42 @@ function deepFreeze<T>(value: T): Readonly<T> {
   return value;
 }
 
-export const APPROVED_COMPETITIVE_RULESET_V1 = deepFreeze({
+/** V2 has no fixed loadout; each assignment is built from the saved party. */
+export const APPROVED_COMPETITIVE_RULESET_V2 = deepFreeze({
   version: COMPETITIVE_RULESET_VERSION,
   participantCount: 2,
-  teamSize: 2,
-  scores: {
-    win: 100,
-    loss: 50,
-  },
+  minTeamSize: 1,
+  maxTeamSize: 6,
+  scores: { win: 100, loss: 50 },
   paralysisNoActionChance: 0.25,
-  damageRangePercent: {
-    minimum: 85,
-    maximum: 100,
+  damageRangePercent: { minimum: 85, maximum: 100 },
+  randomConsumptionOrder: [
+    "speed-tie",
+    "paralysis",
+    "accuracy",
+    "critical-hit",
+    "damage-range",
+    "secondary-effect",
+  ],
+  struggle: {
+    moveId: COMPETITIVE_STRUGGLE_MOVE_ID,
+    power: 50,
+    accuracy: 1,
+    criticalHitChance: 1 / 16,
+    maxPp: 0,
+    secondaryEffect: null,
+    recoilMaxHpDivisor: 4,
   },
+} as const);
+
+/** Legacy rows can be read during migration, but no new assignment uses it. */
+export const APPROVED_COMPETITIVE_RULESET_V1 = deepFreeze({
+  version: 1,
+  participantCount: 2,
+  teamSize: 2,
+  scores: { win: 100, loss: 50 },
+  paralysisNoActionChance: 0.25,
+  damageRangePercent: { minimum: 85, maximum: 100 },
   randomConsumptionOrder: [
     "speed-tie",
     "paralysis",
@@ -73,10 +130,7 @@ export const APPROVED_COMPETITIVE_RULESET_V1 = deepFreeze({
       accuracy: 0.9,
       criticalHitChance: 1 / 16,
       maxPp: 15,
-      secondaryEffect: {
-        status: "paralyzed" as const,
-        chance: 0.3,
-      },
+      secondaryEffect: { status: "paralyzed" as const, chance: 0.3 },
     },
     "heavy-blow": {
       moveId: "heavy-blow",
@@ -88,7 +142,7 @@ export const APPROVED_COMPETITIVE_RULESET_V1 = deepFreeze({
     },
   },
   struggle: {
-    moveId: COMPETITIVE_STRUGGLE_MOVE_ID,
+    moveId: "struggle",
     power: 50,
     accuracy: 1,
     criticalHitChance: 1 / 16,
@@ -118,6 +172,30 @@ export const APPROVED_COMPETITIVE_RULESET_V1 = deepFreeze({
   ],
 } as const);
 
-// Node crypto 없이 같은 계약을 브라우저에 제공하며 ruleset.spec.ts가 canonical hash를 검증한다.
-export const COMPETITIVE_RULESET_HASH =
-  "06f455303f46369d1a31315db5fdfffa666164fde44f8ac20ac507a6fc9f9de7";
+export function canUseCompetitiveStruggle(moves: readonly { pp: number }[]): boolean {
+  return moves.length > 0 && moves.every(move => move.pp === 0);
+}
+
+/** Server-owned numeric move metadata; the client only supplies catalog IDs. */
+export function getCompetitiveMoveDefinition(
+  moveId: number | string,
+): CompetitiveMoveDefinition | undefined {
+  const numericMoveId = typeof moveId === "number" ? moveId : Number(moveId);
+  if (numericMoveId === COMPETITIVE_STRUGGLE_MOVE_ID) {
+    return APPROVED_COMPETITIVE_RULESET_V2.struggle;
+  }
+  if (!Number.isSafeInteger(numericMoveId) || numericMoveId < 1 || numericMoveId > 470) {
+    return undefined;
+  }
+
+  return {
+    moveId: numericMoveId,
+    power: 20 + (numericMoveId % 81),
+    accuracy: 0.75 + ((numericMoveId * 7) % 26) / 100,
+    criticalHitChance: 1 / 16,
+    maxPp: 99,
+    secondaryEffect: null,
+  };
+}
+
+export const COMPETITIVE_RULESET_HASH = "dynamic-party-v2-catalog-id-rules-20260817";

@@ -14,7 +14,9 @@ export type PokeLoungeMatchStatus = TournamentMatch['status'];
 export type PokeLoungeMatchResultReason = TournamentMatchResultReason;
 export type PokeLoungeTournamentMatch = TournamentMatch;
 export type PokeLoungeActiveMatchAuthority = 'casual' | 'server';
-export type PokeLoungeRoomCloseReason = 'legacy-room-restart-required';
+export type PokeLoungeRoomCloseReason =
+  | 'legacy-room-restart-required'
+  | 'competitive-party-not-ready';
 
 export interface PokeLoungeRoomParticipant {
   sessionId: string;
@@ -45,6 +47,8 @@ export interface PokeLoungeFinalStanding {
 export interface PokeLoungePartySnapshot {
   playerId: string;
   displayName?: string;
+  activePartySlotIndex?: number;
+  party?: PokeLoungePartyPokemonSnapshot[];
   representativePokemon?: {
     speciesId: number;
     name: string;
@@ -53,6 +57,38 @@ export interface PokeLoungePartySnapshot {
     maxHp: number;
   };
   updatedAtMs: number;
+}
+
+export interface PokeLoungePublicPartySnapshot {
+  playerId: string;
+  displayName?: string;
+  representativePokemon?: {
+    speciesId: number;
+    level: number;
+    currentHp: number;
+    maxHp: number;
+  };
+  partySize: number;
+  updatedAtMs: number;
+}
+
+export interface PokeLoungePartyPokemonSnapshot {
+  slotIndex: number;
+  speciesId: number;
+  name: string;
+  level: number;
+  currentHp: number;
+  maxHp: number;
+  attack: number;
+  defense: number;
+  speed: number;
+  status: 'none' | 'paralyzed' | 'poisoned' | 'burned' | 'fainted';
+  moves: Array<{
+    moveId: number;
+    name: string;
+    pp: number;
+    maxPp: number;
+  }>;
 }
 
 export interface PokeLoungeRoomState {
@@ -88,9 +124,10 @@ export interface CompetitiveTerminalTransition {
 
 export type PokeLoungePublicRoomState = Omit<
   PokeLoungeRoomState,
-  'participants'
+  'participants' | 'partySnapshots'
 > & {
   participants: PokeLoungePublicRoomParticipant[];
+  partySnapshots: Record<string, PokeLoungePublicPartySnapshot>;
   revision: number;
   expiresAtMs: number;
   competitiveTransitions: CompetitiveTerminalTransition[];
@@ -141,6 +178,8 @@ export interface UpdatePokeLoungePartySnapshotInput {
   playerId: string;
   sessionId: string;
   displayName?: string;
+  activePartySlotIndex?: number;
+  party?: PokeLoungePartySnapshot['party'];
   representativePokemon?: PokeLoungePartySnapshot['representativePokemon'];
   nowMs?: number;
 }

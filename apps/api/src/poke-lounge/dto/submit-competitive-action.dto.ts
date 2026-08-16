@@ -25,12 +25,15 @@ export class CompetitiveActionDto {
   @IsIn(['move', 'switch'])
   kind!: CanonicalCompetitiveAction['kind'];
 
-  @ApiPropertyOptional({ example: 'steady-strike' })
+  @ApiPropertyOptional({ oneOf: [{ type: 'number' }, { type: 'string' }] })
   @ValidateIf((value: CompetitiveActionDto) => value.kind === 'move')
+  @ValidateIf((value: CompetitiveActionDto) => typeof value.moveId === 'string')
   @IsString()
+  @ValidateIf((value: CompetitiveActionDto) => typeof value.moveId === 'number')
+  @IsInt()
   @IsNotEmpty()
   @MaxLength(128)
-  moveId?: string;
+  moveId?: number | string;
 
   @ApiPropertyOptional({ minimum: 0 })
   @ValidateIf((value: CompetitiveActionDto) => value.kind === 'switch')

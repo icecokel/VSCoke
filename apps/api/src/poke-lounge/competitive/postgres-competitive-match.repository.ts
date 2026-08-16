@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { CompetitivePartyInput } from '@vscoke/poke-lounge-battle';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, type EntityManager, type Repository } from 'typeorm';
 import { PokeLoungeCompetitiveMatch } from '../entities/poke-lounge-competitive-match.entity';
@@ -16,6 +17,7 @@ import {
 import type { CompetitiveMatchAssignment } from './competitive-match.types';
 import { toCompetitiveProjection } from './competitive-projection.service';
 import type { PokeLoungeRoomSnapshot } from '../poke-lounge-room.repository';
+import type { PokeLoungeRoomState } from '../poke-lounge-room.types';
 import { getPokeLoungeRoomExpiresAtMs } from '../poke-lounge-room-policy';
 
 @Injectable()
@@ -127,6 +129,7 @@ export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepos
         players: plan.assignmentPlayers,
         bracketMatchId: plan.assignmentBracketMatchId!,
         kind: plan.assignmentKind!,
+        parties: toCompetitiveParties(room.state, plan.assignmentPlayers),
       });
       await matchRepository.save(matchRepository.create(assignment));
       const committedAt = new Date();
@@ -150,6 +153,43 @@ export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepos
       };
     });
   }
+}
+
+export function toCompetitiveParties(
+  state: Pick<PokeLoungeRoomState, 'partySnapshots'>,
+  players: [
+    { playerId: string; accountId: string },
+    { playerId: string; accountId: string },
+  ],
+): Record<string, CompetitivePartyInput> {
+  const parties: Record<string, CompetitivePartyInput> = {};
+  for (const player of players) {
+    const snapshot = state.partySnapshots[player.playerId];
+    if (!snapshot?.party?.length) {
+      throw new Error(`Competitive party is not ready for ${player.playerId}`);
+    }
+    parties[player.playerId] = {
+      activeSlotIndex:
+        snapshot.activePartySlotIndex ?? snapshot.party[0].slotIndex,
+      members: snapshot.party.map((pokemon) => ({
+        slotIndex: pokemon.slotIndex,
+        speciesId: pokemon.speciesId,
+        level: pokemon.level,
+        maxHp: pokemon.maxHp,
+        currentHp: pokemon.currentHp,
+        attack: pokemon.attack,
+        defense: pokemon.defense,
+        speed: pokemon.speed,
+        status: pokemon.status === 'paralyzed' ? 'paralyzed' : 'none',
+        moves: pokemon.moves.map((move) => ({
+          moveId: move.moveId,
+          pp: move.pp,
+          maxPp: move.maxPp,
+        })),
+      })),
+    };
+  }
+  return parties;
 }
 
 async function saveSeat(

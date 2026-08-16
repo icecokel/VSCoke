@@ -1,4 +1,9 @@
-import { ApiExtraModels, ApiProperty, getSchemaPath } from '@nestjs/swagger';
+import {
+  ApiExtraModels,
+  ApiProperty,
+  ApiPropertyOptional,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import type { CompetitiveActionProjection } from '../competitive/competitive-action.types';
 import type {
   CompetitiveMatchKind,
@@ -6,16 +11,31 @@ import type {
 } from '../competitive/competitive-match.types';
 
 class CompetitiveMoveStateDto {
-  @ApiProperty()
-  moveId!: string;
+  @ApiProperty({ oneOf: [{ type: 'number' }, { type: 'string' }] })
+  moveId!: number | string;
 
   @ApiProperty({ minimum: 0 })
   pp!: number;
 }
 
 class CompetitiveCombatantStateDto {
-  @ApiProperty()
-  speciesId!: string;
+  @ApiProperty({ oneOf: [{ type: 'number' }, { type: 'string' }] })
+  speciesId!: number | string;
+
+  @ApiPropertyOptional({ minimum: 0 })
+  slotIndex?: number;
+
+  @ApiPropertyOptional({ minimum: 1 })
+  level?: number;
+
+  @ApiPropertyOptional({ minimum: 1 })
+  attack?: number;
+
+  @ApiPropertyOptional({ minimum: 1 })
+  defense?: number;
+
+  @ApiPropertyOptional({ minimum: 1 })
+  speed?: number;
 
   @ApiProperty({ minimum: 1 })
   maxHp!: number;
@@ -59,8 +79,8 @@ class CompetitiveTerminalResultDto {
 }
 
 class CompetitiveBattleStateDto {
-  @ApiProperty({ example: 1 })
-  rulesetVersion!: 1;
+  @ApiProperty({ example: 2 })
+  rulesetVersion!: 1 | 2;
 
   @ApiProperty({ minimum: 0 })
   turn!: number;

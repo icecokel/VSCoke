@@ -42,6 +42,7 @@ import {
   toCompetitiveTerminalTransition,
 } from './competitive-projection.service';
 import { createCompetitiveAssignment } from './competitive-match.service';
+import { toCompetitiveParties } from './postgres-competitive-match.repository';
 import type { CompetitiveMatchKind } from './competitive-match.types';
 
 @Injectable()
@@ -539,6 +540,7 @@ export async function advanceTournamentAuthorityMatch(
     kind: 'tournament-unranked',
     assignmentRevision: 1,
     players: [players[0], players[1]],
+    parties: toCompetitiveParties(room.state, [players[0], players[1]]),
   });
   await matchRepository.save(matchRepository.create(assignment));
   state.tournament.activeMatchAuthority = 'server';

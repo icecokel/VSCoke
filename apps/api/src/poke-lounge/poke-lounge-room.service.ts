@@ -567,6 +567,14 @@ export class PokeLoungeRoomService {
       ...(input.displayName?.trim()
         ? { displayName: input.displayName.trim() }
         : {}),
+      ...(input.activePartySlotIndex === undefined
+        ? {}
+        : {
+            activePartySlotIndex: normalizeSlotIndex(
+              input.activePartySlotIndex,
+            ),
+          }),
+      ...(input.party ? { party: normalizePartySnapshot(input.party) } : {}),
       ...(input.representativePokemon
         ? {
             representativePokemon: normalizeRepresentativePokemon(
@@ -598,6 +606,16 @@ export class PokeLoungeRoomService {
           );
         }
 
+        if (
+          room.status === 'tournament' ||
+          room.status === 'completed' ||
+          room.status === 'closed'
+        ) {
+          throw new BadRequestException(
+            'Party snapshots are immutable after tournament start',
+          );
+        }
+
         room.partySnapshots[participant.playerId] = {
           playerId: participant.playerId,
           ...(normalized.displayName
@@ -605,9 +623,20 @@ export class PokeLoungeRoomService {
             : participant.displayName
               ? { displayName: participant.displayName }
               : {}),
-          ...(normalized.representativePokemon
-            ? { representativePokemon: normalized.representativePokemon }
-            : {}),
+          ...(normalized.party
+            ? {
+                representativePokemon: representativeFromParty(
+                  normalized.party,
+                  normalized.activePartySlotIndex,
+                ),
+              }
+            : normalized.representativePokemon
+              ? { representativePokemon: normalized.representativePokemon }
+              : {}),
+          ...(normalized.activePartySlotIndex === undefined
+            ? {}
+            : { activePartySlotIndex: normalized.activePartySlotIndex }),
+          ...(normalized.party ? { party: normalized.party } : {}),
           updatedAtMs: nowMs,
         };
         room.updatedAtMs = nowMs;
@@ -1189,6 +1218,94 @@ function normalizeRepresentativePokemon(
     level,
     currentHp,
     maxHp,
+  };
+}
+
+function normalizeSlotIndex(value: unknown): number {
+  if (
+    typeof value !== 'number' ||
+    !Number.isInteger(value) ||
+    value < 0 ||
+    value > 5
+  ) {
+    throw new BadRequestException('Invalid activePartySlotIndex');
+  }
+  return value;
+}
+
+function normalizePartySnapshot(
+  party: NonNullable<UpdatePokeLoungePartySnapshotInput['party']>,
+): NonNullable<PokeLoungePartySnapshot['party']> {
+  if (party.length < 1 || party.length > 6) {
+    throw new BadRequestException('Party must contain between 1 and 6 Pokémon');
+  }
+
+  const seenSlots = new Set<number>();
+  return party.map((pokemon) => {
+    const slotIndex = normalizeSlotIndex(pokemon.slotIndex);
+    if (seenSlots.has(slotIndex)) {
+      throw new BadRequestException('Party slotIndex must be unique');
+    }
+    seenSlots.add(slotIndex);
+
+    const level = normalizePositiveInteger(pokemon.level, 'level');
+    if (level > 100) {
+      throw new BadRequestException('level cannot exceed 100');
+    }
+    const maxHp = normalizePositiveInteger(pokemon.maxHp, 'maxHp');
+    const currentHp = normalizeNonNegativeInteger(
+      pokemon.currentHp,
+      'currentHp',
+    );
+    if (currentHp > maxHp) {
+      throw new BadRequestException('currentHp cannot exceed maxHp');
+    }
+
+    return {
+      slotIndex,
+      speciesId: normalizePositiveInteger(pokemon.speciesId, 'speciesId'),
+      name: pokemon.name,
+      level,
+      currentHp,
+      maxHp,
+      attack: normalizePositiveInteger(pokemon.attack, 'attack'),
+      defense: normalizePositiveInteger(pokemon.defense, 'defense'),
+      speed: normalizePositiveInteger(pokemon.speed, 'speed'),
+      status: pokemon.status,
+      moves: pokemon.moves.slice(0, 4).map((move) => {
+        const maxPp = normalizePositiveInteger(move.maxPp, 'maxPp');
+        const pp = normalizeNonNegativeInteger(move.pp, 'pp');
+        if (pp > maxPp) {
+          throw new BadRequestException('pp cannot exceed maxPp');
+        }
+        return {
+          moveId: normalizePositiveInteger(move.moveId, 'moveId'),
+          name: move.name,
+          pp,
+          maxPp,
+        };
+      }),
+    };
+  });
+}
+
+function representativeFromParty(
+  party: NonNullable<UpdatePokeLoungePartySnapshotInput['party']>,
+  activePartySlotIndex = party.find((pokemon) => pokemon.currentHp > 0)
+    ?.slotIndex ?? party[0]?.slotIndex,
+): PokeLoungePartySnapshot['representativePokemon'] {
+  const pokemon =
+    party.find((candidate) => candidate.slotIndex === activePartySlotIndex) ??
+    party[0];
+  if (!pokemon) {
+    throw new BadRequestException('Party must contain one Pokémon');
+  }
+  return {
+    speciesId: pokemon.speciesId,
+    name: pokemon.name,
+    level: pokemon.level,
+    currentHp: pokemon.currentHp,
+    maxHp: pokemon.maxHp,
   };
 }
 

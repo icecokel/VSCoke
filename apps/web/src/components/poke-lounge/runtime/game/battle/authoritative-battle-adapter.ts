@@ -1,5 +1,4 @@
 import {
-  APPROVED_COMPETITIVE_RULESET_V1,
   canUseCompetitiveStruggle,
   COMPETITIVE_STRUGGLE_MOVE_ID,
 } from "@vscoke/poke-lounge-battle";
@@ -7,6 +6,10 @@ import type { CompetitiveAction, CompetitiveProjection } from "../network/localP
 import { createDefaultBattleStatStages } from "./battle-stat-stages";
 import { getBattlePokemonAssets } from "./battlePokemonAssets";
 import { normalizeIndividualValues } from "./individual-values";
+import {
+  getRuntimePokemonMoveDetails,
+  getRuntimePokemonSpeciesSummary,
+} from "../data/game-data-json";
 import type {
   BattleMove,
   BattleParticipant,
@@ -17,17 +20,6 @@ import type {
 
 type CompetitivePlayer = CompetitiveProjection["currentState"]["playersById"][string];
 type CompetitivePokemon = CompetitivePlayer["team"][number];
-
-const SPECIES_VIEW = {
-  "vscoke-alpha": { speciesId: 155, name: "브케인" },
-  "vscoke-beta": { speciesId: 152, name: "치코리타" },
-} as const;
-
-const MOVE_VIEW = {
-  "steady-strike": { id: 1, name: "안정 타격" },
-  "stun-spark": { id: 2, name: "마비 불꽃" },
-  "heavy-blow": { id: 3, name: "강타" },
-} as const;
 
 export function isLegalAuthoritativeAction(
   projection: CompetitiveProjection,
@@ -40,13 +32,14 @@ export function isLegalAuthoritativeAction(
   }
 
   if (action.kind === "move") {
-    const activePokemon = player.team[player.activeSlotIndex];
+    const activePokemon = player.team.find(pokemon => pokemon.slotIndex === player.activeSlotIndex);
+    const moveId = toNumericId(action.moveId);
     return Boolean(
       activePokemon &&
       activePokemon.currentHp > 0 &&
-      typeof action.moveId === "string" &&
-      (activePokemon.moves.some(move => move.moveId === action.moveId && move.pp > 0) ||
-        (action.moveId === COMPETITIVE_STRUGGLE_MOVE_ID &&
+      moveId !== null &&
+      (activePokemon.moves.some(move => move.moveId === moveId && move.pp > 0) ||
+        (moveId === COMPETITIVE_STRUGGLE_MOVE_ID &&
           canUseCompetitiveStruggle(activePokemon.moves))),
     );
   }
@@ -56,7 +49,7 @@ export function isLegalAuthoritativeAction(
       return false;
     }
     const slotIndex = action.slotIndex as number;
-    const target = player.team[slotIndex];
+    const target = player.team.find(pokemon => pokemon.slotIndex === slotIndex);
     return slotIndex !== player.activeSlotIndex && Boolean(target && target.currentHp > 0);
   }
 
@@ -112,7 +105,9 @@ function toBattleParticipant(player: CompetitivePlayer, fallbackName: string): B
     { length: 6 },
     (_, slotIndex): BattlePartySlot => ({
       slotIndex,
-      pokemon: player.team[slotIndex] ? toBattlePokemon(player.team[slotIndex]) : null,
+      pokemon: player.team.find(candidate => candidate.slotIndex === slotIndex)
+        ? toBattlePokemon(player.team.find(candidate => candidate.slotIndex === slotIndex)!)
+        : null,
     }),
   );
   const activePokemon = party[player.activeSlotIndex]?.pokemon;
@@ -131,38 +126,42 @@ function toBattleParticipant(player: CompetitivePlayer, fallbackName: string): B
 }
 
 function toBattlePokemon(pokemon: CompetitivePokemon): BattlePokemon {
-  const species = getSpeciesView(pokemon.speciesId);
-  const rules = species.rules;
-  const assets = getBattlePokemonAssets(species.speciesId);
+  const speciesId = toNumericId(pokemon.speciesId) ?? 1;
+  const species = getRuntimePokemonSpeciesSummary(speciesId);
+  const assets = getBattlePokemonAssets(speciesId);
+  const level = pokemon.level ?? 1;
+  const attack = pokemon.attack ?? 10 + level;
+  const defense = pokemon.defense ?? 10 + level;
+  const speed = pokemon.speed ?? 10 + level;
   const status =
     pokemon.currentHp <= 0 ? "fainted" : pokemon.status === "paralyzed" ? "paralyzed" : "normal";
 
   return {
-    speciesId: species.speciesId,
-    name: species.name,
-    level: rules.level,
+    speciesId,
+    name: species?.name ?? `#${speciesId}`,
+    level,
     catchRate: 0,
     baseExpYield: 0,
     growthRate: 1_000_000,
     experience: 0,
     baseStats: {
-      hp: rules.maxHp,
-      attack: rules.attack,
-      defense: rules.defense,
-      speed: rules.speed,
-      special_attack: 80,
-      special_defense: 80,
+      hp: species?.baseStats.hp ?? pokemon.maxHp,
+      attack: species?.baseStats.attack ?? attack,
+      defense: species?.baseStats.defense ?? defense,
+      speed: species?.baseStats.speed ?? speed,
+      special_attack: species?.baseStats.specialAttack ?? attack,
+      special_defense: species?.baseStats.specialDefense ?? defense,
     },
     individualValues: normalizeIndividualValues({}, () => 0),
     maxHp: pokemon.maxHp,
     currentHp: pokemon.currentHp,
-    attack: rules.attack,
-    defense: rules.defense,
-    specialAttack: 80,
-    specialDefense: 80,
-    speed: rules.speed,
+    attack,
+    defense,
+    specialAttack: species?.baseStats.specialAttack ?? attack,
+    specialDefense: species?.baseStats.specialDefense ?? defense,
+    speed,
     statStages: createDefaultBattleStatStages(),
-    typeIds: [0],
+    typeIds: species?.typeIds ?? [0],
     status,
     frontSprite: assets.front,
     backSprite: assets.back,
@@ -171,42 +170,25 @@ function toBattlePokemon(pokemon: CompetitivePokemon): BattlePokemon {
 }
 
 function toBattleMove(move: CompetitivePokemon["moves"][number]): BattleMove {
-  const view = getMoveView(move.moveId);
-  const rules = view.rules;
+  const moveId = toNumericId(move.moveId) ?? 1;
+  const view = getRuntimePokemonMoveDetails(moveId);
+  const maxPp = view?.pp ?? Math.max(1, move.pp);
 
   return {
-    id: view.id,
-    name: view.name,
+    id: moveId,
+    name: view?.name ?? `Move #${moveId}`,
     pp: move.pp,
-    maxPp: rules.maxPp,
+    maxPp,
     type: "normal",
-    typeId: 0,
-    category: "physical",
-    effectCode: 0,
-    accuracy: Math.round(rules.accuracy * 100),
-    power: rules.power,
+    typeId: view?.typeId ?? 0,
+    category: view?.category ?? "physical",
+    effectCode: view?.effectCode ?? 0,
+    accuracy: view?.accuracy ?? 100,
+    power: view?.power ?? 0,
   };
 }
 
-function getSpeciesView(speciesId: string) {
-  if (speciesId === "vscoke-alpha" || speciesId === "vscoke-beta") {
-    const rules = APPROVED_COMPETITIVE_RULESET_V1.loadout.find(
-      candidate => candidate.speciesId === speciesId,
-    );
-
-    if (rules) {
-      return { ...SPECIES_VIEW[speciesId], rules };
-    }
-  }
-  throw new Error(`Unsupported competitive species: ${speciesId}`);
-}
-
-function getMoveView(moveId: string) {
-  if (moveId === "steady-strike" || moveId === "stun-spark" || moveId === "heavy-blow") {
-    return {
-      ...MOVE_VIEW[moveId],
-      rules: APPROVED_COMPETITIVE_RULESET_V1.moves[moveId],
-    };
-  }
-  throw new Error(`Unsupported competitive move: ${moveId}`);
+function toNumericId(value: unknown): number | null {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : null;
 }

@@ -821,8 +821,6 @@ export interface components {
     PokeLoungeRepresentativePokemonDto: {
       /** @example 25 */
       speciesId: number;
-      /** @example Pikachu */
-      name: string;
       /** @example 12 */
       level: number;
       /** @example 18 */
@@ -836,15 +834,22 @@ export interface components {
       /** @example Player A */
       displayName?: string;
       representativePokemon?: components["schemas"]["PokeLoungeRepresentativePokemonDto"];
+      /** @example 1 */
+      partySize: number;
       /** @example 1720000002000 */
       updatedAtMs: number;
     };
     CompetitiveMoveStateDto: {
-      moveId: string;
+      moveId: number | string;
       pp: number;
     };
     CompetitiveCombatantStateDto: {
-      speciesId: string;
+      speciesId: number | string;
+      slotIndex?: number;
+      level?: number;
+      attack?: number;
+      defense?: number;
+      speed?: number;
       maxHp: number;
       currentHp: number;
       /** @enum {string} */
@@ -866,7 +871,7 @@ export interface components {
       };
     };
     CompetitiveBattleStateDto: {
-      /** @example 1 */
+      /** @example 2 */
       rulesetVersion: number;
       turn: number;
       participantIds: string[];
@@ -1072,10 +1077,10 @@ export interface components {
        */
       status: "waiting" | "round-started" | "tournament" | "completed" | "closed";
       /**
-       * @example legacy-room-restart-required
+       * @example competitive-party-not-ready
        * @enum {string}
        */
-      closeReason?: "legacy-room-restart-required";
+      closeReason?: "legacy-room-restart-required" | "competitive-party-not-ready";
       /** @example 1720000000000 */
       createdAtMs: number;
       /** @example 1720000001000 */
@@ -1131,8 +1136,7 @@ export interface components {
     CompetitiveActionDto: {
       /** @enum {string} */
       kind: "move" | "switch";
-      /** @example steady-strike */
-      moveId?: string;
+      moveId?: number | string;
       slotIndex?: number;
     };
     SubmitCompetitiveActionDto: {
@@ -1160,6 +1164,39 @@ export interface components {
       /** @example true */
       ready: boolean;
     };
+    PokeLoungePartyMoveDto: {
+      /** @example 33 */
+      moveId: number;
+      /** @example Tackle */
+      name: string;
+      /** @example 35 */
+      pp: number;
+      /** @example 35 */
+      maxPp: number;
+    };
+    PokeLoungePartyPokemonDto: {
+      /** @example 0 */
+      slotIndex: number;
+      /** @example 7 */
+      speciesId: number;
+      /** @example Squirtle */
+      name: string;
+      /** @example 11 */
+      level: number;
+      /** @example 24 */
+      currentHp: number;
+      /** @example 30 */
+      maxHp: number;
+      /** @example 22 */
+      attack: number;
+      /** @example 25 */
+      defense: number;
+      /** @example 18 */
+      speed: number;
+      /** @example normal */
+      status: string;
+      moves: components["schemas"]["PokeLoungePartyMoveDto"][];
+    };
     UpdatePokeLoungePartySnapshotDto: {
       /** @example player-a */
       playerId: string;
@@ -1167,6 +1204,9 @@ export interface components {
       sessionId: string;
       /** @example Player A */
       displayName?: string;
+      /** @example 0 */
+      activePartySlotIndex?: number;
+      party?: components["schemas"]["PokeLoungePartyPokemonDto"][];
       representativePokemon?: components["schemas"]["PokeLoungeRepresentativePokemonDto"];
     };
     SubmitPokeLoungeMatchResultDto: {

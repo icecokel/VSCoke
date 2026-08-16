@@ -12,7 +12,7 @@ import type {
 export type CompetitiveActionReceiptStatus = 'pending' | 'resolved';
 
 export interface PublicCompetitiveBattleState {
-  rulesetVersion: 1;
+  rulesetVersion: 1 | 2;
   turn: number;
   participantIds: readonly [string, string];
   playersById: Readonly<
@@ -22,11 +22,16 @@ export interface PublicCompetitiveBattleState {
         playerId: string;
         activeSlotIndex: number;
         team: readonly {
-          speciesId: string;
+          speciesId: number | string;
+          slotIndex?: number;
+          level?: number;
+          attack?: number;
+          defense?: number;
+          speed?: number;
           maxHp: number;
           currentHp: number;
           status: CanonicalBattleStatus;
-          moves: readonly { moveId: string; pp: number }[];
+          moves: readonly { moveId: number | string; pp: number }[];
         }[];
       }
     >

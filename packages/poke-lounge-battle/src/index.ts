@@ -14,6 +14,7 @@ export {
 export { createSeededRandom, type SeededRandom } from "./prng";
 export {
   APPROVED_COMPETITIVE_RULESET_V1,
+  APPROVED_COMPETITIVE_RULESET_V2,
   canUseCompetitiveStruggle,
   COMPETITIVE_RULESET_HASH,
   COMPETITIVE_STRUGGLE_MOVE_ID,
@@ -21,6 +22,8 @@ export {
   createInitialBattleState,
   type CompetitiveLoadoutEntry,
   type CompetitiveMoveDefinition,
+  type CompetitivePartyMemberInput,
+  type CompetitivePartyInput,
 } from "./ruleset";
 export {
   resolveTurn,

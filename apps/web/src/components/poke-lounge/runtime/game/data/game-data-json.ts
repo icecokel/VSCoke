@@ -23,6 +23,28 @@ export interface RuntimePokemonMoveSummary {
   pp: number;
 }
 
+export interface RuntimePokemonSpeciesSummary {
+  id: number;
+  name: string;
+  baseStats: {
+    hp: number;
+    attack: number;
+    defense: number;
+    speed: number;
+    specialAttack: number;
+    specialDefense: number;
+  };
+  typeIds: number[];
+}
+
+export interface RuntimePokemonMoveDetails extends RuntimePokemonMoveSummary {
+  power: number;
+  accuracy: number;
+  typeId: number;
+  category: "physical" | "special" | "status";
+  effectCode: number;
+}
+
 export interface BattlePokemonSpriteSheetAssetRecord {
   path: string;
 }
@@ -159,6 +181,89 @@ export function getRuntimePokemonMoveSummary(moveId: number): RuntimePokemonMove
     id,
     name,
     pp,
+  };
+}
+
+export function getRuntimePokemonSpeciesSummary(
+  speciesId: number,
+): RuntimePokemonSpeciesSummary | null {
+  const pokemonData = runtimeGameDataJsonState.pokemonData;
+  if (!isRecord(pokemonData) || !isRecord(pokemonData.species)) {
+    return null;
+  }
+  const species = pokemonData.species[String(speciesId)];
+  if (!isRecord(species) || !isRecord(species.baseStats) || !isRecord(species.types)) {
+    return null;
+  }
+  const baseStats = species.baseStats;
+  const typeIds = species.types.ids;
+  if (
+    !Number.isInteger(species.speciesId) ||
+    typeof species.name !== "string" ||
+    !isRecord(baseStats) ||
+    !Number.isInteger(baseStats.hp) ||
+    !Number.isInteger(baseStats.attack) ||
+    !Number.isInteger(baseStats.defense) ||
+    !Number.isInteger(baseStats.speed) ||
+    !Number.isInteger(baseStats.specialAttack) ||
+    !Number.isInteger(baseStats.specialDefense) ||
+    !Array.isArray(typeIds) ||
+    !typeIds.every(typeId => Number.isInteger(typeId))
+  ) {
+    return null;
+  }
+  return {
+    id: species.speciesId as number,
+    name: species.name,
+    baseStats: {
+      hp: baseStats.hp as number,
+      attack: baseStats.attack as number,
+      defense: baseStats.defense as number,
+      speed: baseStats.speed as number,
+      specialAttack: baseStats.specialAttack as number,
+      specialDefense: baseStats.specialDefense as number,
+    },
+    typeIds: typeIds as number[],
+  };
+}
+
+export function getRuntimePokemonMoveDetails(moveId: number): RuntimePokemonMoveDetails | null {
+  const pokemonData = runtimeGameDataJsonState.pokemonData;
+  if (!isRecord(pokemonData) || !isRecord(pokemonData.moves)) {
+    return null;
+  }
+  const move = pokemonData.moves[String(moveId)];
+  if (!isRecord(move)) {
+    return null;
+  }
+  const id = readPositiveInteger(move.id);
+  const name = typeof move.name === "string" ? move.name.trim() : "";
+  const pp = readPositiveInteger(move.pp);
+  const power = typeof move.power === "number" && Number.isInteger(move.power) ? move.power : 0;
+  const accuracy =
+    typeof move.accuracy === "number" && Number.isInteger(move.accuracy) ? move.accuracy : 0;
+  const typeId = typeof move.typeId === "number" && Number.isInteger(move.typeId) ? move.typeId : 0;
+  const effectCode =
+    typeof move.effectCode === "number" && Number.isInteger(move.effectCode) ? move.effectCode : 0;
+  const category = move.category;
+  if (
+    id !== moveId ||
+    !name ||
+    !pp ||
+    typeof category !== "string" ||
+    !["physical", "special", "status"].includes(category)
+  ) {
+    return null;
+  }
+  return {
+    id,
+    name,
+    pp,
+    power,
+    accuracy,
+    typeId,
+    effectCode,
+    category: category as RuntimePokemonMoveDetails["category"],
   };
 }
 

@@ -269,6 +269,7 @@ export function createCompetitiveAssignment(
 ): CompetitiveMatchAssignment {
   const initialState = createInitialBattleState(
     context.players.map((player) => player.playerId) as [string, string],
+    context.parties,
   );
   const initialStateHash = hashCanonicalState(initialState);
 

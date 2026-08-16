@@ -1432,7 +1432,9 @@ export class BattleScene extends Phaser.Scene {
       const command = COMMANDS[this.selectedCommandIndex]?.command ?? "fight";
       if (command === "fight") {
         const player = projection.currentState.playersById[ownPlayerId];
-        const activePokemon = player?.team[player.activeSlotIndex];
+        const activePokemon = player?.team.find(
+          pokemon => pokemon.slotIndex === player.activeSlotIndex,
+        );
         if (activePokemon && canUseCompetitiveStruggle(activePokemon.moves)) {
           this.submitAuthoritativeAction({
             kind: "move",
@@ -1460,12 +1462,15 @@ export class BattleScene extends Phaser.Scene {
 
     if (this.state.phase === "move-select") {
       const player = projection.currentState.playersById[ownPlayerId];
-      const activePokemon = player?.team[player.activeSlotIndex];
+      const activePokemon = player?.team.find(
+        pokemon => pokemon.slotIndex === player.activeSlotIndex,
+      );
       const moveId = canUseCompetitiveStruggle(activePokemon?.moves ?? [])
         ? COMPETITIVE_STRUGGLE_MOVE_ID
         : activePokemon?.moves[this.selectedMoveIndex]?.moveId;
-      if (moveId) {
-        this.submitAuthoritativeAction({ kind: "move", moveId });
+      const numericMoveId = typeof moveId === "number" ? moveId : Number(moveId);
+      if (Number.isSafeInteger(numericMoveId) && numericMoveId > 0) {
+        this.submitAuthoritativeAction({ kind: "move", moveId: numericMoveId });
       }
       return;
     }
@@ -1476,7 +1481,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private submitAuthoritativeAction(
-    action: { kind: "move"; moveId: string } | { kind: "switch"; slotIndex: number },
+    action: { kind: "move"; moveId: number } | { kind: "switch"; slotIndex: number },
   ): void {
     const projection = this.authoritativeProjection;
     const ownPlayerId = this.authoritativeOwnPlayerId;
@@ -1988,7 +1993,7 @@ export class BattleScene extends Phaser.Scene {
     const localPlayer = this.gameStateStore.getCurrentLocalPlayer();
     const previousCurrentPlayerId = this.gameStateStore.getState().currentPlayerId;
 
-    if (this.state.battleKind === "trainer") {
+    if (this.state.battleKind === "trainer" && !this.authoritativeProjection) {
       this.upsertTrainerBattleParticipant(this.state.player);
       this.upsertTrainerBattleParticipant(this.state.opponent);
       this.gameStateStore.setCurrentPlayer(previousCurrentPlayerId);
@@ -3590,6 +3595,9 @@ function toPlayerPokemon(pokemon: BattlePokemon): PlayerPokemon {
     gender: pokemon.gender,
     maxHp: pokemon.maxHp,
     currentHp: pokemon.currentHp,
+    attack: pokemon.attack,
+    defense: pokemon.defense,
+    speed: pokemon.speed,
     experience: pokemon.experience,
     growthRate: pokemon.growthRate,
     status: pokemon.status,

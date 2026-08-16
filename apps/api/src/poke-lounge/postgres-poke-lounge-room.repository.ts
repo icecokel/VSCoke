@@ -20,6 +20,7 @@ import { PokeLoungeRoom } from './entities/poke-lounge-room.entity';
 import { VerifiedPokeLoungeHistoryWriter } from '../game/verified-poke-lounge-history-writer.service';
 import { PokeLoungeCompetitiveAction } from './competitive/competitive-action.entity';
 import { createCompetitiveAssignment } from './competitive/competitive-match.service';
+import { toCompetitiveParties } from './competitive/postgres-competitive-match.repository';
 import {
   finalizeCompetitiveTerminalMatch,
   resolveTurnReceipts,
@@ -414,10 +415,7 @@ export async function ensureActiveTournamentAssignment(
   }
 
   const assignmentPlayers = [players[0], players[1]] as const;
-  const assignmentKind =
-    snapshot.tournament.bracket?.participants.length === 2
-      ? 'ranked-head-to-head'
-      : 'tournament-unranked';
+  const assignmentKind = 'tournament-unranked' as const;
   const existing =
     active?.bracketMatchId === bracketMatchId
       ? active
@@ -503,6 +501,10 @@ export async function ensureActiveTournamentAssignment(
     kind: assignmentKind,
     assignmentRevision: 1,
     players: [...assignmentPlayers],
+    parties: toCompetitiveParties(snapshot, [
+      assignmentPlayers[0],
+      assignmentPlayers[1],
+    ]),
   });
   await matchRepository.save(matchRepository.create(assignment));
   snapshot.tournament.activeMatchAuthority = 'server';

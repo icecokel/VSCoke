@@ -15,13 +15,16 @@ export function createCanonicalIdRecord<T>(
 }
 
 export interface CanonicalMoveState {
-  moveId: string;
+  /** Runtime move catalog IDs are numeric; string is kept for legacy row reads. */
+  moveId: number | string;
   pp: number;
 }
 
 export interface CanonicalCombatantState {
-  speciesId: string;
+  /** Runtime species catalog IDs are numeric; string is kept for legacy row reads. */
+  speciesId: number | string;
   level: number;
+  slotIndex?: number;
   maxHp: number;
   currentHp: number;
   attack: number;
@@ -45,7 +48,7 @@ export interface CanonicalTerminalResult {
 }
 
 export interface CanonicalBattleState {
-  rulesetVersion: 1;
+  rulesetVersion: 1 | 2;
   turn: number;
   participantIds: readonly [string, string];
   playersById: CanonicalIdRecord<CanonicalPlayerState>;

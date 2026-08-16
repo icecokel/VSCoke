@@ -30,6 +30,7 @@ type Handler<T extends RoomMessage> = (payload: RoomEvent[T]) => void;
 type ApiServerRoom = components["schemas"]["PokeLoungeRoomResponseDto"];
 type ServerParticipant = ApiServerRoom["participants"][number];
 type ServerPartySnapshot = components["schemas"]["PokeLoungePartySnapshotDto"];
+type ServerPartySnapshotInput = components["schemas"]["UpdatePokeLoungePartySnapshotDto"];
 
 interface ServerRoomState {
   roomCode: string;
@@ -1195,7 +1196,8 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         playerId: serverPlayerId,
         sessionId,
         displayName: snapshot.displayName,
-        representativePokemon: toRepresentativePokemonSnapshot(snapshot),
+        activePartySlotIndex: snapshot.activePartySlotIndex,
+        party: toPartySnapshot(snapshot),
       },
       getLatestRevision,
       idempotencyKey,
@@ -1408,7 +1410,14 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     },
     sessionId,
     connect(initialSnapshot) {
-      if (disposed || connectStarted) {
+      if (disposed) {
+        return;
+      }
+
+      if (connectStarted) {
+        if (initialSnapshot && activeRoomId !== PENDING_ROOM_ID) {
+          void submitPartySnapshot(initialSnapshot).catch(() => {});
+        }
         return;
       }
 
@@ -1705,35 +1714,48 @@ function createDefaultSnapshot(sessionId: string, playerId: string): PlayerSnaps
   };
 }
 
-function toRepresentativePokemonSnapshot(
-  snapshot: PlayerSnapshot,
-): ServerPartySnapshot["representativePokemon"] {
-  const partyPokemon =
-    snapshot.party?.find(slot => slot.slotIndex === snapshot.activePartySlotIndex)?.pokemon ??
-    snapshot.party?.find(slot => slot.pokemon)?.pokemon;
+function toPartySnapshot(snapshot: PlayerSnapshot): ServerPartySnapshotInput["party"] {
+  const party = snapshot.party ?? [];
 
-  if (
-    !partyPokemon ||
-    !Number.isInteger(partyPokemon.speciesId) ||
-    !Number.isInteger(partyPokemon.level) ||
-    partyPokemon.currentHp === undefined ||
-    partyPokemon.maxHp === undefined ||
-    !Number.isInteger(partyPokemon.currentHp) ||
-    !Number.isInteger(partyPokemon.maxHp)
-  ) {
-    return undefined;
-  }
+  return party.flatMap(slot => {
+    const pokemon = slot.pokemon;
+    if (!pokemon) {
+      return [];
+    }
 
-  const currentHp = partyPokemon.currentHp;
-  const maxHp = partyPokemon.maxHp;
+    const maxHp = Number.isInteger(pokemon.maxHp)
+      ? Math.max(1, pokemon.maxHp as number)
+      : 10 + pokemon.level * 2 + (pokemon.speciesId % 10);
+    const currentHp = Number.isInteger(pokemon.currentHp)
+      ? Math.max(0, Math.min(maxHp, pokemon.currentHp as number))
+      : maxHp;
 
-  return {
-    speciesId: partyPokemon.speciesId,
-    name: partyPokemon.name,
-    level: partyPokemon.level,
-    currentHp,
-    maxHp,
-  };
+    return [
+      {
+        slotIndex: slot.slotIndex,
+        speciesId: pokemon.speciesId,
+        name: pokemon.name,
+        level: pokemon.level,
+        currentHp,
+        maxHp,
+        attack: Math.max(1, pokemon.attack ?? 5 + pokemon.level * 2 + (pokemon.speciesId % 20)),
+        defense: Math.max(1, pokemon.defense ?? 5 + pokemon.level * 2 + (pokemon.speciesId % 17)),
+        speed: Math.max(1, pokemon.speed ?? 5 + pokemon.level * 2 + (pokemon.speciesId % 23)),
+        status:
+          pokemon.status === "paralyzed"
+            ? "paralyzed"
+            : pokemon.currentHp === 0
+              ? "fainted"
+              : "none",
+        moves: (pokemon.moves ?? []).slice(0, 4).map(move => ({
+          moveId: move.id,
+          name: move.name,
+          pp: Math.max(0, move.pp),
+          maxPp: Math.max(1, move.maxPp),
+        })),
+      },
+    ];
+  });
 }
 
 function isE2eEnabled(): boolean {

@@ -83,12 +83,18 @@ export function advancePokeLoungeRoomClock(
         participant.role === 'participant' && participant.connected,
     )
     .every((participant) =>
-      Boolean(advanced.partySnapshots[participant.playerId]?.party?.length),
+      Boolean(
+        advanced.partySnapshots[participant.playerId]?.competitiveParty.members
+          .length,
+      ),
     );
   if (!participantsReady) {
     advanced.status = 'closed';
     advanced.closeReason = 'competitive-party-not-ready';
     advanced.round.phase = 'completed';
+    advanced.round.endsAtMs = null;
+    advanced.tournament.activeMatchId = null;
+    advanced.tournament.activeMatchAuthority = null;
     advanced.updatedAtMs = nowMs;
     advanced.revision = room.revision + 1;
     advanced.expiresAtMs = getPokeLoungeRoomExpiresAtMs(advanced);

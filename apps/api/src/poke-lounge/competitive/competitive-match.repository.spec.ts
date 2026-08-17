@@ -95,7 +95,7 @@ describe('planCompetitiveSeatBinding', () => {
     ).toMatchObject({ outcome: 'bind', assignmentPlayers: null });
   });
 
-  it('creates a ranked assignment for an activated two-player bracket', () => {
+  it('keeps an activated two-player dynamic-party bracket unranked', () => {
     const room = roomState();
     const bracket = createTournamentBracketState(
       room.participants.map(({ playerId, displayName }) => ({
@@ -124,7 +124,7 @@ describe('planCompetitiveSeatBinding', () => {
         { playerId: 'player-b', accountId: 'account-b' },
       ],
       assignmentBracketMatchId: 'game-round-1-bracket-1-match-1',
-      assignmentKind: 'ranked-head-to-head',
+      assignmentKind: 'tournament-unranked',
     });
   });
 

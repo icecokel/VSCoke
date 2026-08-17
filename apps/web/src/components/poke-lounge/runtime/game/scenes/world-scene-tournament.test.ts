@@ -63,7 +63,7 @@ test("5인 서버 대진 안내는 canonical bye와 현재 상대를 7줄 이내
   assert.match(text, /현재 경기 · #4 Player 4 vs #5 Player 5/);
   assert.match(text, /내 상태 · #4 Player 4 · 상대 #5 Player 5/);
   assert.match(text, /서버 권위전 · 공개 랭킹 미반영/);
-  assert.match(text, /전투 규칙 · 고정 Lv\.50 · 2마리/);
+  assert.match(text, /전투 규칙 · 육성 파티 · 레벨 유지/);
   assert.ok(text.split("\n").length <= 7);
 
   projection.ownPlayerId = "player-1";
@@ -120,7 +120,7 @@ test("원격 party가 없는 casual active match는 미지원과 로그인·나�
   assert.match(text, /원격 캐주얼전 미지원/);
   assert.match(text, /로그인 후 재참가 또는 방 나가기/);
   assert.match(text, /캐주얼전 · 공개 랭킹 미반영/);
-  assert.doesNotMatch(text, /고정 Lv\.50/);
+  assert.doesNotMatch(text, /육성 파티/);
   assert.ok(text.split("\n").length <= 7);
 });
 

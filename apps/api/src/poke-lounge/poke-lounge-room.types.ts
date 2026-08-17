@@ -1,3 +1,12 @@
+import type {
+  CompetitivePartyInput,
+  NormalizedCompetitiveParty,
+  TournamentBracketState,
+  TournamentMatch,
+  TournamentMatchResultReason,
+} from '@vscoke/poke-lounge-battle';
+import type { CompetitiveActionProjection } from './competitive/competitive-action.types';
+
 export type PokeLoungeParticipantRole = 'participant' | 'spectator';
 export type PokeLoungeRoomStatus =
   | 'waiting'
@@ -45,24 +54,17 @@ export interface PokeLoungeFinalStanding {
 }
 
 export interface PokeLoungePartySnapshot {
+  version: 2;
   playerId: string;
   displayName?: string;
-  activePartySlotIndex?: number;
-  party?: PokeLoungePartyPokemonSnapshot[];
-  representativePokemon?: {
-    speciesId: number;
-    name: string;
-    level: number;
-    currentHp: number;
-    maxHp: number;
-  };
+  competitiveParty: NormalizedCompetitiveParty;
   updatedAtMs: number;
 }
 
 export interface PokeLoungePublicPartySnapshot {
   playerId: string;
   displayName?: string;
-  representativePokemon?: {
+  representativePokemon: {
     speciesId: number;
     level: number;
     currentHp: number;
@@ -70,25 +72,6 @@ export interface PokeLoungePublicPartySnapshot {
   };
   partySize: number;
   updatedAtMs: number;
-}
-
-export interface PokeLoungePartyPokemonSnapshot {
-  slotIndex: number;
-  speciesId: number;
-  name: string;
-  level: number;
-  currentHp: number;
-  maxHp: number;
-  attack: number;
-  defense: number;
-  speed: number;
-  status: 'none' | 'paralyzed' | 'poisoned' | 'burned' | 'fainted';
-  moves: Array<{
-    moveId: number;
-    name: string;
-    pp: number;
-    maxPp: number;
-  }>;
 }
 
 export interface PokeLoungeRoomState {
@@ -178,14 +161,6 @@ export interface UpdatePokeLoungePartySnapshotInput {
   playerId: string;
   sessionId: string;
   displayName?: string;
-  activePartySlotIndex?: number;
-  party?: PokeLoungePartySnapshot['party'];
-  representativePokemon?: PokeLoungePartySnapshot['representativePokemon'];
+  competitiveParty: CompetitivePartyInput;
   nowMs?: number;
 }
-import type {
-  TournamentBracketState,
-  TournamentMatch,
-  TournamentMatchResultReason,
-} from '@vscoke/poke-lounge-battle';
-import type { CompetitiveActionProjection } from './competitive/competitive-action.types';

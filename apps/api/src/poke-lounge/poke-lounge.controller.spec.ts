@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import type { Request } from 'express';
+import { createTestCompetitivePartyInput } from '../../test/support/competitive-party.fixture';
 import { GoogleAuthGuard } from '../auth/google-auth.guard';
 import type { PokeLoungeRoomSnapshot } from './poke-lounge-room.repository';
 import type { PokeLoungeRoomService } from './poke-lounge-room.service';
@@ -49,7 +50,11 @@ describe('PokeLoungeController', () => {
       () =>
         controller.updatePartySnapshot(
           'ROOM01',
-          { playerId: 'player-a', sessionId: 'session-a' },
+          {
+            playerId: 'player-a',
+            sessionId: 'session-a',
+            competitiveParty: createTestCompetitivePartyInput(),
+          },
           request(),
         ),
       () =>
@@ -172,7 +177,11 @@ describe('PokeLoungeController', () => {
     );
     await controller.updatePartySnapshot(
       'ROOM01',
-      { playerId: 'player-a', sessionId: 'session-a' },
+      {
+        playerId: 'player-a',
+        sessionId: 'session-a',
+        competitiveParty: createTestCompetitivePartyInput(),
+      },
       rawRequest,
     );
     await controller.submitResult(
@@ -257,7 +266,11 @@ describe('PokeLoungeController', () => {
     await controller.updatePartySnapshot(
       'ROOM01',
       withClientNowMs(
-        { playerId: 'player-a', sessionId: 'session-a' },
+        {
+          playerId: 'player-a',
+          sessionId: 'session-a',
+          competitiveParty: createTestCompetitivePartyInput(),
+        },
         clientNowMs,
       ),
       rawRequest,
@@ -344,7 +357,7 @@ describe('PokeLoungeController', () => {
         assignmentRevision: 1,
         turn: 0,
         clientCommandId: '00000000-0000-4000-8000-000000000001',
-        action: { kind: 'move', moveId: 'steady-strike' },
+        action: { kind: 'move', moveId: 55 },
       },
       { user: { id: 'account-a' } } as never,
     );
@@ -377,7 +390,7 @@ describe('PokeLoungeController', () => {
           assignmentRevision: 1,
           turn: 0,
           clientCommandId: '00000000-0000-4000-8000-000000000001',
-          action: { kind: 'move', moveId: 'steady-strike' },
+          action: { kind: 'move', moveId: 55 },
         },
         { user: { id: 'account-a' } } as never,
       ),

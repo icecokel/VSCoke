@@ -18,6 +18,7 @@ import type {
   PokeLoungeRepositoryResult,
   PokeLoungeRoomSnapshot,
 } from './poke-lounge-room.repository';
+import { createTestPartySnapshots } from '../../test/support/competitive-party.fixture';
 
 const ACTOR_KEY_CONSTRAINT = 'UQ_poke_lounge_room_command_actor_key';
 const ROOM_ACTOR_KEY_CONSTRAINT = 'UQ_poke_lounge_room_command_room_actor_key';
@@ -251,7 +252,7 @@ describe('ensureActiveTournamentAssignment', () => {
     });
   });
 
-  it('creates a ranked assignment only after a two-player bracket activates', async () => {
+  it('creates an unranked assignment after a two-player dynamic-party bracket activates', async () => {
     const bracket = createTournamentBracketState(
       [
         { playerId: 'player-1', displayName: 'Player 1' },
@@ -303,7 +304,7 @@ describe('ensureActiveTournamentAssignment', () => {
 
     expect(matchSave).toHaveBeenCalledTimes(1);
     expect(matchSave.mock.calls[0]?.[0]).toMatchObject({
-      kind: 'ranked-head-to-head',
+      kind: 'tournament-unranked',
       playerAccounts: [
         { playerId: 'player-1', accountId: 'account-1' },
         { playerId: 'player-2', accountId: 'account-2' },
@@ -389,7 +390,7 @@ describe('ensureActiveTournamentAssignment', () => {
     });
   });
 
-  it('reconciles a ranked result completed before the two-player bracket activates', async () => {
+  it('rejects a completed legacy ranked result in a V2 dynamic-party bracket', async () => {
     const bracket = createTournamentBracketState(
       [
         { playerId: 'player-1', displayName: 'Player 1' },
@@ -445,23 +446,18 @@ describe('ensureActiveTournamentAssignment', () => {
       }),
     } as unknown as EntityManager;
 
-    await ensureActiveTournamentAssignment(
-      manager,
-      {
-        id: '00000000-0000-4000-8000-000000000001',
-        roomCode: 'ROOM01',
-      } as PokeLoungeRoom,
-      roomSnapshot,
+    await expect(
+      ensureActiveTournamentAssignment(
+        manager,
+        {
+          id: '00000000-0000-4000-8000-000000000001',
+          roomCode: 'ROOM01',
+        } as PokeLoungeRoom,
+        roomSnapshot,
+      ),
+    ).rejects.toThrow(
+      'Completed competitive match does not match the activated bracket',
     );
-
-    expect(roomSnapshot).toMatchObject({
-      status: 'completed',
-      tournament: {
-        activeMatchId: null,
-        activeMatchAuthority: null,
-        cumulativeScores: { 'player-1': 100, 'player-2': 70 },
-      },
-    });
   });
 
   it('deletes a stale active row before creating the canonical active assignment', async () => {
@@ -553,6 +549,12 @@ describe('completeServerAuthorityParticipantLeave', () => {
           { playerId: 'player-4', accountId: 'account-4' },
           { playerId: 'player-5', accountId: 'account-5' },
         ],
+        parties: {
+          'player-4':
+            currentSnapshot.partySnapshots['player-4'].competitiveParty,
+          'player-5':
+            currentSnapshot.partySnapshots['player-5'].competitiveParty,
+        },
       });
       const match = {
         ...assignment,
@@ -982,7 +984,13 @@ function snapshot(): PokeLoungeRoomSnapshot {
     createdAtMs: 1_000,
     updatedAtMs: 1_000,
     participants: [],
-    partySnapshots: {},
+    partySnapshots: createTestPartySnapshots([
+      'player-1',
+      'player-2',
+      'player-3',
+      'player-4',
+      'player-5',
+    ]),
     round: {
       index: 1,
       phase: 'waiting',

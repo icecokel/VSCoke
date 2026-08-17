@@ -8,11 +8,16 @@ import {
 } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import {
+  CompetitivePartyValidationError,
+  normalizeCompetitiveParty,
+} from '@vscoke/poke-lounge-battle';
+import {
   hashPokeLoungeRoomCommand,
   type PokeLoungeRoomCommandContext,
   type PokeLoungeRoomOperation,
 } from './poke-lounge-room-command';
 import {
+  PokeLoungePartySnapshotLocked,
   PokeLoungeRoomConflict,
   toPokeLoungePublicRoomState,
 } from './poke-lounge-room-conflict';
@@ -567,21 +572,7 @@ export class PokeLoungeRoomService {
       ...(input.displayName?.trim()
         ? { displayName: input.displayName.trim() }
         : {}),
-      ...(input.activePartySlotIndex === undefined
-        ? {}
-        : {
-            activePartySlotIndex: normalizeSlotIndex(
-              input.activePartySlotIndex,
-            ),
-          }),
-      ...(input.party ? { party: normalizePartySnapshot(input.party) } : {}),
-      ...(input.representativePokemon
-        ? {
-            representativePokemon: normalizeRepresentativePokemon(
-              input.representativePokemon,
-            ),
-          }
-        : {}),
+      competitiveParty: normalizePartySnapshot(input.competitiveParty),
     };
     const nowMs = this.normalizeNow(input.nowMs);
 
@@ -611,32 +602,18 @@ export class PokeLoungeRoomService {
           room.status === 'completed' ||
           room.status === 'closed'
         ) {
-          throw new BadRequestException(
-            'Party snapshots are immutable after tournament start',
-          );
+          throw new PokeLoungePartySnapshotLocked();
         }
 
         room.partySnapshots[participant.playerId] = {
+          version: 2,
           playerId: participant.playerId,
           ...(normalized.displayName
             ? { displayName: normalized.displayName }
             : participant.displayName
               ? { displayName: participant.displayName }
               : {}),
-          ...(normalized.party
-            ? {
-                representativePokemon: representativeFromParty(
-                  normalized.party,
-                  normalized.activePartySlotIndex,
-                ),
-              }
-            : normalized.representativePokemon
-              ? { representativePokemon: normalized.representativePokemon }
-              : {}),
-          ...(normalized.activePartySlotIndex === undefined
-            ? {}
-            : { activePartySlotIndex: normalized.activePartySlotIndex }),
-          ...(normalized.party ? { party: normalized.party } : {}),
+          competitiveParty: normalized.competitiveParty,
           updatedAtMs: nowMs,
         };
         room.updatedAtMs = nowMs;
@@ -1196,136 +1173,22 @@ function completeParticipantLeaveAsForfeit(
   completeMatch(room, match, opponent.playerId, 'forfeit', nowMs);
 }
 
-function normalizeRepresentativePokemon(
-  value: PokeLoungePartySnapshot['representativePokemon'],
-): PokeLoungePartySnapshot['representativePokemon'] {
-  if (!value) {
-    return undefined;
-  }
-
-  const speciesId = normalizePositiveInteger(value.speciesId, 'speciesId');
-  const level = normalizePositiveInteger(value.level, 'level');
-  const currentHp = normalizeNonNegativeInteger(value.currentHp, 'currentHp');
-  const maxHp = normalizeNonNegativeInteger(value.maxHp, 'maxHp');
-
-  if (currentHp > maxHp) {
-    throw new BadRequestException('currentHp cannot exceed maxHp');
-  }
-
-  return {
-    speciesId,
-    name: value.name,
-    level,
-    currentHp,
-    maxHp,
-  };
-}
-
-function normalizeSlotIndex(value: unknown): number {
-  if (
-    typeof value !== 'number' ||
-    !Number.isInteger(value) ||
-    value < 0 ||
-    value > 5
-  ) {
-    throw new BadRequestException('Invalid activePartySlotIndex');
-  }
-  return value;
-}
-
 function normalizePartySnapshot(
-  party: NonNullable<UpdatePokeLoungePartySnapshotInput['party']>,
-): NonNullable<PokeLoungePartySnapshot['party']> {
-  if (party.length < 1 || party.length > 6) {
-    throw new BadRequestException('Party must contain between 1 and 6 Pokémon');
-  }
-
-  const seenSlots = new Set<number>();
-  return party.map((pokemon) => {
-    const slotIndex = normalizeSlotIndex(pokemon.slotIndex);
-    if (seenSlots.has(slotIndex)) {
-      throw new BadRequestException('Party slotIndex must be unique');
+  party: UpdatePokeLoungePartySnapshotInput['competitiveParty'],
+): PokeLoungePartySnapshot['competitiveParty'] {
+  try {
+    return normalizeCompetitiveParty(party);
+  } catch (error) {
+    if (error instanceof CompetitivePartyValidationError) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: 'POKE_LOUNGE_COMPETITIVE_PARTY_INVALID',
+        message: 'Competitive party snapshot is invalid',
+        reason: error.reason,
+      });
     }
-    seenSlots.add(slotIndex);
-
-    const level = normalizePositiveInteger(pokemon.level, 'level');
-    if (level > 100) {
-      throw new BadRequestException('level cannot exceed 100');
-    }
-    const maxHp = normalizePositiveInteger(pokemon.maxHp, 'maxHp');
-    const currentHp = normalizeNonNegativeInteger(
-      pokemon.currentHp,
-      'currentHp',
-    );
-    if (currentHp > maxHp) {
-      throw new BadRequestException('currentHp cannot exceed maxHp');
-    }
-
-    return {
-      slotIndex,
-      speciesId: normalizePositiveInteger(pokemon.speciesId, 'speciesId'),
-      name: pokemon.name,
-      level,
-      currentHp,
-      maxHp,
-      attack: normalizePositiveInteger(pokemon.attack, 'attack'),
-      defense: normalizePositiveInteger(pokemon.defense, 'defense'),
-      speed: normalizePositiveInteger(pokemon.speed, 'speed'),
-      status: pokemon.status,
-      moves: pokemon.moves.slice(0, 4).map((move) => {
-        const maxPp = normalizePositiveInteger(move.maxPp, 'maxPp');
-        const pp = normalizeNonNegativeInteger(move.pp, 'pp');
-        if (pp > maxPp) {
-          throw new BadRequestException('pp cannot exceed maxPp');
-        }
-        return {
-          moveId: normalizePositiveInteger(move.moveId, 'moveId'),
-          name: move.name,
-          pp,
-          maxPp,
-        };
-      }),
-    };
-  });
-}
-
-function representativeFromParty(
-  party: NonNullable<UpdatePokeLoungePartySnapshotInput['party']>,
-  activePartySlotIndex = party.find((pokemon) => pokemon.currentHp > 0)
-    ?.slotIndex ?? party[0]?.slotIndex,
-): PokeLoungePartySnapshot['representativePokemon'] {
-  const pokemon =
-    party.find((candidate) => candidate.slotIndex === activePartySlotIndex) ??
-    party[0];
-  if (!pokemon) {
-    throw new BadRequestException('Party must contain one Pokémon');
+    throw error;
   }
-  return {
-    speciesId: pokemon.speciesId,
-    name: pokemon.name,
-    level: pokemon.level,
-    currentHp: pokemon.currentHp,
-    maxHp: pokemon.maxHp,
-  };
-}
-
-function normalizePositiveInteger(value: unknown, fieldName: string): number {
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) {
-    throw new BadRequestException(`Invalid ${fieldName}`);
-  }
-
-  return value;
-}
-
-function normalizeNonNegativeInteger(
-  value: unknown,
-  fieldName: string,
-): number {
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
-    throw new BadRequestException(`Invalid ${fieldName}`);
-  }
-
-  return value;
 }
 
 function normalizeRoundDuration(roundDurationMs: number | undefined): number {

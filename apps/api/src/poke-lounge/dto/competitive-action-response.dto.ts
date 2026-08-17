@@ -1,9 +1,4 @@
-import {
-  ApiExtraModels,
-  ApiProperty,
-  ApiPropertyOptional,
-  getSchemaPath,
-} from '@nestjs/swagger';
+import { ApiExtraModels, ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import type { CompetitiveActionProjection } from '../competitive/competitive-action.types';
 import type {
   CompetitiveMatchKind,
@@ -11,31 +6,45 @@ import type {
 } from '../competitive/competitive-match.types';
 
 class CompetitiveMoveStateDto {
-  @ApiProperty({ oneOf: [{ type: 'number' }, { type: 'string' }] })
-  moveId!: number | string;
+  @ApiProperty({ minimum: 1, maximum: 470 })
+  moveId!: number;
 
   @ApiProperty({ minimum: 0 })
   pp!: number;
 }
 
+class CompetitiveBattleStatStagesDto {
+  @ApiProperty({ minimum: -6, maximum: 6 })
+  attack!: number;
+
+  @ApiProperty({ minimum: -6, maximum: 6 })
+  defense!: number;
+
+  @ApiProperty({ minimum: -6, maximum: 6 })
+  specialAttack!: number;
+
+  @ApiProperty({ minimum: -6, maximum: 6 })
+  specialDefense!: number;
+
+  @ApiProperty({ minimum: -6, maximum: 6 })
+  speed!: number;
+
+  @ApiProperty({ minimum: -6, maximum: 6 })
+  accuracy!: number;
+
+  @ApiProperty({ minimum: -6, maximum: 6 })
+  evasion!: number;
+}
+
 class CompetitiveCombatantStateDto {
-  @ApiProperty({ oneOf: [{ type: 'number' }, { type: 'string' }] })
-  speciesId!: number | string;
+  @ApiProperty({ minimum: 1, maximum: 493 })
+  speciesId!: number;
 
-  @ApiPropertyOptional({ minimum: 0 })
-  slotIndex?: number;
+  @ApiProperty({ minimum: 0, maximum: 5 })
+  slotIndex!: number;
 
-  @ApiPropertyOptional({ minimum: 1 })
-  level?: number;
-
-  @ApiPropertyOptional({ minimum: 1 })
-  attack?: number;
-
-  @ApiPropertyOptional({ minimum: 1 })
-  defense?: number;
-
-  @ApiPropertyOptional({ minimum: 1 })
-  speed?: number;
+  @ApiProperty({ minimum: 1, maximum: 100 })
+  level!: number;
 
   @ApiProperty({ minimum: 1 })
   maxHp!: number;
@@ -43,8 +52,13 @@ class CompetitiveCombatantStateDto {
   @ApiProperty({ minimum: 0 })
   currentHp!: number;
 
-  @ApiProperty({ enum: ['none', 'paralyzed'] })
-  status!: 'none' | 'paralyzed';
+  @ApiProperty({
+    enum: ['normal', 'poisoned', 'burned', 'paralyzed', 'fainted'],
+  })
+  status!: 'normal' | 'poisoned' | 'burned' | 'paralyzed' | 'fainted';
+
+  @ApiProperty({ type: CompetitiveBattleStatStagesDto })
+  statStages!: CompetitiveBattleStatStagesDto;
 
   @ApiProperty({ type: [CompetitiveMoveStateDto] })
   moves!: CompetitiveMoveStateDto[];
@@ -79,8 +93,8 @@ class CompetitiveTerminalResultDto {
 }
 
 class CompetitiveBattleStateDto {
-  @ApiProperty({ example: 2 })
-  rulesetVersion!: 1 | 2;
+  @ApiProperty({ example: 2, enum: [2] })
+  rulesetVersion!: 2;
 
   @ApiProperty({ minimum: 0 })
   turn!: number;
@@ -100,6 +114,7 @@ class CompetitiveBattleStateDto {
 
 @ApiExtraModels(
   CompetitiveMoveStateDto,
+  CompetitiveBattleStatStagesDto,
   CompetitiveCombatantStateDto,
   CompetitivePlayerStateDto,
   CompetitiveTerminalResultDto,

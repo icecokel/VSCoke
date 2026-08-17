@@ -42,6 +42,16 @@ export class PokeLoungeRoomConflict extends ConflictException {
   }
 }
 
+export class PokeLoungePartySnapshotLocked extends ConflictException {
+  constructor() {
+    super({
+      statusCode: 409,
+      code: 'POKE_LOUNGE_PARTY_SNAPSHOT_LOCKED',
+      message: 'Poke Lounge party snapshot is locked',
+    });
+  }
+}
+
 export function toPokeLoungePublicRoomState(
   room: PokeLoungeRoomSnapshot,
 ): PokeLoungePublicRoomState {
@@ -50,24 +60,7 @@ export function toPokeLoungePublicRoomState(
     partySnapshots: Object.fromEntries(
       Object.entries(room.partySnapshots).map(([playerId, snapshot]) => [
         playerId,
-        {
-          playerId: snapshot.playerId,
-          ...(snapshot.displayName
-            ? { displayName: snapshot.displayName }
-            : {}),
-          ...(snapshot.representativePokemon
-            ? {
-                representativePokemon: {
-                  speciesId: snapshot.representativePokemon.speciesId,
-                  level: snapshot.representativePokemon.level,
-                  currentHp: snapshot.representativePokemon.currentHp,
-                  maxHp: snapshot.representativePokemon.maxHp,
-                },
-              }
-            : {}),
-          partySize: snapshot.party?.length ?? 0,
-          updatedAtMs: snapshot.updatedAtMs,
-        },
+        toPublicPartySnapshot(snapshot),
       ]),
     ),
     competitiveTransitions: structuredClone(room.competitiveTransitions ?? []),
@@ -84,5 +77,29 @@ export function toPokeLoungePublicRoomState(
         ? {}
         : { leftAtMs: participant.leftAtMs }),
     })),
+  };
+}
+
+function toPublicPartySnapshot(
+  snapshot: PokeLoungeRoomSnapshot['partySnapshots'][string],
+): PokeLoungePublicRoomState['partySnapshots'][string] {
+  const representative = snapshot.competitiveParty.members.find(
+    (member) => member.slotIndex === snapshot.competitiveParty.activeSlotIndex,
+  );
+  if (!representative) {
+    throw new Error('Competitive party representative is missing');
+  }
+
+  return {
+    playerId: snapshot.playerId,
+    ...(snapshot.displayName ? { displayName: snapshot.displayName } : {}),
+    representativePokemon: {
+      speciesId: representative.speciesId,
+      level: representative.level,
+      currentHp: representative.currentHp,
+      maxHp: representative.maxHp,
+    },
+    partySize: snapshot.competitiveParty.members.length,
+    updatedAtMs: snapshot.updatedAtMs,
   };
 }

@@ -251,8 +251,8 @@ export class PokeLoungePartySnapshotDto implements PokeLoungePublicPartySnapshot
   @ApiPropertyOptional({ example: 'Player A' })
   displayName?: string;
 
-  @ApiPropertyOptional({ type: PokeLoungeRepresentativePokemonDto })
-  representativePokemon?: PokeLoungeRepresentativePokemonDto;
+  @ApiProperty({ type: PokeLoungeRepresentativePokemonDto })
+  representativePokemon!: PokeLoungeRepresentativePokemonDto;
 
   @ApiProperty({ example: 1, minimum: 0 })
   partySize!: number;

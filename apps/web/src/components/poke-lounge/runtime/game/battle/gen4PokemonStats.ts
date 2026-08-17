@@ -1,3 +1,7 @@
+import {
+  calculateGen4BattleStats as calculateSharedGen4BattleStats,
+  type Gen4BattleStats,
+} from "@vscoke/poke-lounge-battle";
 import { MAX_POKEMON_INDIVIDUAL_VALUE, type PokemonIndividualValues } from "./individual-values";
 
 export const DEFAULT_GEN4_IV = 31;
@@ -28,14 +32,7 @@ export interface Gen4BaseStats {
   speed: number;
 }
 
-export interface Gen4BattleStats {
-  maxHp: number;
-  attack: number;
-  defense: number;
-  specialAttack: number;
-  specialDefense: number;
-  speed: number;
-}
+export type { Gen4BattleStats } from "@vscoke/poke-lounge-battle";
 
 export function calculateGen4BattleStats(
   baseStats: Gen4BaseStats,
@@ -43,44 +40,19 @@ export function calculateGen4BattleStats(
   iv: PokemonStatValuesInput = DEFAULT_GEN4_IVS,
   ev: PokemonStatValuesInput = DEFAULT_GEN4_EVS,
 ): Gen4BattleStats {
-  return {
-    maxHp: calculateHp(
-      baseStats.hp,
-      level,
-      resolveStatValue(iv, "hp", DEFAULT_GEN4_IV),
-      resolveStatValue(ev, "hp", DEFAULT_GEN4_EV),
-    ),
-    attack: calculateOtherStat(
-      baseStats.attack,
-      level,
-      resolveStatValue(iv, "attack", DEFAULT_GEN4_IV),
-      resolveStatValue(ev, "attack", DEFAULT_GEN4_EV),
-    ),
-    defense: calculateOtherStat(
-      baseStats.defense,
-      level,
-      resolveStatValue(iv, "defense", DEFAULT_GEN4_IV),
-      resolveStatValue(ev, "defense", DEFAULT_GEN4_EV),
-    ),
-    specialAttack: calculateOtherStat(
-      baseStats.special_attack,
-      level,
-      resolveStatValue(iv, "specialAttack", DEFAULT_GEN4_IV),
-      resolveStatValue(ev, "specialAttack", DEFAULT_GEN4_EV),
-    ),
-    specialDefense: calculateOtherStat(
-      baseStats.special_defense,
-      level,
-      resolveStatValue(iv, "specialDefense", DEFAULT_GEN4_IV),
-      resolveStatValue(ev, "specialDefense", DEFAULT_GEN4_EV),
-    ),
-    speed: calculateOtherStat(
-      baseStats.speed,
-      level,
-      resolveStatValue(iv, "speed", DEFAULT_GEN4_IV),
-      resolveStatValue(ev, "speed", DEFAULT_GEN4_EV),
-    ),
-  };
+  return calculateSharedGen4BattleStats(
+    {
+      hp: baseStats.hp,
+      attack: baseStats.attack,
+      defense: baseStats.defense,
+      specialAttack: baseStats.special_attack,
+      specialDefense: baseStats.special_defense,
+      speed: baseStats.speed,
+    },
+    level,
+    toStatValues(iv, DEFAULT_GEN4_IV),
+    toStatValues(ev, DEFAULT_GEN4_EV),
+  );
 }
 
 type PokemonStatValuesInput = number | Partial<PokemonIndividualValues>;
@@ -97,10 +69,13 @@ function resolveStatValue(
   return input[stat] ?? fallback;
 }
 
-function calculateHp(base: number, level: number, iv: number, ev: number): number {
-  return Math.floor(((2 * base + iv + Math.floor(ev / 4)) * level) / 100) + level + 10;
-}
-
-function calculateOtherStat(base: number, level: number, iv: number, ev: number): number {
-  return Math.floor(((2 * base + iv + Math.floor(ev / 4)) * level) / 100) + 5;
+function toStatValues(input: PokemonStatValuesInput, fallback: number): PokemonIndividualValues {
+  return {
+    hp: resolveStatValue(input, "hp", fallback),
+    attack: resolveStatValue(input, "attack", fallback),
+    defense: resolveStatValue(input, "defense", fallback),
+    specialAttack: resolveStatValue(input, "specialAttack", fallback),
+    specialDefense: resolveStatValue(input, "specialDefense", fallback),
+    speed: resolveStatValue(input, "speed", fallback),
+  };
 }

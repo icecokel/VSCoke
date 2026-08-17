@@ -1,3 +1,5 @@
+export type CanonicalMoveId = number | "struggle";
+
 export type CanonicalCompetitiveAction =
-  | { kind: "move"; moveId: number | string }
+  | { kind: "move"; moveId: CanonicalMoveId }
   | { kind: "switch"; slotIndex: number };

@@ -6,6 +6,10 @@ import {
 } from '@nestjs/common';
 import { createTournamentBracketState } from '@vscoke/poke-lounge-battle';
 import { FakePokeLoungeRoomRepository } from '../../test/support/fake-poke-lounge-room.repository';
+import {
+  createTestCompetitivePartyInput,
+  createTestPartySnapshot,
+} from '../../test/support/competitive-party.fixture';
 import type { PokeLoungeRoomEventPublisher } from './poke-lounge-room-event.publisher';
 import type {
   PokeLoungeRoomRepository,
@@ -572,21 +576,23 @@ describe('PokeLoungeRoomService', () => {
       { playerId: 'player-2', sessionId: 'session-2', nowMs: 10 },
       command(0, 2),
     );
+    await updateTestParty('player-1', 'session-1', 1, 30, 20);
+    await updateTestParty('player-2', 'session-2', 2, 31, 30);
     const waiting = await service.setReady(
       'ROOM01',
       { playerId: 'player-1', sessionId: 'session-1', ready: true, nowMs: 100 },
-      command(1, 3),
+      command(3, 3),
     );
     const started = await service.setReady(
       'ROOM01',
       { playerId: 'player-2', sessionId: 'session-2', ready: true, nowMs: 200 },
-      command(2, 4),
+      command(4, 4),
     );
 
     expect(waiting.status).toBe('waiting');
     expect(started).toMatchObject({
       status: 'round-started',
-      revision: 3,
+      revision: 5,
       round: { startedAtMs: 200, endsAtMs: 1200 },
     });
 
@@ -596,7 +602,7 @@ describe('PokeLoungeRoomService', () => {
 
     expect(tournament).toMatchObject({
       status: 'tournament',
-      revision: 4,
+      revision: 6,
       tournament: {
         version: 2,
         activeMatchId: 'game-round-1-bracket-1-match-1',
@@ -622,15 +628,17 @@ describe('PokeLoungeRoomService', () => {
       { playerId: 'player-2', sessionId: 'session-2', nowMs: 10 },
       command(0, 2),
     );
+    await updateTestParty('player-1', 'session-1', 1, 32, 20);
+    await updateTestParty('player-2', 'session-2', 2, 33, 30);
     await service.setReady(
       'ROOM01',
       { playerId: 'player-1', sessionId: 'session-1', ready: true, nowMs: 100 },
-      command(1, 3),
+      command(3, 3),
     );
     const started = await service.setReady(
       'ROOM01',
       { playerId: 'player-2', sessionId: 'session-2', ready: true, nowMs: 200 },
-      command(2, 4),
+      command(4, 4),
     );
 
     const joined = await service.joinRoom(
@@ -638,10 +646,17 @@ describe('PokeLoungeRoomService', () => {
       { playerId: 'player-3', sessionId: 'session-3', nowMs: 300 },
       command(started.revision, 5),
     );
+    const withParty = await updateTestParty(
+      'player-3',
+      'session-3',
+      joined.revision,
+      34,
+      350,
+    );
     const ready = await service.setReady(
       'ROOM01',
       { playerId: 'player-3', sessionId: 'session-3', ready: true, nowMs: 400 },
-      command(joined.revision, 6),
+      command(withParty.revision, 6),
     );
 
     expect(joined).toMatchObject({
@@ -788,28 +803,15 @@ describe('PokeLoungeRoomService', () => {
         playerId: 'player-1',
         sessionId: 'session-1',
         displayName: ' Alpha ',
-        representativePokemon: {
-          speciesId: 25,
-          name: 'Pikachu',
-          level: 12,
-          currentHp: 18,
-          maxHp: 30,
-        },
+        competitiveParty: createTestCompetitivePartyInput(),
         nowMs: 50,
       },
       command(0, 2),
     );
 
     expect(room.partySnapshots['player-1']).toEqual({
-      playerId: 'player-1',
+      ...createTestPartySnapshot('player-1'),
       displayName: 'Alpha',
-      representativePokemon: {
-        speciesId: 25,
-        name: 'Pikachu',
-        level: 12,
-        currentHp: 18,
-        maxHp: 30,
-      },
       updatedAtMs: 50,
     });
     await expect(
@@ -818,18 +820,57 @@ describe('PokeLoungeRoomService', () => {
         {
           playerId: 'player-1',
           sessionId: 'wrong',
-          representativePokemon: {
-            speciesId: 25,
-            name: 'Pikachu',
-            level: 12,
-            currentHp: 31,
-            maxHp: 30,
-          },
+          competitiveParty: createTestCompetitivePartyInput(),
           nowMs: 51,
         },
         command(1, 3),
       ),
     ).rejects.toThrow(BadRequestException);
+
+    const invalidParty = createTestCompetitivePartyInput();
+    invalidParty.members[0].currentHp = 35;
+    try {
+      await service.updatePartySnapshot(
+        'ROOM01',
+        {
+          playerId: 'player-1',
+          sessionId: 'session-1',
+          competitiveParty: invalidParty,
+          nowMs: 52,
+        },
+        command(1, 4),
+      );
+      throw new Error('Expected invalid party snapshot to be rejected');
+    } catch (error) {
+      expect(error).toBeInstanceOf(BadRequestException);
+      expect((error as BadRequestException).getResponse()).toMatchObject({
+        code: 'POKE_LOUNGE_COMPETITIVE_PARTY_INVALID',
+        reason: 'hp-out-of-range',
+      });
+    }
+  });
+
+  it('locks party snapshots after the tournament starts', async () => {
+    const tournament = await createTournament();
+
+    try {
+      await service.updatePartySnapshot(
+        'ROOM01',
+        {
+          playerId: 'player-1',
+          sessionId: 'session-1',
+          competitiveParty: createTestCompetitivePartyInput(),
+          nowMs: 1_201,
+        },
+        command(tournament.revision, 50),
+      );
+      throw new Error('Expected party snapshot lock');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConflictException);
+      expect((error as ConflictException).getResponse()).toMatchObject({
+        code: 'POKE_LOUNGE_PARTY_SNAPSHOT_LOCKED',
+      });
+    }
   });
 
   it('accepts authorized tournament results and returns final standings', async () => {
@@ -1337,19 +1378,40 @@ describe('PokeLoungeRoomService', () => {
       { playerId: 'player-2', sessionId: 'session-2', nowMs: 10 },
       command(0, 2),
     );
+    await updateTestParty('player-1', 'session-1', 1, 40, 20);
+    await updateTestParty('player-2', 'session-2', 2, 41, 30);
     await service.setReady(
       'ROOM01',
       { playerId: 'player-1', sessionId: 'session-1', ready: true, nowMs: 100 },
-      command(1, 3),
+      command(3, 3),
     );
     await service.setReady(
       'ROOM01',
       { playerId: 'player-2', sessionId: 'session-2', ready: true, nowMs: 200 },
-      command(2, 4),
+      command(4, 4),
     );
 
     currentTimeMs = 1200;
     return service.getRoom('ROOM01');
+  }
+
+  function updateTestParty(
+    playerId: string,
+    sessionId: string,
+    expectedRevision: number,
+    commandIndex: number,
+    nowMs: number,
+  ) {
+    return service.updatePartySnapshot(
+      'ROOM01',
+      {
+        playerId,
+        sessionId,
+        competitiveParty: createTestCompetitivePartyInput(),
+        nowMs,
+      },
+      command(expectedRevision, commandIndex),
+    );
   }
 });
 
@@ -1360,7 +1422,7 @@ function command(expectedRevision: number, index: number) {
   };
 }
 
-function createSnapshot() {
+function createSnapshot(): PokeLoungeRoomSnapshot {
   return {
     roomCode: 'ROOM01',
     status: 'waiting' as const,

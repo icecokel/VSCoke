@@ -9,10 +9,13 @@ import { PokeLoungeCompetitiveAction } from './competitive-action.entity';
 import {
   COMPETITIVE_RULESET_HASH,
   COMPETITIVE_RULESET_VERSION,
-  createInitialBattleState,
   createTournamentBracketState,
   hashCanonicalState,
 } from '@vscoke/poke-lounge-battle';
+import {
+  createTestInitialBattleState,
+  createTestPartySnapshots,
+} from '../../../test/support/competitive-party.fixture';
 import type { DataSource, EntityManager } from 'typeorm';
 import { PostgresCompetitiveActionRepository } from './postgres-competitive-action.repository';
 import { getMetadataArgsStorage } from 'typeorm';
@@ -32,7 +35,7 @@ describe('hashCompetitiveActionRequest', () => {
       assignmentRevision: 1,
       turn: 0,
       clientCommandId: '00000000-0000-4000-8000-000000000001',
-      action: { kind: 'move' as const, moveId: 'steady-strike' },
+      action: { kind: 'move' as const, moveId: 55 },
     };
     const hash = hashCompetitiveActionRequest(input);
 
@@ -120,7 +123,7 @@ describe('PostgresCompetitiveActionRepository command replay ordering', () => {
         currentTurn: status === 'pending' ? 0 : 1,
         status: status === 'pending' ? 'active' : 'completed',
         playerIds: ['player-a', 'player-b'] as [string, string],
-        currentState: createInitialBattleState(['player-a', 'player-b']),
+        currentState: createTestInitialBattleState(['player-a', 'player-b']),
         stateHash: 'b'.repeat(64),
         submittedPlayerIds: status === 'pending' ? ['player-a'] : [],
         terminal: null,
@@ -374,7 +377,13 @@ describe('advanceTournamentAuthorityMatch', () => {
         createdAtMs: 0,
         updatedAtMs: 0,
         participants: [],
-        partySnapshots: {},
+        partySnapshots: createTestPartySnapshots([
+          'player-1',
+          'player-2',
+          'player-3',
+          'player-4',
+          'player-5',
+        ]),
         round: {
           index: 1,
           phase: 'tournament',
@@ -459,6 +468,17 @@ describe('advanceTournamentAuthorityMatch', () => {
         ],
       }),
     );
+    const nextAssignment = matchSave.mock.calls[0]?.[0];
+    const frozenMember =
+      room.state.partySnapshots['player-4'].competitiveParty.members[0];
+    expect(
+      nextAssignment?.initialState.playersById['player-4'].team[0],
+    ).toMatchObject({
+      speciesId: frozenMember.speciesId,
+      level: frozenMember.level,
+      currentHp: frozenMember.currentHp,
+      moves: frozenMember.moves,
+    });
   });
 });
 
@@ -470,7 +490,7 @@ function actionInput() {
     assignmentRevision: 1,
     turn: 0,
     clientCommandId: '00000000-0000-4000-8000-000000000001',
-    action: { kind: 'move' as const, moveId: 'steady-strike' },
+    action: { kind: 'move' as const, moveId: 55 },
   };
 }
 
@@ -553,7 +573,7 @@ function terminalTournamentRepository() {
   );
   const activeBracketMatchId = bracket.currentRound!.matches[0].matchId;
   const oldMatchId = '11111111-1111-4111-8111-111111111111';
-  const currentState = createInitialBattleState(['player-4', 'player-5']);
+  const currentState = createTestInitialBattleState(['player-4', 'player-5']);
   currentState.playersById['player-5'].team.forEach((combatant, index) => {
     combatant.currentHp = index === 0 ? 1 : 0;
   });
@@ -595,7 +615,13 @@ function terminalTournamentRepository() {
       createdAtMs: 0,
       updatedAtMs: 0,
       participants: [],
-      partySnapshots: {},
+      partySnapshots: createTestPartySnapshots([
+        'player-1',
+        'player-2',
+        'player-3',
+        'player-4',
+        'player-5',
+      ]),
       round: {
         index: 1,
         phase: 'tournament',

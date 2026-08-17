@@ -1,11 +1,13 @@
 import {
-  canUseCompetitiveStruggle,
+  COMPETITIVE_RULESET_V2,
   COMPETITIVE_STRUGGLE_MOVE_ID,
+  isCompetitiveMoveEffectSelectable,
 } from "@vscoke/poke-lounge-battle";
 import type { CompetitiveAction, CompetitiveProjection } from "../network/localPreviewRoom";
-import { createDefaultBattleStatStages } from "./battle-stat-stages";
 import { getBattlePokemonAssets } from "./battlePokemonAssets";
-import { normalizeIndividualValues } from "./individual-values";
+import { getGen4TypeName } from "./battleRomData";
+import { calculateGen4BattleStats } from "./gen4PokemonStats";
+import { createMaxIndividualValues } from "./individual-values";
 import {
   getRuntimePokemonMoveDetails,
   getRuntimePokemonSpeciesSummary,
@@ -33,14 +35,21 @@ export function isLegalAuthoritativeAction(
 
   if (action.kind === "move") {
     const activePokemon = player.team.find(pokemon => pokemon.slotIndex === player.activeSlotIndex);
-    const moveId = toNumericId(action.moveId);
+    if (!activePokemon || activePokemon.currentHp === 0) {
+      return false;
+    }
+    if (action.moveId === COMPETITIVE_STRUGGLE_MOVE_ID) {
+      return canUseAuthoritativeStruggle(activePokemon.moves);
+    }
+
     return Boolean(
-      activePokemon &&
-      activePokemon.currentHp > 0 &&
-      moveId !== null &&
-      (activePokemon.moves.some(move => move.moveId === moveId && move.pp > 0) ||
-        (moveId === COMPETITIVE_STRUGGLE_MOVE_ID &&
-          canUseCompetitiveStruggle(activePokemon.moves))),
+      Number.isSafeInteger(action.moveId) &&
+      activePokemon.moves.some(
+        move =>
+          move.moveId === action.moveId &&
+          move.pp > 0 &&
+          isRuntimeCompetitiveMoveSelectable(move.moveId),
+      ),
     );
   }
 
@@ -126,43 +135,53 @@ function toBattleParticipant(player: CompetitivePlayer, fallbackName: string): B
 }
 
 function toBattlePokemon(pokemon: CompetitivePokemon): BattlePokemon {
-  const speciesId = toNumericId(pokemon.speciesId) ?? 1;
+  const speciesId = pokemon.speciesId;
   const species = getRuntimePokemonSpeciesSummary(speciesId);
+  if (!species) {
+    throw new Error(`Competitive species ${speciesId} is missing from runtime game data`);
+  }
   const assets = getBattlePokemonAssets(speciesId);
-  const level = pokemon.level ?? 1;
-  const attack = pokemon.attack ?? 10 + level;
-  const defense = pokemon.defense ?? 10 + level;
-  const speed = pokemon.speed ?? 10 + level;
-  const status =
-    pokemon.currentHp <= 0 ? "fainted" : pokemon.status === "paralyzed" ? "paralyzed" : "normal";
+  const individualValues = createMaxIndividualValues();
+  const displayStats = calculateGen4BattleStats(
+    {
+      hp: species.baseStats.hp,
+      attack: species.baseStats.attack,
+      defense: species.baseStats.defense,
+      speed: species.baseStats.speed,
+      special_attack: species.baseStats.specialAttack,
+      special_defense: species.baseStats.specialDefense,
+    },
+    pokemon.level,
+    individualValues,
+  );
 
   return {
     speciesId,
-    name: species?.name ?? `#${speciesId}`,
-    level,
+    name: species.name,
+    level: pokemon.level,
     catchRate: 0,
     baseExpYield: 0,
     growthRate: 1_000_000,
     experience: 0,
     baseStats: {
-      hp: species?.baseStats.hp ?? pokemon.maxHp,
-      attack: species?.baseStats.attack ?? attack,
-      defense: species?.baseStats.defense ?? defense,
-      speed: species?.baseStats.speed ?? speed,
-      special_attack: species?.baseStats.specialAttack ?? attack,
-      special_defense: species?.baseStats.specialDefense ?? defense,
+      hp: species.baseStats.hp,
+      attack: species.baseStats.attack,
+      defense: species.baseStats.defense,
+      speed: species.baseStats.speed,
+      special_attack: species.baseStats.specialAttack,
+      special_defense: species.baseStats.specialDefense,
     },
-    individualValues: normalizeIndividualValues({}, () => 0),
+    individualValues,
     maxHp: pokemon.maxHp,
     currentHp: pokemon.currentHp,
-    attack,
-    defense,
-    specialAttack: species?.baseStats.specialAttack ?? attack,
-    specialDefense: species?.baseStats.specialDefense ?? defense,
-    speed,
-    statStages: createDefaultBattleStatStages(),
-    typeIds: species?.typeIds ?? [0],
-    status,
+    attack: displayStats.attack,
+    defense: displayStats.defense,
+    specialAttack: displayStats.specialAttack,
+    specialDefense: displayStats.specialDefense,
+    speed: displayStats.speed,
+    statStages: { ...pokemon.statStages },
+    typeIds: species.typeIds,
+    status: pokemon.status,
     frontSprite: assets.front,
     backSprite: assets.back,
     moves: pokemon.moves.map(toBattleMove),
@@ -170,25 +189,55 @@ function toBattlePokemon(pokemon: CompetitivePokemon): BattlePokemon {
 }
 
 function toBattleMove(move: CompetitivePokemon["moves"][number]): BattleMove {
-  const moveId = toNumericId(move.moveId) ?? 1;
+  const moveId = move.moveId;
   const view = getRuntimePokemonMoveDetails(moveId);
-  const maxPp = view?.pp ?? Math.max(1, move.pp);
+  if (!view) {
+    throw new Error(`Competitive move ${moveId} is missing from runtime game data`);
+  }
 
   return {
     id: moveId,
-    name: view?.name ?? `Move #${moveId}`,
+    name: view.name,
     pp: move.pp,
-    maxPp,
-    type: "normal",
-    typeId: view?.typeId ?? 0,
-    category: view?.category ?? "physical",
-    effectCode: view?.effectCode ?? 0,
-    accuracy: view?.accuracy ?? 100,
-    power: view?.power ?? 0,
+    maxPp: view.pp,
+    type: getGen4TypeName(view.typeId),
+    typeId: view.typeId,
+    category: view.category,
+    effectCode: view.effectCode,
+    accuracy: view.accuracy,
+    power: view.power,
+    ...getCompetitiveEffectSupport(view),
   };
 }
 
-function toNumericId(value: unknown): number | null {
-  const parsed = typeof value === "number" ? value : Number(value);
-  return Number.isSafeInteger(parsed) ? parsed : null;
+export function canUseAuthoritativeStruggle(
+  moves: readonly { moveId: number; pp: number }[],
+): boolean {
+  return moves.every(move => move.pp === 0 || !isRuntimeCompetitiveMoveSelectable(move.moveId));
+}
+
+function isRuntimeCompetitiveMoveSelectable(moveId: number): boolean {
+  const move = getRuntimePokemonMoveDetails(moveId);
+  if (!move) {
+    throw new Error(`Competitive move ${moveId} is missing from runtime game data`);
+  }
+  return isCompetitiveMoveEffectSelectable(move);
+}
+
+function getCompetitiveEffectSupport(
+  move: NonNullable<ReturnType<typeof getRuntimePokemonMoveDetails>>,
+): Pick<BattleMove, "competitiveEffectSupport"> {
+  const supportedEffectCodes: readonly number[] = [
+    0,
+    ...COMPETITIVE_RULESET_V2.supportedPrimaryStatusEffectCodes,
+    ...COMPETITIVE_RULESET_V2.supportedSecondaryEffectCodes,
+    ...COMPETITIVE_RULESET_V2.priorityEffectCodes,
+  ];
+  if (supportedEffectCodes.includes(move.effectCode)) {
+    return {};
+  }
+  return {
+    competitiveEffectSupport:
+      move.category === "status" ? "unsupported-primary" : "unsupported-secondary",
+  };
 }

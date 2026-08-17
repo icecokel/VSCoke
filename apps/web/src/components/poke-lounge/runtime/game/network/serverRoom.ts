@@ -15,6 +15,7 @@ import {
   parseCompetitiveProjectionContract,
   parseCompetitiveRoomSnapshotContract,
 } from "./competitive-projection";
+import { createCompetitivePartySnapshot } from "./competitive-party-snapshot";
 import {
   findCurrentMatch,
   mapServerTournamentPlayerIds,
@@ -30,7 +31,6 @@ type Handler<T extends RoomMessage> = (payload: RoomEvent[T]) => void;
 type ApiServerRoom = components["schemas"]["PokeLoungeRoomResponseDto"];
 type ServerParticipant = ApiServerRoom["participants"][number];
 type ServerPartySnapshot = components["schemas"]["PokeLoungePartySnapshotDto"];
-type ServerPartySnapshotInput = components["schemas"]["UpdatePokeLoungePartySnapshotDto"];
 
 interface ServerRoomState {
   roomCode: string;
@@ -1196,8 +1196,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         playerId: serverPlayerId,
         sessionId,
         displayName: snapshot.displayName,
-        activePartySlotIndex: snapshot.activePartySlotIndex,
-        party: toPartySnapshot(snapshot),
+        competitiveParty: createCompetitivePartySnapshot(snapshot),
       },
       getLatestRevision,
       idempotencyKey,
@@ -1712,50 +1711,6 @@ function createDefaultSnapshot(sessionId: string, playerId: string): PlayerSnaps
     y: 446,
     facing: "front",
   };
-}
-
-function toPartySnapshot(snapshot: PlayerSnapshot): ServerPartySnapshotInput["party"] {
-  const party = snapshot.party ?? [];
-
-  return party.flatMap(slot => {
-    const pokemon = slot.pokemon;
-    if (!pokemon) {
-      return [];
-    }
-
-    const maxHp = Number.isInteger(pokemon.maxHp)
-      ? Math.max(1, pokemon.maxHp as number)
-      : 10 + pokemon.level * 2 + (pokemon.speciesId % 10);
-    const currentHp = Number.isInteger(pokemon.currentHp)
-      ? Math.max(0, Math.min(maxHp, pokemon.currentHp as number))
-      : maxHp;
-
-    return [
-      {
-        slotIndex: slot.slotIndex,
-        speciesId: pokemon.speciesId,
-        name: pokemon.name,
-        level: pokemon.level,
-        currentHp,
-        maxHp,
-        attack: Math.max(1, pokemon.attack ?? 5 + pokemon.level * 2 + (pokemon.speciesId % 20)),
-        defense: Math.max(1, pokemon.defense ?? 5 + pokemon.level * 2 + (pokemon.speciesId % 17)),
-        speed: Math.max(1, pokemon.speed ?? 5 + pokemon.level * 2 + (pokemon.speciesId % 23)),
-        status:
-          pokemon.status === "paralyzed"
-            ? "paralyzed"
-            : pokemon.currentHp === 0
-              ? "fainted"
-              : "none",
-        moves: (pokemon.moves ?? []).slice(0, 4).map(move => ({
-          moveId: move.id,
-          name: move.name,
-          pp: Math.max(0, move.pp),
-          maxPp: Math.max(1, move.maxPp),
-        })),
-      },
-    ];
-  });
 }
 
 function isE2eEnabled(): boolean {

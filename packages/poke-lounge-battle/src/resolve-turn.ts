@@ -1,5 +1,12 @@
 import type { CanonicalCompetitiveAction } from "./actions";
 import {
+  applyBattleStatStageDelta,
+  BATTLE_STAT_STAGE_KEYS,
+  calculateBattleStageModifiedStat,
+  normalizeBattleStatStages,
+  type BattleStatStageKey,
+} from "./battle-stat-stages";
+import {
   createCanonicalIdRecord,
   hashCanonicalState,
   type CanonicalBattleState,
@@ -8,26 +15,23 @@ import {
   type CanonicalPlayerState,
   type CanonicalTerminalResult,
 } from "./canonical-state";
+import {
+  COMPETITIVE_MOVE_CATALOG,
+  COMPETITIVE_SPECIES_CATALOG,
+} from "./competitive-catalog.generated";
+import { canUseCompetitiveStruggle, isCompetitiveMoveSelectable } from "./competitive-party";
+import { calculateGen4Damage, checkGen4Accuracy } from "./gen4-battle-math";
+import { calculateGen4TypeEffectiveness } from "./gen4-type-chart";
 import type { SeededRandom } from "./prng";
 import {
-  APPROVED_COMPETITIVE_RULESET_V2,
-  canUseCompetitiveStruggle,
+  COMPETITIVE_RULESET_V2,
   COMPETITIVE_RULESET_VERSION,
   COMPETITIVE_STRUGGLE_MOVE_ID,
   getCompetitiveMoveDefinition,
-  type CompetitiveMoveDefinition,
+  type CompetitiveResolvedMoveDefinition,
 } from "./ruleset";
 
-export interface CompetitiveAssignmentV1 {
-  matchId: string;
-  assignmentRevision: number;
-  rulesetVersion: 1 | 2;
-  rulesetHash: string;
-  participantIds: readonly [string, string];
-  initialState: CanonicalBattleState;
-}
-
-export interface ResolvedTurnV1 {
+export interface ResolvedTurnV2 {
   turn: number;
   state: CanonicalBattleState;
   stateHash: string;
@@ -60,7 +64,7 @@ function sortedParticipantIds(state: CanonicalBattleState): readonly [string, st
   }
 
   const statePlayerIds = Object.keys(state.playersById).sort();
-  if (statePlayerIds.length !== 2 || statePlayerIds.some((id, i) => id !== ids[i])) {
+  if (statePlayerIds.length !== 2 || statePlayerIds.some((id, index) => id !== ids[index])) {
     throw new Error("Canonical battle state requires exactly two participant players");
   }
 
@@ -68,47 +72,68 @@ function sortedParticipantIds(state: CanonicalBattleState): readonly [string, st
 }
 
 function validateCombatant(combatant: CanonicalCombatantState): void {
+  const species = COMPETITIVE_SPECIES_CATALOG[combatant.speciesId];
   if (
-    !Number.isSafeInteger(combatant.speciesId) ||
-    (combatant.speciesId as number) < 1 ||
-    (combatant.speciesId as number) > 500 ||
+    !species ||
+    !Number.isSafeInteger(combatant.slotIndex) ||
+    combatant.slotIndex < 0 ||
+    combatant.slotIndex >= COMPETITIVE_RULESET_V2.partySize.maximum ||
     !Number.isSafeInteger(combatant.level) ||
     combatant.level < 1 ||
     combatant.level > 100 ||
     !Number.isSafeInteger(combatant.maxHp) ||
     combatant.maxHp < 1 ||
-    !Number.isSafeInteger(combatant.attack) ||
-    combatant.attack < 1 ||
-    !Number.isSafeInteger(combatant.defense) ||
-    combatant.defense < 1 ||
-    !Number.isSafeInteger(combatant.speed) ||
-    combatant.speed < 1 ||
-    combatant.moves.length > 4 ||
-    !Number.isInteger(combatant.currentHp) ||
+    !Number.isSafeInteger(combatant.currentHp) ||
     combatant.currentHp < 0 ||
     combatant.currentHp > combatant.maxHp ||
-    !["none", "paralyzed"].includes(combatant.status)
+    ![
+      combatant.attack,
+      combatant.defense,
+      combatant.specialAttack,
+      combatant.specialDefense,
+      combatant.speed,
+    ].every(stat => Number.isSafeInteger(stat) && stat >= 1) ||
+    combatant.typeIds.length !== species.typeIds.length ||
+    combatant.typeIds.some((typeId, index) => typeId !== species.typeIds[index]) ||
+    combatant.moves.length < 1 ||
+    combatant.moves.length > COMPETITIVE_RULESET_V2.moveCountMaximum ||
+    !hasMatchingStatusAndHp(combatant)
   ) {
     throw new Error("Invalid canonical combatant state");
   }
 
+  const normalizedStages = normalizeBattleStatStages(combatant.statStages);
+  if (BATTLE_STAT_STAGE_KEYS.some(key => normalizedStages[key] !== combatant.statStages[key])) {
+    throw new Error("Invalid canonical combatant stat stages");
+  }
+
+  const moveIds = new Set<number>();
   for (const move of combatant.moves) {
-    const definition = getCompetitiveMoveDefinition(move.moveId);
-    if (!definition || !Number.isInteger(move.pp) || move.pp < 0 || move.pp > definition.maxPp) {
+    const definition = COMPETITIVE_MOVE_CATALOG[move.moveId];
+    if (
+      !definition ||
+      moveIds.has(move.moveId) ||
+      !Number.isSafeInteger(move.pp) ||
+      move.pp < 0 ||
+      move.pp > definition.maxPp
+    ) {
       throw new Error("Invalid canonical move state");
     }
+    moveIds.add(move.moveId);
   }
 }
 
 function validatePlayer(playerId: string, player: CanonicalPlayerState): void {
+  const slots = new Set(player.team.map(member => member.slotIndex));
   if (
     player.playerId !== playerId ||
-    !Number.isInteger(player.activeSlotIndex) ||
+    !Number.isSafeInteger(player.activeSlotIndex) ||
     player.activeSlotIndex < 0 ||
-    player.activeSlotIndex >= 6 ||
-    player.team.length < APPROVED_COMPETITIVE_RULESET_V2.minTeamSize ||
-    player.team.length > APPROVED_COMPETITIVE_RULESET_V2.maxTeamSize ||
-    !player.team.some(member => member.slotIndex === player.activeSlotIndex)
+    player.activeSlotIndex >= COMPETITIVE_RULESET_V2.partySize.maximum ||
+    player.team.length < COMPETITIVE_RULESET_V2.partySize.minimum ||
+    player.team.length > COMPETITIVE_RULESET_V2.partySize.maximum ||
+    slots.size !== player.team.length ||
+    !slots.has(player.activeSlotIndex)
   ) {
     throw new Error("Invalid canonical player state");
   }
@@ -129,6 +154,8 @@ function cloneState(
           activeSlotIndex: player.activeSlotIndex,
           team: player.team.map(member => ({
             ...member,
+            typeIds: [...member.typeIds] as [number] | [number, number],
+            statStages: { ...member.statStages },
             moves: member.moves.map(move => ({ ...move })),
           })),
         },
@@ -152,10 +179,11 @@ function cloneState(
 
 function activeCombatant(state: CanonicalBattleState, playerId: string): CanonicalCombatantState {
   const player = state.playersById[playerId]!;
-  return (
-    player.team.find(member => member.slotIndex === player.activeSlotIndex) ??
-    player.team[player.activeSlotIndex]!
-  );
+  const active = player.team.find(member => member.slotIndex === player.activeSlotIndex);
+  if (!active) {
+    throw new Error("Canonical player active slot is missing");
+  }
+  return active;
 }
 
 function rejectUnsupportedAction(action: never): never {
@@ -178,14 +206,17 @@ function validateAction(
       }
       if (action.moveId === COMPETITIVE_STRUGGLE_MOVE_ID) {
         if (!canUseCompetitiveStruggle(active.moves)) {
-          throw new Error("Cannot struggle while the active combatant has usable PP");
+          throw new Error("Cannot struggle while the active combatant has a selectable move");
         }
         return;
       }
+      if (!Number.isSafeInteger(action.moveId) || action.moveId < 1 || action.moveId > 470) {
+        throw new Error("Cannot use an invalid move");
+      }
 
       const move = active.moves.find(candidate => candidate.moveId === action.moveId);
-      if (!move || !getCompetitiveMoveDefinition(action.moveId)) {
-        throw new Error("Cannot use an invalid move");
+      if (!move || !isCompetitiveMoveSelectable(action.moveId)) {
+        throw new Error("Cannot use an invalid or unsupported move");
       }
       if (move.pp === 0) {
         throw new Error("Cannot use a move with zero PP");
@@ -193,7 +224,11 @@ function validateAction(
       return;
     }
     case "switch": {
-      if (!Number.isInteger(action.slotIndex) || action.slotIndex < 0 || action.slotIndex >= 6) {
+      if (
+        !Number.isSafeInteger(action.slotIndex) ||
+        action.slotIndex < 0 ||
+        action.slotIndex >= COMPETITIVE_RULESET_V2.partySize.maximum
+      ) {
         throw new Error("Switch slot is out of range");
       }
       if (action.slotIndex === player.activeSlotIndex) {
@@ -201,7 +236,7 @@ function validateAction(
       }
       const target = player.team.find(member => member.slotIndex === action.slotIndex);
       if (!target || target.currentHp === 0) {
-        throw new Error("Cannot switch to a fainted slot");
+        throw new Error("Cannot switch to a missing or fainted slot");
       }
       return;
     }
@@ -214,20 +249,6 @@ function opponentId(participantIds: readonly [string, string], playerId: string)
   return participantIds[0] === playerId ? participantIds[1] : participantIds[0];
 }
 
-function calculateDamage(
-  attacker: CanonicalCombatantState,
-  defender: CanonicalCombatantState,
-  move: CompetitiveMoveDefinition,
-  criticalHit: boolean,
-  rangePercent: number,
-): number {
-  const levelFactor = Math.floor((2 * attacker.level) / 5) + 2;
-  const scaledPower = Math.floor((levelFactor * move.power * attacker.attack) / defender.defense);
-  const baseDamage = Math.floor(scaledPower / 50) + 2;
-  const criticalDamage = criticalHit ? Math.floor((baseDamage * 3) / 2) : baseDamage;
-  return Math.max(1, Math.floor((criticalDamage * rangePercent) / 100));
-}
-
 function terminalForFaint(
   participantIds: readonly [string, string],
   winnerPlayerId: string,
@@ -237,8 +258,8 @@ function terminalForFaint(
     participantIds.map(playerId => [
       playerId,
       playerId === winnerPlayerId
-        ? APPROVED_COMPETITIVE_RULESET_V2.scores.win
-        : APPROVED_COMPETITIVE_RULESET_V2.scores.loss,
+        ? COMPETITIVE_RULESET_V2.scores.win
+        : COMPETITIVE_RULESET_V2.scores.loss,
     ]),
   );
   return {
@@ -249,8 +270,27 @@ function terminalForFaint(
   };
 }
 
-function hasFaintedTeam(state: CanonicalBattleState, playerId: string): boolean {
-  return state.playersById[playerId]!.team.every(member => member.currentHp === 0);
+function setTerminalIfTeamFainted(
+  state: CanonicalBattleState,
+  participantIds: readonly [string, string],
+  loserPlayerId: string,
+): boolean {
+  if (state.playersById[loserPlayerId]!.team.some(member => member.currentHp > 0)) {
+    return false;
+  }
+  state.terminal = terminalForFaint(
+    participantIds,
+    opponentId(participantIds, loserPlayerId),
+    loserPlayerId,
+  );
+  return true;
+}
+
+function applyDamage(combatant: CanonicalCombatantState, damage: number): void {
+  combatant.currentHp = Math.max(0, combatant.currentHp - damage);
+  if (combatant.currentHp === 0) {
+    combatant.status = "fainted";
+  }
 }
 
 function executeMove(
@@ -274,50 +314,165 @@ function executeMove(
 
   if (
     attacker.status === "paralyzed" &&
-    randomValue(random) < APPROVED_COMPETITIVE_RULESET_V2.paralysisNoActionChance
+    randomValue(random) < COMPETITIVE_RULESET_V2.paralysisNoActionChance
   ) {
     return;
   }
-  if (randomValue(random) >= move.accuracy) {
-    return;
-  }
 
-  const criticalHit = randomValue(random) < move.criticalHitChance;
-  const damageRange = APPROVED_COMPETITIVE_RULESET_V2.damageRangePercent;
-  const rangePercent =
-    damageRange.minimum +
-    Math.floor(randomValue(random) * (damageRange.maximum - damageRange.minimum + 1));
   const targetPlayerId = opponentId(participantIds, actorPlayerId);
   const defender = activeCombatant(state, targetPlayerId);
-  const damage = calculateDamage(attacker, defender, move, criticalHit, rangePercent);
-  defender.currentHp = Math.max(0, defender.currentHp - damage);
-
-  if (isStruggle) {
-    const recoil = Math.max(
-      1,
-      Math.floor(attacker.maxHp / APPROVED_COMPETITIVE_RULESET_V2.struggle.recoilMaxHpDivisor),
-    );
-    attacker.currentHp = Math.max(0, attacker.currentHp - recoil);
-  }
-
-  if (hasFaintedTeam(state, actorPlayerId)) {
-    state.terminal = terminalForFaint(participantIds, targetPlayerId, actorPlayerId);
-    return;
-  }
-  if (hasFaintedTeam(state, targetPlayerId)) {
-    state.terminal = terminalForFaint(participantIds, actorPlayerId, targetPlayerId);
-    return;
-  }
-  if (defender.currentHp === 0 || attacker.currentHp === 0) {
-    return;
-  }
-
   if (
-    move.secondaryEffect &&
-    randomValue(random) < move.secondaryEffect.chance &&
-    defender.status === "none"
+    move.accuracy !== 0 &&
+    !checkGen4Accuracy({
+      accuracy: move.accuracy,
+      accuracyStage: attacker.statStages.accuracy,
+      evasionStage: defender.statStages.evasion,
+      roll: 1 + Math.floor(randomValue(random) * 100),
+    })
   ) {
-    defender.status = move.secondaryEffect.status;
+    return;
+  }
+
+  const effectiveness = calculateGen4TypeEffectiveness(move.typeId, defender.typeIds);
+  const isDamaging = move.category !== "status" && move.power > 0 && effectiveness > 0;
+  let damage = 0;
+  if (isDamaging) {
+    const critical = randomValue(random) < COMPETITIVE_RULESET_V2.criticalHitChance;
+    const range = COMPETITIVE_RULESET_V2.damageRangePercent;
+    const randomFactor =
+      range.minimum + Math.floor(randomValue(random) * (range.maximum - range.minimum + 1));
+    damage = calculateMoveDamage(attacker, defender, move, critical, randomFactor, effectiveness);
+    applyDamage(defender, damage);
+    const defenderTeamFainted = setTerminalIfTeamFainted(state, participantIds, targetPlayerId);
+    if (isStruggle) {
+      applyDamage(
+        attacker,
+        Math.max(
+          1,
+          Math.floor(attacker.maxHp / COMPETITIVE_RULESET_V2.struggle.recoilMaxHpDivisor),
+        ),
+      );
+      if (!defenderTeamFainted) {
+        setTerminalIfTeamFainted(state, participantIds, actorPlayerId);
+      }
+    }
+    if (defenderTeamFainted) {
+      return;
+    }
+  }
+
+  applySupportedMoveEffect(defender, move, damage, random);
+
+  if (isStruggle && !isDamaging) {
+    applyDamage(
+      attacker,
+      Math.max(1, Math.floor(attacker.maxHp / COMPETITIVE_RULESET_V2.struggle.recoilMaxHpDivisor)),
+    );
+    setTerminalIfTeamFainted(state, participantIds, actorPlayerId);
+  }
+}
+
+function calculateMoveDamage(
+  attacker: CanonicalCombatantState,
+  defender: CanonicalCombatantState,
+  move: CompetitiveResolvedMoveDefinition,
+  critical: boolean,
+  randomFactor: number,
+  effectiveness: number,
+): number {
+  const rawAttack =
+    move.category === "special"
+      ? calculateBattleStageModifiedStat(attacker.specialAttack, attacker.statStages.specialAttack)
+      : calculateBattleStageModifiedStat(attacker.attack, attacker.statStages.attack);
+  const attack =
+    move.category === "physical" && attacker.status === "burned"
+      ? Math.max(1, Math.floor(rawAttack / COMPETITIVE_RULESET_V2.burnPhysicalAttackDivisor))
+      : rawAttack;
+  const defense =
+    move.category === "special"
+      ? calculateBattleStageModifiedStat(
+          defender.specialDefense,
+          defender.statStages.specialDefense,
+        )
+      : calculateBattleStageModifiedStat(defender.defense, defender.statStages.defense);
+
+  return calculateGen4Damage({
+    level: attacker.level,
+    power: move.power,
+    attack,
+    defense,
+    moveTypeId: move.typeId,
+    attackerTypeIds: attacker.typeIds,
+    typeEffectiveness: effectiveness,
+    randomFactor,
+    critical,
+    category: move.category,
+  });
+}
+
+function applySupportedMoveEffect(
+  defender: CanonicalCombatantState,
+  move: CompetitiveResolvedMoveDefinition,
+  damage: number,
+  random: SeededRandom,
+): void {
+  if (defender.currentHp === 0) {
+    return;
+  }
+  if (move.effectCode === 66) {
+    applyStatus(defender, "poisoned");
+    return;
+  }
+  if (move.effectCode === 67) {
+    applyStatus(defender, "paralyzed");
+    return;
+  }
+  if (move.effectCode === 4 && damage > 0) {
+    if (randomValue(random) < 0.1) {
+      applyStatus(defender, "burned");
+    }
+    return;
+  }
+  if (move.effectCode === 6 && damage > 0) {
+    if (randomValue(random) < 0.1) {
+      applyStatus(defender, "paralyzed");
+    }
+    return;
+  }
+
+  const stageEffect = getStatStageEffect(move.effectCode);
+  if (stageEffect) {
+    defender.statStages = applyBattleStatStageDelta(
+      defender.statStages,
+      stageEffect.key,
+      stageEffect.delta,
+    );
+  }
+}
+
+function applyStatus(
+  defender: CanonicalCombatantState,
+  status: "poisoned" | "burned" | "paralyzed",
+): void {
+  if (defender.status === "normal") {
+    defender.status = status;
+  }
+}
+
+function getStatStageEffect(effectCode: number): { key: BattleStatStageKey; delta: number } | null {
+  switch (effectCode) {
+    case 18:
+      return { key: "attack", delta: -1 };
+    case 19:
+      return { key: "defense", delta: -1 };
+    case 20:
+      return { key: "speed", delta: -1 };
+    case 23:
+      return { key: "accuracy", delta: -1 };
+    case 60:
+      return { key: "speed", delta: -2 };
+    default:
+      return null;
   }
 }
 
@@ -332,12 +487,73 @@ function orderedMoveActors(
     return actors;
   }
 
-  const firstSpeed = activeCombatant(state, actors[0]!).speed;
-  const secondSpeed = activeCombatant(state, actors[1]!).speed;
+  const firstMove = getMoveForAction(actionsByPlayerId[actors[0]!]!);
+  const secondMove = getMoveForAction(actionsByPlayerId[actors[1]!]!);
+  const priorityDifference = getMovePriority(firstMove) - getMovePriority(secondMove);
+  if (priorityDifference !== 0) {
+    return priorityDifference > 0 ? actors : [actors[1]!, actors[0]!];
+  }
+
+  const firstSpeed = calculateEffectiveSpeed(activeCombatant(state, actors[0]!));
+  const secondSpeed = calculateEffectiveSpeed(activeCombatant(state, actors[1]!));
   if (firstSpeed === secondSpeed) {
     return randomValue(random) < 0.5 ? actors : [actors[1]!, actors[0]!];
   }
   return firstSpeed > secondSpeed ? actors : [actors[1]!, actors[0]!];
+}
+
+function getMoveForAction(action: CanonicalCompetitiveAction): CompetitiveResolvedMoveDefinition {
+  if (action.kind !== "move") {
+    throw new Error("Move ordering requires a move action");
+  }
+  const move = getCompetitiveMoveDefinition(action.moveId);
+  if (!move) {
+    throw new Error("Move ordering requires a catalog move");
+  }
+  return move;
+}
+
+function getMovePriority(move: CompetitiveResolvedMoveDefinition): number {
+  return COMPETITIVE_RULESET_V2.priorityEffectCodes.includes(
+    move.effectCode as (typeof COMPETITIVE_RULESET_V2.priorityEffectCodes)[number],
+  )
+    ? 1
+    : 0;
+}
+
+function calculateEffectiveSpeed(combatant: CanonicalCombatantState): number {
+  const stagedSpeed = calculateBattleStageModifiedStat(combatant.speed, combatant.statStages.speed);
+  return combatant.status === "paralyzed" ? Math.max(1, Math.floor(stagedSpeed / 4)) : stagedSpeed;
+}
+
+function applyResidualDamage(
+  state: CanonicalBattleState,
+  participantIds: readonly [string, string],
+): void {
+  for (const playerId of participantIds) {
+    const combatant = activeCombatant(state, playerId);
+    const divisor =
+      combatant.status === "poisoned"
+        ? COMPETITIVE_RULESET_V2.poisonDamageDivisor
+        : combatant.status === "burned"
+          ? COMPETITIVE_RULESET_V2.burnDamageDivisor
+          : null;
+    if (divisor === null || combatant.currentHp === 0) {
+      continue;
+    }
+
+    applyDamage(combatant, Math.max(1, Math.floor(combatant.maxHp / divisor)));
+    if (setTerminalIfTeamFainted(state, participantIds, playerId)) {
+      return;
+    }
+  }
+}
+
+function hasMatchingStatusAndHp(combatant: CanonicalCombatantState): boolean {
+  if (combatant.currentHp === 0) {
+    return combatant.status === "fainted";
+  }
+  return ["normal", "poisoned", "burned", "paralyzed"].includes(combatant.status);
 }
 
 export function validateCompetitiveAction(input: {
@@ -364,7 +580,7 @@ export function resolveTurn(input: {
   state: CanonicalBattleState;
   actionsByPlayerId: CanonicalIdRecord<CanonicalCompetitiveAction>;
   random: SeededRandom;
-}): ResolvedTurnV1 {
+}): ResolvedTurnV2 {
   const stateWithSafeRecords: CanonicalBattleState = {
     ...input.state,
     playersById: createCanonicalIdRecord(Object.entries(input.state.playersById)),
@@ -419,9 +635,10 @@ export function resolveTurn(input: {
       actionsByPlayerId[actorPlayerId] as Extract<CanonicalCompetitiveAction, { kind: "move" }>,
       input.random,
     );
-    if (participantIds.some(playerId => activeCombatant(state, playerId).currentHp === 0)) {
-      break;
-    }
+  }
+
+  if (!state.terminal) {
+    applyResidualDamage(state, participantIds);
   }
 
   const resolvedTurn = state.turn;

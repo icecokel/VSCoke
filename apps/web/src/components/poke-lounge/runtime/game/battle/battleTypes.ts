@@ -39,6 +39,7 @@ export interface BattleMove {
   effectCode: number;
   accuracy: number;
   power: number;
+  competitiveEffectSupport?: "unsupported-primary" | "unsupported-secondary";
 }
 
 export interface BattlePokemon {

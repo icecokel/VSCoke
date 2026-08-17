@@ -13,6 +13,8 @@
     "build": "pnpm --filter @vscoke/poke-lounge-battle build && pnpm --filter @vscoke/web build && pnpm --filter @vscoke/api build",
     "build:poke-lounge-battle": "pnpm --filter @vscoke/poke-lounge-battle build",
     "check:poke-lounge-battle-resolution": "node scripts/check-poke-lounge-battle-resolution.mjs types && pnpm build:poke-lounge-battle && node scripts/check-poke-lounge-battle-resolution.mjs runtime",
+    "generate:poke-lounge-competitive-catalog": "node scripts/poke-lounge/generate-competitive-catalog.mjs --write",
+    "check:poke-lounge-competitive-catalog": "node scripts/poke-lounge/generate-competitive-catalog.mjs --check",
     "build:web": "pnpm --filter @vscoke/web build",
     "build:api": "pnpm build:poke-lounge-battle && pnpm --filter @vscoke/api build",
     "start": "pnpm --filter @vscoke/web start",

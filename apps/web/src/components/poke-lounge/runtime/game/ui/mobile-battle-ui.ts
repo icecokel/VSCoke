@@ -28,6 +28,7 @@ export interface MobileBattleMoveOption {
   pp: number;
   maxPp: number;
   type: string;
+  effectNotice: string | null;
   selected: boolean;
   disabled: boolean;
 }

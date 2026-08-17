@@ -1,8 +1,4 @@
-import {
-  APPROVED_COMPETITIVE_RULESET_V1,
-  COMPETITIVE_RULESET_HASH,
-  COMPETITIVE_RULESET_VERSION,
-} from "@vscoke/poke-lounge-battle";
+import { COMPETITIVE_RULESET_HASH, COMPETITIVE_RULESET_VERSION } from "@vscoke/poke-lounge-battle";
 import type {
   CompetitiveProjection,
   CompetitiveProjectionParseResult,
@@ -21,21 +17,6 @@ const MAX_COMPETITIVE_ARRAY_ITEMS = 2;
 const MAX_COMPETITIVE_TEAM_ITEMS = 6;
 const MAX_COMPETITIVE_TRANSITIONS = 8;
 const MAX_ROOM_SNAPSHOT_KEYS = 32;
-
-/** Legacy fixture shape retained for old replay tests only. New projections are V2. */
-export const APPROVED_COMPETITIVE_LOADOUT = APPROVED_COMPETITIVE_RULESET_V1.loadout.map(
-  template => ({
-    speciesId: template.speciesId,
-    maxHp: template.maxHp,
-    moves: template.moveIds.map(moveId => ({
-      moveId,
-      maxPp:
-        APPROVED_COMPETITIVE_RULESET_V1.moves[
-          moveId as keyof typeof APPROVED_COMPETITIVE_RULESET_V1.moves
-        ].maxPp,
-    })),
-  }),
-);
 
 const COMPETITIVE_PROJECTION_KEYS = [
   "assignmentRevision",
@@ -317,8 +298,20 @@ function parsePlayer(
   return {
     playerId,
     activeSlotIndex,
-    team: player.team.map(pokemon => parsePokemon(pokemon)),
+    team: parseTeam(player.team, activeSlotIndex),
   };
+}
+
+function parseTeam(
+  team: unknown[],
+  activeSlotIndex: number,
+): CompetitiveProjection["currentState"]["playersById"][string]["team"] {
+  const parsed = team.map(pokemon => parsePokemon(pokemon));
+  const slots = new Set(parsed.map(pokemon => pokemon.slotIndex));
+  if (slots.size !== parsed.length || !slots.has(activeSlotIndex)) {
+    throw schemaError();
+  }
+  return parsed;
 }
 
 function parsePokemon(
@@ -326,18 +319,7 @@ function parsePokemon(
 ): CompetitiveProjection["currentState"]["playersById"][string]["team"][number] {
   const pokemon = requireRecord(
     value,
-    [
-      "attack",
-      "currentHp",
-      "defense",
-      "level",
-      "maxHp",
-      "moves",
-      "slotIndex",
-      "speciesId",
-      "speed",
-      "status",
-    ],
+    ["currentHp", "level", "maxHp", "moves", "slotIndex", "speciesId", "statStages", "status"],
     4,
   );
   const speciesId = requireNonnegativeSafeInteger(pokemon.speciesId);
@@ -345,20 +327,17 @@ function parsePokemon(
   const level = requireNonnegativeSafeInteger(pokemon.level);
   const maxHp = requireNonnegativeSafeInteger(pokemon.maxHp);
   const currentHp = requireNonnegativeSafeInteger(pokemon.currentHp);
-  const attack = requireNonnegativeSafeInteger(pokemon.attack);
-  const defense = requireNonnegativeSafeInteger(pokemon.defense);
-  const speed = requireNonnegativeSafeInteger(pokemon.speed);
+  const statStages = parseStatStages(pokemon.statStages);
   if (
     speciesId < 1 ||
     slotIndex > 5 ||
     level < 1 ||
     level > 100 ||
-    attack < 1 ||
-    defense < 1 ||
-    speed < 1 ||
+    maxHp < 1 ||
     currentHp > maxHp ||
-    (pokemon.status !== "none" && pokemon.status !== "paralyzed") ||
+    !isCompetitivePokemonStatus(pokemon.status, currentHp) ||
     !Array.isArray(pokemon.moves) ||
+    pokemon.moves.length < 1 ||
     pokemon.moves.length > 4
   ) {
     throw schemaError();
@@ -368,14 +347,46 @@ function parsePokemon(
     speciesId,
     slotIndex,
     level,
-    attack,
-    defense,
-    speed,
     maxHp,
     currentHp,
     status: pokemon.status,
-    moves: pokemon.moves.map(move => parseMove(move)),
+    statStages,
+    moves: parseMoves(pokemon.moves),
   };
+}
+
+function parseStatStages(
+  value: unknown,
+): CompetitiveProjection["currentState"]["playersById"][string]["team"][number]["statStages"] {
+  const keys = [
+    "accuracy",
+    "attack",
+    "defense",
+    "evasion",
+    "specialAttack",
+    "specialDefense",
+    "speed",
+  ] as const;
+  const stages = requireRecord(value, keys, 5);
+  return Object.fromEntries(
+    keys.map(key => {
+      const stage = requireSafeInteger(stages[key]);
+      if (stage < -6 || stage > 6) {
+        throw schemaError();
+      }
+      return [key, stage];
+    }),
+  ) as CompetitiveProjection["currentState"]["playersById"][string]["team"][number]["statStages"];
+}
+
+function parseMoves(
+  moves: unknown[],
+): CompetitiveProjection["currentState"]["playersById"][string]["team"][number]["moves"] {
+  const parsed = moves.map(move => parseMove(move));
+  if (new Set(parsed.map(move => move.moveId)).size !== parsed.length) {
+    throw schemaError();
+  }
+  return parsed;
 }
 
 function parseMove(
@@ -542,10 +553,27 @@ function requireHash(value: unknown): string {
 }
 
 function requireNonnegativeSafeInteger(value: unknown): number {
-  if (!Number.isSafeInteger(value) || (value as number) < 0) {
+  const integer = requireSafeInteger(value);
+  if (integer < 0) {
+    throw schemaError();
+  }
+  return integer;
+}
+
+function requireSafeInteger(value: unknown): number {
+  if (!Number.isSafeInteger(value)) {
     throw schemaError();
   }
   return value as number;
+}
+
+function isCompetitivePokemonStatus(
+  value: unknown,
+  currentHp: number,
+): value is CompetitiveProjection["currentState"]["playersById"][string]["team"][number]["status"] {
+  return currentHp === 0
+    ? value === "fainted"
+    : value === "normal" || value === "poisoned" || value === "burned" || value === "paralyzed";
 }
 
 function isCompetitiveStatus(value: unknown): value is CompetitiveProjection["status"] {

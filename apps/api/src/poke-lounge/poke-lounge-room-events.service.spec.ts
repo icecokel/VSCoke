@@ -36,22 +36,23 @@ describe('PokeLoungeRoomEventsService', () => {
     const room = publicRoom();
     room.competitive = {
       matchId: 'match-1',
+      bracketMatchId: 'game-round-1-bracket-1-match-1',
+      kind: 'tournament-unranked',
       assignmentRevision: 1,
-      rulesetVersion: 1,
-      rulesetHash: 'b'.repeat(64),
+      rulesetVersion: COMPETITIVE_RULESET_VERSION,
+      rulesetHash: COMPETITIVE_RULESET_HASH,
       currentTurn: 1,
       status: 'active',
       playerIds: ['player-a', 'player-b'],
       currentState: {
-        rulesetVersion: 1,
+        ...createTestInitialBattleState(['player-a', 'player-b']),
         turn: 1,
-        participantIds: ['player-a', 'player-b'],
-        playersById: {},
-        terminal: null,
       },
       stateHash: 'a'.repeat(64),
       submittedPlayerIds: [],
       terminal: null,
+      terminalEventId: null,
+      terminalRoomRevision: null,
     };
     service.subscribe(listener);
 
@@ -103,6 +104,7 @@ function publicRoom(): PokeLoungePublicRoomState {
     finalStandings: [],
     revision: 3,
     expiresAtMs: 30 * 60_000,
+    competitiveTransitions: [],
   };
 }
 
@@ -115,3 +117,8 @@ function emptyTournament() {
     cumulativeScores: {},
   };
 }
+import {
+  COMPETITIVE_RULESET_HASH,
+  COMPETITIVE_RULESET_VERSION,
+} from '@vscoke/poke-lounge-battle';
+import { createTestInitialBattleState } from '../../test/support/competitive-party.fixture';

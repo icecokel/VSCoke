@@ -1,8 +1,7 @@
 import type {
   CanonicalBattleState,
   CanonicalTerminalResult,
-  CompetitivePartyMemberInput,
-  CompetitivePartyInput,
+  NormalizedCompetitiveParty,
 } from '@vscoke/poke-lounge-battle';
 import type { PublicCompetitiveBattleState } from './competitive-action.types';
 
@@ -65,8 +64,5 @@ export interface CompetitiveAssignmentCreateContext {
   kind: CompetitiveMatchKind;
   assignmentRevision: number;
   players: [CompetitivePlayerAccount, CompetitivePlayerAccount];
-  parties?: Record<
-    string,
-    readonly CompetitivePartyMemberInput[] | CompetitivePartyInput
-  >;
+  parties: Record<string, NormalizedCompetitiveParty>;
 }

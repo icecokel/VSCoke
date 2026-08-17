@@ -1,4 +1,16 @@
-export type { CanonicalCompetitiveAction } from "./actions";
+export type { CanonicalCompetitiveAction, CanonicalMoveId } from "./actions";
+export {
+  applyBattleStatStageDelta,
+  BATTLE_STAT_STAGE_KEYS,
+  BATTLE_STAT_STAGE_MAX,
+  BATTLE_STAT_STAGE_MIN,
+  calculateBattleStageModifiedStat,
+  clampBattleStatStage,
+  createDefaultBattleStatStages,
+  normalizeBattleStatStages,
+  type BattleStatStageKey,
+  type BattleStatStages,
+} from "./battle-stat-stages";
 export {
   canonicalize,
   createCanonicalIdRecord,
@@ -13,24 +25,65 @@ export {
 } from "./canonical-state";
 export { createSeededRandom, type SeededRandom } from "./prng";
 export {
-  APPROVED_COMPETITIVE_RULESET_V1,
-  APPROVED_COMPETITIVE_RULESET_V2,
-  canUseCompetitiveStruggle,
-  COMPETITIVE_RULESET_HASH,
-  COMPETITIVE_STRUGGLE_MOVE_ID,
-  COMPETITIVE_RULESET_VERSION,
-  createInitialBattleState,
-  type CompetitiveLoadoutEntry,
+  COMPETITIVE_CATALOG_HASH,
+  COMPETITIVE_MOVE_CATALOG,
+  COMPETITIVE_SPECIES_CATALOG,
   type CompetitiveMoveDefinition,
-  type CompetitivePartyMemberInput,
-  type CompetitivePartyInput,
-} from "./ruleset";
+  type CompetitiveSpeciesDefinition,
+} from "./competitive-catalog.generated";
 export {
-  resolveTurn,
-  validateCompetitiveAction,
-  type CompetitiveAssignmentV1,
-  type ResolvedTurnV1,
-} from "./resolve-turn";
+  COMPETITIVE_CATALOG_MOVE_COUNT,
+  COMPETITIVE_CATALOG_SPECIES_COUNT,
+} from "./competitive-catalog-metadata.generated";
+export {
+  canUseCompetitiveStruggle,
+  COMPETITIVE_MOVE_COUNT_MAX,
+  COMPETITIVE_PARTY_SLOT_COUNT,
+  COMPETITIVE_PARTY_SNAPSHOT_VERSION,
+  COMPETITIVE_POKEMON_LEVEL_MAX,
+  COMPETITIVE_POKEMON_LEVEL_MIN,
+  COMPETITIVE_SUPPORTED_PRIMARY_STATUS_EFFECT_CODES,
+  CompetitivePartyValidationError,
+  isCompetitiveMoveSelectable,
+  normalizeCompetitiveParty,
+  type CompetitiveIndividualValues,
+  type CompetitivePartyInput,
+  type CompetitivePartyMemberInput,
+  type CompetitivePartyValidationReason,
+  type CompetitivePersistentStatus,
+  type NormalizedCompetitiveParty,
+  type NormalizedCompetitivePartyMember,
+} from "./competitive-party";
+export {
+  calculateGen4Damage,
+  checkGen4Accuracy,
+  type Gen4AccuracyInput,
+  type Gen4DamageInput,
+  type Gen4MoveCategory,
+} from "./gen4-battle-math";
+export {
+  calculateGen4BattleStats,
+  type Gen4BaseStats,
+  type Gen4BattleStats,
+  type Gen4StatValues,
+} from "./gen4-pokemon-stats";
+export { calculateGen4TypeEffectiveness } from "./gen4-type-chart";
+export {
+  isCompetitiveMoveEffectSelectable,
+  type CompetitiveMoveEffectDescriptor,
+} from "./competitive-ruleset-config";
+export {
+  APPROVED_COMPETITIVE_RULESET_V2,
+  COMPETITIVE_RULESET_HASH,
+  COMPETITIVE_RULESET_V2,
+  COMPETITIVE_RULESET_VERSION,
+  COMPETITIVE_STRUGGLE_MOVE_ID,
+  createInitialBattleState,
+  type CompetitiveBattleParticipantInput,
+  type CompetitiveResolvedMoveDefinition,
+  type CompetitiveStruggleDefinition,
+} from "./ruleset";
+export { resolveTurn, validateCompetitiveAction, type ResolvedTurnV2 } from "./resolve-turn";
 export {
   createTournamentBracketState,
   getReadyTournamentMatches,

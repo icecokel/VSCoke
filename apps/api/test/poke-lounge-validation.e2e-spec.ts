@@ -8,6 +8,7 @@ import { CompetitiveMatchService } from './../src/poke-lounge/competitive/compet
 import { PokeLoungeController } from './../src/poke-lounge/poke-lounge.controller';
 import type { PokeLoungeRoomSnapshot } from './../src/poke-lounge/poke-lounge-room.repository';
 import { PokeLoungeRoomService } from './../src/poke-lounge/poke-lounge-room.service';
+import { createTestCompetitivePartyInput } from './support/competitive-party.fixture';
 
 const idempotencyKey = '00000000-0000-4000-8000-000000000001';
 const roomSnapshot: PokeLoungeRoomSnapshot = {
@@ -62,12 +63,12 @@ const invalidMutations = [
     body: {
       playerId: 'player-a',
       sessionId: 'session-a',
-      representativePokemon: {
-        speciesId: '25',
-        name: 'Pikachu',
-        level: 12,
-        currentHp: 18,
-        maxHp: 30,
+      competitiveParty: {
+        ...createTestCompetitivePartyInput(),
+        members: createTestCompetitivePartyInput().members.map((member) => ({
+          ...member,
+          maxHp: 999,
+        })),
       },
     },
   },

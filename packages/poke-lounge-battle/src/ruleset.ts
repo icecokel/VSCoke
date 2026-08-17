@@ -1,118 +1,101 @@
+import { createDefaultBattleStatStages } from "./battle-stat-stages";
 import {
   createCanonicalIdRecord,
   type CanonicalBattleState,
   type CanonicalPlayerState,
 } from "./canonical-state";
+import type { NormalizedCompetitiveParty } from "./competitive-party";
 import {
-  APPROVED_COMPETITIVE_RULESET_V2,
-  canUseCompetitiveStruggle,
   COMPETITIVE_RULESET_VERSION,
-  type CompetitiveMoveDefinition,
   getCompetitiveMoveDefinition as getMoveDefinition,
-  type CompetitivePartyMemberInput,
-  type CompetitivePartyInput,
+  type CompetitiveResolvedMoveDefinition,
 } from "./ruleset-contract";
 
 export {
-  APPROVED_COMPETITIVE_RULESET_V1,
   APPROVED_COMPETITIVE_RULESET_V2,
   canUseCompetitiveStruggle,
+  COMPETITIVE_CATALOG_HASH,
   COMPETITIVE_RULESET_HASH,
+  COMPETITIVE_RULESET_V2,
   COMPETITIVE_STRUGGLE_MOVE_ID,
   COMPETITIVE_RULESET_VERSION,
-  type CompetitiveLoadoutEntry,
-  type CompetitiveMoveDefinition,
-  type CompetitivePartyMemberInput,
-  type CompetitivePartyInput,
+  type CompetitiveResolvedMoveDefinition,
+  type CompetitiveStruggleDefinition,
 } from "./ruleset-contract";
 
+export interface CompetitiveBattleParticipantInput {
+  playerId: string;
+  party: NormalizedCompetitiveParty;
+}
+
 export function getCompetitiveMoveDefinition(
-  moveId: number | string,
-): CompetitiveMoveDefinition | undefined {
+  moveId: number | "struggle",
+): CompetitiveResolvedMoveDefinition | undefined {
   return getMoveDefinition(moveId);
 }
 
 export function createInitialBattleState(
-  participantIds: readonly [string, string],
-  parties?: Readonly<
-    Record<string, readonly CompetitivePartyMemberInput[] | CompetitivePartyInput>
-  >,
+  participants: readonly [CompetitiveBattleParticipantInput, CompetitiveBattleParticipantInput],
 ): CanonicalBattleState {
-  if (participantIds.some(playerId => playerId.trim().length === 0)) {
+  if (participants.some(participant => participant.playerId.trim().length === 0)) {
     throw new Error("Initial-state participant IDs must be non-empty");
   }
-  if (participantIds[0] === participantIds[1]) {
+  if (participants[0].playerId === participants[1].playerId) {
     throw new Error("Initial-state participant IDs must be distinct");
   }
 
-  const canonicalParticipantIds = [...participantIds].sort() as [string, string];
+  const canonicalParticipants = [...participants].sort((left, right) =>
+    left.playerId.localeCompare(right.playerId),
+  ) as [CompetitiveBattleParticipantInput, CompetitiveBattleParticipantInput];
+  const participantIds = canonicalParticipants.map(participant => participant.playerId) as [
+    string,
+    string,
+  ];
   const playersById = createCanonicalIdRecord<CanonicalPlayerState>(
-    canonicalParticipantIds.map(playerId => [
-      playerId,
-      createCanonicalPlayerState(playerId, parties?.[playerId]),
+    canonicalParticipants.map(participant => [
+      participant.playerId,
+      createCanonicalPlayerState(participant),
     ]),
   );
 
   return {
     rulesetVersion: COMPETITIVE_RULESET_VERSION,
     turn: 0,
-    participantIds: canonicalParticipantIds,
+    participantIds,
     playersById,
     terminal: null,
   };
 }
 
 function createCanonicalPlayerState(
-  playerId: string,
-  party: readonly CompetitivePartyMemberInput[] | CompetitivePartyInput | undefined,
+  participant: CompetitiveBattleParticipantInput,
 ): CanonicalPlayerState {
-  const partyInput = isCompetitivePartyInput(party) ? party : undefined;
-  const members: readonly CompetitivePartyMemberInput[] | undefined = partyInput
-    ? partyInput.members
-    : (party as readonly CompetitivePartyMemberInput[] | undefined);
-  if (!members || members.length < APPROVED_COMPETITIVE_RULESET_V2.minTeamSize) {
-    throw new Error("Competitive assignment requires a saved party");
-  }
-
-  const normalizedParty = [...members]
-    .sort((left, right) => left.slotIndex - right.slotIndex)
-    .map(member => ({
-      speciesId: member.speciesId,
-      slotIndex: member.slotIndex,
-      level: member.level,
-      maxHp: member.maxHp,
-      currentHp: member.currentHp,
-      attack: member.attack,
-      defense: member.defense,
-      speed: member.speed,
-      status: member.status ?? "none",
-      moves: member.moves.map(move => ({
-        moveId: move.moveId,
-        pp: move.pp,
-      })),
-    }));
-
-  const requestedActiveSlotIndex = partyInput?.activeSlotIndex;
-  const activeSlotIndex =
-    requestedActiveSlotIndex !== undefined &&
-    normalizedParty.some(
-      member => member.slotIndex === requestedActiveSlotIndex && member.currentHp > 0,
-    )
-      ? requestedActiveSlotIndex
-      : normalizedParty.find(member => member.currentHp > 0)?.slotIndex;
-  if (activeSlotIndex === undefined) {
-    throw new Error("Competitive assignment requires one healthy party member");
+  const { party, playerId } = participant;
+  const active = party.members.find(member => member.slotIndex === party.activeSlotIndex);
+  if (!active || active.currentHp === 0) {
+    throw new Error("Competitive assignment requires a battle-ready active party member");
   }
 
   return {
     playerId,
-    activeSlotIndex,
-    team: normalizedParty,
+    activeSlotIndex: party.activeSlotIndex,
+    team: [...party.members]
+      .sort((left, right) => left.slotIndex - right.slotIndex)
+      .map(member => ({
+        slotIndex: member.slotIndex,
+        speciesId: member.speciesId,
+        level: member.level,
+        maxHp: member.maxHp,
+        currentHp: member.currentHp,
+        attack: member.attack,
+        defense: member.defense,
+        specialAttack: member.specialAttack,
+        specialDefense: member.specialDefense,
+        speed: member.speed,
+        typeIds: member.typeIds,
+        statStages: createDefaultBattleStatStages(),
+        status: member.status,
+        moves: member.moves.map(move => ({ ...move })),
+      })),
   };
-}
-
-function isCompetitivePartyInput(
-  value: readonly CompetitivePartyMemberInput[] | CompetitivePartyInput | undefined,
-): value is CompetitivePartyInput {
-  return Boolean(value && !Array.isArray(value) && "members" in value);
 }

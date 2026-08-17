@@ -14,6 +14,19 @@ The `/[locale]/game/poke-lounge` route has 70 public asset records without verif
 
 Persistence, Socket recovery, deterministic server competition, verified-only ranking, migration, CI, test, or documentation completion does not change this decision. The technical implementation is recorded in [Poke Lounge Hardening Report](./poke-lounge-hardening-report.md), but it does not establish ownership, permission, license compatibility, trademark clearance, or any other legal conclusion. A human owner and appropriate legal reviewer must review the unresolved items and record the release decision.
 
+## Competitive battle V2 technical gate
+
+The release candidate must also satisfy the grown-party competitive battle contract independently of the provenance decision:
+
+- each player commits a complete 1–6 member party snapshot before the preparation deadline;
+- the server freezes that snapshot and creates matches with the current V2 ruleset version and hash;
+- public room responses redact individual values, move loadouts, and derived internal battle stats before assignment;
+- an authoritative competitive result never writes battle HP, PP, status, or progression back to the world save;
+- two-player matches are `tournament-unranked` and create no verified ranking history;
+- legacy V1 nonterminal rooms are closed and legacy completed rows remain audit-only.
+
+Run `pnpm check:poke-lounge-competitive-catalog`, `pnpm check:poke-lounge-battle-resolution`, `pnpm test:poke-lounge-battle`, `pnpm test:api`, and `pnpm test:web`. PostgreSQL-backed API and browser integration gates additionally require a migrated `_test` database through `TEST_DATABASE_URL`.
+
 ## Release owner sign-off
 
 | Release owner | Final release decision | Signed/approved at |

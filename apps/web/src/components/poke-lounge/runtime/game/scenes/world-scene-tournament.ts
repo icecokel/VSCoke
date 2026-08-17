@@ -527,7 +527,7 @@ export function createServerTournamentAnnouncementText({
     projection.competitionKind === "ranked-head-to-head" ||
     projection.competitionKind === "tournament-unranked"
   ) {
-    lines.push("전투 규칙 · 고정 Lv.50 · 2마리");
+    lines.push("전투 규칙 · 육성 파티 · 레벨 유지");
   }
 
   if (casualBattleAvailable === false) {

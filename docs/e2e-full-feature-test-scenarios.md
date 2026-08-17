@@ -392,39 +392,40 @@ pnpm smoke:api:remote
 
 현재 자동화 매핑: `poke-lounge-autosave.spec.ts`. `POKE-SAVE-010`은 실제 PostgreSQL 통합 시나리오로 추가해야 한다.
 
-## 18. Poke Lounge: 서버 룸·2인 권위 경쟁전
+## 18. Poke Lounge: 서버 룸·육성 파티 권위 경쟁전
 
-| ID             | 우선순위/상태 | 사전조건                          | 절차                            | 기대 결과                                                                              |
-| -------------- | ------------- | --------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------- |
-| `POKE-SRV-001` | P0/A          | `USER_A`                          | server room 생성                | UUID command header로 room이 생성되고 code가 URL에 반영된다.                           |
-| `POKE-SRV-002` | P0/A          | `USER_B`, room code               | join                            | 두 context가 서로 다른 session/identity로 같은 public snapshot을 본다.                 |
-| `POKE-SRV-003` | P0/A          | 두 사용자                         | 각자 competitive seat bind      | ID token은 메모리에만 있고 두 계정이 각 seat에 한 번만 연결된다.                       |
-| `POKE-SRV-004` | P0/A          | 두 seat eligible                  | assignment 수신                 | host 여부와 무관하게 두 사용자 모두 같은 match/turn으로 battle을 시작한다.             |
-| `POKE-SRV-005` | P1/A          | 익명 또는 중복 계정               | seat bind                       | competitive를 열지 않고 casual world를 유지한다.                                       |
-| `POKE-SRV-006` | P1/A          | 세 번째 참가자                    | join/bind                       | active participant가 3명 이상이면 competitive assignment를 만들지 않는다.              |
-| `POKE-SRV-007` | P0/A          | 자기 turn                         | move 선택                       | UUIDv4 action이 한 번 제출되고 waiting 상태로 전환된다.                                |
-| `POKE-SRV-008` | P0/A          | switch 가능                       | switch 선택                     | 선택 slot만 제출되고 현재/faint slot은 제출되지 않는다.                                |
-| `POKE-SRV-009` | P1/A          | 두 action                         | 동시에 action 제출              | 서버가 한 turn만 결정적으로 resolve하고 새 revision을 broadcast한다.                   |
-| `POKE-SRV-010` | P1/A          | 400 응답                          | action 제출                     | fresh projection 후 입력이 다시 열리고 잘못된 local result를 만들지 않는다.            |
-| `POKE-SRV-011` | P1/A          | stale turn 409                    | action 제출                     | REST snapshot으로 resync하고 새 상태를 기준으로 입력한다.                              |
-| `POKE-SRV-012` | P1/A          | network 실패                      | 같은 action 재시도              | 동일 command UUID를 재사용하고 서버에서 중복 처리되지 않는다.                          |
-| `POKE-SRV-013` | P1/A          | 연속 transport 실패               | action 제출                     | capped retry 후 REST 복구하고 새 사용자 입력에 새 UUID를 사용한다.                     |
-| `POKE-SRV-014` | P1/A          | response parsing 실패             | 성공 응답 처리                  | mutation을 중복 전송하지 않고 projection recovery로 전환한다.                          |
-| `POKE-SRV-015` | P1/A          | socket disconnect                 | 연결 복구                       | 같은 socket identity로 REST recovery 후 재구독한다.                                    |
-| `POKE-SRV-016` | P1/A          | socket/REST 경합                  | newer socket 후 stale REST 도착 | 높은 revision만 적용되어 화면이 과거로 돌아가지 않는다.                                |
-| `POKE-SRV-017` | P1/A          | submittedPlayerIds 포함 snapshot  | reconnect                       | 자기 waiting 상태를 복원하고 중복 action을 막는다.                                     |
-| `POKE-SRV-018` | P1/A          | malformed projection              | socket 수신                     | battle을 열지 않고 schema rejection 후 REST recovery한다.                              |
-| `POKE-SRV-019` | P1/A          | participant/HP/PP 위조 projection | 수신                            | parser가 거부하고 prototype pollution이나 과대 record를 적용하지 않는다.               |
-| `POKE-SRV-020` | P0/A          | terminal turn                     | 마지막 action 제출              | winner/loser와 score는 서버 projection만 사용한다.                                     |
-| `POKE-SRV-021` | P0/A          | terminal                          | 결과 화면 확인                  | generic score API나 client-asserted tournament result를 전송하지 않는다.               |
-| `POKE-SRV-022` | P0/N          | 로컬 API+DB                       | match 종료 후 ranking 조회      | winner 100, loser 50의 verified history가 각각 한 번 저장되고 공개 ranking에 반영된다. |
-| `POKE-SRV-023` | P1/A          | create 직후 unmount               | 응답 전/후 leave                | 실제 생성 room에 leave를 정확히 한 번 전송한다.                                        |
-| `POKE-SRV-024` | P1/A          | party 변경                        | connect 및 party update         | party snapshot이 직렬화되어 mutation queue 순서대로 전송된다.                          |
-| `POKE-SRV-025` | P1/A          | revision/idempotency conflict     | mutation                        | conflict snapshot만 적용하고 command를 자동 재실행하지 않는다.                         |
-| `POKE-SRV-026` | P1/N          | API 프로세스 재시작               | active room/match 재조회        | room, assignment, action receipt가 PostgreSQL에서 복원된다.                            |
-| `POKE-SRV-027` | P2/N          | 두 실제 browser                   | 전체 경쟁 match 실행            | 서로의 turn/waiting/HP/PP/result가 실시간으로 동일하게 보인다.                         |
+| ID             | 우선순위/상태 | 사전조건                              | 절차                            | 기대 결과                                                                                         |
+| -------------- | ------------- | ------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `POKE-SRV-001` | P0/A          | `USER_A`                              | server room 생성                | UUID command header로 room이 생성되고 code가 URL에 반영된다.                                      |
+| `POKE-SRV-002` | P0/A          | `USER_B`, room code                   | join                            | 두 context가 서로 다른 session/identity로 같은 public snapshot을 본다.                            |
+| `POKE-SRV-003` | P0/A          | 두 사용자                             | 각자 competitive seat bind      | ID token은 메모리에만 있고 두 계정이 각 seat에 한 번만 연결된다.                                  |
+| `POKE-SRV-004` | P0/A          | 두 seat eligible, full party commit   | assignment 수신                 | 양쪽이 frozen species/level/slot/move로 같은 V2 match/turn을 시작한다.                            |
+| `POKE-SRV-005` | P1/A          | 익명 또는 중복 계정                   | seat bind                       | competitive를 열지 않고 casual world를 유지한다.                                                  |
+| `POKE-SRV-006` | P1/A          | 세 번째 참가자                        | join/bind                       | active participant가 3명 이상이면 competitive assignment를 만들지 않는다.                         |
+| `POKE-SRV-007` | P0/A          | 자기 turn                             | move 선택                       | UUIDv4 action이 한 번 제출되고 waiting 상태로 전환된다.                                           |
+| `POKE-SRV-008` | P0/A          | switch 가능                           | switch 선택                     | 선택 slot만 제출되고 현재/faint slot은 제출되지 않는다.                                           |
+| `POKE-SRV-009` | P1/A          | 두 action                             | 동시에 action 제출              | 서버가 한 turn만 결정적으로 resolve하고 새 revision을 broadcast한다.                              |
+| `POKE-SRV-010` | P1/A          | 400 응답                              | action 제출                     | fresh projection 후 입력이 다시 열리고 잘못된 local result를 만들지 않는다.                       |
+| `POKE-SRV-011` | P1/A          | stale turn 409                        | action 제출                     | REST snapshot으로 resync하고 새 상태를 기준으로 입력한다.                                         |
+| `POKE-SRV-012` | P1/A          | network 실패                          | 같은 action 재시도              | 동일 command UUID를 재사용하고 서버에서 중복 처리되지 않는다.                                     |
+| `POKE-SRV-013` | P1/A          | 연속 transport 실패                   | action 제출                     | capped retry 후 REST 복구하고 새 사용자 입력에 새 UUID를 사용한다.                                |
+| `POKE-SRV-014` | P1/A          | response parsing 실패                 | 성공 응답 처리                  | mutation을 중복 전송하지 않고 projection recovery로 전환한다.                                     |
+| `POKE-SRV-015` | P1/A          | socket disconnect                     | 연결 복구                       | 같은 socket identity로 REST recovery 후 재구독한다.                                               |
+| `POKE-SRV-016` | P1/A          | socket/REST 경합                      | newer socket 후 stale REST 도착 | 높은 revision만 적용되어 화면이 과거로 돌아가지 않는다.                                           |
+| `POKE-SRV-017` | P1/A          | submittedPlayerIds 포함 snapshot      | reconnect                       | 자기 waiting 상태를 복원하고 중복 action을 막는다.                                                |
+| `POKE-SRV-018` | P1/A          | malformed projection                  | socket 수신                     | battle을 열지 않고 schema rejection 후 REST recovery한다.                                         |
+| `POKE-SRV-019` | P1/A          | participant/HP/PP 위조 projection     | 수신                            | parser가 거부하고 prototype pollution이나 과대 record를 적용하지 않는다.                          |
+| `POKE-SRV-020` | P0/A          | terminal turn                         | 마지막 action 제출              | winner/loser와 score는 서버 projection만 사용하고 PvP HP/PP/status를 월드 저장에 반영하지 않는다. |
+| `POKE-SRV-021` | P0/A          | terminal                              | 결과 화면 확인                  | generic score API나 client-asserted tournament result를 전송하지 않는다.                          |
+| `POKE-SRV-022` | P0/A          | 로컬 API+DB, 정확히 두 참가자         | match 종료 후 history 조회      | match kind가 `tournament-unranked`이고 verified history는 0개다.                                  |
+| `POKE-SRV-023` | P1/A          | create 직후 unmount                   | 응답 전/후 leave                | 실제 생성 room에 leave를 정확히 한 번 전송한다.                                                   |
+| `POKE-SRV-024` | P1/A          | party 변경                            | connect 및 party update         | party snapshot이 직렬화되어 mutation queue 순서대로 전송된다.                                     |
+| `POKE-SRV-025` | P1/A          | revision/idempotency conflict         | mutation                        | conflict snapshot만 적용하고 command를 자동 재실행하지 않는다.                                    |
+| `POKE-SRV-026` | P1/N          | API 프로세스 재시작                   | active room/match 재조회        | room, assignment, action receipt가 PostgreSQL에서 복원된다.                                       |
+| `POKE-SRV-027` | P2/N          | 두 실제 browser                       | 전체 경쟁 match 실행            | 서로의 turn/waiting/HP/PP/result가 실시간으로 동일하게 보인다.                                    |
+| `POKE-SRV-028` | P0/A          | 마감 전 party 누락 또는 invalid party | 준비 마감/party mutation        | 명시적 오류 또는 room close로 처리되고 대체 mock 파티로 계속 진행하지 않는다.                     |
 
-현재 자동화 매핑: `poke-lounge-multiplayer.spec.ts`, `poke-lounge-room.e2e-spec.ts`, `poke-lounge-competitive.repository.integration-spec.ts`. `POKE-SRV-022`, `026`, `027`은 Web+실 API+DB를 묶는 상위 E2E suite로 추가해야 한다.
+현재 자동화 매핑: `poke-lounge-multiplayer.spec.ts`, `poke-lounge-room.e2e-spec.ts`, `poke-lounge-competitive.repository.integration-spec.ts`, `poke-lounge-five-player-tournament.spec.ts`. `POKE-SRV-026`, `027`의 전체 환경 회귀는 `TEST_DATABASE_URL`을 사용하는 통합 runner에서 확인한다.
 
 ## 19. 점수·랭킹·공유 상세
 
@@ -438,7 +439,7 @@ pnpm smoke:api:remote
 | `SCORE-006` | P0/A          | 잘못된 ID/404                | share 직접 진입         | 서버 예외 대신 404 복구 화면을 표시한다.                                     |
 | `SCORE-007` | P1/A          | API 530/fetch 실패           | share 직접 진입         | recoverable fallback으로 처리한다.                                           |
 | `SCORE-008` | P1/A          | API 500                      | share 직접 진입         | 실제 server error를 조용히 404로 숨기지 않고 오류로 분류한다.                |
-| `SCORE-009` | P0/N          | Poke casual/verified fixture | 공개 ranking 조회       | verified-room 결과만 포함되고 client-asserted 결과는 제외된다.               |
+| `SCORE-009` | P0/A          | Poke legacy verified fixture | 공개 ranking 조회       | 기존 verified 결과만 포함되고 V2 unranked/client-asserted 결과는 제외된다.   |
 | `SCORE-010` | P1/N          | share UI                     | 링크 복사·QR·Web Share  | canonical share URL이 모든 방식에서 동일하다.                                |
 
 현재 자동화 매핑: `api-read-error.spec.ts`, `error-fallback.spec.ts`, `not-found-recovery.spec.ts`, `server-route-fallback.spec.ts`, `history-tabs.spec.ts`, API `game-result-trust.integration-spec.ts`.
@@ -598,7 +599,7 @@ flaky 테스트는 단순 retry 성공으로 닫지 않는다. 최초 실패 tra
 2. 사용자 입력이 있는 모든 공개 화면에 최소 한 개의 정상 경로 E2E가 있다.
 3. 각 외부 경계인 API, OAuth, PostgreSQL, Socket.IO, clipboard/share에 정상·실패 경로가 있다.
 4. Sky Drop, Wordle, Poke Lounge가 각각 실제 시작→플레이→종료→재시작 흐름을 통과한다.
-5. Poke Lounge는 익명 solo, local room, 인증 2인 server competition을 각각 통과한다.
+5. Poke Lounge는 익명 solo, local room, 인증 사용자별 실제 육성 파티 server competition을 각각 통과한다.
 6. ko-KR, en-US, ja-JP route와 360/390/430 mobile 레이아웃이 통과한다.
 7. Firefox와 WebKit에서 P0 핵심 경로가 통과한다.
 8. critical 접근성 오류, console error, 예상하지 않은 4xx/5xx, 정적 asset 404가 없다.
@@ -607,6 +608,6 @@ flaky 테스트는 단순 retry 성공으로 닫지 않는다. 최초 실패 tra
 
 ## 27. 현재 결론
 
-현재 저장소는 route, 다국어, 취미 화면, 오류 fallback, Poke Lounge domain/저장/멀티플레이에 강한 자동화 기반이 있다. 반면 Sky Drop의 실제 플레이, Wordle 완주, 공통 점수 제출·공유, Recipe/Espresso의 실제 HTTP 계약, Google OAuth, Web+실 API+DB를 묶은 2인 Poke Lounge 경쟁전은 전체 기능 E2E 관점에서 보강이 필요하다.
+현재 저장소는 route, 다국어, 취미 화면, 오류 fallback, Poke Lounge domain/저장/멀티플레이에 강한 자동화 기반이 있다. 반면 Sky Drop의 실제 플레이, Wordle 완주, 공통 점수 제출·공유, Recipe/Espresso의 실제 HTTP 계약, Google OAuth는 전체 기능 E2E 관점에서 보강이 필요하다. Poke Lounge 실제 API/DB 경쟁전은 전용 통합 runner와 `_test` DB를 사용한다.
 
 따라서 기존 `pnpm e2e` 통과만으로 "모든 기능 테스트 완료"라고 판정하지 않는다. 이 문서의 `N`과 `P` 항목을 자동화하거나 릴리즈 후보 수동 결과로 증명한 뒤 완료로 판정한다.

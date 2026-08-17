@@ -540,7 +540,7 @@ export async function advanceTournamentAuthorityMatch(
     kind: 'tournament-unranked',
     assignmentRevision: 1,
     players: [players[0], players[1]],
-    parties: toCompetitiveParties(room.state, [players[0], players[1]]),
+    parties: toCompetitiveParties(state, [players[0], players[1]]),
   });
   await matchRepository.save(matchRepository.create(assignment));
   state.tournament.activeMatchAuthority = 'server';

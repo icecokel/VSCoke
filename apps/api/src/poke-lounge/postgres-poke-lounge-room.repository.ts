@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import { Injectable, Optional } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import {
+  COMPETITIVE_RULESET_HASH,
+  COMPETITIVE_RULESET_VERSION,
   createCanonicalIdRecord,
   hashCanonicalState,
   type CanonicalTerminalResult,
@@ -696,6 +698,12 @@ export function findCompletedCompetitiveMatchesAfterRevision(
     .addSelect(['transition.currentState', 'transition.terminalResult'])
     .where('transition.roomId = :roomId', { roomId })
     .andWhere('transition.status = :status', { status: 'completed' })
+    .andWhere('transition.rulesetVersion = :rulesetVersion', {
+      rulesetVersion: COMPETITIVE_RULESET_VERSION,
+    })
+    .andWhere('transition.rulesetHash = :rulesetHash', {
+      rulesetHash: COMPETITIVE_RULESET_HASH,
+    })
     .andWhere('transition.terminalRoomRevision > :afterRevision', {
       afterRevision,
     })

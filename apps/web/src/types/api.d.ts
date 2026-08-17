@@ -833,27 +833,34 @@ export interface components {
       playerId: string;
       /** @example Player A */
       displayName?: string;
-      representativePokemon?: components["schemas"]["PokeLoungeRepresentativePokemonDto"];
+      representativePokemon: components["schemas"]["PokeLoungeRepresentativePokemonDto"];
       /** @example 1 */
       partySize: number;
       /** @example 1720000002000 */
       updatedAtMs: number;
     };
     CompetitiveMoveStateDto: {
-      moveId: number | string;
+      moveId: number;
       pp: number;
     };
+    CompetitiveBattleStatStagesDto: {
+      attack: number;
+      defense: number;
+      specialAttack: number;
+      specialDefense: number;
+      speed: number;
+      accuracy: number;
+      evasion: number;
+    };
     CompetitiveCombatantStateDto: {
-      speciesId: number | string;
-      slotIndex?: number;
-      level?: number;
-      attack?: number;
-      defense?: number;
-      speed?: number;
+      speciesId: number;
+      slotIndex: number;
+      level: number;
       maxHp: number;
       currentHp: number;
       /** @enum {string} */
-      status: "none" | "paralyzed";
+      status: "normal" | "poisoned" | "burned" | "paralyzed" | "fainted";
+      statStages: components["schemas"]["CompetitiveBattleStatStagesDto"];
       moves: components["schemas"]["CompetitiveMoveStateDto"][];
     };
     CompetitivePlayerStateDto: {
@@ -871,8 +878,11 @@ export interface components {
       };
     };
     CompetitiveBattleStateDto: {
-      /** @example 2 */
-      rulesetVersion: number;
+      /**
+       * @example 2
+       * @enum {number}
+       */
+      rulesetVersion: 2;
       turn: number;
       participantIds: string[];
       playersById: {
@@ -1164,38 +1174,52 @@ export interface components {
       /** @example true */
       ready: boolean;
     };
-    PokeLoungePartyMoveDto: {
-      /** @example 33 */
-      moveId: number;
-      /** @example Tackle */
-      name: string;
-      /** @example 35 */
-      pp: number;
-      /** @example 35 */
-      maxPp: number;
+    CompetitiveIndividualValuesDto: {
+      /** @example 31 */
+      hp: number;
+      /** @example 20 */
+      attack: number;
+      /** @example 25 */
+      defense: number;
+      /** @example 17 */
+      specialAttack: number;
+      /** @example 23 */
+      specialDefense: number;
+      /** @example 19 */
+      speed: number;
     };
-    PokeLoungePartyPokemonDto: {
+    CompetitivePartyMoveDto: {
+      /** @example 55 */
+      moveId: number;
+      /** @example 25 */
+      pp: number;
+    };
+    CompetitivePartyMemberDto: {
       /** @example 0 */
       slotIndex: number;
       /** @example 7 */
       speciesId: number;
-      /** @example Squirtle */
-      name: string;
       /** @example 11 */
       level: number;
-      /** @example 24 */
-      currentHp: number;
       /** @example 30 */
-      maxHp: number;
-      /** @example 22 */
-      attack: number;
-      /** @example 25 */
-      defense: number;
-      /** @example 18 */
-      speed: number;
-      /** @example normal */
-      status: string;
-      moves: components["schemas"]["PokeLoungePartyMoveDto"][];
+      currentHp: number;
+      /**
+       * @example normal
+       * @enum {string}
+       */
+      status: "normal" | "poisoned" | "burned" | "paralyzed" | "fainted";
+      individualValues: components["schemas"]["CompetitiveIndividualValuesDto"];
+      moves: components["schemas"]["CompetitivePartyMoveDto"][];
+    };
+    CompetitivePartyDto: {
+      /**
+       * @example 2
+       * @enum {number}
+       */
+      version: 2;
+      /** @example 0 */
+      activeSlotIndex: number;
+      members: components["schemas"]["CompetitivePartyMemberDto"][];
     };
     UpdatePokeLoungePartySnapshotDto: {
       /** @example player-a */
@@ -1204,10 +1228,7 @@ export interface components {
       sessionId: string;
       /** @example Player A */
       displayName?: string;
-      /** @example 0 */
-      activePartySlotIndex?: number;
-      party?: components["schemas"]["PokeLoungePartyPokemonDto"][];
-      representativePokemon?: components["schemas"]["PokeLoungeRepresentativePokemonDto"];
+      competitiveParty: components["schemas"]["CompetitivePartyDto"];
     };
     SubmitPokeLoungeMatchResultDto: {
       /** @example player-a */

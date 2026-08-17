@@ -1,8 +1,13 @@
 import type { DataSource, EntityManager } from 'typeorm';
 import {
-  createInitialBattleState,
+  COMPETITIVE_RULESET_HASH,
+  COMPETITIVE_RULESET_VERSION,
   createTournamentBracketState,
 } from '@vscoke/poke-lounge-battle';
+import {
+  createTestInitialBattleState,
+  createTestPartySnapshots,
+} from '../../../test/support/competitive-party.fixture';
 import { PostgresCompetitiveMatchRepository } from './postgres-competitive-match.repository';
 import {
   POKE_LOUNGE_ACTIVE_ROOM_LEASE_MS,
@@ -424,13 +429,15 @@ function assignment(context: {
     string,
     string,
   ];
-  const state = createInitialBattleState(participantIds);
+  const state = createTestInitialBattleState(participantIds);
   return {
     ...context,
     matchId: '00000000-0000-4000-8000-000000000001',
+    bracketMatchId: 'game-round-1-bracket-1-match-1',
+    kind: 'tournament-unranked' as const,
     playerAccounts: context.players,
-    rulesetVersion: 1,
-    rulesetHash: 'a'.repeat(64),
+    rulesetVersion: COMPETITIVE_RULESET_VERSION,
+    rulesetHash: COMPETITIVE_RULESET_HASH,
     serverSeed: 'b'.repeat(64),
     initialState: state,
     initialStateHash: 'c'.repeat(64),
@@ -439,6 +446,8 @@ function assignment(context: {
     currentTurn: 0,
     status: 'pending' as const,
     terminalResult: null,
+    terminalEventId: null,
+    terminalRoomRevision: null,
     completedAt: null,
   };
 }
@@ -452,7 +461,7 @@ function roomState(playerIds = ['player-a', 'player-b']) {
     participants: playerIds.map((playerId, index) =>
       participant(`session-${String.fromCharCode(97 + index)}`, playerId),
     ),
-    partySnapshots: {},
+    partySnapshots: createTestPartySnapshots(playerIds),
     round: {
       index: 1,
       phase: 'waiting' as const,

@@ -14,6 +14,7 @@ import {
   getPokeLoungeTestTypeOrmOptions,
   truncatePokeLoungeRoomStorage,
 } from './support/poke-lounge-test-database';
+import { createTestCompetitivePartyInput } from './support/competitive-party.fixture';
 
 type ConflictBody = {
   statusCode: number;
@@ -78,6 +79,7 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
         body: {
           playerId: 'player-a',
           sessionId: 'session-a',
+          competitiveParty: createTestCompetitivePartyInput(),
           ready: true,
         },
       },
@@ -272,6 +274,7 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
         playerId: 'player-a',
         sessionId: 'session-a',
         displayName: 'Player A',
+        competitiveParty: createTestCompetitivePartyInput(),
       })
       .expect(201);
 

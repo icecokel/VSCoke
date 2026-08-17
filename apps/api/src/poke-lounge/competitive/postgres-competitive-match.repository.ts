@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { CompetitivePartyInput } from '@vscoke/poke-lounge-battle';
+import type { NormalizedCompetitiveParty } from '@vscoke/poke-lounge-battle';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, type EntityManager, type Repository } from 'typeorm';
 import { PokeLoungeCompetitiveMatch } from '../entities/poke-lounge-competitive-match.entity';
@@ -161,33 +161,14 @@ export function toCompetitiveParties(
     { playerId: string; accountId: string },
     { playerId: string; accountId: string },
   ],
-): Record<string, CompetitivePartyInput> {
-  const parties: Record<string, CompetitivePartyInput> = {};
+): Record<string, NormalizedCompetitiveParty> {
+  const parties: Record<string, NormalizedCompetitiveParty> = {};
   for (const player of players) {
     const snapshot = state.partySnapshots[player.playerId];
-    if (!snapshot?.party?.length) {
+    if (!snapshot?.competitiveParty.members.length) {
       throw new Error(`Competitive party is not ready for ${player.playerId}`);
     }
-    parties[player.playerId] = {
-      activeSlotIndex:
-        snapshot.activePartySlotIndex ?? snapshot.party[0].slotIndex,
-      members: snapshot.party.map((pokemon) => ({
-        slotIndex: pokemon.slotIndex,
-        speciesId: pokemon.speciesId,
-        level: pokemon.level,
-        maxHp: pokemon.maxHp,
-        currentHp: pokemon.currentHp,
-        attack: pokemon.attack,
-        defense: pokemon.defense,
-        speed: pokemon.speed,
-        status: pokemon.status === 'paralyzed' ? 'paralyzed' : 'none',
-        moves: pokemon.moves.map((move) => ({
-          moveId: move.moveId,
-          pp: move.pp,
-          maxPp: move.maxPp,
-        })),
-      })),
-    };
+    parties[player.playerId] = structuredClone(snapshot.competitiveParty);
   }
   return parties;
 }

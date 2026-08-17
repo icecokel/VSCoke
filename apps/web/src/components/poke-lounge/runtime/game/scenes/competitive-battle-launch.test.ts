@@ -1,20 +1,55 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
-import {
-  APPROVED_COMPETITIVE_RULESET_V1,
-  COMPETITIVE_RULESET_HASH,
-  COMPETITIVE_STRUGGLE_MOVE_ID,
-} from "@vscoke/poke-lounge-battle";
+import { fileURLToPath } from "node:url";
+import { COMPETITIVE_RULESET_HASH, COMPETITIVE_STRUGGLE_MOVE_ID } from "@vscoke/poke-lounge-battle";
 import {
   isLegalAuthoritativeAction,
   toAuthoritativeBattleState,
 } from "../battle/authoritative-battle-adapter";
-import { APPROVED_COMPETITIVE_LOADOUT } from "../network/competitive-projection";
+import {
+  BATTLE_POKEMON_ASSETS_JSON_PATH,
+  LEVEL_UP_MOVE_TABLE_JSON_PATH,
+  loadRuntimeGameDataJson,
+  POKEMON_DATA_JSON_PATH,
+  resetRuntimeGameDataJsonStateForTest,
+  WILD_BATTLE_MOVE_SETS_JSON_PATH,
+} from "../data/game-data-json";
 import type {
   CompetitiveProjection,
   CompetitiveRoomProjectionEvent,
 } from "../network/localPreviewRoom";
 import { createCompetitiveBattleLaunchCache } from "./competitive-battle-launch";
+
+const webRoot = fileURLToPath(new URL("../../../../../../", import.meta.url));
+
+test.before(async () => {
+  await loadRuntimeGameDataJson(async input => {
+    const requestPath =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.pathname
+          : new URL(input.url).pathname;
+    if (
+      ![
+        POKEMON_DATA_JSON_PATH,
+        LEVEL_UP_MOVE_TABLE_JSON_PATH,
+        WILD_BATTLE_MOVE_SETS_JSON_PATH,
+        BATTLE_POKEMON_ASSETS_JSON_PATH,
+      ].includes(requestPath)
+    ) {
+      return new Response(null, { status: 404 });
+    }
+    return new Response(
+      fs.readFileSync(path.join(webRoot, "public", requestPath.replace(/^\//, "")), "utf8"),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  });
+});
+
+test.after(() => resetRuntimeGameDataJsonStateForTest());
 
 function createProjection(
   matchId: string,
@@ -26,14 +61,14 @@ function createProjection(
     bracketMatchId,
     kind: "tournament-unranked",
     assignmentRevision: 1,
-    rulesetVersion: 1,
+    rulesetVersion: 2,
     rulesetHash: COMPETITIVE_RULESET_HASH,
     currentTurn: 0,
     status: "active",
     playerIds,
     stateHash: "b".repeat(64),
     currentState: {
-      rulesetVersion: 1,
+      rulesetVersion: 2,
       turn: 0,
       participantIds: playerIds,
       playersById: Object.fromEntries(
@@ -42,13 +77,26 @@ function createProjection(
           {
             playerId,
             activeSlotIndex: 0,
-            team: APPROVED_COMPETITIVE_LOADOUT.map(pokemon => ({
-              speciesId: pokemon.speciesId,
-              maxHp: pokemon.maxHp,
-              currentHp: pokemon.maxHp,
-              status: "none" as const,
-              moves: pokemon.moves.map(move => ({ moveId: move.moveId, pp: move.maxPp })),
-            })),
+            team: [
+              {
+                slotIndex: 0,
+                speciesId: playerId === playerIds[0] ? 7 : 158,
+                level: playerId === playerIds[0] ? 11 : 13,
+                maxHp: 34,
+                currentHp: 34,
+                status: "normal" as const,
+                statStages: {
+                  attack: 0,
+                  defense: 0,
+                  specialAttack: 0,
+                  specialDefense: 0,
+                  speed: 0,
+                  accuracy: 0,
+                  evasion: 0,
+                },
+                moves: [{ moveId: 55, pp: 25 }],
+              },
+            ],
           },
         ]),
       ),
@@ -90,19 +138,16 @@ test("authoritative terminal state는 기존 WorldScene 복귀 위치를 보존�
 
   assert.equal(state.phase, "ended");
   assert.deepEqual(state.returnToWorld, returnToWorld);
-  assert.equal(state.player.pokemon.level, APPROVED_COMPETITIVE_RULESET_V1.loadout[0].level);
-  assert.equal(state.player.pokemon.attack, APPROVED_COMPETITIVE_RULESET_V1.loadout[0].attack);
+  assert.equal(state.player.pokemon.name, "리아코");
+  assert.equal(state.player.pokemon.level, 13);
+  assert.equal(state.player.pokemon.attack, 25);
   assert.deepEqual(
     state.player.pokemon.moves.map(move => ({
       power: move.power,
       accuracy: move.accuracy,
       maxPp: move.maxPp,
     })),
-    APPROVED_COMPETITIVE_RULESET_V1.loadout[0].moveIds.map(moveId => ({
-      power: APPROVED_COMPETITIVE_RULESET_V1.moves[moveId].power,
-      accuracy: Math.round(APPROVED_COMPETITIVE_RULESET_V1.moves[moveId].accuracy * 100),
-      maxPp: APPROVED_COMPETITIVE_RULESET_V1.moves[moveId].maxPp,
-    })),
+    [{ power: 40, accuracy: 100, maxPp: 25 }],
   );
 });
 
@@ -123,6 +168,39 @@ test("authoritative battle은 활성 포켓몬의 PP가 모두 0일 때만 발�
     }),
     true,
   );
+});
+
+test("미지원 상태 기술은 선택 불가로, 공격 기술의 미지원 부가 효과는 표시만 한다", () => {
+  const projection = createProjection(
+    "11111111-1111-4111-8111-111111111111",
+    "game-round-1-bracket-1-match-1",
+    ["seed-4", "seed-5"],
+  );
+  const activePokemon = projection.currentState.playersById["seed-4"]?.team[0];
+  assert.ok(activePokemon);
+  activePokemon.moves = [
+    { moveId: 97, pp: 30 },
+    { moveId: 2, pp: 25 },
+  ];
+
+  const state = toAuthoritativeBattleState(projection, "seed-4");
+
+  assert.deepEqual(
+    state.player.pokemon.moves.map(move => ({
+      moveId: move.id,
+      name: move.name,
+      support: move.competitiveEffectSupport,
+    })),
+    [
+      { moveId: 97, name: "고속이동", support: "unsupported-primary" },
+      { moveId: 2, name: "태권당수", support: "unsupported-secondary" },
+    ],
+  );
+  assert.equal(
+    isLegalAuthoritativeAction(projection, "seed-4", { kind: "move", moveId: 97 }),
+    false,
+  );
+  assert.equal(isLegalAuthoritativeAction(projection, "seed-4", { kind: "move", moveId: 2 }), true);
 });
 
 test("WorldScene은 handed-off old key만 완료하고 next assignment를 한 번만 launch한다", () => {

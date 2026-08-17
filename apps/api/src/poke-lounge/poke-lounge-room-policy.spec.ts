@@ -9,6 +9,7 @@ import {
   isPokeLoungeRoomExpired,
   normalizeLegacyPokeLoungeRoomSnapshot,
 } from './poke-lounge-room-policy';
+import { createTestPartySnapshots } from '../../test/support/competitive-party.fixture';
 
 const MINUTE_MS = 60_000;
 
@@ -257,6 +258,35 @@ describe('PokeLoungeRoomPolicy', () => {
     ).toEqual(['player-1', 'player-3', 'player-2']);
   });
 
+  it('closes at the exact deadline when an active participant has no committed party', () => {
+    const room = createSnapshot({
+      status: 'round-started',
+      participants: [
+        createParticipant('player-1', 1),
+        createParticipant('player-2', 2),
+      ],
+      partySnapshots: createTestPartySnapshots(['player-1']),
+      round: {
+        index: 1,
+        phase: 'round-started',
+        durationMs: 1_000,
+        startedAtMs: 0,
+        endsAtMs: 1_000,
+      },
+    });
+
+    expect(advancePokeLoungeRoomClock(room, 1_000)).toMatchObject({
+      status: 'closed',
+      closeReason: 'competitive-party-not-ready',
+      revision: 1,
+      round: { phase: 'completed', endsAtMs: null },
+      tournament: {
+        activeMatchId: null,
+        activeMatchAuthority: null,
+      },
+    });
+  });
+
   it('closes progressed legacy rooms with a finite restart-required expiry', () => {
     const legacy = createSnapshot({ status: 'tournament' });
     (legacy as unknown as { tournament: unknown }).tournament = {
@@ -305,7 +335,7 @@ describe('PokeLoungeRoomPolicy', () => {
 function createSnapshot(
   overrides: Partial<PokeLoungeRoomSnapshot> = {},
 ): PokeLoungeRoomSnapshot {
-  return {
+  const snapshot: PokeLoungeRoomSnapshot = {
     roomCode: 'ROOM01',
     status: 'waiting',
     createdAtMs: 1_000,
@@ -331,6 +361,12 @@ function createSnapshot(
     expiresAtMs: 1_000 + 30 * MINUTE_MS,
     ...overrides,
   };
+  if (!Object.prototype.hasOwnProperty.call(overrides, 'partySnapshots')) {
+    snapshot.partySnapshots = createTestPartySnapshots(
+      snapshot.participants.map((participant) => participant.playerId),
+    );
+  }
+  return snapshot;
 }
 
 function createParticipant(playerId: string, joinedAtMs: number) {

@@ -2093,20 +2093,15 @@
             "example": 1720000002000
           }
         },
-        "required": ["playerId", "partySize", "updatedAtMs"]
+        "required": ["playerId", "representativePokemon", "partySize", "updatedAtMs"]
       },
       "CompetitiveMoveStateDto": {
         "type": "object",
         "properties": {
           "moveId": {
-            "oneOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "string"
-              }
-            ]
+            "type": "number",
+            "minimum": 1,
+            "maximum": 470
           },
           "pp": {
             "type": "number",
@@ -2115,38 +2110,72 @@
         },
         "required": ["moveId", "pp"]
       },
+      "CompetitiveBattleStatStagesDto": {
+        "type": "object",
+        "properties": {
+          "attack": {
+            "type": "number",
+            "minimum": -6,
+            "maximum": 6
+          },
+          "defense": {
+            "type": "number",
+            "minimum": -6,
+            "maximum": 6
+          },
+          "specialAttack": {
+            "type": "number",
+            "minimum": -6,
+            "maximum": 6
+          },
+          "specialDefense": {
+            "type": "number",
+            "minimum": -6,
+            "maximum": 6
+          },
+          "speed": {
+            "type": "number",
+            "minimum": -6,
+            "maximum": 6
+          },
+          "accuracy": {
+            "type": "number",
+            "minimum": -6,
+            "maximum": 6
+          },
+          "evasion": {
+            "type": "number",
+            "minimum": -6,
+            "maximum": 6
+          }
+        },
+        "required": [
+          "attack",
+          "defense",
+          "specialAttack",
+          "specialDefense",
+          "speed",
+          "accuracy",
+          "evasion"
+        ]
+      },
       "CompetitiveCombatantStateDto": {
         "type": "object",
         "properties": {
           "speciesId": {
-            "oneOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "string"
-              }
-            ]
+            "type": "number",
+            "minimum": 1,
+            "maximum": 493
           },
           "slotIndex": {
             "type": "number",
-            "minimum": 0
+            "minimum": 0,
+            "maximum": 5
           },
           "level": {
             "type": "number",
-            "minimum": 1
-          },
-          "attack": {
-            "type": "number",
-            "minimum": 1
-          },
-          "defense": {
-            "type": "number",
-            "minimum": 1
-          },
-          "speed": {
-            "type": "number",
-            "minimum": 1
+            "minimum": 1,
+            "maximum": 100
           },
           "maxHp": {
             "type": "number",
@@ -2158,7 +2187,10 @@
           },
           "status": {
             "type": "string",
-            "enum": ["none", "paralyzed"]
+            "enum": ["normal", "poisoned", "burned", "paralyzed", "fainted"]
+          },
+          "statStages": {
+            "$ref": "#/components/schemas/CompetitiveBattleStatStagesDto"
           },
           "moves": {
             "type": "array",
@@ -2167,7 +2199,16 @@
             }
           }
         },
-        "required": ["speciesId", "maxHp", "currentHp", "status", "moves"]
+        "required": [
+          "speciesId",
+          "slotIndex",
+          "level",
+          "maxHp",
+          "currentHp",
+          "status",
+          "statStages",
+          "moves"
+        ]
       },
       "CompetitivePlayerStateDto": {
         "type": "object",
@@ -2216,7 +2257,8 @@
         "properties": {
           "rulesetVersion": {
             "type": "number",
-            "example": 2
+            "example": 2,
+            "enum": [2]
           },
           "turn": {
             "type": "number",
@@ -3016,91 +3058,142 @@
         },
         "required": ["playerId", "sessionId", "ready"]
       },
-      "PokeLoungePartyMoveDto": {
+      "CompetitiveIndividualValuesDto": {
+        "type": "object",
+        "properties": {
+          "hp": {
+            "type": "number",
+            "example": 31,
+            "minimum": 0,
+            "maximum": 31
+          },
+          "attack": {
+            "type": "number",
+            "example": 20,
+            "minimum": 0,
+            "maximum": 31
+          },
+          "defense": {
+            "type": "number",
+            "example": 25,
+            "minimum": 0,
+            "maximum": 31
+          },
+          "specialAttack": {
+            "type": "number",
+            "example": 17,
+            "minimum": 0,
+            "maximum": 31
+          },
+          "specialDefense": {
+            "type": "number",
+            "example": 23,
+            "minimum": 0,
+            "maximum": 31
+          },
+          "speed": {
+            "type": "number",
+            "example": 19,
+            "minimum": 0,
+            "maximum": 31
+          }
+        },
+        "required": ["hp", "attack", "defense", "specialAttack", "specialDefense", "speed"]
+      },
+      "CompetitivePartyMoveDto": {
         "type": "object",
         "properties": {
           "moveId": {
             "type": "number",
-            "example": 33
-          },
-          "name": {
-            "type": "string",
-            "example": "Tackle"
+            "example": 55,
+            "minimum": 1,
+            "maximum": 470
           },
           "pp": {
             "type": "number",
-            "example": 35
-          },
-          "maxPp": {
-            "type": "number",
-            "example": 35
+            "example": 25,
+            "minimum": 0
           }
         },
-        "required": ["moveId", "name", "pp", "maxPp"]
+        "required": ["moveId", "pp"]
       },
-      "PokeLoungePartyPokemonDto": {
+      "CompetitivePartyMemberDto": {
         "type": "object",
         "properties": {
           "slotIndex": {
             "type": "number",
-            "example": 0
+            "example": 0,
+            "minimum": 0,
+            "maximum": 5
           },
           "speciesId": {
             "type": "number",
-            "example": 7
-          },
-          "name": {
-            "type": "string",
-            "example": "Squirtle"
+            "example": 7,
+            "minimum": 1,
+            "maximum": 493
           },
           "level": {
             "type": "number",
-            "example": 11
+            "example": 11,
+            "minimum": 1,
+            "maximum": 100
           },
           "currentHp": {
             "type": "number",
-            "example": 24
-          },
-          "maxHp": {
-            "type": "number",
-            "example": 30
-          },
-          "attack": {
-            "type": "number",
-            "example": 22
-          },
-          "defense": {
-            "type": "number",
-            "example": 25
-          },
-          "speed": {
-            "type": "number",
-            "example": 18
+            "example": 30,
+            "minimum": 0
           },
           "status": {
             "type": "string",
+            "enum": ["normal", "poisoned", "burned", "paralyzed", "fainted"],
             "example": "normal"
           },
+          "individualValues": {
+            "$ref": "#/components/schemas/CompetitiveIndividualValuesDto"
+          },
           "moves": {
+            "minItems": 1,
+            "maxItems": 4,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/PokeLoungePartyMoveDto"
+              "$ref": "#/components/schemas/CompetitivePartyMoveDto"
             }
           }
         },
         "required": [
           "slotIndex",
           "speciesId",
-          "name",
           "level",
           "currentHp",
-          "maxHp",
-          "attack",
-          "defense",
-          "speed",
           "status",
+          "individualValues",
           "moves"
         ]
+      },
+      "CompetitivePartyDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "example": 2,
+            "enum": [2]
+          },
+          "activeSlotIndex": {
+            "type": "number",
+            "example": 0,
+            "minimum": 0,
+            "maximum": 5
+          },
+          "members": {
+            "minItems": 1,
+            "maxItems": 6,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompetitivePartyMemberDto"
+            }
+          }
+        },
+        "required": ["version", "activeSlotIndex", "members"]
       },
       "UpdatePokeLoungePartySnapshotDto": {
         "type": "object",
@@ -3117,21 +3210,11 @@
             "type": "string",
             "example": "Player A"
           },
-          "activePartySlotIndex": {
-            "type": "number",
-            "example": 0
-          },
-          "party": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PokeLoungePartyPokemonDto"
-            }
-          },
-          "representativePokemon": {
-            "$ref": "#/components/schemas/PokeLoungeRepresentativePokemonDto"
+          "competitiveParty": {
+            "$ref": "#/components/schemas/CompetitivePartyDto"
           }
         },
-        "required": ["playerId", "sessionId"]
+        "required": ["playerId", "sessionId", "competitiveParty"]
       },
       "SubmitPokeLoungeMatchResultDto": {
         "type": "object",

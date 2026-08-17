@@ -1,5 +1,6 @@
 import type {
   CanonicalBattleStatus,
+  BattleStatStages,
   CanonicalCompetitiveAction,
   CanonicalTerminalResult,
 } from '@vscoke/poke-lounge-battle';
@@ -12,7 +13,7 @@ import type {
 export type CompetitiveActionReceiptStatus = 'pending' | 'resolved';
 
 export interface PublicCompetitiveBattleState {
-  rulesetVersion: 1 | 2;
+  rulesetVersion: 2;
   turn: number;
   participantIds: readonly [string, string];
   playersById: Readonly<
@@ -22,16 +23,14 @@ export interface PublicCompetitiveBattleState {
         playerId: string;
         activeSlotIndex: number;
         team: readonly {
-          speciesId: number | string;
-          slotIndex?: number;
-          level?: number;
-          attack?: number;
-          defense?: number;
-          speed?: number;
+          speciesId: number;
+          slotIndex: number;
+          level: number;
           maxHp: number;
           currentHp: number;
           status: CanonicalBattleStatus;
-          moves: readonly { moveId: number | string; pp: number }[];
+          statStages: BattleStatStages;
+          moves: readonly { moveId: number; pp: number }[];
         }[];
       }
     >

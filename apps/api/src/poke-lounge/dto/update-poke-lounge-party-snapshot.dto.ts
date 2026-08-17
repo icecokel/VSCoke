@@ -1,123 +1,172 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  IsInt,
+  ArrayMaxSize,
+  ArrayMinSize,
+  Equals,
   IsArray,
   IsIn,
-  IsObject,
+  IsInt,
   IsOptional,
   IsString,
+  Max,
   Min,
   ValidateNested,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type {
-  PokeLoungePartySnapshot,
-  UpdatePokeLoungePartySnapshotInput,
-} from './../poke-lounge-room.types';
+  CompetitiveIndividualValues,
+  CompetitivePartyInput,
+  CompetitivePartyMemberInput,
+} from '@vscoke/poke-lounge-battle';
+import type { UpdatePokeLoungePartySnapshotInput } from './../poke-lounge-room.types';
 
-class PokeLoungeRepresentativePokemonDto implements NonNullable<
-  PokeLoungePartySnapshot['representativePokemon']
-> {
-  @ApiProperty({ example: 25 })
-  @IsInt()
-  @Min(1)
-  speciesId!: number;
+const COMPETITIVE_STAT_EXAMPLES: CompetitiveIndividualValues = {
+  hp: 31,
+  attack: 20,
+  defense: 25,
+  specialAttack: 17,
+  specialDefense: 23,
+  speed: 19,
+};
 
-  @ApiProperty({ example: 'Pikachu' })
-  @IsString()
-  name!: string;
-
-  @ApiProperty({ example: 12 })
-  @IsInt()
-  @Min(1)
-  level!: number;
-
-  @ApiProperty({ example: 18 })
-  @IsInt()
-  @Min(0)
-  currentHp!: number;
-
-  @ApiProperty({ example: 30 })
+class CompetitiveIndividualValuesDto implements CompetitiveIndividualValues {
+  @ApiProperty({
+    example: COMPETITIVE_STAT_EXAMPLES.hp,
+    minimum: 0,
+    maximum: 31,
+  })
   @IsInt()
   @Min(0)
-  maxHp!: number;
+  @Max(31)
+  hp!: number;
+
+  @ApiProperty({
+    example: COMPETITIVE_STAT_EXAMPLES.attack,
+    minimum: 0,
+    maximum: 31,
+  })
+  @IsInt()
+  @Min(0)
+  @Max(31)
+  attack!: number;
+
+  @ApiProperty({
+    example: COMPETITIVE_STAT_EXAMPLES.defense,
+    minimum: 0,
+    maximum: 31,
+  })
+  @IsInt()
+  @Min(0)
+  @Max(31)
+  defense!: number;
+
+  @ApiProperty({
+    example: COMPETITIVE_STAT_EXAMPLES.specialAttack,
+    minimum: 0,
+    maximum: 31,
+  })
+  @IsInt()
+  @Min(0)
+  @Max(31)
+  specialAttack!: number;
+
+  @ApiProperty({
+    example: COMPETITIVE_STAT_EXAMPLES.specialDefense,
+    minimum: 0,
+    maximum: 31,
+  })
+  @IsInt()
+  @Min(0)
+  @Max(31)
+  specialDefense!: number;
+
+  @ApiProperty({
+    example: COMPETITIVE_STAT_EXAMPLES.speed,
+    minimum: 0,
+    maximum: 31,
+  })
+  @IsInt()
+  @Min(0)
+  @Max(31)
+  speed!: number;
 }
 
-class PokeLoungePartyMoveDto {
-  @ApiProperty({ example: 33 })
+class CompetitivePartyMoveDto {
+  @ApiProperty({ example: 55, minimum: 1, maximum: 470 })
   @IsInt()
   @Min(1)
+  @Max(470)
   moveId!: number;
 
-  @ApiProperty({ example: 'Tackle' })
-  @IsString()
-  name!: string;
-
-  @ApiProperty({ example: 35 })
+  @ApiProperty({ example: 25, minimum: 0 })
   @IsInt()
   @Min(0)
   pp!: number;
-
-  @ApiProperty({ example: 35 })
-  @IsInt()
-  @Min(1)
-  maxPp!: number;
 }
 
-class PokeLoungePartyPokemonDto {
-  @ApiProperty({ example: 0 })
+class CompetitivePartyMemberDto implements CompetitivePartyMemberInput {
+  @ApiProperty({ example: 0, minimum: 0, maximum: 5 })
   @IsInt()
   @Min(0)
+  @Max(5)
   slotIndex!: number;
 
-  @ApiProperty({ example: 7 })
+  @ApiProperty({ example: 7, minimum: 1, maximum: 493 })
   @IsInt()
   @Min(1)
+  @Max(493)
   speciesId!: number;
 
-  @ApiProperty({ example: 'Squirtle' })
-  @IsString()
-  name!: string;
-
-  @ApiProperty({ example: 11 })
+  @ApiProperty({ example: 11, minimum: 1, maximum: 100 })
   @IsInt()
   @Min(1)
+  @Max(100)
   level!: number;
 
-  @ApiProperty({ example: 24 })
+  @ApiProperty({ example: 30, minimum: 0 })
   @IsInt()
   @Min(0)
   currentHp!: number;
 
-  @ApiProperty({ example: 30 })
-  @IsInt()
-  @Min(1)
-  maxHp!: number;
+  @ApiProperty({
+    enum: ['normal', 'poisoned', 'burned', 'paralyzed', 'fainted'],
+    example: 'normal',
+  })
+  @IsIn(['normal', 'poisoned', 'burned', 'paralyzed', 'fainted'])
+  status!: CompetitivePartyMemberInput['status'];
 
-  @ApiProperty({ example: 22 })
-  @IsInt()
-  @Min(1)
-  attack!: number;
+  @ApiProperty({ type: CompetitiveIndividualValuesDto })
+  @ValidateNested()
+  @Type(() => CompetitiveIndividualValuesDto)
+  individualValues!: CompetitiveIndividualValuesDto;
 
-  @ApiProperty({ example: 25 })
-  @IsInt()
-  @Min(1)
-  defense!: number;
-
-  @ApiProperty({ example: 18 })
-  @IsInt()
-  @Min(1)
-  speed!: number;
-
-  @ApiProperty({ example: 'normal' })
-  @IsIn(['none', 'paralyzed', 'poisoned', 'burned', 'fainted'])
-  status!: 'none' | 'paralyzed' | 'poisoned' | 'burned' | 'fainted';
-
-  @ApiProperty({ type: [PokeLoungePartyMoveDto] })
+  @ApiProperty({ type: [CompetitivePartyMoveDto], minItems: 1, maxItems: 4 })
   @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(4)
   @ValidateNested({ each: true })
-  @Type(() => PokeLoungePartyMoveDto)
-  moves!: PokeLoungePartyMoveDto[];
+  @Type(() => CompetitivePartyMoveDto)
+  moves!: CompetitivePartyMoveDto[];
+}
+
+class CompetitivePartyDto implements CompetitivePartyInput {
+  @ApiProperty({ example: 2, enum: [2] })
+  @Equals(2)
+  version!: 2;
+
+  @ApiProperty({ example: 0, minimum: 0, maximum: 5 })
+  @IsInt()
+  @Min(0)
+  @Max(5)
+  activeSlotIndex!: number;
+
+  @ApiProperty({ type: [CompetitivePartyMemberDto], minItems: 1, maxItems: 6 })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(6)
+  @ValidateNested({ each: true })
+  @Type(() => CompetitivePartyMemberDto)
+  members!: CompetitivePartyMemberDto[];
 }
 
 export class UpdatePokeLoungePartySnapshotDto implements UpdatePokeLoungePartySnapshotInput {
@@ -134,23 +183,8 @@ export class UpdatePokeLoungePartySnapshotDto implements UpdatePokeLoungePartySn
   @IsString()
   displayName?: string;
 
-  @ApiPropertyOptional({ example: 0 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  activePartySlotIndex?: number;
-
-  @ApiPropertyOptional({ type: [PokeLoungePartyPokemonDto] })
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => PokeLoungePartyPokemonDto)
-  party?: PokeLoungePartyPokemonDto[];
-
-  @ApiPropertyOptional({ type: PokeLoungeRepresentativePokemonDto })
-  @IsOptional()
-  @IsObject()
+  @ApiProperty({ type: CompetitivePartyDto })
   @ValidateNested()
-  @Type(() => PokeLoungeRepresentativePokemonDto)
-  representativePokemon?: PokeLoungeRepresentativePokemonDto;
+  @Type(() => CompetitivePartyDto)
+  competitiveParty!: CompetitivePartyDto;
 }

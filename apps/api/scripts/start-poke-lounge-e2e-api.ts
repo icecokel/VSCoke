@@ -39,6 +39,42 @@ type E2eMatchAssertion = {
   currentTurn: number;
   bracketMatchId: string | null;
   kind: string | null;
+  rulesetVersion: number;
+  initialPartyByPlayerId: Record<string, E2ePartySummary>;
+};
+type E2ePartySummary = {
+  activeSlotIndex: number;
+  members: Array<{
+    slotIndex: number;
+    speciesId: number;
+    level: number;
+    moveIds: number[];
+  }>;
+};
+type E2eRoomState = {
+  tournament?: unknown;
+  partySnapshots?: Record<string, { competitiveParty?: E2ePartySummarySource }>;
+};
+type E2ePartySummarySource = {
+  activeSlotIndex?: unknown;
+  members?: Array<{
+    slotIndex?: unknown;
+    speciesId?: unknown;
+    level?: unknown;
+    moves?: Array<{ moveId?: unknown }>;
+  }>;
+};
+type E2eInitialState = {
+  playersById?: Record<
+    string,
+    {
+      activeSlotIndex?: unknown;
+      team?: E2ePartySummarySource['members'];
+    }
+  >;
+};
+type E2eMatchRow = Omit<E2eMatchAssertion, 'initialPartyByPlayerId'> & {
+  initialState: E2eInitialState;
 };
 type E2eActionAssertion = {
   matchId: string;
@@ -199,7 +235,7 @@ async function readDatabaseAssertions(
   }
 
   const [room] = await dataSource.query<
-    Array<{ id: string; revision: string; state: { tournament?: unknown } }>
+    Array<{ id: string; revision: string; state: E2eRoomState }>
   >(
     `SELECT id, revision, state
        FROM poke_lounge_room
@@ -236,13 +272,22 @@ async function readDatabaseAssertions(
       : 'NULL::text AS "bracketMatchId"',
     existingMatchColumns.has('kind') ? 'kind' : 'NULL::text AS kind',
   ].join(', ');
-  const matches = await dataSource.query<E2eMatchAssertion[]>(
-    `SELECT match_id AS "matchId", status, current_turn AS "currentTurn", ${optionalSelect}
+  const matchRows = await dataSource.query<E2eMatchRow[]>(
+    `SELECT match_id AS "matchId",
+            status,
+            current_turn AS "currentTurn",
+            ruleset_version AS "rulesetVersion",
+            initial_state AS "initialState",
+            ${optionalSelect}
        FROM poke_lounge_competitive_match
       WHERE room_id = $1
       ORDER BY created_at ASC`,
     [room.id],
   );
+  const matches = matchRows.map(({ initialState, ...match }) => ({
+    ...match,
+    initialPartyByPlayerId: summarizeInitialParties(initialState),
+  }));
   const actions = await dataSource.query<E2eActionAssertion[]>(
     `SELECT match_id AS "matchId",
             actor_player_id AS "playerId",
@@ -266,12 +311,52 @@ async function readDatabaseAssertions(
     roomCode,
     revision: Number(room.revision),
     tournament: room.state.tournament ?? null,
+    frozenPartyByPlayerId: summarizeFrozenParties(room.state.partySnapshots),
     seatCount: Number(seatCounts?.seatCount ?? 0),
     distinctAccountCount: Number(seatCounts?.accountCount ?? 0),
     matches,
     actionCount: actions.length,
     ...actionEvidence,
     gameHistoryCount: Number(historyCounts?.historyCount ?? 0),
+  };
+}
+
+function summarizeFrozenParties(
+  snapshots: E2eRoomState['partySnapshots'],
+): Record<string, E2ePartySummary> {
+  return Object.fromEntries(
+    Object.entries(snapshots ?? {}).map(([playerId, snapshot]) => [
+      playerId,
+      summarizeParty(snapshot.competitiveParty),
+    ]),
+  );
+}
+
+function summarizeInitialParties(
+  state: E2eInitialState,
+): Record<string, E2ePartySummary> {
+  return Object.fromEntries(
+    Object.entries(state.playersById ?? {}).map(([playerId, player]) => [
+      playerId,
+      summarizeParty({
+        activeSlotIndex: player.activeSlotIndex,
+        members: player.team,
+      }),
+    ]),
+  );
+}
+
+function summarizeParty(
+  party: E2ePartySummarySource | undefined,
+): E2ePartySummary {
+  return {
+    activeSlotIndex: Number(party?.activeSlotIndex),
+    members: (party?.members ?? []).map((member) => ({
+      slotIndex: Number(member.slotIndex),
+      speciesId: Number(member.speciesId),
+      level: Number(member.level),
+      moveIds: (member.moves ?? []).map((move) => Number(move.moveId)),
+    })),
   };
 }
 

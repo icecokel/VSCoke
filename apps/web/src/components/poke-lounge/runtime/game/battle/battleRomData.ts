@@ -53,6 +53,10 @@ const GEN4_TYPE_NAMES = [
   "악",
 ] as const;
 
+export function getGen4TypeName(typeId: number): string {
+  return GEN4_TYPE_NAMES[typeId] ?? `type-${typeId}`;
+}
+
 const GEN4_CATEGORIES: Record<number, Gen4MoveCategory> = {
   0: "physical",
   1: "special",
@@ -76,7 +80,7 @@ export function normalizeRomMoveRecord(
     category: GEN4_CATEGORIES[categoryValue] ?? "status",
     power: fields.power?.value ?? 0,
     typeId,
-    typeName: GEN4_TYPE_NAMES[typeId] ?? `type-${typeId}`,
+    typeName: getGen4TypeName(typeId),
     accuracy: fields.accuracy?.value ?? 0,
     pp,
     maxPp: pp,

@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
+import type { BattleStatStages } from "./battle-stat-stages";
+import type { CompetitivePersistentStatus } from "./competitive-party";
 
-export type CanonicalBattleStatus = "none" | "paralyzed";
+export type CanonicalBattleStatus = CompetitivePersistentStatus;
 
 export type CanonicalIdRecord<T> = Readonly<Record<string, T>>;
 
@@ -15,18 +17,23 @@ export function createCanonicalIdRecord<T>(
 }
 
 export interface CanonicalMoveState {
-  moveId: string;
+  moveId: number;
   pp: number;
 }
 
 export interface CanonicalCombatantState {
-  speciesId: string;
+  slotIndex: number;
+  speciesId: number;
   level: number;
   maxHp: number;
   currentHp: number;
   attack: number;
   defense: number;
+  specialAttack: number;
+  specialDefense: number;
   speed: number;
+  typeIds: readonly [number] | readonly [number, number];
+  statStages: BattleStatStages;
   status: CanonicalBattleStatus;
   moves: readonly CanonicalMoveState[];
 }
@@ -45,7 +52,7 @@ export interface CanonicalTerminalResult {
 }
 
 export interface CanonicalBattleState {
-  rulesetVersion: 1;
+  rulesetVersion: 2;
   turn: number;
   participantIds: readonly [string, string];
   playersById: CanonicalIdRecord<CanonicalPlayerState>;

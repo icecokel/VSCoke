@@ -153,7 +153,11 @@ Web은 current assignment cache, 최근 terminal transition cache, room cursor, 
 
 서버 room의 `tournament.version = 2` snapshot은 공통 package가 만든 bracket, bye, stable `activeMatchId`와 match authority를 함께 보관한다. 참가자 seed는 join 순서와 player ID로 서버에서 확정하며 Web은 참가자 배열로 대진을 다시 만들지 않는다. 5인 첫 bracket은 `seed 4 vs 5`와 `seed 1/3/2 bye`로 시작한다. 여러 2인 경기는 동시에 열지 않고 서버가 한 match씩 순차 활성화한다.
 
-서로 다른 인증 계정이 좌석을 바인딩한 active match에서는 각 계정이 자기 action만 제출할 수 있고 서버는 `@vscoke/poke-lounge-battle`의 서버 seed, canonical state와 turn을 전진시킨다. 정확히 2명인 `ranked-head-to-head` terminal은 승자 100점, 패자 50점의 `verified-room` 이력을 한 트랜잭션으로 기록한다. 3~6인 bracket의 `tournament-unranked` authority match는 같은 결정론적 전투와 durable receipt를 사용하지만 bracket만 전진시키고 공개 랭킹 이력을 만들지 않는다.
+Web은 준비 중인 full party를 V2 최소 계약으로 전송한다. API는 종·레벨·슬롯·선두·IV·기술 ID·현재 HP·상태·PP를 검증하고, generated species/move catalog에서 최대 HP·능력치·타입·기술 상한을 계산해 normalized party를 room에 저장한다. 준비 종료 시 이 snapshot을 동결해 assignment를 만들며, 이후 매치도 같은 frozen party로 초기화하므로 이전 PvP 피해·PP·상태가 다음 매치나 월드 저장 상태에 누적되지 않는다.
+
+서로 다른 인증 계정이 좌석을 바인딩한 active match에서는 각 계정이 자기 action만 제출할 수 있고 서버는 `@vscoke/poke-lounge-battle` V2의 서버 seed, canonical state와 turn을 전진시킨다. 정확히 2명이어도 client-authored 육성 파티를 사용하는 새 assignment는 `tournament-unranked`다. 서버 권위 terminal은 bracket만 전진시키고 공개 랭킹 이력을 만들지 않는다. 과거 완료된 `ranked-head-to-head` 이력은 감사와 기존 랭킹 조회를 위해 보존하지만, 진행 중인 V1 방과 매치는 migration에서 restart-required로 종료·정리한다.
+
+경쟁 카탈로그는 `apps/web/public/game-data/pokemon-data.json`에서 `pnpm generate:poke-lounge-competitive-catalog`로 생성한다. CI의 `pnpm check:poke-lounge-competitive-catalog`는 server catalog와 browser-safe count/hash metadata의 byte drift를 검사한다.
 
 authority assignment가 없는 casual active match는 `POST /poke-lounge/rooms/:roomCode/result`로 진행한다. 이 결과와 solo/일반 `POST /game/result`는 client-asserted unranked이며 공개 Poke Lounge 랭킹에 반영되지 않는다. Web은 `activeMatchAuthority`에 따라 authority action과 casual result transport를 배타적으로 선택한다.
 

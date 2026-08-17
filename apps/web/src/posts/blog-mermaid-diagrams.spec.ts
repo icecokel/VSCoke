@@ -17,7 +17,7 @@ test("흐름 중심 블로그 글은 Mermaid 다이어그램을 제공한다", (
   assert.match(resumeRag, /flowchart TD/);
   assert.match(routing, /<MermaidDiagram/);
   assert.match(routing, /flowchart LR/);
-  assert.match(routing, /router\.push\('\/game'\)/);
+  assert.match(routing, /router\.push\(\\'\/game\\'\)/);
   assert.match(workflow, /<MermaidDiagram/);
   assert.match(workflow, /flowchart LR/);
   assert.match(skills, /<MermaidDiagram/);

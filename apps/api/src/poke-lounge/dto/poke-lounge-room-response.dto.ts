@@ -16,7 +16,7 @@ import type {
   PokeLoungeFinalStanding,
   PokeLoungeMatchResultReason,
   PokeLoungeMatchStatus,
-  PokeLoungePartySnapshot,
+  PokeLoungePublicPartySnapshot,
   PokeLoungeParticipantRole,
   PokeLoungePublicRoomParticipant,
   PokeLoungePublicRoomState,
@@ -229,13 +229,10 @@ class PokeLoungeFinalStandingDto implements PokeLoungeFinalStanding {
 }
 
 export class PokeLoungeRepresentativePokemonDto implements NonNullable<
-  PokeLoungePartySnapshot['representativePokemon']
+  PokeLoungePublicPartySnapshot['representativePokemon']
 > {
   @ApiProperty({ example: 25 })
   speciesId!: number;
-
-  @ApiProperty({ example: 'Pikachu' })
-  name!: string;
 
   @ApiProperty({ example: 12 })
   level!: number;
@@ -247,15 +244,18 @@ export class PokeLoungeRepresentativePokemonDto implements NonNullable<
   maxHp!: number;
 }
 
-export class PokeLoungePartySnapshotDto implements PokeLoungePartySnapshot {
+export class PokeLoungePartySnapshotDto implements PokeLoungePublicPartySnapshot {
   @ApiProperty({ example: 'player-a' })
   playerId!: string;
 
   @ApiPropertyOptional({ example: 'Player A' })
   displayName?: string;
 
-  @ApiPropertyOptional({ type: PokeLoungeRepresentativePokemonDto })
-  representativePokemon?: PokeLoungeRepresentativePokemonDto;
+  @ApiProperty({ type: PokeLoungeRepresentativePokemonDto })
+  representativePokemon!: PokeLoungeRepresentativePokemonDto;
+
+  @ApiProperty({ example: 1, minimum: 0 })
+  partySize!: number;
 
   @ApiProperty({ example: 1720000002000 })
   updatedAtMs!: number;
@@ -328,8 +328,8 @@ export class PokeLoungeRoomResponseDto implements PokeLoungePublicRoomState {
   status!: PokeLoungeRoomStatus;
 
   @ApiPropertyOptional({
-    enum: ['legacy-room-restart-required'],
-    example: 'legacy-room-restart-required',
+    enum: ['legacy-room-restart-required', 'competitive-party-not-ready'],
+    example: 'competitive-party-not-ready',
   })
   closeReason?: PokeLoungeRoomState['closeReason'];
 

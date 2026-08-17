@@ -1,94 +1,105 @@
 import { createHash } from "node:crypto";
-
 import {
-  APPROVED_COMPETITIVE_RULESET_V1,
-  COMPETITIVE_RULESET_HASH,
-  COMPETITIVE_STRUGGLE_MOVE_ID,
-  COMPETITIVE_RULESET_VERSION,
   canonicalize,
+  COMPETITIVE_CATALOG_HASH,
+  COMPETITIVE_RULESET_HASH,
+  COMPETITIVE_RULESET_V2,
   createInitialBattleState,
+  normalizeCompetitiveParty,
+  type CompetitivePartyInput,
 } from "./index";
-import {
-  APPROVED_COMPETITIVE_RULESET_V1 as BROWSER_COMPETITIVE_RULESET,
-  COMPETITIVE_RULESET_HASH as BROWSER_COMPETITIVE_RULESET_HASH,
-} from "./browser";
 
-describe("approved competitive ruleset", () => {
-  it("publishes one versioned server-owned minimal ruleset", () => {
-    expect(COMPETITIVE_RULESET_VERSION).toBe(1);
-    expect(APPROVED_COMPETITIVE_RULESET_V1).toMatchObject({
-      version: 1,
-      participantCount: 2,
-      teamSize: 2,
-      scores: { win: 100, loss: 50 },
-      randomConsumptionOrder: [
-        "speed-tie",
-        "paralysis",
-        "accuracy",
-        "critical-hit",
-        "damage-range",
-        "secondary-effect",
+const IVS = {
+  hp: 31,
+  attack: 30,
+  defense: 29,
+  specialAttack: 28,
+  specialDefense: 27,
+  speed: 26,
+};
+
+function party(input: { slotIndex: number; speciesId: number; level: number; moveIds: number[] }) {
+  const normalized = normalizeCompetitiveParty({
+    version: 2,
+    activeSlotIndex: input.slotIndex,
+    members: [
+      {
+        ...input,
+        currentHp: 1,
+        status: "normal",
+        individualValues: IVS,
+        moves: input.moveIds.map(moveId => ({ moveId, pp: 1 })),
+      },
+    ],
+  } satisfies CompetitivePartyInput);
+  return {
+    ...normalized,
+    members: normalized.members.map(member => ({ ...member, currentHp: member.maxHp })),
+  };
+}
+
+describe("competitive ruleset V2", () => {
+  it("preserves each normalized grown party with its original slots and levels", () => {
+    const squirtle = party({ slotIndex: 0, speciesId: 7, level: 11, moveIds: [55] });
+    const totodile = party({ slotIndex: 2, speciesId: 158, level: 13, moveIds: [55, 44] });
+
+    const state = createInitialBattleState([
+      { playerId: "player-b", party: totodile },
+      { playerId: "player-a", party: squirtle },
+    ]);
+
+    expect(state.participantIds).toEqual(["player-a", "player-b"]);
+    expect(state.playersById["player-a"]?.team[0]).toMatchObject({
+      slotIndex: 0,
+      speciesId: 7,
+      level: 11,
+      moves: [{ moveId: 55, pp: 1 }],
+    });
+    expect(state.playersById["player-b"]?.team[0]).toMatchObject({
+      slotIndex: 2,
+      speciesId: 158,
+      level: 13,
+      moves: [
+        { moveId: 55, pp: 1 },
+        { moveId: 44, pp: 1 },
       ],
     });
-    expect(Object.keys(APPROVED_COMPETITIVE_RULESET_V1.moves).sort()).toEqual([
-      "heavy-blow",
-      "steady-strike",
-      "stun-spark",
-    ]);
-    expect(APPROVED_COMPETITIVE_RULESET_V1.struggle).toMatchObject({
-      moveId: COMPETITIVE_STRUGGLE_MOVE_ID,
-      power: 50,
-      maxPp: 0,
-      recoilMaxHpDivisor: 4,
+    expect(state.playersById["player-a"]?.team[0]?.statStages).toEqual({
+      attack: 0,
+      defense: 0,
+      specialAttack: 0,
+      specialDefense: 0,
+      speed: 0,
+      accuracy: 0,
+      evasion: 0,
     });
-    expect(APPROVED_COMPETITIVE_RULESET_V1.loadout).toHaveLength(2);
   });
 
-  it("publishes the SHA-256 hash of the complete ruleset", () => {
+  it("binds the ruleset hash to the canonical V2 config and generated catalog hash", () => {
     const expected = createHash("sha256")
-      .update(canonicalize(APPROVED_COMPETITIVE_RULESET_V1), "utf8")
+      .update(
+        canonicalize({
+          catalogHash: COMPETITIVE_CATALOG_HASH,
+          ruleset: COMPETITIVE_RULESET_V2,
+        }),
+        "utf8",
+      )
       .digest("hex");
 
     expect(COMPETITIVE_RULESET_HASH).toBe(expected);
-    expect(COMPETITIVE_RULESET_HASH).toBe(
-      "06f455303f46369d1a31315db5fdfffa666164fde44f8ac20ac507a6fc9f9de7",
-    );
-    expect(BROWSER_COMPETITIVE_RULESET).toBe(APPROVED_COMPETITIVE_RULESET_V1);
-    expect(BROWSER_COMPETITIVE_RULESET_HASH).toBe(COMPETITIVE_RULESET_HASH);
+    expect(COMPETITIVE_RULESET_HASH).toMatch(/^[a-f0-9]{64}$/);
   });
 
-  it("creates a canonical initial state from the approved loadout", () => {
-    const state = createInitialBattleState(["player-b", "player-a"]);
-
-    expect(state.participantIds).toEqual(["player-a", "player-b"]);
-    expect(state.turn).toBe(0);
-    expect(state.terminal).toBeNull();
-    for (const playerId of state.participantIds) {
-      expect(state.playersById[playerId]).toEqual({
-        playerId,
-        activeSlotIndex: 0,
-        team: APPROVED_COMPETITIVE_RULESET_V1.loadout.map(template => ({
-          speciesId: template.speciesId,
-          level: template.level,
-          maxHp: template.maxHp,
-          currentHp: template.maxHp,
-          attack: template.attack,
-          defense: template.defense,
-          speed: template.speed,
-          status: "none",
-          moves: template.moveIds.map(moveId => ({
-            moveId,
-            pp: APPROVED_COMPETITIVE_RULESET_V1.moves[moveId].maxPp,
-          })),
-        })),
-      });
-    }
-  });
-
-  it.each<[readonly [string, string], string]>([
-    [["player-a", "player-a"], "distinct"],
-    [["", "player-b"], "non-empty"],
-  ])("rejects invalid initial-state participants %p", (participantIds, message) => {
-    expect(() => createInitialBattleState(participantIds)).toThrow(message as string);
+  it.each([
+    ["blank", "", "player-b", "Initial-state participant IDs must be non-empty"],
+    ["duplicate", "same", "same", "Initial-state participant IDs must be distinct"],
+  ])("rejects %s participant IDs", (_case, first, second, message) => {
+    const validParty = party({ slotIndex: 0, speciesId: 7, level: 11, moveIds: [55] });
+    expect(() =>
+      createInitialBattleState([
+        { playerId: first, party: validParty },
+        { playerId: second, party: validParty },
+      ]),
+    ).toThrow(message);
   });
 });

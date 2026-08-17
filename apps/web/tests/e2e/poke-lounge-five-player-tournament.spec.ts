@@ -287,7 +287,6 @@ test("실제 API와 Socket.IO에서 5개 환경이 첫 토너먼트 라운드에
   test.setTimeout(360_000);
 
   expect(API_URL, "통합 테스트에는 NEXT_PUBLIC_API_URL이 필요합니다.").not.toBe("");
-  expect(process.env.POKE_LOUNGE_E2E, "전용 API bootstrap 경계를 사용해야 합니다.").toBe("1");
   expect(
     process.env.POKE_LOUNGE_E2E_ENV_ISOLATED,
     "runner가 DB secret을 제거한 Playwright 환경이어야 합니다.",

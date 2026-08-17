@@ -22,13 +22,28 @@ const apiPort = String(46000 + (process.pid % 1000));
 const webPort = String(47000 + (process.pid % 1000));
 const apiUrl = `http://127.0.0.1:${apiPort}`;
 const webUrl = `http://127.0.0.1:${webPort}`;
+const requestedPlaywrightArgs = process.argv.slice(2);
+const usesPokeLoungeApi = requestedPlaywrightArgs.some(argument =>
+  /(?:^|\/)poke-lounge[^/]*\.spec\.ts$/.test(argument),
+);
+const playwrightArgs =
+  requestedPlaywrightArgs.length === 0
+    ? [
+        "test",
+        "tests/e2e/hobby-espresso.spec.ts",
+        "tests/e2e/hobby-recipes.spec.ts",
+        "--project=chromium",
+      ]
+    : requestedPlaywrightArgs[0] === "test"
+      ? requestedPlaywrightArgs
+      : ["test", ...requestedPlaywrightArgs];
 const seedEnv = {
   ...process.env,
   TEST_DATABASE_URL: testDatabaseUrl,
 };
 delete seedEnv.DB_DATABASE;
 
-const integrationEnv = {
+const apiEnv = {
   ...process.env,
   CORS_ORIGINS: webUrl,
   DB_DATABASE: databaseName,
@@ -44,11 +59,32 @@ const integrationEnv = {
   TEST_DATABASE_URL: testDatabaseUrl,
 };
 
+if (usesPokeLoungeApi) {
+  apiEnv.POKE_LOUNGE_E2E = "1";
+  apiEnv.POKE_LOUNGE_E2E_RESET_DB = "1";
+}
+
+const playwrightEnv = {
+  ...process.env,
+  NEXT_PUBLIC_API_URL: apiUrl,
+  PLAYWRIGHT_PORT: webPort,
+};
+
+if (usesPokeLoungeApi) {
+  playwrightEnv.POKE_LOUNGE_E2E_ENV_ISOLATED = "1";
+}
+
+for (const name of Object.keys(playwrightEnv)) {
+  if (isDatabaseEnvironmentName(name)) {
+    delete playwrightEnv[name];
+  }
+}
+
 const runCommand = (command, args, options = {}) =>
   new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, {
       cwd: repositoryRoot,
-      env: integrationEnv,
+      env: apiEnv,
       stdio: "inherit",
       ...options,
     });
@@ -97,29 +133,49 @@ const stopProcessGroup = child => {
 let apiProcess;
 
 try {
-  await runCommand(pnpmCommand, ["--filter", "@vscoke/api", "e2e:seed:hobby"], {
-    env: seedEnv,
-  });
+  if (!usesPokeLoungeApi) {
+    await runCommand(pnpmCommand, ["--filter", "@vscoke/api", "e2e:seed:hobby"], {
+      env: seedEnv,
+    });
+  }
 
-  apiProcess = spawn(pnpmCommand, ["--filter", "@vscoke/api", "start"], {
+  const apiArgs = usesPokeLoungeApi
+    ? [
+        "--filter",
+        "@vscoke/api",
+        "exec",
+        "ts-node",
+        "-r",
+        "tsconfig-paths/register",
+        "scripts/start-poke-lounge-e2e-api.ts",
+      ]
+    : ["--filter", "@vscoke/api", "start"];
+  apiProcess = spawn(pnpmCommand, apiArgs, {
     cwd: repositoryRoot,
     detached: process.platform !== "win32",
-    env: integrationEnv,
+    env: apiEnv,
     stdio: "inherit",
   });
 
   await waitForApi();
-  await runCommand(
-    process.execPath,
-    [
-      "scripts/playwright-runner.mjs",
-      "test",
-      "tests/e2e/hobby-espresso.spec.ts",
-      "tests/e2e/hobby-recipes.spec.ts",
-      "--project=chromium",
-    ],
-    { cwd: webRoot },
-  );
+  await runCommand(process.execPath, ["scripts/playwright-runner.mjs", ...playwrightArgs], {
+    cwd: webRoot,
+    env: playwrightEnv,
+  });
 } finally {
   stopProcessGroup(apiProcess);
+}
+
+function isDatabaseEnvironmentName(name) {
+  return (
+    name === "TEST_DATABASE_URL" ||
+    name === "DATABASE_URL" ||
+    name === "DB_URL" ||
+    name === "PGDATABASE" ||
+    name === "PGHOST" ||
+    name === "PGPASSWORD" ||
+    name === "PGPORT" ||
+    name === "PGUSER" ||
+    name.startsWith("DB_")
+  );
 }

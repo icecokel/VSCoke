@@ -6,16 +6,45 @@ import type {
 } from '../competitive/competitive-match.types';
 
 class CompetitiveMoveStateDto {
-  @ApiProperty()
-  moveId!: string;
+  @ApiProperty({ minimum: 1, maximum: 470 })
+  moveId!: number;
 
   @ApiProperty({ minimum: 0 })
   pp!: number;
 }
 
+class CompetitiveBattleStatStagesDto {
+  @ApiProperty({ minimum: -6, maximum: 6 })
+  attack!: number;
+
+  @ApiProperty({ minimum: -6, maximum: 6 })
+  defense!: number;
+
+  @ApiProperty({ minimum: -6, maximum: 6 })
+  specialAttack!: number;
+
+  @ApiProperty({ minimum: -6, maximum: 6 })
+  specialDefense!: number;
+
+  @ApiProperty({ minimum: -6, maximum: 6 })
+  speed!: number;
+
+  @ApiProperty({ minimum: -6, maximum: 6 })
+  accuracy!: number;
+
+  @ApiProperty({ minimum: -6, maximum: 6 })
+  evasion!: number;
+}
+
 class CompetitiveCombatantStateDto {
-  @ApiProperty()
-  speciesId!: string;
+  @ApiProperty({ minimum: 1, maximum: 493 })
+  speciesId!: number;
+
+  @ApiProperty({ minimum: 0, maximum: 5 })
+  slotIndex!: number;
+
+  @ApiProperty({ minimum: 1, maximum: 100 })
+  level!: number;
 
   @ApiProperty({ minimum: 1 })
   maxHp!: number;
@@ -23,8 +52,13 @@ class CompetitiveCombatantStateDto {
   @ApiProperty({ minimum: 0 })
   currentHp!: number;
 
-  @ApiProperty({ enum: ['none', 'paralyzed'] })
-  status!: 'none' | 'paralyzed';
+  @ApiProperty({
+    enum: ['normal', 'poisoned', 'burned', 'paralyzed', 'fainted'],
+  })
+  status!: 'normal' | 'poisoned' | 'burned' | 'paralyzed' | 'fainted';
+
+  @ApiProperty({ type: CompetitiveBattleStatStagesDto })
+  statStages!: CompetitiveBattleStatStagesDto;
 
   @ApiProperty({ type: [CompetitiveMoveStateDto] })
   moves!: CompetitiveMoveStateDto[];
@@ -59,8 +93,8 @@ class CompetitiveTerminalResultDto {
 }
 
 class CompetitiveBattleStateDto {
-  @ApiProperty({ example: 1 })
-  rulesetVersion!: 1;
+  @ApiProperty({ example: 2, enum: [2] })
+  rulesetVersion!: 2;
 
   @ApiProperty({ minimum: 0 })
   turn!: number;
@@ -80,6 +114,7 @@ class CompetitiveBattleStateDto {
 
 @ApiExtraModels(
   CompetitiveMoveStateDto,
+  CompetitiveBattleStatStagesDto,
   CompetitiveCombatantStateDto,
   CompetitivePlayerStateDto,
   CompetitiveTerminalResultDto,

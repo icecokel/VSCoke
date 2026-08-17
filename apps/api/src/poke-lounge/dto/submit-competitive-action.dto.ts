@@ -2,11 +2,9 @@ import { Type } from 'class-transformer';
 import {
   IsIn,
   IsInt,
-  IsNotEmpty,
   IsString,
   Matches,
   Max,
-  MaxLength,
   Min,
   ValidateIf,
   Validate,
@@ -20,23 +18,37 @@ import type { CanonicalCompetitiveAction } from '@vscoke/poke-lounge-battle';
 const UUID_V4_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
+@ValidatorConstraint({ name: 'competitiveMoveId', async: false })
+class CompetitiveMoveIdConstraint implements ValidatorConstraintInterface {
+  validate(value: unknown): boolean {
+    return (
+      value === 'struggle' ||
+      (Number.isSafeInteger(value) &&
+        (value as number) >= 1 &&
+        (value as number) <= 470)
+    );
+  }
+
+  defaultMessage(): string {
+    return 'moveId must be a numeric catalog ID or struggle';
+  }
+}
+
 export class CompetitiveActionDto {
   @ApiProperty({ enum: ['move', 'switch'] })
   @IsIn(['move', 'switch'])
   kind!: CanonicalCompetitiveAction['kind'];
 
-  @ApiPropertyOptional({ example: 'steady-strike' })
+  @ApiPropertyOptional({ oneOf: [{ type: 'number' }, { type: 'string' }] })
   @ValidateIf((value: CompetitiveActionDto) => value.kind === 'move')
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(128)
-  moveId?: string;
+  @Validate(CompetitiveMoveIdConstraint)
+  moveId?: number | 'struggle';
 
   @ApiPropertyOptional({ minimum: 0 })
   @ValidateIf((value: CompetitiveActionDto) => value.kind === 'switch')
   @IsInt()
   @Min(0)
-  @Max(Number.MAX_SAFE_INTEGER)
+  @Max(5)
   slotIndex?: number;
 }
 
@@ -90,7 +102,11 @@ export class SubmitCompetitiveActionDto {
 export function toCanonicalCompetitiveAction(
   action: CompetitiveActionDto,
 ): CanonicalCompetitiveAction {
-  return action.kind === 'move'
-    ? { kind: 'move', moveId: action.moveId ?? '' }
-    : { kind: 'switch', slotIndex: action.slotIndex ?? -1 };
+  if (action.kind === 'move' && action.moveId !== undefined) {
+    return { kind: 'move', moveId: action.moveId };
+  }
+  if (action.kind === 'switch' && action.slotIndex !== undefined) {
+    return { kind: 'switch', slotIndex: action.slotIndex };
+  }
+  throw new Error('Competitive action DTO was not validated');
 }

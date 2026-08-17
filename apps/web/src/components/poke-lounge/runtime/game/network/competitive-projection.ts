@@ -1,8 +1,4 @@
-import {
-  APPROVED_COMPETITIVE_RULESET_V1,
-  COMPETITIVE_RULESET_HASH,
-  COMPETITIVE_RULESET_VERSION,
-} from "@vscoke/poke-lounge-battle";
+import { COMPETITIVE_RULESET_HASH, COMPETITIVE_RULESET_VERSION } from "@vscoke/poke-lounge-battle";
 import type {
   CompetitiveProjection,
   CompetitiveProjectionParseResult,
@@ -18,6 +14,7 @@ const PLAYER_ID_MAX_LENGTH = 256;
 const MAX_COMPETITIVE_PROJECTION_DEPTH = 6;
 const MAX_COMPETITIVE_RECORD_KEYS = 16;
 const MAX_COMPETITIVE_ARRAY_ITEMS = 2;
+const MAX_COMPETITIVE_TEAM_ITEMS = 6;
 const MAX_COMPETITIVE_TRANSITIONS = 8;
 const MAX_ROOM_SNAPSHOT_KEYS = 32;
 
@@ -37,17 +34,6 @@ const COMPETITIVE_PROJECTION_KEYS = [
   "terminal",
 ] as const;
 const COMPETITIVE_TERMINAL_METADATA_KEYS = ["terminalEventId", "terminalRoomRevision"] as const;
-
-export const APPROVED_COMPETITIVE_LOADOUT = APPROVED_COMPETITIVE_RULESET_V1.loadout.map(
-  template => ({
-    speciesId: template.speciesId,
-    maxHp: template.maxHp,
-    moves: template.moveIds.map(moveId => ({
-      moveId,
-      maxPp: APPROVED_COMPETITIVE_RULESET_V1.moves[moveId].maxPp,
-    })),
-  }),
-);
 
 type CompetitiveTerminal = NonNullable<CompetitiveProjection["terminal"]>;
 
@@ -71,7 +57,7 @@ export function parseCompetitiveProjectionContract(
   const assignmentRevision = requireNonnegativeSafeInteger(projection.assignmentRevision);
   const currentTurn = requireNonnegativeSafeInteger(projection.currentTurn);
   const rulesetVersion = projection.rulesetVersion;
-  const rulesetHash = requireHash(projection.rulesetHash);
+  const rulesetHash = requireString(projection.rulesetHash);
   const stateHash = requireHash(projection.stateHash);
   const status = projection.status;
   const playerIds = parsePlayerIds(projection.playerIds);
@@ -302,8 +288,9 @@ function parsePlayer(
   if (
     playerId !== expectedPlayerId ||
     !Array.isArray(player.team) ||
-    player.team.length !== APPROVED_COMPETITIVE_LOADOUT.length ||
-    activeSlotIndex >= player.team.length
+    player.team.length < 1 ||
+    player.team.length > MAX_COMPETITIVE_TEAM_ITEMS ||
+    activeSlotIndex >= 6
   ) {
     throw schemaError();
   }
@@ -311,50 +298,108 @@ function parsePlayer(
   return {
     playerId,
     activeSlotIndex,
-    team: player.team.map((pokemon, slotIndex) =>
-      parsePokemon(pokemon, APPROVED_COMPETITIVE_LOADOUT[slotIndex]),
-    ),
+    team: parseTeam(player.team, activeSlotIndex),
   };
+}
+
+function parseTeam(
+  team: unknown[],
+  activeSlotIndex: number,
+): CompetitiveProjection["currentState"]["playersById"][string]["team"] {
+  const parsed = team.map(pokemon => parsePokemon(pokemon));
+  const slots = new Set(parsed.map(pokemon => pokemon.slotIndex));
+  if (slots.size !== parsed.length || !slots.has(activeSlotIndex)) {
+    throw schemaError();
+  }
+  return parsed;
 }
 
 function parsePokemon(
   value: unknown,
-  approved: (typeof APPROVED_COMPETITIVE_LOADOUT)[number],
 ): CompetitiveProjection["currentState"]["playersById"][string]["team"][number] {
-  const pokemon = requireRecord(value, ["currentHp", "maxHp", "moves", "speciesId", "status"], 4);
+  const pokemon = requireRecord(
+    value,
+    ["currentHp", "level", "maxHp", "moves", "slotIndex", "speciesId", "statStages", "status"],
+    4,
+  );
+  const speciesId = requireNonnegativeSafeInteger(pokemon.speciesId);
+  const slotIndex = requireNonnegativeSafeInteger(pokemon.slotIndex);
+  const level = requireNonnegativeSafeInteger(pokemon.level);
   const maxHp = requireNonnegativeSafeInteger(pokemon.maxHp);
   const currentHp = requireNonnegativeSafeInteger(pokemon.currentHp);
+  const statStages = parseStatStages(pokemon.statStages);
   if (
-    pokemon.speciesId !== approved.speciesId ||
-    maxHp !== approved.maxHp ||
+    speciesId < 1 ||
+    slotIndex > 5 ||
+    level < 1 ||
+    level > 100 ||
+    maxHp < 1 ||
     currentHp > maxHp ||
-    (pokemon.status !== "none" && pokemon.status !== "paralyzed") ||
+    !isCompetitivePokemonStatus(pokemon.status, currentHp) ||
     !Array.isArray(pokemon.moves) ||
-    pokemon.moves.length !== approved.moves.length
+    pokemon.moves.length < 1 ||
+    pokemon.moves.length > 4
   ) {
     throw schemaError();
   }
 
   return {
-    speciesId: approved.speciesId,
+    speciesId,
+    slotIndex,
+    level,
     maxHp,
     currentHp,
     status: pokemon.status,
-    moves: pokemon.moves.map((move, index) => parseMove(move, approved.moves[index])),
+    statStages,
+    moves: parseMoves(pokemon.moves),
   };
+}
+
+function parseStatStages(
+  value: unknown,
+): CompetitiveProjection["currentState"]["playersById"][string]["team"][number]["statStages"] {
+  const keys = [
+    "accuracy",
+    "attack",
+    "defense",
+    "evasion",
+    "specialAttack",
+    "specialDefense",
+    "speed",
+  ] as const;
+  const stages = requireRecord(value, keys, 5);
+  return Object.fromEntries(
+    keys.map(key => {
+      const stage = requireSafeInteger(stages[key]);
+      if (stage < -6 || stage > 6) {
+        throw schemaError();
+      }
+      return [key, stage];
+    }),
+  ) as CompetitiveProjection["currentState"]["playersById"][string]["team"][number]["statStages"];
+}
+
+function parseMoves(
+  moves: unknown[],
+): CompetitiveProjection["currentState"]["playersById"][string]["team"][number]["moves"] {
+  const parsed = moves.map(move => parseMove(move));
+  if (new Set(parsed.map(move => move.moveId)).size !== parsed.length) {
+    throw schemaError();
+  }
+  return parsed;
 }
 
 function parseMove(
   value: unknown,
-  approved: (typeof APPROVED_COMPETITIVE_LOADOUT)[number]["moves"][number],
 ): CompetitiveProjection["currentState"]["playersById"][string]["team"][number]["moves"][number] {
   const move = requireRecord(value, ["moveId", "pp"], 5);
+  const moveId = requireNonnegativeSafeInteger(move.moveId);
   const pp = requireNonnegativeSafeInteger(move.pp);
-  if (move.moveId !== approved.moveId || pp > approved.maxPp) {
+  if (moveId < 1 || moveId > 470 || pp > 99) {
     throw schemaError();
   }
 
-  return { moveId: approved.moveId, pp };
+  return { moveId, pp };
 }
 
 function parsePlayerIds(value: unknown): [string, string] {
@@ -405,8 +450,8 @@ function parseTerminal(
     (terminal.reason !== "faint" &&
       terminal.reason !== "forfeit" &&
       terminal.reason !== "timeout") ||
-    scoreByPlayerId[winnerPlayerId] !== APPROVED_COMPETITIVE_RULESET_V1.scores.win ||
-    scoreByPlayerId[loserPlayerId] !== APPROVED_COMPETITIVE_RULESET_V1.scores.loss
+    scoreByPlayerId[winnerPlayerId] !== 100 ||
+    scoreByPlayerId[loserPlayerId] !== 50
   ) {
     throw schemaError();
   }
@@ -508,10 +553,27 @@ function requireHash(value: unknown): string {
 }
 
 function requireNonnegativeSafeInteger(value: unknown): number {
-  if (!Number.isSafeInteger(value) || (value as number) < 0) {
+  const integer = requireSafeInteger(value);
+  if (integer < 0) {
+    throw schemaError();
+  }
+  return integer;
+}
+
+function requireSafeInteger(value: unknown): number {
+  if (!Number.isSafeInteger(value)) {
     throw schemaError();
   }
   return value as number;
+}
+
+function isCompetitivePokemonStatus(
+  value: unknown,
+  currentHp: number,
+): value is CompetitiveProjection["currentState"]["playersById"][string]["team"][number]["status"] {
+  return currentHp === 0
+    ? value === "fainted"
+    : value === "normal" || value === "poisoned" || value === "burned" || value === "paralyzed";
 }
 
 function isCompetitiveStatus(value: unknown): value is CompetitiveProjection["status"] {

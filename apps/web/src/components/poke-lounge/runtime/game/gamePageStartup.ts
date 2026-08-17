@@ -1,6 +1,7 @@
 import { loadBootstrapData } from "../bootstrap";
 import { renderStarterSelectionScreen, type StarterSelectionOptions } from "../starter-selection";
 import type { GameBootstrapData, StarterPokemon } from "../types";
+import { calculateGen4BattleStats } from "@vscoke/poke-lounge-battle";
 import {
   bindPokeLoungeAudioPrimeListeners,
   stopAllPokeLoungeAudio,
@@ -10,6 +11,7 @@ import { createPlayerPokemonMovesForLevel } from "./battle/levelUpMoves";
 import { createPokeLoungeGame, type PokeLoungeGameResult } from "./createPokeLoungeGame";
 import {
   getRuntimePokemonSpeciesGenderRatio,
+  getRuntimePokemonSpeciesSummary,
   loadRuntimeGameDataJson,
 } from "./data/game-data-json";
 import { readInitialBattleE2eScenario, readInitialGameScene } from "./gameStartup";
@@ -848,12 +850,22 @@ export function createStarterPlayerPokemon(
     random,
   );
 
+  const individualValues = createRandomIndividualValues();
+  const species = getRuntimePokemonSpeciesSummary(starter.speciesId);
+  if (!species) {
+    throw new Error(`Starter species ${starter.speciesId} is missing from runtime game data`);
+  }
+  const stats = calculateGen4BattleStats(species.baseStats, level, individualValues);
+
   return {
     speciesId: starter.speciesId,
     name: starter.displayName,
     level,
     ...(gender ? { gender } : {}),
-    individualValues: createRandomIndividualValues(),
+    individualValues,
+    currentHp: stats.maxHp,
+    maxHp: stats.maxHp,
+    status: "normal",
     moves: createPlayerPokemonMovesForLevel(starter.speciesId, level),
   };
 }

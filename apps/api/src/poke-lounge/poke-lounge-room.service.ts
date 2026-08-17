@@ -8,11 +8,16 @@ import {
 } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import {
+  CompetitivePartyValidationError,
+  normalizeCompetitiveParty,
+} from '@vscoke/poke-lounge-battle';
+import {
   hashPokeLoungeRoomCommand,
   type PokeLoungeRoomCommandContext,
   type PokeLoungeRoomOperation,
 } from './poke-lounge-room-command';
 import {
+  PokeLoungePartySnapshotLocked,
   PokeLoungeRoomConflict,
   toPokeLoungePublicRoomState,
 } from './poke-lounge-room-conflict';
@@ -567,13 +572,7 @@ export class PokeLoungeRoomService {
       ...(input.displayName?.trim()
         ? { displayName: input.displayName.trim() }
         : {}),
-      ...(input.representativePokemon
-        ? {
-            representativePokemon: normalizeRepresentativePokemon(
-              input.representativePokemon,
-            ),
-          }
-        : {}),
+      competitiveParty: normalizePartySnapshot(input.competitiveParty),
     };
     const nowMs = this.normalizeNow(input.nowMs);
 
@@ -598,16 +597,23 @@ export class PokeLoungeRoomService {
           );
         }
 
+        if (
+          room.status === 'tournament' ||
+          room.status === 'completed' ||
+          room.status === 'closed'
+        ) {
+          throw new PokeLoungePartySnapshotLocked();
+        }
+
         room.partySnapshots[participant.playerId] = {
+          version: 2,
           playerId: participant.playerId,
           ...(normalized.displayName
             ? { displayName: normalized.displayName }
             : participant.displayName
               ? { displayName: participant.displayName }
               : {}),
-          ...(normalized.representativePokemon
-            ? { representativePokemon: normalized.representativePokemon }
-            : {}),
+          competitiveParty: normalized.competitiveParty,
           updatedAtMs: nowMs,
         };
         room.updatedAtMs = nowMs;
@@ -1167,48 +1173,22 @@ function completeParticipantLeaveAsForfeit(
   completeMatch(room, match, opponent.playerId, 'forfeit', nowMs);
 }
 
-function normalizeRepresentativePokemon(
-  value: PokeLoungePartySnapshot['representativePokemon'],
-): PokeLoungePartySnapshot['representativePokemon'] {
-  if (!value) {
-    return undefined;
+function normalizePartySnapshot(
+  party: UpdatePokeLoungePartySnapshotInput['competitiveParty'],
+): PokeLoungePartySnapshot['competitiveParty'] {
+  try {
+    return normalizeCompetitiveParty(party);
+  } catch (error) {
+    if (error instanceof CompetitivePartyValidationError) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: 'POKE_LOUNGE_COMPETITIVE_PARTY_INVALID',
+        message: 'Competitive party snapshot is invalid',
+        reason: error.reason,
+      });
+    }
+    throw error;
   }
-
-  const speciesId = normalizePositiveInteger(value.speciesId, 'speciesId');
-  const level = normalizePositiveInteger(value.level, 'level');
-  const currentHp = normalizeNonNegativeInteger(value.currentHp, 'currentHp');
-  const maxHp = normalizeNonNegativeInteger(value.maxHp, 'maxHp');
-
-  if (currentHp > maxHp) {
-    throw new BadRequestException('currentHp cannot exceed maxHp');
-  }
-
-  return {
-    speciesId,
-    name: value.name,
-    level,
-    currentHp,
-    maxHp,
-  };
-}
-
-function normalizePositiveInteger(value: unknown, fieldName: string): number {
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) {
-    throw new BadRequestException(`Invalid ${fieldName}`);
-  }
-
-  return value;
-}
-
-function normalizeNonNegativeInteger(
-  value: unknown,
-  fieldName: string,
-): number {
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
-    throw new BadRequestException(`Invalid ${fieldName}`);
-  }
-
-  return value;
 }
 
 function normalizeRoundDuration(roundDurationMs: number | undefined): number {

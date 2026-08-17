@@ -4,11 +4,6 @@ import {
   createTournamentBracketState,
   hashCanonicalState,
 } from '@vscoke/poke-lounge-battle';
-import { User } from '../src/auth/entities/user.entity';
-import { GameHistory } from '../src/game/entities/game-history.entity';
-import { GamePokeLoungeState } from '../src/game/entities/game-poke-lounge-state.entity';
-import { GameType } from '../src/game/enums/game-type.enum';
-import { GameService } from '../src/game/game.service';
 import { VerifiedPokeLoungeHistoryWriter } from '../src/game/verified-poke-lounge-history-writer.service';
 import { CreateLegacyCoreSchema1759999999999 } from '../src/migrations/1759999999999-create-legacy-core-schema';
 import { AddPokeLoungeGameType1793664000000 } from '../src/migrations/1793664000000-add-poke-lounge-game-type';
@@ -21,6 +16,7 @@ import { AddCompetitiveHistoryPublication1794441600000 } from '../src/migrations
 import { SupportPokeLoungeTournamentMatches1794528000000 } from '../src/migrations/1794528000000-support-poke-lounge-tournament-matches';
 import { AddPokeLoungeCompetitiveTransitionMetadata1794614400000 } from '../src/migrations/1794614400000-add-poke-lounge-competitive-transition-metadata';
 import { EnforcePokeLoungeActiveRoomLease1794787200000 } from '../src/migrations/1794787200000-enforce-poke-lounge-active-room-lease';
+import { CloseLegacyPokeLoungeCompetitiveRooms1794960000000 } from '../src/migrations/1794960000000-close-legacy-poke-lounge-competitive-rooms';
 import { CompetitiveMatchService } from '../src/poke-lounge/competitive/competitive-match.service';
 import { PostgresCompetitiveMatchRepository } from '../src/poke-lounge/competitive/postgres-competitive-match.repository';
 import { PostgresCompetitiveActionRepository } from '../src/poke-lounge/competitive/postgres-competitive-action.repository';
@@ -39,6 +35,7 @@ import {
 import type { PokeLoungeRoomState } from '../src/poke-lounge/poke-lounge-room.types';
 import type { PokeLoungeRoomRepository } from '../src/poke-lounge/poke-lounge-room.repository';
 import type { PokeLoungeRoomCommittedEvent } from '../src/poke-lounge/poke-lounge-room-event.publisher';
+import { createTestPartySnapshots } from './support/competitive-party.fixture';
 
 const describePostgres = process.env.TEST_DATABASE_URL
   ? describe
@@ -129,7 +126,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     const room = await roomRepository.findOneByOrFail({ roomCode: 'ROOM01' });
     expect(room.state.tournament.activeMatchAuthority).toBe('server');
     room.state.partySnapshots['player-a'] = {
-      playerId: 'player-a',
+      ...room.state.partySnapshots['player-a'],
       displayName: 'Mutated browser party',
       updatedAtMs: 999,
     };
@@ -203,7 +200,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     ).resolves.toBe(0);
   });
 
-  it('defers a two-player ranked assignment until the preparation clock activates the bracket', async () => {
+  it('defers a two-player unranked assignment until the preparation clock activates the bracket', async () => {
     await insertRoom('ROOM15', ['player-a', 'player-b']);
 
     await expect(
@@ -234,7 +231,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     });
     expect(match).toMatchObject({
       bracketMatchId: 'game-round-1-bracket-1-match-1',
-      kind: 'ranked-head-to-head',
+      kind: 'tournament-unranked',
       playerAccounts: [
         { playerId: 'player-a', accountId: 'account-a' },
         { playerId: 'player-b', accountId: 'account-b' },
@@ -705,7 +702,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     await expect(historyCount()).resolves.toBe(0);
   });
 
-  it('writes ranked 100/50 history once when an active participant leave finalizes the match', async () => {
+  it('does not write verified history when a two-player V2 match ends by leave', async () => {
     await seedUsers(['account-a', 'account-b']);
     await insertActivatedRoom('ROOM20', ['player-a', 'player-b']);
     await service.bindSeat('ROOM20', 'session-a', 'account-a');
@@ -715,7 +712,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
       'account-b',
     );
     if (!assignment) {
-      throw new Error('Expected ranked competitive assignment');
+      throw new Error('Expected competitive assignment');
     }
     const room = await dataSource
       .getRepository(PokeLoungeRoom)
@@ -731,13 +728,13 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     );
 
     expect(left.competitiveTransitions).toHaveLength(1);
-    const rankedTransition = left.competitiveTransitions?.[0];
-    expect(typeof rankedTransition?.terminalEventId).toBe('string');
-    expect(rankedTransition).toMatchObject({
+    const terminalTransition = left.competitiveTransitions?.[0];
+    expect(typeof terminalTransition?.terminalEventId).toBe('string');
+    expect(terminalTransition).toMatchObject({
       terminalRoomRevision: left.revision,
       projection: {
         matchId: assignment.matchId,
-        kind: 'ranked-head-to-head',
+        kind: 'tournament-unranked',
         status: 'completed',
         terminal: {
           winnerPlayerId: 'player-a',
@@ -747,14 +744,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
         },
       },
     });
-    await expect(
-      dataSource.query(
-        'SELECT "userId", score FROM game_history ORDER BY score DESC',
-      ),
-    ).resolves.toEqual([
-      { userId: 'account-a', score: 100 },
-      { userId: 'account-b', score: 50 },
-    ]);
+    await expect(historyCount()).resolves.toBe(0);
     expect(publish).toHaveBeenCalledTimes(1);
 
     await expect(
@@ -764,7 +754,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
         leaveCommand,
       ),
     ).resolves.toEqual(left);
-    await expect(historyCount()).resolves.toBe(2);
+    await expect(historyCount()).resolves.toBe(0);
     expect(publish).toHaveBeenCalledTimes(1);
   });
 
@@ -995,7 +985,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     await expect(
       service.submitAction({
         ...actionInput(assignment.matchId, 'account-a'),
-        action: { kind: 'move', moveId: 'forged-move' },
+        action: { kind: 'move', moveId: 471 },
       }),
     ).rejects.toThrow('Competitive action is illegal');
 
@@ -1360,7 +1350,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     });
   });
 
-  it('rolls back terminal action publication on a changed source score and recovers after correction', async () => {
+  it('completes a V2 match without reading or changing legacy verified history', async () => {
     await seedUsers(['account-a', 'account-b']);
     await insertActivatedRoom('ROOM11', ['player-a', 'player-b']);
     await service.bindSeat('ROOM11', 'session-a', 'account-a');
@@ -1407,48 +1397,55 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     await service.submitAction(firstInput);
     publish.mockClear();
 
-    await expect(service.submitAction(secondInput)).rejects.toThrow(
-      /conflicts with the persisted server result/,
-    );
-    await expect(
-      dataSource.query(
-        `
+    await expect(service.submitAction(secondInput)).resolves.toMatchObject({
+      status: 'completed',
+      terminal: { winnerPlayerId: 'player-a', loserPlayerId: 'player-b' },
+    });
+    const [completedMatch] = await dataSource.query<
+      Array<{
+        current_turn: number;
+        status: string;
+        terminal_result: {
+          winnerPlayerId: string;
+          loserPlayerId: string;
+        };
+        history_publication: unknown;
+      }>
+    >(
+      `
         SELECT current_turn, status, terminal_result, history_publication
         FROM poke_lounge_competitive_match
         WHERE match_id = $1
         `,
-        [assignment.matchId],
-      ),
-    ).resolves.toEqual([
-      {
-        current_turn: 0,
-        status: 'active',
-        terminal_result: null,
-        history_publication: null,
+      [assignment.matchId],
+    );
+    expect(completedMatch).toMatchObject({
+      current_turn: 1,
+      status: 'completed',
+      terminal_result: {
+        winnerPlayerId: 'player-a',
+        loserPlayerId: 'player-b',
       },
+      history_publication: null,
+    });
+    const resolvedActions = await dataSource.query<
+      Array<{ status: string; resolved_at: Date | null }>
+    >(
+      `SELECT status, resolved_at FROM poke_lounge_competitive_action ORDER BY actor_player_id`,
+    );
+    expect(resolvedActions.map((action) => action.status)).toEqual([
+      'resolved',
+      'resolved',
     ]);
-    await expect(
-      dataSource.query(
-        `SELECT status, resolved_at FROM poke_lounge_competitive_action ORDER BY actor_player_id`,
-      ),
-    ).resolves.toEqual([{ status: 'pending', resolved_at: null }]);
+    expect(
+      resolvedActions.every((action) => action.resolved_at instanceof Date),
+    ).toBe(true);
     await expect(historyCount()).resolves.toBe(1);
     await expect(
       dataSource.getRepository(PokeLoungeRoom).findOneByOrFail({
         roomCode: 'ROOM11',
       }),
-    ).resolves.toMatchObject({ revision: 7 });
-    expect(publish).not.toHaveBeenCalled();
-
-    await dataSource.query(
-      `UPDATE game_history SET score = 100 WHERE id = $1`,
-      [conflictingHistoryId],
-    );
-    await expect(service.submitAction(secondInput)).resolves.toMatchObject({
-      status: 'completed',
-      terminal: { winnerPlayerId: 'player-a', loserPlayerId: 'player-b' },
-    });
-    await expect(historyCount()).resolves.toBe(2);
+    ).resolves.toMatchObject({ revision: 8 });
     await expect(
       dataSource.query(`SELECT id FROM game_history WHERE "sourceKey" = $1`, [
         conflictingSourceKey,
@@ -1554,7 +1551,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     expect(publish).not.toHaveBeenCalled();
   });
 
-  it('atomically publishes terminal histories, retries once, and replays after restart without republishing', async () => {
+  it('commits a V2 terminal without history and replays it after restart', async () => {
     await seedUsers(['account-a', 'account-b']);
     await insertActivatedRoom('ROOM07', ['player-a', 'player-b']);
     await service.bindSeat('ROOM07', 'session-a', 'account-a');
@@ -1597,44 +1594,6 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     await service.submitAction(firstInput);
     publish.mockClear();
 
-    const failOnceWrite = jest
-      .fn<
-        ReturnType<VerifiedPokeLoungeHistoryWriter['write']>,
-        Parameters<VerifiedPokeLoungeHistoryWriter['write']>
-      >()
-      .mockRejectedValueOnce(new Error('history publication failed'))
-      .mockImplementation((manager, input) =>
-        historyWriter.write(manager, input),
-      );
-    const failOnceWriter = { write: failOnceWrite };
-    resetServices(failOnceWriter);
-
-    await expect(service.submitAction(secondInput)).rejects.toThrow(
-      'history publication failed',
-    );
-    await expect(
-      dataSource.getRepository(PokeLoungeCompetitiveAction).find(),
-    ).resolves.toMatchObject([{ status: 'pending', resolvedAt: null }]);
-    await expect(
-      dataSource.getRepository(PokeLoungeCompetitiveMatch).findOneByOrFail({
-        matchId: assignment.matchId,
-      }),
-    ).resolves.toMatchObject({
-      currentTurn: 0,
-      status: 'active',
-      terminalEventId: null,
-      terminalRoomRevision: null,
-      completedAt: null,
-    });
-    await expect(
-      dataSource.query(
-        'SELECT history_publication FROM poke_lounge_competitive_match WHERE match_id = $1',
-        [assignment.matchId],
-      ),
-    ).resolves.toEqual([{ history_publication: null }]);
-    await expect(historyCount()).resolves.toBe(0);
-    expect(publish).not.toHaveBeenCalled();
-
     const terminalResponse = await service.submitAction(secondInput);
     expect(terminalResponse).toMatchObject({
       status: 'completed',
@@ -1645,74 +1604,14 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
         scoreByPlayerId: { 'player-a': 100, 'player-b': 50 },
       },
     });
-    expect(failOnceWrite.mock.calls).toHaveLength(2);
     expect(publish).toHaveBeenCalledTimes(1);
-
-    const histories = await dataSource.query<GameHistory[]>(
-      'SELECT * FROM game_history ORDER BY "userId" ASC',
-    );
-    expect(
-      histories.map(({ userId, score, resultTrust, sourceKey }) => ({
-        userId,
-        score,
-        resultTrust,
-        sourceKey,
-      })),
-    ).toEqual([
-      {
-        userId: 'account-a',
-        score: 100,
-        resultTrust: 'verified-room',
-        sourceKey: histories[0].sourceKey,
-      },
-      {
-        userId: 'account-b',
-        score: 50,
-        resultTrust: 'verified-room',
-        sourceKey: histories[1].sourceKey,
-      },
-    ]);
-    expect(histories[0].sourceKey).toMatch(
-      new RegExp(`^.+:${assignment.matchId}:account-a$`),
-    );
-    expect(histories[1].sourceKey).toMatch(
-      new RegExp(`^.+:${assignment.matchId}:account-b$`),
-    );
-    const [audit] = await dataSource.query<
-      Array<{
-        history_publication: { historyIdByAccountId: Record<string, string> };
-      }>
-    >(
-      'SELECT history_publication FROM poke_lounge_competitive_match WHERE match_id = $1',
-      [assignment.matchId],
-    );
-    expect(audit.history_publication.historyIdByAccountId).toEqual({
-      'account-a': histories[0].id,
-      'account-b': histories[1].id,
-    });
-    expect(JSON.stringify(terminalResponse)).not.toContain(histories[0].id);
-    expect(JSON.stringify(publish.mock.calls)).not.toContain(histories[0].id);
-
-    const rankingDataSource = new DataSource({
-      type: 'postgres',
-      url: testDatabaseUrl,
-      entities: [User, GameHistory, GamePokeLoungeState],
-    });
-    await rankingDataSource.initialize();
-    const ranking = await new GameService(
-      rankingDataSource.getRepository(GameHistory),
-      rankingDataSource.getRepository(GamePokeLoungeState),
-    ).getRanking(GameType.POKE_LOUNGE);
-    await rankingDataSource.destroy();
-    expect(
-      ranking.map(({ rank, score, user }) => ({ rank, score, user })),
-    ).toEqual([
-      { rank: 1, score: 100, user: { displayName: 'Test User' } },
-      { rank: 2, score: 50, user: { displayName: 'Test User' } },
-    ]);
-    expect(JSON.stringify(ranking)).not.toMatch(
-      /resultTrust|sourceKey|email|accessToken/,
-    );
+    await expect(historyCount()).resolves.toBe(0);
+    await expect(
+      dataSource.query(
+        'SELECT history_publication FROM poke_lounge_competitive_match WHERE match_id = $1',
+        [assignment.matchId],
+      ),
+    ).resolves.toEqual([{ history_publication: null }]);
 
     await dataSource.destroy();
     dataSource = createDataSource(testDatabaseUrl);
@@ -1733,7 +1632,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     await expect(service.submitAction(secondInput)).resolves.toEqual(
       terminalResponse,
     );
-    await expect(historyCount()).resolves.toBe(2);
+    await expect(historyCount()).resolves.toBe(0);
     expect(publish).not.toHaveBeenCalled();
   });
 
@@ -1944,6 +1843,7 @@ function createDataSource(testDatabaseUrl: string): DataSource {
       SupportPokeLoungeTournamentMatches1794528000000,
       AddPokeLoungeCompetitiveTransitionMetadata1794614400000,
       EnforcePokeLoungeActiveRoomLease1794787200000,
+      CloseLegacyPokeLoungeCompetitiveRooms1794960000000,
     ],
     synchronize: false,
     migrationsTransactionMode: 'each',
@@ -1962,7 +1862,7 @@ function actionInput(
     assignmentRevision: 1,
     turn: 0,
     clientCommandId,
-    action: { kind: 'move' as const, moveId: 'steady-strike' },
+    action: { kind: 'move' as const, moveId: 55 },
   };
 }
 
@@ -1992,7 +1892,7 @@ function roomState(roomCode: string, playerIds: string[]): PokeLoungeRoomState {
       connected: true,
       joinedAtMs: index,
     })),
-    partySnapshots: {},
+    partySnapshots: createTestPartySnapshots(playerIds),
     round: {
       index: 1,
       phase: 'waiting',

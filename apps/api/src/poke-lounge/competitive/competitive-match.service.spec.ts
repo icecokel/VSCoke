@@ -2,9 +2,12 @@ import { BadRequestException, ConflictException } from '@nestjs/common';
 import {
   COMPETITIVE_RULESET_HASH,
   COMPETITIVE_RULESET_VERSION,
-  createInitialBattleState,
   hashCanonicalState,
 } from '@vscoke/poke-lounge-battle';
+import {
+  createTestCompetitiveParty,
+  createTestInitialBattleState,
+} from '../../../test/support/competitive-party.fixture';
 import type { CompetitiveMatchRepository } from './competitive-match.repository';
 import type { CompetitiveActionRepository } from './competitive-action.repository';
 import type { PokeLoungeRoomEventPublisher } from '../poke-lounge-room-event.publisher';
@@ -37,15 +40,21 @@ describe('CompetitiveMatchService', () => {
       const match = input.createAssignment({
         roomId: 'room-id',
         roomCode: 'ROOM01',
+        bracketMatchId: 'game-round-1-bracket-1-match-1',
+        kind: 'tournament-unranked',
         assignmentRevision: 1,
         players: [
           { playerId: 'player-a', accountId: 'account-a' },
           { playerId: 'player-b', accountId: 'account-b' },
         ],
+        parties: {
+          'player-a': createTestCompetitiveParty(),
+          'player-b': createTestCompetitiveParty(),
+        },
       });
 
       expect(match.initialState).toEqual(
-        createInitialBattleState(['player-a', 'player-b']),
+        createTestInitialBattleState(['player-a', 'player-b']),
       );
       expect(match.initialStateHash).toBe(
         hashCanonicalState(match.initialState),
@@ -94,7 +103,7 @@ describe('CompetitiveMatchService', () => {
   });
 
   it('publishes the durable assignment projection after the second seat commits', async () => {
-    const state = createInitialBattleState(['player-a', 'player-b']);
+    const state = createTestInitialBattleState(['player-a', 'player-b']);
     repository.bindSeatAndAssign.mockResolvedValue({
       outcome: 'assigned',
       eligible: true,
@@ -219,7 +228,7 @@ describe('CompetitiveMatchService', () => {
         assignmentRevision: 1,
         turn: 0,
         clientCommandId: '00000000-0000-4000-8000-000000000001',
-        action: { kind: 'move', moveId: 'steady-strike' },
+        action: { kind: 'move', moveId: 55 },
       }),
     ).resolves.toEqual(response);
 
@@ -402,7 +411,7 @@ function actionInput() {
     assignmentRevision: 1,
     turn: 0,
     clientCommandId: '00000000-0000-4000-8000-000000000001',
-    action: { kind: 'move' as const, moveId: 'steady-strike' },
+    action: { kind: 'move' as const, moveId: 55 },
   };
 }
 
@@ -410,7 +419,7 @@ function actionProjection(
   matchId = 'match-1',
   bracketMatchId = 'game-round-1-bracket-1-match-1',
 ) {
-  const currentState = createInitialBattleState(['player-a', 'player-b']);
+  const currentState = createTestInitialBattleState(['player-a', 'player-b']);
   return {
     matchId,
     bracketMatchId,

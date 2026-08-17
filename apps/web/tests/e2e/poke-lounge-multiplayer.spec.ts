@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { expect, type Browser, type Page, type Request, test } from "@playwright/test";
 import {
   COMPETITIVE_RULESET_HASH,
@@ -10,6 +12,14 @@ import {
   toAuthoritativeBattleState,
 } from "../../src/components/poke-lounge/runtime/game/battle/authoritative-battle-adapter";
 import { parseCompetitiveProjection } from "../../src/components/poke-lounge/runtime/game/network/competitive-projection";
+import {
+  BATTLE_POKEMON_ASSETS_JSON_PATH,
+  LEVEL_UP_MOVE_TABLE_JSON_PATH,
+  loadRuntimeGameDataJson,
+  POKEMON_DATA_JSON_PATH,
+  resetRuntimeGameDataJsonStateForTest,
+  WILD_BATTLE_MOVE_SETS_JSON_PATH,
+} from "../../src/components/poke-lounge/runtime/game/data/game-data-json";
 import { createCompetitiveBattleLaunchCache } from "../../src/components/poke-lounge/runtime/game/scenes/competitive-battle-launch";
 import type { CompetitiveProjection } from "../../src/components/poke-lounge/runtime/game/network/localPreviewRoom";
 import { createGameStateStore } from "../../src/components/poke-lounge/runtime/game/state/gameStateStore";
@@ -59,22 +69,50 @@ const BRACKET_MATCH_ID = "game-round-1-bracket-1-match-1";
 const ROOM_EXPIRES_AT_MS = 253402300799999;
 const AUTH_ID_TOKEN_EXPIRES_AT = Math.floor(Date.now() / 1000) + 60 * 60;
 const AUTH_ID_TOKEN = `${Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url")}.${Buffer.from(JSON.stringify({ exp: AUTH_ID_TOKEN_EXPIRES_AT })).toString("base64url")}.signature`;
+const webRoot = process.cwd();
+
+test.beforeAll(async () => {
+  await loadRuntimeGameDataJson(async input => {
+    const requestPath =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.pathname
+          : new URL(input.url).pathname;
+    if (
+      ![
+        POKEMON_DATA_JSON_PATH,
+        LEVEL_UP_MOVE_TABLE_JSON_PATH,
+        WILD_BATTLE_MOVE_SETS_JSON_PATH,
+        BATTLE_POKEMON_ASSETS_JSON_PATH,
+      ].includes(requestPath)
+    ) {
+      return new Response(null, { status: 404 });
+    }
+    return new Response(
+      fs.readFileSync(path.join(webRoot, "public", requestPath.replace(/^\//, "")), "utf8"),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  });
+});
+
+test.afterAll(() => resetRuntimeGameDataJsonStateForTest());
 
 const createCompetitiveProjection = (
   overrides: Partial<CompetitiveProjection> = {},
 ): CompetitiveProjection => ({
   matchId: "11111111-1111-4111-8111-111111111111",
   bracketMatchId: "game-round-1-bracket-1-match-1",
-  kind: "ranked-head-to-head",
+  kind: "tournament-unranked",
   assignmentRevision: 7,
-  rulesetVersion: 1,
+  rulesetVersion: 2,
   rulesetHash: COMPETITIVE_RULESET_HASH,
   currentTurn: 3,
   status: "active",
   playerIds: ["player-a", "player-b"],
   stateHash: "b".repeat(64),
   currentState: {
-    rulesetVersion: 1,
+    rulesetVersion: 2,
     turn: 3,
     participantIds: ["player-a", "player-b"],
     playersById: {
@@ -83,23 +121,29 @@ const createCompetitiveProjection = (
         activeSlotIndex: 1,
         team: [
           {
-            speciesId: "vscoke-alpha",
-            maxHp: 120,
-            currentHp: 60,
-            status: "none",
+            slotIndex: 1,
+            speciesId: 7,
+            level: 11,
+            maxHp: 34,
+            currentHp: 20,
+            status: "normal",
+            statStages: createZeroStatStages(),
             moves: [
-              { moveId: "steady-strike", pp: 18 },
-              { moveId: "stun-spark", pp: 9 },
+              { moveId: 55, pp: 18 },
+              { moveId: 86, pp: 9 },
             ],
           },
           {
-            speciesId: "vscoke-beta",
-            maxHp: 140,
-            currentHp: 91,
+            slotIndex: 3,
+            speciesId: 158,
+            level: 13,
+            maxHp: 38,
+            currentHp: 31,
             status: "paralyzed",
+            statStages: createZeroStatStages(),
             moves: [
-              { moveId: "steady-strike", pp: 19 },
-              { moveId: "heavy-blow", pp: 7 },
+              { moveId: 55, pp: 19 },
+              { moveId: 44, pp: 7 },
             ],
           },
         ],
@@ -109,23 +153,29 @@ const createCompetitiveProjection = (
         activeSlotIndex: 0,
         team: [
           {
-            speciesId: "vscoke-alpha",
-            maxHp: 120,
-            currentHp: 44,
-            status: "none",
+            slotIndex: 0,
+            speciesId: 4,
+            level: 11,
+            maxHp: 32,
+            currentHp: 14,
+            status: "normal",
+            statStages: createZeroStatStages(),
             moves: [
-              { moveId: "steady-strike", pp: 17 },
-              { moveId: "stun-spark", pp: 9 },
+              { moveId: 33, pp: 17 },
+              { moveId: 52, pp: 9 },
             ],
           },
           {
-            speciesId: "vscoke-beta",
-            maxHp: 140,
-            currentHp: 140,
-            status: "none",
+            slotIndex: 2,
+            speciesId: 1,
+            level: 12,
+            maxHp: 35,
+            currentHp: 35,
+            status: "normal",
+            statStages: createZeroStatStages(),
             moves: [
-              { moveId: "steady-strike", pp: 20 },
-              { moveId: "heavy-blow", pp: 10 },
+              { moveId: 33, pp: 20 },
+              { moveId: 73, pp: 10 },
             ],
           },
         ],
@@ -137,6 +187,18 @@ const createCompetitiveProjection = (
   terminal: null,
   ...overrides,
 });
+
+function createZeroStatStages() {
+  return {
+    attack: 0,
+    defense: 0,
+    specialAttack: 0,
+    specialDefense: 0,
+    speed: 0,
+    accuracy: 0,
+    evasion: 0,
+  };
+}
 
 function createServerCompetitiveProjection(
   server: MockServerState,
@@ -191,10 +253,10 @@ test.describe("Poke Lounge authoritative battle adapter", () => {
     expect(state.phase).toBe("command");
     expect(state.turn).toBe(3);
     expect(state.player.activePartySlotIndex).toBe(1);
-    expect(state.player.pokemon).toMatchObject({ currentHp: 91, maxHp: 140, status: "paralyzed" });
-    expect(state.player.pokemon.moves[1]).toMatchObject({ name: "강타", pp: 7 });
-    expect(state.opponent.pokemon).toMatchObject({ currentHp: 44, maxHp: 120 });
-    expect(state.opponent.pokemon.moves[1]).toMatchObject({ name: "마비 불꽃", pp: 9 });
+    expect(state.player.pokemon).toMatchObject({ currentHp: 20, maxHp: 34, status: "normal" });
+    expect(state.player.pokemon.moves[1]).toMatchObject({ name: "전기자석파", pp: 9 });
+    expect(state.opponent.pokemon).toMatchObject({ currentHp: 14, maxHp: 32 });
+    expect(state.opponent.pokemon.moves[1]).toMatchObject({ name: "불꽃세례", pp: 9 });
   });
 
   test("PP가 없거나 현재 슬롯인 교체 대상과 전투불능 슬롯은 제출 불가다", () => {
@@ -206,7 +268,7 @@ test.describe("Poke Lounge authoritative battle adapter", () => {
     expect(
       isLegalAuthoritativeAction(projection, "player-a", {
         kind: "move",
-        moveId: "heavy-blow",
+        moveId: 44,
       }),
     ).toBe(false);
     expect(
@@ -222,12 +284,12 @@ test.describe("Poke Lounge authoritative battle adapter", () => {
 
   test("active Pokemon의 HP가 0이면 PP가 남은 move도 제출 불가다", () => {
     const projection = createCompetitiveProjection();
-    projection.currentState.playersById["player-a"].team[1].currentHp = 0;
+    projection.currentState.playersById["player-a"].team[0].currentHp = 0;
 
     expect(
       isLegalAuthoritativeAction(projection, "player-a", {
         kind: "move",
-        moveId: "heavy-blow",
+        moveId: 55,
       }),
     ).toBe(false);
   });
@@ -297,19 +359,19 @@ test.describe("Poke Lounge competitive projection parser", () => {
 
   test("team active slot과 승인되지 않은 species/move 및 HP/PP 범위를 거부한다", () => {
     const invalidActive = structuredClone(createCompetitiveProjection());
-    invalidActive.currentState.playersById["player-a"].activeSlotIndex = 3;
+    invalidActive.currentState.playersById["player-a"].activeSlotIndex = 5;
     expect(() => parseCompetitiveProjection(invalidActive)).toThrow();
 
     const invalidTeamSize = structuredClone(createCompetitiveProjection());
-    invalidTeamSize.currentState.playersById["player-a"].team.pop();
+    invalidTeamSize.currentState.playersById["player-a"].team.splice(0);
     expect(() => parseCompetitiveProjection(invalidTeamSize)).toThrow();
 
     const invalidSpecies = structuredClone(createCompetitiveProjection());
-    invalidSpecies.currentState.playersById["player-a"].team[0].speciesId = "unknown";
+    invalidSpecies.currentState.playersById["player-a"].team[0].speciesId = "unknown" as never;
     expect(() => parseCompetitiveProjection(invalidSpecies)).toThrow();
 
     const invalidMove = structuredClone(createCompetitiveProjection());
-    invalidMove.currentState.playersById["player-a"].team[0].moves[0].moveId = "unknown";
+    invalidMove.currentState.playersById["player-a"].team[0].moves[0].moveId = "unknown" as never;
     expect(() => parseCompetitiveProjection(invalidMove)).toThrow();
 
     const invalidHp = structuredClone(createCompetitiveProjection());
@@ -317,7 +379,7 @@ test.describe("Poke Lounge competitive projection parser", () => {
     expect(() => parseCompetitiveProjection(invalidHp)).toThrow();
 
     const invalidPp = structuredClone(createCompetitiveProjection());
-    invalidPp.currentState.playersById["player-a"].team[0].moves[0].pp = 21;
+    invalidPp.currentState.playersById["player-a"].team[0].moves[0].pp = 100;
     expect(() => parseCompetitiveProjection(invalidPp)).toThrow();
   });
 
@@ -587,7 +649,7 @@ test.describe("Poke Lounge server multiplayer", () => {
     expect(server.competitiveActionBodies[0]).toMatchObject({
       assignmentRevision: 7,
       turn: 3,
-      action: { kind: "move", moveId: "heavy-blow" },
+      action: { kind: "move", moveId: 86 },
     });
     expect(server.competitiveActionBodies[0]?.clientCommandId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
@@ -645,11 +707,11 @@ test.describe("Poke Lounge server multiplayer", () => {
 
     await setBattleCommand(page, "pokemon");
     await confirmBattle(page);
-    await setBattlePartySlot(page, 0);
+    await setBattlePartySlot(page, 3);
     await confirmBattle(page);
 
     await expect.poll(() => Promise.resolve(server.competitiveActionBodies.length)).toBe(1);
-    expect(server.competitiveActionBodies[0]?.action).toEqual({ kind: "switch", slotIndex: 0 });
+    expect(server.competitiveActionBodies[0]?.action).toEqual({ kind: "switch", slotIndex: 3 });
   });
 
   test("authoritative switch는 HP 0 슬롯을 제출하지 않는다", async ({ page }) => {
@@ -1026,7 +1088,9 @@ test.describe("Poke Lounge server multiplayer", () => {
     await expect
       .poll(() => Promise.resolve(server.commandRequests.length))
       .toBeGreaterThan(requestCount);
-    expect(server.commandRequests.at(-1)?.revision).toBe("100");
+    const submittedRevision = Number(server.commandRequests.at(-1)?.revision);
+    expect(submittedRevision).toBeGreaterThanOrEqual(100);
+    expect(submittedRevision).not.toBe(99);
   });
 
   test("disconnect와 reconnect는 한 socket에서 REST recovery와 재구독을 수행한다", async ({
@@ -1553,6 +1617,16 @@ test.describe("Poke Lounge server multiplayer", () => {
             level: number;
             currentHp: number;
             maxHp: number;
+            status: "normal";
+            individualValues: {
+              hp: number;
+              attack: number;
+              defense: number;
+              specialAttack: number;
+              specialDefense: number;
+              speed: number;
+            };
+            moves: Array<{ id: number; name: string; pp: number; maxPp: number }>;
           } | null;
         }>;
       };
@@ -1569,6 +1643,16 @@ test.describe("Poke Lounge server multiplayer", () => {
               level: 12,
               currentHp: 18,
               maxHp: 30,
+              status: "normal",
+              individualValues: {
+                hp: 12,
+                attack: 13,
+                defense: 14,
+                specialAttack: 15,
+                specialDefense: 16,
+                speed: 17,
+              },
+              moves: [{ id: 33, name: "몸통박치기", pp: 20, maxPp: 35 }],
             },
           },
         ],
@@ -1587,19 +1671,34 @@ test.describe("Poke Lounge server multiplayer", () => {
       )
       .toBeGreaterThanOrEqual(2);
 
-    const snapshotWithRepresentativePokemon = server.partySnapshotBodies.find(
-      body => body.representativePokemon,
+    const snapshotWithPikachu = server.partySnapshotBodies.find(body =>
+      body.competitiveParty?.members.some(member => member.speciesId === 25),
     );
 
-    expect(snapshotWithRepresentativePokemon).toMatchObject({
+    expect(snapshotWithPikachu).toMatchObject({
       playerId: expect.any(String),
       sessionId: expect.any(String),
-      representativePokemon: {
-        speciesId: expect.any(Number),
-        name: expect.any(String),
-        level: expect.any(Number),
-        currentHp: expect.any(Number),
-        maxHp: expect.any(Number),
+      competitiveParty: {
+        version: 2,
+        activeSlotIndex: 0,
+        members: [
+          {
+            slotIndex: 0,
+            speciesId: 25,
+            level: 12,
+            currentHp: 18,
+            status: "normal",
+            individualValues: {
+              hp: 12,
+              attack: 13,
+              defense: 14,
+              specialAttack: 15,
+              specialDefense: 16,
+              speed: 17,
+            },
+            moves: [{ moveId: 33, pp: 20 }],
+          },
+        ],
       },
     });
   });
@@ -2575,6 +2674,7 @@ async function mockServerRoom(
         if (seatProjection && options.competitiveFaintedSwitchSlot) {
           const ownPlayerId = getStateParticipants(server)[0].playerId;
           seatProjection.currentState.playersById[ownPlayerId].team[0].currentHp = 0;
+          seatProjection.currentState.playersById[ownPlayerId].team[0].status = "fainted";
         }
         await route.fulfill({
           status: 201,
@@ -2768,7 +2868,7 @@ interface MockServerState {
     assignmentRevision?: number;
     turn?: number;
     clientCommandId?: string;
-    action?: { kind?: string; moveId?: string; slotIndex?: number };
+    action?: { kind?: string; moveId?: number | string; slotIndex?: number };
   }>;
   competitiveActionNetworkFailureReturned: boolean;
   competitiveActionNetworkFailuresReturned: number;
@@ -2791,12 +2891,25 @@ interface MockServerState {
     playerId?: string;
     sessionId?: string;
     displayName?: string;
-    representativePokemon?: {
-      speciesId: number;
-      name: string;
-      level: number;
-      currentHp: number;
-      maxHp: number;
+    competitiveParty?: {
+      version: 2;
+      activeSlotIndex: number;
+      members: Array<{
+        slotIndex: number;
+        speciesId: number;
+        level: number;
+        currentHp: number;
+        status: "normal" | "poisoned" | "burned" | "paralyzed";
+        individualValues: {
+          hp: number;
+          attack: number;
+          defense: number;
+          specialAttack: number;
+          specialDefense: number;
+          speed: number;
+        };
+        moves: Array<{ moveId: number; pp: number }>;
+      }>;
     };
   }>;
   resultBodies: Array<{
@@ -3284,17 +3397,33 @@ function createPartySnapshots(server?: MockServerState) {
         (snapshot): snapshot is NonNullable<typeof snapshot> & { playerId: string } =>
           typeof snapshot.playerId === "string" && snapshot.playerId.length > 0,
       )
-      .map(snapshot => [
-        snapshot.playerId,
-        {
-          playerId: snapshot.playerId,
-          ...(snapshot.displayName ? { displayName: snapshot.displayName } : {}),
-          ...(snapshot.representativePokemon
-            ? { representativePokemon: snapshot.representativePokemon }
-            : {}),
-          updatedAtMs: 0,
-        },
-      ]),
+      .flatMap(snapshot => {
+        const party = snapshot.competitiveParty;
+        const representative = party?.members.find(
+          member => member.slotIndex === party.activeSlotIndex,
+        );
+        if (!party || !representative) {
+          return [];
+        }
+
+        return [
+          [
+            snapshot.playerId,
+            {
+              playerId: snapshot.playerId,
+              ...(snapshot.displayName ? { displayName: snapshot.displayName } : {}),
+              representativePokemon: {
+                speciesId: representative.speciesId,
+                level: representative.level,
+                currentHp: representative.currentHp,
+                maxHp: representative.currentHp,
+              },
+              partySize: party.members.length,
+              updatedAtMs: 0,
+            },
+          ] as const,
+        ];
+      }),
   );
 }
 

@@ -135,11 +135,7 @@ export function planCompetitiveSeatBinding(input: {
   const assignmentBracketMatchId = hasTournamentPlayers
     ? activeBracketMatch!.matchId
     : null;
-  const assignmentKind = hasTournamentPlayers
-    ? input.room.tournament.bracket?.participants.length === 2
-      ? 'ranked-head-to-head'
-      : 'tournament-unranked'
-    : null;
+  const assignmentKind = hasTournamentPlayers ? 'tournament-unranked' : null;
 
   return {
     outcome: existingSeat ? 'already-bound' : 'bind',

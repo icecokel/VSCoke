@@ -46,6 +46,9 @@ export interface PlayerPokemon {
   gender?: PokemonGender;
   maxHp?: number;
   currentHp?: number;
+  attack?: number;
+  defense?: number;
+  speed?: number;
   experience?: number;
   growthRate?: number;
   status?: PlayerPokemonStatus;

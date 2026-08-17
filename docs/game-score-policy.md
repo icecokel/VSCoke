@@ -34,9 +34,9 @@
 
 일반 게임 결과 DTO는 `resultTrust`와 `sourceKey`를 받지 않는다. `GameService.createHistory`는 Poke Lounge 일반 제출을 항상 `client-asserted`, `sourceKey = NULL`로 저장한다. 이 결과는 저장과 공유가 가능하지만 공개 Poke Lounge 랭킹에는 포함되지 않는다.
 
-`verified-room`은 서버 전용 `VerifiedPokeLoungeHistoryWriter`만 기록한다. writer는 호출자가 제공한 임의 키를 받지 않고 서버의 `roomId`, `matchId`, 바인딩된 `userId`로 `roomId:matchId:userId` 형식의 `sourceKey`를 만든다. 같은 source key 재시도는 기존 행을 재사용하며, 기존 점수와 달라지면 충돌로 실패한다.
+`verified-room`은 서버 전용 `VerifiedPokeLoungeHistoryWriter`만 기록한다. writer는 호출자가 제공한 임의 키를 받지 않고 서버의 `roomId`, `matchId`, 바인딩된 `userId`로 `roomId:matchId:userId` 형식의 `sourceKey`를 만든다. 이 경로는 과거 `ranked-head-to-head` 완료 이력의 호환성과 감사 목적으로만 남아 있으며 V2 육성 파티 assignment에서는 호출되지 않는다.
 
-경쟁 액션 엔진이 종료 결과를 확정한 경우에만 두 계정의 이력을 액션 영수증, 매치 종료 상태, 비공개 history ID 감사 매핑과 같은 `EntityManager` 트랜잭션에서 발행한다. writer 실패나 source 충돌은 이 변경 전체를 롤백하며 Socket 이벤트는 commit 이후에만 발행한다. 캐주얼 룸 `/result`는 이 경로를 호출하지 않는다.
+과거 ranked 경쟁 액션 엔진이 종료 결과를 확정한 경우에만 두 계정의 이력을 액션 영수증, 매치 종료 상태, 비공개 history ID 감사 매핑과 같은 `EntityManager` 트랜잭션에서 발행했다. 캐주얼 룸 `/result`와 현재 V2 `tournament-unranked` 경로는 이 writer를 호출하지 않는다.
 
 경쟁 match는 다음 조건을 모두 만족해야 한다.
 
@@ -45,9 +45,9 @@
 3. 서버가 seed, ruleset version/hash, canonical state와 turn을 만들고 보관한다.
 4. 각 인증 계정은 자기 player의 현재 turn action만 제출할 수 있다. 상대 action, 과거/미래 turn, 잘못된 assignment revision, 재사용된 command는 거부하거나 durable receipt로 재생한다.
 5. Web과 API가 공유하는 `@vscoke/poke-lounge-battle` 결정론 엔진만 state를 전진시킨다. 클라이언트 winner, score, elapsed time, terminal 주장은 입력으로 받지 않는다.
-6. 엔진 terminal에서 승자는 100점, 패자는 50점으로 서버가 확정한다. 두 verified history와 match/action receipt는 같은 PostgreSQL 트랜잭션에서 발행된다.
+6. 엔진 terminal에서 승자는 100점, 패자는 50점으로 서버가 확정하지만 V2에서는 bracket 점수로만 사용한다.
 
-정확히 2명의 `ranked-head-to-head`만 위 verified 점수를 발행한다. 3~6인 server tournament는 여러 2인 match를 순차 진행한다. 두 인증 좌석이 준비된 `tournament-unranked` match는 서버가 action과 terminal을 권위 있게 확정하고 bracket을 전진시키지만 `game_history`와 공개 랭킹 점수를 만들지 않는다. authority가 없는 casual match는 `/poke-lounge/rooms/:roomCode/result`로 전진하며 역시 unranked다. 같은 active match에서 authority action과 casual result를 함께 제출해서는 안 된다.
+현재 새 서버 권위 match는 참가자가 정확히 2명이어도 모두 `tournament-unranked`다. 클라이언트가 제출한 육성 파티의 포획·성장 이력을 서버가 아직 증명할 수 없기 때문이다. 서버는 action과 terminal을 권위 있게 확정하고 bracket을 전진시키지만 `game_history`와 공개 랭킹 점수를 만들지 않는다. authority가 없는 casual match는 `/poke-lounge/rooms/:roomCode/result`로 전진하며 역시 unranked다. 같은 active match에서 authority action과 casual result를 함께 제출해서는 안 된다.
 
 인증되지 않은 참가자, casual tournament와 solo play도 client-asserted unranked이며 저장·공유는 가능해도 공개 Poke Lounge 랭킹의 근거가 아니다. server authority 결과를 일반 `POST /game/result`나 casual `/result`로 중복 제출해서는 안 된다.
 
@@ -118,4 +118,4 @@ WHERE p.game_type IS NULL
 
 ## 한계
 
-일반 `POST /game/result`의 범위/속도 정책은 client-asserted 입력에 대한 1차 plausibility 방어선이며 경쟁 증명이 아니다. Poke Lounge verified ranking은 정확히 두 명의 `ranked-head-to-head` 서버 엔진 경로에서만 생성된다. 다인 tournament는 서버 권위 match를 사용할 수 있어도 의도적으로 unranked이며, 익명·casual tournament·solo도 공개 랭킹에서 제외한다.
+일반 `POST /game/result`의 범위/속도 정책은 client-asserted 입력에 대한 1차 plausibility 방어선이며 경쟁 증명이 아니다. 현재 Poke Lounge V2 육성 파티 서버 엔진은 인원수와 관계없이 unranked이며, 과거 `verified-room` 기록만 기존 공개 랭킹 조회에 남는다. 익명·casual tournament·solo도 공개 랭킹에서 제외한다.

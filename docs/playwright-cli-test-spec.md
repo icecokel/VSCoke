@@ -40,19 +40,19 @@
 
 ## 4. 공식 실행 흐름
 
-| 목적                | 명령                        | 비고                           |
-| ------------------- | --------------------------- | ------------------------------ |
-| 브라우저 설치       | `pnpm e2e:install`          | 최초 1회 또는 브라우저 갱신 시 |
-| 스모크 검증         | `pnpm e2e:smoke`            | 가장 빠른 핵심 검증            |
-| 전체 E2E            | `pnpm e2e`                  | 기본 회귀 검증                 |
-| 크로스 브라우저     | `pnpm e2e:cross-browser`    | WebKit, Firefox 포함           |
-| 실제 API 통합       | `pnpm e2e:integration`      | 테스트 DB 기반 취미 성공 경로  |
-| 헤디드 디버깅       | `pnpm e2e:headed`           | 로컬 재현용                    |
-| UI 모드             | `pnpm e2e:ui`               | 선택 실행 및 디버깅            |
-| 코드 생성기         | `pnpm e2e:codegen`          | 셀렉터 탐색용                  |
-| 리포트 확인         | `pnpm e2e:report`           | 실패 분석                      |
-| 비주얼 기준선 갱신  | `pnpm e2e:update-snapshots` | Chromium 기준선만 갱신         |
-| 반복 검증 서버 기동 | `pnpm e2e:server`           | 고정 포트 `37123` 사용         |
+| 목적                | 명령                        | 비고                                 |
+| ------------------- | --------------------------- | ------------------------------------ |
+| 브라우저 설치       | `pnpm e2e:install`          | 최초 1회 또는 브라우저 갱신 시       |
+| 스모크 검증         | `pnpm e2e:smoke`            | 가장 빠른 핵심 검증                  |
+| 전체 E2E            | `pnpm e2e`                  | 기본 회귀 검증                       |
+| 크로스 브라우저     | `pnpm e2e:cross-browser`    | WebKit, Firefox 포함                 |
+| 실제 API 통합       | `pnpm e2e:integration`      | 테스트 DB 기반 취미·Poke Lounge 경로 |
+| 헤디드 디버깅       | `pnpm e2e:headed`           | 로컬 재현용                          |
+| UI 모드             | `pnpm e2e:ui`               | 선택 실행 및 디버깅                  |
+| 코드 생성기         | `pnpm e2e:codegen`          | 셀렉터 탐색용                        |
+| 리포트 확인         | `pnpm e2e:report`           | 실패 분석                            |
+| 비주얼 기준선 갱신  | `pnpm e2e:update-snapshots` | Chromium 기준선만 갱신               |
+| 반복 검증 서버 기동 | `pnpm e2e:server`           | 고정 포트 `37123` 사용               |
 
 ## 5. CLI 실행 정책
 
@@ -107,20 +107,20 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:37123 pnpm --filter @vscoke/web exec playwr
 
 현재 테스트는 아래 범주로 관리한다.
 
-| 범주                 | 현재 파일                                                                                |
-| -------------------- | ---------------------------------------------------------------------------------------- |
-| 스모크/i18n          | `i18n-integrity.spec.ts`                                                                 |
-| 핵심 라우트/CTA      | `core-routes.spec.ts`, `deep-link.spec.ts`                                               |
-| 장애 복구/fallback   | `error-fallback.spec.ts`, `capability-fallback.spec.ts`, `not-found-recovery.spec.ts`    |
-| API/client 계약      | `api-read-error.spec.ts`, `auth-token.spec.ts`, `server-route-fallback.spec.ts`          |
-| 상태 유지            | `history-tabs.spec.ts`, `state-persistence.spec.ts`                                      |
-| 접근성/키보드        | `keyboard-only.spec.ts`                                                                  |
-| 모바일 동작          | `mobile-behavior.spec.ts`                                                                |
-| 레이아웃/비주얼 회귀 | `layout-shift.spec.ts`, `visual-regression.spec.ts`                                      |
-| 취미/게임 진입       | `hobby-games.spec.ts`, `hobby-recipes.spec.ts`, `hobby-espresso.spec.ts`                 |
-| Poke Lounge          | `poke-lounge.spec.ts`, `poke-lounge-autosave.spec.ts`, `poke-lounge-multiplayer.spec.ts` |
-| Resume RAG           | `resume-rag-chat-public.spec.ts`                                                         |
-| Analytics            | `google-analytics.spec.ts`, `google-tag-manager.spec.ts`                                 |
+| 범주                 | 현재 파일                                                                                                                              |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 스모크/i18n          | `i18n-integrity.spec.ts`                                                                                                               |
+| 핵심 라우트/CTA      | `core-routes.spec.ts`, `deep-link.spec.ts`                                                                                             |
+| 장애 복구/fallback   | `error-fallback.spec.ts`, `capability-fallback.spec.ts`, `not-found-recovery.spec.ts`                                                  |
+| API/client 계약      | `api-read-error.spec.ts`, `auth-token.spec.ts`, `server-route-fallback.spec.ts`                                                        |
+| 상태 유지            | `history-tabs.spec.ts`, `state-persistence.spec.ts`                                                                                    |
+| 접근성/키보드        | `keyboard-only.spec.ts`                                                                                                                |
+| 모바일 동작          | `mobile-behavior.spec.ts`                                                                                                              |
+| 레이아웃/비주얼 회귀 | `layout-shift.spec.ts`, `visual-regression.spec.ts`                                                                                    |
+| 취미/게임 진입       | `hobby-games.spec.ts`, `hobby-recipes.spec.ts`, `hobby-espresso.spec.ts`                                                               |
+| Poke Lounge          | `poke-lounge.spec.ts`, `poke-lounge-autosave.spec.ts`, `poke-lounge-multiplayer.spec.ts`, `poke-lounge-five-player-tournament.spec.ts` |
+| Resume RAG           | `resume-rag-chat-public.spec.ts`                                                                                                       |
+| Analytics            | `google-analytics.spec.ts`, `google-tag-manager.spec.ts`                                                                               |
 
 신규 테스트는 반드시 위 범주 중 하나에 속해야 하며, 성격이 다르면 새 범주를 문서에 추가한 뒤 도입한다.
 
@@ -157,12 +157,27 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:37123 pnpm --filter @vscoke/web exec playwr
 - `PLAYWRIGHT_ENABLE_CROSS_BROWSER`
 - `PLAYWRIGHT_REUSE_EXISTING_SERVER`
 - `NEXT_DIST_DIR`
+- `TEST_DATABASE_URL` (`_test` suffix가 있는 통합 테스트 DB)
+- `POKE_LOUNGE_E2E_RUN_ROOT` (Poke Lounge checkpoint 산출물 위치)
 
 운영 규칙:
 
 - 자동 실행 시 포트와 dist 디렉토리는 프로세스 단위로 격리한다.
 - 반복 검증 서버는 고정 포트 `37123`, 고정 산출물 `.next-e2e`를 사용한다.
 - 인증 및 API 주소는 E2E 안전 기본값으로 주입한다.
+- `e2e:integration -- <spec> <Playwright args>`는 전달받은 spec과 인자를 그대로 실행한다.
+- Poke Lounge spec은 test-only API bootstrap을 사용하고 API child에만 DB 접속값과 `POKE_LOUNGE_E2E=1`, `POKE_LOUNGE_E2E_RESET_DB=1`을 전달한다.
+- Playwright/Web child에서는 DB URL과 credential을 제거하고 `POKE_LOUNGE_E2E_ENV_ISOLATED=1`만 노출한다.
+- Poke Lounge 통합 실행의 DB 이름은 반드시 `_test`로 끝나야 하며 process group 종료 시 API와 Web child를 함께 정리한다.
+
+예시:
+
+```bash
+TEST_DATABASE_URL="$TEST_DATABASE_URL" PLAYWRIGHT_WORKERS=1 \
+  pnpm --filter @vscoke/web e2e:integration -- \
+  tests/e2e/poke-lounge-five-player-tournament.spec.ts \
+  --project=chromium
+```
 
 ## 10. 비주얼 회귀 규칙
 

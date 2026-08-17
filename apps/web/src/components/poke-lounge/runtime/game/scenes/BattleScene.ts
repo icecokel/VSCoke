@@ -1,8 +1,5 @@
 import * as Phaser from "phaser";
-import {
-  canUseCompetitiveStruggle,
-  COMPETITIVE_STRUGGLE_MOVE_ID,
-} from "@vscoke/poke-lounge-battle";
+import { COMPETITIVE_STRUGGLE_MOVE_ID } from "@vscoke/poke-lounge-battle";
 import {
   BATTLE_LAYOUT,
   getBattleOptionIndexAtPoint,
@@ -112,9 +109,11 @@ import { consumeVirtualGamepadPress, resetVirtualGamepad } from "../input/virtua
 import { setShortcutGuideTouchControlsSuppressed } from "../input/mobileTouchControlsVisibility";
 import type { WildEncounterCandidate } from "../world/wildEncounters";
 import {
+  canUseAuthoritativeStruggle,
   isLegalAuthoritativeAction,
   toAuthoritativeBattleState,
 } from "../battle/authoritative-battle-adapter";
+import { persistBattlePartyToWorld, toPlayerPokemon } from "../battle/battle-world-persistence";
 import type {
   CompetitiveProjection,
   MultiplayerRoom,
@@ -434,6 +433,12 @@ export function getVisibleBoundsContainedBattleSpriteRenderBox(
 }
 
 export function formatBattleMoveMeta(move: BattleMove): string {
+  if (move.competitiveEffectSupport === "unsupported-primary") {
+    return "효과 미지원";
+  }
+  if (move.competitiveEffectSupport === "unsupported-secondary") {
+    return "부가 효과 미지원";
+  }
   return `PP ${move.pp}/${move.maxPp} ${move.type}`;
 }
 
@@ -1106,8 +1111,16 @@ export class BattleScene extends Phaser.Scene {
         pp: move.pp,
         maxPp: move.maxPp,
         type: move.type,
+        effectNotice:
+          move.competitiveEffectSupport === "unsupported-primary"
+            ? "효과 미지원"
+            : move.competitiveEffectSupport === "unsupported-secondary"
+              ? "부가 효과 미지원"
+              : null,
         selected: index === this.selectedMoveIndex,
-        disabled: isMobileBattleMoveDisabled(phase, move.pp),
+        disabled:
+          isMobileBattleMoveDisabled(phase, move.pp) ||
+          move.competitiveEffectSupport === "unsupported-primary",
       })),
       party: this.getBattlePartySlotViews().map(slot => ({
         slotIndex: slot.slotIndex,
@@ -1432,8 +1445,10 @@ export class BattleScene extends Phaser.Scene {
       const command = COMMANDS[this.selectedCommandIndex]?.command ?? "fight";
       if (command === "fight") {
         const player = projection.currentState.playersById[ownPlayerId];
-        const activePokemon = player?.team[player.activeSlotIndex];
-        if (activePokemon && canUseCompetitiveStruggle(activePokemon.moves)) {
+        const activePokemon = player?.team.find(
+          pokemon => pokemon.slotIndex === player.activeSlotIndex,
+        );
+        if (activePokemon && canUseAuthoritativeStruggle(activePokemon.moves)) {
           this.submitAuthoritativeAction({
             kind: "move",
             moveId: COMPETITIVE_STRUGGLE_MOVE_ID,
@@ -1460,11 +1475,16 @@ export class BattleScene extends Phaser.Scene {
 
     if (this.state.phase === "move-select") {
       const player = projection.currentState.playersById[ownPlayerId];
-      const activePokemon = player?.team[player.activeSlotIndex];
-      const moveId = canUseCompetitiveStruggle(activePokemon?.moves ?? [])
+      const activePokemon = player?.team.find(
+        pokemon => pokemon.slotIndex === player.activeSlotIndex,
+      );
+      const moveId = canUseAuthoritativeStruggle(activePokemon?.moves ?? [])
         ? COMPETITIVE_STRUGGLE_MOVE_ID
         : activePokemon?.moves[this.selectedMoveIndex]?.moveId;
-      if (moveId) {
+      if (
+        moveId === COMPETITIVE_STRUGGLE_MOVE_ID ||
+        (typeof moveId === "number" && Number.isSafeInteger(moveId))
+      ) {
         this.submitAuthoritativeAction({ kind: "move", moveId });
       }
       return;
@@ -1476,7 +1496,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private submitAuthoritativeAction(
-    action: { kind: "move"; moveId: string } | { kind: "switch"; slotIndex: number },
+    action: { kind: "move"; moveId: number | "struggle" } | { kind: "switch"; slotIndex: number },
   ): void {
     const projection = this.authoritativeProjection;
     const ownPlayerId = this.authoritativeOwnPlayerId;
@@ -1988,33 +2008,21 @@ export class BattleScene extends Phaser.Scene {
     const localPlayer = this.gameStateStore.getCurrentLocalPlayer();
     const previousCurrentPlayerId = this.gameStateStore.getState().currentPlayerId;
 
-    if (this.state.battleKind === "trainer") {
+    if (
+      !completedCompetitiveBattle &&
+      this.state.battleKind === "trainer" &&
+      !this.authoritativeProjection
+    ) {
       this.upsertTrainerBattleParticipant(this.state.player);
       this.upsertTrainerBattleParticipant(this.state.opponent);
       this.gameStateStore.setCurrentPlayer(previousCurrentPlayerId);
-    } else if (localPlayer.party.length === 0) {
-      this.gameStateStore.updateActivePokemon(toPlayerPokemon(this.state.player.pokemon));
     } else {
-      this.state.player.party.forEach(slot => {
-        if (slot.pokemon) {
-          this.gameStateStore.updatePokemonInPartySlot(
-            slot.slotIndex,
-            toPlayerPokemon(slot.pokemon),
-          );
-        }
+      persistBattlePartyToWorld({
+        completedCompetitiveBattle: Boolean(completedCompetitiveBattle),
+        gameStateStore: this.gameStateStore,
+        localPlayer,
+        participant: this.state.player,
       });
-
-      const activePartySlotIndex = this.state.player.activePartySlotIndex;
-      const activePartySlot = this.state.player.party.find(
-        slot => slot.slotIndex === activePartySlotIndex,
-      );
-
-      if (
-        localPlayer.activePartySlotIndex !== activePartySlotIndex &&
-        activePartySlot?.pokemon?.status !== "fainted"
-      ) {
-        this.gameStateStore.setActivePartySlot(activePartySlotIndex);
-      }
     }
 
     if (this.state.result?.reason === "capture" && this.state.result.capturedPokemon) {
@@ -3125,7 +3133,8 @@ export class BattleScene extends Phaser.Scene {
 
     resolveBattleOptionSlotRects(rect).forEach((slot, index) => {
       const move = this.state.player.pokemon.moves[index] ?? null;
-      const disabled = !move;
+      const disabled =
+        !move || move.pp <= 0 || move.competitiveEffectSupport === "unsupported-primary";
 
       this.drawBattleOptionSlot(slot, {
         selected: index === this.selectedMoveIndex && !disabled,
@@ -3580,27 +3589,6 @@ export class BattleScene extends Phaser.Scene {
 
     delete document.documentElement.dataset.pokeLoungeE2eBattle;
   }
-}
-
-function toPlayerPokemon(pokemon: BattlePokemon): PlayerPokemon {
-  return {
-    speciesId: pokemon.speciesId,
-    name: pokemon.name,
-    level: pokemon.level,
-    gender: pokemon.gender,
-    maxHp: pokemon.maxHp,
-    currentHp: pokemon.currentHp,
-    experience: pokemon.experience,
-    growthRate: pokemon.growthRate,
-    status: pokemon.status,
-    individualValues: { ...pokemon.individualValues },
-    moves: pokemon.moves.map(move => ({
-      id: move.id,
-      name: move.name,
-      pp: move.pp,
-      maxPp: move.maxPp,
-    })),
-  };
 }
 
 function resolvePreviousBattleLevel({

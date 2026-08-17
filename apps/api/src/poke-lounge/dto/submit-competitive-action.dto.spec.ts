@@ -10,7 +10,7 @@ describe('SubmitCompetitiveActionDto', () => {
   });
 
   it.each([
-    { kind: 'move', moveId: 'steady-strike' },
+    { kind: 'move', moveId: 55 },
     { kind: 'move', moveId: COMPETITIVE_STRUGGLE_MOVE_ID },
     { kind: 'switch', slotIndex: 1 },
   ])('accepts a strict legal action shape', async (action) => {
@@ -57,16 +57,14 @@ describe('SubmitCompetitiveActionDto', () => {
       ),
     ).rejects.toThrow(BadRequestException);
     await expect(
-      transform(
-        validBody({ kind: 'move', moveId: 'steady-strike', slotIndex: 1 }),
-      ),
+      transform(validBody({ kind: 'move', moveId: 55, slotIndex: 1 })),
     ).rejects.toThrow(BadRequestException);
   });
 
   function validBody(
     action: Record<string, unknown> = {
       kind: 'move',
-      moveId: 'steady-strike',
+      moveId: 55,
     },
     overrides: Record<string, unknown> = {},
   ) {

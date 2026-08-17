@@ -7,7 +7,6 @@ import {
   recordTournamentMatchResult,
 } from "@vscoke/poke-lounge-battle";
 import { createGameStateStore } from "../state/gameStateStore";
-import { APPROVED_COMPETITIVE_LOADOUT } from "./competitive-projection";
 import type { CompetitiveProjection, RoomEvent } from "./localPreviewRoom";
 
 interface FixtureSocket {
@@ -463,14 +462,14 @@ function createCompetitiveProjection(
     bracketMatchId,
     kind: "tournament-unranked",
     assignmentRevision: 1,
-    rulesetVersion: 1,
+    rulesetVersion: 2,
     rulesetHash: COMPETITIVE_RULESET_HASH,
     currentTurn: 0,
     status: "active",
     playerIds,
     stateHash: "b".repeat(64),
     currentState: {
-      rulesetVersion: 1,
+      rulesetVersion: 2,
       turn: 0,
       participantIds: playerIds,
       playersById: Object.fromEntries(
@@ -479,13 +478,26 @@ function createCompetitiveProjection(
           {
             playerId,
             activeSlotIndex: 0,
-            team: APPROVED_COMPETITIVE_LOADOUT.map(pokemon => ({
-              speciesId: pokemon.speciesId,
-              maxHp: pokemon.maxHp,
-              currentHp: pokemon.maxHp,
-              status: "none",
-              moves: pokemon.moves.map(move => ({ moveId: move.moveId, pp: move.maxPp })),
-            })),
+            team: [
+              {
+                slotIndex: 0,
+                speciesId: playerId === playerIds[0] ? 7 : 158,
+                level: playerId === playerIds[0] ? 11 : 13,
+                maxHp: 34,
+                currentHp: 34,
+                status: "normal",
+                statStages: {
+                  attack: 0,
+                  defense: 0,
+                  specialAttack: 0,
+                  specialDefense: 0,
+                  speed: 0,
+                  accuracy: 0,
+                  evasion: 0,
+                },
+                moves: [{ moveId: 55, pp: 25 }],
+              },
+            ],
           },
         ]),
       ),
@@ -1828,13 +1840,7 @@ test("BattleScene은 최신 snapshot을 적용하고 WorldScene 재구독에도 
     const unsubscribe = room.on("TOURNAMENT_STATE", applyProjection);
 
     room.connect({
-      sessionId: "session-1",
-      playerId: "player-1",
-      displayName: "Player 1",
-      map: "new-bark-town",
-      x: 656,
-      y: 446,
-      facing: "front",
+      ...createPlayerSnapshot(),
     });
     await waitFor(() => calls.some(path => path.endsWith("/ready")));
     assert.equal(store.getState().tournament.serverProjection?.revision, 15);
@@ -2137,7 +2143,7 @@ for (const deliveryOrder of ["rest-first", "socket-first"] as const) {
           assignmentRevision: snapshots.completedOldCompetitive.assignmentRevision,
           turn: 0,
           clientCommandId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-          action: { kind: "move", moveId: "steady-strike" },
+          action: { kind: "move", moveId: 55 },
         });
 
       if (deliveryOrder === "rest-first") {
@@ -2226,7 +2232,7 @@ for (const delayedSource of ["action", "seat"] as const) {
           assignmentRevision: snapshots.activeOld.competitive!.assignmentRevision,
           turn: snapshots.activeOld.competitive!.currentTurn,
           clientCommandId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-          action: { kind: "move", moveId: "steady-strike" },
+          action: { kind: "move", moveId: 55 },
         });
       }
 
@@ -2325,7 +2331,7 @@ test("legacy terminal metadata 응답은 current cache를 덮지 않고 room rec
       assignmentRevision: snapshots.completedOldCompetitive.assignmentRevision,
       turn: 0,
       clientCommandId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-      action: { kind: "move", moveId: "steady-strike" },
+      action: { kind: "move", moveId: 55 },
     });
     await waitFor(() => actionRequests === 1);
     await waitFor(() => metadataRecoveryGate.release !== undefined);
@@ -2561,6 +2567,28 @@ function createPlayerSnapshot() {
     x: 656,
     y: 446,
     facing: "front" as const,
+    activePartySlotIndex: 0,
+    party: [
+      {
+        slotIndex: 0,
+        pokemon: {
+          speciesId: 7,
+          name: "꼬부기",
+          level: 11,
+          currentHp: 34,
+          status: "normal" as const,
+          individualValues: {
+            hp: 31,
+            attack: 31,
+            defense: 31,
+            specialAttack: 31,
+            specialDefense: 31,
+            speed: 31,
+          },
+          moves: [{ id: 55, name: "물대포", pp: 25, maxPp: 25 }],
+        },
+      },
+    ],
   };
 }
 

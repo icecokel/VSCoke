@@ -1038,6 +1038,7 @@ function MobileBattleDeck({ copy }: { copy: PokeLoungeCopy }) {
               <span>{move.name}</span>
               <small>
                 PP {move.pp}/{move.maxPp} · {move.type}
+                {move.effectNotice ? ` · ${move.effectNotice}` : ""}
                 {moveReplacement ? ` · ${copy.mobile.forgetMove}` : ""}
               </small>
             </button>

@@ -2,9 +2,9 @@ import {
   COMPETITIVE_RULESET_HASH,
   COMPETITIVE_RULESET_VERSION,
   createCanonicalIdRecord,
-  createInitialBattleState,
   hashCanonicalState,
 } from '@vscoke/poke-lounge-battle';
+import { createTestInitialBattleState } from '../../../test/support/competitive-party.fixture';
 import type { CanonicalTerminalResult } from '@vscoke/poke-lounge-battle';
 import {
   toCompetitiveProjection,
@@ -15,7 +15,7 @@ import type { DataSource } from 'typeorm';
 
 describe('toCompetitiveProjection', () => {
   it('exposes only the recoverable approved battle state and current submissions', () => {
-    const state = createInitialBattleState(['player-a', 'player-b']);
+    const state = createTestInitialBattleState(['player-a', 'player-b']);
 
     const projection = toCompetitiveProjection(
       {
@@ -56,20 +56,30 @@ describe('toCompetitiveProjection', () => {
       },
     });
     expect(projection.currentState.playersById['player-a'].team[0]).toEqual({
-      speciesId: 'vscoke-alpha',
-      maxHp: 120,
-      currentHp: 120,
-      status: 'none',
-      moves: [
-        { moveId: 'steady-strike', pp: 20 },
-        { moveId: 'stun-spark', pp: 15 },
-      ],
+      speciesId: 7,
+      slotIndex: 0,
+      level: 11,
+      maxHp: 34,
+      currentHp: 34,
+      status: 'normal',
+      statStages: {
+        attack: 0,
+        defense: 0,
+        specialAttack: 0,
+        specialDefense: 0,
+        speed: 0,
+        accuracy: 0,
+        evasion: 0,
+      },
+      moves: [{ moveId: 55, pp: 1 }],
     });
+    const publicPokemon =
+      projection.currentState.playersById['player-a'].team[0];
+    expect(publicPokemon).not.toHaveProperty('attack');
+    expect(publicPokemon).not.toHaveProperty('defense');
+    expect(publicPokemon).not.toHaveProperty('specialAttack');
+    expect(publicPokemon).not.toHaveProperty('individualValues');
     const serialized = JSON.stringify(projection);
-    expect(serialized).not.toContain('attack');
-    expect(serialized).not.toContain('defense');
-    expect(serialized).not.toContain('speed');
-    expect(serialized).not.toContain('"level"');
     expect(serialized).not.toContain('account');
     expect(serialized).not.toContain('session');
     expect(serialized).not.toContain('seed');
@@ -113,7 +123,7 @@ describe('toCompetitiveProjection', () => {
       ),
     ).toThrow('requires terminal metadata');
 
-    const activeState = createInitialBattleState(['player-a', 'player-b']);
+    const activeState = createTestInitialBattleState(['player-a', 'player-b']);
     expect(() =>
       toCompetitiveProjection(
         {
@@ -258,6 +268,14 @@ describe('CompetitiveProjectionService', () => {
     ).findRoomSnapshot('room01', 4);
 
     expect(transitionQuery.andWhere).toHaveBeenCalledWith(
+      'transition.rulesetVersion = :rulesetVersion',
+      { rulesetVersion: COMPETITIVE_RULESET_VERSION },
+    );
+    expect(transitionQuery.andWhere).toHaveBeenCalledWith(
+      'transition.rulesetHash = :rulesetHash',
+      { rulesetHash: COMPETITIVE_RULESET_HASH },
+    );
+    expect(transitionQuery.andWhere).toHaveBeenCalledWith(
       'transition.terminalRoomRevision > :afterRevision',
       { afterRevision: 4 },
     );
@@ -300,7 +318,7 @@ function terminalMatch(metadata: {
   terminalEventId: string | null;
   terminalRoomRevision: number | null;
 }) {
-  const state = createInitialBattleState(['player-a', 'player-b']);
+  const state = createTestInitialBattleState(['player-a', 'player-b']);
   const terminal: CanonicalTerminalResult = {
     winnerPlayerId: 'player-a',
     loserPlayerId: 'player-b',

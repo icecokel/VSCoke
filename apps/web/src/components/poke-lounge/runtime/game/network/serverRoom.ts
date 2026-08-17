@@ -15,6 +15,7 @@ import {
   parseCompetitiveProjectionContract,
   parseCompetitiveRoomSnapshotContract,
 } from "./competitive-projection";
+import { createCompetitivePartySnapshot } from "./competitive-party-snapshot";
 import {
   findCurrentMatch,
   mapServerTournamentPlayerIds,
@@ -1195,7 +1196,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         playerId: serverPlayerId,
         sessionId,
         displayName: snapshot.displayName,
-        representativePokemon: toRepresentativePokemonSnapshot(snapshot),
+        competitiveParty: createCompetitivePartySnapshot(snapshot),
       },
       getLatestRevision,
       idempotencyKey,
@@ -1408,7 +1409,14 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     },
     sessionId,
     connect(initialSnapshot) {
-      if (disposed || connectStarted) {
+      if (disposed) {
+        return;
+      }
+
+      if (connectStarted) {
+        if (initialSnapshot && activeRoomId !== PENDING_ROOM_ID) {
+          void submitPartySnapshot(initialSnapshot).catch(() => {});
+        }
         return;
       }
 
@@ -1702,37 +1710,6 @@ function createDefaultSnapshot(sessionId: string, playerId: string): PlayerSnaps
     x: 656,
     y: 446,
     facing: "front",
-  };
-}
-
-function toRepresentativePokemonSnapshot(
-  snapshot: PlayerSnapshot,
-): ServerPartySnapshot["representativePokemon"] {
-  const partyPokemon =
-    snapshot.party?.find(slot => slot.slotIndex === snapshot.activePartySlotIndex)?.pokemon ??
-    snapshot.party?.find(slot => slot.pokemon)?.pokemon;
-
-  if (
-    !partyPokemon ||
-    !Number.isInteger(partyPokemon.speciesId) ||
-    !Number.isInteger(partyPokemon.level) ||
-    partyPokemon.currentHp === undefined ||
-    partyPokemon.maxHp === undefined ||
-    !Number.isInteger(partyPokemon.currentHp) ||
-    !Number.isInteger(partyPokemon.maxHp)
-  ) {
-    return undefined;
-  }
-
-  const currentHp = partyPokemon.currentHp;
-  const maxHp = partyPokemon.maxHp;
-
-  return {
-    speciesId: partyPokemon.speciesId,
-    name: partyPokemon.name,
-    level: partyPokemon.level,
-    currentHp,
-    maxHp,
   };
 }
 

@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { COMPETITIVE_RULESET_HASH } from "@vscoke/poke-lounge-battle";
 import {
-  APPROVED_COMPETITIVE_LOADOUT,
   CompetitiveProjectionSchemaError,
   parseCompetitiveProjection,
   parseCompetitiveProjectionContract,
@@ -17,13 +16,26 @@ function createProjection() {
       {
         playerId,
         activeSlotIndex: 0,
-        team: APPROVED_COMPETITIVE_LOADOUT.map(pokemon => ({
-          speciesId: pokemon.speciesId,
-          maxHp: pokemon.maxHp,
-          currentHp: pokemon.maxHp,
-          status: "none",
-          moves: pokemon.moves.map(move => ({ moveId: move.moveId, pp: move.maxPp })),
-        })),
+        team: [
+          {
+            slotIndex: 0,
+            speciesId: playerId === playerIds[0] ? 7 : 158,
+            level: playerId === playerIds[0] ? 11 : 13,
+            maxHp: 34,
+            currentHp: 34,
+            status: "normal",
+            statStages: {
+              attack: 0,
+              defense: 0,
+              specialAttack: 0,
+              specialDefense: 0,
+              speed: 0,
+              accuracy: 0,
+              evasion: 0,
+            },
+            moves: [{ moveId: 55, pp: 25 }],
+          },
+        ],
       },
     ]),
   );
@@ -33,14 +45,14 @@ function createProjection() {
     bracketMatchId: "game-round-1-bracket-1-match-1",
     kind: "tournament-unranked",
     assignmentRevision: 1,
-    rulesetVersion: 1,
+    rulesetVersion: 2,
     rulesetHash: COMPETITIVE_RULESET_HASH,
     currentTurn: 0,
     status: "active",
     playerIds,
     stateHash: "b".repeat(64),
     currentState: {
-      rulesetVersion: 1,
+      rulesetVersion: 2,
       turn: 0,
       participantIds: playerIds,
       playersById,
@@ -120,7 +132,7 @@ test("terminal projection은 stable event metadata를 보존한다", () => {
   assert.equal(parsed.terminalMetadataState, "stable");
 });
 
-test("legacy completed projection의 누락 metadata는 recovery 신호와 null로 복구한다", () => {
+test("완료 직후 metadata 누락 projection은 recovery 신호와 null로 복구한다", () => {
   const parsed = parseCompetitiveProjectionContract(createCompletedProjection());
 
   assert.equal(parsed.projection.terminalEventId, null);
@@ -128,7 +140,7 @@ test("legacy completed projection의 누락 metadata는 recovery 신호와 null�
   assert.equal(parsed.terminalMetadataState, "legacy-recovery-required");
 });
 
-test("legacy completed projection의 null metadata도 recovery 신호로 읽는다", () => {
+test("완료 직후 null metadata projection도 recovery 신호로 읽는다", () => {
   const parsed = parseCompetitiveProjectionContract({
     ...createCompletedProjection(),
     terminalEventId: null,
@@ -212,7 +224,7 @@ test("transition wrapper와 projection의 terminal metadata가 다르면 거부�
   );
 });
 
-test("legacy completed projection은 transition cache 입력으로 허용하지 않는다", () => {
+test("stable metadata가 없는 완료 projection은 transition cache 입력으로 허용하지 않는다", () => {
   assert.throws(
     () =>
       parseCompetitiveRoomSnapshotContract({
@@ -275,3 +287,77 @@ test("competitiveTransitions가 revision과 event ID 순서를 어기면 거부�
     CompetitiveProjectionSchemaError,
   );
 });
+
+test("서로 다른 team 길이와 비연속 physical slot을 보존한다", () => {
+  const projection = createProjection();
+  projection.currentState.playersById["player-4"].team = [
+    projection.currentState.playersById["player-4"].team[0],
+    {
+      ...projection.currentState.playersById["player-4"].team[0],
+      slotIndex: 2,
+      speciesId: 152,
+      level: 17,
+    },
+    {
+      ...projection.currentState.playersById["player-4"].team[0],
+      slotIndex: 5,
+      speciesId: 158,
+      level: 13,
+    },
+  ];
+  projection.currentState.playersById["player-4"].activeSlotIndex = 2;
+
+  const parsed = parseCompetitiveProjection(projection);
+
+  assert.deepEqual(
+    parsed.currentState.playersById["player-4"].team.map(member => member.slotIndex),
+    [0, 2, 5],
+  );
+  assert.equal(parsed.currentState.playersById["player-5"].team.length, 1);
+});
+
+for (const [name, mutate] of [
+  [
+    "7번째 member",
+    (projection: ReturnType<typeof createProjection>) => {
+      const team = projection.currentState.playersById["player-4"].team;
+      projection.currentState.playersById["player-4"].team = Array.from(
+        { length: 7 },
+        (_, slotIndex) => ({ ...team[0], slotIndex }),
+      );
+    },
+  ],
+  [
+    "duplicate slot",
+    (projection: ReturnType<typeof createProjection>) => {
+      const team = projection.currentState.playersById["player-4"].team;
+      projection.currentState.playersById["player-4"].team = [team[0], { ...team[0] }];
+    },
+  ],
+  [
+    "invalid HP",
+    (projection: ReturnType<typeof createProjection>) => {
+      projection.currentState.playersById["player-4"].team[0].currentHp = 35;
+    },
+  ],
+  [
+    "invalid PP",
+    (projection: ReturnType<typeof createProjection>) => {
+      projection.currentState.playersById["player-4"].team[0].moves[0].pp = 100;
+    },
+  ],
+  [
+    "V1 ruleset",
+    (projection: ReturnType<typeof createProjection>) => {
+      projection.rulesetVersion = 1;
+      projection.currentState.rulesetVersion = 1;
+    },
+  ],
+] as const) {
+  test(`${name} projection은 거부한다`, () => {
+    const projection = createProjection();
+    mutate(projection);
+
+    assert.throws(() => parseCompetitiveProjection(projection), CompetitiveProjectionSchemaError);
+  });
+}

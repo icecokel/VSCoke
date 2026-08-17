@@ -1,78 +1,101 @@
+import { createDefaultBattleStatStages } from "./battle-stat-stages";
 import {
   createCanonicalIdRecord,
   type CanonicalBattleState,
   type CanonicalPlayerState,
 } from "./canonical-state";
+import type { NormalizedCompetitiveParty } from "./competitive-party";
 import {
-  APPROVED_COMPETITIVE_RULESET_V1,
-  canUseCompetitiveStruggle,
-  COMPETITIVE_STRUGGLE_MOVE_ID,
   COMPETITIVE_RULESET_VERSION,
-  type CompetitiveMoveDefinition,
+  getCompetitiveMoveDefinition as getMoveDefinition,
+  type CompetitiveResolvedMoveDefinition,
 } from "./ruleset-contract";
 
 export {
-  APPROVED_COMPETITIVE_RULESET_V1,
+  APPROVED_COMPETITIVE_RULESET_V2,
   canUseCompetitiveStruggle,
+  COMPETITIVE_CATALOG_HASH,
   COMPETITIVE_RULESET_HASH,
+  COMPETITIVE_RULESET_V2,
   COMPETITIVE_STRUGGLE_MOVE_ID,
   COMPETITIVE_RULESET_VERSION,
-  type CompetitiveLoadoutEntry,
-  type CompetitiveMoveDefinition,
+  type CompetitiveResolvedMoveDefinition,
+  type CompetitiveStruggleDefinition,
 } from "./ruleset-contract";
 
-export function getCompetitiveMoveDefinition(
-  moveId: string,
-): CompetitiveMoveDefinition | undefined {
-  if (moveId === COMPETITIVE_STRUGGLE_MOVE_ID) {
-    return APPROVED_COMPETITIVE_RULESET_V1.struggle;
-  }
+export interface CompetitiveBattleParticipantInput {
+  playerId: string;
+  party: NormalizedCompetitiveParty;
+}
 
-  const moves: Readonly<Record<string, CompetitiveMoveDefinition>> =
-    APPROVED_COMPETITIVE_RULESET_V1.moves;
-  return moves[moveId];
+export function getCompetitiveMoveDefinition(
+  moveId: number | "struggle",
+): CompetitiveResolvedMoveDefinition | undefined {
+  return getMoveDefinition(moveId);
 }
 
 export function createInitialBattleState(
-  participantIds: readonly [string, string],
+  participants: readonly [CompetitiveBattleParticipantInput, CompetitiveBattleParticipantInput],
 ): CanonicalBattleState {
-  if (participantIds.some(playerId => playerId.trim().length === 0)) {
+  if (participants.some(participant => participant.playerId.trim().length === 0)) {
     throw new Error("Initial-state participant IDs must be non-empty");
   }
-  if (participantIds[0] === participantIds[1]) {
+  if (participants[0].playerId === participants[1].playerId) {
     throw new Error("Initial-state participant IDs must be distinct");
   }
 
-  const canonicalParticipantIds = [...participantIds].sort() as [string, string];
+  const canonicalParticipants = [...participants].sort((left, right) =>
+    left.playerId.localeCompare(right.playerId),
+  ) as [CompetitiveBattleParticipantInput, CompetitiveBattleParticipantInput];
+  const participantIds = canonicalParticipants.map(participant => participant.playerId) as [
+    string,
+    string,
+  ];
   const playersById = createCanonicalIdRecord<CanonicalPlayerState>(
-    canonicalParticipantIds.map(playerId => [
-      playerId,
-      {
-        playerId,
-        activeSlotIndex: 0,
-        team: APPROVED_COMPETITIVE_RULESET_V1.loadout.map(template => ({
-          speciesId: template.speciesId,
-          level: template.level,
-          maxHp: template.maxHp,
-          currentHp: template.maxHp,
-          attack: template.attack,
-          defense: template.defense,
-          speed: template.speed,
-          status: "none",
-          moves: template.moveIds.map(moveId => ({
-            moveId,
-            pp: APPROVED_COMPETITIVE_RULESET_V1.moves[moveId].maxPp,
-          })),
-        })),
-      },
+    canonicalParticipants.map(participant => [
+      participant.playerId,
+      createCanonicalPlayerState(participant),
     ]),
   );
 
   return {
     rulesetVersion: COMPETITIVE_RULESET_VERSION,
     turn: 0,
-    participantIds: canonicalParticipantIds,
+    participantIds,
     playersById,
     terminal: null,
+  };
+}
+
+function createCanonicalPlayerState(
+  participant: CompetitiveBattleParticipantInput,
+): CanonicalPlayerState {
+  const { party, playerId } = participant;
+  const active = party.members.find(member => member.slotIndex === party.activeSlotIndex);
+  if (!active || active.currentHp === 0) {
+    throw new Error("Competitive assignment requires a battle-ready active party member");
+  }
+
+  return {
+    playerId,
+    activeSlotIndex: party.activeSlotIndex,
+    team: [...party.members]
+      .sort((left, right) => left.slotIndex - right.slotIndex)
+      .map(member => ({
+        slotIndex: member.slotIndex,
+        speciesId: member.speciesId,
+        level: member.level,
+        maxHp: member.maxHp,
+        currentHp: member.currentHp,
+        attack: member.attack,
+        defense: member.defense,
+        specialAttack: member.specialAttack,
+        specialDefense: member.specialDefense,
+        speed: member.speed,
+        typeIds: member.typeIds,
+        statStages: createDefaultBattleStatStages(),
+        status: member.status,
+        moves: member.moves.map(move => ({ ...move })),
+      })),
   };
 }

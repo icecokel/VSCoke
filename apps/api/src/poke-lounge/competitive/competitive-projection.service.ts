@@ -270,9 +270,12 @@ function toPublicBattleState(
             activeSlotIndex: player.activeSlotIndex,
             team: player.team.map((combatant) => ({
               speciesId: combatant.speciesId,
+              slotIndex: combatant.slotIndex,
+              level: combatant.level,
               maxHp: combatant.maxHp,
               currentHp: combatant.currentHp,
               status: combatant.status,
+              statStages: { ...combatant.statStages },
               moves: combatant.moves.map(({ moveId, pp }) => ({ moveId, pp })),
             })),
           },

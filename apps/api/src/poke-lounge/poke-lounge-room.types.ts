@@ -1,3 +1,12 @@
+import type {
+  CompetitivePartyInput,
+  NormalizedCompetitiveParty,
+  TournamentBracketState,
+  TournamentMatch,
+  TournamentMatchResultReason,
+} from '@vscoke/poke-lounge-battle';
+import type { CompetitiveActionProjection } from './competitive/competitive-action.types';
+
 export type PokeLoungeParticipantRole = 'participant' | 'spectator';
 export type PokeLoungeRoomStatus =
   | 'waiting'
@@ -14,7 +23,9 @@ export type PokeLoungeMatchStatus = TournamentMatch['status'];
 export type PokeLoungeMatchResultReason = TournamentMatchResultReason;
 export type PokeLoungeTournamentMatch = TournamentMatch;
 export type PokeLoungeActiveMatchAuthority = 'casual' | 'server';
-export type PokeLoungeRoomCloseReason = 'legacy-room-restart-required';
+export type PokeLoungeRoomCloseReason =
+  | 'legacy-room-restart-required'
+  | 'competitive-party-not-ready';
 
 export interface PokeLoungeRoomParticipant {
   sessionId: string;
@@ -43,15 +54,23 @@ export interface PokeLoungeFinalStanding {
 }
 
 export interface PokeLoungePartySnapshot {
+  version: 2;
   playerId: string;
   displayName?: string;
-  representativePokemon?: {
+  competitiveParty: NormalizedCompetitiveParty;
+  updatedAtMs: number;
+}
+
+export interface PokeLoungePublicPartySnapshot {
+  playerId: string;
+  displayName?: string;
+  representativePokemon: {
     speciesId: number;
-    name: string;
     level: number;
     currentHp: number;
     maxHp: number;
   };
+  partySize: number;
   updatedAtMs: number;
 }
 
@@ -88,9 +107,10 @@ export interface CompetitiveTerminalTransition {
 
 export type PokeLoungePublicRoomState = Omit<
   PokeLoungeRoomState,
-  'participants'
+  'participants' | 'partySnapshots'
 > & {
   participants: PokeLoungePublicRoomParticipant[];
+  partySnapshots: Record<string, PokeLoungePublicPartySnapshot>;
   revision: number;
   expiresAtMs: number;
   competitiveTransitions: CompetitiveTerminalTransition[];
@@ -141,12 +161,6 @@ export interface UpdatePokeLoungePartySnapshotInput {
   playerId: string;
   sessionId: string;
   displayName?: string;
-  representativePokemon?: PokeLoungePartySnapshot['representativePokemon'];
+  competitiveParty: CompetitivePartyInput;
   nowMs?: number;
 }
-import type {
-  TournamentBracketState,
-  TournamentMatch,
-  TournamentMatchResultReason,
-} from '@vscoke/poke-lounge-battle';
-import type { CompetitiveActionProjection } from './competitive/competitive-action.types';

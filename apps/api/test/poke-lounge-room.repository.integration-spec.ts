@@ -13,6 +13,7 @@ import {
   createPokeLoungeTestDataSource,
   truncatePokeLoungeRoomStorage,
 } from './support/poke-lounge-test-database';
+import { createTestPartySnapshots } from './support/competitive-party.fixture';
 
 describe('PostgresPokeLoungeRoomRepository', () => {
   let dataSource: DataSource;
@@ -273,6 +274,9 @@ describe('PostgresPokeLoungeRoomRepository', () => {
       createdAtMs: nowMs,
       updatedAtMs: nowMs,
       participants,
+      partySnapshots: createTestPartySnapshots(
+        participants.map((participant) => participant.playerId),
+      ),
       round: {
         index: 1,
         phase: 'round-started',
@@ -554,6 +558,7 @@ describe('PostgresPokeLoungeRoomRepository', () => {
         createParticipant('player-a', 1_000),
         createParticipant('player-b', 1_001),
       ],
+      partySnapshots: createTestPartySnapshots(['player-a', 'player-b']),
     });
     await createRoom(repository, room);
 
@@ -590,6 +595,7 @@ describe('PostgresPokeLoungeRoomRepository', () => {
         createParticipant('player-a', 1_000),
         createParticipant('player-b', 1_001),
       ],
+      partySnapshots: createTestPartySnapshots(['player-a', 'player-b']),
     });
     await createRoom(repository, room);
     const idempotencyKey = randomUUID();

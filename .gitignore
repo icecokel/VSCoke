@@ -102,6 +102,7 @@ next-env.d.ts
 !/docs/e2e-full-feature-test-scenarios.md
 !/docs/poke-lounge-audio-sources.md
 !/docs/poke-lounge-game-concept.md
+!/docs/poke-lounge-multiplayer-test-scenarios.md
 !/docs/poke-lounge-viewport-layout.md
 !/docs/licenses/
 !/docs/licenses/kenney-audio-cc0.txt

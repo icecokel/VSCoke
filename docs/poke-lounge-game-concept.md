@@ -20,6 +20,12 @@ Poke Lounge는 비공식 Pokémon 팬 게임이다. 기술 구현이 완료됐�
 
 첫 사용자는 세션을 자동 생성하고 다음 사용자는 자동 참가한다. 참가자의 닉네임과 월드 위치는 Socket.IO로 같은 세션에 실시간 전달한다. 포획·파티·재화와 솔로 전투 진행은 각 사용자의 탭에 독립적으로 저장한다.
 
+한 세션에는 최대 6명이 참가한다. 7번째 신규 사용자는 관전자로 전환하지 않고 접속을
+거부한다. 동일 사용자는 브라우저 탭의 `playerId + sessionId` 조합으로 판별하므로 같은 탭의
+새로고침과 15초 안의 연결 복구는 기존 자리를 유지한다. 다른 탭·브라우저·기기는 같은
+닉네임과 임시 비밀번호를 입력해도 신규 사용자이며, 명시적으로 나간 뒤 다시 들어와도 새
+사용자로 참가한다.
+
 사용자에게 방 코드, 생성·참가 구분, 초대 링크, 준비 시간, Google 로그인, 경쟁전·토너먼트·점수·랭킹 선택을 요구하지 않는다. 공개 멀티플레이는 ready, party snapshot, competitive seat를 호출하지 않는다. 임시 비밀번호는 NFKC 정규화 후 브라우저에서 SHA-256 기반 6자리 세션 키로 파생하며 원문은 URL, 브라우저 저장소, API 요청에 남기지 않는다. 세션이 끝난 뒤에는 새 임시 비밀번호를 사용한다.
 
 직접 `network=local`, `network=server`, `room`, `roundMs`를 넣는 URL과 경쟁 좌석 API는 회귀·통합 테스트를 위한 내부 호환 경로다. 공개 제품 기능이나 사용자 안내 대상으로 취급하지 않는다.
@@ -376,6 +382,7 @@ targeted 1회와 fresh release 3회가 모두 5/5 통과했다. 다섯 context�
 | 주제                    | 기준 문서·코드                                                                                                    |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | 전체 모노레포 구조      | [VSCoke Monorepo Concept](./vscoke-monorepo-concept.md)                                                           |
+| 공개 멀티플레이 검증    | [Poke Lounge 공개 멀티플레이 테스트 시나리오](./poke-lounge-multiplayer-test-scenarios.md)                        |
 | 저장·룸·경쟁 구현       | `apps/api/src/poke-lounge/`, `apps/web/src/components/poke-lounge/runtime/game/`                                  |
 | terminal 수렴 완료 상태 | [Terminal Client Convergence Plan](./superpowers/plans/2026-07-16-poke-lounge-terminal-client-convergence-fix.md) |
 | 점수와 공개 랭킹        | [Game Score Policy](./game-score-policy.md)                                                                       |

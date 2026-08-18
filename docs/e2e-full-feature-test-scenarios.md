@@ -66,6 +66,7 @@ Firefox mobile emulation은 터치 동작 참고용으로만 사용한다. 실�
 | `USER_B`  | `USER_A`와 다른 Google 계정                     | 계정 전환 회귀         |
 | `USER_C`  | 선택적 세 번째 계정 또는 익명 참가자            | 계정 격리 회귀         |
 | `ANON`    | 쿠키·스토리지가 비어 있는 context               | 공개 화면, 익명 게임   |
+| `MP1~MP7` | 로그인하지 않은 독립 browser context 7개        | 공개 멀티플레이 정원   |
 | `DB_BASE` | migration 완료, Wordle 단어·레시피·원두 fixture | API 정상 경로          |
 | `DB_GAME` | ranking과 공유 결과 fixture                     | 점수·랭킹·공유         |
 | `DB_ROOM` | 테스트 시작 시 active room 없음                 | Poke Lounge room       |
@@ -361,21 +362,25 @@ pnpm smoke:api:remote
 
 ## 16. Poke Lounge: 닉네임·임시 비밀번호 멀티플레이
 
-| ID               | 우선순위/상태 | 사전조건             | 절차                                | 기대 결과                                                                            |
-| ---------------- | ------------- | -------------------- | ----------------------------------- | ------------------------------------------------------------------------------------ |
-| `POKE-MULTI-001` | P0/A          | 익명 entry           | 닉네임 없이 접속                    | 닉네임 필수 오류와 focus가 표시된다.                                                 |
-| `POKE-MULTI-002` | P0/A          | 닉네임 입력          | 임시 비밀번호 없이 접속             | 임시 비밀번호 필수 오류와 focus가 표시된다.                                          |
-| `POKE-MULTI-003` | P0/A          | 첫 browser           | 닉네임·임시 비밀번호 입력           | 파생 key로 room을 자동 생성하고 스타터 또는 저장된 게임으로 진입한다.                |
-| `POKE-MULTI-004` | P0/A          | 두 번째 browser      | 다른 닉네임·같은 임시 비밀번호 입력 | 별도 참가 선택 없이 같은 room에 참가하고 서로의 닉네임을 본다.                       |
-| `POKE-MULTI-005` | P0/A          | desktop/mobile world | 양쪽에서 이동                       | 상대의 좌표·방향이 실시간 갱신되고 identity 위조·파티 데이터는 중계되지 않는다.      |
-| `POKE-MULTI-006` | P0/A          | 공개 multiplayer     | API·Socket 요청 관측                | room은 waiting을 유지하고 ready, party snapshot, competitive seat를 호출하지 않는다. |
-| `POKE-MULTI-007` | P0/A          | 두 browser           | 서로 다른 임시 비밀번호 입력        | 서로 다른 room으로 격리된다.                                                         |
-| `POKE-MULTI-008` | P0/A          | 입력·요청·URL 관측   | 접속                                | 임시 비밀번호 원문이 URL, storage, API body, console에 남지 않는다.                  |
-| `POKE-MULTI-009` | P0/A          | desktop/mobile entry | 360/390/430과 desktop에서 입력·접속 | 모든 입력과 CTA가 game frame 안에 있고 가로 overflow가 없다.                         |
-| `POKE-MULTI-010` | P0/A          | 공개 entry           | 노출 control 검사                   | 방 코드, 생성/참가, 초대, 시간, 로그인, 경쟁전 설정이 없다.                          |
-| `POKE-MULTI-011` | P1/N          | 참가 중              | 나가기                              | room 연결을 정리하고 닉네임·임시 비밀번호 entry로 돌아간다.                          |
+공개 멀티플레이의 상세 절차, 7개 browser 정원 검증, 동일 사용자 판정, 필수 screenshot과 통과
+조건은 [Poke Lounge 공개 멀티플레이 테스트 시나리오](./poke-lounge-multiplayer-test-scenarios.md)를
+유일한 실행 기준으로 사용한다.
 
-현재 자동화 매핑: `room-entry.test.ts`, `poke-lounge.spec.ts`, `poke-lounge-mobile.spec.ts`, `poke-lounge-room.service.spec.ts`, `poke-lounge-room.e2e-spec.ts`. 실제 두 browser+API+PostgreSQL 자동 생성·참가는 통합 runner에서 확인한다.
+전체 기능 회귀에서는 다음 묶음을 P0로 실행한다.
+
+| 묶음          | 핵심 판정                                                                    |
+| ------------- | ---------------------------------------------------------------------------- |
+| 입장          | 닉네임·임시 비밀번호만 노출되고 로그인·방 설정·경쟁 설정이 없다.             |
+| 자동 연결     | 같은 임시 비밀번호의 Desktop과 Mobile이 같은 월드에서 서로의 움직임을 본다.  |
+| 정원          | 6명까지 참가하고 7번째 신규 사용자는 409 `POKE_LOUNGE_ROOM_FULL`로 거부된다. |
+| 동일 사용자   | 같은 탭의 `playerId + sessionId` 재접속은 정원과 무관하게 복원된다.          |
+| 들고나기      | 명시적 나가기 또는 15초 재접속 유예 만료 뒤 빈자리에 신규 사용자가 참가한다. |
+| 독립 플레이   | 각자의 파티·재화·인벤토리·전투 진행은 다른 참가자에게 공유되지 않는다.       |
+| 비밀값·비기능 | 임시 비밀번호 원문 비노출, Desktop/Mobile viewport와 오류 복구를 확인한다.   |
+
+현재 하위 계층 자동화는 입력·파생 key·정원 409·재접속 유예·identity 보호를 검증한다. 실제
+공개 입력을 사용하는 Desktop↔Mobile 2개 context와 정원 검증용 7개 context 통합 E2E는 보강
+대상이다.
 
 ## 17. Poke Lounge: 계정 저장·복원 호환
 
@@ -399,6 +404,9 @@ pnpm smoke:api:remote
 ## 18. Poke Lounge: 내부 서버·경쟁 구현 회귀
 
 이 절은 공개 제품 기능이 아니다. 현재 멀티플레이 제품 acceptance는 16절의 닉네임·임시 비밀번호 흐름만 사용한다. 아래 direct room URL, 경쟁 좌석, 권위전 시나리오는 기존 내부 구현을 안전하게 유지하거나 제거할 때 참고하는 통합 회귀 목록이며, 사용자에게 로그인·방 코드·경쟁전 선택을 노출할 근거로 사용하지 않는다.
+
+공개 멀티플레이 배포 판정과 운영 테스트에서는 이 절을 실행하지 않는다. 이 절의 라운드,
+승패와 최종 우승자 결과로 공개 shared world를 통과 처리해서도 안 된다.
 
 | ID             | 우선순위/상태 | 사전조건                              | 절차                            | 기대 결과                                                                                         |
 | -------------- | ------------- | ------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------- |
@@ -531,7 +539,7 @@ pnpm smoke:api:remote
 1. API contract, typecheck, lint, knip, build.
 2. API unit 및 PostgreSQL migration/E2E.
 3. Chromium에서 `NAV`, `I18N`, 주요 route, API fallback, 각 게임 진입.
-4. Poke Lounge starter→world→battle 한 경로와 server room 핵심 action.
+4. Poke Lounge starter→world→battle 한 경로와 공개 멀티플레이 입장·정원 초과 거부.
 5. 실패 시 merge 금지.
 
 현재 PR workflow는 `i18n-integrity`, `hobby-games`, `keyboard-only`만 focused 실행한다. 전체 기능 목표에는 부족하므로 다음 파일을 P0 분할 job으로 추가하는 것을 권장한다.
@@ -559,10 +567,11 @@ Chromium 전체 suite와 실제 PostgreSQL integration을 실행한다. 외부 �
 1. `pnpm e2e:cross-browser`로 Chromium, Firefox, WebKit 실행.
 2. mobile 360, 390, 430 viewport 실행.
 3. 두 익명 browser에서 같은 임시 비밀번호로 Poke Lounge 자동 생성·참가·플레이.
-4. 공통 계정 기능을 위한 실제 Google OAuth 로그인·로그아웃. Poke Lounge 멀티플레이에는 적용하지 않는다.
-5. Vercel production과 Ubuntu API smoke.
-6. visual baseline 및 CLS 확인.
-7. 운영 console error, failed request, CORS, Socket reconnect 확인.
+4. 독립 browser context 7개에서 6명 참가, 7번째 거부, 동일 세션 재접속과 빈자리 재입장.
+5. 공통 계정 기능을 위한 실제 Google OAuth 로그인·로그아웃. Poke Lounge 멀티플레이에는 적용하지 않는다.
+6. Vercel production과 Ubuntu API smoke.
+7. visual baseline 및 CLS 확인.
+8. 운영 console error, failed request, CORS, Socket reconnect 확인.
 
 ## 24. 자동화 구현 순서
 
@@ -610,7 +619,7 @@ flaky 테스트는 단순 retry 성공으로 닫지 않는다. 최초 실패 tra
 2. 사용자 입력이 있는 모든 공개 화면에 최소 한 개의 정상 경로 E2E가 있다.
 3. 각 외부 경계인 API, OAuth, PostgreSQL, Socket.IO, clipboard/share에 정상·실패 경로가 있다.
 4. Sky Drop, Wordle, Poke Lounge가 각각 실제 시작→플레이→종료→재시작 흐름을 통과한다.
-5. Poke Lounge는 익명 solo와 닉네임·임시 비밀번호 기반 실제 2인 멀티플레이를 각각 통과한다.
+5. Poke Lounge는 익명 solo, 실제 Desktop↔Mobile 2인 shared world와 6명 정원·7번째 거부를 통과한다.
 6. ko-KR, en-US, ja-JP route와 360/390/430 mobile 레이아웃이 통과한다.
 7. Firefox와 WebKit에서 P0 핵심 경로가 통과한다.
 8. critical 접근성 오류, console error, 예상하지 않은 4xx/5xx, 정적 asset 404가 없다.
@@ -619,6 +628,6 @@ flaky 테스트는 단순 retry 성공으로 닫지 않는다. 최초 실패 tra
 
 ## 27. 현재 결론
 
-현재 저장소는 route, 다국어, 취미 화면, 오류 fallback, Poke Lounge domain/저장/멀티플레이에 강한 자동화 기반이 있다. 반면 Sky Drop의 실제 플레이, Wordle 완주, 공통 점수 제출·공유, Recipe/Espresso의 실제 HTTP 계약, Google OAuth는 전체 기능 E2E 관점에서 보강이 필요하다. Poke Lounge 공개 멀티플레이는 닉네임·임시 비밀번호 두 browser 통합 runner와 `_test` DB를 사용한다.
+현재 저장소는 route, 다국어, 취미 화면, 오류 fallback, Poke Lounge domain/저장/멀티플레이에 강한 자동화 기반이 있다. 반면 Sky Drop의 실제 플레이, Wordle 완주, 공통 점수 제출·공유, Recipe/Espresso의 실제 HTTP 계약, Google OAuth는 전체 기능 E2E 관점에서 보강이 필요하다. Poke Lounge 공개 멀티플레이는 닉네임·임시 비밀번호를 사용하는 실제 Desktop↔Mobile 2인 shared world와 7개 context 정원 검증을 완료해야 한다.
 
 따라서 기존 `pnpm e2e` 통과만으로 "모든 기능 테스트 완료"라고 판정하지 않는다. 이 문서의 `N`과 `P` 항목을 자동화하거나 릴리즈 후보 수동 결과로 증명한 뒤 완료로 판정한다.

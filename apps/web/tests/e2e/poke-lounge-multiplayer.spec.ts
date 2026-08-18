@@ -28,6 +28,7 @@ import { gotoWithRetry } from "./test-helpers";
 
 type PokeLoungeWindow = Window & {
   __POKE_LOUNGE_E2E__?: {
+    getActiveSceneKey(): string | null;
     getRoomSnapshot(): {
       roomId: string | null;
       sessionId: string | null;
@@ -41,6 +42,18 @@ type PokeLoungeWindow = Window & {
         connectionStatus: "offline" | "connecting" | "online";
       };
     };
+    startWildBattleForTest(input: {
+      encounter: {
+        mapKey: string;
+        step: { from: { x: number; y: number }; to: { x: number; y: number } };
+        speciesId: number;
+        name: string;
+        level: number;
+      };
+      x: number;
+      y: number;
+      facing: "front" | "back" | "left" | "right";
+    }): unknown;
   };
   __POKE_LOUNGE_SOCKET_TEST__?: PokeLoungeSocketTestControl;
 };
@@ -1125,6 +1138,33 @@ test.describe("Poke Lounge server multiplayer", () => {
     const recoveryAfterSubscribedSnapshot = server.recoveryAfterRevisions.length;
     await page.waitForTimeout(750);
     expect(server.recoveryAfterRevisions).toHaveLength(recoveryAfterSubscribedSnapshot);
+  });
+
+  test("준비 중 야생전에 진입해도 멀티플레이 연결을 유지한다", async ({ page }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, { waitForResult: true, wrapped: true });
+    await startServerRoom(page);
+    await expect.poll(() => getConnectionStatus(page)).toBe("online");
+
+    await page.evaluate(() => {
+      (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__?.startWildBattleForTest({
+        encounter: {
+          mapKey: "town",
+          step: { from: { x: 0, y: 0 }, to: { x: 1, y: 0 } },
+          speciesId: 19,
+          name: "꼬렛",
+          level: 5,
+        },
+        x: 656,
+        y: 446,
+        facing: "front",
+      });
+    });
+
+    await waitForActiveScene(page, "battle");
+    expect(await getConnectionStatus(page)).toBe("online");
+    expect((await getSocketState(page)).connected).toBe(true);
   });
 
   test("최초 connect_error는 capped REST recovery를 시작하고 dispose 후 정리된다", async ({

@@ -39,6 +39,7 @@ import {
   type WorldTournamentBattleResult,
 } from "./world-scene-tournament";
 import { resolvePersistedWorldSpawn, shouldPersistSoloWorldPosition } from "./world-scene-spawn";
+import { shouldDisposeRoomOnWorldShutdown } from "./world-scene-room-lifecycle";
 import {
   createWorldSceneEncounters,
   type WildBattleStartInput,
@@ -436,6 +437,10 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    const shouldDisposeRoom = shouldDisposeRoomOnWorldShutdown(
+      this.encounters.isBattleIntroPlaying(),
+      this.preserveRoomForBattle,
+    );
     if (this.player) {
       this.persistLocalPlayerPositionIfChanged();
     }
@@ -459,7 +464,7 @@ export class WorldScene extends Phaser.Scene {
     this.remotePlayerSnapshots.clear();
     this.lastLocalSnapshotSyncKey = "";
     this.cursors = null;
-    if (!this.preserveRoomForBattle) {
+    if (shouldDisposeRoom) {
       this.room.dispose();
       this.gameStateStore.setSession({
         sessionId: null,

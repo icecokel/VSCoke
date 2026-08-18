@@ -4,6 +4,14 @@
 
 이 문서는 `POST /game/result`로 저장되는 공개 랭킹 점수의 서버 검증 기준을 정리한다. 현재 정책의 source of truth는 `apps/api/src/game/game-score-policy.ts`다.
 
+이 문서는 현재 API 점수·공개 랭킹 구현 정책이다. 확정됐지만 아직 구현되지 않은 Poke Lounge
+3라운드 누적 점수와 최종 우승 규칙은
+[3라운드 챔피언십 규칙](./poke-lounge-rules/three-round-championship.md)을 따른다. 챔피언십
+라운드 점수는 각 포켓몬의 `currentHp / maxHp * 100`을 합산하고 세 라운드 동안 누적한다.
+기존 match 승패 점수와 토너먼트 순위 배점은 이 값에 포함하지 않는다. 방 안의 챔피언십
+점수와 전역 공개 랭킹 반영 여부도 별개이며 챔피언십 누적 점수를 일반 `POST /game/result`로
+제출하지 않는다.
+
 ## 현재 정책
 
 현재 API에 등록된 랭킹용 게임 타입은 `SKY_DROP`, `POKE_LOUNGE`다. Wordle은 웹 게임 라우트가 있지만 현재 `POST /game/result` 랭킹 저장 타입에는 포함되지 않는다.

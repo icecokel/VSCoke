@@ -10,7 +10,10 @@
 즐긴다.
 
 이 문서의 모든 `P0` 시나리오를 통과해야 현재 멀티플레이 기능을 정상으로 판정한다. 공개
-멀티플레이에는 라운드, 승패와 최종 우승 조건이 없다.
+멀티플레이의 현재 구현에는 라운드, 승패와 최종 우승 조건이 없다. 확정됐지만 아직 구현되지
+않은 3라운드 누적 점수 챔피언십은
+[3라운드 챔피언십 규칙](./poke-lounge-rules/three-round-championship.md)에서 관리하며, 이
+shared-world 인수 테스트의 통과만으로 챔피언십을 검증했다고 판정하지 않는다.
 
 ## 2. 제품 계약
 
@@ -263,6 +266,7 @@ Authorization header를 요구해서는 안 된다.
 
 ## 10. 기준 문서
 
+- [Poke Lounge 게임 규칙 인덱스](./poke-lounge-rules/index.md)
 - [Poke Lounge Game Concept](./poke-lounge-game-concept.md)
 - [VSCoke Monorepo Concept](./vscoke-monorepo-concept.md)
 - [VSCoke 전체 기능 E2E 테스트 시나리오](./e2e-full-feature-test-scenarios.md)

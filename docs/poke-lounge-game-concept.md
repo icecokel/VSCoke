@@ -5,6 +5,11 @@
 
 이 문서는 Poke Lounge의 플레이 경험, 게임 규칙, 멀티플레이 구조와 현재 제품 경계를 한곳에 정리한 기준 문서다. 사용자에게 보이는 게임 컨셉을 먼저 설명하고, 그 컨셉을 지탱하는 서버 권위·저장·검증 구조를 뒤에서 연결한다.
 
+제품 규칙은 [Poke Lounge 게임 규칙 인덱스](./poke-lounge-rules/index.md)에서 시작한다. 이
+문서는 현재 구현된 플레이 경험의 개요이며, 확정됐지만 아직 구현되지 않은 3라운드 누적 점수
+챔피언십은 [3라운드 챔피언십 규칙](./poke-lounge-rules/three-round-championship.md)을 따른다.
+챔피언십 라운드 점수는 토너먼트 순위 배점이 아니라 파티 포켓몬의 남은 체력 비율 합계다.
+
 Poke Lounge는 비공식 Pokémon 팬 게임이다. 기술 구현이 완료됐거나 배포 빌드가 통과했다는 사실은 Pokémon 관련 명칭·표장·데이터·에셋의 공개 사용 권리를 의미하지 않는다. 현재 공개 출시 권리 상태는 [Poke Lounge Release Gate](./poke-lounge-release-gate.md) 기준 `UNRESOLVED`다.
 
 ## 한 문장 컨셉
@@ -205,7 +210,8 @@ seed 2 ─────────────── bye ─┘
 
 여러 ready match를 동시에 열지 않고 서버가 한 경기씩 순차 활성화한다. 5인 경기에서 seed 5가 첫 매치를 이기면 다음 ready match는 `seed 1 vs seed 5`, 이어서 `seed 3 vs seed 2` 순서다. 한 방에는 최대 6명만 참가할 수 있으며 7번째 신규 사용자의 접속은 거부한다. 기존 참가자의 동일 세션 재접속은 정원과 관계없이 허용하고, 참가자가 방에서 나가 자리가 비면 새 사용자의 입장을 허용한다.
 
-방 내부 토너먼트 순위 점수는 다음과 같다.
+현재 내부 호환 토너먼트의 레거시 순위 점수는 다음과 같다. 이 표는 3라운드 챔피언십의
+남은 체력 비율 점수가 아니며 새 챔피언십 누적 점수에 사용하지 않는다.
 
 | 순위 | 점수 |
 | ---: | ---: |
@@ -381,6 +387,7 @@ targeted 1회와 fresh release 3회가 모두 5/5 통과했다. 다섯 context�
 
 | 주제                    | 기준 문서·코드                                                                                                    |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| 제품 게임 규칙          | [Poke Lounge 게임 규칙 인덱스](./poke-lounge-rules/index.md)                                                      |
 | 전체 모노레포 구조      | [VSCoke Monorepo Concept](./vscoke-monorepo-concept.md)                                                           |
 | 공개 멀티플레이 검증    | [Poke Lounge 공개 멀티플레이 테스트 시나리오](./poke-lounge-multiplayer-test-scenarios.md)                        |
 | 저장·룸·경쟁 구현       | `apps/api/src/poke-lounge/`, `apps/web/src/components/poke-lounge/runtime/game/`                                  |
@@ -393,10 +400,7 @@ targeted 1회와 fresh release 3회가 모두 5/5 통과했다. 다섯 context�
 | 공통 전투·대진 규칙     | `packages/poke-lounge-battle/`                                                                                    |
 | 5환경 검증              | `apps/web/tests/e2e/poke-lounge-five-player-tournament.spec.ts`                                                   |
 
-세부 기술 문서와 현재 코드가 이 문서와 충돌하면 다음 우선순위로 판단한다.
-
-1. 현재 실행 코드와 migration
-2. 2026-07-16 terminal 수렴 완료 기록
-3. Game Score Policy
-4. 이 컨셉 문서
-5. 과거 port·roadmap·implementation plan
+제품 목표는 게임 규칙 인덱스와 연결 문서를 우선한다. 현재 구현 여부는 실행 코드, migration과
+테스트를 우선한다. 확정 규칙과 현재 구현이 다르면 규칙을 삭제하거나 코드가 이미 구현됐다고
+간주하지 않고 구현 공백으로 관리한다. 과거 port·roadmap·implementation plan은 결정 배경과
+구현 이력으로만 사용한다.

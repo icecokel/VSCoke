@@ -3,6 +3,7 @@ import test from "node:test";
 import { getExperienceForLevel } from "../battle/experience";
 import {
   formatRankScoreHud,
+  formatRoundHudText,
   getPokemonExperienceProgress,
   getPokemonHpRatio,
 } from "./world-scene-hud";
@@ -42,5 +43,22 @@ test("랭크와 점수 HUD는 솔로와 계정 기록을 구분한다", () => {
   assert.equal(
     formatRankScoreHud({ rank: 12, score: 345 }, "competitive"),
     "계정 기록\n랭크 12 · 점수 345",
+  );
+});
+
+test("라운드 HUD는 시작까지 남은 시간을 초 단위로 표시한다", () => {
+  assert.equal(
+    formatRoundHudText(
+      {
+        phase: "preparation",
+        roundIndex: 1,
+        totalRounds: 3,
+        preparationDurationMs: 300_000,
+        phaseStartedAtMs: 1_000,
+        preparationEndsAtMs: 301_000,
+      },
+      271_001,
+    ),
+    "라운드 1/3 시작까지\n00:30",
   );
 });

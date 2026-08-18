@@ -5,6 +5,7 @@ import {
   DEFAULT_PREPARATION_DURATION_MS,
   formatRoundTimer,
   getRoundRemainingMs,
+  type GameRoundState,
 } from "../round/roundState";
 import type {
   GameStateStore,
@@ -201,27 +202,8 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
 
   private formatRoundHudText(nowMs: number): string {
     const round = this.dependencies.gameStateStore.getState().round;
-    const visibleRound = Math.max(1, round.roundIndex);
 
-    if (round.phase === "preparation") {
-      return `Round ${visibleRound}/${round.totalRounds}\n${formatRoundTimer(
-        getRoundRemainingMs(round, nowMs),
-      )}`;
-    }
-
-    if (round.phase === "tournament") {
-      return `Round ${visibleRound}/${round.totalRounds}\nTournament`;
-    }
-
-    if (round.phase === "round-result") {
-      return `Round ${visibleRound}/${round.totalRounds}\nResult`;
-    }
-
-    if (round.phase === "game-result") {
-      return "Game Result";
-    }
-
-    return "Round 대기";
+    return formatRoundHudText(round, nowMs);
   }
 
   createPartyHud(): void {
@@ -871,4 +853,28 @@ export function formatRankScoreHud(
   return mode === "solo"
     ? "솔로 모드\n랭킹 미반영"
     : `계정 기록\n랭크 ${rankLabel} · 점수 ${scoreLabel}`;
+}
+
+export function formatRoundHudText(round: GameRoundState, nowMs: number): string {
+  const visibleRound = Math.max(1, round.roundIndex);
+
+  if (round.phase === "preparation") {
+    return `라운드 ${visibleRound}/${round.totalRounds} 시작까지\n${formatRoundTimer(
+      getRoundRemainingMs(round, nowMs),
+    )}`;
+  }
+
+  if (round.phase === "tournament") {
+    return `라운드 ${visibleRound}/${round.totalRounds}\n토너먼트 진행`;
+  }
+
+  if (round.phase === "round-result") {
+    return `라운드 ${visibleRound}/${round.totalRounds}\n결과`;
+  }
+
+  if (round.phase === "game-result") {
+    return "최종 결과";
+  }
+
+  return "라운드 대기";
 }

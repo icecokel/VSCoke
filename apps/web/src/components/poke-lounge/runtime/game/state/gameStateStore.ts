@@ -10,6 +10,7 @@ import type { PokemonIndividualValues } from "../battle/individual-values";
 import type { PokemonGender } from "../battle/pokemon-gender";
 import { isSupportedPokemonSpeciesId } from "../battle/pokemon-species";
 import {
+  ROUND_TOTAL_COUNT,
   createDefaultRoundState,
   startPreparationRound as startPreparationRoundState,
   transitionPreparationIfExpired,
@@ -1453,7 +1454,7 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
           ...state.round,
           phase: roundPhase,
           roundIndex: input.roundIndex,
-          totalRounds: 1,
+          totalRounds: ROUND_TOTAL_COUNT,
           preparationDurationMs: input.roomRound.durationMs,
           phaseStartedAtMs:
             input.roomRound.startedAtMs ??
@@ -1926,7 +1927,7 @@ function normalizeScore(score: unknown): number {
     return 0;
   }
 
-  return Math.max(0, Math.floor(parsedScore));
+  return Math.max(0, parsedScore);
 }
 
 function normalizePositiveInteger(value: unknown): number | null {

@@ -1,5 +1,6 @@
 import {
   advanceTournamentAuthorityMatch,
+  createTerminalHpScores,
   hashCompetitiveActionRequest,
   isSupportedCompetitiveRuleset,
   resolveTurnReceipts,
@@ -52,6 +53,17 @@ describe('hashCompetitiveActionRequest', () => {
 });
 
 describe('competitive action resolution guards', () => {
+  it('scores the authoritative terminal teams by remaining HP ratio', () => {
+    const state = createTestInitialBattleState(['player-1', 'player-2']);
+    const player2 = state.playersById['player-2'];
+    player2.team[0].currentHp = 0;
+
+    expect(createTerminalHpScores(state)).toEqual({
+      'player-1': 100,
+      'player-2': 0,
+    });
+  });
+
   it('publishes verified history only for ranked head-to-head matches', () => {
     expect(shouldPublishVerifiedHistory('ranked-head-to-head')).toBe(true);
     expect(shouldPublishVerifiedHistory('tournament-unranked')).toBe(false);
@@ -432,6 +444,7 @@ describe('advanceTournamentAuthorityMatch', () => {
       bracketMatchId: firstMatchId,
       kind: 'tournament-unranked',
       assignmentRevision: 1,
+      currentState: createTestInitialBattleState(['player-4', 'player-5']),
       completedAt: new Date(2_000),
       terminalResult: {
         winnerPlayerId: 'player-4',

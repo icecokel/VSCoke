@@ -9,6 +9,7 @@ describe('toPokeLoungePublicRoomState', () => {
       ...createTestPartySnapshot('player-a'),
       displayName: 'Player A',
     };
+    snapshot.tournament.roundScores = { 'player-a': 75 };
 
     const publicRoom = toPokeLoungePublicRoomState(snapshot);
 
@@ -27,6 +28,7 @@ describe('toPokeLoungePublicRoomState', () => {
     expect(JSON.stringify(publicRoom.partySnapshots)).not.toMatch(
       /individualValues|moves|attack|defense|speed/,
     );
+    expect(publicRoom.tournament).not.toHaveProperty('roundScores');
   });
 });
 

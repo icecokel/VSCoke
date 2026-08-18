@@ -141,6 +141,34 @@ test("서버 준비 단계는 서버 endsAt 기준 남은 시간을 표시한다
     casualBattleAvailable: null,
   });
 
-  assert.match(text, /준비 중 · 00:30/);
+  assert.match(text, /라운드 1\/3 준비 중 · 00:30/);
+  assert.ok(text.split("\n").length <= 7);
+});
+
+test("다음 라운드 준비 단계는 내 누적 HP 비율 순위와 점수를 표시한다", () => {
+  const projection = createFivePlayerProjection();
+  projection.roomStatus = "round-started";
+  projection.roundIndex = 2;
+  projection.roomRound.index = 2;
+  projection.roomRound.phase = "round-started";
+  projection.tournament.bracket = null;
+  projection.tournament.activeMatchId = null;
+  projection.tournament.activeMatchAuthority = null;
+  projection.tournament.cumulativeScores = {
+    "player-1": 125,
+    "player-2": 200,
+    "player-3": 100,
+    "player-4": 133.3333,
+    "player-5": 50,
+  };
+
+  const text = createServerTournamentAnnouncementText({
+    projection,
+    nowMs: 2_000,
+    casualBattleAvailable: null,
+  });
+
+  assert.match(text, /라운드 2\/3 준비 중/);
+  assert.match(text, /내 누적 순위 · 2위 · 133\.33점/);
   assert.ok(text.split("\n").length <= 7);
 });

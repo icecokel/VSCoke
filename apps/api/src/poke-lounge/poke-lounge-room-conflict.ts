@@ -78,6 +78,13 @@ export function toPokeLoungePublicRoomState(
 ): PokeLoungePublicRoomState {
   return {
     ...room,
+    tournament: {
+      version: room.tournament.version,
+      bracket: structuredClone(room.tournament.bracket),
+      activeMatchId: room.tournament.activeMatchId,
+      activeMatchAuthority: room.tournament.activeMatchAuthority,
+      cumulativeScores: structuredClone(room.tournament.cumulativeScores),
+    },
     partySnapshots: Object.fromEntries(
       Object.entries(room.partySnapshots).map(([playerId, snapshot]) => [
         playerId,

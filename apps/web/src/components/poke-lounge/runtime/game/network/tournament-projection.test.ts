@@ -71,6 +71,21 @@ test("preparation의 null bracket과 null authority는 정상 lobby projection�
   );
 });
 
+test("남은 체력 비율 누적 점수의 유한한 소수 값을 보존한다", () => {
+  const tournament = parseServerTournamentState(
+    {
+      version: 2,
+      bracket: null,
+      activeMatchId: null,
+      activeMatchAuthority: null,
+      cumulativeScores: { "player-1": 133.3333 },
+    },
+    2,
+  );
+
+  assert.equal(tournament.cumulativeScores["player-1"], 133.3333);
+});
+
 test("5인 canonical projection은 seed 4/5 match와 seed 1/3/2 bye를 보존한다", () => {
   const tournament = parseServerTournamentState(createFivePlayerServerTournament(), 1);
 

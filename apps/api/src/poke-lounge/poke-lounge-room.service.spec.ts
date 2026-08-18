@@ -9,6 +9,7 @@ import { FakePokeLoungeRoomRepository } from '../../test/support/fake-poke-loung
 import {
   createTestCompetitivePartyInput,
   createTestPartySnapshot,
+  createTestPartySnapshots,
 } from '../../test/support/competitive-party.fixture';
 import type { PokeLoungeRoomEventPublisher } from './poke-lounge-room-event.publisher';
 import type {
@@ -953,7 +954,7 @@ describe('PokeLoungeRoomService', () => {
     }
   });
 
-  it('accepts authorized tournament results and returns final standings', async () => {
+  it('accepts authorized tournament results and starts the next game round', async () => {
     const tournament = await createTournament();
 
     const completed = await service.submitMatchResult(
@@ -971,12 +972,14 @@ describe('PokeLoungeRoomService', () => {
     );
 
     expect(completed).toMatchObject({
-      status: 'completed',
+      status: 'round-started',
       revision: tournament.revision + 1,
-      finalStandings: [
-        { playerId: 'player-1', rank: 1, score: 100 },
-        { playerId: 'player-2', rank: 2, score: 70 },
-      ],
+      round: { index: 2, phase: 'round-started' },
+      tournament: {
+        bracket: null,
+        cumulativeScores: { 'player-1': 100, 'player-2': 100 },
+      },
+      finalStandings: [],
     });
     publisher.publish.mockClear();
     await expect(
@@ -1042,22 +1045,11 @@ describe('PokeLoungeRoomService', () => {
     );
 
     expect(completed).toMatchObject({
-      status: 'completed',
+      status: 'round-started',
+      round: { index: 2, phase: 'round-started' },
       tournament: {
-        bracket: {
-          completedRounds: [
-            {
-              matches: [
-                {
-                  status: 'completed',
-                  winnerPlayerId: 'player-2',
-                  loserPlayerId: 'player-1',
-                  resultReason: 'forfeit',
-                },
-              ],
-            },
-          ],
-        },
+        bracket: null,
+        cumulativeScores: { 'player-1': 100, 'player-2': 100 },
       },
     });
   });
@@ -1075,6 +1067,9 @@ describe('PokeLoungeRoomService', () => {
       connected: true,
       joinedAtMs: index,
     }));
+    room.partySnapshots = createTestPartySnapshots(
+      room.participants.map((participant) => participant.playerId),
+    );
     const bracket = createTournamentBracketState(
       room.participants.map(({ playerId, displayName }) => ({
         playerId,
@@ -1159,10 +1154,18 @@ describe('PokeLoungeRoomService', () => {
     );
 
     expect(completed).toMatchObject({
-      status: 'completed',
+      status: 'round-started',
+      round: { index: 2, phase: 'round-started' },
       tournament: {
         activeMatchId: null,
-        bracket: { championPlayerId: 'player-4' },
+        bracket: null,
+        cumulativeScores: {
+          'player-1': 100,
+          'player-2': 100,
+          'player-3': 100,
+          'player-4': 100,
+          'player-5': 100,
+        },
       },
     });
   });

@@ -141,7 +141,7 @@ test("preparation snapshot은 bracket과 current match를 조기에 만들지 �
     ok: true,
   });
   assert.equal(store.getState().round.phase, "preparation");
-  assert.equal(store.getState().round.totalRounds, 1);
+  assert.equal(store.getState().round.totalRounds, 3);
   assert.equal(store.getState().round.preparationDurationMs, 300_000);
   assert.equal(store.getState().round.phaseStartedAtMs, 1_000);
   assert.equal(store.getState().round.preparationEndsAtMs, 301_000);

@@ -4,6 +4,7 @@ import {
   POKE_LOUNGE_ACTIVE_ROOM_LEASE_MS,
   POKE_LOUNGE_PENDING_PRESENCE_LEASE_MS,
   advancePokeLoungeRoomClock,
+  completePokeLoungeTournamentMatch,
   expirePendingPokeLoungePresence,
   getPokeLoungeRoomExpiresAtMs,
   isPokeLoungeRoomExpired,
@@ -145,7 +146,7 @@ describe('PokeLoungeRoomPolicy', () => {
 
     expect(expirePendingPokeLoungePresence(room, pendingUntilMs)).toMatchObject(
       {
-        status: 'completed',
+        status: 'round-started',
         participants: [
           {
             playerId: 'player-1',
@@ -157,23 +158,79 @@ describe('PokeLoungeRoomPolicy', () => {
         ],
         tournament: {
           activeMatchId: null,
-          bracket: {
-            championPlayerId: 'player-2',
-            completedRounds: [
-              {
-                matches: [
-                  {
-                    winnerPlayerId: 'player-2',
-                    loserPlayerId: 'player-1',
-                    resultReason: 'forfeit',
-                  },
-                ],
-              },
-            ],
-          },
+          bracket: null,
+          cumulativeScores: { 'player-1': 100, 'player-2': 100 },
         },
+        round: { index: 2, phase: 'round-started' },
       },
     );
+  });
+
+  it('completes three game rounds and ranks the champion by cumulative HP ratio', () => {
+    let room = createSnapshot({
+      status: 'round-started',
+      participants: [
+        createParticipant('player-1', 1),
+        createParticipant('player-2', 2),
+      ],
+      round: {
+        index: 1,
+        phase: 'round-started',
+        durationMs: 1_000,
+        startedAtMs: 0,
+        endsAtMs: 1_000,
+      },
+    });
+    const rounds = [
+      {
+        winnerPlayerId: 'player-1',
+        scores: { 'player-1': 150, 'player-2': 50 },
+      },
+      {
+        winnerPlayerId: 'player-2',
+        scores: { 'player-1': 100, 'player-2': 200 },
+      },
+      {
+        winnerPlayerId: 'player-1',
+        scores: { 'player-1': 75.5, 'player-2': 25 },
+      },
+    ] as const;
+
+    for (const [index, round] of rounds.entries()) {
+      const advanced = advancePokeLoungeRoomClock(room, room.round.endsAtMs!);
+      expect(advanced).not.toBeNull();
+      room = advanced!;
+      completePokeLoungeTournamentMatch(
+        room,
+        room.tournament.activeMatchId!,
+        round.winnerPlayerId,
+        'faint',
+        2_000 + index,
+        round.scores,
+      );
+
+      if (index < 2) {
+        expect(room).toMatchObject({
+          status: 'round-started',
+          round: { index: index + 2, phase: 'round-started' },
+          tournament: { bracket: null, roundScores: {} },
+        });
+      }
+    }
+
+    expect(room).toMatchObject({
+      status: 'completed',
+      round: { index: 3, phase: 'completed', endsAtMs: null },
+      tournament: {
+        activeMatchId: null,
+        roundScores: {},
+        cumulativeScores: { 'player-1': 325.5, 'player-2': 275 },
+      },
+      finalStandings: [
+        { playerId: 'player-1', rank: 1, score: 325.5 },
+        { playerId: 'player-2', rank: 2, score: 275 },
+      ],
+    });
   });
 
   it('advances an elapsed round once with deterministic tournament matches', () => {

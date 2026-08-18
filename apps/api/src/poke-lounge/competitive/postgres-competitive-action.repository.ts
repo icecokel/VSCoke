@@ -9,8 +9,10 @@ import {
   createSeededRandom,
   hashCanonicalState,
   resolveTurn,
+  scoreRemainingHpPercentage,
   validateCompetitiveAction,
   type CanonicalCompetitiveAction,
+  type CanonicalBattleState,
   type CanonicalTerminalResult,
 } from '@vscoke/poke-lounge-battle';
 import { DataSource, type EntityManager } from 'typeorm';
@@ -507,6 +509,7 @@ export async function advanceTournamentAuthorityMatch(
     terminal.winnerPlayerId,
     terminal.reason,
     completedMatch.completedAt?.getTime() ?? Date.now(),
+    createTerminalHpScores(completedMatch.currentState),
   );
   convergeOfflinePokeLoungeTournamentMatches(
     state,
@@ -551,6 +554,21 @@ export function shouldPublishVerifiedHistory(
   kind: CompetitiveMatchKind,
 ): boolean {
   return kind === 'ranked-head-to-head';
+}
+
+export function createTerminalHpScores(
+  state: Pick<CanonicalBattleState, 'participantIds' | 'playersById'>,
+): Record<string, number> {
+  return Object.fromEntries(
+    state.participantIds.map((playerId) => {
+      const team = state.playersById[playerId]?.team;
+      if (!team?.length) {
+        throw new Error(`Competitive team is missing for ${playerId}`);
+      }
+
+      return [playerId, scoreRemainingHpPercentage(team)];
+    }),
+  );
 }
 
 export function hashCompetitiveActionRequest(

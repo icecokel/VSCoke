@@ -60,9 +60,9 @@ export function createTournamentResultRows({
       rankLabel: `${standing.rank}위`,
       rankTieLabel: tiedRanks.has(standing.rank) ? "공동" : null,
       roundScore,
-      roundScoreLabel: `이번 +${roundScore}`,
+      roundScoreLabel: `이번 +${formatTournamentScore(roundScore)}`,
       cumulativeScore,
-      cumulativeScoreLabel: `방 점수 ${cumulativeScore}`,
+      cumulativeScoreLabel: `방 점수 ${formatTournamentScore(cumulativeScore)}`,
       champion: standing.champion,
     };
   });
@@ -80,7 +80,7 @@ export function createTournamentResultPanelViewModel({
   return {
     title: createTournamentResultTitle({ roundIndex, totalRounds, final }),
     final,
-    nextActionLabel: final ? "토너먼트 종료" : "다음 라운드 시작",
+    nextActionLabel: final ? "챔피언십 종료" : "다음 라운드 시작",
     rankingLabel: publicRankingIncluded ? "공개 랭킹 반영" : "공개 랭킹 미반영",
     rows: createTournamentResultRows({ standings, roundScores, cumulativeScores }),
   };
@@ -101,9 +101,10 @@ export function createTournamentResultTitle({
 }
 
 export function formatTournamentResultRow(row: TournamentResultRow): string {
+  const championLabel = row.champion ? "우승 · " : "";
   const tieLabel = row.rankTieLabel ? `${row.rankTieLabel} ` : "";
 
-  return `${tieLabel}${row.rankLabel} ${truncateDisplayName(row.displayName)} · ${row.roundScoreLabel} · ${row.cumulativeScoreLabel}`;
+  return `${championLabel}${tieLabel}${row.rankLabel} ${truncateDisplayName(row.displayName)} · ${row.roundScoreLabel} · ${row.cumulativeScoreLabel}`;
 }
 
 function truncateDisplayName(displayName: string): string {
@@ -137,5 +138,11 @@ function readScore(scores: TournamentResultScoreLookup | undefined, playerId: st
     return 0;
   }
 
-  return Math.max(0, Math.floor(score));
+  return Math.max(0, score);
+}
+
+function formatTournamentScore(score: number): string {
+  const rounded = Math.round(score * 100) / 100;
+
+  return String(rounded);
 }

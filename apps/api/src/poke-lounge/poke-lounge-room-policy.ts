@@ -2,10 +2,9 @@ import {
   accumulateTournamentScores,
   createTournamentBracketState,
   getReadyTournamentMatches,
-  getTournamentStandings,
   rankCumulativeTournamentScores,
   recordTournamentMatchResult,
-  scoreTournamentStandings,
+  scoreRemainingHpPercentage,
 } from '@vscoke/poke-lounge-battle';
 import type { PokeLoungeRoomSnapshot } from './poke-lounge-room.repository';
 import type { PokeLoungeRoomState } from './poke-lounge-room.types';
@@ -18,6 +17,7 @@ export const POKE_LOUNGE_ROOM_CAPACITY = 200;
 export const POKE_LOUNGE_CREATION_ADVISORY_LOCK = 742198451;
 export const POKE_LOUNGE_ACTIVE_ROOM_LEASE_MS = 2 * HOUR_MS;
 export const POKE_LOUNGE_PENDING_PRESENCE_LEASE_MS = 15_000;
+export const POKE_LOUNGE_GAME_ROUND_COUNT = 3;
 const MAX_TOURNAMENT_WALKOVERS = 12;
 
 export function getPokeLoungeRoomExpiresAtMs(
@@ -176,8 +176,10 @@ export function createTournamentState(
     .filter((participant) => {
       return (
         participant.role === 'participant' &&
-        participant.connected &&
-        participant.presencePendingUntilMs === undefined
+        Boolean(
+          room.partySnapshots[participant.playerId]?.competitiveParty.members
+            .length,
+        )
       );
     })
     .sort((left, right) => {
@@ -199,6 +201,7 @@ export function createTournamentState(
     bracket,
     activeMatchId: getReadyTournamentMatches(bracket)[0]?.matchId ?? null,
     activeMatchAuthority: 'casual',
+    roundScores: {},
     cumulativeScores: structuredClone(room.tournament.cumulativeScores),
   };
 }
@@ -222,6 +225,7 @@ export function normalizeLegacyPokeLoungeRoomSnapshot(
     bracket: null,
     activeMatchId: null,
     activeMatchAuthority: null,
+    roundScores: {},
     cumulativeScores: structuredClone(tournament.cumulativeScores ?? {}),
   };
   normalized.revision = room.revision + 1;
@@ -248,10 +252,27 @@ export function completePokeLoungeTournamentMatch(
   winnerPlayerId: string,
   reason: PokeLoungeMatchResultReason,
   nowMs: number,
+  terminalHpScores?: Readonly<Record<string, number>>,
 ): void {
   const bracket = room.tournament.bracket;
   if (!bracket) {
     throw new Error('Tournament bracket is not initialized');
+  }
+  const match = bracket.currentRound?.matches.find(
+    (candidate) => candidate.matchId === matchId,
+  );
+  const loserPlayerId = match?.participantIds.find(
+    (playerId) => playerId !== winnerPlayerId,
+  );
+  if (!match || !loserPlayerId) {
+    throw new Error('Tournament match participants are invalid');
+  }
+  const roundScores = { ...(room.tournament.roundScores ?? {}) };
+  if (terminalHpScores) {
+    roundScores[loserPlayerId] = requireRoundHpScore(
+      terminalHpScores,
+      loserPlayerId,
+    );
   }
 
   room.tournament.bracket = recordTournamentMatchResult(
@@ -263,17 +284,43 @@ export function completePokeLoungeTournamentMatch(
   room.updatedAtMs = nowMs;
 
   if (room.tournament.bracket.status === 'completed') {
-    const roundScores = scoreTournamentStandings(
-      getTournamentStandings(room.tournament.bracket),
+    if (terminalHpScores) {
+      roundScores[winnerPlayerId] = requireRoundHpScore(
+        terminalHpScores,
+        winnerPlayerId,
+      );
+    }
+    const scoreRows = room.tournament.bracket.participants.map(
+      (participant) => ({
+        ...participant,
+        rank: participant.seed,
+        score:
+          roundScores[participant.playerId] ??
+          scoreFrozenParty(room, participant.playerId),
+      }),
     );
     room.tournament.cumulativeScores = accumulateTournamentScores(
       room.tournament.cumulativeScores,
-      roundScores,
+      scoreRows,
     );
     room.tournament.activeMatchId = null;
     room.tournament.activeMatchAuthority = null;
+    room.tournament.roundScores = {};
+
+    if (room.round.index < POKE_LOUNGE_GAME_ROUND_COUNT) {
+      room.status = 'round-started';
+      room.round.index += 1;
+      room.round.phase = 'round-started';
+      room.round.startedAtMs = nowMs;
+      room.round.endsAtMs = nowMs + room.round.durationMs;
+      room.tournament.bracket = null;
+      room.finalStandings = [];
+      return;
+    }
+
     room.status = 'completed';
     room.round.phase = 'completed';
+    room.round.endsAtMs = null;
     room.finalStandings = rankCumulativeTournamentScores(
       room.tournament.cumulativeScores,
       room.tournament.bracket.participants,
@@ -285,6 +332,8 @@ export function completePokeLoungeTournamentMatch(
     }));
     return;
   }
+
+  room.tournament.roundScores = roundScores;
 
   room.tournament.activeMatchId =
     getReadyTournamentMatches(room.tournament.bracket)[0]?.matchId ?? null;
@@ -347,6 +396,7 @@ export function convergeOfflinePokeLoungeTournamentMatches(
       winnerPlayerId,
       'forfeit',
       nowMs,
+      createFrozenMatchHpScores(room, match.participantIds),
     );
     completed.push({
       matchId: match.matchId,
@@ -356,6 +406,36 @@ export function convergeOfflinePokeLoungeTournamentMatches(
   }
 
   throw new Error('Tournament offline-forfeit convergence exceeded its bound');
+}
+
+function createFrozenMatchHpScores(
+  room: PokeLoungeRoomState,
+  playerIds: readonly string[],
+): Record<string, number> {
+  return Object.fromEntries(
+    playerIds.map((playerId) => [playerId, scoreFrozenParty(room, playerId)]),
+  );
+}
+
+function scoreFrozenParty(room: PokeLoungeRoomState, playerId: string): number {
+  const party = room.partySnapshots[playerId]?.competitiveParty.members;
+  if (!party?.length) {
+    throw new Error(`Tournament party is missing for ${playerId}`);
+  }
+
+  return scoreRemainingHpPercentage(party);
+}
+
+function requireRoundHpScore(
+  scores: Readonly<Record<string, number>>,
+  playerId: string,
+): number {
+  const score = scores[playerId];
+  if (typeof score !== 'number' || !Number.isFinite(score) || score < 0) {
+    throw new Error(`Tournament HP score is invalid for ${playerId}`);
+  }
+
+  return score;
 }
 
 function selectWalkoverWinner(

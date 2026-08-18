@@ -530,7 +530,7 @@ function parseCumulativeScores(
         !parseId(playerId) ||
         (bracket && !participantIds.has(playerId)) ||
         typeof score !== "number" ||
-        !Number.isSafeInteger(score) ||
+        !Number.isFinite(score) ||
         score < 0
       ) {
         throw new TournamentProjectionSchemaError();

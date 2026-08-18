@@ -2,6 +2,7 @@ import {
   accumulateTournamentScores,
   DEFAULT_TOURNAMENT_SCORE_BY_RANK,
   rankCumulativeTournamentScores,
+  scoreRemainingHpPercentage,
   scoreTournamentStandings,
 } from "./tournament-scoring";
 
@@ -41,6 +42,16 @@ describe("tournament scoring", () => {
       { playerId: "player-2", rank: 1 },
       { playerId: "player-3", rank: 3 },
     ]);
+  });
+
+  it("sums each party member remaining HP percentage without placement points", () => {
+    expect(
+      scoreRemainingHpPercentage([
+        { currentHp: 39, maxHp: 39 },
+        { currentHp: 15, maxHp: 30 },
+        { currentHp: 0, maxHp: 44 },
+      ]),
+    ).toBe(150);
   });
 });
 

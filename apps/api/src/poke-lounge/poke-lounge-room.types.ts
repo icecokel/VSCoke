@@ -94,6 +94,7 @@ export interface PokeLoungeRoomState {
     bracket: TournamentBracketState | null;
     activeMatchId: string | null;
     activeMatchAuthority: PokeLoungeActiveMatchAuthority | null;
+    roundScores?: Record<string, number>;
     cumulativeScores: Record<string, number>;
   };
   finalStandings: PokeLoungeFinalStanding[];

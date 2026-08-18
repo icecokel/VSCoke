@@ -5,6 +5,7 @@ import {
   createTournamentMatchResultAuthorityPayload,
 } from "../network/tournamentAuthority";
 import type { PlayerSnapshot } from "../network/localPreviewRoom";
+import { ROUND_TOTAL_COUNT } from "../round/roundState";
 import {
   findCurrentMatch,
   type TournamentCompetitionKind,
@@ -521,6 +522,11 @@ export function createServerTournamentAnnouncementText({
     lines.push(ownStatus);
   }
 
+  const cumulativeStatus = createOwnCumulativeStatusLabel(projection);
+  if (cumulativeStatus) {
+    lines.push(cumulativeStatus);
+  }
+
   lines.push(createCompetitionKindLabel(projection.competitionKind));
 
   if (
@@ -545,7 +551,7 @@ function createServerRoomStageLabel(projection: TournamentStateRoomPayload, nowM
   if (projection.roomStatus === "round-started") {
     const remainingMs = Math.max(0, (projection.roomRound.endsAtMs ?? nowMs) - nowMs);
 
-    return `준비 중 · ${formatRemainingTime(remainingMs)}`;
+    return `라운드 ${projection.roundIndex}/${ROUND_TOTAL_COUNT} 준비 중 · ${formatRemainingTime(remainingMs)}`;
   }
 
   if (projection.roomStatus === "completed") {
@@ -559,6 +565,36 @@ function createServerRoomStageLabel(projection: TournamentStateRoomPayload, nowM
   const currentRoundNumber = projection.tournament.bracket?.currentRound?.roundNumber;
 
   return currentRoundNumber ? `토너먼트 진행 · 대진 ${currentRoundNumber}` : "대진 준비 중";
+}
+
+function createOwnCumulativeStatusLabel(projection: TournamentStateRoomPayload): string | null {
+  if (projection.roomStatus !== "round-started" || projection.roundIndex <= 1) {
+    return null;
+  }
+
+  const ranked = projection.participants
+    .filter(participant => participant.role === "participant")
+    .map((participant, index) => ({
+      playerId: participant.playerId,
+      score: projection.tournament.cumulativeScores[participant.playerId] ?? 0,
+      order: index,
+    }))
+    .sort((left, right) => right.score - left.score || left.order - right.order);
+  const ownIndex = ranked.findIndex(row => row.playerId === projection.ownPlayerId);
+  if (ownIndex < 0) {
+    return null;
+  }
+  const previous = ranked[ownIndex - 1];
+  const rank =
+    previous?.score === ranked[ownIndex]!.score
+      ? ranked.findIndex(row => row.score === ranked[ownIndex]!.score) + 1
+      : ownIndex + 1;
+
+  return `내 누적 순위 · ${rank}위 · ${formatScore(ranked[ownIndex]!.score)}점`;
+}
+
+function formatScore(score: number): string {
+  return String(Math.round(Math.max(0, score) * 100) / 100);
 }
 
 function createOwnTournamentStatusLabel(

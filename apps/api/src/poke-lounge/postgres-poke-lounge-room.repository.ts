@@ -24,6 +24,7 @@ import { PokeLoungeCompetitiveAction } from './competitive/competitive-action.en
 import { createCompetitiveAssignment } from './competitive/competitive-match.service';
 import { toCompetitiveParties } from './competitive/postgres-competitive-match.repository';
 import {
+  createTerminalHpScores,
   finalizeCompetitiveTerminalMatch,
   resolveTurnReceipts,
 } from './competitive/postgres-competitive-action.repository';
@@ -398,6 +399,7 @@ export async function ensureActiveTournamentAssignment(
       playerAccounts: true,
       status: true,
       terminalResult: true,
+      currentState: true,
       completedAt: true,
     },
   });
@@ -430,6 +432,7 @@ export async function ensureActiveTournamentAssignment(
             playerAccounts: true,
             status: true,
             terminalResult: true,
+            currentState: true,
             completedAt: true,
           },
         });
@@ -453,6 +456,7 @@ export async function ensureActiveTournamentAssignment(
           existing.terminalResult.winnerPlayerId,
           existing.terminalResult.reason,
           existing.completedAt?.getTime() ?? nowFromSnapshot(snapshot),
+          createTerminalHpScores(existing.currentState),
         );
         await ensureActiveTournamentAssignment(
           manager,

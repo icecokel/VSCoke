@@ -156,7 +156,7 @@ function subscribeToFinalGameResult(
       state.tournament.scoresByPlayerId[playerId] ??
       state.playersById[playerId]?.competitive.score ??
       0;
-    const score = Number.isFinite(rawScore) ? Math.max(0, Math.floor(rawScore)) : 0;
+    const score = Number.isFinite(rawScore) ? Math.max(0, rawScore) : 0;
 
     onGameResult({ playerId, score });
   });

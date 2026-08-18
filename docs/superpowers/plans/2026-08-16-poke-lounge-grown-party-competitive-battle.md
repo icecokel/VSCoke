@@ -1,8 +1,9 @@
-# Poke Lounge 육성 파티 경쟁전 전환 상세 작업 계획
+# Poke Lounge 육성 파티 경쟁전 전환 상세 작업 계획 — 현재 구현 반영본
 
-> 이 문서는 구현자가 제품·데이터·호환 정책을 추가로 결정하지 않고 위에서 아래 순서대로
-> 실행할 수 있는 작업 명세다. 요구사항은 두 가지다. 경쟁전의 고정 포켓몬·고정 레벨·고정
-> 파티 크기 규칙을 제거하고, 각 플레이어가 준비 시간 동안 실제로 모으고 키운 파티로
+> 최초 작성 시점에는 위에서 아래로 실행하는 작업 명세였고, 현재는 `main`의 구현과 남은
+> release gate를 함께 기록하는 구현 기준 문서다. 구현 기준 commit은
+> `597dd51 fix(poke-lounge):육성 파티 경쟁전 V2 보완`이다. 경쟁전의 고정 포켓몬·고정 레벨·
+> 고정 파티 크기 규칙을 제거하고, 각 플레이어가 준비 시간 동안 실제로 모으고 키운 파티로
 > 전투한다. 고정 loadout, 고정 레벨, mock 파티 fallback은 허용하지 않는다.
 
 **목표:** 준비 시간이 끝나는 순간까지 서버에 commit된 각 플레이어의 최신 파티를 동결하고,
@@ -14,6 +15,15 @@ competitive action receipt, terminal convergence를 그대로 사용한다. 새 
 
 **기술 스택:** Next.js 15, React 19, Phaser 3.90, NestJS 11, TypeORM, PostgreSQL,
 Socket.IO, `@vscoke/poke-lounge-battle`, Jest, Node test runner, Playwright, pnpm 9.12.0.
+
+**현재 상태:** V2 파티 계약, 서버 정규화, 동적 assignment, 실제 numeric species/move 표시,
+V1 room migration과 unranked 정책은 구현됐다. 별도 2인 실제 Desktop/Mobile 육성 파티
+Playwright spec은 만들지 않았고, 현재 자동화는 Web의 `poke-lounge-multiplayer.spec.ts`, API
+E2E·repository integration, 실제 5-context `poke-lounge-five-player-tournament.spec.ts`로 나뉜다.
+서로 다른 성장 파티를 사용한 2인 실제 브라우저 terminal·전용 screenshot gate는 남은 검증이다.
+
+**문서 해석:** 아래 Task 0~8의 commit 블록은 최초 계획의 단계별 경계다. 실제 반영은 PR #45의
+squash commit 하나로 이루어졌으므로 현재 작업에서 같은 commit 순서를 다시 만들 필요는 없다.
 
 ---
 
@@ -47,8 +57,8 @@ Socket.IO, `@vscoke/poke-lounge-battle`, Jest, Node test runner, Playwright, pnp
 
 ### 1.3 경쟁전 기술 지원 범위
 
-이번 작업은 파티 연결 버그를 해결하며 471개 기술 효과를 새로 완성하는 작업은 아니다. 대신
-기술을 다른 기술로 바꾸는 현재의 조용한 fallback은 제거한다.
+이번 작업은 파티 연결 버그를 해결하며 카탈로그 1~470의 모든 기술 효과를 새로 완성하는 작업은
+아니다. 대신 기술을 다른 기술로 바꾸는 기존의 조용한 fallback은 제거한다.
 
 - 모든 기술은 실제 numeric move ID, 이름, 타입, 분류, 위력, 명중, PP를 유지한다.
 - 물리·특수 공격은 기존 Gen 4 대미지, STAB, 타입 상성, 명중, 급소, 85~100% 난수를 사용한다.
@@ -104,9 +114,10 @@ Socket.IO, `@vscoke/poke-lounge-battle`, Jest, Node test runner, Playwright, pnp
 
 ---
 
-## 2. 현재 버그와 수정 경계
+## 2. 전환 전 버그와 현재 수정 경계
 
-현재 흐름은 다음과 같다.
+전환 전 흐름은 다음과 같았다. 아래 V1 흐름은 현재 구현 설명이 아니라 회귀 금지 대상으로
+보존한 기록이다.
 
 ```txt
 Web GameStateStore
@@ -181,7 +192,8 @@ export interface CompetitivePartyInput {
 }
 ```
 
-HTTP body는 기존 identity 필드를 유지한다.
+공개 HTTP body는 기존 identity 필드를 유지하되 클라이언트가 서버 시간을 주입할 수 없게
+`nowMs`를 받지 않는다.
 
 ```ts
 export interface UpdatePokeLoungePartySnapshotInput {
@@ -189,11 +201,12 @@ export interface UpdatePokeLoungePartySnapshotInput {
   sessionId: string;
   displayName?: string;
   competitiveParty: CompetitivePartyInput;
-  nowMs?: number;
 }
 ```
 
-클라이언트는 `name`, `maxHp`, 파생 능력치, 타입, move name/maxPp를 보내지 않는다.
+`PokeLoungeRoomService` 내부 입력 타입에는 결정론적 unit test를 위한 `nowMs?`가 남아 있지만,
+controller는 `withoutClientNowMs()`로 이를 제거한다. 클라이언트는 `name`, `maxHp`, 파생 능력치,
+타입, move name/maxPp도 보내지 않는다.
 
 ### 3.2 API 내부 room snapshot
 
@@ -460,8 +473,10 @@ room.tournament.activeMatchId = null;
 room.tournament.activeMatchAuthority = null;
 ```
 
-Web 오류 copy는 기존 `server-room-error-copy.ts`의 ko/en/ja 테이블을 확장해 새 방 참가 안내를
-표시한다. 고정 파티로 계속 진행하는 버튼은 추가하지 않는다.
+Web은 파티 mutation 자체가 실패했을 때 `server-room-error-copy.ts`의 ko/en/ja
+`ROOM_PARTY_SYNC_FAILED` 문구를 표시한다. `competitive-party-not-ready` close reason은 public
+room snapshot과 OpenAPI에는 있으나 현재 Web에 전용 안내 문구로 매핑하지 않았다. 별도 안내가
+필요하면 후속 UI 작업으로 추가하며, 고정 파티로 계속 진행하는 버튼은 만들지 않는다.
 
 ---
 
@@ -591,6 +606,7 @@ secondary-effect
 - Create: `packages/poke-lounge-battle/src/gen4-pokemon-stats.ts`
 - Create: `packages/poke-lounge-battle/src/gen4-type-chart.ts`
 - Create: `packages/poke-lounge-battle/src/battle-stat-stages.ts`
+- Create: `packages/poke-lounge-battle/src/competitive-ruleset-config.ts`
 - Modify: `packages/poke-lounge-battle/src/ruleset-contract.ts`
 - Modify: `packages/poke-lounge-battle/src/ruleset.ts`
 - Modify: `packages/poke-lounge-battle/src/resolve-turn.ts`
@@ -619,6 +635,8 @@ secondary-effect
 - Create: `apps/api/src/migrations/1794960000000-close-legacy-poke-lounge-competitive-rooms.ts`
 - Create: `apps/api/src/migrations/1794960000000-close-legacy-poke-lounge-competitive-rooms.spec.ts`
 - Modify: `apps/api/scripts/start-poke-lounge-e2e-api.ts`
+- Create: `apps/api/test/support/competitive-party.fixture.ts`
+- Modify: 관련 service/repository/integration/E2E `*.spec.ts`
 - Generate: `apps/api/openapi.json`
 - Generate: `apps/web/src/types/api.d.ts`
 
@@ -633,10 +651,14 @@ secondary-effect
 - Modify: `apps/web/src/components/poke-lounge/runtime/game/scenes/WorldScene.ts`
 - Modify: `apps/web/src/components/poke-lounge/runtime/game/scenes/BattleScene.ts`
 - Modify: `apps/web/src/components/poke-lounge/runtime/game/battle/authoritative-battle-adapter.ts`
+- Create: `apps/web/src/components/poke-lounge/runtime/game/battle/battle-world-persistence.ts`
+- Create: `apps/web/src/components/poke-lounge/runtime/game/battle/battle-world-persistence.spec.ts`
 - Modify: Web의 기존 Gen 4 math/stat/type/stage 파일을 shared export 재사용으로 전환
 - Modify: `apps/web/src/components/poke-lounge/runtime/game/server-room-error-copy.ts`
+- Modify: `apps/web/src/components/poke-lounge/runtime/game/gamePageStartup.ts`
+- Modify: 모바일 shell과 battle UI의 V2 표시 경계
 - Modify: 관련 Web unit tests
-- Create: `apps/web/tests/e2e/poke-lounge-grown-party-competitive.spec.ts`
+- Modify: `apps/web/tests/e2e/poke-lounge-multiplayer.spec.ts`
 - Modify: `apps/web/tests/e2e/poke-lounge-five-player-tournament.spec.ts`
 - Modify: `apps/web/scripts/playwright-integration-runner.mjs`
 
@@ -715,7 +737,9 @@ pnpm test:web
 
 #### RED
 
-`competitive-catalog.spec.ts`에 다음을 먼저 작성한다.
+별도 `competitive-catalog.spec.ts`는 만들지 않았다. catalog bounds/count/hash와 대표 종·기술
+fixture는 `competitive-party.spec.ts`, ruleset과 catalog hash 결합은 `ruleset.spec.ts`에서
+검증한다.
 
 - species 1과 493이 있고 494는 없다.
 - move 1과 470이 있고 0은 없다.
@@ -910,27 +934,29 @@ feat(poke-lounge):전체 파티 스냅샷 검증 추가
 1. `advancePokeLoungeRoomClock()`에서 active participant의 V2 snapshot 존재 여부를 먼저
    검사한다.
 2. 실패하면 closed snapshot을 만들고 bracket/assignment를 만들지 않는다.
-3. `CompetitiveAssignmentCreateContext`에 `partyByPlayerId`를 추가하지 말고, 더 안전하게
-   `players` 각 항목에 `party`를 붙인다.
+3. 현재 `CompetitiveAssignmentCreateContext`는 identity 전용 `players`와 생성 순간에만 쓰는
+   `parties: Record<playerId, NormalizedCompetitiveParty>`를 분리한다.
 
 ```ts
-players: [
-  CompetitivePlayerAccount & { party: NormalizedCompetitiveParty },
-  CompetitivePlayerAccount & { party: NormalizedCompetitiveParty },
-];
+interface CompetitiveAssignmentCreateContext {
+  players: [CompetitivePlayerAccount, CompetitivePlayerAccount];
+  parties: Record<string, NormalizedCompetitiveParty>;
+}
 ```
 
-`CompetitiveAssignmentPlayerInput`을 별도 타입으로 만들고, assignment의 `playerAccounts`에는
-`playerId`와 `accountId`만 새 객체로 복사한다. `party`를 player account JSON에 저장하거나
-`...context` spread로 assignment의 extra property에 남기지 않는다.
+`createCompetitiveAssignment()`이 두 값을 player ID로 결합해 `initialState`를 만든다. DB entity와
+public projection은 `parties`나 IV 원문을 별도 column/property로 노출하지 않고, identity는
+`playerAccounts`, 전투 상태는 `initialState/currentState`에 저장한다.
 
-4. `createCompetitiveAssignment()`은 caller의 `kind` 입력을 제거하고 항상
-   `tournament-unranked`를 기록한다.
+4. `CompetitiveMatchKind`와 `createCompetitiveAssignment()`의 `kind` 입력은 완료된 legacy
+   `ranked-head-to-head` row 호환을 위해 유지한다. 신규 V2 assignment를 만드는 모든 caller는
+   `tournament-unranked`만 전달한다.
 5. 아래 세 assignment 경로를 모두 수정한다.
    - `ensureActiveTournamentAssignment()`
    - `PostgresCompetitiveMatchRepository.bindSeatAndAssign()`
    - `createNextCompetitiveAssignment()` in competitive action repository
-6. `planCompetitiveSeatBinding()`의 `assignmentKind` 계산을 제거한다.
+6. `planCompetitiveSeatBinding()`의 `assignmentKind`는 `tournament-unranked | null`만 계산한다.
+   `ranked-head-to-head`를 새로 선택하는 분기는 없다.
 7. 다음 match 생성은 room `partySnapshots`를 다시 읽고 새 initial state를 만든다.
 8. completed terminal transition query는 V2 version/hash만 반환한다.
 9. `shouldPublishVerifiedHistory()`는 legacy ranked row에만 true를 유지하되 새 assignment에서는
@@ -979,7 +1005,7 @@ feat(poke-lounge):준비 종료 파티를 대전에 연결
 - full party payload exact 변환
 - name/maxHp 파생값 미전송
 - missing IV/move/currentHp이면 명시적 local invalid 결과
-- party 변경 stable key 변경, 위치만 변경하면 key 불변
+- 빈 physical slot을 건너뛰되 원래 slot 번호 유지
 
 `competitive-battle-launch.test.ts`:
 
@@ -991,23 +1017,25 @@ feat(poke-lounge):준비 종료 파티를 대전에 연결
 `server-room-snapshot-replay.test.ts`:
 
 - initial workflow는 party 성공 뒤에만 ready 전송
-- wild BattleScene 복귀 시 같은 room의 최신 party를 다시 전송
-- tournament 상태에서는 refresh 전송하지 않음
+- 로컬 party 변경 시 같은 room의 최신 party를 다시 전송
+- tournament 이후 mutation은 서버의 locked 409가 최종 방어선임을 확인
 
 #### GREEN
 
-1. `competitive-party-snapshot.ts`에 다음 pure 함수를 둔다.
-   - `createCompetitivePartyPayload(playerSnapshot)`
-   - `createCompetitivePartySyncKey(playerSnapshot)`
+1. `competitive-party-snapshot.ts`의 `createCompetitivePartySnapshot(playerSnapshot)`이 서버에
+   보내는 최소 V2 payload를 만든다.
 2. serverRoom initial workflow는 payload 변환 실패 시 ready로 진행하지 않고
    `ROOM_PARTY_SYNC_FAILED`를 발행한다.
 3. `MultiplayerRoom.connect(snapshot)`이 이미 연결된 room에서 다시 호출되면
-   `waiting | round-started`일 때만 새 idempotency key로 party refresh를 보낸다.
-4. WorldScene의 sync key는 위치를 제외하고 player ID/display/active slot/full party만 포함한다.
-5. BattleScene이 비권위 wild/casual 결과를 store에 반영한 직후, scene 전환 전에 room이 있으면
-   `PLAYER_CHANGED_MAP`으로 최신 party를 보낸다.
-6. authoritative battle 종료에서는 월드 party를 update/upsert하지 않는다. 서버 PvP 피해가
-   `GameStateStore`에 덮어써지지 않게 `authoritativeProjection !== null` 분기를 먼저 둔다.
+   party refresh를 시도할 수 있다. lifecycle 허용 여부는 API가 결정하며 tournament 이후에는
+   `POKE_LOUNGE_PARTY_SNAPSHOT_LOCKED`로 거절한다.
+4. WorldScene의 `createLocalSnapshotSyncKey()`는 위치를 제외하고 player ID/display/active
+   slot/full party만 포함한다.
+5. BattleScene은 `persistBattlePartyToWorld()`로 비권위 wild/casual 결과를 store에 반영한다.
+   WorldScene store subscription이 변경을 감지해 `PLAYER_CHANGED_MAP`을 보내므로 BattleScene이
+   room transport를 직접 호출하지 않는다.
+6. `persistBattlePartyToWorld()`은 완료된 authoritative battle이면 즉시 반환한다. 서버 PvP
+   피해·PP·상태를 `GameStateStore`에 덮어쓰지 않는다.
 7. projection parser의 고정 array size/loadout 검증을 V2 generic invariant로 바꾼다.
 8. `MAX_COMPETITIVE_ARRAY_ITEMS`를 participant action용 2와 team용 6으로 분리한다.
 9. adapter의 `SPECIES_VIEW`, `MOVE_VIEW`를 제거한다.
@@ -1017,8 +1045,9 @@ feat(poke-lounge):준비 종료 파티를 대전에 연결
 13. unsupported primary status move는 disabled, unsupported secondary effect는 별도 badge/copy를
     표시한다.
 14. party select는 six physical slots를 유지하고 빈 slot을 그대로 표시한다.
-15. “육성 파티 대전 · 공개 랭킹 미반영” copy를 기존 Poke Lounge locale copy 경계에 ko/en/ja로
-    추가한다.
+15. 현재 Web은 authority를 “서버 권위전 · 공개 랭킹 미반영”, 규칙을 “전투 규칙 · 육성 파티 ·
+    레벨 유지”로 나눠 표시한다. 모바일 battle dock도 같은 move 지원 상태와 disabled 판단을
+    사용한다.
 16. adapter가 `BattlePokemon` presentation model을 채울 때 runtime species base stat/type과
     actual level을 사용한다. IV가 없는 public projection에서 만든 표시용 능력치는 서버 전투
     계산에 재사용하지 않으며, authoritative action은 계속 move ID/switch slot만 전송한다.
@@ -1147,24 +1176,30 @@ chore(poke-lounge):V1 경쟁 방 전환 정리
   `POKE_LOUNGE_E2E_ENV_ISOLATED=1`만 준다.
 - `_test` suffix guard와 process group cleanup을 유지한다.
 
-#### 7.3 2인 성장 파티 E2E
+#### 7.3 현재 2인 자동화 범위
 
-새 `poke-lounge-grown-party-competitive.spec.ts`는 serial 단일 시나리오로 작성한다.
+별도 `poke-lounge-grown-party-competitive.spec.ts`는 현재 만들지 않았다. 다음 세 계층이 역할을
+나눠 검증한다.
 
-1. Desktop Chromium/e2e-user-1이 방을 만든다.
-2. Mobile Chromium 390×844 touch/e2e-user-2가 참가한다.
-3. Desktop은 꼬부기 species 7을 Lv11로 성장시킨다.
-4. Mobile은 리아코 species 158을 Lv13으로 성장시킨다.
-5. 양쪽 full snapshot commit을 REST assertion으로 확인한다.
-6. 준비 마감 뒤 DB test-only assertion에서 initialState를 확인한다.
-7. Desktop 화면은 꼬부기 Lv11, Mobile 화면은 리아코 Lv13이어야 한다.
-8. 양쪽이 실제 numeric move를 최소 한 번 제출한다.
-9. 한쪽 active가 쓰러지면 실제 frozen party의 다음 slot으로 switch한다.
-10. terminal까지 진행하고 양쪽 result/standings가 같은 winner로 수렴한다.
-11. match kind는 `tournament-unranked`, verified history count는 0이다.
-12. network/DB/UI text 어디에도 `vscoke-alpha`, `vscoke-beta`, 양쪽 Lv50 동일화가 없다.
+1. `poke-lounge-multiplayer.spec.ts`
+   - numeric species/move projection과 실제 이름·레벨 표시
+   - full party snapshot 전송, initial party→ready 순서, revision recovery
+   - authoritative move/switch/terminal UI와 월드 파티 비오염
+   - 이 spec의 room/API transport는 browser route fixture를 사용한다.
+2. API E2E와 repository integration
+   - 서로 다른 V2 party, frozen initial state, numeric action, terminal, 다음 assignment reset
+   - internal IV 보존과 public redaction
+   - `tournament-unranked`와 verified history 0개
+3. `poke-lounge-five-player-tournament.spec.ts`
+   - 실제 PostgreSQL, REST, Socket.IO, 다섯 인증 identity
+   - Desktop Chromium/Firefox/WebKit과 Mobile Chromium/WebKit의 action·terminal·recovery 수렴
 
-Playwright는 아래 checkpoint screenshot을 test output과 run root에 남긴다.
+`apps/api/scripts/start-poke-lounge-e2e-api.ts`의 test-only assertion은 internal party 요약,
+initial/current match state, kind/ruleset/action count, verified history count를 제공한다. IV 원문과 DB
+credential은 artifact에 쓰지 않는다.
+
+서로 다른 성장 결과를 실제 두 browser에서 만들고 terminal까지 완주하는 전용 시나리오는 아직
+남아 있다. 추가할 때는 아래 checkpoint를 최소 증거로 유지한다.
 
 ```txt
 01-desktop-grown-party.png
@@ -1176,34 +1211,38 @@ Playwright는 아래 checkpoint screenshot을 test output과 run root에 남긴�
 07-mobile-final.png
 ```
 
-`apps/api/scripts/start-poke-lounge-e2e-api.ts`의 test-only assertion response에 다음을 추가한다.
+#### 7.4 현재 5인 bracket 회귀
 
-- internal party snapshot의 species/level/slot/move ID 요약
-- match initialState의 species/level/slot/move ID
-- match kind/rulesetVersion/action count
-- verified history count
+기존 5-player spec은 실제 API/DB/Socket과 다섯 browser context, 첫 active match, touch action,
+terminal→두 번째 round assignment, full reload, same-page reconnect, recovery cursor,
+screenshot/run report를 검증한다. 두 번째 round 진입 뒤 남은 match를 실행하지 않으므로 현재 증거를
+“모든 round 완료”나 “최종 우승자 확인”으로 판정하지 않는다.
 
-IV 원문과 DB credential은 artifact에 쓰지 않는다.
+5-player spec은 다음 순서로 최종 우승자까지 확장한다.
 
-#### 7.4 5인 bracket 회귀
+1. `currentRound`의 모든 active match를 차례로 실행하고 각 match의 양쪽 실제 UI action을 남긴다.
+2. 각 match는 `reason=faint` terminal로 끝나야 한다. timeout·forfeit 결과는 실패로 처리한다.
+3. terminal 뒤 다음 assignment가 열릴 때 frozen party의 species/level/move/physical slot이 같고 이전
+   PvP HP/status/PP가 새 initial state에 누적되지 않았는지 browser와 DB 양쪽에서 확인한다.
+4. round와 match별 Desktop/Mobile 시작·action·switch·terminal screenshot을 수집한다. 파일명에는
+   `round-{roundNumber}-match-{matchNumber}`와 실행 환경을 포함한다.
+5. 마지막 match 뒤 bracket `status=completed`, `currentRound=null`, `championPlayerId`가 확정되고
+   다섯 browser, REST projection, DB standings의 1위가 같은 player인지 확인한다.
+6. `completedRounds`의 모든 실제 match가 terminal이고 action count가 0보다 큰지 확인한다.
 
-기존 5-player spec fixture를 각기 다른 species/level/party size로 바꾼다.
+현재 starter 진입 흐름을 사용하므로 각 참가자를 서로 다른 species/level/party size로 성장시키는
+assertion은 없다. 아래 항목은 2인 전용 live gate와 함께 남은 확장 범위다.
 
-- 첫 active match가 actual party로 시작한다.
-- bye player의 frozen party가 다음 match에도 같다.
-- 이전 match PvP 피해가 다음 initial state에 없다.
-- spectator는 match 시작 전 public room response에서 full move/IV를 볼 수 없다.
-- 기존 terminal→next assignment, reload, reconnect, Socket 수렴 assertion은 유지한다.
+- bye player의 서로 다른 frozen party가 다음 match에도 같은지 확인
+- spectator가 match 시작 전 full move/IV를 볼 수 없는지 live response로 확인
 
 #### 검증
 
 ```bash
 pnpm test:api:e2e
 
-TEST_DATABASE_URL="$TEST_DATABASE_URL" \
-PLAYWRIGHT_WORKERS=1 \
-pnpm --filter @vscoke/web e2e:integration -- \
-  tests/e2e/poke-lounge-grown-party-competitive.spec.ts \
+pnpm --filter @vscoke/web e2e -- \
+  tests/e2e/poke-lounge-multiplayer.spec.ts \
   --project=chromium
 
 TEST_DATABASE_URL="$TEST_DATABASE_URL" \
@@ -1215,10 +1254,14 @@ pnpm --filter @vscoke/web e2e:integration -- \
 
 #### Gate
 
-- 실제 PostgreSQL, REST, Socket.IO, 서로 다른 인증 identity를 사용한다.
-- Desktop/Mobile이 실제 육성 파티로 terminal까지 완주한다.
-- screenshot 7개와 DB assertion JSON이 생성된다.
-- WebKit/Firefox가 환경 문제로 실행 불가하면 Chromium 핵심 gate와 분리해 원인을 명시한다.
+- 구현됨: API E2E/repository integration과 5-context spec은 실제 PostgreSQL, REST, Socket.IO,
+  서로 다른 인증 identity를 사용한다.
+- 구현됨: 5-context spec은 첫 match의 Desktop/Mobile terminal, reload/reconnect, 다음 round 진입과
+  checkpoint screenshot을 수집한다.
+- 남음: 5-context spec이 모든 round와 match를 `faint` terminal로 끝내고 다섯 browser·REST·DB의
+  동일한 최종 우승자까지 확인해야 한다.
+- 남음: 서로 다른 성장 파티를 만든 2인 Desktop/Mobile 전용 live spec과 위 7개 전용 screenshot.
+- 남음: 이 live gate가 통과하기 전에는 “육성 파티 실제 브라우저 검증 완료”로 표시하지 않는다.
 
 #### Commit
 
@@ -1245,7 +1288,7 @@ test(poke-lounge):육성 파티 경쟁전 회귀 추가
   - 기술 변경은 asset rights 결정을 바꾸지 않음을 유지
   - Desktop/Mobile grown-party E2E를 기술 gate에 추가
 - `playwright-cli-test-spec.md`, `e2e-full-feature-test-scenarios.md`
-  - 전용 runner와 새 spec 실행 명령 추가
+  - 전용 runner와 현재 자동화 매핑 추가
 
 #### 잔여 검색
 
@@ -1293,6 +1336,15 @@ pnpm build
 상태를 유지한다. 이 known failure를 기능 실패로 오인하거나 manifest를 승인 상태로 바꾸지
 않는다.
 
+#### 현재 검증 상태 — 2026-08-17
+
+- PR #45 API check와 Vercel build는 통과했다.
+- PR #45 Web check는 기능 test가 아니라 mobile test collection assertion에서 실패했다. 현재
+  `poke-lounge-mobile.spec.ts`는 13개 test를 수집하지만 `pull-request-check.yml`의 `main`은
+  `Total: 1 test in 1 file`을 기대한다.
+- 따라서 현재 `main`을 “전체 검증 통과”로 기록하지 않는다. collection 기대값 동기화와 2인
+  실제 성장 파티 browser gate가 남아 있다.
+
 #### 최종 commit
 
 ```text
@@ -1323,26 +1375,30 @@ docs(poke-lounge):육성 파티 경쟁 규칙 반영
 
 ## 10. 완료 인수 조건
 
-다음 조건을 모두 만족해야 완료다.
+아래 표는 목표를 줄이지 않고 현재 증거 수준을 구분한다. `구현`은 코드와 unit/API integration
+증거가 있다는 뜻이며, `남음`은 실제 browser release gate가 아직 없다는 뜻이다.
 
-1. 스타터와 성장 결과가 경쟁전 첫 포켓몬과 정확히 일치한다.
-2. 서로 다른 플레이어의 종과 레벨이 서로 다르게 유지된다.
-3. 파티 1~6마리와 빈 슬롯을 포함한 원래 slot 번호가 유지된다.
-4. active slot과 switch action이 physical slot 번호로 동작한다.
-5. 실제 기술 ID/PP를 사용하며 다른 고정 기술로 바꾸지 않는다.
-6. 고정 브케인/치코리타, Lv50, 2마리 loadout fallback이 새 match에 없다.
-7. 서버가 species, level, IV, derived HP, move, PP, status invariant를 검증한다.
-8. 준비 종료 전에 commit된 최신 snapshot만 사용한다.
-9. invalid/missing party는 명시적으로 실패하고 고정/casual/mock 파티로 대체하지 않는다.
-10. PvP 피해가 월드 save와 다음 bracket match에 누적되지 않는다.
-11. REST, Socket, reload/reconnect가 같은 frozen party와 match state로 수렴한다.
-12. public room snapshot은 상대 IV와 전체 move를 match 전에 노출하지 않는다.
-13. Desktop과 Mobile이 actual party로 terminal 화면까지 도달한다.
-14. 정확히 2명이어도 새 match는 `tournament-unranked`이고 verified history가 0개다.
-15. V1 진행 방은 restart-required로 종료되고 completed V1 row는 감사용으로 남는다.
-16. OpenAPI와 Web generated type이 V2 계약과 일치한다.
-17. generated catalog와 source JSON이 byte-stable check를 통과한다.
-18. 전체 lint, typecheck, unit, API E2E, browser E2E, build가 통과한다.
+| ID  | 인수 조건                                                            | 현재 상태                              |
+| --- | -------------------------------------------------------------------- | -------------------------------------- |
+| 1   | 스타터와 성장 결과가 경쟁전 첫 포켓몬과 정확히 일치                  | 구현, 2인 live gate 남음               |
+| 2   | 서로 다른 플레이어의 종과 레벨이 다르게 유지                         | 구현, 2인 live gate 남음               |
+| 3   | 파티 1~6마리와 빈 slot의 physical 번호 유지                          | 확정 버그 수정, unit 검증              |
+| 4   | active slot과 switch가 physical slot 번호로 동작                     | 구현                                   |
+| 5   | 실제 기술 ID/PP를 사용하고 고정 기술로 대체하지 않음                 | 구현                                   |
+| 6   | 고정 브케인/치코리타, Lv50, 2마리 loadout fallback 제거              | 구현                                   |
+| 7   | 서버가 species/level/IV/derived HP/move/PP/status invariant 검증     | 구현                                   |
+| 8   | 준비 종료 전에 commit된 최신 snapshot만 사용                         | 구현                                   |
+| 9   | invalid/missing party를 명시적으로 실패시키고 fallback 금지          | 구현                                   |
+| 10  | PvP 피해가 월드 save와 다음 bracket initial state에 누적되지 않음    | 구현                                   |
+| 11  | REST/Socket/reload/reconnect가 frozen party와 match state로 수렴     | 5-context 구현, 성장 fixture 확장 남음 |
+| 12  | match 전 public room에서 상대 IV와 전체 move를 노출하지 않음         | 구현                                   |
+| 13  | Desktop과 Mobile이 서로 다른 실제 육성 파티로 terminal 화면까지 도달 | 수동 live 완료, 전용 자동화 남음       |
+| 14  | 2인도 `tournament-unranked`, verified history 0개                    | 구현                                   |
+| 15  | V1 진행 방 restart-required 종료, completed V1 감사 row 보존         | 구현                                   |
+| 16  | OpenAPI와 Web generated type이 V2 계약과 일치                        | 구현                                   |
+| 17  | generated catalog와 source JSON byte-stable check 통과               | 구현                                   |
+| 18  | 전체 lint/typecheck/unit/API E2E/browser E2E/build 통과              | 부분 완료, Web CI 수정 남음            |
+| 19  | 5인 bracket의 모든 round를 끝내고 모든 계층이 같은 최종 우승자 확인  | 남음                                   |
 
 ---
 
@@ -1350,7 +1406,7 @@ docs(poke-lounge):육성 파티 경쟁 규칙 반영
 
 - 서버 권위 야생전투·포획·경험치·진화·기술·아이템 ledger
 - client-authored 성장 파티의 공개 verified 랭킹 재활성화
-- 모든 471개 기술의 완전한 Gen 4 효과 구현
+- 카탈로그 1~470 기술의 완전한 Gen 4 효과 구현
 - PvP 피해를 월드 파티에 영구 반영하는 규칙
 - matchmaking, 시즌, 친구 목록, 로비 재설계
 - 여러 API 인스턴스 Socket fan-out

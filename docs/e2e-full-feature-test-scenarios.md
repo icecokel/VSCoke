@@ -424,8 +424,13 @@ pnpm smoke:api:remote
 | `POKE-SRV-026` | P1/N          | API 프로세스 재시작                   | active room/match 재조회        | room, assignment, action receipt가 PostgreSQL에서 복원된다.                                       |
 | `POKE-SRV-027` | P2/N          | 두 실제 browser                       | 전체 경쟁 match 실행            | 서로의 turn/waiting/HP/PP/result가 실시간으로 동일하게 보인다.                                    |
 | `POKE-SRV-028` | P0/A          | 마감 전 party 누락 또는 invalid party | 준비 마감/party mutation        | 명시적 오류 또는 room close로 처리되고 대체 mock 파티로 계속 진행하지 않는다.                     |
+| `POKE-SRV-029` | P0/N          | 실제 browser 5개, frozen party 5개    | 모든 active match와 round 완료  | bracket 완료와 최종 우승자 수렴을 확인한다.                                                       |
 
-현재 자동화 매핑: `poke-lounge-multiplayer.spec.ts`, `poke-lounge-room.e2e-spec.ts`, `poke-lounge-competitive.repository.integration-spec.ts`, `poke-lounge-five-player-tournament.spec.ts`. `POKE-SRV-026`, `027`의 전체 환경 회귀는 `TEST_DATABASE_URL`을 사용하는 통합 runner에서 확인한다.
+현재 자동화 매핑: `poke-lounge-multiplayer.spec.ts`, `poke-lounge-room.e2e-spec.ts`, `poke-lounge-competitive.repository.integration-spec.ts`, `poke-lounge-five-player-tournament.spec.ts`. `POKE-SRV-026`, `027`의 전체 환경 회귀는 `TEST_DATABASE_URL`을 사용하는 통합 runner에서 확인한다. `POKE-SRV-029`는 현재 첫 match 종료와 다음 round 진입까지만 확인하므로, 최종 우승자까지 진행하도록 5-player spec을 확장해야 한다.
+
+`POKE-SRV-029`는 각 match가 양쪽의 실제 action과 `reason=faint`로 끝나고 bracket
+`status=completed`, `currentRound=null`이 된 경우에만 통과한다. timeout·forfeit은 통과로 인정하지
+않으며, 모든 browser·REST·DB가 같은 `championPlayerId`와 standings 1위에 수렴해야 한다.
 
 ## 19. 점수·랭킹·공유 상세
 

@@ -2952,6 +2952,9 @@ test.describe("Poke Lounge", () => {
     const temporaryPassword = page.locator("[data-room-entry-temporary-password]");
     const submit = page.locator("[data-room-entry-multiplayer-submit]");
 
+    await expect(displayName).toHaveValue(/^\S+ \S+$/);
+    await expect(displayName).not.toHaveValue(/^Player \d+$/);
+
     await displayName.fill("");
     await submit.click();
     await expect(page.locator("[data-room-entry-message]")).toContainText("닉네임");

@@ -1,5 +1,7 @@
 export type PokeLoungeLocale = "ko-KR" | "en-US" | "ja-JP";
 
+type PokeLoungeRandomNameWords = readonly [string, string, string, string, string];
+
 export interface PokeLoungeCopy {
   locale: PokeLoungeLocale;
   unknownTrainer: string;
@@ -143,6 +145,8 @@ export interface PokeLoungeCopy {
     multiplayerNameDescription: string;
     multiplayerNamePlaceholder: string;
     multiplayerNameRequired: string;
+    multiplayerNameModifiers: PokeLoungeRandomNameWords;
+    multiplayerNameNouns: PokeLoungeRandomNameWords;
     multiplayerEntryTitle: string;
     multiplayerEntrySubmit: string;
     localDescription: string;
@@ -319,6 +323,8 @@ const KOREAN_COPY: PokeLoungeCopy = {
     multiplayerNameDescription: "같은 월드의 친구에게 표시됩니다. 최대 12자",
     multiplayerNamePlaceholder: "닉네임 입력",
     multiplayerNameRequired: "멀티플레이에 사용할 닉네임을 입력해 주세요.",
+    multiplayerNameModifiers: ["용감한", "재빠른", "명랑한", "신비한", "빛나는"],
+    multiplayerNameNouns: ["트레이너", "탐험가", "모험가", "승부사", "수집가"],
     multiplayerEntryTitle: "멀티플레이 입장",
     multiplayerEntrySubmit: "입장하기",
     localDescription:
@@ -500,6 +506,8 @@ const ENGLISH_COPY: PokeLoungeCopy = {
     multiplayerNameDescription: "Shown to friends in the same world. Up to 12 characters.",
     multiplayerNamePlaceholder: "Enter a nickname",
     multiplayerNameRequired: "Enter a nickname for multiplayer.",
+    multiplayerNameModifiers: ["Brave", "Swift", "Merry", "Mystic", "Shiny"],
+    multiplayerNameNouns: ["Ace", "Scout", "Hero", "Tamer", "Champ"],
     multiplayerEntryTitle: "Join multiplayer",
     multiplayerEntrySubmit: "Join",
     localDescription:
@@ -683,6 +691,8 @@ const JAPANESE_COPY: PokeLoungeCopy = {
     multiplayerNameDescription: "同じワールドの友達に表示されます。最大12文字です。",
     multiplayerNamePlaceholder: "ニックネームを入力",
     multiplayerNameRequired: "マルチプレイ用のニックネームを入力してください。",
+    multiplayerNameModifiers: ["勇敢な", "素早い", "陽気な", "不思議な", "輝く"],
+    multiplayerNameNouns: ["トレーナー", "探検家", "冒険者", "勝負師", "コレクター"],
     multiplayerEntryTitle: "マルチプレイに参加",
     multiplayerEntrySubmit: "参加する",
     localDescription:

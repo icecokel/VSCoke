@@ -63,7 +63,7 @@ export function renderDirectMultiplayerEntryScreen(
   const message = createMessage();
   const displayNameInput = createMultiplayerDisplayNameInput(
     options.initialDisplayName,
-    copy.roomEntry.multiplayerNamePlaceholder,
+    copy.roomEntry,
   );
   displayNameInput.setAttribute("data-room-entry-direct-multiplayer-name", "true");
   const displayNameDescription = document.createElement("p");
@@ -183,7 +183,7 @@ export function renderRoomEntryScreen(
   );
   const displayNameInput = createMultiplayerDisplayNameInput(
     options.initialDisplayName,
-    copy.roomEntry.multiplayerNamePlaceholder,
+    copy.roomEntry,
   );
   const displayNameDescription = document.createElement("p");
   displayNameDescription.className = "room-entry-field-copy";
@@ -356,15 +356,19 @@ function createModeGroup(
 
 function createMultiplayerDisplayNameInput(
   initialDisplayName: string | undefined,
-  placeholder: string,
+  copy: PokeLoungeCopy["roomEntry"],
 ): HTMLInputElement {
   const input = document.createElement("input");
   input.id = MULTIPLAYER_DISPLAY_NAME_INPUT_ID;
   input.type = "text";
   input.autocomplete = "off";
   input.maxLength = MAX_MULTIPLAYER_DISPLAY_NAME_LENGTH;
-  input.placeholder = placeholder;
-  input.value = normalizeMultiplayerDisplayName(initialDisplayName ?? "");
+  input.placeholder = copy.multiplayerNamePlaceholder;
+  input.value = resolveInitialMultiplayerDisplayName(
+    initialDisplayName,
+    copy.multiplayerNameModifiers,
+    copy.multiplayerNameNouns,
+  );
   input.setAttribute("data-room-entry-display-name", "true");
   return input;
 }
@@ -400,6 +404,30 @@ function getMultiplayerDisplayName(
 
 export function normalizeMultiplayerDisplayName(value: string): string {
   return Array.from(value.trim()).slice(0, MAX_MULTIPLAYER_DISPLAY_NAME_LENGTH).join("");
+}
+
+export function createRandomMultiplayerDisplayName(
+  modifiers: PokeLoungeCopy["roomEntry"]["multiplayerNameModifiers"],
+  nouns: PokeLoungeCopy["roomEntry"]["multiplayerNameNouns"],
+  random: () => number = Math.random,
+): string {
+  const combinationCount = modifiers.length * nouns.length;
+  const index = Math.floor(Math.max(0, Math.min(0.999999, random())) * combinationCount);
+
+  return `${modifiers[Math.floor(index / nouns.length)]} ${nouns[index % nouns.length]}`;
+}
+
+export function resolveInitialMultiplayerDisplayName(
+  initialDisplayName: string | undefined,
+  modifiers: PokeLoungeCopy["roomEntry"]["multiplayerNameModifiers"],
+  nouns: PokeLoungeCopy["roomEntry"]["multiplayerNameNouns"],
+  random: () => number = Math.random,
+): string {
+  const normalizedName = normalizeMultiplayerDisplayName(initialDisplayName ?? "");
+
+  return normalizedName && !/^player \d+$/i.test(normalizedName)
+    ? normalizedName
+    : createRandomMultiplayerDisplayName(modifiers, nouns, random);
 }
 
 function createLabeledField(

@@ -1314,7 +1314,9 @@ export class BattleScene extends Phaser.Scene {
 
       return createWildBattleState({
         encounter: data.encounter,
-        playerPokemon: localPlayer.party[localPlayer.activePartySlotIndex]?.pokemon ?? undefined,
+        playerPokemon:
+          localPlayer.party.find(slot => slot.slotIndex === localPlayer.activePartySlotIndex)
+            ?.pokemon ?? undefined,
         playerParty: localPlayer.party,
         activePartySlotIndex: localPlayer.activePartySlotIndex,
         returnToWorld: data.returnToWorld,

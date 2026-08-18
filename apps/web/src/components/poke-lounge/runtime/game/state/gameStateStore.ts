@@ -957,8 +957,13 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
     },
     addPokemonToParty(pokemon) {
       const localPlayer = getCurrentLocalPlayer(state);
+      const occupiedSlotIndices = new Set(localPlayer.party.map(slot => slot.slotIndex));
+      const slotIndex = Array.from(
+        { length: PLAYER_PARTY_SLOT_COUNT },
+        (_, candidateSlotIndex) => candidateSlotIndex,
+      ).find(candidateSlotIndex => !occupiedSlotIndices.has(candidateSlotIndex));
 
-      if (localPlayer.party.length >= PLAYER_PARTY_SLOT_COUNT) {
+      if (slotIndex === undefined) {
         const boxIndex = localPlayer.pokemonBox.length;
 
         setCurrentLocalPlayer({
@@ -969,7 +974,6 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
         return { ok: true, destination: "box", boxIndex };
       }
 
-      const slotIndex = localPlayer.party.length;
       setCurrentLocalPlayer({
         ...localPlayer,
         party: [
@@ -978,7 +982,7 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
             slotIndex,
             pokemon,
           },
-        ],
+        ].sort((left, right) => left.slotIndex - right.slotIndex),
       });
 
       return { ok: true, destination: "party", slotIndex };
@@ -1819,15 +1823,28 @@ function normalizePokemonParty(party: unknown): Array<PlayerPokemonSlot<PlayerPo
     return [];
   }
 
-  const supportedPokemon = party.flatMap(slot => {
-    if (typeof slot !== "object" || slot === null || !("pokemon" in slot)) {
-      return [];
-    }
+  const occupiedSlotIndices = new Set<number>();
 
-    return isPlayerPokemonRecord(slot.pokemon) ? [{ slotIndex: 0, pokemon: slot.pokemon }] : [];
-  });
+  return party
+    .flatMap(slot => {
+      if (
+        typeof slot !== "object" ||
+        slot === null ||
+        !("slotIndex" in slot) ||
+        typeof slot.slotIndex !== "number" ||
+        !isValidPartySlotIndex(slot.slotIndex) ||
+        occupiedSlotIndices.has(slot.slotIndex) ||
+        !("pokemon" in slot) ||
+        !isPlayerPokemonRecord(slot.pokemon)
+      ) {
+        return [];
+      }
 
-  return compactPartySlots(supportedPokemon);
+      occupiedSlotIndices.add(slot.slotIndex);
+
+      return [{ slotIndex: slot.slotIndex, pokemon: slot.pokemon }];
+    })
+    .sort((left, right) => left.slotIndex - right.slotIndex);
 }
 
 function findSupportedActivePartyPokemon(

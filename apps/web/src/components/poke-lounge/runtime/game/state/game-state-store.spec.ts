@@ -371,6 +371,39 @@ test("기절한 포켓몬도 비활성 파티 슬롯에는 교체할 수 있다"
   assert.equal(store.getCurrentLocalPlayer().activePartySlotIndex, 0);
 });
 
+test("파티 정규화는 빈 physical slot과 활성 slot 번호를 보존한다", () => {
+  const localPlayer = createDefaultLocalPlayer();
+  localPlayer.party = [
+    { slotIndex: 0, pokemon: createPokemon(1, "이상해씨") },
+    { slotIndex: 3, pokemon: createPokemon(4, "파이리") },
+  ];
+  localPlayer.activePartySlotIndex = 3;
+  const defaultState = createDefaultGameState();
+  const store = createGameStateStore({
+    initialState: {
+      ...defaultState,
+      currentPlayerId: localPlayer.playerId,
+      playersById: { [localPlayer.playerId]: localPlayer },
+    },
+  });
+
+  assert.deepEqual(
+    store.getCurrentLocalPlayer().party.map(slot => slot.slotIndex),
+    [0, 3],
+  );
+  assert.equal(store.getCurrentLocalPlayer().activePartySlotIndex, 3);
+
+  assert.deepEqual(store.addPokemonToParty(createPokemon(7, "꼬부기")), {
+    ok: true,
+    destination: "party",
+    slotIndex: 1,
+  });
+  assert.deepEqual(
+    store.getCurrentLocalPlayer().party.map(slot => slot.slotIndex),
+    [0, 1, 3],
+  );
+});
+
 test("지원 범위를 벗어난 포켓몬은 초기 파티와 PC에서 제거한다", () => {
   const localPlayer = createDefaultLocalPlayer();
   localPlayer.party = [
@@ -393,9 +426,9 @@ test("지원 범위를 벗어난 포켓몬은 초기 파티와 PC에서 제거�
       slotIndex: slot.slotIndex,
       speciesId: slot.pokemon?.speciesId,
     })),
-    [{ slotIndex: 0, speciesId: 493 }],
+    [{ slotIndex: 1, speciesId: 493 }],
   );
-  assert.equal(store.getCurrentLocalPlayer().activePartySlotIndex, 0);
+  assert.equal(store.getCurrentLocalPlayer().activePartySlotIndex, 1);
   assert.deepEqual(
     store.getCurrentLocalPlayer().pokemonBox.map(pokemon => pokemon.speciesId),
     [493],

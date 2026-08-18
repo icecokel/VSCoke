@@ -1375,7 +1375,9 @@ export function createLocalPlayerSnapshot(
   localPlayer: LocalPlayerState,
   position: { x: number; y: number; facing: PlayerFacing },
 ): PlayerSnapshot {
-  const activePokemon = localPlayer.party[localPlayer.activePartySlotIndex]?.pokemon;
+  const activePokemon = localPlayer.party.find(
+    slot => slot.slotIndex === localPlayer.activePartySlotIndex,
+  )?.pokemon;
 
   return {
     sessionId,

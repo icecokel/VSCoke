@@ -2935,50 +2935,41 @@ test.describe("Poke Lounge", () => {
     expect(browserErrors.join("\n")).toBe("");
   });
 
-  test("network=local room 생성, 참가, 나가기 흐름을 검증한다", async ({ page }) => {
+  test("닉네임과 임시 비밀번호만으로 멀티플레이 진입을 시작한다", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
 
     await gotoWithRetry(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
     await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30000 });
     await expect(page.locator("[data-screen='starter-selection']")).toBeHidden();
 
-    await page.locator("[data-room-entry-create]").click();
-    await chooseStarter(page);
-    await waitForGameCanvas(page);
-    await expectRoomOnline(page);
+    await expect(page.locator("[data-room-entry-create]")).toHaveCount(0);
+    await expect(page.locator("[data-room-entry-code]")).toHaveCount(0);
+    await expect(page.locator("[data-room-entry-join]")).toHaveCount(0);
+    await expect(page.locator("[data-room-entry-invite]")).toHaveCount(0);
+    await expect(page.locator("[data-room-entry-settings]")).toHaveCount(0);
 
-    await page.locator("[data-room-leave]").click();
-    const leaveDialog = page.locator("[data-poke-lounge-leave-dialog='true']");
-    await expect(leaveDialog).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(leaveDialog).not.toBeVisible();
-    await expect(page.locator("[data-poke-lounge-settings='true']")).toHaveCount(0);
-    await expectRoomOnline(page);
+    const displayName = page.locator("[data-room-entry-display-name]");
+    const temporaryPassword = page.locator("[data-room-entry-temporary-password]");
+    const submit = page.locator("[data-room-entry-multiplayer-submit]");
 
-    await leaveRoom(page);
-    await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30000 });
+    await displayName.fill("");
+    await submit.click();
+    await expect(page.locator("[data-room-entry-message]")).toContainText("닉네임");
+    await displayName.fill("레드");
+    await submit.click();
+    await expect(page.locator("[data-room-entry-message]")).toContainText("임시 비밀번호");
 
-    await page.locator("[data-room-entry-code]").fill(LOCAL_ROOM_CODE);
-    await page.locator("[data-room-entry-join]").click();
-    await waitForGameCanvas(page);
-    await expectRoomOnline(page, LOCAL_ROOM_CODE);
-    await leaveRoom(page);
-    await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30000 });
-
-    await gotoWithRetry(
-      page,
-      `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?network=local&room=${LOCAL_ROOM_CODE}&e2e=1`,
-    );
-    await continuePastOptionalStarter(page);
-    await expectRoomOnline(page, LOCAL_ROOM_CODE);
-    await leaveRoom(page);
-    await expect(page).not.toHaveURL(/network=local|room=/);
-    await expect(page.locator("[data-room-entry-screen='true']")).toBeVisible({ timeout: 30000 });
+    await temporaryPassword.fill("친구만 아는 값");
+    await submit.click();
+    await expect(page.locator("[data-screen='starter-selection']")).toBeVisible();
+    await expect(page).toHaveURL(/network=server/);
+    await expect(page).toHaveURL(/create=1/);
+    await expect(page).not.toHaveURL(/room=|roundMs=|친구만/);
 
     expect(browserErrors.join("\n")).toBe("");
   });
 
-  test("로컬 방 생성은 저장된 파티를 초기화하지 않는다", async ({ page }) => {
+  test("내부 로컬 멀티플레이 진입은 저장된 파티를 초기화하지 않는다", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
 
     await startSoloGame(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
@@ -2986,9 +2977,10 @@ test.describe("Poke Lounge", () => {
     const savedPlayer = before?.playersById[before.currentPlayerId];
     expect(savedPlayer?.party).toHaveLength(1);
 
-    await gotoWithRetry(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
-    await continueToRoomEntry(page);
-    await page.locator("[data-room-entry-create]").click();
+    await gotoWithRetry(
+      page,
+      `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?network=local&room=${LOCAL_ROOM_CODE}&e2e=1`,
+    );
 
     await expect(page.locator("[data-screen='starter-selection']")).toBeHidden();
     await waitForGameCanvas(page);
@@ -2996,99 +2988,6 @@ test.describe("Poke Lounge", () => {
 
     expect(after?.currentPlayerId).toBe(before?.currentPlayerId);
     expect(after?.playersById[after.currentPlayerId]?.party).toEqual(savedPlayer?.party);
-    expect(browserErrors.join("\n")).toBe("");
-  });
-
-  test("방 만들기에서 토너먼트 시간을 선택하면 room URL과 라운드 시간에 반영된다", async ({
-    page,
-  }) => {
-    const browserErrors = collectBrowserErrors(page);
-
-    await gotoWithRetry(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
-    await continueToRoomEntry(page);
-
-    const durationOptions = page.locator("[data-room-entry-round-duration-option]");
-    await expect(durationOptions).toHaveText(["3분", "5분", "10분", "15분"]);
-    await expect(page.locator("[data-room-entry-round-duration-option='300000']")).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-
-    await page.locator("[data-room-entry-round-duration-option='600000']").click();
-    await expect(page.locator("[data-room-entry-round-duration-option='600000']")).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    await page.locator("[data-room-entry-create]").click();
-
-    await expect(page).toHaveURL(/network=local/);
-    await expect(page).toHaveURL(/roundMs=600000/);
-    await chooseStarter(page);
-    await waitForGameCanvas(page);
-    await expect
-      .poll(() =>
-        getGameStateSnapshot(page).then(state => state?.round.preparationDurationMs ?? null),
-      )
-      .toBe(600_000);
-
-    expect(browserErrors.join("\n")).toBe("");
-  });
-
-  test("방 생성 후 설정에서 공유 링크를 복사한다", async ({ page }) => {
-    const browserErrors = collectBrowserErrors(page);
-
-    await page.addInitScript(() => {
-      Object.defineProperty(navigator, "clipboard", {
-        configurable: true,
-        value: {
-          writeText: async (text: string) => {
-            const pokeWindow = window as PokeLoungeWindow;
-
-            pokeWindow.__POKE_LOUNGE_COPIED_TEXT__ = text;
-          },
-        },
-      });
-    });
-
-    await gotoWithRetry(page, `/${POKE_LOUNGE_LOCALE}/game/poke-lounge?e2e=1`);
-    await continueToRoomEntry(page);
-    await page.locator("[data-room-entry-round-duration-option='600000']").click();
-    await page.locator("[data-room-entry-create]").click();
-    await chooseStarter(page);
-    await waitForGameCanvas(page);
-
-    await expect
-      .poll(() => page.evaluate(() => document.body.classList.contains("is-shortcut-guide-open")))
-      .toBe(true);
-    await page.keyboard.press("Escape");
-    await expect(page.locator("[data-poke-lounge-settings='true']")).toHaveCount(0);
-    await expect
-      .poll(() => page.evaluate(() => document.body.classList.contains("is-shortcut-guide-open")))
-      .toBe(false);
-    await page.keyboard.press("Escape");
-
-    const settingsPanel = page.locator("[data-poke-lounge-settings='true']");
-    await expect(settingsPanel).toBeVisible();
-    const shareButton = settingsPanel.locator("[data-poke-lounge-setting-action='share-link']");
-    await expect(shareButton).toHaveText("같은 기기 다른 탭용 링크 복사");
-    await expect(
-      settingsPanel.locator("[data-poke-lounge-local-share-notice='true']"),
-    ).toContainText("같은 기기의 같은 브라우저 프로필");
-    await shareButton.click();
-    await expect(shareButton).toHaveText("링크 복사됨");
-
-    const copiedText = await page.evaluate(() => {
-      const pokeWindow = window as PokeLoungeWindow;
-
-      return pokeWindow.__POKE_LOUNGE_COPIED_TEXT__ ?? null;
-    });
-
-    expect(copiedText).not.toBeNull();
-    expect(copiedText).toContain(`/${POKE_LOUNGE_LOCALE}/game/poke-lounge?`);
-    expect(copiedText).toContain("network=local");
-    expect(copiedText).toContain("room=");
-    expect(copiedText).toContain("roundMs=600000");
-    expect(copiedText).not.toContain("e2e=1");
     expect(browserErrors.join("\n")).toBe("");
   });
 
@@ -3775,13 +3674,6 @@ async function getGameStateSnapshot(page: Page): Promise<PokeLoungeGameStateSnap
 
     return pokeWindow.__POKE_LOUNGE_E2E__?.getGameStateSnapshot() ?? null;
   });
-}
-
-async function leaveRoom(page: Page): Promise<void> {
-  await page.locator("[data-room-leave]").click();
-  const dialog = page.locator("[data-poke-lounge-leave-dialog='true']");
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole("button", { name: "방 나가기" }).click();
 }
 
 async function expectRoomOnline(page: Page, roomId?: string): Promise<void> {

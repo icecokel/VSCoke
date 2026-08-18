@@ -119,6 +119,7 @@ export async function startGamePage(
   let runtimeGameDataPromise: Promise<void> | null = null;
   let activeGame: PokeLoungeGameInstance | null = null;
   let activeMultiplayerRoom: ReturnType<typeof createMultiplayerRoom> | null = null;
+  let temporaryRoomCode: string | undefined;
   let activeViewportSize = dependencies.viewportSize;
   let localTestModeState: LocalTestModeState = { available: false, active: false };
   let destroyed = false;
@@ -206,13 +207,17 @@ export async function startGamePage(
 
     const roomEntry = readRoomEntryFromLocation(gameUrl);
     const multiplayerRoom = (dependencies.createMultiplayerRoom ?? createMultiplayerRoom)({
-      accountId: dependencies.accountId,
+      accountId: temporaryRoomCode ? undefined : dependencies.accountId,
       createWebRtcRoom,
-      idToken: dependencies.idToken,
-      getIdToken: dependencies.getIdToken,
+      idToken: temporaryRoomCode ? undefined : dependencies.idToken,
+      getIdToken: temporaryRoomCode ? undefined : dependencies.getIdToken,
+      roomId: temporaryRoomCode,
+      persistRoomCodeInUrl: temporaryRoomCode ? false : undefined,
+      sharedWorldOnly: Boolean(temporaryRoomCode),
       searchParams: gameUrl.searchParams,
     });
-    const competitiveRoundsEnabled = isCompetitiveRoomEntryMode(roomEntry.mode);
+    const competitiveRoundsEnabled =
+      isCompetitiveRoomEntryMode(roomEntry.mode) && !temporaryRoomCode;
     activeMultiplayerRoom = multiplayerRoom;
     mount.innerHTML = "";
     mount.dataset.pokeLoungeResourceStatus = "loading";
@@ -222,7 +227,10 @@ export async function startGamePage(
       gameStateStore,
       initialScene,
       multiplayerRoom,
-      onGameResult: roomEntry.mode === "server-room" ? undefined : dependencies.onGameResult,
+      onGameResult:
+        roomEntry.mode === "server-room" && !temporaryRoomCode
+          ? undefined
+          : dependencies.onGameResult,
       viewportSize: activeViewportSize,
     });
     activeGame = game;
@@ -245,6 +253,7 @@ export async function startGamePage(
         roomId: null,
         connectionStatus: "offline",
       });
+      temporaryRoomCode = undefined;
       clearRoomEntrySearchParams(currentUrl);
       replaceBrowserUrl(currentUrl);
       game?.destroy(true);
@@ -296,14 +305,14 @@ export async function startGamePage(
       },
     );
 
-    if (competitiveRoundsEnabled) {
+    if (competitiveRoundsEnabled || temporaryRoomCode) {
       renderRoomLeaveButton(
         mount,
         leaveAndReturnToRoomEntry,
         () => {
           const phase = gameStateStore.getState().round.phase;
 
-          if (phase === "tournament") {
+          if (competitiveRoundsEnabled && phase === "tournament") {
             return {
               title: copy.roomEntry.leaveTournamentTitle,
               description: copy.roomEntry.leaveTournamentDescription,
@@ -410,6 +419,11 @@ export async function startGamePage(
         displayName: selection.displayName,
       });
     }
+
+    temporaryRoomCode =
+      selection.mode === "server-room" && selection.createRoom
+        ? (selection.roomCode ?? undefined)
+        : undefined;
 
     applyRoomEntrySelection(currentUrl, selection);
     replaceBrowserUrl(currentUrl);
@@ -556,15 +570,11 @@ export async function startGamePage(
       return;
     }
 
-    if (roomEntry.mode === "server-room" && !dependencies.idToken && !isLocalE2eUrl(currentUrl)) {
+    if (roomEntry.mode === "server-room" && !isLocalE2eUrl(currentUrl)) {
       currentUrl.searchParams.delete("create");
       currentUrl.searchParams.delete("network");
       currentUrl.searchParams.delete("room");
       replaceBrowserUrl(currentUrl);
-      dispatchPokeLoungeNotice(mount.ownerDocument, {
-        message: copy.roomEntry.serverInviteRequiresLogin,
-        tone: "warning",
-      });
       showRoomEntry();
       return;
     }

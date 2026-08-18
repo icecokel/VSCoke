@@ -145,26 +145,20 @@ export interface PokeLoungeCopy {
     multiplayerNameRequired: string;
     multiplayerEntryTitle: string;
     multiplayerEntrySubmit: string;
-    tournamentSettings: string;
-    tournamentSettingsDescription: string;
-    localTitle: string;
     localDescription: string;
-    localCreate: string;
-    roomCodePlaceholder: string;
-    localJoin: string;
-    localCodeLabel: string;
-    serverInviteRequiresLogin: string;
-    invitePlaceholder: string;
-    inviteDescription: string;
-    inviteLabel: string;
-    localCodeRequired: string;
+    multiplayerTitle: string;
+    multiplayerDescription: string;
+    temporaryPasswordLabel: string;
+    temporaryPasswordDescription: string;
+    temporaryPasswordPlaceholder: string;
+    temporaryPasswordRequired: string;
+    multiplayerConnect: string;
+    multiplayerConnectFailed: string;
     preparing: string;
     newGameTitle: string;
     newGameDescription: string;
     cancel: string;
     resetAndStart: string;
-    preparationTime: string;
-    durationMinutes(minutes: number): string;
     freshSession: string;
     leaveTournamentTitle: string;
     leaveTournamentDescription: string;
@@ -322,36 +316,30 @@ const KOREAN_COPY: PokeLoungeCopy = {
     localTestRequestFailed:
       "로컬 싱글 테스트 모드를 전환하지 못했습니다. 로컬 환경 설정을 확인한 뒤 다시 시도해 주세요.",
     multiplayerNameLabel: "트레이너 닉네임",
-    multiplayerNameDescription: "같은 방의 플레이어와 대진 화면에 표시됩니다. 최대 12자",
+    multiplayerNameDescription: "같은 월드의 친구에게 표시됩니다. 최대 12자",
     multiplayerNamePlaceholder: "닉네임 입력",
     multiplayerNameRequired: "멀티플레이에 사용할 닉네임을 입력해 주세요.",
     multiplayerEntryTitle: "멀티플레이 입장",
     multiplayerEntrySubmit: "입장하기",
-    tournamentSettings: "대회 설정",
-    tournamentSettingsDescription: "로컬 방을 만들 때 적용됩니다.",
-    localTitle: "로컬 멀티플레이",
     localDescription:
       "같은 기기의 같은 브라우저 프로필에서 연 다른 탭끼리만 연결됩니다. 다른 기기나 브라우저 프로필에서는 참가할 수 없습니다.",
-    localCreate: "로컬 방 만들기",
-    roomCodePlaceholder: "방 코드",
-    localJoin: "코드로 입장",
-    localCodeLabel: "로컬 방 코드",
-    serverInviteRequiresLogin: "서버 경쟁전 초대는 로그인 후 참가할 수 있습니다.",
-    invitePlaceholder: "방을 선택하면 초대 링크가 표시됩니다.",
-    inviteDescription:
-      "로컬 링크는 같은 기기의 같은 브라우저 프로필에서 연 다른 탭에서만 사용할 수 있습니다.",
-    inviteLabel: "초대 링크",
-    localCodeRequired: "로컬 방 코드를 입력해 주세요.",
+    multiplayerTitle: "멀티플레이",
+    multiplayerDescription:
+      "친구와 같은 임시 비밀번호를 입력하면 같은 월드에서 서로의 움직임을 볼 수 있습니다.",
+    temporaryPasswordLabel: "임시 비밀번호",
+    temporaryPasswordDescription:
+      "함께 플레이할 친구끼리 같은 값을 입력하세요. 비밀번호 원문은 저장하거나 전송하지 않습니다.",
+    temporaryPasswordPlaceholder: "임시 비밀번호 입력",
+    temporaryPasswordRequired: "멀티플레이에 사용할 임시 비밀번호를 입력해 주세요.",
+    multiplayerConnect: "접속하고 즐기기",
+    multiplayerConnectFailed: "멀티플레이 접속 정보를 만들지 못했습니다. 다시 시도해 주세요.",
     preparing: "준비 중...",
     newGameTitle: "새 게임을 시작할까요?",
     newGameDescription:
-      "현재 브라우저에 저장된 모험과 세션 진행 상황이 초기화됩니다. 로그인 상태라면 계정 저장에도 초기화된 상태가 반영될 수 있으며, 이 작업은 되돌릴 수 없습니다.",
+      "현재 브라우저에 저장된 모험과 세션 진행 상황이 초기화됩니다. 이 작업은 되돌릴 수 없습니다.",
     cancel: "취소",
     resetAndStart: "초기화 후 시작",
-    preparationTime: "대회 시작 전 준비 시간",
-    durationMinutes: minutes => `${minutes}분`,
-    freshSession:
-      "방 연결 정보가 만료되어 입장 화면으로 돌아왔습니다. 방 코드를 다시 확인해 주세요.",
+    freshSession: "멀티플레이 연결 정보가 만료되어 입장 화면으로 돌아왔습니다. 다시 접속해 주세요.",
     leaveTournamentTitle: "경기에서 나갈까요?",
     leaveTournamentDescription: "지금 나가면 진행 중인 경기가 기권 처리될 수 있습니다.",
     leaveRoomTitle: "방에서 나갈까요?",
@@ -509,37 +497,31 @@ const ENGLISH_COPY: PokeLoungeCopy = {
     localTestRequestFailed:
       "Could not switch local solo test mode. Check the local environment setup and try again.",
     multiplayerNameLabel: "Trainer nickname",
-    multiplayerNameDescription:
-      "Shown to other players in the room and during matches. Up to 12 characters.",
+    multiplayerNameDescription: "Shown to friends in the same world. Up to 12 characters.",
     multiplayerNamePlaceholder: "Enter a nickname",
     multiplayerNameRequired: "Enter a nickname for multiplayer.",
     multiplayerEntryTitle: "Join multiplayer",
     multiplayerEntrySubmit: "Join",
-    tournamentSettings: "Tournament settings",
-    tournamentSettingsDescription: "Used when creating a local room.",
-    localTitle: "Local multiplayer",
     localDescription:
       "Only tabs opened in the same browser profile on this device can connect. Other devices and browser profiles cannot join.",
-    localCreate: "Create local room",
-    roomCodePlaceholder: "Room code",
-    localJoin: "Join by code",
-    localCodeLabel: "Local room code",
-    serverInviteRequiresLogin: "Sign in before joining a server competition invite.",
-    invitePlaceholder: "Choose a room to show its invite link.",
-    inviteDescription:
-      "Local links work only in another tab in the same browser profile on this device.",
-    inviteLabel: "Invite link",
-    localCodeRequired: "Enter a local room code.",
+    multiplayerTitle: "Multiplayer",
+    multiplayerDescription:
+      "Enter the same temporary password as a friend to see each other move in the same world.",
+    temporaryPasswordLabel: "Temporary password",
+    temporaryPasswordDescription:
+      "Use the same value as the friends you want to play with. The original password is never stored or sent.",
+    temporaryPasswordPlaceholder: "Enter a temporary password",
+    temporaryPasswordRequired: "Enter a temporary password for multiplayer.",
+    multiplayerConnect: "Connect and play",
+    multiplayerConnectFailed: "Could not prepare multiplayer access. Try again.",
     preparing: "Preparing...",
     newGameTitle: "Start a new game?",
     newGameDescription:
-      "This clears the adventure and session progress stored in this browser. If you are signed in, the reset state may also be saved to your account. This cannot be undone.",
+      "This clears the adventure and session progress stored in this browser. This cannot be undone.",
     cancel: "Cancel",
     resetAndStart: "Reset and start",
-    preparationTime: "Preparation time before the tournament",
-    durationMinutes: minutes => `${minutes} min`,
     freshSession:
-      "The room session expired, so you were returned to play selection. Check the room code and try again.",
+      "The multiplayer session expired, so you were returned to play selection. Connect again.",
     leaveTournamentTitle: "Leave the match?",
     leaveTournamentDescription: "Leaving now may count as forfeiting the active match.",
     leaveRoomTitle: "Leave the room?",
@@ -698,36 +680,31 @@ const JAPANESE_COPY: PokeLoungeCopy = {
     localTestRequestFailed:
       "ローカルソロテストモードを切り替えられませんでした。ローカル環境の設定を確認して、もう一度お試しください。",
     multiplayerNameLabel: "トレーナーニックネーム",
-    multiplayerNameDescription: "同じルームのプレイヤーと対戦画面に表示されます。最大12文字です。",
+    multiplayerNameDescription: "同じワールドの友達に表示されます。最大12文字です。",
     multiplayerNamePlaceholder: "ニックネームを入力",
     multiplayerNameRequired: "マルチプレイ用のニックネームを入力してください。",
     multiplayerEntryTitle: "マルチプレイに参加",
     multiplayerEntrySubmit: "参加する",
-    tournamentSettings: "大会設定",
-    tournamentSettingsDescription: "ローカルルームの作成時に使用します。",
-    localTitle: "ローカルマルチプレイ",
     localDescription:
       "この端末の同じブラウザプロファイルで開いた別タブ同士だけが接続できます。他の端末やプロファイルからは参加できません。",
-    localCreate: "ローカルルームを作成",
-    roomCodePlaceholder: "ルームコード",
-    localJoin: "コードで参加",
-    localCodeLabel: "ローカルルームコード",
-    serverInviteRequiresLogin: "サーバー対戦の招待に参加するにはログインしてください。",
-    invitePlaceholder: "ルームを選ぶと招待リンクが表示されます。",
-    inviteDescription:
-      "ローカルリンクは、この端末の同じブラウザプロファイルで開いた別タブだけで使えます。",
-    inviteLabel: "招待リンク",
-    localCodeRequired: "ローカルルームコードを入力してください。",
+    multiplayerTitle: "マルチプレイ",
+    multiplayerDescription:
+      "友達と同じ一時パスワードを入力すると、同じワールドでお互いの動きを確認できます。",
+    temporaryPasswordLabel: "一時パスワード",
+    temporaryPasswordDescription:
+      "一緒に遊ぶ友達同士で同じ値を入力してください。パスワードの原文は保存も送信もしません。",
+    temporaryPasswordPlaceholder: "一時パスワードを入力",
+    temporaryPasswordRequired: "マルチプレイ用の一時パスワードを入力してください。",
+    multiplayerConnect: "接続して遊ぶ",
+    multiplayerConnectFailed: "マルチプレイ接続を準備できませんでした。もう一度お試しください。",
     preparing: "準備中...",
     newGameTitle: "ニューゲームを始めますか？",
     newGameDescription:
-      "このブラウザに保存された冒険とセッション進行状況が初期化されます。ログイン中は初期化状態がアカウントにも保存される場合があります。この操作は元に戻せません。",
+      "このブラウザに保存された冒険とセッション進行状況が初期化されます。この操作は元に戻せません。",
     cancel: "キャンセル",
     resetAndStart: "初期化して開始",
-    preparationTime: "大会開始前の準備時間",
-    durationMinutes: minutes => `${minutes}分`,
     freshSession:
-      "ルーム接続情報の期限が切れたため、プレイ選択に戻りました。ルームコードを確認してください。",
+      "マルチプレイ接続情報の期限が切れたため、プレイ選択に戻りました。もう一度接続してください。",
     leaveTournamentTitle: "試合から退出しますか？",
     leaveTournamentDescription: "今退出すると、進行中の試合が棄権扱いになる場合があります。",
     leaveRoomTitle: "ルームから退出しますか？",

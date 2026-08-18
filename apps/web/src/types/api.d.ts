@@ -807,6 +807,8 @@ export interface components {
       sources: components["schemas"]["ResumeRagSourceDto"][];
     };
     CreatePokeLoungeRoomDto: {
+      /** @example ABC234 */
+      roomCode?: string;
       /** @example player-a */
       playerId?: string;
       /** @example session-a */

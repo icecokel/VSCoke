@@ -122,7 +122,7 @@ export class PokeLoungeRoomService {
 
     for (let attempt = 0; attempt < 20; attempt += 1) {
       const room: PokeLoungeRoomSnapshot = {
-        roomCode: this.roomCodeFactory(),
+        roomCode: normalized.roomCode ?? this.roomCodeFactory(),
         status: 'waiting',
         createdAtMs: nowMs,
         updatedAtMs: nowMs,
@@ -164,6 +164,39 @@ export class PokeLoungeRoomService {
       });
 
       if (result.outcome === 'room-code-collision') {
+        if (normalized.roomCode) {
+          const existing = await this.repository.getAndAdvance(
+            normalized.roomCode,
+            nowMs,
+          );
+          if (!existing.snapshot) {
+            continue;
+          }
+          if (existing.committedChange) {
+            await this.publish(
+              'room-clock-advanced',
+              await this.commandEventSnapshot(existing.snapshot),
+            );
+          }
+
+          return this.joinRoom(
+            normalized.roomCode,
+            {
+              playerId: normalized.playerId,
+              sessionId: normalized.sessionId,
+              ...(normalized.userId ? { userId: normalized.userId } : {}),
+              displayName: normalized.displayName,
+              ...(input.nowMs === undefined ? {} : { nowMs }),
+            },
+            {
+              idempotencyKey: deriveCreateOrJoinIdempotencyKey(
+                command.idempotencyKey,
+              ),
+              expectedRevision: existing.snapshot.revision,
+            },
+            options,
+          );
+        }
         continue;
       }
 
@@ -866,6 +899,7 @@ type NormalizedJoinInput = Omit<
 };
 
 type NormalizedCreateInput = NormalizedParticipantInput & {
+  roomCode?: string;
   roundDurationMs: number;
 };
 
@@ -875,6 +909,9 @@ function normalizeCreateInput(
   const playerId = input.playerId?.trim() || 'player-1';
 
   return {
+    ...(input.roomCode?.trim()
+      ? { roomCode: normalizeRoomCode(input.roomCode) }
+      : {}),
     playerId,
     sessionId: requireSessionId(input.sessionId),
     ...(input.userId?.trim() ? { userId: input.userId.trim() } : {}),
@@ -1216,6 +1253,20 @@ function normalizeNow(
 
 function normalizeRoomCode(roomCode: string): string {
   return roomCode.trim().toUpperCase();
+}
+
+function deriveCreateOrJoinIdempotencyKey(
+  createIdempotencyKey: string,
+): string {
+  const bytes = createHash('sha256')
+    .update(`poke-lounge-create-or-join:${createIdempotencyKey}`)
+    .digest()
+    .subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString('hex');
+
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 function isMatchResultReason(

@@ -170,6 +170,57 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
     expect(joinedReplay.body).toEqual(joined);
   });
 
+  it('creates or joins a requested temporary room code through one route', async () => {
+    const hostResponse = await request(httpServer)
+      .post('/poke-lounge/rooms')
+      .set(commandHeaders(10, 0))
+      .send({
+        ...createBody(),
+        roomCode: 'TEMP01',
+        displayName: '레드',
+      })
+      .expect(201);
+    const guestBody = {
+      roomCode: 'TEMP01',
+      playerId: 'player-b',
+      sessionId: 'session-b',
+      displayName: '블루',
+    };
+    const guestResponse = await request(httpServer)
+      .post('/poke-lounge/rooms')
+      .set(commandHeaders(11, 0))
+      .send(guestBody)
+      .expect(201);
+    const guestReplay = await request(httpServer)
+      .post('/poke-lounge/rooms')
+      .set(commandHeaders(11, 0))
+      .send(guestBody)
+      .expect(201);
+    const guest = guestResponse.body as PokeLoungePublicRoomState;
+
+    expect(hostResponse.body).toMatchObject({
+      roomCode: 'TEMP01',
+      revision: 0,
+    });
+    expect(guest).toMatchObject({
+      roomCode: 'TEMP01',
+      revision: 1,
+    });
+    expect(guest.participants).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ displayName: '레드' }),
+        expect.objectContaining({ displayName: '블루' }),
+      ]),
+    );
+    expect(guestReplay.body).toEqual(guest);
+
+    await request(httpServer)
+      .post('/poke-lounge/rooms')
+      .set(commandHeaders(12, 0))
+      .send({ ...createBody(), roomCode: 'short' })
+      .expect(400);
+  });
+
   it('returns complete redacted snapshots for idempotency and revision conflicts', async () => {
     const created = await createRoom(1);
 

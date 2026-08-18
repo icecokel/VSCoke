@@ -3,6 +3,7 @@ export const ROOM_ROUND_DURATION_QUERY_PARAM = "roundMs";
 export const ROOM_ROUND_DURATION_OPTIONS_MS = [180_000, 300_000, 600_000, 900_000] as const;
 
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const MAX_TEMPORARY_PASSWORD_LENGTH = 64;
 
 export type RoomEntryMode = "unset" | "solo" | "local-room" | "server-room" | "webrtc";
 export type RoomRoundDurationMs = (typeof ROOM_ROUND_DURATION_OPTIONS_MS)[number];
@@ -31,6 +32,32 @@ export function createRoomCode(random: () => number = Math.random): string {
 
     return ROOM_CODE_ALPHABET[index];
   }).join("");
+}
+
+export function normalizeTemporaryPassword(value: string): string {
+  return Array.from(value.normalize("NFKC").trim())
+    .slice(0, MAX_TEMPORARY_PASSWORD_LENGTH)
+    .join("");
+}
+
+export async function deriveTemporaryRoomCode(password: string): Promise<string> {
+  const normalizedPassword = normalizeTemporaryPassword(password);
+
+  if (!normalizedPassword) {
+    throw new Error("Temporary password is required.");
+  }
+
+  const digest = new Uint8Array(
+    await globalThis.crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(`poke-lounge-room:${normalizedPassword}`),
+    ),
+  );
+
+  return Array.from(
+    digest.slice(0, ROOM_CODE_LENGTH),
+    byte => ROOM_CODE_ALPHABET[byte & (ROOM_CODE_ALPHABET.length - 1)],
+  ).join("");
 }
 
 export function createInviteUrl(baseUrl: URL, roomCode: string, roundDurationMs?: number): URL {

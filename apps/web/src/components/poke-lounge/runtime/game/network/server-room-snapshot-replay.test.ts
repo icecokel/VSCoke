@@ -17,17 +17,20 @@ interface FixtureSocket {
   emit(eventName: string, payload: unknown): FixtureSocket;
   disconnect(): FixtureSocket;
   pushSnapshot(room: unknown): void;
+  pushPlayerEvent(event: unknown): void;
   disconnectFromServer(): void;
   failConnection(error?: unknown): void;
   pushSubscriptionError(): void;
   reconnectFromServer(): void;
   setActiveTransport(name: string): void;
   subscriptions(): Array<{ afterRevision: number }>;
+  emissions(eventName: string): unknown[];
 }
 
 function createSocket(initiallyConnected = true): FixtureSocket {
   const listeners = new Map<string, Set<(event?: unknown) => void>>();
   const recordedSubscriptions: Array<{ afterRevision: number }> = [];
+  const recordedEmissions = new Map<string, unknown[]>();
   let connected = initiallyConnected;
   let activeTransport = "polling";
 
@@ -55,6 +58,9 @@ function createSocket(initiallyConnected = true): FixtureSocket {
       return this;
     },
     emit(eventName, payload) {
+      const emissions = recordedEmissions.get(eventName) ?? [];
+      emissions.push(payload);
+      recordedEmissions.set(eventName, emissions);
       if (eventName === "room.subscribe" && payload && typeof payload === "object") {
         const afterRevision = (payload as { afterRevision?: unknown }).afterRevision;
         if (typeof afterRevision === "number") {
@@ -69,6 +75,9 @@ function createSocket(initiallyConnected = true): FixtureSocket {
     },
     pushSnapshot(room) {
       dispatch("room.snapshot", { room });
+    },
+    pushPlayerEvent(event) {
+      dispatch("room.player-event", event);
     },
     disconnectFromServer() {
       if (connected) {
@@ -94,6 +103,9 @@ function createSocket(initiallyConnected = true): FixtureSocket {
     },
     subscriptions() {
       return [...recordedSubscriptions];
+    },
+    emissions(eventName) {
+      return [...(recordedEmissions.get(eventName) ?? [])];
     },
   };
 }
@@ -2483,6 +2495,124 @@ test("create 응답 전 transport 실패는 같은 idempotency key로 방 생성
     assert.equal(new Set(createIdempotencyKeys).size, 1);
     assert.notEqual(createIdempotencyKeys[0], "");
     assert.equal(room.roomId, snapshots.initial.roomCode);
+  } finally {
+    room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
+test("임시 비밀번호 방은 파생 room code와 실시간 위치만 공유한다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const timers = createManualRecoveryTimers("?create=1&network=server");
+  const fixtureWindow = timers.window as typeof timers.window & {
+    history: { state: null; replaceState(state: unknown, title: string, url?: string | URL): void };
+  };
+  fixtureWindow.history = {
+    state: null,
+    replaceState(_state, _title, url) {
+      if (url) {
+        fixtureWindow.location.href = String(url);
+      }
+    },
+  };
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: fixtureWindow,
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const socket = createSocket();
+    const snapshots = createRoomSnapshots();
+    let createBody: unknown;
+    const requestedPaths: string[] = [];
+    const fetchFixture: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      requestedPaths.push(url.pathname);
+      if (url.pathname === "/poke-lounge/rooms") {
+        createBody = JSON.parse(String(init?.body));
+      }
+      return jsonResponse(snapshots.initial);
+    };
+    room = createServerRoom({
+      createRoom: true,
+      roomId: "ROOM01",
+      persistRoomCodeInUrl: false,
+      sharedWorldOnly: true,
+      playerId: "player-1",
+      sessionId: "session-1",
+      fetch: fetchFixture,
+      socketFactory: () => socket,
+    });
+
+    room.connect(createPlayerSnapshot());
+    await waitFor(() => socket.subscriptions().length > 0);
+    socket.pushSnapshot(snapshots.initial);
+    await waitFor(() => socket.emissions("room.player-event").length > 0);
+
+    assert.deepEqual(createBody, {
+      playerId: "player-1",
+      sessionId: "session-1",
+      displayName: "Player 1",
+      roomCode: "ROOM01",
+    });
+    assert.equal(fixtureWindow.location.href.includes("room="), false);
+    assert.equal(
+      requestedPaths.some(path => path.endsWith("/party-snapshot")),
+      false,
+    );
+    assert.equal(
+      requestedPaths.some(path => path.endsWith("/ready")),
+      false,
+    );
+
+    const initialLiveEvent = socket.emissions("room.player-event").at(-1) as {
+      type: string;
+      snapshot: Record<string, unknown>;
+    };
+    assert.equal(initialLiveEvent.type, "PLAYER_CHANGED_MAP");
+    assert.equal("party" in initialLiveEvent.snapshot, false);
+    assert.equal("sessionId" in initialLiveEvent.snapshot, false);
+
+    const received: RoomEvent["PLAYER_MOVED"][] = [];
+    const leftSessionIds: string[] = [];
+    room.on("PLAYER_MOVED", snapshot => received.push(snapshot));
+    room.on("PLAYER_LEFT", ({ sessionId }) => leftSessionIds.push(sessionId));
+    socket.pushPlayerEvent({
+      type: "PLAYER_MOVED",
+      snapshot: {
+        sessionId: "player-2",
+        playerId: "player-2",
+        displayName: "Mobile",
+        map: "new-bark-town",
+        x: 704,
+        y: 446,
+        facing: "right",
+      },
+    });
+    assert.deepEqual(received, [
+      {
+        sessionId: "player-2",
+        playerId: "player-2",
+        displayName: "Mobile",
+        map: "new-bark-town",
+        x: 704,
+        y: 446,
+        facing: "right",
+      },
+    ]);
+
+    const afterLeave = structuredClone(snapshots.initial);
+    afterLeave.revision += 1;
+    const disconnected = afterLeave.participants.find(
+      participant => participant.playerId === "player-2",
+    );
+    assert.ok(disconnected);
+    disconnected.connected = false;
+    socket.pushSnapshot(afterLeave);
+    assert.deepEqual(leftSessionIds, ["player-2"]);
   } finally {
     room?.dispose();
     restoreWindow(originalWindow);

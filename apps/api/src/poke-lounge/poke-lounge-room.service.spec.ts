@@ -103,6 +103,54 @@ describe('PokeLoungeRoomService', () => {
     );
   });
 
+  it('creates or joins the same requested room code without exposing separate commands', async () => {
+    const mutate = jest.spyOn(repository, 'mutate');
+    const created = await service.createRoom(
+      {
+        roomCode: 'TEMP01',
+        playerId: 'player-1',
+        sessionId: 'session-1',
+        displayName: '레드',
+        nowMs: 0,
+      },
+      command(0, 1),
+    );
+    const joined = await service.createRoom(
+      {
+        roomCode: 'TEMP01',
+        playerId: 'player-2',
+        sessionId: 'session-2',
+        displayName: '블루',
+        nowMs: 1,
+      },
+      command(0, 2),
+    );
+    const replayed = await service.createRoom(
+      {
+        roomCode: 'TEMP01',
+        playerId: 'player-2',
+        sessionId: 'session-2',
+        displayName: '블루',
+        nowMs: 1,
+      },
+      command(0, 2),
+    );
+
+    expect(created).toMatchObject({ roomCode: 'TEMP01', revision: 0 });
+    expect(joined).toMatchObject({ roomCode: 'TEMP01', revision: 1 });
+    expect(joined.participants).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ playerId: 'player-1', displayName: '레드' }),
+        expect.objectContaining({ playerId: 'player-2', displayName: '블루' }),
+      ]),
+    );
+    expect(replayed).toEqual(joined);
+    const joinIdempotencyKey = mutate.mock.calls.at(0)?.[0].idempotencyKey;
+    expect(joinIdempotencyKey).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+  });
+
   it('updates a nickname when the same session rejoins a waiting room', async () => {
     const created = await service.createRoom(
       {

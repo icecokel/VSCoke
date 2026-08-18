@@ -27,6 +27,7 @@ import {
 } from "./tournament-projection";
 
 type Handler<T extends RoomMessage> = (payload: RoomEvent[T]) => void;
+type SharedWorldPlayerEventType = "PLAYER_MOVED" | "PLAYER_MOVEMENT_ENDED" | "PLAYER_CHANGED_MAP";
 
 type ApiServerRoom = components["schemas"]["PokeLoungeRoomResponseDto"];
 type ServerParticipant = ApiServerRoom["participants"][number];
@@ -53,6 +54,8 @@ export interface ServerRoomOptions {
   playerId?: string;
   createRoom?: boolean;
   roundDurationMs?: number;
+  persistRoomCodeInUrl?: boolean;
+  sharedWorldOnly?: boolean;
   fetch?: typeof fetch;
   idToken?: string;
   getIdToken?: () => string | undefined;
@@ -255,6 +258,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   let initialWorkflowRetryQueued = false;
   let initialWorkflowStage: InitialWorkflowStage = "open";
   let initialWorkflowSnapshot: PlayerSnapshot | null = null;
+  let latestSharedWorldSnapshot: PlayerSnapshot | null = null;
   let initialOpenIdempotencyKey = createIdempotencyKey();
   let initialPartyIdempotencyKey = createIdempotencyKey();
   let initialReadyIdempotencyKey = createIdempotencyKey();
@@ -760,6 +764,25 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     scheduleRecovery();
   };
 
+  const publishSharedWorldSnapshot = (
+    type: "PLAYER_MOVED" | "PLAYER_MOVEMENT_ENDED" | "PLAYER_CHANGED_MAP",
+  ) => {
+    if (!socketConnected || !roomSocket || !latestSharedWorldSnapshot) {
+      return;
+    }
+
+    const { map, x, y, facing } = latestSharedWorldSnapshot;
+    roomSocket.emit("room.player-event", {
+      type,
+      snapshot: {
+        map,
+        x,
+        y,
+        facing,
+      },
+    });
+  };
+
   const handleSocketSnapshot = (event: unknown) => {
     let room: ServerRoomState;
 
@@ -786,6 +809,20 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       emitConnectionStatus("online");
       clearRecoveryTimer();
     }
+
+    if (options.sharedWorldOnly && room.roomCode === activeRoomId) {
+      publishSharedWorldSnapshot("PLAYER_CHANGED_MAP");
+    }
+  };
+
+  const handleSharedWorldEvent = (event: unknown) => {
+    const parsed = parseSharedWorldPlayerEvent(event);
+
+    if (!parsed || parsed.snapshot.playerId === serverPlayerId) {
+      return;
+    }
+
+    emit(parsed.type, parsed.snapshot);
   };
 
   const handleSubscriptionError = () => {
@@ -852,6 +889,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     roomSocket.on("connect_error", handleSocketConnectError);
     roomSocket.on("disconnect", handleSocketDisconnect);
     roomSocket.on("room.snapshot", handleSocketSnapshot);
+    roomSocket.on("room.player-event", handleSharedWorldEvent);
     roomSocket.on("room.subscription-error", handleSubscriptionError);
     roomSocket.on("room.revision-conflict", handleRevisionConflict);
 
@@ -892,6 +930,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       return false;
     }
 
+    const previousState = latestState;
     const previousAssignment = currentAssignmentProjection;
     latestState = state;
     lastAppliedRoomRevision = state.revision;
@@ -907,6 +946,22 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     }
 
     emit("CURRENT_PLAYERS", createCurrentPlayersPayload(state));
+    if (options.sharedWorldOnly && previousState) {
+      const connectedPlayerIds = new Set(
+        state.participants
+          .filter(participant => participant.connected)
+          .map(participant => participant.playerId),
+      );
+      for (const participant of previousState.participants) {
+        if (
+          participant.connected &&
+          participant.playerId !== serverPlayerId &&
+          !connectedPlayerIds.has(participant.playerId)
+        ) {
+          emit("PLAYER_LEFT", { sessionId: participant.playerId });
+        }
+      }
+    }
 
     if (state.competitive) {
       applyCurrentAssignmentProjection(state.competitive);
@@ -1415,7 +1470,12 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
 
       if (connectStarted) {
         if (initialSnapshot && activeRoomId !== PENDING_ROOM_ID) {
-          void submitPartySnapshot(initialSnapshot).catch(() => {});
+          if (options.sharedWorldOnly) {
+            latestSharedWorldSnapshot = structuredClone(initialSnapshot);
+            publishSharedWorldSnapshot("PLAYER_CHANGED_MAP");
+          } else {
+            void submitPartySnapshot(initialSnapshot).catch(() => {});
+          }
         }
         return;
       }
@@ -1425,6 +1485,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       const snapshot = initialSnapshot ?? createDefaultSnapshot(sessionId, localPlayerId);
       localPlayerId = snapshot.playerId?.trim() || localPlayerId;
       initialWorkflowSnapshot = structuredClone(snapshot);
+      latestSharedWorldSnapshot = structuredClone(snapshot);
       void runInitialWorkflow();
     },
     leave() {
@@ -1447,6 +1508,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         roomSocket.off("connect_error", handleSocketConnectError);
         roomSocket.off("disconnect", handleSocketDisconnect);
         roomSocket.off("room.snapshot", handleSocketSnapshot);
+        roomSocket.off("room.player-event", handleSharedWorldEvent);
         roomSocket.off("room.subscription-error", handleSubscriptionError);
         roomSocket.off("room.revision-conflict", handleRevisionConflict);
         roomSocket.disconnect();
@@ -1456,6 +1518,17 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     },
     send(type, payload) {
       if (disposed) {
+        return;
+      }
+
+      if (
+        options.sharedWorldOnly &&
+        (type === "PLAYER_MOVED" ||
+          type === "PLAYER_MOVEMENT_ENDED" ||
+          type === "PLAYER_CHANGED_MAP")
+      ) {
+        latestSharedWorldSnapshot = structuredClone(payload as PlayerSnapshot);
+        publishSharedWorldSnapshot(type);
         return;
       }
 
@@ -1502,6 +1575,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       playerId: serverPlayerId,
       sessionId,
       displayName: snapshot.displayName,
+      ...(options.createRoom && activeRoomId !== PENDING_ROOM_ID ? { roomCode: activeRoomId } : {}),
       ...(options.createRoom && options.roundDurationMs
         ? { roundDurationMs: options.roundDurationMs }
         : {}),
@@ -1510,7 +1584,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     if (options.createRoom) {
       return mutateRoom("/poke-lounge/rooms", body, () => 0, initialOpenIdempotencyKey).then(
         state => {
-          if (!disposed) {
+          if (!disposed && options.persistRoomCodeInUrl !== false) {
             applyCreatedRoomToLocation(state.roomCode);
           }
 
@@ -1564,7 +1638,11 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         const opened = await openServerRoom(initialWorkflowSnapshot);
         applySnapshot(opened);
         if (initialWorkflowStage === "open") {
-          initialWorkflowStage = readIdToken() ? "competitive-seat" : "party";
+          initialWorkflowStage = options.sharedWorldOnly
+            ? "complete"
+            : readIdToken()
+              ? "competitive-seat"
+              : "party";
         }
       }
 
@@ -2058,6 +2136,62 @@ function parseSocketRoomEvent(value: unknown): ServerRoomState {
   }
 
   return parseServerRoomState((value as { room: unknown }).room);
+}
+
+function parseSharedWorldPlayerEvent(
+  value: unknown,
+): { type: SharedWorldPlayerEventType; snapshot: PlayerSnapshot } | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const event = value as Record<string, unknown>;
+  const type = event.type;
+  const snapshot = event.snapshot;
+  if (
+    (type !== "PLAYER_MOVED" &&
+      type !== "PLAYER_MOVEMENT_ENDED" &&
+      type !== "PLAYER_CHANGED_MAP") ||
+    !snapshot ||
+    typeof snapshot !== "object"
+  ) {
+    return null;
+  }
+
+  const candidate = snapshot as Record<string, unknown>;
+  if (
+    typeof candidate.sessionId !== "string" ||
+    !candidate.sessionId ||
+    typeof candidate.playerId !== "string" ||
+    !candidate.playerId ||
+    typeof candidate.displayName !== "string" ||
+    !candidate.displayName ||
+    typeof candidate.map !== "string" ||
+    !candidate.map ||
+    typeof candidate.x !== "number" ||
+    !Number.isFinite(candidate.x) ||
+    typeof candidate.y !== "number" ||
+    !Number.isFinite(candidate.y) ||
+    (candidate.facing !== "front" &&
+      candidate.facing !== "back" &&
+      candidate.facing !== "left" &&
+      candidate.facing !== "right")
+  ) {
+    return null;
+  }
+
+  return {
+    type,
+    snapshot: {
+      sessionId: candidate.sessionId,
+      playerId: candidate.playerId,
+      displayName: candidate.displayName,
+      map: candidate.map,
+      x: candidate.x,
+      y: candidate.y,
+      facing: candidate.facing,
+    },
+  };
 }
 
 function hasSameCanonicalRoomProjection(left: ServerRoomState, right: ServerRoomState): boolean {

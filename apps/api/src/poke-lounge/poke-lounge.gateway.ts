@@ -15,6 +15,8 @@ import { PokeLoungeRoomEventsService } from './poke-lounge-room-events.service';
 import { PokeLoungeRoomService } from './poke-lounge-room.service';
 
 const MAX_SUBSCRIPTION_IDENTITY_LENGTH = 256;
+const MAX_LIVE_MAP_KEY_LENGTH = 64;
+const MAX_LIVE_COORDINATE = 1_000_000;
 const PARTICIPANT_DISCONNECT_GRACE_MS = 15_000;
 const ROOM_CODE_PATTERN = /^[A-Z0-9]{6}$/;
 const SUBSCRIPTION_ERROR = {
@@ -34,6 +36,23 @@ type PokeLoungeSocketData = {
   pokeLoungePlayerId?: string;
   pokeLoungeSessionId?: string;
   pokeLoungePresenceKey?: string;
+  pokeLoungeDisplayName?: string;
+  pokeLoungeSubscribed?: boolean;
+};
+
+type PokeLoungeLivePlayerEventType =
+  | 'PLAYER_MOVED'
+  | 'PLAYER_MOVEMENT_ENDED'
+  | 'PLAYER_CHANGED_MAP';
+
+type PokeLoungeLivePlayerEvent = {
+  type: PokeLoungeLivePlayerEventType;
+  snapshot: {
+    map: string;
+    x: number;
+    y: number;
+    facing: 'front' | 'back' | 'left' | 'right';
+  };
 };
 
 type PendingPresenceExpiry = {
@@ -135,6 +154,8 @@ export class PokeLoungeGateway
         delete socketData.pokeLoungePlayerId;
         delete socketData.pokeLoungeSessionId;
         delete socketData.pokeLoungePresenceKey;
+        delete socketData.pokeLoungeDisplayName;
+        delete socketData.pokeLoungeSubscribed;
       }
 
       if (
@@ -149,6 +170,8 @@ export class PokeLoungeGateway
       // expires the participant that actually owned the previous presence.
       // Registration also makes a disconnect during room join or durable
       // acknowledgement observable by handleDisconnect.
+      delete socketData.pokeLoungeDisplayName;
+      delete socketData.pokeLoungeSubscribed;
       const presenceGroup = this.registerPresence(socket, subscription);
       socketData.pokeLoungeRoomName = nextRoomName;
       socketData.pokeLoungePlayerId = subscription.playerId;
@@ -167,6 +190,12 @@ export class PokeLoungeGateway
           presenceGroup.epoch,
           presenceGroup.controller.signal,
         );
+      const participant = committedRoom.participants.find(
+        (candidate) => candidate.playerId === subscription.playerId,
+      );
+      socketData.pokeLoungeDisplayName =
+        participant?.displayName ?? subscription.playerId;
+      socketData.pokeLoungeSubscribed = true;
       socket.emit('room.snapshot', { room: committedRoom });
     } catch {
       for (const roomNameToLeave of new Set(
@@ -185,8 +214,42 @@ export class PokeLoungeGateway
       delete socketData.pokeLoungePlayerId;
       delete socketData.pokeLoungeSessionId;
       delete socketData.pokeLoungePresenceKey;
+      delete socketData.pokeLoungeDisplayName;
+      delete socketData.pokeLoungeSubscribed;
       rejectSubscription(socket);
     }
+  }
+
+  @SubscribeMessage('room.player-event')
+  relayPlayerEvent(
+    @ConnectedSocket() socket: Socket,
+    @MessageBody() input: unknown,
+  ): void {
+    const socketData = socket.data as PokeLoungeSocketData;
+    const event = parseLivePlayerEvent(input);
+    const room = socketData.pokeLoungeRoomName;
+    const playerId = socketData.pokeLoungePlayerId;
+    const displayName = socketData.pokeLoungeDisplayName;
+
+    if (
+      !event ||
+      !room ||
+      !playerId ||
+      !displayName ||
+      socketData.pokeLoungeSubscribed !== true
+    ) {
+      return;
+    }
+
+    socket.to(room).emit('room.player-event', {
+      type: event.type,
+      snapshot: {
+        sessionId: playerId,
+        playerId,
+        displayName,
+        ...event.snapshot,
+      },
+    });
   }
 
   private registerPresence(
@@ -334,6 +397,54 @@ function parseSubscription(input: unknown): PokeLoungeRoomSubscription | null {
     ...(afterRevision === undefined
       ? {}
       : { afterRevision: afterRevision as number }),
+  };
+}
+
+function parseLivePlayerEvent(
+  input: unknown,
+): PokeLoungeLivePlayerEvent | null {
+  if (!input || typeof input !== 'object') {
+    return null;
+  }
+
+  const event = input as Record<string, unknown>;
+  const type = event.type;
+  const snapshot = event.snapshot;
+  if (
+    (type !== 'PLAYER_MOVED' &&
+      type !== 'PLAYER_MOVEMENT_ENDED' &&
+      type !== 'PLAYER_CHANGED_MAP') ||
+    !snapshot ||
+    typeof snapshot !== 'object'
+  ) {
+    return null;
+  }
+
+  const candidate = snapshot as Record<string, unknown>;
+  const map = normalizeBoundedString(candidate.map);
+  const x = candidate.x;
+  const y = candidate.y;
+  const facing = candidate.facing;
+  if (
+    !map ||
+    map.length > MAX_LIVE_MAP_KEY_LENGTH ||
+    typeof x !== 'number' ||
+    !Number.isFinite(x) ||
+    Math.abs(x) > MAX_LIVE_COORDINATE ||
+    typeof y !== 'number' ||
+    !Number.isFinite(y) ||
+    Math.abs(y) > MAX_LIVE_COORDINATE ||
+    (facing !== 'front' &&
+      facing !== 'back' &&
+      facing !== 'left' &&
+      facing !== 'right')
+  ) {
+    return null;
+  }
+
+  return {
+    type,
+    snapshot: { map, x, y, facing },
   };
 }
 

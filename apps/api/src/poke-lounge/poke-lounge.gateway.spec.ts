@@ -224,6 +224,63 @@ describe('PokeLoungeGateway', () => {
     expect(JSON.stringify(namespaceEmit.mock.calls)).not.toContain('sessionId');
   });
 
+  it('relays validated live movement with the subscribed participant identity', async () => {
+    const client = socket();
+    await gateway.subscribe(client.value, validSubscription());
+
+    gateway.relayPlayerEvent(client.value, {
+      type: 'PLAYER_MOVED',
+      snapshot: {
+        sessionId: 'forged-session',
+        playerId: 'forged-player',
+        displayName: 'Forged player',
+        map: 'new-bark-town',
+        x: 672,
+        y: 448,
+        facing: 'left',
+        party: [{ secret: true }],
+      },
+    });
+
+    expect(client.to).toHaveBeenCalledWith('room:ROOM01');
+    expect(client.broadcastEmit).toHaveBeenCalledWith('room.player-event', {
+      type: 'PLAYER_MOVED',
+      snapshot: {
+        sessionId: 'player-1',
+        playerId: 'player-1',
+        displayName: 'Player 1',
+        map: 'new-bark-town',
+        x: 672,
+        y: 448,
+        facing: 'left',
+      },
+    });
+  });
+
+  it('ignores live movement before subscription and malformed coordinates', async () => {
+    const unsubscribed = socket();
+
+    gateway.relayPlayerEvent(unsubscribed.value, {
+      type: 'PLAYER_MOVED',
+      snapshot: { map: 'new-bark-town', x: 1, y: 2, facing: 'front' },
+    });
+    expect(unsubscribed.broadcastEmit).not.toHaveBeenCalled();
+
+    const subscribed = socket();
+    await gateway.subscribe(subscribed.value, validSubscription());
+    gateway.relayPlayerEvent(subscribed.value, {
+      type: 'PLAYER_MOVED',
+      snapshot: {
+        map: 'new-bark-town',
+        x: Number.POSITIVE_INFINITY,
+        y: 2,
+        facing: 'front',
+      },
+    });
+
+    expect(subscribed.broadcastEmit).not.toHaveBeenCalled();
+  });
+
   it('reports cursor regression without joining or applying the lower snapshot', async () => {
     roomService.authorizeSubscription.mockResolvedValue(
       publicRoom({ revision: 6 }),
@@ -529,14 +586,18 @@ function socket(data: Record<string, unknown> = {}) {
   const join = jest.fn().mockResolvedValue(undefined);
   const leave = jest.fn().mockResolvedValue(undefined);
   const emit = jest.fn();
+  const broadcastEmit = jest.fn();
+  const to = jest.fn(() => ({ emit: broadcastEmit }));
 
-  const value = { data, join, leave, emit, connected: true };
+  const value = { data, join, leave, emit, to, connected: true };
 
   return {
     value: value as unknown as Socket,
     join,
     leave,
     emit,
+    to,
+    broadcastEmit,
     disconnect: () => {
       value.connected = false;
     },

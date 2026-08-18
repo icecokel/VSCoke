@@ -2024,6 +2024,10 @@
       "CreatePokeLoungeRoomDto": {
         "type": "object",
         "properties": {
+          "roomCode": {
+            "type": "string",
+            "example": "ABC234"
+          },
           "playerId": {
             "type": "string",
             "example": "player-a"

@@ -1,7 +1,7 @@
 # Poke Lounge Game Concept
 
-확인 기준일: 2026-07-16
-구현 기준: `codex/fix/poke-lounge-five-player-tournament` (`a0ab579`)
+확인 기준일: 2026-08-18
+구현 기준: `main`
 
 이 문서는 Poke Lounge의 플레이 경험, 게임 규칙, 멀티플레이 구조와 현재 제품 경계를 한곳에 정리한 기준 문서다. 사용자에게 보이는 게임 컨셉을 먼저 설명하고, 그 컨셉을 지탱하는 서버 권위·저장·검증 구조를 뒤에서 연결한다.
 
@@ -9,24 +9,37 @@ Poke Lounge는 비공식 Pokémon 팬 게임이다. 기술 구현이 완료됐�
 
 ## 한 문장 컨셉
 
-성도 스타터와 함께 작은 라운지 마을에서 야생 포켓몬을 포획·육성하는 탐색 루프와, 최대 6인의 순차 싱글 엘리미네이션을 한 세션에 결합한 브라우저형 포켓몬 팬 게임이다.
+닉네임과 친구끼리 공유한 임시 비밀번호만 입력하면 같은 월드에 연결되어 함께 움직이며 각자의 탐색·포획·육성을 즐기는 브라우저형 포켓몬 팬 게임이다.
+
+## 멀티플레이 제품 계약
+
+멀티플레이의 공개 진입 계약은 다음 두 단계뿐이다.
+
+1. 사용자가 닉네임과 임시 비밀번호를 입력한다.
+2. 같은 임시 비밀번호를 입력한 사용자끼리 자동으로 같은 세션에 연결되어 서로의 닉네임과 움직임을 보며 게임을 즐긴다.
+
+첫 사용자는 세션을 자동 생성하고 다음 사용자는 자동 참가한다. 참가자의 닉네임과 월드 위치는 Socket.IO로 같은 세션에 실시간 전달한다. 포획·파티·재화와 솔로 전투 진행은 각 사용자의 탭에 독립적으로 저장한다.
+
+사용자에게 방 코드, 생성·참가 구분, 초대 링크, 준비 시간, Google 로그인, 경쟁전·토너먼트·점수·랭킹 선택을 요구하지 않는다. 공개 멀티플레이는 ready, party snapshot, competitive seat를 호출하지 않는다. 임시 비밀번호는 NFKC 정규화 후 브라우저에서 SHA-256 기반 6자리 세션 키로 파생하며 원문은 URL, 브라우저 저장소, API 요청에 남기지 않는다. 세션이 끝난 뒤에는 새 임시 비밀번호를 사용한다.
+
+직접 `network=local`, `network=server`, `room`, `roundMs`를 넣는 URL과 경쟁 좌석 API는 회귀·통합 테스트를 위한 내부 호환 경로다. 공개 제품 기능이나 사용자 안내 대상으로 취급하지 않는다.
 
 ## 제품 정체성
 
-Poke Lounge는 장편 RPG나 MMO보다 짧은 세션의 **탐색·육성·대전 루프**에 집중한다. VSCoke 안에서는 가볍게 플레이할 수 있는 게임인 동시에, 브라우저 게임 상태와 서버 권위 경쟁 규칙을 함께 다루는 기술적 MVP 역할을 한다.
+Poke Lounge는 장편 RPG나 MMO보다 짧은 세션의 **탐색·육성·대전 루프**에 집중한다. 멀티플레이 입장보다 실제 플레이에 집중할 수 있도록 접속 절차를 최소화한다.
 
 | 설계 축            | 의도                                                                      |
 | ------------------ | ------------------------------------------------------------------------- |
 | 브라우저 접근성    | 설치 없이 데스크톱 키보드와 모바일 터치로 바로 시작한다.                  |
-| 준비와 승부        | 월드 활동과 제한된 준비 시간, 이어지는 대진을 한 세션 루프로 묶는다.      |
+| 함께하는 월드      | 같은 세션의 닉네임과 움직임을 실시간으로 공유한다.                        |
 | 익숙한 전투 감각   | Gen 4풍 턴제 전투, 타입 상성, PP, 상태 이상, 포획과 성장 경험을 제공한다. |
-| 소규모 소셜 플레이 | 친구 2~6명이 방 코드로 참가·파티·토너먼트 상태를 공유한다.                |
-| 결과 신뢰 분리     | 캐주얼 결과와 서버가 검증한 공개 랭킹 결과를 섞지 않는다.                 |
+| 소규모 소셜 플레이 | 친구 2~6명이 같은 임시 비밀번호로 참가해 같은 월드에서 움직인다.          |
+| 단순한 입장        | 계정, 방 코드, 초대 링크나 별도 경쟁 설정 없이 바로 접속한다.             |
 
 주요 대상은 다음과 같다.
 
 - 혼자 짧게 탐색·포획·육성을 즐기려는 사용자
-- 2~6명이 방 코드를 공유해 작은 토너먼트를 진행하려는 친구 그룹
+- 2~6명이 임시 비밀번호 하나만 공유해 함께 즐기려는 친구 그룹
 - 데스크톱과 모바일 브라우저에서 같은 게임 흐름을 경험하려는 사용자
 - Web, API, PostgreSQL과 실시간 동기화가 결합된 게임 구조를 확인하려는 VSCoke 방문자
 
@@ -34,45 +47,34 @@ Poke Lounge는 장편 RPG나 MMO보다 짧은 세션의 **탐색·육성·대전
 
 ```mermaid
 flowchart LR
-  Entry["모드와 방 선택"] --> Starter["스타터 선택"]
-  Starter --> Prepare["월드 탐색과 준비"]
-  Prepare --> Encounter["야생 조우와 전투"]
+  Entry["닉네임과 임시 비밀번호"] --> Starter["스타터 선택"]
+  Starter --> World["친구와 같은 월드"]
+  World --> Encounter["각자의 탐색·야생 조우"]
   Encounter --> Growth["포획·성장·아이템·파티 편성"]
-  Growth --> Prepare
-  Prepare --> Tournament["준비 시간 종료와 토너먼트"]
-  Tournament --> Result["순위와 점수 확인"]
-  Result --> Next["다음 플레이 또는 새 방"]
+  Growth --> World
+  World --> Exit["나가기 또는 새 임시 비밀번호"]
 ```
 
-1. 사용자는 혼자 시작하거나 로컬 방을 만들고 참가한다. 서버 방은 공개 선택 UI 대신 로그인한 사용자가 직접 URL로 생성·입장한다.
+1. 사용자는 혼자 시작하거나 닉네임과 임시 비밀번호로 멀티플레이에 접속한다.
 2. 저장된 파티가 없다면 치코리타, 브케인, 리아코 중 Lv.10 스타터 한 마리를 고른다.
 3. 마을을 이동하며 야생 포켓몬과 싸우고, 포획하고, 경험치와 돈을 얻는다.
-4. 간호사, 상점, PC 박스와 주사위 게임을 이용해 파티와 자원을 정비하고, 솔로에서는 챌린저와 미러전을 치른다.
-5. 서버 방에서는 준비 시간이 끝나면 서버가 참가자와 대진을 확정한다.
-6. 매치를 한 경기씩 진행하고, 토너먼트 종료 후 순위와 점수를 확인한다.
+4. 간호사, 상점, PC 박스와 주사위 게임을 이용해 파티와 자원을 정비하고 각자의 챌린지와 전투를 이어 간다.
+5. 세션을 나가면 닉네임·임시 비밀번호 화면으로 돌아간다.
 
-서버 권위전은 준비 종료 직전까지 서버에 commit된 육성 파티를 동결해 사용한다. 종·레벨·슬롯·선두·IV·기술·현재 HP·상태·PP는 그대로 보존하고, 최대 HP와 전투 능력치·타입·기술 수치는 서버 카탈로그에서 다시 계산한다.
-
-솔로 모드는 월드 탐색·야생전·성장 루프에 집중하며 토너먼트 타이머를 시작하지 않는다. 대신 월드의 솔로 챌린저에게 말을 걸면 현재 파티를 그대로 복제한 동급 미러전으로 세션을 마칠 수 있다. 서버 방은 준비 시간 뒤 한 번의 싱글 엘리미네이션 bracket을 완료하면 최종 결과로 끝난다. Web 내부에는 3라운드 로컬 흐름도 남아 있지만 현재 서버 운영 컨셉을 “3회 토너먼트”로 해석하지 않는다.
+솔로와 공개 멀티플레이 모두 월드 탐색·야생전·성장 루프에 집중하며 토너먼트 타이머를 시작하지 않는다. 월드의 솔로 챌린저에게 말을 걸면 현재 파티를 그대로 복제한 동급 미러전으로 세션을 마칠 수 있다.
 
 ## 게임 모드
 
-| 모드             |                        참가 | 상태 권위                           | 공개 랭킹 | 현재 위치                                   |
-| ---------------- | --------------------------: | ----------------------------------- | --------- | ------------------------------------------- |
-| 솔로             |                         1명 | 브라우저 로컬 상태                  | 제외      | 탐색·야생전·성장·챌린지 완료                |
-| 로컬 방          |                    최대 6명 | `BroadcastChannel` 기반 클라이언트  | 제외      | 같은 브라우저 프로필의 개발·미리보기        |
-| 수동 WebRTC      |                    2명 중심 | 수동 signal 교환 클라이언트         | 제외      | 일반 진입 UI에 없는 실험 경로               |
-| 서버 방 캐주얼   |                       2~6명 | 서버 bracket + client-asserted 결과 | 제외      | 결과 API는 있으나 브라우저 전투 진입 미완성 |
-| 서버 1:1 경쟁전  |               인증 계정 2명 | 서버 전투 엔진                      | 제외      | `tournament-unranked`                       |
-| 서버 다인 경쟁전 | 전체 3~6명, active 2명 인증 | 서버 전투 엔진                      | 제외      | `tournament-unranked`                       |
+| 공개 모드       |  참가 | 입장 방식                   | 상태                                  |
+| --------------- | ----: | --------------------------- | ------------------------------------- |
+| 솔로            |   1명 | 이어하기 또는 새 게임       | 브라우저 로컬 상태                    |
+| 멀티플레이 세션 | 2~6명 | 닉네임 + 같은 임시 비밀번호 | PostgreSQL 참가 상태 + Socket.IO 위치 |
 
-서버 방은 캐주얼과 경쟁전으로 별도 생성되지 않는다. 현재 active match의 두 참가자가 서로 다른 인증 계정으로 경쟁 좌석을 모두 바인딩하면 그 매치만 서버 권위로 승격된다. 좌석이 준비되지 않은 매치에는 캐주얼 결과 제출 API가 적용되며, 두 결과 경로를 같은 active match에 동시에 제출할 수 없다. 다만 현재 서버 snapshot은 원격 참가자의 전투 파티를 전달하지 않아 Web 클라이언트가 캐주얼 원격전을 시작하는 종단 경로는 완성되지 않았다.
-
-서버 방 lifecycle은 `waiting → round-started(준비) → tournament → completed`다. 연결된 participant가 2명 이상이고 모두 ready이면 준비 시간이 시작된다. 로컬 방 생성 UI에서는 3·5·10·15분 중 선택하며 기본값은 5분이다. 서버 방 생성 URL은 기본값 또는 `roundMs` 값으로 준비 시간을 정한다. 토너먼트 중 active participant가 나가면 해당 match는 forfeit로 처리되고, 연결된 participant가 모두 사라지면 방은 `closed`로 전환된다.
+멀티플레이 세션은 참가자가 들어오고 나가는 단순한 shared world다. 공개 클라이언트는 세션을 `waiting`으로 유지하고 별도 준비·대진·결과 단계로 전환하지 않는다. 연결된 참가자가 모두 사라지면 방은 만료 정책에 따라 정리된다.
 
 ## 월드와 탐색
 
-현재 월드는 단일 `town` 맵이다. 플레이어는 픽셀 아트 마을에서 충돌 타일, 조우 지역과 NPC 상호작용 지점을 탐색한다. 로컬 방과 WebRTC는 원격 참가자의 이동을 같은 맵에 표시한다. 서버 방은 참가·대표 파티·토너먼트 상태를 공유하지만 현재 원격 참가자의 실시간 필드 이동은 중계하지 않는다.
+현재 월드는 단일 `town` 맵이다. 플레이어는 픽셀 아트 마을에서 충돌 타일, 조우 지역과 NPC 상호작용 지점을 탐색한다. 공개 멀티플레이는 인증된 세션 참가자의 닉네임·좌표·방향만 같은 방의 다른 참가자에게 중계하고, 클라이언트가 보낸 player/session identity와 파티 데이터는 중계하지 않는다.
 
 주요 상호작용은 다음과 같다.
 
@@ -152,7 +154,9 @@ Poke Lounge에는 목적이 다른 두 전투 규칙이 공존한다.
 
 포획은 상대 HP, 종족 포획률과 볼 배율을 반영하는 Gen 4식 네 번의 흔들림 판정을 사용한다. 트레이너전에서는 포획과 도주가 제한된다. 포획·도주 실패 또는 아이템 사용은 상대 행동 기회를 소비한다.
 
-### 서버 권위 경쟁전
+### 내부 호환: 서버 권위 경쟁전
+
+이 절과 다음 토너먼트 절은 공개 멀티플레이 제품 계약이 아니다. 기존 데이터·API·통합 테스트를 안전하게 유지하거나 제거할 때 참고하는 내부 호환 규칙이다.
 
 서버 권위전은 준비 종료 때 동결한 각 플레이어의 실제 육성 파티로 시작한다. 클라이언트는 종·레벨·슬롯·IV·기술 ID·현재 HP·상태·PP만 제출하며, 서버가 생성된 1~493 종과 1~470 기술 카탈로그로 파생 수치와 상한을 검증한다. 잘못된 파티나 전투불능 선두는 다른 파티로 대체하지 않고 명시적으로 거절한다.
 
@@ -176,7 +180,7 @@ Poke Lounge에는 목적이 다른 두 전투 규칙이 공존한다.
 
 한 토너먼트의 다음 매치는 같은 frozen party에서 새로 시작한다. 서버 권위 PvP 중 발생한 HP·PP·상태·선두 변경은 다음 매치나 월드 저장 파티에 누적하지 않는다.
 
-## 토너먼트와 점수
+## 내부 호환: 토너먼트와 점수
 
 토너먼트는 2~6인 싱글 엘리미네이션이다. 서버가 참가 순서와 player ID를 기준으로 seed를 확정하고 canonical bracket과 부전승을 생성한다. Web은 서버 bracket을 표시할 뿐 참가자 배열로 대진을 다시 계산하지 않는다.
 
@@ -220,19 +224,21 @@ seed 2 ─────────────── bye ─┘
 
 일반 결과 API 정책과 실제 솔로 플레이 흐름은 구분해야 한다. 솔로 챌린지를 완료하면 승리 100점, 패배 0점의 `game-result`로 전환되어 일반 결과를 제출할 수 있다. 이 점수는 로컬 경쟁 통계와 공개 검증 랭킹에는 반영하지 않는다.
 
-## 멀티플레이와 상태 수렴
+## 멀티플레이 구현과 상태 수렴
 
-서버 방 상태의 원본은 PostgreSQL이다. REST는 명령과 최초·장애 복구를 담당하고 Socket.IO는 commit된 snapshot을 실시간으로 전달한다.
+세션 참가 상태의 원본은 PostgreSQL이다. REST는 자동 생성·참가와 장애 복구를 담당한다. Socket.IO subscription은 room의 session/player identity로 승인하며, 승인된 소켓만 월드 위치 event를 같은 room의 다른 참가자에게 보낼 수 있다. 서버는 event의 identity와 닉네임을 durable participant 값으로 덮어쓰고 좌표·방향만 전달한다.
 
 ```mermaid
 flowchart LR
-  Web["Phaser Web client"] -->|"REST command\nrevision + idempotency"| API["NestJS API"]
-  API -->|"transaction"| DB["PostgreSQL\nroom + match + receipts"]
+  Web["Phaser Web client"] -->|"create or join\nroom key + nickname"| API["NestJS API"]
+  API -->|"transaction"| DB["PostgreSQL\nroom + participants"]
   DB -->|"commit"| API
   API -->|"Socket.IO room.snapshot"| Web
-  Web -->|"disconnect/conflict recovery"| API
-  API --> Engine["shared deterministic\nbattle + bracket engine"]
+  Web -->|"Socket.IO position"| API
+  API -->|"validated nickname + position"| Peer["same-room browsers"]
 ```
+
+공개 shared world는 room을 `waiting`으로 유지하며 토너먼트 command를 만들지 않는다. 아래 revision, match, terminal 수렴 설명은 내부 경쟁 호환 경로에만 적용한다.
 
 모든 일반 room mutation은 UUID v4 `X-Idempotency-Key`와 `If-Match-Revision`을 요구한다. 같은 key와 같은 요청은 저장된 응답을 재생하고, 같은 key에 다른 요청이나 오래된 revision은 충돌로 처리한다.
 
@@ -245,16 +251,15 @@ Web은 이전 terminal을 먼저 적용해 양쪽 플레이어가 승리·패배
 
 이 구조는 5명이 동시에 하나의 전투를 하는 모델이 아니다. 최대 6인 canonical bracket 안에서 정확히 두 명의 서버 권위 match를 순차 실행하는 모델이다.
 
-## 계정, 저장과 복구
+## 저장과 복구
 
-| 상태            | 저장 위치                  | 범위                                                      |
-| --------------- | -------------------------- | --------------------------------------------------------- |
-| 익명 플레이어   | versioned `sessionStorage` | 현재 탭의 파티·박스·재화·위치·단축키 안내 확인 상태       |
-| 로그인 플레이어 | VSCoke API                 | 계정 단위 local-player snapshot                           |
-| 서버 방         | PostgreSQL                 | room aggregate, revision, TTL, command receipt            |
-| 경쟁 매치       | PostgreSQL                 | canonical battle state, action receipt, terminal metadata |
+| 상태          | 저장 위치                  | 범위                                                      |
+| ------------- | -------------------------- | --------------------------------------------------------- |
+| 익명 플레이어 | versioned `sessionStorage` | 현재 탭의 파티·박스·재화·위치·단축키 안내 확인 상태       |
+| 서버 방       | PostgreSQL                 | room aggregate, revision, TTL, command receipt            |
+| 경쟁 매치     | PostgreSQL                 | canonical battle state, action receipt, terminal metadata |
 
-로그인 사용자는 Phaser를 시작하기 전에 저장 snapshot을 GET하고 검증·정규화한 뒤 한 번에 hydrate한다. 저장 데이터는 파티, 박스, 활성 슬롯, 돈, 인벤토리, 랭크·점수, 안내 확인 상태와 월드 위치를 포함한다.
+멀티플레이 접속에는 계정 인증이 필요하지 않다. 익명 플레이 상태는 탭 단위로 저장하고 멀티플레이 room 상태만 서버에서 동기화한다. 기존 계정 저장 코드는 다른 게임·내부 호환을 위해 남아 있지만 멀티플레이 진입 계약이 아니다.
 
 자동 저장은 상태 변경 후 debounce, 주기 저장과 정상 종료 final flush를 조합한다. 인증 GET이 실패하면 로컬 상태로 게임은 열지만, 서버 상태를 오래된 로컬 값으로 덮어쓰지 않도록 복구 전까지 원격 autosave를 시작하지 않는다.
 
@@ -284,20 +289,19 @@ apps/web
 
 apps/api
   account save와 game history
-  durable Poke Lounge room
-  competitive seat/action와 Socket gateway
+  durable Poke Lounge room과 live position gateway
+  내부 호환 competitive seat/action
 
 packages/poke-lounge-battle
-  canonical state와 PRNG
-  deterministic turn resolver
-  2~6인 bracket과 순위 점수
+  솔로 전투 규칙
+  내부 호환 canonical state, PRNG와 bracket
 
 PostgreSQL
-  room aggregate와 command receipt
-  competitive match/action와 verified history
+  room aggregate와 participant
+  내부 호환 competitive match/action와 verified history
 ```
 
-Web과 API는 `@vscoke/poke-lounge-battle` 규칙을 공유한다. 브라우저는 상태를 표현하고 입력을 제출하며, 서버 권위 match의 state 전진은 API만 수행한다. API DTO에서 생성한 local OpenAPI JSON과 Web generated type이 두 앱 사이의 계약 기준이다.
+공개 멀티플레이는 room 참가 상태와 live position gateway를 사용한다. Web과 API는 내부 경쟁 호환 경로에서 `@vscoke/poke-lounge-battle` 규칙을 공유한다. API DTO에서 생성한 local OpenAPI JSON과 Web generated type이 두 앱 사이의 계약 기준이다.
 
 현재 Socket event publisher에는 multi-instance fan-out adapter가 없다. PostgreSQL은 durable source지만 실시간 전파는 단일 API 인스턴스를 전제로 한다.
 
@@ -311,7 +315,7 @@ Web과 API는 `@vscoke/poke-lounge-battle` 규칙을 공유한다. 브라우저�
 - PostgreSQL E2E: migration, transaction rollback, receipt replay와 verified history
 - Playwright: 스타터, 월드, 전투, 저장, 멀티플레이와 모바일 입력
 
-최신 5환경 release gate는 실제 Nest API, PostgreSQL과 Socket.IO를 사용해 다음 context를 동시에 열었다.
+기존 내부 경쟁 호환 release gate는 실제 Nest API, PostgreSQL과 Socket.IO를 사용해 다음 context를 동시에 열었다.
 
 | 테스터 | 환경                                | 입력·특징                         |
 | -----: | ----------------------------------- | --------------------------------- |
@@ -321,7 +325,7 @@ Web과 API는 `@vscoke/poke-lounge-battle` 규칙을 공유한다. 브라우저�
 |      4 | Mobile Chromium / Pixel 7 emulation | touch, seed 4 첫 매치             |
 |      5 | Mobile WebKit / iPhone 13 emulation | touch, seed 5 첫 매치             |
 
-targeted 1회와 fresh release 3회가 모두 5/5 통과했다. 다섯 context는 테스트 전용 bootstrap의 서로 다른 `e2e-user-1`~`e2e-user-5` identity를 사용하며 실제 Google 계정이 아니다. 모바일 두 환경도 물리 기기가 아니라 Playwright device emulation이다. 검증 범위는 다섯 격리 identity 입장, `seed 4 vs 5`, 모바일 touch 권위 전투, 양쪽 브라우저의 이전 terminal 관측, Firefox reload·same-page reconnect와 다음 `seed 1 vs 승자` assignment 수렴까지다.
+targeted 1회와 fresh release 3회가 모두 5/5 통과했다. 다섯 context는 테스트 전용 bootstrap의 서로 다른 `e2e-user-1`~`e2e-user-5` identity를 사용하며 실제 Google 계정이 아니다. 모바일 두 환경도 물리 기기가 아니라 Playwright device emulation이다. 이 결과는 내부 경쟁 호환 검증이며 현재 공개 shared-world acceptance를 대신하지 않는다.
 
 이 검증은 **5인 전체 토너먼트를 champion 확정까지 완주한 E2E가 아니다.** 첫 매치 종료부터 다음 assignment까지의 가장 위험한 수렴 경계를 검증한 release gate다. 실제 5브라우저 통합 실행은 격리 PostgreSQL이 필요한 로컬 gate이며 PR CI는 focused Chromium 회귀와 통합 spec 수집 조건을 담당한다.
 
@@ -329,21 +333,19 @@ targeted 1회와 fresh release 3회가 모두 5/5 통과했다. 다섯 context�
 
 - 솔로 월드 탐색, 야생전, 포획, 성장, 상점, 인벤토리와 PC 박스
 - 데스크톱 키보드와 모바일 터치 입력
-- 로그인 계정 저장과 안전한 hydration·autosave
-- PostgreSQL durable room, revision과 command receipt
-- REST 복구와 Socket.IO committed snapshot
-- 2~6인 canonical bracket과 부전승
-- 순차 2인 서버 권위 match와 terminal→다음 assignment 수렴
-- 2~6인 V2 육성 파티 서버 권위전과 unranked bracket
-- 5개 브라우저 context의 첫 매치→다음 배정 release 검증
+- 닉네임·임시 비밀번호 기반 멀티플레이 자동 생성·참가
+- 임시 비밀번호 원문 비저장·비전송
+- 같은 세션 참가자의 닉네임·월드 위치 실시간 중계
+- 공개 경로의 ready·party snapshot·competitive seat 미호출
+- PostgreSQL durable room과 REST·Socket.IO 복구
+- 내부 호환 범위의 bracket·서버 권위 match 회귀 테스트
 
 ## 현재 제약과 비목표
 
 - 월드는 단일 마을이며 장거리 탐험, 퀘스트와 스토리 캠페인은 없다.
-- 서버 방은 현재 한 세션당 한 bracket을 진행한다.
-- 육성 파티 획득 이력을 검증하는 서버 command ledger는 아직 없다.
-- 3~6인 서버 권위 토너먼트는 공개 랭킹 대상이 아니다.
-- 운영형 로비, 친구 목록, 자동 matchmaking과 시즌 시스템은 없다.
+- 공개 멀티플레이는 PvP, 토너먼트, 공유 파티·재화 진행을 제공하지 않는다.
+- 임시 비밀번호는 계정 비밀번호가 아니라 짧은 세션을 찾는 공유 secret이다.
+- Google 로그인, 계정 선택, 방 코드, 초대 링크, 로비, 친구 목록, matchmaking과 시즌 시스템은 멀티플레이 제품 범위가 아니다.
 - 여러 API 인스턴스 사이의 Socket fan-out은 지원하지 않는다.
 - 수동 WebRTC는 개발·실험 경로이며 운영 멀티플레이로 취급하지 않는다.
 - 인게임 문구는 대부분 한국어 중심이며 전체 다국어 게임 UI는 완료되지 않았다.
@@ -363,15 +365,11 @@ targeted 1회와 fresh release 3회가 모두 5/5 통과했다. 다섯 context�
 
 ## 향후 확장 우선순위
 
-다음 항목은 현재 구현이 아니라 제품 방향 제안이다.
+멀티플레이 접속 기능은 의도적으로 확장하지 않는다. 닉네임과 임시 비밀번호만으로 접속해 즐긴다는 계약을 유지한다.
 
 1. 에셋과 코드의 권리 문제를 먼저 해결해 공개 출시 기준을 확정한다.
-2. 포획·성장 command ledger를 추가해 육성 파티 획득 이력까지 서버가 증명할 수 있게 한다.
-3. 5인 전체 bracket을 champion까지 완주하는 실제 브라우저 E2E를 추가한다.
-4. 실제 5브라우저 gate를 CI 또는 예약 release workflow로 운영한다.
-5. 로비, 초대 상태, 재입장과 matchmaking UX를 제품화한다.
-6. 다인 랭킹이 필요하면 시즌, 동률, 이탈, 부정행위와 보상 정책을 별도로 설계한다.
-7. 권리 정리된 신규 맵, NPC, 퀘스트와 콘텐츠 데이터를 추가한다.
+2. 닉네임·임시 비밀번호 정상/실패 경로와 실제 2인 접속 E2E를 운영한다.
+3. 권리 정리된 신규 맵, NPC, 퀘스트와 콘텐츠 데이터를 추가한다.
 
 ## Source of truth
 

@@ -118,6 +118,7 @@ export type PokeLoungePublicRoomState = Omit<
 };
 
 export interface CreatePokeLoungeRoomInput {
+  roomCode?: string;
   playerId?: string;
   sessionId: string;
   userId?: string;

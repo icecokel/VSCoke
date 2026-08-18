@@ -28,6 +28,39 @@ type AudioPlaybackSnapshot = {
   lastSfxId: string | null;
 };
 
+test("Poke Lounge 모바일 멀티플레이 진입은 게임 프레임 안에 맞는다", async ({ page }) => {
+  await gotoWithRetry(page, "/ko-KR/game/poke-lounge?e2e=1");
+
+  const screen = page.locator("[data-room-entry-screen='true']");
+  await expect(screen).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator("[data-room-entry-display-name]")).toBeVisible();
+  await expect(page.locator("[data-room-entry-temporary-password]")).toBeVisible();
+  await expect(page.locator("[data-room-entry-multiplayer-submit]")).toBeVisible();
+  await expect(page.locator("[data-room-entry-code]")).toHaveCount(0);
+  await expect(page.locator("[data-room-entry-settings]")).toHaveCount(0);
+
+  const layout = await page.evaluate(() => {
+    const frame = document.querySelector<HTMLElement>("[data-poke-lounge-game-frame='true']");
+    const entry = document.querySelector<HTMLElement>("[data-room-entry-screen='true']");
+    if (!frame || !entry) {
+      return null;
+    }
+
+    const frameRect = frame.getBoundingClientRect();
+    const entryRect = entry.getBoundingClientRect();
+    return {
+      documentFits: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+      entryFits:
+        entryRect.left >= frameRect.left &&
+        entryRect.right <= frameRect.right + 1 &&
+        entryRect.top >= frameRect.top &&
+        entryRect.bottom <= frameRect.bottom + 1,
+    };
+  });
+
+  expect(layout).toEqual({ documentFits: true, entryFits: true });
+});
+
 test("Poke Lounge 모바일 로딩이 멈춰도 게임 센터로 이탈할 수 있다", async ({ page }) => {
   let releaseGameChunk: (() => void) | undefined;
   const gameChunkGate = new Promise<void>(resolve => {

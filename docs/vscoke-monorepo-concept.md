@@ -124,7 +124,21 @@ SearchPanel
 -> Codex app-server answer generation
 ```
 
-Poke Lounge는 저장 상태, durable room, 인증 경쟁 경로를 분리한다.
+Poke Lounge 공개 멀티플레이는 인증 없이 닉네임과 임시 비밀번호만 사용한다. 브라우저는 정규화한 임시 비밀번호 원문을 저장·전송하지 않고 SHA-256 기반 6자리 room key로 파생한다. 첫 요청은 같은 key의 room을 생성하고 이미 존재하면 자동 참가한다.
+
+```txt
+nickname + temporary password
+-> browser derives room key (raw password discarded)
+-> POST /poke-lounge/rooms { roomCode, playerId, sessionId, displayName }
+-> create-or-join PostgreSQL room
+-> Socket.IO participant snapshot + validated live position
+```
+
+공개 클라이언트는 room을 waiting 상태로 유지하며 ready, party snapshot, competitive seat를 호출하지 않는다. 참가자의 개인 파티·재화·전투는 탭에 독립적으로 저장하고, 같은 room에는 서버가 승인한 닉네임과 월드 좌표·방향만 중계한다.
+
+방 코드, 생성·참가 구분, 초대 링크, 라운드 시간, Google 로그인과 경쟁전 선택은 공개 UI에 없다. 기존 direct room URL과 경쟁 좌석 경로는 내부 회귀·통합 테스트 호환용이다.
+
+Poke Lounge의 별도 계정 저장 경로는 멀티플레이 접속 계약과 분리한다.
 
 ```txt
 authenticated Web
@@ -135,6 +149,8 @@ authenticated Web
 ```
 
 서버 GET이 없거나 로그인하지 않은 경우 Phaser는 versioned `sessionStorage` local-player snapshot으로 시작한다. 인증 GET이 실패하면 로컬 상태로 게임을 시작하되 원격 autosave는 재시도 전까지 열지 않아 서버 상태를 덮어쓰지 않는다. `localStorage`의 legacy key는 제거한다.
+
+다음 room command·경쟁전 설명은 공개 멀티플레이가 호출하지 않는 내부 호환 구현이다.
 
 ```txt
 room mutation + X-Idempotency-Key + If-Match-Revision

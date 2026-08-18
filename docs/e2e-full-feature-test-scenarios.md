@@ -60,15 +60,15 @@ Firefox mobile emulation은 터치 동작 참고용으로만 사용한다. 실�
 
 ### 3.3 필수 계정과 데이터
 
-| 식별자    | 준비 내용                                             | 사용 시나리오             |
-| --------- | ----------------------------------------------------- | ------------------------- |
-| `USER_A`  | Google 인증 가능한 테스트 계정, Poke Lounge 파티 보유 | 로그인, 저장, 경쟁전 host |
-| `USER_B`  | `USER_A`와 다른 Google 계정                           | 경쟁전 guest              |
-| `USER_C`  | 선택적 세 번째 계정 또는 익명 참가자                  | 3인 casual 강등           |
-| `ANON`    | 쿠키·스토리지가 비어 있는 context                     | 공개 화면, 익명 게임      |
-| `DB_BASE` | migration 완료, Wordle 단어·레시피·원두 fixture       | API 정상 경로             |
-| `DB_GAME` | ranking과 공유 결과 fixture                           | 점수·랭킹·공유            |
-| `DB_ROOM` | 테스트 시작 시 active room 없음                       | Poke Lounge room          |
+| 식별자    | 준비 내용                                       | 사용 시나리오          |
+| --------- | ----------------------------------------------- | ---------------------- |
+| `USER_A`  | Google 인증 가능한 테스트 계정                  | 공통 로그인, 계정 저장 |
+| `USER_B`  | `USER_A`와 다른 Google 계정                     | 계정 전환 회귀         |
+| `USER_C`  | 선택적 세 번째 계정 또는 익명 참가자            | 계정 격리 회귀         |
+| `ANON`    | 쿠키·스토리지가 비어 있는 context               | 공개 화면, 익명 게임   |
+| `DB_BASE` | migration 완료, Wordle 단어·레시피·원두 fixture | API 정상 경로          |
+| `DB_GAME` | ranking과 공유 결과 fixture                     | 점수·랭킹·공유         |
+| `DB_ROOM` | 테스트 시작 시 active room 없음                 | Poke Lounge room       |
 
 테스트 데이터는 반복 실행 가능해야 한다. 고정 UUID, 고정 room code 또는 테스트 전용 seed를 사용하고, 테스트 종료 시 생성 데이터와 room을 정리한다. 운영 smoke에서는 쓰기 작업을 최소화하고 테스트 전용 계정과 식별자를 사용한다.
 
@@ -316,25 +316,25 @@ pnpm smoke:api:remote
 
 ## 14. Poke Lounge: 진입·월드·로컬 상태
 
-| ID               | 우선순위/상태 | 사전조건                      | 절차                                       | 기대 결과                                                           |
-| ---------------- | ------------- | ----------------------------- | ------------------------------------------ | ------------------------------------------------------------------- |
-| `POKE-ENTRY-001` | P0/A          | `ANON`                        | Game Center에서 Poke Lounge 진입           | 팬 게임 안내, mode 선택, room entry가 컨테이너 안에 표시된다.       |
-| `POKE-ENTRY-002` | P0/A          | entry                         | Solo 선택 후 스타터 선택                   | local player가 생성되고 world canvas로 진입한다.                    |
-| `POKE-ENTRY-003` | P1/N          | starter 화면                  | 각 스타터를 개별 선택                      | 종족, 초기 level, move, stats, IV가 선택 종족에 맞게 저장된다.      |
-| `POKE-ENTRY-004` | P1/N          | starter 화면                  | 중복 클릭/뒤로 가기                        | player가 중복 생성되지 않고 이전 단계로 안전하게 돌아간다.          |
-| `POKE-WORLD-001` | P0/A          | world                         | 방향키/WASD 이동                           | tile 단위 이동, camera, player animation, collision이 일치한다.     |
-| `POKE-WORLD-002` | P1/A          | world probe                   | 상점 NPC 상호작용, 구매·취소               | 돈과 inventory가 조건에 맞게 변하고 부족한 돈은 거부된다.           |
-| `POKE-WORLD-003` | P1/A          | world probe                   | 회복 NPC 상호작용                          | party HP, PP, 상태 이상이 회복되고 안내가 표시된다.                 |
-| `POKE-WORLD-004` | P1/A          | party/PC fixture              | PC 열기, 보관, 인출, 교체                  | 마지막 party 보관과 party capacity 규칙이 지켜진다.                 |
-| `POKE-WORLD-005` | P1/A          | party fixture                 | 좌측 party slot 선택                       | 포켓몬 상세 panel에 stats, IV, move, 상태가 표시된다.               |
-| `POKE-WORLD-006` | P1/A          | inventory fixture             | 아이템 사용                                | 대상과 효과가 맞고 소비 수량이 한 번만 감소한다.                    |
-| `POKE-WORLD-007` | P1/A          | world                         | 단축키, dice control, 설정 panel 실행      | 각 interaction이 한 번만 동작하고 이동 input과 충돌하지 않는다.     |
-| `POKE-WORLD-008` | P1/N          | 모든 party faint              | 이동 및 grass 진입                         | 이동은 가능하지만 야생 전투는 시작하지 않는다.                      |
-| `POKE-WORLD-009` | P1/A          | desktop                       | Esc 설정, fullscreen fallback              | 설정 panel이 열리고 fullscreen 미지원 환경에서 fallback이 실행된다. |
-| `POKE-WORLD-010` | P1/A          | mobile                        | canvas, fullscreen CTA, entry/starter 확인 | 360px에서도 가로 overflow 없이 조작 가능하다.                       |
-| `POKE-STATE-001` | P0/A          | 유효 session snapshot         | reload/remount                             | 현재 local player와 party/PC/inventory가 한 번만 hydrate된다.       |
-| `POKE-STATE-002` | P0/A          | unknown version/오염 snapshot | 진입                                       | 위험 key와 잘못된 값은 폐기되고 안전한 초기 상태를 사용한다.        |
-| `POKE-STATE-003` | P1/A          | 유효 snapshot                 | sanitize                                   | local player만 보존되고 IV와 유효 필드는 유지된다.                  |
+| ID               | 우선순위/상태 | 사전조건                      | 절차                                       | 기대 결과                                                                |
+| ---------------- | ------------- | ----------------------------- | ------------------------------------------ | ------------------------------------------------------------------------ |
+| `POKE-ENTRY-001` | P0/A          | `ANON`                        | Game Center에서 Poke Lounge 진입           | 팬 게임 안내, 솔로와 닉네임·임시 비밀번호 입력이 컨테이너 안에 표시된다. |
+| `POKE-ENTRY-002` | P0/A          | entry                         | Solo 선택 후 스타터 선택                   | local player가 생성되고 world canvas로 진입한다.                         |
+| `POKE-ENTRY-003` | P1/N          | starter 화면                  | 각 스타터를 개별 선택                      | 종족, 초기 level, move, stats, IV가 선택 종족에 맞게 저장된다.           |
+| `POKE-ENTRY-004` | P1/N          | starter 화면                  | 중복 클릭/뒤로 가기                        | player가 중복 생성되지 않고 이전 단계로 안전하게 돌아간다.               |
+| `POKE-WORLD-001` | P0/A          | world                         | 방향키/WASD 이동                           | tile 단위 이동, camera, player animation, collision이 일치한다.          |
+| `POKE-WORLD-002` | P1/A          | world probe                   | 상점 NPC 상호작용, 구매·취소               | 돈과 inventory가 조건에 맞게 변하고 부족한 돈은 거부된다.                |
+| `POKE-WORLD-003` | P1/A          | world probe                   | 회복 NPC 상호작용                          | party HP, PP, 상태 이상이 회복되고 안내가 표시된다.                      |
+| `POKE-WORLD-004` | P1/A          | party/PC fixture              | PC 열기, 보관, 인출, 교체                  | 마지막 party 보관과 party capacity 규칙이 지켜진다.                      |
+| `POKE-WORLD-005` | P1/A          | party fixture                 | 좌측 party slot 선택                       | 포켓몬 상세 panel에 stats, IV, move, 상태가 표시된다.                    |
+| `POKE-WORLD-006` | P1/A          | inventory fixture             | 아이템 사용                                | 대상과 효과가 맞고 소비 수량이 한 번만 감소한다.                         |
+| `POKE-WORLD-007` | P1/A          | world                         | 단축키, dice control, 설정 panel 실행      | 각 interaction이 한 번만 동작하고 이동 input과 충돌하지 않는다.          |
+| `POKE-WORLD-008` | P1/N          | 모든 party faint              | 이동 및 grass 진입                         | 이동은 가능하지만 야생 전투는 시작하지 않는다.                           |
+| `POKE-WORLD-009` | P1/A          | desktop                       | Esc 설정, fullscreen fallback              | 설정 panel이 열리고 fullscreen 미지원 환경에서 fallback이 실행된다.      |
+| `POKE-WORLD-010` | P1/A          | mobile                        | canvas, fullscreen CTA, entry/starter 확인 | 360px에서도 가로 overflow 없이 조작 가능하다.                            |
+| `POKE-STATE-001` | P0/A          | 유효 session snapshot         | reload/remount                             | 현재 local player와 party/PC/inventory가 한 번만 hydrate된다.            |
+| `POKE-STATE-002` | P0/A          | unknown version/오염 snapshot | 진입                                       | 위험 key와 잘못된 값은 폐기되고 안전한 초기 상태를 사용한다.             |
+| `POKE-STATE-003` | P1/A          | 유효 snapshot                 | sanitize                                   | local player만 보존되고 IV와 유효 필드는 유지된다.                       |
 
 현재 자동화 매핑: `poke-lounge.spec.ts`, `poke-lounge-state-hydration.spec.ts`.
 
@@ -359,23 +359,27 @@ pnpm smoke:api:remote
 
 현재 자동화 매핑: `poke-lounge.spec.ts`, `poke-lounge:audio:verify`.
 
-## 16. Poke Lounge: 로컬 룸·토너먼트
+## 16. Poke Lounge: 닉네임·임시 비밀번호 멀티플레이
 
-| ID               | 우선순위/상태 | 사전조건        | 절차                          | 기대 결과                                                                    |
-| ---------------- | ------------- | --------------- | ----------------------------- | ---------------------------------------------------------------------------- |
-| `POKE-LOCAL-001` | P0/A          | `network=local` | 방 생성                       | room code와 URL이 생성되고 host가 참가자 목록에 표시된다.                    |
-| `POKE-LOCAL-002` | P0/A          | 생성 room       | 두 번째 context에서 code 입력 | guest가 같은 room state를 보고 서로 다른 identity를 유지한다.                |
-| `POKE-LOCAL-003` | P1/A          | room 설정       | tournament round 시간 선택    | 선택 시간이 URL/state와 round timer에 반영된다.                              |
-| `POKE-LOCAL-004` | P1/A          | room            | 공유 링크 복사                | room code를 포함한 URL이 생성된다.                                           |
-| `POKE-LOCAL-005` | P0/A          | 참가 중         | guest/host 순서로 leave       | 참가자 목록과 phase가 정리되고 page가 entry로 돌아간다.                      |
-| `POKE-LOCAL-006` | P1/A          | roundMs=1000    | timer 만료 대기               | local room이 tournament phase로 전환된다.                                    |
-| `POKE-LOCAL-007` | P1/A          | solo            | 같은 시간 대기                | solo는 tournament phase로 전환되지 않는다.                                   |
-| `POKE-LOCAL-008` | P1/A          | tournament 종료 | 최종 result 도달, 점수 제출   | 사용자 확인 전 일반 점수 제출이 발생하지 않고 명시적 제출 후 한 번 전송된다. |
-| `POKE-LOCAL-009` | P2/N          | 3명 이상        | 참가·ready·round 진행         | casual tournament 정책대로 동작하고 verified ranking에는 포함되지 않는다.    |
+| ID               | 우선순위/상태 | 사전조건             | 절차                                | 기대 결과                                                                            |
+| ---------------- | ------------- | -------------------- | ----------------------------------- | ------------------------------------------------------------------------------------ |
+| `POKE-MULTI-001` | P0/A          | 익명 entry           | 닉네임 없이 접속                    | 닉네임 필수 오류와 focus가 표시된다.                                                 |
+| `POKE-MULTI-002` | P0/A          | 닉네임 입력          | 임시 비밀번호 없이 접속             | 임시 비밀번호 필수 오류와 focus가 표시된다.                                          |
+| `POKE-MULTI-003` | P0/A          | 첫 browser           | 닉네임·임시 비밀번호 입력           | 파생 key로 room을 자동 생성하고 스타터 또는 저장된 게임으로 진입한다.                |
+| `POKE-MULTI-004` | P0/A          | 두 번째 browser      | 다른 닉네임·같은 임시 비밀번호 입력 | 별도 참가 선택 없이 같은 room에 참가하고 서로의 닉네임을 본다.                       |
+| `POKE-MULTI-005` | P0/A          | desktop/mobile world | 양쪽에서 이동                       | 상대의 좌표·방향이 실시간 갱신되고 identity 위조·파티 데이터는 중계되지 않는다.      |
+| `POKE-MULTI-006` | P0/A          | 공개 multiplayer     | API·Socket 요청 관측                | room은 waiting을 유지하고 ready, party snapshot, competitive seat를 호출하지 않는다. |
+| `POKE-MULTI-007` | P0/A          | 두 browser           | 서로 다른 임시 비밀번호 입력        | 서로 다른 room으로 격리된다.                                                         |
+| `POKE-MULTI-008` | P0/A          | 입력·요청·URL 관측   | 접속                                | 임시 비밀번호 원문이 URL, storage, API body, console에 남지 않는다.                  |
+| `POKE-MULTI-009` | P0/A          | desktop/mobile entry | 360/390/430과 desktop에서 입력·접속 | 모든 입력과 CTA가 game frame 안에 있고 가로 overflow가 없다.                         |
+| `POKE-MULTI-010` | P0/A          | 공개 entry           | 노출 control 검사                   | 방 코드, 생성/참가, 초대, 시간, 로그인, 경쟁전 설정이 없다.                          |
+| `POKE-MULTI-011` | P1/N          | 참가 중              | 나가기                              | room 연결을 정리하고 닉네임·임시 비밀번호 entry로 돌아간다.                          |
 
-현재 자동화 매핑: `poke-lounge.spec.ts`.
+현재 자동화 매핑: `room-entry.test.ts`, `poke-lounge.spec.ts`, `poke-lounge-mobile.spec.ts`, `poke-lounge-room.service.spec.ts`, `poke-lounge-room.e2e-spec.ts`. 실제 두 browser+API+PostgreSQL 자동 생성·참가는 통합 runner에서 확인한다.
 
-## 17. Poke Lounge: 인증 저장·복원
+## 17. Poke Lounge: 계정 저장·복원 호환
+
+이 절은 멀티플레이 접속 요구사항이 아니다. 멀티플레이는 Google 로그인 없이 동작하며, 아래 항목은 기존 계정 저장 경로의 회귀 범위다.
 
 | ID              | 우선순위/상태 | 사전조건        | 절차                             | 기대 결과                                                   |
 | --------------- | ------------- | --------------- | -------------------------------- | ----------------------------------------------------------- |
@@ -392,7 +396,9 @@ pnpm smoke:api:remote
 
 현재 자동화 매핑: `poke-lounge-autosave.spec.ts`. `POKE-SAVE-010`은 실제 PostgreSQL 통합 시나리오로 추가해야 한다.
 
-## 18. Poke Lounge: 서버 룸·육성 파티 권위 경쟁전
+## 18. Poke Lounge: 내부 서버·경쟁 구현 회귀
+
+이 절은 공개 제품 기능이 아니다. 현재 멀티플레이 제품 acceptance는 16절의 닉네임·임시 비밀번호 흐름만 사용한다. 아래 direct room URL, 경쟁 좌석, 권위전 시나리오는 기존 내부 구현을 안전하게 유지하거나 제거할 때 참고하는 통합 회귀 목록이며, 사용자에게 로그인·방 코드·경쟁전 선택을 노출할 근거로 사용하지 않는다.
 
 | ID             | 우선순위/상태 | 사전조건                              | 절차                            | 기대 결과                                                                                         |
 | -------------- | ------------- | ------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------- |
@@ -534,8 +540,8 @@ pnpm smoke:api:remote
 core-routes.spec.ts
 not-found-recovery.spec.ts
 server-route-fallback.spec.ts
-poke-lounge.spec.ts --grep "solo 선택|wild-victory|network=local"
-poke-lounge-multiplayer.spec.ts --grep "server room create|authoritative move|terminal"
+poke-lounge.spec.ts --grep "solo 선택|wild-victory|임시 비밀번호"
+poke-lounge-mobile.spec.ts --grep "멀티플레이 진입"
 ```
 
 ### 23.2 일일 P1 세트
@@ -552,8 +558,8 @@ Chromium 전체 suite와 실제 PostgreSQL integration을 실행한다. 외부 �
 
 1. `pnpm e2e:cross-browser`로 Chromium, Firefox, WebKit 실행.
 2. mobile 360, 390, 430 viewport 실행.
-3. `USER_A`, `USER_B`를 이용한 실제 2인 Poke Lounge 경쟁 match.
-4. 실제 Google OAuth 로그인·로그아웃.
+3. 두 익명 browser에서 같은 임시 비밀번호로 Poke Lounge 자동 생성·참가·플레이.
+4. 공통 계정 기능을 위한 실제 Google OAuth 로그인·로그아웃. Poke Lounge 멀티플레이에는 적용하지 않는다.
 5. Vercel production과 Ubuntu API smoke.
 6. visual baseline 및 CLS 확인.
 7. 운영 console error, failed request, CORS, Socket reconnect 확인.
@@ -604,7 +610,7 @@ flaky 테스트는 단순 retry 성공으로 닫지 않는다. 최초 실패 tra
 2. 사용자 입력이 있는 모든 공개 화면에 최소 한 개의 정상 경로 E2E가 있다.
 3. 각 외부 경계인 API, OAuth, PostgreSQL, Socket.IO, clipboard/share에 정상·실패 경로가 있다.
 4. Sky Drop, Wordle, Poke Lounge가 각각 실제 시작→플레이→종료→재시작 흐름을 통과한다.
-5. Poke Lounge는 익명 solo, local room, 인증 사용자별 실제 육성 파티 server competition을 각각 통과한다.
+5. Poke Lounge는 익명 solo와 닉네임·임시 비밀번호 기반 실제 2인 멀티플레이를 각각 통과한다.
 6. ko-KR, en-US, ja-JP route와 360/390/430 mobile 레이아웃이 통과한다.
 7. Firefox와 WebKit에서 P0 핵심 경로가 통과한다.
 8. critical 접근성 오류, console error, 예상하지 않은 4xx/5xx, 정적 asset 404가 없다.
@@ -613,6 +619,6 @@ flaky 테스트는 단순 retry 성공으로 닫지 않는다. 최초 실패 tra
 
 ## 27. 현재 결론
 
-현재 저장소는 route, 다국어, 취미 화면, 오류 fallback, Poke Lounge domain/저장/멀티플레이에 강한 자동화 기반이 있다. 반면 Sky Drop의 실제 플레이, Wordle 완주, 공통 점수 제출·공유, Recipe/Espresso의 실제 HTTP 계약, Google OAuth는 전체 기능 E2E 관점에서 보강이 필요하다. Poke Lounge 실제 API/DB 경쟁전은 전용 통합 runner와 `_test` DB를 사용한다.
+현재 저장소는 route, 다국어, 취미 화면, 오류 fallback, Poke Lounge domain/저장/멀티플레이에 강한 자동화 기반이 있다. 반면 Sky Drop의 실제 플레이, Wordle 완주, 공통 점수 제출·공유, Recipe/Espresso의 실제 HTTP 계약, Google OAuth는 전체 기능 E2E 관점에서 보강이 필요하다. Poke Lounge 공개 멀티플레이는 닉네임·임시 비밀번호 두 browser 통합 runner와 `_test` DB를 사용한다.
 
 따라서 기존 `pnpm e2e` 통과만으로 "모든 기능 테스트 완료"라고 판정하지 않는다. 이 문서의 `N`과 `P` 항목을 자동화하거나 릴리즈 후보 수동 결과로 증명한 뒤 완료로 판정한다.

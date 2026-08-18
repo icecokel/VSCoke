@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readRoomEntryFromSearchParams, readRoomRoundDurationMs } from "./roomEntry";
+import {
+  deriveTemporaryRoomCode,
+  normalizeTemporaryPassword,
+  readRoomEntryFromSearchParams,
+  readRoomRoundDurationMs,
+} from "./roomEntry";
 import { normalizeMultiplayerDisplayName, shouldResetRoomEntrySession } from "./roomEntryScreen";
 
 test("명시적으로 선택한 솔로 새 게임만 저장 세션을 초기화한다", () => {
@@ -58,4 +63,17 @@ test("서버 방 URL은 선택 화면 없이 생성과 코드 입장을 유지�
 test("멀티플레이 닉네임은 공백을 제거하고 최대 12자로 정리한다", () => {
   assert.equal(normalizeMultiplayerDisplayName("  레드  "), "레드");
   assert.equal(normalizeMultiplayerDisplayName("abcdefghijklmn"), "abcdefghijkl");
+});
+
+test("임시 비밀번호는 원문 대신 동일한 6자리 방 키로 파생한다", async () => {
+  assert.equal(normalizeTemporaryPassword(" １２３ 친구 "), "123 친구");
+
+  const normalizedCode = await deriveTemporaryRoomCode(" １２３ 친구 ");
+  const sameCode = await deriveTemporaryRoomCode("123 친구");
+  const differentCode = await deriveTemporaryRoomCode("다른 친구");
+
+  assert.match(normalizedCode, /^[A-HJ-NP-Z2-9]{6}$/);
+  assert.equal(normalizedCode, sameCode);
+  assert.notEqual(normalizedCode, differentCode);
+  await assert.rejects(() => deriveTemporaryRoomCode("   "));
 });

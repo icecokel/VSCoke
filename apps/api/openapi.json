@@ -505,7 +505,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PokeLoungeRoomConflictResponseDto"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/PokeLoungeRoomConflictResponseDto"
+                    },
+                    {
+                      "$ref": "#/components/schemas/PokeLoungeRoomFullResponseDto"
+                    }
+                  ]
                 }
               }
             }
@@ -741,7 +748,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PokeLoungeRoomConflictResponseDto"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/PokeLoungeRoomConflictResponseDto"
+                    },
+                    {
+                      "$ref": "#/components/schemas/PokeLoungeRoomFullResponseDto"
+                    }
+                  ]
                 }
               }
             }
@@ -2021,36 +2035,6 @@
         },
         "required": ["answer", "grounded", "sources"]
       },
-      "CreatePokeLoungeRoomDto": {
-        "type": "object",
-        "properties": {
-          "roomCode": {
-            "type": "string",
-            "example": "ABC234"
-          },
-          "playerId": {
-            "type": "string",
-            "example": "player-a"
-          },
-          "sessionId": {
-            "type": "string",
-            "example": "session-a"
-          },
-          "userId": {
-            "type": "string",
-            "example": "user-123"
-          },
-          "displayName": {
-            "type": "string",
-            "example": "Player A"
-          },
-          "roundDurationMs": {
-            "type": "number",
-            "example": 60000
-          }
-        },
-        "required": ["sessionId"]
-      },
       "PokeLoungeRepresentativePokemonDto": {
         "type": "object",
         "properties": {
@@ -2879,6 +2863,54 @@
           }
         },
         "required": ["statusCode", "code", "message", "snapshot"]
+      },
+      "PokeLoungeRoomFullResponseDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 409
+          },
+          "code": {
+            "type": "string",
+            "enum": ["POKE_LOUNGE_ROOM_FULL"]
+          },
+          "message": {
+            "type": "string",
+            "example": "Poke Lounge room is full"
+          }
+        },
+        "required": ["statusCode", "code", "message"]
+      },
+      "CreatePokeLoungeRoomDto": {
+        "type": "object",
+        "properties": {
+          "roomCode": {
+            "type": "string",
+            "example": "ABC234"
+          },
+          "playerId": {
+            "type": "string",
+            "example": "player-a"
+          },
+          "sessionId": {
+            "type": "string",
+            "example": "session-a"
+          },
+          "userId": {
+            "type": "string",
+            "example": "user-123"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Player A"
+          },
+          "roundDurationMs": {
+            "type": "number",
+            "example": 60000
+          }
+        },
+        "required": ["sessionId"]
       },
       "BindCompetitiveSeatDto": {
         "type": "object",

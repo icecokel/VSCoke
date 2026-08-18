@@ -581,10 +581,10 @@ describe('PokeLoungeRoomService', () => {
     ).rejects.toThrow('Poke Lounge room capacity reached');
   });
 
-  it('keeps participant authorization and spectator limits inside repository mutations', async () => {
+  it('rejects a seventh player while allowing an existing session to rejoin a full room', async () => {
     await createRoom();
 
-    for (let index = 2; index <= 7; index += 1) {
+    for (let index = 2; index <= 6; index += 1) {
       await service.joinRoom(
         'room01',
         {
@@ -596,25 +596,57 @@ describe('PokeLoungeRoomService', () => {
       );
     }
 
+    await expect(
+      service.createRoom(
+        {
+          roomCode: 'ROOM01',
+          playerId: 'player-7',
+          sessionId: 'session-7',
+          nowMs: 7,
+        },
+        command(0, 7),
+      ),
+    ).rejects.toMatchObject({
+      response: {
+        statusCode: 409,
+        code: 'POKE_LOUNGE_ROOM_FULL',
+        message: 'Poke Lounge room is full',
+      },
+    });
+
     currentTimeMs = 10;
     const room = await service.getRoom('ROOM01');
 
-    expect(
-      room.participants.filter((row) => row.role === 'participant'),
-    ).toHaveLength(6);
-    expect(
-      room.participants.find((row) => row.playerId === 'player-7'),
-    ).toMatchObject({
-      role: 'spectator',
-      ready: false,
-    });
+    expect(room.participants).toHaveLength(6);
+    expect(room.participants.every((row) => row.role === 'participant')).toBe(
+      true,
+    );
+    expect(room.participants.some((row) => row.playerId === 'player-7')).toBe(
+      false,
+    );
     await expect(
       service.joinRoom(
         'ROOM01',
         { playerId: 'player-2', sessionId: 'wrong', nowMs: 11 },
-        command(6, 20),
+        command(5, 20),
       ),
     ).rejects.toThrow('Join sessionId does not match this participant');
+
+    const rejoined = await service.joinRoom(
+      'ROOM01',
+      { playerId: 'player-2', sessionId: 'session-2', nowMs: 12 },
+      command(5, 21),
+    );
+
+    expect(rejoined.participants).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          playerId: 'player-2',
+          sessionId: 'session-2',
+          role: 'participant',
+        }),
+      ]),
+    );
   });
 
   it('starts and durably advances the server round with one revision per commit', async () => {

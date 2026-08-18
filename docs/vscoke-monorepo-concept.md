@@ -126,6 +126,10 @@ SearchPanel
 
 Poke Lounge 공개 멀티플레이는 인증 없이 닉네임과 임시 비밀번호만 사용한다. 브라우저는 정규화한 임시 비밀번호 원문을 저장·전송하지 않고 SHA-256 기반 6자리 room key로 파생한다. 첫 요청은 같은 key의 room을 생성하고 이미 존재하면 자동 참가한다.
 
+한 방의 최대 인원은 6명이다. 기존 참가자는 같은 브라우저 세션으로 재접속할 수 있지만,
+참가자 6명이 남아 있는 동안 7번째 신규 사용자의 접속은 `POKE_LOUNGE_ROOM_FULL`로 거부한다.
+누군가 방에서 나가 참가자 자리가 비면 새로운 사용자가 입장할 수 있다.
+
 ```txt
 nickname + temporary password
 -> browser derives room key (raw password discarded)

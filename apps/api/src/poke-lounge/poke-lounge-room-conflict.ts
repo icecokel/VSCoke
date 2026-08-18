@@ -22,6 +22,17 @@ export class PokeLoungeRoomConflictResponseDto {
   snapshot!: PokeLoungeRoomResponseDto;
 }
 
+export class PokeLoungeRoomFullResponseDto {
+  @ApiProperty({ example: 409 })
+  statusCode!: number;
+
+  @ApiProperty({ enum: ['POKE_LOUNGE_ROOM_FULL'] })
+  code!: 'POKE_LOUNGE_ROOM_FULL';
+
+  @ApiProperty({ example: 'Poke Lounge room is full' })
+  message!: string;
+}
+
 export class PokeLoungeRoomConflict extends ConflictException {
   constructor(
     kind: PokeLoungeRoomConflictKind,
@@ -48,6 +59,16 @@ export class PokeLoungePartySnapshotLocked extends ConflictException {
       statusCode: 409,
       code: 'POKE_LOUNGE_PARTY_SNAPSHOT_LOCKED',
       message: 'Poke Lounge party snapshot is locked',
+    });
+  }
+}
+
+export class PokeLoungeRoomFull extends ConflictException {
+  constructor() {
+    super({
+      statusCode: 409,
+      code: 'POKE_LOUNGE_ROOM_FULL',
+      message: 'Poke Lounge room is full',
     });
   }
 }

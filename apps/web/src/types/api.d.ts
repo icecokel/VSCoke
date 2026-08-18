@@ -806,20 +806,6 @@ export interface components {
       grounded: boolean;
       sources: components["schemas"]["ResumeRagSourceDto"][];
     };
-    CreatePokeLoungeRoomDto: {
-      /** @example ABC234 */
-      roomCode?: string;
-      /** @example player-a */
-      playerId?: string;
-      /** @example session-a */
-      sessionId: string;
-      /** @example user-123 */
-      userId?: string;
-      /** @example Player A */
-      displayName?: string;
-      /** @example 60000 */
-      roundDurationMs?: number;
-    };
     PokeLoungeRepresentativePokemonDto: {
       /** @example 25 */
       speciesId: number;
@@ -1119,6 +1105,28 @@ export interface components {
       /** @example Poke Lounge room revision conflict */
       message: string;
       snapshot: components["schemas"]["PokeLoungeRoomResponseDto"];
+    };
+    PokeLoungeRoomFullResponseDto: {
+      /** @example 409 */
+      statusCode: number;
+      /** @enum {string} */
+      code: "POKE_LOUNGE_ROOM_FULL";
+      /** @example Poke Lounge room is full */
+      message: string;
+    };
+    CreatePokeLoungeRoomDto: {
+      /** @example ABC234 */
+      roomCode?: string;
+      /** @example player-a */
+      playerId?: string;
+      /** @example session-a */
+      sessionId: string;
+      /** @example user-123 */
+      userId?: string;
+      /** @example Player A */
+      displayName?: string;
+      /** @example 60000 */
+      roundDurationMs?: number;
     };
     BindCompetitiveSeatDto: {
       /** @example session-a */
@@ -1680,7 +1688,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PokeLoungeRoomConflictResponseDto"];
+          "application/json":
+            | components["schemas"]["PokeLoungeRoomConflictResponseDto"]
+            | components["schemas"]["PokeLoungeRoomFullResponseDto"];
         };
       };
     };
@@ -1806,7 +1816,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PokeLoungeRoomConflictResponseDto"];
+          "application/json":
+            | components["schemas"]["PokeLoungeRoomConflictResponseDto"]
+            | components["schemas"]["PokeLoungeRoomFullResponseDto"];
         };
       };
     };

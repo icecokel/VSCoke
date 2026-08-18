@@ -75,6 +75,7 @@ export interface PokeLoungeServerRoomErrorDetail {
     | "ROOM_PARTY_SYNC_FAILED"
     | "ROOM_READY_FAILED"
     | "ROOM_TRANSPORT_FAILED"
+    | "ROOM_FULL"
     | "CURSOR_REGRESSION";
   message: string;
   recoverable: boolean;
@@ -166,6 +167,7 @@ const MAX_RECENT_TERMINAL_PROJECTIONS = 8;
 const PENDING_ROOM_ID = "server-pending";
 const REVISION_CONFLICT_CODE = "POKE_LOUNGE_REVISION_CONFLICT";
 const IDEMPOTENCY_CONFLICT_CODE = "POKE_LOUNGE_IDEMPOTENCY_CONFLICT";
+const ROOM_FULL_CODE = "POKE_LOUNGE_ROOM_FULL";
 
 interface ServerRoomConflictResponse {
   statusCode: 409;
@@ -1860,6 +1862,10 @@ function classifyRecoveryFailure(error: unknown): RecoveryFailureKind {
 }
 
 function isRecoverableInitialWorkflowError(error: unknown): boolean {
+  if (isRoomFullRequestError(error)) {
+    return false;
+  }
+
   if (error instanceof ServerRoomTransportError) {
     return true;
   }
@@ -1882,6 +1888,14 @@ function createInitialWorkflowErrorDetail(
 ): Omit<PokeLoungeServerRoomErrorDetail, "cancel" | "retry"> {
   const status = error instanceof ServerRoomRequestError ? error.status : null;
   const statusMessage = status ? ` (HTTP ${status})` : "";
+
+  if (stage === "open" && isRoomFullRequestError(error)) {
+    return {
+      code: "ROOM_FULL",
+      message: "멀티플레이 방의 최대 인원 6명이 모두 접속 중입니다.",
+      recoverable: false,
+    };
+  }
 
   switch (stage) {
     case "open":
@@ -1917,6 +1931,19 @@ function createInitialWorkflowErrorDetail(
         recoverable,
       };
   }
+}
+
+function isRoomFullRequestError(error: unknown): boolean {
+  if (!(error instanceof ServerRoomRequestError) || error.status !== 409) {
+    return false;
+  }
+
+  const value = error.responseBody;
+  return (
+    Boolean(value) &&
+    typeof value === "object" &&
+    (value as Record<string, unknown>).code === ROOM_FULL_CODE
+  );
 }
 
 async function retryOneNetworkFailure<T>(operation: () => Promise<T>): Promise<T> {

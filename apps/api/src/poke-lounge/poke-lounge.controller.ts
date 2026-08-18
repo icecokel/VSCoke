@@ -14,11 +14,13 @@ import {
   ApiBody,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiExtraModels,
   ApiHeader,
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
   ApiTags,
+  getSchemaPath,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { GoogleAuthGuard } from '../auth/google-auth.guard';
@@ -40,6 +42,7 @@ import { UpdatePokeLoungePartySnapshotDto } from './dto/update-poke-lounge-party
 import type { PokeLoungeRoomCommandContext } from './poke-lounge-room-command';
 import {
   PokeLoungeRoomConflictResponseDto,
+  PokeLoungeRoomFullResponseDto,
   toPokeLoungePublicRoomState,
 } from './poke-lounge-room-conflict';
 import { PokeLoungeRoomService } from './poke-lounge-room.service';
@@ -53,6 +56,10 @@ const UUID_V4_PATH_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 @ApiTags('poke-lounge')
+@ApiExtraModels(
+  PokeLoungeRoomConflictResponseDto,
+  PokeLoungeRoomFullResponseDto,
+)
 @Controller('poke-lounge')
 export class PokeLoungeController {
   constructor(
@@ -65,7 +72,14 @@ export class PokeLoungeController {
   @ApiHeader({ name: REVISION_HEADER, required: true, example: '0' })
   @ApiBody({ type: CreatePokeLoungeRoomDto })
   @ApiCreatedResponse({ type: PokeLoungeRoomResponseDto })
-  @ApiConflictResponse({ type: PokeLoungeRoomConflictResponseDto })
+  @ApiConflictResponse({
+    schema: {
+      oneOf: [
+        { $ref: getSchemaPath(PokeLoungeRoomConflictResponseDto) },
+        { $ref: getSchemaPath(PokeLoungeRoomFullResponseDto) },
+      ],
+    },
+  })
   async createRoom(
     @Body() body: CreatePokeLoungeRoomDto,
     @Req() request: Request,
@@ -160,7 +174,14 @@ export class PokeLoungeController {
   @ApiHeader({ name: REVISION_HEADER, required: true, example: '0' })
   @ApiBody({ type: JoinPokeLoungeRoomDto })
   @ApiCreatedResponse({ type: PokeLoungeRoomResponseDto })
-  @ApiConflictResponse({ type: PokeLoungeRoomConflictResponseDto })
+  @ApiConflictResponse({
+    schema: {
+      oneOf: [
+        { $ref: getSchemaPath(PokeLoungeRoomConflictResponseDto) },
+        { $ref: getSchemaPath(PokeLoungeRoomFullResponseDto) },
+      ],
+    },
+  })
   async joinRoom(
     @Param('roomCode') roomCode: string,
     @Body() body: JoinPokeLoungeRoomDto,

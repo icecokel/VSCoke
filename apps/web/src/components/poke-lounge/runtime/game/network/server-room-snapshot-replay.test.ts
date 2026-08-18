@@ -2501,6 +2501,79 @@ test("create 응답 전 transport 실패는 같은 idempotency key로 방 생성
   }
 });
 
+test("7번째 신규 사용자는 정원 초과 안내를 받고 자동 재시도하지 않는다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const timers = createManualRecoveryTimers("?create=1&network=server");
+  const eventListeners = new Map<string, Set<EventListener>>();
+  const fixtureWindow = {
+    ...timers.window,
+    addEventListener(eventName: string, listener: EventListener) {
+      const listeners = eventListeners.get(eventName) ?? new Set<EventListener>();
+      listeners.add(listener);
+      eventListeners.set(eventName, listeners);
+    },
+    dispatchEvent(event: Event) {
+      for (const listener of eventListeners.get(event.type) ?? []) {
+        listener(event);
+      }
+      return true;
+    },
+  };
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: fixtureWindow,
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom, POKE_LOUNGE_SERVER_ROOM_ERROR_EVENT } = await import("./serverRoom");
+    type CapturedErrorDetail = {
+      code: string;
+      message: string;
+      recoverable: boolean;
+      retry?: () => void;
+      cancel: () => void;
+    };
+    const errorDetails: CapturedErrorDetail[] = [];
+    fixtureWindow.addEventListener(POKE_LOUNGE_SERVER_ROOM_ERROR_EVENT, event => {
+      errorDetails.push((event as CustomEvent<CapturedErrorDetail>).detail);
+    });
+    room = createServerRoom({
+      createRoom: true,
+      roomId: "ROOM01",
+      persistRoomCodeInUrl: false,
+      sharedWorldOnly: true,
+      playerId: "player-7",
+      sessionId: "session-7",
+      fetch: async () =>
+        jsonResponse(
+          {
+            statusCode: 409,
+            code: "POKE_LOUNGE_ROOM_FULL",
+            message: "Poke Lounge room is full",
+          },
+          409,
+        ),
+      socketFactory: () => createSocket(),
+    });
+
+    room.connect(createPlayerSnapshot());
+    await waitFor(() => errorDetails.length > 0);
+
+    const errorDetail = errorDetails[0];
+    assert.ok(errorDetail);
+    assert.equal(errorDetail.code, "ROOM_FULL");
+    assert.equal(errorDetail.message, "멀티플레이 방의 최대 인원 6명이 모두 접속 중입니다.");
+    assert.equal(errorDetail.recoverable, false);
+    assert.equal(errorDetail.retry, undefined);
+    assert.equal(timers.nextDelay(), null);
+  } finally {
+    room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
 test("임시 비밀번호 방은 파생 room code와 실시간 위치만 공유한다", async () => {
   process.env.NEXT_PUBLIC_API_URL = "http://api.test";
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");

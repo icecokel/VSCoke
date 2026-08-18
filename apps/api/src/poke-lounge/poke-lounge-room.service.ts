@@ -19,6 +19,7 @@ import {
 import {
   PokeLoungePartySnapshotLocked,
   PokeLoungeRoomConflict,
+  PokeLoungeRoomFull,
   toPokeLoungePublicRoomState,
 } from './poke-lounge-room-conflict';
 import {
@@ -58,7 +59,7 @@ import { CompetitiveProjectionService } from './competitive/competitive-projecti
 const DEFAULT_ROUND_DURATION_MS = 60_000;
 const MIN_ROUND_DURATION_MS = 1;
 const MAX_ROUND_DURATION_MS = 3_600_000;
-const MAX_PARTICIPANTS = 6;
+const MAX_ROOM_OCCUPANTS = 6;
 const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const MATCH_RESULT_REASONS = new Set<PokeLoungeMatchResultReason>([
   'faint',
@@ -528,11 +529,9 @@ export class PokeLoungeRoomService {
         }
 
         assertRoomJoinable(room, nowMs);
-        const participantCount = room.participants.filter(
-          (participant) => participant.role === 'participant',
-        ).length;
-        const role =
-          participantCount < MAX_PARTICIPANTS ? 'participant' : 'spectator';
+        if (room.participants.length >= MAX_ROOM_OCCUPANTS) {
+          throw new PokeLoungeRoomFull();
+        }
         room.participants.push(
           createParticipant(
             {
@@ -541,7 +540,7 @@ export class PokeLoungeRoomService {
               displayName:
                 normalized.displayName ?? formatDefaultPlayerName(playerId),
             },
-            role,
+            'participant',
             nowMs,
             options.requireSocketAcknowledgement === true,
           ),

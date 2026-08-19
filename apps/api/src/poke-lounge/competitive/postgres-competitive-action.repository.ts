@@ -44,7 +44,10 @@ import {
   toCompetitiveTerminalTransition,
 } from './competitive-projection.service';
 import { createCompetitiveAssignment } from './competitive-match.service';
-import { toCompetitiveParties } from './postgres-competitive-match.repository';
+import {
+  toCompetitiveParties,
+  toCompetitivePlayers,
+} from './postgres-competitive-match.repository';
 import type { CompetitiveMatchKind } from './competitive-match.types';
 
 @Injectable()
@@ -527,11 +530,13 @@ export async function advanceTournamentAuthorityMatch(
   const seats = await manager
     .getRepository(PokeLoungeCompetitiveSeat)
     .find({ where: { roomId: room.id } });
-  const players = nextBracketMatch.participantIds.map((playerId) => {
-    const seat = seats.find((candidate) => candidate.playerId === playerId);
-    return seat ? { playerId: seat.playerId, accountId: seat.accountId } : null;
-  });
-  if (!players[0] || !players[1]) {
+  const players = toCompetitivePlayers(
+    state,
+    seats,
+    nextBracketMatch.participantIds,
+    room.roomCode,
+  );
+  if (!players) {
     return null;
   }
 
@@ -542,8 +547,8 @@ export async function advanceTournamentAuthorityMatch(
     bracketMatchId,
     kind: 'tournament-unranked',
     assignmentRevision: 1,
-    players: [players[0], players[1]],
-    parties: toCompetitiveParties(state, [players[0], players[1]]),
+    players,
+    parties: toCompetitiveParties(state, players),
   });
   await matchRepository.save(matchRepository.create(assignment));
   state.tournament.activeMatchAuthority = 'server';

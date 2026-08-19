@@ -9,8 +9,6 @@ const matchResultReasons: PokeLoungeMatchResultReason[] = [
   'faint',
   'timeout',
   'forfeit',
-  'run',
-  'capture',
 ];
 
 export class SubmitPokeLoungeMatchResultDto implements SubmitPokeLoungeMatchResultInput {

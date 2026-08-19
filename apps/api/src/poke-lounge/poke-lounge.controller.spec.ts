@@ -28,6 +28,7 @@ describe('PokeLoungeController', () => {
     competitiveService = {
       bindSeat: jest.fn().mockResolvedValue(null),
       submitAction: jest.fn().mockResolvedValue({ matchId: 'match-1' }),
+      submitSessionAction: jest.fn().mockResolvedValue({ matchId: 'match-1' }),
     } as unknown as jest.Mocked<CompetitiveMatchService>;
     controller = new PokeLoungeController(service, competitiveService);
   });
@@ -379,6 +380,28 @@ describe('PokeLoungeController', () => {
       descriptor?.value as object,
     ) as unknown[];
     expect(guards).toContain(GoogleAuthGuard);
+  });
+
+  it('submits a password-room action with only its private session identity', async () => {
+    await controller.submitSessionCompetitiveAction(
+      'room01',
+      '00000000-0000-4000-8000-000000000010',
+      {
+        sessionId: 'session-a',
+        assignmentRevision: 1,
+        turn: 0,
+        clientCommandId: '00000000-0000-4000-8000-000000000001',
+        action: { kind: 'move', moveId: 55 },
+      },
+    );
+
+    expect(
+      competitiveService.submitSessionAction.mock.calls[0]?.[0],
+    ).toMatchObject({
+      roomCode: 'ROOM01',
+      matchId: '00000000-0000-4000-8000-000000000010',
+      sessionId: 'session-a',
+    });
   });
 
   it('rejects malformed competitive match ids before calling the service', async () => {

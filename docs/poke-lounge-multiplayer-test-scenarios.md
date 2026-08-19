@@ -1,6 +1,6 @@
 # Poke Lounge 공개 멀티플레이 테스트 시나리오
 
-확인 기준일: 2026-08-18
+확인 기준일: 2026-08-19
 구현 기준: `main`
 
 ## 1. 목적
@@ -10,10 +10,8 @@
 즐긴다.
 
 이 문서의 모든 `P0` 시나리오를 통과해야 현재 멀티플레이 기능을 정상으로 판정한다. 공개
-멀티플레이의 현재 구현에는 라운드, 승패와 최종 우승 조건이 없다. 확정됐지만 아직 구현되지
-않은 3라운드 누적 점수 챔피언십은
-[3라운드 챔피언십 규칙](./poke-lounge-rules/three-round-championship.md)에서 관리하며, 이
-shared-world 인수 테스트의 통과만으로 챔피언십을 검증했다고 판정하지 않는다.
+멀티플레이는 shared world와 3라운드 누적 점수 챔피언십을 하나의 세션에서 제공한다.
+세부 판정은 [3라운드 챔피언십 규칙](./poke-lounge-rules/three-round-championship.md)을 따른다.
 
 ## 2. 제품 계약
 
@@ -26,6 +24,9 @@ shared-world 인수 테스트의 통과만으로 챔피언십을 검증했다고
 4. 포획, 파티, 재화, 인벤토리와 전투 진행은 각 브라우저 탭에 독립적으로 남는다.
 5. 한 세션의 최대 인원은 6명이며 7번째 신규 사용자는 접속을 거부한다.
 6. 동일 사용자는 브라우저 탭의 `playerId + sessionId` 조합으로 판별한다.
+7. 참가자 2명 이상의 파티 동기화가 끝나면 5분 준비를 자동 시작하고 화면에 남은 시간을
+   표시한다.
+8. 서버가 각 대진의 행동, 승패, terminal HP 점수와 3라운드 누적 순위를 확정한다.
 
 ### 2.1 동일 사용자 판정
 
@@ -44,8 +45,8 @@ shared-world 인수 테스트의 통과만으로 챔피언십을 검증했다고
 
 - Google 로그인, 계정 선택과 OAuth callback
 - 사용자에게 보이는 방 코드, 방 생성·참가 선택, 초대 링크와 방장 권한
-- ready, 준비 시간, party snapshot과 competitive seat
-- PvP, 토너먼트, 라운드, 대진표, 승자, 최종 우승자와 점수·랭킹
+- 사용자가 직접 고르는 ready, 준비 시간과 경쟁 모드 설정
+- Google 계정에 바인딩하는 competitive seat
 - direct room URL, 수동 WebRTC와 내부 경쟁 API
 - 사용자 간 파티·재화·인벤토리 공유
 
@@ -122,14 +123,15 @@ Authorization header를 요구해서는 안 된다.
 
 ### 5.2 세션 자동 생성·참가와 비밀값
 
-| ID               | 우선순위/상태 | 절차                                    | 기대 결과                                                                    |
-| ---------------- | ------------- | --------------------------------------- | ---------------------------------------------------------------------------- |
-| `MP-SESSION-001` | P0/P          | `MP1`이 닉네임과 `PW_A`로 접속          | 별도 선택 없이 세션을 생성하고 스타터 선택 또는 저장된 월드로 진입한다.      |
-| `MP-SESSION-002` | P0/P          | `MP2`가 다른 닉네임과 `PW_A`로 접속     | 같은 세션에 자동 참가하고 양쪽이 두 닉네임을 본다.                           |
-| `MP-SESSION-003` | P0/P          | 새 context가 `PW_B`로 접속              | `PW_A` 세션 참가자와 서로 보이지 않는다.                                     |
-| `MP-SESSION-004` | P0/A          | URL, storage, API body와 console을 검사 | 임시 비밀번호 원문이 남지 않고 API에는 파생 key만 전달된다.                  |
-| `MP-SESSION-005` | P0/A          | room REST·Socket 요청을 관찰            | room은 `waiting`이며 ready·party snapshot·competitive seat 요청이 0건이다.   |
-| `MP-SESSION-006` | P0/P          | 인증 쿠키가 없는 `MP1`, `MP2`로 접속    | Google 로그인이나 bearer token 없이 create-or-join과 Socket 승인이 성공한다. |
+| ID               | 우선순위/상태 | 절차                                    | 기대 결과                                                                                  |
+| ---------------- | ------------- | --------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `MP-SESSION-001` | P0/P          | `MP1`이 닉네임과 `PW_A`로 접속          | 별도 선택 없이 세션을 생성하고 스타터 선택 또는 저장된 월드로 진입한다.                    |
+| `MP-SESSION-002` | P0/P          | `MP2`가 다른 닉네임과 `PW_A`로 접속     | 같은 세션에 자동 참가하고 양쪽이 두 닉네임을 본다.                                         |
+| `MP-SESSION-003` | P0/P          | 새 context가 `PW_B`로 접속              | `PW_A` 세션 참가자와 서로 보이지 않는다.                                                   |
+| `MP-SESSION-004` | P0/A          | URL, storage, API body와 console을 검사 | 임시 비밀번호 원문이 남지 않고 API에는 파생 key만 전달된다.                                |
+| `MP-SESSION-005` | P0/A          | room REST·Socket 요청을 관찰            | 각 클라이언트가 party snapshot과 ready를 자동 전송하고 competitive seat는 호출하지 않는다. |
+| `MP-SESSION-006` | P0/P          | 인증 쿠키가 없는 `MP1`, `MP2`로 접속    | Google 로그인이나 bearer token 없이 create-or-join과 Socket 승인이 성공한다.               |
+| `MP-SESSION-007` | P0/P          | 두 참가자의 파티 동기화 완료            | 1라운드 5분 준비가 자동 시작되고 양쪽에 같은 라운드와 남은 시간이 표시된다.                |
 
 ### 5.3 최대 6명과 7번째 접속 거부
 
@@ -169,7 +171,17 @@ Authorization header를 요구해서는 안 된다.
 | `MP-WORLD-006` | P1/P          | `MP1`이 전투 종료 후 월드로 복귀               | 상대 avatar와 최신 위치를 다시 보고 자신의 HP·PP·보상만 유지한다.              |
 | `MP-WORLD-007` | P0/P          | 참가자 한 명이 명시적으로 나가기               | 다른 화면에서 해당 avatar가 제거되고 나머지 사용자는 계속 플레이한다.          |
 
-### 5.6 오류·복구·화면
+### 5.6 3라운드 챔피언십
+
+| ID             | 우선순위/상태 | 절차                                   | 기대 결과                                                                       |
+| -------------- | ------------- | -------------------------------------- | ------------------------------------------------------------------------------- |
+| `MP-CHAMP-001` | P0/P          | 2명의 party snapshot·ready 자동 동기화 | 정확히 5분 준비가 시작되고 현재 라운드와 남은 시간이 같은 기준 시각으로 보인다. |
+| `MP-CHAMP-002` | P0/A          | 준비 중 한 명이 나가 참가자가 1명이 됨 | 이탈자의 파티를 제거하고 대진 없이 `waiting`으로 돌아간다.                      |
+| `MP-CHAMP-003` | P0/P          | 준비 종료 뒤 첫 대진에서 행동 제출     | 로그인 없이 private session identity로 자기 행동만 제출할 수 있다.              |
+| `MP-CHAMP-004` | P0/P          | 전투를 terminal까지 진행               | 서버가 승패·bracket 전진·각 파티 terminal HP 비율 점수를 확정한다.              |
+| `MP-CHAMP-005` | P0/P          | 3개 라운드를 모두 완료                 | 누적 점수 내림차순 최종 순위가 표시되고 동점 최고 점수는 공동 우승이다.         |
+
+### 5.7 오류·복구·화면
 
 | ID             | 우선순위/상태 | 절차                                     | 기대 결과                                                                            |
 | -------------- | ------------- | ---------------------------------------- | ------------------------------------------------------------------------------------ |
@@ -196,13 +208,21 @@ Authorization header를 요구해서는 안 된다.
 ### 6.2 6명 정원·7번째 거부·재입장
 
 1. `MP1`~`MP6`이 같은 `PW_A`에 순서대로 접속한다.
-2. REST snapshot에서 참가자 6명, 서로 다른 identity와 `waiting` 상태를 확인한다.
+2. REST snapshot에서 참가자 6명과 서로 다른 identity를 확인한다.
 3. `MP7`이 같은 `PW_A`로 접속해 409 정원 초과 화면을 확인한다.
 4. 정원이 찬 상태에서 `MP1`을 새로고침해 동일 identity와 참가자 6명을 확인한다.
 5. `MP6`이 명시적으로 나가고 `MP7`이 다시 접속해 여섯 번째 자리를 얻는지 확인한다.
 6. 한 참가자의 Socket을 일시 중단하고 15초 안에 재연결해 같은 자리를 유지하는지 확인한다.
 7. 다시 연결을 끊고 유예를 넘겨 참가자 제거와 다음 신규 참가자의 입장을 확인한다.
 8. 남은 모든 참가자가 명시적으로 나가도록 정리한다.
+
+### 6.3 기본 2인 챔피언십
+
+1. `MP1`, `MP2`가 같은 `PW_A`에 접속해 각자의 파티를 준비한다.
+2. 자동 party snapshot·ready 요청과 1라운드 5분 준비 시작을 확인한다.
+3. 양쪽 HUD의 현재 라운드와 남은 시간이 서버 종료 시각을 기준으로 감소하는지 확인한다.
+4. 첫 대진을 끝내고 terminal HP 비율 점수와 다음 대진 또는 다음 라운드 전환을 확인한다.
+5. 3라운드 완료 뒤 누적 최종 순위와 공동 1위 규칙을 확인한다.
 
 ## 7. 필수 증적
 
@@ -217,7 +237,10 @@ Authorization header를 요구해서는 안 된다.
 | `07` | 정원이 찬 상태에서 동일 사용자가 재접속한 상태   |
 | `08` | 한 명이 나간 뒤 7번째 사용자가 입장한 상태       |
 | `09` | 한 사용자는 전투, 다른 사용자는 월드인 독립 상태 |
-| `10` | 테스트 종료 후 입장 화면 또는 정리된 room 상태   |
+| `10` | 1라운드와 준비 남은 시간이 표시된 양쪽 화면      |
+| `11` | 서버 확정 대진 결과와 terminal HP 라운드 점수    |
+| `12` | 3라운드 누적 최종 순위                           |
+| `13` | 테스트 종료 후 입장 화면 또는 정리된 room 상태   |
 
 각 screenshot은 시나리오 ID, browser, viewport와 시각을 함께 기록한다. 추가로 다음 JSON 또는
 로그를 남긴다.
@@ -225,7 +248,7 @@ Authorization header를 요구해서는 안 된다.
 - commit SHA와 배포 URL
 - 공개 participant 수와 room status
 - 예상된 409 한 건과 `POKE_LOUNGE_ROOM_FULL` code
-- ready, party snapshot, competitive seat 요청 건수 0
+- 자동 ready·party snapshot과 session action 요청 경로, competitive seat 요청 건수 0
 - console error, page error와 예상하지 않은 4xx/5xx
 - 가로 overflow 여부
 
@@ -241,28 +264,29 @@ Authorization header를 요구해서는 안 된다.
 4. Desktop 키보드와 Mobile 터치 이동이 서로의 화면에 반영된다.
 5. 각 사용자의 파티·재화·전투 진행은 다른 사용자에게 공유되지 않는다.
 6. 임시 비밀번호 원문과 identity credential이 URL, 저장소, 로그와 artifact에 노출되지 않는다.
-7. 공개 흐름에서 ready, party snapshot과 competitive seat 요청이 없다.
-8. 예상된 정원 초과 409 외에 예상하지 않은 4xx/5xx, page error와 console error가 없다.
-9. Desktop과 Mobile에서 entry, world와 오류 화면이 viewport를 벗어나지 않는다.
-
-승자, 패자, 라운드 완료와 최종 우승자는 통과 조건이 아니다.
+7. 공개 흐름에서 party snapshot과 ready는 자동 동기화되고 competitive seat는 요청하지 않는다.
+8. 5분 준비, 서버 권위 대진, terminal HP 점수와 3라운드 누적 순위가 규칙대로 진행된다.
+9. 예상된 정원 초과 409 외에 예상하지 않은 4xx/5xx, page error와 console error가 없다.
+10. Desktop과 Mobile에서 entry, world, 챔피언십과 오류 화면이 viewport를 벗어나지 않는다.
 
 ## 9. 현재 자동화 근거와 공백
 
-| 범위                      | 현재 근거                                                                                                  | 남은 공백                                      |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| 입장 입력·금지 control    | `room-entry.test.ts`, `poke-lounge.spec.ts`, `poke-lounge-mobile.spec.ts`                                  | 없음                                           |
-| 임시 비밀번호 파생·비노출 | `room-entry.test.ts`, `server-room-snapshot-replay.test.ts`                                                | 운영 artifact 수동 점검                        |
-| 자동 create-or-join       | `poke-lounge-room.service.spec.ts`, `poke-lounge-room.e2e-spec.ts`                                         | 공개 입력을 사용한 실제 두 browser 통합        |
-| 6명 정원·7번째 거부       | `poke-lounge-room.service.spec.ts`, `server-room-snapshot-replay.test.ts`                                  | 실제 7 browser UI 통합                         |
-| 동일 세션 재접속          | `poke-lounge-room.service.spec.ts`, `poke-lounge.gateway.spec.ts`                                          | 정원 6명 상태의 실제 browser reload            |
-| disconnect 유예           | `poke-lounge.gateway.spec.ts`, `poke-lounge-room-policy.spec.ts`                                           | 실제 Socket 연결 중단·복귀                     |
-| 위치 중계·identity 보호   | `poke-lounge.gateway.spec.ts`, `server-room-snapshot-replay.test.ts`                                       | Desktop↔Mobile 실제 양방향 이동                |
-| 독립 게임 진행            | `game-state-store.test.ts`, `server-room-snapshot-replay.test.ts`, Poke Lounge 전투 E2E                    | 한쪽 전투·한쪽 월드의 실제 2 browser 동시 검증 |
-| 오류·복구                 | `server-room-snapshot-replay.test.ts`, `server-room-error-copy.test.ts`, `poke-lounge-multiplayer.spec.ts` | 운영 API·Socket 장애 수동 smoke                |
+| 범위                      | 현재 근거                                                                                                                 | 남은 공백                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| 입장 입력·금지 control    | `room-entry.test.ts`, `poke-lounge.spec.ts`, `poke-lounge-mobile.spec.ts`                                                 | 없음                                           |
+| 임시 비밀번호 파생·비노출 | `room-entry.test.ts`, `server-room-snapshot-replay.test.ts`                                                               | 운영 artifact 수동 점검                        |
+| 자동 create-or-join       | `poke-lounge-room.service.spec.ts`, `poke-lounge-room.e2e-spec.ts`                                                        | 공개 입력을 사용한 실제 두 browser 통합        |
+| 6명 정원·7번째 거부       | `poke-lounge-room.service.spec.ts`, `server-room-snapshot-replay.test.ts`                                                 | 실제 7 browser UI 통합                         |
+| 동일 세션 재접속          | `poke-lounge-room.service.spec.ts`, `poke-lounge.gateway.spec.ts`                                                         | 정원 6명 상태의 실제 browser reload            |
+| disconnect 유예           | `poke-lounge.gateway.spec.ts`, `poke-lounge-room-policy.spec.ts`                                                          | 실제 Socket 연결 중단·복귀                     |
+| 위치 중계·identity 보호   | `poke-lounge.gateway.spec.ts`, `server-room-snapshot-replay.test.ts`                                                      | Desktop↔Mobile 실제 양방향 이동                |
+| 독립 게임 진행            | `game-state-store.test.ts`, `server-room-snapshot-replay.test.ts`, Poke Lounge 전투 E2E                                   | 한쪽 전투·한쪽 월드의 실제 2 browser 동시 검증 |
+| 자동 준비·서버 권위 대진  | `poke-lounge-room.service.spec.ts`, `postgres-poke-lounge-room.repository.spec.ts`, `server-room-snapshot-replay.test.ts` | 공개 입력 기반 3라운드 실제 2 browser 완주     |
+| 이탈·점수·누적 순위       | `poke-lounge-room-policy.spec.ts`, `postgres-competitive-action.repository.spec.ts`                                       | 실제 disconnect와 동점 공동 우승 UI 검증       |
+| 오류·복구                 | `server-room-snapshot-replay.test.ts`, `server-room-error-copy.test.ts`, `poke-lounge-multiplayer.spec.ts`                | 운영 API·Socket 장애 수동 smoke                |
 
-공개 멀티플레이 자동화의 다음 완료 조건은 경쟁전 spec 확장이 아니라, 같은 임시 비밀번호를 실제
-입력하는 Desktop·Mobile 2개 context와 정원 검증용 7개 context 통합 테스트다.
+공개 멀티플레이 자동화의 다음 완료 조건은 같은 임시 비밀번호를 실제 입력하는 Desktop·Mobile
+2개 context의 3라운드 완주와 정원 검증용 7개 context 통합 테스트다.
 
 ## 10. 기준 문서
 

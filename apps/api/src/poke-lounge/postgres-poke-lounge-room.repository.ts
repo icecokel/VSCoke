@@ -22,7 +22,10 @@ import { PokeLoungeRoom } from './entities/poke-lounge-room.entity';
 import { VerifiedPokeLoungeHistoryWriter } from '../game/verified-poke-lounge-history-writer.service';
 import { PokeLoungeCompetitiveAction } from './competitive/competitive-action.entity';
 import { createCompetitiveAssignment } from './competitive/competitive-match.service';
-import { toCompetitiveParties } from './competitive/postgres-competitive-match.repository';
+import {
+  toCompetitiveParties,
+  toCompetitivePlayers,
+} from './competitive/postgres-competitive-match.repository';
 import {
   createTerminalHpScores,
   finalizeCompetitiveTerminalMatch,
@@ -409,16 +412,18 @@ export async function ensureActiveTournamentAssignment(
   const seats = await manager
     .getRepository(PokeLoungeCompetitiveSeat)
     .find({ where: { roomId: room.id } });
-  const players = bracketMatch.participantIds.map((playerId) => {
-    const seat = seats.find((candidate) => candidate.playerId === playerId);
-    return seat ? { playerId: seat.playerId, accountId: seat.accountId } : null;
-  });
-  if (!players[0] || !players[1]) {
+  const players = toCompetitivePlayers(
+    snapshot,
+    seats,
+    bracketMatch.participantIds,
+    room.roomCode,
+  );
+  if (!players) {
     snapshot.tournament.activeMatchAuthority = 'casual';
     return;
   }
 
-  const assignmentPlayers = [players[0], players[1]] as const;
+  const assignmentPlayers = players;
   const assignmentKind = 'tournament-unranked' as const;
   const existing =
     active?.bracketMatchId === bracketMatchId

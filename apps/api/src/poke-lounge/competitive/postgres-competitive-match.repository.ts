@@ -11,10 +11,12 @@ import type {
   CompetitiveSeatBindingResult,
 } from './competitive-match.repository';
 import {
+  createSessionCompetitiveAccountId,
   isCompetitiveAssignmentMember,
   planCompetitiveSeatBinding,
 } from './competitive-match.repository';
 import type { CompetitiveMatchAssignment } from './competitive-match.types';
+import type { CompetitivePlayerAccount } from './competitive-match.types';
 import { toCompetitiveProjection } from './competitive-projection.service';
 import type { PokeLoungeRoomSnapshot } from '../poke-lounge-room.repository';
 import type { PokeLoungeRoomState } from '../poke-lounge-room.types';
@@ -171,6 +173,29 @@ export function toCompetitiveParties(
     parties[player.playerId] = structuredClone(snapshot.competitiveParty);
   }
   return parties;
+}
+
+export function toCompetitivePlayers(
+  state: Pick<PokeLoungeRoomState, 'participants'>,
+  seats: Pick<PokeLoungeCompetitiveSeat, 'playerId' | 'accountId'>[],
+  playerIds: readonly [string, string],
+  roomCode: string,
+): [CompetitivePlayerAccount, CompetitivePlayerAccount] | null {
+  const players = playerIds.map((playerId) => {
+    const seat = seats.find((candidate) => candidate.playerId === playerId);
+    const sessionId = state.participants.find(
+      (participant) => participant.playerId === playerId,
+    )?.sessionId;
+    const accountId =
+      seat?.accountId ??
+      (sessionId
+        ? createSessionCompetitiveAccountId(roomCode, sessionId)
+        : null);
+
+    return accountId ? { playerId, accountId } : null;
+  });
+
+  return players[0] && players[1] ? [players[0], players[1]] : null;
 }
 
 async function saveSeat(

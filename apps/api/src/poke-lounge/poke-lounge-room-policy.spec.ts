@@ -146,7 +146,7 @@ describe('PokeLoungeRoomPolicy', () => {
 
     expect(expirePendingPokeLoungePresence(room, pendingUntilMs)).toMatchObject(
       {
-        status: 'round-started',
+        status: 'waiting',
         participants: [
           {
             playerId: 'player-1',
@@ -161,7 +161,7 @@ describe('PokeLoungeRoomPolicy', () => {
           bracket: null,
           cumulativeScores: { 'player-1': 100, 'player-2': 100 },
         },
-        round: { index: 2, phase: 'round-started' },
+        round: { index: 2, phase: 'waiting' },
       },
     );
   });
@@ -341,6 +341,28 @@ describe('PokeLoungeRoomPolicy', () => {
         activeMatchId: null,
         activeMatchAuthority: null,
       },
+    });
+  });
+
+  it('returns an undersized preparation round to waiting at its deadline', () => {
+    const room = createSnapshot({
+      status: 'round-started',
+      participants: [createParticipant('player-1', 1)],
+      partySnapshots: createTestPartySnapshots(['player-1']),
+      round: {
+        index: 1,
+        phase: 'round-started',
+        durationMs: 1_000,
+        startedAtMs: 0,
+        endsAtMs: 1_000,
+      },
+    });
+
+    expect(advancePokeLoungeRoomClock(room, 1_000)).toMatchObject({
+      status: 'waiting',
+      revision: 1,
+      round: { phase: 'waiting', startedAtMs: null, endsAtMs: null },
+      tournament: { bracket: null, activeMatchId: null },
     });
   });
 

@@ -2574,7 +2574,7 @@ test("7번째 신규 사용자는 정원 초과 안내를 받고 자동 재시�
   }
 });
 
-test("임시 비밀번호 방은 파생 room code와 실시간 위치만 공유한다", async () => {
+test("임시 비밀번호 방은 안전한 실시간 위치와 챔피언십 준비 상태를 동기화한다", async () => {
   process.env.NEXT_PUBLIC_API_URL = "http://api.test";
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   const timers = createManualRecoveryTimers("?create=1&network=server");
@@ -2600,12 +2600,19 @@ test("임시 비밀번호 방은 파생 room code와 실시간 위치만 공유�
     const socket = createSocket();
     const snapshots = createRoomSnapshots();
     let createBody: unknown;
+    let sessionActionRequest: { body: unknown; authorization: string | null } | null = null;
     const requestedPaths: string[] = [];
     const fetchFixture: typeof fetch = async (input, init) => {
       const url = new URL(typeof input === "string" ? input : input.toString());
       requestedPaths.push(url.pathname);
       if (url.pathname === "/poke-lounge/rooms") {
         createBody = JSON.parse(String(init?.body));
+      }
+      if (url.pathname.endsWith("/session-actions")) {
+        sessionActionRequest = {
+          body: JSON.parse(String(init?.body)),
+          authorization: new Headers(init?.headers).get("Authorization"),
+        };
       }
       return jsonResponse(snapshots.initial);
     };
@@ -2614,6 +2621,7 @@ test("임시 비밀번호 방은 파생 room code와 실시간 위치만 공유�
       roomId: "ROOM01",
       persistRoomCodeInUrl: false,
       sharedWorldOnly: true,
+      competitiveRoundsEnabled: true,
       playerId: "player-1",
       sessionId: "session-1",
       fetch: fetchFixture,
@@ -2623,7 +2631,11 @@ test("임시 비밀번호 방은 파생 room code와 실시간 위치만 공유�
     room.connect(createPlayerSnapshot());
     await waitFor(() => socket.subscriptions().length > 0);
     socket.pushSnapshot(snapshots.initial);
-    await waitFor(() => socket.emissions("room.player-event").length > 0);
+    await waitFor(
+      () =>
+        socket.emissions("room.player-event").length > 0 &&
+        requestedPaths.some(path => path.endsWith("/ready")),
+    );
 
     assert.deepEqual(createBody, {
       playerId: "player-1",
@@ -2634,11 +2646,11 @@ test("임시 비밀번호 방은 파생 room code와 실시간 위치만 공유�
     assert.equal(fixtureWindow.location.href.includes("room="), false);
     assert.equal(
       requestedPaths.some(path => path.endsWith("/party-snapshot")),
-      false,
+      true,
     );
     assert.equal(
       requestedPaths.some(path => path.endsWith("/ready")),
-      false,
+      true,
     );
 
     const initialLiveEvent = socket.emissions("room.player-event").at(-1) as {
@@ -2648,6 +2660,25 @@ test("임시 비밀번호 방은 파생 room code와 실시간 위치만 공유�
     assert.equal(initialLiveEvent.type, "PLAYER_CHANGED_MAP");
     assert.equal("party" in initialLiveEvent.snapshot, false);
     assert.equal("sessionId" in initialLiveEvent.snapshot, false);
+
+    room.send("COMPETITIVE_ACTION", {
+      matchId: "00000000-0000-4000-8000-000000000010",
+      assignmentRevision: 1,
+      turn: 0,
+      clientCommandId: "00000000-0000-4000-8000-000000000011",
+      action: { kind: "move", moveId: 55 },
+    });
+    await waitFor(() => sessionActionRequest !== null);
+    assert.deepEqual(sessionActionRequest, {
+      body: {
+        assignmentRevision: 1,
+        turn: 0,
+        clientCommandId: "00000000-0000-4000-8000-000000000011",
+        action: { kind: "move", moveId: 55 },
+        sessionId: "session-1",
+      },
+      authorization: null,
+    });
 
     const received: RoomEvent["PLAYER_MOVED"][] = [];
     const leftSessionIds: string[] = [];

@@ -75,6 +75,18 @@ describe('PokeLoungeRoomService', () => {
     expectPublicEvent(publisher, 'room-created', room);
   });
 
+  it('fixes production round preparation to five minutes', async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+
+    try {
+      const room = await createRoom({ roundDurationMs: 1_000 });
+      expect(room.round.durationMs).toBe(300_000);
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
+
   it('uses supplied nicknames for a room creator and a newly joined player', async () => {
     const created = await service.createRoom(
       {
@@ -283,7 +295,7 @@ describe('PokeLoungeRoomService', () => {
 
     expect(guestAcknowledged).toMatchObject({
       status: 'round-started',
-      round: { startedAtMs: 0, endsAtMs: 60_000 },
+      round: { startedAtMs: 0, endsAtMs: 300_000 },
       participants: [
         { playerId: 'player-1', ready: true, connected: true },
         { playerId: 'player-2', ready: true, connected: true },
@@ -1045,13 +1057,48 @@ describe('PokeLoungeRoomService', () => {
     );
 
     expect(completed).toMatchObject({
-      status: 'round-started',
-      round: { index: 2, phase: 'round-started' },
+      status: 'waiting',
+      round: { index: 2, phase: 'waiting' },
       tournament: {
         bracket: null,
         cumulativeScores: { 'player-1': 100, 'player-2': 100 },
       },
     });
+  });
+
+  it('removes a preparation leaver and restarts waiting without a ghost bracket', async () => {
+    await createRoom({ roundDurationMs: 1_000 });
+    await service.joinRoom(
+      'ROOM01',
+      { playerId: 'player-2', sessionId: 'session-2', nowMs: 10 },
+      command(0, 2),
+    );
+    await updateTestParty('player-1', 'session-1', 1, 50, 20);
+    await updateTestParty('player-2', 'session-2', 2, 51, 30);
+    await service.setReady(
+      'ROOM01',
+      { playerId: 'player-1', sessionId: 'session-1', ready: true, nowMs: 100 },
+      command(3, 3),
+    );
+    const started = await service.setReady(
+      'ROOM01',
+      { playerId: 'player-2', sessionId: 'session-2', ready: true, nowMs: 200 },
+      command(4, 4),
+    );
+
+    const waiting = await service.leaveRoom(
+      'ROOM01',
+      { playerId: 'player-1', sessionId: 'session-1', nowMs: 300 },
+      command(started.revision, 5),
+    );
+
+    expect(waiting).toMatchObject({
+      status: 'waiting',
+      participants: [{ playerId: 'player-2' }],
+      round: { phase: 'waiting', startedAtMs: null, endsAtMs: null },
+      tournament: { bracket: null, activeMatchId: null },
+    });
+    expect(waiting.partySnapshots['player-1']).toBeUndefined();
   });
 
   it('converges a casual five-player bye disconnect when that player reaches a later match', async () => {

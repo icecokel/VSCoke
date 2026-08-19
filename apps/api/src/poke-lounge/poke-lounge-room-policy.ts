@@ -77,17 +77,24 @@ export function advancePokeLoungeRoomClock(
   }
 
   const advanced = structuredClone(room);
-  const participantsReady = advanced.participants
-    .filter(
-      (participant) =>
-        participant.role === 'participant' && participant.connected,
-    )
-    .every((participant) =>
-      Boolean(
-        advanced.partySnapshots[participant.playerId]?.competitiveParty.members
-          .length,
-      ),
-    );
+  const participants = advanced.participants.filter(
+    (participant) =>
+      participant.role === 'participant' && participant.connected,
+  );
+  if (participants.length < 2) {
+    resetRoundPreparation(advanced);
+    advanced.updatedAtMs = nowMs;
+    advanced.revision = room.revision + 1;
+    advanced.expiresAtMs = getPokeLoungeRoomExpiresAtMs(advanced);
+    return advanced;
+  }
+
+  const participantsReady = participants.every((participant) =>
+    Boolean(
+      advanced.partySnapshots[participant.playerId]?.competitiveParty.members
+        .length,
+    ),
+  );
   if (!participantsReady) {
     advanced.status = 'closed';
     advanced.closeReason = 'competitive-party-not-ready';
@@ -135,6 +142,15 @@ export function expirePendingPokeLoungePresence(
     for (const playerId of expiredPlayerIds) {
       delete expired.partySnapshots[playerId];
     }
+    if (
+      expired.status === 'round-started' &&
+      expired.participants.filter(
+        (participant) =>
+          participant.role === 'participant' && participant.connected,
+      ).length < 2
+    ) {
+      resetRoundPreparation(expired);
+    }
   } else {
     for (const participant of expired.participants) {
       if (expiredPlayerIds.has(participant.playerId)) {
@@ -176,6 +192,7 @@ export function createTournamentState(
     .filter((participant) => {
       return (
         participant.role === 'participant' &&
+        participant.connected &&
         Boolean(
           room.partySnapshots[participant.playerId]?.competitiveParty.members
             .length,
@@ -204,6 +221,13 @@ export function createTournamentState(
     roundScores: {},
     cumulativeScores: structuredClone(room.tournament.cumulativeScores),
   };
+}
+
+function resetRoundPreparation(room: PokeLoungeRoomState): void {
+  room.status = 'waiting';
+  room.round.phase = 'waiting';
+  room.round.startedAtMs = null;
+  room.round.endsAtMs = null;
 }
 
 export function normalizeLegacyPokeLoungeRoomSnapshot(
@@ -308,13 +332,22 @@ export function completePokeLoungeTournamentMatch(
     room.tournament.roundScores = {};
 
     if (room.round.index < POKE_LOUNGE_GAME_ROUND_COUNT) {
-      room.status = 'round-started';
       room.round.index += 1;
-      room.round.phase = 'round-started';
-      room.round.startedAtMs = nowMs;
-      room.round.endsAtMs = nowMs + room.round.durationMs;
       room.tournament.bracket = null;
       room.finalStandings = [];
+      if (
+        room.participants.filter(
+          (participant) =>
+            participant.role === 'participant' && participant.connected,
+        ).length < 2
+      ) {
+        resetRoundPreparation(room);
+      } else {
+        room.status = 'round-started';
+        room.round.phase = 'round-started';
+        room.round.startedAtMs = nowMs;
+        room.round.endsAtMs = nowMs + room.round.durationMs;
+      }
       return;
     }
 

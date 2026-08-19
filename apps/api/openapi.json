@@ -682,6 +682,62 @@
         "tags": ["poke-lounge"]
       }
     },
+    "/poke-lounge/rooms/{roomCode}/matches/{matchId}/session-actions": {
+      "post": {
+        "operationId": "PokeLoungeController_submitSessionCompetitiveAction",
+        "parameters": [
+          {
+            "name": "roomCode",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "matchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitSessionCompetitiveActionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CompetitiveActionResponseDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": ["poke-lounge"]
+      }
+    },
     "/poke-lounge/rooms/{roomCode}/join": {
       "post": {
         "operationId": "PokeLoungeController_joinRoom",
@@ -2907,7 +2963,8 @@
           },
           "roundDurationMs": {
             "type": "number",
-            "example": 60000
+            "example": 300000,
+            "description": "Test-only override; production preparation is fixed at 300000ms"
           }
         },
         "required": ["sessionId"]
@@ -3053,6 +3110,32 @@
           }
         },
         "required": ["assignmentRevision", "turn", "clientCommandId", "action"]
+      },
+      "SubmitSessionCompetitiveActionDto": {
+        "type": "object",
+        "properties": {
+          "assignmentRevision": {
+            "type": "number",
+            "minimum": 0
+          },
+          "turn": {
+            "type": "number",
+            "minimum": 0
+          },
+          "clientCommandId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "$ref": "#/components/schemas/CompetitiveActionDto"
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "required": ["assignmentRevision", "turn", "clientCommandId", "action", "sessionId"]
       },
       "JoinPokeLoungeRoomDto": {
         "type": "object",
@@ -3277,7 +3360,7 @@
           },
           "reason": {
             "type": "string",
-            "enum": ["faint", "timeout", "forfeit", "run", "capture"],
+            "enum": ["faint", "timeout", "forfeit"],
             "example": "faint"
           }
         },

@@ -15,6 +15,7 @@ import {
 } from '@vscoke/poke-lounge-battle';
 import {
   COMPETITIVE_MATCH_REPOSITORY,
+  createSessionCompetitiveAccountId,
   type CompetitiveMatchRepository,
   type CompetitiveSeatBindingFailure,
 } from './competitive-match.repository';
@@ -155,6 +156,18 @@ export class CompetitiveMatchService implements OnModuleDestroy {
     }
 
     return structuredClone(result.response);
+  }
+
+  submitSessionAction(
+    input: Omit<SubmitCompetitiveActionInput, 'accountId'> & {
+      sessionId: string;
+    },
+  ) {
+    const { sessionId, ...actionInput } = input;
+    return this.submitAction({
+      ...actionInput,
+      accountId: createSessionCompetitiveAccountId(input.roomCode, sessionId),
+    });
   }
 
   private scheduleTurnTimeout(

@@ -225,6 +225,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/poke-lounge/rooms/{roomCode}/matches/{matchId}/session-actions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["PokeLoungeController_submitSessionCompetitiveAction"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/poke-lounge/rooms/{roomCode}/join": {
     parameters: {
       query?: never;
@@ -1125,7 +1141,10 @@ export interface components {
       userId?: string;
       /** @example Player A */
       displayName?: string;
-      /** @example 60000 */
+      /**
+       * @description Test-only override; production preparation is fixed at 300000ms
+       * @example 300000
+       */
       roundDurationMs?: number;
     };
     BindCompetitiveSeatDto: {
@@ -1165,6 +1184,14 @@ export interface components {
       /** Format: uuid */
       clientCommandId: string;
       action: components["schemas"]["CompetitiveActionDto"];
+    };
+    SubmitSessionCompetitiveActionDto: {
+      assignmentRevision: number;
+      turn: number;
+      /** Format: uuid */
+      clientCommandId: string;
+      action: components["schemas"]["CompetitiveActionDto"];
+      sessionId: string;
     };
     JoinPokeLoungeRoomDto: {
       /** @example player-b */
@@ -1255,7 +1282,7 @@ export interface components {
        * @example faint
        * @enum {string}
        */
-      reason: "faint" | "timeout" | "forfeit" | "run" | "capture";
+      reason: "faint" | "timeout" | "forfeit";
     };
     LeavePokeLoungeRoomDto: {
       /** @example player-a */
@@ -1764,6 +1791,36 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["SubmitCompetitiveActionDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["CompetitiveActionResponseDto"];
+          };
+        };
+      };
+    };
+  };
+  PokeLoungeController_submitSessionCompetitiveAction: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        roomCode: string;
+        matchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SubmitSessionCompetitiveActionDto"];
       };
     };
     responses: {

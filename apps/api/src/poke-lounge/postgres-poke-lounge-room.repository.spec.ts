@@ -312,6 +312,80 @@ describe('ensureActiveTournamentAssignment', () => {
     });
   });
 
+  it('creates a server assignment from private participant sessions without login seats', async () => {
+    const bracket = createTournamentBracketState(
+      [
+        { playerId: 'player-1', displayName: 'Player 1' },
+        { playerId: 'player-2', displayName: 'Player 2' },
+      ],
+      1,
+    );
+    const roomSnapshot = snapshot();
+    roomSnapshot.status = 'tournament';
+    roomSnapshot.round.phase = 'tournament';
+    roomSnapshot.participants = [
+      {
+        sessionId: 'session-1',
+        playerId: 'player-1',
+        displayName: 'Player 1',
+        role: 'participant',
+        ready: true,
+        connected: true,
+        joinedAtMs: 1,
+      },
+      {
+        sessionId: 'session-2',
+        playerId: 'player-2',
+        displayName: 'Player 2',
+        role: 'participant',
+        ready: true,
+        connected: true,
+        joinedAtMs: 2,
+      },
+    ];
+    roomSnapshot.tournament = {
+      version: 2,
+      bracket,
+      activeMatchId: bracket.currentRound!.matches[0].matchId,
+      activeMatchAuthority: 'casual',
+      cumulativeScores: {},
+    };
+    const matchSave = jest.fn((value: PokeLoungeCompetitiveMatch) => value);
+    const manager = {
+      getRepository: jest.fn((entity) => {
+        if (entity === PokeLoungeCompetitiveSeat) {
+          return { find: jest.fn().mockResolvedValue([]) };
+        }
+        if (entity === PokeLoungeCompetitiveMatch) {
+          return {
+            findOne: jest.fn().mockResolvedValue(null),
+            create: jest.fn((value: PokeLoungeCompetitiveMatch) => value),
+            save: matchSave,
+            delete: jest.fn(),
+          };
+        }
+        throw new Error('Unexpected repository');
+      }),
+    } as unknown as EntityManager;
+
+    await ensureActiveTournamentAssignment(
+      manager,
+      {
+        id: '00000000-0000-4000-8000-000000000001',
+        roomCode: 'ROOM01',
+      } as PokeLoungeRoom,
+      roomSnapshot,
+    );
+
+    expect(roomSnapshot.tournament.activeMatchAuthority).toBe('server');
+    const accounts = matchSave.mock.calls[0]?.[0].playerAccounts;
+    expect(accounts?.map(({ accountId }) => accountId)).toEqual([
+      expect.stringMatching(/^session:[0-9a-f]{64}$/),
+      expect.stringMatching(/^session:[0-9a-f]{64}$/),
+    ]);
+    expect(accounts?.[0].accountId).not.toBe(accounts?.[1].accountId);
+  });
+
   it('replaces a stale pre-bracket ranked assignment before activating five players', async () => {
     const bracket = createTournamentBracketState(
       Array.from({ length: 5 }, (_, index) => ({

@@ -56,6 +56,7 @@ export interface ServerRoomOptions {
   roundDurationMs?: number;
   persistRoomCodeInUrl?: boolean;
   sharedWorldOnly?: boolean;
+  competitiveRoundsEnabled?: boolean;
   fetch?: typeof fetch;
   idToken?: string;
   getIdToken?: () => string | undefined;
@@ -1265,30 +1266,25 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   const submitCompetitiveAction = async (
     command: RoomEvent["COMPETITIVE_ACTION"],
   ): Promise<void> => {
-    if (!readIdToken()) {
-      return;
-    }
-
-    const body = JSON.stringify({
-      assignmentRevision: command.assignmentRevision,
-      turn: command.turn,
-      clientCommandId: command.clientCommandId,
-      action: command.action,
-    });
     const send = async () => {
       const idToken = readIdToken();
-      if (!idToken) {
-        throw new Error("Poke Lounge competitive session authentication expired");
-      }
+      const actionPath = idToken ? "actions" : "session-actions";
+      const body = JSON.stringify({
+        assignmentRevision: command.assignmentRevision,
+        turn: command.turn,
+        clientCommandId: command.clientCommandId,
+        action: command.action,
+        ...(!idToken ? { sessionId } : {}),
+      });
 
       let httpResponse: { response: Response; responseText: string };
       try {
         httpResponse = await fetchResponseWithTimeout(
-          `${getApiBaseUrl()}/poke-lounge/rooms/${activeRoomId}/matches/${command.matchId}/actions`,
+          `${getApiBaseUrl()}/poke-lounge/rooms/${activeRoomId}/matches/${command.matchId}/${actionPath}`,
           {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${idToken}`,
+              ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
               "Content-Type": "application/json",
             },
             body,
@@ -1475,7 +1471,8 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
           if (options.sharedWorldOnly) {
             latestSharedWorldSnapshot = structuredClone(initialSnapshot);
             publishSharedWorldSnapshot("PLAYER_CHANGED_MAP");
-          } else {
+          }
+          if (!options.sharedWorldOnly || options.competitiveRoundsEnabled) {
             void submitPartySnapshot(initialSnapshot).catch(() => {});
           }
         }
@@ -1531,6 +1528,9 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       ) {
         latestSharedWorldSnapshot = structuredClone(payload as PlayerSnapshot);
         publishSharedWorldSnapshot(type);
+        if (type === "PLAYER_CHANGED_MAP" && options.competitiveRoundsEnabled) {
+          void submitPartySnapshot(payload as PlayerSnapshot).catch(() => {});
+        }
         return;
       }
 
@@ -1640,11 +1640,12 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         const opened = await openServerRoom(initialWorkflowSnapshot);
         applySnapshot(opened);
         if (initialWorkflowStage === "open") {
-          initialWorkflowStage = options.sharedWorldOnly
-            ? "complete"
-            : readIdToken()
-              ? "competitive-seat"
-              : "party";
+          initialWorkflowStage =
+            options.sharedWorldOnly && !options.competitiveRoundsEnabled
+              ? "complete"
+              : readIdToken()
+                ? "competitive-seat"
+                : "party";
         }
       }
 

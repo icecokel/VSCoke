@@ -1,6 +1,6 @@
 # VSCoke Monorepo Concept
 
-확인 기준일: 2026-07-16
+확인 기준일: 2026-08-19
 
 이 문서는 현재 구현된 VSCoke monorepo의 구조, 실행 방식, 테스트, 배포 흐름을 한눈에 보기 위한 기준 문서다. 프론트엔드, 백엔드, 테스트, hook 작업을 시작할 때는 이 문서를 먼저 확인한다.
 
@@ -73,15 +73,15 @@ API는 Ubuntu 호스트에서 PM2로 실행되는 NestJS 앱이다.
 
 현재 API 모듈:
 
-| 모듈            | 주요 endpoint                                                                                             | 설명                             |
-| --------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| App             | `GET /`, `GET /health`                                                                                    | 기본 상태와 health 확인          |
-| Recipe          | `GET /recipes`, `GET /recipes/:id`                                                                        | 취미 레시피 목록/상세            |
-| EspressoHistory | `GET /espresso-history/beans`, `GET /espresso-history/beans/:id`                                          | 에스프레소 원두/라운드 기록      |
-| Game            | `POST /game/result`, `GET /game/ranking`, `GET /game/result/:id`, `GET/PUT /game/poke-lounge/state`       | 게임 점수, 랭킹, 공유, 저장 상태 |
-| PokeLounge      | `POST /poke-lounge/rooms`, `GET /poke-lounge/rooms/:roomCode`, join/ready/snapshot/result/leave room APIs | Poke Lounge 서버 룸 상태         |
-| ResumeRag       | `POST /resume-rag/chat`                                                                                   | 공개 이력 질문 답변              |
-| Wordle          | `GET /wordle/word`, `POST /wordle/check`                                                                  | Wordle 단어 조회/검증            |
+| 모듈            | 주요 endpoint                                                                                       | 설명                              |
+| --------------- | --------------------------------------------------------------------------------------------------- | --------------------------------- |
+| App             | `GET /`, `GET /health`                                                                              | 기본 상태와 health 확인           |
+| Recipe          | `GET /recipes`, `GET /recipes/:id`                                                                  | 취미 레시피 목록/상세             |
+| EspressoHistory | `GET /espresso-history/beans`, `GET /espresso-history/beans/:id`                                    | 에스프레소 원두/라운드 기록       |
+| Game            | `POST /game/result`, `GET /game/ranking`, `GET /game/result/:id`, `GET/PUT /game/poke-lounge/state` | 게임 점수, 랭킹, 공유, 저장 상태  |
+| PokeLounge      | room create/join/ready/snapshot/leave, competitive seat/action/session-action APIs                  | shared world와 서버 권위 챔피언십 |
+| ResumeRag       | `POST /resume-rag/chat`                                                                             | 공개 이력 질문 답변               |
+| Wordle          | `GET /wordle/word`, `POST /wordle/check`                                                            | Wordle 단어 조회/검증             |
 
 DB 연결은 API 런타임에서만 관리한다. 웹은 DB에 직접 접근하지 않는다.
 
@@ -136,9 +136,15 @@ nickname + temporary password
 -> POST /poke-lounge/rooms { roomCode, playerId, sessionId, displayName }
 -> create-or-join PostgreSQL room
 -> Socket.IO participant snapshot + validated live position
+-> automatic party snapshot + ready
+-> five-minute preparation + server-authoritative tournament
 ```
 
-공개 클라이언트는 room을 waiting 상태로 유지하며 ready, party snapshot, competitive seat를 호출하지 않는다. 참가자의 개인 파티·재화·전투는 탭에 독립적으로 저장하고, 같은 room에는 서버가 승인한 닉네임과 월드 좌표·방향만 중계한다.
+공개 클라이언트는 현재 파티와 ready를 자동 동기화한다. 연결 참가자 2명 이상의 파티가
+준비되면 5분 준비를 시작하고, 서버가 2~6인 대진·전투 terminal·HP 비율 점수·3라운드 누적
+순위를 확정한다. 비로그인 행동은 방 코드와 비공개 session identity로 승인한다. 참가자의 개인
+파티·재화·야생전 진행은 탭에 독립적으로 저장하고, 같은 room에는 서버가 승인한 닉네임과 월드
+좌표·방향만 중계한다.
 
 방 코드, 생성·참가 구분, 초대 링크, 라운드 시간, Google 로그인과 경쟁전 선택은 공개 UI에 없다. 기존 direct room URL과 경쟁 좌석 경로는 내부 회귀·통합 테스트 호환용이다.
 
@@ -154,7 +160,8 @@ authenticated Web
 
 서버 GET이 없거나 로그인하지 않은 경우 Phaser는 versioned `sessionStorage` local-player snapshot으로 시작한다. 인증 GET이 실패하면 로컬 상태로 게임을 시작하되 원격 autosave는 재시도 전까지 열지 않아 서버 상태를 덮어쓰지 않는다. `localStorage`의 legacy key는 제거한다.
 
-다음 room command·경쟁전 설명은 공개 멀티플레이가 호출하지 않는 내부 호환 구현이다.
+다음 room command·경쟁전 흐름은 공개 멀티플레이의 서버 권위 구현이며, account competitive
+seat만 선택적 로그인·내부 direct room 경로다.
 
 ```txt
 room mutation + X-Idempotency-Key + If-Match-Revision

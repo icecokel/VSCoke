@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { PokeLoungeRoomState } from '../poke-lounge-room.types';
 import type { PokeLoungeRoomSnapshot } from '../poke-lounge-room.repository';
 import type { CompetitiveActionProjection } from './competitive-action.types';
@@ -58,6 +59,17 @@ export function isCompetitiveAssignmentMember(
       member.playerId === identity.playerId &&
       member.accountId === identity.accountId,
   );
+}
+
+export function createSessionCompetitiveAccountId(
+  roomCode: string,
+  sessionId: string,
+): string {
+  return `session:${createHash('sha256')
+    .update(roomCode.trim().toUpperCase())
+    .update('\0')
+    .update(sessionId.trim())
+    .digest('hex')}`;
 }
 
 export type CompetitiveSeatBindingPlan =

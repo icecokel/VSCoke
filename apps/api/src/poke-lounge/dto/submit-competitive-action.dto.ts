@@ -5,7 +5,9 @@ import {
   IsString,
   Matches,
   Max,
+  MaxLength,
   Min,
+  MinLength,
   ValidateIf,
   Validate,
   ValidateNested,
@@ -97,6 +99,15 @@ export class SubmitCompetitiveActionDto {
   @ValidateNested()
   @Type(() => CompetitiveActionDto)
   action!: CompetitiveActionDto;
+}
+
+export class SubmitSessionCompetitiveActionDto extends SubmitCompetitiveActionDto {
+  @ApiProperty({ minLength: 1, maxLength: 256 })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(256)
+  @Matches(/\S/)
+  sessionId!: string;
 }
 
 export function toCanonicalCompetitiveAction(

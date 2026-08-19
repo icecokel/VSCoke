@@ -1,6 +1,9 @@
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { COMPETITIVE_STRUGGLE_MOVE_ID } from '@vscoke/poke-lounge-battle';
-import { SubmitCompetitiveActionDto } from './submit-competitive-action.dto';
+import {
+  SubmitCompetitiveActionDto,
+  SubmitSessionCompetitiveActionDto,
+} from './submit-competitive-action.dto';
 
 describe('SubmitCompetitiveActionDto', () => {
   const pipe = new ValidationPipe({
@@ -58,6 +61,27 @@ describe('SubmitCompetitiveActionDto', () => {
     ).rejects.toThrow(BadRequestException);
     await expect(
       transform(validBody({ kind: 'move', moveId: 55, slotIndex: 1 })),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('requires a bounded non-blank session identity for password rooms', async () => {
+    await expect(
+      pipe.transform(
+        { ...validBody(), sessionId: 'session-a' },
+        {
+          type: 'body',
+          metatype: SubmitSessionCompetitiveActionDto,
+        },
+      ),
+    ).resolves.toMatchObject({ sessionId: 'session-a' });
+    await expect(
+      pipe.transform(
+        { ...validBody(), sessionId: ' '.repeat(257) },
+        {
+          type: 'body',
+          metatype: SubmitSessionCompetitiveActionDto,
+        },
+      ),
     ).rejects.toThrow(BadRequestException);
   });
 

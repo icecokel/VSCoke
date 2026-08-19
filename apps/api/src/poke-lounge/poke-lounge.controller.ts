@@ -30,6 +30,7 @@ import { CompetitiveAssignmentResponseDto } from './dto/competitive-assignment-r
 import { CompetitiveActionResponseDto } from './dto/competitive-action-response.dto';
 import {
   SubmitCompetitiveActionDto,
+  SubmitSessionCompetitiveActionDto,
   toCanonicalCompetitiveAction,
 } from './dto/submit-competitive-action.dto';
 import { CreatePokeLoungeRoomDto } from './dto/create-poke-lounge-room.dto';
@@ -162,6 +163,29 @@ export class PokeLoungeController {
       roomCode: roomCode.trim().toUpperCase(),
       matchId: matchId.toLowerCase(),
       accountId: request.user.id,
+      assignmentRevision: body.assignmentRevision,
+      turn: body.turn,
+      clientCommandId: body.clientCommandId,
+      action: toCanonicalCompetitiveAction(body.action),
+    });
+  }
+
+  @Post('rooms/:roomCode/matches/:matchId/session-actions')
+  @ApiBody({ type: SubmitSessionCompetitiveActionDto })
+  @ApiCreatedResponse({ type: CompetitiveActionResponseDto })
+  async submitSessionCompetitiveAction(
+    @Param('roomCode') roomCode: string,
+    @Param('matchId') matchId: string,
+    @Body() body: SubmitSessionCompetitiveActionDto,
+  ) {
+    if (!UUID_V4_PATH_PATTERN.test(matchId)) {
+      throw new BadRequestException('matchId must be a canonical UUID v4');
+    }
+
+    return this.competitiveMatchService.submitSessionAction({
+      roomCode: roomCode.trim().toUpperCase(),
+      matchId: matchId.toLowerCase(),
+      sessionId: body.sessionId,
       assignmentRevision: body.assignmentRevision,
       turn: body.turn,
       clientCommandId: body.clientCommandId,

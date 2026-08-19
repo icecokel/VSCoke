@@ -214,10 +214,10 @@ export async function startGamePage(
       roomId: temporaryRoomCode,
       persistRoomCodeInUrl: temporaryRoomCode ? false : undefined,
       sharedWorldOnly: Boolean(temporaryRoomCode),
+      competitiveRoundsEnabled: isCompetitiveRoomEntryMode(roomEntry.mode),
       searchParams: gameUrl.searchParams,
     });
-    const competitiveRoundsEnabled =
-      isCompetitiveRoomEntryMode(roomEntry.mode) && !temporaryRoomCode;
+    const competitiveRoundsEnabled = isCompetitiveRoomEntryMode(roomEntry.mode);
     activeMultiplayerRoom = multiplayerRoom;
     mount.innerHTML = "";
     mount.dataset.pokeLoungeResourceStatus = "loading";
@@ -227,10 +227,7 @@ export async function startGamePage(
       gameStateStore,
       initialScene,
       multiplayerRoom,
-      onGameResult:
-        roomEntry.mode === "server-room" && !temporaryRoomCode
-          ? undefined
-          : dependencies.onGameResult,
+      onGameResult: roomEntry.mode === "server-room" ? undefined : dependencies.onGameResult,
       viewportSize: activeViewportSize,
     });
     activeGame = game;

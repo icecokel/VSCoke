@@ -1,20 +1,21 @@
 # Poke Lounge Game Concept
 
-확인 기준일: 2026-08-18
+확인 기준일: 2026-08-19
 구현 기준: `main`
 
 이 문서는 Poke Lounge의 플레이 경험, 게임 규칙, 멀티플레이 구조와 현재 제품 경계를 한곳에 정리한 기준 문서다. 사용자에게 보이는 게임 컨셉을 먼저 설명하고, 그 컨셉을 지탱하는 서버 권위·저장·검증 구조를 뒤에서 연결한다.
 
 제품 규칙은 [Poke Lounge 게임 규칙 인덱스](./poke-lounge-rules/index.md)에서 시작한다. 이
-문서는 현재 구현된 플레이 경험의 개요이며, 확정됐지만 아직 구현되지 않은 3라운드 누적 점수
-챔피언십은 [3라운드 챔피언십 규칙](./poke-lounge-rules/three-round-championship.md)을 따른다.
+문서는 현재 구현된 플레이 경험의 개요이며, 공개 멀티플레이의 3라운드 누적 점수 챔피언십은
+[3라운드 챔피언십 규칙](./poke-lounge-rules/three-round-championship.md)을 따른다.
 챔피언십 라운드 점수는 토너먼트 순위 배점이 아니라 파티 포켓몬의 남은 체력 비율 합계다.
 
 Poke Lounge는 비공식 Pokémon 팬 게임이다. 기술 구현이 완료됐거나 배포 빌드가 통과했다는 사실은 Pokémon 관련 명칭·표장·데이터·에셋의 공개 사용 권리를 의미하지 않는다. 현재 공개 출시 권리 상태는 [Poke Lounge Release Gate](./poke-lounge-release-gate.md) 기준 `UNRESOLVED`다.
 
 ## 한 문장 컨셉
 
-닉네임과 친구끼리 공유한 임시 비밀번호만 입력하면 같은 월드에 연결되어 함께 움직이며 각자의 탐색·포획·육성을 즐기는 브라우저형 포켓몬 팬 게임이다.
+닉네임과 친구끼리 공유한 임시 비밀번호만 입력하면 같은 월드에서 탐색·포획·육성을 즐기고,
+5분 준비와 3라운드 토너먼트로 최종 우승을 겨루는 브라우저형 포켓몬 팬 게임이다.
 
 ## 멀티플레이 제품 계약
 
@@ -22,6 +23,8 @@ Poke Lounge는 비공식 Pokémon 팬 게임이다. 기술 구현이 완료됐�
 
 1. 사용자가 닉네임과 임시 비밀번호를 입력한다.
 2. 같은 임시 비밀번호를 입력한 사용자끼리 자동으로 같은 세션에 연결되어 서로의 닉네임과 움직임을 보며 게임을 즐긴다.
+3. 참가자 2명 이상의 파티 동기화가 끝나면 1라운드 5분 준비가 자동 시작되고, 총 3회의
+   싱글 엘리미네이션 토너먼트와 terminal HP 누적 점수로 최종 순위를 정한다.
 
 첫 사용자는 세션을 자동 생성하고 다음 사용자는 자동 참가한다. 참가자의 닉네임과 월드 위치는 Socket.IO로 같은 세션에 실시간 전달한다. 포획·파티·재화와 솔로 전투 진행은 각 사용자의 탭에 독립적으로 저장한다.
 
@@ -31,7 +34,11 @@ Poke Lounge는 비공식 Pokémon 팬 게임이다. 기술 구현이 완료됐�
 닉네임과 임시 비밀번호를 입력해도 신규 사용자이며, 명시적으로 나간 뒤 다시 들어와도 새
 사용자로 참가한다.
 
-사용자에게 방 코드, 생성·참가 구분, 초대 링크, 준비 시간, Google 로그인, 경쟁전·토너먼트·점수·랭킹 선택을 요구하지 않는다. 공개 멀티플레이는 ready, party snapshot, competitive seat를 호출하지 않는다. 임시 비밀번호는 NFKC 정규화 후 브라우저에서 SHA-256 기반 6자리 세션 키로 파생하며 원문은 URL, 브라우저 저장소, API 요청에 남기지 않는다. 세션이 끝난 뒤에는 새 임시 비밀번호를 사용한다.
+사용자에게 방 코드, 생성·참가 구분, 초대 링크, 준비 시간 선택, Google 로그인이나 경쟁전
+설정을 요구하지 않는다. 공개 클라이언트는 현재 파티와 ready를 자동 동기화하고, 로그인 계정용
+competitive seat 대신 비공개 `sessionId`로 자기 대진의 행동만 제출한다. 임시 비밀번호는
+NFKC 정규화 후 브라우저에서 SHA-256 기반 6자리 세션 키로 파생하며 원문은 URL, 브라우저
+저장소, API 요청에 남기지 않는다. 세션이 끝난 뒤에는 새 임시 비밀번호를 사용한다.
 
 직접 `network=local`, `network=server`, `room`, `roundMs`를 넣는 URL과 경쟁 좌석 API는 회귀·통합 테스트를 위한 내부 호환 경로다. 공개 제품 기능이나 사용자 안내 대상으로 취급하지 않는다.
 
@@ -63,6 +70,11 @@ flowchart LR
   World --> Encounter["각자의 탐색·야생 조우"]
   Encounter --> Growth["포획·성장·아이템·파티 편성"]
   Growth --> World
+  World --> Prep["현재 라운드 · 준비 5분"]
+  Prep --> Tournament["2~6인 토너먼트"]
+  Tournament --> Score["terminal HP 점수"]
+  Score -->|"1·2라운드"| Prep
+  Score -->|"3라운드"| Result["누적 최종 순위"]
   World --> Exit["나가기 또는 새 임시 비밀번호"]
 ```
 
@@ -70,18 +82,25 @@ flowchart LR
 2. 저장된 파티가 없다면 치코리타, 브케인, 리아코 중 Lv.10 스타터 한 마리를 고른다.
 3. 마을을 이동하며 야생 포켓몬과 싸우고, 포획하고, 경험치와 돈을 얻는다.
 4. 간호사, 상점, PC 박스와 주사위 게임을 이용해 파티와 자원을 정비하고 각자의 챌린지와 전투를 이어 간다.
-5. 세션을 나가면 닉네임·임시 비밀번호 화면으로 돌아간다.
+5. 두 명 이상이 모이면 화면의 현재 라운드와 남은 시간을 보며 파티를 정비한다.
+6. 준비 종료 때 동결한 파티로 토너먼트를 진행하고, 3라운드 누적 점수로 최종 순위를 정한다.
+7. 세션을 나가면 닉네임·임시 비밀번호 화면으로 돌아간다.
 
-솔로와 공개 멀티플레이 모두 월드 탐색·야생전·성장 루프에 집중하며 토너먼트 타이머를 시작하지 않는다. 월드의 솔로 챌린저에게 말을 걸면 현재 파티를 그대로 복제한 동급 미러전으로 세션을 마칠 수 있다.
+솔로는 토너먼트 타이머를 시작하지 않는다. 공개 멀티플레이는 월드 탐색·야생전·성장 루프를
+5분 준비 중에도 계속 제공하고, 준비 종료 시점의 최신 유효 파티를 동결한다. 월드의 솔로
+챌린저에게 말을 걸면 현재 파티를 그대로 복제한 동급 미러전으로 세션을 마칠 수 있다.
 
 ## 게임 모드
 
-| 공개 모드       |  참가 | 입장 방식                   | 상태                                  |
-| --------------- | ----: | --------------------------- | ------------------------------------- |
-| 솔로            |   1명 | 이어하기 또는 새 게임       | 브라우저 로컬 상태                    |
-| 멀티플레이 세션 | 2~6명 | 닉네임 + 같은 임시 비밀번호 | PostgreSQL 참가 상태 + Socket.IO 위치 |
+| 공개 모드       |  참가 | 입장 방식                   | 상태                                      |
+| --------------- | ----: | --------------------------- | ----------------------------------------- |
+| 솔로            |   1명 | 이어하기 또는 새 게임       | 브라우저 로컬 상태                        |
+| 멀티플레이 세션 | 2~6명 | 닉네임 + 같은 임시 비밀번호 | shared world + 서버 권위 3라운드 챔피언십 |
 
-멀티플레이 세션은 참가자가 들어오고 나가는 단순한 shared world다. 공개 클라이언트는 세션을 `waiting`으로 유지하고 별도 준비·대진·결과 단계로 전환하지 않는다. 연결된 참가자가 모두 사라지면 방은 만료 정책에 따라 정리된다.
+멀티플레이 세션은 shared world의 접속 단위이자 3라운드 챔피언십 진행 단위다. 두 명 이상의
+파티 동기화가 끝나면 `round-started`로 전환하고 정확히 5분 뒤 대진을 만든다. 준비 중 이탈로
+2명 미만이 되면 ghost 참가자나 기권 대진을 만들지 않고 `waiting`으로 돌아간다. 연결된
+참가자가 모두 사라지면 방은 만료 정책에 따라 정리된다.
 
 ## 월드와 탐색
 
@@ -165,9 +184,9 @@ Poke Lounge에는 목적이 다른 두 전투 규칙이 공존한다.
 
 포획은 상대 HP, 종족 포획률과 볼 배율을 반영하는 Gen 4식 네 번의 흔들림 판정을 사용한다. 트레이너전에서는 포획과 도주가 제한된다. 포획·도주 실패 또는 아이템 사용은 상대 행동 기회를 소비한다.
 
-### 내부 호환: 서버 권위 경쟁전
+### 챔피언십 서버 권위 경쟁전
 
-이 절과 다음 토너먼트 절은 공개 멀티플레이 제품 계약이 아니다. 기존 데이터·API·통합 테스트를 안전하게 유지하거나 제거할 때 참고하는 내부 호환 규칙이다.
+이 절과 다음 토너먼트 절은 공개 멀티플레이 챔피언십의 서버 권위 계약이다.
 
 서버 권위전은 준비 종료 때 동결한 각 플레이어의 실제 육성 파티로 시작한다. 클라이언트는 종·레벨·슬롯·IV·기술 ID·현재 HP·상태·PP만 제출하며, 서버가 생성된 1~493 종과 1~470 기술 카탈로그로 파생 수치와 상한을 검증한다. 잘못된 파티나 전투불능 선두는 다른 파티로 대체하지 않고 명시적으로 거절한다.
 
@@ -175,7 +194,9 @@ Poke Lounge에는 목적이 다른 두 전투 규칙이 공존한다.
 
 활성 포켓몬의 모든 기술 PP가 0이면 예약 행동 `struggle`만 사용할 수 있다. `struggle`은 위력 50, 명중률 100%이며 사용자 최대 HP의 1/4을 반동으로 소비한다.
 
-각 인증 계정은 자신에게 바인딩된 player의 현재 turn 행동만 제출할 수 있다. 서버는 다음 순서와 난수 소비 순서를 고정한다.
+로그인 사용자는 계정에 바인딩된 player, 비로그인 공개 세션은 방 코드와 비공개 session
+identity로 결정된 player의 현재 turn 행동만 제출할 수 있다. 서버는 다음 순서와 난수 소비
+순서를 고정한다.
 
 한쪽 행동이 먼저 제출된 뒤 60초 안에 상대 행동이 없으면 먼저 제출한 플레이어의 timeout 승리로 확정한다. 기준 시각은 서버 DB에 저장된 첫 행동 receipt의 생성 시각이다.
 
@@ -187,11 +208,13 @@ Poke Lounge에는 목적이 다른 두 전투 규칙이 공존한다.
 
 포켓몬이 쓰러지면 서버가 자동 교체하지 않는다. 해당 플레이어가 다음 turn에 유효한 포켓몬으로 `switch` 행동을 직접 제출해야 한다.
 
-클라이언트는 승자, 패자, 점수나 terminal을 권위 입력으로 제출하지 않는다. 서버가 terminal에서 승자 100점, 패자 50점을 확정한다.
+클라이언트는 승자, 패자, 점수나 terminal을 권위 입력으로 제출하지 않는다. 서버가 terminal의
+승패·종료 사유·양쪽 frozen party HP를 확정한다. 챔피언십 라운드 점수는 승자 100점·패자
+50점이 아니라 각 파티원의 `현재 HP / 최대 HP × 100` 합계다.
 
 한 토너먼트의 다음 매치는 같은 frozen party에서 새로 시작한다. 서버 권위 PvP 중 발생한 HP·PP·상태·선두 변경은 다음 매치나 월드 저장 파티에 누적하지 않는다.
 
-## 내부 호환: 토너먼트와 점수
+## 챔피언십 토너먼트와 점수
 
 토너먼트는 2~6인 싱글 엘리미네이션이다. 서버가 참가 순서와 player ID를 기준으로 seed를 확정하고 canonical bracket과 부전승을 생성한다. Web은 서버 bracket을 표시할 뿐 참가자 배열로 대진을 다시 계산하지 않는다.
 
@@ -210,17 +233,10 @@ seed 2 ─────────────── bye ─┘
 
 여러 ready match를 동시에 열지 않고 서버가 한 경기씩 순차 활성화한다. 5인 경기에서 seed 5가 첫 매치를 이기면 다음 ready match는 `seed 1 vs seed 5`, 이어서 `seed 3 vs seed 2` 순서다. 한 방에는 최대 6명만 참가할 수 있으며 7번째 신규 사용자의 접속은 거부한다. 기존 참가자의 동일 세션 재접속은 정원과 관계없이 허용하고, 참가자가 방에서 나가 자리가 비면 새 사용자의 입장을 허용한다.
 
-현재 내부 호환 토너먼트의 레거시 순위 점수는 다음과 같다. 이 표는 3라운드 챔피언십의
-남은 체력 비율 점수가 아니며 새 챔피언십 누적 점수에 사용하지 않는다.
-
-| 순위 | 점수 |
-| ---: | ---: |
-|  1위 |  100 |
-|  2위 |   70 |
-|  3위 |   45 |
-|  4위 |   30 |
-|  5위 |   15 |
-|  6위 |    5 |
+각 라운드 점수는 토너먼트 최종 순위와 무관하게 서버가 보관한 terminal frozen party의 남은
+체력 비율을 합산한다. 1·2라운드 뒤에는 누적 중간 순위를 표시하고 다음 5분 준비로 이동한다.
+3라운드 뒤에는 누적 점수 내림차순으로 최종 순위를 만들며 같은 점수에는 같은 순위를
+부여한다.
 
 방 내부 누적 점수와 공개 Poke Lounge 랭킹 점수는 서로 다른 개념이다.
 
@@ -230,7 +246,10 @@ seed 2 ─────────────── bye ─┘
 | 로컬·WebRTC 결과            | client/host asserted | 일반 결과 제출 가능 | 제외                  |
 | 서버 방 casual `/result`    | unranked             | room 전진           | 제외                  |
 | 2~6인 `tournament-unranked` | 서버 권위            | bracket 전진        | 제외                  |
-| 과거 `ranked-head-to-head`  | `verified-room`      | 감사용 완료 이력    | 기존 기록만 포함      |
+
+공개 닉네임·임시 비밀번호 경로는 항상 `tournament-unranked` 서버 권위 대진을 사용한다. 나머지
+결과 경로는 솔로·direct URL 회귀를 위한 내부 호환이며 공개 챔피언십 판정에 사용하지 않는다.
+| 과거 `ranked-head-to-head` | `verified-room` | 감사용 완료 이력 | 기존 기록만 포함 |
 
 공개 랭킹은 `verified-room` 결과만 먼저 필터링한 뒤 사용자별 최고 점수로 계산한다. 현재 V2 육성 파티는 획득 이력을 서버가 증명하지 못하므로 정확히 2명이어도 `tournament-unranked`이며 새 공개 랭킹 이력을 만들지 않는다.
 
@@ -250,7 +269,9 @@ flowchart LR
   API -->|"validated nickname + position"| Peer["same-room browsers"]
 ```
 
-공개 shared world는 room을 `waiting`으로 유지하며 토너먼트 command를 만들지 않는다. 아래 revision, match, terminal 수렴 설명은 내부 경쟁 호환 경로에만 적용한다.
+공개 shared world는 자동 party snapshot과 ready가 2명 이상 모이면 5분 준비와 토너먼트로
+전환한다. 아래 revision, match, terminal 수렴은 공개 챔피언십과 내부 direct room 경로에 함께
+적용한다.
 
 모든 일반 room mutation은 UUID v4 `X-Idempotency-Key`와 `If-Match-Revision`을 요구한다. 같은 key와 같은 요청은 저장된 응답을 재생하고, 같은 key에 다른 요청이나 오래된 revision은 충돌로 처리한다.
 
@@ -271,7 +292,10 @@ Web은 이전 terminal을 먼저 적용해 양쪽 플레이어가 승리·패배
 | 서버 방       | PostgreSQL                 | room aggregate, revision, TTL, command receipt            |
 | 경쟁 매치     | PostgreSQL                 | canonical battle state, action receipt, terminal metadata |
 
-멀티플레이 접속에는 계정 인증이 필요하지 않다. 익명 플레이 상태는 탭 단위로 저장하고 멀티플레이 room 상태만 서버에서 동기화한다. 기존 계정 저장 코드는 다른 게임·내부 호환을 위해 남아 있지만 멀티플레이 진입 계약이 아니다.
+멀티플레이 접속에는 계정 인증이 필요하지 않다. 익명 플레이 상태는 탭 단위로 저장하고
+멀티플레이 room, frozen party, 대진과 competitive battle state는 서버에서 동기화한다. 기존
+계정 저장 코드는 다른 게임과 선택적 로그인 저장을 위해 남아 있지만 멀티플레이 진입 계약이
+아니다.
 
 자동 저장은 상태 변경 후 debounce, 주기 저장과 정상 종료 final flush를 조합한다. 인증 GET이 실패하면 로컬 상태로 게임은 열지만, 서버 상태를 오래된 로컬 값으로 덮어쓰지 않도록 복구 전까지 원격 autosave를 시작하지 않는다.
 
@@ -302,18 +326,20 @@ apps/web
 apps/api
   account save와 game history
   durable Poke Lounge room과 live position gateway
-  내부 호환 competitive seat/action
+  공개 session action + 선택적 account competitive seat
 
 packages/poke-lounge-battle
   솔로 전투 규칙
-  내부 호환 canonical state, PRNG와 bracket
+  canonical state, PRNG와 bracket
 
 PostgreSQL
   room aggregate와 participant
-  내부 호환 competitive match/action와 verified history
+  competitive match/action와 verified history
 ```
 
-공개 멀티플레이는 room 참가 상태와 live position gateway를 사용한다. Web과 API는 내부 경쟁 호환 경로에서 `@vscoke/poke-lounge-battle` 규칙을 공유한다. API DTO에서 생성한 local OpenAPI JSON과 Web generated type이 두 앱 사이의 계약 기준이다.
+공개 멀티플레이는 room 참가 상태, live position gateway와 서버 권위 competitive action을
+사용한다. Web과 API는 `@vscoke/poke-lounge-battle` 규칙을 공유한다. API DTO에서 생성한
+local OpenAPI JSON과 Web generated type이 두 앱 사이의 계약 기준이다.
 
 현재 Socket event publisher에는 multi-instance fan-out adapter가 없다. PostgreSQL은 durable source지만 실시간 전파는 단일 API 인스턴스를 전제로 한다.
 
@@ -327,7 +353,7 @@ PostgreSQL
 - PostgreSQL E2E: migration, transaction rollback, receipt replay와 verified history
 - Playwright: 스타터, 월드, 전투, 저장, 멀티플레이와 모바일 입력
 
-기존 내부 경쟁 호환 release gate는 실제 Nest API, PostgreSQL과 Socket.IO를 사용해 다음 context를 동시에 열었다.
+기존 경쟁 release gate는 실제 Nest API, PostgreSQL과 Socket.IO를 사용해 다음 context를 동시에 열었다.
 
 | 테스터 | 환경                                | 입력·특징                         |
 | -----: | ----------------------------------- | --------------------------------- |
@@ -337,7 +363,7 @@ PostgreSQL
 |      4 | Mobile Chromium / Pixel 7 emulation | touch, seed 4 첫 매치             |
 |      5 | Mobile WebKit / iPhone 13 emulation | touch, seed 5 첫 매치             |
 
-targeted 1회와 fresh release 3회가 모두 5/5 통과했다. 다섯 context는 테스트 전용 bootstrap의 서로 다른 `e2e-user-1`~`e2e-user-5` identity를 사용하며 실제 Google 계정이 아니다. 모바일 두 환경도 물리 기기가 아니라 Playwright device emulation이다. 이 결과는 내부 경쟁 호환 검증이며 현재 공개 shared-world acceptance를 대신하지 않는다.
+targeted 1회와 fresh release 3회가 모두 5/5 통과했다. 다섯 context는 테스트 전용 bootstrap의 서로 다른 `e2e-user-1`~`e2e-user-5` identity를 사용하며 실제 Google 계정이 아니다. 모바일 두 환경도 물리 기기가 아니라 Playwright device emulation이다. 이 결과는 서버 권위 대진 수렴 검증이며 닉네임·임시 비밀번호를 실제 입력하는 공개 멀티브라우저 acceptance를 대신하지 않는다.
 
 이 검증은 **5인 전체 토너먼트를 champion 확정까지 완주한 E2E가 아니다.** 첫 매치 종료부터 다음 assignment까지의 가장 위험한 수렴 경계를 검증한 release gate다. 실제 5브라우저 통합 실행은 격리 PostgreSQL이 필요한 로컬 gate이며 PR CI는 focused Chromium 회귀와 통합 spec 수집 조건을 담당한다.
 
@@ -348,14 +374,16 @@ targeted 1회와 fresh release 3회가 모두 5/5 통과했다. 다섯 context�
 - 닉네임·임시 비밀번호 기반 멀티플레이 자동 생성·참가
 - 임시 비밀번호 원문 비저장·비전송
 - 같은 세션 참가자의 닉네임·월드 위치 실시간 중계
-- 공개 경로의 ready·party snapshot·competitive seat 미호출
+- 공개 경로의 party snapshot·ready 자동 동기화와 5분 남은 시간 표시
+- 비로그인 session identity 기반 서버 권위 대진
+- 3라운드 terminal HP 누적 점수와 공동 순위
 - PostgreSQL durable room과 REST·Socket.IO 복구
-- 내부 호환 범위의 bracket·서버 권위 match 회귀 테스트
+- bracket·서버 권위 match 회귀 테스트
 
 ## 현재 제약과 비목표
 
 - 월드는 단일 마을이며 장거리 탐험, 퀘스트와 스토리 캠페인은 없다.
-- 공개 멀티플레이는 PvP, 토너먼트, 공유 파티·재화 진행을 제공하지 않는다.
+- 멀티플레이의 파티·재화 진행은 공유하지 않으며 준비 종료 시점의 경쟁용 파티 복사본만 서버에 동결한다.
 - 임시 비밀번호는 계정 비밀번호가 아니라 짧은 세션을 찾는 공유 secret이다.
 - Google 로그인, 계정 선택, 방 코드, 초대 링크, 로비, 친구 목록, matchmaking과 시즌 시스템은 멀티플레이 제품 범위가 아니다.
 - 여러 API 인스턴스 사이의 Socket fan-out은 지원하지 않는다.

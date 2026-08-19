@@ -9,6 +9,7 @@ import {
   createTestInitialBattleState,
 } from '../../../test/support/competitive-party.fixture';
 import type { CompetitiveMatchRepository } from './competitive-match.repository';
+import { createSessionCompetitiveAccountId } from './competitive-match.repository';
 import type { CompetitiveActionRepository } from './competitive-action.repository';
 import type { PokeLoungeRoomEventPublisher } from '../poke-lounge-room-event.publisher';
 import { CompetitiveMatchService } from './competitive-match.service';
@@ -250,6 +251,31 @@ describe('CompetitiveMatchService', () => {
       'clientCommandId',
     );
     expect(order).toEqual(['transaction-committed', 'event-published']);
+  });
+
+  it('maps a private room session to its server assignment actor', async () => {
+    const response = actionProjection();
+    actionRepository.submit.mockResolvedValue({
+      outcome: 'accepted',
+      response,
+      room: roomSnapshot(),
+      committed: false,
+    });
+
+    await service.submitSessionAction({
+      roomCode: 'room01',
+      matchId: 'match-1',
+      sessionId: ' session-a ',
+      assignmentRevision: 1,
+      turn: 0,
+      clientCommandId: '00000000-0000-4000-8000-000000000001',
+      action: { kind: 'move', moveId: 55 },
+    });
+
+    expect(actionRepository.submit.mock.calls[0]?.[0]).toMatchObject({
+      roomCode: 'ROOM01',
+      accountId: createSessionCompetitiveAccountId('ROOM01', 'session-a'),
+    });
   });
 
   it('keeps the original 60 second deadline when a pending command is replayed', async () => {

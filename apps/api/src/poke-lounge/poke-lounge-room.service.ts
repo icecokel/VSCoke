@@ -28,7 +28,6 @@ import {
   type PokeLoungeRoomEventPublisher,
 } from './poke-lounge-room-event.publisher';
 import {
-  createTournamentState,
   completePokeLoungeTournamentMatch,
   convergeOfflinePokeLoungeTournamentMatches,
   getPokeLoungeRoomExpiresAtMs,
@@ -56,7 +55,7 @@ import type {
 } from './poke-lounge-room.types';
 import { CompetitiveProjectionService } from './competitive/competitive-projection.service';
 
-const DEFAULT_ROUND_DURATION_MS = 60_000;
+const DEFAULT_ROUND_DURATION_MS = 300_000;
 const MIN_ROUND_DURATION_MS = 1;
 const MAX_ROUND_DURATION_MS = 3_600_000;
 const MAX_ROOM_OCCUPANTS = 6;
@@ -65,8 +64,6 @@ const MATCH_RESULT_REASONS = new Set<PokeLoungeMatchResultReason>([
   'faint',
   'timeout',
   'forfeit',
-  'run',
-  'capture',
 ]);
 
 type MutationInput = {
@@ -864,15 +861,27 @@ function applyParticipantLeave(
   delete participant.presenceEpoch;
   room.updatedAtMs = nowMs;
 
-  if (room.status === 'waiting') {
+  if (room.status === 'waiting' || room.status === 'round-started') {
     room.participants = room.participants.filter(
       (row) => row.playerId !== participant.playerId,
     );
     delete room.partySnapshots[participant.playerId];
   }
 
-  if (participant.role === 'participant') {
+  if (participant.role === 'participant' && room.status === 'tournament') {
     completeParticipantLeaveAsForfeit(room, participant.playerId, nowMs);
+  }
+
+  if (
+    room.status === 'round-started' &&
+    room.participants.filter(
+      (row) => row.role === 'participant' && row.connected,
+    ).length < 2
+  ) {
+    room.status = 'waiting';
+    room.round.phase = 'waiting';
+    room.round.startedAtMs = null;
+    room.round.endsAtMs = null;
   }
 
   if (!room.participants.some((row) => row.connected)) {
@@ -1157,57 +1166,24 @@ function completeParticipantLeaveAsForfeit(
   playerId: string,
   nowMs: number,
 ): void {
-  if (room.status === 'tournament') {
-    if (room.tournament.activeMatchAuthority === 'server') {
-      return;
-    }
-
-    const match = room.tournament.bracket?.currentRound?.matches.find(
-      (candidate) =>
-        candidate.matchId === room.tournament.activeMatchId &&
-        candidate.status === 'ready' &&
-        candidate.participantIds.includes(playerId),
-    );
-    const opponentId = match?.participantIds.find((id) => id !== playerId);
-
-    if (match && opponentId) {
-      completeMatch(room, match, opponentId, 'forfeit', nowMs);
-    }
-
+  if (
+    room.status !== 'tournament' ||
+    room.tournament.activeMatchAuthority === 'server'
+  ) {
     return;
   }
 
-  if (room.status !== 'round-started') {
-    return;
-  }
-
-  const opponents = room.participants.filter(
-    (participant) =>
-      participant.role === 'participant' &&
-      participant.connected &&
-      participant.playerId !== playerId,
+  const match = room.tournament.bracket?.currentRound?.matches.find(
+    (candidate) =>
+      candidate.matchId === room.tournament.activeMatchId &&
+      candidate.status === 'ready' &&
+      candidate.participantIds.includes(playerId),
   );
+  const opponentId = match?.participantIds.find((id) => id !== playerId);
 
-  if (opponents.length !== 1) {
-    return;
+  if (match && opponentId) {
+    completeMatch(room, match, opponentId, 'forfeit', nowMs);
   }
-
-  const [opponent] = opponents;
-  room.status = 'tournament';
-  room.round.phase = 'tournament';
-  room.tournament = createTournamentState({
-    ...room,
-    participants: room.participants.map((participant) => ({
-      ...participant,
-      connected:
-        participant.playerId === playerId ? true : participant.connected,
-    })),
-  });
-  const match = room.tournament.bracket?.currentRound?.matches[0];
-  if (!match) {
-    return;
-  }
-  completeMatch(room, match, opponent.playerId, 'forfeit', nowMs);
 }
 
 function normalizePartySnapshot(
@@ -1229,6 +1205,10 @@ function normalizePartySnapshot(
 }
 
 function normalizeRoundDuration(roundDurationMs: number | undefined): number {
+  if (process.env.NODE_ENV !== 'test') {
+    return DEFAULT_ROUND_DURATION_MS;
+  }
+
   if (
     typeof roundDurationMs !== 'number' ||
     !Number.isFinite(roundDurationMs)

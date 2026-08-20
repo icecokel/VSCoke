@@ -1,0 +1,52 @@
+name: Production Chat Smoke
+
+on:
+  schedule:
+    - cron: "17 9 * * *"
+      timezone: "Asia/Seoul"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-chat-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: "true"
+      PLAYWRIGHT_BASE_URL: https://vscoke.icecoke.kr
+      PLAYWRIGHT_PRODUCTION_SMOKE: "1"
+      PLAYWRIGHT_RETRIES: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @vscoke/web exec playwright install --with-deps chromium
+      - run: >-
+          pnpm --filter @vscoke/web e2e --
+          tests/e2e/main-chat-production-smoke.spec.ts
+          tests/e2e/resume-rag-chat-production-smoke.spec.ts
+          --project=chromium
+
+      - name: Upload Playwright failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-chat-smoke-${{ github.run_id }}
+          path: output/playwright
+          if-no-files-found: ignore
+          retention-days: 7

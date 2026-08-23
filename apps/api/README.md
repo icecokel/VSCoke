@@ -24,97 +24,21 @@
 | Resume RAG      | `POST /resume-rag/chat`                                                                                           |
 | Wordle          | `GET /wordle/word`, `POST /wordle/check`                                                                          |
 
-## 로컬 준비
+## 로컬 실행
 
-저장소 루트에서 의존성을 설치한다.
-
-```bash
-corepack enable
-corepack prepare pnpm@9.12.0 --activate
-pnpm install
-```
-
-환경 변수는 예시 파일을 복사해 구성한다.
-
-```bash
-cp apps/api/.env.example apps/api/.env
-```
-
-최소 실행 값:
-
-```env
-GOOGLE_CLIENT_ID=replace-with-google-client-id
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=replace-with-db-password
-DB_DATABASE=vscoke
-DB_SYNCHRONIZE=false
-```
-
-개발 환경에서만 인증 우회를 쓸 경우:
-
-```env
-ENABLE_DEV_AUTH_BYPASS=true
-DEV_AUTH_TOKEN=replace-with-local-token
-```
-
-운영 환경 변수 기준은 [Deployment and Environment Plan](../../docs/deployment-and-env.md)을 따른다.
-
-## 실행 명령
-
-루트에서 실행:
-
-```bash
-PORT=3001 pnpm dev:api
-pnpm build:api
-pnpm test:api
-pnpm test:api:e2e
-pnpm test:poke-lounge-battle
-```
-
-API 앱 필터를 직접 사용할 수도 있다.
-
-```bash
-pnpm --filter @vscoke/api start:dev
-pnpm --filter @vscoke/api build
-pnpm --filter @vscoke/api test
-pnpm --filter @vscoke/api test:e2e
-```
-
-Swagger 확인:
-
-```txt
-http://localhost:3001/api
-http://localhost:3001/api-json
-```
+설치, 환경 변수, 실행과 검증 명령은 [Local Development](../../docs/local-development.md#api만-실행)를
+따른다. API 환경 변수의 실제 목록은 `.env.example`에서 확인한다.
 
 ## OpenAPI 계약
 
-프론트 타입은 현재 커밋의 controller/DTO에서 생성한 로컬 OpenAPI 계약을 기준으로 한다.
-
-```bash
-pnpm generate:types
-pnpm check:api-contract
-```
-
-`pnpm generate:types`는 `apps/api/openapi.json`을 생성하고 `apps/web/src/types/api.d.ts`를 갱신한다. API DTO나 controller 응답이 바뀌면 두 파일의 diff를 함께 확인한다.
+프론트 타입은 현재 커밋의 controller/DTO에서 생성한 로컬 OpenAPI 계약을 기준으로 한다. 갱신
+절차는 [Local Development의 API 타입 갱신](../../docs/local-development.md#api-타입-갱신)을
+따른다.
 
 ## DB와 migration
 
 운영에서는 `DB_SYNCHRONIZE=false`를 유지하고 schema 변경은 TypeORM migration으로 반영한다.
-
-```bash
-pnpm --filter @vscoke/api migration:create src/migrations/<kebab-summary>
-pnpm --filter @vscoke/api migration:generate src/migrations/<kebab-summary>
-pnpm --filter @vscoke/api migration:show
-pnpm --filter @vscoke/api migration:run
-pnpm --filter @vscoke/api migration:revert
-```
-
-`CreateLegacyCoreSchema1759999999999`는 legacy core 객체가 모두 없을 때만 canonical schema를 만들고, 모두 있을 때는 정확히 일치하는 schema만 migration ledger에 채택한다. 일부 객체만 있거나 schema/ledger가 다르면 자동 수리 없이 실패한다. 이 baseline의 `down`은 기존 데이터 삭제를 막기 위해 의도적으로 실패한다.
-
-PostgreSQL 테스트에는 운영 DB와 분리된 `TEST_DATABASE_URL`이 필수다. 데이터베이스 이름은 `_test`로 끝나야 하고 `DATABASE_URL`, `DB_URL`, `DB_DATABASE`와 같은 대상을 가리킬 수 없다. CI는 PostgreSQL 16 service에서 test migration을 먼저 실행한 뒤 integration/E2E를 수행한다. 운영 배포 workflow는 migration을 자동 실행하지 않으며, backup과 ledger 확인 후 maintenance window에서 수동 실행한다.
+생성, dry run, 운영 반영과 rollback은 [API 배포 가이드](DEPLOY.md#3-db-schema-변경)를 따른다.
 
 ## Poke Lounge 계약
 
@@ -129,33 +53,10 @@ PostgreSQL 테스트에는 운영 DB와 분리된 `TEST_DATABASE_URL`이 필수�
 
 랭킹 정책은 [Game Score Policy](../../docs/game-score-policy.md)를 따른다.
 
-Mac 로컬에서 운영 DB 확인이 필요하면 Cloudflare Access TCP tunnel을 먼저 실행한다.
-
-```bash
-pnpm --filter @vscoke/api db:tunnel
-```
-
-## Resume RAG 운영 메모
-
-운영 chat은 `resume_source_items`의 DB 텍스트를 keyword/text search로 검색하고, 검색된 근거를 Codex app-server에 전달해 답변만 생성한다. 운영 chat runtime에는 OpenAI/API 임베딩 키가 필요하지 않다.
-
-필수 기준값:
-
-```env
-RAG_CHAT_PROVIDER=codex-app-server
-RAG_CODEX_APP_SERVER_URL=ws://127.0.0.1:14561
-RAG_CODEX_CWD=/home/icenux/projects/vscoke-api
-RAG_CODEX_REASONING_EFFORT=low
-RAG_PUBLIC_CHAT_ORIGINS=https://vscoke.icecoke.kr
-```
+Resume RAG와 메인 채팅의 동작·환경 변수·검증 기준은
+[메인 채팅 AI 사용 지침](../../docs/main-chat-ai-usage-guide.md)을 따른다.
 
 ## 배포
 
-API는 `.github/workflows/deploy-api.yml`이 Ubuntu host의 GitHub Actions self-hosted runner에서 배포한다.
-
-- 배포 경로: `/home/icenux/projects/vscoke-api`
-- PM2 앱 이름: `vscoke-api`
-- entrypoint: `apps/api/dist/src/main.js`
-- 공개 health: `https://api.icecoke.kr/health`
-
-세부 절차는 [DEPLOY.md](DEPLOY.md)와 [Operations Runbook](../../docs/operations-runbook.md)을 따른다.
+배포 구조와 환경은 [Deployment and Environment Plan](../../docs/deployment-and-env.md), 실행 절차는
+[DEPLOY.md](DEPLOY.md), 장애 대응은 [Operations Runbook](../../docs/operations-runbook.md)을 따른다.

@@ -2,15 +2,9 @@
 
 이 문서는 VSCoke monorepo 운영 중 배포 실패나 런타임 장애가 발생했을 때 확인할 순서를 정리한다.
 
-## 운영 구조
-
-```txt
-GitHub repository
-├─ apps/web -> Vercel
-└─ apps/api -> GitHub Actions self-hosted runner on Ubuntu host -> PM2 -> Cloudflare Tunnel
-```
-
-웹과 API는 같은 저장소를 쓰지만 배포 주체가 다르다. 웹 장애는 Vercel을 먼저 보고, API 장애는 GitHub Actions, Ubuntu host runner, PM2, Cloudflare Tunnel을 순서대로 본다.
+배포 구조, 환경 변수 위치와 정상 기대값은
+[Deployment and Environment Plan](./deployment-and-env.md)을 기준으로 한다. 이 문서는 장애가
+발생했을 때의 확인·복구 순서만 다룬다.
 
 ## 서버 접속
 
@@ -60,11 +54,10 @@ systemctl is-active vscoke-api-native.service || true
 
 확인 순서:
 
-1. Vercel Project의 Root Directory가 `apps/web`인지 확인한다.
-2. Build Command가 `pnpm build`인지 확인한다.
-3. Node.js Version이 `22.x`인지 확인한다.
-4. Vercel 환경 변수에 `NEXT_PUBLIC_API_URL`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET`이 있는지 확인한다.
-5. `NEXT_PUBLIC_API_URL`이 현재 API 공개 주소를 바라보는지 확인한다.
+1. Vercel 설정을 [Web 배포 기준](./deployment-and-env.md#web-vercel)과 비교한다.
+2. 실패한 deployment의 build log에서 최초 오류를 확인한다.
+3. Production·Preview 환경 변수가 대상 환경에 등록됐는지 확인한다.
+4. API 공개 health가 정상이면 웹 빌드를 로컬에서 재현한다.
 
 로컬에서 재현:
 
@@ -83,41 +76,21 @@ NEXT_PUBLIC_API_URL=http://127.0.0.1:65535 pnpm build:web
 
 ## API GitHub Actions 실패
 
-API 배포 workflow:
-
-```txt
-.github/workflows/deploy-api.yml
-```
-
-트리거 조건:
-
-```txt
-main push with apps/api/**, root package files, or deploy-api workflow changes
-workflow_dispatch
-```
+API 배포의 trigger, runner와 release 단계는 `.github/workflows/deploy-api.yml`이 기준이다.
 
 확인 순서:
 
 1. GitHub Actions run 로그에서 실패 step을 확인한다.
-2. self-hosted runner가 online인지 확인한다.
-3. runner labels에 `self-hosted`, `vscoke-api`, `host`가 있는지 확인한다.
-4. Ubuntu host runtime에 `node`, `corepack`, `pm2`가 있는지 확인한다.
-5. `/home/icenux/projects/vscoke-api/.env`가 존재하는지 확인한다.
-6. 실패가 build인지, staging install인지, PM2 restart인지, health check인지 분류한다.
+2. self-hosted runner가 online이고 workflow 요구 label을 만족하는지 확인한다.
+3. workflow의 사전 조건 검사 결과를 확인한다.
+4. 실패가 build인지, staging install인지, PM2 restart인지, health check인지 분류한다.
 
 수동 재실행은 GitHub Actions의 `workflow_dispatch`를 사용한다.
 
 ## Ubuntu host runner offline
 
-현재 runner 운영 값:
-
-| 항목            | 값                                                              |
-| --------------- | --------------------------------------------------------------- |
-| systemd service | `actions.runner.icecokel-VSCoke.icenux-vscoke-api-host.service` |
-| Runner name     | `icenux-vscoke-api-host`                                        |
-| Required label  | `vscoke-api`, `host`                                            |
-
-Ubuntu host에서 확인:
+서비스 이름과 runner label은 [API 배포 기준](./deployment-and-env.md#api-ubuntu-host)을 확인한다.
+Ubuntu host에서 현재 서비스 상태를 확인한다.
 
 ```bash
 ssh icenux-external
@@ -287,29 +260,8 @@ LIMIT 50;
 
 ## 환경 변수 변경
 
-웹 환경 변수:
-
-```txt
-Vercel Project Settings -> Environment Variables
-```
-
-웹 환경 변수 변경 후에는 새 Vercel deployment가 필요하다.
-
-API 운영 환경 변수:
-
-```txt
-/home/icenux/projects/vscoke-api/.env
-```
-
-API 환경 변수 변경 후에는 PM2 재시작이 필요하다.
-
-```bash
-cd /home/icenux/projects/vscoke-api
-pm2 restart vscoke-api --update-env
-pm2 save
-```
-
-비밀값은 GitHub issue, PR, commit, 문서에 원문으로 남기지 않는다.
+정상 변경 절차는 [API 배포 가이드](../apps/api/DEPLOY.md#2-환경-변수-배포-수동)를 따른다.
+장애 대응 중에도 비밀값을 GitHub issue, PR, commit, 문서와 로그에 원문으로 남기지 않는다.
 
 ## 배포 후 검증
 

@@ -105,48 +105,12 @@ Web route:
 | 취미 검색 집계  | `/api/hobby-search-index`                                    | 5, 10          |
 | 검색엔진 파일   | `/robots.txt`, `/sitemap.xml`                                | 22             |
 
-API endpoint:
-
-| 모듈          | 경로                                                                                | 주요 검증 섹션 |
-| ------------- | ----------------------------------------------------------------------------------- | -------------- |
-| App           | `GET /`, `GET /health`                                                              | 21             |
-| OpenAPI       | `GET /api-json`                                                                     | 21             |
-| Recipe        | `GET /recipes`, `GET /recipes/:id`                                                  | 10, 21         |
-| Espresso      | `GET /espresso-history/beans`, `GET /espresso-history/beans/:id`                    | 9, 21          |
-| Wordle        | `GET /wordle/word`, `POST /wordle/check`                                            | 13, 21         |
-| Game result   | `POST /game/result`, `GET /game/ranking`, `GET /game/result/:id`                    | 11, 19, 21     |
-| Poke state    | `GET /game/poke-lounge/state`, `PUT /game/poke-lounge/state`                        | 17, 21         |
-| Poke room     | `POST /poke-lounge/rooms`, `GET /poke-lounge/rooms/:roomCode`                       | 18, 21         |
-| Poke mutation | `competitive-seat`, `actions`, `join`, `ready`, `party-snapshot`, `result`, `leave` | 18, 21         |
-| Poke Socket   | namespace `/poke-lounge`, snapshot subscribe/broadcast                              | 18, 21         |
-| Resume RAG    | `POST /resume-rag/chat`                                                             | 7, 21          |
+API endpoint 목록은 [VSCoke API README](../apps/api/README.md#주요-모듈)를 기준으로 한다.
 
 ## 4. 공통 실행 명령
 
-```bash
-# Web 기본 전체 회귀
-pnpm e2e
-
-# 로컬 PostgreSQL fixture와 실제 API를 사용하는 취미 통합 회귀
-TEST_DATABASE_URL=postgresql://<user>@127.0.0.1:5432/vscoke_web_test pnpm e2e:integration
-
-# Desktop 및 mobile 크로스 브라우저
-pnpm e2e:cross-browser
-
-# API unit, PostgreSQL integration, HTTP/Socket E2E
-pnpm test:api
-pnpm test:api:e2e
-
-# 계약, 타입, 정적 검증
-pnpm check:api-contract
-pnpm type:check:web
-pnpm lint
-pnpm knip
-pnpm build
-
-# 운영 연결 smoke
-pnpm smoke:api:remote
-```
+공통 실행 명령은 [Local Development의 검증 명령](./local-development.md#검증-명령), Web E2E
+선택과 실행 정책은 [Playwright CLI 테스트 흐름 스펙](./playwright-cli-test-spec.md)을 따른다.
 
 실패 조사 시 `PLAYWRIGHT_WORKERS=1`을 유지하고, `--grep`으로 단일 시나리오를 재현한다. Playwright artifact는 HTML report, 첫 재시도 trace, 실패 screenshot, 실패 video를 기준 증적으로 사용한다.
 
@@ -542,15 +506,8 @@ pnpm smoke:api:remote
 4. Poke Lounge starter→world→battle 한 경로와 공개 멀티플레이 입장·정원 초과 거부.
 5. 실패 시 merge 금지.
 
-현재 PR workflow는 `i18n-integrity`, `hobby-games`, `keyboard-only`만 focused 실행한다. 전체 기능 목표에는 부족하므로 다음 파일을 P0 분할 job으로 추가하는 것을 권장한다.
-
-```txt
-core-routes.spec.ts
-not-found-recovery.spec.ts
-server-route-fallback.spec.ts
-poke-lounge.spec.ts --grep "solo 선택|wild-victory|임시 비밀번호"
-poke-lounge-mobile.spec.ts --grep "멀티플레이 진입"
-```
+실제 PR 실행 목록은 `.github/workflows/pull-request-check.yml`을 기준으로 한다. 위 P0 목표와
+workflow 사이에 공백이 생기면 이 시나리오의 우선순위를 근거로 focused job을 조정한다.
 
 ### 23.2 일일 P1 세트
 

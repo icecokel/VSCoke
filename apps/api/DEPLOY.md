@@ -1,6 +1,6 @@
 # API 배포 가이드
 
-이 프로젝트(`apps/api`)는 Ubuntu 호스트의 GitHub Actions self-hosted runner로 배포하고, 환경 변수는 서버에서 수동 관리합니다.
+이 문서는 API 코드·환경 변수·DB schema를 운영에 반영하는 실행 절차만 다룹니다.
 
 전체 monorepo 배포/환경 변수 기준은 [Deployment and Environment Plan](../../docs/deployment-and-env.md)을 우선합니다.
 
@@ -12,34 +12,19 @@
 ssh icenux-external
 ```
 
-현재 운영 API는 `/home/icenux/projects/vscoke-api` 배포본을 PM2 앱 `vscoke-api`로 실행합니다. 이전 `/opt/icenux/vscoke-api` 기반 `vscoke-api-native.service`는 사용하지 않으며 `disabled/inactive` 상태여야 합니다.
+서버 경로, 프로세스와 runner 기준값은
+[Deployment and Environment Plan](../../docs/deployment-and-env.md#api-ubuntu-host)을 확인합니다.
 
 ## 1. 소스 코드 배포 (자동)
 
-코드 변경 사항(`apps/api/src/`, `apps/api/package.json` 등)은 Git을 통해 배포합니다.
-
-1. 변경 사항 커밋:
-   ```bash
-   git add .
-   git commit -m "feat(api):기능 추가"
-   ```
-2. 원격 저장소 푸시:
-   ```bash
-   git push origin main
-   ```
-3. GitHub Actions가 자동으로 다음을 수행합니다:
-   - systemd가 관리하는 Ubuntu host self-hosted runner에서 작업 실행
-   - Ubuntu host `node`, `corepack`, `pm2` 사용
-   - 빌드 (`pnpm --filter @vscoke/api build`)
-   - staged release 생성 (`~/projects/vscoke-api/.next-release`)
-   - production 의존성 설치
-   - 서버 재기동 (`pm2 delete vscoke-api || true` 후 `pm2 start apps/api/dist/src/main.js --name vscoke-api --update-env`)
-   - `pm2 save`
-   - 내부/공개 API smoke test
+`main` 반영 뒤 `.github/workflows/deploy-api.yml`이 배포를 수행합니다. 수동 재실행은 해당
+workflow의 `workflow_dispatch`를 사용하고, 완료 뒤 `pnpm smoke:api:remote`로 공개 health를
+확인합니다. workflow 단계와 trigger가 바뀌면 workflow 파일을 기준으로 판단합니다.
 
 ## 2. 환경 변수 배포 (수동)
 
-보안상 `.env` 파일은 Git에 포함되지 않으므로 수동으로 전송해야 합니다. 운영 `.env`는 Ubuntu host의 `/home/icenux/projects/vscoke-api/.env` 기준입니다.
+보안상 `.env` 파일은 Git에 포함하지 않고 수동으로 전송합니다. 파일 위치와 변수별 기준은
+[Deployment and Environment Plan](../../docs/deployment-and-env.md#api-환경-변수)을 따릅니다.
 
 로컬 또는 운영 환경을 새로 만들 때는 `apps/api/.env.example`을 복사한 뒤 실제 값으로 채웁니다.
 
@@ -56,28 +41,25 @@ ssh icenux-external
    ```
    > 코드 배포와 함께라면 GitHub Actions가 재시작해주므로 생략 가능합니다.
 
-### Resume RAG 운영 설정
-
-운영 chat은 `resume_source_items`에 저장된 DB 텍스트를 keyword/text search로 검색하고, 검색된 근거를 Codex app-server에 전달해 답변만 생성합니다. 운영 chat runtime에는 OpenAI/API 임베딩 키가 필요하지 않습니다.
-
-필수 기준값:
-
-```bash
-RAG_CHAT_PROVIDER=codex-app-server
-RAG_CODEX_APP_SERVER_URL=ws://127.0.0.1:14561
-RAG_CODEX_CWD=/home/icenux/projects/vscoke-api
-RAG_CODEX_REASONING_EFFORT=low
-```
-
-`RAG_AI_API_KEY`, `RAG_AI_BASE_URL`, `RAG_EMBEDDING_PROVIDER`, `RAG_EMBEDDING_MODEL`, `RAG_EMBEDDING_DIMENSIONS`는 선택적 legacy/future 벡터 인덱싱 경로에서만 설정합니다. 운영 chat만 배포할 때는 필수값으로 취급하지 않습니다.
-
-`RAG_CODEX_REASONING_EFFORT`는 이력 chat의 답변 생성 turn에만 적용됩니다. 기본값은 `low`이며, 지원 값은 `none`, `minimal`, `low`, `medium`, `high`, `xhigh`입니다.
-
-`POST /resume-rag/chat`은 Cloudflare Tunnel을 거친 원본 IP당 최근 1시간에 20회까지만 허용합니다. API는 loopback proxy만 신뢰해 원본 IP를 해석하므로, 외부에서 임의로 `X-Forwarded-For`를 넣어 제한을 우회할 수 없습니다.
+Resume RAG와 메인 채팅 환경 변수는
+[메인 채팅 AI 사용 지침](../../docs/main-chat-ai-usage-guide.md#5-배포-환경-설정)을 따릅니다.
 
 ## 3. DB schema 변경
 
 운영 API는 `DB_SYNCHRONIZE=false`를 기본으로 유지합니다. schema 변경은 TypeORM migration 파일로 추적하고, 운영 DB에는 backup을 만든 뒤 migration 명령으로만 반영합니다. 운영 DB에서 `psql`로 직접 DDL을 실행하는 방식은 긴급 복구 상황이 아니면 사용하지 않습니다.
+
+### Legacy baseline 주의
+
+`CreateLegacyCoreSchema1759999999999`는 migration 도입 전에 생성된 `public.user`,
+`public.game_history`, `public.game_history_gametype_enum`을 ledger에 편입합니다. 세 객체가 모두
+없으면 canonical schema를 만들고, 모두 있으면 알려진 정확한 schema만 채택합니다. 일부만 있거나
+열·제약·enum·필수 index가 다르면 자동 수리 없이 실패합니다.
+
+운영 최초 적용 전에는 세 객체의 schema와 TypeORM `migrations` ledger를 함께 덤프합니다. 이미
+후속 enum migration이 기록된 DB를 고려해 baseline은 `SKY_DROP` 또는 순서가 고정된
+`SKY_DROP, POKE_LOUNGE`만 허용합니다. 실패 시 drop, alter 또는 ledger 수동 삽입을 하지 말고
+차이를 먼저 검토합니다. 이 baseline의 `down`은 기존 데이터 삭제를 막기 위해 의도적으로
+실패합니다.
 
 ### Migration 생성
 
@@ -212,29 +194,5 @@ tunnel 터미널은 유지하고, 다른 터미널에서 migration dry run이나
 | **환경 변수 (`.env`)**       | `scp .env icenux-external:/home/icenux/projects/vscoke-api/.env` | 수동 전송 및 재시작 필요   |
 | **DB schema**                | TypeORM migration + backup                                       | 운영 반영 직전 backup 필수 |
 
-## 운영 전 확인할 항목
-
-- GitHub Actions self-hosted runner: labels `self-hosted`, `vscoke-api`, `host`
-- Ubuntu host runtime: Node.js 20 이상, Corepack, pnpm 9.12.0, PM2, PostgreSQL 접근성
-- Cloudflare Tunnel: API 도메인이 Ubuntu host API 포트로 라우팅되는지 확인
-- 이전 `vscoke-api-native.service`: `disabled/inactive`
-- API runtime env: `NODE_ENV=production`, `DB_SYNCHRONIZE=false`, `GOOGLE_CLIENT_ID`, DB 접속 정보
-- Web 연동: Vercel의 `NEXT_PUBLIC_API_URL`이 API 공개 도메인을 가리키는지 확인
-
-## PM2 복구 절차
-
-배포 workflow는 `vscoke-api` 프로세스를 삭제한 뒤 새로 시작합니다. 첫 운영 배포가 성공하면 Ubuntu host에서 현재 PM2 목록을 저장합니다.
-
-```bash
-ssh icenux-external "pm2 status"
-ssh icenux-external "pm2 save"
-```
-
-기기 재부팅 후 자동 복구가 필요하면 PM2 systemd startup에서 아래 흐름이 실행되도록 구성합니다.
-
-```bash
-pm2 resurrect
-pm2 status
-```
-
-Cloudflare Tunnel도 재부팅 후 API 도메인을 다시 Ubuntu host API 포트로 연결해야 합니다. Tunnel이 별도 systemd 서비스로 관리되는지 운영 환경에서 확인합니다.
+배포 실패, PM2 복구와 Cloudflare Tunnel 장애 대응은
+[Operations Runbook](../../docs/operations-runbook.md)을 따릅니다.

@@ -15,23 +15,8 @@ apps/api -> GitHub Actions self-hosted runner on Ubuntu host -> PM2 -> Cloudflar
 
 PR은 배포 전에 `.github/workflows/pull-request-check.yml`로 검증한다. 이 workflow는 `main` 대상 pull request와 수동 실행(`workflow_dispatch`)에서 동작한다.
 
-공통 기준:
-
-- Node.js 20
-- `pnpm@9.12.0`
-- `pnpm install --frozen-lockfile`
-- `NEXT_PUBLIC_API_URL=https://api.icecoke.kr`
-
-검증 job:
-
-| Job | 실행 내용                                                                                                                               |
-| --- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| API | PostgreSQL 16 + pgvector, test migration show/run, API lint/unit/PostgreSQL integration/E2E, API build                                  |
-| Web | Playwright Chromium 설치, `pnpm check:api-contract`, `pnpm type:check:web`, `pnpm lint:web`, `pnpm knip`, `pnpm build:web`, focused E2E |
-
-현재 focused E2E는 `i18n-integrity.spec.ts`, `hobby-games.spec.ts`, `keyboard-only.spec.ts`를 Chromium에서 실행한다. 전체 E2E와 cross-browser 회귀는 실행 시간이 크므로 기본 PR workflow에는 넣지 않고 필요 시 로컬 또는 별도 workflow에서 실행한다.
-
-API job은 `TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/vscoke_test`를 사용한다. test data source는 `_test` suffix와 regular DB target 분리를 강제하고 `synchronize: false`로 migration을 증거로 삼는다. Poke Lounge room, 경쟁 action/history publication의 PostgreSQL integration test가 이 job에 포함된다.
+실제 runtime, service, 명령과 focused E2E 목록은 workflow 파일이 기준이다. Web E2E 선택 정책은
+[Playwright CLI 테스트 흐름 스펙](./playwright-cli-test-spec.md)을 따른다.
 
 ### Web: Vercel
 
@@ -153,139 +138,57 @@ PM2 운영 기준:
 NEXT_PUBLIC_API_URL=http://127.0.0.1:65535 pnpm build:web
 ```
 
-### Resume RAG 채팅 집계
-
-이력 질문과 이력 페이지는 브라우저의 `dataLayer`에 다음 GTM 커스텀 이벤트를 적재한다.
-
-| 이벤트                                | 발생 시점                          |
-| ------------------------------------- | ---------------------------------- |
-| `resume_readme_viewed`                | README 이력 페이지 진입            |
-| `resume_chat_page_viewed`             | 이력 질문 페이지 진입              |
-| `resume_rag_chat_composer_focused`    | 질문 입력창 첫 focus               |
-| `resume_rag_chat_opened`              | 모바일 README에서 질문 페이지 열기 |
-| `resume_rag_chat_topic_expanded`      | 추천 질문 주제 펼치기              |
-| `resume_rag_chat_suggestion_selected` | 추천 질문 선택                     |
-| `resume_rag_chat_submitted`           | 질문 API 전송                      |
-| `resume_rag_chat_completed`           | 답변 수신                          |
-| `resume_rag_chat_failed`              | API 또는 응답 계약 실패            |
-| `resume_rag_chat_answer_viewed`       | README에서 준비한 답변 보기        |
-
-채팅 이벤트의 공통 parameter는 `chat_entry_point`, `chat_locale`, `chat_keyword`,
-`chat_question_length`다. 완료 이벤트에는 `chat_evidence`, `chat_source_count`, 실패 이벤트에는
-`chat_failure_reason`, 추천 주제 이벤트에는 `chat_topic_index`가 추가된다. 질문 원문은 이메일 등
-개인정보가 포함될 수 있어 GA/GTM으로 보내지 않는다.
-
-GTM에서 위 이벤트별 Custom Event trigger와 같은 이름의 GA4 Event 태그를 만들고 Data Layer
-Variable을 event parameter로 매핑한다. GA4 관리 화면에서 `chat_keyword`, `chat_entry_point`,
-`chat_evidence`, `chat_failure_reason`을 event-scoped custom dimension으로 등록하면 이벤트 수와
-사용자 수를 탐색 보고서에서 집계할 수 있다. `NEXT_PUBLIC_GTM_ID`가 없고 직접 GA만 연결한 경우에는
-동일 이벤트를 `gtag`로 전송한다. GA와 GTM을 동시에 설정한 경우에는 GTM 경로만 사용한다.
-
-새 키워드가 필요하면 `resume-rag-chat-analytics.ts`의 허용 목록에 정규화한 값과 매처를 추가한다.
-점검 모드에서 차단된 전송은 전송·완료·실패 이벤트를 추가하지 않는다.
-
-### Resume RAG 질문 로그
-
-`resume_rag_chat_logs`에는 origin 검증과 DTO 검증을 통과한 질문을 답변 처리 전에 기록한다.
-질문 내용은 검토할 수 있도록 보관하되 이메일, 전화번호, Bearer/API key·token·secret 값은
-마스킹한다. IP 주소, 로그인 계정 식별자, 질문 원문을 GA/GTM으로 보내지 않는다.
-
-운영에서 최근 질문을 확인할 때는 다음 조회를 사용한다.
-
-```sql
-SELECT "createdAt", "locale", "questionText"
-FROM "resume_rag_chat_logs"
-ORDER BY "createdAt" DESC
-LIMIT 100;
-```
-
-동일하게 마스킹된 질문의 반복 수는 `questionHash`로 집계할 수 있다.
-
 ### API 환경 변수
 
 API 로컬 개발 값은 `apps/api/.env`에 둔다. 시작점은 `apps/api/.env.example`을 복사해 사용한다.
 
 API 운영 값은 Ubuntu host의 `/home/icenux/projects/vscoke-api/.env`에 둔다. 현재 PM2 실행은 이 경로에서 시작되므로 Nest `ConfigModule`이 이 위치의 `.env`를 읽는다.
 
-| 이름                         | 필수      | 기본값                                 | 설명                                                                                                 |
-| ---------------------------- | --------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                   | 권장      | `development`                          | 운영에서는 `production`                                                                              |
-| `PORT`                       | 권장      | `3000`                                 | API 리슨 포트                                                                                        |
-| `LOG_LEVEL`                  | 선택      | `development=debug`, `production=info` | Winston 콘솔·일별 파일 로그 최소 레벨 (`error`, `warn`, `info`, `debug` 등)                          |
-| `CORS_ORIGINS`               | 권장      | 기본 허용 origin + 추가 없음           | 쉼표로 구분한 추가 허용 origin                                                                       |
-| `GOOGLE_CLIENT_ID`           | 필수      | 없음                                   | Google OAuth 토큰 검증                                                                               |
-| `DB_HOST`                    | 필수      | `localhost`                            | PostgreSQL host                                                                                      |
-| `DB_PORT`                    | 필수      | `5432`                                 | PostgreSQL port                                                                                      |
-| `DB_USERNAME`                | 필수      | `postgres`                             | PostgreSQL user                                                                                      |
-| `DB_PASSWORD`                | 필수      | `postgres`                             | PostgreSQL password                                                                                  |
-| `DB_DATABASE`                | 필수      | `vscoke`                               | PostgreSQL database                                                                                  |
-| `DB_SYNCHRONIZE`             | 운영 필수 | production에서는 `false` 취급          | TypeORM synchronize 제어                                                                             |
-| `NOTIFY_SERVICE_URL`         | 선택      | 없음                                   | 운영 에러 알림 endpoint                                                                              |
-| `NOTIFY_SERVICE_USER`        | 선택      | 없음                                   | 알림 endpoint basic auth user                                                                        |
-| `NOTIFY_SERVICE_PASSWORD`    | 선택      | 없음                                   | 알림 endpoint basic auth password                                                                    |
-| `ENABLE_DEV_AUTH_BYPASS`     | 개발 전용 | `false` 취급                           | 개발 인증 우회                                                                                       |
-| `DEV_AUTH_TOKEN`             | 개발 전용 | 없음                                   | 개발 인증 우회 토큰                                                                                  |
-| `CLOUDFLARE_DB_HOST`         | 개발 보조 | 없음                                   | `db:tunnel` 스크립트용 DB hostname                                                                   |
-| `RAG_CHAT_PROVIDER`          | 필수      | 없음                                   | 이력 RAG 답변 생성 provider. 운영은 `codex-app-server`                                               |
-| `RAG_CODEX_APP_SERVER_URL`   | 필수      | `ws://127.0.0.1:14561`                 | Ubuntu host의 Codex app-server loopback endpoint                                                     |
-| `RAG_CODEX_CWD`              | 필수      | 없음                                   | Codex app-server 작업 디렉터리. 운영은 `/home/icenux/projects/vscoke-api`                            |
-| `RAG_CODEX_TIMEOUT_MS`       | 권장      | `120000`                               | Codex app-server 응답 timeout                                                                        |
-| `RAG_CODEX_REASONING_EFFORT` | 권장      | `low`                                  | 이력 chat 답변 turn의 reasoning effort. 지원 값: `none`, `minimal`, `low`, `medium`, `high`, `xhigh` |
-| `RAG_CHAT_MODEL`             | 선택      | 없음                                   | 비워두면 Codex app-server 기본 모델 사용                                                             |
-| `RAG_CODEX_MODEL_PROVIDER`   | 선택      | 없음                                   | Codex app-server provider 힌트. 비워두면 app-server 기본값 사용                                      |
-| `RAG_PUBLIC_CHAT_ORIGINS`    | 운영 권장 | `https://vscoke.icecoke.kr`            | 공개 이력 질문 API를 허용할 브라우저 origin 목록                                                     |
-| `RAG_EMBEDDING_PROVIDER`     | 선택      | 없음                                   | 선택적 벡터 인덱싱용 embedding provider                                                              |
-| `RAG_EMBEDDING_MODEL`        | 선택      | 없음                                   | 선택적 벡터 인덱싱용 embedding model                                                                 |
-| `RAG_EMBEDDING_DIMENSIONS`   | 선택      | 없음                                   | 선택적 벡터 인덱싱용 embedding dimension                                                             |
-| `RAG_AI_BASE_URL`            | 선택      | 없음                                   | 선택적 openai-compatible 임베딩/벡터 인덱싱 endpoint                                                 |
-| `RAG_AI_API_KEY`             | 선택      | 없음                                   | 선택적 openai-compatible 임베딩/벡터 인덱싱 키                                                       |
-| `RAG_TOP_K`                  | 권장      | `5`                                    | 텍스트 검색 후보 수                                                                                  |
-| `RAG_MIN_SIMILARITY`         | 권장      | `0.1`                                  | 텍스트 검색 최소 점수                                                                                |
-| `RAG_CHUNK_SIZE`             | 선택      | `1200`                                 | 선택적 source item chunking 크기                                                                     |
-| `RAG_CHUNK_OVERLAP`          | 선택      | `120`                                  | 선택적 source item chunking overlap                                                                  |
-| `RAG_ALLOWED_VISIBILITIES`   | 권장      | `public`                               | RAG 검색 허용 visibility 목록                                                                        |
+| 이름                      | 필수      | 기본값                                 | 설명                                                                        |
+| ------------------------- | --------- | -------------------------------------- | --------------------------------------------------------------------------- |
+| `NODE_ENV`                | 권장      | `development`                          | 운영에서는 `production`                                                     |
+| `PORT`                    | 권장      | `3000`                                 | API 리슨 포트                                                               |
+| `LOG_LEVEL`               | 선택      | `development=debug`, `production=info` | Winston 콘솔·일별 파일 로그 최소 레벨 (`error`, `warn`, `info`, `debug` 등) |
+| `CORS_ORIGINS`            | 권장      | 기본 허용 origin + 추가 없음           | 쉼표로 구분한 추가 허용 origin                                              |
+| `GOOGLE_CLIENT_ID`        | 필수      | 없음                                   | Google OAuth 토큰 검증                                                      |
+| `DB_HOST`                 | 필수      | `localhost`                            | PostgreSQL host                                                             |
+| `DB_PORT`                 | 필수      | `5432`                                 | PostgreSQL port                                                             |
+| `DB_USERNAME`             | 필수      | `postgres`                             | PostgreSQL user                                                             |
+| `DB_PASSWORD`             | 필수      | `postgres`                             | PostgreSQL password                                                         |
+| `DB_DATABASE`             | 필수      | `vscoke`                               | PostgreSQL database                                                         |
+| `DB_SYNCHRONIZE`          | 운영 필수 | production에서는 `false` 취급          | TypeORM synchronize 제어                                                    |
+| `NOTIFY_SERVICE_URL`      | 선택      | 없음                                   | 운영 에러 알림 endpoint                                                     |
+| `NOTIFY_SERVICE_USER`     | 선택      | 없음                                   | 알림 endpoint basic auth user                                               |
+| `NOTIFY_SERVICE_PASSWORD` | 선택      | 없음                                   | 알림 endpoint basic auth password                                           |
+| `ENABLE_DEV_AUTH_BYPASS`  | 개발 전용 | `false` 취급                           | 개발 인증 우회                                                              |
+| `DEV_AUTH_TOKEN`          | 개발 전용 | 없음                                   | 개발 인증 우회 토큰                                                         |
+| `CLOUDFLARE_DB_HOST`      | 개발 보조 | 없음                                   | `db:tunnel` 스크립트용 DB hostname                                          |
 
-Resume RAG 운영 chat은 `resume_source_items`의 기존 DB 텍스트를 keyword/text search로 검색하고, 검색된 근거를 Codex app-server에 전달해 답변만 생성한다. 따라서 운영 chat runtime에는 OpenAI/API 임베딩 키가 필요하지 않다.
-
-벡터 인덱싱과 임베딩 설정(`RAG_EMBEDDING_PROVIDER`, `RAG_EMBEDDING_MODEL`, `RAG_EMBEDDING_DIMENSIONS`, `RAG_AI_API_KEY`)은 현재 운영 배포의 필수 경로가 아니라 legacy/future 선택 경로다. 별도 벡터 인덱싱을 다시 사용할 때만 설정한다.
+Resume RAG와 메인 채팅 변수, 기본값과 데이터 정책은
+[메인 채팅·이력 질문 AI 사용 지침](./main-chat-ai-usage-guide.md)을 따른다. 실제 변수 목록은
+`apps/api/.env.example`이 기준이다.
 
 운영 주의:
 
 - `ENABLE_DEV_AUTH_BYPASS`와 `DEV_AUTH_TOKEN`은 운영 `.env`에 넣지 않는다.
 - `DB_SYNCHRONIZE=false`를 명시한다. 코드 기본값도 `false`이며, 운영에서 `DB_SYNCHRONIZE=true`면 API가 fail-fast 한다.
 - API 배포 workflow는 migration을 자동 실행하지 않는다. 운영 DB migration은 백업과 ledger 확인 후 별도 maintenance 작업으로 실행한다.
-- `RAG_CHAT_PROVIDER=codex-app-server`를 명시한다.
-- Ubuntu host에서는 `RAG_CODEX_APP_SERVER_URL=ws://127.0.0.1:14561`, `RAG_CODEX_CWD=/home/icenux/projects/vscoke-api`를 기준값으로 둔다.
-- `RAG_CODEX_REASONING_EFFORT`는 기본값 `low`로 이력 chat turn에만 적용한다. 환경값을 바꾸면 PM2를 `--update-env` 옵션으로 재시작한다.
-- 공개 이력 채팅은 Cloudflare Tunnel을 통과한 원본 IP당 최근 1시간에 20회까지만 허용한다. API는 loopback proxy만 신뢰해 IP를 해석한다.
-- 공개 이력 질문은 사용자 로그인 없이 동작하되, `RAG_PUBLIC_CHAT_ORIGINS=https://vscoke.icecoke.kr` 기준으로 공식 운영 웹 origin에서 온 브라우저 요청만 허용한다.
-- 운영 chat만 사용할 때는 `RAG_AI_API_KEY`를 요구하지 않는다.
 - 기본 CORS 허용 origin은 production 웹 도메인과 로컬 개발 웹 도메인뿐이다.
 - Vercel preview에서 production API 직접 호출이 필요하면 preview origin을 `CORS_ORIGINS`에 명시한다. wildcard, path 포함 URL, http/https가 아닌 값은 허용 목록에서 제외된다.
 - 운영 에러 알림은 `NOTIFY_SERVICE_URL`, `NOTIFY_SERVICE_USER`, `NOTIFY_SERVICE_PASSWORD`가 모두 설정된 경우에만 전역 예외 필터가 전송한다. 기본 endpoint나 기본 계정 fallback은 없다.
 - `.env`만 변경한 경우 코드 배포 없이 PM2 재시작이 필요하다.
 
-### 운영 DB migration onboarding
+### 운영 DB migration
 
-`CreateLegacyCoreSchema1759999999999`는 tracked migration보다 먼저 외부에서 생성됐던 `public.user`, `public.game_history`, `public.game_history_gametype_enum`을 production migration ledger에 편입한다. 세 객체가 모두 없으면 `public`에 historical schema를 생성하고, 모두 있으면 알려진 정확한 schema만 채택한다. 일부만 있거나 열, 타입, nullability, default, PK/FK의 validated/deferrable/match 의미, enum label, required `userId` index가 허용 형태와 다르면 아무것도 수정하지 않고 실패한다. 호출 세션의 search path에서 다른 schema가 `public`보다 앞서더라도 baseline의 생성과 참조 대상은 `public`으로 고정된다.
+backup, legacy baseline, 실행과 rollback 절차는
+[API 배포 가이드](../apps/api/DEPLOY.md#3-db-schema-변경)를 따른다.
 
-운영 최초 적용 순서:
-
-1. PostgreSQL backup을 만들고 복구 가능 여부를 확인한다.
-2. `public.user`, `public.game_history`, `public.game_history_gametype_enum`의 schema와 TypeORM `migrations` ledger를 함께 덤프한다.
-3. 배포 artifact에서 `pnpm --filter @vscoke/api migration:show`로 pending migration을 확인한다.
-4. maintenance window에서 `pnpm --filter @vscoke/api migration:run`을 수동 실행한다.
-5. baseline과 후속 `AddPokeLoungeGameType1793664000000`이 ledger에 기록됐는지 다시 확인한다.
-
-이미 후속 enum migration이 기록된 운영 DB를 고려해 baseline은 enum label을 `SKY_DROP` 또는 순서가 고정된 `SKY_DROP, POKE_LOUNGE`만 허용한다. 신규 DB에서는 baseline이 `SKY_DROP`만 생성하고 후속 migration이 `POKE_LOUNGE`를 추가한다. baseline 실패 시 drop, alter, 자동 repair 또는 migration ledger 수동 삽입을 진행하지 말고 schema/ledger 차이를 먼저 검토한다. `down`은 기존 객체와 데이터를 삭제할 수 있어 명시적으로 실패하는 irreversible 정책이다.
+### Poke Lounge 공개 조건
 
 Poke Lounge hardening의 기술 검증과 운영 migration 적용은 공개 배포의 권리 승인이 아니다. 기본 Vercel 빌드는 provenance를 자동 차단하지 않지만 [Poke Lounge Release Gate](./poke-lounge-release-gate.md)의 권리 상태는 `UNRESOLVED`이며, owner/legal review와 서명된 권리 결정이 별도로 필요하다. 엄격한 차단이 필요한 환경에는 `POKE_LOUNGE_PROVENANCE_STRICT=1`을 설정한다.
 
-```bash
-scp .env icenux-external:/home/icenux/projects/vscoke-api/.env
-ssh icenux-external "chmod 600 /home/icenux/projects/vscoke-api/.env"
-ssh icenux-external "cd /home/icenux/projects/vscoke-api && pm2 restart vscoke-api --update-env && pm2 save"
-```
+환경 변수 전송과 재시작 명령은 [API 배포 가이드](../apps/api/DEPLOY.md#2-환경-변수-배포-수동)를
+따른다.
 
 ### GitHub Actions Runner and Variables
 
@@ -305,18 +208,3 @@ API 배포는 Ubuntu host self-hosted runner에서 직접 실행하므로 SSH �
 | ---------------- | -------------------------------------------------------------------------------------------------------------- |
 | `API_HEALTH_URL` | 공개 API smoke test URL. GitHub Actions repository variable이다. 기본값은 `https://api.icecoke.kr/health`      |
 | `API_DEPLOY_DIR` | Ubuntu host 배포 디렉터리. GitHub Actions repository variable이다. 기본값은 `/home/icenux/projects/vscoke-api` |
-
-## 앞으로 해야 할 일
-
-- [x] Vercel web 프로젝트의 Root Directory를 `apps/web`으로 변경한다.
-- [x] Vercel Production/Preview 환경에 web 환경 변수 표의 필수 값을 설정한다.
-- [x] Ubuntu host의 `/home/icenux/projects/vscoke-api/.env`를 현재 API 환경 변수 목록 기준으로 정리한다.
-- [x] Ubuntu host에 self-hosted runner를 설치하고 `vscoke-api`, `host` label을 부여한다.
-- [x] Cloudflare Tunnel이 API 도메인을 Ubuntu host API 포트로 라우팅하는지 확인한다.
-- [x] API 배포 후 `https://api.icecoke.kr/health`를 smoke test한다.
-- [ ] 웹의 API 호출 경로와 CORS를 production UI에서 smoke test한다.
-- [ ] standalone `vscoke-api` 저장소는 monorepo 배포가 1회 이상 성공한 뒤 archive한다.
-- [x] secret 없는 `apps/api/.env.example`과 `apps/web/.env.example`을 추가해 신규 환경 구성을 표준화한다.
-- [x] API lint debt를 정리한 뒤 루트 `pnpm lint`에 API lint를 포함한다.
-- [x] PM2 재부팅 복구 기준을 문서화한다.
-- [x] PM2 실행 명령을 `ecosystem.config.cjs`로 옮길지 검토한다. 현재는 서버 `.env` 위치를 `~/projects/vscoke-api/.env`로 유지하기 위해 workflow 명령 기반 실행을 유지한다.

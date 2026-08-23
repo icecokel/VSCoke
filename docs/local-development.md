@@ -35,13 +35,13 @@ apps/api -> NestJS backend
 | 웹 타입 체크       | `pnpm type:check:web`          |
 | API test           | `pnpm test:api`                |
 | API E2E test       | `pnpm test:api:e2e`            |
-| Web/API 통합 E2E   | `pnpm e2e:integration`         |
 | battle engine test | `pnpm test:poke-lounge-battle` |
 | OpenAPI 타입 생성  | `pnpm generate:types`          |
 | API 계약 확인      | `pnpm check:api-contract`      |
-| 웹 E2E             | `pnpm e2e`                     |
-| 웹 E2E smoke       | `pnpm e2e:smoke`               |
 | unused code check  | `pnpm knip`                    |
+
+Web E2E 명령과 선택 기준은 [Playwright CLI 테스트 흐름 스펙](./playwright-cli-test-spec.md)을
+따른다.
 
 ## 환경 변수 준비
 
@@ -66,7 +66,8 @@ NEXT_PUBLIC_API_URL=https://api.icecoke.kr
 
 API는 DB, Google OAuth, 알림 설정을 `apps/api/.env`에서 읽는다. 운영 값은 Ubuntu host의 API `.env`에서 별도로 관리한다.
 
-Resume RAG chat을 로컬 API에서 실제로 호출하려면 `RAG_CHAT_PROVIDER`, `RAG_CODEX_APP_SERVER_URL`, `RAG_CODEX_CWD`, `RAG_PUBLIC_CHAT_ORIGINS`도 확인한다. 운영 chat은 DB 텍스트 검색과 Codex app-server 답변 생성을 사용하며 OpenAI/API 임베딩 키를 필수로 요구하지 않는다.
+Resume RAG와 메인 채팅을 로컬 API에서 실제로 호출하는 설정은
+[메인 채팅·이력 질문 AI 사용 지침](./main-chat-ai-usage-guide.md#5-배포-환경-설정)을 따른다.
 
 ### Poke Lounge 로컬 싱글 테스트 모드
 
@@ -123,16 +124,7 @@ http://localhost:3001/api
 http://localhost:3001/api-json
 ```
 
-주요 API surface:
-
-| 영역            | endpoint                                                                                                     |
-| --------------- | ------------------------------------------------------------------------------------------------------------ |
-| Health          | `GET /health`                                                                                                |
-| Hobby           | `GET /recipes`, `GET /recipes/:id`, `GET /espresso-history/beans`, `GET /espresso-history/beans/:id`         |
-| Game            | `POST /game/result`, `GET /game/ranking`, `GET /game/result/:id`, `GET/PUT /game/poke-lounge/state`          |
-| Poke Lounge     | durable room commands, competitive seat/action, `GET /poke-lounge/rooms/:roomCode`, Socket.IO `/poke-lounge` |
-| Resume question | `POST /resume-rag/chat`                                                                                      |
-| Wordle          | `GET /wordle/word`, `POST /wordle/check`                                                                     |
+현재 module과 endpoint 목록은 [VSCoke API README](../apps/api/README.md#주요-모듈)를 확인한다.
 
 API 빌드:
 
@@ -254,12 +246,9 @@ pnpm smoke:api:remote
 
 PR 자동 검증은 `.github/workflows/pull-request-check.yml`에서 실행한다.
 
-| Job | 검증                                                                    |
-| --- | ----------------------------------------------------------------------- |
-| API | API lint, unit test, E2E test, build                                    |
-| Web | API contract diff, typecheck, lint, knip, build, focused Playwright E2E |
-
-현재 PR focused E2E는 `i18n-integrity`, `hobby-games`, `keyboard-only`를 Chromium에서 실행한다. 전체 Playwright 회귀가 필요하면 로컬에서 `pnpm e2e` 또는 `pnpm e2e:cross-browser`를 별도로 실행한다.
+PR이 실제로 실행하는 job과 spec은 `.github/workflows/pull-request-check.yml`이 기준이다. 테스트
+선택 정책과 전체 회귀 방법은 [Playwright CLI 테스트 흐름 스펙](./playwright-cli-test-spec.md)을
+따른다.
 
 ## 자주 생기는 문제
 

@@ -1,6 +1,6 @@
-# 메인 채팅 AI 사용 지침
+# 메인 채팅·이력 질문 AI 사용 지침
 
-확인 기준일: 2026-08-08
+확인 기준일: 2026-08-20
 
 ## 1. 목적과 범위
 
@@ -61,6 +61,7 @@ Codex app-server 주소와 인증 정보는 브라우저 번들, Vercel 환경 �
 
 - `ResumeRagOriginGuard`가 허용된 웹 origin인지 확인한다.
 - `MainChatRateLimitGuard`가 이력서 전용 채팅과 별도로 IP당 최근 1시간 30회를 제한한다.
+- 이력 질문 `POST /resume-rag/chat`은 IP당 최근 1시간 20회를 제한한다.
 - 인사, 감사, 도움말처럼 명시적으로 등록된 짧은 문구는 다국어 고정 응답을 반환한다.
 - 고정 응답이 아니면 기존 `ResumeRagService`에 질문을 전달한다.
 - 메인 채팅 질문은 `recordQuestion: false`로 처리해 이력 질문 로그에 저장하지 않는다.
@@ -133,6 +134,9 @@ RAG_ALLOWED_VISIBILITIES=public
 - `RAG_CODEX_MODEL_PROVIDER`: 별도 provider 힌트가 필요할 때만 설정한다.
 - `RAG_TOP_K`: 기본값 `5`다.
 - `RAG_MIN_SIMILARITY`: 기본값 `0.1`이다.
+- `RAG_EMBEDDING_PROVIDER`, `RAG_EMBEDDING_MODEL`, `RAG_EMBEDDING_DIMENSIONS`,
+  `RAG_AI_BASE_URL`, `RAG_AI_API_KEY`: 선택적 벡터 인덱싱을 다시 사용할 때만 설정한다.
+- `RAG_CHUNK_SIZE`, `RAG_CHUNK_OVERLAP`: 선택적 source item chunking 설정이다.
 
 운영 채팅은 DB 텍스트 검색을 사용하므로 `RAG_AI_API_KEY`, 임베딩 provider, 임베딩 모델을
 필수로 요구하지 않는다. 환경 변수를 변경한 뒤에는 PM2를 `--update-env`로 재시작한다.
@@ -169,7 +173,49 @@ codex app-server --listen ws://127.0.0.1:14561
 - 검색 근거 없이 일반 지식이나 추측으로 답하도록 prompt를 완화하지 않는다.
 - 메인 채팅에 대화 저장을 추가하려면 보존 기간, 삭제 정책, 개인정보 범위를 먼저 문서화한다.
 
-## 8. 배포 검증 체크리스트
+## 8. 분석과 질문 로그
+
+이력 질문 화면은 다음 `dataLayer` 이벤트를 사용한다.
+
+| 이벤트                                | 발생 시점                          |
+| ------------------------------------- | ---------------------------------- |
+| `resume_readme_viewed`                | README 이력 페이지 진입            |
+| `resume_chat_page_viewed`             | 이력 질문 페이지 진입              |
+| `resume_rag_chat_composer_focused`    | 질문 입력창 첫 focus               |
+| `resume_rag_chat_opened`              | 모바일 README에서 질문 페이지 열기 |
+| `resume_rag_chat_topic_expanded`      | 추천 질문 주제 펼치기              |
+| `resume_rag_chat_suggestion_selected` | 추천 질문 선택                     |
+| `resume_rag_chat_submitted`           | 질문 API 전송                      |
+| `resume_rag_chat_completed`           | 답변 수신                          |
+| `resume_rag_chat_failed`              | API 또는 응답 계약 실패            |
+| `resume_rag_chat_answer_viewed`       | README에서 준비한 답변 보기        |
+
+공통 parameter는 `chat_entry_point`, `chat_locale`, `chat_keyword`, `chat_question_length`다. 완료
+이벤트에는 `chat_evidence`, `chat_source_count`, 실패 이벤트에는 `chat_failure_reason`, 추천 주제
+이벤트에는 `chat_topic_index`를 추가한다. 질문 원문, IP 주소와 계정 식별자는 보내지 않는다.
+
+GTM에서는 이벤트별 Custom Event trigger와 같은 이름의 GA4 Event 태그를 만들고 Data Layer
+Variable을 parameter로 매핑한다. `chat_keyword`, `chat_entry_point`, `chat_evidence`,
+`chat_failure_reason`은 event-scoped custom dimension으로 등록한다. `NEXT_PUBLIC_GTM_ID` 없이
+GA만 연결하면 같은 이벤트를 `gtag`로 보내고, GA와 GTM을 함께 설정하면 GTM 경로만 사용한다.
+
+새 키워드는 `resume-rag-chat-analytics.ts`의 허용 목록에 정규화 값과 matcher를 추가한다. 점검
+모드에서 차단된 요청은 전송·완료·실패 이벤트를 만들지 않는다.
+
+`resume_rag_chat_logs`에는 origin·DTO 검증을 통과한 이력 질문을 답변 처리 전에 기록한다. 이메일,
+전화번호, Bearer/API key·token·secret은 마스킹하고 동일한 마스킹 결과의 반복 수는
+`questionHash`로 집계한다. 메인 채팅 질문은 이 로그에 저장하지 않는다.
+
+최근 질문은 다음 조회로 확인한다.
+
+```sql
+SELECT "createdAt", "locale", "questionText"
+FROM "resume_rag_chat_logs"
+ORDER BY "createdAt" DESC
+LIMIT 100;
+```
+
+## 9. 배포 검증 체크리스트
 
 1. Ubuntu에서 Codex CLI 인증과 app-server 실행 계정을 확인한다.
 2. app-server를 loopback listener로 실행한다.
@@ -201,7 +247,7 @@ curl --fail-with-body --request POST https://api.icecoke.kr/main-chat \
 
 정상적인 AI 답변은 HTTP `200`, `grounded: true`, 하나 이상의 `sources`를 반환해야 한다.
 
-## 9. 장애 판단
+## 10. 장애 판단
 
 | 증상                                             | 우선 확인                                                  |
 | ------------------------------------------------ | ---------------------------------------------------------- |
@@ -212,7 +258,7 @@ curl --fail-with-body --request POST https://api.icecoke.kr/main-chat \
 | 답변 언어가 요청 locale과 다름                   | locale 전달값과 app-server prompt                          |
 | 답변에 근거 밖 내용이 포함됨                     | 전달 context와 provider prompt 변경 이력                   |
 
-## 10. 변경 지침
+## 11. 변경 지침
 
 - Web에서 Codex app-server를 직접 호출하는 경로를 추가하지 않는다.
 - 고정 응답, 검색, AI 답변 생성의 책임을 섞지 않는다.
@@ -223,7 +269,7 @@ curl --fail-with-body --request POST https://api.icecoke.kr/main-chat \
 - multi-turn 대화를 도입할 때는 기존 메시지 전송 범위, token 한도, 개인정보 저장 정책,
   prompt injection 방어를 별도 사양으로 먼저 정의한다.
 
-## 11. 구현 기준 파일
+## 12. 구현 기준 파일
 
 - Web 요청: `apps/web/src/features/main-chat/lib/main-chat-service.ts`
 - Web 상태: `apps/web/src/features/main-chat/lib/main-chat-state.ts`

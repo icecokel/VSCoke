@@ -1,11 +1,11 @@
 # Poke Lounge Game Concept
 
-확인 기준일: 2026-08-20
+확인 기준일: 2026-08-24
 구현 기준: `main`
 
 이 문서는 Poke Lounge의 제품 의도와 현재 구현 경계를 설명한다. 게임 진행 순서와 고정 수치는
 [게임 규칙 인덱스](./poke-lounge-rules/index.md), 테스트 절차는
-[공개 멀티플레이 테스트 시나리오](./poke-lounge-multiplayer-test-scenarios.md)를 기준으로 한다.
+[플레이어 E2E 테스트 시나리오](./poke-lounge-multiplayer-test-scenarios.md)를 기준으로 한다.
 
 Poke Lounge는 비공식 Pokémon 팬 게임이다. 기술 구현이나 배포 성공은 관련 명칭·표장·데이터·
 에셋의 공개 사용 권리를 의미하지 않는다. 공개 출시 권리 상태는
@@ -130,8 +130,7 @@ terminal event와 match를 중복 제거한 뒤 결과를 먼저 적용하고, �
 
 검증은 공통 엔진 unit, Web unit, API unit·PostgreSQL integration, HTTP/Socket E2E와 Playwright
 브라우저 시나리오로 나눈다. 현재 자동화 범위와 남은 수동 검증은
-[전체 기능 E2E 테스트 시나리오](./e2e-full-feature-test-scenarios.md)와
-[공개 멀티플레이 테스트 시나리오](./poke-lounge-multiplayer-test-scenarios.md)를 따른다.
+[플레이어 E2E 테스트 시나리오](./poke-lounge-multiplayer-test-scenarios.md)를 따른다.
 
 현재 구현 범위:
 
@@ -161,14 +160,14 @@ build가 이를 자동 차단하지 않는 것은 권리 승인이 아니다.
 
 ## Source of truth
 
-| 주제                 | 기준 문서·코드                                                                 |
-| -------------------- | ------------------------------------------------------------------------------ |
-| 제품 게임 규칙       | [게임 규칙 인덱스](./poke-lounge-rules/index.md)                               |
-| 현재 제품·구현 경계  | 이 문서                                                                        |
-| 공개 멀티플레이 검증 | [공개 멀티플레이 테스트 시나리오](./poke-lounge-multiplayer-test-scenarios.md) |
-| 점수와 공개 랭킹     | [Game Score Policy](./game-score-policy.md)                                    |
-| 공개 출시 권리       | [Poke Lounge Release Gate](./poke-lounge-release-gate.md)                      |
-| 에셋 인벤토리        | [Poke Lounge Asset Provenance](./poke-lounge-asset-provenance.md)              |
-| Web runtime          | `apps/web/src/components/poke-lounge/runtime/game/`                            |
-| 서버 room과 경쟁전   | `apps/api/src/poke-lounge/`                                                    |
-| 공통 전투·대진 규칙  | `packages/poke-lounge-battle/`                                                 |
+| 주제                | 기준 문서·코드                                                              |
+| ------------------- | --------------------------------------------------------------------------- |
+| 제품 게임 규칙      | [게임 규칙 인덱스](./poke-lounge-rules/index.md)                            |
+| 현재 제품·구현 경계 | 이 문서                                                                     |
+| 플레이어 E2E 검증   | [플레이어 E2E 테스트 시나리오](./poke-lounge-multiplayer-test-scenarios.md) |
+| 점수와 공개 랭킹    | [Game Score Policy](./game-score-policy.md)                                 |
+| 공개 출시 권리      | [Poke Lounge Release Gate](./poke-lounge-release-gate.md)                   |
+| 에셋 인벤토리       | [Poke Lounge Asset Provenance](./poke-lounge-asset-provenance.md)           |
+| Web runtime         | `apps/web/src/components/poke-lounge/runtime/game/`                         |
+| 서버 room과 경쟁전  | `apps/api/src/poke-lounge/`                                                 |
+| 공통 전투·대진 규칙 | `packages/poke-lounge-battle/`                                              |

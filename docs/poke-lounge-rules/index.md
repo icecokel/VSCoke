@@ -1,6 +1,6 @@
 # Poke Lounge 게임 규칙 인덱스
 
-확인 기준일: 2026-08-20
+확인 기준일: 2026-08-24
 
 ## 1. 문서 역할
 
@@ -9,8 +9,7 @@
 
 이 디렉터리는 제품 게임 규칙만 관리한다. 현재 구현 상태는
 [Poke Lounge 게임 콘셉트](../poke-lounge-game-concept.md), 테스트 절차는
-[공개 멀티플레이 테스트 시나리오](../poke-lounge-multiplayer-test-scenarios.md)와
-[전체 기능 E2E 테스트 시나리오](../e2e-full-feature-test-scenarios.md)에서 관리한다.
+[플레이어 E2E 테스트 시나리오](../poke-lounge-multiplayer-test-scenarios.md)에서 관리한다.
 
 과거 계획서는 구현 배경으로만 사용한다. 규칙 값은 이 인덱스와 연결 문서를 기준으로 한다.
 

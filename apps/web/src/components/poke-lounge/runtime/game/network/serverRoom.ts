@@ -298,6 +298,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   let lastRecoveryFailureKind: ServerRoomTransportDiagnostics["lastRecoveryFailureKind"] = null;
   let cursorRegression = false;
   let connectStarted = false;
+  let hasSynchronizedPartySnapshot = false;
   let mutationQueue: Promise<void> = Promise.resolve();
   let announcedCompetitiveAssignmentKey: string | null = null;
   let latestCompetitionKind: TournamentCompetitionKind = null;
@@ -875,7 +876,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     dispatchWindowEvent(POKE_LOUNGE_FRESH_SESSION_REQUIRED_EVENT, {
       roomCode: activeRoomId,
     });
-    void requestLeave();
+    void requestLeave().catch(() => {});
   };
 
   const ensureSocket = () => {
@@ -1250,6 +1251,18 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   };
 
   const submitPartySnapshot = async (snapshot: PlayerSnapshot, idempotencyKey?: string) => {
+    const isLocked =
+      latestState?.status === "tournament" ||
+      latestState?.status === "completed" ||
+      latestState?.status === "closed";
+    if (
+      isLocked &&
+      (hasSynchronizedPartySnapshot ||
+        (latestState && Object.hasOwn(latestState.partySnapshots, serverPlayerId)))
+    ) {
+      return;
+    }
+
     const nextState = await mutateRoom(
       `/poke-lounge/rooms/${activeRoomId}/party-snapshot`,
       {
@@ -1263,6 +1276,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     );
 
     applySnapshot(nextState);
+    hasSynchronizedPartySnapshot = true;
   };
 
   const submitCompetitiveAction = async (
@@ -1506,8 +1520,9 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       void runInitialWorkflow();
     },
     leave() {
-      clearStoredServerIdentity(options.accountId);
-      void requestLeave();
+      return requestLeave().then(() => {
+        clearStoredServerIdentity(options.accountId);
+      });
     },
     dispose() {
       if (disposed) {
@@ -1739,14 +1754,28 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     }
 
     leaveSent = true;
-    leavePromise = mutateRoom(
-      `/poke-lounge/rooms/${activeRoomId}/leave`,
-      { playerId: serverPlayerId, sessionId },
-      getLatestRevision,
-    ).then(
-      () => undefined,
-      () => undefined,
-    );
+    const send = () =>
+      mutateRoom(
+        `/poke-lounge/rooms/${activeRoomId}/leave`,
+        { playerId: serverPlayerId, sessionId },
+        getLatestRevision,
+      );
+    leavePromise = (async () => {
+      try {
+        try {
+          await send();
+        } catch (error) {
+          if (getServerRoomConflict(error)?.code !== REVISION_CONFLICT_CODE) {
+            throw error;
+          }
+          await send();
+        }
+      } catch (error) {
+        leaveSent = false;
+        leavePromise = null;
+        throw error;
+      }
+    })();
 
     return leavePromise;
   }
@@ -2381,13 +2410,20 @@ function isTerminalTransitionConsistentWithRoom(
   const terminal = projection.terminal;
   const bracketMatch = findBracketMatch(state, projection.bracketMatchId);
 
-  return Boolean(
-    terminal &&
-    bracketMatch?.status === "completed" &&
+  if (!terminal) {
+    return false;
+  }
+
+  if (!bracketMatch) {
+    return Number(projection.bracketMatchId.split("-")[2]) < state.round.index;
+  }
+
+  return (
+    bracketMatch.status === "completed" &&
     hasSamePlayerIds(projection.playerIds, bracketMatch.participantIds) &&
     terminal.winnerPlayerId === bracketMatch.winnerPlayerId &&
     terminal.loserPlayerId === bracketMatch.loserPlayerId &&
-    terminal.reason === bracketMatch.resultReason,
+    terminal.reason === bracketMatch.resultReason
   );
 }
 

@@ -101,7 +101,7 @@ export interface MultiplayerRoom {
   connect(initialSnapshot?: PlayerSnapshot): void;
   setLobbyReady(ready: boolean): Promise<void>;
   startChampionship(): Promise<void>;
-  leave?(): void;
+  leave?(): Promise<void>;
   dispose(): void;
   send<T extends RoomMessage>(type: T, payload: RoomEvent[T]): void;
   on<T extends RoomMessage>(type: T, handler: (payload: RoomEvent[T]) => void): RoomUnsubscribe;

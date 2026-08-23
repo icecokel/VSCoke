@@ -263,8 +263,19 @@ export async function startGamePage(
       showRoomEntry();
     };
     const leaveAndReturnToRoomEntry = () => {
-      multiplayerRoom.leave?.();
-      returnToRoomEntry();
+      void (async () => {
+        try {
+          await multiplayerRoom.leave?.();
+        } catch {
+          dispatchPokeLoungeNotice(mount.ownerDocument, {
+            message: copy.lobby.mutationFailed,
+            tone: "error",
+          });
+          return;
+        }
+
+        returnToRoomEntry();
+      })();
     };
     const handleFreshSessionRequired = () => {
       dispatchPokeLoungeNotice(mount.ownerDocument, {

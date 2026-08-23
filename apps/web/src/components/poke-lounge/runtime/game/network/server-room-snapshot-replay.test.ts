@@ -605,6 +605,209 @@ test("서버 방 신원은 기존 값을 현재 계정으로 이전하고 계정
   }
 });
 
+test("이전 게임 라운드 terminal은 다음 라운드 bracket 초기화 뒤에도 적용한다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      location: { href: "http://web.test/game", search: "" },
+      setTimeout,
+      clearTimeout,
+    },
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const socket = createSocket();
+    const snapshots = createRoomSnapshots();
+    let ready = false;
+    const fetchFixture: typeof fetch = async input => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      ready ||= url.pathname.endsWith("/party-snapshot");
+      return jsonResponse(snapshots.initial);
+    };
+    room = createServerRoom({
+      roomId: "ROOM01",
+      playerId: "player-1",
+      sessionId: "session-1",
+      fetch: fetchFixture,
+      socketFactory: () => socket,
+    });
+    const competitiveStates: RoomEvent["COMPETITIVE_STATE"][] = [];
+    const tournamentStates: RoomEvent["TOURNAMENT_STATE"][] = [];
+    room.on("COMPETITIVE_STATE", payload => competitiveStates.push(payload));
+    room.on("TOURNAMENT_STATE", payload => tournamentStates.push(payload));
+    room.connect(createPlayerSnapshot());
+    await waitFor(() => ready);
+
+    socket.pushSnapshot({
+      roomCode: "ROOM01",
+      hostPlayerId: "player-1",
+      revision: 51,
+      expiresAtMs: 253_402_300_799_999,
+      status: "round-started",
+      participants: snapshots.initial.participants,
+      partySnapshots: snapshots.initial.partySnapshots,
+      round: {
+        index: 2,
+        phase: "round-started",
+        durationMs: 300_000,
+        startedAtMs: 3_000,
+        endsAtMs: 303_000,
+      },
+      tournament: {
+        version: 2,
+        bracket: null,
+        activeMatchId: null,
+        activeMatchAuthority: null,
+        cumulativeScores: {},
+      },
+      finalStandings: [],
+      competitiveTransitions: [snapshots.terminalTransition],
+    });
+
+    assert.equal(competitiveStates.at(-1)?.projection.status, "completed");
+    assert.equal(tournamentStates.at(-1)?.roundIndex, 2);
+    assert.equal(tournamentStates.at(-1)?.roomStatus, "round-started");
+  } finally {
+    room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
+test("전투 중 WorldScene 재연결은 잠긴 party snapshot을 다시 제출하지 않는다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      location: { href: "http://web.test/game", search: "" },
+      setTimeout,
+      clearTimeout,
+    },
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const socket = createSocket();
+    const snapshots = createRoomSnapshots();
+    let partyRequests = 0;
+    const fetchFixture: typeof fetch = async input => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname.endsWith("/party-snapshot")) {
+        partyRequests += 1;
+      }
+      return jsonResponse(snapshots.initial);
+    };
+    room = createServerRoom({
+      roomId: "ROOM01",
+      sharedWorldOnly: true,
+      competitiveRoundsEnabled: true,
+      playerId: "player-1",
+      sessionId: "session-1",
+      fetch: fetchFixture,
+      socketFactory: () => socket,
+    });
+    const snapshot = createPlayerSnapshot();
+    room.connect(snapshot);
+    await waitFor(() => partyRequests === 1);
+
+    room.connect(snapshot);
+    await flushAsyncWork();
+
+    assert.equal(partyRequests, 1);
+  } finally {
+    room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
+test("명시적 leave는 revision conflict의 최신 revision으로 한 번 재시도한다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const timers = createManualRecoveryTimers();
+  const values = new Map<string, string>([
+    [
+      "poke-lounge:server-room-identity",
+      JSON.stringify({ sessionId: "session-1", playerId: "player-1" }),
+    ],
+  ]);
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      ...timers.window,
+      sessionStorage: {
+        getItem(key: string) {
+          return values.get(key) ?? null;
+        },
+        setItem(key: string, value: string) {
+          values.set(key, value);
+        },
+        removeItem(key: string) {
+          values.delete(key);
+        },
+      },
+    },
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const socket = createSocket();
+    const snapshots = createRoomSnapshots();
+    const leaveRequests: Array<{ idempotencyKey: string; revision: string }> = [];
+    let ready = false;
+    const fetchFixture: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      ready ||= url.pathname.endsWith("/party-snapshot");
+      if (!url.pathname.endsWith("/leave")) {
+        return jsonResponse(snapshots.initial);
+      }
+
+      const headers = new Headers(init?.headers);
+      leaveRequests.push({
+        idempotencyKey: headers.get("X-Idempotency-Key") ?? "",
+        revision: headers.get("If-Match-Revision") ?? "",
+      });
+      if (leaveRequests.length === 1) {
+        return jsonResponse(
+          {
+            statusCode: 409,
+            code: "POKE_LOUNGE_REVISION_CONFLICT",
+            message: "Poke Lounge room revision conflict",
+            snapshot: { ...snapshots.initial, revision: 16 },
+          },
+          409,
+        );
+      }
+
+      return jsonResponse({ ...snapshots.initial, revision: 17 }, 201);
+    };
+    room = createServerRoom({
+      roomId: "ROOM01",
+      fetch: fetchFixture,
+      socketFactory: () => socket,
+    });
+    room.connect(createPlayerSnapshot());
+    await waitFor(() => ready);
+
+    await room.leave?.();
+
+    assert.deepEqual(
+      leaveRequests.map(request => request.revision),
+      ["15", "16"],
+    );
+    assert.equal(new Set(leaveRequests.map(request => request.idempotencyKey)).size, 2);
+    assert.equal(values.has("poke-lounge:server-room-identity"), false);
+  } finally {
+    room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
 test("E2E socket transport diagnostics는 query guard와 sanitized state transition을 유지한다", async () => {
   process.env.NEXT_PUBLIC_API_URL = "http://api.test";
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
@@ -1571,11 +1774,9 @@ test("same-revision 중첩 record key 순서 차이는 recovery를 시작하지 
       },
     };
     const reordered = reverseNestedObjectKeyOrder(initial);
-    let ready = false;
     let recoveryRequests = 0;
     const fetchFixture: typeof fetch = async input => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      ready ||= url.pathname.endsWith("/party-snapshot");
       if (url.searchParams.has("afterRevision")) {
         recoveryRequests += 1;
       }
@@ -1589,7 +1790,7 @@ test("same-revision 중첩 record key 순서 차이는 recovery를 시작하지 
       socketFactory: () => socket,
     });
     room.connect(createPlayerSnapshot());
-    await waitFor(() => ready && socket.subscriptions().length > 0 && recoveryRequests > 0);
+    await waitFor(() => socket.subscriptions().length > 0 && recoveryRequests > 0);
     await waitFor(() => {
       const diagnostics = getServerRoomTransportDiagnosticsForE2e(room ?? undefined);
       return diagnostics?.recoveryInFlight === false;

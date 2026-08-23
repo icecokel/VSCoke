@@ -166,6 +166,8 @@ export function createWebRtcRoom(options: WebRtcRoomOptions = {}): WebRtcRoom {
   return {
     sessionId,
     roomId: options.roomId ?? "webrtc",
+    setLobbyReady: async () => undefined,
+    startChampionship: async () => undefined,
     connect() {
       connected = true;
       emitConnectionStatus(dataChannel?.readyState === "open" ? "online" : "connecting");

@@ -20,6 +20,7 @@ function createFivePlayerProjection(): TournamentStateRoomPayload {
   return {
     revision: 5,
     roomCode: "ROOM01",
+    hostPlayerId: "player-1",
     roundIndex: 1,
     roomStatus: "tournament",
     roomRound: {
@@ -33,6 +34,7 @@ function createFivePlayerProjection(): TournamentStateRoomPayload {
       ...participant,
       role: "participant",
       ready: true,
+      partyReady: true,
       connected: true,
     })),
     tournament: {
@@ -58,7 +60,8 @@ test("5인 서버 대진 안내는 canonical bye와 현재 상대를 7줄 이내
     casualBattleAvailable: null,
   });
 
-  assert.match(text, /서버 토너먼트 · 방 ROOM01/);
+  assert.match(text, /^서버 토너먼트$/m);
+  assert.doesNotMatch(text, /ROOM01/);
   assert.match(text, /참가 5\/6 · 준비 5\/5 · 접속 5\/5 · 관전 0/);
   assert.match(text, /현재 경기 · #4 Player 4 vs #5 Player 5/);
   assert.match(text, /내 상태 · #4 Player 4 · 상대 #5 Player 5/);

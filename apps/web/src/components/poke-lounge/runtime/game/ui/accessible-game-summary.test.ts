@@ -51,6 +51,20 @@ test("접근성 요약은 영어와 일본어 경로에서 핵심 상태를 현�
   assert.match(japaneseSummary, /先頭 Cyndaquil、レベル 10/);
 });
 
+test("접근성 요약은 내부 멀티플레이 방 코드를 노출하지 않는다", () => {
+  const store = createGameStateStore();
+  store.setSession({
+    sessionId: "session-1",
+    roomId: "SECRET",
+    connectionStatus: "online",
+  });
+
+  const summary = createAccessibleGameSummary(store.getState());
+
+  assert.match(summary, /멀티플레이, 연결됨/);
+  assert.doesNotMatch(summary, /SECRET/);
+});
+
 test("영어와 일본어 접근성 이벤트는 전투·가방 핵심 상태를 현지화한다", () => {
   const battleStatus =
     "내 브케인 HP 24/30. 상대 치코리타 HP 18/30. 기술 몸통박치기 선택. PP 31/35.";

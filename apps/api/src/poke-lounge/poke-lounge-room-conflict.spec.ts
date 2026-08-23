@@ -5,6 +5,27 @@ import type { PokeLoungeRoomSnapshot } from './poke-lounge-room.repository';
 describe('toPokeLoungePublicRoomState', () => {
   it('exposes only the active representative summary before a match', () => {
     const snapshot = roomSnapshot();
+    snapshot.participants = [
+      {
+        sessionId: 'session-b',
+        playerId: 'player-b',
+        displayName: 'Player B',
+        role: 'participant',
+        ready: false,
+        connected: true,
+        joinedAtMs: 2,
+      },
+      {
+        sessionId: 'session-a',
+        playerId: 'player-a',
+        displayName: 'Player A',
+        role: 'participant',
+        ready: false,
+        connected: true,
+        presencePendingUntilMs: 15_000,
+        joinedAtMs: 1,
+      },
+    ];
     snapshot.partySnapshots['player-a'] = {
       ...createTestPartySnapshot('player-a'),
       displayName: 'Player A',
@@ -25,6 +46,8 @@ describe('toPokeLoungePublicRoomState', () => {
       partySize: 1,
       updatedAtMs: 1,
     });
+    expect(publicRoom.hostPlayerId).toBe('player-a');
+    expect(publicRoom.participants[1]).toMatchObject({ connected: false });
     expect(JSON.stringify(publicRoom.partySnapshots)).not.toMatch(
       /individualValues|moves|attack|defense|speed/,
     );

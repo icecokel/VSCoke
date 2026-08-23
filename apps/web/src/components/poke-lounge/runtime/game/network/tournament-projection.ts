@@ -47,6 +47,7 @@ export interface TournamentRoomParticipant {
   displayName: string;
   role: ApiRoomParticipant["role"];
   ready: boolean;
+  partyReady: boolean;
   connected: boolean;
   seed: number | null;
 }
@@ -62,6 +63,7 @@ export interface TournamentRoomRound {
 export interface TournamentStateRoomPayload {
   revision: number;
   roomCode: string;
+  hostPlayerId: string | null;
   roundIndex: number;
   roomStatus: ApiRoomStatus;
   roomRound: TournamentRoomRound;

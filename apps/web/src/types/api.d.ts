@@ -273,6 +273,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/poke-lounge/rooms/{roomCode}/start": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["PokeLoungeController_startRoom"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/poke-lounge/rooms/{roomCode}/party-snapshot": {
     parameters: {
       query?: never;
@@ -1103,6 +1119,8 @@ export interface components {
       revision: number;
       /** @example 1720001800000 */
       expiresAtMs: number;
+      /** @example player-a */
+      hostPlayerId: string | null;
       participants: components["schemas"]["PokeLoungeRoomParticipantDto"][];
       partySnapshots: {
         [key: string]: components["schemas"]["PokeLoungePartySnapshotDto"];
@@ -1210,6 +1228,12 @@ export interface components {
       sessionId: string;
       /** @example true */
       ready: boolean;
+    };
+    StartPokeLoungeRoomDto: {
+      /** @example player-a */
+      playerId: string;
+      /** @example session-a */
+      sessionId: string;
     };
     CompetitiveIndividualValuesDto: {
       /** @example 31 */
@@ -1895,6 +1919,46 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["SetPokeLoungeReadyDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["PokeLoungeRoomResponseDto"];
+          };
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PokeLoungeRoomConflictResponseDto"];
+        };
+      };
+    };
+  };
+  PokeLoungeController_startRoom: {
+    parameters: {
+      query?: never;
+      header: {
+        "If-Match-Revision": string;
+        "X-Idempotency-Key": string;
+      };
+      path: {
+        roomCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["StartPokeLoungeRoomDto"];
       };
     };
     responses: {

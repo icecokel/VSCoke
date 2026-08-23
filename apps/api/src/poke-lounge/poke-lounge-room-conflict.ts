@@ -3,6 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { PokeLoungeRoomResponseDto } from './dto/poke-lounge-room-response.dto';
 import type { PokeLoungeRoomSnapshot } from './poke-lounge-room.repository';
 import type { PokeLoungePublicRoomState } from './poke-lounge-room.types';
+import { getPokeLoungeRoomHostPlayerId } from './poke-lounge-room-policy';
 
 export type PokeLoungeRoomConflictKind = 'revision' | 'idempotency';
 
@@ -78,6 +79,7 @@ export function toPokeLoungePublicRoomState(
 ): PokeLoungePublicRoomState {
   return {
     ...room,
+    hostPlayerId: getPokeLoungeRoomHostPlayerId(room),
     tournament: {
       version: room.tournament.version,
       bracket: structuredClone(room.tournament.bracket),

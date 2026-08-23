@@ -58,6 +58,11 @@ const invalidMutations = [
     },
   },
   {
+    name: 'start',
+    path: '/poke-lounge/rooms/ROOM01/start',
+    body: { playerId: 'player-a', sessionId: 123 },
+  },
+  {
     name: 'party snapshot',
     path: '/poke-lounge/rooms/ROOM01/party-snapshot',
     body: {
@@ -96,6 +101,7 @@ const createRoomServiceMock = () => ({
   getRoom: jest.fn().mockResolvedValue(roomSnapshot),
   joinRoom: jest.fn().mockResolvedValue(roomSnapshot),
   setReady: jest.fn().mockResolvedValue(roomSnapshot),
+  startRoom: jest.fn().mockResolvedValue(roomSnapshot),
   updatePartySnapshot: jest.fn().mockResolvedValue(roomSnapshot),
   submitMatchResult: jest.fn().mockResolvedValue(roomSnapshot),
   leaveRoom: jest.fn().mockResolvedValue(roomSnapshot),
@@ -170,6 +176,7 @@ describe('Poke Lounge request validation (e2e)', () => {
         roomService.createRoom,
         roomService.joinRoom,
         roomService.setReady,
+        roomService.startRoom,
         roomService.updatePartySnapshot,
         roomService.submitMatchResult,
         roomService.leaveRoom,

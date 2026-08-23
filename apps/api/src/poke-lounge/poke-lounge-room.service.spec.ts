@@ -255,7 +255,7 @@ describe('PokeLoungeRoomService', () => {
     expect(getAndAdvance).toHaveBeenCalledWith('ROOM01', 42_000);
   });
 
-  it('keeps ready commands pending until socket acknowledgement and starts only after both acknowledgements', async () => {
+  it('keeps the room waiting after ready and presence acknowledgement until the host starts it', async () => {
     const created = await service.createRoom(
       { playerId: 'player-1', sessionId: 'session-1', nowMs: 0 },
       command(0, 1),
@@ -267,18 +267,39 @@ describe('PokeLoungeRoomService', () => {
       command(created.revision, 2),
       { requireSocketAcknowledgement: true },
     );
+    const hostParty = await updateTestParty(
+      'player-1',
+      'session-1',
+      joined.revision,
+      3,
+      2,
+    );
+    const guestParty = await updateTestParty(
+      'player-2',
+      'session-2',
+      hostParty.revision,
+      4,
+      3,
+    );
     const hostReady = await service.setReady(
       'ROOM01',
-      { playerId: 'player-1', sessionId: 'session-1', ready: true, nowMs: 2 },
-      command(joined.revision, 3),
+      { playerId: 'player-1', sessionId: 'session-1', ready: true, nowMs: 4 },
+      command(guestParty.revision, 5),
     );
     const bothReady = await service.setReady(
       'ROOM01',
-      { playerId: 'player-2', sessionId: 'session-2', ready: true, nowMs: 3 },
-      command(hostReady.revision, 4),
+      { playerId: 'player-2', sessionId: 'session-2', ready: true, nowMs: 5 },
+      command(hostReady.revision, 6),
     );
 
     expect(bothReady.status).toBe('waiting');
+    await expect(
+      service.startRoom(
+        'ROOM01',
+        { playerId: 'player-1', sessionId: 'session-1', nowMs: 5 },
+        command(bothReady.revision, 70),
+      ),
+    ).rejects.toThrow('All participants must be connected before starting');
     const hostAcknowledged = await service.acknowledgeParticipantPresence(
       'ROOM01',
       'player-1',
@@ -294,12 +315,22 @@ describe('PokeLoungeRoomService', () => {
     );
 
     expect(guestAcknowledged).toMatchObject({
-      status: 'round-started',
-      round: { startedAtMs: 0, endsAtMs: 300_000 },
+      status: 'waiting',
+      round: { startedAtMs: null, endsAtMs: null },
       participants: [
         { playerId: 'player-1', ready: true, connected: true },
         { playerId: 'player-2', ready: true, connected: true },
       ],
+    });
+    const started = await service.startRoom(
+      'ROOM01',
+      { playerId: 'player-1', sessionId: 'session-1', nowMs: 6 },
+      command(guestAcknowledged.revision, 7),
+    );
+
+    expect(started).toMatchObject({
+      status: 'round-started',
+      round: { startedAtMs: 6, endsAtMs: 300_006 },
     });
     expect(JSON.stringify(guestAcknowledged)).not.toContain(
       'presencePendingUntilMs',
@@ -662,7 +693,7 @@ describe('PokeLoungeRoomService', () => {
     );
   });
 
-  it('starts and durably advances the server round with one revision per commit', async () => {
+  it('starts only on the host command and durably advances the server round', async () => {
     await createRoom({ roundDurationMs: 1000 });
     await service.joinRoom(
       'ROOM01',
@@ -676,26 +707,42 @@ describe('PokeLoungeRoomService', () => {
       { playerId: 'player-1', sessionId: 'session-1', ready: true, nowMs: 100 },
       command(3, 3),
     );
-    const started = await service.setReady(
+    const bothReady = await service.setReady(
       'ROOM01',
       { playerId: 'player-2', sessionId: 'session-2', ready: true, nowMs: 200 },
       command(4, 4),
     );
 
     expect(waiting.status).toBe('waiting');
+    expect(bothReady).toMatchObject({
+      status: 'waiting',
+      round: { startedAtMs: null, endsAtMs: null },
+    });
+    const started = await service.startRoom(
+      'ROOM01',
+      { playerId: 'player-1', sessionId: 'session-1', nowMs: 300 },
+      command(bothReady.revision, 5),
+    );
+
     expect(started).toMatchObject({
       status: 'round-started',
-      revision: 5,
-      round: { startedAtMs: 200, endsAtMs: 1200 },
+      revision: 6,
+      round: { startedAtMs: 300, endsAtMs: 1300 },
     });
+    const replayed = await service.startRoom(
+      'ROOM01',
+      { playerId: 'player-1', sessionId: 'session-1', nowMs: 300 },
+      { ...command(999, 5), expectedRevision: 999 },
+    );
+    expect(replayed).toEqual(started);
 
     publisher.publish.mockClear();
-    currentTimeMs = 1200;
+    currentTimeMs = 1300;
     const tournament = await service.getRoom('room01');
 
     expect(tournament).toMatchObject({
       status: 'tournament',
-      revision: 6,
+      revision: 7,
       tournament: {
         version: 2,
         activeMatchId: 'game-round-1-bracket-1-match-1',
@@ -714,7 +761,84 @@ describe('PokeLoungeRoomService', () => {
     expectPublicEvent(publisher, 'room-clock-advanced', tournament);
   });
 
-  it('accepts late participants during preparation without extending the deadline', async () => {
+  it('requires a waiting room, a synced party, every ready participant, and the current host', async () => {
+    await createRoom({ roundDurationMs: 1_000 });
+
+    await expect(
+      service.setReady(
+        'ROOM01',
+        { playerId: 'player-1', sessionId: 'session-1', ready: true, nowMs: 1 },
+        command(0, 2),
+      ),
+    ).rejects.toThrow('Party snapshot is required before becoming ready');
+    await expect(
+      service.startRoom(
+        'ROOM01',
+        { playerId: 'player-1', sessionId: 'session-1', nowMs: 1 },
+        command(0, 3),
+      ),
+    ).rejects.toThrow('At least two participants are required to start');
+
+    const joined = await service.joinRoom(
+      'ROOM01',
+      { playerId: 'player-2', sessionId: 'session-2', nowMs: 2 },
+      command(0, 4),
+    );
+    const hostParty = await updateTestParty(
+      'player-1',
+      'session-1',
+      joined.revision,
+      5,
+      3,
+    );
+    const guestParty = await updateTestParty(
+      'player-2',
+      'session-2',
+      hostParty.revision,
+      6,
+      4,
+    );
+    const hostReady = await service.setReady(
+      'ROOM01',
+      { playerId: 'player-1', sessionId: 'session-1', ready: true, nowMs: 5 },
+      command(guestParty.revision, 7),
+    );
+
+    await expect(
+      service.startRoom(
+        'ROOM01',
+        { playerId: 'player-1', sessionId: 'session-1', nowMs: 6 },
+        command(hostReady.revision, 8),
+      ),
+    ).rejects.toThrow('All participants must be ready before starting');
+
+    const bothReady = await service.setReady(
+      'ROOM01',
+      { playerId: 'player-2', sessionId: 'session-2', ready: true, nowMs: 7 },
+      command(hostReady.revision, 9),
+    );
+
+    await expect(
+      service.startRoom(
+        'ROOM01',
+        { playerId: 'player-2', sessionId: 'session-2', nowMs: 8 },
+        command(bothReady.revision, 10),
+      ),
+    ).rejects.toThrow('Only the room host can start');
+
+    const withoutGuestParty = repository.snapshot('ROOM01')!;
+    delete withoutGuestParty.partySnapshots['player-2'];
+    repository.seed(withoutGuestParty);
+    await expect(
+      service.startRoom(
+        'ROOM01',
+        { playerId: 'player-1', sessionId: 'session-1', nowMs: 9 },
+        command(withoutGuestParty.revision, 11),
+      ),
+    ).rejects.toThrow('All participants need a party snapshot before starting');
+  });
+
+  it('rejects new participants after host start and still allows an existing identity to reconnect', async () => {
     await createRoom({ roundDurationMs: 1000 });
     await service.joinRoom(
       'ROOM01',
@@ -728,57 +852,46 @@ describe('PokeLoungeRoomService', () => {
       { playerId: 'player-1', sessionId: 'session-1', ready: true, nowMs: 100 },
       command(3, 3),
     );
-    const started = await service.setReady(
+    const bothReady = await service.setReady(
       'ROOM01',
       { playerId: 'player-2', sessionId: 'session-2', ready: true, nowMs: 200 },
       command(4, 4),
     );
-
-    const joined = await service.joinRoom(
+    const started = await service.startRoom(
       'ROOM01',
-      { playerId: 'player-3', sessionId: 'session-3', nowMs: 300 },
-      command(started.revision, 5),
-    );
-    const withParty = await updateTestParty(
-      'player-3',
-      'session-3',
-      joined.revision,
-      34,
-      350,
-    );
-    const ready = await service.setReady(
-      'ROOM01',
-      { playerId: 'player-3', sessionId: 'session-3', ready: true, nowMs: 400 },
-      command(withParty.revision, 6),
+      { playerId: 'player-1', sessionId: 'session-1', nowMs: 300 },
+      command(bothReady.revision, 5),
     );
 
-    expect(joined).toMatchObject({
-      status: 'round-started',
-      round: { startedAtMs: 200, endsAtMs: 1200 },
-    });
-    expect(ready.round).toMatchObject({ startedAtMs: 200, endsAtMs: 1200 });
-
-    currentTimeMs = 1200;
-    const tournament = await service.getRoom('ROOM01');
-    expect(tournament).toMatchObject({
-      status: 'tournament',
-      tournament: {
-        bracket: {
-          participants: [
-            { playerId: 'player-1' },
-            { playerId: 'player-2' },
-            { playerId: 'player-3' },
-          ],
-        },
-      },
-    });
     await expect(
       service.joinRoom(
         'ROOM01',
-        { playerId: 'player-4', sessionId: 'session-4', nowMs: 1201 },
-        command(tournament.revision, 7),
+        { playerId: 'player-3', sessionId: 'session-3', nowMs: 400 },
+        command(started.revision, 6),
       ),
     ).rejects.toThrow('Room is not joinable');
+    await expect(
+      service.setReady(
+        'ROOM01',
+        {
+          playerId: 'player-2',
+          sessionId: 'session-2',
+          ready: false,
+          nowMs: 450,
+        },
+        command(started.revision, 8),
+      ),
+    ).rejects.toThrow('Ready can only change in a waiting room');
+    const rejoined = await service.joinRoom(
+      'ROOM01',
+      { playerId: 'player-2', sessionId: 'session-2', nowMs: 500 },
+      command(started.revision, 7),
+    );
+
+    expect(rejoined).toMatchObject({
+      status: 'round-started',
+      round: { startedAtMs: 300, endsAtMs: 1300 },
+    });
   });
 
   it('allows an existing player with the same session to reconnect during a tournament', async () => {
@@ -1080,25 +1193,33 @@ describe('PokeLoungeRoomService', () => {
       { playerId: 'player-1', sessionId: 'session-1', ready: true, nowMs: 100 },
       command(3, 3),
     );
-    const started = await service.setReady(
+    const bothReady = await service.setReady(
       'ROOM01',
       { playerId: 'player-2', sessionId: 'session-2', ready: true, nowMs: 200 },
       command(4, 4),
+    );
+    const started = await service.startRoom(
+      'ROOM01',
+      { playerId: 'player-1', sessionId: 'session-1', nowMs: 200 },
+      command(bothReady.revision, 5),
     );
 
     const waiting = await service.leaveRoom(
       'ROOM01',
       { playerId: 'player-1', sessionId: 'session-1', nowMs: 300 },
-      command(started.revision, 5),
+      command(started.revision, 6),
     );
 
     expect(waiting).toMatchObject({
       status: 'waiting',
-      participants: [{ playerId: 'player-2' }],
+      participants: [{ playerId: 'player-2', ready: false }],
       round: { phase: 'waiting', startedAtMs: null, endsAtMs: null },
       tournament: { bracket: null, activeMatchId: null },
     });
     expect(waiting.partySnapshots['player-1']).toBeUndefined();
+    expect(publisher.publish.mock.calls.at(-1)?.[0].snapshot).toMatchObject({
+      hostPlayerId: 'player-2',
+    });
   });
 
   it('converges a casual five-player bye disconnect when that player reaches a later match', async () => {
@@ -1515,10 +1636,15 @@ describe('PokeLoungeRoomService', () => {
       { playerId: 'player-1', sessionId: 'session-1', ready: true, nowMs: 100 },
       command(3, 3),
     );
-    await service.setReady(
+    const bothReady = await service.setReady(
       'ROOM01',
       { playerId: 'player-2', sessionId: 'session-2', ready: true, nowMs: 200 },
       command(4, 4),
+    );
+    await service.startRoom(
+      'ROOM01',
+      { playerId: 'player-1', sessionId: 'session-1', nowMs: 200 },
+      command(bothReady.revision, 99),
     );
 
     currentTimeMs = 1200;

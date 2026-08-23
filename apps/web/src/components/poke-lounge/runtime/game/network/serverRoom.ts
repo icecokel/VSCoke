@@ -35,6 +35,7 @@ type ServerPartySnapshot = components["schemas"]["PokeLoungePartySnapshotDto"];
 
 interface ServerRoomState {
   roomCode: string;
+  hostPlayerId: string | null;
   revision: number;
   expiresAtMs: number;
   status: ApiServerRoom["status"];
@@ -177,7 +178,7 @@ interface ServerRoomConflictResponse {
   snapshot: ServerRoomState;
 }
 
-type InitialWorkflowStage = "open" | "competitive-seat" | "party" | "ready" | "complete";
+type InitialWorkflowStage = "open" | "competitive-seat" | "party" | "complete";
 
 class ServerRoomRequestError extends Error {
   constructor(
@@ -264,7 +265,6 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   let latestSharedWorldSnapshot: PlayerSnapshot | null = null;
   let initialOpenIdempotencyKey = createIdempotencyKey();
   let initialPartyIdempotencyKey = createIdempotencyKey();
-  let initialReadyIdempotencyKey = createIdempotencyKey();
   let competitiveActionRecoveryTimer: number | null = null;
   let competitiveActionRecoveryAttempt = 0;
   let competitiveActionRecoveryInFlight = false;
@@ -1122,6 +1122,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     return {
       revision: state.revision,
       roomCode: state.roomCode,
+      hostPlayerId: state.hostPlayerId ? mapServerPlayerIdForLocalStore(state.hostPlayerId) : null,
       roundIndex: state.round.index,
       roomStatus: state.status,
       roomRound: { ...state.round },
@@ -1133,6 +1134,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
           displayName: participant.displayName,
           role: participant.role,
           ready: participant.ready,
+          partyReady: Object.hasOwn(state.partySnapshots, participant.playerId),
           connected: participant.connected,
           seed: seedByPlayerId.get(playerId) ?? null,
         };
@@ -1461,6 +1463,22 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       return activeRoomId;
     },
     sessionId,
+    async setLobbyReady(ready) {
+      const state = await mutateRoom(
+        `/poke-lounge/rooms/${activeRoomId}/ready`,
+        { playerId: serverPlayerId, sessionId, ready },
+        getLatestRevision,
+      );
+      applySnapshot(state);
+    },
+    async startChampionship() {
+      const state = await mutateRoom(
+        `/poke-lounge/rooms/${activeRoomId}/start`,
+        { playerId: serverPlayerId, sessionId },
+        getLatestRevision,
+      );
+      applySnapshot(state);
+    },
     connect(initialSnapshot) {
       if (disposed) {
         return;
@@ -1678,27 +1696,12 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       if (initialWorkflowStage === "party") {
         await submitPartySnapshot(initialWorkflowSnapshot, initialPartyIdempotencyKey);
         if (initialWorkflowStage === "party") {
-          initialWorkflowStage = "ready";
+          initialWorkflowStage = "complete";
         }
       }
 
       if (disposed) {
         return;
-      }
-
-      if (initialWorkflowStage === "ready") {
-        const ready = await mutateRoom(
-          `/poke-lounge/rooms/${activeRoomId}/ready`,
-          {
-            playerId: serverPlayerId,
-            sessionId,
-            ready: true,
-          },
-          getLatestRevision,
-          initialReadyIdempotencyKey,
-        );
-        applySnapshot(ready);
-        initialWorkflowStage = "complete";
       }
 
       clearInitialWorkflowTimer();
@@ -1727,8 +1730,6 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       initialOpenIdempotencyKey = createIdempotencyKey();
     } else if (stage === "party") {
       initialPartyIdempotencyKey = createIdempotencyKey();
-    } else if (stage === "ready") {
-      initialReadyIdempotencyKey = createIdempotencyKey();
     }
   }
 
@@ -1919,12 +1920,6 @@ function createInitialWorkflowErrorDetail(
         message: `파티 정보를 서버와 동기화하지 못했습니다${statusMessage}. 다시 시도해 주세요.`,
         recoverable,
       };
-    case "ready":
-      return {
-        code: "ROOM_READY_FAILED",
-        message: `준비 상태를 서버에 반영하지 못했습니다${statusMessage}. 다시 시도해 주세요.`,
-        recoverable,
-      };
     case "complete":
       return {
         code: "ROOM_TRANSPORT_FAILED",
@@ -2040,6 +2035,7 @@ function parseServerRoomState(value: unknown): ServerRoomState {
 
   if (
     typeof room.roomCode !== "string" ||
+    (room.hostPlayerId !== null && typeof room.hostPlayerId !== "string") ||
     !Number.isSafeInteger(room.revision) ||
     (room.revision as number) < 0 ||
     typeof room.expiresAtMs !== "number" ||
@@ -2058,6 +2054,12 @@ function parseServerRoomState(value: unknown): ServerRoomState {
   }
 
   const participants = parseServerRoomParticipants(room.participants);
+  if (
+    room.hostPlayerId !== null &&
+    !participants.some(participant => participant.playerId === room.hostPlayerId)
+  ) {
+    throw new ServerRoomSchemaError();
+  }
   const round = parseServerRoomRound(room.round);
   const tournament = parseServerTournamentState(room.tournament, round.index);
   const competitiveContract = parseCompetitiveRoomSnapshotContract(room);
@@ -2225,6 +2227,7 @@ function parseSharedWorldPlayerEvent(
 function hasSameCanonicalRoomProjection(left: ServerRoomState, right: ServerRoomState): boolean {
   return (
     left.roomCode === right.roomCode &&
+    left.hostPlayerId === right.hostPlayerId &&
     left.status === right.status &&
     stableJsonStringify(left.participants) === stableJsonStringify(right.participants) &&
     stableJsonStringify(left.partySnapshots) === stableJsonStringify(right.partySnapshots) &&

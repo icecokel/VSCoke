@@ -69,6 +69,36 @@ describe('PokeLoungeRoomResponseDto terminal transition contract', () => {
     });
   });
 
+  it('requires the nullable host id and documents the host start mutation', () => {
+    const room = schema('PokeLoungeRoomResponseDto');
+    const roomProperties = requireRecord(
+      room.properties,
+      'PokeLoungeRoomResponseDto.properties',
+    );
+    expect(
+      requireStringArray(room.required, 'PokeLoungeRoomResponseDto.required'),
+    ).toContain('hostPlayerId');
+    expect(roomProperties.hostPlayerId).toMatchObject({
+      type: 'string',
+      nullable: true,
+    });
+
+    const documentRecord = requireRecord(document, 'OpenAPI document');
+    const paths = requireRecord(documentRecord.paths, 'OpenAPI paths');
+    const startPath = requireRecord(
+      paths['/poke-lounge/rooms/{roomCode}/start'],
+      'start path',
+    );
+    const post = requireRecord(startPath.post, 'start POST');
+    const requestBody = requireRecord(post.requestBody, 'start request body');
+    const content = requireRecord(requestBody.content, 'start request content');
+    const json = requireRecord(content['application/json'], 'start JSON body');
+
+    expect(json.schema).toEqual({
+      $ref: '#/components/schemas/StartPokeLoungeRoomDto',
+    });
+  });
+
   function schema(name: string): Record<string, unknown> {
     const documentRecord = requireRecord(document, 'OpenAPI document');
     const components = requireRecord(

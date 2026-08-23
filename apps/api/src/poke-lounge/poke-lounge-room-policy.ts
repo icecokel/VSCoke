@@ -20,6 +20,20 @@ export const POKE_LOUNGE_PENDING_PRESENCE_LEASE_MS = 15_000;
 export const POKE_LOUNGE_GAME_ROUND_COUNT = 3;
 const MAX_TOURNAMENT_WALKOVERS = 12;
 
+export function getPokeLoungeRoomHostPlayerId(
+  room: Pick<PokeLoungeRoomState, 'participants'>,
+): string | null {
+  return (
+    room.participants
+      .filter((participant) => participant.role === 'participant')
+      .sort(
+        (left, right) =>
+          left.joinedAtMs - right.joinedAtMs ||
+          left.playerId.localeCompare(right.playerId),
+      )[0]?.playerId ?? null
+  );
+}
+
 export function getPokeLoungeRoomExpiresAtMs(
   room: Pick<PokeLoungeRoomState, 'status' | 'updatedAtMs'> &
     Partial<Pick<PokeLoungeRoomState, 'participants'>>,
@@ -82,7 +96,7 @@ export function advancePokeLoungeRoomClock(
       participant.role === 'participant' && participant.connected,
   );
   if (participants.length < 2) {
-    resetRoundPreparation(advanced);
+    resetPokeLoungeRoundPreparation(advanced);
     advanced.updatedAtMs = nowMs;
     advanced.revision = room.revision + 1;
     advanced.expiresAtMs = getPokeLoungeRoomExpiresAtMs(advanced);
@@ -149,7 +163,7 @@ export function expirePendingPokeLoungePresence(
           participant.role === 'participant' && participant.connected,
       ).length < 2
     ) {
-      resetRoundPreparation(expired);
+      resetPokeLoungeRoundPreparation(expired);
     }
   } else {
     for (const participant of expired.participants) {
@@ -223,11 +237,16 @@ export function createTournamentState(
   };
 }
 
-function resetRoundPreparation(room: PokeLoungeRoomState): void {
+export function resetPokeLoungeRoundPreparation(
+  room: PokeLoungeRoomState,
+): void {
   room.status = 'waiting';
   room.round.phase = 'waiting';
   room.round.startedAtMs = null;
   room.round.endsAtMs = null;
+  for (const participant of room.participants) {
+    participant.ready = false;
+  }
 }
 
 export function normalizeLegacyPokeLoungeRoomSnapshot(
@@ -341,7 +360,7 @@ export function completePokeLoungeTournamentMatch(
             participant.role === 'participant' && participant.connected,
         ).length < 2
       ) {
-        resetRoundPreparation(room);
+        resetPokeLoungeRoundPreparation(room);
       } else {
         room.status = 'round-started';
         room.round.phase = 'round-started';

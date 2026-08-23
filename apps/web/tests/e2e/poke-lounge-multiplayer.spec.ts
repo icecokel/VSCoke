@@ -42,6 +42,9 @@ type PokeLoungeWindow = Window & {
         connectionStatus: "offline" | "connecting" | "online";
       };
     };
+    getWorldSnapshot(): {
+      player: { x: number; y: number } | null;
+    } | null;
     startWildBattleForTest(input: {
       encounter: {
         mapKey: string;
@@ -1058,7 +1061,10 @@ test.describe("Poke Lounge server multiplayer", () => {
     expect(server.calls).toContain(`POST /poke-lounge/rooms/${ROOM_CODE}/join`);
     await expect
       .poll(
-        () => Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+        () =>
+          Promise.resolve(
+            server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/party-snapshot`),
+          ),
         { timeout: 30000 },
       )
       .toBe(true);
@@ -1363,7 +1369,9 @@ test.describe("Poke Lounge server multiplayer", () => {
     await startServerRoom(page);
     await expect
       .poll(() =>
-        Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+        Promise.resolve(
+          server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/party-snapshot`),
+        ),
       )
       .toBe(true);
 
@@ -1404,7 +1412,9 @@ test.describe("Poke Lounge server multiplayer", () => {
       .toBeGreaterThanOrEqual(1);
     await expect
       .poll(() =>
-        Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+        Promise.resolve(
+          server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/party-snapshot`),
+        ),
       )
       .toBe(true);
 
@@ -1449,7 +1459,9 @@ test.describe("Poke Lounge server multiplayer", () => {
     await startServerRoom(page);
     await expect
       .poll(() =>
-        Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+        Promise.resolve(
+          server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/party-snapshot`),
+        ),
       )
       .toBe(true);
     const firstIdentity = server.joinedParticipants.at(-1);
@@ -1502,7 +1514,9 @@ test.describe("Poke Lounge server multiplayer", () => {
     );
     await expect
       .poll(() =>
-        Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+        Promise.resolve(
+          server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/party-snapshot`),
+        ),
       )
       .toBe(true);
 
@@ -1552,8 +1566,15 @@ test.describe("Poke Lounge server multiplayer", () => {
     browser,
   }) => {
     const server = createMockServerState();
-    const hostPage = await newMockedPage(browser, server, { wrapped: true });
-    const guestPage = await newMockedPage(browser, server, { wrapped: true });
+    const hostPage = await newMockedPage(browser, server, {
+      lobbyLifecycle: true,
+      wrapped: true,
+    });
+    const guestPage = await newMockedPage(browser, server, {
+      lobbyLifecycle: true,
+      mobile: true,
+      wrapped: true,
+    });
 
     await startServerRoom(hostPage, createServerRoomUrl(600_000), "레드");
     await expectServerRoomUrl(hostPage);
@@ -1597,6 +1618,105 @@ test.describe("Poke Lounge server multiplayer", () => {
       displayName: "레드",
       roundDurationMs: 600_000,
     });
+
+    const waitingRoom = createLobbyWaitingRoomState(server);
+    await emitSocketSnapshot(hostPage, waitingRoom);
+    await emitSocketSnapshot(guestPage, waitingRoom);
+    const hostLobby = hostPage.locator("[data-room-lobby='true']");
+    const guestLobby = guestPage.locator("[data-room-lobby='true']");
+    await expect(hostLobby).toBeVisible();
+    await expect(guestLobby).toBeVisible();
+    await expect(hostLobby).toContainText("참가자 2/6");
+    await expect(hostLobby).toContainText("레드");
+    await expect(hostLobby).toContainText("그린");
+    await expect(hostPage.locator("[data-room-lobby-start='true']")).toBeDisabled();
+    await expect(guestPage.locator("[data-room-lobby-start='true']")).toHaveCount(0);
+    expect(server.commandRequests.filter(request => request.suffix === "/ready")).toHaveLength(0);
+
+    const beforeMovement = await getWorldPlayerPosition(hostPage);
+    await hostPage.keyboard.down("ArrowRight");
+    await hostPage.waitForTimeout(200);
+    await hostPage.keyboard.up("ArrowRight");
+    expect(await getWorldPlayerPosition(hostPage)).toEqual(beforeMovement);
+
+    server.joinedParticipants.push(
+      ...Array.from({ length: 4 }, (_, index) => ({
+        playerId: `layout-player-${index + 3}`,
+        sessionId: `layout-session-${index + 3}`,
+        displayName: `Layout ${index + 3}`,
+        joinedAtMs: index + 2,
+      })),
+    );
+    server.revision += 1;
+    const fullWaitingRoom = createLobbyWaitingRoomState(server);
+    await emitSocketSnapshot(hostPage, fullWaitingRoom);
+    await emitSocketSnapshot(guestPage, fullWaitingRoom);
+    await expect(hostLobby).toContainText("참가자 6/6");
+    await expect(guestLobby).toContainText("참가자 6/6");
+
+    for (const page of [hostPage, guestPage]) {
+      const participantList = page.locator("[data-room-lobby-participants='true']");
+      await participantList.focus();
+      await expect(participantList).toBeFocused();
+      await page.keyboard.press("End");
+    }
+
+    const lobbyBounds = await Promise.all(
+      [hostPage, guestPage].map(page =>
+        page.locator("#game-root").evaluate(gameRoot => {
+          const lobby = gameRoot.querySelector<HTMLElement>("[data-room-lobby='true']");
+          const participantList = gameRoot.querySelector<HTMLElement>(
+            "[data-room-lobby-participants='true']",
+          );
+          const lastParticipant = participantList?.querySelector<HTMLElement>("li:last-child");
+          const leaveButton = gameRoot.querySelector<HTMLElement>("[data-room-leave='true']");
+
+          return {
+            rootBox: gameRoot.getBoundingClientRect(),
+            lobbyBox: lobby?.getBoundingClientRect(),
+            listBox: participantList?.getBoundingClientRect(),
+            lastBox: lastParticipant?.getBoundingClientRect(),
+            leaveBox: leaveButton?.getBoundingClientRect(),
+            leaveMinHeight: leaveButton
+              ? Number.parseFloat(getComputedStyle(leaveButton).minHeight)
+              : null,
+          };
+        }),
+      ),
+    );
+    for (const bounds of lobbyBounds) {
+      expect(bounds.lobbyBox?.left).toBeGreaterThanOrEqual(bounds.rootBox.left);
+      expect(bounds.lobbyBox?.right).toBeLessThanOrEqual(bounds.rootBox.right);
+      expect(bounds.lobbyBox?.top).toBeGreaterThanOrEqual(bounds.rootBox.top);
+      expect(bounds.lobbyBox?.bottom).toBeLessThanOrEqual(bounds.rootBox.bottom);
+      expect(bounds.lastBox?.top).toBeGreaterThanOrEqual((bounds.listBox?.top ?? 0) - 1);
+      expect(bounds.lastBox?.bottom).toBeLessThanOrEqual((bounds.listBox?.bottom ?? 0) + 1);
+    }
+    const mobileBounds = lobbyBounds[1];
+    expect(mobileBounds.leaveMinHeight).toBeGreaterThanOrEqual(44);
+    expect(mobileBounds.leaveBox?.right).toBeLessThanOrEqual(mobileBounds.rootBox.right);
+    expect(mobileBounds.leaveBox?.top).toBeGreaterThanOrEqual(mobileBounds.rootBox.top);
+
+    server.joinedParticipants.splice(2);
+    server.revision += 1;
+    const restoredWaitingRoom = createLobbyWaitingRoomState(server);
+    await emitSocketSnapshot(hostPage, restoredWaitingRoom);
+    await emitSocketSnapshot(guestPage, restoredWaitingRoom);
+
+    await hostPage.locator("[data-room-lobby-ready='true']").click();
+    await guestPage.locator("[data-room-lobby-ready='true']").click();
+    const readyRoom = createLobbyWaitingRoomState(server);
+    await emitSocketSnapshot(hostPage, readyRoom);
+    await emitSocketSnapshot(guestPage, readyRoom);
+    await expect(hostPage.locator("[data-room-lobby-start='true']")).toBeEnabled();
+    await expect(guestLobby).toContainText("방장이 챔피언십을 시작할 때까지");
+
+    await hostPage.locator("[data-room-lobby-start='true']").click();
+    await expect(hostLobby).toBeHidden();
+    await emitSocketSnapshot(guestPage, createLobbyStartedRoomState(server));
+    await expect(guestLobby).toBeHidden();
+    expect(server.commandRequests.filter(request => request.suffix === "/ready")).toHaveLength(2);
+    expect(server.commandRequests.filter(request => request.suffix === "/start")).toHaveLength(1);
 
     await hostPage.context().close();
     await guestPage.context().close();
@@ -1743,15 +1863,23 @@ test.describe("Poke Lounge server multiplayer", () => {
     });
   });
 
-  test("초기 ready revision conflict는 최신 snapshot부터 workflow를 재개한다", async ({ page }) => {
+  test("수동 ready revision conflict는 최신 snapshot과 인라인 오류를 표시한다", async ({
+    page,
+  }) => {
     const server = createMockServerState();
 
     await mockServerRoom(page, server, {
+      lobbyLifecycle: true,
       revisionConflictSuffix: "/ready",
       waitForResult: true,
       wrapped: true,
     });
     await startServerRoom(page);
+    const readyButton = page.locator("[data-room-lobby-ready='true']");
+    await expect(readyButton).toBeVisible();
+    expect(server.commandHeaders.filter(headers => headers.suffix === "/ready")).toHaveLength(0);
+
+    await readyButton.click();
 
     await expect
       .poll(
@@ -1761,8 +1889,18 @@ test.describe("Poke Lounge server multiplayer", () => {
           ),
         { timeout: 30000 },
       )
+      .toBe(1);
+    await expect(page.locator("[data-room-lobby-error='true']")).not.toBeEmpty();
+
+    await readyButton.click();
+    await expect
+      .poll(() =>
+        Promise.resolve(
+          server.commandHeaders.filter(headers => headers.suffix === "/ready").length,
+        ),
+      )
       .toBe(2);
-    await page.waitForTimeout(500);
+    await expect(page.locator("[data-room-lobby-error='true']")).toBeEmpty();
 
     const readyHeaders = server.commandHeaders.filter(headers => headers.suffix === "/ready");
     expect(readyHeaders).toHaveLength(2);
@@ -1786,7 +1924,9 @@ test.describe("Poke Lounge server multiplayer", () => {
     await startServerRoom(page);
     await expect
       .poll(() =>
-        Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+        Promise.resolve(
+          server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/party-snapshot`),
+        ),
       )
       .toBe(true);
     await page.waitForTimeout(800);
@@ -1834,10 +1974,12 @@ test.describe("Poke Lounge server multiplayer", () => {
 
     await mockServerRoom(page, server, {
       idempotencyConflictSuffix: "/ready",
+      lobbyLifecycle: true,
       waitForResult: true,
       wrapped: true,
     });
     await startServerRoom(page);
+    await page.locator("[data-room-lobby-ready='true']").click();
 
     await expect
       .poll(() =>
@@ -1859,7 +2001,9 @@ test.describe("Poke Lounge server multiplayer", () => {
     await startServerRoom(page);
     await expect
       .poll(() =>
-        Promise.resolve(server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/ready`)),
+        Promise.resolve(
+          server.calls.includes(`POST /poke-lounge/rooms/${ROOM_CODE}/party-snapshot`),
+        ),
       )
       .toBe(true);
     const joinCount = server.commandHeaders.filter(header => header.suffix === "/join").length;
@@ -2025,6 +2169,14 @@ async function getRoundPhase(page: Page): Promise<string | null> {
     const pokeWindow = window as PokeLoungeWindow;
 
     return pokeWindow.__POKE_LOUNGE_E2E__?.getGameStateSnapshot().round.phase ?? null;
+  });
+}
+
+async function getWorldPlayerPosition(page: Page): Promise<{ x: number; y: number } | null> {
+  return page.evaluate(() => {
+    const player = (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__?.getWorldSnapshot()?.player;
+
+    return player ? { x: player.x, y: player.y } : null;
   });
 }
 
@@ -2478,6 +2630,7 @@ async function mockServerRoom(
     malformedSuccessSuffix?: string;
     malformedSuccessType?: "json" | "schema";
     malformedCompetitiveSeat?: boolean;
+    lobbyLifecycle?: boolean;
     mutationDelayMs?: number;
     networkFailureSuffix?: string;
     rejectLeave?: boolean;
@@ -2608,7 +2761,9 @@ async function mockServerRoom(
         server.revisionConflictReturned = true;
         server.revision += 1;
         server.conflictRevision = server.revision;
-        const snapshot = createWaitingRoomState(server);
+        const snapshot = options.lobbyLifecycle
+          ? createLobbyWaitingRoomState(server)
+          : createWaitingRoomState(server);
 
         if (options.revisionConflictDelayMs) {
           await new Promise(resolve => setTimeout(resolve, options.revisionConflictDelayMs));
@@ -2660,7 +2815,12 @@ async function mockServerRoom(
         await route.fulfill({
           status: 201,
           contentType: "application/json",
-          body: stringifyResponse(createWaitingRoomState(server), options),
+          body: stringifyResponse(
+            options.lobbyLifecycle
+              ? createLobbyWaitingRoomState(server)
+              : createWaitingRoomState(server),
+            options,
+          ),
         });
         return;
       }
@@ -2673,6 +2833,19 @@ async function mockServerRoom(
         server.partySnapshotBodies.push(
           (await request.postDataJSON()) as MockServerState["partySnapshotBodies"][number],
         );
+      }
+
+      if (method === "POST" && suffix === "/ready" && options.lobbyLifecycle) {
+        const body = (await request.postDataJSON()) as { playerId?: string; ready?: boolean };
+        if (body.playerId && body.ready === true) {
+          server.readyPlayerIds.add(body.playerId);
+        } else if (body.playerId) {
+          server.readyPlayerIds.delete(body.playerId);
+        }
+      }
+
+      if (method === "POST" && suffix === "/start" && options.lobbyLifecycle) {
+        server.lobbyStarted = true;
       }
 
       if (method === "POST" && suffix === "/competitive-seat") {
@@ -2818,6 +2991,20 @@ async function mockServerRoom(
         server.revision += 1;
       }
 
+      if (options.lobbyLifecycle) {
+        await route.fulfill({
+          status: method === "GET" ? 200 : 201,
+          contentType: "application/json",
+          body: stringifyResponse(
+            server.lobbyStarted
+              ? createLobbyStartedRoomState(server)
+              : createLobbyWaitingRoomState(server),
+            options,
+          ),
+        });
+        return;
+      }
+
       if (
         method === "GET" &&
         options.advanceRevisionOnGetAfterConflict &&
@@ -2876,9 +3063,17 @@ async function mockServerRoom(
 async function newMockedPage(
   browser: Browser,
   server: MockServerState,
-  options: { wrapped?: boolean } = {},
+  options: { lobbyLifecycle?: boolean; mobile?: boolean; wrapped?: boolean } = {},
 ): Promise<Page> {
-  const context = await browser.newContext();
+  const context = await browser.newContext(
+    options.mobile
+      ? {
+          hasTouch: true,
+          isMobile: true,
+          viewport: { width: 390, height: 844 },
+        }
+      : undefined,
+  );
   const page = await context.newPage();
 
   await mockServerRoom(page, server, options);
@@ -2972,6 +3167,8 @@ interface MockServerState {
     displayName?: string;
     joinedAtMs: number;
   }>;
+  lobbyStarted: boolean;
+  readyPlayerIds: Set<string>;
 }
 
 function createMockServerState(): MockServerState {
@@ -3007,6 +3204,8 @@ function createMockServerState(): MockServerState {
     joinedPlayerIds: new Set(),
     joinedSessionIds: new Set(),
     joinedParticipants: [],
+    lobbyStarted: false,
+    readyPlayerIds: new Set(),
   };
 }
 
@@ -3131,6 +3330,54 @@ function createWaitingRoomState(server: MockServerState) {
     },
     finalStandings: [],
     partySnapshots: createPartySnapshots(server),
+  };
+}
+
+function createLobbyWaitingRoomState(server: MockServerState) {
+  return {
+    roomCode: ROOM_CODE,
+    hostPlayerId: server.joinedParticipants[0]?.playerId ?? null,
+    revision: server.revision,
+    expiresAtMs: ROOM_EXPIRES_AT_MS,
+    status: "waiting",
+    participants: server.joinedParticipants.map(participant => ({
+      playerId: participant.playerId,
+      displayName: participant.displayName ?? participant.playerId,
+      role: "participant",
+      ready: server.readyPlayerIds.has(participant.playerId),
+      connected: true,
+      joinedAtMs: participant.joinedAtMs,
+    })),
+    partySnapshots: createPartySnapshots(server),
+    round: {
+      index: 1,
+      phase: "waiting",
+      durationMs: 300_000,
+      startedAtMs: null,
+      endsAtMs: null,
+    },
+    tournament: {
+      version: 2,
+      bracket: null,
+      activeMatchId: null,
+      activeMatchAuthority: null,
+      cumulativeScores: {},
+    },
+    finalStandings: [],
+  };
+}
+
+function createLobbyStartedRoomState(server: MockServerState) {
+  return {
+    ...createLobbyWaitingRoomState(server),
+    status: "round-started",
+    round: {
+      index: 1,
+      phase: "round-started",
+      durationMs: 300_000,
+      startedAtMs: 1_000,
+      endsAtMs: 301_000,
+    },
   };
 }
 
@@ -3269,6 +3516,7 @@ function createCompletedRoomState(server?: MockServerState) {
 
   return {
     roomCode: ROOM_CODE,
+    hostPlayerId: first.playerId,
     revision: server?.revision ?? 0,
     expiresAtMs: ROOM_EXPIRES_AT_MS,
     status: "completed",

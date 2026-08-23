@@ -26,7 +26,9 @@ import type { TournamentSession } from "../tournament/tournamentSession";
 import { type DiceGambleNumber, type DiceGamblePrediction } from "../gamble/diceGamble";
 import { createGameTextStyle } from "../ui/gameTextStyle";
 import { DEFAULT_PREPARATION_DURATION_MS } from "../round/roundState";
-import { isVirtualGamepadPressed } from "../input/virtualGamepad";
+import { isVirtualGamepadPressed, resetVirtualGamepad } from "../input/virtualGamepad";
+import { getPokeLoungeCopyForUrl } from "../../../poke-lounge-copy";
+import { createRoomLobbyScreen, type RoomLobbyScreen } from "../ui/room-lobby-screen";
 import { createWorldSceneHud, type WorldSceneHudController } from "./world-scene-hud";
 import {
   createWorldSceneInteractions,
@@ -197,6 +199,7 @@ export class WorldScene extends Phaser.Scene {
   private shutdownComplete = false;
   private hud!: WorldSceneHudController;
   private tournament: WorldSceneTournamentController | null = null;
+  private roomLobby: RoomLobbyScreen | null = null;
   private facing: PlayerFacing = "front";
   private lastSentAt = 0;
   private lastSent: { x: number; y: number; facing: PlayerFacing } = {
@@ -403,6 +406,13 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    if (this.roomLobby) {
+      this.player.setVelocity(0, 0);
+      this.player.anims.stop();
+      this.player.setFrame(FIELD_MAP.player.frameNames[this.facing]);
+      return;
+    }
+
     this.updateRoundClock(Date.now());
 
     if (this.encounters.isBattleIntroPlaying()) {
@@ -458,6 +468,8 @@ export class WorldScene extends Phaser.Scene {
     this.hud.destroy();
     this.tournament?.destroy();
     this.tournament = null;
+    this.roomLobby?.destroy();
+    this.roomLobby = null;
     this.encounters.destroy();
     this.roomConnected = false;
     this.pendingRoomMessages = [];
@@ -948,6 +960,8 @@ export class WorldScene extends Phaser.Scene {
           return;
         }
 
+        this.updateRoomLobby(payload);
+
         this.tournament?.clearPresentation();
         if (payload.roomStatus === "completed") {
           this.tournament?.showResultPresentationIfNeeded();
@@ -1134,6 +1148,12 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private isRoomTournamentHost(): boolean {
+    const projection = this.gameStateStore.getState().tournament.serverProjection;
+
+    if (projection) {
+      return projection.hostPlayerId === projection.ownPlayerId;
+    }
+
     return this.getRoomHostSessionId() === this.room.sessionId;
   }
 
@@ -1153,10 +1173,22 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private getRoomHostPlayerId(): string | null {
+    const projection = this.gameStateStore.getState().tournament.serverProjection;
+
+    if (projection) {
+      return projection.hostPlayerId === projection.ownPlayerId ? projection.hostPlayerId : null;
+    }
+
     return this.isRoomTournamentHost() ? this.gameStateStore.getState().currentPlayerId : null;
   }
 
   private getExpectedRoomHostPlayerId(): string | null {
+    const projection = this.gameStateStore.getState().tournament.serverProjection;
+
+    if (projection) {
+      return projection.hostPlayerId;
+    }
+
     const hostSessionId = this.getRoomHostSessionId();
 
     if (hostSessionId === this.room.sessionId) {
@@ -1170,6 +1202,34 @@ export class WorldScene extends Phaser.Scene {
     const expectedHostPlayerId = this.getExpectedRoomHostPlayerId();
 
     return Boolean(hostPlayerId && expectedHostPlayerId && hostPlayerId === expectedHostPlayerId);
+  }
+
+  private updateRoomLobby(payload: RoomEvent["TOURNAMENT_STATE"]): void {
+    if (payload.roomStatus !== "waiting") {
+      this.roomLobby?.destroy();
+      this.roomLobby = null;
+      return;
+    }
+
+    if (this.roomLobby) {
+      this.roomLobby.update(payload);
+      return;
+    }
+
+    const mount = this.game.canvas.parentElement;
+    if (!mount) {
+      return;
+    }
+
+    resetVirtualGamepad();
+    this.player?.setVelocity(0, 0);
+    this.roomLobby = createRoomLobbyScreen({
+      mount,
+      copy: getPokeLoungeCopyForUrl(new URL(window.location.href)).lobby,
+      projection: payload,
+      onSetReady: ready => this.room.setLobbyReady(ready),
+      onStart: () => this.room.startChampionship(),
+    });
   }
 
   private mapRoomParticipantIdForLocalStore(playerId: string): string {

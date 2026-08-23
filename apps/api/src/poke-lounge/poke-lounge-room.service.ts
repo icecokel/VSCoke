@@ -30,8 +30,10 @@ import {
 import {
   completePokeLoungeTournamentMatch,
   convergeOfflinePokeLoungeTournamentMatches,
+  getPokeLoungeRoomHostPlayerId,
   getPokeLoungeRoomExpiresAtMs,
   POKE_LOUNGE_PENDING_PRESENCE_LEASE_MS,
+  resetPokeLoungeRoundPreparation,
 } from './poke-lounge-room-policy';
 import {
   POKE_LOUNGE_ROOM_REPOSITORY,
@@ -50,6 +52,7 @@ import type {
   PokeLoungeRoomState,
   PokeLoungeTournamentMatch,
   SetPokeLoungeReadyInput,
+  StartPokeLoungeRoomInput,
   SubmitPokeLoungeMatchResultInput,
   UpdatePokeLoungePartySnapshotInput,
 } from './poke-lounge-room.types';
@@ -452,7 +455,6 @@ export class PokeLoungeRoomService {
               currentParticipant.presenceEpoch = normalizedPresenceEpoch;
             }
             current.updatedAtMs = nowMs;
-            startRoundWhenReady(current, nowMs);
             return current;
           },
         });
@@ -526,7 +528,7 @@ export class PokeLoungeRoomService {
           return room;
         }
 
-        assertRoomJoinable(room, nowMs);
+        assertRoomJoinable(room);
         if (room.participants.length >= MAX_ROOM_OCCUPANTS) {
           throw new PokeLoungeRoomFull();
         }
@@ -570,6 +572,11 @@ export class PokeLoungeRoomService {
       nowMs,
       body: normalizedCommandBody(normalized, input.nowMs),
       apply: (room) => {
+        if (room.status !== 'waiting' || room.round.phase !== 'waiting') {
+          throw new BadRequestException(
+            'Ready can only change in a waiting room',
+          );
+        }
         const participant = findParticipant(room, normalized.playerId);
         assertParticipantSession(
           participant,
@@ -580,12 +587,101 @@ export class PokeLoungeRoomService {
         if (participant.role !== 'participant') {
           throw new BadRequestException('Spectators cannot become ready');
         }
+        if (
+          normalized.ready &&
+          !room.partySnapshots[participant.playerId]?.competitiveParty.members
+            .length
+        ) {
+          throw new BadRequestException(
+            'Party snapshot is required before becoming ready',
+          );
+        }
 
         participant.ready = normalized.ready;
         room.updatedAtMs = nowMs;
 
-        startRoundWhenReady(room, nowMs);
+        return room;
+      },
+    });
+  }
 
+  async startRoom(
+    roomCode: string,
+    input: StartPokeLoungeRoomInput,
+    command: PokeLoungeRoomCommandContext,
+  ): Promise<PokeLoungeRoomSnapshot> {
+    const normalized = {
+      playerId: input.playerId.trim(),
+      sessionId: input.sessionId.trim(),
+    };
+    const nowMs = this.normalizeNow(input.nowMs);
+
+    return this.mutateRoom({
+      operation: 'start',
+      roomCode,
+      actorPlayerId: normalized.playerId,
+      command,
+      nowMs,
+      body: normalizedCommandBody(normalized, input.nowMs),
+      apply: (room) => {
+        if (room.status !== 'waiting' || room.round.phase !== 'waiting') {
+          throw new BadRequestException('Room is not waiting to start');
+        }
+
+        const participant = findParticipant(room, normalized.playerId);
+        assertParticipantSession(
+          participant,
+          normalized.sessionId,
+          'Start sessionId does not match this participant',
+        );
+        if (getPokeLoungeRoomHostPlayerId(room) !== participant.playerId) {
+          throw new BadRequestException('Only the room host can start');
+        }
+
+        const participants = room.participants.filter(
+          (candidate) => candidate.role === 'participant',
+        );
+        if (participants.length < 2) {
+          throw new BadRequestException(
+            'At least two participants are required to start',
+          );
+        }
+        if (participants.length > MAX_ROOM_OCCUPANTS) {
+          throw new BadRequestException('Room has too many participants');
+        }
+        if (
+          participants.some(
+            (candidate) =>
+              !candidate.connected ||
+              candidate.presencePendingUntilMs !== undefined,
+          )
+        ) {
+          throw new BadRequestException(
+            'All participants must be connected before starting',
+          );
+        }
+        if (participants.some((candidate) => !candidate.ready)) {
+          throw new BadRequestException(
+            'All participants must be ready before starting',
+          );
+        }
+        if (
+          participants.some(
+            (candidate) =>
+              !room.partySnapshots[candidate.playerId]?.competitiveParty.members
+                .length,
+          )
+        ) {
+          throw new BadRequestException(
+            'All participants need a party snapshot before starting',
+          );
+        }
+
+        room.status = 'round-started';
+        room.round.phase = 'round-started';
+        room.round.startedAtMs = nowMs;
+        room.round.endsAtMs = nowMs + room.round.durationMs;
+        room.updatedAtMs = nowMs;
         return room;
       },
     });
@@ -878,10 +974,7 @@ function applyParticipantLeave(
       (row) => row.role === 'participant' && row.connected,
     ).length < 2
   ) {
-    room.status = 'waiting';
-    room.round.phase = 'waiting';
-    room.round.startedAtMs = null;
-    room.round.endsAtMs = null;
+    resetPokeLoungeRoundPreparation(room);
   }
 
   if (!room.participants.some((row) => row.connected)) {
@@ -1034,14 +1127,8 @@ function findParticipant(
   return participant;
 }
 
-function assertRoomJoinable(room: PokeLoungeRoomState, nowMs: number): void {
-  const preparationWindowOpen =
-    room.status === 'round-started' &&
-    room.round.phase === 'round-started' &&
-    room.round.endsAtMs !== null &&
-    nowMs < room.round.endsAtMs;
-
-  if (room.status !== 'waiting' && !preparationWindowOpen) {
+function assertRoomJoinable(room: PokeLoungeRoomState): void {
+  if (room.status !== 'waiting') {
     throw new BadRequestException('Room is not joinable');
   }
 }
@@ -1054,34 +1141,6 @@ function assertExistingParticipantRejoinable(room: PokeLoungeRoomState): void {
   ) {
     throw new BadRequestException('Room is not joinable');
   }
-}
-
-function canStartRound(room: PokeLoungeRoomState): boolean {
-  if (room.status !== 'waiting' || room.round.phase !== 'waiting') {
-    return false;
-  }
-
-  const participants = room.participants.filter(
-    (participant) =>
-      participant.role === 'participant' &&
-      participant.connected &&
-      participant.presencePendingUntilMs === undefined,
-  );
-
-  return (
-    participants.length >= 2 &&
-    participants.every((participant) => participant.ready)
-  );
-}
-
-function startRoundWhenReady(room: PokeLoungeRoomState, nowMs: number): void {
-  if (!canStartRound(room)) {
-    return;
-  }
-  room.status = 'round-started';
-  room.round.phase = 'round-started';
-  room.round.startedAtMs = nowMs;
-  room.round.endsAtMs = nowMs + room.round.durationMs;
 }
 
 function findActiveMatch(

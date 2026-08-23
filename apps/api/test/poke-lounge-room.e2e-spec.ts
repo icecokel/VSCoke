@@ -386,9 +386,23 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
       .send({ playerId: 'player-b', sessionId: 'session-b' })
       .expect(201);
     const joined = joinedResponse.body as PokeLoungePublicRoomState;
+    const hostParty = await updatePartySnapshot(
+      created.roomCode,
+      'player-a',
+      'session-a',
+      joined.revision,
+      42,
+    );
+    const guestParty = await updatePartySnapshot(
+      created.roomCode,
+      'player-b',
+      'session-b',
+      hostParty.revision,
+      43,
+    );
     const hostReadyResponse = await request(httpServer)
       .post(`/poke-lounge/rooms/${created.roomCode}/ready`)
-      .set(commandHeaders(42, joined.revision))
+      .set(commandHeaders(44, guestParty.revision))
       .send({
         playerId: 'player-a',
         sessionId: 'session-a',
@@ -398,7 +412,7 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
     const hostReady = hostReadyResponse.body as PokeLoungePublicRoomState;
     const bothReadyResponse = await request(httpServer)
       .post(`/poke-lounge/rooms/${created.roomCode}/ready`)
-      .set(commandHeaders(43, hostReady.revision))
+      .set(commandHeaders(45, hostReady.revision))
       .send({
         playerId: 'player-b',
         sessionId: 'session-b',
@@ -434,7 +448,7 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
     });
   });
 
-  it('admits five sequential players before the fixed preparation deadline and supports tournament reconnect', async () => {
+  it('starts five ready players together, rejects late joins, and supports tournament reconnect', async () => {
     const roundDurationMs = 2_000;
     const created = await createRoom(20, roundDurationMs);
     const joinedSecond = await request(httpServer)
@@ -458,44 +472,69 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
       'session-b',
       hostAcknowledged.revision,
     );
-    const hostParty = await updatePartySnapshot(
-      created.roomCode,
-      'player-a',
-      'session-a',
-      guestAcknowledged.revision,
-      22,
-    );
-    const guestParty = await updatePartySnapshot(
-      created.roomCode,
-      'player-b',
-      'session-b',
-      hostParty.revision,
-      23,
-    );
-    const readyHost = await request(httpServer)
-      .post(`/poke-lounge/rooms/${created.roomCode}/ready`)
-      .set(commandHeaders(24, guestParty.revision))
-      .send({
-        playerId: 'player-a',
-        sessionId: 'session-a',
-        ready: true,
-      })
-      .expect(201);
-    const readyHostRoom = readyHost.body as PokeLoungePublicRoomState;
+    let revision = guestAcknowledged.revision;
+    for (const [index, suffix] of ['c', 'd', 'e'].entries()) {
+      const joined = await request(httpServer)
+        .post(`/poke-lounge/rooms/${created.roomCode}/join`)
+        .set(commandHeaders(22 + index, revision))
+        .send({
+          playerId: `player-${suffix}`,
+          sessionId: `session-${suffix}`,
+        })
+        .expect(201);
+      const joinedRoom = joined.body as PokeLoungePublicRoomState;
+      expect(joinedRoom.status).toBe('waiting');
+      const acknowledged = await acknowledgePendingPresence(
+        created.roomCode,
+        `player-${suffix}`,
+        `session-${suffix}`,
+        joinedRoom.revision,
+      );
+      revision = acknowledged.revision;
+    }
+
+    for (const [index, suffix] of ['a', 'b', 'c', 'd', 'e'].entries()) {
+      const party = await updatePartySnapshot(
+        created.roomCode,
+        `player-${suffix}`,
+        `session-${suffix}`,
+        revision,
+        30 + index,
+      );
+      revision = party.revision;
+    }
+
+    for (const [index, suffix] of ['a', 'b', 'c', 'd', 'e'].entries()) {
+      const ready = await request(httpServer)
+        .post(`/poke-lounge/rooms/${created.roomCode}/ready`)
+        .set(commandHeaders(40 + index, revision))
+        .send({
+          playerId: `player-${suffix}`,
+          sessionId: `session-${suffix}`,
+          ready: true,
+        })
+        .expect(201);
+      const readyRoom = ready.body as PokeLoungePublicRoomState;
+      expect(readyRoom).toMatchObject({
+        status: 'waiting',
+        round: { startedAtMs: null, endsAtMs: null },
+      });
+      revision = readyRoom.revision;
+    }
+
     const earliestStartedAtMs = Date.now();
     const started = await request(httpServer)
-      .post(`/poke-lounge/rooms/${created.roomCode}/ready`)
-      .set(commandHeaders(25, readyHostRoom.revision))
-      .send({
-        playerId: 'player-b',
-        sessionId: 'session-b',
-        ready: true,
-      })
+      .post(`/poke-lounge/rooms/${created.roomCode}/start`)
+      .set(commandHeaders(50, revision))
+      .send({ playerId: 'player-a', sessionId: 'session-a' })
       .expect(201);
     const startedRoom = started.body as PokeLoungePublicRoomState;
     const latestStartedAtMs = Date.now();
 
-    expect(startedRoom.status).toBe('round-started');
+    expect(startedRoom).toMatchObject({
+      status: 'round-started',
+      hostPlayerId: 'player-a',
+    });
     expect(startedRoom.round.startedAtMs).toBeGreaterThanOrEqual(
       earliestStartedAtMs,
     );
@@ -506,57 +545,11 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
       startedRoom.round.startedAtMs! + roundDurationMs,
     );
 
-    let revision = startedRoom.revision;
-    for (const [index, suffix] of ['c', 'd', 'e'].entries()) {
-      const joined = await request(httpServer)
-        .post(`/poke-lounge/rooms/${created.roomCode}/join`)
-        .set(commandHeaders(26 + index * 3, revision))
-        .send({
-          playerId: `player-${suffix}`,
-          sessionId: `session-${suffix}`,
-        })
-        .expect(201);
-      const joinedRoom = joined.body as PokeLoungePublicRoomState;
-      expect(joinedRoom).toMatchObject({
-        status: 'round-started',
-        round: {
-          startedAtMs: startedRoom.round.startedAtMs,
-          endsAtMs: startedRoom.round.endsAtMs,
-        },
-      });
-      const acknowledged = await acknowledgePendingPresence(
-        created.roomCode,
-        `player-${suffix}`,
-        `session-${suffix}`,
-        joinedRoom.revision,
-      );
-      revision = acknowledged.revision;
-
-      const party = await updatePartySnapshot(
-        created.roomCode,
-        `player-${suffix}`,
-        `session-${suffix}`,
-        revision,
-        27 + index * 3,
-      );
-      revision = party.revision;
-
-      const ready = await request(httpServer)
-        .post(`/poke-lounge/rooms/${created.roomCode}/ready`)
-        .set(commandHeaders(28 + index * 3, revision))
-        .send({
-          playerId: `player-${suffix}`,
-          sessionId: `session-${suffix}`,
-          ready: true,
-        })
-        .expect(201);
-      const readyRoom = ready.body as PokeLoungePublicRoomState;
-      expect(readyRoom.round).toMatchObject({
-        startedAtMs: startedRoom.round.startedAtMs,
-        endsAtMs: startedRoom.round.endsAtMs,
-      });
-      revision = readyRoom.revision;
-    }
+    await request(httpServer)
+      .post(`/poke-lounge/rooms/${created.roomCode}/join`)
+      .set(commandHeaders(51, startedRoom.revision))
+      .send({ playerId: 'player-f', sessionId: 'session-f' })
+      .expect(400);
 
     await waitForServerDeadline(startedRoom.round.endsAtMs!);
     const tournamentResponse = await request(httpServer)
@@ -565,7 +558,7 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
     const tournament = tournamentResponse.body as PokeLoungePublicRoomState;
     expect(tournament).toMatchObject({
       status: 'tournament',
-      revision: revision + 1,
+      revision: startedRoom.revision + 1,
       tournament: {
         activeMatchId: 'game-round-1-bracket-1-match-1',
       },
@@ -574,7 +567,7 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
 
     const rejoined = await request(httpServer)
       .post(`/poke-lounge/rooms/${created.roomCode}/join`)
-      .set(commandHeaders(35, tournament.revision))
+      .set(commandHeaders(52, tournament.revision))
       .send({
         playerId: 'player-a',
         sessionId: 'session-a',
@@ -582,15 +575,6 @@ describe('Poke Lounge PostgreSQL rooms (e2e)', () => {
       .expect(201);
     const rejoinedRoom = rejoined.body as PokeLoungePublicRoomState;
     expect(rejoinedRoom).toMatchObject({ status: 'tournament' });
-
-    await request(httpServer)
-      .post(`/poke-lounge/rooms/${created.roomCode}/join`)
-      .set(commandHeaders(36, rejoinedRoom.revision))
-      .send({
-        playerId: 'player-f',
-        sessionId: 'session-f',
-      })
-      .expect(400);
   });
 
   it('persists a room after closing and recreating the Nest application', async () => {

@@ -8,7 +8,7 @@ const enableCrossBrowser = process.env.PLAYWRIGHT_ENABLE_CROSS_BROWSER === "1";
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${playwrightPort}`;
 const configuredRetries = Number.parseInt(process.env.PLAYWRIGHT_RETRIES ?? "", 10);
 const mobileTestMatch = /(mobile-behavior|poke-lounge-mobile)\.spec\.ts$/;
-const integrationTestMatch = /poke-lounge-five-player-tournament\.spec\.ts$/;
+const integrationTestMatch = /poke-lounge-(?:five-player-tournament|public-lobby)\.spec\.ts$/;
 const visualRegressionTestMatch = /visual-regression\.spec\.ts$/;
 const playwrightOutputRoot = process.env.PLAYWRIGHT_OUTPUT_DIR ?? "../../output/playwright";
 

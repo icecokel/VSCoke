@@ -413,7 +413,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     await expect(historyCount()).resolves.toBe(0);
   });
 
-  it('converges a disconnected bye through later server-authority matches and completes the tournament', async () => {
+  it('converges a disconnected bye and opens the next game-round preparation', async () => {
     const { room } = await activateFivePlayerTournament('ROOM23');
     const roomService = createRoomService();
     const matchRepository = dataSource.getRepository(
@@ -500,11 +500,12 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
       .getRepository(PokeLoungeRoom)
       .findOneByOrFail({ id: room.id });
     expect(completedRoom.state).toMatchObject({
-      status: 'completed',
+      status: 'round-started',
+      round: { index: 2, phase: 'round-started' },
       tournament: {
         activeMatchId: null,
         activeMatchAuthority: null,
-        bracket: { status: 'completed', championPlayerId: 'player-d' },
+        bracket: null,
       },
     });
     const matches = await matchRepository.findBy({ roomId: room.id });
@@ -1210,12 +1211,11 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
           result.snapshot.revision === 7
         ) {
           laterCommitted = true;
-          await laterService.setReady(
+          await laterService.joinRoom(
             'ROOM13',
             {
               playerId: 'player-b',
               sessionId: 'session-b',
-              ready: true,
               nowMs: 2,
             },
             roomCommand(7, 15),
@@ -1234,12 +1234,11 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     roomPublish.mockClear();
     const firstCommand = roomCommand(6, 14);
 
-    const revisionOne = await commandService.setReady(
+    const revisionOne = await commandService.joinRoom(
       'ROOM13',
       {
         playerId: 'player-a',
         sessionId: 'session-a',
-        ready: true,
         nowMs: 1,
       },
       firstCommand,
@@ -1248,7 +1247,7 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     expect(revisionOne).toMatchObject({
       revision: 7,
       participants: [
-        { playerId: 'player-a', ready: true },
+        { playerId: 'player-a', ready: false },
         { playerId: 'player-b', ready: false },
       ],
     });
@@ -1269,12 +1268,11 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     });
 
     roomPublish.mockClear();
-    const replay = await commandService.setReady(
+    const replay = await commandService.joinRoom(
       'ROOM13',
       {
         playerId: 'player-a',
         sessionId: 'session-a',
-        ready: true,
         nowMs: 1,
       },
       { ...firstCommand, expectedRevision: 999 },
@@ -1287,8 +1285,8 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
     expect(latest).toMatchObject({
       revision: 8,
       participants: [
-        { playerId: 'player-a', ready: true },
-        { playerId: 'player-b', ready: true },
+        { playerId: 'player-a', ready: false },
+        { playerId: 'player-b', ready: false },
       ],
       competitive: { submittedPlayerIds: [] },
     });

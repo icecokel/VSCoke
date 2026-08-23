@@ -852,6 +852,149 @@
   box-shadow: 0 1px 0 #17231c;
 }
 
+.page :global(.room-lobby-screen) {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  padding: clamp(52px, 10%, 64px) clamp(10px, 4%, 24px) clamp(10px, 4%, 24px);
+  overflow: hidden;
+  place-items: center;
+  background: rgba(23, 35, 28, 0.88);
+  color: #17201a;
+}
+
+.page :global(.room-lobby-panel) {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  gap: 10px;
+  width: min(560px, 100%);
+  max-width: 100%;
+  height: min(430px, 100%);
+  max-height: 100%;
+  min-height: 0;
+  padding: clamp(12px, 3%, 18px);
+  border: 3px solid #17231c;
+  border-radius: 6px;
+  background: rgba(248, 251, 240, 0.98);
+  box-shadow: 0 8px 0 #17231c;
+  overflow: hidden;
+}
+
+.page :global(.room-lobby-header) {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.page :global(.room-lobby-header h2),
+.page :global(.room-lobby-header p),
+.page :global(.room-lobby-status),
+.page :global(.room-lobby-error) {
+  margin: 0;
+}
+
+.page :global(.room-lobby-header h2) {
+  font-size: clamp(1rem, 3vw, 1.3rem);
+  font-weight: 900;
+}
+
+.page :global(.room-lobby-header p),
+.page :global(.room-lobby-status),
+.page :global(.room-lobby-error) {
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.page :global(.room-lobby-participants) {
+  display: grid;
+  align-content: start;
+  min-height: 0;
+  margin: 0;
+  padding: 0 4px 3px 0;
+  overflow-y: auto;
+  list-style: none;
+  gap: 7px;
+}
+
+.page :global(.room-lobby-participant) {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.8fr) minmax(0, 1.8fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 2px solid rgba(79, 101, 63, 0.55);
+  border-radius: 4px;
+  background: #eef4df;
+}
+
+.page :global(.room-lobby-participant strong) {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page :global(.room-lobby-badges) {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.page :global(.room-lobby-badges span) {
+  padding: 2px 5px;
+  border: 1px solid #4f653f;
+  border-radius: 999px;
+  background: #f8fbf0;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.page :global(.room-lobby-footer) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.page :global(.room-lobby-footer button) {
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 2px solid #17231c;
+  border-radius: 4px;
+  background: #fff9dd;
+  box-shadow: 0 3px 0 #17231c;
+  color: #17201a;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.page :global(.room-lobby-footer button:disabled) {
+  cursor: default;
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+.page :global(.room-lobby-error) {
+  min-height: 1.1em;
+  color: #9f2d25;
+}
+
+.touchGameDevice[data-poke-lounge-room-lobby-open="true"]
+  :global([data-poke-lounge-mobile-control-dock="true"]),
+.touchGameDevice[data-poke-lounge-room-lobby-open="true"]
+  :global([data-poke-lounge-mobile-fullscreen-scene="true"]) {
+  display: none;
+}
+
 @media (orientation: portrait) {
   .touchGameDevice {
     --poke-lounge-mobile-screen-gap: clamp(6px, 1.5dvh, 12px);
@@ -2038,6 +2181,28 @@
 }
 
 @media (max-width: 760px) {
+  .page :global(.room-lobby-panel) {
+    gap: 6px;
+    padding: 10px;
+    box-shadow: none;
+  }
+
+  .page :global(.room-lobby-participant) {
+    grid-template-columns: 1fr;
+  }
+
+  .page :global(.room-lobby-badges) {
+    justify-content: flex-start;
+  }
+
+  .page :global(.room-lobby-footer button) {
+    min-height: 44px;
+  }
+
+  .page :global(.room-leave-button) {
+    min-height: 44px;
+  }
+
   .page :global(.room-entry-panel) {
     gap: 10px;
     padding: 14px;

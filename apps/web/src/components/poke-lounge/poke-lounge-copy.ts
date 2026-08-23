@@ -128,6 +128,26 @@ export interface PokeLoungeCopy {
     retrying: string;
     lobby: string;
   };
+  lobby: {
+    title: string;
+    participantCount(count: number): string;
+    participantListLabel: string;
+    hostBadge: string;
+    ready: string;
+    notReady: string;
+    connected: string;
+    disconnected: string;
+    partyReady: string;
+    partyMissing: string;
+    readyAction: string;
+    cancelReadyAction: string;
+    startAction: string;
+    hostReady: string;
+    guestWaiting: string;
+    ownPartyMissingReason: string;
+    mutationFailed: string;
+    startDisabledReason: Record<"players" | "connection" | "party" | "ready" | "mutation", string>;
+  };
   roomEntry: {
     title: string;
     fanNotice: string;
@@ -302,6 +322,32 @@ const KOREAN_COPY: PokeLoungeCopy = {
     retry: "다시 시도",
     retrying: "다시 불러오는 중...",
     lobby: "입장 화면으로 돌아가기",
+  },
+  lobby: {
+    title: "챔피언십 대기실",
+    participantCount: count => `참가자 ${count}/6`,
+    participantListLabel: "챔피언십 참가자",
+    hostBadge: "방장",
+    ready: "준비 완료",
+    notReady: "준비 전",
+    connected: "접속 중",
+    disconnected: "연결 끊김",
+    partyReady: "파티 완료",
+    partyMissing: "파티 확인 필요",
+    readyAction: "준비",
+    cancelReadyAction: "준비 취소",
+    startAction: "챔피언십 시작",
+    hostReady: "모든 조건이 갖춰졌습니다.",
+    guestWaiting: "방장이 챔피언십을 시작할 때까지 기다려 주세요.",
+    ownPartyMissingReason: "파티가 서버에 반영되면 준비할 수 있습니다.",
+    mutationFailed: "요청을 반영하지 못했습니다. 최신 대기실 상태를 확인해 주세요.",
+    startDisabledReason: {
+      players: "참가자가 2명 이상 필요합니다.",
+      connection: "연결이 끊긴 참가자가 있습니다.",
+      party: "파티 준비가 끝나지 않은 참가자가 있습니다.",
+      ready: "아직 준비하지 않은 참가자가 있습니다.",
+      mutation: "대기실 상태를 반영하는 중입니다.",
+    },
   },
   roomEntry: {
     title: "플레이 방식 선택",
@@ -485,6 +531,32 @@ const ENGLISH_COPY: PokeLoungeCopy = {
     retry: "Try again",
     retrying: "Loading again...",
     lobby: "Back to play selection",
+  },
+  lobby: {
+    title: "Championship Lobby",
+    participantCount: count => `Players ${count}/6`,
+    participantListLabel: "Championship players",
+    hostBadge: "Host",
+    ready: "Ready",
+    notReady: "Not ready",
+    connected: "Connected",
+    disconnected: "Disconnected",
+    partyReady: "Party ready",
+    partyMissing: "Party needed",
+    readyAction: "Ready",
+    cancelReadyAction: "Cancel ready",
+    startAction: "Start championship",
+    hostReady: "Everyone is ready to start.",
+    guestWaiting: "Wait for the host to start the championship.",
+    ownPartyMissingReason: "You can ready up after your party reaches the server.",
+    mutationFailed: "The request failed. Check the latest lobby state and try again.",
+    startDisabledReason: {
+      players: "At least two players are required.",
+      connection: "A player is disconnected.",
+      party: "A player's party is not ready.",
+      ready: "A player is not ready yet.",
+      mutation: "Updating the lobby.",
+    },
   },
   roomEntry: {
     title: "Choose how to play",
@@ -670,6 +742,32 @@ const JAPANESE_COPY: PokeLoungeCopy = {
     retry: "再試行",
     retrying: "再読み込み中...",
     lobby: "プレイ選択に戻る",
+  },
+  lobby: {
+    title: "チャンピオンシップロビー",
+    participantCount: count => `参加者 ${count}/6`,
+    participantListLabel: "チャンピオンシップ参加者",
+    hostBadge: "ホスト",
+    ready: "準備完了",
+    notReady: "準備前",
+    connected: "接続中",
+    disconnected: "切断",
+    partyReady: "パーティ準備完了",
+    partyMissing: "パーティ確認待ち",
+    readyAction: "準備完了",
+    cancelReadyAction: "準備を取り消す",
+    startAction: "チャンピオンシップ開始",
+    hostReady: "開始条件がそろいました。",
+    guestWaiting: "ホストが開始するまでお待ちください。",
+    ownPartyMissingReason: "パーティがサーバーに反映されると準備できます。",
+    mutationFailed: "リクエストに失敗しました。最新のロビー状態を確認してください。",
+    startDisabledReason: {
+      players: "参加者が2人以上必要です。",
+      connection: "切断中の参加者がいます。",
+      party: "パーティ準備が完了していない参加者がいます。",
+      ready: "まだ準備していない参加者がいます。",
+      mutation: "ロビー状態を更新しています。",
+    },
   },
   roomEntry: {
     title: "プレイ方法を選択",

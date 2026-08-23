@@ -232,12 +232,9 @@ class DefaultWorldSceneTournament implements WorldSceneTournamentController {
       publicRankingIncluded:
         state.tournament.serverProjection?.competitionKind === "ranked-head-to-head",
     });
-    const title = state.tournament.serverProjection
-      ? `${panel.title} · 방 ${state.tournament.serverProjection.roomCode}`
-      : panel.title;
     this.setAnnouncement(
       [
-        title,
+        panel.title,
         ...panel.rows.map(formatTournamentResultRow),
         panel.rankingLabel,
         panel.nextActionLabel,
@@ -507,7 +504,7 @@ export function createServerTournamentAnnouncementText({
   const bracket = projection.tournament.bracket;
   const activeMatch = findCurrentMatch(bracket, projection.tournament.activeMatchId);
   const lines = [
-    `서버 토너먼트 · 방 ${projection.roomCode}`,
+    "서버 토너먼트",
     createServerRoomStageLabel(projection, nowMs),
     `참가 ${tournamentParticipants.length}/6 · 준비 ${readyCount}/${tournamentParticipants.length} · 접속 ${connectedCount}/${participants.length} · 관전 ${spectators.length}`,
   ];

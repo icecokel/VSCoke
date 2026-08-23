@@ -38,6 +38,7 @@ import { JoinPokeLoungeRoomDto } from './dto/join-poke-lounge-room.dto';
 import { LeavePokeLoungeRoomDto } from './dto/leave-poke-lounge-room.dto';
 import { PokeLoungeRoomResponseDto } from './dto/poke-lounge-room-response.dto';
 import { SetPokeLoungeReadyDto } from './dto/set-poke-lounge-ready.dto';
+import { StartPokeLoungeRoomDto } from './dto/start-poke-lounge-room.dto';
 import { SubmitPokeLoungeMatchResultDto } from './dto/submit-poke-lounge-match-result.dto';
 import { UpdatePokeLoungePartySnapshotDto } from './dto/update-poke-lounge-party-snapshot.dto';
 import type { PokeLoungeRoomCommandContext } from './poke-lounge-room-command';
@@ -243,6 +244,31 @@ export class PokeLoungeController {
           playerId: body.playerId,
           sessionId: body.sessionId,
           ready: body.ready,
+        },
+        command,
+      ),
+    );
+  }
+
+  @Post('rooms/:roomCode/start')
+  @ApiHeader({ name: IDEMPOTENCY_HEADER, required: true })
+  @ApiHeader({ name: REVISION_HEADER, required: true, example: '0' })
+  @ApiBody({ type: StartPokeLoungeRoomDto })
+  @ApiCreatedResponse({ type: PokeLoungeRoomResponseDto })
+  @ApiConflictResponse({ type: PokeLoungeRoomConflictResponseDto })
+  async startRoom(
+    @Param('roomCode') roomCode: string,
+    @Body() body: StartPokeLoungeRoomDto,
+    @Req() request: Request,
+  ) {
+    const command = parseRoomCommandHeaders(request);
+
+    return toPokeLoungePublicRoomState(
+      await this.roomService.startRoom(
+        roomCode,
+        {
+          playerId: body.playerId,
+          sessionId: body.sessionId,
         },
         command,
       ),

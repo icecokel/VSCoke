@@ -6,6 +6,7 @@ import {
   advancePokeLoungeRoomClock,
   completePokeLoungeTournamentMatch,
   expirePendingPokeLoungePresence,
+  getPokeLoungeRoomHostPlayerId,
   getPokeLoungeRoomExpiresAtMs,
   isPokeLoungeRoomExpired,
   normalizeLegacyPokeLoungeRoomSnapshot,
@@ -15,6 +16,25 @@ import { createTestPartySnapshots } from '../../test/support/competitive-party.f
 const MINUTE_MS = 60_000;
 
 describe('PokeLoungeRoomPolicy', () => {
+  it('selects the current host by join time and then player id', () => {
+    const room = createSnapshot({
+      participants: [
+        createParticipant('player-c', 2),
+        createParticipant('player-b', 1),
+        createParticipant('player-a', 1),
+      ],
+    });
+
+    expect(getPokeLoungeRoomHostPlayerId(room)).toBe('player-a');
+    room.participants = room.participants.filter(
+      (participant) => participant.playerId !== 'player-a',
+    );
+    expect(getPokeLoungeRoomHostPlayerId(room)).toBe('player-b');
+    expect(
+      getPokeLoungeRoomHostPlayerId(createSnapshot({ participants: [] })),
+    ).toBeNull();
+  });
+
   it.each([
     ['waiting', 30 * MINUTE_MS],
     ['completed', 10 * MINUTE_MS],
@@ -361,6 +381,7 @@ describe('PokeLoungeRoomPolicy', () => {
     expect(advancePokeLoungeRoomClock(room, 1_000)).toMatchObject({
       status: 'waiting',
       revision: 1,
+      participants: [{ playerId: 'player-1', ready: false }],
       round: { phase: 'waiting', startedAtMs: null, endsAtMs: null },
       tournament: { bracket: null, activeMatchId: null },
     });

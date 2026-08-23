@@ -1971,6 +1971,7 @@ function hasSameCanonicalTournamentProjection(
   return (
     left.roundIndex === right.roundIndex &&
     left.roomCode === right.roomCode &&
+    left.hostPlayerId === right.hostPlayerId &&
     left.roomStatus === right.roomStatus &&
     JSON.stringify(left.roomRound) === JSON.stringify(right.roomRound) &&
     JSON.stringify(left.participants) === JSON.stringify(right.participants) &&

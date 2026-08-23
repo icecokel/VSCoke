@@ -21,6 +21,7 @@ describe('PokeLoungeController', () => {
       getRoom: jest.fn().mockResolvedValue(snapshot()),
       joinRoom: jest.fn().mockResolvedValue(snapshot()),
       setReady: jest.fn().mockResolvedValue(snapshot()),
+      startRoom: jest.fn().mockResolvedValue(snapshot()),
       updatePartySnapshot: jest.fn().mockResolvedValue(snapshot()),
       submitMatchResult: jest.fn().mockResolvedValue(snapshot()),
       leaveRoom: jest.fn().mockResolvedValue(snapshot()),
@@ -46,6 +47,12 @@ describe('PokeLoungeController', () => {
         controller.setReady(
           'ROOM01',
           { playerId: 'player-a', sessionId: 'session-a', ready: true },
+          request(),
+        ),
+      () =>
+        controller.startRoom(
+          'ROOM01',
+          { playerId: 'player-a', sessionId: 'session-a' },
           request(),
         ),
       () =>
@@ -86,6 +93,7 @@ describe('PokeLoungeController', () => {
     expect(service.createRoom.mock.calls).toHaveLength(0);
     expect(service.joinRoom.mock.calls).toHaveLength(0);
     expect(service.setReady.mock.calls).toHaveLength(0);
+    expect(service.startRoom.mock.calls).toHaveLength(0);
     expect(service.updatePartySnapshot.mock.calls).toHaveLength(0);
     expect(service.submitMatchResult.mock.calls).toHaveLength(0);
     expect(service.leaveRoom.mock.calls).toHaveLength(0);
@@ -176,6 +184,11 @@ describe('PokeLoungeController', () => {
       { playerId: 'player-a', sessionId: 'session-a', ready: true },
       rawRequest,
     );
+    await controller.startRoom(
+      'ROOM01',
+      { playerId: 'player-a', sessionId: 'session-a' },
+      rawRequest,
+    );
     await controller.updatePartySnapshot(
       'ROOM01',
       {
@@ -206,6 +219,7 @@ describe('PokeLoungeController', () => {
     for (const calls of [
       service.joinRoom.mock.calls,
       service.setReady.mock.calls,
+      service.startRoom.mock.calls,
       service.updatePartySnapshot.mock.calls,
       service.submitMatchResult.mock.calls,
       service.leaveRoom.mock.calls,
@@ -264,6 +278,14 @@ describe('PokeLoungeController', () => {
       ),
       rawRequest,
     );
+    await controller.startRoom(
+      'ROOM01',
+      withClientNowMs(
+        { playerId: 'player-a', sessionId: 'session-a' },
+        clientNowMs,
+      ),
+      rawRequest,
+    );
     await controller.updatePartySnapshot(
       'ROOM01',
       withClientNowMs(
@@ -304,6 +326,7 @@ describe('PokeLoungeController', () => {
       service.createRoom.mock.calls[0]?.[0],
       service.joinRoom.mock.calls[0]?.[1],
       service.setReady.mock.calls[0]?.[1],
+      service.startRoom.mock.calls[0]?.[1],
       service.updatePartySnapshot.mock.calls[0]?.[1],
       service.submitMatchResult.mock.calls[0]?.[1],
       service.leaveRoom.mock.calls[0]?.[1],

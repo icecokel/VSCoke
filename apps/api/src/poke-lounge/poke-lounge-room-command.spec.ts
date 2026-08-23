@@ -60,4 +60,19 @@ describe('Poke Lounge room command hashing', () => {
       }),
     ).not.toBe(hashPokeLoungeRoomCommand(base));
   });
+
+  it('includes the host session identity in start command hashes', () => {
+    const first = hashPokeLoungeRoomCommand({
+      operation: 'start',
+      roomCode: 'ROOM01',
+      body: { playerId: 'player-a', sessionId: 'session-a' },
+    });
+    const otherSession = hashPokeLoungeRoomCommand({
+      operation: 'start',
+      roomCode: 'ROOM01',
+      body: { playerId: 'player-a', sessionId: 'session-b' },
+    });
+
+    expect(otherSession).not.toBe(first);
+  });
 });

@@ -6,8 +6,8 @@ interface AccessibleSummaryCopy {
   trainerPreparing: string;
   noParty: string;
   solo: string;
-  room(roomId: string, connectionStatus: string): string;
-  tournamentRoom(roomId: string): string;
+  room(connectionStatus: string): string;
+  tournament: string;
   waiting(ready: number, total: number): string;
   roundStarting: string;
   tournamentComplete: string;
@@ -38,8 +38,8 @@ const ACCESSIBLE_SUMMARY_COPY: Record<PokeLoungeLocale, AccessibleSummaryCopy> =
     trainerPreparing: "트레이너 정보를 준비하는 중입니다.",
     noParty: "파티 포켓몬을 선택하지 않았습니다.",
     solo: "솔로 플레이, 공개 랭킹 미반영.",
-    room: (roomId, connectionStatus) => `방 ${roomId}, ${connectionStatus}.`,
-    tournamentRoom: roomId => `방 ${roomId}.`,
+    room: connectionStatus => `멀티플레이, ${connectionStatus}.`,
+    tournament: "토너먼트.",
     waiting: (ready, total) => `대기실, 준비 ${ready}/${total}.`,
     roundStarting: "대회 시작 전 준비 중.",
     tournamentComplete: "토너먼트 완료.",
@@ -73,8 +73,8 @@ const ACCESSIBLE_SUMMARY_COPY: Record<PokeLoungeLocale, AccessibleSummaryCopy> =
     trainerPreparing: "Preparing trainer information.",
     noParty: "No party Pokémon selected.",
     solo: "Solo play, not included in the public ranking.",
-    room: (roomId, connectionStatus) => `Room ${roomId}, ${connectionStatus}.`,
-    tournamentRoom: roomId => `Room ${roomId}.`,
+    room: connectionStatus => `Multiplayer, ${connectionStatus}.`,
+    tournament: "Tournament.",
     waiting: (ready, total) => `Lobby, ${ready} of ${total} ready.`,
     roundStarting: "Preparing to start the tournament.",
     tournamentComplete: "Tournament complete.",
@@ -108,8 +108,8 @@ const ACCESSIBLE_SUMMARY_COPY: Record<PokeLoungeLocale, AccessibleSummaryCopy> =
     trainerPreparing: "トレーナー情報を準備しています。",
     noParty: "パーティのポケモンが選択されていません。",
     solo: "ソロプレイ、公開ランキング対象外。",
-    room: (roomId, connectionStatus) => `ルーム ${roomId}、${connectionStatus}。`,
-    tournamentRoom: roomId => `ルーム ${roomId}。`,
+    room: connectionStatus => `マルチプレイ、${connectionStatus}。`,
+    tournament: "トーナメント。",
     waiting: (ready, total) => `ロビー、準備完了 ${ready}/${total}。`,
     roundStarting: "大会開始前の準備中。",
     tournamentComplete: "トーナメント完了。",
@@ -160,7 +160,7 @@ export function createAccessibleGameSummary(state: GameState, locale?: string | 
   if (!projection) {
     const modeSummary =
       state.session.roomId && state.session.roomId !== "local-preview"
-        ? copy.room(state.session.roomId, copy.connection[state.session.connectionStatus])
+        ? copy.room(copy.connection[state.session.connectionStatus])
         : copy.solo;
 
     return `${modeSummary} ${partySummary}`;
@@ -200,7 +200,7 @@ export function createAccessibleGameSummary(state: GameState, locale?: string | 
   const rankingSummary =
     projection.competitionKind === "ranked-head-to-head" ? copy.ranked : copy.unranked;
 
-  return `${copy.tournamentRoom(projection.roomCode)} ${stageSummary} ${roleSummary} ${rankingSummary} ${partySummary}`;
+  return `${copy.tournament} ${stageSummary} ${roleSummary} ${rankingSummary} ${partySummary}`;
 }
 
 interface AccessibleSceneCopy {

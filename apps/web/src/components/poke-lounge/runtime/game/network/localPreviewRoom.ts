@@ -99,6 +99,8 @@ export interface MultiplayerRoom {
   roomId: string;
   sessionId: string;
   connect(initialSnapshot?: PlayerSnapshot): void;
+  setLobbyReady(ready: boolean): Promise<void>;
+  startChampionship(): Promise<void>;
   leave?(): void;
   dispose(): void;
   send<T extends RoomMessage>(type: T, payload: RoomEvent[T]): void;
@@ -303,6 +305,8 @@ export function createLocalPreviewRoom(options: LocalPreviewRoomOptions = {}): M
   return {
     roomId,
     sessionId,
+    setLobbyReady: async () => undefined,
+    startChampionship: async () => undefined,
     connect(initialSnapshot) {
       if (disposed || connected) {
         return;

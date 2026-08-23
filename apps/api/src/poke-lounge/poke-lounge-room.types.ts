@@ -110,6 +110,7 @@ export type PokeLoungePublicRoomState = Omit<
   PokeLoungeRoomState,
   'participants' | 'partySnapshots'
 > & {
+  hostPlayerId: string | null;
   participants: PokeLoungePublicRoomParticipant[];
   partySnapshots: Record<string, PokeLoungePublicPartySnapshot>;
   revision: number;
@@ -140,6 +141,12 @@ export interface SetPokeLoungeReadyInput {
   playerId: string;
   sessionId?: string;
   ready: boolean;
+  nowMs?: number;
+}
+
+export interface StartPokeLoungeRoomInput {
+  playerId: string;
+  sessionId: string;
   nowMs?: number;
 }
 

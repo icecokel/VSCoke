@@ -58,6 +58,7 @@ function createProjection(revision: number): TournamentStateRoomPayload {
   return {
     revision,
     roomCode: "ROOM01",
+    hostPlayerId: "player-1",
     roundIndex: 1,
     roomStatus: "tournament",
     roomRound: {
@@ -71,6 +72,7 @@ function createProjection(revision: number): TournamentStateRoomPayload {
       ...participant,
       role: "participant",
       ready: true,
+      partyReady: true,
       connected: true,
     })),
     tournament: {
@@ -92,6 +94,7 @@ function createPreparationProjection(revision: number): TournamentStateRoomPaylo
   return {
     revision,
     roomCode: "ROOM01",
+    hostPlayerId: "player-1",
     roundIndex: 1,
     roomStatus: "round-started",
     roomRound: {
@@ -107,6 +110,7 @@ function createPreparationProjection(revision: number): TournamentStateRoomPaylo
         displayName: "Player 1",
         role: "participant",
         ready: true,
+        partyReady: true,
         connected: true,
         seed: null,
       },
@@ -115,6 +119,7 @@ function createPreparationProjection(revision: number): TournamentStateRoomPaylo
         displayName: "Player 2",
         role: "participant",
         ready: true,
+        partyReady: true,
         connected: true,
         seed: null,
       },
@@ -185,10 +190,17 @@ test("낮은 revision projection은 현재 bracket을 덮지 않는다", () => {
   assert.equal(store.getState().tournament.serverProjection?.revision, 7);
 });
 
-test("같은 revision의 다른 bracket은 현재 canonical state를 덮지 않는다", () => {
+test("같은 revision의 다른 방장이나 bracket은 현재 canonical state를 덮지 않는다", () => {
   const store = createGameStateStore();
   const projection = createProjection(7);
   store.applyTournamentSnapshotFromRoom(projection, 1000);
+  const divergentHost = structuredClone(projection);
+  divergentHost.hostPlayerId = "player-2";
+
+  assert.deepEqual(store.applyTournamentSnapshotFromRoom(divergentHost, 1050), {
+    ok: false,
+    reason: "invalid-projection",
+  });
   const divergent = structuredClone(projection);
   divergent.tournament.activeMatchId = null;
   divergent.tournament.activeMatchAuthority = null;

@@ -1240,9 +1240,7 @@ export function PokeLoungeGame() {
           onOpenSettings={handleMobileSettingsOpen}
           settings={{
             autosaveLabel,
-            connectionLabel: multiplayerRoomId
-              ? `${connectionLabel} · ${multiplayerRoomId}`
-              : connectionLabel,
+            connectionLabel,
             hydrationFallbackMessage: usingLocalHydrationFallback ? stateHydrationMessage : null,
             hydrationRetryDisabled,
             hydrationRetryLabel,
@@ -1326,7 +1324,7 @@ export function PokeLoungeGame() {
               data-tone={connectionSummary.connectionStatus === "online" ? "success" : "warning"}
               data-poke-lounge-connection-status={connectionSummary.connectionStatus}
             >
-              {connectionLabel} · {multiplayerRoomId}
+              {connectionLabel}
             </p>
           ) : null}
           <p

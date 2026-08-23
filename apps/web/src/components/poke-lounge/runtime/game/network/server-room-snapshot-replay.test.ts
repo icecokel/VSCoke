@@ -190,6 +190,7 @@ function createRoomSnapshots() {
 
     return {
       roomCode: "ROOM01",
+      hostPlayerId: "player-1",
       revision,
       expiresAtMs: 253_402_300_799_999,
       status: "tournament",
@@ -440,6 +441,7 @@ function createEightTerminalTransitionPage() {
 
   return {
     roomCode: "ROOM01",
+    hostPlayerId: "player-1",
     revision: 100,
     expiresAtMs: 253_402_300_799_999,
     status: "tournament",
@@ -641,7 +643,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     let ready = false;
     const fetchFixture: typeof fetch = async input => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      ready ||= url.pathname.endsWith("/ready");
+      ready ||= url.pathname.endsWith("/party-snapshot");
       return jsonResponse(snapshots.initial);
     };
     room = createServerRoom({
@@ -853,7 +855,7 @@ test("round 종료 시각이 되면 authoritative GET으로 완료 상태를 반
     let latestRoundPhase: RoomEvent["TOURNAMENT_STATE"]["roomRound"]["phase"] | null = null;
     const fetchFixture: typeof fetch = async (input, init) => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      ready ||= url.pathname.endsWith("/ready");
+      ready ||= url.pathname.endsWith("/party-snapshot");
       const isClockRefresh =
         clockArmed && (init?.method ?? "GET") === "GET" && !url.searchParams.has("afterRevision");
 
@@ -915,7 +917,7 @@ test("round 종료 GET이 같은 상태를 반환하면 bounded backoff로 다�
     let clockRefreshes = 0;
     const fetchFixture: typeof fetch = async (input, init) => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      ready ||= url.pathname.endsWith("/ready");
+      ready ||= url.pathname.endsWith("/party-snapshot");
       const isClockRefresh =
         clockArmed && (init?.method ?? "GET") === "GET" && !url.searchParams.has("afterRevision");
 
@@ -977,7 +979,7 @@ test("긴 round 대기는 30초로 제한되고 dispose는 stale callback도 무
     let clockRefreshes = 0;
     const fetchFixture: typeof fetch = async (input, init) => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      ready ||= url.pathname.endsWith("/ready");
+      ready ||= url.pathname.endsWith("/party-snapshot");
       if (
         clockArmed &&
         (init?.method ?? "GET") === "GET" &&
@@ -1124,7 +1126,7 @@ test("reconnect 뒤 clear된 queued recovery timer는 추가 GET을 dispatch하�
     let recoveryRequests = 0;
     const fetchFixture: typeof fetch = async input => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      ready ||= url.pathname.endsWith("/ready");
+      ready ||= url.pathname.endsWith("/party-snapshot");
       if (url.searchParams.has("afterRevision")) {
         recoveryRequests += 1;
       }
@@ -1178,7 +1180,7 @@ test("socket 미연결 recovery 성공은 polling backoff를 초기화하지 않
     let recoveryRequests = 0;
     const fetchFixture: typeof fetch = async input => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      ready ||= url.pathname.endsWith("/ready");
+      ready ||= url.pathname.endsWith("/party-snapshot");
       if (url.searchParams.has("afterRevision")) {
         recoveryRequests += 1;
       }
@@ -1228,7 +1230,7 @@ test("8개 terminal transition 페이지는 cursor 전진 시 즉시 다음 페�
     let recoveryRequests = 0;
     const fetchFixture: typeof fetch = async input => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      ready ||= url.pathname.endsWith("/ready");
+      ready ||= url.pathname.endsWith("/party-snapshot");
       if (!url.searchParams.has("afterRevision")) {
         return jsonResponse(snapshots.initial);
       }
@@ -1287,7 +1289,7 @@ test("외부 terminal recovery가 대기 중이면 8개 페이지도 backoff로 
     let releaseFirstRecovery: (() => void) | undefined;
     const fetchFixture: typeof fetch = async input => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      ready ||= url.pathname.endsWith("/ready");
+      ready ||= url.pathname.endsWith("/party-snapshot");
       if (!url.searchParams.has("afterRevision")) {
         return jsonResponse(snapshots.initial);
       }
@@ -1353,7 +1355,7 @@ test("persistent same-revision mismatch recovery는 즉시 재귀하지 않는�
     let mismatchRecoveryRequests = 0;
     const fetchFixture: typeof fetch = async input => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      ready ||= url.pathname.endsWith("/ready");
+      ready ||= url.pathname.endsWith("/party-snapshot");
       if (!url.searchParams.has("afterRevision")) {
         return jsonResponse(snapshots.initial);
       }
@@ -1418,7 +1420,7 @@ test("E2E recovery failure diagnostics는 원인을 분류하고 안정화 시 �
     let ready = false;
     const fetchFixture: typeof fetch = async input => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      ready ||= url.pathname.endsWith("/ready");
+      ready ||= url.pathname.endsWith("/party-snapshot");
       if (!url.searchParams.has("afterRevision")) {
         return jsonResponse(snapshots.initial);
       }
@@ -1573,7 +1575,7 @@ test("same-revision 중첩 record key 순서 차이는 recovery를 시작하지 
     let recoveryRequests = 0;
     const fetchFixture: typeof fetch = async input => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      ready ||= url.pathname.endsWith("/ready");
+      ready ||= url.pathname.endsWith("/party-snapshot");
       if (url.searchParams.has("afterRevision")) {
         recoveryRequests += 1;
       }
@@ -1629,7 +1631,7 @@ test("같은 room revision의 경쟁전 제출과 turn 전진을 정상 적용�
     let recoveryRequests = 0;
     const fetchFixture: typeof fetch = async input => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      ready ||= url.pathname.endsWith("/ready");
+      ready ||= url.pathname.endsWith("/party-snapshot");
       if (url.searchParams.has("afterRevision")) {
         recoveryRequests += 1;
       }
@@ -1706,7 +1708,7 @@ test("지연된 경쟁전 projection은 최신 assignment와 turn 및 제출 상
     let ready = false;
     const fetchFixture: typeof fetch = async input => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      ready ||= url.pathname.endsWith("/ready");
+      ready ||= url.pathname.endsWith("/party-snapshot");
       return jsonResponse(snapshots.initial);
     };
     room = createServerRoom({
@@ -1854,7 +1856,7 @@ test("BattleScene은 최신 snapshot을 적용하고 WorldScene 재구독에도 
     room.connect({
       ...createPlayerSnapshot(),
     });
-    await waitFor(() => calls.some(path => path.endsWith("/ready")));
+    await waitFor(() => calls.some(path => path.endsWith("/party-snapshot")));
     assert.equal(store.getState().tournament.serverProjection?.revision, 15);
     assert.equal(store.getState().tournament.serverProjection?.roomCode, "ROOM01");
     assert.deepEqual(store.getState().tournament.serverProjection?.roomRound, {
@@ -1869,6 +1871,7 @@ test("BattleScene은 최신 snapshot을 적용하고 WorldScene 재구독에도 
       displayName: "Player 1",
       role: "participant",
       ready: true,
+      partyReady: false,
       connected: true,
       seed: 1,
     });
@@ -1946,7 +1949,7 @@ test("listener가 없는 동안 terminal을 cache하고 terminal에서 current �
     let ready = false;
     const fetchFixture: typeof fetch = async input => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      ready ||= url.pathname.endsWith("/ready");
+      ready ||= url.pathname.endsWith("/party-snapshot");
 
       return new Response(JSON.stringify(snapshots.initial), {
         status: 200,
@@ -2002,7 +2005,7 @@ test("completed bracket grace는 terminal cursor로 복구하고 lower snapshot 
     let ready = false;
     const fetchFixture: typeof fetch = async input => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      ready ||= url.pathname.endsWith("/ready");
+      ready ||= url.pathname.endsWith("/party-snapshot");
       const afterRevision = url.searchParams.get("afterRevision");
       if (afterRevision !== null) {
         recoveryAfterRevisions.push(Number(afterRevision));
@@ -2125,7 +2128,7 @@ for (const deliveryOrder of ["rest-first", "socket-first"] as const) {
       let ready = false;
       const fetchFixture: typeof fetch = async input => {
         const url = new URL(typeof input === "string" ? input : input.toString());
-        ready ||= url.pathname.endsWith("/ready");
+        ready ||= url.pathname.endsWith("/party-snapshot");
         if (url.pathname.endsWith("/competitive-seat")) {
           return jsonResponse(null, 201);
         }
@@ -2204,7 +2207,7 @@ for (const delayedSource of ["action", "seat"] as const) {
       let ready = false;
       const fetchFixture: typeof fetch = async input => {
         const url = new URL(typeof input === "string" ? input : input.toString());
-        ready ||= url.pathname.endsWith("/ready");
+        ready ||= url.pathname.endsWith("/party-snapshot");
 
         if (url.pathname.endsWith("/competitive-seat")) {
           if (delayedSource === "seat") {
@@ -2293,7 +2296,7 @@ test("legacy terminal metadata 응답은 current cache를 덮지 않고 room rec
     const metadataRecoveryGate: { release?: () => void } = {};
     const fetchFixture: typeof fetch = async input => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      ready ||= url.pathname.endsWith("/ready");
+      ready ||= url.pathname.endsWith("/party-snapshot");
       if (url.pathname.endsWith("/competitive-seat")) {
         return jsonResponse(null, 201);
       }
@@ -2375,7 +2378,7 @@ test("legacy terminal metadata 응답은 current cache를 덮지 않고 room rec
   }
 });
 
-test("초기 ready revision conflict 뒤 단계 workflow를 재개한다", async () => {
+test("수동 ready revision conflict는 최신 snapshot을 반영하고 자동 재시도하지 않는다", async () => {
   process.env.NEXT_PUBLIC_API_URL = "http://api.test";
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   const timers = createManualRecoveryTimers();
@@ -2390,14 +2393,24 @@ test("초기 ready revision conflict 뒤 단계 workflow를 재개한다", async
     const socket = createSocket();
     const snapshots = createRoomSnapshots();
     const readyIdempotencyKeys: string[] = [];
+    const mutationBodies: unknown[] = [];
     let readyRequests = 0;
+    let startRequests = 0;
+    let partySynced = false;
     const fetchFixture: typeof fetch = async (input, init) => {
       const url = new URL(typeof input === "string" ? input : input.toString());
+      partySynced ||= url.pathname.endsWith("/party-snapshot");
+      if (url.pathname.endsWith("/start")) {
+        startRequests += 1;
+        mutationBodies.push(JSON.parse(String(init?.body)));
+        return jsonResponse(snapshots.initial);
+      }
       if (!url.pathname.endsWith("/ready")) {
         return jsonResponse(snapshots.initial);
       }
 
       readyRequests += 1;
+      mutationBodies.push(JSON.parse(String(init?.body)));
       readyIdempotencyKeys.push(new Headers(init?.headers).get("X-Idempotency-Key") ?? "");
       if (readyRequests === 1) {
         return jsonResponse(
@@ -2422,15 +2435,24 @@ test("초기 ready revision conflict 뒤 단계 workflow를 재개한다", async
     });
 
     room.connect(createPlayerSnapshot());
-    await waitFor(() => readyRequests === 1);
-    assert.equal(timers.nextDelay(), 250);
+    await waitFor(() => partySynced);
+    await assert.rejects(room.setLobbyReady(true));
+    assert.equal(readyRequests, 1);
+    assert.equal(timers.nextDelay(), null);
 
-    await timers.runNext();
-    await waitFor(() => readyRequests === 2);
+    await room.setLobbyReady(true);
+    assert.equal(readyRequests, 2);
 
     assert.notEqual(readyIdempotencyKeys[0], "");
     assert.notEqual(readyIdempotencyKeys[1], "");
     assert.notEqual(readyIdempotencyKeys[0], readyIdempotencyKeys[1]);
+    await room.startChampionship();
+    assert.equal(startRequests, 1);
+    assert.deepEqual(mutationBodies, [
+      { playerId: "player-1", sessionId: "session-1", ready: true },
+      { playerId: "player-1", sessionId: "session-1", ready: true },
+      { playerId: "player-1", sessionId: "session-1" },
+    ]);
   } finally {
     room?.dispose();
     restoreWindow(originalWindow);
@@ -2474,7 +2496,7 @@ test("create 응답 전 transport 실패는 같은 idempotency key로 방 생성
           throw new TypeError("connection reset after commit");
         }
       }
-      ready ||= url.pathname.endsWith("/ready");
+      ready ||= url.pathname.endsWith("/party-snapshot");
       return jsonResponse(snapshots.initial);
     };
     room = createServerRoom({
@@ -2634,7 +2656,7 @@ test("임시 비밀번호 방은 안전한 실시간 위치와 챔피언십 준�
     await waitFor(
       () =>
         socket.emissions("room.player-event").length > 0 &&
-        requestedPaths.some(path => path.endsWith("/ready")),
+        requestedPaths.some(path => path.endsWith("/party-snapshot")),
     );
 
     assert.deepEqual(createBody, {
@@ -2650,7 +2672,7 @@ test("임시 비밀번호 방은 안전한 실시간 위치와 챔피언십 준�
     );
     assert.equal(
       requestedPaths.some(path => path.endsWith("/ready")),
-      true,
+      false,
     );
 
     const initialLiveEvent = socket.emissions("room.player-event").at(-1) as {
@@ -2746,7 +2768,7 @@ test("casual result 복구 재전송은 최초 body와 idempotency key를 그대
     let ready = false;
     const fetchFixture: typeof fetch = async (input, init) => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      ready ||= url.pathname.endsWith("/ready");
+      ready ||= url.pathname.endsWith("/party-snapshot");
       if (!url.pathname.endsWith("/result")) {
         return jsonResponse(snapshots.initial);
       }

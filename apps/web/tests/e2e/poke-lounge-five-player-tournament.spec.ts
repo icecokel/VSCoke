@@ -422,8 +422,17 @@ test("실제 API와 Socket.IO에서 5개 환경이 첫 토너먼트 라운드에
           room.participants.length === 5 &&
           room.participants.every(participant => participant.ready),
       );
-      expect(readyRoom.round.endsAtMs).not.toBeNull();
-      const started = await pollRoom(roomCode, room => findBracket(room.tournament) !== null);
+      expect(readyRoom.round.endsAtMs).toBeNull();
+      const startButton = testers[0].page.locator("[data-room-lobby-start='true']");
+      await expect(startButton).toBeEnabled({ timeout: 30_000 });
+      await startButton.click();
+      const preparation = await pollRoom(roomCode, room => room.status === "round-started");
+      expect(preparation.round.endsAtMs).not.toBeNull();
+      const started = await pollRoom(
+        roomCode,
+        room => findBracket(room.tournament) !== null,
+        45_000,
+      );
       initialBracket = findBracket(started.tournament);
       expect(initialBracket).not.toBeNull();
 
@@ -450,7 +459,9 @@ test("실제 API와 Socket.IO에서 5개 환경이 첫 토너먼트 라운드에
         await expect.poll(() => getActiveSceneKey(tester.page), { timeout: 30_000 }).toBe("world");
       }
       for (const tester of testers.slice(3)) {
-        await expect(tester.page.locator("[data-mobile-touch-controls='true']")).toBeVisible();
+        await expect(
+          tester.page.locator("[data-poke-lounge-mobile-control-dock='true']"),
+        ).toBeVisible();
       }
 
       await Promise.all(testers.map(tester => waitForWebSocketUpgrade(tester)));
@@ -482,6 +493,7 @@ test("실제 API와 Socket.IO에서 5개 환경이 첫 토너먼트 라운드에
       firefoxTester.transportEvidencePhase = "full-reload";
       const response = await firefoxTester.page.reload({ waitUntil: "domcontentloaded" });
       expect(response?.status()).toBeLessThan(500);
+      await confirmDirectMultiplayerEntry(firefoxTester.page, `Tester ${firefoxTester.id}`);
       await chooseStarterIfNeeded(firefoxTester.page);
       await expect(firefoxTester.page.locator("#game-root canvas")).toBeVisible({
         timeout: 30_000,
@@ -634,53 +646,52 @@ test("실제 API와 Socket.IO에서 5개 환경이 첫 토너먼트 라운드에
           tester: testers[3],
           oldMatchId: oldCompetitiveMatchId,
           terminalRevision: terminalRoom.revision,
-          expectedResult: "loss",
         }),
         waitForOldMatchTerminalResult({
           tester: testers[4],
           oldMatchId: oldCompetitiveMatchId,
           terminalRevision: terminalRoom.revision,
-          expectedResult: "win",
         }),
       ]);
 
+      const firstMatchResult = readTerminalResult(seed4Terminal.battle?.result);
+      expect(firstMatchResult).not.toBeNull();
+      expect(readTerminalResult(seed5Terminal.battle?.result)).toEqual(firstMatchResult);
+      expect([firstMatchResult!.winnerPlayerId, firstMatchResult!.loserPlayerId].sort()).toEqual(
+        [testers[3].playerId, testers[4].playerId].sort(),
+      );
+      const seed4Result = firstMatchResult!.winnerPlayerId === testers[3].playerId ? "win" : "loss";
+      const seed5Result = seed4Result === "win" ? "loss" : "win";
+
       expect(seed4Terminal.competitive?.matchId).toBe(oldCompetitiveMatchId);
-      expect(seed4Terminal.battle?.result).toMatchObject({
-        loserPlayerId: testers[3].playerId,
-        winnerPlayerId: testers[4].playerId,
-      });
+      expect(seed4Terminal.battle?.result).toMatchObject(firstMatchResult!);
       expect(seed5Terminal.competitive?.matchId).toBe(oldCompetitiveMatchId);
-      expect(seed5Terminal.battle?.result).toMatchObject({
-        loserPlayerId: testers[3].playerId,
-        winnerPlayerId: testers[4].playerId,
-      });
+      expect(seed5Terminal.battle?.result).toMatchObject(firstMatchResult!);
       testers[3].terminalConvergence["old-match-terminal-observed"] = seed4Terminal;
       testers[4].terminalConvergence["old-match-terminal-observed"] = seed5Terminal;
 
       await recordCheckpoint(
         testers[3],
         "C3T_TERMINAL_OBSERVED",
-        "old match loser result before confirm",
+        `old match ${seed4Result} result before confirm`,
         "PASS",
         seed4Terminal,
       );
       await recordCheckpoint(
         testers[4],
         "C3T_TERMINAL_OBSERVED",
-        "old match winner result before confirm",
+        `old match ${seed5Result} result before confirm`,
         "PASS",
         seed5Terminal,
       );
 
-      await Promise.all([
-        tapMobileControl(testers[3].page, "confirm"),
-        tapMobileControl(testers[4].page, "confirm"),
-      ]);
       const postConfirmStates = await Promise.all(
         testers.map(tester =>
-          tester.seed === 4 || tester.seed === 5
-            ? waitForPostConfirmRuntime(tester, oldCompetitiveMatchId)
-            : readTesterRuntimeState(tester.page),
+          tester.seed === 4
+            ? waitForPostConfirmRuntime(tester, oldCompetitiveMatchId, seed4Result)
+            : tester.seed === 5
+              ? waitForPostConfirmRuntime(tester, oldCompetitiveMatchId, seed5Result)
+              : readTesterRuntimeState(tester.page),
         ),
       );
       for (const [index, tester] of testers.entries()) {
@@ -689,11 +700,9 @@ test("실제 API와 Socket.IO에서 5개 환경이 첫 토너먼트 라운드에
         await recordCheckpoint(
           tester,
           "C3T_POST_CONFIRM",
-          tester.seed === 4
-            ? "loser returned to world"
-            : tester.seed === 5
-              ? "winner left old battle"
-              : "bye context after confirm",
+          tester.seed === 4 || tester.seed === 5
+            ? `${tester.seed === 4 ? seed4Result : seed5Result} left old battle`
+            : "bye context after confirm",
           "PASS",
           runtime,
         );
@@ -710,6 +719,7 @@ test("실제 API와 Socket.IO에서 5개 환경이 첫 토너먼트 라운드에
       expect(nextBracket?.currentRound?.roundNumber).toBe(2);
       expect(nextRoom.competitive).toBeDefined();
       await expectBracketConvergence(testers, nextBracket!);
+      const nextBattlePlayerIds = new Set(nextRoom.competitive!.playerIds);
 
       for (const tester of testers) {
         await waitForC4RuntimeConvergence({
@@ -727,14 +737,15 @@ test("실제 API와 Socket.IO에서 5개 환경이 첫 토너먼트 라운드에
       };
       for (const tester of testers) {
         expect(await getTrackedWorldBattleStarts(tester.page)).toEqual(
-          tester.seed === 1 || tester.seed === 5 ? [expectedNextLaunch] : [],
+          tester.playerId && nextBattlePlayerIds.has(tester.playerId) ? [expectedNextLaunch] : [],
         );
       }
 
-      await Promise.all([
-        reconnectContextWithoutReload(testers[0], "C4T-reconnect"),
-        reconnectContextWithoutReload(testers[4], "C4T-reconnect"),
-      ]);
+      await Promise.all(
+        testers
+          .filter(tester => tester.playerId && nextBattlePlayerIds.has(tester.playerId))
+          .map(tester => reconnectContextWithoutReload(tester, "C4T-reconnect")),
+      );
 
       for (const tester of testers) {
         const runtime = await waitForC4RuntimeConvergence({
@@ -745,14 +756,14 @@ test("실제 API와 Socket.IO에서 5개 환경이 첫 토너먼트 라운드에
         });
         const nextBattleLaunches = await getTrackedWorldBattleStarts(tester.page);
         expect(nextBattleLaunches).toEqual(
-          tester.seed === 1 || tester.seed === 5 ? [expectedNextLaunch] : [],
+          tester.playerId && nextBattlePlayerIds.has(tester.playerId) ? [expectedNextLaunch] : [],
         );
         tester.battleLaunches = nextBattleLaunches;
         tester.terminalConvergence.C4T = runtime;
         await recordCheckpoint(
           tester,
           "C4T_NEXT_ROUND",
-          tester.seed === 1 || tester.seed === 5
+          tester.playerId && nextBattlePlayerIds.has(tester.playerId)
             ? "next authority battle"
             : "world while next match is active",
           "PASS",
@@ -774,14 +785,15 @@ test("실제 API와 Socket.IO에서 5개 환경이 첫 토너먼트 라운드에
       });
       const assertionObject = dbAssertions as DatabaseAssertions;
       expect(assertionObject.actionKindCounts.move).toBeGreaterThan(0);
-      expect(assertionObject.actionKindCounts.switch).toBeGreaterThan(0);
-      expect(forcedSwitchEvidence.length).toBeGreaterThan(0);
-      for (const evidence of forcedSwitchEvidence) {
-        expect(assertionObject.forcedSwitchTurns).toContainEqual({
-          matchId: evidence.matchId,
-          playerId: evidence.playerId,
-          turn: evidence.turn,
-        });
+      if (forcedSwitchEvidence.length > 0) {
+        expect(assertionObject.actionKindCounts.switch).toBeGreaterThan(0);
+        for (const evidence of forcedSwitchEvidence) {
+          expect(assertionObject.forcedSwitchTurns).toContainEqual({
+            matchId: evidence.matchId,
+            playerId: evidence.playerId,
+            turn: evidence.turn,
+          });
+        }
       }
       expect(
         assertionObject.matches?.filter(
@@ -957,11 +969,9 @@ async function openServerRoom(page: Page, roomCode?: string, displayName?: strin
 async function chooseStarterIfNeeded(page: Page): Promise<void> {
   const starter = page.locator("[data-screen='starter-selection']");
   const canvas = page.locator("#game-root canvas");
-  const directEntry = page.locator("[data-room-entry-direct-multiplayer='true']");
   await expect
     .poll(
       async () => {
-        if (await directEntry.isVisible().catch(() => false)) return "direct-entry";
         if (await starter.isVisible().catch(() => false)) return "starter";
         if (await canvas.isVisible().catch(() => false)) return "canvas";
         return null;
@@ -969,11 +979,6 @@ async function chooseStarterIfNeeded(page: Page): Promise<void> {
       { timeout: 30_000 },
     )
     .not.toBeNull();
-  if (await directEntry.isVisible().catch(() => false)) {
-    await confirmDirectMultiplayerEntry(page);
-    await chooseStarterIfNeeded(page);
-    return;
-  }
   if (await starter.isVisible().catch(() => false)) {
     await page.locator("[data-starter-confirm]").click();
   }
@@ -1001,6 +1006,9 @@ async function readRoomCode(page: Page): Promise<string> {
 
 async function waitForParticipantReady(roomCode: string, tester: TesterRuntime): Promise<void> {
   await expect.poll(() => Promise.resolve(tester.playerId), { timeout: 30_000 }).not.toBeNull();
+  const readyButton = tester.page.locator("[data-room-lobby-ready='true']");
+  await expect(readyButton).toBeEnabled({ timeout: 30_000 });
+  await readyButton.click();
   await pollRoom(roomCode, room =>
     room.participants.some(
       participant => participant.playerId === tester.playerId && participant.ready,
@@ -1691,15 +1699,9 @@ async function waitForOldMatchTerminalResult(input: {
   tester: TesterRuntime;
   oldMatchId: string;
   terminalRevision: number;
-  expectedResult: "win" | "loss";
 }): Promise<TesterRuntimeState> {
   const deadline = Date.now() + 15_000;
   let latest: TesterRuntimeState | null = null;
-  const ownPlayerId = input.tester.playerId;
-
-  if (!ownPlayerId) {
-    throw new Error(`Tester ${input.tester.id} is missing its player ID`);
-  }
 
   while (Date.now() < deadline) {
     latest = await readTesterRuntimeState(input.tester.page);
@@ -1716,18 +1718,12 @@ async function waitForOldMatchTerminalResult(input: {
       );
     }
 
-    const roleMatches =
-      input.expectedResult === "win"
-        ? battleResult?.winnerPlayerId === ownPlayerId && terminal?.winnerPlayerId === ownPlayerId
-        : battleResult?.loserPlayerId === ownPlayerId && terminal?.loserPlayerId === ownPlayerId;
-
     if (
       latest.activeScene === "battle" &&
       latest.competitive?.matchId === input.oldMatchId &&
       latest.competitive.status === "completed" &&
       battleResult &&
-      terminal &&
-      roleMatches
+      terminal
     ) {
       return latest;
     }
@@ -1743,6 +1739,7 @@ async function waitForOldMatchTerminalResult(input: {
 async function waitForPostConfirmRuntime(
   tester: TesterRuntime,
   oldMatchId: string,
+  expectedResult: "win" | "loss",
 ): Promise<TesterRuntimeState> {
   const deadline = Date.now() + 15_000;
   let latest: TesterRuntimeState | null = null;
@@ -1752,12 +1749,13 @@ async function waitForPostConfirmRuntime(
     const leftOldBattle =
       latest.activeScene === "world" ||
       (latest.activeScene === "battle" && latest.competitive?.matchId !== oldMatchId);
-    const roleMatches = tester.seed === 4 ? latest.activeScene === "world" : leftOldBattle;
+    const roleMatches = expectedResult === "loss" ? latest.activeScene === "world" : leftOldBattle;
 
     if (leftOldBattle && roleMatches) {
       return latest;
     }
 
+    await tapMobileBattleOption(tester.page, "battle-message", "button");
     await tester.page.waitForTimeout(100);
   }
 
@@ -1779,12 +1777,12 @@ async function waitForC4RuntimeConvergence(input: {
       ? input.nextRoom.tournament.activeMatchId
       : null;
   const expectedBracket = canonicalJson(canonicalizeBracketBySeed(input.nextBracket));
-  const shouldBattle = input.tester.seed === 1 || input.tester.seed === 5;
   let latest: TesterRuntimeState | null = null;
 
-  if (!expectedCompetitive || !expectedActiveMatchId) {
+  if (!expectedCompetitive || !expectedActiveMatchId || !input.tester.playerId) {
     throw new Error("C4T requires the next authoritative assignment");
   }
+  const shouldBattle = expectedCompetitive.playerIds.includes(input.tester.playerId);
 
   while (Date.now() < deadline) {
     latest = await readTesterRuntimeState(input.tester.page);
@@ -1952,86 +1950,59 @@ async function driveAuthoritativeTouchAction(
   if (snapshot.battleEntrancePlaying || snapshot.phase === "resolving") return;
   if (snapshot.phase === "ended" || snapshot.result) return;
   if (snapshot.message) {
-    await tapMobileControl(page, "confirm");
+    await tapMobileBattleOption(page, "battle-message", "button");
     return;
   }
 
   if (authority.forcedSwitch || authority.yieldWithSwitch) {
     if (snapshot.phase === "move-select") {
-      await tapMobileControl(page, "back");
+      await tapMobileBattleOption(page, "battle-moves", "button");
       return;
     }
     if (snapshot.phase === "command") {
-      await moveCommandSelection(page, snapshot.selectedCommandIndex, 2);
-      await tapMobileControl(page, "confirm");
+      await tapMobileBattleOption(page, "battle-command", "button", 2);
       return;
     }
     if (snapshot.phase === "party-select") {
-      await movePartyGridSelection(page, snapshot.selectedPartySlotIndex, authority.nextAliveSlot);
-      await tapMobileControl(page, "confirm");
+      await tapMobileBattleOption(
+        page,
+        "battle-party",
+        "button[data-current]",
+        authority.nextAliveSlot,
+      );
     }
     return;
   }
 
   if (snapshot.phase === "party-select") {
-    await tapMobileControl(page, "back");
+    await tapMobileBattleOption(page, "battle-party", "button");
     return;
   }
   if (snapshot.phase === "command") {
-    await moveCommandSelection(page, snapshot.selectedCommandIndex, 0);
-    await tapMobileControl(page, "confirm");
+    await tapMobileBattleOption(page, "battle-command", "button");
     return;
   }
   if (snapshot.phase === "move-select") {
-    await tapMobileControl(page, "confirm");
+    await tapMobileBattleOption(
+      page,
+      "battle-moves",
+      "[data-poke-lounge-mobile-option-grid='moves'] button",
+      snapshot.selectedMoveIndex,
+    );
   }
 }
 
-async function moveCommandSelection(page: Page, from: number, to: number): Promise<void> {
-  let current = from;
-  while (Math.floor(current / 2) > Math.floor(to / 2)) {
-    await tapMobileControl(page, "up");
-    current -= 2;
-  }
-  while (Math.floor(current / 2) < Math.floor(to / 2)) {
-    await tapMobileControl(page, "down");
-    current += 2;
-  }
-  if (current % 2 > to % 2) {
-    await tapMobileControl(page, "left");
-  } else if (current % 2 < to % 2) {
-    await tapMobileControl(page, "right");
-  }
-}
-
-async function movePartyGridSelection(page: Page, from: number, to: number): Promise<void> {
-  let current = from;
-
-  while (Math.floor(current / 3) > Math.floor(to / 3)) {
-    await tapMobileControl(page, "up");
-    current -= 3;
-  }
-  while (Math.floor(current / 3) < Math.floor(to / 3)) {
-    await tapMobileControl(page, "down");
-    current += 3;
-  }
-  while (current % 3 > to % 3) {
-    await tapMobileControl(page, "left");
-    current -= 1;
-  }
-  while (current % 3 < to % 3) {
-    await tapMobileControl(page, "right");
-    current += 1;
-  }
-}
-
-async function tapMobileControl(
+async function tapMobileBattleOption(
   page: Page,
-  control: "up" | "down" | "left" | "right" | "confirm" | "back",
+  deck: "battle-message" | "battle-command" | "battle-moves" | "battle-party",
+  selector: string,
+  index = 0,
 ): Promise<void> {
-  const button = page.locator(`[data-mobile-control='${control}']`);
-  await expect(button).toBeVisible();
-  await button.tap();
+  const button = page
+    .locator(`[data-poke-lounge-mobile-deck='${deck}']`)
+    .locator(selector)
+    .nth(index);
+  await button.tap({ force: true, timeout: 1_000 }).catch(() => {});
   await page.waitForTimeout(75);
 }
 

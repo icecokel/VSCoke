@@ -1972,8 +1972,10 @@ test.describe("Poke Lounge", () => {
               };
               subscribe(listener: () => void): () => void;
             };
+            isMovementActive: boolean;
             maybeSendMovementEnd(time: number): void;
             player: { x: number; y: number };
+            sendRoomMessage(type: string, payload: unknown): void;
           }
         | undefined;
 
@@ -1999,12 +2001,20 @@ test.describe("Poke Lounge", () => {
       worldScene.player.x += 2;
       worldScene.maybeSendMovementEnd(1_000_500);
       const positionNotificationCount = notificationCount;
+      const sentRoomMessages: string[] = [];
+      worldScene.sendRoomMessage = type => {
+        sentRoomMessages.push(type);
+      };
+      worldScene.isMovementActive = true;
+      worldScene.maybeSendMovementEnd(1_000_600);
+      worldScene.maybeSendMovementEnd(1_000_700);
       const storedPosition = worldScene.gameStateStore.getCurrentLocalPlayer().position;
       unsubscribe();
 
       return {
         stationaryNotificationCount,
         directionNotificationCount,
+        movementEndCount: sentRoomMessages.filter(type => type === "PLAYER_MOVEMENT_ENDED").length,
         positionNotificationCount,
         storedPosition,
       };
@@ -2012,6 +2022,7 @@ test.describe("Poke Lounge", () => {
 
     expect(result.stationaryNotificationCount).toBe(0);
     expect(result.directionNotificationCount).toBe(1);
+    expect(result.movementEndCount).toBe(1);
     expect(result.positionNotificationCount).toBe(2);
     expect(result.storedPosition.facing).toBe("left");
     expect(browserErrors.join("\n")).toBe("");

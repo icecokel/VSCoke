@@ -207,6 +207,7 @@ export class WorldScene extends Phaser.Scene {
     y: 0,
     facing: "front",
   };
+  private isMovementActive = false;
   private readonly encounters: WorldSceneEncounterController;
   private readonly interactions: WorldSceneInteractionsController;
   private readonly competitiveRoundsEnabled: boolean;
@@ -302,6 +303,7 @@ export class WorldScene extends Phaser.Scene {
     }
     this.shutdownComplete = false;
     this.preserveRoomForBattle = false;
+    this.isMovementActive = false;
     this.hud = createWorldSceneHud({
       getDocument: () => this.game.canvas.ownerDocument,
       getGameObjectFactory: () => this.add,
@@ -429,6 +431,7 @@ export class WorldScene extends Phaser.Scene {
     this.player.setVelocity(velocity.x, velocity.y);
 
     if (velocity.x !== 0 || velocity.y !== 0) {
+      this.isMovementActive = true;
       this.facing = velocity.facing;
       this.player.anims.play(FIELD_MAP.player.walkAnimationKeys[this.facing], true);
       this.maybeSendMovement(time);
@@ -473,8 +476,11 @@ export class WorldScene extends Phaser.Scene {
     this.encounters.destroy();
     this.roomConnected = false;
     this.pendingRoomMessages = [];
+    this.remotePlayers.clear();
+    this.remoteLabels.clear();
     this.remotePlayerSnapshots.clear();
     this.lastLocalSnapshotSyncKey = "";
+    this.isMovementActive = false;
     this.cursors = null;
     if (shouldDisposeRoom) {
       this.room.dispose();
@@ -932,12 +938,8 @@ export class WorldScene extends Phaser.Scene {
       }),
       this.room.on("PLAYER_MOVEMENT_ENDED", player => {
         if (player.sessionId !== this.room.sessionId) {
-          this.remotePlayerSnapshots.set(player.sessionId, clonePlayerSnapshot(player));
-          this.gameStateStore.upsertRemotePlayer(toRemotePlayerState(player));
-        }
-        const sprite = this.remotePlayers.get(player.sessionId);
-        if (sprite) {
-          sprite.setVelocity(0, 0);
+          this.upsertRemotePlayer(player);
+          this.remotePlayers.get(player.sessionId)?.setVelocity(0, 0);
         }
       }),
       this.room.on("PLAYER_CHANGED_MAP", player => {
@@ -1355,9 +1357,14 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
-    this.sendRoomMessage("PLAYER_MOVEMENT_ENDED", this.createLocalPlayerSnapshot());
     this.persistLocalPlayerPositionIfChanged();
+    if (!this.isMovementActive) {
+      return;
+    }
+
+    this.sendRoomMessage("PLAYER_MOVEMENT_ENDED", this.createLocalPlayerSnapshot());
     this.lastSentAt = time;
+    this.isMovementActive = false;
   }
 
   private persistLocalPlayerPositionIfChanged(): boolean {

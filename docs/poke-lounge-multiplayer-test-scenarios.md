@@ -83,17 +83,17 @@ Authorization header를 요구해서는 안 된다.
 
 ### 4.2 브라우저 구성
 
-| 환경          | 기본 viewport        | 입력   | 브라우저 매트릭스           |
-| ------------- | -------------------- | ------ | --------------------------- |
-| `Desktop Web` | 1440×900             | 키보드 | Chromium, P2 Firefox·WebKit |
-| `Mobile Web`  | Pixel 7 기준 390×844 | 터치   | Chromium, P2 Mobile WebKit  |
+| 환경          | 기본 viewport        | 입력   | 브라우저 매트릭스          |
+| ------------- | -------------------- | ------ | -------------------------- |
+| `Desktop Web` | 1440×900             | 키보드 | Chromium, P2 WebKit        |
+| `Mobile Web`  | Pixel 7 기준 390×844 | 터치   | Chromium, P2 Mobile WebKit |
 
 플레이어 역할은 `MP1`부터 `MP7`까지 유지하되 환경은 고정하지 않는다. 실행 시작 시 seed로 환경
 목록을 섞어 각 플레이어에게 배정하고, 해당 실행이 끝날 때까지 같은 환경을 유지한다.
 
 - 2인 시나리오: `Desktop Web` 1개와 `Mobile Web` 1개를 섞어 배정한다.
-- 3인 시나리오: 서로 다른 `Desktop Chromium`, `Desktop Firefox`, `Mobile Chromium` 환경을
-  한 개씩 사용하고 세 플레이어에게 섞어 배정한다.
+- 3인 시나리오: 서로 다른 `Desktop Chromium`, `Mobile Chromium`, `Mobile WebKit` 환경을 한 개씩
+  사용하고 세 플레이어에게 섞어 배정한다.
 - 6·7인 시나리오: `Desktop Web` 4개와 `Mobile Web` 3개를 섞어 배정한다.
 - 실행 seed와 `playerId → 환경` 배정 결과를 artifact에 기록하고 같은 seed로 재현할 수 있어야
   한다.
@@ -265,7 +265,38 @@ context를 재사용하더라도 이전 실행의 30초 override가 다음 방 �
 
 ## 6. 실행 시나리오
 
-### 6.1 기본 2인 shared world
+### 6.1 Luna 분산 실행 오케스트레이션
+
+| 실행 주체             | 책임                                                                | 금지 사항                                     |
+| --------------------- | ------------------------------------------------------------------- | --------------------------------------------- |
+| 루트 오케스트레이터   | 실행 준비, 환경 배정, 단계 동기화, 장애 분류, 증적 취합과 최종 보고 | 방 참가, 플레이어 입력과 승패 개입            |
+| `Luna xhigh` runner   | 배정된 독립 context의 입장·이동·전투·캡처와 상태 보고               | 다른 runner의 context 조작, 서버 판정 우회    |
+| `MP` 플레이어 context | 하나의 `playerId + sessionId`, 저장 상태와 Desktop·Mobile 환경 유지 | 다른 플레이어와 storage·cookie·입력 상태 공유 |
+
+1. 루트 오케스트레이터는 browser를 열기 전에 실행 ID와 환경 seed를 만들고 `MP` 역할, runner,
+   Desktop Web 또는 Mobile Web 환경을 무작위로 연결한다. 배정 결과는 같은 seed로 재현할 수 있게
+   기록한다.
+2. 에이전트 수와 플레이어 수는 별도로 기록한다. 현재 동시 실행 슬롯 4개에는 루트가 포함되므로
+   루트 1개와 `Luna xhigh` runner 최대 3개를 동시에 사용한다. 제품 정원 검증이 더 많은 플레이어
+   context를 요구하면 runner가 서로 격리된 context를 나눠 담당하며, 루트는 플레이어가 되지 않는다.
+3. `MP1` runner가 최초 접속과 자동 방 생성을 담당하는 방장이다. 루트 오케스트레이터를 `MP1`,
+   방장 또는 플레이어 슬롯으로 계산하지 않는다.
+4. 루트는 `ENV-READY` 보고를 모두 받은 뒤 `MP1`에게 방 생성을 지시하고, `C0-HOST`를 확인한 뒤
+   후속 참가를 순서대로 허용한다. ready·시작·대진 전환은 해당 checkpoint의 전원 보고가 모인
+   뒤에만 다음 단계로 진행한다.
+5. 전투 첫 turn은 두 참가자의 `ACTION-ARMED`를 대조한 뒤 루트가 같은 `matchId`와 turn의
+   `ACTION-GO`를 한 번 보낸다. 이후 turn은 각 runner가 서버 phase와 turn 전진을 따라 진행하며
+   루트가 플레이 입력을 대신하지 않는다.
+6. 전체 실행에는 별도 종료 시간 제한을 두지 않고 서버가 3라운드 누적 우승자를 확정할 때까지
+   한 사이클을 진행한다. 제품의 준비 시간, turn deadline과 재접속 유예는 그대로 지킨다.
+7. 각 runner는 필수 checkpoint와 연결 중단·REST 복구·Socket 재구독 전후 화면을 캡처한다. 루트는
+   실행 ID, `MP` 역할, 환경, checkpoint와 시각을 대조하고 민감값을 제거한 증적만 취합한다.
+8. runner가 `DOC-GAP`, `CODE-FAIL` 또는 `INFRA-BLOCKED`를 보고하면 루트가 중단·재현·계속 여부를
+   결정한다. 내부 API로 행동이나 승패를 대신 만들지 않으며, 안전한 checkpoint부터만 재개한다.
+9. 루트는 중간 진행을 결과 보고로 간주하지 않는다. 우승자 확정과 room 정리가 끝난 뒤 환경별
+   성공 여부, 최종 순위, 연결 복구 결과, 캡처와 결함만 하나의 최종 보고로 전달한다.
+
+### 6.2 기본 2인 shared world
 
 1. `MP1`, `MP2`의 storage를 비우고 Poke Lounge 입장 화면을 연다.
 2. seed로 `MP1`, `MP2`의 환경을 배정하고 Desktop Web과 Mobile Web 입장 화면을 각각 캡처한다.
@@ -279,7 +310,7 @@ context를 재사용하더라도 이전 실행의 30초 override가 다음 방 �
 9. `MP1`의 전투 보상과 파티 변경이 `MP2`에 반영되지 않는지 확인한다.
 10. 두 사용자가 방에서 나가고 입장 화면으로 돌아오는지 확인한다.
 
-### 6.2 6명 정원·7번째 거부·재입장
+### 6.3 6명 정원·7번째 거부·재입장
 
 1. `MP1`~`MP6`이 같은 `PW_A`에 순서대로 접속한다.
 2. REST snapshot에서 참가자 6명과 서로 다른 identity를 확인한다.
@@ -290,7 +321,7 @@ context를 재사용하더라도 이전 실행의 30초 override가 다음 방 �
 7. 다시 연결을 끊고 유예를 넘겨 참가자 제거와 다음 신규 참가자의 입장을 확인한다.
 8. 남은 모든 참가자가 명시적으로 나가도록 정리한다.
 
-### 6.3 기본 2인 챔피언십
+### 6.4 기본 2인 챔피언십
 
 1. `MP1`, `MP2`가 같은 `PW_A`에 접속해 각자의 파티를 준비한다.
 2. 자동 party snapshot 뒤에도 대기실과 준비 전 상태가 유지되는지 확인한다.
@@ -304,7 +335,7 @@ context를 재사용하더라도 이전 실행의 30초 override가 다음 방 �
 8. 3라운드 완료 뒤 모든 화면에 같은 누적 최종 순위와 예상 우승자가 표시되는지 확인한다.
 9. 최고 누적 점수가 같을 때는 공동 우승으로 표시되는지 별도 fixture로 확인한다.
 
-### 6.4 3인 shared world·3라운드 챔피언십 반복 실행
+### 6.5 3인 shared world·3라운드 챔피언십 반복 실행
 
 #### 실행 전
 
@@ -460,26 +491,26 @@ context를 재사용하더라도 이전 실행의 30초 override가 다음 방 �
 3인 반복 실행은 아래 담당 플레이어가 checkpoint를 캡처한다. `전원` checkpoint는 세 화면에서
 각각 남긴다.
 
-| checkpoint           | 담당   | 필수 증적                                                                |
-| -------------------- | ------ | ------------------------------------------------------------------------ |
-| `C0-HOST`            | `MP1`  | `MP1` 한 명, 방장, 파티 동기화 완료, 준비 전인 자동 생성 대기실          |
-| `C0-JOINED`          | 전원   | 세 닉네임, `MP1` 방장, 세 파티 동기화 완료, 전원 준비 전, 타이머 미시작  |
-| `C1-PARTIAL-READY`   | `MP1`  | 두 명 ready와 비활성 시작 버튼                                           |
-| `C1-ALL-READY`       | 전원   | 전원 ready와 `MP1`에게만 활성인 시작 버튼                                |
-| `C1-WORLD`           | 전원   | 같은 준비 종료 시각, Desktop Chromium·Desktop Firefox·Mobile 이동 동기화 |
-| `C2-BYE`             | 전원   | seed 1 부전승, seed 2 대 3 대진, 참가·비참가 화면                        |
-| `C2-FIRST-ACTION`    | 참가자 | 두 실제 UI 입력과 2xx 응답, submitted 또는 즉시 상태 전진                |
-| `C2-FIRST-TERMINAL`  | 전원   | 첫 대진 승자, 원시 terminal HP 상태, 결승 대진, 라운드 점수 미확정       |
-| `C2-FIRST-CONFIRMED` | 전원   | 결과 확인 뒤 승자의 결승 battle, 패자의 world, 비참가자의 action 없음    |
-| `C2-ROUND-RESULT`    | 전원   | 결승 뒤 게임 라운드별 우승자, 확정 점수, 누적 순위                       |
-| `C3-FINAL`           | 전원   | 세 화면의 같은 최종 순위와 우승자                                        |
-| `C3-CLEANUP`         | 전원   | 순차 leave 성공, 입장 화면 복귀, room `closed`, 전원 `connected=false`   |
+| checkpoint           | 담당   | 필수 증적                                                                       |
+| -------------------- | ------ | ------------------------------------------------------------------------------- |
+| `C0-HOST`            | `MP1`  | `MP1` 한 명, 방장, 파티 동기화 완료, 준비 전인 자동 생성 대기실                 |
+| `C0-JOINED`          | 전원   | 세 닉네임, `MP1` 방장, 세 파티 동기화 완료, 전원 준비 전, 타이머 미시작         |
+| `C1-PARTIAL-READY`   | `MP1`  | 두 명 ready와 비활성 시작 버튼                                                  |
+| `C1-ALL-READY`       | 전원   | 전원 ready와 `MP1`에게만 활성인 시작 버튼                                       |
+| `C1-WORLD`           | 전원   | 같은 준비 종료 시각, Desktop Chromium·Mobile Chromium·Mobile WebKit 이동 동기화 |
+| `C2-BYE`             | 전원   | seed 1 부전승, seed 2 대 3 대진, 참가·비참가 화면                               |
+| `C2-FIRST-ACTION`    | 참가자 | 두 실제 UI 입력과 2xx 응답, submitted 또는 즉시 상태 전진                       |
+| `C2-FIRST-TERMINAL`  | 전원   | 첫 대진 승자, 원시 terminal HP 상태, 결승 대진, 라운드 점수 미확정              |
+| `C2-FIRST-CONFIRMED` | 전원   | 결과 확인 뒤 승자의 결승 battle, 패자의 world, 비참가자의 action 없음           |
+| `C2-ROUND-RESULT`    | 전원   | 결승 뒤 게임 라운드별 우승자, 확정 점수, 누적 순위                              |
+| `C3-FINAL`           | 전원   | 세 화면의 같은 최종 순위와 우승자                                               |
+| `C3-CLEANUP`         | 전원   | 순차 leave 성공, 입장 화면 복귀, room `closed`, 전원 `connected=false`          |
 
 각 screenshot은 시나리오 ID, browser, viewport와 시각을 함께 기록한다. 추가로 다음 JSON 또는
 로그를 남긴다.
 
 - commit SHA와 배포 URL
-- 실행 seed와 플레이어별 Desktop Chromium·Desktop Firefox·Mobile Chromium 배정 결과
+- 실행 seed와 플레이어별 Desktop Chromium·Mobile Chromium·Mobile WebKit 배정 결과
 - 공개 participant 수와 room status
 - 예상된 409 한 건과 `POKE_LOUNGE_ROOM_FULL` code
 - 자동 party snapshot, 수동 ready·start와 session action 요청 경로, competitive seat 요청 건수 0

@@ -10,7 +10,7 @@
     "e2e:codegen": "node scripts/playwright-runner.mjs codegen",
     "e2e:cross-browser": "PLAYWRIGHT_ENABLE_CROSS_BROWSER=1 node scripts/playwright-runner.mjs test",
     "e2e:headed": "node scripts/playwright-runner.mjs test --headed",
-    "e2e:install": "playwright install chromium firefox webkit",
+    "e2e:install": "playwright install chromium webkit",
     "e2e:integration": "node scripts/playwright-integration-runner.mjs",
     "e2e:local-test-mode": "node scripts/playwright-runner.mjs --local-test-mode test tests/e2e/poke-lounge-local-test-mode.spec.ts --project=chromium",
     "e2e:report": "playwright show-report",

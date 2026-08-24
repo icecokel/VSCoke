@@ -14,6 +14,8 @@ import {
   LOCAL_TEST_API_HOSTNAME,
   resolveLocalTestAuthToken,
 } from './auth/local-test-account';
+import { PokeLoungeLiveStateService } from './poke-lounge/poke-lounge-live-state.service';
+import { PokeLoungeRedisIoAdapter } from './poke-lounge/poke-lounge-redis-io.adapter';
 
 /**
  * 애플리케이션 진입점 함수
@@ -23,6 +25,12 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: WinstonModule.createLogger(winstonConfig),
   });
+  const liveState = app.get(PokeLoungeLiveStateService);
+  await liveState.connect();
+  app.useWebSocketAdapter(
+    new PokeLoungeRedisIoAdapter(app, liveState.createSocketAdapter()),
+  );
+  app.enableShutdownHooks();
 
   app.set('trust proxy', 'loopback');
   app.use(requestIdMiddleware);

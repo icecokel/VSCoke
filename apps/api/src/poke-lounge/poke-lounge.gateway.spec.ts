@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import type { Namespace, Socket } from 'socket.io';
+import type { PokeLoungeLiveStateService } from './poke-lounge-live-state.service';
 import { PokeLoungeRoomEventsService } from './poke-lounge-room-events.service';
 import type { PokeLoungePublicRoomState } from './poke-lounge-room.types';
 import { PokeLoungeGateway } from './poke-lounge.gateway';
@@ -15,9 +16,23 @@ describe('PokeLoungeGateway', () => {
     >
   >;
   let events: PokeLoungeRoomEventsService;
+  let liveState: jest.Mocked<
+    Pick<
+      PokeLoungeLiveStateService,
+      | 'deleteRoom'
+      | 'extendRoomExpiry'
+      | 'getCursor'
+      | 'getSnapshot'
+      | 'removePlayer'
+      | 'upsertPlayer'
+    >
+  >;
   let gateway: PokeLoungeGateway;
   let namespaceEmit: jest.Mock;
+  let namespaceFetchSockets: jest.Mock;
   let namespaceTo: jest.Mock;
+  let serverSideEmit: jest.Mock;
+  let serverListeners: Map<string, (input: unknown) => void>;
 
   beforeEach(() => {
     roomService = {
@@ -26,13 +41,50 @@ describe('PokeLoungeGateway', () => {
       expireParticipantPresence: jest.fn().mockResolvedValue(undefined),
     };
     events = new PokeLoungeRoomEventsService();
+    liveState = {
+      deleteRoom: jest.fn().mockResolvedValue(undefined),
+      extendRoomExpiry: jest.fn().mockResolvedValue(undefined),
+      getCursor: jest.fn().mockResolvedValue({
+        roomCode: 'ROOM01',
+        worldEpoch: 'world-1',
+        worldSeq: 0,
+      }),
+      getSnapshot: jest.fn().mockResolvedValue(worldSnapshot()),
+      removePlayer: jest.fn().mockResolvedValue(undefined),
+      upsertPlayer: jest
+        .fn()
+        .mockImplementation(
+          ({
+            roomCode,
+            player,
+          }: Parameters<PokeLoungeLiveStateService['upsertPlayer']>[0]) =>
+            Promise.resolve({
+              roomCode,
+              worldEpoch: 'world-1',
+              worldSeq: 1,
+              ...player,
+            }),
+        ),
+    };
     gateway = new PokeLoungeGateway(
       roomService as unknown as PokeLoungeRoomService,
       events,
+      liveState as unknown as PokeLoungeLiveStateService,
     );
     namespaceEmit = jest.fn();
+    namespaceFetchSockets = jest.fn().mockResolvedValue([]);
     namespaceTo = jest.fn(() => ({ emit: namespaceEmit }));
-    gateway.afterInit({ to: namespaceTo } as unknown as Namespace);
+    serverSideEmit = jest.fn();
+    serverListeners = new Map();
+    gateway.afterInit({
+      off: jest.fn(),
+      in: jest.fn(() => ({ fetchSockets: namespaceFetchSockets })),
+      on: jest.fn((eventName: string, listener: (input: unknown) => void) => {
+        serverListeners.set(eventName, listener);
+      }),
+      serverSideEmit,
+      to: namespaceTo,
+    } as unknown as Namespace);
   });
 
   afterEach(() => {
@@ -72,6 +124,10 @@ describe('PokeLoungeGateway', () => {
     expect(second.emit).toHaveBeenCalledWith('room.snapshot', {
       room: publicRoom(),
     });
+    expect(first.emit).toHaveBeenCalledWith(
+      'room.world-snapshot',
+      worldSnapshot(),
+    );
     expect(JSON.stringify(first.emit.mock.calls)).not.toContain('sessionId');
   });
 
@@ -221,14 +277,48 @@ describe('PokeLoungeGateway', () => {
     expect(namespaceEmit).toHaveBeenCalledWith('room.snapshot', {
       room,
     });
+    expect(serverSideEmit).toHaveBeenCalledWith('poke-lounge.room-metadata', {
+      roomCode: 'ROOM01',
+      revision: room.revision,
+      expiresAtMs: room.expiresAtMs,
+      closed: false,
+    });
+    expect(liveState.extendRoomExpiry).toHaveBeenCalledWith(
+      'ROOM01',
+      room.expiresAtMs,
+    );
     expect(JSON.stringify(namespaceEmit.mock.calls)).not.toContain('sessionId');
+  });
+
+  it('applies a closed room metadata event and ignores an older reopen', async () => {
+    const client = socket();
+    await gateway.subscribe(client.value, validSubscription());
+    serverListeners.get('poke-lounge.room-metadata')?.({
+      roomCode: 'ROOM01',
+      revision: 8,
+      expiresAtMs: publicRoom().expiresAtMs,
+      closed: true,
+    });
+    serverListeners.get('poke-lounge.room-metadata')?.({
+      roomCode: 'ROOM01',
+      revision: 7,
+      expiresAtMs: publicRoom().expiresAtMs,
+      closed: false,
+    });
+    await gateway.relayPlayerEvent(client.value, {
+      type: 'PLAYER_MOVED',
+      snapshot: { map: 'new-bark-town', x: 1, y: 2, facing: 'front' },
+    });
+
+    expect(liveState.deleteRoom).toHaveBeenCalledWith('ROOM01');
+    expect(liveState.upsertPlayer).not.toHaveBeenCalled();
   });
 
   it('relays validated live movement with the subscribed participant identity', async () => {
     const client = socket();
     await gateway.subscribe(client.value, validSubscription());
 
-    gateway.relayPlayerEvent(client.value, {
+    await gateway.relayPlayerEvent(client.value, {
       type: 'PLAYER_MOVED',
       snapshot: {
         sessionId: 'forged-session',
@@ -242,9 +332,31 @@ describe('PokeLoungeGateway', () => {
       },
     });
 
-    expect(client.to).toHaveBeenCalledWith('room:ROOM01');
-    expect(client.broadcastEmit).toHaveBeenCalledWith('room.player-event', {
+    const storedInput = liveState.upsertPlayer.mock.calls[0]?.[0];
+    expect(storedInput).toBeDefined();
+    if (!storedInput) {
+      throw new Error('Expected a stored live player event');
+    }
+    const { updatedAtMs, ...storedPlayer } = storedInput.player;
+    expect({ ...storedInput, player: storedPlayer }).toEqual({
+      roomCode: 'ROOM01',
+      expiresAtMs: publicRoom().expiresAtMs,
+      player: {
+        playerId: 'player-1',
+        displayName: 'Player 1',
+        map: 'new-bark-town',
+        x: 672,
+        y: 448,
+        facing: 'left',
+      },
+    });
+    expect(updatedAtMs).toEqual(expect.any(Number));
+    expect(namespaceTo).toHaveBeenCalledWith('room:ROOM01');
+    expect(namespaceEmit).toHaveBeenCalledWith('room.player-event', {
       type: 'PLAYER_MOVED',
+      roomCode: 'ROOM01',
+      worldEpoch: 'world-1',
+      worldSeq: 1,
       snapshot: {
         sessionId: 'player-1',
         playerId: 'player-1',
@@ -260,15 +372,15 @@ describe('PokeLoungeGateway', () => {
   it('ignores live movement before subscription and malformed coordinates', async () => {
     const unsubscribed = socket();
 
-    gateway.relayPlayerEvent(unsubscribed.value, {
+    await gateway.relayPlayerEvent(unsubscribed.value, {
       type: 'PLAYER_MOVED',
       snapshot: { map: 'new-bark-town', x: 1, y: 2, facing: 'front' },
     });
-    expect(unsubscribed.broadcastEmit).not.toHaveBeenCalled();
+    expect(liveState.upsertPlayer).not.toHaveBeenCalled();
 
     const subscribed = socket();
     await gateway.subscribe(subscribed.value, validSubscription());
-    gateway.relayPlayerEvent(subscribed.value, {
+    await gateway.relayPlayerEvent(subscribed.value, {
       type: 'PLAYER_MOVED',
       snapshot: {
         map: 'new-bark-town',
@@ -278,7 +390,7 @@ describe('PokeLoungeGateway', () => {
       },
     });
 
-    expect(subscribed.broadcastEmit).not.toHaveBeenCalled();
+    expect(liveState.upsertPlayer).not.toHaveBeenCalled();
   });
 
   it('reports cursor regression without joining or applying the lower snapshot', async () => {
@@ -307,8 +419,10 @@ describe('PokeLoungeGateway', () => {
     gateway.handleDisconnect(client.value);
     await jest.advanceTimersByTimeAsync(14_999);
     expect(roomService.expireParticipantPresence).not.toHaveBeenCalled();
+    expect(liveState.removePlayer).not.toHaveBeenCalled();
 
     await jest.advanceTimersByTimeAsync(1);
+    expect(liveState.removePlayer).toHaveBeenCalledWith('ROOM01', 'player-1');
     expect(roomService.expireParticipantPresence).toHaveBeenCalledWith(
       'ROOM01',
       'player-1',
@@ -330,6 +444,28 @@ describe('PokeLoungeGateway', () => {
     await jest.advanceTimersByTimeAsync(10_000);
 
     expect(roomService.expireParticipantPresence).not.toHaveBeenCalled();
+    expect(liveState.removePlayer).not.toHaveBeenCalled();
+  });
+
+  it('keeps presence when the same identity reconnects to another API instance', async () => {
+    jest.useFakeTimers();
+    const disconnected = socket();
+    await gateway.subscribe(disconnected.value, validSubscription());
+    namespaceFetchSockets.mockResolvedValueOnce([
+      {
+        data: {
+          pokeLoungePlayerId: 'player-1',
+          pokeLoungeSessionId: 'session-1',
+          pokeLoungeSubscribed: true,
+        },
+      },
+    ]);
+
+    gateway.handleDisconnect(disconnected.value);
+    await jest.advanceTimersByTimeAsync(15_000);
+
+    expect(roomService.expireParticipantPresence).not.toHaveBeenCalled();
+    expect(liveState.removePlayer).not.toHaveBeenCalled();
   });
 
   it('expires the durable presence when a reconnect acknowledgement is aborted', async () => {
@@ -609,6 +745,7 @@ function publicRoom(
 ): PokeLoungePublicRoomState {
   return {
     roomCode: 'ROOM01',
+    hostPlayerId: 'player-1',
     status: 'waiting',
     createdAtMs: 0,
     updatedAtMs: 0,
@@ -639,8 +776,17 @@ function publicRoom(
     },
     finalStandings: [],
     revision: 7,
-    expiresAtMs: 30 * 60_000,
+    expiresAtMs: 253_402_300_799_999,
     competitiveTransitions: [],
     ...overrides,
+  };
+}
+
+function worldSnapshot() {
+  return {
+    roomCode: 'ROOM01',
+    worldEpoch: 'world-1',
+    worldSeq: 0,
+    players: [],
   };
 }

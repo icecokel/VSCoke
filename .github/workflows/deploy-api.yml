@@ -80,6 +80,31 @@ jobs:
           test -f packages/poke-lounge-battle/dist/index.js
           pnpm --filter @vscoke/api exec node -e "require('@vscoke/poke-lounge-battle')"
 
+      - name: Verify Redis connection
+        run: |
+          cd "$API_DEPLOY_DIR"
+          set -a
+          . ./.env
+          set +a
+          test -n "${REDIS_URL:-}"
+          cd .next-release
+          pnpm --filter @vscoke/api exec node - <<'NODE'
+          const { createClient } = require('redis');
+
+          (async () => {
+            const client = createClient({ url: process.env.REDIS_URL });
+            try {
+              await client.connect();
+              if ((await client.ping()) !== 'PONG') process.exitCode = 1;
+            } finally {
+              if (client.isOpen) await client.close();
+            }
+          })().catch((error) => {
+            console.error(error.message);
+            process.exit(1);
+          });
+          NODE
+
       - name: Promote release
         run: |
           RELEASE_DIR="$API_DEPLOY_DIR/.next-release"

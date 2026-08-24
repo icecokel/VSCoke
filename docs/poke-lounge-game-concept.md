@@ -89,7 +89,8 @@ flowchart LR
   DB -->|"commit"| API
   API -->|"room.snapshot"| Web
   Web -->|"validated position"| API
-  API --> Peer["same-room browsers"]
+  API -->|"latest position + worldSeq"| Redis["Redis"]
+  Redis -->|"Socket.IO adapter fan-out"| Peer["same-room browsers"]
 ```
 
 일반 room mutation은 idempotency key와 마지막 committed revision을 사용한다. 서버는 상태와
@@ -101,8 +102,9 @@ revision conflict에서 REST snapshot으로 복구하며 상시 polling이나 AP
 terminal event와 match를 중복 제거한 뒤 결과를 먼저 적용하고, 현재 assignment가 있는 참가자만
 다음 전투를 시작한다.
 
-현재 실시간 전파는 단일 API 인스턴스를 전제로 한다. PostgreSQL은 durable source지만 여러 API
-인스턴스 사이의 Socket fan-out adapter는 없다.
+플레이어 위치는 Redis Hash의 최신 snapshot과 `worldSeq`로 복구한다. Socket.IO Redis Adapter가
+여러 API 인스턴스 사이의 방 이벤트를 fan-out하며, PostgreSQL room revision과 Redis
+`worldSeq`는 서로 독립된 cursor다.
 
 ## 저장과 복구
 
@@ -111,6 +113,7 @@ terminal event와 match를 중복 제거한 뒤 결과를 먼저 적용하고, �
 | 익명 플레이어 | versioned `sessionStorage` | 현재 탭의 파티·박스·재화·위치와 UI 상태                    |
 | 서버 방       | PostgreSQL                 | room aggregate, revision, TTL과 command receipt            |
 | 경쟁 매치     | PostgreSQL                 | canonical battle state, action receipt와 terminal metadata |
+| 실시간 위치   | Redis                      | 방 수명 동안 map, 좌표, 방향과 worldSeq                    |
 
 인증 GET이 실패하면 로컬 상태로 게임을 열되, 서버 상태를 오래된 로컬 값으로 덮어쓰지 않도록 복구
 전까지 원격 autosave를 시작하지 않는다. 멀티플레이 접속 상태와 선택적 로그인 계정 저장은 서로
@@ -140,12 +143,12 @@ terminal event와 match를 중복 제거한 뒤 결과를 먼저 적용하고, �
 - 서버 권위 대진·전투·결과와 PostgreSQL room 복구
 - 브라우저 로컬 저장과 선택적 로그인 계정 저장
 - 방장·수동 ready·수동 시작 기반 멀티플레이 대기실과 시작 후 참가 잠금
+- Redis snapshot·worldSeq 기반 위치 누락 복구와 API 인스턴스 간 Socket fan-out
 
 현재 제약:
 
 - 월드는 단일 마을이며 장거리 탐험, 퀘스트와 스토리 캠페인은 없다.
 - 파티·재화 진행은 사용자마다 독립적이다.
-- 여러 API 인스턴스 사이의 Socket fan-out은 지원하지 않는다.
 - 수동 WebRTC는 개발·실험 경로이며 운영 멀티플레이가 아니다.
 - 인게임 문구는 한국어 중심이며 전체 다국어 UI는 완료되지 않았다.
 - 물리 모바일 기기와 실제 네트워크 품질의 장시간 game-feel 검증은 별도다.

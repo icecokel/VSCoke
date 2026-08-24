@@ -75,7 +75,7 @@ if (usesPokeLoungeApi) {
 }
 
 for (const name of Object.keys(playwrightEnv)) {
-  if (isDatabaseEnvironmentName(name)) {
+  if (isDatabaseEnvironmentName(name) || name === "REDIS_URL") {
     delete playwrightEnv[name];
   }
 }

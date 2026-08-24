@@ -241,6 +241,23 @@ LIMIT 20;
 
 Web은 REST GET으로 room을 초기화하고 Socket.IO `/poke-lounge`의 committed `room.snapshot`을 적용한다. Socket 연결이 끊기거나 `room.revision-conflict`가 오면 `GET /poke-lounge/rooms/:roomCode?afterRevision=<lastRevision>`으로 복구한다. 지속적인 750 ms polling을 정상 상태로 되살리지 않는다. mutation 재시도는 동일 payload, 동일 `X-Idempotency-Key`, 마지막 committed `If-Match-Revision` 조합만 사용한다.
 
+실시간 위치와 Socket.IO 인스턴스 간 fan-out은 Redis를 사용한다. 위치가 일부 브라우저에서만
+멈추거나 API가 시작되지 않으면 먼저 Redis 연결을 확인한다.
+
+```bash
+ssh icenux-external
+cd /home/icenux/projects/vscoke-api
+set -a
+. ./.env
+set +a
+pnpm --filter @vscoke/api exec node -e "const {createClient}=require('redis');(async()=>{const client=createClient({url:process.env.REDIS_URL});try{await client.connect();console.log(await client.ping())}finally{if(client.isOpen)await client.close()}})().catch(error=>{console.error(error.message);process.exit(1)})"
+```
+
+기대값은 `PONG`이다. Redis 장애 중에는 인스턴스별 메모리 fallback을 켜지 않는다. Redis를
+복구한 뒤 `pm2 restart vscoke-api --update-env`를 실행하면 Web이 재구독하면서
+`room.world-snapshot`을 다시 받는다. ready, 대진, 경쟁전과 점수는 PostgreSQL이 기준이므로 Redis
+key를 수동으로 점수나 우승 상태로 보정하지 않는다.
+
 경쟁 match는 서로 다른 인증 계정 두 개의 seat binding, 각 계정의 자기 action 제출, 서버 결정론 엔진의 terminal 확정 순서로 진행된다. terminal에서 승자 100점과 패자 50점, action receipts, match publication mapping, verified histories가 한 트랜잭션으로 기록된다. 일부만 남았다면 수동 score 삽입이나 ledger 수정 대신 실패 트랜잭션과 source key 충돌을 조사한다.
 
 ```sql

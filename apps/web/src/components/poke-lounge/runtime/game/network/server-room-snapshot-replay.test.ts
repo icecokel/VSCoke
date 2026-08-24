@@ -17,6 +17,8 @@ interface FixtureSocket {
   emit(eventName: string, payload: unknown): FixtureSocket;
   disconnect(): FixtureSocket;
   pushSnapshot(room: unknown): void;
+  pushWorldSnapshot(snapshot: unknown): void;
+  pushWorldCursor(cursor: unknown): void;
   pushPlayerEvent(event: unknown): void;
   disconnectFromServer(): void;
   failConnection(error?: unknown): void;
@@ -75,6 +77,12 @@ function createSocket(initiallyConnected = true): FixtureSocket {
     },
     pushSnapshot(room) {
       dispatch("room.snapshot", { room });
+    },
+    pushWorldSnapshot(snapshot) {
+      dispatch("room.world-snapshot", snapshot);
+    },
+    pushWorldCursor(cursor) {
+      dispatch("room.world-cursor", cursor);
     },
     pushPlayerEvent(event) {
       dispatch("room.player-event", event);
@@ -892,6 +900,8 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
       recoveryTimerScheduled: false,
       subscriptionFailed: false,
       lastAppliedTerminalRevision: snapshots.initial.revision,
+      lastAppliedWorldSeq: null,
+      worldEpoch: null,
       lastSocketErrorKind: null,
       lastSocketConnectErrorClass: null,
       lastRecoveryFailureKind: null,
@@ -924,6 +934,8 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
       recoveryTimerScheduled: true,
       subscriptionFailed: true,
       lastAppliedTerminalRevision: snapshots.terminalTransition.terminalRoomRevision,
+      lastAppliedWorldSeq: null,
+      worldEpoch: null,
       lastSocketErrorKind: "connect_error",
       lastSocketConnectErrorClass: "websocket_error",
       lastRecoveryFailureKind: null,
@@ -945,6 +957,8 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
       recoveryTimerScheduled: false,
       subscriptionFailed: false,
       lastAppliedTerminalRevision: snapshots.terminalTransition.terminalRoomRevision,
+      lastAppliedWorldSeq: null,
+      worldEpoch: null,
       lastSocketErrorKind: "connect_error",
       lastSocketConnectErrorClass: "websocket_error",
       lastRecoveryFailureKind: null,
@@ -989,6 +1003,8 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
       recoveryTimerScheduled: true,
       subscriptionFailed: false,
       lastAppliedTerminalRevision: snapshots.terminalTransition.terminalRoomRevision,
+      lastAppliedWorldSeq: null,
+      worldEpoch: null,
       lastSocketErrorKind: "disconnect",
       lastSocketConnectErrorClass: "unknown",
       lastRecoveryFailureKind: null,
@@ -1005,6 +1021,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     assert.deepEqual(Object.keys(invalidSnapshotDiagnostics ?? {}).sort(), [
       "activeTransport",
       "lastAppliedTerminalRevision",
+      "lastAppliedWorldSeq",
       "lastRecoveryFailureKind",
       "lastSocketConnectErrorClass",
       "lastSocketErrorKind",
@@ -1014,6 +1031,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
       "socketConnected",
       "subscriptionFailed",
       "transportState",
+      "worldEpoch",
     ]);
     assert.equal(invalidSnapshotDiagnostics?.lastSocketErrorKind, "invalid_snapshot");
     assert.equal(invalidSnapshotDiagnostics?.lastSocketConnectErrorClass, "unknown");
@@ -2904,11 +2922,32 @@ test("임시 비밀번호 방은 안전한 실시간 위치와 챔피언십 준�
     });
 
     const received: RoomEvent["PLAYER_MOVED"][] = [];
+    const changed: RoomEvent["PLAYER_CHANGED_MAP"][] = [];
     const leftSessionIds: string[] = [];
     room.on("PLAYER_MOVED", snapshot => received.push(snapshot));
+    room.on("PLAYER_CHANGED_MAP", snapshot => changed.push(snapshot));
     room.on("PLAYER_LEFT", ({ sessionId }) => leftSessionIds.push(sessionId));
+    socket.pushWorldSnapshot({
+      roomCode: "ROOM01",
+      worldEpoch: "world-1",
+      worldSeq: 1,
+      players: [
+        {
+          playerId: "player-2",
+          displayName: "Mobile",
+          map: "new-bark-town",
+          x: 700,
+          y: 446,
+          facing: "right",
+        },
+      ],
+    });
+    assert.equal(changed.at(-1)?.x, 700);
     socket.pushPlayerEvent({
       type: "PLAYER_MOVED",
+      roomCode: "ROOM01",
+      worldEpoch: "world-1",
+      worldSeq: 2,
       snapshot: {
         sessionId: "player-2",
         playerId: "player-2",
@@ -2930,6 +2969,46 @@ test("임시 비밀번호 방은 안전한 실시간 위치와 챔피언십 준�
         facing: "right",
       },
     ]);
+    socket.pushPlayerEvent({
+      type: "PLAYER_MOVED",
+      roomCode: "ROOM01",
+      worldEpoch: "world-1",
+      worldSeq: 4,
+      snapshot: {
+        sessionId: "player-2",
+        playerId: "player-2",
+        displayName: "Mobile",
+        map: "new-bark-town",
+        x: 708,
+        y: 446,
+        facing: "right",
+      },
+    });
+    assert.equal(received.length, 1);
+    assert.equal(socket.emissions("room.world-resync").length, 1);
+    socket.pushWorldSnapshot({
+      roomCode: "ROOM01",
+      worldEpoch: "world-1",
+      worldSeq: 4,
+      players: [
+        {
+          playerId: "player-2",
+          displayName: "Mobile",
+          map: "new-bark-town",
+          x: 708,
+          y: 446,
+          facing: "right",
+        },
+      ],
+    });
+    assert.equal(changed.at(-1)?.x, 708);
+
+    socket.pushWorldCursor({
+      roomCode: "ROOM01",
+      worldEpoch: "world-2",
+      worldSeq: 0,
+    });
+    assert.equal(socket.emissions("room.world-resync").length, 2);
 
     const afterLeave = structuredClone(snapshots.initial);
     afterLeave.revision += 1;

@@ -71,11 +71,11 @@ Authorization header를 요구해서는 안 된다.
 
 ### 4.1 환경 계층
 
-| 환경      | Web           | API           | DB                      | 목적                       |
-| --------- | ------------- | ------------- | ----------------------- | -------------------------- |
-| UI 격리   | 로컬 Next.js  | 응답 fixture  | 없음                    | 입력·오류·레이아웃         |
-| 로컬 통합 | 로컬 Next.js  | 실제 NestJS   | 격리 PostgreSQL `_test` | 참가·Socket·leave·재접속   |
-| 운영 인수 | 운영 배포 Web | 운영 배포 API | 운영 정책               | 실제 배포·CORS·Socket·화면 |
+| 환경      | Web           | API           | DB                      | 실시간 상태 | 목적                       |
+| --------- | ------------- | ------------- | ----------------------- | ----------- | -------------------------- |
+| UI 격리   | 로컬 Next.js  | 응답 fixture  | 없음                    | 없음        | 입력·오류·레이아웃         |
+| 로컬 통합 | 로컬 Next.js  | 실제 NestJS   | 격리 PostgreSQL `_test` | 격리 Redis  | 참가·Socket·leave·재접속   |
+| 운영 인수 | 운영 배포 Web | 운영 배포 API | 운영 정책               | 운영 Redis  | 실제 배포·CORS·Socket·화면 |
 
 운영 인수 테스트는 임시 비밀번호 원문, 쿠키, token과 전체 Socket payload를 artifact에 저장하지
 않는다. 운영 room에는 테스트 전용 닉네임 prefix를 사용하고 완료 후 모든 참가자가 명시적으로
@@ -94,6 +94,8 @@ Authorization header를 요구해서는 안 된다.
 - 2인 시나리오: `Desktop Web` 1개와 `Mobile Web` 1개를 섞어 배정한다.
 - 3인 시나리오: 서로 다른 `Desktop Chromium`, `Mobile Chromium`, `Mobile WebKit` 환경을 한 개씩
   사용하고 세 플레이어에게 섞어 배정한다.
+- 5인 한 사이클: `Desktop Chromium` 2개, `Desktop WebKit`, `Mobile Chromium`, `Mobile WebKit`을
+  다섯 플레이어에게 섞어 배정한다.
 - 6·7인 시나리오: `Desktop Web` 4개와 `Mobile Web` 3개를 섞어 배정한다.
 - 실행 seed와 `playerId → 환경` 배정 결과를 artifact에 기록하고 같은 seed로 재현할 수 있어야
   한다.
@@ -233,6 +235,8 @@ context를 재사용하더라도 이전 실행의 30초 override가 다음 방 �
 | `MP-WORLD-005` | P0/P          | `MP1` 파티·재화·인벤토리를 변경                | `MP2`의 파티·재화·인벤토리는 변하지 않고 네트워크 payload에도 포함되지 않는다. |
 | `MP-WORLD-006` | P1/P          | `MP1`이 전투 종료 후 월드로 복귀               | 상대 avatar와 최신 위치를 다시 보고 자신의 HP·PP·보상만 유지한다.              |
 | `MP-WORLD-007` | P0/P          | 3명 이상 중 한 명이 명시적으로 나가기          | 다른 화면에서 해당 avatar가 제거되고 2명 이상 남은 사용자는 계속 플레이한다.   |
+| `MP-WORLD-008` | P0/P          | 위치 이벤트 한 건을 누락시킨 뒤 cursor 수신    | 2초 안에 Redis snapshot을 다시 받아 모든 화면의 위치와 worldSeq가 수렴한다.    |
+| `MP-WORLD-009` | P0/P          | 연결된 API 인스턴스를 교체하고 같은 탭 재접속  | 같은 Redis snapshot으로 복구하며 중복 avatar나 고정 시작 좌표가 생기지 않는다. |
 
 ### 5.7 3라운드 챔피언십
 
@@ -267,18 +271,20 @@ context를 재사용하더라도 이전 실행의 30초 override가 다음 방 �
 
 ### 6.1 Luna 분산 실행 오케스트레이션
 
-| 실행 주체             | 책임                                                                | 금지 사항                                     |
-| --------------------- | ------------------------------------------------------------------- | --------------------------------------------- |
-| 루트 오케스트레이터   | 실행 준비, 환경 배정, 단계 동기화, 장애 분류, 증적 취합과 최종 보고 | 방 참가, 플레이어 입력과 승패 개입            |
-| `Luna xhigh` runner   | 배정된 독립 context의 입장·이동·전투·캡처와 상태 보고               | 다른 runner의 context 조작, 서버 판정 우회    |
-| `MP` 플레이어 context | 하나의 `playerId + sessionId`, 저장 상태와 Desktop·Mobile 환경 유지 | 다른 플레이어와 storage·cookie·입력 상태 공유 |
+| 실행 주체               | 책임                                                                | 금지 사항                                     |
+| ----------------------- | ------------------------------------------------------------------- | --------------------------------------------- |
+| 루트 오케스트레이터     | 실행 준비, 환경 배정, 단계 동기화, 장애 분류, 증적 취합과 최종 보고 | 방 참가, 플레이어 입력과 승패 개입            |
+| `Luna xhigh` runner 4개 | 배정된 독립 context의 입장·이동·전투·캡처와 상태 보고               | 다른 runner의 context 조작, 서버 판정 우회    |
+| `MP` 플레이어 context   | 하나의 `playerId + sessionId`, 저장 상태와 Desktop·Mobile 환경 유지 | 다른 플레이어와 storage·cookie·입력 상태 공유 |
 
 1. 루트 오케스트레이터는 browser를 열기 전에 실행 ID와 환경 seed를 만들고 `MP` 역할, runner,
    Desktop Web 또는 Mobile Web 환경을 무작위로 연결한다. 배정 결과는 같은 seed로 재현할 수 있게
    기록한다.
-2. 에이전트 수와 플레이어 수는 별도로 기록한다. 현재 동시 실행 슬롯 4개에는 루트가 포함되므로
-   루트 1개와 `Luna xhigh` runner 최대 3개를 동시에 사용한다. 제품 정원 검증이 더 많은 플레이어
-   context를 요구하면 runner가 서로 격리된 context를 나눠 담당하며, 루트는 플레이어가 되지 않는다.
+2. `LUNA-1`~`LUNA-4`의 `Luna xhigh` runner 4개를 구성하고 환경 seed로 Desktop Chromium,
+   Desktop WebKit, Mobile Chromium, Mobile WebKit을 섞어 배정한다. 현재 동시 실행 슬롯 4개에는
+   루트가 포함되므로 runner는 최대 3개씩 활성화하고 나머지 1개는 자기 context를 유지한 채
+   checkpoint 단위로 교대한다. 5인 한 사이클에서는 seed로 선택한 runner 한 명이 두 번째
+   Desktop Chromium context를 추가로 소유한다. 루트는 어떤 경우에도 플레이어가 되지 않는다.
 3. `MP1` runner가 최초 접속과 자동 방 생성을 담당하는 방장이다. 루트 오케스트레이터를 `MP1`,
    방장 또는 플레이어 슬롯으로 계산하지 않는다.
 4. 루트는 `ENV-READY` 보고를 모두 받은 뒤 `MP1`에게 방 생성을 지시하고, `C0-HOST`를 확인한 뒤
@@ -549,25 +555,33 @@ context를 재사용하더라도 이전 실행의 30초 override가 다음 방 �
 
 ## 9. 현재 자동화 근거와 공백
 
-| 범위                      | 현재 근거                                                                                                                 | 남은 공백                                      |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| 입장 입력·금지 control    | `room-entry.test.ts`, `poke-lounge.spec.ts`, `poke-lounge-mobile.spec.ts`                                                 | 없음                                           |
-| 임시 비밀번호 파생·비노출 | `room-entry.test.ts`, `server-room-snapshot-replay.test.ts`                                                               | 운영 artifact 수동 점검                        |
-| 자동 create-or-join       | `poke-lounge-room.service.spec.ts`, `poke-lounge-room.e2e-spec.ts`, `poke-lounge-public-lobby.spec.ts`                    | 다른 비밀번호 세션 격리의 실제 browser 검증    |
-| 방장·수동 ready·시작      | `poke-lounge-room.service.spec.ts`, `poke-lounge-multiplayer.spec.ts`, `poke-lounge-public-lobby.spec.ts`                 | 3명 이상 실제 browser 시작 검증                |
-| 6명 정원·7번째 거부       | `poke-lounge-room.service.spec.ts`, `server-room-snapshot-replay.test.ts`                                                 | 실제 7 browser UI 통합                         |
-| 동일 세션 재접속          | `poke-lounge-room.service.spec.ts`, `poke-lounge.gateway.spec.ts`                                                         | 정원 6명 상태의 실제 browser reload            |
-| disconnect 유예           | `poke-lounge.gateway.spec.ts`, `poke-lounge-room-policy.spec.ts`                                                          | 실제 Socket 연결 중단·복귀                     |
-| 위치 중계·identity 보호   | `poke-lounge.gateway.spec.ts`, `server-room-snapshot-replay.test.ts`                                                      | Desktop↔Mobile 실제 양방향 이동                |
-| 독립 게임 진행            | `game-state-store.test.ts`, `server-room-snapshot-replay.test.ts`, Poke Lounge 전투 E2E                                   | 한쪽 전투·한쪽 월드의 실제 2 browser 동시 검증 |
-| 3인 부전승·결승           | `tournament-bracket.test.ts`, `poke-lounge-five-player-tournament.spec.ts`                                                | 실제 3 browser의 3라운드 완주                  |
-| 서버 권위 대진·3라운드    | `poke-lounge-room.service.spec.ts`, `postgres-poke-lounge-room.repository.spec.ts`, `server-room-snapshot-replay.test.ts` | 수동 시작 기반 3라운드 실제 browser 완주       |
-| 이탈·점수·누적 순위       | `poke-lounge-room-policy.spec.ts`, `postgres-competitive-action.repository.spec.ts`                                       | 실제 disconnect와 동점 공동 우승 UI 검증       |
-| 오류·복구                 | `server-room-snapshot-replay.test.ts`, `server-room-error-copy.test.ts`, `poke-lounge-multiplayer.spec.ts`                | 운영 API·Socket 장애 수동 smoke                |
+| 범위                      | 현재 근거                                                                                                                         | 남은 공백                                      |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| 입장 입력·금지 control    | `room-entry.test.ts`, `poke-lounge.spec.ts`, `poke-lounge-mobile.spec.ts`                                                         | 없음                                           |
+| 임시 비밀번호 파생·비노출 | `room-entry.test.ts`, `server-room-snapshot-replay.test.ts`                                                                       | 운영 artifact 수동 점검                        |
+| 자동 create-or-join       | `poke-lounge-room.service.spec.ts`, `poke-lounge-room.e2e-spec.ts`, `poke-lounge-public-lobby.spec.ts`                            | 다른 비밀번호 세션 격리의 실제 browser 검증    |
+| 방장·수동 ready·시작      | `poke-lounge-room.service.spec.ts`, `poke-lounge-multiplayer.spec.ts`, `poke-lounge-public-lobby.spec.ts`                         | 3명 이상 실제 browser 시작 검증                |
+| 6명 정원·7번째 거부       | `poke-lounge-room.service.spec.ts`, `server-room-snapshot-replay.test.ts`                                                         | 실제 7 browser UI 통합                         |
+| 동일 세션 재접속          | `poke-lounge-room.service.spec.ts`, `poke-lounge.gateway.spec.ts`                                                                 | 정원 6명 상태의 실제 browser reload            |
+| disconnect 유예           | `poke-lounge.gateway.spec.ts`, `poke-lounge-room-policy.spec.ts`                                                                  | 실제 Socket 연결 중단·복귀                     |
+| 위치 중계·identity 보호   | `poke-lounge.gateway.spec.ts`, `server-room-snapshot-replay.test.ts`                                                              | Desktop↔Mobile 실제 양방향 이동                |
+| 독립 게임 진행            | `game-state-store.test.ts`, `server-room-snapshot-replay.test.ts`, Poke Lounge 전투 E2E                                           | 한쪽 전투·한쪽 월드의 실제 2 browser 동시 검증 |
+| 5인 부전승·12대진         | `tournament-bracket.test.ts`, `poke-lounge-five-player-tournament.spec.ts`                                                        | 없음                                           |
+| 서버 권위 대진·3라운드    | `poke-lounge-room.service.spec.ts`, `postgres-poke-lounge-room.repository.spec.ts`, `poke-lounge-five-player-tournament.spec.ts`  | 운영 배포 환경 반복 실행                       |
+| 이탈·점수·누적 순위       | `poke-lounge-room-policy.spec.ts`, `postgres-competitive-action.repository.spec.ts`, `poke-lounge-five-player-tournament.spec.ts` | 동점 공동 우승 실제 browser fixture            |
+| 오류·복구                 | `server-room-snapshot-replay.test.ts`, `server-room-error-copy.test.ts`, `poke-lounge-multiplayer.spec.ts`                        | 운영 API·Socket 장애 수동 smoke                |
 
-같은 임시 비밀번호를 실제 입력하는 Desktop·Mobile 2개 context의 대기실 수동 시작과 동일한
-5분 기준 시각 검증, 5개 context의 첫 토너먼트 대진 수렴은 자동화됐다. 다음 확장 완료 조건은
-실제 3개 context의 3라운드 완주와 정원 검증용 7개 context 통합 테스트다.
+2026-08-24 격리 실행 `manual-1787548782726`에서 Desktop Chromium 2개, Desktop WebKit,
+Mobile Chromium, Mobile WebKit의 독립 context 5개가 방 `76T2XH`를 함께 플레이했다. worker 1,
+retry 0, 전체 실행 시간 제한 없이 게임 라운드 3개와 단일 제거 대진 12개를 완료했다. 다섯 화면이
+`Tester 3` 우승에 수렴했고 전원 명시적 퇴장 뒤 Redis world key 부재를 확인했다. 총 112개 서버
+권위 move, HTTP 5xx·page error 0건과 상황별 screenshot 54장이 기록됐다.
+
+Desktop Chromium과 Mobile WebKit의 최종 우승 화면에서 도움말·설정 overlay가 닫힌 상태를,
+Mobile WebKit의 퇴장 화면에서 입장 화면 복귀를 육안 확인했다. 로컬 증적은
+`output/playwright/poke-lounge-five-player/manual-1787548782726/`에 있으며 실행 산출물이므로
+커밋하지 않는다. 남은 운영 인수 범위는 실제 배포 URL 반복 실행, 동점 공동 우승 browser fixture와
+정원 검증용 7개 context다.
 
 ## 10. 기준 문서
 

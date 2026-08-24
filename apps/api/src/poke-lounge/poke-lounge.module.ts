@@ -20,6 +20,7 @@ import { PokeLoungeGateway } from './poke-lounge.gateway';
 import { PokeLoungeController } from './poke-lounge.controller';
 import { PokeLoungeRoomService } from './poke-lounge-room.service';
 import { CompetitiveProjectionService } from './competitive/competitive-projection.service';
+import { PokeLoungeLiveStateService } from './poke-lounge-live-state.service';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { CompetitiveProjectionService } from './competitive/competitive-projecti
       useExisting: PostgresPokeLoungeRoomRepository,
     },
     PokeLoungeRoomEventsService,
+    PokeLoungeLiveStateService,
     {
       provide: POKE_LOUNGE_ROOM_EVENT_PUBLISHER,
       useExisting: PokeLoungeRoomEventsService,
@@ -60,6 +62,6 @@ import { CompetitiveProjectionService } from './competitive/competitive-projecti
     CompetitiveMatchService,
     PokeLoungeGateway,
   ],
-  exports: [PokeLoungeRoomService],
+  exports: [PokeLoungeLiveStateService, PokeLoungeRoomService],
 })
 export class PokeLoungeModule {}

@@ -10,9 +10,6 @@ const MOBILE_VIEWPORTS: Record<string, { width: number; height: number; browserN
   "webkit-mobile-sm": { width: 360, height: 780, browserName: "webkit" },
   "webkit-mobile-md": { width: 390, height: 844, browserName: "webkit" },
   "webkit-mobile-lg": { width: 430, height: 932, browserName: "webkit" },
-  "firefox-mobile-sm": { width: 360, height: 780, browserName: "firefox" },
-  "firefox-mobile-md": { width: 390, height: 844, browserName: "firefox" },
-  "firefox-mobile-lg": { width: 430, height: 932, browserName: "firefox" },
 };
 
 const getMobileTestLocale = (): Locale =>

@@ -28,6 +28,17 @@ import {
 
 type Handler<T extends RoomMessage> = (payload: RoomEvent[T]) => void;
 type SharedWorldPlayerEventType = "PLAYER_MOVED" | "PLAYER_MOVEMENT_ENDED" | "PLAYER_CHANGED_MAP";
+type SharedWorldCursor = {
+  roomCode: string;
+  worldEpoch: string;
+  worldSeq: number;
+};
+type SharedWorldSnapshot = SharedWorldCursor & { players: PlayerSnapshot[] };
+type SharedWorldPlayerEvent = {
+  type: SharedWorldPlayerEventType;
+  snapshot: PlayerSnapshot;
+  cursor: SharedWorldCursor | null;
+};
 
 type ApiServerRoom = components["schemas"]["PokeLoungeRoomResponseDto"];
 type ServerParticipant = ApiServerRoom["participants"][number];
@@ -118,6 +129,8 @@ export type ServerRoomTransportDiagnostics = {
   recoveryTimerScheduled: boolean;
   subscriptionFailed: boolean;
   lastAppliedTerminalRevision: number | null;
+  lastAppliedWorldSeq: number | null;
+  worldEpoch: string | null;
   lastSocketErrorKind:
     | "connect_error"
     | "disconnect"
@@ -285,6 +298,11 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   const completedBracketRecoveryMatchIds = new Set<string>();
   let lastAppliedRoomRevision = -1;
   let lastAppliedTerminalRevision = -1;
+  let lastAppliedWorldSeq = 0;
+  let worldEpoch: string | null = null;
+  let worldSnapshotInitialized = false;
+  let worldResyncRequested = false;
+  const worldPlayers = new Map<string, PlayerSnapshot>();
   let freshTerminalBaselineInitialized = false;
   let roomSocket: ServerRoomSocket | null = null;
   let socketConnected = false;
@@ -753,6 +771,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   const handleSocketDisconnect = () => {
     socketConnected = false;
     subscriptionRetryRequired = false;
+    worldResyncRequested = false;
     emitConnectionStatus("offline");
     lastSocketErrorKind = "disconnect";
     scheduleRecovery();
@@ -761,6 +780,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   const handleSocketConnectError = (error: unknown) => {
     socketConnected = false;
     subscriptionRetryRequired = false;
+    worldResyncRequested = false;
     emitConnectionStatus("offline");
     subscriptionFailed = true;
     lastSocketErrorKind = "connect_error";
@@ -785,6 +805,88 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         facing,
       },
     });
+  };
+
+  const requestWorldResync = () => {
+    if (
+      worldResyncRequested ||
+      !socketConnected ||
+      !roomSocket ||
+      activeRoomId === PENDING_ROOM_ID
+    ) {
+      return;
+    }
+    worldResyncRequested = true;
+    roomSocket.emit("room.world-resync", { roomCode: activeRoomId });
+  };
+
+  const applyWorldPlayerEvent = (type: SharedWorldPlayerEventType, snapshot: PlayerSnapshot) => {
+    worldPlayers.set(snapshot.sessionId, structuredClone(snapshot));
+    if (snapshot.playerId === serverPlayerId) {
+      return;
+    }
+    emit(type, snapshot);
+  };
+
+  const handleWorldSnapshot = (event: unknown) => {
+    let snapshot: SharedWorldSnapshot;
+    try {
+      snapshot = parseSharedWorldSnapshot(event);
+    } catch {
+      worldResyncRequested = false;
+      requestWorldResync();
+      return;
+    }
+    if (snapshot.roomCode !== activeRoomId) {
+      return;
+    }
+    if (
+      worldSnapshotInitialized &&
+      snapshot.worldEpoch === worldEpoch &&
+      snapshot.worldSeq < lastAppliedWorldSeq
+    ) {
+      return;
+    }
+
+    const previousPlayerIds = new Set(worldPlayers.keys());
+    worldPlayers.clear();
+    for (const player of snapshot.players) {
+      worldPlayers.set(player.sessionId, structuredClone(player));
+      previousPlayerIds.delete(player.sessionId);
+      if (player.playerId !== serverPlayerId) {
+        emit("PLAYER_CHANGED_MAP", player);
+      }
+    }
+    if (worldSnapshotInitialized) {
+      for (const playerId of previousPlayerIds) {
+        if (playerId !== serverPlayerId) {
+          emit("PLAYER_LEFT", { sessionId: playerId });
+        }
+      }
+    }
+    worldEpoch = snapshot.worldEpoch;
+    lastAppliedWorldSeq = snapshot.worldSeq;
+    worldSnapshotInitialized = true;
+    worldResyncRequested = false;
+  };
+
+  const handleWorldCursor = (event: unknown) => {
+    let cursor: SharedWorldCursor;
+    try {
+      cursor = parseSharedWorldCursor(event);
+    } catch {
+      return;
+    }
+    if (cursor.roomCode !== activeRoomId) {
+      return;
+    }
+    if (
+      !worldSnapshotInitialized ||
+      cursor.worldEpoch !== worldEpoch ||
+      cursor.worldSeq > lastAppliedWorldSeq
+    ) {
+      requestWorldResync();
+    }
   };
 
   const handleSocketSnapshot = (event: unknown) => {
@@ -822,11 +924,29 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   const handleSharedWorldEvent = (event: unknown) => {
     const parsed = parseSharedWorldPlayerEvent(event);
 
-    if (!parsed || parsed.snapshot.playerId === serverPlayerId) {
+    if (!parsed) {
+      return;
+    }
+    if (!parsed.cursor) {
+      if (!worldSnapshotInitialized) {
+        applyWorldPlayerEvent(parsed.type, parsed.snapshot);
+      }
+      return;
+    }
+    if (
+      parsed.cursor.roomCode !== activeRoomId ||
+      parsed.cursor.worldEpoch !== worldEpoch ||
+      parsed.cursor.worldSeq > lastAppliedWorldSeq + 1
+    ) {
+      requestWorldResync();
+      return;
+    }
+    if (parsed.cursor.worldSeq <= lastAppliedWorldSeq) {
       return;
     }
 
-    emit(parsed.type, parsed.snapshot);
+    lastAppliedWorldSeq = parsed.cursor.worldSeq;
+    applyWorldPlayerEvent(parsed.type, parsed.snapshot);
   };
 
   const handleSubscriptionError = () => {
@@ -836,6 +956,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
 
     subscriptionFailed = true;
     subscriptionRetryRequired = true;
+    worldResyncRequested = false;
     lastSocketErrorKind = "subscription_error";
     emitConnectionStatus("connecting");
     scheduleRecovery();
@@ -894,6 +1015,8 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     roomSocket.on("disconnect", handleSocketDisconnect);
     roomSocket.on("room.snapshot", handleSocketSnapshot);
     roomSocket.on("room.player-event", handleSharedWorldEvent);
+    roomSocket.on("room.world-snapshot", handleWorldSnapshot);
+    roomSocket.on("room.world-cursor", handleWorldCursor);
     roomSocket.on("room.subscription-error", handleSubscriptionError);
     roomSocket.on("room.revision-conflict", handleRevisionConflict);
 
@@ -949,7 +1072,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       resultSync = { matchId: null, status: "idle" };
     }
 
-    emit("CURRENT_PLAYERS", createCurrentPlayersPayload(state));
+    emit("CURRENT_PLAYERS", createCurrentPlayersPayload());
     if (options.sharedWorldOnly && previousState) {
       const connectedPlayerIds = new Set(
         state.participants
@@ -963,6 +1086,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
           !connectedPlayerIds.has(participant.playerId)
         ) {
           emit("PLAYER_LEFT", { sessionId: participant.playerId });
+          worldPlayers.delete(participant.playerId);
         }
       }
     }
@@ -1056,15 +1180,11 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     }
   };
 
-  const createCurrentPlayersPayload = (state: ServerRoomState): RoomEvent["CURRENT_PLAYERS"] => ({
+  const createCurrentPlayersPayload = (): RoomEvent["CURRENT_PLAYERS"] => ({
     players: Object.fromEntries(
-      state.participants
-        .filter(participant => participant.connected)
-        .map(participant => {
-          const snapshot = toPlayerSnapshot(participant, serverPlayerId, sessionId, localPlayerId);
-
-          return [snapshot.sessionId, snapshot] as const;
-        }),
+      [...worldPlayers.entries()]
+        .filter(([, snapshot]) => snapshot.playerId !== serverPlayerId)
+        .map(([playerId, snapshot]) => [playerId, structuredClone(snapshot)]),
     ),
   });
 
@@ -1175,7 +1295,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     }
 
     if (latestState && type === "CURRENT_PLAYERS") {
-      handler(createCurrentPlayersPayload(latestState));
+      handler(createCurrentPlayersPayload());
       return;
     }
 
@@ -1467,6 +1587,8 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     lastAppliedTerminalRevision: freshTerminalBaselineInitialized
       ? lastAppliedTerminalRevision
       : null,
+    lastAppliedWorldSeq: worldSnapshotInitialized ? lastAppliedWorldSeq : null,
+    worldEpoch,
     lastSocketErrorKind,
     lastSocketConnectErrorClass,
     lastRecoveryFailureKind,
@@ -1541,6 +1663,8 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         roomSocket.off("disconnect", handleSocketDisconnect);
         roomSocket.off("room.snapshot", handleSocketSnapshot);
         roomSocket.off("room.player-event", handleSharedWorldEvent);
+        roomSocket.off("room.world-snapshot", handleWorldSnapshot);
+        roomSocket.off("room.world-cursor", handleWorldCursor);
         roomSocket.off("room.subscription-error", handleSubscriptionError);
         roomSocket.off("room.revision-conflict", handleRevisionConflict);
         roomSocket.disconnect();
@@ -1791,25 +1915,6 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   function mapServerPlayerIdForLocalStore(playerId: string): string {
     return playerId === serverPlayerId ? localPlayerId : playerId;
   }
-}
-
-function toPlayerSnapshot(
-  participant: ServerParticipant,
-  serverPlayerId: string,
-  serverSessionId: string,
-  localPlayerId: string,
-): PlayerSnapshot {
-  const local = participant.playerId === serverPlayerId;
-
-  return {
-    sessionId: local ? serverSessionId : participant.playerId,
-    playerId: local ? localPlayerId : participant.playerId,
-    displayName: participant.displayName,
-    map: "new-bark-town",
-    x: local ? 656 : 704,
-    y: 446,
-    facing: "front",
-  };
 }
 
 function createDefaultSnapshot(sessionId: string, playerId: string): PlayerSnapshot {
@@ -2197,9 +2302,7 @@ function parseSocketRoomEvent(value: unknown): ServerRoomState {
   return parseServerRoomState((value as { room: unknown }).room);
 }
 
-function parseSharedWorldPlayerEvent(
-  value: unknown,
-): { type: SharedWorldPlayerEventType; snapshot: PlayerSnapshot } | null {
+function parseSharedWorldPlayerEvent(value: unknown): SharedWorldPlayerEvent | null {
   if (!value || typeof value !== "object") {
     return null;
   }
@@ -2218,11 +2321,83 @@ function parseSharedWorldPlayerEvent(
   }
 
   const candidate = snapshot as Record<string, unknown>;
+  const parsedSnapshot = parseSharedWorldPlayer(candidate, true);
+  if (!parsedSnapshot) {
+    return null;
+  }
+  const hasCursor =
+    event.roomCode !== undefined || event.worldEpoch !== undefined || event.worldSeq !== undefined;
+  let cursor: SharedWorldCursor | null = null;
+  if (hasCursor) {
+    try {
+      cursor = parseSharedWorldCursor(event);
+    } catch {
+      return null;
+    }
+  }
+
+  return { type, snapshot: parsedSnapshot, cursor };
+}
+
+function parseSharedWorldSnapshot(value: unknown): SharedWorldSnapshot {
+  const cursor = parseSharedWorldCursor(value);
+  if (!value || typeof value !== "object") {
+    throw new Error("Poke Lounge world snapshot is malformed");
+  }
+  const players = (value as Record<string, unknown>).players;
+  if (!Array.isArray(players)) {
+    throw new Error("Poke Lounge world snapshot is malformed");
+  }
+  const playerIds = new Set<string>();
+  const parsedPlayers = players.map(player => {
+    if (!player || typeof player !== "object" || Array.isArray(player)) {
+      throw new Error("Poke Lounge world snapshot is malformed");
+    }
+    const parsed = parseSharedWorldPlayer(player as Record<string, unknown>, false);
+    if (!parsed || !parsed.playerId || playerIds.has(parsed.playerId)) {
+      throw new Error("Poke Lounge world snapshot is malformed");
+    }
+    playerIds.add(parsed.playerId);
+    return parsed;
+  });
+
+  return { ...cursor, players: parsedPlayers };
+}
+
+function parseSharedWorldCursor(value: unknown): SharedWorldCursor {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Poke Lounge world cursor is malformed");
+  }
+  const cursor = value as Record<string, unknown>;
   if (
-    typeof candidate.sessionId !== "string" ||
-    !candidate.sessionId ||
-    typeof candidate.playerId !== "string" ||
-    !candidate.playerId ||
+    typeof cursor.roomCode !== "string" ||
+    !cursor.roomCode ||
+    typeof cursor.worldEpoch !== "string" ||
+    !cursor.worldEpoch ||
+    !Number.isSafeInteger(cursor.worldSeq) ||
+    (cursor.worldSeq as number) < 0
+  ) {
+    throw new Error("Poke Lounge world cursor is malformed");
+  }
+
+  return {
+    roomCode: cursor.roomCode,
+    worldEpoch: cursor.worldEpoch,
+    worldSeq: cursor.worldSeq as number,
+  };
+}
+
+function parseSharedWorldPlayer(
+  candidate: Record<string, unknown>,
+  requiresSessionId: boolean,
+): PlayerSnapshot | null {
+  const playerId = candidate.playerId;
+  const sessionId = requiresSessionId ? candidate.sessionId : playerId;
+  if (
+    typeof sessionId !== "string" ||
+    !sessionId ||
+    typeof playerId !== "string" ||
+    !playerId ||
     typeof candidate.displayName !== "string" ||
     !candidate.displayName ||
     typeof candidate.map !== "string" ||
@@ -2240,16 +2415,13 @@ function parseSharedWorldPlayerEvent(
   }
 
   return {
-    type,
-    snapshot: {
-      sessionId: candidate.sessionId,
-      playerId: candidate.playerId,
-      displayName: candidate.displayName,
-      map: candidate.map,
-      x: candidate.x,
-      y: candidate.y,
-      facing: candidate.facing,
-    },
+    sessionId,
+    playerId,
+    displayName: candidate.displayName,
+    map: candidate.map,
+    x: candidate.x,
+    y: candidate.y,
+    facing: candidate.facing,
   };
 }
 

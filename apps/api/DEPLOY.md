@@ -28,6 +28,10 @@ workflow의 `workflow_dispatch`를 사용하고, 완료 뒤 `pnpm smoke:api:remo
 
 로컬 또는 운영 환경을 새로 만들 때는 `apps/api/.env.example`을 복사한 뒤 실제 값으로 채웁니다.
 
+Poke Lounge 실시간 상태는 Redis가 필수입니다. 코드 배포 전에 운영 Redis를 먼저 준비하고
+`REDIS_URL`을 설정합니다. 연결할 수 없으면 API는 시작되지 않으며 프로세스 메모리로 대체하지
+않습니다.
+
 1. `.env` 파일 전송:
 
    ```bash
@@ -36,10 +40,26 @@ workflow의 `workflow_dispatch`를 사용하고, 완료 뒤 `pnpm smoke:api:remo
    ```
 
 2. (환경 변수만 변경 시) 서버 재시작 필요:
+
    ```bash
    ssh icenux-external "cd /home/icenux/projects/vscoke-api && pm2 restart vscoke-api --update-env"
    ```
+
    > 코드 배포와 함께라면 GitHub Actions가 재시작해주므로 생략 가능합니다.
+
+3. Redis 연결 확인:
+
+   ```bash
+   ssh icenux-external
+   cd /home/icenux/projects/vscoke-api
+   set -a
+   . ./.env
+   set +a
+   pnpm --filter @vscoke/api exec node -e "const {createClient}=require('redis');(async()=>{const client=createClient({url:process.env.REDIS_URL});try{await client.connect();console.log(await client.ping())}finally{if(client.isOpen)await client.close()}})().catch(error=>{console.error(error.message);process.exit(1)})"
+   ```
+
+   `PONG`이 출력된 뒤 API를 재시작합니다. 운영 비밀번호가 포함될 수 있는 `REDIS_URL` 원문은
+   로그나 명령 인자에 출력하지 않습니다.
 
 Resume RAG와 메인 채팅 환경 변수는
 [메인 채팅 AI 사용 지침](../../docs/main-chat-ai-usage-guide.md#5-배포-환경-설정)을 따릅니다.

@@ -48,7 +48,7 @@
 | 브라우저 설치       | `pnpm e2e:install`          | 최초 1회 또는 브라우저 갱신 시       |
 | 스모크 검증         | `pnpm e2e:smoke`            | 가장 빠른 핵심 검증                  |
 | 전체 E2E            | `pnpm e2e`                  | 기본 회귀 검증                       |
-| 크로스 브라우저     | `pnpm e2e:cross-browser`    | WebKit, Firefox 포함                 |
+| 크로스 브라우저     | `pnpm e2e:cross-browser`    | WebKit 포함                          |
 | 실제 API 통합       | `pnpm e2e:integration`      | 테스트 DB 기반 취미·Poke Lounge 경로 |
 | 헤디드 디버깅       | `pnpm e2e:headed`           | 로컬 재현용                          |
 | UI 모드             | `pnpm e2e:ui`               | 선택 실행 및 디버깅                  |
@@ -96,9 +96,7 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:37123 pnpm --filter @vscoke/web exec playwr
 환경 변수 `PLAYWRIGHT_ENABLE_CROSS_BROWSER=1`일 때 아래를 추가한다.
 
 - `webkit`
-- `firefox`
 - `webkit-mobile-*`
-- `firefox-mobile-*`
 
 ### 6-3. 운영 원칙
 

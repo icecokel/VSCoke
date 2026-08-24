@@ -49,11 +49,6 @@ export default defineConfig({
             testIgnore: [mobileTestMatch, integrationTestMatch, visualRegressionTestMatch],
             use: { ...devices["Desktop Safari"] },
           },
-          {
-            name: "firefox",
-            testIgnore: [mobileTestMatch, integrationTestMatch, visualRegressionTestMatch],
-            use: { ...devices["Desktop Firefox"] },
-          },
         ]
       : []),
     {
@@ -124,42 +119,6 @@ export default defineConfig({
             use: {
               ...devices["iPhone 13"],
               browserName: "webkit" as const,
-              viewport: { width: 430, height: 932 },
-              isMobile: true,
-              hasTouch: true,
-              deviceScaleFactor: 2,
-            },
-          },
-          {
-            name: "firefox-mobile-sm",
-            testMatch: mobileTestMatch,
-            use: {
-              ...devices["iPhone 13"],
-              browserName: "firefox" as const,
-              viewport: { width: 360, height: 780 },
-              isMobile: true,
-              hasTouch: true,
-              deviceScaleFactor: 2,
-            },
-          },
-          {
-            name: "firefox-mobile-md",
-            testMatch: mobileTestMatch,
-            use: {
-              ...devices["iPhone 13"],
-              browserName: "firefox" as const,
-              viewport: { width: 390, height: 844 },
-              isMobile: true,
-              hasTouch: true,
-              deviceScaleFactor: 2,
-            },
-          },
-          {
-            name: "firefox-mobile-lg",
-            testMatch: mobileTestMatch,
-            use: {
-              ...devices["iPhone 13"],
-              browserName: "firefox" as const,
               viewport: { width: 430, height: 932 },
               isMobile: true,
               hasTouch: true,

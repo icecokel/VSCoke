@@ -51,12 +51,12 @@ UI 격리 테스트의 route interception은 오류 상태를 재현하기 위�
 | 그룹          | 브라우저/디바이스 | 뷰포트                | 범위                       |
 | ------------- | ----------------- | --------------------- | -------------------------- |
 | Desktop 기본  | Chromium          | Desktop Chrome 기본값 | 모든 P0/P1                 |
-| Desktop 호환  | Firefox, WebKit   | Desktop 기본값        | P0와 주요 게임             |
+| Desktop 호환  | WebKit            | Desktop 기본값        | P0와 주요 게임             |
 | Mobile small  | Chromium, WebKit  | 360x780               | 메뉴, 게임, 모달, overflow |
 | Mobile medium | Chromium, WebKit  | 390x844               | 기본 모바일 회귀           |
 | Mobile large  | Chromium, WebKit  | 430x932               | 넓은 모바일 회귀           |
 
-Firefox mobile emulation은 터치 동작 참고용으로만 사용한다. 실제 iOS Safari 판정은 WebKit 또는 실기기 결과를 우선한다.
+실제 iOS Safari 판정은 WebKit 또는 실기기 결과를 우선한다.
 
 ### 3.3 필수 계정과 데이터
 
@@ -253,29 +253,29 @@ API endpoint 목록은 [VSCoke API README](../apps/api/README.md#주요-모듈)�
 | `SKY-009` | P1/N          | resize             | desktop 크기를 연속 변경         | canvas와 UI가 컨테이너에 맞고 input 좌표가 어긋나지 않는다.        |
 | `SKY-010` | P1/N          | audio 허용/차단    | 첫 입력 전후 효과음 확인         | 브라우저 autoplay 정책을 위반하지 않고 입력 후 audio가 재생된다.   |
 | `SKY-011` | P1/N          | 로그인 API         | game over 후 제출·공유           | `SKY_DROP` 점수가 저장되고 ranking/share 상세에 반영된다.          |
-| `SKY-012` | P2/N          | Firefox/WebKit     | 핵심 플레이 1회                  | canvas, keyboard, audio, 결과 전환이 Chromium과 동일하다.          |
+| `SKY-012` | P2/N          | WebKit             | 핵심 플레이 1회                  | canvas, keyboard, audio, 결과 전환이 Chromium과 동일하다.          |
 
 현재 자동화는 진입과 공통 화면 중심이다. 실제 Phaser board 플레이 시나리오는 신규 test hook 또는 deterministic seed가 필요하다.
 
 ## 13. Wordle
 
-| ID         | 우선순위/상태 | 사전조건              | 절차                                      | 기대 결과                                                                                   |
-| ---------- | ------------- | --------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `WORD-001` | P0/A          | word API 성공         | 화면 진입                                 | loading 후 정답 길이에 맞는 board와 keyboard가 표시된다.                                    |
-| `WORD-002` | P0/A          | board 활성            | 물리 키보드로 영문 입력, Backspace, Enter | tile 입력·삭제·제출이 focus 없이 동작한다.                                                  |
-| `WORD-003` | P0/A          | board 활성            | 화면 keyboard만 사용                      | mouse/touch만으로 동일한 입력과 제출이 가능하다.                                            |
-| `WORD-004` | P0/N          | 길이 미달             | Enter                                     | API를 호출하지 않고 길이 안내를 표시한다.                                                   |
-| `WORD-005` | P0/A          | dictionary 미등록     | 유효 길이 단어 제출                       | invalid word 안내 후 현재 row가 수정 가능하다.                                              |
-| `WORD-006` | P0/N          | 정답 fixture          | 정답 제출                                 | correct tile과 성공 toast가 표시되고 추가 입력은 막힌다.                                    |
-| `WORD-007` | P0/N          | 오답 fixture          | 모든 row 소진                             | 마지막 row와 정답을 포함한 실패 toast가 표시되고 추가 입력은 막힌다.                        |
-| `WORD-008` | P1/N          | 중복 문자 정답        | 같은 문자가 여러 번 포함된 guess          | correct/present/absent 수가 Wordle 규칙에 맞다.                                             |
-| `WORD-009` | P1/N          | 제출 animation        | 빠른 연속 입력                            | 검증 중 다음 row 입력이나 중복 API 요청이 발생하지 않는다.                                  |
-| `WORD-010` | P0/A          | word/check API 실패   | 로딩 또는 제출                            | 서버 이전 안내 toast를 표시하고 앱 전체가 500이 되지 않는다.                                |
-| `WORD-011` | P0/N          | 플레이 중             | header Restart                            | 별도 중복 요청 없이 새 단어를 불러오고 board와 keyboard 상태를 초기화한다.                  |
-| `WORD-012` | P1/N          | 완료 상태             | header Restart                            | 성공/실패 상태가 지워지고 새 단어로 플레이가 재개된다.                                      |
-| `WORD-013` | P1/N          | 임의 상태             | header 공유                               | Wordle 안내 문구와 현재 페이지 URL이 공유되며 정답이나 내부 debug answer를 노출하지 않는다. |
-| `WORD-014` | P1/N          | reload                | 진행 중/완료 후 새로고침                  | 명시된 persistence 정책대로 상태가 유지되거나 새 게임으로 일관되게 초기화된다.              |
-| `WORD-015` | P2/N          | Firefox/WebKit/mobile | keyboard와 touch 입력                     | key event, tile animation, modal이 브라우저별로 동작한다.                                   |
+| ID         | 우선순위/상태 | 사전조건            | 절차                                      | 기대 결과                                                                                   |
+| ---------- | ------------- | ------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `WORD-001` | P0/A          | word API 성공       | 화면 진입                                 | loading 후 정답 길이에 맞는 board와 keyboard가 표시된다.                                    |
+| `WORD-002` | P0/A          | board 활성          | 물리 키보드로 영문 입력, Backspace, Enter | tile 입력·삭제·제출이 focus 없이 동작한다.                                                  |
+| `WORD-003` | P0/A          | board 활성          | 화면 keyboard만 사용                      | mouse/touch만으로 동일한 입력과 제출이 가능하다.                                            |
+| `WORD-004` | P0/N          | 길이 미달           | Enter                                     | API를 호출하지 않고 길이 안내를 표시한다.                                                   |
+| `WORD-005` | P0/A          | dictionary 미등록   | 유효 길이 단어 제출                       | invalid word 안내 후 현재 row가 수정 가능하다.                                              |
+| `WORD-006` | P0/N          | 정답 fixture        | 정답 제출                                 | correct tile과 성공 toast가 표시되고 추가 입력은 막힌다.                                    |
+| `WORD-007` | P0/N          | 오답 fixture        | 모든 row 소진                             | 마지막 row와 정답을 포함한 실패 toast가 표시되고 추가 입력은 막힌다.                        |
+| `WORD-008` | P1/N          | 중복 문자 정답      | 같은 문자가 여러 번 포함된 guess          | correct/present/absent 수가 Wordle 규칙에 맞다.                                             |
+| `WORD-009` | P1/N          | 제출 animation      | 빠른 연속 입력                            | 검증 중 다음 row 입력이나 중복 API 요청이 발생하지 않는다.                                  |
+| `WORD-010` | P0/A          | word/check API 실패 | 로딩 또는 제출                            | 서버 이전 안내 toast를 표시하고 앱 전체가 500이 되지 않는다.                                |
+| `WORD-011` | P0/N          | 플레이 중           | header Restart                            | 별도 중복 요청 없이 새 단어를 불러오고 board와 keyboard 상태를 초기화한다.                  |
+| `WORD-012` | P1/N          | 완료 상태           | header Restart                            | 성공/실패 상태가 지워지고 새 단어로 플레이가 재개된다.                                      |
+| `WORD-013` | P1/N          | 임의 상태           | header 공유                               | Wordle 안내 문구와 현재 페이지 URL이 공유되며 정답이나 내부 debug answer를 노출하지 않는다. |
+| `WORD-014` | P1/N          | reload              | 진행 중/완료 후 새로고침                  | 명시된 persistence 정책대로 상태가 유지되거나 새 게임으로 일관되게 초기화된다.              |
+| `WORD-015` | P2/N          | WebKit/mobile       | keyboard와 touch 입력                     | key event, tile animation, modal이 브라우저별로 동작한다.                                   |
 
 현재 자동화 매핑: `keyboard-only.spec.ts`, `error-fallback.spec.ts`, `wordle.e2e-spec.ts`. 승리·패배와 중복 문자 UI 자동화는 보강 대상이다.
 
@@ -396,7 +396,7 @@ Chromium 전체 suite와 실제 PostgreSQL integration을 실행한다. 외부 �
 
 ### 23.3 릴리즈 후보 세트
 
-1. `pnpm e2e:cross-browser`로 Chromium, Firefox, WebKit 실행.
+1. `pnpm e2e:cross-browser`로 Chromium과 WebKit 실행.
 2. mobile 360, 390, 430 viewport 실행.
 3. 두 익명 browser에서 같은 임시 비밀번호로 Poke Lounge 자동 생성·참가·플레이.
 4. 독립 browser context 7개에서 6명 참가, 7번째 거부, 동일 세션 재접속과 빈자리 재입장.
@@ -453,7 +453,7 @@ flaky 테스트는 단순 retry 성공으로 닫지 않는다. 최초 실패 tra
 4. Sky Drop, Wordle, Poke Lounge가 각각 실제 시작→플레이→종료→재시작 흐름을 통과한다.
 5. Poke Lounge는 익명 solo, 실제 Desktop↔Mobile 2인 shared world와 6명 정원·7번째 거부를 통과한다.
 6. ko-KR, en-US, ja-JP route와 360/390/430 mobile 레이아웃이 통과한다.
-7. Firefox와 WebKit에서 P0 핵심 경로가 통과한다.
+7. WebKit에서 P0 핵심 경로가 통과한다.
 8. critical 접근성 오류, console error, 예상하지 않은 4xx/5xx, 정적 asset 404가 없다.
 9. 실패 artifact와 실행 결과가 commit SHA 기준으로 보존된다.
 10. 미자동화 또는 수동 항목은 담당자, 실행일, 결과가 릴리즈 기록에 남는다.

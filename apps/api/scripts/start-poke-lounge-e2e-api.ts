@@ -13,6 +13,8 @@ import type { User } from '../src/auth/entities/user.entity';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
 import { getCorsOptions } from '../src/common/utils/cors.util';
+import { PokeLoungeLiveStateService } from '../src/poke-lounge/poke-lounge-live-state.service';
+import { PokeLoungeRedisIoAdapter } from '../src/poke-lounge/poke-lounge-redis-io.adapter';
 
 const E2E_TOKEN_PATTERN = /^poke-lounge-e2e-token-([1-5])$/;
 const E2E_TABLES = [
@@ -119,6 +121,11 @@ async function bootstrap(): Promise<void> {
     .useClass(PokeLoungeE2eAuthGuard)
     .compile();
   const app = testingModule.createNestApplication();
+  const liveState = testingModule.get(PokeLoungeLiveStateService);
+  await liveState.connect();
+  app.useWebSocketAdapter(
+    new PokeLoungeRedisIoAdapter(app, liveState.createSocketAdapter()),
+  );
 
   app.enableCors(getCorsOptions(process.env.CORS_ORIGINS));
   app.useGlobalPipes(
@@ -139,6 +146,7 @@ async function bootstrap(): Promise<void> {
   registerDatabaseAssertionEndpoint(
     httpAdapterInstance as E2eHttpAdapter,
     testingModule.get(DataSource),
+    liveState,
   );
 
   const port = Number.parseInt(process.env.PORT ?? '', 10) || 3001;
@@ -211,12 +219,20 @@ async function resetE2eTables(dataSource: DataSource): Promise<void> {
 function registerDatabaseAssertionEndpoint(
   expressApp: E2eHttpAdapter,
   dataSource: DataSource,
+  liveState: PokeLoungeLiveStateService,
 ): void {
   expressApp.get('/__e2e/poke-lounge/assertions', (request, response) => {
     const roomCodeQuery = request.query.roomCode;
     const roomCode = typeof roomCodeQuery === 'string' ? roomCodeQuery : '';
-    void readDatabaseAssertions(dataSource, roomCode).then(
-      (assertions) => response.status(200).json(assertions),
+    void Promise.all([
+      readDatabaseAssertions(dataSource, roomCode),
+      liveState.getCursor(roomCode).then(
+        () => true,
+        () => false,
+      ),
+    ]).then(
+      ([assertions, redisWorldPresent]) =>
+        response.status(200).json({ ...assertions, redisWorldPresent }),
       (error) =>
         response.status(500).json({
           message: error instanceof Error ? error.message : String(error),

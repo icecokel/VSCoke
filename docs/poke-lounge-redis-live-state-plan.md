@@ -1,7 +1,7 @@
 # Poke Lounge Redis 실시간 상태 개선 작업 계획
 
 확인 기준일: 2026-08-24
-상태: 코드 구현·격리 5인 한 사이클 검증 완료, 운영 배포 검증 전
+상태: 코드 구현·격리 5인 한 사이클·운영 배포 health 검증 완료
 
 ## 1. 목적
 
@@ -179,7 +179,7 @@ Redis로 경쟁전 상태를 옮기지 않는다. 다만 action 제출 뒤 상�
 - 서로 다른 두 Socket.IO 서버 사이의 room event와 server-side room 종료 metadata가 Redis
   Adapter를 통해 양방향 전달됨을 확인했다.
 - 실제 NestJS, Next.js, PostgreSQL과 Redis를 사용한 격리 브라우저 한 사이클을 통과했다.
-- 운영 배포 결과는 코드·격리 검증과 분리해 남긴다.
+- 운영 배포 결과는 코드·격리 검증과 분리해 아래에 남긴다.
 
 2026-08-24 격리 5인 한 사이클 결과:
 
@@ -201,6 +201,21 @@ Redis로 경쟁전 상태를 옮기지 않는다. 다만 action 제출 뒤 상�
 세부 결과는 로컬 증적 디렉터리
 `output/playwright/poke-lounge-five-player/manual-1787548782726/`에 있다. 이 디렉터리는 실행
 산출물이며 커밋 대상이 아니다.
+
+2026-08-24 운영 배포 결과:
+
+| 항목         | 결과                                                                         |
+| ------------ | ---------------------------------------------------------------------------- |
+| commit       | `67fe2bd2f24a91d86ede7f659924b354af1380a7`                                   |
+| API workflow | GitHub Actions `32693566315` success, Redis 연결·PM2 재시작·health 모두 통과 |
+| Web 배포     | Vercel Production deployment success                                         |
+| Redis        | 운영 loopback Redis `PONG`                                                   |
+| API          | PM2 `vscoke-api` online, 내부·공개 health HTTP 200                           |
+| Web          | `https://vscoke.icecoke.kr/ko-KR/game/poke-lounge` HTTP 200                  |
+| 확인 시각    | 2026-08-24 14:27:55 KST                                                      |
+
+위 결과는 배포와 기본 연결 검증이다. 실제 운영 URL에서 여러 플레이어가 진행하는 한 사이클은 아래
+운영 인수 절차로 별도 실행하며, 격리 5인 한 사이클 결과를 운영 실행으로 대신 기록하지 않는다.
 
 ### 9.1 자동 검증
 

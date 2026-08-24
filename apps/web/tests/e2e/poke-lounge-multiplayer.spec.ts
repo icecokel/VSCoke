@@ -24,6 +24,7 @@ import { createCompetitiveBattleLaunchCache } from "../../src/components/poke-lo
 import type { CompetitiveProjection } from "../../src/components/poke-lounge/runtime/game/network/localPreviewRoom";
 import { createGameStateStore } from "../../src/components/poke-lounge/runtime/game/state/gameStateStore";
 import { buildPokeLoungeSaveSnapshot } from "../../src/components/poke-lounge/runtime/game/state/poke-lounge-save-snapshot";
+import { getPokeLoungeCopy } from "../../src/components/poke-lounge/poke-lounge-copy";
 import { gotoWithRetry } from "./test-helpers";
 
 type PokeLoungeWindow = Window & {
@@ -80,6 +81,7 @@ interface PokeLoungeSocketTestControl {
 }
 
 const LOCALE = "ko-KR";
+const copy = getPokeLoungeCopy(LOCALE);
 const ROOM_CODE = "SRV001";
 const BRACKET_MATCH_ID = "game-round-1-bracket-1-match-1";
 const ROOM_EXPIRES_AT_MS = 253402300799999;
@@ -583,10 +585,112 @@ test.describe("Poke Lounge server multiplayer", () => {
 
     await waitForActiveScene(page, "battle");
     expect(await getBattleSnapshot(page)).toMatchObject({
+      battleEntrancePlaying: true,
+      message: copy.mobile.preparing,
+    });
+    await waitForBattleReady(page);
+    expect(await getBattleSnapshot(page)).toMatchObject({
       battleKind: "trainer",
       phase: "command",
+      message: null,
       turn: 3,
     });
+  });
+
+  test("authoritative action은 서버 응답 전 전송 중이고 접수 후 상대 대기로 전환한다", async ({
+    page,
+  }) => {
+    const server = createMockServerState();
+
+    await mockAuthenticatedPokeSession(page);
+    await mockServerRoom(page, server, {
+      competitive: true,
+      competitiveActionResponseDeferred: true,
+      competitiveImmediately: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+    await waitForActiveScene(page, "battle");
+    await waitForBattleReady(page);
+
+    await confirmBattle(page);
+    await setBattleMoveIndex(page, 1);
+    await confirmBattle(page);
+
+    await expect.poll(() => Promise.resolve(server.competitiveActionBodies.length)).toBe(1);
+    expect(await getBattleSnapshot(page)).toMatchObject({
+      phase: "resolving",
+      message: copy.mobile.actionSending,
+    });
+
+    server.resolveCompetitiveActionResponse?.();
+    await expect
+      .poll(() => getBattleSnapshot(page).then(snapshot => snapshot?.message))
+      .toBe(copy.mobile.waiting);
+  });
+
+  test("authoritative battle은 연결 중단부터 projection 복구까지 안내하고 입력을 잠근다", async ({
+    browser,
+  }) => {
+    const server = createMockServerState();
+    const context = await browser.newContext({
+      hasTouch: true,
+      isMobile: true,
+      viewport: { width: 360, height: 780 },
+    });
+    const page = await context.newPage();
+
+    await mockAuthenticatedPokeSession(page);
+    await mockServerRoom(page, server, {
+      competitive: true,
+      competitiveImmediately: true,
+      waitForResult: true,
+      wrapped: true,
+    });
+    await startServerRoom(page);
+    await waitForActiveScene(page, "battle");
+    await waitForBattleReady(page);
+
+    await disconnectSocket(page);
+    await expect
+      .poll(() => getBattleSnapshot(page).then(snapshot => snapshot?.message))
+      .toBe(copy.mobile.connectionRecovering);
+
+    const recoveryDeck = page.locator("[data-poke-lounge-mobile-deck='battle-message']");
+    if (await recoveryDeck.isVisible()) {
+      const [gamePageBounds, fieldBounds, recoveryDeckBounds] = await Promise.all([
+        page.locator("[data-testid='poke-lounge-page']").boundingBox(),
+        page.locator("[data-poke-lounge-mobile-screen='top']").boundingBox(),
+        recoveryDeck.boundingBox(),
+      ]);
+
+      expect(gamePageBounds).not.toBeNull();
+      expect(fieldBounds).not.toBeNull();
+      expect(recoveryDeckBounds).not.toBeNull();
+      expect(recoveryDeckBounds!.y).toBeGreaterThanOrEqual(
+        fieldBounds!.y + fieldBounds!.height - 1,
+      );
+      expect(recoveryDeckBounds!.x).toBeGreaterThanOrEqual(gamePageBounds!.x - 1);
+      expect(recoveryDeckBounds!.x + recoveryDeckBounds!.width).toBeLessThanOrEqual(
+        gamePageBounds!.x + gamePageBounds!.width + 1,
+      );
+      expect(recoveryDeckBounds!.y + recoveryDeckBounds!.height).toBeLessThanOrEqual(
+        gamePageBounds!.y + gamePageBounds!.height + 1,
+      );
+    }
+
+    await reconnectSocket(page);
+    server.revision += 1;
+    await emitSocketSnapshot(page, {
+      ...createTournamentRoomState(server),
+      competitive: createServerCompetitiveProjection(server),
+    });
+    await expect
+      .poll(() => getBattleSnapshot(page).then(snapshot => snapshot?.phase))
+      .toBe("command");
+    expect((await getBattleSnapshot(page))?.message).toBeNull();
+    await context.close();
   });
 
   test("assignment 생성 알림은 첫 참가자와 두 번째 참가자 모두 같은 battle을 시작한다", async ({
@@ -672,7 +776,7 @@ test.describe("Poke Lounge server multiplayer", () => {
     );
     expect(server.competitiveActionAuthHeaders).toEqual([`Bearer ${AUTH_ID_TOKEN}`]);
     await expect.poll(() => getBattleSnapshot(page).then(value => value?.phase)).toBe("resolving");
-    expect((await getBattleSnapshot(page))?.message).toBe("상대의 선택을 기다리는 중...");
+    expect((await getBattleSnapshot(page))?.message).toBe(copy.mobile.waiting);
   });
 
   test("authoritative action 400 응답 후 fresh projection에서 입력을 다시 허용한다", async ({
@@ -778,8 +882,9 @@ test.describe("Poke Lounge server multiplayer", () => {
     );
 
     await waitForActiveScene(page, "battle");
+    await waitForBattleReady(page);
     await expect.poll(() => getBattleSnapshot(page).then(value => value?.phase)).toBe("resolving");
-    expect((await getBattleSnapshot(page))?.message).toBe("상대의 선택을 기다리는 중...");
+    expect((await getBattleSnapshot(page))?.message).toBe(copy.mobile.waiting);
   });
 
   test("competitive action network retry는 같은 UUID command를 재사용한다", async ({ page }) => {
@@ -2624,6 +2729,7 @@ async function mockServerRoom(
     competitiveActionNetworkFailure?: boolean;
     competitiveActionNetworkFailureCount?: number;
     competitiveActionRejected?: boolean;
+    competitiveActionResponseDeferred?: boolean;
     competitiveActionStaleConflict?: boolean;
     competitiveImmediately?: boolean;
     competitiveFaintedSwitchSlot?: boolean;
@@ -2952,6 +3058,15 @@ async function mockServerRoom(
           });
           return;
         }
+        if (
+          options.competitiveActionResponseDeferred &&
+          !server.competitiveActionResponseDeferred
+        ) {
+          server.competitiveActionResponseDeferred = true;
+          await new Promise<void>(resolve => {
+            server.resolveCompetitiveActionResponse = resolve;
+          });
+        }
         const ownPlayerId = getStateParticipants(server)[0].playerId;
         const projection = createServerCompetitiveProjection(server, {
           submittedPlayerIds: [ownPlayerId],
@@ -3113,6 +3228,7 @@ interface MockServerState {
   }>;
   competitiveActionNetworkFailureReturned: boolean;
   competitiveActionNetworkFailuresReturned: number;
+  competitiveActionResponseDeferred: boolean;
   competitiveActionStaleReturned: boolean;
   competitiveResyncRequested: boolean;
   competitiveSeatBodies: Array<{ sessionId?: string }>;
@@ -3126,6 +3242,7 @@ interface MockServerState {
   networkFailureReturned: boolean;
   recoveryAfterRevisions: number[];
   recoveryGetDeferred: boolean;
+  resolveCompetitiveActionResponse?: () => void;
   resolveRecoveryGet?: () => void;
   resolveLeaveResponse?: () => void;
   partySnapshotBodies: Array<{
@@ -3189,6 +3306,7 @@ function createMockServerState(): MockServerState {
     competitiveActionBodies: [],
     competitiveActionNetworkFailureReturned: false,
     competitiveActionNetworkFailuresReturned: 0,
+    competitiveActionResponseDeferred: false,
     competitiveActionStaleReturned: false,
     competitiveResyncRequested: false,
     competitiveSeatBodies: [],

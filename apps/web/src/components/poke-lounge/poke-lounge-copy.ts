@@ -120,6 +120,8 @@ export interface PokeLoungeCopy {
     wallet: string;
     waiting: string;
     preparing: string;
+    actionSending: string;
+    connectionRecovering: string;
   };
   startup: {
     title: string;
@@ -312,8 +314,10 @@ const KOREAN_COPY: PokeLoungeCopy = {
     pcParty: "파티",
     pcBox: "박스",
     wallet: "보유",
-    waiting: "상대의 선택을 기다리는 중",
-    preparing: "전투 화면을 준비하는 중",
+    waiting: "상대의 선택을 기다리는 중...",
+    preparing: "전투를 준비하는 중...",
+    actionSending: "행동을 서버에 전송하는 중...",
+    connectionRecovering: "연결을 복구하는 중...",
   },
   startup: {
     title: "게임을 시작하지 못했습니다",
@@ -521,8 +525,10 @@ const ENGLISH_COPY: PokeLoungeCopy = {
     pcParty: "Party",
     pcBox: "Box",
     wallet: "Wallet",
-    waiting: "Waiting for the other trainer",
-    preparing: "Preparing the battle screen",
+    waiting: "Waiting for the other trainer...",
+    preparing: "Preparing the battle...",
+    actionSending: "Sending your action to the server...",
+    connectionRecovering: "Restoring the connection...",
   },
   startup: {
     title: "Could not start the game",
@@ -732,8 +738,10 @@ const JAPANESE_COPY: PokeLoungeCopy = {
     pcParty: "手持ち",
     pcBox: "ボックス",
     wallet: "所持金",
-    waiting: "相手の選択を待っています",
-    preparing: "バトル画面を準備中",
+    waiting: "相手の選択を待っています...",
+    preparing: "バトルを準備しています...",
+    actionSending: "行動をサーバーに送信しています...",
+    connectionRecovering: "接続を復旧しています...",
   },
   startup: {
     title: "ゲームを開始できませんでした",

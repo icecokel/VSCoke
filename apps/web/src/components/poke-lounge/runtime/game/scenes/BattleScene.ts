@@ -108,6 +108,7 @@ import {
 import { consumeVirtualGamepadPress, resetVirtualGamepad } from "../input/virtualGamepad";
 import { setShortcutGuideTouchControlsSuppressed } from "../input/mobileTouchControlsVisibility";
 import type { WildEncounterCandidate } from "../world/wildEncounters";
+import { getPokeLoungeCopyForUrl } from "../../../poke-lounge-copy";
 import {
   canUseAuthoritativeStruggle,
   isLegalAuthoritativeAction,
@@ -117,6 +118,7 @@ import { persistBattlePartyToWorld, toPlayerPokemon } from "../battle/battle-wor
 import type {
   CompetitiveProjection,
   MultiplayerRoom,
+  RoomEvent,
   RoomUnsubscribe,
 } from "../network/localPreviewRoom";
 import type { CompetitiveBattleLaunchKey } from "./competitive-battle-launch";
@@ -493,6 +495,8 @@ export class BattleScene extends Phaser.Scene {
   private authoritativeProjection: CompetitiveProjection | null = null;
   private authoritativeOwnPlayerId: string | null = null;
   private authoritativeInputPending = false;
+  private authoritativeConnectionStatus: RoomEvent["CONNECTION_STATUS"]["connectionStatus"] =
+    "offline";
   private soloChallenge = false;
   private authoritativeUnsubscribers: RoomUnsubscribe[] = [];
   private lastAccessibleStatus = "";
@@ -517,11 +521,13 @@ export class BattleScene extends Phaser.Scene {
       this.authoritativeInputPending = data.projection.submittedPlayerIds.includes(
         data.ownPlayerId,
       );
+      this.authoritativeConnectionStatus = "offline";
       this.bindAuthoritativeRoom();
     } else {
       this.authoritativeProjection = null;
       this.authoritativeOwnPlayerId = null;
       this.authoritativeInputPending = false;
+      this.authoritativeConnectionStatus = "offline";
     }
     this.returningToWorld = false;
     this.battleEntrancePlayed = false;
@@ -713,7 +719,7 @@ export class BattleScene extends Phaser.Scene {
       battleKind: this.state.battleKind,
       phase: this.state.phase,
       turn: this.state.turn,
-      message: this.state.messageQueue[0] ?? null,
+      message: this.getVisibleBattleMessage(),
       messageQueue: [...this.state.messageQueue],
       selectedCommandIndex: this.selectedCommandIndex,
       selectedCommand: selectedCommand.command,
@@ -1082,7 +1088,7 @@ export class BattleScene extends Phaser.Scene {
     const pendingMoveLearning = this.getCurrentPendingMoveLearning();
     const state: MobileBattleUiState = {
       phase,
-      message: this.state.messageQueue[0] ?? null,
+      message: this.getVisibleBattleMessage(),
       isHelpOpen: this.shortcutGuideOpen,
       isInputLocked:
         this.battleEntrancePlaying ||
@@ -1528,7 +1534,7 @@ export class BattleScene extends Phaser.Scene {
     this.state = {
       ...this.state,
       phase: "resolving",
-      messageQueue: ["상대의 선택을 기다리는 중..."],
+      messageQueue: [this.getBattleStatusCopy().actionSending],
     };
     this.render();
     this.multiplayerRoom.send("COMPETITIVE_ACTION", {
@@ -1547,11 +1553,21 @@ export class BattleScene extends Phaser.Scene {
 
     this.authoritativeUnsubscribers.push(
       this.multiplayerRoom.on("CONNECTION_STATUS", ({ connectionStatus }) => {
+        this.authoritativeConnectionStatus = connectionStatus;
         this.gameStateStore.setSession({
           sessionId: this.multiplayerRoom?.sessionId ?? null,
           roomId: this.multiplayerRoom?.roomId ?? null,
           connectionStatus,
         });
+        if (connectionStatus !== "online" && this.authoritativeProjection?.status !== "completed") {
+          this.authoritativeInputPending = true;
+          this.state = {
+            ...this.state,
+            phase: "resolving",
+            messageQueue: [this.getBattleStatusCopy().connectionRecovering],
+          };
+          this.render();
+        }
       }),
       this.multiplayerRoom.on("TOURNAMENT_STATE", payload => {
         this.gameStateStore.applyTournamentSnapshotFromRoom(payload, Date.now());
@@ -1573,9 +1589,22 @@ export class BattleScene extends Phaser.Scene {
         if (projection.status === "completed") {
           this.finishBattleEntranceAnimation();
         }
-        this.setBattleState(
-          toAuthoritativeBattleState(projection, ownPlayerId, this.state.returnToWorld),
+        const nextState = toAuthoritativeBattleState(
+          projection,
+          ownPlayerId,
+          this.state.returnToWorld,
+          this.getBattleStatusCopy().waiting,
         );
+        if (this.authoritativeConnectionStatus !== "online" && projection.status !== "completed") {
+          this.authoritativeInputPending = true;
+          this.setBattleState({
+            ...nextState,
+            phase: "resolving",
+            messageQueue: [this.getBattleStatusCopy().connectionRecovering],
+          });
+          return;
+        }
+        this.setBattleState(nextState);
       }),
       this.multiplayerRoom.on("COMPETITIVE_ACTION_FAILED", ({ matchId, message }) => {
         if (matchId !== this.authoritativeProjection?.matchId) {
@@ -1913,6 +1942,7 @@ export class BattleScene extends Phaser.Scene {
       },
     });
     this.battleEntranceTween = tween;
+    this.render();
   }
 
   private finishBattleEntranceAnimation(): void {
@@ -2534,6 +2564,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private render(): void {
+    const visibleMessage = this.getVisibleBattleMessage();
+
     this.children.removeAll(true);
     if (this.evolutionAnimationPlaying && this.evolutionTransition) {
       this.drawEvolutionScene();
@@ -2555,7 +2587,7 @@ export class BattleScene extends Phaser.Scene {
 
     if (
       this.usesMobileBattleDeck() &&
-      this.state.messageQueue.length === 0 &&
+      !visibleMessage &&
       (this.state.phase === "command" ||
         this.state.phase === "move-select" ||
         this.state.phase === "move-replace-select" ||
@@ -2567,42 +2599,42 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    if (this.state.phase === "move-select") {
+    if (this.state.phase === "move-select" && !visibleMessage) {
       this.drawMoveWindow();
       this.drawShortcutGuideIfOpen();
       this.drawBattleEntranceOverlay();
       return;
     }
 
-    if (this.state.phase === "move-replace-select") {
+    if (this.state.phase === "move-replace-select" && !visibleMessage) {
       this.drawMoveReplacementWindow();
       this.drawShortcutGuideIfOpen();
       this.drawBattleEntranceOverlay();
       return;
     }
 
-    if (this.state.phase === "party-select" && this.state.messageQueue.length === 0) {
+    if (this.state.phase === "party-select" && !visibleMessage) {
       this.drawPartySelectWindow();
       this.drawShortcutGuideIfOpen();
       this.drawBattleEntranceOverlay();
       return;
     }
 
-    if (this.state.phase === "bag-select" && this.state.messageQueue.length === 0) {
+    if (this.state.phase === "bag-select" && !visibleMessage) {
       this.drawBagSelectWindow();
       this.drawShortcutGuideIfOpen();
       this.drawBattleEntranceOverlay();
       return;
     }
 
-    if (this.state.phase === "command" && this.state.messageQueue.length === 0) {
+    if (this.state.phase === "command" && !visibleMessage) {
       this.drawCommandWindow();
       this.drawShortcutGuideIfOpen();
       this.drawBattleEntranceOverlay();
       return;
     }
 
-    this.drawMessageWindow(this.state.messageQueue[0] ?? BATTLE_END_CONFIRM_MESSAGE);
+    this.drawMessageWindow(visibleMessage ?? BATTLE_END_CONFIRM_MESSAGE);
     this.drawShortcutGuideIfOpen();
     this.drawBattleEntranceOverlay();
   }
@@ -2611,7 +2643,7 @@ export class BattleScene extends Phaser.Scene {
     const playerPokemon = this.state.player.pokemon;
     const opponentPokemon = this.state.opponent.pokemon;
     const healthSummary = `내 ${playerPokemon.name} HP ${playerPokemon.currentHp}/${playerPokemon.maxHp}. 상대 ${opponentPokemon.name} HP ${opponentPokemon.currentHp}/${opponentPokemon.maxHp}.`;
-    const queuedMessage = this.state.messageQueue[0];
+    const queuedMessage = this.getVisibleBattleMessage();
     let interactionSummary = queuedMessage ?? "";
 
     if (!queuedMessage && this.state.phase === "command") {
@@ -2656,6 +2688,18 @@ export class BattleScene extends Phaser.Scene {
 
     this.lastAccessibleStatus = nextStatus;
     dispatchPokeLoungeAccessibleStatus(this.game.canvas.ownerDocument, nextStatus);
+  }
+
+  private getVisibleBattleMessage(): string | null {
+    if (this.authoritativeProjection && this.battleEntrancePlaying) {
+      return this.getBattleStatusCopy().preparing;
+    }
+
+    return this.state.messageQueue[0] ?? null;
+  }
+
+  private getBattleStatusCopy() {
+    return getPokeLoungeCopyForUrl(new URL(this.game.canvas.ownerDocument.location.href)).mobile;
   }
 
   private drawBackground(): void {

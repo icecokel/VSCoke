@@ -69,6 +69,7 @@ export function toAuthoritativeBattleState(
   projection: CompetitiveProjection,
   ownPlayerId: string,
   returnToWorld?: BattleScreenState["returnToWorld"],
+  waitingMessage = "상대의 선택을 기다리는 중...",
 ): BattleScreenState {
   const ownPlayer = projection.currentState.playersById[ownPlayerId];
   const opponentId = projection.playerIds.find(playerId => playerId !== ownPlayerId);
@@ -100,7 +101,7 @@ export function toAuthoritativeBattleState(
     messageQueue: result
       ? [result.winnerPlayerId === ownPlayerId ? "승리했습니다." : "패배했습니다."]
       : waiting
-        ? ["상대의 선택을 기다리는 중..."]
+        ? [waitingMessage]
         : [],
     selectedMoveId: null,
     tournamentMatchId: projection.matchId,

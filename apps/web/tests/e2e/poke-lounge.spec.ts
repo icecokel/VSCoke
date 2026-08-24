@@ -2651,6 +2651,33 @@ test.describe("Poke Lounge", () => {
     expect(browserErrors.join("\n")).toBe("");
   });
 
+  test("빠른 Enter 입력도 전투 기술 선택을 놓치지 않는다", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await startBattleScenario(page, "wild-victory");
+    await expect
+      .poll(() => getBattleSnapshot(page).then(snapshot => snapshot?.battleEntrancePlaying ?? true))
+      .toBe(false);
+    await page.evaluate(() => {
+      (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__?.drainBattleMessages();
+    });
+
+    const canvas = page.locator("#game-root canvas");
+    await canvas.focus();
+    await page.keyboard.press("Enter");
+    await expect
+      .poll(() => getBattleSnapshot(page).then(snapshot => snapshot?.phase ?? null))
+      .toBe("move-select");
+
+    await page.keyboard.press("Enter");
+    await expect
+      .poll(() => getBattleSnapshot(page).then(snapshot => snapshot?.result ?? null), {
+        timeout: 30000,
+      })
+      .not.toBeNull();
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
   test("HGSS 파티 트레이는 3x2 키 이동과 슬롯 직접 클릭 교체를 지원한다", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
 

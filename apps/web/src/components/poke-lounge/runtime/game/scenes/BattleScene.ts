@@ -462,6 +462,7 @@ export class BattleScene extends Phaser.Scene {
   private readonly spriteVisibleBoundsCache = new Map<string, BattleSpriteVisibleBounds>();
   private cursors: Phaser.Types.Input.Keyboard.CursorKeys | null = null;
   private confirmKeys: Phaser.Input.Keyboard.Key[] = [];
+  private keyboardConfirmQueued = false;
   private escKey: Phaser.Input.Keyboard.Key | null = null;
   private backspaceKey: Phaser.Input.Keyboard.Key | null = null;
   private helpKey: Phaser.Input.Keyboard.Key | null = null;
@@ -568,6 +569,7 @@ export class BattleScene extends Phaser.Scene {
         stopWildBattleBgm();
       }
       this.clearAuthoritativeSubscriptions();
+      this.unbindKeys();
       this.messageAutoAdvanceTimer?.remove(false);
       this.messageAutoAdvanceTimer = null;
       this.removeMobileBattleUiListeners?.();
@@ -583,6 +585,7 @@ export class BattleScene extends Phaser.Scene {
       }
       this.messageAutoAdvanceTimer?.remove(false);
       this.messageAutoAdvanceTimer = null;
+      this.unbindKeys();
       this.removeMobileBattleUiListeners?.();
       this.removeMobileBattleUiListeners = null;
       this.shortcutGuideOpen = false;
@@ -614,16 +617,19 @@ export class BattleScene extends Phaser.Scene {
       usesPokeLoungeMobileShell(ownerDocument) &&
       hasPokeLoungeMobileFullscreenScene(ownerDocument)
     ) {
+      this.keyboardConfirmQueued = false;
       resetVirtualGamepad();
       return;
     }
 
     if (this.battleEntrancePlaying) {
+      this.keyboardConfirmQueued = false;
       resetVirtualGamepad();
       return;
     }
 
     if (this.captureAnimationPlaying || this.evolutionAnimationPlaying) {
+      this.keyboardConfirmQueued = false;
       resetVirtualGamepad();
       return;
     }
@@ -633,6 +639,7 @@ export class BattleScene extends Phaser.Scene {
       this.isHitAnimationPlaying() ||
       this.isStatusCommitPlaying()
     ) {
+      this.keyboardConfirmQueued = false;
       resetVirtualGamepad();
       return;
     }
@@ -645,9 +652,9 @@ export class BattleScene extends Phaser.Scene {
 
     if (this.shortcutGuideOpen) {
       if (
+        this.consumeKeyboardConfirm() ||
         consumeVirtualGamepadPress("confirm") ||
         consumeVirtualGamepadPress("back") ||
-        this.confirmKeys.some(key => Phaser.Input.Keyboard.JustDown(key)) ||
         Phaser.Input.Keyboard.JustDown(this.escKey) ||
         Phaser.Input.Keyboard.JustDown(this.backspaceKey)
       ) {
@@ -669,10 +676,7 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    if (
-      consumeVirtualGamepadPress("confirm") ||
-      this.confirmKeys.some(key => Phaser.Input.Keyboard.JustDown(key))
-    ) {
+    if (this.consumeKeyboardConfirm() || consumeVirtualGamepadPress("confirm")) {
       playBattleConfirmSound();
       this.confirmSelection();
     }
@@ -886,11 +890,29 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    this.unbindKeys();
     this.cursors = keyboard.createCursorKeys();
     this.confirmKeys = BATTLE_CONFIRM_KEY_CODES.map(keyCode => keyboard.addKey(keyCode));
+    this.confirmKeys.forEach(key => key.on("down", this.queueKeyboardConfirm, this));
     this.escKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     this.backspaceKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.BACKSPACE);
     this.helpKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.H);
+  }
+
+  private queueKeyboardConfirm(): void {
+    this.keyboardConfirmQueued = true;
+  }
+
+  private consumeKeyboardConfirm(): boolean {
+    const queued = this.keyboardConfirmQueued;
+    this.keyboardConfirmQueued = false;
+    return queued;
+  }
+
+  private unbindKeys(): void {
+    this.confirmKeys.forEach(key => key.off("down", this.queueKeyboardConfirm, this));
+    this.confirmKeys = [];
+    this.keyboardConfirmQueued = false;
   }
 
   private setBattleUiSceneMarker(active: boolean): void {

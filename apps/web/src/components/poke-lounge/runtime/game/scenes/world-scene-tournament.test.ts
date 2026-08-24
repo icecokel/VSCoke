@@ -6,7 +6,11 @@ import {
   recordTournamentMatchResult,
 } from "@vscoke/poke-lounge-battle";
 import type { TournamentStateRoomPayload } from "../network/tournament-projection";
-import { createServerTournamentAnnouncementText } from "./world-scene-tournament";
+import { createGameStateStore } from "../state/gameStateStore";
+import {
+  createServerTournamentAnnouncementText,
+  createWorldSceneTournament,
+} from "./world-scene-tournament";
 
 function createFivePlayerProjection(): TournamentStateRoomPayload {
   const bracket = createTournamentBracketState(
@@ -174,4 +178,83 @@ test("다음 라운드 준비 단계는 내 누적 HP 비율 순위와 점수를
   assert.match(text, /라운드 2\/3 준비 중/);
   assert.match(text, /내 누적 순위 · 2위 · 133\.33점/);
   assert.ok(text.split("\n").length <= 7);
+});
+
+test("최종 결과는 마지막 대진 승자가 아니라 서버 누적 순위를 표시한다", () => {
+  const participants = [
+    { playerId: "player-1", displayName: "Player 1" },
+    { playerId: "player-2", displayName: "Player 2" },
+  ];
+  const bracket = createTournamentBracketState(participants, 3);
+  const match = getReadyTournamentMatches(bracket)[0];
+  assert.ok(match);
+  const completedBracket = recordTournamentMatchResult(bracket, match.matchId, "player-1", {
+    reason: "faint",
+    completedAtMs: 2_000,
+  });
+  const store = createGameStateStore();
+  const applied = store.applyTournamentSnapshotFromRoom(
+    {
+      revision: 41,
+      roomCode: "ROOM01",
+      hostPlayerId: "player-1",
+      roundIndex: 3,
+      roomStatus: "completed",
+      roomRound: {
+        index: 3,
+        phase: "tournament",
+        durationMs: 300_000,
+        startedAtMs: 1_000,
+        endsAtMs: 301_000,
+      },
+      participants: completedBracket.participants.map(participant => ({
+        ...participant,
+        role: "participant" as const,
+        ready: true,
+        partyReady: true,
+        connected: true,
+      })),
+      tournament: {
+        version: 2,
+        bracket: completedBracket,
+        activeMatchId: null,
+        activeMatchAuthority: null,
+        cumulativeScores: { "player-1": 182.14, "player-2": 253.33 },
+      },
+      ownPlayerId: "player-1",
+      activeMatchTransport: "awaiting-authority",
+      competitionKind: "tournament-unranked",
+      finalStandings: [
+        { playerId: "player-2", displayName: "Player 2", rank: 1, score: 253.33 },
+        { playerId: "player-1", displayName: "Player 1", rank: 2, score: 182.14 },
+      ],
+      resultSync: { matchId: null, status: "idle" },
+    },
+    3_000,
+  );
+  assert.deepEqual(applied, { ok: true });
+
+  let announcementText = "";
+  const tournament = createWorldSceneTournament({
+    gameStateStore: store,
+    isBattleIntroPlaying: () => false,
+    hasWorldPlayer: () => true,
+    isRoomTournamentHost: () => false,
+    getRemotePlayerSnapshots: () => [],
+    startTrainerBattle: () => {},
+    getRoomHostPlayerId: () => null,
+    sendTournamentStarted: () => {},
+    sendTournamentMatchResult: () => {},
+    sendTournamentCompleted: () => {},
+    sendRoundScoreUpdates: () => {},
+    createAnnouncement: text => {
+      announcementText = text;
+      return { destroy: () => {} };
+    },
+  });
+
+  tournament.showResultPresentationIfNeeded();
+
+  assert.match(announcementText, /우승 · 1위 Player 2/);
+  assert.doesNotMatch(announcementText, /우승 · 1위 Player 1/);
 });

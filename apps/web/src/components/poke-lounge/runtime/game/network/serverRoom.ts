@@ -363,7 +363,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       httpResponse = await fetchResponseWithTimeout(`${getApiBaseUrl()}${path}`, {
         ...init,
         headers: {
-          "Content-Type": "application/json",
+          ...(init?.body !== undefined ? { "Content-Type": "application/json" } : {}),
           ...init?.headers,
         },
       });

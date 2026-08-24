@@ -3015,6 +3015,56 @@ test("casual result 복구 재전송은 최초 body와 idempotency key를 그대
   }
 });
 
+test("room GET은 불필요한 JSON CORS preflight 헤더를 보내지 않는다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const timers = createManualRecoveryTimers();
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: timers.window,
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const snapshots = createRoomSnapshots();
+    const requests: Array<{ method: string; contentType: string | null }> = [];
+    let ready = false;
+    const fetchFixture: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      const method = init?.method ?? "GET";
+      requests.push({
+        method,
+        contentType: new Headers(init?.headers).get("Content-Type"),
+      });
+      ready ||= url.pathname.endsWith("/party-snapshot");
+      return jsonResponse(snapshots.initial);
+    };
+    room = createServerRoom({
+      roomId: "ROOM01",
+      playerId: "player-1",
+      sessionId: "session-1",
+      fetch: fetchFixture,
+      socketFactory: () => createSocket(),
+    });
+    room.connect(createPlayerSnapshot());
+    await waitFor(() => ready);
+
+    assert.ok(requests.some(request => request.method === "GET"));
+    assert.ok(
+      requests.filter(request => request.method === "GET").every(request => !request.contentType),
+    );
+    assert.ok(
+      requests
+        .filter(request => request.method === "POST")
+        .every(request => request.contentType === "application/json"),
+    );
+  } finally {
+    room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
 function createPlayerSnapshot() {
   return {
     sessionId: "session-1",

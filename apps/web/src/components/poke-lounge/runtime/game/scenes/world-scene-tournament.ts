@@ -18,10 +18,7 @@ import {
   type LocalPlayerState,
 } from "../state/gameStateStore";
 import type { TournamentMatch, TournamentStanding } from "../tournament/tournamentState";
-import {
-  getTournamentSessionStandings,
-  type TournamentSession,
-} from "../tournament/tournamentSession";
+import type { TournamentSession } from "../tournament/tournamentSession";
 import {
   createTournamentResultPanelViewModel,
   formatTournamentResultRow,
@@ -703,10 +700,6 @@ function getMatchParticipantIds(match: TournamentMatch): [string, string] {
 }
 
 function createVisibleTournamentStandings(state: GameState): TournamentStanding[] {
-  if (state.tournament.session?.status === "completed") {
-    return getTournamentSessionStandings(state.tournament.session);
-  }
-
   return state.tournament.standings.map(standing => ({
     playerId: standing.playerId,
     displayName: standing.displayName,

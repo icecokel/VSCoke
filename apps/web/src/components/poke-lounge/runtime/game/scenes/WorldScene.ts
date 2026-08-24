@@ -987,6 +987,8 @@ export class WorldScene extends Phaser.Scene {
         const { projection, ownPlayerId } = payload;
 
         if (
+          this.shutdownComplete ||
+          !this.player ||
           !projection.playerIds.includes(ownPlayerId) ||
           !this.competitiveBattleLaunchCache.begin(payload)
         ) {

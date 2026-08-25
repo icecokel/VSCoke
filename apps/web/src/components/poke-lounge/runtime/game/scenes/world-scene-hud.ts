@@ -52,6 +52,7 @@ export interface WorldSceneHudDependencies {
   getGameObjectFactory(): Phaser.GameObjects.GameObjectFactory;
   gameStateStore: GameStateStore;
   competitiveRoundsEnabled: boolean;
+  roundWaitingText: string;
   addUnsubscriber(unsubscribe: () => void): void;
   canOpenPokemonStatusPanel(): boolean;
   getViewportSize(): { width: number; height: number };
@@ -203,7 +204,7 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
   private formatRoundHudText(nowMs: number): string {
     const round = this.dependencies.gameStateStore.getState().round;
 
-    return formatRoundHudText(round, nowMs);
+    return formatRoundHudText(round, nowMs, this.dependencies.roundWaitingText);
   }
 
   createPartyHud(): void {
@@ -855,10 +856,17 @@ export function formatRankScoreHud(
     : `계정 기록\n랭크 ${rankLabel} · 점수 ${scoreLabel}`;
 }
 
-export function formatRoundHudText(round: GameRoundState, nowMs: number): string {
+export function formatRoundHudText(
+  round: GameRoundState,
+  nowMs: number,
+  roundWaitingText = "다른 플레이어를 기다리는 중...",
+): string {
   const visibleRound = Math.max(1, round.roundIndex);
 
   if (round.phase === "preparation") {
+    if (getRoundRemainingMs(round, nowMs) === 0) {
+      return `라운드 ${visibleRound}/${round.totalRounds}\n${roundWaitingText}`;
+    }
     return `라운드 ${visibleRound}/${round.totalRounds} 시작까지\n${formatRoundTimer(
       getRoundRemainingMs(round, nowMs),
     )}`;

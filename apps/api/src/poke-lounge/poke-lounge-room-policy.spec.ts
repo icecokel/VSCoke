@@ -217,6 +217,9 @@ describe('PokeLoungeRoomPolicy', () => {
     ] as const;
 
     for (const [index, round] of rounds.entries()) {
+      for (const participant of room.participants) {
+        participant.ready = true;
+      }
       const advanced = advancePokeLoungeRoomClock(room, room.round.endsAtMs!);
       expect(advanced).not.toBeNull();
       room = advanced!;
@@ -232,6 +235,10 @@ describe('PokeLoungeRoomPolicy', () => {
       if (index < 2) {
         expect(room).toMatchObject({
           status: 'round-started',
+          participants: [
+            { playerId: 'player-1', ready: false },
+            { playerId: 'player-2', ready: false },
+          ],
           round: { index: index + 2, phase: 'round-started' },
           tournament: { bracket: null, roundScores: {} },
         });
@@ -473,6 +480,30 @@ describe('PokeLoungeRoomPolicy', () => {
         1_100,
       ),
     ).toBeNull();
+  });
+
+  it('waits at the elapsed round boundary until every participant is ready', () => {
+    const room = createSnapshot({
+      status: 'round-started',
+      participants: [
+        createParticipant('player-1', 1),
+        { ...createParticipant('player-2', 2), ready: false },
+      ],
+      round: {
+        index: 1,
+        phase: 'round-started',
+        durationMs: 1_000,
+        startedAtMs: 0,
+        endsAtMs: 1_000,
+      },
+    });
+
+    expect(advancePokeLoungeRoomClock(room, 1_000)).toBeNull();
+    room.participants[1].ready = true;
+    expect(advancePokeLoungeRoomClock(room, 1_000)).toMatchObject({
+      status: 'tournament',
+      round: { phase: 'tournament' },
+    });
   });
 });
 

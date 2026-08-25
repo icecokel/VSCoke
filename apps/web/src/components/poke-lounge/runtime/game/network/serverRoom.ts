@@ -18,6 +18,7 @@ import {
 import { createCompetitivePartySnapshot } from "./competitive-party-snapshot";
 import {
   findCurrentMatch,
+  isRoundReadinessDue,
   mapServerTournamentPlayerIds,
   parseServerTournamentState,
   type ServerTournamentState,
@@ -574,6 +575,15 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     latestState.round.phase === "round-started" &&
     latestState.round.endsAtMs === target.endsAtMs;
 
+  const updateReady = async (ready: boolean) => {
+    const state = await mutateRoom(
+      `/poke-lounge/rooms/${activeRoomId}/ready`,
+      { playerId: serverPlayerId, sessionId, ready },
+      getLatestRevision,
+    );
+    applySnapshot(state);
+  };
+
   const runRoomClockRefresh = async (target: NonNullable<typeof roomClockTarget>) => {
     if (disposed || roomClockInFlight || !hasCurrentRoomClockTarget(target)) {
       return;
@@ -583,6 +593,17 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     try {
       const room = await requestRoom(`/poke-lounge/rooms/${target.roomCode}`);
       applySnapshot(room);
+      const ownParticipant = room.participants.find(
+        participant => participant.playerId === serverPlayerId,
+      );
+      if (
+        isRoundReadinessDue(room.status, room.round, Date.now()) &&
+        ownParticipant?.role === "participant" &&
+        ownParticipant.connected &&
+        !ownParticipant.ready
+      ) {
+        await updateReady(true);
+      }
       if (hasCurrentRoomClockTarget(target)) {
         roomClockAttempt += 1;
       }
@@ -1600,12 +1621,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     },
     sessionId,
     async setLobbyReady(ready) {
-      const state = await mutateRoom(
-        `/poke-lounge/rooms/${activeRoomId}/ready`,
-        { playerId: serverPlayerId, sessionId, ready },
-        getLatestRevision,
-      );
-      applySnapshot(state);
+      await updateReady(ready);
     },
     async startChampionship() {
       const state = await mutateRoom(

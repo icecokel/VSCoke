@@ -57,7 +57,8 @@ type ExpectedHudDependencyKeys =
   | "getDocument"
   | "getGameObjectFactory"
   | "getViewportSize"
-  | "isShutdownComplete";
+  | "isShutdownComplete"
+  | "roundWaitingText";
 
 export type WorldSceneInteractionsProductionBoundary = Expect<
   Equal<keyof WorldSceneInteractions, ExpectedProductionKeys>

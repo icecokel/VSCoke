@@ -6,10 +6,22 @@ import {
   recordTournamentMatchResult,
 } from "@vscoke/poke-lounge-battle";
 import {
+  isRoundReadinessDue,
   mapServerTournamentPlayerIds,
   parseServerTournamentState,
   TournamentProjectionSchemaError,
 } from "./tournament-projection";
+
+test("라운드 준비 마감 시각부터 준비 확인이 필요하다", () => {
+  const round = {
+    phase: "round-started" as const,
+    endsAtMs: 10_000,
+  };
+
+  assert.equal(isRoundReadinessDue("round-started", round, 9_999), false);
+  assert.equal(isRoundReadinessDue("round-started", round, 10_000), true);
+  assert.equal(isRoundReadinessDue("tournament", round, 10_000), false);
+});
 
 function createFivePlayerServerTournament() {
   const bracket = createTournamentBracketState(

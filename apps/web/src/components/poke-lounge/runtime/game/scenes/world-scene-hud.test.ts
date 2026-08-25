@@ -62,3 +62,21 @@ test("라운드 HUD는 시작까지 남은 시간을 초 단위로 표시한다"
     "라운드 1/3 시작까지\n00:30",
   );
 });
+
+test("라운드 준비 시간이 끝나면 다른 플레이어 대기를 표시한다", () => {
+  assert.equal(
+    formatRoundHudText(
+      {
+        phase: "preparation",
+        roundIndex: 2,
+        totalRounds: 3,
+        preparationDurationMs: 300_000,
+        phaseStartedAtMs: 1_000,
+        preparationEndsAtMs: 301_000,
+      },
+      301_000,
+      "Waiting for the other players...",
+    ),
+    "라운드 2/3\nWaiting for the other players...",
+  );
+});

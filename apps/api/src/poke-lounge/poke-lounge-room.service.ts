@@ -28,6 +28,7 @@ import {
   type PokeLoungeRoomEventPublisher,
 } from './poke-lounge-room-event.publisher';
 import {
+  advancePokeLoungeRoomClock,
   completePokeLoungeTournamentMatch,
   convergeOfflinePokeLoungeTournamentMatches,
   getPokeLoungeRoomHostPlayerId,
@@ -572,7 +573,14 @@ export class PokeLoungeRoomService {
       nowMs,
       body: normalizedCommandBody(normalized, input.nowMs),
       apply: (room) => {
-        if (room.status !== 'waiting' || room.round.phase !== 'waiting') {
+        const isLobbyReady =
+          room.status === 'waiting' && room.round.phase === 'waiting';
+        const isRoundReady =
+          room.status === 'round-started' &&
+          room.round.phase === 'round-started' &&
+          room.round.endsAtMs !== null &&
+          nowMs >= room.round.endsAtMs;
+        if (!isLobbyReady && !isRoundReady) {
           throw new BadRequestException(
             'Ready can only change in a waiting room',
           );
@@ -587,6 +595,9 @@ export class PokeLoungeRoomService {
         if (participant.role !== 'participant') {
           throw new BadRequestException('Spectators cannot become ready');
         }
+        if (isRoundReady && !normalized.ready) {
+          throw new BadRequestException('Round readiness cannot be cancelled');
+        }
         if (
           normalized.ready &&
           !room.partySnapshots[participant.playerId]?.competitiveParty.members
@@ -600,7 +611,9 @@ export class PokeLoungeRoomService {
         participant.ready = normalized.ready;
         room.updatedAtMs = nowMs;
 
-        return room;
+        return isRoundReady
+          ? (advancePokeLoungeRoomClock(room, nowMs) ?? room)
+          : room;
       },
     });
   }
@@ -681,6 +694,9 @@ export class PokeLoungeRoomService {
         room.round.phase = 'round-started';
         room.round.startedAtMs = nowMs;
         room.round.endsAtMs = nowMs + room.round.durationMs;
+        for (const candidate of participants) {
+          candidate.ready = false;
+        }
         room.updatedAtMs = nowMs;
         return room;
       },

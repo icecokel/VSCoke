@@ -311,6 +311,7 @@ export class WorldScene extends Phaser.Scene {
       getGameObjectFactory: () => this.add,
       gameStateStore: this.gameStateStore,
       competitiveRoundsEnabled: this.competitiveRoundsEnabled,
+      roundWaitingText: getPokeLoungeCopyForUrl(new URL(window.location.href)).mobile.roundWaiting,
       addUnsubscriber: unsubscribe => this.unsubscribers.push(unsubscribe),
       canOpenPokemonStatusPanel: () => this.interactions.canOpenPokemonStatusPanel(),
       getViewportSize: () => this.getViewportSize(),

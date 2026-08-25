@@ -123,6 +123,7 @@ import type {
 } from "../network/localPreviewRoom";
 import type { CompetitiveBattleLaunchKey } from "./competitive-battle-launch";
 import { isCompetitiveAssignmentForPlayer } from "./competitive-battle-launch";
+import { isRoundReadinessDue } from "../network/tournament-projection";
 
 export const BATTLE_COMMAND_LABELS = ["싸운다", "가방", "포켓몬", "도망"] as const;
 export const BATTLE_SPRITE_CROP = { x: 0, y: 0, ...BATTLE_POKEMON_FRAME_SIZE } as const;
@@ -1596,7 +1597,39 @@ export class BattleScene extends Phaser.Scene {
         }
       }),
       this.multiplayerRoom.on("TOURNAMENT_STATE", payload => {
-        this.gameStateStore.applyTournamentSnapshotFromRoom(payload, Date.now());
+        const nowMs = Date.now();
+        const destination = this.state.returnToWorld;
+        this.gameStateStore.applyTournamentSnapshotFromRoom(payload, nowMs);
+
+        if (
+          this.competitivePreemptionQueued ||
+          !destination ||
+          !isRoundReadinessDue(payload.roomStatus, payload.roomRound, nowMs)
+        ) {
+          return;
+        }
+
+        this.competitivePreemptionQueued = true;
+        this.gameStateStore.healCurrentParty();
+        this.state = {
+          ...this.state,
+          phase: "resolving",
+          messageQueue: [this.getBattleStatusCopy().roundWaiting],
+        };
+        this.render();
+        queueMicrotask(() => {
+          if (!this.scene.isActive()) {
+            return;
+          }
+
+          this.scene.start("world", {
+            spawnPosition: {
+              x: destination.x,
+              y: destination.y,
+              facing: destination.facing,
+            },
+          });
+        });
       }),
       this.multiplayerRoom.on("COMPETITIVE_STATE", ({ projection, ownPlayerId }) => {
         const current = this.authoritativeProjection;

@@ -84,6 +84,19 @@ export interface TournamentStateRoomPayload {
   };
 }
 
+export function isRoundReadinessDue(
+  roomStatus: TournamentStateRoomPayload["roomStatus"],
+  round: Pick<TournamentRoomRound, "phase" | "endsAtMs">,
+  nowMs: number,
+): boolean {
+  return (
+    roomStatus === "round-started" &&
+    round.phase === "round-started" &&
+    round.endsAtMs !== null &&
+    nowMs >= round.endsAtMs
+  );
+}
+
 export class TournamentProjectionSchemaError extends Error {
   constructor() {
     super("Poke Lounge tournament projection is malformed");

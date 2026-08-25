@@ -1176,6 +1176,78 @@ test("round 종료 GET이 같은 상태를 반환하면 bounded backoff로 다�
   }
 });
 
+test("round 종료 상태를 받은 참가자는 준비 확인을 서버에 보낸다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const timers = createManualRecoveryTimers();
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: timers.window,
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const socket = createSocket();
+    const snapshots = createRoomSnapshots();
+    const roundStarted = {
+      ...createRoundStartedRoomSnapshot(snapshots.initial, 16, Date.now()),
+      participants: snapshots.initial.participants.map(participant => ({
+        ...participant,
+        ready: false,
+      })),
+    };
+    const ownReady = {
+      ...roundStarted,
+      revision: 17,
+      participants: roundStarted.participants.map(participant => ({
+        ...participant,
+        ready: participant.playerId === "player-1",
+      })),
+    };
+    let initialPartySynced = false;
+    let clockArmed = false;
+    let readyRequestBody: unknown = null;
+    const fetchFixture: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      initialPartySynced ||= url.pathname.endsWith("/party-snapshot");
+
+      if (clockArmed && url.pathname.endsWith("/ready")) {
+        readyRequestBody = JSON.parse(String(init?.body));
+        return jsonResponse(ownReady);
+      }
+      if (clockArmed && (init?.method ?? "GET") === "GET") {
+        return jsonResponse(roundStarted);
+      }
+
+      return jsonResponse(snapshots.initial);
+    };
+    room = createServerRoom({
+      roomId: "ROOM01",
+      playerId: "player-1",
+      sessionId: "session-1",
+      fetch: fetchFixture,
+      socketFactory: () => socket,
+    });
+    room.connect(createPlayerSnapshot());
+    await waitFor(() => initialPartySynced && socket.subscriptions().length > 0);
+    await flushAsyncWork();
+
+    clockArmed = true;
+    socket.pushSnapshot(roundStarted);
+    await timers.runNext();
+
+    assert.deepEqual(readyRequestBody, {
+      playerId: "player-1",
+      sessionId: "session-1",
+      ready: true,
+    });
+  } finally {
+    room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
 test("긴 round 대기는 30초로 제한되고 dispose는 stale callback도 무시한다", async () => {
   process.env.NEXT_PUBLIC_API_URL = "http://api.test";
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");

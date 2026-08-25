@@ -738,11 +738,27 @@ describe('PokeLoungeRoomService', () => {
 
     publisher.publish.mockClear();
     currentTimeMs = 1300;
-    const tournament = await service.getRoom('room01');
+    const hostRoundReady = await service.setReady(
+      'ROOM01',
+      { playerId: 'player-1', sessionId: 'session-1', ready: true },
+      command(started.revision, 6),
+    );
+    expect(hostRoundReady).toMatchObject({
+      status: 'round-started',
+      participants: [
+        { playerId: 'player-1', ready: true },
+        { playerId: 'player-2', ready: false },
+      ],
+    });
+    const tournament = await service.setReady(
+      'ROOM01',
+      { playerId: 'player-2', sessionId: 'session-2', ready: true },
+      command(hostRoundReady.revision, 7),
+    );
 
     expect(tournament).toMatchObject({
       status: 'tournament',
-      revision: 7,
+      revision: 8,
       tournament: {
         version: 2,
         activeMatchId: 'game-round-1-bracket-1-match-1',
@@ -758,7 +774,7 @@ describe('PokeLoungeRoomService', () => {
         },
       },
     });
-    expectPublicEvent(publisher, 'room-clock-advanced', tournament);
+    expectPublicEvent(publisher, 'room-updated', tournament);
   });
 
   it('requires a waiting room, a synced party, every ready participant, and the current host', async () => {
@@ -1641,14 +1657,23 @@ describe('PokeLoungeRoomService', () => {
       { playerId: 'player-2', sessionId: 'session-2', ready: true, nowMs: 200 },
       command(4, 4),
     );
-    await service.startRoom(
+    const started = await service.startRoom(
       'ROOM01',
       { playerId: 'player-1', sessionId: 'session-1', nowMs: 200 },
       command(bothReady.revision, 99),
     );
 
     currentTimeMs = 1200;
-    return service.getRoom('ROOM01');
+    const hostRoundReady = await service.setReady(
+      'ROOM01',
+      { playerId: 'player-1', sessionId: 'session-1', ready: true },
+      command(started.revision, 100),
+    );
+    return service.setReady(
+      'ROOM01',
+      { playerId: 'player-2', sessionId: 'session-2', ready: true },
+      command(hostRoundReady.revision, 101),
+    );
   }
 
   function updateTestParty(

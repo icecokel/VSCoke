@@ -122,6 +122,9 @@ export function advancePokeLoungeRoomClock(
     advanced.expiresAtMs = getPokeLoungeRoomExpiresAtMs(advanced);
     return advanced;
   }
+  if (participants.some((participant) => !participant.ready)) {
+    return null;
+  }
   for (const participant of participants) {
     const partySnapshot = advanced.partySnapshots[participant.playerId];
     partySnapshot.competitiveParty = restoreCompetitiveParty(
@@ -374,6 +377,9 @@ export function completePokeLoungeTournamentMatch(
         room.round.phase = 'round-started';
         room.round.startedAtMs = nowMs;
         room.round.endsAtMs = nowMs + room.round.durationMs;
+        for (const participant of room.participants) {
+          participant.ready = false;
+        }
       }
       return;
     }

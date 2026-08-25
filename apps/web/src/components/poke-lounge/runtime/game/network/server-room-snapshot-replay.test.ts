@@ -34,7 +34,7 @@ function createSocket(initiallyConnected = true): FixtureSocket {
   const recordedSubscriptions: Array<{ afterRevision: number }> = [];
   const recordedEmissions = new Map<string, unknown[]>();
   let connected = initiallyConnected;
-  let activeTransport = "polling";
+  let activeTransport = "websocket";
 
   const dispatch = (eventName: string, event?: unknown) => {
     for (const listener of listeners.get(eventName) ?? []) {
@@ -885,7 +885,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     assert.equal(getServerRoomTransportDiagnosticsForE2e(room)?.lastAppliedTerminalRevision, null);
     room.connect(createPlayerSnapshot());
     await waitFor(() => ready && socket.subscriptions().length > 0);
-    assert.deepEqual(configuredTransports, ["polling", "websocket"]);
+    assert.deepEqual(configuredTransports, ["websocket"]);
     await waitFor(() => {
       const diagnostics = getServerRoomTransportDiagnosticsForE2e(room ?? undefined);
       return diagnostics?.socketConnected === true && diagnostics.recoveryInFlight === false;
@@ -894,7 +894,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     assert.deepEqual(getServerRoomTransportDiagnosticsForE2e(room), {
       socketConnected: true,
       transportState: "connected",
-      activeTransport: "polling",
+      activeTransport: "websocket",
       recoveryAttempt: 0,
       recoveryInFlight: false,
       recoveryTimerScheduled: false,

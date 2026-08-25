@@ -12,6 +12,13 @@ export interface CompetitiveBattleLaunchCache {
   complete(matchId: string, assignmentRevision: number): void;
 }
 
+export function isCompetitiveAssignmentForPlayer(event: CompetitiveRoomProjectionEvent): boolean {
+  return (
+    event.projection.status !== "completed" &&
+    event.projection.playerIds.includes(event.ownPlayerId)
+  );
+}
+
 export function createCompetitiveBattleLaunchCache(): CompetitiveBattleLaunchCache {
   const projections = new Map<string, CompetitiveRoomProjectionEvent>();
   const begun = new Set<string>();

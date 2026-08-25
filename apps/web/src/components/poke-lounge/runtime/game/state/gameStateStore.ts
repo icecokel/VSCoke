@@ -905,13 +905,7 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
         return;
       }
 
-      setCurrentLocalPlayer({
-        ...localPlayer,
-        party: localPlayer.party.map(slot => ({
-          ...slot,
-          pokemon: slot.pokemon ? healPokemon(slot.pokemon) : slot.pokemon,
-        })),
-      });
+      setCurrentLocalPlayer(healLocalPlayer(localPlayer));
     },
     settleDiceGambleResult({ stakePokeDollars, rewardPokeDollars }) {
       if (
@@ -1447,9 +1441,23 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
       const projectionAdvanced =
         !previousProjection || input.revision > previousProjection.revision;
       const roundPhase = resolveServerTournamentRoundPhase(input);
+      const shouldRestoreCurrentParty =
+        roundPhase === "tournament" &&
+        (state.round.phase !== "tournament" || state.round.roundIndex !== input.roundIndex) &&
+        input.participants.some(
+          participant =>
+            participant.playerId === state.currentPlayerId && participant.role === "participant",
+        );
+      const playersById = shouldRestoreCurrentParty
+        ? {
+            ...state.playersById,
+            [state.currentPlayerId]: healLocalPlayer(getCurrentLocalPlayer(state)),
+          }
+        : state.playersById;
 
       state = {
         ...state,
+        playersById,
         round: {
           ...state.round,
           phase: roundPhase,
@@ -1474,6 +1482,9 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
               : state.tournament.lastRoundScores,
         },
       };
+      if (shouldRestoreCurrentParty) {
+        persistLocalPlayers();
+      }
       notify();
 
       return { ok: true };
@@ -2196,6 +2207,16 @@ function healPokemon(pokemon: PlayerPokemon): PlayerPokemon {
           })),
         }
       : {}),
+  };
+}
+
+export function healLocalPlayer(localPlayer: LocalPlayerState): LocalPlayerState {
+  return {
+    ...localPlayer,
+    party: localPlayer.party.map(slot => ({
+      ...slot,
+      pokemon: slot.pokemon ? healPokemon(slot.pokemon) : slot.pokemon,
+    })),
   };
 }
 

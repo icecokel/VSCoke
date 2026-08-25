@@ -46,6 +46,7 @@ export {
   CompetitivePartyValidationError,
   isCompetitiveMoveSelectable,
   normalizeCompetitiveParty,
+  restoreCompetitiveParty,
   type CompetitiveIndividualValues,
   type CompetitivePartyInput,
   type CompetitivePartyMemberInput,

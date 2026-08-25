@@ -122,6 +122,7 @@ import type {
   RoomUnsubscribe,
 } from "../network/localPreviewRoom";
 import type { CompetitiveBattleLaunchKey } from "./competitive-battle-launch";
+import { isCompetitiveAssignmentForPlayer } from "./competitive-battle-launch";
 
 export const BATTLE_COMMAND_LABELS = ["싸운다", "가방", "포켓몬", "도망"] as const;
 export const BATTLE_SPRITE_CROP = { x: 0, y: 0, ...BATTLE_POKEMON_FRAME_SIZE } as const;
@@ -500,6 +501,7 @@ export class BattleScene extends Phaser.Scene {
     "offline";
   private soloChallenge = false;
   private authoritativeUnsubscribers: RoomUnsubscribe[] = [];
+  private competitivePreemptionQueued = false;
   private lastAccessibleStatus = "";
   private removeMobileBattleUiListeners: (() => void) | null = null;
   private messageAutoAdvanceTimer: Phaser.Time.TimerEvent | null = null;
@@ -513,6 +515,7 @@ export class BattleScene extends Phaser.Scene {
 
   create(data: unknown = {}): void {
     this.clearAuthoritativeSubscriptions();
+    this.competitivePreemptionQueued = false;
     this.state = this.createInitialState(data);
     this.soloChallenge = isTrainerBattleSceneData(data) && data.soloChallenge === true;
     this.persistWorldPositionOnReturn = !isRecord(data) || data.persistWorldPosition !== false;
@@ -529,6 +532,7 @@ export class BattleScene extends Phaser.Scene {
       this.authoritativeOwnPlayerId = null;
       this.authoritativeInputPending = false;
       this.authoritativeConnectionStatus = "offline";
+      this.bindCompetitiveAssignmentPreemption();
     }
     this.returningToWorld = false;
     this.battleEntrancePlayed = false;
@@ -1635,6 +1639,43 @@ export class BattleScene extends Phaser.Scene {
         this.authoritativeInputPending = true;
         this.state = { ...this.state, phase: "resolving", messageQueue: [message] };
         this.render();
+      }),
+    );
+  }
+
+  private bindCompetitiveAssignmentPreemption(): void {
+    if (!this.multiplayerRoom) {
+      return;
+    }
+
+    this.authoritativeUnsubscribers.push(
+      this.multiplayerRoom.on("TOURNAMENT_STATE", payload => {
+        this.gameStateStore.applyTournamentSnapshotFromRoom(payload, Date.now());
+      }),
+      this.multiplayerRoom.on("COMPETITIVE_ASSIGNMENT", event => {
+        if (
+          this.competitivePreemptionQueued ||
+          !this.state.returnToWorld ||
+          !isCompetitiveAssignmentForPlayer(event)
+        ) {
+          return;
+        }
+
+        this.competitivePreemptionQueued = true;
+        this.gameStateStore.healCurrentParty();
+        queueMicrotask(() => {
+          if (!this.scene.isActive()) {
+            return;
+          }
+
+          this.scene.restart({
+            battleKind: "authoritative",
+            ownPlayerId: event.ownPlayerId,
+            persistWorldPosition: this.persistWorldPositionOnReturn,
+            projection: event.projection,
+            returnToWorld: this.state.returnToWorld,
+          });
+        });
       }),
     );
   }

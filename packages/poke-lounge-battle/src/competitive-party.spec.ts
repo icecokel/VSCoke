@@ -8,6 +8,7 @@ import {
   CompetitivePartyValidationError,
   isCompetitiveMoveSelectable,
   normalizeCompetitiveParty,
+  restoreCompetitiveParty,
   type CompetitivePartyInput,
 } from "./index";
 
@@ -100,6 +101,32 @@ describe("competitive party normalization", () => {
     }));
 
     expect(normalizeCompetitiveParty(input({ members })).members).toHaveLength(6);
+  });
+
+  it("restores HP, PP and persistent status before a tournament battle", () => {
+    const normalized = normalizeCompetitiveParty(
+      input({
+        members: [
+          {
+            ...input().members[0],
+            currentHp: 7,
+            status: "paralyzed",
+            moves: [{ moveId: 55, pp: 1 }],
+          },
+        ],
+      }),
+    );
+
+    expect(restoreCompetitiveParty(normalized).members[0]).toMatchObject({
+      currentHp: normalized.members[0]?.maxHp,
+      status: "normal",
+      moves: [{ moveId: 55, pp: 25 }],
+    });
+    expect(normalized.members[0]).toMatchObject({
+      currentHp: 7,
+      status: "paralyzed",
+      moves: [{ moveId: 55, pp: 1 }],
+    });
   });
 
   it.each([

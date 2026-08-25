@@ -308,6 +308,50 @@ describe('PokeLoungeRoomPolicy', () => {
     });
   });
 
+  it('restores every participant party when the round enters tournament', () => {
+    const room = createSnapshot({
+      status: 'round-started',
+      participants: [
+        createParticipant('player-1', 1),
+        createParticipant('player-2', 2),
+      ],
+      round: {
+        index: 1,
+        phase: 'round-started',
+        durationMs: 1_000,
+        startedAtMs: 0,
+        endsAtMs: 1_000,
+      },
+    });
+    const damaged = room.partySnapshots['player-1'].competitiveParty;
+    room.partySnapshots['player-1'].competitiveParty = {
+      ...damaged,
+      members: damaged.members.map((member) => ({
+        ...member,
+        currentHp: 1,
+        status: 'burned' as const,
+        moves: member.moves.map((move) => ({ ...move, pp: 0 })),
+      })),
+    };
+
+    const advanced = advancePokeLoungeRoomClock(room, 1_000);
+    const restored =
+      advanced?.partySnapshots['player-1'].competitiveParty.members[0];
+
+    expect(restored).toMatchObject({
+      currentHp: restored?.maxHp,
+      status: 'normal',
+      moves: [{ moveId: 55, pp: 25 }],
+    });
+    expect(
+      room.partySnapshots['player-1'].competitiveParty.members[0],
+    ).toMatchObject({
+      currentHp: 1,
+      status: 'burned',
+      moves: [{ moveId: 55, pp: 0 }],
+    });
+  });
+
   it('includes all five players as one match and three byes', () => {
     const room = createSnapshot({
       status: 'round-started',

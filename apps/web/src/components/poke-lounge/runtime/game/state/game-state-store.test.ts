@@ -179,6 +179,41 @@ test("server projection은 한 번의 notify로 session과 active match에 원�
   assert.deepEqual(store.getCurrentTournamentMatch()?.participantIds, ["player-4", "player-5"]);
 });
 
+test("공식 라운드 진입은 로컬 파티의 HP, PP와 상태이상을 한 번만 회복한다", () => {
+  const store = createGameStateStore();
+  store.setStarterPokemon({
+    speciesId: 155,
+    name: "브케인",
+    level: 10,
+    currentHp: 3,
+    maxHp: 30,
+    status: "burned",
+    moves: [{ id: 33, name: "몸통박치기", pp: 1, maxPp: 35 }],
+  });
+  store.applyTournamentSnapshotFromRoom(createPreparationProjection(3), 1_000);
+
+  assert.deepEqual(store.applyTournamentSnapshotFromRoom(createProjection(4), 2_000), {
+    ok: true,
+  });
+  assert.deepEqual(store.getCurrentLocalPlayer().party[0]?.pokemon, {
+    speciesId: 155,
+    name: "브케인",
+    level: 10,
+    currentHp: 30,
+    maxHp: 30,
+    status: "normal",
+    moves: [{ id: 33, name: "몸통박치기", pp: 35, maxPp: 35 }],
+  });
+
+  const restored = store.getCurrentLocalPlayer().party[0]?.pokemon;
+  assert.ok(restored);
+  store.updateActivePokemon({ ...restored, currentHp: 20 });
+  assert.deepEqual(store.applyTournamentSnapshotFromRoom(createProjection(5), 3_000), {
+    ok: true,
+  });
+  assert.equal(store.getCurrentLocalPlayer().party[0]?.pokemon?.currentHp, 20);
+});
+
 test("낮은 revision projection은 현재 bracket을 덮지 않는다", () => {
   const store = createGameStateStore();
   store.applyTournamentSnapshotFromRoom(createProjection(7), 1000);

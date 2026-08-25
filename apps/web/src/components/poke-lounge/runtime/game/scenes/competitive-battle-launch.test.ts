@@ -20,7 +20,10 @@ import type {
   CompetitiveProjection,
   CompetitiveRoomProjectionEvent,
 } from "../network/localPreviewRoom";
-import { createCompetitiveBattleLaunchCache } from "./competitive-battle-launch";
+import {
+  createCompetitiveBattleLaunchCache,
+  isCompetitiveAssignmentForPlayer,
+} from "./competitive-battle-launch";
 
 const webRoot = fileURLToPath(new URL("../../../../../../", import.meta.url));
 
@@ -239,4 +242,25 @@ test("WorldScene은 handed-off old key만 완료하고 next assignment를 한 �
   );
   assert.equal(cache.begin(nextEvent), true);
   assert.equal(cache.begin(nextEvent), false);
+});
+
+test("공식 배정은 해당 플레이어의 진행 중인 로컬 전투만 선점한다", () => {
+  const event: CompetitiveRoomProjectionEvent = {
+    projection: createProjection(
+      "11111111-1111-4111-8111-111111111111",
+      "game-round-1-bracket-1-match-1",
+      ["seed-4", "seed-5"],
+    ),
+    ownPlayerId: "seed-4",
+  };
+
+  assert.equal(isCompetitiveAssignmentForPlayer(event), true);
+  assert.equal(isCompetitiveAssignmentForPlayer({ ...event, ownPlayerId: "spectator" }), false);
+  assert.equal(
+    isCompetitiveAssignmentForPlayer({
+      ...event,
+      projection: { ...event.projection, status: "completed" },
+    }),
+    false,
+  );
 });

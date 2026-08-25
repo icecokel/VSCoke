@@ -16,6 +16,7 @@ import { WILD_ENCOUNTER_TABLES_JSON_ASSET } from "../world/wildEncounterTables";
 import { getDefaultGameStateStore } from "../state/defaultGameStateStore";
 import {
   createDefaultLocalPlayer,
+  healLocalPlayer,
   type GameStateStore,
   type LocalPlayerState,
   type PlayerPokemon,
@@ -49,6 +50,7 @@ import {
 } from "./world-scene-encounters";
 import {
   createCompetitiveBattleLaunchCache,
+  isCompetitiveAssignmentForPlayer,
   type CompetitiveBattleLaunchKey,
 } from "./competitive-battle-launch";
 
@@ -759,14 +761,15 @@ export class WorldScene extends Phaser.Scene {
 
     this.preserveRoomForBattle = true;
     this.player.setVelocity(0, 0);
+    this.gameStateStore.healCurrentParty();
 
     const battleData = {
       battleKind: "trainer",
       matchId: match.matchId,
       roundIndex: this.gameStateStore.getState().round.roundIndex,
       matchIndex: match.matchNumber,
-      player,
-      opponent,
+      player: healLocalPlayer(player),
+      opponent: healLocalPlayer(opponent),
       persistWorldPosition: shouldPersistSoloWorldPosition(this.competitiveRoundsEnabled),
       returnToWorld: {
         mapKey: FIELD_MAP.key,
@@ -986,17 +989,18 @@ export class WorldScene extends Phaser.Scene {
         this.tournament?.clearPresentation();
       }),
       this.room.on("COMPETITIVE_ASSIGNMENT", payload => {
-        const { projection, ownPlayerId } = payload;
+        const { projection } = payload;
 
         if (
           this.shutdownComplete ||
           !this.player ||
-          !projection.playerIds.includes(ownPlayerId) ||
+          !isCompetitiveAssignmentForPlayer(payload) ||
           !this.competitiveBattleLaunchCache.begin(payload)
         ) {
           return;
         }
 
+        this.gameStateStore.healCurrentParty();
         this.preserveRoomForBattle = true;
         this.player.setVelocity(0, 0);
         this.encounters.playBattleIntroTransition(() => {

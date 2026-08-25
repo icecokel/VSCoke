@@ -211,6 +211,32 @@ export function normalizeCompetitiveParty(
   };
 }
 
+export function restoreCompetitiveParty(
+  party: NormalizedCompetitiveParty,
+): NormalizedCompetitiveParty {
+  return {
+    ...party,
+    members: party.members.map(member => ({
+      ...member,
+      currentHp: member.maxHp,
+      status: "normal",
+      moves: member.moves.map(move => ({
+        ...move,
+        pp: getCompetitiveMoveMaxPp(move.moveId),
+      })),
+    })),
+  };
+}
+
+function getCompetitiveMoveMaxPp(moveId: number): number {
+  const move = COMPETITIVE_MOVE_CATALOG[moveId];
+  if (!move) {
+    throw new Error("Normalized competitive party contains an unsupported move");
+  }
+
+  return move.maxPp;
+}
+
 export function isCompetitiveMoveSelectable(moveId: number): boolean {
   const definition = COMPETITIVE_MOVE_CATALOG[moveId];
   return Boolean(definition && isCompetitiveMoveEffectSelectable(definition));

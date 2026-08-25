@@ -4,6 +4,7 @@ import {
   getReadyTournamentMatches,
   rankCumulativeTournamentScores,
   recordTournamentMatchResult,
+  restoreCompetitiveParty,
   scoreRemainingHpPercentage,
 } from '@vscoke/poke-lounge-battle';
 import type { PokeLoungeRoomSnapshot } from './poke-lounge-room.repository';
@@ -120,6 +121,13 @@ export function advancePokeLoungeRoomClock(
     advanced.revision = room.revision + 1;
     advanced.expiresAtMs = getPokeLoungeRoomExpiresAtMs(advanced);
     return advanced;
+  }
+  for (const participant of participants) {
+    const partySnapshot = advanced.partySnapshots[participant.playerId];
+    partySnapshot.competitiveParty = restoreCompetitiveParty(
+      partySnapshot.competitiveParty,
+    );
+    partySnapshot.updatedAtMs = nowMs;
   }
   advanced.status = 'tournament';
   advanced.round.phase = 'tournament';

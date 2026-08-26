@@ -940,7 +940,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     assert.equal(getServerRoomTransportDiagnosticsForE2e(room)?.lastAppliedTerminalRevision, null);
     room.connect(createPlayerSnapshot());
     await waitFor(() => ready && socket.subscriptions().length > 0);
-    assert.deepEqual(configuredTransports, ["websocket", "polling"]);
+    assert.deepEqual(configuredTransports, ["polling", "websocket"]);
     assert.equal(tryAllTransports, true);
     await waitFor(() => {
       const diagnostics = getServerRoomTransportDiagnosticsForE2e(room ?? undefined);

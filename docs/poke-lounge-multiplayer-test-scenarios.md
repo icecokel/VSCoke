@@ -92,8 +92,10 @@ Authorization header를 요구해서는 안 된다.
 목록을 섞어 각 플레이어에게 배정하고, 해당 실행이 끝날 때까지 같은 환경을 유지한다.
 
 `agent-browser` 에이전트 실행에서 `Mobile Web`은 viewport만 줄이지 않고 방 입장 전에
-`set device "iPhone 12"`로 touch device를 에뮬레이션한다. viewport `390×844`와
-`navigator.maxTouchPoints > 0`을 확인한 뒤에만 `ENV-READY`를 보고한다. `Desktop Web`은
+`open --init-script .agents/skills/poke-lounge-agent-browser-test/scripts/mobile-touch-init.js`로 빈 named
+session을 시작하고 `set device "iPhone 12"`를 적용한 뒤 대상 URL을 연다. `agent-browser` 0.34.0의
+device preset이 적용하지 않는 touch capability만 리포지토리에서 검토한 init script로 보정한다.
+viewport `390×844`와 `navigator.maxTouchPoints > 0`을 확인한 뒤에만 `ENV-READY`를 보고한다. `Desktop Web`은
 `set viewport 1440 900`을 적용하고 touch device를 에뮬레이션하지 않는다. 모바일 조작 deck과 터치
 방향 패드는 라운드 시작 후 `C1-WORLD`에서 확인하며, 그때 없으면 `CODE-FAIL`이다.
 

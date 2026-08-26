@@ -25,9 +25,11 @@ them unless the user asks.
 - Give every player a unique named session such as `poke-<run-id>-mp1`. Never use the shared default session,
   reuse another player's session, or use `close --all`.
 - Use headless Chromium for both environments. Assign Desktop Web `1440x900` or Mobile Web `390x844` from the
-  recorded random seed. Apply Desktop with `set viewport 1440 900`; apply Mobile with `set device "iPhone 12"`
-  before entering the room, then verify viewport `390x844` and `navigator.maxTouchPoints > 0`. Firefox is
-  excluded. A narrow viewport without touch emulation is not Mobile Web and must not report `ENV-READY`.
+  recorded random seed. Apply Desktop with `set viewport 1440 900`. For Mobile, launch the blank named session
+  with `open --init-script .agents/skills/poke-lounge-agent-browser-test/scripts/mobile-touch-init.js`, apply
+  `set device "iPhone 12"`, then open the target URL. Verify viewport `390x844` and
+  `navigator.maxTouchPoints > 0` before room entry. Firefox is excluded. A narrow viewport without the reviewed
+  touch init script is not Mobile Web and must not report `ENV-READY`.
 - Open settings and turn sound off in every player session before room entry. Report `AUDIO-MUTED <MP role>`
   only after verifying that session's control state.
 - The orchestrator does not occupy a player session unless the user explicitly asks it to play. One runner may

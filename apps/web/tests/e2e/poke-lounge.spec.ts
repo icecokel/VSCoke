@@ -110,6 +110,8 @@ interface PokeLoungeBattleSnapshot {
   } | null;
   battleEntrancePlaying: boolean;
   battleEntrancePlayed: boolean;
+  fullRenderCount: number;
+  animationFrameUpdateCount: number;
   hpAnimationPlaying: boolean;
   hpAnimationStartedCount: number;
   hitAnimationPlaying: boolean;
@@ -2402,6 +2404,20 @@ test.describe("Poke Lounge", () => {
     expect(snapshot?.evolutionAnimationPlaying).toBe(true);
     expect(snapshot?.evolutionFromSpeciesId).toBe(152);
     expect(snapshot?.evolutionToSpeciesId).toBe(153);
+    await expect
+      .poll(
+        () => getBattleSnapshot(page).then(current => current?.evolutionAnimationPlaying ?? true),
+        { timeout: 5000 },
+      )
+      .toBe(false);
+    const afterAnimation = await getBattleSnapshot(page);
+
+    expect(afterAnimation?.animationFrameUpdateCount).toBeGreaterThan(
+      snapshot?.animationFrameUpdateCount ?? 0,
+    );
+    expect(
+      (afterAnimation?.fullRenderCount ?? 0) - (snapshot?.fullRenderCount ?? 0),
+    ).toBeLessThanOrEqual(4);
     expect(browserErrors.join("\n")).toBe("");
   });
 
@@ -2425,6 +2441,20 @@ test.describe("Poke Lounge", () => {
     expect(snapshot?.captureAnimationStartedCount).toBeGreaterThan(0);
     expect(snapshot?.captureAnimationPlaying).toBe(true);
     expect(snapshot?.captureAnimationShakes).not.toBeNull();
+    await expect
+      .poll(
+        () => getBattleSnapshot(page).then(current => current?.captureAnimationPlaying ?? true),
+        { timeout: 5000 },
+      )
+      .toBe(false);
+    const afterAnimation = await getBattleSnapshot(page);
+
+    expect(afterAnimation?.animationFrameUpdateCount).toBeGreaterThan(
+      snapshot?.animationFrameUpdateCount ?? 0,
+    );
+    expect(
+      (afterAnimation?.fullRenderCount ?? 0) - (snapshot?.fullRenderCount ?? 0),
+    ).toBeLessThanOrEqual(3);
     expect(browserErrors.join("\n")).toBe("");
   });
 
@@ -2863,7 +2893,9 @@ test.describe("Poke Lounge", () => {
     const browserErrors = collectBrowserErrors(page);
 
     await startBattleScenario(page, "wild-victory");
-    expect((await getBattleSnapshot(page))?.battleEntrancePlayed).toBe(true);
+    const entranceStart = await getBattleSnapshot(page);
+
+    expect(entranceStart?.battleEntrancePlayed).toBe(true);
     await expect
       .poll(
         () => getBattleSnapshot(page).then(snapshot => snapshot?.battleEntrancePlaying ?? true),
@@ -2872,6 +2904,14 @@ test.describe("Poke Lounge", () => {
         },
       )
       .toBe(false);
+    const entranceEnd = await getBattleSnapshot(page);
+
+    expect(entranceEnd?.animationFrameUpdateCount).toBeGreaterThan(
+      entranceStart?.animationFrameUpdateCount ?? 0,
+    );
+    expect(
+      (entranceEnd?.fullRenderCount ?? 0) - (entranceStart?.fullRenderCount ?? 0),
+    ).toBeLessThanOrEqual(2);
 
     await chooseFightCommand(page);
     const before = await getBattleSnapshot(page);
@@ -2925,6 +2965,14 @@ test.describe("Poke Lounge", () => {
         { timeout: 5000 },
       )
       .toBe(true);
+    const afterAnimation = await getBattleSnapshot(page);
+
+    expect(afterAnimation?.animationFrameUpdateCount).toBeGreaterThan(
+      before?.animationFrameUpdateCount ?? 0,
+    );
+    expect(
+      (afterAnimation?.fullRenderCount ?? 0) - (before?.fullRenderCount ?? 0),
+    ).toBeLessThanOrEqual(4);
     expect(
       await page.evaluate(
         () => (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__?.getAudioPlaybackSnapshot() ?? null,

@@ -37,6 +37,7 @@ import { createMultiplayerRoom } from "./network/multiplayerRoomFactory";
 import {
   POKE_LOUNGE_FRESH_SESSION_REQUIRED_EVENT,
   POKE_LOUNGE_SERVER_ROOM_ERROR_EVENT,
+  readStoredServerRoomResume,
   type PokeLoungeServerRoomErrorDetail,
 } from "./network/serverRoom";
 import {
@@ -569,6 +570,24 @@ export async function startGamePage(
     }
 
     const roomEntry = readRoomEntryFromLocation(currentUrl);
+    const storedResume = readStoredServerRoomResume();
+    const canResumeStoredRoom =
+      !localTestModeState.active &&
+      !gameStateStore.canChooseStarter() &&
+      storedResume !== null &&
+      (roomEntry.mode === "unset" ||
+        (roomEntry.mode === "server-room" && roomEntry.createRoom === true));
+
+    if (canResumeStoredRoom) {
+      temporaryRoomCode = storedResume.roomCode;
+      currentUrl.searchParams.set("network", "server");
+      currentUrl.searchParams.set("create", "1");
+      currentUrl.searchParams.delete("room");
+      roomEntrySelectionPending = true;
+      setRoomEntryScreenPending(mount, copy.roomEntry.preparing);
+      startGameAfterStarterSelection(currentUrl);
+      return;
+    }
 
     if (localTestModeState.active && isCompetitiveRoomEntryMode(roomEntry.mode)) {
       clearRoomEntrySearchParams(currentUrl);

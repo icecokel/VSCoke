@@ -613,6 +613,59 @@ test("서버 방 신원은 기존 값을 현재 계정으로 이전하고 계정
   }
 });
 
+test("활성 서버 방만 새로고침 복구 대상으로 저장하고 종료 시 제거한다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const timers = createManualRecoveryTimers();
+  const values = new Map<string, string>();
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      ...timers.window,
+      sessionStorage: {
+        getItem(key: string) {
+          return values.get(key) ?? null;
+        },
+        setItem(key: string, value: string) {
+          values.set(key, value);
+        },
+        removeItem(key: string) {
+          values.delete(key);
+        },
+      },
+    },
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom, readStoredServerRoomResume } = await import("./serverRoom");
+    const socket = createSocket();
+    const snapshots = createRoomSnapshots();
+    room = createServerRoom({
+      roomId: "ROOM01",
+      playerId: "player-1",
+      sessionId: "session-1",
+      fetch: async () => jsonResponse(snapshots.initial),
+      socketFactory: () => socket,
+    });
+    room.connect(createPlayerSnapshot());
+    await waitFor(() => readStoredServerRoomResume()?.roomCode === "ROOM01");
+
+    socket.pushSnapshot(
+      createCompletedRoomSnapshot(
+        createRoundStartedRoomSnapshot(snapshots.initial, 16, 301_000),
+        17,
+      ),
+    );
+
+    assert.equal(readStoredServerRoomResume(), null);
+    assert.equal(values.has("poke-lounge:server-room-identity"), false);
+  } finally {
+    room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
 test("이전 게임 라운드 terminal은 다음 라운드 bracket 초기화 뒤에도 적용한다", async () => {
   process.env.NEXT_PUBLIC_API_URL = "http://api.test";
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");

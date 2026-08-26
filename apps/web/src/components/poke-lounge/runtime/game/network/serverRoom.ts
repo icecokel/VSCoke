@@ -172,6 +172,7 @@ export function getServerRoomTransportDiagnosticsForE2e(
 }
 
 const SERVER_IDENTITY_STORAGE_KEY = "poke-lounge:server-room-identity";
+const SERVER_ROOM_CODE_PATTERN = /^[A-Z0-9]{6}$/;
 const RECOVERY_INITIAL_DELAY_MS = 250;
 const RECOVERY_MAX_DELAY_MS = 5000;
 const ROOM_CLOCK_RETRY_INITIAL_DELAY_MS = 250;
@@ -190,6 +191,19 @@ interface ServerRoomConflictResponse {
   code: typeof REVISION_CONFLICT_CODE | typeof IDEMPOTENCY_CONFLICT_CODE;
   message: string;
   snapshot: ServerRoomState;
+}
+
+interface StoredServerRoomIdentity {
+  sessionId: string;
+  playerId: string;
+  activeRoom?: {
+    roomCode: string;
+    expiresAtMs: number;
+  };
+}
+
+export interface StoredServerRoomResume {
+  roomCode: string;
 }
 
 type InitialWorkflowStage = "open" | "competitive-seat" | "party" | "complete";
@@ -354,6 +368,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       return;
     }
 
+    clearStoredServerRoomSession(options.accountId);
     dispatchWindowEvent(POKE_LOUNGE_FRESH_SESSION_REQUIRED_EVENT, {
       roomCode: activeRoomId === PENDING_ROOM_ID ? null : activeRoomId,
     });
@@ -1032,7 +1047,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     clearRecoveryTimer();
     clearRoomClockRefresh();
     roomSocket?.disconnect();
-    clearStoredServerIdentity(options.accountId);
+    clearStoredServerRoomSession(options.accountId);
     const cursorError = new Error(
       "Poke Lounge room cursor regressed; a fresh room session is required",
     );
@@ -1115,6 +1130,22 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     lastAppliedRoomRevision = state.revision;
     activeRoomId = state.roomCode;
     latestCompetitionKind = resolveCompetitionKind(state, latestCompetitionKind);
+
+    if (isTerminalState()) {
+      clearStoredServerRoomSession(options.accountId);
+    } else if (state.participants.some(participant => participant.playerId === serverPlayerId)) {
+      writeStoredIdentity(
+        {
+          sessionId,
+          playerId: serverPlayerId,
+          activeRoom: {
+            roomCode: state.roomCode,
+            expiresAtMs: state.expiresAtMs,
+          },
+        },
+        options.accountId,
+      );
+    }
 
     if (
       resultSync.matchId &&
@@ -1690,7 +1721,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     },
     leave() {
       return requestLeave().then(() => {
-        clearStoredServerIdentity(options.accountId);
+        clearStoredServerRoomSession(options.accountId);
       });
     },
     dispose() {
@@ -2163,7 +2194,7 @@ function dispatchWindowEvent<T>(eventName: string, detail: T): void {
   window.dispatchEvent(new CustomEvent<T>(eventName, { detail }));
 }
 
-function clearStoredServerIdentity(accountId?: string): void {
+export function clearStoredServerRoomSession(accountId?: string): void {
   if (typeof window === "undefined") {
     return;
   }
@@ -2720,12 +2751,17 @@ function resolveServerIdentity(options: ServerRoomOptions): {
     playerId: playerIdOverride ?? stored?.playerId ?? `server-player-${createIdentityToken()}`,
   };
 
-  writeStoredIdentity(identity, options.accountId);
+  writeStoredIdentity(
+    stored?.sessionId === identity.sessionId && stored.playerId === identity.playerId
+      ? { ...stored, ...identity }
+      : identity,
+    options.accountId,
+  );
 
   return identity;
 }
 
-function readStoredIdentity(accountId?: string): { sessionId: string; playerId: string } | null {
+function readStoredIdentity(accountId?: string): StoredServerRoomIdentity | null {
   if (typeof window === "undefined") {
     return null;
   }
@@ -2747,12 +2783,19 @@ function readStoredIdentity(accountId?: string): { sessionId: string; playerId: 
       return null;
     }
 
-    const parsed = JSON.parse(stored) as Partial<{ sessionId: unknown; playerId: unknown }>;
+    const parsed = JSON.parse(stored) as Partial<{
+      sessionId: unknown;
+      playerId: unknown;
+      activeRoom: unknown;
+    }>;
 
     if (typeof parsed.sessionId === "string" && typeof parsed.playerId === "string") {
+      const activeRoom = parseStoredActiveRoom(parsed.activeRoom);
+
       return {
         sessionId: parsed.sessionId,
         playerId: parsed.playerId,
+        ...(activeRoom ? { activeRoom } : {}),
       };
     }
   } catch {
@@ -2762,10 +2805,7 @@ function readStoredIdentity(accountId?: string): { sessionId: string; playerId: 
   return null;
 }
 
-function writeStoredIdentity(
-  identity: { sessionId: string; playerId: string },
-  accountId?: string,
-): void {
+function writeStoredIdentity(identity: StoredServerRoomIdentity, accountId?: string): void {
   if (typeof window === "undefined") {
     return;
   }
@@ -2775,6 +2815,50 @@ function writeStoredIdentity(
   } catch {
     // Ignore storage failures; generated identities still work for the current page lifetime.
   }
+}
+
+export function readStoredServerRoomResume(accountId?: string): StoredServerRoomResume | null {
+  const identity = readStoredIdentity(accountId);
+  const activeRoom = identity?.activeRoom;
+
+  if (!identity || !activeRoom) {
+    return null;
+  }
+
+  if (activeRoom.expiresAtMs <= Date.now()) {
+    writeStoredIdentity(
+      {
+        sessionId: identity.sessionId,
+        playerId: identity.playerId,
+      },
+      accountId,
+    );
+    return null;
+  }
+
+  return { roomCode: activeRoom.roomCode };
+}
+
+function parseStoredActiveRoom(value: unknown): StoredServerRoomIdentity["activeRoom"] | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const activeRoom = value as Record<string, unknown>;
+
+  if (
+    typeof activeRoom.roomCode !== "string" ||
+    !SERVER_ROOM_CODE_PATTERN.test(activeRoom.roomCode) ||
+    typeof activeRoom.expiresAtMs !== "number" ||
+    !Number.isFinite(activeRoom.expiresAtMs)
+  ) {
+    return null;
+  }
+
+  return {
+    roomCode: activeRoom.roomCode,
+    expiresAtMs: activeRoom.expiresAtMs,
+  };
 }
 
 function getServerIdentityStorageKey(accountId?: string): string {

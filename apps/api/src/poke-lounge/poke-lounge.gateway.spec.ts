@@ -258,12 +258,12 @@ describe('PokeLoungeGateway', () => {
 
     expect(client.leave).toHaveBeenCalledWith('room:ROOM01');
     expect(client.value.data).toEqual({});
-    await jest.advanceTimersByTimeAsync(15_000);
+    await jest.advanceTimersByTimeAsync(60_000);
     expect(roomService.expireParticipantPresence).toHaveBeenCalledWith(
       'ROOM01',
       'player-1',
       'session-1',
-      undefined,
+      expect.any(String),
       expect.anything(),
     );
   });
@@ -417,7 +417,7 @@ describe('PokeLoungeGateway', () => {
     await gateway.subscribe(client.value, validSubscription());
 
     gateway.handleDisconnect(client.value);
-    await jest.advanceTimersByTimeAsync(14_999);
+    await jest.advanceTimersByTimeAsync(59_999);
     expect(roomService.expireParticipantPresence).not.toHaveBeenCalled();
     expect(liveState.removePlayer).not.toHaveBeenCalled();
 
@@ -427,7 +427,7 @@ describe('PokeLoungeGateway', () => {
       'ROOM01',
       'player-1',
       'session-1',
-      undefined,
+      expect.any(String),
       expect.anything(),
     );
   });
@@ -462,7 +462,7 @@ describe('PokeLoungeGateway', () => {
     ]);
 
     gateway.handleDisconnect(disconnected.value);
-    await jest.advanceTimersByTimeAsync(15_000);
+    await jest.advanceTimersByTimeAsync(60_000);
 
     expect(roomService.expireParticipantPresence).not.toHaveBeenCalled();
     expect(liveState.removePlayer).not.toHaveBeenCalled();
@@ -496,13 +496,13 @@ describe('PokeLoungeGateway', () => {
     rejectReconnect?.(new Error('cancelled reconnect acknowledgement'));
     await reconnecting;
     roomService.expireParticipantPresence.mockClear();
-    await jest.advanceTimersByTimeAsync(15_000);
+    await jest.advanceTimersByTimeAsync(60_000);
 
     expect(roomService.expireParticipantPresence).toHaveBeenCalledWith(
       'ROOM01',
       'player-1',
       'session-1',
-      undefined,
+      expect.any(String),
       expect.objectContaining({ aborted: false }),
     );
   });
@@ -515,11 +515,11 @@ describe('PokeLoungeGateway', () => {
     await gateway.subscribe(second.value, validSubscription());
 
     gateway.handleDisconnect(first.value);
-    await jest.advanceTimersByTimeAsync(15_000);
+    await jest.advanceTimersByTimeAsync(60_000);
     expect(roomService.expireParticipantPresence).not.toHaveBeenCalled();
 
     gateway.handleDisconnect(second.value);
-    await jest.advanceTimersByTimeAsync(15_000);
+    await jest.advanceTimersByTimeAsync(60_000);
     expect(roomService.expireParticipantPresence).toHaveBeenCalledTimes(1);
   });
 
@@ -568,13 +568,13 @@ describe('PokeLoungeGateway', () => {
     await firstSubscription;
     gateway.handleDisconnect(first.value);
     gateway.handleDisconnect(second.value);
-    await jest.advanceTimersByTimeAsync(15_000);
+    await jest.advanceTimersByTimeAsync(60_000);
 
     expect(roomService.expireParticipantPresence).toHaveBeenCalledWith(
       'ROOM01',
       'player-1',
       'session-1',
-      undefined,
+      expect.any(String),
       expect.anything(),
     );
   });
@@ -589,20 +589,20 @@ describe('PokeLoungeGateway', () => {
       playerId: 'player-2',
       sessionId: 'session-2',
     });
-    await jest.advanceTimersByTimeAsync(15_000);
+    await jest.advanceTimersByTimeAsync(60_000);
 
     expect(roomService.expireParticipantPresence).toHaveBeenCalledWith(
       'ROOM01',
       'player-1',
       'session-1',
-      undefined,
+      expect.any(String),
       expect.anything(),
     );
     expect(roomService.expireParticipantPresence).not.toHaveBeenCalledWith(
       'ROOM01',
       'player-2',
       'session-2',
-      undefined,
+      expect.any(String),
       expect.anything(),
     );
   });
@@ -627,13 +627,13 @@ describe('PokeLoungeGateway', () => {
     gateway.handleDisconnect(client.value);
     resolveAcknowledgement?.(publicRoom({ revision: 8 }));
     await pending;
-    await jest.advanceTimersByTimeAsync(15_000);
+    await jest.advanceTimersByTimeAsync(60_000);
 
     expect(roomService.expireParticipantPresence).toHaveBeenCalledWith(
       'ROOM01',
       'player-1',
       'session-1',
-      undefined,
+      expect.any(String),
       expect.anything(),
     );
   });
@@ -656,14 +656,14 @@ describe('PokeLoungeGateway', () => {
     gateway.handleDisconnect(client.value);
     resolveJoin?.();
     await pending;
-    await jest.advanceTimersByTimeAsync(15_000);
+    await jest.advanceTimersByTimeAsync(60_000);
 
     expect(roomService.acknowledgeParticipantPresence).not.toHaveBeenCalled();
     expect(roomService.expireParticipantPresence).toHaveBeenCalledWith(
       'ROOM01',
       'player-1',
       'session-1',
-      undefined,
+      expect.any(String),
       expect.anything(),
     );
   });
@@ -683,7 +683,7 @@ describe('PokeLoungeGateway', () => {
       roomService.acknowledgeParticipantPresence.mock.calls[0]?.[4];
     gateway.handleDisconnect(disconnected.value);
 
-    await jest.advanceTimersByTimeAsync(15_000);
+    await jest.advanceTimersByTimeAsync(60_000);
     expect(resolveExpiry).toBeDefined();
     const expirySignal =
       roomService.expireParticipantPresence.mock.calls[0]?.[4];
@@ -691,7 +691,7 @@ describe('PokeLoungeGateway', () => {
       'ROOM01',
       'player-1',
       'session-1',
-      undefined,
+      firstEpoch,
       expirySignal,
     );
 

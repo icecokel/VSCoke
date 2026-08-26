@@ -116,7 +116,7 @@ export interface paths {
     };
     /**
      * 게임별 Top 10 랭킹 조회
-     * @description POKE_LOUNGE는 서버에서 검증된 대전 결과만 포함합니다. 응답은 항상 랭킹 배열입니다.
+     * @description POKE_LOUNGE는 영속 기록을 만들지 않아 빈 배열을 반환합니다.
      */
     get: operations["GameController_getRanking"];
     put?: never;
@@ -267,6 +267,22 @@ export interface paths {
     get?: never;
     put?: never;
     post: operations["PokeLoungeController_setReady"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/poke-lounge/rooms/{roomCode}/round-ready": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["PokeLoungeController_setRoundReady"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1229,6 +1245,14 @@ export interface components {
       /** @example true */
       ready: boolean;
     };
+    SetPokeLoungeRoundReadyDto: {
+      /** @example player-a */
+      playerId: string;
+      /** @example session-a */
+      sessionId: string;
+      /** @example 1 */
+      roundIndex: number;
+    };
     StartPokeLoungeRoomDto: {
       /** @example player-a */
       playerId: string;
@@ -1940,6 +1964,37 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PokeLoungeRoomConflictResponseDto"];
+        };
+      };
+    };
+  };
+  PokeLoungeController_setRoundReady: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Idempotency-Key": string;
+      };
+      path: {
+        roomCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SetPokeLoungeRoundReadyDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["PokeLoungeRoomResponseDto"];
+          };
         };
       };
     };

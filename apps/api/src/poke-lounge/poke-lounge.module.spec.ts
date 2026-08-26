@@ -1,25 +1,25 @@
 import { PokeLoungeRoomEventsService } from './poke-lounge-room-events.service';
 import { CompetitiveMatchService } from './competitive/competitive-match.service';
 import { COMPETITIVE_MATCH_REPOSITORY } from './competitive/competitive-match.repository';
-import { PostgresCompetitiveMatchRepository } from './competitive/postgres-competitive-match.repository';
-import { PostgresCompetitiveActionRepository } from './competitive/postgres-competitive-action.repository';
 import { COMPETITIVE_ACTION_REPOSITORY } from './competitive/competitive-action.repository';
 import { POKE_LOUNGE_ROOM_EVENT_PUBLISHER } from './poke-lounge-room-event.publisher';
+import { POKE_LOUNGE_ROOM_REPOSITORY } from './poke-lounge-room.repository';
 import { PokeLoungeGateway } from './poke-lounge.gateway';
 import { PokeLoungeModule } from './poke-lounge.module';
-import { GameModule } from '../game/game.module';
+import { PokeLoungeRedisModule } from './poke-lounge-redis.module';
+import { RedisPokeLoungeRepository } from './redis-poke-lounge.repository';
 
 describe('PokeLoungeModule', () => {
-  it('imports the game writer module without redefining its provider', () => {
+  it('imports the shared Redis connection module', () => {
     const imports = Reflect.getMetadata(
       'imports',
       PokeLoungeModule,
     ) as object[];
 
-    expect(imports).toContain(GameModule);
+    expect(imports).toContain(PokeLoungeRedisModule);
   });
 
-  it('binds committed room events to the Socket.IO gateway publisher', () => {
+  it('binds all transient repositories to one Redis implementation', () => {
     const providers = Reflect.getMetadata(
       'providers',
       PokeLoungeModule,
@@ -28,15 +28,18 @@ describe('PokeLoungeModule', () => {
     expect(providers).toContain(PokeLoungeRoomEventsService);
     expect(providers).toContain(PokeLoungeGateway);
     expect(providers).toContain(CompetitiveMatchService);
-    expect(providers).toContain(PostgresCompetitiveMatchRepository);
-    expect(providers).toContain(PostgresCompetitiveActionRepository);
+    expect(providers).toContain(RedisPokeLoungeRepository);
     expect(providers).toContainEqual({
       provide: COMPETITIVE_ACTION_REPOSITORY,
-      useExisting: PostgresCompetitiveActionRepository,
+      useExisting: RedisPokeLoungeRepository,
     });
     expect(providers).toContainEqual({
       provide: COMPETITIVE_MATCH_REPOSITORY,
-      useExisting: PostgresCompetitiveMatchRepository,
+      useExisting: RedisPokeLoungeRepository,
+    });
+    expect(providers).toContainEqual({
+      provide: POKE_LOUNGE_ROOM_REPOSITORY,
+      useExisting: RedisPokeLoungeRepository,
     });
     expect(providers).toContainEqual({
       provide: POKE_LOUNGE_ROOM_EVENT_PUBLISHER,

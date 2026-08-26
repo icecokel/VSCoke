@@ -1212,8 +1212,9 @@ test("round 종료 상태를 받은 참가자는 준비 확인을 서버에 보�
       const url = new URL(typeof input === "string" ? input : input.toString());
       initialPartySynced ||= url.pathname.endsWith("/party-snapshot");
 
-      if (clockArmed && url.pathname.endsWith("/ready")) {
+      if (clockArmed && url.pathname.endsWith("/round-ready")) {
         readyRequestBody = JSON.parse(String(init?.body));
+        assert.equal(new Headers(init?.headers).has("If-Match-Revision"), false);
         return jsonResponse(ownReady);
       }
       if (clockArmed && (init?.method ?? "GET") === "GET") {
@@ -1240,7 +1241,7 @@ test("round 종료 상태를 받은 참가자는 준비 확인을 서버에 보�
     assert.deepEqual(readyRequestBody, {
       playerId: "player-1",
       sessionId: "session-1",
-      ready: true,
+      roundIndex: roundStarted.round.index,
     });
   } finally {
     room?.dispose();

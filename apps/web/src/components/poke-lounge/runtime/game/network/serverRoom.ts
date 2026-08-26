@@ -291,6 +291,11 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     revision: number;
     endsAtMs: number;
   } | null = null;
+  let roundReadyCommand: {
+    roomCode: string;
+    roundIndex: number;
+    idempotencyKey: string;
+  } | null = null;
   let latestState: ServerRoomState | null = null;
   let currentAssignmentProjection: CompetitiveProjection | null = null;
   let recentTerminalProjections: CompetitiveTerminalTransition[] = [];
@@ -584,6 +589,32 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     applySnapshot(state);
   };
 
+  const updateRoundReady = async (roundIndex: number) => {
+    if (
+      !roundReadyCommand ||
+      roundReadyCommand.roomCode !== activeRoomId ||
+      roundReadyCommand.roundIndex !== roundIndex
+    ) {
+      roundReadyCommand = {
+        roomCode: activeRoomId,
+        roundIndex,
+        idempotencyKey: createIdempotencyKey(),
+      };
+    }
+
+    const command = roundReadyCommand;
+    const state = await enqueueMutation(() =>
+      retryOneNetworkFailure(() =>
+        requestRoom(`/poke-lounge/rooms/${activeRoomId}/round-ready`, {
+          method: "POST",
+          headers: { "X-Idempotency-Key": command.idempotencyKey },
+          body: JSON.stringify({ playerId: serverPlayerId, sessionId, roundIndex }),
+        }),
+      ),
+    );
+    applySnapshot(state);
+  };
+
   const runRoomClockRefresh = async (target: NonNullable<typeof roomClockTarget>) => {
     if (disposed || roomClockInFlight || !hasCurrentRoomClockTarget(target)) {
       return;
@@ -602,7 +633,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         ownParticipant.connected &&
         !ownParticipant.ready
       ) {
-        await updateReady(true);
+        await updateRoundReady(room.round.index);
       }
       if (hasCurrentRoomClockTarget(target)) {
         roomClockAttempt += 1;

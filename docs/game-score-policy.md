@@ -14,12 +14,11 @@
 
 ## 현재 정책
 
-현재 API에 등록된 랭킹용 게임 타입은 `SKY_DROP`, `POKE_LOUNGE`다. Wordle은 웹 게임 라우트가 있지만 현재 `POST /game/result` 랭킹 저장 타입에는 포함되지 않는다.
+현재 API에서 영속 랭킹으로 저장하는 게임 타입은 `SKY_DROP`이다. `POKE_LOUNGE`는 API enum 호환성을 유지하지만 결과 저장을 거절하며, Wordle도 현재 `POST /game/result` 랭킹 저장 타입에는 포함되지 않는다.
 
-| gameType    | score min | score max | playTime min | playTime max | max score/sec |
-| ----------- | --------- | --------- | ------------ | ------------ | ------------- |
-| SKY_DROP    | 1         | 100000    | 1초          | 86400초      | 2000          |
-| POKE_LOUNGE | 1         | 1000      | 1초          | 86400초      | 1000          |
+| gameType | score min | score max | playTime min | playTime max | max score/sec |
+| -------- | --------- | --------- | ------------ | ------------ | ------------- |
+| SKY_DROP | 1         | 100000    | 1초          | 86400초      | 2000          |
 
 서버는 다음 조건을 강제한다.
 
@@ -32,36 +31,13 @@
 
 ## Poke Lounge 결과 신뢰도
 
-`game_history.resultTrust`는 Poke Lounge 결과의 생성 경계를 구분한다.
+Poke Lounge 방, 경쟁전, action receipt, 결과와 로그인 진행 상태는 Redis TTL 범위에서만 유지한다.
+서버는 결정론 엔진으로 전투와 우승자를 판정하지만 `game_history`를 생성하지 않는다.
 
-| 값                | 의미                                                              | Poke Lounge 공개 랭킹 |
-| ----------------- | ----------------------------------------------------------------- | --------------------- |
-| `client-asserted` | 일반 `POST /game/result`로 저장한 클라이언트 주장 결과            | 제외                  |
-| `verified-room`   | 서버가 확정한 룸 종료 결과를 서버 전용 writer가 트랜잭션으로 기록 | 포함                  |
-| `NULL`            | 신뢰도 분류를 적용하지 않는 다른 게임의 기존 동작                 | 기존 정책 유지        |
-
-일반 게임 결과 DTO는 `resultTrust`와 `sourceKey`를 받지 않는다. `GameService.createHistory`는 Poke Lounge 일반 제출을 항상 `client-asserted`, `sourceKey = NULL`로 저장한다. 이 결과는 저장과 공유가 가능하지만 공개 Poke Lounge 랭킹에는 포함되지 않는다.
-
-`verified-room`은 서버 전용 `VerifiedPokeLoungeHistoryWriter`만 기록한다. writer는 호출자가 제공한 임의 키를 받지 않고 서버의 `roomId`, `matchId`, 바인딩된 `userId`로 `roomId:matchId:userId` 형식의 `sourceKey`를 만든다. 이 경로는 과거 `ranked-head-to-head` 완료 이력의 호환성과 감사 목적으로만 남아 있으며 V2 육성 파티 assignment에서는 호출되지 않는다.
-
-과거 ranked 경쟁 액션 엔진이 종료 결과를 확정한 경우에만 두 계정의 이력을 액션 영수증, 매치 종료 상태, 비공개 history ID 감사 매핑과 같은 `EntityManager` 트랜잭션에서 발행했다. 캐주얼 룸 `/result`와 현재 V2 `tournament-unranked` 경로는 이 writer를 호출하지 않는다.
-
-경쟁 match는 다음 조건을 모두 만족해야 한다.
-
-1. 정확히 두 개의 서로 다른 room participant/session이 있어야 한다.
-2. 두 participant는 각각 서로 다른 인증 계정으로 competitive seat를 바인딩해야 한다.
-3. 서버가 seed, ruleset version/hash, canonical state와 turn을 만들고 보관한다.
-4. 각 인증 계정은 자기 player의 현재 turn action만 제출할 수 있다. 상대 action, 과거/미래 turn, 잘못된 assignment revision, 재사용된 command는 거부하거나 durable receipt로 재생한다.
-5. Web과 API가 공유하는 `@vscoke/poke-lounge-battle` 결정론 엔진만 state를 전진시킨다. 클라이언트 winner, score, elapsed time, terminal 주장은 입력으로 받지 않는다.
-6. 엔진 terminal에서 승자는 100점, 패자는 50점으로 서버가 확정하지만 V2에서는 bracket 점수로만 사용한다.
-
-현재 새 서버 권위 match는 참가자가 정확히 2명이어도 모두 `tournament-unranked`다. 클라이언트가 제출한 육성 파티의 포획·성장 이력을 서버가 아직 증명할 수 없기 때문이다. 서버는 action과 terminal을 권위 있게 확정하고 bracket을 전진시키지만 `game_history`와 공개 랭킹 점수를 만들지 않는다. authority가 없는 casual match는 `/poke-lounge/rooms/:roomCode/result`로 전진하며 역시 unranked다. 같은 active match에서 authority action과 casual result를 함께 제출해서는 안 된다.
-
-인증되지 않은 참가자, casual tournament와 solo play도 client-asserted unranked이며 저장·공유는 가능해도 공개 Poke Lounge 랭킹의 근거가 아니다. server authority 결과를 일반 `POST /game/result`나 casual `/result`로 중복 제출해서는 안 된다.
-
-Poke Lounge 랭킹과 등수 쿼리는 각 사용자 최고 점수를 고르는 window 또는 집계 안에서 먼저 `resultTrust = 'verified-room'`을 적용한다. 따라서 더 높은 `client-asserted` 점수가 같은 사용자에게 있어도 최고 점수나 등수에 영향을 주지 않는다.
-
-신뢰도 migration은 기존 `POKE_LOUNGE` 행 중 `resultTrust IS NULL`인 행만 `client-asserted`로 채운다. 다른 게임 행은 `NULL`로 유지하고 이미 분류된 값을 덮어쓰지 않는다.
+- 일반 `POST /game/result`의 `gameType=POKE_LOUNGE` 요청은 `400`으로 거절한다.
+- `GET /game/ranking?gameType=POKE_LOUNGE`는 DB를 조회하지 않고 빈 배열을 반환한다.
+- 캐주얼 `/result`와 서버 권위 action은 현재 Redis room 안의 대진과 누적 점수만 갱신한다.
+- 기존 DB의 Poke Lounge 기록과 `resultTrust` 값은 마이그레이션 호환 데이터일 뿐 새 런타임에서 읽거나 추가하지 않는다.
 
 ## 운영 정리 기준
 
@@ -126,4 +102,4 @@ WHERE p.game_type IS NULL
 
 ## 한계
 
-일반 `POST /game/result`의 범위/속도 정책은 client-asserted 입력에 대한 1차 plausibility 방어선이며 경쟁 증명이 아니다. 현재 Poke Lounge V2 육성 파티 서버 엔진은 인원수와 관계없이 unranked이며, 과거 `verified-room` 기록만 기존 공개 랭킹 조회에 남는다. 익명·casual tournament·solo도 공개 랭킹에서 제외한다.
+일반 `POST /game/result`의 범위/속도 정책은 client-asserted 입력에 대한 1차 plausibility 방어선이며 경쟁 증명이 아니다. Poke Lounge는 인원수와 관계없이 영속 랭킹에서 제외한다.

@@ -102,6 +102,74 @@ describe('PokeLoungeLiveStateService', () => {
     });
     await service.onModuleDestroy();
   });
+
+  it('maps room document CAS and player progress to Redis primitives', async () => {
+    const redis = redisFixture();
+    const service = createService(redis);
+    await service.connect();
+    redis.command.eval.mockResolvedValueOnce([0, '']);
+
+    await expect(
+      service.createRoomState({
+        roomCode: ' room01 ',
+        document: '{"roomCode":"ROOM01"}',
+        expiresAtMs: 10_000,
+        nowMs: 1_000,
+        capacity: 200,
+        actorPlayerId: 'player-1',
+        idempotencyKey: 'command-1',
+        requestHash: 'hash-1',
+      }),
+    ).resolves.toEqual({ outcome: 'created' });
+    expect(redis.command.eval).toHaveBeenLastCalledWith(expect.any(String), {
+      keys: [
+        'poke-lounge:room:ROOM01:state',
+        'poke-lounge:rooms',
+        expect.stringMatching(/^poke-lounge:create-command:/),
+      ],
+      arguments: [
+        '1000',
+        '200',
+        '{"roomCode":"ROOM01"}',
+        '10000',
+        JSON.stringify({ requestHash: 'hash-1', roomCode: 'ROOM01' }),
+        'ROOM01',
+      ],
+    });
+
+    redis.command.hmGet.mockResolvedValueOnce(['2', '{"roomCode":"ROOM01"}']);
+    await expect(service.getRoomState('room01')).resolves.toEqual({
+      version: 2,
+      document: '{"roomCode":"ROOM01"}',
+    });
+
+    redis.command.eval.mockResolvedValueOnce(1);
+    redis.command.hGetAll.mockResolvedValueOnce({
+      revision: '1',
+      state: '{"map":"new-bark-town"}',
+      clientUpdatedAt: '',
+      createdAt: '2026-08-26T00:00:00.000Z',
+      updatedAt: '2026-08-26T00:00:01.000Z',
+    });
+    await expect(
+      service.savePlayerState({
+        userId: 'user-1',
+        state: { map: 'new-bark-town' },
+        expectedRevision: 0,
+        clientUpdatedAt: null,
+        nowMs: 1_000,
+        expiresAtMs: 7_201_000,
+      }),
+    ).resolves.toBe(1);
+    await expect(service.getPlayerState('user-1')).resolves.toEqual({
+      revision: 1,
+      state: { map: 'new-bark-town' },
+      clientUpdatedAt: null,
+      createdAt: '2026-08-26T00:00:00.000Z',
+      updatedAt: '2026-08-26T00:00:01.000Z',
+    });
+    await service.onModuleDestroy();
+  });
 });
 
 function createService(redis: ReturnType<typeof redisFixture>) {

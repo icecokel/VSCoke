@@ -1,7 +1,7 @@
 # Poke Lounge 플레이 성능 최적화 계획
 
 확인 기준일: 2026-08-26
-상태: 진행 중 — 단계 1 구현 및 Desktop·Mobile Chromium 회귀 완료
+상태: 진행 중 — 단계 1~4 구현, 정적·단위·핵심 Chromium 회귀 완료
 
 ## 1. 목적
 
@@ -86,19 +86,19 @@ Poke Lounge의 2~6인 플레이에서 전투 애니메이션 프레임 저하, �
 
 상태 특성에 맞춰 현재 저장소와 전송 경계를 유지한다.
 
-| 상태                                     | 처리 방식                               |
-| ---------------------------------------- | --------------------------------------- |
-| 로컬 입력과 자기 캐릭터 이동             | 브라우저 즉시 반영                      |
-| map, 좌표, 방향                          | Socket.IO와 Redis 최신 상태             |
-| 방 참가, lobby ready, start와 round      | REST와 PostgreSQL room transaction      |
-| 경쟁전 action, turn, HP, terminal과 점수 | REST와 PostgreSQL 서버 권위 transaction |
-| committed snapshot 전파와 연결 복구      | Socket.IO와 bounded REST recovery       |
+| 상태                                     | 처리 방식                         |
+| ---------------------------------------- | --------------------------------- |
+| 로컬 입력과 자기 캐릭터 이동             | 브라우저 즉시 반영                |
+| map, 좌표, 방향                          | Socket.IO와 Redis 최신 상태       |
+| 방 참가, lobby ready, start와 round      | REST와 Redis Lua CAS              |
+| 경쟁전 action, turn, HP, terminal과 점수 | REST와 Redis 서버 권위 CAS        |
+| committed snapshot 전파와 연결 복구      | Socket.IO와 bounded REST recovery |
 
 다음 경로를 새로 도입하지 않는다.
 
 - SSE 또는 WebRTC 전환
 - Redis Streams, Kafka, BullMQ 등 별도 메시지 큐
-- 경쟁전 상태나 최종 결과의 Redis 이전
+- 경쟁전 상태나 최종 결과의 별도 영속 DB 이중 기록
 - 이동 이력 저장과 event sourcing
 - 서버 판정 전에 HP, 승패나 점수를 확정하는 낙관적 업데이트
 
@@ -189,6 +189,19 @@ Poke Lounge의 2~6인 플레이에서 전투 애니메이션 프레임 저하, �
 **Gate 2:** 이동 전송량이 증가하지 않고 원격 이동 지연과 복구 기준을 만족하며, 최종 좌표가 서버
 Redis snapshot과 일치해야 한다.
 
+#### 2026-08-26 2차 구현 결과
+
+- 원격 이동 snapshot은 `GameStateStore` 전체 구독 경로에서 분리하고 `WorldScene`의 목표 좌표로만
+  저장한다.
+- 이동 중에는 120ms 선형 보간을 적용하고 최초 등장, 맵 변경, 96px 이상 이격과 이동 종료는 서버
+  좌표로 즉시 맞춘다.
+- 연결 전 `PLAYER_MOVED`는 마지막 한 건만 남기며, Redis·Socket 전송 빈도와 `worldSeq` 계약은
+  변경하지 않았다.
+- 로컬 위치 저장은 이동 프레임마다 수행하지 않고 1초 간격과 이동 종료 시점에만 수행한다.
+- 재화·순위·파티 HUD는 값이 실제로 바뀔 때만 다시 그린다.
+- 보간 경계 단위 테스트와 Web 타입 검사·단위 회귀는 통과했다. 실제 다중 브라우저 이동 지연과
+  Redis 최종 좌표 대조는 로컬 한 사이클에서 확인해야 한다.
+
 ### 단계 3. lobby ready와 round ready 분리
 
 목적은 라운드 진입 확인을 room revision 경쟁이 아닌 플레이어별 멱등 barrier로 처리하는 것이다.
@@ -197,7 +210,7 @@ Redis snapshot과 일치해야 한다.
 2. 라운드 종료 뒤에는 `roundIndex`를 포함한 별도 round-ready 명령을 사용한다.
 3. 서버는 `(roomCode, roundIndex, playerId)` 의미로 같은 확인을 멱등 처리한다.
 4. 이미 준비된 플레이어가 다시 요청하면 오류 대신 최신 snapshot을 반환한다.
-5. PostgreSQL row lock 안에서 확인을 직렬화하고 마지막 연결 참가자의 확인이 들어올 때 한 번만
+5. Redis Lua CAS로 확인을 직렬화하고 마지막 연결 참가자의 확인이 들어올 때 한 번만
    tournament로 전환한다.
 6. 클라이언트는 round별 `inFlight`와 `acknowledged` 상태를 가져 동일 명령을 동시에 보내지 않는다.
 7. revision conflict를 무작위 지연으로 숨기거나 무한 재시도하지 않는다.
@@ -207,7 +220,7 @@ Redis snapshot과 일치해야 한다.
 - `apps/api/src/poke-lounge/poke-lounge.controller.ts`
 - `apps/api/src/poke-lounge/poke-lounge-room.service.ts`
 - `apps/api/src/poke-lounge/poke-lounge-room.repository.ts`
-- `apps/api/src/poke-lounge/postgres-poke-lounge-room.repository.ts`
+- `apps/api/src/poke-lounge/redis-poke-lounge.repository.ts`
 - `apps/api/src/poke-lounge/dto/`
 - `apps/web/src/components/poke-lounge/runtime/game/network/serverRoom.ts`
 - API OpenAPI와 생성 Web 타입
@@ -218,6 +231,18 @@ Redis snapshot과 일치해야 한다.
 
 **Gate 3:** 2·3·6인 동시 round-ready에서 예상하지 않은 400·409가 없고 다음 라운드와 대진이 모든
 snapshot에서 동일해야 한다.
+
+#### 2026-08-26 구현 결과
+
+- 기존 `/ready`는 대기실 준비·취소만 처리하고, `roundIndex`를 받는 `/round-ready`를 추가했다.
+- round-ready는 `If-Match-Revision` 없이 Redis room CAS 안에서 직렬화하며 플레이어별
+  `X-Idempotency-Key`로 재전송한다.
+- 클라이언트는 라운드마다 같은 key를 유지하고 한 번에 하나만 전송한다. 같은 확인의 재전송은
+  저장 당시 응답이 아니라 최신 room snapshot을 받는다.
+- 3명의 동시 `Promise.all` 확인이 모두 성공하고 room revision이 참가자 수만큼 전진한 뒤 정확히
+  한 번 tournament로 전환되는 service 회귀를 추가했다.
+- DTO, Swagger, OpenAPI와 생성 Web 타입을 같은 변경에 반영했다. 실제 2·3·6인 브라우저의 4xx
+  0건 판정은 로컬 한 사이클에서 확인해야 한다.
 
 ### 단계 4. 전투 완료 전환을 명시적 상태로 고정
 
@@ -242,6 +267,18 @@ snapshot에서 동일해야 한다.
 
 **Gate 4:** terminal 캡처와 결과 확인 한 번 뒤 승자는 다음 대진 또는 최종 결과, 패자는 월드로
 전환하며 추가 입력 없이 모든 화면이 같은 서버 상태에 수렴해야 한다.
+
+#### 2026-08-26 구현 결과
+
+- authoritative terminal을 match ID와 assignment revision 기준 `visible → acknowledged →
+transitioned` 상태로 고정했다.
+- 마지막 턴 제출자가 terminal에서도 입력 대기 상태로 남아 Mobile `다음` control이 잠기던 문제를
+  완료 projection 수신 시 해제했다.
+- terminal 확인 전에는 round-ready room snapshot이 BattleScene을 선점하지 못하고, 확인 뒤에는
+  completed launch key를 넘겨 WorldScene 전환과 다음 assignment 시작을 한 번만 수행한다.
+- 마지막 제출자가 두 명 모두인 terminal fixture에서 승자·패자 결과 확인과 WorldScene 복귀
+  Chromium 회귀 2건이 통과했다. 실제 Mobile touch와 다음 대진 연속 전환은 로컬 한 사이클에서
+  확인해야 한다.
 
 ### 단계 5. 테스트 실행 비용 정리
 
@@ -314,8 +351,8 @@ API 계약을 변경하지 않은 단계에서는 `check:api-contract` 생성물
    제한하고 제거 조건을 같은 변경에 기록한다.
 4. 단계 4·5는 Web 배포 뒤 운영 한 사이클로 확인한다.
 
-롤백 시 Web을 먼저 이전 버전으로 되돌리고 API를 되돌린다. PostgreSQL 경쟁전 결과와 Redis 위치
-snapshot은 기존 형식을 유지하므로 데이터 변환 롤백은 만들지 않는다. round-ready에 schema 변경이
+롤백 시 Web을 먼저 이전 버전으로 되돌리고 API를 되돌린다. Redis 경쟁전 결과와 위치 snapshot은
+TTL 데이터이므로 데이터 변환 롤백은 만들지 않는다. round-ready에 schema 변경이
 필요해지는 경우에는 migration의 역방향 안전성을 구현 전에 별도로 검토한다.
 
 ## 9. 완료 기준
@@ -340,5 +377,5 @@ snapshot은 기존 형식을 유지하므로 데이터 변환 롤백은 만들�
 - 새로운 렌더링 엔진 도입
 - 성능 근거 없는 전체 room delta protocol 재설계
 
-현재 최대 6명, 단일 리전과 단일 활성 대진에서는 기존 Phaser, Socket.IO, Redis와 PostgreSQL을
-유지하는 것이 가장 작은 구조 변경이다.
+현재 최대 6명, 단일 리전과 단일 활성 대진에서는 기존 Phaser, Socket.IO와 Redis를 유지하는 것이
+가장 작은 구조다.

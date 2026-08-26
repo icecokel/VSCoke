@@ -21,6 +21,7 @@ describe('PokeLoungeController', () => {
       getRoom: jest.fn().mockResolvedValue(snapshot()),
       joinRoom: jest.fn().mockResolvedValue(snapshot()),
       setReady: jest.fn().mockResolvedValue(snapshot()),
+      setRoundReady: jest.fn().mockResolvedValue(snapshot()),
       startRoom: jest.fn().mockResolvedValue(snapshot()),
       updatePartySnapshot: jest.fn().mockResolvedValue(snapshot()),
       submitMatchResult: jest.fn().mockResolvedValue(snapshot()),
@@ -34,7 +35,7 @@ describe('PokeLoungeController', () => {
     controller = new PokeLoungeController(service, competitiveService);
   });
 
-  it('requires one canonical UUID v4 and one non-negative safe revision on every POST', async () => {
+  it('requires one canonical UUID v4 and one non-negative safe revision on revision-controlled POSTs', async () => {
     const cases = [
       () => controller.createRoom({ sessionId: 'session-a' }, request()),
       () =>
@@ -97,6 +98,20 @@ describe('PokeLoungeController', () => {
     expect(service.updatePartySnapshot.mock.calls).toHaveLength(0);
     expect(service.submitMatchResult.mock.calls).toHaveLength(0);
     expect(service.leaveRoom.mock.calls).toHaveLength(0);
+  });
+
+  it('accepts round readiness with idempotency metadata and no revision header', async () => {
+    await controller.setRoundReady(
+      'ROOM01',
+      { playerId: 'player-a', sessionId: 'session-a', roundIndex: 1 },
+      request(['X-Idempotency-Key', IDEMPOTENCY_KEY]),
+    );
+
+    expect(service.setRoundReady.mock.calls[0]).toEqual([
+      'ROOM01',
+      { playerId: 'player-a', sessionId: 'session-a', roundIndex: 1 },
+      { idempotencyKey: IDEMPOTENCY_KEY },
+    ]);
   });
 
   it.each([

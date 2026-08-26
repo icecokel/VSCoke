@@ -44,6 +44,11 @@ import {
 import { resolvePersistedWorldSpawn, shouldPersistSoloWorldPosition } from "./world-scene-spawn";
 import { shouldDisposeRoomOnWorldShutdown } from "./world-scene-room-lifecycle";
 import {
+  resolveRemotePlayerMotion,
+  shouldSnapRemotePlayer,
+  type RemotePlayerMotion,
+} from "./world-scene-motion";
+import {
   createWorldSceneEncounters,
   type WildBattleStartInput,
   type WorldSceneEncounterController,
@@ -67,6 +72,7 @@ const PLAYER_HITBOX = FIELD_MAP.player.hitbox;
 const PLAYER_DEPTH = 20;
 const TALL_GRASS_FOREGROUND_DEPTH = 30;
 const ABOVE_PLAYER_DEPTH = 40;
+const PLAYER_POSITION_PERSIST_INTERVAL_MS = 1_000;
 export const ROUND_DURATION_QUERY_PARAM = "roundMs";
 
 type PcBoxFocus = "party" | "box";
@@ -194,6 +200,7 @@ export class WorldScene extends Phaser.Scene {
   private remotePlayers = new Map<string, Phaser.Physics.Arcade.Sprite>();
   private remoteLabels = new Map<string, Phaser.GameObjects.Text>();
   private remotePlayerSnapshots = new Map<string, PlayerSnapshot>();
+  private remotePlayerMotions = new Map<string, RemotePlayerMotion>();
   private unsubscribers: RoomUnsubscribe[] = [];
   private roomConnected = false;
   private pendingRoomMessages: Array<{ type: RoomMessage; payload: RoomEvent[RoomMessage] }> = [];
@@ -204,6 +211,7 @@ export class WorldScene extends Phaser.Scene {
   private roomLobby: RoomLobbyScreen | null = null;
   private facing: PlayerFacing = "front";
   private lastSentAt = 0;
+  private lastPositionPersistedAt = 0;
   private lastSent: { x: number; y: number; facing: PlayerFacing } = {
     x: 0,
     y: 0,
@@ -306,6 +314,7 @@ export class WorldScene extends Phaser.Scene {
     this.shutdownComplete = false;
     this.preserveRoomForBattle = false;
     this.isMovementActive = false;
+    this.lastPositionPersistedAt = 0;
     this.hud = createWorldSceneHud({
       getDocument: () => this.game.canvas.ownerDocument,
       getGameObjectFactory: () => this.add,
@@ -411,6 +420,8 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    this.updateRemotePlayers(time);
+
     if (this.roomLobby) {
       this.player.setVelocity(0, 0);
       this.player.anims.stop();
@@ -482,6 +493,7 @@ export class WorldScene extends Phaser.Scene {
     this.remotePlayers.clear();
     this.remoteLabels.clear();
     this.remotePlayerSnapshots.clear();
+    this.remotePlayerMotions.clear();
     this.lastLocalSnapshotSyncKey = "";
     this.isMovementActive = false;
     this.cursors = null;
@@ -928,27 +940,27 @@ export class WorldScene extends Phaser.Scene {
       this.room.on("CURRENT_PLAYERS", ({ players }) => {
         Object.values(players)
           .filter(player => player.sessionId !== this.room.sessionId)
-          .forEach(player => this.upsertRemotePlayer(player));
+          .forEach(player => this.upsertRemotePlayer(player, "snap"));
       }),
       this.room.on("PLAYER_JOINED", player => {
         if (player.sessionId !== this.room.sessionId) {
-          this.upsertRemotePlayer(player);
+          this.upsertRemotePlayer(player, "snap");
         }
       }),
       this.room.on("PLAYER_MOVED", player => {
         if (player.sessionId !== this.room.sessionId) {
-          this.upsertRemotePlayer(player);
+          this.upsertRemotePlayer(player, "interpolate");
         }
       }),
       this.room.on("PLAYER_MOVEMENT_ENDED", player => {
         if (player.sessionId !== this.room.sessionId) {
-          this.upsertRemotePlayer(player);
+          this.upsertRemotePlayer(player, "snap");
           this.remotePlayers.get(player.sessionId)?.setVelocity(0, 0);
         }
       }),
       this.room.on("PLAYER_CHANGED_MAP", player => {
         if (player.sessionId !== this.room.sessionId) {
-          this.upsertRemotePlayer(player);
+          this.upsertRemotePlayer(player, "snap");
         }
       }),
       this.room.on("PLAYER_LEFT", ({ sessionId }) => {
@@ -957,6 +969,7 @@ export class WorldScene extends Phaser.Scene {
         this.remotePlayers.delete(sessionId);
         this.remoteLabels.delete(sessionId);
         this.remotePlayerSnapshots.delete(sessionId);
+        this.remotePlayerMotions.delete(sessionId);
         this.gameStateStore.removeRemotePlayer(sessionId);
       }),
       this.room.on("TOURNAMENT_STATE", payload => {
@@ -1110,11 +1123,12 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
-  private upsertRemotePlayer(snapshot: PlayerSnapshot): void {
+  private upsertRemotePlayer(snapshot: PlayerSnapshot, movement: "interpolate" | "snap"): void {
+    const previousSnapshot = this.remotePlayerSnapshots.get(snapshot.sessionId);
     this.remotePlayerSnapshots.set(snapshot.sessionId, clonePlayerSnapshot(snapshot));
-    this.gameStateStore.upsertRemotePlayer(toRemotePlayerState(snapshot));
     let sprite = this.remotePlayers.get(snapshot.sessionId);
     let label = this.remoteLabels.get(snapshot.sessionId);
+    const isNewPlayer = !sprite;
 
     if (!sprite) {
       sprite = this.physics.add.sprite(
@@ -1150,10 +1164,53 @@ export class WorldScene extends Phaser.Scene {
       this.remoteLabels.set(snapshot.sessionId, label);
     }
 
-    sprite.setPosition(snapshot.x, snapshot.y);
-    sprite.setFrame(FIELD_MAP.player.frameNames[snapshot.facing]);
-    label.setPosition(snapshot.x, snapshot.y - 22);
+    const shouldSnap =
+      movement === "snap" ||
+      isNewPlayer ||
+      previousSnapshot?.map !== snapshot.map ||
+      shouldSnapRemotePlayer(sprite, snapshot);
+
+    if (shouldSnap) {
+      this.remotePlayerMotions.delete(snapshot.sessionId);
+      sprite.setPosition(snapshot.x, snapshot.y);
+      sprite.anims.stop();
+      sprite.setFrame(FIELD_MAP.player.frameNames[snapshot.facing]);
+      label.setPosition(snapshot.x, snapshot.y - 22);
+      this.gameStateStore.upsertRemotePlayer(toRemotePlayerState(snapshot));
+    } else {
+      this.remotePlayerMotions.set(snapshot.sessionId, {
+        fromX: sprite.x,
+        fromY: sprite.y,
+        targetX: snapshot.x,
+        targetY: snapshot.y,
+        startedAtMs: this.time.now,
+      });
+      sprite.anims.play(FIELD_MAP.player.walkAnimationKeys[snapshot.facing], true);
+    }
+
     label.setText(getRemotePlayerDisplayName(snapshot));
+  }
+
+  private updateRemotePlayers(time: number): void {
+    for (const [sessionId, motion] of this.remotePlayerMotions) {
+      const sprite = this.remotePlayers.get(sessionId);
+      const label = this.remoteLabels.get(sessionId);
+      const snapshot = this.remotePlayerSnapshots.get(sessionId);
+
+      if (!sprite || !label || !snapshot) {
+        this.remotePlayerMotions.delete(sessionId);
+        continue;
+      }
+
+      const next = resolveRemotePlayerMotion(motion, time);
+      sprite.setPosition(next.x, next.y);
+      label.setPosition(next.x, next.y - 22);
+      if (next.complete) {
+        sprite.anims.stop();
+        sprite.setFrame(FIELD_MAP.player.frameNames[snapshot.facing]);
+        this.remotePlayerMotions.delete(sessionId);
+      }
+    }
   }
 
   private isRoomTournamentHost(): boolean {
@@ -1352,7 +1409,10 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.sendRoomMessage("PLAYER_MOVED", this.createLocalPlayerSnapshot());
-    this.persistLocalPlayerPositionIfChanged();
+    if (time - this.lastPositionPersistedAt >= PLAYER_POSITION_PERSIST_INTERVAL_MS) {
+      this.persistLocalPlayerPositionIfChanged();
+      this.lastPositionPersistedAt = time;
+    }
     this.lastSentAt = time;
     this.lastSent = { x: this.player.x, y: this.player.y, facing: this.facing };
   }
@@ -1363,6 +1423,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.persistLocalPlayerPositionIfChanged();
+    this.lastPositionPersistedAt = time;
     if (!this.isMovementActive) {
       return;
     }
@@ -1419,6 +1480,11 @@ export class WorldScene extends Phaser.Scene {
 
   private sendRoomMessage(type: RoomMessage, payload: RoomEvent[RoomMessage]): void {
     if (!this.roomConnected) {
+      if (type === "PLAYER_MOVED") {
+        this.pendingRoomMessages = this.pendingRoomMessages.filter(
+          message => message.type !== "PLAYER_MOVED",
+        );
+      }
       this.pendingRoomMessages.push({ type, payload });
       return;
     }

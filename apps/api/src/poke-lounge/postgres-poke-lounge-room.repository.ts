@@ -250,8 +250,14 @@ export class PostgresPokeLoungeRoomRepository implements PokeLoungeRoomRepositor
           idempotencyKey: input.idempotencyKey,
         },
       });
+      const replaysRoundReady =
+        input.operation === 'round-ready' &&
+        existingCommand?.requestHash === input.requestHash;
 
-      if (existingCommand?.requestHash === input.requestHash) {
+      if (
+        existingCommand?.requestHash === input.requestHash &&
+        !replaysRoundReady
+      ) {
         return createResult(
           receiptSnapshot(existingCommand),
           'replayed',
@@ -287,18 +293,29 @@ export class PostgresPokeLoungeRoomRepository implements PokeLoungeRoomRepositor
 
         return createResult(
           advancedSnapshot,
-          existingCommand ? 'idempotency-conflict' : 'revision-conflict',
+          replaysRoundReady
+            ? 'replayed'
+            : existingCommand
+              ? 'idempotency-conflict'
+              : 'revision-conflict',
           true,
         );
       }
 
       await attachActiveCompetitiveProjection(manager, room, currentSnapshot);
 
+      if (replaysRoundReady) {
+        return createResult(currentSnapshot, 'replayed', false);
+      }
+
       if (existingCommand) {
         return createResult(currentSnapshot, 'idempotency-conflict', false);
       }
 
-      if (currentSnapshot.revision !== input.expectedRevision) {
+      if (
+        input.expectedRevision !== undefined &&
+        currentSnapshot.revision !== input.expectedRevision
+      ) {
         return createResult(currentSnapshot, 'revision-conflict', false);
       }
 

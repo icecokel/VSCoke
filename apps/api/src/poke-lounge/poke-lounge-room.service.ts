@@ -13,6 +13,7 @@ import {
 } from '@vscoke/poke-lounge-battle';
 import {
   hashPokeLoungeRoomCommand,
+  type PokeLoungeIdempotentCommandContext,
   type PokeLoungeRoomCommandContext,
   type PokeLoungeRoomOperation,
 } from './poke-lounge-room-command';
@@ -53,6 +54,7 @@ import type {
   PokeLoungeRoomState,
   PokeLoungeTournamentMatch,
   SetPokeLoungeReadyInput,
+  SetPokeLoungeRoundReadyInput,
   StartPokeLoungeRoomInput,
   SubmitPokeLoungeMatchResultInput,
   UpdatePokeLoungePartySnapshotInput,
@@ -74,7 +76,7 @@ type MutationInput = {
   operation: Exclude<PokeLoungeRoomOperation, 'create'>;
   roomCode: string;
   actorPlayerId: string;
-  command: PokeLoungeRoomCommandContext;
+  command: PokeLoungeRoomCommandContext | PokeLoungeIdempotentCommandContext;
   nowMs: number;
   body: unknown;
   apply: (room: PokeLoungeRoomSnapshot) => PokeLoungeRoomSnapshot;
@@ -573,14 +575,7 @@ export class PokeLoungeRoomService {
       nowMs,
       body: normalizedCommandBody(normalized, input.nowMs),
       apply: (room) => {
-        const isLobbyReady =
-          room.status === 'waiting' && room.round.phase === 'waiting';
-        const isRoundReady =
-          room.status === 'round-started' &&
-          room.round.phase === 'round-started' &&
-          room.round.endsAtMs !== null &&
-          nowMs >= room.round.endsAtMs;
-        if (!isLobbyReady && !isRoundReady) {
+        if (room.status !== 'waiting' || room.round.phase !== 'waiting') {
           throw new BadRequestException(
             'Ready can only change in a waiting room',
           );
@@ -595,9 +590,6 @@ export class PokeLoungeRoomService {
         if (participant.role !== 'participant') {
           throw new BadRequestException('Spectators cannot become ready');
         }
-        if (isRoundReady && !normalized.ready) {
-          throw new BadRequestException('Round readiness cannot be cancelled');
-        }
         if (
           normalized.ready &&
           !room.partySnapshots[participant.playerId]?.competitiveParty.members
@@ -611,9 +603,76 @@ export class PokeLoungeRoomService {
         participant.ready = normalized.ready;
         room.updatedAtMs = nowMs;
 
-        return isRoundReady
-          ? (advancePokeLoungeRoomClock(room, nowMs) ?? room)
-          : room;
+        return room;
+      },
+    });
+  }
+
+  async setRoundReady(
+    roomCode: string,
+    input: SetPokeLoungeRoundReadyInput,
+    command: PokeLoungeIdempotentCommandContext,
+  ): Promise<PokeLoungeRoomSnapshot> {
+    if (!Number.isSafeInteger(input.roundIndex) || input.roundIndex < 1) {
+      throw new BadRequestException('roundIndex must be a positive integer');
+    }
+
+    const normalized = {
+      playerId: input.playerId.trim(),
+      sessionId: input.sessionId?.trim(),
+      roundIndex: input.roundIndex,
+    };
+    const nowMs = this.normalizeNow(input.nowMs);
+
+    return this.mutateRoom({
+      operation: 'round-ready',
+      roomCode,
+      actorPlayerId: normalized.playerId,
+      command,
+      nowMs,
+      body: normalizedCommandBody(normalized, input.nowMs),
+      apply: (room) => {
+        const participant = findParticipant(room, normalized.playerId);
+        assertParticipantSession(
+          participant,
+          normalized.sessionId,
+          'Round ready sessionId does not match this participant',
+        );
+
+        if (participant.role !== 'participant') {
+          throw new BadRequestException('Spectators cannot become ready');
+        }
+        if (
+          room.round.index > normalized.roundIndex ||
+          (room.round.index === normalized.roundIndex &&
+            (room.status === 'tournament' || room.status === 'completed'))
+        ) {
+          return room;
+        }
+        if (room.round.index !== normalized.roundIndex) {
+          throw new BadRequestException('Round ready index does not match');
+        }
+        if (
+          room.status !== 'round-started' ||
+          room.round.phase !== 'round-started' ||
+          room.round.endsAtMs === null ||
+          nowMs < room.round.endsAtMs
+        ) {
+          throw new BadRequestException('Round is not ready to finish');
+        }
+        if (
+          !room.partySnapshots[participant.playerId]?.competitiveParty.members
+            .length
+        ) {
+          throw new BadRequestException(
+            'Party snapshot is required before becoming ready',
+          );
+        }
+
+        participant.ready = true;
+        room.updatedAtMs = nowMs;
+
+        return advancePokeLoungeRoomClock(room, nowMs) ?? room;
       },
     });
   }
@@ -858,7 +917,9 @@ export class PokeLoungeRoomService {
         roomCode: normalizedRoomCode,
         body: input.body,
       }),
-      expectedRevision: input.command.expectedRevision,
+      ...('expectedRevision' in input.command
+        ? { expectedRevision: input.command.expectedRevision }
+        : {}),
       nowMs: input.nowMs,
       apply: input.apply,
     });

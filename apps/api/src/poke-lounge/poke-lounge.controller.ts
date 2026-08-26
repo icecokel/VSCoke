@@ -38,10 +38,14 @@ import { JoinPokeLoungeRoomDto } from './dto/join-poke-lounge-room.dto';
 import { LeavePokeLoungeRoomDto } from './dto/leave-poke-lounge-room.dto';
 import { PokeLoungeRoomResponseDto } from './dto/poke-lounge-room-response.dto';
 import { SetPokeLoungeReadyDto } from './dto/set-poke-lounge-ready.dto';
+import { SetPokeLoungeRoundReadyDto } from './dto/set-poke-lounge-round-ready.dto';
 import { StartPokeLoungeRoomDto } from './dto/start-poke-lounge-room.dto';
 import { SubmitPokeLoungeMatchResultDto } from './dto/submit-poke-lounge-match-result.dto';
 import { UpdatePokeLoungePartySnapshotDto } from './dto/update-poke-lounge-party-snapshot.dto';
-import type { PokeLoungeRoomCommandContext } from './poke-lounge-room-command';
+import type {
+  PokeLoungeIdempotentCommandContext,
+  PokeLoungeRoomCommandContext,
+} from './poke-lounge-room-command';
 import {
   PokeLoungeRoomConflictResponseDto,
   PokeLoungeRoomFullResponseDto,
@@ -250,6 +254,28 @@ export class PokeLoungeController {
     );
   }
 
+  @Post('rooms/:roomCode/round-ready')
+  @ApiHeader({ name: IDEMPOTENCY_HEADER, required: true })
+  @ApiBody({ type: SetPokeLoungeRoundReadyDto })
+  @ApiCreatedResponse({ type: PokeLoungeRoomResponseDto })
+  async setRoundReady(
+    @Param('roomCode') roomCode: string,
+    @Body() body: SetPokeLoungeRoundReadyDto,
+    @Req() request: Request,
+  ) {
+    return toPokeLoungePublicRoomState(
+      await this.roomService.setRoundReady(
+        roomCode,
+        {
+          playerId: body.playerId,
+          sessionId: body.sessionId,
+          roundIndex: body.roundIndex,
+        },
+        parseIdempotencyHeader(request),
+      ),
+    );
+  }
+
   @Post('rooms/:roomCode/start')
   @ApiHeader({ name: IDEMPOTENCY_HEADER, required: true })
   @ApiHeader({ name: REVISION_HEADER, required: true, example: '0' })
@@ -403,6 +429,20 @@ function parseRoomCommandHeaders(
   }
 
   return { idempotencyKey, expectedRevision };
+}
+
+function parseIdempotencyHeader(
+  request: Request,
+): PokeLoungeIdempotentCommandContext {
+  const idempotencyKey = readSingleRawHeader(request, IDEMPOTENCY_HEADER);
+
+  if (!UUID_V4_PATTERN.test(idempotencyKey)) {
+    throw new BadRequestException(
+      `${IDEMPOTENCY_HEADER} must be a canonical UUID v4`,
+    );
+  }
+
+  return { idempotencyKey };
 }
 
 function readSingleRawHeader(request: Request, headerName: string): string {

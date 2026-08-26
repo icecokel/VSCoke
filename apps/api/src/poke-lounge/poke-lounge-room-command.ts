@@ -4,6 +4,7 @@ export type PokeLoungeRoomOperation =
   | 'create'
   | 'join'
   | 'ready'
+  | 'round-ready'
   | 'start'
   | 'party-snapshot'
   | 'presence'
@@ -13,6 +14,10 @@ export type PokeLoungeRoomOperation =
 export interface PokeLoungeRoomCommandContext {
   idempotencyKey: string;
   expectedRevision: number;
+}
+
+export interface PokeLoungeIdempotentCommandContext {
+  idempotencyKey: string;
 }
 
 export interface PokeLoungeRoomCommandEnvelope {

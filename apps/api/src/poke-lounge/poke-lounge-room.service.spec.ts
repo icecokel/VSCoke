@@ -738,11 +738,18 @@ describe('PokeLoungeRoomService', () => {
 
     publisher.publish.mockClear();
     currentTimeMs = 1300;
-    const hostRoundReady = await service.setReady(
-      'ROOM01',
-      { playerId: 'player-1', sessionId: 'session-1', ready: true },
-      command(started.revision, 6),
-    );
+    const [hostRoundReady] = await Promise.all([
+      service.setRoundReady(
+        'ROOM01',
+        { playerId: 'player-1', sessionId: 'session-1', roundIndex: 1 },
+        roundCommand(6),
+      ),
+      service.setRoundReady(
+        'ROOM01',
+        { playerId: 'player-2', sessionId: 'session-2', roundIndex: 1 },
+        roundCommand(7),
+      ),
+    ]);
     expect(hostRoundReady).toMatchObject({
       status: 'round-started',
       participants: [
@@ -750,10 +757,11 @@ describe('PokeLoungeRoomService', () => {
         { playerId: 'player-2', ready: false },
       ],
     });
-    const tournament = await service.setReady(
+    const tournament = repository.snapshot('ROOM01')!;
+    const replayedRoundReady = await service.setRoundReady(
       'ROOM01',
-      { playerId: 'player-2', sessionId: 'session-2', ready: true },
-      command(hostRoundReady.revision, 7),
+      { playerId: 'player-1', sessionId: 'session-1', roundIndex: 1 },
+      roundCommand(6),
     );
 
     expect(tournament).toMatchObject({
@@ -774,7 +782,85 @@ describe('PokeLoungeRoomService', () => {
         },
       },
     });
+    expect(replayedRoundReady).toEqual(tournament);
     expectPublicEvent(publisher, 'room-updated', tournament);
+  });
+
+  it('accepts three concurrent round readiness acknowledgements without revision conflicts', async () => {
+    await createRoom({ roundDurationMs: 1_000 });
+    let room = await service.joinRoom(
+      'ROOM01',
+      { playerId: 'player-2', sessionId: 'session-2', nowMs: 10 },
+      command(0, 201),
+    );
+    room = await service.joinRoom(
+      'ROOM01',
+      { playerId: 'player-3', sessionId: 'session-3', nowMs: 11 },
+      command(room.revision, 202),
+    );
+
+    for (const [index, playerId] of [
+      'player-1',
+      'player-2',
+      'player-3',
+    ].entries()) {
+      room = await updateTestParty(
+        playerId,
+        `session-${index + 1}`,
+        room.revision,
+        203 + index,
+        20 + index,
+      );
+    }
+    for (const [index, playerId] of [
+      'player-1',
+      'player-2',
+      'player-3',
+    ].entries()) {
+      room = await service.setReady(
+        'ROOM01',
+        {
+          playerId,
+          sessionId: `session-${index + 1}`,
+          ready: true,
+          nowMs: 30 + index,
+        },
+        command(room.revision, 206 + index),
+      );
+    }
+
+    const started = await service.startRoom(
+      'ROOM01',
+      { playerId: 'player-1', sessionId: 'session-1', nowMs: 40 },
+      command(room.revision, 209),
+    );
+    currentTimeMs = 1_040;
+
+    const acknowledgements = await Promise.all(
+      ['player-1', 'player-2', 'player-3'].map((playerId, index) =>
+        service.setRoundReady(
+          'ROOM01',
+          {
+            playerId,
+            sessionId: `session-${index + 1}`,
+            roundIndex: 1,
+          },
+          roundCommand(210 + index),
+        ),
+      ),
+    );
+    const tournament = repository.snapshot('ROOM01')!;
+
+    expect(acknowledgements).toHaveLength(3);
+    expect(tournament).toMatchObject({
+      status: 'tournament',
+      revision: started.revision + 3,
+      participants: [
+        { playerId: 'player-1', ready: true },
+        { playerId: 'player-2', ready: true },
+        { playerId: 'player-3', ready: true },
+      ],
+    });
   });
 
   it('requires a waiting room, a synced party, every ready participant, and the current host', async () => {
@@ -1657,22 +1743,22 @@ describe('PokeLoungeRoomService', () => {
       { playerId: 'player-2', sessionId: 'session-2', ready: true, nowMs: 200 },
       command(4, 4),
     );
-    const started = await service.startRoom(
+    await service.startRoom(
       'ROOM01',
       { playerId: 'player-1', sessionId: 'session-1', nowMs: 200 },
       command(bothReady.revision, 99),
     );
 
     currentTimeMs = 1200;
-    const hostRoundReady = await service.setReady(
+    await service.setRoundReady(
       'ROOM01',
-      { playerId: 'player-1', sessionId: 'session-1', ready: true },
-      command(started.revision, 100),
+      { playerId: 'player-1', sessionId: 'session-1', roundIndex: 1 },
+      roundCommand(100),
     );
-    return service.setReady(
+    return service.setRoundReady(
       'ROOM01',
-      { playerId: 'player-2', sessionId: 'session-2', ready: true },
-      command(hostRoundReady.revision, 101),
+      { playerId: 'player-2', sessionId: 'session-2', roundIndex: 1 },
+      roundCommand(101),
     );
   }
 
@@ -1699,6 +1785,12 @@ describe('PokeLoungeRoomService', () => {
 function command(expectedRevision: number, index: number) {
   return {
     expectedRevision,
+    idempotencyKey: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+  };
+}
+
+function roundCommand(index: number) {
+  return {
     idempotencyKey: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
   };
 }

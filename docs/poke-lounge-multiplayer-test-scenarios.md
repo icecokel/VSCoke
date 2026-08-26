@@ -71,11 +71,11 @@ Authorization header를 요구해서는 안 된다.
 
 ### 4.1 환경 계층
 
-| 환경      | Web           | API           | DB                      | 실시간 상태 | 목적                       |
-| --------- | ------------- | ------------- | ----------------------- | ----------- | -------------------------- |
-| UI 격리   | 로컬 Next.js  | 응답 fixture  | 없음                    | 없음        | 입력·오류·레이아웃         |
-| 로컬 통합 | 로컬 Next.js  | 실제 NestJS   | 격리 PostgreSQL `_test` | 격리 Redis  | 참가·Socket·leave·재접속   |
-| 운영 인수 | 운영 배포 Web | 운영 배포 API | 운영 정책               | 운영 Redis  | 실제 배포·CORS·Socket·화면 |
+| 환경      | Web           | API           | DB             | 실시간 상태 | 목적                       |
+| --------- | ------------- | ------------- | -------------- | ----------- | -------------------------- |
+| UI 격리   | 로컬 Next.js  | 응답 fixture  | 없음           | 없음        | 입력·오류·레이아웃         |
+| 로컬 통합 | 로컬 Next.js  | 실제 NestJS   | 테스트 계정 DB | 격리 Redis  | 참가·Socket·leave·재접속   |
+| 운영 인수 | 운영 배포 Web | 운영 배포 API | 운영 정책      | 운영 Redis  | 실제 배포·CORS·Socket·화면 |
 
 운영 인수 테스트는 임시 비밀번호 원문, 쿠키, token과 전체 Socket payload를 artifact에 저장하지
 않는다. 운영 room에는 테스트 전용 닉네임 prefix를 사용하고 완료 후 모든 참가자가 명시적으로
@@ -560,21 +560,21 @@ context를 재사용하더라도 이전 실행의 30초 override가 다음 방 �
 
 ## 9. 현재 자동화 근거와 공백
 
-| 범위                      | 현재 근거                                                                                                                         | 남은 공백                                      |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| 입장 입력·금지 control    | `room-entry.test.ts`, `poke-lounge.spec.ts`, `poke-lounge-mobile.spec.ts`                                                         | 없음                                           |
-| 임시 비밀번호 파생·비노출 | `room-entry.test.ts`, `server-room-snapshot-replay.test.ts`                                                                       | 운영 artifact 수동 점검                        |
-| 자동 create-or-join       | `poke-lounge-room.service.spec.ts`, `poke-lounge-room.e2e-spec.ts`, `poke-lounge-public-lobby.spec.ts`                            | 다른 비밀번호 세션 격리의 실제 browser 검증    |
-| 방장·수동 ready·시작      | `poke-lounge-room.service.spec.ts`, `poke-lounge-multiplayer.spec.ts`, `poke-lounge-public-lobby.spec.ts`                         | 3명 이상 실제 browser 시작 검증                |
-| 6명 정원·7번째 거부       | `poke-lounge-room.service.spec.ts`, `server-room-snapshot-replay.test.ts`                                                         | 실제 7 browser UI 통합                         |
-| 동일 세션 재접속          | `poke-lounge-room.service.spec.ts`, `poke-lounge.gateway.spec.ts`                                                                 | 정원 6명 상태의 실제 browser reload            |
-| disconnect 유예           | `poke-lounge.gateway.spec.ts`, `poke-lounge-room-policy.spec.ts`                                                                  | 실제 Socket 연결 중단·복귀                     |
-| 위치 중계·identity 보호   | `poke-lounge.gateway.spec.ts`, `server-room-snapshot-replay.test.ts`                                                              | Desktop↔Mobile 실제 양방향 이동                |
-| 독립 게임 진행            | `game-state-store.test.ts`, `server-room-snapshot-replay.test.ts`, Poke Lounge 전투 E2E                                           | 한쪽 전투·한쪽 월드의 실제 2 browser 동시 검증 |
-| 5인 부전승·12대진         | `tournament-bracket.test.ts`, `poke-lounge-five-player-tournament.spec.ts`                                                        | 없음                                           |
-| 서버 권위 대진·3라운드    | `poke-lounge-room.service.spec.ts`, `postgres-poke-lounge-room.repository.spec.ts`, `poke-lounge-five-player-tournament.spec.ts`  | 운영 배포 환경 반복 실행                       |
-| 이탈·점수·누적 순위       | `poke-lounge-room-policy.spec.ts`, `postgres-competitive-action.repository.spec.ts`, `poke-lounge-five-player-tournament.spec.ts` | 동점 공동 우승 실제 browser fixture            |
-| 오류·복구                 | `server-room-snapshot-replay.test.ts`, `server-room-error-copy.test.ts`, `poke-lounge-multiplayer.spec.ts`                        | 운영 API·Socket 장애 수동 smoke                |
+| 범위                      | 현재 근거                                                                                                                | 남은 공백                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| 입장 입력·금지 control    | `room-entry.test.ts`, `poke-lounge.spec.ts`, `poke-lounge-mobile.spec.ts`                                                | 없음                                           |
+| 임시 비밀번호 파생·비노출 | `room-entry.test.ts`, `server-room-snapshot-replay.test.ts`                                                              | 운영 artifact 수동 점검                        |
+| 자동 create-or-join       | `poke-lounge-room.service.spec.ts`, `poke-lounge-room.e2e-spec.ts`, `poke-lounge-public-lobby.spec.ts`                   | 다른 비밀번호 세션 격리의 실제 browser 검증    |
+| 방장·수동 ready·시작      | `poke-lounge-room.service.spec.ts`, `poke-lounge-multiplayer.spec.ts`, `poke-lounge-public-lobby.spec.ts`                | 3명 이상 실제 browser 시작 검증                |
+| 6명 정원·7번째 거부       | `poke-lounge-room.service.spec.ts`, `server-room-snapshot-replay.test.ts`                                                | 실제 7 browser UI 통합                         |
+| 동일 세션 재접속          | `poke-lounge-room.service.spec.ts`, `poke-lounge.gateway.spec.ts`                                                        | 정원 6명 상태의 실제 browser reload            |
+| disconnect 유예           | `poke-lounge.gateway.spec.ts`, `poke-lounge-room-policy.spec.ts`                                                         | 실제 Socket 연결 중단·복귀                     |
+| 위치 중계·identity 보호   | `poke-lounge.gateway.spec.ts`, `server-room-snapshot-replay.test.ts`                                                     | Desktop↔Mobile 실제 양방향 이동                |
+| 독립 게임 진행            | `game-state-store.test.ts`, `server-room-snapshot-replay.test.ts`, Poke Lounge 전투 E2E                                  | 한쪽 전투·한쪽 월드의 실제 2 browser 동시 검증 |
+| 5인 부전승·12대진         | `tournament-bracket.test.ts`, `poke-lounge-five-player-tournament.spec.ts`                                               | 없음                                           |
+| 서버 권위 대진·3라운드    | `poke-lounge-room.service.spec.ts`, `redis-poke-lounge.repository.spec.ts`, `poke-lounge-five-player-tournament.spec.ts` | 운영 배포 환경 반복 실행                       |
+| 이탈·점수·누적 순위       | `poke-lounge-room-policy.spec.ts`, `redis-poke-lounge.repository.spec.ts`, `poke-lounge-five-player-tournament.spec.ts`  | 동점 공동 우승 실제 browser fixture            |
+| 오류·복구                 | `server-room-snapshot-replay.test.ts`, `server-room-error-copy.test.ts`, `poke-lounge-multiplayer.spec.ts`               | 운영 API·Socket 장애 수동 smoke                |
 
 2026-08-24 격리 실행 `manual-1787548782726`에서 Desktop Chromium 2개, Desktop WebKit,
 Mobile Chromium, Mobile WebKit의 독립 context 5개가 방 `76T2XH`를 함께 플레이했다. worker 1,

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -6,7 +7,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { GameHistory } from './entities/game-history.entity';
-import { GamePokeLoungeState } from './entities/game-poke-lounge-state.entity';
 import { User } from '../auth/entities/user.entity';
 import { CreateGameHistoryDto } from './dto/create-game-history.dto';
 import { SavePokeLoungeStateDto } from './dto/save-poke-lounge-state.dto';
@@ -22,6 +22,10 @@ import {
   isPublicRankingEligible as isScorePublicRankingEligible,
   validateGameScoreSubmission,
 } from './game-score-policy';
+import {
+  PokeLoungeLiveStateService,
+  type PokeLoungeRedisPlayerState,
+} from '../poke-lounge/poke-lounge-live-state.service';
 
 type MaxScoreRow = {
   maxScore: string | number | null;
@@ -38,17 +42,18 @@ type RankCountRow = {
   count: string | number;
 };
 
-type PokeLoungeStateRow = {
+export type TransientPokeLoungeState = {
   id: string;
   userId: string;
   state: Record<string, unknown>;
   revision: number;
-  clientUpdatedAt: Date | string | null;
-  createdAt: Date | string;
-  updatedAt: Date | string;
+  clientUpdatedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 const GENERIC_GAME_SUBMISSION_TRUST: GameSubmissionTrust = 'client-asserted';
+const POKE_LOUNGE_PLAYER_STATE_TTL_MS = 2 * 60 * 60 * 1000;
 
 /**
  * 게임 비즈니스 로직을 처리하는 서비스
@@ -58,8 +63,7 @@ export class GameService {
   constructor(
     @InjectRepository(GameHistory)
     private gameHistoryRepository: Repository<GameHistory>,
-    @InjectRepository(GamePokeLoungeState)
-    private pokeLoungeStateRepository: Repository<GamePokeLoungeState>,
+    private readonly pokeLoungeRedis: PokeLoungeLiveStateService,
   ) {}
 
   /**
@@ -70,6 +74,9 @@ export class GameService {
     gameType: GameType,
     dateRange?: { start: Date; end: Date },
   ): Promise<number> {
+    if (gameType === GameType.POKE_LOUNGE) {
+      return 0;
+    }
     const policy = getGameScorePolicy(gameType);
     const query = this.gameHistoryRepository
       .createQueryBuilder('gh')
@@ -99,15 +106,15 @@ export class GameService {
     user: User,
     createGameHistoryDto: CreateGameHistoryDto,
   ): Promise<GameHistory> {
+    if (createGameHistoryDto.gameType === GameType.POKE_LOUNGE) {
+      throw new BadRequestException('Poke Lounge results are transient');
+    }
     validateGameScoreSubmission(createGameHistoryDto);
 
     const history = this.gameHistoryRepository.create({
       ...createGameHistoryDto,
       user: user,
-      resultTrust:
-        createGameHistoryDto.gameType === GameType.POKE_LOUNGE
-          ? GENERIC_GAME_SUBMISSION_TRUST
-          : null,
+      resultTrust: null,
       sourceKey: null,
     });
     return this.gameHistoryRepository.save(history);
@@ -124,16 +131,12 @@ export class GameService {
    * 게임별 랭킹 목록을 조회함 (유저별 최고 점수 기준 Top 10)
    */
   async getRanking(gameType: GameType): Promise<GameRankingHistoryDto[]> {
+    if (gameType === GameType.POKE_LOUNGE) {
+      return [];
+    }
     const policy = getGameScorePolicy(gameType);
     const policyValues = getGameScorePolicyValues(policy);
-    const trustCondition =
-      gameType === GameType.POKE_LOUNGE
-        ? `AND gh."resultTrust" = $${policyValues.length + 2}`
-        : '';
     const queryValues: Array<string | number> = [gameType, ...policyValues];
-    if (gameType === GameType.POKE_LOUNGE) {
-      queryValues.push('verified-room');
-    }
 
     // 유저별 최고 점수 1건만 추린 뒤 전체 상위 10건을 구함
     const rows = await this.gameHistoryRepository.query<RankingProjectionRow[]>(
@@ -157,7 +160,6 @@ export class GameService {
         INNER JOIN "user" user_record ON user_record.id = gh."userId"
         WHERE gh."gameType" = $1
           AND ${buildPositionalValidScoreCondition('gh', 2)}
-          ${trustCondition}
       ) AS ranked
       WHERE ranked.row_num = 1
       ORDER BY ranked.score DESC, ranked."createdAt" ASC
@@ -196,95 +198,37 @@ export class GameService {
   async savePokeLoungeState(
     user: User,
     dto: SavePokeLoungeStateDto,
-  ): Promise<GamePokeLoungeState> {
-    const clientUpdatedAt = dto.clientUpdatedAt
-      ? new Date(dto.clientUpdatedAt)
-      : null;
-    const legacySave = dto.expectedRevision === undefined;
-    const rows = legacySave
-      ? await this.pokeLoungeStateRepository.query<PokeLoungeStateRow[]>(
-          `
-          INSERT INTO "game_poke_lounge_state"
-            ("userId", "state", "clientUpdatedAt", "revision")
-          VALUES ($1, $2::jsonb, $3::timestamptz, 1)
-          ON CONFLICT ("userId") DO UPDATE SET
-            "state" = EXCLUDED."state",
-            "clientUpdatedAt" = EXCLUDED."clientUpdatedAt",
-            "revision" = "game_poke_lounge_state"."revision" + 1,
-            "updatedAt" = now()
-          WHERE "game_poke_lounge_state"."revision" = 0
-          RETURNING *
-          `,
-          [user.id, JSON.stringify(dto.state), clientUpdatedAt],
-        )
-      : await this.pokeLoungeStateRepository.query<PokeLoungeStateRow[]>(
-          `
-      WITH updated AS (
-        UPDATE "game_poke_lounge_state"
-        SET
-          "state" = $2::jsonb,
-          "clientUpdatedAt" = $3::timestamptz,
-          "revision" = "revision" + 1,
-          "updatedAt" = now()
-        WHERE "userId" = $1
-          AND "revision" = $4::integer
-        RETURNING *
-      ),
-      inserted AS (
-        INSERT INTO "game_poke_lounge_state"
-          ("userId", "state", "clientUpdatedAt", "revision")
-        SELECT $1, $2::jsonb, $3::timestamptz, 1
-        WHERE NOT EXISTS (
-          SELECT 1
-          FROM "game_poke_lounge_state"
-          WHERE "userId" = $1
-        )
-          AND $4::integer = 0
-        ON CONFLICT ("userId") DO NOTHING
-        RETURNING *
-      )
-      SELECT * FROM updated
-      UNION ALL
-      SELECT * FROM inserted
-      `,
-          [
-            user.id,
-            JSON.stringify(dto.state),
-            clientUpdatedAt,
-            dto.expectedRevision,
-          ],
-        );
-
-    const savedRow = rows[0];
-    if (
-      rows.length !== 1 ||
-      !savedRow ||
-      savedRow.revision !== (legacySave ? 1 : dto.expectedRevision! + 1)
-    ) {
+  ): Promise<TransientPokeLoungeState> {
+    const nowMs = Date.now();
+    const clientUpdatedAt = dto.clientUpdatedAt ?? null;
+    const revision = await this.pokeLoungeRedis.savePlayerState({
+      userId: user.id,
+      state: dto.state,
+      ...(dto.expectedRevision === undefined
+        ? {}
+        : { expectedRevision: dto.expectedRevision }),
+      clientUpdatedAt,
+      nowMs,
+      expiresAtMs: nowMs + POKE_LOUNGE_PLAYER_STATE_TTL_MS,
+    });
+    if (revision === null) {
       throw new ConflictException(
         'Poke Lounge state revision conflict; reload the latest state',
       );
     }
-
-    return this.pokeLoungeStateRepository.create({
-      ...savedRow,
-      user,
-      clientUpdatedAt: toDateOrNull(savedRow.clientUpdatedAt),
-      createdAt: toDate(savedRow.createdAt),
-      updatedAt: toDate(savedRow.updatedAt),
-    });
+    const stored = await this.pokeLoungeRedis.getPlayerState(user.id);
+    if (!stored || stored.revision !== revision) {
+      throw new Error('Poke Lounge Redis state was not readable after save');
+    }
+    return toTransientPokeLoungeState(user.id, stored);
   }
 
-  async findPokeLoungeState(userId: string): Promise<GamePokeLoungeState> {
-    const state = await this.pokeLoungeStateRepository.findOne({
-      where: { userId },
-    });
-
+  async findPokeLoungeState(userId: string): Promise<TransientPokeLoungeState> {
+    const state = await this.pokeLoungeRedis.getPlayerState(userId);
     if (!state) {
       throw new NotFoundException('Poke Lounge state not found');
     }
-
-    return state;
+    return toTransientPokeLoungeState(userId, state);
   }
 
   /**
@@ -300,6 +244,9 @@ export class GameService {
     gameType: GameType,
     dateRange?: { start: Date; end: Date },
   ): Promise<number | null> {
+    if (gameType === GameType.POKE_LOUNGE) {
+      return null;
+    }
     const policy = getGameScorePolicy(gameType);
     const policyValues = getGameScorePolicyValues(policy);
     const queryValues: Array<string | number | Date> = [
@@ -307,10 +254,6 @@ export class GameService {
       score,
       ...policyValues,
     ];
-    const trustCondition =
-      gameType === GameType.POKE_LOUNGE
-        ? `AND "resultTrust" = $${queryValues.push('verified-room')}`
-        : '';
     let dateRangeCondition = '';
     if (dateRange) {
       const startIndex = queryValues.push(dateRange.start);
@@ -328,7 +271,6 @@ export class GameService {
         FROM game_history
         WHERE "gameType" = $1
         AND ${buildPositionalValidScoreCondition(undefined, 3)}
-        ${trustCondition}
         ${dateRangeCondition}
         GROUP BY "userId"
       ) AS user_scores
@@ -342,10 +284,19 @@ export class GameService {
   }
 }
 
-function toDate(value: Date | string): Date {
-  return value instanceof Date ? value : new Date(value);
-}
-
-function toDateOrNull(value: Date | string | null): Date | null {
-  return value === null ? null : toDate(value);
+function toTransientPokeLoungeState(
+  userId: string,
+  state: PokeLoungeRedisPlayerState,
+): TransientPokeLoungeState {
+  return {
+    id: userId,
+    userId,
+    state: structuredClone(state.state),
+    revision: state.revision,
+    clientUpdatedAt: state.clientUpdatedAt
+      ? new Date(state.clientUpdatedAt)
+      : null,
+    createdAt: new Date(state.createdAt),
+    updatedAt: new Date(state.updatedAt),
+  };
 }

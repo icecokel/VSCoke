@@ -63,38 +63,38 @@ apps/web
   local save, room adapter, UI와 입력
 
 apps/api
-  account save와 game history
-  durable Poke Lounge room과 live position gateway
+  Redis TTL Poke account save와 일반 게임의 game history
+  transient Poke Lounge room과 live position gateway
   공개 session action과 선택적 account competitive seat
 
 packages/poke-lounge-battle
   솔로·경쟁 전투 규칙
   canonical state, PRNG와 bracket
 
-PostgreSQL
-  room aggregate와 participant
-  competitive match/action과 완료 이력
+Redis
+  room aggregate, participant와 command receipt
+  competitive match/action, account save와 live position
 ```
 
 Web과 API는 `@vscoke/poke-lounge-battle`의 결정론적 규칙을 공유한다. API DTO에서 생성한 로컬
 OpenAPI JSON과 Web generated type이 두 앱 사이의 계약 기준이다.
 
-공개 멀티플레이의 접속 상태는 PostgreSQL이 보관하고, REST는 생성·참가와 장애 복구를,
+공개 멀티플레이의 접속 상태는 Redis가 TTL 동안 보관하고, REST는 생성·참가와 장애 복구를,
 Socket.IO는 승인된 참가자의 실시간 위치와 committed snapshot 전파를 담당한다.
 
 ```mermaid
 flowchart LR
   Web["Phaser Web client"] -->|"room command"| API["NestJS API"]
-  API -->|"transaction"| DB["PostgreSQL"]
-  DB -->|"commit"| API
+  API -->|"Lua CAS"| Redis["Redis"]
+  Redis -->|"commit"| API
   API -->|"room.snapshot"| Web
   Web -->|"validated position"| API
-  API -->|"latest position + worldSeq"| Redis["Redis"]
+  API -->|"latest position + worldSeq"| Redis
   Redis -->|"Socket.IO adapter fan-out"| Peer["same-room browsers"]
 ```
 
 일반 room mutation은 idempotency key와 마지막 committed revision을 사용한다. 서버는 상태와
-명령 receipt를 같은 transaction에서 저장한 뒤 snapshot을 발행한다. Web은 Socket 연결 장애나
+명령 receipt를 같은 Lua CAS에서 저장한 뒤 snapshot을 발행한다. Web은 Socket 연결 장애나
 revision conflict에서 REST snapshot으로 복구하며 상시 polling이나 API 메모리 상태에 의존하지
 않는다.
 
@@ -103,17 +103,18 @@ terminal event와 match를 중복 제거한 뒤 결과를 먼저 적용하고, �
 다음 전투를 시작한다.
 
 플레이어 위치는 Redis Hash의 최신 snapshot과 `worldSeq`로 복구한다. Socket.IO Redis Adapter가
-여러 API 인스턴스 사이의 방 이벤트를 fan-out하며, PostgreSQL room revision과 Redis
-`worldSeq`는 서로 독립된 cursor다.
+여러 API 인스턴스 사이의 방 이벤트를 fan-out한다. Redis room revision과 `worldSeq`는 같은
+저장소를 사용하지만 서로 독립된 cursor다.
 
 ## 저장과 복구
 
 | 상태          | 저장 위치                  | 범위                                                       |
 | ------------- | -------------------------- | ---------------------------------------------------------- |
 | 익명 플레이어 | versioned `sessionStorage` | 현재 탭의 파티·박스·재화·위치와 UI 상태                    |
-| 서버 방       | PostgreSQL                 | room aggregate, revision, TTL과 command receipt            |
-| 경쟁 매치     | PostgreSQL                 | canonical battle state, action receipt와 terminal metadata |
+| 서버 방       | Redis TTL                  | room aggregate, revision, TTL과 command receipt            |
+| 경쟁 매치     | Redis TTL                  | canonical battle state, action receipt와 terminal metadata |
 | 실시간 위치   | Redis                      | 방 수명 동안 map, 좌표, 방향과 worldSeq                    |
+| 로그인 진행   | Redis TTL                  | 계정별 진행 snapshot과 revision, 마지막 저장 후 2시간      |
 
 인증 GET이 실패하면 로컬 상태로 게임을 열되, 서버 상태를 오래된 로컬 값으로 덮어쓰지 않도록 복구
 전까지 원격 autosave를 시작하지 않는다. 멀티플레이 접속 상태와 선택적 로그인 계정 저장은 서로
@@ -131,7 +132,7 @@ terminal event와 match를 중복 제거한 뒤 결과를 먼저 적용하고, �
 
 ## 검증과 현재 범위
 
-검증은 공통 엔진 unit, Web unit, API unit·PostgreSQL integration, HTTP/Socket E2E와 Playwright
+검증은 공통 엔진 unit, Web unit, API unit·Redis integration, HTTP/Socket E2E와 Playwright
 브라우저 시나리오로 나눈다. 현재 자동화 범위와 남은 수동 검증은
 [플레이어 E2E 테스트 시나리오](./poke-lounge-multiplayer-test-scenarios.md)를 따른다.
 
@@ -140,7 +141,7 @@ terminal event와 match를 중복 제거한 뒤 결과를 먼저 적용하고, �
 - 솔로 월드 탐색, 야생전, 포획, 성장, 상점, 인벤토리와 PC 박스
 - 데스크톱 키보드와 모바일 터치 입력
 - shared world 참가와 닉네임·위치 실시간 중계
-- 서버 권위 대진·전투·결과와 PostgreSQL room 복구
+- 서버 권위 대진·전투·결과와 Redis TTL room 복구
 - 브라우저 로컬 저장과 선택적 로그인 계정 저장
 - 방장·수동 ready·수동 시작 기반 멀티플레이 대기실과 시작 후 참가 잠금
 - Redis snapshot·worldSeq 기반 위치 누락 복구와 API 인스턴스 간 Socket fan-out

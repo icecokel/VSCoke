@@ -1,5 +1,9 @@
 # Poke Lounge Redis 실시간 상태 개선 작업 계획
 
+> 이 문서는 위치 상태만 Redis로 옮기던 과거 계획이다. 현재 구현은 방, 경쟁전, 명령 영수증,
+> 로그인 진행 상태까지 Redis TTL을 단일 런타임 저장소로 사용하며
+> [Poke Lounge Game Concept](./poke-lounge-game-concept.md)을 기준으로 한다.
+
 확인 기준일: 2026-08-24
 상태: 코드 구현·격리 5인 한 사이클·운영 배포 health 검증 완료
 

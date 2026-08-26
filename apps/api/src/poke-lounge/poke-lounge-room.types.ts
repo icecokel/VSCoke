@@ -144,6 +144,13 @@ export interface SetPokeLoungeReadyInput {
   nowMs?: number;
 }
 
+export interface SetPokeLoungeRoundReadyInput {
+  playerId: string;
+  sessionId?: string;
+  roundIndex: number;
+  nowMs?: number;
+}
+
 export interface StartPokeLoungeRoomInput {
   playerId: string;
   sessionId: string;

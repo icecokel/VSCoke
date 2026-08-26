@@ -106,8 +106,11 @@ export class FakePokeLoungeRoomRepository implements PokeLoungeRoomRepository {
     }
 
     const receipt = this.receipts.get(commandKey(input));
+    const replaysRoundReady =
+      input.operation === 'round-ready' &&
+      receipt?.requestHash === input.requestHash;
 
-    if (receipt?.requestHash === input.requestHash) {
+    if (receipt?.requestHash === input.requestHash && !replaysRoundReady) {
       return result(receipt.snapshot, 'replayed', false);
     }
 
@@ -128,16 +131,27 @@ export class FakePokeLoungeRoomRepository implements PokeLoungeRoomRepository {
 
       return result(
         lifecycleAdvanced,
-        receipt ? 'idempotency-conflict' : 'revision-conflict',
+        replaysRoundReady
+          ? 'replayed'
+          : receipt
+            ? 'idempotency-conflict'
+            : 'revision-conflict',
         true,
       );
+    }
+
+    if (replaysRoundReady) {
+      return result(current, 'replayed', false);
     }
 
     if (receipt) {
       return result(current, 'idempotency-conflict', false);
     }
 
-    if (current.revision !== input.expectedRevision) {
+    if (
+      input.expectedRevision !== undefined &&
+      current.revision !== input.expectedRevision
+    ) {
       return result(current, 'revision-conflict', false);
     }
 

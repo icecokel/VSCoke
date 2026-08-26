@@ -198,6 +198,7 @@ export interface BattleE2eSnapshot {
   returnToWorld: BattleScreenState["returnToWorld"];
   battleEntrancePlaying: boolean;
   battleEntrancePlayed: boolean;
+  authoritativeInputPending: boolean;
   fullRenderCount: number;
   animationFrameUpdateCount: number;
   hpAnimationPlaying: boolean;
@@ -247,6 +248,11 @@ interface BattleEvolutionTransition {
   fromPokemon: BattlePokemon;
   toPokemon: BattlePokemon;
 }
+
+type AuthoritativeTerminalTransition = {
+  key: CompetitiveBattleLaunchKey;
+  status: "visible" | "acknowledged" | "transitioned";
+};
 
 interface BattleWorldPositionPolicy {
   persistWorldPosition?: boolean;
@@ -511,6 +517,7 @@ export class BattleScene extends Phaser.Scene {
   private authoritativeProjection: CompetitiveProjection | null = null;
   private authoritativeOwnPlayerId: string | null = null;
   private authoritativeInputPending = false;
+  private authoritativeTerminalTransition: AuthoritativeTerminalTransition | null = null;
   private authoritativeConnectionStatus: RoomEvent["CONNECTION_STATUS"]["connectionStatus"] =
     "offline";
   private soloChallenge = false;
@@ -536,15 +543,26 @@ export class BattleScene extends Phaser.Scene {
     if (isAuthoritativeBattleSceneData(data)) {
       this.authoritativeProjection = data.projection;
       this.authoritativeOwnPlayerId = data.ownPlayerId;
-      this.authoritativeInputPending = data.projection.submittedPlayerIds.includes(
-        data.ownPlayerId,
-      );
+      this.authoritativeInputPending =
+        data.projection.status !== "completed" &&
+        data.projection.submittedPlayerIds.includes(data.ownPlayerId);
+      this.authoritativeTerminalTransition =
+        data.projection.status === "completed"
+          ? {
+              key: {
+                matchId: data.projection.matchId,
+                assignmentRevision: data.projection.assignmentRevision,
+              },
+              status: "visible",
+            }
+          : null;
       this.authoritativeConnectionStatus = "offline";
       this.bindAuthoritativeRoom();
     } else {
       this.authoritativeProjection = null;
       this.authoritativeOwnPlayerId = null;
       this.authoritativeInputPending = false;
+      this.authoritativeTerminalTransition = null;
       this.authoritativeConnectionStatus = "offline";
       this.bindCompetitiveAssignmentPreemption();
     }
@@ -780,6 +798,7 @@ export class BattleScene extends Phaser.Scene {
       returnToWorld: this.state.returnToWorld ? { ...this.state.returnToWorld } : undefined,
       battleEntrancePlaying: this.battleEntrancePlaying,
       battleEntrancePlayed: this.battleEntrancePlayed,
+      authoritativeInputPending: this.authoritativeInputPending,
       fullRenderCount: this.fullRenderCount,
       animationFrameUpdateCount: this.animationFrameUpdateCount,
       hpAnimationPlaying: this.isHpAnimationPlaying(),
@@ -826,6 +845,7 @@ export class BattleScene extends Phaser.Scene {
     this.selectedPartySlotIndex = 0;
     this.selectedBagItemIndex = 0;
     this.returningToWorld = false;
+    this.authoritativeTerminalTransition = null;
     this.battleEntrancePlayed = false;
     this.hpAnimationStartedCount = 0;
     this.hitAnimationStartedCount = 0;
@@ -1389,12 +1409,11 @@ export class BattleScene extends Phaser.Scene {
       this.authoritativeProjection?.status === "completed" &&
       this.authoritativeOwnPlayerId &&
       this.state.phase === "ended" &&
-      this.state.returnToWorld
+      this.state.returnToWorld &&
+      this.authoritativeTerminalTransition?.status === "visible"
     ) {
-      const completedCompetitiveBattle: CompetitiveBattleLaunchKey = {
-        matchId: this.authoritativeProjection.matchId,
-        assignmentRevision: this.authoritativeProjection.assignmentRevision,
-      };
+      const completedCompetitiveBattle = this.authoritativeTerminalTransition.key;
+      this.authoritativeTerminalTransition.status = "acknowledged";
       this.clearAuthoritativeSubscriptions();
       this.authoritativeInputPending = false;
       this.authoritativeProjection = null;
@@ -1623,6 +1642,8 @@ export class BattleScene extends Phaser.Scene {
         if (
           this.competitivePreemptionQueued ||
           !destination ||
+          (this.authoritativeTerminalTransition !== null &&
+            this.authoritativeTerminalTransition.status !== "transitioned") ||
           !isRoundReadinessDue(payload.roomStatus, payload.roomRound, nowMs)
         ) {
           return;
@@ -1663,8 +1684,23 @@ export class BattleScene extends Phaser.Scene {
 
         this.authoritativeProjection = projection;
         this.authoritativeOwnPlayerId = ownPlayerId;
-        this.authoritativeInputPending = projection.submittedPlayerIds.includes(ownPlayerId);
+        this.authoritativeInputPending =
+          projection.status !== "completed" && projection.submittedPlayerIds.includes(ownPlayerId);
         if (projection.status === "completed") {
+          const currentTerminal = this.authoritativeTerminalTransition;
+          if (
+            !currentTerminal ||
+            currentTerminal.key.matchId !== projection.matchId ||
+            currentTerminal.key.assignmentRevision !== projection.assignmentRevision
+          ) {
+            this.authoritativeTerminalTransition = {
+              key: {
+                matchId: projection.matchId,
+                assignmentRevision: projection.assignmentRevision,
+              },
+              status: "visible",
+            };
+          }
           this.finishBattleEntranceAnimation();
         }
         const nextState = toAuthoritativeBattleState(
@@ -2143,6 +2179,14 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.returningToWorld = true;
+    if (
+      completedCompetitiveBattle &&
+      this.authoritativeTerminalTransition?.key.matchId === completedCompetitiveBattle.matchId &&
+      this.authoritativeTerminalTransition.key.assignmentRevision ===
+        completedCompetitiveBattle.assignmentRevision
+    ) {
+      this.authoritativeTerminalTransition.status = "transitioned";
+    }
     this.clearE2eSnapshot();
     this.setBattleState(this.applyLevelUpMoveLearning(this.state), {
       animateHpDecrease: false,

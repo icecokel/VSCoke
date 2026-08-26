@@ -11,7 +11,7 @@ import {
   toCompetitiveTerminalTransition,
 } from './competitive-projection.service';
 import { CompetitiveProjectionService } from './competitive-projection.service';
-import type { DataSource } from 'typeorm';
+import type { RedisPokeLoungeRepository } from '../redis-poke-lounge.repository';
 
 describe('toCompetitiveProjection', () => {
   it('exposes only the recoverable approved battle state and current submissions', () => {
@@ -161,158 +161,25 @@ describe('toCompetitiveProjection', () => {
 });
 
 describe('CompetitiveProjectionService', () => {
-  it('reads room, match, and receipts through one repeatable-read manager', async () => {
-    const room = {
-      id: '00000000-0000-4000-8000-000000000001',
+  it('delegates the consistent room snapshot read to Redis', async () => {
+    const snapshot = {
       roomCode: 'ROOM01',
-      state: {
-        roomCode: 'ROOM01',
-        participants: [],
-        tournament: {
-          activeMatchId: 'game-round-1-bracket-1-match-1',
-          activeMatchAuthority: 'server',
-        },
-      },
-      revision: 7,
-      expiresAt: new Date('2026-07-11T01:00:00.000Z'),
-    };
-    const roomQuery = queryBuilder(room);
-    const matchQuery = queryBuilder(null);
-    const manager = {
-      getRepository: jest
-        .fn()
-        .mockReturnValueOnce({
-          createQueryBuilder: jest.fn().mockReturnValue(roomQuery),
-        })
-        .mockReturnValueOnce({
-          createQueryBuilder: jest.fn().mockReturnValue(matchQuery),
-        }),
-    };
-    const transaction = jest.fn(
-      (_isolation: string, run: (value: typeof manager) => unknown) =>
-        run(manager),
-    );
-    const directGetRepository = jest.fn().mockReturnValue({
-      createQueryBuilder: jest.fn().mockReturnValue(queryBuilder(null)),
-    });
-    const dataSource = {
-      transaction,
-      getRepository: directGetRepository,
-    } as unknown as DataSource;
-    const service = new CompetitiveProjectionService(dataSource);
-
-    await service.findRoomSnapshot('room01');
-
-    expect(transaction).toHaveBeenCalledWith(
-      'REPEATABLE READ',
-      expect.any(Function),
-    );
-    expect(manager.getRepository.mock.calls.length).toBeGreaterThan(0);
-    expect(matchQuery.where).toHaveBeenCalledWith('match.roomId = :roomId', {
-      roomId: '00000000-0000-4000-8000-000000000001',
-    });
-    expect(matchQuery.andWhere).toHaveBeenCalledWith(
-      'match.bracketMatchId = :bracketMatchId',
-      { bracketMatchId: 'game-round-1-bracket-1-match-1' },
-    );
-    expect(matchQuery.andWhere).toHaveBeenCalledWith(
-      expect.stringContaining('match.status IN'),
-      { statuses: ['pending', 'active'] },
-    );
-    expect(directGetRepository.mock.calls).toHaveLength(0);
-  });
-
-  it('returns at most eight completed transitions in the durable cursor window and stable order', async () => {
-    const room = {
-      id: '00000000-0000-4000-8000-000000000001',
-      roomCode: 'ROOM01',
-      state: {
-        roomCode: 'ROOM01',
-        participants: [],
-        tournament: {
-          activeMatchId: null,
-          activeMatchAuthority: null,
-        },
-      },
       revision: 12,
-      expiresAt: new Date('2026-07-11T01:00:00.000Z'),
+      expiresAtMs: 1_000,
+      participants: [],
+      phase: 'waiting' as const,
+      tournament: null,
     };
-    const roomQuery = queryBuilder(room);
-    const matches = Array.from({ length: 8 }, (_, index) => ({
-      ...terminalMatch({
-        terminalEventId: `00000000-0000-4000-8000-${String(index + 5).padStart(12, '0')}`,
-        terminalRoomRevision: index + 5,
-      }),
-      matchId: `match-${index + 5}`,
-    }));
-    const transitionQuery = queryBuilder(null, matches);
-    const manager = {
-      getRepository: jest
-        .fn()
-        .mockReturnValueOnce({
-          createQueryBuilder: jest.fn().mockReturnValue(roomQuery),
-        })
-        .mockReturnValueOnce({
-          createQueryBuilder: jest.fn().mockReturnValue(transitionQuery),
-        }),
-    };
-    const dataSource = {
-      transaction: jest.fn(
-        (_isolation: string, run: (value: typeof manager) => unknown) =>
-          run(manager),
-      ),
-    } as unknown as DataSource;
+    const findRoomSnapshot = jest.fn().mockResolvedValue(snapshot);
+    const repository = {
+      findRoomSnapshot,
+    } as unknown as RedisPokeLoungeRepository;
+    const service = new CompetitiveProjectionService(repository);
 
-    const snapshot = await new CompetitiveProjectionService(
-      dataSource,
-    ).findRoomSnapshot('room01', 4);
-
-    expect(transitionQuery.andWhere).toHaveBeenCalledWith(
-      'transition.rulesetVersion = :rulesetVersion',
-      { rulesetVersion: COMPETITIVE_RULESET_VERSION },
-    );
-    expect(transitionQuery.andWhere).toHaveBeenCalledWith(
-      'transition.rulesetHash = :rulesetHash',
-      { rulesetHash: COMPETITIVE_RULESET_HASH },
-    );
-    expect(transitionQuery.andWhere).toHaveBeenCalledWith(
-      'transition.terminalRoomRevision > :afterRevision',
-      { afterRevision: 4 },
-    );
-    expect(transitionQuery.andWhere).toHaveBeenCalledWith(
-      'transition.terminalRoomRevision <= :currentRevision',
-      { currentRevision: 12 },
-    );
-    expect(transitionQuery.orderBy).toHaveBeenCalledWith(
-      'transition.terminalRoomRevision',
-      'ASC',
-    );
-    expect(transitionQuery.addOrderBy).toHaveBeenCalledWith(
-      'transition.terminalEventId',
-      'ASC',
-    );
-    expect(transitionQuery.take).toHaveBeenCalledWith(8);
-    expect(snapshot?.competitiveTransitions).toHaveLength(8);
-    expect(
-      snapshot?.competitiveTransitions.map(
-        (transition) => transition.terminalRoomRevision,
-      ),
-    ).toEqual([5, 6, 7, 8, 9, 10, 11, 12]);
+    await expect(service.findRoomSnapshot('room01', 4)).resolves.toBe(snapshot);
+    expect(findRoomSnapshot).toHaveBeenCalledWith('room01', 4);
   });
 });
-
-function queryBuilder(result: unknown, results: unknown[] = []) {
-  return {
-    addSelect: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    andWhere: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    addOrderBy: jest.fn().mockReturnThis(),
-    take: jest.fn().mockReturnThis(),
-    getOne: jest.fn().mockResolvedValue(result),
-    getMany: jest.fn().mockResolvedValue(results),
-  };
-}
 
 function terminalMatch(metadata: {
   terminalEventId: string | null;

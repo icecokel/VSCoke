@@ -82,6 +82,9 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
   private currencyHudText: Phaser.GameObjects.Text | null = null;
   private rankScoreHudText: Phaser.GameObjects.Text | null = null;
   private roundHudText: Phaser.GameObjects.Text | null = null;
+  private lastCurrencyText = "";
+  private lastRankScoreText = "";
+  private lastPartyHudKey = "";
   private lastRenderedRoundHudText = "";
   private partyHudObjects: Phaser.GameObjects.GameObject[] = [];
   private partyHudSubscribed = false;
@@ -97,11 +100,14 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
   createCurrencyHud(): void {
     const { gameStateStore } = this.dependencies;
 
+    this.lastCurrencyText = formatPokeDollars(
+      gameStateStore.getCurrentLocalPlayer().wallet.pokeDollars,
+    );
     this.currencyHudText = this.add
       .text(
         12,
         10,
-        formatPokeDollars(gameStateStore.getCurrentLocalPlayer().wallet.pokeDollars),
+        this.lastCurrencyText,
         createGameTextStyle({
           color: "#f8fbf0",
           fontSize: "14px",
@@ -116,8 +122,12 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
     this.dependencies.addUnsubscriber(
       gameStateStore.subscribe(state => {
         const currentPlayer = state.playersById[state.currentPlayerId];
+        const nextText = formatPokeDollars(currentPlayer?.wallet.pokeDollars ?? 0);
 
-        this.currencyHudText?.setText(formatPokeDollars(currentPlayer?.wallet.pokeDollars ?? 0));
+        if (nextText !== this.lastCurrencyText) {
+          this.currencyHudText?.setText(nextText);
+          this.lastCurrencyText = nextText;
+        }
       }),
     );
   }
@@ -125,14 +135,15 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
   createRankScoreHud(): void {
     const { gameStateStore } = this.dependencies;
 
+    this.lastRankScoreText = formatRankScoreHud(
+      gameStateStore.getCurrentLocalPlayer().competitive,
+      this.dependencies.competitiveRoundsEnabled ? "competitive" : "solo",
+    );
     this.rankScoreHudText = this.add
       .text(
         this.dependencies.getViewportSize().width - 12,
         10,
-        formatRankScoreHud(
-          gameStateStore.getCurrentLocalPlayer().competitive,
-          this.dependencies.competitiveRoundsEnabled ? "competitive" : "solo",
-        ),
+        this.lastRankScoreText,
         createGameTextStyle({
           align: "right",
           color: "#f8fbf0",
@@ -148,13 +159,15 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
     this.dependencies.addUnsubscriber(
       gameStateStore.subscribe(state => {
         const currentPlayer = state.playersById[state.currentPlayerId];
-
-        this.rankScoreHudText?.setText(
-          formatRankScoreHud(
-            currentPlayer?.competitive ?? { rank: null, score: 0 },
-            this.dependencies.competitiveRoundsEnabled ? "competitive" : "solo",
-          ),
+        const nextText = formatRankScoreHud(
+          currentPlayer?.competitive ?? { rank: null, score: 0 },
+          this.dependencies.competitiveRoundsEnabled ? "competitive" : "solo",
         );
+
+        if (nextText !== this.lastRankScoreText) {
+          this.rankScoreHudText?.setText(nextText);
+          this.lastRankScoreText = nextText;
+        }
       }),
     );
   }
@@ -217,12 +230,18 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
     this.partyHudSubscribed = true;
     this.dependencies.addUnsubscriber(
       this.dependencies.gameStateStore.subscribe(() => {
+        const nextKey = this.createPartyHudKey();
+        if (nextKey === this.lastPartyHudKey) {
+          return;
+        }
+
         this.render();
       }),
     );
   }
 
   render(): void {
+    this.lastPartyHudKey = this.createPartyHudKey();
     this.partyHudObjects.forEach(object => object.destroy());
     this.partyHudObjects = [];
 
@@ -244,6 +263,16 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
     }
 
     this.renderPokemonStatusPanel();
+  }
+
+  private createPartyHudKey(): string {
+    const player = this.dependencies.gameStateStore.getCurrentLocalPlayer();
+
+    return JSON.stringify({
+      playerId: player.playerId,
+      activePartySlotIndex: player.activePartySlotIndex,
+      party: player.party,
+    });
   }
 
   private renderPartyHudSlot(slot: PartyHudSlotView): void {

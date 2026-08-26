@@ -96,13 +96,13 @@ Web
 -> Codex app-server answer generation
 ```
 
-Poke Lounge는 브라우저 로컬 진행, PostgreSQL room·match 상태와 Socket.IO 실시간 전파를
+Poke Lounge는 브라우저 로컬 진행, Redis room·match 상태와 Socket.IO 실시간 전파를
 분리한다.
 
 ```text
 Web local player state
 -> REST room command
--> PostgreSQL transaction and revision
+-> Redis Lua CAS and revision
 -> Socket.IO committed snapshot
 -> same-room browsers
 ```

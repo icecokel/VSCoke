@@ -30,7 +30,7 @@ import { SavePokeLoungeStateDto } from './dto/save-poke-lounge-state.dto';
 import { GoogleAuthGuard } from '../auth/google-auth.guard';
 import { GameType } from './enums/game-type.enum';
 import { User } from '../auth/entities/user.entity';
-import { GamePokeLoungeState } from './entities/game-poke-lounge-state.entity';
+import type { TransientPokeLoungeState } from './game.service';
 
 type AuthenticatedRequest = Request & { user: User };
 
@@ -193,8 +193,7 @@ export class GameController {
   @Get('ranking')
   @ApiOperation({
     summary: '게임별 Top 10 랭킹 조회',
-    description:
-      'POKE_LOUNGE는 서버에서 검증된 대전 결과만 포함합니다. 응답은 항상 랭킹 배열입니다.',
+    description: 'POKE_LOUNGE는 영속 기록을 만들지 않아 빈 배열을 반환합니다.',
   })
   @ApiQuery({
     name: 'gameType',
@@ -246,7 +245,7 @@ export class GameController {
 }
 
 function toPokeLoungeStateResponse(
-  savedState: GamePokeLoungeState,
+  savedState: TransientPokeLoungeState,
 ): PokeLoungeStateResponseDto {
   return {
     id: savedState.id,

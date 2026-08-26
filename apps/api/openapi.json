@@ -267,7 +267,7 @@
     },
     "/game/ranking": {
       "get": {
-        "description": "POKE_LOUNGE는 서버에서 검증된 대전 결과만 포함합니다. 응답은 항상 랭킹 배열입니다.",
+        "description": "POKE_LOUNGE는 영속 기록을 만들지 않아 빈 배열을 반환합니다.",
         "operationId": "GameController_getRanking",
         "parameters": [
           {
@@ -887,6 +887,62 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PokeLoungeRoomConflictResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["poke-lounge"]
+      }
+    },
+    "/poke-lounge/rooms/{roomCode}/round-ready": {
+      "post": {
+        "operationId": "PokeLoungeController_setRoundReady",
+        "parameters": [
+          {
+            "name": "roomCode",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPokeLoungeRoundReadyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PokeLoungeRoomResponseDto"
+                    }
+                  }
                 }
               }
             }
@@ -3257,6 +3313,25 @@
           }
         },
         "required": ["playerId", "sessionId", "ready"]
+      },
+      "SetPokeLoungeRoundReadyDto": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "type": "string",
+            "example": "player-a"
+          },
+          "sessionId": {
+            "type": "string",
+            "example": "session-a"
+          },
+          "roundIndex": {
+            "type": "number",
+            "example": 1,
+            "minimum": 1
+          }
+        },
+        "required": ["playerId", "sessionId", "roundIndex"]
       },
       "StartPokeLoungeRoomDto": {
         "type": "object",

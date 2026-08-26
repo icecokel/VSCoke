@@ -1070,6 +1070,7 @@ test.describe("Poke Lounge server multiplayer", () => {
       const completedProjection = {
         ...projection,
         currentTurn: projection.currentTurn + 1,
+        submittedPlayerIds: [...projection.playerIds],
         status: "completed" as const,
         currentState: {
           ...projection.currentState,
@@ -1095,6 +1096,7 @@ test.describe("Poke Lounge server multiplayer", () => {
 
       await expect.poll(() => getBattleSnapshot(page).then(value => value?.phase)).toBe("ended");
       expect((await getBattleSnapshot(page))?.battleEntrancePlaying).toBe(false);
+      expect((await getBattleSnapshot(page))?.authoritativeInputPending).toBe(false);
       expect((await getBattleSnapshot(page))?.result).toMatchObject({
         winnerPlayerId,
         loserPlayerId,
@@ -2365,6 +2367,7 @@ async function getBattleSnapshot(page: Page): Promise<{
   message: string | null;
   battleKind: string;
   battleEntrancePlaying: boolean;
+  authoritativeInputPending: boolean;
   result: { winnerPlayerId: string; loserPlayerId: string; reason: string } | null;
   turn: number;
 } | null> {
@@ -2378,6 +2381,7 @@ async function getBattleSnapshot(page: Page): Promise<{
               message: string | null;
               battleKind: string;
               battleEntrancePlaying: boolean;
+              authoritativeInputPending: boolean;
               result: { winnerPlayerId: string; loserPlayerId: string; reason: string } | null;
               turn: number;
             } | null;

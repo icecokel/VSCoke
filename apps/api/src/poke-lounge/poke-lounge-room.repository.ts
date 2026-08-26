@@ -49,7 +49,7 @@ export interface PokeLoungeRoomRepository {
     actorPlayerId: string;
     idempotencyKey: string;
     requestHash: string;
-    expectedRevision: number;
+    expectedRevision?: number;
     nowMs: number;
     apply: (room: PokeLoungeRoomSnapshot) => PokeLoungeRoomSnapshot;
   }): Promise<PokeLoungeRepositoryResult | null>;

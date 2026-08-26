@@ -1,13 +1,83 @@
 import { Injectable, Logger, OnModuleDestroy, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createAdapter } from '@socket.io/redis-adapter';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { createClient } from 'redis';
 
 const WORLD_EPOCH_FIELD = '_epoch';
 const WORLD_SEQUENCE_FIELD = '_seq';
 const WORLD_KEY_PREFIX = 'poke-lounge:room:';
 const WORLD_KEY_SUFFIX = ':world';
+const ROOM_STATE_KEY_SUFFIX = ':state';
+const ROOM_INDEX_KEY = 'poke-lounge:rooms';
+const PLAYER_STATE_KEY_PREFIX = 'poke-lounge:player:';
+const PLAYER_STATE_KEY_SUFFIX = ':state';
+const CREATE_COMMAND_KEY_PREFIX = 'poke-lounge:create-command:';
+const CREATE_ROOM_STATE_SCRIPT = `
+local receipt = redis.call('GET', KEYS[3])
+if receipt then
+  return {3, receipt}
+end
+redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', ARGV[1])
+if redis.call('ZCARD', KEYS[2]) >= tonumber(ARGV[2]) then
+  return {2, ''}
+end
+if redis.call('EXISTS', KEYS[1]) == 1 then
+  return {1, ''}
+end
+redis.call('HSET', KEYS[1], 'version', '0', 'document', ARGV[3])
+redis.call('PEXPIREAT', KEYS[1], ARGV[4])
+redis.call('SET', KEYS[3], ARGV[5], 'PXAT', ARGV[4])
+redis.call('ZADD', KEYS[2], ARGV[4], ARGV[6])
+return {0, ''}
+`;
+const COMPARE_AND_SET_ROOM_STATE_SCRIPT = `
+if redis.call('EXISTS', KEYS[1]) == 0 then
+  return 0
+end
+local version = tonumber(redis.call('HGET', KEYS[1], 'version'))
+if version ~= tonumber(ARGV[1]) then
+  return -1
+end
+redis.call('HSET', KEYS[1], 'version', tostring(version + 1), 'document', ARGV[2])
+redis.call('PEXPIREAT', KEYS[1], ARGV[3])
+redis.call('ZADD', KEYS[2], ARGV[3], ARGV[4])
+return 1
+`;
+const PURGE_ROOM_STATES_SCRIPT = `
+local count = redis.call('ZCOUNT', KEYS[1], '-inf', ARGV[1])
+redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[1])
+return count
+`;
+const SAVE_PLAYER_STATE_SCRIPT = `
+local currentRevision = redis.call('HGET', KEYS[1], 'revision')
+local expectedRevision = tonumber(ARGV[1])
+local nextRevision = 1
+local createdAt = ARGV[4]
+if currentRevision then
+  if expectedRevision < 0 and tonumber(currentRevision) ~= 0 then
+    return -1
+  end
+  if expectedRevision >= 0 and tonumber(currentRevision) ~= expectedRevision then
+    return -1
+  end
+  nextRevision = tonumber(currentRevision) + 1
+  createdAt = redis.call('HGET', KEYS[1], 'createdAt') or createdAt
+elseif expectedRevision > 0 then
+  return -1
+end
+redis.call(
+  'HSET',
+  KEYS[1],
+  'revision', tostring(nextRevision),
+  'state', ARGV[2],
+  'clientUpdatedAt', ARGV[3],
+  'createdAt', createdAt,
+  'updatedAt', ARGV[4]
+)
+redis.call('PEXPIREAT', KEYS[1], ARGV[5])
+return nextRevision
+`;
 const UPSERT_PLAYER_SCRIPT = `
 local epoch = redis.call('HGET', KEYS[1], '${WORLD_EPOCH_FIELD}')
 if not epoch then
@@ -87,6 +157,23 @@ export interface PokeLoungeWorldPlayerEvent extends PokeLoungeWorldPlayerState {
   worldSeq: number;
 }
 
+export interface PokeLoungeRedisRoomRecord {
+  version: number;
+  document: string;
+}
+
+export type CreatePokeLoungeRedisRoomResult =
+  | { outcome: 'created' | 'capacity-reached' | 'room-code-collision' }
+  | { outcome: 'command-exists'; receipt: string };
+
+export interface PokeLoungeRedisPlayerState {
+  revision: number;
+  state: Record<string, unknown>;
+  clientUpdatedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 @Injectable()
 export class PokeLoungeLiveStateService implements OnModuleDestroy {
   private readonly logger = new Logger(PokeLoungeLiveStateService.name);
@@ -151,6 +238,182 @@ export class PokeLoungeLiveStateService implements OnModuleDestroy {
     }
 
     return createAdapter(commandClient, subscriberClient);
+  }
+
+  async createRoomState(input: {
+    roomCode: string;
+    document: string;
+    expiresAtMs: number;
+    nowMs: number;
+    capacity: number;
+    actorPlayerId: string;
+    idempotencyKey: string;
+    requestHash: string;
+  }): Promise<CreatePokeLoungeRedisRoomResult> {
+    const client = this.requireCommandClient();
+    const roomCode = normalizeRoomCode(input.roomCode);
+    const receipt = JSON.stringify({
+      requestHash: input.requestHash,
+      roomCode,
+    });
+    const result = await client.eval(CREATE_ROOM_STATE_SCRIPT, {
+      keys: [
+        roomStateKey(roomCode),
+        ROOM_INDEX_KEY,
+        createCommandKey(input.actorPlayerId, input.idempotencyKey),
+      ],
+      arguments: [
+        String(normalizeTimestampMs(input.nowMs)),
+        String(input.capacity),
+        input.document,
+        String(normalizeTimestampMs(input.expiresAtMs)),
+        receipt,
+        roomCode,
+      ],
+    });
+    const [status, existingReceipt] = parseRedisTuple(result);
+
+    if (status === 0) {
+      return { outcome: 'created' };
+    }
+    if (status === 1) {
+      return { outcome: 'room-code-collision' };
+    }
+    if (status === 2) {
+      return { outcome: 'capacity-reached' };
+    }
+    if (status === 3 && typeof existingReceipt === 'string') {
+      return { outcome: 'command-exists', receipt: existingReceipt };
+    }
+
+    throw new Error('Poke Lounge Redis create result is malformed');
+  }
+
+  async getRoomState(
+    roomCode: string,
+  ): Promise<PokeLoungeRedisRoomRecord | null> {
+    const client = this.requireCommandClient();
+    const values = await client.hmGet(
+      roomStateKey(normalizeRoomCode(roomCode)),
+      ['version', 'document'],
+    );
+    if (values[0] === null && values[1] === null) {
+      return null;
+    }
+    const version = parseNonNegativeInteger(values[0]);
+    if (version === null || typeof values[1] !== 'string') {
+      throw new Error('Poke Lounge Redis room state is malformed');
+    }
+
+    return { version, document: values[1] };
+  }
+
+  async compareAndSetRoomState(input: {
+    roomCode: string;
+    expectedVersion: number;
+    document: string;
+    expiresAtMs: number;
+  }): Promise<'committed' | 'conflict' | 'missing'> {
+    const client = this.requireCommandClient();
+    const roomCode = normalizeRoomCode(input.roomCode);
+    const result = await client.eval(COMPARE_AND_SET_ROOM_STATE_SCRIPT, {
+      keys: [roomStateKey(roomCode), ROOM_INDEX_KEY],
+      arguments: [
+        String(input.expectedVersion),
+        input.document,
+        String(normalizeTimestampMs(input.expiresAtMs)),
+        roomCode,
+      ],
+    });
+
+    if (result === 1) {
+      return 'committed';
+    }
+    if (result === -1) {
+      return 'conflict';
+    }
+    if (result === 0) {
+      return 'missing';
+    }
+    throw new Error('Poke Lounge Redis compare-and-set result is malformed');
+  }
+
+  async purgeExpiredRoomStates(nowMs: number): Promise<number> {
+    const result = await this.requireCommandClient().eval(
+      PURGE_ROOM_STATES_SCRIPT,
+      {
+        keys: [ROOM_INDEX_KEY],
+        arguments: [String(normalizeTimestampMs(nowMs))],
+      },
+    );
+    const count = parseNonNegativeInteger(result);
+    if (count === null) {
+      throw new Error('Poke Lounge Redis purge result is malformed');
+    }
+    return count;
+  }
+
+  async getPlayerState(
+    userId: string,
+  ): Promise<PokeLoungeRedisPlayerState | null> {
+    const values = await this.requireCommandClient().hGetAll(
+      playerStateKey(userId),
+    );
+    if (Object.keys(values).length === 0) {
+      return null;
+    }
+    const revision = parseNonNegativeInteger(values.revision);
+    if (
+      revision === null ||
+      typeof values.state !== 'string' ||
+      typeof values.createdAt !== 'string' ||
+      typeof values.updatedAt !== 'string'
+    ) {
+      throw new Error('Poke Lounge Redis player state is malformed');
+    }
+    const state = JSON.parse(values.state) as unknown;
+    if (!isRecord(state)) {
+      throw new Error('Poke Lounge Redis player snapshot is malformed');
+    }
+
+    return {
+      revision,
+      state,
+      clientUpdatedAt: values.clientUpdatedAt || null,
+      createdAt: values.createdAt,
+      updatedAt: values.updatedAt,
+    };
+  }
+
+  async savePlayerState(input: {
+    userId: string;
+    state: Record<string, unknown>;
+    expectedRevision?: number;
+    clientUpdatedAt: string | null;
+    nowMs: number;
+    expiresAtMs: number;
+  }): Promise<number | null> {
+    const result = await this.requireCommandClient().eval(
+      SAVE_PLAYER_STATE_SCRIPT,
+      {
+        keys: [playerStateKey(input.userId)],
+        arguments: [
+          String(input.expectedRevision ?? -1),
+          JSON.stringify(input.state),
+          input.clientUpdatedAt ?? '',
+          new Date(input.nowMs).toISOString(),
+          String(normalizeTimestampMs(input.expiresAtMs)),
+        ],
+      },
+    );
+    if (result === -1) {
+      return null;
+    }
+    const revision = parseNonNegativeInteger(result);
+    if (revision === null) {
+      throw new Error('Poke Lounge Redis player save result is malformed');
+    }
+    return revision;
   }
 
   async upsertPlayer(input: {
@@ -267,6 +530,25 @@ function worldKey(roomCode: string): string {
   return `${WORLD_KEY_PREFIX}${roomCode}${WORLD_KEY_SUFFIX}`;
 }
 
+function roomStateKey(roomCode: string): string {
+  return `${WORLD_KEY_PREFIX}${roomCode}${ROOM_STATE_KEY_SUFFIX}`;
+}
+
+function playerStateKey(userId: string): string {
+  return `${PLAYER_STATE_KEY_PREFIX}${createHash('sha256').update(userId).digest('hex')}${PLAYER_STATE_KEY_SUFFIX}`;
+}
+
+function createCommandKey(
+  actorPlayerId: string,
+  idempotencyKey: string,
+): string {
+  return `${CREATE_COMMAND_KEY_PREFIX}${createHash('sha256')
+    .update(actorPlayerId)
+    .update('\0')
+    .update(idempotencyKey)
+    .digest('hex')}`;
+}
+
 function normalizeRoomCode(roomCode: string): string {
   const normalized = roomCode.trim().toUpperCase();
   if (!/^[A-Z0-9]{6}$/.test(normalized)) {
@@ -280,6 +562,33 @@ function normalizeExpiresAtSeconds(expiresAtMs: number): number {
     throw new Error('Poke Lounge world expiry is invalid');
   }
   return Math.ceil(expiresAtMs / 1000);
+}
+
+function normalizeTimestampMs(value: number): number {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error('Poke Lounge Redis timestamp is invalid');
+  }
+  return value;
+}
+
+function parseNonNegativeInteger(value: unknown): number | null {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function parseRedisTuple(value: unknown): [number, unknown] {
+  if (!Array.isArray(value) || value.length < 2) {
+    throw new Error('Poke Lounge Redis tuple is malformed');
+  }
+  const status = Number(value[0]);
+  if (!Number.isSafeInteger(status)) {
+    throw new Error('Poke Lounge Redis tuple status is malformed');
+  }
+  return [status, value[1]];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function parseUpsertResult(value: unknown): [string, number] {

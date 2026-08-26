@@ -30,10 +30,9 @@ them unless the user asks.
   `set device "iPhone 12"`, then open the target URL. Verify viewport `390x844` and
   `navigator.maxTouchPoints > 0` before room entry. Firefox is excluded. A narrow viewport without the reviewed
   touch init script is not Mobile Web and must not report `ENV-READY`.
-- The public entry screen does not expose settings. After automatic room entry and starter selection first expose
-  settings, open them and turn sound off before ready, start, movement, or battle input. Report
-  `AUDIO-MUTED <MP role>` only after verifying that session's control state, and do not admit the next player until
-  the current player has reported it.
+- The public entry screen and waiting lobby do not expose settings. Immediately after the host starts and the lobby
+  closes, close any shortcut or mobile guide through its canonical control, open settings, and turn sound off before
+  movement or battle input. Report `AUDIO-MUTED <MP role>` only after verifying that session's control state.
 - The orchestrator does not occupy a player session unless the user explicitly asks it to play. One runner may
   own multiple named sessions when the requested player count exceeds the available agent concurrency.
 
@@ -47,7 +46,7 @@ them unless the user asks.
    results, rankings, or a winner.
 4. Store screenshots and diagnostic artifacts under `output/agent-browser/poke-lounge/<run-id>/`; include the
    MP role, environment, checkpoint, and timestamp in filenames. Never record raw passwords, session IDs,
-   cookies, tokens, or full Socket payloads.
+   cookies, tokens, the internal room code, or full Socket payloads.
 5. Inspect `console`, `errors`, and relevant `network requests` at failures and before the final verdict. A
    one-cycle test ends only after the server-confirmed winner and rankings converge across every player, each
    player leaves through the UI, and the room reaches the documented cleanup state. Do not add an overall test

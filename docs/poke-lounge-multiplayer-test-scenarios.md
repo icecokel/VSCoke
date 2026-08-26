@@ -417,9 +417,11 @@ route로 바꾸지 않는다. 전체 response, 방 코드, `playerId`, `sessionI
    shortcut guide가 열려 있으면 `Escape`를 정확히 한 번 입력해 `shortcutGuideOpen=false`와 help UI
    제거를 확인한다. guide를 닫은 뒤 설정을 열어 소리 control을 `소리 꺼짐`으로 맞추고 접근성 이름
    `소리 음소거`를 확인한 뒤 설정을 닫아 `AUDIO-MUTED`를 보고한다. 입력 전 화면 경계·장애물을 피한
-   이동 가능 방향 중 현재 avatar가 바라보는 방향과 다른 방향을 고른다. Desktop은 canvas focus 뒤 해당 방향키를 100ms 이하, Mobile은 해당 joystick
-   방향을 100ms 이하로 한 번 입력한다. 변화가 없을 때만 같은 방향으로 한 번 더 입력하고 다른 두
-   화면에 avatar 좌표·방향이 반영되는지 확인한다. 경계·장애물 방향이나 현재 바라보는 방향을 골라
+   이동 가능 방향 중 현재 avatar가 바라보는 방향과 다른 방향을 고른다. Desktop은 canvas focus 뒤
+   `agent-browser keydown <Arrow>`, `agent-browser wait 50`, `agent-browser keyup <Arrow>` 순서로 50ms 동안
+   입력하고 중간 명령이 실패해도 같은 방향의 `keyup`을 반드시 수행한다. 유지 시간이 없는 `press`는
+   이동에 사용하지 않는다. Mobile은 해당 joystick 방향을 100ms 이하로 한 번 입력한다. 변화가
+   없을 때만 같은 방향으로 한 번 더 입력하고 다른 두 화면에 avatar 좌표·방향이 반영되는지 확인한다. 경계·장애물 방향이나 현재 바라보는 방향을 골라
    좌표·방향 변화를 만들지 못하면 `TEST-RUNNER`로 중단한다. 각 runner는 자신의 시작 전환을 관찰하면
    다른 runner의 timing field나 이동
    보고를 기다리지 않고 이 절차까지 연속·병렬 수행한다. 루트는 전원 보고 뒤 timing field와 동기화

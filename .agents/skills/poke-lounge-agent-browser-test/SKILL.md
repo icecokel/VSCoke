@@ -59,8 +59,10 @@ them unless the user asks.
    is still missing. Report only the documented field whitelist; never save the full response or sensitive identity
    values.
 7. During the shared-world checkpoint, never send a direction input while a shortcut or mobile guide is open. Close
-   the guide through its canonical control, verify the help is gone, and only then send the designated movement once;
-   retry movement once only when no coordinate or direction change is observed.
+   the guide through its canonical control, verify the help is gone, and only then send the designated movement once.
+   For Desktop, focus the canvas and use `keydown <Arrow>`, `wait 50`, then `keyup <Arrow>`; always release the key
+   even if an intermediate command fails, and do not use the zero-hold `press` command for movement. Retry movement
+   once only when no coordinate or direction change is observed.
 8. After each battle UI procedure, watch up to five seconds for its `session-actions` request. If no request appears,
    capture the current phase and focus, then repeat the complete UI procedure exactly once; do not wait passively for
    the turn deadline. If the retry also emits no request, report `CODE-FAIL`. After any 2xx, never retry that turn.

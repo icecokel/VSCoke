@@ -93,9 +93,9 @@ Authorization header를 요구해서는 안 된다.
 
 `agent-browser` 에이전트 실행에서 `Mobile Web`은 viewport만 줄이지 않고 방 입장 전에
 `set device "iPhone 12"`로 touch device를 에뮬레이션한다. viewport `390×844`와
-`navigator.maxTouchPoints > 0`을 확인해야 하며, 모바일 조작 deck과 터치 방향 패드가 없으면
-`ENV-READY`를 보고하지 않고 `INFRA-BLOCKED`로 중단한다. `Desktop Web`은 `set viewport 1440 900`을
-적용하고 touch device를 에뮬레이션하지 않는다.
+`navigator.maxTouchPoints > 0`을 확인한 뒤에만 `ENV-READY`를 보고한다. `Desktop Web`은
+`set viewport 1440 900`을 적용하고 touch device를 에뮬레이션하지 않는다. 모바일 조작 deck과 터치
+방향 패드는 라운드 시작 후 `C1-WORLD`에서 확인하며, 그때 없으면 `CODE-FAIL`이다.
 
 - 2인 시나리오: `Desktop Web` 1개와 `Mobile Web` 1개를 섞어 배정한다.
 - 3인 한 사이클: `Desktop Chromium` 1개와 `Mobile Chromium` 2개를 세 플레이어에게 섞어

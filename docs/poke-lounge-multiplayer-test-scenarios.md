@@ -456,7 +456,9 @@ route로 바꾸지 않는다. 전체 response, 방 코드, `playerId`, `sessionI
    Desktop은 canvas focus 후 Enter, Mobile은 화면의 `다음`을 정확히 한 번 입력하고 scene·match가
    바뀔 때까지 추가 입력을 금지한다. 같은 UUID의 서버 완료 증적은 마지막 action 2xx response의
    `status=completed`·`terminal`, room `competitiveTransitions` 또는 완료된 bracket match history 중
-   하나에서 별도로 확인한다. 결과 확인 뒤에도 최신 projection이 없을 때만 안정된 전환 장면에서
+   하나에서 별도로 확인한다. terminal 참가자·승패는 반드시 이 같은 UUID의 완료 증적과 action
+   요청 주체로 판정하며, 이미 다음 대진으로 바뀐 active competitive projection에서 추론하지 않는다.
+   결과 확인 뒤에도 최신 projection이 없을 때만 안정된 전환 장면에서
    page reload를 정확히 한 번 수행해 자동 room GET을 관찰한다. atomic bracket 전진으로 현재 active
    competitive projection이 이미 다음 match `pending`이어도 정상이다. 이 캡처·결과 확인은 각
    runner가 연속 수행하고 관리자 승인을 기다리지 않는다. 승자는 `MP1`과의 결승 battle로, 패자는
@@ -502,7 +504,8 @@ route로 바꾸지 않는다. 전체 response, 방 코드, `playerId`, `sessionI
 - `CODE-FAIL`: 문서와 제품 규칙의 기대 결과는 명확하지만 화면, API, Socket 또는 DB가 다르게
   동작한다. 안전한 다음 checkpoint까지 증적을 보존한 뒤 관리자가 계속 여부를 정한다.
 - `TEST-RUNNER`: `ACTION-GO` 전 입력, 2xx 뒤 같은 turn 재입력, 지정하지 않은 UI 입력 또는 서버
-  phase 전환 전에 필수 checkpoint를 끝내지 못한 경우처럼 runner가 절차를 위반했다. 제품 실패로
+  phase 전환 전에 필수 checkpoint를 끝내지 못하거나 terminal 참가자를 다음 대진에서 추론한 경우처럼
+  runner가 절차를 위반했다. 제품 실패로
   세지 않고 새 입력을 즉시 중단해 증적을 보존한 뒤 room을 정리하고 같은 seed·환경 배정·파티·행동
   순서로 처음부터 다시 실행한다.
 - `INFRA-BLOCKED`: 브라우저 실행 파일, 격리 DB, 포트 또는 서버 기동 문제로 제품 동작에 도달하지

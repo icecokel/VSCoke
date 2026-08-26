@@ -404,8 +404,9 @@ route로 바꾸지 않는다. 전체 response, 방 코드, `playerId`, `sessionI
 
 1. `MP2`, `MP3`, `MP1` 순서로 ready를 선택한다. 두 명만 ready일 때 시작 버튼이 비활성인지,
    전원 ready 뒤 `MP1`에게만 활성인지 캡처한다.
-2. 비방장 두 플레이어가 전환 watcher 준비를 보고한 뒤 `MP1`이 시작한다. 세 화면의
-   `startedAtMs`, `endsAtMs`, 라운드 번호가 같은지 확인한다.
+2. 비방장 두 플레이어가 전환 watcher와 4의 이동 절차 준비를, `MP1`이 시작 직후 이동 연속 절차
+   준비를 보고한 뒤 `MP1`이 시작한다. 세 화면의 `startedAtMs`, `endsAtMs`, 라운드 번호가 같은지
+   확인한다.
 3. `waiting` 대기실에서는 이동할 수 없어야 한다. 시작 후 `round-started` 준비 단계에서는
    대기실이 닫히고 각자 월드를 탐색할 수 있어야 한다.
 4. Mobile은 `모바일 조작` deck이 열려 있으면 접근성 이름 `뒤로` control로 먼저 닫고
@@ -413,9 +414,9 @@ route로 바꾸지 않는다. 전체 response, 방 코드, `playerId`, `sessionI
    shortcut guide가 열려 있으면 `Escape`를 정확히 한 번 입력해 `shortcutGuideOpen=false`와 help UI
    제거를 확인한다. Desktop은 canvas focus 뒤 방향키를 100ms 이하, Mobile은 joystick 방향을 100ms
    이하로 한 번 입력한다. 변화가 없을 때만 한 번 더 입력하고 다른 두 화면에 avatar 좌표·방향이
-   반영되는지 확인한다. 세 runner는 시작 timing field 보고가 모이면 서로의 이동 완료를 기다리지
-   않고 이 절차를 병렬로 수행하며, 루트는 전원 완료 뒤 동기화 증적을 대조한다. 준비
-   `endsAtMs` 전에 전원 checkpoint를 끝내지 못하면 `TEST-RUNNER`로 중단한다.
+   반영되는지 확인한다. 각 runner는 자신의 시작 전환을 관찰하면 다른 runner의 timing field나 이동
+   보고를 기다리지 않고 이 절차까지 연속·병렬 수행한다. 루트는 전원 보고 뒤 timing field와 동기화
+   증적을 대조한다. 준비 `endsAtMs` 전에 전원 checkpoint를 끝내지 못하면 `TEST-RUNNER`로 중단한다.
 5. 이동으로 야생전이 열리면 해당 화면을 캡처하되 파티 상태를 바꿀 수 있는 battle command를
    입력하지 않는다. 다른 두 플레이어의 world 진행이 유지되는지 확인하고 서버 경쟁 대진을
    기다린다. 첫 대진 참가자에게 competitive assignment가 생기면 로컬 야생전 대신 해당 전투가,

@@ -1,6 +1,6 @@
 # Poke Lounge 플레이어 E2E 테스트 시나리오
 
-확인 기준일: 2026-08-26
+확인 기준일: 2026-08-27
 구현 기준: `main`
 
 ## 1. 목적
@@ -91,6 +91,12 @@ Authorization header를 요구해서는 안 된다.
 플레이어 역할은 `MP1`부터 `MP7`까지 유지하되 환경은 고정하지 않는다. 실행 시작 시 seed로 환경
 목록을 섞어 각 플레이어에게 배정하고, 해당 실행이 끝날 때까지 같은 환경을 유지한다.
 
+`agent-browser` 에이전트 실행에서 `Mobile Web`은 viewport만 줄이지 않고 방 입장 전에
+`set device "iPhone 12"`로 touch device를 에뮬레이션한다. viewport `390×844`와
+`navigator.maxTouchPoints > 0`을 확인해야 하며, 모바일 조작 deck과 터치 방향 패드가 없으면
+`ENV-READY`를 보고하지 않고 `INFRA-BLOCKED`로 중단한다. `Desktop Web`은 `set viewport 1440 900`을
+적용하고 touch device를 에뮬레이션하지 않는다.
+
 - 2인 시나리오: `Desktop Web` 1개와 `Mobile Web` 1개를 섞어 배정한다.
 - 3인 한 사이클: `Desktop Chromium` 1개와 `Mobile Chromium` 2개를 세 플레이어에게 섞어
   배정한다.
@@ -151,6 +157,24 @@ room의 `durationMs`는 기본값 `300000`이어야 한다. 단일 자동화의 
 응답 직후 `finally`에서 설치할 때 보존한 handler 참조로 제거한다. 다음 실행 시작 시 목록 조회에
 의존하지 않고 각 Playwright page에서 `page.unrouteAll({ behavior: "wait" })`을 호출한다. 같은 browser
 context를 재사용하더라도 이전 실행의 30초 override가 다음 방 생성에 적용되면 안 된다.
+
+`agent-browser` 분산 실행은 내부 API를 새로 호출하지 않고, 브라우저가 이미 완료한
+요청의 response만 읽어 authoritative room projection을 확인한다. 방 입장 전에 각 named
+session의 network log를 비우고, checkpoint마다 다음 명령으로 가장 최신의 room 요청 ID와
+response body를 읽는다.
+
+```sh
+agent-browser --session <name> network requests --filter "poke-lounge/rooms" --status 2xx --json
+agent-browser --session <name> network request <request-id> --json
+```
+
+방 생성 response에서 `round.durationMs`와 request body를, 시작·자동 복구 response에서
+`round.startedAtMs`, `round.endsAtMs`, `round.index`를, 대진 배정 response에서
+`competitive.matchId`, `competitive.currentTurn`, `competitive.status`만 추출한다. 상태가 누락되거나
+예전 revision이면 재접속 유예 내에 UI reload를 정확히 한 번 수행하고, 페이지가 자동으로 보낸
+최신 room GET response를 다시 읽는다. `fetch`, `curl`, request replay로 room 상태를 직접 조회하거나
+route로 바꾸지 않는다. 전체 response, 방 코드, `playerId`, `sessionId`, token, cookie는 artifact나
+관리자 채널에 남기지 않는다. 이 수동 읽기 절차는 UI 조작을 대신하는 내부 API 호출이 아니다.
 
 `PW_A`, `PW_B` 원문은 문서, URL, screenshot, trace 제목과 JSON 결과에 기록하지 않는다.
 해시에서 파생된 내부 6자리 key도 사용자 화면 증거로 사용하지 않는다.
@@ -283,9 +307,10 @@ context를 재사용하더라도 이전 실행의 30초 override가 다음 방 �
    Mobile Chromium 2개를 섞어 배정한다. 각 runner는 하나의 플레이어 context를 소유하며 루트는
    어떤 경우에도 플레이어가 되지 않는다.
 3. 각 runner는 배정된 모든 context에서 Poke Lounge 화면을 연 직후, 방 접속·ready·게임 입력보다
-   먼저 설정을 연다. 소리 control을 `소리 꺼짐`으로 맞추고 접근성 이름이 `소리 음소거`인지
-   확인한 뒤 설정을 닫는다. 이미 꺼져 있으면 추가로 누르지 않는다. 완료한 플레이어마다
-   `AUDIO-MUTED <MP 역할>`을 보고하고, 모든 보고가 모인 뒤에만 `ENV-READY`로 진행한다.
+   먼저 배정된 viewport와 Mobile touch emulation을 확인하고 named session의 network log를 비운 뒤
+   설정을 연다. 소리 control을 `소리 꺼짐`으로 맞추고 접근성 이름이 `소리 음소거`인지 확인한 뒤
+   설정을 닫는다. 이미 꺼져 있으면 추가로 누르지 않는다. 완료한 플레이어마다 `AUDIO-MUTED <MP 역할>`을
+   보고하고, 모든 보고가 모인 뒤에만 `ENV-READY`로 진행한다.
 4. `MP1` runner가 최초 접속과 자동 방 생성을 담당하는 방장이다. 루트 오케스트레이터를 `MP1`,
    방장 또는 플레이어 슬롯으로 계산하지 않는다.
 5. 루트는 `ENV-READY` 보고를 모두 받은 뒤 `MP1`에게 방 생성을 지시하고, `C0-HOST`를 확인한 뒤

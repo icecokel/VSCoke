@@ -25,7 +25,9 @@ them unless the user asks.
 - Give every player a unique named session such as `poke-<run-id>-mp1`. Never use the shared default session,
   reuse another player's session, or use `close --all`.
 - Use headless Chromium for both environments. Assign Desktop Web `1440x900` or Mobile Web `390x844` from the
-  recorded random seed, then apply it with `set viewport` before entering the room. Firefox is excluded.
+  recorded random seed. Apply Desktop with `set viewport 1440 900`; apply Mobile with `set device "iPhone 12"`
+  before entering the room, then verify viewport `390x844` and `navigator.maxTouchPoints > 0`. Firefox is
+  excluded. A narrow viewport without touch emulation is not Mobile Web and must not report `ENV-READY`.
 - Open settings and turn sound off in every player session before room entry. Report `AUDIO-MUTED <MP role>`
   only after verifying that session's control state.
 - The orchestrator does not occupy a player session unless the user explicitly asks it to play. One runner may
@@ -46,7 +48,11 @@ them unless the user asks.
    one-cycle test ends only after the server-confirmed winner and rankings converge across every player, each
    player leaves through the UI, and the room reaches the documented cleanup state. Do not add an overall test
    timeout that shortens product deadlines.
-6. On `DOC-GAP`, `CODE-FAIL`, or `INFRA-BLOCKED`, preserve safe evidence and report the classification. Resume
+6. Read authoritative room fields from browser-completed request/response detail as documented in the canonical
+   scenario. This is passive inspection: do not issue `fetch`, replay a request, or route/mock it. If the latest
+   projection is missing, reload the UI once within the reconnect grace and inspect the page's automatic room GET.
+   Report only the documented field whitelist; never save the full response or sensitive identity values.
+7. On `DOC-GAP`, `CODE-FAIL`, or `INFRA-BLOCKED`, preserve safe evidence and report the classification. Resume
    only from a documented safe checkpoint; never fabricate progress.
 
 Close only the named sessions created by the run after in-game cleanup is complete. Report environment

@@ -1,6 +1,6 @@
 # Poke Lounge 플레이어 E2E 테스트 시나리오
 
-확인 기준일: 2026-08-24
+확인 기준일: 2026-08-26
 구현 기준: `main`
 
 ## 1. 목적
@@ -92,17 +92,16 @@ Authorization header를 요구해서는 안 된다.
 목록을 섞어 각 플레이어에게 배정하고, 해당 실행이 끝날 때까지 같은 환경을 유지한다.
 
 - 2인 시나리오: `Desktop Web` 1개와 `Mobile Web` 1개를 섞어 배정한다.
-- 3인 시나리오: 서로 다른 `Desktop Chromium`, `Mobile Chromium`, `Mobile WebKit` 환경을 한 개씩
-  사용하고 세 플레이어에게 섞어 배정한다.
-- 5인 한 사이클: `Desktop Chromium` 2개, `Desktop WebKit`, `Mobile Chromium`, `Mobile WebKit`을
-  다섯 플레이어에게 섞어 배정한다.
+- 3인 한 사이클: `Desktop Chromium` 1개와 `Mobile Chromium` 2개를 세 플레이어에게 섞어
+  배정한다.
 - 6·7인 시나리오: `Desktop Web` 4개와 `Mobile Web` 3개를 섞어 배정한다.
 - 실행 seed와 `playerId → 환경` 배정 결과를 artifact에 기록하고 같은 seed로 재현할 수 있어야
   한다.
 
 3인 실행의 배정은 실행마다 새 무작위 seed를 만들고 `SHA-256("<seed>|<MP 역할>")` 오름차순으로
-역할을 정렬한 뒤 위 세 환경을 표 순서대로 할당한다. 환경 선택은 무작위지만 seed와 계산식으로
-재현 가능해야 한다.
+역할을 정렬한 뒤 `Desktop Chromium` 1개, `Mobile Chromium` 2개 순서로 할당한다. 환경 선택은
+무작위지만 seed와 계산식으로 재현 가능해야 한다. WebKit은 P2 scripted regression에서만 확인하고
+agent-operated 한 사이클에는 배정하지 않는다.
 
 모든 context는 서로 다른 `sessionStorage`를 사용한다. 같은 사용자 재접속 시나리오에서만 기존
 탭과 storage를 유지한다.
@@ -274,22 +273,19 @@ context를 재사용하더라도 이전 실행의 30초 override가 다음 방 �
 | 실행 주체               | 책임                                                                | 금지 사항                                     |
 | ----------------------- | ------------------------------------------------------------------- | --------------------------------------------- |
 | 루트 오케스트레이터     | 실행 준비, 환경 배정, 단계 동기화, 장애 분류, 증적 취합과 최종 보고 | 방 참가, 플레이어 입력과 승패 개입            |
-| `Luna xhigh` runner 4개 | 배정된 독립 context의 입장·이동·전투·캡처와 상태 보고               | 다른 runner의 context 조작, 서버 판정 우회    |
+| `Luna xhigh` runner 3개 | 배정된 독립 context의 입장·이동·전투·캡처와 상태 보고               | 다른 runner의 context 조작, 서버 판정 우회    |
 | `MP` 플레이어 context   | 하나의 `playerId + sessionId`, 저장 상태와 Desktop·Mobile 환경 유지 | 다른 플레이어와 storage·cookie·입력 상태 공유 |
 
 1. 루트 오케스트레이터는 browser를 열기 전에 실행 ID와 환경 seed를 만들고 `MP` 역할, runner,
    Desktop Web 또는 Mobile Web 환경을 무작위로 연결한다. 배정 결과는 같은 seed로 재현할 수 있게
    기록한다.
-2. `LUNA-1`~`LUNA-4`의 `Luna xhigh` runner 4개를 구성하고 환경 seed로 Desktop Chromium,
-   Desktop WebKit, Mobile Chromium, Mobile WebKit을 섞어 배정한다. 현재 동시 실행 슬롯 4개에는
-   루트가 포함되므로 runner는 최대 3개씩 활성화하고 나머지 1개는 자기 context를 유지한 채
-   checkpoint 단위로 교대한다. 5인 한 사이클에서는 seed로 선택한 runner 한 명이 두 번째
-   Desktop Chromium context를 추가로 소유한다. 루트는 어떤 경우에도 플레이어가 되지 않는다.
+2. `LUNA-1`~`LUNA-3`의 `Luna xhigh` runner 3개를 구성하고 환경 seed로 Desktop Chromium 1개와
+   Mobile Chromium 2개를 섞어 배정한다. 각 runner는 하나의 플레이어 context를 소유하며 루트는
+   어떤 경우에도 플레이어가 되지 않는다.
 3. 각 runner는 배정된 모든 context에서 Poke Lounge 화면을 연 직후, 방 접속·ready·게임 입력보다
    먼저 설정을 연다. 소리 control을 `소리 꺼짐`으로 맞추고 접근성 이름이 `소리 음소거`인지
-   확인한 뒤 설정을 닫는다. 이미 꺼져 있으면 추가로 누르지 않으며, 한 runner가 두 context를
-   맡으면 둘 다 개별 설정한다. 완료한 플레이어마다 `AUDIO-MUTED <MP 역할>`을 보고하고, 모든
-   보고가 모인 뒤에만 `ENV-READY`로 진행한다.
+   확인한 뒤 설정을 닫는다. 이미 꺼져 있으면 추가로 누르지 않는다. 완료한 플레이어마다
+   `AUDIO-MUTED <MP 역할>`을 보고하고, 모든 보고가 모인 뒤에만 `ENV-READY`로 진행한다.
 4. `MP1` runner가 최초 접속과 자동 방 생성을 담당하는 방장이다. 루트 오케스트레이터를 `MP1`,
    방장 또는 플레이어 슬롯으로 계산하지 않는다.
 5. 루트는 `ENV-READY` 보고를 모두 받은 뒤 `MP1`에게 방 생성을 지시하고, `C0-HOST`를 확인한 뒤
@@ -502,26 +498,26 @@ context를 재사용하더라도 이전 실행의 30초 override가 다음 방 �
 3인 반복 실행은 아래 담당 플레이어가 checkpoint를 캡처한다. `전원` checkpoint는 세 화면에서
 각각 남긴다.
 
-| checkpoint           | 담당   | 필수 증적                                                                       |
-| -------------------- | ------ | ------------------------------------------------------------------------------- |
-| `C0-HOST`            | `MP1`  | `MP1` 한 명, 방장, 파티 동기화 완료, 준비 전인 자동 생성 대기실                 |
-| `C0-JOINED`          | 전원   | 세 닉네임, `MP1` 방장, 세 파티 동기화 완료, 전원 준비 전, 타이머 미시작         |
-| `C1-PARTIAL-READY`   | `MP1`  | 두 명 ready와 비활성 시작 버튼                                                  |
-| `C1-ALL-READY`       | 전원   | 전원 ready와 `MP1`에게만 활성인 시작 버튼                                       |
-| `C1-WORLD`           | 전원   | 같은 준비 종료 시각, Desktop Chromium·Mobile Chromium·Mobile WebKit 이동 동기화 |
-| `C2-BYE`             | 전원   | seed 1 부전승, seed 2 대 3 대진, 참가·비참가 화면                               |
-| `C2-FIRST-ACTION`    | 참가자 | 두 실제 UI 입력과 2xx 응답, submitted 또는 즉시 상태 전진                       |
-| `C2-FIRST-TERMINAL`  | 전원   | 첫 대진 승자, 원시 terminal HP 상태, 결승 대진, 라운드 점수 미확정              |
-| `C2-FIRST-CONFIRMED` | 전원   | 결과 확인 뒤 승자의 결승 battle, 패자의 world, 비참가자의 action 없음           |
-| `C2-ROUND-RESULT`    | 전원   | 결승 뒤 게임 라운드별 우승자, 확정 점수, 누적 순위                              |
-| `C3-FINAL`           | 전원   | 세 화면의 같은 최종 순위와 우승자                                               |
-| `C3-CLEANUP`         | 전원   | 순차 leave 성공, 입장 화면 복귀, room `closed`, 전원 `connected=false`          |
+| checkpoint           | 담당   | 필수 증적                                                                 |
+| -------------------- | ------ | ------------------------------------------------------------------------- |
+| `C0-HOST`            | `MP1`  | `MP1` 한 명, 방장, 파티 동기화 완료, 준비 전인 자동 생성 대기실           |
+| `C0-JOINED`          | 전원   | 세 닉네임, `MP1` 방장, 세 파티 동기화 완료, 전원 준비 전, 타이머 미시작   |
+| `C1-PARTIAL-READY`   | `MP1`  | 두 명 ready와 비활성 시작 버튼                                            |
+| `C1-ALL-READY`       | 전원   | 전원 ready와 `MP1`에게만 활성인 시작 버튼                                 |
+| `C1-WORLD`           | 전원   | 같은 준비 종료 시각, Desktop Chromium 1개·Mobile Chromium 2개 이동 동기화 |
+| `C2-BYE`             | 전원   | seed 1 부전승, seed 2 대 3 대진, 참가·비참가 화면                         |
+| `C2-FIRST-ACTION`    | 참가자 | 두 실제 UI 입력과 2xx 응답, submitted 또는 즉시 상태 전진                 |
+| `C2-FIRST-TERMINAL`  | 전원   | 첫 대진 승자, 원시 terminal HP 상태, 결승 대진, 라운드 점수 미확정        |
+| `C2-FIRST-CONFIRMED` | 전원   | 결과 확인 뒤 승자의 결승 battle, 패자의 world, 비참가자의 action 없음     |
+| `C2-ROUND-RESULT`    | 전원   | 결승 뒤 게임 라운드별 우승자, 확정 점수, 누적 순위                        |
+| `C3-FINAL`           | 전원   | 세 화면의 같은 최종 순위와 우승자                                         |
+| `C3-CLEANUP`         | 전원   | 순차 leave 성공, 입장 화면 복귀, room `closed`, 전원 `connected=false`    |
 
 각 screenshot은 시나리오 ID, browser, viewport와 시각을 함께 기록한다. 추가로 다음 JSON 또는
 로그를 남긴다.
 
 - commit SHA와 배포 URL
-- 실행 seed와 플레이어별 Desktop Chromium·Mobile Chromium·Mobile WebKit 배정 결과
+- 실행 seed와 플레이어별 Desktop Chromium 1개·Mobile Chromium 2개 배정 결과
 - 공개 participant 수와 room status
 - 예상된 409 한 건과 `POKE_LOUNGE_ROOM_FULL` code
 - 자동 party snapshot, 수동 ready·start와 session action 요청 경로, competitive seat 요청 건수 0

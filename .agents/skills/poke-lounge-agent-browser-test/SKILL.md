@@ -60,9 +60,12 @@ them unless the user asks.
    values.
 7. During the shared-world checkpoint, never send a direction input while a shortcut or mobile guide is open. Close
    the guide through its canonical control, verify the help is gone, and only then send the designated movement once.
-   For Desktop, focus the canvas and use `keydown <Arrow>`, `wait 50`, then `keyup <Arrow>`; always release the key
-   even if an intermediate command fails, and do not use the zero-hold `press` command for movement. Retry movement
-   once only when no coordinate or direction change is observed.
+   For Desktop, focus the canvas and run
+   `node .agents/skills/poke-lounge-agent-browser-test/scripts/desktop-arrow-hold.mjs <session> <Arrow>` once. The
+   helper uses the official `agent-browser` stream input to hold and release a physical arrow for 50ms. Do not use
+   CLI `keydown` for arrows in `agent-browser` 0.34.0 because it emits no physical key code, and do not use the
+   zero-hold `press` command for movement. Retry movement once only when no coordinate or direction change is
+   observed.
 8. After each battle UI procedure, watch up to five seconds for its `session-actions` request. If no request appears,
    capture the current phase and focus, then repeat the complete UI procedure exactly once; do not wait passively for
    the turn deadline. If the retry also emits no request, report `CODE-FAIL`. After any 2xx, never retry that turn.

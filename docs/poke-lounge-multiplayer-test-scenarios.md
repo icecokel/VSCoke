@@ -418,9 +418,11 @@ route로 바꾸지 않는다. 전체 response, 방 코드, `playerId`, `sessionI
    제거를 확인한다. guide를 닫은 뒤 설정을 열어 소리 control을 `소리 꺼짐`으로 맞추고 접근성 이름
    `소리 음소거`를 확인한 뒤 설정을 닫아 `AUDIO-MUTED`를 보고한다. 입력 전 화면 경계·장애물을 피한
    이동 가능 방향 중 현재 avatar가 바라보는 방향과 다른 방향을 고른다. Desktop은 canvas focus 뒤
-   `agent-browser keydown <Arrow>`, `agent-browser wait 50`, `agent-browser keyup <Arrow>` 순서로 50ms 동안
-   입력하고 중간 명령이 실패해도 같은 방향의 `keyup`을 반드시 수행한다. 유지 시간이 없는 `press`는
-   이동에 사용하지 않는다. Mobile은 해당 joystick 방향을 100ms 이하로 한 번 입력한다. 변화가
+   `node .agents/skills/poke-lounge-agent-browser-test/scripts/desktop-arrow-hold.mjs <session> <Arrow>`를 한 번
+   실행한다. 이 helper는 공식 `agent-browser` stream 입력으로 물리 방향키 code를 포함한 keyDown을 보내고
+   50ms 뒤 같은 키의 keyUp을 보장한다. `agent-browser` 0.34.0의 CLI `keydown`은 방향키의 물리 code를
+   보내지 않으므로 사용하지 않고, 유지 시간이 없는 `press`도 이동에 사용하지 않는다. Mobile은 해당
+   joystick 방향을 100ms 이하로 한 번 입력한다. 변화가
    없을 때만 같은 방향으로 한 번 더 입력하고 다른 두 화면에 avatar 좌표·방향이 반영되는지 확인한다. 경계·장애물 방향이나 현재 바라보는 방향을 골라
    좌표·방향 변화를 만들지 못하면 `TEST-RUNNER`로 중단한다. 각 runner는 자신의 시작 전환을 관찰하면
    다른 runner의 timing field나 이동

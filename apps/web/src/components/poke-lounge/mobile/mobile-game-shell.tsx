@@ -138,6 +138,7 @@ interface MobileSettingsProps {
   rankingStatus: "idle" | "loading" | "ready" | "error";
   roomShareAvailable: boolean;
   roomShareStatus: "idle" | "success" | "error";
+  volumeAriaLabel: string;
   volumeLabel: string;
 }
 
@@ -1146,6 +1147,7 @@ function MobileSettingsScreen({
   rankingStatus,
   roomShareAvailable,
   roomShareStatus,
+  volumeAriaLabel,
   volumeLabel,
 }: MobileSettingsProps & { copy: PokeLoungeCopy }) {
   if (!open) {
@@ -1175,7 +1177,12 @@ function MobileSettingsScreen({
       </header>
       <p className={styles.settingsDescription}>{copy.settingsDescription}</p>
       <div className={styles.settingsOptions}>
-        <Button type="button" variant="outline" onClick={onVolumeCycle}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onVolumeCycle}
+          aria-label={volumeAriaLabel}
+        >
           {volumeLabel}
         </Button>
         {roomShareAvailable ? (

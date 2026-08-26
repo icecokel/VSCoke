@@ -518,6 +518,7 @@ test("Poke Lounge 모바일은 세로 필드와 전체 화면 메뉴를 제공�
     .toBeCloseTo(0.24);
   await volumeButton.click();
   await expect(volumeButton).toHaveText("소리 꺼짐");
+  await expect(volumeButton).toHaveAccessibleName("소리 음소거");
   await expect.poll(async () => (await readAudioPlaybackSnapshot(page))?.activeBgmVolume).toBe(0);
   await expectSceneOccludesControl(settingsScreen, controls);
   await expectNoModalDialog(page);

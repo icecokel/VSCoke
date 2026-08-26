@@ -285,6 +285,7 @@ export function PokeLoungeGame() {
   const volumeValue = POKE_LOUNGE_VOLUME_STEPS[volumeLevelIndex];
   const volumePercent = Math.round(volumeValue * 100);
   const volumeLabel = volumePercent === 0 ? copy.volumeMuted : copy.volumeLabel(volumePercent);
+  const volumeAriaLabel = copy.volumeAriaLabel(volumePercent);
   const uiSizeLabel = uiSize === "large" ? copy.uiLarge : copy.uiNormal;
   const roomShareUrl = settingsOpen ? createPokeLoungeRoomShareUrlFromLocation() : null;
   const localRoomShare =
@@ -1262,6 +1263,7 @@ export function PokeLoungeGame() {
             rankingStatus,
             roomShareAvailable: Boolean(roomShareUrl),
             roomShareStatus,
+            volumeAriaLabel,
             volumeLabel,
           }}
         />
@@ -1411,7 +1413,7 @@ export function PokeLoungeGame() {
                 variant="outline"
                 className={styles.settingsOptionButton}
                 onClick={handleVolumeCycle}
-                aria-label={copy.volumeAriaLabel(volumePercent)}
+                aria-label={volumeAriaLabel}
                 data-poke-lounge-setting-option="true"
                 data-poke-lounge-setting-action="volume"
                 data-poke-lounge-volume-level={volumeLevelIndex}

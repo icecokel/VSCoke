@@ -451,15 +451,17 @@ route로 바꾸지 않는다. 전체 response, 방 코드, `playerId`, `sessionI
 5. 첫 대진 terminal 화면에서 같은 승자와 양 참가자의 원시 terminal HP 상태를 캡처한다. 서버가
    이미 결승을 배정했더라도 이 시점의 로컬 terminal 화면은 정상이다.
 6. 로컬 `phase=ended`, `result` 존재와 화면 결과 control을 모두 확인한 시점을 UI terminal
-   checkpoint로 삼아 승자와 패자가 먼저 결과를 캡처한다. 같은 UUID의 서버 완료 증적은 마지막
-   action 2xx response의 `status=completed`·`terminal`, room `competitiveTransitions` 또는 완료된
-   bracket match history 중 하나에서 별도로 확인한다. atomic bracket 전진으로 현재 active
-   competitive projection이 이미 다음 match `pending`이어도 정상이다. 캡처가 끝나기 전에는 키나
-   touch를 보내지 않는다. 그 뒤 Desktop은 canvas focus 후 Enter, Mobile은 화면의 `다음`을 정확히
-   한 번 입력하고 scene·match가 바뀔 때까지 추가 입력을 금지한다. 이 캡처·결과 확인은 각 runner가
-   연속 수행하고 관리자 승인을 기다리지 않는다. 승자는 `MP1`과의 결승 battle로, 패자는 world로
-   전환하고 전투 action control이 없어야 한다. 세 화면에서 같은 결승 대진을 확인한다. 이 시점에는
-   게임 라운드 점수가 아직 확정되지 않는다.
+   checkpoint로 삼아 승자와 패자가 먼저 결과를 캡처한다. visible·enabled 결과 control이 남아 있는
+   동안에는 page reload를 금지하며 캡처가 끝나기 전에는 키나 touch를 보내지 않는다. 캡처 뒤
+   Desktop은 canvas focus 후 Enter, Mobile은 화면의 `다음`을 정확히 한 번 입력하고 scene·match가
+   바뀔 때까지 추가 입력을 금지한다. 같은 UUID의 서버 완료 증적은 마지막 action 2xx response의
+   `status=completed`·`terminal`, room `competitiveTransitions` 또는 완료된 bracket match history 중
+   하나에서 별도로 확인한다. 결과 확인 뒤에도 최신 projection이 없을 때만 안정된 전환 장면에서
+   page reload를 정확히 한 번 수행해 자동 room GET을 관찰한다. atomic bracket 전진으로 현재 active
+   competitive projection이 이미 다음 match `pending`이어도 정상이다. 이 캡처·결과 확인은 각
+   runner가 연속 수행하고 관리자 승인을 기다리지 않는다. 승자는 `MP1`과의 결승 battle로, 패자는
+   world로 전환하고 전투 action control이 없어야 한다. 세 화면에서 같은 결승 대진을 확인한다. 이
+   시점에는 게임 라운드 점수가 아직 확정되지 않는다.
 7. 결승 참가자들은 새 match의 `command`, turn 0과 입력 control을 확인하고 정확한
    `ACTION-ARMED`를 공유 관리자 채널에 보고한다. 관리자의 `ACTION-GO` 뒤 2~4의 행동 규칙으로
    terminal까지 진행한다. 결승 terminal도 6의 캡처 → 결과 확인 1회 → 추가 입력 금지 순서를

@@ -53,9 +53,12 @@ them unless the user asks.
 6. Read authoritative room fields from browser-completed request/response detail as documented in the canonical
    scenario. This is passive inspection: do not issue `fetch`, replay a request, or route/mock it. If the latest
    projection is missing, reload the UI once within the reconnect grace and inspect the page's automatic room GET.
-   Report only the documented field whitelist; never save the full response or sensitive identity values.
-7. On `DOC-GAP`, `CODE-FAIL`, or `INFRA-BLOCKED`, preserve safe evidence and report the classification. Resume
-   only from a documented safe checkpoint; never fabricate progress.
+   When a visible, enabled result control still requires canonical confirmation, do not reload: capture and confirm
+   it exactly once, wait for the stable post-transition scene, and only then use the one allowed reload if evidence
+   is still missing. Report only the documented field whitelist; never save the full response or sensitive identity
+   values.
+7. On `DOC-GAP`, `CODE-FAIL`, `TEST-RUNNER`, or `INFRA-BLOCKED`, preserve safe evidence and report the
+   classification. Resume only from a documented safe checkpoint; never fabricate progress.
 
 Close only the named sessions created by the run after in-game cleanup is complete. Report environment
 assignments, checkpoints, winner and rankings, connection recovery, captured evidence, and defects as one final

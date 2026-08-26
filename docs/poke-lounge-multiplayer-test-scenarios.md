@@ -308,16 +308,18 @@ route로 바꾸지 않는다. 전체 response, 방 코드, `playerId`, `sessionI
 2. `LUNA-1`~`LUNA-3`의 `Luna xhigh` runner 3개를 구성하고 환경 seed로 Desktop Chromium 1개와
    Mobile Chromium 2개를 섞어 배정한다. 각 runner는 하나의 플레이어 context를 소유하며 루트는
    어떤 경우에도 플레이어가 되지 않는다.
-3. 각 runner는 배정된 모든 context에서 Poke Lounge 화면을 연 직후, 방 접속·ready·게임 입력보다
-   먼저 배정된 viewport와 Mobile touch emulation을 확인하고 named session의 network log를 비운 뒤
-   설정을 연다. 소리 control을 `소리 꺼짐`으로 맞추고 접근성 이름이 `소리 음소거`인지 확인한 뒤
-   설정을 닫는다. 이미 꺼져 있으면 추가로 누르지 않는다. 완료한 플레이어마다 `AUDIO-MUTED <MP 역할>`을
-   보고하고, 모든 보고가 모인 뒤에만 `ENV-READY`로 진행한다.
+3. 각 runner는 배정된 context에서 Poke Lounge 입장 화면을 연 직후 배정된 viewport와 Mobile touch
+   emulation을 확인하고 named session의 network log를 비운 뒤 `ENV-READY`를 보고한다. 공개 입장
+   화면에는 설정 control이 없으므로 자동 방 입장과 스타터 선택 뒤 설정이 처음 노출되면 ready·시작·
+   이동·전투 입력 전에 즉시 연다. 소리 control을 `소리 꺼짐`으로 맞추고 접근성 이름이
+   `소리 음소거`인지 확인한 뒤 설정을 닫는다. 이미 꺼져 있으면 추가로 누르지 않는다. 완료한
+   플레이어마다 `AUDIO-MUTED <MP 역할>`을 보고한다.
 4. `MP1` runner가 최초 접속과 자동 방 생성을 담당하는 방장이다. 루트 오케스트레이터를 `MP1`,
    방장 또는 플레이어 슬롯으로 계산하지 않는다.
-5. 루트는 `ENV-READY` 보고를 모두 받은 뒤 `MP1`에게 방 생성을 지시하고, `C0-HOST`를 확인한 뒤
-   후속 참가를 순서대로 허용한다. ready·시작·대진 전환은 해당 checkpoint의 전원 보고가 모인
-   뒤에만 다음 단계로 진행한다.
+5. 루트는 `ENV-READY` 보고를 모두 받은 뒤 `MP1`에게 방 생성을 지시하고, `C0-HOST`와 해당
+   `AUDIO-MUTED`를 확인한 뒤 후속 참가를 순서대로 허용한다. 각 후속 참가자도 party snapshot과
+   `AUDIO-MUTED`를 보고해야 다음 참가자를 허용한다. ready·시작·대진 전환은 해당 checkpoint의
+   전원 보고가 모인 뒤에만 다음 단계로 진행한다.
 6. 전투 첫 turn은 두 참가자의 `ACTION-ARMED`를 대조한 뒤 루트가 같은 `matchId`와 turn의
    `ACTION-GO`를 한 번 보낸다. 이후 turn은 각 runner가 서버 phase와 turn 전진을 따라 진행하며
    루트가 플레이 입력을 대신하지 않는다.
@@ -388,15 +390,16 @@ route로 바꾸지 않는다. 전체 response, 방 코드, `playerId`, `sessionI
 #### C0 방 생성·순차 참가
 
 1. `MP1`만 입장 화면을 열어 닉네임과 `PW_A`를 제출한다. 자동 방 생성 뒤 스타터 선택 화면이
-   열리면 첫 번째 스타터를 확정하고 party snapshot 동기화가 끝날 때까지 기다린다.
+   열리면 첫 번째 스타터를 확정하고 party snapshot 동기화가 끝날 때까지 기다린다. 설정이 노출되면
+   소리를 끄고 `AUDIO-MUTED MP1`을 보고한다.
 2. 분산 실행에서는 방 생성 요청 body에 `roundDurationMs`가 없고 서버 room의 `durationMs`가
    `300000`인지 확인한다. 단일 자동화에서는 요청과 서버 값이 모두 `30000`인지 확인한다. 이전
    route 값이 남아 기준과 다르면 제품 assertion 전에 중단·정리하고 `INFRA-BLOCKED`로 보고한다.
 3. `MP1`은 대기실에서 자신이 유일한 참가자이자 방장이고 파티 동기화가 완료됐음을 캡처한 뒤
    관리자에게 `C0-HOST`를 보고한다.
 4. 관리자 승인 뒤 `MP2`, 이어서 `MP3`이 서로 다른 context에서 닉네임과 같은 `PW_A`를
-   제출한다. 각자 스타터 선택 화면에서 첫 번째 스타터를 확정하고 자신의 party snapshot
-   동기화 완료를 보고한 뒤에만 다음 플레이어가 참가한다.
+   제출한다. 각자 스타터 선택 화면에서 첫 번째 스타터를 확정하고 자신의 party snapshot 동기화와
+   `AUDIO-MUTED`를 보고한 뒤에만 다음 플레이어가 참가한다.
 5. 각 참가자는 세 닉네임, `MP1` 방장, 세 파티 동기화 완료, 모두 준비 전, 타이머 미시작을 자기
    화면에서 확인하고 `C0-JOINED`를 보고한다.
 

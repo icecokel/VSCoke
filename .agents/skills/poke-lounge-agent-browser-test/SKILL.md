@@ -30,8 +30,10 @@ them unless the user asks.
   `set device "iPhone 12"`, then open the target URL. Verify viewport `390x844` and
   `navigator.maxTouchPoints > 0` before room entry. Firefox is excluded. A narrow viewport without the reviewed
   touch init script is not Mobile Web and must not report `ENV-READY`.
-- Open settings and turn sound off in every player session before room entry. Report `AUDIO-MUTED <MP role>`
-  only after verifying that session's control state.
+- The public entry screen does not expose settings. After automatic room entry and starter selection first expose
+  settings, open them and turn sound off before ready, start, movement, or battle input. Report
+  `AUDIO-MUTED <MP role>` only after verifying that session's control state, and do not admit the next player until
+  the current player has reported it.
 - The orchestrator does not occupy a player session unless the user explicitly asks it to play. One runner may
   own multiple named sessions when the requested player count exceeds the available agent concurrency.
 

@@ -413,7 +413,9 @@ route로 바꾸지 않는다. 전체 response, 방 코드, `playerId`, `sessionI
    shortcut guide가 열려 있으면 `Escape`를 정확히 한 번 입력해 `shortcutGuideOpen=false`와 help UI
    제거를 확인한다. Desktop은 canvas focus 뒤 방향키를 100ms 이하, Mobile은 joystick 방향을 100ms
    이하로 한 번 입력한다. 변화가 없을 때만 한 번 더 입력하고 다른 두 화면에 avatar 좌표·방향이
-   반영되는지 확인한다.
+   반영되는지 확인한다. 세 runner는 시작 timing field 보고가 모이면 서로의 이동 완료를 기다리지
+   않고 이 절차를 병렬로 수행하며, 루트는 전원 완료 뒤 동기화 증적을 대조한다. 준비
+   `endsAtMs` 전에 전원 checkpoint를 끝내지 못하면 `TEST-RUNNER`로 중단한다.
 5. 이동으로 야생전이 열리면 해당 화면을 캡처하되 파티 상태를 바꿀 수 있는 battle command를
    입력하지 않는다. 다른 두 플레이어의 world 진행이 유지되는지 확인하고 서버 경쟁 대진을
    기다린다. 첫 대진 참가자에게 competitive assignment가 생기면 로컬 야생전 대신 해당 전투가,
@@ -496,9 +498,10 @@ route로 바꾸지 않는다. 전체 response, 방 코드, `playerId`, `sessionI
   중단하고 브라우저·서버 상태와 문서 위치만 보고한다.
 - `CODE-FAIL`: 문서와 제품 규칙의 기대 결과는 명확하지만 화면, API, Socket 또는 DB가 다르게
   동작한다. 안전한 다음 checkpoint까지 증적을 보존한 뒤 관리자가 계속 여부를 정한다.
-- `TEST-RUNNER`: `ACTION-GO` 전 입력, 2xx 뒤 같은 turn 재입력 또는 지정하지 않은 UI 입력처럼
-  runner가 절차를 위반했다. 제품 실패로 세지 않고 새 입력을 즉시 중단해 증적을 보존한 뒤 room을
-  정리하고 같은 seed·환경 배정·파티·행동 순서로 처음부터 다시 실행한다.
+- `TEST-RUNNER`: `ACTION-GO` 전 입력, 2xx 뒤 같은 turn 재입력, 지정하지 않은 UI 입력 또는 서버
+  phase 전환 전에 필수 checkpoint를 끝내지 못한 경우처럼 runner가 절차를 위반했다. 제품 실패로
+  세지 않고 새 입력을 즉시 중단해 증적을 보존한 뒤 room을 정리하고 같은 seed·환경 배정·파티·행동
+  순서로 처음부터 다시 실행한다.
 - `INFRA-BLOCKED`: 브라우저 실행 파일, 격리 DB, 포트 또는 서버 기동 문제로 제품 동작에 도달하지
   못했거나 이전 실행의 request route가 새 fixture를 오염시켰다. 제품 실패로 세지 않고 환경 로그를
   남긴다.

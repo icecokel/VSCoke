@@ -412,9 +412,12 @@ route로 바꾸지 않는다. 전체 response, 방 코드, `playerId`, `sessionI
 4. Mobile은 `모바일 조작` deck이 열려 있으면 접근성 이름 `뒤로` control로 먼저 닫고
    `shortcutGuideOpen=false`, world-help 제거, explore deck과 joystick 표시를 확인한다. Desktop도
    shortcut guide가 열려 있으면 `Escape`를 정확히 한 번 입력해 `shortcutGuideOpen=false`와 help UI
-   제거를 확인한다. Desktop은 canvas focus 뒤 방향키를 100ms 이하, Mobile은 joystick 방향을 100ms
-   이하로 한 번 입력한다. 변화가 없을 때만 한 번 더 입력하고 다른 두 화면에 avatar 좌표·방향이
-   반영되는지 확인한다. 각 runner는 자신의 시작 전환을 관찰하면 다른 runner의 timing field나 이동
+   제거를 확인한다. 입력 전 화면 경계·장애물을 피한 이동 가능 방향 중 현재 avatar가 바라보는 방향과
+   다른 방향을 고른다. Desktop은 canvas focus 뒤 해당 방향키를 100ms 이하, Mobile은 해당 joystick
+   방향을 100ms 이하로 한 번 입력한다. 변화가 없을 때만 같은 방향으로 한 번 더 입력하고 다른 두
+   화면에 avatar 좌표·방향이 반영되는지 확인한다. 경계·장애물 방향이나 현재 바라보는 방향을 골라
+   좌표·방향 변화를 만들지 못하면 `TEST-RUNNER`로 중단한다. 각 runner는 자신의 시작 전환을 관찰하면
+   다른 runner의 timing field나 이동
    보고를 기다리지 않고 이 절차까지 연속·병렬 수행한다. 루트는 전원 보고 뒤 timing field와 동기화
    증적을 대조한다. 준비 `endsAtMs` 전에 전원 checkpoint를 끝내지 못하면 `TEST-RUNNER`로 중단한다.
 5. 이동으로 야생전이 열리면 해당 화면을 캡처하되 파티 상태를 바꿀 수 있는 battle command를

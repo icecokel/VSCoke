@@ -325,8 +325,9 @@ route로 바꾸지 않는다. 전체 response, 방 코드, `playerId`, `sessionI
    한 사이클을 진행한다. 제품의 준비 시간, turn deadline과 재접속 유예는 그대로 지킨다.
 8. 각 runner는 필수 checkpoint와 연결 중단·REST 복구·Socket 재구독 전후 화면을 캡처한다. 루트는
    실행 ID, `MP` 역할, 환경, checkpoint와 시각을 대조하고 민감값을 제거한 증적만 취합한다.
-9. runner가 `DOC-GAP`, `CODE-FAIL` 또는 `INFRA-BLOCKED`를 보고하면 루트가 중단·재현·계속 여부를
-   결정한다. 내부 API로 행동이나 승패를 대신 만들지 않으며, 안전한 checkpoint부터만 재개한다.
+9. runner가 `DOC-GAP`, `CODE-FAIL`, `TEST-RUNNER` 또는 `INFRA-BLOCKED`를 보고하면 루트가
+   중단·재현·계속 여부를 결정한다. 내부 API로 행동이나 승패를 대신 만들지 않으며, 안전한
+   checkpoint부터만 재개한다.
 10. 루트는 중간 진행을 결과 보고로 간주하지 않는다. 우승자 확정과 room 정리가 끝난 뒤 환경별
     성공 여부, 최종 순위, 연결 복구 결과, 캡처와 결함만 하나의 최종 보고로 전달한다.
 
@@ -495,6 +496,9 @@ route로 바꾸지 않는다. 전체 response, 방 코드, `playerId`, `sessionI
   중단하고 브라우저·서버 상태와 문서 위치만 보고한다.
 - `CODE-FAIL`: 문서와 제품 규칙의 기대 결과는 명확하지만 화면, API, Socket 또는 DB가 다르게
   동작한다. 안전한 다음 checkpoint까지 증적을 보존한 뒤 관리자가 계속 여부를 정한다.
+- `TEST-RUNNER`: `ACTION-GO` 전 입력, 2xx 뒤 같은 turn 재입력 또는 지정하지 않은 UI 입력처럼
+  runner가 절차를 위반했다. 제품 실패로 세지 않고 새 입력을 즉시 중단해 증적을 보존한 뒤 room을
+  정리하고 같은 seed·환경 배정·파티·행동 순서로 처음부터 다시 실행한다.
 - `INFRA-BLOCKED`: 브라우저 실행 파일, 격리 DB, 포트 또는 서버 기동 문제로 제품 동작에 도달하지
   못했거나 이전 실행의 request route가 새 fixture를 오염시켰다. 제품 실패로 세지 않고 환경 로그를
   남긴다.

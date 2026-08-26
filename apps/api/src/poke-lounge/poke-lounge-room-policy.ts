@@ -160,21 +160,12 @@ export function expirePendingPokeLoungePresence(
   }
 
   const expired = structuredClone(room);
-  if (expired.status === 'waiting' || expired.status === 'round-started') {
+  if (expired.status === 'waiting') {
     expired.participants = expired.participants.filter(
       (participant) => !expiredPlayerIds.has(participant.playerId),
     );
     for (const playerId of expiredPlayerIds) {
       delete expired.partySnapshots[playerId];
-    }
-    if (
-      expired.status === 'round-started' &&
-      expired.participants.filter(
-        (participant) =>
-          participant.role === 'participant' && participant.connected,
-      ).length < 2
-    ) {
-      resetPokeLoungeRoundPreparation(expired);
     }
   } else {
     for (const participant of expired.participants) {
@@ -183,6 +174,7 @@ export function expirePendingPokeLoungePresence(
         participant.ready = false;
         participant.leftAtMs = nowMs;
         delete participant.presencePendingUntilMs;
+        delete participant.presenceEpoch;
       }
     }
     if (
@@ -196,7 +188,7 @@ export function expirePendingPokeLoungePresence(
   expired.updatedAtMs = nowMs;
   expired.revision = room.revision + 1;
   if (
-    (expired.status === 'waiting' || expired.status === 'round-started') &&
+    expired.status === 'waiting' &&
     !expired.participants.some(
       (participant) =>
         participant.connected &&

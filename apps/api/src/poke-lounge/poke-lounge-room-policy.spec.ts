@@ -129,6 +129,51 @@ describe('PokeLoungeRoomPolicy', () => {
     );
   });
 
+  it('keeps an unacknowledged round resume reclaimable after its pending lease expires', () => {
+    const pendingUntilMs = 2_000;
+    const room = createSnapshot({
+      status: 'round-started',
+      participants: [
+        {
+          ...createParticipant('player-1', 1),
+          presencePendingUntilMs: pendingUntilMs,
+          presenceEpoch: 'stale-epoch',
+        },
+        createParticipant('player-2', 2),
+      ],
+      partySnapshots: createTestPartySnapshots(['player-1', 'player-2']),
+      round: {
+        index: 1,
+        phase: 'round-started',
+        durationMs: 300_000,
+        startedAtMs: 0,
+        endsAtMs: 300_000,
+      },
+    });
+
+    const expired = expirePendingPokeLoungePresence(room, pendingUntilMs);
+
+    expect(expired).toMatchObject({
+      status: 'round-started',
+      participants: [
+        {
+          playerId: 'player-1',
+          connected: false,
+          ready: false,
+          leftAtMs: pendingUntilMs,
+        },
+        { playerId: 'player-2', connected: true },
+      ],
+    });
+    expect(expired?.partySnapshots['player-1']).toMatchObject({
+      playerId: 'player-1',
+    });
+    expect(expired?.participants[0]).not.toHaveProperty(
+      'presencePendingUntilMs',
+    );
+    expect(expired?.participants[0]).not.toHaveProperty('presenceEpoch');
+  });
+
   it('turns an expired tournament rejoin lease offline and converges its casual match', () => {
     const pendingUntilMs = 2_000;
     const participants = [

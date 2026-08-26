@@ -904,6 +904,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     const socket = createSocket();
     const snapshots = createRoomSnapshots();
     let configuredTransports: string[] | null = null;
+    let tryAllTransports = false;
     let ready = false;
     const fetchFixture: typeof fetch = async input => {
       const url = new URL(typeof input === "string" ? input : input.toString());
@@ -917,6 +918,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
       fetch: fetchFixture,
       socketFactory: (_url, socketOptions) => {
         configuredTransports = [...socketOptions.transports];
+        tryAllTransports = socketOptions.tryAllTransports;
         return socket;
       },
     });
@@ -938,7 +940,8 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     assert.equal(getServerRoomTransportDiagnosticsForE2e(room)?.lastAppliedTerminalRevision, null);
     room.connect(createPlayerSnapshot());
     await waitFor(() => ready && socket.subscriptions().length > 0);
-    assert.deepEqual(configuredTransports, ["websocket"]);
+    assert.deepEqual(configuredTransports, ["websocket", "polling"]);
+    assert.equal(tryAllTransports, true);
     await waitFor(() => {
       const diagnostics = getServerRoomTransportDiagnosticsForE2e(room ?? undefined);
       return diagnostics?.socketConnected === true && diagnostics.recoveryInFlight === false;
@@ -996,6 +999,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     assert.equal(connectionStatuses.at(-1), "offline");
     assert.equal(connectionStore.getState().session.connectionStatus, "offline");
 
+    socket.setActiveTransport("polling");
     socket.reconnectFromServer();
     await waitFor(() => {
       const diagnostics = getServerRoomTransportDiagnosticsForE2e(room ?? undefined);
@@ -1004,7 +1008,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     assert.deepEqual(getServerRoomTransportDiagnosticsForE2e(room), {
       socketConnected: true,
       transportState: "connected",
-      activeTransport: "websocket",
+      activeTransport: "polling",
       recoveryAttempt: 0,
       recoveryInFlight: false,
       recoveryTimerScheduled: false,
@@ -1018,6 +1022,7 @@ test("E2E socket transport diagnostics는 query guard와 sanitized state transit
     });
     assert.equal(connectionStatuses.at(-1), "online");
     assert.equal(connectionStore.getState().session.connectionStatus, "online");
+    socket.setActiveTransport("websocket");
 
     const additionalConnectErrorClasses: Array<
       [error: unknown, expected: "timeout" | "server_reject" | "cors" | "unknown"]

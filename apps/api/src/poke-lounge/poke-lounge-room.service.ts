@@ -366,7 +366,9 @@ export class PokeLoungeRoomService {
             ) {
               throw new PokeLoungePresenceMutationCancelled();
             }
-            return applyParticipantLeave(current, currentParticipant, nowMs);
+            return applyParticipantLeave(current, currentParticipant, nowMs, {
+              preserveRoundParticipant: true,
+            });
           },
         });
         return;
@@ -1026,6 +1028,7 @@ function applyParticipantLeave(
   room: PokeLoungeRoomSnapshot,
   participant: PokeLoungeRoomParticipant,
   nowMs: number,
+  options: { preserveRoundParticipant?: boolean } = {},
 ): PokeLoungeRoomSnapshot {
   participant.connected = false;
   participant.ready = false;
@@ -1034,7 +1037,10 @@ function applyParticipantLeave(
   delete participant.presenceEpoch;
   room.updatedAtMs = nowMs;
 
-  if (room.status === 'waiting' || room.status === 'round-started') {
+  if (
+    room.status === 'waiting' ||
+    (room.status === 'round-started' && !options.preserveRoundParticipant)
+  ) {
     room.participants = room.participants.filter(
       (row) => row.playerId !== participant.playerId,
     );
@@ -1047,6 +1053,7 @@ function applyParticipantLeave(
 
   if (
     room.status === 'round-started' &&
+    !options.preserveRoundParticipant &&
     room.participants.filter(
       (row) => row.role === 'participant' && row.connected,
     ).length < 2
@@ -1054,7 +1061,10 @@ function applyParticipantLeave(
     resetPokeLoungeRoundPreparation(room);
   }
 
-  if (!room.participants.some((row) => row.connected)) {
+  if (
+    !room.participants.some((row) => row.connected) &&
+    !(room.status === 'round-started' && options.preserveRoundParticipant)
+  ) {
     room.status = 'closed';
     room.round.phase = 'completed';
   }

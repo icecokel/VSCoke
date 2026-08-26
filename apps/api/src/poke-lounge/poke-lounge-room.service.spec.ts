@@ -996,6 +996,88 @@ describe('PokeLoungeRoomService', () => {
     });
   });
 
+  it('keeps a disconnected round participant reclaimable across failed resume leases', async () => {
+    await createRoom({ roundDurationMs: 300_000 });
+    await service.joinRoom(
+      'ROOM01',
+      { playerId: 'player-2', sessionId: 'session-2', nowMs: 10 },
+      command(0, 2),
+    );
+    await updateTestParty('player-1', 'session-1', 1, 32, 20);
+    await updateTestParty('player-2', 'session-2', 2, 33, 30);
+    await service.setReady(
+      'ROOM01',
+      { playerId: 'player-1', sessionId: 'session-1', ready: true, nowMs: 100 },
+      command(3, 3),
+    );
+    const bothReady = await service.setReady(
+      'ROOM01',
+      { playerId: 'player-2', sessionId: 'session-2', ready: true, nowMs: 200 },
+      command(4, 4),
+    );
+    const started = await service.startRoom(
+      'ROOM01',
+      { playerId: 'player-1', sessionId: 'session-1', nowMs: 300 },
+      command(bothReady.revision, 5),
+    );
+
+    currentTimeMs = 400;
+    await service.expireParticipantPresence('ROOM01', 'player-2', 'session-2');
+    const firstResume = await service.createRoom(
+      {
+        roomCode: 'ROOM01',
+        playerId: 'player-2',
+        sessionId: 'session-2',
+        nowMs: 500,
+      },
+      command(0, 6),
+      { requireSocketAcknowledgement: true },
+    );
+
+    currentTimeMs = 500 + 15_000;
+    const failedResumeExpired = await service.getRoom('ROOM01');
+    const secondResume = await service.createRoom(
+      {
+        roomCode: 'ROOM01',
+        playerId: 'player-2',
+        sessionId: 'session-2',
+        nowMs: currentTimeMs + 1,
+      },
+      command(0, 7),
+      { requireSocketAcknowledgement: true },
+    );
+    const acknowledged = await service.acknowledgeParticipantPresence(
+      'ROOM01',
+      'player-2',
+      'session-2',
+      secondResume.revision,
+    );
+
+    expect(started.status).toBe('round-started');
+    expect(firstResume.participants).toHaveLength(2);
+    expect(failedResumeExpired.status).toBe('round-started');
+    expect(
+      failedResumeExpired.participants.find(
+        (participant) => participant.playerId === 'player-2',
+      ),
+    ).toMatchObject({
+      playerId: 'player-2',
+      connected: false,
+    });
+    expect(acknowledged.status).toBe('round-started');
+    expect(
+      acknowledged.participants.find(
+        (participant) => participant.playerId === 'player-2',
+      ),
+    ).toMatchObject({
+      playerId: 'player-2',
+      connected: true,
+    });
+    expect(acknowledged.partySnapshots['player-2']).toMatchObject({
+      playerId: 'player-2',
+    });
+  });
+
   it('allows an existing player with the same session to reconnect during a tournament', async () => {
     const tournament = await createTournament();
 

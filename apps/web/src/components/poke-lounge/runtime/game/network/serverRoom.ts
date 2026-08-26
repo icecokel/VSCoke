@@ -116,7 +116,8 @@ type ServerRoomSocketFactory = (
   url: string,
   options: {
     path: "/socket.io";
-    transports: ["websocket"];
+    transports: ["websocket", "polling"];
+    tryAllTransports: true;
     reconnection: true;
   },
 ) => ServerRoomSocket;
@@ -1074,7 +1075,8 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
 
     roomSocket = socketFactory(`${getApiBaseUrl().replace(/\/$/, "")}/poke-lounge`, {
       path: "/socket.io",
-      transports: ["websocket"],
+      transports: ["websocket", "polling"],
+      tryAllTransports: true,
       reconnection: true,
     });
     roomSocket.on("connect", handleSocketConnect);

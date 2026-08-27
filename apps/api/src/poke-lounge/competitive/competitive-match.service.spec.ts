@@ -278,7 +278,7 @@ describe('CompetitiveMatchService', () => {
     });
   });
 
-  it('keeps the original 60 second deadline when a pending command is replayed', async () => {
+  it('keeps the original 30 second deadline when a pending command is replayed', async () => {
     jest.useFakeTimers();
     actionRepository.submit.mockResolvedValue({
       outcome: 'accepted',
@@ -292,7 +292,7 @@ describe('CompetitiveMatchService', () => {
 
     try {
       await service.submitAction(actionInput());
-      await jest.advanceTimersByTimeAsync(30_000);
+      await jest.advanceTimersByTimeAsync(15_000);
       actionRepository.submit.mockResolvedValue({
         outcome: 'replayed',
         response: actionProjection(),
@@ -300,7 +300,7 @@ describe('CompetitiveMatchService', () => {
         committed: false,
       });
       await service.submitAction(actionInput());
-      await jest.advanceTimersByTimeAsync(30_000);
+      await jest.advanceTimersByTimeAsync(15_000);
 
       expect(actionRepository.expirePendingTurn.mock.calls).toHaveLength(1);
       const timeoutInput =

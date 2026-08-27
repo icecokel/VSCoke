@@ -8,7 +8,7 @@ export const COMPETITIVE_ACTION_REPOSITORY = Symbol(
   'COMPETITIVE_ACTION_REPOSITORY',
 );
 
-export const COMPETITIVE_TURN_DEADLINE_MS = 60_000;
+export const COMPETITIVE_TURN_DEADLINE_MS = 30_000;
 
 export type CompetitiveActionFailure =
   | 'room-not-found'

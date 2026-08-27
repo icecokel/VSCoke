@@ -62,6 +62,9 @@ describe('SubmitCompetitiveActionDto', () => {
     await expect(
       transform(validBody({ kind: 'move', moveId: 55, slotIndex: 1 })),
     ).rejects.toThrow(BadRequestException);
+    await expect(transform(validBody({ kind: 'run' }))).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   it('requires a bounded non-blank session identity for password rooms', async () => {

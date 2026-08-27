@@ -449,7 +449,7 @@ route로 바꾸지 않는다. 전체 response, 방 코드, `playerId`, `sessionI
    보내기 전에는 누구도 첫 action을 제출하지 않는다. 시작 신호 뒤 Desktop은 canvas를 click해
    focus한 다음 `Fight` Enter, `move-select` 전환 확인, 첫 공격 기술 Enter 순서로 입력한다. Mobile은
    화면에 표시된 `Fight`, 첫 공격 기술을 차례로 touch한다. 한쪽 action이 2xx로 접수된 로컬 관찰
-   시각부터 상대는 서버의 60초 turn deadline 안에 제출하며 이후 turn마다 관리자 보고를 기다리지
+   시각부터 상대는 서버의 30초 turn deadline 안에 제출하며 이후 turn마다 관리자 보고를 기다리지
    않는다.
 3. 각 입력은 5초 안에 `session-actions` 요청이 발생하는지 확인한다. 응답이 2xx이면 재입력하지
    않고, 자신의 `submittedPlayerIds` 관찰 또는 서버 revision·turn·status·terminal·다음 대진 중

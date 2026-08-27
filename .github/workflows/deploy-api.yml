@@ -82,6 +82,7 @@ jobs:
           test -f apps/api/package.json
           test -f packages/poke-lounge-battle/dist/index.js
           pnpm --filter @vscoke/api exec node -e "require('@vscoke/poke-lounge-battle')"
+          pnpm --filter @vscoke/api exec node -e "require('bullmq'); require('ioredis')"
 
       - name: Verify Redis connection
         run: |

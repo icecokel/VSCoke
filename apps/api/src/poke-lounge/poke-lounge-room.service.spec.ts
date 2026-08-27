@@ -75,13 +75,13 @@ describe('PokeLoungeRoomService', () => {
     expectPublicEvent(publisher, 'room-created', room);
   });
 
-  it('fixes production round preparation to five minutes', async () => {
+  it('fixes production round preparation to three minutes', async () => {
     const originalNodeEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = 'production';
 
     try {
       const room = await createRoom({ roundDurationMs: 1_000 });
-      expect(room.round.durationMs).toBe(300_000);
+      expect(room.round.durationMs).toBe(180_000);
     } finally {
       process.env.NODE_ENV = originalNodeEnv;
     }
@@ -330,7 +330,7 @@ describe('PokeLoungeRoomService', () => {
 
     expect(started).toMatchObject({
       status: 'round-started',
-      round: { startedAtMs: 6, endsAtMs: 300_006 },
+      round: { startedAtMs: 6, endsAtMs: 180_006 },
     });
     expect(JSON.stringify(guestAcknowledged)).not.toContain(
       'presencePendingUntilMs',

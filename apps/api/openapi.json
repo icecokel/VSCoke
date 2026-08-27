@@ -3100,8 +3100,8 @@
           },
           "roundDurationMs": {
             "type": "number",
-            "example": 300000,
-            "description": "Test-only override; production preparation is fixed at 300000ms"
+            "example": 180000,
+            "description": "Test-only override; production preparation is fixed at 180000ms"
           }
         },
         "required": ["sessionId"]

@@ -1453,12 +1453,12 @@ test.describe("Poke Lounge", () => {
     expect(resolved.messageQueue).toEqual(expect.arrayContaining(["브케인은 독 데미지를 입었다!"]));
   });
 
-  test("토너먼트 사이 기본 준비 시간은 5분이다", () => {
+  test("토너먼트 사이 기본 준비 시간은 3분이다", () => {
     const startedRound = startPreparationRound(createDefaultRoundState(), 1_000);
 
-    expect(DEFAULT_PREPARATION_DURATION_MS).toBe(300_000);
-    expect(startedRound.preparationDurationMs).toBe(300_000);
-    expect(getRoundRemainingMs(startedRound, 1_000)).toBe(300_000);
+    expect(DEFAULT_PREPARATION_DURATION_MS).toBe(180_000);
+    expect(startedRound.preparationDurationMs).toBe(180_000);
+    expect(getRoundRemainingMs(startedRound, 1_000)).toBe(180_000);
   });
 
   test("게임 센터 카드와 world scene 직접 진입을 검증한다", async ({ page }) => {

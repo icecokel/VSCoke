@@ -1176,8 +1176,8 @@ export interface components {
       /** @example Player A */
       displayName?: string;
       /**
-       * @description Test-only override; production preparation is fixed at 300000ms
-       * @example 300000
+       * @description Test-only override; production preparation is fixed at 180000ms
+       * @example 180000
        */
       roundDurationMs?: number;
     };

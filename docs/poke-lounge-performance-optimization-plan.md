@@ -290,7 +290,7 @@ transitioned` 상태로 고정했다.
 3. 전투 입력은 새 snapshot ref를 얻은 뒤 한 번 수행하고 2xx 또는 서버 state 전진을 확인한 뒤에만
    다음 입력으로 간다.
 4. Desktop과 Mobile 결과 확인 control을 접근성 이름으로 안정적으로 찾을 수 있게 한다.
-5. 제품의 5분 준비, 60초 turn deadline과 재접속 유예는 단축하지 않는다.
+5. 제품의 3분 준비, 60초 turn deadline과 재접속 유예는 테스트 편의를 위해 단축하지 않는다.
 
 **Gate 5:** runner 지연 때문에 발생한 전투 timeout이 없고, 동일한 필수 증적을 더 적은 명령과
 artifact로 수집해야 한다.

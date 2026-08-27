@@ -30,7 +30,7 @@ const publicGameUrl = "/ko-KR/game/poke-lounge?e2e=1";
 
 test.use({ trace: "off" });
 
-test("공개 임시 비밀번호로 입장한 두 사용자는 방장 시작 시 같은 5분을 받는다", async ({
+test("공개 임시 비밀번호로 입장한 두 사용자는 방장 시작 시 같은 3분을 받는다", async ({
   browser,
 }) => {
   test.setTimeout(120_000);
@@ -101,10 +101,10 @@ test("공개 임시 비밀번호로 입장한 두 사용자는 방장 시작 시
     const startedRoom = await readRoom(await startResponse);
     expect(startedRoom.round.startedAtMs).not.toBeNull();
     expect(startedRoom.round.endsAtMs).not.toBeNull();
-    expect(startedRoom.round.endsAtMs! - startedRoom.round.startedAtMs!).toBe(300_000);
+    expect(startedRoom.round.endsAtMs! - startedRoom.round.startedAtMs!).toBe(180_000);
 
     const expectedClock = {
-      durationMs: 300_000,
+      durationMs: 180_000,
       startedAtMs: startedRoom.round.startedAtMs,
       endsAtMs: startedRoom.round.endsAtMs,
     };

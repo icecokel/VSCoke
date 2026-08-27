@@ -37,9 +37,9 @@ export class CreatePokeLoungeRoomDto implements CreatePokeLoungeRoomInput {
   displayName?: string;
 
   @ApiPropertyOptional({
-    example: 300000,
+    example: 180000,
     description:
-      'Test-only override; production preparation is fixed at 300000ms',
+      'Test-only override; production preparation is fixed at 180000ms',
   })
   @IsOptional()
   @IsInt()

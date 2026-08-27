@@ -61,7 +61,7 @@ import type {
 } from './poke-lounge-room.types';
 import { CompetitiveProjectionService } from './competitive/competitive-projection.service';
 
-const DEFAULT_ROUND_DURATION_MS = 300_000;
+const DEFAULT_ROUND_DURATION_MS = 180_000;
 const MIN_ROUND_DURATION_MS = 1;
 const MAX_ROUND_DURATION_MS = 3_600_000;
 const MAX_ROOM_OCCUPANTS = 6;

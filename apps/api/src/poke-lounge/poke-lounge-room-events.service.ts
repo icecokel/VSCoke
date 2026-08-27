@@ -25,6 +25,16 @@ export class PokeLoungeRoomEventsService implements PokeLoungeRoomEventPublisher
     };
   }
 
+  subscribeSnapshots(
+    listener: (snapshot: PokeLoungePublicRoomState) => void,
+  ): () => void {
+    return this.subscribe((event) => {
+      if (event.type === 'room.snapshot') {
+        listener(event.room);
+      }
+    });
+  }
+
   publish(event: PokeLoungeRoomCommittedEvent): Promise<void> {
     this.publishCommitted(event.snapshot);
     return Promise.resolve();

@@ -7,13 +7,11 @@ import {
   COMPETITIVE_RULESET_VERSION,
   createCanonicalIdRecord,
   createSeededRandom,
-  hashCanonicalState,
   resolveTurn,
   scoreRemainingHpPercentage,
   validateCompetitiveAction,
   type CanonicalCompetitiveAction,
   type CanonicalBattleState,
-  type CanonicalTerminalResult,
 } from '@vscoke/poke-lounge-battle';
 import { DataSource, type EntityManager } from 'typeorm';
 import { VerifiedPokeLoungeHistoryWriter } from '../../game/verified-poke-lounge-history-writer.service';
@@ -140,31 +138,7 @@ export class PostgresCompetitiveActionRepository implements CompetitiveActionRep
         turnActions.length === 1 &&
         nowMs >= getCompetitiveTurnDeadlineMs(turnActions[0])
       ) {
-        const completed = await completePendingTurnTimeout(
-          manager,
-          room,
-          match,
-          turnActions[0],
-          nowMs,
-          this.historyWriter,
-        );
-        await actionRepository.save(
-          actionRepository.create({
-            matchId: match.matchId,
-            roomId: room.id,
-            turn: input.turn,
-            actorPlayerId: actor.playerId,
-            actorAccountId: actor.accountId,
-            clientCommandId: input.clientCommandId,
-            action: input.action,
-            canonicalAction,
-            requestHash,
-            status: 'resolved',
-            response: completed.response,
-            resolvedAt: match.completedAt,
-          }),
-        );
-        return { outcome: 'accepted', ...completed, committed: true };
+        return { outcome: 'turn-conflict' };
       }
 
       try {
@@ -342,7 +316,7 @@ export class PostgresCompetitiveActionRepository implements CompetitiveActionRep
         return { outcome: 'not-due', retryAtMs: deadlineMs };
       }
 
-      const completed = await completePendingTurnTimeout(
+      const resolved = await completePendingTurnDeadline(
         manager,
         room,
         match,
@@ -351,7 +325,7 @@ export class PostgresCompetitiveActionRepository implements CompetitiveActionRep
         this.historyWriter,
       );
 
-      return { outcome: 'completed', ...completed };
+      return { outcome: 'resolved', ...resolved };
     });
   }
 }
@@ -362,7 +336,7 @@ function getCompetitiveTurnDeadlineMs(
   return receipt.createdAt.getTime() + COMPETITIVE_TURN_DEADLINE_MS;
 }
 
-async function completePendingTurnTimeout(
+async function completePendingTurnDeadline(
   manager: EntityManager,
   room: PokeLoungeRoom,
   match: PokeLoungeCompetitiveMatch,
@@ -373,53 +347,55 @@ async function completePendingTurnTimeout(
   response: CompetitiveActionProjection;
   room: PokeLoungeRoomSnapshot;
 }> {
-  const winnerPlayerId = pendingReceipt.actorPlayerId;
-  const loserPlayerId = match.currentState.participantIds.find(
-    (playerId) => playerId !== winnerPlayerId,
-  );
-  if (!loserPlayerId) {
-    throw new Error('Competitive timeout winner is not assigned');
-  }
-
-  const terminal = Object.assign(Object.create(null), {
-    winnerPlayerId,
-    loserPlayerId,
-    reason: 'timeout',
-    scoreByPlayerId: createCanonicalIdRecord([
-      [winnerPlayerId, 100],
-      [loserPlayerId, 50],
+  const resolved = resolveTurn({
+    state: match.currentState,
+    actionsByPlayerId: createCanonicalIdRecord([
+      [pendingReceipt.actorPlayerId, pendingReceipt.action],
     ]),
-  }) as CanonicalTerminalResult;
-  match.currentState.terminal = terminal;
-  match.currentStateHash = hashCanonicalState(match.currentState);
-  match.terminalResult = terminal;
-  match.status = 'completed';
-  match.completedAt = new Date(nowMs);
+    random: createSeededRandom(`${match.serverSeed}:${match.currentTurn}`),
+  });
+  match.currentState = resolved.state;
+  match.currentStateHash = resolved.stateHash;
+  match.currentTurn = resolved.state.turn;
+  match.terminalResult = resolved.terminal;
+  match.status = resolved.terminal ? 'completed' : 'active';
+  match.completedAt = resolved.terminal ? new Date(nowMs) : null;
 
-  const finalized = await finalizeCompetitiveTerminalMatch(
-    manager,
-    room,
-    match,
-    room.revision + 1,
-    historyWriter,
-  );
+  let response: CompetitiveActionProjection;
+  let nextCompetitive: CompetitiveActionProjection | null = null;
+  if (resolved.terminal) {
+    const finalized = await finalizeCompetitiveTerminalMatch(
+      manager,
+      room,
+      match,
+      room.revision + 1,
+      historyWriter,
+    );
+    response = finalized.projection;
+    nextCompetitive = finalized.nextCompetitive;
+  } else {
+    await manager
+      .getRepository(PokeLoungeCompetitiveMatch)
+      .save({ ...match }, { reload: false });
+    response = toProjection(match, []);
+  }
   await markRoomUpdated(manager, room);
-  resolveTurnReceipts(
-    [pendingReceipt],
-    finalized.projection,
-    match.completedAt,
-  );
+  resolveTurnReceipts([pendingReceipt], response, new Date(nowMs));
   await manager.getRepository(PokeLoungeCompetitiveAction).save(pendingReceipt);
 
   const roomSnapshot = snapshotFromEntity(room);
-  roomSnapshot.competitiveTransitions = [
-    toCompetitiveTerminalTransition(finalized.projection),
-  ];
-  if (finalized.nextCompetitive) {
-    roomSnapshot.competitive = finalized.nextCompetitive;
+  if (resolved.terminal) {
+    roomSnapshot.competitiveTransitions = [
+      toCompetitiveTerminalTransition(response),
+    ];
+  } else {
+    roomSnapshot.competitive = response;
+  }
+  if (nextCompetitive) {
+    roomSnapshot.competitive = nextCompetitive;
   }
 
-  return { response: finalized.projection, room: roomSnapshot };
+  return { response, room: roomSnapshot };
 }
 
 export async function finalizeCompetitiveTerminalMatch(

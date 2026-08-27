@@ -101,6 +101,36 @@ describe("competitive turn resolution V2", () => {
     expect(resolved.stateHash).toMatch(/^[a-f0-9]{64}$/);
   });
 
+  it("resolves one submitted action while the other participant skips the turn", () => {
+    const state = battleState();
+    const defenderBefore = state.playersById[PLAYER_B]!.team[0]!.currentHp;
+
+    const resolved = resolveTurn({
+      state,
+      actionsByPlayerId: createCanonicalIdRecord([[PLAYER_A, { kind: "move", moveId: 55 }]]),
+      random: constantRandom(0.99),
+    });
+
+    expect(resolved.state.playersById[PLAYER_A]!.team[0]!.moves[0]!.pp).toBe(0);
+    expect(resolved.state.playersById[PLAYER_B]!.team[0]!.currentHp).toBeLessThan(defenderBefore);
+    expect(resolved.state.turn).toBe(1);
+    expect(resolved.terminal).toBeNull();
+  });
+
+  it("advances an empty turn without declaring a winner", () => {
+    const state = battleState();
+
+    const resolved = resolveTurn({
+      state,
+      actionsByPlayerId: createCanonicalIdRecord([]),
+      random: constantRandom(0.99),
+    });
+
+    expect(resolved.state.playersById).toEqual(state.playersById);
+    expect(resolved.state.turn).toBe(1);
+    expect(resolved.terminal).toBeNull();
+  });
+
   it("does not end the match when only the active Pokemon faints", () => {
     const state = battleState();
     const defender = state.playersById[PLAYER_B]!.team[0]!;

@@ -52,6 +52,7 @@ export class CompetitiveMatchService
     string,
     ReturnType<typeof setTimeout>
   >();
+  private unsubscribeFromRoomSnapshots: (() => void) | null = null;
 
   constructor(
     @Inject(COMPETITIVE_MATCH_REPOSITORY)
@@ -63,6 +64,18 @@ export class CompetitiveMatchService
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
+    this.unsubscribeFromRoomSnapshots?.();
+    this.unsubscribeFromRoomSnapshots =
+      this.eventPublisher.subscribeSnapshots?.((snapshot) => {
+        if (snapshot.competitive) {
+          this.ensureTurnTimeout(
+            snapshot.roomCode,
+            snapshot.competitive,
+            snapshot.updatedAtMs,
+          );
+        }
+      }) ?? null;
+
     if (!this.actionRepository.findPendingTurns) {
       return;
     }
@@ -86,6 +99,8 @@ export class CompetitiveMatchService
   }
 
   onModuleDestroy(): void {
+    this.unsubscribeFromRoomSnapshots?.();
+    this.unsubscribeFromRoomSnapshots = null;
     for (const timeout of this.turnTimeouts.values()) {
       clearTimeout(timeout);
     }
@@ -120,6 +135,12 @@ export class CompetitiveMatchService
     if (!result.assignment) {
       return null;
     }
+
+    this.ensureTurnTimeout(
+      result.assignment.roomCode,
+      toPublicAssignment(result.assignment),
+      result.assignment.turnStartedAtMs,
+    );
 
     if (result.committed) {
       try {
@@ -157,20 +178,12 @@ export class CompetitiveMatchService
       input.matchId,
       input.turn,
     );
-    if (result.committed) {
+    if (
+      result.committed &&
+      (result.response.status === 'completed' ||
+        result.response.currentTurn !== input.turn)
+    ) {
       this.clearTurnTimeout(timeoutKey);
-      if (
-        result.response.status !== 'completed' &&
-        result.response.currentTurn === input.turn &&
-        result.response.submittedPlayerIds.length === 1
-      ) {
-        this.scheduleTurnTimeout(
-          input.roomCode,
-          input.matchId,
-          input.turn,
-          Date.now() + COMPETITIVE_TURN_DEADLINE_MS,
-        );
-      }
     }
 
     if (result.committed) {
@@ -179,6 +192,13 @@ export class CompetitiveMatchService
         result.response,
         result.room,
       );
+      if (result.room.competitive) {
+        this.ensureTurnTimeout(
+          result.room.roomCode,
+          result.room.competitive,
+          result.room.updatedAtMs,
+        );
+      }
     }
 
     return structuredClone(result.response);
@@ -215,6 +235,29 @@ export class CompetitiveMatchService
     this.turnTimeouts.set(key, timeout);
   }
 
+  private ensureTurnTimeout(
+    roomCode: string,
+    projection: CompetitiveActionProjection,
+    turnStartedAtMs: number,
+  ): void {
+    if (projection.status === 'completed') {
+      return;
+    }
+    const key = competitiveTurnTimeoutKey(
+      roomCode,
+      projection.matchId,
+      projection.currentTurn,
+    );
+    if (!this.turnTimeouts.has(key)) {
+      this.scheduleTurnTimeout(
+        roomCode,
+        projection.matchId,
+        projection.currentTurn,
+        turnStartedAtMs + COMPETITIVE_TURN_DEADLINE_MS,
+      );
+    }
+  }
+
   private clearTurnTimeout(key: string): void {
     const timeout = this.turnTimeouts.get(key);
     if (timeout) {
@@ -237,12 +280,19 @@ export class CompetitiveMatchService
       });
       if (result.outcome === 'not-due') {
         this.scheduleTurnTimeout(roomCode, matchId, turn, result.retryAtMs);
-      } else if (result.outcome === 'completed') {
+      } else if (result.outcome === 'resolved') {
         await this.publishCommittedAction(
           matchId,
           result.response,
           result.room,
         );
+        if (result.room.competitive) {
+          this.ensureTurnTimeout(
+            result.room.roomCode,
+            result.room.competitive,
+            result.room.updatedAtMs,
+          );
+        }
       }
     } catch (error) {
       this.logger.error(
@@ -329,6 +379,7 @@ export function createCompetitiveAssignment(
     currentState: structuredClone(initialState),
     currentStateHash: initialStateHash,
     currentTurn: initialState.turn,
+    turnStartedAtMs: context.turnStartedAtMs ?? Date.now(),
     status: 'pending',
     terminalEventId: null,
     terminalRoomRevision: null,

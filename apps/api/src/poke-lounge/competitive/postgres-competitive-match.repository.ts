@@ -255,6 +255,8 @@ function assignmentFromEntity(
     currentState: structuredClone(match.currentState),
     currentStateHash: match.currentStateHash,
     currentTurn: match.currentTurn,
+    turnStartedAtMs:
+      match.updatedAt?.getTime() ?? match.createdAt?.getTime() ?? Date.now(),
     status: match.status,
     terminalEventId: match.terminalEventId ?? null,
     terminalRoomRevision: match.terminalRoomRevision ?? null,

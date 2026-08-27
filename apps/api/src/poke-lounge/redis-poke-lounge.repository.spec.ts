@@ -1,3 +1,9 @@
+import {
+  COMPETITIVE_RULESET_HASH,
+  COMPETITIVE_RULESET_VERSION,
+  hashCanonicalState,
+} from '@vscoke/poke-lounge-battle';
+import { createTestInitialBattleState } from '../../test/support/competitive-party.fixture';
 import type {
   CreatePokeLoungeRedisRoomResult,
   PokeLoungeRedisRoomRecord,
@@ -54,7 +60,7 @@ describe('RedisPokeLoungeRepository', () => {
     expect(redis.compareAndSetCalls).toBe(1);
   });
 
-  it('restores the original deadline for a pending competitive turn', async () => {
+  it('restores and resolves a competitive turn even when nobody acts', async () => {
     const redis = new InMemoryRedisRoomState();
     const repository = new RedisPokeLoungeRepository(redis as never);
     const room = roomSnapshot();
@@ -65,10 +71,10 @@ describe('RedisPokeLoungeRepository', () => {
       requestHash: 'create-hash',
       nowMs: 0,
     });
-    redis.seedPendingTurn(room.roomCode, {
+    redis.seedOpenTurn(room.roomCode, {
       matchId: 'match-1',
       turn: 3,
-      createdAtMs: 1_000,
+      startedAtMs: 1_000,
     });
 
     await expect(repository.findPendingTurns()).resolves.toEqual([
@@ -77,6 +83,40 @@ describe('RedisPokeLoungeRepository', () => {
         matchId: 'match-1',
         turn: 3,
         deadlineMs: 31_000,
+      },
+    ]);
+
+    await expect(
+      repository.expirePendingTurn({
+        roomCode: room.roomCode,
+        matchId: 'match-1',
+        turn: 3,
+        nowMs: 30_999,
+      }),
+    ).resolves.toEqual({ outcome: 'not-due', retryAtMs: 31_000 });
+
+    await expect(
+      repository.expirePendingTurn({
+        roomCode: room.roomCode,
+        matchId: 'match-1',
+        turn: 3,
+        nowMs: 31_000,
+      }),
+    ).resolves.toMatchObject({
+      outcome: 'resolved',
+      response: {
+        status: 'active',
+        currentTurn: 4,
+        submittedPlayerIds: [],
+        terminal: null,
+      },
+    });
+    await expect(repository.findPendingTurns()).resolves.toEqual([
+      {
+        roomCode: 'ROOM01',
+        matchId: 'match-1',
+        turn: 4,
+        deadlineMs: 61_000,
       },
     ]);
   });
@@ -105,30 +145,52 @@ class InMemoryRedisRoomState {
     return Promise.resolve([...this.rooms.keys()]);
   }
 
-  seedPendingTurn(
+  seedOpenTurn(
     roomCode: string,
-    input: { matchId: string; turn: number; createdAtMs: number },
+    input: { matchId: string; turn: number; startedAtMs: number },
   ): void {
     const current = this.rooms.get(roomCode);
     if (!current) {
       throw new Error('Room fixture is missing');
     }
     const document = JSON.parse(current.document) as {
+      id: string;
+      room: PokeLoungeRoomSnapshot;
       matches: Record<string, Record<string, unknown>>;
       actions: Record<string, Record<string, unknown>>;
     };
+    const state = createTestInitialBattleState(['player-1', 'player-2']);
+    state.turn = input.turn;
+    const stateHash = hashCanonicalState(state);
+    document.room.status = 'tournament';
+    document.room.round.phase = 'tournament';
+    document.room.tournament.activeMatchId = 'bracket-match-1';
+    document.room.tournament.activeMatchAuthority = 'server';
     document.matches[input.matchId] = {
+      roomId: document.id,
+      roomCode,
       matchId: input.matchId,
+      bracketMatchId: 'bracket-match-1',
+      kind: 'tournament-unranked',
+      assignmentRevision: 1,
+      playerAccounts: [
+        { playerId: 'player-1', accountId: 'account-1' },
+        { playerId: 'player-2', accountId: 'account-2' },
+      ],
+      rulesetVersion: COMPETITIVE_RULESET_VERSION,
+      rulesetHash: COMPETITIVE_RULESET_HASH,
+      serverSeed: 'a'.repeat(64),
+      initialState: structuredClone(state),
+      initialStateHash: stateHash,
+      currentState: state,
+      currentStateHash: stateHash,
       status: 'active',
       currentTurn: input.turn,
+      turnStartedAtMs: input.startedAtMs,
+      terminalEventId: null,
+      terminalRoomRevision: null,
+      terminalResult: null,
       completedAt: null,
-    };
-    document.actions['pending-action'] = {
-      matchId: input.matchId,
-      turn: input.turn,
-      actorPlayerId: 'player-1',
-      status: 'pending',
-      createdAtMs: input.createdAtMs,
     };
     current.document = JSON.stringify(document);
   }

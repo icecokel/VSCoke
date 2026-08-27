@@ -37,6 +37,10 @@ describe('CompetitiveMatchService', () => {
     );
   });
 
+  afterEach(() => {
+    service.onModuleDestroy();
+  });
+
   it('creates a full approved assignment and returns only its public projection', async () => {
     repository.bindSeatAndAssign.mockImplementation((input) => {
       const match = input.createAssignment({
@@ -133,6 +137,7 @@ describe('CompetitiveMatchService', () => {
         currentState: state,
         currentStateHash: hashCanonicalState(state),
         currentTurn: 0,
+        turnStartedAtMs: 0,
         status: 'pending',
         terminalResult: null,
         completedAt: null,
@@ -279,8 +284,18 @@ describe('CompetitiveMatchService', () => {
     });
   });
 
-  it('keeps the original 30 second deadline when a pending command is replayed', async () => {
+  it('starts the 30 second deadline before actions and does not restart it on replay', async () => {
     jest.useFakeTimers();
+    jest.setSystemTime(1_000);
+    let snapshotListener:
+      | Parameters<
+          NonNullable<PokeLoungeRoomEventPublisher['subscribeSnapshots']>
+        >[0]
+      | undefined;
+    publisher.subscribeSnapshots = jest.fn((listener) => {
+      snapshotListener = listener;
+      return jest.fn();
+    });
     actionRepository.submit.mockResolvedValue({
       outcome: 'accepted',
       response: actionProjection(),
@@ -292,6 +307,12 @@ describe('CompetitiveMatchService', () => {
     });
 
     try {
+      await service.onApplicationBootstrap();
+      snapshotListener?.({
+        ...roomSnapshot(),
+        updatedAtMs: 1_000,
+        competitive: actionProjection(),
+      });
       await service.submitAction(actionInput());
       await jest.advanceTimersByTimeAsync(15_000);
       actionRepository.submit.mockResolvedValue({

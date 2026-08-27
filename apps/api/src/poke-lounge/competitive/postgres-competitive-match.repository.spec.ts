@@ -444,6 +444,7 @@ function assignment(context: {
     currentState: state,
     currentStateHash: 'c'.repeat(64),
     currentTurn: 0,
+    turnStartedAtMs: 0,
     status: 'pending' as const,
     terminalResult: null,
     terminalEventId: null,

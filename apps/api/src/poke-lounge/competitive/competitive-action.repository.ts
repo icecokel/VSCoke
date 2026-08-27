@@ -35,7 +35,7 @@ export type CompetitiveTurnTimeoutResult =
   | { outcome: 'ignored' }
   | { outcome: 'not-due'; retryAtMs: number }
   | {
-      outcome: 'completed';
+      outcome: 'resolved';
       response: CompetitiveActionProjection;
       room: PokeLoungeRoomSnapshot;
     };

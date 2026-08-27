@@ -177,7 +177,7 @@ describe('PostgresCompetitiveActionRepository command replay ordering', () => {
 });
 
 describe('PostgresCompetitiveActionRepository terminal convergence contract', () => {
-  it('commits a timeout when the opponent misses the persisted receipt deadline', async () => {
+  it('resolves the submitted action at its deadline and only finishes on faint', async () => {
     const harness = terminalTournamentRepository();
     await harness.repository.submit(harness.firstInput);
     harness.actionQueryResults.splice(2, 0, {
@@ -194,13 +194,13 @@ describe('PostgresCompetitiveActionRepository terminal convergence contract', ()
     });
 
     expect(result).toMatchObject({
-      outcome: 'completed',
+      outcome: 'resolved',
       response: {
         status: 'completed',
         terminal: {
           winnerPlayerId: 'player-4',
           loserPlayerId: 'player-5',
-          reason: 'timeout',
+          reason: 'faint',
         },
       },
     });
@@ -210,7 +210,7 @@ describe('PostgresCompetitiveActionRepository terminal convergence contract', ()
     });
   });
 
-  it('resolves a late second action as the same transactional timeout', async () => {
+  it('rejects a second action submitted after the turn deadline', async () => {
     const harness = terminalTournamentRepository();
     await harness.repository.submit(harness.firstInput);
     harness.actionRows[0].createdAt = new Date(
@@ -223,33 +223,9 @@ describe('PostgresCompetitiveActionRepository terminal convergence contract', ()
 
     const result = await harness.repository.submit(lateInput);
 
-    expect(result).toMatchObject({
-      outcome: 'accepted',
-      committed: true,
-      response: {
-        terminal: {
-          winnerPlayerId: 'player-4',
-          loserPlayerId: 'player-5',
-          reason: 'timeout',
-        },
-      },
-    });
-    expect(harness.actionRows).toHaveLength(2);
-    expect(harness.actionRows.map((receipt) => receipt.status)).toEqual([
-      'resolved',
-      'resolved',
-    ]);
-    await expect(harness.repository.submit(lateInput)).resolves.toMatchObject({
-      outcome: 'replayed',
-      committed: false,
-      response: {
-        terminal: {
-          winnerPlayerId: 'player-4',
-          loserPlayerId: 'player-5',
-          reason: 'timeout',
-        },
-      },
-    });
+    expect(result).toEqual({ outcome: 'turn-conflict' });
+    expect(harness.actionRows).toHaveLength(1);
+    expect(harness.actionRows[0]?.status).toBe('pending');
   });
 
   it('returns explicit null terminal metadata for the first pending action', async () => {

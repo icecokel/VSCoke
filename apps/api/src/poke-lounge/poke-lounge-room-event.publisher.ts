@@ -16,4 +16,7 @@ export interface PokeLoungeRoomCommittedEvent {
 
 export interface PokeLoungeRoomEventPublisher {
   publish(event: PokeLoungeRoomCommittedEvent): Promise<void>;
+  subscribeSnapshots?(
+    listener: (snapshot: PokeLoungePublicRoomState) => void,
+  ): () => void;
 }

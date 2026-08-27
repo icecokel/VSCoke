@@ -318,6 +318,7 @@ export class RedisPokeLoungeRepository
         return { outcome: 'room-not-found' };
       }
       const document = current.document;
+      const nowMs = Date.now();
       const plan = planCompetitiveSeatBinding({
         room: document.room,
         seats: document.seats,
@@ -354,7 +355,7 @@ export class RedisPokeLoungeRepository
           };
         }
         document.seats.push(plan.seat);
-        renewRoomLease(document.room, Date.now());
+        renewRoomLease(document.room, nowMs);
         if (!(await this.commitDocument(current.version, document))) {
           continue;
         }
@@ -368,7 +369,7 @@ export class RedisPokeLoungeRepository
       if (activeAssignment && existingMatch) {
         if (plan.outcome === 'bind') {
           document.seats.push(plan.seat);
-          renewRoomLease(document.room, Date.now());
+          renewRoomLease(document.room, nowMs);
           if (!(await this.commitDocument(current.version, document))) {
             continue;
           }
@@ -394,7 +395,7 @@ export class RedisPokeLoungeRepository
             eligible: false,
           };
         }
-        renewRoomLease(document.room, Date.now());
+        renewRoomLease(document.room, nowMs);
         if (!(await this.commitDocument(current.version, document))) {
           continue;
         }
@@ -409,13 +410,14 @@ export class RedisPokeLoungeRepository
         roomId: document.id,
         roomCode: document.room.roomCode,
         assignmentRevision: 1,
+        turnStartedAtMs: nowMs,
         players: plan.assignmentPlayers,
         bracketMatchId: plan.assignmentBracketMatchId!,
         kind: plan.assignmentKind!,
         parties: toCompetitiveParties(document.room, plan.assignmentPlayers),
       });
       document.matches[assignment.matchId] = assignment;
-      touchRoom(document.room, Date.now());
+      touchRoom(document.room, nowMs);
       document.room.tournament.activeMatchAuthority = 'server';
       if (!(await this.commitDocument(current.version, document))) {
         continue;
@@ -493,40 +495,8 @@ export class RedisPokeLoungeRepository
       ) {
         return { outcome: 'actor-turn-conflict' };
       }
-      if (
-        turnActions.length === 1 &&
-        nowMs >= turnActions[0].createdAtMs + COMPETITIVE_TURN_DEADLINE_MS
-      ) {
-        const completed = completePendingTurnTimeout(
-          document,
-          match,
-          turnActions[0],
-          nowMs,
-        );
-        document.actions[
-          competitiveActionKey(
-            match.matchId,
-            actor.playerId,
-            input.clientCommandId,
-          )
-        ] = createActionReceipt({
-          match,
-          actor,
-          input,
-          requestHash,
-          response: completed.response,
-          status: 'resolved',
-          createdAtMs: nowMs,
-          resolvedAtMs: nowMs,
-        });
-        if (!(await this.commitDocument(current.version, document))) {
-          continue;
-        }
-        return {
-          outcome: 'accepted',
-          ...completed,
-          committed: true,
-        };
+      if (nowMs >= match.turnStartedAtMs + COMPETITIVE_TURN_DEADLINE_MS) {
+        return { outcome: 'turn-conflict' };
       }
 
       try {
@@ -578,48 +548,27 @@ export class RedisPokeLoungeRepository
           [turnActions[0].actorPlayerId, turnActions[0].action],
           [actor.playerId, input.action],
         ]);
-      const resolved = resolveTurn({
-        state: match.currentState,
+      const resolved = resolveCompetitiveTurn(
+        document,
+        match,
         actionsByPlayerId,
-        random: createSeededRandom(`${match.serverSeed}:${match.currentTurn}`),
-      });
-      if (resolved.terminal && resolved.terminal.reason !== 'faint') {
-        throw new Error(
-          'Stage 3 engine produced an unsupported terminal reason',
-        );
-      }
-
-      match.currentState = resolved.state;
-      match.currentStateHash = resolved.stateHash;
-      match.currentTurn = resolved.state.turn;
-      match.terminalResult = resolved.terminal;
-      match.status = resolved.terminal ? 'completed' : 'active';
-      match.completedAt = resolved.terminal ? new Date(nowMs) : null;
-      let response: CompetitiveActionProjection;
-      let nextCompetitive: CompetitiveActionProjection | null = null;
-      if (resolved.terminal) {
-        const finalized = finalizeCompetitiveTerminalMatch(
-          document,
-          match,
-          document.room.revision + 1,
-        );
-        response = finalized.projection;
-        nextCompetitive = finalized.nextCompetitive;
-      } else {
-        response = toCompetitiveProjection(match, []);
-      }
-      touchRoom(document.room, nowMs);
+        nowMs,
+      );
       const resolvedReceipt = createActionReceipt({
         match,
         actor,
         input,
         requestHash,
-        response,
+        response: resolved.response,
         status: 'resolved',
         createdAtMs: nowMs,
         resolvedAtMs: nowMs,
       });
-      resolveTurnReceipts([turnActions[0], resolvedReceipt], response, nowMs);
+      resolveTurnReceipts(
+        [turnActions[0], resolvedReceipt],
+        resolved.response,
+        nowMs,
+      );
       document.actions[
         competitiveActionKey(
           match.matchId,
@@ -631,19 +580,9 @@ export class RedisPokeLoungeRepository
         continue;
       }
 
-      const room = projectRoomSnapshot(document);
-      if (resolved.terminal) {
-        room.competitiveTransitions = [toTerminalTransition(response)];
-      } else {
-        room.competitive = response;
-      }
-      if (nextCompetitive) {
-        room.competitive = nextCompetitive;
-      }
       return {
         outcome: 'accepted',
-        response,
-        room,
+        ...resolved,
         committed: true,
       };
     }
@@ -662,19 +601,13 @@ export class RedisPokeLoungeRepository
         return [];
       }
       const match = findActiveMatch(current.document);
-      const pending = match
-        ? findTurnActions(current.document, match).find(
-            (action) => action.status === 'pending',
-          )
-        : undefined;
-
-      return pending && match
+      return match
         ? [
             {
               roomCode: current.document.room.roomCode,
               matchId: match.matchId,
               turn: match.currentTurn,
-              deadlineMs: pending.createdAtMs + COMPETITIVE_TURN_DEADLINE_MS,
+              deadlineMs: match.turnStartedAtMs + COMPETITIVE_TURN_DEADLINE_MS,
             },
           ]
         : [];
@@ -702,27 +635,16 @@ export class RedisPokeLoungeRepository
       ) {
         return { outcome: 'ignored' };
       }
-      const pending = findTurnActions(document, match).find(
-        (action) => action.status === 'pending',
-      );
-      if (!pending) {
-        return { outcome: 'ignored' };
-      }
-      const deadlineMs = pending.createdAtMs + COMPETITIVE_TURN_DEADLINE_MS;
+      const deadlineMs = match.turnStartedAtMs + COMPETITIVE_TURN_DEADLINE_MS;
       if (input.nowMs < deadlineMs) {
         return { outcome: 'not-due', retryAtMs: deadlineMs };
       }
 
-      const completed = completePendingTurnTimeout(
-        document,
-        match,
-        pending,
-        input.nowMs,
-      );
+      const resolved = completeExpiredTurn(document, match, input.nowMs);
       if (!(await this.commitDocument(current.version, document))) {
         continue;
       }
-      return { outcome: 'completed', ...completed };
+      return { outcome: 'resolved', ...resolved };
     }
 
     throw new Error('Poke Lounge Redis turn timeout was contended');
@@ -884,6 +806,7 @@ function ensureActiveTournamentAssignment(
     bracketMatchId,
     kind: 'tournament-unranked',
     assignmentRevision: 1,
+    turnStartedAtMs: snapshot.updatedAtMs,
     players,
     parties: toCompetitiveParties(snapshot, players),
   });
@@ -1032,6 +955,7 @@ function advanceTournamentAuthorityMatch(
     bracketMatchId,
     kind: 'tournament-unranked',
     assignmentRevision: 1,
+    turnStartedAtMs: completedMatch.completedAt?.getTime() ?? state.updatedAtMs,
     players,
     parties: toCompetitiveParties(state, players),
   });
@@ -1040,41 +964,74 @@ function advanceTournamentAuthorityMatch(
   return toCompetitiveProjection(assignment, []);
 }
 
-function completePendingTurnTimeout(
+function completeExpiredTurn(
   document: RedisPokeLoungeDocument,
   match: CompetitiveMatchAssignment,
-  pending: RedisCompetitiveActionReceipt,
   nowMs: number,
 ): { response: CompetitiveActionProjection; room: PokeLoungeRoomSnapshot } {
-  const loserPlayerId = match.currentState.participantIds.find(
-    (playerId) => playerId !== pending.actorPlayerId,
+  const receipts = findTurnActions(document, match);
+  const actionsByPlayerId = createCanonicalIdRecord<CanonicalCompetitiveAction>(
+    receipts.map((receipt) => [receipt.actorPlayerId, receipt.action]),
   );
-  if (!loserPlayerId) {
-    throw new Error('Competitive timeout winner is not assigned');
-  }
-  const terminal = createTerminalResult(
-    pending.actorPlayerId,
-    loserPlayerId,
-    'timeout',
-  );
-  match.currentState.terminal = terminal;
-  match.currentStateHash = hashCanonicalState(match.currentState);
-  match.terminalResult = terminal;
-  match.status = 'completed';
-  match.completedAt = new Date(nowMs);
-  const finalized = finalizeCompetitiveTerminalMatch(
+  const resolved = resolveCompetitiveTurn(
     document,
     match,
-    document.room.revision + 1,
+    actionsByPlayerId,
+    nowMs,
   );
-  touchRoom(document.room, nowMs);
-  resolveTurnReceipts([pending], finalized.projection, nowMs);
-  const room = projectRoomSnapshot(document);
-  room.competitiveTransitions = [toTerminalTransition(finalized.projection)];
-  if (finalized.nextCompetitive) {
-    room.competitive = finalized.nextCompetitive;
+  resolveTurnReceipts(receipts, resolved.response, nowMs);
+  return resolved;
+}
+
+function resolveCompetitiveTurn(
+  document: RedisPokeLoungeDocument,
+  match: CompetitiveMatchAssignment,
+  actionsByPlayerId: Readonly<Record<string, CanonicalCompetitiveAction>>,
+  nowMs: number,
+): { response: CompetitiveActionProjection; room: PokeLoungeRoomSnapshot } {
+  const resolved = resolveTurn({
+    state: match.currentState,
+    actionsByPlayerId: createCanonicalIdRecord(
+      Object.entries(actionsByPlayerId),
+    ),
+    random: createSeededRandom(`${match.serverSeed}:${match.currentTurn}`),
+  });
+  if (resolved.terminal && resolved.terminal.reason !== 'faint') {
+    throw new Error('Stage 3 engine produced an unsupported terminal reason');
   }
-  return { response: finalized.projection, room };
+
+  match.currentState = resolved.state;
+  match.currentStateHash = resolved.stateHash;
+  match.currentTurn = resolved.state.turn;
+  match.turnStartedAtMs = nowMs;
+  match.terminalResult = resolved.terminal;
+  match.status = resolved.terminal ? 'completed' : 'active';
+  match.completedAt = resolved.terminal ? new Date(nowMs) : null;
+  let response: CompetitiveActionProjection;
+  let nextCompetitive: CompetitiveActionProjection | null = null;
+  if (resolved.terminal) {
+    const finalized = finalizeCompetitiveTerminalMatch(
+      document,
+      match,
+      document.room.revision + 1,
+    );
+    response = finalized.projection;
+    nextCompetitive = finalized.nextCompetitive;
+  } else {
+    response = toCompetitiveProjection(match, []);
+  }
+  touchRoom(document.room, nowMs);
+
+  const room = projectRoomSnapshot(document);
+  if (resolved.terminal) {
+    room.competitiveTransitions = [toTerminalTransition(response)];
+  } else {
+    room.competitive = response;
+  }
+  if (nextCompetitive) {
+    room.competitive = nextCompetitive;
+  }
+  return { response, room };
 }
 
 function projectRoomSnapshot(
@@ -1201,7 +1158,7 @@ function resolveTurnReceipts(
 function createTerminalResult(
   winnerPlayerId: string,
   loserPlayerId: string,
-  reason: 'forfeit' | 'timeout',
+  reason: 'forfeit',
 ): CanonicalTerminalResult {
   return Object.assign(Object.create(null), {
     winnerPlayerId,
@@ -1476,6 +1433,25 @@ function parseDocument(value: string): RedisPokeLoungeDocument {
     match.completedAt = match.completedAt
       ? new Date(String(match.completedAt))
       : null;
+    if (
+      !Number.isSafeInteger(match.turnStartedAtMs) ||
+      match.turnStartedAtMs < 0
+    ) {
+      const firstTurnActionAtMs = Object.values(document.actions)
+        .filter(
+          (action) =>
+            action.matchId === match.matchId &&
+            action.turn === match.currentTurn,
+        )
+        .reduce<number | null>(
+          (earliest, action) =>
+            earliest === null
+              ? action.createdAtMs
+              : Math.min(earliest, action.createdAtMs),
+          null,
+        );
+      match.turnStartedAtMs = firstTurnActionAtMs ?? document.room.updatedAtMs;
+    }
   }
   return document;
 }

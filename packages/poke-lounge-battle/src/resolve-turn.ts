@@ -482,7 +482,7 @@ function orderedMoveActors(
   actionsByPlayerId: Readonly<Record<string, CanonicalCompetitiveAction>>,
   random: SeededRandom,
 ): string[] {
-  const actors = participantIds.filter(playerId => actionsByPlayerId[playerId]!.kind === "move");
+  const actors = participantIds.filter(playerId => actionsByPlayerId[playerId]?.kind === "move");
   if (actors.length < 2) {
     return actors;
   }
@@ -606,17 +606,17 @@ export function resolveTurn(input: {
 
   const actionPlayerIds = Object.keys(actionsByPlayerId).sort();
   if (
-    actionPlayerIds.length !== 2 ||
-    actionPlayerIds.some((playerId, index) => playerId !== participantIds[index])
+    actionPlayerIds.length > 2 ||
+    actionPlayerIds.some(playerId => !participantIds.includes(playerId))
   ) {
-    throw new Error("A turn requires exactly one action from each participant");
+    throw new Error("A turn accepts at most one action from each participant");
   }
-  for (const playerId of participantIds) {
+  for (const playerId of actionPlayerIds) {
     validateAction(stateWithSafeRecords, playerId, actionsByPlayerId[playerId]!);
   }
 
   const state = cloneState(stateWithSafeRecords, participantIds);
-  for (const playerId of participantIds) {
+  for (const playerId of actionPlayerIds) {
     const action = actionsByPlayerId[playerId]!;
     if (action.kind === "switch") {
       state.playersById[playerId]!.activeSlotIndex = action.slotIndex;

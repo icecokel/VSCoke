@@ -132,9 +132,9 @@ agent-operated 한 사이클에는 배정하지 않는다.
 | 전투 행동 | 매 턴 첫 번째 사용 가능한 공격 기술, 강제 교체 시 첫 번째 생존 슬롯                           |
 | Desktop   | fresh canvas ref focus 뒤 `Fight` Enter → fresh ref로 `move-select` 확인 → 첫 공격 기술 Enter |
 | Mobile    | 화면의 `Fight` touch → 기술 목록 확인 → 첫 공격 기술 touch                                    |
-| 턴 시한   | 첫 action 2xx 뒤 상대 action까지 30,000ms, 두 runner 준비 뒤에만 첫 제출                      |
+| 턴 시한   | 서버 turn 진입부터 30,000ms, 미제출자는 해당 턴 행동만 생략                                   |
 | 결과 확인 | terminal 캡처 뒤 Desktop은 Enter, Mobile은 화면의 `다음`을 한 번 입력                         |
-| 금지 행동 | 고의 timeout, 기권, 브라우저 종료로 승패 유도                                                 |
+| 금지 행동 | 기권이나 브라우저 종료로 승패 유도                                                            |
 | 준비 시간 | 분산 테스터는 제품 기본값 180,000ms, 단일 자동화만 30,000ms 허용                              |
 | 승패 판정 | 실행마다 서버가 확정한 점수·순위·우승자와 세 화면이 같은지 확인                               |
 
@@ -452,8 +452,8 @@ route로 바꾸지 않는다. 전체 response, 방 코드, `playerId`, `sessionI
    `move-select` 전환 뒤 fresh snapshot에서 canvas ref를 다시 얻어 `focus`하고 첫 공격 기술 Enter를
    입력한다. Mobile은 화면에 표시된 `Fight`, 첫 공격 기술을 차례로 touch한다. `ACTION-GO` 뒤 첫
    입력 전에는 screenshot이나 추가 관리자 보고를 기다리지 않는다. 한쪽 action이 2xx로 접수된
-   로컬 관찰 시각부터 상대는 서버의 30초 turn deadline 안에 제출하며 이후 turn마다 관리자 보고를
-   기다리지 않는다.
+   서버 projection의 turn 진입부터 양쪽 모두 30초 turn deadline 안에 제출하며 이후 turn마다 관리자
+   보고를 기다리지 않는다. deadline을 넘긴 플레이어는 해당 턴 행동만 생략되고 매치는 계속되어야 한다.
 3. 각 입력은 5초 안에 `session-actions` 요청이 발생하는지 확인한다. 응답이 2xx이면 재입력하지
    않고, 자신의 `submittedPlayerIds` 관찰 또는 서버 revision·turn·status·terminal·다음 대진 중
    하나의 전진으로 반영을 확인한다. 두 번째 참가자의 제출로 turn이 즉시 처리되면 submitted

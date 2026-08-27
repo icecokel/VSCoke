@@ -36,6 +36,7 @@ export interface CompetitiveMatchAssignment extends CompetitiveTerminalMetadata 
   currentState: CanonicalBattleState;
   currentStateHash: string;
   currentTurn: number;
+  turnStartedAtMs: number;
   status: CompetitiveMatchStatus;
   terminalResult: CanonicalTerminalResult | null;
   completedAt: Date | null;
@@ -63,6 +64,7 @@ export interface CompetitiveAssignmentCreateContext {
   bracketMatchId: string;
   kind: CompetitiveMatchKind;
   assignmentRevision: number;
+  turnStartedAtMs?: number;
   players: [CompetitivePlayerAccount, CompetitivePlayerAccount];
   parties: Record<string, NormalizedCompetitiveParty>;
 }

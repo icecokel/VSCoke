@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import type { Namespace, Socket } from 'socket.io';
 import type { PokeLoungeLiveStateService } from './poke-lounge-live-state.service';
 import { PokeLoungeRoomEventsService } from './poke-lounge-room-events.service';
+import type { PokeLoungeRoomSnapshot } from './poke-lounge-room.repository';
 import type { PokeLoungePublicRoomState } from './poke-lounge-room.types';
 import { PokeLoungeGateway } from './poke-lounge.gateway';
 import type { PokeLoungeRoomService } from './poke-lounge-room.service';
@@ -13,6 +14,8 @@ describe('PokeLoungeGateway', () => {
       | 'authorizeSubscription'
       | 'acknowledgeParticipantPresence'
       | 'expireParticipantPresence'
+      | 'getRoom'
+      | 'markParticipantDisconnectPending'
     >
   >;
   let events: PokeLoungeRoomEventsService;
@@ -23,6 +26,7 @@ describe('PokeLoungeGateway', () => {
       | 'extendRoomExpiry'
       | 'getCursor'
       | 'getSnapshot'
+      | 'listRoomStateCodes'
       | 'removePlayer'
       | 'upsertPlayer'
     >
@@ -39,6 +43,8 @@ describe('PokeLoungeGateway', () => {
       authorizeSubscription: jest.fn().mockResolvedValue(publicRoom()),
       acknowledgeParticipantPresence: jest.fn().mockResolvedValue(publicRoom()),
       expireParticipantPresence: jest.fn().mockResolvedValue(undefined),
+      getRoom: jest.fn().mockResolvedValue(roomSnapshot()),
+      markParticipantDisconnectPending: jest.fn().mockResolvedValue(undefined),
     };
     events = new PokeLoungeRoomEventsService();
     liveState = {
@@ -50,6 +56,7 @@ describe('PokeLoungeGateway', () => {
         worldSeq: 0,
       }),
       getSnapshot: jest.fn().mockResolvedValue(worldSnapshot()),
+      listRoomStateCodes: jest.fn().mockResolvedValue([]),
       removePlayer: jest.fn().mockResolvedValue(undefined),
       upsertPlayer: jest
         .fn()
@@ -418,6 +425,14 @@ describe('PokeLoungeGateway', () => {
 
     gateway.handleDisconnect(client.value);
     await jest.advanceTimersByTimeAsync(59_999);
+    expect(roomService.markParticipantDisconnectPending).toHaveBeenCalledWith(
+      'ROOM01',
+      'player-1',
+      'session-1',
+      expect.any(String),
+      expect.any(Number),
+      expect.anything(),
+    );
     expect(roomService.expireParticipantPresence).not.toHaveBeenCalled();
     expect(liveState.removePlayer).not.toHaveBeenCalled();
 
@@ -451,7 +466,7 @@ describe('PokeLoungeGateway', () => {
     jest.useFakeTimers();
     const disconnected = socket();
     await gateway.subscribe(disconnected.value, validSubscription());
-    namespaceFetchSockets.mockResolvedValueOnce([
+    namespaceFetchSockets.mockResolvedValue([
       {
         data: {
           pokeLoungePlayerId: 'player-1',
@@ -466,6 +481,63 @@ describe('PokeLoungeGateway', () => {
 
     expect(roomService.expireParticipantPresence).not.toHaveBeenCalled();
     expect(liveState.removePlayer).not.toHaveBeenCalled();
+  });
+
+  it('restores a persisted disconnect deadline after application restart', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(1_000);
+    liveState.listRoomStateCodes.mockResolvedValue(['ROOM01']);
+    roomService.getRoom.mockResolvedValue(
+      roomSnapshot({
+        participants: [
+          {
+            ...roomSnapshot().participants[0],
+            presenceEpoch: 'presence-epoch-1',
+            disconnectPendingUntilMs: 61_000,
+          },
+        ],
+      }),
+    );
+
+    await gateway.onApplicationBootstrap();
+    await jest.advanceTimersByTimeAsync(59_999);
+    expect(roomService.expireParticipantPresence).not.toHaveBeenCalled();
+
+    await jest.advanceTimersByTimeAsync(1);
+    expect(roomService.expireParticipantPresence).toHaveBeenCalledWith(
+      'ROOM01',
+      'player-1',
+      'session-1',
+      'presence-epoch-1',
+      expect.anything(),
+    );
+  });
+
+  it('persists grace for an acknowledged participant missing after restart', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(1_000);
+    liveState.listRoomStateCodes.mockResolvedValue(['ROOM01']);
+    roomService.getRoom.mockResolvedValue(
+      roomSnapshot({
+        participants: [
+          {
+            ...roomSnapshot().participants[0],
+            presenceEpoch: 'presence-epoch-1',
+          },
+        ],
+      }),
+    );
+
+    await gateway.onApplicationBootstrap();
+
+    expect(roomService.markParticipantDisconnectPending).toHaveBeenCalledWith(
+      'ROOM01',
+      'player-1',
+      'session-1',
+      'presence-epoch-1',
+      61_000,
+      expect.anything(),
+    );
   });
 
   it('expires the durable presence when a reconnect acknowledgement is aborted', async () => {
@@ -778,6 +850,26 @@ function publicRoom(
     revision: 7,
     expiresAtMs: 253_402_300_799_999,
     competitiveTransitions: [],
+    ...overrides,
+  };
+}
+
+function roomSnapshot(
+  overrides: Partial<PokeLoungeRoomSnapshot> = {},
+): PokeLoungeRoomSnapshot {
+  return {
+    ...publicRoom(),
+    participants: [
+      {
+        sessionId: 'session-1',
+        playerId: 'player-1',
+        displayName: 'Player 1',
+        role: 'participant',
+        ready: false,
+        connected: true,
+        joinedAtMs: 0,
+      },
+    ],
     ...overrides,
   };
 }

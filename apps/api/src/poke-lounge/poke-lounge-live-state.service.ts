@@ -353,6 +353,10 @@ export class PokeLoungeLiveStateService implements OnModuleDestroy {
     return count;
   }
 
+  async listRoomStateCodes(): Promise<string[]> {
+    return this.requireCommandClient().zRange(ROOM_INDEX_KEY, 0, -1);
+  }
+
   async getPlayerState(
     userId: string,
   ): Promise<PokeLoungeRedisPlayerState | null> {

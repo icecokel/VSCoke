@@ -399,6 +399,81 @@ describe('PokeLoungeRoomService', () => {
     });
   });
 
+  it('persists a reconnect grace deadline and expires it after restart', async () => {
+    await createRoom();
+    await service.acknowledgeParticipantPresence(
+      'ROOM01',
+      'player-1',
+      'session-1',
+      undefined,
+      'presence-epoch-1',
+    );
+    publisher.publish.mockClear();
+
+    await service.markParticipantDisconnectPending(
+      'ROOM01',
+      'player-1',
+      'session-1',
+      'presence-epoch-1',
+      60_000,
+    );
+
+    expect(repository.snapshot('ROOM01')).toMatchObject({
+      participants: [
+        {
+          playerId: 'player-1',
+          connected: true,
+          presenceEpoch: 'presence-epoch-1',
+          disconnectPendingUntilMs: 60_000,
+        },
+      ],
+    });
+    expect(JSON.stringify(publisher.publish.mock.calls)).not.toContain(
+      'disconnectPendingUntilMs',
+    );
+
+    currentTimeMs = 60_000;
+    await expect(service.getRoom('ROOM01')).resolves.toMatchObject({
+      status: 'closed',
+      participants: [],
+    });
+  });
+
+  it('clears a persisted disconnect deadline when the participant reconnects', async () => {
+    await createRoom();
+    await service.acknowledgeParticipantPresence(
+      'ROOM01',
+      'player-1',
+      'session-1',
+      undefined,
+      'presence-epoch-old',
+    );
+    await service.markParticipantDisconnectPending(
+      'ROOM01',
+      'player-1',
+      'session-1',
+      'presence-epoch-old',
+      60_000,
+    );
+
+    await service.acknowledgeParticipantPresence(
+      'ROOM01',
+      'player-1',
+      'session-1',
+      undefined,
+      'presence-epoch-new',
+    );
+    currentTimeMs = 60_000;
+
+    await expect(service.getRoom('ROOM01')).resolves.toMatchObject({
+      status: 'waiting',
+      participants: [{ playerId: 'player-1', connected: true }],
+    });
+    expect(repository.snapshot('ROOM01')?.participants[0]).not.toHaveProperty(
+      'disconnectPendingUntilMs',
+    );
+  });
+
   it('does not mutate presence for a stale session or an already absent participant', async () => {
     await createRoom();
 

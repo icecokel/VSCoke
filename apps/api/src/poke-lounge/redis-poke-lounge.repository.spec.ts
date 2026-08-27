@@ -53,6 +53,33 @@ describe('RedisPokeLoungeRepository', () => {
     });
     expect(redis.compareAndSetCalls).toBe(1);
   });
+
+  it('restores the original deadline for a pending competitive turn', async () => {
+    const redis = new InMemoryRedisRoomState();
+    const repository = new RedisPokeLoungeRepository(redis as never);
+    const room = roomSnapshot();
+    await repository.create({
+      room,
+      actorPlayerId: 'player-1',
+      idempotencyKey: 'create-1',
+      requestHash: 'create-hash',
+      nowMs: 0,
+    });
+    redis.seedPendingTurn(room.roomCode, {
+      matchId: 'match-1',
+      turn: 3,
+      createdAtMs: 1_000,
+    });
+
+    await expect(repository.findPendingTurns()).resolves.toEqual([
+      {
+        roomCode: 'ROOM01',
+        matchId: 'match-1',
+        turn: 3,
+        deadlineMs: 31_000,
+      },
+    ]);
+  });
 });
 
 class InMemoryRedisRoomState {
@@ -72,6 +99,38 @@ class InMemoryRedisRoomState {
 
   getRoomState(roomCode: string): Promise<PokeLoungeRedisRoomRecord | null> {
     return Promise.resolve(this.rooms.get(roomCode) ?? null);
+  }
+
+  listRoomStateCodes(): Promise<string[]> {
+    return Promise.resolve([...this.rooms.keys()]);
+  }
+
+  seedPendingTurn(
+    roomCode: string,
+    input: { matchId: string; turn: number; createdAtMs: number },
+  ): void {
+    const current = this.rooms.get(roomCode);
+    if (!current) {
+      throw new Error('Room fixture is missing');
+    }
+    const document = JSON.parse(current.document) as {
+      matches: Record<string, Record<string, unknown>>;
+      actions: Record<string, Record<string, unknown>>;
+    };
+    document.matches[input.matchId] = {
+      matchId: input.matchId,
+      status: 'active',
+      currentTurn: input.turn,
+      completedAt: null,
+    };
+    document.actions['pending-action'] = {
+      matchId: input.matchId,
+      turn: input.turn,
+      actorPlayerId: 'player-1',
+      status: 'pending',
+      createdAtMs: input.createdAtMs,
+    };
+    current.document = JSON.stringify(document);
   }
 
   compareAndSetRoomState(input: {

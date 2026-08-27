@@ -387,6 +387,106 @@ export class PokeLoungeRoomService {
     }
   }
 
+  async markParticipantDisconnectPending(
+    roomCode: string,
+    playerId: string,
+    sessionId: string,
+    presenceEpoch: string,
+    expiresAtMs: number,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const normalizedPlayerId = playerId.trim();
+    const normalizedSessionId = sessionId.trim();
+    const normalizedPresenceEpoch = presenceEpoch.trim();
+    const normalizedExpiresAtMs = this.normalizeNow(expiresAtMs);
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      if (signal?.aborted) {
+        return;
+      }
+      let room: PokeLoungeRoomSnapshot;
+      try {
+        room = await this.getRoom(roomCode);
+      } catch (error) {
+        if (error instanceof NotFoundException) {
+          return;
+        }
+        throw error;
+      }
+      const participant = room.participants.find(
+        (candidate) => candidate.playerId === normalizedPlayerId,
+      );
+      if (
+        !participant ||
+        participant.sessionId !== normalizedSessionId ||
+        !participant.connected ||
+        participant.presenceEpoch !== normalizedPresenceEpoch
+      ) {
+        return;
+      }
+      if (participant.disconnectPendingUntilMs === normalizedExpiresAtMs) {
+        return;
+      }
+
+      const nowMs = this.normalizeNow(undefined);
+      try {
+        await this.mutateRoom({
+          operation: 'presence',
+          roomCode: room.roomCode,
+          actorPlayerId: normalizedPlayerId,
+          command: {
+            idempotencyKey: randomUUID(),
+            expectedRevision: room.revision,
+          },
+          nowMs,
+          body: {
+            playerId: normalizedPlayerId,
+            sessionId: normalizedSessionId,
+            presenceEpoch: normalizedPresenceEpoch,
+            expiresAtMs: normalizedExpiresAtMs,
+          },
+          apply: (current) => {
+            if (signal?.aborted) {
+              throw new PokeLoungePresenceMutationCancelled();
+            }
+            const currentParticipant = findParticipant(
+              current,
+              normalizedPlayerId,
+            );
+            assertParticipantSession(
+              currentParticipant,
+              normalizedSessionId,
+              'Presence sessionId does not match this participant',
+            );
+            if (
+              !currentParticipant.connected ||
+              currentParticipant.presenceEpoch !== normalizedPresenceEpoch
+            ) {
+              throw new PokeLoungePresenceMutationCancelled();
+            }
+            currentParticipant.disconnectPendingUntilMs = normalizedExpiresAtMs;
+            current.updatedAtMs = nowMs;
+            return current;
+          },
+        });
+        return;
+      } catch (error) {
+        if (error instanceof PokeLoungePresenceMutationCancelled) {
+          return;
+        }
+        if (error instanceof PokeLoungeRoomConflict) {
+          continue;
+        }
+        if (error instanceof NotFoundException) {
+          return;
+        }
+        throw error;
+      }
+    }
+
+    throw new Error('Unable to persist Poke Lounge disconnect grace');
+  }
+
   async acknowledgeParticipantPresence(
     roomCode: string,
     playerId: string,
@@ -416,6 +516,7 @@ export class PokeLoungeRoomService {
       if (
         participant.connected &&
         participant.presencePendingUntilMs === undefined &&
+        participant.disconnectPendingUntilMs === undefined &&
         (normalizedPresenceEpoch === undefined ||
           participant.presenceEpoch === normalizedPresenceEpoch)
       ) {
@@ -456,6 +557,7 @@ export class PokeLoungeRoomService {
             currentParticipant.connected = true;
             currentParticipant.leftAtMs = undefined;
             delete currentParticipant.presencePendingUntilMs;
+            delete currentParticipant.disconnectPendingUntilMs;
             if (normalizedPresenceEpoch !== undefined) {
               currentParticipant.presenceEpoch = normalizedPresenceEpoch;
             }
@@ -523,6 +625,7 @@ export class PokeLoungeRoomService {
               nowMs + POKE_LOUNGE_PENDING_PRESENCE_LEASE_MS;
           } else if (options.requireSocketAcknowledgement !== true) {
             delete existing.presencePendingUntilMs;
+            delete existing.disconnectPendingUntilMs;
           }
           existing.ready =
             existing.role === 'participant' ? existing.ready : false;
@@ -1034,6 +1137,7 @@ function applyParticipantLeave(
   participant.ready = false;
   participant.leftAtMs = nowMs;
   delete participant.presencePendingUntilMs;
+  delete participant.disconnectPendingUntilMs;
   delete participant.presenceEpoch;
   room.updatedAtMs = nowMs;
 

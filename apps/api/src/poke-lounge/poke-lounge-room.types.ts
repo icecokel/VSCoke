@@ -36,6 +36,7 @@ export interface PokeLoungeRoomParticipant {
   ready: boolean;
   connected: boolean;
   presencePendingUntilMs?: number;
+  disconnectPendingUntilMs?: number;
   presenceEpoch?: string;
   joinedAtMs: number;
   leftAtMs?: number;
@@ -43,7 +44,11 @@ export interface PokeLoungeRoomParticipant {
 
 export type PokeLoungePublicRoomParticipant = Omit<
   PokeLoungeRoomParticipant,
-  'sessionId' | 'userId' | 'presencePendingUntilMs' | 'presenceEpoch'
+  | 'sessionId'
+  | 'userId'
+  | 'presencePendingUntilMs'
+  | 'disconnectPendingUntilMs'
+  | 'presenceEpoch'
 >;
 
 export interface PokeLoungeFinalStanding {

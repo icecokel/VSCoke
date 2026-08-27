@@ -1,4 +1,8 @@
-import { Logger, OnModuleDestroy } from '@nestjs/common';
+import {
+  Logger,
+  type OnApplicationBootstrap,
+  type OnModuleDestroy,
+} from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import {
   ConnectedSocket,
@@ -70,6 +74,11 @@ type PresenceGroup = {
   epoch: string;
 };
 
+type PresenceExpiryInput = PokeLoungeRoomSubscription & {
+  presenceEpoch: string;
+  expiresAtMs: number;
+};
+
 type PokeLoungeServerRoomMetadata = {
   roomCode: string;
   revision: number;
@@ -82,7 +91,11 @@ type PokeLoungeServerRoomMetadata = {
   cors: getCorsOptions(process.env.CORS_ORIGINS),
 })
 export class PokeLoungeGateway
-  implements OnGatewayInit, OnGatewayDisconnect, OnModuleDestroy
+  implements
+    OnApplicationBootstrap,
+    OnGatewayInit,
+    OnGatewayDisconnect,
+    OnModuleDestroy
 {
   private readonly logger = new Logger(PokeLoungeGateway.name);
   @WebSocketServer()
@@ -139,6 +152,58 @@ export class PokeLoungeGateway
       WORLD_CURSOR_INTERVAL_MS,
     );
     this.worldCursorTimer.unref();
+  }
+
+  async onApplicationBootstrap(): Promise<void> {
+    try {
+      const roomCodes = await this.liveState.listRoomStateCodes();
+      for (const roomCode of roomCodes) {
+        try {
+          const room = await this.roomService.getRoom(roomCode);
+          const clusterSockets = await this.server
+            .in(roomName(room.roomCode))
+            .fetchSockets();
+          for (const participant of room.participants) {
+            if (
+              !participant.connected ||
+              participant.presencePendingUntilMs !== undefined ||
+              participant.presenceEpoch === undefined
+            ) {
+              continue;
+            }
+            const hasPersistedDeadline =
+              participant.disconnectPendingUntilMs !== undefined;
+            if (
+              !hasPersistedDeadline &&
+              hasMatchingPresence(clusterSockets, participant)
+            ) {
+              continue;
+            }
+            const expiry = {
+              roomCode: room.roomCode,
+              playerId: participant.playerId,
+              sessionId: participant.sessionId,
+              presenceEpoch: participant.presenceEpoch,
+              expiresAtMs:
+                participant.disconnectPendingUntilMs ??
+                Date.now() + PARTICIPANT_DISCONNECT_GRACE_MS,
+            };
+            const controller = this.schedulePresenceExpiry(expiry);
+            if (!hasPersistedDeadline && controller) {
+              await this.persistPresenceExpiry(
+                expiry,
+                controller.signal,
+                false,
+              );
+            }
+          }
+        } catch (error) {
+          this.logLiveStateError('restore room presence expiry', error);
+        }
+      }
+    } catch (error) {
+      this.logLiveStateError('list room presence expiries', error);
+    }
   }
 
   onModuleDestroy(): void {
@@ -435,80 +500,133 @@ export class PokeLoungeGateway
       return;
     }
     const presenceEpoch = presenceGroup.epoch;
+    const expiresAtMs = Date.now() + PARTICIPANT_DISCONNECT_GRACE_MS;
+    const expiry = {
+      roomCode,
+      playerId,
+      sessionId,
+      presenceEpoch,
+      expiresAtMs,
+    };
+    const controller = this.schedulePresenceExpiry(expiry);
+    if (!controller) {
+      return;
+    }
+    void this.persistPresenceExpiry(expiry, controller.signal);
+  }
+
+  private async persistPresenceExpiry(
+    input: PresenceExpiryInput,
+    signal: AbortSignal,
+    verifyConnected = true,
+  ): Promise<void> {
+    try {
+      if (verifyConnected && (await this.hasConnectedPresence(input))) {
+        return;
+      }
+      await this.roomService.markParticipantDisconnectPending(
+        input.roomCode,
+        input.playerId,
+        input.sessionId,
+        input.presenceEpoch,
+        input.expiresAtMs,
+        signal,
+      );
+    } catch (error) {
+      this.logLiveStateError('persist disconnected player grace', error);
+    }
+  }
+
+  private schedulePresenceExpiry(
+    input: PresenceExpiryInput,
+  ): AbortController | null {
+    const key = presenceKey(input);
+    if (
+      this.disconnectTimers.has(key) ||
+      (this.socketsByPresence.get(key)?.size ?? 0) > 0
+    ) {
+      return null;
+    }
     const controller = new AbortController();
+    const timer = setTimeout(
+      () => {
+        void (async () => {
+          const pending = this.disconnectTimers.get(key);
+          if (!pending || pending.timer !== timer) {
+            return;
+          }
+          const presenceGroup = this.presenceGroups.get(key);
+          if (
+            (this.socketsByPresence.get(key)?.size ?? 0) > 0 ||
+            (presenceGroup !== undefined &&
+              presenceGroup.epoch !== input.presenceEpoch)
+          ) {
+            this.disconnectTimers.delete(key);
+            controller.abort();
+            return;
+          }
 
-    const timer = setTimeout(() => {
-      void (async () => {
-        const pending = this.disconnectTimers.get(key);
-        if (!pending || pending.timer !== timer) {
-          return;
-        }
-        if (
-          (this.socketsByPresence.get(key)?.size ?? 0) > 0 ||
-          this.presenceGroups.get(key)?.epoch !== presenceEpoch
-        ) {
-          this.disconnectTimers.delete(key);
-          controller.abort();
-          return;
-        }
-
-        try {
-          const clusterSockets = await this.server
-            .in(roomName(roomCode))
-            .fetchSockets();
-          const connectedElsewhere = clusterSockets.some((candidate) => {
-            const data = candidate.data as PokeLoungeSocketData;
-            return (
-              data.pokeLoungePlayerId === playerId &&
-              data.pokeLoungeSessionId === sessionId &&
-              data.pokeLoungeSubscribed === true
-            );
-          });
-          if (connectedElsewhere) {
+          try {
+            if (await this.hasConnectedPresence(input)) {
+              this.disconnectTimers.delete(key);
+              this.presenceGroups.delete(key);
+              controller.abort();
+              return;
+            }
+          } catch (error) {
+            this.logLiveStateError('verify disconnected player', error);
             this.disconnectTimers.delete(key);
             this.presenceGroups.delete(key);
             controller.abort();
             return;
           }
-        } catch (error) {
-          this.logLiveStateError('verify disconnected player', error);
-          this.disconnectTimers.delete(key);
-          this.presenceGroups.delete(key);
-          controller.abort();
-          return;
-        }
 
-        await Promise.all([
-          this.liveState
-            .removePlayer(roomCode, playerId)
-            .catch((error) =>
-              this.logLiveStateError('remove disconnected player', error),
-            ),
-          this.roomService
-            .expireParticipantPresence(
-              roomCode,
-              playerId,
-              sessionId,
-              presenceEpoch,
-              controller.signal,
-            )
-            .catch(() => undefined),
-        ]).finally(() => {
-          const current = this.disconnectTimers.get(key);
-          if (current?.timer === timer) {
-            this.disconnectTimers.delete(key);
-          }
-          if (
-            (this.socketsByPresence.get(key)?.size ?? 0) === 0 &&
-            this.presenceGroups.get(key)?.epoch === presenceEpoch
-          ) {
-            this.presenceGroups.delete(key);
-          }
-        });
-      })();
-    }, PARTICIPANT_DISCONNECT_GRACE_MS);
+          await Promise.all([
+            this.liveState
+              .removePlayer(input.roomCode, input.playerId)
+              .catch((error) =>
+                this.logLiveStateError('remove disconnected player', error),
+              ),
+            this.roomService
+              .expireParticipantPresence(
+                input.roomCode,
+                input.playerId,
+                input.sessionId,
+                input.presenceEpoch,
+                controller.signal,
+              )
+              .catch(() => undefined),
+          ]).finally(() => {
+            const current = this.disconnectTimers.get(key);
+            if (current?.timer === timer) {
+              this.disconnectTimers.delete(key);
+            }
+            if (
+              (this.socketsByPresence.get(key)?.size ?? 0) === 0 &&
+              this.presenceGroups.get(key)?.epoch === input.presenceEpoch
+            ) {
+              this.presenceGroups.delete(key);
+            }
+          });
+        })();
+      },
+      Math.max(0, input.expiresAtMs - Date.now()),
+    );
     timer.unref();
     this.disconnectTimers.set(key, { controller, timer });
+    return controller;
+  }
+
+  private async hasConnectedPresence(
+    input: Pick<
+      PokeLoungeRoomSubscription,
+      'roomCode' | 'playerId' | 'sessionId'
+    >,
+  ): Promise<boolean> {
+    const clusterSockets = await this.server
+      .in(roomName(input.roomCode))
+      .fetchSockets();
+    return hasMatchingPresence(clusterSockets, input);
   }
 
   private updateRoomMetadata(roomCode: string, expiresAtMs: number): void {
@@ -728,6 +846,20 @@ function presenceKey(subscription: PokeLoungeRoomSubscription): string {
     subscription.playerId,
     subscription.sessionId,
   ]);
+}
+
+function hasMatchingPresence(
+  sockets: ReadonlyArray<Pick<Socket, 'data'>>,
+  input: Pick<PokeLoungeRoomSubscription, 'playerId' | 'sessionId'>,
+): boolean {
+  return sockets.some((candidate) => {
+    const data = candidate.data as PokeLoungeSocketData;
+    return (
+      data.pokeLoungePlayerId === input.playerId &&
+      data.pokeLoungeSessionId === input.sessionId &&
+      data.pokeLoungeSubscribed === true
+    );
+  });
 }
 
 function rejectSubscription(socket: Socket): void {

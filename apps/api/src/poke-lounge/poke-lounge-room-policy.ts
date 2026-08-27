@@ -148,11 +148,12 @@ export function expirePendingPokeLoungePresence(
 ): PokeLoungeRoomSnapshot | null {
   const expiredPlayerIds = new Set(
     room.participants
-      .filter(
-        (participant) =>
-          participant.presencePendingUntilMs !== undefined &&
-          participant.presencePendingUntilMs <= nowMs,
-      )
+      .filter((participant) => {
+        const pendingUntilMs =
+          participant.presencePendingUntilMs ??
+          participant.disconnectPendingUntilMs;
+        return pendingUntilMs !== undefined && pendingUntilMs <= nowMs;
+      })
       .map((participant) => participant.playerId),
   );
   if (expiredPlayerIds.size === 0) {
@@ -174,6 +175,7 @@ export function expirePendingPokeLoungePresence(
         participant.ready = false;
         participant.leftAtMs = nowMs;
         delete participant.presencePendingUntilMs;
+        delete participant.disconnectPendingUntilMs;
         delete participant.presenceEpoch;
       }
     }

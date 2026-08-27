@@ -142,6 +142,16 @@ describe('PokeLoungeLiveStateService', () => {
       version: 2,
       document: '{"roomCode":"ROOM01"}',
     });
+    redis.command.zRange.mockResolvedValueOnce(['ROOM01', 'ROOM02']);
+    await expect(service.listRoomStateCodes()).resolves.toEqual([
+      'ROOM01',
+      'ROOM02',
+    ]);
+    expect(redis.command.zRange).toHaveBeenCalledWith(
+      'poke-lounge:rooms',
+      0,
+      -1,
+    );
 
     redis.command.eval.mockResolvedValueOnce(1);
     redis.command.hGetAll.mockResolvedValueOnce({
@@ -213,6 +223,7 @@ function redisFixture() {
     eval: jest.fn().mockResolvedValue(1),
     hGetAll: jest.fn().mockResolvedValue({}),
     hmGet: jest.fn().mockResolvedValue(['world-1', '0']),
+    zRange: jest.fn().mockResolvedValue([]),
   };
 
   return { command, subscriber };

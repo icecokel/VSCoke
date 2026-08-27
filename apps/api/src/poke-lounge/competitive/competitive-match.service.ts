@@ -5,6 +5,7 @@ import {
   Inject,
   Injectable,
   Logger,
+  type OnApplicationBootstrap,
   type OnModuleDestroy,
 } from '@nestjs/common';
 import {
@@ -43,7 +44,9 @@ import type { PokeLoungeRoomSnapshot } from '../poke-lounge-room.repository';
 import { toCompetitiveProjection } from './competitive-projection.service';
 
 @Injectable()
-export class CompetitiveMatchService implements OnModuleDestroy {
+export class CompetitiveMatchService
+  implements OnApplicationBootstrap, OnModuleDestroy
+{
   private readonly logger = new Logger(CompetitiveMatchService.name);
   private readonly turnTimeouts = new Map<
     string,
@@ -58,6 +61,29 @@ export class CompetitiveMatchService implements OnModuleDestroy {
     @Inject(POKE_LOUNGE_ROOM_EVENT_PUBLISHER)
     private readonly eventPublisher: PokeLoungeRoomEventPublisher,
   ) {}
+
+  async onApplicationBootstrap(): Promise<void> {
+    if (!this.actionRepository.findPendingTurns) {
+      return;
+    }
+
+    try {
+      const pendingTurns = await this.actionRepository.findPendingTurns();
+      for (const pending of pendingTurns) {
+        this.scheduleTurnTimeout(
+          pending.roomCode,
+          pending.matchId,
+          pending.turn,
+          pending.deadlineMs,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        'Failed to restore competitive turn deadlines',
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+  }
 
   onModuleDestroy(): void {
     for (const timeout of this.turnTimeouts.values()) {

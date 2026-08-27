@@ -17,6 +17,7 @@ import {
 import type {
   CompetitiveActionRepository,
   CompetitiveActionResult,
+  CompetitivePendingTurn,
   CompetitiveTurnTimeoutResult,
 } from './competitive/competitive-action.repository';
 import { COMPETITIVE_TURN_DEADLINE_MS } from './competitive/competitive-action.repository';
@@ -648,6 +649,36 @@ export class RedisPokeLoungeRepository
     }
 
     throw new Error('Poke Lounge Redis competitive action was contended');
+  }
+
+  async findPendingTurns(): Promise<CompetitivePendingTurn[]> {
+    const roomCodes = await this.redis.listRoomStateCodes();
+    const rooms = await Promise.all(
+      roomCodes.map((roomCode) => this.readDocument(roomCode)),
+    );
+
+    return rooms.flatMap((current) => {
+      if (!current) {
+        return [];
+      }
+      const match = findActiveMatch(current.document);
+      const pending = match
+        ? findTurnActions(current.document, match).find(
+            (action) => action.status === 'pending',
+          )
+        : undefined;
+
+      return pending && match
+        ? [
+            {
+              roomCode: current.document.room.roomCode,
+              matchId: match.matchId,
+              turn: match.currentTurn,
+              deadlineMs: pending.createdAtMs + COMPETITIVE_TURN_DEADLINE_MS,
+            },
+          ]
+        : [];
+    });
   }
 
   async expirePendingTurn(input: {

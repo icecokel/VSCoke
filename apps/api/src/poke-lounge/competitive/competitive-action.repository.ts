@@ -40,8 +40,16 @@ export type CompetitiveTurnTimeoutResult =
       room: PokeLoungeRoomSnapshot;
     };
 
+export interface CompetitivePendingTurn {
+  roomCode: string;
+  matchId: string;
+  turn: number;
+  deadlineMs: number;
+}
+
 export interface CompetitiveActionRepository {
   submit(input: SubmitCompetitiveActionInput): Promise<CompetitiveActionResult>;
+  findPendingTurns?(): Promise<CompetitivePendingTurn[]>;
   expirePendingTurn(input: {
     roomCode: string;
     matchId: string;

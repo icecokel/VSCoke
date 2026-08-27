@@ -26,6 +26,7 @@ describe('CompetitiveMatchService', () => {
     };
     actionRepository = {
       submit: jest.fn(),
+      findPendingTurns: jest.fn().mockResolvedValue([]),
       expirePendingTurn: jest.fn(),
     };
     publisher = { publish: jest.fn().mockResolvedValue(undefined) };
@@ -311,6 +312,41 @@ describe('CompetitiveMatchService', () => {
         turn: 0,
       });
       expect(typeof timeoutInput?.nowMs).toBe('number');
+    } finally {
+      service.onModuleDestroy();
+      jest.useRealTimers();
+    }
+  });
+
+  it('restores a pending Redis turn deadline after application restart', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(1_000);
+    const findPendingTurns = jest.fn().mockResolvedValue([
+      {
+        roomCode: 'ROOM01',
+        matchId: 'match-1',
+        turn: 3,
+        deadlineMs: 31_000,
+      },
+    ]);
+    const expirePendingTurn = jest.fn().mockResolvedValue({
+      outcome: 'ignored',
+    });
+    actionRepository.findPendingTurns = findPendingTurns;
+    actionRepository.expirePendingTurn = expirePendingTurn;
+
+    try {
+      await service.onApplicationBootstrap();
+      await jest.advanceTimersByTimeAsync(29_999);
+      expect(expirePendingTurn).not.toHaveBeenCalled();
+
+      await jest.advanceTimersByTimeAsync(1);
+      expect(expirePendingTurn).toHaveBeenCalledWith({
+        roomCode: 'ROOM01',
+        matchId: 'match-1',
+        turn: 3,
+        nowMs: 31_000,
+      });
     } finally {
       service.onModuleDestroy();
       jest.useRealTimers();

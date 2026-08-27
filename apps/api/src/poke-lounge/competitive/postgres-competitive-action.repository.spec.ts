@@ -591,6 +591,7 @@ function terminalTournamentRepository() {
     terminalResult: null,
     historyPublication: null,
     completedAt: null,
+    updatedAt: new Date('2026-07-16T00:00:00.000Z'),
   } as unknown as PokeLoungeCompetitiveMatch;
   const room = {
     id: match.roomId,

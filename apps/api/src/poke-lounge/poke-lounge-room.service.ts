@@ -299,7 +299,7 @@ export class PokeLoungeRoomService {
     const normalizedSessionId = sessionId.trim();
     const normalizedPresenceEpoch = presenceEpoch?.trim();
 
-    for (let attempt = 0; attempt < 3; attempt += 1) {
+    for (let attempt = 0; attempt < MAX_ROOM_OCCUPANTS; attempt += 1) {
       if (signal?.aborted) {
         return;
       }
@@ -400,7 +400,7 @@ export class PokeLoungeRoomService {
     const normalizedPresenceEpoch = presenceEpoch.trim();
     const normalizedExpiresAtMs = this.normalizeNow(expiresAtMs);
 
-    for (let attempt = 0; attempt < 3; attempt += 1) {
+    for (let attempt = 0; attempt < MAX_ROOM_OCCUPANTS; attempt += 1) {
       if (signal?.aborted) {
         return;
       }
@@ -499,7 +499,7 @@ export class PokeLoungeRoomService {
     const normalizedSessionId = sessionId.trim();
     const normalizedPresenceEpoch = presenceEpoch?.trim();
 
-    for (let attempt = 0; attempt < 3; attempt += 1) {
+    for (let attempt = 0; attempt < MAX_ROOM_OCCUPANTS; attempt += 1) {
       if (signal?.aborted) {
         throw new PokeLoungePresenceMutationCancelled();
       }

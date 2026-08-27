@@ -1,4 +1,3 @@
-import type { PokeLoungeRoomCommittedEvent } from '../poke-lounge-room-event.publisher';
 import type { CompetitivePendingTurn } from './competitive-action.repository';
 
 export const COMPETITIVE_TURN_QUEUE = Symbol('COMPETITIVE_TURN_QUEUE');
@@ -13,10 +12,7 @@ export type CompetitiveTurnJobData = CompetitivePendingTurn;
 
 export type CompetitiveTurnJobResult =
   | { outcome: 'ignored' }
-  | {
-      outcome: 'resolved';
-      event: PokeLoungeRoomCommittedEvent;
-    };
+  | { outcome: 'resolved' };
 
 export function createCompetitiveTurnJobId(
   turn: CompetitivePendingTurn,

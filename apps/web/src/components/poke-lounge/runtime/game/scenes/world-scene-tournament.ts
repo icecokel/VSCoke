@@ -545,6 +545,10 @@ function createServerRoomStageLabel(projection: TournamentStateRoomPayload, nowM
   if (projection.roomStatus === "round-started") {
     const remainingMs = Math.max(0, (projection.roomRound.endsAtMs ?? nowMs) - nowMs);
 
+    if (remainingMs === 0) {
+      return `라운드 ${projection.roundIndex}/${ROUND_TOTAL_COUNT} · 다른 플레이어를 기다리는 중...`;
+    }
+
     return `라운드 ${projection.roundIndex}/${ROUND_TOTAL_COUNT} 준비 중 · ${formatRemainingTime(remainingMs)}`;
   }
 

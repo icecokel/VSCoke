@@ -103,6 +103,7 @@ next-env.d.ts
 !/docs/e2e-full-feature-test-scenarios.md
 !/docs/poke-lounge-audio-sources.md
 !/docs/poke-lounge-game-concept.md
+!/docs/poke-lounge-game-server-stabilization-plan.md
 !/docs/poke-lounge-multiplayer-test-scenarios.md
 !/docs/poke-lounge-performance-optimization-plan.md
 !/docs/poke-lounge-redis-live-state-plan.md

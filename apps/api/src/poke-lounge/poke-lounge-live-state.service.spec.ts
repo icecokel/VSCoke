@@ -180,6 +180,44 @@ describe('PokeLoungeLiveStateService', () => {
     });
     await service.onModuleDestroy();
   });
+
+  it('publishes and subscribes to minimal room commit notifications', async () => {
+    const redis = redisFixture();
+    const service = createService(redis);
+    await service.connect();
+    let handleMessage: ((message: string) => void) | undefined;
+    redis.commitSubscriber.subscribe.mockImplementationOnce(
+      (_channel: string, listener: (message: string) => void) => {
+        handleMessage = listener;
+        return Promise.resolve(1);
+      },
+    );
+    const listener = jest.fn();
+
+    const unsubscribe = await service.subscribeRoomCommits(listener);
+    await service.publishRoomCommit({ roomCode: ' room01 ', revision: 4 });
+    handleMessage?.(JSON.stringify({ roomCode: 'ROOM01', revision: 4 }));
+
+    expect(redis.command.publish).toHaveBeenCalledWith(
+      'poke-lounge:room-committed',
+      JSON.stringify({ roomCode: 'ROOM01', revision: 4 }),
+    );
+    expect(redis.commitSubscriber.subscribe).toHaveBeenCalledWith(
+      'poke-lounge:room-committed',
+      expect.any(Function),
+    );
+    expect(listener).toHaveBeenCalledWith({
+      roomCode: 'ROOM01',
+      revision: 4,
+    });
+
+    await unsubscribe();
+    expect(redis.commitSubscriber.unsubscribe).toHaveBeenCalledWith(
+      'poke-lounge:room-committed',
+      expect.any(Function),
+    );
+    await service.onModuleDestroy();
+  });
 });
 
 function createService(redis: ReturnType<typeof redisFixture>) {
@@ -190,7 +228,7 @@ function createService(redis: ReturnType<typeof redisFixture>) {
 }
 
 function redisFixture() {
-  const subscriber = {
+  const redisClient = () => ({
     isReady: false,
     isOpen: false,
     connect: jest.fn(function (this: { isReady: boolean; isOpen: boolean }) {
@@ -205,26 +243,26 @@ function redisFixture() {
     }),
     destroy: jest.fn(),
     on: jest.fn(),
+  });
+  const subscriber = redisClient();
+  const commitSubscriber = {
+    ...redisClient(),
+    subscribe: jest.fn().mockResolvedValue(1),
+    unsubscribe: jest.fn().mockResolvedValue(0),
   };
   const command = {
-    ...subscriber,
-    connect: jest.fn(function (this: { isReady: boolean; isOpen: boolean }) {
-      this.isReady = true;
-      this.isOpen = true;
-      return Promise.resolve();
-    }),
-    close: jest.fn(function (this: { isReady: boolean; isOpen: boolean }) {
-      this.isReady = false;
-      this.isOpen = false;
-      return Promise.resolve();
-    }),
+    ...redisClient(),
     del: jest.fn().mockResolvedValue(1),
-    duplicate: jest.fn(() => subscriber),
+    duplicate: jest
+      .fn()
+      .mockReturnValueOnce(subscriber)
+      .mockReturnValueOnce(commitSubscriber),
     eval: jest.fn().mockResolvedValue(1),
     hGetAll: jest.fn().mockResolvedValue({}),
     hmGet: jest.fn().mockResolvedValue(['world-1', '0']),
+    publish: jest.fn().mockResolvedValue(1),
     zRange: jest.fn().mockResolvedValue([]),
   };
 
-  return { command, subscriber };
+  return { command, subscriber, commitSubscriber };
 }

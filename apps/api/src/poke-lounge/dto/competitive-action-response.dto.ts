@@ -144,6 +144,9 @@ export class CompetitiveActionResponseDto implements CompetitiveActionProjection
   @ApiProperty()
   currentTurn!: number;
 
+  @ApiProperty({ minimum: 0 })
+  turnEndsAtMs!: number;
+
   @ApiProperty({ enum: ['pending', 'active', 'completed'] })
   status!: CompetitiveMatchStatus;
 

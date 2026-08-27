@@ -50,6 +50,7 @@ export interface CompetitiveAssignmentProjection extends CompetitiveTerminalMeta
   rulesetVersion: number;
   rulesetHash: string;
   currentTurn: number;
+  turnEndsAtMs: number;
   status: CompetitiveMatchStatus;
   playerIds: [string, string];
   currentState: PublicCompetitiveBattleState;

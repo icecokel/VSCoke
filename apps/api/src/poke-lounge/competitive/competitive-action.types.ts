@@ -46,6 +46,7 @@ export interface CompetitiveActionProjection extends CompetitiveTerminalMetadata
   rulesetVersion: number;
   rulesetHash: string;
   currentTurn: number;
+  turnEndsAtMs: number;
   status: CompetitiveMatchStatus;
   playerIds: [string, string];
   currentState: PublicCompetitiveBattleState;

@@ -66,6 +66,7 @@ export interface ServerRoomOptions {
   sessionId?: string;
   playerId?: string;
   createRoom?: boolean;
+  resumeRoom?: boolean;
   roundDurationMs?: number;
   persistRoomCodeInUrl?: boolean;
   sharedWorldOnly?: boolean;
@@ -155,6 +156,7 @@ export type ServerRoomTransportDiagnostics = {
 };
 
 type RecoveryFailureKind = NonNullable<ServerRoomTransportDiagnostics["lastRecoveryFailureKind"]>;
+type RecoveryOrigin = "transport" | "online-probe";
 
 interface ServerRoomE2eDiagnosticsReader {
   getRoomTransportDiagnosticsForE2e?(): ServerRoomTransportDiagnostics;
@@ -176,6 +178,7 @@ const SERVER_IDENTITY_STORAGE_KEY = "poke-lounge:server-room-identity";
 const SERVER_ROOM_CODE_PATTERN = /^[A-Z0-9]{6}$/;
 const RECOVERY_INITIAL_DELAY_MS = 250;
 const RECOVERY_MAX_DELAY_MS = 5000;
+const ONLINE_STALE_RECOVERY_DELAY_MS = 3000;
 const ROOM_CLOCK_RETRY_INITIAL_DELAY_MS = 250;
 const ROOM_CLOCK_RETRY_MAX_DELAY_MS = 5000;
 const ROOM_CLOCK_MAX_WAIT_MS = 30_000;
@@ -285,6 +288,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   let recoveryInFlight = false;
   let recoveryRetryQueued = false;
   let recoveryDrainQueued = false;
+  let onlineRecoveryQueued = false;
   let initialWorkflowTimer: number | null = null;
   let initialWorkflowAttempt = 0;
   let initialWorkflowInFlight = false;
@@ -294,10 +298,13 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   let latestSharedWorldSnapshot: PlayerSnapshot | null = null;
   let initialOpenIdempotencyKey = createIdempotencyKey();
   let initialPartyIdempotencyKey = createIdempotencyKey();
-  let competitiveActionRecoveryTimer: number | null = null;
-  let competitiveActionRecoveryAttempt = 0;
-  let competitiveActionRecoveryInFlight = false;
-  let competitiveActionRecoveryMatchId: string | null = null;
+  let onlineStaleRecoveryTimer: number | null = null;
+  let onlineStaleRecoveryFingerprint: string | null = null;
+  let onlineStaleRecoveryDueAtMs: number | null = null;
+  let onlineStaleRecoveryAttempt = 0;
+  let onlineStaleRecoveryRepeats = false;
+  let onlineStaleRecoveryGeneration = 0;
+  let visibilityRecoveryDocument: Document | null = null;
   let roomClockTimer: number | null = null;
   let roomClockAttempt = 0;
   let roomClockInFlight = false;
@@ -546,7 +553,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       initialWorkflowStage,
       error,
       recoverable,
-      options.createRoom === true,
+      options.createRoom === true && options.resumeRoom !== true,
     );
     emitConnectionStatus("offline");
     dispatchServerRoomError({
@@ -569,14 +576,17 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     }, delayMs);
   };
 
-  const clearCompetitiveActionRecovery = () => {
-    if (competitiveActionRecoveryTimer !== null) {
-      window.clearTimeout(competitiveActionRecoveryTimer);
-      competitiveActionRecoveryTimer = null;
+  const clearOnlineStaleRecovery = () => {
+    if (onlineStaleRecoveryTimer !== null) {
+      window.clearTimeout(onlineStaleRecoveryTimer);
+      onlineStaleRecoveryTimer = null;
     }
 
-    competitiveActionRecoveryAttempt = 0;
-    competitiveActionRecoveryMatchId = null;
+    onlineStaleRecoveryFingerprint = null;
+    onlineStaleRecoveryDueAtMs = null;
+    onlineStaleRecoveryAttempt = 0;
+    onlineStaleRecoveryRepeats = false;
+    onlineStaleRecoveryGeneration += 1;
   };
 
   const clearRoomClockRefresh = () => {
@@ -596,13 +606,22 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     latestState.round.phase === "round-started" &&
     latestState.round.endsAtMs === target.endsAtMs;
 
+  const applyExpectedTransitionSnapshot = (state: ServerRoomState): boolean => {
+    const applied = applySnapshot(state);
+    if (applied) {
+      scheduleOnlineStaleRecovery();
+    }
+
+    return applied;
+  };
+
   const updateReady = async (ready: boolean) => {
     const state = await mutateRoom(
       `/poke-lounge/rooms/${activeRoomId}/ready`,
       { playerId: serverPlayerId, sessionId, ready },
       getLatestRevision,
     );
-    applySnapshot(state);
+    applyExpectedTransitionSnapshot(state);
   };
 
   const updateRoundReady = async (roundIndex: number) => {
@@ -628,7 +647,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         }),
       ),
     );
-    applySnapshot(state);
+    applyExpectedTransitionSnapshot(state);
   };
 
   const runRoomClockRefresh = async (target: NonNullable<typeof roomClockTarget>) => {
@@ -753,7 +772,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     }, delayMs);
   };
 
-  const runRecovery = async () => {
+  const runRecovery = async (origin: RecoveryOrigin = "transport") => {
     if (disposed || cursorRegression || activeRoomId === PENDING_ROOM_ID) {
       return;
     }
@@ -763,6 +782,12 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       return;
     }
 
+    const onlineExpectationBeforeRecovery = onlineStaleRecoveryFingerprint;
+    const repeatOnlineExpectation = onlineStaleRecoveryRepeats;
+    const onlineExpectationGeneration = onlineStaleRecoveryGeneration;
+    let recoverySucceeded = false;
+    let onlineProbeFailed = false;
+    let retryOnlineExpectation = false;
     recoveryInFlight = true;
     try {
       const terminalRevisionBeforeRecovery = lastAppliedTerminalRevision;
@@ -770,7 +795,13 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         `/poke-lounge/rooms/${activeRoomId}?afterRevision=${Math.max(0, lastAppliedTerminalRevision)}`,
       );
       const applied = applySnapshot(room);
+      recoverySucceeded = true;
       const terminalCursorAdvanced = lastAppliedTerminalRevision > terminalRevisionBeforeRecovery;
+      retryOnlineExpectation =
+        repeatOnlineExpectation &&
+        onlineExpectationBeforeRecovery !== null &&
+        createOnlineRecoveryFingerprint() === onlineExpectationBeforeRecovery &&
+        !isTerminalState();
 
       if (socketConnected && subscriptionRetryRequired) {
         emitRoomSubscription();
@@ -790,13 +821,17 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       }
     } catch (error) {
       lastRecoveryFailureKind = classifyRecoveryFailure(error);
-      subscriptionFailed = socketConnected;
+      if (origin === "online-probe") {
+        onlineProbeFailed = true;
+      } else {
+        subscriptionFailed = socketConnected;
+      }
     } finally {
       recoveryInFlight = false;
 
       if (recoveryDrainQueued) {
         recoveryDrainQueued = false;
-        void runRecovery();
+        void runRecovery(origin);
         return;
       }
 
@@ -804,8 +839,175 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         recoveryRetryQueued = false;
       }
 
+      if (onlineRecoveryQueued) {
+        onlineRecoveryQueued = false;
+        if (
+          !onlineProbeFailed &&
+          socketConnected &&
+          !disposed &&
+          !cursorRegression &&
+          !isTerminalState()
+        ) {
+          void runRecovery("online-probe");
+          return;
+        }
+      }
+
+      if (
+        onlineStaleRecoveryGeneration === onlineExpectationGeneration &&
+        ((recoverySucceeded && retryOnlineExpectation) ||
+          (onlineProbeFailed && !shouldContinueRecovery()))
+      ) {
+        const delayMs = Math.min(
+          ONLINE_STALE_RECOVERY_DELAY_MS * 2 ** onlineStaleRecoveryAttempt,
+          RECOVERY_MAX_DELAY_MS,
+        );
+        scheduleOnlineStaleRecovery(delayMs, false, true);
+      } else if (
+        recoverySucceeded &&
+        onlineStaleRecoveryGeneration === onlineExpectationGeneration &&
+        onlineExpectationBeforeRecovery !== null &&
+        onlineStaleRecoveryFingerprint === onlineExpectationBeforeRecovery
+      ) {
+        clearOnlineStaleRecovery();
+      }
+
+      if (recoverySucceeded && !retryOnlineExpectation) {
+        scheduleCurrentTurnDeadlineRecovery();
+      }
+
       scheduleRecovery();
     }
+  };
+
+  const createOnlineRecoveryFingerprint = (): string =>
+    stableJsonStringify({
+      roomCode: latestState?.roomCode ?? activeRoomId,
+      roomRevision: lastAppliedRoomRevision,
+      terminalRevision: lastAppliedTerminalRevision,
+      roomStatus: latestState?.status ?? null,
+      round: latestState?.round ?? null,
+      competitive: currentAssignmentProjection
+        ? {
+            matchId: currentAssignmentProjection.matchId,
+            assignmentRevision: currentAssignmentProjection.assignmentRevision,
+            currentTurn: currentAssignmentProjection.currentTurn,
+            turnEndsAtMs: currentAssignmentProjection.turnEndsAtMs,
+            stateHash: currentAssignmentProjection.stateHash,
+            status: currentAssignmentProjection.status,
+            submittedPlayerIds: currentAssignmentProjection.submittedPlayerIds,
+          }
+        : null,
+    }) ?? "";
+
+  const requestOnlineRecovery = () => {
+    if (disposed || cursorRegression || isTerminalState() || activeRoomId === PENDING_ROOM_ID) {
+      return;
+    }
+
+    if (recoveryInFlight) {
+      onlineRecoveryQueued = true;
+      return;
+    }
+
+    void runRecovery("online-probe");
+  };
+
+  const scheduleOnlineStaleRecovery = (
+    delayMs = ONLINE_STALE_RECOVERY_DELAY_MS,
+    resetAttempt = true,
+    repeatUntilProgress = false,
+  ) => {
+    const recoveryDocument = typeof document === "undefined" ? null : document;
+    if (
+      !recoveryDocument ||
+      recoveryDocument.visibilityState === "hidden" ||
+      disposed ||
+      cursorRegression ||
+      isTerminalState() ||
+      !socketConnected ||
+      !latestState ||
+      activeRoomId === PENDING_ROOM_ID
+    ) {
+      return;
+    }
+
+    const fingerprint = createOnlineRecoveryFingerprint();
+    const normalizedDelayMs = Math.max(0, delayMs);
+    const dueAtMs = Date.now() + normalizedDelayMs;
+    if (resetAttempt) {
+      onlineStaleRecoveryAttempt = 0;
+    }
+    if (
+      onlineStaleRecoveryTimer !== null &&
+      onlineStaleRecoveryFingerprint === fingerprint &&
+      onlineStaleRecoveryDueAtMs !== null &&
+      onlineStaleRecoveryDueAtMs <= dueAtMs
+    ) {
+      return;
+    }
+
+    if (onlineStaleRecoveryFingerprint !== fingerprint) {
+      clearOnlineStaleRecovery();
+    } else if (onlineStaleRecoveryTimer !== null) {
+      window.clearTimeout(onlineStaleRecoveryTimer);
+      onlineStaleRecoveryTimer = null;
+    }
+    onlineStaleRecoveryFingerprint = fingerprint;
+    onlineStaleRecoveryRepeats = repeatUntilProgress;
+    onlineStaleRecoveryDueAtMs = dueAtMs;
+    onlineStaleRecoveryGeneration += 1;
+    onlineStaleRecoveryTimer = window.setTimeout(() => {
+      onlineStaleRecoveryTimer = null;
+      onlineStaleRecoveryDueAtMs = null;
+      if (createOnlineRecoveryFingerprint() !== fingerprint) {
+        clearOnlineStaleRecovery();
+        return;
+      }
+
+      onlineStaleRecoveryAttempt += 1;
+      requestOnlineRecovery();
+    }, normalizedDelayMs);
+  };
+
+  const scheduleCurrentTurnDeadlineRecovery = () => {
+    const projection = currentAssignmentProjection;
+    if (!projection || projection.status === "completed") {
+      return;
+    }
+
+    const allPlayersSubmitted = projection.playerIds.every(playerId =>
+      projection.submittedPlayerIds.includes(playerId),
+    );
+    if (allPlayersSubmitted && !onlineStaleRecoveryRepeats) {
+      clearOnlineStaleRecovery();
+    }
+    const deadlineRecoveryDelayMs = Math.max(0, projection.turnEndsAtMs - Date.now());
+    scheduleOnlineStaleRecovery(
+      allPlayersSubmitted
+        ? ONLINE_STALE_RECOVERY_DELAY_MS
+        : deadlineRecoveryDelayMs + ONLINE_STALE_RECOVERY_DELAY_MS,
+      true,
+      true,
+    );
+  };
+
+  const handleVisibilityRecovery = () => {
+    if (visibilityRecoveryDocument?.visibilityState !== "visible") {
+      clearOnlineStaleRecovery();
+      return;
+    }
+
+    scheduleOnlineStaleRecovery(0);
+  };
+
+  const registerVisibilityRecovery = () => {
+    if (visibilityRecoveryDocument || typeof document === "undefined") {
+      return;
+    }
+
+    visibilityRecoveryDocument = document;
+    visibilityRecoveryDocument.addEventListener("visibilitychange", handleVisibilityRecovery);
   };
 
   const requestTerminalRecovery = (failureKind: RecoveryFailureKind = "unknown") => {
@@ -834,6 +1036,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     clearRecoveryTimer();
     emitRoomSubscription();
     void runRecovery();
+    scheduleOnlineStaleRecovery();
   };
 
   const handleSocketDisconnect = () => {
@@ -842,6 +1045,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     worldResyncRequested = false;
     emitConnectionStatus("offline");
     lastSocketErrorKind = "disconnect";
+    clearOnlineStaleRecovery();
     scheduleRecovery();
   };
 
@@ -853,6 +1057,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     subscriptionFailed = true;
     lastSocketErrorKind = "connect_error";
     lastSocketConnectErrorClass = classifySocketConnectError(error);
+    clearOnlineStaleRecovery();
     scheduleRecovery();
   };
 
@@ -1027,6 +1232,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     worldResyncRequested = false;
     lastSocketErrorKind = "subscription_error";
     emitConnectionStatus("connecting");
+    clearOnlineStaleRecovery();
     scheduleRecovery();
   };
 
@@ -1046,6 +1252,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     cursorRegression = true;
     subscriptionFailed = false;
     clearRecoveryTimer();
+    clearOnlineStaleRecovery();
     clearRoomClockRefresh();
     roomSocket?.disconnect();
     clearStoredServerRoomSession(options.accountId);
@@ -1133,7 +1340,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     activeRoomId = state.roomCode;
     latestCompetitionKind = resolveCompetitionKind(state, latestCompetitionKind);
 
-    if (isTerminalState()) {
+    if (state.status === "closed") {
       clearStoredServerRoomSession(options.accountId);
     } else if (state.participants.some(participant => participant.playerId === serverPlayerId)) {
       writeStoredIdentity(
@@ -1197,9 +1404,16 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       requestTerminalRecovery();
     }
 
+    if (
+      onlineStaleRecoveryFingerprint !== null &&
+      onlineStaleRecoveryFingerprint !== createOnlineRecoveryFingerprint()
+    ) {
+      clearOnlineStaleRecovery();
+    }
+
     if (isTerminalState()) {
       clearRecoveryTimer();
-      clearCompetitiveActionRecovery();
+      clearOnlineStaleRecovery();
     }
     scheduleRoomClockRefresh();
 
@@ -1249,10 +1463,6 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       throw error;
     }
 
-    if (competitiveActionRecoveryMatchId === transition.projection.matchId) {
-      clearCompetitiveActionRecovery();
-    }
-
     return true;
   };
 
@@ -1281,7 +1491,6 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       return;
     }
 
-    clearCompetitiveActionRecovery();
     const previousCompetitionKind = latestCompetitionKind;
     latestCompetitionKind = projection.kind;
     currentAssignmentProjection = projection;
@@ -1293,6 +1502,9 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       emit("COMPETITIVE_ASSIGNMENT", payload);
     }
     emit("COMPETITIVE_STATE", payload);
+    if (!recoveryInFlight) {
+      scheduleCurrentTurnDeadlineRecovery();
+    }
 
     if (latestState && previousCompetitionKind !== latestCompetitionKind) {
       emitTournamentProjection(latestState);
@@ -1408,53 +1620,6 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     }
   };
 
-  const scheduleCompetitiveActionRecovery = (matchId: string) => {
-    competitiveActionRecoveryMatchId = matchId;
-    if (
-      disposed ||
-      isTerminalState() ||
-      activeRoomId === PENDING_ROOM_ID ||
-      competitiveActionRecoveryTimer !== null ||
-      competitiveActionRecoveryInFlight
-    ) {
-      return;
-    }
-
-    const delayMs = Math.min(
-      RECOVERY_INITIAL_DELAY_MS * 2 ** competitiveActionRecoveryAttempt,
-      RECOVERY_MAX_DELAY_MS,
-    );
-    competitiveActionRecoveryAttempt += 1;
-    competitiveActionRecoveryTimer = window.setTimeout(() => {
-      competitiveActionRecoveryTimer = null;
-      void runCompetitiveActionRecovery();
-    }, delayMs);
-  };
-
-  const runCompetitiveActionRecovery = async () => {
-    const matchId = competitiveActionRecoveryMatchId;
-    if (disposed || !matchId || isTerminalState() || activeRoomId === PENDING_ROOM_ID) {
-      return;
-    }
-
-    competitiveActionRecoveryInFlight = true;
-    let recovered = false;
-    try {
-      const room = await requestRoom(
-        `/poke-lounge/rooms/${activeRoomId}?afterRevision=${Math.max(0, lastAppliedTerminalRevision)}`,
-      );
-      applySnapshot(room);
-      recovered = room.competitive?.matchId === matchId || terminalMatchIds.has(matchId);
-    } catch {
-      // Retry below with bounded backoff until a current projection is available.
-    } finally {
-      competitiveActionRecoveryInFlight = false;
-      if (!recovered) {
-        scheduleCompetitiveActionRecovery(matchId);
-      }
-    }
-  };
-
   const submitPartySnapshot = async (snapshot: PlayerSnapshot, idempotencyKey?: string) => {
     const isLocked =
       latestState?.status === "tournament" ||
@@ -1480,7 +1645,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       idempotencyKey,
     );
 
-    applySnapshot(nextState);
+    applyExpectedTransitionSnapshot(nextState);
     hasSynchronizedPartySnapshot = true;
   };
 
@@ -1535,6 +1700,8 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
 
       if (projection.status !== "completed") {
         applyCurrentAssignmentProjection(projection);
+        clearOnlineStaleRecovery();
+        scheduleOnlineStaleRecovery(ONLINE_STALE_RECOVERY_DELAY_MS, true, true);
         return;
       }
 
@@ -1560,13 +1727,15 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         lastAppliedTerminalRevision,
         projection.terminalRoomRevision,
       );
+      clearOnlineStaleRecovery();
+      scheduleOnlineStaleRecovery(ONLINE_STALE_RECOVERY_DELAY_MS, true, true);
     } catch (error) {
       emit("COMPETITIVE_ACTION_FAILED", {
         matchId: command.matchId,
         status: error instanceof ServerRoomRequestError ? error.status : null,
         message: "서버 상태를 다시 불러오는 중...",
       });
-      scheduleCompetitiveActionRecovery(command.matchId);
+      requestOnlineRecovery();
     }
   };
 
@@ -1617,7 +1786,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         idempotencyKey,
       );
       resultSync = { matchId: null, status: "idle" };
-      applySnapshot(nextState);
+      applyExpectedTransitionSnapshot(nextState);
     } catch (error) {
       resultSync = { matchId: activeMatch.matchId, status: "recovering" };
       if (latestState) {
@@ -1644,7 +1813,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
             idempotencyKey,
           );
           resultSync = { matchId: null, status: "idle" };
-          applySnapshot(retriedState);
+          applyExpectedTransitionSnapshot(retriedState);
           return;
         } catch {
           // Fall through to the explicit error projection below.
@@ -1693,7 +1862,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         { playerId: serverPlayerId, sessionId },
         getLatestRevision,
       );
-      applySnapshot(state);
+      applyExpectedTransitionSnapshot(state);
     },
     connect(initialSnapshot) {
       if (disposed) {
@@ -1714,6 +1883,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       }
 
       connectStarted = true;
+      registerVisibilityRecovery();
       emitConnectionStatus("connecting");
       const snapshot = initialSnapshot ?? createDefaultSnapshot(sessionId, localPlayerId);
       localPlayerId = snapshot.playerId?.trim() || localPlayerId;
@@ -1723,6 +1893,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     },
     leave() {
       return requestLeave().then(() => {
+        clearOnlineStaleRecovery();
         clearStoredServerRoomSession(options.accountId);
       });
     },
@@ -1735,8 +1906,10 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       emitConnectionStatus("offline");
       clearRecoveryTimer();
       clearInitialWorkflowTimer();
-      clearCompetitiveActionRecovery();
+      clearOnlineStaleRecovery();
       clearRoomClockRefresh();
+      visibilityRecoveryDocument?.removeEventListener("visibilitychange", handleVisibilityRecovery);
+      visibilityRecoveryDocument = null;
       if (roomSocket) {
         roomSocket.off("connect", handleSocketConnect);
         roomSocket.off("connect_error", handleSocketConnectError);
@@ -1810,6 +1983,10 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   };
 
   function openServerRoom(snapshot: PlayerSnapshot): Promise<ServerRoomState> {
+    if (options.resumeRoom) {
+      return requestRoom(`/poke-lounge/rooms/${activeRoomId}`);
+    }
+
     const body = {
       playerId: serverPlayerId,
       sessionId,
@@ -1878,7 +2055,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         applySnapshot(opened);
         if (initialWorkflowStage === "open") {
           initialWorkflowStage =
-            options.sharedWorldOnly && !options.competitiveRoundsEnabled
+            options.resumeRoom || (options.sharedWorldOnly && !options.competitiveRoundsEnabled)
               ? "complete"
               : readIdToken()
                 ? "competitive-seat"
@@ -2543,6 +2720,10 @@ function isCompetitiveProjectionAtLeastAsCurrent(
 
   if (candidate.currentTurn !== current.currentTurn) {
     return candidate.currentTurn > current.currentTurn;
+  }
+
+  if (candidate.turnEndsAtMs !== current.turnEndsAtMs) {
+    return false;
   }
 
   if (candidate.stateHash !== current.stateHash) {

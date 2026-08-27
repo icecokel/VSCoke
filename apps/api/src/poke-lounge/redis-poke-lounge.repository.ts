@@ -601,16 +601,10 @@ export class RedisPokeLoungeRepository
         return [];
       }
       const match = findActiveMatch(current.document);
-      return match
-        ? [
-            {
-              roomCode: current.document.room.roomCode,
-              matchId: match.matchId,
-              turn: match.currentTurn,
-              deadlineMs: match.turnStartedAtMs + COMPETITIVE_TURN_DEADLINE_MS,
-            },
-          ]
-        : [];
+      const pending = match
+        ? toCompetitivePendingTurn(current.document.room.roomCode, match)
+        : null;
+      return pending ? [pending] : [];
     });
   }
 
@@ -641,10 +635,14 @@ export class RedisPokeLoungeRepository
       }
 
       const resolved = completeExpiredTurn(document, match, input.nowMs);
+      const nextMatch = findActiveMatch(document);
+      const nextTurn = nextMatch
+        ? toCompetitivePendingTurn(document.room.roomCode, nextMatch)
+        : null;
       if (!(await this.commitDocument(current.version, document))) {
         continue;
       }
-      return { outcome: 'resolved', ...resolved };
+      return { outcome: 'resolved', ...resolved, nextTurn };
     }
 
     throw new Error('Poke Lounge Redis turn timeout was contended');
@@ -1087,6 +1085,18 @@ function findActiveMatch(
       (match) => match.status === 'pending' || match.status === 'active',
     ) ?? null
   );
+}
+
+function toCompetitivePendingTurn(
+  roomCode: string,
+  match: CompetitiveMatchAssignment,
+): CompetitivePendingTurn {
+  return {
+    roomCode,
+    matchId: match.matchId,
+    turn: match.currentTurn,
+    deadlineMs: match.turnStartedAtMs + COMPETITIVE_TURN_DEADLINE_MS,
+  };
 }
 
 function removeParticipantSeats(

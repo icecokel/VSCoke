@@ -10,6 +10,7 @@ const WORLD_KEY_PREFIX = 'poke-lounge:room:';
 const WORLD_KEY_SUFFIX = ':world';
 const ROOM_STATE_KEY_SUFFIX = ':state';
 const ROOM_INDEX_KEY = 'poke-lounge:rooms';
+const ROOM_COMMIT_CHANNEL = 'poke-lounge:room-committed';
 const PLAYER_STATE_KEY_PREFIX = 'poke-lounge:player:';
 const PLAYER_STATE_KEY_SUFFIX = ':state';
 const CREATE_COMMAND_KEY_PREFIX = 'poke-lounge:create-command:';
@@ -162,6 +163,11 @@ export interface PokeLoungeRedisRoomRecord {
   document: string;
 }
 
+export interface PokeLoungeRoomCommitNotification {
+  roomCode: string;
+  revision: number;
+}
+
 export type CreatePokeLoungeRedisRoomResult =
   | { outcome: 'created' | 'capacity-reached' | 'room-code-collision' }
   | { outcome: 'command-exists'; receipt: string };
@@ -179,7 +185,9 @@ export class PokeLoungeLiveStateService implements OnModuleDestroy {
   private readonly logger = new Logger(PokeLoungeLiveStateService.name);
   private commandClient: RedisClient | null = null;
   private subscriberClient: RedisClient | null = null;
+  private roomCommitSubscriberClient: RedisClient | null = null;
   private connectPromise: Promise<void> | null = null;
+  private roomCommitConnectPromise: Promise<void> | null = null;
 
   constructor(
     private readonly configService: ConfigService,
@@ -238,6 +246,43 @@ export class PokeLoungeLiveStateService implements OnModuleDestroy {
     }
 
     return createAdapter(commandClient, subscriberClient);
+  }
+
+  async publishRoomCommit(
+    input: PokeLoungeRoomCommitNotification,
+  ): Promise<void> {
+    const notification = {
+      roomCode: normalizeRoomCode(input.roomCode),
+      revision: requireNonNegativeInteger(input.revision, 'room revision'),
+    };
+    await this.requireCommandClient().publish(
+      ROOM_COMMIT_CHANNEL,
+      JSON.stringify(notification),
+    );
+  }
+
+  async subscribeRoomCommits(
+    listener: (notification: PokeLoungeRoomCommitNotification) => void,
+  ): Promise<() => Promise<void>> {
+    await this.connect();
+    const subscriber = await this.requireRoomCommitSubscriber();
+    const handleMessage = (message: string): void => {
+      try {
+        listener(parseRoomCommitNotification(message));
+      } catch (error) {
+        this.logger.error(
+          'Failed to handle Poke Lounge room commit notification',
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
+    };
+    await subscriber.subscribe(ROOM_COMMIT_CHANNEL, handleMessage);
+
+    return async () => {
+      if (subscriber.isOpen) {
+        await subscriber.unsubscribe(ROOM_COMMIT_CHANNEL, handleMessage);
+      }
+    };
   }
 
   async createRoomState(input: {
@@ -508,9 +553,12 @@ export class PokeLoungeLiveStateService implements OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
-    const clients = [this.subscriberClient, this.commandClient].filter(
-      (client): client is RedisClient => client !== null,
-    );
+    const clients = [
+      this.roomCommitSubscriberClient,
+      this.subscriberClient,
+      this.commandClient,
+    ].filter((client): client is RedisClient => client !== null);
+    this.roomCommitSubscriberClient = null;
     this.subscriberClient = null;
     this.commandClient = null;
     await Promise.all(
@@ -527,6 +575,40 @@ export class PokeLoungeLiveStateService implements OnModuleDestroy {
       throw new Error('Poke Lounge Redis command client is unavailable');
     }
     return this.commandClient;
+  }
+
+  private async requireRoomCommitSubscriber(): Promise<RedisClient> {
+    if (this.roomCommitSubscriberClient?.isReady) {
+      return this.roomCommitSubscriberClient;
+    }
+    if (!this.roomCommitConnectPromise) {
+      const subscriber = this.requireCommandClient().duplicate();
+      subscriber.on('error', (error) =>
+        this.logger.error(
+          'Poke Lounge Redis room commit subscriber error',
+          error,
+        ),
+      );
+      this.roomCommitSubscriberClient = subscriber;
+      this.roomCommitConnectPromise = subscriber
+        .connect()
+        .then(() => undefined)
+        .catch((error: unknown) => {
+          subscriber.destroy();
+          this.roomCommitSubscriberClient = null;
+          throw error;
+        })
+        .finally(() => {
+          this.roomCommitConnectPromise = null;
+        });
+    }
+    await this.roomCommitConnectPromise;
+    if (!this.roomCommitSubscriberClient?.isReady) {
+      throw new Error(
+        'Poke Lounge Redis room commit subscriber is unavailable',
+      );
+    }
+    return this.roomCommitSubscriberClient;
   }
 }
 
@@ -578,6 +660,32 @@ function normalizeTimestampMs(value: number): number {
 function parseNonNegativeInteger(value: unknown): number | null {
   const parsed = typeof value === 'number' ? value : Number(value);
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function requireNonNegativeInteger(value: unknown, name: string): number {
+  const parsed = parseNonNegativeInteger(value);
+  if (parsed === null) {
+    throw new Error(`Poke Lounge Redis ${name} is invalid`);
+  }
+  return parsed;
+}
+
+function parseRoomCommitNotification(
+  value: string,
+): PokeLoungeRoomCommitNotification {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value) as unknown;
+  } catch {
+    throw new Error('Poke Lounge room commit notification is malformed');
+  }
+  if (!isRecord(parsed) || typeof parsed.roomCode !== 'string') {
+    throw new Error('Poke Lounge room commit notification is malformed');
+  }
+  return {
+    roomCode: normalizeRoomCode(parsed.roomCode),
+    revision: requireNonNegativeInteger(parsed.revision, 'room revision'),
+  };
 }
 
 function parseRedisTuple(value: unknown): [number, unknown] {

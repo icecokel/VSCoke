@@ -173,7 +173,7 @@ export function createAccessibleGameSummary(state: GameState, locale?: string | 
   const ownParticipant = projection.participants.find(
     participant => participant.playerId === projection.ownPlayerId,
   );
-  const opponent = activeMatch
+  const opponent = activeMatch?.participantIds.includes(projection.ownPlayerId)
     ? [activeMatch.participantA, activeMatch.participantB].find(
         participant => participant.playerId !== projection.ownPlayerId,
       )

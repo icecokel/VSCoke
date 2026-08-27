@@ -439,6 +439,54 @@ describe('PokeLoungeRoomService', () => {
     });
   });
 
+  it('persists reconnect grace when every room occupant disconnects together', async () => {
+    let room = await createRoom();
+    const participants = Array.from({ length: 6 }, (_, index) => ({
+      playerId: `player-${index + 1}`,
+      sessionId: `session-${index + 1}`,
+      presenceEpoch: `presence-epoch-${index + 1}`,
+    }));
+
+    for (const [index, participant] of participants.slice(1).entries()) {
+      room = await service.joinRoom(
+        'ROOM01',
+        { ...participant, nowMs: index + 1 },
+        command(room.revision, index + 2),
+      );
+    }
+    for (const participant of participants) {
+      await service.acknowledgeParticipantPresence(
+        'ROOM01',
+        participant.playerId,
+        participant.sessionId,
+        undefined,
+        participant.presenceEpoch,
+      );
+    }
+
+    await Promise.all(
+      participants.map((participant) =>
+        service.markParticipantDisconnectPending(
+          'ROOM01',
+          participant.playerId,
+          participant.sessionId,
+          participant.presenceEpoch,
+          60_000,
+        ),
+      ),
+    );
+
+    const persistedParticipants = repository.snapshot('ROOM01')?.participants;
+    for (const participant of participants) {
+      expect(persistedParticipants).toContainEqual(
+        expect.objectContaining({
+          playerId: participant.playerId,
+          disconnectPendingUntilMs: 60_000,
+        }),
+      );
+    }
+  });
+
   it('clears a persisted disconnect deadline when the participant reconnects', async () => {
     await createRoom();
     await service.acknowledgeParticipantPresence(

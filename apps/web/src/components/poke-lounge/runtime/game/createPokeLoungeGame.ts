@@ -81,6 +81,7 @@ export interface PokeLoungeGameOptions {
   gameStateStore?: GameStateStore;
   multiplayerRoom?: MultiplayerRoom;
   onGameResult?: (result: PokeLoungeGameResult) => void;
+  serverAuthoritativeRounds?: boolean;
   viewportSize?: GameViewportDisplaySize;
 }
 
@@ -112,6 +113,7 @@ export function createPokeLoungeGame(
       new BootScene(options.initialScene ?? "world", options.battleE2eScenario ?? null),
       new WorldScene(gameStateStore, options.multiplayerRoom, {
         competitiveRoundsEnabled: options.competitiveRoundsEnabled,
+        serverAuthoritativeRounds: options.serverAuthoritativeRounds,
       }),
       new BattleScene(gameStateStore, options.multiplayerRoom),
     ],

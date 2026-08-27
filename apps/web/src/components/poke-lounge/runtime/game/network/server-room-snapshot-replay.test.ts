@@ -164,6 +164,42 @@ function createManualRecoveryTimers(search = "") {
   };
 }
 
+function createVisibilityDocument(initialState: DocumentVisibilityState) {
+  let visibilityState = initialState;
+  const listeners = new Set<EventListenerOrEventListenerObject>();
+  const fixture = {
+    get visibilityState() {
+      return visibilityState;
+    },
+    addEventListener(eventName: string, listener: EventListenerOrEventListenerObject) {
+      if (eventName === "visibilitychange") {
+        listeners.add(listener);
+      }
+    },
+    removeEventListener(eventName: string, listener: EventListenerOrEventListenerObject) {
+      if (eventName === "visibilitychange") {
+        listeners.delete(listener);
+      }
+    },
+  } as unknown as Document;
+
+  return {
+    document: fixture,
+    listenerCount: () => listeners.size,
+    setVisibility(nextState: DocumentVisibilityState) {
+      visibilityState = nextState;
+      const event = { type: "visibilitychange" } as Event;
+      for (const listener of listeners) {
+        if (typeof listener === "function") {
+          listener.call(fixture, event);
+        } else {
+          listener.handleEvent(event);
+        }
+      }
+    },
+  };
+}
+
 function createRoomSnapshots() {
   const participants = Array.from({ length: 5 }, (_, index) => ({
     playerId: `player-${index + 1}`,
@@ -487,6 +523,7 @@ function createCompetitiveProjection(
     rulesetVersion: 2,
     rulesetHash: COMPETITIVE_RULESET_HASH,
     currentTurn: 0,
+    turnEndsAtMs: 30_000,
     status: "active",
     playerIds,
     stateHash: "b".repeat(64),
@@ -613,7 +650,7 @@ test("서버 방 신원은 기존 값을 현재 계정으로 이전하고 계정
   }
 });
 
-test("활성 서버 방만 새로고침 복구 대상으로 저장하고 종료 시 제거한다", async () => {
+test("완료 방은 새로고침 복구 대상으로 보존하고 closed에서 제거한다", async () => {
   process.env.NEXT_PUBLIC_API_URL = "http://api.test";
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   const timers = createManualRecoveryTimers();
@@ -651,12 +688,16 @@ test("활성 서버 방만 새로고침 복구 대상으로 저장하고 종료 
     room.connect(createPlayerSnapshot());
     await waitFor(() => readStoredServerRoomResume()?.roomCode === "ROOM01");
 
-    socket.pushSnapshot(
-      createCompletedRoomSnapshot(
-        createRoundStartedRoomSnapshot(snapshots.initial, 16, 301_000),
-        17,
-      ),
+    const completed = createCompletedRoomSnapshot(
+      createRoundStartedRoomSnapshot(snapshots.initial, 16, 301_000),
+      17,
     );
+    socket.pushSnapshot(completed);
+
+    assert.deepEqual(readStoredServerRoomResume(), { roomCode: "ROOM01" });
+    assert.equal(values.has("poke-lounge:server-room-identity"), true);
+
+    socket.pushSnapshot({ ...completed, revision: 18, status: "closed" });
 
     assert.equal(readStoredServerRoomResume(), null);
     assert.equal(values.has("poke-lounge:server-room-identity"), false);
@@ -1510,6 +1551,198 @@ test("reconnect 뒤 clear된 queued recovery timer는 추가 GET을 dispatch하�
     assert.equal(recoveryRequests, recoveryCountAfterReconnect);
   } finally {
     room?.dispose();
+    restoreWindow(originalWindow);
+  }
+});
+
+test("online action stale watchdog은 GET 실패를 socket failure로 승격하지 않고 backoff한다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
+  const timers = createManualRecoveryTimers();
+  const visibility = createVisibilityDocument("visible");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: timers.window,
+  });
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: visibility.document,
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const socket = createSocket();
+    const snapshots = createRoomSnapshots();
+    const initialProjection = {
+      ...snapshots.activeOld.competitive!,
+      turnEndsAtMs: Date.now() + 60_000,
+    };
+    const actionPlayerId = initialProjection.playerIds[0];
+    const initialRoom = { ...snapshots.activeOld, competitive: initialProjection };
+    const actionProjection = {
+      ...initialProjection,
+      submittedPlayerIds: [actionPlayerId],
+    };
+    const nextProjection = {
+      ...actionProjection,
+      currentTurn: 1,
+      turnEndsAtMs: Date.now() + 90_000,
+      stateHash: "c".repeat(64),
+      currentState: { ...actionProjection.currentState, turn: 1 },
+      submittedPlayerIds: [],
+    };
+    const nextRoom = { ...initialRoom, competitive: nextProjection };
+    let recoveryRoom = initialRoom;
+    let recoveryFailuresRemaining = 0;
+    let recoveryRequests = 0;
+    let actionRequests = 0;
+    let partySynced = false;
+    const fetchFixture: typeof fetch = async input => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      partySynced ||= url.pathname.endsWith("/party-snapshot");
+      if (url.pathname.endsWith("/session-actions")) {
+        actionRequests += 1;
+        return jsonResponse(actionProjection, 201);
+      }
+      if (url.searchParams.has("afterRevision")) {
+        recoveryRequests += 1;
+        if (recoveryFailuresRemaining > 0) {
+          recoveryFailuresRemaining -= 1;
+          throw new TypeError("online recovery failed");
+        }
+        return jsonResponse(recoveryRoom);
+      }
+
+      return jsonResponse(initialRoom);
+    };
+    room = createServerRoom({
+      roomId: "ROOM01",
+      playerId: actionPlayerId,
+      sessionId: "session-1",
+      fetch: fetchFixture,
+      socketFactory: () => socket,
+    });
+    const receivedTurns: number[] = [];
+    let actionApplied = false;
+    room.on("COMPETITIVE_STATE", ({ projection }) => {
+      receivedTurns.push(projection.currentTurn);
+      actionApplied ||= projection.submittedPlayerIds.includes(actionPlayerId);
+    });
+    room.connect(createPlayerSnapshot());
+    await waitFor(() => partySynced && receivedTurns.includes(0));
+    await flushAsyncWork();
+    const recoveryRequestsBeforeAction = recoveryRequests;
+    recoveryFailuresRemaining = 1;
+
+    room.send("COMPETITIVE_ACTION", {
+      matchId: initialProjection.matchId,
+      assignmentRevision: initialProjection.assignmentRevision,
+      turn: initialProjection.currentTurn,
+      clientCommandId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      action: { kind: "move", moveId: 55 },
+    });
+    await waitFor(() => actionRequests === 1 && actionApplied);
+    await flushAsyncWork();
+
+    assert.equal(timers.nextDelay(), 3_000);
+    await timers.runNext();
+    await waitFor(() => recoveryRequests === recoveryRequestsBeforeAction + 1);
+    assert.equal(timers.nextDelay(), 5_000);
+
+    await timers.runNext();
+    await waitFor(() => recoveryRequests === recoveryRequestsBeforeAction + 2);
+    assert.equal(timers.nextDelay(), 5_000);
+
+    recoveryRoom = nextRoom;
+    await timers.runNext();
+    await waitFor(() => receivedTurns.includes(1));
+    assert.ok((timers.nextDelay() ?? 0) > 30_000);
+
+    visibility.setVisibility("hidden");
+    assert.equal(timers.nextDelay(), null);
+    visibility.setVisibility("visible");
+    assert.equal(timers.nextDelay(), 0);
+
+    socket.pushSnapshot(
+      createCompletedRoomSnapshot(
+        createRoundStartedRoomSnapshot(snapshots.initial, 16, Date.now() + 60_000),
+        17,
+      ),
+    );
+    assert.equal(timers.nextDelay(), null);
+    assert.equal(visibility.listenerCount(), 1);
+
+    room.dispose();
+    room = null;
+    assert.equal(visibility.listenerCount(), 0);
+  } finally {
+    room?.dispose();
+    restoreGlobalProperty("document", originalDocument);
+    restoreWindow(originalWindow);
+  }
+});
+
+test("visibility 복귀 recovery는 중복 trigger를 합치고 새 revision에서 종료한다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
+  const timers = createManualRecoveryTimers();
+  const visibility = createVisibilityDocument("hidden");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: timers.window,
+  });
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: visibility.document,
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const socket = createSocket();
+    const snapshots = createRoomSnapshots();
+    let recoverySnapshot = snapshots.initial;
+    let recoveryRequests = 0;
+    let partySynced = false;
+    const fetchFixture: typeof fetch = async input => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      partySynced ||= url.pathname.endsWith("/party-snapshot");
+      if (url.searchParams.has("afterRevision")) {
+        recoveryRequests += 1;
+        return jsonResponse(recoverySnapshot);
+      }
+
+      return jsonResponse(snapshots.initial);
+    };
+    room = createServerRoom({
+      roomId: "ROOM01",
+      playerId: "player-1",
+      sessionId: "session-1",
+      fetch: fetchFixture,
+      socketFactory: () => socket,
+    });
+    room.connect(createPlayerSnapshot());
+    await waitFor(() => partySynced && recoveryRequests > 0);
+    const recoveryRequestsBeforeVisibility = recoveryRequests;
+    recoverySnapshot = { ...snapshots.initial, revision: 16 };
+
+    visibility.setVisibility("visible");
+    visibility.setVisibility("visible");
+    assert.equal(timers.nextDelay(), 0);
+    await timers.runNext();
+    await waitFor(() => recoveryRequests === recoveryRequestsBeforeVisibility + 1);
+
+    assert.equal(timers.nextDelay(), null);
+    assert.equal(visibility.listenerCount(), 1);
+    room.dispose();
+    room = null;
+    assert.equal(visibility.listenerCount(), 0);
+  } finally {
+    room?.dispose();
+    restoreGlobalProperty("document", originalDocument);
     restoreWindow(originalWindow);
   }
 });
@@ -3317,9 +3550,16 @@ function jsonResponse(value: unknown, status = 200): Response {
 }
 
 function restoreWindow(originalWindow: PropertyDescriptor | undefined): void {
-  if (originalWindow) {
-    Object.defineProperty(globalThis, "window", originalWindow);
+  restoreGlobalProperty("window", originalWindow);
+}
+
+function restoreGlobalProperty(
+  property: "document" | "window",
+  descriptor: PropertyDescriptor | undefined,
+): void {
+  if (descriptor) {
+    Object.defineProperty(globalThis, property, descriptor);
   } else {
-    Reflect.deleteProperty(globalThis, "window");
+    Reflect.deleteProperty(globalThis, property);
   }
 }

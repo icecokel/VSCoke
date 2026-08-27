@@ -526,6 +526,8 @@ export class BattleScene extends Phaser.Scene {
   private lastAccessibleStatus = "";
   private removeMobileBattleUiListeners: (() => void) | null = null;
   private messageAutoAdvanceTimer: Phaser.Time.TimerEvent | null = null;
+  private sceneLifecycleActive = false;
+  private sceneGeneration = 0;
 
   constructor(
     private readonly gameStateStore: GameStateStore = getDefaultGameStateStore(),
@@ -535,7 +537,9 @@ export class BattleScene extends Phaser.Scene {
   }
 
   create(data: unknown = {}): void {
-    this.clearAuthoritativeSubscriptions();
+    this.cleanupSceneLifecycle();
+    this.sceneLifecycleActive = true;
+    this.sceneGeneration += 1;
     this.competitivePreemptionQueued = false;
     this.state = this.createInitialState(data);
     this.soloChallenge = isTrainerBattleSceneData(data) && data.soloChallenge === true;
@@ -606,31 +610,16 @@ export class BattleScene extends Phaser.Scene {
       if (!this.returningToWorld) {
         stopWildBattleBgm();
       }
-      this.clearAuthoritativeSubscriptions();
-      this.unbindKeys();
-      this.messageAutoAdvanceTimer?.remove(false);
-      this.messageAutoAdvanceTimer = null;
-      this.removeMobileBattleUiListeners?.();
-      this.removeMobileBattleUiListeners = null;
-      this.shortcutGuideOpen = false;
-      setShortcutGuideTouchControlsSuppressed(false);
+      this.cleanupSceneLifecycle();
       this.setBattleUiSceneMarker(false);
-      this.resetRenderedObjectReferences();
       dispatchPokeLoungeAccessibleStatus(this.game.canvas.ownerDocument, "필드 탐색");
     });
     this.events.once(Phaser.Scenes.Events.DESTROY, () => {
       if (!this.returningToWorld) {
         stopWildBattleBgm();
       }
-      this.messageAutoAdvanceTimer?.remove(false);
-      this.messageAutoAdvanceTimer = null;
-      this.unbindKeys();
-      this.removeMobileBattleUiListeners?.();
-      this.removeMobileBattleUiListeners = null;
-      this.shortcutGuideOpen = false;
-      setShortcutGuideTouchControlsSuppressed(false);
+      this.cleanupSceneLifecycle();
       this.setBattleUiSceneMarker(false);
-      this.resetRenderedObjectReferences();
     });
     if (this.authoritativeProjection?.status === "completed") {
       this.finishBattleEntranceAnimation();
@@ -1635,6 +1624,7 @@ export class BattleScene extends Phaser.Scene {
         }
       }),
       this.multiplayerRoom.on("TOURNAMENT_STATE", payload => {
+        const sceneGeneration = this.sceneGeneration;
         const nowMs = Date.now();
         const destination = this.state.returnToWorld;
         this.gameStateStore.applyTournamentSnapshotFromRoom(payload, nowMs);
@@ -1658,7 +1648,7 @@ export class BattleScene extends Phaser.Scene {
         };
         this.render();
         queueMicrotask(() => {
-          if (!this.scene.isActive()) {
+          if (!this.isSceneLifecycleCurrent(sceneGeneration) || !this.scene.isActive()) {
             return;
           }
 
@@ -1751,8 +1741,9 @@ export class BattleScene extends Phaser.Scene {
 
         this.competitivePreemptionQueued = true;
         this.gameStateStore.healCurrentParty();
+        const sceneGeneration = this.sceneGeneration;
         queueMicrotask(() => {
-          if (!this.scene.isActive()) {
+          if (!this.isSceneLifecycleCurrent(sceneGeneration) || !this.scene.isActive()) {
             return;
           }
 
@@ -1773,10 +1764,40 @@ export class BattleScene extends Phaser.Scene {
     this.authoritativeUnsubscribers = [];
   }
 
+  private cleanupSceneLifecycle(): void {
+    this.sceneLifecycleActive = false;
+    this.clearAuthoritativeSubscriptions();
+    this.unbindKeys();
+    this.messageAutoAdvanceTimer?.remove(false);
+    this.messageAutoAdvanceTimer = null;
+    this.removeMobileBattleUiListeners?.();
+    this.removeMobileBattleUiListeners = null;
+    this.shortcutGuideOpen = false;
+    setShortcutGuideTouchControlsSuppressed(false);
+    this.cancelHpTweens();
+    this.cancelStatusCommitTweens();
+    this.cancelHitTweens();
+    this.battleEntranceTween?.stop();
+    this.battleEntranceTween = null;
+    this.captureAnimationTween?.stop();
+    this.captureAnimationTween = null;
+    this.evolutionAnimationTween?.stop();
+    this.evolutionAnimationTween = null;
+    this.resetRenderedObjectReferences();
+  }
+
+  private isSceneLifecycleCurrent(sceneGeneration: number): boolean {
+    return this.sceneLifecycleActive && this.sceneGeneration === sceneGeneration;
+  }
+
   private setBattleState(
     nextState: BattleScreenState,
     options: { animateHpDecrease?: boolean; render?: boolean } = {},
   ): void {
+    if (!this.sceneLifecycleActive) {
+      return;
+    }
+
     const nextCaptureAttempt = nextState.captureAttempt ?? null;
     const shouldPlayCaptureAnimation =
       nextCaptureAttempt !== null && nextCaptureAttempt !== this.state.captureAttempt;
@@ -1836,7 +1857,15 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    this.messageAutoAdvanceTimer = this.time.delayedCall(BATTLE_MESSAGE_AUTO_ADVANCE_MS, () => {
+    const sceneGeneration = this.sceneGeneration;
+    const timer = this.time.delayedCall(BATTLE_MESSAGE_AUTO_ADVANCE_MS, () => {
+      if (
+        !this.isSceneLifecycleCurrent(sceneGeneration) ||
+        this.messageAutoAdvanceTimer !== timer
+      ) {
+        return;
+      }
+
       this.messageAutoAdvanceTimer = null;
       if (
         this.battleEntrancePlaying ||
@@ -1855,6 +1884,7 @@ export class BattleScene extends Phaser.Scene {
 
       this.advanceBattleMessage();
     });
+    this.messageAutoAdvanceTimer = timer;
   }
 
   private syncDisplayedHpToState(): void {
@@ -1982,7 +2012,13 @@ export class BattleScene extends Phaser.Scene {
 
   private cancelHitTweens(): void {
     BATTLE_HP_SIDES.forEach(side => {
-      this.hitEffects[side]?.tween?.stop();
+      const hitEffect = this.hitEffects[side];
+      const tween = hitEffect?.tween;
+
+      if (hitEffect) {
+        hitEffect.tween = null;
+      }
+      tween?.stop();
     });
   }
 
@@ -2053,15 +2089,21 @@ export class BattleScene extends Phaser.Scene {
       duration: BATTLE_HIT_TWEEN_MS,
       ease: "Sine.easeOut",
       onUpdate: () => {
+        if (hitEffect.tween !== tween) {
+          return;
+        }
+
         hitEffect.progress = tweenState.progress;
         this.animationFrameUpdateCount += 1;
         this.updatePokemonImages();
       },
       onComplete: () => {
-        hitEffect.progress = 0;
-        if (hitEffect.tween === tween) {
-          hitEffect.tween = null;
+        if (hitEffect.tween !== tween) {
+          return;
         }
+
+        hitEffect.progress = 0;
+        hitEffect.tween = null;
         this.updatePokemonImages();
       },
     });
@@ -2082,17 +2124,23 @@ export class BattleScene extends Phaser.Scene {
       duration: BATTLE_ENTRANCE_TWEEN_MS,
       ease: "Cubic.easeOut",
       onUpdate: () => {
+        if (this.battleEntranceTween !== tween) {
+          return;
+        }
+
         this.battleEntranceProgress = tweenState.progress;
         this.animationFrameUpdateCount += 1;
         this.updatePokemonImages();
         this.updateBattleEntranceOverlay();
       },
       onComplete: () => {
+        if (this.battleEntranceTween !== tween) {
+          return;
+        }
+
         this.battleEntranceProgress = 1;
         this.battleEntrancePlaying = false;
-        if (this.battleEntranceTween === tween) {
-          this.battleEntranceTween = null;
-        }
+        this.battleEntranceTween = null;
         this.render();
       },
     });
@@ -2121,17 +2169,23 @@ export class BattleScene extends Phaser.Scene {
       duration: ROM_CAPTURE_ANIMATION_DURATION_MS,
       ease: "Linear",
       onUpdate: () => {
+        if (this.captureAnimationTween !== tween) {
+          return;
+        }
+
         this.captureAnimationProgress = tweenState.progress;
         this.animationFrameUpdateCount += 1;
         this.updatePokemonImages();
         this.updateCaptureAnimationObjects();
       },
       onComplete: () => {
+        if (this.captureAnimationTween !== tween) {
+          return;
+        }
+
         this.captureAnimationProgress = 1;
         this.captureAnimationPlaying = false;
-        if (this.captureAnimationTween === tween) {
-          this.captureAnimationTween = null;
-        }
+        this.captureAnimationTween = null;
         this.render();
       },
     });
@@ -2155,16 +2209,22 @@ export class BattleScene extends Phaser.Scene {
       duration: ROM_EVOLUTION_ANIMATION_DURATION_MS,
       ease: "Linear",
       onUpdate: () => {
+        if (this.evolutionAnimationTween !== tween) {
+          return;
+        }
+
         this.evolutionAnimationProgress = tweenState.progress;
         this.animationFrameUpdateCount += 1;
         this.updateEvolutionAnimationObjects();
       },
       onComplete: () => {
+        if (this.evolutionAnimationTween !== tween) {
+          return;
+        }
+
         this.evolutionAnimationProgress = 1;
         this.evolutionAnimationPlaying = false;
-        if (this.evolutionAnimationTween === tween) {
-          this.evolutionAnimationTween = null;
-        }
+        this.evolutionAnimationTween = null;
         this.render();
       },
     });
@@ -2732,6 +2792,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private render(): void {
+    if (!this.sceneLifecycleActive) {
+      return;
+    }
+
     const visibleMessage = this.getVisibleBattleMessage();
 
     this.children.removeAll(true);

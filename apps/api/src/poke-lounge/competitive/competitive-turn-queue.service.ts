@@ -1,16 +1,10 @@
 import {
-  Inject,
   Injectable,
-  Logger,
   type OnModuleDestroy,
   type OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Queue, QueueEvents } from 'bullmq';
-import {
-  POKE_LOUNGE_ROOM_EVENT_PUBLISHER,
-  type PokeLoungeRoomEventPublisher,
-} from '../poke-lounge-room-event.publisher';
+import { Queue } from 'bullmq';
 import {
   COMPETITIVE_TURN_JOB_NAME,
   COMPETITIVE_TURN_QUEUE_NAME,
@@ -27,18 +21,12 @@ const RETRY_DELAY_MS = 5_000;
 export class CompetitiveTurnQueueService
   implements CompetitiveTurnQueue, OnModuleInit, OnModuleDestroy
 {
-  private readonly logger = new Logger(CompetitiveTurnQueueService.name);
   private queue: Queue<
     CompetitiveTurnJobData,
     CompetitiveTurnJobResult
   > | null = null;
-  private queueEvents: QueueEvents<CompetitiveTurnJobResult> | null = null;
 
-  constructor(
-    private readonly configService: ConfigService,
-    @Inject(POKE_LOUNGE_ROOM_EVENT_PUBLISHER)
-    private readonly eventPublisher: PokeLoungeRoomEventPublisher,
-  ) {}
+  constructor(private readonly configService: ConfigService) {}
 
   async onModuleInit(): Promise<void> {
     const redisUrl = this.requireRedisUrl();
@@ -55,40 +43,12 @@ export class CompetitiveTurnQueueService
         removeOnFail: { count: 1_000 },
       },
     });
-    this.queueEvents = new QueueEvents<CompetitiveTurnJobResult>(
-      COMPETITIVE_TURN_QUEUE_NAME,
-      {
-        connection: { url: redisUrl, maxRetriesPerRequest: null },
-      },
-    );
-    this.queueEvents.on('completed', ({ returnvalue }) => {
-      if (returnvalue?.outcome === 'resolved') {
-        void this.eventPublisher.publish(returnvalue.event).catch((error) => {
-          this.logger.error(
-            'Failed to publish a completed competitive turn job',
-            error instanceof Error ? error.stack : String(error),
-          );
-        });
-      }
-    });
-    this.queueEvents.on('failed', ({ jobId, failedReason }) => {
-      this.logger.error(
-        `Competitive turn job ${jobId} failed: ${failedReason}`,
-      );
-    });
-    await Promise.all([
-      this.queue.waitUntilReady(),
-      this.queueEvents.waitUntilReady(),
-    ]);
+    await this.queue.waitUntilReady();
   }
 
   async onModuleDestroy(): Promise<void> {
-    await Promise.all([
-      this.queue?.close() ?? Promise.resolve(),
-      this.queueEvents?.close() ?? Promise.resolve(),
-    ]);
+    await (this.queue?.close() ?? Promise.resolve());
     this.queue = null;
-    this.queueEvents = null;
   }
 
   async schedule(turn: CompetitiveTurnJobData): Promise<void> {

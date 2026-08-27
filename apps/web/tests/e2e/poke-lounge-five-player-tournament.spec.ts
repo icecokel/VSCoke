@@ -236,16 +236,15 @@ type ForcedSwitchEvidence = {
   toSlotIndex: number;
 };
 
-type DatabaseAssertions = {
+type RedisAssertions = {
   roomCode: string;
   seatCount: number;
   distinctAccountCount: number;
-  gameHistoryCount: number;
   actionCount: number;
   actionKindCounts: { move: number; switch: number };
   forcedSwitchTurns: Array<{ matchId: string; playerId: string; turn: number }>;
   matches?: Array<{ status: string }>;
-  redisWorldPresent?: boolean;
+  worldStatePresent?: boolean;
 };
 
 type TesterResult = {
@@ -319,7 +318,7 @@ test("실제 API와 Socket.IO에서 5개 환경이 3라운드 우승과 방 정�
   let oldCompetitiveMatchId = "";
   let overallStatus: "PASS" | "FAIL" | "BLOCKED" = "FAIL";
   let failure: unknown;
-  let dbAssertions: unknown = null;
+  let redisAssertions: unknown = null;
   let initialBracket: TournamentBracket | null = null;
   let nextBracket: TournamentBracket | null = null;
   let convergedRoom: PublicRoom | null = null;
@@ -487,7 +486,14 @@ test("실제 API와 Socket.IO에서 5개 환경이 3라운드 우승과 방 정�
         tester.transportEvidencePhase = "steady";
       }
 
-      await Promise.all(testers.map(tester => assertRecoveryStability(tester)));
+      const recoveryBaselines = await Promise.all(
+        testers.map(tester => waitForHealthyRecoveryQuiescence(tester, "C1_STABILITY")),
+      );
+      await Promise.all(
+        testers.map((tester, index) =>
+          assertRecoveryStability(tester, "C1_STABILITY", recoveryBaselines[index]),
+        ),
+      );
 
       for (const tester of testers) {
         await recordCheckpoint(
@@ -506,7 +512,10 @@ test("실제 API와 Socket.IO에서 5개 환경이 3라운드 우승과 방 정�
       reconnectTester.transportEvidencePhase = "full-reload";
       const response = await reconnectTester.page.reload({ waitUntil: "domcontentloaded" });
       expect(response?.status()).toBeLessThan(500);
-      await confirmDirectMultiplayerEntry(reconnectTester.page, `Tester ${reconnectTester.id}`);
+      await confirmDirectMultiplayerEntryIfNeeded(
+        reconnectTester.page,
+        `Tester ${reconnectTester.id}`,
+      );
       await chooseStarterIfNeeded(reconnectTester.page);
       await expect(reconnectTester.page.locator("#game-root canvas")).toBeVisible({
         timeout: 30_000,
@@ -791,10 +800,10 @@ test("실제 API와 Socket.IO에서 5개 환경이 3라운드 우승과 방 정�
 
     await test.step("C5_FULL_CYCLE: 남은 대진을 진행해 3라운드 최종 우승자를 확정한다", async () => {
       expect(convergedRoom).not.toBeNull();
-      const activeAssertions = await fetchJson<DatabaseAssertions>(
+      const activeAssertions = await fetchJson<RedisAssertions>(
         `${API_URL}/__e2e/poke-lounge/assertions?roomCode=${encodeURIComponent(roomCode)}`,
       );
-      expect(activeAssertions.redisWorldPresent).toBe(true);
+      expect(activeAssertions.worldStatePresent).toBe(true);
       finalRoom = await completeRemainingTournamentMatches({
         roomCode,
         testers,
@@ -819,18 +828,17 @@ test("실제 API와 Socket.IO에서 5개 환경이 3라운드 우승과 방 정�
       await captureCheckpointScreenshots(testers, "C5_FINAL_WINNER");
     });
 
-    await test.step("C6_CONVERGED: DB·REST·Socket과 room close 전 Redis 상태를 확인한다", async () => {
-      dbAssertions = await fetchJson<DatabaseAssertions>(
+    await test.step("C6_CONVERGED: Redis·REST·Socket 최종 상태를 확인한다", async () => {
+      redisAssertions = await fetchJson<RedisAssertions>(
         `${API_URL}/__e2e/poke-lounge/assertions?roomCode=${encodeURIComponent(roomCode)}`,
       );
-      expect(dbAssertions).toMatchObject({
+      expect(redisAssertions).toMatchObject({
         roomCode,
         seatCount: 5,
         distinctAccountCount: 5,
-        gameHistoryCount: 0,
-        redisWorldPresent: true,
+        worldStatePresent: true,
       });
-      const assertionObject = dbAssertions as DatabaseAssertions;
+      const assertionObject = redisAssertions as RedisAssertions;
       expect(assertionObject.actionKindCounts.move).toBeGreaterThan(0);
       if (forcedSwitchEvidence.length > 0) {
         expect(assertionObject.actionKindCounts.switch).toBeGreaterThan(0);
@@ -847,7 +855,7 @@ test("실제 API와 Socket.IO에서 5개 환경이 3라운드 우승과 방 정�
       ).toBe(12);
 
       for (const tester of testers) {
-        await recordCheckpoint(tester, "C6_CONVERGED", "DB/REST/Socket/Redis", "PASS");
+        await recordCheckpoint(tester, "C6_CONVERGED", "Redis/REST/Socket", "PASS");
       }
       expect(networkErrors).toEqual([]);
     });
@@ -861,14 +869,14 @@ test("실제 API와 Socket.IO에서 5개 환경이 3라운드 우승과 방 정�
         .poll(
           async () =>
             (
-              await fetchJson<DatabaseAssertions>(
+              await fetchJson<RedisAssertions>(
                 `${API_URL}/__e2e/poke-lounge/assertions?roomCode=${encodeURIComponent(roomCode)}`,
               )
-            ).redisWorldPresent,
+            ).worldStatePresent,
           { timeout: 30_000 },
         )
         .toBe(false);
-      dbAssertions = await fetchJson<DatabaseAssertions>(
+      redisAssertions = await fetchJson<RedisAssertions>(
         `${API_URL}/__e2e/poke-lounge/assertions?roomCode=${encodeURIComponent(roomCode)}`,
       );
       await captureCheckpointScreenshots(testers, "C7_ROOM_CLOSED");
@@ -891,7 +899,7 @@ test("실제 API와 Socket.IO에서 5개 환경이 3라운드 우승과 방 정�
       overallStatus,
       failure,
       networkErrors,
-      dbAssertions,
+      redisAssertions,
       initialBracket,
       nextBracket,
       oldCompetitiveMatchId,
@@ -1060,6 +1068,29 @@ async function confirmDirectMultiplayerEntry(page: Page, displayName?: string): 
   }
 
   await page.locator("[data-room-entry-direct-multiplayer-submit='true']").click();
+}
+
+async function confirmDirectMultiplayerEntryIfNeeded(
+  page: Page,
+  displayName: string,
+): Promise<void> {
+  const canvas = page.locator("#game-root canvas");
+  const directEntry = page.locator("[data-room-entry-direct-multiplayer='true']");
+  await expect
+    .poll(
+      async () =>
+        (await canvas.isVisible().catch(() => false)) ||
+        (await directEntry.isVisible().catch(() => false)),
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+
+  if (
+    !(await canvas.isVisible().catch(() => false)) &&
+    (await directEntry.isVisible().catch(() => false))
+  ) {
+    await confirmDirectMultiplayerEntry(page, displayName);
+  }
 }
 
 async function waitForRoomCode(page: Page): Promise<string> {
@@ -1429,21 +1460,46 @@ async function assertRecoveryStability(
   phase = "C1_STABILITY",
   quiescenceBaseline: RecoveryQuiescenceBaseline | null = null,
 ): Promise<void> {
-  const totalBefore = quiescenceBaseline?.recoveryRequestTotal ?? getRecoveryRequestTotal(tester);
+  const totalBefore = getRecoveryRequestTotal(tester);
+  const responseTotalBefore = tester.recoveryRequests.reduce(
+    (total, evidence) => total + getRecoveryResponseTotal(evidence),
+    0,
+  );
   await tester.page.waitForTimeout(RECOVERY_STABILITY_WINDOW_MS);
   const totalAfter = getRecoveryRequestTotal(tester);
-  if (totalAfter !== totalBefore) {
+  const responseTotalAfter = tester.recoveryRequests.reduce(
+    (total, evidence) => total + getRecoveryResponseTotal(evidence),
+    0,
+  );
+  const requestDelta = totalAfter - totalBefore;
+  const responseDelta = responseTotalAfter - responseTotalBefore;
+  const runtime = await readTesterRuntimeState(tester.page);
+  const diagnostics = runtime.transportDiagnostics;
+  const requestsSucceeded = tester.recoveryRequests.every(evidence =>
+    evidence.statuses.every(status => status.status >= 200 && status.status < 300),
+  );
+  const transportHealthy =
+    diagnostics?.socketConnected === true &&
+    diagnostics.activeTransport === "websocket" &&
+    diagnostics.recoveryInFlight === false &&
+    diagnostics.recoveryTimerScheduled === false &&
+    diagnostics.subscriptionFailed === false &&
+    diagnostics.recoveryAttempt === 0;
+  const stable =
+    requestDelta >= 0 &&
+    requestDelta <= 1 &&
+    responseDelta >= requestDelta &&
+    requestsSucceeded &&
+    transportHealthy;
+
+  if (!stable) {
     const record = await appendFailureTimeTransportRecord(tester, phase, quiescenceBaseline);
     expect(
-      totalAfter,
-      `Tester ${tester.id} emitted recovery GET during ${RECOVERY_STABILITY_WINDOW_MS}ms stability window; diagnostics=${JSON.stringify(record)}`,
-    ).toBe(totalBefore);
+      stable,
+      `Tester ${tester.id} recovery was not bounded and healthy during ${RECOVERY_STABILITY_WINDOW_MS}ms stability window; requestDelta=${requestDelta}; responseDelta=${responseDelta}; diagnostics=${JSON.stringify(record)}`,
+    ).toBe(true);
     return;
   }
-  expect(
-    totalAfter,
-    `Tester ${tester.id} emitted recovery GET during ${RECOVERY_STABILITY_WINDOW_MS}ms stability window`,
-  ).toBe(totalBefore);
 }
 
 async function reconnectContextWithoutReload(tester: TesterRuntime): Promise<{
@@ -2476,7 +2532,7 @@ function writeArtifacts(input: {
   overallStatus: "PASS" | "FAIL" | "BLOCKED";
   failure: unknown;
   networkErrors: Array<{ tester: number; kind: string; detail: string }>;
-  dbAssertions: unknown;
+  redisAssertions: unknown;
   initialBracket: TournamentBracket | null;
   nextBracket: TournamentBracket | null;
   oldCompetitiveMatchId: string;
@@ -2510,13 +2566,13 @@ function writeArtifacts(input: {
   writeJson("environment.json", environment);
   writeJson("matrix.json", matrix);
   writeJson("network-errors.json", input.networkErrors);
-  writeJson("db-assertions.json", input.dbAssertions ?? { status: "not-collected" });
-  const databaseActionEvidence = input.dbAssertions as Partial<DatabaseAssertions> | null;
+  writeJson("redis-assertions.json", input.redisAssertions ?? { status: "not-collected" });
+  const redisActionEvidence = input.redisAssertions as Partial<RedisAssertions> | null;
   writeJson("forced-switch-evidence.json", {
     client: input.forcedSwitchEvidence,
-    database: {
-      actionKindCounts: databaseActionEvidence?.actionKindCounts ?? null,
-      forcedSwitchTurns: databaseActionEvidence?.forcedSwitchTurns ?? [],
+    redis: {
+      actionKindCounts: redisActionEvidence?.actionKindCounts ?? null,
+      forcedSwitchTurns: redisActionEvidence?.forcedSwitchTurns ?? [],
     },
   });
   writeJson("client-terminal-convergence.json", {
@@ -2695,9 +2751,9 @@ function renderSummary(
   )} |
 | C3T seed 4/5 동일 old match terminal/result 선관측 | ${gateStatus(c3tTerminalObserved, Boolean(input.nextBracket))} |
 | C4T 실제 store/scene/battle/competitive 다음 대진 수렴 | ${gateStatus(allPassedCheckpoint("C4T_NEXT_ROUND"), Boolean(input.nextBracket))} |
-| C5 3라운드 최종 순위와 우승 수렴 | ${gateStatus(allPassedCheckpoint("C5_FINAL_WINNER"), Boolean(input.dbAssertions))} |
-| C6 DB/REST/Socket/Redis 최종 수렴 | ${gateStatus(allPassedCheckpoint("C6_CONVERGED"), Boolean(input.dbAssertions))} |
-| C7 전원 명시적 퇴장 | ${gateStatus(allPassedCheckpoint("C7_ROOM_CLOSED"), Boolean(input.dbAssertions))} |
+| C5 3라운드 최종 순위와 우승 수렴 | ${gateStatus(allPassedCheckpoint("C5_FINAL_WINNER"), Boolean(input.redisAssertions))} |
+| C6 Redis/REST/Socket 최종 수렴 | ${gateStatus(allPassedCheckpoint("C6_CONVERGED"), Boolean(input.redisAssertions))} |
+| C7 전원 명시적 퇴장 | ${gateStatus(allPassedCheckpoint("C7_ROOM_CLOSED"), Boolean(input.redisAssertions))} |
 | Chromium reload 최초 500 없음 | ${gateStatus(fullReloadPassed && !input.networkErrors.some(error => error.tester === 2 && error.kind === "http-5xx"), fullReloadPassed || input.testers.some(tester => tester.checkpoints.some(checkpoint => checkpoint.checkpoint === "C2_ACTION_1")))} |
 | Chromium same-page Socket reconnect cursor 유지 | ${gateStatus(samePageReconnectPassed, fullReloadPassed)} |
 

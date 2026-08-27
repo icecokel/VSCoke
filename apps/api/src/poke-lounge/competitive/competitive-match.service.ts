@@ -5,8 +5,6 @@ import {
   Inject,
   Injectable,
   Logger,
-  type OnApplicationBootstrap,
-  type OnModuleDestroy,
 } from '@nestjs/common';
 import {
   COMPETITIVE_RULESET_HASH,
@@ -48,11 +46,8 @@ import type { PokeLoungeRoomSnapshot } from '../poke-lounge-room.repository';
 import { toCompetitiveProjection } from './competitive-projection.service';
 
 @Injectable()
-export class CompetitiveMatchService
-  implements OnApplicationBootstrap, OnModuleDestroy
-{
+export class CompetitiveMatchService {
   private readonly logger = new Logger(CompetitiveMatchService.name);
-  private unsubscribeFromRoomSnapshots: (() => void) | null = null;
 
   constructor(
     @Inject(COMPETITIVE_MATCH_REPOSITORY)
@@ -64,43 +59,6 @@ export class CompetitiveMatchService
     @Inject(COMPETITIVE_TURN_QUEUE)
     private readonly turnQueue: CompetitiveTurnQueue,
   ) {}
-
-  async onApplicationBootstrap(): Promise<void> {
-    this.unsubscribeFromRoomSnapshots?.();
-    this.unsubscribeFromRoomSnapshots =
-      this.eventPublisher.subscribeSnapshots?.((snapshot) => {
-        const competitive = snapshot.competitive;
-        if (competitive && competitive.status !== 'completed') {
-          void this.scheduleTurnTimeout({
-            roomCode: snapshot.roomCode,
-            matchId: competitive.matchId,
-            turn: competitive.currentTurn,
-            deadlineMs: snapshot.updatedAtMs + COMPETITIVE_TURN_DEADLINE_MS,
-          });
-        }
-      }) ?? null;
-
-    if (!this.actionRepository.findPendingTurns) {
-      return;
-    }
-
-    try {
-      const pendingTurns = await this.actionRepository.findPendingTurns();
-      for (const pending of pendingTurns) {
-        await this.scheduleTurnTimeout(pending);
-      }
-    } catch (error) {
-      this.logger.error(
-        'Failed to restore competitive turn deadlines',
-        error instanceof Error ? error.stack : String(error),
-      );
-    }
-  }
-
-  onModuleDestroy(): void {
-    this.unsubscribeFromRoomSnapshots?.();
-    this.unsubscribeFromRoomSnapshots = null;
-  }
 
   async bindSeat(
     roomCode: string,
@@ -181,7 +139,7 @@ export class CompetitiveMatchService
           roomCode: result.room.roomCode,
           matchId: result.room.competitive.matchId,
           turn: result.room.competitive.currentTurn,
-          deadlineMs: result.room.updatedAtMs + COMPETITIVE_TURN_DEADLINE_MS,
+          deadlineMs: result.room.competitive.turnEndsAtMs,
         });
       }
     }

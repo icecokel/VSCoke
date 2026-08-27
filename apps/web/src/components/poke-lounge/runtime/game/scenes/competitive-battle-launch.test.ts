@@ -67,6 +67,7 @@ function createProjection(
     rulesetVersion: 2,
     rulesetHash: COMPETITIVE_RULESET_HASH,
     currentTurn: 0,
+    turnEndsAtMs: 30_000,
     status: "active",
     playerIds,
     stateHash: "b".repeat(64),

@@ -18,6 +18,7 @@ interface EncounterHarness {
 
 const createEncounterHarness = (
   hasTallGrassAt: WorldSceneEncountersDependencies["hasTallGrassAt"],
+  delay: WorldSceneEncountersDependencies["delay"] = (_ms, onComplete) => onComplete(),
 ): EncounterHarness => {
   const player = createDefaultLocalPlayer();
   player.party = [
@@ -78,7 +79,7 @@ const createEncounterHarness = (
     createRectangle: () => createRectangleStub(),
     shakeCamera: () => undefined,
     addTween: () => undefined,
-    delay: (_ms, onComplete) => onComplete(),
+    delay,
     startBattle: data => {
       startedBattle = data;
     },
@@ -132,6 +133,28 @@ test("한 프레임에 여러 타일을 지나도 중간 긴 풀 타일의 조�
     battleIntroPlaying: true,
   });
   assert.ok(harness.getStartedBattle());
+});
+
+test("파괴된 조우 컨트롤러의 지연 전환은 새 라이프사이클에서 전투를 시작하지 않는다", () => {
+  const battleIntroCallbacks: Array<() => void> = [];
+  const harness = createEncounterHarness(
+    tile => tile.x === 21 && tile.y === 13,
+    (_ms, onComplete) => {
+      battleIntroCallbacks.push(onComplete);
+    },
+  );
+
+  harness.moveTo({ x: 688, y: 446 });
+  harness.controller.afterMovement();
+  harness.controller.destroy();
+  harness.controller.initialize({ x: 688, y: 446 });
+  battleIntroCallbacks[0]?.();
+
+  assert.equal(harness.getStartedBattle(), null);
+  assert.deepEqual(harness.controller.getE2eSnapshot(), {
+    encounterLocked: false,
+    battleIntroPlaying: false,
+  });
 });
 
 const createRectangleStub = (): ReturnType<WorldSceneEncountersDependencies["createRectangle"]> => {

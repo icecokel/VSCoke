@@ -1,5 +1,6 @@
 import type { CanonicalBattleState } from '@vscoke/poke-lounge-battle';
 import type { CompetitiveTerminalTransition } from '../poke-lounge-room.types';
+import { COMPETITIVE_TURN_DEADLINE_MS } from './competitive-action.repository';
 import type {
   CompetitiveActionProjection,
   PublicCompetitiveBattleState,
@@ -27,9 +28,9 @@ export function toCompetitiveProjection(
     Partial<
       Pick<
         CompetitiveMatchAssignment,
-        'terminalEventId' | 'terminalRoomRevision'
+        'terminalEventId' | 'terminalRoomRevision' | 'turnStartedAtMs'
       >
-    >,
+    > & { updatedAt?: Date },
   submittedPlayerIds: readonly string[],
 ): CompetitiveActionProjection {
   const terminalEventId = match.terminalEventId ?? null;
@@ -50,6 +51,7 @@ export function toCompetitiveProjection(
     rulesetVersion: match.rulesetVersion,
     rulesetHash: match.rulesetHash,
     currentTurn: match.currentTurn,
+    turnEndsAtMs: resolveTurnEndsAtMs(match),
     status: match.status,
     terminalEventId,
     terminalRoomRevision,
@@ -62,6 +64,18 @@ export function toCompetitiveProjection(
     submittedPlayerIds: [...submittedPlayerIds].sort(),
     terminal: structuredClone(match.terminalResult),
   };
+}
+
+function resolveTurnEndsAtMs(input: {
+  turnStartedAtMs?: number;
+  updatedAt?: Date;
+}): number {
+  const turnStartedAtMs =
+    input.turnStartedAtMs ?? input.updatedAt?.getTime() ?? Number.NaN;
+  if (!Number.isSafeInteger(turnStartedAtMs) || turnStartedAtMs < 0) {
+    throw new Error('Competitive turn start time is invalid');
+  }
+  return turnStartedAtMs + COMPETITIVE_TURN_DEADLINE_MS;
 }
 
 export function toCompetitiveTerminalTransition(

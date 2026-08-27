@@ -7,6 +7,7 @@ export interface MultiplayerRoomFactoryOptions {
   accountId?: string;
   roomId?: string;
   persistRoomCodeInUrl?: boolean;
+  resumeRoom?: boolean;
   sharedWorldOnly?: boolean;
   competitiveRoundsEnabled?: boolean;
   createWebRtcRoom?: () => MultiplayerRoom;
@@ -36,6 +37,7 @@ export function createMultiplayerRoom(options: MultiplayerRoomFactoryOptions): M
       idToken: options.idToken,
       getIdToken: options.getIdToken,
       persistRoomCodeInUrl: options.persistRoomCodeInUrl,
+      resumeRoom: options.resumeRoom,
       sharedWorldOnly: options.sharedWorldOnly,
       competitiveRoundsEnabled: options.competitiveRoundsEnabled,
     });

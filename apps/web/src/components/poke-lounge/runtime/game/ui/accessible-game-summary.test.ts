@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createTournamentBracketState } from "@vscoke/poke-lounge-battle";
+import type { TournamentStateRoomPayload } from "../network/tournament-projection";
 import { createGameStateStore } from "../state/gameStateStore";
 import {
   createAccessibleGameSummary,
@@ -63,6 +65,56 @@ test("접근성 요약은 내부 멀티플레이 방 코드를 노출하지 않�
 
   assert.match(summary, /멀티플레이, 연결됨/);
   assert.doesNotMatch(summary, /SECRET/);
+});
+
+test("부전승 플레이어에게 다른 참가자의 현재 경기를 상대라고 안내하지 않는다", () => {
+  const bracket = createTournamentBracketState(
+    Array.from({ length: 3 }, (_, index) => ({
+      playerId: `player-${index + 1}`,
+      displayName: `Player ${index + 1}`,
+    })),
+    1,
+  );
+  const projection: TournamentStateRoomPayload = {
+    revision: 1,
+    roomCode: "ROOM01",
+    hostPlayerId: "player-1",
+    roundIndex: 1,
+    roomStatus: "tournament",
+    roomRound: {
+      index: 1,
+      phase: "tournament",
+      durationMs: 180_000,
+      startedAtMs: 1_000,
+      endsAtMs: 181_000,
+    },
+    participants: bracket.participants.map(participant => ({
+      ...participant,
+      role: "participant",
+      ready: true,
+      partyReady: true,
+      connected: true,
+    })),
+    tournament: {
+      version: 2,
+      bracket,
+      activeMatchId: bracket.currentRound?.matches[0]?.matchId ?? null,
+      activeMatchAuthority: "server",
+      cumulativeScores: {},
+    },
+    ownPlayerId: "player-1",
+    activeMatchTransport: "authority",
+    competitionKind: "tournament-unranked",
+    finalStandings: [],
+    resultSync: { matchId: null, status: "idle" },
+  };
+  const store = createGameStateStore();
+  store.applyTournamentSnapshotFromRoom(projection, 1_000);
+
+  const summary = createAccessibleGameSummary(store.getState());
+
+  assert.match(summary, /다음 대진 대기 중/);
+  assert.doesNotMatch(summary, /현재 상대 Player/);
 });
 
 test("영어와 일본어 접근성 이벤트는 전투·가방 핵심 상태를 현지화한다", () => {

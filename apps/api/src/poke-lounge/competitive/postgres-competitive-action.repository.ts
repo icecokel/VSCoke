@@ -212,6 +212,7 @@ export class PostgresCompetitiveActionRepository implements CompetitiveActionRep
       match.terminalResult = resolved.terminal;
       match.status = resolved.terminal ? 'completed' : 'active';
       match.completedAt = resolved.terminal ? new Date() : null;
+      match.updatedAt = new Date(nowMs);
       let nextCompetitive: CompetitiveActionProjection | null = null;
       let response: CompetitiveActionProjection;
       if (resolved.terminal) {
@@ -325,7 +326,7 @@ export class PostgresCompetitiveActionRepository implements CompetitiveActionRep
         this.historyWriter,
       );
 
-      return { outcome: 'resolved', ...resolved };
+      return { outcome: 'resolved', ...resolved, nextTurn: null };
     });
   }
 }
@@ -360,6 +361,7 @@ async function completePendingTurnDeadline(
   match.terminalResult = resolved.terminal;
   match.status = resolved.terminal ? 'completed' : 'active';
   match.completedAt = resolved.terminal ? new Date(nowMs) : null;
+  match.updatedAt = new Date(nowMs);
 
   let response: CompetitiveActionProjection;
   let nextCompetitive: CompetitiveActionProjection | null = null;

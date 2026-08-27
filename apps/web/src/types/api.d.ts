@@ -936,6 +936,7 @@ export interface components {
       rulesetVersion: number;
       rulesetHash: string;
       currentTurn: number;
+      turnEndsAtMs: number;
       /** @enum {string} */
       status: "pending" | "active" | "completed";
       /** Format: uuid */
@@ -1195,6 +1196,7 @@ export interface components {
       rulesetVersion: number;
       rulesetHash: string;
       currentTurn: number;
+      turnEndsAtMs: number;
       /** @enum {string} */
       status: "pending" | "active" | "completed";
       /** Format: uuid */

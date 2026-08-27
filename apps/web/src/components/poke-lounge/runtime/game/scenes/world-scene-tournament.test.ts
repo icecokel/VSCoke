@@ -150,6 +150,15 @@ test("서버 준비 단계는 서버 endsAt 기준 남은 시간을 표시한다
 
   assert.match(text, /라운드 1\/3 준비 중 · 00:30/);
   assert.ok(text.split("\n").length <= 7);
+
+  const expiredText = createServerTournamentAnnouncementText({
+    projection,
+    nowMs: 32_000,
+    casualBattleAvailable: null,
+  });
+
+  assert.match(expiredText, /라운드 1\/3 · 다른 플레이어를 기다리는 중\.\.\./);
+  assert.doesNotMatch(expiredText, /00:00/);
 });
 
 test("다음 라운드 준비 단계는 내 누적 HP 비율 순위와 점수를 표시한다", () => {

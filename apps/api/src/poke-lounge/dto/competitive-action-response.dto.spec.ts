@@ -7,7 +7,7 @@ describe('CompetitiveActionResponseDto contract', () => {
     document = await createLocalOpenApiDocument();
   });
 
-  it('requires additive nullable terminal metadata on every new action response', () => {
+  it('requires the server turn deadline and nullable terminal metadata', () => {
     const schema = getSchema('CompetitiveActionResponseDto');
     const properties = requireRecord(
       schema.properties,
@@ -20,9 +20,17 @@ describe('CompetitiveActionResponseDto contract', () => {
         'CompetitiveActionResponseDto.required',
       ),
     ).toEqual(
-      expect.arrayContaining(['terminalEventId', 'terminalRoomRevision']),
+      expect.arrayContaining([
+        'turnEndsAtMs',
+        'terminalEventId',
+        'terminalRoomRevision',
+      ]),
     );
     expect(properties).toMatchObject({
+      turnEndsAtMs: {
+        type: 'number',
+        minimum: 0,
+      },
       terminalEventId: {
         type: 'string',
         format: 'uuid',

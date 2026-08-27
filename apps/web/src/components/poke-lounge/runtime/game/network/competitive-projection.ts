@@ -23,6 +23,7 @@ const COMPETITIVE_PROJECTION_KEYS = [
   "bracketMatchId",
   "currentState",
   "currentTurn",
+  "turnEndsAtMs",
   "kind",
   "matchId",
   "playerIds",
@@ -56,6 +57,7 @@ export function parseCompetitiveProjectionContract(
   const kind = projection.kind;
   const assignmentRevision = requireNonnegativeSafeInteger(projection.assignmentRevision);
   const currentTurn = requireNonnegativeSafeInteger(projection.currentTurn);
+  const turnEndsAtMs = requireNonnegativeSafeInteger(projection.turnEndsAtMs);
   const rulesetVersion = projection.rulesetVersion;
   const rulesetHash = requireString(projection.rulesetHash);
   const stateHash = requireHash(projection.stateHash);
@@ -96,6 +98,7 @@ export function parseCompetitiveProjectionContract(
       rulesetVersion,
       rulesetHash,
       currentTurn,
+      turnEndsAtMs,
       status,
       playerIds,
       stateHash,

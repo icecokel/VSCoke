@@ -53,10 +53,6 @@ type E2ePartySummary = {
     moveIds: number[];
   }>;
 };
-type E2eRoomState = {
-  tournament?: unknown;
-  partySnapshots?: Record<string, { competitiveParty?: E2ePartySummarySource }>;
-};
 type E2ePartySummarySource = {
   activeSlotIndex?: unknown;
   members?: Array<{
@@ -74,9 +70,6 @@ type E2eInitialState = {
       team?: E2ePartySummarySource['members'];
     }
   >;
-};
-type E2eMatchRow = Omit<E2eMatchAssertion, 'initialPartyByPlayerId'> & {
-  initialState: E2eInitialState;
 };
 type E2eActionAssertion = {
   matchId: string;
@@ -143,9 +136,8 @@ async function bootstrap(): Promise<void> {
   }
 
   const httpAdapterInstance: unknown = app.getHttpAdapter().getInstance();
-  registerDatabaseAssertionEndpoint(
+  registerRedisAssertionEndpoint(
     httpAdapterInstance as E2eHttpAdapter,
-    testingModule.get(DataSource),
     liveState,
   );
 
@@ -216,23 +208,22 @@ async function resetE2eTables(dataSource: DataSource): Promise<void> {
   }
 }
 
-function registerDatabaseAssertionEndpoint(
+function registerRedisAssertionEndpoint(
   expressApp: E2eHttpAdapter,
-  dataSource: DataSource,
   liveState: PokeLoungeLiveStateService,
 ): void {
   expressApp.get('/__e2e/poke-lounge/assertions', (request, response) => {
     const roomCodeQuery = request.query.roomCode;
     const roomCode = typeof roomCodeQuery === 'string' ? roomCodeQuery : '';
     void Promise.all([
-      readDatabaseAssertions(dataSource, roomCode),
+      readRedisAssertions(liveState, roomCode),
       liveState.getCursor(roomCode).then(
         () => true,
         () => false,
       ),
     ]).then(
-      ([assertions, redisWorldPresent]) =>
-        response.status(200).json({ ...assertions, redisWorldPresent }),
+      ([assertions, worldStatePresent]) =>
+        response.status(200).json({ ...assertions, worldStatePresent }),
       (error) =>
         response.status(500).json({
           message: error instanceof Error ? error.message : String(error),
@@ -241,8 +232,8 @@ function registerDatabaseAssertionEndpoint(
   });
 }
 
-async function readDatabaseAssertions(
-  dataSource: DataSource,
+async function readRedisAssertions(
+  liveState: PokeLoungeLiveStateService,
   rawRoomCode: string,
 ) {
   const roomCode = rawRoomCode.trim().toUpperCase();
@@ -250,100 +241,18 @@ async function readDatabaseAssertions(
     throw new Error('A canonical roomCode is required');
   }
 
-  const [room] = await dataSource.query<
-    Array<{ id: string; revision: string; state: E2eRoomState }>
-  >(
-    `SELECT id, revision, state
-       FROM poke_lounge_room
-      WHERE room_code = $1`,
-    [roomCode],
-  );
-  if (!room) {
-    throw new Error('Poke Lounge E2E room was not found');
-  }
-
-  const [seatCounts] = await dataSource.query<
-    Array<{ seatCount: string; accountCount: string }>
-  >(
-    `SELECT COUNT(*)::text AS "seatCount",
-            COUNT(DISTINCT account_id)::text AS "accountCount"
-       FROM poke_lounge_competitive_seat
-      WHERE room_id = $1`,
-    [room.id],
-  );
-  const matchColumns = await dataSource.query<Array<{ column_name: string }>>(
-    `SELECT column_name
-       FROM information_schema.columns
-      WHERE table_schema = 'public'
-        AND table_name = 'poke_lounge_competitive_match'
-        AND column_name = ANY($1::text[])`,
-    [['bracket_match_id', 'kind']],
-  );
-  const existingMatchColumns = new Set(
-    matchColumns.map((row) => row.column_name),
-  );
-  const optionalSelect = [
-    existingMatchColumns.has('bracket_match_id')
-      ? 'bracket_match_id AS "bracketMatchId"'
-      : 'NULL::text AS "bracketMatchId"',
-    existingMatchColumns.has('kind') ? 'kind' : 'NULL::text AS kind',
-  ].join(', ');
-  const matchRows = await dataSource.query<E2eMatchRow[]>(
-    `SELECT match_id AS "matchId",
-            status,
-            current_turn AS "currentTurn",
-            ruleset_version AS "rulesetVersion",
-            initial_state AS "initialState",
-            ${optionalSelect}
-       FROM poke_lounge_competitive_match
-      WHERE room_id = $1
-      ORDER BY created_at ASC`,
-    [room.id],
-  );
-  const matches = matchRows.map(({ initialState, ...match }) => ({
-    ...match,
-    initialPartyByPlayerId: summarizeInitialParties(initialState),
-  }));
-  const actions = await dataSource.query<E2eActionAssertion[]>(
-    `SELECT match_id AS "matchId",
-            actor_player_id AS "playerId",
-            turn,
-            action ->> 'kind' AS kind
-       FROM poke_lounge_competitive_action
-      WHERE room_id = $1
-      ORDER BY created_at ASC, actor_player_id ASC`,
-    [room.id],
-  );
-  const actionEvidence = summarizeActionEvidence(actions);
-  const [historyCounts] = await dataSource.query<
-    Array<{ historyCount: string }>
-  >(
-    `SELECT COUNT(*)::text AS "historyCount"
-       FROM game_history
-      WHERE "gameType" = 'POKE_LOUNGE'`,
-  );
-
-  return {
-    roomCode,
-    revision: Number(room.revision),
-    tournament: room.state.tournament ?? null,
-    frozenPartyByPlayerId: summarizeFrozenParties(room.state.partySnapshots),
-    seatCount: Number(seatCounts?.seatCount ?? 0),
-    distinctAccountCount: Number(seatCounts?.accountCount ?? 0),
-    matches,
-    actionCount: actions.length,
-    ...actionEvidence,
-    gameHistoryCount: Number(historyCounts?.historyCount ?? 0),
-  };
+  const stored = await liveState.getRoomState(roomCode);
+  if (!stored) throw new Error('Poke Lounge E2E room was not found');
+  return summarizeRedisAssertionDocument(stored.document, roomCode);
 }
 
 function summarizeFrozenParties(
-  snapshots: E2eRoomState['partySnapshots'],
+  snapshots: Record<string, unknown>,
 ): Record<string, E2ePartySummary> {
   return Object.fromEntries(
     Object.entries(snapshots ?? {}).map(([playerId, snapshot]) => [
       playerId,
-      summarizeParty(snapshot.competitiveParty),
+      summarizeParty(expectRecord(snapshot, 'party snapshot').competitiveParty),
     ]),
   );
 }
@@ -362,9 +271,11 @@ function summarizeInitialParties(
   );
 }
 
-function summarizeParty(
-  party: E2ePartySummarySource | undefined,
-): E2ePartySummary {
+function summarizeParty(rawParty: unknown): E2ePartySummary {
+  const party = expectRecord(
+    rawParty,
+    'competitive party',
+  ) as E2ePartySummarySource;
   return {
     activeSlotIndex: Number(party?.activeSlotIndex),
     members: (party?.members ?? []).map((member) => ({
@@ -374,6 +285,99 @@ function summarizeParty(
       moveIds: (member.moves ?? []).map((move) => Number(move.moveId)),
     })),
   };
+}
+
+export function summarizeRedisAssertionDocument(
+  rawDocument: string,
+  expectedRoomCode: string,
+) {
+  const document = expectRecord(
+    JSON.parse(rawDocument) as unknown,
+    'Redis document',
+  );
+  const room = expectRecord(document.room, 'Redis room');
+  const roomCode = expectString(room.roomCode, 'roomCode');
+  if (document.version !== 1 || roomCode !== expectedRoomCode) {
+    throw new Error('Poke Lounge Redis room document is malformed');
+  }
+
+  const seats = expectArray(document.seats, 'Redis seats').map((seat) =>
+    expectRecord(seat, 'Redis seat'),
+  );
+  const matches = Object.values(
+    expectRecord(document.matches, 'Redis matches'),
+  ).map((rawMatch) => {
+    const match = expectRecord(rawMatch, 'Redis match');
+    const initialState = expectRecord(
+      match.initialState,
+      'Redis match initial state',
+    ) as E2eInitialState;
+    const summarized: E2eMatchAssertion = {
+      matchId: expectString(match.matchId, 'matchId'),
+      status: expectString(match.status, 'match status'),
+      currentTurn: expectInteger(match.currentTurn, 'match currentTurn'),
+      bracketMatchId:
+        match.bracketMatchId === null
+          ? null
+          : expectString(match.bracketMatchId, 'bracketMatchId'),
+      kind: match.kind === null ? null : expectString(match.kind, 'match kind'),
+      rulesetVersion: expectInteger(match.rulesetVersion, 'rulesetVersion'),
+      initialPartyByPlayerId: summarizeInitialParties(initialState),
+    };
+    return summarized;
+  });
+  const actions = Object.values(
+    expectRecord(document.actions, 'Redis actions'),
+  ).map((rawAction): E2eActionAssertion => {
+    const action = expectRecord(rawAction, 'Redis action');
+    const command = expectRecord(action.action, 'Redis action command');
+    return {
+      matchId: expectString(action.matchId, 'action matchId'),
+      playerId: expectString(action.actorPlayerId, 'action actorPlayerId'),
+      turn: expectInteger(action.turn, 'action turn'),
+      kind: expectString(command.kind, 'action kind'),
+    };
+  });
+
+  return {
+    roomCode,
+    revision: expectInteger(room.revision, 'room revision'),
+    tournament: room.tournament ?? null,
+    frozenPartyByPlayerId: summarizeFrozenParties(
+      expectRecord(room.partySnapshots, 'party snapshots'),
+    ),
+    seatCount: seats.length,
+    distinctAccountCount: new Set(
+      seats.map((seat) => expectString(seat.accountId, 'seat accountId')),
+    ).size,
+    matches,
+    actionCount: actions.length,
+    ...summarizeActionEvidence(actions),
+  };
+}
+
+function expectRecord(value: unknown, label: string): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error(`${label} is malformed`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function expectArray(value: unknown, label: string): unknown[] {
+  if (!Array.isArray(value)) throw new Error(`${label} is malformed`);
+  return value;
+}
+
+function expectString(value: unknown, label: string): string {
+  if (typeof value !== 'string') throw new Error(`${label} is malformed`);
+  return value;
+}
+
+function expectInteger(value: unknown, label: string): number {
+  if (typeof value !== 'number' || !Number.isInteger(value)) {
+    throw new Error(`${label} is malformed`);
+  }
+  return value;
 }
 
 export function summarizeActionEvidence(actions: E2eActionAssertion[]) {

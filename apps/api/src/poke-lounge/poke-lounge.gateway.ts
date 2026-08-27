@@ -135,7 +135,7 @@ export class PokeLoungeGateway
         return;
       }
 
-      this.server
+      this.server.local
         .to(roomName(event.room.roomCode))
         .emit('room.snapshot', { room: event.room });
       const metadata = {
@@ -145,7 +145,6 @@ export class PokeLoungeGateway
         closed: event.room.status === 'closed',
       };
       this.applyRoomMetadata(metadata);
-      this.server.serverSideEmit(SERVER_ROOM_METADATA_EVENT, metadata);
     });
     this.worldCursorTimer = setInterval(
       () => void this.publishWorldCursors(),

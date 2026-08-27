@@ -41,10 +41,6 @@ describe('CompetitiveMatchService', () => {
     );
   });
 
-  afterEach(() => {
-    service.onModuleDestroy();
-  });
-
   it('creates a full approved assignment and returns only its public projection', async () => {
     repository.bindSeatAndAssign.mockImplementation((input) => {
       const match = input.createAssignment({
@@ -288,29 +284,18 @@ describe('CompetitiveMatchService', () => {
     });
   });
 
-  it('queues one stable turn deadline before actions without changing it on replay', async () => {
-    let snapshotListener:
-      | Parameters<
-          NonNullable<PokeLoungeRoomEventPublisher['subscribeSnapshots']>
-        >[0]
-      | undefined;
-    publisher.subscribeSnapshots = jest.fn((listener) => {
-      snapshotListener = listener;
-      return jest.fn();
-    });
+  it('queues the canonical committed turn deadline without changing it on replay', async () => {
+    const next = {
+      ...actionProjection(),
+      currentTurn: 1,
+      turnEndsAtMs: 61_000,
+    };
     actionRepository.submit.mockResolvedValue({
       outcome: 'accepted',
       response: actionProjection(),
-      room: roomSnapshot(),
+      room: { ...roomSnapshot(), competitive: next },
       committed: true,
     });
-    await service.onApplicationBootstrap();
-    snapshotListener?.({
-      ...roomSnapshot(),
-      updatedAtMs: 1_000,
-      competitive: actionProjection(),
-    });
-    await Promise.resolve();
     await service.submitAction(actionInput());
     actionRepository.submit.mockResolvedValue({
       outcome: 'replayed',
@@ -325,33 +310,10 @@ describe('CompetitiveMatchService', () => {
         {
           roomCode: 'ROOM01',
           matchId: 'match-1',
-          turn: 0,
-          deadlineMs: 31_000,
+          turn: 1,
+          deadlineMs: 61_000,
         },
       ],
-    ]);
-  });
-
-  it('restores a pending Redis turn deadline after application restart', async () => {
-    const findPendingTurns = jest.fn().mockResolvedValue([
-      {
-        roomCode: 'ROOM01',
-        matchId: 'match-1',
-        turn: 3,
-        deadlineMs: 31_000,
-      },
-    ]);
-    actionRepository.findPendingTurns = findPendingTurns;
-
-    await service.onApplicationBootstrap();
-
-    expect(turnQueue.schedule.mock.calls).toContainEqual([
-      {
-        roomCode: 'ROOM01',
-        matchId: 'match-1',
-        turn: 3,
-        deadlineMs: 31_000,
-      },
     ]);
   });
 
@@ -500,6 +462,7 @@ function actionProjection(
     rulesetVersion: COMPETITIVE_RULESET_VERSION,
     rulesetHash: COMPETITIVE_RULESET_HASH,
     currentTurn: 0,
+    turnEndsAtMs: 30_000,
     status: 'active' as const,
     terminalEventId: null,
     terminalRoomRevision: null,

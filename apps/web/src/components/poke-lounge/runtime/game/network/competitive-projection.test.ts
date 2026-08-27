@@ -48,6 +48,7 @@ function createProjection() {
     rulesetVersion: 2,
     rulesetHash: COMPETITIVE_RULESET_HASH,
     currentTurn: 0,
+    turnEndsAtMs: 30_000,
     status: "active",
     playerIds,
     stateHash: "b".repeat(64),
@@ -100,6 +101,7 @@ test("authority projection은 UUID와 stable bracket match ID를 구분해 적�
   assert.equal(projection.matchId, "123e4567-e89b-42d3-a456-426614174000");
   assert.equal(projection.bracketMatchId, "game-round-1-bracket-1-match-1");
   assert.equal(projection.kind, "tournament-unranked");
+  assert.equal(projection.turnEndsAtMs, 30_000);
 });
 
 test("authority projection은 브라우저가 공유하는 실제 ruleset hash만 적용한다", () => {
@@ -120,6 +122,13 @@ test("authority projection은 브라우저가 공유하는 실제 ruleset hash�
 test("bracket match ID가 빠진 authority projection은 거부한다", () => {
   const projection: Record<string, unknown> = { ...createProjection() };
   delete projection.bracketMatchId;
+
+  assert.throws(() => parseCompetitiveProjection(projection), CompetitiveProjectionSchemaError);
+});
+
+test("turn deadline이 빠진 authority projection은 거부한다", () => {
+  const projection: Record<string, unknown> = { ...createProjection() };
+  delete projection.turnEndsAtMs;
 
   assert.throws(() => parseCompetitiveProjection(projection), CompetitiveProjectionSchemaError);
 });

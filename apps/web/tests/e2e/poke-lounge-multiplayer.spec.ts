@@ -85,6 +85,7 @@ const copy = getPokeLoungeCopy(LOCALE);
 const ROOM_CODE = "SRV001";
 const BRACKET_MATCH_ID = "game-round-1-bracket-1-match-1";
 const ROOM_EXPIRES_AT_MS = 253402300799999;
+const COMPETITIVE_TURN_ENDS_AT_MS = Date.now() + 60 * 60 * 1000;
 const AUTH_ID_TOKEN_EXPIRES_AT = Math.floor(Date.now() / 1000) + 60 * 60;
 const AUTH_ID_TOKEN = `${Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url")}.${Buffer.from(JSON.stringify({ exp: AUTH_ID_TOKEN_EXPIRES_AT })).toString("base64url")}.signature`;
 const webRoot = process.cwd();
@@ -126,6 +127,7 @@ const createCompetitiveProjection = (
   rulesetVersion: 2,
   rulesetHash: COMPETITIVE_RULESET_HASH,
   currentTurn: 3,
+  turnEndsAtMs: COMPETITIVE_TURN_ENDS_AT_MS,
   status: "active",
   playerIds: ["player-a", "player-b"],
   stateHash: "b".repeat(64),
@@ -1201,6 +1203,28 @@ test.describe("Poke Lounge server multiplayer", () => {
         { timeout: 30000 },
       )
       .toBe(true);
+  });
+
+  test("완료 방 새로고침은 mutation 없이 canonical GET으로 결과를 복구한다", async ({ page }) => {
+    const server = createMockServerState();
+
+    await mockServerRoom(page, server, { wrapped: true });
+    await startServerRoom(page);
+    await expect.poll(() => getRoundPhase(page)).toBe("game-result");
+
+    const postCountBeforeReload = server.calls.filter(call => call.startsWith("POST ")).length;
+    const getCountBeforeReload = server.calls.filter(call => call.startsWith("GET ")).length;
+
+    await page.reload();
+
+    await expect(page.locator("#game-root canvas")).toBeVisible({ timeout: 30000 });
+    await expect.poll(() => getRoundPhase(page)).toBe("game-result");
+    expect(server.calls.filter(call => call.startsWith("POST "))).toHaveLength(
+      postCountBeforeReload,
+    );
+    expect(server.calls.filter(call => call.startsWith("GET ")).length).toBeGreaterThan(
+      getCountBeforeReload,
+    );
   });
 
   test("server room이 completed 전이면 GET polling으로 최신 상태를 반영한다", async ({ page }) => {

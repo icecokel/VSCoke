@@ -99,6 +99,7 @@ export interface WorldSceneCreateData {
 
 export interface WorldSceneOptions {
   competitiveRoundsEnabled?: boolean;
+  serverAuthoritativeRounds?: boolean;
 }
 
 export interface WorldE2eSnapshot {
@@ -221,6 +222,7 @@ export class WorldScene extends Phaser.Scene {
   private readonly encounters: WorldSceneEncounterController;
   private readonly interactions: WorldSceneInteractionsController;
   private readonly competitiveRoundsEnabled: boolean;
+  private readonly serverAuthoritativeRounds: boolean;
   private readonly competitiveBattleLaunchCache = createCompetitiveBattleLaunchCache();
   private preserveRoomForBattle = false;
 
@@ -231,6 +233,7 @@ export class WorldScene extends Phaser.Scene {
   ) {
     super("world");
     this.competitiveRoundsEnabled = options.competitiveRoundsEnabled ?? true;
+    this.serverAuthoritativeRounds = options.serverAuthoritativeRounds ?? false;
     this.encounters = createWorldSceneEncounters({
       gameStateStore: this.gameStateStore,
       getPlayerPosition: () =>
@@ -320,6 +323,7 @@ export class WorldScene extends Phaser.Scene {
       getGameObjectFactory: () => this.add,
       gameStateStore: this.gameStateStore,
       competitiveRoundsEnabled: this.competitiveRoundsEnabled,
+      serverAuthoritativeRounds: this.serverAuthoritativeRounds,
       roundWaitingText: getPokeLoungeCopyForUrl(new URL(window.location.href)).mobile.roundWaiting,
       addUnsubscriber: unsubscribe => this.unsubscribers.push(unsubscribe),
       canOpenPokemonStatusPanel: () => this.interactions.canOpenPokemonStatusPanel(),

@@ -52,6 +52,7 @@ export interface WorldSceneHudDependencies {
   getGameObjectFactory(): Phaser.GameObjects.GameObjectFactory;
   gameStateStore: GameStateStore;
   competitiveRoundsEnabled: boolean;
+  serverAuthoritativeRounds: boolean;
   roundWaitingText: string;
   addUnsubscriber(unsubscribe: () => void): void;
   canOpenPokemonStatusPanel(): boolean;
@@ -175,7 +176,10 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
   createRoundHud(nowMs: number, preparationDurationMs = DEFAULT_PREPARATION_DURATION_MS): void {
     const { gameStateStore } = this.dependencies;
 
-    if (gameStateStore.getState().round.phase === "waiting") {
+    if (
+      !this.dependencies.serverAuthoritativeRounds &&
+      gameStateStore.getState().round.phase === "waiting"
+    ) {
       gameStateStore.startPreparationRound(nowMs, preparationDurationMs);
     }
 
@@ -205,7 +209,9 @@ class DefaultWorldSceneHud implements WorldSceneHudController {
       return;
     }
 
-    this.dependencies.gameStateStore.advanceRoundClock(nowMs);
+    if (!this.dependencies.serverAuthoritativeRounds) {
+      this.dependencies.gameStateStore.advanceRoundClock(nowMs);
+    }
     const nextText = this.formatRoundHudText(nowMs);
 
     if (nextText !== this.lastRenderedRoundHudText) {

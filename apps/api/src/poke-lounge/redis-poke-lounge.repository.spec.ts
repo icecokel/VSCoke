@@ -107,8 +107,15 @@ describe('RedisPokeLoungeRepository', () => {
       response: {
         status: 'active',
         currentTurn: 4,
+        turnEndsAtMs: 61_000,
         submittedPlayerIds: [],
         terminal: null,
+      },
+      nextTurn: {
+        roomCode: 'ROOM01',
+        matchId: 'match-1',
+        turn: 4,
+        deadlineMs: 61_000,
       },
     });
     await expect(repository.findPendingTurns()).resolves.toEqual([

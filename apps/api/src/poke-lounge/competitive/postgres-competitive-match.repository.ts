@@ -148,10 +148,7 @@ export class PostgresCompetitiveMatchRepository implements CompetitiveMatchRepos
         eligible: true,
         committed: true,
         room: snapshotFromEntity(room),
-        projection: toCompetitiveProjection(
-          matchRepository.create(assignment),
-          [],
-        ),
+        projection: toCompetitiveProjection(assignment, []),
       };
     });
   }

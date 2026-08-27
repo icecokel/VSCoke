@@ -34,6 +34,7 @@ describe('PokeLoungeGateway', () => {
   let gateway: PokeLoungeGateway;
   let namespaceEmit: jest.Mock;
   let namespaceFetchSockets: jest.Mock;
+  let namespaceLocalTo: jest.Mock;
   let namespaceTo: jest.Mock;
   let serverSideEmit: jest.Mock;
   let serverListeners: Map<string, (input: unknown) => void>;
@@ -46,7 +47,7 @@ describe('PokeLoungeGateway', () => {
       getRoom: jest.fn().mockResolvedValue(roomSnapshot()),
       markParticipantDisconnectPending: jest.fn().mockResolvedValue(undefined),
     };
-    events = new PokeLoungeRoomEventsService();
+    events = new PokeLoungeRoomEventsService({} as never, {} as never);
     liveState = {
       deleteRoom: jest.fn().mockResolvedValue(undefined),
       extendRoomExpiry: jest.fn().mockResolvedValue(undefined),
@@ -81,6 +82,7 @@ describe('PokeLoungeGateway', () => {
     namespaceEmit = jest.fn();
     namespaceFetchSockets = jest.fn().mockResolvedValue([]);
     namespaceTo = jest.fn(() => ({ emit: namespaceEmit }));
+    namespaceLocalTo = jest.fn(() => ({ emit: namespaceEmit }));
     serverSideEmit = jest.fn();
     serverListeners = new Map();
     gateway.afterInit({
@@ -89,6 +91,7 @@ describe('PokeLoungeGateway', () => {
       on: jest.fn((eventName: string, listener: (input: unknown) => void) => {
         serverListeners.set(eventName, listener);
       }),
+      local: { to: namespaceLocalTo },
       serverSideEmit,
       to: namespaceTo,
     } as unknown as Namespace);
@@ -275,21 +278,16 @@ describe('PokeLoungeGateway', () => {
     );
   });
 
-  it('broadcasts only committed public snapshots to the authorized room', async () => {
+  it('broadcasts only committed public snapshots to the authorized room', () => {
     const room = publicRoom({ revision: 8 });
 
-    await events.publish({ type: 'room-updated', snapshot: room });
+    events.publishCommitted(room);
 
-    expect(namespaceTo).toHaveBeenCalledWith('room:ROOM01');
+    expect(namespaceLocalTo).toHaveBeenCalledWith('room:ROOM01');
     expect(namespaceEmit).toHaveBeenCalledWith('room.snapshot', {
       room,
     });
-    expect(serverSideEmit).toHaveBeenCalledWith('poke-lounge.room-metadata', {
-      roomCode: 'ROOM01',
-      revision: room.revision,
-      expiresAtMs: room.expiresAtMs,
-      closed: false,
-    });
+    expect(serverSideEmit).not.toHaveBeenCalled();
     expect(liveState.extendRoomExpiry).toHaveBeenCalledWith(
       'ROOM01',
       room.expiresAtMs,

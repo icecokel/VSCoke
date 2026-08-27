@@ -1,17 +1,43 @@
+import {
+  COMPETITIVE_RULESET_HASH,
+  COMPETITIVE_RULESET_VERSION,
+} from '@vscoke/poke-lounge-battle';
+import { createTestInitialBattleState } from '../../test/support/competitive-party.fixture';
+import type { CompetitiveProjectionService } from './competitive/competitive-projection.service';
 import type { PokeLoungeRoomCommittedEvent } from './poke-lounge-room-event.publisher';
-import { PokeLoungeRoomEventsService } from './poke-lounge-room-events.service';
+import {
+  PokeLoungeRoomEventsService,
+  type PokeLoungeRoomTransportEvent,
+} from './poke-lounge-room-events.service';
+import type {
+  PokeLoungeLiveStateService,
+  PokeLoungeRoomCommitNotification,
+} from './poke-lounge-live-state.service';
+import type { PokeLoungeRoomSnapshot } from './poke-lounge-room.repository';
 import type { PokeLoungePublicRoomState } from './poke-lounge-room.types';
 
+const TEST_EXPIRES_AT_MS = 253_402_300_799_999;
+
 describe('PokeLoungeRoomEventsService', () => {
-  it('maps a committed Task 5 event to a cloned public room snapshot', async () => {
-    const service = new PokeLoungeRoomEventsService();
-    const listener = jest.fn();
-    const room = publicRoom();
-    service.subscribe(listener);
+  it('publishes only a Redis cursor and relays the canonical public snapshot', async () => {
+    const harness = createHarness();
+    const listener = roomEventListener();
+    harness.service.subscribe(listener);
+    await harness.service.onModuleInit();
 
-    await service.publish(committedEvent(room));
-    room.participants[0].displayName = 'mutated after publish';
+    await harness.service.publish(committedEvent(publicRoom()));
+    expect(harness.liveState.publishRoomCommit.mock.calls).toEqual([
+      [{ roomCode: 'ROOM01', revision: 3 }],
+    ]);
+    expect(listener).not.toHaveBeenCalled();
 
+    harness.projection.findRoomSnapshot.mockResolvedValueOnce(roomSnapshot());
+    harness.notify({ roomCode: 'ROOM01', revision: 3 });
+    await flushCommit();
+
+    expect(harness.projection.findRoomSnapshot.mock.calls).toEqual([
+      ['ROOM01', 2],
+    ]);
     expect(listener).toHaveBeenCalledWith({
       type: 'room.snapshot',
       room: publicRoom(),
@@ -19,56 +45,162 @@ describe('PokeLoungeRoomEventsService', () => {
     expect(JSON.stringify(listener.mock.calls)).not.toContain('sessionId');
   });
 
-  it('stops delivering events after unsubscribe', async () => {
-    const service = new PokeLoungeRoomEventsService();
-    const listener = jest.fn();
-    const unsubscribe = service.subscribe(listener);
-    unsubscribe();
+  it('ignores duplicate and reverse notifications while retaining terminal transitions', async () => {
+    const harness = createHarness();
+    const receivedEvents: PokeLoungeRoomTransportEvent[] = [];
+    const listener = jest.fn((event: PokeLoungeRoomTransportEvent) => {
+      receivedEvents.push(event);
+    });
+    harness.service.subscribe(listener);
+    await harness.service.onModuleInit();
+    const terminal = competitiveProjection({
+      status: 'completed',
+      terminalEventId: '00000000-0000-4000-8000-000000000050',
+      terminalRoomRevision: 10,
+    });
+    harness.projection.findRoomSnapshot.mockResolvedValueOnce(
+      roomSnapshot({
+        revision: 10,
+        competitiveTransitions: [
+          {
+            terminalEventId: terminal.terminalEventId!,
+            terminalRoomRevision: terminal.terminalRoomRevision!,
+            projection: terminal,
+          },
+        ],
+      }),
+    );
 
-    await service.publish(committedEvent(publicRoom()));
+    harness.notify({ roomCode: 'ROOM01', revision: 10 });
+    await flushCommit();
+    harness.notify({ roomCode: 'ROOM01', revision: 10 });
+    harness.notify({ roomCode: 'ROOM01', revision: 9 });
+    await flushCommit();
+
+    expect(harness.projection.findRoomSnapshot.mock.calls).toEqual([
+      ['ROOM01', 9],
+    ]);
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(receivedEvents[0]).toMatchObject({
+      room: {
+        competitiveTransitions: [
+          {
+            terminalRoomRevision: 10,
+            projection: { status: 'completed' },
+          },
+        ],
+      },
+    });
+  });
+
+  it('serializes same-room notifications and relays a terminal transition once', async () => {
+    const harness = createHarness();
+    const listener = roomEventListener();
+    harness.service.subscribe(listener);
+    await harness.service.onModuleInit();
+    const snapshot = deferred<PokeLoungeRoomSnapshot>();
+    const terminal = competitiveProjection({
+      status: 'completed',
+      terminalEventId: '00000000-0000-4000-8000-000000000051',
+      terminalRoomRevision: 10,
+    });
+    harness.projection.findRoomSnapshot.mockReturnValueOnce(snapshot.promise);
+
+    harness.notify({ roomCode: 'ROOM01', revision: 10 });
+    harness.notify({ roomCode: 'ROOM01', revision: 10 });
+    await flushCommit();
+
+    expect(harness.projection.findRoomSnapshot.mock.calls).toEqual([
+      ['ROOM01', 9],
+    ]);
+
+    snapshot.resolve(
+      roomSnapshot({
+        revision: 10,
+        competitiveTransitions: [
+          {
+            terminalEventId: terminal.terminalEventId!,
+            terminalRoomRevision: terminal.terminalRoomRevision!,
+            projection: terminal,
+          },
+        ],
+      }),
+    );
+    await flushCommit();
+
+    expect(harness.projection.findRoomSnapshot.mock.calls).toHaveLength(1);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops expired cursors before accepting a reused room code', async () => {
+    const now = jest.spyOn(Date, 'now').mockReturnValue(1_000);
+    const harness = createHarness();
+    const listener = roomEventListener();
+    harness.service.subscribe(listener);
+    await harness.service.onModuleInit();
+    harness.projection.findRoomSnapshot
+      .mockResolvedValueOnce(roomSnapshot({ revision: 5, expiresAtMs: 2_000 }))
+      .mockResolvedValueOnce(roomSnapshot({ revision: 0, expiresAtMs: 4_000 }));
+
+    try {
+      harness.notify({ roomCode: 'ROOM01', revision: 5 });
+      await flushCommit();
+      now.mockReturnValue(3_000);
+      harness.notify({ roomCode: 'ROOM01', revision: 0 });
+      await flushCommit();
+
+      expect(harness.projection.findRoomSnapshot.mock.calls).toEqual([
+        ['ROOM01', 4],
+        ['ROOM01', 0],
+      ]);
+      expect(listener).toHaveBeenCalledTimes(2);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it('stops delivering events and closes the Redis subscription', async () => {
+    const harness = createHarness();
+    const listener = roomEventListener();
+    const unsubscribe = harness.service.subscribe(listener);
+    unsubscribe();
+    await harness.service.onModuleInit();
+    harness.projection.findRoomSnapshot.mockResolvedValueOnce(roomSnapshot());
+
+    harness.notify({ roomCode: 'ROOM01', revision: 3 });
+    await flushCommit();
+    await harness.service.onModuleDestroy();
 
     expect(listener).not.toHaveBeenCalled();
-  });
-
-  it('delivers only the sanitized competitive projection through the room socket path', async () => {
-    const service = new PokeLoungeRoomEventsService();
-    const listener = jest.fn();
-    const room = publicRoom();
-    room.competitive = {
-      matchId: 'match-1',
-      bracketMatchId: 'game-round-1-bracket-1-match-1',
-      kind: 'tournament-unranked',
-      assignmentRevision: 1,
-      rulesetVersion: COMPETITIVE_RULESET_VERSION,
-      rulesetHash: COMPETITIVE_RULESET_HASH,
-      currentTurn: 1,
-      status: 'active',
-      playerIds: ['player-a', 'player-b'],
-      currentState: {
-        ...createTestInitialBattleState(['player-a', 'player-b']),
-        turn: 1,
-      },
-      stateHash: 'a'.repeat(64),
-      submittedPlayerIds: [],
-      terminal: null,
-      terminalEventId: null,
-      terminalRoomRevision: null,
-    };
-    service.subscribe(listener);
-
-    await service.publish({
-      type: 'competitive-action-committed',
-      snapshot: room,
-    });
-
-    const serialized = JSON.stringify(listener.mock.calls);
-    expect(serialized).toContain('match-1');
-    expect(serialized).not.toContain('accountId');
-    expect(serialized).not.toContain('sessionId');
-    expect(serialized).not.toContain('serverSeed');
-    expect(serialized).not.toContain('clientCommandId');
+    expect(harness.unsubscribeFromRedis).toHaveBeenCalledTimes(1);
   });
 });
+
+function createHarness() {
+  let notify: (notification: PokeLoungeRoomCommitNotification) => void = () =>
+    undefined;
+  const unsubscribeFromRedis = jest.fn().mockResolvedValue(undefined);
+  const liveState = {
+    publishRoomCommit: jest.fn().mockResolvedValue(undefined),
+    subscribeRoomCommits: jest.fn(
+      (listener: (notification: PokeLoungeRoomCommitNotification) => void) => {
+        notify = listener;
+        return Promise.resolve(unsubscribeFromRedis);
+      },
+    ),
+  } as unknown as jest.Mocked<PokeLoungeLiveStateService>;
+  const projection = {
+    findRoomSnapshot: jest.fn(),
+  } as unknown as jest.Mocked<CompetitiveProjectionService>;
+  return {
+    service: new PokeLoungeRoomEventsService(liveState, projection),
+    liveState,
+    projection,
+    unsubscribeFromRedis,
+    notify: (notification: PokeLoungeRoomCommitNotification) =>
+      notify(notification),
+  };
+}
 
 function committedEvent(
   snapshot: PokeLoungePublicRoomState,
@@ -76,7 +208,9 @@ function committedEvent(
   return { type: 'room-updated', snapshot };
 }
 
-function publicRoom(): PokeLoungePublicRoomState {
+function roomSnapshot(
+  overrides: Partial<PokeLoungeRoomSnapshot> = {},
+): PokeLoungeRoomSnapshot {
   return {
     roomCode: 'ROOM01',
     status: 'waiting',
@@ -85,6 +219,7 @@ function publicRoom(): PokeLoungePublicRoomState {
     participants: [
       {
         playerId: 'player-1',
+        sessionId: 'session-secret',
         displayName: 'Player 1',
         role: 'participant',
         ready: false,
@@ -96,15 +231,64 @@ function publicRoom(): PokeLoungePublicRoomState {
     round: {
       index: 1,
       phase: 'waiting',
-      durationMs: 1000,
+      durationMs: 1_000,
       startedAtMs: null,
       endsAtMs: null,
     },
     tournament: emptyTournament(),
     finalStandings: [],
     revision: 3,
-    expiresAtMs: 30 * 60_000,
+    expiresAtMs: TEST_EXPIRES_AT_MS,
     competitiveTransitions: [],
+    ...overrides,
+  };
+}
+
+function publicRoom(): PokeLoungePublicRoomState {
+  const { participants, ...snapshot } = roomSnapshot();
+  return {
+    ...snapshot,
+    hostPlayerId: 'player-1',
+    participants: participants.map(
+      ({ playerId, displayName, role, ready, connected, joinedAtMs }) => ({
+        playerId,
+        displayName,
+        role,
+        ready,
+        connected,
+        joinedAtMs,
+      }),
+    ),
+  };
+}
+
+function competitiveProjection(
+  overrides: Partial<ReturnType<typeof activeCompetitiveProjection>> = {},
+) {
+  return { ...activeCompetitiveProjection(), ...overrides };
+}
+
+function activeCompetitiveProjection() {
+  return {
+    matchId: 'match-1',
+    bracketMatchId: 'game-round-1-bracket-1-match-1',
+    kind: 'tournament-unranked' as const,
+    assignmentRevision: 1,
+    rulesetVersion: COMPETITIVE_RULESET_VERSION,
+    rulesetHash: COMPETITIVE_RULESET_HASH,
+    currentTurn: 1,
+    turnEndsAtMs: 31_000,
+    status: 'active' as const,
+    playerIds: ['player-a', 'player-b'] as [string, string],
+    currentState: {
+      ...createTestInitialBattleState(['player-a', 'player-b']),
+      turn: 1,
+    },
+    stateHash: 'a'.repeat(64),
+    submittedPlayerIds: [],
+    terminal: null,
+    terminalEventId: null,
+    terminalRoomRevision: null,
   };
 }
 
@@ -117,8 +301,19 @@ function emptyTournament() {
     cumulativeScores: {},
   };
 }
-import {
-  COMPETITIVE_RULESET_HASH,
-  COMPETITIVE_RULESET_VERSION,
-} from '@vscoke/poke-lounge-battle';
-import { createTestInitialBattleState } from '../../test/support/competitive-party.fixture';
+
+function flushCommit(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
+function roomEventListener() {
+  return jest.fn<(event: PokeLoungeRoomTransportEvent) => void>();
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((complete) => {
+    resolve = complete;
+  });
+  return { promise, resolve };
+}

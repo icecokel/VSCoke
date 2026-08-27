@@ -38,6 +38,7 @@ export type CompetitiveTurnTimeoutResult =
       outcome: 'resolved';
       response: CompetitiveActionProjection;
       room: PokeLoungeRoomSnapshot;
+      nextTurn: CompetitivePendingTurn | null;
     };
 
 export interface CompetitivePendingTurn {

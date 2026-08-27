@@ -2982,6 +2982,37 @@ test.describe("Poke Lounge", () => {
     expect(browserErrors.join("\n")).toBe("");
   });
 
+  test("전투 Scene teardown 뒤 stale render callback이 pageerror를 만들지 않는다", async ({
+    page,
+  }) => {
+    const browserErrors = collectBrowserErrors(page);
+
+    await startBattleScenario(page, "wild-victory");
+    await page.evaluate(async () => {
+      const game = window.__POKE_LOUNGE_GAME__;
+      const battleScene = game?.scene.getScene("battle") as unknown as
+        | { render(): void }
+        | undefined;
+
+      if (!game || !battleScene) {
+        throw new Error("Battle scene is unavailable.");
+      }
+
+      await new Promise<void>(resolve => {
+        const staleRender = battleScene.render.bind(battleScene);
+        game.events.once("destroy", () => {
+          staleRender();
+          resolve();
+        });
+        game.destroy(true);
+      });
+    });
+    await page.waitForTimeout(100);
+
+    await expect(page.locator("#game-root canvas")).toHaveCount(0);
+    expect(browserErrors.join("\n")).toBe("");
+  });
+
   test("상태 기술은 타격음 없이 공격 메시지 뒤 마비 텍스트를 표시한다", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
 

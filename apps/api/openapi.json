@@ -2491,6 +2491,10 @@
           "currentTurn": {
             "type": "number"
           },
+          "turnEndsAtMs": {
+            "type": "number",
+            "minimum": 0
+          },
           "status": {
             "type": "string",
             "enum": ["pending", "active", "completed"]
@@ -2541,6 +2545,7 @@
           "rulesetVersion",
           "rulesetHash",
           "currentTurn",
+          "turnEndsAtMs",
           "status",
           "terminalEventId",
           "terminalRoomRevision",
@@ -3143,6 +3148,10 @@
           "currentTurn": {
             "type": "number"
           },
+          "turnEndsAtMs": {
+            "type": "number",
+            "minimum": 0
+          },
           "status": {
             "type": "string",
             "enum": ["pending", "active", "completed"]
@@ -3193,6 +3202,7 @@
           "rulesetVersion",
           "rulesetHash",
           "currentTurn",
+          "turnEndsAtMs",
           "status",
           "terminalEventId",
           "terminalRoomRevision",

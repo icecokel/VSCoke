@@ -108,12 +108,14 @@ class DefaultWorldSceneEncounters implements WorldSceneEncounterController {
   private stepTracker: TileStepTracker | null = null;
   private encounterLocked = false;
   private battleIntroPlaying = false;
+  private lifecycleGeneration = 0;
   private wildEncounterRateOverride: number | undefined;
   private readonly wildEncounterConfigCache = new Map<string, WildEncounterConfig | undefined>();
 
   constructor(private readonly dependencies: WorldSceneEncountersDependencies) {}
 
   initialize(position: { x: number; y: number }): void {
+    this.lifecycleGeneration += 1;
     this.stepTracker = createTileStepTracker(position);
     this.encounterLocked = false;
     this.battleIntroPlaying = false;
@@ -181,6 +183,8 @@ class DefaultWorldSceneEncounters implements WorldSceneEncounterController {
   }
 
   playBattleIntroTransition(onComplete: () => void): void {
+    const lifecycleGeneration = this.lifecycleGeneration;
+
     this.battleIntroPlaying = true;
     playBattleTransitionSound();
 
@@ -234,10 +238,17 @@ class DefaultWorldSceneEncounters implements WorldSceneEncounterController {
       duration: BATTLE_INTRO_TIMING.fadeMs,
       ease: "Linear",
     });
-    this.dependencies.delay(getBattleIntroDurationMs(), onComplete);
+    this.dependencies.delay(getBattleIntroDurationMs(), () => {
+      if (this.lifecycleGeneration !== lifecycleGeneration || !this.battleIntroPlaying) {
+        return;
+      }
+
+      onComplete();
+    });
   }
 
   destroy(): void {
+    this.lifecycleGeneration += 1;
     this.stepTracker = null;
     this.encounterLocked = false;
     this.battleIntroPlaying = false;

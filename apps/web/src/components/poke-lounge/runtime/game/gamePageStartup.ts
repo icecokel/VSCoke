@@ -121,6 +121,7 @@ export async function startGamePage(
   let activeGame: PokeLoungeGameInstance | null = null;
   let activeMultiplayerRoom: ReturnType<typeof createMultiplayerRoom> | null = null;
   let temporaryRoomCode: string | undefined;
+  let resumingStoredRoom = false;
   let activeViewportSize = dependencies.viewportSize;
   let localTestModeState: LocalTestModeState = { available: false, active: false };
   let destroyed = false;
@@ -208,12 +209,13 @@ export async function startGamePage(
 
     const roomEntry = readRoomEntryFromLocation(gameUrl);
     const multiplayerRoom = (dependencies.createMultiplayerRoom ?? createMultiplayerRoom)({
-      accountId: temporaryRoomCode ? undefined : dependencies.accountId,
+      accountId: resumingStoredRoom || !temporaryRoomCode ? dependencies.accountId : undefined,
       createWebRtcRoom,
-      idToken: temporaryRoomCode ? undefined : dependencies.idToken,
-      getIdToken: temporaryRoomCode ? undefined : dependencies.getIdToken,
+      idToken: resumingStoredRoom || !temporaryRoomCode ? dependencies.idToken : undefined,
+      getIdToken: resumingStoredRoom || !temporaryRoomCode ? dependencies.getIdToken : undefined,
       roomId: temporaryRoomCode,
       persistRoomCodeInUrl: temporaryRoomCode ? false : undefined,
+      resumeRoom: resumingStoredRoom,
       sharedWorldOnly: Boolean(temporaryRoomCode),
       competitiveRoundsEnabled: isCompetitiveRoomEntryMode(roomEntry.mode),
       searchParams: gameUrl.searchParams,
@@ -229,6 +231,7 @@ export async function startGamePage(
       initialScene,
       multiplayerRoom,
       onGameResult: roomEntry.mode === "server-room" ? undefined : dependencies.onGameResult,
+      serverAuthoritativeRounds: roomEntry.mode === "server-room",
       viewportSize: activeViewportSize,
     });
     activeGame = game;
@@ -252,6 +255,7 @@ export async function startGamePage(
         connectionStatus: "offline",
       });
       temporaryRoomCode = undefined;
+      resumingStoredRoom = false;
       clearRoomEntrySearchParams(currentUrl);
       replaceBrowserUrl(currentUrl);
       game?.destroy(true);
@@ -433,6 +437,7 @@ export async function startGamePage(
       selection.mode === "server-room" && selection.createRoom
         ? (selection.roomCode ?? undefined)
         : undefined;
+    resumingStoredRoom = false;
 
     applyRoomEntrySelection(currentUrl, selection);
     replaceBrowserUrl(currentUrl);
@@ -570,16 +575,18 @@ export async function startGamePage(
     }
 
     const roomEntry = readRoomEntryFromLocation(currentUrl);
-    const storedResume = readStoredServerRoomResume();
+    const storedResume = readStoredServerRoomResume(dependencies.accountId);
     const canResumeStoredRoom =
       !localTestModeState.active &&
       !gameStateStore.canChooseStarter() &&
       storedResume !== null &&
       (roomEntry.mode === "unset" ||
-        (roomEntry.mode === "server-room" && roomEntry.createRoom === true));
+        (roomEntry.mode === "server-room" &&
+          (roomEntry.createRoom === true || roomEntry.roomCode === storedResume.roomCode)));
 
     if (canResumeStoredRoom) {
       temporaryRoomCode = storedResume.roomCode;
+      resumingStoredRoom = true;
       currentUrl.searchParams.set("network", "server");
       currentUrl.searchParams.set("create", "1");
       currentUrl.searchParams.delete("room");

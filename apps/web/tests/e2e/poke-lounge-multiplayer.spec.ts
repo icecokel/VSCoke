@@ -693,7 +693,7 @@ test.describe("Poke Lounge server multiplayer", () => {
     await context.close();
   });
 
-  test("assignment 생성 알림은 첫 참가자와 두 번째 참가자 모두 같은 battle을 시작한다", async ({
+  test("assignment 생성 알림은 야생전 참가자와 신규 참가자 모두 같은 battle을 시작한다", async ({
     browser,
   }) => {
     const server = createMockServerState();
@@ -721,6 +721,22 @@ test.describe("Poke Lounge server multiplayer", () => {
     );
     await expect.poll(() => Promise.resolve(server.competitiveSeatBodies.length)).toBe(1);
     expect(await getActiveSceneKey(hostPage)).toBe("world");
+    await hostPage.evaluate(() => {
+      (window as PokeLoungeWindow).__POKE_LOUNGE_E2E__?.startWildBattleForTest({
+        encounter: {
+          mapKey: "town",
+          step: { from: { x: 0, y: 0 }, to: { x: 1, y: 0 } },
+          speciesId: 19,
+          name: "꼬렛",
+          level: 5,
+        },
+        x: 656,
+        y: 446,
+        facing: "front",
+      });
+    });
+    await waitForActiveScene(hostPage, "battle");
+    expect((await getBattleSnapshot(hostPage))?.battleKind).toBe("wild");
 
     await startServerRoom(
       guestPage,
@@ -736,9 +752,19 @@ test.describe("Poke Lounge server multiplayer", () => {
     });
 
     await waitForActiveScene(hostPage, "battle");
+    await waitForBattleReady(hostPage);
     expect((await getBattleSnapshot(hostPage))?.turn).toBe(
       (await getBattleSnapshot(guestPage))?.turn,
     );
+
+    const canvas = hostPage.locator("#game-root canvas");
+    await canvas.focus();
+    await hostPage.keyboard.press("Enter");
+    await expect
+      .poll(() => getBattleSnapshot(hostPage).then(snapshot => snapshot?.phase))
+      .toBe("move-select");
+    await hostPage.keyboard.press("Enter");
+    await expect.poll(() => Promise.resolve(server.competitiveActionBodies.length)).toBe(1);
 
     await hostContext.close();
     await guestContext.close();

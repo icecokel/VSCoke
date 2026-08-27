@@ -69,6 +69,11 @@ them unless the user asks.
 8. After each battle UI procedure, watch up to five seconds for its `session-actions` request. If no request appears,
    capture the current phase and focus, then repeat the complete UI procedure exactly once; do not wait passively for
    the turn deadline. If the retry also emits no request, report `CODE-FAIL`. After any 2xx, never retry that turn.
+   For Desktop battle input, take a fresh interactive snapshot, focus the current
+   `Poke Lounge 대화형 게임 캔버스` ref, and then `press Enter`. Do not click the canvas merely to focus it because
+   the pointer event also confirms the current option. After `command` rerenders to `move-select`, take another fresh
+   snapshot and reacquire/focus the canvas ref before the move Enter. Do not capture screenshots or wait for another
+   manager message between `ACTION-GO` and the first input.
 9. On `DOC-GAP`, `CODE-FAIL`, `TEST-RUNNER`, or `INFRA-BLOCKED`, preserve safe evidence and report the
    classification. Resume only from a documented safe checkpoint; never fabricate progress.
 

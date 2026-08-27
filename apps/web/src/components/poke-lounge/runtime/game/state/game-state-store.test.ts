@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createTournamentBracketState } from "@vscoke/poke-lounge-battle";
+import {
+  createTournamentBracketState,
+  recordTournamentMatchResult,
+} from "@vscoke/poke-lounge-battle";
 import type { TournamentStateRoomPayload } from "../network/tournament-projection";
 import {
   createDefaultLocalPlayer,
@@ -136,6 +139,48 @@ function createPreparationProjection(revision: number): TournamentStateRoomPaylo
     competitionKind: null,
     finalStandings: [],
     resultSync: { matchId: null, status: "idle" },
+  };
+}
+
+function createCompletedProjection(revision: number): TournamentStateRoomPayload {
+  const projection = createProjection(revision);
+  let bracket = createTournamentBracketState(
+    projection.participants.map(({ playerId, displayName }) => ({ playerId, displayName })),
+    3,
+  );
+
+  while (bracket.status === "in-progress") {
+    for (const match of bracket.currentRound?.matches ?? []) {
+      bracket = recordTournamentMatchResult(bracket, match.matchId, match.participantA.playerId);
+    }
+  }
+
+  const finalStandings = bracket.participants.map((participant, index) => ({
+    playerId: participant.playerId,
+    displayName: participant.displayName,
+    rank: index + 1,
+    score: 300 - index * 50,
+  }));
+
+  return {
+    ...projection,
+    roundIndex: 3,
+    roomStatus: "completed",
+    roomRound: {
+      ...projection.roomRound,
+      index: 3,
+      phase: "completed",
+      startedAtMs: 500,
+      endsAtMs: 800,
+    },
+    tournament: {
+      version: 2,
+      bracket,
+      activeMatchId: null,
+      activeMatchAuthority: null,
+      cumulativeScores: Object.fromEntries(finalStandings.map(row => [row.playerId, row.score])),
+    },
+    finalStandings,
   };
 }
 
@@ -292,4 +337,43 @@ test("완료 순위는 재접속 첫 snapshot에서도 canonical seed를 보존�
       ["player-3", 3],
     ],
   );
+});
+
+test("완료 event와 snapshot 순서가 달라도 이번 라운드 점수를 한 번만 계산한다", () => {
+  const completedProjection = createCompletedProjection(9);
+  const completedEvent = {
+    roundIndex: 3,
+    championPlayerId: completedProjection.tournament.bracket?.championPlayerId ?? "",
+    standings: completedProjection.finalStandings,
+  };
+  const expectedRoundScores = [200, 150, 100, 50, 50];
+
+  for (const eventFirst of [false, true]) {
+    const store = createGameStateStore();
+    completedProjection.finalStandings.forEach((row, index) => {
+      store.applyRoundScoreUpdatedFromRoom({
+        roundIndex: 2,
+        playerId: row.playerId,
+        rank: row.rank,
+        score: index === 4 ? 50 : 100,
+      });
+    });
+
+    if (eventFirst) {
+      assert.deepEqual(store.applyTournamentCompletedFromRoom(completedEvent, 1_000), { ok: true });
+      assert.deepEqual(store.applyTournamentSnapshotFromRoom(completedProjection, 1_100), {
+        ok: true,
+      });
+    } else {
+      assert.deepEqual(store.applyTournamentSnapshotFromRoom(completedProjection, 1_000), {
+        ok: true,
+      });
+      assert.deepEqual(store.applyTournamentCompletedFromRoom(completedEvent, 1_100), { ok: true });
+    }
+
+    assert.deepEqual(
+      store.getState().tournament.lastRoundScores.map(row => row.score),
+      expectedRoundScores,
+    );
+  }
 });

@@ -1478,7 +1478,9 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
           standings: rows ?? state.tournament.standings,
           lastRoundScores:
             bracket?.status === "completed" && rows
-              ? createRoundScoresFromCumulativeRows(state.tournament.scoresByPlayerId, rows)
+              ? hasAppliedTournamentRoundResult(state, input.roundIndex)
+                ? state.tournament.lastRoundScores
+                : createRoundScoresFromCumulativeRows(state.tournament.scoresByPlayerId, rows)
               : state.tournament.lastRoundScores,
         },
       };
@@ -1553,10 +1555,9 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
       }
 
       const scoresByPlayerId = Object.fromEntries(rows.map(row => [row.playerId, row.score]));
-      const roundScores = createRoundScoresFromCumulativeRows(
-        state.tournament.scoresByPlayerId,
-        rows,
-      );
+      const roundScores = hasAppliedTournamentRoundResult(state, roundIndex)
+        ? state.tournament.lastRoundScores
+        : createRoundScoresFromCumulativeRows(state.tournament.scoresByPlayerId, rows);
       const finalRound = roundIndex >= state.round.totalRounds;
       const playersById = finalRound
         ? applyFinalTournamentCompetitiveStats(state.playersById, rows)
@@ -2078,6 +2079,14 @@ function createRoundScoresFromCumulativeRows(
     rank: row.rank,
     score: Math.max(0, row.score - normalizeScore(previousScores[row.playerId])),
   }));
+}
+
+function hasAppliedTournamentRoundResult(state: GameState, roundIndex: number): boolean {
+  return (
+    state.round.roundIndex === roundIndex &&
+    (state.round.phase === "round-result" || state.round.phase === "game-result") &&
+    state.tournament.lastRoundScores.length > 0
+  );
 }
 
 function resolvePlayerDisplayName(state: GameState, playerId: string): string {

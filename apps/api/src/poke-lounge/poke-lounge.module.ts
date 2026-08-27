@@ -12,6 +12,8 @@ import { PokeLoungeRoomService } from './poke-lounge-room.service';
 import { CompetitiveProjectionService } from './competitive/competitive-projection.service';
 import { RedisPokeLoungeRepository } from './redis-poke-lounge.repository';
 import { PokeLoungeRedisModule } from './poke-lounge-redis.module';
+import { CompetitiveTurnQueueService } from './competitive/competitive-turn-queue.service';
+import { COMPETITIVE_TURN_QUEUE } from './competitive/competitive-turn-queue';
 
 @Module({
   imports: [AuthModule, PokeLoungeRedisModule],
@@ -37,6 +39,11 @@ import { PokeLoungeRedisModule } from './poke-lounge-redis.module';
       useExisting: PokeLoungeRoomEventsService,
     },
     PokeLoungeRoomService,
+    CompetitiveTurnQueueService,
+    {
+      provide: COMPETITIVE_TURN_QUEUE,
+      useExisting: CompetitiveTurnQueueService,
+    },
     CompetitiveMatchService,
     PokeLoungeGateway,
   ],

@@ -13,11 +13,13 @@ import { createSessionCompetitiveAccountId } from './competitive-match.repositor
 import type { CompetitiveActionRepository } from './competitive-action.repository';
 import type { PokeLoungeRoomEventPublisher } from '../poke-lounge-room-event.publisher';
 import { CompetitiveMatchService } from './competitive-match.service';
+import type { CompetitiveTurnQueue } from './competitive-turn-queue';
 
 describe('CompetitiveMatchService', () => {
   let repository: jest.Mocked<CompetitiveMatchRepository>;
   let actionRepository: jest.Mocked<CompetitiveActionRepository>;
   let publisher: jest.Mocked<PokeLoungeRoomEventPublisher>;
+  let turnQueue: jest.Mocked<CompetitiveTurnQueue>;
   let service: CompetitiveMatchService;
 
   beforeEach(() => {
@@ -30,10 +32,12 @@ describe('CompetitiveMatchService', () => {
       expirePendingTurn: jest.fn(),
     };
     publisher = { publish: jest.fn().mockResolvedValue(undefined) };
+    turnQueue = { schedule: jest.fn().mockResolvedValue(undefined) };
     service = new CompetitiveMatchService(
       repository,
       actionRepository,
       publisher,
+      turnQueue,
     );
   });
 
@@ -284,9 +288,7 @@ describe('CompetitiveMatchService', () => {
     });
   });
 
-  it('starts the 30 second deadline before actions and does not restart it on replay', async () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(1_000);
+  it('queues one stable turn deadline before actions without changing it on replay', async () => {
     let snapshotListener:
       | Parameters<
           NonNullable<PokeLoungeRoomEventPublisher['subscribeSnapshots']>
@@ -302,46 +304,35 @@ describe('CompetitiveMatchService', () => {
       room: roomSnapshot(),
       committed: true,
     });
-    actionRepository.expirePendingTurn.mockResolvedValue({
-      outcome: 'ignored',
+    await service.onApplicationBootstrap();
+    snapshotListener?.({
+      ...roomSnapshot(),
+      updatedAtMs: 1_000,
+      competitive: actionProjection(),
     });
+    await Promise.resolve();
+    await service.submitAction(actionInput());
+    actionRepository.submit.mockResolvedValue({
+      outcome: 'replayed',
+      response: actionProjection(),
+      room: roomSnapshot(),
+      committed: false,
+    });
+    await service.submitAction(actionInput());
 
-    try {
-      await service.onApplicationBootstrap();
-      snapshotListener?.({
-        ...roomSnapshot(),
-        updatedAtMs: 1_000,
-        competitive: actionProjection(),
-      });
-      await service.submitAction(actionInput());
-      await jest.advanceTimersByTimeAsync(15_000);
-      actionRepository.submit.mockResolvedValue({
-        outcome: 'replayed',
-        response: actionProjection(),
-        room: roomSnapshot(),
-        committed: false,
-      });
-      await service.submitAction(actionInput());
-      await jest.advanceTimersByTimeAsync(15_000);
-
-      expect(actionRepository.expirePendingTurn.mock.calls).toHaveLength(1);
-      const timeoutInput =
-        actionRepository.expirePendingTurn.mock.calls[0]?.[0];
-      expect(timeoutInput).toMatchObject({
-        roomCode: 'ROOM01',
-        matchId: 'match-1',
-        turn: 0,
-      });
-      expect(typeof timeoutInput?.nowMs).toBe('number');
-    } finally {
-      service.onModuleDestroy();
-      jest.useRealTimers();
-    }
+    expect(turnQueue.schedule.mock.calls).toEqual([
+      [
+        {
+          roomCode: 'ROOM01',
+          matchId: 'match-1',
+          turn: 0,
+          deadlineMs: 31_000,
+        },
+      ],
+    ]);
   });
 
   it('restores a pending Redis turn deadline after application restart', async () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(1_000);
     const findPendingTurns = jest.fn().mockResolvedValue([
       {
         roomCode: 'ROOM01',
@@ -350,28 +341,18 @@ describe('CompetitiveMatchService', () => {
         deadlineMs: 31_000,
       },
     ]);
-    const expirePendingTurn = jest.fn().mockResolvedValue({
-      outcome: 'ignored',
-    });
     actionRepository.findPendingTurns = findPendingTurns;
-    actionRepository.expirePendingTurn = expirePendingTurn;
 
-    try {
-      await service.onApplicationBootstrap();
-      await jest.advanceTimersByTimeAsync(29_999);
-      expect(expirePendingTurn).not.toHaveBeenCalled();
+    await service.onApplicationBootstrap();
 
-      await jest.advanceTimersByTimeAsync(1);
-      expect(expirePendingTurn).toHaveBeenCalledWith({
+    expect(turnQueue.schedule.mock.calls).toContainEqual([
+      {
         roomCode: 'ROOM01',
         matchId: 'match-1',
         turn: 3,
-        nowMs: 31_000,
-      });
-    } finally {
-      service.onModuleDestroy();
-      jest.useRealTimers();
-    }
+        deadlineMs: 31_000,
+      },
+    ]);
   });
 
   it('publishes one composite snapshot with the completed old match before the next tournament assignment', async () => {
@@ -448,6 +429,14 @@ describe('CompetitiveMatchService', () => {
         competitive: next,
       },
     });
+    expect(turnQueue.schedule.mock.calls).toContainEqual([
+      {
+        roomCode: 'ROOM01',
+        matchId: 'match-2',
+        turn: 0,
+        deadlineMs: 30_000,
+      },
+    ]);
   });
 
   it('does not publish replayed receipts or failed transactions', async () => {

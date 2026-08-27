@@ -8,6 +8,8 @@ import { PokeLoungeGateway } from './poke-lounge.gateway';
 import { PokeLoungeModule } from './poke-lounge.module';
 import { PokeLoungeRedisModule } from './poke-lounge-redis.module';
 import { RedisPokeLoungeRepository } from './redis-poke-lounge.repository';
+import { CompetitiveTurnQueueService } from './competitive/competitive-turn-queue.service';
+import { COMPETITIVE_TURN_QUEUE } from './competitive/competitive-turn-queue';
 
 describe('PokeLoungeModule', () => {
   it('imports the shared Redis connection module', () => {
@@ -28,6 +30,7 @@ describe('PokeLoungeModule', () => {
     expect(providers).toContain(PokeLoungeRoomEventsService);
     expect(providers).toContain(PokeLoungeGateway);
     expect(providers).toContain(CompetitiveMatchService);
+    expect(providers).toContain(CompetitiveTurnQueueService);
     expect(providers).toContain(RedisPokeLoungeRepository);
     expect(providers).toContainEqual({
       provide: COMPETITIVE_ACTION_REPOSITORY,
@@ -44,6 +47,10 @@ describe('PokeLoungeModule', () => {
     expect(providers).toContainEqual({
       provide: POKE_LOUNGE_ROOM_EVENT_PUBLISHER,
       useExisting: PokeLoungeRoomEventsService,
+    });
+    expect(providers).toContainEqual({
+      provide: COMPETITIVE_TURN_QUEUE,
+      useExisting: CompetitiveTurnQueueService,
     });
   });
 });

@@ -73,19 +73,19 @@ host
 8. `.env`의 `REDIS_URL`로 Redis에 연결할 수 있어야 한다. 연결할 수 없으면 API가 시작되지 않는다.
 9. `/home/icenux/projects/vscoke-api/.next-release`에 `apps/api/dist`, `apps/api/package.json`, 루트 `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`을 staging한다.
 10. staging 경로에서 production 의존성을 설치한다.
-11. staging이 성공하면 `/home/icenux/projects/vscoke-api`로 release 파일을 복사하고 PM2로 API를 재기동한다.
+11. staging이 성공하면 `/home/icenux/projects/vscoke-api`로 release 파일을 복사하고 PM2로 API와 Poke Lounge 턴 워커를 재기동한다.
 12. Ubuntu host 내부 `http://127.0.0.1:$PORT/health`와 공개 `API_HEALTH_URL`을 smoke test한다.
 
 운영 프로세스 기준:
 
-| 항목        | 값                                 |
-| ----------- | ---------------------------------- |
-| SSH 접속    | `ssh icenux-external`              |
-| 서버 경로   | `/home/icenux/projects/vscoke-api` |
-| PM2 앱 이름 | `vscoke-api`                       |
-| 실행 파일   | `apps/api/dist/src/main.js`        |
-| 기본 포트   | `3000` 또는 `.env`의 `PORT`        |
-| 외부 노출   | Cloudflare Tunnel                  |
+| 항목        | 값                                                                          |
+| ----------- | --------------------------------------------------------------------------- |
+| SSH 접속    | `ssh icenux-external`                                                       |
+| 서버 경로   | `/home/icenux/projects/vscoke-api`                                          |
+| PM2 앱 이름 | `vscoke-api`, `vscoke-poke-lounge-turn-worker`                              |
+| 실행 파일   | `apps/api/dist/src/main.js`, `apps/api/dist/src/poke-lounge-turn-worker.js` |
+| 기본 포트   | `3000` 또는 `.env`의 `PORT`                                                 |
+| 외부 노출   | Cloudflare Tunnel                                                           |
 
 현재 systemd/프로세스 기준:
 
@@ -93,16 +93,17 @@ host
 | -------------------------------- | ------------------- | ------------------------------------ |
 | `pm2-icenux.service`             | `enabled`, `active` | 재부팅 시 PM2 dump를 복구한다.       |
 | `vscoke-api`                     | PM2 `online`        | 운영 API 프로세스                    |
+| `vscoke-poke-lounge-turn-worker` | PM2 `online`        | Redis 기반 경쟁 턴 제한 처리 워커    |
 | `cloudflared-icenux.service`     | `enabled`, `active` | `api.icecoke.kr` 터널                |
 | `vscoke-api-native.service`      | `disabled/inactive` | 이전 `/opt/icenux/vscoke-api` 서비스 |
 | `vscoke-api-local-proxy.service` | `disabled/inactive` | 이전 Docker API용 local proxy        |
 
 PM2 운영 기준:
 
-- GitHub Actions 배포는 `pm2 delete vscoke-api || true` 후 새 프로세스를 시작한다.
+- GitHub Actions 배포는 기존 턴 워커와 API를 종료한 뒤 API, 턴 워커 순으로 새 프로세스를 시작한다.
 - GitHub Actions 배포는 재시작 후 `pm2 save`를 실행해 현재 프로세스 목록을 저장한다.
 - 빌드와 staging 의존성 설치가 성공하기 전에는 기존 PM2 프로세스를 건드리지 않는다.
-- PM2 dump에는 `vscoke-api`가 포함되어야 한다.
+- PM2 dump에는 `vscoke-api`와 `vscoke-poke-lounge-turn-worker`가 포함되어야 한다.
 - 기기 재부팅 후 복구가 필요하면 systemd PM2 startup에서 `pm2 resurrect`가 실행되도록 구성한다.
 - Cloudflare Tunnel 실행 방식도 재부팅 후 복구 대상에 포함한다. Tunnel이 별도 systemd 서비스로 관리되는지 운영 환경에서 확인한다.
 
@@ -158,7 +159,7 @@ API 운영 값은 Ubuntu host의 `/home/icenux/projects/vscoke-api/.env`에 둔�
 | `DB_PASSWORD`             | 필수      | `postgres`                             | PostgreSQL password                                                         |
 | `DB_DATABASE`             | 필수      | `vscoke`                               | PostgreSQL database                                                         |
 | `DB_SYNCHRONIZE`          | 운영 필수 | production에서는 `false` 취급          | TypeORM synchronize 제어                                                    |
-| `REDIS_URL`               | 필수      | 없음                                   | Poke Lounge 위치 상태와 Socket.IO 인스턴스 간 fan-out                       |
+| `REDIS_URL`               | 필수      | 없음                                   | Poke Lounge 상태, Socket.IO fan-out, BullMQ 턴 제한 작업                    |
 | `NOTIFY_SERVICE_URL`      | 선택      | 없음                                   | 운영 에러 알림 endpoint                                                     |
 | `NOTIFY_SERVICE_USER`     | 선택      | 없음                                   | 알림 endpoint basic auth user                                               |
 | `NOTIFY_SERVICE_PASSWORD` | 선택      | 없음                                   | 알림 endpoint basic auth password                                           |

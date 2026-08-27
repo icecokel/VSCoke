@@ -31,6 +31,10 @@ import {
   type CompetitiveActionFailure,
   type CompetitiveActionRepository,
 } from './competitive-action.repository';
+import {
+  COMPETITIVE_TURN_QUEUE,
+  type CompetitiveTurnQueue,
+} from './competitive-turn-queue';
 import type {
   CompetitiveActionProjection,
   SubmitCompetitiveActionInput,
@@ -48,10 +52,6 @@ export class CompetitiveMatchService
   implements OnApplicationBootstrap, OnModuleDestroy
 {
   private readonly logger = new Logger(CompetitiveMatchService.name);
-  private readonly turnTimeouts = new Map<
-    string,
-    ReturnType<typeof setTimeout>
-  >();
   private unsubscribeFromRoomSnapshots: (() => void) | null = null;
 
   constructor(
@@ -61,18 +61,22 @@ export class CompetitiveMatchService
     private readonly actionRepository: CompetitiveActionRepository,
     @Inject(POKE_LOUNGE_ROOM_EVENT_PUBLISHER)
     private readonly eventPublisher: PokeLoungeRoomEventPublisher,
+    @Inject(COMPETITIVE_TURN_QUEUE)
+    private readonly turnQueue: CompetitiveTurnQueue,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
     this.unsubscribeFromRoomSnapshots?.();
     this.unsubscribeFromRoomSnapshots =
       this.eventPublisher.subscribeSnapshots?.((snapshot) => {
-        if (snapshot.competitive) {
-          this.ensureTurnTimeout(
-            snapshot.roomCode,
-            snapshot.competitive,
-            snapshot.updatedAtMs,
-          );
+        const competitive = snapshot.competitive;
+        if (competitive && competitive.status !== 'completed') {
+          void this.scheduleTurnTimeout({
+            roomCode: snapshot.roomCode,
+            matchId: competitive.matchId,
+            turn: competitive.currentTurn,
+            deadlineMs: snapshot.updatedAtMs + COMPETITIVE_TURN_DEADLINE_MS,
+          });
         }
       }) ?? null;
 
@@ -83,12 +87,7 @@ export class CompetitiveMatchService
     try {
       const pendingTurns = await this.actionRepository.findPendingTurns();
       for (const pending of pendingTurns) {
-        this.scheduleTurnTimeout(
-          pending.roomCode,
-          pending.matchId,
-          pending.turn,
-          pending.deadlineMs,
-        );
+        await this.scheduleTurnTimeout(pending);
       }
     } catch (error) {
       this.logger.error(
@@ -101,10 +100,6 @@ export class CompetitiveMatchService
   onModuleDestroy(): void {
     this.unsubscribeFromRoomSnapshots?.();
     this.unsubscribeFromRoomSnapshots = null;
-    for (const timeout of this.turnTimeouts.values()) {
-      clearTimeout(timeout);
-    }
-    this.turnTimeouts.clear();
   }
 
   async bindSeat(
@@ -136,11 +131,13 @@ export class CompetitiveMatchService
       return null;
     }
 
-    this.ensureTurnTimeout(
-      result.assignment.roomCode,
-      toPublicAssignment(result.assignment),
-      result.assignment.turnStartedAtMs,
-    );
+    await this.scheduleTurnTimeout({
+      roomCode: result.assignment.roomCode,
+      matchId: result.assignment.matchId,
+      turn: result.assignment.currentTurn,
+      deadlineMs:
+        result.assignment.turnStartedAtMs + COMPETITIVE_TURN_DEADLINE_MS,
+    });
 
     if (result.committed) {
       try {
@@ -173,19 +170,6 @@ export class CompetitiveMatchService
       throwActionError(result.outcome);
     }
 
-    const timeoutKey = competitiveTurnTimeoutKey(
-      input.roomCode,
-      input.matchId,
-      input.turn,
-    );
-    if (
-      result.committed &&
-      (result.response.status === 'completed' ||
-        result.response.currentTurn !== input.turn)
-    ) {
-      this.clearTurnTimeout(timeoutKey);
-    }
-
     if (result.committed) {
       await this.publishCommittedAction(
         input.matchId,
@@ -193,11 +177,12 @@ export class CompetitiveMatchService
         result.room,
       );
       if (result.room.competitive) {
-        this.ensureTurnTimeout(
-          result.room.roomCode,
-          result.room.competitive,
-          result.room.updatedAtMs,
-        );
+        await this.scheduleTurnTimeout({
+          roomCode: result.room.roomCode,
+          matchId: result.room.competitive.matchId,
+          turn: result.room.competitive.currentTurn,
+          deadlineMs: result.room.updatedAtMs + COMPETITIVE_TURN_DEADLINE_MS,
+        });
       }
     }
 
@@ -216,87 +201,14 @@ export class CompetitiveMatchService
     });
   }
 
-  private scheduleTurnTimeout(
-    roomCode: string,
-    matchId: string,
-    turn: number,
-    deadlineMs: number,
-  ): void {
-    const key = competitiveTurnTimeoutKey(roomCode, matchId, turn);
-    this.clearTurnTimeout(key);
-    const timeout = setTimeout(
-      () => {
-        this.turnTimeouts.delete(key);
-        void this.expireTurn(roomCode, matchId, turn);
-      },
-      Math.max(0, deadlineMs - Date.now()),
-    );
-    timeout.unref();
-    this.turnTimeouts.set(key, timeout);
-  }
-
-  private ensureTurnTimeout(
-    roomCode: string,
-    projection: CompetitiveActionProjection,
-    turnStartedAtMs: number,
-  ): void {
-    if (projection.status === 'completed') {
-      return;
-    }
-    const key = competitiveTurnTimeoutKey(
-      roomCode,
-      projection.matchId,
-      projection.currentTurn,
-    );
-    if (!this.turnTimeouts.has(key)) {
-      this.scheduleTurnTimeout(
-        roomCode,
-        projection.matchId,
-        projection.currentTurn,
-        turnStartedAtMs + COMPETITIVE_TURN_DEADLINE_MS,
-      );
-    }
-  }
-
-  private clearTurnTimeout(key: string): void {
-    const timeout = this.turnTimeouts.get(key);
-    if (timeout) {
-      clearTimeout(timeout);
-      this.turnTimeouts.delete(key);
-    }
-  }
-
-  private async expireTurn(
-    roomCode: string,
-    matchId: string,
-    turn: number,
+  private async scheduleTurnTimeout(
+    turn: Parameters<CompetitiveTurnQueue['schedule']>[0],
   ): Promise<void> {
     try {
-      const result = await this.actionRepository.expirePendingTurn({
-        roomCode,
-        matchId,
-        turn,
-        nowMs: Date.now(),
-      });
-      if (result.outcome === 'not-due') {
-        this.scheduleTurnTimeout(roomCode, matchId, turn, result.retryAtMs);
-      } else if (result.outcome === 'resolved') {
-        await this.publishCommittedAction(
-          matchId,
-          result.response,
-          result.room,
-        );
-        if (result.room.competitive) {
-          this.ensureTurnTimeout(
-            result.room.roomCode,
-            result.room.competitive,
-            result.room.updatedAtMs,
-          );
-        }
-      }
+      await this.turnQueue.schedule(turn);
     } catch (error) {
       this.logger.error(
-        `Failed to expire competitive turn for ${matchId}`,
+        `Failed to schedule competitive turn for ${turn.matchId}`,
         error instanceof Error ? error.stack : String(error),
       );
     }
@@ -328,14 +240,6 @@ export class CompetitiveMatchService
       );
     }
   }
-}
-
-function competitiveTurnTimeoutKey(
-  roomCode: string,
-  matchId: string,
-  turn: number,
-): string {
-  return `${roomCode.trim().toUpperCase()}:${matchId}:${turn}`;
 }
 
 function throwActionError(outcome: CompetitiveActionFailure): never {

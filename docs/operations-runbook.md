@@ -48,7 +48,7 @@ systemctl is-active cloudflared-icenux.service
 systemctl is-active vscoke-api-native.service || true
 ```
 
-기대값은 `vscoke-api`가 PM2 `online`, API runner와 `cloudflared-icenux.service`가 `active`, `vscoke-api-native.service`가 `inactive`이다.
+기대값은 `vscoke-api`와 `vscoke-poke-lounge-turn-worker`가 PM2 `online`, API runner와 `cloudflared-icenux.service`가 `active`, `vscoke-api-native.service`가 `inactive`이다.
 
 ## 웹 배포 실패
 
@@ -113,6 +113,7 @@ Ubuntu host에서 확인:
 ssh icenux-external
 pm2 list
 pm2 logs vscoke-api --lines 100
+pm2 logs vscoke-poke-lounge-turn-worker --lines 100
 ```
 
 모든 HTTP 응답은 `X-Request-Id`를 포함한다. `pm2 logs` 또는
@@ -126,6 +127,7 @@ body, IP, 인증 정보, 이메일을 기록하지 않는다. 파일 로그는 �
 ```bash
 cd /home/icenux/projects/vscoke-api
 pm2 restart vscoke-api --update-env
+pm2 restart vscoke-poke-lounge-turn-worker --update-env
 pm2 save
 ```
 
@@ -134,8 +136,10 @@ pm2 save
 ```bash
 cd /home/icenux/projects/vscoke-api
 test -f apps/api/dist/src/main.js
+test -f apps/api/dist/src/poke-lounge-turn-worker.js
 sudo systemctl disable --now vscoke-api-native.service || true
 pm2 start apps/api/dist/src/main.js --name vscoke-api --update-env
+pm2 start apps/api/dist/src/poke-lounge-turn-worker.js --name vscoke-poke-lounge-turn-worker --update-env
 pm2 save
 ```
 
@@ -225,7 +229,7 @@ rollback이 필요하면 먼저 전체 DB backup을 만들고, `resultTrust`와 
 
 ## Poke Lounge room/경쟁 장애
 
-room, 경쟁전, mutation/action receipt와 로그인 진행 상태는 Redis TTL 데이터다. API 재시작 후 room이
+room, 경쟁전, mutation/action receipt와 로그인 진행 상태는 Redis TTL 데이터다. 경쟁 턴의 30초 제한은 같은 Redis의 BullMQ 지연 작업을 `vscoke-poke-lounge-turn-worker`가 처리한다. API 재시작 후 room이
 사라지거나 같은 idempotency key가 새 command처럼 처리되면 메모리나 PostgreSQL에서 복구하지
 말고 `REDIS_URL`, Redis 재시작·eviction·TTL과 `poke-lounge:rooms` index를 먼저 확인한다.
 
@@ -244,7 +248,7 @@ pnpm --filter @vscoke/api exec node -e "const {createClient}=require('redis');(a
 ```
 
 기대값은 `PONG`이다. Redis 장애 중에는 인스턴스별 메모리 fallback을 켜지 않는다. Redis를
-복구한 뒤 `pm2 restart vscoke-api --update-env`를 실행하면 Web이 재구독하면서
+복구한 뒤 API와 턴 워커를 재시작하면 Web이 재구독하면서
 `room.world-snapshot`과 REST room snapshot을 다시 받는다. Redis key를 수동으로 점수나 우승 상태로
 보정하지 않는다. TTL 만료나 eviction으로 room document가 사라졌다면 해당 게임은 종료하고 새
 방에서 시작한다. Poke Lounge 결과를 `POST /game/result` 또는 PostgreSQL 직접 삽입으로 보정하지

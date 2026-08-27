@@ -1642,9 +1642,16 @@ describePostgres('PostgresCompetitiveMatchRepository', () => {
         verifiedWriter: VerifiedPokeLoungeHistoryWriter,
       ): PostgresCompetitiveActionRepository;
     })(dataSource, writer);
-    service = new CompetitiveMatchService(repository, actionRepository, {
-      publish,
-    });
+    service = new CompetitiveMatchService(
+      repository,
+      actionRepository,
+      {
+        publish,
+      },
+      {
+        schedule: jest.fn().mockResolvedValue(undefined),
+      },
+    );
   }
 
   function createRoomService(): PokeLoungeRoomService {

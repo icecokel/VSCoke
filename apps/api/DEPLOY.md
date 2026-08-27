@@ -28,7 +28,7 @@ workflow의 `workflow_dispatch`를 사용하고, 완료 뒤 `pnpm smoke:api:remo
 
 로컬 또는 운영 환경을 새로 만들 때는 `apps/api/.env.example`을 복사한 뒤 실제 값으로 채웁니다.
 
-Poke Lounge 실시간 상태는 Redis가 필수입니다. 코드 배포 전에 운영 Redis를 먼저 준비하고
+Poke Lounge 실시간 상태와 BullMQ 경쟁 턴 작업은 Redis가 필수입니다. 코드 배포 전에 운영 Redis를 먼저 준비하고
 `REDIS_URL`을 설정합니다. 연결할 수 없으면 API는 시작되지 않으며 프로세스 메모리로 대체하지
 않습니다.
 
@@ -58,7 +58,7 @@ Poke Lounge 실시간 상태는 Redis가 필수입니다. 코드 배포 전에 �
    pnpm --filter @vscoke/api exec node -e "const {createClient}=require('redis');(async()=>{const client=createClient({url:process.env.REDIS_URL});try{await client.connect();console.log(await client.ping())}finally{if(client.isOpen)await client.close()}})().catch(error=>{console.error(error.message);process.exit(1)})"
    ```
 
-   `PONG`이 출력된 뒤 API를 재시작합니다. 운영 비밀번호가 포함될 수 있는 `REDIS_URL` 원문은
+   `PONG`이 출력된 뒤 API와 `vscoke-poke-lounge-turn-worker`를 재시작합니다. 운영 비밀번호가 포함될 수 있는 `REDIS_URL` 원문은
    로그나 명령 인자에 출력하지 않습니다.
 
 Resume RAG와 메인 채팅 환경 변수는

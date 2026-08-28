@@ -1,5 +1,10 @@
 import type { BattleParticipant, BattlePokemon } from "./battleTypes";
-import type { GameStateStore, LocalPlayerState, PlayerPokemon } from "../state/gameStateStore";
+import type {
+  AddPokemonToPartyResult,
+  GameStateStore,
+  LocalPlayerState,
+  PlayerPokemon,
+} from "../state/gameStateStore";
 
 interface PersistBattlePartyToWorldInput {
   completedCompetitiveBattle: boolean;
@@ -9,6 +14,11 @@ interface PersistBattlePartyToWorldInput {
   >;
   localPlayer: Pick<LocalPlayerState, "activePartySlotIndex" | "party">;
   participant: Pick<BattleParticipant, "activePartySlotIndex" | "party" | "pokemon">;
+}
+
+interface PersistCapturedPokemonToWorldInput {
+  capturedPokemon: BattlePokemon | null | undefined;
+  gameStateStore: Pick<GameStateStore, "addPokemonToParty">;
 }
 
 export function persistBattlePartyToWorld({
@@ -41,6 +51,17 @@ export function persistBattlePartyToWorld({
   ) {
     gameStateStore.setActivePartySlot(participant.activePartySlotIndex);
   }
+}
+
+export function persistCapturedPokemonToWorld({
+  capturedPokemon,
+  gameStateStore,
+}: PersistCapturedPokemonToWorldInput): AddPokemonToPartyResult | null {
+  if (!capturedPokemon) {
+    return null;
+  }
+
+  return gameStateStore.addPokemonToParty(toPlayerPokemon(capturedPokemon));
 }
 
 export function toPlayerPokemon(pokemon: BattlePokemon): PlayerPokemon {

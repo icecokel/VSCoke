@@ -115,7 +115,11 @@ import {
   isLegalAuthoritativeAction,
   toAuthoritativeBattleState,
 } from "../battle/authoritative-battle-adapter";
-import { persistBattlePartyToWorld, toPlayerPokemon } from "../battle/battle-world-persistence";
+import {
+  persistBattlePartyToWorld,
+  persistCapturedPokemonToWorld,
+  toPlayerPokemon,
+} from "../battle/battle-world-persistence";
 import type {
   CompetitiveProjection,
   MultiplayerRoom,
@@ -1632,6 +1636,7 @@ export class BattleScene extends Phaser.Scene {
         }
 
         this.competitivePreemptionQueued = true;
+        this.persistCapturedPokemon();
         this.gameStateStore.healCurrentParty();
         this.state = {
           ...this.state,
@@ -1739,6 +1744,7 @@ export class BattleScene extends Phaser.Scene {
         }
 
         this.competitivePreemptionQueued = true;
+        this.persistCapturedPokemon();
         this.gameStateStore.healCurrentParty();
         this.state = {
           ...this.state,
@@ -1770,6 +1776,7 @@ export class BattleScene extends Phaser.Scene {
         }
 
         this.competitivePreemptionQueued = true;
+        this.persistCapturedPokemon();
         this.gameStateStore.healCurrentParty();
         const sceneGeneration = this.sceneGeneration;
         queueMicrotask(() => {
@@ -2315,17 +2322,7 @@ export class BattleScene extends Phaser.Scene {
       });
     }
 
-    if (this.state.result?.reason === "capture" && this.state.result.capturedPokemon) {
-      const capturedPokemon = toPlayerPokemon(this.state.result.capturedPokemon);
-      const placement = this.gameStateStore.addPokemonToParty(capturedPokemon);
-
-      if (placement.destination === "box") {
-        dispatchPokeLoungeNotice(this.game.canvas.ownerDocument, {
-          message: `포획한 ${capturedPokemon.name}, 파티가 가득 차 PC 박스로 전송했습니다.`,
-          tone: "info",
-        });
-      }
-    }
+    this.persistCapturedPokemon();
 
     if (
       this.state.result?.winnerPlayerId === localPlayer.playerId &&
@@ -2388,6 +2385,25 @@ export class BattleScene extends Phaser.Scene {
         : {}),
       ...(completedCompetitiveBattle ? { completedCompetitiveBattle } : {}),
     });
+  }
+
+  private persistCapturedPokemon(): void {
+    if (this.state.result?.reason !== "capture") {
+      return;
+    }
+
+    const capturedPokemon = this.state.result.capturedPokemon;
+    const placement = persistCapturedPokemonToWorld({
+      capturedPokemon,
+      gameStateStore: this.gameStateStore,
+    });
+
+    if (placement?.destination === "box" && capturedPokemon) {
+      dispatchPokeLoungeNotice(this.game.canvas.ownerDocument, {
+        message: `포획한 ${capturedPokemon.name}, 파티가 가득 차 PC 박스로 전송했습니다.`,
+        tone: "info",
+      });
+    }
   }
 
   private upsertTrainerBattleParticipant(participant: BattleParticipant): void {

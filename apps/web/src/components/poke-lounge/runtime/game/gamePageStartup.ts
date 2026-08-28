@@ -62,6 +62,7 @@ import {
   POKE_LOUNGE_ROOM_LEAVE_REQUEST_EVENT,
   type PokeLoungeRoomLeaveRequestDetail,
 } from "./ui/poke-lounge-ui-events";
+import { setBattleSceneMarker } from "./ui/active-game-scene-marker";
 import { getPokeLoungeCopyForUrl, type PokeLoungeCopy } from "../../poke-lounge-copy";
 import { getServerRoomErrorMessage } from "./server-room-error-copy";
 
@@ -222,6 +223,7 @@ export async function startGamePage(
     });
     const competitiveRoundsEnabled = isCompetitiveRoomEntryMode(roomEntry.mode);
     activeMultiplayerRoom = multiplayerRoom;
+    setBattleSceneMarker(mount, false);
     mount.innerHTML = "";
     mount.dataset.pokeLoungeResourceStatus = "loading";
     const game = (dependencies.createPokeLoungeGame ?? createPokeLoungeGame)(mount, {

@@ -70,6 +70,7 @@ export function toAuthoritativeBattleState(
   ownPlayerId: string,
   returnToWorld?: BattleScreenState["returnToWorld"],
   waitingMessage = "상대의 선택을 기다리는 중...",
+  previousState?: BattleScreenState,
 ): BattleScreenState {
   const ownPlayer = projection.currentState.playersById[ownPlayerId];
   const opponentId = projection.playerIds.find(playerId => playerId !== ownPlayerId);
@@ -88,10 +89,19 @@ export function toAuthoritativeBattleState(
         reason: terminal.reason,
       }
     : null;
+  const preservedSelectionPhase =
+    !result &&
+    !waiting &&
+    previousState?.tournamentMatchId === projection.matchId &&
+    previousState.roundIndex === projection.assignmentRevision &&
+    previousState.turn === projection.currentTurn &&
+    (previousState.phase === "move-select" || previousState.phase === "party-select")
+      ? previousState.phase
+      : null;
 
   return {
     battleKind: "trainer",
-    phase: result ? "ended" : waiting ? "resolving" : "command",
+    phase: result ? "ended" : waiting ? "resolving" : (preservedSelectionPhase ?? "command"),
     roundIndex: projection.assignmentRevision,
     matchIndex: 0,
     turn: projection.currentTurn,

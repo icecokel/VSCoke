@@ -1392,13 +1392,16 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
     },
     applyTournamentSnapshotFromRoom(input, nowMs) {
       const previousProjection = state.tournament.serverProjection;
+      const roomChanged =
+        previousProjection !== null && previousProjection.roomCode !== input.roomCode;
 
-      if (previousProjection && input.revision < previousProjection.revision) {
+      if (previousProjection && !roomChanged && input.revision < previousProjection.revision) {
         return { ok: false, reason: "stale-revision" };
       }
 
       if (
         previousProjection &&
+        !roomChanged &&
         input.revision === previousProjection.revision &&
         !hasSameCanonicalTournamentProjection(previousProjection, input)
       ) {
@@ -1439,7 +1442,7 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
       }
 
       const projectionAdvanced =
-        !previousProjection || input.revision > previousProjection.revision;
+        !previousProjection || roomChanged || input.revision > previousProjection.revision;
       const roundPhase = resolveServerTournamentRoundPhase(input);
       const shouldRestoreCurrentParty =
         roundPhase === "tournament" &&
@@ -1475,13 +1478,15 @@ export function createGameStateStore(options: CreateGameStateStoreOptions = {}):
           session,
           serverProjection: input,
           scoresByPlayerId: { ...input.tournament.cumulativeScores },
-          standings: rows ?? state.tournament.standings,
+          standings: rows ?? (roomChanged ? [] : state.tournament.standings),
           lastRoundScores:
             bracket?.status === "completed" && rows
               ? hasAppliedTournamentRoundResult(state, input.roundIndex)
                 ? state.tournament.lastRoundScores
                 : createRoundScoresFromCumulativeRows(state.tournament.scoresByPlayerId, rows)
-              : state.tournament.lastRoundScores,
+              : roomChanged
+                ? []
+                : state.tournament.lastRoundScores,
         },
       };
       if (shouldRestoreCurrentParty) {

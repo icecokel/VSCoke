@@ -1,4 +1,5 @@
 import type { CompetitiveRoomProjectionEvent } from "../network/localPreviewRoom";
+import { isRoundReadinessDue } from "../network/tournament-projection";
 
 export interface CompetitiveBattleLaunchKey {
   matchId: string;
@@ -17,6 +18,15 @@ export function isCompetitiveAssignmentForPlayer(event: CompetitiveRoomProjectio
     event.projection.status !== "completed" &&
     event.projection.playerIds.includes(event.ownPlayerId)
   );
+}
+
+export function shouldPreemptLocalBattleForRound(
+  roomStatus: Parameters<typeof isRoundReadinessDue>[0],
+  roomRound: Parameters<typeof isRoundReadinessDue>[1],
+  nowMs: number,
+  preemptionQueued: boolean,
+): boolean {
+  return !preemptionQueued && isRoundReadinessDue(roomStatus, roomRound, nowMs);
 }
 
 export function createCompetitiveBattleLaunchCache(): CompetitiveBattleLaunchCache {

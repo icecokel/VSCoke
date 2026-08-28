@@ -606,10 +606,13 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     latestState.round.phase === "round-started" &&
     latestState.round.endsAtMs === target.endsAtMs;
 
-  const applyExpectedTransitionSnapshot = (state: ServerRoomState): boolean => {
+  const applyExpectedTransitionSnapshot = (
+    state: ServerRoomState,
+    repeatUntilProgress = false,
+  ): boolean => {
     const applied = applySnapshot(state);
     if (applied) {
-      scheduleOnlineStaleRecovery();
+      scheduleOnlineStaleRecovery(ONLINE_STALE_RECOVERY_DELAY_MS, true, repeatUntilProgress);
     }
 
     return applied;
@@ -647,7 +650,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
         }),
       ),
     );
-    applyExpectedTransitionSnapshot(state);
+    applyExpectedTransitionSnapshot(state, true);
   };
 
   const runRoomClockRefresh = async (target: NonNullable<typeof roomClockTarget>) => {

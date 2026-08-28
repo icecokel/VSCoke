@@ -86,6 +86,7 @@ import {
   dispatchPokeLoungeAccessibleStatus,
   dispatchPokeLoungeNotice,
 } from "../ui/poke-lounge-ui-events";
+import { setBattleSceneMarker } from "../ui/active-game-scene-marker";
 import { FIELD_MAP } from "../world/fieldMap";
 import {
   dispatchMobileBattleUiState,
@@ -122,7 +123,10 @@ import type {
   RoomUnsubscribe,
 } from "../network/localPreviewRoom";
 import type { CompetitiveBattleLaunchKey } from "./competitive-battle-launch";
-import { isCompetitiveAssignmentForPlayer } from "./competitive-battle-launch";
+import {
+  isCompetitiveAssignmentForPlayer,
+  shouldPreemptLocalBattleForRound,
+} from "./competitive-battle-launch";
 import { isRoundReadinessDue } from "../network/tournament-projection";
 
 export const BATTLE_COMMAND_LABELS = ["싸운다", "가방", "포켓몬", "도망"] as const;
@@ -541,6 +545,10 @@ export class BattleScene extends Phaser.Scene {
     this.sceneLifecycleActive = true;
     this.sceneGeneration += 1;
     this.competitivePreemptionQueued = false;
+    this.selectedCommandIndex = 0;
+    this.selectedMoveIndex = 0;
+    this.selectedPartySlotIndex = 0;
+    this.selectedBagItemIndex = 0;
     this.state = this.createInitialState(data);
     this.soloChallenge = isTrainerBattleSceneData(data) && data.soloChallenge === true;
     this.persistWorldPositionOnReturn = !isRecord(data) || data.persistWorldPosition !== false;
@@ -955,23 +963,7 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const gamePage = gameRoot.closest<HTMLElement>("[data-testid='poke-lounge-page']");
-
-    if (active) {
-      gameRoot.dataset.pokeLoungeActiveScene = "battle";
-      if (gamePage) {
-        gamePage.dataset.pokeLoungeActiveScene = "battle";
-      }
-      return;
-    }
-
-    if (gameRoot.dataset.pokeLoungeActiveScene === "battle") {
-      delete gameRoot.dataset.pokeLoungeActiveScene;
-    }
-
-    if (gamePage?.dataset.pokeLoungeActiveScene === "battle") {
-      delete gamePage.dataset.pokeLoungeActiveScene;
-    }
+    setBattleSceneMarker(gameRoot, active);
   }
 
   private usesMobileBattleDeck(): boolean {
@@ -1698,6 +1690,7 @@ export class BattleScene extends Phaser.Scene {
           ownPlayerId,
           this.state.returnToWorld,
           this.getBattleStatusCopy().waiting,
+          this.state,
         );
         if (this.authoritativeConnectionStatus !== "online" && projection.status !== "completed") {
           this.authoritativeInputPending = true;
@@ -1728,7 +1721,44 @@ export class BattleScene extends Phaser.Scene {
 
     this.authoritativeUnsubscribers.push(
       this.multiplayerRoom.on("TOURNAMENT_STATE", payload => {
-        this.gameStateStore.applyTournamentSnapshotFromRoom(payload, Date.now());
+        const sceneGeneration = this.sceneGeneration;
+        const nowMs = Date.now();
+        const destination = this.state.returnToWorld;
+        this.gameStateStore.applyTournamentSnapshotFromRoom(payload, nowMs);
+
+        if (
+          !destination ||
+          !shouldPreemptLocalBattleForRound(
+            payload.roomStatus,
+            payload.roomRound,
+            nowMs,
+            this.competitivePreemptionQueued,
+          )
+        ) {
+          return;
+        }
+
+        this.competitivePreemptionQueued = true;
+        this.gameStateStore.healCurrentParty();
+        this.state = {
+          ...this.state,
+          phase: "resolving",
+          messageQueue: [this.getBattleStatusCopy().roundWaiting],
+        };
+        this.render();
+        queueMicrotask(() => {
+          if (!this.isSceneLifecycleCurrent(sceneGeneration) || !this.scene.isActive()) {
+            return;
+          }
+
+          this.scene.start("world", {
+            spawnPosition: {
+              x: destination.x,
+              y: destination.y,
+              facing: destination.facing,
+            },
+          });
+        });
       }),
       this.multiplayerRoom.on("COMPETITIVE_ASSIGNMENT", event => {
         if (

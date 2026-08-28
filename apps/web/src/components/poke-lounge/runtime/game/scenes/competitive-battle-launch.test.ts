@@ -23,6 +23,7 @@ import type {
 import {
   createCompetitiveBattleLaunchCache,
   isCompetitiveAssignmentForPlayer,
+  shouldPreemptLocalBattleForRound,
 } from "./competitive-battle-launch";
 
 const webRoot = fileURLToPath(new URL("../../../../../../", import.meta.url));
@@ -174,6 +175,40 @@ test("authoritative battle은 활성 포켓몬의 PP가 모두 0일 때만 발�
   );
 });
 
+test("같은 턴 상대 행동 갱신은 현재 기술 선택을 닫지 않는다", () => {
+  const projection = createProjection(
+    "11111111-1111-4111-8111-111111111111",
+    "game-round-1-bracket-1-match-1",
+    ["seed-4", "seed-5"],
+  );
+  const selectingMove = {
+    ...toAuthoritativeBattleState(projection, "seed-4"),
+    phase: "move-select" as const,
+  };
+
+  const peerSubmitted = toAuthoritativeBattleState(
+    { ...projection, submittedPlayerIds: ["seed-5"] },
+    "seed-4",
+    undefined,
+    undefined,
+    selectingMove,
+  );
+  const nextTurn = toAuthoritativeBattleState(
+    {
+      ...projection,
+      currentTurn: 1,
+      currentState: { ...projection.currentState, turn: 1 },
+    },
+    "seed-4",
+    undefined,
+    undefined,
+    selectingMove,
+  );
+
+  assert.equal(peerSubmitted.phase, "move-select");
+  assert.equal(nextTurn.phase, "command");
+});
+
 test("미지원 상태 기술은 선택 불가로, 공격 기술의 미지원 부가 효과는 표시만 한다", () => {
   const projection = createProjection(
     "11111111-1111-4111-8111-111111111111",
@@ -264,4 +299,12 @@ test("공식 배정은 해당 플레이어의 진행 중인 로컬 전투만 선
     }),
     false,
   );
+});
+
+test("라운드 준비가 끝나면 로컬 전투를 월드로 돌려보낸다", () => {
+  const round = { phase: "round-started" as const, endsAtMs: 10_000 };
+
+  assert.equal(shouldPreemptLocalBattleForRound("round-started", round, 10_000, false), true);
+  assert.equal(shouldPreemptLocalBattleForRound("round-started", round, 9_999, false), false);
+  assert.equal(shouldPreemptLocalBattleForRound("round-started", round, 10_000, true), false);
 });

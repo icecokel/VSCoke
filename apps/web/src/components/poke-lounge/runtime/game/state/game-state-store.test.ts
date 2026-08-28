@@ -270,6 +270,29 @@ test("낮은 revision projection은 현재 bracket을 덮지 않는다", () => {
   assert.equal(store.getState().tournament.serverProjection?.revision, 7);
 });
 
+test("새 방의 낮은 revision은 이전 방의 토너먼트 상태를 교체한다", () => {
+  const store = createGameStateStore();
+  store.applyTournamentSnapshotFromRoom(createCompletedProjection(40), 1_000);
+  const nextRoom = createPreparationProjection(1);
+  nextRoom.roomCode = "ROOM02";
+  nextRoom.roomStatus = "waiting";
+  nextRoom.roomRound = {
+    ...nextRoom.roomRound,
+    phase: "waiting",
+    startedAtMs: null,
+    endsAtMs: null,
+  };
+  nextRoom.participants = nextRoom.participants.slice(0, 1);
+
+  assert.deepEqual(store.applyTournamentSnapshotFromRoom(nextRoom, 2_000), { ok: true });
+  assert.equal(store.getState().tournament.serverProjection?.roomCode, "ROOM02");
+  assert.equal(store.getState().tournament.serverProjection?.participants.length, 1);
+  assert.equal(store.getState().round.phase, "waiting");
+  assert.deepEqual(store.getState().tournament.scoresByPlayerId, {});
+  assert.deepEqual(store.getState().tournament.lastRoundScores, []);
+  assert.deepEqual(store.getState().tournament.standings, []);
+});
+
 test("같은 revision의 다른 방장이나 bracket은 현재 canonical state를 덮지 않는다", () => {
   const store = createGameStateStore();
   const projection = createProjection(7);

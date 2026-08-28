@@ -1652,6 +1652,22 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   const submitCompetitiveAction = async (
     command: RoomEvent["COMPETITIVE_ACTION"],
   ): Promise<void> => {
+    const projection = currentAssignmentProjection;
+    if (
+      projection?.matchId === command.matchId &&
+      projection.assignmentRevision === command.assignmentRevision &&
+      projection.currentTurn === command.turn &&
+      Date.now() >= projection.turnEndsAtMs
+    ) {
+      emit("COMPETITIVE_ACTION_FAILED", {
+        matchId: command.matchId,
+        status: null,
+        message: "서버 상태를 다시 불러오는 중...",
+      });
+      requestOnlineRecovery();
+      return;
+    }
+
     const send = async () => {
       const idToken = readIdToken();
       const actionPath = idToken ? "actions" : "session-actions";

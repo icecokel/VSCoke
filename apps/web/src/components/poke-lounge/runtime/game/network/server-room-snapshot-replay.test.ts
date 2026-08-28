@@ -523,7 +523,7 @@ function createCompetitiveProjection(
     rulesetVersion: 2,
     rulesetHash: COMPETITIVE_RULESET_HASH,
     currentTurn: 0,
-    turnEndsAtMs: 30_000,
+    turnEndsAtMs: Date.now() + 30_000,
     status: "active",
     playerIds,
     stateHash: "b".repeat(64),
@@ -1680,6 +1680,79 @@ test("online action stale watchdog은 GET 실패를 socket failure로 승격하�
   } finally {
     room?.dispose();
     restoreGlobalProperty("document", originalDocument);
+    restoreWindow(originalWindow);
+  }
+});
+
+test("만료된 competitive turn 행동은 전송하지 않고 최신 room으로 복구한다", async () => {
+  process.env.NEXT_PUBLIC_API_URL = "http://api.test";
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      location: { href: "http://web.test/game", search: "" },
+      setTimeout,
+      clearTimeout,
+    },
+  });
+  let room: ReturnType<(typeof import("./serverRoom"))["createServerRoom"]> | null = null;
+
+  try {
+    const { createServerRoom } = await import("./serverRoom");
+    const socket = createSocket();
+    const snapshots = createRoomSnapshots();
+    const expiredProjection = {
+      ...snapshots.activeOld.competitive!,
+      turnEndsAtMs: Date.now() - 1,
+    };
+    const expiredRoom = { ...snapshots.activeOld, competitive: expiredProjection };
+    let actionRequests = 0;
+    let recoveryRequests = 0;
+    let partySynced = false;
+    const fetchFixture: typeof fetch = async input => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      partySynced ||= url.pathname.endsWith("/party-snapshot");
+      if (url.pathname.includes("/actions")) {
+        actionRequests += 1;
+      }
+      if (url.searchParams.has("afterRevision")) {
+        recoveryRequests += 1;
+      }
+      return jsonResponse(expiredRoom);
+    };
+    room = createServerRoom({
+      roomId: "ROOM01",
+      playerId: expiredProjection.playerIds[0],
+      sessionId: "session-1",
+      fetch: fetchFixture,
+      socketFactory: () => socket,
+    });
+    room.connect(createPlayerSnapshot());
+    await waitFor(() => partySynced);
+    socket.pushSnapshot(expiredRoom);
+    const failures: RoomEvent["COMPETITIVE_ACTION_FAILED"][] = [];
+    room.on("COMPETITIVE_ACTION_FAILED", failure => failures.push(failure));
+    const recoveryRequestsBeforeAction = recoveryRequests;
+
+    room.send("COMPETITIVE_ACTION", {
+      matchId: expiredProjection.matchId,
+      assignmentRevision: expiredProjection.assignmentRevision,
+      turn: expiredProjection.currentTurn,
+      clientCommandId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      action: { kind: "move", moveId: 55 },
+    });
+
+    await waitFor(() => recoveryRequests > recoveryRequestsBeforeAction);
+    assert.equal(actionRequests, 0);
+    assert.deepEqual(failures, [
+      {
+        matchId: expiredProjection.matchId,
+        status: null,
+        message: "서버 상태를 다시 불러오는 중...",
+      },
+    ]);
+  } finally {
+    room?.dispose();
     restoreWindow(originalWindow);
   }
 });

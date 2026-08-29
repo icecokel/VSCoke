@@ -22,6 +22,8 @@ export interface RomBackedMoveDefinition {
   id: number;
   name: string;
   effectCode: number;
+  effectChance: number;
+  priority: number;
   category: Gen4MoveCategory;
   power: number;
   typeId: number;
@@ -72,11 +74,15 @@ export function normalizeRomMoveRecord(
   const categoryValue = fields.category?.value ?? 2;
   const typeId = fields.type?.value ?? 0;
   const pp = fields.pp?.value ?? 0;
+  const effectChance = Number.parseInt(record.raw_hex.slice(14, 16), 16) || 0;
+  const priorityByte = Number.parseInt(record.raw_hex.slice(20, 22), 16) || 0;
 
   return {
     id: record.index,
     name,
     effectCode,
+    effectChance,
+    priority: priorityByte > 127 ? priorityByte - 256 : priorityByte,
     category: GEN4_CATEGORIES[categoryValue] ?? "status",
     power: fields.power?.value ?? 0,
     typeId,

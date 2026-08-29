@@ -50263,7 +50263,10 @@
       "typeId": 0,
       "typeName": "노말",
       "accuracy": 0,
-      "pp": 0
+      "pp": 0,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0
     },
     "1": {
       "id": 1,
@@ -50275,6 +50278,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 35,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "막치기"
     },
     "2": {
@@ -50287,6 +50293,9 @@
       "typeName": "격투",
       "accuracy": 100,
       "pp": 25,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "태권당수"
     },
     "3": {
@@ -50299,6 +50308,9 @@
       "typeName": "노말",
       "accuracy": 85,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "연속뺨치기"
     },
     "4": {
@@ -50311,6 +50323,9 @@
       "typeName": "노말",
       "accuracy": 85,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "연속펀치"
     },
     "5": {
@@ -50323,6 +50338,9 @@
       "typeName": "노말",
       "accuracy": 85,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "메가톤펀치"
     },
     "6": {
@@ -50335,6 +50353,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "고양이돈받기"
     },
     "7": {
@@ -50347,6 +50368,9 @@
       "typeName": "불꽃",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "불꽃펀치"
     },
     "8": {
@@ -50359,6 +50383,9 @@
       "typeName": "얼음",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "냉동펀치"
     },
     "9": {
@@ -50371,6 +50398,9 @@
       "typeName": "전기",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "번개펀치"
     },
     "10": {
@@ -50383,6 +50413,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 35,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "할퀴기"
     },
     "11": {
@@ -50395,6 +50428,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 30,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "찝기"
     },
     "12": {
@@ -50407,6 +50443,9 @@
       "typeName": "노말",
       "accuracy": 30,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "가위자르기"
     },
     "13": {
@@ -50419,6 +50458,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 4,
+      "priority": 0,
       "name": "칼바람"
     },
     "14": {
@@ -50431,6 +50473,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 30,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "칼춤"
     },
     "15": {
@@ -50443,6 +50488,9 @@
       "typeName": "노말",
       "accuracy": 95,
       "pp": 30,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "풀베기"
     },
     "16": {
@@ -50455,6 +50503,9 @@
       "typeName": "비행",
       "accuracy": 100,
       "pp": 35,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "바람일으키기"
     },
     "17": {
@@ -50467,6 +50518,9 @@
       "typeName": "비행",
       "accuracy": 100,
       "pp": 35,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "날개치기"
     },
     "18": {
@@ -50479,6 +50533,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": -6,
       "name": "날려버리기"
     },
     "19": {
@@ -50491,6 +50548,9 @@
       "typeName": "비행",
       "accuracy": 95,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "공중날기"
     },
     "20": {
@@ -50503,6 +50563,9 @@
       "typeName": "노말",
       "accuracy": 75,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "조이기"
     },
     "21": {
@@ -50515,6 +50578,9 @@
       "typeName": "노말",
       "accuracy": 75,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "힘껏치기"
     },
     "22": {
@@ -50527,6 +50593,9 @@
       "typeName": "풀",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "덩굴채찍"
     },
     "23": {
@@ -50539,6 +50608,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "짓밟기"
     },
     "24": {
@@ -50551,6 +50623,9 @@
       "typeName": "격투",
       "accuracy": 100,
       "pp": 30,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "두번치기"
     },
     "25": {
@@ -50563,6 +50638,9 @@
       "typeName": "노말",
       "accuracy": 75,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "메가톤킥"
     },
     "26": {
@@ -50575,6 +50653,9 @@
       "typeName": "격투",
       "accuracy": 95,
       "pp": 25,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "점프킥"
     },
     "27": {
@@ -50587,6 +50668,9 @@
       "typeName": "격투",
       "accuracy": 85,
       "pp": 15,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "돌려차기"
     },
     "28": {
@@ -50599,6 +50683,9 @@
       "typeName": "땅",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "모래뿌리기"
     },
     "29": {
@@ -50611,6 +50698,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "박치기"
     },
     "30": {
@@ -50623,6 +50713,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 25,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "뿔찌르기"
     },
     "31": {
@@ -50635,6 +50728,9 @@
       "typeName": "노말",
       "accuracy": 85,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "마구찌르기"
     },
     "32": {
@@ -50647,6 +50743,9 @@
       "typeName": "노말",
       "accuracy": 30,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "뿔드릴"
     },
     "33": {
@@ -50659,6 +50758,9 @@
       "typeName": "노말",
       "accuracy": 95,
       "pp": 35,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "몸통박치기"
     },
     "34": {
@@ -50671,6 +50773,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "누르기"
     },
     "35": {
@@ -50683,6 +50788,9 @@
       "typeName": "노말",
       "accuracy": 85,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "김밥말이"
     },
     "36": {
@@ -50695,6 +50803,9 @@
       "typeName": "노말",
       "accuracy": 85,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "돌진"
     },
     "37": {
@@ -50707,6 +50818,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 2,
+      "priority": 0,
       "name": "난동부리기"
     },
     "38": {
@@ -50719,6 +50833,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "이판사판태클"
     },
     "39": {
@@ -50731,6 +50848,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 30,
+      "effectChance": 0,
+      "range": 4,
+      "priority": 0,
       "name": "꼬리흔들기"
     },
     "40": {
@@ -50743,6 +50863,9 @@
       "typeName": "독",
       "accuracy": 100,
       "pp": 35,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "독침"
     },
     "41": {
@@ -50755,6 +50878,9 @@
       "typeName": "벌레",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 20,
+      "range": 0,
+      "priority": 0,
       "name": "더블니들"
     },
     "42": {
@@ -50767,6 +50893,9 @@
       "typeName": "벌레",
       "accuracy": 85,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "바늘미사일"
     },
     "43": {
@@ -50779,6 +50908,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 30,
+      "effectChance": 0,
+      "range": 4,
+      "priority": 0,
       "name": "째려보기"
     },
     "44": {
@@ -50791,6 +50923,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 25,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "물기"
     },
     "45": {
@@ -50803,6 +50938,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 40,
+      "effectChance": 0,
+      "range": 4,
+      "priority": 0,
       "name": "울음소리"
     },
     "46": {
@@ -50815,6 +50953,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": -6,
       "name": "울부짖기"
     },
     "47": {
@@ -50827,6 +50968,9 @@
       "typeName": "노말",
       "accuracy": 55,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "노래하기"
     },
     "48": {
@@ -50839,6 +50983,9 @@
       "typeName": "노말",
       "accuracy": 55,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "초음파"
     },
     "49": {
@@ -50851,6 +50998,9 @@
       "typeName": "노말",
       "accuracy": 90,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "소닉붐"
     },
     "50": {
@@ -50863,6 +51013,9 @@
       "typeName": "노말",
       "accuracy": 80,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "사슬묶기"
     },
     "51": {
@@ -50875,6 +51028,9 @@
       "typeName": "독",
       "accuracy": 100,
       "pp": 30,
+      "effectChance": 10,
+      "range": 4,
+      "priority": 0,
       "name": "용해액"
     },
     "52": {
@@ -50887,6 +51043,9 @@
       "typeName": "불꽃",
       "accuracy": 100,
       "pp": 25,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "불꽃세례"
     },
     "53": {
@@ -50899,6 +51058,9 @@
       "typeName": "불꽃",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "화염방사"
     },
     "54": {
@@ -50911,6 +51073,9 @@
       "typeName": "얼음",
       "accuracy": 0,
       "pp": 30,
+      "effectChance": 0,
+      "range": 32,
+      "priority": 0,
       "name": "흰안개"
     },
     "55": {
@@ -50923,6 +51088,9 @@
       "typeName": "물",
       "accuracy": 100,
       "pp": 25,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "물대포"
     },
     "56": {
@@ -50935,6 +51103,9 @@
       "typeName": "물",
       "accuracy": 80,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "하이드로펌프"
     },
     "57": {
@@ -50947,6 +51118,9 @@
       "typeName": "물",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 8,
+      "priority": 0,
       "name": "파도타기"
     },
     "58": {
@@ -50959,6 +51133,9 @@
       "typeName": "얼음",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "냉동빔"
     },
     "59": {
@@ -50971,6 +51148,9 @@
       "typeName": "얼음",
       "accuracy": 70,
       "pp": 5,
+      "effectChance": 10,
+      "range": 4,
+      "priority": 0,
       "name": "눈보라"
     },
     "60": {
@@ -50983,6 +51163,9 @@
       "typeName": "에스퍼",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "환상빔"
     },
     "61": {
@@ -50995,6 +51178,9 @@
       "typeName": "물",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "거품광선"
     },
     "62": {
@@ -51007,6 +51193,9 @@
       "typeName": "얼음",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "오로라빔"
     },
     "63": {
@@ -51019,6 +51208,9 @@
       "typeName": "노말",
       "accuracy": 90,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "파괴광선"
     },
     "64": {
@@ -51031,6 +51223,9 @@
       "typeName": "비행",
       "accuracy": 100,
       "pp": 35,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "쪼기"
     },
     "65": {
@@ -51043,6 +51238,9 @@
       "typeName": "비행",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "회전부리"
     },
     "66": {
@@ -51055,6 +51253,9 @@
       "typeName": "격투",
       "accuracy": 80,
       "pp": 25,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "지옥의바퀴"
     },
     "67": {
@@ -51067,6 +51268,9 @@
       "typeName": "격투",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "안다리걸기"
     },
     "68": {
@@ -51079,6 +51283,9 @@
       "typeName": "격투",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 1,
+      "priority": -5,
       "name": "카운터"
     },
     "69": {
@@ -51091,6 +51298,9 @@
       "typeName": "격투",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "지구던지기"
     },
     "70": {
@@ -51103,6 +51313,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "괴력"
     },
     "71": {
@@ -51115,6 +51328,9 @@
       "typeName": "풀",
       "accuracy": 100,
       "pp": 25,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "흡수"
     },
     "72": {
@@ -51127,6 +51343,9 @@
       "typeName": "풀",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "메가드레인"
     },
     "73": {
@@ -51139,6 +51358,9 @@
       "typeName": "풀",
       "accuracy": 90,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "씨뿌리기"
     },
     "74": {
@@ -51151,6 +51373,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 40,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "성장"
     },
     "75": {
@@ -51163,6 +51388,9 @@
       "typeName": "풀",
       "accuracy": 95,
       "pp": 25,
+      "effectChance": 0,
+      "range": 4,
+      "priority": 0,
       "name": "잎날가르기"
     },
     "76": {
@@ -51175,6 +51403,9 @@
       "typeName": "풀",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "솔라빔"
     },
     "77": {
@@ -51187,6 +51418,9 @@
       "typeName": "독",
       "accuracy": 75,
       "pp": 35,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "독가루"
     },
     "78": {
@@ -51199,6 +51433,9 @@
       "typeName": "풀",
       "accuracy": 75,
       "pp": 30,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "저리가루"
     },
     "79": {
@@ -51211,6 +51448,9 @@
       "typeName": "풀",
       "accuracy": 75,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "수면가루"
     },
     "80": {
@@ -51223,6 +51463,9 @@
       "typeName": "풀",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 2,
+      "priority": 0,
       "name": "꽃잎댄스"
     },
     "81": {
@@ -51235,6 +51478,9 @@
       "typeName": "벌레",
       "accuracy": 95,
       "pp": 40,
+      "effectChance": 0,
+      "range": 4,
+      "priority": 0,
       "name": "실뿜기"
     },
     "82": {
@@ -51247,6 +51493,9 @@
       "typeName": "드래곤",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "용의분노"
     },
     "83": {
@@ -51259,6 +51508,9 @@
       "typeName": "불꽃",
       "accuracy": 70,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "회오리불꽃"
     },
     "84": {
@@ -51271,6 +51523,9 @@
       "typeName": "전기",
       "accuracy": 100,
       "pp": 30,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "전기쇼크"
     },
     "85": {
@@ -51283,6 +51538,9 @@
       "typeName": "전기",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "10만볼트"
     },
     "86": {
@@ -51295,6 +51553,9 @@
       "typeName": "전기",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "전기자석파"
     },
     "87": {
@@ -51307,6 +51568,9 @@
       "typeName": "전기",
       "accuracy": 70,
       "pp": 10,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "번개"
     },
     "88": {
@@ -51319,6 +51583,9 @@
       "typeName": "바위",
       "accuracy": 90,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "돌떨구기"
     },
     "89": {
@@ -51331,6 +51598,9 @@
       "typeName": "땅",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 8,
+      "priority": 0,
       "name": "지진"
     },
     "90": {
@@ -51343,6 +51613,9 @@
       "typeName": "땅",
       "accuracy": 30,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "땅가르기"
     },
     "91": {
@@ -51355,6 +51628,9 @@
       "typeName": "땅",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "구멍파기"
     },
     "92": {
@@ -51367,6 +51643,9 @@
       "typeName": "독",
       "accuracy": 85,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "맹독"
     },
     "93": {
@@ -51379,6 +51658,9 @@
       "typeName": "에스퍼",
       "accuracy": 100,
       "pp": 25,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "염동력"
     },
     "94": {
@@ -51391,6 +51673,9 @@
       "typeName": "에스퍼",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "사이코키네시스"
     },
     "95": {
@@ -51403,6 +51688,9 @@
       "typeName": "에스퍼",
       "accuracy": 70,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "최면술"
     },
     "96": {
@@ -51415,6 +51703,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 40,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "요가포즈"
     },
     "97": {
@@ -51427,6 +51718,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 30,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "고속이동"
     },
     "98": {
@@ -51439,6 +51733,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 30,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 1,
       "name": "전광석화"
     },
     "99": {
@@ -51451,6 +51748,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "분노"
     },
     "100": {
@@ -51463,6 +51763,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "순간이동"
     },
     "101": {
@@ -51475,6 +51778,9 @@
       "typeName": "고스트",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "나이트헤드"
     },
     "102": {
@@ -51487,6 +51793,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "흉내내기"
     },
     "103": {
@@ -51499,6 +51808,9 @@
       "typeName": "노말",
       "accuracy": 85,
       "pp": 40,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "싫은소리"
     },
     "104": {
@@ -51511,6 +51823,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 15,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "그림자분신"
     },
     "105": {
@@ -51523,6 +51838,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "HP회복"
     },
     "106": {
@@ -51535,6 +51853,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 30,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "단단해지기"
     },
     "107": {
@@ -51547,6 +51868,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "작아지기"
     },
     "108": {
@@ -51559,6 +51883,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "연막"
     },
     "109": {
@@ -51571,6 +51898,9 @@
       "typeName": "고스트",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "이상한빛"
     },
     "110": {
@@ -51583,6 +51913,9 @@
       "typeName": "물",
       "accuracy": 0,
       "pp": 40,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "껍질에숨기"
     },
     "111": {
@@ -51595,6 +51928,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 40,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "웅크리기"
     },
     "112": {
@@ -51607,6 +51943,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 30,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "배리어"
     },
     "113": {
@@ -51619,6 +51958,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 30,
+      "effectChance": 0,
+      "range": 32,
+      "priority": 0,
       "name": "빛의장막"
     },
     "114": {
@@ -51631,6 +51973,9 @@
       "typeName": "얼음",
       "accuracy": 0,
       "pp": 30,
+      "effectChance": 0,
+      "range": 64,
+      "priority": 0,
       "name": "흑안개"
     },
     "115": {
@@ -51643,6 +51988,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 32,
+      "priority": 0,
       "name": "리플렉터"
     },
     "116": {
@@ -51655,6 +52003,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 30,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "기충전"
     },
     "117": {
@@ -51667,6 +52018,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 1,
       "name": "참기"
     },
     "118": {
@@ -51679,6 +52033,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 1,
+      "priority": 0,
       "name": "손가락흔들기"
     },
     "119": {
@@ -51691,6 +52048,9 @@
       "typeName": "비행",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 1,
+      "priority": 0,
       "name": "따라하기"
     },
     "120": {
@@ -51703,6 +52063,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 0,
+      "range": 8,
+      "priority": 0,
       "name": "자폭"
     },
     "121": {
@@ -51715,6 +52078,9 @@
       "typeName": "노말",
       "accuracy": 75,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "알폭탄"
     },
     "122": {
@@ -51727,6 +52093,9 @@
       "typeName": "고스트",
       "accuracy": 100,
       "pp": 30,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "핥기"
     },
     "123": {
@@ -51739,6 +52108,9 @@
       "typeName": "독",
       "accuracy": 70,
       "pp": 20,
+      "effectChance": 40,
+      "range": 0,
+      "priority": 0,
       "name": "스모그"
     },
     "124": {
@@ -51751,6 +52123,9 @@
       "typeName": "독",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "오물공격"
     },
     "125": {
@@ -51763,6 +52138,9 @@
       "typeName": "땅",
       "accuracy": 85,
       "pp": 20,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "뼈다귀치기"
     },
     "126": {
@@ -51775,6 +52153,9 @@
       "typeName": "불꽃",
       "accuracy": 85,
       "pp": 5,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "불대문자"
     },
     "127": {
@@ -51787,6 +52168,9 @@
       "typeName": "물",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 20,
+      "range": 0,
+      "priority": 0,
       "name": "폭포오르기"
     },
     "128": {
@@ -51799,6 +52183,9 @@
       "typeName": "물",
       "accuracy": 75,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "껍질끼우기"
     },
     "129": {
@@ -51811,6 +52198,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 4,
+      "priority": 0,
       "name": "스피드스타"
     },
     "130": {
@@ -51823,6 +52213,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 100,
+      "range": 0,
+      "priority": 0,
       "name": "로케트박치기"
     },
     "131": {
@@ -51835,6 +52228,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "가시대포"
     },
     "132": {
@@ -51847,6 +52243,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 35,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "휘감기"
     },
     "133": {
@@ -51859,6 +52258,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "망각술"
     },
     "134": {
@@ -51871,6 +52273,9 @@
       "typeName": "에스퍼",
       "accuracy": 80,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "숟가락휘기"
     },
     "135": {
@@ -51883,6 +52288,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "알낳기"
     },
     "136": {
@@ -51895,6 +52303,9 @@
       "typeName": "격투",
       "accuracy": 90,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "무릎차기"
     },
     "137": {
@@ -51907,6 +52318,9 @@
       "typeName": "노말",
       "accuracy": 75,
       "pp": 30,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "뱀눈초리"
     },
     "138": {
@@ -51919,6 +52333,9 @@
       "typeName": "에스퍼",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "꿈먹기"
     },
     "139": {
@@ -51931,6 +52348,9 @@
       "typeName": "독",
       "accuracy": 55,
       "pp": 40,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "독가스"
     },
     "140": {
@@ -51943,6 +52363,9 @@
       "typeName": "노말",
       "accuracy": 85,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "구슬던지기"
     },
     "141": {
@@ -51955,6 +52378,9 @@
       "typeName": "벌레",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "흡혈"
     },
     "142": {
@@ -51967,6 +52393,9 @@
       "typeName": "노말",
       "accuracy": 75,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "악마의키스"
     },
     "143": {
@@ -51979,6 +52408,9 @@
       "typeName": "비행",
       "accuracy": 90,
       "pp": 5,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "불새"
     },
     "144": {
@@ -51991,6 +52423,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "변신"
     },
     "145": {
@@ -52003,6 +52438,9 @@
       "typeName": "물",
       "accuracy": 100,
       "pp": 30,
+      "effectChance": 10,
+      "range": 4,
+      "priority": 0,
       "name": "거품"
     },
     "146": {
@@ -52015,6 +52453,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 20,
+      "range": 0,
+      "priority": 0,
       "name": "잼잼펀치"
     },
     "147": {
@@ -52027,6 +52468,9 @@
       "typeName": "풀",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "버섯포자"
     },
     "148": {
@@ -52039,6 +52483,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "플래시"
     },
     "149": {
@@ -52051,6 +52498,9 @@
       "typeName": "에스퍼",
       "accuracy": 80,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "사이코웨이브"
     },
     "150": {
@@ -52063,6 +52513,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 40,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "튀어오르기"
     },
     "151": {
@@ -52075,6 +52528,9 @@
       "typeName": "독",
       "accuracy": 0,
       "pp": 40,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "녹기"
     },
     "152": {
@@ -52087,6 +52543,9 @@
       "typeName": "물",
       "accuracy": 85,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "찝게햄머"
     },
     "153": {
@@ -52099,6 +52558,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 0,
+      "range": 8,
+      "priority": 0,
       "name": "대폭발"
     },
     "154": {
@@ -52111,6 +52573,9 @@
       "typeName": "노말",
       "accuracy": 80,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "마구할퀴기"
     },
     "155": {
@@ -52123,6 +52588,9 @@
       "typeName": "땅",
       "accuracy": 90,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "뼈다귀부메랑"
     },
     "156": {
@@ -52135,6 +52603,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "잠자기"
     },
     "157": {
@@ -52147,6 +52618,9 @@
       "typeName": "바위",
       "accuracy": 90,
       "pp": 10,
+      "effectChance": 30,
+      "range": 4,
+      "priority": 0,
       "name": "스톤샤워"
     },
     "158": {
@@ -52159,6 +52633,9 @@
       "typeName": "노말",
       "accuracy": 90,
       "pp": 15,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "필살앞니"
     },
     "159": {
@@ -52171,6 +52648,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 30,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "각지기"
     },
     "160": {
@@ -52183,6 +52663,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 30,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "텍스처"
     },
     "161": {
@@ -52195,6 +52678,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 20,
+      "range": 0,
+      "priority": 0,
       "name": "트라이어택"
     },
     "162": {
@@ -52207,6 +52693,9 @@
       "typeName": "노말",
       "accuracy": 90,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "분노의앞니"
     },
     "163": {
@@ -52219,6 +52708,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "베어가르기"
     },
     "164": {
@@ -52231,6 +52723,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "대타출동"
     },
     "165": {
@@ -52243,6 +52738,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 1,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "발버둥"
     },
     "166": {
@@ -52255,6 +52753,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 1,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "스케치"
     },
     "167": {
@@ -52267,6 +52768,9 @@
       "typeName": "격투",
       "accuracy": 90,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "트리플킥"
     },
     "168": {
@@ -52279,6 +52783,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "도둑질"
     },
     "169": {
@@ -52291,6 +52798,9 @@
       "typeName": "벌레",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "거미집"
     },
     "170": {
@@ -52303,6 +52813,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "마음의눈"
     },
     "171": {
@@ -52315,6 +52828,9 @@
       "typeName": "고스트",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "악몽"
     },
     "172": {
@@ -52327,6 +52843,9 @@
       "typeName": "불꽃",
       "accuracy": 100,
       "pp": 25,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "화염자동차"
     },
     "173": {
@@ -52339,6 +52858,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "코골기"
     },
     "174": {
@@ -52351,6 +52873,9 @@
       "typeName": "???",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "저주"
     },
     "175": {
@@ -52363,6 +52888,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "바둥바둥"
     },
     "176": {
@@ -52375,6 +52903,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 30,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "텍스처2"
     },
     "177": {
@@ -52387,6 +52918,9 @@
       "typeName": "비행",
       "accuracy": 95,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "에어로블라스트"
     },
     "178": {
@@ -52399,6 +52933,9 @@
       "typeName": "풀",
       "accuracy": 85,
       "pp": 40,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "목화포자"
     },
     "179": {
@@ -52411,6 +52948,9 @@
       "typeName": "격투",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "기사회생"
     },
     "180": {
@@ -52423,6 +52963,9 @@
       "typeName": "고스트",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "원한"
     },
     "181": {
@@ -52435,6 +52978,9 @@
       "typeName": "얼음",
       "accuracy": 100,
       "pp": 25,
+      "effectChance": 10,
+      "range": 4,
+      "priority": 0,
       "name": "눈싸라기"
     },
     "182": {
@@ -52447,6 +52993,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 3,
       "name": "방어"
     },
     "183": {
@@ -52459,6 +53008,9 @@
       "typeName": "격투",
       "accuracy": 100,
       "pp": 30,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 1,
       "name": "마하펀치"
     },
     "184": {
@@ -52471,6 +53023,9 @@
       "typeName": "노말",
       "accuracy": 90,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "겁나는얼굴"
     },
     "185": {
@@ -52483,6 +53038,9 @@
       "typeName": "악",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "속여때리기"
     },
     "186": {
@@ -52495,6 +53053,9 @@
       "typeName": "노말",
       "accuracy": 75,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "천사의키스"
     },
     "187": {
@@ -52507,6 +53068,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "배북"
     },
     "188": {
@@ -52519,6 +53083,9 @@
       "typeName": "독",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "오물폭탄"
     },
     "189": {
@@ -52531,6 +53098,9 @@
       "typeName": "땅",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 100,
+      "range": 0,
+      "priority": 0,
       "name": "진흙뿌리기"
     },
     "190": {
@@ -52543,6 +53113,9 @@
       "typeName": "물",
       "accuracy": 85,
       "pp": 10,
+      "effectChance": 50,
+      "range": 0,
+      "priority": 0,
       "name": "대포무노포"
     },
     "191": {
@@ -52555,6 +53128,9 @@
       "typeName": "땅",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 128,
+      "priority": 0,
       "name": "압정뿌리기"
     },
     "192": {
@@ -52567,6 +53143,9 @@
       "typeName": "전기",
       "accuracy": 50,
       "pp": 5,
+      "effectChance": 100,
+      "range": 0,
+      "priority": 0,
       "name": "전자포"
     },
     "193": {
@@ -52579,6 +53158,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 40,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "꿰뚫어보기"
     },
     "194": {
@@ -52591,6 +53173,9 @@
       "typeName": "고스트",
       "accuracy": 0,
       "pp": 5,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "길동무"
     },
     "195": {
@@ -52603,6 +53188,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 5,
+      "effectChance": 0,
+      "range": 64,
+      "priority": 0,
       "name": "멸망의노래"
     },
     "196": {
@@ -52615,6 +53203,9 @@
       "typeName": "얼음",
       "accuracy": 95,
       "pp": 15,
+      "effectChance": 100,
+      "range": 4,
+      "priority": 0,
       "name": "얼다바람"
     },
     "197": {
@@ -52627,6 +53218,9 @@
       "typeName": "격투",
       "accuracy": 0,
       "pp": 5,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 3,
       "name": "판별"
     },
     "198": {
@@ -52639,6 +53233,9 @@
       "typeName": "땅",
       "accuracy": 80,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "본러쉬"
     },
     "199": {
@@ -52651,6 +53248,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "록온"
     },
     "200": {
@@ -52663,6 +53263,9 @@
       "typeName": "드래곤",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 2,
+      "priority": 0,
       "name": "역린"
     },
     "201": {
@@ -52675,6 +53278,9 @@
       "typeName": "바위",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 64,
+      "priority": 0,
       "name": "모래바람"
     },
     "202": {
@@ -52687,6 +53293,9 @@
       "typeName": "풀",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "기가드레인"
     },
     "203": {
@@ -52699,6 +53308,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 3,
       "name": "버티기"
     },
     "204": {
@@ -52711,6 +53323,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "애교부리기"
     },
     "205": {
@@ -52723,6 +53338,9 @@
       "typeName": "바위",
       "accuracy": 90,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "구르기"
     },
     "206": {
@@ -52735,6 +53353,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 40,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "칼등치기"
     },
     "207": {
@@ -52747,6 +53368,9 @@
       "typeName": "노말",
       "accuracy": 90,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "뽐내기"
     },
     "208": {
@@ -52759,6 +53383,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "우유마시기"
     },
     "209": {
@@ -52771,6 +53398,9 @@
       "typeName": "전기",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "스파크"
     },
     "210": {
@@ -52783,6 +53413,9 @@
       "typeName": "벌레",
       "accuracy": 95,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "연속자르기"
     },
     "211": {
@@ -52795,6 +53428,9 @@
       "typeName": "강철",
       "accuracy": 90,
       "pp": 25,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "강철날개"
     },
     "212": {
@@ -52807,6 +53443,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "검은눈빛"
     },
     "213": {
@@ -52819,6 +53458,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "헤롱헤롱"
     },
     "214": {
@@ -52831,6 +53473,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 1,
+      "priority": 0,
       "name": "잠꼬대"
     },
     "215": {
@@ -52843,6 +53488,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 5,
+      "effectChance": 0,
+      "range": 32,
+      "priority": 0,
       "name": "치료방울"
     },
     "216": {
@@ -52855,6 +53503,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "은혜갚기"
     },
     "217": {
@@ -52867,6 +53518,9 @@
       "typeName": "노말",
       "accuracy": 90,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "프레젠트"
     },
     "218": {
@@ -52879,6 +53533,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "화풀이"
     },
     "219": {
@@ -52891,6 +53548,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 25,
+      "effectChance": 0,
+      "range": 32,
+      "priority": 0,
       "name": "신비의부적"
     },
     "220": {
@@ -52903,6 +53563,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "아픔나누기"
     },
     "221": {
@@ -52915,6 +53578,9 @@
       "typeName": "불꽃",
       "accuracy": 95,
       "pp": 5,
+      "effectChance": 50,
+      "range": 0,
+      "priority": 0,
       "name": "성스러운불꽃"
     },
     "222": {
@@ -52927,6 +53593,9 @@
       "typeName": "땅",
       "accuracy": 100,
       "pp": 30,
+      "effectChance": 0,
+      "range": 8,
+      "priority": 0,
       "name": "매그니튜드"
     },
     "223": {
@@ -52939,6 +53608,9 @@
       "typeName": "격투",
       "accuracy": 50,
       "pp": 5,
+      "effectChance": 100,
+      "range": 0,
+      "priority": 0,
       "name": "폭발펀치"
     },
     "224": {
@@ -52951,6 +53623,9 @@
       "typeName": "벌레",
       "accuracy": 85,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "메가폰"
     },
     "225": {
@@ -52963,6 +53638,9 @@
       "typeName": "드래곤",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "용의숨결"
     },
     "226": {
@@ -52975,6 +53653,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 40,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "바톤터치"
     },
     "227": {
@@ -52987,6 +53668,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "앵콜"
     },
     "228": {
@@ -52999,6 +53683,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "따라가때리기"
     },
     "229": {
@@ -53011,6 +53698,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 40,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "고속스핀"
     },
     "230": {
@@ -53023,6 +53713,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 4,
+      "priority": 0,
       "name": "달콤한향기"
     },
     "231": {
@@ -53035,6 +53728,9 @@
       "typeName": "강철",
       "accuracy": 75,
       "pp": 15,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "아이언테일"
     },
     "232": {
@@ -53047,6 +53743,9 @@
       "typeName": "강철",
       "accuracy": 95,
       "pp": 35,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "메탈크로우"
     },
     "233": {
@@ -53059,6 +53758,9 @@
       "typeName": "격투",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": -1,
       "name": "받아던지기"
     },
     "234": {
@@ -53071,6 +53773,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 5,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "아침햇살"
     },
     "235": {
@@ -53083,6 +53788,9 @@
       "typeName": "풀",
       "accuracy": 0,
       "pp": 5,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "광합성"
     },
     "236": {
@@ -53095,6 +53803,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 5,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "달의불빛"
     },
     "237": {
@@ -53107,6 +53818,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "잠재파워"
     },
     "238": {
@@ -53119,6 +53833,9 @@
       "typeName": "격투",
       "accuracy": 80,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "크로스촙"
     },
     "239": {
@@ -53131,6 +53848,9 @@
       "typeName": "드래곤",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 20,
+      "range": 4,
+      "priority": 0,
       "name": "회오리"
     },
     "240": {
@@ -53143,6 +53863,9 @@
       "typeName": "물",
       "accuracy": 0,
       "pp": 5,
+      "effectChance": 0,
+      "range": 64,
+      "priority": 0,
       "name": "비바라기"
     },
     "241": {
@@ -53155,6 +53878,9 @@
       "typeName": "불꽃",
       "accuracy": 0,
       "pp": 5,
+      "effectChance": 0,
+      "range": 64,
+      "priority": 0,
       "name": "쾌청"
     },
     "242": {
@@ -53167,6 +53893,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 20,
+      "range": 0,
+      "priority": 0,
       "name": "깨물어부수기"
     },
     "243": {
@@ -53179,6 +53908,9 @@
       "typeName": "에스퍼",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 1,
+      "priority": -5,
       "name": "미러코트"
     },
     "244": {
@@ -53191,6 +53923,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "자기암시"
     },
     "245": {
@@ -53203,6 +53938,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 1,
       "name": "신속"
     },
     "246": {
@@ -53215,6 +53953,9 @@
       "typeName": "바위",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "원시의힘"
     },
     "247": {
@@ -53227,6 +53968,9 @@
       "typeName": "고스트",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 20,
+      "range": 0,
+      "priority": 0,
       "name": "섀도볼"
     },
     "248": {
@@ -53239,6 +53983,9 @@
       "typeName": "에스퍼",
       "accuracy": 90,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "미래예지"
     },
     "249": {
@@ -53251,6 +53998,9 @@
       "typeName": "격투",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 50,
+      "range": 0,
+      "priority": 0,
       "name": "바위깨기"
     },
     "250": {
@@ -53263,6 +54013,9 @@
       "typeName": "물",
       "accuracy": 70,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "바다회오리"
     },
     "251": {
@@ -53275,6 +54028,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "집단구타"
     },
     "252": {
@@ -53287,6 +54043,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 100,
+      "range": 0,
+      "priority": 1,
       "name": "속이다"
     },
     "253": {
@@ -53299,6 +54058,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 2,
+      "priority": 0,
       "name": "소란피기"
     },
     "254": {
@@ -53311,6 +54073,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "비축하기"
     },
     "255": {
@@ -53323,6 +54088,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "토해내기"
     },
     "256": {
@@ -53335,6 +54103,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "꿀꺽"
     },
     "257": {
@@ -53347,6 +54118,9 @@
       "typeName": "불꽃",
       "accuracy": 90,
       "pp": 10,
+      "effectChance": 10,
+      "range": 4,
+      "priority": 0,
       "name": "열풍"
     },
     "258": {
@@ -53359,6 +54133,9 @@
       "typeName": "얼음",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 64,
+      "priority": 0,
       "name": "싸라기눈"
     },
     "259": {
@@ -53371,6 +54148,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "트집"
     },
     "260": {
@@ -53383,6 +54163,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "부추기기"
     },
     "261": {
@@ -53395,6 +54178,9 @@
       "typeName": "불꽃",
       "accuracy": 75,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "도깨비불"
     },
     "262": {
@@ -53407,6 +54193,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "추억의선물"
     },
     "263": {
@@ -53419,6 +54208,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "객기"
     },
     "264": {
@@ -53431,6 +54223,9 @@
       "typeName": "격투",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": -3,
       "name": "힘껏펀치"
     },
     "265": {
@@ -53443,6 +54238,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "정신차리기"
     },
     "266": {
@@ -53455,6 +54253,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 3,
       "name": "날따름"
     },
     "267": {
@@ -53467,6 +54268,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 1,
+      "priority": 0,
       "name": "자연의힘"
     },
     "268": {
@@ -53479,6 +54283,9 @@
       "typeName": "전기",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "충전"
     },
     "269": {
@@ -53491,6 +54298,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "도발"
     },
     "270": {
@@ -53503,6 +54313,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 256,
+      "priority": 5,
       "name": "도우미"
     },
     "271": {
@@ -53515,6 +54328,9 @@
       "typeName": "에스퍼",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "트릭"
     },
     "272": {
@@ -53527,6 +54343,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "역할"
     },
     "273": {
@@ -53539,6 +54358,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "희망사항"
     },
     "274": {
@@ -53551,6 +54373,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 1,
+      "priority": 0,
       "name": "조수"
     },
     "275": {
@@ -53563,6 +54388,9 @@
       "typeName": "풀",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "뿌리박기"
     },
     "276": {
@@ -53575,6 +54403,9 @@
       "typeName": "격투",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "엄청난힘"
     },
     "277": {
@@ -53587,6 +54418,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 15,
+      "effectChance": 0,
+      "range": 1,
+      "priority": 4,
       "name": "매직코트"
     },
     "278": {
@@ -53599,6 +54433,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "리사이클"
     },
     "279": {
@@ -53611,6 +54448,9 @@
       "typeName": "격투",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": -4,
       "name": "리벤지"
     },
     "280": {
@@ -53623,6 +54463,9 @@
       "typeName": "격투",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "깨트리다"
     },
     "281": {
@@ -53635,6 +54478,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "하품"
     },
     "282": {
@@ -53647,6 +54493,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "탁쳐서떨구기"
     },
     "283": {
@@ -53659,6 +54508,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "죽기살기"
     },
     "284": {
@@ -53671,6 +54523,9 @@
       "typeName": "불꽃",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 0,
+      "range": 4,
+      "priority": 0,
       "name": "분화"
     },
     "285": {
@@ -53683,6 +54538,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "스킬스웹"
     },
     "286": {
@@ -53695,6 +54553,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "봉인"
     },
     "287": {
@@ -53707,6 +54568,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "리프레쉬"
     },
     "288": {
@@ -53719,6 +54583,9 @@
       "typeName": "고스트",
       "accuracy": 0,
       "pp": 5,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "원념"
     },
     "289": {
@@ -53731,6 +54598,9 @@
       "typeName": "악",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 1,
+      "priority": 4,
       "name": "가로챔"
     },
     "290": {
@@ -53743,6 +54613,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "비밀의힘"
     },
     "291": {
@@ -53755,6 +54628,9 @@
       "typeName": "물",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "다이빙"
     },
     "292": {
@@ -53767,6 +54643,9 @@
       "typeName": "격투",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "손바닥치기"
     },
     "293": {
@@ -53779,6 +54658,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "보호색"
     },
     "294": {
@@ -53791,6 +54673,9 @@
       "typeName": "벌레",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "반딧불"
     },
     "295": {
@@ -53803,6 +54688,9 @@
       "typeName": "에스퍼",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 50,
+      "range": 0,
+      "priority": 0,
       "name": "라스트버지"
     },
     "296": {
@@ -53815,6 +54703,9 @@
       "typeName": "에스퍼",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 50,
+      "range": 0,
+      "priority": 0,
       "name": "미스트볼"
     },
     "297": {
@@ -53827,6 +54718,9 @@
       "typeName": "비행",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "깃털댄스"
     },
     "298": {
@@ -53839,6 +54733,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 8,
+      "priority": 0,
       "name": "흔들흔들댄스"
     },
     "299": {
@@ -53851,6 +54748,9 @@
       "typeName": "불꽃",
       "accuracy": 90,
       "pp": 10,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "브레이즈킥"
     },
     "300": {
@@ -53863,6 +54763,9 @@
       "typeName": "땅",
       "accuracy": 0,
       "pp": 15,
+      "effectChance": 0,
+      "range": 64,
+      "priority": 0,
       "name": "흙놀이"
     },
     "301": {
@@ -53875,6 +54778,9 @@
       "typeName": "얼음",
       "accuracy": 90,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "아이스볼"
     },
     "302": {
@@ -53887,6 +54793,9 @@
       "typeName": "풀",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "바늘팔"
     },
     "303": {
@@ -53899,6 +54808,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "태만함"
     },
     "304": {
@@ -53911,6 +54823,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 4,
+      "priority": 0,
       "name": "하이퍼보이스"
     },
     "305": {
@@ -53923,6 +54838,9 @@
       "typeName": "독",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "독엄니"
     },
     "306": {
@@ -53935,6 +54853,9 @@
       "typeName": "노말",
       "accuracy": 95,
       "pp": 10,
+      "effectChance": 50,
+      "range": 0,
+      "priority": 0,
       "name": "브레이크크루"
     },
     "307": {
@@ -53947,6 +54868,9 @@
       "typeName": "불꽃",
       "accuracy": 90,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "블러스트번"
     },
     "308": {
@@ -53959,6 +54883,9 @@
       "typeName": "물",
       "accuracy": 90,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "하이드로캐논"
     },
     "309": {
@@ -53971,6 +54898,9 @@
       "typeName": "강철",
       "accuracy": 85,
       "pp": 10,
+      "effectChance": 20,
+      "range": 0,
+      "priority": 0,
       "name": "코멧펀치"
     },
     "310": {
@@ -53983,6 +54913,9 @@
       "typeName": "고스트",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "놀래키기"
     },
     "311": {
@@ -53995,6 +54928,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "웨더볼"
     },
     "312": {
@@ -54007,6 +54943,9 @@
       "typeName": "풀",
       "accuracy": 0,
       "pp": 5,
+      "effectChance": 0,
+      "range": 32,
+      "priority": 0,
       "name": "아로마테라피"
     },
     "313": {
@@ -54019,6 +54958,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "거짓울음"
     },
     "314": {
@@ -54031,6 +54973,9 @@
       "typeName": "비행",
       "accuracy": 95,
       "pp": 25,
+      "effectChance": 0,
+      "range": 4,
+      "priority": 0,
       "name": "에어컷터"
     },
     "315": {
@@ -54043,6 +54988,9 @@
       "typeName": "불꽃",
       "accuracy": 90,
       "pp": 5,
+      "effectChance": 100,
+      "range": 0,
+      "priority": 0,
       "name": "오버히트"
     },
     "316": {
@@ -54055,6 +55003,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 40,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "냄새구별"
     },
     "317": {
@@ -54067,6 +55018,9 @@
       "typeName": "바위",
       "accuracy": 80,
       "pp": 10,
+      "effectChance": 100,
+      "range": 0,
+      "priority": 0,
       "name": "암석봉인"
     },
     "318": {
@@ -54079,6 +55033,9 @@
       "typeName": "벌레",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "은빛바람"
     },
     "319": {
@@ -54091,6 +55048,9 @@
       "typeName": "강철",
       "accuracy": 85,
       "pp": 40,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "금속음"
     },
     "320": {
@@ -54103,6 +55063,9 @@
       "typeName": "풀",
       "accuracy": 55,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "풀피리"
     },
     "321": {
@@ -54115,6 +55078,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "간지르기"
     },
     "322": {
@@ -54127,6 +55093,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "코스믹파워"
     },
     "323": {
@@ -54139,6 +55108,9 @@
       "typeName": "물",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 0,
+      "range": 4,
+      "priority": 0,
       "name": "바지락조개"
     },
     "324": {
@@ -54151,6 +55123,9 @@
       "typeName": "벌레",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "시그널빔"
     },
     "325": {
@@ -54163,6 +55138,9 @@
       "typeName": "고스트",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "섀도펀치"
     },
     "326": {
@@ -54175,6 +55153,9 @@
       "typeName": "에스퍼",
       "accuracy": 100,
       "pp": 30,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "신통력"
     },
     "327": {
@@ -54187,6 +55168,9 @@
       "typeName": "격투",
       "accuracy": 90,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "스카이업퍼"
     },
     "328": {
@@ -54199,6 +55183,9 @@
       "typeName": "땅",
       "accuracy": 70,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "모래지옥"
     },
     "329": {
@@ -54211,6 +55198,9 @@
       "typeName": "얼음",
       "accuracy": 30,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "절대영도"
     },
     "330": {
@@ -54223,6 +55213,9 @@
       "typeName": "물",
       "accuracy": 85,
       "pp": 10,
+      "effectChance": 30,
+      "range": 4,
+      "priority": 0,
       "name": "탁류"
     },
     "331": {
@@ -54235,6 +55228,9 @@
       "typeName": "풀",
       "accuracy": 100,
       "pp": 30,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "기관총"
     },
     "332": {
@@ -54247,6 +55243,9 @@
       "typeName": "비행",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "제비반환"
     },
     "333": {
@@ -54259,6 +55258,9 @@
       "typeName": "얼음",
       "accuracy": 100,
       "pp": 30,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "고드름침"
     },
     "334": {
@@ -54271,6 +55273,9 @@
       "typeName": "강철",
       "accuracy": 0,
       "pp": 15,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "철벽"
     },
     "335": {
@@ -54283,6 +55288,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "블록"
     },
     "336": {
@@ -54295,6 +55303,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 40,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "멀리짖음"
     },
     "337": {
@@ -54307,6 +55318,9 @@
       "typeName": "드래곤",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "드래곤크루"
     },
     "338": {
@@ -54319,6 +55333,9 @@
       "typeName": "풀",
       "accuracy": 90,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "하드플랜트"
     },
     "339": {
@@ -54331,6 +55348,9 @@
       "typeName": "격투",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "벌크업"
     },
     "340": {
@@ -54343,6 +55363,9 @@
       "typeName": "비행",
       "accuracy": 85,
       "pp": 5,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "뛰어오르다"
     },
     "341": {
@@ -54355,6 +55378,9 @@
       "typeName": "땅",
       "accuracy": 95,
       "pp": 15,
+      "effectChance": 100,
+      "range": 0,
+      "priority": 0,
       "name": "머드숏"
     },
     "342": {
@@ -54367,6 +55393,9 @@
       "typeName": "독",
       "accuracy": 100,
       "pp": 25,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "포이즌테일"
     },
     "343": {
@@ -54379,6 +55408,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 40,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "탐내다"
     },
     "344": {
@@ -54391,6 +55423,9 @@
       "typeName": "전기",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "볼트태클"
     },
     "345": {
@@ -54403,6 +55438,9 @@
       "typeName": "풀",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "메지컬리프"
     },
     "346": {
@@ -54415,6 +55453,9 @@
       "typeName": "물",
       "accuracy": 0,
       "pp": 15,
+      "effectChance": 0,
+      "range": 64,
+      "priority": 0,
       "name": "물놀이"
     },
     "347": {
@@ -54427,6 +55468,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "명상"
     },
     "348": {
@@ -54439,6 +55483,9 @@
       "typeName": "풀",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "리프블레이드"
     },
     "349": {
@@ -54451,6 +55498,9 @@
       "typeName": "드래곤",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "용의춤"
     },
     "350": {
@@ -54463,6 +55513,9 @@
       "typeName": "바위",
       "accuracy": 80,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "락블레스트"
     },
     "351": {
@@ -54475,6 +55528,9 @@
       "typeName": "전기",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "전격파"
     },
     "352": {
@@ -54487,6 +55543,9 @@
       "typeName": "물",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 20,
+      "range": 0,
+      "priority": 0,
       "name": "물의파동"
     },
     "353": {
@@ -54499,6 +55558,9 @@
       "typeName": "강철",
       "accuracy": 85,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "파멸의소원"
     },
     "354": {
@@ -54511,6 +55573,9 @@
       "typeName": "에스퍼",
       "accuracy": 90,
       "pp": 5,
+      "effectChance": 100,
+      "range": 0,
+      "priority": 0,
       "name": "사이코부스트"
     },
     "355": {
@@ -54523,6 +55588,9 @@
       "typeName": "비행",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "날개쉬기"
     },
     "356": {
@@ -54535,6 +55603,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 5,
+      "effectChance": 0,
+      "range": 64,
+      "priority": 0,
       "name": "중력"
     },
     "357": {
@@ -54547,6 +55618,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 40,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "미라클아이"
     },
     "358": {
@@ -54559,6 +55633,9 @@
       "typeName": "격투",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "잠깨움뺨치기"
     },
     "359": {
@@ -54571,6 +55648,9 @@
       "typeName": "격투",
       "accuracy": 90,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "암해머"
     },
     "360": {
@@ -54583,6 +55663,9 @@
       "typeName": "강철",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "자이로볼"
     },
     "361": {
@@ -54595,6 +55678,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "치유소원"
     },
     "362": {
@@ -54607,6 +55693,9 @@
       "typeName": "물",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "소금물"
     },
     "363": {
@@ -54619,6 +55708,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "자연의은혜"
     },
     "364": {
@@ -54631,6 +55723,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 2,
       "name": "페인트"
     },
     "365": {
@@ -54643,6 +55738,9 @@
       "typeName": "비행",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "쪼아대기"
     },
     "366": {
@@ -54655,6 +55753,9 @@
       "typeName": "비행",
       "accuracy": 0,
       "pp": 30,
+      "effectChance": 0,
+      "range": 32,
+      "priority": 0,
       "name": "순풍"
     },
     "367": {
@@ -54667,6 +55768,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 30,
+      "effectChance": 0,
+      "range": 512,
+      "priority": 0,
       "name": "경혈찌르기"
     },
     "368": {
@@ -54679,6 +55783,9 @@
       "typeName": "강철",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 1,
+      "priority": 0,
       "name": "메탈버스트"
     },
     "369": {
@@ -54691,6 +55798,9 @@
       "typeName": "벌레",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "유턴"
     },
     "370": {
@@ -54703,6 +55813,9 @@
       "typeName": "격투",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "인파이트"
     },
     "371": {
@@ -54715,6 +55828,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "보복"
     },
     "372": {
@@ -54727,6 +55843,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "승부굳히기"
     },
     "373": {
@@ -54739,6 +55858,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "금제"
     },
     "374": {
@@ -54751,6 +55873,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "내던지기"
     },
     "375": {
@@ -54763,6 +55888,9 @@
       "typeName": "에스퍼",
       "accuracy": 90,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "사이코시프트"
     },
     "376": {
@@ -54775,6 +55903,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "마지막수단"
     },
     "377": {
@@ -54787,6 +55918,9 @@
       "typeName": "에스퍼",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 4,
+      "priority": 0,
       "name": "회복봉인"
     },
     "378": {
@@ -54799,6 +55933,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "쥐어짜기"
     },
     "379": {
@@ -54811,6 +55948,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "파워트릭"
     },
     "380": {
@@ -54823,6 +55963,9 @@
       "typeName": "독",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "위액"
     },
     "381": {
@@ -54835,6 +55978,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 30,
+      "effectChance": 0,
+      "range": 32,
+      "priority": 0,
       "name": "주술"
     },
     "382": {
@@ -54847,6 +55993,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 1024,
+      "priority": 0,
       "name": "선취"
     },
     "383": {
@@ -54859,6 +56008,9 @@
       "typeName": "노말",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 1,
+      "priority": 0,
       "name": "흉내쟁이"
     },
     "384": {
@@ -54871,6 +56023,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "파워스웹"
     },
     "385": {
@@ -54883,6 +56038,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "가드스웹"
     },
     "386": {
@@ -54895,6 +56053,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "혼내기"
     },
     "387": {
@@ -54907,6 +56068,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "뒀다쓰기"
     },
     "388": {
@@ -54919,6 +56083,9 @@
       "typeName": "풀",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "고민씨"
     },
     "389": {
@@ -54931,6 +56098,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 1,
       "name": "기습"
     },
     "390": {
@@ -54943,6 +56113,9 @@
       "typeName": "독",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 128,
+      "priority": 0,
       "name": "독압정"
     },
     "391": {
@@ -54955,6 +56128,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "하트스웹"
     },
     "392": {
@@ -54967,6 +56143,9 @@
       "typeName": "물",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "아쿠아링"
     },
     "393": {
@@ -54979,6 +56158,9 @@
       "typeName": "전기",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "전자부유"
     },
     "394": {
@@ -54991,6 +56173,9 @@
       "typeName": "불꽃",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "플레어드라이브"
     },
     "395": {
@@ -55003,6 +56188,9 @@
       "typeName": "격투",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "발경"
     },
     "396": {
@@ -55015,6 +56203,9 @@
       "typeName": "격투",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "파동탄"
     },
     "397": {
@@ -55027,6 +56218,9 @@
       "typeName": "바위",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "록커트"
     },
     "398": {
@@ -55039,6 +56233,9 @@
       "typeName": "독",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "독찌르기"
     },
     "399": {
@@ -55051,6 +56248,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 20,
+      "range": 0,
+      "priority": 0,
       "name": "악의파동"
     },
     "400": {
@@ -55063,6 +56263,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "깜짝베기"
     },
     "401": {
@@ -55075,6 +56278,9 @@
       "typeName": "물",
       "accuracy": 90,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "아쿠아테일"
     },
     "402": {
@@ -55087,6 +56293,9 @@
       "typeName": "풀",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "씨폭탄"
     },
     "403": {
@@ -55099,6 +56308,9 @@
       "typeName": "비행",
       "accuracy": 95,
       "pp": 20,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "에어슬래시"
     },
     "404": {
@@ -55111,6 +56323,9 @@
       "typeName": "벌레",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "시저크로스"
     },
     "405": {
@@ -55123,6 +56338,9 @@
       "typeName": "벌레",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "벌레의야단법석"
     },
     "406": {
@@ -55135,6 +56353,9 @@
       "typeName": "드래곤",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "용의파동"
     },
     "407": {
@@ -55147,6 +56368,9 @@
       "typeName": "드래곤",
       "accuracy": 75,
       "pp": 10,
+      "effectChance": 20,
+      "range": 0,
+      "priority": 0,
       "name": "드래곤다이브"
     },
     "408": {
@@ -55159,6 +56383,9 @@
       "typeName": "바위",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "파워젬"
     },
     "409": {
@@ -55171,6 +56398,9 @@
       "typeName": "격투",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "드레인펀치"
     },
     "410": {
@@ -55183,6 +56413,9 @@
       "typeName": "격투",
       "accuracy": 100,
       "pp": 30,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 1,
       "name": "진공파"
     },
     "411": {
@@ -55195,6 +56428,9 @@
       "typeName": "격투",
       "accuracy": 70,
       "pp": 5,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "기합구슬"
     },
     "412": {
@@ -55207,6 +56443,9 @@
       "typeName": "풀",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "에너지볼"
     },
     "413": {
@@ -55219,6 +56458,9 @@
       "typeName": "비행",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "브레이브버드"
     },
     "414": {
@@ -55231,6 +56473,9 @@
       "typeName": "땅",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "대지의힘"
     },
     "415": {
@@ -55243,6 +56488,9 @@
       "typeName": "악",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "바꿔치기"
     },
     "416": {
@@ -55255,6 +56503,9 @@
       "typeName": "노말",
       "accuracy": 90,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "기가임팩트"
     },
     "417": {
@@ -55267,6 +56518,9 @@
       "typeName": "악",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "나쁜음모"
     },
     "418": {
@@ -55279,6 +56533,9 @@
       "typeName": "강철",
       "accuracy": 100,
       "pp": 30,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 1,
       "name": "불릿펀치"
     },
     "419": {
@@ -55291,6 +56548,9 @@
       "typeName": "얼음",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": -4,
       "name": "눈사태"
     },
     "420": {
@@ -55303,6 +56563,9 @@
       "typeName": "얼음",
       "accuracy": 100,
       "pp": 30,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 1,
       "name": "얼음뭉치"
     },
     "421": {
@@ -55315,6 +56578,9 @@
       "typeName": "고스트",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "섀도크루"
     },
     "422": {
@@ -55327,6 +56593,9 @@
       "typeName": "전기",
       "accuracy": 95,
       "pp": 15,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "번개엄니"
     },
     "423": {
@@ -55339,6 +56608,9 @@
       "typeName": "얼음",
       "accuracy": 95,
       "pp": 15,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "얼음엄니"
     },
     "424": {
@@ -55351,6 +56623,9 @@
       "typeName": "불꽃",
       "accuracy": 95,
       "pp": 15,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "불꽃엄니"
     },
     "425": {
@@ -55363,6 +56638,9 @@
       "typeName": "고스트",
       "accuracy": 100,
       "pp": 30,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 1,
       "name": "야습"
     },
     "426": {
@@ -55375,6 +56653,9 @@
       "typeName": "땅",
       "accuracy": 85,
       "pp": 10,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "진흙폭탄"
     },
     "427": {
@@ -55387,6 +56668,9 @@
       "typeName": "에스퍼",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "사이코커터"
     },
     "428": {
@@ -55399,6 +56683,9 @@
       "typeName": "에스퍼",
       "accuracy": 90,
       "pp": 15,
+      "effectChance": 20,
+      "range": 0,
+      "priority": 0,
       "name": "사념의박치기"
     },
     "429": {
@@ -55411,6 +56698,9 @@
       "typeName": "강철",
       "accuracy": 85,
       "pp": 10,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "미러숏"
     },
     "430": {
@@ -55423,6 +56713,9 @@
       "typeName": "강철",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "러스터캐논"
     },
     "431": {
@@ -55435,6 +56728,9 @@
       "typeName": "노말",
       "accuracy": 85,
       "pp": 20,
+      "effectChance": 20,
+      "range": 0,
+      "priority": 0,
       "name": "락클라임"
     },
     "432": {
@@ -55447,6 +56743,9 @@
       "typeName": "비행",
       "accuracy": 0,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "안개제거"
     },
     "433": {
@@ -55459,6 +56758,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 5,
+      "effectChance": 0,
+      "range": 64,
+      "priority": -7,
       "name": "트릭룸"
     },
     "434": {
@@ -55471,6 +56773,9 @@
       "typeName": "드래곤",
       "accuracy": 90,
       "pp": 5,
+      "effectChance": 100,
+      "range": 0,
+      "priority": 0,
       "name": "용성군"
     },
     "435": {
@@ -55483,6 +56788,9 @@
       "typeName": "전기",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 30,
+      "range": 8,
+      "priority": 0,
       "name": "방전"
     },
     "436": {
@@ -55495,6 +56803,9 @@
       "typeName": "불꽃",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 30,
+      "range": 8,
+      "priority": 0,
       "name": "분연"
     },
     "437": {
@@ -55507,6 +56818,9 @@
       "typeName": "풀",
       "accuracy": 90,
       "pp": 5,
+      "effectChance": 100,
+      "range": 0,
+      "priority": 0,
       "name": "리프스톰"
     },
     "438": {
@@ -55519,6 +56833,9 @@
       "typeName": "풀",
       "accuracy": 85,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "파워휩"
     },
     "439": {
@@ -55531,6 +56848,9 @@
       "typeName": "바위",
       "accuracy": 90,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "암석포"
     },
     "440": {
@@ -55543,6 +56863,9 @@
       "typeName": "독",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "크로스포이즌"
     },
     "441": {
@@ -55555,6 +56878,9 @@
       "typeName": "독",
       "accuracy": 70,
       "pp": 5,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "더스트슈트"
     },
     "442": {
@@ -55567,6 +56893,9 @@
       "typeName": "강철",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 30,
+      "range": 0,
+      "priority": 0,
       "name": "아이언헤드"
     },
     "443": {
@@ -55579,6 +56908,9 @@
       "typeName": "강철",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "마그넷봄"
     },
     "444": {
@@ -55591,6 +56923,9 @@
       "typeName": "바위",
       "accuracy": 80,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "스톤에지"
     },
     "445": {
@@ -55603,6 +56938,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 4,
+      "priority": 0,
       "name": "유혹"
     },
     "446": {
@@ -55615,6 +56953,9 @@
       "typeName": "바위",
       "accuracy": 0,
       "pp": 20,
+      "effectChance": 0,
+      "range": 128,
+      "priority": 0,
       "name": "스텔스록"
     },
     "447": {
@@ -55627,6 +56968,9 @@
       "typeName": "풀",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "풀묶기"
     },
     "448": {
@@ -55639,6 +56983,9 @@
       "typeName": "비행",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "수다"
     },
     "449": {
@@ -55651,6 +56998,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "심판의뭉치"
     },
     "450": {
@@ -55663,6 +57013,9 @@
       "typeName": "벌레",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "벌레먹음"
     },
     "451": {
@@ -55675,6 +57028,9 @@
       "typeName": "전기",
       "accuracy": 90,
       "pp": 10,
+      "effectChance": 70,
+      "range": 0,
+      "priority": 0,
       "name": "차지빔"
     },
     "452": {
@@ -55687,6 +57043,9 @@
       "typeName": "풀",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "우드해머"
     },
     "453": {
@@ -55699,6 +57058,9 @@
       "typeName": "물",
       "accuracy": 100,
       "pp": 20,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 1,
       "name": "아쿠아제트"
     },
     "454": {
@@ -55711,6 +57073,9 @@
       "typeName": "벌레",
       "accuracy": 100,
       "pp": 15,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "공격지령"
     },
     "455": {
@@ -55723,6 +57088,9 @@
       "typeName": "벌레",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "방어지령"
     },
     "456": {
@@ -55735,6 +57103,9 @@
       "typeName": "벌레",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "회복지령"
     },
     "457": {
@@ -55747,6 +57118,9 @@
       "typeName": "바위",
       "accuracy": 80,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "양날박치기"
     },
     "458": {
@@ -55759,6 +57133,9 @@
       "typeName": "노말",
       "accuracy": 90,
       "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "더블어택"
     },
     "459": {
@@ -55771,6 +57148,9 @@
       "typeName": "드래곤",
       "accuracy": 90,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "시간의포효"
     },
     "460": {
@@ -55783,6 +57163,9 @@
       "typeName": "드래곤",
       "accuracy": 95,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "공간절단"
     },
     "461": {
@@ -55795,6 +57178,9 @@
       "typeName": "에스퍼",
       "accuracy": 0,
       "pp": 10,
+      "effectChance": 0,
+      "range": 16,
+      "priority": 0,
       "name": "초승달춤"
     },
     "462": {
@@ -55807,6 +57193,9 @@
       "typeName": "노말",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "묵사발"
     },
     "463": {
@@ -55819,6 +57208,9 @@
       "typeName": "불꽃",
       "accuracy": 70,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "마그마스톰"
     },
     "464": {
@@ -55831,6 +57223,9 @@
       "typeName": "악",
       "accuracy": 80,
       "pp": 10,
+      "effectChance": 0,
+      "range": 4,
+      "priority": 0,
       "name": "다크홀"
     },
     "465": {
@@ -55843,6 +57238,9 @@
       "typeName": "풀",
       "accuracy": 85,
       "pp": 5,
+      "effectChance": 40,
+      "range": 0,
+      "priority": 0,
       "name": "시드플레어"
     },
     "466": {
@@ -55855,6 +57253,9 @@
       "typeName": "고스트",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 10,
+      "range": 0,
+      "priority": 0,
       "name": "괴상한바람"
     },
     "467": {
@@ -55867,6 +57268,9 @@
       "typeName": "고스트",
       "accuracy": 100,
       "pp": 5,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0,
       "name": "섀도다이브"
     },
     "468": {
@@ -55878,7 +57282,10 @@
       "typeId": 0,
       "typeName": "노말",
       "accuracy": 100,
-      "pp": 10
+      "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0
     },
     "469": {
       "id": 469,
@@ -55889,7 +57296,10 @@
       "typeId": 0,
       "typeName": "노말",
       "accuracy": 100,
-      "pp": 10
+      "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0
     },
     "470": {
       "id": 470,
@@ -55900,7 +57310,10 @@
       "typeId": 0,
       "typeName": "노말",
       "accuracy": 100,
-      "pp": 10
+      "pp": 10,
+      "effectChance": 0,
+      "range": 0,
+      "priority": 0
     }
   }
 }

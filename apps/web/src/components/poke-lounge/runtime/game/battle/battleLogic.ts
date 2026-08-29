@@ -454,7 +454,7 @@ export function choosePlayerMove(
   const random = options.random ?? Math.random;
   const selectedMove = state.player.pokemon.moves[moveIndex];
   const playerMove =
-    selectedMove && selectedMove.pp > 0
+    selectedMove && isBattleMoveSelectable(selectedMove)
       ? selectedMove
       : resolveStruggle(state.player.pokemon.moves);
 
@@ -1254,7 +1254,7 @@ function randomUsableMove(
   moves: BattleMove[],
   random: () => number = Math.random,
 ): BattleMove | null {
-  const usableMoves = moves.filter(move => move.pp > 0);
+  const usableMoves = moves.filter(isBattleMoveSelectable);
 
   if (usableMoves.length === 0) {
     return resolveStruggle(moves);
@@ -1264,7 +1264,13 @@ function randomUsableMove(
 }
 
 function resolveStruggle(moves: BattleMove[]): BattleMove | null {
-  return moves.length > 0 && moves.every(move => move.pp <= 0) ? STRUGGLE_MOVE : null;
+  return moves.length > 0 && moves.every(move => !isBattleMoveSelectable(move))
+    ? STRUGGLE_MOVE
+    : null;
+}
+
+function isBattleMoveSelectable(move: BattleMove): boolean {
+  return move.pp > 0 && move.competitiveEffectSupport !== "unsupported-primary";
 }
 
 function spendMovePp(moves: BattleMove[], moveId: number): BattleMove[] {
@@ -1455,18 +1461,26 @@ function resolveMoveEffect(
     return applyParalysisEffect(attacker, defender);
   }
 
-  if (move.effectCode === 4 && options.damage > 0 && randomUnit(options.random) < 0.1) {
+  if (
+    move.effectCode === 4 &&
+    options.damage > 0 &&
+    randomUnit(options.random) < (move.effectChance ?? 10) / 100
+  ) {
     return applyBurnEffect(attacker, defender);
   }
 
-  if (move.effectCode === 6 && options.damage > 0 && randomUnit(options.random) < 0.1) {
+  if (
+    move.effectCode === 6 &&
+    options.damage > 0 &&
+    randomUnit(options.random) < (move.effectChance ?? 10) / 100
+  ) {
     return applyParalysisEffect(attacker, defender);
   }
 
   const statStageEffect = getStatStageEffect(move.effectCode);
 
   if (statStageEffect) {
-    return applyDefenderStatStageEffect(attacker, defender, statStageEffect);
+    return applyStatStageEffect(attacker, defender, statStageEffect);
   }
 
   return { attacker, defender, messages: [] };
@@ -1545,53 +1559,74 @@ function applyParalysisEffect(attacker: BattlePokemon, defender: BattlePokemon):
   };
 }
 
-function getStatStageEffect(
-  effectCode: number,
-): { key: BattleStatStageKey; delta: number; label: string } | null {
+function getStatStageEffect(effectCode: number): {
+  key: BattleStatStageKey;
+  delta: number;
+  label: string;
+  target: "attacker" | "defender";
+} | null {
   switch (effectCode) {
     case 18:
-      return { key: "attack", delta: -1, label: "공격" };
+      return { key: "attack", delta: -1, label: "공격", target: "defender" };
     case 19:
-      return { key: "defense", delta: -1, label: "방어" };
+      return { key: "defense", delta: -1, label: "방어", target: "defender" };
     case 20:
-      return { key: "speed", delta: -1, label: "스피드" };
+      return { key: "speed", delta: -1, label: "스피드", target: "defender" };
     case 23:
-      return { key: "accuracy", delta: -1, label: "명중률" };
+      return { key: "accuracy", delta: -1, label: "명중률", target: "defender" };
     case 60:
-      return { key: "speed", delta: -2, label: "스피드" };
+      return { key: "speed", delta: -2, label: "스피드", target: "defender" };
+    case 156:
+      return { key: "defense", delta: 1, label: "방어", target: "attacker" };
     default:
       return null;
   }
 }
 
-function applyDefenderStatStageEffect(
+function applyStatStageEffect(
   attacker: BattlePokemon,
   defender: BattlePokemon,
-  effect: { key: BattleStatStageKey; delta: number; label: string },
+  effect: {
+    key: BattleStatStageKey;
+    delta: number;
+    label: string;
+    target: "attacker" | "defender";
+  },
 ): MoveEffectOutcome {
-  const currentStages = normalizeBattleStatStages(defender.statStages);
+  const target = effect.target === "attacker" ? attacker : defender;
+  const currentStages = normalizeBattleStatStages(target.statStages);
   const nextStages = applyBattleStatStageDelta(currentStages, effect.key, effect.delta);
 
   if (nextStages[effect.key] === currentStages[effect.key]) {
     return {
       attacker,
       defender,
-      messages: [`${defender.name}의 ${effect.label}은 더 이상 떨어지지 않는다!`],
+      messages: [
+        `${target.name}의 ${effect.label}은 더 이상 ${effect.delta > 0 ? "오르지" : "떨어지지"} 않는다!`,
+      ],
     };
   }
 
+  const updatedTarget = {
+    ...target,
+    statStages: nextStages,
+  };
+
   return {
-    attacker,
-    defender: {
-      ...defender,
-      statStages: nextStages,
-    },
+    attacker: effect.target === "attacker" ? updatedTarget : attacker,
+    defender: effect.target === "defender" ? updatedTarget : defender,
     messages: [
-      effect.delta <= -2
-        ? `${defender.name}의 ${effect.label}이 크게 떨어졌다!`
-        : `${defender.name}의 ${effect.label}이 떨어졌다!`,
+      effect.delta > 0
+        ? `${target.name}의 ${withSubjectParticle(effect.label)} 올랐다!`
+        : effect.delta <= -2
+          ? `${target.name}의 ${withSubjectParticle(effect.label)} 크게 떨어졌다!`
+          : `${target.name}의 ${withSubjectParticle(effect.label)} 떨어졌다!`,
     ],
   };
+}
+
+function withSubjectParticle(value: string): string {
+  return `${value}${getTopicParticle(value) === "은" ? "이" : "가"}`;
 }
 
 function applyEndOfTurnEffects(
@@ -1881,11 +1916,7 @@ function isFullyParalyzed(pokemon: BattlePokemon, random: () => number = Math.ra
 }
 
 function getMovePriority(move: BattleMove): number {
-  if (move.effectCode === 103) {
-    return 1;
-  }
-
-  return 0;
+  return move.priority ?? (move.effectCode === 103 ? 1 : 0);
 }
 
 function rollCriticalHit(random: () => number): boolean {

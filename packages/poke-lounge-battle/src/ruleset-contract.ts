@@ -19,6 +19,8 @@ export interface CompetitiveStruggleDefinition {
   power: 50;
   accuracy: 100;
   effectCode: 0;
+  effectChance: 0;
+  priority: 0;
   maxPp: 0;
 }
 

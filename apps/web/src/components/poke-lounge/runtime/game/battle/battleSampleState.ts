@@ -109,6 +109,8 @@ function createBattleMove(moveId: number, name: string): BattleMove {
     typeId: normalized.typeId,
     category: normalized.category,
     effectCode: normalized.effectCode,
+    effectChance: normalized.effectChance,
+    priority: normalized.priority,
     accuracy: normalized.accuracy,
     power: normalized.power,
   };

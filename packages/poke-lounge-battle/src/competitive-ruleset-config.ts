@@ -30,10 +30,12 @@ export const COMPETITIVE_RULESET_V2 = deepFreeze({
     power: 50,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 0,
     recoilMaxHpDivisor: 4,
   },
-  supportedPrimaryStatusEffectCodes: [18, 19, 20, 23, 60, 66, 67],
+  supportedPrimaryStatusEffectCodes: [18, 19, 20, 23, 60, 66, 67, 156],
   supportedSecondaryEffectCodes: [4, 6],
   priorityEffectCodes: [103],
   randomConsumptionOrder: [
@@ -64,4 +66,4 @@ export function isCompetitiveMoveEffectSelectable(move: CompetitiveMoveEffectDes
 
 // canonical JSON({ catalogHash, ruleset: COMPETITIVE_RULESET_V2 })의 SHA-256이다.
 export const COMPETITIVE_RULESET_HASH =
-  "5cd9adaa532811085ecef5da684836b31693d41a29020709edb0af2742b0ebef";
+  "fdaae85f7b124d72ce1e7220db0db336038cf2d48110eef5aa5dcad19594779e";

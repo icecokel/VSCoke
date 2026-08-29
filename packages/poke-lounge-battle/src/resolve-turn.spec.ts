@@ -166,6 +166,78 @@ describe("competitive turn resolution V2", () => {
     expect(resolved.state.playersById[PLAYER_A]!.team[0]!.currentHp).toBeLessThan(before);
   });
 
+  it("uses the ROM secondary-effect chance", () => {
+    const partyA = normalizedParty({
+      members: [{ slotIndex: 0, speciesId: 7, level: 11, moveIds: [34] }],
+    });
+    const partyB = normalizedParty({
+      members: [{ slotIndex: 0, speciesId: 4, level: 11, moveIds: [33] }],
+    });
+    const state = createInitialBattleState([
+      { playerId: PLAYER_A, party: partyA },
+      { playerId: PLAYER_B, party: partyB },
+    ]);
+
+    const resolved = resolveTurn({
+      state,
+      actionsByPlayerId: actions({ kind: "move", moveId: 34 }, { kind: "move", moveId: 33 }),
+      random: constantRandom(0.2),
+    });
+
+    expect(resolved.state.playersById[PLAYER_B]!.team[0]!.status).toBe("paralyzed");
+  });
+
+  it("uses the ROM move priority before speed", () => {
+    const partyA = normalizedParty({
+      members: [{ slotIndex: 0, speciesId: 7, level: 11, moveIds: [252] }],
+    });
+    const partyB = normalizedParty({
+      members: [{ slotIndex: 0, speciesId: 4, level: 11, moveIds: [33] }],
+    });
+    const state = createInitialBattleState([
+      { playerId: PLAYER_A, party: partyA },
+      { playerId: PLAYER_B, party: partyB },
+    ]);
+    state.playersById[PLAYER_A]!.team[0]!.currentHp = 1;
+    state.playersById[PLAYER_B]!.team[0]!.currentHp = 1;
+
+    const resolved = resolveTurn({
+      state,
+      actionsByPlayerId: actions({ kind: "move", moveId: 252 }, { kind: "move", moveId: 33 }),
+      random: constantRandom(0.99),
+    });
+
+    expect(resolved.terminal?.winnerPlayerId).toBe(PLAYER_A);
+  });
+
+  it("applies Defense Curl to the user without damaging the opponent", () => {
+    const party = normalizedParty({
+      members: [{ slotIndex: 0, speciesId: 7, level: 11, moveIds: [111] }],
+    });
+    const state = createInitialBattleState([
+      { playerId: PLAYER_A, party },
+      { playerId: PLAYER_B, party },
+    ]);
+    const attackerHp = state.playersById[PLAYER_A]!.team[0]!.currentHp;
+    const defenderHp = state.playersById[PLAYER_B]!.team[0]!.currentHp;
+
+    const resolved = resolveTurn({
+      state,
+      actionsByPlayerId: createCanonicalIdRecord([[PLAYER_A, { kind: "move", moveId: 111 }]]),
+      random: constantRandom(0.99),
+    });
+
+    expect(resolved.state.playersById[PLAYER_A]!.team[0]).toMatchObject({
+      currentHp: attackerHp,
+      statStages: { defense: 1 },
+      moves: [{ moveId: 111, pp: 0 }],
+    });
+    expect(resolved.state.playersById[PLAYER_B]!.team[0]).toMatchObject({
+      currentHp: defenderHp,
+      statStages: { defense: 0 },
+    });
+  });
+
   it("requires a manual switch after an active faint", () => {
     const state = battleState();
     const active = state.playersById[PLAYER_A]!.team[0]!;

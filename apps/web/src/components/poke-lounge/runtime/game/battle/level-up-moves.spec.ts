@@ -23,7 +23,7 @@ import type { RomPersonalRecordCollection, RomRefinedMoveCollection } from "./wi
 const webRoot = fileURLToPath(new URL("../../../../../../", import.meta.url));
 
 test("ROM 한국어 기술명은 코드형 fallback 대신 상대 기술명에 사용한다", async () => {
-  const pokemonData = readPublicJson(POKEMON_DATA_JSON_PATH);
+  const pokemonData = readPublicJson(POKEMON_DATA_JSON_PATH) as PokemonDataJson;
   const moveRecords = readPublicJson(
     "/assets/poke-lounge/extraction/refined-battle-records.json",
   ) as RomRefinedMoveCollection;
@@ -35,6 +35,27 @@ test("ROM 한국어 기술명은 코드형 fallback 대신 상대 기술명에 �
   try {
     assert.equal(createBattleMoveFromRom(78, moveRecords).name, "저리가루");
     assert.equal(createBattleMoveFromRom(200, moveRecords).name, "역린");
+    assert.deepEqual(createBattleMoveFromRom(111, moveRecords), {
+      id: 111,
+      name: "웅크리기",
+      pp: 40,
+      maxPp: 40,
+      type: "노말",
+      typeId: 0,
+      category: "status",
+      effectCode: 156,
+      effectChance: 0,
+      priority: 0,
+      accuracy: 0,
+      power: 0,
+    });
+    assert.equal(createBattleMoveFromRom(34, moveRecords).effectChance, 30);
+    assert.equal(createBattleMoveFromRom(18, moveRecords).priority, -6);
+    assert.equal(pokemonData.moves["111"]?.range, 16);
+    assert.equal(
+      createBattleMoveFromRom(97, moveRecords).competitiveEffectSupport,
+      "unsupported-primary",
+    );
   } finally {
     resetRuntimeGameDataJsonStateForTest();
   }
@@ -295,7 +316,10 @@ interface LevelUpMoveTableJson {
 
 interface PokemonDataJson {
   species: Record<string, { levelUpMoves?: LevelUpMoveRow[] }>;
-  moves: Record<string, { id: number; name?: string }>;
+  moves: Record<
+    string,
+    { id: number; name?: string; effectChance?: number; priority?: number; range?: number }
+  >;
 }
 
 const createRuntimeGameDataFetcher =

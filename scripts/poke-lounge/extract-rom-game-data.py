@@ -743,7 +743,7 @@ def parse_move_records(
 
     for move_id, file_data in enumerate(moves.files):
         data = bytes(file_data)
-        if len(data) < 7:
+        if len(data) < 11:
             raise ValueError(f"Move record {move_id} is too short: {len(data)} bytes")
 
         type_id = data[4]
@@ -762,6 +762,9 @@ def parse_move_records(
             ),
             "accuracy": data[5],
             "pp": data[6],
+            "effectChance": data[7],
+            "range": read_u16le(data, 8),
+            "priority": int.from_bytes(data[10:11], "little", signed=True),
         }
         move_name = move_names.get(move_id)
         if move_name:

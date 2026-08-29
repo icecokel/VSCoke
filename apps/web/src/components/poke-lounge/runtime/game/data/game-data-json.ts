@@ -43,6 +43,8 @@ export interface RuntimePokemonMoveDetails extends RuntimePokemonMoveSummary {
   typeId: number;
   category: "physical" | "special" | "status";
   effectCode: number;
+  effectChance: number;
+  priority: number;
 }
 
 export interface BattlePokemonSpriteSheetAssetRecord {
@@ -245,6 +247,12 @@ export function getRuntimePokemonMoveDetails(moveId: number): RuntimePokemonMove
   const typeId = typeof move.typeId === "number" && Number.isInteger(move.typeId) ? move.typeId : 0;
   const effectCode =
     typeof move.effectCode === "number" && Number.isInteger(move.effectCode) ? move.effectCode : 0;
+  const effectChance =
+    typeof move.effectChance === "number" && Number.isInteger(move.effectChance)
+      ? move.effectChance
+      : 0;
+  const priority =
+    typeof move.priority === "number" && Number.isInteger(move.priority) ? move.priority : 0;
   const category = move.category;
   if (
     id !== moveId ||
@@ -263,6 +271,8 @@ export function getRuntimePokemonMoveDetails(moveId: number): RuntimePokemonMove
     accuracy,
     typeId,
     effectCode,
+    effectChance,
+    priority,
     category: category as RuntimePokemonMoveDetails["category"],
   };
 }

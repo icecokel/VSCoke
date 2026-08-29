@@ -37,6 +37,8 @@ export interface BattleMove {
   typeId: number;
   category: BattleMoveCategory;
   effectCode: number;
+  effectChance?: number;
+  priority?: number;
   accuracy: number;
   power: number;
   competitiveEffectSupport?: "unsupported-primary" | "unsupported-secondary";

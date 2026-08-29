@@ -9,7 +9,7 @@ import type { BattleMove, BattlePokemon } from "./battleTypes";
 import type { RomRefinedMoveCollection } from "./wildBattleFactory";
 
 export const MAX_POKEMON_MOVE_COUNT = 4;
-const SUPPORTED_STATUS_MOVE_EFFECT_CODES = new Set([18, 19, 20, 23, 60, 66, 67]);
+const SUPPORTED_STATUS_MOVE_EFFECT_CODES = new Set([18, 19, 20, 23, 60, 66, 67, 156]);
 
 export interface LevelUpMoveDefinition {
   level: number;
@@ -200,6 +200,8 @@ export function createBattleMoveFromRom(
     typeId: normalized.typeId,
     category: normalized.category,
     effectCode: normalized.effectCode,
+    effectChance: normalized.effectChance,
+    priority: normalized.priority,
     accuracy: normalized.accuracy,
     power: normalized.power,
   };
@@ -207,12 +209,7 @@ export function createBattleMoveFromRom(
   return move.category === "status" && !SUPPORTED_STATUS_MOVE_EFFECT_CODES.has(move.effectCode)
     ? {
         ...move,
-        type: "노말",
-        typeId: 0,
-        category: "physical",
-        effectCode: 0,
-        accuracy: 100,
-        power: 40,
+        competitiveEffectSupport: "unsupported-primary",
       }
     : move;
 }

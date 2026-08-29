@@ -47,7 +47,7 @@ describe("competitive party normalization", () => {
     expect(COMPETITIVE_CATALOG_SPECIES_COUNT).toBe(493);
     expect(COMPETITIVE_CATALOG_MOVE_COUNT).toBe(470);
     expect(COMPETITIVE_CATALOG_HASH).toBe(
-      "587daa5e6d1e15c684b11ae8cba5a44039f1500c4470b4198cce26c2abdfe05a",
+      "4dfc61095841284f2d0db2ffe9ed373bb5a3f963d21edb5d1bb53e69dd50480a",
     );
     expect(COMPETITIVE_SPECIES_CATALOG[1]?.speciesId).toBe(1);
     expect(COMPETITIVE_SPECIES_CATALOG[493]?.speciesId).toBe(493);
@@ -196,6 +196,7 @@ describe("competitive party normalization", () => {
   it("allows struggle only when no selectable move has PP", () => {
     expect(isCompetitiveMoveSelectable(55)).toBe(true);
     expect(isCompetitiveMoveSelectable(86)).toBe(true);
+    expect(isCompetitiveMoveSelectable(111)).toBe(true);
     expect(isCompetitiveMoveSelectable(97)).toBe(false);
     expect(canUseCompetitiveStruggle([{ moveId: 97, pp: 30 }])).toBe(true);
     expect(canUseCompetitiveStruggle([{ moveId: 55, pp: 1 }])).toBe(false);

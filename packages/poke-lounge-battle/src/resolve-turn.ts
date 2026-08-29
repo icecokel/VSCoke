@@ -361,7 +361,7 @@ function executeMove(
     }
   }
 
-  applySupportedMoveEffect(defender, move, damage, random);
+  applySupportedMoveEffect(attacker, defender, move, damage, random);
 
   if (isStruggle && !isDamaging) {
     applyDamage(
@@ -411,6 +411,7 @@ function calculateMoveDamage(
 }
 
 function applySupportedMoveEffect(
+  attacker: CanonicalCombatantState,
   defender: CanonicalCombatantState,
   move: CompetitiveResolvedMoveDefinition,
   damage: number,
@@ -428,13 +429,13 @@ function applySupportedMoveEffect(
     return;
   }
   if (move.effectCode === 4 && damage > 0) {
-    if (randomValue(random) < 0.1) {
+    if (randomValue(random) < move.effectChance / 100) {
       applyStatus(defender, "burned");
     }
     return;
   }
   if (move.effectCode === 6 && damage > 0) {
-    if (randomValue(random) < 0.1) {
+    if (randomValue(random) < move.effectChance / 100) {
       applyStatus(defender, "paralyzed");
     }
     return;
@@ -442,8 +443,9 @@ function applySupportedMoveEffect(
 
   const stageEffect = getStatStageEffect(move.effectCode);
   if (stageEffect) {
-    defender.statStages = applyBattleStatStageDelta(
-      defender.statStages,
+    const target = stageEffect.target === "attacker" ? attacker : defender;
+    target.statStages = applyBattleStatStageDelta(
+      target.statStages,
       stageEffect.key,
       stageEffect.delta,
     );
@@ -459,18 +461,22 @@ function applyStatus(
   }
 }
 
-function getStatStageEffect(effectCode: number): { key: BattleStatStageKey; delta: number } | null {
+function getStatStageEffect(
+  effectCode: number,
+): { key: BattleStatStageKey; delta: number; target: "attacker" | "defender" } | null {
   switch (effectCode) {
     case 18:
-      return { key: "attack", delta: -1 };
+      return { key: "attack", delta: -1, target: "defender" };
     case 19:
-      return { key: "defense", delta: -1 };
+      return { key: "defense", delta: -1, target: "defender" };
     case 20:
-      return { key: "speed", delta: -1 };
+      return { key: "speed", delta: -1, target: "defender" };
     case 23:
-      return { key: "accuracy", delta: -1 };
+      return { key: "accuracy", delta: -1, target: "defender" };
     case 60:
-      return { key: "speed", delta: -2 };
+      return { key: "speed", delta: -2, target: "defender" };
+    case 156:
+      return { key: "defense", delta: 1, target: "attacker" };
     default:
       return null;
   }
@@ -514,11 +520,7 @@ function getMoveForAction(action: CanonicalCompetitiveAction): CompetitiveResolv
 }
 
 function getMovePriority(move: CompetitiveResolvedMoveDefinition): number {
-  return COMPETITIVE_RULESET_V2.priorityEffectCodes.includes(
-    move.effectCode as (typeof COMPETITIVE_RULESET_V2.priorityEffectCodes)[number],
-  )
-    ? 1
-    : 0;
+  return move.priority;
 }
 
 function calculateEffectiveSpeed(combatant: CanonicalCombatantState): number {

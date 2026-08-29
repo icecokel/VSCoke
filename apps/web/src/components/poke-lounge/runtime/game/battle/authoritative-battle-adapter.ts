@@ -215,6 +215,8 @@ function toBattleMove(move: CompetitivePokemon["moves"][number]): BattleMove {
     typeId: view.typeId,
     category: view.category,
     effectCode: view.effectCode,
+    effectChance: view.effectChance,
+    priority: view.priority,
     accuracy: view.accuracy,
     power: view.power,
     ...getCompetitiveEffectSupport(view),

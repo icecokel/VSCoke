@@ -1,6 +1,6 @@
 // 이 파일은 scripts/poke-lounge/generate-competitive-catalog.mjs로 생성한다.
 
 export const COMPETITIVE_CATALOG_HASH =
-  "587daa5e6d1e15c684b11ae8cba5a44039f1500c4470b4198cce26c2abdfe05a";
+  "4dfc61095841284f2d0db2ffe9ed373bb5a3f963d21edb5d1bb53e69dd50480a";
 export const COMPETITIVE_CATALOG_SPECIES_COUNT = 493;
 export const COMPETITIVE_CATALOG_MOVE_COUNT = 470;

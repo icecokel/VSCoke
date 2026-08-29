@@ -20,6 +20,8 @@ export interface CompetitiveMoveDefinition {
   power: number;
   accuracy: number;
   effectCode: number;
+  effectChance: number;
+  priority: number;
   maxPp: number;
 }
 
@@ -5950,6 +5952,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 35,
   },
   "2": {
@@ -5959,6 +5963,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 50,
     accuracy: 100,
     effectCode: 43,
+    effectChance: 0,
+    priority: 0,
     maxPp: 25,
   },
   "3": {
@@ -5968,6 +5974,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 15,
     accuracy: 85,
     effectCode: 29,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "4": {
@@ -5977,6 +5985,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 18,
     accuracy: 85,
     effectCode: 29,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "5": {
@@ -5986,6 +5996,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 85,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "6": {
@@ -5995,6 +6007,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 34,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "7": {
@@ -6004,6 +6018,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 75,
     accuracy: 100,
     effectCode: 4,
+    effectChance: 10,
+    priority: 0,
     maxPp: 15,
   },
   "8": {
@@ -6013,6 +6029,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 75,
     accuracy: 100,
     effectCode: 5,
+    effectChance: 10,
+    priority: 0,
     maxPp: 15,
   },
   "9": {
@@ -6022,6 +6040,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 75,
     accuracy: 100,
     effectCode: 6,
+    effectChance: 10,
+    priority: 0,
     maxPp: 15,
   },
   "10": {
@@ -6031,6 +6051,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 35,
   },
   "11": {
@@ -6040,6 +6062,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 55,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "12": {
@@ -6049,6 +6073,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 30,
     effectCode: 38,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "13": {
@@ -6058,6 +6084,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 39,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "14": {
@@ -6067,6 +6095,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 50,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "15": {
@@ -6076,6 +6106,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 50,
     accuracy: 95,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "16": {
@@ -6085,6 +6117,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 149,
+    effectChance: 0,
+    priority: 0,
     maxPp: 35,
   },
   "17": {
@@ -6094,6 +6128,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 35,
   },
   "18": {
@@ -6103,6 +6139,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 28,
+    effectChance: 0,
+    priority: -6,
     maxPp: 20,
   },
   "19": {
@@ -6112,6 +6150,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 90,
     accuracy: 95,
     effectCode: 155,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "20": {
@@ -6121,6 +6161,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 15,
     accuracy: 75,
     effectCode: 42,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "21": {
@@ -6130,6 +6172,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 75,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "22": {
@@ -6139,6 +6183,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 35,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "23": {
@@ -6148,6 +6194,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 65,
     accuracy: 100,
     effectCode: 150,
+    effectChance: 30,
+    priority: 0,
     maxPp: 20,
   },
   "24": {
@@ -6157,6 +6205,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 30,
     accuracy: 100,
     effectCode: 44,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "25": {
@@ -6166,6 +6216,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 75,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "26": {
@@ -6175,6 +6227,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 85,
     accuracy: 95,
     effectCode: 45,
+    effectChance: 0,
+    priority: 0,
     maxPp: 25,
   },
   "27": {
@@ -6184,6 +6238,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 85,
     effectCode: 31,
+    effectChance: 30,
+    priority: 0,
     maxPp: 15,
   },
   "28": {
@@ -6193,6 +6249,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 23,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "29": {
@@ -6202,6 +6260,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 70,
     accuracy: 100,
     effectCode: 31,
+    effectChance: 30,
+    priority: 0,
     maxPp: 15,
   },
   "30": {
@@ -6211,6 +6271,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 65,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 25,
   },
   "31": {
@@ -6220,6 +6282,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 15,
     accuracy: 85,
     effectCode: 29,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "32": {
@@ -6229,6 +6293,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 30,
     effectCode: 38,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "33": {
@@ -6238,6 +6304,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 35,
     accuracy: 95,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 35,
   },
   "34": {
@@ -6247,6 +6315,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 85,
     accuracy: 100,
     effectCode: 6,
+    effectChance: 30,
+    priority: 0,
     maxPp: 15,
   },
   "35": {
@@ -6256,6 +6326,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 15,
     accuracy: 85,
     effectCode: 42,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "36": {
@@ -6265,6 +6337,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 90,
     accuracy: 85,
     effectCode: 48,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "37": {
@@ -6274,6 +6348,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 90,
     accuracy: 100,
     effectCode: 27,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "38": {
@@ -6283,6 +6359,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 100,
     effectCode: 198,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "39": {
@@ -6292,6 +6370,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 19,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "40": {
@@ -6301,6 +6381,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 15,
     accuracy: 100,
     effectCode: 2,
+    effectChance: 30,
+    priority: 0,
     maxPp: 35,
   },
   "41": {
@@ -6310,6 +6392,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 25,
     accuracy: 100,
     effectCode: 77,
+    effectChance: 20,
+    priority: 0,
     maxPp: 20,
   },
   "42": {
@@ -6319,6 +6403,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 14,
     accuracy: 85,
     effectCode: 29,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "43": {
@@ -6328,6 +6414,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 19,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "44": {
@@ -6337,6 +6425,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 31,
+    effectChance: 30,
+    priority: 0,
     maxPp: 25,
   },
   "45": {
@@ -6346,6 +6436,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 18,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "46": {
@@ -6355,6 +6447,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 28,
+    effectChance: 0,
+    priority: -6,
     maxPp: 20,
   },
   "47": {
@@ -6364,6 +6458,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 55,
     effectCode: 1,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "48": {
@@ -6373,6 +6469,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 55,
     effectCode: 49,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "49": {
@@ -6382,6 +6480,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 90,
     effectCode: 130,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "50": {
@@ -6391,6 +6491,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 80,
     effectCode: 86,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "51": {
@@ -6400,6 +6502,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 72,
+    effectChance: 10,
+    priority: 0,
     maxPp: 30,
   },
   "52": {
@@ -6409,6 +6513,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 4,
+    effectChance: 10,
+    priority: 0,
     maxPp: 25,
   },
   "53": {
@@ -6418,6 +6524,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 95,
     accuracy: 100,
     effectCode: 4,
+    effectChance: 10,
+    priority: 0,
     maxPp: 15,
   },
   "54": {
@@ -6427,6 +6535,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 46,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "55": {
@@ -6436,6 +6546,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 25,
   },
   "56": {
@@ -6445,6 +6557,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 80,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "57": {
@@ -6454,6 +6568,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 95,
     accuracy: 100,
     effectCode: 257,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "58": {
@@ -6463,6 +6579,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 95,
     accuracy: 100,
     effectCode: 5,
+    effectChance: 10,
+    priority: 0,
     maxPp: 10,
   },
   "59": {
@@ -6472,6 +6590,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 70,
     effectCode: 260,
+    effectChance: 10,
+    priority: 0,
     maxPp: 5,
   },
   "60": {
@@ -6481,6 +6601,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 65,
     accuracy: 100,
     effectCode: 76,
+    effectChance: 10,
+    priority: 0,
     maxPp: 20,
   },
   "61": {
@@ -6490,6 +6612,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 65,
     accuracy: 100,
     effectCode: 70,
+    effectChance: 10,
+    priority: 0,
     maxPp: 20,
   },
   "62": {
@@ -6499,6 +6623,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 65,
     accuracy: 100,
     effectCode: 68,
+    effectChance: 10,
+    priority: 0,
     maxPp: 20,
   },
   "63": {
@@ -6508,6 +6634,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 150,
     accuracy: 90,
     effectCode: 80,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "64": {
@@ -6517,6 +6645,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 35,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 35,
   },
   "65": {
@@ -6526,6 +6656,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "66": {
@@ -6535,6 +6667,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 80,
     effectCode: 48,
+    effectChance: 0,
+    priority: 0,
     maxPp: 25,
   },
   "67": {
@@ -6544,6 +6678,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 196,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "68": {
@@ -6553,6 +6689,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 89,
+    effectChance: 0,
+    priority: -5,
     maxPp: 20,
   },
   "69": {
@@ -6562,6 +6700,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 87,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "70": {
@@ -6571,6 +6711,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "71": {
@@ -6580,6 +6722,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 20,
     accuracy: 100,
     effectCode: 3,
+    effectChance: 0,
+    priority: 0,
     maxPp: 25,
   },
   "72": {
@@ -6589,6 +6733,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 3,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "73": {
@@ -6598,6 +6744,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 90,
     effectCode: 84,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "74": {
@@ -6607,6 +6755,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 13,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "75": {
@@ -6616,6 +6766,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 55,
     accuracy: 95,
     effectCode: 43,
+    effectChance: 0,
+    priority: 0,
     maxPp: 25,
   },
   "76": {
@@ -6625,6 +6777,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 100,
     effectCode: 151,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "77": {
@@ -6634,6 +6788,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 75,
     effectCode: 66,
+    effectChance: 0,
+    priority: 0,
     maxPp: 35,
   },
   "78": {
@@ -6643,6 +6799,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 75,
     effectCode: 67,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "79": {
@@ -6652,6 +6810,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 75,
     effectCode: 1,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "80": {
@@ -6661,6 +6821,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 90,
     accuracy: 100,
     effectCode: 27,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "81": {
@@ -6670,6 +6832,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 95,
     effectCode: 20,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "82": {
@@ -6679,6 +6843,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 41,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "83": {
@@ -6688,6 +6854,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 15,
     accuracy: 70,
     effectCode: 42,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "84": {
@@ -6697,6 +6865,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 6,
+    effectChance: 10,
+    priority: 0,
     maxPp: 30,
   },
   "85": {
@@ -6706,6 +6876,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 95,
     accuracy: 100,
     effectCode: 6,
+    effectChance: 10,
+    priority: 0,
     maxPp: 15,
   },
   "86": {
@@ -6715,6 +6887,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 67,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "87": {
@@ -6724,6 +6898,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 70,
     effectCode: 152,
+    effectChance: 30,
+    priority: 0,
     maxPp: 10,
   },
   "88": {
@@ -6733,6 +6909,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 50,
     accuracy: 90,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "89": {
@@ -6742,6 +6920,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 100,
     effectCode: 147,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "90": {
@@ -6751,6 +6931,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 30,
     effectCode: 38,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "91": {
@@ -6760,6 +6942,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 256,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "92": {
@@ -6769,6 +6953,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 85,
     effectCode: 33,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "93": {
@@ -6778,6 +6964,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 50,
     accuracy: 100,
     effectCode: 76,
+    effectChance: 10,
+    priority: 0,
     maxPp: 25,
   },
   "94": {
@@ -6787,6 +6975,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 90,
     accuracy: 100,
     effectCode: 72,
+    effectChance: 10,
+    priority: 0,
     maxPp: 10,
   },
   "95": {
@@ -6796,6 +6986,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 70,
     effectCode: 1,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "96": {
@@ -6805,6 +6997,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 10,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "97": {
@@ -6814,6 +7008,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 52,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "98": {
@@ -6823,6 +7019,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 103,
+    effectChance: 0,
+    priority: 1,
     maxPp: 30,
   },
   "99": {
@@ -6832,6 +7030,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 20,
     accuracy: 100,
     effectCode: 81,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "100": {
@@ -6841,6 +7041,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 153,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "101": {
@@ -6850,6 +7052,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 87,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "102": {
@@ -6859,6 +7063,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 82,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "103": {
@@ -6868,6 +7074,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 85,
     effectCode: 59,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "104": {
@@ -6877,6 +7085,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 16,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "105": {
@@ -6886,6 +7096,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 32,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "106": {
@@ -6895,6 +7107,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 11,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "107": {
@@ -6904,6 +7118,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 108,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "108": {
@@ -6913,6 +7129,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 23,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "109": {
@@ -6922,6 +7140,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 49,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "110": {
@@ -6931,6 +7151,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 11,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "111": {
@@ -6940,6 +7162,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 156,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "112": {
@@ -6949,6 +7173,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 51,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "113": {
@@ -6958,6 +7184,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 35,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "114": {
@@ -6967,6 +7195,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 25,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "115": {
@@ -6976,6 +7206,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 65,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "116": {
@@ -6985,6 +7217,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 47,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "117": {
@@ -6994,6 +7228,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 0,
     effectCode: 26,
+    effectChance: 0,
+    priority: 1,
     maxPp: 10,
   },
   "118": {
@@ -7003,6 +7239,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 83,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "119": {
@@ -7012,6 +7250,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 9,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "120": {
@@ -7021,6 +7261,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 200,
     accuracy: 100,
     effectCode: 7,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "121": {
@@ -7030,6 +7272,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 75,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "122": {
@@ -7039,6 +7283,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 20,
     accuracy: 100,
     effectCode: 6,
+    effectChance: 30,
+    priority: 0,
     maxPp: 30,
   },
   "123": {
@@ -7048,6 +7294,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 20,
     accuracy: 70,
     effectCode: 2,
+    effectChance: 40,
+    priority: 0,
     maxPp: 20,
   },
   "124": {
@@ -7057,6 +7305,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 65,
     accuracy: 100,
     effectCode: 2,
+    effectChance: 30,
+    priority: 0,
     maxPp: 20,
   },
   "125": {
@@ -7066,6 +7316,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 65,
     accuracy: 85,
     effectCode: 31,
+    effectChance: 10,
+    priority: 0,
     maxPp: 20,
   },
   "126": {
@@ -7075,6 +7327,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 85,
     effectCode: 4,
+    effectChance: 10,
+    priority: 0,
     maxPp: 5,
   },
   "127": {
@@ -7084,6 +7338,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 31,
+    effectChance: 20,
+    priority: 0,
     maxPp: 15,
   },
   "128": {
@@ -7093,6 +7349,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 35,
     accuracy: 75,
     effectCode: 42,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "129": {
@@ -7102,6 +7360,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 0,
     effectCode: 17,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "130": {
@@ -7111,6 +7371,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 100,
     effectCode: 145,
+    effectChance: 100,
+    priority: 0,
     maxPp: 15,
   },
   "131": {
@@ -7120,6 +7382,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 20,
     accuracy: 100,
     effectCode: 29,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "132": {
@@ -7129,6 +7393,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 10,
     accuracy: 100,
     effectCode: 70,
+    effectChance: 10,
+    priority: 0,
     maxPp: 35,
   },
   "133": {
@@ -7138,6 +7404,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 54,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "134": {
@@ -7147,6 +7415,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 80,
     effectCode: 23,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "135": {
@@ -7156,6 +7426,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 32,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "136": {
@@ -7165,6 +7437,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 90,
     effectCode: 45,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "137": {
@@ -7174,6 +7448,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 75,
     effectCode: 67,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "138": {
@@ -7183,6 +7459,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 100,
     effectCode: 8,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "139": {
@@ -7192,6 +7470,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 55,
     effectCode: 66,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "140": {
@@ -7201,6 +7481,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 15,
     accuracy: 85,
     effectCode: 29,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "141": {
@@ -7210,6 +7492,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 20,
     accuracy: 100,
     effectCode: 3,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "142": {
@@ -7219,6 +7503,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 75,
     effectCode: 1,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "143": {
@@ -7228,6 +7514,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 140,
     accuracy: 90,
     effectCode: 75,
+    effectChance: 30,
+    priority: 0,
     maxPp: 5,
   },
   "144": {
@@ -7237,6 +7525,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 57,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "145": {
@@ -7246,6 +7536,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 20,
     accuracy: 100,
     effectCode: 70,
+    effectChance: 10,
+    priority: 0,
     maxPp: 30,
   },
   "146": {
@@ -7255,6 +7547,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 70,
     accuracy: 100,
     effectCode: 76,
+    effectChance: 20,
+    priority: 0,
     maxPp: 10,
   },
   "147": {
@@ -7264,6 +7558,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 1,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "148": {
@@ -7273,6 +7569,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 23,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "149": {
@@ -7282,6 +7580,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 80,
     effectCode: 88,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "150": {
@@ -7291,6 +7591,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 85,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "151": {
@@ -7300,6 +7602,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 51,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "152": {
@@ -7309,6 +7613,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 90,
     accuracy: 85,
     effectCode: 43,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "153": {
@@ -7318,6 +7624,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 250,
     accuracy: 100,
     effectCode: 7,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "154": {
@@ -7327,6 +7635,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 18,
     accuracy: 80,
     effectCode: 29,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "155": {
@@ -7336,6 +7646,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 50,
     accuracy: 90,
     effectCode: 44,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "156": {
@@ -7345,6 +7657,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 37,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "157": {
@@ -7354,6 +7668,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 75,
     accuracy: 90,
     effectCode: 31,
+    effectChance: 30,
+    priority: 0,
     maxPp: 10,
   },
   "158": {
@@ -7363,6 +7679,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 90,
     effectCode: 31,
+    effectChance: 10,
+    priority: 0,
     maxPp: 15,
   },
   "159": {
@@ -7372,6 +7690,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 10,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "160": {
@@ -7381,6 +7701,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 30,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "161": {
@@ -7390,6 +7712,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 36,
+    effectChance: 20,
+    priority: 0,
     maxPp: 10,
   },
   "162": {
@@ -7399,6 +7723,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 90,
     effectCode: 40,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "163": {
@@ -7408,6 +7734,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 70,
     accuracy: 100,
     effectCode: 43,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "164": {
@@ -7417,6 +7745,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 79,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "165": {
@@ -7426,6 +7756,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 50,
     accuracy: 0,
     effectCode: 254,
+    effectChance: 0,
+    priority: 0,
     maxPp: 1,
   },
   "166": {
@@ -7435,6 +7767,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 95,
+    effectChance: 0,
+    priority: 0,
     maxPp: 1,
   },
   "167": {
@@ -7444,6 +7778,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 10,
     accuracy: 90,
     effectCode: 104,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "168": {
@@ -7453,6 +7789,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 105,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "169": {
@@ -7462,6 +7800,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 106,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "170": {
@@ -7471,6 +7811,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 94,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "171": {
@@ -7480,6 +7822,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 107,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "172": {
@@ -7489,6 +7833,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 125,
+    effectChance: 10,
+    priority: 0,
     maxPp: 25,
   },
   "173": {
@@ -7498,6 +7844,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 92,
+    effectChance: 30,
+    priority: 0,
     maxPp: 15,
   },
   "174": {
@@ -7507,6 +7855,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 109,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "175": {
@@ -7516,6 +7866,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 99,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "176": {
@@ -7525,6 +7877,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 93,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "177": {
@@ -7534,6 +7888,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 95,
     effectCode: 43,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "178": {
@@ -7543,6 +7899,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 85,
     effectCode: 60,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "179": {
@@ -7552,6 +7910,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 99,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "180": {
@@ -7561,6 +7921,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 100,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "181": {
@@ -7570,6 +7932,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 5,
+    effectChance: 10,
+    priority: 0,
     maxPp: 25,
   },
   "182": {
@@ -7579,6 +7943,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 111,
+    effectChance: 0,
+    priority: 3,
     maxPp: 10,
   },
   "183": {
@@ -7588,6 +7954,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 103,
+    effectChance: 0,
+    priority: 1,
     maxPp: 30,
   },
   "184": {
@@ -7597,6 +7965,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 90,
     effectCode: 60,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "185": {
@@ -7606,6 +7976,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 0,
     effectCode: 17,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "186": {
@@ -7615,6 +7987,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 75,
     effectCode: 49,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "187": {
@@ -7624,6 +7998,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 142,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "188": {
@@ -7633,6 +8009,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 90,
     accuracy: 100,
     effectCode: 2,
+    effectChance: 30,
+    priority: 0,
     maxPp: 10,
   },
   "189": {
@@ -7642,6 +8020,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 20,
     accuracy: 100,
     effectCode: 73,
+    effectChance: 100,
+    priority: 0,
     maxPp: 10,
   },
   "190": {
@@ -7651,6 +8031,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 65,
     accuracy: 85,
     effectCode: 73,
+    effectChance: 50,
+    priority: 0,
     maxPp: 10,
   },
   "191": {
@@ -7660,6 +8042,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 112,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "192": {
@@ -7669,6 +8053,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 50,
     effectCode: 6,
+    effectChance: 100,
+    priority: 0,
     maxPp: 5,
   },
   "193": {
@@ -7678,6 +8064,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 113,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "194": {
@@ -7687,6 +8075,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 98,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "195": {
@@ -7696,6 +8086,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 114,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "196": {
@@ -7705,6 +8097,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 55,
     accuracy: 95,
     effectCode: 70,
+    effectChance: 100,
+    priority: 0,
     maxPp: 15,
   },
   "197": {
@@ -7714,6 +8108,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 111,
+    effectChance: 0,
+    priority: 3,
     maxPp: 5,
   },
   "198": {
@@ -7723,6 +8119,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 25,
     accuracy: 80,
     effectCode: 29,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "199": {
@@ -7732,6 +8130,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 94,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "200": {
@@ -7741,6 +8141,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 100,
     effectCode: 27,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "201": {
@@ -7750,6 +8152,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 115,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "202": {
@@ -7759,6 +8163,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 3,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "203": {
@@ -7768,6 +8174,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 116,
+    effectChance: 0,
+    priority: 3,
     maxPp: 10,
   },
   "204": {
@@ -7777,6 +8185,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 58,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "205": {
@@ -7786,6 +8196,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 30,
     accuracy: 90,
     effectCode: 117,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "206": {
@@ -7795,6 +8207,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 101,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "207": {
@@ -7804,6 +8218,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 90,
     effectCode: 118,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "208": {
@@ -7813,6 +8229,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 32,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "209": {
@@ -7822,6 +8240,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 65,
     accuracy: 100,
     effectCode: 6,
+    effectChance: 30,
+    priority: 0,
     maxPp: 20,
   },
   "210": {
@@ -7831,6 +8251,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 10,
     accuracy: 95,
     effectCode: 119,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "211": {
@@ -7840,6 +8262,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 70,
     accuracy: 90,
     effectCode: 138,
+    effectChance: 10,
+    priority: 0,
     maxPp: 25,
   },
   "212": {
@@ -7849,6 +8273,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 106,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "213": {
@@ -7858,6 +8284,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 120,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "214": {
@@ -7867,6 +8295,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 97,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "215": {
@@ -7876,6 +8306,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 102,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "216": {
@@ -7885,6 +8317,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 121,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "217": {
@@ -7894,6 +8328,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 90,
     effectCode: 122,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "218": {
@@ -7903,6 +8339,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 123,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "219": {
@@ -7912,6 +8350,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 124,
+    effectChance: 0,
+    priority: 0,
     maxPp: 25,
   },
   "220": {
@@ -7921,6 +8361,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 91,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "221": {
@@ -7930,6 +8372,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 95,
     effectCode: 125,
+    effectChance: 50,
+    priority: 0,
     maxPp: 5,
   },
   "222": {
@@ -7939,6 +8383,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 126,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "223": {
@@ -7948,6 +8394,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 50,
     effectCode: 76,
+    effectChance: 100,
+    priority: 0,
     maxPp: 5,
   },
   "224": {
@@ -7957,6 +8405,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 85,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "225": {
@@ -7966,6 +8416,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 6,
+    effectChance: 30,
+    priority: 0,
     maxPp: 20,
   },
   "226": {
@@ -7975,6 +8427,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 127,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "227": {
@@ -7984,6 +8438,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 90,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "228": {
@@ -7993,6 +8449,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 128,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "229": {
@@ -8002,6 +8460,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 20,
     accuracy: 100,
     effectCode: 129,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "230": {
@@ -8011,6 +8471,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 24,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "231": {
@@ -8020,6 +8482,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 75,
     effectCode: 69,
+    effectChance: 30,
+    priority: 0,
     maxPp: 15,
   },
   "232": {
@@ -8029,6 +8493,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 50,
     accuracy: 95,
     effectCode: 139,
+    effectChance: 10,
+    priority: 0,
     maxPp: 35,
   },
   "233": {
@@ -8038,6 +8504,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 70,
     accuracy: 0,
     effectCode: 78,
+    effectChance: 0,
+    priority: -1,
     maxPp: 10,
   },
   "234": {
@@ -8047,6 +8515,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 132,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "235": {
@@ -8056,6 +8526,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 132,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "236": {
@@ -8065,6 +8537,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 132,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "237": {
@@ -8074,6 +8548,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 135,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "238": {
@@ -8083,6 +8559,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 80,
     effectCode: 43,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "239": {
@@ -8092,6 +8570,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 146,
+    effectChance: 20,
+    priority: 0,
     maxPp: 20,
   },
   "240": {
@@ -8101,6 +8581,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 136,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "241": {
@@ -8110,6 +8592,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 137,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "242": {
@@ -8119,6 +8603,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 69,
+    effectChance: 20,
+    priority: 0,
     maxPp: 15,
   },
   "243": {
@@ -8128,6 +8614,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 144,
+    effectChance: 0,
+    priority: -5,
     maxPp: 20,
   },
   "244": {
@@ -8137,6 +8625,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 143,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "245": {
@@ -8146,6 +8636,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 103,
+    effectChance: 0,
+    priority: 1,
     maxPp: 5,
   },
   "246": {
@@ -8155,6 +8647,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 140,
+    effectChance: 10,
+    priority: 0,
     maxPp: 5,
   },
   "247": {
@@ -8164,6 +8658,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 72,
+    effectChance: 20,
+    priority: 0,
     maxPp: 15,
   },
   "248": {
@@ -8173,6 +8669,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 90,
     effectCode: 148,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "249": {
@@ -8182,6 +8680,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 69,
+    effectChance: 50,
+    priority: 0,
     maxPp: 15,
   },
   "250": {
@@ -8191,6 +8691,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 15,
     accuracy: 70,
     effectCode: 261,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "251": {
@@ -8200,6 +8702,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 10,
     accuracy: 100,
     effectCode: 154,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "252": {
@@ -8209,6 +8713,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 158,
+    effectChance: 100,
+    priority: 1,
     maxPp: 10,
   },
   "253": {
@@ -8218,6 +8724,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 50,
     accuracy: 100,
     effectCode: 159,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "254": {
@@ -8227,6 +8735,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 160,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "255": {
@@ -8236,6 +8746,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 161,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "256": {
@@ -8245,6 +8757,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 162,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "257": {
@@ -8254,6 +8768,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 90,
     effectCode: 4,
+    effectChance: 10,
+    priority: 0,
     maxPp: 10,
   },
   "258": {
@@ -8263,6 +8779,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 164,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "259": {
@@ -8272,6 +8790,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 165,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "260": {
@@ -8281,6 +8801,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 166,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "261": {
@@ -8290,6 +8812,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 75,
     effectCode: 167,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "262": {
@@ -8299,6 +8823,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 168,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "263": {
@@ -8308,6 +8834,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 70,
     accuracy: 100,
     effectCode: 169,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "264": {
@@ -8317,6 +8845,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 150,
     accuracy: 100,
     effectCode: 170,
+    effectChance: 0,
+    priority: -3,
     maxPp: 20,
   },
   "265": {
@@ -8326,6 +8856,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 171,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "266": {
@@ -8335,6 +8867,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 172,
+    effectChance: 0,
+    priority: 3,
     maxPp: 20,
   },
   "267": {
@@ -8344,6 +8878,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 173,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "268": {
@@ -8353,6 +8889,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 174,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "269": {
@@ -8362,6 +8900,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 175,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "270": {
@@ -8371,6 +8911,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 176,
+    effectChance: 0,
+    priority: 5,
     maxPp: 20,
   },
   "271": {
@@ -8380,6 +8922,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 177,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "272": {
@@ -8389,6 +8933,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 178,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "273": {
@@ -8398,6 +8944,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 179,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "274": {
@@ -8407,6 +8955,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 180,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "275": {
@@ -8416,6 +8966,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 181,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "276": {
@@ -8425,6 +8977,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 100,
     effectCode: 182,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "277": {
@@ -8434,6 +8988,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 183,
+    effectChance: 0,
+    priority: 4,
     maxPp: 15,
   },
   "278": {
@@ -8443,6 +8999,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 184,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "279": {
@@ -8452,6 +9010,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 185,
+    effectChance: 0,
+    priority: -4,
     maxPp: 10,
   },
   "280": {
@@ -8461,6 +9021,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 75,
     accuracy: 100,
     effectCode: 186,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "281": {
@@ -8470,6 +9032,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 187,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "282": {
@@ -8479,6 +9043,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 20,
     accuracy: 100,
     effectCode: 188,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "283": {
@@ -8488,6 +9054,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 189,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "284": {
@@ -8497,6 +9065,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 150,
     accuracy: 100,
     effectCode: 190,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "285": {
@@ -8506,6 +9076,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 191,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "286": {
@@ -8515,6 +9087,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 192,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "287": {
@@ -8524,6 +9098,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 193,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "288": {
@@ -8533,6 +9109,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 194,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "289": {
@@ -8542,6 +9120,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 195,
+    effectChance: 0,
+    priority: 4,
     maxPp: 10,
   },
   "290": {
@@ -8551,6 +9131,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 70,
     accuracy: 100,
     effectCode: 197,
+    effectChance: 30,
+    priority: 0,
     maxPp: 20,
   },
   "291": {
@@ -8560,6 +9142,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 255,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "292": {
@@ -8569,6 +9153,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 15,
     accuracy: 100,
     effectCode: 29,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "293": {
@@ -8578,6 +9164,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 213,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "294": {
@@ -8587,6 +9175,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 53,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "295": {
@@ -8596,6 +9186,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 70,
     accuracy: 100,
     effectCode: 72,
+    effectChance: 50,
+    priority: 0,
     maxPp: 5,
   },
   "296": {
@@ -8605,6 +9197,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 70,
     accuracy: 100,
     effectCode: 71,
+    effectChance: 50,
+    priority: 0,
     maxPp: 5,
   },
   "297": {
@@ -8614,6 +9208,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 58,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "298": {
@@ -8623,6 +9219,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 199,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "299": {
@@ -8632,6 +9230,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 85,
     accuracy: 90,
     effectCode: 200,
+    effectChance: 10,
+    priority: 0,
     maxPp: 10,
   },
   "300": {
@@ -8641,6 +9241,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 201,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "301": {
@@ -8650,6 +9252,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 30,
     accuracy: 90,
     effectCode: 117,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "302": {
@@ -8659,6 +9263,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 31,
+    effectChance: 30,
+    priority: 0,
     maxPp: 15,
   },
   "303": {
@@ -8668,6 +9274,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 32,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "304": {
@@ -8677,6 +9285,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 90,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "305": {
@@ -8686,6 +9296,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 50,
     accuracy: 100,
     effectCode: 202,
+    effectChance: 30,
+    priority: 0,
     maxPp: 15,
   },
   "306": {
@@ -8695,6 +9307,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 75,
     accuracy: 95,
     effectCode: 69,
+    effectChance: 50,
+    priority: 0,
     maxPp: 10,
   },
   "307": {
@@ -8704,6 +9318,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 150,
     accuracy: 90,
     effectCode: 80,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "308": {
@@ -8713,6 +9329,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 150,
     accuracy: 90,
     effectCode: 80,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "309": {
@@ -8722,6 +9340,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 85,
     effectCode: 139,
+    effectChance: 20,
+    priority: 0,
     maxPp: 10,
   },
   "310": {
@@ -8731,6 +9351,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 30,
     accuracy: 100,
     effectCode: 31,
+    effectChance: 30,
+    priority: 0,
     maxPp: 15,
   },
   "311": {
@@ -8740,6 +9362,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 50,
     accuracy: 100,
     effectCode: 203,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "312": {
@@ -8749,6 +9373,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 102,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "313": {
@@ -8758,6 +9384,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 62,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "314": {
@@ -8767,6 +9395,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 55,
     accuracy: 95,
     effectCode: 43,
+    effectChance: 0,
+    priority: 0,
     maxPp: 25,
   },
   "315": {
@@ -8776,6 +9406,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 140,
     accuracy: 90,
     effectCode: 204,
+    effectChance: 100,
+    priority: 0,
     maxPp: 5,
   },
   "316": {
@@ -8785,6 +9417,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 113,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "317": {
@@ -8794,6 +9428,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 50,
     accuracy: 80,
     effectCode: 70,
+    effectChance: 100,
+    priority: 0,
     maxPp: 10,
   },
   "318": {
@@ -8803,6 +9439,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 140,
+    effectChance: 10,
+    priority: 0,
     maxPp: 5,
   },
   "319": {
@@ -8812,6 +9450,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 85,
     effectCode: 62,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "320": {
@@ -8821,6 +9461,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 55,
     effectCode: 1,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "321": {
@@ -8830,6 +9472,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 205,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "322": {
@@ -8839,6 +9483,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 206,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "323": {
@@ -8848,6 +9494,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 150,
     accuracy: 100,
     effectCode: 190,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "324": {
@@ -8857,6 +9505,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 75,
     accuracy: 100,
     effectCode: 76,
+    effectChance: 10,
+    priority: 0,
     maxPp: 15,
   },
   "325": {
@@ -8866,6 +9516,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 0,
     effectCode: 17,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "326": {
@@ -8875,6 +9527,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 31,
+    effectChance: 10,
+    priority: 0,
     maxPp: 30,
   },
   "327": {
@@ -8884,6 +9538,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 85,
     accuracy: 90,
     effectCode: 207,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "328": {
@@ -8893,6 +9549,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 15,
     accuracy: 70,
     effectCode: 42,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "329": {
@@ -8902,6 +9560,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 30,
     effectCode: 38,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "330": {
@@ -8911,6 +9571,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 95,
     accuracy: 85,
     effectCode: 73,
+    effectChance: 30,
+    priority: 0,
     maxPp: 10,
   },
   "331": {
@@ -8920,6 +9582,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 10,
     accuracy: 100,
     effectCode: 29,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "332": {
@@ -8929,6 +9593,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 0,
     effectCode: 17,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "333": {
@@ -8938,6 +9604,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 10,
     accuracy: 100,
     effectCode: 29,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "334": {
@@ -8947,6 +9615,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 51,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "335": {
@@ -8956,6 +9626,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 106,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "336": {
@@ -8965,6 +9637,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 10,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "337": {
@@ -8974,6 +9648,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "338": {
@@ -8983,6 +9659,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 150,
     accuracy: 90,
     effectCode: 80,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "339": {
@@ -8992,6 +9670,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 208,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "340": {
@@ -9001,6 +9681,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 85,
     accuracy: 85,
     effectCode: 263,
+    effectChance: 30,
+    priority: 0,
     maxPp: 5,
   },
   "341": {
@@ -9010,6 +9692,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 55,
     accuracy: 95,
     effectCode: 70,
+    effectChance: 100,
+    priority: 0,
     maxPp: 15,
   },
   "342": {
@@ -9019,6 +9703,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 50,
     accuracy: 100,
     effectCode: 209,
+    effectChance: 10,
+    priority: 0,
     maxPp: 25,
   },
   "343": {
@@ -9028,6 +9714,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 105,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "344": {
@@ -9037,6 +9725,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 100,
     effectCode: 262,
+    effectChance: 10,
+    priority: 0,
     maxPp: 15,
   },
   "345": {
@@ -9046,6 +9736,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 0,
     effectCode: 17,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "346": {
@@ -9055,6 +9747,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 210,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "347": {
@@ -9064,6 +9758,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 211,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "348": {
@@ -9073,6 +9769,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 90,
     accuracy: 100,
     effectCode: 43,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "349": {
@@ -9082,6 +9780,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 212,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "350": {
@@ -9091,6 +9791,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 25,
     accuracy: 80,
     effectCode: 29,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "351": {
@@ -9100,6 +9802,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 0,
     effectCode: 17,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "352": {
@@ -9109,6 +9813,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 76,
+    effectChance: 20,
+    priority: 0,
     maxPp: 20,
   },
   "353": {
@@ -9118,6 +9824,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 85,
     effectCode: 148,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "354": {
@@ -9127,6 +9835,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 140,
     accuracy: 90,
     effectCode: 204,
+    effectChance: 100,
+    priority: 0,
     maxPp: 5,
   },
   "355": {
@@ -9136,6 +9846,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 214,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "356": {
@@ -9145,6 +9857,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 215,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "357": {
@@ -9154,6 +9868,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 216,
+    effectChance: 0,
+    priority: 0,
     maxPp: 40,
   },
   "358": {
@@ -9163,6 +9879,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 217,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "359": {
@@ -9172,6 +9890,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 90,
     effectCode: 218,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "360": {
@@ -9181,6 +9901,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 219,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "361": {
@@ -9190,6 +9912,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 220,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "362": {
@@ -9199,6 +9923,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 65,
     accuracy: 100,
     effectCode: 221,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "363": {
@@ -9208,6 +9934,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 222,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "364": {
@@ -9217,6 +9945,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 50,
     accuracy: 100,
     effectCode: 223,
+    effectChance: 0,
+    priority: 2,
     maxPp: 10,
   },
   "365": {
@@ -9226,6 +9956,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 224,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "366": {
@@ -9235,6 +9967,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 225,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "367": {
@@ -9244,6 +9978,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 226,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "368": {
@@ -9253,6 +9989,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 227,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "369": {
@@ -9262,6 +10000,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 70,
     accuracy: 100,
     effectCode: 228,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "370": {
@@ -9271,6 +10011,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 100,
     effectCode: 229,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "371": {
@@ -9280,6 +10022,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 50,
     accuracy: 100,
     effectCode: 230,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "372": {
@@ -9289,6 +10033,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 50,
     accuracy: 100,
     effectCode: 231,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "373": {
@@ -9298,6 +10044,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 232,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "374": {
@@ -9307,6 +10055,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 233,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "375": {
@@ -9316,6 +10066,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 90,
     effectCode: 234,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "376": {
@@ -9325,6 +10077,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 0,
     effectCode: 235,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "377": {
@@ -9334,6 +10088,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 236,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "378": {
@@ -9343,6 +10099,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 237,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "379": {
@@ -9352,6 +10110,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 238,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "380": {
@@ -9361,6 +10121,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 239,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "381": {
@@ -9370,6 +10132,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 240,
+    effectChance: 0,
+    priority: 0,
     maxPp: 30,
   },
   "382": {
@@ -9379,6 +10143,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 241,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "383": {
@@ -9388,6 +10154,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 242,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "384": {
@@ -9397,6 +10165,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 243,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "385": {
@@ -9406,6 +10176,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 244,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "386": {
@@ -9415,6 +10187,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 245,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "387": {
@@ -9424,6 +10198,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 130,
     accuracy: 100,
     effectCode: 246,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "388": {
@@ -9433,6 +10209,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 247,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "389": {
@@ -9442,6 +10220,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 248,
+    effectChance: 0,
+    priority: 1,
     maxPp: 5,
   },
   "390": {
@@ -9451,6 +10231,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 249,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "391": {
@@ -9460,6 +10242,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 250,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "392": {
@@ -9469,6 +10253,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 251,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "393": {
@@ -9478,6 +10264,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 252,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "394": {
@@ -9487,6 +10275,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 100,
     effectCode: 253,
+    effectChance: 10,
+    priority: 0,
     maxPp: 15,
   },
   "395": {
@@ -9496,6 +10286,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 6,
+    effectChance: 30,
+    priority: 0,
     maxPp: 10,
   },
   "396": {
@@ -9505,6 +10297,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 90,
     accuracy: 0,
     effectCode: 17,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "397": {
@@ -9514,6 +10308,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 52,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "398": {
@@ -9523,6 +10319,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 2,
+    effectChance: 30,
+    priority: 0,
     maxPp: 20,
   },
   "399": {
@@ -9532,6 +10330,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 31,
+    effectChance: 20,
+    priority: 0,
     maxPp: 15,
   },
   "400": {
@@ -9541,6 +10341,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 70,
     accuracy: 100,
     effectCode: 43,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "401": {
@@ -9550,6 +10352,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 90,
     accuracy: 90,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "402": {
@@ -9559,6 +10363,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "403": {
@@ -9568,6 +10374,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 75,
     accuracy: 95,
     effectCode: 31,
+    effectChance: 30,
+    priority: 0,
     maxPp: 20,
   },
   "404": {
@@ -9577,6 +10385,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "405": {
@@ -9586,6 +10396,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 90,
     accuracy: 100,
     effectCode: 72,
+    effectChance: 10,
+    priority: 0,
     maxPp: 10,
   },
   "406": {
@@ -9595,6 +10407,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 90,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "407": {
@@ -9604,6 +10418,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 75,
     effectCode: 31,
+    effectChance: 20,
+    priority: 0,
     maxPp: 10,
   },
   "408": {
@@ -9613,6 +10429,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 70,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "409": {
@@ -9622,6 +10440,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 3,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "410": {
@@ -9631,6 +10451,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 103,
+    effectChance: 0,
+    priority: 1,
     maxPp: 30,
   },
   "411": {
@@ -9640,6 +10462,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 70,
     effectCode: 72,
+    effectChance: 10,
+    priority: 0,
     maxPp: 5,
   },
   "412": {
@@ -9649,6 +10473,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 72,
+    effectChance: 10,
+    priority: 0,
     maxPp: 10,
   },
   "413": {
@@ -9658,6 +10484,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 100,
     effectCode: 198,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "414": {
@@ -9667,6 +10495,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 90,
     accuracy: 100,
     effectCode: 72,
+    effectChance: 10,
+    priority: 0,
     maxPp: 10,
   },
   "415": {
@@ -9676,6 +10506,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 177,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "416": {
@@ -9685,6 +10517,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 150,
     accuracy: 90,
     effectCode: 80,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "417": {
@@ -9694,6 +10528,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 53,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "418": {
@@ -9703,6 +10539,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 103,
+    effectChance: 0,
+    priority: 1,
     maxPp: 30,
   },
   "419": {
@@ -9712,6 +10550,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 185,
+    effectChance: 0,
+    priority: -4,
     maxPp: 10,
   },
   "420": {
@@ -9721,6 +10561,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 103,
+    effectChance: 0,
+    priority: 1,
     maxPp: 30,
   },
   "421": {
@@ -9730,6 +10572,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 70,
     accuracy: 100,
     effectCode: 43,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "422": {
@@ -9739,6 +10583,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 65,
     accuracy: 95,
     effectCode: 275,
+    effectChance: 10,
+    priority: 0,
     maxPp: 15,
   },
   "423": {
@@ -9748,6 +10594,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 65,
     accuracy: 95,
     effectCode: 274,
+    effectChance: 10,
+    priority: 0,
     maxPp: 15,
   },
   "424": {
@@ -9757,6 +10605,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 65,
     accuracy: 95,
     effectCode: 273,
+    effectChance: 10,
+    priority: 0,
     maxPp: 15,
   },
   "425": {
@@ -9766,6 +10616,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 103,
+    effectChance: 0,
+    priority: 1,
     maxPp: 30,
   },
   "426": {
@@ -9775,6 +10627,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 65,
     accuracy: 85,
     effectCode: 73,
+    effectChance: 30,
+    priority: 0,
     maxPp: 10,
   },
   "427": {
@@ -9784,6 +10638,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 70,
     accuracy: 100,
     effectCode: 43,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "428": {
@@ -9793,6 +10649,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 90,
     effectCode: 31,
+    effectChance: 20,
+    priority: 0,
     maxPp: 15,
   },
   "429": {
@@ -9802,6 +10660,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 65,
     accuracy: 85,
     effectCode: 73,
+    effectChance: 30,
+    priority: 0,
     maxPp: 10,
   },
   "430": {
@@ -9811,6 +10671,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 72,
+    effectChance: 10,
+    priority: 0,
     maxPp: 10,
   },
   "431": {
@@ -9820,6 +10682,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 90,
     accuracy: 85,
     effectCode: 76,
+    effectChance: 20,
+    priority: 0,
     maxPp: 20,
   },
   "432": {
@@ -9829,6 +10693,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 258,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "433": {
@@ -9838,6 +10704,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 259,
+    effectChance: 0,
+    priority: -7,
     maxPp: 5,
   },
   "434": {
@@ -9847,6 +10715,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 140,
     accuracy: 90,
     effectCode: 204,
+    effectChance: 100,
+    priority: 0,
     maxPp: 5,
   },
   "435": {
@@ -9856,6 +10726,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 6,
+    effectChance: 30,
+    priority: 0,
     maxPp: 15,
   },
   "436": {
@@ -9865,6 +10737,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 4,
+    effectChance: 30,
+    priority: 0,
     maxPp: 15,
   },
   "437": {
@@ -9874,6 +10748,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 140,
     accuracy: 90,
     effectCode: 204,
+    effectChance: 100,
+    priority: 0,
     maxPp: 5,
   },
   "438": {
@@ -9883,6 +10759,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 85,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "439": {
@@ -9892,6 +10770,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 150,
     accuracy: 90,
     effectCode: 80,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "440": {
@@ -9901,6 +10781,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 70,
     accuracy: 100,
     effectCode: 209,
+    effectChance: 10,
+    priority: 0,
     maxPp: 20,
   },
   "441": {
@@ -9910,6 +10792,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 70,
     effectCode: 2,
+    effectChance: 30,
+    priority: 0,
     maxPp: 5,
   },
   "442": {
@@ -9919,6 +10803,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 80,
     accuracy: 100,
     effectCode: 31,
+    effectChance: 30,
+    priority: 0,
     maxPp: 15,
   },
   "443": {
@@ -9928,6 +10814,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 0,
     effectCode: 17,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "444": {
@@ -9937,6 +10825,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 80,
     effectCode: 43,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "445": {
@@ -9946,6 +10836,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 100,
     effectCode: 265,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "446": {
@@ -9955,6 +10847,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 266,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "447": {
@@ -9964,6 +10858,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 196,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "448": {
@@ -9973,6 +10869,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 267,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "449": {
@@ -9982,6 +10880,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 100,
     effectCode: 268,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "450": {
@@ -9991,6 +10891,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 224,
+    effectChance: 0,
+    priority: 0,
     maxPp: 20,
   },
   "451": {
@@ -10000,6 +10902,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 50,
     accuracy: 90,
     effectCode: 276,
+    effectChance: 70,
+    priority: 0,
     maxPp: 10,
   },
   "452": {
@@ -10009,6 +10913,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 100,
     effectCode: 198,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "453": {
@@ -10018,6 +10924,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 40,
     accuracy: 100,
     effectCode: 103,
+    effectChance: 0,
+    priority: 1,
     maxPp: 20,
   },
   "454": {
@@ -10027,6 +10935,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 90,
     accuracy: 100,
     effectCode: 43,
+    effectChance: 0,
+    priority: 0,
     maxPp: 15,
   },
   "455": {
@@ -10036,6 +10946,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 206,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "456": {
@@ -10045,6 +10957,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 32,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "457": {
@@ -10054,6 +10968,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 150,
     accuracy: 80,
     effectCode: 269,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "458": {
@@ -10063,6 +10979,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 35,
     accuracy: 90,
     effectCode: 44,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "459": {
@@ -10072,6 +10990,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 150,
     accuracy: 90,
     effectCode: 80,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "460": {
@@ -10081,6 +11001,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 95,
     effectCode: 43,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "461": {
@@ -10090,6 +11012,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 0,
     effectCode: 270,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "462": {
@@ -10099,6 +11023,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 1,
     accuracy: 100,
     effectCode: 237,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "463": {
@@ -10108,6 +11034,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 70,
     effectCode: 42,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "464": {
@@ -10117,6 +11045,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 0,
     accuracy: 80,
     effectCode: 1,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "465": {
@@ -10126,6 +11056,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 85,
     effectCode: 271,
+    effectChance: 40,
+    priority: 0,
     maxPp: 5,
   },
   "466": {
@@ -10135,6 +11067,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 60,
     accuracy: 100,
     effectCode: 140,
+    effectChance: 10,
+    priority: 0,
     maxPp: 5,
   },
   "467": {
@@ -10144,6 +11078,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 120,
     accuracy: 100,
     effectCode: 272,
+    effectChance: 0,
+    priority: 0,
     maxPp: 5,
   },
   "468": {
@@ -10153,6 +11089,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "469": {
@@ -10162,6 +11100,8 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
   "470": {
@@ -10171,9 +11111,11 @@ export const COMPETITIVE_MOVE_CATALOG: Readonly<Record<number, CompetitiveMoveDe
     power: 100,
     accuracy: 100,
     effectCode: 0,
+    effectChance: 0,
+    priority: 0,
     maxPp: 10,
   },
 };
 
 export const COMPETITIVE_CATALOG_HASH =
-  "587daa5e6d1e15c684b11ae8cba5a44039f1500c4470b4198cce26c2abdfe05a";
+  "4dfc61095841284f2d0db2ffe9ed373bb5a3f963d21edb5d1bb53e69dd50480a";

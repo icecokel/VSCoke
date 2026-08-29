@@ -170,7 +170,7 @@ test("직접 구성한 3개 기술은 정규 기술표로 덮어쓰지 않는다
   }
 });
 
-test("화상·마비와 학습 기술을 보존하고 미지원 상태기술은 안전한 공격으로 해석한다", async () => {
+test("화상·마비와 학습 기술을 보존하고 미지원 상태기술은 롬 데이터대로 비활성화한다", async () => {
   await loadRuntimeGameData();
 
   try {
@@ -190,8 +190,12 @@ test("화상·마비와 학습 기술을 보존하고 미지원 상태기술은 
       dittoState.player.pokemon.moves.map(move => move.id),
       [144],
     );
-    assert.equal(dittoState.player.pokemon.moves[0]?.category, "physical");
-    assert.equal(dittoState.player.pokemon.moves[0]?.power, 40);
+    assert.equal(dittoState.player.pokemon.moves[0]?.category, "status");
+    assert.equal(dittoState.player.pokemon.moves[0]?.power, 0);
+    assert.equal(
+      dittoState.player.pokemon.moves[0]?.competitiveEffectSupport,
+      "unsupported-primary",
+    );
 
     const mixedMoveState = createBattleState({
       ...createPlayerPokemon(152, "치코리타"),
@@ -204,6 +208,10 @@ test("화상·마비와 학습 기술을 보존하고 미지원 상태기술은 
     assert.deepEqual(
       mixedMoveState.player.pokemon.moves.map(move => move.id),
       [33, 235],
+    );
+    assert.equal(
+      mixedMoveState.player.pokemon.moves[1]?.competitiveEffectSupport,
+      "unsupported-primary",
     );
   } finally {
     resetRuntimeGameDataJsonStateForTest();

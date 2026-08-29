@@ -220,6 +220,118 @@ test("기술 우선도가 같으면 스피드가 빠른 포켓몬이 먼저 행�
   );
 });
 
+test("ROM 기술 우선도는 스피드보다 먼저 적용한다", () => {
+  const state = createSpeedOrderBattleState({ playerSpeed: 10, opponentSpeed: 100 });
+  const playerPokemon = {
+    ...state.player.pokemon,
+    moves: [{ ...state.player.pokemon.moves[0]!, priority: 1 }],
+  };
+  state.player.pokemon = playerPokemon;
+  state.player.party[0] = { slotIndex: 0, pokemon: playerPokemon };
+
+  const resolved = choosePlayerMove(state, 0, { random: () => 0.99 });
+
+  assert.equal(resolved.messageQueue[0], "치코리타의 몸통박치기!");
+});
+
+test("ROM 부가 효과 확률을 그대로 적용한다", () => {
+  const state = createSpeedOrderBattleState({ playerSpeed: 100, opponentSpeed: 10 });
+  const playerPokemon = {
+    ...state.player.pokemon,
+    moves: [
+      {
+        ...state.player.pokemon.moves[0]!,
+        effectCode: 6,
+        effectChance: 30,
+      },
+    ],
+  };
+  state.player.pokemon = playerPokemon;
+  state.player.party[0] = { slotIndex: 0, pokemon: playerPokemon };
+
+  const resolved = choosePlayerMove(state, 0, { random: () => 0.2 });
+
+  assert.equal(resolved.opponent.pokemon.status, "paralyzed");
+});
+
+test("웅크리기는 상대를 공격하지 않고 사용자의 방어를 올린다", () => {
+  const initialState = createSampleBattleState();
+  const defenseCurl = {
+    ...initialState.player.pokemon.moves[0],
+    id: 111,
+    name: "웅크리기",
+    category: "status" as const,
+    effectCode: 156,
+    power: 0,
+    accuracy: 0,
+  };
+  const state: BattleScreenState = {
+    ...initialState,
+    phase: "move-select",
+    messageQueue: [],
+    player: {
+      ...initialState.player,
+      pokemon: {
+        ...initialState.player.pokemon,
+        moves: [defenseCurl],
+      },
+    },
+    opponent: {
+      ...initialState.opponent,
+      pokemon: {
+        ...initialState.opponent.pokemon,
+        moves: [],
+      },
+    },
+  };
+
+  const resolved = choosePlayerMove(state, 0, { random: () => 0.5 });
+
+  assert.equal(resolved.player.pokemon.statStages.defense, 1);
+  assert.equal(resolved.opponent.pokemon.statStages.defense, 0);
+  assert.equal(resolved.opponent.pokemon.currentHp, state.opponent.pokemon.currentHp);
+  assert.equal(resolved.messageQueue.includes("치코리타의 방어가 올랐다!"), true);
+  assert.ok(resolved.messageHpSnapshots?.every(snapshot => snapshot.attackHitTarget === null));
+});
+
+test("미지원 상태 기술만 남으면 무효 공격 대신 발버둥을 사용한다", () => {
+  const initialState = createSampleBattleState();
+  const unsupportedMove = {
+    ...initialState.player.pokemon.moves[0],
+    id: 97,
+    name: "고속이동",
+    category: "status" as const,
+    effectCode: 52,
+    power: 0,
+    accuracy: 0,
+    competitiveEffectSupport: "unsupported-primary" as const,
+  };
+  const state: BattleScreenState = {
+    ...initialState,
+    phase: "command",
+    messageQueue: [],
+    player: {
+      ...initialState.player,
+      pokemon: {
+        ...initialState.player.pokemon,
+        moves: [unsupportedMove],
+      },
+    },
+    opponent: {
+      ...initialState.opponent,
+      pokemon: {
+        ...initialState.opponent.pokemon,
+        moves: [],
+      },
+    },
+  };
+
+  const resolved = chooseBattleCommand(state, "fight", { random: () => 0.5 });
+
+  assert.equal(resolved.messageQueue[0], "치코리타의 발버둥!");
+  assert.ok(resolved.opponent.pokemon.currentHp < state.opponent.pokemon.currentHp);
+});
+
 test("선두가 쓰러지고 생존한 벤치가 있으면 패배 대신 강제 교체로 진행한다", () => {
   const state = choosePlayerMove(createTwoPokemonBattleState(), 0, {
     random: () => 0.5,

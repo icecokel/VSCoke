@@ -89,7 +89,7 @@ class DefaultWorldSceneTournament implements WorldSceneTournamentController {
 
   constructor(private readonly dependencies: WorldSceneTournamentDependencies) {}
 
-  update(nowMs: number): void {
+  update(): void {
     const state = this.dependencies.gameStateStore.getState();
     const serverProjection = state.tournament.serverProjection;
 
@@ -97,7 +97,7 @@ class DefaultWorldSceneTournament implements WorldSceneTournamentController {
       serverProjection &&
       (state.round.phase === "waiting" || state.round.phase === "preparation")
     ) {
-      this.showServerTournamentMessage(serverProjection, nowMs);
+      this.showServerTournamentMessage(serverProjection);
       return;
     }
 
@@ -111,7 +111,7 @@ class DefaultWorldSceneTournament implements WorldSceneTournamentController {
         return;
       }
 
-      this.showTournamentPendingMessage(nowMs);
+      this.showTournamentPendingMessage();
       return;
     }
 
@@ -248,11 +248,11 @@ class DefaultWorldSceneTournament implements WorldSceneTournamentController {
     this.submittedServerMatchId = null;
   }
 
-  private showTournamentPendingMessage(nowMs: number): void {
+  private showTournamentPendingMessage(): void {
     const projection = this.dependencies.gameStateStore.getState().tournament.serverProjection;
 
     if (projection) {
-      this.showServerTournamentMessage(projection, nowMs);
+      this.showServerTournamentMessage(projection);
       return;
     }
 
@@ -411,7 +411,7 @@ class DefaultWorldSceneTournament implements WorldSceneTournamentController {
     return true;
   }
 
-  private showServerTournamentMessage(projection: TournamentStateRoomPayload, nowMs: number): void {
+  private showServerTournamentMessage(projection: TournamentStateRoomPayload): void {
     if (projection.resultSync.matchId === projection.tournament.activeMatchId) {
       if (projection.resultSync.status === "submitting") {
         this.setAnnouncement("경기 결과 전송 중", "16px");
@@ -429,44 +429,7 @@ class DefaultWorldSceneTournament implements WorldSceneTournamentController {
       }
     }
 
-    this.setAnnouncement(
-      createServerTournamentAnnouncementText({
-        projection,
-        nowMs,
-        casualBattleAvailable: this.isCurrentCasualBattleAvailable(projection),
-      }),
-      "14px",
-    );
-  }
-
-  private isCurrentCasualBattleAvailable(projection: TournamentStateRoomPayload): boolean | null {
-    if (projection.activeMatchTransport !== "casual") {
-      return null;
-    }
-
-    const match = findCurrentMatch(
-      projection.tournament.bracket,
-      projection.tournament.activeMatchId,
-    );
-
-    if (!match || !getMatchParticipantIds(match).includes(projection.ownPlayerId)) {
-      return null;
-    }
-
-    const opponentPlayerId = getMatchParticipantIds(match).find(
-      playerId => playerId !== projection.ownPlayerId,
-    );
-    const player = this.getTournamentBattlePlayer(projection.ownPlayerId);
-    const opponent = opponentPlayerId
-      ? this.getTournamentBattlePlayer(opponentPlayerId)
-      : undefined;
-
-    return Boolean(
-      player &&
-      opponent &&
-      hasActiveTournamentPokemon(player) &&
-      hasActiveTournamentPokemon(opponent),
-    );
+    this.clearPresentation();
   }
 
   private setAnnouncement(text: string, fontSize: "14px" | "16px"): void {

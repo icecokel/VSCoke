@@ -131,6 +131,35 @@ test("원격 party가 없는 casual active match는 미지원과 로그인·나�
   assert.ok(text.split("\n").length <= 7);
 });
 
+test("서버 토너먼트 진행 설명은 월드 중앙에 표시하지 않는다", () => {
+  const projection = createFivePlayerProjection();
+  const store = createGameStateStore();
+  const applied = store.applyTournamentSnapshotFromRoom(projection, 2_000);
+  assert.deepEqual(applied, { ok: true });
+  let announcementText: string | null = null;
+  const tournament = createWorldSceneTournament({
+    gameStateStore: store,
+    isBattleIntroPlaying: () => false,
+    hasWorldPlayer: () => false,
+    isRoomTournamentHost: () => false,
+    getRemotePlayerSnapshots: () => [],
+    startTrainerBattle: () => {},
+    getRoomHostPlayerId: () => null,
+    sendTournamentStarted: () => {},
+    sendTournamentMatchResult: () => {},
+    sendTournamentCompleted: () => {},
+    sendRoundScoreUpdates: () => {},
+    createAnnouncement: text => {
+      announcementText = text;
+      return { destroy: () => {} };
+    },
+  });
+
+  tournament.update(2_000);
+
+  assert.equal(announcementText, null);
+});
+
 test("서버 준비 단계는 서버 endsAt 기준 남은 시간을 표시한다", () => {
   const projection = createFivePlayerProjection();
   projection.roomStatus = "round-started";

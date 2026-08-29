@@ -21,12 +21,17 @@ describe('PokeLoungeRoomResponseDto terminal transition contract', () => {
       roomProperties.competitive,
       'PokeLoungeRoomResponseDto.competitive',
     );
+    const assignments = requireSchema(
+      roomProperties.competitiveAssignments,
+      'PokeLoungeRoomResponseDto.competitiveAssignments',
+    );
 
     const required = requireStringArray(
       room.required,
       'PokeLoungeRoomResponseDto.required',
     );
     expect(required).toContain('competitiveTransitions');
+    expect(required).toContain('competitiveAssignments');
     expect(required).not.toContain('competitive');
     expect(transitions).toMatchObject({
       type: 'array',
@@ -39,6 +44,13 @@ describe('PokeLoungeRoomResponseDto terminal transition contract', () => {
       $ref: '#/components/schemas/CompetitiveActionResponseDto',
     });
     expect(competitive).not.toMatchObject({ nullable: true });
+    expect(assignments).toMatchObject({
+      type: 'array',
+      maxItems: 3,
+      items: {
+        $ref: '#/components/schemas/CompetitiveActionResponseDto',
+      },
+    });
   });
 
   it('requires wrapper metadata and its completed action projection', () => {

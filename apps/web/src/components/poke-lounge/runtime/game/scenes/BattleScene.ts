@@ -290,6 +290,7 @@ interface BattleE2eSceneData {
 export interface AuthoritativeBattleSceneData extends BattleWorldPositionPolicy {
   battleKind: "authoritative";
   ownPlayerId: string;
+  spectating?: boolean;
   projection: CompetitiveProjection;
   returnToWorld: BattleScreenState["returnToWorld"];
 }
@@ -360,6 +361,7 @@ function isAuthoritativeBattleSceneData(data: unknown): data is AuthoritativeBat
     isRecord(data) &&
     data.battleKind === "authoritative" &&
     typeof data.ownPlayerId === "string" &&
+    (data.spectating === undefined || typeof data.spectating === "boolean") &&
     isRecord(data.projection) &&
     isRecord(data.returnToWorld)
   );
@@ -524,6 +526,7 @@ export class BattleScene extends Phaser.Scene {
   private persistWorldPositionOnReturn = true;
   private authoritativeProjection: CompetitiveProjection | null = null;
   private authoritativeOwnPlayerId: string | null = null;
+  private authoritativeSpectating = false;
   private authoritativeInputPending = false;
   private authoritativeTerminalTransition: AuthoritativeTerminalTransition | null = null;
   private authoritativeConnectionStatus: RoomEvent["CONNECTION_STATUS"]["connectionStatus"] =
@@ -559,9 +562,11 @@ export class BattleScene extends Phaser.Scene {
     if (isAuthoritativeBattleSceneData(data)) {
       this.authoritativeProjection = data.projection;
       this.authoritativeOwnPlayerId = data.ownPlayerId;
+      this.authoritativeSpectating = data.spectating === true;
       this.authoritativeInputPending =
         data.projection.status !== "completed" &&
-        data.projection.submittedPlayerIds.includes(data.ownPlayerId);
+        (this.authoritativeSpectating ||
+          data.projection.submittedPlayerIds.includes(data.ownPlayerId));
       this.authoritativeTerminalTransition =
         data.projection.status === "completed"
           ? {
@@ -577,6 +582,7 @@ export class BattleScene extends Phaser.Scene {
     } else {
       this.authoritativeProjection = null;
       this.authoritativeOwnPlayerId = null;
+      this.authoritativeSpectating = false;
       this.authoritativeInputPending = false;
       this.authoritativeTerminalTransition = null;
       this.authoritativeConnectionStatus = "offline";
@@ -1344,7 +1350,13 @@ export class BattleScene extends Phaser.Scene {
 
   private createInitialState(data: unknown): BattleScreenState {
     if (isAuthoritativeBattleSceneData(data)) {
-      return toAuthoritativeBattleState(data.projection, data.ownPlayerId, data.returnToWorld);
+      return this.toAuthoritativeSceneState(
+        data.projection,
+        data.ownPlayerId,
+        data.returnToWorld,
+        undefined,
+        data.spectating === true,
+      );
     }
 
     if (isBattleE2eSceneData(data)) {
@@ -1385,6 +1397,35 @@ export class BattleScene extends Phaser.Scene {
     return createSampleBattleState();
   }
 
+  private toAuthoritativeSceneState(
+    projection: CompetitiveProjection,
+    viewPlayerId: string,
+    returnToWorld: BattleScreenState["returnToWorld"],
+    previousState?: BattleScreenState,
+    spectating = this.authoritativeSpectating,
+  ): BattleScreenState {
+    const state = toAuthoritativeBattleState(
+      projection,
+      viewPlayerId,
+      returnToWorld,
+      this.getBattleStatusCopy().waiting,
+      previousState,
+    );
+    if (!spectating) {
+      return state;
+    }
+
+    return {
+      ...state,
+      phase: state.result ? "ended" : "resolving",
+      messageQueue: [
+        state.result
+          ? this.getBattleStatusCopy().spectatingCompleted
+          : this.getBattleStatusCopy().spectating,
+      ],
+    };
+  }
+
   private confirmSelection(): void {
     if (this.battleEntrancePlaying) {
       return;
@@ -1403,7 +1444,7 @@ export class BattleScene extends Phaser.Scene {
       this.authoritativeInputPending = false;
       this.authoritativeProjection = null;
       this.authoritativeOwnPlayerId = null;
-      this.returnToWorld(completedCompetitiveBattle);
+      this.returnToWorld(this.authoritativeSpectating ? undefined : completedCompetitiveBattle);
       return;
     }
 
@@ -1558,7 +1599,13 @@ export class BattleScene extends Phaser.Scene {
   ): void {
     const projection = this.authoritativeProjection;
     const ownPlayerId = this.authoritativeOwnPlayerId;
-    if (!projection || !ownPlayerId || !this.multiplayerRoom || this.authoritativeInputPending) {
+    if (
+      !projection ||
+      !ownPlayerId ||
+      !this.multiplayerRoom ||
+      this.authoritativeSpectating ||
+      this.authoritativeInputPending
+    ) {
       return;
     }
     if (!isLegalAuthoritativeAction(projection, ownPlayerId, action)) {
@@ -1658,7 +1705,8 @@ export class BattleScene extends Phaser.Scene {
           });
         });
       }),
-      this.multiplayerRoom.on("COMPETITIVE_STATE", ({ projection, ownPlayerId }) => {
+      this.multiplayerRoom.on("COMPETITIVE_STATE", event => {
+        const { projection } = event;
         const current = this.authoritativeProjection;
         if (
           !current ||
@@ -1670,9 +1718,13 @@ export class BattleScene extends Phaser.Scene {
         }
 
         this.authoritativeProjection = projection;
-        this.authoritativeOwnPlayerId = ownPlayerId;
+        const viewPlayerId = event.viewPlayerId ?? event.ownPlayerId;
+        const spectating = event.spectating === true;
+        this.authoritativeOwnPlayerId = viewPlayerId;
+        this.authoritativeSpectating = spectating;
         this.authoritativeInputPending =
-          projection.status !== "completed" && projection.submittedPlayerIds.includes(ownPlayerId);
+          projection.status !== "completed" &&
+          (spectating || projection.submittedPlayerIds.includes(viewPlayerId));
         if (projection.status === "completed") {
           const currentTerminal = this.authoritativeTerminalTransition;
           if (
@@ -1690,12 +1742,12 @@ export class BattleScene extends Phaser.Scene {
           }
           this.finishBattleEntranceAnimation();
         }
-        const nextState = toAuthoritativeBattleState(
+        const nextState = this.toAuthoritativeSceneState(
           projection,
-          ownPlayerId,
+          viewPlayerId,
           this.state.returnToWorld,
-          this.getBattleStatusCopy().waiting,
           this.state,
+          spectating,
         );
         if (this.authoritativeConnectionStatus !== "online" && projection.status !== "completed") {
           this.authoritativeInputPending = true;
@@ -1715,6 +1767,25 @@ export class BattleScene extends Phaser.Scene {
         this.authoritativeInputPending = true;
         this.state = { ...this.state, phase: "resolving", messageQueue: [message] };
         this.render();
+      }),
+      this.multiplayerRoom.on("COMPETITIVE_ASSIGNMENT", event => {
+        if (
+          !this.authoritativeSpectating ||
+          event.projection.matchId === this.authoritativeProjection?.matchId ||
+          !this.state.returnToWorld ||
+          !isCompetitiveAssignmentForPlayer(event)
+        ) {
+          return;
+        }
+
+        this.scene.restart({
+          battleKind: "authoritative",
+          ownPlayerId: event.viewPlayerId ?? event.ownPlayerId,
+          spectating: event.spectating === true,
+          persistWorldPosition: this.persistWorldPositionOnReturn,
+          projection: event.projection,
+          returnToWorld: this.state.returnToWorld,
+        });
       }),
     );
   }
@@ -1786,7 +1857,8 @@ export class BattleScene extends Phaser.Scene {
 
           this.scene.restart({
             battleKind: "authoritative",
-            ownPlayerId: event.ownPlayerId,
+            ownPlayerId: event.viewPlayerId ?? event.ownPlayerId,
+            spectating: event.spectating === true,
             persistWorldPosition: this.persistWorldPositionOnReturn,
             projection: event.projection,
             returnToWorld: this.state.returnToWorld,
@@ -2299,6 +2371,18 @@ export class BattleScene extends Phaser.Scene {
     const returnToWorld = this.state.returnToWorld;
 
     if (!returnToWorld) {
+      return;
+    }
+
+    if (this.authoritativeSpectating) {
+      this.clearAuthoritativeSubscriptions();
+      this.scene.start("world", {
+        spawnPosition: {
+          x: returnToWorld.x,
+          y: returnToWorld.y,
+          facing: returnToWorld.facing,
+        },
+      });
       return;
     }
 

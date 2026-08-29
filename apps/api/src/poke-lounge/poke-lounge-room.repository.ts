@@ -11,6 +11,7 @@ export type PokeLoungeRoomSnapshot = PokeLoungeRoomState & {
   revision: number;
   expiresAtMs: number;
   competitiveTransitions?: CompetitiveTerminalTransition[];
+  competitiveAssignments?: CompetitiveActionProjection[];
   competitive?: CompetitiveActionProjection;
 };
 

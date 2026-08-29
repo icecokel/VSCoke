@@ -16,7 +16,7 @@ export interface CompetitiveBattleLaunchCache {
 export function isCompetitiveAssignmentForPlayer(event: CompetitiveRoomProjectionEvent): boolean {
   return (
     event.projection.status !== "completed" &&
-    event.projection.playerIds.includes(event.ownPlayerId)
+    (event.spectating === true || event.projection.playerIds.includes(event.ownPlayerId))
   );
 }
 

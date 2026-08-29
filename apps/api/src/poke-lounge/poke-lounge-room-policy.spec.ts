@@ -305,6 +305,41 @@ describe('PokeLoungeRoomPolicy', () => {
     });
   });
 
+  it('applies round ranking scores in the same transition that ends the round', () => {
+    const room = createSnapshot({
+      status: 'round-started',
+      participants: [
+        createParticipant('player-1', 1),
+        createParticipant('player-2', 2),
+      ],
+      round: {
+        index: 1,
+        phase: 'round-started',
+        durationMs: 1_000,
+        startedAtMs: 0,
+        endsAtMs: 1_000,
+      },
+    });
+    const tournament = advancePokeLoungeRoomClock(room, 1_000)!;
+
+    completePokeLoungeTournamentMatch(
+      tournament,
+      tournament.tournament.activeMatchId!,
+      'player-1',
+      'faint',
+      1_001,
+      { 'player-1': 75, 'player-2': 25 },
+    );
+
+    expect(tournament).toMatchObject({
+      status: 'round-started',
+      round: { index: 2, phase: 'round-started' },
+      tournament: {
+        cumulativeScores: { 'player-1': 75, 'player-2': 25 },
+      },
+    });
+  });
+
   it('advances an elapsed round once with deterministic tournament matches', () => {
     const room = createSnapshot({
       status: 'round-started',

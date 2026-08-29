@@ -8,8 +8,14 @@ import {
   parseCompetitiveRoomSnapshotContract,
 } from "./competitive-projection";
 
-function createProjection() {
-  const playerIds = ["player-4", "player-5"] as const;
+function createProjection(
+  input: {
+    matchId?: string;
+    bracketMatchId?: string;
+    playerIds?: readonly [string, string];
+  } = {},
+) {
+  const playerIds = input.playerIds ?? (["player-4", "player-5"] as const);
   const playersById = Object.fromEntries(
     playerIds.map(playerId => [
       playerId,
@@ -41,8 +47,8 @@ function createProjection() {
   );
 
   return {
-    matchId: "123e4567-e89b-42d3-a456-426614174000",
-    bracketMatchId: "game-round-1-bracket-1-match-1",
+    matchId: input.matchId ?? "123e4567-e89b-42d3-a456-426614174000",
+    bracketMatchId: input.bracketMatchId ?? "game-round-1-bracket-1-match-1",
     kind: "tournament-unranked",
     assignmentRevision: 1,
     rulesetVersion: 2,
@@ -184,7 +190,30 @@ test("room snapshot의 누락 transitions는 빈 배열로, competitive 누락�
   const parsed = parseCompetitiveRoomSnapshotContract({ revision: 50 });
 
   assert.deepEqual(parsed.competitiveTransitions, []);
+  assert.deepEqual(parsed.competitiveAssignments, []);
   assert.equal("competitive" in parsed, false);
+});
+
+test("room snapshot은 같은 bracket 단계의 경쟁전 여러 개를 함께 읽는다", () => {
+  const assignments = [
+    createProjection(),
+    createProjection({
+      matchId: "223e4567-e89b-42d3-a456-426614174001",
+      bracketMatchId: "game-round-1-bracket-1-match-2",
+      playerIds: ["player-1", "player-2"],
+    }),
+  ];
+
+  const parsed = parseCompetitiveRoomSnapshotContract({
+    revision: 50,
+    competitiveAssignments: assignments,
+    competitive: assignments[0],
+  });
+
+  assert.deepEqual(
+    parsed.competitiveAssignments.map(assignment => assignment.bracketMatchId),
+    ["game-round-1-bracket-1-match-1", "game-round-1-bracket-1-match-2"],
+  );
 });
 
 test("room snapshot의 competitive null은 거부한다", () => {

@@ -121,6 +121,7 @@ export type PokeLoungePublicRoomState = Omit<
   revision: number;
   expiresAtMs: number;
   competitiveTransitions: CompetitiveTerminalTransition[];
+  competitiveAssignments: CompetitiveActionProjection[];
   competitive?: CompetitiveActionProjection;
 };
 

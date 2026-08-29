@@ -3,7 +3,10 @@ import {
   COMPETITIVE_RULESET_VERSION,
   hashCanonicalState,
 } from '@vscoke/poke-lounge-battle';
-import { createTestInitialBattleState } from '../../test/support/competitive-party.fixture';
+import {
+  createTestInitialBattleState,
+  createTestPartySnapshots,
+} from '../../test/support/competitive-party.fixture';
 import type {
   CreatePokeLoungeRedisRoomResult,
   PokeLoungeRedisRoomRecord,
@@ -126,6 +129,35 @@ describe('RedisPokeLoungeRepository', () => {
         deadlineMs: 61_000,
       },
     ]);
+  });
+
+  it('creates every ready bracket match in the same stage concurrently', async () => {
+    const redis = new InMemoryRedisRoomState();
+    const repository = new RedisPokeLoungeRepository(redis as never);
+    const room = sixPlayerRoundSnapshot();
+    await repository.create({
+      room,
+      actorPlayerId: 'player-1',
+      idempotencyKey: 'create-1',
+      requestHash: 'create-hash',
+      nowMs: 0,
+    });
+
+    const advanced = await repository.getAndAdvance(room.roomCode, 100);
+    const assignments = advanced.snapshot?.competitiveAssignments ?? [];
+
+    expect(advanced.snapshot).toMatchObject({
+      status: 'tournament',
+      tournament: { activeMatchAuthority: 'server' },
+    });
+    expect(assignments).toHaveLength(2);
+    expect(
+      new Set(assignments.map((assignment) => assignment.bracketMatchId)),
+    ).toHaveProperty('size', 2);
+    expect(
+      new Set(assignments.flatMap((assignment) => assignment.playerIds)),
+    ).toHaveProperty('size', 4);
+    await expect(repository.findPendingTurns()).resolves.toHaveLength(2);
   });
 });
 
@@ -262,5 +294,33 @@ function roomSnapshot(): PokeLoungeRoomSnapshot {
     finalStandings: [],
     revision: 0,
     expiresAtMs: 0,
+  };
+}
+
+function sixPlayerRoundSnapshot(): PokeLoungeRoomSnapshot {
+  const playerIds = Array.from(
+    { length: 6 },
+    (_, index) => `player-${index + 1}`,
+  );
+  return {
+    ...roomSnapshot(),
+    status: 'round-started',
+    participants: playerIds.map((playerId, index) => ({
+      sessionId: `session-${index + 1}`,
+      playerId,
+      displayName: `Player ${index + 1}`,
+      role: 'participant',
+      ready: true,
+      connected: true,
+      joinedAtMs: index,
+    })),
+    partySnapshots: createTestPartySnapshots(playerIds),
+    round: {
+      index: 1,
+      phase: 'round-started',
+      durationMs: 100,
+      startedAtMs: 0,
+      endsAtMs: 100,
+    },
   };
 }

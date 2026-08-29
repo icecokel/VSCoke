@@ -36,6 +36,7 @@ export interface CompetitiveTerminalTransition {
 export interface CompetitiveRoomSnapshotContract {
   revision: number;
   competitiveTransitions: CompetitiveTerminalTransition[];
+  competitiveAssignments: CompetitiveProjection[];
   competitive?: CompetitiveProjection;
 }
 export type CompetitiveAction = components["schemas"]["CompetitiveActionDto"];
@@ -50,6 +51,8 @@ export interface CompetitiveActionCommand {
 export interface CompetitiveRoomProjectionEvent {
   projection: CompetitiveProjection;
   ownPlayerId: string;
+  viewPlayerId?: string;
+  spectating?: boolean;
 }
 
 export type PlayerFacing = "front" | "back" | "left" | "right";

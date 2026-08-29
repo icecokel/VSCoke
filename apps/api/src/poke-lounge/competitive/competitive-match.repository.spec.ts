@@ -128,7 +128,7 @@ describe('planCompetitiveSeatBinding', () => {
     });
   });
 
-  it('assigns only the active bracket pair when all five seats are bound', () => {
+  it('assigns only the requested player active bracket pair when all five seats are bound', () => {
     const room = roomState();
     room.participants.push(
       participant('c'),
@@ -181,6 +181,11 @@ describe('planCompetitiveSeatBinding', () => {
     );
 
     expect(plan(room, seats, 'session-a', 'account-a')).toMatchObject({
+      assignmentPlayers: null,
+      assignmentBracketMatchId: null,
+      assignmentKind: null,
+    });
+    expect(plan(room, seats, 'session-d', 'account-d')).toMatchObject({
       assignmentPlayers: [
         { playerId: 'player-d', accountId: 'account-d' },
         { playerId: 'player-e', accountId: 'account-e' },

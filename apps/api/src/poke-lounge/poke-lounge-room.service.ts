@@ -1342,7 +1342,7 @@ function findActiveMatch(
     (candidate) => candidate.matchId === matchId,
   );
 
-  if (!match || room.tournament.activeMatchId !== matchId) {
+  if (!match) {
     throw new BadRequestException('Match not found');
   }
 
@@ -1425,7 +1425,6 @@ function completeParticipantLeaveAsForfeit(
 
   const match = room.tournament.bracket?.currentRound?.matches.find(
     (candidate) =>
-      candidate.matchId === room.tournament.activeMatchId &&
       candidate.status === 'ready' &&
       candidate.participantIds.includes(playerId),
   );

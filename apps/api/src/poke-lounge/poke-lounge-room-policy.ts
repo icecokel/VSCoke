@@ -411,17 +411,23 @@ export type PokeLoungeOfflineForfeit = {
 export function convergeOfflinePokeLoungeTournamentMatches(
   room: PokeLoungeRoomState,
   nowMs: number,
+  targetMatchId?: string,
 ): PokeLoungeOfflineForfeit[] {
   const completed: PokeLoungeOfflineForfeit[] = [];
 
   for (let attempt = 0; attempt < MAX_TOURNAMENT_WALKOVERS; attempt += 1) {
-    if (room.status !== 'tournament' || !room.tournament.activeMatchId) {
+    if (room.status !== 'tournament' || !room.tournament.bracket) {
       return completed;
     }
-    const match = room.tournament.bracket?.currentRound?.matches.find(
+    const match = getReadyTournamentMatches(room.tournament.bracket).find(
       (candidate) =>
-        candidate.matchId === room.tournament.activeMatchId &&
-        candidate.status === 'ready',
+        (!targetMatchId || candidate.matchId === targetMatchId) &&
+        candidate.participantIds.some((playerId) => {
+          const participant = room.participants.find(
+            (row) => row.playerId === playerId,
+          );
+          return !isParticipantPresenceActive(participant);
+        }),
     );
     if (!match) {
       return completed;

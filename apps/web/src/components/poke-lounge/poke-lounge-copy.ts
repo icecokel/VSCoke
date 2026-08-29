@@ -120,6 +120,8 @@ export interface PokeLoungeCopy {
     wallet: string;
     waiting: string;
     roundWaiting: string;
+    spectating: string;
+    spectatingCompleted: string;
     preparing: string;
     actionSending: string;
     connectionRecovering: string;
@@ -317,6 +319,8 @@ const KOREAN_COPY: PokeLoungeCopy = {
     wallet: "보유",
     waiting: "상대의 선택을 기다리는 중...",
     roundWaiting: "다른 플레이어를 기다리는 중...",
+    spectating: "다른 플레이어의 경기 관전 중...",
+    spectatingCompleted: "관전 중인 경기가 종료되었습니다.",
     preparing: "전투를 준비하는 중...",
     actionSending: "행동을 서버에 전송하는 중...",
     connectionRecovering: "연결을 복구하는 중...",
@@ -529,6 +533,8 @@ const ENGLISH_COPY: PokeLoungeCopy = {
     wallet: "Wallet",
     waiting: "Waiting for the other trainer...",
     roundWaiting: "Waiting for the other players...",
+    spectating: "Watching another player's match...",
+    spectatingCompleted: "The match you were watching has ended.",
     preparing: "Preparing the battle...",
     actionSending: "Sending your action to the server...",
     connectionRecovering: "Restoring the connection...",
@@ -743,6 +749,8 @@ const JAPANESE_COPY: PokeLoungeCopy = {
     wallet: "所持金",
     waiting: "相手の選択を待っています...",
     roundWaiting: "ほかのプレイヤーを待っています...",
+    spectating: "ほかのプレイヤーの試合を観戦しています...",
+    spectatingCompleted: "観戦中の試合が終了しました。",
     preparing: "バトルを準備しています...",
     actionSending: "行動をサーバーに送信しています...",
     connectionRecovering: "接続を復旧しています...",

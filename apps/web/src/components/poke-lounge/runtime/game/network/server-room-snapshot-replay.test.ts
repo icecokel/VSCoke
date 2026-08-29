@@ -7,7 +7,28 @@ import {
   recordTournamentMatchResult,
 } from "@vscoke/poke-lounge-battle";
 import { createGameStateStore } from "../state/gameStateStore";
+import { selectCompetitiveAssignment } from "./competitive-projection";
 import type { CompetitiveProjection, RoomEvent } from "./localPreviewRoom";
+
+test("동시 경기 선택은 본인 경기를 우선하고 비전투자는 같은 경기를 안정적으로 관전한다", () => {
+  const assignments = [
+    {
+      matchId: "match-1",
+      bracketMatchId: "game-round-1-bracket-1-match-1",
+      playerIds: ["player-1", "player-2"],
+    },
+    {
+      matchId: "match-2",
+      bracketMatchId: "game-round-1-bracket-1-match-2",
+      playerIds: ["player-3", "player-4"],
+    },
+  ] as unknown as CompetitiveProjection[];
+
+  assert.equal(selectCompetitiveAssignment(assignments, "player-3", 1)?.matchId, "match-2");
+  const watched = selectCompetitiveAssignment(assignments, "player-5", 1)?.matchId;
+  assert.ok(watched === "match-1" || watched === "match-2");
+  assert.equal(selectCompetitiveAssignment(assignments, "player-5", 1)?.matchId, watched);
+});
 
 interface FixtureSocket {
   readonly connected: boolean;

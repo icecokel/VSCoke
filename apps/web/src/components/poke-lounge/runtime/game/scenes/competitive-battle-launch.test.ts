@@ -295,6 +295,15 @@ test("공식 배정은 해당 플레이어의 진행 중인 로컬 전투만 선
   assert.equal(
     isCompetitiveAssignmentForPlayer({
       ...event,
+      ownPlayerId: "spectator",
+      spectating: true,
+      viewPlayerId: "seed-4",
+    }),
+    true,
+  );
+  assert.equal(
+    isCompetitiveAssignmentForPlayer({
+      ...event,
       projection: { ...event.projection, status: "completed" },
     }),
     false,

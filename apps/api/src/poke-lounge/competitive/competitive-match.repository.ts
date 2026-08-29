@@ -129,7 +129,9 @@ export function planCompetitiveSeatBinding(input: {
     : [...input.seats, seat];
   const activeBracketMatch =
     input.room.tournament.bracket?.currentRound?.matches.find(
-      (match) => match.matchId === input.room.tournament.activeMatchId,
+      (match) =>
+        match.status === 'ready' &&
+        match.participantIds.includes(participant.playerId),
     );
   const tournamentPlayers = activeBracketMatch
     ? activeBracketMatch.participantIds.map((playerId) =>

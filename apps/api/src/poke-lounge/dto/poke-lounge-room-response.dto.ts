@@ -371,6 +371,9 @@ export class PokeLoungeRoomResponseDto implements PokeLoungePublicRoomState {
   @ApiProperty({ type: [CompetitiveTerminalTransitionDto], maxItems: 8 })
   competitiveTransitions!: CompetitiveTerminalTransitionDto[];
 
+  @ApiProperty({ type: [CompetitiveActionResponseDto], maxItems: 3 })
+  competitiveAssignments!: CompetitiveActionResponseDto[];
+
   @ApiPropertyOptional({ type: CompetitiveActionResponseDto })
   competitive?: CompetitiveActionResponseDto;
 }

@@ -16,6 +16,7 @@ const MAX_COMPETITIVE_RECORD_KEYS = 16;
 const MAX_COMPETITIVE_ARRAY_ITEMS = 2;
 const MAX_COMPETITIVE_TEAM_ITEMS = 6;
 const MAX_COMPETITIVE_TRANSITIONS = 8;
+const MAX_COMPETITIVE_ASSIGNMENTS = 3;
 const MAX_ROOM_SNAPSHOT_KEYS = 32;
 
 const COMPETITIVE_PROJECTION_KEYS = [
@@ -123,6 +124,7 @@ export function parseCompetitiveRoomSnapshotContract(
   const result: CompetitiveRoomSnapshotContract = {
     revision,
     competitiveTransitions,
+    competitiveAssignments: [],
   };
 
   if (hasOwn(snapshot, "competitive")) {
@@ -139,7 +141,85 @@ export function parseCompetitiveRoomSnapshotContract(
     result.competitive = parsed.projection;
   }
 
+  result.competitiveAssignments = hasOwn(snapshot, "competitiveAssignments")
+    ? parseCompetitiveAssignments(snapshot.competitiveAssignments)
+    : result.competitive
+      ? [result.competitive]
+      : [];
+  if (
+    result.competitive &&
+    !result.competitiveAssignments.some(
+      assignment => assignment.matchId === result.competitive?.matchId,
+    )
+  ) {
+    throw schemaError();
+  }
+
   return result;
+}
+
+export function selectCompetitiveAssignment(
+  assignments: readonly CompetitiveProjection[],
+  playerId: string,
+  roundIndex: number,
+): CompetitiveProjection | null {
+  const ownAssignment = assignments.find(assignment => assignment.playerIds.includes(playerId));
+  if (ownAssignment) {
+    return ownAssignment;
+  }
+  if (assignments.length === 0) {
+    return null;
+  }
+
+  const ordered = [...assignments].sort((left, right) =>
+    left.bracketMatchId.localeCompare(right.bracketMatchId),
+  );
+  return selectStableValue(
+    ordered,
+    `${playerId}:${roundIndex}:${ordered.map(assignment => assignment.matchId).join(":")}`,
+  );
+}
+
+export function selectCompetitiveViewPlayerId(
+  projection: CompetitiveProjection,
+  playerId: string,
+): string {
+  return projection.playerIds.includes(playerId)
+    ? playerId
+    : selectStableValue(projection.playerIds, `${playerId}:${projection.matchId}`);
+}
+
+function selectStableValue<T>(values: readonly T[], key: string): T {
+  let hash = 2166136261;
+  for (let index = 0; index < key.length; index += 1) {
+    hash ^= key.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return values[Math.abs(hash) % values.length]!;
+}
+
+function parseCompetitiveAssignments(value: unknown): CompetitiveProjection[] {
+  if (!Array.isArray(value) || value.length > MAX_COMPETITIVE_ASSIGNMENTS) {
+    throw schemaError();
+  }
+
+  const matchIds = new Set<string>();
+  const bracketMatchIds = new Set<string>();
+  return value.map(item => {
+    const parsed = parseCompetitiveProjectionContract(item);
+    const projection = parsed.projection;
+    if (
+      projection.status === "completed" ||
+      parsed.terminalMetadataState !== "not-terminal" ||
+      matchIds.has(projection.matchId) ||
+      bracketMatchIds.has(projection.bracketMatchId)
+    ) {
+      throw schemaError();
+    }
+    matchIds.add(projection.matchId);
+    bracketMatchIds.add(projection.bracketMatchId);
+    return projection;
+  });
 }
 
 function parseTerminalMetadata(

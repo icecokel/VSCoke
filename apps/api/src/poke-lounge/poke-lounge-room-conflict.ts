@@ -94,6 +94,10 @@ export function toPokeLoungePublicRoomState(
       ]),
     ),
     competitiveTransitions: structuredClone(room.competitiveTransitions ?? []),
+    competitiveAssignments: structuredClone(
+      room.competitiveAssignments ??
+        (room.competitive ? [room.competitive] : []),
+    ),
     participants: room.participants.map((participant) => ({
       playerId: participant.playerId,
       displayName: participant.displayName,

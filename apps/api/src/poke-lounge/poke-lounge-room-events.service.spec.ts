@@ -240,6 +240,7 @@ function roomSnapshot(
     revision: 3,
     expiresAtMs: TEST_EXPIRES_AT_MS,
     competitiveTransitions: [],
+    competitiveAssignments: [],
     ...overrides,
   };
 }

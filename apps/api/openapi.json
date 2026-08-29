@@ -3021,6 +3021,13 @@
               "$ref": "#/components/schemas/CompetitiveTerminalTransitionDto"
             }
           },
+          "competitiveAssignments": {
+            "maxItems": 3,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompetitiveActionResponseDto"
+            }
+          },
           "competitive": {
             "$ref": "#/components/schemas/CompetitiveActionResponseDto"
           }
@@ -3038,7 +3045,8 @@
           "round",
           "tournament",
           "finalStandings",
-          "competitiveTransitions"
+          "competitiveTransitions",
+          "competitiveAssignments"
         ]
       },
       "PokeLoungeRoomConflictResponseDto": {

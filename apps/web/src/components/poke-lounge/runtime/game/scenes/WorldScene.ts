@@ -1031,7 +1031,8 @@ export class WorldScene extends Phaser.Scene {
           }
           this.scene.start("battle", {
             battleKind: "authoritative",
-            ownPlayerId: latest.ownPlayerId,
+            ownPlayerId: latest.viewPlayerId ?? latest.ownPlayerId,
+            spectating: latest.spectating === true,
             persistWorldPosition: shouldPersistSoloWorldPosition(this.competitiveRoundsEnabled),
             projection: latest.projection,
             returnToWorld: {

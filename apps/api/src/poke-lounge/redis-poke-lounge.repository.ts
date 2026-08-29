@@ -6,6 +6,7 @@ import {
   COMPETITIVE_RULESET_VERSION,
   createCanonicalIdRecord,
   createSeededRandom,
+  getReadyTournamentMatches,
   hashCanonicalState,
   resolveTurn,
   scoreRemainingHpPercentage,
@@ -275,13 +276,20 @@ export class RedisPokeLoungeRepository
       );
       removeParticipantSeats(document, document.room, next);
       if (input.operation === 'leave') {
-        completeServerAuthorityParticipantLeave(
+        const activeMatch = findActiveMatchForPlayer(
           document,
-          document.room,
-          next,
           input.actorPlayerId,
-          input.nowMs,
         );
+        if (activeMatch) {
+          completeServerAuthorityParticipantLeave(
+            document,
+            document.room,
+            next,
+            activeMatch.bracketMatchId,
+            input.actorPlayerId,
+            input.nowMs,
+          );
+        }
       }
       ensureActiveTournamentAssignment(document, next);
       document.commands[
@@ -332,7 +340,9 @@ export class RedisPokeLoungeRepository
       const requestedParticipant = document.room.participants.find(
         (participant) => participant.sessionId === input.sessionId,
       );
-      const existingMatch = findActiveMatch(document);
+      const existingMatch = requestedParticipant
+        ? findActiveMatchForPlayer(document, requestedParticipant.playerId)
+        : null;
       const activeAssignment =
         document.room.status === 'waiting' ||
         document.room.status === 'round-started'
@@ -600,11 +610,9 @@ export class RedisPokeLoungeRepository
       if (!current) {
         return [];
       }
-      const match = findActiveMatch(current.document);
-      const pending = match
-        ? toCompetitivePendingTurn(current.document.room.roomCode, match)
-        : null;
-      return pending ? [pending] : [];
+      return findActiveMatches(current.document).map((match) =>
+        toCompetitivePendingTurn(current.document.room.roomCode, match),
+      );
     });
   }
 
@@ -635,9 +643,11 @@ export class RedisPokeLoungeRepository
       }
 
       const resolved = completeExpiredTurn(document, match, input.nowMs);
-      const nextMatch = findActiveMatch(document);
+      const nextMatch = document.matches[input.matchId];
       const nextTurn = nextMatch
-        ? toCompetitivePendingTurn(document.room.roomCode, nextMatch)
+        ? nextMatch.status === 'pending' || nextMatch.status === 'active'
+          ? toCompetitivePendingTurn(document.room.roomCode, nextMatch)
+          : null
         : null;
       if (!(await this.commitDocument(current.version, document))) {
         continue;
@@ -719,107 +729,121 @@ function ensureActiveTournamentAssignment(
   document: RedisPokeLoungeDocument,
   snapshot: PokeLoungeRoomSnapshot,
 ): void {
-  const bracketMatchId = snapshot.tournament.activeMatchId;
-  const bracketMatch = snapshot.tournament.bracket?.currentRound?.matches.find(
-    (match) => match.matchId === bracketMatchId,
-  );
-  if (!bracketMatchId || !bracketMatch) {
-    return;
-  }
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const bracket = snapshot.tournament.bracket;
+    const readyMatches = bracket ? getReadyTournamentMatches(bracket) : [];
+    snapshot.tournament.activeMatchId = readyMatches[0]?.matchId ?? null;
 
-  const active = findActiveMatch(document);
-  if (active && active.bracketMatchId !== bracketMatchId) {
-    deleteMatch(document, active.matchId);
-  }
-  const players = toCompetitivePlayers(
-    snapshot,
-    document.seats,
-    bracketMatch.participantIds,
-    snapshot.roomCode,
-  );
-  if (!players) {
-    snapshot.tournament.activeMatchAuthority = 'casual';
-    return;
-  }
+    if (readyMatches.length === 0) {
+      snapshot.tournament.activeMatchAuthority = null;
+      return;
+    }
 
-  const existing =
-    active?.bracketMatchId === bracketMatchId
-      ? active
-      : Object.values(document.matches).find(
-          (match) => match.bracketMatchId === bracketMatchId,
-        );
-  if (existing) {
-    const matchesBracket =
-      existing.kind === 'tournament-unranked' &&
-      hasSameCompetitivePlayers(existing.playerAccounts, players);
-    if (!matchesBracket) {
-      if (existing.status === 'completed') {
-        throw new Error(
-          'Completed competitive match does not match the activated bracket',
-        );
-      }
-      deleteMatch(document, existing.matchId);
-    } else {
-      snapshot.tournament.activeMatchAuthority = 'server';
-      if (existing.status === 'completed' && existing.terminalResult) {
-        completePokeLoungeTournamentMatch(
-          snapshot,
-          bracketMatchId,
-          existing.terminalResult.winnerPlayerId,
-          existing.terminalResult.reason,
-          existing.completedAt?.getTime() ?? snapshot.updatedAtMs,
-          createTerminalHpScores(existing.currentState),
-        );
-        ensureActiveTournamentAssignment(document, snapshot);
+    let shouldRecompute = false;
+    for (const bracketMatch of readyMatches) {
+      const players = toCompetitivePlayers(
+        snapshot,
+        document.seats,
+        bracketMatch.participantIds,
+        snapshot.roomCode,
+      );
+      if (!players) {
+        snapshot.tournament.activeMatchAuthority = 'casual';
         return;
       }
+
+      const existing = Object.values(document.matches).find(
+        (match) => match.bracketMatchId === bracketMatch.matchId,
+      );
+      if (existing) {
+        const matchesBracket =
+          existing.kind === 'tournament-unranked' &&
+          hasSameCompetitivePlayers(existing.playerAccounts, players);
+        if (!matchesBracket) {
+          if (existing.status === 'completed') {
+            throw new Error(
+              'Completed competitive match does not match the activated bracket',
+            );
+          }
+          deleteMatch(document, existing.matchId);
+        } else if (existing.status === 'completed' && existing.terminalResult) {
+          completePokeLoungeTournamentMatch(
+            snapshot,
+            bracketMatch.matchId,
+            existing.terminalResult.winnerPlayerId,
+            existing.terminalResult.reason,
+            existing.completedAt?.getTime() ?? snapshot.updatedAtMs,
+            createTerminalHpScores(existing.currentState),
+          );
+          shouldRecompute = true;
+          break;
+        } else {
+          const offlinePlayerId = selectOfflineMatchLoser(
+            snapshot,
+            bracketMatch.participantIds,
+          );
+          if (offlinePlayerId) {
+            completeServerAuthorityParticipantLeave(
+              document,
+              snapshot,
+              snapshot,
+              bracketMatch.matchId,
+              offlinePlayerId,
+              snapshot.updatedAtMs,
+            );
+            shouldRecompute = true;
+            break;
+          }
+          continue;
+        }
+      }
+
       const offlinePlayerId = selectOfflineMatchLoser(
         snapshot,
         bracketMatch.participantIds,
       );
       if (offlinePlayerId) {
-        completeServerAuthorityParticipantLeave(
-          document,
+        convergeOfflinePokeLoungeTournamentMatches(
           snapshot,
-          snapshot,
-          offlinePlayerId,
           snapshot.updatedAtMs,
+          bracketMatch.matchId,
         );
+        shouldRecompute = true;
+        break;
       }
-      return;
-    }
-  }
 
-  if (
-    convergeOfflinePokeLoungeTournamentMatches(snapshot, snapshot.updatedAtMs)
-      .length > 0
-  ) {
-    ensureActiveTournamentAssignment(document, snapshot);
+      const assignment = createCompetitiveAssignment({
+        roomId: document.id,
+        roomCode: snapshot.roomCode,
+        bracketMatchId: bracketMatch.matchId,
+        kind: 'tournament-unranked',
+        assignmentRevision: 1,
+        turnStartedAtMs: snapshot.updatedAtMs,
+        players,
+        parties: toCompetitiveParties(snapshot, players),
+      });
+      document.matches[assignment.matchId] = assignment;
+    }
+
+    if (shouldRecompute) {
+      continue;
+    }
+
+    snapshot.tournament.activeMatchAuthority = 'server';
     return;
   }
 
-  const assignment = createCompetitiveAssignment({
-    roomId: document.id,
-    roomCode: snapshot.roomCode,
-    bracketMatchId,
-    kind: 'tournament-unranked',
-    assignmentRevision: 1,
-    turnStartedAtMs: snapshot.updatedAtMs,
-    players,
-    parties: toCompetitiveParties(snapshot, players),
-  });
-  document.matches[assignment.matchId] = assignment;
-  snapshot.tournament.activeMatchAuthority = 'server';
+  throw new Error('Tournament assignment convergence exceeded its bound');
 }
 
 function completeServerAuthorityParticipantLeave(
   document: RedisPokeLoungeDocument,
   current: PokeLoungeRoomSnapshot,
   next: PokeLoungeRoomSnapshot,
+  bracketMatchId: string,
   playerId: string,
   nowMs: number,
 ): void {
-  const bracketMatchId = current.tournament.activeMatchId;
   if (
     current.status !== 'tournament' ||
     current.tournament.activeMatchAuthority !== 'server' ||
@@ -860,7 +884,10 @@ function completeServerAuthorityParticipantLeave(
     next.revision,
     next,
   );
-  next.competitiveTransitions = [toTerminalTransition(finalized.projection)];
+  next.competitiveTransitions = [
+    ...(next.competitiveTransitions ?? []),
+    toTerminalTransition(finalized.projection),
+  ];
   if (finalized.nextCompetitive) {
     next.competitive = finalized.nextCompetitive;
   }
@@ -878,7 +905,7 @@ function finalizeCompetitiveTerminalMatch(
   document: RedisPokeLoungeDocument,
   match: CompetitiveMatchAssignment,
   terminalRoomRevision: number,
-  state: PokeLoungeRoomState = document.room,
+  state: PokeLoungeRoomSnapshot = document.room,
 ): {
   projection: CompetitiveActionProjection;
   nextCompetitive: CompetitiveActionProjection | null;
@@ -898,8 +925,11 @@ function finalizeCompetitiveTerminalMatch(
     throw new Error('Competitive terminal metadata revision is immutable');
   }
 
+  const bracketMatch = state.tournament.bracket?.currentRound?.matches.find(
+    (candidate) => candidate.matchId === match.bracketMatchId,
+  );
   const nextCompetitive =
-    state.tournament.activeMatchId === match.bracketMatchId
+    bracketMatch?.status === 'ready'
       ? advanceTournamentAuthorityMatch(document, match, state)
       : null;
   return {
@@ -911,7 +941,7 @@ function finalizeCompetitiveTerminalMatch(
 function advanceTournamentAuthorityMatch(
   document: RedisPokeLoungeDocument,
   completedMatch: CompetitiveMatchAssignment,
-  state: PokeLoungeRoomState,
+  state: PokeLoungeRoomSnapshot,
 ): CompetitiveActionProjection | null {
   const terminal = completedMatch.terminalResult;
   if (!terminal) {
@@ -925,41 +955,19 @@ function advanceTournamentAuthorityMatch(
     completedMatch.completedAt?.getTime() ?? Date.now(),
     createTerminalHpScores(completedMatch.currentState),
   );
-  convergeOfflinePokeLoungeTournamentMatches(
-    state,
-    completedMatch.completedAt?.getTime() ?? Date.now(),
-  );
+  ensureActiveTournamentAssignment(document, state);
 
-  const bracketMatchId = state.tournament.activeMatchId;
-  const nextMatch = state.tournament.bracket?.currentRound?.matches.find(
-    (match) => match.matchId === bracketMatchId,
+  const readyMatchIds = new Set(
+    state.tournament.bracket
+      ? getReadyTournamentMatches(state.tournament.bracket).map(
+          (match) => match.matchId,
+        )
+      : [],
   );
-  if (!nextMatch || !bracketMatchId) {
-    return null;
-  }
-  const players = toCompetitivePlayers(
-    state,
-    document.seats,
-    nextMatch.participantIds,
-    document.room.roomCode,
+  const nextMatch = findActiveMatches(document).find((candidate) =>
+    readyMatchIds.has(candidate.bracketMatchId),
   );
-  if (!players) {
-    state.tournament.activeMatchAuthority = 'casual';
-    return null;
-  }
-  const assignment = createCompetitiveAssignment({
-    roomId: document.id,
-    roomCode: document.room.roomCode,
-    bracketMatchId,
-    kind: 'tournament-unranked',
-    assignmentRevision: 1,
-    turnStartedAtMs: completedMatch.completedAt?.getTime() ?? state.updatedAtMs,
-    players,
-    parties: toCompetitiveParties(state, players),
-  });
-  document.matches[assignment.matchId] = assignment;
-  state.tournament.activeMatchAuthority = 'server';
-  return toCompetitiveProjection(assignment, []);
+  return nextMatch ? toCompetitiveProjection(nextMatch, []) : null;
 }
 
 function completeExpiredTurn(
@@ -1037,18 +1045,30 @@ function projectRoomSnapshot(
 ): PokeLoungeRoomSnapshot {
   const snapshot = structuredClone(document.room);
   delete snapshot.competitive;
+  delete snapshot.competitiveAssignments;
   delete snapshot.competitiveTransitions;
-  const activeMatchId = snapshot.tournament.activeMatchId;
-  if (!activeMatchId || snapshot.tournament.activeMatchAuthority !== 'server') {
+  const activeMatchIds = new Set(
+    snapshot.tournament.bracket
+      ? getReadyTournamentMatches(snapshot.tournament.bracket).map(
+          (match) => match.matchId,
+        )
+      : [],
+  );
+  if (
+    activeMatchIds.size === 0 ||
+    snapshot.tournament.activeMatchAuthority !== 'server'
+  ) {
+    snapshot.competitiveAssignments = [];
     return snapshot;
   }
-  const match = Object.values(document.matches).find(
-    (candidate) =>
-      candidate.bracketMatchId === activeMatchId &&
-      candidate.status !== 'completed',
+  const matches = findActiveMatches(document).filter((candidate) =>
+    activeMatchIds.has(candidate.bracketMatchId),
   );
-  if (match) {
-    snapshot.competitive = projectMatch(document, match);
+  snapshot.competitiveAssignments = matches.map((match) =>
+    projectMatch(document, match),
+  );
+  if (matches[0]) {
+    snapshot.competitive = projectMatch(document, matches[0]);
   }
   return snapshot;
 }
@@ -1077,12 +1097,23 @@ function findTurnActions(
     );
 }
 
-function findActiveMatch(
+function findActiveMatches(
   document: RedisPokeLoungeDocument,
+): CompetitiveMatchAssignment[] {
+  return Object.values(document.matches)
+    .filter((match) => match.status === 'pending' || match.status === 'active')
+    .sort((left, right) =>
+      left.bracketMatchId.localeCompare(right.bracketMatchId),
+    );
+}
+
+function findActiveMatchForPlayer(
+  document: RedisPokeLoungeDocument,
+  playerId: string,
 ): CompetitiveMatchAssignment | null {
   return (
-    Object.values(document.matches).find(
-      (match) => match.status === 'pending' || match.status === 'active',
+    findActiveMatches(document).find((match) =>
+      match.playerAccounts.some((player) => player.playerId === playerId),
     ) ?? null
   );
 }
@@ -1279,6 +1310,7 @@ function toStoredRoom(
 ): PokeLoungeRoomSnapshot {
   const stored = structuredClone(snapshot);
   delete stored.competitive;
+  delete stored.competitiveAssignments;
   delete stored.competitiveTransitions;
   return stored;
 }

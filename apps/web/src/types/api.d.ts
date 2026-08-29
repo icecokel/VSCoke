@@ -1146,6 +1146,7 @@ export interface components {
       tournament: components["schemas"]["PokeLoungeTournamentDto"];
       finalStandings: components["schemas"]["PokeLoungeFinalStandingDto"][];
       competitiveTransitions: components["schemas"]["CompetitiveTerminalTransitionDto"][];
+      competitiveAssignments: components["schemas"]["CompetitiveActionResponseDto"][];
       competitive?: components["schemas"]["CompetitiveActionResponseDto"];
     };
     PokeLoungeRoomConflictResponseDto: {

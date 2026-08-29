@@ -14,6 +14,8 @@ import {
   parseCompetitiveProjection,
   parseCompetitiveProjectionContract,
   parseCompetitiveRoomSnapshotContract,
+  selectCompetitiveAssignment,
+  selectCompetitiveViewPlayerId,
 } from "./competitive-projection";
 import { createCompetitivePartySnapshot } from "./competitive-party-snapshot";
 import {
@@ -57,6 +59,7 @@ interface ServerRoomState {
   tournament: ServerTournamentState;
   finalStandings: ApiServerRoom["finalStandings"];
   competitiveTransitions: CompetitiveTerminalTransition[];
+  competitiveAssignments: CompetitiveProjection[];
   competitive?: CompetitiveProjection;
 }
 
@@ -1361,7 +1364,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
 
     if (
       resultSync.matchId &&
-      state.tournament.activeMatchId !== resultSync.matchId &&
+      !getReadyMatchIds(state.tournament).has(resultSync.matchId) &&
       resultSync.status !== "error"
     ) {
       resultSync = { matchId: null, status: "idle" };
@@ -1386,8 +1389,13 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       }
     }
 
-    if (state.competitive) {
-      applyCurrentAssignmentProjection(state.competitive);
+    const selectedAssignment = selectCompetitiveAssignment(
+      state.competitiveAssignments,
+      serverPlayerId,
+      state.round.index,
+    );
+    if (selectedAssignment) {
+      applyCurrentAssignmentProjection(selectedAssignment);
     } else if (
       currentAssignmentProjection &&
       !canReplayCompetitiveAssignment(currentAssignmentProjection)
@@ -1497,7 +1505,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
     const previousCompetitionKind = latestCompetitionKind;
     latestCompetitionKind = projection.kind;
     currentAssignmentProjection = projection;
-    const payload = { projection, ownPlayerId: serverPlayerId };
+    const payload = createCompetitivePayload(projection);
     const assignmentKey = `${projection.matchId}:${projection.assignmentRevision}`;
 
     if (announcedCompetitiveAssignmentKey !== assignmentKey) {
@@ -1517,7 +1525,7 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
   const canApplyCurrentAssignmentProjection = (projection: CompetitiveProjection): boolean =>
     projection.status !== "completed" &&
     latestState?.tournament.activeMatchAuthority === "server" &&
-    latestState.tournament.activeMatchId === projection.bracketMatchId;
+    getReadyMatchIds(latestState.tournament).has(projection.bracketMatchId);
 
   const createTournamentProjectionPayload = (
     state: ServerRoomState,
@@ -1530,7 +1538,8 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
       tournament.activeMatchAuthority === "casual"
         ? "casual"
         : tournament.activeMatchAuthority === "server" &&
-            currentAssignmentProjection?.bracketMatchId === tournament.activeMatchId
+            currentAssignmentProjection &&
+            getReadyMatchIds(tournament).has(currentAssignmentProjection.bracketMatchId)
           ? "authority"
           : "awaiting-authority";
     const seedByPlayerId = new Map(
@@ -1578,15 +1587,20 @@ export function createServerRoom(options: ServerRoomOptions): MultiplayerRoom {
 
   const createCompetitivePayload = (
     projection: CompetitiveProjection,
-  ): RoomEvent["COMPETITIVE_STATE"] => ({
-    projection,
-    ownPlayerId: serverPlayerId,
-  });
+  ): RoomEvent["COMPETITIVE_STATE"] => {
+    const spectating = !projection.playerIds.includes(serverPlayerId);
+    return {
+      projection,
+      ownPlayerId: serverPlayerId,
+      viewPlayerId: selectCompetitiveViewPlayerId(projection, serverPlayerId),
+      spectating,
+    };
+  };
 
   const canReplayCompetitiveAssignment = (projection: CompetitiveProjection): boolean =>
     projection.status !== "completed" &&
     latestState?.tournament.activeMatchAuthority === "server" &&
-    latestState.tournament.activeMatchId === projection.bracketMatchId;
+    getReadyMatchIds(latestState.tournament).has(projection.bracketMatchId);
 
   const replayLatestEvent = (type: RoomMessage, handler: Handler<RoomMessage>) => {
     if (type === "CONNECTION_STATUS" && connectionStatusAnnounced) {
@@ -2479,6 +2493,7 @@ function parseServerRoomState(value: unknown): ServerRoomState {
     round,
     tournament,
     competitiveTransitions: competitiveContract.competitiveTransitions,
+    competitiveAssignments: competitiveContract.competitiveAssignments,
   };
 
   if (competitiveContract.competitive) {
@@ -2488,7 +2503,11 @@ function parseServerRoomState(value: unknown): ServerRoomState {
   }
 
   if (
-    (parsed.competitive && !isCurrentAssignmentConsistentWithRoom(parsed)) ||
+    parsed.competitiveAssignments.some(
+      projection => !isCompetitiveAssignmentConsistentWithRoom(parsed, projection),
+    ) ||
+    (parsed.competitive &&
+      !isCompetitiveAssignmentConsistentWithRoom(parsed, parsed.competitive)) ||
     parsed.competitiveTransitions.some(
       transition => !isTerminalTransitionConsistentWithRoom(parsed, transition),
     )
@@ -2714,6 +2733,14 @@ function hasSameCanonicalRoomProjection(left: ServerRoomState, right: ServerRoom
   );
 }
 
+function getReadyMatchIds(tournament: ServerTournamentState): Set<string> {
+  return new Set(
+    tournament.bracket?.currentRound?.matches
+      .filter(match => match.status === "ready")
+      .map(match => match.matchId) ?? [],
+  );
+}
+
 function isCompetitiveProjectionAtLeastAsCurrent(
   current: CompetitiveProjection | null,
   candidate: CompetitiveProjection,
@@ -2818,7 +2845,9 @@ function resolveCompetitionKind(
   previousKind: TournamentCompetitionKind,
 ): TournamentCompetitionKind {
   const projectedKind =
-    state.competitive?.kind ?? state.competitiveTransitions.at(-1)?.projection.kind;
+    state.competitiveAssignments[0]?.kind ??
+    state.competitive?.kind ??
+    state.competitiveTransitions.at(-1)?.projection.kind;
 
   if (projectedKind) {
     return projectedKind;
@@ -2841,12 +2870,15 @@ function hasCompletedBracketMatch(state: ServerRoomState, bracketMatchId: string
   return findBracketMatch(state, bracketMatchId)?.status === "completed";
 }
 
-function isCurrentAssignmentConsistentWithRoom(state: ServerRoomState): boolean {
-  const projection = state.competitive;
-  const activeMatch = findCurrentMatch(state.tournament.bracket, state.tournament.activeMatchId);
+function isCompetitiveAssignmentConsistentWithRoom(
+  state: ServerRoomState,
+  projection: CompetitiveProjection,
+): boolean {
+  const activeMatch = state.tournament.bracket?.currentRound?.matches.find(
+    match => match.matchId === projection.bracketMatchId && match.status === "ready",
+  );
 
   return Boolean(
-    projection &&
     state.tournament.activeMatchAuthority === "server" &&
     activeMatch &&
     projection.bracketMatchId === activeMatch.matchId &&

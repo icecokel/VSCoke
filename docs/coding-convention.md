@@ -157,15 +157,14 @@
 
 변경 범위에 필요한 최소 검증을 저장소 루트에서 실행한다.
 
-| 변경 범위          | 필수 검증                                                    |
-| ------------------ | ------------------------------------------------------------ |
-| 문서·설정          | 변경 파일 Prettier 검사와 관련 설정 검증                     |
-| 웹 코드            | `pnpm lint:web`, `pnpm type:check:web`                       |
-| API 코드           | `pnpm --filter @vscoke/api lint`, 관련 API 테스트            |
-| 공유 battle 패키지 | `pnpm --filter @vscoke/poke-lounge-battle lint`, 관련 테스트 |
-| API 계약           | `pnpm check:api-contract`                                    |
-| 사용자 흐름·UI     | 관련 Playwright spec 또는 `pnpm e2e:smoke`                   |
-| 통합 영향          | `pnpm build` 및 영향 범위 테스트                             |
+| 변경 범위      | 필수 검증                                         |
+| -------------- | ------------------------------------------------- |
+| 문서·설정      | 변경 파일 Prettier 검사와 관련 설정 검증          |
+| 웹 코드        | `pnpm lint:web`, `pnpm type:check:web`            |
+| API 코드       | `pnpm --filter @vscoke/api lint`, 관련 API 테스트 |
+| API 계약       | `pnpm check:api-contract`                         |
+| 사용자 흐름·UI | 관련 Playwright spec 또는 `pnpm e2e:smoke`        |
+| 통합 영향      | `pnpm build` 및 영향 범위 테스트                  |
 
 실행하지 못한 검증이나 이미 알려진 실패가 있으면 완료 보고에 명시한다.
 

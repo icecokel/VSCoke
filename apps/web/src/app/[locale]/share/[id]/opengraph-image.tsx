@@ -33,18 +33,15 @@ const OGImage = async ({ params }: { params: Promise<{ id: string }> }) => {
     );
   }
 
-  const isSkyDrop = result.gameType === "SKY_DROP";
-  const isPokeLounge = result.gameType === "POKE_LOUNGE";
-  const gameTitle = isSkyDrop ? "SKY DROP" : isPokeLounge ? "POKE LOUNGE" : "GAME";
+  const isSkyDrop = (result.gameType as string) === "SKY_DROP";
+  const gameTitle = isSkyDrop ? "SKY DROP" : "GAME";
   const medal = isSkyDrop ? getSkyDropMedal(result.score) : null;
 
   // Colors
-  const titleColor = isSkyDrop ? "#4ECDC4" : isPokeLounge ? "#F8FBEF" : "#FFD93D";
+  const titleColor = isSkyDrop ? "#4ECDC4" : "#FFD93D";
   const accentGradient = isSkyDrop
     ? "linear-gradient(90deg, #4ECDC4, #FF6B6B)"
-    : isPokeLounge
-      ? "linear-gradient(90deg, #F8FBEF, #7CCFA7)"
-      : "linear-gradient(90deg, #FFD93D, #FF8E3C)";
+    : "linear-gradient(90deg, #FFD93D, #FF8E3C)";
 
   return new ImageResponse(
     <div

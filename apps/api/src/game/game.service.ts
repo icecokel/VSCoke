@@ -1,31 +1,19 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { GameHistory } from './entities/game-history.entity';
 import { User } from '../auth/entities/user.entity';
 import { CreateGameHistoryDto } from './dto/create-game-history.dto';
-import { SavePokeLoungeStateDto } from './dto/save-poke-lounge-state.dto';
 import { GameRankingHistoryDto } from './dto/game-ranking-history.dto';
 import { GameType } from './enums/game-type.enum';
 import {
-  GameSubmissionTrust,
   buildNamedValidScoreCondition,
   buildPositionalValidScoreCondition,
   getGameScorePolicy,
   getGameScorePolicyParams,
   getGameScorePolicyValues,
-  isPublicRankingEligible as isScorePublicRankingEligible,
   validateGameScoreSubmission,
 } from './game-score-policy';
-import {
-  PokeLoungeLiveStateService,
-  type PokeLoungeRedisPlayerState,
-} from '../poke-lounge/poke-lounge-live-state.service';
 
 type MaxScoreRow = {
   maxScore: string | number | null;
@@ -42,19 +30,6 @@ type RankCountRow = {
   count: string | number;
 };
 
-export type TransientPokeLoungeState = {
-  id: string;
-  userId: string;
-  state: Record<string, unknown>;
-  revision: number;
-  clientUpdatedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-const GENERIC_GAME_SUBMISSION_TRUST: GameSubmissionTrust = 'client-asserted';
-const POKE_LOUNGE_PLAYER_STATE_TTL_MS = 2 * 60 * 60 * 1000;
-
 /**
  * 게임 비즈니스 로직을 처리하는 서비스
  */
@@ -63,7 +38,6 @@ export class GameService {
   constructor(
     @InjectRepository(GameHistory)
     private gameHistoryRepository: Repository<GameHistory>,
-    private readonly pokeLoungeRedis: PokeLoungeLiveStateService,
   ) {}
 
   /**
@@ -74,9 +48,6 @@ export class GameService {
     gameType: GameType,
     dateRange?: { start: Date; end: Date },
   ): Promise<number> {
-    if (gameType === GameType.POKE_LOUNGE) {
-      return 0;
-    }
     const policy = getGameScorePolicy(gameType);
     const query = this.gameHistoryRepository
       .createQueryBuilder('gh')
@@ -106,34 +77,19 @@ export class GameService {
     user: User,
     createGameHistoryDto: CreateGameHistoryDto,
   ): Promise<GameHistory> {
-    if (createGameHistoryDto.gameType === GameType.POKE_LOUNGE) {
-      throw new BadRequestException('Poke Lounge results are transient');
-    }
     validateGameScoreSubmission(createGameHistoryDto);
 
     const history = this.gameHistoryRepository.create({
       ...createGameHistoryDto,
       user: user,
-      resultTrust: null,
-      sourceKey: null,
     });
     return this.gameHistoryRepository.save(history);
-  }
-
-  isPublicRankingEligible(gameType: GameType): boolean {
-    return isScorePublicRankingEligible(
-      gameType,
-      GENERIC_GAME_SUBMISSION_TRUST,
-    );
   }
 
   /**
    * 게임별 랭킹 목록을 조회함 (유저별 최고 점수 기준 Top 10)
    */
   async getRanking(gameType: GameType): Promise<GameRankingHistoryDto[]> {
-    if (gameType === GameType.POKE_LOUNGE) {
-      return [];
-    }
     const policy = getGameScorePolicy(gameType);
     const policyValues = getGameScorePolicyValues(policy);
     const queryValues: Array<string | number> = [gameType, ...policyValues];
@@ -195,42 +151,6 @@ export class GameService {
     return history;
   }
 
-  async savePokeLoungeState(
-    user: User,
-    dto: SavePokeLoungeStateDto,
-  ): Promise<TransientPokeLoungeState> {
-    const nowMs = Date.now();
-    const clientUpdatedAt = dto.clientUpdatedAt ?? null;
-    const revision = await this.pokeLoungeRedis.savePlayerState({
-      userId: user.id,
-      state: dto.state,
-      ...(dto.expectedRevision === undefined
-        ? {}
-        : { expectedRevision: dto.expectedRevision }),
-      clientUpdatedAt,
-      nowMs,
-      expiresAtMs: nowMs + POKE_LOUNGE_PLAYER_STATE_TTL_MS,
-    });
-    if (revision === null) {
-      throw new ConflictException(
-        'Poke Lounge state revision conflict; reload the latest state',
-      );
-    }
-    const stored = await this.pokeLoungeRedis.getPlayerState(user.id);
-    if (!stored || stored.revision !== revision) {
-      throw new Error('Poke Lounge Redis state was not readable after save');
-    }
-    return toTransientPokeLoungeState(user.id, stored);
-  }
-
-  async findPokeLoungeState(userId: string): Promise<TransientPokeLoungeState> {
-    const state = await this.pokeLoungeRedis.getPlayerState(userId);
-    if (!state) {
-      throw new NotFoundException('Poke Lounge state not found');
-    }
-    return toTransientPokeLoungeState(userId, state);
-  }
-
   /**
    * 사용자의 특정 점수에 대한 현재 전체 등수를 계산함
    * @param userId 사용자 ID
@@ -244,9 +164,6 @@ export class GameService {
     gameType: GameType,
     dateRange?: { start: Date; end: Date },
   ): Promise<number | null> {
-    if (gameType === GameType.POKE_LOUNGE) {
-      return null;
-    }
     const policy = getGameScorePolicy(gameType);
     const policyValues = getGameScorePolicyValues(policy);
     const queryValues: Array<string | number | Date> = [
@@ -282,21 +199,4 @@ export class GameService {
     // (나보다 높은 유저 수) + 1 = 현재 나의 등수
     return Number.parseInt(String(result[0]?.count ?? '0'), 10) + 1;
   }
-}
-
-function toTransientPokeLoungeState(
-  userId: string,
-  state: PokeLoungeRedisPlayerState,
-): TransientPokeLoungeState {
-  return {
-    id: userId,
-    userId,
-    state: structuredClone(state.state),
-    revision: state.revision,
-    clientUpdatedAt: state.clientUpdatedAt
-      ? new Date(state.clientUpdatedAt)
-      : null,
-    createdAt: new Date(state.createdAt),
-    updatedAt: new Date(state.updatedAt),
-  };
 }

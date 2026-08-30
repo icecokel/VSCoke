@@ -29,17 +29,6 @@ export const normalizeConnectSource = (value: string | undefined) => {
   }
 };
 
-export const toWebSocketConnectSource = (value: string | undefined) => {
-  const origin = normalizeConnectSource(value);
-
-  if (!origin) return undefined;
-
-  const url = new URL(origin);
-  url.protocol = url.protocol === "http:" ? "ws:" : "wss:";
-
-  return url.origin;
-};
-
 export const createConnectSources = (apiUrl: string | undefined) => {
   const apiOrigins = [productionApiOrigin, normalizeConnectSource(apiUrl)].filter(
     (source): source is string => Boolean(source),
@@ -49,7 +38,7 @@ export const createConnectSources = (apiUrl: string | undefined) => {
     new Set(
       [
         "'self'",
-        ...apiOrigins.flatMap(origin => [origin, toWebSocketConnectSource(origin)]),
+        ...apiOrigins,
         "https://www.google-analytics.com",
         "https://region1.google-analytics.com",
         "https://analytics.google.com",
@@ -86,15 +75,6 @@ const nextConfig: NextConfig = {
 
   // 모노레포 루트를 명시해 workspace package 참조와 lockfile 탐지를 안정화한다.
   outputFileTracingRoot: monorepoRoot,
-  transpilePackages: ["@vscoke/poke-lounge-battle"],
-  webpack(config) {
-    config.resolve.alias["@vscoke/poke-lounge-battle"] = path.join(
-      monorepoRoot,
-      "packages/poke-lounge-battle/src/browser.ts",
-    );
-    return config;
-  },
-
   // 외부 이미지 도메인 허용 설정 (next/image 컴포넌트용)
   images: {
     remotePatterns: [

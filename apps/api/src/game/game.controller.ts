@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Put,
   Post,
   Body,
   UseGuards,
@@ -18,19 +17,15 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
-  ApiNotFoundResponse,
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { GameService } from './game.service';
 import { CreateGameHistoryDto } from './dto/create-game-history.dto';
 import { GameHistoryResponseDto } from './dto/game-history-response.dto';
 import { GameRankingHistoryDto } from './dto/game-ranking-history.dto';
-import { PokeLoungeStateResponseDto } from './dto/poke-lounge-state-response.dto';
-import { SavePokeLoungeStateDto } from './dto/save-poke-lounge-state.dto';
 import { GoogleAuthGuard } from '../auth/google-auth.guard';
 import { GameType } from './enums/game-type.enum';
 import { User } from '../auth/entities/user.entity';
-import type { TransientPokeLoungeState } from './game.service';
 
 type AuthenticatedRequest = Request & { user: User };
 
@@ -67,22 +62,6 @@ export class GameController {
       req.user.id,
       history.gameType,
     );
-
-    if (!this.gameService.isPublicRankingEligible(history.gameType)) {
-      return {
-        id: history.id,
-        score: history.score,
-        gameType: history.gameType,
-        createdAt: history.createdAt,
-        user: {
-          displayName: `${history.user.firstName} ${history.user.lastName}`,
-        },
-        rank: null,
-        bestScore,
-        allTimeRank: null,
-        weeklyRank: null,
-      };
-    }
 
     // 전체 랭킹 (내 최고 점수 기준)
     const allTimeRank = await this.gameService.getUserRank(
@@ -138,37 +117,6 @@ export class GameController {
     };
   }
 
-  @Put('poke-lounge/state')
-  @UseGuards(GoogleAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Poke Lounge 상태 저장' })
-  @ApiOkResponse({ type: PokeLoungeStateResponseDto })
-  async savePokeLoungeState(
-    @Req() req: AuthenticatedRequest,
-    @Body() body: SavePokeLoungeStateDto,
-  ): Promise<PokeLoungeStateResponseDto> {
-    const savedState = await this.gameService.savePokeLoungeState(
-      req.user,
-      body,
-    );
-
-    return toPokeLoungeStateResponse(savedState);
-  }
-
-  @Get('poke-lounge/state')
-  @UseGuards(GoogleAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Poke Lounge 상태 조회' })
-  @ApiOkResponse({ type: PokeLoungeStateResponseDto })
-  @ApiNotFoundResponse({ description: '저장된 Poke Lounge 상태가 없음' })
-  async getPokeLoungeState(
-    @Req() req: AuthenticatedRequest,
-  ): Promise<PokeLoungeStateResponseDto> {
-    const savedState = await this.gameService.findPokeLoungeState(req.user.id);
-
-    return toPokeLoungeStateResponse(savedState);
-  }
-
   /**
    * KST(UTC+9) 기준 이번 주 월요일 00:00:00 ~ 일요일 23:59:59의 Date 범위를 반환
    */
@@ -193,7 +141,6 @@ export class GameController {
   @Get('ranking')
   @ApiOperation({
     summary: '게임별 Top 10 랭킹 조회',
-    description: 'POKE_LOUNGE는 영속 기록을 만들지 않아 빈 배열을 반환합니다.',
   })
   @ApiQuery({
     name: 'gameType',
@@ -242,18 +189,4 @@ export class GameController {
       },
     };
   }
-}
-
-function toPokeLoungeStateResponse(
-  savedState: TransientPokeLoungeState,
-): PokeLoungeStateResponseDto {
-  return {
-    id: savedState.id,
-    userId: savedState.userId,
-    state: savedState.state,
-    revision: savedState.revision,
-    createdAt: savedState.createdAt,
-    updatedAt: savedState.updatedAt,
-    clientUpdatedAt: savedState.clientUpdatedAt,
-  };
 }

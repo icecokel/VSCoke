@@ -7,8 +7,7 @@ const playwrightWorkers = Number.parseInt(process.env.PLAYWRIGHT_WORKERS ?? "", 
 const enableCrossBrowser = process.env.PLAYWRIGHT_ENABLE_CROSS_BROWSER === "1";
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${playwrightPort}`;
 const configuredRetries = Number.parseInt(process.env.PLAYWRIGHT_RETRIES ?? "", 10);
-const mobileTestMatch = /(mobile-behavior|poke-lounge-mobile)\.spec\.ts$/;
-const integrationTestMatch = /poke-lounge-(?:five-player-tournament|public-lobby)\.spec\.ts$/;
+const mobileTestMatch = /mobile-behavior\.spec\.ts$/;
 const visualRegressionTestMatch = /visual-regression\.spec\.ts$/;
 const playwrightOutputRoot = process.env.PLAYWRIGHT_OUTPUT_DIR ?? "../../output/playwright";
 
@@ -39,14 +38,14 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      testIgnore: [mobileTestMatch, integrationTestMatch],
+      testIgnore: mobileTestMatch,
       use: { ...devices["Desktop Chrome"] },
     },
     ...(enableCrossBrowser
       ? [
           {
             name: "webkit",
-            testIgnore: [mobileTestMatch, integrationTestMatch, visualRegressionTestMatch],
+            testIgnore: [mobileTestMatch, visualRegressionTestMatch],
             use: { ...devices["Desktop Safari"] },
           },
         ]
@@ -123,14 +122,6 @@ export default defineConfig({
               isMobile: true,
               hasTouch: true,
               deviceScaleFactor: 2,
-            },
-          },
-          {
-            name: "poke-lounge-five-browser-integration",
-            testMatch: integrationTestMatch,
-            use: {
-              browserName: "chromium" as const,
-              screenshot: "off" as const,
             },
           },
         ]

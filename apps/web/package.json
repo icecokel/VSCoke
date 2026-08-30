@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --hostname localhost",
-    "build": "node ../../scripts/poke-lounge/check-asset-provenance.mjs --deployment-gate && next build",
+    "build": "next build",
     "start": "next start",
     "e2e": "node scripts/playwright-runner.mjs test",
     "e2e:codegen": "node scripts/playwright-runner.mjs codegen",
@@ -12,7 +12,6 @@
     "e2e:headed": "node scripts/playwright-runner.mjs test --headed",
     "e2e:install": "playwright install chromium webkit",
     "e2e:integration": "node scripts/playwright-integration-runner.mjs",
-    "e2e:local-test-mode": "node scripts/playwright-runner.mjs --local-test-mode test tests/e2e/poke-lounge-local-test-mode.spec.ts --project=chromium",
     "e2e:report": "playwright show-report",
     "e2e:server": "NEXT_DIST_DIR=.next-e2e PLAYWRIGHT_PORT=37123 node scripts/playwright-web-server.mjs",
     "e2e:smoke": "node scripts/playwright-runner.mjs test tests/e2e/i18n-integrity.spec.ts --project=chromium",
@@ -24,7 +23,7 @@
     "format:check": "prettier --check .",
     "type:check": "tsc --noEmit",
     "knip": "knip --no-progress --include files,dependencies,unlisted,unresolved",
-    "test:poke-lounge-unit": "node scripts/web-unit-test-runner.mjs",
+    "test": "node scripts/web-unit-test-runner.mjs",
     "generate:types": "openapi-typescript ../api/openapi.json -o src/types/api.d.ts"
   },
   "dependencies": {
@@ -38,7 +37,6 @@
     "@radix-ui/react-slot": "^1.2.5",
     "@radix-ui/react-tooltip": "^1.2.9",
     "@radix-ui/react-visually-hidden": "^1.2.5",
-    "@vscoke/poke-lounge-battle": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "gray-matter": "^4.0.3",
@@ -55,7 +53,6 @@
     "qrcode.react": "^4.2.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "socket.io-client": "^4.8.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0"
   },

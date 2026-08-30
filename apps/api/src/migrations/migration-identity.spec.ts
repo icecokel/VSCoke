@@ -15,7 +15,6 @@ describe('production migration identities', () => {
 
     expect(new Set(timestamps).size).toBe(timestamps.length);
     expect(new Set(classNames).size).toBe(classNames.length);
-    expect(timestamps).toContain('1794441600000');
   });
 });
 

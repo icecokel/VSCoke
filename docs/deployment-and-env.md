@@ -70,22 +70,21 @@ host
 5. `pnpm --filter @vscoke/api build`로 API를 빌드한다.
 6. Ubuntu host의 `node`, `corepack`, `pm2`를 사용한다.
 7. `/home/icenux/projects/vscoke-api/.env`가 있는지 확인한다.
-8. `.env`의 `REDIS_URL`로 Redis에 연결할 수 있어야 한다. 연결할 수 없으면 API가 시작되지 않는다.
-9. `/home/icenux/projects/vscoke-api/.next-release`에 `apps/api/dist`, `apps/api/package.json`, 루트 `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`을 staging한다.
-10. staging 경로에서 production 의존성을 설치한다.
-11. staging이 성공하면 `/home/icenux/projects/vscoke-api`로 release 파일을 복사하고 PM2로 API와 Poke Lounge 턴 워커를 재기동한다.
-12. Ubuntu host 내부 `http://127.0.0.1:$PORT/health`와 공개 `API_HEALTH_URL`을 smoke test한다.
+8. `/home/icenux/projects/vscoke-api/.next-release`에 `apps/api/dist`, `apps/api/package.json`, 루트 `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`을 staging한다.
+9. staging 경로에서 production 의존성을 설치한다.
+10. staging이 성공하면 `/home/icenux/projects/vscoke-api`로 release 파일을 복사하고 PM2로 API를 재기동한다.
+11. Ubuntu host 내부 `http://127.0.0.1:$PORT/health`와 공개 `API_HEALTH_URL`을 smoke test한다.
 
 운영 프로세스 기준:
 
-| 항목        | 값                                                                          |
-| ----------- | --------------------------------------------------------------------------- |
-| SSH 접속    | `ssh icenux-external`                                                       |
-| 서버 경로   | `/home/icenux/projects/vscoke-api`                                          |
-| PM2 앱 이름 | `vscoke-api`, `vscoke-poke-lounge-turn-worker`                              |
-| 실행 파일   | `apps/api/dist/src/main.js`, `apps/api/dist/src/poke-lounge-turn-worker.js` |
-| 기본 포트   | `3000` 또는 `.env`의 `PORT`                                                 |
-| 외부 노출   | Cloudflare Tunnel                                                           |
+| 항목        | 값                                 |
+| ----------- | ---------------------------------- |
+| SSH 접속    | `ssh icenux-external`              |
+| 서버 경로   | `/home/icenux/projects/vscoke-api` |
+| PM2 앱 이름 | `vscoke-api`                       |
+| 실행 파일   | `apps/api/dist/src/main.js`        |
+| 기본 포트   | `3000` 또는 `.env`의 `PORT`        |
+| 외부 노출   | Cloudflare Tunnel                  |
 
 현재 systemd/프로세스 기준:
 
@@ -93,17 +92,15 @@ host
 | -------------------------------- | ------------------- | ------------------------------------ |
 | `pm2-icenux.service`             | `enabled`, `active` | 재부팅 시 PM2 dump를 복구한다.       |
 | `vscoke-api`                     | PM2 `online`        | 운영 API 프로세스                    |
-| `vscoke-poke-lounge-turn-worker` | PM2 `online`        | Redis 기반 경쟁 턴 제한 처리 워커    |
 | `cloudflared-icenux.service`     | `enabled`, `active` | `api.icecoke.kr` 터널                |
 | `vscoke-api-native.service`      | `disabled/inactive` | 이전 `/opt/icenux/vscoke-api` 서비스 |
 | `vscoke-api-local-proxy.service` | `disabled/inactive` | 이전 Docker API용 local proxy        |
 
 PM2 운영 기준:
 
-- GitHub Actions 배포는 기존 턴 워커와 API를 종료한 뒤 API, 턴 워커 순으로 새 프로세스를 시작한다.
 - GitHub Actions 배포는 재시작 후 `pm2 save`를 실행해 현재 프로세스 목록을 저장한다.
 - 빌드와 staging 의존성 설치가 성공하기 전에는 기존 PM2 프로세스를 건드리지 않는다.
-- PM2 dump에는 `vscoke-api`와 `vscoke-poke-lounge-turn-worker`가 포함되어야 한다.
+- PM2 dump에는 `vscoke-api`가 포함되어야 한다.
 - 기기 재부팅 후 복구가 필요하면 systemd PM2 startup에서 `pm2 resurrect`가 실행되도록 구성한다.
 - Cloudflare Tunnel 실행 방식도 재부팅 후 복구 대상에 포함한다. Tunnel이 별도 systemd 서비스로 관리되는지 운영 환경에서 확인한다.
 
@@ -159,7 +156,6 @@ API 운영 값은 Ubuntu host의 `/home/icenux/projects/vscoke-api/.env`에 둔�
 | `DB_PASSWORD`             | 필수      | `postgres`                             | PostgreSQL password                                                         |
 | `DB_DATABASE`             | 필수      | `vscoke`                               | PostgreSQL database                                                         |
 | `DB_SYNCHRONIZE`          | 운영 필수 | production에서는 `false` 취급          | TypeORM synchronize 제어                                                    |
-| `REDIS_URL`               | 필수      | 없음                                   | Poke Lounge 상태, Socket.IO fan-out, BullMQ 턴 제한 작업                    |
 | `NOTIFY_SERVICE_URL`      | 선택      | 없음                                   | 운영 에러 알림 endpoint                                                     |
 | `NOTIFY_SERVICE_USER`     | 선택      | 없음                                   | 알림 endpoint basic auth user                                               |
 | `NOTIFY_SERVICE_PASSWORD` | 선택      | 없음                                   | 알림 endpoint basic auth password                                           |
@@ -175,7 +171,6 @@ Resume RAG와 메인 채팅 변수, 기본값과 데이터 정책은
 
 - `ENABLE_DEV_AUTH_BYPASS`와 `DEV_AUTH_TOKEN`은 운영 `.env`에 넣지 않는다.
 - `DB_SYNCHRONIZE=false`를 명시한다. 코드 기본값도 `false`이며, 운영에서 `DB_SYNCHRONIZE=true`면 API가 fail-fast 한다.
-- `REDIS_URL`은 인증과 TLS를 포함한 운영 Redis 연결 문자열로 설정한다. 값이 없거나 연결할 수 없으면 API가 fail-fast 하며 프로세스 메모리 fallback은 없다.
 - API 배포 workflow는 migration을 자동 실행하지 않는다. 운영 DB migration은 백업과 ledger 확인 후 별도 maintenance 작업으로 실행한다.
 - 기본 CORS 허용 origin은 production 웹 도메인과 로컬 개발 웹 도메인뿐이다.
 - Vercel preview에서 production API 직접 호출이 필요하면 preview origin을 `CORS_ORIGINS`에 명시한다. wildcard, path 포함 URL, http/https가 아닌 값은 허용 목록에서 제외된다.
@@ -186,10 +181,6 @@ Resume RAG와 메인 채팅 변수, 기본값과 데이터 정책은
 
 backup, legacy baseline, 실행과 rollback 절차는
 [API 배포 가이드](../apps/api/DEPLOY.md#3-db-schema-변경)를 따른다.
-
-### Poke Lounge 공개 조건
-
-Poke Lounge hardening의 기술 검증과 운영 migration 적용은 공개 배포의 권리 승인이 아니다. 기본 Vercel 빌드는 provenance를 자동 차단하지 않지만 [Poke Lounge Release Gate](./poke-lounge-release-gate.md)의 권리 상태는 `UNRESOLVED`이며, owner/legal review와 서명된 권리 결정이 별도로 필요하다. 엄격한 차단이 필요한 환경에는 `POKE_LOUNGE_PROVENANCE_STRICT=1`을 설정한다.
 
 환경 변수 전송과 재시작 명령은 [API 배포 가이드](../apps/api/DEPLOY.md#2-환경-변수-배포-수동)를
 따른다.

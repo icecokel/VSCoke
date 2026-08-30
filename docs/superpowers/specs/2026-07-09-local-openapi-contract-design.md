@@ -20,6 +20,6 @@ API tooling script는 contract module에서 OpenAPI JSON을 생성해 `apps/api/
 
 ## Testing
 
-- API e2e test에서 로컬 contract generator가 DB env 없이 핵심 OpenAPI path와 `GameType.POKE_LOUNGE` enum을 생성하는지 확인한다.
+- API e2e test에서 로컬 contract generator가 DB env 없이 핵심 OpenAPI path와 `GameType.SKY_DROP` enum을 생성하는지 확인한다.
 - `pnpm generate:types`가 로컬 `apps/api/openapi.json`을 갱신하고 Web 타입을 재생성하는지 확인한다.
 - PR CI는 `pnpm generate:types` 후 `git diff --exit-code apps/api/openapi.json apps/web/src/types/api.d.ts`를 실행한다.

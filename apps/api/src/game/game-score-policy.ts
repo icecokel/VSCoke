@@ -10,13 +10,6 @@ export type GameScorePolicy = {
   maxScorePerSecond: number;
 };
 
-export type GameSubmissionTrust = 'client-asserted' | 'verified-room';
-
-export const isPublicRankingEligible = (
-  gameType: GameType,
-  trust: GameSubmissionTrust,
-): boolean => gameType !== GameType.POKE_LOUNGE || trust === 'verified-room';
-
 const GAME_SCORE_POLICIES: Record<GameType, GameScorePolicy> = {
   [GameType.SKY_DROP]: {
     minScore: 1,
@@ -24,13 +17,6 @@ const GAME_SCORE_POLICIES: Record<GameType, GameScorePolicy> = {
     minPlayTimeSeconds: 1,
     maxPlayTimeSeconds: 86400,
     maxScorePerSecond: 2000,
-  },
-  [GameType.POKE_LOUNGE]: {
-    minScore: 1,
-    maxScore: 1000,
-    minPlayTimeSeconds: 1,
-    maxPlayTimeSeconds: 86400,
-    maxScorePerSecond: 1000,
   },
 };
 

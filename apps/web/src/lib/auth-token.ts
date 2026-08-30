@@ -9,14 +9,9 @@ export type ApiTokenSession = {
   user?: { id?: unknown } | null;
   idToken?: unknown;
   idTokenExpiresAt?: unknown;
-  localTestMode?: unknown;
   accessToken?: unknown;
   error?: unknown;
 };
-
-export interface SessionApiTokenOptions {
-  allowLocalTestMode?: boolean;
-}
 
 const decodeBase64Url = (value: string): string => {
   if (typeof Buffer !== "undefined") {
@@ -31,25 +26,6 @@ const decodeBase64Url = (value: string): string => {
 export const getJwtExpiresAt = (token?: unknown): number | undefined => {
   const payload = getJwtPayload(token);
   return typeof payload?.exp === "number" ? payload.exp : undefined;
-};
-
-export const getJwtSubject = (token?: unknown): string | undefined => {
-  const payload = getJwtPayload(token);
-  return typeof payload?.sub === "string" && payload.sub.trim() ? payload.sub : undefined;
-};
-
-export const getSessionApiAccountId = (
-  session?: ApiTokenSession | null,
-  idToken?: unknown,
-): string | undefined => {
-  const tokenSubject = getJwtSubject(idToken);
-  if (tokenSubject) {
-    return tokenSubject;
-  }
-
-  return typeof session?.user?.id === "string" && session.user.id.trim()
-    ? session.user.id
-    : undefined;
 };
 
 export const isIdTokenUsable = (
@@ -72,13 +48,8 @@ export const isAuthSessionError = (error?: unknown): boolean =>
 export const getSessionApiIdToken = (
   session?: ApiTokenSession | null,
   nowMs: number = Date.now(),
-  options: SessionApiTokenOptions = {},
 ): string | undefined => {
-  if (
-    !session ||
-    isAuthSessionError(session.error) ||
-    (session.localTestMode === true && options.allowLocalTestMode !== true)
-  ) {
+  if (!session || isAuthSessionError(session.error)) {
     return undefined;
   }
 

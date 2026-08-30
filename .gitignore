@@ -33,25 +33,6 @@ dist/
 .DS_Store
 *.pem
 
-# Poke Lounge local ROM and extraction workspaces
-*.nds
-*.gba
-*.gbc
-*.gb
-*.cia
-*.3ds
-data/roms/
-data/raw/
-data/processed/
-assets/raw/
-assets/processed/
-apps/web/data/raw/
-apps/web/data/processed/
-apps/web/assets/raw/
-apps/web/assets/processed/
-apps/web/public/assets/raw/
-apps/web/public/assets/processed/
-
 # debug
 npm-debug.log*
 yarn-debug.log*
@@ -101,17 +82,7 @@ next-env.d.ts
 !/docs/playwright-cli-test-spec.md
 !/docs/resume-rag-chat-test-scenarios.md
 !/docs/e2e-full-feature-test-scenarios.md
-!/docs/poke-lounge-audio-sources.md
-!/docs/poke-lounge-game-concept.md
-!/docs/poke-lounge-game-server-stabilization-plan.md
-!/docs/poke-lounge-multiplayer-test-scenarios.md
-!/docs/poke-lounge-performance-optimization-plan.md
-!/docs/poke-lounge-redis-live-state-plan.md
-!/docs/poke-lounge-rules/
-!/docs/poke-lounge-rules/*.md
-!/docs/poke-lounge-viewport-layout.md
 !/docs/licenses/
-!/docs/licenses/kenney-audio-cc0.txt
 !/docs/swagger-style-guide.md
 !/docs/user-deployment-checklist.md
 !/docs/vscoke-monorepo-concept.md

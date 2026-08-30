@@ -14,34 +14,25 @@ const nextTsconfigPath = process.env.NEXT_TYPESCRIPT_CONFIG_PATH ?? defaultNextT
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://${host}:${port}`;
 const readyUrl = `${baseURL}/ko-KR`;
 const reuseExistingServer = process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === "1";
-const enableLocalTestMode = process.argv.includes("--local-test-mode");
-const localTestAuthToken = enableLocalTestMode
-  ? "playwright_local_test_auth_token_0123456789abcdef"
-  : "";
-
 const serverEnv = {
   ...process.env,
   AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST ?? "true",
   AUTH_URL: process.env.AUTH_URL ?? baseURL,
   AUTH_SECRET: process.env.AUTH_SECRET ?? "e2e-auth-secret",
   HOSTNAME: host,
-  LOCAL_TEST_AUTH_TOKEN: localTestAuthToken,
   NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ?? "e2e-auth-secret",
   NEXTAUTH_URL: process.env.NEXTAUTH_URL ?? baseURL,
   NEXT_DIST_DIR: nextDistDir,
   NEXT_TYPESCRIPT_CONFIG_PATH: nextTsconfigPath,
-  NEXT_PUBLIC_API_URL: enableLocalTestMode
-    ? "http://127.0.0.1:65535"
-    : (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:65535"),
+  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:65535",
   NEXT_PUBLIC_GA_MEASUREMENT_ID: process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? "G-E2ETEST",
   NEXT_PUBLIC_GTM_ID: process.env.NEXT_PUBLIC_GTM_ID ?? "GTM-E2ETEST",
   PLAYWRIGHT_BASE_URL: baseURL,
-  PLAYWRIGHT_ENABLE_LOCAL_TEST_MODE: enableLocalTestMode ? "1" : "",
   PLAYWRIGHT_PORT: port,
   PORT: port,
 };
 
-const playwrightArgs = process.argv.slice(2).filter(argument => argument !== "--local-test-mode");
+const playwrightArgs = process.argv.slice(2);
 if (playwrightArgs.length === 0) {
   playwrightArgs.push("test");
 }

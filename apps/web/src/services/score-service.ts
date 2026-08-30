@@ -45,7 +45,6 @@ export const submitScore = async (
   try {
     const gameTypeMap = {
       "sky-drop": "SKY_DROP",
-      "poke-lounge": "POKE_LOUNGE",
     } satisfies Record<string, CreateGameHistoryDto["gameType"]>;
     const gameType = gameTypeMap[data.gameName as keyof typeof gameTypeMap];
 

@@ -28,10 +28,6 @@ workflow의 `workflow_dispatch`를 사용하고, 완료 뒤 `pnpm smoke:api:remo
 
 로컬 또는 운영 환경을 새로 만들 때는 `apps/api/.env.example`을 복사한 뒤 실제 값으로 채웁니다.
 
-Poke Lounge 실시간 상태와 BullMQ 경쟁 턴 작업은 Redis가 필수입니다. 코드 배포 전에 운영 Redis를 먼저 준비하고
-`REDIS_URL`을 설정합니다. 연결할 수 없으면 API는 시작되지 않으며 프로세스 메모리로 대체하지
-않습니다.
-
 1. `.env` 파일 전송:
 
    ```bash
@@ -47,20 +43,6 @@ Poke Lounge 실시간 상태와 BullMQ 경쟁 턴 작업은 Redis가 필수입�
 
    > 코드 배포와 함께라면 GitHub Actions가 재시작해주므로 생략 가능합니다.
 
-3. Redis 연결 확인:
-
-   ```bash
-   ssh icenux-external
-   cd /home/icenux/projects/vscoke-api
-   set -a
-   . ./.env
-   set +a
-   pnpm --filter @vscoke/api exec node -e "const {createClient}=require('redis');(async()=>{const client=createClient({url:process.env.REDIS_URL});try{await client.connect();console.log(await client.ping())}finally{if(client.isOpen)await client.close()}})().catch(error=>{console.error(error.message);process.exit(1)})"
-   ```
-
-   `PONG`이 출력된 뒤 API와 `vscoke-poke-lounge-turn-worker`를 재시작합니다. 운영 비밀번호가 포함될 수 있는 `REDIS_URL` 원문은
-   로그나 명령 인자에 출력하지 않습니다.
-
 Resume RAG와 메인 채팅 환경 변수는
 [메인 채팅 AI 사용 지침](../../docs/main-chat-ai-usage-guide.md#5-배포-환경-설정)을 따릅니다.
 
@@ -75,9 +57,8 @@ Resume RAG와 메인 채팅 환경 변수는
 없으면 canonical schema를 만들고, 모두 있으면 알려진 정확한 schema만 채택합니다. 일부만 있거나
 열·제약·enum·필수 index가 다르면 자동 수리 없이 실패합니다.
 
-운영 최초 적용 전에는 세 객체의 schema와 TypeORM `migrations` ledger를 함께 덤프합니다. 이미
-후속 enum migration이 기록된 DB를 고려해 baseline은 `SKY_DROP` 또는 순서가 고정된
-`SKY_DROP, POKE_LOUNGE`만 허용합니다. 실패 시 drop, alter 또는 ledger 수동 삽입을 하지 말고
+운영 최초 적용 전에는 세 객체의 schema와 TypeORM `migrations` ledger를 함께 덤프합니다.
+baseline은 `SKY_DROP` enum만 허용합니다. 실패 시 drop, alter 또는 ledger 수동 삽입을 하지 말고
 차이를 먼저 검토합니다. 이 baseline의 `down`은 기존 데이터 삭제를 막기 위해 의도적으로
 실패합니다.
 

@@ -10,11 +10,6 @@ import { QueryFailedError, Repository } from 'typeorm';
 import { Request } from 'express';
 import { User } from './entities/user.entity';
 import { ErrorMessage } from '../common/constants/message.constant';
-import {
-  LOCAL_TEST_ACCOUNT_PROFILE,
-  isLocalTestAccountRequestAllowed,
-  resolveLocalTestAuthToken,
-} from './local-test-account';
 
 type AuthenticatedRequest = Request & { user?: User };
 type UserProfile = Pick<User, 'id' | 'email' | 'firstName' | 'lastName'>;
@@ -45,18 +40,8 @@ export class GoogleAuthGuard implements CanActivate {
 
     // 개발 환경 인증 우회 로직 (명시적으로 활성화된 경우에만 허용)
     const isNonProduction = process.env.NODE_ENV !== 'production';
-    const localTestAuthToken = resolveLocalTestAuthToken();
     const isDevBypassEnabled = process.env.ENABLE_DEV_AUTH_BYPASS === 'true';
     const devAuthToken = process.env.DEV_AUTH_TOKEN;
-
-    if (localTestAuthToken && token === localTestAuthToken) {
-      if (!isLocalTestAccountRequestAllowed(request)) {
-        throw new UnauthorizedException(ErrorMessage.AUTH.INVALID_TOKEN);
-      }
-
-      request.user = await this.findOrCreateUser(LOCAL_TEST_ACCOUNT_PROFILE);
-      return true;
-    }
 
     if (
       isNonProduction &&

@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { DataSource, MigrationExecutor } from 'typeorm';
 import { CreateLegacyCoreSchema1759999999999 } from '../src/migrations/1759999999999-create-legacy-core-schema';
-import { AddPokeLoungeGameType1793664000000 } from '../src/migrations/1793664000000-add-poke-lounge-game-type';
 import { requireTestDatabaseUrl } from '../src/test-data-source';
 
 describe('legacy core production baseline migration', () => {
@@ -89,56 +88,8 @@ describe('legacy core production baseline migration', () => {
     expect(enumLabels).toEqual(['SKY_DROP']);
   });
 
-  it('rejects an all-absent schema when the later enum migration is already recorded', async () => {
-    await createMigrationLedger(dataSource);
-    await dataSource.query(`
-      INSERT INTO public.migrations ("timestamp", "name")
-      VALUES (1793664000000, 'AddPokeLoungeGameType1793664000000')
-    `);
-
-    const ledgerDataSource = new DataSource({
-      type: 'postgres',
-      url: disposableUrl.toString(),
-      migrations: [CreateLegacyCoreSchema1759999999999],
-      migrationsTableName: 'migrations',
-      synchronize: false,
-    });
-    await ledgerDataSource.initialize();
-
-    try {
-      const migrationExecutor = new MigrationExecutor(ledgerDataSource);
-
-      await expect(
-        migrationExecutor.executePendingMigrations(),
-      ).rejects.toThrow('Legacy core schema/ledger mismatch');
-
-      await expect(readCoreObjectPresence(ledgerDataSource)).resolves.toEqual({
-        user_table: false,
-        game_table: false,
-        enum: false,
-      });
-      await expect(
-        ledgerDataSource.query<Array<{ timestamp: string; name: string }>>(`
-          SELECT "timestamp"::text, "name"
-          FROM public.migrations
-          ORDER BY "timestamp"
-        `),
-      ).resolves.toEqual([
-        {
-          timestamp: '1793664000000',
-          name: 'AddPokeLoungeGameType1793664000000',
-        },
-      ]);
-    } finally {
-      await ledgerDataSource.destroy();
-    }
-  });
-
   it('adopts an exact schema without changing existing data', async () => {
     await runBaseline(dataSource);
-    await dataSource.query(`
-      ALTER TYPE public.game_history_gametype_enum ADD VALUE 'POKE_LOUNGE'
-    `);
     await dataSource.query(`
       ALTER TABLE public."user"
         RENAME CONSTRAINT "user_pkey" TO "legacy_user_primary"
@@ -161,7 +112,7 @@ describe('legacy core production baseline migration', () => {
     `);
     await dataSource.query(`
       INSERT INTO public.game_history ("score", "gameType", "userId")
-      VALUES (42, 'POKE_LOUNGE', 'legacy-user')
+      VALUES (42, 'SKY_DROP', 'legacy-user')
     `);
 
     await runBaseline(dataSource);
@@ -175,7 +126,7 @@ describe('legacy core production baseline migration', () => {
 
     expect(users).toEqual([{ id: 'legacy-user' }]);
     expect(games).toEqual([
-      { score: 42, gameType: 'POKE_LOUNGE', userId: 'legacy-user' },
+      { score: 42, gameType: 'SKY_DROP', userId: 'legacy-user' },
     ]);
   });
 
@@ -192,20 +143,6 @@ describe('legacy core production baseline migration', () => {
 
     await expect(runBaseline(dataSource)).resolves.toBeUndefined();
     await expect(readEnumLabels(dataSource)).resolves.toEqual(['SKY_DROP']);
-  });
-
-  it('adopts an already-added POKE_LOUNGE when the later enum migration is not recorded', async () => {
-    await runBaseline(dataSource);
-    await dataSource.query(`
-      ALTER TYPE public.game_history_gametype_enum ADD VALUE 'POKE_LOUNGE'
-    `);
-    await createMigrationLedger(dataSource);
-
-    await expect(runBaseline(dataSource)).resolves.toBeUndefined();
-    await expect(readEnumLabels(dataSource)).resolves.toEqual([
-      'SKY_DROP',
-      'POKE_LOUNGE',
-    ]);
   });
 
   it('rejects unknown enum labels even when the later migration is not recorded', async () => {
@@ -281,72 +218,6 @@ describe('legacy core production baseline migration', () => {
     } finally {
       await queryRunner.rollbackTransaction();
       await queryRunner.release();
-    }
-  });
-
-  it('adds POKE_LOUNGE only to public through the migration chain with a tenant enum shadow', async () => {
-    const chainDataSource = new DataSource({
-      type: 'postgres',
-      url: disposableUrl.toString(),
-      schema: 'public',
-      migrations: [
-        CreateLegacyCoreSchema1759999999999,
-        AddPokeLoungeGameType1793664000000,
-      ],
-      migrationsTableName: 'migrations',
-      synchronize: false,
-    });
-    await chainDataSource.initialize();
-    const queryRunner = chainDataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      await queryRunner.query('CREATE SCHEMA tenant');
-      await queryRunner.query(`
-        CREATE TYPE tenant.game_history_gametype_enum AS ENUM ('SKY_DROP')
-      `);
-      await queryRunner.query(`
-        CREATE TABLE public.migrations (
-          "id" serial PRIMARY KEY,
-          "timestamp" bigint NOT NULL,
-          "name" varchar NOT NULL
-        )
-      `);
-      await queryRunner.query('SET LOCAL search_path TO tenant, public');
-
-      const migrationExecutor = new MigrationExecutor(
-        chainDataSource,
-        queryRunner,
-      );
-      const executed = await migrationExecutor.executePendingMigrations();
-      const labels = await queryRunner.query<
-        Array<{ schema: string; label: string }>
-      >(`
-        SELECT namespace.nspname AS schema, enum_value.enumlabel AS label
-        FROM pg_catalog.pg_enum enum_value
-        JOIN pg_catalog.pg_type type_record
-          ON type_record.oid = enum_value.enumtypid
-        JOIN pg_catalog.pg_namespace namespace
-          ON namespace.oid = type_record.typnamespace
-        WHERE namespace.nspname IN ('public', 'tenant')
-          AND type_record.typname = 'game_history_gametype_enum'
-        ORDER BY namespace.nspname, enum_value.enumsortorder
-      `);
-
-      expect(executed.map((migration) => migration.name)).toEqual([
-        'CreateLegacyCoreSchema1759999999999',
-        'AddPokeLoungeGameType1793664000000',
-      ]);
-      expect(labels).toEqual([
-        { schema: 'public', label: 'SKY_DROP' },
-        { schema: 'public', label: 'POKE_LOUNGE' },
-        { schema: 'tenant', label: 'SKY_DROP' },
-      ]);
-    } finally {
-      await queryRunner.rollbackTransaction();
-      await queryRunner.release();
-      await chainDataSource.destroy();
     }
   });
 
@@ -496,15 +367,12 @@ describe('legacy core production baseline migration', () => {
   it('executes and records only the pending older baseline through MigrationExecutor', async () => {
     await runBaseline(dataSource);
     await dataSource.query(`
-      ALTER TYPE public.game_history_gametype_enum ADD VALUE 'POKE_LOUNGE'
-    `);
-    await dataSource.query(`
       INSERT INTO public."user" ("id", "email", "firstName", "lastName")
       VALUES ('ledger-user', 'ledger@example.com', 'Ledger', 'User')
     `);
     await dataSource.query(`
       INSERT INTO public.game_history ("score", "gameType", "userId")
-      VALUES (77, 'POKE_LOUNGE', 'ledger-user')
+      VALUES (77, 'SKY_DROP', 'ledger-user')
     `);
 
     const ledgerDataSource = new DataSource({
@@ -519,11 +387,6 @@ describe('legacy core production baseline migration', () => {
     try {
       const migrationExecutor = new MigrationExecutor(ledgerDataSource);
       await migrationExecutor.showMigrations();
-      await ledgerDataSource.query(`
-        INSERT INTO public.migrations ("timestamp", "name")
-        VALUES (1793664000000, 'AddPokeLoungeGameType1793664000000')
-      `);
-
       const executed = await migrationExecutor.executePendingMigrations();
       const ledger = await ledgerDataSource.query<
         Array<{ timestamp: string; name: string }>
@@ -547,68 +410,9 @@ describe('legacy core production baseline migration', () => {
           timestamp: '1759999999999',
           name: 'CreateLegacyCoreSchema1759999999999',
         },
-        {
-          timestamp: '1793664000000',
-          name: 'AddPokeLoungeGameType1793664000000',
-        },
       ]);
       expect(games).toEqual([
-        { score: 77, gameType: 'POKE_LOUNGE', userId: 'ledger-user' },
-      ]);
-    } finally {
-      await ledgerDataSource.destroy();
-    }
-  });
-
-  it('rejects a pending baseline when the later enum ledger row contradicts SKY_DROP-only', async () => {
-    await runBaseline(dataSource);
-    await dataSource.query(`
-      INSERT INTO public."user" ("id", "email", "firstName", "lastName")
-      VALUES ('ledger-mismatch-user', 'mismatch@example.com', 'Ledger', 'Mismatch')
-    `);
-
-    const ledgerDataSource = new DataSource({
-      type: 'postgres',
-      url: disposableUrl.toString(),
-      migrations: [CreateLegacyCoreSchema1759999999999],
-      migrationsTableName: 'migrations',
-      synchronize: false,
-    });
-    await ledgerDataSource.initialize();
-
-    try {
-      const migrationExecutor = new MigrationExecutor(ledgerDataSource);
-      await migrationExecutor.showMigrations();
-      await ledgerDataSource.query(`
-        INSERT INTO public.migrations ("timestamp", "name")
-        VALUES (1793664000000, 'AddPokeLoungeGameType1793664000000')
-      `);
-
-      await expect(
-        migrationExecutor.executePendingMigrations(),
-      ).rejects.toThrow('Legacy core schema/ledger mismatch');
-
-      const ledger = await ledgerDataSource.query<
-        Array<{ timestamp: string; name: string }>
-      >(`
-        SELECT "timestamp"::text, "name"
-        FROM public.migrations
-        ORDER BY "timestamp"
-      `);
-      const users = await ledgerDataSource.query<Array<{ id: string }>>(`
-        SELECT "id"
-        FROM public."user"
-      `);
-
-      expect(ledger).toEqual([
-        {
-          timestamp: '1793664000000',
-          name: 'AddPokeLoungeGameType1793664000000',
-        },
-      ]);
-      expect(users).toEqual([{ id: 'ledger-mismatch-user' }]);
-      await expect(readEnumLabels(ledgerDataSource)).resolves.toEqual([
-        'SKY_DROP',
+        { score: 77, gameType: 'SKY_DROP', userId: 'ledger-user' },
       ]);
     } finally {
       await ledgerDataSource.destroy();

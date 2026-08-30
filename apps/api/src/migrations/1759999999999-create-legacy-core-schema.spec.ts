@@ -18,9 +18,6 @@ describe('CreateLegacyCoreSchema1759999999999 SQL contract', () => {
     expect(query).toContain(
       'CREATE INDEX "IDX_game_history_user_id"\n            ON public.game_history',
     );
-    expect(query.indexOf(`FROM public."migrations"`)).toBeLessThan(
-      query.indexOf('IF core_object_count = 0 THEN'),
-    );
   });
 
   it('rejects partial objects and validates an exact existing schema', async () => {
@@ -46,12 +43,7 @@ describe('CreateLegacyCoreSchema1759999999999 SQL contract', () => {
     expect(query).toContain('index_record.indpred IS NULL');
     expect(query).toContain('index_record.indexprs IS NULL');
     expect(query).toContain('pg_catalog.pg_enum');
-    expect(query).toContain(`ARRAY['SKY_DROP', 'POKE_LOUNGE']::text[]`);
-    expect(query).toContain(`pg_catalog.to_regclass('public."migrations"')`);
-    expect(query).toContain(`FROM public."migrations"`);
-    expect(query).toContain(`WHERE "name" = $1`);
-    expect(query).toContain('AddPokeLoungeGameType1793664000000');
-    expect(query).toContain('Legacy core schema/ledger mismatch');
+    expect(query).toContain(`ARRAY['SKY_DROP']::text[]`);
     expect(query).toContain('Legacy core schema mismatch');
     expect(query).not.toMatch(/\bDROP\b|\bALTER\b/);
   });

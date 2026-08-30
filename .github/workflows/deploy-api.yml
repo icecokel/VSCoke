@@ -6,7 +6,6 @@ on:
     branches: ["main"]
     paths:
       - "apps/api/**"
-      - "packages/poke-lounge-battle/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -24,7 +23,6 @@ jobs:
       API_HEALTH_URL: ${{ vars.API_HEALTH_URL || 'https://api.icecoke.kr/health' }}
       API_LOCAL_HEALTH_URL: ${{ vars.API_LOCAL_HEALTH_URL || 'http://127.0.0.1:3000/health' }}
       API_PROCESS_NAME: ${{ vars.API_PROCESS_NAME || 'vscoke-api' }}
-      API_TURN_WORKER_PROCESS_NAME: ${{ vars.API_TURN_WORKER_PROCESS_NAME || 'vscoke-poke-lounge-turn-worker' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -58,62 +56,27 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm build:api
-          test -f packages/poke-lounge-battle/dist/index.js
           test -f apps/api/dist/src/main.js
-          test -f apps/api/dist/src/poke-lounge-turn-worker.js
 
       - name: Create staged release
         run: |
           RELEASE_DIR="$API_DEPLOY_DIR/.next-release"
           rm -rf "$RELEASE_DIR"
           mkdir -p "$RELEASE_DIR/apps/api"
-          mkdir -p "$RELEASE_DIR/packages/poke-lounge-battle"
 
           rsync -a apps/api/dist "$RELEASE_DIR/apps/api/"
-          rsync -a packages/poke-lounge-battle/dist "$RELEASE_DIR/packages/poke-lounge-battle/"
           cp apps/api/package.json "$RELEASE_DIR/apps/api/package.json"
-          cp packages/poke-lounge-battle/package.json "$RELEASE_DIR/packages/poke-lounge-battle/package.json"
           cp package.json pnpm-lock.yaml pnpm-workspace.yaml "$RELEASE_DIR/"
 
           cd "$RELEASE_DIR"
           pnpm --filter @vscoke/api install --prod --frozen-lockfile --ignore-scripts
           test -f apps/api/dist/src/main.js
-          test -f apps/api/dist/src/poke-lounge-turn-worker.js
           test -f apps/api/package.json
-          test -f packages/poke-lounge-battle/dist/index.js
-          pnpm --filter @vscoke/api exec node -e "require('@vscoke/poke-lounge-battle')"
-          pnpm --filter @vscoke/api exec node -e "require('bullmq'); require('ioredis')"
-
-      - name: Verify Redis connection
-        run: |
-          cd "$API_DEPLOY_DIR"
-          set -a
-          . ./.env
-          set +a
-          test -n "${REDIS_URL:-}"
-          cd .next-release
-          pnpm --filter @vscoke/api exec node - <<'NODE'
-          const { createClient } = require('redis');
-
-          (async () => {
-            const client = createClient({ url: process.env.REDIS_URL });
-            try {
-              await client.connect();
-              if ((await client.ping()) !== 'PONG') process.exitCode = 1;
-            } finally {
-              if (client.isOpen) await client.close();
-            }
-          })().catch((error) => {
-            console.error(error.message);
-            process.exit(1);
-          });
-          NODE
 
       - name: Promote release
         run: |
           RELEASE_DIR="$API_DEPLOY_DIR/.next-release"
           test -f "$RELEASE_DIR/apps/api/dist/src/main.js"
-          test -f "$RELEASE_DIR/apps/api/dist/src/poke-lounge-turn-worker.js"
 
           rsync -a --delete \
             --exclude '.env' \
@@ -122,7 +85,7 @@ jobs:
             "$RELEASE_DIR"/ \
             "$API_DEPLOY_DIR"/
 
-      - name: Restart API and turn worker with PM2
+      - name: Restart API with PM2
         run: |
           if systemctl list-unit-files vscoke-api-local-proxy.service >/dev/null 2>&1; then
             sudo systemctl disable --now vscoke-api-local-proxy.service || true
@@ -133,17 +96,10 @@ jobs:
           . ./.env
           set +a
 
-          pm2 delete "$API_TURN_WORKER_PROCESS_NAME" || true
           pm2 delete "$API_PROCESS_NAME" || true
           pm2 start apps/api/dist/src/main.js --name "$API_PROCESS_NAME" --update-env
-          pm2 start apps/api/dist/src/poke-lounge-turn-worker.js --name "$API_TURN_WORKER_PROCESS_NAME" --update-env
           pm2 save
           pm2 status "$API_PROCESS_NAME"
-          pm2 status "$API_TURN_WORKER_PROCESS_NAME"
-
-          WORKER_PID="$(pm2 pid "$API_TURN_WORKER_PROCESS_NAME")"
-          test -n "$WORKER_PID"
-          test "$WORKER_PID" -gt 0
 
       - name: Verify local API health
         run: |

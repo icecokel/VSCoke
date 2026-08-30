@@ -12,12 +12,6 @@ export default function GameDashboard() {
 
   const games = [
     {
-      id: "poke-lounge",
-      title: "Poke Lounge",
-      description: t("pokeLoungeDesc"),
-      route: "/game/poke-lounge",
-    },
-    {
       id: "sky-drop",
       title: "Sky Drop",
       description: t("skyDropDesc"),
@@ -32,7 +26,7 @@ export default function GameDashboard() {
   ];
 
   useEffect(() => {
-    ["/game/poke-lounge", "/game/sky-drop", "/game/wordle"].forEach(path => prefetch(path));
+    ["/game/sky-drop", "/game/wordle"].forEach(path => prefetch(path));
   }, [prefetch]);
 
   return (

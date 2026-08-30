@@ -1,4 +1,0 @@
-interface:
-  display_name: "Poke Lounge Viewport Layout"
-  short_description: "Poke Lounge 화면이 게임 프레임을 넘지 않도록 보장합니다"
-  default_prompt: "Use $poke-lounge-viewport-layout to keep this Poke Lounge screen inside its game frame."

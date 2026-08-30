@@ -17,8 +17,6 @@ vscoke/
 ├─ apps/
 │  ├─ web/      -> Next.js App Router frontend
 │  └─ api/      -> NestJS backend
-├─ packages/
-│  └─ poke-lounge-battle/ -> Web/API 공유 결정론적 전투 규칙
 ├─ docs/
 ├─ scripts/
 ├─ package.json
@@ -50,16 +48,10 @@ API는 Ubuntu host에서 실행되는 NestJS 앱이다.
 
 - 취미 데이터, 인증, 게임 결과와 이력 질문 API를 제공한다.
 - TypeORM과 PostgreSQL로 영속 상태를 관리한다.
-- Poke Lounge room, Socket.IO와 서버 권위 경쟁 상태를 관리한다.
 - controller와 DTO에서 Swagger/OpenAPI 계약을 생성한다.
 - 요청 로그와 운영 health endpoint를 제공한다.
 
 현재 module과 endpoint 목록은 [VSCoke API README](../apps/api/README.md)를 기준으로 한다.
-
-### Shared package: `packages/poke-lounge-battle`
-
-`@vscoke/poke-lounge-battle`은 Web과 API가 함께 사용하는 결정론적 전투 상태, PRNG, turn
-resolver와 bracket 규칙을 제공한다. 브라우저 UI나 API transport 책임은 포함하지 않는다.
 
 ## 데이터와 타입 흐름
 
@@ -96,20 +88,6 @@ Web
 -> Codex app-server answer generation
 ```
 
-Poke Lounge는 브라우저 로컬 진행, Redis room·match 상태와 Socket.IO 실시간 전파를
-분리한다.
-
-```text
-Web local player state
--> REST room command
--> Redis Lua CAS and revision
--> Socket.IO committed snapshot
--> same-room browsers
-```
-
-제품 규칙은 [Poke Lounge 게임 규칙 인덱스](./poke-lounge-rules/index.md), 현재 구현 경계는
-[Poke Lounge Game Concept](./poke-lounge-game-concept.md)을 따른다.
-
 ## 배포 경계
 
 ```mermaid
@@ -140,17 +118,14 @@ flowchart LR
 
 ## 기준 문서
 
-| 주제                  | 기준 문서                                                          |
-| --------------------- | ------------------------------------------------------------------ |
-| 코딩 정책             | [Coding Convention](./coding-convention.md)                        |
-| 로컬 실행·검증        | [Local Development](./local-development.md)                        |
-| Web E2E 정책          | [Playwright CLI Test Spec](./playwright-cli-test-spec.md)          |
-| 전체 E2E 시나리오     | [Full Feature E2E Scenarios](./e2e-full-feature-test-scenarios.md) |
-| 배포·환경 변수        | [Deployment and Environment Plan](./deployment-and-env.md)         |
-| 장애 대응             | [Operations Runbook](./operations-runbook.md)                      |
-| API 실행·계약 개요    | [VSCoke API README](../apps/api/README.md)                         |
-| API 배포·migration    | [API Deploy Guide](../apps/api/DEPLOY.md)                          |
-| 게임 점수·랭킹        | [Game Score Policy](./game-score-policy.md)                        |
-| Poke Lounge 제품 규칙 | [Poke Lounge Rules](./poke-lounge-rules/index.md)                  |
-| Poke Lounge 구현 경계 | [Poke Lounge Game Concept](./poke-lounge-game-concept.md)          |
-| Poke Lounge 공개 권리 | [Poke Lounge Release Gate](./poke-lounge-release-gate.md)          |
+| 주제               | 기준 문서                                                          |
+| ------------------ | ------------------------------------------------------------------ |
+| 코딩 정책          | [Coding Convention](./coding-convention.md)                        |
+| 로컬 실행·검증     | [Local Development](./local-development.md)                        |
+| Web E2E 정책       | [Playwright CLI Test Spec](./playwright-cli-test-spec.md)          |
+| 전체 E2E 시나리오  | [Full Feature E2E Scenarios](./e2e-full-feature-test-scenarios.md) |
+| 배포·환경 변수     | [Deployment and Environment Plan](./deployment-and-env.md)         |
+| 장애 대응          | [Operations Runbook](./operations-runbook.md)                      |
+| API 실행·계약 개요 | [VSCoke API README](../apps/api/README.md)                         |
+| API 배포·migration | [API Deploy Guide](../apps/api/DEPLOY.md)                          |
+| 게임 점수·랭킹     | [Game Score Policy](./game-score-policy.md)                        |

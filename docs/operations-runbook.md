@@ -48,7 +48,7 @@ systemctl is-active cloudflared-icenux.service
 systemctl is-active vscoke-api-native.service || true
 ```
 
-기대값은 `vscoke-api`와 `vscoke-poke-lounge-turn-worker`가 PM2 `online`, API runner와 `cloudflared-icenux.service`가 `active`, `vscoke-api-native.service`가 `inactive`이다.
+기대값은 `vscoke-api`가 PM2 `online`, API runner와 `cloudflared-icenux.service`가 `active`, `vscoke-api-native.service`가 `inactive`이다.
 
 ## 웹 배포 실패
 
@@ -113,7 +113,6 @@ Ubuntu host에서 확인:
 ssh icenux-external
 pm2 list
 pm2 logs vscoke-api --lines 100
-pm2 logs vscoke-poke-lounge-turn-worker --lines 100
 ```
 
 모든 HTTP 응답은 `X-Request-Id`를 포함한다. `pm2 logs` 또는
@@ -127,7 +126,6 @@ body, IP, 인증 정보, 이메일을 기록하지 않는다. 파일 로그는 �
 ```bash
 cd /home/icenux/projects/vscoke-api
 pm2 restart vscoke-api --update-env
-pm2 restart vscoke-poke-lounge-turn-worker --update-env
 pm2 save
 ```
 
@@ -136,10 +134,8 @@ pm2 save
 ```bash
 cd /home/icenux/projects/vscoke-api
 test -f apps/api/dist/src/main.js
-test -f apps/api/dist/src/poke-lounge-turn-worker.js
 sudo systemctl disable --now vscoke-api-native.service || true
 pm2 start apps/api/dist/src/main.js --name vscoke-api --update-env
-pm2 start apps/api/dist/src/poke-lounge-turn-worker.js --name vscoke-poke-lounge-turn-worker --update-env
 pm2 save
 ```
 
@@ -208,52 +204,6 @@ legacy core baseline이 `Legacy core schema is partial` 또는 `Legacy core sche
 
 baseline `down`은 destructive rollback 방지를 위해 의도적으로 실패한다. rollback이 필요하다는 이유로 운영의 `user`, `game_history`, enum을 삭제해서는 안 된다.
 
-### 게임 결과 신뢰도 migration rollback
-
-`AddGameResultTrust1794355200000`은 `game_history`에 `resultTrust` 또는 `sourceKey`가 하나라도 남아 있으면 `down`을 의도적으로 실패시킨다. 기존 Poke Lounge 행은 `up`에서 `client-asserted`로 backfill되므로, 데이터가 있는 운영 DB에서 일반적인 migration revert는 허용되지 않는다. 이 동작은 신뢰도와 서버 결과의 멱등성 키를 조용히 삭제하는 rollback을 막는다.
-
-상태 확인:
-
-```sql
-SELECT "gameType", "resultTrust", count(*)
-FROM game_history
-GROUP BY "gameType", "resultTrust"
-ORDER BY "gameType", "resultTrust";
-
-SELECT count(*) AS server_verified_rows
-FROM game_history
-WHERE "sourceKey" IS NOT NULL;
-```
-
-rollback이 필요하면 먼저 전체 DB backup을 만들고, `resultTrust`와 `sourceKey`를 보존할 별도 migration을 설계한다. 운영 데이터에서 두 열을 `NULL`로 일괄 변경하거나 writer가 만든 행을 삭제해서 기존 `down`을 통과시키면 안 된다. 빈 신규 환경에서 두 열 모두 데이터가 없을 때만 `down`이 index, constraint, column 순서로 제거를 진행한다.
-
-## Poke Lounge room/경쟁 장애
-
-room, 경쟁전, mutation/action receipt와 로그인 진행 상태는 Redis TTL 데이터다. 경쟁 턴의 30초 제한은 같은 Redis의 BullMQ 지연 작업을 `vscoke-poke-lounge-turn-worker`가 처리한다. API 재시작 후 room이
-사라지거나 같은 idempotency key가 새 command처럼 처리되면 메모리나 PostgreSQL에서 복구하지
-말고 `REDIS_URL`, Redis 재시작·eviction·TTL과 `poke-lounge:rooms` index를 먼저 확인한다.
-
-Web은 REST GET으로 room을 초기화하고 Socket.IO `/poke-lounge`의 committed `room.snapshot`을 적용한다. Socket 연결이 끊기거나 `room.revision-conflict`가 오면 `GET /poke-lounge/rooms/:roomCode?afterRevision=<lastRevision>`으로 복구한다. 지속적인 750 ms polling을 정상 상태로 되살리지 않는다. mutation 재시도는 동일 payload, 동일 `X-Idempotency-Key`, 마지막 committed `If-Match-Revision` 조합만 사용한다.
-
-실시간 위치와 Socket.IO 인스턴스 간 fan-out도 같은 Redis를 사용한다. 위치가 일부 브라우저에서만
-멈추거나 API가 시작되지 않으면 먼저 Redis 연결을 확인한다.
-
-```bash
-ssh icenux-external
-cd /home/icenux/projects/vscoke-api
-set -a
-. ./.env
-set +a
-pnpm --filter @vscoke/api exec node -e "const {createClient}=require('redis');(async()=>{const client=createClient({url:process.env.REDIS_URL});try{await client.connect();console.log(await client.ping())}finally{if(client.isOpen)await client.close()}})().catch(error=>{console.error(error.message);process.exit(1)})"
-```
-
-기대값은 `PONG`이다. Redis 장애 중에는 인스턴스별 메모리 fallback을 켜지 않는다. Redis를
-복구한 뒤 API와 턴 워커를 재시작하면 Web이 재구독하면서
-`room.world-snapshot`과 REST room snapshot을 다시 받는다. Redis key를 수동으로 점수나 우승 상태로
-보정하지 않는다. TTL 만료나 eviction으로 room document가 사라졌다면 해당 게임은 종료하고 새
-방에서 시작한다. Poke Lounge 결과를 `POST /game/result` 또는 PostgreSQL 직접 삽입으로 보정하지
-않는다.
-
 ## 환경 변수 변경
 
 정상 변경 절차는 [API 배포 가이드](../apps/api/DEPLOY.md#2-환경-변수-배포-수동)를 따른다.
@@ -271,16 +221,13 @@ pnpm smoke:api:remote
 
 1. Vercel deployment 상태가 `Ready`인지 확인한다.
 2. 주요 페이지가 로드되는지 확인한다.
-3. 로그인, 게임 점수 제출, Wordle, Poke Lounge GET hydration/Redis 자동 저장/room 복구, 이력 질문처럼 API를 호출하는 화면을 확인한다.
+3. 로그인, 게임 점수 제출, Wordle, 이력 질문처럼 API를 호출하는 화면을 확인한다.
 4. 브라우저 네트워크 탭에서 API URL이 `NEXT_PUBLIC_API_URL`과 일치하는지 확인한다.
 
 API 계약 변경을 포함한 배포라면 로컬 또는 PR 검증에서 `pnpm check:api-contract`가 통과했는지도 같이 확인한다.
-
-Poke Lounge 기술 검증이나 배포가 통과해도 공개 route/asset의 권리가 승인된 것은 아니다. [Poke Lounge Release Gate](./poke-lounge-release-gate.md)는 owner/legal review와 provenance 승인 전까지 `UNRESOLVED`다. 기본 배포는 경고 상태로 진행하며, 엄격한 환경은 `POKE_LOUNGE_PROVENANCE_STRICT=1`로 차단한다.
 
 ## 관련 문서
 
 - [Monorepo Concept](./vscoke-monorepo-concept.md)
 - [Deployment and Environment Plan](./deployment-and-env.md)
 - [Local Development](./local-development.md)
-- [Poke Lounge Release Gate](./poke-lounge-release-gate.md)

@@ -1,17 +1,10 @@
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { GameService } from './game.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { GameHistory } from './entities/game-history.entity';
 import { User } from '../auth/entities/user.entity';
 import { CreateGameHistoryDto } from './dto/create-game-history.dto';
-import { SavePokeLoungeStateDto } from './dto/save-poke-lounge-state.dto';
 import { GameType } from './enums/game-type.enum';
-import { PokeLoungeLiveStateService } from '../poke-lounge/poke-lounge-live-state.service';
 
 const mockQueryBuilder = {
   select: jest.fn().mockReturnThis(),
@@ -42,15 +35,9 @@ const mockGameHistoryRepository = () => ({
   query: jest.fn(), // Raw query 지원
 });
 
-const mockPokeLoungeRedis = () => ({
-  savePlayerState: jest.fn(),
-  getPlayerState: jest.fn(),
-});
-
 describe('GameService', () => {
   let service: GameService;
   let repository: ReturnType<typeof mockGameHistoryRepository>;
-  let pokeLoungeRedis: ReturnType<typeof mockPokeLoungeRedis>;
 
   beforeEach(async () => {
     // 각 테스트 전에 모든 모킹 초기화
@@ -63,16 +50,11 @@ describe('GameService', () => {
           provide: getRepositoryToken(GameHistory),
           useFactory: mockGameHistoryRepository,
         },
-        {
-          provide: PokeLoungeLiveStateService,
-          useFactory: mockPokeLoungeRedis,
-        },
       ],
     }).compile();
 
     service = module.get<GameService>(GameService);
     repository = module.get(getRepositoryToken(GameHistory));
-    pokeLoungeRedis = module.get(PokeLoungeLiveStateService);
   });
 
   afterEach(() => {
@@ -101,8 +83,6 @@ describe('GameService', () => {
       expect(repository.create).toHaveBeenCalledWith({
         ...createDto,
         user,
-        resultTrust: null,
-        sourceKey: null,
       });
       expect(repository.save).toHaveBeenCalledWith(savedHistory);
       expect(result).toEqual(savedHistory);
@@ -173,26 +153,9 @@ describe('GameService', () => {
       expect(repository.create).toHaveBeenCalledWith({
         ...createDto,
         user,
-        resultTrust: null,
-        sourceKey: null,
       });
       expect(repository.save).toHaveBeenCalledWith(savedHistory);
       expect(result).toEqual(savedHistory);
-    });
-
-    it('Poke Lounge 결과는 영속 기록으로 저장하지 않아야 함', async () => {
-      const user = Object.assign(new User(), { id: 'test-id' });
-      const dto: CreateGameHistoryDto = {
-        score: 300,
-        gameType: GameType.POKE_LOUNGE,
-        playTime: 30,
-      };
-
-      await expect(service.createHistory(user, dto)).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
-      expect(repository.create).not.toHaveBeenCalled();
-      expect(repository.save).not.toHaveBeenCalled();
     });
   });
 
@@ -272,13 +235,6 @@ describe('GameService', () => {
       expect(result).toEqual([]);
       expect(repository.find).not.toHaveBeenCalled();
     });
-
-    it('Poke Lounge 랭킹은 DB를 조회하지 않고 빈 배열을 반환해야 함', async () => {
-      await expect(service.getRanking(GameType.POKE_LOUNGE)).resolves.toEqual(
-        [],
-      );
-      expect(repository.query).not.toHaveBeenCalled();
-    });
   });
 
   describe('getUserBestScore', () => {
@@ -338,13 +294,6 @@ describe('GameService', () => {
         },
       );
     });
-
-    it('Poke Lounge 최고 점수는 DB를 조회하지 않아야 함', async () => {
-      await expect(
-        service.getUserBestScore('user1', GameType.POKE_LOUNGE),
-      ).resolves.toBe(0);
-      expect(repository.createQueryBuilder).not.toHaveBeenCalled();
-    });
   });
 
   describe('getUserRank', () => {
@@ -398,139 +347,6 @@ describe('GameService', () => {
         expect.stringContaining('score BETWEEN $3 AND $4'),
         [GameType.SKY_DROP, 100, 1, 100000, 1, 86400, 2000],
       );
-    });
-
-    it('Poke Lounge 등수는 DB를 조회하지 않아야 함', async () => {
-      await expect(
-        service.getUserRank('user1', 300, GameType.POKE_LOUNGE),
-      ).resolves.toBeNull();
-      expect(repository.query).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('savePokeLoungeState', () => {
-    it('Redis에 상태와 두 시간 TTL을 저장하고 최신 revision을 반환해야 함', async () => {
-      jest.spyOn(Date, 'now').mockReturnValue(1_000);
-      const user = Object.assign(new User(), { id: 'poke-user' });
-      const dto: SavePokeLoungeStateDto = {
-        state: { room: 'LOUNGE' },
-        expectedRevision: 0,
-      };
-      const stored = {
-        revision: 1,
-        state: dto.state,
-        clientUpdatedAt: null,
-        createdAt: '2026-08-26T00:00:00.000Z',
-        updatedAt: '2026-08-26T00:00:01.000Z',
-      };
-      pokeLoungeRedis.savePlayerState.mockResolvedValue(1);
-      pokeLoungeRedis.getPlayerState.mockResolvedValue(stored);
-
-      await expect(
-        service.savePokeLoungeState(user, dto),
-      ).resolves.toMatchObject({
-        id: user.id,
-        userId: user.id,
-        state: dto.state,
-        revision: 1,
-      });
-      expect(pokeLoungeRedis.savePlayerState).toHaveBeenCalledWith({
-        userId: user.id,
-        state: dto.state,
-        expectedRevision: 0,
-        clientUpdatedAt: null,
-        nowMs: 1_000,
-        expiresAtMs: 7_201_000,
-      });
-    });
-
-    it('구버전 Web 저장은 expectedRevision을 Redis에 전달하지 않아야 함', async () => {
-      jest.spyOn(Date, 'now').mockReturnValue(1_000);
-      const user = Object.assign(new User(), { id: 'legacy-user' });
-      const stored = {
-        revision: 1,
-        state: { marker: 'legacy' },
-        clientUpdatedAt: '2099-01-01T00:00:00.000Z',
-        createdAt: '2026-08-26T00:00:00.000Z',
-        updatedAt: '2026-08-26T00:00:01.000Z',
-      };
-      pokeLoungeRedis.savePlayerState.mockResolvedValue(1);
-      pokeLoungeRedis.getPlayerState.mockResolvedValue(stored);
-
-      await service.savePokeLoungeState(user, {
-        state: stored.state,
-        clientUpdatedAt: stored.clientUpdatedAt,
-      });
-
-      expect(pokeLoungeRedis.savePlayerState).toHaveBeenCalledWith({
-        userId: user.id,
-        state: stored.state,
-        clientUpdatedAt: stored.clientUpdatedAt,
-        nowMs: 1_000,
-        expiresAtMs: 7_201_000,
-      });
-    });
-
-    it('Redis revision 충돌은 409로 반환해야 함', async () => {
-      pokeLoungeRedis.savePlayerState.mockResolvedValue(null);
-
-      const error = await service
-        .savePokeLoungeState(Object.assign(new User(), { id: 'poke-user' }), {
-          state: {},
-          expectedRevision: 2,
-        })
-        .catch((caught: unknown) => caught);
-
-      expect(error).toBeInstanceOf(ConflictException);
-      expect((error as ConflictException).getStatus()).toBe(409);
-      expect(pokeLoungeRedis.getPlayerState).not.toHaveBeenCalled();
-    });
-
-    it('저장 직후 Redis에서 같은 revision을 읽지 못하면 실패해야 함', async () => {
-      pokeLoungeRedis.savePlayerState.mockResolvedValue(2);
-      pokeLoungeRedis.getPlayerState.mockResolvedValue({
-        revision: 1,
-        state: {},
-        clientUpdatedAt: null,
-        createdAt: '2026-08-26T00:00:00.000Z',
-        updatedAt: '2026-08-26T00:00:01.000Z',
-      });
-
-      await expect(
-        service.savePokeLoungeState(
-          Object.assign(new User(), { id: 'poke-user' }),
-          { state: {}, expectedRevision: 1 },
-        ),
-      ).rejects.toThrow('Redis state was not readable after save');
-    });
-  });
-
-  describe('findPokeLoungeState', () => {
-    it('Redis에서 최신 상태를 조회해야 함', async () => {
-      pokeLoungeRedis.getPlayerState.mockResolvedValueOnce({
-        revision: 4,
-        state: { map: 'new-bark-town' },
-        clientUpdatedAt: null,
-        createdAt: '2026-08-26T00:00:00.000Z',
-        updatedAt: '2026-08-26T00:00:01.000Z',
-      });
-
-      await expect(
-        service.findPokeLoungeState('poke-user'),
-      ).resolves.toMatchObject({
-        id: 'poke-user',
-        userId: 'poke-user',
-        revision: 4,
-      });
-      expect(pokeLoungeRedis.getPlayerState).toHaveBeenCalledWith('poke-user');
-    });
-
-    it('Redis 상태가 없으면 NotFoundException을 던져야 함', async () => {
-      pokeLoungeRedis.getPlayerState.mockResolvedValue(null);
-
-      await expect(
-        service.findPokeLoungeState('poke-user'),
-      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 });

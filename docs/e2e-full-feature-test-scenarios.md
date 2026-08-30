@@ -10,7 +10,6 @@
 
 - Web: `apps/web`
 - API: `apps/api`
-- 공유 전투 엔진: `packages/poke-lounge-battle`
 - Web E2E: `apps/web/tests/e2e`
 - API E2E/통합: `apps/api/test`
 - 브라우저 설정: `apps/web/playwright.config.ts`
@@ -69,9 +68,8 @@ UI 격리 테스트의 route interception은 오류 상태를 재현하기 위�
 | `MP1~MP7` | 로그인하지 않은 독립 browser context 7개        | 공개 멀티플레이 정원   |
 | `DB_BASE` | migration 완료, Wordle 단어·레시피·원두 fixture | API 정상 경로          |
 | `DB_GAME` | ranking과 공유 결과 fixture                     | 점수·랭킹·공유         |
-| `DB_ROOM` | 테스트 시작 시 active room 없음                 | Poke Lounge room       |
 
-테스트 데이터는 반복 실행 가능해야 한다. 고정 UUID, 고정 room code 또는 테스트 전용 seed를 사용하고, 테스트 종료 시 생성 데이터와 room을 정리한다. 운영 smoke에서는 쓰기 작업을 최소화하고 테스트 전용 계정과 식별자를 사용한다.
+테스트 데이터는 반복 실행 가능해야 한다. 고정 UUID 또는 테스트 전용 seed를 사용하고, 테스트 종료 시 생성 데이터를 정리한다. 운영 smoke에서는 쓰기 작업을 최소화하고 테스트 전용 계정과 식별자를 사용한다.
 
 ### 3.4 공통 사전조건
 
@@ -97,7 +95,6 @@ Web route:
 | 게임 센터       | `/:locale/game`                                              | 11             |
 | Sky Drop        | `/:locale/game/sky-drop`                                     | 12, 19         |
 | Wordle          | `/:locale/game/wordle`                                       | 13             |
-| Poke Lounge     | `/:locale/game/poke-lounge`                                  | 14             |
 | 에스프레소      | `/:locale/hobby/espresso`, `/:locale/hobby/espresso/:beanId` | 9              |
 | 레시피          | `/:locale/hobby/recipes`                                     | 10             |
 | 공유 결과       | `/:locale/share/:id`, `/:locale/share/:id/opengraph-image`   | 19, 22         |
@@ -224,17 +221,17 @@ API endpoint 목록은 [VSCoke API README](../apps/api/README.md#주요-모듈)�
 
 ## 11. 게임 센터 공통
 
-| ID         | 우선순위/상태 | 사전조건                         | 절차                           | 기대 결과                                                                        |
-| ---------- | ------------- | -------------------------------- | ------------------------------ | -------------------------------------------------------------------------------- |
-| `GAME-001` | P0/A          | `/game`                          | 3개 게임 카드 확인             | Sky Drop, Poke Lounge, Wordle 카드와 설명이 표시된다.                            |
-| `GAME-002` | P0/A          | Game Center                      | 각 카드 클릭 및 직접 URL 진입  | 대응 게임 화면이 locale을 유지해 열린다.                                         |
-| `GAME-003` | P1/N          | Sky Drop 결과 화면               | 점수 0, 양수, 최고점 상태 확인 | 제출·공유·메달·최고점 UI가 조건에 맞게 표시된다.                                 |
-| `GAME-004` | P0/P          | 비로그인 Sky Drop 결과           | 점수 제출 실행                 | 로그인 흐름이 시작되고 pending score가 보존된다.                                 |
-| `GAME-005` | P0/P          | 로그인 Sky Drop 결과             | 점수 제출 후 재클릭            | API 요청은 한 번만 성공하고 제출 완료 상태가 유지된다.                           |
-| `GAME-006` | P1/P          | 저장된 Sky Drop/Poke Lounge 결과 | 공유 실행                      | result ID를 포함한 share URL이 생성되고 clipboard/Web Share fallback이 동작한다. |
-| `GAME-007` | P1/A          | ranking API 실패                 | 게임 ready 화면 진입           | 화면이 깨지지 않고 빈 ranking 상태를 표시한다.                                   |
-| `GAME-008` | P1/N          | 저장된 ranking                   | 게임 ready 화면 진입           | gameType별 상위 순위와 본인 최고점이 정확하다.                                   |
-| `GAME-009` | P1/N          | pending score storage            | 결과 후 reload/login           | 대기 점수가 복원되고 중복 제출 없이 이어진다.                                    |
+| ID         | 우선순위/상태 | 사전조건               | 절차                           | 기대 결과                                                                        |
+| ---------- | ------------- | ---------------------- | ------------------------------ | -------------------------------------------------------------------------------- |
+| `GAME-001` | P0/A          | `/game`                | 2개 게임 카드 확인             | Sky Drop, Wordle 카드와 설명이 표시된다.                                         |
+| `GAME-002` | P0/A          | Game Center            | 각 카드 클릭 및 직접 URL 진입  | 대응 게임 화면이 locale을 유지해 열린다.                                         |
+| `GAME-003` | P1/N          | Sky Drop 결과 화면     | 점수 0, 양수, 최고점 상태 확인 | 제출·공유·메달·최고점 UI가 조건에 맞게 표시된다.                                 |
+| `GAME-004` | P0/P          | 비로그인 Sky Drop 결과 | 점수 제출 실행                 | 로그인 흐름이 시작되고 pending score가 보존된다.                                 |
+| `GAME-005` | P0/P          | 로그인 Sky Drop 결과   | 점수 제출 후 재클릭            | API 요청은 한 번만 성공하고 제출 완료 상태가 유지된다.                           |
+| `GAME-006` | P1/P          | 저장된 Sky Drop 결과   | 공유 실행                      | result ID를 포함한 share URL이 생성되고 clipboard/Web Share fallback이 동작한다. |
+| `GAME-007` | P1/A          | ranking API 실패       | 게임 ready 화면 진입           | 화면이 깨지지 않고 빈 ranking 상태를 표시한다.                                   |
+| `GAME-008` | P1/N          | 저장된 ranking         | 게임 ready 화면 진입           | gameType별 상위 순위와 본인 최고점이 정확하다.                                   |
+| `GAME-009` | P1/N          | pending score storage  | 결과 후 reload/login           | 대기 점수가 복원되고 중복 제출 없이 이어진다.                                    |
 
 현재 자동화 매핑: `hobby-games.spec.ts`, `core-routes.spec.ts`, `error-fallback.spec.ts`. 공통 결과 화면의 실제 로그인·제출·공유는 신규 통합 자동화가 필요하다.
 
@@ -278,12 +275,6 @@ API endpoint 목록은 [VSCoke API README](../apps/api/README.md#주요-모듈)�
 | `WORD-015` | P2/N          | WebKit/mobile       | keyboard와 touch 입력                     | key event, tile animation, modal이 브라우저별로 동작한다.                                   |
 
 현재 자동화 매핑: `keyboard-only.spec.ts`, `error-fallback.spec.ts`, `wordle.e2e-spec.ts`. 승리·패배와 중복 문자 UI 자동화는 보강 대상이다.
-
-## 14. Poke Lounge
-
-Poke Lounge의 방 생성·참가, 플레이, 3라운드 우승, 오류 복구와 상황별 캡처는
-[Poke Lounge 플레이어 E2E 테스트 시나리오](./poke-lounge-multiplayer-test-scenarios.md)를
-유일한 기준으로 사용한다. 이 문서에는 Poke Lounge 상세 시나리오를 중복해서 기록하지 않는다.
 
 ## 19. 점수·랭킹·공유 상세
 
@@ -378,8 +369,7 @@ Poke Lounge의 방 생성·참가, 플레이, 3라운드 우승, 오류 복구�
 1. API contract, typecheck, lint, knip, build.
 2. API unit 및 PostgreSQL migration/E2E.
 3. Chromium에서 `NAV`, `I18N`, 주요 route, API fallback, 각 게임 진입.
-4. Poke Lounge starter→world→battle 한 경로와 공개 멀티플레이 입장·정원 초과 거부.
-5. 실패 시 merge 금지.
+4. 실패 시 merge 금지.
 
 실제 PR 실행 목록은 `.github/workflows/pull-request-check.yml`을 기준으로 한다. 위 P0 목표와
 workflow 사이에 공백이 생기면 이 시나리오의 우선순위를 근거로 focused job을 조정한다.
@@ -398,23 +388,20 @@ Chromium 전체 suite와 실제 PostgreSQL integration을 실행한다. 외부 �
 
 1. `pnpm e2e:cross-browser`로 Chromium과 WebKit 실행.
 2. mobile 360, 390, 430 viewport 실행.
-3. 두 익명 browser에서 같은 임시 비밀번호로 Poke Lounge 자동 생성·참가·플레이.
-4. 독립 browser context 7개에서 6명 참가, 7번째 거부, 동일 세션 재접속과 빈자리 재입장.
-5. 공통 계정 기능을 위한 실제 Google OAuth 로그인·로그아웃. Poke Lounge 멀티플레이에는 적용하지 않는다.
-6. Vercel production과 Ubuntu API smoke.
-7. visual baseline 및 CLS 확인.
-8. 운영 console error, failed request, CORS, Socket reconnect 확인.
+3. 공통 계정 기능을 위한 실제 Google OAuth 로그인·로그아웃.
+4. Vercel production과 Ubuntu API smoke.
+5. visual baseline 및 CLS 확인.
+6. 운영 console error, failed request, CORS, Socket reconnect 확인.
 
 ## 24. 자동화 구현 순서
 
-| 순서 | 작업                                         | 이유                                                |
-| ---- | -------------------------------------------- | --------------------------------------------------- |
-| 1    | Sky Drop deterministic play hook 및 승패 E2E | 현재 실제 플레이 검증이 가장 부족함                 |
-| 2    | Wordle 승리·패배·중복 문자 E2E               | 핵심 규칙 UI 누락 보완                              |
-| 3    | 점수 제출·랭킹·공유 Web+API 통합             | 게임 공통 사용자 가치 검증                          |
-| 4    | Recipe/Espresso/Game State/RAG HTTP E2E      | controller별 계약 공백 보완                         |
-| 5    | Poke Lounge 두 browser+실 API+DB 상위 E2E    | route interception과 repository test 사이 공백 제거 |
-| 6    | 전체 화면 axe와 metadata/asset smoke         | 비기능 release 기준 완성                            |
+| 순서 | 작업                                         | 이유                                |
+| ---- | -------------------------------------------- | ----------------------------------- |
+| 1    | Sky Drop deterministic play hook 및 승패 E2E | 현재 실제 플레이 검증이 가장 부족함 |
+| 2    | Wordle 승리·패배·중복 문자 E2E               | 핵심 규칙 UI 누락 보완              |
+| 3    | 점수 제출·랭킹·공유 Web+API 통합             | 게임 공통 사용자 가치 검증          |
+| 4    | Recipe/Espresso/Game State/RAG HTTP E2E      | controller별 계약 공백 보완         |
+| 6    | 전체 화면 axe와 metadata/asset smoke         | 비기능 release 기준 완성            |
 
 test hook은 production 동작을 바꾸지 않는 `e2e` query 또는 test-only adapter로 제한한다. 결과를 직접 주입해 화면만 통과시키기보다 seed, clock, encounter/collision 조건을 제어해 실제 domain logic을 실행해야 한다.
 
@@ -449,17 +436,16 @@ flaky 테스트는 단순 retry 성공으로 닫지 않는다. 최초 실패 tra
 
 1. 모든 `P0` 시나리오가 Chromium과 API 통합 환경에서 통과한다.
 2. 사용자 입력이 있는 모든 공개 화면에 최소 한 개의 정상 경로 E2E가 있다.
-3. 각 외부 경계인 API, OAuth, PostgreSQL, Socket.IO, clipboard/share에 정상·실패 경로가 있다.
-4. Sky Drop, Wordle, Poke Lounge가 각각 실제 시작→플레이→종료→재시작 흐름을 통과한다.
-5. Poke Lounge는 익명 solo, 실제 Desktop↔Mobile 2인 shared world와 6명 정원·7번째 거부를 통과한다.
-6. ko-KR, en-US, ja-JP route와 360/390/430 mobile 레이아웃이 통과한다.
-7. WebKit에서 P0 핵심 경로가 통과한다.
-8. critical 접근성 오류, console error, 예상하지 않은 4xx/5xx, 정적 asset 404가 없다.
-9. 실패 artifact와 실행 결과가 commit SHA 기준으로 보존된다.
-10. 미자동화 또는 수동 항목은 담당자, 실행일, 결과가 릴리즈 기록에 남는다.
+3. 각 외부 경계인 API, OAuth, PostgreSQL, clipboard/share에 정상·실패 경로가 있다.
+4. Sky Drop과 Wordle이 각각 실제 시작→플레이→종료→재시작 흐름을 통과한다.
+5. ko-KR, en-US, ja-JP route와 360/390/430 mobile 레이아웃이 통과한다.
+6. WebKit에서 P0 핵심 경로가 통과한다.
+7. critical 접근성 오류, console error, 예상하지 않은 4xx/5xx, 정적 asset 404가 없다.
+8. 실패 artifact와 실행 결과가 commit SHA 기준으로 보존된다.
+9. 미자동화 또는 수동 항목은 담당자, 실행일, 결과가 릴리즈 기록에 남는다.
 
 ## 27. 현재 결론
 
-현재 저장소는 route, 다국어, 취미 화면, 오류 fallback, Poke Lounge domain/저장/멀티플레이에 강한 자동화 기반이 있다. 반면 Sky Drop의 실제 플레이, Wordle 완주, 공통 점수 제출·공유, Recipe/Espresso의 실제 HTTP 계약, Google OAuth는 전체 기능 E2E 관점에서 보강이 필요하다. Poke Lounge 공개 멀티플레이는 닉네임·임시 비밀번호를 사용하는 실제 Desktop↔Mobile 2인 shared world와 7개 context 정원 검증을 완료해야 한다.
+현재 저장소는 route, 다국어, 취미 화면과 오류 fallback에 자동화 기반이 있다. 반면 Sky Drop의 실제 플레이, Wordle 완주, 공통 점수 제출·공유, Recipe/Espresso의 실제 HTTP 계약, Google OAuth는 전체 기능 E2E 관점에서 보강이 필요하다.
 
 따라서 기존 `pnpm e2e` 통과만으로 "모든 기능 테스트 완료"라고 판정하지 않는다. 이 문서의 `N`과 `P` 항목을 자동화하거나 릴리즈 후보 수동 결과로 증명한 뒤 완료로 판정한다.

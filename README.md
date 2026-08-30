@@ -30,7 +30,7 @@ VS Code에서 영감을 받은 화면은 개발자라는 정체성을 드러내�
 - **Wordle**: 여섯 번의 기회 안에 다섯 글자 영어 단어를 맞히는 단어 게임
 - **기록 탐색**: 개발 글, 레시피, 에스프레소 추출 기록을 검색하고 살펴보는 개인 아카이브
 
-게임은 포트폴리오의 중심이 아니라, 개발자가 만든 인터랙션을 가볍게 체험하는 공간입니다. 일부 게임은 점수 기록과 공유 기능을 제공하며, Poke Lounge는 웹과 서버가 함께 상태와 경쟁 규칙을 다루는 기술적 MVP로 포함되어 있습니다.
+게임은 포트폴리오의 중심이 아니라, 개발자가 만든 인터랙션을 가볍게 체험하는 공간입니다. 일부 게임은 점수 기록과 공유 기능을 제공합니다.
 
 ## 프로젝트 구성
 
@@ -39,8 +39,6 @@ vscoke/
 ├─ apps/
 │  ├─ web/      # 포트폴리오 웹 애플리케이션
 │  └─ api/      # 데이터, 인증, 게임, 이력 질문 API
-├─ packages/
-│  └─ poke-lounge-battle/ # 웹과 API가 공유하는 경쟁 전투 규칙
 └─ docs/        # 개발·운영·정책 문서
 ```
 
@@ -50,7 +48,7 @@ vscoke/
 
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS, next-intl
 - **Backend**: NestJS 11, TypeORM, PostgreSQL, Swagger/OpenAPI
-- **Interaction**: Auth.js, Phaser, Socket.IO
+- **Interaction**: Auth.js
 - **Quality**: Playwright E2E, ESLint, Prettier
 
 ## 확인과 문서
@@ -66,5 +64,3 @@ pnpm check:api-contract
 - [Monorepo Concept](docs/vscoke-monorepo-concept.md): 앱의 책임과 데이터 흐름
 - [Local Development](docs/local-development.md): 로컬 실행과 환경 변수
 - [Game Score Policy](docs/game-score-policy.md): 게임 결과와 랭킹 검증 기준
-- [Poke Lounge Game Concept](docs/poke-lounge-game-concept.md): 게임 경험, 규칙과 멀티플레이 컨셉
-- [Poke Lounge Release Gate](docs/poke-lounge-release-gate.md): Poke Lounge 공개 배포 조건

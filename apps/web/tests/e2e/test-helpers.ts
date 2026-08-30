@@ -60,8 +60,6 @@ export interface AppMessages {
     resultNotFoundTitle: string;
     notEnoughLetters: string;
     wordleTitle: string;
-    pokeLoungeTitle: string;
-    pokeLoungeDesc: string;
   };
   blog: {
     backToList: string;

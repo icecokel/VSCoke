@@ -127,27 +127,16 @@ describe('API documentation (e2e)', () => {
     );
   });
 
-  it('/api-json (GET) exposes Poke Lounge in GameType enum', async () => {
-    const response = await request(httpServer).get('/api-json').expect(200);
-    const body = response.body as OpenApiDocument;
-
-    expect(body.components?.schemas?.GameType?.enum).toEqual(
-      expect.arrayContaining(['POKE_LOUNGE']),
-    );
-  });
-
   it('/game/ranking (GET) serializes only the public ranking projection', async () => {
     gameService.getRanking.mockResolvedValue([
       {
         id: 'sentinel-history-id',
         score: 100,
         rank: 1,
-        gameType: 'POKE_LOUNGE',
+        gameType: 'SKY_DROP',
         playTime: 30,
         createdAt: new Date('2026-07-11T00:00:00.000Z'),
         userId: 'sentinel-user-id',
-        resultTrust: 'verified-room',
-        sourceKey: 'sentinel-source-key',
         user: {
           id: 'sentinel-user-id',
           displayName: 'Gil Dong',
@@ -158,7 +147,7 @@ describe('API documentation (e2e)', () => {
     ]);
 
     const response = await request(httpServer)
-      .get('/game/ranking?gameType=POKE_LOUNGE')
+      .get('/game/ranking?gameType=SKY_DROP')
       .expect(200);
 
     expect(response.body).toEqual({
@@ -173,7 +162,7 @@ describe('API documentation (e2e)', () => {
       ],
     });
     expect(JSON.stringify(response.body)).not.toMatch(
-      /resultTrust|sourceKey|email|accessToken|sentinel/,
+      /email|accessToken|sentinel/,
     );
   });
 });

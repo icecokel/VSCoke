@@ -12,7 +12,6 @@ const generatedApiContractPath = join(temporaryDirectory, "openapi.json");
 const generatedWebTypesPath = join(temporaryDirectory, "api.d.ts");
 
 try {
-  run("pnpm", ["build:poke-lounge-battle"]);
   run("pnpm", [
     "--filter",
     "@vscoke/api",

@@ -11,9 +11,6 @@ import { GameService } from './game/game.service';
 import { MainChatController } from './main-chat/main-chat.controller';
 import { MainChatRateLimitGuard } from './main-chat/main-chat-rate-limit.guard';
 import { MainChatService } from './main-chat/main-chat.service';
-import { PokeLoungeController } from './poke-lounge/poke-lounge.controller';
-import { CompetitiveMatchService } from './poke-lounge/competitive/competitive-match.service';
-import { PokeLoungeRoomService } from './poke-lounge/poke-lounge-room.service';
 import { RecipeController } from './recipe/recipe.controller';
 import { RecipeService } from './recipe/recipe.service';
 import { ResumeRagController } from './resume-rag/resume-rag.controller';
@@ -41,7 +38,6 @@ const contractGuardStubProvider = (provide: InjectionToken): Provider => ({
     EspressoHistoryController,
     GameController,
     MainChatController,
-    PokeLoungeController,
     RecipeController,
     ResumeRagController,
     WordleController,
@@ -52,8 +48,6 @@ const contractGuardStubProvider = (provide: InjectionToken): Provider => ({
     contractStubProvider(GameService),
     contractGuardStubProvider(MainChatRateLimitGuard),
     contractStubProvider(MainChatService),
-    contractStubProvider(PokeLoungeRoomService),
-    contractStubProvider(CompetitiveMatchService),
     contractStubProvider(RecipeService),
     contractStubProvider(getRepositoryToken(User)),
     contractGuardStubProvider(GoogleAuthGuard),

@@ -2,7 +2,7 @@ import type { DataSource } from 'typeorm';
 
 const originalEnv = process.env;
 
-describe('Poke Lounge test data source', () => {
+describe('test data source', () => {
   beforeEach(() => {
     jest.resetModules();
     process.env = {
@@ -114,17 +114,6 @@ describe('Poke Lounge test data source', () => {
     },
   );
 
-  it('blocks rerouted DATABASE_URL before Jest support can construct or truncate', () => {
-    process.env.TEST_DATABASE_URL =
-      'postgresql://postgres:postgres@127.0.0.1:5432/vscoke_test';
-    process.env.DATABASE_URL =
-      'postgresql://regular:regular@regular-db.invalid:6543/vscoke_test?host=127.0.0.1&port=5432';
-
-    expect(() => loadTestDatabaseSupport()).toThrow(
-      'Regular database URLs must not include query parameters',
-    );
-  });
-
   it('rejects equality with the configured regular database name', () => {
     process.env.TEST_DATABASE_URL =
       'postgresql://postgres:postgres@127.0.0.1:5432/vscoke_test';
@@ -173,10 +162,4 @@ function loadTestDataSource(): DataSource {
   }
 
   return dataSource;
-}
-
-function loadTestDatabaseSupport(): void {
-  jest.isolateModules(() => {
-    jest.requireActual('../test/support/poke-lounge-test-database');
-  });
 }

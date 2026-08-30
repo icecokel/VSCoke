@@ -23,22 +23,21 @@ apps/api -> NestJS backend
 
 루트 스크립트는 workspace 명령을 감싸는 진입점이다.
 
-| 목적               | 명령                           |
-| ------------------ | ------------------------------ |
-| 웹 개발            | `pnpm dev:web`                 |
-| API 개발           | `pnpm dev:api`                 |
-| 전체 빌드          | `pnpm build`                   |
-| 웹 빌드            | `pnpm build:web`               |
-| API 빌드           | `pnpm build:api`               |
-| 웹 lint            | `pnpm lint:web`                |
-| 전체 lint          | `pnpm lint`                    |
-| 웹 타입 체크       | `pnpm type:check:web`          |
-| API test           | `pnpm test:api`                |
-| API E2E test       | `pnpm test:api:e2e`            |
-| battle engine test | `pnpm test:poke-lounge-battle` |
-| OpenAPI 타입 생성  | `pnpm generate:types`          |
-| API 계약 확인      | `pnpm check:api-contract`      |
-| unused code check  | `pnpm knip`                    |
+| 목적              | 명령                      |
+| ----------------- | ------------------------- |
+| 웹 개발           | `pnpm dev:web`            |
+| API 개발          | `pnpm dev:api`            |
+| 전체 빌드         | `pnpm build`              |
+| 웹 빌드           | `pnpm build:web`          |
+| API 빌드          | `pnpm build:api`          |
+| 웹 lint           | `pnpm lint:web`           |
+| 전체 lint         | `pnpm lint`               |
+| 웹 타입 체크      | `pnpm type:check:web`     |
+| API test          | `pnpm test:api`           |
+| API E2E test      | `pnpm test:api:e2e`       |
+| OpenAPI 타입 생성 | `pnpm generate:types`     |
+| API 계약 확인     | `pnpm check:api-contract` |
+| unused code check | `pnpm knip`               |
 
 Web E2E 명령과 선택 기준은 [Playwright CLI 테스트 흐름 스펙](./playwright-cli-test-spec.md)을
 따른다.
@@ -68,18 +67,6 @@ API는 DB, Google OAuth, 알림 설정을 `apps/api/.env`에서 읽는다. 운�
 
 Resume RAG와 메인 채팅을 로컬 API에서 실제로 호출하는 설정은
 [메인 채팅·이력 질문 AI 사용 지침](./main-chat-ai-usage-guide.md#5-배포-환경-설정)을 따른다.
-
-### Poke Lounge 로컬 싱글 테스트 모드
-
-싱글 게임의 전투, 상호작용, 저장과 이어하기 완성도를 반복 확인할 때 사용한다. 임의의 32~128자 토큰을 만들고, 같은 `LOCAL_TEST_AUTH_TOKEN` 값을 Git에서 제외되는 `apps/web/.env.local`과 `apps/api/.env`에만 저장한다. Web은 `http://localhost:3000` 또는 `http://127.0.0.1:3000`, `NEXT_PUBLIC_API_URL`은 `http://127.0.0.1:3001`을 사용한다.
-
-```env
-LOCAL_TEST_AUTH_TOKEN=<로컬에서 생성한 임의의 토큰>
-```
-
-환경 변수만 설정해서는 테스트 계정이 자동 로그인되지 않는다. 로컬 Web과 API를 실행한 뒤 Poke Lounge 입장 화면의 `로컬 싱글 테스트`에서 `테스트 모드로 시작`을 눌러야 활성화된다. 활성화 상태는 30일 동안 이 브라우저에 유지되며 화면의 `테스트 모드 종료`로 해제할 수 있다.
-
-테스트 모드에서는 고정 로컬 계정의 실제 Poke Lounge Redis TTL 상태 저장 API를 사용한다. 멀티플레이 선택은 숨기고 경쟁전 및 다른 게임 API에는 이 토큰을 허용하지 않는다. 다른 게임에서 계정 기능을 사용하려면 먼저 `테스트 모드 종료`를 누른다. Web 또는 API를 재시작해도 Redis TTL 안에서는 이어할 수 있지만 Redis 초기화나 만료 뒤에는 복구하지 않는다.
 
 ## 웹만 실행
 
@@ -115,7 +102,7 @@ API 개발 서버:
 PORT=3001 pnpm dev:api
 ```
 
-루트 명령은 `@vscoke/poke-lounge-battle`을 먼저 빌드한 뒤 battle TypeScript watch와 Nest watch를 함께 실행한다. 공유 배틀 엔진 소스를 수정하면 `dist`가 갱신되고 API가 다시 컴파일된다.
+루트 명령은 Nest 개발 서버를 watch 모드로 실행한다.
 
 Swagger 확인:
 
@@ -138,7 +125,7 @@ API 테스트:
 pnpm test:api
 ```
 
-레거시 migration integration과 API E2E의 테스트 계정에는 별도 test DB가 필요하다. 이름이 `_test`로 끝나지 않거나 regular DB 환경 변수와 같은 대상을 가리키면 test data source가 실행 전에 실패한다. Poke Lounge room과 플레이 상태 자체는 `REDIS_URL`의 격리 Redis를 사용한다.
+레거시 migration integration과 API E2E의 테스트 계정에는 별도 test DB가 필요하다. 이름이 `_test`로 끝나지 않거나 regular DB 환경 변수와 같은 대상을 가리키면 test data source가 실행 전에 실패한다.
 
 ```bash
 TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/vscoke_test \
@@ -146,29 +133,6 @@ TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/vscoke_test \
 TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/vscoke_test \
   pnpm test:api:e2e
 ```
-
-공유 경쟁 엔진은 별도로 검증한다.
-
-```bash
-pnpm test:poke-lounge-battle
-```
-
-## Poke Lounge 로컬 흐름
-
-로그인 Web은 `Authorization: Bearer <Google ID token>`으로 `GET /game/poke-lounge/state`를 먼저 호출한다. version 1 snapshot 검증과 local-player hydration이 끝난 뒤 Phaser와 `PUT /game/poke-lounge/state` autosave를 시작한다. 로그인하지 않았거나 서버 snapshot이 없으면 versioned `sessionStorage` 상태를 사용한다. GET 오류 시 게임은 local fallback으로 열리지만 원격 autosave는 retry 전까지 비활성 상태다.
-
-서버 room mutation에는 다음 두 header가 필수다.
-
-```http
-X-Idempotency-Key: 00000000-0000-4000-8000-000000000000
-If-Match-Revision: 0
-```
-
-`X-Idempotency-Key`는 canonical UUID v4이고 같은 network retry는 같은 key를 재사용한다. `If-Match-Revision`은 마지막 적용 revision이며 create는 `0`이다. stale mutation은 committed room snapshot을 포함한 `409` conflict로 복구한다.
-
-Web은 `GET /poke-lounge/rooms/:roomCode?afterRevision=<revision>`으로 초기/복구 snapshot을 읽고 Socket.IO `/poke-lounge` namespace에 `room.subscribe`를 보낸다. 정상 상태는 commit 이후 `room.snapshot`으로 전달된다. Socket outage나 `room.revision-conflict`에서는 bounded REST retry를 사용하며 상시 750 ms polling은 하지 않는다.
-
-경쟁 API인 `POST /poke-lounge/rooms/:roomCode/competitive-seat`와 `POST /poke-lounge/rooms/:roomCode/matches/:matchId/actions`도 bearer 인증이 필수다. 서로 다른 인증 계정 두 개가 좌석을 가져야 하며 각 클라이언트는 자기 action만 제출한다. casual `/result`나 일반 `/game/result`는 server room 결과 제출 경로가 아니다.
 
 ## 웹과 API 같이 실행
 

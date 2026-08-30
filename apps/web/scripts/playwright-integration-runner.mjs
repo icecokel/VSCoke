@@ -23,9 +23,6 @@ const webPort = String(47000 + (process.pid % 1000));
 const apiUrl = `http://127.0.0.1:${apiPort}`;
 const webUrl = `http://127.0.0.1:${webPort}`;
 const requestedPlaywrightArgs = process.argv.slice(2);
-const usesPokeLoungeApi = requestedPlaywrightArgs.some(argument =>
-  /(?:^|\/)poke-lounge[^/]*\.spec\.ts$/.test(argument),
-);
 const playwrightArgs =
   requestedPlaywrightArgs.length === 0
     ? [
@@ -59,23 +56,14 @@ const apiEnv = {
   TEST_DATABASE_URL: testDatabaseUrl,
 };
 
-if (usesPokeLoungeApi) {
-  apiEnv.POKE_LOUNGE_E2E = "1";
-  apiEnv.POKE_LOUNGE_E2E_RESET_DB = "1";
-}
-
 const playwrightEnv = {
   ...process.env,
   NEXT_PUBLIC_API_URL: apiUrl,
   PLAYWRIGHT_PORT: webPort,
 };
 
-if (usesPokeLoungeApi) {
-  playwrightEnv.POKE_LOUNGE_E2E_ENV_ISOLATED = "1";
-}
-
 for (const name of Object.keys(playwrightEnv)) {
-  if (isDatabaseEnvironmentName(name) || name === "REDIS_URL") {
+  if (isDatabaseEnvironmentName(name)) {
     delete playwrightEnv[name];
   }
 }
@@ -133,24 +121,11 @@ const stopProcessGroup = child => {
 let apiProcess;
 
 try {
-  if (!usesPokeLoungeApi) {
-    await runCommand(pnpmCommand, ["--filter", "@vscoke/api", "e2e:seed:hobby"], {
-      env: seedEnv,
-    });
-  }
+  await runCommand(pnpmCommand, ["--filter", "@vscoke/api", "e2e:seed:hobby"], {
+    env: seedEnv,
+  });
 
-  const apiArgs = usesPokeLoungeApi
-    ? [
-        "--filter",
-        "@vscoke/api",
-        "exec",
-        "ts-node",
-        "-r",
-        "tsconfig-paths/register",
-        "scripts/start-poke-lounge-e2e-api.ts",
-      ]
-    : ["--filter", "@vscoke/api", "start"];
-  apiProcess = spawn(pnpmCommand, apiArgs, {
+  apiProcess = spawn(pnpmCommand, ["--filter", "@vscoke/api", "start"], {
     cwd: repositoryRoot,
     detached: process.platform !== "win32",
     env: apiEnv,

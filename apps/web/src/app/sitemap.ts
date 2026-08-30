@@ -18,7 +18,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/readme",
     "/game",
     "/game/sky-drop",
-    "/game/poke-lounge",
     "/game/wordle",
   ];
   const localizedStaticUrls = routing.locales.flatMap(locale =>

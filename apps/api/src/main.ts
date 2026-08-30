@@ -10,12 +10,6 @@ import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/utils/winston.config';
 import { getCorsOptions } from './common/utils/cors.util';
 import { setupApiDocumentation } from './api-documentation';
-import {
-  LOCAL_TEST_API_HOSTNAME,
-  resolveLocalTestAuthToken,
-} from './auth/local-test-account';
-import { PokeLoungeLiveStateService } from './poke-lounge/poke-lounge-live-state.service';
-import { PokeLoungeRedisIoAdapter } from './poke-lounge/poke-lounge-redis-io.adapter';
 
 /**
  * 애플리케이션 진입점 함수
@@ -25,11 +19,6 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: WinstonModule.createLogger(winstonConfig),
   });
-  const liveState = app.get(PokeLoungeLiveStateService);
-  await liveState.connect();
-  app.useWebSocketAdapter(
-    new PokeLoungeRedisIoAdapter(app, liveState.createSocketAdapter()),
-  );
   app.enableShutdownHooks();
 
   app.set('trust proxy', 'loopback');
@@ -51,11 +40,6 @@ async function bootstrap() {
 
   // 지정된 포트에서 서버 실행
   const port = process.env.PORT ?? 3000;
-
-  if (resolveLocalTestAuthToken()) {
-    await app.listen(port, LOCAL_TEST_API_HOSTNAME);
-    return;
-  }
 
   await app.listen(port);
 }

@@ -278,20 +278,19 @@ API endpoint 목록은 [VSCoke API README](../apps/api/README.md#주요-모듈)�
 
 ## 19. 점수·랭킹·공유 상세
 
-| ID          | 우선순위/상태 | 사전조건                     | 절차                    | 기대 결과                                                                    |
-| ----------- | ------------- | ---------------------------- | ----------------------- | ---------------------------------------------------------------------------- |
-| `SCORE-001` | P0/P          | 로그인, 게임 결과            | 점수 제출               | gameType, score, source가 API 계약에 맞고 result ID가 반환된다.              |
-| `SCORE-002` | P1/N          | 동일 결과                    | 제출 재시도             | idempotency 또는 UI guard로 중복 history가 생기지 않는다.                    |
-| `SCORE-003` | P0/A          | ranking API 실패             | ranking 화면            | 빈 상태로 fallback하고 page 500을 만들지 않는다.                             |
-| `SCORE-004` | P0/N          | `DB_GAME`                    | gameType별 ranking 조회 | 사용자별 최고점, 정렬, 공개 projection만 반환된다.                           |
-| `SCORE-005` | P0/A          | 유효 share ID                | `/share/:id` 직접 진입  | 게임명, 점수, 사용자, 생성 시각이 표시되고 탭 이름에 UUID가 노출되지 않는다. |
-| `SCORE-006` | P0/A          | 잘못된 ID/404                | share 직접 진입         | 서버 예외 대신 404 복구 화면을 표시한다.                                     |
-| `SCORE-007` | P1/A          | API 530/fetch 실패           | share 직접 진입         | recoverable fallback으로 처리한다.                                           |
-| `SCORE-008` | P1/A          | API 500                      | share 직접 진입         | 실제 server error를 조용히 404로 숨기지 않고 오류로 분류한다.                |
-| `SCORE-009` | P0/A          | Poke legacy verified fixture | 공개 ranking 조회       | 기존 verified 결과만 포함되고 V2 unranked/client-asserted 결과는 제외된다.   |
-| `SCORE-010` | P1/N          | share UI                     | 링크 복사·QR·Web Share  | canonical share URL이 모든 방식에서 동일하다.                                |
+| ID          | 우선순위/상태 | 사전조건           | 절차                    | 기대 결과                                                                    |
+| ----------- | ------------- | ------------------ | ----------------------- | ---------------------------------------------------------------------------- |
+| `SCORE-001` | P0/P          | 로그인, 게임 결과  | 점수 제출               | gameType, score, source가 API 계약에 맞고 result ID가 반환된다.              |
+| `SCORE-002` | P1/N          | 동일 결과          | 제출 재시도             | idempotency 또는 UI guard로 중복 history가 생기지 않는다.                    |
+| `SCORE-003` | P0/A          | ranking API 실패   | ranking 화면            | 빈 상태로 fallback하고 page 500을 만들지 않는다.                             |
+| `SCORE-004` | P0/N          | `DB_GAME`          | gameType별 ranking 조회 | 사용자별 최고점, 정렬, 공개 projection만 반환된다.                           |
+| `SCORE-005` | P0/A          | 유효 share ID      | `/share/:id` 직접 진입  | 게임명, 점수, 사용자, 생성 시각이 표시되고 탭 이름에 UUID가 노출되지 않는다. |
+| `SCORE-006` | P0/A          | 잘못된 ID/404      | share 직접 진입         | 서버 예외 대신 404 복구 화면을 표시한다.                                     |
+| `SCORE-007` | P1/A          | API 530/fetch 실패 | share 직접 진입         | recoverable fallback으로 처리한다.                                           |
+| `SCORE-008` | P1/A          | API 500            | share 직접 진입         | 실제 server error를 조용히 404로 숨기지 않고 오류로 분류한다.                |
+| `SCORE-010` | P1/N          | share UI           | 링크 복사·QR·Web Share  | canonical share URL이 모든 방식에서 동일하다.                                |
 
-현재 자동화 매핑: `api-read-error.spec.ts`, `error-fallback.spec.ts`, `not-found-recovery.spec.ts`, `server-route-fallback.spec.ts`, `history-tabs.spec.ts`, API `game-result-trust.integration-spec.ts`.
+현재 자동화 매핑: `api-read-error.spec.ts`, `error-fallback.spec.ts`, `not-found-recovery.spec.ts`, `server-route-fallback.spec.ts`, `history-tabs.spec.ts`.
 
 ## 20. 인증과 세션
 
@@ -303,7 +302,7 @@ API endpoint 목록은 [VSCoke API README](../apps/api/README.md#주요-모듈)�
 | `AUTH-004` | P0/A          | 유효 idToken           | token helper 실행            | JWT exp를 계산하고 API 제출 token으로 반환한다.                  |
 | `AUTH-005` | P0/A          | 만료/갱신 실패 idToken | API 작업                     | 만료 token과 accessToken fallback을 사용하지 않는다.             |
 | `AUTH-006` | P0/N          | 보호 API               | token 없음/잘못된 token 요청 | 401이며 사용자 간 데이터가 노출되지 않는다.                      |
-| `AUTH-007` | P1/N          | `USER_A`→`USER_B`      | 같은 browser에서 계정 전환   | 저장·pending score·Poke state가 계정 간 섞이지 않는다.           |
+| `AUTH-007` | P1/N          | `USER_A`→`USER_B`      | 같은 browser에서 계정 전환   | pending score가 계정 간 섞이지 않는다.                           |
 | `AUTH-008` | P1/N          | OAuth 취소/오류        | 로그인 시도                  | 원래 화면에서 재시도 가능한 오류 안내를 표시한다.                |
 
 현재 자동화 매핑: `auth-token.spec.ts`, API `google-auth.guard.spec.ts`. 실제 Google OAuth는 운영 수동 smoke 또는 별도 테스트 OAuth 프로젝트가 필요하다.

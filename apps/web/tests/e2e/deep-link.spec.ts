@@ -91,9 +91,9 @@ test.describe("딥링크 직접 진입", () => {
     await expect(careerDetails).toHaveCount(4);
     expect(await careerDetails.locator("h1").allTextContents()).toEqual([
       "오프리메드 - 의료·임상 분석 제품",
-      "CodeCrayon - 커머스·백오피스",
-      "CodeCrayon - WebView·웹게임",
-      "CodeCrayon - AI 활용과 운영 도구",
+      "CodeCrayon - WebView 제품과 웹게임",
+      "CodeCrayon - AI 활용과 콘텐츠 운영 도구",
+      "CodeCrayon - 고객용 커머스와 판매자·운영자 백오피스",
     ]);
 
     await page.getByTestId("resume-preview-save-pdf").click();
@@ -170,34 +170,40 @@ test.describe("딥링크 직접 진입", () => {
     const { locale } = await resolveLocaleAndMessages(page);
 
     await gotoWithRetry(page, `/${locale}/resume/commerce-backoffice-product`);
-    await expect(page.getByRole("heading", { name: "커머스·백오피스", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "고객용 커머스", exact: true })).toBeVisible();
     await expect(
-      page.getByText("한국어·일본어·영어·중국어 화면을 지원했습니다.", { exact: false }),
+      page.getByText("한국어·일본어·영어·번체 중국어를 제공하고", { exact: false }),
     ).toBeVisible();
     await expect(
-      page.getByText("Flutter Web 백오피스를 Next.js로 마이그레이션", { exact: false }),
+      page.getByText("Flutter Web 백오피스를 Next.js로 한 번에 교체", { exact: false }),
     ).toBeVisible();
 
     await gotoWithRetry(page, `/${locale}/resume/translate`);
     await expect(
-      page.getByText("재직 중 약 3개월 동안 운영자 3~4명이 사용했습니다.", {
+      page.getByText("약 3일 걸리던 작업을 하루 6~8편까지 처리", {
         exact: false,
       }),
     ).toBeVisible();
     await expect(
-      page.getByText("셀렉터스 상품 블로그 초안 생성 프로토타입", { exact: false }),
+      page.getByText("셀렉터스 상품 블로그 초안을 AI로 생성하는 프로토타입", {
+        exact: false,
+      }),
     ).toBeVisible();
-    await expect(page.getByText("약 50분에서 10분 이내로 줄였고", { exact: false })).toBeVisible();
+    await expect(
+      page.getByText("비슷한 키워드 수 기준 확인 시간을 약 50분에서 10분 이내", {
+        exact: false,
+      }),
+    ).toBeVisible();
 
     await gotoWithRetry(page, `/${locale}/resume/shortime-playground`);
     await expect(
-      page.getByText("WebView 영역을 제안하고 프로토타입으로 시연", { exact: false }),
+      page.getByText("WebView Playground를 제안해 프로토타입으로 시연", { exact: false }),
     ).toBeVisible();
     await expect(
-      page.getByText("결과 제출 중 중복 진행과 Safari 오디오 재생", { exact: false }),
+      page.getByText("광고 완료·딥링크·Safari 오디오·중복 진행·timeout", { exact: false }),
     ).toBeVisible();
     await expect(
-      page.getByText("DB 기준 주간 고유 이용자 약 2,000~3,000명", { exact: false }),
+      page.getByText("주간 고유 이용자 약 2,000~3,000명", { exact: false }),
     ).toBeVisible();
   });
 });

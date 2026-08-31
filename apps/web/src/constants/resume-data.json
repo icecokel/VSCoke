@@ -12,16 +12,16 @@
     "id": "codecrayon",
     "projects": [
       {
-        "id": "commerceBackoffice",
-        "fileRef": "commerce-backoffice-product"
-      },
-      {
         "id": "shortimePlayground",
         "fileRef": "shortime-playground"
       },
       {
         "id": "subtitleSystem",
         "fileRef": "translate"
+      },
+      {
+        "id": "commerceBackoffice",
+        "fileRef": "commerce-backoffice-product"
       }
     ]
   },
@@ -41,6 +41,9 @@
     "projects": [
       {
         "id": "consularCallCenter"
+      },
+      {
+        "id": "smartDis"
       }
     ]
   },
@@ -49,6 +52,12 @@
     "projects": [
       {
         "id": "policyCoordination"
+      },
+      {
+        "id": "socialSecurity"
+      },
+      {
+        "id": "childProtection"
       }
     ]
   }

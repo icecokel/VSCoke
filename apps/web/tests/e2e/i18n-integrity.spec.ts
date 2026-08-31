@@ -56,12 +56,15 @@ interface ResumeCopyMessages {
         role: string;
         projects: {
           consularCallCenter: ResumeProjectCopy;
+          smartDis: ResumeProjectCopy;
         };
       };
       datalogicsInfra: {
         role: string;
         projects: {
           policyCoordination: ResumeProjectCopy;
+          socialSecurity: ResumeProjectCopy;
+          childProtection: ResumeProjectCopy;
         };
       };
     };
@@ -108,43 +111,43 @@ test.describe("i18n 무결성", () => {
     expect(jaMessages.resume.title).toBe("ビジネス価値を生み出し、チームの負担を減らす開発者");
 
     for (const messages of [koMessages, enMessages, jaMessages]) {
-      expect(messages.resume.introduction).toHaveLength(4);
+      expect(messages.resume.introduction).toHaveLength(5);
     }
     expect(koMessages.resume.introduction[0]).toBe(
       "안녕하세요. 프론트엔드를 중심으로 제품과 운영에 필요한 기능을 개발해 온 이상민입니다.",
     );
-    expect(koMessages.resume.introduction[3]).toContain("프로젝트별 지침·Skill·Hook·PR 검증 기준");
-    expect(enMessages.resume.introduction[1]).toContain("independent WebView product");
-    expect(jaMessages.resume.introduction[2]).toContain("ログ保存、リクエスト追跡");
+    expect(koMessages.resume.introduction[3]).toContain("LLM Wiki와 MCP");
+    expect(enMessages.resume.introduction[3]).toContain("LLM Wiki and MCP");
+    expect(jaMessages.resume.introduction[1]).toContain("ログ保存、リクエスト追跡");
 
     expect(
       koMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions.map(
         description => description.subtitle,
       ),
-    ).toEqual(["의료·임상 분석 화면 개발", "AI 개발 도구 활용", "인프라와 백엔드"]);
+    ).toEqual(["의료·임상 분석 화면 개발", "AI 개발 도구 활용 경험", "개발 환경과 백엔드 운영"]);
     expect(
       enMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions.map(
         description => description.subtitle,
       ),
     ).toEqual([
       "Medical and Clinical Analysis Screen Development",
-      "AI Development Tooling",
-      "Infrastructure and Backend",
+      "AI Development Tooling Experience",
+      "Development Environment and Backend Operations",
     ]);
     expect(
       jaMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions.map(
         description => description.subtitle,
       ),
-    ).toEqual(["医療・臨床分析画面の開発", "AI開発ツールの活用", "インフラとバックエンド"]);
-    expect(koMessages.resume.careers.oprimed.role).toBe("서비스 개발자");
+    ).toEqual(["医療・臨床分析画面の開発", "AI開発ツールの活用経験", "開発環境とバックエンド運用"]);
+    expect(koMessages.resume.careers.oprimed.role).toBe("풀스택 개발자");
     expect(
       koMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions[0]
-        ?.tasks?.[2],
+        ?.tasks?.[3],
     ).toContain("약 95%");
     expect(
       enMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions[1]
         ?.tasks?.[1],
-    ).toContain("typecheck, test, and build");
+    ).toContain("local LLM Wiki");
     expect(
       jaMessages.resume.careers.oprimed.projects.medicalFrontendProductization.descriptions[2]
         ?.skills,
@@ -154,30 +157,37 @@ test.describe("i18n 무결성", () => {
       koMessages.resume.careers.codecrayon.projects.commerceBackoffice.title,
       koMessages.resume.careers.codecrayon.projects.shortimePlayground.title,
       koMessages.resume.careers.codecrayon.projects.subtitleSystem.title,
-    ]).toEqual(["커머스·백오피스", "WebView·웹게임", "AI 활용과 운영 도구"]);
+    ]).toEqual(["고객용 커머스", "WebView 제품과 웹게임", "AI 활용과 콘텐츠 운영 도구"]);
     expect([
       enMessages.resume.careers.codecrayon.projects.commerceBackoffice.title,
       enMessages.resume.careers.codecrayon.projects.shortimePlayground.title,
       enMessages.resume.careers.codecrayon.projects.subtitleSystem.title,
     ]).toEqual([
-      "Commerce and Back Office",
-      "WebView and Web Games",
-      "AI Use and Operations Tools",
+      "Customer-Facing Commerce",
+      "WebView Products and Web Games",
+      "AI Use and Content Operations Tools",
     ]);
     expect([
       jaMessages.resume.careers.codecrayon.projects.commerceBackoffice.title,
       jaMessages.resume.careers.codecrayon.projects.shortimePlayground.title,
       jaMessages.resume.careers.codecrayon.projects.subtitleSystem.title,
-    ]).toEqual(["コマース・バックオフィス", "WebView・Webゲーム", "AI活用と運用ツール"]);
+    ]).toEqual([
+      "顧客向けコマース",
+      "WebViewプロダクトとWebゲーム",
+      "AI活用とコンテンツ運用ツール",
+    ]);
     expect(
       koMessages.resume.careers.codecrayon.projects.commerceBackoffice.descriptions[0]?.tasks?.[0],
-    ).toContain("한국어·일본어·영어·중국어");
+    ).toContain("한국어·일본어·영어·번체 중국어");
+    expect(
+      koMessages.resume.careers.codecrayon.projects.commerceBackoffice.descriptions[1]?.subtitle,
+    ).toBe("판매자 화면과 운영자 백오피스");
     expect(
       koMessages.resume.careers.codecrayon.projects.shortimePlayground.descriptions[0]?.tasks?.[1],
     ).toContain("2,000~3,000명");
     expect(
       koMessages.resume.careers.codecrayon.projects.subtitleSystem.descriptions[0]?.tasks?.[1],
-    ).toContain("상품 블로그 초안 생성 프로토타입");
+    ).toContain("상품 블로그 초안을 AI로 생성하는 프로토타입");
 
     expect(koMessages.resume.careers.allofthem.projects.insuranceSubscription.title).toBe(
       "공통 가입 진입과 성능 개선",
@@ -186,30 +196,36 @@ test.describe("i18n 무결성", () => {
       "Subscription and Operations Systems",
     );
     expect(
-      jaMessages.resume.careers.allofthem.projects.insuranceSubscription.descriptions[0]?.detail,
-    ).toBe("顧客企業の流入から加入・運用までをつなぐ保険プロダクト");
+      koMessages.resume.careers.allofthem.projects.insuranceSubscription.descriptions[0]?.tasks,
+    ).toHaveLength(2);
+    expect(
+      jaMessages.resume.careers.allofthem.projects.insuranceResponsive.descriptions[0]?.tasks,
+    ).toHaveLength(2);
 
     expect(koMessages.resume.careers.datalogics.projects.consularCallCenter.title).toBe(
-      "외교부 영사콜센터 유지보수와 Smart-DIS ETL 개발",
+      "외교부 영사콜센터 유지보수",
     );
     expect(enMessages.resume.careers.datalogics.projects.consularCallCenter.title).toBe(
-      "Consular Call Center Maintenance and Smart-DIS ETL Development",
+      "Ministry of Foreign Affairs Consular Call Center Maintenance",
     );
     expect(jaMessages.resume.careers.datalogics.projects.consularCallCenter.title).toBe(
-      "領事コールセンター保守とSmart-DIS ETL開発",
+      "外交部領事コールセンター保守",
+    );
+    expect(koMessages.resume.careers.datalogics.projects.smartDis.title).toBe(
+      "Smart-DIS 데이터 마이그레이션과 실행 환경 전환",
     );
     expect(
       koMessages.resume.careers.datalogics.projects.consularCallCenter.descriptions[0]?.tasks,
-    ).toHaveLength(3);
+    ).toHaveLength(1);
     expect(
       koMessages.resume.careers.datalogicsInfra.projects.policyCoordination.descriptions[0]?.tasks,
-    ).toHaveLength(3);
+    ).toHaveLength(1);
     expect(
       enMessages.resume.careers.datalogicsInfra.projects.policyCoordination.descriptions[0]?.skills,
     ).toContain("L2/L3");
     expect(
-      jaMessages.resume.careers.datalogicsInfra.projects.policyCoordination.descriptions[0]
-        ?.tasks?.[2],
+      jaMessages.resume.careers.datalogicsInfra.projects.childProtection.descriptions[0]
+        ?.tasks?.[0],
     ).toContain("児童保護専門機関");
   });
 
@@ -284,11 +300,19 @@ test.describe("i18n 무결성", () => {
         name: "비즈니스 가치를 만들고, 팀의 고통을 줄이는 개발자",
       }),
     ).toBeVisible();
-    await expect(page.getByText("서비스 개발자")).toBeVisible();
+    await expect(page.getByText("풀스택 개발자")).toBeVisible();
     await expect(
       page
         .getByRole("heading", {
-          name: "외교부 영사콜센터 유지보수와 Smart-DIS ETL 개발",
+          name: "외교부 영사콜센터 유지보수",
+          exact: true,
+        })
+        .first(),
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole("heading", {
+          name: "Smart-DIS 데이터 마이그레이션과 실행 환경 전환",
           exact: true,
         })
         .first(),
@@ -299,7 +323,7 @@ test.describe("i18n 무결성", () => {
       exact: true,
     });
     const descriptionDetail = page.getByText(
-      "의료·임상 분석 제품의 화면 개발과 접근성·성능 개선, AI 개발 환경, CI/CD와 백엔드 로그 작업을 맡고 있습니다.",
+      "의료·임상 분석 제품의 화면 개발과 접근성·성능 개선, 개발 환경 개선과 백엔드 작업을 함께 맡고 있습니다.",
       { exact: true },
     );
     const [subtitleBox, detailBox] = await Promise.all([

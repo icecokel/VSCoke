@@ -86,6 +86,12 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await dialog.getByRole("button", { name: "Portfolio" }).first().click();
     await dialog.getByRole("button", { name: "VSCOKE" }).first().click();
     await expect(openButton).toBeEnabled();
+    await dialog.getByRole("button", { name: "Poke Lounge" }).first().click();
+    await expect(
+      dialog.getByText(`https://poke-lounge.icecoke.kr/${locale}/game/poke-lounge`, {
+        exact: true,
+      }),
+    ).toBeVisible();
     await cancelButton.click();
     await expect(dialog).toBeHidden();
 
@@ -325,10 +331,25 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     const localeRegex = escapeRegExp(locale);
     await visit(page, `/${locale}/game`);
 
-    await expect(page.getByRole("heading", { name: messages.home.cards.gameTitle })).toBeVisible();
-    await expect(page.locator("main button")).toHaveCount(2);
-    await expect(page.locator("main.bg-slate-900")).toHaveCSS("padding-bottom", "100px");
-    await expect(page.locator("main button").first()).toHaveAccessibleName(/Sky Drop/);
+    const gameCenter = page.locator("main.bg-slate-900");
+
+    await expect(
+      gameCenter.getByRole("heading", { name: messages.home.cards.gameTitle }),
+    ).toBeVisible();
+    await expect(gameCenter.getByRole("button")).toHaveCount(2);
+    await expect(gameCenter.getByRole("link", { name: /Poke Lounge/ })).toHaveAttribute(
+      "href",
+      `https://poke-lounge.icecoke.kr/${locale}/game/poke-lounge`,
+    );
+    const pokeLoungeRedirect = await page.request.get(`/${locale}/game/poke-lounge`, {
+      maxRedirects: 0,
+    });
+    expect(pokeLoungeRedirect.status()).toBe(308);
+    expect(pokeLoungeRedirect.headers().location).toBe(
+      `https://poke-lounge.icecoke.kr/${locale}/game/poke-lounge`,
+    );
+    await expect(gameCenter).toHaveCSS("padding-bottom", "100px");
+    await expect(gameCenter.getByRole("button").first()).toHaveAccessibleName(/Sky Drop/);
 
     await expect(page.getByRole("button", { name: /Sky Drop/ })).toBeVisible();
     await expect(

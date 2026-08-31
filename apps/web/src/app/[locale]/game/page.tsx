@@ -1,12 +1,14 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useCustomRouter } from "@/hooks/use-custom-router";
+import { pokeLoungeSiteUrl } from "@/lib/site-url";
 import { useEffect } from "react";
 
 import { ChevronRight } from "lucide-react";
 
 export default function GameDashboard() {
+  const locale = useLocale();
   const t = useTranslations("Game");
   const { push, prefetch } = useCustomRouter();
 
@@ -36,6 +38,23 @@ export default function GameDashboard() {
       </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 w-full max-w-4xl">
+        <a
+          href={`${pokeLoungeSiteUrl}/${locale}/game/poke-lounge`}
+          className="group relative flex h-24 w-full cursor-pointer flex-row items-center justify-between rounded-2xl border-2 border-slate-700 bg-slate-800 p-4 text-left transition-all duration-300 hover:scale-105 hover:border-green-300 hover:bg-slate-700 md:h-64 md:w-64 md:flex-col md:justify-center md:p-6 md:text-center"
+        >
+          <div className="flex flex-col md:items-center">
+            <h2 className="text-xl md:text-2xl font-bold text-white mb-1 md:mb-2 leading-tight">
+              Poke Lounge
+            </h2>
+            <p className="text-xs md:text-base text-gray-400 group-hover:text-gray-200 transition-colors line-clamp-1 md:line-clamp-3">
+              {t("pokeLoungeDesc")}
+            </p>
+          </div>
+          <div className="md:hidden text-green-300">
+            <ChevronRight className="w-6 h-6" />
+          </div>
+        </a>
+
         {games.map(game => (
           <button
             key={game.id}

@@ -13,8 +13,8 @@ import useSnackBar from "@/components/base-ui/snack-bar/hooks/use-snack-bar";
 import BaseText from "@/components/base-ui/text";
 import { useMemo, useState } from "react";
 import Icon, { TKind } from "@/components/base-ui/icon";
-import { useTranslations } from "next-intl";
-import { siteUrl } from "@/lib/site-url";
+import { useLocale, useTranslations } from "next-intl";
+import { pokeLoungeSiteUrl, siteUrl } from "@/lib/site-url";
 
 interface IOpenProjectModalProps {
   open: boolean;
@@ -32,16 +32,23 @@ interface IProject {
 }
 
 const OpenProjectModal = (props: IOpenProjectModalProps) => {
+  const locale = useLocale();
   const t = useTranslations("menu");
   const categories = useMemo<ICategory[]>(
     () => [
       {
         label: "Portfolio",
-        items: [{ label: "VSCOKE", link: siteUrl }],
+        items: [
+          { label: "VSCOKE", link: siteUrl },
+          {
+            label: "Poke Lounge",
+            link: `${pokeLoungeSiteUrl}/${locale}/game/poke-lounge`,
+          },
+        ],
       },
       { label: "Users", items: [{ label: "Test", link: "" }] },
     ],
-    [],
+    [locale],
   );
   const sidebarSections = useMemo<
     { title: string; items: { icon: TKind; id: string; label: string }[] }[]
@@ -87,7 +94,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
   const handleClickOpenProject = () => {
     onClose();
     if (currentProject?.link) {
-      window.open(currentProject?.link);
+      window.open(currentProject.link, "_blank", "noopener,noreferrer");
     } else {
       open();
     }

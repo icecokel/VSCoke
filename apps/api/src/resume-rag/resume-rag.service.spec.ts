@@ -234,6 +234,33 @@ describe('ResumeRagService conversational retrieval', () => {
       { history },
     );
     expect(result.grounded).toBe(false);
-    expect(answer).toHaveBeenCalledTimes(1);
+    expect(answer).not.toHaveBeenCalled();
+    expect(retrieve).toHaveBeenCalledWith({
+      question: '정확한 수치는?',
+      locale: 'ko-KR',
+    });
+  });
+
+  it('명시적으로 새 주제로 전환하면 이전 대화로 검색어를 재작성하지 않는다', async () => {
+    const retrieve = jest.fn().mockResolvedValue([]);
+    const answer = jest.fn();
+    const service = new ResumeRagService(
+      { retrieve } as unknown as ResumeRagRetrieverService,
+      { answer },
+      createChatLogService().chatLogService,
+    );
+    const result = await service.answer(
+      {
+        question: '이제 주제를 바꿔서 내일 비트코인 가격을 알려줘',
+        locale: 'ko-KR',
+      },
+      { history },
+    );
+    expect(result.grounded).toBe(false);
+    expect(retrieve).toHaveBeenCalledWith({
+      question: '이제 주제를 바꿔서 내일 비트코인 가격을 알려줘',
+      locale: 'ko-KR',
+    });
+    expect(answer).not.toHaveBeenCalled();
   });
 });

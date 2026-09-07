@@ -1,4 +1,7 @@
-import type { ResumeChatHistoryMessage } from './resume-chat-history';
+import {
+  shouldResolveResumeChatReference,
+  type ResumeChatHistoryMessage,
+} from './resume-chat-history';
 import {
   Inject,
   Injectable,
@@ -69,7 +72,10 @@ export class ResumeRagService {
     let chunks: RetrievedResumeChunk[];
     try {
       let searchQuestion = request.question;
-      if (options.history?.length) {
+      if (
+        options.history?.length &&
+        shouldResolveResumeChatReference(request.question)
+      ) {
         searchQuestion = (
           await this.chatProvider.answer({
             task: 'rewrite-query',

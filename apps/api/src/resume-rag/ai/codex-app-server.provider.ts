@@ -1,3 +1,7 @@
+import {
+  buildResumeChatPrompt,
+  getResumeChatInstructions,
+} from './resume-chat-prompt';
 import type { ChatAnswerRequest, ChatProvider } from './chat-provider';
 import {
   type RequiredCodexAppServerConfig,
@@ -97,35 +101,6 @@ const getCompletedAgentMessageText = (
 
 const isTurnCompleted = (message: JsonRpcMessage): boolean =>
   message.method === 'turn/completed';
-
-const formatContext = (request: ChatAnswerRequest): string =>
-  request.contexts
-    .map((context, index) =>
-      [
-        `[${index + 1}] ${context.title}`,
-        `Source key: ${context.sourceKey}`,
-        `Source path: ${context.sourcePath}`,
-        `Similarity: ${context.similarity.toFixed(4)}`,
-        'Content:',
-        context.content,
-      ].join('\n'),
-    )
-    .join('\n\n');
-
-const buildPrompt = (request: ChatAnswerRequest): string =>
-  [
-    `Locale: ${request.locale}`,
-    `Question: ${request.question}`,
-    '',
-    'Retrieved resume context:',
-    formatContext(request),
-    '',
-    'Answer requirements:',
-    '- Answer only from the retrieved resume context above.',
-    '- If the context is insufficient, say that the available evidence is insufficient.',
-    '- Keep the answer concise and natural.',
-    '- Do not mention internal implementation details, vector search, or model/provider settings.',
-  ].join('\n');
 
 class CodexJsonRpcClient {
   private nextId = 1;
@@ -277,7 +252,7 @@ export class CodexAppServerProvider implements ChatProvider {
       const threadId = getThreadId(
         await client.request(
           'thread/start',
-          this.buildThreadStart(codexConfig),
+          this.buildThreadStart(codexConfig, request),
         ),
       );
 
@@ -313,7 +288,7 @@ export class CodexAppServerProvider implements ChatProvider {
       await Promise.all([
         client.request('turn/start', {
           threadId,
-          input: [{ type: 'text', text: buildPrompt(request) }],
+          input: [{ type: 'text', text: buildResumeChatPrompt(request) }],
           cwd: codexConfig.codexCwd ?? process.cwd(),
           approvalPolicy: 'never',
           sandboxPolicy: { type: 'readOnly', networkAccess: false },
@@ -338,7 +313,10 @@ export class CodexAppServerProvider implements ChatProvider {
     }
   }
 
-  private buildThreadStart(config: RequiredCodexAppServerConfig) {
+  private buildThreadStart(
+    config: RequiredCodexAppServerConfig,
+    request: ChatAnswerRequest,
+  ) {
     return {
       cwd: config.codexCwd ?? process.cwd(),
       ephemeral: true,
@@ -346,14 +324,8 @@ export class CodexAppServerProvider implements ChatProvider {
       sandbox: 'read-only',
       model: config.chatModel ?? null,
       modelProvider: config.codexModelProvider ?? null,
-      baseInstructions: [
-        'You are a strict resume RAG answer generator.',
-        'Use only the resume context supplied by the current user turn.',
-        'Do not use tools, filesystem, network, memory, or prior conversation.',
-        'Return only the final answer text.',
-      ].join(' '),
-      developerInstructions:
-        'Answer resume questions only from supplied retrieved context. If the context is insufficient, say so plainly.',
+      baseInstructions: getResumeChatInstructions(request),
+      developerInstructions: getResumeChatInstructions(request),
       environments: [],
       dynamicTools: [],
     };

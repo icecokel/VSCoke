@@ -1,3 +1,4 @@
+import type { ResumeChatHistoryMessage } from '../resume-rag/resume-chat-history';
 import { Injectable } from '@nestjs/common';
 import type { ResumeRagChatRequestDto } from '../resume-rag/dto/resume-rag-chat-request.dto';
 import type { ResumeRagChatResponseDto } from '../resume-rag/dto/resume-rag-chat-response.dto';
@@ -100,7 +101,10 @@ const getSimpleReply = (
 export class MainChatService {
   constructor(private readonly resumeRagService: ResumeRagService) {}
 
-  answer(request: ResumeRagChatRequestDto): Promise<ResumeRagChatResponseDto> {
+  answer(
+    request: ResumeRagChatRequestDto,
+    history?: ResumeChatHistoryMessage[],
+  ): Promise<ResumeRagChatResponseDto> {
     const simpleReply = getSimpleReply(request.question, request.locale);
     if (simpleReply) {
       return Promise.resolve({
@@ -110,6 +114,9 @@ export class MainChatService {
       });
     }
 
-    return this.resumeRagService.answer(request, { recordQuestion: false });
+    return this.resumeRagService.answer(request, {
+      recordQuestion: false,
+      ...(history?.length ? { history } : {}),
+    });
   }
 }

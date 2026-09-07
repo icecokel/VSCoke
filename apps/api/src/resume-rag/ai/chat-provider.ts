@@ -1,6 +1,9 @@
+import type { ResumeChatHistoryMessage } from '../resume-chat-history';
 import type { RetrievedResumeChunk } from '../resume-rag-retriever.service';
 
 export type ChatAnswerRequest = {
+  task?: 'rewrite-query';
+  history?: ResumeChatHistoryMessage[];
   question: string;
   locale: string;
   contexts: RetrievedResumeChunk[];

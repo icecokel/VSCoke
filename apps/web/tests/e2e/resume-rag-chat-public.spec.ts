@@ -1,3 +1,4 @@
+import { conversationResponse, mockResumeConversationStorage } from "./test-helpers";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:65535";
@@ -11,11 +12,14 @@ const getFailureAlert = (page: Page, title: string) =>
   page.getByRole("alert").filter({ hasText: title });
 
 test.describe("Resume RAG public chat", () => {
+  test.beforeEach(async ({ page }) => {
+    await mockResumeConversationStorage(page);
+  });
   test("README에서 질문한 답변을 준비한 뒤 질문 페이지에서 바로 볼 수 있다", async ({ page }) => {
     await page.route(`${apiBaseUrl}/resume-rag/chat`, async route => {
       const request = route.request();
 
-      expect(request.postDataJSON()).toEqual({
+      expect(request.postDataJSON()).toMatchObject({
         question: "Oprimed에서 맡은 일을 알려줘",
         locale: "ko-KR",
       });
@@ -26,6 +30,7 @@ test.describe("Resume RAG public chat", () => {
         body: JSON.stringify({
           success: true,
           data: {
+            ...conversationResponse(route),
             answer: "Oprimed에서는 의료 분석 워크스페이스를 개발했습니다.",
             grounded: true,
             sources: [
@@ -76,6 +81,7 @@ test.describe("Resume RAG public chat", () => {
         body: JSON.stringify({
           success: true,
           data: {
+            ...conversationResponse(route),
             answer: "Oprimed에서는 의료 분석 워크스페이스를 개발했습니다.",
             grounded: true,
             sources: [],
@@ -160,6 +166,7 @@ test.describe("Resume RAG public chat", () => {
         body: JSON.stringify({
           success: true,
           data: {
+            ...conversationResponse(route),
             answer: "Oprimed에서는 의료 분석 워크스페이스를 개발했습니다.",
             grounded: true,
             sources: [
@@ -192,7 +199,7 @@ test.describe("Resume RAG public chat", () => {
     await expect(page.getByText("근거 1개")).toBeVisible();
     expect(capturedRequests).toHaveLength(1);
     expect(capturedRequests[0]?.headers.authorization).toBeUndefined();
-    expect(capturedRequests[0]?.body).toEqual({
+    expect(capturedRequests[0]?.body).toMatchObject({
       question: "Oprimed에서 어떤 업무를 했어?",
       locale: "ko-KR",
     });
@@ -208,6 +215,7 @@ test.describe("Resume RAG public chat", () => {
         body: JSON.stringify({
           success: true,
           data: {
+            ...conversationResponse(route),
             answer: "GA4 이벤트를 GTM으로 전송했습니다.",
             grounded: true,
             sources: [],
@@ -252,6 +260,7 @@ test.describe("Resume RAG public chat", () => {
         body: JSON.stringify({
           success: true,
           data: {
+            ...conversationResponse(route),
             answer: "검색된 이력 근거가 부족해 답변할 수 없습니다.",
             grounded: false,
             sources: [],
@@ -319,6 +328,7 @@ test.describe("Resume RAG public chat", () => {
         body: JSON.stringify({
           success: true,
           data: {
+            ...conversationResponse(route),
             answer: "재시도 후 Oprimed 답변을 생성했습니다.",
             grounded: true,
             sources: [
@@ -346,9 +356,10 @@ test.describe("Resume RAG public chat", () => {
 
     await expect(page.getByText("재시도 후 Oprimed 답변을 생성했습니다.")).toBeVisible();
     await expect(page.getByText(question, { exact: true })).toHaveCount(1);
+    expect(capturedBodies[0]).toEqual(capturedBodies[1]);
     expect(capturedBodies).toEqual([
-      { question, locale: "ko-KR" },
-      { question, locale: "ko-KR" },
+      expect.objectContaining({ question, locale: "ko-KR" }),
+      expect.objectContaining({ question, locale: "ko-KR" }),
     ]);
   });
 
@@ -360,6 +371,7 @@ test.describe("Resume RAG public chat", () => {
         body: JSON.stringify({
           success: true,
           data: {
+            ...conversationResponse(route),
             grounded: true,
             sources: [],
           },

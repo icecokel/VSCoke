@@ -495,6 +495,15 @@
         "title": "답변 요청에 실패했습니다",
         "description": "네트워크 또는 API 상태를 확인한 뒤 다시 시도해 주세요."
       }
+    },
+    "conversation": {
+      "newConversation": "새 대화",
+      "restoring": "이전 대화를 불러오는 중입니다.",
+      "savedNotice": "질문·답변은 최대 30일, 최근 50개까지 저장됩니다. 민감한 정보는 입력하지 마세요.",
+      "memoryOnly": "이 브라우저에서는 새로고침 후 대화를 복원할 수 없습니다.",
+      "restoreError": "대화를 불러오지 못했습니다. 다시 불러오거나 새 대화를 시작해 주세요.",
+      "retry": "다시 불러오기",
+      "confirmReset": "현재 대화 기록을 삭제하고 새 대화를 시작할까요?"
     }
   },
   "resumePreview": {

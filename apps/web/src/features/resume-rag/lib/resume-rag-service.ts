@@ -41,7 +41,7 @@ const isResumeRagSource = (value: unknown): value is ResumeRagSource => {
   );
 };
 
-const isResumeRagChatResponse = (value: unknown): value is ResumeRagChatResponse => {
+export const isResumeRagChatResponse = (value: unknown): value is ResumeRagChatResponse => {
   if (!value || typeof value !== "object") return false;
 
   const response = value as Partial<ResumeRagChatResponse>;
@@ -93,10 +93,14 @@ export const readResumeRagRateLimitFromError = (error: unknown): ResumeRagRateLi
   return readResumeRagRateLimit(error.headers);
 };
 
-export const askResumeRag = async (request: ResumeRagChatRequest): Promise<ResumeRagChatResult> => {
+export const askResumeRag = async (
+  request: ResumeRagChatRequest,
+  token?: string,
+): Promise<ResumeRagChatResult> => {
   const { data: response, headers } = await apiClient.postWithResponse<ResumeRagChatResponse>(
     "/resume-rag/chat",
     request,
+    token ? { headers: { "X-Resume-Conversation-Token": token } } : undefined,
   );
 
   if (!isResumeRagChatResponse(response)) {

@@ -1,8 +1,15 @@
 import { ApiError } from "@/lib/api-client";
 import { MainChatContractError } from "./main-chat-service";
-import type { MainChatFailure, MainChatRateLimit, MainChatResult, MainChatState } from "../types";
+import type {
+  MainChatFailure,
+  MainChatRateLimit,
+  MainChatResult,
+  MainChatState,
+  MainChatMessage,
+} from "../types";
 
 type MainChatAction =
+  | { type: "restore"; messages: MainChatMessage[] }
   | {
       type: "submit";
       messageId: string;
@@ -53,6 +60,18 @@ export const canSubmitMainChat = (state: MainChatState, now = new Date()): boole
 };
 
 export const mainChatReducer = (state: MainChatState, action: MainChatAction): MainChatState => {
+  if (action.type === "restore") {
+    return {
+      status:
+        state.status === "rate-limited"
+          ? "rate-limited"
+          : action.messages.length
+            ? "answered"
+            : "empty",
+      messages: action.messages,
+      rateLimit: state.rateLimit,
+    };
+  }
   if (action.type === "rate-limit-reset") {
     if (state.status !== "rate-limited" || !canSubmitMainChat(state, action.occurredAt)) {
       return state;
@@ -68,7 +87,10 @@ export const mainChatReducer = (state: MainChatState, action: MainChatAction): M
 
     return {
       status: "submitting",
-      messages: [...state.messages, { id: action.messageId, role: "user", content: question }],
+      messages:
+        state.failure?.question === question && state.messages.at(-1)?.role === "user"
+          ? state.messages
+          : [...state.messages, { id: action.messageId, role: "user", content: question }],
       rateLimit: state.rateLimit,
       pendingQuestion: question,
     };

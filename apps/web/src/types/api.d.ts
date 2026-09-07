@@ -191,6 +191,39 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/resume-rag/conversations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 익명 대화 생성. 30일 후 만료된다. */
+    post: operations["ResumeConversationController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/resume-rag/conversations/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ResumeConversationController_history"];
+    put?: never;
+    post?: never;
+    delete: operations["ResumeConversationController_remove"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/wordle/word": {
     parameters: {
       query?: never;
@@ -548,6 +581,16 @@ export interface components {
       user: components["schemas"]["GameHistoryUserDto"];
     };
     ResumeRagChatRequestDto: {
+      /**
+       * Format: uuid
+       * @description 생성한 대화 ID. 접근키 헤더와 함께 전달한다.
+       */
+      conversationId?: string;
+      /**
+       * Format: uuid
+       * @description 대화 요청 시 필수. 재시도에는 같은 UUID를 사용한다.
+       */
+      requestId?: string;
       /** @example 어떤 의료 도메인 프로젝트 경험이 있나요? */
       question: string;
       /**
@@ -567,6 +610,10 @@ export interface components {
       similarity: number;
     };
     ResumeRagChatResponseDto: {
+      /** Format: uuid */
+      conversationId?: string;
+      /** Format: uuid */
+      requestId?: string;
       answer: string;
       grounded: boolean;
       sources: components["schemas"]["ResumeRagSourceDto"][];
@@ -615,6 +662,44 @@ export interface components {
        * @example 2026-06-16T12:00:00.000Z
        */
       updatedAt: string;
+    };
+    CreateResumeConversationDto: {
+      /** @enum {string} */
+      locale: "ko-KR" | "en-US" | "ja-JP";
+      /** @enum {string} */
+      channel: "main" | "resume";
+    };
+    ResumeConversationAccessDto: {
+      /** Format: uuid */
+      id: string;
+      /** @description 대화 생성 시 한 번 반환하는 접근키. URL이나 로그에 기록하지 않는다. */
+      token: string;
+      /** Format: date-time */
+      expiresAt: string;
+    };
+    ResumeConversationTurnDto: {
+      /** Format: uuid */
+      id: string;
+      /** Format: uuid */
+      requestId: string;
+      question: string;
+      answer: string;
+      grounded: boolean;
+      sources: components["schemas"]["ResumeRagSourceDto"][];
+      /** Format: date-time */
+      createdAt: string;
+    };
+    ResumeConversationHistoryDto: {
+      /** @enum {string} */
+      locale: "ko-KR" | "en-US" | "ja-JP";
+      /** @enum {string} */
+      channel: "main" | "resume";
+      /** Format: uuid */
+      id: string;
+      /** Format: date-time */
+      expiresAt: string;
+      /** @description 최근 50개 질문·답변 쌍 */
+      turns: components["schemas"]["ResumeConversationTurnDto"][];
     };
     WordResponseDto: {
       /**
@@ -835,7 +920,9 @@ export interface operations {
   MainChatController_chat: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        "X-Resume-Conversation-Token"?: string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -974,7 +1061,9 @@ export interface operations {
   ResumeRagController_chat: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        "X-Resume-Conversation-Token"?: string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -1021,6 +1110,96 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  ResumeConversationController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateResumeConversationDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["ResumeConversationAccessDto"];
+          };
+        };
+      };
+    };
+  };
+  ResumeConversationController_history: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Resume-Conversation-Token": string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["ResumeConversationHistoryDto"];
+          };
+        };
+      };
+      /** @description 접근키 불일치, 삭제 또는 만료된 대화 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ResumeConversationController_remove: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Resume-Conversation-Token": string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: {
+              deleted: boolean;
+            };
+          };
+        };
       };
     };
   };

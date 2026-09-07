@@ -88,11 +88,15 @@ export const readMainChatRateLimitFromError = (error: unknown): MainChatRateLimi
   return readMainChatRateLimit(error.headers);
 };
 
-export const askMainChat = async (request: MainChatRequest): Promise<MainChatResult> => {
+export const askMainChat = async (
+  request: MainChatRequest,
+  token?: string,
+): Promise<MainChatResult> => {
   try {
     const { data: response, headers } = await apiClient.postWithResponse<MainChatResponse>(
       "/main-chat",
       request,
+      token ? { headers: { "X-Resume-Conversation-Token": token } } : undefined,
     );
 
     if (!isMainChatResponse(response)) {

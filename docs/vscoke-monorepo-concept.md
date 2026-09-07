@@ -84,8 +84,9 @@ SearchPanel
 ```text
 Web
 -> POST /main-chat or /resume-rag/chat
--> apps/api text retrieval
--> Codex app-server answer generation
+-> apps/api conversation storage / contextual query rewrite
+-> keyword + pgvector hybrid retrieval
+-> Codex app-server grounded answer generation
 ```
 
 ## 배포 경계

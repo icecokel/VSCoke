@@ -1,5 +1,10 @@
 "use client";
 
+import { ResumeConversationToolbar } from "@/features/resume-rag/components/resume-conversation-toolbar";
+import {
+  useResumeConversation,
+  toResumeConversationMessages,
+} from "@/features/resume-rag/lib/use-resume-conversation";
 import { FormEvent, useEffect, useReducer, useRef, useState } from "react";
 import { ArrowUp, ChevronRight, Clock, RefreshCw, Send, Sparkles } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -26,11 +31,24 @@ export const MainChat = () => {
   const locale = useLocale();
   const apiLocale = locale === "en-US" || locale === "ja-JP" ? locale : "ko-KR";
   const t = useTranslations("home.mainChat");
+  const conversation = useResumeConversation("main", apiLocale);
   const { push, prefetch } = useCustomRouter();
   const [state, dispatch] = useReducer(mainChatReducer, undefined, createInitialMainChatState);
   const [question, setQuestion] = useState("");
   const isSubmittingRef = useRef(false);
-  const canSubmit = question.trim().length >= 2 && canSubmitMainChat(state);
+  const canSubmit =
+    question.trim().length >= 2 &&
+    canSubmitMainChat(state) &&
+    !conversation.isRestoring &&
+    !conversation.restoreError;
+
+  useEffect(() => {
+    if (conversation.restoredTurns === null) return;
+    dispatch({
+      type: "restore",
+      messages: toResumeConversationMessages(conversation.restoredTurns),
+    });
+  }, [conversation.restoredTurns]);
 
   useEffect(() => {
     if (state.status !== "rate-limited" || !state.rateLimit) return;
@@ -47,7 +65,14 @@ export const MainChat = () => {
   const submitQuestion = async (rawQuestion: string) => {
     const trimmedQuestion = rawQuestion.trim();
 
-    if (trimmedQuestion.length < 2 || isSubmittingRef.current || !canSubmitMainChat(state)) return;
+    if (
+      trimmedQuestion.length < 2 ||
+      isSubmittingRef.current ||
+      !canSubmitMainChat(state) ||
+      conversation.isRestoring ||
+      conversation.restoreError
+    )
+      return;
 
     isSubmittingRef.current = true;
     const submittedAt = new Date();
@@ -57,7 +82,7 @@ export const MainChat = () => {
     setQuestion("");
 
     try {
-      const result = await askMainChat({ question: trimmedQuestion, locale: apiLocale });
+      const result = await conversation.send(trimmedQuestion, askMainChat);
 
       dispatch({
         type: "resolve",
@@ -101,6 +126,16 @@ export const MainChat = () => {
             {t("publicAccess")}
           </span>
         </header>
+        <ResumeConversationToolbar
+          isRestoring={conversation.isRestoring}
+          isWorking={conversation.isWorking}
+          hasError={Boolean(conversation.restoreError)}
+          memoryOnly={conversation.memoryOnly}
+          onRestore={conversation.restore}
+          onReset={async () => {
+            if (await conversation.reset()) setQuestion("");
+          }}
+        />
 
         <div className="flex flex-1 flex-col justify-center py-10 md:py-14">
           {isEmpty ? (

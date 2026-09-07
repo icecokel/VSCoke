@@ -1,5 +1,7 @@
 "use client";
 
+import { useResumeConversation } from "../lib/use-resume-conversation";
+import { ResumeConversationToolbar } from "./resume-conversation-toolbar";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowRight, Loader2, MessageCircle, RefreshCw, Send } from "lucide-react";
@@ -41,6 +43,7 @@ const createChatId = () => {
 export const ReadmeResumeQuestionComposer = () => {
   const t = useTranslations("resumeRag.readmeEntry");
   const locale = useLocale();
+  const conversation = useResumeConversation("resume", locale);
   const router = useRouter();
   const isMobile = useIsMobile();
   const [question, setQuestion] = useState("");
@@ -64,8 +67,12 @@ export const ReadmeResumeQuestionComposer = () => {
   }, [isMobile]);
 
   const canSubmit = useMemo(
-    () => question.trim().length >= 2 && status !== "submitting",
-    [question, status],
+    () =>
+      question.trim().length >= 2 &&
+      status !== "submitting" &&
+      !conversation.isRestoring &&
+      !conversation.restoreError,
+    [question, status, conversation.isRestoring, conversation.restoreError],
   );
 
   const handleComposerFocus = () => {
@@ -82,7 +89,14 @@ export const ReadmeResumeQuestionComposer = () => {
     event.preventDefault();
 
     const trimmedQuestion = question.trim();
-    if (trimmedQuestion.length < 2 || status === "submitting") return;
+    if (
+      trimmedQuestion.length < 2 ||
+      status === "submitting" ||
+      conversation.isWorking ||
+      conversation.isRestoring ||
+      conversation.restoreError
+    )
+      return;
 
     const chatId = createChatId();
 
@@ -96,10 +110,7 @@ export const ReadmeResumeQuestionComposer = () => {
     let failureReason: ResumeRagChatFailureReason = "request";
 
     try {
-      const response = await askResumeRag({
-        question: trimmedQuestion,
-        locale,
-      });
+      const response = await conversation.send(trimmedQuestion, askResumeRag);
       setRateLimit(response.rateLimit);
       const stored = storeResumeRagChat({
         id: chatId,
@@ -188,6 +199,22 @@ export const ReadmeResumeQuestionComposer = () => {
           <div className="border-b border-gray-200 px-3 py-2">
             <div className="text-sm font-semibold text-gray-900">{t("title")}</div>
             <p className="mt-0.5 text-xs leading-5 text-gray-500">{t("description")}</p>
+          </div>
+          <div className="px-3">
+            <ResumeConversationToolbar
+              isRestoring={conversation.isRestoring}
+              isWorking={conversation.isWorking}
+              hasError={Boolean(conversation.restoreError)}
+              memoryOnly={conversation.memoryOnly}
+              onRestore={conversation.restore}
+              onReset={async () => {
+                if (await conversation.reset()) {
+                  setStatus("idle");
+                  setReadyChatId(null);
+                  setQuestion("");
+                }
+              }}
+            />
           </div>
           <div className="p-2">
             <div className="flex items-end gap-2 rounded-md border border-blue-300 bg-white p-2 transition-colors focus-within:border-blue-300">

@@ -10,6 +10,11 @@ export const codexReasoningEfforts = [
 export type CodexReasoningEffort = (typeof codexReasoningEfforts)[number];
 
 export type ResumeRagConfig = {
+  retrievalMode?: 'keyword' | 'vector' | 'hybrid';
+  vectorMinSimilarity?: number;
+  embeddingSendDimensions?: boolean;
+  localEmbeddingCacheDir?: string;
+  localEmbeddingLocalFilesOnly?: boolean;
   embeddingProvider?: string;
   embeddingModel?: string;
   embeddingDimensions?: number;
@@ -95,9 +100,33 @@ const splitCsv = (value: string | undefined, fallback: string[]): string[] => {
   return values.length > 0 ? values : fallback;
 };
 
+const parseRetrievalMode = (
+  value: string | undefined,
+): 'keyword' | 'vector' | 'hybrid' => {
+  const mode = value || 'hybrid';
+  if (mode !== 'keyword' && mode !== 'vector' && mode !== 'hybrid') {
+    throw new Error('Invalid RAG_RETRIEVAL_MODE');
+  }
+  return mode;
+};
+
+const parseVectorThreshold = (value: string | undefined): number => {
+  const threshold = value === undefined || value === '' ? 0.3 : Number(value);
+  if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1) {
+    throw new Error('Invalid RAG_VECTOR_MIN_SIMILARITY');
+  }
+  return threshold;
+};
+
 export const getResumeRagConfig = (
   env: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env,
 ): ResumeRagConfig => ({
+  retrievalMode: parseRetrievalMode(env.RAG_RETRIEVAL_MODE),
+  vectorMinSimilarity: parseVectorThreshold(env.RAG_VECTOR_MIN_SIMILARITY),
+  embeddingSendDimensions: env.RAG_EMBEDDING_SEND_DIMENSIONS === 'true',
+  localEmbeddingCacheDir: env.RAG_LOCAL_EMBEDDING_CACHE_DIR || undefined,
+  localEmbeddingLocalFilesOnly:
+    env.RAG_LOCAL_EMBEDDING_LOCAL_FILES_ONLY === 'true',
   embeddingProvider: env.RAG_EMBEDDING_PROVIDER || undefined,
   embeddingModel: env.RAG_EMBEDDING_MODEL || undefined,
   embeddingDimensions: parseOptionalInt(env.RAG_EMBEDDING_DIMENSIONS),

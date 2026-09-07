@@ -1,7 +1,6 @@
-export type ResumeRagChatRequest = {
-  question: string;
-  locale: string;
-};
+import type { components } from "@/types/api";
+
+export type ResumeRagChatRequest = components["schemas"]["ResumeRagChatRequestDto"];
 
 export type ResumeRagSource = {
   title: string;
@@ -16,6 +15,8 @@ export type ResumeRagSource = {
 };
 
 export type ResumeRagChatResponse = {
+  conversationId?: string;
+  requestId?: string;
   answer: string;
   grounded: boolean;
   sources: ResumeRagSource[];

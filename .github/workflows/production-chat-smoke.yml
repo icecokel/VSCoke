@@ -40,6 +40,7 @@ jobs:
           pnpm --filter @vscoke/web e2e --
           tests/e2e/main-chat-production-smoke.spec.ts
           tests/e2e/resume-rag-chat-production-smoke.spec.ts
+          tests/e2e/resume-conversation-production-smoke.spec.ts
           --project=chromium
 
       - name: Upload Playwright failure artifacts

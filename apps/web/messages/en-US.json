@@ -495,6 +495,15 @@
         "title": "Failed to request an answer",
         "description": "Check the network or API state, then try again."
       }
+    },
+    "conversation": {
+      "newConversation": "New conversation",
+      "restoring": "Loading your previous conversation.",
+      "savedNotice": "The latest 50 turns are saved for up to 30 days. Do not enter sensitive information.",
+      "memoryOnly": "This browser cannot restore the conversation after a refresh.",
+      "restoreError": "The conversation could not be loaded. Retry or start a new conversation.",
+      "retry": "Reload conversation",
+      "confirmReset": "Delete this conversation and start a new one?"
     }
   },
   "resumePreview": {

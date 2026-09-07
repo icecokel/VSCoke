@@ -1,3 +1,4 @@
+import { ResumeConversationService } from '../src/resume-rag/resume-conversation.service';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Server } from 'node:http';
@@ -38,6 +39,7 @@ describe('ResumeRagController (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [ResumeRagController],
       providers: [
+        { provide: ResumeConversationService, useValue: {} },
         ResumeRagRateLimitGuard,
         ResumeRagOriginGuard,
         {

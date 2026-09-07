@@ -1,3 +1,4 @@
+import type { ResumeChatHistoryMessage } from './resume-chat-history';
 import {
   Inject,
   Injectable,
@@ -20,6 +21,7 @@ type AnswerRequest = {
 
 type AnswerOptions = {
   recordQuestion?: boolean;
+  history?: ResumeChatHistoryMessage[];
 };
 
 const toStringArray = (value: unknown): string[] | undefined =>
@@ -66,7 +68,32 @@ export class ResumeRagService {
 
     let chunks: RetrievedResumeChunk[];
     try {
-      chunks = await this.retriever.retrieve(request);
+      let searchQuestion = request.question;
+      if (options.history?.length) {
+        searchQuestion = (
+          await this.chatProvider.answer({
+            task: 'rewrite-query',
+            question: request.question,
+            locale: request.locale,
+            history: options.history,
+            contexts: [],
+          })
+        ).trim();
+        if (!searchQuestion || searchQuestion.length > 1000)
+          throw new Error('Invalid contextual search query');
+      }
+      chunks = await this.retriever.retrieve({
+        question: searchQuestion,
+        locale: request.locale,
+      });
+      let remaining = 16_000;
+      chunks = chunks
+        .map((chunk) => {
+          const content = chunk.content.slice(0, Math.min(4000, remaining));
+          remaining -= content.length;
+          return { ...chunk, content };
+        })
+        .filter((chunk) => chunk.content.length > 0);
     } catch (error) {
       throw new ServiceUnavailableException(
         error instanceof Error ? error.message : String(error),
@@ -86,6 +113,7 @@ export class ResumeRagService {
         question: request.question,
         locale: request.locale,
         contexts: chunks,
+        ...(options.history?.length ? { history: options.history } : {}),
       });
 
       return {

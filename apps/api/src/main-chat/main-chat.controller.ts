@@ -1,5 +1,12 @@
 import {
+  ResumeConversationService,
+  RESUME_CONVERSATION_TOKEN_HEADER,
+} from '../resume-rag/resume-conversation.service';
+import { ApiHeader } from '@nestjs/swagger';
+import {
   Body,
+  Header,
+  Headers,
   Controller,
   HttpCode,
   HttpStatus,
@@ -43,9 +50,14 @@ const rateLimitResponseHeaders = {
 @ApiTags('Main Chat')
 @Controller('main-chat')
 export class MainChatController {
-  constructor(private readonly mainChatService: MainChatService) {}
+  constructor(
+    private readonly mainChatService: MainChatService,
+    private readonly conversations: ResumeConversationService,
+  ) {}
 
   @Post()
+  @Header('Cache-Control', 'no-store')
+  @ApiHeader({ name: RESUME_CONVERSATION_TOKEN_HEADER, required: false })
   @HttpCode(HttpStatus.OK)
   @UseGuards(ResumeRagOriginGuard, MainChatRateLimitGuard)
   @ApiOperation({ summary: '프로젝트와 이력서 통합 질문 답변' })
@@ -71,7 +83,16 @@ export class MainChatController {
   })
   chat(
     @Body() request: ResumeRagChatRequestDto,
+    @Headers(RESUME_CONVERSATION_TOKEN_HEADER) token?: string,
   ): Promise<ResumeRagChatResponseDto> {
-    return this.mainChatService.answer(request);
+    if (!request.conversationId && !request.requestId && !token)
+      return this.mainChatService.answer(request);
+    return this.conversations.runTurn(
+      request,
+      token,
+      'main',
+      (history, question) =>
+        this.mainChatService.answer({ ...request, question }, history),
+    );
   }
 }

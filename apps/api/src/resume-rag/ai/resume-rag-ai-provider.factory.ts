@@ -1,3 +1,4 @@
+import { LocalE5EmbeddingProvider } from './local-e5-embedding.provider';
 import { CodexAppServerProvider } from './codex-app-server.provider';
 import { OpenAiCompatibleProvider } from './open-ai-compatible.provider';
 import type { ChatProvider } from './chat-provider';
@@ -51,6 +52,10 @@ class MissingChatProvider implements ChatProvider {
 export const createEmbeddingProvider = (
   config: ResumeRagConfig,
 ): EmbeddingProvider => {
+  if (config.embeddingProvider === 'local-e5-q8') {
+    return new LocalE5EmbeddingProvider(config);
+  }
+
   if (config.embeddingProvider === 'openai-compatible') {
     return new OpenAiCompatibleProvider(config);
   }

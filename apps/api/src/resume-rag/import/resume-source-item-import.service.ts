@@ -56,30 +56,48 @@ export class ResumeSourceItemImportService {
     for (const entry of entries) {
       try {
         const items = loadResumeSourceItemsFromEntry(entry);
+        await this.sourceItemRepository.manager.transaction(async (manager) => {
+          const repository = manager.getRepository(ResumeSourceItem);
+          const retainedIds: string[] = [];
+          for (const item of items) {
+            const existing = await repository.findOne({
+              where: {
+                sourceType: item.sourceType,
+                sourceKey: item.sourceKey,
+                contentHash: item.contentHash,
+              },
+            });
+            const saved = await repository.save(
+              repository.create({
+                ...existing,
+                ...item,
+                importBatchId: batch.id,
+              }),
+            );
+            retainedIds.push(saved.id);
+          }
+          const first = items[0];
+          if (first && retainedIds.length > 0) {
+            await repository
+              .createQueryBuilder()
+              .update(ResumeSourceItem)
+              .set({ status: 'superseded', vectorize: false })
+              .where(
+                '"sourceType" = :sourceType AND ("sourceKey" = :entryId OR left("sourceKey", length(:sectionPrefix)) = :sectionPrefix)',
+                {
+                  sourceType: first.sourceType,
+                  entryId: entry.id,
+                  sectionPrefix: `${entry.id}#`,
+                },
+              )
+              .andWhere('"id" NOT IN (:...retainedIds)', { retainedIds })
+              .execute();
+          }
+        });
         for (const item of items) {
-          if (item.status === 'rejected') {
-            summary.rejected += 1;
-          }
-          if (item.vectorize) {
-            summary.vectorizable += 1;
-          } else {
-            summary.storeOnly += 1;
-          }
-
-          const existing = await this.sourceItemRepository.findOne({
-            where: {
-              sourceType: item.sourceType,
-              sourceKey: item.sourceKey,
-              contentHash: item.contentHash,
-            },
-          });
-          await this.sourceItemRepository.save(
-            this.sourceItemRepository.create({
-              ...existing,
-              ...item,
-              importBatchId: batch.id,
-            }),
-          );
+          if (item.status === 'rejected') summary.rejected += 1;
+          if (item.vectorize) summary.vectorizable += 1;
+          else summary.storeOnly += 1;
           summary.imported += 1;
         }
       } catch (error) {

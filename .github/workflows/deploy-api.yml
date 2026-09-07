@@ -6,6 +6,9 @@ on:
     branches: ["main"]
     paths:
       - "apps/api/**"
+      - "apps/web/src/constants/resume-data.json"
+      - "apps/web/messages/*.json"
+      - "apps/web/resume-detail/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -68,6 +71,12 @@ jobs:
           cp apps/api/package.json "$RELEASE_DIR/apps/api/package.json"
           cp package.json pnpm-lock.yaml pnpm-workspace.yaml "$RELEASE_DIR/"
 
+          # 웹에 공개된 자료만 배포물에 포함한다. 개인 이력 작업공간은 복사하지 않는다.
+          mkdir -p "$RELEASE_DIR/apps/web/src/constants" "$RELEASE_DIR/apps/web/messages"
+          cp apps/web/src/constants/resume-data.json "$RELEASE_DIR/apps/web/src/constants/"
+          cp apps/web/messages/{ko-KR,en-US,ja-JP}.json "$RELEASE_DIR/apps/web/messages/"
+          rsync -a apps/web/resume-detail/ "$RELEASE_DIR/apps/web/resume-detail/"
+
           cd "$RELEASE_DIR"
           pnpm --filter @vscoke/api install --prod --frozen-lockfile --ignore-scripts
           test -f apps/api/dist/src/main.js
@@ -84,6 +93,17 @@ jobs:
             --exclude 'backups' \
             "$RELEASE_DIR"/ \
             "$API_DEPLOY_DIR"/
+
+      - name: Synchronize public resume sources and index
+        run: |
+          cd "$API_DEPLOY_DIR"
+          set -a
+          . ./.env
+          set +a
+          RESUME_WORKSPACE_ROOT= pnpm --filter @vscoke/api resume:import
+          if [ "${RAG_RETRIEVAL_MODE:-hybrid}" != "keyword" ] && [ -n "${RAG_EMBEDDING_PROVIDER:-}" ]; then
+            pnpm --filter @vscoke/api resume:index
+          fi
 
       - name: Restart API with PM2
         run: |

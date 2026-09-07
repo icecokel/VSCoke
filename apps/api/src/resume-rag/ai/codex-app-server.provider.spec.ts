@@ -209,7 +209,9 @@ describe('CodexAppServerProvider', () => {
     );
     const turnInput = sentMessages[2].params.input?.[0]?.text ?? '';
     expect(sentMessages[2].params.effort).toBe('low');
-    expect(turnInput).toContain('[1] 핵심 요약');
+    expect(turnInput).toContain('"reference":1');
+    expect(turnInput).toContain('"title":"핵심 요약"');
+    expect(turnInput).not.toContain('resume.mdx');
     expect(turnInput).toContain(
       '상민은 운영 자동화와 백오피스 개발 경험이 있다.',
     );

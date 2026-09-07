@@ -1,3 +1,8 @@
+import { ResumeChatConversation } from './entities/resume-chat-conversation.entity';
+import { ResumeChatTurn } from './entities/resume-chat-turn.entity';
+import { ResumeConversationController } from './resume-conversation.controller';
+import { ResumeConversationService } from './resume-conversation.service';
+import { ResumeConversationRateLimitGuard } from './resume-conversation-rate-limit.guard';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import {
@@ -38,6 +43,8 @@ import { ResumeRagService } from './resume-rag.service';
   imports: [
     TypeOrmModule.forFeature([
       ResumeImportBatch,
+      ResumeChatConversation,
+      ResumeChatTurn,
       ResumeRagChatLog,
       ResumeRagKeywordGroupEntity,
       ResumeRagKeywordTerm,
@@ -45,8 +52,10 @@ import { ResumeRagService } from './resume-rag.service';
       ResumeVectorChunk,
     ]),
   ],
-  controllers: [ResumeRagController],
+  controllers: [ResumeRagController, ResumeConversationController],
   providers: [
+    ResumeConversationService,
+    ResumeConversationRateLimitGuard,
     ResumeRagOriginGuard,
     ResumeRagRateLimitGuard,
     ResumeRagChatLogService,
@@ -74,6 +83,7 @@ import { ResumeRagService } from './resume-rag.service';
     },
   ],
   exports: [
+    ResumeConversationService,
     ResumeRagOriginGuard,
     ResumeRagService,
     ResumeSourceItemImportService,

@@ -1,4 +1,6 @@
 import fs from "node:fs";
+import { randomUUID } from "node:crypto";
+import type { Route } from "@playwright/test";
 import path from "node:path";
 import { expect, Page } from "@playwright/test";
 
@@ -224,4 +226,85 @@ export const mockWordleWord = async (page: Page, word = "apple") => {
   return {
     getRequestCount: () => requestCount,
   };
+};
+
+export const conversationResponse = (
+  route: Route,
+): { conversationId: string; requestId: string } => {
+  const request = route.request().postDataJSON() as { conversationId: string; requestId: string };
+  return { conversationId: request.conversationId, requestId: request.requestId };
+};
+
+export type MockResumeTurn = {
+  id: string;
+  requestId: string;
+  question: string;
+  answer: string;
+  grounded: boolean;
+  sources: [];
+  createdAt: string;
+};
+
+export const mockResumeConversationStorage = async (page: Page) => {
+  const conversations = new Map<
+    string,
+    {
+      id: string;
+      token: string;
+      channel: string;
+      locale: string;
+      expiresAt: string;
+      turns: MockResumeTurn[];
+    }
+  >();
+  const deleted: string[] = [];
+  const restored: string[] = [];
+  await page.route("**/resume-rag/conversations**", async route => {
+    const request = route.request();
+    const pathname = new URL(request.url()).pathname;
+    if (request.method() === "POST" && pathname.endsWith("/conversations")) {
+      const input = request.postDataJSON() as { channel: string; locale: string };
+      const access = {
+        id: randomUUID(),
+        token: "a".repeat(64),
+        expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+      };
+      conversations.set(access.id, { ...access, ...input, turns: [] });
+      await route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, data: access }),
+      });
+      return;
+    }
+    const id = pathname.split("/").at(-1) ?? "";
+    const conversation = conversations.get(id);
+    if (!conversation || request.headers()["x-resume-conversation-token"] !== conversation.token) {
+      await route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ message: "Conversation not found" }),
+      });
+      return;
+    }
+    if (request.method() === "DELETE") {
+      conversations.delete(id);
+      deleted.push(id);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, data: { deleted: true } }),
+      });
+      return;
+    }
+    restored.push(id);
+    const { token: omitted, ...history } = conversation;
+    void omitted;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true, data: history }),
+    });
+  });
+  return { conversations, deleted, restored };
 };

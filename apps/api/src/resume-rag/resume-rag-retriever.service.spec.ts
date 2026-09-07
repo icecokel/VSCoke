@@ -25,7 +25,9 @@ const createService = (
     ),
   } as unknown as ResumeRagKeywordService,
 ): ResumeRagRetrieverService =>
-  new ResumeRagRetrieverService(dataSource, config, keywordService);
+  new ResumeRagRetrieverService(dataSource, config, keywordService, {
+    embed: jest.fn(),
+  });
 
 describe('ResumeRagRetrieverService', () => {
   it('queries source items directly without embedding configuration', async () => {

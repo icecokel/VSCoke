@@ -1,5 +1,11 @@
 "use client";
 
+import { ResumeConversationToolbar } from "./resume-conversation-toolbar";
+import {
+  useResumeConversation,
+  toResumeConversationMessages,
+} from "../lib/use-resume-conversation";
+import { createResumeRagChatStorageKey } from "../lib/resume-rag-chat-storage";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -407,6 +413,7 @@ type ResumeQuestionChatProps = {
 export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) => {
   const t = useTranslations("resumeRag");
   const locale = useLocale();
+  const conversation = useResumeConversation("resume", locale);
   const rawSuggestions = t.raw("suggestions");
   const suggestions = Array.isArray(rawSuggestions)
     ? rawSuggestions.filter((suggestion): suggestion is string => typeof suggestion === "string")
@@ -442,9 +449,25 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
     setFailure(null);
   }, [initialChatId]);
 
+  useEffect(() => {
+    if (conversation.restoredTurns === null) return;
+    if (
+      conversation.restoredTurns.length === 0 &&
+      initialChatId &&
+      readResumeRagChat(initialChatId)
+    )
+      return;
+    setMessages(toResumeConversationMessages(conversation.restoredTurns));
+    setFailure(null);
+  }, [conversation.restoredTurns, initialChatId]);
+
   const canSubmit = useMemo(
-    () => question.trim().length >= 2 && !isSubmitting,
-    [isSubmitting, question],
+    () =>
+      question.trim().length >= 2 &&
+      !isSubmitting &&
+      !conversation.isRestoring &&
+      !conversation.restoreError,
+    [isSubmitting, question, conversation.isRestoring, conversation.restoreError],
   );
 
   const handleComposerFocus = () => {
@@ -459,7 +482,14 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
 
   const submitQuestion = async (rawQuestion: string, options: { appendUserMessage: boolean }) => {
     const trimmedQuestion = rawQuestion.trim();
-    if (!trimmedQuestion || isSubmitting) return;
+    if (
+      trimmedQuestion.length < 2 ||
+      isSubmitting ||
+      conversation.isWorking ||
+      conversation.isRestoring ||
+      conversation.restoreError
+    )
+      return;
 
     setIsSubmitting(true);
     setFailure(null);
@@ -479,10 +509,7 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
     });
 
     try {
-      const response = await askResumeRag({
-        question: trimmedQuestion,
-        locale,
-      });
+      const response = await conversation.send(trimmedQuestion, askResumeRag);
       setRateLimit(response.rateLimit);
       setMessages(prev => [
         ...prev,
@@ -528,6 +555,27 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
       className="flex min-h-0 flex-1 flex-col md:min-h-[calc(100svh-15rem)]"
       data-testid="resume-rag-chat-shell"
     >
+      <ResumeConversationToolbar
+        isRestoring={conversation.isRestoring}
+        isWorking={conversation.isWorking}
+        hasError={Boolean(conversation.restoreError)}
+        memoryOnly={conversation.memoryOnly}
+        onRestore={conversation.restore}
+        onReset={async () => {
+          if (await conversation.reset()) {
+            if (initialChatId) {
+              try {
+                window.sessionStorage.removeItem(createResumeRagChatStorageKey(initialChatId));
+              } catch {
+                /* 저장소 차단 시 메모리만 초기화한다. */
+              }
+            }
+            setMessages([]);
+            setQuestion("");
+            setFailure(null);
+          }
+        }}
+      />
       <div
         className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain pb-4"
         data-testid="resume-rag-chat-scroll-region"

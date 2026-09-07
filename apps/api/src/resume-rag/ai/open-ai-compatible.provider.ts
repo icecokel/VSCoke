@@ -1,3 +1,7 @@
+import {
+  buildResumeChatPrompt,
+  getResumeChatInstructions,
+} from './resume-chat-prompt';
 import type { ChatAnswerRequest, ChatProvider } from './chat-provider';
 import type { EmbeddingProvider, EmbeddingResult } from './embedding-provider';
 import {
@@ -46,6 +50,7 @@ export class OpenAiCompatibleProvider
       `${normalizeBaseUrl(baseConfig.baseUrl)}/embeddings`,
       {
         method: 'POST',
+        signal: AbortSignal.timeout(30_000),
         headers: {
           Authorization: `Bearer ${baseConfig.apiKey}`,
           'Content-Type': 'application/json',
@@ -53,6 +58,9 @@ export class OpenAiCompatibleProvider
         body: JSON.stringify({
           model: embeddingConfig.embeddingModel,
           input,
+          ...(this.config.embeddingSendDimensions
+            ? { dimensions: embeddingConfig.embeddingDimensions }
+            : {}),
         }),
       },
     );
@@ -65,7 +73,9 @@ export class OpenAiCompatibleProvider
     const vector = json.data?.[0]?.embedding;
     if (
       !Array.isArray(vector) ||
-      vector.some((value) => typeof value !== 'number')
+      vector.some(
+        (value) => typeof value !== 'number' || !Number.isFinite(value),
+      )
     ) {
       throw new Error('Embedding provider returned an invalid vector');
     }
@@ -91,16 +101,10 @@ export class OpenAiCompatibleProvider
     const chatConfig = requireOpenAiCompatibleChatModelConfig(this.config);
     const baseConfig = getBaseProviderConfig(this.config);
 
-    const contextText = request.contexts
-      .map(
-        (context, index) =>
-          `[${index + 1}] ${context.title}\n${context.content}`,
-      )
-      .join('\n\n');
-
     const response = await fetch(
       `${normalizeBaseUrl(baseConfig.baseUrl)}/chat/completions`,
       {
+        signal: AbortSignal.timeout(this.config.codexTimeoutMs),
         method: 'POST',
         headers: {
           Authorization: `Bearer ${baseConfig.apiKey}`,
@@ -112,17 +116,11 @@ export class OpenAiCompatibleProvider
           messages: [
             {
               role: 'system',
-              content:
-                'Answer only from the provided resume context. If the context is insufficient, say you cannot answer from the available evidence.',
+              content: getResumeChatInstructions(request),
             },
             {
               role: 'user',
-              content: [
-                `Locale: ${request.locale}`,
-                `Question: ${request.question}`,
-                'Resume context:',
-                contextText,
-              ].join('\n\n'),
+              content: buildResumeChatPrompt(request),
             },
           ],
         }),

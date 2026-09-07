@@ -1,3 +1,6 @@
+import { ResumeConversationController } from './resume-rag/resume-conversation.controller';
+import { ResumeConversationService } from './resume-rag/resume-conversation.service';
+import { ResumeConversationRateLimitGuard } from './resume-rag/resume-conversation-rate-limit.guard';
 import { InjectionToken, Module, Provider } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
@@ -40,6 +43,7 @@ const contractGuardStubProvider = (provide: InjectionToken): Provider => ({
     MainChatController,
     RecipeController,
     ResumeRagController,
+    ResumeConversationController,
     WordleController,
   ],
   providers: [
@@ -54,6 +58,8 @@ const contractGuardStubProvider = (provide: InjectionToken): Provider => ({
     contractGuardStubProvider(ResumeRagOriginGuard),
     contractGuardStubProvider(ResumeRagRateLimitGuard),
     contractStubProvider(ResumeRagService),
+    contractStubProvider(ResumeConversationService),
+    contractGuardStubProvider(ResumeConversationRateLimitGuard),
     contractStubProvider(WordleService),
   ],
 })

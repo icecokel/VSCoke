@@ -170,3 +170,70 @@ describe('ResumeRagService', () => {
     ).rejects.toThrow(ServiceUnavailableException);
   });
 });
+
+describe('ResumeRagService conversational retrieval', () => {
+  const history = [
+    { role: 'user' as const, content: 'Oprimed 프로젝트를 설명해줘' },
+    { role: 'assistant' as const, content: 'Oprimed 의료 프로젝트 설명' },
+  ];
+  it('이전 맥락으로 검색 질문을 재작성하고 새 근거와 함께 답변한다', async () => {
+    const contexts = [
+      {
+        id: '1',
+        title: '역할',
+        content: '공개 역할 근거',
+        sourcePath: 'role.md',
+        sourceKey: 'role',
+        citationMetadata: {},
+        similarity: 0.9,
+      },
+    ];
+    const retrieve = jest.fn().mockResolvedValue(contexts);
+    const answer = jest
+      .fn()
+      .mockResolvedValueOnce('Oprimed 프로젝트의 담당 역할')
+      .mockResolvedValueOnce('새 근거를 따른 역할 설명');
+    const service = new ResumeRagService(
+      { retrieve } as unknown as ResumeRagRetrieverService,
+      { answer },
+      createChatLogService().chatLogService,
+    );
+    const result = await service.answer(
+      { question: '거기서 맡은 역할은?', locale: 'ko-KR' },
+      { history },
+    );
+    expect(answer).toHaveBeenNthCalledWith(1, {
+      task: 'rewrite-query',
+      question: '거기서 맡은 역할은?',
+      locale: 'ko-KR',
+      history,
+      contexts: [],
+    });
+    expect(retrieve).toHaveBeenCalledWith({
+      question: 'Oprimed 프로젝트의 담당 역할',
+      locale: 'ko-KR',
+    });
+    expect(answer).toHaveBeenNthCalledWith(2, {
+      question: '거기서 맡은 역할은?',
+      locale: 'ko-KR',
+      history,
+      contexts,
+    });
+    expect(result.answer).toBe('새 근거를 따른 역할 설명');
+  });
+  it('이전 답변이 있어도 새로운 근거가 없으면 경력 답변을 생성하지 않는다', async () => {
+    const retrieve = jest.fn().mockResolvedValue([]);
+    const answer = jest.fn().mockResolvedValue('Oprimed의 공개되지 않은 수치');
+    const service = new ResumeRagService(
+      { retrieve } as unknown as ResumeRagRetrieverService,
+      { answer },
+      createChatLogService().chatLogService,
+    );
+    const result = await service.answer(
+      { question: '정확한 수치는?', locale: 'ko-KR' },
+      { history },
+    );
+    expect(result.grounded).toBe(false);
+    expect(answer).toHaveBeenCalledTimes(1);
+  });
+});

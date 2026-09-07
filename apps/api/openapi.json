@@ -269,7 +269,16 @@
     "/main-chat": {
       "post": {
         "operationId": "MainChatController_chat",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "X-Resume-Conversation-Token",
+            "required": false,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -448,7 +457,16 @@
     "/resume-rag/chat": {
       "post": {
         "operationId": "ResumeRagController_chat",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "X-Resume-Conversation-Token",
+            "required": false,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -533,6 +551,145 @@
         },
         "summary": "이력 RAG 질문 답변",
         "tags": ["Resume RAG"]
+      }
+    },
+    "/resume-rag/conversations": {
+      "post": {
+        "operationId": "ResumeConversationController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateResumeConversationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ResumeConversationAccessDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "익명 대화 생성. 30일 후 만료된다.",
+        "tags": ["Resume conversations"]
+      }
+    },
+    "/resume-rag/conversations/{id}": {
+      "get": {
+        "operationId": "ResumeConversationController_history",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Resume-Conversation-Token",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ResumeConversationHistoryDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "접근키 불일치, 삭제 또는 만료된 대화"
+          }
+        },
+        "tags": ["Resume conversations"]
+      },
+      "delete": {
+        "operationId": "ResumeConversationController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Resume-Conversation-Token",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "type": "object",
+                      "required": ["deleted"],
+                      "properties": {
+                        "deleted": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Resume conversations"]
       }
     },
     "/wordle/word": {
@@ -1195,6 +1352,16 @@
       "ResumeRagChatRequestDto": {
         "type": "object",
         "properties": {
+          "conversationId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "생성한 대화 ID. 접근키 헤더와 함께 전달한다."
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "대화 요청 시 필수. 재시도에는 같은 UUID를 사용한다."
+          },
           "question": {
             "type": "string",
             "example": "어떤 의료 도메인 프로젝트 경험이 있나요?",
@@ -1245,6 +1412,14 @@
       "ResumeRagChatResponseDto": {
         "type": "object",
         "properties": {
+          "conversationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "answer": {
             "type": "string"
           },
@@ -1333,6 +1508,100 @@
           }
         },
         "required": ["id", "name", "tags", "ingredients", "recipe", "createdAt", "updatedAt"]
+      },
+      "CreateResumeConversationDto": {
+        "type": "object",
+        "properties": {
+          "locale": {
+            "type": "string",
+            "enum": ["ko-KR", "en-US", "ja-JP"]
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["main", "resume"]
+          }
+        },
+        "required": ["locale", "channel"]
+      },
+      "ResumeConversationAccessDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "token": {
+            "type": "string",
+            "description": "대화 생성 시 한 번 반환하는 접근키. URL이나 로그에 기록하지 않는다."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "token", "expiresAt"]
+      },
+      "ResumeConversationTurnDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "question": {
+            "type": "string"
+          },
+          "answer": {
+            "type": "string"
+          },
+          "grounded": {
+            "type": "boolean"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumeRagSourceDto"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "requestId", "question", "answer", "grounded", "sources", "createdAt"]
+      },
+      "ResumeConversationHistoryDto": {
+        "type": "object",
+        "properties": {
+          "locale": {
+            "type": "string",
+            "enum": ["ko-KR", "en-US", "ja-JP"]
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["main", "resume"]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "turns": {
+            "description": "최근 50개 질문·답변 쌍",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumeConversationTurnDto"
+            }
+          }
+        },
+        "required": ["locale", "channel", "id", "expiresAt", "turns"]
       },
       "WordResponseDto": {
         "type": "object",

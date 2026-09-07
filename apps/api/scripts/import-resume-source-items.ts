@@ -19,8 +19,7 @@ const findRepoRoot = (start: string): string => {
 
 const main = async () => {
   const repoRoot = findRepoRoot(process.cwd());
-  const resumeWorkspaceRoot =
-    process.env.RESUME_WORKSPACE_ROOT || '/Users/smlee/Documents/resume';
+  const resumeWorkspaceRoot = process.env.RESUME_WORKSPACE_ROOT || undefined;
 
   await dataSource.initialize();
   try {
@@ -31,9 +30,12 @@ const main = async () => {
     const entries = createResumeImportManifest({
       repoRoot,
       resumeWorkspaceRoot,
-    });
+    }).filter((entry) => entry.visibility === 'public');
     const batch = await service.importEntries(entries, repoRoot);
     console.log(JSON.stringify(batch.summary, null, 2));
+    if (batch.status !== 'completed') {
+      process.exitCode = 1;
+    }
   } finally {
     await dataSource.destroy();
   }

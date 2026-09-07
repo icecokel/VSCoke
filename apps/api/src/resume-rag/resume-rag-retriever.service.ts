@@ -1,4 +1,12 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import type { EmbeddingProvider } from './ai/embedding-provider';
+import {
+  RESUME_RAG_EMBEDDING_PROVIDER,
+  assertEmbeddingResultMatches,
+} from './ai/embedding-provider';
+import { requireEmbeddingModelConfig } from './resume-rag.config';
+import { getResumeChunkConfigHash } from './indexing/resume-index-profile';
+import { RESUME_CHUNKER_VERSION } from './indexing/resume-source-item-chunker';
 import { DataSource } from 'typeorm';
 import { RESUME_RAG_CONFIG, type ResumeRagConfig } from './resume-rag.config';
 import { ResumeRagKeywordService } from './resume-rag-keyword.service';
@@ -95,14 +103,37 @@ const toRetrievedChunk = (
 
 @Injectable()
 export class ResumeRagRetrieverService {
+  private readonly logger = new Logger(ResumeRagRetrieverService.name);
   constructor(
     private readonly dataSource: DataSource,
     @Inject(RESUME_RAG_CONFIG)
     private readonly config: ResumeRagConfig,
     private readonly keywordService: ResumeRagKeywordService,
+    @Inject(RESUME_RAG_EMBEDDING_PROVIDER)
+    private readonly embeddingProvider: EmbeddingProvider,
   ) {}
 
   async retrieve(
+    request: ResumeRagRetrieveRequest,
+  ): Promise<RetrievedResumeChunk[]> {
+    const mode = this.config.retrievalMode ?? 'keyword';
+    if (mode === 'keyword') return this.retrieveKeywords(request);
+    if (mode === 'vector')
+      return (await this.retrieveVectors(request)).slice(0, this.config.topK);
+
+    const [keywords, vectors] = await Promise.all([
+      this.retrieveKeywords(request),
+      this.retrieveVectors(request).catch(() => {
+        this.logger.warn(
+          'Resume vector search unavailable; using keyword retrieval',
+        );
+        return [] as RetrievedResumeChunk[];
+      }),
+    ]);
+    return mergeResumeSearchResults(vectors, keywords, this.config.topK);
+  }
+
+  private async retrieveKeywords(
     request: ResumeRagRetrieveRequest,
   ): Promise<RetrievedResumeChunk[]> {
     const tokens = await this.keywordService.createSearchTokens(
@@ -119,9 +150,15 @@ export class ResumeRagRetrieverService {
           "sourcePath",
           "sourceKey",
           "metadata"
-        FROM resume_source_items
+        FROM (
+          SELECT DISTINCT ON ("sourceType", "sourceKey") *
+          FROM resume_source_items
+          WHERE "status" <> 'superseded'
+          ORDER BY "sourceType", "sourceKey", "updatedAt" DESC, "id" DESC
+        ) AS current_items
         WHERE "status" = 'active'
           AND "vectorize" = TRUE
+          AND "visibility" = 'public'
           AND "visibility" = ANY($1)
           AND (
             $2::varchar IS NULL
@@ -149,4 +186,95 @@ export class ResumeRagRetrieverService {
       .slice(0, this.config.topK)
       .map(toRetrievedChunk);
   }
+
+  private async retrieveVectors(
+    request: ResumeRagRetrieveRequest,
+  ): Promise<RetrievedResumeChunk[]> {
+    const profile = requireEmbeddingModelConfig(this.config);
+    const embedding = await this.embeddingProvider.embed(request.question);
+    assertEmbeddingResultMatches(embedding, {
+      provider: profile.embeddingProvider,
+      model: profile.embeddingModel,
+      dimensions: profile.embeddingDimensions,
+    });
+    const rows: unknown = await this.dataSource.query(
+      `WITH current_items AS MATERIALIZED (
+        SELECT DISTINCT ON ("sourceType", "sourceKey") *
+        FROM resume_source_items
+          WHERE "status" <> 'superseded'
+        ORDER BY "sourceType", "sourceKey", "updatedAt" DESC, "id" DESC
+      ), eligible AS MATERIALIZED (
+        SELECT chunk.*, source.title AS "sourceTitle", source.metadata AS "sourceMetadata"
+        FROM resume_vector_chunks chunk
+        INNER JOIN current_items source ON source.id = chunk."sourceItemId"
+        WHERE source.status = 'active' AND source.vectorize = TRUE
+          AND source.visibility = 'public' AND source.visibility = ANY($1)
+          AND chunk.status = 'active' AND chunk.visibility = 'public'
+          AND ($2::varchar IS NULL OR source.locale IS NULL OR source.locale = $2
+            OR split_part(source.locale, '-', 1) = split_part($2, '-', 1))
+          AND chunk."embeddingProvider" = $3 AND chunk."embeddingModel" = $4
+          AND chunk."embeddingDimensions" = $5 AND vector_dims(chunk.embedding) = $5
+          AND chunk."chunkerVersion" = $6 AND chunk."chunkConfigHash" = $7
+      )
+      SELECT id, content, "sourceTitle" AS title, "sourcePath", "sourceKey",
+        "sourceMetadata" AS "citationMetadata", 1 - (embedding <=> $8::vector) AS similarity
+      FROM eligible
+      WHERE 1 - (embedding <=> $8::vector) >= $9
+      ORDER BY embedding <=> $8::vector, id
+      LIMIT $10`,
+      [
+        this.config.allowedVisibilities,
+        request.locale || null,
+        profile.embeddingProvider,
+        profile.embeddingModel,
+        profile.embeddingDimensions,
+        RESUME_CHUNKER_VERSION,
+        getResumeChunkConfigHash(this.config),
+        JSON.stringify(embedding.vector),
+        this.config.vectorMinSimilarity ?? 0.3,
+        this.config.topK * 3,
+      ],
+    );
+    if (!Array.isArray(rows)) return [];
+    return rows
+      .filter(
+        (row): row is RetrievedResumeChunk =>
+          isRecord(row) &&
+          typeof row.id === 'string' &&
+          typeof row.content === 'string' &&
+          typeof row.title === 'string' &&
+          typeof row.sourcePath === 'string' &&
+          typeof row.sourceKey === 'string' &&
+          isRecord(row.citationMetadata) &&
+          Number.isFinite(Number(row.similarity)),
+      )
+      .map((row) => ({ ...row, similarity: Number(row.similarity) }));
+  }
 }
+
+export const mergeResumeSearchResults = (
+  vectors: RetrievedResumeChunk[],
+  keywords: RetrievedResumeChunk[],
+  topK: number,
+): RetrievedResumeChunk[] => {
+  const scores = new Map<
+    string,
+    { chunk: RetrievedResumeChunk; rank: number }
+  >();
+  for (const results of [vectors, keywords]) {
+    const seen = new Set<string>();
+    results.forEach((chunk, index) => {
+      if (seen.has(chunk.sourceKey)) return;
+      seen.add(chunk.sourceKey);
+      const existing = scores.get(chunk.sourceKey);
+      scores.set(chunk.sourceKey, {
+        chunk: existing?.chunk ?? chunk,
+        rank: (existing?.rank ?? 0) + 1 / (60 + index + 1),
+      });
+    });
+  }
+  return [...scores.values()]
+    .sort((a, b) => b.rank - a.rank)
+    .slice(0, topK)
+    .map(({ chunk }) => chunk);
+};

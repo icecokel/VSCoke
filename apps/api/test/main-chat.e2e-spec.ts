@@ -1,3 +1,4 @@
+import { ResumeConversationService } from '../src/resume-rag/resume-conversation.service';
 import {
   INestApplication,
   ServiceUnavailableException,
@@ -43,6 +44,7 @@ describe('MainChatController (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [MainChatController],
       providers: [
+        { provide: ResumeConversationService, useValue: {} },
         MainChatService,
         MainChatRateLimitGuard,
         ResumeRagOriginGuard,

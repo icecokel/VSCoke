@@ -44,7 +44,12 @@ workflow의 `workflow_dispatch`를 사용하고, 완료 뒤 `pnpm smoke:api:remo
    > 코드 배포와 함께라면 GitHub Actions가 재시작해주므로 생략 가능합니다.
 
 Resume RAG와 메인 채팅 환경 변수는
-[메인 채팅 AI 사용 지침](../../docs/main-chat-ai-usage-guide.md#5-배포-환경-설정)을 따릅니다.
+[메인 채팅 AI 사용 지침의 배포 적용 절차](../../docs/main-chat-ai-usage-guide.md#9-배포-적용-절차)를 따릅니다.
+
+벡터 검색·저장 대화의 최초 릴리스는 일반 자동 배포와 별도로 **신규 migration → API → 웹**
+순서를 확보해야 합니다. API workflow는 migration/import/index를 자동 실행하지 않고, release에는
+import에 필요한 웹 이력 원본과 소스 빌드 도구가 포함되지 않습니다. 해당 기능의 정비용 checkout,
+절대 경로 환경 파일, 실제 DB 검증과 기록 보존형 롤백 절차는 위 AI 사용 지침 9절을 우선합니다.
 
 ## 3. DB schema 변경
 
@@ -64,17 +69,19 @@ baseline은 `SKY_DROP` enum만 허용합니다. 실패 시 drop, alter 또는 le
 
 ### Migration 생성
 
+아래 `<kebab-summary>`는 실제 변경 요약의 kebab-case 이름으로 바꿉니다.
+
 빈 migration을 만들 때:
 
 ```bash
-pnpm --filter @vscoke/api migration:create src/migrations/<kebab-summary>
+pnpm --filter @vscoke/api migration:create 'src/migrations/<kebab-summary>'
 ```
 
 현재 entity와 연결된 DB를 비교해 migration 초안을 만들 때:
 
 ```bash
 pnpm --filter @vscoke/api db:tunnel
-pnpm --filter @vscoke/api migration:generate src/migrations/<kebab-summary>
+pnpm --filter @vscoke/api migration:generate 'src/migrations/<kebab-summary>'
 ```
 
 `migration:generate`는 현재 DB schema와 entity 차이를 비교하므로, 별도 터미널에서 DB tunnel을 계속 유지해야 합니다. 생성된 migration의 `up`, `down`을 모두 검토하고, rollback이 불가능한 변경은 배포 전에 별도 수동 복구 절차를 이 문서나 PR에 남깁니다.

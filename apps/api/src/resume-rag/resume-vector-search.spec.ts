@@ -83,6 +83,25 @@ describe('Resume vector retrieval', () => {
     ]);
   });
 
+  it.each(['vector', 'hybrid'])(
+    '이력 의도가 없으면 %s 모드도 임베딩을 실행하지 않는다',
+    async (mode) => {
+      const { service, embed, query } = createHarness(mode);
+      const keywordService = Reflect.get(service, 'keywordService') as {
+        createSearchTokens: jest.Mock;
+      };
+      keywordService.createSearchTokens.mockResolvedValue([]);
+      expect(
+        await service.retrieve({
+          question: '내일 비트코인 가격을 알려줘',
+          locale: 'ko-KR',
+        }),
+      ).toEqual([]);
+      expect(embed).not.toHaveBeenCalled();
+      expect(query).not.toHaveBeenCalled();
+    },
+  );
+
   it('벡터 모드는 공급자 실패를 숨기지 않고 DB를 조회하지 않는다', async () => {
     const { service, embed, query } = createHarness();
     embed.mockRejectedValue(new Error('embedding unavailable'));

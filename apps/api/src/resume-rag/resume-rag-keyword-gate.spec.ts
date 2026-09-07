@@ -20,6 +20,15 @@ describe('resume-rag keyword search', () => {
     );
   });
 
+  it('한국어 사례와 일본어 이력 의도를 검색 후보로 인정한다', () => {
+    expect(createResumeRagSearchTokens('반복 작업을 줄인 사례')).toEqual(
+      expect.arrayContaining(['사례', '프로젝트', '경험']),
+    );
+    expect(createResumeRagSearchTokens('担当した役割と成果を教えて')).toEqual(
+      expect.arrayContaining(['役割', '成果', 'project', 'role']),
+    );
+  });
+
   it('expands project intent into retrieval tokens', () => {
     expect(createResumeRagSearchTokens('대표 포트폴리오와 담당 역할')).toEqual(
       expect.arrayContaining([

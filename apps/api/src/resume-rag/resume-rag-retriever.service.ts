@@ -116,13 +116,18 @@ export class ResumeRagRetrieverService {
   async retrieve(
     request: ResumeRagRetrieveRequest,
   ): Promise<RetrievedResumeChunk[]> {
+    const tokens = await this.keywordService.createSearchTokens(
+      request.question,
+    );
+    if (tokens.length === 0) return [];
+
     const mode = this.config.retrievalMode ?? 'keyword';
-    if (mode === 'keyword') return this.retrieveKeywords(request);
+    if (mode === 'keyword') return this.retrieveKeywords(request, tokens);
     if (mode === 'vector')
       return (await this.retrieveVectors(request)).slice(0, this.config.topK);
 
     const [keywords, vectors] = await Promise.all([
-      this.retrieveKeywords(request),
+      this.retrieveKeywords(request, tokens),
       this.retrieveVectors(request).catch(() => {
         this.logger.warn(
           'Resume vector search unavailable; using keyword retrieval',
@@ -135,12 +140,8 @@ export class ResumeRagRetrieverService {
 
   private async retrieveKeywords(
     request: ResumeRagRetrieveRequest,
+    tokens: string[],
   ): Promise<RetrievedResumeChunk[]> {
-    const tokens = await this.keywordService.createSearchTokens(
-      request.question,
-    );
-    if (tokens.length === 0) return [];
-
     const rows: unknown = await this.dataSource.query(
       `
         SELECT

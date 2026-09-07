@@ -119,6 +119,13 @@ const hashText = (value: string): string =>
 const stripFrontmatter = (value: string): string =>
   value.startsWith('---') ? value.replace(/^---\n[\s\S]*?\n---\n?/, '') : value;
 
+const readFrontmatterTitle = (value: string): string | undefined => {
+  const block = value.match(/^---\n([\s\S]*?)\n---/i)?.[1];
+  const rawTitle = block?.match(/^title:\s*(.+)$/im)?.[1]?.trim();
+  if (!rawTitle) return undefined;
+  return rawTitle.replace(/^["']|["']$/g, '').trim() || undefined;
+};
+
 const hasDirectContactData = (
   value: string,
 ): { rejected: false } | { rejected: true; reason: string } => {
@@ -180,6 +187,8 @@ const splitMarkdownItems = (
   text: string,
 ): ResumeSourceItemPayload[] => {
   const body = stripFrontmatter(text).replace(/\r\n/g, '\n');
+  const documentTitle = readFrontmatterTitle(text);
+  const isPublicResumeDetail = entry.itemType === 'public_resume_detail';
   const headings = [...body.matchAll(/^(#{1,6})\s+(.+)$/gm)].map((match) => ({
     depth: match[1].length,
     title: match[2].trim(),
@@ -197,10 +206,19 @@ const splitMarkdownItems = (
 
   if (selected.length === 0) {
     return [
-      createPayload(entry, entry.title, body, entry.id, {
-        ...entry.metadata,
-        sectionPath: entry.title,
-      }),
+      createPayload(
+        entry,
+        entry.title,
+        isPublicResumeDetail
+          ? [documentTitle ?? entry.title, body].filter(Boolean).join('\n\n')
+          : body,
+        entry.id,
+        {
+          ...entry.metadata,
+          sectionPath: entry.title,
+          ...(documentTitle ? { documentTitle } : {}),
+        },
+      ),
     ];
   }
 
@@ -215,14 +233,21 @@ const splitMarkdownItems = (
     slugCounts.set(baseSlug, count + 1);
     const slug = count === 0 ? baseSlug : `${baseSlug}-${count + 1}`;
 
+    const contextualBody = isPublicResumeDetail
+      ? [documentTitle ?? entry.title, heading.title, sectionBody]
+          .filter(Boolean)
+          .join('\n\n')
+      : sectionBody;
+
     return createPayload(
       entry,
       heading.title,
-      sectionBody,
+      contextualBody,
       `${entry.id}#${slug}`,
       {
         ...entry.metadata,
         sectionPath: heading.title,
+        ...(documentTitle ? { documentTitle } : {}),
       },
     );
   });

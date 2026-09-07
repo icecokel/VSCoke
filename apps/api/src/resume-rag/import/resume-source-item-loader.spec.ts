@@ -117,6 +117,46 @@ describe('resume source item loader', () => {
     expect(items[0].bodyText).not.toContain('title: Hidden');
   });
 
+  it('공개 이력 상세는 문서명과 섹션명을 검색 본문에 포함한다', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'resume-rag-loader-'));
+    const filePath = join(dir, 'public-detail.mdx');
+    writeFileSync(
+      filePath,
+      [
+        '---',
+        'title: "오프리메드 - 의료·임상 분석 제품"',
+        '---',
+        '## 기술',
+        'Next.js, React',
+      ].join('\n'),
+    );
+
+    const [item] = loadResumeSourceItemsFromEntry({
+      id: 'app-resume-detail:oprimed',
+      path: filePath,
+      sourcePath: 'apps/web/resume-detail/oprimed.mdx',
+      parser: 'markdown',
+      sourceType: 'app_resume',
+      itemType: 'public_resume_detail',
+      title: 'Oprimed detail',
+      status: 'active',
+      visibility: 'public',
+      vectorize: true,
+      metadata: {},
+    });
+
+    expect(item.bodyText).toBe(
+      '오프리메드 - 의료·임상 분석 제품\n\n기술\n\nNext.js, React',
+    );
+    expect(item.metadata).toEqual(
+      expect.objectContaining({
+        documentTitle: '오프리메드 - 의료·임상 분석 제품',
+        sectionPath: '기술',
+      }),
+    );
+    expect(item.bodyText).not.toContain('title:');
+  });
+
   it('keeps raw markdown section text unchanged', () => {
     const dir = mkdtempSync(join(tmpdir(), 'resume-rag-loader-'));
     const filePath = join(dir, 'raw-source.md');

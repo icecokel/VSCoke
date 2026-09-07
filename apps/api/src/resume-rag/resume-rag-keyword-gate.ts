@@ -1159,6 +1159,20 @@ const keywordAliasMatches = (question: string, alias: string): boolean => {
   const normalizedAlias = normalizeSearchText(alias);
   if (!normalizedAlias) return false;
 
+  if (/^[a-z0-9 ]+$/i.test(normalizedAlias)) {
+    const questionTokens = normalizedQuestion.split(' ').filter(Boolean);
+    const aliasTokens = normalizedAlias.split(' ').filter(Boolean);
+    const matchesTokenSequence = questionTokens.some((_, start) =>
+      aliasTokens.every(
+        (aliasToken, offset) => questionTokens[start + offset] === aliasToken,
+      ),
+    );
+    if (matchesTokenSequence) return true;
+
+    const compactAlias = aliasTokens.join('');
+    return aliasTokens.length > 1 && questionTokens.includes(compactAlias);
+  }
+
   return (
     normalizedQuestion.includes(normalizedAlias) ||
     compactSearchText(question).includes(compactSearchText(alias))
@@ -1169,18 +1183,17 @@ export const createResumeRagSearchTokens = (
   text: string,
   groups: readonly ResumeRagKeywordGroup[] = RESUME_RAG_KEYWORD_GROUPS,
 ): string[] => {
-  const uniqueTokens = new Set<string>();
+  const matchedGroups = groups.filter((group) =>
+    group.aliases.some((alias) => keywordAliasMatches(text, alias)),
+  );
+  if (matchedGroups.length === 0) return [];
 
+  const uniqueTokens = new Set<string>();
   for (const rawToken of normalizeSearchText(text).split(/\s+/)) {
     addToken(uniqueTokens, rawToken);
   }
 
-  for (const group of groups) {
-    const matched = group.aliases.some((alias) =>
-      keywordAliasMatches(text, alias),
-    );
-    if (!matched) continue;
-
+  for (const group of matchedGroups) {
     const expansions =
       group.searchExpansions ??
       SEARCH_TOKEN_EXPANSIONS_BY_KEYWORD_GROUP[group.id] ??

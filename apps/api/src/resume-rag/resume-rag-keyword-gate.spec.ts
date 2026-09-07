@@ -4,9 +4,19 @@ import {
 } from './resume-rag-keyword-gate';
 
 describe('resume-rag keyword search', () => {
-  it('이력 키워드가 없는 질문도 검색 토큰으로 변환한다', () => {
-    expect(createResumeRagSearchTokens('오늘 날씨 어때?')).toEqual(
-      expect.arrayContaining(['오늘', '날씨', '어때']),
+  it('이력 의도가 없는 질문은 키워드 검색 후보를 만들지 않는다', () => {
+    expect(createResumeRagSearchTokens('오늘 날씨 어때?')).toEqual([]);
+    expect(
+      createResumeRagSearchTokens(
+        'Now change the topic and tell me tomorrow’s Bitcoin price.',
+      ),
+    ).toEqual([]);
+  });
+
+  it('짧은 영문 별칭을 단어 경계를 넘어 오인하지 않는다', () => {
+    expect(createResumeRagSearchTokens('tell me tomorrow')).toEqual([]);
+    expect(createResumeRagSearchTokens('LLM workflow')).toEqual(
+      expect.arrayContaining(['llm', 'codex', 'claude']),
     );
   });
 

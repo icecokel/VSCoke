@@ -32,6 +32,7 @@ export type ResumeRagConfig = {
   chunkSize: number;
   chunkOverlap: number;
   allowedVisibilities: string[];
+  allowedSourceTypes: string[];
 };
 
 export type RequiredEmbeddingModelConfig = {
@@ -54,7 +55,7 @@ export type RequiredCodexAppServerConfig = {
   chatModel?: string;
   codexModelProvider?: string;
   codexAppServerUrl: string;
-  codexCwd?: string;
+  codexCwd: string;
   codexTimeoutMs: number;
   codexReasoningEffort: CodexReasoningEffort;
 };
@@ -148,6 +149,7 @@ export const getResumeRagConfig = (
   chunkSize: parseOptionalInt(env.RAG_CHUNK_SIZE) ?? 1200,
   chunkOverlap: parseOptionalInt(env.RAG_CHUNK_OVERLAP) ?? 120,
   allowedVisibilities: splitCsv(env.RAG_ALLOWED_VISIBILITIES, ['public']),
+  allowedSourceTypes: splitCsv(env.RAG_ALLOWED_SOURCE_TYPES, ['app_resume']),
 });
 
 export const requireEmbeddingModelConfig = (
@@ -206,18 +208,20 @@ export const requireCodexAppServerConfig = (
   config: ResumeRagConfig,
 ): RequiredCodexAppServerConfig => {
   const providerConfig = requireChatProviderConfig(config);
-  if (!config.codexAppServerUrl) {
-    throw new Error(
-      'Missing Resume RAG Codex config: RAG_CODEX_APP_SERVER_URL',
-    );
+  const missing = [
+    config.codexAppServerUrl ? null : 'RAG_CODEX_APP_SERVER_URL',
+    config.codexCwd ? null : 'RAG_CODEX_CWD',
+  ].filter((value): value is string => Boolean(value));
+  if (missing.length > 0) {
+    throw new Error(`Missing Resume RAG Codex config: ${missing.join(', ')}`);
   }
 
   return {
     chatProvider: providerConfig.chatProvider,
     chatModel: config.chatModel,
     codexModelProvider: config.codexModelProvider,
-    codexAppServerUrl: config.codexAppServerUrl,
-    codexCwd: config.codexCwd,
+    codexAppServerUrl: config.codexAppServerUrl as string,
+    codexCwd: config.codexCwd as string,
     codexTimeoutMs: config.codexTimeoutMs,
     codexReasoningEffort: config.codexReasoningEffort,
   };

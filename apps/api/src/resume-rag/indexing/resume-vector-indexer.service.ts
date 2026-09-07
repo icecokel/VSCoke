@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import type { EmbeddingProvider } from '../ai/embedding-provider';
 import {
   RESUME_RAG_EMBEDDING_PROVIDER,
@@ -49,19 +49,26 @@ export class ResumeVectorIndexerService {
     };
     // 검색 필터뿐 아니라 외부 임베딩으로 전송하는 입력도 공개 자료로 제한한다.
     const sourceItems = await this.sourceItemRepository.find({
-      where: { vectorize: true, status: 'active', visibility: 'public' },
+      where: {
+        vectorize: true,
+        status: 'active',
+        visibility: 'public',
+        sourceType: In(this.config.allowedSourceTypes),
+      },
       order: { updatedAt: 'ASC' },
     });
     const summary: IndexSummary = { indexed: 0, skipped: 0 };
 
-    await this.vectorChunkRepository.query(`
-      DELETE FROM resume_vector_chunks chunk
+    await this.vectorChunkRepository.query(
+      `DELETE FROM resume_vector_chunks chunk
       WHERE NOT EXISTS (
         SELECT 1 FROM resume_source_items source
         WHERE source.id = chunk."sourceItemId" AND source.status = 'active'
           AND source.visibility = 'public' AND source.vectorize = TRUE
-      )
-    `);
+          AND source."sourceType" = ANY($1)
+      )`,
+      [this.config.allowedSourceTypes],
+    );
 
     for (const sourceItem of sourceItems) {
       const where = { sourceItemId: sourceItem.id, ...profile };
@@ -130,6 +137,7 @@ export class ResumeVectorIndexerService {
           current.status !== 'active' ||
           current.visibility !== 'public' ||
           !current.vectorize ||
+          !this.config.allowedSourceTypes.includes(current.sourceType) ||
           current.contentHash !== sourceItem.contentHash
         )
           return;

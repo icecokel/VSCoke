@@ -13,6 +13,7 @@ const createConfig = (
   chunkOverlap: 120,
   codexTimeoutMs: 120_000,
   allowedVisibilities: ['public'],
+  allowedSourceTypes: ['app_resume'],
   ...overrides,
 });
 
@@ -74,7 +75,8 @@ describe('ResumeRagRetrieverService', () => {
     expect(sql).toContain('"vectorize" = TRUE');
     expect(sql).toContain('"visibility" = ANY($1)');
     expect(sql).toContain('"locale" IS NULL OR "locale" = $2');
-    expect(params).toEqual([['public', 'limited'], 'ko-KR']);
+    expect(sql).toContain('"sourceType" = ANY($3)');
+    expect(params).toEqual([['public', 'limited'], 'ko-KR', ['app_resume']]);
   });
 
   it('matches Korean query terms after stripping common particles', async () => {

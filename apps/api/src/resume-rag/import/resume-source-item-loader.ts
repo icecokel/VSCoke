@@ -1,12 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { basename, join, relative } from 'node:path';
+import { basename, join } from 'node:path';
 
 export type ResumeSourceParser = 'json' | 'markdown' | 'mdx' | 'text' | 'tsv';
 
 export type ResumeImportManifestEntry = {
   id: string;
   path: string;
+  sourcePath: string;
   parser: ResumeSourceParser;
   sourceType: string;
   itemType: string;
@@ -144,11 +145,6 @@ const hasDirectContactData = (
   return { rejected: false };
 };
 
-const toSourcePath = (filePath: string): string => {
-  const repoRelative = relative(process.cwd(), filePath);
-  return repoRelative.startsWith('..') ? filePath : repoRelative;
-};
-
 const createPayload = (
   entry: ResumeImportManifestEntry,
   title: string,
@@ -166,7 +162,7 @@ const createPayload = (
   return {
     sourceType: entry.sourceType,
     itemType: entry.itemType,
-    sourcePath: toSourcePath(entry.path),
+    sourcePath: entry.sourcePath,
     sourceKey,
     title,
     bodyText: safeBody,
@@ -262,6 +258,7 @@ export const createResumeImportManifest = ({
     {
       id: 'app:resume-data',
       path: join(repoRoot, 'apps/web/src/constants/resume-data.json'),
+      sourcePath: 'apps/web/src/constants/resume-data.json',
       parser: 'json',
       sourceType: 'app_resume',
       itemType: 'current_resume_data',
@@ -274,6 +271,7 @@ export const createResumeImportManifest = ({
     ...['ko-KR', 'en-US', 'ja-JP'].map((locale) => ({
       id: `app:messages:${locale}`,
       path: join(repoRoot, `apps/web/messages/${locale}.json`),
+      sourcePath: `apps/web/messages/${locale}.json`,
       parser: 'json' as const,
       sourceType: 'app_resume',
       itemType: 'localized_resume_messages',
@@ -288,6 +286,7 @@ export const createResumeImportManifest = ({
     ...APP_RESUME_DETAIL_FILES.map((fileName) => ({
       id: `app:resume-detail:${fileName.replace(/\.mdx$/, '')}`,
       path: join(repoRoot, 'apps/web/resume-detail', fileName),
+      sourcePath: `apps/web/resume-detail/${fileName}`,
       parser: 'mdx' as const,
       sourceType: 'app_resume',
       itemType: 'public_resume_detail',
@@ -306,6 +305,7 @@ export const createResumeImportManifest = ({
   const vectorEntries = RESUME_WORKSPACE_VECTOR_FILES.map((fileName) => ({
     id: `resume-workspace:${fileName}`,
     path: join(resumeWorkspaceRoot, fileName),
+    sourcePath: fileName,
     parser: fileName.endsWith('.json')
       ? ('json' as const)
       : ('markdown' as const),
@@ -335,6 +335,7 @@ export const createResumeImportManifest = ({
     (fileName) => ({
       id: `resume-workspace:${fileName}`,
       path: join(resumeWorkspaceRoot, fileName),
+      sourcePath: fileName,
       parser: fileName.endsWith('.tsv') ? ('tsv' as const) : ('text' as const),
       sourceType: 'resume_workspace',
       itemType: 'evidence_log',
@@ -350,6 +351,7 @@ export const createResumeImportManifest = ({
     (fileName) => ({
       id: `resume-workspace:${fileName}`,
       path: join(resumeWorkspaceRoot, fileName),
+      sourcePath: fileName,
       parser: fileName.endsWith('.json')
         ? ('json' as const)
         : ('markdown' as const),
@@ -370,6 +372,7 @@ export const createResumeImportManifest = ({
     (fileName) => ({
       id: `resume-workspace:${fileName}`,
       path: join(resumeWorkspaceRoot, fileName),
+      sourcePath: fileName,
       parser: 'markdown' as const,
       sourceType: 'resume_workspace',
       itemType: fileName.includes('public')

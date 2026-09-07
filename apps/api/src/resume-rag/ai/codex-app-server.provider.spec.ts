@@ -159,6 +159,7 @@ const baseConfig: ResumeRagConfig = {
   chunkSize: 1200,
   chunkOverlap: 120,
   allowedVisibilities: ['public'],
+  allowedSourceTypes: ['app_resume'],
 };
 
 describe('CodexAppServerProvider', () => {

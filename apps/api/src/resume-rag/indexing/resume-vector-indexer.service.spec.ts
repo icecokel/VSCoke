@@ -27,8 +27,12 @@ const createHarness = () => {
     bodyText: source.bodyText,
     metadata: {},
   });
+  let findOptions: unknown;
   const sources = {
-    find: jest.fn().mockResolvedValue([source]),
+    find: jest.fn((options: unknown) => {
+      findOptions = options;
+      return Promise.resolve([source]);
+    }),
     findOne: jest.fn().mockResolvedValue(source),
   };
   const vectors = {
@@ -64,6 +68,7 @@ const createHarness = () => {
     chunks,
     transaction,
     embed,
+    getFindOptions: () => findOptions,
     service: new ResumeVectorIndexerService(
       sources as unknown as Repository<ResumeSourceItem>,
       {
@@ -79,14 +84,16 @@ const createHarness = () => {
 
 describe('ResumeVectorIndexerService', () => {
   it('공개 활성 자료만 읽고, 모든 임베딩이 준비된 뒤 청크를 교체한다', async () => {
-    const { service, sources, vectors, embed } = createHarness();
+    const { service, sources, vectors, embed, getFindOptions } =
+      createHarness();
     expect(await service.indexAll()).toEqual({ indexed: 1, skipped: 0 });
-    expect(sources.find).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { vectorize: true, status: 'active', visibility: 'public' },
-      }),
-    );
+    expect(sources.find).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(getFindOptions())).toContain('app_resume');
     expect(embed).toHaveBeenCalledWith('공개 프로젝트 근거', 'passage');
+    expect(vectors.query).toHaveBeenCalledWith(
+      expect.stringContaining('source."sourceType" = ANY($1)'),
+      [['app_resume']],
+    );
     expect(vectors.delete).toHaveBeenCalledTimes(1);
     expect(vectors.save).toHaveBeenCalledWith([
       expect.objectContaining({ embedding: [1, 0], visibility: 'public' }),
@@ -108,6 +115,18 @@ describe('ResumeVectorIndexerService', () => {
     expect(vectors.delete).not.toHaveBeenCalled();
     expect(transaction).not.toHaveBeenCalled();
   });
+
+  it('허용되지 않은 원본 타입으로 전환되면 준비한 청크를 게시하지 않는다', async () => {
+    const { service, source, sources, vectors } = createHarness();
+    sources.findOne.mockResolvedValue({
+      ...source,
+      sourceType: 'resume_workspace',
+    });
+    await service.indexAll();
+    expect(vectors.delete).not.toHaveBeenCalled();
+    expect(vectors.save).not.toHaveBeenCalled();
+  });
+
   it('임베딩 중 비공개로 전환된 원본은 게시하지 않는다', async () => {
     const { service, source, sources, vectors } = createHarness();
     sources.findOne.mockResolvedValue({ ...source, visibility: 'private' });

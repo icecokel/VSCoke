@@ -37,6 +37,11 @@ describe('resume source item loader', () => {
         }),
       ]),
     );
+    const appResume = manifest.find(
+      (entry) => entry.sourceType === 'app_resume',
+    );
+    expect(appResume?.sourcePath).toMatch(/^apps\/web\//);
+
     const currentResume = manifest.find((entry) =>
       entry.path.endsWith('base-resume-final-v61-2026-08-02.md'),
     );
@@ -82,6 +87,7 @@ describe('resume source item loader', () => {
     const items = loadResumeSourceItemsFromEntry({
       id: 'test:source',
       path: filePath,
+      sourcePath: 'fixtures/source.md',
       parser: 'markdown',
       sourceType: 'resume_workspace',
       itemType: 'final_resume_section',
@@ -95,6 +101,7 @@ describe('resume source item loader', () => {
     expect(items).toHaveLength(2);
     expect(items[0]).toEqual(
       expect.objectContaining({
+        sourcePath: 'fixtures/source.md',
         sourceKey: 'test:source#project-a',
         title: 'Project A',
         vectorize: true,
@@ -121,6 +128,7 @@ describe('resume source item loader', () => {
     const [item] = loadResumeSourceItemsFromEntry({
       id: 'test:raw-source',
       path: filePath,
+      sourcePath: 'fixtures/raw-source.md',
       parser: 'markdown',
       sourceType: 'resume_workspace',
       itemType: 'raw_career_evidence',
@@ -142,6 +150,7 @@ describe('resume source item loader', () => {
     const items = loadResumeSourceItemsFromEntry({
       id: 'test:contact',
       path: filePath,
+      sourcePath: 'fixtures/contact.md',
       parser: 'markdown',
       sourceType: 'resume_workspace',
       itemType: 'strategy_section',

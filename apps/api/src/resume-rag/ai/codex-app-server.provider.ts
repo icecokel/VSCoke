@@ -289,7 +289,7 @@ export class CodexAppServerProvider implements ChatProvider {
         client.request('turn/start', {
           threadId,
           input: [{ type: 'text', text: buildResumeChatPrompt(request) }],
-          cwd: codexConfig.codexCwd ?? process.cwd(),
+          cwd: codexConfig.codexCwd,
           approvalPolicy: 'never',
           sandboxPolicy: { type: 'readOnly', networkAccess: false },
           environments: [],
@@ -318,7 +318,7 @@ export class CodexAppServerProvider implements ChatProvider {
     request: ChatAnswerRequest,
   ) {
     return {
-      cwd: config.codexCwd ?? process.cwd(),
+      cwd: config.codexCwd,
       ephemeral: true,
       approvalPolicy: 'never',
       sandbox: 'read-only',

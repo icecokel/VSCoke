@@ -3,6 +3,7 @@ import {
   requireChatProviderConfig,
   requireOpenAiCompatibleChatModelConfig,
   requireEmbeddingModelConfig,
+  requireCodexAppServerConfig,
 } from './resume-rag.config';
 
 describe('resume rag config', () => {
@@ -16,10 +17,12 @@ describe('resume rag config', () => {
     expect(config.chatModel).toBeUndefined();
   });
 
-  it('defaults retrieval similarity for keyword text search', () => {
+  it('defaults retrieval and source safety settings', () => {
     const config = getResumeRagConfig({});
 
     expect(config.minSimilarity).toBe(0.1);
+    expect(config.allowedVisibilities).toEqual(['public']);
+    expect(config.allowedSourceTypes).toEqual(['app_resume']);
   });
 
   it('rejects an unsupported Codex reasoning effort', () => {
@@ -41,6 +44,7 @@ describe('resume rag config', () => {
       RAG_CODEX_REASONING_EFFORT: 'low',
       RAG_TOP_K: '7',
       RAG_MIN_SIMILARITY: '0.73',
+      RAG_ALLOWED_SOURCE_TYPES: 'app_resume,curated_resume',
     });
 
     expect(config.embeddingDimensions).toBe(1536);
@@ -52,6 +56,7 @@ describe('resume rag config', () => {
     expect(config.codexReasoningEffort).toBe('low');
     expect(config.topK).toBe(7);
     expect(config.minSimilarity).toBe(0.73);
+    expect(config.allowedSourceTypes).toEqual(['app_resume', 'curated_resume']);
   });
 
   it('fails clearly when embedding model settings are missing', () => {
@@ -72,6 +77,17 @@ describe('resume rag config', () => {
         getResumeRagConfig({ RAG_CHAT_PROVIDER: 'codex-app-server' }),
       ),
     ).not.toThrow();
+  });
+
+  it('requires an isolated working directory for Codex app-server', () => {
+    expect(() =>
+      requireCodexAppServerConfig(
+        getResumeRagConfig({
+          RAG_CHAT_PROVIDER: 'codex-app-server',
+          RAG_CODEX_APP_SERVER_URL: 'ws://127.0.0.1:14561',
+        }),
+      ),
+    ).toThrow('RAG_CODEX_CWD');
   });
 
   it('still requires chat model settings for openai-compatible chat', () => {

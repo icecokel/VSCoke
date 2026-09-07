@@ -154,6 +154,7 @@ export class ResumeRagRetrieverService {
           SELECT DISTINCT ON ("sourceType", "sourceKey") *
           FROM resume_source_items
           WHERE "status" <> 'superseded'
+            AND "sourceType" = ANY($3)
           ORDER BY "sourceType", "sourceKey", "updatedAt" DESC, "id" DESC
         ) AS current_items
         WHERE "status" = 'active'
@@ -167,7 +168,11 @@ export class ResumeRagRetrieverService {
           )
         ORDER BY "updatedAt" DESC
       `,
-      [this.config.allowedVisibilities, request.locale || null],
+      [
+        this.config.allowedVisibilities,
+        request.locale || null,
+        this.config.allowedSourceTypes,
+      ],
     );
 
     if (!Array.isArray(rows)) return [];
@@ -201,7 +206,7 @@ export class ResumeRagRetrieverService {
       `WITH current_items AS MATERIALIZED (
         SELECT DISTINCT ON ("sourceType", "sourceKey") *
         FROM resume_source_items
-          WHERE "status" <> 'superseded'
+          WHERE "status" <> 'superseded' AND "sourceType" = ANY($2)
         ORDER BY "sourceType", "sourceKey", "updatedAt" DESC, "id" DESC
       ), eligible AS MATERIALIZED (
         SELECT chunk.*, source.title AS "sourceTitle", source.metadata AS "sourceMetadata"
@@ -210,20 +215,21 @@ export class ResumeRagRetrieverService {
         WHERE source.status = 'active' AND source.vectorize = TRUE
           AND source.visibility = 'public' AND source.visibility = ANY($1)
           AND chunk.status = 'active' AND chunk.visibility = 'public'
-          AND ($2::varchar IS NULL OR source.locale IS NULL OR source.locale = $2
-            OR split_part(source.locale, '-', 1) = split_part($2, '-', 1))
-          AND chunk."embeddingProvider" = $3 AND chunk."embeddingModel" = $4
-          AND chunk."embeddingDimensions" = $5 AND vector_dims(chunk.embedding) = $5
-          AND chunk."chunkerVersion" = $6 AND chunk."chunkConfigHash" = $7
+          AND ($3::varchar IS NULL OR source.locale IS NULL OR source.locale = $3
+            OR split_part(source.locale, '-', 1) = split_part($3, '-', 1))
+          AND chunk."embeddingProvider" = $4 AND chunk."embeddingModel" = $5
+          AND chunk."embeddingDimensions" = $6 AND vector_dims(chunk.embedding) = $6
+          AND chunk."chunkerVersion" = $7 AND chunk."chunkConfigHash" = $8
       )
       SELECT id, content, "sourceTitle" AS title, "sourcePath", "sourceKey",
-        "sourceMetadata" AS "citationMetadata", 1 - (embedding <=> $8::vector) AS similarity
+        "sourceMetadata" AS "citationMetadata", 1 - (embedding <=> $9::vector) AS similarity
       FROM eligible
-      WHERE 1 - (embedding <=> $8::vector) >= $9
-      ORDER BY embedding <=> $8::vector, id
-      LIMIT $10`,
+      WHERE 1 - (embedding <=> $9::vector) >= $10
+      ORDER BY embedding <=> $9::vector, id
+      LIMIT $11`,
       [
         this.config.allowedVisibilities,
+        this.config.allowedSourceTypes,
         request.locale || null,
         profile.embeddingProvider,
         profile.embeddingModel,

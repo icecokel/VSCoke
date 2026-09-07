@@ -65,10 +65,12 @@ describe('Resume vector retrieval', () => {
     expect(sql).toContain("source.visibility = 'public'");
     expect(sql).toContain("source.status = 'active'");
     expect(sql).toContain('source.vectorize = TRUE');
-    expect(sql).toContain('vector_dims(chunk.embedding) = $5');
-    expect(sql).toContain('embedding <=> $8::vector');
+    expect(sql).toContain('"sourceType" = ANY($2)');
+    expect(sql).toContain('vector_dims(chunk.embedding) = $6');
+    expect(sql).toContain('embedding <=> $9::vector');
     expect(params).toEqual([
       ['public'],
+      ['app_resume'],
       'ko-KR',
       profile.provider,
       profile.model,

@@ -1,12 +1,49 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Not, Repository } from 'typeorm';
 import { ResumeImportBatch } from '../entities/resume-import-batch.entity';
 import { ResumeSourceItem } from '../entities/resume-source-item.entity';
 import {
   type ResumeImportManifestEntry,
   loadResumeSourceItemsFromEntry,
 } from './resume-source-item-loader';
+
+type ResumeImportOptions = {
+  retireMissingSourceTypes?: readonly string[];
+};
+
+type ResumeSourceIdentity = Pick<
+  ResumeSourceItem,
+  'id' | 'sourceType' | 'sourceKey' | 'status'
+>;
+
+export const findRetiredResumeSourceItemIds = (
+  items: readonly ResumeSourceIdentity[],
+  entries: readonly Pick<ResumeImportManifestEntry, 'id' | 'sourceType'>[],
+  managedSourceTypes: readonly string[],
+): string[] => {
+  const currentEntryIdsBySourceType = new Map<string, string[]>();
+  for (const sourceType of managedSourceTypes) {
+    const entryIds = entries
+      .filter((entry) => entry.sourceType === sourceType)
+      .map((entry) => entry.id);
+    if (entryIds.length > 0)
+      currentEntryIdsBySourceType.set(sourceType, entryIds);
+  }
+
+  return items
+    .filter((item) => item.status !== 'superseded')
+    .filter((item) => {
+      const entryIds = currentEntryIdsBySourceType.get(item.sourceType);
+      if (!entryIds) return false;
+      return !entryIds.some(
+        (entryId) =>
+          item.sourceKey === entryId ||
+          item.sourceKey.startsWith(`${entryId}#`),
+      );
+    })
+    .map((item) => item.id);
+};
 
 type ImportSummary = {
   entries: number;
@@ -15,6 +52,7 @@ type ImportSummary = {
   failed: number;
   vectorizable: number;
   storeOnly: number;
+  retired: number;
   failures: Array<{ id: string; message: string }>;
 };
 
@@ -30,6 +68,7 @@ export class ResumeSourceItemImportService {
   async importEntries(
     entries: ResumeImportManifestEntry[],
     sourceRoot: string,
+    options: ResumeImportOptions = {},
   ): Promise<ResumeImportBatch> {
     const batch = await this.batchRepository.save(
       this.batchRepository.create({
@@ -50,6 +89,7 @@ export class ResumeSourceItemImportService {
       failed: 0,
       vectorizable: 0,
       storeOnly: 0,
+      retired: 0,
       failures: [],
     };
 
@@ -106,6 +146,29 @@ export class ResumeSourceItemImportService {
           id: entry.id,
           message: error instanceof Error ? error.message : String(error),
         });
+      }
+    }
+
+    if (summary.failed === 0 && options.retireMissingSourceTypes?.length) {
+      const managedSourceTypes = [...new Set(options.retireMissingSourceTypes)];
+      const existingItems = await this.sourceItemRepository.find({
+        where: {
+          sourceType: In(managedSourceTypes),
+          status: Not('superseded'),
+        },
+        select: ['id', 'sourceType', 'sourceKey', 'status'],
+      });
+      const retiredIds = findRetiredResumeSourceItemIds(
+        existingItems,
+        entries,
+        managedSourceTypes,
+      );
+      if (retiredIds.length > 0) {
+        const result = await this.sourceItemRepository.update(
+          { id: In(retiredIds) },
+          { status: 'superseded', vectorize: false },
+        );
+        summary.retired = result.affected ?? retiredIds.length;
       }
     }
 

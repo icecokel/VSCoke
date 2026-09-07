@@ -19,7 +19,12 @@ import {
   requireEmbeddingModelConfig,
 } from '../resume-rag.config';
 
-type IndexSummary = { indexed: number; skipped: number };
+type IndexSummary = {
+  indexed: number;
+  skipped: number;
+  published: number;
+  sources: number;
+};
 
 @Injectable()
 export class ResumeVectorIndexerService {
@@ -57,7 +62,12 @@ export class ResumeVectorIndexerService {
       },
       order: { updatedAt: 'ASC' },
     });
-    const summary: IndexSummary = { indexed: 0, skipped: 0 };
+    const summary: IndexSummary = {
+      indexed: 0,
+      skipped: 0,
+      published: 0,
+      sources: 0,
+    };
 
     await this.vectorChunkRepository.query(
       `DELETE FROM resume_vector_chunks chunk
@@ -127,24 +137,33 @@ export class ResumeVectorIndexerService {
       }
 
       // API 호출 동안 DB 잠금을 유지하지 않고, 전 청크 준비가 끝난 뒤 원자적으로 교체한다.
-      await this.vectorChunkRepository.manager.transaction(async (manager) => {
-        const current = await manager.getRepository(ResumeSourceItem).findOne({
-          where: { id: sourceItem.id },
-          lock: { mode: 'pessimistic_read' },
-        });
-        if (
-          !current ||
-          current.status !== 'active' ||
-          current.visibility !== 'public' ||
-          !current.vectorize ||
-          !this.config.allowedSourceTypes.includes(current.sourceType) ||
-          current.contentHash !== sourceItem.contentHash
-        )
-          return;
-        const repository = manager.getRepository(ResumeVectorChunk);
-        await repository.delete(where);
-        if (prepared.length > 0) await repository.save(prepared);
-      });
+      const wasPublished = await this.vectorChunkRepository.manager.transaction(
+        async (manager) => {
+          const current = await manager
+            .getRepository(ResumeSourceItem)
+            .findOne({
+              where: { id: sourceItem.id },
+              lock: { mode: 'pessimistic_read' },
+            });
+          if (
+            !current ||
+            current.status !== 'active' ||
+            current.visibility !== 'public' ||
+            !current.vectorize ||
+            !this.config.allowedSourceTypes.includes(current.sourceType) ||
+            current.contentHash !== sourceItem.contentHash
+          )
+            return false;
+          const repository = manager.getRepository(ResumeVectorChunk);
+          await repository.delete(where);
+          if (prepared.length > 0) await repository.save(prepared);
+          return true;
+        },
+      );
+      if (wasPublished && prepared.length > 0) {
+        summary.published += prepared.length;
+        summary.sources += 1;
+      }
     }
     return summary;
   }

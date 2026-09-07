@@ -31,7 +31,9 @@ const main = async () => {
       repoRoot,
       resumeWorkspaceRoot,
     }).filter((entry) => entry.visibility === 'public');
-    const batch = await service.importEntries(entries, repoRoot);
+    const batch = await service.importEntries(entries, repoRoot, {
+      retireMissingSourceTypes: ['app_resume'],
+    });
     console.log(JSON.stringify(batch.summary, null, 2));
     if (batch.status !== 'completed') {
       process.exitCode = 1;

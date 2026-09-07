@@ -86,7 +86,12 @@ describe('ResumeVectorIndexerService', () => {
   it('공개 활성 자료만 읽고, 모든 임베딩이 준비된 뒤 청크를 교체한다', async () => {
     const { service, sources, vectors, embed, getFindOptions } =
       createHarness();
-    expect(await service.indexAll()).toEqual({ indexed: 1, skipped: 0 });
+    expect(await service.indexAll()).toEqual({
+      indexed: 1,
+      skipped: 0,
+      published: 1,
+      sources: 1,
+    });
     expect(sources.find).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(getFindOptions())).toContain('app_resume');
     expect(embed).toHaveBeenCalledWith('공개 프로젝트 근거', 'passage');
@@ -104,7 +109,12 @@ describe('ResumeVectorIndexerService', () => {
     vectors.find.mockResolvedValue([
       { chunkIndex: 0, contentHash: chunks[0].contentHash, embedding: [1, 0] },
     ]);
-    expect(await service.indexAll()).toEqual({ indexed: 0, skipped: 1 });
+    expect(await service.indexAll()).toEqual({
+      indexed: 0,
+      skipped: 1,
+      published: 1,
+      sources: 1,
+    });
     expect(embed).not.toHaveBeenCalled();
     expect(vectors.save).toHaveBeenCalledTimes(1);
   });
@@ -122,7 +132,12 @@ describe('ResumeVectorIndexerService', () => {
       ...source,
       sourceType: 'resume_workspace',
     });
-    await service.indexAll();
+    expect(await service.indexAll()).toEqual({
+      indexed: 1,
+      skipped: 0,
+      published: 0,
+      sources: 0,
+    });
     expect(vectors.delete).not.toHaveBeenCalled();
     expect(vectors.save).not.toHaveBeenCalled();
   });
@@ -130,7 +145,12 @@ describe('ResumeVectorIndexerService', () => {
   it('임베딩 중 비공개로 전환된 원본은 게시하지 않는다', async () => {
     const { service, source, sources, vectors } = createHarness();
     sources.findOne.mockResolvedValue({ ...source, visibility: 'private' });
-    await service.indexAll();
+    expect(await service.indexAll()).toEqual({
+      indexed: 1,
+      skipped: 0,
+      published: 0,
+      sources: 0,
+    });
     expect(vectors.delete).not.toHaveBeenCalled();
     expect(vectors.save).not.toHaveBeenCalled();
   });

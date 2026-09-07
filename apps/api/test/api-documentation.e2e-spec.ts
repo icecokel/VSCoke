@@ -2,21 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { Server } from 'node:http';
 import request from 'supertest';
-import { AppController } from './../src/app.controller';
-import { AppService } from './../src/app.service';
-import { EspressoHistoryController } from './../src/espresso-history/espresso-history.controller';
-import { EspressoHistoryService } from './../src/espresso-history/espresso-history.service';
-import { GoogleAuthGuard } from './../src/auth/google-auth.guard';
-import { GameController } from './../src/game/game.controller';
-import { GameService } from './../src/game/game.service';
-import { MainChatController } from './../src/main-chat/main-chat.controller';
-import { MainChatService } from './../src/main-chat/main-chat.service';
-import { RecipeController } from './../src/recipe/recipe.controller';
-import { RecipeService } from './../src/recipe/recipe.service';
-import { ResumeRagController } from './../src/resume-rag/resume-rag.controller';
-import { ResumeRagService } from './../src/resume-rag/resume-rag.service';
-import { WordleController } from './../src/wordle/wordle.controller';
-import { WordleService } from './../src/wordle/wordle.service';
+import { ApiContractModule } from '../src/api-contract.module';
+import { GoogleAuthGuard } from '../src/auth/google-auth.guard';
+import { GameService } from '../src/game/game.service';
 import { setupApiDocumentation } from './../src/api-documentation';
 import { TransformInterceptor } from './../src/common/interceptors/transform.interceptor';
 
@@ -48,6 +36,8 @@ const requiredOpenApiPaths = [
   '/recipes',
   '/recipes/{id}',
   '/resume-rag/chat',
+  '/resume-rag/conversations',
+  '/resume-rag/conversations/{id}',
   '/wordle/check',
   '/wordle/word',
 ];
@@ -60,43 +50,10 @@ describe('API documentation (e2e)', () => {
   beforeEach(async () => {
     gameService = { getRanking: jest.fn() };
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      controllers: [
-        AppController,
-        EspressoHistoryController,
-        GameController,
-        MainChatController,
-        RecipeController,
-        ResumeRagController,
-        WordleController,
-      ],
-      providers: [
-        AppService,
-        {
-          provide: EspressoHistoryService,
-          useValue: {},
-        },
-        {
-          provide: GameService,
-          useValue: gameService,
-        },
-        {
-          provide: MainChatService,
-          useValue: {},
-        },
-        {
-          provide: RecipeService,
-          useValue: {},
-        },
-        {
-          provide: ResumeRagService,
-          useValue: {},
-        },
-        {
-          provide: WordleService,
-          useValue: {},
-        },
-      ],
+      imports: [ApiContractModule],
     })
+      .overrideProvider(GameService)
+      .useValue(gameService)
       .overrideGuard(GoogleAuthGuard)
       .useValue({
         canActivate: () => true,

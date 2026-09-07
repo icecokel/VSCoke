@@ -643,7 +643,7 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
             aria-label={t("composerLabel")}
             rows={1}
             className="max-h-36 min-h-11 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-sm text-gray-100 shadow-none placeholder:text-gray-500 focus-visible:border-transparent focus-visible:ring-0 md:min-h-11"
-            disabled={isSubmitting}
+            disabled={isSubmitting || conversation.isRestoring}
           />
           <Button
             type="submit"

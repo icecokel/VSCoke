@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { getMigrationFilePaths } from './migration-file-paths';
 import { DataSource } from 'typeorm';
 
 const envPath = join(process.cwd(), '.env');
@@ -28,6 +29,6 @@ export default new DataSource({
   password: process.env.DB_PASSWORD ?? 'postgres',
   database: process.env.DB_DATABASE ?? 'vscoke',
   entities: [join(__dirname, '**', '*.entity{.ts,.js}')],
-  migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
+  migrations: getMigrationFilePaths(join(__dirname, 'migrations')),
   synchronize: false,
 });

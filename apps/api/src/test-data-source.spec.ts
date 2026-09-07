@@ -1,3 +1,5 @@
+import { join } from 'node:path';
+import { getMigrationFilePaths } from './migration-file-paths';
 import type { DataSource } from 'typeorm';
 
 const originalEnv = process.env;
@@ -142,9 +144,9 @@ describe('test data source', () => {
     expect(dataSource.options.entities).toEqual([
       expect.stringContaining('*.entity{.ts,.js}'),
     ]);
-    expect(dataSource.options.migrations).toEqual([
-      expect.stringMatching(/[\\/]migrations[\\/]\*\.\{ts,js\}$/),
-    ]);
+    expect(dataSource.options.migrations).toEqual(
+      getMigrationFilePaths(join(__dirname, 'migrations')),
+    );
   });
 });
 

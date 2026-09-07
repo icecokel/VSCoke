@@ -12,6 +12,30 @@ type ChatRequest = {
 };
 
 for (const channel of ["main", "resume"] as const) {
+  test(`${channel} 채팅은 hydration 전에 입력과 전송을 허용하지 않는다`, async ({
+    browser,
+    baseURL,
+  }) => {
+    const context = await browser.newContext({ baseURL, javaScriptEnabled: false });
+    try {
+      const page = await context.newPage();
+      await page.goto(channel === "main" ? "/ko-KR" : "/ko-KR/resume/question");
+      await expect(
+        page.getByRole("textbox", {
+          name: channel === "main" ? ko.home.mainChat.placeholder : ko.resumeRag.composerLabel,
+        }),
+      ).toBeDisabled();
+      await expect(
+        page.getByRole("button", {
+          name: channel === "main" ? ko.home.mainChat.send : ko.resumeRag.submit,
+          exact: true,
+        }),
+      ).toBeDisabled();
+    } finally {
+      await context.close();
+    }
+  });
+
   test(`${channel} 채팅은 맥락 식별자를 유지하고 새로고침 후 복원·삭제한다`, async ({ page }) => {
     const storage = await mockResumeConversationStorage(page);
     const requests: ChatRequest[] = [];

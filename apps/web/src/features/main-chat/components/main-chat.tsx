@@ -258,7 +258,7 @@ export const MainChat = () => {
             <Textarea
               value={question}
               rows={1}
-              disabled={isRateLimited}
+              disabled={isRateLimited || conversation.isRestoring}
               placeholder={t("placeholder")}
               aria-label={t("placeholder")}
               className="min-h-12 resize-none border-gray-700 bg-gray-900 px-4 py-3 text-sm text-gray-100 placeholder:text-gray-500 focus-visible:border-blue-300 focus-visible:ring-blue-300/20"

@@ -1007,8 +1007,38 @@ exit 1이다. 같은 manifest entry의 이전 섹션은 절대 경로가 아니�
 - 동시 요청 두 건에서 저장 한 건, 409 한 건을 확인하고 테스트 대화를 삭제했다.
 - 최초 기존 공개 원본 177개 중 빈 본문 1개를 제외한 176개에서 420개 벡터를 생성했다.
 - 최초 청크 수/해시 대조 일치, 최대 토큰 347개로 입력 잘림 없음.
-- 최종 코드 배포와 공개 웹 검증은 완료 후 이 절에 추가 기록한다.
+- 기능 배포 커밋: `73a1f14ae8c8afbfff4bff7878a444d54777b49a`.
+- GitHub Actions API 배포 실행 `34130830320`: 2026-09-07 23:04 KST 성공.
+- 동일 커밋의 Vercel production 상태 success를 확인했다.
+- 배포 중 공개 앱 자료 12개 파일/36개 항목 import, 실패 0. 개인정보 패턴으로 3개 항목은 rejected.
+- 배포 중 21개 청크 임베딩 생성, 398개 재사용. 최종 유효 공개 원본 175개, 벡터 419개.
+- 최신 배포 이후 모든 원본의 예상 청크 수/해시를 DB와 대조했으며 비공개/비활성 원본 벡터 0개.
+- 실제 vector 모드에서 배포 자동화/의료 제품 질문은 검색되고 날씨/시세 질문은 빈 결과임을 확인했다.
+- 공개 API에서 실제 Oprimed 질문과 후속 질문을 생성하고, 중간에 API를 재시작해도 대화가 복원됐다.
+- 공개 API의 첫 답변 약 9.8초, 재시작 뒤 검색 질문 재작성 포함 후속 답변 약 19.0초(각 1회 표본).
+- 같은 requestId의 실제 HTTP 재시도는 최초 답변을 반환하고 저장 턴 수를 늘리지 않았다.
+- 운영 CORS preflight 204, 공식 origin과 X-Resume-Conversation-Token 헤더 허용 확인.
+- 메인/이력서 채팅 각각 실제 브라우저에서 모델 답변 2개, 후속 지시 대상 해석, 새로고침 복원, 삭제를 확인했다.
+- 운영 Playwright `resume-conversation-production-smoke.spec.ts`: Chromium 2개 통과. 테스트 대화는 삭제했다.
+- 실제 DB에서 51턴 작성 시 최근 50턴 유지, 모델 입력 최대 6턴, locale 불일치 404, 만료/purge CASCADE를 확인했다.
+- 회귀 검사: API 단위 226개, 웹 단위 46개, 모킹 기반 채팅 브라우저 14개, i18n smoke 6개 통과.
+- 웹/API lint, 웹 타입, API 계약, knip, production build 통과. 운영 테스트의 trace/video는 비활성화했다.
 
 모델 사용 기준: [E5 모델 카드](https://huggingface.co/intfloat/multilingual-e5-small),
 [ONNX 변환 모델](https://huggingface.co/Xenova/multilingual-e5-small),
 [Transformers.js Node 실행](https://huggingface.co/docs/transformers.js/en/tutorials/node).
+
+### 10.4. 운영 적용 이후 남은 범위
+
+핵심 요청인 벡터 검색과 저장 대화의 운영 적용은 완료했다. 9절의 초기 작업 보드를 모두
+완료했다는 뜻은 아니며 다음은 별도 후속 범위다.
+
+- 전체 DB 백업 복원 리허설은 실행하지 않았다. 연결 계정에 DB 생성 권한이 없어 신규
+  migration의 up/down을 실제 DB의 rollback 트랜잭션으로 검증했다. 백업 archive 목록은 확인했다.
+- 고정 평가셋 전체, 모든 언어/브라우저의 실모델 품질 평가는 아직 없다. 이번 실모델 검증은
+  한국어와 Chromium, 몇 가지 양성/음성 질문으로 제한된다. 소규모 점수 조정은 정확도 보증이 아니다.
+- 문장별 근거 검증, 6턴을 넘는 장기 요약, 기기 간 동기화, 분산 rate limit, 전체 요청 deadline은 후속 과제다.
+- localStorage 접근키, Codex 도구/파일 접근 경계, 백업의 별도 보존/공개 철회 정책에 대한
+  심층 보안 검토는 완료로 간주하지 않는다. 기존 답변 모델과 추론 설정은 변경하지 않았다.
+- 개인 이력 원본의 직접 서버 전송은 수행하지 않았다. 기존 운영 DB의 공개 근거와 Git의
+  공개 웹 자료만 사용한다. 새로운 보강 원본 갱신은 승인된 별도 import 절차가 필요하다.

@@ -63,16 +63,16 @@ host
 
 현재 워크플로 기준:
 
-1. `main` 브랜치에 `apps/api/**`, 루트 패키지/락파일, API 배포 워크플로 변경이 push된다.
+1. `main`에 API, 루트 패키지/락파일, API 배포 workflow 또는 공개 웹 이력 자료 변경이 push된다. 실제 경로 필터는 workflow를 따른다.
 2. Ubuntu 호스트의 self-hosted runner가 job을 실행한다. runner는 systemd 서비스로 관리한다.
 3. workflow build runtime은 `actions/setup-node@v4`의 Node.js 24를 사용한다.
 4. runner 작업 디렉터리에서 의존성을 설치한다.
 5. `pnpm --filter @vscoke/api build`로 API를 빌드한다.
 6. Ubuntu host의 `node`, `corepack`, `pm2`를 사용한다.
 7. `/home/icenux/projects/vscoke-api/.env`가 있는지 확인한다.
-8. `/home/icenux/projects/vscoke-api/.next-release`에 `apps/api/dist`, `apps/api/package.json`, 루트 `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`을 staging한다.
+8. `/home/icenux/projects/vscoke-api/.next-release`에 API dist/package, 루트 package/lock/workspace 및 공개 웹 이력 JSON/메시지/MDX를 staging한다. 개인 이력 작업공간은 포함하지 않는다.
 9. staging 경로에서 production 의존성을 설치한다.
-10. staging이 성공하면 `/home/icenux/projects/vscoke-api`로 release 파일을 복사하고 PM2로 API를 재기동한다.
+10. staging이 성공하면 release를 복사하고 공개 앱 이력을 import한다. 임베딩이 설정된 hybrid/vector 모드에서는 index도 갱신한 뒤 PM2로 API를 재기동한다.
 11. Ubuntu host 내부 `http://127.0.0.1:$PORT/health`와 공개 `API_HEALTH_URL`을 smoke test한다.
 
 운영 프로세스 기준:

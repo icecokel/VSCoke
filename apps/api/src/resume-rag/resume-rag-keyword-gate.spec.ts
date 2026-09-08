@@ -1,6 +1,17 @@
 import { createResumeRagSearchTokens } from './resume-rag-keyword-gate';
 
 describe('resume-rag keyword search', () => {
+  it('새 경험의 고유명과 관심 분야도 검색할 수 있다', () => {
+    expect(createResumeRagSearchTokens('웍스피어에서 DnD를 없앤 이유')).toEqual(
+      expect.arrayContaining(['웍스피어', 'dnd']),
+    );
+    expect(createResumeRagSearchTokens('AX에 관심을 가진 이유')).toContain(
+      'ax',
+    );
+    expect(createResumeRagSearchTokens('기술 선택 기준')).toContain('선택');
+    expect(createResumeRagSearchTokens('택시 taxi')).toEqual([]);
+  });
+
   it('이력 의도가 없는 질문은 키워드 검색 후보를 만들지 않는다', () => {
     expect(createResumeRagSearchTokens('오늘 날씨 어때?')).toEqual([]);
     expect(

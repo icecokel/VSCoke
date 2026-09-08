@@ -9,6 +9,8 @@ on:
       - "apps/web/src/constants/resume-data.json"
       - "apps/web/messages/*.json"
       - "apps/web/resume-detail/**"
+      - "docs/public-site-guide.md"
+      - "docs/public-resume-experience.md"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -76,6 +78,8 @@ jobs:
           cp apps/web/src/constants/resume-data.json "$RELEASE_DIR/apps/web/src/constants/"
           cp apps/web/messages/{ko-KR,en-US,ja-JP}.json "$RELEASE_DIR/apps/web/messages/"
           rsync -a apps/web/resume-detail/ "$RELEASE_DIR/apps/web/resume-detail/"
+          mkdir -p "$RELEASE_DIR/docs"
+          cp docs/public-site-guide.md docs/public-resume-experience.md "$RELEASE_DIR/docs/"
 
           cd "$RELEASE_DIR"
           pnpm --filter @vscoke/api install --prod --frozen-lockfile --ignore-scripts

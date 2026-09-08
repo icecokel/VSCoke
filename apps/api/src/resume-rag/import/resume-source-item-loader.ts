@@ -52,7 +52,7 @@ const APP_RESUME_DETAIL_FILES = [
 ];
 
 const RESUME_WORKSPACE_VECTOR_FILES = [
-  'docs/base-resume-final-v61-2026-08-02.md',
+  'docs/base-resume-final-v62-2026-08-12.md',
   'docs/base-resume-ai-workflow-v1-2026-06-29.md',
   'docs/oprimed-public-resume-final.md',
   'docs/public-resume-page.md',
@@ -334,6 +334,19 @@ export const createResumeImportManifest = ({
       vectorize: true,
       metadata: { version: 'current' },
     },
+    {
+      id: 'app:resume-experience',
+      path: join(repoRoot, 'docs/public-resume-experience.md'),
+      sourcePath: 'docs/public-resume-experience.md',
+      parser: 'markdown',
+      sourceType: 'app_resume',
+      itemType: 'public_rag_evidence',
+      title: '이상민의 경험과 판단 근거',
+      status: 'active',
+      visibility: 'public',
+      vectorize: true,
+      metadata: { version: 'supporting', fidelity: 'reviewed-section' },
+    },
   ];
 
   if (!resumeWorkspaceRoot) {
@@ -358,12 +371,12 @@ export const createResumeImportManifest = ({
     title: basename(fileName),
     status: 'active',
     visibility:
-      fileName.includes('public') || fileName.includes('base-resume-final-v61')
+      fileName.includes('public') || fileName.includes('base-resume-final-v62')
         ? 'public'
         : 'private',
     vectorize: true,
     metadata: {
-      version: fileName.includes('base-resume-final-v61')
+      version: fileName.includes('base-resume-final-v62')
         ? 'current'
         : 'supporting',
     },

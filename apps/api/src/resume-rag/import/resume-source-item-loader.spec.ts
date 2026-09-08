@@ -23,7 +23,7 @@ describe('resume source item loader', () => {
           visibility: 'public',
         }),
         expect.objectContaining({
-          path: '/resume/docs/base-resume-final-v61-2026-08-02.md',
+          path: '/resume/docs/base-resume-final-v62-2026-08-12.md',
           itemType: 'final_resume_section',
           vectorize: true,
           visibility: 'public',
@@ -43,7 +43,7 @@ describe('resume source item loader', () => {
     expect(appResume?.sourcePath).toMatch(/^apps\/web\//);
 
     const currentResume = manifest.find((entry) =>
-      entry.path.endsWith('base-resume-final-v61-2026-08-02.md'),
+      entry.path.endsWith('base-resume-final-v62-2026-08-12.md'),
     );
     expect(currentResume?.metadata.version).toBe('current');
     const supersededSources = manifest.filter((entry) =>

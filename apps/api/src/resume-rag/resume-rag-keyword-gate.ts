@@ -86,6 +86,21 @@ export const RESUME_RAG_KEYWORD_GROUPS: readonly ResumeRagKeywordGroup[] = [
     ],
   },
   {
+    id: 'recruitment-assignment',
+    weight: 2,
+    aliases: [
+      '웍스피어',
+      'worxphere',
+      '채용 보드',
+      '채용 파이프라인',
+      '파이프라인 보드',
+      'recruitment board',
+      'recruitment pipeline',
+      '採用ボード',
+    ],
+    searchExpansions: [],
+  },
+  {
     id: 'oprimed',
     weight: 3,
     aliases: ['oprimed', 'optivis', '오프리메드', '오프리', '오프티비스'],
@@ -190,6 +205,7 @@ export const RESUME_RAG_KEYWORD_GROUPS: readonly ResumeRagKeywordGroup[] = [
     aliases: [
       '개발 철학',
       '작업 철학',
+      '기술 선택',
       '일하는 방식',
       '업무 방식',
       '문제 판단',
@@ -311,6 +327,7 @@ export const RESUME_RAG_KEYWORD_GROUPS: readonly ResumeRagKeywordGroup[] = [
     aliases: [
       '자동화',
       'ai',
+      'ax',
       'llm',
       'mcp',
       'llm wiki',

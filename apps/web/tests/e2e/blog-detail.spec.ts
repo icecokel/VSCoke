@@ -44,6 +44,13 @@ test.describe("블로그 상세 읽기 경험", () => {
     const target = page.locator(`[id="${decodeURIComponent(fragment!.slice(1))}"]`);
     await expect(target).toBeFocused();
     await expect(link).toHaveAttribute("aria-current", "location");
+    const [progressBox, targetBox] = await Promise.all([
+      page.getByRole("progressbar", { name: ko.blog.detail.progress }).boundingBox(),
+      target.boundingBox(),
+    ]);
+    expect(progressBox).not.toBeNull();
+    expect(targetBox).not.toBeNull();
+    expect(targetBox!.y).toBeGreaterThanOrEqual(progressBox!.y + progressBox!.height + 8);
     await page.reload();
     await expect(outline).toBeVisible();
     await expect

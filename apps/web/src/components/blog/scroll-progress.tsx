@@ -44,10 +44,10 @@ export default function ScrollProgress({ label }: { label: string }) {
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={progress}
-      className="pointer-events-none sticky top-0 z-20 h-0.5 w-full bg-border/50"
+      className="pointer-events-none sticky top-0 z-20 h-2 w-full bg-background"
     >
       <div
-        className="h-full origin-left bg-primary"
+        className="absolute inset-x-0 bottom-0 h-0.5 origin-left bg-primary"
         style={{ transform: `scaleX(${progress / 100})` }}
       />
     </div>

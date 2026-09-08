@@ -34,7 +34,7 @@ export const isLegacyBlogImageUrl = (src: string): boolean => {
 
 export const PostHeading1 = ({ children }: PostElementProps) => (
   <h2
-    className="mt-12 mb-5 scroll-mt-8 text-2xl leading-snug font-semibold tracking-tight text-foreground sm:text-3xl"
+    className="mt-12 mb-5 scroll-mt-14 text-2xl leading-snug font-semibold tracking-tight text-foreground sm:text-3xl"
     data-blog-speech-segment
   >
     {children}
@@ -43,7 +43,7 @@ export const PostHeading1 = ({ children }: PostElementProps) => (
 
 export const PostHeading2 = ({ children }: PostElementProps) => (
   <h3
-    className="mt-10 mb-4 scroll-mt-8 text-xl leading-snug font-semibold tracking-tight text-foreground sm:text-2xl"
+    className="mt-10 mb-4 scroll-mt-14 text-xl leading-snug font-semibold tracking-tight text-foreground sm:text-2xl"
     data-blog-speech-segment
   >
     {children}
@@ -52,7 +52,7 @@ export const PostHeading2 = ({ children }: PostElementProps) => (
 
 export const PostHeading3 = ({ children }: PostElementProps) => (
   <h4
-    className="mt-7 mb-3 scroll-mt-8 text-lg leading-relaxed font-semibold text-foreground"
+    className="mt-7 mb-3 scroll-mt-14 text-lg leading-relaxed font-semibold text-foreground"
     data-blog-speech-segment
   >
     {children}

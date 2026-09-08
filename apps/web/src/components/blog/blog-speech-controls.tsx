@@ -245,7 +245,7 @@ export const BlogSpeechControls = ({ description, language, title }: BlogSpeechC
 
   return (
     <div
-      className="flex flex-wrap items-center justify-end gap-2"
+      className="flex flex-wrap items-center gap-2 [&_button]:min-h-10"
       data-testid="blog-speech-controls"
     >
       <Tooltip>
@@ -267,7 +267,7 @@ export const BlogSpeechControls = ({ description, language, title }: BlogSpeechC
         <TooltipContent
           side="top"
           sideOffset={8}
-          className="border border-gray-700 bg-gray-900 text-white"
+          className="border border-border bg-popover text-popover-foreground"
           data-testid="blog-speech-experimental-tooltip"
         >
           {t("experimentalHint")}
@@ -308,7 +308,7 @@ export const BlogSpeechControls = ({ description, language, title }: BlogSpeechC
         {liveMessage}
       </span>
       {playbackState === "error" && (
-        <span className="basis-full text-right text-sm text-red-300" role="alert">
+        <span className="basis-full text-sm text-muted-foreground" role="alert">
           {t("error")}
         </span>
       )}

@@ -158,6 +158,22 @@
       "speakingStatus": "ブログ記事を読み上げています。",
       "pausedStatus": "音声読み上げを一時停止しました。",
       "error": "音声読み上げを開始できませんでした。"
+    },
+    "detail": {
+      "development": "開発ノート",
+      "journal": "経験と記録",
+      "publishedOn": "公開日",
+      "readingTime": "約{minutes}分",
+      "tags": "記事のタグ",
+      "tools": "閲覧・共有ツール",
+      "contents": "この記事の目次",
+      "backToTop": "先頭へ",
+      "endOfArticle": "最後までお読みいただきありがとうございます。",
+      "progress": "読書の進捗",
+      "code": "コード",
+      "copyCode": "コードをコピー",
+      "copied": "コピーしました",
+      "copyFailed": "コピーできませんでした。コードを選択してコピーしてください。"
     }
   },
   "Game": {

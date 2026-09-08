@@ -72,3 +72,29 @@ test.describe("비주얼 회귀", () => {
     });
   }
 });
+
+test.describe("블로그 상세 비주얼", () => {
+  for (const layout of [
+    { name: "desktop", width: 1440, height: 1000 },
+    { name: "mobile", width: 390, height: 844 },
+  ]) {
+    test(`${layout.name} 읽기 레이아웃`, async ({ page }) => {
+      await page.setViewportSize({ width: layout.width, height: layout.height });
+      await gotoWithRetry(page, "/ko-KR/blog/journal/hello-world");
+      await expect(page.getByTestId("blog-outline")).toBeVisible();
+      await page.addStyleTag({
+        content: "nextjs-portal, [data-nextjs-dev-overlay] { display: none !important; }",
+      });
+      await page.evaluate(() => document.fonts.ready);
+      await page.locator("#main-scroll-container").evaluate(element => {
+        element.scrollTop = 0;
+      });
+      await expect(page).toHaveScreenshot(`blog-detail-${layout.name}.png`, {
+        animations: "disabled",
+        caret: "hide",
+        fullPage: false,
+        maxDiffPixels: 50,
+      });
+    });
+  }
+});

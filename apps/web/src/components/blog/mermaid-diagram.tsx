@@ -17,9 +17,28 @@ export const MermaidDiagram = ({ chart, description }: MermaidDiagramProps) => {
 
     void import("mermaid")
       .then(async ({ default: mermaid }) => {
+        const style = getComputedStyle(document.documentElement);
+        const token = (name: string) => style.getPropertyValue(name).trim();
         mermaid.initialize({
           startOnLoad: false,
-          theme: "dark",
+          theme: "base",
+          themeVariables: {
+            darkMode: document.documentElement.classList.contains("dark"),
+            background: token("--background"),
+            primaryColor: token("--card"),
+            primaryTextColor: token("--foreground"),
+            primaryBorderColor: token("--muted-foreground"),
+            secondaryColor: token("--muted"),
+            secondaryTextColor: token("--foreground"),
+            tertiaryColor: token("--background"),
+            tertiaryTextColor: token("--foreground"),
+            lineColor: token("--muted-foreground"),
+            textColor: token("--foreground"),
+            edgeLabelBackground: token("--card"),
+            clusterBkg: token("--background"),
+            clusterBorder: token("--border"),
+            fontFamily: style.fontFamily,
+          },
           securityLevel: "strict",
         });
         const rendered = await mermaid.render(`mermaid-${diagramId}`, chart);
@@ -34,15 +53,21 @@ export const MermaidDiagram = ({ chart, description }: MermaidDiagramProps) => {
   }, [chart, diagramId]);
 
   if (!svg) {
-    return <PreBlock aria-label={description}>{chart}</PreBlock>;
+    return (
+      <PreBlock variant="article" language="mermaid" aria-label={description}>
+        {chart}
+      </PreBlock>
+    );
   }
 
   return (
     <div
       aria-label={description}
-      className="my-6 overflow-x-auto rounded-lg border border-gray-700 bg-gray-900 p-4 [&_svg]:mx-auto"
+      className="my-7 max-w-full overflow-x-auto rounded-xl border border-border bg-card p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-6 [&_svg]:mx-auto"
       dangerouslySetInnerHTML={{ __html: svg }}
       role="img"
+      tabIndex={0}
+      data-blog-speech-exclude
     />
   );
 };

@@ -119,6 +119,7 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:37123 pnpm --filter @vscoke/web exec playwr
 | 모바일 동작          | `mobile-behavior.spec.ts`                                                             |
 | 레이아웃/비주얼 회귀 | `layout-shift.spec.ts`, `visual-regression.spec.ts`                                   |
 | 취미/게임 진입       | `hobby-games.spec.ts`, `hobby-recipes.spec.ts`, `hobby-espresso.spec.ts`              |
+| 블로그 상세          | `blog-detail.spec.ts`                                                                 |
 | Resume RAG           | `resume-rag-chat-public.spec.ts`                                                      |
 | Analytics            | `google-analytics.spec.ts`, `google-tag-manager.spec.ts`                              |
 

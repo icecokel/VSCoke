@@ -19,8 +19,8 @@ test.describe("딥링크 직접 진입", () => {
 
     await gotoWithRetry(page, `/${locale}/blog/${blogSlug}`);
     await expect(page).toHaveURL(new RegExp(`/${localeRegex}/blog/.+`));
-    await expect(page.locator("article.prose")).toBeVisible();
-    await expect(page.getByRole("heading", { level: 2 })).toBeVisible();
+    await expect(page.getByTestId("blog-post").getByRole("article")).toBeVisible();
+    await expect(page.getByTestId("blog-post").getByRole("heading", { level: 1 })).toBeVisible();
 
     await gotoWithRetry(page, `/${locale}/resume/${resumeSlug}`);
     await expect(page).toHaveURL(new RegExp(`/${localeRegex}/resume/.+`));
@@ -113,14 +113,14 @@ test.describe("딥링크 직접 진입", () => {
   });
 
   test("TSX 블로그 포스트를 기존 URL과 공통 셸로 렌더링한다", async ({ page }) => {
-    const { locale } = await resolveLocaleAndMessages(page);
+    const { locale, messages } = await resolveLocaleAndMessages(page);
 
     await gotoWithRetry(page, `/${locale}/blog/journal/hello-world`);
 
     await expect(page.getByRole("heading", { name: "블로그를 시작하며" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "블로그를 시작합니다" })).toBeVisible();
     await expect(page.getByText("좋은 개발자는 코드를 작성하는 것만큼")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Copy code" })).toBeVisible();
+    await expect(page.getByRole("button", { name: messages.blog.detail.copyCode })).toBeVisible();
   });
 
   test("블로그 상세에 canonical BlogPosting JSON-LD를 노출한다", async ({ page }) => {
@@ -150,13 +150,17 @@ test.describe("딥링크 직접 진입", () => {
   });
 
   test("표·이미지·코드가 있는 TSX 블로그 포스트를 보존한다", async ({ page }) => {
-    const { locale } = await resolveLocaleAndMessages(page);
+    const { locale, messages } = await resolveLocaleAndMessages(page);
 
     await gotoWithRetry(page, `/${locale}/blog/dev/html-mistakes-1`);
 
     await expect(page.locator("article table")).toBeVisible();
-    await expect(page.locator("article img")).toHaveCount(3);
-    await expect(page.getByRole("button", { name: "Copy code" }).first()).toBeVisible();
+    // 만료된 외부 스크린샷은 기존 정책대로 안내 카드로 대체한다.
+    await expect(page.getByTestId("blog-legacy-image-notice")).toHaveCount(3);
+    await expect(page.locator("article img")).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: messages.blog.detail.copyCode }).first(),
+    ).toBeVisible();
   });
 
   test("존재하지 않는 블로그 slug는 404로 응답한다", async ({ page }) => {

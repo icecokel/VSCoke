@@ -158,6 +158,22 @@
       "speakingStatus": "The blog article is being read aloud.",
       "pausedStatus": "Speech playback is paused.",
       "error": "Unable to start speech playback."
+    },
+    "detail": {
+      "development": "Development notes",
+      "journal": "Experience & journal",
+      "publishedOn": "Published on",
+      "readingTime": "{minutes} min read",
+      "tags": "Article tags",
+      "tools": "Reading and sharing tools",
+      "contents": "On this page",
+      "backToTop": "Back to top",
+      "endOfArticle": "Thanks for reading.",
+      "progress": "Reading progress",
+      "code": "Code",
+      "copyCode": "Copy code",
+      "copied": "Copied",
+      "copyFailed": "Unable to copy. Please select and copy the code."
     }
   },
   "Game": {

@@ -11,7 +11,6 @@ import type {
   ThHTMLAttributes,
 } from "react";
 import { PhotoIcon } from "@heroicons/react/24/outline";
-import BaseText from "@/components/base-ui/text";
 import { PreBlock } from "@/components/blog/pre-block";
 import { cn } from "@/lib/utils";
 
@@ -34,25 +33,34 @@ export const isLegacyBlogImageUrl = (src: string): boolean => {
 };
 
 export const PostHeading1 = ({ children }: PostElementProps) => (
-  <BaseText type="h3" className="mt-8 mb-4 text-yellow-200" data-blog-speech-segment>
+  <h2
+    className="mt-12 mb-5 scroll-mt-8 text-2xl leading-snug font-semibold tracking-tight text-foreground sm:text-3xl"
+    data-blog-speech-segment
+  >
     {children}
-  </BaseText>
+  </h2>
 );
 
 export const PostHeading2 = ({ children }: PostElementProps) => (
-  <BaseText type="h4" className="mt-6 mb-3 text-white/90" data-blog-speech-segment>
+  <h3
+    className="mt-10 mb-4 scroll-mt-8 text-xl leading-snug font-semibold tracking-tight text-foreground sm:text-2xl"
+    data-blog-speech-segment
+  >
     {children}
-  </BaseText>
+  </h3>
 );
 
 export const PostHeading3 = ({ children }: PostElementProps) => (
-  <BaseText type="h5" className="mt-4 mb-2 text-white/80" data-blog-speech-segment>
+  <h4
+    className="mt-7 mb-3 scroll-mt-8 text-lg leading-relaxed font-semibold text-foreground"
+    data-blog-speech-segment
+  >
     {children}
-  </BaseText>
+  </h4>
 );
 
 export const PostParagraph = ({ children }: PostElementProps) => (
-  <p className="mb-4 text-base leading-relaxed text-gray-200/95" data-blog-speech-segment>
+  <p className="mb-5 text-base leading-8 text-foreground/85" data-blog-speech-segment>
     {children}
   </p>
 );
@@ -62,7 +70,13 @@ export const PostUnorderedList = ({
   className,
   ...props
 }: HTMLAttributes<HTMLUListElement>) => (
-  <ul className={cn("mb-4 ml-6 list-disc text-gray-200", className)} {...props}>
+  <ul
+    className={cn(
+      "mb-6 list-disc space-y-2 pl-6 text-foreground/85 marker:text-muted-foreground",
+      className,
+    )}
+    {...props}
+  >
     {children}
   </ul>
 );
@@ -72,7 +86,13 @@ export const PostOrderedList = ({
   className,
   ...props
 }: OlHTMLAttributes<HTMLOListElement>) => (
-  <ol className={cn("mb-4 ml-6 list-decimal text-gray-200", className)} {...props}>
+  <ol
+    className={cn(
+      "mb-6 list-decimal space-y-2 pl-6 text-foreground/85 marker:font-medium marker:text-muted-foreground",
+      className,
+    )}
+    {...props}
+  >
     {children}
   </ol>
 );
@@ -82,7 +102,7 @@ export const PostListItem = ({
   className,
   ...props
 }: LiHTMLAttributes<HTMLLIElement>) => (
-  <li className={cn("mb-1", className)} data-blog-speech-segment {...props}>
+  <li className={cn("pl-1 leading-8 [&>p]:mb-2", className)} data-blog-speech-segment {...props}>
     {children}
   </li>
 );
@@ -93,7 +113,10 @@ export const PostLink = ({
   ...props
 }: AnchorHTMLAttributes<HTMLAnchorElement>) => (
   <a
-    className={cn("text-blue-400 underline hover:text-blue-300", className)}
+    className={cn(
+      "rounded-sm text-primary underline decoration-primary/40 underline-offset-4 transition-colors hover:decoration-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      className,
+    )}
     target="_blank"
     rel="noopener noreferrer"
     {...props}
@@ -108,7 +131,10 @@ export const PostBlockquote = ({
   ...props
 }: BlockquoteHTMLAttributes<HTMLQuoteElement>) => (
   <blockquote
-    className={cn("my-4 border-l-4 border-yellow-200/50 pl-4 text-gray-300 italic", className)}
+    className={cn(
+      "my-7 rounded-r-xl border-l-2 border-primary/60 bg-muted/40 px-5 py-4 text-foreground/85 [&>p:last-child]:mb-0",
+      className,
+    )}
     data-blog-speech-segment
     {...props}
   >
@@ -118,7 +144,10 @@ export const PostBlockquote = ({
 
 export const PostInlineCode = ({ children, className, ...props }: HTMLAttributes<HTMLElement>) => (
   <code
-    className={cn("rounded bg-gray-700/50 px-1.5 py-0.5 text-sm text-yellow-200/90", className)}
+    className={cn(
+      "rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[0.875em] text-foreground",
+      className,
+    )}
     {...props}
   >
     {children}
@@ -126,15 +155,15 @@ export const PostInlineCode = ({ children, className, ...props }: HTMLAttributes
 );
 
 export const PostCodeBlock = ({ code, language }: PostCodeBlockProps) => (
-  <PreBlock>
+  <PreBlock variant="article" language={language}>
     <code className={language ? `language-${language}` : undefined}>{code}</code>
   </PreBlock>
 );
 
-export const PostHorizontalRule = () => <hr className="my-8 border-gray-600" />;
+export const PostHorizontalRule = () => <hr className="my-10 border-border" />;
 
 export const PostStrong = ({ children }: PostElementProps) => (
-  <strong className="font-bold text-white">{children}</strong>
+  <strong className="font-semibold text-foreground">{children}</strong>
 );
 
 export const PostEmphasis = ({ children }: PostElementProps) => (
@@ -143,32 +172,31 @@ export const PostEmphasis = ({ children }: PostElementProps) => (
 
 const PostLegacyImageNotice = ({ alt }: Pick<PostImageProps, "alt">) => (
   <div
-    className="my-6 flex items-start gap-3 rounded-lg border border-gray-700 bg-gray-800/70 p-4 text-gray-200"
+    className="my-7 flex items-start gap-3 rounded-xl border border-border bg-muted/40 p-5 text-muted-foreground"
     data-blog-speech-exclude
+    data-testid="blog-legacy-image-notice"
   >
-    <PhotoIcon aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-yellow-200" />
+    <PhotoIcon aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
     <div>
-      <p className="m-0 font-semibold text-white">이전 스크린샷 안내</p>
+      <p className="m-0 font-semibold text-foreground">이전 스크린샷 안내</p>
       <p className="m-0 mt-1 text-sm leading-6">
         원본 스크린샷은 만료된 외부 링크라 표시하지 않습니다. 본문의 명령과 설명을 기준으로 진행해
         주세요.
       </p>
-      {alt && <p className="m-0 mt-2 text-sm text-gray-400">설명: {alt}</p>}
+      {alt && <p className="m-0 mt-2 text-sm text-muted-foreground">설명: {alt}</p>}
     </div>
   </div>
 );
 
 export const PostImage = ({ alt, className, src, ...props }: PostImageProps) => {
-  if (isLegacyBlogImageUrl(src)) {
-    return <PostLegacyImageNotice alt={alt} />;
-  }
+  if (isLegacyBlogImageUrl(src)) return <PostLegacyImageNotice alt={alt} />;
 
   return (
     // 기존 블로그 원격 이미지는 크기 정보가 없어 이 경계에서만 native img를 유지한다.
     // eslint-disable-next-line @next/next/no-img-element
     <img
       alt={alt}
-      className={cn("my-6 h-auto max-w-full rounded-lg", className)}
+      className={cn("my-8 h-auto max-w-full rounded-xl border border-border", className)}
       decoding="async"
       loading="lazy"
       src={src}
@@ -182,9 +210,15 @@ export const PostTable = ({
   className,
   ...props
 }: TableHTMLAttributes<HTMLTableElement>) => (
-  <div className="my-6 overflow-x-auto">
+  <div
+    className="my-7 max-w-full overflow-x-auto rounded-xl border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    tabIndex={0}
+  >
     <table
-      className={cn("w-full border-collapse text-left text-sm text-gray-200", className)}
+      className={cn(
+        "w-full border-collapse text-left text-sm leading-7 text-foreground/85",
+        className,
+      )}
       {...props}
     >
       {children}
@@ -193,13 +227,13 @@ export const PostTable = ({
 );
 
 export const PostTableHead = ({ children }: PostElementProps) => (
-  <thead className="bg-gray-800/80">{children}</thead>
+  <thead className="bg-muted/70 text-foreground">{children}</thead>
 );
 
 export const PostTableBody = ({ children }: PostElementProps) => <tbody>{children}</tbody>;
 
 export const PostTableRow = ({ children }: PostElementProps) => (
-  <tr className="border-b border-gray-700">{children}</tr>
+  <tr className="border-b border-border last:border-0">{children}</tr>
 );
 
 export const PostTableHeader = ({
@@ -208,7 +242,7 @@ export const PostTableHeader = ({
   ...props
 }: ThHTMLAttributes<HTMLTableCellElement>) => (
   <th
-    className={cn("px-3 py-2 font-bold text-white", className)}
+    className={cn("px-4 py-3 font-semibold text-foreground", className)}
     data-blog-speech-segment
     {...props}
   >
@@ -221,7 +255,7 @@ export const PostTableCell = ({
   className,
   ...props
 }: TdHTMLAttributes<HTMLTableCellElement>) => (
-  <td className={cn("px-3 py-2 align-top", className)} data-blog-speech-segment {...props}>
+  <td className={cn("px-4 py-3 align-top", className)} data-blog-speech-segment {...props}>
     {children}
   </td>
 );

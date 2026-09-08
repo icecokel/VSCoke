@@ -1,57 +1,54 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BLOG_SPEECH_CONTENT_ID } from "@/components/blog/blog-speech";
 
-export default function ScrollProgress() {
+export default function ScrollProgress({ label }: { label: string }) {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    let container: HTMLElement | null = null;
-    let requestFrameId: number;
+    const container = document.getElementById("main-scroll-container");
+    const article = document.getElementById(BLOG_SPEECH_CONTENT_ID);
+    if (!container) return;
+    let frame = 0;
 
-    const handleScroll = () => {
-      if (!container) return;
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      const windowHeight = scrollHeight - clientHeight;
-
-      if (windowHeight === 0) {
-        setProgress(0);
-        return;
-      }
-
-      const scroll = scrollTop / windowHeight;
-      setProgress(Math.min(1, Math.max(0, scroll)));
+    const measure = () => {
+      const distance = container.scrollHeight - container.clientHeight;
+      setProgress(
+        distance > 0
+          ? Math.round(Math.min(1, Math.max(0, container.scrollTop / distance)) * 100)
+          : 100,
+      );
     };
-
-    const attachListener = () => {
-      container = document.getElementById("main-scroll-container");
-      if (container) {
-        container.addEventListener("scroll", handleScroll);
-        // Initial calculation
-        handleScroll();
-      } else {
-        // Retry if not found yet (e.g., during hydration/render)
-        requestFrameId = requestAnimationFrame(attachListener);
-      }
+    const scheduleMeasure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
     };
-
-    attachListener();
+    const observer = new ResizeObserver(scheduleMeasure);
+    observer.observe(container);
+    if (article) observer.observe(article);
+    container.addEventListener("scroll", scheduleMeasure, { passive: true });
+    scheduleMeasure();
 
     return () => {
-      if (container) {
-        container.removeEventListener("scroll", handleScroll);
-      }
-      if (requestFrameId) {
-        cancelAnimationFrame(requestFrameId);
-      }
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      container.removeEventListener("scroll", scheduleMeasure);
     };
   }, []);
 
   return (
-    <div className="fixed top-0 left-0 w-full h-1 z-50 bg-transparent">
+    <div
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={progress}
+      className="pointer-events-none sticky top-0 z-20 h-0.5 w-full bg-border/50"
+    >
       <div
-        className="h-full bg-yellow-200 transition-all duration-150 ease-out origin-left"
-        style={{ transform: `scaleX(${progress})` }}
+        className="h-full origin-left bg-primary"
+        style={{ transform: `scaleX(${progress / 100})` }}
       />
     </div>
   );

@@ -158,6 +158,22 @@
       "speakingStatus": "블로그 글을 읽고 있습니다.",
       "pausedStatus": "음성 읽기를 일시정지했습니다.",
       "error": "음성 읽기를 시작하지 못했습니다."
+    },
+    "detail": {
+      "development": "개발 노트",
+      "journal": "경험과 기록",
+      "publishedOn": "작성일",
+      "readingTime": "약 {minutes}분",
+      "tags": "글 태그",
+      "tools": "읽기와 공유 도구",
+      "contents": "이 글의 목차",
+      "backToTop": "맨 위로",
+      "endOfArticle": "끝까지 읽어주셔서 감사합니다.",
+      "progress": "글 읽기 진행률",
+      "code": "코드",
+      "copyCode": "코드 복사",
+      "copied": "복사 완료",
+      "copyFailed": "복사하지 못했습니다. 코드를 선택해 복사해 주세요."
     }
   },
   "Game": {

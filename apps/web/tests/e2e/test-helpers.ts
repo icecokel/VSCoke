@@ -65,6 +65,7 @@ export interface AppMessages {
   };
   blog: {
     backToList: string;
+    detail: { copyCode: string };
   };
   profile: {
     proposal: string;

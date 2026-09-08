@@ -20,6 +20,13 @@ README(`/readme`)에서 프로필과 경력 요약을 확인할 수 있다. 이�
 Game Center(`/game`)에서 게임을 선택할 수 있다. Sky Drop은 `/game/sky-drop`,
 Wordle은 `/game/wordle`에 있다. Poke Lounge는 Game Center의 링크로 이동할 수 있다.
 
+Sky Drop은 React·HTML·CSS로 렌더링하며 Canvas/WebGL이나 별도 게임 엔진을 사용하지 않는다.
+열을 클릭·탭하거나 Q/W/E를 눌러 맨 아래 블록을 집어 다른 열에 놓는다. 같은 색 3개를
+맞추면 제거되고, 한 열이 12개를 넘으면 종료된다. 블록 무늬로도 색을 구분할 수 있다.
+일시정지 버튼 또는 Esc로 멈추고 다시 이어갈 수 있으며, 일시정지 화면에서 게임센터로
+나갈 수 있다. 탭이 숨겨지면 자동 정지하고 사용자가 재개하기 전까지 시간·생성이 멈춘다.
+기존 점수·콤보·시간 보너스, Google 로그인 점수 기록과 결과 링크 공유를 유지한다.
+
 ## 취미
 
 에스프레소 관련 화면은 `/hobby/espresso`, 레시피 화면은 `/hobby/recipes`에서 확인할 수 있다.

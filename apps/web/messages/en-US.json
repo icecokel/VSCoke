@@ -240,7 +240,27 @@
     "scorePointSuffix": " pts",
     "resultNotFoundTitle": "Game Result Not Found",
     "resultNotFoundDescription": "The shared game result could not be found.",
-    "backToGame": "Back to games"
+    "backToGame": "Back to games",
+    "skyDrop": {
+      "title": "Sky Drop",
+      "tagline": "Match colors. Stay in the game.",
+      "rules": "Tap a column to pick up its bottom block, then tap another to place it. Match three of the same color to clear them.",
+      "keyboardHint": "Q · W · E or tap a column · Esc to pause",
+      "pickHint": "Choose a column to pick up a block",
+      "placeHint": "Choose another column · Tap the same one to cancel",
+      "column": "Column {number}, {count} blocks, key {key}",
+      "limit": "Maximum {count} blocks",
+      "pause": "Pause",
+      "paused": "Take a break",
+      "pausedHint": "Blocks and time are paused. Continue when you are ready.",
+      "resume": "Continue",
+      "mute": "Mute sound",
+      "unmute": "Enable sound",
+      "combo": "Combo ×{count}",
+      "loginTitle": "Sign in required",
+      "loginDescription": "Save your score to share this result. Would you like to sign in and save it?",
+      "cancel": "Cancel"
+    }
   },
   "Share": {
     "title": "Share VSCoke",

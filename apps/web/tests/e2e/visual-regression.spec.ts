@@ -98,3 +98,41 @@ test.describe("블로그 상세 비주얼", () => {
     });
   }
 });
+
+test.describe("Sky Drop DOM 비주얼", () => {
+  test.use({ contextOptions: { reducedMotion: "reduce" } });
+  for (const layout of [
+    { name: "desktop", width: 1440, height: 900 },
+    { name: "mobile", width: 390, height: 844 },
+    { name: "landscape", width: 844, height: 390 },
+  ]) {
+    test(`${layout.name} 시작·플레이 레이아웃`, async ({ page }) => {
+      await page.setViewportSize({ width: layout.width, height: layout.height });
+      await page.route("**/game/ranking*", route => route.fulfill({ json: [] }));
+      await page.route("**/api/auth/session", route => route.fulfill({ json: null }));
+      await page.clock.install({ time: new Date("2026-09-08T12:00:00Z") });
+      await page.addInitScript(() => {
+        Math.random = () => 0.5;
+      });
+      await gotoWithRetry(page, "/ko-KR/game/sky-drop");
+      await expect(page.getByTestId("game-start-button")).toBeEnabled();
+      await page.addStyleTag({
+        content: "nextjs-portal, [data-nextjs-dev-overlay] { display: none !important; }",
+      });
+      await page.evaluate(() => document.fonts.ready);
+      await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000);
+      const game = page.getByTestId("sky-drop-game");
+      await expect(game).toHaveScreenshot(`sky-drop-${layout.name}-ready.png`, {
+        animations: "disabled",
+      });
+      await page.getByTestId("game-start-button").click();
+      await page.clock.runFor(1500);
+      await expect(page.getByTestId("sky-drop-time")).toHaveText("00:01");
+      await expect(page.getByTestId("sky-drop-block")).toHaveCount(9);
+      await page.mouse.move(0, 0);
+      await expect(game).toHaveScreenshot(`sky-drop-${layout.name}-playing.png`, {
+        animations: "disabled",
+      });
+    });
+  }
+});

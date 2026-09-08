@@ -240,7 +240,27 @@
     "scorePointSuffix": "点",
     "resultNotFoundTitle": "ゲーム結果が見つかりません",
     "resultNotFoundDescription": "共有されたゲーム結果を見つけられませんでした。",
-    "backToGame": "ゲームへ戻る"
+    "backToGame": "ゲームへ戻る",
+    "skyDrop": {
+      "title": "Sky Drop",
+      "tagline": "色をそろえて、長く生き残ろう",
+      "rules": "列を押して一番下のブロックを持ち上げ、別の列に置きます。同じ色を3つそろえると消えます。",
+      "keyboardHint": "Q・W・E または列をタップ · Escで一時停止",
+      "pickHint": "移動するブロックの列を選んでください",
+      "placeHint": "別の列に置きます · 同じ列でキャンセル",
+      "column": "{number}列目、ブロック{count}個、{key}キー",
+      "limit": "最大{count}個",
+      "pause": "一時停止",
+      "paused": "ひと休み",
+      "pausedHint": "ブロックと時間は止まっています。準備ができたら再開してください。",
+      "resume": "再開する",
+      "mute": "音を消す",
+      "unmute": "音を出す",
+      "combo": "コンボ ×{count}",
+      "loginTitle": "ログインが必要です",
+      "loginDescription": "結果を共有するにはスコアの保存が必要です。ログインして保存しますか？",
+      "cancel": "キャンセル"
+    }
   },
   "Share": {
     "title": "VSCokeを共有",

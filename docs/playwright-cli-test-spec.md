@@ -108,20 +108,20 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:37123 pnpm --filter @vscoke/web exec playwr
 
 현재 테스트는 아래 범주로 관리한다.
 
-| 범주                 | 현재 파일                                                                             |
-| -------------------- | ------------------------------------------------------------------------------------- |
-| 스모크/i18n          | `i18n-integrity.spec.ts`                                                              |
-| 핵심 라우트/CTA      | `core-routes.spec.ts`, `deep-link.spec.ts`                                            |
-| 장애 복구/fallback   | `error-fallback.spec.ts`, `capability-fallback.spec.ts`, `not-found-recovery.spec.ts` |
-| API/client 계약      | `api-read-error.spec.ts`, `auth-token.spec.ts`, `server-route-fallback.spec.ts`       |
-| 상태 유지            | `history-tabs.spec.ts`, `state-persistence.spec.ts`                                   |
-| 접근성/키보드        | `keyboard-only.spec.ts`                                                               |
-| 모바일 동작          | `mobile-behavior.spec.ts`                                                             |
-| 레이아웃/비주얼 회귀 | `layout-shift.spec.ts`, `visual-regression.spec.ts`                                   |
-| 취미/게임 진입       | `hobby-games.spec.ts`, `hobby-recipes.spec.ts`, `hobby-espresso.spec.ts`              |
-| 블로그 상세          | `blog-detail.spec.ts`                                                                 |
-| Resume RAG           | `resume-rag-chat-public.spec.ts`                                                      |
-| Analytics            | `google-analytics.spec.ts`, `google-tag-manager.spec.ts`                              |
+| 범주                 | 현재 파일                                                                                    |
+| -------------------- | -------------------------------------------------------------------------------------------- |
+| 스모크/i18n          | `i18n-integrity.spec.ts`                                                                     |
+| 핵심 라우트/CTA      | `core-routes.spec.ts`, `deep-link.spec.ts`                                                   |
+| 장애 복구/fallback   | `error-fallback.spec.ts`, `capability-fallback.spec.ts`, `not-found-recovery.spec.ts`        |
+| API/client 계약      | `api-read-error.spec.ts`, `auth-token.spec.ts`, `server-route-fallback.spec.ts`              |
+| 상태 유지            | `history-tabs.spec.ts`, `state-persistence.spec.ts`                                          |
+| 접근성/키보드        | `keyboard-only.spec.ts`                                                                      |
+| 모바일 동작          | `mobile-behavior.spec.ts`                                                                    |
+| 레이아웃/비주얼 회귀 | `layout-shift.spec.ts`, `visual-regression.spec.ts`                                          |
+| 취미/게임 진입       | `hobby-games.spec.ts`, `sky-drop.spec.ts`, `hobby-recipes.spec.ts`, `hobby-espresso.spec.ts` |
+| 블로그 상세          | `blog-detail.spec.ts`                                                                        |
+| Resume RAG           | `resume-rag-chat-public.spec.ts`                                                             |
+| Analytics            | `google-analytics.spec.ts`, `google-tag-manager.spec.ts`                                     |
 
 신규 테스트는 반드시 위 범주 중 하나에 속해야 하며, 성격이 다르면 새 범주를 문서에 추가한 뒤 도입한다.
 

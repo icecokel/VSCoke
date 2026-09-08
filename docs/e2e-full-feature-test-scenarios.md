@@ -239,20 +239,25 @@ API endpoint 목록은 [VSCoke API README](../apps/api/README.md#주요-모듈)�
 
 | ID        | 우선순위/상태 | 사전조건           | 절차                             | 기대 결과                                                          |
 | --------- | ------------- | ------------------ | -------------------------------- | ------------------------------------------------------------------ |
-| `SKY-001` | P0/P          | ready 화면         | ranking 로딩 후 Start            | Phaser canvas가 로드되고 score 0으로 게임이 시작된다.              |
+| `SKY-001` | P0/P          | ready 화면         | ranking 로딩 후 Start            | DOM 보드가 표시되고 Canvas 없이 score 0으로 게임이 시작된다.       |
 | `SKY-002` | P0/N          | 게임 시작          | Q/W/E 키로 각 column 조작        | 해당 column의 pickup/putdown 동작만 실행된다.                      |
 | `SKY-003` | P1/N          | touch 환경         | 세 column을 touch                | 키보드와 동일한 조작 결과가 발생한다.                              |
 | `SKY-004` | P1/N          | 매칭 가능한 block  | 같은 종류를 조합                 | block이 제거되고 규칙에 맞는 점수·floating text·효과음이 발생한다. |
 | `SKY-005` | P1/N          | 매칭 불가 block    | 내려놓기                         | 점수가 증가하지 않고 board 상태만 갱신된다.                        |
 | `SKY-006` | P0/N          | board 포화 fixture | 더 이상 배치할 수 없는 상태 생성 | game over가 한 번 발생하고 최종 점수가 결과 화면에 전달된다.       |
-| `SKY-007` | P0/N          | 결과 화면          | Restart                          | 새 scene에서 board, elapsed state, score가 초기화된다.             |
-| `SKY-008` | P0/N          | ready/결과         | Exit 또는 Dashboard              | Game Center로 돌아가고 Phaser instance가 정리된다.                 |
-| `SKY-009` | P1/N          | resize             | desktop 크기를 연속 변경         | canvas와 UI가 컨테이너에 맞고 input 좌표가 어긋나지 않는다.        |
+| `SKY-007` | P0/N          | 결과 화면          | Restart                          | 새 상태에서 board, elapsed state, score가 초기화된다.              |
+| `SKY-008` | P0/N          | ready/결과         | Exit 또는 Dashboard              | Game Center로 돌아가고 게임 타이머·오디오가 정리된다.              |
+| `SKY-009` | P1/N          | resize             | desktop 크기를 연속 변경         | DOM 보드와 UI가 컨테이너에 맞고 열 버튼의 조작이 유지된다.         |
 | `SKY-010` | P1/N          | audio 허용/차단    | 첫 입력 전후 효과음 확인         | 브라우저 autoplay 정책을 위반하지 않고 입력 후 audio가 재생된다.   |
 | `SKY-011` | P1/N          | 로그인 API         | game over 후 제출·공유           | `SKY_DROP` 점수가 저장되고 ranking/share 상세에 반영된다.          |
-| `SKY-012` | P2/N          | WebKit             | 핵심 플레이 1회                  | canvas, keyboard, audio, 결과 전환이 Chromium과 동일하다.          |
+| `SKY-012` | P2/N          | WebKit             | 핵심 플레이 1회                  | DOM, keyboard, audio 실패 격리, 결과 전환이 Chromium과 동일하다.   |
 
-현재 자동화는 진입과 공통 화면 중심이다. 실제 Phaser board 플레이 시나리오는 신규 test hook 또는 deterministic seed가 필요하다.
+2026-09-08 DOM 전환: `sky-drop.spec.ts`에서 Canvas getContext를 실패시키고도 시작·키보드·터치·
+실제 DOM 매칭·종료·재시작·일시정지·탭 숨김·회전·다국어·로그인 결과 복원을 검증한다.
+무작위 시드와 시각은 브라우저 테스트에서 제어하며 런타임에 테스트 전용 전역 접근점은 두지 않는다.
+순수 reducer의 생성 속도·콤보·보너스·상한·동시 입력 경계는 `sky-drop-engine.spec.ts`에서 검증한다.
+점수 API·인증 세션·공유는 mock 계약 검증이다. 실제 OAuth, 운영 DB 쓰기와 실기기 음향 검증은
+별도이며 위 시나리오 상태를 모두 완료로 간주하지 않는다.
 
 ## 13. Wordle
 
@@ -394,13 +399,13 @@ Chromium 전체 suite와 실제 PostgreSQL integration을 실행한다. 외부 �
 
 ## 24. 자동화 구현 순서
 
-| 순서 | 작업                                         | 이유                                |
-| ---- | -------------------------------------------- | ----------------------------------- |
-| 1    | Sky Drop deterministic play hook 및 승패 E2E | 현재 실제 플레이 검증이 가장 부족함 |
-| 2    | Wordle 승리·패배·중복 문자 E2E               | 핵심 규칙 UI 누락 보완              |
-| 3    | 점수 제출·랭킹·공유 Web+API 통합             | 게임 공통 사용자 가치 검증          |
-| 4    | Recipe/Espresso/Game State/RAG HTTP E2E      | controller별 계약 공백 보완         |
-| 6    | 전체 화면 axe와 metadata/asset smoke         | 비기능 release 기준 완성            |
+| 순서 | 작업                                    | 이유                                     |
+| ---- | --------------------------------------- | ---------------------------------------- |
+| 1    | Sky Drop 실기기 음향·실제 OAuth 검증    | DOM 완주 자동화 이후 남은 실제 환경 검증 |
+| 2    | Wordle 승리·패배·중복 문자 E2E          | 핵심 규칙 UI 누락 보완                   |
+| 3    | 점수 제출·랭킹·공유 Web+API 통합        | 게임 공통 사용자 가치 검증               |
+| 4    | Recipe/Espresso/Game State/RAG HTTP E2E | controller별 계약 공백 보완              |
+| 6    | 전체 화면 axe와 metadata/asset smoke    | 비기능 release 기준 완성                 |
 
 test hook은 production 동작을 바꾸지 않는 `e2e` query 또는 test-only adapter로 제한한다. 결과를 직접 주입해 화면만 통과시키기보다 seed, clock, encounter/collision 조건을 제어해 실제 domain logic을 실행해야 한다.
 
@@ -445,6 +450,6 @@ flaky 테스트는 단순 retry 성공으로 닫지 않는다. 최초 실패 tra
 
 ## 27. 현재 결론
 
-현재 저장소는 route, 다국어, 취미 화면과 오류 fallback에 자동화 기반이 있다. 반면 Sky Drop의 실제 플레이, Wordle 완주, 공통 점수 제출·공유, Recipe/Espresso의 실제 HTTP 계약, Google OAuth는 전체 기능 E2E 관점에서 보강이 필요하다.
+현재 저장소는 route, 다국어, 취미 화면과 오류 fallback에 자동화 기반이 있다. Sky Drop DOM의 실제 입력 기반 플레이 자동화는 2026-09-08에 보강했다. 반면 실기기 음향, Wordle 완주, 공통 점수 제출·공유, Recipe/Espresso의 실제 HTTP 계약, Google OAuth는 전체 기능 E2E 관점에서 보강이 필요하다.
 
 따라서 기존 `pnpm e2e` 통과만으로 "모든 기능 테스트 완료"라고 판정하지 않는다. 이 문서의 `N`과 `P` 항목을 자동화하거나 릴리즈 후보 수동 결과로 증명한 뒤 완료로 판정한다.

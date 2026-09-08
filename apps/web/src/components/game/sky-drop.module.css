@@ -1,0 +1,176 @@
+.frame {
+  position: relative;
+  width: min(100%, 480px);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--background);
+  color: var(--foreground);
+  container-type: size;
+}
+
+@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
+  .frame {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+  }
+}
+
+.content {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+  outline: none;
+}
+
+.board {
+  position: relative;
+  flex: 1;
+  min-height: 130px;
+  isolation: isolate;
+  touch-action: manipulation;
+}
+
+.block {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc((100% - 16px) / 3);
+  height: calc(100% / 13 - 4px);
+  border: 1px solid color-mix(in srgb, var(--color-black) 20%, transparent);
+  border-radius: 6px;
+  color: var(--color-gray-900);
+  font-size: clamp(10px, 2.5cqh, 18px);
+  font-weight: 700;
+  box-shadow:
+    inset 0 2px color-mix(in srgb, var(--color-white) 25%, transparent),
+    inset 0 -2px color-mix(in srgb, var(--color-black) 15%, transparent);
+  transition:
+    top 140ms ease-out,
+    left 140ms ease-out,
+    transform 100ms ease-out;
+  animation: arrive 160ms ease-out both;
+}
+
+.held {
+  z-index: 2;
+  outline: 2px dashed var(--foreground);
+  outline-offset: 3px;
+  transform: translateY(6px) scale(0.96);
+}
+
+.matched {
+  z-index: 3;
+  animation: disappear 400ms ease-out forwards;
+}
+
+.points {
+  position: absolute;
+  z-index: 4;
+  color: var(--color-yellow-500);
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-shadow: 0 1px 3px var(--background);
+  animation: float-up 700ms ease-out forwards;
+}
+
+.deadline {
+  position: absolute;
+  top: calc(100% * 12 / 13 - 1px);
+  width: 100%;
+  border-top: 2px dashed var(--destructive);
+}
+
+.danger::after {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  border: 2px solid var(--destructive);
+  border-radius: 12px;
+  animation: warning 1.2s ease-in-out infinite alternate;
+}
+
+.board[data-paused="true"] *,
+.board[data-paused="true"]::after {
+  animation-play-state: paused;
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    scale: 0.85;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes disappear {
+  from {
+    opacity: 1;
+    scale: 1.05;
+  }
+  to {
+    opacity: 0;
+    scale: 0.2;
+    rotate: 10deg;
+  }
+}
+
+@keyframes float-up {
+  from {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -45px);
+  }
+}
+
+@keyframes warning {
+  from {
+    opacity: 0.3;
+  }
+  to {
+    opacity: 0.9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .block {
+    animation: none;
+    transition: none;
+  }
+  .matched {
+    opacity: 0;
+  }
+  .points {
+    animation: none;
+    transform: translateX(-50%);
+  }
+  .danger::after {
+    animation: none;
+  }
+}
+
+@container (max-height: 520px) {
+  .content {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+}

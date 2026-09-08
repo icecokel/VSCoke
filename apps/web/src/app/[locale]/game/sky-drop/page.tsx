@@ -1,94 +1,9 @@
-"use client";
-
-import { useState, useCallback, useEffect } from "react";
-import dynamic from "next/dynamic";
-import { GameConstants } from "@/components/game/game-constants";
-import { createDesktopGameFrameStyle } from "@/components/game/game-frame-style";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useGame } from "@/contexts/game-context";
-import GameReadyScreen from "@/components/game/game-ready-screen";
-
-const PhaserGame = dynamic(
-  () => import("@/components/game/phaser-game").then(mod => mod.PhaserGame),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex size-full items-center justify-center bg-gray-900 text-white">
-        <p className="animate-pulse text-xl">Loading Sky Drop...</p>
-      </div>
-    ),
-  },
-);
+import { SkyDropGame } from "@/components/game/sky-drop-game";
 
 export default function SkyDropPage() {
-  const isMobile = useIsMobile();
-  const { setGamePlaying } = useGame();
-  const [gameState, setGameState] = useState<"ready" | "playing">("ready");
-  const [gameKey, setGameKey] = useState(0);
-
-  // 게임 상태 전역 동기화
-  useEffect(() => {
-    setGamePlaying(gameState === "playing");
-    return () => setGamePlaying(false);
-  }, [gameState, setGamePlaying]);
-
-  const handleGameReady = useCallback(() => {
-    // Phaser 로드 완료 시 추가 작업이 필요하면 여기에 작성
-  }, []);
-
-  const handleStart = () => {
-    setGameState("playing");
-  };
-
-  const handleGoToReady = useCallback(() => {
-    setGameState("ready");
-    setGameKey(prev => prev + 1); // Phaser 인스턴스 초기화
-  }, []);
-
-  const handleRestart = useCallback(() => {
-    setGameState("playing");
-    setGameKey(prev => prev + 1);
-  }, []);
-
-  // 모바일 스타일: 전체화면 고정
-  const containerStyle = isMobile
-    ? {
-        position: "fixed" as const,
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100dvh",
-        zIndex: 50,
-        border: "none",
-        borderRadius: 0,
-      }
-    : createDesktopGameFrameStyle({
-        maxWidth: GameConstants.MAX_WIDTH,
-        aspectRatioCss: GameConstants.ASPECT_RATIO_CSS,
-      });
-
   return (
-    <main className="flex h-full w-full flex-col items-center justify-center bg-slate-900 p-0 sm:p-4">
-      <div
-        className={`relative overflow-hidden bg-black shadow-2xl ${!isMobile ? "rounded-xl border-0 border-slate-700 sm:border-4" : ""}`}
-        style={containerStyle}
-      >
-        {gameState === "ready" && (
-          <div className="absolute inset-0 z-20">
-            <GameReadyScreen onStart={handleStart} isMobile={isMobile} />
-          </div>
-        )}
-
-        <div className="size-full">
-          <PhaserGame
-            key={gameKey}
-            isPlaying={gameState === "playing"}
-            onReady={handleGameReady}
-            onGoToReady={handleGoToReady}
-            onRestart={handleRestart}
-          />
-        </div>
-      </div>
+    <main className="flex h-full min-h-0 w-full items-center justify-center bg-background p-0 sm:p-4">
+      <SkyDropGame />
     </main>
   );
 }

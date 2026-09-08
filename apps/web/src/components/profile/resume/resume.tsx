@@ -1,6 +1,8 @@
 "use client";
 
 import BaseText from "@/components/base-ui/text";
+import { CustomLink } from "@/components/custom-link";
+import { Button } from "@/components/ui/button";
 import { CareerSection } from "./career-section";
 import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
@@ -77,6 +79,29 @@ const Resume = () => {
         {careers.map((career, careerIndex) => (
           <CareerSection key={careerIndex} careerData={career} index={careerIndex} />
         ))}
+        <section aria-labelledby="personal-projects-title" className="mb-12">
+          <BaseText id="personal-projects-title" type="h5" className="mb-8 ml-2 text-yellow-200">
+            {t("personalProjects.title")}
+          </BaseText>
+          <article className="mb-8 ml-4">
+            <BaseText type="h6" className="text-white">
+              {t("personalProjects.worxphere.title")}
+            </BaseText>
+            <BaseText type="body2" className="mt-2 block text-gray-300">
+              {t("personalProjects.worxphere.description")}
+            </BaseText>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="mt-3 h-7 border-yellow-200/50 text-xs text-yellow-200 hover:bg-yellow-200/10 hover:text-yellow-100"
+            >
+              <CustomLink href="/resume/worxphere-recruitment-board">
+                {t("personalProjects.viewDescription")}
+              </CustomLink>
+            </Button>
+          </article>
+        </section>
       </div>
     </div>
   );

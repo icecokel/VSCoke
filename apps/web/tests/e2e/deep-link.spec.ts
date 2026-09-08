@@ -88,12 +88,13 @@ test.describe("딥링크 직접 진입", () => {
     await gotoWithRetry(page, `/${locale}/resume/preview`);
 
     const careerDetails = page.getByTestId("resume-preview-career-detail-document");
-    await expect(careerDetails).toHaveCount(4);
+    await expect(careerDetails).toHaveCount(5);
     expect(await careerDetails.locator("h1").allTextContents()).toEqual([
-      "오프리메드 - 의료·임상 분석 제품",
-      "CodeCrayon - WebView 제품과 웹게임",
+      "오프리메드 - 의료·임상 제품과 개발·검증 체계",
+      "CodeCrayon - 제안에서 운영까지 이어진 WebView·웹게임",
       "CodeCrayon - AI 활용과 콘텐츠 운영 도구",
-      "CodeCrayon - 고객용 커머스와 판매자·운영자 백오피스",
+      "CodeCrayon - 고객 주문과 판매자·운영자 업무",
+      "AOT - 보험 가입 흐름과 공통 연동 SDK",
     ]);
 
     await page.getByTestId("resume-preview-save-pdf").click();

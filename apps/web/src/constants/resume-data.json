@@ -29,7 +29,8 @@
     "id": "allofthem",
     "projects": [
       {
-        "id": "insuranceSubscription"
+        "id": "insuranceSubscription",
+        "fileRef": "allofthem-insurance-platform"
       },
       {
         "id": "insuranceResponsive"

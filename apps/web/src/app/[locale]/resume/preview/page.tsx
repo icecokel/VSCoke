@@ -31,7 +31,7 @@ const ResumePreviewPage = async () => {
   const introduction = tResume.raw("introduction") as string[];
   const careerDetails = RESUME_DATA.flatMap(career =>
     career.projects.flatMap(project => {
-      if (!("fileRef" in project)) {
+      if (!("fileRef" in project) || !project.fileRef) {
         return [];
       }
 

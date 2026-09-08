@@ -74,6 +74,10 @@ export interface AppMessages {
   resume: {
     viewDescription: string;
     backToResume: string;
+    personalProjects: {
+      title: string;
+      viewDescription: string;
+    };
     links: string[];
   };
 }

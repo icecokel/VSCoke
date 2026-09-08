@@ -41,6 +41,7 @@ type ManifestOptions = {
 };
 
 const APP_RESUME_DETAIL_FILES = [
+  'allofthem-insurance-platform.mdx',
   'commerce-backoffice-product.mdx',
   'freebooting-finder.mdx',
   'oprimed-medical-frontend-productization.mdx',
@@ -49,6 +50,7 @@ const APP_RESUME_DETAIL_FILES = [
   'shortime-frontend.mdx',
   'shortime-playground.mdx',
   'translate.mdx',
+  'worxphere-recruitment-board.mdx',
 ];
 
 const RESUME_WORKSPACE_VECTOR_FILES = [

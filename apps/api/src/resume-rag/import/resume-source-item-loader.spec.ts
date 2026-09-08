@@ -1,12 +1,36 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import {
   createResumeImportManifest,
   loadResumeSourceItemsFromEntry,
 } from './resume-source-item-loader';
 
 describe('resume source item loader', () => {
+  it('모든 공개 상세 문서를 누락 없이 활성 검색 원본으로 읽는다', () => {
+    const repoRoot = resolve(__dirname, '../../../../..');
+    const detailPath = join(repoRoot, 'apps/web/resume-detail');
+    const entries = createResumeImportManifest({ repoRoot }).filter(
+      (entry) => entry.itemType === 'public_resume_detail',
+    );
+    expect(entries.map((entry) => entry.path).sort()).toEqual(
+      readdirSync(detailPath)
+        .filter((file) => file.endsWith('.mdx'))
+        .map((file) => join(detailPath, file))
+        .sort(),
+    );
+    for (const entry of entries) {
+      const items = loadResumeSourceItemsFromEntry(entry);
+      expect(items.length).toBeGreaterThan(0);
+      expect(new Set(items.map((item) => item.sourceKey)).size).toBe(
+        items.length,
+      );
+      expect(
+        items.every((item) => item.status === 'active' && item.vectorize),
+      ).toBe(true);
+    }
+  });
+
   it('builds an explicit manifest without whole-workspace ingestion', () => {
     const manifest = createResumeImportManifest({
       repoRoot: '/repo',

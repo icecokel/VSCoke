@@ -625,9 +625,9 @@
               {
                 "subtitle": "AI Use and Content Operations Tools",
                 "tasks": [
-                  "To reduce the burden of repeatedly translating each episode's subtitles into eight languages, I built an AI translation tool and integrated it into the Shortime back office. Work that took one person about three days per episode could then process six to eight episodes per day.",
+                  "Moved the subtitle translation CLI into a web tool and integrated it into the Shortime backoffice to reduce repetitive translation across eight languages. Based on my recollection, one operator went from roughly three days per episode to processing six to eight episodes per day.",
                   "To secure content that could improve user retention and test an SEO acquisition strategy using backlinks, I built a prototype that generates drafts for Sellectors product blog posts with AI.",
-                  "To reduce repeated searches across three video platforms, I brought keyword results into one screen and reduced review time for a similar number of keywords from about 50 minutes to under 10 minutes."
+                  "Brought candidate videos from three platforms into one screen to reduce repetitive searches. Operators reported that checks with a similar number of keywords fell from about 50 minutes to under 10 minutes."
                 ]
               }
             ]
@@ -639,23 +639,23 @@
                 "subtitle": "WebView Products and Web Games",
                 "tasks": [
                   "The video platform needed content worth revisiting, but putting events and games in the app meant waiting for an app release for every change. I proposed and demonstrated a WebView Playground prototype, then led the setup of a dedicated frontend project after it was adopted. I later moved fortune and event content into it and expanded it with gift codes, lucky draws, and surveys.",
-                  "To give users lightweight content beyond video viewing and a reason to return, I developed the Phaser-based Flying Pop and Open Sesame, which uses accumulated bonuses. The two games recorded approximately 2,000 to 3,000 weekly unique users.",
+                  "Users needed light content to enjoy beyond watching videos and a reason to return. Built FlyingPop and OpenSesame with Phaser, using existing bonuses for OpenSesame. Based on my recollection of database checks at the time, the games had roughly 2,000–3,000 weekly unique users.",
                   "I integrated the Flutter bridge and game APIs with app and backend teammates and handled ad completion, deep links, Safari audio, duplicate progression, and timeout issues."
                 ]
               }
             ]
           },
           "freebootingFinder": {
-            "title": "Unauthorized Content Search Tool",
+            "title": "Candidate Search Tool for Unauthorized Content Review",
             "period": "2025.06 - 2025.06",
             "descriptions": [
               {
                 "subtitle": "Moved repetitive manual checks into a crawling-based tool",
-                "detail": "Moved unauthorized-content checking work from repetitive manual searches into a crawling-based tool.",
+                "detail": "Brought keyword-based candidates from three video platforms into one screen for operators to review possible unauthorized use.",
                 "skills": "TypeScript, Express, Axios, Cheerio, Vercel Serverless Functions",
                 "tasks": [
                   "Built a keyword-based crawling tool and result-review screen.",
-                  "Reduced daily checking work from 50 minutes to under 10 minutes.",
+                  "Operators reported that checks with a similar number of keywords fell from about 50 minutes to under 10 minutes.",
                   "Separated bot-blocked browser crawling areas into Node.js-based processing."
                 ]
               }
@@ -975,6 +975,14 @@
       "https://vscoke.icecoke.kr/en-US",
       "https://github.com/icecokel",
       "https://vscoke.icecoke.kr/en-US/blog/dashboard"
-    ]
+    ],
+    "personalProjects": {
+      "title": "Personal assignments & portfolio",
+      "worxphere": {
+        "title": "Worxphere Recruitment Pipeline Board",
+        "description": "August 2026 · A personal assignment with 1,000 fictional applicants, documenting decisions about confirmation, failure recovery, full-dataset search, and performance verification."
+      },
+      "viewDescription": "Project details"
+    }
   }
 }

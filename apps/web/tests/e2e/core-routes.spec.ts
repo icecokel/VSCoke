@@ -251,6 +251,22 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await expectPath(page, new RegExp(`^/${localeRegex}/readme$`));
   });
 
+  test("개인 과제 상세에서 이력서로 돌아온다", async ({ page }) => {
+    const { locale, messages } = await resolveLocaleAndMessages(page);
+    const localeRegex = escapeRegExp(locale);
+    await visit(page, `/${locale}/readme`);
+    const personalProject = page.getByRole("region", {
+      name: messages.resume.personalProjects.title,
+    });
+    await personalProject
+      .getByRole("link", { name: messages.resume.personalProjects.viewDescription })
+      .click();
+    await expectPath(page, new RegExp(`^/${localeRegex}/resume/worxphere-recruitment-board$`));
+    await expect(page.locator("article.prose")).toBeVisible();
+    await page.getByRole("link", { name: messages.resume.backToResume }).click();
+    await expectPath(page, new RegExp(`^/${localeRegex}/readme$`));
+  });
+
   test("블로그 CTA 전체 동작", async ({ page }) => {
     const { locale, messages } = await resolveLocaleAndMessages(page);
     const localeRegex = escapeRegExp(locale);

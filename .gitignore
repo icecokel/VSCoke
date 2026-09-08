@@ -78,6 +78,7 @@ next-env.d.ts
 !/docs/local-development.md
 !/docs/main-chat-ai-usage-guide.md
 !/docs/main-chat-test-scenarios.md
+!/docs/public-site-guide.md
 !/docs/operations-runbook.md
 !/docs/playwright-cli-test-spec.md
 !/docs/resume-rag-chat-test-scenarios.md

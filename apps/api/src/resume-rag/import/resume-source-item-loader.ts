@@ -321,6 +321,19 @@ export const createResumeImportManifest = ({
       vectorize: true,
       metadata: { version: 'current' },
     })),
+    {
+      id: 'app:site-guide',
+      path: join(repoRoot, 'docs/public-site-guide.md'),
+      sourcePath: 'docs/public-site-guide.md',
+      parser: 'markdown',
+      sourceType: 'app_resume',
+      itemType: 'public_site_guide',
+      title: 'VSCoke 사이트 안내',
+      status: 'active',
+      visibility: 'public',
+      vectorize: true,
+      metadata: { version: 'current' },
+    },
   ];
 
   if (!resumeWorkspaceRoot) {

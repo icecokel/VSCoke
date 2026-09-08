@@ -89,7 +89,7 @@ describe('MainChatController (e2e)', () => {
     expect(body).toEqual({ success: true, data: groundedResponse });
     expect(answer).toHaveBeenCalledWith(
       { question, locale: 'ko-KR' },
-      { recordQuestion: false },
+      { channel: 'main', recordQuestion: false },
     );
   });
 
@@ -149,21 +149,6 @@ describe('MainChatController (e2e)', () => {
       expect.objectContaining({ success: false, statusCode: 429 }),
     );
     expect(answer).toHaveBeenCalledTimes(30);
-  });
-
-  it('간단한 인사는 근거 답변 공급자를 호출하지 않고 처리한다', async () => {
-    const response = await request(httpServer)
-      .post('/main-chat')
-      .set('Origin', publicOrigin)
-      .send({ question: '안녕하세요!', locale: 'ko-KR' })
-      .expect(200);
-    const body = response.body as SuccessResponse;
-
-    expect(body.data).toEqual(
-      expect.objectContaining({ grounded: false, sources: [] }),
-    );
-    expect(body.data?.answer).toContain('대표 프로젝트');
-    expect(answer).not.toHaveBeenCalled();
   });
 
   it('검색 또는 답변 생성 공급자 실패를 503으로 반환한다', async () => {

@@ -71,7 +71,7 @@ export class ResumeRagController {
     @Headers(RESUME_CONVERSATION_TOKEN_HEADER) token?: string,
   ): Promise<ResumeRagChatResponseDto> {
     if (!request.conversationId && !request.requestId && !token)
-      return this.resumeRagService.answer(request);
+      return this.resumeRagService.answer(request, { channel: 'resume' });
     return this.conversations.runTurn(
       request,
       token,
@@ -79,7 +79,7 @@ export class ResumeRagController {
       (history, question) =>
         this.resumeRagService.answer(
           { ...request, question },
-          { history, recordQuestion: false },
+          { channel: 'resume', history, recordQuestion: false },
         ),
     );
   }

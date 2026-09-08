@@ -86,10 +86,10 @@
     },
     "techTitle": "主な技術スタック",
     "mainChat": {
-      "workspaceTitle": "プロジェクト・経歴チャット",
+      "workspaceTitle": "プロジェクト・サイトチャット",
       "publicAccess": "GPT-5.6 Luna · xhigh",
-      "title": "プロジェクトと経歴について聞いてください",
-      "description": "VSCOKEのプロジェクト、技術経験、履歴書の内容を自然な言葉で確認できます。",
+      "title": "プロジェクトやサイトについて質問してください",
+      "description": "公開プロジェクトの詳細とサイト案内をもとに回答します。経歴全般は履歴書チャットで質問してください。",
       "navigationLabel": "主要ページ",
       "navigation": {
         "readme": "README",
@@ -101,10 +101,10 @@
         "projects": "プロジェクトの目的と担当役割",
         "tech": "使用技術と選定理由",
         "problemSolving": "問題解決の過程と成果",
-        "career": "経歴と職務適性",
+        "career": "サイトのメニューと利用方法",
         "collaboration": "協業方法と業務経験"
       },
-      "placeholder": "プロジェクトや経歴について質問してください",
+      "placeholder": "プロジェクトやサイトの利用方法を質問してください",
       "send": "質問を送信",
       "you": "あなた",
       "pending": "回答を準備しています。",

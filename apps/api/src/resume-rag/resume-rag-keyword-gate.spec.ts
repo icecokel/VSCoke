@@ -1,7 +1,4 @@
-import {
-  createResumeRagSearchTokens,
-  getResumeRagNoEvidenceAnswer,
-} from './resume-rag-keyword-gate';
+import { createResumeRagSearchTokens } from './resume-rag-keyword-gate';
 
 describe('resume-rag keyword search', () => {
   it('이력 의도가 없는 질문은 키워드 검색 후보를 만들지 않는다', () => {
@@ -130,18 +127,9 @@ describe('resume-rag keyword search', () => {
     );
   });
 
-  it('returns a fixed localized no-evidence message', () => {
-    expect(getResumeRagNoEvidenceAnswer('ko-KR')).toBe(
-      '이 질문은 제 이력 범위를 벗어난 것 같아요. 프로젝트, 기술 경험, 업무 성과, 강점처럼 이력과 관련된 내용으로 다시 물어봐 주세요.\n\n추천 키워드: Oprimed, 의료 도메인, CI/CD와 배포, 프론트엔드 강점',
-    );
-    expect(getResumeRagNoEvidenceAnswer('en-US')).toBe(
-      'This question seems outside the scope of my resume. Please ask about resume-related topics such as projects, technical experience, work impact, or strengths.\n\nSuggested topics: Oprimed, healthcare domain, CI/CD and deployment, frontend strengths',
-    );
-    expect(getResumeRagNoEvidenceAnswer('ja-JP')).toBe(
-      'この質問は私の履歴の範囲から外れているようです。プロジェクト、技術経験、業務成果、強みなど履歴に関連する内容で質問してください。\n\nおすすめのキーワード: Oprimed、医療ドメイン、CI/CDとデプロイ、フロントエンドの強み',
-    );
-    expect(getResumeRagNoEvidenceAnswer('unknown')).toBe(
-      getResumeRagNoEvidenceAnswer('ko-KR'),
-    );
+  it('사이트 질문도 검색 후보로 만들되 다른 메뉴로 확장하지 않는다', () => {
+    const tokens = createResumeRagSearchTokens('블로그 어디서 봐?');
+    expect(tokens).toContain('블로그');
+    expect(tokens).not.toContain('게임');
   });
 });

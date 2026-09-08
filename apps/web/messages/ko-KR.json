@@ -86,10 +86,10 @@
     },
     "techTitle": "주요 기술 스택",
     "mainChat": {
-      "workspaceTitle": "프로젝트 · 경력 채팅",
+      "workspaceTitle": "프로젝트 · 사이트 채팅",
       "publicAccess": "GPT-5.6 Luna · xhigh",
-      "title": "프로젝트와 경력에 대해 물어보세요",
-      "description": "VSCOKE의 프로젝트, 기술 경험, 이력서 내용을 자연어로 확인할 수 있습니다.",
+      "title": "프로젝트와 사이트에 대해 물어보세요",
+      "description": "공개 프로젝트 상세와 사이트 안내 자료를 바탕으로 답변합니다. 경력 전반은 이력서 채팅에서 물어보세요.",
       "navigationLabel": "주요 페이지",
       "navigation": {
         "readme": "README",
@@ -101,10 +101,10 @@
         "projects": "프로젝트별 목적과 담당 역할",
         "tech": "사용한 기술과 선택 이유",
         "problemSolving": "문제 해결 과정과 성과",
-        "career": "경력과 직무 적합성",
+        "career": "사이트 메뉴와 이용 방법",
         "collaboration": "협업 방식과 업무 경험"
       },
-      "placeholder": "프로젝트나 경력에 대해 질문해보세요",
+      "placeholder": "프로젝트나 사이트 이용 방법을 질문해보세요",
       "send": "질문 보내기",
       "you": "나",
       "pending": "답변을 준비하고 있습니다.",

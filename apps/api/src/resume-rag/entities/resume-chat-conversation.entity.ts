@@ -6,7 +6,9 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-export type ResumeChatChannel = 'main' | 'resume';
+import type { ChatChannel } from '../chat-definition';
+
+export type ResumeChatChannel = ChatChannel;
 
 @Entity('resume_chat_conversations')
 @Index(['expiresAt'])

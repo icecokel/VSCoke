@@ -86,10 +86,10 @@
     },
     "techTitle": "Core Tech Stack",
     "mainChat": {
-      "workspaceTitle": "Project · Career Chat",
+      "workspaceTitle": "Project · Site Chat",
       "publicAccess": "GPT-5.6 Luna · xhigh",
-      "title": "Ask about projects and career",
-      "description": "Explore VSCOKE projects, technical experience, and resume details in natural language.",
+      "title": "Ask about projects and the site",
+      "description": "Answers use public project details and site guidance. For overall career questions, use the resume chat.",
       "navigationLabel": "Main pages",
       "navigation": {
         "readme": "README",
@@ -101,10 +101,10 @@
         "projects": "Project goals and responsibilities",
         "tech": "Technologies used and why they were chosen",
         "problemSolving": "Problem-solving process and outcomes",
-        "career": "Career background and role fit",
+        "career": "Site navigation and usage",
         "collaboration": "Collaboration style and work experience"
       },
-      "placeholder": "Ask about a project or career experience",
+      "placeholder": "Ask about a project or how to use the site",
       "send": "Send question",
       "you": "You",
       "pending": "Preparing an answer.",

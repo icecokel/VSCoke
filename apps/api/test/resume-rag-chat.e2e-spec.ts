@@ -80,10 +80,13 @@ describe('ResumeRagController (e2e)', () => {
     const body = response.body as SuccessResponse;
 
     expect(body).toEqual({ success: true, data: groundedResponse });
-    expect(answer).toHaveBeenCalledWith({
-      question: '프론트엔드 경력을 알려주세요.',
-      locale: 'ko-KR',
-    });
+    expect(answer).toHaveBeenCalledWith(
+      {
+        question: '프론트엔드 경력을 알려주세요.',
+        locale: 'ko-KR',
+      },
+      { channel: 'resume' },
+    );
   });
 
   it('허용하지 않은 origin을 403으로 차단한다', async () => {

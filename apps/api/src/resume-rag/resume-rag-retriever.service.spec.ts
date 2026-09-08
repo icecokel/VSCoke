@@ -1,3 +1,4 @@
+import { chatDefinitions } from './chat-definition';
 import { DataSource } from 'typeorm';
 import { ResumeRagRetrieverService } from './resume-rag-retriever.service';
 import type { ResumeRagConfig } from './resume-rag.config';
@@ -12,6 +13,7 @@ const createConfig = (
   chunkSize: 1200,
   chunkOverlap: 120,
   codexTimeoutMs: 120_000,
+  codexReasoningEffort: 'low',
   allowedVisibilities: ['public'],
   allowedSourceTypes: ['app_resume'],
   ...overrides,
@@ -31,53 +33,66 @@ const createService = (
   });
 
 describe('ResumeRagRetrieverService', () => {
-  it('queries source items directly without embedding configuration', async () => {
-    const query = jest.fn().mockResolvedValue([
-      {
+  it.each(['main', 'resume'] as const)(
+    '%s 키워드 검색은 채널별 공개 원본만 조회한다',
+    async (channel) => {
+      const query = jest.fn().mockResolvedValue([
+        {
+          id: 'item-1',
+          title: '대표 프로젝트',
+          bodyText: 'VSCoke 대표 프로젝트와 NestJS API 개선 경험',
+          sourcePath: 'resume/projects.md',
+          sourceKey: 'projects#vscoke',
+          metadata: { sectionPath: 'Projects', version: 'current' },
+        },
+      ]);
+      const dataSource = { query } as unknown as DataSource;
+      const service = createService(
+        dataSource,
+        createConfig({
+          allowedVisibilities: ['public', 'limited'],
+        }),
+      );
+
+      const result = await service.retrieve({
+        channel,
+        question: '대표 프로젝트가 뭐야?',
+        locale: 'ko-KR',
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
         id: 'item-1',
         title: '대표 프로젝트',
-        bodyText: 'VSCoke 대표 프로젝트와 NestJS API 개선 경험',
+        content: 'VSCoke 대표 프로젝트와 NestJS API 개선 경험',
         sourcePath: 'resume/projects.md',
         sourceKey: 'projects#vscoke',
-        metadata: { sectionPath: 'Projects', version: 'current' },
-      },
-    ]);
-    const dataSource = { query } as unknown as DataSource;
-    const service = createService(
-      dataSource,
-      createConfig({
-        allowedVisibilities: ['public', 'limited'],
-      }),
-    );
+        citationMetadata: { sectionPath: 'Projects', version: 'current' },
+      });
+      expect(typeof result[0].similarity).toBe('number');
 
-    const result = await service.retrieve({
-      question: '대표 프로젝트가 뭐야?',
-      locale: 'ko-KR',
-    });
-
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
-      id: 'item-1',
-      title: '대표 프로젝트',
-      content: 'VSCoke 대표 프로젝트와 NestJS API 개선 경험',
-      sourcePath: 'resume/projects.md',
-      sourceKey: 'projects#vscoke',
-      citationMetadata: { sectionPath: 'Projects', version: 'current' },
-    });
-    expect(typeof result[0].similarity).toBe('number');
-
-    const calls = query.mock.calls as Array<[string, unknown[]]>;
-    expect(calls).toHaveLength(1);
-    const [sql, params] = calls[0];
-    expect(sql).toContain('FROM resume_source_items');
-    expect(sql).not.toContain('resume_vector_chunks');
-    expect(sql).toContain(`"status" = 'active'`);
-    expect(sql).toContain('"vectorize" = TRUE');
-    expect(sql).toContain('"visibility" = ANY($1)');
-    expect(sql).toContain('"locale" IS NULL OR "locale" = $2');
-    expect(sql).toContain('"sourceType" = ANY($3)');
-    expect(params).toEqual([['public', 'limited'], 'ko-KR', ['app_resume']]);
-  });
+      const calls = query.mock.calls as Array<[string, unknown[]]>;
+      expect(calls).toHaveLength(1);
+      const [sql, params] = calls[0];
+      expect(sql).toContain('FROM resume_source_items');
+      expect(sql).toContain('AND "itemType" = ANY($4)');
+      expect(sql.indexOf('AS current_items')).toBeLessThan(
+        sql.indexOf('AND "itemType" = ANY($4)'),
+      );
+      expect(sql).not.toContain('resume_vector_chunks');
+      expect(sql).toContain(`"status" = 'active'`);
+      expect(sql).toContain('"vectorize" = TRUE');
+      expect(sql).toContain('"visibility" = ANY($1)');
+      expect(sql).toContain('"locale" IS NULL OR "locale" = $2');
+      expect(sql).toContain('"sourceType" = ANY($3)');
+      expect(params).toEqual([
+        ['public', 'limited'],
+        'ko-KR',
+        ['app_resume'],
+        chatDefinitions[channel].itemTypes,
+      ]);
+    },
+  );
 
   it('matches Korean query terms after stripping common particles', async () => {
     const query = jest.fn().mockResolvedValue([
@@ -105,6 +120,7 @@ describe('ResumeRagRetrieverService', () => {
     );
 
     const result = await service.retrieve({
+      channel: 'resume',
       question: '대표 프로젝트가 뭐야?',
       locale: 'ko-KR',
     });
@@ -138,6 +154,7 @@ describe('ResumeRagRetrieverService', () => {
     );
 
     const result = await service.retrieve({
+      channel: 'resume',
       question: 'cicd경험',
       locale: 'ko-KR',
     });
@@ -177,6 +194,7 @@ describe('ResumeRagRetrieverService', () => {
     );
 
     const result = await service.retrieve({
+      channel: 'resume',
       question: '운영키워드',
       locale: 'ko-KR',
     });
@@ -206,7 +224,11 @@ describe('ResumeRagRetrieverService', () => {
     );
 
     await expect(
-      service.retrieve({ question: '오늘 날씨 어때?', locale: 'ko-KR' }),
+      service.retrieve({
+        channel: 'resume',
+        question: '오늘 날씨 어때?',
+        locale: 'ko-KR',
+      }),
     ).resolves.toEqual([]);
     expect(createSearchTokens).toHaveBeenCalledWith('오늘 날씨 어때?');
     expect(query).toHaveBeenCalledTimes(1);
@@ -267,19 +289,39 @@ describe('ResumeRagRetrieverService', () => {
     );
 
     await expect(
-      service.retrieve({ question: '웹뷰경험', locale: 'ko-KR' }),
+      service.retrieve({
+        channel: 'resume',
+        question: '웹뷰경험',
+        locale: 'ko-KR',
+      }),
     ).resolves.toContainEqual(expect.objectContaining({ id: 'webview' }));
     await expect(
-      service.retrieve({ question: '번역자동화', locale: 'ko-KR' }),
+      service.retrieve({
+        channel: 'resume',
+        question: '번역자동화',
+        locale: 'ko-KR',
+      }),
     ).resolves.toContainEqual(expect.objectContaining({ id: 'translation' }));
     await expect(
-      service.retrieve({ question: '성능최적화', locale: 'ko-KR' }),
+      service.retrieve({
+        channel: 'resume',
+        question: '성능최적화',
+        locale: 'ko-KR',
+      }),
     ).resolves.toContainEqual(expect.objectContaining({ id: 'performance' }));
     await expect(
-      service.retrieve({ question: '백오피스운영', locale: 'ko-KR' }),
+      service.retrieve({
+        channel: 'resume',
+        question: '백오피스운영',
+        locale: 'ko-KR',
+      }),
     ).resolves.toContainEqual(expect.objectContaining({ id: 'backoffice' }));
     await expect(
-      service.retrieve({ question: '장애대응', locale: 'ko-KR' }),
+      service.retrieve({
+        channel: 'resume',
+        question: '장애대응',
+        locale: 'ko-KR',
+      }),
     ).resolves.toContainEqual(expect.objectContaining({ id: 'operations' }));
   });
 
@@ -329,18 +371,34 @@ describe('ResumeRagRetrieverService', () => {
     );
 
     await expect(
-      service.retrieve({ question: '제품설계', locale: 'ko-KR' }),
+      service.retrieve({
+        channel: 'resume',
+        question: '제품설계',
+        locale: 'ko-KR',
+      }),
     ).resolves.toContainEqual(
       expect.objectContaining({ id: 'product-design' }),
     );
     await expect(
-      service.retrieve({ question: '사용성개선', locale: 'ko-KR' }),
+      service.retrieve({
+        channel: 'resume',
+        question: '사용성개선',
+        locale: 'ko-KR',
+      }),
     ).resolves.toContainEqual(expect.objectContaining({ id: 'usability' }));
     await expect(
-      service.retrieve({ question: '타입모델링', locale: 'ko-KR' }),
+      service.retrieve({
+        channel: 'resume',
+        question: '타입모델링',
+        locale: 'ko-KR',
+      }),
     ).resolves.toContainEqual(expect.objectContaining({ id: 'type-modeling' }));
     await expect(
-      service.retrieve({ question: 'webvitals', locale: 'ko-KR' }),
+      service.retrieve({
+        channel: 'resume',
+        question: 'webvitals',
+        locale: 'ko-KR',
+      }),
     ).resolves.toContainEqual(expect.objectContaining({ id: 'web-vitals' }));
   });
 });

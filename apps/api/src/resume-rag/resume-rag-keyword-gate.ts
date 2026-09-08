@@ -57,6 +57,35 @@ const STOP_WORDS = new Set([
 
 export const RESUME_RAG_KEYWORD_GROUPS: readonly ResumeRagKeywordGroup[] = [
   {
+    id: 'site-navigation',
+    weight: 2,
+    searchExpansions: [],
+    aliases: [
+      '사이트',
+      '메뉴',
+      'readme',
+      '블로그',
+      '게임',
+      '워들',
+      '취미',
+      '에스프레소',
+      '레시피',
+      'site',
+      'blog',
+      'game',
+      'games',
+      'wordle',
+      'sky drop',
+      'hobby',
+      'espresso',
+      'recipe',
+      'サイト',
+      'ブログ',
+      'ゲーム',
+      '趣味',
+    ],
+  },
+  {
     id: 'oprimed',
     weight: 3,
     aliases: ['oprimed', 'optivis', '오프리메드', '오프리', '오프티비스'],
@@ -1124,15 +1153,6 @@ export const SEARCH_TOKEN_EXPANSIONS_BY_KEYWORD_GROUP: Record<
   ],
 };
 
-const OUT_OF_SCOPE_ANSWER_BY_LOCALE: Record<string, string> = {
-  'ko-KR':
-    '이 질문은 제 이력 범위를 벗어난 것 같아요. 프로젝트, 기술 경험, 업무 성과, 강점처럼 이력과 관련된 내용으로 다시 물어봐 주세요.\n\n추천 키워드: Oprimed, 의료 도메인, CI/CD와 배포, 프론트엔드 강점',
-  'en-US':
-    'This question seems outside the scope of my resume. Please ask about resume-related topics such as projects, technical experience, work impact, or strengths.\n\nSuggested topics: Oprimed, healthcare domain, CI/CD and deployment, frontend strengths',
-  'ja-JP':
-    'この質問は私の履歴の範囲から外れているようです。プロジェクト、技術経験、業務成果、強みなど履歴に関連する内容で質問してください。\n\nおすすめのキーワード: Oprimed、医療ドメイン、CI/CDとデプロイ、フロントエンドの強み',
-};
-
 const normalizeSearchText = (text: string): string =>
   text
     .normalize('NFKC')
@@ -1221,7 +1241,3 @@ export const createResumeRagSearchTokens = (
 
   return [...uniqueTokens];
 };
-
-export const getResumeRagNoEvidenceAnswer = (locale: string): string =>
-  OUT_OF_SCOPE_ANSWER_BY_LOCALE[locale] ??
-  OUT_OF_SCOPE_ANSWER_BY_LOCALE['ko-KR'];

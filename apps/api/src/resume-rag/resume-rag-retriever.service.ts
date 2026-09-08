@@ -11,8 +11,10 @@ import { DataSource } from 'typeorm';
 import { RESUME_RAG_CONFIG, type ResumeRagConfig } from './resume-rag.config';
 import { ResumeRagKeywordService } from './resume-rag-keyword.service';
 import { normalizeResumeRagSearchText } from './resume-rag-keyword-gate';
+import { chatDefinitions, type ChatChannel } from './chat-definition';
 
 export type ResumeRagRetrieveRequest = {
+  channel: ChatChannel;
   question: string;
   locale: string;
 };
@@ -159,6 +161,7 @@ export class ResumeRagRetrieverService {
           ORDER BY "sourceType", "sourceKey", "updatedAt" DESC, "id" DESC
         ) AS current_items
         WHERE "status" = 'active'
+          AND "itemType" = ANY($4)
           AND "vectorize" = TRUE
           AND "visibility" = 'public'
           AND "visibility" = ANY($1)
@@ -172,7 +175,8 @@ export class ResumeRagRetrieverService {
       [
         this.config.allowedVisibilities,
         request.locale || null,
-        this.config.allowedSourceTypes,
+        this.allowedSourceTypes(request.channel),
+        chatDefinitions[request.channel].itemTypes,
       ],
     );
 
@@ -214,6 +218,7 @@ export class ResumeRagRetrieverService {
         FROM resume_vector_chunks chunk
         INNER JOIN current_items source ON source.id = chunk."sourceItemId"
         WHERE source.status = 'active' AND source.vectorize = TRUE
+          AND source."itemType" = ANY($12)
           AND source.visibility = 'public' AND source.visibility = ANY($1)
           AND chunk.status = 'active' AND chunk.visibility = 'public'
           AND ($3::varchar IS NULL OR source.locale IS NULL OR source.locale = $3
@@ -230,7 +235,7 @@ export class ResumeRagRetrieverService {
       LIMIT $11`,
       [
         this.config.allowedVisibilities,
-        this.config.allowedSourceTypes,
+        this.allowedSourceTypes(request.channel),
         request.locale || null,
         profile.embeddingProvider,
         profile.embeddingModel,
@@ -240,6 +245,7 @@ export class ResumeRagRetrieverService {
         JSON.stringify(embedding.vector),
         this.config.vectorMinSimilarity ?? 0.3,
         this.config.topK * 3,
+        chatDefinitions[request.channel].itemTypes,
       ],
     );
     if (!Array.isArray(rows)) return [];
@@ -256,6 +262,12 @@ export class ResumeRagRetrieverService {
           Number.isFinite(Number(row.similarity)),
       )
       .map((row) => ({ ...row, similarity: Number(row.similarity) }));
+  }
+
+  private allowedSourceTypes(channel: ChatChannel): string[] {
+    return this.config.allowedSourceTypes.filter((sourceType) =>
+      chatDefinitions[channel].sourceTypes.includes(sourceType),
+    );
   }
 }
 

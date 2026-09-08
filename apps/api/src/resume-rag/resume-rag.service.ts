@@ -15,7 +15,11 @@ import {
 } from './resume-rag-retriever.service';
 import type { ResumeRagChatResponseDto } from './dto/resume-rag-chat-response.dto';
 import { ResumeRagChatLogService } from './resume-rag-chat-log.service';
-import { getResumeRagNoEvidenceAnswer } from './resume-rag-keyword-gate';
+import {
+  getChatSimpleReply,
+  getChatNoEvidenceAnswer,
+  type ChatChannel,
+} from './chat-definition';
 
 type AnswerRequest = {
   question: string;
@@ -23,6 +27,7 @@ type AnswerRequest = {
 };
 
 type AnswerOptions = {
+  channel?: ChatChannel;
   recordQuestion?: boolean;
   history?: ResumeChatHistoryMessage[];
 };
@@ -62,12 +67,21 @@ export class ResumeRagService {
     request: AnswerRequest,
     options: AnswerOptions = {},
   ): Promise<ResumeRagChatResponseDto> {
+    const channel = options.channel ?? 'resume';
     if (options.recordQuestion !== false) {
       await this.chatLogService.recordQuestion(
         request.question,
         request.locale,
       );
     }
+
+    const simpleReply = getChatSimpleReply(
+      request.question,
+      request.locale,
+      channel,
+    );
+    if (simpleReply)
+      return { answer: simpleReply, grounded: false, sources: [] };
 
     let chunks: RetrievedResumeChunk[];
     try {
@@ -78,6 +92,7 @@ export class ResumeRagService {
       ) {
         searchQuestion = (
           await this.chatProvider.answer({
+            channel,
             task: 'rewrite-query',
             question: request.question,
             locale: request.locale,
@@ -89,6 +104,7 @@ export class ResumeRagService {
           throw new Error('Invalid contextual search query');
       }
       chunks = await this.retriever.retrieve({
+        channel,
         question: searchQuestion,
         locale: request.locale,
       });
@@ -108,7 +124,7 @@ export class ResumeRagService {
 
     if (chunks.length === 0) {
       return {
-        answer: getResumeRagNoEvidenceAnswer(request.locale),
+        answer: getChatNoEvidenceAnswer(request.locale, channel),
         grounded: false,
         sources: [],
       };
@@ -116,6 +132,7 @@ export class ResumeRagService {
 
     try {
       const answer = await this.chatProvider.answer({
+        channel,
         question: request.question,
         locale: request.locale,
         contexts: chunks,

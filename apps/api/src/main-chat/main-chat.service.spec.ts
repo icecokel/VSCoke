@@ -9,28 +9,6 @@ const response = {
 };
 
 describe('MainChatService', () => {
-  it.each([
-    ['안녕!', 'ko-KR', '대표 프로젝트와 맡은 역할'],
-    ['Thanks', 'en-US', 'You’re welcome!'],
-    ['何を聞けますか？', 'ja-JP', 'プロジェクトでの役割'],
-  ])(
-    '간단한 문구 %s에 고정 응답을 반환한다',
-    async (question, locale, answerText) => {
-      const answer = jest.fn();
-      const resumeRagService = { answer } as unknown as ResumeRagService;
-      const service = new MainChatService(resumeRagService);
-
-      const result = await service.answer({ question, locale });
-
-      expect(result.answer).toContain(answerText);
-      expect(result).toMatchObject({
-        grounded: false,
-        sources: [],
-      });
-      expect(answer).not.toHaveBeenCalled();
-    },
-  );
-
   it('인사와 프로젝트 질문이 함께 있으면 프로젝트 질문으로 처리한다', async () => {
     const answer = jest.fn().mockResolvedValue(response);
     const resumeRagService = { answer } as unknown as ResumeRagService;
@@ -41,7 +19,10 @@ describe('MainChatService', () => {
     };
 
     await expect(service.answer(request)).resolves.toEqual(response);
-    expect(answer).toHaveBeenCalledWith(request, { recordQuestion: false });
+    expect(answer).toHaveBeenCalledWith(request, {
+      channel: 'main',
+      recordQuestion: false,
+    });
   });
 
   it.each([
@@ -57,7 +38,7 @@ describe('MainChatService', () => {
     ).resolves.toEqual(response);
     expect(answer).toHaveBeenCalledWith(
       { question, locale: 'ko-KR' },
-      { recordQuestion: false },
+      { channel: 'main', recordQuestion: false },
     );
   });
 

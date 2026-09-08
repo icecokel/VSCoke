@@ -132,7 +132,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** 프로젝트와 이력서 통합 질문 답변 */
+    /** 공개 프로젝트 상세와 사이트 안내 RAG 질문 답변 */
     post: operations["MainChatController_chat"];
     delete?: never;
     options?: never;

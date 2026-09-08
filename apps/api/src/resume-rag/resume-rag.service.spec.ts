@@ -35,11 +35,12 @@ describe('ResumeRagService', () => {
       service.answer({ question: '오늘 날씨 어때?', locale: 'ko-KR' }),
     ).resolves.toEqual({
       answer:
-        '이 질문은 제 이력 범위를 벗어난 것 같아요. 프로젝트, 기술 경험, 업무 성과, 강점처럼 이력과 관련된 내용으로 다시 물어봐 주세요.\n\n추천 키워드: Oprimed, 의료 도메인, CI/CD와 배포, 프론트엔드 강점',
+        '이 채팅의 공개 자료에서 질문에 답할 근거를 찾지 못했어요. 경력과 담당 업무, 기술 경험, 업무 성과와 강점에 대해 물어봐 주세요.',
       grounded: false,
       sources: [],
     });
     expect(retrieve).toHaveBeenCalledWith({
+      channel: 'resume',
       question: '오늘 날씨 어때?',
       locale: 'ko-KR',
     });
@@ -84,7 +85,7 @@ describe('ResumeRagService', () => {
       service.answer({ question: 'Oprimed에 없는 내용?', locale: 'ko-KR' }),
     ).resolves.toEqual({
       answer:
-        '이 질문은 제 이력 범위를 벗어난 것 같아요. 프로젝트, 기술 경험, 업무 성과, 강점처럼 이력과 관련된 내용으로 다시 물어봐 주세요.\n\n추천 키워드: Oprimed, 의료 도메인, CI/CD와 배포, 프론트엔드 강점',
+        '이 채팅의 공개 자료에서 질문에 답할 근거를 찾지 못했어요. 경력과 담당 업무, 기술 경험, 업무 성과와 강점에 대해 물어봐 주세요.',
       grounded: false,
       sources: [],
     });
@@ -176,51 +177,57 @@ describe('ResumeRagService conversational retrieval', () => {
     { role: 'user' as const, content: 'Oprimed 프로젝트를 설명해줘' },
     { role: 'assistant' as const, content: 'Oprimed 의료 프로젝트 설명' },
   ];
-  it('이전 맥락으로 검색 질문을 재작성하고 새 근거와 함께 답변한다', async () => {
-    const contexts = [
-      {
-        id: '1',
-        title: '역할',
-        content: '공개 역할 근거',
-        sourcePath: 'role.md',
-        sourceKey: 'role',
-        citationMetadata: {},
-        similarity: 0.9,
-      },
-    ];
-    const retrieve = jest.fn().mockResolvedValue(contexts);
-    const answer = jest
-      .fn()
-      .mockResolvedValueOnce('Oprimed 프로젝트의 담당 역할')
-      .mockResolvedValueOnce('새 근거를 따른 역할 설명');
-    const service = new ResumeRagService(
-      { retrieve } as unknown as ResumeRagRetrieverService,
-      { answer },
-      createChatLogService().chatLogService,
-    );
-    const result = await service.answer(
-      { question: '거기서 맡은 역할은?', locale: 'ko-KR' },
-      { history },
-    );
-    expect(answer).toHaveBeenNthCalledWith(1, {
-      task: 'rewrite-query',
-      question: '거기서 맡은 역할은?',
-      locale: 'ko-KR',
-      history,
-      contexts: [],
-    });
-    expect(retrieve).toHaveBeenCalledWith({
-      question: 'Oprimed 프로젝트의 담당 역할',
-      locale: 'ko-KR',
-    });
-    expect(answer).toHaveBeenNthCalledWith(2, {
-      question: '거기서 맡은 역할은?',
-      locale: 'ko-KR',
-      history,
-      contexts,
-    });
-    expect(result.answer).toBe('새 근거를 따른 역할 설명');
-  });
+  it.each(['main', 'resume'] as const)(
+    '%s 이전 맥락으로 재작성해 같은 채널의 새 근거로 답변한다',
+    async (channel) => {
+      const contexts = [
+        {
+          id: '1',
+          title: '역할',
+          content: '공개 역할 근거',
+          sourcePath: 'role.md',
+          sourceKey: 'role',
+          citationMetadata: {},
+          similarity: 0.9,
+        },
+      ];
+      const retrieve = jest.fn().mockResolvedValue(contexts);
+      const answer = jest
+        .fn()
+        .mockResolvedValueOnce('Oprimed 프로젝트의 담당 역할')
+        .mockResolvedValueOnce('새 근거를 따른 역할 설명');
+      const service = new ResumeRagService(
+        { retrieve } as unknown as ResumeRagRetrieverService,
+        { answer },
+        createChatLogService().chatLogService,
+      );
+      const result = await service.answer(
+        { question: '거기서 맡은 역할은?', locale: 'ko-KR' },
+        { channel, history },
+      );
+      expect(answer).toHaveBeenNthCalledWith(1, {
+        channel,
+        task: 'rewrite-query',
+        question: '거기서 맡은 역할은?',
+        locale: 'ko-KR',
+        history,
+        contexts: [],
+      });
+      expect(retrieve).toHaveBeenCalledWith({
+        channel,
+        question: 'Oprimed 프로젝트의 담당 역할',
+        locale: 'ko-KR',
+      });
+      expect(answer).toHaveBeenNthCalledWith(2, {
+        channel,
+        question: '거기서 맡은 역할은?',
+        locale: 'ko-KR',
+        history,
+        contexts,
+      });
+      expect(result.answer).toBe('새 근거를 따른 역할 설명');
+    },
+  );
   it('이전 답변이 있어도 새로운 근거가 없으면 경력 답변을 생성하지 않는다', async () => {
     const retrieve = jest.fn().mockResolvedValue([]);
     const answer = jest.fn().mockResolvedValue('Oprimed의 공개되지 않은 수치');
@@ -236,6 +243,7 @@ describe('ResumeRagService conversational retrieval', () => {
     expect(result.grounded).toBe(false);
     expect(answer).not.toHaveBeenCalled();
     expect(retrieve).toHaveBeenCalledWith({
+      channel: 'resume',
       question: '정확한 수치는?',
       locale: 'ko-KR',
     });
@@ -258,9 +266,33 @@ describe('ResumeRagService conversational retrieval', () => {
     );
     expect(result.grounded).toBe(false);
     expect(retrieve).toHaveBeenCalledWith({
+      channel: 'resume',
       question: '이제 주제를 바꿔서 내일 비트코인 가격을 알려줘',
       locale: 'ko-KR',
     });
     expect(answer).not.toHaveBeenCalled();
   });
+});
+
+describe('공통 채팅 인사 처리', () => {
+  it.each(['main', 'resume'] as const)(
+    '%s 인사는 검색과 AI 호출 없이 처리한다',
+    async (channel) => {
+      const retrieve = jest.fn();
+      const answer = jest.fn();
+      const service = new ResumeRagService(
+        { retrieve } as unknown as ResumeRagRetrieverService,
+        { answer },
+        createChatLogService().chatLogService,
+      );
+      const result = await service.answer(
+        { question: '안녕하세요!', locale: 'ko-KR' },
+        { channel },
+      );
+      expect(result).toMatchObject({ grounded: false, sources: [] });
+      expect(result.answer).toContain(channel === 'main' ? '사이트' : '경력');
+      expect(retrieve).not.toHaveBeenCalled();
+      expect(answer).not.toHaveBeenCalled();
+    },
+  );
 });

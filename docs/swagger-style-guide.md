@@ -5,7 +5,7 @@
 - 운영 Swagger: [https://api.icecoke.kr/api](https://api.icecoke.kr/api)
 - OpenAPI JSON: [https://api.icecoke.kr/api-json](https://api.icecoke.kr/api-json)
 - 로컬 계약 파일: `apps/api/openapi.json`
-- 확인 기준일: 2026-07-10
+- 확인 기준일: 2026-09-10
 
 이 문서는 VSCoke API Swagger/OpenAPI를 일관되게 유지하기 위한 작성 규칙과 실무 가이드를 정리합니다. 개발/CI의 타입 생성 기준은 운영 Swagger가 아니라 현재 커밋의 controller/DTO에서 생성한 `apps/api/openapi.json`입니다.
 
@@ -132,7 +132,7 @@ export class RecipeController {}
 
 - JSON 필드명은 실제 응답과 동일하게 유지합니다.
 - 프런트에서 별도 매핑하더라도 Swagger는 원본 계약 기준으로 적습니다.
-- 현재 운영 스펙은 `sourceTopicId`, `translatedAt`처럼 camelCase를 사용하므로 새 필드도 같은 기준을 따릅니다.
+- 현재 스펙은 `conversationId`, `requestId`, `createdAt`처럼 camelCase를 사용하므로 새 필드도 같은 기준을 따릅니다.
 
 ### 6-2. nullable
 
@@ -186,20 +186,20 @@ getRecipes() {
 }
 ```
 
-## 9. 현재 Swagger 개선 포인트
+## 9. 현재 계약과 회귀 검사
 
-2026-07-10 기준 확인 결과:
+현재 16개 operation의 성공 응답 설명과 루트 태그를 명시합니다. 성공 JSON은
+`{ success: true, data }`, 오류는 `ApiErrorResponseDto`를 사용합니다. 오류 DTO의 공통 필수
+필드는 `success: false`, `statusCode`, `timestamp`, `path`이며 `message`는 문자열 또는
+문자열 배열입니다. 도메인 오류의 추가 필드가 존재할 수 있고 오류에 success/data envelope를
+중복으로 씌우지 않습니다.
 
-- 루트 `tags` 메타데이터가 비어 있습니다.
-- 일부 4xx/5xx 오류 응답 스키마가 충분히 드러나지 않습니다.
-- 정수 의미의 숫자 필드는 validation과 OpenAPI `integer` 노출 여부를 함께 점검해야 합니다.
+`score`·`playTime`·등수는 integer입니다. `playTime`은 optional + nullable이며, 등수는
+공개 결과 조회에서 생략되는 optional 숫자입니다. null과 생략을 같은 의미로 문서화하지 않습니다.
 
-우선순위:
-
-1. 응답 설명 채우기
-2. 태그 메타데이터 채우기
-3. 점수, 시간, 랭크 같은 정수 필드를 `integer`로 정리
-4. 공통 에러 DTO와 상태 코드 문서화
+`apps/api/test/api-contract.e2e-spec.ts`가 설명·태그·정수/null·오류 상태 및 스키마를
+검증하고, `api-documentation.e2e-spec.ts`가 실제 HTTP 검증 오류의 envelope를 확인합니다.
+`pnpm check:api-contract`는 생성물 동기화 검사이므로 이 의미 검증과 함께 실행합니다.
 
 ## 10. 배포 전 체크리스트
 

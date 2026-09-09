@@ -1,8 +1,21 @@
 import {
+  ApiBadRequestResponse,
+  ApiConflictResponse,
+  ApiForbiddenResponse,
+  ApiHeader,
+  ApiInternalServerErrorResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiServiceUnavailableResponse,
+  ApiTags,
+  ApiTooManyRequestsResponse,
+} from '@nestjs/swagger';
+import { ApiErrorResponseDto } from '../common/dto/api-error-response.dto';
+import {
   ResumeConversationService,
   RESUME_CONVERSATION_TOKEN_HEADER,
 } from '../resume-rag/resume-conversation.service';
-import { ApiHeader } from '@nestjs/swagger';
 import {
   Body,
   Header,
@@ -13,16 +26,6 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiBadRequestResponse,
-  ApiForbiddenResponse,
-  ApiInternalServerErrorResponse,
-  ApiOkResponse,
-  ApiOperation,
-  ApiServiceUnavailableResponse,
-  ApiTags,
-  ApiTooManyRequestsResponse,
-} from '@nestjs/swagger';
 import { ResumeRagChatRequestDto } from '../resume-rag/dto/resume-rag-chat-request.dto';
 import { ResumeRagChatResponseDto } from '../resume-rag/dto/resume-rag-chat-response.dto';
 import { ResumeRagOriginGuard } from '../resume-rag/resume-rag-origin.guard';
@@ -56,29 +59,44 @@ export class MainChatController {
   ) {}
 
   @Post()
+  @ApiNotFoundResponse({
+    description: '접근키, 채널 또는 언어 불일치나 삭제·만료된 대화',
+    type: ApiErrorResponseDto,
+  })
+  @ApiConflictResponse({
+    description: '다른 질문에 사용된 요청 ID 또는 동시 대화 버전 충돌',
+    type: ApiErrorResponseDto,
+  })
   @Header('Cache-Control', 'no-store')
   @ApiHeader({ name: RESUME_CONVERSATION_TOKEN_HEADER, required: false })
   @HttpCode(HttpStatus.OK)
   @UseGuards(ResumeRagOriginGuard, MainChatRateLimitGuard)
   @ApiOperation({ summary: '공개 프로젝트 상세와 사이트 안내 RAG 질문 답변' })
   @ApiOkResponse({
+    description:
+      '공개 프로젝트·사이트 안내 답변 반환. 저장 대화는 식별자를 포함한다.',
     type: ResumeRagChatResponseDto,
     headers: rateLimitResponseHeaders,
   })
   @ApiBadRequestResponse({
+    type: ApiErrorResponseDto,
     description: '질문 길이 또는 locale 형식이 올바르지 않음',
   })
   @ApiForbiddenResponse({
+    type: ApiErrorResponseDto,
     description: '허용된 VSCoke 웹 origin이 아닌 요청',
   })
   @ApiTooManyRequestsResponse({
+    type: ApiErrorResponseDto,
     description: 'IP당 1시간에 허용된 메인 채팅 요청 횟수를 초과함',
     headers: rateLimitResponseHeaders,
   })
   @ApiServiceUnavailableResponse({
+    type: ApiErrorResponseDto,
     description: '검색 또는 답변 생성 공급자를 사용할 수 없음',
   })
   @ApiInternalServerErrorResponse({
+    type: ApiErrorResponseDto,
     description: '분류되지 않은 서버 오류',
   })
   chat(

@@ -88,7 +88,7 @@ SearchPanel
 pnpm generate:types
 pnpm check:api-contract
 pnpm --filter @vscoke/web type:check
-pnpm --filter @vscoke/web e2e -- tests/e2e/hobby-recipes.spec.ts tests/e2e/hobby-espresso.spec.ts --project=chromium
+pnpm --filter @vscoke/web e2e tests/e2e/hobby-recipes.spec.ts tests/e2e/hobby-espresso.spec.ts --project=chromium
 ```
 
 API 문서와 타입을 같이 바꾼 경우 다음도 확인한다.

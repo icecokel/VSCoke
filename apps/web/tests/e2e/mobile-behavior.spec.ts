@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { gotoWithRetry, type Locale } from "./test-helpers";
+import { gotoWithRetry, loadMessages, type Locale } from "./test-helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -61,11 +61,21 @@ test.describe("모바일 전용 동작", () => {
     const savePdfButton = page.getByTestId("resume-preview-save-pdf");
     await expect(resumeDocument).toBeVisible();
     await expect(savePdfButton).toBeVisible();
+    const messages = loadMessages(locale);
+    const career = messages.resume.careers.oprimed;
+    const project = career.projects.medicalFrontendProductization;
     await expect(
-      resumeDocument.getByText("긴 분석 과정에서 입력과 결과가 끊기지 않도록", {
-        exact: false,
-      }),
+      resumeDocument.getByRole("heading", { name: messages.resumePreview.experience, exact: true }),
     ).toBeVisible();
+    await expect(
+      resumeDocument.getByRole("heading", { name: career.company, exact: true }),
+    ).toBeVisible();
+    await expect(
+      resumeDocument.getByRole("heading", { name: project.title, exact: true }),
+    ).toBeVisible();
+    const description = project.descriptions[0]?.detail;
+    if (!description) throw new Error("Oprimed 대표 프로젝트의 상세 이력 문구가 없습니다.");
+    await expect(resumeDocument.getByText(description, { exact: true })).toBeVisible();
 
     const [documentBox, buttonBox] = await Promise.all([
       resumeDocument.boundingBox(),

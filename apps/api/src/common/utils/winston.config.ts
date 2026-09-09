@@ -2,13 +2,34 @@ import { utilities as nestWinstonUtilities } from 'nest-winston';
 import * as winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 
+const logLevels = [
+  'error',
+  'warn',
+  'info',
+  'http',
+  'verbose',
+  'debug',
+  'silly',
+] as const;
+
+export const resolveLogLevel = (
+  env: Record<string, string | undefined> = process.env,
+): string => {
+  const level = env.LOG_LEVEL?.trim().toLowerCase();
+  if (!level) return env.NODE_ENV === 'production' ? 'info' : 'debug';
+  if (!logLevels.some((candidate) => candidate === level)) {
+    throw new Error(
+      'Invalid LOG_LEVEL: expected error, warn, info, http, verbose, debug, or silly',
+    );
+  }
+  return level;
+};
+
 /**
  * Winston 로거 설정 객체
  */
 export const createWinstonConfig = () => {
-  const logLevel =
-    process.env.LOG_LEVEL ??
-    (process.env.NODE_ENV === 'production' ? 'info' : 'debug');
+  const logLevel = resolveLogLevel();
 
   return {
     level: logLevel,

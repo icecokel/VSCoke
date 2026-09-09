@@ -1,3 +1,4 @@
+import type KoreanMessages from "../../messages/ko-KR.json";
 import fs from "node:fs";
 import { randomUUID } from "node:crypto";
 import type { Route } from "@playwright/test";
@@ -9,6 +10,7 @@ export type Locale = (typeof SUPPORTED_LOCALES)[number];
 const DEFAULT_PLAYWRIGHT_LOCALE: Locale = "ko-KR";
 
 export interface AppMessages {
+  resumePreview: typeof KoreanMessages.resumePreview;
   common: {
     korean: string;
     english: string;
@@ -24,6 +26,7 @@ export interface AppMessages {
     open: string;
   };
   home: {
+    mainChat: typeof KoreanMessages.home.mainChat;
     primaryCta: string;
     secondaryCta: string;
     cards: {
@@ -73,6 +76,7 @@ export interface AppMessages {
     call: string;
   };
   resume: {
+    careers: typeof KoreanMessages.resume.careers;
     viewDescription: string;
     backToResume: string;
     personalProjects: {

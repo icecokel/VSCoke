@@ -82,7 +82,7 @@ EspressoBeanResponseDto
 pnpm generate:types
 pnpm check:api-contract
 pnpm --filter @vscoke/api build
-pnpm --filter @vscoke/api test -- --runInBand
+pnpm --filter @vscoke/api exec jest --runInBand
 ```
 
 DB 연결이 가능한 환경에서는 `/api-json`을 조회해 다음을 확인한다. 개발/CI 타입 생성 기준은 운영 `/api-json`이 아니라 현재 커밋에서 생성한 `apps/api/openapi.json`이다.

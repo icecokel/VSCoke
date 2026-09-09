@@ -1,5 +1,11 @@
+import {
+  ApiInternalServerErrorResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { ApiErrorResponseDto } from './common/dto/api-error-response.dto';
 import { Controller, Get } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiOkResponse } from '@nestjs/swagger';
 import { AppService } from './app.service';
 import { HealthCheckResponseDto } from './dto/health-check-response.dto';
 
@@ -8,6 +14,10 @@ import { HealthCheckResponseDto } from './dto/health-check-response.dto';
  */
 @ApiTags('App')
 @Controller()
+@ApiInternalServerErrorResponse({
+  description: '분류되지 않은 서버 오류',
+  type: ApiErrorResponseDto,
+})
 export class AppController {
   constructor(private readonly appService: AppService) {}
 

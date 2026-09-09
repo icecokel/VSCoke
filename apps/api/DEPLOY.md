@@ -44,12 +44,27 @@ workflow의 `workflow_dispatch`를 사용하고, 완료 뒤 `pnpm smoke:api:remo
    > 코드 배포와 함께라면 GitHub Actions가 재시작해주므로 생략 가능합니다.
 
 Resume RAG와 메인 채팅 환경 변수는
-[메인 채팅 AI 사용 지침의 배포 적용 절차](../../docs/main-chat-ai-usage-guide.md#9-배포-적용-절차)를 따릅니다.
+[현재 배포·검증 기준](../../docs/main-chat-ai-usage-guide.md#6-배포와-검증)을 따릅니다.
 
-벡터 검색·저장 대화의 최초 릴리스는 일반 자동 배포와 별도로 **신규 migration → API → 웹**
-순서를 확보해야 합니다. API workflow는 migration/import/index를 자동 실행하지 않고, release에는
-import에 필요한 웹 이력 원본과 소스 빌드 도구가 포함되지 않습니다. 해당 기능의 정비용 checkout,
-절대 경로 환경 파일, 실제 DB 검증과 기록 보존형 롤백 절차는 위 AI 사용 지침 9절을 우선합니다.
+### 현재 릴리스 구성과 실행 순서
+
+| 구분         | 현재 동작                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------- |
+| DB migration | 자동 실행하지 않습니다. 신규 schema는 백업·ledger 확인 후 API보다 먼저 적용합니다.                |
+| 공개 원본    | 웹 이력 JSON·번역 메시지·경력 MDX·공개 안내 문서를 패키징합니다. 개인 이력 작업공간은 제외합니다. |
+| import       | 릴리스 승격 후 공개 원본을 `resume:import`로 동기화합니다. 실패하면 배포를 실패 처리합니다.       |
+| index        | keyword 모드가 아니고 임베딩 공급자가 설정됐을 때 실행합니다.                                     |
+| API 재시작   | import와 필요한 index가 성공한 뒤 PM2를 재시작합니다.                                             |
+| health 도구  | `scripts/check-api-health.mjs`와 그 의존 파일 `api-health-checker.mjs`를 릴리스에 포함합니다.     |
+| 보존 경로    | `rsync --delete`에서 `.env`, `.next-release`, `backups`, `logs`를 제외합니다.                     |
+
+신규 기능 릴리스는 **migration → API → 웹** 순서를 확보합니다. API와 Vercel 사이의 자동
+순서 보장은 없습니다. 소스 빌드 도구나 개인 원본을 운영 릴리스에 임의로 추가하지 않습니다.
+AI 사용 지침 9절은 최초 도입 당시의 기록이며, 현재 자동화의 판단 기준은 위 표와 workflow입니다.
+
+health 검사는 checkout 루트 또는 새 릴리스 루트에서 `pnpm smoke:api:remote`로 실행합니다.
+이전 릴리스로 롤백해 health 파일이 없으면 검증된 checkout에서 대상 `API_HEALTH_URL`을
+지정해 실행합니다. health 성공은 DB migration·RAG 검색 품질 검증을 대체하지 않습니다.
 
 ## 3. DB schema 변경
 

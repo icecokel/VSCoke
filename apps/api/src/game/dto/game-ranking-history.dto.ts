@@ -2,10 +2,10 @@ import { ApiProperty } from '@nestjs/swagger';
 import { GameHistoryUserDto } from './game-history-response.dto';
 
 export class GameRankingHistoryDto {
-  @ApiProperty({ description: '점수', example: 100 })
+  @ApiProperty({ type: 'integer', description: '점수', example: 100 })
   score: number;
 
-  @ApiProperty({ description: '순위', example: 1 })
+  @ApiProperty({ type: 'integer', description: '순위', example: 1 })
   rank: number;
 
   @ApiProperty({

@@ -24,7 +24,7 @@ export class GameHistory {
   gameType: GameType;
 
   @Column({ type: 'int', nullable: true })
-  playTime?: number;
+  playTime?: number | null;
 
   @CreateDateColumn()
   createdAt: Date;

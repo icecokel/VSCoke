@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Server } from 'node:http';
 import request from 'supertest';
+import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { ApiContractModule } from '../src/api-contract.module';
 import { GoogleAuthGuard } from '../src/auth/google-auth.guard';
 import { GameService } from '../src/game/game.service';
@@ -62,6 +63,14 @@ describe('API documentation (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.useGlobalInterceptors(new TransformInterceptor());
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
+    app.useGlobalFilters(new HttpExceptionFilter());
     setupApiDocumentation(app);
     await app.init();
     httpServer = app.getHttpServer() as Server;
@@ -71,6 +80,22 @@ describe('API documentation (e2e)', () => {
     if (app) {
       await app.close();
     }
+  });
+
+  it('문서화된 오류 envelope가 실제 입력 검증 응답과 일치한다', async () => {
+    const response = await request(httpServer)
+      .post('/wordle/check')
+      .send({ word: 'hi' })
+      .expect(400);
+    expect(response.body).toMatchObject({
+      success: false,
+      statusCode: 400,
+      path: '/wordle/check',
+    });
+    const body = response.body as { timestamp?: unknown; message?: unknown };
+    expect(typeof body.timestamp).toBe('string');
+    expect(Array.isArray(body.message)).toBe(true);
+    expect(response.body).not.toHaveProperty('data');
   });
 
   it('/api-json (GET) exposes deploy-critical API paths without cache', async () => {

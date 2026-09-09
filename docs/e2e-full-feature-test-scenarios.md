@@ -256,39 +256,60 @@ API endpoint 목록은 [VSCoke API README](../apps/api/README.md#주요-모듈)�
 
 ## 13. Wordle
 
-| ID         | 우선순위/상태 | 사전조건            | 절차                                      | 기대 결과                                                                                   |
-| ---------- | ------------- | ------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `WORD-001` | P0/A          | word API 성공       | 화면 진입                                 | loading 후 정답 길이에 맞는 board와 keyboard가 표시된다.                                    |
-| `WORD-002` | P0/A          | board 활성          | 물리 키보드로 영문 입력, Backspace, Enter | tile 입력·삭제·제출이 focus 없이 동작한다.                                                  |
-| `WORD-003` | P0/A          | board 활성          | 화면 keyboard만 사용                      | mouse/touch만으로 동일한 입력과 제출이 가능하다.                                            |
-| `WORD-004` | P0/N          | 길이 미달           | Enter                                     | API를 호출하지 않고 길이 안내를 표시한다.                                                   |
-| `WORD-005` | P0/A          | dictionary 미등록   | 유효 길이 단어 제출                       | invalid word 안내 후 현재 row가 수정 가능하다.                                              |
-| `WORD-006` | P0/N          | 정답 fixture        | 정답 제출                                 | correct tile과 성공 toast가 표시되고 추가 입력은 막힌다.                                    |
-| `WORD-007` | P0/N          | 오답 fixture        | 모든 row 소진                             | 마지막 row와 정답을 포함한 실패 toast가 표시되고 추가 입력은 막힌다.                        |
-| `WORD-008` | P1/N          | 중복 문자 정답      | 같은 문자가 여러 번 포함된 guess          | correct/present/absent 수가 Wordle 규칙에 맞다.                                             |
-| `WORD-009` | P1/N          | 제출 animation      | 빠른 연속 입력                            | 검증 중 다음 row 입력이나 중복 API 요청이 발생하지 않는다.                                  |
-| `WORD-010` | P0/A          | word/check API 실패 | 로딩 또는 제출                            | 서버 이전 안내 toast를 표시하고 앱 전체가 500이 되지 않는다.                                |
-| `WORD-011` | P0/N          | 플레이 중           | header Restart                            | 별도 중복 요청 없이 새 단어를 불러오고 board와 keyboard 상태를 초기화한다.                  |
-| `WORD-012` | P1/N          | 완료 상태           | header Restart                            | 성공/실패 상태가 지워지고 새 단어로 플레이가 재개된다.                                      |
-| `WORD-013` | P1/N          | 임의 상태           | header 공유                               | Wordle 안내 문구와 현재 페이지 URL이 공유되며 정답이나 내부 debug answer를 노출하지 않는다. |
-| `WORD-014` | P1/N          | reload              | 진행 중/완료 후 새로고침                  | 명시된 persistence 정책대로 상태가 유지되거나 새 게임으로 일관되게 초기화된다.              |
-| `WORD-015` | P2/N          | WebKit/mobile       | keyboard와 touch 입력                     | key event, tile animation, modal이 브라우저별로 동작한다.                                   |
+확인 기준일: 2026-09-09. 현재 규칙과 구현 제한은 [Wordle 게임 규칙](./wordle-game-rules.md)을
+기준으로 한다. 아래 표는 현재 동작의 회귀 검증이며, 재시작 경합 등 아직 보장하지 않는 목표는
+별도 표로 구분한다. Wordle에는 점수 계산·누적·랭킹 제출이 없다.
 
-현재 자동화 매핑: `keyboard-only.spec.ts`, `error-fallback.spec.ts`, `wordle.e2e-spec.ts`. 승리·패배와 중복 문자 UI 자동화는 보강 대상이다.
+| ID         | 우선순위/상태 | 사전조건                     | 절차                                      | 현재 동작의 검증 기준                                                                                                                            |
+| ---------- | ------------- | ---------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `WORD-001` | P0/A          | word API 성공                | 화면 진입                                 | 로딩 후 5칸 × 6줄의 보드와 화면 키보드가 표시된다.                                                                                               |
+| `WORD-002` | P0/A          | board 활성                   | 물리 키보드로 영문 입력, Backspace, Enter | 게임 타일에 별도 포커스 없이 입력·삭제·제출한다. 버튼·링크·입력 요소의 포커스와 조합 단축키는 기본 동작을 우선한다.                              |
+| `WORD-003` | P0/P          | board 활성                   | 화면 keyboard만 사용                      | mouse/touch로 입력·제출한다. 기존 자동화는 키 버튼과 검증 API 실패 경로를 확인하며, 성공 제출·터치 완주는 추가 검증한다.                         |
+| `WORD-004` | P0/P          | 길이 미달                    | Enter                                     | 길이 안내를 표시하고 입력·시도 횟수를 유지한다. 안내 UI는 자동화되어 있으며 API 미호출 단언은 보강한다.                                          |
+| `WORD-005` | P0/P          | dictionary 미등록            | 다섯 글자 단어 제출                       | 안내 후 현재 입력을 전부 지우고 기회를 소모하지 않는다. API의 exists=false는 자동화되어 있으며 같은 줄 재입력 UI는 보강한다.                     |
+| `WORD-006` | P0/N          | 정답 fixture                 | 정답 제출                                 | correct 타일과 성공 알림이 표시되고 추가 입력을 막는다. 점수를 부여하지 않는다.                                                                  |
+| `WORD-007` | P0/N          | 오답 fixture                 | 유효한 오답 6회 제출                      | 마지막 줄과 정답을 포함한 실패 알림이 표시되고 추가 입력을 막는다.                                                                               |
+| `WORD-008` | P1/N          | 중복 문자 정답               | 같은 문자가 여러 번 포함된 guess          | correct 우선 판정 후 남은 개수 안에서 present를 부여한다.                                                                                        |
+| `WORD-009` | P1/N          | 단어 검증 API 응답 대기      | 빠른 연속 입력·제출                       | 검증 중 게임 입력과 중복 check 요청을 막는다. 재시작 경합 보장을 포함하지 않는다.                                                                |
+| `WORD-010` | P0/P          | word/check API 실패          | 로딩 또는 제출                            | 공통 apiUnavailable 알림을 표시한다. 로딩 실패는 정답 없는 입력을 막고, 제출 실패는 입력·기회를 유지한다. 후자의 상태 유지 단언은 보강 대상이다. |
+| `WORD-011` | P0/P          | 플레이 중, 진행 중 요청 없음 | header Restart 한 번                      | 입력·기록·키보드·승패를 초기화하고 랜덤 단어를 다시 요청한다. 기존 자동화는 키보드 재시작 후 단어 재요청을 확인한다.                             |
+| `WORD-012` | P1/N          | 완료 상태                    | header Restart                            | 성공/실패 상태를 지우고 랜덤 단어로 재개한다. 이전과 다른 단어라는 보장은 없다.                                                                  |
+| `WORD-013` | P1/N          | 임의 상태                    | header 공유                               | 안내 문구와 현재 페이지 URL을 공유한다. 정답·점수·시도 결과표나 /share/:id 결과 링크를 생성하지 않는다.                                          |
+| `WORD-014` | P1/N          | 진행 중 또는 완료            | 브라우저 전체 새로고침                    | 이전 판을 복원하지 않고 상태를 초기화한 뒤 랜덤 단어를 다시 요청한다.                                                                            |
+| `WORD-015` | P2/N          | WebKit/mobile                | keyboard와 touch 입력                     | 입력·타일 판정·승패 알림·재시작이 동작한다. 현재 없는 결과 모달을 요구하지 않는다.                                                               |
+| `WORD-016` | P1/N          | 여러 판 반복                 | 성공·실패·재시작 반복                     | 점수·승수·연승을 누적하지 않고 game/result를 호출하지 않는다.                                                                                    |
+
+현재 자동화 근거:
+
+- [hobby-games.spec.ts](../apps/web/tests/e2e/hobby-games.spec.ts): 단어 로딩 후 게임 진입과 키보드 표시.
+- [keyboard-only.spec.ts](../apps/web/tests/e2e/keyboard-only.spec.ts): 키보드 재시작·글자 입력·삭제·길이 안내.
+- [error-fallback.spec.ts](../apps/web/tests/e2e/error-fallback.spec.ts): 단어 조회·검증 API 실패 안내와 키보드 입력.
+- [wordle.e2e-spec.ts](../apps/api/test/wordle.e2e-spec.ts): 서비스 mock 기반 단어 등록 여부·요청 형식 검증. 실제 DB나 브라우저 완주 검증이 아니다.
+
+현재 구현과 분리한 후속 목표:
+
+| ID         | 우선순위/상태 | 현재 제한                                                        | 개선 후 검증 기준                                                              |
+| ---------- | ------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `WORD-017` | P0/N          | 재시작 연타·진행 중 검증 응답과 재시작의 경합을 제어하지 않는다. | 중복 단어 요청을 막고 이전 판 응답이 새 판의 정답·기록·승패를 덮어쓰지 않는다. |
+
+이 문서 갱신으로 후속 목표가 구현되거나 자동화가 추가된 것은 아니다. 상태 표시는 실제 테스트의
+검증 범위를 반영하며, 실행하지 않은 승패 완주·중복 문자 UI·새로고침 검사를 통과로 취급하지 않는다.
 
 ## 19. 점수·랭킹·공유 상세
 
-| ID          | 우선순위/상태 | 사전조건           | 절차                    | 기대 결과                                                                    |
-| ----------- | ------------- | ------------------ | ----------------------- | ---------------------------------------------------------------------------- |
-| `SCORE-001` | P0/P          | 로그인, 게임 결과  | 점수 제출               | gameType, score, source가 API 계약에 맞고 result ID가 반환된다.              |
-| `SCORE-002` | P1/N          | 동일 결과          | 제출 재시도             | idempotency 또는 UI guard로 중복 history가 생기지 않는다.                    |
-| `SCORE-003` | P0/A          | ranking API 실패   | ranking 화면            | 빈 상태로 fallback하고 page 500을 만들지 않는다.                             |
-| `SCORE-004` | P0/N          | `DB_GAME`          | gameType별 ranking 조회 | 사용자별 최고점, 정렬, 공개 projection만 반환된다.                           |
-| `SCORE-005` | P0/A          | 유효 share ID      | `/share/:id` 직접 진입  | 게임명, 점수, 사용자, 생성 시각이 표시되고 탭 이름에 UUID가 노출되지 않는다. |
-| `SCORE-006` | P0/A          | 잘못된 ID/404      | share 직접 진입         | 서버 예외 대신 404 복구 화면을 표시한다.                                     |
-| `SCORE-007` | P1/A          | API 530/fetch 실패 | share 직접 진입         | recoverable fallback으로 처리한다.                                           |
-| `SCORE-008` | P1/A          | API 500            | share 직접 진입         | 실제 server error를 조용히 404로 숨기지 않고 오류로 분류한다.                |
-| `SCORE-010` | P1/N          | share UI           | 링크 복사·QR·Web Share  | canonical share URL이 모든 방식에서 동일하다.                                |
+현재 점수 저장·랭킹 대상은 Sky Drop이다. Wordle의 페이지 링크 공유는 13절에서 다루며, 이 절의 점수 제출·결과 ID 공유에 포함하지 않는다.
+
+| ID          | 우선순위/상태 | 사전조건           | 절차                    | 기대 결과                                                                         |
+| ----------- | ------------- | ------------------ | ----------------------- | --------------------------------------------------------------------------------- |
+| `SCORE-001` | P0/P          | 로그인, 게임 결과  | 점수 제출               | gameType=SKY_DROP, score, 선택값 playTime이 API 계약에 맞고 result ID가 반환된다. |
+| `SCORE-002` | P1/N          | 동일 결과          | 제출 재시도             | idempotency 또는 UI guard로 중복 history가 생기지 않는다.                         |
+| `SCORE-003` | P0/A          | ranking API 실패   | ranking 화면            | 빈 상태로 fallback하고 page 500을 만들지 않는다.                                  |
+| `SCORE-004` | P0/N          | `DB_GAME`          | gameType별 ranking 조회 | 사용자별 최고점, 정렬, 공개 projection만 반환된다.                                |
+| `SCORE-005` | P0/A          | 유효 share ID      | `/share/:id` 직접 진입  | 게임명, 점수, 사용자, 생성 시각이 표시되고 탭 이름에 UUID가 노출되지 않는다.      |
+| `SCORE-006` | P0/A          | 잘못된 ID/404      | share 직접 진입         | 서버 예외 대신 404 복구 화면을 표시한다.                                          |
+| `SCORE-007` | P1/A          | API 530/fetch 실패 | share 직접 진입         | recoverable fallback으로 처리한다.                                                |
+| `SCORE-008` | P1/A          | API 500            | share 직접 진입         | 실제 server error를 조용히 404로 숨기지 않고 오류로 분류한다.                     |
+| `SCORE-010` | P1/N          | share UI           | 링크 복사·QR·Web Share  | canonical share URL이 모든 방식에서 동일하다.                                     |
 
 현재 자동화 매핑: `api-read-error.spec.ts`, `error-fallback.spec.ts`, `not-found-recovery.spec.ts`, `server-route-fallback.spec.ts`, `history-tabs.spec.ts`.
 
@@ -309,28 +330,28 @@ API endpoint 목록은 [VSCoke API README](../apps/api/README.md#주요-모듈)�
 
 ## 21. API·PostgreSQL·Socket 통합
 
-| ID        | 우선순위/상태 | 사전조건             | 절차                                    | 기대 결과                                                            |
-| --------- | ------------- | -------------------- | --------------------------------------- | -------------------------------------------------------------------- |
-| `API-001` | P0/A          | API 실행             | `GET /`, `GET /health`                  | 200과 서비스 상태를 반환한다.                                        |
-| `API-002` | P0/A          | API 실행             | `GET /api-json`                         | deploy-critical endpoint와 enum이 있고 cache되지 않는다.             |
-| `API-003` | P0/A          | source clean         | OpenAPI와 Web type 생성                 | 생성 후 tracked diff가 없다.                                         |
-| `API-004` | P0/N          | recipe fixture       | 목록·상세·없는 ID 조회                  | 200 목록/상세와 404가 계약대로 반환된다.                             |
-| `API-005` | P0/N          | espresso fixture     | bean 목록·상세·없는 ID 조회             | 응답 projection과 404가 계약대로 반환된다.                           |
-| `API-006` | P0/A          | Wordle DB            | valid/invalid/짧음/김/비영문 check      | 200 또는 400 validation이 계약대로 동작한다.                         |
-| `API-007` | P0/N          | Wordle DB            | `GET /wordle/word` 반복                 | 허용 길이 영단어를 반환하고 민감한 답 데이터가 추가 노출되지 않는다. |
-| `API-008` | P0/N          | 인증 계정            | game state PUT→GET                      | versioned snapshot이 계정별로 round-trip된다.                        |
-| `API-009` | P0/N          | 다른 계정            | `USER_A` state를 `USER_B`로 조회        | 다른 사용자의 state가 반환되지 않는다.                               |
-| `API-010` | P0/A          | room API             | 모든 mutation header 누락/오염          | command ID와 revision validation이 요청을 거부한다.                  |
-| `API-011` | P0/A          | room API+DB          | create/join/ready/snapshot/result/leave | revision·expiry가 증가하고 session은 public 응답에서 redaction된다.  |
-| `API-012` | P0/A          | 같은 command         | 요청 replay와 payload 변경 replay       | 동일 요청은 같은 receipt, 변경 요청은 conflict다.                    |
-| `API-013` | P1/A          | 두 writer            | 같은 revision에 동시 mutation           | 하나만 commit되고 다른 요청은 conflict snapshot을 받는다.            |
-| `API-014` | P1/A          | room expiry          | waiting/completed/closed 시간 진행      | strict expiry room만 purge되고 receipt가 cascade 삭제된다.           |
-| `API-015` | P0/A          | Socket 두 client     | 권한 session으로 subscribe              | 한 committed revision을 두 client가 받고 잘못된 session은 거부된다.  |
-| `API-016` | P0/A          | 경쟁 match           | seat bind/action/terminal               | assignment, receipt, history가 transaction 단위로 저장된다.          |
-| `API-017` | P1/A          | API 재시작           | room/match/action 재조회                | 메모리 상태에 의존하지 않고 DB에서 복원된다.                         |
-| `API-018` | P0/A          | fresh DB             | migration chain 실행                    | canonical schema, enum, index, extension이 생성된다.                 |
-| `API-019` | P1/A          | partial/mismatch DB  | baseline migration                      | 자동 수리나 데이터 삭제 없이 명시적으로 실패한다.                    |
-| `API-020` | P1/N          | RAG origin allowlist | 허용/비허용 Origin으로 chat             | 허용 origin만 성공하고 비허용 origin은 명확히 거부된다.              |
+| ID        | 우선순위/상태 | 사전조건             | 절차                                    | 기대 결과                                                                                      |
+| --------- | ------------- | -------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `API-001` | P0/A          | API 실행             | `GET /`, `GET /health`                  | 200과 서비스 상태를 반환한다.                                                                  |
+| `API-002` | P0/A          | API 실행             | `GET /api-json`                         | deploy-critical endpoint와 enum이 있고 cache되지 않는다.                                       |
+| `API-003` | P0/A          | source clean         | OpenAPI와 Web type 생성                 | 생성 후 tracked diff가 없다.                                                                   |
+| `API-004` | P0/N          | recipe fixture       | 목록·상세·없는 ID 조회                  | 200 목록/상세와 404가 계약대로 반환된다.                                                       |
+| `API-005` | P0/N          | espresso fixture     | bean 목록·상세·없는 ID 조회             | 응답 projection과 404가 계약대로 반환된다.                                                     |
+| `API-006` | P0/A          | Wordle DB            | valid/invalid/짧음/김/비영문 check      | 200 또는 400 validation이 계약대로 동작한다.                                                   |
+| `API-007` | P0/N          | Wordle DB            | `GET /wordle/word` 반복                 | 준비된 단어 DB에서 { word }를 반환한다. word는 정답 문자열이며 추가 DB 필드는 반환하지 않는다. |
+| `API-008` | P0/N          | 인증 계정            | game state PUT→GET                      | versioned snapshot이 계정별로 round-trip된다.                                                  |
+| `API-009` | P0/N          | 다른 계정            | `USER_A` state를 `USER_B`로 조회        | 다른 사용자의 state가 반환되지 않는다.                                                         |
+| `API-010` | P0/A          | room API             | 모든 mutation header 누락/오염          | command ID와 revision validation이 요청을 거부한다.                                            |
+| `API-011` | P0/A          | room API+DB          | create/join/ready/snapshot/result/leave | revision·expiry가 증가하고 session은 public 응답에서 redaction된다.                            |
+| `API-012` | P0/A          | 같은 command         | 요청 replay와 payload 변경 replay       | 동일 요청은 같은 receipt, 변경 요청은 conflict다.                                              |
+| `API-013` | P1/A          | 두 writer            | 같은 revision에 동시 mutation           | 하나만 commit되고 다른 요청은 conflict snapshot을 받는다.                                      |
+| `API-014` | P1/A          | room expiry          | waiting/completed/closed 시간 진행      | strict expiry room만 purge되고 receipt가 cascade 삭제된다.                                     |
+| `API-015` | P0/A          | Socket 두 client     | 권한 session으로 subscribe              | 한 committed revision을 두 client가 받고 잘못된 session은 거부된다.                            |
+| `API-016` | P0/A          | 경쟁 match           | seat bind/action/terminal               | assignment, receipt, history가 transaction 단위로 저장된다.                                    |
+| `API-017` | P1/A          | API 재시작           | room/match/action 재조회                | 메모리 상태에 의존하지 않고 DB에서 복원된다.                                                   |
+| `API-018` | P0/A          | fresh DB             | migration chain 실행                    | canonical schema, enum, index, extension이 생성된다.                                           |
+| `API-019` | P1/A          | partial/mismatch DB  | baseline migration                      | 자동 수리나 데이터 삭제 없이 명시적으로 실패한다.                                              |
+| `API-020` | P1/N          | RAG origin allowlist | 허용/비허용 Origin으로 chat             | 허용 origin만 성공하고 비허용 origin은 명확히 거부된다.                                        |
 
 현재 자동화 매핑: `apps/api/test` 전체와 API unit specs. Recipe, Espresso, game state, RAG의 실제 HTTP E2E는 보강해야 한다.
 

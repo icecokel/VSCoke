@@ -37,7 +37,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @vscoke/web exec playwright install --with-deps chromium
       - run: >-
-          pnpm --filter @vscoke/web e2e --
+          pnpm --filter @vscoke/web e2e
           tests/e2e/main-chat-production-smoke.spec.ts
           tests/e2e/resume-rag-chat-production-smoke.spec.ts
           tests/e2e/resume-conversation-production-smoke.spec.ts

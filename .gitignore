@@ -89,3 +89,5 @@ next-env.d.ts
 !/docs/swagger-style-guide.md
 !/docs/user-deployment-checklist.md
 !/docs/vscoke-monorepo-concept.md
+
+!/docs/docs-implementation-alignment-20260910.md

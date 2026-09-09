@@ -1,4 +1,17 @@
 import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiInternalServerErrorResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
+import { ApiErrorResponseDto } from '../common/dto/api-error-response.dto';
+import {
   Controller,
   Get,
   Post,
@@ -10,14 +23,6 @@ import {
   ParseEnumPipe,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiCreatedResponse,
-  ApiTags,
-  ApiOkResponse,
-  ApiOperation,
-  ApiQuery,
-} from '@nestjs/swagger';
 import { Request } from 'express';
 import { GameService } from './game.service';
 import { CreateGameHistoryDto } from './dto/create-game-history.dto';
@@ -37,6 +42,10 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
  */
 @ApiTags('Game')
 @Controller('game')
+@ApiInternalServerErrorResponse({
+  description: '분류되지 않은 서버 오류',
+  type: ApiErrorResponseDto,
+})
 export class GameController {
   constructor(private readonly gameService: GameService) {}
 
@@ -44,10 +53,21 @@ export class GameController {
    * 게임 결과 저장 및 현재 등수 반환
    */
   @Post('result')
+  @ApiBadRequestResponse({
+    description: '지원하지 않는 게임 타입 또는 점수·플레이 시간 정책 위반',
+    type: ApiErrorResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Google ID token이 없거나 유효하지 않음',
+    type: ApiErrorResponseDto,
+  })
   @UseGuards(GoogleAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '게임 결과 생성 및 랭킹 확인' })
-  @ApiCreatedResponse({ type: GameHistoryResponseDto })
+  @ApiCreatedResponse({
+    description: '게임 결과 저장 및 이번 판·전체·주간 등수 반환',
+    type: GameHistoryResponseDto,
+  })
   async createResult(
     @Req() req: AuthenticatedRequest,
     @Body() createGameHistoryDto: CreateGameHistoryDto,
@@ -84,18 +104,7 @@ export class GameController {
       { start, end },
     );
 
-    // 현재 게임의 등수 계산 (기존 로직 유지)
-    // const currentRank = await this.gameService.getUserRank(
-    //   req.user.id,
-    //   history.score,
-    //   history.gameType,
-    // );
-    // -> 요구사항: API 응답에 `rank` 필드가 있는데, 이는 "이번 판의 등수"인지 "내 최고 기록의 등수"인지 명확하지 않음.
-    // 기존 코드에서는 'rank' 변수에 getUserRank(history.score) 결과를 담아서 반환했음.
-    // DTO 상 'rank'는 "현재 등수"라고 되어 있음. 이번 판 점수의 등수를 의미하는 듯.
-    // 하지만 기획상 "전체 랭킹", "주간 랭킹"이 추가되므로 'rank'의 의미가 중복될 수 있음.
-    // 여기서는 'rank' 필드를 "이번 판 점수의 등수"로 유지하고, 추가 필드를 채워줌.
-
+    // 이번 판보다 높은 사용자별 최고점 개수 + 1. 본인의 과거 최고점도 집계하며 Top 10 밖도 숫자다.
     const currentRank = await this.gameService.getUserRank(
       req.user.id,
       history.score,
@@ -139,6 +148,10 @@ export class GameController {
    * 게임별 랭킹 목록 조회 (Top 10)
    */
   @Get('ranking')
+  @ApiBadRequestResponse({
+    description: '조회할 gameType이 없거나 지원하지 않음',
+    type: ApiErrorResponseDto,
+  })
   @ApiOperation({
     summary: '게임별 Top 10 랭킹 조회',
   })
@@ -149,7 +162,11 @@ export class GameController {
     enumName: 'GameType',
     description: '조회할 게임 타입',
   })
-  @ApiOkResponse({ type: GameRankingHistoryDto, isArray: true })
+  @ApiOkResponse({
+    description: '사용자별 최고 점수 기준 상위 10건 조회',
+    type: GameRankingHistoryDto,
+    isArray: true,
+  })
   async getRanking(
     @Query('gameType', new ParseEnumPipe(GameType)) gameType: GameType,
   ): Promise<GameRankingHistoryDto[]> {
@@ -169,6 +186,14 @@ export class GameController {
    * 특정 게임 결과 상세 조회 (ID 기준, 공유용)
    */
   @Get('result/:id')
+  @ApiBadRequestResponse({
+    description: '결과 ID가 UUID가 아님',
+    type: ApiErrorResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: '해당 게임 결과가 없음',
+    type: ApiErrorResponseDto,
+  })
   @ApiOperation({ summary: '게임 결과 상세 조회' })
   @ApiOkResponse({
     type: GameHistoryResponseDto,

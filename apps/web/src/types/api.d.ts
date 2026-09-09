@@ -215,9 +215,11 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
+    /** 저장 대화 최근 기록 조회 */
     get: operations["ResumeConversationController_history"];
     put?: never;
     post?: never;
+    /** 저장 대화와 연결된 기록 삭제 */
     delete: operations["ResumeConversationController_remove"];
     options?: never;
     head?: never;
@@ -262,6 +264,42 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    ApiErrorResponseDto: {
+      /**
+       * @description 오류 응답 여부
+       * @example false
+       * @enum {boolean}
+       */
+      success: false;
+      /**
+       * @description HTTP 오류 상태
+       * @example 400
+       */
+      statusCode: number;
+      /**
+       * Format: date-time
+       * @description 오류 응답 생성 시각
+       * @example 2026-09-10T00:00:00.000Z
+       */
+      timestamp: string;
+      /**
+       * @description 요청 경로. query가 있으면 포함한다.
+       * @example /wordle/check
+       */
+      path: string;
+      /**
+       * @description 오류 설명 또는 입력 검증 오류 목록
+       * @example [
+       *       "단어는 반드시 5글자여야 합니다."
+       *     ]
+       */
+      message?: string | string[];
+      /**
+       * @description Nest HTTP 오류 이름
+       * @example Bad Request
+       */
+      error?: string;
+    };
     HealthCheckResponseDto: {
       /** @example ok */
       status: string;
@@ -492,15 +530,17 @@ export interface components {
     GameType: "SKY_DROP";
     CreateGameHistoryDto: {
       /**
+       * Format: int32
        * @description 게임별 서버 정책으로 최종 검증되는 정수 점수. DTO는 전체 게임 타입의 제출 envelope만 검증한다.
        * @example 8500
        */
       score: number;
       /**
+       * Format: int32
        * @description 플레이 시간(초). 제출되면 게임별 서버 정책의 점수 대비 비정상 속도 검증에 사용된다.
        * @example 120
        */
-      playTime?: number;
+      playTime?: number | null;
       /**
        * @description 서버에 등록된 게임 타입. 게임별 점수 정책은 서버에서 적용된다.
        * @example SKY_DROP
@@ -540,25 +580,25 @@ export interface components {
       /** @description 사용자 정보 */
       user: components["schemas"]["GameHistoryUserDto"];
       /**
-       * @description 현재 등수 (1부터 시작, 랭킹 외 시 null)
+       * @description 이번 판보다 높은 사용자별 최고점 개수 + 1. 본인의 과거 최고점도 비교하며 Top 10 밖도 숫자. 공개 결과 조회에서는 생략
        * @example 1
        */
-      rank?: number | null;
+      rank?: number;
       /**
        * @description 유저의 역대 최고 점수
        * @example 1200
        */
-      bestScore?: number | null;
+      bestScore?: number;
       /**
        * @description 전체 기간 랭킹
        * @example 42
        */
-      allTimeRank?: number | null;
+      allTimeRank?: number;
       /**
        * @description 금주 랭킹 (KST 월요일 0시 ~ 일요일 24시 기준)
        * @example 5
        */
-      weeklyRank?: number | null;
+      weeklyRank?: number;
     };
     GameRankingHistoryDto: {
       /**
@@ -754,6 +794,15 @@ export interface operations {
           };
         };
       };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
     };
   };
   AppController_getHealth: {
@@ -778,6 +827,15 @@ export interface operations {
           };
         };
       };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
     };
   };
   EspressoHistoryController_getBeans: {
@@ -800,6 +858,15 @@ export interface operations {
             success: true;
             data: components["schemas"]["EspressoBeanResponseDto"][];
           };
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
         };
       };
     };
@@ -834,7 +901,18 @@ export interface operations {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
     };
   };
@@ -851,6 +929,7 @@ export interface operations {
       };
     };
     responses: {
+      /** @description 게임 결과 저장 및 이번 판·전체·주간 등수 반환 */
       201: {
         headers: {
           [name: string]: unknown;
@@ -861,6 +940,33 @@ export interface operations {
             success: true;
             data: components["schemas"]["GameHistoryResponseDto"];
           };
+        };
+      };
+      /** @description 지원하지 않는 게임 타입 또는 점수·플레이 시간 정책 위반 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description Google ID token이 없거나 유효하지 않음 */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
         };
       };
     };
@@ -877,6 +983,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
+      /** @description 사용자별 최고 점수 기준 상위 10건 조회 */
       200: {
         headers: {
           [name: string]: unknown;
@@ -887,6 +994,24 @@ export interface operations {
             success: true;
             data: components["schemas"]["GameRankingHistoryDto"][];
           };
+        };
+      };
+      /** @description 조회할 gameType이 없거나 지원하지 않음 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
         };
       };
     };
@@ -915,6 +1040,33 @@ export interface operations {
           };
         };
       };
+      /** @description 결과 ID가 UUID가 아님 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 해당 게임 결과가 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
     };
   };
   MainChatController_chat: {
@@ -932,6 +1084,7 @@ export interface operations {
       };
     };
     responses: {
+      /** @description 공개 프로젝트·사이트 안내 답변 반환. 저장 대화는 식별자를 포함한다. */
       200: {
         headers: {
           /** @description IP당 1시간 메인 채팅 요청 최대 횟수 */
@@ -955,14 +1108,36 @@ export interface operations {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
       /** @description 허용된 VSCoke 웹 origin이 아닌 요청 */
       403: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 접근키, 채널 또는 언어 불일치나 삭제·만료된 대화 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 다른 질문에 사용된 요청 ID 또는 동시 대화 버전 충돌 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
       /** @description IP당 1시간에 허용된 메인 채팅 요청 횟수를 초과함 */
       429: {
@@ -975,21 +1150,27 @@ export interface operations {
           "X-RateLimit-Reset"?: number;
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
       /** @description 분류되지 않은 서버 오류 */
       500: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
       /** @description 검색 또는 답변 생성 공급자를 사용할 수 없음 */
       503: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
     };
   };
@@ -1013,6 +1194,15 @@ export interface operations {
             success: true;
             data: components["schemas"]["RecipeResponseDto"][];
           };
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
         };
       };
     };
@@ -1047,14 +1237,27 @@ export interface operations {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
       /** @description 해당 레시피가 존재하지 않음 */
       404: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
     };
   };
@@ -1073,6 +1276,7 @@ export interface operations {
       };
     };
     responses: {
+      /** @description 공개 이력 근거 답변 반환. 저장 대화는 식별자를 포함한다. */
       200: {
         headers: {
           /** @description IP당 1시간 이력 채팅 요청 최대 횟수 */
@@ -1091,12 +1295,41 @@ export interface operations {
           };
         };
       };
+      /** @description 질문·언어·대화 요청 식별자가 올바르지 않음 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
       /** @description 허용된 VSCoke 웹 origin이 아닌 요청 */
       403: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 접근키, 채널 또는 언어 불일치나 삭제·만료된 대화 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 다른 질문에 사용된 요청 ID 또는 동시 대화 버전 충돌 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
       /** @description IP당 1시간에 허용된 이력 채팅 요청 횟수를 초과함 */
       429: {
@@ -1109,7 +1342,27 @@ export interface operations {
           "X-RateLimit-Reset"?: number;
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 검색 또는 답변 생성 공급자를 사용할 수 없음 */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
     };
   };
@@ -1126,6 +1379,7 @@ export interface operations {
       };
     };
     responses: {
+      /** @description 대화 생성 성공. 비밀 접근키는 이 응답에서만 제공한다. */
       201: {
         headers: {
           [name: string]: unknown;
@@ -1136,6 +1390,42 @@ export interface operations {
             success: true;
             data: components["schemas"]["ResumeConversationAccessDto"];
           };
+        };
+      };
+      /** @description 대화 ID, 채널 또는 언어 형식이 올바르지 않음 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 허용되지 않은 웹 origin */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description IP당 1시간 대화 관리 요청 120회 초과 */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
         };
       };
     };
@@ -1153,6 +1443,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
+      /** @description 접근키로 검증한 대화의 최근 50턴 조회 */
       200: {
         headers: {
           [name: string]: unknown;
@@ -1165,12 +1456,50 @@ export interface operations {
           };
         };
       };
+      /** @description 대화 ID, 채널 또는 언어 형식이 올바르지 않음 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 허용되지 않은 웹 origin */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
       /** @description 접근키 불일치, 삭제 또는 만료된 대화 */
       404: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description IP당 1시간 대화 관리 요청 120회 초과 */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
     };
   };
@@ -1187,6 +1516,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
+      /** @description 대화와 연결된 턴 삭제 완료 */
       200: {
         headers: {
           [name: string]: unknown;
@@ -1199,6 +1529,51 @@ export interface operations {
               deleted: boolean;
             };
           };
+        };
+      };
+      /** @description 대화 ID, 채널 또는 언어 형식이 올바르지 않음 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 허용되지 않은 웹 origin */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 접근키 불일치, 삭제 또는 만료된 대화 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description IP당 1시간 대화 관리 요청 120회 초과 */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
         };
       };
     };
@@ -1223,6 +1598,24 @@ export interface operations {
             success: true;
             data: components["schemas"]["WordResponseDto"];
           };
+        };
+      };
+      /** @description 준비된 단어가 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
         };
       };
     };
@@ -1251,6 +1644,24 @@ export interface operations {
             success: true;
             data: components["schemas"]["CheckWordResponseDto"];
           };
+        };
+      };
+      /** @description 입력 단어가 5글자 영문이 아니거나 허용되지 않은 필드가 있음 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
         };
       };
     };

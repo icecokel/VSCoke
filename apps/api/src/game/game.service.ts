@@ -163,7 +163,7 @@ export class GameService {
     score: number,
     gameType: GameType,
     dateRange?: { start: Date; end: Date },
-  ): Promise<number | null> {
+  ): Promise<number> {
     const policy = getGameScorePolicy(gameType);
     const policyValues = getGameScorePolicyValues(policy);
     const queryValues: Array<string | number | Date> = [

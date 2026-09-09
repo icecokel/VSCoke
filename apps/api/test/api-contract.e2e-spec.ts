@@ -130,8 +130,7 @@ describe('Local OpenAPI contract generation', () => {
     );
     expect(gameHistoryResponseSchema?.properties?.rank).toEqual(
       expect.objectContaining({
-        type: 'number',
-        nullable: true,
+        type: 'integer',
       }),
     );
 
@@ -201,5 +200,98 @@ describe('Local OpenAPI contract generation', () => {
     });
 
     expect(documentedResponses.length).toBeGreaterThan(0);
+  });
+});
+
+describe('OpenAPI 의미 계약', () => {
+  it('모든 operation의 성공 설명·태그·오류 envelope를 명시한다', async () => {
+    const document = await createLocalOpenApiDocument();
+    const tags = new Map(
+      document.tags?.map((tag) => [tag.name, tag.description]),
+    );
+    let operations = 0;
+    for (const path of Object.values(document.paths)) {
+      for (const method of httpMethods) {
+        const operation = path[method];
+        if (!operation) continue;
+        operations += 1;
+        expect(operation.summary?.trim()).toBeTruthy();
+        expect(operation.tags?.length).toBeGreaterThan(0);
+        for (const tag of operation.tags ?? [])
+          expect(tags.get(tag)?.trim()).toBeTruthy();
+        expect(operation.responses['500']).toBeDefined();
+        for (const [status, response] of Object.entries(operation.responses)) {
+          if ('$ref' in response) continue;
+          expect(response.description.trim()).toBeTruthy();
+          if (Number(status) >= 400) {
+            expect(response.content?.['application/json']?.schema).toEqual({
+              $ref: '#/components/schemas/ApiErrorResponseDto',
+            });
+          }
+        }
+      }
+    }
+    expect(operations).toBe(16);
+  });
+
+  it('점수·시간·등수는 정수이며 시간만 null을 허용한다', async () => {
+    const document = await createLocalOpenApiDocument();
+    const input = document.components?.schemas
+      ?.CreateGameHistoryDto as ContractSchema;
+    expect(input.properties?.score).toMatchObject({
+      type: 'integer',
+      minimum: 1,
+      maximum: 1_000_000,
+    });
+    expect(input.properties?.playTime).toMatchObject({
+      type: 'integer',
+      nullable: true,
+    });
+    const history = document.components?.schemas
+      ?.GameHistoryResponseDto as ContractSchema;
+    for (const field of [
+      'score',
+      'rank',
+      'bestScore',
+      'allTimeRank',
+      'weeklyRank',
+    ]) {
+      expect(history.properties?.[field]?.type).toBe('integer');
+      expect(history.properties?.[field]?.nullable).not.toBe(true);
+    }
+    expect(history.required).not.toContain('rank');
+  });
+
+  it('guard·검증·대화 충돌에서 실제 발생하는 오류 상태를 명시한다', async () => {
+    const document = await createLocalOpenApiDocument();
+    const required = [
+      ['/wordle/check', 'post', ['400', '500']],
+      ['/wordle/word', 'get', ['404', '500']],
+      ['/game/result', 'post', ['400', '401', '500']],
+      ['/game/ranking', 'get', ['400', '500']],
+      ['/game/result/{id}', 'get', ['400', '404', '500']],
+      ['/main-chat', 'post', ['400', '403', '404', '409', '429', '500', '503']],
+      [
+        '/resume-rag/chat',
+        'post',
+        ['400', '403', '404', '409', '429', '500', '503'],
+      ],
+      ['/resume-rag/conversations', 'post', ['400', '403', '429', '500']],
+      [
+        '/resume-rag/conversations/{id}',
+        'get',
+        ['400', '403', '404', '429', '500'],
+      ],
+      [
+        '/resume-rag/conversations/{id}',
+        'delete',
+        ['400', '403', '404', '429', '500'],
+      ],
+    ] as const;
+    for (const [path, method, statuses] of required) {
+      expect(Object.keys(document.paths[path][method]!.responses)).toEqual(
+        expect.arrayContaining(statuses),
+      );
+    }
   });
 });

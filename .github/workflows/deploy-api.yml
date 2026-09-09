@@ -11,6 +11,8 @@ on:
       - "apps/web/resume-detail/**"
       - "docs/public-site-guide.md"
       - "docs/public-resume-experience.md"
+      - "scripts/check-api-health.mjs"
+      - "scripts/api-health-checker.mjs"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -72,6 +74,8 @@ jobs:
           rsync -a apps/api/dist "$RELEASE_DIR/apps/api/"
           cp apps/api/package.json "$RELEASE_DIR/apps/api/package.json"
           cp package.json pnpm-lock.yaml pnpm-workspace.yaml "$RELEASE_DIR/"
+          mkdir -p "$RELEASE_DIR/scripts"
+          cp scripts/check-api-health.mjs scripts/api-health-checker.mjs "$RELEASE_DIR/scripts/"
 
           # 웹에 공개된 자료만 배포물에 포함한다. 개인 이력 작업공간은 복사하지 않는다.
           mkdir -p "$RELEASE_DIR/apps/web/src/constants" "$RELEASE_DIR/apps/web/messages"
@@ -95,6 +99,7 @@ jobs:
             --exclude '.env' \
             --exclude '.next-release' \
             --exclude 'backups' \
+            --exclude 'logs' \
             "$RELEASE_DIR"/ \
             "$API_DEPLOY_DIR"/
 

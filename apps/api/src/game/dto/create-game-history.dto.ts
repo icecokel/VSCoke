@@ -9,6 +9,8 @@ const GAME_SCORE_DTO_MAX_PLAY_TIME_SECONDS = 86_400;
 
 export class CreateGameHistoryDto {
   @ApiProperty({
+    type: 'integer',
+    format: 'int32',
     description:
       '게임별 서버 정책으로 최종 검증되는 정수 점수. DTO는 전체 게임 타입의 제출 envelope만 검증한다.',
     example: 8500,
@@ -21,6 +23,9 @@ export class CreateGameHistoryDto {
   score: number;
 
   @ApiPropertyOptional({
+    type: 'integer',
+    format: 'int32',
+    nullable: true,
     description:
       '플레이 시간(초). 제출되면 게임별 서버 정책의 점수 대비 비정상 속도 검증에 사용된다.',
     example: 120,
@@ -31,7 +36,7 @@ export class CreateGameHistoryDto {
   @Min(GAME_SCORE_DTO_MIN_PLAY_TIME_SECONDS)
   @Max(GAME_SCORE_DTO_MAX_PLAY_TIME_SECONDS)
   @IsOptional()
-  playTime?: number;
+  playTime?: number | null;
 
   @ApiProperty({
     enum: GameType,

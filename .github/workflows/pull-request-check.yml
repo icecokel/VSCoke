@@ -117,6 +117,9 @@ jobs:
       - name: Run web type check
         run: pnpm type:check:web
 
+      - name: Verify deployment and test command contracts
+        run: pnpm test:tooling
+
       - name: Run web unit tests
         run: pnpm test:web
 
@@ -132,7 +135,7 @@ jobs:
       - name: Run focused web E2E tests
         env:
           NEXT_PUBLIC_API_URL: http://127.0.0.1:65535
-        run: pnpm --filter @vscoke/web e2e -- tests/e2e/i18n-integrity.spec.ts tests/e2e/hobby-games.spec.ts tests/e2e/keyboard-only.spec.ts tests/e2e/core-routes.spec.ts tests/e2e/not-found-recovery.spec.ts tests/e2e/server-route-fallback.spec.ts tests/e2e/resume-conversation-persistence.spec.ts tests/e2e/resume-rag-chat-public.spec.ts --project=chromium
+        run: pnpm --filter @vscoke/web e2e tests/e2e/i18n-integrity.spec.ts tests/e2e/hobby-games.spec.ts tests/e2e/keyboard-only.spec.ts tests/e2e/core-routes.spec.ts tests/e2e/not-found-recovery.spec.ts tests/e2e/server-route-fallback.spec.ts tests/e2e/resume-conversation-persistence.spec.ts tests/e2e/resume-rag-chat-public.spec.ts --project=chromium
 
       - name: Run integrated hobby web E2E tests
         run: pnpm e2e:integration

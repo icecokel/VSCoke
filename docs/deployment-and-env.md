@@ -39,6 +39,7 @@ Vercel 프로젝트는 monorepo 루트가 아니라 웹 앱 디렉터리를 루�
 - Preview 배포도 같은 Vercel 프로젝트에서 처리한다. Preview가 API를 호출해야 하면 `NEXT_PUBLIC_API_URL`을 preview 환경에도 설정한다.
 - Vercel 환경 변수 변경은 기존 배포에 소급 적용되지 않는다. 값을 바꾼 뒤에는 새 deployment를 생성한다.
 - 현재 Vercel Root Directory는 `apps/web`, Node.js Version은 `22.x` 기준으로 운영한다.
+- apex 도메인 연결을 설명한 구형 로컬 가이드를 현재 VSCoke의 Primary 설정으로 사용하지 않는다.
 - canonical URL은 `apps/web/src/lib/site-url.ts`의 `https://vscoke.icecoke.kr`를 기준으로 생성한다.
 - 이전 `vscoke.vercel.app` 요청은 같은 경로를 유지해 production 도메인으로 영구 리디렉션한다.
 - Google OAuth 승인 리디렉션 URI에는 `https://vscoke.icecoke.kr/api/auth/callback/google`을 등록한다.
@@ -70,9 +71,9 @@ host
 5. `pnpm --filter @vscoke/api build`로 API를 빌드한다.
 6. Ubuntu host의 `node`, `corepack`, `pm2`를 사용한다.
 7. `/home/icenux/projects/vscoke-api/.env`가 있는지 확인한다.
-8. `/home/icenux/projects/vscoke-api/.next-release`에 API dist/package, 루트 package/lock/workspace 및 공개 웹 이력 JSON/메시지/MDX를 staging한다. 개인 이력 작업공간은 포함하지 않는다.
+8. `/home/icenux/projects/vscoke-api/.next-release`에 API dist/package, 루트 package/lock/workspace, health 검사 스크립트와 공개 웹 이력 JSON/메시지/MDX를 staging한다. 개인 이력 작업공간은 포함하지 않는다.
 9. staging 경로에서 production 의존성을 설치한다.
-10. staging이 성공하면 release를 복사하고 공개 앱 이력을 import한다. 임베딩이 설정된 hybrid/vector 모드에서는 index도 갱신한 뒤 PM2로 API를 재기동한다.
+10. staging이 성공하면 `.env`, `.next-release`, `backups`, `logs`를 보존하며 release를 복사하고 공개 앱 이력을 import한다. 임베딩이 설정된 hybrid/vector 모드에서는 index도 갱신한 뒤 PM2로 API를 재기동한다.
 11. Ubuntu host 내부 `http://127.0.0.1:$PORT/health`와 공개 `API_HEALTH_URL`을 smoke test한다.
 
 운영 프로세스 기준:
@@ -168,6 +169,8 @@ Resume RAG와 메인 채팅 변수, 기본값과 데이터 정책은
 `apps/api/.env.example`이 기준이다.
 
 운영 주의:
+
+- `LOG_LEVEL`은 미설정·빈값·공백이면 기본 레벨을 사용한다. 유효한 값은 공백을 제거하고 소문자로 정규화하며 잘못된 레벨은 시작 시 실패한다.
 
 - `ENABLE_DEV_AUTH_BYPASS`와 `DEV_AUTH_TOKEN`은 운영 `.env`에 넣지 않는다.
 - `DB_SYNCHRONIZE=false`를 명시한다. 코드 기본값도 `false`이며, 운영에서 `DB_SYNCHRONIZE=true`면 API가 fail-fast 한다.

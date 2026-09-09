@@ -1,16 +1,22 @@
-import { Controller, Get, Param } from '@nestjs/common';
 import {
+  ApiInternalServerErrorResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
+import { ApiErrorResponseDto } from '../common/dto/api-error-response.dto';
+import { Controller, Get, Param } from '@nestjs/common';
 import { EspressoBeanResponseDto } from './dto/espresso-bean-response.dto';
 import { EspressoHistoryService } from './espresso-history.service';
 
 @ApiTags('EspressoHistory')
 @Controller('espresso-history')
+@ApiInternalServerErrorResponse({
+  description: '분류되지 않은 서버 오류',
+  type: ApiErrorResponseDto,
+})
 export class EspressoHistoryController {
   constructor(
     private readonly espressoHistoryService: EspressoHistoryService,
@@ -37,7 +43,10 @@ export class EspressoHistoryController {
     description: '에스프레소 원두 상세 조회 성공',
     type: EspressoBeanResponseDto,
   })
-  @ApiNotFoundResponse({ description: '해당 원두 기록이 존재하지 않음' })
+  @ApiNotFoundResponse({
+    type: ApiErrorResponseDto,
+    description: '해당 원두 기록이 존재하지 않음',
+  })
   async getBeanById(@Param('id') id: string): Promise<EspressoBeanResponseDto> {
     return this.espressoHistoryService.getBeanById(id);
   }

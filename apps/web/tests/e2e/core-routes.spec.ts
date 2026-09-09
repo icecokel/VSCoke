@@ -112,55 +112,31 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     ).toBeVisible();
   });
 
-  test("홈 CTA 6개 전체 경로 검증", async ({ page }) => {
+  test("홈 채팅·안내·탐색 CTA 경로 검증", async ({ page }) => {
     const { locale, messages } = await resolveLocaleAndMessages(page);
-    const localeRegex = escapeRegExp(locale);
     await visit(page, `/${locale}`);
-
-    const heroSection = page.locator('[data-testid="home-hero"]');
-    await expect(heroSection).toHaveCount(1);
-
-    const primaryCta = heroSection.getByRole("button", {
-      name: new RegExp(`^${escapeRegExp(messages.home.primaryCta)}$`),
-    });
-    const secondaryCta = heroSection.getByRole("button", {
-      name: new RegExp(`^${escapeRegExp(messages.home.secondaryCta)}$`),
-    });
-
-    await expect(primaryCta).toBeVisible();
-    await expect(secondaryCta).toBeVisible();
-
-    await primaryCta.click();
-    await expectPath(page, new RegExp(`^/${localeRegex}/readme$`));
-    await visit(page, `/${locale}`);
-
-    await secondaryCta.click();
-    await expectPath(page, new RegExp(`^/${localeRegex}/game$`));
-    await visit(page, `/${locale}`);
-
-    const quickLaunchGrid = page.locator(
-      "section div.grid.grid-cols-1.gap-3.sm\\:grid-cols-2.lg\\:grid-cols-3",
-    );
-    await expect(quickLaunchGrid).toHaveCount(1);
-    await expect(quickLaunchGrid.locator("button")).toHaveCount(3);
-
-    const quickCtaCases: Array<{ title: string; path: string }> = [
-      { title: messages.home.cards.readmeTitle, path: "/readme" },
-      { title: messages.home.cards.gameTitle, path: "/game" },
-      { title: messages.home.cards.blogDashboardTitle, path: "/blog/dashboard" },
+    const copy = messages.home.mainChat;
+    await expect(
+      page.getByRole("heading", { name: copy.workspaceTitle, exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: copy.title, exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: copy.guideTitle, exact: true })).toBeVisible();
+    const question = page.getByRole("textbox", { name: copy.placeholder });
+    await expect(question).toBeEnabled();
+    await expect(page.getByRole("button", { name: copy.send, exact: true })).toBeDisabled();
+    const navigation = page.getByRole("navigation", { name: copy.navigationLabel });
+    await expect(navigation.getByRole("button")).toHaveCount(3);
+    const destinations = [
+      { title: copy.navigation.readme, path: "/readme" },
+      { title: copy.navigation.game, path: "/game" },
+      { title: copy.navigation.blog, path: "/blog/dashboard" },
     ];
-
-    await expect(quickLaunchGrid.getByRole("heading")).toHaveText(
-      quickCtaCases.map(testCase => testCase.title),
-    );
-
-    for (const testCase of quickCtaCases) {
-      const cta = quickLaunchGrid
-        .getByRole("button", { name: new RegExp(escapeRegExp(testCase.title)) })
-        .first();
-      await expect(cta).toBeVisible();
-      await cta.click();
-      await expectPath(page, new RegExp(`^/${localeRegex}${escapeRegExp(testCase.path)}$`));
+    for (const destination of destinations) {
+      await navigation.getByRole("button", { name: destination.title, exact: true }).click();
+      await expectPath(
+        page,
+        new RegExp(`^/${escapeRegExp(locale)}${escapeRegExp(destination.path)}$`),
+      );
       await visit(page, `/${locale}`);
     }
   });

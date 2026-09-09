@@ -119,7 +119,10 @@ pm2 logs vscoke-api --lines 100
 `/home/icenux/projects/vscoke-api/logs/combined-YYYY-MM-DD.log`에서 같은 ID를 찾아
 요청의 method, route template, statusCode, durationMs를 확인한다. access log에는 query,
 body, IP, 인증 정보, 이메일을 기록하지 않는다. 파일 로그는 일별·20MB 단위로 압축 회전하며
-180일 동안 보관한다.
+180일 동안 보관한다. 배포의 `rsync --delete`는 `logs`를 보존한다. 이는 파일 회전 정책이며
+별도 백업·호스트 장애 복구를 보장하지 않는다. 이전 배포로 이미 유실된 로그는 이 설정으로
+복원되지 않는다. `LOG_LEVEL` 미설정·빈값은 운영 info/개발 debug를 사용하고 잘못된 값은
+시작을 실패시킨다. `pnpm test:tooling`에서 임시 릴리스로 보존 정책을 회귀 검증한다.
 
 환경 변수 변경 후 재시작:
 

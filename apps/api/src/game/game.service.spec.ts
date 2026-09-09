@@ -297,6 +297,13 @@ describe('GameService', () => {
   });
 
   describe('getUserRank', () => {
+    it('Top 10 밖의 이번 판도 null 대신 숫자 등수를 반환한다', async () => {
+      repository.query.mockResolvedValue([{ count: '25' }]);
+      expect(await service.getUserRank('user1', 100, GameType.SKY_DROP)).toBe(
+        26,
+      );
+    });
+
     it('should return user rank', async () => {
       repository.query.mockResolvedValue([{ count: '5' }]);
 

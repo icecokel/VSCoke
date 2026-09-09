@@ -13,7 +13,7 @@ export class GameHistoryResponseDto {
   })
   id: string;
 
-  @ApiProperty({ description: '점수', example: 100 })
+  @ApiProperty({ type: 'integer', description: '점수', example: 100 })
   score: number;
 
   @ApiProperty({
@@ -33,34 +33,31 @@ export class GameHistoryResponseDto {
   user: GameHistoryUserDto;
 
   @ApiPropertyOptional({
-    description: '현재 등수 (1부터 시작, 랭킹 외 시 null)',
+    description:
+      '이번 판보다 높은 사용자별 최고점 개수 + 1. 본인의 과거 최고점도 비교하며 Top 10 밖도 숫자. 공개 결과 조회에서는 생략',
     example: 1,
-    nullable: true,
-    type: Number,
+    type: 'integer',
   })
-  rank?: number | null;
+  rank?: number;
 
   @ApiPropertyOptional({
     description: '유저의 역대 최고 점수',
     example: 1200,
-    nullable: true,
-    type: Number,
+    type: 'integer',
   })
-  bestScore?: number | null;
+  bestScore?: number;
 
   @ApiPropertyOptional({
     description: '전체 기간 랭킹',
     example: 42,
-    nullable: true,
-    type: Number,
+    type: 'integer',
   })
-  allTimeRank?: number | null;
+  allTimeRank?: number;
 
   @ApiPropertyOptional({
     description: '금주 랭킹 (KST 월요일 0시 ~ 일요일 24시 기준)',
     example: 5,
-    nullable: true,
-    type: Number,
+    type: 'integer',
   })
-  weeklyRank?: number | null;
+  weeklyRank?: number;
 }

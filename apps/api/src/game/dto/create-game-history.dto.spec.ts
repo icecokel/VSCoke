@@ -8,6 +8,26 @@ const validateDto = (payload: Partial<CreateGameHistoryDto>) => {
 };
 
 describe('CreateGameHistoryDto', () => {
+  it.each([undefined, null])(
+    '플레이 시간 %p은 생략처럼 허용한다',
+    async (playTime) => {
+      expect(
+        await validateDto({
+          score: 100,
+          playTime,
+          gameType: GameType.SKY_DROP,
+        }),
+      ).toHaveLength(0);
+    },
+  );
+  it('플레이 시간 소수는 거절한다', async () => {
+    const errors = await validateDto({
+      score: 100,
+      playTime: 1.5,
+      gameType: GameType.SKY_DROP,
+    });
+    expect(errors[0]?.constraints).toHaveProperty('isInt');
+  });
   it('유효한 Sky Drop 점수 payload를 허용해야 함', async () => {
     const errors = await validateDto({
       score: 8500,

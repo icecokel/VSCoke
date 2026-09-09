@@ -2,9 +2,13 @@
 
 ## 1. 문서 목적
 
-이 문서는 VSCoke Web, API, PostgreSQL, 인증, 실시간 통신을 포함한 전체 사용자 기능의 E2E 검증 기준을 정의한다. 현재 Playwright와 API E2E에서 자동화된 범위뿐 아니라, 전체 기능 검증을 위해 추가해야 할 시나리오와 수동 검증 범위까지 하나의 기준으로 관리한다.
+이 문서는 VSCoke Web, API, PostgreSQL, 인증을 포함한 전체 사용자 기능의 E2E 검증 기준을 정의한다. 현재 Playwright와 API E2E에서 자동화된 범위뿐 아니라, 전체 기능 검증을 위해 추가해야 할 시나리오와 수동 검증 범위까지 하나의 기준으로 관리한다.
 
-이 문서의 "전체 기능"은 현재 저장소에 구현된 공개 화면, 사용자 상호작용, API 계약, 저장과 복구, 실시간 경쟁 흐름, 반응형·접근성·다국어·분석 기능을 의미한다. 가능한 모든 입력 조합을 뜻하지는 않으며, 각 기능의 정상 경로, 주요 경계값, 권한 경계, 복구 경로를 최소 한 번 이상 검증하는 것을 완료 기준으로 삼는다.
+이 문서의 "전체 기능"은 현재 저장소에 구현된 공개 화면, 사용자 상호작용, API 계약, 저장과 복구, 반응형·접근성·다국어·분석 기능을 의미한다. 가능한 모든 입력 조합을 뜻하지는 않으며, 각 기능의 정상 경로, 주요 경계값, 권한 경계, 복구 경로를 최소 한 번 이상 검증하는 것을 완료 기준으로 삼는다.
+
+확인 기준일: 2026-09-10. Poke Lounge는 외부 서비스이며 이 저장소의 방·Socket·경쟁전 API로
+간주하지 않는다. 이 문서의 A는 자동화 파일이 있다는 뜻이지 가장 최근 실행이 모두 통과했다는
+뜻이 아니다. 현재 실행 결과는 해당 검증 보고서를 따른다.
 
 기준 구현:
 
@@ -40,7 +44,7 @@
 | 환경       | 목적                            | Web                         | API                           | DB                      | 외부 서비스                  |
 | ---------- | ------------------------------- | --------------------------- | ----------------------------- | ----------------------- | ---------------------------- |
 | UI 격리    | 화면 상태와 오류 UI 검증        | 로컬 Next.js                | Playwright route interception | 없음                    | 없음                         |
-| 로컬 통합  | 실제 요청·저장·Socket 검증      | 로컬 Next.js                | 로컬 NestJS                   | 격리 PostgreSQL `_test` | Google 인증은 테스트 토큰    |
+| 로컬 통합  | 실제 요청·저장·복원 검증        | 로컬 Next.js                | 로컬 NestJS                   | 격리 PostgreSQL `_test` | Google 인증은 테스트 토큰    |
 | 운영 smoke | 배포·도메인·CORS·정적 에셋 확인 | `https://vscoke.icecoke.kr` | `https://api.icecoke.kr`      | 운영 DB                 | 실제 OAuth/Cloudflare/Vercel |
 
 UI 격리 테스트의 route interception은 오류 상태를 재현하기 위한 테스트 장치다. 실제 API 통합 성공을 대신하지 않는다. 전체 기능 완료 판정에는 로컬 통합 또는 운영 smoke 결과가 함께 있어야 한다.
@@ -65,7 +69,6 @@ UI 격리 테스트의 route interception은 오류 상태를 재현하기 위�
 | `USER_B`  | `USER_A`와 다른 Google 계정                     | 계정 전환 회귀         |
 | `USER_C`  | 선택적 세 번째 계정 또는 익명 참가자            | 계정 격리 회귀         |
 | `ANON`    | 쿠키·스토리지가 비어 있는 context               | 공개 화면, 익명 게임   |
-| `MP1~MP7` | 로그인하지 않은 독립 browser context 7개        | 공개 멀티플레이 정원   |
 | `DB_BASE` | migration 완료, Wordle 단어·레시피·원두 fixture | API 정상 경로          |
 | `DB_GAME` | ranking과 공유 결과 fixture                     | 점수·랭킹·공유         |
 
@@ -113,63 +116,66 @@ API endpoint 목록은 [VSCoke API README](../apps/api/README.md#주요-모듈)�
 
 ## 5. 전역 셸·탐색·다국어
 
-| ID         | 우선순위/상태 | 사전조건             | 절차                                                              | 기대 결과                                                                |
-| ---------- | ------------- | -------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `NAV-001`  | P0/A          | `ANON`               | `/ko-KR` 직접 진입                                                | 홈이 200으로 렌더되고 메뉴바·사이드바·히스토리 영역이 초기화된다.        |
-| `NAV-002`  | P0/A          | 홈                   | Hero의 README와 Game CTA를 각각 클릭                              | locale을 유지한 `/readme`, `/game` 탭이 열리고 활성 탭과 URL이 일치한다. |
-| `NAV-003`  | P0/A          | 홈                   | Quick Launch의 README, Blog, Dashboard, Game 카드를 순서대로 클릭 | 모든 목적지가 올바른 탭 제목과 경로로 열린다.                            |
-| `NAV-004`  | P0/A          | 셸 표시              | 메뉴바의 모든 CTA 실행                                            | 각 CTA가 중복 탭을 만들지 않고 대응 화면으로 이동한다.                   |
-| `NAV-005`  | P0/A          | 셸 표시              | 사이드바 트리를 펼치고 모든 공개 항목 실행                        | 트리 선택, URL, 활성 히스토리 탭이 일치한다.                             |
-| `NAV-006`  | P0/A          | 두 개 이상 탭        | 탭 전환, 중간 탭 닫기, 활성 탭 닫기                               | 마지막 사용 가능한 탭이 규칙대로 활성화되고 URL이 갱신된다.              |
-| `NAV-007`  | P0/A          | 탭 생성 완료         | 새로고침 후 브라우저 재진입                                       | history/localStorage 상태와 활성 탭이 복원된다.                          |
-| `NAV-008`  | P0/A          | `ANON`               | 존재하지 않는 locale 내부 경로 진입                               | 404 화면 또는 유효 탭으로 복구되고 잘못된 탭은 history에서 제거된다.     |
-| `NAV-009`  | P0/A          | 상세 화면            | 브라우저 뒤로/앞으로 실행                                         | URL, 화면, 활성 탭이 browser history와 일치한다.                         |
-| `NAV-010`  | P0/A          | 검색 패널            | 화면명, 블로그 제목, 원두, 레시피 검색                            | 결과가 분류되어 표시되고 선택 시 정확한 상세 화면으로 이동한다.          |
-| `NAV-011`  | P1/N          | 검색 패널            | 공백, 특수문자, 존재하지 않는 검색어 입력                         | 오류 없이 빈 상태를 표시하고 이전 결과가 남지 않는다.                    |
-| `I18N-001` | P0/A          | 메시지 파일          | ko-KR, en-US, ja-JP key 구조 비교                                 | key, 배열 구조, 필수 이력 문구가 모든 locale에서 일치한다.               |
-| `I18N-002` | P0/A          | `/ko-KR`             | locale을 en-US, ja-JP로 변경                                      | 같은 논리 경로에서 텍스트와 URL locale만 변경된다.                       |
-| `I18N-003` | P0/A          | locale 변경 완료     | 새로고침 후 `/` 진입                                              | locale cookie가 유지되고 `/`가 저장된 locale로 redirect된다.             |
-| `I18N-004` | P1/N          | 각 locale            | 전체 주요 화면에서 제목, 버튼, 빈 상태 확인                       | 번역 key가 그대로 노출되지 않고 레이아웃 overflow가 없다.                |
-| `LINK-001` | P0/A          | `ANON`               | 블로그 상세, 이력서 상세, 원두 상세, 각 게임을 URL로 직접 진입    | 셸과 상세 콘텐츠가 함께 렌더되고 hydration 오류가 없다.                  |
-| `LINK-002` | P1/A          | Web Share API 미지원 | 공유 링크 버튼 실행                                               | clipboard fallback이 동작하고 성공 또는 실패 안내가 명확하다.            |
-| `LINK-003` | P1/N          | QR 지원 화면         | QR dialog 열기, 닫기, 재열기                                      | 현재 canonical URL의 QR이 표시되고 focus가 dialog 안에서 관리된다.       |
+| ID         | 우선순위/상태 | 사전조건             | 절차                                                             | 기대 결과                                                                |
+| ---------- | ------------- | -------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `NAV-001`  | P0/A          | `ANON`               | `/ko-KR` 직접 진입                                               | 홈이 200으로 렌더되고 메뉴바·사이드바·히스토리 영역이 초기화된다.        |
+| `NAV-002`  | P0/A          | 홈                   | 메인 채팅 안내의 README와 Game CTA를 각각 클릭                   | locale을 유지한 `/readme`, `/game` 탭이 열리고 활성 탭과 URL이 일치한다. |
+| `NAV-003`  | P0/A          | 홈                   | 메인 채팅 안내의 README, Game Center, Blog Dashboard 버튼을 선택 | 모든 목적지가 올바른 탭 제목과 경로로 열린다.                            |
+| `NAV-004`  | P0/A          | 셸 표시              | 메뉴바의 모든 CTA 실행                                           | 각 CTA가 중복 탭을 만들지 않고 대응 화면으로 이동한다.                   |
+| `NAV-005`  | P0/A          | 셸 표시              | 사이드바 트리를 펼치고 모든 공개 항목 실행                       | 트리 선택, URL, 활성 히스토리 탭이 일치한다.                             |
+| `NAV-006`  | P0/A          | 두 개 이상 탭        | 탭 전환, 중간 탭 닫기, 활성 탭 닫기                              | 마지막 사용 가능한 탭이 규칙대로 활성화되고 URL이 갱신된다.              |
+| `NAV-007`  | P0/A          | 탭 생성 완료         | 새로고침 후 브라우저 재진입                                      | history/localStorage 상태와 활성 탭이 복원된다.                          |
+| `NAV-008`  | P0/A          | `ANON`               | 존재하지 않는 locale 내부 경로 진입                              | 404 화면 또는 유효 탭으로 복구되고 잘못된 탭은 history에서 제거된다.     |
+| `NAV-009`  | P0/A          | 상세 화면            | 브라우저 뒤로/앞으로 실행                                        | URL, 화면, 활성 탭이 browser history와 일치한다.                         |
+| `NAV-010`  | P0/A          | 검색 패널            | 화면명, 블로그 제목, 원두, 레시피 검색                           | 결과가 분류되어 표시되고 선택 시 정확한 상세 화면으로 이동한다.          |
+| `NAV-011`  | P1/N          | 검색 패널            | 공백, 특수문자, 존재하지 않는 검색어 입력                        | 오류 없이 빈 상태를 표시하고 이전 결과가 남지 않는다.                    |
+| `I18N-001` | P0/A          | 메시지 파일          | ko-KR, en-US, ja-JP key 구조 비교                                | key, 배열 구조, 필수 이력 문구가 모든 locale에서 일치한다.               |
+| `I18N-002` | P0/A          | `/ko-KR`             | locale을 en-US, ja-JP로 변경                                     | 같은 논리 경로에서 텍스트와 URL locale만 변경된다.                       |
+| `I18N-003` | P0/A          | locale 변경 완료     | 새로고침 후 `/` 진입                                             | locale cookie가 유지되고 `/`가 저장된 locale로 redirect된다.             |
+| `I18N-004` | P1/N          | 각 locale            | 전체 주요 화면에서 제목, 버튼, 빈 상태 확인                      | 번역 key가 그대로 노출되지 않고 레이아웃 overflow가 없다.                |
+| `LINK-001` | P0/A          | `ANON`               | 블로그 상세, 이력서 상세, 원두 상세, 각 게임을 URL로 직접 진입   | 셸과 상세 콘텐츠가 함께 렌더되고 hydration 오류가 없다.                  |
+| `LINK-002` | P1/A          | Web Share API 미지원 | 공유 링크 버튼 실행                                              | clipboard fallback이 동작하고 성공 또는 실패 안내가 명확하다.            |
+| `LINK-003` | P1/N          | QR 지원 화면         | QR dialog 열기, 닫기, 재열기                                     | 현재 canonical URL의 QR이 표시되고 focus가 dialog 안에서 관리된다.       |
 
 현재 자동화 매핑: `core-routes.spec.ts`, `history-tabs.spec.ts`, `state-persistence.spec.ts`, `not-found-recovery.spec.ts`, `deep-link.spec.ts`, `i18n-integrity.spec.ts`, `capability-fallback.spec.ts`.
 
 ## 6. 홈·README·이력서·패키지
 
-| ID            | 우선순위/상태 | 사전조건         | 절차                                   | 기대 결과                                                         |
-| ------------- | ------------- | ---------------- | -------------------------------------- | ----------------------------------------------------------------- |
-| `HOME-001`    | P0/A          | 홈               | Hero, 설명, 4개 Quick Launch 카드 확인 | 핵심 텍스트와 CTA가 표시되고 카드가 겹치거나 잘리지 않는다.       |
-| `HOME-002`    | P1/N          | 네트워크 관찰    | CTA hover/focus 후 클릭                | 목적지 prefetch가 발생하고 클릭 navigation은 한 번만 실행된다.    |
-| `README-001`  | P0/A          | `/readme`        | 프로필, 경력, 기술, 링크 영역 스크롤   | 모든 주요 섹션이 렌더되고 외부 링크 속성이 안전하다.              |
-| `README-002`  | P0/A          | README           | 이력서 CTA 선택                        | 선택한 slug의 `/resume/:slug`로 이동하고 정확한 문서가 표시된다.  |
-| `README-003`  | P1/N          | README           | 블로그·프로젝트·연락 링크 실행         | 내부 링크는 탭 셸을 사용하고 외부 링크는 새 context에서 열린다.   |
-| `RESUME-001`  | P0/A          | 유효 slug        | 이력서 상세 직접 진입                  | 제목, 회사/프로젝트, 기간, 본문이 slug와 일치한다.                |
-| `RESUME-002`  | P1/N          | 잘못된 slug      | `/resume/not-existing` 진입            | 서버 500 없이 404 또는 안전한 복구 화면을 표시한다.               |
-| `RESUME-003`  | P1/N          | 상세 화면        | 공유 링크·QR, 뒤로 가기 실행           | 공유 URL이 현재 slug를 포함하고 이전 탭으로 복귀한다.             |
-| `PACKAGE-001` | P0/A          | `/package`       | package JSON 트리 확인                 | object, array, string, number가 유효한 구조로 표시된다.           |
-| `PACKAGE-002` | P2/A          | Desktop snapshot | package 화면 visual 비교               | 긴 dependency 이름이 컨테이너를 깨지 않고 기준 이미지와 일치한다. |
+| ID            | 우선순위/상태 | 사전조건         | 절차                                       | 기대 결과                                                           |
+| ------------- | ------------- | ---------------- | ------------------------------------------ | ------------------------------------------------------------------- |
+| `HOME-001`    | P0/A          | 홈               | MainChat 제목·안내·입력·탐색 버튼 3개 확인 | 현재 메시지의 제목·안내와 CTA가 표시된다. 빈 질문은 전송할 수 없다. |
+| `HOME-002`    | P1/N          | 네트워크 관찰    | CTA hover/focus 후 클릭                    | 목적지 prefetch가 발생하고 클릭 navigation은 한 번만 실행된다.      |
+| `README-001`  | P0/A          | `/readme`        | 프로필, 경력, 기술, 링크 영역 스크롤       | 모든 주요 섹션이 렌더되고 외부 링크 속성이 안전하다.                |
+| `README-002`  | P0/A          | README           | 이력서 CTA 선택                            | 선택한 slug의 `/resume/:slug`로 이동하고 정확한 문서가 표시된다.    |
+| `README-003`  | P1/N          | README           | 블로그·프로젝트·연락 링크 실행             | 내부 링크는 탭 셸을 사용하고 외부 링크는 새 context에서 열린다.     |
+| `RESUME-001`  | P0/A          | 유효 slug        | 이력서 상세 직접 진입                      | 제목, 회사/프로젝트, 기간, 본문이 slug와 일치한다.                  |
+| `RESUME-002`  | P1/N          | 잘못된 slug      | `/resume/not-existing` 진입                | 서버 500 없이 404 또는 안전한 복구 화면을 표시한다.                 |
+| `RESUME-003`  | P1/N          | 상세 화면        | 공유 링크·QR, 뒤로 가기 실행               | 공유 URL이 현재 slug를 포함하고 이전 탭으로 복귀한다.               |
+| `PACKAGE-001` | P0/A          | `/package`       | package JSON 트리 확인                     | object, array, string, number가 유효한 구조로 표시된다.             |
+| `PACKAGE-002` | P2/A          | Desktop snapshot | package 화면 visual 비교                   | 긴 dependency 이름이 컨테이너를 깨지 않고 기준 이미지와 일치한다.   |
 
 현재 자동화 매핑: `core-routes.spec.ts`, `deep-link.spec.ts`, `visual-regression.spec.ts`.
 
 ## 7. Resume RAG 공개 질문
 
-| ID        | 우선순위/상태 | 사전조건            | 절차                               | 기대 결과                                                                                 |
-| --------- | ------------- | ------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------- |
-| `RAG-001` | P0/A          | 비로그인 README     | 질문 입력 후 답변 보기 선택        | 질문이 임시 저장되고 `/resume/question`에서 자동 제출 또는 준비 상태로 표시된다.          |
-| `RAG-002` | P0/A          | 비로그인 질문 화면  | 새 질문 입력·전송                  | Authorization 없이 공개 API를 호출하고 로딩 후 답변을 표시한다.                           |
-| `RAG-003` | P1/A          | 성공 fixture        | source가 있는 답변 수신            | 답변, topic, source 제목, 유사도, source link가 표시된다.                                 |
-| `RAG-004` | P1/A          | 낮은 신뢰 fixture   | 질문 전송                          | 낮은 신뢰 안내와 빈 근거 상태가 오해 없이 표시된다.                                       |
-| `RAG-005` | P1/A          | API 429             | 질문 전송 후 재시도                | 같은 질문이 보존되고 재시도 버튼으로 다시 전송된다.                                       |
-| `RAG-006` | P1/A          | origin 차단 응답    | 질문 전송                          | origin 안내를 표시하고 무의미한 재시도 버튼은 제공하지 않는다.                            |
-| `RAG-007` | P1/A          | 계약 불일치 응답    | 질문 전송 후 재시도                | 응답 형식 오류를 구분해 안내하고 재시도가 가능하다.                                       |
-| `RAG-008` | P1/A          | 깨진 chatId/storage | 질문 화면 직접 진입                | 예외 없이 빈 composer로 fallback한다.                                                     |
-| `RAG-009` | P1/A          | 질문 화면           | response header 확인               | API origin이 CSP `connect-src`에 허용되고 불필요한 wildcard가 없다.                       |
-| `RAG-010` | P1/N          | 로컬 API+DB         | 실제 저장 문서에 대한 질문         | 답변과 source가 DB 검색 결과에 기반하고 source 제목·내용·유사도가 실제 record와 대응한다. |
-| `RAG-011` | P2/N          | 연속 질문           | 빈 질문, 최대 길이, 빠른 중복 제출 | validation이 동작하고 요청이 중복 생성되지 않는다.                                        |
+| ID        | 우선순위/상태 | 사전조건            | 절차                               | 기대 결과                                                                                                             |
+| --------- | ------------- | ------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `RAG-001` | P0/A          | 비로그인 README     | 질문 입력 후 답변 보기 선택        | README에서 질문을 완료한 뒤 chatId로 이동한다. 준비된 스냅샷·서버 대화를 복원하며 같은 질문을 자동 재전송하지 않는다. |
+| `RAG-002` | P0/A          | 비로그인 질문 화면  | 새 질문 입력·전송                  | Google 로그인 없이 대화를 생성하고 접근키·대화 ID·요청 ID로 질문을 보내 답변을 표시한다.                              |
+| `RAG-003` | P1/A          | 성공 fixture        | source가 있는 답변 수신            | 답변, 근거 상태·제목·검색 유사도를 표시하며 publicUrl이 있을 때만 링크를 제공한다. 유사도는 답변 정확도가 아니다.     |
+| `RAG-004` | P1/A          | 낮은 신뢰 fixture   | 질문 전송                          | 낮은 신뢰 안내와 빈 근거 상태가 오해 없이 표시된다.                                                                   |
+| `RAG-005` | P1/A          | API 429             | 질문 전송 후 재시도                | 같은 질문이 보존되고 재시도 버튼으로 다시 전송된다.                                                                   |
+| `RAG-006` | P1/A          | origin 차단 응답    | 질문 전송                          | origin 안내를 표시하고 무의미한 재시도 버튼은 제공하지 않는다.                                                        |
+| `RAG-007` | P1/A          | 계약 불일치 응답    | 질문 전송 후 재시도                | 응답 형식 오류를 구분해 안내하고 재시도가 가능하다.                                                                   |
+| `RAG-008` | P1/A          | 깨진 chatId/storage | 질문 화면 직접 진입                | 깨진 스냅샷을 무시한다. 유효한 서버 대화는 복원하고, 없으면 초기 composer를 표시한다.                                 |
+| `RAG-009` | P1/A          | 질문 화면           | response header 확인               | API origin이 CSP `connect-src`에 허용되고 불필요한 wildcard가 없다.                                                   |
+| `RAG-010` | P1/N          | 로컬 API+DB         | 실제 저장 문서에 대한 질문         | 답변과 source가 DB 검색 결과에 기반하고 source 제목·내용·유사도가 실제 record와 대응한다.                             |
+| `RAG-011` | P2/N          | 연속 질문           | 빈 질문, 최대 길이, 빠른 중복 제출 | validation이 동작하고 요청이 중복 생성되지 않는다.                                                                    |
 
-현재 자동화 매핑: `resume-rag-chat-public.spec.ts`. `RAG-010`은 실 API·DB 통합 suite로 추가해야 한다.
+현재 자동화 매핑: `resume-rag-chat-public.spec.ts`, `resume-conversation-persistence.spec.ts`.
+대화 저장의 실제 DB 제약은 `resume-conversation.integration-spec.ts`, 실모델 기본 흐름은
+`resume-conversation-production-smoke.spec.ts`로 분리한다. `RAG-010`의 모든 검색 데이터
+대조가 저장 테스트만으로 완료된 것은 아니다. 상세 기준은 [이력 채팅 시나리오](./resume-rag-chat-test-scenarios.md#11-저장-대화-회귀와-검증-경계)를 따른다.
 
 ## 8. 블로그
 
@@ -221,17 +227,17 @@ API endpoint 목록은 [VSCoke API README](../apps/api/README.md#주요-모듈)�
 
 ## 11. 게임 센터 공통
 
-| ID         | 우선순위/상태 | 사전조건               | 절차                           | 기대 결과                                                                        |
-| ---------- | ------------- | ---------------------- | ------------------------------ | -------------------------------------------------------------------------------- |
-| `GAME-001` | P0/A          | `/game`                | 2개 게임 카드 확인             | Sky Drop, Wordle 카드와 설명이 표시된다.                                         |
-| `GAME-002` | P0/A          | Game Center            | 각 카드 클릭 및 직접 URL 진입  | 대응 게임 화면이 locale을 유지해 열린다.                                         |
-| `GAME-003` | P1/N          | Sky Drop 결과 화면     | 점수 0, 양수, 최고점 상태 확인 | 제출·공유·메달·최고점 UI가 조건에 맞게 표시된다.                                 |
-| `GAME-004` | P0/P          | 비로그인 Sky Drop 결과 | 점수 제출 실행                 | 로그인 흐름이 시작되고 pending score가 보존된다.                                 |
-| `GAME-005` | P0/P          | 로그인 Sky Drop 결과   | 점수 제출 후 재클릭            | API 요청은 한 번만 성공하고 제출 완료 상태가 유지된다.                           |
-| `GAME-006` | P1/P          | 저장된 Sky Drop 결과   | 공유 실행                      | result ID를 포함한 share URL이 생성되고 clipboard/Web Share fallback이 동작한다. |
-| `GAME-007` | P1/A          | ranking API 실패       | 게임 ready 화면 진입           | 화면이 깨지지 않고 빈 ranking 상태를 표시한다.                                   |
-| `GAME-008` | P1/N          | 저장된 ranking         | 게임 ready 화면 진입           | gameType별 상위 순위와 본인 최고점이 정확하다.                                   |
-| `GAME-009` | P1/N          | pending score storage  | 결과 후 reload/login           | 대기 점수가 복원되고 중복 제출 없이 이어진다.                                    |
+| ID         | 우선순위/상태 | 사전조건               | 절차                                | 기대 결과                                                                        |
+| ---------- | ------------- | ---------------------- | ----------------------------------- | -------------------------------------------------------------------------------- |
+| `GAME-001` | P0/A          | `/game`                | 내부 게임 2개와 외부 게임 링크 확인 | Sky Drop·Wordle 버튼과 Poke Lounge 외부 링크가 표시된다.                         |
+| `GAME-002` | P0/A          | Game Center            | 각 카드 클릭 및 직접 URL 진입       | 대응 게임 화면이 locale을 유지해 열린다.                                         |
+| `GAME-003` | P1/N          | Sky Drop 결과 화면     | 점수 0, 양수, 최고점 상태 확인      | 제출·공유·메달·최고점 UI가 조건에 맞게 표시된다.                                 |
+| `GAME-004` | P0/P          | 비로그인 Sky Drop 결과 | 점수 제출 실행                      | 로그인 흐름이 시작되고 pending score가 보존된다.                                 |
+| `GAME-005` | P0/P          | 로그인 Sky Drop 결과   | 점수 제출 후 재클릭                 | API 요청은 한 번만 성공하고 제출 완료 상태가 유지된다.                           |
+| `GAME-006` | P1/P          | 저장된 Sky Drop 결과   | 공유 실행                           | result ID를 포함한 share URL이 생성되고 clipboard/Web Share fallback이 동작한다. |
+| `GAME-007` | P1/A          | ranking API 실패       | 게임 ready 화면 진입                | 화면이 깨지지 않고 빈 ranking 상태를 표시한다.                                   |
+| `GAME-008` | P1/N          | 저장된 ranking         | 게임 ready 화면 진입                | gameType별 상위 순위와 본인 최고점이 정확하다.                                   |
+| `GAME-009` | P1/N          | pending score storage  | 결과 후 reload/login                | 대기 점수가 복원되고 중복 제출 없이 이어진다.                                    |
 
 현재 자동화 매핑: `hobby-games.spec.ts`, `core-routes.spec.ts`, `error-fallback.spec.ts`. 공통 결과 화면의 실제 로그인·제출·공유는 신규 통합 자동화가 필요하다.
 
@@ -330,57 +336,63 @@ API endpoint 목록은 [VSCoke API README](../apps/api/README.md#주요-모듈)�
 
 ## 21. API·PostgreSQL·Socket 통합
 
-| ID        | 우선순위/상태 | 사전조건             | 절차                                    | 기대 결과                                                                                      |
-| --------- | ------------- | -------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `API-001` | P0/A          | API 실행             | `GET /`, `GET /health`                  | 200과 서비스 상태를 반환한다.                                                                  |
-| `API-002` | P0/A          | API 실행             | `GET /api-json`                         | deploy-critical endpoint와 enum이 있고 cache되지 않는다.                                       |
-| `API-003` | P0/A          | source clean         | OpenAPI와 Web type 생성                 | 생성 후 tracked diff가 없다.                                                                   |
-| `API-004` | P0/N          | recipe fixture       | 목록·상세·없는 ID 조회                  | 200 목록/상세와 404가 계약대로 반환된다.                                                       |
-| `API-005` | P0/N          | espresso fixture     | bean 목록·상세·없는 ID 조회             | 응답 projection과 404가 계약대로 반환된다.                                                     |
-| `API-006` | P0/A          | Wordle DB            | valid/invalid/짧음/김/비영문 check      | 200 또는 400 validation이 계약대로 동작한다.                                                   |
-| `API-007` | P0/N          | Wordle DB            | `GET /wordle/word` 반복                 | 준비된 단어 DB에서 { word }를 반환한다. word는 정답 문자열이며 추가 DB 필드는 반환하지 않는다. |
-| `API-008` | P0/N          | 인증 계정            | game state PUT→GET                      | versioned snapshot이 계정별로 round-trip된다.                                                  |
-| `API-009` | P0/N          | 다른 계정            | `USER_A` state를 `USER_B`로 조회        | 다른 사용자의 state가 반환되지 않는다.                                                         |
-| `API-010` | P0/A          | room API             | 모든 mutation header 누락/오염          | command ID와 revision validation이 요청을 거부한다.                                            |
-| `API-011` | P0/A          | room API+DB          | create/join/ready/snapshot/result/leave | revision·expiry가 증가하고 session은 public 응답에서 redaction된다.                            |
-| `API-012` | P0/A          | 같은 command         | 요청 replay와 payload 변경 replay       | 동일 요청은 같은 receipt, 변경 요청은 conflict다.                                              |
-| `API-013` | P1/A          | 두 writer            | 같은 revision에 동시 mutation           | 하나만 commit되고 다른 요청은 conflict snapshot을 받는다.                                      |
-| `API-014` | P1/A          | room expiry          | waiting/completed/closed 시간 진행      | strict expiry room만 purge되고 receipt가 cascade 삭제된다.                                     |
-| `API-015` | P0/A          | Socket 두 client     | 권한 session으로 subscribe              | 한 committed revision을 두 client가 받고 잘못된 session은 거부된다.                            |
-| `API-016` | P0/A          | 경쟁 match           | seat bind/action/terminal               | assignment, receipt, history가 transaction 단위로 저장된다.                                    |
-| `API-017` | P1/A          | API 재시작           | room/match/action 재조회                | 메모리 상태에 의존하지 않고 DB에서 복원된다.                                                   |
-| `API-018` | P0/A          | fresh DB             | migration chain 실행                    | canonical schema, enum, index, extension이 생성된다.                                           |
-| `API-019` | P1/A          | partial/mismatch DB  | baseline migration                      | 자동 수리나 데이터 삭제 없이 명시적으로 실패한다.                                              |
-| `API-020` | P1/N          | RAG origin allowlist | 허용/비허용 Origin으로 chat             | 허용 origin만 성공하고 비허용 origin은 명확히 거부된다.                                        |
+| ID        | 우선순위/상태 | 사전조건                      | 절차                               | 기대 결과                                                                                                            |
+| --------- | ------------- | ----------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `API-001` | P0/A          | API 실행                      | `GET /`, `GET /health`             | 200과 서비스 상태를 반환한다.                                                                                        |
+| `API-002` | P0/A          | API 실행                      | `GET /api-json`                    | deploy-critical endpoint와 enum이 있고 cache되지 않는다.                                                             |
+| `API-003` | P0/A          | source clean                  | OpenAPI와 Web type 생성            | 생성 후 tracked diff가 없다.                                                                                         |
+| `API-004` | P0/N          | recipe fixture                | 목록·상세·없는 ID 조회             | 200 목록/상세와 404가 계약대로 반환된다.                                                                             |
+| `API-005` | P0/N          | espresso fixture              | bean 목록·상세·없는 ID 조회        | 응답 projection과 404가 계약대로 반환된다.                                                                           |
+| `API-006` | P0/A          | 서비스 mock                   | valid/invalid/짧음/김/비영문 check | HTTP 200/400과 요청 검증을 확인한다. 실제 단어 DB 검증과 구분한다.                                                   |
+| `API-007` | P0/N          | Wordle DB                     | `GET /wordle/word` 반복            | 준비된 단어 DB에서 { word }를 반환한다. word는 정답 문자열이며 추가 DB 필드는 반환하지 않는다.                       |
+| `API-018` | P0/A          | fresh DB                      | migration chain 실행               | canonical schema, enum, index, extension이 생성된다.                                                                 |
+| `API-019` | P1/A          | partial/mismatch DB           | baseline migration                 | 자동 수리나 데이터 삭제 없이 명시적으로 실패한다.                                                                    |
+| `API-020` | P1/A          | 서비스 mock·실제 Origin guard | 허용/비허용 Origin으로 chat        | main-chat.e2e-spec.ts와 resume-rag-chat.e2e-spec.ts에서 요청 거부를 검증한다. 실모델·운영 allowlist 평가와는 별개다. |
 
-현재 자동화 매핑: `apps/api/test` 전체와 API unit specs. Recipe, Espresso, game state, RAG의 실제 HTTP E2E는 보강해야 한다.
+현재 자동화 매핑: `apps/api/test`와 API unit specs. 대화 저장·보존·동시성은 실제 PostgreSQL,
+채팅·Wordle HTTP는 서비스 mock, 취미 전체 연계는 별도 Web/API 통합으로 범위를 구분한다.
+Recipe/Espresso의 독립적인 HTTP 경계 검증은 보강 대상이다.
+
+폐기된 ID는 재사용하지 않는다: `API-008`, `API-009`(계정 game state), `API-010`~`API-017`
+(방 명령·receipt·revision·Socket·경쟁전·복원), `SEC-003`(room projection parser).
+현재 저장소에 대응하는 API·검증이 없으므로 A/N 목록 및 신규 구현 계획에서 제외한다.
+외부 Poke Lounge 기능의 구현·자동화 상태는 해당 저장소에서 별도로 확인해야 한다.
 
 ## 22. 오류 복구·보안·비기능
 
-| ID          | 우선순위/상태 | 사전조건             | 절차                                              | 기대 결과                                                             |
-| ----------- | ------------- | -------------------- | ------------------------------------------------- | --------------------------------------------------------------------- |
-| `ERR-001`   | P0/A          | API read             | 404, 530, network failure, 500 각각 주입          | recoverable 오류만 fallback하고 500은 숨기지 않는다.                  |
-| `ERR-002`   | P1/N          | 느린 네트워크        | 주요 목록/API를 지연                              | loading 상태가 보이고 버튼 중복 제출이 막힌다.                        |
-| `ERR-003`   | P1/N          | offline              | 게임 중 네트워크 전환                             | 로컬 플레이는 유지되고 원격 기능은 재시도 가능한 안내를 표시한다.     |
-| `SEC-001`   | P0/N          | 운영/로컬            | security header 검사                              | CSP, frame, content type, referrer 정책이 route 성격에 맞다.          |
-| `SEC-002`   | P0/N          | 보호 요청            | token/session/room credential을 URL·DOM·로그 검사 | credential이 public snapshot, query, console에 노출되지 않는다.       |
-| `SEC-003`   | P1/A          | 악성 room projection | prototype key/oversized payload 수신              | parser가 적용 전에 거부한다.                                          |
-| `A11Y-001`  | P0/A          | Wordle               | Tab, Shift+Tab, Enter, Space만 사용               | 핵심 입력·제출·restart가 가능하고 focus가 보인다.                     |
-| `A11Y-002`  | P1/N          | 전체 주요 화면       | axe 기반 WCAG 검사                                | critical/serious violation이 없다.                                    |
-| `A11Y-003`  | P1/N          | dialog/panel         | 키보드로 열기·닫기                                | focus trap, Escape, trigger 복귀가 동작한다.                          |
-| `A11Y-004`  | P1/N          | 결과·toast·loading   | screen reader semantics 검사                      | 상태 변경이 적절한 live region과 label로 전달된다.                    |
-| `MOB-001`   | P0/A          | 360/390/430          | 전체 주요 route 진입                              | 메뉴 trigger 규칙과 viewport overflow가 기준에 맞다.                  |
-| `MOB-002`   | P1/N          | mobile keyboard      | 검색·RAG 입력                                     | virtual keyboard로 CTA가 가려지지 않고 scroll로 접근 가능하다.        |
-| `VIS-001`   | P1/A          | 고정 viewport/font   | 홈, Blog, Dashboard, Game, Package screenshot     | 승인된 baseline과 의미 있는 차이가 없다.                              |
-| `VIS-002`   | P1/A          | 주요 route           | 초기 load CLS 측정                                | 문서화된 기준 이하이고 이미지·canvas가 뒤늦게 레이아웃을 밀지 않는다. |
-| `PERF-001`  | P2/N          | production build     | 주요 route navigation 측정                        | 심각한 long task, 무한 request, 메모리 증가가 없다.                   |
-| `PERF-002`  | P2/N          | 게임 반복            | scene 진입/종료 10회                              | canvas, audio, key/socket listener 개수가 누적되지 않는다.            |
-| `AN-001`    | P1/A          | GA env 있음          | 페이지 진입                                       | GA script가 한 번 로드되고 설정이 없으면 로드되지 않는다.             |
-| `AN-002`    | P1/A          | GTM env 있음         | 페이지 진입                                       | GTM script와 noscript fallback이 표시되고 중복 삽입되지 않는다.       |
-| `META-001`  | P2/N          | 운영 URL             | sitemap, robots, canonical, OG image 조회         | 공개 route와 metadata가 운영 URL 기준으로 유효하다.                   |
-| `ASSET-001` | P0/N          | 운영 배포            | 주요 image/audio/font 요청 관찰                   | 404, MIME 오류, mixed content가 없다.                                 |
+| ID          | 우선순위/상태 | 사전조건           | 절차                                              | 기대 결과                                                             |
+| ----------- | ------------- | ------------------ | ------------------------------------------------- | --------------------------------------------------------------------- |
+| `ERR-001`   | P0/A          | API read           | 404, 530, network failure, 500 각각 주입          | recoverable 오류만 fallback하고 500은 숨기지 않는다.                  |
+| `ERR-002`   | P1/N          | 느린 네트워크      | 주요 목록/API를 지연                              | loading 상태가 보이고 버튼 중복 제출이 막힌다.                        |
+| `ERR-003`   | P1/N          | offline            | 게임 중 네트워크 전환                             | 로컬 플레이는 유지되고 원격 기능은 재시도 가능한 안내를 표시한다.     |
+| `SEC-001`   | P0/N          | 운영/로컬          | security header 검사                              | CSP, frame, content type, referrer 정책이 route 성격에 맞다.          |
+| `SEC-002`   | P0/N          | 보호 요청          | Google token·세션·대화 접근키를 URL·DOM·로그 검사 | credential이 public snapshot, query, console에 노출되지 않는다.       |
+| `A11Y-001`  | P0/A          | Wordle             | Tab, Shift+Tab, Enter, Space만 사용               | 핵심 입력·제출·restart가 가능하고 focus가 보인다.                     |
+| `A11Y-002`  | P1/N          | 전체 주요 화면     | axe 기반 WCAG 검사                                | critical/serious violation이 없다.                                    |
+| `A11Y-003`  | P1/N          | dialog/panel       | 키보드로 열기·닫기                                | focus trap, Escape, trigger 복귀가 동작한다.                          |
+| `A11Y-004`  | P1/N          | 결과·toast·loading | screen reader semantics 검사                      | 상태 변경이 적절한 live region과 label로 전달된다.                    |
+| `MOB-001`   | P0/A          | 360/390/430        | 전체 주요 route 진입                              | 메뉴 trigger 규칙과 viewport overflow가 기준에 맞다.                  |
+| `MOB-002`   | P1/N          | mobile keyboard    | 검색·RAG 입력                                     | virtual keyboard로 CTA가 가려지지 않고 scroll로 접근 가능하다.        |
+| `VIS-001`   | P1/A          | 고정 viewport/font | 홈, Blog, Dashboard, Game, Package screenshot     | 승인된 baseline과 의미 있는 차이가 없다.                              |
+| `VIS-002`   | P1/A          | 주요 route         | 초기 load CLS 측정                                | 문서화된 기준 이하이고 이미지·canvas가 뒤늦게 레이아웃을 밀지 않는다. |
+| `PERF-001`  | P2/N          | production build   | 주요 route navigation 측정                        | 심각한 long task, 무한 request, 메모리 증가가 없다.                   |
+| `PERF-002`  | P2/N          | 게임 반복          | scene 진입/종료 10회                              | canvas, audio, key/socket listener 개수가 누적되지 않는다.            |
+| `AN-001`    | P1/A          | GA env 있음        | 페이지 진입                                       | GA script가 한 번 로드되고 설정이 없으면 로드되지 않는다.             |
+| `AN-002`    | P1/A          | GTM env 있음       | 페이지 진입                                       | GTM script와 noscript fallback이 표시되고 중복 삽입되지 않는다.       |
+| `META-001`  | P2/N          | 운영 URL           | sitemap, robots, canonical, OG image 조회         | 공개 route와 metadata가 운영 URL 기준으로 유효하다.                   |
+| `ASSET-001` | P0/N          | 운영 배포          | 주요 image/audio/font 요청 관찰                   | 404, MIME 오류, mixed content가 없다.                                 |
 
 현재 자동화 매핑: `api-read-error.spec.ts`, `mobile-behavior.spec.ts`, `layout-shift.spec.ts`, `visual-regression.spec.ts`, `keyboard-only.spec.ts`, `google-analytics.spec.ts`, `google-tag-manager.spec.ts`.
+
+## 22.1 배포·명령·계약 의미 회귀
+
+`pnpm test:tooling`은 임시 릴리스에서 실제 staging/promote 명령을 실행해 logs·환경·백업
+보존과 health 스크립트의 의존 파일을 검증한다. 패키지 설치만 fixture로 대체하고 rsync와
+health 명령은 실제 실행한다. Playwright 프로젝트 선택과 Jest 직렬 실행은 실제 CLI의 목록·
+설정 출력으로 확인한다. 이 검증은 운영 배포 성공이나 실브라우저 플레이를 대신하지 않는다.
+
+`api-contract.e2e-spec.ts`는 Swagger 응답 설명·태그·정수/null·공통 오류 스키마와 실제 발생
+가능한 상태를 검증한다. `check:api-contract`의 생성물 일치 검사와 함께 실행한다.
 
 ## 23. 실행 세트
 
@@ -411,7 +423,7 @@ Chromium 전체 suite와 실제 PostgreSQL integration을 실행한다. 외부 �
 3. 공통 계정 기능을 위한 실제 Google OAuth 로그인·로그아웃.
 4. Vercel production과 Ubuntu API smoke.
 5. visual baseline 및 CLS 확인.
-6. 운영 console error, failed request, CORS, Socket reconnect 확인.
+6. 운영 console error, failed request, CORS 확인. 외부 게임의 Socket 검증은 해당 프로젝트에서 별도로 수행한다.
 
 ## 24. 자동화 구현 순서
 
@@ -420,7 +432,7 @@ Chromium 전체 suite와 실제 PostgreSQL integration을 실행한다. 외부 �
 | 1    | Sky Drop deterministic play hook 및 승패 E2E | 현재 실제 플레이 검증이 가장 부족함 |
 | 2    | Wordle 승리·패배·중복 문자 E2E               | 핵심 규칙 UI 누락 보완              |
 | 3    | 점수 제출·랭킹·공유 Web+API 통합             | 게임 공통 사용자 가치 검증          |
-| 4    | Recipe/Espresso/Game State/RAG HTTP E2E      | controller별 계약 공백 보완         |
+| 4    | Recipe/Espresso/RAG HTTP·검색 통합 E2E       | controller별 계약 공백 보완         |
 | 6    | 전체 화면 axe와 metadata/asset smoke         | 비기능 release 기준 완성            |
 
 test hook은 production 동작을 바꾸지 않는 `e2e` query 또는 test-only adapter로 제한한다. 결과를 직접 주입해 화면만 통과시키기보다 seed, clock, encounter/collision 조건을 제어해 실제 domain logic을 실행해야 한다.

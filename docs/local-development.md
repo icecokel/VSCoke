@@ -66,7 +66,7 @@ NEXT_PUBLIC_API_URL=https://api.icecoke.kr
 API는 DB, Google OAuth, 알림 설정을 `apps/api/.env`에서 읽는다. 운영 값은 Ubuntu host의 API `.env`에서 별도로 관리한다.
 
 Resume RAG와 메인 채팅을 로컬 API에서 실제로 호출하는 설정은
-[메인 채팅·이력 질문 AI 사용 지침](./main-chat-ai-usage-guide.md#5-배포-환경-설정)을 따른다.
+[메인 채팅·이력 질문 AI 사용 지침](./main-chat-ai-usage-guide.md#로컬-api-연결)을 따른다.
 
 ## 웹만 실행
 
@@ -165,6 +165,9 @@ pnpm --filter @vscoke/api db:tunnel
 ```txt
 Mac localhost:5432 -> cloudflared access tcp -> PostgreSQL on Ubuntu host
 ```
+
+배포 보존·health 도구 패키징·테스트 옵션의 회귀 검사는 `pnpm test:tooling`으로 실행한다.
+이 검사는 임시 파일·loopback HTTP·CLI 설정 조회를 사용하고 운영 배포를 실행하지 않는다.
 
 ## API 타입 갱신
 

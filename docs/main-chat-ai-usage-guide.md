@@ -1,12 +1,13 @@
 # 메인 채팅·이력 질문 AI 사용 지침
 
-확인 기준일: 2026-09-08
+확인 기준일: 2026-09-10
 
 > 9절은 최초 배포 계획과 당시의 인수인계 기록이다. 벡터 검색·저장 대화의 운영 반영 결과는
 > 10절, 중단됐던 PostgreSQL 통합 검증과 초기 입력 안정화 작업은 11절을 따른다.
 
-핵심 기능의 운영 반영 기록과 개발 환경의 최신 검증 결과를 구분한다. 실행·복구 절차는
-[9. 배포 적용 절차](#9-배포-적용-절차), 별도 후속 과제는 10.4절을 참고한다.
+현재 구현은 1~8절, 실행·복구 기준은 [6절](#6-배포와-검증)과
+[API 배포 가이드](../apps/api/DEPLOY.md)를 따른다. 9~11절은 각 작성 시점의 계획·검증 기록이며
+그 안의 "미배포", "자동화 없음", 테스트 개수를 현재 상태로 해석하지 않는다.
 
 ## 1. 범위와 구조
 
@@ -66,7 +67,10 @@ RRF로 합치고 sourceKey별 중복을 제거한 뒤 `RAG_TOP_K`(5)개를 선�
 청크 설정 해시에는 chunkSize와 chunkOverlap만 포함하고 API 키·채팅 모델은 포함하지 않는다.
 모든 청크가 준비된 뒤 트랜잭션으로 한 원본의 해당 프로필을 교체한다. 그동안 원본이 수정되거나
 비공개로 바뀌면 게시하지 않는다. import 성공 시 같은 파일의 이전 내용과 제거된 섹션은
-superseded 처리한다. manifest 자체에서 없앤 파일은 운영자가 별도 비활성화해야 한다.
+superseded 처리한다. CLI는 `retireMissingSourceTypes: ['app_resume']`를 사용하므로
+manifest에서 빠진 공개 앱 원본도 자동 비활성화한다. 단, 해당 배치에 import 실패가 없어야
+하고 관리 중인 sourceType의 manifest가 비어 있지 않아야 한다. 전체 누락을 실수로 삭제하지
+않기 위한 보호다. `resume_workspace` 전체나 이 조건 밖의 제거는 운영자가 별도로 검토한다.
 
 ## 3. 저장 대화 API와 접근 제어
 
@@ -126,13 +130,39 @@ OpenAI 호환 공급자도 동일한 질문 재작성·근거 제한 프롬프�
 
 ## 6. 배포와 검증
 
-신규 테이블 migration과 벡터 설정·인덱싱 순서는
-[벡터 검색·저장 대화 배포 지침](#9-배포-적용-절차)을 따른다.
-임베딩 공급자가 없으면 hybrid는 키워드로 대체되므로 벡터 적용 여부를 성공 응답만으로 판단하지
-않는다. 실제 임베딩·DB 환경에서 동의어 질문, 후속 질문, 공개 범위와 최신 자료를 함께 검증한다.
+### 현재 운영 배포
 
-Codex app-server listener는 기존처럼 loopback에만 둔다. 서버·모델 공급자 변경은 이 기능과 별도
-운영 결정이며 기존 app-server transport의 지원 범위와 버전 고정 정책을 유지한다.
+신규 DB schema는 [API 배포 가이드](../apps/api/DEPLOY.md#3-db-schema-변경)에 따라 먼저
+백업·migration을 수행한다. 자동 workflow는 공개 웹 원본을 포함하고 import를 실행하며,
+keyword 모드가 아니고 임베딩 공급자가 설정된 경우 index를 갱신한다. 실패하면 API 재시작
+단계로 진행하지 않는다. 운영 릴리스에 개인 작업공간을 복사하지 않는다.
+
+임베딩 공급자가 없으면 hybrid는 키워드로 대체되므로 성공 답변만으로 벡터 준비를 판단하지
+않는다. 실제 임베딩·DB 환경에서 동의어 질문, 후속 질문, 공개 범위와 최신 자료를 확인한다.
+소스 파일 삭제 시 app_resume 자동 폐기 조건은 2절을 따른다. 최초 도입 체크리스트가 필요하면
+[9절 기록](#9-배포-적용-절차)을 참조하되 현재 workflow와 다른 당시의 제약은 적용하지 않는다.
+
+### 로컬 API 연결
+
+로컬 API 환경 파일과 DB 준비는 [Local Development](./local-development.md#api만-실행)를
+따른다. `RAG_CHAT_PROVIDER`와 선택한 공급자의 설정을 `apps/api/.env.example`에서 확인한다.
+Codex 경로는 기존 loopback listener와 승인된 작업 경로를 사용하며 새 외부 listener를 열지
+않는다. 일반 API 테스트는 공급자를 모킹하고 별도 테스트 DB를 사용한다.
+
+웹의 `NEXT_PUBLIC_API_URL`을 해당 로컬 API로 맞춘다. 실제 웹 origin을
+`CORS_ORIGINS`와 `RAG_PUBLIC_CHAT_ORIGINS` 양쪽에 명시한다. 임의로 운영 DB를 테스트
+DB처럼 초기화하거나 공개 원본 import/index를 운영에 실행하지 않는다.
+
+### 검증 종류와 명령
+
+`pnpm check:api-contract`는 생성물 일치, `pnpm test:tooling`은 배포 보존·health 패키징·CLI
+옵션 전달을 검증한다. `resume-conversation-persistence.spec.ts`는 mock API 기반 UI 검증이며
+실모델 품질 보장은 아니다. API의 `resume-conversation.integration-spec.ts`는 실제 PostgreSQL
+저장·접근키·동시성·삭제·보존을 검증한다. 운영 smoke 세트에는 후속 질문·복원·삭제 및 테스트
+대화 정리가 포함되어 있으나 모든 언어·모든 생성 결과를 평가하는 것은 아니다.
+
+Codex app-server listener는 loopback에 둔다. 서버·모델 변경은 별도 운영 결정이며 transport
+지원 범위와 버전 고정 정책을 유지한다.
 
 ## 7. 분석과 기존 질문 로그
 

@@ -1,4 +1,4 @@
-import { createWinstonConfig } from './winston.config';
+import { createWinstonConfig, resolveLogLevel } from './winston.config';
 
 type WinstonTransport = {
   level?: string;
@@ -83,5 +83,41 @@ describe('winstonConfig', () => {
     expect(
       fileTransports.map((transport) => transport.options?.maxFiles),
     ).toEqual(['180d', '180d']);
+  });
+});
+
+describe('resolveLogLevel', () => {
+  it.each([undefined, '', '   '])(
+    '운영 미설정·빈값 %p은 info를 사용한다',
+    (level) => {
+      expect(
+        resolveLogLevel({ NODE_ENV: 'production', LOG_LEVEL: level }),
+      ).toBe('info');
+    },
+  );
+  it.each([undefined, '', '   '])(
+    '개발 미설정·빈값 %p은 debug를 사용한다',
+    (level) => {
+      expect(
+        resolveLogLevel({ NODE_ENV: 'development', LOG_LEVEL: level }),
+      ).toBe('debug');
+    },
+  );
+  it.each(['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'])(
+    '허용 레벨 %s을 사용한다',
+    (level) => {
+      expect(resolveLogLevel({ LOG_LEVEL: level })).toBe(level);
+    },
+  );
+  it('공백과 대문자를 정규화한다', () => {
+    expect(resolveLogLevel({ LOG_LEVEL: ' WARN ' })).toBe('warn');
+  });
+  it('잘못된 레벨은 값을 노출하지 않고 실패한다', () => {
+    expect(() =>
+      resolveLogLevel({ LOG_LEVEL: 'invalid-private-value' }),
+    ).toThrow('Invalid LOG_LEVEL');
+    expect(() =>
+      resolveLogLevel({ LOG_LEVEL: 'invalid-private-value' }),
+    ).not.toThrow('invalid-private-value');
   });
 });

@@ -65,6 +65,11 @@
 - 래퍼는 테스트 실행 전 Next 개발 서버를 자동 기동하고, 종료 시 서버를 정리한다.
 - 기본 `baseURL`은 격리 포트 기반으로 자동 계산한다.
 - 기본 worker 수는 1로 유지한다.
+- 다른 작업의 포트가 점유되어도 해당 Node 프로세스를 종료하지 않는다. 자동 격리 포트 또는
+  소유권이 확인된 별도 포트를 사용하고 자신이 시작한 서버만 정리한다.
+- 일반 `e2e`는 `pnpm --filter @vscoke/web e2e <spec> --project=chromium`으로 실행한다.
+  중간에 독립된 `--`를 넣으면 이후 옵션이 파일 필터로 해석될 수 있으므로 넣지 않는다.
+- `--list`로 선택된 프로젝트·테스트를 점검할 수 있다. 자동 회귀는 `pnpm test:tooling`이 담당한다.
 
 ### 5-2. 직접 CLI 실행 허용 조건
 
@@ -120,7 +125,7 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:37123 pnpm --filter @vscoke/web exec playwr
 | 레이아웃/비주얼 회귀 | `layout-shift.spec.ts`, `visual-regression.spec.ts`                                   |
 | 취미/게임 진입       | `hobby-games.spec.ts`, `hobby-recipes.spec.ts`, `hobby-espresso.spec.ts`              |
 | 블로그 상세          | `blog-detail.spec.ts`                                                                 |
-| Resume RAG           | `resume-rag-chat-public.spec.ts`                                                      |
+| Resume RAG           | `resume-rag-chat-public.spec.ts`, `resume-conversation-persistence.spec.ts`           |
 | Analytics            | `google-analytics.spec.ts`, `google-tag-manager.spec.ts`                              |
 
 신규 테스트는 반드시 위 범주 중 하나에 속해야 하며, 성격이 다르면 새 범주를 문서에 추가한 뒤 도입한다.
@@ -165,14 +170,14 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:37123 pnpm --filter @vscoke/web exec playwr
 - 자동 실행 시 포트와 dist 디렉토리는 프로세스 단위로 격리한다.
 - 반복 검증 서버는 고정 포트 `37123`, 고정 산출물 `.next-e2e`를 사용한다.
 - 인증 및 API 주소는 E2E 안전 기본값으로 주입한다.
-- `e2e:integration -- <spec> <Playwright args>`는 전달받은 spec과 인자를 그대로 실행한다.
+- `e2e:integration <spec> <Playwright args>`는 전달받은 spec과 인자를 그대로 실행한다.
 - 통합 실행의 DB 이름은 반드시 `_test`로 끝나야 하며 process group 종료 시 API와 Web child를 함께 정리한다.
 
 예시:
 
 ```bash
 TEST_DATABASE_URL="$TEST_DATABASE_URL" PLAYWRIGHT_WORKERS=1 \
-  pnpm --filter @vscoke/web e2e:integration -- \
+  pnpm --filter @vscoke/web e2e:integration \
   tests/e2e/hobby-espresso.spec.ts \
   --project=chromium
 ```
@@ -203,7 +208,7 @@ TEST_DATABASE_URL="$TEST_DATABASE_URL" PLAYWRIGHT_WORKERS=1 \
 2. Chromium 설치
 3. `pnpm check:api-contract`
 4. `pnpm type:check:web`
-5. `pnpm lint:web`
+5. `pnpm test:tooling`, `pnpm test:web`, `pnpm lint:web`
 6. `pnpm knip`
 7. `pnpm build:web`
 8. `.github/workflows/pull-request-check.yml`에 정의된 focused E2E

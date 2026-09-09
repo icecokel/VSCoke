@@ -18,13 +18,13 @@ export interface UseWordleReturn {
   usedKeys: Record<string, LetterStatus>;
   handleKeyup: (key: string) => void;
   resetGame: () => Promise<void>;
-  answer: string; // 디버깅용
+  answer: string; // 실패 시 정답 안내에 사용하며 서버 응답에도 포함된다.
   isLoading: boolean;
   isValidating: boolean; // 단어 검증 중 상태
   error: Error | null;
 }
 
-// Logic 인스턴스는 컴포넌트 외부 혹은 useMemo로 관리 권장
+// 판정기는 판별 상태를 보관하지 않으므로 컴포넌트 간 공유한다.
 const logic: WordleLogic = new EnglishWordleLogic();
 
 export const useWordle = (): UseWordleReturn => {
@@ -106,8 +106,7 @@ export const useWordle = (): UseWordleReturn => {
         return;
       }
 
-      // 로컬 로직 검증 (사전 검증이 이미 API로 대체되었지만, logic 인터페이스 유지를 위해 남겨둠/혹은 제거 가능)
-      // if (!logic.isValidWord(currentGuess)) { ... }
+      // 사전 검증은 서버에서 끝났고, 글자 판정과 승패는 클라이언트가 처리한다.
 
       const guessUpper = currentGuess.toUpperCase();
       const result = logic.checkGuess(guessUpper, answer);

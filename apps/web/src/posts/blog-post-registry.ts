@@ -1,6 +1,18 @@
 import type { BlogPostDefinition, PostMeta } from "@/types/blog";
+import postgresClickhouseMessages from "../../messages/posts/postgresql-clickhouse.ko.json";
 
 export const blogPostDefinitions = [
+  {
+    slug: "dev/postgresql-clickhouse-comparison",
+    category: "dev",
+    title: postgresClickhouseMessages.title,
+    date: "2026-09-14",
+    description: postgresClickhouseMessages.description,
+    tags: ["PostgreSQL", "ClickHouse", "Benchmark", "Database", "AI"],
+    readingTime: "9 min read",
+    published: false,
+    load: () => import("@/posts/dev/postgresql-clickhouse-comparison"),
+  },
   {
     slug: "dev/centos8-mysql-delete",
     category: "dev",

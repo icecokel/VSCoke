@@ -136,3 +136,25 @@ test.describe("Sky Drop DOM 비주얼", () => {
     });
   }
 });
+
+test.describe("PostgreSQL ClickHouse 비교 화면 비주얼", () => {
+  for (const layout of [
+    { name: "desktop", width: 1440, height: 1100 },
+    { name: "mobile", width: 390, height: 844 },
+  ]) {
+    test(`벤치마크 ${layout.name} 측정값 시각화`, async ({ page }) => {
+      await page.setViewportSize({ width: layout.width, height: layout.height });
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await gotoWithRetry(page, "/ko-KR/blog/preview/dev/postgresql-clickhouse-comparison");
+      const explorer = page.getByTestId("benchmark-explorer");
+      await expect(page.getByTestId("benchmark-value-postgres")).toHaveText("11.847");
+      await page.evaluate(() => document.fonts.ready);
+      await explorer.scrollIntoViewIfNeeded();
+      await expect(explorer).toHaveScreenshot(`postgresql-clickhouse-${layout.name}.png`, {
+        animations: "disabled",
+        caret: "hide",
+        maxDiffPixels: 50,
+      });
+    });
+  }
+});

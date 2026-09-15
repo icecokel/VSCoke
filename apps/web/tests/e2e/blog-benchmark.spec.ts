@@ -32,6 +32,86 @@ test.describe("공개 블로그 벤치마크", () => {
     expect(errors).toEqual([]);
   });
 
+  test("스크립트 준비 전에는 조작을 막고 준비 후 첫 클릭부터 처리한다", async ({ page }) => {
+    let releaseScripts: () => void = () => {};
+    const gate = new Promise<void>(resolve => {
+      releaseScripts = resolve;
+    });
+    await page.route("**/_next/static/chunks/**", async route => {
+      await gate;
+      await route.continue();
+    });
+    const explorer = page.getByTestId("benchmark-explorer");
+    const tab = explorer.getByRole("button", { name: copy.filter, exact: true });
+    try {
+      await page.goto(articlePath, { waitUntil: "commit" });
+      await expect(explorer).toHaveAttribute("data-ready", "false");
+      await expect(tab).toBeDisabled();
+      await expect(explorer).toContainText(copy.loading);
+    } finally {
+      releaseScripts();
+    }
+    await expect(explorer).toHaveAttribute("data-ready", "true");
+    await tab.click();
+    await expect(tab).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByTestId("benchmark-value-postgres")).toHaveText("0.390");
+  });
+
+  test("그래프는 키보드로 구간을 선택하고 수치와 버튼 선택을 동기화한다", async ({ page }) => {
+    await gotoWithRetry(page, articlePath);
+    const chart = page.getByRole("slider", { name: copy.trendLabel, exact: true });
+    await expect(chart).toHaveAttribute("aria-disabled", "false");
+    await chart.focus();
+    await page.keyboard.press("End");
+    await expect(page.getByTestId("benchmark-trend-selection")).toContainText("35.568");
+    await page.keyboard.press("Home");
+    await expect(chart).toHaveAttribute("aria-valuenow", "0");
+    await page.keyboard.press("ArrowRight");
+    await expect(chart).toHaveAttribute("aria-valuenow", "1");
+    const ranges = page
+      .getByTestId("benchmark-explorer")
+      .getByRole("group", { name: copy.rangeLabel, exact: true });
+    await expect(ranges.getByRole("button", { name: rowsLabel(10), exact: true })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  for (const width of [1440, 390]) {
+    test(`${width}px에서 시작 계기부터 실험과 판단까지 순서대로 읽을 수 있다`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 });
+      await gotoWithRetry(page, articlePath);
+      const body = page.locator("article");
+      await expect(body.locator(":scope > :first-child")).toHaveText(article.intro.heading);
+      await expect(body.locator("p").first()).toHaveText(article.intro.first);
+      await expect(body).toContainText(article.intro.second);
+      await expect(body).toContainText(article.intro.third);
+      await expect(body).toContainText(article.storage.first);
+      await expect(body).toContainText(article.discovery.first);
+      await expect(body).toContainText(article.expectation.first);
+      await expect(body).toContainText(article.expectation.second);
+      await expect(body.locator(":scope > h2")).toHaveText([
+        article.intro.heading,
+        article.storage.heading,
+        article.discovery.heading,
+        article.expectation.heading,
+        article.method.heading,
+        article.results.heading,
+        article.explorer.heading,
+        article.records.heading,
+        article.limits.heading,
+        article.decision.heading,
+        article.ai.heading,
+        article.outro.heading,
+        article.references.heading,
+      ]);
+      await body
+        .getByRole("heading", { name: article.intro.heading, exact: true })
+        .scrollIntoViewIfNeeded();
+      await expect(body.locator("p").first()).toBeInViewport();
+    });
+  }
+
   for (const query of benchmarkQueries) {
     test(`${query}: 측정한 9개 범위의 중앙값과 판정을 정확히 전환한다`, async ({ page }) => {
       await gotoWithRetry(page, articlePath);
@@ -61,6 +141,7 @@ test.describe("공개 블로그 벤치마크", () => {
   test("슬라이더는 키보드로 판단 보류 구간과 양 끝값까지 이동한다", async ({ page }) => {
     await gotoWithRetry(page, articlePath);
     const slider = page.getByRole("slider", { name: copy.rangeLabel });
+    await expect(slider).toBeEnabled();
     await slider.focus();
     await page.keyboard.press("ArrowLeft");
     await expect(page.getByTestId("benchmark-verdict")).toContainText(copy.pending);
@@ -129,7 +210,9 @@ test.describe("공개 블로그 벤치마크", () => {
   test("동작 줄이기 설정에서는 재생 대신 정적 결과를 유지한다", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await gotoWithRetry(page, articlePath);
-    await page.getByRole("button", { name: copy.replay, exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: copy.staticResults, exact: true }),
+    ).toBeDisabled();
     await expect(page.getByTestId("benchmark-replay-status")).toHaveText(copy.reduced);
     await expect(page.getByRole("button", { name: copy.stop, exact: true })).toHaveCount(0);
     await expect(page.getByTestId("benchmark-replay-postgres")).toHaveAttribute(

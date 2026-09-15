@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import ko from "../../messages/ko-KR.json";
 import { gotoWithRetry } from "./test-helpers";
 
 test.describe("비주얼 회귀", () => {
@@ -147,9 +148,17 @@ test.describe("PostgreSQL ClickHouse 비교 화면 비주얼", () => {
       await page.emulateMedia({ reducedMotion: "reduce" });
       await gotoWithRetry(page, "/ko-KR/blog/dev/postgresql-clickhouse-comparison");
       const explorer = page.getByTestId("benchmark-explorer");
+      await expect(explorer).toHaveAttribute("data-ready", "true");
+      await expect(page.getByTestId("benchmark-replay-status")).toHaveText(
+        ko.blog.benchmark.reduced,
+      );
       await expect(page.getByTestId("benchmark-value-postgres")).toHaveText("11.847");
       await page.evaluate(() => document.fonts.ready);
       await explorer.scrollIntoViewIfNeeded();
+      // 요소 캡처에 겹치는 페이지 진행률은 이 컴포넌트 비교에서 제외한다.
+      await page.addStyleTag({
+        content: "[data-testid=blog-post] > [role=progressbar] { visibility: hidden !important; }",
+      });
       await expect(explorer).toHaveScreenshot(`postgresql-clickhouse-${layout.name}.png`, {
         animations: "disabled",
         caret: "hide",

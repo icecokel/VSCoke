@@ -1,4 +1,3 @@
-import { ArrowRight, FlaskConical } from "lucide-react";
 import { createTranslator } from "next-intl";
 import {
   PostBlockquote,
@@ -28,32 +27,37 @@ const postgresReference = "https://www.postgresql.org/docs/current/indexes-intro
 
 const PostgreSqlClickHouseComparisonPost = () => (
   <>
-    <div className="mb-10 rounded-2xl border border-border bg-muted/30 p-6 sm:p-8">
-      <div className="mb-4 flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
-        <FlaskConical aria-hidden="true" className="size-4 text-primary" />
-        <span>{t("eyebrow")}</span>
-        <ArrowRight aria-hidden="true" className="size-3" />
-        <span>{t("projectDate")}</span>
-      </div>
-      <p
-        className="max-w-xl text-xl leading-relaxed font-medium tracking-tight text-foreground sm:text-2xl"
-        data-blog-speech-segment
-      >
-        {t("lead")}
-      </p>
-    </div>
-
     <PostHeading1>{t("intro.heading")}</PostHeading1>
     <PostParagraph>{t("intro.first")}</PostParagraph>
-    <PostParagraph>
-      {t("intro.second")} <PostLink href={clickhouseReference}>[1]</PostLink>
-    </PostParagraph>
+    <PostParagraph>{t("intro.second")}</PostParagraph>
     <PostBlockquote>
       <PostParagraph>
-        <strong>{t("intro.expectation")}</strong>
+        <strong>{t("intro.question")}</strong>
       </PostParagraph>
     </PostBlockquote>
     <PostParagraph>{t("intro.third")}</PostParagraph>
+
+    <PostHeading1>{t("storage.heading")}</PostHeading1>
+    <PostParagraph>{t("storage.first")}</PostParagraph>
+    <PostBlockquote>
+      <PostParagraph>
+        <strong>{t("storage.question")}</strong>
+      </PostParagraph>
+    </PostBlockquote>
+    <PostParagraph>{t("storage.second")}</PostParagraph>
+
+    <PostHeading1>{t("discovery.heading")}</PostHeading1>
+    <PostParagraph>{t("discovery.first")}</PostParagraph>
+    <PostParagraph>{t("discovery.second")}</PostParagraph>
+
+    <PostHeading1>{t("expectation.heading")}</PostHeading1>
+    <PostParagraph>{t("expectation.first")}</PostParagraph>
+    <PostBlockquote>
+      <PostParagraph>
+        <strong>{t("expectation.quote")}</strong>
+      </PostParagraph>
+    </PostBlockquote>
+    <PostParagraph>{t("expectation.second")}</PostParagraph>
 
     <PostHeading1>{t("method.heading")}</PostHeading1>
     <PostParagraph>{t("method.intro")}</PostParagraph>
@@ -77,10 +81,6 @@ const PostgreSqlClickHouseComparisonPost = () => (
       </p>
     </aside>
 
-    <PostHeading1>{t("explorer.heading")}</PostHeading1>
-    <PostParagraph>{t("explorer.intro")}</PostParagraph>
-    <PostgreSqlClickHouseBenchmark />
-
     <PostHeading1>{t("results.heading")}</PostHeading1>
     <PostHeading2>{t("results.filterTitle")}</PostHeading2>
     <PostParagraph>{t("results.filter")}</PostParagraph>
@@ -96,43 +96,9 @@ const PostgreSqlClickHouseComparisonPost = () => (
     </PostBlockquote>
     <PostParagraph>{t("results.takeawayDetail")}</PostParagraph>
 
-    <PostHeading1>{t("decision.heading")}</PostHeading1>
-    <PostParagraph>{t("decision.intro")}</PostParagraph>
-    <PostHeading2>{t("decision.workloadTitle")}</PostHeading2>
-    <PostParagraph>{t("decision.workload")}</PostParagraph>
-    <PostParagraph>{t("decision.workloadCaveat")}</PostParagraph>
-    <PostHeading2>{t("decision.teamTitle")}</PostHeading2>
-    <PostParagraph>{t("decision.team")}</PostParagraph>
-    <PostParagraph>{t("decision.teamDetail")}</PostParagraph>
-    <PostBlockquote>
-      <PostParagraph>
-        <strong>{t("decision.quote")}</strong>
-      </PostParagraph>
-    </PostBlockquote>
-    <PostParagraph>{t("decision.completion")}</PostParagraph>
-
-    <PostHeading1>{t("limits.heading")}</PostHeading1>
-    <PostParagraph>{t("limits.intro")}</PostParagraph>
-    <PostParagraph>{t("limits.environment")}</PostParagraph>
-    <PostParagraph>{t("limits.statistics")}</PostParagraph>
-    <PostParagraph>{t("limits.scope")}</PostParagraph>
-    <PostParagraph>
-      {t("limits.theory")} <PostLink href={clickhouseReference}>[1]</PostLink>{" "}
-      <PostLink href={postgresReference}>[2]</PostLink>
-    </PostParagraph>
-
-    <PostHeading1>{t("ai.heading")}</PostHeading1>
-    <PostParagraph>{t("ai.first")}</PostParagraph>
-    <PostParagraph>{t("ai.second")}</PostParagraph>
-    <PostBlockquote>
-      <PostParagraph>
-        <strong>{t("ai.quote")}</strong>
-      </PostParagraph>
-    </PostBlockquote>
-
-    <PostHeading1>{t("outro.heading")}</PostHeading1>
-    <PostParagraph>{t("outro.first")}</PostParagraph>
-    <PostParagraph>{t("outro.last")}</PostParagraph>
+    <PostHeading1>{t("explorer.heading")}</PostHeading1>
+    <PostParagraph>{t("explorer.intro")}</PostParagraph>
+    <PostgreSqlClickHouseBenchmark />
 
     <PostHeading1>{t("records.heading")}</PostHeading1>
     <PostParagraph>{t("records.intro")}</PostParagraph>
@@ -188,6 +154,44 @@ const PostgreSqlClickHouseComparisonPost = () => (
       ))}
     </details>
     <p className="text-xs leading-6 text-muted-foreground">{t("records.source")}</p>
+
+    <PostHeading1>{t("limits.heading")}</PostHeading1>
+    <PostParagraph>{t("limits.intro")}</PostParagraph>
+    <PostParagraph>{t("limits.environment")}</PostParagraph>
+    <PostParagraph>{t("limits.statistics")}</PostParagraph>
+    <PostParagraph>{t("limits.scope")}</PostParagraph>
+    <PostParagraph>
+      {t("limits.theory")} <PostLink href={clickhouseReference}>[1]</PostLink>{" "}
+      <PostLink href={postgresReference}>[2]</PostLink>
+    </PostParagraph>
+
+    <PostHeading1>{t("decision.heading")}</PostHeading1>
+    <PostParagraph>{t("decision.intro")}</PostParagraph>
+    <PostHeading2>{t("decision.workloadTitle")}</PostHeading2>
+    <PostParagraph>{t("decision.workload")}</PostParagraph>
+    <PostParagraph>{t("decision.workloadCaveat")}</PostParagraph>
+    <PostHeading2>{t("decision.teamTitle")}</PostHeading2>
+    <PostParagraph>{t("decision.team")}</PostParagraph>
+    <PostParagraph>{t("decision.teamDetail")}</PostParagraph>
+    <PostBlockquote>
+      <PostParagraph>
+        <strong>{t("decision.quote")}</strong>
+      </PostParagraph>
+    </PostBlockquote>
+    <PostParagraph>{t("decision.completion")}</PostParagraph>
+
+    <PostHeading1>{t("ai.heading")}</PostHeading1>
+    <PostParagraph>{t("ai.first")}</PostParagraph>
+    <PostParagraph>{t("ai.second")}</PostParagraph>
+    <PostBlockquote>
+      <PostParagraph>
+        <strong>{t("ai.quote")}</strong>
+      </PostParagraph>
+    </PostBlockquote>
+
+    <PostHeading1>{t("outro.heading")}</PostHeading1>
+    <PostParagraph>{t("outro.first")}</PostParagraph>
+    <PostParagraph>{t("outro.last")}</PostParagraph>
 
     <PostHeading1>{t("references.heading")}</PostHeading1>
     <PostParagraph>{t("references.intro")}</PostParagraph>

@@ -3,6 +3,8 @@ import test from "node:test";
 import { getAllPosts, getPostBySlug } from "@/lib/blog";
 import {
   BENCHMARK_REPLAY_SCALE,
+  BENCHMARK_MIN_REPLAY_DURATION_MS,
+  getBenchmarkReplayScale,
   benchmarkMeasurements,
   benchmarkQueries,
   getBenchmarkComparison,
@@ -78,4 +80,21 @@ test("새 글은 공개 목록과 공개 상세 경로에서 제공한다", () =
   assert.equal(getPostBySlug(slug)?.published, true);
   assert.ok(getAllPosts().some(post => post.slug === slug));
   assert.ok(getAllPosts(true).some(post => post.slug === slug));
+});
+
+test("읽기 쉬운 재생은 최소 2초이며 한 조건의 두 DB에 동일한 배율을 적용한다", () => {
+  for (const query of benchmarkQueries) {
+    for (const row of benchmarkMeasurements[query]) {
+      const scale = getBenchmarkReplayScale(row);
+      const { maximumMs } = getBenchmarkComparison(row);
+      assert.ok(scale >= BENCHMARK_REPLAY_SCALE);
+      assert.ok(maximumMs * scale >= BENCHMARK_MIN_REPLAY_DURATION_MS);
+      for (const duration of [row.postgres, row.clickhouse]) {
+        assert.equal(getBenchmarkReplayProgress((duration * scale) / 2, duration, scale), 0.5);
+        assert.equal(getBenchmarkReplayProgress(duration * scale, duration, scale), 1);
+      }
+    }
+  }
+  assert.equal(getBenchmarkReplayProgress(10, 1, 0), 0);
+  assert.equal(getBenchmarkReplayProgress(10, 1, Number.NaN), 0);
 });

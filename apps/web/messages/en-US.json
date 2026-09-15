@@ -199,8 +199,8 @@
       "replay": "Replay comparison",
       "stop": "Stop replay",
       "replayTitle": "Same condition, different finish times",
-      "replayNote": "Every recorded duration is multiplied by {scale} for display. This is neither actual wait time nor a simultaneous-run measurement.",
-      "ready": "Recorded results",
+      "replayNote": "Both databases in this selection use the same ×{scale} scale. Replays last at least 2 seconds, so the scale varies by selection. This is not live latency or a concurrent benchmark; compare recorded values across ranges.",
+      "ready": "Ready · Play to compare completion times.",
       "playing": "Replaying on an expanded time scale",
       "complete": "Replay complete",
       "reduced": "Reduced motion is enabled. Results are shown without animation.",
@@ -214,7 +214,12 @@
       "scope": "The range is not the returned row count or physical scanned row count. All three queries returned one summary row.",
       "source": "Source · Local testbed comparison report",
       "previewTitle": "Unpublished draft preview",
-      "previewNote": "Available only in local development. Not listed in public browsing or search."
+      "previewNote": "Available only in local development. Not listed in public browsing or search.",
+      "staticResults": "Static results",
+      "waitingTrack": "Waiting",
+      "trendHint": "Tap or click a range on the chart. Use arrow keys, Home, or End with a keyboard.",
+      "interactionHint": "Select a query and data range to change the results.",
+      "loading": "Preparing comparison controls."
     }
   },
   "Game": {

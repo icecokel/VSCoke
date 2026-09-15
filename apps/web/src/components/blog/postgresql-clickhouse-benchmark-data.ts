@@ -53,6 +53,7 @@ export const benchmarkDatabaseNames = {
 } as const;
 
 export const BENCHMARK_REPLAY_SCALE = 50;
+export const BENCHMARK_MIN_REPLAY_DURATION_MS = 2000;
 
 export const getBenchmarkComparison = (measurement: BenchmarkMeasurement) => {
   const fasterMs = Math.min(measurement.postgres, measurement.clickhouse);
@@ -66,8 +67,19 @@ export const getBenchmarkComparison = (measurement: BenchmarkMeasurement) => {
   };
 };
 
-export const getBenchmarkReplayProgress = (elapsedMs: number, recordedMs: number): number => {
+// 작은 구간도 변화를 볼 수 있도록 늘리되, 한 비교의 두 DB에는 같은 배율을 적용한다.
+export const getBenchmarkReplayScale = (measurement: BenchmarkMeasurement): number =>
+  Math.max(
+    BENCHMARK_REPLAY_SCALE,
+    Math.ceil(BENCHMARK_MIN_REPLAY_DURATION_MS / getBenchmarkComparison(measurement).maximumMs),
+  );
+
+export const getBenchmarkReplayProgress = (
+  elapsedMs: number,
+  recordedMs: number,
+  scale = BENCHMARK_REPLAY_SCALE,
+): number => {
   if (!Number.isFinite(recordedMs) || recordedMs <= 0) return 1;
-  if (!Number.isFinite(elapsedMs)) return 0;
-  return Math.max(0, Math.min(1, elapsedMs / (recordedMs * BENCHMARK_REPLAY_SCALE)));
+  if (!Number.isFinite(elapsedMs) || !Number.isFinite(scale) || scale <= 0) return 0;
+  return Math.max(0, Math.min(1, elapsedMs / (recordedMs * scale)));
 };

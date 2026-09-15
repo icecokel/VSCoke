@@ -6,12 +6,12 @@ import { useEffect, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  BENCHMARK_REPLAY_SCALE,
   benchmarkDatabaseNames,
   benchmarkMeasurements,
   benchmarkQueries,
   getBenchmarkComparison,
   getBenchmarkReplayProgress,
+  getBenchmarkReplayScale,
   type BenchmarkMeasurement,
   type BenchmarkQuery,
 } from "@/components/blog/postgresql-clickhouse-benchmark-data";
@@ -27,16 +27,19 @@ const databaseBars = {
 };
 
 interface BenchmarkReplayProps {
+  isReady: boolean;
   measurement: BenchmarkMeasurement;
 }
 
-const BenchmarkReplay = ({ measurement }: BenchmarkReplayProps) => {
+const BenchmarkReplay = ({ measurement, isReady }: BenchmarkReplayProps) => {
   const t = useTranslations("blog.benchmark");
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasPlayed, setHasPlayed] = useState(false);
   const [isReducedMotion, setIsReducedMotion] = useState(false);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
+  const statusId = useId();
   const maximumMs = getBenchmarkComparison(measurement).maximumMs;
+  const replayScale = getBenchmarkReplayScale(measurement);
 
   useEffect(() => {
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -45,6 +48,7 @@ const BenchmarkReplay = ({ measurement }: BenchmarkReplayProps) => {
       if (preference.matches) {
         setIsPlaying(false);
         setElapsedMs(null);
+        setHasPlayed(false);
       }
     };
     updatePreference();
@@ -56,7 +60,7 @@ const BenchmarkReplay = ({ measurement }: BenchmarkReplayProps) => {
     if (!isPlaying || isReducedMotion) return;
     let frameId = 0;
     let startedAt: number | undefined;
-    const duration = maximumMs * BENCHMARK_REPLAY_SCALE;
+    const duration = maximumMs * replayScale;
     const tick = (now: number) => {
       startedAt ??= now;
       const elapsed = Math.min(now - startedAt, duration);
@@ -69,9 +73,10 @@ const BenchmarkReplay = ({ measurement }: BenchmarkReplayProps) => {
     };
     frameId = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(frameId);
-  }, [isPlaying, isReducedMotion, maximumMs]);
+  }, [isPlaying, isReducedMotion, maximumMs, replayScale]);
 
   const toggleReplay = () => {
+    if (!isReady) return;
     if (isPlaying) {
       setIsPlaying(false);
       setElapsedMs(null);
@@ -92,19 +97,31 @@ const BenchmarkReplay = ({ measurement }: BenchmarkReplayProps) => {
     <div className="border-t border-border bg-muted/20 p-4 sm:p-6" data-testid="benchmark-replay">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm font-semibold">{t("replayTitle")}</p>
-        <Button type="button" variant="outline" size="sm" onClick={toggleReplay}>
-          {isPlaying ? (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={toggleReplay}
+          disabled={!isReady || isReducedMotion}
+          aria-describedby={statusId}
+          className="min-h-11 touch-manipulation"
+        >
+          {isReducedMotion ? (
+            <Info aria-hidden="true" className="size-3.5" />
+          ) : isPlaying ? (
             <Square aria-hidden="true" className="size-3.5" />
           ) : (
             <Play aria-hidden="true" className="size-3.5" />
           )}
-          {isPlaying ? t("stop") : t("replay")}
+          {isReducedMotion ? t("staticResults") : isPlaying ? t("stop") : t("replay")}
         </Button>
       </div>
       <div className="space-y-4" aria-hidden="true">
         {databases.map(database => {
-          const progress =
-            elapsedMs === null ? 1 : getBenchmarkReplayProgress(elapsedMs, measurement[database]);
+          const progress = isReducedMotion
+            ? 1
+            : elapsedMs === null
+              ? 0
+              : getBenchmarkReplayProgress(elapsedMs, measurement[database], replayScale);
           const isComplete = progress >= 1;
           return (
             <div
@@ -117,7 +134,12 @@ const BenchmarkReplay = ({ measurement }: BenchmarkReplayProps) => {
                   {benchmarkDatabaseNames[database]}
                 </span>
                 <span className="text-muted-foreground">
-                  {isComplete ? t("returned") : t("runningTrack")}
+                  {isComplete
+                    ? t("completeTrack")
+                    : isPlaying
+                      ? t("runningTrack")
+                      : t("waitingTrack")}{" "}
+                  · {measurement[database].toFixed(3)} {t("unit")}
                 </span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-muted">
@@ -131,12 +153,13 @@ const BenchmarkReplay = ({ measurement }: BenchmarkReplayProps) => {
         })}
       </div>
       <p className="mt-4 text-xs leading-6 text-muted-foreground">
-        {t("replayNote", { scale: BENCHMARK_REPLAY_SCALE })}
+        {t("replayNote", { scale: replayScale })}
       </p>
       <p
         role="status"
         className="mt-1 text-xs leading-5 text-muted-foreground"
         data-testid="benchmark-replay-status"
+        id={statusId}
       >
         {isReducedMotion
           ? t("reduced")
@@ -151,26 +174,66 @@ const BenchmarkReplay = ({ measurement }: BenchmarkReplayProps) => {
 };
 
 interface BenchmarkTrendProps {
+  isReady: boolean;
+  onSelect: (index: number) => void;
   measurements: readonly BenchmarkMeasurement[];
   selectedIndex: number;
 }
 
-const BenchmarkTrend = ({ measurements, selectedIndex }: BenchmarkTrendProps) => {
+const BenchmarkTrend = ({
+  measurements,
+  selectedIndex,
+  onSelect,
+  isReady,
+}: BenchmarkTrendProps) => {
   const t = useTranslations("blog.benchmark");
   const locale = useLocale();
   const id = useId();
   const max = Math.ceil(Math.max(...measurements.flatMap(row => [row.postgres, row.clickhouse])));
+  const selected = measurements[selectedIndex];
+  const select = (index: number) => {
+    if (isReady) onSelect(Math.max(0, Math.min(measurements.length - 1, index)));
+  };
   const x = (index: number) => 42 + index * 57;
   const y = (value: number) => 148 - (value / max) * 118;
   const number = new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 0 });
 
   return (
-    <figure className="border-t border-border p-4 sm:p-6">
+    <figure className="border-t border-border p-4 sm:p-6" data-testid="benchmark-trend">
       <figcaption className="mb-2 text-sm font-semibold">{t("trendTitle")}</figcaption>
+      <p className="mb-3 text-xs leading-6 text-muted-foreground">{t("trendHint")}</p>
       <svg
+        data-testid="benchmark-trend-chart"
         viewBox="0 0 540 188"
-        className="h-auto w-full text-muted-foreground"
-        role="img"
+        className="h-auto w-full cursor-pointer touch-manipulation rounded-lg text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
+        role="slider"
+        tabIndex={isReady ? 0 : -1}
+        aria-disabled={!isReady}
+        aria-valuemin={0}
+        aria-valuemax={measurements.length - 1}
+        aria-valuenow={selectedIndex}
+        aria-valuetext={t("rows", { count: selected.rows })}
+        onClick={event => {
+          const bounds = event.currentTarget.getBoundingClientRect();
+          if (bounds.width > 0)
+            select(Math.round((((event.clientX - bounds.left) / bounds.width) * 540 - 42) / 57));
+        }}
+        onKeyDown={event => {
+          const next =
+            event.key === "Home"
+              ? 0
+              : event.key === "End"
+                ? measurements.length - 1
+                : ["ArrowLeft", "ArrowDown"].includes(event.key)
+                  ? selectedIndex - 1
+                  : ["ArrowRight", "ArrowUp"].includes(event.key)
+                    ? selectedIndex + 1
+                    : null;
+          if (next !== null) {
+            event.preventDefault();
+            select(next);
+          }
+        }}
         aria-labelledby={`${id}-title`}
         aria-describedby={`${id}-note`}
       >
@@ -243,6 +306,21 @@ const BenchmarkTrend = ({ measurements, selectedIndex }: BenchmarkTrendProps) =>
           </text>
         ))}
       </svg>
+      <div
+        className="my-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs leading-6"
+        data-testid="benchmark-trend-selection"
+        role="status"
+        aria-atomic="true"
+      >
+        <p className="font-semibold">{t("rows", { count: selected.rows })}</p>
+        <p className="flex flex-wrap gap-x-4 font-mono tabular-nums">
+          {databases.map(database => (
+            <span key={database} className={databaseColors[database]}>
+              {benchmarkDatabaseNames[database]} {selected[database].toFixed(3)} {t("unit")}
+            </span>
+          ))}
+        </p>
+      </div>
       <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs">
         {databases.map(database => (
           <span
@@ -268,6 +346,8 @@ export const PostgreSqlClickHouseBenchmark = () => {
   const t = useTranslations("blog.benchmark");
   const locale = useLocale();
   const id = useId();
+  const [isReady, setIsReady] = useState(false);
+  useEffect(() => setIsReady(true), []);
   const [query, setQuery] = useState<BenchmarkQuery>("group");
   const [rangeIndex, setRangeIndex] = useState(6);
   const measurements = benchmarkMeasurements[query];
@@ -287,6 +367,8 @@ export const PostgreSqlClickHouseBenchmark = () => {
       className="@container/benchmark my-8 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-sm"
       aria-labelledby={`${id}-heading`}
       data-testid="benchmark-explorer"
+      data-ready={isReady}
+      aria-busy={!isReady}
       data-blog-speech-exclude
       lang={locale}
     >
@@ -303,6 +385,9 @@ export const PostgreSqlClickHouseBenchmark = () => {
         <p id={`${id}-heading`} className="text-xl font-semibold tracking-tight">
           {t("title")}
         </p>
+        <p className="mt-2 text-xs leading-6 text-muted-foreground" role="status">
+          {isReady ? t("interactionHint") : t("loading")}
+        </p>
       </div>
 
       <div className="p-4 sm:p-6">
@@ -317,9 +402,10 @@ export const PostgreSqlClickHouseBenchmark = () => {
               type="button"
               variant="ghost"
               onClick={() => setQuery(key)}
+              disabled={!isReady}
               aria-pressed={query === key}
               className={cn(
-                "h-auto min-h-11 whitespace-normal rounded-lg px-2 py-2 text-xs leading-5 @sm/benchmark:text-sm",
+                "h-auto min-h-11 touch-manipulation whitespace-normal rounded-lg px-2 py-2 text-xs leading-5 @sm/benchmark:text-sm",
                 query === key && "bg-background text-foreground shadow-sm hover:bg-background",
               )}
             >
@@ -347,6 +433,7 @@ export const PostgreSqlClickHouseBenchmark = () => {
           <input
             id={`${id}-range`}
             type="range"
+            disabled={!isReady}
             min={0}
             max={measurements.length - 1}
             step={1}
@@ -354,10 +441,10 @@ export const PostgreSqlClickHouseBenchmark = () => {
             aria-valuetext={t("rows", { count: measurement.rows })}
             aria-describedby={`${id}-range-hint`}
             onChange={event => setRangeIndex(Number(event.target.value))}
-            className="mt-2 h-9 w-full cursor-pointer accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="mt-2 h-11 w-full cursor-pointer touch-pan-y appearance-none bg-transparent accent-primary disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-muted [&::-webkit-slider-thumb]:-mt-2.5 [&::-webkit-slider-thumb]:size-7 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-track]:h-2 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-muted [&::-moz-range-thumb]:size-7 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-background [&::-moz-range-thumb]:bg-primary"
           />
           <div
-            className="grid grid-cols-3 gap-1 @sm/benchmark:grid-cols-9"
+            className="grid grid-cols-3 gap-2 @lg/benchmark:grid-cols-9"
             role="group"
             aria-label={t("rangeLabel")}
           >
@@ -366,11 +453,12 @@ export const PostgreSqlClickHouseBenchmark = () => {
                 key={row.rows}
                 type="button"
                 onClick={() => setRangeIndex(index)}
+                disabled={!isReady}
                 aria-label={t("rows", { count: row.rows })}
                 aria-pressed={index === rangeIndex}
                 className={cn(
-                  "min-h-9 rounded-md px-1 font-mono text-xs text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring",
-                  index === rangeIndex && "bg-primary/10 font-semibold text-primary",
+                  "min-h-11 min-w-11 cursor-pointer touch-manipulation rounded-md border border-border px-1 font-mono text-xs text-muted-foreground transition-colors hover:bg-muted active:bg-primary/15 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-ring",
+                  index === rangeIndex && "border-primary bg-primary/10 font-semibold text-primary",
                 )}
               >
                 {compactNumber.format(row.rows)}
@@ -382,16 +470,16 @@ export const PostgreSqlClickHouseBenchmark = () => {
           </p>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-3 @sm/benchmark:grid-cols-2">
+        <div className="mt-4 grid grid-cols-2 gap-2 @sm/benchmark:gap-3">
           {databases.map(database => (
             <div
               key={database}
-              className="min-w-0 rounded-xl border border-border bg-background p-4"
+              className="min-w-0 rounded-xl border border-border bg-background p-3 @sm/benchmark:p-4"
               data-testid={`benchmark-metric-${database}`}
             >
               <div
                 className={cn(
-                  "mb-3 flex items-center gap-2 text-sm font-medium",
+                  "mb-2 flex items-center gap-1 text-xs font-medium @sm/benchmark:gap-2 @sm/benchmark:text-sm",
                   databaseColors[database],
                 )}
               >
@@ -400,7 +488,7 @@ export const PostgreSqlClickHouseBenchmark = () => {
               </div>
               <div className="flex flex-wrap items-baseline gap-x-2">
                 <span
-                  className="font-mono text-3xl font-semibold tracking-tight tabular-nums"
+                  className="font-mono text-2xl font-semibold tracking-tight tabular-nums @sm/benchmark:text-3xl"
                   data-testid={`benchmark-value-${database}`}
                 >
                   {measurement[database].toFixed(3)}
@@ -444,8 +532,13 @@ export const PostgreSqlClickHouseBenchmark = () => {
         </div>
       </div>
 
-      <BenchmarkReplay key={`${query}-${rangeIndex}`} measurement={measurement} />
-      <BenchmarkTrend measurements={measurements} selectedIndex={rangeIndex} />
+      <BenchmarkReplay key={`${query}-${rangeIndex}`} measurement={measurement} isReady={isReady} />
+      <BenchmarkTrend
+        measurements={measurements}
+        selectedIndex={rangeIndex}
+        onSelect={setRangeIndex}
+        isReady={isReady}
+      />
       <div className="flex gap-2 border-t border-border bg-muted/20 px-4 py-3 sm:px-6">
         <Info aria-hidden="true" className="mt-1 size-3.5 shrink-0 text-muted-foreground" />
         <p className="text-[11px] leading-5 text-muted-foreground">{t("scope")}</p>

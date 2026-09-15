@@ -81,6 +81,7 @@ next-env.d.ts
 !/docs/main-chat-test-scenarios.md
 !/docs/public-site-guide.md
 !/docs/public-resume-experience.md
+!/docs/postgresql-clickhouse-comparison.md
 !/docs/operations-runbook.md
 !/docs/playwright-cli-test-spec.md
 !/docs/resume-rag-chat-test-scenarios.md

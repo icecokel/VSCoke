@@ -10,22 +10,22 @@ import {
 } from "../../src/components/blog/postgresql-clickhouse-benchmark-data";
 import { gotoWithRetry } from "./test-helpers";
 
-const previewPath = "/ko-KR/blog/preview/dev/postgresql-clickhouse-comparison";
+const articlePath = "/ko-KR/blog/dev/postgresql-clickhouse-comparison";
 const copy = ko.blog.benchmark;
 const rowsLabel = (rows: number) =>
   copy.rows.replace("{count, number}", rows.toLocaleString("ko-KR"));
 
-test.describe("블로그 벤치마크 초안", () => {
+test.describe("공개 블로그 벤치마크", () => {
   test.use({ viewport: { width: 1440, height: 1000 } });
 
-  test("초안 표시·한국어 본문·검색 제외 메타데이터를 제공한다", async ({ page }) => {
+  test("공개 본문·한국어 콘텐츠·검색 메타데이터를 제공한다", async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
-    await gotoWithRetry(page, previewPath);
-    await expect(page.getByTestId("blog-draft-notice")).toContainText(copy.previewTitle);
+    await gotoWithRetry(page, articlePath);
+    await expect(page.getByTestId("blog-draft-notice")).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(article.title);
     await expect(page.locator("article")).toContainText(article.method.important);
-    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    await expect(page.locator('meta[name="robots"]')).not.toHaveAttribute("content", /noindex/);
     await expect(page.getByTestId("benchmark-explorer")).toContainText(copy.recorded);
     await expect(page.getByTestId("benchmark-value-postgres")).toHaveText("11.847");
     await expect(page.getByTestId("benchmark-value-clickhouse")).toHaveText("5.416");
@@ -34,7 +34,7 @@ test.describe("블로그 벤치마크 초안", () => {
 
   for (const query of benchmarkQueries) {
     test(`${query}: 측정한 9개 범위의 중앙값과 판정을 정확히 전환한다`, async ({ page }) => {
-      await gotoWithRetry(page, previewPath);
+      await gotoWithRetry(page, articlePath);
       const explorer = page.getByTestId("benchmark-explorer");
       await explorer.getByRole("button", { name: copy[query], exact: true }).click();
       for (const row of benchmarkMeasurements[query]) {
@@ -59,7 +59,7 @@ test.describe("블로그 벤치마크 초안", () => {
   }
 
   test("슬라이더는 키보드로 판단 보류 구간과 양 끝값까지 이동한다", async ({ page }) => {
-    await gotoWithRetry(page, previewPath);
+    await gotoWithRetry(page, articlePath);
     const slider = page.getByRole("slider", { name: copy.rangeLabel });
     await slider.focus();
     await page.keyboard.press("ArrowLeft");
@@ -74,7 +74,7 @@ test.describe("블로그 벤치마크 초안", () => {
 
   test("재생은 기록된 순서로 완료되고 데이터베이스 요청을 보내지 않는다", async ({ page }) => {
     const requests: string[] = [];
-    await gotoWithRetry(page, previewPath);
+    await gotoWithRetry(page, articlePath);
     await page.getByRole("button", { name: copy.join, exact: true }).click();
     await page.getByRole("button", { name: rowsLabel(1000000), exact: true }).click();
     await page.clock.install();
@@ -112,7 +112,7 @@ test.describe("블로그 벤치마크 초안", () => {
   });
 
   test("재생 중지와 조건 변경은 이전 애니메이션을 정리한다", async ({ page }) => {
-    await gotoWithRetry(page, previewPath);
+    await gotoWithRetry(page, articlePath);
     await page.getByRole("button", { name: copy.join, exact: true }).click();
     await page.getByRole("button", { name: rowsLabel(1000000), exact: true }).click();
     await page.clock.install();
@@ -128,7 +128,7 @@ test.describe("블로그 벤치마크 초안", () => {
 
   test("동작 줄이기 설정에서는 재생 대신 정적 결과를 유지한다", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
-    await gotoWithRetry(page, previewPath);
+    await gotoWithRetry(page, articlePath);
     await page.getByRole("button", { name: copy.replay, exact: true }).click();
     await expect(page.getByTestId("benchmark-replay-status")).toHaveText(copy.reduced);
     await expect(page.getByRole("button", { name: copy.stop, exact: true })).toHaveCount(0);
@@ -139,7 +139,7 @@ test.describe("블로그 벤치마크 초안", () => {
   });
 
   test("전체 기록 표에 원문 27개 조건과 판단 보류를 제공한다", async ({ page }) => {
-    await gotoWithRetry(page, previewPath);
+    await gotoWithRetry(page, articlePath);
     await page.getByTestId("benchmark-records").locator("summary").click();
     for (const query of benchmarkQueries) {
       const table = page.getByTestId(`benchmark-table-${query}`);
@@ -158,7 +158,7 @@ test.describe("블로그 벤치마크 초안", () => {
   for (const width of [360, 390, 768]) {
     test(`${width}px 화면에서 조작 요소와 본문이 가로로 넘치지 않는다`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
-      await gotoWithRetry(page, previewPath);
+      await gotoWithRetry(page, articlePath);
       await page.getByRole("button", { name: copy.group, exact: true }).click();
       await page.getByRole("button", { name: rowsLabel(30000), exact: true }).click();
       await expect(page.getByTestId("benchmark-verdict")).toContainText(copy.pending);
@@ -184,7 +184,7 @@ test.describe("블로그 벤치마크 초안", () => {
     ["ja-JP", ja.blog.benchmark],
   ] as const) {
     test(`${locale} 조작 UI와 한국어 원문을 함께 표시한다`, async ({ page }) => {
-      await gotoWithRetry(page, previewPath.replace("ko-KR", locale));
+      await gotoWithRetry(page, articlePath.replace("ko-KR", locale));
       await expect(page.getByTestId("benchmark-explorer")).toContainText(labels.title);
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(article.title);
       await page.getByRole("button", { name: labels.filter, exact: true }).click();
@@ -192,17 +192,15 @@ test.describe("블로그 벤치마크 초안", () => {
     });
   }
 
-  test("공개 목록과 공개 상세 경로에서는 초안이 노출되지 않는다", async ({ page }) => {
+  test("공개 목록과 공개 상세 경로에서 글을 노출한다", async ({ page }) => {
     await gotoWithRetry(page, "/ko-KR/blog");
-    await expect(page.getByRole("link", { name: article.title, exact: true })).toHaveCount(0);
-    const response = await gotoWithRetry(
-      page,
-      "/ko-KR/blog/dev/postgresql-clickhouse-comparison",
-      1,
-      false,
-    );
-    expect(response?.status()).toBe(404);
-    await expect(page.getByTestId("benchmark-explorer")).toHaveCount(0);
-    await expect(page.getByRole("heading", { level: 1, name: article.title })).toHaveCount(0);
+    const articleLink = page.locator('a[href="/ko-KR/blog/dev/postgresql-clickhouse-comparison"]');
+    await expect(articleLink).toBeVisible();
+    await expect(
+      articleLink.getByRole("heading", { name: article.title, exact: true }),
+    ).toBeVisible();
+    await gotoWithRetry(page, articlePath);
+    await expect(page.getByTestId("benchmark-explorer")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: article.title })).toBeVisible();
   });
 });

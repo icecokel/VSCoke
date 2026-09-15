@@ -10,7 +10,7 @@ export const blogPostDefinitions = [
     description: postgresClickhouseMessages.description,
     tags: ["PostgreSQL", "ClickHouse", "Benchmark", "Database", "AI"],
     readingTime: "9 min read",
-    published: false,
+    published: true,
     load: () => import("@/posts/dev/postgresql-clickhouse-comparison"),
   },
   {

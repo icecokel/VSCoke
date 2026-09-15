@@ -145,7 +145,7 @@ test.describe("PostgreSQL ClickHouse 비교 화면 비주얼", () => {
     test(`벤치마크 ${layout.name} 측정값 시각화`, async ({ page }) => {
       await page.setViewportSize({ width: layout.width, height: layout.height });
       await page.emulateMedia({ reducedMotion: "reduce" });
-      await gotoWithRetry(page, "/ko-KR/blog/preview/dev/postgresql-clickhouse-comparison");
+      await gotoWithRetry(page, "/ko-KR/blog/dev/postgresql-clickhouse-comparison");
       const explorer = page.getByTestId("benchmark-explorer");
       await expect(page.getByTestId("benchmark-value-postgres")).toHaveText("11.847");
       await page.evaluate(() => document.fonts.ready);

@@ -73,9 +73,9 @@ test("재생은 모든 조건에 같은 시간 배율을 사용하고 범위를 
   assert.equal(getBenchmarkReplayProgress(1, 0), 1);
 });
 
-test("새 글은 공개 목록에서 제외하고 명시적 초안 조회에서만 제공한다", () => {
+test("새 글은 공개 목록과 공개 상세 경로에서 제공한다", () => {
   const slug = "dev/postgresql-clickhouse-comparison";
-  assert.equal(getPostBySlug(slug)?.published, false);
-  assert.ok(!getAllPosts().some(post => post.slug === slug));
+  assert.equal(getPostBySlug(slug)?.published, true);
+  assert.ok(getAllPosts().some(post => post.slug === slug));
   assert.ok(getAllPosts(true).some(post => post.slug === slug));
 });

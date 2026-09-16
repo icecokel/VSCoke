@@ -157,7 +157,11 @@
       "experimentalHint": "브라우저 환경에 따라 동작이 다를 수 있는 테스트 기능입니다.",
       "speakingStatus": "블로그 글을 읽고 있습니다.",
       "pausedStatus": "음성 읽기를 일시정지했습니다.",
-      "error": "음성 읽기를 시작하지 못했습니다."
+      "error": "음성 읽기를 시작하지 못했습니다.",
+      "compactRead": "듣기",
+      "compactPause": "일시정지",
+      "compactResume": "계속 듣기",
+      "compactUnsupported": "듣기 미지원"
     },
     "detail": {
       "development": "개발 노트",

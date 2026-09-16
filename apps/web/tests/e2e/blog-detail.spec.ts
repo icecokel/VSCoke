@@ -26,7 +26,12 @@ test.describe("블로그 상세 읽기 경험", () => {
     expect(boxes[0]!.y + boxes[0]!.height).toBeLessThan(boxes[1]!.y);
     expect(boxes[1]!.y + boxes[1]!.height).toBeLessThan(boxes[2]!.y);
     expect(boxes[2]!.width).toBeLessThanOrEqual(768);
-    await expect(page.locator("header time")).toHaveAttribute("datetime", "2024-12-13");
+    await expect(page.getByTestId("blog-post-header").locator("time")).toHaveCount(0);
+    const jsonLd = await page
+      .getByTestId("blog-post")
+      .locator('script[type="application/ld+json"]')
+      .textContent();
+    expect(JSON.parse(jsonLd ?? "{}").datePublished).toBe("2024-12-13");
   });
 
   test("목차는 키보드로 이동하고 fragment·초점·새로고침 위치를 유지한다", async ({ page }) => {
@@ -194,7 +199,7 @@ test.describe("블로그 상세 읽기 경험", () => {
     ["en-US", en],
     ["ja-JP", ja],
   ] as const) {
-    test(`${locale}에서 읽기 도구·목차·날짜를 현지화한다`, async ({ page }) => {
+    test(`${locale}에서 읽기 도구·목차를 현지화하고 날짜를 표시하지 않는다`, async ({ page }) => {
       await gotoWithRetry(page, `/${locale}/blog/journal/hello-world`);
       await expect(page.getByRole("group", { name: messages.blog.detail.tools })).toBeVisible();
       await expect(
@@ -202,7 +207,7 @@ test.describe("블로그 상세 읽기 경험", () => {
           .getByTestId("blog-outline-desktop")
           .getByText(messages.blog.detail.contents, { exact: true }),
       ).toBeVisible();
-      await expect(page.locator("header time")).toContainText("2024");
+      await expect(page.getByTestId("blog-post-header").locator("time")).toHaveCount(0);
       await expect(
         page.getByRole("button", { name: messages.blog.detail.copyCode }),
       ).toBeAttached();

@@ -16,6 +16,7 @@ interface ShareLinkButtonProps {
   variant?: ComponentProps<typeof Button>["variant"];
   size?: ComponentProps<typeof Button>["size"];
   iconOnly?: boolean;
+  labelClassName?: string;
 }
 
 export const ShareLinkButton = ({
@@ -28,6 +29,7 @@ export const ShareLinkButton = ({
   variant = "outline",
   size = "sm",
   iconOnly = false,
+  labelClassName,
 }: ShareLinkButtonProps) => {
   const t = useTranslations("Share");
   const { shareLink } = useLinkShare();
@@ -52,8 +54,8 @@ export const ShareLinkButton = ({
       aria-label={label ?? t("share")}
       title={label ?? t("share")}
     >
-      <Share2 className="h-4 w-4" />
-      {!iconOnly && (label ?? t("share"))}
+      <Share2 aria-hidden="true" className="h-4 w-4" />
+      {!iconOnly && <span className={labelClassName}>{label ?? t("share")}</span>}
     </Button>
   );
 };

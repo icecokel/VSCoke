@@ -231,6 +231,14 @@ export const BlogSpeechControls = ({ description, language, title }: BlogSpeechC
         : playbackState === "paused"
           ? t("resume")
           : t("read");
+  const compactLabel =
+    supportState === "unsupported"
+      ? t("compactUnsupported")
+      : playbackState === "speaking"
+        ? t("compactPause")
+        : playbackState === "paused"
+          ? t("compactResume")
+          : t("compactRead");
   const PrimaryIcon =
     playbackState === "speaking" ? PauseIcon : playbackState === "paused" ? PlayIcon : Volume2Icon;
   const formattedRate = Number.isInteger(rate) ? rate.toFixed(0) : rate.toFixed(1);
@@ -245,7 +253,7 @@ export const BlogSpeechControls = ({ description, language, title }: BlogSpeechC
 
   return (
     <div
-      className="flex flex-wrap items-center gap-2 [&_button]:min-h-10"
+      className="flex min-w-0 flex-1 flex-wrap items-center gap-1 @xl/blog:flex-initial @xl/blog:gap-2 [&_button]:min-h-11 @xl/blog:[&_button]:min-h-10"
       data-testid="blog-speech-controls"
     >
       <Tooltip>
@@ -254,6 +262,8 @@ export const BlogSpeechControls = ({ description, language, title }: BlogSpeechC
             type="button"
             variant="outline"
             size="sm"
+            aria-label={primaryLabel}
+            className="touch-manipulation gap-1 rounded-full border-transparent bg-muted/60 px-2 shadow-none has-[>svg]:px-2 dark:bg-muted/60 @xl/blog:gap-2 @xl/blog:rounded-md @xl/blog:border-border @xl/blog:bg-background @xl/blog:shadow-xs @xl/blog:has-[>svg]:px-2.5 @xl/blog:dark:bg-input/30"
             aria-controls={BLOG_SPEECH_CONTENT_ID}
             aria-pressed={playbackState === "speaking"}
             data-testid="blog-speech-primary"
@@ -261,7 +271,12 @@ export const BlogSpeechControls = ({ description, language, title }: BlogSpeechC
             onClick={handlePrimaryAction}
           >
             <PrimaryIcon aria-hidden="true" className="size-4" />
-            {primaryLabel}
+            <span aria-hidden="true" className="@xl/blog:hidden">
+              {compactLabel}
+            </span>
+            <span aria-hidden="true" className="hidden @xl/blog:inline">
+              {primaryLabel}
+            </span>
           </Button>
         </TooltipTrigger>
         <TooltipContent
@@ -280,11 +295,12 @@ export const BlogSpeechControls = ({ description, language, title }: BlogSpeechC
           variant="outline"
           size="sm"
           aria-label={t("speed", { rate: formattedRate })}
+          className="w-11 min-w-11 touch-manipulation rounded-full border-transparent bg-transparent px-0 font-mono tabular-nums shadow-none has-[>svg]:px-0 dark:bg-transparent @xl/blog:w-auto @xl/blog:rounded-md @xl/blog:border-border @xl/blog:bg-background @xl/blog:px-3 @xl/blog:font-sans @xl/blog:shadow-xs @xl/blog:has-[>svg]:px-2.5 @xl/blog:dark:bg-input/30"
           data-testid="blog-speech-rate"
           onClick={handleRateChange}
           title={t("speed", { rate: formattedRate })}
         >
-          <GaugeIcon aria-hidden="true" className="size-4" />
+          <GaugeIcon aria-hidden="true" className="hidden size-4 @xl/blog:block" />
           {formattedRate}×
         </Button>
       )}
@@ -295,12 +311,14 @@ export const BlogSpeechControls = ({ description, language, title }: BlogSpeechC
           variant="outline"
           size="sm"
           aria-controls={BLOG_SPEECH_CONTENT_ID}
+          aria-label={t("stop")}
+          className="size-11 touch-manipulation rounded-full border-transparent bg-transparent p-0 shadow-none dark:bg-transparent @xl/blog:h-10 @xl/blog:w-auto @xl/blog:rounded-md @xl/blog:border-border @xl/blog:bg-background @xl/blog:px-3 @xl/blog:shadow-xs @xl/blog:dark:bg-input/30"
           data-testid="blog-speech-stop"
           onClick={stopSpeech}
           title={t("stop")}
         >
           <SquareIcon aria-hidden="true" className="size-4" />
-          {t("stop")}
+          <span className="sr-only @xl/blog:not-sr-only">{t("stop")}</span>
         </Button>
       )}
 

@@ -157,7 +157,11 @@
       "experimentalHint": "This is an experimental feature and may vary by browser.",
       "speakingStatus": "The blog article is being read aloud.",
       "pausedStatus": "Speech playback is paused.",
-      "error": "Unable to start speech playback."
+      "error": "Unable to start speech playback.",
+      "compactRead": "Listen",
+      "compactPause": "Pause",
+      "compactResume": "Resume",
+      "compactUnsupported": "Unavailable"
     },
     "detail": {
       "development": "Development notes",

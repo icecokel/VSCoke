@@ -20,6 +20,7 @@ interface ShareQrDialogProps {
   title?: string;
   triggerLabel?: string;
   triggerClassName?: string;
+  triggerLabelClassName?: string;
 }
 
 export const ShareQrDialog = ({
@@ -27,6 +28,7 @@ export const ShareQrDialog = ({
   title,
   triggerLabel,
   triggerClassName,
+  triggerLabelClassName,
 }: ShareQrDialogProps) => {
   const t = useTranslations("Share");
   const { resolveUrl, copyLink } = useLinkShare();
@@ -43,9 +45,16 @@ export const ShareQrDialog = ({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className={triggerClassName}>
-          <QrCode className="h-4 w-4" />
-          {triggerLabel ?? t("qr")}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={triggerClassName}
+          aria-label={triggerLabel ?? t("qr")}
+          title={triggerLabel ?? t("qr")}
+        >
+          <QrCode aria-hidden="true" className="h-4 w-4" />
+          <span className={triggerLabelClassName}>{triggerLabel ?? t("qr")}</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">

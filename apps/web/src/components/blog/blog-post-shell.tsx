@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowLeft, CalendarDays, Clock3 } from "lucide-react";
+import { ArrowLeft, Clock3 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { BLOG_SPEECH_CONTENT_ID } from "@/components/blog/blog-speech";
 import { BlogSpeechControls } from "@/components/blog/blog-speech-controls";
@@ -28,6 +28,8 @@ export const BlogPostShell = async ({
 }: BlogPostShellProps) => {
   const t = await getTranslations({ locale, namespace: "blog.detail" });
   const jsonLd = createBlogPostJsonLd({ canonicalUrl, locale, post });
+  const mobileShareButtonClassName =
+    "size-11 touch-manipulation rounded-full border-transparent bg-transparent p-0 shadow-none hover:bg-muted dark:bg-transparent @xl/blog:h-10 @xl/blog:w-auto @xl/blog:rounded-md @xl/blog:border-border @xl/blog:bg-background @xl/blog:px-3 @xl/blog:shadow-xs @xl/blog:dark:bg-input/30";
   const minutes = post.readingTime.match(/^(\d+) min read$/)?.[1];
   const category =
     post.category === "dev"
@@ -74,18 +76,6 @@ export const BlogPostShell = async ({
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
           <span className="inline-flex items-center gap-2">
-            <CalendarDays aria-hidden="true" className="size-4" />
-            <span className="sr-only">{t("publishedOn")}</span>
-            <time dateTime={post.date}>
-              {new Intl.DateTimeFormat(locale, {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-                timeZone: "UTC",
-              }).format(new Date(post.date))}
-            </time>
-          </span>
-          <span className="inline-flex items-center gap-2">
             <Clock3 aria-hidden="true" className="size-4" />
             {minutes ? t("readingTime", { minutes: Number(minutes) }) : post.readingTime}
           </span>
@@ -110,19 +100,28 @@ export const BlogPostShell = async ({
       <div
         role="group"
         aria-label={t("tools")}
-        className="mt-8 mb-9 flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-3 border-y border-border py-3 @4xl/blog:mt-10 @4xl/blog:mb-12"
+        className="mt-5 mb-6 flex min-h-14 items-center justify-between gap-1 border-b border-border py-1.5 @xl/blog:mt-8 @xl/blog:mb-9 @xl/blog:min-h-16 @xl/blog:flex-wrap @xl/blog:gap-x-4 @xl/blog:gap-y-3 @xl/blog:border-y @xl/blog:py-3 @4xl/blog:mt-10 @4xl/blog:mb-12"
         data-testid="blog-reading-tools"
       >
         {/* 글 원문은 모든 UI locale에서 한국어이므로 낭독 언어는 원문을 따른다. */}
         <BlogSpeechControls title={post.title} description={post.description} language="ko-KR" />
-        <div className="flex flex-wrap items-center gap-2">
+        <div
+          className="flex shrink-0 items-center border-l border-border pl-1 @xl/blog:gap-2 @xl/blog:border-0 @xl/blog:pl-0"
+          data-testid="blog-share-actions"
+        >
           <ShareLinkButton
             url={canonicalUrl}
             title={post.title}
             text={post.description}
-            className="min-h-10"
+            className={mobileShareButtonClassName}
+            labelClassName="sr-only @xl/blog:not-sr-only"
           />
-          <ShareQrDialog url={canonicalUrl} title={post.title} triggerClassName="min-h-10" />
+          <ShareQrDialog
+            url={canonicalUrl}
+            title={post.title}
+            triggerClassName={mobileShareButtonClassName}
+            triggerLabelClassName="sr-only @xl/blog:not-sr-only"
+          />
         </div>
       </div>
 

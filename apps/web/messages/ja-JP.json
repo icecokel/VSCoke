@@ -157,7 +157,11 @@
       "experimentalHint": "ブラウザ環境によって動作が異なる場合があるテスト機能です。",
       "speakingStatus": "ブログ記事を読み上げています。",
       "pausedStatus": "音声読み上げを一時停止しました。",
-      "error": "音声読み上げを開始できませんでした。"
+      "error": "音声読み上げを開始できませんでした。",
+      "compactRead": "聴く",
+      "compactPause": "一時停止",
+      "compactResume": "再開",
+      "compactUnsupported": "音声非対応"
     },
     "detail": {
       "development": "開発ノート",

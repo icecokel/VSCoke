@@ -260,6 +260,91 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/beat-jev/matches": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** JEV 2선승 매치 시작 */
+    post: operations["BeatJevController_createMatch"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/beat-jev/matches/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 진행 중인 JEV 매치 조회 */
+    get: operations["BeatJevController_getMatch"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/beat-jev/matches/{id}/actions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 플레이어 행동 적용 */
+    post: operations["BeatJevController_playAction"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/beat-jev/matches/{id}/continue": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** JEV의 차례 진행 또는 실패한 차례 재시도 */
+    post: operations["BeatJevController_continueJev"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/beat-jev/matches/{id}/next": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 다음 게임 또는 무승부 재경기 시작 */
+    post: operations["BeatJevController_nextGame"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -761,6 +846,69 @@ export interface components {
        * @example true
        */
       exists: boolean;
+    };
+    /** @enum {string} */
+    BeatJevGameId:
+      | "connect-four"
+      | "othello"
+      | "dots-and-boxes"
+      | "isolation"
+      | "battleship"
+      | "codebreaker"
+      | "yacht-dice"
+      | "dice-stop"
+      | "bomb-dodge"
+      | "blind-card";
+    BeatJevGameViewDto: {
+      gameId: components["schemas"]["BeatJevGameId"];
+      /** @enum {string} */
+      turn: "PLAYER" | "JEV";
+      /** @enum {string|null} */
+      result: "PLAYER" | "JEV" | "DRAW" | null;
+      data: {
+        [key: string]: unknown;
+      };
+      legalActions: string[];
+    };
+    BeatJevRoundHistoryDto: {
+      gameId: components["schemas"]["BeatJevGameId"];
+      /** @enum {string} */
+      result: "PLAYER" | "JEV" | "DRAW";
+    };
+    BeatJevMatchDto: {
+      /** Format: uuid */
+      id: string;
+      revision: number;
+      games: (
+        | "connect-four"
+        | "othello"
+        | "dots-and-boxes"
+        | "isolation"
+        | "battleship"
+        | "codebreaker"
+        | "yacht-dice"
+        | "dice-stop"
+        | "bomb-dodge"
+        | "blind-card"
+        | null
+      )[];
+      gameIndex: number;
+      playerWins: number;
+      jevWins: number;
+      /** @enum {string} */
+      status: "PLAYING" | "ROUND_END" | "COMPLETE";
+      game: components["schemas"]["BeatJevGameViewDto"];
+      history: components["schemas"]["BeatJevRoundHistoryDto"][];
+    };
+    GameActionDto: {
+      /** @example 0 */
+      revision: number;
+      /** @example column:2 */
+      action: string;
+    };
+    RevisionDto: {
+      /** @example 0 */
+      revision: number;
     };
   };
   responses: never;
@@ -1663,6 +1811,190 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["ApiErrorResponseDto"];
         };
+      };
+    };
+  };
+  BeatJevController_createMatch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["BeatJevMatchDto"];
+          };
+        };
+      };
+      /** @description 시간당 게임 요청 횟수 초과 */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BeatJevController_getMatch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["BeatJevMatchDto"];
+          };
+        };
+      };
+      /** @description 매치가 없거나 만료됨 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BeatJevController_playAction: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["GameActionDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["BeatJevMatchDto"];
+          };
+        };
+      };
+      /** @description 허용되지 않은 행동 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description 이미 변경된 매치 상태 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BeatJevController_continueJev: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RevisionDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["BeatJevMatchDto"];
+          };
+        };
+      };
+      /** @description 이미 변경된 매치 상태 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description 시간당 게임 요청 횟수 초과 */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BeatJevController_nextGame: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RevisionDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["BeatJevMatchDto"];
+          };
+        };
+      };
+      /** @description 현재 게임이 끝나지 않음 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };

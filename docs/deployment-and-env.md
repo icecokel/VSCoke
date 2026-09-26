@@ -144,25 +144,26 @@ API 로컬 개발 값은 `apps/api/.env`에 둔다. 시작점은 `apps/api/.env.
 
 API 운영 값은 Ubuntu host의 `/home/icenux/projects/vscoke-api/.env`에 둔다. 현재 PM2 실행은 이 경로에서 시작되므로 Nest `ConfigModule`이 이 위치의 `.env`를 읽는다.
 
-| 이름                      | 필수      | 기본값                                 | 설명                                                                        |
-| ------------------------- | --------- | -------------------------------------- | --------------------------------------------------------------------------- |
-| `NODE_ENV`                | 권장      | `development`                          | 운영에서는 `production`                                                     |
-| `PORT`                    | 권장      | `3000`                                 | API 리슨 포트                                                               |
-| `LOG_LEVEL`               | 선택      | `development=debug`, `production=info` | Winston 콘솔·일별 파일 로그 최소 레벨 (`error`, `warn`, `info`, `debug` 등) |
-| `CORS_ORIGINS`            | 권장      | 기본 허용 origin + 추가 없음           | 쉼표로 구분한 추가 허용 origin                                              |
-| `GOOGLE_CLIENT_ID`        | 필수      | 없음                                   | Google OAuth 토큰 검증                                                      |
-| `DB_HOST`                 | 필수      | `localhost`                            | PostgreSQL host                                                             |
-| `DB_PORT`                 | 필수      | `5432`                                 | PostgreSQL port                                                             |
-| `DB_USERNAME`             | 필수      | `postgres`                             | PostgreSQL user                                                             |
-| `DB_PASSWORD`             | 필수      | `postgres`                             | PostgreSQL password                                                         |
-| `DB_DATABASE`             | 필수      | `vscoke`                               | PostgreSQL database                                                         |
-| `DB_SYNCHRONIZE`          | 운영 필수 | production에서는 `false` 취급          | TypeORM synchronize 제어                                                    |
-| `NOTIFY_SERVICE_URL`      | 선택      | 없음                                   | 운영 에러 알림 endpoint                                                     |
-| `NOTIFY_SERVICE_USER`     | 선택      | 없음                                   | 알림 endpoint basic auth user                                               |
-| `NOTIFY_SERVICE_PASSWORD` | 선택      | 없음                                   | 알림 endpoint basic auth password                                           |
-| `ENABLE_DEV_AUTH_BYPASS`  | 개발 전용 | `false` 취급                           | 개발 인증 우회                                                              |
-| `DEV_AUTH_TOKEN`          | 개발 전용 | 없음                                   | 개발 인증 우회 토큰                                                         |
-| `CLOUDFLARE_DB_HOST`      | 개발 보조 | 없음                                   | `db:tunnel` 스크립트용 DB hostname                                          |
+| 이름                      | 필수                  | 기본값                                 | 설명                                                                        |
+| ------------------------- | --------------------- | -------------------------------------- | --------------------------------------------------------------------------- |
+| `NODE_ENV`                | 권장                  | `development`                          | 운영에서는 `production`                                                     |
+| `PORT`                    | 권장                  | `3000`                                 | API 리슨 포트                                                               |
+| `LOG_LEVEL`               | 선택                  | `development=debug`, `production=info` | Winston 콘솔·일별 파일 로그 최소 레벨 (`error`, `warn`, `info`, `debug` 등) |
+| `CORS_ORIGINS`            | 권장                  | 기본 허용 origin + 추가 없음           | 쉼표로 구분한 추가 허용 origin                                              |
+| `GOOGLE_CLIENT_ID`        | 필수                  | 없음                                   | Google OAuth 토큰 검증                                                      |
+| `DB_HOST`                 | 필수                  | `localhost`                            | PostgreSQL host                                                             |
+| `DB_PORT`                 | 필수                  | `5432`                                 | PostgreSQL port                                                             |
+| `DB_USERNAME`             | 필수                  | `postgres`                             | PostgreSQL user                                                             |
+| `DB_PASSWORD`             | 필수                  | `postgres`                             | PostgreSQL password                                                         |
+| `DB_DATABASE`             | 필수                  | `vscoke`                               | PostgreSQL database                                                         |
+| `DB_SYNCHRONIZE`          | 운영 필수             | production에서는 `false` 취급          | TypeORM synchronize 제어                                                    |
+| `JEV_API_KEY`             | JEV 게임 사용 시 필수 | 없음                                   | JEV 상대 행동 선택용 서버 API 키                                            |
+| `NOTIFY_SERVICE_URL`      | 선택                  | 없음                                   | 운영 에러 알림 endpoint                                                     |
+| `NOTIFY_SERVICE_USER`     | 선택                  | 없음                                   | 알림 endpoint basic auth user                                               |
+| `NOTIFY_SERVICE_PASSWORD` | 선택                  | 없음                                   | 알림 endpoint basic auth password                                           |
+| `ENABLE_DEV_AUTH_BYPASS`  | 개발 전용             | `false` 취급                           | 개발 인증 우회                                                              |
+| `DEV_AUTH_TOKEN`          | 개발 전용             | 없음                                   | 개발 인증 우회 토큰                                                         |
+| `CLOUDFLARE_DB_HOST`      | 개발 보조             | 없음                                   | `db:tunnel` 스크립트용 DB hostname                                          |
 
 Resume RAG와 메인 채팅 변수, 기본값과 데이터 정책은
 [메인 채팅·이력 질문 AI 사용 지침](./main-chat-ai-usage-guide.md)을 따른다. 실제 변수 목록은

@@ -328,7 +328,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await expect(
       gameCenter.getByRole("heading", { name: messages.home.cards.gameTitle }),
     ).toBeVisible();
-    await expect(gameCenter.getByRole("button")).toHaveCount(2);
+    await expect(gameCenter.getByRole("button")).toHaveCount(3);
     await expect(gameCenter.getByRole("link", { name: /Poke Lounge/ })).toHaveAttribute(
       "href",
       `https://poke-lounge.icecoke.kr/${locale}/game/poke-lounge`,
@@ -346,6 +346,9 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await expect(page.getByRole("button", { name: /Sky Drop/ })).toBeVisible();
     await expect(
       page.getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.wordleTitle)) }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.beatJev.title)) }),
     ).toBeVisible();
     await expect(page.getByRole("button", { name: /doom|둠/i })).toHaveCount(0);
 

@@ -1220,6 +1220,243 @@
         "summary": "단어 유효성 검사",
         "tags": ["Wordle"]
       }
+    },
+    "/beat-jev/matches": {
+      "post": {
+        "operationId": "BeatJevController_createMatch",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/BeatJevMatchDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "시간당 게임 요청 횟수 초과"
+          }
+        },
+        "summary": "JEV 2선승 매치 시작",
+        "tags": ["Beat Jev"]
+      }
+    },
+    "/beat-jev/matches/{id}": {
+      "get": {
+        "operationId": "BeatJevController_getMatch",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/BeatJevMatchDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "매치가 없거나 만료됨"
+          }
+        },
+        "summary": "진행 중인 JEV 매치 조회",
+        "tags": ["Beat Jev"]
+      }
+    },
+    "/beat-jev/matches/{id}/actions": {
+      "post": {
+        "operationId": "BeatJevController_playAction",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GameActionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/BeatJevMatchDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "허용되지 않은 행동"
+          },
+          "409": {
+            "description": "이미 변경된 매치 상태"
+          }
+        },
+        "summary": "플레이어 행동 적용",
+        "tags": ["Beat Jev"]
+      }
+    },
+    "/beat-jev/matches/{id}/continue": {
+      "post": {
+        "operationId": "BeatJevController_continueJev",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/BeatJevMatchDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "이미 변경된 매치 상태"
+          },
+          "429": {
+            "description": "시간당 게임 요청 횟수 초과"
+          }
+        },
+        "summary": "JEV의 차례 진행 또는 실패한 차례 재시도",
+        "tags": ["Beat Jev"]
+      }
+    },
+    "/beat-jev/matches/{id}/next": {
+      "post": {
+        "operationId": "BeatJevController_nextGame",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/BeatJevMatchDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "현재 게임이 끝나지 않음"
+          }
+        },
+        "summary": "다음 게임 또는 무승부 재경기 시작",
+        "tags": ["Beat Jev"]
+      }
     }
   },
   "info": {
@@ -2178,6 +2415,168 @@
           }
         },
         "required": ["exists"]
+      },
+      "BeatJevGameId": {
+        "type": "string",
+        "enum": [
+          "connect-four",
+          "othello",
+          "dots-and-boxes",
+          "isolation",
+          "battleship",
+          "codebreaker",
+          "yacht-dice",
+          "dice-stop",
+          "bomb-dodge",
+          "blind-card"
+        ]
+      },
+      "BeatJevGameViewDto": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BeatJevGameId"
+              }
+            ]
+          },
+          "turn": {
+            "type": "string",
+            "enum": ["PLAYER", "JEV"]
+          },
+          "result": {
+            "type": "string",
+            "enum": ["PLAYER", "JEV", "DRAW"],
+            "nullable": true
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "legalActions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["gameId", "turn", "result", "data", "legalActions"]
+      },
+      "BeatJevRoundHistoryDto": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BeatJevGameId"
+              }
+            ]
+          },
+          "result": {
+            "type": "string",
+            "enum": ["PLAYER", "JEV", "DRAW"]
+          }
+        },
+        "required": ["gameId", "result"]
+      },
+      "BeatJevMatchDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "number",
+            "minimum": 0
+          },
+          "games": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "connect-four",
+                "othello",
+                "dots-and-boxes",
+                "isolation",
+                "battleship",
+                "codebreaker",
+                "yacht-dice",
+                "dice-stop",
+                "bomb-dodge",
+                "blind-card"
+              ],
+              "nullable": true
+            }
+          },
+          "gameIndex": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2
+          },
+          "playerWins": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2
+          },
+          "jevWins": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PLAYING", "ROUND_END", "COMPLETE"]
+          },
+          "game": {
+            "$ref": "#/components/schemas/BeatJevGameViewDto"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BeatJevRoundHistoryDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "revision",
+          "games",
+          "gameIndex",
+          "playerWins",
+          "jevWins",
+          "status",
+          "game",
+          "history"
+        ]
+      },
+      "GameActionDto": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "number",
+            "example": 0,
+            "minimum": 0
+          },
+          "action": {
+            "type": "string",
+            "example": "column:2",
+            "maxLength": 80
+          }
+        },
+        "required": ["revision", "action"]
+      },
+      "RevisionDto": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "number",
+            "example": 0,
+            "minimum": 0
+          }
+        },
+        "required": ["revision"]
       }
     }
   }

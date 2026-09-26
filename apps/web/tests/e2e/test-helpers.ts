@@ -59,6 +59,7 @@ export interface AppMessages {
   Game: {
     start: string;
     exit: string;
+    beatJev: typeof KoreanMessages.Game.beatJev;
     apiUnavailable: string;
     leaderboardEmpty: string;
     loadFailed: string;

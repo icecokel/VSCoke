@@ -10,6 +10,7 @@ import { MainChatModule } from './main-chat/main-chat.module';
 import { RecipeModule } from './recipe/recipe.module';
 import { ResumeRagModule } from './resume-rag/resume-rag.module';
 import { WordleModule } from './wordle/wordle.module';
+import { BeatJevModule } from './beat-jev/beat-jev.module';
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/utils/winston.config';
 
@@ -58,6 +59,7 @@ import { winstonConfig } from './common/utils/winston.config';
     RecipeModule,
     ResumeRagModule,
     WordleModule,
+    BeatJevModule,
   ],
   controllers: [AppController],
   providers: [AppService],

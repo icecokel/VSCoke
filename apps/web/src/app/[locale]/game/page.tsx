@@ -25,10 +25,16 @@ export default function GameDashboard() {
       description: t("wordleDesc"),
       route: "/game/wordle",
     },
+    {
+      id: "beat-jev",
+      title: t("beatJev.title"),
+      description: t("beatJev.cardDescription"),
+      route: "/game/beat-jev",
+    },
   ];
 
   useEffect(() => {
-    ["/game/sky-drop", "/game/wordle"].forEach(path => prefetch(path));
+    ["/game/sky-drop", "/game/wordle", "/game/beat-jev"].forEach(path => prefetch(path));
   }, [prefetch]);
 
   return (
@@ -37,10 +43,10 @@ export default function GameDashboard() {
         Game Center
       </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 w-full max-w-4xl">
+      <div className="grid w-full max-w-3xl grid-cols-1 gap-3 md:grid-cols-2 md:gap-6">
         <a
           href={`${pokeLoungeSiteUrl}/${locale}/game/poke-lounge`}
-          className="group relative flex h-24 w-full cursor-pointer flex-row items-center justify-between rounded-2xl border-2 border-slate-700 bg-slate-800 p-4 text-left transition-all duration-300 hover:scale-105 hover:border-green-300 hover:bg-slate-700 md:h-64 md:w-64 md:flex-col md:justify-center md:p-6 md:text-center"
+          className="group relative flex h-24 w-full cursor-pointer flex-row items-center justify-between rounded-2xl border-2 border-slate-700 bg-slate-800 p-4 text-left transition-all duration-300 hover:scale-105 hover:border-green-300 hover:bg-slate-700 md:h-64 md:flex-col md:justify-center md:p-6 md:text-center"
         >
           <div className="flex flex-col md:items-center">
             <h2 className="text-xl md:text-2xl font-bold text-white mb-1 md:mb-2 leading-tight">
@@ -61,7 +67,7 @@ export default function GameDashboard() {
             onClick={() => push(game.route)}
             onMouseEnter={() => prefetch(game.route)}
             onFocus={() => prefetch(game.route)}
-            className="group relative flex h-24 w-full cursor-pointer flex-row items-center justify-between rounded-2xl border-2 border-slate-700 bg-slate-800 p-4 text-left transition-all duration-300 hover:scale-105 hover:border-green-300 hover:bg-slate-700 md:h-64 md:w-64 md:flex-col md:justify-center md:p-6 md:text-center"
+            className="group relative flex h-24 w-full cursor-pointer flex-row items-center justify-between rounded-2xl border-2 border-slate-700 bg-slate-800 p-4 text-left transition-all duration-300 hover:scale-105 hover:border-green-300 hover:bg-slate-700 md:h-64 md:flex-col md:justify-center md:p-6 md:text-center"
           >
             <div className="flex flex-col md:items-center">
               <h2 className="text-xl md:text-2xl font-bold text-white mb-1 md:mb-2 leading-tight">

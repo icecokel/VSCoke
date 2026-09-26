@@ -22,6 +22,9 @@ import { ResumeRagRateLimitGuard } from './resume-rag/resume-rag-rate-limit.guar
 import { ResumeRagService } from './resume-rag/resume-rag.service';
 import { WordleController } from './wordle/wordle.controller';
 import { WordleService } from './wordle/wordle.service';
+import { BeatJevController } from './beat-jev/beat-jev.controller';
+import { BeatJevService } from './beat-jev/beat-jev.service';
+import { BeatJevRateLimitGuard } from './beat-jev/beat-jev-rate-limit.guard';
 
 const contractStubProvider = (provide: InjectionToken): Provider => ({
   provide,
@@ -45,6 +48,7 @@ const contractGuardStubProvider = (provide: InjectionToken): Provider => ({
     ResumeRagController,
     ResumeConversationController,
     WordleController,
+    BeatJevController,
   ],
   providers: [
     AppService,
@@ -61,6 +65,8 @@ const contractGuardStubProvider = (provide: InjectionToken): Provider => ({
     contractStubProvider(ResumeConversationService),
     contractGuardStubProvider(ResumeConversationRateLimitGuard),
     contractStubProvider(WordleService),
+    contractStubProvider(BeatJevService),
+    contractGuardStubProvider(BeatJevRateLimitGuard),
   ],
 })
 export class ApiContractModule {}

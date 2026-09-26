@@ -251,6 +251,16 @@ export const useSearchIndex = (): SearchItem[] => {
         featured: true,
         priority: 390,
       },
+      {
+        id: "game:beat-jev",
+        type: "game",
+        title: tGame("beatJev.title"),
+        description: tGame("beatJev.cardDescription"),
+        keywords: ["jev", "board game", "yacht dice", "야추", "보드게임"],
+        path: "/game/beat-jev",
+        featured: true,
+        priority: 380,
+      },
     ];
 
     return [

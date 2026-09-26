@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { type NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 import { getJwtExpiresAt, isIdTokenUsable } from "@/lib/auth-token";
 
@@ -34,7 +34,7 @@ async function refreshAccessToken(refreshToken: string) {
   }
 }
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+export const authConfig: NextAuthConfig = {
   providers: [
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
@@ -63,8 +63,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         };
       }
 
-      // 토큰이 아직 유효한 경우
-      if (Date.now() < (token.expiresAt as number) * 1000) {
+      // API 인증에 필요한 ID 토큰의 만료 여유 시간까지 확인한다.
+      if (
+        typeof token.expiresAt === "number" &&
+        Date.now() < token.expiresAt * 1000 &&
+        isIdTokenUsable(token.idToken, token.idTokenExpiresAt)
+      ) {
         return token;
       }
 
@@ -116,4 +120,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return session;
     },
   },
-});
+};
+
+export const { handlers, signIn, signOut, auth } = NextAuth(authConfig);

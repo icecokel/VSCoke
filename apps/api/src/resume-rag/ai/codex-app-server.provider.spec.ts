@@ -17,6 +17,8 @@ type SentCodexRequest = {
 
 type FakeCodexWebSocketBehavior =
   | 'answer'
+  | 'multiple-messages'
+  | 'unphased-messages'
   | 'connect-error'
   | 'turn-start-error'
   | 'turn-timeout';
@@ -89,6 +91,49 @@ class FakeCodexWebSocket {
         result: { turn: { id: 'turn-1' } },
       });
       if (this.behavior === 'turn-timeout') {
+        return;
+      }
+
+      if (
+        this.behavior === 'multiple-messages' ||
+        this.behavior === 'unphased-messages'
+      ) {
+        this.emit({
+          method: 'item/agentMessage/delta',
+          params: { itemId: 'progress', delta: '자료를 확인하겠습니다. ' },
+        });
+        this.emit({
+          method: 'item/completed',
+          params: {
+            item: {
+              type: 'agentMessage',
+              id: 'progress',
+              phase:
+                this.behavior === 'unphased-messages' ? null : 'commentary',
+              text: '자료를 확인하겠습니다. ',
+            },
+          },
+        });
+        this.emit({
+          method: 'item/agentMessage/delta',
+          params: { itemId: 'answer', delta: '최종 답변입니다.' },
+        });
+        this.emit({
+          method: 'item/completed',
+          params: {
+            item: {
+              type: 'agentMessage',
+              id: 'answer',
+              phase:
+                this.behavior === 'unphased-messages' ? null : 'final_answer',
+              text: '최종 답변입니다.',
+            },
+          },
+        });
+        this.emit({
+          method: 'turn/completed',
+          params: { turn: { status: 'completed' }, threadId: 'thread-1' },
+        });
         return;
       }
 
@@ -217,6 +262,28 @@ describe('CodexAppServerProvider', () => {
       '상민은 운영 자동화와 백오피스 개발 경험이 있다.',
     );
     expect(turnInput).toContain('Question: 상민의 강점은?');
+  });
+
+  it('returns only the final answer when commentary arrives first', async () => {
+    const provider = new CodexAppServerProvider(baseConfig, {
+      createWebSocket: (url) =>
+        new FakeCodexWebSocket(url, 'multiple-messages'),
+    });
+
+    await expect(provider.answer(failureRequest)).resolves.toBe(
+      '최종 답변입니다.',
+    );
+  });
+
+  it('keeps the latest completed answer when phases are unavailable', async () => {
+    const provider = new CodexAppServerProvider(baseConfig, {
+      createWebSocket: (url) =>
+        new FakeCodexWebSocket(url, 'unphased-messages'),
+    });
+
+    await expect(provider.answer(failureRequest)).resolves.toBe(
+      '최종 답변입니다.',
+    );
   });
 
   it('clears timers when connection fails asynchronously', async () => {

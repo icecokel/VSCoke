@@ -31,6 +31,52 @@ const installHistoryFixture = async (
 };
 
 test.describe("히스토리 탭 상태머신", () => {
+  test("저장소 접근이 차단되어도 현재 탭을 표시한다", async ({ page }) => {
+    const errors: Error[] = [];
+    page.on("pageerror", error => errors.push(error));
+    await page.addInitScript(() => {
+      const originalGet = Storage.prototype.getItem;
+      Storage.prototype.getItem = function (key) {
+        if (key === "vscoke-history") throw new DOMException("blocked", "SecurityError");
+        return originalGet.call(this, key);
+      };
+      const originalSet = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key, value) {
+        if (key === "vscoke-history") throw new DOMException("blocked", "SecurityError");
+        return originalSet.call(this, key, value);
+      };
+      const originalRemove = Storage.prototype.removeItem;
+      Storage.prototype.removeItem = function (key) {
+        if (key === "vscoke-history") throw new DOMException("blocked", "SecurityError");
+        return originalRemove.call(this, key);
+      };
+    });
+
+    await visit(page, `/${getTestLocale()}/game`);
+    await expect(
+      page.getByTestId("history-tab-rail").locator('button[aria-current="page"]'),
+    ).toContainText("game");
+    expect(errors).toEqual([]);
+  });
+
+  test("저장소 쓰기가 실패해도 현재 탭을 표시한다", async ({ page }) => {
+    const errors: Error[] = [];
+    page.on("pageerror", error => errors.push(error));
+    await page.addInitScript(() => {
+      const original = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key, value) {
+        if (key === "vscoke-history") throw new DOMException("full", "QuotaExceededError");
+        return original.call(this, key, value);
+      };
+    });
+
+    await visit(page, `/${getTestLocale()}/game`);
+    await expect(
+      page.getByTestId("history-tab-rail").locator('button[aria-current="page"]'),
+    ).toContainText("game");
+    expect(errors).toEqual([]);
+  });
+
   test("마지막 접근 값이 없거나 3일 지난 탭은 만료된다", async ({ page }) => {
     const locale = getTestLocale();
     const expiredAt = Date.now() - 4 * 24 * 60 * 60 * 1000;

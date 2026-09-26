@@ -82,21 +82,32 @@ const getThreadId = (result: unknown): string => {
   return threadId;
 };
 
-const getNotificationDelta = (message: JsonRpcMessage): string | null => {
+const getNotificationDelta = (
+  message: JsonRpcMessage,
+): { itemId: string; delta: string } | null => {
   if (message.method !== 'item/agentMessage/delta') return null;
   if (!isRecord(message.params)) return null;
-  return typeof message.params.delta === 'string' ? message.params.delta : null;
+  if (typeof message.params.delta !== 'string') return null;
+  return {
+    itemId:
+      typeof message.params.itemId === 'string' ? message.params.itemId : '',
+    delta: message.params.delta,
+  };
 };
 
 const getCompletedAgentMessageText = (
   message: JsonRpcMessage,
-): string | null => {
+): { itemId: string; text: string; phase: unknown } | null => {
   if (message.method !== 'item/completed') return null;
   if (!isRecord(message.params) || !isRecord(message.params.item)) return null;
   if (message.params.item.type !== 'agentMessage') return null;
-  return typeof message.params.item.text === 'string'
-    ? message.params.item.text
-    : null;
+  if (typeof message.params.item.text !== 'string') return null;
+  return {
+    itemId:
+      typeof message.params.item.id === 'string' ? message.params.item.id : '',
+    text: message.params.item.text,
+    phase: message.params.item.phase,
+  };
 };
 
 const isTurnCompleted = (message: JsonRpcMessage): boolean =>
@@ -233,8 +244,11 @@ export class CodexAppServerProvider implements ChatProvider {
       this.createWebSocket,
     );
 
-    let answerText = '';
-    let completedAgentText = '';
+    const deltasByItem = new Map<string, string>();
+    const commentaryItems = new Set<string>();
+    let finalAnswerText = '';
+    let finalAnswerItemId = '';
+    let legacyAnswerText = '';
     let completionTimeout: NodeJS.Timeout | undefined;
 
     try {
@@ -265,12 +279,22 @@ export class CodexAppServerProvider implements ChatProvider {
         client.setNotificationHandler((message) => {
           const delta = getNotificationDelta(message);
           if (delta) {
-            answerText += delta;
+            deltasByItem.set(
+              delta.itemId,
+              (deltasByItem.get(delta.itemId) ?? '') + delta.delta,
+            );
           }
 
-          const completedText = getCompletedAgentMessageText(message);
-          if (completedText) {
-            completedAgentText = completedText;
+          const completedMessage = getCompletedAgentMessageText(message);
+          if (completedMessage) {
+            if (completedMessage.phase === 'commentary') {
+              commentaryItems.add(completedMessage.itemId);
+            } else if (completedMessage.phase === 'final_answer') {
+              finalAnswerText = completedMessage.text;
+              finalAnswerItemId = completedMessage.itemId;
+            } else {
+              legacyAnswerText = completedMessage.text;
+            }
           }
 
           if (isTurnCompleted(message)) {
@@ -299,7 +323,16 @@ export class CodexAppServerProvider implements ChatProvider {
         completed,
       ]);
 
-      const finalAnswer = (answerText || completedAgentText).trim();
+      const latestAnswerDelta = [...deltasByItem]
+        .reverse()
+        .find(([itemId]) => !commentaryItems.has(itemId))?.[1];
+      const finalAnswer = (
+        finalAnswerText ||
+        deltasByItem.get(finalAnswerItemId) ||
+        legacyAnswerText ||
+        latestAnswerDelta ||
+        ''
+      ).trim();
       if (!finalAnswer) {
         throw new Error('Codex app-server returned an empty answer');
       }

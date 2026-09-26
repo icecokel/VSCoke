@@ -42,14 +42,18 @@ export const HistoryProvider = ({ children }: { children: React.ReactNode }) => 
 
   // 초기 로드시 localStorage에서 데이터 가져오기
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
         const parsed = JSON.parse(stored);
         const cleaned = filterExpired(parsed);
         setHistory(cleaned);
-      } catch {
+      }
+    } catch {
+      try {
         localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // 저장소가 차단되어도 현재 화면의 탭은 메모리에서 유지한다.
       }
     }
     onTrue();
@@ -58,7 +62,11 @@ export const HistoryProvider = ({ children }: { children: React.ReactNode }) => 
   // hydration 완료 후에만 localStorage에 저장
   useEffect(() => {
     if (isHydrated) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+      } catch {
+        // 저장소가 차단되거나 가득 찼을 때도 현재 화면의 탭은 유지한다.
+      }
     }
   }, [history, isHydrated]);
 

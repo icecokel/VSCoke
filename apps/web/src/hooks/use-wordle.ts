@@ -40,25 +40,32 @@ export const useWordle = (): UseWordleReturn => {
   const [isValidating, setIsValidating] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
   const isSubmittingRef = useRef(false);
+  const generationRef = useRef(0);
 
   // 단어 가져오기
   const loadNewWord = useCallback(async () => {
+    const generation = ++generationRef.current;
     try {
       setIsLoading(true);
       setError(null);
       setAnswer("");
       const word = await fetchRandomWord();
-      setAnswer(word.toUpperCase());
+      if (generationRef.current === generation) setAnswer(word.toUpperCase());
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load word"));
-      toast.error(t("apiUnavailable"), { id: "api-unavailable" });
+      if (generationRef.current === generation) {
+        setError(err instanceof Error ? err : new Error("Failed to load word"));
+        toast.error(t("apiUnavailable"), { id: "api-unavailable" });
+      }
     } finally {
-      setIsLoading(false);
+      if (generationRef.current === generation) setIsLoading(false);
     }
   }, [t]);
 
   // 게임 초기화
   const resetGame = useCallback(async () => {
+    generationRef.current += 1;
+    isSubmittingRef.current = false;
+    setIsValidating(false);
     setTurn(0);
     setCurrentGuess("");
     setGuesses([...Array(MAX_CHALLENGES)]);
@@ -71,7 +78,10 @@ export const useWordle = (): UseWordleReturn => {
   // 최초 진입 시 단어 설정
   useEffect(() => {
     // 마운트 시 한 번만 실행
-    loadNewWord();
+    void loadNewWord();
+    return () => {
+      generationRef.current += 1;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -94,11 +104,13 @@ export const useWordle = (): UseWordleReturn => {
     }
 
     // 서버 API를 통한 단어 유효성 검사
+    const generation = generationRef.current;
     isSubmittingRef.current = true;
     setIsValidating(true);
 
     try {
       const isValid = await checkWord(currentGuess);
+      if (generationRef.current !== generation) return;
 
       if (!isValid) {
         toast.error(t("notInList"));
@@ -158,11 +170,15 @@ export const useWordle = (): UseWordleReturn => {
 
       setCurrentGuess("");
     } catch (err) {
-      console.error(err);
-      toast.error(t("apiUnavailable"), { id: "api-unavailable" });
+      if (generationRef.current === generation) {
+        console.error(err);
+        toast.error(t("apiUnavailable"), { id: "api-unavailable" });
+      }
     } finally {
-      isSubmittingRef.current = false;
-      setIsValidating(false);
+      if (generationRef.current === generation) {
+        isSubmittingRef.current = false;
+        setIsValidating(false);
+      }
     }
   }, [currentGuess, turn, answer, gameStatus, t, isValidating, isLoading]);
 

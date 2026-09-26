@@ -27,7 +27,11 @@ export function WordleKeyboard({ onKey, usedKeys }: WordleKeyboardProps) {
               <button
                 key={key}
                 aria-label={key}
-                onClick={() => onKey(key)}
+                onClick={event => {
+                  // 포인터 조작 뒤에는 바로 물리 키보드로 이어간다. Tab·Enter·Space 포커스는 보존한다.
+                  if (event.detail > 0) event.currentTarget.blur();
+                  onKey(key);
+                }}
                 className={cn(
                   "flex h-full min-h-9 cursor-pointer items-center justify-center rounded font-bold uppercase transition-all select-none active:scale-95",
                   "text-xs sm:text-sm",

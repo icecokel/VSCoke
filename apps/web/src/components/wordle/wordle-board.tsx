@@ -1,5 +1,6 @@
 import { LetterStatus } from "@/lib/wordle/wordle-logic";
 import { WordleTile } from "./wordle-tile";
+import styles from "./wordle.module.css";
 
 interface WordleBoardProps {
   guesses: string[];
@@ -10,8 +11,8 @@ interface WordleBoardProps {
 
 export function WordleBoard({ guesses, history, currentGuess, turn }: WordleBoardProps) {
   return (
-    // 보드 컨테이너: 높이 기준 5:6 비율 유지
-    <div className="h-full max-h-full min-w-[220px] mx-auto" style={{ aspectRatio: "5/6" }}>
+    // 사용 가능한 가로·세로 중 작은 쪽으로 30칸 전체를 맞춘다.
+    <div className={styles.board} data-testid="wordle-board">
       {/* 6줄 보드를 하나의 div로 묶어 고정 gap 유지 */}
       <div className="h-full w-full grid grid-rows-6 gap-2">
         {/* 모든 6줄을 렌더링 (gap은 항상 동일) */}

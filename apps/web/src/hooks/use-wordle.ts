@@ -208,7 +208,7 @@ export const useWordle = (): UseWordleReturn => {
       // 영문자 입력만 허용
       if (/^[A-Za-z]$/.test(key)) {
         if (currentGuess.length < logic.getWordLength()) {
-          setCurrentGuess(prev => prev + key);
+          setCurrentGuess(prev => (prev + key).slice(0, logic.getWordLength()));
         }
       }
     },

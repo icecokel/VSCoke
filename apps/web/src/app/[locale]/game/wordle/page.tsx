@@ -7,12 +7,11 @@ import { WordleKeyboard } from "@/components/wordle/wordle-keyboard";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Loader2 } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
+import styles from "@/components/wordle/wordle.module.css";
 import { ShareLinkButton } from "@/components/share/share-link-button";
 import { useTranslations } from "next-intl";
 
 export default function WordlePage() {
-  const isMobile = useIsMobile();
   const tShare = useTranslations("Share");
   const tGame = useTranslations("Game");
   const {
@@ -61,30 +60,11 @@ export default function WordlePage() {
     }
   }, [gameStatus, answer, tGame]);
 
-  // 조건부 컨테이너 스타일
-  const containerStyle = isMobile
-    ? {
-        position: "fixed" as const,
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100dvh",
-        zIndex: 50,
-      }
-    : {
-        // 데스크탑: 가로 최대 600px, 높이는 화면에 맞춤
-        width: "min(600px, 90vw)",
-        height: "min(90vh, 800px)",
-      };
-
   return (
-    <main className="flex h-full w-full items-center justify-center bg-background">
-      <div
-        className={`relative flex flex-col overflow-hidden bg-background ${!isMobile ? "rounded-xl border border-border" : ""}`}
-        style={containerStyle}
-      >
+    <main className="flex h-full min-h-0 w-full min-w-0 items-center justify-center bg-background">
+      <div className={styles.frame}>
         {/* Header */}
-        <header className="flex items-center justify-between px-4 py-3 shrink-0">
+        <header className={`flex shrink-0 items-center justify-between px-4 py-3 ${styles.header}`}>
           <h1 className="text-xl font-bold tracking-tight" data-testid="wordle-title">
             Wordle
           </h1>
@@ -95,7 +75,7 @@ export default function WordlePage() {
               iconOnly
               text={tShare("wordleText")}
               label={tShare("share")}
-              className={isMobile ? "h-8 w-8" : ""}
+              className="max-md:h-8 max-md:w-8"
             />
             <Button
               variant="ghost"
@@ -115,7 +95,7 @@ export default function WordlePage() {
         </header>
 
         {/* Board - flex-1로 남은 공간 채움 */}
-        <div className="flex-1 flex items-center justify-center min-h-0 px-4">
+        <div className={styles.boardArea}>
           {isLoading ? (
             <div className="flex flex-col items-center gap-4 text-muted-foreground">
               <Loader2 className="h-10 w-10 animate-spin" />
@@ -134,7 +114,7 @@ export default function WordlePage() {
         </div>
 
         {/* Keyboard - 하단 고정 */}
-        <footer className="shrink-0 px-2 pb-4 pt-2">
+        <footer className={`shrink-0 px-2 pb-4 pt-2 ${styles.footer}`}>
           <WordleKeyboard onKey={handleKeyup} usedKeys={usedKeys} />
         </footer>
       </div>

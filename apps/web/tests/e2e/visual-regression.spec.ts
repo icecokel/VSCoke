@@ -188,3 +188,37 @@ test.describe("블로그 모바일 읽기 도구 비주얼", () => {
     });
   }
 });
+
+test.describe("Wordle 판 전체 비주얼", () => {
+  test.use({ hasTouch: true });
+  for (const layout of [
+    { name: "desktop", width: 1440, height: 900 },
+    { name: "mobile", width: 390, height: 844 },
+    { name: "tablet", width: 768, height: 1024 },
+    { name: "landscape", width: 844, height: 390 },
+  ]) {
+    test(`${layout.name} 30칸·키보드 비주얼`, async ({ page }) => {
+      await page.setViewportSize({ width: layout.width, height: layout.height });
+      await page.route("**/wordle/word", route =>
+        route.fulfill({ json: { success: true, data: { word: "apple" } } }),
+      );
+      await page.route("**/wordle/check", route =>
+        route.fulfill({ json: { success: true, data: { exists: true } } }),
+      );
+      await gotoWithRetry(page, "/ko-KR/game/wordle");
+      await expect(page.locator(".grid-rows-6 > .grid-cols-5")).toHaveCount(6);
+      await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
+      await page.keyboard.type("alley");
+      await page.keyboard.press("Enter");
+      await expect(page.locator(".grid-rows-6 .animate-flip")).toHaveCount(5);
+      await page.evaluate(() => document.fonts.ready);
+      await expect(page.getByTestId("wordle-title").locator("xpath=../..")).toHaveScreenshot(
+        `wordle-${layout.name}.png`,
+        {
+          animations: "disabled",
+          caret: "hide",
+        },
+      );
+    });
+  }
+});

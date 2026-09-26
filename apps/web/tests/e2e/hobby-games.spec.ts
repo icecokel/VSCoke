@@ -46,7 +46,7 @@ test.describe("취미 게임 섹션", () => {
 
     await gotoWithRetry(page, `/${locale}/game/wordle`);
     await expect(page.getByTestId("wordle-loading")).toBeHidden();
-    const board = page.locator("main div[style*='aspect-ratio']").first();
+    const board = page.getByTestId("wordle-board");
     await page.keyboard.type("APPLE");
     await expect(board).toContainText("APPLE");
     await page.keyboard.press("Enter");
@@ -121,7 +121,7 @@ test.describe("취미 게임 섹션", () => {
     releaseFirstWord();
     await firstResponse;
 
-    const board = page.locator("main div[style*='aspect-ratio']").first();
+    const board = page.getByTestId("wordle-board");
     await page.keyboard.type("BREAD");
     await page.keyboard.press("Enter");
     await expect(board.locator(".bg-green-600")).toHaveCount(5);
@@ -167,4 +167,99 @@ test.describe("취미 게임 섹션", () => {
     await expect(page.getByTestId("wordle-loading")).toBeHidden({ timeout: 20000 });
     await expectWordleKeyboardButtons(page);
   });
+});
+
+test.describe("Wordle 입력과 화면 크기", () => {
+  test.beforeEach(async ({ page }) => {
+    const { locale } = await resolveLocaleAndMessages(page);
+    await mockWordleWord(page);
+    await page.route("**/wordle/check", route =>
+      route.fulfill({ json: { success: true, data: { exists: true } } }),
+    );
+    await gotoWithRetry(page, `/${locale}/game/wordle`);
+    await expect(page.getByTestId("wordle-loading")).toBeHidden();
+  });
+
+  test("화면 키 클릭 뒤 물리 키보드로 입력·삭제·제출한다", async ({ page }) => {
+    const row = page.locator(".grid-rows-6 > .grid-cols-5").first();
+    await page.getByRole("button", { name: "A", exact: true }).click();
+    await page.keyboard.type("PPLE");
+    await expect(row).toHaveText("APPLE");
+    await page.keyboard.press("Backspace");
+    await expect(row).toHaveText("APPL");
+    await page.keyboard.press("E");
+    await page.keyboard.press("Enter");
+    await expect(row.locator(".bg-green-600")).toHaveCount(5);
+  });
+
+  test("키보드로 화면 키를 누르면 포커스를 유지한다", async ({ page }) => {
+    const key = page.getByRole("button", { name: "A", exact: true });
+    await key.focus();
+    await key.press("Enter");
+    await expect(key).toBeFocused();
+    await key.press("Space");
+    await expect(key).toBeFocused();
+    await expect(page.locator(".grid-rows-6 > .grid-cols-5").first()).toHaveText("AA");
+  });
+
+  test("한 번에 몰린 입력도 다섯 글자까지만 제출한다", async ({ page }) => {
+    // 같은 이벤트 루프에서 입력해 React 상태 갱신이 묶이는 경계를 재현한다.
+    await page.evaluate(() => {
+      for (const key of "APPLEEXTRA") {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+      }
+    });
+    const request = page.waitForRequest(request => request.url().includes("/wordle/check"));
+    await page.keyboard.press("Enter");
+    expect((await request).postDataJSON()).toEqual({ word: "APPLE" });
+    await expect(page.locator(".grid-rows-6 .bg-green-600")).toHaveCount(5);
+  });
+
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 360, height: 780 },
+    { width: 390, height: 844 },
+    { width: 768, height: 1024 },
+    { width: 844, height: 390 },
+  ]) {
+    test(`${viewport.width}×${viewport.height}에서 타일과 키보드가 겹치지 않는다`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      const tiles = page.locator(".grid-rows-6 > .grid-cols-5 > div");
+      await expect(tiles).toHaveCount(30);
+      const geometry = await tiles.evaluateAll(elements => {
+        const main = elements[0].closest("main")!;
+        const header = main.querySelector("header")!.getBoundingClientRect();
+        const footer = main.querySelector("footer")!.getBoundingClientRect();
+        return elements.map(element => {
+          const tile = element.getBoundingClientRect();
+          return {
+            left: tile.left,
+            right: tile.right,
+            top: tile.top,
+            bottom: tile.bottom,
+            width: tile.width,
+            height: tile.height,
+            headerBottom: header.bottom,
+            footerTop: footer.top,
+            viewportWidth: innerWidth,
+            viewportHeight: innerHeight,
+          };
+        });
+      });
+      for (const tile of geometry) {
+        expect.soft(tile.left).toBeGreaterThanOrEqual(0);
+        expect.soft(tile.right).toBeLessThanOrEqual(tile.viewportWidth);
+        expect.soft(tile.top).toBeGreaterThanOrEqual(tile.headerBottom - 1);
+        expect
+          .soft(tile.bottom)
+          .toBeLessThanOrEqual(Math.min(tile.footerTop, tile.viewportHeight) + 1);
+        expect.soft(tile.width).toBeGreaterThan(0);
+        expect.soft(Math.abs(tile.width - tile.height)).toBeLessThanOrEqual(1);
+      }
+      await expect(page.getByRole("button", { name: "Enter", exact: true })).toBeInViewport();
+      await expect(page.getByRole("button", { name: "Backspace", exact: true })).toBeInViewport();
+    });
+  }
 });

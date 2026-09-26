@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { LetterStatus } from "@/lib/wordle/wordle-logic";
+import styles from "./wordle.module.css";
 
 interface WordleTileProps {
   letter?: string;
@@ -14,11 +15,10 @@ export function WordleTile({ letter, status, index = 0 }: WordleTileProps) {
     <div
       style={{ animationDelay }}
       className={cn(
-        // 정사각형 유지, 최소 40px (터치 친화적)
-        "flex items-center justify-center w-full aspect-square min-w-10 min-h-10",
+        "flex h-full w-full min-h-0 min-w-0 items-center justify-center",
+        styles.tile,
         "font-bold uppercase select-none transition-all duration-300",
-        // 반응형 폰트 크기
-        "text-base sm:text-xl md:text-2xl",
+
         // 빈 타일: 얇은 테두리만
         !status && !letter && "border border-gray-600/40",
         // 입력 중인 타일: 테두리 없이 배경만

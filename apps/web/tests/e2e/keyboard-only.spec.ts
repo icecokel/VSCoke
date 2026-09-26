@@ -101,7 +101,7 @@ test.describe("키보드 전용 시나리오", () => {
     await expect.poll(() => wordleWord.getRequestCount()).toBeGreaterThanOrEqual(2);
     await expect(page.getByTestId("wordle-loading")).toBeHidden({ timeout: 20000 });
 
-    const board = page.locator("main div[style*='aspect-ratio']").first();
+    const board = page.getByTestId("wordle-board");
     await page.keyboard.press("Control+A");
     await expect(board).not.toContainText("A");
 

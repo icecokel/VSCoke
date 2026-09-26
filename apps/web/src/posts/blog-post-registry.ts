@@ -513,6 +513,17 @@ export const blogPostDefinitions = [
     published: true,
     load: () => import("@/posts/journal/wiki-mcp-for-designers"),
   },
+  {
+    slug: "journal/user-flow-logging-429-investigation",
+    category: "journal",
+    title: "429를 겪으며 사용자 행동 이벤트의 전송과 저장을 다시 설계했다",
+    date: "2026-09-26",
+    description: "사용자 행동 이벤트를 수집하며 429를 겪고 Worker 전송과 DB 저장을 고친 과정",
+    tags: ["Event Tracking", "HTTP 429", "Debugging"],
+    readingTime: "9 min read",
+    published: true,
+    load: () => import("@/posts/journal/user-flow-logging-429-investigation"),
+  },
 ] satisfies BlogPostDefinition[];
 
 const definitionsBySlug = new Map(

@@ -111,6 +111,15 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm --filter @vscoke/web exec playwright install --with-deps chromium
 
+      - name: Install pgvector in PostgreSQL service
+        run: |
+          docker exec "${{ job.services.postgres.id }}" sh -c '
+            set -eu
+            apt-get update
+            apt-get install -y --no-install-recommends postgresql-16-pgvector
+            rm -rf /var/lib/apt/lists/*
+          '
+
       - name: Verify local API contract types
         run: pnpm check:api-contract
 

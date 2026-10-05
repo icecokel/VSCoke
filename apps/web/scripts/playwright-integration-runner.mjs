@@ -121,6 +121,9 @@ const stopProcessGroup = child => {
 let apiProcess;
 
 try {
+  await runCommand(pnpmCommand, ["--filter", "@vscoke/api", "migration:run:test"], {
+    env: seedEnv,
+  });
   await runCommand(pnpmCommand, ["--filter", "@vscoke/api", "e2e:seed:hobby"], {
     env: seedEnv,
   });

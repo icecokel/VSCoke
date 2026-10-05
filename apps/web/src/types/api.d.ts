@@ -260,6 +260,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/beat-jev/status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** JEV 게임 사용 가능 여부 조회 */
+    get: operations["BeatJevController_getStatus"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/beat-jev/matches": {
     parameters: {
       query?: never;
@@ -846,6 +863,10 @@ export interface components {
        * @example true
        */
       exists: boolean;
+    };
+    BeatJevStatusDto: {
+      /** @description JEV API 키 설정 여부 */
+      enabled: boolean;
     };
     /** @enum {string} */
     BeatJevGameId:
@@ -1814,6 +1835,29 @@ export interface operations {
       };
     };
   };
+  BeatJevController_getStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["BeatJevStatusDto"];
+          };
+        };
+      };
+    };
+  };
   BeatJevController_createMatch: {
     parameters: {
       query?: never;
@@ -1837,6 +1881,13 @@ export interface operations {
       };
       /** @description 시간당 게임 요청 횟수 초과 */
       429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description JEV API 키가 설정되지 않음 */
+      503: {
         headers: {
           [name: string]: unknown;
         };

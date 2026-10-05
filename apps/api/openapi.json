@@ -1221,6 +1221,36 @@
         "tags": ["Wordle"]
       }
     },
+    "/beat-jev/status": {
+      "get": {
+        "operationId": "BeatJevController_getStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/BeatJevStatusDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "JEV 게임 사용 가능 여부 조회",
+        "tags": ["Beat Jev"]
+      }
+    },
     "/beat-jev/matches": {
       "post": {
         "operationId": "BeatJevController_createMatch",
@@ -1248,6 +1278,9 @@
           },
           "429": {
             "description": "시간당 게임 요청 횟수 초과"
+          },
+          "503": {
+            "description": "JEV API 키가 설정되지 않음"
           }
         },
         "summary": "JEV 2선승 매치 시작",
@@ -2415,6 +2448,16 @@
           }
         },
         "required": ["exists"]
+      },
+      "BeatJevStatusDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "JEV API 키 설정 여부"
+          }
+        },
+        "required": ["enabled"]
       },
       "BeatJevGameId": {
         "type": "string",

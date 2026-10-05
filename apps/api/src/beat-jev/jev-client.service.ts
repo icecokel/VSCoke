@@ -86,8 +86,12 @@ const describeAction = (view: GameView, action: string): string => {
 export class JevClientService {
   constructor(private readonly configService: ConfigService) {}
 
+  isConfigured(): boolean {
+    return Boolean(this.configService.get<string>('JEV_API_KEY')?.trim());
+  }
+
   async chooseAction(view: GameView): Promise<string> {
-    const apiKey = this.configService.get<string>('JEV_API_KEY');
+    const apiKey = this.configService.get<string>('JEV_API_KEY')?.trim();
     if (!apiKey) {
       throw new ServiceUnavailableException(
         'JEV API 키가 설정되지 않았습니다.',

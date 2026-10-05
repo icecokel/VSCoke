@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import ko from "../../messages/ko-KR.json";
-import { gotoWithRetry } from "./test-helpers";
+import { gotoWithRetry, mockBeatJevAvailability } from "./test-helpers";
 
 test.describe("비주얼 회귀", () => {
   test.use({
@@ -21,6 +21,7 @@ test.describe("비주얼 회귀", () => {
 
   for (const pageCase of pages) {
     test(`${pageCase.path} 화면 시각 회귀 체크`, async ({ page }) => {
+      if (pageCase.ready === "game") await mockBeatJevAvailability(page);
       await page.addInitScript(() => {
         localStorage.setItem(
           "vscoke-history",
@@ -56,6 +57,9 @@ test.describe("비주얼 회귀", () => {
         await expect(page.getByText("Stats")).toBeVisible();
       } else if (pageCase.ready === "game") {
         await expect(page.getByRole("heading", { name: "Game Center" })).toBeVisible();
+        await expect(
+          page.getByRole("button", { name: new RegExp(ko.Game.beatJev.title) }),
+        ).toBeVisible();
       } else {
         await expect(page.locator("code").first()).toContainText('"name"');
       }

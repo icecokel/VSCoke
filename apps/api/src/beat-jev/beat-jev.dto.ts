@@ -3,6 +3,11 @@ import { IsInt, IsString, MaxLength, Min } from 'class-validator';
 import { GAME_IDS } from './beat-jev.types';
 import type { GameId, GameResult, Side } from './beat-jev.types';
 
+export class BeatJevStatusDto {
+  @ApiProperty({ description: 'JEV API 키 설정 여부' })
+  enabled: boolean;
+}
+
 export class RevisionDto {
   @ApiProperty({ example: 0, minimum: 0 })
   @IsInt()

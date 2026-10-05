@@ -165,6 +165,11 @@ API 운영 값은 Ubuntu host의 `/home/icenux/projects/vscoke-api/.env`에 둔�
 | `DEV_AUTH_TOKEN`          | 개발 전용             | 없음                                   | 개발 인증 우회 토큰                                                         |
 | `CLOUDFLARE_DB_HOST`      | 개발 보조             | 없음                                   | `db:tunnel` 스크립트용 DB hostname                                          |
 
+`JEV_API_KEY`는 API 서버에 설정한다. `GET /beat-jev/status`는 키 값 없이 설정 여부만 반환한다.
+키가 비어 있거나 상태 조회에 실패하면 웹의 게임 카드와 검색에서 JEV 게임을 숨기고, 직접 URL
+접근은 게임 센터로 돌려보낸다. 키가 없으면 새 매치 생성도 차단한다. Vercel에만 키를 등록해도
+API 서버의 JEV 게임은 활성화되지 않는다.
+
 Resume RAG와 메인 채팅 변수, 기본값과 데이터 정책은
 [메인 채팅·이력 질문 AI 사용 지침](./main-chat-ai-usage-guide.md)을 따른다. 실제 변수 목록은
 `apps/api/.env.example`이 기준이다.

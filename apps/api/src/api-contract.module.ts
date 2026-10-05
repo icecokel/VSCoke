@@ -25,6 +25,7 @@ import { WordleService } from './wordle/wordle.service';
 import { BeatJevController } from './beat-jev/beat-jev.controller';
 import { BeatJevService } from './beat-jev/beat-jev.service';
 import { BeatJevRateLimitGuard } from './beat-jev/beat-jev-rate-limit.guard';
+import { JevClientService } from './beat-jev/jev-client.service';
 
 const contractStubProvider = (provide: InjectionToken): Provider => ({
   provide,
@@ -66,6 +67,7 @@ const contractGuardStubProvider = (provide: InjectionToken): Provider => ({
     contractGuardStubProvider(ResumeConversationRateLimitGuard),
     contractStubProvider(WordleService),
     contractStubProvider(BeatJevService),
+    contractStubProvider(JevClientService),
     contractGuardStubProvider(BeatJevRateLimitGuard),
   ],
 })

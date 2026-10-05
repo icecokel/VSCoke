@@ -4,6 +4,7 @@ import {
   expectPath,
   expectWordleKeyboardButtons,
   loadMessages,
+  mockBeatJevAvailability,
   resolveLocaleAndMessages,
   SUPPORTED_LOCALES,
   type AppMessages,
@@ -319,6 +320,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
   });
 
   test("게임 섹션 CTA 전체 동작", async ({ page }) => {
+    await mockBeatJevAvailability(page);
     const { locale, messages } = await resolveLocaleAndMessages(page);
     const localeRegex = escapeRegExp(locale);
     await visit(page, `/${locale}/game`);

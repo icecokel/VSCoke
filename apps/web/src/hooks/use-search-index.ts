@@ -6,6 +6,7 @@ import RESUME_DATA from "@/constants/resume-data.json";
 import { SearchPostsContext } from "@/contexts/app-provider";
 import type { ResumeCareerData } from "@/components/profile/resume/types";
 import type { SearchItem } from "@/types/search";
+import { useBeatJevAvailability } from "./use-beat-jev-availability";
 
 type ResumeDescription = {
   subtitle?: string;
@@ -60,6 +61,7 @@ const uniqueStrings = (values: string[]): string[] => {
 };
 
 export const useSearchIndex = (): SearchItem[] => {
+  const isJevEnabled = useBeatJevAvailability();
   const locale = useLocale();
   const posts = useContext(SearchPostsContext);
   const tBlog = useTranslations("blog");
@@ -272,10 +274,11 @@ export const useSearchIndex = (): SearchItem[] => {
       hobbyEspressoLanding,
       ...blogPosts,
       ...profileProjects,
-      ...gameItems,
+      ...gameItems.filter(item => item.id !== "game:beat-jev" || isJevEnabled === true),
       ...hobbyItems,
     ];
   }, [
+    isJevEnabled,
     hobbyItems,
     posts,
     tBlog,

@@ -2,6 +2,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useCustomRouter } from "@/hooks/use-custom-router";
+import { useBeatJevAvailability } from "@/hooks/use-beat-jev-availability";
 import { pokeLoungeSiteUrl } from "@/lib/site-url";
 import { useEffect } from "react";
 
@@ -11,6 +12,7 @@ export default function GameDashboard() {
   const locale = useLocale();
   const t = useTranslations("Game");
   const { push, prefetch } = useCustomRouter();
+  const isJevEnabled = useBeatJevAvailability();
 
   const games = [
     {
@@ -31,11 +33,12 @@ export default function GameDashboard() {
       description: t("beatJev.cardDescription"),
       route: "/game/beat-jev",
     },
-  ];
+  ].filter(game => game.id !== "beat-jev" || isJevEnabled === true);
 
   useEffect(() => {
-    ["/game/sky-drop", "/game/wordle", "/game/beat-jev"].forEach(path => prefetch(path));
-  }, [prefetch]);
+    ["/game/sky-drop", "/game/wordle"].forEach(path => prefetch(path));
+    if (isJevEnabled) prefetch("/game/beat-jev");
+  }, [prefetch, isJevEnabled]);
 
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-start bg-slate-900 px-4 py-8 pb-[100px] md:justify-center md:p-4 md:pb-[100px]">

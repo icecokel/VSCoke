@@ -1,6 +1,90 @@
 import { expect, test } from "@playwright/test";
 import type { GameId, MatchSnapshot } from "../../src/services/beat-jev-service";
-import { gotoWithRetry, resolveLocaleAndMessages, type AppMessages } from "./test-helpers";
+import {
+  escapeRegExp,
+  gotoWithRetry,
+  mockBeatJevAvailability,
+  resolveLocaleAndMessages,
+  type AppMessages,
+} from "./test-helpers";
+
+test.beforeEach(async ({ page }) => {
+  await mockBeatJevAvailability(page);
+});
+
+test("설정 확인 전에는 숨기고 사용 가능한 게임만 카드와 검색에 표시한다", async ({ page }) => {
+  const { locale, messages } = await resolveLocaleAndMessages(page);
+  let enable = () => {};
+  const ready = new Promise<void>(resolve => {
+    enable = resolve;
+  });
+  await page.route("**/beat-jev/status", async route => {
+    await ready;
+    await route.fulfill({ json: { success: true, data: { enabled: true } } });
+  });
+  await gotoWithRetry(page, `/${locale}/game`);
+  const card = page.locator("main").getByRole("button", {
+    name: new RegExp(escapeRegExp(messages.Game.beatJev.title)),
+  });
+  await expect(card).toHaveCount(0);
+  enable();
+  await expect(card).toBeVisible();
+
+  await page
+    .getByRole("button", {
+      name: new RegExp(`^${escapeRegExp(messages.sidebar.search)}$`),
+    })
+    .first()
+    .click();
+  await page.getByTestId("blog-dashboard-search-input").fill("jev");
+  const result = page
+    .locator("[data-slot='sidebar-content'] li > button")
+    .filter({ hasText: "/game/beat-jev" });
+  await expect(result).toBeVisible();
+  await result.click();
+  await expect(page.getByTestId("beat-jev-game")).toBeVisible();
+});
+
+for (const unavailable of [
+  { name: "키 미설정", data: { enabled: false } },
+  { name: "빈 응답", data: null },
+  { name: "잘못된 응답", data: { enabled: "true" } },
+  { name: "서버 오류", status: 503 },
+  { name: "연결 실패", abort: true },
+]) {
+  test(`${unavailable.name}이면 카드·검색·직접 URL에서 게임을 숨긴다`, async ({ page }) => {
+    const { locale, messages } = await resolveLocaleAndMessages(page);
+    await page.route("**/beat-jev/status", async route => {
+      if ("abort" in unavailable) {
+        await route.abort();
+      } else {
+        await route.fulfill({
+          status: "status" in unavailable ? unavailable.status : 200,
+          json: { success: true, data: "data" in unavailable ? unavailable.data : null },
+        });
+      }
+    });
+    await gotoWithRetry(page, `/${locale}/game`);
+    const gameCenter = page.locator("main.bg-slate-900");
+    await expect(gameCenter.getByRole("button")).toHaveCount(2);
+    await expect(gameCenter.getByText(messages.Game.beatJev.title)).toHaveCount(0);
+    await page
+      .getByRole("button", {
+        name: new RegExp(`^${escapeRegExp(messages.sidebar.search)}$`),
+      })
+      .first()
+      .click();
+    await page.getByTestId("blog-dashboard-search-input").fill("jev");
+    await expect(page.locator("[data-slot='sidebar-content'] li > button")).toHaveCount(0);
+
+    await gotoWithRetry(page, `/${locale}/game/beat-jev`);
+    await expect(page).toHaveURL(new RegExp(`/${escapeRegExp(locale)}/game$`));
+    await expect(page.getByTestId("beat-jev-game")).toHaveCount(0);
+    await expect(
+      page.getByTestId("history-tab-rail").locator('button[aria-current="page"]'),
+    ).toHaveCount(1);
+  });
+}
 
 const matchId = "83520f5a-8d3e-4b30-9e0d-31a9695c0935";
 const emptyBoard = (size: number) =>

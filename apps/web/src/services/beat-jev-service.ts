@@ -23,6 +23,17 @@ export const gameIds = [
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
+export const getBeatJevAvailability = async (): Promise<boolean> => {
+  const status = await apiClient.get<unknown>("/beat-jev/status", {
+    cache: "no-store",
+    signal: AbortSignal.timeout(5_000),
+  });
+  if (!isRecord(status) || typeof status.enabled !== "boolean") {
+    throw new Error("Invalid JEV status response");
+  }
+  return status.enabled;
+};
+
 const isGameId = (value: unknown): value is GameId =>
   typeof value === "string" && gameIds.some(gameId => gameId === value);
 

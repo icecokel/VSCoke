@@ -238,6 +238,12 @@ export const mockWordleWord = async (page: Page, word = "apple") => {
   };
 };
 
+export const mockBeatJevAvailability = async (page: Page, enabled = true) => {
+  await page.route("**/beat-jev/status", route =>
+    route.fulfill({ json: { success: true, data: { enabled } } }),
+  );
+};
+
 export const conversationResponse = (
   route: Route,
 ): { conversationId: string; requestId: string } => {

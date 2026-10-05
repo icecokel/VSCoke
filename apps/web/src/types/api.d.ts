@@ -362,6 +362,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/client-errors": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 웹 오류를 운영 로그에 기록 */
+    post: operations["ClientErrorController_report"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -378,6 +395,11 @@ export interface components {
        * @example 400
        */
       statusCode: number;
+      /**
+       * @description 운영 API 로그에서 요청을 찾는 ID
+       * @example a5fa93a9-5f91-44f0-9f6e-02e4360a1594
+       */
+      requestId: string;
       /**
        * Format: date-time
        * @description 오류 응답 생성 시각
@@ -930,6 +952,23 @@ export interface components {
     RevisionDto: {
       /** @example 0 */
       revision: number;
+    };
+    ClientErrorDto: {
+      /** Format: uuid */
+      eventId: string;
+      /** @enum {string} */
+      source: "browser" | "web-server";
+      /** @enum {string} */
+      kind: "runtime" | "rejection" | "react" | "api" | "server";
+      /** @example /ko-KR/game/wordle */
+      path: string;
+      /** @example TypeError */
+      errorName: string;
+      message: string;
+      stack?: string;
+      /** Format: uuid */
+      relatedRequestId?: string;
+      statusCode?: number;
     };
   };
   responses: never;
@@ -1844,6 +1883,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
+      /** @description JEV 게임 사용 가능 상태 */
       200: {
         headers: {
           [name: string]: unknown;
@@ -1854,6 +1894,15 @@ export interface operations {
             success: true;
             data: components["schemas"]["BeatJevStatusDto"];
           };
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
         };
       };
     };
@@ -1867,6 +1916,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
+      /** @description 새 JEV 매치 */
       201: {
         headers: {
           [name: string]: unknown;
@@ -1884,14 +1934,27 @@ export interface operations {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
       /** @description JEV API 키가 설정되지 않음 */
       503: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
     };
   };
@@ -1906,6 +1969,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
+      /** @description 진행 중인 매치 */
       200: {
         headers: {
           [name: string]: unknown;
@@ -1923,7 +1987,18 @@ export interface operations {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
     };
   };
@@ -1942,6 +2017,7 @@ export interface operations {
       };
     };
     responses: {
+      /** @description 행동이 반영된 매치 */
       200: {
         headers: {
           [name: string]: unknown;
@@ -1959,14 +2035,27 @@ export interface operations {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
       /** @description 이미 변경된 매치 상태 */
       409: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
     };
   };
@@ -1985,6 +2074,7 @@ export interface operations {
       };
     };
     responses: {
+      /** @description JEV 차례가 반영된 매치 */
       200: {
         headers: {
           [name: string]: unknown;
@@ -2002,14 +2092,27 @@ export interface operations {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
       /** @description 시간당 게임 요청 횟수 초과 */
       429: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
     };
   };
@@ -2028,6 +2131,7 @@ export interface operations {
       };
     };
     responses: {
+      /** @description 다음 게임이 시작된 매치 */
       200: {
         headers: {
           [name: string]: unknown;
@@ -2045,7 +2149,76 @@ export interface operations {
         headers: {
           [name: string]: unknown;
         };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+    };
+  };
+  ClientErrorController_report: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ClientErrorDto"];
+      };
+    };
+    responses: {
+      /** @description 오류 보고가 로그에 기록됨 */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
         content?: never;
+      };
+      /** @description 유효하지 않은 오류 보고 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 허용되지 않은 브라우저 origin */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 오류 보고 횟수 제한 */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 분류되지 않은 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
       };
     };
   };

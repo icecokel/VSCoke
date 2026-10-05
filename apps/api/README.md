@@ -14,18 +14,20 @@
 
 ## 주요 모듈
 
-| 모듈                 | 주요 endpoint                                                                                                 |
-| -------------------- | ------------------------------------------------------------------------------------------------------------- |
-| App                  | `GET /`, `GET /health`                                                                                        |
-| Recipe               | `GET /recipes`, `GET /recipes/:id`                                                                            |
-| EspressoHistory      | `GET /espresso-history/beans`, `GET /espresso-history/beans/:id`                                              |
-| Game                 | `POST /game/result`, `GET /game/ranking`, `GET /game/result/:id`                                              |
-| Main Chat            | `POST /main-chat`                                                                                             |
-| Resume RAG           | `POST /resume-rag/chat`                                                                                       |
-| Resume conversations | `POST /resume-rag/conversations`, `GET /resume-rag/conversations/:id`, `DELETE /resume-rag/conversations/:id` |
-| Wordle               | `GET /wordle/word`, `POST /wordle/check`                                                                      |
+| 모듈                 | 주요 endpoint                                                                                                                                                                                 |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| App                  | `GET /`, `GET /health`                                                                                                                                                                        |
+| Recipe               | `GET /recipes`, `GET /recipes/:id`                                                                                                                                                            |
+| EspressoHistory      | `GET /espresso-history/beans`, `GET /espresso-history/beans/:id`                                                                                                                              |
+| Game                 | `POST /game/result`, `GET /game/ranking`, `GET /game/result/:id`                                                                                                                              |
+| Main Chat            | `POST /main-chat`                                                                                                                                                                             |
+| Resume RAG           | `POST /resume-rag/chat`                                                                                                                                                                       |
+| Resume conversations | `POST /resume-rag/conversations`, `GET /resume-rag/conversations/:id`, `DELETE /resume-rag/conversations/:id`                                                                                 |
+| Wordle               | `GET /wordle/word`, `POST /wordle/check`                                                                                                                                                      |
+| Beat Jev             | `GET /beat-jev/status`, `POST /beat-jev/matches`, `GET /beat-jev/matches/:id`, `POST /beat-jev/matches/:id/actions`, `POST /beat-jev/matches/:id/continue`, `POST /beat-jev/matches/:id/next` |
+| Observability        | `POST /client-errors`                                                                                                                                                                         |
 
-현재 위 표는 HTTP operation 16개를 포함한다. Google 인증이 필요한 점수 저장과
+현재 위 표는 HTTP operation 23개를 포함한다. Google 인증이 필요한 점수 저장과
 익명 대화 접근키로 보호하는 대화 API는 다른 인증 경계다.
 
 ## 로컬 실행

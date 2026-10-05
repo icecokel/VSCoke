@@ -5,6 +5,12 @@
     "english": "English",
     "japanese": "日本語"
   },
+  "errorTracking": {
+    "title": "エラーが発生しました。",
+    "description": "しばらくしてからもう一度お試しください。",
+    "reference": "エラー番号: {eventId}",
+    "retry": "再試行"
+  },
   "menu": {
     "file": "ファイル",
     "openProject": "プロジェクトを開く",

@@ -5,6 +5,12 @@
     "english": "English",
     "japanese": "日本語"
   },
+  "errorTracking": {
+    "title": "Something went wrong.",
+    "description": "Please try again shortly.",
+    "reference": "Error ID: {eventId}",
+    "retry": "Try again"
+  },
   "menu": {
     "file": "File",
     "openProject": "Open Project",

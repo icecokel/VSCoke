@@ -6,7 +6,7 @@ test("블로그 포스트 메타데이터 기준선을 유지한다", () => {
   const posts = getAllPosts();
   const slugs = posts.map(post => post.slug);
 
-  assert.equal(posts.length, 43);
+  assert.equal(posts.length, 44);
   assert.equal(new Set(slugs).size, posts.length);
 
   for (const post of posts) {
@@ -30,7 +30,7 @@ test("블로그 카테고리와 대표 태그 집계를 유지한다", () => {
   const tagCounts = Object.fromEntries(getAllTags().map(tag => [tag.label, tag.count]));
 
   assert.deepEqual(groupCounts, {
-    journal: 10,
+    journal: 11,
     dev: 33,
   });
   assert.equal(tagCounts.JavaScript, 8);

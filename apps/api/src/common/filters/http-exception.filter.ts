@@ -71,6 +71,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       ...errorResponse,
       success: false,
       statusCode: status,
+      requestId: accessLog.requestId,
       timestamp: new Date().toISOString(),
       path: request.url,
     });
@@ -104,10 +105,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     // 요청 정보 추출
     const method = request.method;
-    const url = request.url;
-    const queryParams = JSON.stringify(redactSensitiveValue(request.query));
-    const body = JSON.stringify(redactSensitiveValue(request.body));
+    const route = createApiRequestLog(request, 500).route;
     const timestamp = new Date().toISOString();
+    const requestId = createApiRequestLog(request, 500).requestId;
 
     // 상세 알림 메시지 포맷
     const notifyMessage = [
@@ -116,9 +116,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
       `**📍 Request Info**`,
       `- **Time**: \`${timestamp}\``,
       `- **Method**: \`${method}\``,
-      `- **URL**: \`${url}\``,
-      `- **Query**: \`${queryParams}\``,
-      `- **Body**: \`\`\`json\n${body}\n\`\`\``,
+      `- **Route**: \`${route}\``,
+      `- **Request ID**: \`${requestId}\``,
       ``,
       `**❌ Error Details**`,
       `- **Message**: ${errorMessage}`,

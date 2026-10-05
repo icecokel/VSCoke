@@ -1,4 +1,11 @@
 import { getApiBaseUrl } from "@/lib/constants";
+import { reportWebError } from "@/lib/error-reporting";
+
+const reportApiFailure = (report: Parameters<typeof reportWebError>[0]): Promise<void> | void => {
+  const delivery = reportWebError(report);
+  if (typeof window === "undefined") return delivery;
+  void delivery;
+};
 
 /**
  * API 에러 클래스
@@ -10,6 +17,7 @@ export class ApiError extends Error {
     message: string,
     public data?: unknown,
     public headers?: Headers,
+    public requestId?: string,
   ) {
     super(message);
     this.name = "ApiError";
@@ -69,32 +77,72 @@ export const apiClient = {
   ): Promise<ApiClientResponse<T>> {
     const { token, body, ...fetchOptions } = options;
 
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-      ...options.headers,
-    };
+    const headers = new Headers(options.headers);
+    headers.set("Content-Type", "application/json");
+    const requestId = crypto.randomUUID();
+    headers.set("X-Request-Id", requestId);
 
     if (token) {
-      (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+      headers.set("Authorization", `Bearer ${token}`);
     }
 
-    const response = await fetch(`${getApiBaseUrl()}${endpoint}`, {
-      ...fetchOptions,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    const method = fetchOptions.method ?? "GET";
+    let response: Response;
+
+    try {
+      response = await fetch(`${getApiBaseUrl()}${endpoint}`, {
+        ...fetchOptions,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch (error) {
+      await reportApiFailure({
+        source: typeof window === "undefined" ? "web-server" : "browser",
+        kind: "api",
+        path: typeof window === "undefined" ? endpoint : window.location.pathname,
+        errorName: error instanceof Error ? error.name : "NetworkError",
+        message: `${method} ${new URL(endpoint, "https://api.icecoke.kr").pathname}: network failure`,
+        relatedRequestId: requestId,
+      });
+      throw error;
+    }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
+      if (response.status >= 500) {
+        await reportApiFailure({
+          source: typeof window === "undefined" ? "web-server" : "browser",
+          kind: "api",
+          path: typeof window === "undefined" ? endpoint : window.location.pathname,
+          errorName: "ApiError",
+          message: `${method} ${new URL(endpoint, "https://api.icecoke.kr").pathname}: HTTP ${response.status}`,
+          relatedRequestId: response.headers.get("X-Request-Id") ?? requestId,
+          statusCode: response.status,
+        });
+      }
       throw new ApiError(
         response.status,
         errorData?.message || `API 요청 실패 (${response.status})`,
         errorData,
         response.headers,
+        response.headers.get("X-Request-Id") ?? requestId,
       );
     }
 
-    const json: ApiResponse<T> = await response.json();
+    let json: ApiResponse<T>;
+    try {
+      json = await response.json();
+    } catch (error) {
+      await reportApiFailure({
+        source: typeof window === "undefined" ? "web-server" : "browser",
+        kind: "api",
+        path: typeof window === "undefined" ? endpoint : window.location.pathname,
+        errorName: "InvalidApiResponse",
+        message: `${method} ${new URL(endpoint, "https://api.icecoke.kr").pathname}: invalid JSON`,
+        relatedRequestId: response.headers.get("X-Request-Id") ?? requestId,
+      });
+      throw error;
+    }
 
     // API가 { success, data } 형태로 래핑된 경우 data 반환
     return {

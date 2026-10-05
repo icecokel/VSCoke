@@ -126,6 +126,9 @@ PM2 운영 기준:
 주의:
 
 - `NEXT_PUBLIC_` 값은 클라이언트 번들에 포함된다. 비밀값을 넣지 않는다.
+- 웹 오류 수집은 `NEXT_PUBLIC_API_URL`의 `/client-errors`를 사용한다. Production·Preview
+  origin은 API의 `CORS_ORIGINS`에 정확히 등록해야 한다. Next 서버 오류도 같은 API로 전달하며,
+  전달 실패는 Vercel Runtime Logs에 기록된다.
 - `AUTH_GOOGLE_SECRET`, `AUTH_SECRET` 같은 비밀값에는 `NEXT_PUBLIC_` prefix를 붙이지 않는다.
 - `NEXT_PUBLIC_GA_MEASUREMENT_ID`에는 `G-`로 시작하는 GA4 측정 ID만 넣는다.
 - `NEXT_PUBLIC_GTM_ID`에는 `GTM-`로 시작하는 웹 컨테이너 ID만 넣는다.
@@ -188,6 +191,8 @@ Resume RAG와 메인 채팅 변수, 기본값과 데이터 정책은
 - 기본 CORS 허용 origin은 production 웹 도메인과 로컬 개발 웹 도메인뿐이다.
 - Vercel preview에서 production API 직접 호출이 필요하면 preview origin을 `CORS_ORIGINS`에 명시한다. wildcard, path 포함 URL, http/https가 아닌 값은 허용 목록에서 제외된다.
 - 운영 에러 알림은 `NOTIFY_SERVICE_URL`, `NOTIFY_SERVICE_USER`, `NOTIFY_SERVICE_PASSWORD`가 모두 설정된 경우에만 전역 예외 필터가 전송한다. 기본 endpoint나 기본 계정 fallback은 없다.
+- 웹의 브라우저·Next 서버 오류는 API `logs/error-*.log`에 `web.error`로 기록한다. API 요청과
+  예외는 `requestId`로 연결한다. 로그 조회 절차는 [Operations Runbook](./operations-runbook.md#febe-오류-추적)을 따른다.
 - 환경변수 변경은 `API_ENV_PRODUCTION` Secret을 수정하고 API 배포 workflow를 수동 재실행한다.
   Secret 수정 자체는 배포를 시작하지 않는다. 서버 `.env`를 직접 수정하면 다음 배포에서 덮어쓴다.
 

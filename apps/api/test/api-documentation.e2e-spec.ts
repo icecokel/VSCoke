@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { Server } from 'node:http';
 import request from 'supertest';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
@@ -8,6 +9,7 @@ import { GoogleAuthGuard } from '../src/auth/google-auth.guard';
 import { GameService } from '../src/game/game.service';
 import { setupApiDocumentation } from './../src/api-documentation';
 import { TransformInterceptor } from './../src/common/interceptors/transform.interceptor';
+import { requestIdMiddleware } from '../src/common/middleware/request-id.middleware';
 
 type OpenApiDocument = {
   info?: {
@@ -33,6 +35,7 @@ const requiredOpenApiPaths = [
   '/game/result',
   '/game/result/{id}',
   '/health',
+  '/client-errors',
   '/main-chat',
   '/recipes',
   '/recipes/{id}',
@@ -62,6 +65,7 @@ describe('API documentation (e2e)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.use(requestIdMiddleware);
     app.useGlobalInterceptors(new TransformInterceptor());
     app.useGlobalPipes(
       new ValidationPipe({
@@ -96,6 +100,31 @@ describe('API documentation (e2e)', () => {
     expect(typeof body.timestamp).toBe('string');
     expect(Array.isArray(body.message)).toBe(true);
     expect(response.body).not.toHaveProperty('data');
+  });
+
+  it('웹 오류를 HTTP로 받고 이벤트 ID와 API 요청 ID를 로그에 연결한다', async () => {
+    const errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+    const eventId = 'a5fa93a9-5f91-44f0-9f6e-02e4360a1594';
+    const requestId = 'b5fa93a9-5f91-44f0-9f6e-02e4360a1594';
+
+    const response = await request(httpServer)
+      .post('/client-errors')
+      .set('Origin', 'https://vscoke.icecoke.kr')
+      .set('X-Request-Id', requestId)
+      .send({
+        eventId,
+        source: 'browser',
+        kind: 'runtime',
+        path: '/ko-KR/game/wordle',
+        errorName: 'TypeError',
+        message: 'Unexpected failure',
+      })
+      .expect(202);
+
+    expect(response.headers['x-request-id']).toBe(requestId);
+    expect(errorSpy.mock.calls[0]?.[0]).toContain(eventId);
+    expect(errorSpy.mock.calls[0]?.[0]).toContain(requestId);
+    errorSpy.mockRestore();
   });
 
   it('/api-json (GET) exposes deploy-critical API paths without cache', async () => {

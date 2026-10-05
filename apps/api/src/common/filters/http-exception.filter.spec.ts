@@ -66,6 +66,7 @@ describe('HttpExceptionFilter', () => {
         snapshot: { revision: 7 },
         success: false,
         statusCode: 400,
+        requestId: 'a5fa93a9-5f91-44f0-9f6e-02e4360a1594',
         path: '/resume-rag/chat?question=person@example.com',
       }),
     );

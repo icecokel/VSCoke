@@ -231,7 +231,7 @@ describe('OpenAPI 의미 계약', () => {
         }
       }
     }
-    expect(operations).toBe(16);
+    expect(operations).toBe(23);
   });
 
   it('점수·시간·등수는 정수이며 시간만 null을 허용한다', async () => {

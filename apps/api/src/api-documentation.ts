@@ -62,6 +62,7 @@ export const createApiDocument = (app: INestApplication): OpenAPIObject => {
     .setDescription('VSCoke API 문서입니다.')
     .setVersion('1.0')
     .addTag('App', 'API 프로세스 상태 확인')
+    .addTag('Observability', '웹 오류 보고 및 요청 추적')
     .addTag('Recipe', '공개 레시피 조회')
     .addTag('EspressoHistory', '공개 에스프레소 추출 기록 조회')
     .addTag('Game', 'Sky Drop 결과 저장과 최고점 랭킹')
@@ -69,6 +70,7 @@ export const createApiDocument = (app: INestApplication): OpenAPIObject => {
     .addTag('Resume RAG', '공개 이력 근거 채팅')
     .addTag('Resume conversations', '익명 대화 생성·복원·삭제')
     .addTag('Wordle', '랜덤 단어 제공과 사전 검증')
+    .addTag('Beat Jev', 'JEV 게임 상태와 대결 진행')
     .addBearerAuth()
     .build();
 

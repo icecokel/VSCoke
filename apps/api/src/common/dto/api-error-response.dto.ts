@@ -20,6 +20,12 @@ export class ApiErrorResponseDto {
   statusCode: number;
 
   @ApiProperty({
+    description: '운영 API 로그에서 요청을 찾는 ID',
+    example: 'a5fa93a9-5f91-44f0-9f6e-02e4360a1594',
+  })
+  requestId: string;
+
+  @ApiProperty({
     type: String,
     format: 'date-time',
     description: '오류 응답 생성 시각',

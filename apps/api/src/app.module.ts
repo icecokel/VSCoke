@@ -13,6 +13,7 @@ import { WordleModule } from './wordle/wordle.module';
 import { BeatJevModule } from './beat-jev/beat-jev.module';
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/utils/winston.config';
+import { ClientErrorController } from './common/logging/client-error.controller';
 
 /**
  * 애플리케이션의 루트 모듈
@@ -61,7 +62,7 @@ import { winstonConfig } from './common/utils/winston.config';
     WordleModule,
     BeatJevModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, ClientErrorController],
   providers: [AppService],
 })
 export class AppModule {}

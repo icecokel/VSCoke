@@ -151,6 +151,33 @@ pm2 save
 curl -fsS http://127.0.0.1:3000/health
 ```
 
+## FE·BE 오류 추적
+
+웹 오류 화면의 `오류 번호`는 `eventId`다. API 실패 응답의 `requestId`와
+`X-Request-Id` 헤더는 API 요청 로그를 찾는 값이다. 브라우저·Next 서버 오류는
+`POST /client-errors`를 통해 API의 일별 오류 로그에 `web.error`로 기록된다.
+API 요청 종료는 `api.request`, API 예외는 `api.error`로 기록된다.
+웹 API 클라이언트가 보낸 `X-Request-Id`는 세 이벤트의 `relatedRequestId`와
+`requestId`를 연결한다.
+
+```bash
+ssh icenux-external
+cd /home/icenux/projects/vscoke-api
+TRACE_ID='사용자가 전달한 오류 번호 또는 API requestId'
+grep -F "$TRACE_ID" logs/error-$(date +%F).log logs/combined-$(date +%F).log
+```
+
+오래된 압축 로그는 `zgrep -F 'ID' logs/error-*.gz logs/combined-*.gz`로 찾는다.
+`web.error`의 `eventId`로 오류를 찾은 다음 `relatedRequestId`가 있으면 같은 ID의
+`api.error`와 `api.request`를 확인한다. API 요청이 실패했는데 `api.error`가 없다면
+네트워크·Cloudflare 응답일 수 있다. 이때 `web.error`의 상태 코드와 시각을
+Cloudflare 및 Vercel 로그와 비교한다. Next 서버에서 API로 오류를 전달하지 못하면
+Vercel Runtime Logs에 `Web error report could not reach the API`가 남는다.
+
+브라우저 오류 보고는 허용 origin만 받고, endpoint 전체는 IP당 시간당 60건으로 제한한다. 본문에는
+요청 body, query, 인증 토큰을 보내지 않는다. 운영 점검에서는 실제 사용자 오류 대신
+고유한 테스트 `eventId`로 정상적인 보고를 한 건 전송하고 파일에 기록됐는지 확인한다.
+
 ## Cloudflare Tunnel 장애
 
 증상:

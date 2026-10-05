@@ -5,6 +5,12 @@
     "english": "English",
     "japanese": "日本語"
   },
+  "errorTracking": {
+    "title": "오류가 발생했습니다.",
+    "description": "잠시 후 다시 시도해 주세요.",
+    "reference": "오류 번호: {eventId}",
+    "retry": "다시 시도"
+  },
   "menu": {
     "file": "파일",
     "openProject": "프로젝트 열기",

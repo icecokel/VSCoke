@@ -124,13 +124,8 @@ body, IP, 인증 정보, 이메일을 기록하지 않는다. 파일 로그는 �
 복원되지 않는다. `LOG_LEVEL` 미설정·빈값은 운영 info/개발 debug를 사용하고 잘못된 값은
 시작을 실패시킨다. `pnpm test:tooling`에서 임시 릴리스로 보존 정책을 회귀 검증한다.
 
-환경 변수 변경 후 재시작:
-
-```bash
-cd /home/icenux/projects/vscoke-api
-pm2 restart vscoke-api --update-env
-pm2 save
-```
+환경변수 변경은 Repository Secret `API_ENV_PRODUCTION`을 수정하고 API 배포 workflow를
+수동 재실행한다. 서버 `.env`를 직접 편집하거나 재시작만으로 Secret 변경을 적용하지 않는다.
 
 프로세스가 없으면 마지막 배포 산출물이 있는지 확인한다.
 
@@ -209,7 +204,7 @@ baseline `down`은 destructive rollback 방지를 위해 의도적으로 실패�
 
 ## 환경 변수 변경
 
-정상 변경 절차는 [API 배포 가이드](../apps/api/DEPLOY.md#2-환경-변수-배포-수동)를 따른다.
+정상 변경 절차는 [API 배포 가이드](../apps/api/DEPLOY.md#2-환경-변수-배포-github-secret)를 따른다.
 장애 대응 중에도 비밀값을 GitHub issue, PR, commit, 문서와 로그에 원문으로 남기지 않는다.
 
 ## 배포 후 검증

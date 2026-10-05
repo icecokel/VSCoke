@@ -9,6 +9,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { createServer } from "node:http";
@@ -59,6 +60,7 @@ test("배포는 로그·환경·백업을 보존하고 릴리스에서 health �
       "apps/api/package.json",
       "scripts/check-api-health.mjs",
       "scripts/api-health-checker.mjs",
+      "scripts/api-deploy-env.mjs",
     ]) {
       const target = join(checkout, path);
       mkdirSync(dirname(target), { recursive: true });
@@ -123,6 +125,83 @@ test("배포는 로그·환경·백업을 보존하고 릴리스에서 health �
       await new Promise<void>((resolve, reject) =>
         server.close(error => (error ? reject(error) : resolve())),
       );
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});
+
+test("운영 환경은 Secret으로 교체되고 비밀값과 셸 문자를 그대로 자식 프로세스에 전달한다", async () => {
+  const fixture = mkdtempSync(join(tmpdir(), "vscoke-env-contract-"));
+  const target = join(fixture, ".env");
+  const script = join(root, "scripts/api-deploy-env.mjs");
+  const password = "fixture 'password' $HOME $(touch unexpected) `touch unexpected`";
+  const content = [
+    "NODE_ENV=production",
+    "DB_SYNCHRONIZE=false",
+    "DB_HOST=localhost",
+    "DB_USERNAME=fixture",
+    `DB_PASSWORD="${password}"`,
+    "DB_DATABASE=fixture",
+    "GOOGLE_CLIENT_ID=fixture",
+    "JEV_API_KEY=fixture-jev-key",
+  ].join("\n");
+  const env = {
+    ...process.env,
+    GITHUB_ACTIONS: "false",
+    API_DEPLOY_DIR: fixture,
+    API_ENV_PRODUCTION: content,
+  };
+  try {
+    write(target, "old-server-env");
+    await run(process.execPath, [script, "check"], { env });
+    for (const invalid of [
+      "",
+      content.replace("NODE_ENV=production", "NODE_ENV=development"),
+      content.replace("DB_SYNCHRONIZE=false", "DB_SYNCHRONIZE=true"),
+      content.replace("DB_PASSWORD=", "MISSING_PASSWORD="),
+      `${content}\nENABLE_DEV_AUTH_BYPASS=true`,
+      `${content}\nDEV_AUTH_TOKEN=fixture-dev-token`,
+    ]) {
+      await assert.rejects(
+        run(process.execPath, [script, "write"], {
+          env: { ...env, API_ENV_PRODUCTION: invalid },
+        }),
+      );
+      assert.equal(readFileSync(target, "utf8"), "old-server-env");
+    }
+    const applied = await run(process.execPath, [script, "write"], { env });
+    assert.equal(applied.stdout, "");
+    assert.equal(readFileSync(target, "utf8"), content);
+    assert.equal(statSync(target).mode & 0o777, 0o600);
+    const child = await run(
+      process.execPath,
+      [
+        script,
+        "run",
+        process.execPath,
+        "-e",
+        `
+      const assert = require("node:assert/strict");
+      assert.equal(process.env.DB_PASSWORD, ${JSON.stringify(password)});
+      assert.equal(process.env.JEV_API_KEY, "fixture-jev-key");
+      assert.equal(process.env.API_ENV_PRODUCTION, undefined);
+      console.log("passed");
+    `,
+      ],
+      { cwd: fixture, env: { ...env, DB_PASSWORD: "stale-runner-password" } },
+    );
+    assert.equal(child.stdout.trim(), "passed");
+    assert.equal(existsSync(join(fixture, "unexpected")), false);
+    assert.doesNotMatch(workflow, /\. \.\/\.env/);
+    assert.match(workflow, /API_ENV_PRODUCTION: \$\{\{ secrets\.API_ENV_PRODUCTION \}\}/);
+    assert.ok(
+      workflow.indexOf("Validate production environment secret") <
+        workflow.indexOf("Install dependencies and build API"),
+    );
+    assert.ok(
+      workflow.indexOf("Apply production environment secret") <
+        workflow.indexOf("Synchronize public resume sources and index"),
+    );
+  } finally {
     rmSync(fixture, { recursive: true, force: true });
   }
 });

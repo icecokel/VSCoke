@@ -70,10 +70,10 @@ host
 4. runner 작업 디렉터리에서 의존성을 설치한다.
 5. `pnpm --filter @vscoke/api build`로 API를 빌드한다.
 6. Ubuntu host의 `node`, `corepack`, `pm2`를 사용한다.
-7. `/home/icenux/projects/vscoke-api/.env`가 있는지 확인한다.
+7. Repository Secret `API_ENV_PRODUCTION`과 운영 필수값을 검증한다. Secret이 없으면 기존 서버 `.env`로 대체하지 않고 실패한다.
 8. `/home/icenux/projects/vscoke-api/.next-release`에 API dist/package, 루트 package/lock/workspace, health 검사 스크립트와 공개 웹 이력 JSON/메시지/MDX를 staging한다. 개인 이력 작업공간은 포함하지 않는다.
 9. staging 경로에서 production 의존성을 설치한다.
-10. staging이 성공하면 `.env`, `.next-release`, `backups`, `logs`를 보존하며 release를 복사하고 공개 앱 이력을 import한다. 임베딩이 설정된 hybrid/vector 모드에서는 index도 갱신한 뒤 PM2로 API를 재기동한다.
+10. staging이 성공하면 `.env`, `.next-release`, `backups`, `logs`를 보존하며 release를 복사한다. Secret으로 서버 `.env`를 권한 `600`으로 원자적으로 교체한 뒤 공개 앱 이력을 import한다. 임베딩이 설정된 hybrid/vector 모드에서는 index도 갱신한 뒤 PM2로 API를 재기동한다.
 11. Ubuntu host 내부 `http://127.0.0.1:$PORT/health`와 공개 `API_HEALTH_URL`을 smoke test한다.
 
 운영 프로세스 기준:
@@ -142,7 +142,11 @@ NEXT_PUBLIC_API_URL=http://127.0.0.1:65535 pnpm build:web
 
 API 로컬 개발 값은 `apps/api/.env`에 둔다. 시작점은 `apps/api/.env.example`을 복사해 사용한다.
 
-API 운영 값은 Ubuntu host의 `/home/icenux/projects/vscoke-api/.env`에 둔다. 현재 PM2 실행은 이 경로에서 시작되므로 Nest `ConfigModule`이 이 위치의 `.env`를 읽는다.
+API 운영값의 원본은 GitHub Repository Secret `API_ENV_PRODUCTION`이다. dotenv 전체 내용을
+한 Secret으로 관리하며, 배포마다 Ubuntu host의 `/home/icenux/projects/vscoke-api/.env`를
+생성한다. 서버 파일은 실행용 결과물이며 직접 편집하지 않는다. PM2 실행과 공개 원본 import/index는
+`api-deploy-env.mjs run`이 파일을 파싱해 주입한 환경을 사용한다. 기존 프로세스 환경보다 파일값이
+우선하며 dotenv 내용은 셸 명령으로 실행하지 않는다.
 
 | 이름                      | 필수                  | 기본값                                 | 설명                                                                        |
 | ------------------------- | --------------------- | -------------------------------------- | --------------------------------------------------------------------------- |
@@ -184,19 +188,20 @@ Resume RAG와 메인 채팅 변수, 기본값과 데이터 정책은
 - 기본 CORS 허용 origin은 production 웹 도메인과 로컬 개발 웹 도메인뿐이다.
 - Vercel preview에서 production API 직접 호출이 필요하면 preview origin을 `CORS_ORIGINS`에 명시한다. wildcard, path 포함 URL, http/https가 아닌 값은 허용 목록에서 제외된다.
 - 운영 에러 알림은 `NOTIFY_SERVICE_URL`, `NOTIFY_SERVICE_USER`, `NOTIFY_SERVICE_PASSWORD`가 모두 설정된 경우에만 전역 예외 필터가 전송한다. 기본 endpoint나 기본 계정 fallback은 없다.
-- `.env`만 변경한 경우 코드 배포 없이 PM2 재시작이 필요하다.
+- 환경변수 변경은 `API_ENV_PRODUCTION` Secret을 수정하고 API 배포 workflow를 수동 재실행한다.
+  Secret 수정 자체는 배포를 시작하지 않는다. 서버 `.env`를 직접 수정하면 다음 배포에서 덮어쓴다.
 
 ### 운영 DB migration
 
 backup, legacy baseline, 실행과 rollback 절차는
 [API 배포 가이드](../apps/api/DEPLOY.md#3-db-schema-변경)를 따른다.
 
-환경 변수 전송과 재시작 명령은 [API 배포 가이드](../apps/api/DEPLOY.md#2-환경-변수-배포-수동)를
+Secret 수정과 재배포 절차는 [API 배포 가이드](../apps/api/DEPLOY.md#2-환경-변수-배포-github-secret)를
 따른다.
 
 ### GitHub Actions Runner and Variables
 
-API 배포는 Ubuntu host self-hosted runner에서 직접 실행하므로 SSH 접속용 GitHub Actions secrets를 사용하지 않는다. 애플리케이션 런타임 비밀값은 Ubuntu host `/home/icenux/projects/vscoke-api/.env`에서 관리한다.
+API 배포는 Ubuntu host self-hosted runner에서 직접 실행하므로 SSH 접속용 GitHub Actions secrets를 사용하지 않는다. 애플리케이션 런타임 환경변수는 Repository Secret `API_ENV_PRODUCTION`에서만 관리하며, workflow가 서버 `.env`로 전달한다.
 
 필수 runner 조건:
 

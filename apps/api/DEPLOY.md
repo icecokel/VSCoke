@@ -21,42 +21,39 @@ ssh icenux-external
 workflow의 `workflow_dispatch`를 사용하고, 완료 뒤 `pnpm smoke:api:remote`로 공개 health를
 확인합니다. workflow 단계와 trigger가 바뀌면 workflow 파일을 기준으로 판단합니다.
 
-## 2. 환경 변수 배포 (수동)
+## 2. 환경 변수 배포 (GitHub Secret)
 
-보안상 `.env` 파일은 Git에 포함하지 않고 수동으로 전송합니다. 파일 위치와 변수별 기준은
-[Deployment and Environment Plan](../../docs/deployment-and-env.md#api-환경-변수)을 따릅니다.
+운영 환경변수의 원본은 `icecokel/VSCoke`의 Repository Secret `API_ENV_PRODUCTION`입니다.
+서버 `.env`는 배포 결과물이며 직접 수정하거나 수동으로 전송하지 않습니다. 로컬 개발은
+기존처럼 `apps/api/.env`를 사용합니다.
 
-로컬 또는 운영 환경을 새로 만들 때는 `apps/api/.env.example`을 복사한 뒤 실제 값으로 채웁니다.
+1. GitHub의 **Settings → Secrets and variables → Actions → API_ENV_PRODUCTION**에서
+   운영용 dotenv 전체 내용을 수정합니다. 예제와 변수 기준은
+   [Deployment and Environment Plan](../../docs/deployment-and-env.md#api-환경-변수)을 따릅니다.
+2. **Actions → Deploy API to Ubuntu Host → Run workflow**로 `main`을 다시 배포합니다.
+3. workflow가 Secret을 검증하고 서버 `.env`를 권한 `600`으로 원자적으로 교체한 뒤
+   import/index와 PM2 재시작을 수행합니다. Secret이 비어 있으면 기존 `.env`로 대체하지 않고
+   릴리스 변경 전에 실패합니다.
+4. 공개 health와 JEV 상태를 확인합니다. `JEV_API_KEY`가 비어 있으면 JEV 게임은 숨겨집니다.
 
-1. `.env` 파일 전송:
-
-   ```bash
-   scp .env icenux-external:/home/icenux/projects/vscoke-api/.env
-   ssh icenux-external "chmod 600 /home/icenux/projects/vscoke-api/.env"
-   ```
-
-2. (환경 변수만 변경 시) 서버 재시작 필요:
-
-   ```bash
-   ssh icenux-external "cd /home/icenux/projects/vscoke-api && pm2 restart vscoke-api --update-env"
-   ```
-
-   > 코드 배포와 함께라면 GitHub Actions가 재시작해주므로 생략 가능합니다.
+`NODE_ENV=production`, `DB_SYNCHRONIZE=false`와 DB·Google 인증 필수값을 포함합니다.
+개발 인증 우회와 테스트 토큰은 제외합니다. 비밀값을 명령 인자, Git 파일 또는 로그에
+남기지 않습니다. workflow는 dotenv를 셸로 실행하지 않고 파싱해 자식 프로세스에 전달합니다.
 
 Resume RAG와 메인 채팅 환경 변수는
 [현재 배포·검증 기준](../../docs/main-chat-ai-usage-guide.md#6-배포와-검증)을 따릅니다.
 
 ### 현재 릴리스 구성과 실행 순서
 
-| 구분         | 현재 동작                                                                                         |
-| ------------ | ------------------------------------------------------------------------------------------------- |
-| DB migration | 자동 실행하지 않습니다. 신규 schema는 백업·ledger 확인 후 API보다 먼저 적용합니다.                |
-| 공개 원본    | 웹 이력 JSON·번역 메시지·경력 MDX·공개 안내 문서를 패키징합니다. 개인 이력 작업공간은 제외합니다. |
-| import       | 릴리스 승격 후 공개 원본을 `resume:import`로 동기화합니다. 실패하면 배포를 실패 처리합니다.       |
-| index        | keyword 모드가 아니고 임베딩 공급자가 설정됐을 때 실행합니다.                                     |
-| API 재시작   | import와 필요한 index가 성공한 뒤 PM2를 재시작합니다.                                             |
-| health 도구  | `scripts/check-api-health.mjs`와 그 의존 파일 `api-health-checker.mjs`를 릴리스에 포함합니다.     |
-| 보존 경로    | `rsync --delete`에서 `.env`, `.next-release`, `backups`, `logs`를 제외합니다.                     |
+| 구분         | 현재 동작                                                                                             |
+| ------------ | ----------------------------------------------------------------------------------------------------- |
+| DB migration | 자동 실행하지 않습니다. 신규 schema는 백업·ledger 확인 후 API보다 먼저 적용합니다.                    |
+| 공개 원본    | 웹 이력 JSON·번역 메시지·경력 MDX·공개 안내 문서를 패키징합니다. 개인 이력 작업공간은 제외합니다.     |
+| import       | 릴리스 승격 후 공개 원본을 `resume:import`로 동기화합니다. 실패하면 배포를 실패 처리합니다.           |
+| index        | keyword 모드가 아니고 임베딩 공급자가 설정됐을 때 실행합니다.                                         |
+| API 재시작   | import와 필요한 index가 성공한 뒤 PM2를 재시작합니다.                                                 |
+| health 도구  | `scripts/check-api-health.mjs`, `api-health-checker.mjs`, `api-deploy-env.mjs`를 릴리스에 포함합니다. |
+| 보존 경로    | `rsync --delete`에서 `.env`, `.next-release`, `backups`, `logs`를 제외합니다.                         |
 
 신규 기능 릴리스는 **migration → API → 웹** 순서를 확보합니다. API와 Vercel 사이의 자동
 순서 보장은 없습니다. 소스 빌드 도구나 개인 원본을 운영 릴리스에 임의로 추가하지 않습니다.
@@ -211,11 +208,11 @@ tunnel 터미널은 유지하고, 다른 터미널에서 migration dry run이나
 
 ## 요약
 
-| 변경 유형                    | 배포 방법                                                        | 비고                       |
-| :--------------------------- | :--------------------------------------------------------------- | :------------------------- |
-| **코드 (`apps/api/src` 등)** | `git push`                                                       | GitHub Actions가 자동 처리 |
-| **환경 변수 (`.env`)**       | `scp .env icenux-external:/home/icenux/projects/vscoke-api/.env` | 수동 전송 및 재시작 필요   |
-| **DB schema**                | TypeORM migration + backup                                       | 운영 반영 직전 backup 필수 |
+| 변경 유형                    | 배포 방법                                                      | 비고                       |
+| :--------------------------- | :------------------------------------------------------------- | :------------------------- |
+| **코드 (`apps/api/src` 등)** | `git push`                                                     | GitHub Actions가 자동 처리 |
+| **환경 변수 (`.env`)**       | Repository Secret `API_ENV_PRODUCTION` 수정 후 workflow 재실행 | Actions가 생성 및 재시작   |
+| **DB schema**                | TypeORM migration + backup                                     | 운영 반영 직전 backup 필수 |
 
 배포 실패, PM2 복구와 Cloudflare Tunnel 장애 대응은
 [Operations Runbook](../../docs/operations-runbook.md)을 따릅니다.

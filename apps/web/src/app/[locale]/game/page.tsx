@@ -2,6 +2,8 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useCustomRouter } from "@/hooks/use-custom-router";
+import { PixelJev } from "@/components/game/beat-jev-pixel-art";
+import pixelStyles from "@/components/game/beat-jev-game.module.css";
 import { useBeatJevAvailability } from "@/hooks/use-beat-jev-availability";
 import { pokeLoungeSiteUrl } from "@/lib/site-url";
 import { useEffect } from "react";
@@ -70,13 +72,30 @@ export default function GameDashboard() {
             onClick={() => push(game.route)}
             onMouseEnter={() => prefetch(game.route)}
             onFocus={() => prefetch(game.route)}
-            className="group relative flex h-24 w-full cursor-pointer flex-row items-center justify-between rounded-2xl border-2 border-slate-700 bg-slate-800 p-4 text-left transition-all duration-300 hover:scale-105 hover:border-green-300 hover:bg-slate-700 md:h-64 md:flex-col md:justify-center md:p-6 md:text-center"
+            className={
+              game.id === "beat-jev"
+                ? pixelStyles.gameCard
+                : "group relative flex h-24 w-full cursor-pointer flex-row items-center justify-between rounded-2xl border-2 border-slate-700 bg-slate-800 p-4 text-left transition-all duration-300 hover:scale-105 hover:border-green-300 hover:bg-slate-700 md:h-64 md:flex-col md:justify-center md:p-6 md:text-center"
+            }
           >
+            {game.id === "beat-jev" && <PixelJev className={pixelStyles.cardSprite} />}
             <div className="flex flex-col md:items-center">
-              <h2 className="text-xl md:text-2xl font-bold text-white mb-1 md:mb-2 leading-tight">
+              <h2
+                className={
+                  game.id === "beat-jev"
+                    ? pixelStyles.cardTitle
+                    : "text-xl md:text-2xl font-bold text-white mb-1 md:mb-2 leading-tight"
+                }
+              >
                 {game.title}
               </h2>
-              <p className="text-xs md:text-base text-gray-400 group-hover:text-gray-200 transition-colors line-clamp-1 md:line-clamp-3">
+              <p
+                className={
+                  game.id === "beat-jev"
+                    ? pixelStyles.cardDescription
+                    : "text-xs md:text-base text-gray-400 group-hover:text-gray-200 transition-colors line-clamp-1 md:line-clamp-3"
+                }
+              >
                 {game.description}
               </p>
             </div>

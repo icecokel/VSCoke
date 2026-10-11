@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, Loader2, RotateCcw, Swords } from "lucide-react";
+import { ArrowLeft, Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGame } from "@/contexts/game-context";
 import { useCustomRouter } from "@/hooks/use-custom-router";
@@ -13,9 +13,12 @@ import {
   getBeatJevMatch,
   nextBeatJevGame,
   playBeatJevAction,
+  gameIds,
   type MatchSnapshot,
 } from "@/services/beat-jev-service";
 import { BeatJevBoard } from "./beat-jev-board";
+import { PixelGameIcon, PixelJev, PixelPlayer } from "./beat-jev-pixel-art";
+import styles from "./beat-jev-game.module.css";
 
 const storageKey = "beat-jev-match-id";
 
@@ -171,21 +174,22 @@ export const BeatJevGame = () => {
 
   return (
     <main
-      className="min-h-full bg-gray-900 px-4 py-5 text-white sm:px-7 sm:py-8"
+      className={styles.arcade}
       data-testid="beat-jev-game"
+      data-mode={match ? "playing" : "intro"}
     >
-      <div className="mx-auto w-full max-w-5xl">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-5">
-          <div>
-            <p className="mb-1 text-xs font-semibold uppercase tracking-[0.22em] text-teal-400">
-              {t("eyebrow")}
-            </p>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("title")}</h1>
+      <div className={styles.container}>
+        <header className={styles.header}>
+          <div className={styles.brand}>
+            <span className={styles.brandMark} aria-hidden="true">
+              +
+            </span>
+            <span>{t("eyebrow")}</span>
           </div>
           <Button
             type="button"
             variant="ghost"
-            className="text-gray-200 hover:bg-white/10 hover:text-white"
+            className={styles.back}
             onClick={() => router.push("/game")}
           >
             <ArrowLeft aria-hidden="true" /> {t("backToGames")}
@@ -193,118 +197,171 @@ export const BeatJevGame = () => {
         </header>
 
         {!isLoaded ? (
-          <div className="grid min-h-64 place-items-center" role="status">
+          <div className={styles.loading} role="status">
             <Loader2
-              className="size-7 animate-spin text-teal-400 motion-reduce:animate-none"
+              className="size-7 animate-spin motion-reduce:animate-none"
               aria-hidden="true"
             />
             <span className="sr-only">{t("loading")}</span>
           </div>
         ) : !match ? (
-          <section className="mx-auto flex min-h-[28rem] max-w-lg flex-col items-center justify-center py-12 text-center">
-            <div className="mb-6 grid size-20 place-items-center rounded-2xl border border-teal-400/30 bg-teal-400/10 text-teal-400">
-              <Swords className="size-10" aria-hidden="true" />
-            </div>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">{t("challengeTitle")}</h2>
-            <p className="mt-4 max-w-md text-sm leading-7 text-gray-300">{t("intro")}</p>
-            <p className="mt-3 text-xs text-gray-400">{t("gameMix")}</p>
-            <Button
-              type="button"
-              size="lg"
-              className="mt-8 min-h-12 min-w-44 bg-teal-400 font-semibold text-gray-900 hover:bg-teal-500"
-              onClick={start}
-              disabled={busy !== null}
-            >
-              {busy === "start" ? (
-                <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
-              ) : (
-                <Swords aria-hidden="true" />
-              )}
-              {t("startMatch")}
-            </Button>
-            {error && (
-              <div role="alert" className="mt-5 space-y-3 text-sm text-red-400">
-                <p>
-                  {t("requestFailed")}: {error}
+          <>
+            <section className={styles.hero}>
+              <div className={styles.heroCopy}>
+                <p className={styles.kicker}>
+                  <span aria-hidden="true">▶</span> {t("challengeTitle")}
                 </p>
+                <h1 className={styles.heroTitle}>{t("title")}</h1>
+                <p className={styles.intro}>{t("intro")}</p>
                 <Button
                   type="button"
-                  variant="outline"
-                  onClick={() => void refresh()}
+                  size="lg"
+                  className={styles.start}
+                  onClick={start}
                   disabled={busy !== null}
                 >
-                  {t("retry")}
+                  {busy === "start" ? (
+                    <Loader2
+                      className="animate-spin motion-reduce:animate-none"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <span aria-hidden="true">▶</span>
+                  )}
+                  {t("startMatch")}
+                  <span className={styles.startArrow} aria-hidden="true">
+                    ↗
+                  </span>
                 </Button>
+                {error && (
+                  <div role="alert" className={styles.error}>
+                    <p>
+                      {t("requestFailed")}: {error}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void refresh()}
+                      disabled={busy !== null}
+                    >
+                      {t("retry")}
+                    </Button>
+                  </div>
+                )}
               </div>
-            )}
-          </section>
+              <div className={styles.heroArt} aria-hidden="true">
+                <span className={styles.enemyLabel}>{t("arcade.opponent")}</span>
+                <span className={styles.sparkOne}>+</span>
+                <span className={styles.sparkTwo}>+</span>
+                <div className={styles.mascot}>
+                  <PixelJev className={styles.heroSprite} />
+                </div>
+                <div className={styles.platform} />
+                <span className={styles.enemyName}>{t("jev")}</span>
+              </div>
+            </section>
+            <div className={styles.matchRecipe}>
+              {(
+                [
+                  ["03", "rounds"],
+                  ["02", "wins"],
+                  ["10", "games"],
+                ] as const
+              ).map(([number, label]) => (
+                <div key={label}>
+                  <strong>{number}</strong>
+                  <span>{t(`arcade.${label}`)}</span>
+                </div>
+              ))}
+            </div>
+            <section className={styles.catalog} aria-labelledby="beat-jev-pool-title">
+              <div className={styles.catalogHeader}>
+                <h2 id="beat-jev-pool-title">{t("arcade.gamePool")}</h2>
+                <p>{t("gameMix")}</p>
+              </div>
+              <ul className={styles.gamePool}>
+                {gameIds.map(gameId => (
+                  <li key={gameId}>
+                    <PixelGameIcon gameId={gameId} className={styles.poolIcon} />
+                    <span>{t(`games.${gameId}.title`)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </>
         ) : (
           <>
-            <section
-              className="grid items-center gap-5 py-7 sm:grid-cols-[1fr_auto_1fr]"
-              aria-label={t("matchScore")}
-            >
-              <div className="text-center sm:text-right">
-                <span className="block text-sm text-gray-300">{t("you")}</span>
-                <strong
-                  key={match.playerWins}
-                  className="animate-in zoom-in-75 text-5xl font-bold tabular-nums text-teal-400 duration-300 motion-reduce:animate-none"
-                >
+            <h1 className={styles.matchTitle}>{t("title")}</h1>
+            <section className={styles.scoreHud} aria-label={t("matchScore")}>
+              <div className={styles.contender}>
+                <PixelPlayer className={styles.avatar} />
+                <div>
+                  <span className={styles.playerName}>{t("you")}</span>
+                  <div className={styles.winMarks} aria-hidden="true">
+                    {[0, 1].map(index => (
+                      <i key={index} data-earned={index < match.playerWins || undefined} />
+                    ))}
+                  </div>
+                </div>
+                <strong key={match.playerWins} className={styles.playerScore}>
                   {match.playerWins}
                 </strong>
               </div>
-              <div className="hidden text-lg text-gray-500 sm:block" aria-hidden="true">
-                —
+              <div className={styles.versus}>
+                <span>{t("arcade.firstToTwo")}</span>
+                <b>{t("arcade.versus")}</b>
               </div>
-              <div className="text-center sm:text-left">
-                <span className="block text-sm text-gray-300">{t("jev")}</span>
-                <strong
-                  key={match.jevWins}
-                  className="animate-in zoom-in-75 text-5xl font-bold tabular-nums duration-300 motion-reduce:animate-none"
-                >
+              <div className={`${styles.contender} ${styles.opponent}`}>
+                <PixelJev className={styles.avatar} />
+                <div>
+                  <span className={styles.playerName}>{t("jev")}</span>
+                  <div className={styles.winMarks} aria-hidden="true">
+                    {[0, 1].map(index => (
+                      <i key={index} data-earned={index < match.jevWins || undefined} />
+                    ))}
+                  </div>
+                </div>
+                <strong key={match.jevWins} className={styles.playerScore}>
                   {match.jevWins}
                 </strong>
               </div>
             </section>
-
-            <ol
-              className="grid grid-cols-3 gap-2 border-b border-white/10 pb-6"
-              aria-label={t("matchGames")}
-            >
+            <ol className={styles.rounds} aria-label={t("matchGames")}>
               {match.games.map((gameId, index) => (
                 <li
                   key={`${gameId}-${index}`}
-                  className={`min-w-0 rounded-lg border px-2 py-2 text-center text-xs sm:px-3 sm:text-sm ${index === match.gameIndex && !isComplete ? "animate-in fade-in zoom-in-95 border-teal-400/60 bg-teal-400/10 text-teal-400 duration-300 motion-reduce:animate-none" : "border-white/10 text-gray-400"}`}
+                  data-active={(index === match.gameIndex && !isComplete) || undefined}
                 >
-                  <span className="mr-1 font-mono">{String(index + 1).padStart(2, "0")}</span>
-                  <span className="font-semibold">
-                    {gameId ? t(`games.${gameId}.title`) : t("hiddenGame")}
-                  </span>
+                  <span className={styles.roundIndex}>{String(index + 1).padStart(2, "0")}</span>
+                  {gameId ? (
+                    <PixelGameIcon gameId={gameId} className={styles.roundIcon} />
+                  ) : (
+                    <span className={styles.roundUnknown} aria-hidden="true">
+                      ?
+                    </span>
+                  )}
+                  <span>{gameId ? t(`games.${gameId}.title`) : t("hiddenGame")}</span>
                 </li>
               ))}
             </ol>
-
             {game && (
-              <div
-                key={`${match.id}-${match.gameIndex}`}
-                className="animate-in fade-in slide-in-from-bottom-2 grid gap-8 py-7 duration-300 motion-reduce:animate-none lg:grid-cols-[minmax(0,1fr)_17rem]"
-              >
-                <section className="min-w-0" aria-labelledby="beat-jev-current-title">
-                  <div className="mb-5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-400">
-                      {t("gameNumber", { number: match.gameIndex + 1 })} ·{" "}
-                      {t(`games.${game.gameId}.kind`)}
-                    </p>
-                    <h2 id="beat-jev-current-title" className="mt-2 text-2xl font-bold sm:text-3xl">
-                      {t(`games.${game.gameId}.title`)}
-                    </h2>
-                    <p className="mt-2 max-w-xl text-sm leading-6 text-gray-300">
-                      {t(`games.${game.gameId}.rules`)}
-                    </p>
+              <div key={`${match.id}-${match.gameIndex}`} className={styles.workspace}>
+                <section className={styles.gameSection} aria-labelledby="beat-jev-current-title">
+                  <div className={styles.gameHeading}>
+                    <PixelGameIcon gameId={game.gameId} className={styles.currentIcon} />
+                    <div>
+                      <p className={styles.kicker}>
+                        {t("gameNumber", { number: match.gameIndex + 1 })} ·{" "}
+                        {t(`games.${game.gameId}.kind`)}
+                      </p>
+                      <h2 id="beat-jev-current-title">{t(`games.${game.gameId}.title`)}</h2>
+                    </div>
                   </div>
+                  <p className={styles.gameRules}>{t(`games.${game.gameId}.rules`)}</p>
                   <div
-                    className="rounded-2xl border border-white/10 bg-gray-800/60 px-4 py-7 sm:px-7"
+                    className={styles.boardStage}
                     data-testid="beat-jev-board"
+                    data-game={game.gameId}
                   >
                     <BeatJevBoard
                       key={`${match.id}-${match.gameIndex}-${match.history.length}-${game.gameId}`}
@@ -314,15 +371,17 @@ export const BeatJevGame = () => {
                     />
                   </div>
                 </section>
-
-                <aside className="space-y-6 lg:border-l lg:border-white/10 lg:pl-7">
-                  <div role="status" aria-live="polite">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
-                      {t("status")}
-                    </p>
+                <aside className={styles.aside}>
+                  <div
+                    className={styles.status}
+                    role="status"
+                    aria-live="polite"
+                    data-result={game.result ?? undefined}
+                  >
+                    <p className={styles.kicker}>{t("status")}</p>
                     <p
                       key={`${match.gameIndex}-${match.status}-${game.turn}-${game.result}`}
-                      className="animate-in fade-in mt-2 text-lg font-semibold duration-200 motion-reduce:animate-none"
+                      className={styles.statusText}
                     >
                       {isComplete
                         ? t(match.playerWins > match.jevWins ? "matchWon" : "matchLost")
@@ -339,7 +398,7 @@ export const BeatJevGame = () => {
                             : t("yourTurn")}
                     </p>
                     {busy && (
-                      <p className="mt-2 flex items-center gap-2 text-sm text-gray-400">
+                      <p className={styles.busy}>
                         <Loader2
                           className="size-4 animate-spin motion-reduce:animate-none"
                           aria-hidden="true"
@@ -349,7 +408,7 @@ export const BeatJevGame = () => {
                     )}
                   </div>
                   {error && (
-                    <div role="alert" className="space-y-3 text-sm text-red-400">
+                    <div role="alert" className={styles.error}>
                       <p>
                         {t("requestFailed")}: {error}
                       </p>
@@ -367,7 +426,7 @@ export const BeatJevGame = () => {
                   {match.status === "ROUND_END" && (
                     <Button
                       type="button"
-                      className="min-h-11 w-full bg-teal-400 font-semibold text-gray-900 hover:bg-teal-500"
+                      className={styles.primaryButton}
                       onClick={next}
                       disabled={busy !== null || error !== null}
                     >
@@ -377,30 +436,25 @@ export const BeatJevGame = () => {
                   {isComplete && (
                     <Button
                       type="button"
-                      className="min-h-11 w-full bg-teal-400 font-semibold text-gray-900 hover:bg-teal-500"
+                      className={styles.primaryButton}
                       onClick={start}
                       disabled={busy !== null}
                     >
                       {t("playAgain")}
                     </Button>
                   )}
-                  <details className="text-sm text-gray-300">
-                    <summary className="cursor-pointer font-semibold text-white">
-                      {t("rules")}
-                    </summary>
-                    <p className="mt-2 leading-6">{t(`games.${game.gameId}.rules`)}</p>
+                  <details className={styles.rules}>
+                    <summary>{t("rules")}</summary>
+                    <p>{t(`games.${game.gameId}.rules`)}</p>
                   </details>
                   {match.history.length > 0 && (
-                    <div>
-                      <h3 className="mb-2 text-sm font-semibold">{t("history")}</h3>
-                      <ol className="space-y-2 text-sm text-gray-300">
+                    <div className={styles.history}>
+                      <h3>{t("history")}</h3>
+                      <ol>
                         {match.history.map((item, index) => (
-                          <li
-                            key={`${item.gameId}-${index}`}
-                            className="flex justify-between gap-2 border-t border-white/10 pt-2"
-                          >
+                          <li key={`${item.gameId}-${index}`}>
                             <span>{t(`games.${item.gameId}.title`)}</span>
-                            <span className={item.result === "PLAYER" ? "text-teal-400" : ""}>
+                            <span data-won={item.result === "PLAYER" || undefined}>
                               {t(
                                 item.result === "PLAYER"
                                   ? "win"
@@ -417,7 +471,7 @@ export const BeatJevGame = () => {
                   <Button
                     type="button"
                     variant="ghost"
-                    className="text-gray-300 hover:bg-white/10 hover:text-white"
+                    className={styles.refresh}
                     onClick={() => void refresh()}
                     disabled={busy !== null}
                     aria-label={t("refresh")}

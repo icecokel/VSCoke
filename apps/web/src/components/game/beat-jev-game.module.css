@@ -1,0 +1,923 @@
+@font-face {
+  font-family: "Jev Pixel";
+  src: url("/fonts/galmuri/galmuri11.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Jev Pixel";
+  src: url("/fonts/galmuri/galmuri11-bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+.arcade {
+  --arcade-accent: #c8f56a;
+  --arcade-ink: #10160f;
+  --arcade-paper: #ecebd5;
+  --arcade-muted: #a7b39a;
+  --background: #202a20;
+  --foreground: var(--arcade-paper);
+  --card: #293527;
+  --border: #45533b;
+  --muted: #263123;
+  --muted-foreground: var(--arcade-muted);
+  --primary: var(--arcade-accent);
+  --primary-foreground: var(--arcade-ink);
+  --accent: #34452a;
+  --accent-foreground: var(--arcade-paper);
+  --ring: var(--arcade-accent);
+  min-height: 100%;
+  padding: 24px 36px 56px;
+  background-color: #1b241a;
+  background-image: radial-gradient(#38412c 0.8px, transparent 0.8px);
+  background-size: 12px 12px;
+  color: var(--arcade-paper);
+  font-family: "Jev Pixel", monospace;
+  font-size: 14px;
+  line-height: 1.65;
+  isolation: isolate;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid var(--border);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  letter-spacing: 2px;
+}
+.brandMark {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--arcade-ink);
+  background: var(--arcade-accent);
+  font-size: 22px;
+  font-weight: 700;
+}
+.arcade [data-slot="button"] {
+  border-radius: 0;
+  font: inherit;
+  min-height: 42px;
+  transition:
+    background-color 120ms,
+    transform 120ms;
+}
+.arcade [data-slot="button"]:focus-visible {
+  outline: 2px solid var(--arcade-paper);
+  outline-offset: 4px;
+}
+.arcade [data-slot="button"]:active:not(:disabled) {
+  transform: translate(2px, 2px);
+}
+.arcade .back {
+  color: var(--arcade-muted);
+  padding: 8px 0 8px 12px;
+  font-size: 12px;
+}
+.loading {
+  min-height: 360px;
+  display: grid;
+  place-items: center;
+  color: var(--arcade-accent);
+}
+.hero {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  align-items: center;
+  gap: 32px;
+  padding: 56px 20px 48px;
+}
+.heroCopy {
+  animation: arcade-enter 300ms steps(4, end) both;
+}
+.kicker {
+  color: var(--arcade-accent);
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+.heroTitle {
+  max-width: 7.5ch;
+  margin: 20px 0 24px;
+  font-size: clamp(44px, 5vw, 72px);
+  line-height: 1.32;
+  letter-spacing: -2px;
+  font-weight: 700;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  text-shadow: 4px 4px 0 var(--arcade-ink);
+}
+.intro {
+  max-width: 390px;
+  color: var(--arcade-muted);
+  line-height: 1.9;
+}
+.arcade .start {
+  display: inline-flex;
+  margin-top: 32px;
+  min-width: 238px;
+  min-height: 58px;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 22px;
+  border: 2px solid var(--arcade-ink);
+  background: var(--arcade-accent);
+  color: var(--arcade-ink);
+  font-weight: 700;
+  box-shadow:
+    4px 4px 0 var(--arcade-ink),
+    5px 5px 0 #596d3a;
+}
+.arcade .start:hover,
+.arcade .primaryButton:hover {
+  background: #daff8c;
+}
+.startArrow {
+  font-size: 22px;
+}
+.heroArt {
+  position: relative;
+  display: flex;
+  min-height: 370px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: arcade-enter 400ms steps(4, end) both;
+}
+.enemyLabel {
+  align-self: center;
+  padding: 4px 12px;
+  border: 1px solid #52623e;
+  color: var(--arcade-muted);
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+.mascot {
+  position: relative;
+  z-index: 1;
+  margin: 30px 0 -8px;
+  animation: sprite-idle 3s steps(2, end) infinite;
+}
+.heroSprite {
+  display: block;
+  width: 192px;
+  height: 224px;
+  image-rendering: pixelated;
+}
+.eyes {
+  transform-origin: center 13px;
+  animation: sprite-blink 5s steps(1, end) infinite;
+}
+.platform {
+  width: 256px;
+  height: 24px;
+  background: #36482c;
+  border-top: 8px solid var(--arcade-accent);
+  box-shadow: 0 8px 0 #10160f;
+  clip-path: polygon(
+    8px 0,
+    calc(100% - 8px) 0,
+    calc(100% - 8px) 8px,
+    100% 8px,
+    100% 16px,
+    calc(100% - 16px) 16px,
+    calc(100% - 16px) 100%,
+    16px 100%,
+    16px 16px,
+    0 16px,
+    0 8px,
+    8px 8px
+  );
+}
+.enemyName {
+  margin-top: 22px;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 8px;
+}
+.sparkOne,
+.sparkTwo {
+  position: absolute;
+  color: #6b8550;
+  font-size: 32px;
+}
+.sparkOne {
+  left: 12%;
+  top: 32%;
+}
+.sparkTwo {
+  right: 6%;
+  top: 58%;
+  font-size: 20px;
+}
+.matchRecipe {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 2px solid var(--border);
+  border-bottom: 2px solid var(--border);
+}
+.matchRecipe > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px 12px;
+}
+.matchRecipe > div + div {
+  border-left: 2px solid var(--border);
+}
+.matchRecipe strong {
+  color: var(--arcade-accent);
+  font-size: 30px;
+  line-height: 1;
+}
+.matchRecipe span {
+  font-size: 12px;
+}
+.catalog {
+  padding: 32px 0 0;
+}
+.catalogHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.catalogHeader h2 {
+  font-size: 14px;
+  font-weight: 700;
+}
+.catalogHeader p {
+  color: var(--arcade-muted);
+  font-size: 10px;
+}
+.gamePool {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  column-gap: 20px;
+  row-gap: 20px;
+}
+.gamePool li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.poolIcon {
+  flex-shrink: 0;
+  width: 25px;
+  height: 25px;
+  color: var(--arcade-accent);
+}
+.matchTitle {
+  margin: 20px 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+.scoreHud {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 20px;
+  padding: 24px 30px;
+  background: var(--arcade-ink);
+  border: 2px solid var(--border);
+  box-shadow: 4px 4px 0 var(--arcade-ink);
+}
+.contender {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.avatar {
+  flex-shrink: 0;
+  width: 48px;
+  height: 56px;
+}
+.playerName {
+  display: block;
+  font-size: 13px;
+}
+.playerScore {
+  margin-left: auto;
+  color: var(--arcade-accent);
+  font-size: 44px;
+  line-height: 1;
+  animation: score-pop 220ms steps(3, end);
+}
+.opponent {
+  flex-direction: row-reverse;
+}
+.opponent .playerScore {
+  margin-left: 0;
+  margin-right: auto;
+  color: var(--arcade-paper);
+}
+.opponent .playerName {
+  text-align: right;
+}
+.winMarks {
+  display: flex;
+  gap: 5px;
+  margin-top: 10px;
+}
+.winMarks i {
+  width: 12px;
+  height: 8px;
+  background: #35412c;
+}
+.winMarks i[data-earned] {
+  background: var(--arcade-accent);
+}
+.opponent .winMarks i[data-earned] {
+  background: var(--arcade-paper);
+}
+.versus {
+  padding: 0 20px;
+  text-align: center;
+}
+.versus span {
+  display: block;
+  color: var(--arcade-muted);
+  font-size: 10px;
+}
+.versus b {
+  color: #60714b;
+  font-size: 24px;
+}
+.rounds {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 22px;
+  gap: 8px;
+}
+.rounds li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 54px;
+  padding: 10px 14px;
+  border-bottom: 2px solid var(--border);
+  color: var(--arcade-muted);
+  font-size: 12px;
+}
+.rounds li[data-active] {
+  background: #2d3b23;
+  color: var(--arcade-accent);
+  border-color: var(--arcade-accent);
+}
+.roundIndex {
+  font-size: 10px;
+  opacity: 0.65;
+}
+.roundIcon,
+.roundUnknown {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 20px;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 224px;
+  gap: 32px;
+  padding-top: 32px;
+  animation: arcade-enter 240ms steps(4, end) both;
+}
+.gameSection {
+  min-width: 0;
+}
+.gameHeading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.currentIcon {
+  width: 40px;
+  height: 40px;
+  color: var(--arcade-accent);
+}
+.gameHeading h2 {
+  margin-top: 4px;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.gameRules {
+  margin: 16px 0 20px;
+  color: var(--arcade-muted);
+  font-size: 12px;
+  line-height: 1.9;
+}
+.boardStage {
+  position: relative;
+  border: 2px solid #536044;
+  border-top: 6px solid #536044;
+  padding: 26px;
+  background: #202a20;
+  box-shadow: 4px 4px 0 var(--arcade-ink);
+}
+.boardStage::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: -4px;
+  width: 6px;
+  height: 2px;
+  background: var(--arcade-accent);
+  box-shadow:
+    10px 0 var(--arcade-accent),
+    20px 0 var(--arcade-accent);
+}
+.boardStage [data-slot="button"] {
+  border: 2px solid var(--border);
+  box-shadow: 2px 2px 0 var(--arcade-ink);
+  white-space: normal;
+  height: auto;
+}
+.boardStage [data-variant="default"] {
+  border-color: var(--arcade-accent);
+}
+.aside {
+  padding-left: 24px;
+  border-left: 2px solid var(--border);
+  min-width: 0;
+}
+.aside > * + * {
+  margin-top: 24px;
+}
+.statusText {
+  margin-top: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.6;
+  animation: arcade-enter 180ms steps(3, end);
+}
+.status[data-result="PLAYER"] .statusText {
+  color: var(--arcade-accent);
+}
+.status[data-result="JEV"] .statusText {
+  color: #f4b099;
+}
+.busy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--arcade-muted);
+  margin-top: 12px;
+  font-size: 11px;
+}
+.arcade .primaryButton {
+  width: 100%;
+  min-height: 48px;
+  color: var(--arcade-ink);
+  background: var(--arcade-accent);
+  border: 2px solid var(--arcade-ink);
+  box-shadow: 3px 3px 0 var(--arcade-ink);
+  font-weight: 700;
+}
+.rules {
+  color: var(--arcade-muted);
+  font-size: 12px;
+}
+.rules summary {
+  cursor: pointer;
+  color: var(--arcade-paper);
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--border);
+}
+.rules p {
+  margin-top: 12px;
+}
+.history h3 {
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+.history li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding: 10px 0;
+  color: var(--arcade-muted);
+  font-size: 11px;
+}
+.history [data-won] {
+  color: var(--arcade-accent);
+}
+.arcade .refresh {
+  padding: 8px 0;
+  color: var(--arcade-muted);
+  font-size: 11px;
+}
+.error {
+  margin-top: 24px;
+  color: #ffb5a3;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.error [data-slot="button"] {
+  margin-top: 12px;
+  color: var(--arcade-paper);
+}
+.dieFace {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  width: 65%;
+  height: 65%;
+  gap: 12%;
+}
+.dieFace i[data-pip] {
+  background: currentColor;
+}
+
+@keyframes arcade-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes sprite-idle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+@keyframes sprite-blink {
+  0%,
+  44%,
+  48%,
+  100% {
+    transform: scaleY(1);
+  }
+  45%,
+  47% {
+    transform: scaleY(0.15);
+  }
+}
+@keyframes score-pop {
+  from {
+    transform: translateY(-4px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 900px) {
+  .arcade {
+    padding: 20px 24px 48px;
+  }
+  .hero {
+    padding: 40px 0;
+    gap: 12px;
+  }
+  .heroTitle {
+    font-size: 56px;
+  }
+  .heroSprite {
+    width: 144px;
+    height: 168px;
+  }
+  .platform {
+    width: 208px;
+  }
+  .heroArt {
+    min-height: 300px;
+  }
+  .gamePool {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .workspace {
+    grid-template-columns: minmax(0, 1fr) 180px;
+    gap: 24px;
+  }
+  .aside {
+    padding-left: 20px;
+  }
+  .boardStage {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 600px) {
+  .arcade {
+    padding: 16px 16px 60px;
+  }
+  .header {
+    gap: 8px;
+    padding-bottom: 14px;
+  }
+  .brand {
+    gap: 8px;
+    letter-spacing: 1px;
+    font-size: 10px;
+  }
+  .brandMark {
+    width: 22px;
+    height: 22px;
+    font-size: 18px;
+  }
+  .arcade .back {
+    gap: 6px;
+    font-size: 10px;
+  }
+  .hero {
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 28px 0 32px;
+    position: relative;
+  }
+  .heroCopy {
+    z-index: 1;
+  }
+  .heroTitle {
+    font-size: 46px;
+    margin: 16px 0;
+  }
+  .kicker {
+    font-size: 10px;
+  }
+  .intro {
+    max-width: 100%;
+    font-size: 12px;
+    margin-top: 20px;
+  }
+  .heroArt {
+    position: absolute;
+    top: 66px;
+    right: 0;
+    min-height: 0;
+    width: 120px;
+  }
+  .heroSprite {
+    width: 96px;
+    height: 112px;
+  }
+  .enemyLabel {
+    display: none;
+  }
+  .mascot {
+    margin: 0 0 -4px;
+  }
+  .platform {
+    width: 120px;
+    height: 16px;
+    border-top-width: 4px;
+  }
+  .enemyName {
+    display: none;
+  }
+  .sparkOne,
+  .sparkTwo {
+    display: none;
+  }
+  .arcade .start {
+    margin-top: 24px;
+    width: 100%;
+    min-height: 52px;
+  }
+  .matchRecipe > div {
+    flex-direction: column;
+    gap: 8px;
+    padding: 18px 4px;
+  }
+  .matchRecipe strong {
+    font-size: 24px;
+  }
+  .matchRecipe span {
+    font-size: 10px;
+  }
+  .catalogHeader {
+    align-items: start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .catalogHeader p {
+    font-size: 10px;
+  }
+  .gamePool {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 12px;
+  }
+  .gamePool li {
+    font-size: 10px;
+  }
+  .matchTitle {
+    font-size: 22px;
+  }
+  .scoreHud {
+    padding: 16px 12px;
+    gap: 8px;
+  }
+  .contender {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .avatar {
+    width: 30px;
+    height: 35px;
+  }
+  .playerName {
+    font-size: 10px;
+  }
+  .playerScore {
+    font-size: 28px;
+  }
+  .versus {
+    padding: 0;
+  }
+  .versus span {
+    font-size: 8px;
+  }
+  .versus b {
+    font-size: 18px;
+  }
+  .winMarks {
+    margin-top: 6px;
+    gap: 3px;
+  }
+  .winMarks i {
+    width: 8px;
+    height: 6px;
+  }
+  .rounds {
+    margin-top: 18px;
+    gap: 6px;
+  }
+  .rounds li {
+    padding: 8px 4px;
+    justify-content: center;
+    flex-wrap: wrap;
+    column-gap: 4px;
+    font-size: 10px;
+  }
+  .rounds li > span:last-child {
+    flex-basis: 100%;
+    text-align: center;
+  }
+  .roundIcon,
+  .roundUnknown {
+    width: 20px;
+    height: 20px;
+  }
+  .workspace {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding-top: 24px;
+  }
+  .gameHeading h2 {
+    font-size: 22px;
+  }
+  .boardStage {
+    padding: 18px 12px;
+  }
+  .aside {
+    padding: 20px 0 0;
+    border-left: 0;
+    border-top: 2px solid var(--border);
+  }
+  .statusText {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 359px) {
+  .heroTitle {
+    font-size: 38px;
+  }
+  .heroArt {
+    width: 100px;
+  }
+  .heroSprite {
+    width: 80px;
+    height: 94px;
+  }
+  .platform {
+    width: 96px;
+  }
+  .playerScore {
+    flex-basis: 100%;
+    margin-top: 4px;
+  }
+  .contender .playerScore {
+    text-align: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroCopy,
+  .heroArt,
+  .mascot,
+  .eyes,
+  .workspace,
+  .playerScore,
+  .statusText {
+    animation: none;
+  }
+  .arcade [data-slot="button"] {
+    transition: none;
+  }
+}
+
+.gameCard {
+  display: flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  min-height: 256px;
+  padding: 20px;
+  border: 2px solid #829b56;
+  background: #202a20;
+  color: #ecebd5;
+  font-family: "Jev Pixel", monospace;
+  box-shadow:
+    inset 4px 4px 0 #293527,
+    4px 4px 0 #10160f;
+  cursor: pointer;
+  text-align: center;
+  transition:
+    transform 120ms steps(2, end),
+    background-color 120ms;
+}
+.gameCard:hover {
+  background: #293527;
+  transform: translate(-2px, -2px);
+}
+.gameCard:active {
+  transform: translate(2px, 2px);
+}
+.gameCard:focus-visible {
+  outline: 2px solid #c8f56a;
+  outline-offset: 4px;
+}
+.cardSprite {
+  width: 48px;
+  height: 56px;
+  flex-shrink: 0;
+}
+.cardTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: #c8f56a;
+  margin-bottom: 8px;
+}
+.cardDescription {
+  max-width: 260px;
+  font-size: 11px;
+  line-height: 1.9;
+  color: #a7b39a;
+}
+@media (max-width: 899px) {
+  .gameCard {
+    flex-direction: row;
+    justify-content: start;
+    gap: 16px;
+    min-height: 96px;
+    padding: 12px 16px;
+    text-align: left;
+  }
+  .cardSprite {
+    width: 36px;
+    height: 42px;
+  }
+  .cardTitle {
+    font-size: 18px;
+    margin-bottom: 4px;
+  }
+  .cardDescription {
+    font-size: 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gameCard {
+    transition: none;
+  }
+}

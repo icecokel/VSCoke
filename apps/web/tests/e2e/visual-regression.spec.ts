@@ -226,3 +226,96 @@ test.describe("Wordle 판 전체 비주얼", () => {
     });
   }
 });
+
+test.describe("JEV 픽셀 아케이드 비주얼", () => {
+  for (const layout of [
+    { name: "desktop", width: 1440, height: 1000 },
+    { name: "mobile", width: 390, height: 844 },
+  ]) {
+    for (const view of ["intro", "othello", "yacht-dice", "result"] as const) {
+      test(`${layout.name} ${view} 화면`, async ({ page }) => {
+        await page.setViewportSize({ width: layout.width, height: layout.height });
+        await page.emulateMedia({ reducedMotion: "reduce" });
+        await mockBeatJevAvailability(page);
+        const board = Array.from({ length: 8 }, () => Array<string | null>(8).fill(null));
+        board[3][3] = board[4][4] = "JEV";
+        board[3][4] = board[4][3] = "PLAYER";
+        if (view === "result") board.forEach(row => row.fill("PLAYER"));
+        await page.route("**/beat-jev/matches**", route =>
+          route.fulfill({
+            json: {
+              success: true,
+              data: {
+                id: "83520f5a-8d3e-4b30-9e0d-31a9695c0935",
+                revision: 0,
+                games:
+                  view === "result"
+                    ? ["connect-four", "othello", null]
+                    : [view === "yacht-dice" ? "yacht-dice" : "othello", null, null],
+                gameIndex: view === "result" ? 1 : 0,
+                playerWins: view === "result" ? 2 : 0,
+                jevWins: 0,
+                status: view === "result" ? "COMPLETE" : "PLAYING",
+                history:
+                  view === "result"
+                    ? [
+                        { gameId: "connect-four", result: "PLAYER" },
+                        { gameId: "othello", result: "PLAYER" },
+                      ]
+                    : [],
+                game: {
+                  gameId: view === "yacht-dice" ? "yacht-dice" : "othello",
+                  turn: "PLAYER",
+                  result: view === "result" ? "PLAYER" : null,
+                  legalActions:
+                    view === "yacht-dice"
+                      ? ["hold:00000", "score:choice"]
+                      : ["cell:19", "cell:26", "cell:37", "cell:44"],
+                  data:
+                    view === "yacht-dice"
+                      ? {
+                          dice: [1, 2, 3, 4, 5],
+                          rollsUsed: 1,
+                          rounds: { PLAYER: 0, JEV: 0 },
+                          scorecards: { PLAYER: {}, JEV: {} },
+                          availableScores: {
+                            choice: 15,
+                            "four-kind": 0,
+                            "full-house": 0,
+                            "small-straight": 15,
+                            "large-straight": 30,
+                            yacht: 0,
+                          },
+                        }
+                      : { board },
+                },
+              },
+            },
+          }),
+        );
+        await gotoWithRetry(page, "/ko-KR/game/beat-jev");
+        const game = page.getByTestId("beat-jev-game");
+        await expect(page.getByRole("button", { name: ko.Game.beatJev.startMatch })).toBeVisible();
+        if (view !== "intro") {
+          await page.getByRole("button", { name: ko.Game.beatJev.startMatch }).click();
+          await expect(page.getByTestId("beat-jev-board")).toBeVisible();
+        }
+        await page.evaluate(() => document.fonts.ready);
+        // 고정 높이 앱 스크롤 영역에 가려지는 하단 보드와 결과까지 기준선에 포함한다.
+        const gameBounds = await game.boundingBox();
+        if (gameBounds) {
+          await page.setViewportSize({
+            width: layout.width,
+            height: Math.max(layout.height, Math.ceil(gameBounds.height) + 180),
+          });
+        }
+        await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
+        await game.scrollIntoViewIfNeeded();
+        await expect(game).toHaveScreenshot(`jev-pixel-${layout.name}-${view}.png`, {
+          animations: "disabled",
+          caret: "hide",
+        });
+      });
+    }
+  }
+});

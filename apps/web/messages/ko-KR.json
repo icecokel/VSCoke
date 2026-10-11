@@ -278,13 +278,22 @@
     "wordleTitle": "Wordle",
     "wordleDesc": "6번의 기회 안에 5글자 영어 단어를 맞추는 게임입니다.",
     "beatJev": {
-      "title": "JEV를 이겨라",
+      "arcade": {
+        "opponent": "TODAY’S OPPONENT",
+        "rounds": "랜덤 게임",
+        "wins": "승리 조건",
+        "games": "미니게임",
+        "gamePool": "어떤 게임이 나올까?",
+        "firstToTwo": "먼저 2승",
+        "versus": "VS"
+      },
+      "title": "제브를 이겨라",
       "cardDescription": "무작위 게임 3개로 JEV와 대결하세요. 먼저 2승하면 승리합니다.",
-      "eyebrow": "Game Center · JEV 대결",
+      "eyebrow": "JEV ARCADE",
       "backToGames": "게임 센터",
-      "challengeTitle": "JEV에게 도전하세요",
-      "intro": "서로 다른 게임 3개가 무작위로 등장합니다. 매 게임마다 JEV와 겨루고, 먼저 2승을 거두면 매치에서 승리합니다.",
-      "gameMix": "전략·추리 6종 · 운 4종 · 무승부는 같은 게임 재경기",
+      "challengeTitle": "플레이어의 도전을 기다리는 중",
+      "intro": "랜덤 게임 3개, 먼저 2승하면 승리. 전략으로 맞서거나 운에 맡겨보세요.",
+      "gameMix": "전략·추리 6종 / 운 4종 / 무승부는 재경기",
       "startMatch": "대결 시작",
       "loading": "매치를 불러오는 중입니다.",
       "saving": "행동을 적용하는 중입니다.",
@@ -297,7 +306,7 @@
       "gameNumber": "게임 {number}",
       "hiddenGame": "다음 게임",
       "you": "나",
-      "jev": "JEV",
+      "jev": "제브",
       "status": "현재 상태",
       "yourTurn": "내 차례입니다",
       "jevThinking": "JEV가 선택 중입니다",
@@ -380,7 +389,7 @@
         "othello": {
           "title": "오델로",
           "kind": "전략",
-          "rules": "8×8 판에서 상대 돌을 양쪽으로 감싸 뒤집으세요. 청록색 점이 있는 칸에 둘 수 있습니다. 둘 곳이 없으면 차례를 넘기고, 양쪽 모두 둘 수 없으면 돌이 많은 쪽이 이깁니다."
+          "rules": "8×8 판에서 상대 돌을 양쪽으로 감싸 뒤집으세요. 표시된 칸에 둘 수 있습니다. 둘 곳이 없으면 차례를 넘기고, 양쪽 모두 둘 수 없으면 돌이 많은 쪽이 이깁니다."
         },
         "dots-and-boxes": {
           "title": "점과 상자",

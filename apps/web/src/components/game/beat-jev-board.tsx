@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import type { GameView, Side } from "@/services/beat-jev-service";
 import styles from "./beat-jev-board.module.css";
+import { PixelDie } from "./beat-jev-pixel-art";
 
 interface BoardProps {
   game: GameView;
@@ -37,10 +38,8 @@ const readRecord = (value: unknown): Record<string, unknown> | null =>
     ? (value as Record<string, unknown>)
     : null;
 
-const cellClass =
-  "flex aspect-square min-h-10 items-center justify-center rounded-lg border border-border bg-card text-base font-bold transition-colors disabled:cursor-default sm:min-h-12";
-const playableClass =
-  "hover:border-teal-400 hover:bg-teal-400/10 focus-visible:ring-2 focus-visible:ring-teal-400";
+const cellClass = `${styles.cell} flex aspect-square min-h-10 items-center justify-center text-base font-bold disabled:cursor-default sm:min-h-12`;
+const playableClass = styles.playable;
 
 const Piece = ({
   owner,
@@ -52,12 +51,11 @@ const Piece = ({
   sizeClass?: string;
 }) => {
   const t = useTranslations("Game.beatJev");
-  if (!owner) return <span className="size-2 rounded-full bg-muted-foreground/30" aria-hidden />;
+  if (!owner) return <span className={styles.emptyCell} aria-hidden />;
   return (
     <span
-      className={`flex ${sizeClass} items-center justify-center rounded-full text-xs font-bold ${motionClass} ${
-        owner === "PLAYER" ? "bg-teal-400 text-gray-900" : "bg-gray-500 text-white"
-      }`}
+      className={`${styles.piece} ${sizeClass} ${motionClass}`}
+      data-owner={owner}
       aria-label={t(owner === "PLAYER" ? "you" : "jev")}
     >
       {owner === "PLAYER" ? "P" : "J"}
@@ -90,7 +88,7 @@ const ConnectFourBoard = ({ game, onAction, isBusy }: BoardProps) => {
               type="button"
               size="sm"
               variant="outline"
-              className="h-10 border-teal-400/40"
+              className="h-10 border-[var(--arcade-accent)]/40"
               disabled={isBusy || !game.legalActions.includes(action)}
               onClick={() => onAction(action)}
               aria-label={t("columnAction", { number: column + 1 })}
@@ -150,7 +148,8 @@ const OthelloBoard = ({ game, onAction, isBusy }: BoardProps) => {
               <button
                 type="button"
                 key={action}
-                className={`flex aspect-square min-w-0 items-center justify-center rounded-md border text-xs transition-colors disabled:cursor-default ${isLegal ? "border-teal-400/40 bg-teal-400/10" : "border-border bg-card"} ${playable ? playableClass : ""}`}
+                className={`${styles.othelloCell} ${playable ? playableClass : ""}`}
+                data-legal={isLegal || undefined}
                 disabled={!playable}
                 onClick={() => onAction(action)}
                 aria-label={isLegal ? `${cellLabel} · ${t("legalMove")}` : cellLabel}
@@ -163,7 +162,7 @@ const OthelloBoard = ({ game, onAction, isBusy }: BoardProps) => {
                     sizeClass="size-[75%]"
                   />
                 ) : isLegal ? (
-                  <span className="size-2 rounded-full bg-teal-400/70" aria-hidden="true" />
+                  <span className={styles.legalDot} aria-hidden="true" />
                 ) : null}
               </button>
             );
@@ -200,7 +199,7 @@ const DotsAndBoxesBoard = ({ game, onAction, isBusy }: BoardProps) => {
           const column = index % 7;
           if (row % 2 === 0 && column % 2 === 0) {
             return (
-              <span key={index} className="m-auto size-2 rounded-full bg-foreground" aria-hidden />
+              <span key={index} className="m-auto size-2 rounded-none bg-foreground" aria-hidden />
             );
           }
           if (row % 2 === 1 && column % 2 === 1) {
@@ -208,7 +207,7 @@ const DotsAndBoxesBoard = ({ game, onAction, isBusy }: BoardProps) => {
             return (
               <span
                 key={`${index}-${owner ?? "empty"}`}
-                className={`grid place-items-center rounded text-xs font-bold ${owner ? styles.boxClaim : ""} ${owner === "PLAYER" ? "bg-teal-400/25 text-teal-400" : owner === "JEV" ? "bg-gray-500/40" : ""}`}
+                className={`grid place-items-center rounded-none text-xs font-bold ${owner ? styles.boxClaim : ""} ${owner === "PLAYER" ? "bg-[var(--arcade-accent)]/25 text-[var(--arcade-accent)]" : owner === "JEV" ? "bg-gray-500/40" : ""}`}
                 aria-label={owner ? t(owner === "PLAYER" ? "yourBox" : "jevBox") : undefined}
               >
                 {owner === "PLAYER" ? "P" : owner === "JEV" ? "J" : ""}
@@ -227,7 +226,7 @@ const DotsAndBoxesBoard = ({ game, onAction, isBusy }: BoardProps) => {
               type="button"
               disabled={!playable}
               onClick={() => onAction(action)}
-              className="grid size-full place-items-center rounded focus-visible:ring-2 focus-visible:ring-teal-400"
+              className="grid size-full place-items-center rounded-none focus-visible:ring-2 focus-visible:ring-[var(--arcade-accent)]"
               aria-label={t("edgeAction", {
                 direction: row % 2 === 0 ? t("horizontal") : t("vertical"),
                 row: Math.floor(row / 2) + 1,
@@ -236,7 +235,7 @@ const DotsAndBoxesBoard = ({ game, onAction, isBusy }: BoardProps) => {
             >
               <span
                 key={isFilled ? "filled" : "empty"}
-                className={`${row % 2 === 0 ? "h-2 w-full" : "h-full w-2"} rounded ${isFilled ? (row % 2 === 0 ? styles.horizontalLine : styles.verticalLine) : ""} ${isFilled ? "bg-foreground" : playable ? "bg-teal-400/40 group-hover:bg-teal-400" : "bg-border"}`}
+                className={`${row % 2 === 0 ? "h-2 w-full" : "h-full w-2"} rounded-none ${isFilled ? (row % 2 === 0 ? styles.horizontalLine : styles.verticalLine) : ""} ${isFilled ? "bg-foreground" : playable ? "bg-[var(--arcade-accent)]/40 group-hover:bg-[var(--arcade-accent)]" : "bg-border"}`}
                 aria-hidden="true"
               />
             </button>
@@ -274,6 +273,7 @@ const IsolationBoard = ({ game, onAction, isBusy }: BoardProps) => {
             key={cell}
             type="button"
             className={`${cellClass} ${isBlocked ? "bg-muted/40 text-muted-foreground" : ""} ${playable ? playableClass : ""}`}
+            data-blocked={isBlocked || undefined}
             disabled={!playable}
             onClick={() => onAction(action)}
             aria-label={t("boardCell", {
@@ -297,7 +297,7 @@ const IsolationBoard = ({ game, onAction, isBusy }: BoardProps) => {
                 ×
               </span>
             ) : (
-              <span className="size-2 rounded-full bg-muted-foreground/30" />
+              <span className={styles.emptyCell} />
             )}
           </button>
         );
@@ -392,7 +392,8 @@ const BattleshipBoard = ({ game, onAction, isBusy }: BoardProps) => {
               return (
                 <div
                   key={cell}
-                  className={`${cellClass} ${hasShip ? "bg-teal-400/10" : ""}`}
+                  className={`${cellClass} ${hasShip ? "bg-[var(--arcade-accent)]/10" : ""}`}
+                  data-ship={hasShip || undefined}
                   role="img"
                   aria-label={t("seaCell", {
                     row: Math.floor(cell / 4) + 1,
@@ -449,7 +450,7 @@ const CodebreakerBoard = ({ game, onAction, isBusy }: BoardProps) => {
         {ownGuesses.map((guess, index) => (
           <li
             key={index}
-            className={`flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm ${styles.guessReveal}`}
+            className={`flex items-center justify-between rounded-none border border-border bg-card px-3 py-2 text-sm ${styles.guessReveal}`}
           >
             <div
               className="flex gap-1.5"
@@ -459,7 +460,7 @@ const CodebreakerBoard = ({ game, onAction, isBusy }: BoardProps) => {
               {guess.code.split("").map((digit: string, position: number) => (
                 <span
                   key={position}
-                  className={`grid size-6 place-items-center rounded-full text-xs font-bold text-gray-900 ${["bg-rose-400", "bg-amber-400", "bg-teal-400", "bg-violet-400"][Number(digit)] ?? "bg-muted"}`}
+                  className={`grid size-6 place-items-center rounded-none text-xs font-bold text-gray-900 ${["bg-rose-400", "bg-amber-400", "bg-teal-400", "bg-violet-400"][Number(digit)] ?? "bg-muted"}`}
                   role="img"
                   aria-label={t(`colors.${codeColors[Number(digit)] ?? "rose"}`)}
                   title={t(`colors.${codeColors[Number(digit)] ?? "rose"}`)}
@@ -485,7 +486,7 @@ const CodebreakerBoard = ({ game, onAction, isBusy }: BoardProps) => {
                     `${previous.slice(0, position)}${event.target.value}${previous.slice(position + 1)}`,
                 )
               }
-              className="mt-1 min-h-11 w-full rounded-lg border border-border bg-card px-2 text-foreground focus-visible:ring-2 focus-visible:ring-teal-400"
+              className="mt-1 min-h-11 w-full rounded-none border border-border bg-card px-2 text-foreground focus-visible:ring-2 focus-visible:ring-[var(--arcade-accent)]"
             >
               {codeColors.map((color, index) => (
                 <option key={color} value={index}>
@@ -519,7 +520,11 @@ const scoreCategories = [
 
 const YachtDieFace = memo(
   function YachtDieFace({ face, isHeld }: { face: number; isHeld: boolean }) {
-    return <span className={isHeld ? undefined : styles.yachtRoll}>{face}</span>;
+    return (
+      <span className={`${styles.dieMotion} ${isHeld ? "" : styles.yachtRoll}`}>
+        <PixelDie face={face} />
+      </span>
+    );
   },
   // 보유 상태만 바뀌면 주사위 굴림 모션을 다시 시작하지 않는다.
   (previous, next) => previous.face === next.face,
@@ -578,7 +583,8 @@ const YachtBoard = ({ game, onAction, isBusy }: BoardProps) => {
                 previous.map((value, position) => (position === index ? !value : value)),
               )
             }
-            className={`grid size-12 place-items-center rounded-xl border text-xl font-bold transition-colors sm:size-14 ${styles.yachtDie} ${held[index] ? `border-teal-400 bg-teal-400/20 text-teal-400 ${styles.heldDie}` : "border-border bg-card"}`}
+            className={`grid size-12 place-items-center border text-xl font-bold sm:size-14 ${styles.yachtDie} ${held[index] ? styles.heldDie : ""}`}
+            data-held={held[index] || undefined}
           >
             <YachtDieFace
               key={`${rollsUsed}-${playerRound}-${jevRound}-${game.turn}-${face}`}
@@ -598,7 +604,7 @@ const YachtBoard = ({ game, onAction, isBusy }: BoardProps) => {
           {t("reroll")}
         </Button>
       </div>
-      <div className="overflow-hidden rounded-xl border border-border">
+      <div className="overflow-hidden rounded-none border border-border">
         <div className="grid grid-cols-[1fr_3rem_3rem_3rem] bg-muted/50 px-3 py-2 text-xs font-semibold text-muted-foreground">
           <span>{t("category")}</span>
           <span className="text-center">{t("now")}</span>
@@ -615,7 +621,7 @@ const YachtBoard = ({ game, onAction, isBusy }: BoardProps) => {
             >
               <button
                 type="button"
-                className={`text-left ${playable ? "font-semibold text-teal-400 underline underline-offset-4" : ""}`}
+                className={`text-left ${playable ? "font-semibold text-[var(--arcade-accent)] underline underline-offset-4" : ""}`}
                 disabled={!playable}
                 onClick={() => onAction(action)}
                 aria-label={t("recordCategory", { category: t(`categories.${category}`) })}
@@ -667,11 +673,11 @@ const DiceStopBoard = ({ game, onAction, isBusy }: BoardProps) => {
   return (
     <div className="mx-auto w-full max-w-sm space-y-5 text-center" data-testid="beat-jev-dice-stop">
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-teal-400/30 bg-teal-400/5 p-4">
+        <div className="rounded-none border border-[var(--arcade-accent)]/30 bg-[var(--arcade-accent)]/5 p-4">
           <span className="block text-sm text-muted-foreground">{t("you")}</span>
           <strong className="text-3xl tabular-nums">{playerTotal}</strong>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-none border border-border bg-card p-4">
           <span className="block text-sm text-muted-foreground">{t("jev")}</span>
           <strong className="text-3xl tabular-nums">{jevTotal}</strong>
         </div>
@@ -681,7 +687,7 @@ const DiceStopBoard = ({ game, onAction, isBusy }: BoardProps) => {
         {t("rollNumber", { number: rollCount, total: 5 })}
       </p>
       <div
-        className="mx-auto grid size-24 place-items-center rounded-2xl border border-border bg-card text-5xl font-bold"
+        className={`mx-auto grid size-24 place-items-center text-5xl font-bold ${styles.largeDie}`}
         aria-label={
           lastRollRecord && lastValue !== null
             ? t("lastRoll", {
@@ -693,9 +699,9 @@ const DiceStopBoard = ({ game, onAction, isBusy }: BoardProps) => {
       >
         <span
           key={`${lastValue}-${rollCount}-${playerRound}-${jevRound}`}
-          className={lastValue !== null ? styles.diceStopRoll : ""}
+          className={`${styles.dieMotion} ${lastValue !== null ? styles.diceStopRoll : ""}`}
         >
-          {lastValue ?? "?"}
+          {lastValue !== null ? <PixelDie face={lastValue} /> : "?"}
         </span>
       </div>
       <p>{t("currentPoints", { points: currentScore })}</p>
@@ -742,7 +748,8 @@ const BombBoard = ({ game, onAction, isBusy }: BoardProps) => {
             type="button"
             disabled={!playable}
             onClick={() => onAction(action)}
-            className={`${cellClass} ${isBomb ? "border-red-400 bg-red-400/15 text-red-400" : isOpened ? "bg-teal-400/10 text-teal-400" : ""} ${playable ? playableClass : ""}`}
+            className={`${cellClass} ${isBomb ? "border-red-400 bg-red-400/15 text-red-400" : isOpened ? "bg-[var(--arcade-accent)]/10 text-[var(--arcade-accent)]" : ""} ${playable ? playableClass : ""}`}
+            data-result={isBomb ? "bomb" : isOpened ? "safe" : undefined}
             aria-label={t("seaCell", {
               row: Math.floor(cell / 4) + 1,
               column: (cell % 4) + 1,
@@ -782,7 +789,8 @@ const BlindCardBoard = ({ game, onAction, isBusy }: BoardProps) => {
               type="button"
               disabled={!playable}
               onClick={() => onAction(action)}
-              className={`grid aspect-[2/3] place-items-center rounded-lg border text-lg font-bold transition-colors ${isChosen ? "border-teal-400 bg-teal-400/15" : "border-border bg-card"} ${playable ? playableClass : ""}`}
+              className={`${styles.blindCard} ${playable ? playableClass : ""}`}
+              data-selected={isChosen || undefined}
               aria-label={t("cardPosition", {
                 number: position + 1,
                 state:

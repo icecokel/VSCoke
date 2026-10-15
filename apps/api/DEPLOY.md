@@ -57,7 +57,7 @@ Resume RAG와 메인 채팅 환경 변수는
 
 신규 기능 릴리스는 **migration → API → 웹** 순서를 확보합니다. API와 Vercel 사이의 자동
 순서 보장은 없습니다. 소스 빌드 도구나 개인 원본을 운영 릴리스에 임의로 추가하지 않습니다.
-AI 사용 지침 9절은 최초 도입 당시의 기록이며, 현재 자동화의 판단 기준은 위 표와 workflow입니다.
+현재 자동화의 판단 기준은 위 표와 workflow입니다.
 
 health 검사는 checkout 루트 또는 새 릴리스 루트에서 `pnpm smoke:api:remote`로 실행합니다.
 이전 릴리스로 롤백해 health 파일이 없으면 검증된 checkout에서 대상 `API_HEALTH_URL`을

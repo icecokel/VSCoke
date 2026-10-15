@@ -273,7 +273,7 @@ test("문서의 Jest 명령은 실제 직렬 실행 설정으로 해석된다", 
   assert.deepEqual(parsed.globalConfig.testPathPatterns, []);
 });
 
-test("현재 문서의 API 목록·참조 링크·폐기 범위가 구현과 맞는다", () => {
+test("현재 문서의 API 목록·참조 링크가 구현과 맞는다", () => {
   const api = JSON.parse(read("apps/api/openapi.json")) as {
     paths: Record<string, Record<string, unknown>>;
   };
@@ -290,23 +290,9 @@ test("현재 문서의 API 목록·참조 링크·폐기 범위가 구현과 맞
       );
     }
   }
-  assert.equal(count, 23);
+  assert.equal(count, 25);
   assert.ok(
     read("docs/local-development.md").includes("./main-chat-ai-usage-guide.md#로컬-api-연결"),
   );
   assert.ok(read("docs/main-chat-ai-usage-guide.md").includes("### 로컬 API 연결"));
-  const scenarios = read("docs/e2e-full-feature-test-scenarios.md");
-  assert.doesNotMatch(scenarios, /^\| `API-0(?:08|09|1[0-7])`[^\n]*\|\s*P[0-2]\/[AN]/m);
-  assert.doesNotMatch(scenarios, /^\| `SEC-003`[^\n]*\|\s*P[0-2]\/A/m);
-  assert.match(scenarios, /폐기된 ID는 재사용하지 않는다/);
-  for (const path of [
-    "docs/main-chat-test-scenarios.md",
-    "docs/resume-rag-chat-test-scenarios.md",
-  ]) {
-    const text = read(path);
-    assert.doesNotMatch(text, /현재 `question`, `locale`만/);
-    assert.match(text, /conversationId/);
-    assert.match(text, /X-Resume-Conversation-Token/);
-    assert.match(text, /CONV-007/);
-  }
 });

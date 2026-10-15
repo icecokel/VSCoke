@@ -40,7 +40,7 @@ workspace 명령의 공통 진입점이다.
 - Playwright로 사용자 흐름을 검증한다.
 
 브라우저에서 필요한 API 주소는 `NEXT_PUBLIC_API_URL`로 주입한다. 현재 route와 화면별 검증
-범위는 [전체 기능 E2E 테스트 시나리오](./e2e-full-feature-test-scenarios.md)에서 관리한다.
+범위는 [웹 E2E 테스트](../apps/web/tests/e2e/)에서 확인한다.
 
 ### API: `apps/api`
 
@@ -114,19 +114,18 @@ flowchart LR
 - 양쪽이 공유하는 결정론적 도메인 로직만 `packages`에 둔다.
 - 웹에서 API 소스를 직접 import하지 않는다.
 - API 계약 변경은 controller/DTO, OpenAPI, Web generated type과 service 사용처를 함께 확인한다.
-- 과거 `docs/superpowers/` 계획서는 구현 배경이며 현재 정책 원본으로 사용하지 않는다.
 - E2E 산출물은 Git에 포함하지 않는다.
 
 ## 기준 문서
 
-| 주제               | 기준 문서                                                          |
-| ------------------ | ------------------------------------------------------------------ |
-| 코딩 정책          | [Coding Convention](./coding-convention.md)                        |
-| 로컬 실행·검증     | [Local Development](./local-development.md)                        |
-| Web E2E 정책       | [Playwright CLI Test Spec](./playwright-cli-test-spec.md)          |
-| 전체 E2E 시나리오  | [Full Feature E2E Scenarios](./e2e-full-feature-test-scenarios.md) |
-| 배포·환경 변수     | [Deployment and Environment Plan](./deployment-and-env.md)         |
-| 장애 대응          | [Operations Runbook](./operations-runbook.md)                      |
-| API 실행·계약 개요 | [VSCoke API README](../apps/api/README.md)                         |
-| API 배포·migration | [API Deploy Guide](../apps/api/DEPLOY.md)                          |
-| 게임 점수·랭킹     | [Game Score Policy](./game-score-policy.md)                        |
+| 주제               | 기준 문서                                                  |
+| ------------------ | ---------------------------------------------------------- |
+| 코딩 정책          | [Coding Convention](./coding-convention.md)                |
+| 로컬 실행·검증     | [Local Development](./local-development.md)                |
+| Web E2E 정책       | [Playwright CLI Test Spec](./playwright-cli-test-spec.md)  |
+| Web E2E 검증 범위  | [웹 E2E 테스트](../apps/web/tests/e2e/)                    |
+| 배포·환경 변수     | [Deployment and Environment Plan](./deployment-and-env.md) |
+| 장애 대응          | [Operations Runbook](./operations-runbook.md)              |
+| API 실행·계약 개요 | [VSCoke API README](../apps/api/README.md)                 |
+| API 배포·migration | [API Deploy Guide](../apps/api/DEPLOY.md)                  |
+| 게임 점수·랭킹     | [Game Score Policy](./game-score-policy.md)                |

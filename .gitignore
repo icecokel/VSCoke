@@ -65,10 +65,6 @@ next-env.d.ts
 
 # local docs
 /docs/*
-!/docs/superpowers/
-!/docs/superpowers/plans/
-!/docs/superpowers/plans/2026-06-13-monorepo-structure.md
-!/docs/api-git-history-report.md
 !/docs/coding-convention.md
 !/docs/deployment-and-env.md
 !/docs/game-score-policy.md
@@ -78,19 +74,12 @@ next-env.d.ts
 !/docs/hobby-frontend-schema-concept.md
 !/docs/local-development.md
 !/docs/main-chat-ai-usage-guide.md
-!/docs/main-chat-test-scenarios.md
 !/docs/public-site-guide.md
 !/docs/public-resume-experience.md
 !/docs/postgresql-clickhouse-comparison.md
 !/docs/operations-runbook.md
 !/docs/observability-and-usage.md
 !/docs/playwright-cli-test-spec.md
-!/docs/resume-rag-chat-test-scenarios.md
-!/docs/e2e-full-feature-test-scenarios.md
 !/docs/licenses/
 !/docs/swagger-style-guide.md
-!/docs/user-deployment-checklist.md
 !/docs/vscoke-monorepo-concept.md
-
-!/docs/docs-implementation-alignment-20260910.md
-!/docs/code-review-2026-09-26.md

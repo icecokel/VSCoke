@@ -1,6 +1,8 @@
 import { utilities as nestWinstonUtilities } from 'nest-winston';
 import * as winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
+import { requestLogContext } from '../logging/request-log-context';
+import { redactSensitiveValue } from './redact-sensitive';
 
 const logLevels = [
   'error',
@@ -33,6 +35,40 @@ export const createWinstonConfig = () => {
 
   return {
     level: logLevel,
+    format: winston.format.combine(
+      winston.format.errors({ stack: true }),
+      winston.format((info) => {
+        if (typeof info.message === 'string' && info.message.startsWith('{')) {
+          try {
+            const parsed: unknown = JSON.parse(info.message);
+            if (
+              parsed &&
+              typeof parsed === 'object' &&
+              !Array.isArray(parsed)
+            ) {
+              Object.assign(info, parsed, {
+                level: info.level,
+                message:
+                  'message' in parsed
+                    ? parsed.message
+                    : 'event' in parsed
+                      ? parsed.event
+                      : 'structured log',
+              });
+            }
+          } catch {
+            // JSON이 아닌 기존 로그 메시지는 문자열로 유지한다.
+          }
+        }
+        const requestId = requestLogContext.getStore()?.requestId;
+        if (requestId && !info.requestId) info.requestId = requestId;
+        if (!info.message && typeof info.event === 'string') {
+          info.message = info.event;
+        }
+        Object.assign(info, redactSensitiveValue(info));
+        return info;
+      })(),
+    ),
     transports: [
       // 콘솔 트랜스포트: 개발 환경에서 가독성 좋은 포맷으로 출력
       new winston.transports.Console({

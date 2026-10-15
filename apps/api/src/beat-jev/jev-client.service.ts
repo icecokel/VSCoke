@@ -1,6 +1,7 @@
 import {
   BadGatewayException,
   Injectable,
+  Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -84,6 +85,8 @@ const describeAction = (view: GameView, action: string): string => {
 
 @Injectable()
 export class JevClientService {
+  private readonly logger = new Logger(JevClientService.name);
+
   constructor(private readonly configService: ConfigService) {}
 
   isConfigured(): boolean {
@@ -91,73 +94,110 @@ export class JevClientService {
   }
 
   async chooseAction(view: GameView): Promise<string> {
-    const apiKey = this.configService.get<string>('JEV_API_KEY')?.trim();
-    if (!apiKey) {
-      throw new ServiceUnavailableException(
-        'JEV API 키가 설정되지 않았습니다.',
-      );
-    }
-
-    if (view.legalActions.length === 0) {
-      throw new BadGatewayException('JEV의 유효한 행동이 없습니다.');
-    }
-
-    const criteria = Object.fromEntries(
-      view.legalActions.map((action) => [action, describeAction(view, action)]),
-    );
-
-    let response: Response;
+    const startedAt = performance.now();
+    let stage = 'configuration';
+    let statusCode: number | undefined;
     try {
-      response = await fetch('https://api.typesafe.ai/v1/systemone', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'jev-latest',
-          state: {
-            gameId: view.gameId,
-            goal: gameGoals[view.gameId],
-            rules: gameRules[view.gameId],
-            game: view.data,
-            legalActions: view.legalActions,
+      const apiKey = this.configService.get<string>('JEV_API_KEY')?.trim();
+      if (!apiKey) {
+        throw new ServiceUnavailableException(
+          'JEV API 키가 설정되지 않았습니다.',
+        );
+      }
+
+      stage = 'legal-actions';
+      if (view.legalActions.length === 0) {
+        throw new BadGatewayException('JEV의 유효한 행동이 없습니다.');
+      }
+
+      const criteria = Object.fromEntries(
+        view.legalActions.map((action) => [
+          action,
+          describeAction(view, action),
+        ]),
+      );
+
+      stage = 'request';
+      let response: Response;
+      try {
+        response = await fetch('https://api.typesafe.ai/v1/systemone', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
           },
-          questions: {
-            move: {
-              type: 'choice',
-              instructions:
-                'You are JEV. Choose the strongest legal action for your goal. ' +
-                'Use only the information in the supplied game state.',
-              criteria,
+          body: JSON.stringify({
+            model: 'jev-latest',
+            state: {
+              gameId: view.gameId,
+              goal: gameGoals[view.gameId],
+              rules: gameRules[view.gameId],
+              game: view.data,
+              legalActions: view.legalActions,
             },
-          },
-        }),
-        signal: AbortSignal.timeout(12_000),
+            questions: {
+              move: {
+                type: 'choice',
+                instructions:
+                  'You are JEV. Choose the strongest legal action for your goal. ' +
+                  'Use only the information in the supplied game state.',
+                criteria,
+              },
+            },
+          }),
+          signal: AbortSignal.timeout(12_000),
+        });
+      } catch {
+        throw new ServiceUnavailableException('JEV API에 연결할 수 없습니다.');
+      }
+
+      statusCode = response.status;
+      stage = 'status';
+      if (!response.ok) {
+        throw new BadGatewayException('JEV API가 요청을 처리하지 못했습니다.');
+      }
+
+      stage = 'response';
+      let payload: unknown;
+      try {
+        payload = await response.json();
+      } catch {
+        throw new BadGatewayException('JEV API 응답을 읽을 수 없습니다.');
+      }
+
+      stage = 'choice';
+      const answer = this.readChoice(payload);
+      if (!view.legalActions.includes(answer)) {
+        throw new BadGatewayException(
+          'JEV API가 유효하지 않은 행동을 반환했습니다.',
+        );
+      }
+
+      this.logger.log({
+        event: 'jev.action',
+        outcome: 'completed',
+        provider: 'typesafe',
+        model: 'jev-latest',
+        gameId: view.gameId,
+        legalActionCount: view.legalActions.length,
+        statusCode,
+        durationMs: performance.now() - startedAt,
       });
-    } catch {
-      throw new ServiceUnavailableException('JEV API에 연결할 수 없습니다.');
+      return answer;
+    } catch (error) {
+      this.logger.error({
+        event: 'jev.action',
+        outcome: 'failed',
+        provider: 'typesafe',
+        model: 'jev-latest',
+        gameId: view.gameId,
+        legalActionCount: view.legalActions.length,
+        stage,
+        statusCode,
+        durationMs: performance.now() - startedAt,
+      });
+      throw error;
     }
-
-    if (!response.ok) {
-      throw new BadGatewayException('JEV API가 요청을 처리하지 못했습니다.');
-    }
-
-    let payload: unknown;
-    try {
-      payload = await response.json();
-    } catch {
-      throw new BadGatewayException('JEV API 응답을 읽을 수 없습니다.');
-    }
-
-    const answer = this.readChoice(payload);
-    if (!view.legalActions.includes(answer)) {
-      throw new BadGatewayException(
-        'JEV API가 유효하지 않은 행동을 반환했습니다.',
-      );
-    }
-
-    return answer;
   }
 
   private readChoice(payload: unknown): string {

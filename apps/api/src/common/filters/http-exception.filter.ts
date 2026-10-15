@@ -46,21 +46,41 @@ export class HttpExceptionFilter implements ExceptionFilter {
         : { message: exceptionResponse };
 
     const accessLog = createApiRequestLog(request, status);
-    const errorLog = JSON.stringify({ ...accessLog, event: 'api.error' });
+    const errorDetails = {
+      errorName:
+        exception instanceof Error ? exception.name : 'NonErrorException',
+      ...(status >= Number(HttpStatus.INTERNAL_SERVER_ERROR)
+        ? {
+            message:
+              exception instanceof Error
+                ? exception.message
+                : 'A non-Error value was thrown',
+            stack: exception instanceof Error ? exception.stack : undefined,
+          }
+        : {}),
+    };
+    const errorLog = JSON.stringify(
+      redactSensitiveValue({
+        ...accessLog,
+        event: 'api.error',
+        ...errorDetails,
+      }),
+    );
 
     // 로깅 처리 (500번대 에러는 error로, 그 외는 warn으로 기록)
     if (status >= Number(HttpStatus.INTERNAL_SERVER_ERROR)) {
-      this.logger.error(
-        errorLog,
-        exception instanceof Error
-          ? String(redactSensitiveValue(exception.stack ?? exception.message))
-          : JSON.stringify(redactSensitiveValue(exception)),
-      );
+      this.logger.error(errorLog);
 
       // 알림 전송 (Fire-and-forget)
       this.sendNotification(request, exception).catch((err: unknown) => {
         const errorMessage = err instanceof Error ? err.message : String(err);
-        this.logger.error(`Failed to send notification: ${errorMessage}`);
+        this.logger.error(
+          JSON.stringify({
+            event: 'api.notification.failed',
+            requestId: accessLog.requestId,
+            message: redactSensitiveValue(errorMessage),
+          }),
+        );
       });
     } else {
       this.logger.warn(errorLog);
@@ -92,7 +112,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
     // 에러 상세 정보 추출
     const errorMessage = String(
       redactSensitiveValue(
-        exception instanceof Error ? exception.message : String(exception),
+        exception instanceof Error
+          ? exception.message
+          : 'A non-Error value was thrown',
       ),
     );
     const stackTrace = String(
@@ -140,6 +162,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         Authorization: `Basic ${auth}`,
       },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(3000),
     });
 
     if (!response.ok) {

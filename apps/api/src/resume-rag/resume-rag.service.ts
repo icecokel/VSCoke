@@ -5,6 +5,7 @@ import {
 import {
   Inject,
   Injectable,
+  Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { ChatProvider } from './ai/chat-provider';
@@ -56,6 +57,8 @@ const toSource = (chunk: RetrievedResumeChunk) => ({
 
 @Injectable()
 export class ResumeRagService {
+  private readonly logger = new Logger(ResumeRagService.name);
+
   constructor(
     private readonly retriever: ResumeRagRetrieverService,
     @Inject(RESUME_RAG_CHAT_PROVIDER)
@@ -67,87 +70,156 @@ export class ResumeRagService {
     request: AnswerRequest,
     options: AnswerOptions = {},
   ): Promise<ResumeRagChatResponseDto> {
+    const startedAt = performance.now();
     const channel = options.channel ?? 'resume';
-    if (options.recordQuestion !== false) {
-      await this.chatLogService.recordQuestion(
+    const logContext = {
+      channel,
+      questionLength: request.question.length,
+      historyMessageCount: options.history?.length ?? 0,
+    };
+    let stage = 'question-log';
+    let stageStartedAt = startedAt;
+    try {
+      if (options.recordQuestion !== false) {
+        await this.chatLogService.recordQuestion(
+          request.question,
+          request.locale,
+        );
+      }
+
+      const simpleReply = getChatSimpleReply(
         request.question,
         request.locale,
+        channel,
       );
-    }
-
-    const simpleReply = getChatSimpleReply(
-      request.question,
-      request.locale,
-      channel,
-    );
-    if (simpleReply)
-      return { answer: simpleReply, grounded: false, sources: [] };
-
-    let chunks: RetrievedResumeChunk[];
-    try {
-      let searchQuestion = request.question;
-      if (
-        options.history?.length &&
-        shouldResolveResumeChatReference(request.question)
-      ) {
-        searchQuestion = (
-          await this.chatProvider.answer({
-            channel,
-            task: 'rewrite-query',
-            question: request.question,
-            locale: request.locale,
-            history: options.history,
-            contexts: [],
-          })
-        ).trim();
-        if (!searchQuestion || searchQuestion.length > 1000)
-          throw new Error('Invalid contextual search query');
+      if (simpleReply) {
+        this.logger.log({
+          event: 'chat.answer',
+          ...logContext,
+          outcome: 'simple-reply',
+          grounded: false,
+          sourceCount: 0,
+          durationMs: performance.now() - startedAt,
+        });
+        return { answer: simpleReply, grounded: false, sources: [] };
       }
-      chunks = await this.retriever.retrieve({
-        channel,
-        question: searchQuestion,
-        locale: request.locale,
-      });
-      let remaining = 16_000;
-      chunks = chunks
-        .map((chunk) => {
-          const content = chunk.content.slice(0, Math.min(4000, remaining));
-          remaining -= content.length;
-          return { ...chunk, content };
-        })
-        .filter((chunk) => chunk.content.length > 0);
+
+      let chunks: RetrievedResumeChunk[];
+      try {
+        let searchQuestion = request.question;
+        if (
+          options.history?.length &&
+          shouldResolveResumeChatReference(request.question)
+        ) {
+          stage = 'query-rewrite';
+          stageStartedAt = performance.now();
+          searchQuestion = (
+            await this.chatProvider.answer({
+              channel,
+              task: 'rewrite-query',
+              question: request.question,
+              locale: request.locale,
+              history: options.history,
+              contexts: [],
+            })
+          ).trim();
+          if (!searchQuestion || searchQuestion.length > 1000)
+            throw new Error('Invalid contextual search query');
+          this.logger.log({
+            event: 'chat.provider',
+            ...logContext,
+            provider: this.chatProvider.constructor.name,
+            task: 'rewrite-query',
+            durationMs: performance.now() - stageStartedAt,
+          });
+        }
+        stage = 'retrieval';
+        stageStartedAt = performance.now();
+        chunks = await this.retriever.retrieve({
+          channel,
+          question: searchQuestion,
+          locale: request.locale,
+        });
+        let remaining = 16_000;
+        chunks = chunks
+          .map((chunk) => {
+            const content = chunk.content.slice(0, Math.min(4000, remaining));
+            remaining -= content.length;
+            return { ...chunk, content };
+          })
+          .filter((chunk) => chunk.content.length > 0);
+        this.logger.log({
+          event: 'chat.retrieval',
+          ...logContext,
+          sourceCount: chunks.length,
+          contextCharacters: 16_000 - remaining,
+          durationMs: performance.now() - stageStartedAt,
+        });
+      } catch (error) {
+        throw new ServiceUnavailableException(
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+
+      if (chunks.length === 0) {
+        this.logger.log({
+          event: 'chat.answer',
+          ...logContext,
+          outcome: 'no-evidence',
+          grounded: false,
+          sourceCount: 0,
+          durationMs: performance.now() - startedAt,
+        });
+        return {
+          answer: getChatNoEvidenceAnswer(request.locale, channel),
+          grounded: false,
+          sources: [],
+        };
+      }
+
+      try {
+        stage = 'answer';
+        stageStartedAt = performance.now();
+        const answer = await this.chatProvider.answer({
+          channel,
+          question: request.question,
+          locale: request.locale,
+          contexts: chunks,
+          ...(options.history?.length ? { history: options.history } : {}),
+        });
+
+        this.logger.log({
+          event: 'chat.answer',
+          ...logContext,
+          outcome: 'completed',
+          provider: this.chatProvider.constructor.name,
+          grounded: true,
+          sourceCount: chunks.length,
+          answerLength: answer.length,
+          providerDurationMs: performance.now() - stageStartedAt,
+          durationMs: performance.now() - startedAt,
+        });
+        return {
+          answer,
+          grounded: true,
+          sources: chunks.map(toSource),
+        };
+      } catch (error) {
+        throw new ServiceUnavailableException(
+          error instanceof Error ? error.message : String(error),
+        );
+      }
     } catch (error) {
-      throw new ServiceUnavailableException(
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-
-    if (chunks.length === 0) {
-      return {
-        answer: getChatNoEvidenceAnswer(request.locale, channel),
-        grounded: false,
-        sources: [],
-      };
-    }
-
-    try {
-      const answer = await this.chatProvider.answer({
-        channel,
-        question: request.question,
-        locale: request.locale,
-        contexts: chunks,
-        ...(options.history?.length ? { history: options.history } : {}),
+      this.logger.error({
+        event: 'chat.answer',
+        ...logContext,
+        outcome: 'failed',
+        provider: this.chatProvider.constructor.name,
+        stage,
+        stageDurationMs: performance.now() - stageStartedAt,
+        durationMs: performance.now() - startedAt,
       });
-
-      return {
-        answer,
-        grounded: true,
-        sources: chunks.map(toSource),
-      };
-    } catch (error) {
-      throw new ServiceUnavailableException(
-        error instanceof Error ? error.message : String(error),
-      );
+      throw error;
     }
   }
 }

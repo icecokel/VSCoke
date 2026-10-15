@@ -5,6 +5,12 @@ import { GameHistory } from './entities/game-history.entity';
 import { User } from '../auth/entities/user.entity';
 import { CreateGameHistoryDto } from './dto/create-game-history.dto';
 import { GameType } from './enums/game-type.enum';
+import { Logger } from '@nestjs/common';
+
+const numberMatcher: unknown = expect.any(Number);
+let logSpy: jest.SpiedFunction<Logger['log']>;
+let warnSpy: jest.SpiedFunction<Logger['warn']>;
+let errorSpy: jest.SpiedFunction<Logger['error']>;
 
 const mockQueryBuilder = {
   select: jest.fn().mockReturnThis(),
@@ -42,6 +48,10 @@ describe('GameService', () => {
   beforeEach(async () => {
     // 각 테스트 전에 모든 모킹 초기화
     jest.clearAllMocks();
+    logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    jest.spyOn(Logger.prototype, 'debug').mockImplementation();
+    warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -86,6 +96,40 @@ describe('GameService', () => {
       });
       expect(repository.save).toHaveBeenCalledWith(savedHistory);
       expect(result).toEqual(savedHistory);
+      expect(logSpy).toHaveBeenCalledWith({
+        event: 'game.history',
+        outcome: 'created',
+        gameType: GameType.SKY_DROP,
+        score: 100,
+        playTimeSeconds: undefined,
+        durationMs: numberMatcher,
+      });
+      expect(JSON.stringify(logSpy.mock.calls)).not.toContain('test-id');
+    });
+
+    it('저장 실패 단계만 기록하고 원래 오류와 사용자 정보는 로그에 포함하지 않는다', async () => {
+      const user = new User();
+      user.id = 'private-user-id';
+      const error = new Error('private database credential');
+      repository.save.mockRejectedValue(error);
+
+      await expect(
+        service.createHistory(user, {
+          score: 100,
+          gameType: GameType.SKY_DROP,
+        }),
+      ).rejects.toBe(error);
+
+      expect(errorSpy).toHaveBeenCalledWith({
+        event: 'game.history',
+        outcome: 'failed',
+        stage: 'persistence',
+        gameType: GameType.SKY_DROP,
+        durationMs: numberMatcher,
+      });
+      expect(JSON.stringify(errorSpy.mock.calls)).not.toMatch(
+        /private-user-id|private database credential/,
+      );
     });
 
     it('비정상적으로 큰 점수는 저장 전에 거절해야 함', async () => {
@@ -102,6 +146,14 @@ describe('GameService', () => {
       );
       expect(repository.create).not.toHaveBeenCalled();
       expect(repository.save).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: 'game.history',
+          outcome: 'rejected',
+          stage: 'validation',
+          gameType: GameType.SKY_DROP,
+        }),
+      );
     });
 
     it('플레이 시간 대비 불가능한 점수는 저장 전에 거절해야 함', async () => {

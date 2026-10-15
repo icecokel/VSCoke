@@ -2,6 +2,7 @@ import {
   Injectable,
   CanActivate,
   ExecutionContext,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { OAuth2Client } from 'google-auth-library';
@@ -20,6 +21,7 @@ type UserProfile = Pick<User, 'id' | 'email' | 'firstName' | 'lastName'>;
 @Injectable()
 export class GoogleAuthGuard implements CanActivate {
   private readonly client: OAuth2Client = new OAuth2Client();
+  private readonly logger = new Logger(GoogleAuthGuard.name);
 
   constructor(
     @InjectRepository(User)
@@ -30,11 +32,18 @@ export class GoogleAuthGuard implements CanActivate {
    * 요청을 가로채어 구글 토큰의 유효성을 검사함
    */
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const startedAt = performance.now();
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const token = this.extractTokenFromHeader(request);
 
     // 토큰이 없는 경우 예외 발생
     if (!token) {
+      this.logger.warn({
+        event: 'auth.authentication',
+        outcome: 'rejected',
+        stage: 'token',
+        durationMs: performance.now() - startedAt,
+      });
       throw new UnauthorizedException(ErrorMessage.AUTH.NO_TOKEN);
     }
 
@@ -49,15 +58,33 @@ export class GoogleAuthGuard implements CanActivate {
       devAuthToken &&
       token === devAuthToken
     ) {
-      request.user = await this.findOrCreateUser({
-        id: 'dev-user-id',
-        email: 'dev@example.com',
-        firstName: 'Dev',
-        lastName: 'User',
+      try {
+        request.user = await this.findOrCreateUser({
+          id: 'dev-user-id',
+          email: 'dev@example.com',
+          firstName: 'Dev',
+          lastName: 'User',
+        });
+      } catch (error) {
+        this.logger.error({
+          event: 'auth.authentication',
+          provider: 'development',
+          outcome: 'failed',
+          stage: 'persistence',
+          durationMs: performance.now() - startedAt,
+        });
+        throw error;
+      }
+      this.logger.warn({
+        event: 'auth.authentication',
+        provider: 'development',
+        outcome: 'authenticated',
+        durationMs: performance.now() - startedAt,
       });
       return true;
     }
 
+    let stage = 'configuration';
     try {
       const googleClientId = process.env.GOOGLE_CLIENT_ID;
       if (!googleClientId) {
@@ -65,10 +92,18 @@ export class GoogleAuthGuard implements CanActivate {
       }
 
       // 구글 클라이언트를 사용하여 토큰 검증 (audience 강제)
+      stage = 'verification';
+      const verificationStartedAt = performance.now();
       const ticket = await this.client.verifyIdToken({
         idToken: token,
         audience: googleClientId,
       });
+      this.logger.debug({
+        event: 'auth.google-verification',
+        outcome: 'completed',
+        durationMs: performance.now() - verificationStartedAt,
+      });
+      stage = 'profile';
       const payload = ticket.getPayload();
 
       if (!payload) {
@@ -81,6 +116,7 @@ export class GoogleAuthGuard implements CanActivate {
         throw new UnauthorizedException(ErrorMessage.AUTH.EMAIL_REQUIRED);
       }
 
+      stage = 'persistence';
       const user = await this.findOrCreateUser({
         id: sub,
         email,
@@ -90,8 +126,26 @@ export class GoogleAuthGuard implements CanActivate {
 
       // 요청 객체에 유저 정보 첨부
       request.user = user;
+      this.logger.log({
+        event: 'auth.authentication',
+        provider: 'google',
+        outcome: 'authenticated',
+        durationMs: performance.now() - startedAt,
+      });
       return true;
     } catch (e) {
+      const log = {
+        event: 'auth.authentication',
+        provider: 'google',
+        outcome: e instanceof UnauthorizedException ? 'rejected' : 'failed',
+        stage,
+        durationMs: performance.now() - startedAt,
+      };
+      if (e instanceof UnauthorizedException || stage === 'verification') {
+        this.logger.warn(log);
+      } else {
+        this.logger.error(log);
+      }
       if (e instanceof UnauthorizedException) {
         throw e;
       }
@@ -109,12 +163,15 @@ export class GoogleAuthGuard implements CanActivate {
     });
 
     if (existingUser) {
+      this.logger.debug({ event: 'auth.user', outcome: 'existing' });
       return existingUser;
     }
 
     const user = this.userRepository.create(profile);
     try {
-      return await this.userRepository.save(user);
+      const createdUser = await this.userRepository.save(user);
+      this.logger.log({ event: 'auth.user', outcome: 'created' });
+      return createdUser;
     } catch (error) {
       if (!isUniqueViolation(error)) {
         throw error;
@@ -127,6 +184,10 @@ export class GoogleAuthGuard implements CanActivate {
         throw error;
       }
 
+      this.logger.debug({
+        event: 'auth.user',
+        outcome: 'concurrently-created',
+      });
       return concurrentlyCreatedUser;
     }
   }

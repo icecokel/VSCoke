@@ -1,4 +1,5 @@
 import { createWinstonConfig, resolveLogLevel } from './winston.config';
+import { requestLogContext } from '../logging/request-log-context';
 
 type WinstonTransport = {
   level?: string;
@@ -61,6 +62,7 @@ describe('winstonConfig', () => {
     process.env.LOG_LEVEL = 'warn';
 
     const winstonConfig = createWinstonConfig() as {
+      level: string;
       transports: WinstonTransport[];
     };
     const consoleTransport = winstonConfig.transports.find(
@@ -83,6 +85,38 @@ describe('winstonConfig', () => {
     expect(
       fileTransports.map((transport) => transport.options?.maxFiles),
     ).toEqual(['180d', '180d']);
+  });
+
+  it('구조화 이벤트를 정규화하고 요청 ID와 마스킹을 모든 출력에 적용한다', () => {
+    const config = createWinstonConfig();
+    const requestId = 'a5fa93a9-5f91-44f0-9f6e-02e4360a1594';
+    const info = {
+      level: 'info',
+      message: JSON.stringify({
+        event: 'auth.login',
+        password: 'private-password',
+        question: 'private-question',
+        count: 3,
+      }),
+    };
+
+    const result = requestLogContext.run({ requestId }, () =>
+      config.format.transform(info, {}),
+    );
+
+    expect(result).toMatchObject({
+      event: 'auth.login',
+      message: 'auth.login',
+      level: 'info',
+      requestId,
+      password: '[REDACTED]',
+      question: '[REDACTED]',
+      count: 3,
+    });
+    expect(JSON.stringify(result)).not.toMatch(
+      /private-password|private-question/,
+    );
+    config.transports.forEach((transport) => transport.close?.());
   });
 });
 

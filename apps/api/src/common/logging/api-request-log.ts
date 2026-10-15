@@ -1,4 +1,4 @@
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import type { RequestWithRequestId } from '../middleware/request-id.middleware';
 
 export type ApiRequestLog = {
@@ -8,6 +8,9 @@ export type ApiRequestLog = {
   route: string;
   statusCode: number;
   durationMs: number;
+  outcome: 'completed' | 'aborted';
+  requestContentLength?: number;
+  responseContentLength?: number;
 };
 
 type RoutedRequest = Omit<RequestWithRequestId, 'route'> & {
@@ -18,7 +21,7 @@ const getRoute = (request: RoutedRequest): string => {
   const routePath = request.route?.path;
 
   if (typeof routePath === 'string') {
-    return `${request.baseUrl}${routePath}`;
+    return `${request.baseUrl ?? ''}${routePath}`;
   }
 
   return 'unmatched';
@@ -37,6 +40,8 @@ const getDurationMs = (
 export const createApiRequestLog = (
   request: Request,
   statusCode: number,
+  response?: Response,
+  outcome: ApiRequestLog['outcome'] = 'completed',
 ): ApiRequestLog => {
   const requestWithContext = request as unknown as RoutedRequest;
 
@@ -47,5 +52,23 @@ export const createApiRequestLog = (
     route: getRoute(requestWithContext),
     statusCode,
     durationMs: Number(getDurationMs(requestWithContext).toFixed(3)),
+    outcome,
+    requestContentLength: parseContentLength(
+      request.headers?.['content-length'],
+    ),
+    responseContentLength: parseContentLength(
+      response?.getHeader('content-length'),
+    ),
   };
+};
+
+const parseContentLength = (value: unknown): number | undefined => {
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    return undefined;
+  }
+  if (!/^\d+$/.test(String(value))) {
+    return undefined;
+  }
+  const length = Number(value);
+  return Number.isSafeInteger(length) ? length : undefined;
 };

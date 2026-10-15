@@ -1,8 +1,12 @@
-import { ServiceUnavailableException } from '@nestjs/common';
+import { Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ResumeRagService } from './resume-rag.service';
 import type { ChatProvider } from './ai/chat-provider';
 import type { ResumeRagRetrieverService } from './resume-rag-retriever.service';
 import type { ResumeRagChatLogService } from './resume-rag-chat-log.service';
+
+const numberMatcher: unknown = expect.any(Number);
+let logSpy: jest.SpiedFunction<Logger['log']>;
+let errorSpy: jest.SpiedFunction<Logger['error']>;
 
 const createChatLogService = () => {
   const recordQuestion = jest.fn().mockResolvedValue(undefined);
@@ -12,6 +16,13 @@ const createChatLogService = () => {
     recordQuestion,
   };
 };
+
+beforeEach(() => {
+  logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+  errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+});
+
+afterEach(() => jest.restoreAllMocks());
 
 describe('ResumeRagService', () => {
   it('searches every question and recommends related topics when no evidence is found', async () => {
@@ -46,6 +57,16 @@ describe('ResumeRagService', () => {
     });
     expect(answer).not.toHaveBeenCalled();
     expect(recordQuestion).toHaveBeenCalledWith('오늘 날씨 어때?', 'ko-KR');
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'chat.answer',
+        channel: 'resume',
+        outcome: 'no-evidence',
+        grounded: false,
+        sourceCount: 0,
+        durationMs: numberMatcher,
+      }),
+    );
   });
 
   it('can answer without recording a question for a memory-only chat surface', async () => {
@@ -138,7 +159,80 @@ describe('ResumeRagService', () => {
         contexts: [expect.objectContaining({ content: '근거 내용' })],
       }),
     );
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'chat.retrieval',
+        sourceCount: 1,
+        contextCharacters: '근거 내용'.length,
+      }),
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'chat.answer',
+        outcome: 'completed',
+        grounded: true,
+        sourceCount: 1,
+        providerDurationMs: numberMatcher,
+      }),
+    );
+    expect(JSON.stringify(logSpy.mock.calls)).not.toMatch(
+      /Oprimed에서 맡은 업무 질문|근거 내용|근거 기반 답변|docs\/source.md/,
+    );
   });
+
+  it.each(['question-log', 'query-rewrite', 'retrieval', 'answer'])(
+    '%s 실패 단계만 기록하고 질문과 공급자 오류 내용은 남기지 않는다',
+    async (stage) => {
+      const error = new Error('private-provider-secret');
+      const retrieve = jest.fn().mockResolvedValue([
+        {
+          id: 'private-source-id',
+          content: 'private-context',
+          title: 'Private Source',
+          sourcePath: 'private-path',
+          sourceKey: 'private-key',
+          citationMetadata: {},
+          similarity: 0.9,
+        },
+      ]);
+      const answer = jest.fn().mockRejectedValue(error);
+      const { chatLogService, recordQuestion } = createChatLogService();
+      if (stage === 'question-log') recordQuestion.mockRejectedValue(error);
+      if (stage === 'retrieval') retrieve.mockRejectedValue(error);
+      const service = new ResumeRagService(
+        { retrieve } as unknown as ResumeRagRetrieverService,
+        { answer },
+        chatLogService,
+      );
+
+      const result = service.answer(
+        { question: '거기서 맡은 역할은? private-question', locale: 'ko-KR' },
+        {
+          history:
+            stage === 'query-rewrite'
+              ? [{ role: 'user', content: 'private-history' }]
+              : undefined,
+        },
+      );
+
+      if (stage === 'question-log') await expect(result).rejects.toBe(error);
+      else
+        await expect(result).rejects.toBeInstanceOf(
+          ServiceUnavailableException,
+        );
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: 'chat.answer',
+          channel: 'resume',
+          outcome: 'failed',
+          stage,
+          stageDurationMs: numberMatcher,
+          durationMs: numberMatcher,
+        }),
+      );
+      expect(JSON.stringify(errorSpy.mock.calls)).not.toMatch(/private-/);
+    },
+  );
 
   it('surfaces missing chat model setup as service unavailable', async () => {
     const retriever = {

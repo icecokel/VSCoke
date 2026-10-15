@@ -1,5 +1,9 @@
 import { GoogleAuthGuard } from './google-auth.guard';
-import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import {
+  ExecutionContext,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { LoginTicket, OAuth2Client, TokenPayload } from 'google-auth-library';
 import { QueryFailedError, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -30,6 +34,11 @@ type MockGoogleClient = {
   >;
 };
 
+const numberMatcher: unknown = expect.any(Number);
+let logSpy: jest.SpiedFunction<Logger['log']>;
+let debugSpy: jest.SpiedFunction<Logger['debug']>;
+let warnSpy: jest.SpiedFunction<Logger['warn']>;
+
 const createExecutionContext = (request: TestRequest): ExecutionContext =>
   ({
     switchToHttp: () => ({
@@ -53,6 +62,10 @@ describe('GoogleAuthGuard', () => {
   let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(() => {
+    logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation();
+    warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    jest.spyOn(Logger.prototype, 'error').mockImplementation();
     originalEnv = { ...process.env };
     process.env.NODE_ENV = 'test';
     process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
@@ -78,6 +91,7 @@ describe('GoogleAuthGuard', () => {
 
   afterEach(() => {
     process.env = originalEnv;
+    jest.restoreAllMocks();
   });
 
   it('should be defined', () => {
@@ -92,6 +106,13 @@ describe('GoogleAuthGuard', () => {
 
       await expect(guard.canActivate(context)).rejects.toThrow(
         new UnauthorizedException(ErrorMessage.AUTH.NO_TOKEN),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: 'auth.authentication',
+          outcome: 'rejected',
+          stage: 'token',
+        }),
       );
     });
 
@@ -167,6 +188,47 @@ describe('GoogleAuthGuard', () => {
       });
       expect(mockRequest.user).toBeDefined();
       expect(mockRequest.user?.email).toBe(payload.email);
+      expect(logSpy).toHaveBeenCalledWith({
+        event: 'auth.user',
+        outcome: 'created',
+      });
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: 'auth.authentication',
+          provider: 'google',
+          outcome: 'authenticated',
+          durationMs: numberMatcher,
+        }),
+      );
+      const logs = JSON.stringify([logSpy.mock.calls, debugSpy.mock.calls]);
+      expect(logs).not.toContain(payload.email);
+      expect(logs).not.toContain('valid-token');
+      expect(logs).not.toContain('test-google-client-id');
+    });
+
+    it('실패 단계와 소요 시간만 남기고 Google 오류의 인증 정보는 기록하지 않는다', async () => {
+      mockClient.verifyIdToken.mockRejectedValue(
+        new Error('provider-secret-token user@example.com'),
+      );
+
+      await expect(
+        guard.canActivate(
+          createExecutionContext({
+            headers: { authorization: 'Bearer private-token' },
+          }),
+        ),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+
+      expect(warnSpy).toHaveBeenCalledWith({
+        event: 'auth.authentication',
+        provider: 'google',
+        outcome: 'failed',
+        stage: 'verification',
+        durationMs: numberMatcher,
+      });
+      expect(JSON.stringify(warnSpy.mock.calls)).not.toMatch(
+        /private-token|provider-secret-token|user@example.com/,
+      );
     });
 
     it('should reuse a user inserted by a concurrent request', async () => {

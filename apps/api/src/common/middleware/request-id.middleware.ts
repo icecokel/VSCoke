@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import { createApiRequestLog } from '../logging/api-request-log';
+import { requestLogContext } from '../logging/request-log-context';
 
 export const REQUEST_ID_HEADER = 'x-request-id';
 
@@ -32,10 +33,24 @@ export const requestIdMiddleware = (
   request.requestId = requestId;
   request.requestStartedAt = process.hrtime.bigint();
   response.setHeader('X-Request-Id', requestId);
-  response.once('finish', () => {
-    logger.log(
-      JSON.stringify(createApiRequestLog(request, response.statusCode)),
+  let hasLogged = false;
+  const logCompletion = (outcome: 'completed' | 'aborted'): void => {
+    if (hasLogged) return;
+    hasLogged = true;
+    const statusCode =
+      outcome === 'aborted' && !response.headersSent
+        ? 499
+        : response.statusCode;
+    const message = JSON.stringify(
+      createApiRequestLog(request, statusCode, response, outcome),
     );
+    if (statusCode >= 500) logger.error(message);
+    else if (statusCode >= 400 || outcome === 'aborted') logger.warn(message);
+    else logger.log(message);
+  };
+  response.once('finish', () => logCompletion('completed'));
+  response.once('close', () => {
+    logCompletion(response.writableFinished ? 'completed' : 'aborted');
   });
-  next();
+  requestLogContext.run({ requestId }, next);
 };

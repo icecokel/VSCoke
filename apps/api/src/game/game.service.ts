@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { GameHistory } from './entities/game-history.entity';
@@ -35,6 +40,8 @@ type RankCountRow = {
  */
 @Injectable()
 export class GameService {
+  private readonly logger = new Logger(GameService.name);
+
   constructor(
     @InjectRepository(GameHistory)
     private gameHistoryRepository: Repository<GameHistory>,
@@ -48,6 +55,7 @@ export class GameService {
     gameType: GameType,
     dateRange?: { start: Date; end: Date },
   ): Promise<number> {
+    const startedAt = performance.now();
     const policy = getGameScorePolicy(gameType);
     const query = this.gameHistoryRepository
       .createQueryBuilder('gh')
@@ -67,6 +75,13 @@ export class GameService {
     }
 
     const result = await query.getRawOne<MaxScoreRow>();
+    this.logger.debug({
+      event: 'game.best-score',
+      gameType,
+      hasDateRange: Boolean(dateRange),
+      hasScore: result?.maxScore != null,
+      durationMs: performance.now() - startedAt,
+    });
     return result?.maxScore ? Number.parseInt(String(result.maxScore), 10) : 0;
   }
 
@@ -77,19 +92,45 @@ export class GameService {
     user: User,
     createGameHistoryDto: CreateGameHistoryDto,
   ): Promise<GameHistory> {
-    validateGameScoreSubmission(createGameHistoryDto);
+    const startedAt = performance.now();
+    let stage = 'validation';
+    try {
+      validateGameScoreSubmission(createGameHistoryDto);
 
-    const history = this.gameHistoryRepository.create({
-      ...createGameHistoryDto,
-      user: user,
-    });
-    return this.gameHistoryRepository.save(history);
+      stage = 'persistence';
+      const history = this.gameHistoryRepository.create({
+        ...createGameHistoryDto,
+        user: user,
+      });
+      const savedHistory = await this.gameHistoryRepository.save(history);
+      this.logger.log({
+        event: 'game.history',
+        outcome: 'created',
+        gameType: createGameHistoryDto.gameType,
+        score: createGameHistoryDto.score,
+        playTimeSeconds: createGameHistoryDto.playTime,
+        durationMs: performance.now() - startedAt,
+      });
+      return savedHistory;
+    } catch (error) {
+      const log = {
+        event: 'game.history',
+        outcome: error instanceof BadRequestException ? 'rejected' : 'failed',
+        stage,
+        gameType: createGameHistoryDto.gameType,
+        durationMs: performance.now() - startedAt,
+      };
+      if (error instanceof BadRequestException) this.logger.warn(log);
+      else this.logger.error(log);
+      throw error;
+    }
   }
 
   /**
    * 게임별 랭킹 목록을 조회함 (유저별 최고 점수 기준 Top 10)
    */
   async getRanking(gameType: GameType): Promise<GameRankingHistoryDto[]> {
+    const startedAt = performance.now();
     const policy = getGameScorePolicy(gameType);
     const policyValues = getGameScorePolicyValues(policy);
     const queryValues: Array<string | number> = [gameType, ...policyValues];
@@ -124,6 +165,12 @@ export class GameService {
       queryValues,
     );
 
+    this.logger.log({
+      event: 'game.ranking',
+      gameType,
+      resultCount: rows.length,
+      durationMs: performance.now() - startedAt,
+    });
     return rows.map((row, index) => ({
       score: Number(row.score),
       rank: index + 1,
@@ -139,11 +186,17 @@ export class GameService {
    * ID를 기준으로 특정 게임 기록을 조회함
    */
   async findHistoryById(id: string): Promise<GameHistory> {
+    const startedAt = performance.now();
     const history = await this.gameHistoryRepository.findOne({
       where: { id },
       relations: ['user'],
     });
 
+    this.logger.debug({
+      event: 'game.history-lookup',
+      found: Boolean(history),
+      durationMs: performance.now() - startedAt,
+    });
     if (!history) {
       throw new NotFoundException('Game history not found');
     }
@@ -164,6 +217,7 @@ export class GameService {
     gameType: GameType,
     dateRange?: { start: Date; end: Date },
   ): Promise<number> {
+    const startedAt = performance.now();
     const policy = getGameScorePolicy(gameType);
     const policyValues = getGameScorePolicyValues(policy);
     const queryValues: Array<string | number | Date> = [
@@ -196,6 +250,12 @@ export class GameService {
       queryValues,
     );
 
+    this.logger.debug({
+      event: 'game.user-rank',
+      gameType,
+      hasDateRange: Boolean(dateRange),
+      durationMs: performance.now() - startedAt,
+    });
     // (나보다 높은 유저 수) + 1 = 현재 나의 등수
     return Number.parseInt(String(result[0]?.count ?? '0'), 10) + 1;
   }

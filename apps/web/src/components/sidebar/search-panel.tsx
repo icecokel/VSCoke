@@ -9,6 +9,7 @@ import { useCustomRouter } from "@/hooks/use-custom-router";
 import { useSearchIndex } from "@/hooks/use-search-index";
 import { getRecommendedItems, searchItems } from "@/lib/search";
 import { cn } from "@/lib/utils";
+import { trackUsageEvent } from "@/lib/usage-analytics";
 import type { SearchItem, SearchItemType } from "@/types/search";
 
 interface SearchPanelProps {
@@ -50,6 +51,7 @@ const SearchPanel = ({ onNavigate }: SearchPanelProps) => {
 
   useEffect(() => {
     setActiveIndex(0);
+    if (debouncedQuery) void trackUsageEvent("search_used", "site_search");
   }, [debouncedQuery]);
 
   const handleNavigate = (item: SearchItem) => {

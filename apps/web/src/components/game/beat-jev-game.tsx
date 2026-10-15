@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGame } from "@/contexts/game-context";
 import { useCustomRouter } from "@/hooks/use-custom-router";
 import { ApiError } from "@/lib/api-client";
+import { trackUsageEvent } from "@/lib/usage-analytics";
 import {
   continueBeatJevMatch,
   createBeatJevMatch,
@@ -33,6 +34,7 @@ const isMissingMatch = (error: unknown): boolean =>
   error instanceof ApiError && error.status === 404;
 
 export const BeatJevGame = () => {
+  const path = `/${useLocale()}/game/beat-jev`;
   const t = useTranslations("Game.beatJev");
   const router = useCustomRouter();
   const { setGamePlaying } = useGame();
@@ -41,6 +43,18 @@ export const BeatJevGame = () => {
   const [busy, setBusy] = useState<"start" | "action" | "jev" | "next" | "refresh" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inFlight = useRef(false);
+  const previousMatch = useRef<MatchSnapshot | null>(null);
+
+  useEffect(() => {
+    if (
+      match?.status === "COMPLETE" &&
+      previousMatch.current?.id === match.id &&
+      previousMatch.current.status !== "COMPLETE"
+    ) {
+      void trackUsageEvent("game_completed", "beat_jev", { path });
+    }
+    previousMatch.current = match;
+  }, [match, path]);
 
   useEffect(() => {
     let active = true;
@@ -113,6 +127,7 @@ export const BeatJevGame = () => {
       setBusy(operation);
       try {
         const snapshot = await request();
+        if (operation === "start") void trackUsageEvent("game_started", "beat_jev", { path });
         setMatch(snapshot);
         sessionStorage.setItem(storageKey, snapshot.id);
         setError(null);
@@ -140,7 +155,7 @@ export const BeatJevGame = () => {
         setBusy(null);
       }
     },
-    [match?.id, t],
+    [match?.id, t, path],
   );
 
   useEffect(() => {

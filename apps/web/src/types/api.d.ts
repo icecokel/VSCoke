@@ -379,6 +379,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/usage/events": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 익명 사용 이벤트 저장 (eventId 중복은 한 번만 반영) */
+    post: operations["UsageController_record"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/usage/summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 한국 날짜 범위의 익명 사용 집계 조회 */
+    get: operations["UsageController_summarize"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -969,6 +1003,90 @@ export interface components {
       /** Format: uuid */
       relatedRequestId?: string;
       statusCode?: number;
+    };
+    UsageEventDto: {
+      /**
+       * Format: uuid
+       * @description 재전송 중복 제거용 UUID v4
+       */
+      eventId: string;
+      /**
+       * Format: uuid
+       * @description 브라우저에서 생성한 익명 UUID v4
+       */
+      visitorId: string;
+      /**
+       * Format: uuid
+       * @description 방문 세션의 익명 UUID v4
+       */
+      sessionId: string;
+      /** @enum {string} */
+      eventName:
+        | "page_view"
+        | "chat_submitted"
+        | "chat_completed"
+        | "chat_failed"
+        | "game_started"
+        | "game_completed"
+        | "search_used"
+        | "share_clicked";
+      /**
+       * @description 알려진 웹 경로만 허용. query/hash 금지, 동적 식별자는 서버에서 제거
+       * @example /ko-KR/game/wordle
+       */
+      path: string;
+      /**
+       * @description page_view 외에는 이벤트에 대응하는 기능이 필수
+       * @enum {string}
+       */
+      feature?:
+        | "main_chat"
+        | "resume_chat"
+        | "sky_drop"
+        | "wordle"
+        | "beat_jev"
+        | "site_search"
+        | "share";
+      durationMs?: number;
+    };
+    UsageCountsDto: {
+      events: number;
+      /** @description 해당 범위의 고유 익명 브라우저 수 */
+      visitors: number;
+      sessions: number;
+      pageViews: number;
+    };
+    UsageDailyDto: {
+      events: number;
+      /** @description 해당 범위의 고유 익명 브라우저 수 */
+      visitors: number;
+      sessions: number;
+      pageViews: number;
+      /** @example 2026-10-15 */
+      date: string;
+    };
+    UsageBreakdownDto: {
+      /** @description 경로, 기능 또는 이벤트 이름 */
+      value: string;
+      events: number;
+      visitors: number;
+      sessions: number;
+    };
+    UsageSummaryDto: {
+      /** @example 2026-10-01 */
+      from: string;
+      /** @example 2026-11-01 */
+      to: string;
+      /** @example Asia/Seoul */
+      timezone: string;
+      totals: components["schemas"]["UsageCountsDto"];
+      /** @description 활동이 있는 날짜만 반환 */
+      daily: components["schemas"]["UsageDailyDto"][];
+      /** @description 이벤트 수 상위 100 경로 */
+      paths: components["schemas"]["UsageBreakdownDto"][];
+      /** @description 기능이 있는 이벤트만 집계 */
+      features: components["schemas"]["UsageBreakdownDto"][];
+      events: components["schemas"]["UsageBreakdownDto"][];
     };
   };
   responses: never;
@@ -2213,6 +2331,129 @@ export interface operations {
       };
       /** @description 분류되지 않은 서버 오류 */
       500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+    };
+  };
+  UsageController_record: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UsageEventDto"];
+      };
+    };
+    responses: {
+      /** @description 이벤트 저장 완료 또는 이미 저장된 이벤트 */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description 유효하지 않은 이벤트 또는 조회 기간 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 허용되지 않은 브라우저 origin */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description IP별 시간당 600회 초과 */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 사용 집계 저장 또는 조회 실패 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+    };
+  };
+  UsageController_summarize: {
+    parameters: {
+      query: {
+        /** @description 조회 시작일, 한국 시간 00:00 포함 (YYYY-MM-DD) */
+        from: string;
+        /** @description 조회 종료일, 한국 시간 00:00 제외. 최대 93일 */
+        to: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 총계, 일별, 경로별, 기능별, 이벤트별 집계 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["UsageSummaryDto"];
+          };
+        };
+      };
+      /** @description 유효하지 않은 이벤트 또는 조회 기간 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 조회 키가 없거나 일치하지 않음 */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 사용 집계 저장 또는 조회 실패 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 서버에 32자 이상의 조회 키가 설정되지 않음 */
+      503: {
         headers: {
           [name: string]: unknown;
         };

@@ -3,6 +3,7 @@ import { Noto_Sans_KR } from "next/font/google";
 import { getLocale } from "next-intl/server";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { GoogleTagManager } from "@/components/google-tag-manager";
+import { UsageTracker } from "@/components/usage-tracker";
 import { ErrorTracker } from "@/components/error-tracker";
 import { siteUrl } from "@/lib/site-url";
 import "./globals.css";
@@ -64,6 +65,7 @@ const RootLayout = async ({
     <html lang={locale} className={`${notoSansKr.className} dark`}>
       <body>
         <ErrorTracker />
+        <UsageTracker />
         <GoogleAnalytics measurementId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
         <GoogleTagManager containerId={process.env.NEXT_PUBLIC_GTM_ID} />
         {children}

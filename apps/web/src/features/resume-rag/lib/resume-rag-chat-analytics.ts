@@ -1,3 +1,5 @@
+import { trackUsageEvent } from "@/lib/usage-analytics";
+
 export type ResumeRagChatEntryPoint = "readme" | "resume_question";
 export type ResumeRagSurface = "readme" | "resume_question";
 
@@ -184,6 +186,9 @@ export const trackResumeRagChatSuggestionSelected = ({
 };
 
 export const trackResumeRagChatSubmitted = (input: ResumeRagChatAnalyticsInput) => {
+  void trackUsageEvent("chat_submitted", "resume_chat", {
+    path: `/${input.locale}/${input.entryPoint === "readme" ? "readme" : "resume/question"}`,
+  });
   trackResumeRagEvent(createResumeRagChatSubmittedEvent(input));
 };
 
@@ -192,6 +197,9 @@ export const trackResumeRagChatCompleted = ({
   sourceCount,
   ...input
 }: ResumeRagChatAnalyticsInput & { grounded: boolean; sourceCount: number }) => {
+  void trackUsageEvent("chat_completed", "resume_chat", {
+    path: `/${input.locale}/${input.entryPoint === "readme" ? "readme" : "resume/question"}`,
+  });
   trackResumeRagEvent({
     ...createChatEvent("resume_rag_chat_completed", input),
     chat_evidence: grounded ? ("grounded" satisfies ResumeRagChatEvidence) : "no_evidence",
@@ -203,6 +211,9 @@ export const trackResumeRagChatFailed = ({
   failureReason,
   ...input
 }: ResumeRagChatAnalyticsInput & { failureReason: ResumeRagChatFailureReason }) => {
+  void trackUsageEvent("chat_failed", "resume_chat", {
+    path: `/${input.locale}/${input.entryPoint === "readme" ? "readme" : "resume/question"}`,
+  });
   trackResumeRagEvent({
     ...createChatEvent("resume_rag_chat_failed", input),
     chat_failure_reason: failureReason,

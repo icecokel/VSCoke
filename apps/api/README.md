@@ -27,7 +27,11 @@
 | Beat Jev             | `GET /beat-jev/status`, `POST /beat-jev/matches`, `GET /beat-jev/matches/:id`, `POST /beat-jev/matches/:id/actions`, `POST /beat-jev/matches/:id/continue`, `POST /beat-jev/matches/:id/next` |
 | Observability        | `POST /client-errors`                                                                                                                                                                         |
 
-현재 위 표는 HTTP operation 23개를 포함한다. Google 인증이 필요한 점수 저장과
+사용 집계는 `POST /usage/events`, `GET /usage/summary`로 제공한다.
+상세 로그 필드, 집계 기준과 조회 키 설정은
+[운영 로그와 사용 집계](../../docs/observability-and-usage.md)를 따른다.
+
+현재 위 표와 사용 집계는 HTTP operation 25개를 포함한다. Google 인증이 필요한 점수 저장과
 익명 대화 접근키로 보호하는 대화 API는 다른 인증 경계다.
 
 ## 로컬 실행

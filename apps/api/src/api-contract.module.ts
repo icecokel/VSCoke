@@ -26,6 +26,9 @@ import { BeatJevController } from './beat-jev/beat-jev.controller';
 import { BeatJevService } from './beat-jev/beat-jev.service';
 import { BeatJevRateLimitGuard } from './beat-jev/beat-jev-rate-limit.guard';
 import { JevClientService } from './beat-jev/jev-client.service';
+import { UsageController } from './usage/usage.controller';
+import { UsageService } from './usage/usage.service';
+import { UsageIngestGuard, UsageReadGuard } from './usage/usage.guard';
 import {
   ClientErrorController,
   ClientErrorRateLimitGuard,
@@ -55,6 +58,7 @@ const contractGuardStubProvider = (provide: InjectionToken): Provider => ({
     WordleController,
     BeatJevController,
     ClientErrorController,
+    UsageController,
   ],
   providers: [
     AppService,
@@ -75,6 +79,9 @@ const contractGuardStubProvider = (provide: InjectionToken): Provider => ({
     contractStubProvider(JevClientService),
     contractGuardStubProvider(BeatJevRateLimitGuard),
     contractGuardStubProvider(ClientErrorRateLimitGuard),
+    contractStubProvider(UsageService),
+    contractGuardStubProvider(UsageIngestGuard),
+    contractGuardStubProvider(UsageReadGuard),
   ],
 })
 export class ApiContractModule {}

@@ -1669,6 +1669,165 @@
         "summary": "웹 오류를 운영 로그에 기록",
         "tags": ["Observability"]
       }
+    },
+    "/usage/events": {
+      "post": {
+        "operationId": "UsageController_record",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsageEventDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "이벤트 저장 완료 또는 이미 저장된 이벤트"
+          },
+          "400": {
+            "description": "유효하지 않은 이벤트 또는 조회 기간",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "허용되지 않은 브라우저 origin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "IP별 시간당 600회 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "사용 집계 저장 또는 조회 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "익명 사용 이벤트 저장 (eventId 중복은 한 번만 반영)",
+        "tags": ["Usage"]
+      }
+    },
+    "/usage/summary": {
+      "get": {
+        "operationId": "UsageController_summarize",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "조회 시작일, 한국 시간 00:00 포함 (YYYY-MM-DD)",
+            "schema": {
+              "example": "2026-10-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "조회 종료일, 한국 시간 00:00 제외. 최대 93일",
+            "schema": {
+              "example": "2026-11-01",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "총계, 일별, 경로별, 기능별, 이벤트별 집계",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/UsageSummaryDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "유효하지 않은 이벤트 또는 조회 기간",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "조회 키가 없거나 일치하지 않음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "사용 집계 저장 또는 조회 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "서버에 32자 이상의 조회 키가 설정되지 않음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "한국 날짜 범위의 익명 사용 집계 조회",
+        "tags": ["Usage"]
+      }
     }
   },
   "info": {
@@ -1685,6 +1844,10 @@
     {
       "name": "Observability",
       "description": "웹 오류 보고 및 요청 추적"
+    },
+    {
+      "name": "Usage",
+      "description": "익명 사용 이벤트 수집과 기간별 집계"
     },
     {
       "name": "Recipe",
@@ -2855,6 +3018,184 @@
           }
         },
         "required": ["eventId", "source", "kind", "path", "errorName", "message"]
+      },
+      "UsageEventDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "재전송 중복 제거용 UUID v4"
+          },
+          "visitorId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "브라우저에서 생성한 익명 UUID v4"
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "방문 세션의 익명 UUID v4"
+          },
+          "eventName": {
+            "type": "string",
+            "enum": [
+              "page_view",
+              "chat_submitted",
+              "chat_completed",
+              "chat_failed",
+              "game_started",
+              "game_completed",
+              "search_used",
+              "share_clicked"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "example": "/ko-KR/game/wordle",
+            "maxLength": 200,
+            "description": "알려진 웹 경로만 허용. query/hash 금지, 동적 식별자는 서버에서 제거"
+          },
+          "feature": {
+            "type": "string",
+            "enum": [
+              "main_chat",
+              "resume_chat",
+              "sky_drop",
+              "wordle",
+              "beat_jev",
+              "site_search",
+              "share"
+            ],
+            "description": "page_view 외에는 이벤트에 대응하는 기능이 필수"
+          },
+          "durationMs": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 3600000
+          }
+        },
+        "required": ["eventId", "visitorId", "sessionId", "eventName", "path"]
+      },
+      "UsageCountsDto": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "number",
+            "minimum": 0
+          },
+          "visitors": {
+            "type": "number",
+            "minimum": 0,
+            "description": "해당 범위의 고유 익명 브라우저 수"
+          },
+          "sessions": {
+            "type": "number",
+            "minimum": 0
+          },
+          "pageViews": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": ["events", "visitors", "sessions", "pageViews"]
+      },
+      "UsageDailyDto": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "number",
+            "minimum": 0
+          },
+          "visitors": {
+            "type": "number",
+            "minimum": 0,
+            "description": "해당 범위의 고유 익명 브라우저 수"
+          },
+          "sessions": {
+            "type": "number",
+            "minimum": 0
+          },
+          "pageViews": {
+            "type": "number",
+            "minimum": 0
+          },
+          "date": {
+            "type": "string",
+            "example": "2026-10-15"
+          }
+        },
+        "required": ["events", "visitors", "sessions", "pageViews", "date"]
+      },
+      "UsageBreakdownDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "description": "경로, 기능 또는 이벤트 이름"
+          },
+          "events": {
+            "type": "number",
+            "minimum": 0
+          },
+          "visitors": {
+            "type": "number",
+            "minimum": 0
+          },
+          "sessions": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": ["value", "events", "visitors", "sessions"]
+      },
+      "UsageSummaryDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "example": "2026-10-01"
+          },
+          "to": {
+            "type": "string",
+            "example": "2026-11-01"
+          },
+          "timezone": {
+            "type": "string",
+            "example": "Asia/Seoul"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/UsageCountsDto"
+          },
+          "daily": {
+            "description": "활동이 있는 날짜만 반환",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UsageDailyDto"
+            }
+          },
+          "paths": {
+            "description": "이벤트 수 상위 100 경로",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UsageBreakdownDto"
+            }
+          },
+          "features": {
+            "description": "기능이 있는 이벤트만 집계",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UsageBreakdownDto"
+            }
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UsageBreakdownDto"
+            }
+          }
+        },
+        "required": ["from", "to", "timezone", "totals", "daily", "paths", "features", "events"]
       }
     }
   }

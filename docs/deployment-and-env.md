@@ -177,6 +177,10 @@ API 운영값의 원본은 GitHub Repository Secret `API_ENV_PRODUCTION`이다. 
 접근은 게임 센터로 돌려보낸다. 키가 없으면 새 매치 생성도 차단한다. Vercel에만 키를 등록해도
 API 서버의 JEV 게임은 활성화되지 않는다.
 
+사용 집계를 조회하려면 API 서버에 32자 이상의 `USAGE_ANALYTICS_READ_KEY`를 설정한다.
+브라우저에는 노출하지 않는다. 신규 `usage_events` migration을 적용해야 이벤트 수집이 가능하다.
+집계 기준과 호출 예시는 [운영 로그와 사용 집계](./observability-and-usage.md)를 따른다.
+
 Resume RAG와 메인 채팅 변수, 기본값과 데이터 정책은
 [메인 채팅·이력 질문 AI 사용 지침](./main-chat-ai-usage-guide.md)을 따른다. 실제 변수 목록은
 `apps/api/.env.example`이 기준이다.

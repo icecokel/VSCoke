@@ -63,6 +63,7 @@ export const createApiDocument = (app: INestApplication): OpenAPIObject => {
     .setVersion('1.0')
     .addTag('App', 'API 프로세스 상태 확인')
     .addTag('Observability', '웹 오류 보고 및 요청 추적')
+    .addTag('Usage', '익명 사용 이벤트 수집과 기간별 집계')
     .addTag('Recipe', '공개 레시피 조회')
     .addTag('EspressoHistory', '공개 에스프레소 추출 기록 조회')
     .addTag('Game', 'Sky Drop 결과 저장과 최고점 랭킹')

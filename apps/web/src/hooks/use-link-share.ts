@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { trackUsageEvent } from "@/lib/usage-analytics";
 
 export interface LinkShareOptions {
   url?: string;
@@ -45,6 +46,7 @@ export const useLinkShare = (): UseLinkShareReturn => {
 
   const copyLink = useCallback(
     async (options: Pick<LinkShareOptions, "url" | "text">): Promise<void> => {
+      const path = window.location.pathname;
       const shareText = buildShareText(options);
 
       try {
@@ -59,12 +61,14 @@ export const useLinkShare = (): UseLinkShareReturn => {
         document.body.removeChild(textArea);
         toast.success(t("copied"));
       }
+      void trackUsageEvent("share_clicked", "share", { path });
     },
     [buildShareText, t],
   );
 
   const shareLink = useCallback(
     async (options: LinkShareOptions): Promise<void> => {
+      const path = window.location.pathname;
       const resolvedUrl = resolveUrl(options.url);
 
       if (canShare) {
@@ -74,6 +78,7 @@ export const useLinkShare = (): UseLinkShareReturn => {
             text: options.text,
             url: resolvedUrl,
           });
+          void trackUsageEvent("share_clicked", "share", { path });
           return;
         } catch (error) {
           if ((error as Error).name === "AbortError") {

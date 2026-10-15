@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { WordleLogic, LetterStatus, EnglishWordleLogic } from "@/lib/wordle/wordle-logic";
 import { fetchRandomWord, checkWord } from "@/lib/wordle/wordle-service";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { trackUsageEvent } from "@/lib/usage-analytics";
 
 const MAX_CHALLENGES = 6;
 
@@ -28,6 +29,7 @@ export interface UseWordleReturn {
 const logic: WordleLogic = new EnglishWordleLogic();
 
 export const useWordle = (): UseWordleReturn => {
+  const path = `/${useLocale()}/game/wordle`;
   const t = useTranslations("Game");
   const [answer, setAnswer] = useState<string>("");
   const [currentGuess, setCurrentGuess] = useState<string>("");
@@ -41,6 +43,7 @@ export const useWordle = (): UseWordleReturn => {
   const [error, setError] = useState<Error | null>(null);
   const isSubmittingRef = useRef(false);
   const generationRef = useRef(0);
+  const startedAt = useRef<number | null>(null);
 
   // 단어 가져오기
   const loadNewWord = useCallback(async () => {
@@ -71,6 +74,7 @@ export const useWordle = (): UseWordleReturn => {
     setGuesses([...Array(MAX_CHALLENGES)]);
     setHistory([...Array(MAX_CHALLENGES)]);
     setGameStatus("playing");
+    startedAt.current = null;
     setUsedKeys({});
     await loadNewWord();
   }, [loadNewWord]);
@@ -122,6 +126,16 @@ export const useWordle = (): UseWordleReturn => {
 
       const guessUpper = currentGuess.toUpperCase();
       const result = logic.checkGuess(guessUpper, answer);
+      if (startedAt.current === null) {
+        startedAt.current = Date.now();
+        void trackUsageEvent("game_started", "wordle", { path });
+      }
+      if (guessUpper === answer || turn === MAX_CHALLENGES - 1) {
+        void trackUsageEvent("game_completed", "wordle", {
+          path,
+          durationMs: Date.now() - startedAt.current,
+        });
+      }
 
       // 정답 여부 확인
       if (guessUpper === answer) {
@@ -180,7 +194,7 @@ export const useWordle = (): UseWordleReturn => {
         setIsValidating(false);
       }
     }
-  }, [currentGuess, turn, answer, gameStatus, t, isValidating, isLoading]);
+  }, [currentGuess, turn, answer, gameStatus, t, isValidating, isLoading, path]);
 
   // 키 입력 핸들러 (외부에서 호출 가능)
   const handleKeyup = useCallback(

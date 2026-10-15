@@ -1,5 +1,7 @@
 "use client";
 
+import { trackUsageEvent } from "@/lib/usage-analytics";
+
 import { ResumeConversationToolbar } from "@/features/resume-rag/components/resume-conversation-toolbar";
 import {
   useResumeConversation,
@@ -76,6 +78,8 @@ export const MainChat = () => {
 
     isSubmittingRef.current = true;
     const submittedAt = new Date();
+    const path = window.location.pathname;
+    void trackUsageEvent("chat_submitted", "main_chat", { path });
     const messageId = `user-${submittedAt.getTime()}`;
 
     dispatch({ type: "submit", messageId, question: trimmedQuestion, submittedAt });
@@ -83,6 +87,10 @@ export const MainChat = () => {
 
     try {
       const result = await conversation.send(trimmedQuestion, askMainChat);
+      void trackUsageEvent("chat_completed", "main_chat", {
+        path,
+        durationMs: Date.now() - submittedAt.getTime(),
+      });
 
       dispatch({
         type: "resolve",
@@ -90,6 +98,10 @@ export const MainChat = () => {
         result,
       });
     } catch (error) {
+      void trackUsageEvent("chat_failed", "main_chat", {
+        path,
+        durationMs: Date.now() - submittedAt.getTime(),
+      });
       dispatch({
         type: "reject",
         error,

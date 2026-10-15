@@ -14,6 +14,7 @@ import { BeatJevModule } from './beat-jev/beat-jev.module';
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/utils/winston.config';
 import { ClientErrorController } from './common/logging/client-error.controller';
+import { UsageModule } from './usage/usage.module';
 
 /**
  * 애플리케이션의 루트 모듈
@@ -61,6 +62,7 @@ import { ClientErrorController } from './common/logging/client-error.controller'
     ResumeRagModule,
     WordleModule,
     BeatJevModule,
+    UsageModule,
   ],
   controllers: [AppController, ClientErrorController],
   providers: [AppService],

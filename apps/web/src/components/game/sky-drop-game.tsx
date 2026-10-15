@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useReducer, useRef, useState, type KeyboardEvent } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Pause, Play, Volume2, VolumeX, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCustomRouter } from "@/hooks/use-custom-router";
 import { useGame } from "@/contexts/game-context";
+import { trackUsageEvent } from "@/lib/usage-analytics";
 import { GameReadyScreen } from "./game-ready-screen";
 import { ResultScreen } from "./result-screen";
 import { SkyDropBoard } from "./sky-drop-board";
@@ -15,6 +16,7 @@ import { useSkyDropSound } from "./use-sky-drop-sound";
 import styles from "./sky-drop.module.css";
 
 export const SkyDropGame = () => {
+  const path = `/${useLocale()}/game/sky-drop`;
   const game = useTranslations("Game");
   const t = useTranslations("Game.skyDrop");
   const router = useCustomRouter();
@@ -25,6 +27,14 @@ export const SkyDropGame = () => {
   const contentRef = useRef<HTMLDivElement>(null);
   const resumeRef = useRef<HTMLButtonElement>(null);
   const unlockSound = useSkyDropSound(state.feedback, isMuted);
+  const hasActiveGame = useRef(false);
+
+  useEffect(() => {
+    if (state.status === "over" && hasActiveGame.current) {
+      hasActiveGame.current = false;
+      void trackUsageEvent("game_completed", "sky_drop", { path, durationMs: state.elapsedMs });
+    }
+  }, [state.status, state.elapsedMs, path]);
 
   useEffect(() => {
     try {
@@ -62,10 +72,12 @@ export const SkyDropGame = () => {
   }, [state.status]);
 
   const start = useCallback(() => {
+    hasActiveGame.current = true;
+    void trackUsageEvent("game_started", "sky_drop", { path });
     clearSkyDropPendingScore();
     unlockSound();
     dispatch({ type: "start", seed: Math.floor(Math.random() * 2 ** 32), now: performance.now() });
-  }, [unlockSound]);
+  }, [unlockSound, path]);
   const select = (column: number) => {
     unlockSound();
     dispatch({ type: "select", column, now: performance.now() });

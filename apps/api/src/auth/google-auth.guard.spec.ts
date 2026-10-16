@@ -3,11 +3,13 @@ import {
   ExecutionContext,
   Logger,
   UnauthorizedException,
+  type ArgumentsHost,
 } from '@nestjs/common';
 import { LoginTicket, OAuth2Client, TokenPayload } from 'google-auth-library';
 import { QueryFailedError, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { ErrorMessage } from '../common/constants/message.constant';
+import { HttpExceptionFilter } from '../common/filters/http-exception.filter';
 
 type TestRequest = {
   body?: unknown;
@@ -217,7 +219,8 @@ describe('GoogleAuthGuard', () => {
             headers: { authorization: 'Bearer private-token' },
           }),
         ),
-      ).rejects.toBeInstanceOf(UnauthorizedException);
+      ).rejects.toMatchObject({ status: 401 });
+      expect(mockUserRepository.findOne).not.toHaveBeenCalled();
 
       expect(warnSpy).toHaveBeenCalledWith({
         event: 'auth.authentication',
@@ -229,6 +232,51 @@ describe('GoogleAuthGuard', () => {
       expect(JSON.stringify(warnSpy.mock.calls)).not.toMatch(
         /private-token|provider-secret-token|user@example.com/,
       );
+    });
+
+    it('인증 후 사용자 조회 실패는 원본 오류와 500 응답으로 처리한다', async () => {
+      const request: TestRequest = {
+        headers: { authorization: 'Bearer valid-token' },
+        method: 'POST',
+        path: '/game/result',
+      };
+      const failure = databaseFailure(
+        '08006',
+        'connection failure password=private-db-password',
+      );
+      mockClient.verifyIdToken.mockResolvedValue({
+        getPayload: (): TokenPayload => ({
+          sub: '123',
+          email: 'test@example.com',
+        }),
+      });
+      mockUserRepository.findOne.mockRejectedValue(failure);
+
+      const exception: unknown = await guard
+        .canActivate(createExecutionContext(request))
+        .catch((error: unknown) => error);
+      expect(exception).toBe(failure);
+      expect(request.user).toBeUndefined();
+
+      delete process.env.NOTIFY_SERVICE_URL;
+      const status = jest.fn().mockReturnThis();
+      const json = jest.fn();
+      const host = {
+        switchToHttp: () => ({
+          getRequest: () => request,
+          getResponse: () => ({ status, json }),
+        }),
+      } as ArgumentsHost;
+      new HttpExceptionFilter().catch(exception, host);
+
+      expect(status).toHaveBeenCalledWith(500);
+      expect(json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusCode: 500,
+          message: ErrorMessage.COMMON.INTERNAL_SERVER_ERROR,
+        }),
+      );
+      expect(JSON.stringify(json.mock.calls)).not.toContain(failure.message);
     });
 
     it('should reuse a user inserted by a concurrent request', async () => {
@@ -289,7 +337,7 @@ describe('GoogleAuthGuard', () => {
 
         await expect(
           guard.canActivate(createExecutionContext(request)),
-        ).rejects.toThrow(saveError.message);
+        ).rejects.toBe(saveError);
         expect(mockUserRepository.findOne).toHaveBeenCalledTimes(
           findResults.length,
         );

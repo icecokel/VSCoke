@@ -146,7 +146,7 @@ export class GoogleAuthGuard implements CanActivate {
       } else {
         this.logger.error(log);
       }
-      if (e instanceof UnauthorizedException) {
+      if (e instanceof UnauthorizedException || stage === 'persistence') {
         throw e;
       }
 

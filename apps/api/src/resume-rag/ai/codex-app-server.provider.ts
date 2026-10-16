@@ -299,7 +299,19 @@ export class CodexAppServerProvider implements ChatProvider {
 
           if (isTurnCompleted(message)) {
             clearTimeout(timeout);
-            resolve();
+            if (
+              isRecord(message.params) &&
+              isRecord(message.params.turn) &&
+              message.params.turn.status === 'completed'
+            ) {
+              resolve();
+            } else {
+              reject(
+                new Error(
+                  'Codex app-server turn did not complete successfully',
+                ),
+              );
+            }
           }
 
           if (message.method === 'error') {

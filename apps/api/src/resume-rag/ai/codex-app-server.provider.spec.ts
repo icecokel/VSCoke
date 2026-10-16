@@ -21,6 +21,7 @@ type FakeCodexWebSocketBehavior =
   | 'unphased-messages'
   | 'connect-error'
   | 'turn-start-error'
+  | 'turn-error'
   | 'turn-timeout';
 
 class FakeCodexWebSocket {
@@ -36,6 +37,7 @@ class FakeCodexWebSocket {
   constructor(
     readonly url: string,
     private readonly behavior: FakeCodexWebSocketBehavior = 'answer',
+    private readonly completedTurn: unknown = { status: 'completed' },
   ) {
     FakeCodexWebSocket.instances.push(this);
     queueMicrotask(() => {
@@ -132,7 +134,7 @@ class FakeCodexWebSocket {
         });
         this.emit({
           method: 'turn/completed',
-          params: { turn: { status: 'completed' }, threadId: 'thread-1' },
+          params: { turn: this.completedTurn, threadId: 'thread-1' },
         });
         return;
       }
@@ -145,9 +147,16 @@ class FakeCodexWebSocket {
         method: 'item/agentMessage/delta',
         params: { delta: '답변' },
       });
+      if (this.behavior === 'turn-error') {
+        this.emit({
+          method: 'error',
+          params: { error: { message: 'private provider error' } },
+        });
+        return;
+      }
       this.emit({
         method: 'turn/completed',
-        params: { turn: { status: 'completed' }, threadId: 'thread-1' },
+        params: { turn: this.completedTurn, threadId: 'thread-1' },
       });
     }
   }
@@ -284,6 +293,39 @@ describe('CodexAppServerProvider', () => {
     await expect(provider.answer(failureRequest)).resolves.toBe(
       '최종 답변입니다.',
     );
+  });
+
+  it.each(['failed', 'interrupted', 'unknown', null, undefined])(
+    '부분 답변이 있어도 완료 상태 %s는 거부하고 타이머를 정리한다',
+    async (status) => {
+      await expectNoAsyncLeaks(async () => {
+        const provider = new CodexAppServerProvider(baseConfig, {
+          createWebSocket: (url) =>
+            new FakeCodexWebSocket(url, 'answer', {
+              status,
+              error: { message: 'private provider error' },
+            }),
+        });
+
+        await expect(provider.answer(failureRequest)).rejects.toThrow(
+          new Error('Codex app-server turn did not complete successfully'),
+        );
+        expect(FakeCodexWebSocket.instances[0].closed).toBe(true);
+      });
+    },
+  );
+
+  it('부분 답변 뒤 오류 알림이 오면 거부하고 타이머를 정리한다', async () => {
+    await expectNoAsyncLeaks(async () => {
+      const provider = new CodexAppServerProvider(baseConfig, {
+        createWebSocket: (url) => new FakeCodexWebSocket(url, 'turn-error'),
+      });
+
+      await expect(provider.answer(failureRequest)).rejects.toThrow(
+        new Error('Codex app-server emitted an error notification'),
+      );
+      expect(FakeCodexWebSocket.instances[0].closed).toBe(true);
+    });
   });
 
   it('clears timers when connection fails asynchronously', async () => {

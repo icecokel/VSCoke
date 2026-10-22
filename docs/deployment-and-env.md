@@ -28,7 +28,7 @@ Vercel 프로젝트는 monorepo 루트가 아니라 웹 앱 디렉터리를 루�
 | Framework Preset | `Next.js`                                             |
 | Build Command    | `pnpm build`                                          |
 | Install Command  | 기본값 유지, 필요 시 `pnpm install --frozen-lockfile` |
-| Node.js Version  | `22.x`                                                |
+| Node.js Version  | `24.x`                                                |
 | Primary Domain   | `vscoke.icecoke.kr`                                   |
 | Production env   | Web 환경 변수 표 참고                                 |
 
@@ -38,7 +38,7 @@ Vercel 프로젝트는 monorepo 루트가 아니라 웹 앱 디렉터리를 루�
 - 웹 배포용 GitHub Actions는 만들지 않는다. 웹은 Vercel Git integration이 담당한다.
 - Preview 배포도 같은 Vercel 프로젝트에서 처리한다. Preview가 API를 호출해야 하면 `NEXT_PUBLIC_API_URL`을 preview 환경에도 설정한다.
 - Vercel 환경 변수 변경은 기존 배포에 소급 적용되지 않는다. 값을 바꾼 뒤에는 새 deployment를 생성한다.
-- 현재 Vercel Root Directory는 `apps/web`, Node.js Version은 `22.x` 기준으로 운영한다.
+- 웹 `package.json`의 `engines.node`로 Node.js `24.x`를 선택한다. 기존 배포는 재배포 전까지 바뀌지 않으며, 관리형 런타임의 실제 보안 패치 버전은 배포 후 확인한다.
 - apex 도메인 연결을 설명한 구형 로컬 가이드를 현재 VSCoke의 Primary 설정으로 사용하지 않는다.
 - canonical URL은 `apps/web/src/lib/site-url.ts`의 `https://vscoke.icecoke.kr`를 기준으로 생성한다.
 - 이전 `vscoke.vercel.app` 요청은 같은 경로를 유지해 production 도메인으로 영구 리디렉션한다.
@@ -66,10 +66,10 @@ host
 
 1. `main`에 API, 루트 패키지/락파일, API 배포 workflow 또는 공개 웹 이력 자료 변경이 push된다. 실제 경로 필터는 workflow를 따른다.
 2. Ubuntu 호스트의 self-hosted runner가 job을 실행한다. runner는 systemd 서비스로 관리한다.
-3. workflow build runtime은 `actions/setup-node@v4`의 Node.js 24를 사용한다.
+3. workflow build runtime은 `actions/setup-node@v4`가 `.nvmrc`의 Node.js 24.22.1을 읽어 사용한다.
 4. runner 작업 디렉터리에서 의존성을 설치한다.
 5. `pnpm --filter @vscoke/api build`로 API를 빌드한다.
-6. Ubuntu host의 `node`, `corepack`, `pm2`를 사용한다.
+6. Corepack과 PM2를 사용하며, API의 PM2 interpreter는 setup-node가 선택한 Node.js 절대 경로로 지정한다.
 7. Repository Secret `API_ENV_PRODUCTION`과 운영 필수값을 검증한다. Secret이 없으면 기존 서버 `.env`로 대체하지 않고 실패한다.
 8. `/home/icenux/projects/vscoke-api/.next-release`에 API dist/package, 루트 package/lock/workspace, health 검사 스크립트와 공개 웹 이력 JSON/메시지/MDX를 staging한다. 개인 이력 작업공간은 포함하지 않는다.
 9. staging 경로에서 production 의존성을 설치한다.
@@ -214,11 +214,11 @@ API 배포는 Ubuntu host self-hosted runner에서 직접 실행하므로 SSH �
 
 필수 runner 조건:
 
-| 항목        | 값                                         |
-| ----------- | ------------------------------------------ |
-| runner type | repository self-hosted runner              |
-| labels      | `self-hosted`, `vscoke-api`, `host`        |
-| runtime     | Ubuntu host Node.js 20 이상, Corepack, PM2 |
+| 항목        | 값                                                   |
+| ----------- | ---------------------------------------------------- |
+| runner type | repository self-hosted runner                        |
+| labels      | `self-hosted`, `vscoke-api`, `host`                  |
+| runtime     | Ubuntu host Node.js 24.22.1 이상 24.x, Corepack, PM2 |
 
 선택 값:
 

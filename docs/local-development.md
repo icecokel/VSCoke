@@ -4,7 +4,7 @@
 
 ## 기본 전제
 
-- Node.js 20 이상을 사용한다.
+- `.nvmrc`에 지정된 Node.js 24.22.1 이상 24.x를 사용한다 (`nvm install && nvm use`).
 - 패키지 매니저는 루트 `package.json`의 `packageManager`에 맞춰 `pnpm@9.12.0`을 사용한다.
 - 모든 명령은 별도 안내가 없으면 저장소 루트에서 실행한다.
 

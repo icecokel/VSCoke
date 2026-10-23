@@ -1,0 +1,748 @@
+{
+  "date": "2026-10-22",
+  "inputFileCount": 102,
+  "inputBytes": 7397777,
+  "scope": "전체 파일 목록·UTF-8/JSON 구조·해시 확인, 작업 카드와 보강 기록을 검토하여 공개 원천 자료로 수록. 전체 Git diff·모든 커밋 본문의 재감사는 아님.",
+  "recordCount": 297,
+  "byCompany": {
+    "코드크레용": 108,
+    "오프리메드": 180,
+    "개인 개발 환경": 9
+  },
+  "byKind": {
+    "work-unit": 231,
+    "legacy-supplement": 23,
+    "user-confirmation": 1,
+    "personal-environment": 9,
+    "user-memory": 5,
+    "dated-work-card": 28
+  },
+  "redactionsAndOmissions": {
+    "email": 1181,
+    "url": 0,
+    "absolute_path": 24,
+    "collaborator_unit": 3,
+    "obsolete_attribution_line": 24,
+    "legacy_unit_without_new_commit": 38
+  },
+  "sourceFiles": [
+    {
+      "path": "docs/raw/code-crayon-fresh-work-units-all-branches-2026-06-23/automation-tools-all-branches-raw-work-units.md",
+      "sha256": "c572d887ceaded99f1d3d5280025ce9e9be5c77ade14962ebd02ea2d308a16c5",
+      "recordCount": 22
+    },
+    {
+      "path": "docs/raw/code-crayon-fresh-work-units-all-branches-2026-06-23/code-crayon-evidence-supplement-2026-07-13.md",
+      "sha256": "82eeef0d03e68861ef24b5712bc020c72b37a4be022f4abb811328b54b8a1d7a",
+      "recordCount": 6
+    },
+    {
+      "path": "docs/raw/code-crayon-fresh-work-units-all-branches-2026-06-23/selectors-all-branches-raw-work-units.md",
+      "sha256": "9014abc738fc78030d3e9d06250871fe6f4d6715c83cf3810283fc923f41f080",
+      "recordCount": 55
+    },
+    {
+      "path": "docs/raw/code-crayon-fresh-work-units-all-branches-2026-06-23/shortime-all-branches-raw-work-units.md",
+      "sha256": "4e5b2d16e48686a7433423ab73947ca5811f88cb5dbcea72aaedb03b2b405722",
+      "recordCount": 25
+    },
+    {
+      "path": "docs/raw/codex-agent-workflow-raw-data-2026-06-29.md",
+      "sha256": "80b90b53ac70c1d146e604edb45b3514dbe9ca0418d82ec33f3d43a5b1f8c1f5",
+      "recordCount": 9
+    },
+    {
+      "path": "docs/raw/oprimed-2026-08-12-to-2026-10-15-v1/work-units.json",
+      "sha256": "9a9289fe8ac6472972e7d075c572f6a5c3674bcb9b108720bf4a438c97e7f77b",
+      "recordCount": 28
+    },
+    {
+      "path": "docs/raw/oprimed-domain-onboarding-mcp-raw-data-v1-2026-07-30.md",
+      "sha256": "41abaec2f82653e98d7dd924057caac68bba722cde29320a98302e43d829fe3b",
+      "recordCount": 5
+    },
+    {
+      "path": "docs/raw/oprimed-fresh-work-units-all-branches-2026-06-23/labs-config-admin-all-branches-raw-work-units.md",
+      "sha256": "03a5363ccd8b24331ac77dfbcedc48d02b38ab0c27c65100df07f723b0de5f66",
+      "recordCount": 27
+    },
+    {
+      "path": "docs/raw/oprimed-fresh-work-units-all-branches-2026-06-23/oprimed-ai-workflow-confirmed-work.md",
+      "sha256": "7b228790c66375abc8e75f2853228de223e1e407618bf96419e1fb4fe2a150a2",
+      "recordCount": 1
+    },
+    {
+      "path": "docs/raw/oprimed-fresh-work-units-all-branches-2026-06-23/oprimed-cicd-confirmed-work.md",
+      "sha256": "c1f2c2370587699d7d29fb857bd6e8a3de167f85fcfd04ab18bae88fae071ee7",
+      "recordCount": 1
+    },
+    {
+      "path": "docs/raw/oprimed-fresh-work-units-all-branches-2026-06-23/oprimed-incremental-and-quantified-evidence-2026-07-13.md",
+      "sha256": "d5ec45c3cbc483765bf31daaf5b89d69074e50bcc4d72ca90784c244f3b345d9",
+      "recordCount": 6
+    },
+    {
+      "path": "docs/raw/oprimed-fresh-work-units-all-branches-2026-06-23/optivis-nexus-fe-all-branches-raw-work-units.md",
+      "sha256": "aaaddc9060d4f43ffc399b0e944dfe49cdbed84a68031ce1f0136df6c451384b",
+      "recordCount": 56
+    },
+    {
+      "path": "docs/raw/oprimed-fresh-work-units-all-branches-2026-06-23/portal-trial-all-branches-raw-work-units.md",
+      "sha256": "3c8330377ddbb02368218a630084001af5184c82706dbe208eabac6f7169e275",
+      "recordCount": 33
+    },
+    {
+      "path": "docs/raw/oprimed-work-units-2026-06-23/labs-config-admin-raw-work-units.md",
+      "sha256": "26a182aa6e679cc28f64285e68a1bb165e28b47fab7628727b221b4140523b8d",
+      "recordCount": 0
+    },
+    {
+      "path": "docs/raw/oprimed-work-units-2026-06-23/optivis-nexus-fe-raw-work-units.md",
+      "sha256": "aeafc07f806d07fefcf45b707fb03dd674112e683f9707f87027320d46f234fb",
+      "recordCount": 23
+    },
+    {
+      "path": "docs/raw/oprimed-work-units-2026-06-23/portal-trial-raw-work-units.md",
+      "sha256": "f40cbe8894c36fdd1d58c6c0e2a48c7ed4b73f26663c796198ec79a40ada2679",
+      "recordCount": 0
+    }
+  ],
+  "inventory": [
+    {
+      "group": "code-crayon-fresh-work-units-all-branches-2026-06-23",
+      "extension": ".md",
+      "sha256": "6bfbab93838b9f17d70e8d1800a838b421bd6d22a6462258921a2ede77b72f8b",
+      "bytes": 1975
+    },
+    {
+      "group": "code-crayon-fresh-work-units-all-branches-2026-06-23",
+      "extension": ".md",
+      "sha256": "c572d887ceaded99f1d3d5280025ce9e9be5c77ade14962ebd02ea2d308a16c5",
+      "bytes": 26078
+    },
+    {
+      "group": "code-crayon-fresh-work-units-all-branches-2026-06-23",
+      "extension": ".md",
+      "sha256": "82eeef0d03e68861ef24b5712bc020c72b37a4be022f4abb811328b54b8a1d7a",
+      "bytes": 9406
+    },
+    {
+      "group": "code-crayon-fresh-work-units-all-branches-2026-06-23",
+      "extension": ".md",
+      "sha256": "8e5bc5e8f62a5f58ddd0c2e5eb8566a51d17869b5a890a5b35b6b48e2eea2e3d",
+      "bytes": 2106
+    },
+    {
+      "group": "code-crayon-fresh-work-units-all-branches-2026-06-23",
+      "extension": ".md",
+      "sha256": "9014abc738fc78030d3e9d06250871fe6f4d6715c83cf3810283fc923f41f080",
+      "bytes": 57008
+    },
+    {
+      "group": "code-crayon-fresh-work-units-all-branches-2026-06-23",
+      "extension": ".md",
+      "sha256": "4e5b2d16e48686a7433423ab73947ca5811f88cb5dbcea72aaedb03b2b405722",
+      "bytes": 38883
+    },
+    {
+      "group": "standalone",
+      "extension": ".md",
+      "sha256": "80b90b53ac70c1d146e604edb45b3514dbe9ca0418d82ec33f3d43a5b1f8c1f5",
+      "bytes": 14035
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "4ee9dc1176538a0018703f95105674a99be2656629059c2acbff83bd0a70b8e3",
+      "bytes": 8959
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".jsonl",
+      "sha256": "6cdb96badba5495a0b434e30e450e0bd17ecfe944d6507b2191e84cce884f1cd",
+      "bytes": 3259580
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".json",
+      "sha256": "a999adbf44f5fabedce8eeb371edc59d002b4f310b94a86ac986ec9caac0e256",
+      "bytes": 43435
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "4b6c8ed61d4cbb8bc30030296da00e73ea6b47135f149475bdce624d7990971a",
+      "bytes": 4117
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "fcc856b107fea8bcc1eb57cfa73b93249dbf2601c311bdff34918ff4400da57a",
+      "bytes": 151
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "00dd8d7e5cdf64c2998713b4c68bfd0d3dcdb6c4403e8b3907eb67853bf8f8be",
+      "bytes": 10705
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "0b1ae34e6161af5ba6294d058276e325a6154294c59c77a63fbc668adba8dbb3",
+      "bytes": 59379
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "bafa3c0b2bd0ad93c0bb476fbed8f6aa424ae24cca148951489a719ba34caf33",
+      "bytes": 9320
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "9e1a7cdf2e31dad274e3b0609b261ef999d001ff295b6c371a64dd1b28f16b25",
+      "bytes": 9184
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "81f157fe50d8dcbc0a91c388afa98b1b419ff5e7532265e3ba715e850f4de496",
+      "bytes": 5995
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "b66b308a507879742ffd3093eb536138fa56df94edfa451fc81e3d046b687fd0",
+      "bytes": 56641
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "2d257ba5f83a70ae7937410f9d0632730c5ee0d536db8aae2cd7650f893ca1cd",
+      "bytes": 142
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "5d3414573b55497a1ae9c5ca66614a69d73a106c23b867f4adce90cf378a2511",
+      "bytes": 35881
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "d81b89a45a19ed351dd0aa33e2f606fe78d441162819b3fd6e3575c9a98c6c3f",
+      "bytes": 35721
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "5193f6d4f5d88cbe4c859c4f39693ae4abc9876fe97ba9dfa44d17e15a5253b2",
+      "bytes": 39810
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "b54ade4e9e5fb53c20ed5b0740dc6cebb608dcd408c20a2f0577fb4b43b9e736",
+      "bytes": 17479
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "96112ab67882450a2be53b90d1dd9223192c6556960c3075f4e6f4b07083bde5",
+      "bytes": 80420
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "207d6bdfab959187f138ce43038a55fcb707a1d66601c9f5a77cc96753918507",
+      "bytes": 154
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "aa2378d5795d9c24d0d181c076542b8152c37d3194ef63c0a0b7c8a644ea814e",
+      "bytes": 28643
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "d197fa75198d5718e1aa25a983572b7d7311c4ebedd66a1c9f6a2e308bd3013c",
+      "bytes": 14069
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "43859f971bd58ca76945f98784029fdfb5537728ab9976152082f53290851980",
+      "bytes": 8961
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".jsonl",
+      "sha256": "46e4d9948a8056afd0b4444b7ca323dbc5d48fde451427361316d96fc62a00ad",
+      "bytes": 77682
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "a9092e0db226edb20417226d5b82423567444809d55e82f7c6bed34dad9b5976",
+      "bytes": 81499
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".json",
+      "sha256": "70c25e2536cae5bea54c04914bc513e53dfe87e38e2adb1f76eea337bb708cb4",
+      "bytes": 1413
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".json",
+      "sha256": "9a9289fe8ac6472972e7d075c572f6a5c3674bcb9b108720bf4a438c97e7f77b",
+      "bytes": 27390
+    },
+    {
+      "group": "oprimed-2026-08-12-to-2026-10-15-v1",
+      "extension": ".md",
+      "sha256": "9177cb4a1b306cef58155f26e0363a3ea00932dc8fff609e3b15fd95cbe76fa6",
+      "bytes": 95681
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".md",
+      "sha256": "f4a39381f163d95a98e1cc15dc8f21655d88eb743f6e9f7ccfbc4db85fa4c868",
+      "bytes": 4089
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "b11bf85bb4568168f094b645a314a268ce81400299d5b02740043e9f2193e851",
+      "bytes": 756
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "93ba0c32b7c5bd8f1262295a7ddd069c01d151f08a234ceeccd009fd87b4f9e6",
+      "bytes": 703
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "38f6c58ffbf27e81a30f016b42ffc60a68a870a58c34de93ada2b60f31710360",
+      "bytes": 365778
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "422effe9cce521927426acc420e5e9c9879140eb8faf6c343983a82bfb6312ee",
+      "bytes": 425924
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "9efa03936c15bcc9a8b5c4f24a709728f4817d39dd8d52169f9613dcd4668059",
+      "bytes": 17121
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "021c0f95f66d89d3a4ce51de1b9eef862539c27c5149a36f51b31e72a92216d4",
+      "bytes": 22377
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "18b793f165fe5a14894d0cf326d00e58771c29cb418da0812c9c08e7fbffee1c",
+      "bytes": 6588
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "5792e3bd25fd1b88242891ca78680f5ff8c7fed85f0c2e2105eba694f13448a7",
+      "bytes": 105543
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "3086977beffc5b13534ef6db2bd544ae82075138a9f4204e20eb6f7573539123",
+      "bytes": 20316
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "ff10caeebd8c6f9594b31f01bc91635a64b2c009a898a35045bd83bc833a89c1",
+      "bytes": 768
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "ff10caeebd8c6f9594b31f01bc91635a64b2c009a898a35045bd83bc833a89c1",
+      "bytes": 768
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "9edbfe3369da1a1f4b06d038edb7d2e446d7744a6b5e8176fdea0f85cc8a8e12",
+      "bytes": 3239
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "50064683fe671abf6e2a934492492ff57f276c3871514bcb904fecab7cbb24bd",
+      "bytes": 966
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "015123567d97b6a39a3a924be9b47d0636c3f05cc82424e4f51baab278522a6d",
+      "bytes": 171
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "015123567d97b6a39a3a924be9b47d0636c3f05cc82424e4f51baab278522a6d",
+      "bytes": 171
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "3bd4743e5ba30360ba19ff4f902eb2e3f0ebdb325adfb2e77dc0ff3269e4beea",
+      "bytes": 220
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "8bd36089fcd4cf038e5579af494a7c31939e5a5df61baba87c8e88595262dece",
+      "bytes": 268
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "2f1ce3f2d2ed204d604c9a271c86d410b01b0545483cd576bdff1a664ce1bf50",
+      "bytes": 260907
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "f474064208c0cd87cc4ec41e1d66539bdc4fe8989ef9aa2f937138c92acf2b63",
+      "bytes": 298297
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "955a91ea8250a9528aed9c12d68413398d35e81a4559756b53c10a12eeaed810",
+      "bytes": 91887
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "88b1840a85e4bfaf303b785dc33b5e79ae98cc04ae7d2fd4877a9393d4b7759c",
+      "bytes": 316182
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "69845698c900cfecf3e1e964c1f2ff25e0fa334fa5e2a853077ae35abcf0306e",
+      "bytes": 444810
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "55f6d8e876e8039dcf3ae45ed0f96a33cc0ddd9b38af8e9bac49390eef89fe4b",
+      "bytes": 302906
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "545be7bef65df3de5956d199d0bc4ed70937553f6f349a4f9e792e15c0dbe7b0",
+      "bytes": 63
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "0f4d0f58bd2c741d5c0e4e70452f9e54b2d2824de29e72a290892a380476012d",
+      "bytes": 9986
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "86d597a04b8a583333ee17c9473cf98ca455b4fa5b2e36398a46ec12925f4db0",
+      "bytes": 11528
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "fdedb6daf5f5b416457ad867af964ff105677fbac9b9e87c52b76af547ba3681",
+      "bytes": 7310
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "e3c6498a88b926e2143d1974e472cb914198a5565c3d7b64190f517c7419c81a",
+      "bytes": 13582
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "e5383ddb0ea796382c122889fd15234c7d95bea45c75e23c0968832c5e01f89c",
+      "bytes": 850
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "98d9711e7e798c9c86dee4b138e9346a2a03510150e3b254fe7a094900ebed32",
+      "bytes": 11321
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "2985949e663124afeabc945b3eed6e9d452e2c9dbd1db067376078fa4485ff1d",
+      "bytes": 25425
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "862b63beb41ba510b86f48e4fe89cd8c266258d170d197127e050f3103fc11fa",
+      "bytes": 32315
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "5f9770fe2532aff41ab7917affdf70e6fd2d41f0134fa3e89c1992cebac50c8c",
+      "bytes": 4202
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "3a62a5ce2b5481c04caa75d0aabf620e72a99427ab8100891b0698ad6994030f",
+      "bytes": 74115
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".txt",
+      "sha256": "254d20ec4e5938c71f23fb94a80e14064386c3e2638bf64be44de6f7d6b40b79",
+      "bytes": 7927
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "0fbcc87b23b0080e37e651a30236fdedc6878bbcc0d891a9955435ba2fed2fd7",
+      "bytes": 30316
+    },
+    {
+      "group": "oprimed-commit-logs-2026-06-23",
+      "extension": ".tsv",
+      "sha256": "46b3fd49d9c6a0049df99475a97db489993df4e32ba5c0fb6e2439968dcc36d4",
+      "bytes": 692
+    },
+    {
+      "group": "standalone",
+      "extension": ".md",
+      "sha256": "41abaec2f82653e98d7dd924057caac68bba722cde29320a98302e43d829fe3b",
+      "bytes": 6634
+    },
+    {
+      "group": "oprimed-fresh-work-units-all-branches-2026-06-23",
+      "extension": ".md",
+      "sha256": "d409a5976fd262e92810b9339f4b31553f16452eeffdb13d285449208e0b2595",
+      "bytes": 2025
+    },
+    {
+      "group": "oprimed-fresh-work-units-all-branches-2026-06-23",
+      "extension": ".md",
+      "sha256": "03a5363ccd8b24331ac77dfbcedc48d02b38ab0c27c65100df07f723b0de5f66",
+      "bytes": 38004
+    },
+    {
+      "group": "oprimed-fresh-work-units-all-branches-2026-06-23",
+      "extension": ".md",
+      "sha256": "7b228790c66375abc8e75f2853228de223e1e407618bf96419e1fb4fe2a150a2",
+      "bytes": 8414
+    },
+    {
+      "group": "oprimed-fresh-work-units-all-branches-2026-06-23",
+      "extension": ".md",
+      "sha256": "c1f2c2370587699d7d29fb857bd6e8a3de167f85fcfd04ab18bae88fae071ee7",
+      "bytes": 4336
+    },
+    {
+      "group": "oprimed-fresh-work-units-all-branches-2026-06-23",
+      "extension": ".md",
+      "sha256": "ef466ae0e54039812f52e88cdb6256d26cec6d87209559d3cc77b858bd4b24dd",
+      "bytes": 2818
+    },
+    {
+      "group": "oprimed-fresh-work-units-all-branches-2026-06-23",
+      "extension": ".md",
+      "sha256": "d5ec45c3cbc483765bf31daaf5b89d69074e50bcc4d72ca90784c244f3b345d9",
+      "bytes": 10196
+    },
+    {
+      "group": "oprimed-fresh-work-units-all-branches-2026-06-23",
+      "extension": ".md",
+      "sha256": "aaaddc9060d4f43ffc399b0e944dfe49cdbed84a68031ce1f0136df6c451384b",
+      "bytes": 58807
+    },
+    {
+      "group": "oprimed-fresh-work-units-all-branches-2026-06-23",
+      "extension": ".md",
+      "sha256": "3c8330377ddbb02368218a630084001af5184c82706dbe208eabac6f7169e275",
+      "bytes": 55247
+    },
+    {
+      "group": "oprimed-work-units-2026-06-23",
+      "extension": ".md",
+      "sha256": "21d82b7b028d3235940d4a0a5b766aa863dc037e80dc63bf386836211729030c",
+      "bytes": 2573
+    },
+    {
+      "group": "oprimed-work-units-2026-06-23",
+      "extension": ".md",
+      "sha256": "26a182aa6e679cc28f64285e68a1bb165e28b47fab7628727b221b4140523b8d",
+      "bytes": 26102
+    },
+    {
+      "group": "oprimed-work-units-2026-06-23",
+      "extension": ".md",
+      "sha256": "4e54a696bf2b418a3d8c3c5fc077eb5f38b2e234bb1bb72070595ab5d8423c71",
+      "bytes": 2774
+    },
+    {
+      "group": "oprimed-work-units-2026-06-23",
+      "extension": ".md",
+      "sha256": "aeafc07f806d07fefcf45b707fb03dd674112e683f9707f87027320d46f234fb",
+      "bytes": 48513
+    },
+    {
+      "group": "oprimed-work-units-2026-06-23",
+      "extension": ".md",
+      "sha256": "f40cbe8894c36fdd1d58c6c0e2a48c7ed4b73f26663c796198ec79a40ada2679",
+      "bytes": 49045
+    }
+  ],
+  "excludedMaterial": [
+    "중복 TSV/JSONL 및 저장소별 커밋 목록은 독립 경력으로 복사하지 않음",
+    "코드·설정 원문 발췌는 작업 카드의 근거 ID로 연결; 기업 코드 전문은 복제하지 않음",
+    "원본 색인·수집 방법·작성 제안 문장은 독립 작업으로 수록하지 않음",
+    "작업 카드로 분류되지 않은 커밋은 제목만으로 새 경력 사실로 승격하지 않음; 작성자 계정에 따른 추가 보류는 적용하지 않음"
+  ],
+  "notVerified": [
+    "전체 커밋 diff",
+    "제품 테스트 재실행",
+    "현재 운영 배포·성과",
+    "DB 적재·벡터 재색인"
+  ],
+  "verification": {
+    "originalFileHashesUnchanged": 102,
+    "publicRecordsLoaded": 297,
+    "rejectedRecords": 0,
+    "ragTestSuites": 20,
+    "ragTestsPassed": 124,
+    "toolingTestsPassed": 6,
+    "apiLint": "passed",
+    "apiBuild": "passed",
+    "formatAndDiff": "passed",
+    "runtime": "Node 26.7.0; repository requires Node ^24.22.1; tooling retry suppressed pnpm warning output only"
+  }
+}

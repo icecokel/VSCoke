@@ -349,6 +349,19 @@ export const createResumeImportManifest = ({
       vectorize: true,
       metadata: { version: 'supporting', fidelity: 'reviewed-section' },
     },
+    {
+      id: 'app:resume-raw-data',
+      path: join(repoRoot, 'docs/public-resume-raw-data.md'),
+      sourcePath: 'docs/public-resume-raw-data.md',
+      parser: 'markdown',
+      sourceType: 'app_resume',
+      itemType: 'raw_career_evidence',
+      title: '이상민의 작업별 경력 원천 기록',
+      status: 'active',
+      visibility: 'public',
+      vectorize: true,
+      metadata: { version: 'supporting', fidelity: 'redacted-raw-section' },
+    },
   ];
 
   if (!resumeWorkspaceRoot) {

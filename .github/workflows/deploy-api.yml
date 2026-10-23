@@ -11,6 +11,7 @@ on:
       - "apps/web/resume-detail/**"
       - "docs/public-site-guide.md"
       - "docs/public-resume-experience.md"
+      - "docs/public-resume-raw-data.md"
       - "scripts/check-api-health.mjs"
       - "scripts/api-health-checker.mjs"
       - "scripts/api-deploy-env.mjs"
@@ -89,7 +90,7 @@ jobs:
           cp apps/web/messages/{ko-KR,en-US,ja-JP}.json "$RELEASE_DIR/apps/web/messages/"
           rsync -a apps/web/resume-detail/ "$RELEASE_DIR/apps/web/resume-detail/"
           mkdir -p "$RELEASE_DIR/docs"
-          cp docs/public-site-guide.md docs/public-resume-experience.md "$RELEASE_DIR/docs/"
+          cp docs/public-site-guide.md docs/public-resume-experience.md docs/public-resume-raw-data.md "$RELEASE_DIR/docs/"
 
           cd "$RELEASE_DIR"
           pnpm --filter @vscoke/api install --prod --frozen-lockfile --ignore-scripts

@@ -1,14 +1,53 @@
-import { mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
   createResumeImportManifest,
   loadResumeSourceItemsFromEntry,
 } from './resume-source-item-loader';
+import { RESUME_RAG_RETRIEVED_CHUNK_MAX_CHARS } from '../resume-rag.config';
+
+const repoRoot = resolve(__dirname, '../../../../..');
 
 describe('resume source item loader', () => {
+  it('공개 로우데이터를 coverage 기록과 같은 개수의 검색 가능한 개별 근거로 읽는다', () => {
+    const entry = createResumeImportManifest({ repoRoot }).find(
+      (source) => source.id === 'app:resume-raw-data',
+    );
+    if (!entry) throw new Error('공개 로우데이터 manifest가 없음');
+    const coverage = JSON.parse(
+      readFileSync(
+        join(repoRoot, 'docs/resume-raw-data-coverage.json'),
+        'utf8',
+      ),
+    ) as { recordCount: number };
+
+    const items = loadResumeSourceItemsFromEntry(entry);
+    expect(items).toHaveLength(coverage.recordCount);
+    expect(new Set(items.map((item) => item.sourceKey)).size).toBe(
+      items.length,
+    );
+    for (const item of items) {
+      expect(item).toMatchObject({
+        status: 'active',
+        visibility: 'public',
+        vectorize: true,
+        sourceType: 'app_resume',
+        itemType: 'raw_career_evidence',
+      });
+      expect(item.bodyText).toContain('원본 기준일:');
+      expect(item.bodyText).toContain('확인 한계:');
+      expect(item.bodyText).toContain('원본: `docs/raw/');
+      expect(item.bodyText.length).toBeLessThanOrEqual(
+        RESUME_RAG_RETRIEVED_CHUNK_MAX_CHARS,
+      );
+      // 이메일은 로더가 이미 거부(status: 'rejected')하므로 로컬 절대 경로만 검사한다.
+      expect(item.bodyText).not.toMatch(/\/(?:Users|home)\//);
+      expect(item.title).not.toContain('Collaborator context:');
+    }
+  });
+
   it('모든 공개 상세 문서를 누락 없이 활성 검색 원본으로 읽는다', () => {
-    const repoRoot = resolve(__dirname, '../../../../..');
     const detailPath = join(repoRoot, 'apps/web/resume-detail');
     const entries = createResumeImportManifest({ repoRoot }).filter(
       (entry) => entry.itemType === 'public_resume_detail',

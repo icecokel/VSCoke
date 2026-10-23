@@ -62,6 +62,10 @@ export type RequiredCodexAppServerConfig = {
 
 export const RESUME_RAG_CONFIG = 'RESUME_RAG_CONFIG';
 
+// 프롬프트에 넣는 검색 청크 하나의 최대 길이. keyword 검색은 항목 본문 전체를
+// 청크로 돌려주므로 공개 원천 기록은 이 길이 안에 있어야 잘리지 않는다.
+export const RESUME_RAG_RETRIEVED_CHUNK_MAX_CHARS = 4000;
+
 const DEFAULT_CODEX_APP_SERVER_URL = 'ws://127.0.0.1:14561';
 const DEFAULT_CODEX_TIMEOUT_MS = 120_000;
 const DEFAULT_CODEX_REASONING_EFFORT: CodexReasoningEffort = 'low';

@@ -71,8 +71,12 @@ test("배포는 로그·환경·백업을 보존하고 릴리스에서 health �
     for (const locale of ["ko-KR", "en-US", "ja-JP"])
       write(join(checkout, `apps/web/messages/${locale}.json`), "{}");
     write(join(checkout, "apps/web/resume-detail/fixture.mdx"), "공개 근거 fixture");
-    for (const path of ["public-site-guide.md", "public-resume-experience.md"])
-      write(join(checkout, `docs/${path}`), "공개 문서 fixture");
+    const publicDocs = [
+      "public-site-guide.md",
+      "public-resume-experience.md",
+      "public-resume-raw-data.md",
+    ];
+    for (const path of publicDocs) write(join(checkout, `docs/${path}`), "공개 문서 fixture");
     for (const path of [
       "logs/combined.log",
       "logs/nested/old.log.gz",
@@ -100,6 +104,9 @@ test("배포는 로그·환경·백업을 보존하고 릴리스에서 health �
     }
     assert.equal(existsSync(join(live, "obsolete.js")), false);
     assert.ok(existsSync(join(live, "apps/api/dist/src/main.js")));
+    for (const path of publicDocs) {
+      assert.equal(readFileSync(join(live, `docs/${path}`), "utf8"), "공개 문서 fixture");
+    }
     for (const path of ["scripts/check-api-health.mjs", "scripts/api-health-checker.mjs"]) {
       assert.equal(readFileSync(join(live, path), "utf8"), read(path));
     }

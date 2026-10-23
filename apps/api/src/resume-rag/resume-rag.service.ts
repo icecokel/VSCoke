@@ -21,6 +21,7 @@ import {
   getChatNoEvidenceAnswer,
   type ChatChannel,
 } from './chat-definition';
+import { RESUME_RAG_RETRIEVED_CHUNK_MAX_CHARS } from './resume-rag.config';
 
 type AnswerRequest = {
   question: string;
@@ -143,7 +144,10 @@ export class ResumeRagService {
         let remaining = 16_000;
         chunks = chunks
           .map((chunk) => {
-            const content = chunk.content.slice(0, Math.min(4000, remaining));
+            const content = chunk.content.slice(
+              0,
+              Math.min(RESUME_RAG_RETRIEVED_CHUNK_MAX_CHARS, remaining),
+            );
             remaining -= content.length;
             return { ...chunk, content };
           })

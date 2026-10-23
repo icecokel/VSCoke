@@ -1,0 +1,23 @@
+# 허용 목록 방식: 아래에 나열한 경로만 빌드 컨텍스트에 포함한다.
+*
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!apps/api/package.json
+!apps/api/tsconfig.json
+!apps/api/tsconfig.build.json
+!apps/api/nest-cli.json
+!apps/api/src
+!apps/api/scripts
+!apps/web/src/constants/resume-data.json
+!apps/web/messages
+!apps/web/resume-detail
+!docs/public-site-guide.md
+!docs/public-resume-experience.md
+!docs/public-resume-raw-data.md
+!scripts/api-deploy-env.mjs
+!scripts/check-api-health.mjs
+!scripts/api-health-checker.mjs
+apps/api/src/**/*.spec.ts
+apps/api/scripts/*.js
+apps/api/scripts/*.sh

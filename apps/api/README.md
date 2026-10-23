@@ -4,7 +4,7 @@
 
 ## 기술 스택
 
-- Node.js 20 이상
+- Node.js 24.22.1 (`.nvmrc`, 운영 이미지 `node:24.22.1-bookworm-slim`)
 - NestJS 11
 - TypeScript
 - TypeORM + PostgreSQL
@@ -57,5 +57,7 @@ Resume RAG와 메인 채팅의 동작·환경 변수·검증 기준은
 
 ## 배포
 
-배포 구조와 환경은 [Deployment and Environment Plan](../../docs/deployment-and-env.md), 실행 절차는
-[DEPLOY.md](DEPLOY.md), 장애 대응은 [Operations Runbook](../../docs/operations-runbook.md)을 따른다.
+운영은 `apps/api/Dockerfile`로 빌드한 이미지를 Mac mini의 Docker Compose(`docker-compose.yml`)로
+실행한다. 배포 구조와 환경은 [Deployment and Environment Plan](../../docs/deployment-and-env.md),
+실행 절차는 [DEPLOY.md](DEPLOY.md), 장애 대응은
+[Operations Runbook](../../docs/operations-runbook.md)을 따른다.

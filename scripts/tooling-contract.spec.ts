@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { execFile, execFileSync } from "node:child_process";
 import { once } from "node:events";
 import {
-  chmodSync,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -38,11 +37,10 @@ const write = (path: string, content: string): void => {
 };
 
 // 운영 호스트 대신 임시 checkout/release에서 실제 workflow의 두 단계를 실행한다.
-test("배포는 로그·환경·백업을 보존하고 릴리스에서 health 검사를 실행할 수 있다", async () => {
+test("배포는 secret·로그·백업을 보존하고 릴리스에서 health 검사를 실행할 수 있다", async () => {
   const fixture = mkdtempSync(join(tmpdir(), "vscoke-release-contract-"));
   const checkout = join(fixture, "checkout");
   const live = join(fixture, "live");
-  const bin = join(fixture, "bin");
   const server = createServer((_request, response) => {
     response.setHeader("Content-Type", "application/json");
     response.end(
@@ -53,63 +51,42 @@ test("배포는 로그·환경·백업을 보존하고 릴리스에서 health �
     );
   });
   try {
-    for (const path of [
-      "package.json",
-      "pnpm-lock.yaml",
-      "pnpm-workspace.yaml",
-      "apps/api/package.json",
+    const released = [
+      "apps/api/docker-compose.yml",
       "scripts/check-api-health.mjs",
       "scripts/api-health-checker.mjs",
       "scripts/api-deploy-env.mjs",
-    ]) {
+    ];
+    for (const path of released) {
       const target = join(checkout, path);
       mkdirSync(dirname(target), { recursive: true });
       copyFileSync(join(root, path), target);
     }
-    write(join(checkout, "apps/api/dist/src/main.js"), "// fixture release\n");
-    write(join(checkout, "apps/web/src/constants/resume-data.json"), "[]");
-    for (const locale of ["ko-KR", "en-US", "ja-JP"])
-      write(join(checkout, `apps/web/messages/${locale}.json`), "{}");
-    write(join(checkout, "apps/web/resume-detail/fixture.mdx"), "공개 근거 fixture");
-    const publicDocs = [
-      "public-site-guide.md",
-      "public-resume-experience.md",
-      "public-resume-raw-data.md",
-    ];
-    for (const path of publicDocs) write(join(checkout, `docs/${path}`), "공개 문서 fixture");
-    for (const path of [
+    const preserved = [
+      ".env",
+      "api.env",
+      "postgres.env",
       "logs/combined.log",
       "logs/nested/old.log.gz",
       "backups/fixture.dump",
-      ".env",
-    ])
-      write(join(live, path), `preserve:${path}`);
+    ];
+    for (const path of preserved) write(join(live, path), `preserve:${path}`);
     write(join(live, "obsolete.js"), "remove stale release file");
-    write(
-      join(bin, "pnpm"),
-      '#!/bin/sh\n[ "$*" = "--filter @vscoke/api install --prod --frozen-lockfile --ignore-scripts" ] || exit 77\n',
-    );
-    chmodSync(join(bin, "pnpm"), 0o700);
-    const env = { ...process.env, API_DEPLOY_DIR: live, PATH: `${bin}:${process.env.PATH ?? ""}` };
+    const env = { ...process.env, API_DEPLOY_DIR: live };
     for (const name of ["Create staged release", "Promote release"]) {
       await run("bash", ["-eu", "-c", stepScript(name)], { cwd: checkout, env, timeout: 30_000 });
     }
-    for (const path of [
-      "logs/combined.log",
-      "logs/nested/old.log.gz",
-      "backups/fixture.dump",
-      ".env",
-    ]) {
+    for (const path of preserved) {
       assert.equal(readFileSync(join(live, path), "utf8"), `preserve:${path}`);
     }
     assert.equal(existsSync(join(live, "obsolete.js")), false);
-    assert.ok(existsSync(join(live, "apps/api/dist/src/main.js")));
-    for (const path of publicDocs) {
-      assert.equal(readFileSync(join(live, `docs/${path}`), "utf8"), "공개 문서 fixture");
-    }
-    for (const path of ["scripts/check-api-health.mjs", "scripts/api-health-checker.mjs"]) {
+    assert.equal(readFileSync(join(live, "docker-compose.yml"), "utf8"), read(released[0]));
+    for (const path of released.slice(1)) {
       assert.equal(readFileSync(join(live, path), "utf8"), read(path));
     }
+    // 코드와 공개 자료는 이미지에만 있으므로 호스트 릴리스에 복사하지 않는다.
+    assert.equal(existsSync(join(live, "apps")), false);
+    assert.equal(existsSync(join(live, "docs")), false);
     server.listen(0, "127.0.0.1");
     await once(server, "listening");
     const address = server.address();
@@ -138,7 +115,9 @@ test("배포는 로그·환경·백업을 보존하고 릴리스에서 health �
 
 test("운영 환경은 Secret으로 교체되고 비밀값과 셸 문자를 그대로 자식 프로세스에 전달한다", async () => {
   const fixture = mkdtempSync(join(tmpdir(), "vscoke-env-contract-"));
-  const target = join(fixture, ".env");
+  const target = join(fixture, "api.env");
+  const postgresTarget = join(fixture, "postgres.env");
+  const composeTarget = join(fixture, ".env");
   const script = join(root, "scripts/api-deploy-env.mjs");
   const password = "fixture 'password' $HOME $(touch unexpected) `touch unexpected`";
   const content = [
@@ -159,6 +138,8 @@ test("운영 환경은 Secret으로 교체되고 비밀값과 셸 문자를 그�
   };
   try {
     write(target, "old-server-env");
+    write(postgresTarget, "old-postgres-env");
+    write(composeTarget, "old-compose-env");
     await run(process.execPath, [script, "check"], { env });
     for (const invalid of [
       "",
@@ -167,6 +148,7 @@ test("운영 환경은 Secret으로 교체되고 비밀값과 셸 문자를 그�
       content.replace("DB_PASSWORD=", "MISSING_PASSWORD="),
       `${content}\nENABLE_DEV_AUTH_BYPASS=true`,
       `${content}\nDEV_AUTH_TOKEN=fixture-dev-token`,
+      content.replace("DB_DATABASE=fixture", 'DB_DATABASE="fix\nture"'),
     ]) {
       await assert.rejects(
         run(process.execPath, [script, "write"], {
@@ -174,11 +156,24 @@ test("운영 환경은 Secret으로 교체되고 비밀값과 셸 문자를 그�
         }),
       );
       assert.equal(readFileSync(target, "utf8"), "old-server-env");
+      assert.equal(readFileSync(postgresTarget, "utf8"), "old-postgres-env");
+      assert.equal(readFileSync(composeTarget, "utf8"), "old-compose-env");
     }
     const applied = await run(process.execPath, [script, "write"], { env });
     assert.equal(applied.stdout, "");
     assert.equal(readFileSync(target, "utf8"), content);
     assert.equal(statSync(target).mode & 0o777, 0o600);
+    // compose raw env_file은 따옴표를 벗기지 않으므로 값을 그대로 한 줄씩 쓴다.
+    assert.equal(
+      readFileSync(postgresTarget, "utf8"),
+      `POSTGRES_USER=fixture\nPOSTGRES_PASSWORD=${password}\nPOSTGRES_DB=fixture\n`,
+    );
+    assert.equal(statSync(postgresTarget).mode & 0o777, 0o600);
+    // compose는 비밀값이 아닌 PORT만 보간한다. Secret에 PORT가 없으면 3000이다.
+    assert.equal(readFileSync(composeTarget, "utf8"), "PORT=3000\n");
+    // 컨테이너는 api.env를 /app/.env로 mount해 읽으므로 같은 배치를 재현한다.
+    const app = join(fixture, "app");
+    write(join(app, ".env"), readFileSync(target, "utf8"));
     const child = await run(
       process.execPath,
       [
@@ -194,15 +189,15 @@ test("운영 환경은 Secret으로 교체되고 비밀값과 셸 문자를 그�
       console.log("passed");
     `,
       ],
-      { cwd: fixture, env: { ...env, DB_PASSWORD: "stale-runner-password" } },
+      { cwd: app, env: { ...env, DB_PASSWORD: "stale-runner-password" } },
     );
     assert.equal(child.stdout.trim(), "passed");
-    assert.equal(existsSync(join(fixture, "unexpected")), false);
+    assert.equal(existsSync(join(app, "unexpected")), false);
     assert.doesNotMatch(workflow, /\. \.\/\.env/);
     assert.match(workflow, /API_ENV_PRODUCTION: \$\{\{ secrets\.API_ENV_PRODUCTION \}\}/);
     assert.ok(
       workflow.indexOf("Validate production environment secret") <
-        workflow.indexOf("Install dependencies and build API"),
+        workflow.indexOf("Build API image"),
     );
     assert.ok(
       workflow.indexOf("Apply production environment secret") <

@@ -63,4 +63,5 @@ pnpm check:api-contract
 
 - [Monorepo Concept](docs/vscoke-monorepo-concept.md): 앱의 책임과 데이터 흐름
 - [Local Development](docs/local-development.md): 로컬 실행과 환경 변수
+- [Deployment and Environment Plan](docs/deployment-and-env.md): Vercel 웹과 Mac mini Docker API 배포
 - [Game Score Policy](docs/game-score-policy.md): 게임 결과와 랭킹 검증 기준

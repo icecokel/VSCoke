@@ -72,6 +72,30 @@ jobs:
       - name: Run API PostgreSQL integration and E2E tests
         run: pnpm test:api:e2e
 
+  api-image:
+    name: API image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build --file apps/api/Dockerfile --tag vscoke-api:pr .
+
+      - name: Verify image contents
+        run: |
+          docker run --rm vscoke-api:pr test -f apps/api/dist/src/main.js
+          docker run --rm vscoke-api:pr test -f apps/api/dist/scripts/import-resume-source-items.js
+          docker run --rm vscoke-api:pr test -f docs/public-resume-raw-data.md
+
+      - name: Validate compose file
+        run: |
+          fixture="$(mktemp -d)"
+          cp apps/api/docker-compose.yml "$fixture/"
+          : > "$fixture/.env"
+          : > "$fixture/postgres.env"
+          docker compose --project-directory "$fixture" config --quiet
+
   web:
     name: Web
     runs-on: ubuntu-latest

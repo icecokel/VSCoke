@@ -9,6 +9,7 @@ import { requestIdMiddleware } from './common/middleware/request-id.middleware';
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/utils/winston.config';
 import { getCorsOptions } from './common/utils/cors.util';
+import { getTrustProxySetting } from './common/utils/trust-proxy.util';
 import { setupApiDocumentation } from './api-documentation';
 
 /**
@@ -21,7 +22,7 @@ async function bootstrap() {
   });
   app.enableShutdownHooks();
 
-  app.set('trust proxy', 'loopback');
+  app.set('trust proxy', getTrustProxySetting(process.env.TRUST_PROXY));
   app.use(requestIdMiddleware);
   app.enableCors(getCorsOptions(process.env.CORS_ORIGINS));
 

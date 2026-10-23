@@ -1,6 +1,6 @@
 # VSCoke Monorepo Concept
 
-확인 기준일: 2026-08-20
+확인 기준일: 2026-10-23
 
 이 문서는 VSCoke monorepo의 앱 책임, 경계와 데이터 흐름을 설명한다. 실행 명령은
 [Local Development](./local-development.md), 배포와 환경 변수는
@@ -44,7 +44,7 @@ workspace 명령의 공통 진입점이다.
 
 ### API: `apps/api`
 
-API는 Ubuntu host에서 실행되는 NestJS 앱이다.
+API는 Mac mini의 Docker Compose에서 실행되는 NestJS 앱이다.
 
 - 취미 데이터, 인증, 게임 결과와 이력 질문 API를 제공한다.
 - TypeORM과 PostgreSQL로 영속 상태를 관리한다.
@@ -98,7 +98,7 @@ flowchart LR
   Api["apps/api"]
   Vercel["Vercel"]
   Runner["self-hosted runner"]
-  Host["Ubuntu host"]
+  Host["Mac mini Docker Compose"]
   Tunnel["Cloudflare Tunnel"]
 
   Repo --> Web --> Vercel

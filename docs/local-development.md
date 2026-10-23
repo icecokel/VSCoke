@@ -63,7 +63,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 NEXT_PUBLIC_API_URL=https://api.icecoke.kr
 ```
 
-API는 DB, Google OAuth, 알림 설정을 `apps/api/.env`에서 읽는다. 운영 값은 Ubuntu host의 API `.env`에서 별도로 관리한다.
+API는 DB, Google OAuth, 알림 설정을 `apps/api/.env`에서 읽는다. 운영 값은 Repository Secret `API_ENV_PRODUCTION`에서 별도로 관리한다.
 
 Resume RAG와 메인 채팅을 로컬 API에서 실제로 호출하는 설정은
 [메인 채팅·이력 질문 AI 사용 지침](./main-chat-ai-usage-guide.md#로컬-api-연결)을 따른다.
@@ -152,19 +152,19 @@ NEXT_PUBLIC_API_URL=http://localhost:3001 pnpm dev:web
 
 이 방식은 프론트가 로컬 NestJS API를 직접 호출한다.
 
-## DB tunnel
+## 운영 DB 확인
 
-운영 DB는 Ubuntu host 안의 PostgreSQL을 기준으로 한다. Mac에서 DB 확인이 필요하면 Cloudflare Access TCP tunnel을 먼저 띄운다.
+운영 DB는 Mac mini의 Docker Compose 안 PostgreSQL 컨테이너이며 호스트에 포트를 publish하지 않는다.
+운영 DB 확인은 Mac mini에서 compose를 통해 수행한다.
 
 ```bash
-pnpm --filter @vscoke/api db:tunnel
+cd /Users/smlee/projects/vscoke-api
+docker compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
 ```
 
-터널 실행에는 `apps/api/.env`의 `CLOUDFLARE_DB_HOST`와 `DB_PORT`가 필요하다. 터널을 띄운 터미널은 유지하고, 다른 터미널에서 API 실행이나 DB 확인을 진행한다.
-
-```txt
-Mac localhost:5432 -> cloudflared access tcp -> PostgreSQL on Ubuntu host
-```
+`$POSTGRES_USER`, `$POSTGRES_DB`는 postgres 컨테이너 환경에서 해석되므로 호스트 셸에 값을 두지 않는다.
+이전 Ubuntu host DB용 Cloudflare Access TCP tunnel(`pnpm --filter @vscoke/api db:tunnel`)은 Ubuntu host
+PostgreSQL이 남아 있는 동안 비교 용도로만 사용한다.
 
 배포 보존·health 도구 패키징·테스트 옵션의 회귀 검사는 `pnpm test:tooling`으로 실행한다.
 이 검사는 임시 파일·loopback HTTP·CLI 설정 조회를 사용하고 운영 배포를 실행하지 않는다.

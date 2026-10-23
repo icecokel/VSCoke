@@ -1,4 +1,4 @@
-name: Deploy API to Ubuntu Host (Self-hosted Runner)
+name: Deploy API to Mac mini (Docker)
 
 on:
   workflow_dispatch:
@@ -27,12 +27,12 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: [self-hosted, vscoke-api, host]
+    runs-on: [self-hosted, vscoke-api, mac-mini]
     env:
-      API_DEPLOY_DIR: ${{ vars.API_DEPLOY_DIR || '/home/icenux/projects/vscoke-api' }}
+      API_DEPLOY_DIR: ${{ vars.API_DEPLOY_DIR || '/Users/smlee/projects/vscoke-api' }}
       API_HEALTH_URL: ${{ vars.API_HEALTH_URL || 'https://api.icecoke.kr/health' }}
       API_LOCAL_HEALTH_URL: ${{ vars.API_LOCAL_HEALTH_URL || 'http://127.0.0.1:3000/health' }}
-      API_PROCESS_NAME: ${{ vars.API_PROCESS_NAME || 'vscoke-api' }}
+      API_IMAGE: vscoke-api
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -49,61 +49,42 @@ jobs:
 
       - name: Verify self-hosted runner prerequisites
         run: |
-          command -v node
-          command -v corepack
-          command -v pnpm || true
-          command -v pm2
-          command -v psql
+          command -v docker
           command -v rsync
+          docker version --format '{{.Server.Version}}'
+          docker compose version
           test -d "$API_DEPLOY_DIR"
-          node --version
-          pm2 --version
-          psql --version
 
-      - name: Enable pnpm
+      - name: Build API image
         run: |
-          corepack enable
-          corepack prepare pnpm@9.12.0 --activate
-          pnpm --version
-
-      - name: Install dependencies and build API
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm build:api
-          test -f apps/api/dist/src/main.js
+          docker build \
+            --file apps/api/Dockerfile \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --tag "$API_IMAGE:$GITHUB_SHA" \
+            --tag "$API_IMAGE:latest" \
+            .
+          docker run --rm "$API_IMAGE:$GITHUB_SHA" test -f apps/api/dist/src/main.js
 
       - name: Create staged release
         run: |
           RELEASE_DIR="$API_DEPLOY_DIR/.next-release"
           rm -rf "$RELEASE_DIR"
-          mkdir -p "$RELEASE_DIR/apps/api"
-
-          rsync -a apps/api/dist "$RELEASE_DIR/apps/api/"
-          cp apps/api/package.json "$RELEASE_DIR/apps/api/package.json"
-          cp package.json pnpm-lock.yaml pnpm-workspace.yaml "$RELEASE_DIR/"
           mkdir -p "$RELEASE_DIR/scripts"
+
+          # 코드와 공개 자료는 이미지에 들어 있다. 호스트에는 compose 파일과 health 도구만 둔다.
+          cp apps/api/docker-compose.yml "$RELEASE_DIR/docker-compose.yml"
           cp scripts/check-api-health.mjs scripts/api-health-checker.mjs scripts/api-deploy-env.mjs "$RELEASE_DIR/scripts/"
-
-          # 웹에 공개된 자료만 배포물에 포함한다. 개인 이력 작업공간은 복사하지 않는다.
-          mkdir -p "$RELEASE_DIR/apps/web/src/constants" "$RELEASE_DIR/apps/web/messages"
-          cp apps/web/src/constants/resume-data.json "$RELEASE_DIR/apps/web/src/constants/"
-          cp apps/web/messages/{ko-KR,en-US,ja-JP}.json "$RELEASE_DIR/apps/web/messages/"
-          rsync -a apps/web/resume-detail/ "$RELEASE_DIR/apps/web/resume-detail/"
-          mkdir -p "$RELEASE_DIR/docs"
-          cp docs/public-site-guide.md docs/public-resume-experience.md docs/public-resume-raw-data.md "$RELEASE_DIR/docs/"
-
-          cd "$RELEASE_DIR"
-          pnpm --filter @vscoke/api install --prod --frozen-lockfile --ignore-scripts
-          test -f apps/api/dist/src/main.js
-          test -f apps/api/package.json
+          test -f "$RELEASE_DIR/docker-compose.yml"
 
       - name: Promote release
         run: |
           RELEASE_DIR="$API_DEPLOY_DIR/.next-release"
-          test -f "$RELEASE_DIR/apps/api/dist/src/main.js"
+          test -f "$RELEASE_DIR/docker-compose.yml"
 
           rsync -a --delete \
             --exclude '.env' \
+            --exclude 'api.env' \
+            --exclude 'postgres.env' \
             --exclude '.next-release' \
             --exclude 'backups' \
             --exclude 'logs' \
@@ -115,25 +96,28 @@ jobs:
           API_ENV_PRODUCTION: ${{ secrets.API_ENV_PRODUCTION }}
         run: node scripts/api-deploy-env.mjs write
 
+      - name: Start database
+        run: |
+          cd "$API_DEPLOY_DIR"
+          docker compose config --quiet
+          docker compose up --detach --wait postgres
+
       - name: Synchronize public resume sources and index
         run: |
           cd "$API_DEPLOY_DIR"
-          RESUME_WORKSPACE_ROOT= node scripts/api-deploy-env.mjs run pnpm --filter @vscoke/api resume:import
-          if node scripts/api-deploy-env.mjs run node -e 'process.exit(process.env.RAG_RETRIEVAL_MODE !== "keyword" && process.env.RAG_EMBEDDING_PROVIDER ? 0 : 1)'; then
-            node scripts/api-deploy-env.mjs run pnpm --filter @vscoke/api resume:index
+          docker compose run --rm --no-deps --env RESUME_WORKSPACE_ROOT= api \
+            node scripts/api-deploy-env.mjs run node apps/api/dist/scripts/import-resume-source-items.js
+          if docker compose run --rm --no-deps api \
+            node scripts/api-deploy-env.mjs run node -e 'process.exit(process.env.RAG_RETRIEVAL_MODE !== "keyword" && process.env.RAG_EMBEDDING_PROVIDER ? 0 : 1)'; then
+            docker compose run --rm --no-deps api \
+              node scripts/api-deploy-env.mjs run node apps/api/dist/scripts/index-resume-vectors.js
           fi
 
-      - name: Restart API with PM2
+      - name: Restart API container
         run: |
-          if systemctl list-unit-files vscoke-api-local-proxy.service >/dev/null 2>&1; then
-            sudo systemctl disable --now vscoke-api-local-proxy.service || true
-          fi
-
           cd "$API_DEPLOY_DIR"
-          pm2 delete "$API_PROCESS_NAME" || true
-          node scripts/api-deploy-env.mjs run pm2 start apps/api/dist/src/main.js --name "$API_PROCESS_NAME" --interpreter "$(command -v node)" --update-env
-          pm2 save
-          pm2 status "$API_PROCESS_NAME"
+          docker compose up --detach --wait api
+          docker compose ps
 
       - name: Verify local API health
         run: |
@@ -169,3 +153,13 @@ jobs:
             API_HEALTH_RETRIES=30 \
             API_HEALTH_RETRY_DELAY_MS=2000 \
             node scripts/check-api-health.mjs
+
+      - name: Remove superseded API images
+        run: |
+          docker images "$API_IMAGE" --format '{{.Tag}}' | while read -r tag; do
+            case "$tag" in
+              latest|"$GITHUB_SHA") ;;
+              *) docker image rm "$API_IMAGE:$tag" ;;
+            esac
+          done
+          docker image prune --force

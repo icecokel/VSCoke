@@ -1,6 +1,6 @@
 # 메인 채팅·이력 질문 AI 사용 지침
 
-확인 기준일: 2026-09-10
+확인 기준일: 2026-10-23
 
 이 문서는 채팅 구조, 검색·저장 정책과 운영 시 주의사항을 설명한다. 실행·복구 기준은
 [6절](#6-배포와-검증)과 [API 배포 가이드](../apps/api/DEPLOY.md)를 따른다.
@@ -87,7 +87,7 @@ RAG_RETRIEVAL_MODE=hybrid
 RAG_EMBEDDING_PROVIDER=local-e5-q8
 RAG_EMBEDDING_MODEL=Xenova/multilingual-e5-small@761b726dd34fb83930e26aab4e9ac3899aa1fa78
 RAG_EMBEDDING_DIMENSIONS=384
-RAG_LOCAL_EMBEDDING_CACHE_DIR=/home/icenux/.cache/vscoke/embeddings
+RAG_LOCAL_EMBEDDING_CACHE_DIR=/app/.cache/embeddings
 RAG_LOCAL_EMBEDDING_LOCAL_FILES_ONLY=true
 RAG_VECTOR_MIN_SIMILARITY=0.85
 RAG_CHUNK_SIZE=600

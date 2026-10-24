@@ -188,11 +188,14 @@ restore해 사용합니다.
 한 번만 수행하는 전환 절차입니다. 사전 준비(OrbStack, runner, Codex app-server, cloudflared, Secret 갱신)는
 [Mac mini 초기 준비](../../docs/deployment-and-env.md#mac-mini-초기-준비)를 먼저 마칩니다.
 
-1. Ubuntu host에서 최종 backup을 만들어 Mac mini의 `backups/`로 옮깁니다. 비밀번호는 Ubuntu `.env`에서
-   셸 변수로만 읽습니다.
+1. Ubuntu host에서 최종 backup을 만들어 Mac mini의 `backups/`로 옮깁니다. Ubuntu PostgreSQL은 18이라
+   `pg_dump` 결과(archive 1.16)를 pg16 `pg_restore`가 읽지 못합니다. restore 전에 `postgres:18` 이미지의
+   `pg_restore`로 plain SQL로 바꿔 둡니다.
 
    ```bash
-   ssh icenux-external 'cd /home/icenux/projects/vscoke-api && set -a && . ./.env && set +a && PGPASSWORD="$DB_PASSWORD" pg_dump -h "$DB_HOST" -p "${DB_PORT:-5432}" -U "$DB_USERNAME" -d "$DB_DATABASE" --format=custom --no-owner --no-acl' > /Users/smlee/projects/vscoke-api/backups/cutover.dump
+   ssh icenux-external 'export LD_LIBRARY_PATH=/home/icenux/.local/pgsql-root/usr/lib/x86_64-linux-gnu:/home/icenux/.local/pgsql-root/usr/lib/postgresql/18/lib; /home/icenux/.local/pgsql-root/usr/lib/postgresql/18/bin/pg_dump -h /home/icenux/postgresql/18/run -U vscoke-api -d vscoke-api --format=custom --no-owner --no-acl' > /Users/smlee/projects/vscoke-api/backups/cutover.dump
+   docker run --rm -v /Users/smlee/projects/vscoke-api/backups:/backups postgres:18 pg_restore --no-owner --no-acl -f /backups/cutover.sql /backups/cutover.dump
+   sed -i '' '/^SET transaction_timeout = 0;$/d' /Users/smlee/projects/vscoke-api/backups/cutover.sql
    ```
 
 2. Mac mini 저장소 checkout에서 compose 파일과 Secret 파일을 수동으로 한 번 준비합니다. `API_ENV_PRODUCTION`
@@ -210,7 +213,7 @@ restore해 사용합니다.
    ```bash
    cd /Users/smlee/projects/vscoke-api
    docker compose up --detach --wait postgres
-   docker compose exec postgres sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-acl /backups/cutover.dump'
+   docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 --single-transaction -f /backups/cutover.sql'
    docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select count(*) from migrations"'
    ```
 
@@ -220,6 +223,24 @@ restore해 사용합니다.
    `pnpm smoke:api:remote`로 공개 health를 확인한 뒤 workflow를 한 번 더 실행해 전체 통과를 확인합니다.
 6. Ubuntu host에서 `pm2 stop vscoke-api`, runner 서비스와 `cloudflared-icenux.service`를 중지합니다.
    Ubuntu PostgreSQL은 전환 검증이 끝날 때까지 읽기 전용 비교 용도로 유지한 뒤 정리합니다.
+
+### 전환 실행 기록 (2026-10-24)
+
+Ubuntu host가 꺼진 상태에서 전환을 시작해 위 1·3단계를 그대로 수행하지 못했습니다. 실제로 적용한 상태는
+다음과 같습니다.
+
+- Mac mini DB는 빈 DB에 migration 6개를 적용해 schema를 만들었습니다.
+- 데이터는 `~/icecoke-ops/docker/backups/vscoke-api-icenux-20260628-132521.dump`(2026-06-28 Ubuntu
+  backup)에서 현재 schema에 남아 있는 `user`(3건)와 `game_history`(43건)만 옮겼습니다. 적용한 SQL은
+  `backups/restored-icenux-20260628-user-game_history.sql`에 있습니다.
+- dump의 `espresso_*`, `geek_news_article`, `recipe`, `word`는 현재 API에 table이 없어 옮기지 않았습니다.
+- 2026-06-28 이후 Ubuntu에 쌓인 `user`, `game_history`, resume chat, usage event 데이터는 Ubuntu 디스크에만
+  있습니다. host가 다시 켜지면 1단계 방식으로 최신 dump를 받아 아래처럼 `id` 기준으로 합칩니다.
+
+  ```bash
+  docker run --rm -v /Users/smlee/projects/vscoke-api/backups:/backups postgres:18 pg_restore --data-only --no-owner --no-acl -t user -t game_history -f /backups/icenux-latest.sql /backups/icenux-latest.dump
+  # COPY를 임시 table로 받아 ON CONFLICT (id) DO NOTHING으로 insert하는 SQL로 바꾼 뒤 적용합니다.
+  ```
 
 ## 요약
 

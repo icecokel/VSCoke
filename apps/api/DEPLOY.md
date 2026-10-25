@@ -255,8 +255,10 @@ Ubuntu host가 꺼진 상태에서 전환을 시작해 위 1·3단계를 그대�
   이미 없어 비워 두었습니다.
 - 2026-10-25 Codex app-server를 launchd `kr.icecoke.vscoke-api-codex`로 등록하고 공개 `/resume-rag/chat`
   질문이 근거와 함께 답하는 것을 확인했습니다. 같은 날 icenux에서 pm2 앱, runner 2개(`icenux-vscoke-api`,
-  `icenux-vscoke-api-host`), `vscoke-api-native.service`, 프로젝트·runner 디렉터리를 제거했습니다. Ubuntu
-  PostgreSQL의 `vscoke-api` DB는 비교용으로 남아 있으며, 더 이상 필요 없으면 Ubuntu에서 drop합니다.
+  `icenux-vscoke-api-host`), `vscoke-api-native.service`, 프로젝트·runner 디렉터리를 제거했습니다. 이어서
+  drop 직전 dump(`backups/icenux-20261025-predrop.dump`)를 받은 뒤 Ubuntu PostgreSQL의 `vscoke-api` DB와
+  role, `codex-app-server.service`, `vscoke-api-local-proxy.service`, `~/.cache/vscoke`와 옛 backup(Mac
+  `backups/icenux-old/`로 복사)을 지워 Ubuntu에는 vscoke-api 관련 항목이 남아 있지 않습니다.
 - 주의: `apps/api/**`를 건드린 push는 배포 workflow를 자동 실행하고, workflow는 GitHub Secret으로 env
   파일을 다시 씁니다. Secret이 옛 값인 채로 실행되면 `postgres.env`의 계정이 data volume의 계정과 달라져
   healthcheck와 import가 실패합니다(2026-10-24 run 40080041431). Secret을 먼저 갱신해야 합니다.

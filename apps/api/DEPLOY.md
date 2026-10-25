@@ -226,8 +226,8 @@ restore해 사용합니다.
    컨테이너 기동과 내부 health까지 통과한 뒤 공개 health는 tunnel 전환 전이라 실패할 수 있습니다.
 5. Cloudflare에서 `api.icecoke.kr` route를 Mac mini tunnel로 옮기고 Ubuntu tunnel의 route를 제거합니다.
    `pnpm smoke:api:remote`로 공개 health를 확인한 뒤 workflow를 한 번 더 실행해 전체 통과를 확인합니다.
-6. Ubuntu host에서 `pm2 stop vscoke-api`, runner 서비스와 `cloudflared-icenux.service`를 중지합니다.
-   Ubuntu PostgreSQL은 전환 검증이 끝날 때까지 읽기 전용 비교 용도로 유지한 뒤 정리합니다.
+6. Ubuntu host에서 `pm2 delete vscoke-api`, runner 서비스 제거(`config.sh remove`)와 프로젝트 디렉터리 삭제를
+   수행합니다. Ubuntu PostgreSQL은 전환 검증이 끝날 때까지 읽기 전용 비교 용도로 유지한 뒤 정리합니다.
 
 ### 전환 실행 기록 (2026-10-24 ~ 2026-10-25)
 
@@ -253,6 +253,10 @@ Ubuntu host가 꺼진 상태에서 전환을 시작해 위 1·3단계를 그대�
   통과했습니다. 옛 Secret에서 `CORS_ORIGINS`, `RAG_PUBLIC_CHAT_ORIGINS`, `RAG_CHAT_MODEL`,
   `RAG_CODEX_REASONING_EFFORT`를 새 Secret으로 옮겼습니다. `NOTIFY_*`는 Ubuntu의 localhost 알림 서비스가
   이미 없어 비워 두었습니다.
+- 2026-10-25 Codex app-server를 launchd `kr.icecoke.vscoke-api-codex`로 등록하고 공개 `/resume-rag/chat`
+  질문이 근거와 함께 답하는 것을 확인했습니다. 같은 날 icenux에서 pm2 앱, runner 2개(`icenux-vscoke-api`,
+  `icenux-vscoke-api-host`), `vscoke-api-native.service`, 프로젝트·runner 디렉터리를 제거했습니다. Ubuntu
+  PostgreSQL의 `vscoke-api` DB는 비교용으로 남아 있으며, 더 이상 필요 없으면 Ubuntu에서 drop합니다.
 - 주의: `apps/api/**`를 건드린 push는 배포 workflow를 자동 실행하고, workflow는 GitHub Secret으로 env
   파일을 다시 씁니다. Secret이 옛 값인 채로 실행되면 `postgres.env`의 계정이 data volume의 계정과 달라져
   healthcheck와 import가 실패합니다(2026-10-24 run 40080041431). Secret을 먼저 갱신해야 합니다.

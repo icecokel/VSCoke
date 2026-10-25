@@ -224,23 +224,31 @@ restore해 사용합니다.
 6. Ubuntu host에서 `pm2 stop vscoke-api`, runner 서비스와 `cloudflared-icenux.service`를 중지합니다.
    Ubuntu PostgreSQL은 전환 검증이 끝날 때까지 읽기 전용 비교 용도로 유지한 뒤 정리합니다.
 
-### 전환 실행 기록 (2026-10-24)
+### 전환 실행 기록 (2026-10-24 ~ 2026-10-25)
 
 Ubuntu host가 꺼진 상태에서 전환을 시작해 위 1·3단계를 그대로 수행하지 못했습니다. 실제로 적용한 상태는
 다음과 같습니다.
 
-- Mac mini DB는 빈 DB에 migration 6개를 적용해 schema를 만들었습니다.
-- 데이터는 `~/icecoke-ops/docker/backups/vscoke-api-icenux-20260628-132521.dump`(2026-06-28 Ubuntu
-  backup)에서 현재 schema에 남아 있는 `user`(3건)와 `game_history`(43건)만 옮겼습니다. 적용한 SQL은
-  `backups/restored-icenux-20260628-user-game_history.sql`에 있습니다.
-- dump의 `espresso_*`, `geek_news_article`, `recipe`, `word`는 현재 API에 table이 없어 옮기지 않았습니다.
-- 2026-06-28 이후 Ubuntu에 쌓인 `user`, `game_history`, resume chat, usage event 데이터는 Ubuntu 디스크에만
-  있습니다. host가 다시 켜지면 1단계 방식으로 최신 dump를 받아 아래처럼 `id` 기준으로 합칩니다.
+- Mac mini DB는 빈 DB에 migration 6개를 적용해 schema를 만들었습니다. Ubuntu DB의 `migrations`에는
+  현재 저장소에 없는 Poke Lounge migration 10개가 더 있어 dump 전체 restore 대신 table 단위로 옮겼습니다.
+- 2026-10-25 Ubuntu host가 켜진 뒤 `backups/icenux-20261025.dump`를 받아
+  `backups/merge-icenux-dump.sh`로 사용자 생성 데이터를 `id` 기준으로 병합했습니다. 병합 대상은 `user`,
+  `game_history`, `resume_rag_chat_logs`, `resume_chat_conversations`, `resume_chat_turns`이며 건수와 최신
+  시각이 Ubuntu 실서버와 일치하는 것을 확인했습니다.
+- import/index가 다시 만드는 `resume_source_items`, `resume_vector_chunks`, `resume_import_batches`,
+  keyword table과 현재 API에 없는 `espresso_*`, `geek_news_article`, `recipe`, `word`, `poke_lounge_*`는 옮기지
+  않았습니다. 원본 dump는 `backups/`와 `~/icecoke-ops/docker/backups/`에 남아 있습니다.
+- 스크립트는 여러 번 실행해도 안전합니다(`ON CONFLICT DO NOTHING`). DNS 전환 직전에 1단계 방식으로 최신
+  dump를 받아 한 번 더 실행하면 그 사이 쌓인 데이터까지 합쳐집니다.
 
   ```bash
-  docker run --rm -v /Users/smlee/projects/vscoke-api/backups:/backups postgres:18 pg_restore --data-only --no-owner --no-acl -t user -t game_history -f /backups/icenux-latest.sql /backups/icenux-latest.dump
-  # COPY를 임시 table로 받아 ON CONFLICT (id) DO NOTHING으로 insert하는 SQL로 바꾼 뒤 적용합니다.
+  cd /Users/smlee/projects/vscoke-api
+  backups/merge-icenux-dump.sh backups/icenux-YYYYMMDD.dump
   ```
+
+- 주의: `apps/api/**`를 건드린 push는 배포 workflow를 자동 실행하고, workflow는 GitHub Secret으로 env
+  파일을 다시 씁니다. Secret이 옛 Ubuntu 값인 채로 실행되면 `postgres.env`의 계정이 data volume의 계정과
+  달라져 healthcheck와 import가 실패합니다(2026-10-24 run 40080041431). Secret을 먼저 갱신해야 합니다.
 
 ## 요약
 

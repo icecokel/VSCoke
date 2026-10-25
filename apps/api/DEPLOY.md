@@ -85,6 +85,11 @@ baseline은 `SKY_DROP` enum만 허용합니다. 실패 시 drop, alter 또는 le
 차이를 먼저 검토합니다. 이 baseline의 `down`은 기존 데이터 삭제를 막기 위해 의도적으로
 실패합니다.
 
+`CreateLegacyHobbySchema1795000000002`는 같은 방식으로 synchronize 시절의 `espresso_bean`,
+`espresso_history`, `espresso_round`, `recipe`, `word`를 편입합니다. 다섯 table이 모두 없으면 만들고, 모두
+있으면 그대로 채택하며, 일부만 있으면 실패합니다. Mac mini 운영 DB에는 2026-10-25 Ubuntu dump에서 이
+table들을 데이터와 함께 먼저 복원했으므로 이 migration은 ledger 기록만 남깁니다.
+
 ### Migration 생성
 
 아래 `<kebab-summary>`는 실제 변경 요약의 kebab-case 이름으로 바꿉니다.
@@ -226,29 +231,31 @@ restore해 사용합니다.
 
 ### 전환 실행 기록 (2026-10-24 ~ 2026-10-25)
 
-Ubuntu host가 꺼진 상태에서 전환을 시작해 위 1·3단계를 그대로 수행하지 못했습니다. 실제로 적용한 상태는
+Ubuntu host가 꺼진 상태에서 전환을 시작해 위 1·3단계를 그대로 수행하지 못했습니다. 실제 진행은
 다음과 같습니다.
 
-- Mac mini DB는 빈 DB에 migration 6개를 적용해 schema를 만들었습니다. Ubuntu DB의 `migrations`에는
-  현재 저장소에 없는 Poke Lounge migration 10개가 더 있어 dump 전체 restore 대신 table 단위로 옮겼습니다.
-- 2026-10-25 Ubuntu host가 켜진 뒤 `backups/icenux-20261025.dump`를 받아
-  `backups/merge-icenux-dump.sh`로 사용자 생성 데이터를 `id` 기준으로 병합했습니다. 병합 대상은 `user`,
-  `game_history`, `resume_rag_chat_logs`, `resume_chat_conversations`, `resume_chat_turns`이며 건수와 최신
-  시각이 Ubuntu 실서버와 일치하는 것을 확인했습니다.
-- import/index가 다시 만드는 `resume_source_items`, `resume_vector_chunks`, `resume_import_batches`,
-  keyword table과 현재 API에 없는 `espresso_*`, `geek_news_article`, `recipe`, `word`, `poke_lounge_*`는 옮기지
-  않았습니다. 원본 dump는 `backups/`와 `~/icecoke-ops/docker/backups/`에 남아 있습니다.
-- 스크립트는 여러 번 실행해도 안전합니다(`ON CONFLICT DO NOTHING`). DNS 전환 직전에 1단계 방식으로 최신
-  dump를 받아 한 번 더 실행하면 그 사이 쌓인 데이터까지 합쳐집니다.
-
-  ```bash
-  cd /Users/smlee/projects/vscoke-api
-  backups/merge-icenux-dump.sh backups/icenux-YYYYMMDD.dump
-  ```
-
+- Mac mini DB는 빈 DB에 migration을 적용해 schema를 만들었습니다. Ubuntu DB의 `migrations`에는 현재
+  저장소에 없는 Poke Lounge migration 10개가 더 있어 dump 전체 restore 대신 table 단위로 옮겼습니다.
+- 2026-10-25 Ubuntu host가 켜진 뒤 `backups/icenux-20261025*.dump`를 받아 `backups/merge-icenux-dump.sh`로
+  `user`, `game_history`, `resume_rag_keyword_groups`, `resume_rag_keyword_terms`, `resume_rag_chat_logs`,
+  `resume_chat_conversations`, `resume_chat_turns`를 `id` 기준으로 병합했습니다. DNS 전환 뒤 최종 dump로
+  한 번 더 실행해 건수가 Ubuntu 실서버와 일치하는 것을 확인했습니다. 스크립트는 여러 번 실행해도
+  안전합니다(`ON CONFLICT DO NOTHING`).
+- 첫 전환 직후 `/espresso-history/beans`가 500을 냈습니다. 기존 baseline migration이 `user`와
+  `game_history`만 만들어 hobby table이 없었기 때문입니다. dump에서 `espresso_bean`, `espresso_history`,
+  `espresso_round`, `recipe`, `word`를 schema와 데이터까지 복원하고(`backups/legacy-hobby.sql`),
+  `CreateLegacyHobbySchema1795000000002`를 추가해 새 DB에서도 같은 table이 만들어지게 했습니다.
+- import/index가 다시 만드는 `resume_source_items`, `resume_vector_chunks`, `resume_import_batches`와 현재
+  API에 없는 `espresso_beans`, `espresso_raw_entries`, `geek_news_article`, `poke_lounge_*`는 옮기지 않았습니다.
+  원본 dump는 `backups/`와 `~/icecoke-ops/docker/backups/`에, Ubuntu의 마지막 `.env`는
+  `backups/icenux-legacy.env`에 남겼습니다. Ubuntu PostgreSQL 자체는 삭제하지 않았습니다.
+- 2026-10-25 `api.icecoke.kr` DNS를 Mac mini tunnel `vscoke-api-mac`으로 옮기고 `pnpm smoke:api:remote`를
+  통과했습니다. 옛 Secret에서 `CORS_ORIGINS`, `RAG_PUBLIC_CHAT_ORIGINS`, `RAG_CHAT_MODEL`,
+  `RAG_CODEX_REASONING_EFFORT`를 새 Secret으로 옮겼습니다. `NOTIFY_*`는 Ubuntu의 localhost 알림 서비스가
+  이미 없어 비워 두었습니다.
 - 주의: `apps/api/**`를 건드린 push는 배포 workflow를 자동 실행하고, workflow는 GitHub Secret으로 env
-  파일을 다시 씁니다. Secret이 옛 Ubuntu 값인 채로 실행되면 `postgres.env`의 계정이 data volume의 계정과
-  달라져 healthcheck와 import가 실패합니다(2026-10-24 run 40080041431). Secret을 먼저 갱신해야 합니다.
+  파일을 다시 씁니다. Secret이 옛 값인 채로 실행되면 `postgres.env`의 계정이 data volume의 계정과 달라져
+  healthcheck와 import가 실패합니다(2026-10-24 run 40080041431). Secret을 먼저 갱신해야 합니다.
 
 ## 요약
 

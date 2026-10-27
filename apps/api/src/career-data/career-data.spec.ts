@@ -1,3 +1,4 @@
+import type { DataSource } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import {
@@ -9,10 +10,11 @@ import { CareerDataGuard } from './career-data.guard';
 import {
   CareerDataUpsertDto,
   ResumeVersionSaveDto,
+  ResumeDetailSaveDto,
   validEvidence,
   validMetric,
 } from './career-data.dto';
-import { careerContentHash } from './career-data.service';
+import { CareerDataService, careerContentHash } from './career-data.service';
 const fixture = {
   key: 'pe',
   kind: 'base',
@@ -155,6 +157,39 @@ describe('경력 관리 입력과 인증', () => {
       }),
     ).toBe(true);
     expect(validMetric({ value: 3, unit: 'ms' })).toBe(false);
+  });
+  it('공유 상세 RAG 투영은 특정 언어로 한정하지 않는다', async () => {
+    const query = jest
+      .fn<Promise<Record<string, unknown>[]>, [string, unknown[]?]>()
+      .mockImplementation((sql) =>
+        Promise.resolve(
+          sql.startsWith('INSERT INTO resume_source_items')
+            ? [{ id: 'source' }]
+            : sql.startsWith('INSERT INTO resume_details')
+              ? [{ slug: 'shared-detail' }]
+              : [],
+        ),
+      );
+    const db = {
+      transaction: (
+        work: (manager: { query: typeof query }) => Promise<unknown>,
+      ) => work({ query }),
+    } as unknown as DataSource;
+    await new CareerDataService(db).saveDetail(
+      'shared-detail',
+      plainToInstance(ResumeDetailSaveDto, {
+        expectedRevision: 0,
+        title: 'Shared detail',
+        content: '# Shared detail',
+        visibility: 'public',
+        dependencies: [],
+      }),
+    );
+    const insert = query.mock.calls.find(([sql]) =>
+      sql.startsWith('INSERT INTO resume_source_items'),
+    );
+    expect(insert?.[1]?.[0]).toBe('project_detail');
+    expect(insert?.[1]?.[4]).toBeNull();
   });
   it('hash는 object 키 순서와 무관하고 본문 변경을 구분한다', () => {
     expect(careerContentHash({ a: 1, b: 2 })).toBe(

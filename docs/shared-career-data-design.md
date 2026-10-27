@@ -130,6 +130,8 @@ career_data에 한해 (sourceType,sourceKey) WHERE isCurrent=true unique를 강�
 독립 사실 sourceKey=career-fact/<fact UUID>/ko-KR, itemType=career_fact.
 DB 상세의 sourceKey=resume-detail/<slug>, itemType=project_detail, metadata.slug로 연결한다.
 이 경우 resumeId/resumeVersionId는 null이며 공개 상세와 의존성 조건으로 소비를 제한한다.
+상세 MDX는 기존과 같이 언어 공통 자료이므로 파생 원문의 locale은 null이다. 독립 경력 사실의
+ko-KR 및 이력서 버전의 문서 locale과 구분한다.
 contentHash는 공개 본문/공개 메타정보/원본 ID·revision을 포함하고 내부 메모는 노출하지 않는다.
 관리 저장 서비스가 발행 원문을 생성·원자 교체하며 importer가 이를 임의로 덮어쓰지 않는다.
 철회 시 current 행은 비활성 tombstone으로 남겨 과거 active 행이 다시 선택되지 않게 한다.

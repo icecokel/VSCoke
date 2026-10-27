@@ -629,7 +629,7 @@ export class CareerDataService {
           itemType: 'project_detail',
           title: input.title,
           body: input.content,
-          locale: 'ko-KR',
+          locale: null,
           metadata: { slug, revision },
           isPublic: input.visibility === 'public',
         },
@@ -700,7 +700,7 @@ export class CareerDataService {
       itemType: string;
       title: string;
       body: string;
-      locale: string;
+      locale: string | null;
       metadata: Record<string, unknown>;
       resumeId?: string;
       resumeVersionId?: string;

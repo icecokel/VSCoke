@@ -17,7 +17,10 @@ import {
   ResumeVersionSaveDto,
 } from '../src/career-data/career-data.dto';
 import { ResumeService } from '../src/resume/resume.service';
-import { legacyDetailCondition } from '../src/resume-rag/resume-source-eligibility';
+import {
+  careerSourceCondition,
+  legacyDetailCondition,
+} from '../src/resume-rag/resume-source-eligibility';
 import { createLegacyResumeTables } from './support/synthetic-resume-migration';
 
 const schemaName = `resume_${randomUUID().replaceAll('-', '')}_test`;
@@ -556,6 +559,14 @@ describe('공통 경력 PostgreSQL 원자적 저장', () => {
         dependencies: [{ kind: 'fact', id: factId, revision: 1 }],
       }),
     );
+    for (const locale of ['en-US', 'ja-JP']) {
+      expect(
+        await db.query(
+          `SELECT source.locale FROM resume_source_items source WHERE source."sourceType"='career_data' AND source."sourceKey"=$1 AND source.status='active' AND ${careerSourceCondition('source')} AND (source.locale IS NULL OR source.locale=$2)`,
+          [`resume-detail/${slug}`, locale],
+        ),
+      ).toEqual([{ locale: null }]);
+    }
     const eligible = () =>
       db.query<{ id: string }[]>(
         `SELECT source.id FROM resume_source_items source WHERE source.id=ANY($1::uuid[]) AND ${legacyDetailCondition('source')} ORDER BY source.id`,

@@ -4,6 +4,7 @@ import {
   ApiInternalServerErrorResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
+  ApiServiceUnavailableResponse,
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
@@ -13,6 +14,7 @@ import {
   ResumeDetailSummaryDto,
   ResumeDocumentDto,
   ResumeQueryDto,
+  ResumePreviewDto,
   ResumeSlugParamsDto,
 } from './resume.dto';
 import { ResumeService } from './resume.service';
@@ -39,7 +41,26 @@ export class ResumeController {
     type: ApiErrorResponseDto,
   })
   getDocument(@Query() query: ResumeQueryDto): Promise<ResumeDocumentDto> {
-    return this.resumeService.getDocument(query.locale);
+    return this.resumeService.getDocument(query.locale, query.resume);
+  }
+
+  @ApiServiceUnavailableResponse({
+    description: '연결 상세를 구성할 수 없음. 다시 시도 필요',
+    type: ApiErrorResponseDto,
+  })
+  @Get('preview')
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({ summary: '선택 문서와 상세의 원자적 PDF 미리보기 조회' })
+  @ApiOkResponse({
+    description: '문서와 상세 snapshot 조회 성공',
+    type: ResumePreviewDto,
+  })
+  @ApiNotFoundResponse({
+    description: '공개 문서 또는 연결 상세 없음',
+    type: ApiErrorResponseDto,
+  })
+  getPreview(@Query() query: ResumeQueryDto): Promise<ResumePreviewDto> {
+    return this.resumeService.getPreview(query.locale, query.resume);
   }
 
   @Get('details')

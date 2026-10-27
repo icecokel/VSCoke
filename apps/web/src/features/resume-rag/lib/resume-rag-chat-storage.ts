@@ -53,26 +53,38 @@ const isStoredResumeRagChat = (value: unknown): value is StoredResumeRagChat => 
   );
 };
 
-export const createResumeRagChatStorageKey = (chatId: string) => `${STORAGE_KEY_PREFIX}${chatId}`;
+export const createResumeRagChatStorageKey = (chatId: string, resumeKey = "pe", locale = "ko-KR") =>
+  `${STORAGE_KEY_PREFIX}${resumeKey}.${locale}.${chatId}`;
 
-export const storeResumeRagChat = (chat: StoredResumeRagChat): boolean => {
+export const storeResumeRagChat = (
+  chat: StoredResumeRagChat,
+  resumeKey = "pe",
+  locale = "ko-KR",
+): boolean => {
   const storage = getSessionStorage();
   if (!storage) return false;
 
   try {
-    storage.setItem(createResumeRagChatStorageKey(chat.id), JSON.stringify(chat));
+    storage.setItem(
+      createResumeRagChatStorageKey(chat.id, resumeKey, locale),
+      JSON.stringify(chat),
+    );
     return true;
   } catch {
     return false;
   }
 };
 
-export const readResumeRagChat = (chatId: string): StoredResumeRagChat | null => {
+export const readResumeRagChat = (
+  chatId: string,
+  resumeKey = "pe",
+  locale = "ko-KR",
+): StoredResumeRagChat | null => {
   const storage = getSessionStorage();
   if (!storage) return null;
 
   try {
-    const raw = storage.getItem(createResumeRagChatStorageKey(chatId));
+    const raw = storage.getItem(createResumeRagChatStorageKey(chatId, resumeKey, locale));
     if (!raw) return null;
 
     const parsed = JSON.parse(raw) as unknown;

@@ -2,45 +2,57 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import { ResumePreviewActions } from "@/features/resume-preview/components/resume-preview-actions";
-import { getResumeDocument, getResumeDetailBySlug } from "@/services/resume-service";
+import { getResumePreview } from "@/services/resume-service";
+import { getResumeKey, type ResumeSearchParams } from "@/features/resume/lib/resume-selection";
+import { ApiError } from "@/lib/api-client";
+import { notFound } from "next/navigation";
+import { cache } from "react";
+
+interface ResumePreviewPageProps {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<ResumeSearchParams>;
+}
+
+const getPreview = cache(async (locale: string, key: string) => {
+  try {
+    return await getResumePreview(locale, key);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) notFound();
+    throw error;
+  }
+});
 
 export const dynamic = "force-dynamic";
 
-export const generateMetadata = async (): Promise<Metadata> => {
+export const generateMetadata = async ({
+  params,
+  searchParams,
+}: ResumePreviewPageProps): Promise<Metadata> => {
+  const { locale } = await params;
+  const { document } = await getPreview(locale, getResumeKey((await searchParams).resume));
   const t = await getTranslations("resumePreview");
 
   return {
-    title: t("metaTitle"),
+    title: `${document.title} · ${t("metaTitle")}`,
     description: t("metaDescription"),
   };
 };
 
-const ResumePreviewPage = async ({ params }: { params: Promise<{ locale: string }> }) => {
+const ResumePreviewPage = async ({ params, searchParams }: ResumePreviewPageProps) => {
   const { locale } = await params;
-  const [t, tProfile, tResume, document] = await Promise.all([
+  const key = getResumeKey((await searchParams).resume);
+  const [t, tProfile, tResume, { document, details: careerDetails }] = await Promise.all([
     getTranslations("resumePreview"),
     getTranslations("profile"),
     getTranslations("resume"),
-    getResumeDocument(locale),
+    getPreview(locale, key),
   ]);
   const tDescription = await getTranslations("descriptionItem");
   const { contact, introduction } = document;
-  const detailSlugs = document.careers.flatMap(career =>
-    career.projects.flatMap(project => (project.fileRef ? [project.fileRef] : [])),
-  );
-  const careerDetails = await Promise.all(
-    detailSlugs.map(async slug => {
-      const detail = await getResumeDetailBySlug(slug);
-      if (!detail) {
-        throw new Error(`Resume detail missing: ${slug}`);
-      }
-      return detail;
-    }),
-  );
 
   return (
     <main className="resume-preview-page min-h-full bg-gray-800 px-3 py-4 text-gray-100 md:px-5 md:py-8">
-      <ResumePreviewActions />
+      <ResumePreviewActions resumeKey={key} locale={locale} />
 
       <article
         className="resume-preview-document mx-auto w-full max-w-[210mm] bg-beige-400 px-6 py-8 text-gray-900 shadow-2xl shadow-black/30 sm:px-10 sm:py-12"

@@ -1,5 +1,6 @@
 "use client";
 
+import { resumePath } from "@/features/resume/lib/resume-selection";
 import { ArrowLeftIcon, DownloadIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -19,7 +20,13 @@ import { downloadResumePdf } from "@/features/resume-preview/lib/resume-pdf";
 
 type PdfDownloadState = "idle" | "saving" | "error";
 
-export const ResumePreviewActions = () => {
+export const ResumePreviewActions = ({
+  resumeKey,
+  locale,
+}: {
+  resumeKey: string;
+  locale: string;
+}) => {
   const t = useTranslations("resumePreview");
   const [downloadState, setDownloadState] = useState<PdfDownloadState>("idle");
   const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false);
@@ -40,7 +47,7 @@ export const ResumePreviewActions = () => {
     setDownloadState("saving");
 
     try {
-      await downloadResumePdf(resumeDocument, careerDetailDocuments);
+      await downloadResumePdf(resumeDocument, careerDetailDocuments, { key: resumeKey, locale });
       setDownloadState("idle");
     } catch {
       setDownloadState("error");
@@ -108,7 +115,7 @@ export const ResumePreviewActions = () => {
         </DialogContent>
       </Dialog>
       <CustomLink
-        href="/readme"
+        href={resumePath("/readme", resumeKey)}
         title="README"
         className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-md border border-gray-600 px-3 text-sm font-medium text-gray-100 transition-colors hover:border-gray-400 hover:bg-gray-800"
       >

@@ -9,6 +9,7 @@ type ChatRequest = {
   conversationId: string;
   requestId: string;
   history?: unknown;
+  resumeKey?: string;
 };
 
 for (const channel of ["main", "resume"] as const) {
@@ -148,4 +149,50 @@ test("저장된 대화 복원이 실패하면 맥락 없는 질문을 보내지 
   await expect(page.getByText(ko.resumeRag.conversation.restoreError)).toBeVisible();
   await page.getByRole("textbox", { name: ko.resumeRag.composerLabel }).fill("그 프로젝트 성과는?");
   await expect(page.getByRole("button", { name: ko.resumeRag.submit, exact: true })).toBeDisabled();
+});
+
+test("문서를 전환하면 대화 key와 복원 이력이 섞이지 않는다", async ({ page }) => {
+  const storage = await mockResumeConversationStorage(page);
+  const requests: ChatRequest[] = [];
+  await page.route("**/resume-rag/chat", async route => {
+    const body = route.request().postDataJSON() as ChatRequest;
+    requests.push(body);
+    const conversation = storage.conversations.get(body.conversationId)!;
+    expect(body.resumeKey).toBe(conversation.resumeKey);
+    const turn = {
+      id: randomUUID(),
+      requestId: body.requestId,
+      question: body.question,
+      answer: `Fixture ${body.resumeKey} answer`,
+      grounded: true,
+      sources: [] as [],
+      createdAt: new Date().toISOString(),
+    };
+    conversation.turns.push(turn);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        success: true,
+        data: { ...turn, conversationId: body.conversationId },
+      }),
+    });
+  });
+  const ask = async (key: string) => {
+    await gotoWithRetry(page, `/ko-KR/resume/question?resume=${key}`);
+    const input = page.getByRole("textbox", { name: ko.resumeRag.composerLabel });
+    await input.fill("프로젝트를 설명해줘");
+    const submit = page.getByRole("button", { name: ko.resumeRag.submit, exact: true });
+    await expect(submit).toBeEnabled();
+    await submit.click();
+    await expect(page.getByText(`Fixture ${key} answer`, { exact: true })).toBeVisible();
+  };
+  await ask("pe");
+  await ask("fe");
+  await expect(page.getByText("Fixture pe answer", { exact: true })).toHaveCount(0);
+  expect(requests[0].conversationId).not.toBe(requests[1].conversationId);
+  await gotoWithRetry(page, "/ko-KR/resume/question?resume=pe");
+  await expect(page.getByText("Fixture pe answer", { exact: true })).toBeVisible();
+  await expect(page.getByText("Fixture fe answer", { exact: true })).toHaveCount(0);
+  expect(storage.restored).toContain(requests[0].conversationId);
 });

@@ -11,7 +11,7 @@ import {
 import { ResumeSourceItemChunker } from './indexing/resume-source-item-chunker';
 
 describe('채팅 정의', () => {
-  it('공개 경험은 이력서 채팅에서만 쓰고 근거와 한계를 한 청크에 보존한다', () => {
+  it('이전 파일 원문은 보존하지만 공통 DB 이력서 채팅 근거에서 제외한다', () => {
     const manifest = createResumeImportManifest({
       repoRoot: resolve(__dirname, '../../../..'),
     });
@@ -19,7 +19,7 @@ describe('채팅 정의', () => {
     if (!entry) throw new Error('공개 경험 원본 없음');
     expect(entry.sourceType).toBe('app_resume');
     expect(entry.locale).toBeUndefined();
-    expect(chatDefinitions.resume.itemTypes).toContain(entry.itemType);
+    expect(chatDefinitions.resume.itemTypes).not.toContain(entry.itemType);
     expect(chatDefinitions.main.itemTypes).not.toContain(entry.itemType);
 
     const items = loadResumeSourceItemsFromEntry(entry);
@@ -77,7 +77,12 @@ describe('채팅 정의', () => {
           definition.sourceTypes.includes(entry.sourceType) &&
           definition.itemTypes.includes(entry.itemType),
       );
-      expect(channels).toHaveLength(1);
+      expect(channels).toHaveLength(
+        entry.itemType === 'public_resume_detail' ||
+          entry.itemType === 'public_site_guide'
+          ? 1
+          : 0,
+      );
     }
     const guide = manifest.find(
       (entry) => entry.itemType === 'public_site_guide',

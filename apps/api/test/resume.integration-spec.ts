@@ -1,174 +1,573 @@
 import { randomUUID } from 'node:crypto';
-import type { Server } from 'node:http';
-import { ValidationPipe, type INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import request from 'supertest';
+import { plainToInstance } from 'class-transformer';
+import {
+  ConflictException,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { createTestDataSourceOptions } from '../src/test-data-source';
-import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
-import { CreateResumeContent1795000000003 } from '../src/migrations/1795000000003-create-resume-content';
+import { CreateResumeRagTables1760000000000 } from '../src/migrations/1760000000000-create-resume-rag-tables';
+import { CreateResumeChatConversations1795000000000 } from '../src/migrations/1795000000000-create-resume-chat-conversations';
+import { CreateSharedCareerData1795000000004 } from '../src/migrations/1795000000004-create-shared-career-data';
+import { CareerDataService } from '../src/career-data/career-data.service';
 import {
-  resumeDetailSnapshot,
-  resumeDocumentSnapshot,
-} from '../src/migrations/data/resume-content-snapshot';
-import { ResumeDocument } from '../src/resume/entities/resume-document.entity';
-import { ResumeDetail } from '../src/resume/entities/resume-detail.entity';
-import { ResumeController } from '../src/resume/resume.controller';
+  CareerDataUpsertDto,
+  ResumeDetailSaveDto,
+  ResumeVersionSaveDto,
+} from '../src/career-data/career-data.dto';
 import { ResumeService } from '../src/resume/resume.service';
+import { createLegacyResumeTables } from './support/synthetic-resume-migration';
 
 const schemaName = `resume_${randomUUID().replaceAll('-', '')}_test`;
+const content = {
+  name: 'Synthetic Person',
+  title: 'Synthetic Resume',
+  contact: { email: 'test@example.test', phone: '' },
+  introduction: ['Synthetic'],
+  totalExperience: '1 year',
+  lastUpdated: '2026.10',
+  careers: [],
+  education: [],
+  skills: [],
+  certifications: [],
+  links: [],
+  personalProjects: [],
+};
+const version = (key: string, overrides: Partial<ResumeVersionSaveDto> = {}) =>
+  plainToInstance(ResumeVersionSaveDto, {
+    key,
+    kind: 'base',
+    track: 'product-engineer',
+    locale: 'ko-KR',
+    visibility: 'public',
+    expectedRevision: 0,
+    expectedCurrentVersionId: null,
+    versionName: 'v1',
+    content,
+    dependencies: [],
+    ...overrides,
+  });
 
-describe('이력서 PostgreSQL migration·조회 통합', () => {
-  let dataSource: DataSource;
-  let app: INestApplication<Server>;
-  const migration = new CreateResumeContent1795000000003();
-  const migrate = async () => {
-    const runner = dataSource.createQueryRunner();
+describe('공통 경력 PostgreSQL 원자적 저장', () => {
+  let db: DataSource;
+  let writer: CareerDataService;
+  let reader: ResumeService;
+  beforeAll(async () => {
+    db = new DataSource({
+      ...createTestDataSourceOptions(),
+      type: 'postgres',
+      schema: schemaName,
+      entities: [],
+      migrations: [],
+      extra: { options: `-c search_path=${schemaName},public` },
+    });
+    await db.initialize();
+    await db.query(`CREATE SCHEMA "${schemaName}"`);
+    const runner = db.createQueryRunner();
     try {
-      await migration.up(runner);
+      await new CreateResumeRagTables1760000000000().up(runner);
+      await new CreateResumeChatConversations1795000000000().up(runner);
+      await createLegacyResumeTables(runner);
+      for (const locale of ['ko-KR', 'en-US', 'ja-JP']) {
+        await runner.query(
+          'INSERT INTO resume_documents(locale,content) VALUES($1,$2::jsonb)',
+          [locale, JSON.stringify(content)],
+        );
+      }
+      await runner.query(
+        "INSERT INTO resume_details(slug,title,content) VALUES('synthetic-legacy-detail','Synthetic legacy detail','# Synthetic legacy detail')",
+      );
+      await new CreateSharedCareerData1795000000004().up(runner);
     } finally {
       await runner.release();
     }
-  };
-
-  beforeAll(async () => {
-    if (!/^resume_[a-f0-9]{32}_test$/.test(schemaName)) {
-      throw new Error('Refusing to manage a non-disposable test schema');
+    writer = new CareerDataService(db);
+    reader = new ResumeService(db);
+  });
+  afterAll(async () => {
+    if (db?.isInitialized) {
+      await db.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
+      await db.destroy();
     }
-    dataSource = new DataSource({
-      ...createTestDataSourceOptions(),
-      schema: schemaName,
-      entities: [ResumeDocument, ResumeDetail],
-      migrations: [],
-      extra: { options: `-c search_path=${schemaName}` },
-    });
-    await dataSource.initialize();
-    await dataSource.query(`CREATE SCHEMA "${schemaName}"`);
-    await migrate();
-    const module = await Test.createTestingModule({
-      controllers: [ResumeController],
-      providers: [
-        ResumeService,
+  });
+  const key = () => `test-${randomUUID()}`;
+  const core = async () => {
+    const experienceId = randomUUID(),
+      factId = randomUUID(),
+      bulletId = randomUUID(),
+      keywordId = randomUUID();
+    const batch = plainToInstance(CareerDataUpsertDto, {
+      experiences: [
         {
-          provide: getRepositoryToken(ResumeDocument),
-          useValue: dataSource.getRepository(ResumeDocument),
-        },
-        {
-          provide: getRepositoryToken(ResumeDetail),
-          useValue: dataSource.getRepository(ResumeDetail),
+          id: experienceId,
+          expectedRevision: 0,
+          company: 'Synthetic Co',
+          title: 'Internal project',
+          publicTitle: 'Public project',
         },
       ],
-    }).compile();
-    app = module.createNestApplication<INestApplication<Server>>({
-      logger: false,
+      facts: [
+        {
+          id: factId,
+          experienceId,
+          expectedRevision: 0,
+          kind: 'result',
+          content: 'Synthetic fact',
+          verificationStatus: 'confirmed',
+          visibility: 'public',
+          evidence: [
+            {
+              kind: 'document',
+              locator: 'private/internal.md',
+              as_of: '2026-10-01',
+              line: 12,
+            },
+          ],
+        },
+      ],
+      keywords: [
+        {
+          id: keywordId,
+          expectedRevision: 0,
+          key: `tech-${randomUUID()}`,
+          label: 'Synthetic technology',
+          kind: 'technology',
+          aliases: [],
+        },
+      ],
+      bullets: [
+        {
+          id: bulletId,
+          experienceId,
+          expectedRevision: 0,
+          text: 'Synthetic bullet',
+          status: 'ready',
+          visibility: 'public',
+          facts: [{ factId, factRevision: 1 }],
+          keywordIds: [keywordId],
+          sourceRefs: [
+            { path: 'private/internal.md', line: 12, hash: 'original' },
+          ],
+          reviewNote: 'internal note',
+        },
+      ],
     });
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
+    await writer.upsertData(batch);
+    return { experienceId, factId, bulletId, keywordId, batch };
+  };
+  it('legacy 본문을 PE로 재해석하지 않고 공유 표는 비어 있으며 상세는 private', async () => {
+    await expect(reader.getDocument('ko-KR')).rejects.toThrow(
+      NotFoundException,
+    );
+    expect(await reader.getDetails()).toEqual([]);
+    expect((await writer.getData()).facts).toEqual([]);
+    expect(
+      await db.query('SELECT count(*)::int AS count FROM resume_documents'),
+    ).toEqual([{ count: 3 }]);
+  });
+  it('UUIDv5 보존과 관계 revision, null 유일성·복합 FK·불변 버전을 강제한다', async () => {
+    const { bulletId, experienceId, factId } = await core();
+    const saved = await writer.saveVersion(
+      version(key(), {
+        dependencies: [{ kind: 'bullet', id: bulletId, revision: 1 }],
       }),
     );
-    app.useGlobalInterceptors(new TransformInterceptor());
-    await app.init();
+    const deps = await db.query<{ id: string; source_snapshot: unknown }[]>(
+      'SELECT * FROM resume_content_dependencies WHERE resume_version_id=$1',
+      [saved.versionId],
+    );
+    expect(deps).toHaveLength(4);
+    await expect(
+      db.query('UPDATE resume_versions SET version_name=$1 WHERE id=$2', [
+        'bad',
+        saved.versionId,
+      ]),
+    ).rejects.toThrow('immutable');
+    await expect(
+      db.query(
+        'UPDATE resume_content_dependencies SET source_revision=2 WHERE id=$1',
+        [deps[0].id],
+      ),
+    ).rejects.toThrow('immutable');
+    await expect(
+      db.query(
+        'INSERT INTO resume_content_dependencies(resume_version_id,experience_id,source_revision,source_snapshot) VALUES($1,$2,1,$3)',
+        [saved.versionId, experienceId, {}],
+      ),
+    ).rejects.toThrow('duplicate');
+    await expect(
+      db.query(
+        'INSERT INTO career_bullet_facts(bullet_id,fact_id,experience_id,fact_revision) VALUES($1,$2,$3,1)',
+        [bulletId, factId, randomUUID()],
+      ),
+    ).rejects.toThrow();
+    const uuid5 = '5bb2635b-3510-51a8-8ded-0b9d3bbb3c76';
+    await writer.upsertData(
+      plainToInstance(CareerDataUpsertDto, {
+        experiences: [
+          {
+            id: uuid5,
+            expectedRevision: 0,
+            company: 'Synthetic',
+            title: 'Title',
+          },
+        ],
+        facts: [],
+        bullets: [],
+        keywords: [],
+      }),
+    );
+    expect(
+      await db.query('SELECT id FROM career_experiences WHERE id=$1', [uuid5]),
+    ).toEqual([{ id: uuid5 }]);
   });
-
-  afterAll(async () => {
-    await app?.close();
-    if (!dataSource?.isInitialized) return;
-    try {
-      await dataSource.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
-    } finally {
-      await dataSource.destroy();
-    }
+  it('불렛 관계 실패와 배치 CAS 충돌은 원본 변경까지 rollback한다', async () => {
+    const { batch, experienceId } = await core();
+    const before = await db.query<unknown[]>(
+      'SELECT * FROM career_experiences WHERE id=$1',
+      [experienceId],
+    );
+    await expect(
+      writer.upsertData(
+        plainToInstance(CareerDataUpsertDto, {
+          experiences: [
+            {
+              ...batch.experiences[0],
+              expectedRevision: 1,
+              title: 'Should roll back',
+            },
+          ],
+          facts: [],
+          keywords: [],
+          bullets: [
+            {
+              ...batch.bullets[0],
+              expectedRevision: 1,
+              facts: [{ factId: randomUUID(), factRevision: 1 }],
+            },
+          ],
+        }),
+      ),
+    ).rejects.toThrow(ConflictException);
+    expect(
+      await db.query('SELECT * FROM career_experiences WHERE id=$1', [
+        experienceId,
+      ]),
+    ).toEqual(before);
+    await expect(writer.upsertData(batch)).rejects.toThrow(ConflictException);
   });
-
-  it('migration이 세 언어·모든 상세를 초기 적재하고 HTTP로 그대로 반환한다', async () => {
-    expect(await dataSource.getRepository(ResumeDocument).count()).toBe(3);
-    expect(await dataSource.getRepository(ResumeDetail).count()).toBe(10);
-    for (const document of resumeDocumentSnapshot) {
-      const response = await request(app.getHttpServer())
-        .get(`/resume?locale=${document.locale}`)
-        .expect(200);
-      expect(response.body).toEqual({ success: true, data: document });
-    }
-    for (const detail of resumeDetailSnapshot) {
-      const response = await request(app.getHttpServer())
-        .get(`/resume/details/${detail.slug}`)
-        .expect(200);
-      expect(response.body).toEqual({ success: true, data: detail });
-    }
-    const response = await request(app.getHttpServer())
-      .get('/resume/details')
-      .expect(200);
-    expect(response.body).toEqual({
-      success: true,
-      data: resumeDetailSnapshot.map(({ slug, title, startDate, endDate }) => ({
+  it('문서별 독립 버전, CAS, 같은 버전 재시도와 과거 재시도에서 current를 유지한다', async () => {
+    const pe = key(),
+      fe = key();
+    const firstPayload = version(pe);
+    const first = await writer.saveVersion(firstPayload);
+    expect((await writer.saveVersion(firstPayload)).versionId).toBe(
+      first.versionId,
+    );
+    const other = await writer.saveVersion(
+      version(fe, {
+        kind: 'targeted',
+        targetKey: 'synthetic-target',
+        parentVersionId: first.versionId,
+      }),
+    );
+    const second = await writer.saveVersion(
+      version(pe, {
+        expectedRevision: 1,
+        expectedCurrentVersionId: first.versionId,
+        versionName: 'v2',
+        parentVersionId: first.versionId,
+        content: { ...content, title: 'Next' },
+      }),
+    );
+    expect((await writer.saveVersion(firstPayload)).currentVersionId).toBe(
+      second.versionId,
+    );
+    expect((await reader.getDocument('ko-KR', fe)).versionId).toBe(
+      other.versionId,
+    );
+    expect((await reader.getDocument('ko-KR', pe)).title).toBe('Next');
+    await expect(
+      writer.saveVersion(version(pe, { versionName: 'v3' })),
+    ).rejects.toThrow(ConflictException);
+    await expect(
+      writer.saveVersion(
+        version(pe, { content: { ...content, title: 'Changed' } }),
+      ),
+    ).rejects.toThrow(ConflictException);
+    await expect(reader.getDocument('en-US', pe)).rejects.toThrow(
+      NotFoundException,
+    );
+    await expect(
+      db.query('UPDATE resumes SET current_version_id=$1 WHERE id=$2', [
+        other.versionId,
+        first.documentId,
+      ]),
+    ).rejects.toThrow();
+  });
+  it('동시 CAS 저장은 하나만 성공하며 실패한 버전이 남지 않는다', async () => {
+    const name = key();
+    const initial = await writer.saveVersion(version(name));
+    const results = await Promise.allSettled(
+      ['v2', 'v3'].map((versionName) =>
+        writer.saveVersion(
+          version(name, {
+            versionName,
+            expectedRevision: 1,
+            expectedCurrentVersionId: initial.versionId,
+          }),
+        ),
+      ),
+    );
+    expect(
+      results.filter((result) => result.status === 'fulfilled'),
+    ).toHaveLength(1);
+    expect(
+      await db.query(
+        'SELECT count(*)::int AS count FROM resume_versions WHERE resume_id=$1',
+        [initial.documentId],
+      ),
+    ).toEqual([{ count: 2 }]);
+  });
+  it('일반 원본 수정은 완성 문구·snapshot을 유지하고 명시적 철회는 문서/상세/RAG를 차단한다', async () => {
+    const { batch, bulletId, factId } = await core();
+    const name = key();
+    const slug = key();
+    const saved = await writer.saveVersion(
+      version(name, {
+        dependencies: [{ kind: 'bullet', id: bulletId, revision: 1 }],
+        sourceRef: { path: 'private/source' },
+      }),
+    );
+    await writer.saveDetail(
+      slug,
+      plainToInstance(ResumeDetailSaveDto, {
+        expectedRevision: 0,
+        title: 'Synthetic detail',
+        content: '# Synthetic',
+        visibility: 'public',
+        dependencies: [{ kind: 'fact', id: factId, revision: 1 }],
+      }),
+    );
+    const published = await writer.publishFact(factId, 1);
+    const response = await reader.getDocument('ko-KR', name);
+    expect(JSON.stringify(response)).not.toContain('private/source');
+    expect(JSON.stringify(response)).not.toContain('internal note');
+    const source = await db.query<{ metadata: unknown; bodyText: string }[]>(
+      'SELECT metadata,"bodyText" FROM resume_source_items WHERE id=$1',
+      [published.sourceItemId],
+    );
+    expect(JSON.stringify(source)).not.toContain('private/internal.md');
+    await writer.upsertData(
+      plainToInstance(CareerDataUpsertDto, {
+        experiences: [],
+        keywords: [],
+        bullets: [],
+        facts: [
+          {
+            ...batch.facts[0],
+            expectedRevision: 1,
+            content: 'Changed candidate',
+          },
+        ],
+      }),
+    );
+    expect((await reader.getDocument('ko-KR', name)).versionId).toBe(
+      saved.versionId,
+    );
+    expect(
+      await db.query('SELECT status FROM career_bullets WHERE id=$1', [
+        bulletId,
+      ]),
+    ).toEqual([{ status: 'needs_review' }]);
+    await writer.upsertData(
+      plainToInstance(CareerDataUpsertDto, {
+        experiences: [],
+        keywords: [],
+        bullets: [],
+        facts: [
+          { ...batch.facts[0], expectedRevision: 2, visibility: 'private' },
+        ],
+      }),
+    );
+    await expect(reader.getDocument('ko-KR', name)).rejects.toThrow(
+      NotFoundException,
+    );
+    await expect(reader.getDetail(slug)).rejects.toThrow(NotFoundException);
+    expect(
+      await db.query(
+        `SELECT status,vectorize FROM resume_source_items WHERE "resumeId"=$1 OR id=$2`,
+        [saved.documentId, published.sourceItemId],
+      ),
+    ).toEqual(
+      expect.arrayContaining([{ status: 'inactive', vectorize: false }]),
+    );
+  });
+  it('비공개 ready 후보와 문서는 저장하되 공개 승격에 snapshot 공개 조건을 강제한다', async () => {
+    const id = randomUUID(),
+      factId = randomUUID(),
+      bulletId = randomUUID();
+    await writer.upsertData(
+      plainToInstance(CareerDataUpsertDto, {
+        experiences: [
+          {
+            id,
+            expectedRevision: 0,
+            company: 'Synthetic',
+            title: 'Private title',
+          },
+        ],
+        facts: [
+          {
+            id: factId,
+            experienceId: id,
+            expectedRevision: 0,
+            kind: 'action',
+            content: 'Private',
+            verificationStatus: 'confirmed',
+            evidence: [
+              { kind: 'document', locator: 'private', as_of: '2026-10-01' },
+            ],
+          },
+        ],
+        bullets: [
+          {
+            id: bulletId,
+            experienceId: id,
+            expectedRevision: 0,
+            text: 'Private',
+            status: 'ready',
+            facts: [{ factId, factRevision: 1 }],
+            keywordIds: [],
+          },
+        ],
+        keywords: [],
+      }),
+    );
+    const name = key();
+    const saved = await writer.saveVersion(
+      version(name, {
+        visibility: 'private',
+        dependencies: [{ kind: 'bullet', id: bulletId, revision: 1 }],
+      }),
+    );
+    await expect(reader.getDocument('ko-KR', name)).rejects.toThrow(
+      NotFoundException,
+    );
+    await expect(
+      writer.setVisibility(saved.documentId, {
+        expectedRevision: 1,
+        visibility: 'public',
+      }),
+    ).rejects.toThrow(ConflictException);
+    await expect(writer.publishFact(factId, 1)).rejects.toThrow(
+      ConflictException,
+    );
+  });
+  it('독립 사실은 측정 조건·표현 한계까지 4000자를 넘으면 부분 발행하지 않는다', async () => {
+    const { batch, factId } = await core();
+    await writer.upsertData(
+      plainToInstance(CareerDataUpsertDto, {
+        experiences: [],
+        bullets: [],
+        keywords: [],
+        facts: [
+          {
+            ...batch.facts[0],
+            expectedRevision: 1,
+            content: 'x'.repeat(3900),
+            claimBoundary: 'boundary'.repeat(100),
+          },
+        ],
+      }),
+    );
+    await expect(writer.publishFact(factId, 2)).rejects.toThrow('4000');
+    expect(
+      await db.query(
+        `SELECT count(*)::int AS count FROM resume_source_items WHERE "sourceKey"=$1`,
+        [`career-fact/${factId}/ko-KR`],
+      ),
+    ).toEqual([{ count: 0 }]);
+  });
+  it('문서 공개 철회와 재공개, detail CAS, preview의 상세 순서·누락 오류를 유지한다', async () => {
+    const slug = key();
+    await writer.saveDetail(
+      slug,
+      plainToInstance(ResumeDetailSaveDto, {
+        expectedRevision: 0,
+        title: 'Synthetic detail',
+        content: '# Synthetic',
+        visibility: 'public',
+        dependencies: [],
+      }),
+    );
+    const name = key();
+    const saved = await writer.saveVersion(
+      version(name, {
+        content: {
+          ...content,
+          careers: [
+            {
+              id: 'c',
+              company: 'Synthetic',
+              period: '2026',
+              employmentType: 'Full time',
+              role: 'Engineer',
+              projects: [
+                { id: 'p', title: 'Project', fileRef: slug, descriptions: [] },
+              ],
+            },
+          ],
+        },
+      }),
+    );
+    expect(
+      (await reader.getPreview('ko-KR', name)).details.map((row) => row.slug),
+    ).toEqual([slug]);
+    await writer.setVisibility(saved.documentId, {
+      expectedRevision: 1,
+      visibility: 'private',
+    });
+    await expect(reader.getDocument('ko-KR', name)).rejects.toThrow(
+      NotFoundException,
+    );
+    await writer.setVisibility(saved.documentId, {
+      expectedRevision: 2,
+      visibility: 'public',
+    });
+    expect((await reader.getDocument('ko-KR', name)).versionId).toBe(
+      saved.versionId,
+    );
+    expect(
+      await db.query(
+        `SELECT status FROM resume_source_items WHERE "resumeId"=$1 AND "isCurrent"`,
+        [saved.documentId],
+      ),
+    ).toEqual([{ status: 'active' }]);
+    await writer.saveDetail(
+      slug,
+      plainToInstance(ResumeDetailSaveDto, {
+        expectedRevision: 1,
+        title: 'Synthetic detail',
+        content: '# Synthetic',
+        visibility: 'private',
+        dependencies: [],
+      }),
+    );
+    await expect(reader.getPreview('ko-KR', name)).rejects.toThrow(
+      ServiceUnavailableException,
+    );
+    await expect(
+      writer.saveDetail(
         slug,
-        title,
-        startDate,
-        endDate,
-      })),
-    });
-  });
-
-  it('DB 수정은 재시작 없이 반영하고 migration 재실행은 기존 본문을 보존한다', async () => {
-    const documents = dataSource.getRepository(ResumeDocument);
-    const details = dataSource.getRepository(ResumeDetail);
-    const original = await documents.findOneByOrFail({ locale: 'ko-KR' });
-    const detail = resumeDetailSnapshot[0];
-    try {
-      await documents.update('ko-KR', {
-        content: { ...original.content, title: 'DB 수정 제목' },
-      });
-      await details.update(detail.slug, { content: '# DB 수정 상세' });
-      await migrate();
-      await migrate();
-      const documentResponse = await request(app.getHttpServer())
-        .get('/resume')
-        .expect(200);
-      expect(documentResponse.body).toMatchObject({
-        success: true,
-        data: { title: 'DB 수정 제목' },
-      });
-      const detailResponse = await request(app.getHttpServer())
-        .get(`/resume/details/${detail.slug}`)
-        .expect(200);
-      expect(detailResponse.body).toMatchObject({
-        success: true,
-        data: { content: '# DB 수정 상세' },
-      });
-      expect(await documents.count()).toBe(3);
-      expect(await details.count()).toBe(10);
-    } finally {
-      await documents.save(original);
-      await details.update(detail.slug, { content: detail.content });
-    }
-  });
-
-  it('없는 DB 행은 404이고 날짜 없는 상세는 null 필드를 노출하지 않는다', async () => {
-    const details = dataSource.getRepository(ResumeDetail);
-    await request(app.getHttpServer())
-      .get('/resume/details/missing-project')
-      .expect(404);
-    await details.insert({
-      slug: 'without-dates',
-      title: '날짜 없음',
-      content: '# 본문',
-      startDate: null,
-      endDate: null,
-    });
-    try {
-      const response = await request(app.getHttpServer())
-        .get('/resume/details/without-dates')
-        .expect(200);
-      expect(response.body).toEqual({
-        success: true,
-        data: { slug: 'without-dates', title: '날짜 없음', content: '# 본문' },
-      });
-    } finally {
-      await details.delete('without-dates');
-    }
+        plainToInstance(ResumeDetailSaveDto, {
+          expectedRevision: 1,
+          title: 'Stale',
+          content: '',
+          dependencies: [],
+        }),
+      ),
+    ).rejects.toThrow(ConflictException);
   });
 });

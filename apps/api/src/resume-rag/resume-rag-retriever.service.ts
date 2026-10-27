@@ -1,22 +1,38 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  assertPublicResume,
+  careerSourceCondition,
+  legacyDetailCondition,
+  selectedResumeSourceCondition,
+} from './resume-source-eligibility';
 import type { EmbeddingProvider } from './ai/embedding-provider';
 import {
   RESUME_RAG_EMBEDDING_PROVIDER,
   assertEmbeddingResultMatches,
 } from './ai/embedding-provider';
-import { requireEmbeddingModelConfig } from './resume-rag.config';
+import {
+  RESUME_RAG_RETRIEVED_CHUNK_MAX_CHARS,
+  requireEmbeddingModelConfig,
+} from './resume-rag.config';
 import { getResumeChunkConfigHash } from './indexing/resume-index-profile';
-import { RESUME_CHUNKER_VERSION } from './indexing/resume-source-item-chunker';
+import {
+  RESUME_CHUNKER_VERSION,
+  ResumeSourceItemChunker,
+} from './indexing/resume-source-item-chunker';
 import { DataSource } from 'typeorm';
 import { RESUME_RAG_CONFIG, type ResumeRagConfig } from './resume-rag.config';
 import { ResumeRagKeywordService } from './resume-rag-keyword.service';
-import { normalizeResumeRagSearchText } from './resume-rag-keyword-gate';
+import {
+  createResumeRagQueryTokens,
+  normalizeResumeRagSearchText,
+} from './resume-rag-keyword-gate';
 import { chatDefinitions, type ChatChannel } from './chat-definition';
 
 export type ResumeRagRetrieveRequest = {
   channel: ChatChannel;
   question: string;
   locale: string;
+  resumeKey?: string;
 };
 
 export type RetrievedResumeChunk = {
@@ -72,7 +88,11 @@ const toSourceItemRow = (value: unknown): ResumeSourceItemRow | null => {
   };
 };
 
-const scoreRow = (row: ResumeSourceItemRow, tokens: string[]): number => {
+const scoreRow = (
+  row: ResumeSourceItemRow,
+  tokens: string[],
+  queryTokens: string[],
+): number => {
   if (tokens.length === 0) return 0;
 
   const title = normalizeResumeRagSearchText(row.title);
@@ -85,7 +105,12 @@ const scoreRow = (row: ResumeSourceItemRow, tokens: string[]): number => {
   const titleMatches = matchedTokens.filter((token) =>
     title.includes(token),
   ).length;
-  const baseScore = matchedTokens.length / tokens.length;
+  const directMatches = queryTokens.filter((token) =>
+    searchableText.includes(token),
+  );
+  const directScore =
+    queryTokens.length > 0 ? directMatches.length / queryTokens.length : 0;
+  const baseScore = Math.max(directScore, matchedTokens.length / tokens.length);
   const titleBoost = titleMatches > 0 ? 0.1 : 0;
 
   return Math.min(1, baseScore + titleBoost);
@@ -114,6 +139,17 @@ export class ResumeRagRetrieverService {
     @Inject(RESUME_RAG_EMBEDDING_PROVIDER)
     private readonly embeddingProvider: EmbeddingProvider,
   ) {}
+
+  async assertSelection(request: {
+    locale: string;
+    resumeKey?: string;
+  }): Promise<void> {
+    await assertPublicResume(
+      (sql, parameters) => this.dataSource.query(sql, parameters),
+      request.resumeKey ?? 'pe',
+      request.locale,
+    );
+  }
 
   async retrieve(
     request: ResumeRagRetrieveRequest,
@@ -158,10 +194,14 @@ export class ResumeRagRetrieverService {
           FROM resume_source_items
           WHERE "status" <> 'superseded'
             AND "sourceType" = ANY($3)
+            AND ("sourceType" <> 'career_data' OR "isCurrent" = TRUE)
           ORDER BY "sourceType", "sourceKey", "updatedAt" DESC, "id" DESC
         ) AS current_items
         WHERE "status" = 'active'
           AND "itemType" = ANY($4)
+          AND ${careerSourceCondition('current_items')}
+          AND ${legacyDetailCondition('current_items')}
+          AND ($5::varchar IS NULL OR ${selectedResumeSourceCondition('current_items', '$5', '$2')})
           AND "vectorize" = TRUE
           AND "visibility" = 'public'
           AND "visibility" = ANY($1)
@@ -177,6 +217,7 @@ export class ResumeRagRetrieverService {
         request.locale || null,
         this.allowedSourceTypes(request.channel),
         chatDefinitions[request.channel].itemTypes,
+        request.channel === 'resume' ? (request.resumeKey ?? 'pe') : null,
       ],
     );
 
@@ -185,10 +226,37 @@ export class ResumeRagRetrieverService {
     return rows
       .map(toSourceItemRow)
       .filter((row): row is ResumeSourceItemRow => row !== null)
+      .flatMap((row) => {
+        const chunkSize = Math.min(
+          this.config.chunkSize,
+          RESUME_RAG_RETRIEVED_CHUNK_MAX_CHARS,
+        );
+        const chunks = new ResumeSourceItemChunker().chunk(
+          {
+            sourceItemId: row.id,
+            bodyText: row.bodyText,
+            metadata: row.metadata,
+          },
+          {
+            chunkSize,
+            chunkOverlap: Math.min(this.config.chunkOverlap, chunkSize - 1),
+          },
+        );
+        return chunks.map((chunk, index) => ({
+          ...row,
+          id: chunks.length === 1 ? row.id : `${row.id}:${index}`,
+          bodyText: chunk.content,
+          metadata: chunk.citationMetadata,
+        }));
+      })
       .map(
         (row): ScoredResumeSourceItem => ({
           ...row,
-          score: scoreRow(row, tokens),
+          score: scoreRow(
+            row,
+            tokens,
+            createResumeRagQueryTokens(request.question),
+          ),
         }),
       )
       .filter((row) => row.score >= this.config.minSimilarity)
@@ -212,6 +280,7 @@ export class ResumeRagRetrieverService {
         SELECT DISTINCT ON ("sourceType", "sourceKey") *
         FROM resume_source_items
           WHERE "status" <> 'superseded' AND "sourceType" = ANY($2)
+            AND ("sourceType" <> 'career_data' OR "isCurrent" = TRUE)
         ORDER BY "sourceType", "sourceKey", "updatedAt" DESC, "id" DESC
       ), eligible AS MATERIALIZED (
         SELECT chunk.*, source.title AS "sourceTitle", source.metadata AS "sourceMetadata"
@@ -219,6 +288,9 @@ export class ResumeRagRetrieverService {
         INNER JOIN current_items source ON source.id = chunk."sourceItemId"
         WHERE source.status = 'active' AND source.vectorize = TRUE
           AND source."itemType" = ANY($12)
+          AND ${careerSourceCondition('source')}
+          AND ${legacyDetailCondition('source')}
+          AND ($13::varchar IS NULL OR ${selectedResumeSourceCondition('source', '$13', '$3')})
           AND source.visibility = 'public' AND source.visibility = ANY($1)
           AND chunk.status = 'active' AND chunk.visibility = 'public'
           AND ($3::varchar IS NULL OR source.locale IS NULL OR source.locale = $3
@@ -246,6 +318,7 @@ export class ResumeRagRetrieverService {
         this.config.vectorMinSimilarity ?? 0.3,
         this.config.topK * 3,
         chatDefinitions[request.channel].itemTypes,
+        request.channel === 'resume' ? (request.resumeKey ?? 'pe') : null,
       ],
     );
     if (!Array.isArray(rows)) return [];

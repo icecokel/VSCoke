@@ -1,5 +1,5 @@
-const resumePdfFileName = "sangmin-lee-resume.pdf";
-const resumeWithCareerDetailsPdfFileName = "sangmin-lee-resume-with-career-details.pdf";
+export const resumePdfFileName = (key: string, locale: string, includeDetails: boolean): string =>
+  `sangmin-lee-resume-${key}-${locale}${includeDetails ? "-with-career-details" : ""}.pdf`;
 const exportBackgroundColor = "#f7f6f3";
 const pageMarginY = 8;
 
@@ -115,6 +115,7 @@ const createPageCanvas = (canvas: HTMLCanvasElement, sourceY: number, sourceHeig
 export const downloadResumePdf = async (
   resumeDocument: HTMLElement,
   careerDetailDocuments: HTMLElement[] = [],
+  selection: { key: string; locale: string } = { key: "pe", locale: "ko-KR" },
 ) => {
   const pdfDocuments = [resumeDocument, ...careerDetailDocuments];
 
@@ -183,9 +184,7 @@ export const downloadResumePdf = async (
       canvas.height = 0;
     }
 
-    pdf.save(
-      careerDetailDocuments.length > 0 ? resumeWithCareerDetailsPdfFileName : resumePdfFileName,
-    );
+    pdf.save(resumePdfFileName(selection.key, selection.locale, careerDetailDocuments.length > 0));
   } finally {
     pdfDocuments.forEach(pdfDocument => {
       pdfDocument.classList.remove("resume-preview-document--exporting");

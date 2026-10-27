@@ -153,7 +153,10 @@ export const getResumeRagConfig = (
   chunkSize: parseOptionalInt(env.RAG_CHUNK_SIZE) ?? 1200,
   chunkOverlap: parseOptionalInt(env.RAG_CHUNK_OVERLAP) ?? 120,
   allowedVisibilities: splitCsv(env.RAG_ALLOWED_VISIBILITIES, ['public']),
-  allowedSourceTypes: splitCsv(env.RAG_ALLOWED_SOURCE_TYPES, ['app_resume']),
+  allowedSourceTypes: splitCsv(env.RAG_ALLOWED_SOURCE_TYPES, [
+    'app_resume',
+    'career_data',
+  ]),
 });
 
 export const requireEmbeddingModelConfig = (

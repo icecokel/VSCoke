@@ -1,9 +1,35 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsIn, IsString, IsOptional, Length, Matches } from 'class-validator';
 import type { ResumeChatChannel } from '../entities/resume-chat-conversation.entity';
 import { ResumeRagSourceDto } from './resume-rag-source.dto';
 
+export class ResumeConversationContextDto {
+  @ApiPropertyOptional({ enum: ['main', 'resume'] })
+  @IsOptional()
+  @IsIn(['main', 'resume'])
+  channel?: ResumeChatChannel;
+
+  @ApiPropertyOptional({ enum: ['ko-KR', 'en-US', 'ja-JP'] })
+  @IsOptional()
+  @IsIn(['ko-KR', 'en-US', 'ja-JP'])
+  locale?: string;
+
+  @ApiPropertyOptional({ example: 'pe', maxLength: 80 })
+  @IsOptional()
+  @IsString()
+  @Length(1, 80)
+  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  resumeKey?: string;
+}
+
 export class CreateResumeConversationDto {
+  @ApiPropertyOptional({ example: 'pe', maxLength: 80 })
+  @IsOptional()
+  @IsString()
+  @Length(1, 80)
+  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  resumeKey?: string;
+
   @ApiProperty({ enum: ['ko-KR', 'en-US', 'ja-JP'] })
   @IsString()
   @IsIn(['ko-KR', 'en-US', 'ja-JP'])

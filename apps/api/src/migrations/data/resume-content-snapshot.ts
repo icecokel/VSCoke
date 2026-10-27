@@ -1,10 +1,13 @@
 import type {
-  ResumeDocumentDto,
+  ResumeContentDto,
+  ResumeLocale,
   ResumeDetailDto,
 } from '../../resume/resume.dto';
 
 // 초기 공개 원본을 고정하여 migration 실행 시 웹 소스에 의존하지 않는다.
-export const resumeDocumentSnapshot: ResumeDocumentDto[] = [
+export const resumeDocumentSnapshot: (ResumeContentDto & {
+  locale: ResumeLocale;
+})[] = [
   {
     locale: 'ko-KR',
     name: '이상민',

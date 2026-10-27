@@ -1,5 +1,7 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+import { getResumeKey, resumePath } from "@/features/resume/lib/resume-selection";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { SearchPostsContext } from "@/contexts/app-provider";
@@ -18,6 +20,8 @@ const uniqueStrings = (values: string[]): string[] => {
 export const useSearchIndex = (): SearchItem[] => {
   const isJevEnabled = useBeatJevAvailability();
   const locale = useLocale();
+  const selection = useSearchParams().getAll("resume");
+  const resumeKey = getResumeKey(selection.length > 1 ? selection : selection[0]);
   const posts = useContext(SearchPostsContext);
   const tBlog = useTranslations("blog");
   const tProfile = useTranslations("profile");
@@ -26,9 +30,11 @@ export const useSearchIndex = (): SearchItem[] => {
   const tHobbyRecipes = useTranslations("hobby.recipes");
   const tHobbyEspresso = useTranslations("hobby.espresso");
   const [hobbyItems, setHobbyItems] = useState<SearchItem[]>([]);
-  const [resumeItems, setResumeItems] = useState<{ locale: string; items: SearchItem[] } | null>(
-    null,
-  );
+  const [resumeItems, setResumeItems] = useState<{
+    locale: string;
+    key: string;
+    items: SearchItem[];
+  } | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -60,7 +66,9 @@ export const useSearchIndex = (): SearchItem[] => {
   useEffect(() => {
     let isMounted = true;
 
-    fetch(`/api/resume-search-index?locale=${encodeURIComponent(locale)}`, { cache: "no-store" })
+    fetch(`/api/resume-search-index?${new URLSearchParams({ locale, resume: resumeKey })}`, {
+      cache: "no-store",
+    })
       .then(response => {
         if (!response.ok) {
           throw new Error(`Resume search index request failed: ${response.status}`);
@@ -68,7 +76,7 @@ export const useSearchIndex = (): SearchItem[] => {
         return response.json() as Promise<{ data: SearchItem[] }>;
       })
       .then(({ data }) => {
-        if (isMounted) setResumeItems({ locale, items: data });
+        if (isMounted) setResumeItems({ locale, key: resumeKey, items: data });
       })
       .catch(() => {
         if (isMounted) setResumeItems(null);
@@ -77,7 +85,7 @@ export const useSearchIndex = (): SearchItem[] => {
     return () => {
       isMounted = false;
     };
-  }, [locale]);
+  }, [locale, resumeKey]);
 
   return useMemo(() => {
     const blogLanding: SearchItem = {
@@ -140,7 +148,7 @@ export const useSearchIndex = (): SearchItem[] => {
       title: "README.md",
       description: tProfile("introduction"),
       keywords: uniqueStrings([tProfile("introduction"), tProfile("education"), tProfile("links")]),
-      path: "/readme",
+      path: resumePath("/readme", resumeKey),
       featured: true,
       priority: 450,
     };
@@ -158,7 +166,7 @@ export const useSearchIndex = (): SearchItem[] => {
         tResumeRag("title"),
         tResumeRag("subtitle"),
       ]),
-      path: "/resume/question",
+      path: resumePath("/resume/question", resumeKey),
       featured: true,
       priority: 445,
     };
@@ -207,7 +215,9 @@ export const useSearchIndex = (): SearchItem[] => {
     ];
 
     return [
-      ...(resumeItems?.locale === locale ? resumeItems.items : [profileLanding]),
+      ...(resumeItems?.locale === locale && resumeItems.key === resumeKey
+        ? resumeItems.items
+        : [profileLanding]),
       resumeQuestion,
       blogLanding,
       blogDashboard,
@@ -220,6 +230,7 @@ export const useSearchIndex = (): SearchItem[] => {
   }, [
     isJevEnabled,
     locale,
+    resumeKey,
     resumeItems,
     hobbyItems,
     posts,

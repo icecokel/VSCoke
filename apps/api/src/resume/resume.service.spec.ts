@@ -1,87 +1,140 @@
-import { NotFoundException } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { ResumeDetail } from './entities/resume-detail.entity';
-import { ResumeDocument } from './entities/resume-document.entity';
-import { resumeDocumentSnapshot } from '../migrations/data/resume-content-snapshot';
+import { NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { ResumeService } from './resume.service';
 
-describe('ResumeService', () => {
-  let service: ResumeService;
-  const documents = { findOneBy: jest.fn() };
-  const details = { find: jest.fn(), findOneBy: jest.fn() };
-
-  beforeEach(async () => {
-    jest.resetAllMocks();
-    const module = await Test.createTestingModule({
-      providers: [
-        ResumeService,
-        { provide: getRepositoryToken(ResumeDocument), useValue: documents },
-        { provide: getRepositoryToken(ResumeDetail), useValue: details },
-      ],
-    }).compile();
-    service = module.get(ResumeService);
-  });
-
-  it('언어 기본키와 DB 본문을 반환하고 매번 DB에서 다시 조회한다', async () => {
-    const { locale, ...content } = resumeDocumentSnapshot[0];
-    documents.findOneBy.mockResolvedValue({ locale, content });
-    expect(await service.getDocument(locale)).toEqual({ locale, ...content });
-    documents.findOneBy.mockResolvedValue({
-      locale,
-      content: { ...content, title: 'DB에서 수정한 제목' },
-    });
-    expect((await service.getDocument(locale)).title).toBe(
-      'DB에서 수정한 제목',
-    );
-    expect(documents.findOneBy).toHaveBeenCalledTimes(2);
-    expect(documents.findOneBy).toHaveBeenLastCalledWith({ locale });
-  });
-
-  it('목록에서 본문을 조회하지 않고 선택적 날짜를 생략한다', async () => {
-    details.find.mockResolvedValue([
-      { slug: 'a-project', title: '제목', startDate: null, endDate: null },
+const content = {
+  name: 'Synthetic',
+  title: 'PE',
+  contact: { email: 'a@example.test', phone: '' },
+  introduction: [],
+  totalExperience: '',
+  lastUpdated: '2026.10',
+  careers: [],
+  education: [],
+  skills: [],
+  certifications: [],
+  links: [],
+  personalProjects: [],
+};
+describe('ResumeService 공통 registry 조회', () => {
+  const query = jest.fn<Promise<unknown[]>, [string, unknown[]?]>();
+  const transaction = jest.fn<
+    Promise<unknown>,
+    [string, (manager: unknown) => Promise<unknown>]
+  >();
+  const service = new ResumeService({
+    manager: { query },
+    query,
+    transaction,
+  } as unknown as DataSource);
+  beforeEach(() => jest.resetAllMocks());
+  it('선택 key와 locale만 조회하고 공개 메타정보만 반환한다', async () => {
+    query.mockResolvedValue([
+      {
+        id: 'doc',
+        key: 'fe',
+        locale: 'en-US',
+        version_id: 'version',
+        version_name: 'v29',
+        content_hash: 'hash',
+        content,
+        source_ref: { secret: true },
+      },
     ]);
-    expect(await service.getDetails()).toEqual([
-      { slug: 'a-project', title: '제목' },
-    ]);
-    expect(details.find).toHaveBeenCalledWith({
-      select: { slug: true, title: true, startDate: true, endDate: true },
-      order: { slug: 'ASC' },
+    expect(await service.getDocument('en-US', 'fe')).toEqual({
+      ...content,
+      documentId: 'doc',
+      key: 'fe',
+      locale: 'en-US',
+      versionId: 'version',
+      versionName: 'v29',
+      contentHash: 'hash',
     });
+    expect(query.mock.calls[0][1]).toEqual(['fe', 'en-US']);
+    expect(query.mock.calls[0][0]).toContain("r.visibility='public'");
   });
-
-  it('상세 slug를 바인딩하고 MDX와 날짜를 그대로 반환한다', async () => {
-    const detail = {
-      slug: 'a-project',
-      title: '제목',
-      content: '# 신뢰된 MDX',
-      startDate: '2026.02',
-      endDate: '재직 중',
-    };
-    details.findOneBy.mockResolvedValue(detail);
-    expect(await service.getDetail(detail.slug)).toEqual(detail);
-    expect(details.findOneBy).toHaveBeenCalledWith({ slug: detail.slug });
-  });
-
-  it('없는 문서와 상세는 404로 처리한다', async () => {
-    documents.findOneBy.mockResolvedValue(null);
-    details.findOneBy.mockResolvedValue(null);
+  it('없는 현재 공개 문서에는 legacy fallback 없이 404', async () => {
+    query.mockResolvedValue([]);
     await expect(service.getDocument('ko-KR')).rejects.toThrow(
       NotFoundException,
     );
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+  it('preview는 한 repeatable-read manager로 중복 제거한 상세를 순서대로 읽는다', async () => {
+    const document = {
+      ...content,
+      careers: [
+        { projects: [{ fileRef: 'b' }, { fileRef: 'a' }, { fileRef: 'b' }] },
+      ],
+    };
+    query
+      .mockResolvedValueOnce([
+        {
+          id: 'doc',
+          key: 'pe',
+          locale: 'ko-KR',
+          version_id: 'v',
+          version_name: 'v1',
+          content_hash: 'h',
+          content: document,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          slug: 'b',
+          title: 'B',
+          content: 'B',
+          start_date: null,
+          end_date: null,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          slug: 'a',
+          title: 'A',
+          content: 'A',
+          start_date: null,
+          end_date: null,
+        },
+      ]);
+    transaction.mockImplementation(
+      (_isolation: string, work: (manager: unknown) => Promise<unknown>) =>
+        work({ query }),
+    );
+    const result = await service.getPreview('ko-KR');
+    expect(transaction.mock.calls[0][0]).toBe('REPEATABLE READ');
+    expect(result.details.map((detail) => detail.slug)).toEqual(['b', 'a']);
+    expect(result.details[0]).not.toHaveProperty('startDate');
+  });
+  it('문서는 있지만 연결 상세가 없으면 재시도 가능한 503', async () => {
+    query
+      .mockResolvedValueOnce([
+        {
+          id: 'doc',
+          key: 'pe',
+          locale: 'ko-KR',
+          version_id: 'v',
+          version_name: 'v1',
+          content_hash: 'h',
+          content: {
+            ...content,
+            careers: [{ projects: [{ fileRef: 'missing' }] }],
+          },
+        },
+      ])
+      .mockResolvedValueOnce([]);
+    transaction.mockImplementation((_isolation, work) => work({ query }));
+    await expect(service.getPreview('ko-KR')).rejects.toThrow(
+      ServiceUnavailableException,
+    );
+  });
+  it('누락 상세와 DB 실패는 그대로 전파한다', async () => {
+    query.mockResolvedValue([]);
     await expect(service.getDetail('missing')).rejects.toThrow(
       NotFoundException,
     );
-  });
-
-  it('DB 실패를 본문 fallback으로 감추지 않는다', async () => {
-    const error = new Error('database unavailable');
-    documents.findOneBy.mockRejectedValue(error);
-    details.find.mockRejectedValue(error);
-    details.findOneBy.mockRejectedValue(error);
+    const error = new Error('DB failed');
+    query.mockRejectedValue(error);
     await expect(service.getDocument('ko-KR')).rejects.toBe(error);
-    await expect(service.getDetails()).rejects.toBe(error);
-    await expect(service.getDetail('a-project')).rejects.toBe(error);
   });
 });

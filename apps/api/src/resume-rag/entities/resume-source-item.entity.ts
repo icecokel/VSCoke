@@ -20,6 +20,15 @@ export class ResumeSourceItem {
   id: string;
 
   @Column({ type: 'uuid', nullable: true })
+  resumeId: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  resumeVersionId: string | null;
+
+  @Column({ type: 'boolean', default: true })
+  isCurrent: boolean;
+
+  @Column({ type: 'uuid', nullable: true })
   importBatchId: string | null;
 
   @ManyToOne(() => ResumeImportBatch, (batch) => batch.sourceItems, {

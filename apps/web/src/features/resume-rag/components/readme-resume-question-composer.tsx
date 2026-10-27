@@ -1,5 +1,6 @@
 "use client";
 
+import { resumePath } from "@/features/resume/lib/resume-selection";
 import { useResumeConversation } from "../lib/use-resume-conversation";
 import { ResumeConversationToolbar } from "./resume-conversation-toolbar";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
@@ -40,10 +41,10 @@ const createChatId = () => {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 };
 
-export const ReadmeResumeQuestionComposer = () => {
+export const ReadmeResumeQuestionComposer = ({ resumeKey }: { resumeKey: string }) => {
   const t = useTranslations("resumeRag.readmeEntry");
   const locale = useLocale();
-  const conversation = useResumeConversation("resume", locale);
+  const conversation = useResumeConversation("resume", locale, resumeKey);
   const router = useRouter();
   const isMobile = useIsMobile();
   const [question, setQuestion] = useState("");
@@ -112,14 +113,18 @@ export const ReadmeResumeQuestionComposer = () => {
     try {
       const response = await conversation.send(trimmedQuestion, askResumeRag);
       setRateLimit(response.rateLimit);
-      const stored = storeResumeRagChat({
-        id: chatId,
-        question: trimmedQuestion,
-        answer: response.answer,
-        grounded: response.grounded,
-        sources: response.sources,
-        createdAt: Date.now(),
-      });
+      const stored = storeResumeRagChat(
+        {
+          id: chatId,
+          question: trimmedQuestion,
+          answer: response.answer,
+          grounded: response.grounded,
+          sources: response.sources,
+          createdAt: Date.now(),
+        },
+        resumeKey,
+        locale,
+      );
 
       if (!stored) {
         failureReason = "storage";
@@ -153,12 +158,14 @@ export const ReadmeResumeQuestionComposer = () => {
     if (!readyChatId) return;
 
     trackResumeRagChatAnswerViewed({ entryPoint: "readme", locale });
-    router.push(`/resume/question?chatId=${encodeURIComponent(readyChatId)}`);
+    router.push(
+      resumePath(`/resume/question?chatId=${encodeURIComponent(readyChatId)}`, resumeKey),
+    );
   };
 
   const handleMobileChatClick = () => {
     trackResumeRagChatOpened({ entryPoint: "readme", locale });
-    router.push("/resume/question");
+    router.push(resumePath("/resume/question", resumeKey));
   };
 
   const isSubmitting = status === "submitting";

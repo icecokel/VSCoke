@@ -1,5 +1,6 @@
 "use client";
 
+import { resumePath } from "@/features/resume/lib/resume-selection";
 import BaseText from "@/components/base-ui/text";
 import { CustomLink } from "@/components/custom-link";
 import { Button } from "@/components/ui/button";
@@ -77,7 +78,12 @@ const Resume = ({ document: resume }: { document: ResumeDocument }) => {
       {/* 커리어 상세 */}
       <div className="flex-1">
         {careers.map((career, careerIndex) => (
-          <CareerSection key={careerIndex} careerData={career} index={careerIndex} />
+          <CareerSection
+            key={careerIndex}
+            careerData={career}
+            index={careerIndex}
+            resumeKey={resume.key}
+          />
         ))}
         <section aria-labelledby="personal-projects-title" className="mb-12">
           <BaseText id="personal-projects-title" type="h5" className="mb-8 ml-2 text-yellow-200">
@@ -97,7 +103,7 @@ const Resume = ({ document: resume }: { document: ResumeDocument }) => {
                 size="sm"
                 className="mt-3 h-7 border-yellow-200/50 text-xs text-yellow-200 hover:bg-yellow-200/10 hover:text-yellow-100"
               >
-                <CustomLink href={`/resume/${project.fileRef}`}>
+                <CustomLink href={resumePath(`/resume/${project.fileRef}`, resume.key)}>
                   {t("personalProjects.viewDescription")}
                 </CustomLink>
               </Button>

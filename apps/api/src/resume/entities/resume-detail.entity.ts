@@ -16,4 +16,13 @@ export class ResumeDetail {
 
   @Column({ type: 'text' })
   content: string;
+
+  @Column({ type: 'integer', default: 1 })
+  revision: number;
+
+  @Column({ type: 'text', default: 'private' })
+  visibility: 'private' | 'public';
+
+  @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })
+  updatedAt: Date;
 }

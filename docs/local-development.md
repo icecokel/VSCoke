@@ -125,7 +125,9 @@ API 테스트:
 pnpm test:api
 ```
 
-레거시 migration integration과 API E2E의 테스트 계정에는 별도 test DB가 필요하다. 이름이 `_test`로 끝나지 않거나 regular DB 환경 변수와 같은 대상을 가리키면 test data source가 실행 전에 실패한다.
+레거시 migration integration과 API E2E의 테스트 계정에는 별도 test DB가 필요하다.
+`migration:run:test`는 역사적 이력서 업무 seed를 빈 legacy DDL로 치환한 테스트 전용
+migration runner를 사용한다. 운영 migration 명령은 그대로 유지한다. 이름이 `_test`로 끝나지 않거나 regular DB 환경 변수와 같은 대상을 가리키면 test data source가 실행 전에 실패한다.
 
 ```bash
 TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/vscoke_test \

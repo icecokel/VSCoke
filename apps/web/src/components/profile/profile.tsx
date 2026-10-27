@@ -1,5 +1,6 @@
 "use client";
 
+import { resumePath } from "@/features/resume/lib/resume-selection";
 import Avatar from "@/components/base-ui/avatar";
 import Icon from "@/components/base-ui/icon";
 import BaseText from "@/components/base-ui/text";
@@ -69,7 +70,7 @@ const Profile = ({ document }: { document: ResumeDocument }) => {
           </DialogContent>
         </Dialog>
         <CustomLink
-          href="/resume/preview"
+          href={resumePath("/resume/preview", document.key)}
           title={tPreview("metaTitle")}
           className="inline-flex h-9 items-center gap-2 rounded-md border border-gray-600 px-3 text-sm font-medium text-gray-100 transition-colors hover:border-gray-400 hover:bg-gray-800"
         >

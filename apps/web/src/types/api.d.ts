@@ -208,6 +208,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/resume/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 선택 문서와 상세의 원자적 PDF 미리보기 조회 */
+    get: operations["ResumeController_getPreview"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/resume/details": {
     parameters: {
       query?: never;
@@ -235,6 +252,109 @@ export interface paths {
     /** 경력기술서 상세 조회 */
     get: operations["ResumeController_getDetail"];
     put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/career-data": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 내부 경력 원본 6개 테이블 조회 (snake_case) */
+    get: operations["CareerDataController_getData"];
+    /** 경력 원본과 불렛 관계 원자적 upsert */
+    put: operations["CareerDataController_upsert"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/career-data/facts/{id}/publish": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 현재 공개·확인된 사실을 독립 RAG 원문으로 등록 */
+    post: operations["CareerDataController_publish"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/resume-management/resumes": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 내부 문서 목록과 현재 revision 조회 */
+    get: operations["ResumeManagementController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/resume-management/versions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 불변 완성 버전과 현재 포인터를 함께 저장 */
+    post: operations["ResumeManagementController_save"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/resume-management/resumes/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** 문서 공개 범위 CAS 변경 */
+    patch: operations["ResumeManagementController_visibility"];
+    trace?: never;
+  };
+  "/resume-management/details/{slug}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** 상세 본문·의존성·검색 원문 원자적 upsert */
+    put: operations["ResumeManagementController_detail"];
     post?: never;
     delete?: never;
     options?: never;
@@ -831,6 +951,11 @@ export interface components {
     };
     ResumeRagChatRequestDto: {
       /**
+       * @description 선택한 공개 이력서 key. 생략하면 pe.
+       * @example pe
+       */
+      resumeKey?: string;
+      /**
        * Format: uuid
        * @description 생성한 대화 ID. 접근키 헤더와 함께 전달한다.
        */
@@ -958,8 +1083,179 @@ export interface components {
       fileRef: string;
     };
     ResumeDocumentDto: {
+      name: string;
+      title: string;
+      contact: components["schemas"]["ResumeContactDto"];
+      introduction: string[];
+      totalExperience: string;
+      /** @description 이력서 내용 최종 갱신 연월 */
+      lastUpdated: string;
+      careers: components["schemas"]["ResumeCareerDto"][];
+      education: components["schemas"]["ResumeEducationDto"][];
+      skills: string[];
+      certifications: components["schemas"]["ResumeCertificationDto"][];
+      links: string[];
+      personalProjects: components["schemas"]["ResumePersonalProjectDto"][];
       /** @enum {string} */
       locale: "ko-KR" | "en-US" | "ja-JP";
+      documentId: string;
+      key: string;
+      versionId: string;
+      versionName: string;
+      contentHash: string;
+    };
+    ResumeDetailDto: {
+      slug: string;
+      title: string;
+      startDate?: string;
+      endDate?: string;
+      /** @description 운영자가 관리하는 신뢰된 MDX 본문 */
+      content: string;
+    };
+    ResumePreviewDto: {
+      document: components["schemas"]["ResumeDocumentDto"];
+      details: components["schemas"]["ResumeDetailDto"][];
+    };
+    ResumeDetailSummaryDto: {
+      slug: string;
+      title: string;
+      startDate?: string;
+      endDate?: string;
+    };
+    CareerDataSnapshotDto: {
+      experiences: {
+        [key: string]: unknown;
+      }[];
+      facts: {
+        [key: string]: unknown;
+      }[];
+      bullets: {
+        [key: string]: unknown;
+      }[];
+      bulletFacts: {
+        [key: string]: unknown;
+      }[];
+      keywords: {
+        [key: string]: unknown;
+      }[];
+      bulletKeywords: {
+        [key: string]: unknown;
+      }[];
+    };
+    CareerExperienceDto: {
+      expectedRevision: number;
+      /** Format: uuid */
+      id: string;
+      company: string;
+      title: string;
+      project?: string | null;
+      publicTitle?: string | null;
+      periodStart?: string | null;
+      periodEnd?: string | null;
+    };
+    CareerFactDto: {
+      expectedRevision: number;
+      /** Format: uuid */
+      id: string;
+      /** Format: uuid */
+      experienceId: string;
+      /** @enum {string} */
+      kind:
+        | "context"
+        | "decision"
+        | "action"
+        | "ownership"
+        | "collaboration"
+        | "validation"
+        | "result"
+        | "limitation";
+      content: string;
+      /**
+       * @default needs_confirmation
+       * @enum {string}
+       */
+      verificationStatus: "confirmed" | "needs_confirmation" | "retracted";
+      /** @description kind, locator, as_of(YYYY-MM-DD) 필수. 추가 내부 JSON 필드 보존 */
+      evidence: {
+        [key: string]: unknown;
+      }[];
+      /** @description value, unit, measured_by, environment, period, conditions 필수. 미확인 측정 조건은 null */
+      metric?: {
+        [key: string]: unknown;
+      } | null;
+      claimBoundary?: string | null;
+      /**
+       * @default private
+       * @enum {string}
+       */
+      visibility: "private" | "public";
+    };
+    CareerBulletFactDto: {
+      /** Format: uuid */
+      factId: string;
+      factRevision: number;
+    };
+    CareerBulletDto: {
+      expectedRevision: number;
+      /** Format: uuid */
+      id: string;
+      /** Format: uuid */
+      experienceId: string;
+      text: string;
+      focus?: string | null;
+      /**
+       * @default draft
+       * @enum {string}
+       */
+      status: "draft" | "ready" | "needs_review" | "retired";
+      /**
+       * @default private
+       * @enum {string}
+       */
+      visibility: "private" | "public";
+      sourceRefs?: {
+        [key: string]: unknown;
+      }[];
+      reviewNote?: string | null;
+      facts: components["schemas"]["CareerBulletFactDto"][];
+      keywordIds: string[];
+    };
+    CareerKeywordDto: {
+      expectedRevision: number;
+      /** Format: uuid */
+      id: string;
+      key: string;
+      label: string;
+      /** @enum {string} */
+      kind: "technology" | "task" | "competency";
+      aliases: string[];
+    };
+    CareerDataUpsertDto: {
+      experiences: components["schemas"]["CareerExperienceDto"][];
+      facts: components["schemas"]["CareerFactDto"][];
+      bullets: components["schemas"]["CareerBulletDto"][];
+      keywords: components["schemas"]["CareerKeywordDto"][];
+    };
+    RevisionDto: {
+      /** @example 0 */
+      revision: number;
+    };
+    CareerPublishResultDto: {
+      sourceItemId: string;
+    };
+    ManagedResumeDto: {
+      id: string;
+      key: string;
+      locale: string;
+      kind: string;
+      track: string;
+      targetKey: string | null;
+      visibility: string;
+      revision: number;
+      /** Format: uuid */
+      currentVersionId: string | null;
+    };
+    ResumeContentDto: {
       name: string;
       title: string;
       contact: components["schemas"]["ResumeContactDto"];
@@ -974,21 +1270,75 @@ export interface components {
       links: string[];
       personalProjects: components["schemas"]["ResumePersonalProjectDto"][];
     };
-    ResumeDetailSummaryDto: {
-      slug: string;
-      title: string;
-      startDate?: string;
-      endDate?: string;
+    CareerDependencyDto: {
+      /** @enum {string} */
+      kind: "experience" | "fact" | "bullet" | "keyword";
+      /** Format: uuid */
+      id: string;
+      revision: number;
     };
-    ResumeDetailDto: {
-      slug: string;
+    ResumeVersionSaveDto: {
+      expectedRevision: number;
+      key: string;
+      /** @enum {string} */
+      kind: "base" | "targeted";
+      /** @enum {string} */
+      track: "front-end" | "product-engineer";
+      /** @enum {string} */
+      locale: "ko-KR" | "en-US" | "ja-JP";
+      targetKey?: string | null;
+      /**
+       * @default private
+       * @enum {string}
+       */
+      visibility: "private" | "public";
+      /** Format: uuid */
+      expectedCurrentVersionId: string | null;
+      versionName: string;
+      /** Format: uuid */
+      parentVersionId?: string | null;
+      content: components["schemas"]["ResumeContentDto"];
+      dependencies: components["schemas"]["CareerDependencyDto"][];
+      sourceRef?: {
+        [key: string]: unknown;
+      } | null;
+    };
+    ResumeSaveResultDto: {
+      documentId: string;
+      key: string;
+      locale: string;
+      revision: number;
+      versionId: string;
+      versionName: string;
+      /** Format: uuid */
+      currentVersionId: string | null;
+      contentHash: string;
+    };
+    ResumeVisibilityDto: {
+      expectedRevision: number;
+      /** @enum {string} */
+      visibility: "private" | "public";
+    };
+    ResumeDetailSaveDto: {
+      expectedRevision: number;
       title: string;
-      startDate?: string;
-      endDate?: string;
-      /** @description 운영자가 관리하는 신뢰된 MDX 본문 */
       content: string;
+      startDate?: string | null;
+      endDate?: string | null;
+      /**
+       * @default private
+       * @enum {string}
+       */
+      visibility: "private" | "public";
+      dependencies: components["schemas"]["CareerDependencyDto"][];
+    };
+    CareerDetailResultDto: {
+      slug: string;
+      revision: number;
     };
     CreateResumeConversationDto: {
+      /** @example pe */
+      resumeKey?: string;
       /** @enum {string} */
       locale: "ko-KR" | "en-US" | "ja-JP";
       /** @enum {string} */
@@ -1015,6 +1365,8 @@ export interface components {
       createdAt: string;
     };
     ResumeConversationHistoryDto: {
+      /** @example pe */
+      resumeKey?: string;
       /** @enum {string} */
       locale: "ko-KR" | "en-US" | "ja-JP";
       /** @enum {string} */
@@ -1109,10 +1461,6 @@ export interface components {
       revision: number;
       /** @example column:2 */
       action: string;
-    };
-    RevisionDto: {
-      /** @example 0 */
-      revision: number;
     };
     ClientErrorDto: {
       /** Format: uuid */
@@ -1822,6 +2170,7 @@ export interface operations {
   ResumeController_getDocument: {
     parameters: {
       query?: {
+        resume?: string;
         locale?: "ko-KR" | "en-US" | "ja-JP";
       };
       header?: never;
@@ -1863,6 +2212,60 @@ export interface operations {
       };
       /** @description 이력서 조회 중 서버 오류 */
       500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+    };
+  };
+  ResumeController_getPreview: {
+    parameters: {
+      query?: {
+        resume?: string;
+        locale?: "ko-KR" | "en-US" | "ja-JP";
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 문서와 상세 snapshot 조회 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["ResumePreviewDto"];
+          };
+        };
+      };
+      /** @description 공개 문서 또는 연결 상세 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 이력서 조회 중 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 연결 상세를 구성할 수 없음. 다시 시도 필요 */
+      503: {
         headers: {
           [name: string]: unknown;
         };
@@ -1958,6 +2361,578 @@ export interface operations {
       };
     };
   };
+  CareerDataController_getData: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 관리 요청 처리 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["CareerDataSnapshotDto"];
+          };
+        };
+      };
+      /** @description 관리 입력 또는 JSON 구조 오류 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 관리 Bearer 인증 실패 */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 대상 원본 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description revision, 현재 버전 또는 공개 조건 충돌 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 원본 저장 또는 조회 실패 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 관리 키 미설정 */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+    };
+  };
+  CareerDataController_upsert: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CareerDataUpsertDto"];
+      };
+    };
+    responses: {
+      /** @description 관리 요청 처리 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["CareerDataSnapshotDto"];
+          };
+        };
+      };
+      /** @description 관리 입력 또는 JSON 구조 오류 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 관리 Bearer 인증 실패 */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 대상 원본 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description revision, 현재 버전 또는 공개 조건 충돌 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 원본 저장 또는 조회 실패 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 관리 키 미설정 */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+    };
+  };
+  CareerDataController_publish: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RevisionDto"];
+      };
+    };
+    responses: {
+      /** @description 관리 요청 처리 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["CareerPublishResultDto"];
+          };
+        };
+      };
+      /** @description 관리 입력 또는 JSON 구조 오류 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 관리 Bearer 인증 실패 */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 대상 원본 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description revision, 현재 버전 또는 공개 조건 충돌 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 원본 저장 또는 조회 실패 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 관리 키 미설정 */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+    };
+  };
+  ResumeManagementController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 관리 요청 처리 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["ManagedResumeDto"][];
+          };
+        };
+      };
+      /** @description 관리 입력 또는 JSON 구조 오류 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 관리 Bearer 인증 실패 */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 대상 문서 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description revision, 현재 버전 또는 공개 조건 충돌 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 문서 저장 또는 조회 실패 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 관리 키 미설정 */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+    };
+  };
+  ResumeManagementController_save: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ResumeVersionSaveDto"];
+      };
+    };
+    responses: {
+      /** @description 관리 요청 처리 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["ResumeSaveResultDto"];
+          };
+        };
+      };
+      /** @description 관리 입력 또는 JSON 구조 오류 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 관리 Bearer 인증 실패 */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 대상 문서 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description revision, 현재 버전 또는 공개 조건 충돌 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 문서 저장 또는 조회 실패 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 관리 키 미설정 */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+    };
+  };
+  ResumeManagementController_visibility: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ResumeVisibilityDto"];
+      };
+    };
+    responses: {
+      /** @description 관리 요청 처리 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["ManagedResumeDto"];
+          };
+        };
+      };
+      /** @description 관리 입력 또는 JSON 구조 오류 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 관리 Bearer 인증 실패 */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 대상 문서 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description revision, 현재 버전 또는 공개 조건 충돌 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 문서 저장 또는 조회 실패 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 관리 키 미설정 */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+    };
+  };
+  ResumeManagementController_detail: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slug: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ResumeDetailSaveDto"];
+      };
+    };
+    responses: {
+      /** @description 관리 요청 처리 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["CareerDetailResultDto"];
+          };
+        };
+      };
+      /** @description 관리 입력 또는 JSON 구조 오류 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 관리 Bearer 인증 실패 */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 대상 문서 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description revision, 현재 버전 또는 공개 조건 충돌 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 문서 저장 또는 조회 실패 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 관리 키 미설정 */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+    };
+  };
   ResumeConversationController_create: {
     parameters: {
       query?: never;
@@ -2024,7 +2999,11 @@ export interface operations {
   };
   ResumeConversationController_history: {
     parameters: {
-      query?: never;
+      query?: {
+        channel?: "main" | "resume";
+        locale?: "ko-KR" | "en-US" | "ja-JP";
+        resumeKey?: string;
+      };
       header: {
         "X-Resume-Conversation-Token": string;
       };

@@ -1,5 +1,6 @@
 "use client";
 
+import { resumePath } from "@/features/resume/lib/resume-selection";
 import { useTranslations } from "next-intl";
 
 import BaseText from "@/components/base-ui/text";
@@ -11,9 +12,10 @@ import type { ResumeProjectData } from "./types";
 
 interface CareerProjectProps {
   projectData: ResumeProjectData;
+  resumeKey: string;
 }
 
-export const CareerProject = ({ projectData }: CareerProjectProps) => {
+export const CareerProject = ({ projectData, resumeKey }: CareerProjectProps) => {
   const tResume = useTranslations("resume");
   const router = useCustomRouter();
   const { fileRef, descriptions } = projectData;
@@ -30,7 +32,7 @@ export const CareerProject = ({ projectData }: CareerProjectProps) => {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => router.push(`/resume/${fileRef}`)}
+              onClick={() => router.push(resumePath(`/resume/${fileRef}`, resumeKey))}
               className="h-7 border-yellow-200/50 text-xs text-yellow-200 hover:bg-yellow-200/10 hover:text-yellow-100"
             >
               {tResume("viewDescription")}

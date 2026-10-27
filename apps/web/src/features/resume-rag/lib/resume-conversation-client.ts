@@ -15,7 +15,9 @@ export const toResumeChatLocale = (locale: string): "ko-KR" | "en-US" | "ja-JP" 
 export const resumeConversationStorageKey = (
   channel: ResumeConversationChannel,
   locale: string,
-): string => `vscoke.conversation.v1.${channel}.${toResumeChatLocale(locale)}`;
+  resumeKey = "pe",
+): string =>
+  `vscoke.conversation.v1.${channel}.${toResumeChatLocale(locale)}${channel === "resume" && resumeKey !== "pe" ? `.${resumeKey}` : ""}`;
 
 export const isResumeConversationAccess = (value: unknown): value is ResumeConversationAccess => {
   if (!value || typeof value !== "object") return false;
@@ -33,13 +35,15 @@ export const isResumeConversationAccess = (value: unknown): value is ResumeConve
 export const readResumeConversationAccess = (
   channel: ResumeConversationChannel,
   locale: string,
+  resumeKey = "pe",
 ): ResumeConversationAccess | null => {
   try {
     const value: unknown = JSON.parse(
-      window.localStorage.getItem(resumeConversationStorageKey(channel, locale)) ?? "null",
+      window.localStorage.getItem(resumeConversationStorageKey(channel, locale, resumeKey)) ??
+        "null",
     );
     if (isResumeConversationAccess(value) && Date.parse(value.expiresAt) > Date.now()) return value;
-    window.localStorage.removeItem(resumeConversationStorageKey(channel, locale));
+    window.localStorage.removeItem(resumeConversationStorageKey(channel, locale, resumeKey));
   } catch {
     // 저장소가 차단된 브라우저에서는 열린 화면의 메모리로만 대화를 유지한다.
   }
@@ -50,9 +54,10 @@ export const storeResumeConversationAccess = (
   channel: ResumeConversationChannel,
   locale: string,
   access: ResumeConversationAccess | null,
+  resumeKey = "pe",
 ): boolean => {
   try {
-    const key = resumeConversationStorageKey(channel, locale);
+    const key = resumeConversationStorageKey(channel, locale, resumeKey);
     if (access) window.localStorage.setItem(key, JSON.stringify(access));
     else window.localStorage.removeItem(key);
     return true;
@@ -64,9 +69,11 @@ export const storeResumeConversationAccess = (
 export const createResumeConversation = async (
   channel: ResumeConversationChannel,
   locale: string,
+  resumeKey = "pe",
 ): Promise<ResumeConversationAccess> => {
   const result: unknown = await apiClient.post("/resume-rag/conversations", {
     channel,
+    ...(channel === "resume" ? { resumeKey } : {}),
     locale: toResumeChatLocale(locale),
   });
   if (!isResumeConversationAccess(result) || Date.parse(result.expiresAt) <= Date.now()) {
@@ -79,9 +86,10 @@ export const loadResumeConversation = async (
   access: ResumeConversationAccess,
   channel: ResumeConversationChannel,
   locale: string,
+  resumeKey = "pe",
 ): Promise<ResumeConversationHistory> => {
   const result = await apiClient.get<ResumeConversationHistory>(
-    `/resume-rag/conversations/${access.id}`,
+    `/resume-rag/conversations/${access.id}?${new URLSearchParams({ channel, locale: toResumeChatLocale(locale), ...(channel === "resume" ? { resumeKey } : {}) })}`,
     {
       cache: "no-store",
       headers: { [resumeConversationTokenHeader]: access.token },
@@ -92,6 +100,7 @@ export const loadResumeConversation = async (
     result.id !== access.id ||
     result.channel !== channel ||
     result.locale !== toResumeChatLocale(locale) ||
+    (channel === "resume" && (result.resumeKey ?? "pe") !== resumeKey) ||
     !Array.isArray(result.turns) ||
     result.turns.length > 50 ||
     !result.turns.every(

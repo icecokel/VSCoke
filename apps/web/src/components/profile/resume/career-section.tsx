@@ -9,9 +9,10 @@ import type { ResumeCareerData } from "./types";
 interface CareerSectionProps {
   careerData: ResumeCareerData;
   index: number;
+  resumeKey: string;
 }
 
-export const CareerSection = ({ careerData, index }: CareerSectionProps) => {
+export const CareerSection = ({ careerData, index, resumeKey }: CareerSectionProps) => {
   return (
     <section id={`career_${index}`} className="mb-12">
       <header className="mb-8 ml-2">
@@ -24,7 +25,7 @@ export const CareerSection = ({ careerData, index }: CareerSectionProps) => {
       </header>
 
       {careerData.projects.map(projectData => (
-        <CareerProject key={projectData.id} projectData={projectData} />
+        <CareerProject key={projectData.id} projectData={projectData} resumeKey={resumeKey} />
       ))}
 
       {careerData.achievement && (

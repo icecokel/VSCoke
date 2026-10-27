@@ -26,7 +26,10 @@ const collectTestFiles = async (directory, isTestFile) => {
 
 const testFiles = [
   "next-config.test.ts",
-  ...(await collectTestFiles("scripts", fileName => fileName.endsWith(".test.mjs"))),
+  ...(await collectTestFiles(
+    "scripts",
+    fileName => fileName.endsWith(".test.mjs") || fileName.endsWith(".spec.ts"),
+  )),
   ...(await collectTestFiles(
     "src",
     fileName => fileName.endsWith(".test.ts") || fileName.endsWith(".spec.ts"),

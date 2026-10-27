@@ -8,7 +8,13 @@ import { getTranslations } from "next-intl/server";
 import { ShareLinkButton } from "@/components/share/share-link-button";
 import { ShareQrDialog } from "@/components/share/share-qr-dialog";
 
-import { getResumeDetailBySlug } from "@/services/resume-service";
+import {
+  getResumeKey,
+  resumePath,
+  type ResumeSearchParams,
+} from "@/features/resume/lib/resume-selection";
+import { ApiError } from "@/lib/api-client";
+import { getResumeDocument, getResumeDetailBySlug } from "@/services/resume-service";
 import { cache } from "react";
 
 import { mdxComponents } from "@/components/profile/resume/resume-mdx-components";
@@ -16,24 +22,38 @@ import { siteUrl } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
-const getDetail = cache(getResumeDetailBySlug);
+const getDetail = cache(async (slug: string, locale: string, key?: string) => {
+  try {
+    if (key !== undefined) await getResumeDocument(locale, key);
+    return await getResumeDetailBySlug(slug);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) notFound();
+    throw error;
+  }
+});
 
 interface ResumeDetailPageProps {
+  searchParams: Promise<ResumeSearchParams>;
   params: Promise<{
     locale: string;
     slug: string;
   }>;
 }
 
-export const generateMetadata = async ({ params }: ResumeDetailPageProps): Promise<Metadata> => {
+export const generateMetadata = async ({
+  params,
+  searchParams,
+}: ResumeDetailPageProps): Promise<Metadata> => {
   const { slug, locale } = await params;
-  const detail = await getDetail(slug);
+  const selection = await searchParams;
+  const key = getResumeKey(selection.resume);
+  const detail = await getDetail(slug, locale, selection.resume === undefined ? undefined : key);
 
   if (!detail) {
     notFound();
   }
 
-  const url = `${siteUrl}/${locale}/resume/${slug}`;
+  const url = `${siteUrl}/${locale}${resumePath(`/resume/${slug}`, key)}`;
 
   return {
     title: detail.title,
@@ -53,9 +73,11 @@ export const generateMetadata = async ({ params }: ResumeDetailPageProps): Promi
   };
 };
 
-const ResumeDetailPage = async ({ params }: ResumeDetailPageProps) => {
+const ResumeDetailPage = async ({ params, searchParams }: ResumeDetailPageProps) => {
   const { locale, slug } = await params;
-  const detail = await getDetail(slug);
+  const selection = await searchParams;
+  const key = getResumeKey(selection.resume);
+  const detail = await getDetail(slug, locale, selection.resume === undefined ? undefined : key);
   const t = await getTranslations("resume");
 
   if (!detail) {
@@ -69,7 +91,7 @@ const ResumeDetailPage = async ({ params }: ResumeDetailPageProps) => {
     author: {
       "@type": "Person",
       name: "icecokel",
-      url: `${siteUrl}/${locale}/readme`,
+      url: `${siteUrl}/${locale}${resumePath("/readme", key)}`,
     },
   };
 
@@ -80,7 +102,7 @@ const ResumeDetailPage = async ({ params }: ResumeDetailPageProps) => {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
       <CustomLink
-        href="/readme"
+        href={resumePath("/readme", key)}
         title="README"
         className="inline-flex items-center gap-1 text-gray-400 hover:text-yellow-200 mb-6"
       >

@@ -21,10 +21,12 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
   CreateResumeConversationDto,
+  ResumeConversationContextDto,
   ResumeConversationAccessDto,
   ResumeConversationHistoryDto,
 } from './dto/resume-conversation.dto';
@@ -83,10 +85,11 @@ export class ResumeConversationController {
     description: '접근키 불일치, 삭제 또는 만료된 대화',
   })
   history(
+    @Query() context: ResumeConversationContextDto,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Headers(RESUME_CONVERSATION_TOKEN_HEADER) token?: string,
   ): Promise<ResumeConversationHistoryDto> {
-    return this.conversations.history(id, token);
+    return this.conversations.history(id, token, context);
   }
 
   @Delete(':id')

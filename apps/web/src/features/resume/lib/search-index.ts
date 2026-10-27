@@ -1,3 +1,4 @@
+import { resumePath } from "./resume-selection";
 import type { ResumeDocument } from "@/services/resume-service";
 import type { SearchItem } from "@/types/search";
 
@@ -8,7 +9,7 @@ export const buildResumeSearchItems = (document: ResumeDocument): SearchItem[] =
     title: "README.md",
     description: [document.name, document.introduction[0]].filter(Boolean).join(" "),
     keywords: [document.title, ...document.skills],
-    path: "/readme",
+    path: resumePath("/readme", document.key),
     featured: true,
     priority: 450,
   },
@@ -35,7 +36,7 @@ export const buildResumeSearchItems = (document: ResumeDocument): SearchItem[] =
           project.period ?? "",
           ...descriptionTexts,
         ],
-        path: project.fileRef ? `/resume/${project.fileRef}` : "/readme",
+        path: resumePath(project.fileRef ? `/resume/${project.fileRef}` : "/readme", document.key),
         priority: 240,
       } satisfies SearchItem;
     }),
@@ -46,7 +47,7 @@ export const buildResumeSearchItems = (document: ResumeDocument): SearchItem[] =
     title: project.title,
     description: project.description,
     keywords: [project.title, project.description],
-    path: `/resume/${project.fileRef}`,
+    path: resumePath(`/resume/${project.fileRef}`, document.key),
     priority: 240,
   })),
 ];

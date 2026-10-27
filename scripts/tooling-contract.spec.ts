@@ -292,9 +292,35 @@ test("현재 문서의 API 목록·참조 링크가 구현과 맞는다", () => 
       );
     }
   }
-  assert.equal(count, 28);
+  assert.equal(count, 36);
   assert.ok(
     read("docs/local-development.md").includes("./main-chat-ai-usage-guide.md#로컬-api-연결"),
   );
   assert.ok(read("docs/main-chat-ai-usage-guide.md").includes("### 로컬 API 연결"));
+});
+
+test("통합 러너는 안전한 test migration과 실제 합성 이력서 등록을 브라우저 전에 완료한다", () => {
+  const scripts = JSON.parse(read("apps/api/package.json")) as { scripts: Record<string, string> };
+  assert.match(scripts.scripts["migration:run:test"], /test\/support\/migrate-test-database\.ts/);
+  assert.doesNotMatch(scripts.scripts["migration:run:test"], /typeorm .*migration:run/);
+  const migration = read("apps/api/test/support/migrate-test-database.ts");
+  assert.ok(
+    migration.indexOf("await dataSource.initialize()") <
+      migration.indexOf("useSyntheticResumeMigration(dataSource)"),
+  );
+  assert.ok(
+    migration.indexOf("useSyntheticResumeMigration(dataSource)") <
+      migration.indexOf("await dataSource.runMigrations()"),
+  );
+  const runner = read("apps/web/scripts/playwright-integration-runner.mjs");
+  assert.match(runner, /databaseName\.endsWith\("_test"\)/);
+  assert.match(runner, /e2e:seed:hobby/);
+  assert.match(runner, /CAREER_DATA_WRITE_KEY: careerWriteKey/);
+  assert.match(runner, /delete playwrightEnv\.CAREER_DATA_WRITE_KEY/);
+  assert.ok(runner.indexOf("await waitForApi()") < runner.indexOf("await seedSyntheticResumes("));
+  assert.ok(
+    runner.indexOf("await seedSyntheticResumes(") <
+      runner.lastIndexOf('"scripts/playwright-runner.mjs"'),
+  );
+  assert.match(runner, /finally \{\s*stopProcessGroup\(apiProcess\)/);
 });

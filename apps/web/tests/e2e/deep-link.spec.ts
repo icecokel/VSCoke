@@ -57,7 +57,7 @@ test.describe("딥링크 직접 진입", () => {
     const download = await downloadPromise;
     const downloadPath = await download.path();
 
-    expect(download.suggestedFilename()).toBe("sangmin-lee-resume.pdf");
+    expect(download.suggestedFilename()).toBe(`sangmin-lee-resume-pe-${locale}.pdf`);
     expect(downloadPath).not.toBeNull();
 
     const fileContents = await readFile(downloadPath!);
@@ -105,7 +105,9 @@ test.describe("딥링크 직접 진입", () => {
     const download = await downloadPromise;
     const downloadPath = await download.path();
 
-    expect(download.suggestedFilename()).toBe("sangmin-lee-resume-with-career-details.pdf");
+    expect(download.suggestedFilename()).toBe(
+      `sangmin-lee-resume-pe-${locale}-with-career-details.pdf`,
+    );
     expect(downloadPath).not.toBeNull();
 
     const fileContents = await readFile(downloadPath!);

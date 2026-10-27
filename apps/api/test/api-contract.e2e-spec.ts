@@ -88,6 +88,13 @@ describe('Local OpenAPI contract generation', () => {
         '/health',
         '/main-chat',
         '/recipes',
+        '/career-data',
+        '/career-data/facts/{id}/publish',
+        '/resume-management/resumes',
+        '/resume-management/resumes/{id}',
+        '/resume-management/versions',
+        '/resume-management/details/{slug}',
+        '/resume/preview',
         '/resume',
         '/resume/details',
         '/resume/details/{slug}',
@@ -207,6 +214,39 @@ describe('Local OpenAPI contract generation', () => {
 });
 
 describe('OpenAPI 의미 계약', () => {
+  it('경력 관리 nullable scalar는 object가 아니라 string/null 계약이다', async () => {
+    const document = await createLocalOpenApiDocument();
+    const expected: Record<string, string[]> = {
+      CareerExperienceDto: [
+        'project',
+        'publicTitle',
+        'periodStart',
+        'periodEnd',
+      ],
+      CareerFactDto: ['claimBoundary'],
+      CareerBulletDto: ['focus', 'reviewNote'],
+      ResumeVersionSaveDto: [
+        'targetKey',
+        'expectedCurrentVersionId',
+        'parentVersionId',
+      ],
+      ResumeDetailSaveDto: ['startDate', 'endDate'],
+      ManagedResumeDto: ['targetKey', 'currentVersionId'],
+      ResumeSaveResultDto: ['currentVersionId'],
+    };
+    for (const [name, fields] of Object.entries(expected)) {
+      const schema = document.components?.schemas?.[name];
+      expect(schema).toBeDefined();
+      if (!schema || '$ref' in schema)
+        throw new Error(`Missing schema: ${name}`);
+      for (const field of fields)
+        expect(schema.properties?.[field]).toMatchObject({
+          type: 'string',
+          nullable: true,
+        });
+    }
+  });
+
   it('모든 operation의 성공 설명·태그·오류 envelope를 명시한다', async () => {
     const document = await createLocalOpenApiDocument();
     const tags = new Map(
@@ -234,7 +274,7 @@ describe('OpenAPI 의미 계약', () => {
         }
       }
     }
-    expect(operations).toBe(28);
+    expect(operations).toBe(36);
   });
 
   it('점수·시간·등수는 정수이며 시간만 null을 허용한다', async () => {

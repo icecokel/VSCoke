@@ -15,6 +15,10 @@ import {
 } from '../src/resume-rag/resume-chat-history';
 import { ResumeConversationService } from '../src/resume-rag/resume-conversation.service';
 
+const resumeKey = `conversation-test-${randomUUID()}`;
+const resumeId = randomUUID();
+const versionId = randomUUID();
+
 const answer = {
   answer: 'PostgreSQL 통합 검증 답변',
   grounded: true,
@@ -55,6 +59,7 @@ describe('ResumeConversationService PostgreSQL integration', () => {
     request: CreateResumeConversationDto = {
       channel: 'resume',
       locale: 'ko-KR',
+      resumeKey,
     },
   ) => {
     const access = await service.create(request);
@@ -72,6 +77,19 @@ describe('ResumeConversationService PostgreSQL integration', () => {
 
   beforeAll(async () => {
     await testDataSource.initialize();
+    // 불변 버전 fixture는 고유 key로 격리하고 검증용 DB 수명주기에서만 제거한다.
+    await testDataSource.query(
+      `INSERT INTO resumes(id,key,kind,track,locale,visibility) VALUES($1,$2,'base','product-engineer','ko-KR','public')`,
+      [resumeId, resumeKey],
+    );
+    await testDataSource.query(
+      `INSERT INTO resume_versions(id,resume_id,version_name,content,content_hash,payload_hash) VALUES($1,$2,'fixture','{}',$3,$3)`,
+      [versionId, resumeId, '0'.repeat(64)],
+    );
+    await testDataSource.query(
+      'UPDATE resumes SET current_version_id=$1 WHERE id=$2',
+      [versionId, resumeId],
+    );
     service = createService();
   });
 
@@ -92,6 +110,7 @@ describe('ResumeConversationService PostgreSQL integration', () => {
       requestId: randomUUID(),
       question: 'Oprimed 역할을 알려줘',
       locale: 'ko-KR',
+      resumeKey,
     };
     const generate = jest.fn().mockResolvedValue(answer);
 
@@ -145,6 +164,7 @@ describe('ResumeConversationService PostgreSQL integration', () => {
     const access = await createConversation({
       channel: 'main',
       locale: 'ko-KR',
+      resumeKey,
     });
     const generate = createConcurrentGenerator();
     const results = await Promise.allSettled(
@@ -155,6 +175,7 @@ describe('ResumeConversationService PostgreSQL integration', () => {
             requestId: randomUUID(),
             question: `동시 요청 ${index}`,
             locale: 'ko-KR',
+            resumeKey,
           },
           access.token,
           'main',
@@ -188,6 +209,7 @@ describe('ResumeConversationService PostgreSQL integration', () => {
       requestId: randomUUID(),
       question: '동일한 요청',
       locale: 'ko-KR',
+      resumeKey,
     };
     const generate = createConcurrentGenerator();
     const responses = await Promise.all([
@@ -212,6 +234,7 @@ describe('ResumeConversationService PostgreSQL integration', () => {
       requestId: randomUUID(),
       question: '첫 질문',
       locale: 'ko-KR',
+      resumeKey,
     };
     const generate = jest.fn().mockResolvedValue(answer);
     await service.runTurn(request, access.token, 'resume', generate);
@@ -264,6 +287,7 @@ describe('ResumeConversationService PostgreSQL integration', () => {
       requestId: randomUUID(),
       question: '저장된 프로젝트 질문',
       locale: 'ko-KR',
+      resumeKey,
     };
     await service.runTurn(request, access.token, 'resume', () =>
       Promise.resolve(answer),
@@ -310,6 +334,7 @@ describe('ResumeConversationService PostgreSQL integration', () => {
       requestId: randomUUID(),
       question: '실패 후 재시도',
       locale: 'ko-KR',
+      resumeKey,
     };
     await expect(
       service.runTurn(request, access.token, 'resume', () =>
@@ -341,6 +366,7 @@ describe('ResumeConversationService PostgreSQL integration', () => {
           requestId: randomUUID(),
           question: '빈 답변 검증',
           locale: 'ko-KR',
+          resumeKey,
         },
         access.token,
         'resume',
@@ -362,6 +388,7 @@ describe('ResumeConversationService PostgreSQL integration', () => {
           requestId: randomUUID(),
           question: `질문 ${index}`,
           locale: 'ko-KR',
+          resumeKey,
         },
         access.token,
         'resume',
@@ -405,6 +432,7 @@ describe('ResumeConversationService PostgreSQL integration', () => {
           requestId: randomUUID(),
           question: '삭제 경합',
           locale: 'ko-KR',
+          resumeKey,
         },
         access.token,
         'resume',
@@ -429,6 +457,7 @@ describe('ResumeConversationService PostgreSQL integration', () => {
         requestId: randomUUID(),
         question: '만료 검증 질문',
         locale: 'ko-KR',
+        resumeKey,
       },
       access.token,
       'resume',

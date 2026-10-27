@@ -29,6 +29,7 @@ const createHarness = () => {
   const saved: ResumeChatTurn[] = [];
   let deleted = false;
   const conversations = {
+    query: jest.fn().mockResolvedValue([{ id: 'public-resume' }]),
     findOneBy: jest.fn((where: { id: string; tokenHash: string }) =>
       Promise.resolve(
         !deleted &&
@@ -222,6 +223,49 @@ describe('ResumeConversationService', () => {
     await expect(service.history(conversation.id, token)).rejects.toThrow(
       NotFoundException,
     );
+  });
+
+  it('다른 문서의 대화를 복원하거나 이어서 사용할 수 없다', async () => {
+    const { service, conversation, request } = createHarness();
+    conversation.resumeKey = 'fe';
+    const generate = jest.fn().mockResolvedValue(answer);
+    await expect(
+      service.history(conversation.id, token, {
+        channel: 'resume',
+        locale: 'ko-KR',
+        resumeKey: 'pe',
+      }),
+    ).rejects.toThrow(NotFoundException);
+    await expect(
+      service.runTurn(
+        { ...request(), resumeKey: 'pe' },
+        token,
+        'resume',
+        generate,
+      ),
+    ).rejects.toThrow(NotFoundException);
+    expect(generate).not.toHaveBeenCalled();
+    expect(
+      (await service.history(conversation.id, token, { resumeKey: 'fe' }))
+        .resumeKey,
+    ).toBe('fe');
+  });
+
+  it('선택 문서가 철회되면 인사·새 대화·복원도 허용하지 않는다', async () => {
+    const { service, conversation, conversations, request } = createHarness();
+    conversations.query.mockResolvedValue([]);
+    const generate = jest.fn().mockResolvedValue(answer);
+    await expect(
+      service.create({ channel: 'resume', locale: 'ko-KR', resumeKey: 'pe' }),
+    ).rejects.toThrow(NotFoundException);
+    await expect(service.history(conversation.id, token)).rejects.toThrow(
+      NotFoundException,
+    );
+    await expect(
+      service.runTurn(request('안녕'), token, 'resume', generate),
+    ).rejects.toThrow(NotFoundException);
+    expect(generate).not.toHaveBeenCalled();
+    expect(conversations.save).not.toHaveBeenCalled();
   });
 
   it('접근키 원문 대신 해시를 저장하고 생성 응답에만 원문을 반환한다', async () => {

@@ -9,8 +9,8 @@ type ChatDefinition = {
 
 export const chatDefinitions: Record<ChatChannel, ChatDefinition> = {
   main: {
-    sourceTypes: ['app_resume'],
-    itemTypes: ['public_resume_detail', 'public_site_guide'],
+    sourceTypes: ['app_resume', 'career_data'],
+    itemTypes: ['public_resume_detail', 'public_site_guide', 'project_detail'],
     contextDescription: 'public project details and VSCoke site guidance',
     topics: {
       'ko-KR': '대표 프로젝트와 맡은 역할, 사용 기술, 사이트 이용 방법',
@@ -19,16 +19,8 @@ export const chatDefinitions: Record<ChatChannel, ChatDefinition> = {
     },
   },
   resume: {
-    sourceTypes: ['app_resume', 'resume_workspace'],
-    itemTypes: [
-      'current_resume_data',
-      'localized_resume_messages',
-      'final_resume_section',
-      'raw_career_evidence',
-      'public_rag_evidence',
-      'wanted_mapping',
-      'raw_work_unit',
-    ],
+    sourceTypes: ['career_data'],
+    itemTypes: ['resume_version', 'career_fact'],
     contextDescription: 'public resume, career summaries, and career evidence',
     topics: {
       'ko-KR': '경력과 담당 업무, 기술 경험, 업무 성과와 강점',

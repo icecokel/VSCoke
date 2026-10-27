@@ -15,7 +15,7 @@ const createConfig = (
   codexTimeoutMs: 120_000,
   codexReasoningEffort: 'low',
   allowedVisibilities: ['public'],
-  allowedSourceTypes: ['app_resume'],
+  allowedSourceTypes: ['app_resume', 'career_data'],
   ...overrides,
 });
 
@@ -88,8 +88,9 @@ describe('ResumeRagRetrieverService', () => {
       expect(params).toEqual([
         ['public', 'limited'],
         'ko-KR',
-        ['app_resume'],
+        channel === 'resume' ? ['career_data'] : ['app_resume', 'career_data'],
         chatDefinitions[channel].itemTypes,
+        channel === 'resume' ? 'pe' : null,
       ]);
     },
   );
@@ -401,4 +402,73 @@ describe('ResumeRagRetrieverService', () => {
       }),
     ).resolves.toContainEqual(expect.objectContaining({ id: 'web-vitals' }));
   });
+  it('긴 문서 뒤쪽에 있는 검색 근거를 잘라내지 않고 해당 청크를 선택한다', async () => {
+    const query = jest.fn().mockResolvedValue([
+      {
+        id: 'version',
+        title: '공개 이력서',
+        bodyText: `${'이전 경력 설명 '.repeat(900)}\n\n후반 경력: Uniquelatefact 배포 사고를 해결했습니다.`,
+        sourcePath: 'career-data',
+        sourceKey: 'resume/document/ko-KR',
+        metadata: { resumeKey: 'fe' },
+      },
+    ]);
+    const service = createService(
+      { query } as unknown as DataSource,
+      createConfig({ topK: 1 }),
+      {
+        createSearchTokens: jest.fn().mockResolvedValue(['uniquelatefact']),
+      } as unknown as ResumeRagKeywordService,
+    );
+    const result = await service.retrieve({
+      channel: 'resume',
+      question: 'Uniquelatefact',
+      locale: 'ko-KR',
+      resumeKey: 'fe',
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0].content).toContain('Uniquelatefact 배포 사고');
+    expect(result[0].content.length).toBeLessThanOrEqual(1200);
+  });
+  it.each(['tailmarkerfe', 'detailmarker'])(
+    '39개 확장어가 있어도 질문의 직접 검색어 %s를 희석하지 않는다',
+    async (marker) => {
+      const tokens = createResumeRagSearchTokens(`project ${marker}`);
+      expect(tokens).toHaveLength(39);
+      const query = jest.fn().mockResolvedValue([
+        {
+          id: 'version',
+          title: 'Synthetic document',
+          bodyText: `${'Unrelated synthetic section. '.repeat(180)}\n\n${marker}: approved late career evidence.`,
+          sourcePath: 'career-data',
+          sourceKey: 'resume/synthetic/ko-KR',
+          metadata: { resumeKey: 'fe' },
+        },
+        {
+          id: 'unrelated',
+          title: 'Unrelated',
+          bodyText: 'No matching evidence',
+          sourcePath: 'career-data',
+          sourceKey: 'unrelated',
+          metadata: {},
+        },
+      ]);
+      const service = createService(
+        { query } as unknown as DataSource,
+        createConfig({ topK: 1 }),
+      );
+      const result = await service.retrieve({
+        channel: 'resume',
+        question: `project ${marker}`,
+        locale: 'ko-KR',
+        resumeKey: 'fe',
+      });
+      expect(result).toHaveLength(1);
+      expect(result[0].content).toContain(
+        `${marker}: approved late career evidence`,
+      );
+      expect(result[0].similarity).toBeGreaterThanOrEqual(0.5);
+      expect(result[0].content.length).toBeLessThanOrEqual(1200);
+    },
+  );
 });

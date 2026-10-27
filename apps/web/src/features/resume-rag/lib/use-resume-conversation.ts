@@ -39,7 +39,11 @@ export const toResumeConversationMessages = (
     },
   ]);
 
-export const useResumeConversation = (channel: ResumeConversationChannel, locale: string) => {
+export const useResumeConversation = (
+  channel: ResumeConversationChannel,
+  locale: string,
+  resumeKey = "pe",
+) => {
   const apiLocale = toResumeChatLocale(locale);
   const access = useRef<ResumeConversationAccess | null>(null);
   const pending = useRef<{ question: string; requestId: string } | null>(null);
@@ -61,16 +65,18 @@ export const useResumeConversation = (channel: ResumeConversationChannel, locale
     setRestoreError(null);
     setRestoredTurns(null);
     pending.current = null;
-    const saved = readResumeConversationAccess(channel, apiLocale);
+    const saved = readResumeConversationAccess(channel, apiLocale, resumeKey);
     access.current = saved;
     try {
-      const history = saved ? await loadResumeConversation(saved, channel, apiLocale) : null;
+      const history = saved
+        ? await loadResumeConversation(saved, channel, apiLocale, resumeKey)
+        : null;
       if (generation.current === current) setRestoredTurns(history?.turns ?? []);
     } catch (error) {
       if (generation.current !== current) return;
       if (error instanceof ApiError && error.status === 404) {
         access.current = null;
-        storeResumeConversationAccess(channel, apiLocale, null);
+        storeResumeConversationAccess(channel, apiLocale, null, resumeKey);
         setRestoredTurns([]);
       } else {
         setRestoreError(error);
@@ -81,7 +87,7 @@ export const useResumeConversation = (channel: ResumeConversationChannel, locale
         setIsRestoring(false);
       }
     }
-  }, [apiLocale, channel]);
+  }, [apiLocale, channel, resumeKey]);
 
   useEffect(() => {
     void restore();
@@ -103,10 +109,12 @@ export const useResumeConversation = (channel: ResumeConversationChannel, locale
       try {
         let currentAccess = access.current;
         if (!currentAccess) {
-          currentAccess = await createResumeConversation(channel, apiLocale);
+          currentAccess = await createResumeConversation(channel, apiLocale, resumeKey);
           if (generation.current !== current) throw new Error("Conversation scope changed");
           access.current = currentAccess;
-          setMemoryOnly(!storeResumeConversationAccess(channel, apiLocale, currentAccess));
+          setMemoryOnly(
+            !storeResumeConversationAccess(channel, apiLocale, currentAccess, resumeKey),
+          );
         }
         if (pending.current?.question !== question) {
           pending.current = { question, requestId: crypto.randomUUID() };
@@ -116,6 +124,7 @@ export const useResumeConversation = (channel: ResumeConversationChannel, locale
           {
             question,
             locale: apiLocale,
+            ...(channel === "resume" ? { resumeKey } : {}),
             conversationId: currentAccess.id,
             requestId,
           },
@@ -138,7 +147,7 @@ export const useResumeConversation = (channel: ResumeConversationChannel, locale
         }
       }
     },
-    [apiLocale, channel, restoreError],
+    [apiLocale, channel, resumeKey, restoreError],
   );
 
   const reset = useCallback(async (): Promise<boolean> => {
@@ -156,7 +165,7 @@ export const useResumeConversation = (channel: ResumeConversationChannel, locale
       generation.current += 1;
       access.current = null;
       pending.current = null;
-      storeResumeConversationAccess(channel, apiLocale, null);
+      storeResumeConversationAccess(channel, apiLocale, null, resumeKey);
       setRestoredTurns([]);
       setRestoreError(null);
       setMemoryOnly(false);
@@ -168,7 +177,7 @@ export const useResumeConversation = (channel: ResumeConversationChannel, locale
       busy.current = false;
       setIsWorking(false);
     }
-  }, [apiLocale, channel]);
+  }, [apiLocale, channel, resumeKey]);
 
   return { send, reset, restore, restoredTurns, isRestoring, isWorking, restoreError, memoryOnly };
 };

@@ -4,6 +4,11 @@ import type { ResumeDocument } from "@/services/resume-service";
 import { buildResumeSearchItems } from "./search-index";
 
 const document: ResumeDocument = {
+  documentId: "document",
+  key: "fe",
+  versionId: "version",
+  versionName: "v1",
+  contentHash: "hash",
   locale: "en-US",
   name: "DB name",
   title: "DB title",
@@ -47,7 +52,12 @@ test("DB 이력서의 본문과 순서 및 회사·개인 프로젝트 상세 �
   const items = buildResumeSearchItems(document);
   assert.deepEqual(
     items.map(item => item.path),
-    ["/readme", "/resume/db-project", "/readme", "/resume/personal-detail"],
+    [
+      "/readme?resume=fe",
+      "/resume/db-project?resume=fe",
+      "/readme?resume=fe",
+      "/resume/personal-detail?resume=fe",
+    ],
   );
   assert.equal(items[0].description, "DB name DB introduction");
   assert.deepEqual(items[0].keywords, ["DB title", "DB skill"]);

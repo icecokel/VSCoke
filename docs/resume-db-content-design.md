@@ -1,5 +1,10 @@
 # 이력서 DB 조회 전환
 
+이 문서는 PR50의 최초 파일 → DB 조회 전환 설계를 보존한 기록이다.
+현재 구현 기준은 [resume · VSCoke 공통 경력 DB 계약](./shared-career-data-design.md)이며,
+공개 이력서는 문서 key와 현재 불변 버전으로 조회한다. 아래 locale별 본문·초기 seed 구조는
+새 공통 이력서의 저장 원본이나 fallback으로 사용하지 않는다.
+
 ## 범위와 데이터 소유권
 
 웹 이력서(`/readme`), PDF 미리보기(`/resume/preview`), 경력기술서 상세(`/resume/:slug`),

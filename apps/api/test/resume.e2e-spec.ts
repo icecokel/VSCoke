@@ -19,6 +19,7 @@ describe('공개 이력서 HTTP 계약', () => {
   const service = {
     getDocument: jest.fn(),
     getDetails: jest.fn(),
+    getPreview: jest.fn(),
     getDetail: jest.fn(),
   };
 
@@ -53,17 +54,22 @@ describe('공개 이력서 HTTP 계약', () => {
         .expect(200);
       expect(response.body).toEqual({ success: true, data: document });
       expect(response.headers['cache-control']).toBe('no-store');
-      expect(service.getDocument).toHaveBeenCalledWith(document.locale);
+      expect(service.getDocument).toHaveBeenCalledWith(document.locale, 'pe');
     },
   );
 
   it('언어를 생략하면 한국어를 조회한다', async () => {
     service.getDocument.mockResolvedValue(resumeDocumentSnapshot[0]);
     await request(app.getHttpServer()).get('/resume').expect(200);
-    expect(service.getDocument).toHaveBeenCalledWith('ko-KR');
+    expect(service.getDocument).toHaveBeenCalledWith('ko-KR', 'pe');
   });
 
   it.each([
+    'resume=',
+    'resume=Upper',
+    'resume=bad--key',
+    'resume=' + 'a'.repeat(81),
+    'resume=pe&resume=fe',
     'locale=en',
     'locale=',
     'locale=ko-KR&locale=en-US',

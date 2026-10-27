@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+import { seedSyntheticResumes } from "./playwright-synthetic-resume.mjs";
 import { spawn } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -40,8 +42,10 @@ const seedEnv = {
 };
 delete seedEnv.DB_DATABASE;
 
+const careerWriteKey = randomBytes(32).toString("hex");
 const apiEnv = {
   ...process.env,
+  CAREER_DATA_WRITE_KEY: careerWriteKey,
   CORS_ORIGINS: webUrl,
   DB_DATABASE: databaseName,
   DB_HOST: parsedDatabaseUrl.hostname,
@@ -61,6 +65,8 @@ const playwrightEnv = {
   NEXT_PUBLIC_API_URL: apiUrl,
   PLAYWRIGHT_PORT: webPort,
 };
+
+delete playwrightEnv.CAREER_DATA_WRITE_KEY;
 
 for (const name of Object.keys(playwrightEnv)) {
   if (isDatabaseEnvironmentName(name)) {
@@ -136,6 +142,7 @@ try {
   });
 
   await waitForApi();
+  await seedSyntheticResumes(apiUrl, careerWriteKey, testDatabaseUrl);
   await runCommand(process.execPath, ["scripts/playwright-runner.mjs", ...playwrightArgs], {
     cwd: webRoot,
     env: playwrightEnv,

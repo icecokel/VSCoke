@@ -1232,6 +1232,12 @@ const keywordAliasMatches = (question: string, alias: string): boolean => {
   );
 };
 
+export const createResumeRagQueryTokens = (text: string): string[] => {
+  const tokens = new Set<string>();
+  addTokensFromText(tokens, text);
+  return [...tokens];
+};
+
 export const createResumeRagSearchTokens = (
   text: string,
   groups: readonly ResumeRagKeywordGroup[] = RESUME_RAG_KEYWORD_GROUPS,
@@ -1241,10 +1247,7 @@ export const createResumeRagSearchTokens = (
   );
   if (matchedGroups.length === 0) return [];
 
-  const uniqueTokens = new Set<string>();
-  for (const rawToken of normalizeSearchText(text).split(/\s+/)) {
-    addToken(uniqueTokens, rawToken);
-  }
+  const uniqueTokens = new Set(createResumeRagQueryTokens(text));
 
   for (const group of matchedGroups) {
     const expansions =

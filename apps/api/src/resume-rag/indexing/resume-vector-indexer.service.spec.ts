@@ -34,6 +34,7 @@ const createHarness = () => {
       return Promise.resolve([source]);
     }),
     findOne: jest.fn().mockResolvedValue(source),
+    query: jest.fn().mockResolvedValue([{ id: source.id }]),
   };
   const vectors = {
     find: jest.fn().mockResolvedValue([]),
@@ -42,6 +43,7 @@ const createHarness = () => {
     save: jest.fn().mockResolvedValue([]),
   };
   const manager = {
+    query: jest.fn().mockResolvedValue([{ id: source.id }]),
     getRepository: (entity: unknown) =>
       entity === ResumeSourceItem ? sources : vectors,
   };
@@ -67,6 +69,7 @@ const createHarness = () => {
     source,
     chunks,
     transaction,
+    manager,
     embed,
     getFindOptions: () => findOptions,
     service: new ResumeVectorIndexerService(
@@ -97,13 +100,55 @@ describe('ResumeVectorIndexerService', () => {
     expect(embed).toHaveBeenCalledWith('공개 프로젝트 근거', 'passage');
     expect(vectors.query).toHaveBeenCalledWith(
       expect.stringContaining('source."sourceType" = ANY($1)'),
-      [['app_resume']],
+      [['app_resume', 'career_data']],
     );
     expect(vectors.delete).toHaveBeenCalledTimes(1);
     expect(vectors.save).toHaveBeenCalledWith([
       expect.objectContaining({ embedding: [1, 0], visibility: 'public' }),
     ]);
   });
+  it('임베딩 중 현재 버전이 바뀌면 이전 source의 청크를 게시하지 않는다', async () => {
+    const { service, source, sources, vectors, manager } = createHarness();
+    source.sourceType = 'career_data';
+    source.itemType = 'resume_version';
+    source.isCurrent = true;
+    sources.query.mockResolvedValue([{ id: source.id }]);
+    manager.query.mockResolvedValue([]);
+    expect(await service.indexAll()).toEqual({
+      indexed: 1,
+      skipped: 0,
+      published: 0,
+      sources: 0,
+    });
+    expect(manager.query).toHaveBeenCalledWith(
+      'SELECT pg_advisory_xact_lock(1795000000004)',
+    );
+    expect(manager.query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'r.current_version_id = source."resumeVersionId"',
+      ),
+      [source.id],
+    );
+    expect(vectors.save).not.toHaveBeenCalled();
+  });
+
+  it('현재 공통 상세 tombstone이 있으면 legacy section을 임베딩하지 않는다', async () => {
+    const { service, source, sources, embed } = createHarness();
+    source.sourceKey = 'app:resume-detail:project#역할';
+    sources.query.mockResolvedValue([]);
+    expect(await service.indexAll()).toEqual({
+      indexed: 0,
+      skipped: 0,
+      published: 0,
+      sources: 0,
+    });
+    expect(sources.query).toHaveBeenCalledWith(
+      expect.stringContaining("|| '#')"),
+      [source.id],
+    );
+    expect(embed).not.toHaveBeenCalled();
+  });
+
   it('변경되지 않은 청크는 임베딩을 재사용한다', async () => {
     const { service, vectors, chunks, embed } = createHarness();
     vectors.find.mockResolvedValue([

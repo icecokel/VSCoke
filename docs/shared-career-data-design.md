@@ -4,11 +4,14 @@
 
 DB 스키마, 마이그레이션, 공통 저장 API와 웹·PDF·검색·RAG 소비는 VSCoke가 구현한다.
 실제 경력과 이력서 정제·문서 매핑·데이터 등록은 resume 프로젝트가 맡는다.
-이번 구현은 운영 DB나 resume 저장소를 수정하지 않는다. 새로운 공통 테이블에 업무 데이터를
-seed하지 않는다. 검증은 격리된 테스트 DB와 임시 fixture로 수행한다.
+마이그레이션은 업무 데이터를 seed하지 않으며 실제 데이터 적재는 resume 프로젝트가 맡는다.
+검증은 격리된 테스트 DB와 합성 fixture로 수행한다. resume 저장소는 수정하지 않는다.
 
-이미 작성한 PR50의 역사적 마이그레이션과 기존 데이터를 파괴하지 않는다. 새 마이그레이션은
-공통 구조만 만들고 legacy resume_documents를 자동으로 PE로 오인해 이관하지 않는다.
+운영 사전 조회에서 migration ledger가 #1795000000002까지이고 #1795000000003은 미적용이며
+resume_documents/resume_details/공통 경력 테이블이 없음을 확인했다. 이에 미적용 #3은 기존
+legacy 테이블 DDL만 유지하고 과거 업무 스냅샷 import/INSERT를 제거한다. 스냅샷 artifact와
+이미 존재하는 DB 데이터는 삭제하지 않는다. #3과 #4 모두 구조만 만들고 legacy
+resume_documents를 자동으로 PE로 오인해 이관하지 않는다.
 기존 locale별 본문 테이블은 신규 공개 조회의 원본이나 fallback으로 사용하지 않는다.
 실제 공통 데이터 등록 전 미등록 이력서가 404인 것은 의도한 동작이다.
 
@@ -140,8 +143,10 @@ resume:index로 생성할 수 있도록 DB active 원문을 durable 작업 대�
 
 career_data의 resume_version/career_fact는 resume 채널에만 허용한다. main은 프로젝트 상세와
 사이트 안내의 기존 범위를 유지하되 DB 상세인 career_data/project_detail을 추가한다.
-main에 resume_version/career_fact가 들어가지 않는 것을 검증한다. 상세 upsert 시 대응하는
-legacy app_resume 상세 source family만 전환해 오래된 파일 본문으로 우회하지 않게 한다.
+main에 resume_version/career_fact가 들어가지 않는 것을 검증한다. 상세 upsert는 legacy
+app_resume 원문과 벡터의 상태를 수정하지 않는다. 새 reader가 대응하는 exact sourceKey와
+#section family를 현재 career_data 상세(tombstone 포함)로 대체해 오래된 파일 본문으로
+우회하지 않게 한다. 관리 저장의 벡터 철회도 parent 원문이 career_data인 행에만 적용한다.
 공개 이력서 채팅은 선택 resume key를 요청에 전달하고
 다른 문서 버전이 검색되지 않게 한다. 공통 공개 보강 사실은 함께 검색할 수 있다.
 문서 기반 투영은 해당 current version과 snapshot을 기준으로, 독립 사실은 live fact revision과
@@ -170,7 +175,19 @@ PE 기본값·명시 key·locale·404, 문서별 독립 갱신, 링크/PDF 선�
 없는 표시, RAG 채널/문서 격리·키워드 즉시 갱신·오래된 벡터 작업 차단·실패 재시도.
 검증용 임베딩 공급자는 결정론적으로 대체하고 실제 LLM 품질은 별도 범위로 보고한다.
 lint/typecheck/API contract/관련 단위와 PostgreSQL 통합/웹 E2E/build를 실행하고 알려진 기존
-범위 밖 실패는 분리한다. 운영 데이터 적재·운영 DB 적용·배포는 이번 로컬 구현 범위가 아니다.
+범위 밖 실패는 분리한다.
+
+## 앱 배포 전 운영 사전 적재
+
+사용자는 앱 배포 전 운영 데이터 사전 적재를 별도로 승인했다. root가 운영 백업 후 schema-only
+migration을 적용하고 CareerDataModule/ResumeModule만 포함한 임시 관리 API를 loopback에
+실행한다. 실제 데이터 등록은 resume 프로젝트가 인증된 관리 API로 수행한다. 이 절차는
+현재 운영 앱의 배포·재시작을 포함하지 않는다.
+
+현재 운영 앱은 app_resume/resume_workspace를 소비하며 career_data를 소비하지 않는다.
+사전 적재 시 기존 source/vector 행·상태와 운영 앱의 source 허용 목록을 유지한다. 새 원문과
+철회 tombstone은 career_data에만 저장하며 새 reader의 family 제외 조건은 이후 앱 전환부터
+적용된다. 운영 사전 적재만으로 기존 앱의 철회 동작이 바뀌었다고 보장하지 않는다.
 
 ## 관리 payload 인계 예제
 

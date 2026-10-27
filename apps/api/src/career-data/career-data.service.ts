@@ -635,10 +635,6 @@ export class CareerDataService {
         },
         dependencies,
       );
-      await manager.query(
-        `UPDATE resume_source_items SET status='inactive',vectorize=false,"updatedAt"=now() WHERE "sourceType"='app_resume' AND ("sourceKey"=$1 OR left("sourceKey",length($1)+1)=$1||'#')`,
-        [`app:resume-detail:${slug}`],
-      );
       await this.withdrawSources(manager);
       return { slug, revision };
     });
@@ -783,7 +779,7 @@ export class CareerDataService {
    (s."itemType"='project_detail' AND NOT EXISTS(SELECT 1 FROM resume_details detail WHERE detail.slug=s.metadata->>'slug' AND detail.revision=(s.metadata->>'revision')::int AND detail.visibility='public' AND ${publicDependencyCondition('d.detail_slug=detail.slug AND d.detail_revision=detail.revision')}))
   )`);
     await manager.query(
-      `UPDATE resume_vector_chunks c SET status='inactive' WHERE c.status='active' AND EXISTS(SELECT 1 FROM resume_source_items s WHERE s.id=c."sourceItemId" AND (s.status<>'active' OR NOT s.vectorize OR (s."sourceType"='career_data' AND NOT s."isCurrent")))`,
+      `UPDATE resume_vector_chunks c SET status='inactive' WHERE c.status='active' AND EXISTS(SELECT 1 FROM resume_source_items s WHERE s.id=c."sourceItemId" AND s."sourceType"='career_data' AND (s.status<>'active' OR NOT s.vectorize OR NOT s."isCurrent"))`,
     );
   }
 }

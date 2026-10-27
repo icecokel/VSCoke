@@ -17,6 +17,7 @@ import {
   ResumeVersionSaveDto,
 } from '../src/career-data/career-data.dto';
 import { ResumeService } from '../src/resume/resume.service';
+import { legacyDetailCondition } from '../src/resume-rag/resume-source-eligibility';
 import { createLegacyResumeTables } from './support/synthetic-resume-migration';
 
 const schemaName = `resume_${randomUUID().replaceAll('-', '')}_test`;
@@ -490,6 +491,126 @@ describe('공통 경력 PostgreSQL 원자적 저장', () => {
       ),
     ).toEqual([{ count: 0 }]);
   });
+  it('사전 적재는 legacy source/vector를 보존하고 새 reader만 대응 상세 family를 제외한다', async () => {
+    const slug = key();
+    const fixture = [
+      {
+        type: 'app_resume',
+        key: `app:resume-detail:${slug}`,
+        status: 'active',
+        vectorize: true,
+      },
+      {
+        type: 'app_resume',
+        key: `app:resume-detail:${slug}#section`,
+        status: 'active',
+        vectorize: true,
+      },
+      {
+        type: 'app_resume',
+        key: `app:resume-detail:${slug}-other`,
+        status: 'active',
+        vectorize: true,
+      },
+      {
+        type: 'resume_workspace',
+        key: `legacy-${slug}`,
+        status: 'inactive',
+        vectorize: false,
+      },
+    ];
+    const sourceIds: string[] = [];
+    for (const entry of fixture) {
+      const [source] = await db.query<{ id: string }[]>(
+        `INSERT INTO resume_source_items("sourceType","itemType","sourcePath","sourceKey",title,"bodyText",locale,status,visibility,vectorize,"contentHash",metadata) VALUES($1,'public_resume_detail','synthetic',$2,'Synthetic legacy','Synthetic legacy','ko-KR',$3,'public',$4,$5,'{}'::jsonb) RETURNING id`,
+        [entry.type, entry.key, entry.status, entry.vectorize, randomUUID()],
+      );
+      sourceIds.push(source.id);
+      await db.query(
+        `INSERT INTO resume_vector_chunks("sourceItemId","chunkIndex",content,"contentHash","sourceType","itemType",title,locale,"sourcePath","sourceKey",visibility,status,"citationMetadata","embeddingProvider","embeddingModel","embeddingDimensions",embedding,"chunkerVersion","chunkConfigHash","indexedAt") VALUES($1,0,'Synthetic legacy',$2,$3,'public_resume_detail','Synthetic legacy','ko-KR','synthetic',$4,'public','active','{}'::jsonb,'synthetic','synthetic',2,'[1,0]'::vector,'synthetic','synthetic',now())`,
+        [source.id, randomUUID(), entry.type, entry.key],
+      );
+    }
+    const sourceBefore = await db.query<unknown[]>(
+      'SELECT * FROM resume_source_items WHERE id=ANY($1::uuid[]) ORDER BY id',
+      [sourceIds],
+    );
+    const vectorBefore = await db.query<unknown[]>(
+      'SELECT * FROM resume_vector_chunks WHERE "sourceItemId"=ANY($1::uuid[]) ORDER BY id',
+      [sourceIds],
+    );
+    const { batch, bulletId, factId } = await core();
+    const saved = await writer.saveVersion(
+      version(key(), {
+        dependencies: [{ kind: 'bullet', id: bulletId, revision: 1 }],
+      }),
+    );
+    await writer.publishFact(factId, 1);
+    await writer.saveDetail(
+      slug,
+      plainToInstance(ResumeDetailSaveDto, {
+        expectedRevision: 0,
+        title: 'Synthetic canonical',
+        content: '# Synthetic canonical',
+        visibility: 'public',
+        dependencies: [{ kind: 'fact', id: factId, revision: 1 }],
+      }),
+    );
+    const eligible = () =>
+      db.query<{ id: string }[]>(
+        `SELECT source.id FROM resume_source_items source WHERE source.id=ANY($1::uuid[]) AND ${legacyDetailCondition('source')} ORDER BY source.id`,
+        [sourceIds],
+      );
+    expect((await eligible()).map((row) => row.id)).toEqual(
+      [sourceIds[2], sourceIds[3]].sort(),
+    );
+    await writer.upsertData(
+      plainToInstance(CareerDataUpsertDto, {
+        experiences: [],
+        keywords: [],
+        bullets: [],
+        facts: [
+          { ...batch.facts[0], expectedRevision: 1, visibility: 'private' },
+        ],
+      }),
+    );
+    await writer.setVisibility(saved.documentId, {
+      expectedRevision: 1,
+      visibility: 'private',
+    });
+    await writer.saveDetail(
+      slug,
+      plainToInstance(ResumeDetailSaveDto, {
+        expectedRevision: 1,
+        title: 'Synthetic canonical',
+        content: '# Synthetic canonical',
+        visibility: 'private',
+        dependencies: [],
+      }),
+    );
+    expect((await eligible()).map((row) => row.id)).toEqual(
+      [sourceIds[2], sourceIds[3]].sort(),
+    );
+    expect(
+      await db.query<unknown[]>(
+        'SELECT * FROM resume_source_items WHERE id=ANY($1::uuid[]) ORDER BY id',
+        [sourceIds],
+      ),
+    ).toEqual(sourceBefore);
+    expect(
+      await db.query<unknown[]>(
+        'SELECT * FROM resume_vector_chunks WHERE "sourceItemId"=ANY($1::uuid[]) ORDER BY id',
+        [sourceIds],
+      ),
+    ).toEqual(vectorBefore);
+    expect(
+      await db.query(
+        `SELECT status,vectorize FROM resume_source_items WHERE "sourceType"='career_data' AND "sourceKey"=$1 AND "isCurrent"`,
+        [`resume-detail/${slug}`],
+      ),
+    ).toEqual([{ status: 'inactive', vectorize: false }]);
+  });
+
   it('문서 공개 철회와 재공개, detail CAS, preview의 상세 순서·누락 오류를 유지한다', async () => {
     const slug = key();
     await writer.saveDetail(

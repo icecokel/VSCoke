@@ -61,7 +61,10 @@ Resume RAG와 메인 채팅의 동작·환경 변수·검증 기준은
 `GET /resume?resume=pe&locale=ko-KR`가 기본이며 미등록·비공개·철회 문서는 404다.
 역사적 `resume_documents`와 파일에는 fallback하지 않는다. 기존 상세는 새 migration에서
 private으로 유지하며, 실제 경력 등록과 문서 매핑은 resume 프로젝트가 관리 API로 수행한다.
-API는 새로운 공통 테이블에 실제 경력 데이터를 seed하지 않는다.
+운영 사전 조회에서 migration #1795000000003은 미적용이고 legacy 본문·상세 테이블도
+없음을 확인했다. 해당 migration은 동일 legacy DDL만 생성하며 과거 업무 스냅샷을 import하거나
+INSERT하지 않는다. 스냅샷 artifact와 기존 DB 데이터는 보존한다. 실제 경력·이력서 데이터
+등록은 resume 프로젝트가 관리 API로 수행하며 migration에 자동 seed하지 않는다.
 
 저장 계약과 합성 payload 예제는 [공통 경력 DB 계약](../../docs/shared-career-data-design.md)을 따른다.
 모든 관리 조회·쓰기는 서버 전용 `CAREER_DATA_WRITE_KEY`(32자 이상) Bearer 인증을 요구하며
@@ -73,6 +76,12 @@ API는 새로운 공통 테이블에 실제 경력 데이터를 seed하지 않�
 허용 목록에서 제외하면 canonical 이력서 RAG 원문을 검색하지 않는다.
 새 원문은 즉시 키워드 검색 가능하고 임베딩은 기존 `resume:index`가 갱신한다.
 벡터 저장은 관리 쓰기와 같은 transaction lock에서 최신 공개 조건을 재검사한다.
+
+사용자가 승인한 앱 배포 전 사전 적재는 root가 백업·schema-only migration·loopback 임시 관리
+API 실행을 맡고 resume 프로젝트가 데이터를 등록한다. 현재 운영 앱 배포·재시작은 별개다.
+관리 쓰기는 기존 app_resume/resume_workspace 원문과 벡터 상태를 변경하지 않으며 철회는
+career_data에만 적용한다. 새 reader는 대응 상세의 exact/#section legacy family를 현재
+canonical 상세나 tombstone으로 제외한다. 앱 전환 전에는 기존 운영 앱의 소비 범위가 유지된다.
 
 현재 이력서 채널은 선택한 현재 문서와 명시 발행한 공통 사실만 읽는다.
 기존 파일 출처는 보존하지만 이력서 채널에는 자동 혼합하지 않는다. main의 아직 매핑하지 않은

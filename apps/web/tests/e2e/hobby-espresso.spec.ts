@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { escapeRegExp, expectPath, resolveLocaleAndMessages, visit } from "./test-helpers";
 
-const usesUnavailableHobbyApi = process.env.NEXT_PUBLIC_API_URL === "http://127.0.0.1:65535";
+const usesUnavailableHobbyApi =
+  process.env.PLAYWRIGHT_RESUME_FIXTURE === "1" ||
+  process.env.NEXT_PUBLIC_API_URL === "http://127.0.0.1:65535";
 
 test.describe("취미 원두 기록 페이지", () => {
   test("API 장애 시 원두 기록 페이지가 500 대신 빈 상태를 렌더링한다", async ({ page }) => {

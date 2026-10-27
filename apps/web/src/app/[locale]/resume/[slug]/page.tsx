@@ -8,9 +8,15 @@ import { getTranslations } from "next-intl/server";
 import { ShareLinkButton } from "@/components/share/share-link-button";
 import { ShareQrDialog } from "@/components/share/share-qr-dialog";
 
-import { getResumeDetailBySlug, getAllResumeDetails } from "@/lib/resume-detail";
+import { getResumeDetailBySlug } from "@/services/resume-service";
+import { cache } from "react";
+
 import { mdxComponents } from "@/components/profile/resume/resume-mdx-components";
 import { siteUrl } from "@/lib/site-url";
+
+export const dynamic = "force-dynamic";
+
+const getDetail = cache(getResumeDetailBySlug);
 
 interface ResumeDetailPageProps {
   params: Promise<{
@@ -19,17 +25,12 @@ interface ResumeDetailPageProps {
   }>;
 }
 
-export const generateStaticParams = async () => {
-  const details = getAllResumeDetails();
-  return details.map(detail => ({ slug: detail.slug }));
-};
-
 export const generateMetadata = async ({ params }: ResumeDetailPageProps): Promise<Metadata> => {
   const { slug, locale } = await params;
-  const detail = getResumeDetailBySlug(slug);
+  const detail = await getDetail(slug);
 
   if (!detail) {
-    return { title: "Resume Detail Not Found" };
+    notFound();
   }
 
   const url = `${siteUrl}/${locale}/resume/${slug}`;
@@ -54,7 +55,7 @@ export const generateMetadata = async ({ params }: ResumeDetailPageProps): Promi
 
 const ResumeDetailPage = async ({ params }: ResumeDetailPageProps) => {
   const { locale, slug } = await params;
-  const detail = getResumeDetailBySlug(slug);
+  const detail = await getDetail(slug);
   const t = await getTranslations("resume");
 
   if (!detail) {
@@ -76,7 +77,7 @@ const ResumeDetailPage = async ({ params }: ResumeDetailPageProps) => {
     <div className="p-3 md:p-5 max-w-4xl mx-auto">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
       <CustomLink
         href="/readme"

@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { rmSync } from "node:fs";
+import { startResumeFixture } from "./playwright-resume-fixture.mjs";
 
 const nodeCommand = process.execPath;
 const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
@@ -43,6 +44,7 @@ if (playwrightArgs[0] === "codegen" && playwrightArgs.length === 1) {
 let finalizing = false;
 let server;
 let playwright;
+let fixture;
 
 const cleanupArtifacts = () => {
   if (useExternalServer) return;
@@ -74,6 +76,7 @@ const finish = code => {
 
   const exit = () => {
     cleanupArtifacts();
+    fixture?.close();
     process.exit(code);
   };
 
@@ -121,6 +124,12 @@ const run = async () => {
   if (useExternalServer) {
     await waitForServer(120_000);
   } else if (!(reuseExistingServer && (await isServerReady()))) {
+    if (serverEnv.NEXT_PUBLIC_API_URL === "http://127.0.0.1:65535") {
+      const started = await startResumeFixture();
+      fixture = started.server;
+      serverEnv.NEXT_PUBLIC_API_URL = started.url;
+      serverEnv.PLAYWRIGHT_RESUME_FIXTURE = "1";
+    }
     server = spawn(nodeCommand, ["scripts/playwright-web-server.mjs"], {
       env: serverEnv,
       stdio: ["ignore", "inherit", "inherit"],

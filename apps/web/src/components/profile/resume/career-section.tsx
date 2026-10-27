@@ -1,7 +1,5 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-
 import BaseText from "@/components/base-ui/text";
 
 import AchievementBox from "./achievement-box";
@@ -14,26 +12,24 @@ interface CareerSectionProps {
 }
 
 export const CareerSection = ({ careerData, index }: CareerSectionProps) => {
-  const t = useTranslations(`resume.careers.${careerData.id}`);
-
   return (
     <section id={`career_${index}`} className="mb-12">
       <header className="mb-8 ml-2">
         <BaseText type="h5" className="text-yellow-200">
-          {t("company")}
+          {careerData.company}
         </BaseText>
         <BaseText type="body1" className="mt-2 block text-gray-300">
-          {t("period")} · {t("role")}
+          {careerData.period} · {careerData.role}
         </BaseText>
       </header>
 
       {careerData.projects.map(projectData => (
-        <CareerProject key={projectData.id} careerId={careerData.id} projectData={projectData} />
+        <CareerProject key={projectData.id} projectData={projectData} />
       ))}
 
-      {t.has("achievement") && (
+      {careerData.achievement && (
         <div className="ml-4">
-          <AchievementBox achievement={t("achievement")} />
+          <AchievementBox achievement={careerData.achievement} />
         </div>
       )}
     </section>

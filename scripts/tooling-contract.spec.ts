@@ -292,7 +292,7 @@ test("현재 문서의 API 목록·참조 링크가 구현과 맞는다", () => 
       );
     }
   }
-  assert.equal(count, 25);
+  assert.equal(count, 28);
   assert.ok(
     read("docs/local-development.md").includes("./main-chat-ai-usage-guide.md#로컬-api-연결"),
   );

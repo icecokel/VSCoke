@@ -16,27 +16,22 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import Image from "next/image";
 import Github from "public/images/icons/github.svg";
 import { Fragment } from "react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import ProfileItem from "./profile-item";
 import Resume from "./resume/resume";
 import { ShareLinkButton } from "@/components/share/share-link-button";
 import { ShareQrDialog } from "@/components/share/share-qr-dialog";
 import { CustomLink } from "@/components/custom-link";
-import { siteUrl as productionSiteUrl } from "@/lib/site-url";
+import type { ResumeDocument } from "@/services/resume-service";
 
 /**
  * 이력서 페이지
  * @returns 이력서 컴포넌트
  */
-const Profile = () => {
+const Profile = ({ document }: { document: ResumeDocument }) => {
   const t = useTranslations("profile");
-  const tResume = useTranslations("resume");
   const tPreview = useTranslations("resumePreview");
-  const locale = useLocale();
-  const introduction = tResume.raw("introduction") as string[];
-  const contact = tResume.raw("contact");
-  const siteUrl = `${productionSiteUrl}/${locale}`;
-  const blogUrl = `${siteUrl}/blog/dashboard`;
+  const { introduction, contact } = document;
 
   return (
     <div className="p-3 flex flex-col gap-1 md:gap-5">
@@ -90,12 +85,12 @@ const Profile = () => {
         <Avatar
           className="h-[180px] w-[180px] border-4 border-yellow-200 md:h-[200px] md:w-[200px]"
           src="profile-image.jpg"
-          alt={t("developerName")}
+          alt={document.name}
           size={180}
         />
         <div className="md:ml-3 mt-[25px] md:mt-0">
           <BaseText type="h5" className="text-center">
-            {tResume("title")}
+            {document.title}
           </BaseText>
           <div className="mt-5 w-full max-w-sm bg-blue-100/20 rounded-sm p-4 gap-4 flex flex-col">
             <Tooltip>
@@ -159,40 +154,40 @@ const Profile = () => {
         </BaseText>
       </ProfileItem>
       {/* Resume 섹션 */}
-      <Resume />
+      <Resume document={document} />
 
       <ProfileItem title={t("education")}>
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center ">
-          <div className="mb-5 min-w-[140px]">2020.03</div>
-          <div className="mb-5">
-            <BaseText type="h6">{t("hybridCourse")}</BaseText>
-            <ul className="mt-2 ml-4 list-disc">
-              <li className="text-sm text-gray-300">{t("hybridDesc")}</li>
-            </ul>
+        {document.certifications.map(certification => (
+          <div key={certification.name} className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            <div className="mb-5 min-w-[140px]">{certification.date}</div>
+            <div className="mb-5">
+              <BaseText type="h6">{certification.name}</BaseText>
+              <ul className="mt-2 ml-4 list-disc">
+                {certification.details.map(detail => (
+                  <li key={detail} className="text-sm text-gray-300">
+                    {detail}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-        </div>
+        ))}
       </ProfileItem>
 
       {/* 링크 섹션 */}
       <ProfileItem title={t("links")}>
-        <div className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
-          <Icon kind="navigation" />
-          <a href={siteUrl} target="_blank" rel="noopener noreferrer">
-            {siteUrl}
-          </a>
-        </div>
-        <div className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
-          <Image src={Github} width={24} height={24} alt="git-hub" />
-          <a href="https://github.com/icecokel" target="_blank" rel="noopener noreferrer">
-            https://github.com/icecokel
-          </a>
-        </div>
-        <div className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
-          <Icon kind="bookmark" />
-          <a href={blogUrl} target="_blank" rel="noopener noreferrer">
-            {blogUrl}
-          </a>
-        </div>
+        {document.links.map((url, index) => (
+          <div key={url} className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
+            {index === 1 ? (
+              <Image src={Github} width={24} height={24} alt="git-hub" />
+            ) : (
+              <Icon kind={index === 0 ? "navigation" : "bookmark"} />
+            )}
+            <a href={url} target="_blank" rel="noopener noreferrer">
+              {url}
+            </a>
+          </div>
+        ))}
       </ProfileItem>
     </div>
   );

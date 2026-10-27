@@ -191,6 +191,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/resume": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 언어별 공개 이력서 조회 */
+    get: operations["ResumeController_getDocument"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/resume/details": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 경력기술서 요약 목록 조회 */
+    get: operations["ResumeController_getDetails"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/resume/details/{slug}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 경력기술서 상세 조회 */
+    get: operations["ResumeController_getDetail"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/resume-rag/conversations": {
     parameters: {
       query?: never;
@@ -860,6 +911,82 @@ export interface components {
        * @example 2026-06-16T12:00:00.000Z
        */
       updatedAt: string;
+    };
+    ResumeContactDto: {
+      email: string;
+      phone: string;
+    };
+    ResumeProjectDescriptionDto: {
+      subtitle: string;
+      detail?: string;
+      skills?: string;
+      tasks?: string[];
+      achievement?: string;
+    };
+    ResumeProjectDto: {
+      id: string;
+      title: string;
+      period?: string;
+      fileRef?: string;
+      descriptions: components["schemas"]["ResumeProjectDescriptionDto"][];
+    };
+    ResumeCareerDto: {
+      id: string;
+      company: string;
+      period: string;
+      employmentType: string;
+      role: string;
+      achievement?: string;
+      projects: components["schemas"]["ResumeProjectDto"][];
+    };
+    ResumeEducationDto: {
+      school: string;
+      period: string;
+      status: string;
+      major: string;
+    };
+    ResumeCertificationDto: {
+      name: string;
+      date: string;
+      type: string;
+      details: string[];
+    };
+    ResumePersonalProjectDto: {
+      id: string;
+      title: string;
+      description: string;
+      fileRef: string;
+    };
+    ResumeDocumentDto: {
+      /** @enum {string} */
+      locale: "ko-KR" | "en-US" | "ja-JP";
+      name: string;
+      title: string;
+      contact: components["schemas"]["ResumeContactDto"];
+      introduction: string[];
+      totalExperience: string;
+      /** @description 이력서 내용 최종 갱신 연월 */
+      lastUpdated: string;
+      careers: components["schemas"]["ResumeCareerDto"][];
+      education: components["schemas"]["ResumeEducationDto"][];
+      skills: string[];
+      certifications: components["schemas"]["ResumeCertificationDto"][];
+      links: string[];
+      personalProjects: components["schemas"]["ResumePersonalProjectDto"][];
+    };
+    ResumeDetailSummaryDto: {
+      slug: string;
+      title: string;
+      startDate?: string;
+      endDate?: string;
+    };
+    ResumeDetailDto: {
+      slug: string;
+      title: string;
+      startDate?: string;
+      endDate?: string;
+      /** @description 운영자가 관리하는 신뢰된 MDX 본문 */
+      content: string;
     };
     CreateResumeConversationDto: {
       /** @enum {string} */
@@ -1683,6 +1810,145 @@ export interface operations {
       };
       /** @description 검색 또는 답변 생성 공급자를 사용할 수 없음 */
       503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+    };
+  };
+  ResumeController_getDocument: {
+    parameters: {
+      query?: {
+        locale?: "ko-KR" | "en-US" | "ja-JP";
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 이력서 조회 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["ResumeDocumentDto"];
+          };
+        };
+      };
+      /** @description 지원하지 않는 언어 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 해당 언어의 이력서가 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 이력서 조회 중 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+    };
+  };
+  ResumeController_getDetails: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description slug 오름차순 경력기술서 요약 목록 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["ResumeDetailSummaryDto"][];
+          };
+        };
+      };
+      /** @description 이력서 조회 중 서버 오류 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+    };
+  };
+  ResumeController_getDetail: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slug: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 경력기술서 조회 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["ResumeDetailDto"];
+          };
+        };
+      };
+      /** @description slug 형식 또는 길이가 잘못됨 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 해당 경력기술서가 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 이력서 조회 중 서버 오류 */
+      500: {
         headers: {
           [name: string]: unknown;
         };

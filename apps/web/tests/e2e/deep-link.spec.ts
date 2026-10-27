@@ -173,42 +173,24 @@ test.describe("딥링크 직접 진입", () => {
 
   test("Code Crayon 상세 경력기술서의 대표 근거를 렌더링한다", async ({ page }) => {
     const { locale } = await resolveLocaleAndMessages(page);
+    const documents = [
+      { slug: "commerce-backoffice-product", sectionIndexes: [2, 4] },
+      { slug: "translate", sectionIndexes: [2, 3, 4] },
+      { slug: "shortime-playground", sectionIndexes: [2, 3] },
+    ];
 
-    await gotoWithRetry(page, `/${locale}/resume/commerce-backoffice-product`);
-    await expect(page.getByRole("heading", { name: "고객용 커머스", exact: true })).toBeVisible();
-    await expect(
-      page.getByText("한국어·일본어·영어·번체 중국어를 제공하고", { exact: false }),
-    ).toBeVisible();
-    await expect(
-      page.getByText("Flutter Web 백오피스를 Next.js로 한 번에 교체", { exact: false }),
-    ).toBeVisible();
+    for (const { slug, sectionIndexes } of documents) {
+      const source = await readFile(`resume-detail/${slug}.mdx`, "utf8");
+      const sections = source.split(/^## /m);
+      await gotoWithRetry(page, `/${locale}/resume/${slug}`);
 
-    await gotoWithRetry(page, `/${locale}/resume/translate`);
-    await expect(
-      page.getByText("약 3일 걸리던 작업을 하루 6~8편까지 처리", {
-        exact: false,
-      }),
-    ).toBeVisible();
-    await expect(
-      page.getByText("셀렉터스 상품 블로그 초안을 AI로 생성하는 프로토타입", {
-        exact: false,
-      }),
-    ).toBeVisible();
-    await expect(
-      page.getByText("비슷한 키워드 수 기준 확인 시간을 약 50분에서 10분 이내", {
-        exact: false,
-      }),
-    ).toBeVisible();
-
-    await gotoWithRetry(page, `/${locale}/resume/shortime-playground`);
-    await expect(
-      page.getByText("WebView Playground를 제안해 프로토타입으로 시연", { exact: false }),
-    ).toBeVisible();
-    await expect(
-      page.getByText("광고 완료·딥링크·Safari 오디오·중복 진행·timeout", { exact: false }),
-    ).toBeVisible();
-    await expect(
-      page.getByText("주간 고유 이용자 약 2,000~3,000명", { exact: false }),
-    ).toBeVisible();
+      for (const index of sectionIndexes) {
+        const [heading, ...paragraphs] = sections[index].trim().split(/\n\n+/);
+        await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+        for (const paragraph of paragraphs) {
+          await expect(page.getByText(paragraph, { exact: true })).toBeVisible();
+        }
+      }
+    }
   });
 });

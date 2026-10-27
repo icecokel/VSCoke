@@ -88,6 +88,9 @@ describe('Local OpenAPI contract generation', () => {
         '/health',
         '/main-chat',
         '/recipes',
+        '/resume',
+        '/resume/details',
+        '/resume/details/{slug}',
         '/resume-rag/chat',
         '/wordle/check',
         '/wordle/word',
@@ -231,7 +234,7 @@ describe('OpenAPI 의미 계약', () => {
         }
       }
     }
-    expect(operations).toBe(25);
+    expect(operations).toBe(28);
   });
 
   it('점수·시간·등수는 정수이며 시간만 null을 허용한다', async () => {

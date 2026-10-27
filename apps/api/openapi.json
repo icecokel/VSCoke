@@ -833,6 +833,191 @@
         "tags": ["Resume RAG"]
       }
     },
+    "/resume": {
+      "get": {
+        "operationId": "ResumeController_getDocument",
+        "parameters": [
+          {
+            "name": "locale",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "ko-KR",
+              "type": "string",
+              "enum": ["ko-KR", "en-US", "ja-JP"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "이력서 조회 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ResumeDocumentDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "지원하지 않는 언어",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "해당 언어의 이력서가 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "이력서 조회 중 서버 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "언어별 공개 이력서 조회",
+        "tags": ["Resume"]
+      }
+    },
+    "/resume/details": {
+      "get": {
+        "operationId": "ResumeController_getDetails",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "slug 오름차순 경력기술서 요약 목록",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ResumeDetailSummaryDto"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "이력서 조회 중 서버 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "경력기술서 요약 목록 조회",
+        "tags": ["Resume"]
+      }
+    },
+    "/resume/details/{slug}": {
+      "get": {
+        "operationId": "ResumeController_getDetail",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "maxLength": 160,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "경력기술서 조회 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ResumeDetailDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "slug 형식 또는 길이가 잘못됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "해당 경력기술서가 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "이력서 조회 중 서버 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "경력기술서 상세 조회",
+        "tags": ["Resume"]
+      }
+    },
     "/resume-rag/conversations": {
       "post": {
         "operationId": "ResumeConversationController_create",
@@ -1870,6 +2055,10 @@
       "description": "공개 이력 근거 채팅"
     },
     {
+      "name": "Resume",
+      "description": "공개 이력서와 경력기술서 조회"
+    },
+    {
       "name": "Resume conversations",
       "description": "익명 대화 생성·복원·삭제"
     },
@@ -2674,6 +2863,275 @@
           }
         },
         "required": ["id", "name", "tags", "ingredients", "recipe", "createdAt", "updatedAt"]
+      },
+      "ResumeContactDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          }
+        },
+        "required": ["email", "phone"]
+      },
+      "ResumeProjectDescriptionDto": {
+        "type": "object",
+        "properties": {
+          "subtitle": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "skills": {
+            "type": "string"
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "achievement": {
+            "type": "string"
+          }
+        },
+        "required": ["subtitle"]
+      },
+      "ResumeProjectDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "period": {
+            "type": "string"
+          },
+          "fileRef": {
+            "type": "string"
+          },
+          "descriptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumeProjectDescriptionDto"
+            }
+          }
+        },
+        "required": ["id", "title", "descriptions"]
+      },
+      "ResumeCareerDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "company": {
+            "type": "string"
+          },
+          "period": {
+            "type": "string"
+          },
+          "employmentType": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "achievement": {
+            "type": "string"
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumeProjectDto"
+            }
+          }
+        },
+        "required": ["id", "company", "period", "employmentType", "role", "projects"]
+      },
+      "ResumeEducationDto": {
+        "type": "object",
+        "properties": {
+          "school": {
+            "type": "string"
+          },
+          "period": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "major": {
+            "type": "string"
+          }
+        },
+        "required": ["school", "period", "status", "major"]
+      },
+      "ResumeCertificationDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["name", "date", "type", "details"]
+      },
+      "ResumePersonalProjectDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "fileRef": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "title", "description", "fileRef"]
+      },
+      "ResumeDocumentDto": {
+        "type": "object",
+        "properties": {
+          "locale": {
+            "type": "string",
+            "enum": ["ko-KR", "en-US", "ja-JP"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/ResumeContactDto"
+          },
+          "introduction": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "totalExperience": {
+            "type": "string"
+          },
+          "lastUpdated": {
+            "type": "string",
+            "description": "이력서 내용 최종 갱신 연월"
+          },
+          "careers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumeCareerDto"
+            }
+          },
+          "education": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumeEducationDto"
+            }
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "certifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumeCertificationDto"
+            }
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "personalProjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumePersonalProjectDto"
+            }
+          }
+        },
+        "required": [
+          "locale",
+          "name",
+          "title",
+          "contact",
+          "introduction",
+          "totalExperience",
+          "lastUpdated",
+          "careers",
+          "education",
+          "skills",
+          "certifications",
+          "links",
+          "personalProjects"
+        ]
+      },
+      "ResumeDetailSummaryDto": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
+          }
+        },
+        "required": ["slug", "title"]
+      },
+      "ResumeDetailDto": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string",
+            "description": "운영자가 관리하는 신뢰된 MDX 본문"
+          }
+        },
+        "required": ["slug", "title", "content"]
       },
       "CreateResumeConversationDto": {
         "type": "object",

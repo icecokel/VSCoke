@@ -775,7 +775,7 @@
     "summary": "Summary",
     "experience": "Experience",
     "totalExperience": "{value} total experience",
-    "updatedAt": "Last updated · 2026.09"
+    "updatedAt": "Last updated · {date}"
   },
   "resume": {
     "name": "Sangmin Lee",

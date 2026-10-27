@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { MDXRemote } from "next-mdx-remote/rsc";
-import RESUME_DATA from "@/constants/resume-data.json";
-import type { Description } from "@/components/profile/resume/types";
 import { ResumePreviewActions } from "@/features/resume-preview/components/resume-preview-actions";
-import { getResumeDetailBySlug } from "@/lib/resume-detail";
+import { getResumeDocument, getResumeDetailBySlug } from "@/services/resume-service";
 
-type ResumeContact = {
-  email: string;
-  phone: string;
-};
+export const dynamic = "force-dynamic";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const t = await getTranslations("resumePreview");
@@ -20,23 +15,26 @@ export const generateMetadata = async (): Promise<Metadata> => {
   };
 };
 
-const ResumePreviewPage = async () => {
-  const [t, tProfile, tResume] = await Promise.all([
+const ResumePreviewPage = async ({ params }: { params: Promise<{ locale: string }> }) => {
+  const { locale } = await params;
+  const [t, tProfile, tResume, document] = await Promise.all([
     getTranslations("resumePreview"),
     getTranslations("profile"),
     getTranslations("resume"),
+    getResumeDocument(locale),
   ]);
   const tDescription = await getTranslations("descriptionItem");
-  const contact = tResume.raw("contact") as ResumeContact;
-  const introduction = tResume.raw("introduction") as string[];
-  const careerDetails = RESUME_DATA.flatMap(career =>
-    career.projects.flatMap(project => {
-      if (!("fileRef" in project) || !project.fileRef) {
-        return [];
+  const { contact, introduction } = document;
+  const detailSlugs = document.careers.flatMap(career =>
+    career.projects.flatMap(project => (project.fileRef ? [project.fileRef] : [])),
+  );
+  const careerDetails = await Promise.all(
+    detailSlugs.map(async slug => {
+      const detail = await getResumeDetailBySlug(slug);
+      if (!detail) {
+        throw new Error(`Resume detail missing: ${slug}`);
       }
-
-      const detail = getResumeDetailBySlug(project.fileRef);
-      return detail ? [detail] : [];
+      return detail;
     }),
   );
 
@@ -52,8 +50,8 @@ const ResumePreviewPage = async () => {
           <p className="text-xs font-bold tracking-[0.24em] text-blue-500">{t("documentType")}</p>
           <div className="resume-preview-header-content mt-4 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{tResume("name")}</h1>
-              <p className="mt-2 max-w-xl text-base leading-6 text-gray-700">{tResume("title")}</p>
+              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{document.name}</h1>
+              <p className="mt-2 max-w-xl text-base leading-6 text-gray-700">{document.title}</p>
             </div>
             <dl className="resume-preview-contact shrink-0 space-y-1 text-sm text-gray-700 sm:text-right">
               <div>
@@ -85,14 +83,12 @@ const ResumePreviewPage = async () => {
               {t("experience")}
             </h2>
             <p className="text-xs text-gray-600">
-              {t("totalExperience", { value: tResume("totalExperience") })}
+              {t("totalExperience", { value: document.totalExperience })}
             </p>
           </div>
 
           <div className="divide-y divide-gray-300">
-            {RESUME_DATA.map(career => {
-              const careerKey = `careers.${career.id}`;
-
+            {document.careers.map(career => {
               return (
                 <section
                   key={career.id}
@@ -100,34 +96,21 @@ const ResumePreviewPage = async () => {
                 >
                   <div className="resume-preview-career-heading flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                     <div>
-                      <h3 className="text-base font-bold text-gray-900">
-                        {tResume(`${careerKey}.company`)}
-                      </h3>
-                      <p className="mt-1 text-sm font-medium text-gray-700">
-                        {tResume(`${careerKey}.role`)}
-                      </p>
+                      <h3 className="text-base font-bold text-gray-900">{career.company}</h3>
+                      <p className="mt-1 text-sm font-medium text-gray-700">{career.role}</p>
                     </div>
-                    <p className="shrink-0 text-sm text-gray-600">
-                      {tResume(`${careerKey}.period`)}
-                    </p>
+                    <p className="shrink-0 text-sm text-gray-600">{career.period}</p>
                   </div>
 
                   <div className="mt-4 space-y-5">
                     {career.projects.map(project => {
-                      const projectKey = `${careerKey}.projects.${project.id}`;
-                      const descriptions = tResume.raw(
-                        `${projectKey}.descriptions`,
-                      ) as Description[];
+                      const { descriptions } = project;
 
                       return (
                         <article key={project.id} className="resume-preview-project">
-                          <h4 className="text-sm font-bold text-gray-900">
-                            {tResume(`${projectKey}.title`)}
-                          </h4>
-                          {tResume.has(`${projectKey}.period`) && (
-                            <p className="mt-1 text-xs text-gray-600">
-                              {tResume(`${projectKey}.period`)}
-                            </p>
+                          <h4 className="text-sm font-bold text-gray-900">{project.title}</h4>
+                          {project.period && (
+                            <p className="mt-1 text-xs text-gray-600">{project.period}</p>
                           )}
 
                           <div className="mt-3 space-y-4">
@@ -182,25 +165,32 @@ const ResumePreviewPage = async () => {
           <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-blue-500">
             {tProfile("education")}
           </h2>
-          <div className="mt-4 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-            <div>
-              <h3 className="text-sm font-bold text-gray-900">{tProfile("hybridCourse")}</h3>
-              <ul className="mt-2 text-sm leading-6 text-gray-700">
-                <li className="flex gap-2">
-                  <span
-                    className="mt-2.5 size-1 shrink-0 rounded-full bg-blue-400"
-                    aria-hidden="true"
-                  />
-                  <span>{tProfile("hybridDesc")}</span>
-                </li>
-              </ul>
+          {document.certifications.map(certification => (
+            <div
+              key={certification.name}
+              className="mt-4 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
+            >
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">{certification.name}</h3>
+                <ul className="mt-2 text-sm leading-6 text-gray-700">
+                  {certification.details.map(detail => (
+                    <li key={detail} className="flex gap-2">
+                      <span
+                        className="mt-2.5 size-1 shrink-0 rounded-full bg-blue-400"
+                        aria-hidden="true"
+                      />
+                      <span>{detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <p className="shrink-0 text-sm text-gray-600">{certification.date}</p>
             </div>
-            <p className="shrink-0 text-sm text-gray-600">2020.03</p>
-          </div>
+          ))}
         </section>
 
         <footer className="border-t border-gray-300 pt-4 text-xs text-gray-600">
-          {t("updatedAt")}
+          {t("updatedAt", { date: document.lastUpdated })}
         </footer>
       </article>
 

@@ -117,7 +117,7 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:37123 pnpm --filter @vscoke/web exec playwr
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | 스모크/i18n          | `i18n-integrity.spec.ts`                                                                                         |
 | 핵심 라우트/CTA      | `core-routes.spec.ts`, `deep-link.spec.ts`                                                                       |
-| 장애 복구/fallback   | `error-fallback.spec.ts`, `capability-fallback.spec.ts`, `not-found-recovery.spec.ts`                            |
+| 장애 복구/fallback   | `error-fallback.spec.ts`, `capability-fallback.spec.ts`, `not-found-recovery.spec.ts`, `resume-error.spec.ts`    |
 | API/client 계약      | `api-read-error.spec.ts`, `auth-token.spec.ts`, `server-route-fallback.spec.ts`                                  |
 | 상태 유지            | `history-tabs.spec.ts`, `state-persistence.spec.ts`                                                              |
 | 접근성/키보드        | `keyboard-only.spec.ts`                                                                                          |
@@ -125,6 +125,7 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:37123 pnpm --filter @vscoke/web exec playwr
 | 레이아웃/비주얼 회귀 | `layout-shift.spec.ts`, `visual-regression.spec.ts`                                                              |
 | 취미/게임 진입       | `hobby-games.spec.ts`, `sky-drop.spec.ts`, `beat-jev.spec.ts`, `hobby-recipes.spec.ts`, `hobby-espresso.spec.ts` |
 | 블로그 상세          | `blog-detail.spec.ts`                                                                                            |
+| 이력서 조회          | `resume-content.spec.ts`                                                                                         |
 | Resume RAG           | `resume-rag-chat-public.spec.ts`, `resume-conversation-persistence.spec.ts`                                      |
 | Analytics            | `google-analytics.spec.ts`, `google-tag-manager.spec.ts`, `usage-analytics.spec.ts`                              |
 

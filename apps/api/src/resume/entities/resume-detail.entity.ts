@@ -1,0 +1,19 @@
+import { Column, Entity, PrimaryColumn } from 'typeorm';
+
+@Entity('resume_details')
+export class ResumeDetail {
+  @PrimaryColumn({ type: 'varchar', length: 160 })
+  slug: string;
+
+  @Column({ type: 'text' })
+  title: string;
+
+  @Column({ name: 'start_date', type: 'text', nullable: true })
+  startDate: string | null;
+
+  @Column({ name: 'end_date', type: 'text', nullable: true })
+  endDate: string | null;
+
+  @Column({ type: 'text' })
+  content: string;
+}

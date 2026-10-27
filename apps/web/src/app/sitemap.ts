@@ -1,14 +1,18 @@
 import { getAllPosts } from "@/lib/blog";
-import { getAllResumeDetails } from "@/lib/resume-detail";
+import { getResumeDetails } from "@/services/resume-service";
 import { MetadataRoute } from "next";
 import { routing } from "@/i18n/routing";
 import { getEspressoBeans } from "@/services/espresso-history-service";
 import { siteUrl } from "@/lib/site-url";
 
+export const dynamic = "force-dynamic";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const posts = getAllPosts();
-  const resumeDetails = getAllResumeDetails();
-  const espressoBeans = await getEspressoBeans().catch(() => []);
+  const [resumeDetails, espressoBeans] = await Promise.all([
+    getResumeDetails(),
+    getEspressoBeans().catch(() => []),
+  ]);
 
   const staticRoutes = [
     "",

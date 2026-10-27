@@ -41,7 +41,7 @@ export class ResumeService {
         content: ResumeContentDto;
       }[]
     >(
-      `SELECT r.id,r.key,r.locale,v.id AS version_id,v.version_name,v.content_hash,v.content FROM resumes r JOIN resume_versions v ON v.id=r.current_version_id AND v.resume_id=r.id WHERE r.key=$1 AND r.locale=$2 AND r.visibility='public' AND ${publicDependencyCondition('d.resume_version_id=v.id')}`,
+      `SELECT r.id,r.key,r.locale,v.id AS version_id,v.version_name,v.content_hash,v.content FROM resumes r JOIN resume_versions v ON v.id=r.current_version_id AND v.resume_id=r.id WHERE r.key=$1 AND r.locale=$2 AND r.deleted_at IS NULL AND v.deleted_at IS NULL AND r.visibility='public' AND ${publicDependencyCondition('d.resume_version_id=v.id')}`,
       [key, locale],
     );
     if (!row) throw new NotFoundException('Resume document not found');
@@ -58,7 +58,7 @@ export class ResumeService {
 
   async getDetails(): Promise<ResumeDetailSummaryDto[]> {
     const rows = await this.dataSource.query<DetailRow[]>(
-      `SELECT slug,title,start_date,end_date FROM resume_details detail WHERE visibility='public' AND ${publicDependencyCondition('d.detail_slug=detail.slug AND d.detail_revision=detail.revision')} ORDER BY slug ASC`,
+      `SELECT slug,title,start_date,end_date FROM resume_details detail WHERE detail.deleted_at IS NULL AND visibility='public' AND ${publicDependencyCondition('d.detail_slug=detail.slug AND d.detail_revision=detail.revision')} ORDER BY slug ASC`,
     );
     return rows.map((row) => this.toSummary(row));
   }
@@ -68,7 +68,7 @@ export class ResumeService {
     manager: EntityManager = this.dataSource.manager,
   ): Promise<ResumeDetailDto> {
     const [row] = await manager.query<DetailRow[]>(
-      `SELECT slug,title,start_date,end_date,content FROM resume_details detail WHERE slug=$1 AND visibility='public' AND ${publicDependencyCondition('d.detail_slug=detail.slug AND d.detail_revision=detail.revision')}`,
+      `SELECT slug,title,start_date,end_date,content FROM resume_details detail WHERE slug=$1 AND detail.deleted_at IS NULL AND visibility='public' AND ${publicDependencyCondition('d.detail_slug=detail.slug AND d.detail_revision=detail.revision')}`,
       [slug],
     );
     if (!row) throw new NotFoundException('Resume detail not found');

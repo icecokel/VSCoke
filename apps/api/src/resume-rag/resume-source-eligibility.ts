@@ -2,7 +2,9 @@ import { NotFoundException } from '@nestjs/common';
 import { publicDependencyCondition } from '../career-data/career-data-publication';
 
 export const publicResumeCondition = (alias: string): string =>
-  `${alias}.visibility = 'public' AND ${alias}.current_version_id IS NOT NULL
+  `${alias}.deleted_at IS NULL AND ${alias}.visibility = 'public' AND ${alias}.current_version_id IS NOT NULL
+   AND EXISTS (SELECT 1 FROM resume_versions version
+     WHERE version.id = ${alias}.current_version_id AND version.deleted_at IS NULL)
    AND ${publicDependencyCondition(`d.resume_version_id = ${alias}.current_version_id`)}`;
 
 export const assertPublicResume = async (
@@ -21,6 +23,7 @@ export const assertPublicResume = async (
 
 // 식별자와 placeholder는 서버 코드만 전달한다. 값은 항상 SQL parameter로 묶는다.
 export const careerSourceCondition = (source: string): string => `(
+  ${source}.deleted_at IS NULL AND (
   ${source}."sourceType" <> 'career_data' OR (
     ${source}."isCurrent" = TRUE
     AND ${publicDependencyCondition(`d.source_item_id = ${source}.id`)}
@@ -34,17 +37,18 @@ export const careerSourceCondition = (source: string): string => `(
         SELECT 1 FROM resume_content_dependencies dep
         INNER JOIN career_facts f ON f.id = dep.fact_id
         WHERE dep.source_item_id = ${source}.id AND f.revision = dep.source_revision
+          AND dep.deleted_at IS NULL AND f.deleted_at IS NULL
           AND f.visibility = 'public' AND f.verification_status = 'confirmed'
       )) OR
       (${source}."itemType" = 'project_detail' AND EXISTS (
         SELECT 1 FROM resume_details detail
         WHERE detail.slug = ${source}.metadata->>'slug'
-          AND detail.visibility = 'public'
+          AND detail.deleted_at IS NULL AND detail.visibility = 'public'
           AND detail.revision::text = ${source}.metadata->>'revision'
           AND ${publicDependencyCondition('d.detail_slug = detail.slug AND d.detail_revision = detail.revision')}
       ))
     )
-  )
+  ))
 )`;
 
 export const selectedResumeSourceCondition = (

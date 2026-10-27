@@ -1,14 +1,19 @@
 import {
   Body,
+  DefaultValuePipe,
+  Delete,
   Controller,
   Get,
   Header,
   HttpCode,
   Param,
+  ParseBoolPipe,
+  ParseEnumPipe,
   ParseUUIDPipe,
   Patch,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -19,6 +24,8 @@ import {
   ApiInternalServerErrorResponse,
   ApiNotFoundResponse,
   ApiOperation,
+  ApiQuery,
+  ApiParam,
   ApiServiceUnavailableResponse,
   ApiTags,
   ApiUnauthorizedResponse,
@@ -29,6 +36,7 @@ import { CareerDataGuard } from './career-data.guard';
 import { CareerDataService } from './career-data.service';
 import {
   CareerDataSnapshotDto,
+  CareerDeleteResultDto,
   CareerDataUpsertDto,
   CareerDetailResultDto,
   CareerPublishResultDto,
@@ -77,8 +85,18 @@ export class CareerDataController {
     description: '관리 요청 처리 성공',
     type: CareerDataSnapshotDto,
   })
-  getData(): Promise<CareerDataSnapshotDto> {
-    return this.service.getData();
+  @ApiQuery({
+    name: 'includeDeleted',
+    required: false,
+    type: Boolean,
+    description: '삭제 원본·관계 포함 (기본 false)',
+  })
+  getData(
+    // 전역 ValidationPipe의 Boolean 강제 변환 전에 ParseBoolPipe가 원문을 검사한다.
+    @Query('includeDeleted', new DefaultValuePipe(false), ParseBoolPipe)
+    includeDeleted: unknown,
+  ): Promise<CareerDataSnapshotDto> {
+    return this.service.getData(includeDeleted === true);
   }
   @Put()
   @Header('Cache-Control', 'no-store')
@@ -89,6 +107,30 @@ export class CareerDataController {
   })
   upsert(@Body() body: CareerDataUpsertDto): Promise<CareerDataSnapshotDto> {
     return this.service.upsertData(body);
+  }
+  @Delete(':kind/:id')
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({ summary: '경력 원본과 관련 후보 관계 논리삭제' })
+  @ApiParam({ name: 'kind', enum: ['experience', 'fact', 'bullet', 'keyword'] })
+  @ApiOkResponse({
+    description: '논리삭제 결과 (반복 요청은 기존 삭제 결과)',
+    type: CareerDeleteResultDto,
+  })
+  remove(
+    @Param(
+      'kind',
+      new ParseEnumPipe({
+        experience: 'experience',
+        fact: 'fact',
+        bullet: 'bullet',
+        keyword: 'keyword',
+      }),
+    )
+    kind: 'experience' | 'fact' | 'bullet' | 'keyword',
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: RevisionDto,
+  ): Promise<CareerDeleteResultDto> {
+    return this.service.deleteCareer(kind, id, body.expectedRevision);
   }
   @Post('facts/:id/publish')
   @HttpCode(200)
@@ -143,8 +185,17 @@ export class ResumeManagementController {
     description: '관리 요청 처리 성공',
     type: [ManagedResumeDto],
   })
-  list(): Promise<ManagedResumeDto[]> {
-    return this.service.listResumes();
+  @ApiQuery({
+    name: 'includeDeleted',
+    required: false,
+    type: Boolean,
+    description: '삭제 문서 포함 (기본 false)',
+  })
+  list(
+    @Query('includeDeleted', new DefaultValuePipe(false), ParseBoolPipe)
+    includeDeleted: unknown,
+  ): Promise<ManagedResumeDto[]> {
+    return this.service.listResumes(includeDeleted === true);
   }
   @Post('versions')
   @HttpCode(200)
@@ -156,6 +207,44 @@ export class ResumeManagementController {
   })
   save(@Body() body: ResumeVersionSaveDto): Promise<ResumeSaveResultDto> {
     return this.service.saveVersion(body);
+  }
+  @Delete('resumes/:id')
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({ summary: '문서·소유 버전·의존성과 파생 원문 논리삭제' })
+  @ApiOkResponse({ description: '논리삭제 결과', type: CareerDeleteResultDto })
+  removeResume(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: RevisionDto,
+  ): Promise<CareerDeleteResultDto> {
+    return this.service.deleteResume(id, body.expectedRevision);
+  }
+  @Delete('versions/:id')
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({
+    summary: '불변 버전 논리삭제 (expectedRevision은 소유 문서 기준)',
+  })
+  @ApiOkResponse({
+    description: '논리삭제 결과. 현재 버전이면 포인터 해제',
+    type: CareerDeleteResultDto,
+  })
+  removeVersion(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: RevisionDto,
+  ): Promise<CareerDeleteResultDto> {
+    return this.service.deleteVersion(id, body.expectedRevision);
+  }
+  @Delete('details/:slug')
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({ summary: '상세와 의존성·파생 원문 논리삭제' })
+  @ApiOkResponse({
+    description: '논리삭제 결과 (id는 slug)',
+    type: CareerDeleteResultDto,
+  })
+  removeDetail(
+    @Param() params: ResumeSlugParamsDto,
+    @Body() body: RevisionDto,
+  ): Promise<CareerDeleteResultDto> {
+    return this.service.deleteDetail(params.slug, body.expectedRevision);
   }
   @Patch('resumes/:id')
   @Header('Cache-Control', 'no-store')

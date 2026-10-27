@@ -197,7 +197,7 @@ export class ResumeRagRetrieverService {
             AND ("sourceType" <> 'career_data' OR "isCurrent" = TRUE)
           ORDER BY "sourceType", "sourceKey", "updatedAt" DESC, "id" DESC
         ) AS current_items
-        WHERE "status" = 'active'
+        WHERE deleted_at IS NULL AND "status" = 'active'
           AND "itemType" = ANY($4)
           AND ${careerSourceCondition('current_items')}
           AND ${legacyDetailCondition('current_items')}
@@ -286,7 +286,8 @@ export class ResumeRagRetrieverService {
         SELECT chunk.*, source.title AS "sourceTitle", source.metadata AS "sourceMetadata"
         FROM resume_vector_chunks chunk
         INNER JOIN current_items source ON source.id = chunk."sourceItemId"
-        WHERE source.status = 'active' AND source.vectorize = TRUE
+        WHERE source.deleted_at IS NULL AND chunk.deleted_at IS NULL
+          AND source.status = 'active' AND source.vectorize = TRUE
           AND source."itemType" = ANY($12)
           AND ${careerSourceCondition('source')}
           AND ${legacyDetailCondition('source')}

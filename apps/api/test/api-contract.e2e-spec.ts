@@ -89,10 +89,12 @@ describe('Local OpenAPI contract generation', () => {
         '/main-chat',
         '/recipes',
         '/career-data',
+        '/career-data/{kind}/{id}',
         '/career-data/facts/{id}/publish',
         '/resume-management/resumes',
         '/resume-management/resumes/{id}',
         '/resume-management/versions',
+        '/resume-management/versions/{id}',
         '/resume-management/details/{slug}',
         '/resume/preview',
         '/resume',
@@ -274,7 +276,7 @@ describe('OpenAPI 의미 계약', () => {
         }
       }
     }
-    expect(operations).toBe(36);
+    expect(operations).toBe(40);
   });
 
   it('점수·시간·등수는 정수이며 시간만 null을 허용한다', async () => {

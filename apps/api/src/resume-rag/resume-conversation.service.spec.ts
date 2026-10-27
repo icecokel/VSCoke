@@ -46,22 +46,29 @@ const createHarness = () => {
       Object.assign(conversation, values);
       return Promise.resolve({ affected: 1 });
     }),
-    delete: jest.fn(() => {
+    softDelete: jest.fn(() => {
       deleted = true;
       return Promise.resolve({ affected: 1 });
     }),
+    delete: jest.fn().mockResolvedValue({ affected: 0 }),
     create: jest.fn((values: Partial<ResumeChatConversation>) => values),
     save: jest.fn((values: Partial<ResumeChatConversation>) =>
       Promise.resolve({ ...conversation, ...values }),
     ),
   };
   const turns = {
-    findOneBy: jest.fn((where: { requestId: string }) =>
+    findOne: jest.fn(({ where }: { where: { requestId: string } }) =>
       Promise.resolve(
         saved.find((turn) => turn.requestId === where.requestId) ?? null,
       ),
     ),
-    find: jest.fn(() => Promise.resolve([...saved].reverse())),
+    find: jest.fn(() =>
+      Promise.resolve(saved.filter((turn) => !turn.deletedAt).reverse()),
+    ),
+    softDelete: jest.fn(() => {
+      for (const turn of saved) turn.deletedAt = new Date();
+      return Promise.resolve({ affected: saved.length });
+    }),
     save: jest.fn((turn: ResumeChatTurn) => {
       const stored = Object.assign(new ResumeChatTurn(), turn, {
         id: randomUUID(),
@@ -223,6 +230,50 @@ describe('ResumeConversationService', () => {
     await expect(service.history(conversation.id, token)).rejects.toThrow(
       NotFoundException,
     );
+  });
+
+  it('생성 중 대화가 삭제되면 늦은 모델 응답을 저장하지 않는다', async () => {
+    const { service, request, saved, conversation, conversations, turns } =
+      createHarness();
+    const generate = jest.fn(async () => {
+      await service.remove(conversation.id, token);
+      return answer;
+    });
+    await expect(
+      service.runTurn(request(), token, 'resume', generate),
+    ).rejects.toThrow(NotFoundException);
+    expect(saved).toHaveLength(0);
+    expect(conversations.softDelete).toHaveBeenCalledWith({
+      id: conversation.id,
+    });
+    expect(turns.softDelete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: conversation.id,
+      }),
+    );
+    expect(conversations.delete).not.toHaveBeenCalled();
+  });
+
+  it('최근 기록에서 제외된 requestId를 재실행하거나 복구하지 않는다', async () => {
+    const { service, request, saved, turns } = createHarness();
+    const input = request();
+    await service.runTurn(
+      input,
+      token,
+      'resume',
+      jest.fn().mockResolvedValue(answer),
+    );
+    saved[0].deletedAt = new Date();
+    const generate = jest.fn().mockResolvedValue(answer);
+    await expect(
+      service.runTurn(input, token, 'resume', generate),
+    ).rejects.toThrow(ConflictException);
+    expect(generate).not.toHaveBeenCalled();
+    expect(turns.query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE resume_chat_turns SET deleted_at'),
+      expect.any(Array),
+    );
+    expect(saved).toHaveLength(1);
   });
 
   it('다른 문서의 대화를 복원하거나 이어서 사용할 수 없다', async () => {

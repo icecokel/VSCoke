@@ -1,5 +1,6 @@
 import {
   Column,
+  DeleteDateColumn,
   CreateDateColumn,
   Entity,
   Index,
@@ -79,4 +80,11 @@ export class ResumeSourceItem {
 
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
+
+  @DeleteDateColumn({
+    name: 'deleted_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  deletedAt: Date | null;
 }

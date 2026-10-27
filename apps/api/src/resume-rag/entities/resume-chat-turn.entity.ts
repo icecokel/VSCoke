@@ -1,5 +1,6 @@
 import {
   Column,
+  DeleteDateColumn,
   CreateDateColumn,
   Entity,
   Index,
@@ -41,4 +42,11 @@ export class ResumeChatTurn {
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
+
+  @DeleteDateColumn({
+    name: 'deleted_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  deletedAt: Date | null;
 }

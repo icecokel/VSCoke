@@ -1,5 +1,6 @@
 import {
   Column,
+  DeleteDateColumn,
   type ColumnType,
   Entity,
   Index,
@@ -8,6 +9,7 @@ import {
 
 @Entity('resume_vector_chunks')
 @Index(
+  'IDX_resume_vector_chunks_profile_unique',
   [
     'sourceItemId',
     'chunkIndex',
@@ -17,7 +19,7 @@ import {
     'chunkerVersion',
     'chunkConfigHash',
   ],
-  { unique: true },
+  { unique: true, where: 'deleted_at IS NULL' },
 )
 @Index(['locale'])
 @Index(['status', 'visibility'])
@@ -85,4 +87,11 @@ export class ResumeVectorChunk {
 
   @Column({ type: 'timestamptz' })
   indexedAt: Date;
+
+  @DeleteDateColumn({
+    name: 'deleted_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  deletedAt: Date | null;
 }

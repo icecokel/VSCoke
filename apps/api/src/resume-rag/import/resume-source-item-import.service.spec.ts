@@ -1,3 +1,16 @@
+import type { EntityManager, Repository } from 'typeorm';
+import { ResumeImportBatch } from '../entities/resume-import-batch.entity';
+import { ResumeSourceItem } from '../entities/resume-source-item.entity';
+import {
+  loadResumeSourceItemsFromEntry,
+  type ResumeImportManifestEntry,
+} from './resume-source-item-loader';
+import { ResumeSourceItemImportService } from './resume-source-item-import.service';
+
+jest.mock('./resume-source-item-loader', () => ({
+  loadResumeSourceItemsFromEntry: jest.fn(),
+}));
+
 import { findRetiredResumeSourceItemIds } from './resume-source-item-import.service';
 
 const item = (
@@ -46,4 +59,72 @@ describe('findRetiredResumeSourceItemIds', () => {
       ),
     ).toEqual([]);
   });
+});
+
+describe('ResumeSourceItemImportService', () => {
+  it.each(['latest', 'same-hash'])(
+    '삭제된 %s source를 재import로 복원하거나 superseded 처리하지 않는다',
+    async (deletedMatch) => {
+      const tombstone = {
+        id: 'deleted-source',
+        deletedAt: new Date(),
+        status: 'active',
+      };
+      const source = {
+        sourceType: 'app_resume',
+        sourceKey: 'synthetic',
+        contentHash: 'synthetic-hash',
+        status: 'active',
+        vectorize: true,
+      };
+      jest
+        .mocked(loadResumeSourceItemsFromEntry)
+        .mockReturnValue([
+          source as ReturnType<typeof loadResumeSourceItemsFromEntry>[number],
+        ]);
+      const sources = {
+        findOne: jest
+          .fn()
+          .mockResolvedValueOnce(deletedMatch === 'latest' ? tombstone : null)
+          .mockResolvedValue(tombstone),
+        save: jest.fn(),
+        createQueryBuilder: jest.fn(),
+      };
+      const manager = {
+        query: jest.fn().mockResolvedValue([]),
+        getRepository: () => sources,
+      };
+      const batches = {
+        create: jest.fn((values: Partial<ResumeImportBatch>) => values),
+        save: jest.fn().mockResolvedValue({ id: 'batch' }),
+        update: jest.fn().mockResolvedValue({ affected: 1 }),
+      };
+      const service = new ResumeSourceItemImportService(
+        batches as unknown as Repository<ResumeImportBatch>,
+        {
+          ...sources,
+          manager: {
+            transaction: (
+              operation: (manager: EntityManager) => Promise<unknown>,
+            ) => operation(manager as unknown as EntityManager),
+          },
+        } as unknown as Repository<ResumeSourceItem>,
+      );
+      const batch = await service.importEntries(
+        [
+          {
+            id: 'synthetic',
+            sourceType: 'app_resume',
+          } as ResumeImportManifestEntry,
+        ],
+        'synthetic-root',
+      );
+      expect(batch.summary).toMatchObject({ failed: 1, imported: 0 });
+      expect(sources.save).not.toHaveBeenCalled();
+      expect(sources.createQueryBuilder).not.toHaveBeenCalled();
+      expect(sources.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ withDeleted: true }),
+      );
+    },
+  );
 });

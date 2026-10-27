@@ -418,7 +418,17 @@ export class ResumeSaveResultDto {
   currentVersionId: string | null;
   @ApiProperty() contentHash: string;
 }
+export class CareerDeleteResultDto {
+  @ApiProperty({ description: '원본/문서/버전 ID 또는 상세 slug' }) id: string;
+  @ApiProperty({
+    description: '삭제 후 revision. 버전 삭제는 소유 문서 revision',
+  })
+  revision: number;
+  @ApiProperty({ type: String, format: 'date-time' }) deletedAt: string;
+}
 export class ManagedResumeDto {
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  deletedAt: string | null;
   @ApiProperty() id: string;
   @ApiProperty() key: string;
   @ApiProperty() locale: string;

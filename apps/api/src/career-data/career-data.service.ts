@@ -11,6 +11,7 @@ import type {
   CareerDataUpsertDto,
   CareerDependencyDto,
   CareerIdentityDto,
+  CareerDeleteResultDto,
   ManagedResumeDto,
   ResumeDetailSaveDto,
   ResumeSaveResultDto,
@@ -20,7 +21,11 @@ import type {
 import type { ResumeContentDto } from '../resume/resume.dto';
 import { publicDependencyCondition } from './career-data-publication';
 
-type Row = Record<string, unknown> & { id: string; revision: number };
+type Row = Record<string, unknown> & {
+  id: string;
+  revision: number;
+  deleted_at: string | null;
+};
 type Dependency = CareerDependencyDto & { snapshot: Row };
 type ResumeRow = {
   id: string;
@@ -32,12 +37,14 @@ type ResumeRow = {
   visibility: string;
   revision: number;
   current_version_id: string | null;
+  deleted_at: string | null;
 };
 type VersionRow = {
   id: string;
   version_name: string;
   content_hash: string;
   payload_hash: string;
+  deleted_at: string | null;
 };
 const tables = {
   experience: 'career_experiences',
@@ -92,10 +99,21 @@ export class CareerDataService {
 
   private async readSnapshot(
     manager: EntityManager,
+    includeDeleted = false,
   ): Promise<CareerDataSnapshotDto> {
+    const activeParents: Record<string, string> = {
+      career_facts:
+        ' AND EXISTS(SELECT 1 FROM career_experiences e WHERE e.id=career_facts.experience_id AND e.deleted_at IS NULL)',
+      career_bullets:
+        ' AND EXISTS(SELECT 1 FROM career_experiences e WHERE e.id=career_bullets.experience_id AND e.deleted_at IS NULL)',
+      career_bullet_facts:
+        ' AND EXISTS(SELECT 1 FROM career_bullets b JOIN career_experiences e ON e.id=b.experience_id JOIN career_facts f ON f.id=career_bullet_facts.fact_id WHERE b.id=career_bullet_facts.bullet_id AND b.deleted_at IS NULL AND e.deleted_at IS NULL AND f.deleted_at IS NULL)',
+      career_bullet_keywords:
+        ' AND EXISTS(SELECT 1 FROM career_bullets b JOIN career_experiences e ON e.id=b.experience_id JOIN career_keywords k ON k.id=career_bullet_keywords.keyword_id WHERE b.id=career_bullet_keywords.bullet_id AND b.deleted_at IS NULL AND e.deleted_at IS NULL AND k.deleted_at IS NULL)',
+    };
     const read = (table: string): Promise<Record<string, unknown>[]> =>
       manager.query(
-        `SELECT * FROM ${table} ORDER BY ${table === 'career_bullet_facts' || table === 'career_bullet_keywords' ? 'bullet_id' : 'id'}`,
+        `SELECT * FROM ${table} ${includeDeleted ? '' : `WHERE deleted_at IS NULL${activeParents[table] ?? ''}`} ORDER BY ${table === 'career_bullet_facts' || table === 'career_bullet_keywords' ? 'bullet_id' : 'id'}`,
       );
     return {
       experiences: await read('career_experiences'),
@@ -107,10 +125,165 @@ export class CareerDataService {
     };
   }
 
-  getData(): Promise<CareerDataSnapshotDto> {
+  getData(includeDeleted = false): Promise<CareerDataSnapshotDto> {
     return this.dataSource.transaction('REPEATABLE READ', (manager) =>
-      this.readSnapshot(manager),
+      this.readSnapshot(manager, includeDeleted),
     );
+  }
+
+  private async requireActive(
+    manager: EntityManager,
+    table: string,
+    id: string,
+  ): Promise<void> {
+    const [row] = await manager.query<{ id: string }[]>(
+      `SELECT id FROM ${table} WHERE id=$1 AND deleted_at IS NULL`,
+      [id],
+    );
+    if (!row) throw new ConflictException('삭제됐거나 없는 원본입니다.');
+  }
+
+  deleteCareer(
+    kind: CareerDependencyDto['kind'],
+    id: string,
+    expectedRevision: number,
+  ): Promise<CareerDeleteResultDto> {
+    return this.write(async (manager) => {
+      const table = tables[kind];
+      const [row] = await manager.query<Row[]>(
+        `SELECT * FROM ${table} WHERE id=$1`,
+        [id],
+      );
+      if (!row) throw new NotFoundException('원본이 없습니다.');
+      if (row.deleted_at)
+        return { id, revision: row.revision, deletedAt: row.deleted_at };
+      if (row.revision !== expectedRevision)
+        throw new ConflictException('원본 revision 불일치');
+      if (kind === 'fact' || kind === 'keyword')
+        await manager.query(
+          `UPDATE career_bullets b SET status=CASE WHEN $2='fact' AND b.status='ready' THEN 'needs_review' ELSE b.status END,revision=revision+1,updated_at=now() WHERE b.deleted_at IS NULL AND EXISTS(SELECT 1 FROM ${kind === 'fact' ? 'career_bullet_facts' : 'career_bullet_keywords'} link WHERE link.bullet_id=b.id AND link.${kind}_id=$1 AND link.deleted_at IS NULL)`,
+          [id, kind],
+        );
+      if (kind === 'experience') {
+        for (const child of ['career_facts', 'career_bullets'])
+          await manager.query(
+            `UPDATE ${child} SET deleted_at=now(),revision=revision+1,updated_at=now() WHERE experience_id=$1 AND deleted_at IS NULL`,
+            [id],
+          );
+      }
+      if (kind === 'experience' || kind === 'fact' || kind === 'bullet')
+        await manager.query(
+          `UPDATE career_bullet_facts SET deleted_at=COALESCE(deleted_at,now()) WHERE ${kind === 'experience' ? 'experience_id' : kind === 'fact' ? 'fact_id' : 'bullet_id'}=$1`,
+          [id],
+        );
+      if (kind === 'experience' || kind === 'bullet' || kind === 'keyword')
+        await manager.query(
+          `UPDATE career_bullet_keywords SET deleted_at=COALESCE(deleted_at,now()) WHERE ${kind === 'experience' ? 'bullet_id IN (SELECT id FROM career_bullets WHERE experience_id=$1)' : kind === 'bullet' ? 'bullet_id=$1' : 'keyword_id=$1'}`,
+          [id],
+        );
+      const [result] = await manager.query<CareerDeleteResultDto[]>(
+        `WITH changed AS (UPDATE ${table} SET deleted_at=now(),revision=revision+1,updated_at=now() WHERE id=$1 AND revision=$2 RETURNING id,revision,deleted_at AS "deletedAt") SELECT * FROM changed`,
+        [id, expectedRevision],
+      );
+      if (!result) throw new ConflictException('원본 revision 불일치');
+      await this.withdrawSources(manager);
+      return result;
+    });
+  }
+
+  deleteResume(
+    id: string,
+    expectedRevision: number,
+  ): Promise<CareerDeleteResultDto> {
+    return this.write(async (manager) => {
+      const [row] = await manager.query<ResumeRow[]>(
+        'SELECT * FROM resumes WHERE id=$1',
+        [id],
+      );
+      if (!row) throw new NotFoundException('문서가 없습니다.');
+      if (row.deleted_at)
+        return { id, revision: row.revision, deletedAt: row.deleted_at };
+      if (row.revision !== expectedRevision)
+        throw new ConflictException('문서 revision 불일치');
+      await manager.query(
+        'UPDATE resume_versions SET deleted_at=COALESCE(deleted_at,now()) WHERE resume_id=$1',
+        [id],
+      );
+      await manager.query(
+        'UPDATE resume_content_dependencies SET deleted_at=COALESCE(deleted_at,now()) WHERE resume_version_id IN (SELECT id FROM resume_versions WHERE resume_id=$1)',
+        [id],
+      );
+      const [result] = await manager.query<CareerDeleteResultDto[]>(
+        'WITH changed AS (UPDATE resumes SET deleted_at=now(),revision=revision+1,updated_at=now() WHERE id=$1 AND revision=$2 RETURNING id,revision,deleted_at AS "deletedAt") SELECT * FROM changed',
+        [id, expectedRevision],
+      );
+      if (!result) throw new ConflictException('문서 revision 불일치');
+      await this.withdrawSources(manager);
+      return result;
+    });
+  }
+
+  deleteVersion(
+    id: string,
+    expectedRevision: number,
+  ): Promise<CareerDeleteResultDto> {
+    return this.write(async (manager) => {
+      const [version] = await manager.query<
+        (VersionRow & { resume_id: string })[]
+      >('SELECT * FROM resume_versions WHERE id=$1', [id]);
+      if (!version) throw new NotFoundException('버전이 없습니다.');
+      const [resume] = await manager.query<ResumeRow[]>(
+        'SELECT * FROM resumes WHERE id=$1',
+        [version.resume_id],
+      );
+      if (version.deleted_at)
+        return { id, revision: resume.revision, deletedAt: version.deleted_at };
+      if (resume.deleted_at) throw new NotFoundException('문서가 없습니다.');
+      if (resume.revision !== expectedRevision)
+        throw new ConflictException('문서 revision 불일치');
+      const [deleted] = await manager.query<{ deleted_at: string }[]>(
+        'WITH changed AS (UPDATE resume_versions SET deleted_at=now() WHERE id=$1 RETURNING deleted_at) SELECT * FROM changed',
+        [id],
+      );
+      await manager.query(
+        'UPDATE resume_content_dependencies SET deleted_at=COALESCE(deleted_at,now()) WHERE resume_version_id=$1',
+        [id],
+      );
+      const [changed] = await manager.query<{ revision: number }[]>(
+        `WITH changed AS (UPDATE resumes SET current_version_id=CASE WHEN current_version_id=$2 THEN NULL ELSE current_version_id END, current_version_changed_at=CASE WHEN current_version_id=$2 THEN now() ELSE current_version_changed_at END,revision=revision+1,updated_at=now() WHERE id=$1 AND revision=$3 RETURNING revision) SELECT * FROM changed`,
+        [resume.id, id, expectedRevision],
+      );
+      if (!changed) throw new ConflictException('문서 revision 불일치');
+      await this.withdrawSources(manager);
+      return { id, revision: changed.revision, deletedAt: deleted.deleted_at };
+    });
+  }
+
+  deleteDetail(
+    slug: string,
+    expectedRevision: number,
+  ): Promise<CareerDeleteResultDto> {
+    return this.write(async (manager) => {
+      const [row] = await manager.query<
+        { revision: number; deleted_at: string | null }[]
+      >('SELECT revision,deleted_at FROM resume_details WHERE slug=$1', [slug]);
+      if (!row) throw new NotFoundException('상세가 없습니다.');
+      if (row.deleted_at)
+        return { id: slug, revision: row.revision, deletedAt: row.deleted_at };
+      if (row.revision !== expectedRevision)
+        throw new ConflictException('상세 revision 불일치');
+      await manager.query(
+        'UPDATE resume_content_dependencies SET deleted_at=COALESCE(deleted_at,now()) WHERE detail_slug=$1',
+        [slug],
+      );
+      const [result] = await manager.query<CareerDeleteResultDto[]>(
+        'WITH changed AS (UPDATE resume_details SET deleted_at=now(),revision=revision+1,updated_at=now() WHERE slug=$1 AND revision=$2 RETURNING slug AS id,revision,deleted_at AS "deletedAt") SELECT * FROM changed',
+        [slug, expectedRevision],
+      );
+      if (!result) throw new ConflictException('상세 revision 불일치');
+      await this.withdrawSources(manager);
+      return result;
+    });
   }
 
   private async upsert(
@@ -123,6 +296,8 @@ export class CareerDataService {
       `SELECT * FROM ${table} WHERE id=$1`,
       [input.id],
     );
+    if (existing?.deleted_at)
+      throw new ConflictException('삭제된 원본은 다시 저장할 수 없습니다.');
     if ((existing?.revision ?? 0) !== input.expectedRevision)
       throw new ConflictException(`${table}: revision 불일치`);
     const entries = Object.entries(values);
@@ -162,6 +337,7 @@ export class CareerDataService {
       for (const row of input.facts) {
         if (row.verificationStatus === 'confirmed' && !row.evidence.length)
           throw new BadRequestException('확인된 사실에는 출처가 필요합니다.');
+        await this.requireActive(manager, tables.experience, row.experienceId);
         await this.upsert(manager, tables.fact, row, {
           experience_id: row.experienceId,
           kind: row.kind,
@@ -186,13 +362,14 @@ export class CareerDataService {
             'ready 불렛에는 사실 연결이 필요합니다.',
           );
         await manager.query(
-          'DELETE FROM career_bullet_facts WHERE bullet_id=$1',
+          'UPDATE career_bullet_facts SET deleted_at=COALESCE(deleted_at,now()) WHERE bullet_id=$1',
           [row.id],
         );
         await manager.query(
-          'DELETE FROM career_bullet_keywords WHERE bullet_id=$1',
+          'UPDATE career_bullet_keywords SET deleted_at=COALESCE(deleted_at,now()) WHERE bullet_id=$1',
           [row.id],
         );
+        await this.requireActive(manager, tables.experience, row.experienceId);
         await this.upsert(manager, tables.bullet, row, {
           experience_id: row.experienceId,
           text: row.text,
@@ -204,7 +381,7 @@ export class CareerDataService {
         });
         for (const link of row.facts) {
           const [fact] = await manager.query<Row[]>(
-            'SELECT * FROM career_facts WHERE id=$1',
+            'SELECT * FROM career_facts WHERE id=$1 AND deleted_at IS NULL',
             [link.factId],
           );
           if (
@@ -225,15 +402,17 @@ export class CareerDataService {
               'ready 불렛은 현재 확인된 사실을 참조하고 공개 후보는 공개 사실을 참조해야 합니다.',
             );
           await manager.query(
-            'INSERT INTO career_bullet_facts(bullet_id,fact_id,experience_id,fact_revision) VALUES ($1,$2,$3,$4)',
+            'INSERT INTO career_bullet_facts(bullet_id,fact_id,experience_id,fact_revision) VALUES ($1,$2,$3,$4) ON CONFLICT(bullet_id,fact_id) DO UPDATE SET experience_id=EXCLUDED.experience_id,fact_revision=EXCLUDED.fact_revision,deleted_at=NULL',
             [row.id, link.factId, row.experienceId, link.factRevision],
           );
         }
-        for (const keywordId of row.keywordIds)
+        for (const keywordId of row.keywordIds) {
+          await this.requireActive(manager, tables.keyword, keywordId);
           await manager.query(
-            'INSERT INTO career_bullet_keywords(bullet_id,keyword_id) VALUES ($1,$2)',
+            'INSERT INTO career_bullet_keywords(bullet_id,keyword_id) VALUES ($1,$2) ON CONFLICT(bullet_id,keyword_id) DO UPDATE SET deleted_at=NULL',
             [row.id, keywordId],
           );
+        }
         if (row.status === 'ready' && row.visibility === 'public') {
           const [experience] = await manager.query<Row[]>(
             'SELECT * FROM career_experiences WHERE id=$1',
@@ -247,7 +426,7 @@ export class CareerDataService {
       }
       // 이미 저장한 문구는 유지하고, 현재 후보만 근거 변경을 재검토하도록 표시한다.
       await manager.query(
-        `UPDATE career_bullets b SET status='needs_review',revision=revision+1,updated_at=now() WHERE b.status='ready' AND EXISTS (SELECT 1 FROM career_bullet_facts bf JOIN career_facts f ON f.id=bf.fact_id WHERE bf.bullet_id=b.id AND bf.fact_revision<>f.revision)`,
+        `UPDATE career_bullets b SET status='needs_review',revision=revision+1,updated_at=now() WHERE b.deleted_at IS NULL AND b.status='ready' AND EXISTS (SELECT 1 FROM career_bullet_facts bf JOIN career_facts f ON f.id=bf.fact_id WHERE bf.bullet_id=b.id AND bf.deleted_at IS NULL AND f.deleted_at IS NULL AND bf.fact_revision<>f.revision)`,
       );
       await this.withdrawSources(manager);
       return this.readSnapshot(manager);
@@ -267,7 +446,7 @@ export class CareerDataService {
     ): Promise<void> => {
       const key = `${kind}/${id}`;
       const [snapshot] = await manager.query<Row[]>(
-        `SELECT * FROM ${tables[kind]} WHERE id=$1`,
+        `SELECT * FROM ${tables[kind]} WHERE id=$1 AND deleted_at IS NULL`,
         [id],
       );
       if (!snapshot) throw new ConflictException(`없는 원본: ${key}`);
@@ -296,7 +475,7 @@ export class CareerDataService {
         const links = await manager.query<
           { fact_id: string; fact_revision: number }[]
         >(
-          'SELECT * FROM career_bullet_facts WHERE bullet_id=$1 ORDER BY fact_id',
+          'SELECT * FROM career_bullet_facts WHERE bullet_id=$1 AND deleted_at IS NULL ORDER BY fact_id',
           [id],
         );
         if (isPublic && !links.length)
@@ -304,7 +483,7 @@ export class CareerDataService {
         for (const link of links)
           await add('fact', link.fact_id, link.fact_revision);
         const keywords = await manager.query<{ keyword_id: string }[]>(
-          'SELECT keyword_id FROM career_bullet_keywords WHERE bullet_id=$1 ORDER BY keyword_id',
+          'SELECT keyword_id FROM career_bullet_keywords WHERE bullet_id=$1 AND deleted_at IS NULL ORDER BY keyword_id',
           [id],
         );
         for (const link of keywords) await add('keyword', link.keyword_id);
@@ -387,12 +566,18 @@ export class CareerDataService {
         'SELECT * FROM resumes WHERE key=$1 AND locale=$2',
         [input.key, input.locale],
       );
+      if (resume?.deleted_at)
+        throw new ConflictException('삭제된 문서는 다시 저장할 수 없습니다.');
       if (resume) {
         const [retry] = await manager.query<VersionRow[]>(
           'SELECT * FROM resume_versions WHERE resume_id=$1 AND version_name=$2',
           [resume.id, input.versionName],
         );
         if (retry) {
+          if (retry.deleted_at)
+            throw new ConflictException(
+              '삭제된 버전은 다시 저장할 수 없습니다.',
+            );
           if (retry.payload_hash !== payloadHash)
             throw new ConflictException('같은 버전명에 다른 내용이 있습니다.');
           return this.result(resume, retry);
@@ -407,7 +592,7 @@ export class CareerDataService {
         );
       if (input.parentVersionId) {
         const [parent] = await manager.query<VersionRow[]>(
-          'SELECT id FROM resume_versions WHERE id=$1',
+          'SELECT v.id FROM resume_versions v JOIN resumes r ON r.id=v.resume_id WHERE v.id=$1 AND v.deleted_at IS NULL AND r.deleted_at IS NULL',
           [input.parentVersionId],
         );
         if (!parent) throw new ConflictException('부모 버전이 없습니다.');
@@ -488,9 +673,9 @@ export class CareerDataService {
     });
   }
 
-  async listResumes(): Promise<ManagedResumeDto[]> {
+  async listResumes(includeDeleted = false): Promise<ManagedResumeDto[]> {
     return this.dataSource.query(
-      `SELECT id,key,locale,kind,track,target_key AS "targetKey",visibility,revision,current_version_id AS "currentVersionId" FROM resumes ORDER BY key,locale`,
+      `SELECT id,key,locale,kind,track,target_key AS "targetKey",visibility,revision,current_version_id AS "currentVersionId",deleted_at AS "deletedAt" FROM resumes ${includeDeleted ? '' : 'WHERE deleted_at IS NULL'} ORDER BY key,locale`,
     );
   }
 
@@ -503,19 +688,20 @@ export class CareerDataService {
         'SELECT * FROM resumes WHERE id=$1',
         [id],
       );
-      if (!resume) throw new NotFoundException('문서가 없습니다.');
+      if (!resume || resume.deleted_at)
+        throw new NotFoundException('문서가 없습니다.');
       if (resume.revision !== input.expectedRevision)
         throw new ConflictException('문서 revision 불일치');
       if (input.visibility === 'public') {
         const [allowed] = await manager.query<{ id: string }[]>(
-          `SELECT id FROM resume_versions v WHERE id=$1 AND ${publicDependencyCondition('d.resume_version_id=v.id')}`,
+          `SELECT id FROM resume_versions v WHERE id=$1 AND v.deleted_at IS NULL AND ${publicDependencyCondition('d.resume_version_id=v.id')}`,
           [resume.current_version_id],
         );
         if (!allowed)
           throw new ConflictException('공개할 현재 버전이 없습니다.');
       }
       const [result] = await manager.query<ManagedResumeDto[]>(
-        `WITH changed AS (UPDATE resumes SET visibility=$2,revision=revision+1,updated_at=now() WHERE id=$1 AND revision=$3 RETURNING id,key,locale,kind,track,target_key AS "targetKey",visibility,revision,current_version_id AS "currentVersionId") SELECT * FROM changed`,
+        `WITH changed AS (UPDATE resumes SET visibility=$2,revision=revision+1,updated_at=now() WHERE id=$1 AND revision=$3 RETURNING id,key,locale,kind,track,target_key AS "targetKey",visibility,revision,current_version_id AS "currentVersionId",deleted_at AS "deletedAt") SELECT * FROM changed`,
         [id, input.visibility, input.expectedRevision],
       );
       if (!result) throw new ConflictException('문서 revision 불일치');
@@ -591,10 +777,11 @@ export class CareerDataService {
     input: ResumeDetailSaveDto,
   ): Promise<{ slug: string; revision: number }> {
     return this.write(async (manager) => {
-      const [detail] = await manager.query<{ revision: number }[]>(
-        'SELECT revision FROM resume_details WHERE slug=$1',
-        [slug],
-      );
+      const [detail] = await manager.query<
+        { revision: number; deleted_at: string | null }[]
+      >('SELECT revision,deleted_at FROM resume_details WHERE slug=$1', [slug]);
+      if (detail?.deleted_at)
+        throw new ConflictException('삭제된 상세는 다시 저장할 수 없습니다.');
       if ((detail?.revision ?? 0) !== input.expectedRevision)
         throw new ConflictException('상세 revision 불일치');
       const dependencies = await this.dependencies(
@@ -725,11 +912,15 @@ export class CareerDataService {
       isPublic: input.isPublic,
     });
     const [existing] = await manager.query<
-      { id: string; isCurrent: boolean }[]
+      { id: string; isCurrent: boolean; deleted_at: string | null }[]
     >(
-      `SELECT id,"isCurrent" FROM resume_source_items WHERE "sourceType"='career_data' AND "sourceKey"=$1 AND "contentHash"=$2`,
+      `SELECT id,"isCurrent",deleted_at FROM resume_source_items WHERE "sourceType"='career_data' AND "sourceKey"=$1 AND "contentHash"=$2`,
       [input.key, hash],
     );
+    if (existing?.deleted_at)
+      throw new ConflictException(
+        '삭제된 검색 원문은 다시 발행할 수 없습니다.',
+      );
     if (existing?.isCurrent) {
       if (input.isPublic)
         await manager.query(
@@ -772,14 +963,26 @@ export class CareerDataService {
   }
 
   private async withdrawSources(manager: EntityManager): Promise<void> {
+    await manager.query(`UPDATE resume_source_items s SET deleted_at=now(),status='inactive',vectorize=false,"updatedAt"=now() WHERE s."sourceType"='career_data' AND s.deleted_at IS NULL AND (
+      EXISTS(SELECT 1 FROM resumes r WHERE r.id=s."resumeId" AND r.deleted_at IS NOT NULL) OR
+      EXISTS(SELECT 1 FROM resume_versions v WHERE v.id=s."resumeVersionId" AND v.deleted_at IS NOT NULL) OR
+      (s."itemType"='project_detail' AND EXISTS(SELECT 1 FROM resume_details detail WHERE detail.slug=s.metadata->>'slug' AND detail.deleted_at IS NOT NULL)) OR
+      EXISTS(SELECT 1 FROM resume_content_dependencies d LEFT JOIN career_experiences e ON e.id=d.experience_id LEFT JOIN career_facts f ON f.id=d.fact_id LEFT JOIN career_bullets b ON b.id=d.bullet_id LEFT JOIN career_experiences fe ON fe.id=f.experience_id LEFT JOIN career_experiences be ON be.id=b.experience_id WHERE d.source_item_id=s.id AND (d.deleted_at IS NOT NULL OR e.deleted_at IS NOT NULL OR f.deleted_at IS NOT NULL OR b.deleted_at IS NOT NULL OR fe.deleted_at IS NOT NULL OR be.deleted_at IS NOT NULL))
+    )`);
+    await manager.query(
+      `UPDATE resume_content_dependencies d SET deleted_at=COALESCE(d.deleted_at,now()) WHERE d.source_item_id IN(SELECT s.id FROM resume_source_items s WHERE s."sourceType"='career_data' AND s.deleted_at IS NOT NULL)`,
+    );
+    await manager.query(
+      `UPDATE resume_vector_chunks c SET deleted_at=COALESCE(c.deleted_at,now()),status='inactive' WHERE EXISTS(SELECT 1 FROM resume_source_items s WHERE s.id=c."sourceItemId" AND s."sourceType"='career_data' AND s.deleted_at IS NOT NULL)`,
+    );
     await manager.query(`UPDATE resume_source_items s SET status='inactive',vectorize=false,"updatedAt"=now() WHERE s."sourceType"='career_data' AND s.status='active' AND (
-   NOT s."isCurrent" OR NOT ${publicDependencyCondition('d.source_item_id=s.id')} OR
-   (s."resumeId" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM resumes r WHERE r.id=s."resumeId" AND r.visibility='public' AND r.current_version_id=s."resumeVersionId")) OR
-   (s."itemType"='career_fact' AND NOT EXISTS(SELECT 1 FROM resume_content_dependencies d JOIN career_facts f ON f.id=d.fact_id WHERE d.source_item_id=s.id AND f.revision=d.source_revision AND f.visibility='public' AND f.verification_status='confirmed')) OR
-   (s."itemType"='project_detail' AND NOT EXISTS(SELECT 1 FROM resume_details detail WHERE detail.slug=s.metadata->>'slug' AND detail.revision=(s.metadata->>'revision')::int AND detail.visibility='public' AND ${publicDependencyCondition('d.detail_slug=detail.slug AND d.detail_revision=detail.revision')}))
+   s.deleted_at IS NOT NULL OR NOT s."isCurrent" OR (s."resumeVersionId" IS NOT NULL AND NOT ${publicDependencyCondition('d.resume_version_id=s."resumeVersionId"')}) OR NOT ${publicDependencyCondition('d.source_item_id=s.id')} OR
+   (s."resumeId" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM resumes r WHERE r.id=s."resumeId" AND r.deleted_at IS NULL AND r.visibility='public' AND EXISTS(SELECT 1 FROM resume_versions v WHERE v.id=r.current_version_id AND v.deleted_at IS NULL) AND r.current_version_id=s."resumeVersionId")) OR
+   (s."itemType"='career_fact' AND NOT EXISTS(SELECT 1 FROM resume_content_dependencies d JOIN career_facts f ON f.id=d.fact_id WHERE d.source_item_id=s.id AND d.deleted_at IS NULL AND f.deleted_at IS NULL AND f.revision=d.source_revision AND f.visibility='public' AND f.verification_status='confirmed')) OR
+   (s."itemType"='project_detail' AND NOT EXISTS(SELECT 1 FROM resume_details detail WHERE detail.slug=s.metadata->>'slug' AND detail.deleted_at IS NULL AND detail.revision=(s.metadata->>'revision')::int AND detail.visibility='public' AND ${publicDependencyCondition('d.detail_slug=detail.slug AND d.detail_revision=detail.revision')}))
   )`);
     await manager.query(
-      `UPDATE resume_vector_chunks c SET status='inactive' WHERE c.status='active' AND EXISTS(SELECT 1 FROM resume_source_items s WHERE s.id=c."sourceItemId" AND s."sourceType"='career_data' AND (s.status<>'active' OR NOT s.vectorize OR NOT s."isCurrent"))`,
+      `UPDATE resume_vector_chunks c SET status='inactive' WHERE c.status='active' AND EXISTS(SELECT 1 FROM resume_source_items s WHERE s.id=c."sourceItemId" AND s."sourceType"='career_data' AND (s.deleted_at IS NOT NULL OR s.status<>'active' OR NOT s.vectorize OR NOT s."isCurrent"))`,
     );
   }
 }

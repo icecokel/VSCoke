@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { Column, DeleteDateColumn, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity('resume_details')
 export class ResumeDetail {
@@ -25,4 +25,6 @@ export class ResumeDetail {
 
   @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })
   updatedAt: Date;
+  @DeleteDateColumn({ name: 'deleted_at', type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
 }

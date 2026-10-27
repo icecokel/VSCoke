@@ -39,7 +39,7 @@ const createHarness = () => {
   const vectors = {
     find: jest.fn().mockResolvedValue([]),
     query: jest.fn().mockResolvedValue([]),
-    delete: jest.fn().mockResolvedValue({ affected: 1 }),
+    softDelete: jest.fn().mockResolvedValue({ affected: 1 }),
     save: jest.fn().mockResolvedValue([]),
   };
   const manager = {
@@ -102,7 +102,7 @@ describe('ResumeVectorIndexerService', () => {
       expect.stringContaining('source."sourceType" = ANY($1)'),
       [['app_resume', 'career_data']],
     );
-    expect(vectors.delete).toHaveBeenCalledTimes(1);
+    expect(vectors.softDelete).toHaveBeenCalledTimes(1);
     expect(vectors.save).toHaveBeenCalledWith([
       expect.objectContaining({ embedding: [1, 0], visibility: 'public' }),
     ]);
@@ -167,7 +167,7 @@ describe('ResumeVectorIndexerService', () => {
     const { service, vectors, embed, transaction } = createHarness();
     embed.mockRejectedValue(new Error('embedding failure'));
     await expect(service.indexAll()).rejects.toThrow('embedding failure');
-    expect(vectors.delete).not.toHaveBeenCalled();
+    expect(vectors.softDelete).not.toHaveBeenCalled();
     expect(transaction).not.toHaveBeenCalled();
   });
 
@@ -183,8 +183,25 @@ describe('ResumeVectorIndexerService', () => {
       published: 0,
       sources: 0,
     });
-    expect(vectors.delete).not.toHaveBeenCalled();
+    expect(vectors.softDelete).not.toHaveBeenCalled();
     expect(vectors.save).not.toHaveBeenCalled();
+  });
+
+  it('임베딩 중 원본이 논리삭제되면 벡터를 저장하지 않는다', async () => {
+    const { service, source, sources, vectors } = createHarness();
+    sources.findOne.mockResolvedValue({ ...source, deletedAt: new Date() });
+    expect(await service.indexAll()).toMatchObject({
+      published: 0,
+      sources: 0,
+    });
+    expect(vectors.softDelete).not.toHaveBeenCalled();
+    expect(vectors.save).not.toHaveBeenCalled();
+    expect(vectors.query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'UPDATE resume_vector_chunks chunk SET deleted_at',
+      ),
+      expect.any(Array),
+    );
   });
 
   it('임베딩 중 비공개로 전환된 원본은 게시하지 않는다', async () => {
@@ -196,7 +213,7 @@ describe('ResumeVectorIndexerService', () => {
       published: 0,
       sources: 0,
     });
-    expect(vectors.delete).not.toHaveBeenCalled();
+    expect(vectors.softDelete).not.toHaveBeenCalled();
     expect(vectors.save).not.toHaveBeenCalled();
   });
 });

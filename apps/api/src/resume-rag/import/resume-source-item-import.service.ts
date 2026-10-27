@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Not, Repository } from 'typeorm';
 import { ResumeImportBatch } from '../entities/resume-import-batch.entity';
@@ -97,16 +97,27 @@ export class ResumeSourceItemImportService {
       try {
         const items = loadResumeSourceItemsFromEntry(entry);
         await this.sourceItemRepository.manager.transaction(async (manager) => {
+          await manager.query('SELECT pg_advisory_xact_lock(1795000000004)');
           const repository = manager.getRepository(ResumeSourceItem);
           const retainedIds: string[] = [];
           for (const item of items) {
+            const latest = await repository.findOne({
+              where: { sourceType: item.sourceType, sourceKey: item.sourceKey },
+              order: { updatedAt: 'DESC', id: 'DESC' },
+              withDeleted: true,
+            });
+            if (latest?.deletedAt)
+              throw new ConflictException('Deleted source cannot be imported');
             const existing = await repository.findOne({
               where: {
                 sourceType: item.sourceType,
                 sourceKey: item.sourceKey,
                 contentHash: item.contentHash,
               },
+              withDeleted: true,
             });
+            if (existing?.deletedAt)
+              throw new ConflictException('Deleted source cannot be imported');
             const saved = await repository.save(
               repository.create({
                 ...existing,
@@ -130,6 +141,7 @@ export class ResumeSourceItemImportService {
                   sectionPrefix: `${entry.id}#`,
                 },
               )
+              .andWhere('deleted_at IS NULL')
               .andWhere('"id" NOT IN (:...retainedIds)', { retainedIds })
               .execute();
           }

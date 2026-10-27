@@ -4,7 +4,7 @@ import {
 } from '../resume-source-eligibility';
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import type { EmbeddingProvider } from '../ai/embedding-provider';
 import {
   RESUME_RAG_EMBEDDING_PROVIDER,
@@ -75,10 +75,10 @@ export class ResumeVectorIndexerService {
     };
 
     await this.vectorChunkRepository.query(
-      `DELETE FROM resume_vector_chunks chunk
-      WHERE NOT EXISTS (
+      `UPDATE resume_vector_chunks chunk SET deleted_at = CURRENT_TIMESTAMP
+      WHERE chunk.deleted_at IS NULL AND NOT EXISTS (
         SELECT 1 FROM resume_source_items source
-        WHERE source.id = chunk."sourceItemId" AND source.status = 'active'
+        WHERE source.id = chunk."sourceItemId" AND source.deleted_at IS NULL AND source.status = 'active'
           AND source.visibility = 'public' AND source.vectorize = TRUE
           AND source."sourceType" = ANY($1)
           AND ${careerSourceCondition('source')}
@@ -156,11 +156,7 @@ export class ResumeVectorIndexerService {
       // API 호출 동안 DB 잠금을 유지하지 않고, 전 청크 준비가 끝난 뒤 원자적으로 교체한다.
       const wasPublished = await this.vectorChunkRepository.manager.transaction(
         async (manager) => {
-          if (
-            sourceItem.sourceType === 'career_data' ||
-            sourceItem.itemType === 'public_resume_detail'
-          )
-            await manager.query('SELECT pg_advisory_xact_lock(1795000000004)');
+          await manager.query('SELECT pg_advisory_xact_lock(1795000000004)');
           const current = await manager
             .getRepository(ResumeSourceItem)
             .findOne({
@@ -169,6 +165,7 @@ export class ResumeVectorIndexerService {
             });
           if (
             !current ||
+            current.deletedAt ||
             current.status !== 'active' ||
             current.visibility !== 'public' ||
             !current.vectorize ||
@@ -187,7 +184,7 @@ export class ResumeVectorIndexerService {
             if (!Array.isArray(eligible) || eligible.length === 0) return false;
           }
           const repository = manager.getRepository(ResumeVectorChunk);
-          await repository.delete(where);
+          await repository.softDelete({ ...where, deletedAt: IsNull() });
           if (prepared.length > 0) await repository.save(prepared);
           return true;
         },

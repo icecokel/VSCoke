@@ -10,6 +10,9 @@ import { createTestDataSourceOptions } from '../src/test-data-source';
 import { CreateResumeRagTables1760000000000 } from '../src/migrations/1760000000000-create-resume-rag-tables';
 import { CreateResumeChatConversations1795000000000 } from '../src/migrations/1795000000000-create-resume-chat-conversations';
 import { CreateSharedCareerData1795000000004 } from '../src/migrations/1795000000004-create-shared-career-data';
+import { AddResumeSoftDelete1795000000005 } from '../src/migrations/1795000000005-add-resume-soft-delete';
+import { CreateResumeRagKeywords1793836800000 } from '../src/migrations/1793836800000-create-resume-rag-keywords';
+import { CreateResumeRagChatLogs1794873600000 } from '../src/migrations/1794873600000-create-resume-rag-chat-logs';
 import { CareerDataService } from '../src/career-data/career-data.service';
 import {
   CareerDataUpsertDto,
@@ -83,6 +86,9 @@ describe('공통 경력 PostgreSQL 원자적 저장', () => {
         "INSERT INTO resume_details(slug,title,content) VALUES('synthetic-legacy-detail','Synthetic legacy detail','# Synthetic legacy detail')",
       );
       await new CreateSharedCareerData1795000000004().up(runner);
+      await new CreateResumeRagKeywords1793836800000().up(runner);
+      await new CreateResumeRagChatLogs1794873600000().up(runner);
+      await new AddResumeSoftDelete1795000000005().up(runner);
     } finally {
       await runner.release();
     }
@@ -700,6 +706,369 @@ describe('공통 경력 PostgreSQL 원자적 저장', () => {
           dependencies: [],
         }),
       ),
+    ).rejects.toThrow(ConflictException);
+  });
+  it('관계 전체 교체는 행을 보존하고 명시한 활성 원본만 재선택한다', async () => {
+    const { bulletId, factId, keywordId, batch } = await core();
+    const update = (
+      revision: number,
+      facts = batch.bullets[0].facts,
+      keywordIds = batch.bullets[0].keywordIds,
+    ) =>
+      plainToInstance(CareerDataUpsertDto, {
+        experiences: [],
+        facts: [],
+        keywords: [],
+        bullets: [
+          {
+            ...batch.bullets[0],
+            expectedRevision: revision,
+            status: 'draft',
+            facts,
+            keywordIds,
+          },
+        ],
+      });
+    await writer.upsertData(update(1, [], []));
+    expect(
+      await db.query(
+        'SELECT deleted_at IS NOT NULL AS deleted FROM career_bullet_facts WHERE bullet_id=$1',
+        [bulletId],
+      ),
+    ).toEqual([{ deleted: true }]);
+    expect(
+      (await writer.getData()).bulletFacts.some(
+        (row) => row.bullet_id === bulletId,
+      ),
+    ).toBe(false);
+    await writer.upsertData(update(2));
+    expect(
+      await db.query(
+        'SELECT deleted_at FROM career_bullet_facts WHERE bullet_id=$1',
+        [bulletId],
+      ),
+    ).toEqual([{ deleted_at: null }]);
+    await writer.deleteCareer('keyword', keywordId, 1);
+    await expect(writer.upsertData(update(3))).rejects.toThrow(
+      ConflictException,
+    );
+    expect(
+      await db.query('SELECT revision FROM career_bullets WHERE id=$1', [
+        bulletId,
+      ]),
+    ).toEqual([{ revision: 4 }]);
+    expect(
+      await db.query(
+        'SELECT fact_id FROM career_bullet_facts WHERE bullet_id=$1 AND deleted_at IS NULL',
+        [bulletId],
+      ),
+    ).toEqual([{ fact_id: factId }]);
+  });
+
+  it('keyword 삭제는 역사적 문서를 유지하며 fact 삭제는 후보 재검토·문서 차단·CAS를 적용한다', async () => {
+    const { factId, bulletId, keywordId, batch } = await core();
+    const name = key();
+    const saved = await writer.saveVersion(
+      version(name, {
+        dependencies: [{ kind: 'bullet', id: bulletId, revision: 1 }],
+      }),
+    );
+    await expect(writer.deleteCareer('fact', factId, 99)).rejects.toThrow(
+      ConflictException,
+    );
+    await writer.deleteCareer('keyword', keywordId, 1);
+    expect((await reader.getDocument('ko-KR', name)).versionId).toBe(
+      saved.versionId,
+    );
+    const deleted = await writer.deleteCareer('fact', factId, 1);
+    expect(await writer.deleteCareer('fact', factId, 1)).toEqual(deleted);
+    await expect(reader.getDocument('ko-KR', name)).rejects.toThrow(
+      NotFoundException,
+    );
+    expect(
+      await db.query('SELECT status,revision FROM career_bullets WHERE id=$1', [
+        bulletId,
+      ]),
+    ).toEqual([{ status: 'needs_review', revision: 3 }]);
+    expect(
+      (await writer.getData()).facts.some((row) => row.id === factId),
+    ).toBe(false);
+    expect(
+      (await writer.getData(true)).facts.find((row) => row.id === factId)
+        ?.deleted_at,
+    ).toBeTruthy();
+    expect(
+      await db.query(
+        'SELECT deleted_at IS NOT NULL AS deleted FROM resume_source_items WHERE "resumeId"=$1',
+        [saved.documentId],
+      ),
+    ).toEqual([{ deleted: true }]);
+    await expect(
+      writer.upsertData(
+        plainToInstance(CareerDataUpsertDto, {
+          experiences: [],
+          bullets: [],
+          keywords: [],
+          facts: [{ ...batch.facts[0], expectedRevision: deleted.revision }],
+        }),
+      ),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  it.each(['draft', 'needs_review'] as const)(
+    '%s 비공개 후보도 keyword·fact 관계 삭제마다 revision을 올리고 stale 저장을 거부한다',
+    async (status) => {
+      const { bulletId, factId, keywordId, batch } = await core();
+      const unrelated = await core();
+      const update = (expectedRevision: number, hasLinks = true) =>
+        plainToInstance(CareerDataUpsertDto, {
+          experiences: [],
+          facts: [],
+          keywords: [],
+          bullets: [
+            {
+              ...batch.bullets[0],
+              status,
+              visibility: 'private',
+              expectedRevision,
+              facts: hasLinks ? batch.bullets[0].facts : [],
+              keywordIds: hasLinks ? [keywordId] : [],
+            },
+          ],
+        });
+      await writer.upsertData(update(1));
+      await writer.deleteCareer('keyword', keywordId, 1);
+      expect(
+        await db.query(
+          'SELECT status,revision FROM career_bullets WHERE id=$1',
+          [bulletId],
+        ),
+      ).toEqual([{ status, revision: 3 }]);
+      await expect(writer.upsertData(update(2, false))).rejects.toThrow(
+        ConflictException,
+      );
+      await writer.deleteCareer('fact', factId, 1);
+      expect(
+        await db.query(
+          'SELECT status,revision FROM career_bullets WHERE id=$1',
+          [bulletId],
+        ),
+      ).toEqual([{ status, revision: 4 }]);
+      await expect(writer.upsertData(update(3, false))).rejects.toThrow(
+        ConflictException,
+      );
+      await writer.deleteCareer('keyword', keywordId, 1);
+      await writer.deleteCareer('fact', factId, 1);
+      expect(
+        await db.query('SELECT revision FROM career_bullets WHERE id=$1', [
+          bulletId,
+        ]),
+      ).toEqual([{ revision: 4 }]);
+      expect(
+        await db.query(
+          'SELECT status,revision FROM career_bullets WHERE id=$1',
+          [unrelated.bulletId],
+        ),
+      ).toEqual([{ status: 'ready', revision: 1 }]);
+    },
+  );
+
+  it('experience 삭제는 소속 후보·관계만 cascade하고 공유 keyword와 다른 경험은 보존한다', async () => {
+    const removed = await core();
+    const other = await core();
+    await writer.deleteCareer('experience', removed.experienceId, 1);
+    for (const [table, id] of [
+      ['career_facts', removed.factId],
+      ['career_bullets', removed.bulletId],
+    ])
+      expect(
+        await db.query(
+          `SELECT revision,deleted_at IS NOT NULL AS deleted FROM ${table} WHERE id=$1`,
+          [id],
+        ),
+      ).toEqual([{ revision: 2, deleted: true }]);
+    expect(
+      await db.query('SELECT deleted_at FROM career_keywords WHERE id=$1', [
+        removed.keywordId,
+      ]),
+    ).toEqual([{ deleted_at: null }]);
+    expect(
+      await db.query('SELECT deleted_at FROM career_experiences WHERE id=$1', [
+        other.experienceId,
+      ]),
+    ).toEqual([{ deleted_at: null }]);
+    await expect(
+      writer.upsertData(
+        plainToInstance(CareerDataUpsertDto, {
+          experiences: [],
+          bullets: [],
+          keywords: [],
+          facts: [
+            {
+              ...other.batch.facts[0],
+              id: randomUUID(),
+              experienceId: removed.experienceId,
+              expectedRevision: 0,
+            },
+          ],
+        }),
+      ),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  it('현재 버전 삭제는 포인터를 비우며 새 버전만 허용하고 분기 문서는 유지한다', async () => {
+    const name = key();
+    const first = await writer.saveVersion(version(name));
+    const branch = await writer.saveVersion(
+      version(key(), { parentVersionId: first.versionId }),
+    );
+    await expect(writer.deleteVersion(first.versionId, 99)).rejects.toThrow(
+      ConflictException,
+    );
+    const removed = await writer.deleteVersion(first.versionId, 1);
+    expect(removed.revision).toBe(2);
+    expect(await writer.deleteVersion(first.versionId, 1)).toEqual(removed);
+    await expect(reader.getDocument('ko-KR', name)).rejects.toThrow(
+      NotFoundException,
+    );
+    await expect(writer.saveVersion(version(name))).rejects.toThrow(
+      ConflictException,
+    );
+    await expect(
+      writer.saveVersion(version(key(), { parentVersionId: first.versionId })),
+    ).rejects.toThrow(ConflictException);
+    const next = await writer.saveVersion(
+      version(name, {
+        expectedRevision: 2,
+        expectedCurrentVersionId: null,
+        versionName: 'v2',
+      }),
+    );
+    expect((await reader.getDocument('ko-KR', name)).versionId).toBe(
+      next.versionId,
+    );
+    expect(
+      await db.query('SELECT deleted_at FROM resumes WHERE id=$1', [
+        branch.documentId,
+      ]),
+    ).toEqual([{ deleted_at: null }]);
+    expect(
+      await db.query(
+        'SELECT "isCurrent",deleted_at IS NOT NULL AS deleted FROM resume_source_items WHERE "resumeVersionId"=$1',
+        [first.versionId],
+      ),
+    ).toEqual([{ isCurrent: false, deleted: true }]);
+    await writer.deleteResume(next.documentId, next.revision);
+    expect(
+      (await writer.listResumes()).some((row) => row.id === next.documentId),
+    ).toBe(false);
+    expect(
+      (await writer.listResumes(true)).find((row) => row.id === next.documentId)
+        ?.deletedAt,
+    ).toBeTruthy();
+    await expect(
+      writer.saveVersion(
+        version(name, { expectedRevision: 4, versionName: 'v3' }),
+      ),
+    ).rejects.toThrow(ConflictException);
+    await expect(
+      writer.setVisibility(next.documentId, {
+        expectedRevision: 4,
+        visibility: 'public',
+      }),
+    ).rejects.toThrow(NotFoundException);
+    const runner = db.createQueryRunner();
+    try {
+      await expect(
+        new AddResumeSoftDelete1795000000005().down(runner),
+      ).rejects.toThrow('tombstones');
+    } finally {
+      await runner.release();
+    }
+  });
+
+  it('과거 버전만 삭제해도 현재 버전과 frozen 본문·의존성은 보존한다', async () => {
+    const { factId } = await core();
+    const name = key();
+    const first = await writer.saveVersion(
+      version(name, {
+        dependencies: [{ kind: 'fact', id: factId, revision: 1 }],
+      }),
+    );
+    const next = await writer.saveVersion(
+      version(name, {
+        expectedRevision: 1,
+        expectedCurrentVersionId: first.versionId,
+        versionName: 'v2',
+      }),
+    );
+    const before = await db.query<unknown[]>(
+      'SELECT content,source_ref,parent_version_id FROM resume_versions WHERE id=$1',
+      [first.versionId],
+    );
+    await writer.deleteVersion(first.versionId, 2);
+    expect((await reader.getDocument('ko-KR', name)).versionId).toBe(
+      next.versionId,
+    );
+    expect(
+      await db.query(
+        'SELECT content,source_ref,parent_version_id FROM resume_versions WHERE id=$1',
+        [first.versionId],
+      ),
+    ).toEqual(before);
+    await expect(
+      db.query("UPDATE resume_versions SET content='{}'::jsonb WHERE id=$1", [
+        first.versionId,
+      ]),
+    ).rejects.toThrow('immutable');
+    await expect(
+      db.query('DELETE FROM resume_versions WHERE id=$1', [first.versionId]),
+    ).rejects.toThrow('immutable');
+    await expect(
+      db.query(
+        'UPDATE resume_content_dependencies SET source_revision=2 WHERE resume_version_id=$1',
+        [first.versionId],
+      ),
+    ).rejects.toThrow('immutable');
+  });
+
+  it('삭제 dependency는 차단을 없애지 못하고 상세 삭제는 본문과 이력을 보존한다', async () => {
+    const { factId } = await core();
+    const name = key();
+    const saved = await writer.saveVersion(
+      version(name, {
+        dependencies: [{ kind: 'fact', id: factId, revision: 1 }],
+      }),
+    );
+    await db.query(
+      'UPDATE resume_content_dependencies SET deleted_at=now() WHERE resume_version_id=$1 AND fact_id=$2',
+      [saved.versionId, factId],
+    );
+    await expect(reader.getDocument('ko-KR', name)).rejects.toThrow(
+      NotFoundException,
+    );
+    const slug = key();
+    const input = plainToInstance(ResumeDetailSaveDto, {
+      expectedRevision: 0,
+      title: 'Delete detail',
+      content: '# Kept body',
+      visibility: 'public',
+      dependencies: [{ kind: 'fact', id: factId, revision: 1 }],
+    });
+    await writer.saveDetail(slug, input);
+    await expect(writer.deleteDetail(slug, 99)).rejects.toThrow(
+      ConflictException,
+    );
+    const deleted = await writer.deleteDetail(slug, 1);
+    expect(await writer.deleteDetail(slug, 1)).toEqual(deleted);
+    await expect(reader.getDetail(slug)).rejects.toThrow(NotFoundException);
+    expect(
+      await db.query('SELECT content FROM resume_details WHERE slug=$1', [
+        slug,
+      ]),
+    ).toEqual([{ content: '# Kept body' }]);
+    await expect(
+      writer.saveDetail(slug, { ...input, expectedRevision: 2 }),
     ).rejects.toThrow(ConflictException);
   });
 });

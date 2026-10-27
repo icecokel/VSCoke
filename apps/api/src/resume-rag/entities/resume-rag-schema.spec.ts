@@ -1,5 +1,7 @@
 import 'reflect-metadata';
 import { getMetadataArgsStorage } from 'typeorm';
+import { ResumeChatConversation } from './resume-chat-conversation.entity';
+import { ResumeChatTurn } from './resume-chat-turn.entity';
 import { ResumeImportBatch } from './resume-import-batch.entity';
 import { ResumeRagChatLog } from './resume-rag-chat-log.entity';
 import { ResumeRagKeywordGroupEntity } from './resume-rag-keyword-group.entity';
@@ -19,6 +21,26 @@ const columnNamesFor = (target: EntityClass) =>
     .map((column) => column.propertyName);
 
 describe('Resume RAG schema entities', () => {
+  it.each([
+    ResumeChatConversation,
+    ResumeChatTurn,
+    ResumeImportBatch,
+    ResumeRagChatLog,
+    ResumeRagKeywordGroupEntity,
+    ResumeRagKeywordTerm,
+    ResumeSourceItem,
+    ResumeVectorChunk,
+  ])('모든 RAG entity가 논리삭제 컬럼을 매핑한다: %s', (entity) => {
+    expect(
+      getMetadataArgsStorage().columns.find(
+        (column) => column.target === entity && column.mode === 'deleteDate',
+      ),
+    ).toMatchObject({
+      propertyName: 'deletedAt',
+      options: { name: 'deleted_at', type: 'timestamptz', nullable: true },
+    });
+  });
+
   it('uses DB-source oriented table names', () => {
     expect(tableNameFor(ResumeImportBatch)).toBe('resume_import_batches');
     expect(tableNameFor(ResumeRagChatLog)).toBe('resume_rag_chat_logs');

@@ -10,7 +10,7 @@ import {
   type OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThanOrEqual, Repository } from 'typeorm';
+import { IsNull, LessThanOrEqual, Repository } from 'typeorm';
 import {
   ResumeChatConversation,
   type ResumeChatChannel,
@@ -178,7 +178,19 @@ export class ResumeConversationService
 
   async remove(id: string, token: string | undefined): Promise<void> {
     await this.authorize(id, token);
-    await this.conversations.delete({ id });
+    await this.conversations.manager.transaction(async (manager) => {
+      const conversations = manager.getRepository(ResumeChatConversation);
+      const current = await conversations.findOne({
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!current || current.expiresAt.getTime() <= Date.now())
+        throw unavailable();
+      await manager
+        .getRepository(ResumeChatTurn)
+        .softDelete({ conversationId: id, deletedAt: IsNull() });
+      await conversations.softDelete({ id });
+    });
   }
 
   async runTurn(
@@ -211,7 +223,9 @@ export class ResumeConversationService
     const question = redactResumeRagChatQuestion(request.question);
     const requestId = request.requestId;
     const where = { conversationId: conversation.id, requestId };
-    const cached = await this.turns.findOneBy(where);
+    const cached = await this.turns.findOne({ where, withDeleted: true });
+    if (cached?.deletedAt)
+      throw new ConflictException('requestId is no longer available');
     if (cached) {
       if (cached.question !== question)
         throw new ConflictException(
@@ -244,7 +258,9 @@ export class ResumeConversationService
       });
       if (!current || current.expiresAt.getTime() <= Date.now())
         throw unavailable();
-      const completed = await turns.findOneBy(where);
+      const completed = await turns.findOne({ where, withDeleted: true });
+      if (completed?.deletedAt)
+        throw new ConflictException('requestId is no longer available');
       if (completed) {
         if (completed.question !== question)
           throw new ConflictException(
@@ -268,8 +284,9 @@ export class ResumeConversationService
       const saved = await turns.save(turn);
       await conversations.update(current.id, { version: current.version + 1 });
       await turns.query(
-        `DELETE FROM resume_chat_turns WHERE "conversationId" = $1
-        AND id NOT IN (SELECT id FROM resume_chat_turns WHERE "conversationId" = $1
+        `UPDATE resume_chat_turns SET deleted_at = CURRENT_TIMESTAMP
+        WHERE "conversationId" = $1 AND deleted_at IS NULL
+        AND id NOT IN (SELECT id FROM resume_chat_turns WHERE "conversationId" = $1 AND deleted_at IS NULL
           ORDER BY "createdAt" DESC, id DESC LIMIT $2)`,
         [current.id, RESUME_CHAT_STORED_TURNS],
       );

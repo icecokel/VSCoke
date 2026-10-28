@@ -144,3 +144,61 @@ test("문서 버전 갱신이 다음 조회에 반영되고 다른 문서는 바
     pe.data.contentHash,
   );
 });
+
+test("education만 있는 문서의 교육정보를 README와 미리보기에 표시하고 빈 링크를 숨긴다", async ({
+  page,
+  request,
+}) => {
+  test.skip(process.env.PLAYWRIGHT_RESUME_FIXTURE !== "1", "테스트 fixture 서버가 필요합니다.");
+  const { data } = await (await request.get(`${apiUrl}/resume?locale=ko-KR&resume=fe`)).json();
+  expect(data.education).toHaveLength(1);
+  expect(data.certifications).toEqual([]);
+  expect(data.links).toEqual([]);
+  for (const route of ["/ko-KR/readme?resume=fe", "/ko-KR/resume/preview?resume=fe"]) {
+    await gotoWithRetry(page, route);
+    await expect(
+      page.getByRole("heading", { name: messages.profile.education, exact: true }),
+    ).toBeVisible();
+    for (const value of Object.values(data.education[0]) as string[]) {
+      await expect(page.getByText(value, { exact: true })).toBeVisible();
+    }
+    await expect(
+      page.getByRole("heading", { name: messages.profile.links, exact: true }),
+    ).toHaveCount(0);
+  }
+});
+
+test("교육·자격·링크가 모두 빈 문서는 빈 섹션을 표시하지 않는다", async ({ page, request }) => {
+  test.skip(process.env.PLAYWRIGHT_RESUME_FIXTURE !== "1", "테스트 fixture 서버가 필요합니다.");
+  const { data } = await (await request.get(`${apiUrl}/resume?locale=ko-KR&resume=ko-only`)).json();
+  expect(data.education).toEqual([]);
+  expect(data.certifications).toEqual([]);
+  expect(data.links).toEqual([]);
+  for (const route of ["/ko-KR/readme?resume=ko-only", "/ko-KR/resume/preview?resume=ko-only"]) {
+    await gotoWithRetry(page, route);
+    await expect(
+      page.getByRole("heading", { name: messages.profile.education, exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: messages.profile.links, exact: true }),
+    ).toHaveCount(0);
+  }
+});
+
+test("기존 certifications의 과정명과 세부내용도 README와 미리보기에 유지한다", async ({
+  page,
+  request,
+}) => {
+  const { data } = await (await request.get(`${apiUrl}/resume?locale=ko-KR&resume=pe`)).json();
+  test.skip(data.certifications.length === 0, "선택 문서에 certifications가 없습니다.");
+  for (const route of ["/ko-KR/readme?resume=pe", "/ko-KR/resume/preview?resume=pe"]) {
+    await gotoWithRetry(page, route);
+    for (const certification of data.certifications) {
+      await expect(
+        page.getByRole("heading", { name: certification.name, exact: true }),
+      ).toBeVisible();
+      for (const detail of certification.details)
+        await expect(page.getByText(detail, { exact: true })).toBeVisible();
+    }
+  }
+});

@@ -11,7 +11,7 @@ const waitForNextPaint = () => {
   });
 };
 
-const getPageBreakCandidates = (resumeDocument: HTMLElement, canvas: HTMLCanvasElement) => {
+export const getPageBreakCandidates = (resumeDocument: HTMLElement, canvas: HTMLCanvasElement) => {
   const documentBounds = resumeDocument.getBoundingClientRect();
   const scale = canvas.width / documentBounds.width;
 
@@ -20,11 +20,12 @@ const getPageBreakCandidates = (resumeDocument: HTMLElement, canvas: HTMLCanvasE
       ".resume-preview-career, .resume-preview-project, .resume-preview-description, .resume-preview-career-detail-content h2, .resume-preview-career-detail-content p, li",
     ),
   )
+    .filter(element => !element.matches("p") || !element.previousElementSibling?.matches("h2"))
     .map(element => Math.round((element.getBoundingClientRect().top - documentBounds.top) * scale))
     .sort((firstCandidate, secondCandidate) => firstCandidate - secondCandidate);
 };
 
-const findPageBreak = (
+export const findPageBreak = (
   canvas: HTMLCanvasElement,
   startY: number,
   maximumHeight: number,
@@ -37,8 +38,9 @@ const findPageBreak = (
   }
 
   const minimumBreakY = startY + Math.floor(maximumHeight * 0.7);
+  const maximumBreakY = Math.min(expectedEnd, canvas.height - Math.floor(maximumHeight * 0.3));
   const eligibleBreaks = pageBreakCandidates.filter(
-    candidate => candidate > minimumBreakY && candidate <= expectedEnd,
+    candidate => candidate > minimumBreakY && candidate <= maximumBreakY,
   );
   const preferredBreak = eligibleBreaks[eligibleBreaks.length - 1];
 
@@ -56,7 +58,7 @@ const findPageBreak = (
     0,
     minimumBreakY,
     canvas.width,
-    expectedEnd - minimumBreakY,
+    maximumBreakY - minimumBreakY,
   );
   const pixelStep = 4;
   let lastBlankRow = 0;

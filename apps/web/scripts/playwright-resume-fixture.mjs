@@ -60,6 +60,22 @@ const documents = ["pe", "fe", "worxphere", "nexon", "ko-only"].flatMap((key, in
               title: `Fixture ${key} · ${document.locale} · v1`,
               introduction: [`Synthetic ${key} resume fixture`],
               personalProjects: key === "fe" ? [] : document.personalProjects,
+              ...(key === "fe"
+                ? {
+                    education: [
+                      {
+                        school: "Synthetic education-only course",
+                        major: "Synthetic web and app development training",
+                        period: "2020.03",
+                        status: "Synthetic course",
+                      },
+                    ],
+                    certifications: [],
+                    skills: [],
+                    links: [],
+                  }
+                : {}),
+              ...(key === "ko-only" ? { education: [], certifications: [], links: [] } : {}),
             };
       return {
         ...content,

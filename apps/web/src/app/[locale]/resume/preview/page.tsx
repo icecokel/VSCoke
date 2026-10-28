@@ -173,33 +173,54 @@ const ResumePreviewPage = async ({ params, searchParams }: ResumePreviewPageProp
           </div>
         </section>
 
-        <section className="border-t border-gray-300 py-6">
-          <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-blue-500">
-            {tProfile("education")}
-          </h2>
-          {document.certifications.map(certification => (
-            <div
-              key={certification.name}
-              className="mt-4 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
-            >
-              <div>
-                <h3 className="text-sm font-bold text-gray-900">{certification.name}</h3>
-                <ul className="mt-2 text-sm leading-6 text-gray-700">
-                  {certification.details.map(detail => (
-                    <li key={detail} className="flex gap-2">
-                      <span
-                        className="mt-2.5 size-1 shrink-0 rounded-full bg-blue-400"
-                        aria-hidden="true"
-                      />
-                      <span>{detail}</span>
-                    </li>
-                  ))}
-                </ul>
+        {(document.education.length > 0 || document.certifications.length > 0) && (
+          <section className="border-t border-gray-300 py-6">
+            <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-blue-500">
+              {tProfile("education")}
+            </h2>
+            {document.education.map(education => (
+              <div
+                key={`${education.school}-${education.period}`}
+                className="mt-4 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
+              >
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">{education.school}</h3>
+                  {education.status && (
+                    <p className="mt-1 text-xs text-gray-600">{education.status}</p>
+                  )}
+                  {education.major && (
+                    <p className="mt-2 text-sm leading-6 text-gray-700">{education.major}</p>
+                  )}
+                </div>
+                {education.period && (
+                  <p className="shrink-0 text-sm text-gray-600">{education.period}</p>
+                )}
               </div>
-              <p className="shrink-0 text-sm text-gray-600">{certification.date}</p>
-            </div>
-          ))}
-        </section>
+            ))}
+            {document.certifications.map(certification => (
+              <div
+                key={certification.name}
+                className="mt-4 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
+              >
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">{certification.name}</h3>
+                  <ul className="mt-2 text-sm leading-6 text-gray-700">
+                    {certification.details.map(detail => (
+                      <li key={detail} className="flex gap-2">
+                        <span
+                          className="mt-2.5 size-1 shrink-0 rounded-full bg-blue-400"
+                          aria-hidden="true"
+                        />
+                        <span>{detail}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <p className="shrink-0 text-sm text-gray-600">{certification.date}</p>
+              </div>
+            ))}
+          </section>
+        )}
 
         <footer className="border-t border-gray-300 pt-4 text-xs text-gray-600">
           {t("updatedAt", { date: document.lastUpdated })}

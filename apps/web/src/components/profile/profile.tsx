@@ -157,39 +157,67 @@ const Profile = ({ document }: { document: ResumeDocument }) => {
       {/* Resume 섹션 */}
       <Resume document={document} />
 
-      <ProfileItem title={t("education")}>
-        {document.certifications.map(certification => (
-          <div key={certification.name} className="flex flex-col sm:flex-row gap-2 sm:items-center">
-            <div className="mb-5 min-w-[140px]">{certification.date}</div>
-            <div className="mb-5">
-              <BaseText type="h6">{certification.name}</BaseText>
-              <ul className="mt-2 ml-4 list-disc">
-                {certification.details.map(detail => (
-                  <li key={detail} className="text-sm text-gray-300">
-                    {detail}
-                  </li>
-                ))}
-              </ul>
+      {(document.education.length > 0 || document.certifications.length > 0) && (
+        <ProfileItem title={t("education")}>
+          {document.education.map(education => (
+            <div
+              key={`${education.school}-${education.period}`}
+              className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start"
+            >
+              {education.period && <div className="min-w-[140px]">{education.period}</div>}
+              <div>
+                <BaseText type="h6">{education.school}</BaseText>
+                {education.status && (
+                  <BaseText type="caption" className="mt-1 block text-gray-400">
+                    {education.status}
+                  </BaseText>
+                )}
+                {education.major && (
+                  <BaseText type="body2" className="mt-2 block text-gray-300">
+                    {education.major}
+                  </BaseText>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </ProfileItem>
+          ))}
+          {document.certifications.map(certification => (
+            <div
+              key={certification.name}
+              className="flex flex-col sm:flex-row gap-2 sm:items-center"
+            >
+              <div className="mb-5 min-w-[140px]">{certification.date}</div>
+              <div className="mb-5">
+                <BaseText type="h6">{certification.name}</BaseText>
+                <ul className="mt-2 ml-4 list-disc">
+                  {certification.details.map(detail => (
+                    <li key={detail} className="text-sm text-gray-300">
+                      {detail}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ))}
+        </ProfileItem>
+      )}
 
       {/* 링크 섹션 */}
-      <ProfileItem title={t("links")}>
-        {document.links.map((url, index) => (
-          <div key={url} className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
-            {index === 1 ? (
-              <Image src={Github} width={24} height={24} alt="git-hub" />
-            ) : (
-              <Icon kind={index === 0 ? "navigation" : "bookmark"} />
-            )}
-            <a href={url} target="_blank" rel="noopener noreferrer">
-              {url}
-            </a>
-          </div>
-        ))}
-      </ProfileItem>
+      {document.links.length > 0 && (
+        <ProfileItem title={t("links")}>
+          {document.links.map((url, index) => (
+            <div key={url} className="flex gap-2 mb-4 w-fit hover:text-yellow-200">
+              {index === 1 ? (
+                <Image src={Github} width={24} height={24} alt="git-hub" />
+              ) : (
+                <Icon kind={index === 0 ? "navigation" : "bookmark"} />
+              )}
+              <a href={url} target="_blank" rel="noopener noreferrer">
+                {url}
+              </a>
+            </div>
+          ))}
+        </ProfileItem>
+      )}
     </div>
   );
 };

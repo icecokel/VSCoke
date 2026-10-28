@@ -145,7 +145,6 @@ export class ResumeRagService {
           channel,
           question: searchQuestion,
           locale: request.locale,
-          ...(request.resumeKey ? { resumeKey: request.resumeKey } : {}),
         });
         let remaining = 16_000;
         chunks = chunks

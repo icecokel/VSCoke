@@ -3,7 +3,6 @@ import {
   assertPublicResume,
   careerSourceCondition,
   legacyDetailCondition,
-  selectedResumeSourceCondition,
 } from './resume-source-eligibility';
 import type { EmbeddingProvider } from './ai/embedding-provider';
 import {
@@ -32,7 +31,6 @@ export type ResumeRagRetrieveRequest = {
   channel: ChatChannel;
   question: string;
   locale: string;
-  resumeKey?: string;
 };
 
 export type RetrievedResumeChunk = {
@@ -201,7 +199,6 @@ export class ResumeRagRetrieverService {
           AND "itemType" = ANY($4)
           AND ${careerSourceCondition('current_items')}
           AND ${legacyDetailCondition('current_items')}
-          AND ($5::varchar IS NULL OR ${selectedResumeSourceCondition('current_items', '$5', '$2')})
           AND "vectorize" = TRUE
           AND "visibility" = 'public'
           AND "visibility" = ANY($1)
@@ -217,7 +214,6 @@ export class ResumeRagRetrieverService {
         request.locale || null,
         this.allowedSourceTypes(request.channel),
         chatDefinitions[request.channel].itemTypes,
-        request.channel === 'resume' ? (request.resumeKey ?? 'pe') : null,
       ],
     );
 
@@ -291,7 +287,6 @@ export class ResumeRagRetrieverService {
           AND source."itemType" = ANY($12)
           AND ${careerSourceCondition('source')}
           AND ${legacyDetailCondition('source')}
-          AND ($13::varchar IS NULL OR ${selectedResumeSourceCondition('source', '$13', '$3')})
           AND source.visibility = 'public' AND source.visibility = ANY($1)
           AND chunk.status = 'active' AND chunk.visibility = 'public'
           AND ($3::varchar IS NULL OR source.locale IS NULL OR source.locale = $3
@@ -319,7 +314,6 @@ export class ResumeRagRetrieverService {
         this.config.vectorMinSimilarity ?? 0.3,
         this.config.topK * 3,
         chatDefinitions[request.channel].itemTypes,
-        request.channel === 'resume' ? (request.resumeKey ?? 'pe') : null,
       ],
     );
     if (!Array.isArray(rows)) return [];
@@ -345,6 +339,9 @@ export class ResumeRagRetrieverService {
   }
 }
 
+// 한 원문이 결과를 독점하지 않게 하되, 긴 원문의 여러 관련 청크는 함께 전달한다.
+const RESUME_MERGE_MAX_CHUNKS_PER_SOURCE = 3;
+
 export const mergeResumeSearchResults = (
   vectors: RetrievedResumeChunk[],
   keywords: RetrievedResumeChunk[],
@@ -357,17 +354,26 @@ export const mergeResumeSearchResults = (
   for (const results of [vectors, keywords]) {
     const seen = new Set<string>();
     results.forEach((chunk, index) => {
-      if (seen.has(chunk.sourceKey)) return;
-      seen.add(chunk.sourceKey);
-      const existing = scores.get(chunk.sourceKey);
-      scores.set(chunk.sourceKey, {
+      // 키워드 청크와 벡터 청크는 ID 체계가 달라 원문 key와 본문으로 같은 청크를 식별한다.
+      const chunkKey = `${chunk.sourceKey}\n${chunk.content}`;
+      if (seen.has(chunkKey)) return;
+      seen.add(chunkKey);
+      const existing = scores.get(chunkKey);
+      scores.set(chunkKey, {
         chunk: existing?.chunk ?? chunk,
         rank: (existing?.rank ?? 0) + 1 / (60 + index + 1),
       });
     });
   }
+  const perSource = new Map<string, number>();
   return [...scores.values()]
     .sort((a, b) => b.rank - a.rank)
+    .filter(({ chunk }) => {
+      const count = perSource.get(chunk.sourceKey) ?? 0;
+      if (count >= RESUME_MERGE_MAX_CHUNKS_PER_SOURCE) return false;
+      perSource.set(chunk.sourceKey, count + 1);
+      return true;
+    })
     .slice(0, topK)
     .map(({ chunk }) => chunk);
 };

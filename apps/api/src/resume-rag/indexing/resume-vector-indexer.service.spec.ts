@@ -107,10 +107,10 @@ describe('ResumeVectorIndexerService', () => {
       expect.objectContaining({ embedding: [1, 0], visibility: 'public' }),
     ]);
   });
-  it('임베딩 중 현재 버전이 바뀌면 이전 source의 청크를 게시하지 않는다', async () => {
+  it('임베딩 중 불렛 공개 조건이 바뀌면 이전 source의 청크를 게시하지 않는다', async () => {
     const { service, source, sources, vectors, manager } = createHarness();
     source.sourceType = 'career_data';
-    source.itemType = 'resume_version';
+    source.itemType = 'career_bullet';
     source.isCurrent = true;
     sources.query.mockResolvedValue([{ id: source.id }]);
     manager.query.mockResolvedValue([]);
@@ -124,9 +124,7 @@ describe('ResumeVectorIndexerService', () => {
       'SELECT pg_advisory_xact_lock(1795000000004)',
     );
     expect(manager.query).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'r.current_version_id = source."resumeVersionId"',
-      ),
+      expect.stringContaining("pb.id=((source.metadata->>'bulletId')::uuid)"),
       [source.id],
     );
     expect(vectors.save).not.toHaveBeenCalled();

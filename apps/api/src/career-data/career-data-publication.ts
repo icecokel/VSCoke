@@ -14,3 +14,20 @@ export const publicDependencyCondition = (
   (d.fact_id IS NOT NULL AND (f.id IS NULL OR f.deleted_at IS NOT NULL OR fe.deleted_at IS NOT NULL OR f.visibility<>'public' OR f.verification_status='retracted')) OR
   (d.bullet_id IS NOT NULL AND (b.id IS NULL OR b.deleted_at IS NOT NULL OR be.deleted_at IS NOT NULL OR b.visibility<>'public' OR b.status='retired'))
  ))`;
+
+// 불렛 검색 원문은 동결 snapshot이 아니라 현재 불렛·경험·사실 상태로 공개 여부를 판단한다.
+export const publicBulletCondition = (bulletIdSql: string): string => `EXISTS (
+ SELECT 1 FROM career_bullets pb
+ JOIN career_experiences pe ON pe.id=pb.experience_id
+ WHERE pb.id=(${bulletIdSql}) AND pb.deleted_at IS NULL AND pe.deleted_at IS NULL
+  AND pb.status='ready' AND pb.visibility='public' AND pe.public_title IS NOT NULL
+  AND EXISTS (SELECT 1 FROM career_bullet_facts pbf WHERE pbf.bullet_id=pb.id AND pbf.deleted_at IS NULL)
+  AND NOT EXISTS (
+   SELECT 1 FROM career_bullet_facts pbf JOIN career_facts pf ON pf.id=pbf.fact_id
+   WHERE pbf.bullet_id=pb.id AND pbf.deleted_at IS NULL AND (
+    pf.deleted_at IS NOT NULL OR pf.revision<>pbf.fact_revision OR
+    pf.visibility<>'public' OR pf.verification_status<>'confirmed'))
+  AND NOT EXISTS (
+   SELECT 1 FROM career_bullet_keywords pbk JOIN career_keywords pk ON pk.id=pbk.keyword_id
+   WHERE pbk.bullet_id=pb.id AND pbk.deleted_at IS NULL AND pk.deleted_at IS NOT NULL)
+)`;

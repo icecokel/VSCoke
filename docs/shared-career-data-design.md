@@ -23,7 +23,8 @@ resume_documents를 자동으로 PE로 오인해 이관하지 않는다.
 - 기존 resume 버전 작성·검증 완료 흐름이 공통 API를 호출한다. 별도 웹 발행 승인, 파일
   watcher, 자동 번역, 문서별 물리 테이블을 추가하지 않는다.
 - 원본 후보를 편집해도 이미 저장한 완성 문구는 재작성하지 않는다. private/retracted/retired
-  등 명시적인 공개 철회는 관련 공개 조회와 RAG를 즉시 차단한다. 초기에는 문서 전체 단위다.
+  등 명시적인 공개 철회는 의존성으로 연결된 공개 조회와 불렛 기준 RAG를 즉시 차단한다.
+  초기에는 문서 전체 단위다.
 
 ## 테이블
 
@@ -124,46 +125,63 @@ fileRef 상세를 읽어, PDF 생성 도중 current pointer가 바뀌어도 본�
 
 ## RAG 소비 계약 (BE/FE 담당 간 고정 접점)
 
+이력서 채팅은 이력서 문서 본문이 아니라 경험 단위인 공개 불렛을 근거로 답한다. 문서 버전은
+웹·PDF 표시용 동결 본문이며 RAG 원문으로 발행하지 않는다. 기존 resume_version 원문 행은
+삭제하지 않지만 검색 대상에서 제외하고 다음 관리 쓰기에서 inactive로 정리한다.
+
 resume_source_items에 resumeId/resumeVersionId(nullable UUID FK), isCurrent(boolean)를 추가한다.
 career_data에 한해 (sourceType,sourceKey) WHERE isCurrent=true unique를 강제한다.
-문서 sourceKey=resume/<resume UUID>/<locale>, itemType=resume_version.
+불렛 sourceKey=career-bullet/<bullet UUID>/ko-KR, itemType=career_bullet, metadata.bulletId.
 독립 사실 sourceKey=career-fact/<fact UUID>/ko-KR, itemType=career_fact.
 DB 상세의 sourceKey=resume-detail/<slug>, itemType=project_detail, metadata.slug로 연결한다.
-이 경우 resumeId/resumeVersionId는 null이며 공개 상세와 의존성 조건으로 소비를 제한한다.
-상세 MDX는 기존과 같이 언어 공통 자료이므로 파생 원문의 locale은 null이다. 독립 경력 사실의
-ko-KR 및 이력서 버전의 문서 locale과 구분한다.
-contentHash는 공개 본문/공개 메타정보/원본 ID·revision을 포함하고 내부 메모는 노출하지 않는다.
+세 종류 모두 resumeId/resumeVersionId는 null이다. 상세 MDX는 언어 공통 자료라 locale이 null이며
+불렛·독립 사실 원문은 ko-KR이고 자동 번역하지 않는다.
+
+불렛 원문은 관리 저장 서비스가 PUT /career-data와 DELETE /career-data/:kind/:id 트랜잭션 안에서
+자동으로 맞춘다. 대상은 현재 ready/public이고 경험 publicTitle이 있으며, 연결 사실이 하나 이상이고
+모두 미삭제·confirmed·public·검토 당시 fact_revision과 같은 불렛이다. 원문은 회사·publicTitle,
+불렛 문구, 연결 키워드 label, 연결 사실의 내용·측정 조건·표현 한계로 만든다.
+sourceRefs/reviewNote/evidence locator는 넣지 않는다. 공개 여부는 동결 snapshot이 아니라 현재
+불렛·경험·사실 상태로 판단하므로, 불렛 private/retired/삭제나 연결 사실의 철회·수정은 다음
+검색부터 즉시 제외된다. 원문 hash는 내용만으로 계산한다. 같은 원문으로 돌아오면(공개→비공개→공개,
+문구 되돌림) 기존 행과 임베딩을 재활성화하고, 내용이 바뀌면 새 행을 만들고 이전 행은 current에서 내린다.
+삭제 tombstone 행은 되살리지 않는다. 운영 사전 적재처럼 원문이 아직 없는 불렛은 네 배열이 모두
+빈 PUT /career-data 한 번으로 생성한 뒤 resume:index로 임베딩한다.
+
+contentHash는 공개 본문/공개 메타정보를 포함하고 내부 메모는 노출하지 않는다.
 관리 저장 서비스가 발행 원문을 생성·원자 교체하며 importer가 이를 임의로 덮어쓰지 않는다.
 철회 시 current 행은 비활성 tombstone으로 남겨 과거 active 행이 다시 선택되지 않게 한다.
 
-새 문서 저장 즉시 새 원문은 키워드 검색 가능하며 이전 투영은 제외한다. 임베딩은 기존
-resume:index로 생성할 수 있도록 DB active 원문을 durable 작업 대상으로 사용한다. 새 큐
-서비스는 추가하지 않는다. 늦게 완료한 인덱싱은 isCurrent/current_version_id/공개 조건을
-재확인한 뒤에만 활성화한다. 실제 문서 갱신 후 원문은 즉시, 벡터는 인덱싱 뒤에 반영된다.
-긴 문서의 키워드 조회는 질문에 맞는 제한 길이 청크를 선정한다. 문서 뒤쪽의 사실에 매칭하고
-앞 4000자만 모델에 보내는 동작은 금지한다. 독립 사실의 조건·한계는 컨텍스트에서 보존한다.
+새 원문은 저장 즉시 키워드 검색할 수 있으며 이전 투영은 제외한다. 임베딩은 기존 resume:index가
+DB active 원문을 durable 작업 대상으로 삼아 생성한다. 새 큐 서비스는 추가하지 않는다. 늦게
+완료한 인덱싱은 isCurrent와 공개 조건을 재확인한 뒤에만 활성화한다. 원문은 즉시, 벡터는
+인덱싱 뒤에 반영된다. 긴 원문의 키워드 조회는 질문에 맞는 제한 길이 청크를 선정한다. hybrid 병합은
+같은 청크를 합치되 한 원문에서 최대 3개 청크까지 함께 전달해 긴 상세의 여러 근거를 잃지 않는다.
+독립 사실의 조건·한계는 컨텍스트에서 보존한다.
 
-career_data의 resume_version/career_fact는 resume 채널에만 허용한다. main은 프로젝트 상세와
-사이트 안내의 기존 범위를 유지하되 DB 상세인 career_data/project_detail을 추가한다.
-main에 resume_version/career_fact가 들어가지 않는 것을 검증한다. 상세 upsert는 legacy
-app_resume 원문과 벡터의 상태를 수정하지 않는다. 새 reader가 대응하는 exact sourceKey와
-#section family를 현재 career_data 상세(tombstone 포함)로 대체해 오래된 파일 본문으로
-우회하지 않게 한다. 관리 저장의 벡터 철회도 parent 원문이 career_data인 행에만 적용한다.
-공개 이력서 채팅은 선택 resume key를 요청에 전달하고
-다른 문서 버전이 검색되지 않게 한다. 공통 공개 보강 사실은 함께 검색할 수 있다.
-문서 기반 투영은 해당 current version과 snapshot을 기준으로, 독립 사실은 live fact revision과
-공개 조건을 기준으로 판단한다. 일반 후보 수정만으로 승인된 문서 snapshot을 재작성하지 않는다.
-공개 철회/사실 retracted 등은 연결 문서·상세·원문·청크 모두에서 차단한다.
+career_bullet/career_fact는 resume 채널에만 허용한다. resume 채널은 career_bullet,
+career_fact, project_detail을 검색한다. main은 프로젝트 상세와 사이트 안내의 기존 범위를
+유지하되 DB 상세인 career_data/project_detail을 추가한다. main에 career_bullet/career_fact가
+들어가지 않는 것을 검증한다. 상세 upsert는 legacy app_resume 원문과 벡터의 상태를 수정하지 않는다.
+새 reader가 대응하는 exact sourceKey와 #section family를 현재 career_data 상세(tombstone 포함)로
+대체해 오래된 파일 본문으로 우회하지 않게 한다. 관리 저장의 벡터 철회도 parent 원문이
+career_data인 행에만 적용한다.
 
-대화 생성·복원에도 resume key를 묶고 브라우저 저장키를 문서별로 구분한다(기본 PE와 main은
-기존 대화 저장 호환성 검토). 기존 턴은 근거를 대체하지 않으며 답변은 현재 검색 근거를 따른다.
-조회 키 오류나 private 문서는 legacy RAG로 우회하지 않는다.
+공개 이력서 채팅은 선택한 resume key를 대화 생성·복원·질문 요청에 계속 묶는다. 미등록·비공개
+문서의 채팅은 404이며 legacy RAG로 우회하지 않는다. 검색 범위는 문서별로 나누지 않고 같은
+공개 경험 불렛·사실·상세를 사용한다. 브라우저 저장키는 문서별로 구분한다(기본 PE와 main은 기존
+대화 저장 호환성 유지). 기존 턴은 근거를 대체하지 않으며 답변은 현재 검색 근거를 따른다.
+legacy 파일 근거를 섞으면 원본 철회가 옛 파일 사본으로 우회되므로 조회 fallback으로 쓰지 않는다.
+구 원문을 물리 삭제하지 않으며 필요한 근거는 resume가 원본으로 매핑·등록한다. main의 사이트
+안내와 미전환 프로젝트 자료는 유지하되 현재 project_detail 행(tombstone 포함)이 있는 상세의 옛
+파일 source family는 제외해 재import로 철회 자료가 되살아나지 않게 한다.
 
-선택한 canonical 문서의 resume 채팅은 현재 resume_version과 명시 발행한 career_fact만
-검색한다. legacy 파일 근거를 섞으면 원본 철회가 옛 파일 사본으로 우회되므로 조회 fallback으로
-쓰지 않는다. 구 원문을 물리 삭제하지 않으며 필요한 근거는 resume가 원본으로 매핑·등록한다.
-main의 사이트 안내와 미전환 프로젝트 자료는 유지하되 현재 project_detail 행(tombstone 포함)이
-있는 상세의 옛 파일 source family는 제외해 재import로 철회 자료가 되살아나지 않게 한다.
+### 웹·PDF 본문과 원본 철회
+
+웹 /readme와 PDF는 승인된 동결 버전 본문을 그대로 보여 준다. dependencies에 기록한 원본이
+철회·삭제되면 해당 버전을 차단하지만, dependencies 등록은 선택 사항이며 본문 문구와 불렛 사이에
+구조적 연결은 없다. 의존성이 없는 버전(예: 초기 등록한 pe/fe)은 원본 철회로 자동 차단되지 않는다.
+이런 문서의 문구를 철회하려면 새 버전을 저장하거나 PATCH로 문서를 private 전환한다.
 
 ## 검증과 완료
 
@@ -174,7 +192,7 @@ Node24 런타임과 모든 임시 산출물은 원래 workspace의 output 아래
 필수 확인: SQL 제약, UUID 보존, 인증/입력 검증, 생성·수정 CAS, 관계 원자성, current 버전
 소속, 버전 불변·부모 연결, 같은 요청 재시도/과거 재시도, private/철회 차단, metadata 비노출,
 PE 기본값·명시 key·locale·404, 문서별 독립 갱신, 링크/PDF 선택 보존, 새 현재 버전의 재빌드
-없는 표시, RAG 채널/문서 격리·키워드 즉시 갱신·오래된 벡터 작업 차단·실패 재시도.
+없는 표시, RAG 채널 격리·불렛 live 공개 조건·키워드 즉시 갱신·오래된 벡터 작업 차단·실패 재시도.
 검증용 임베딩 공급자는 결정론적으로 대체하고 실제 LLM 품질은 별도 범위로 보고한다.
 lint/typecheck/API contract/관련 단위와 PostgreSQL 통합/웹 E2E/build를 실행하고 알려진 기존
 범위 밖 실패는 분리한다.

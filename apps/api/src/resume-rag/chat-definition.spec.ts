@@ -11,6 +11,16 @@ import {
 import { ResumeSourceItemChunker } from './indexing/resume-source-item-chunker';
 
 describe('채팅 정의', () => {
+  it('이력서 채팅은 문서 버전이 아니라 공개 불렛·사실·상세를 근거로 쓴다', () => {
+    expect(chatDefinitions.resume.itemTypes).toEqual([
+      'career_bullet',
+      'career_fact',
+      'project_detail',
+    ]);
+    expect(chatDefinitions.main.itemTypes).not.toContain('career_bullet');
+    expect(chatDefinitions.main.itemTypes).not.toContain('career_fact');
+  });
+
   it('이전 파일 원문은 보존하지만 공통 DB 이력서 채팅 근거에서 제외한다', () => {
     const manifest = createResumeImportManifest({
       repoRoot: resolve(__dirname, '../../../..'),

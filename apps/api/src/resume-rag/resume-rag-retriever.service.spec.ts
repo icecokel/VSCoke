@@ -90,7 +90,6 @@ describe('ResumeRagRetrieverService', () => {
         'ko-KR',
         channel === 'resume' ? ['career_data'] : ['app_resume', 'career_data'],
         chatDefinitions[channel].itemTypes,
-        channel === 'resume' ? 'pe' : null,
       ]);
     },
   );
@@ -409,8 +408,8 @@ describe('ResumeRagRetrieverService', () => {
         title: '공개 이력서',
         bodyText: `${'이전 경력 설명 '.repeat(900)}\n\n후반 경력: Uniquelatefact 배포 사고를 해결했습니다.`,
         sourcePath: 'career-data',
-        sourceKey: 'resume/document/ko-KR',
-        metadata: { resumeKey: 'fe' },
+        sourceKey: 'resume-detail/document',
+        metadata: {},
       },
     ]);
     const service = createService(
@@ -424,7 +423,6 @@ describe('ResumeRagRetrieverService', () => {
       channel: 'resume',
       question: 'Uniquelatefact',
       locale: 'ko-KR',
-      resumeKey: 'fe',
     });
     expect(result).toHaveLength(1);
     expect(result[0].content).toContain('Uniquelatefact 배포 사고');
@@ -441,8 +439,8 @@ describe('ResumeRagRetrieverService', () => {
           title: 'Synthetic document',
           bodyText: `${'Unrelated synthetic section. '.repeat(180)}\n\n${marker}: approved late career evidence.`,
           sourcePath: 'career-data',
-          sourceKey: 'resume/synthetic/ko-KR',
-          metadata: { resumeKey: 'fe' },
+          sourceKey: 'resume-detail/synthetic',
+          metadata: {},
         },
         {
           id: 'unrelated',
@@ -461,7 +459,6 @@ describe('ResumeRagRetrieverService', () => {
         channel: 'resume',
         question: `project ${marker}`,
         locale: 'ko-KR',
-        resumeKey: 'fe',
       });
       expect(result).toHaveLength(1);
       expect(result[0].content).toContain(

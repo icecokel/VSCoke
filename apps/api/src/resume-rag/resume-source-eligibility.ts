@@ -1,5 +1,8 @@
 import { NotFoundException } from '@nestjs/common';
-import { publicDependencyCondition } from '../career-data/career-data-publication';
+import {
+  publicBulletCondition,
+  publicDependencyCondition,
+} from '../career-data/career-data-publication';
 
 export const publicResumeCondition = (alias: string): string =>
   `${alias}.deleted_at IS NULL AND ${alias}.visibility = 'public' AND ${alias}.current_version_id IS NOT NULL
@@ -28,11 +31,8 @@ export const careerSourceCondition = (source: string): string => `(
     ${source}."isCurrent" = TRUE
     AND ${publicDependencyCondition(`d.source_item_id = ${source}.id`)}
     AND (
-      (${source}."itemType" = 'resume_version' AND EXISTS (
-        SELECT 1 FROM resumes r WHERE r.id = ${source}."resumeId"
-          AND r.current_version_id = ${source}."resumeVersionId"
-          AND r.locale = ${source}.locale AND ${publicResumeCondition('r')}
-      )) OR
+      (${source}."itemType" = 'career_bullet'
+        AND ${publicBulletCondition(`(${source}.metadata->>'bulletId')::uuid`)}) OR
       (${source}."itemType" = 'career_fact' AND EXISTS (
         SELECT 1 FROM resume_content_dependencies dep
         INNER JOIN career_facts f ON f.id = dep.fact_id
@@ -49,22 +49,6 @@ export const careerSourceCondition = (source: string): string => `(
       ))
     )
   ))
-)`;
-
-export const selectedResumeSourceCondition = (
-  source: string,
-  keyParameter: string,
-  localeParameter: string,
-): string => `(
-  ${source}."sourceType" = 'career_data' AND EXISTS (
-    SELECT 1 FROM resumes selected
-    WHERE selected.key = ${keyParameter} AND selected.locale = ${localeParameter}
-      AND ${publicResumeCondition('selected')}
-      AND (${source}."itemType" = 'career_fact' OR
-        (${source}."itemType" = 'resume_version'
-          AND selected.id = ${source}."resumeId"
-          AND selected.current_version_id = ${source}."resumeVersionId"))
-  )
 )`;
 
 export const legacyDetailCondition = (source: string): string => `NOT (

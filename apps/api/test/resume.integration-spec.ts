@@ -678,11 +678,10 @@ describe('공통 경력 PostgreSQL 원자적 저장', () => {
       saved.versionId,
     );
     expect(
-      await db.query(
-        `SELECT status FROM resume_source_items WHERE "resumeId"=$1 AND "isCurrent"`,
-        [saved.documentId],
-      ),
-    ).toEqual([{ status: 'active' }]);
+      await db.query('SELECT id FROM resume_source_items WHERE "resumeId"=$1', [
+        saved.documentId,
+      ]),
+    ).toEqual([]);
     await writer.saveDetail(
       slug,
       plainToInstance(ResumeDetailSaveDto, {
@@ -708,6 +707,99 @@ describe('공통 경력 PostgreSQL 원자적 저장', () => {
       ),
     ).rejects.toThrow(ConflictException);
   });
+  it('불렛 RAG 원문은 live 공개 조건을 따르고 같은 원문으로 돌아오면 임베딩을 재사용한다', async () => {
+    const { batch, bulletId, experienceId, factId } = await core();
+    const sourceKey = `career-bullet/${bulletId}/ko-KR`;
+    const current = () =>
+      db.query<{ id: string; status: string; bodyText: string }[]>(
+        `SELECT id,status,"bodyText" FROM resume_source_items WHERE "sourceKey"=$1 AND "isCurrent"`,
+        [sourceKey],
+      );
+    const eligible = async () =>
+      (
+        await db.query<{ id: string }[]>(
+          `SELECT s.id FROM resume_source_items s WHERE s."sourceKey"=$1 AND s.status='active' AND ${careerSourceCondition('s')}`,
+          [sourceKey],
+        )
+      ).map((row) => row.id);
+    const [published] = await current();
+    expect(published.status).toBe('active');
+    expect(published.bodyText).toContain('Synthetic Co · Public project');
+    expect(published.bodyText).toContain('Synthetic bullet');
+    expect(published.bodyText).toContain('Synthetic fact');
+    expect(published.bodyText).toContain('Synthetic technology');
+    expect(published.bodyText).not.toContain('private/internal.md');
+    expect(published.bodyText).not.toContain('internal note');
+    expect(await eligible()).toEqual([published.id]);
+    await db.query(
+      `INSERT INTO resume_vector_chunks("sourceItemId","chunkIndex",content,"contentHash","sourceType","itemType",title,locale,"sourcePath","sourceKey",visibility,status,"citationMetadata","embeddingProvider","embeddingModel","embeddingDimensions",embedding,"chunkerVersion","chunkConfigHash","indexedAt") VALUES($1,0,'Synthetic bullet','synthetic','career_data','career_bullet','Synthetic','ko-KR','career-data',$2,'public','active','{}'::jsonb,'synthetic','synthetic',2,'[1,0]'::vector,'synthetic','synthetic',now())`,
+      [published.id, sourceKey],
+    );
+    const chunkStatus = async () =>
+      (
+        await db.query<{ status: string }[]>(
+          'SELECT status FROM resume_vector_chunks WHERE "sourceItemId"=$1',
+          [published.id],
+        )
+      ).map((row) => row.status);
+    const saveBullet = (
+      expectedRevision: number,
+      changes: Record<string, unknown>,
+    ) =>
+      writer.upsertData(
+        plainToInstance(CareerDataUpsertDto, {
+          experiences: [],
+          facts: [],
+          keywords: [],
+          bullets: [{ ...batch.bullets[0], expectedRevision, ...changes }],
+        }),
+      );
+    await saveBullet(1, { visibility: 'private' });
+    expect(await current()).toEqual([
+      expect.objectContaining({ id: published.id, status: 'inactive' }),
+    ]);
+    expect(await chunkStatus()).toEqual(['inactive']);
+    expect(await eligible()).toEqual([]);
+    await saveBullet(2, { visibility: 'public' });
+    expect(await current()).toEqual([
+      expect.objectContaining({ id: published.id, status: 'active' }),
+    ]);
+    expect(await chunkStatus()).toEqual(['active']);
+    expect(await eligible()).toEqual([published.id]);
+    await saveBullet(3, { text: 'Synthetic rewritten bullet' });
+    const [rewritten] = await current();
+    expect(rewritten.id).not.toBe(published.id);
+    expect(rewritten.bodyText).toContain('Synthetic rewritten bullet');
+    expect(await eligible()).toEqual([rewritten.id]);
+    await saveBullet(4, { text: 'Synthetic bullet' });
+    expect((await current())[0].id).toBe(published.id);
+    expect(await chunkStatus()).toEqual(['active']);
+
+    const legacyBulletId = randomUUID();
+    await db.query(
+      "INSERT INTO career_bullets(id,experience_id,text,status,visibility) VALUES($1,$2,'Synthetic preloaded bullet','ready','public')",
+      [legacyBulletId, experienceId],
+    );
+    await db.query(
+      'INSERT INTO career_bullet_facts(bullet_id,fact_id,experience_id,fact_revision) VALUES($1,$2,$3,1)',
+      [legacyBulletId, factId, experienceId],
+    );
+    await writer.upsertData(
+      plainToInstance(CareerDataUpsertDto, {
+        experiences: [],
+        facts: [],
+        keywords: [],
+        bullets: [],
+      }),
+    );
+    expect(
+      await db.query(
+        `SELECT "itemType",status FROM resume_source_items WHERE "sourceKey"=$1 AND "isCurrent"`,
+        [`career-bullet/${legacyBulletId}/ko-KR`],
+      ),
+    ).toEqual([{ itemType: 'career_bullet', status: 'active' }]);
+  });
+
   it('관계 전체 교체는 행을 보존하고 명시한 활성 원본만 재선택한다', async () => {
     const { bulletId, factId, keywordId, batch } = await core();
     const update = (
@@ -776,10 +868,16 @@ describe('공통 경력 PostgreSQL 원자적 저장', () => {
     await expect(writer.deleteCareer('fact', factId, 99)).rejects.toThrow(
       ConflictException,
     );
+    const bulletSourceKey = `career-bullet/${bulletId}/ko-KR`;
     await writer.deleteCareer('keyword', keywordId, 1);
     expect((await reader.getDocument('ko-KR', name)).versionId).toBe(
       saved.versionId,
     );
+    const [afterKeyword] = await db.query<{ bodyText: string }[]>(
+      `SELECT "bodyText" FROM resume_source_items WHERE "sourceKey"=$1 AND "isCurrent" AND status='active'`,
+      [bulletSourceKey],
+    );
+    expect(afterKeyword.bodyText).not.toContain('Synthetic technology');
     const deleted = await writer.deleteCareer('fact', factId, 1);
     expect(await writer.deleteCareer('fact', factId, 1)).toEqual(deleted);
     await expect(reader.getDocument('ko-KR', name)).rejects.toThrow(
@@ -799,10 +897,10 @@ describe('공통 경력 PostgreSQL 원자적 저장', () => {
     ).toBeTruthy();
     expect(
       await db.query(
-        'SELECT deleted_at IS NOT NULL AS deleted FROM resume_source_items WHERE "resumeId"=$1',
-        [saved.documentId],
+        `SELECT status,deleted_at IS NOT NULL AS deleted FROM resume_source_items WHERE "sourceKey"=$1 AND "isCurrent"`,
+        [bulletSourceKey],
       ),
-    ).toEqual([{ deleted: true }]);
+    ).toEqual([{ status: 'inactive', deleted: true }]);
     await expect(
       writer.upsertData(
         plainToInstance(CareerDataUpsertDto, {
@@ -954,10 +1052,10 @@ describe('공통 경력 PostgreSQL 원자적 저장', () => {
     ).toEqual([{ deleted_at: null }]);
     expect(
       await db.query(
-        'SELECT "isCurrent",deleted_at IS NOT NULL AS deleted FROM resume_source_items WHERE "resumeVersionId"=$1',
+        'SELECT id FROM resume_source_items WHERE "resumeVersionId"=$1',
         [first.versionId],
       ),
-    ).toEqual([{ isCurrent: false, deleted: true }]);
+    ).toEqual([]);
     await writer.deleteResume(next.documentId, next.revision);
     expect(
       (await writer.listResumes()).some((row) => row.id === next.documentId),

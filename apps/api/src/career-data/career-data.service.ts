@@ -18,8 +18,10 @@ import type {
   ResumeVersionSaveDto,
   ResumeVisibilityDto,
 } from './career-data.dto';
-import type { ResumeContentDto } from '../resume/resume.dto';
-import { publicDependencyCondition } from './career-data-publication';
+import {
+  publicBulletCondition,
+  publicDependencyCondition,
+} from './career-data-publication';
 
 type Row = Record<string, unknown> & {
   id: string;
@@ -61,14 +63,6 @@ const canonicalJson = (value: unknown): string => {
       .join(',')}}`;
   return JSON.stringify(value);
 };
-export const resumeSourceBody = (content: ResumeContentDto): string =>
-  Object.entries(content)
-    .map(
-      ([key, value]) =>
-        `${key}\n${typeof value === 'string' ? value : JSON.stringify(value, null, 2)}`,
-    )
-    .join('\n\n');
-
 export const careerContentHash = (value: unknown): string =>
   createHash('sha256').update(canonicalJson(value)).digest('hex');
 
@@ -186,6 +180,7 @@ export class CareerDataService {
         [id, expectedRevision],
       );
       if (!result) throw new ConflictException('원본 revision 불일치');
+      await this.syncBulletSources(manager);
       await this.withdrawSources(manager);
       return result;
     });
@@ -428,6 +423,7 @@ export class CareerDataService {
       await manager.query(
         `UPDATE career_bullets b SET status='needs_review',revision=revision+1,updated_at=now() WHERE b.deleted_at IS NULL AND b.status='ready' AND EXISTS (SELECT 1 FROM career_bullet_facts bf JOIN career_facts f ON f.id=bf.fact_id WHERE bf.bullet_id=b.id AND bf.deleted_at IS NULL AND f.deleted_at IS NULL AND bf.fact_revision<>f.revision)`,
       );
+      await this.syncBulletSources(manager);
       await this.withdrawSources(manager);
       return this.readSnapshot(manager);
     });
@@ -653,21 +649,6 @@ export class CareerDataService {
         throw new ConflictException(
           '문서 revision 또는 current version 불일치',
         );
-      await this.publishSource(
-        manager,
-        {
-          key: `resume/${documentId}/${input.locale}`,
-          itemType: 'resume_version',
-          title: input.content.title,
-          body: resumeSourceBody(input.content),
-          locale: input.locale,
-          metadata: { resumeKey: input.key, versionName: input.versionName },
-          resumeId: documentId,
-          resumeVersionId: version.id,
-          isPublic: input.visibility === 'public',
-        },
-        dependencies,
-      );
       await this.withdrawSources(manager);
       return this.result(resume, version);
     });
@@ -706,66 +687,31 @@ export class CareerDataService {
       );
       if (!result) throw new ConflictException('문서 revision 불일치');
       if (input.visibility === 'public') {
-        const [version] = await manager.query<
-          (VersionRow & { content: ResumeContentDto })[]
-        >('SELECT * FROM resume_versions WHERE id=$1', [
-          resume.current_version_id,
-        ]);
         const saved = await manager.query<
           {
             experience_id: string | null;
             fact_id: string | null;
             bullet_id: string | null;
-            keyword_id: string | null;
-            source_revision: number;
             source_snapshot: Row;
           }[]
         >(
-          'SELECT * FROM resume_content_dependencies WHERE resume_version_id=$1',
+          'SELECT experience_id,fact_id,bullet_id,source_snapshot FROM resume_content_dependencies WHERE resume_version_id=$1',
           [resume.current_version_id],
         );
-        const dependencies: Dependency[] = saved.map((entry) => {
-          const kind = (
-            Object.keys(tables) as CareerDependencyDto['kind'][]
-          ).find((kind) => entry[`${kind}_id`])!;
-          const snapshot = entry.source_snapshot;
-          if (
-            (kind === 'experience' && !snapshot.public_title) ||
-            (kind === 'fact' &&
+        const hasReviewSnapshot = saved.some(
+          ({ experience_id, fact_id, bullet_id, source_snapshot: snapshot }) =>
+            (experience_id && !snapshot.public_title) ||
+            (fact_id &&
               (snapshot.visibility !== 'public' ||
                 snapshot.verification_status !== 'confirmed')) ||
-            (kind === 'bullet' &&
-              (snapshot.visibility !== 'public' || snapshot.status !== 'ready'))
-          )
-            throw new ConflictException(
-              '검토용 비공개 원본 snapshot은 새 공개 버전으로 저장하세요.',
-            );
-          return {
-            kind,
-            id: entry[`${kind}_id`]!,
-            revision: entry.source_revision,
-            snapshot,
-          };
-        });
-        const content = version.content;
-        await this.publishSource(
-          manager,
-          {
-            key: `resume/${resume.id}/${resume.locale}`,
-            itemType: 'resume_version',
-            title: content.title,
-            body: resumeSourceBody(content),
-            locale: resume.locale,
-            metadata: {
-              resumeKey: resume.key,
-              versionName: version.version_name,
-            },
-            resumeId: resume.id,
-            resumeVersionId: resume.current_version_id!,
-            isPublic: true,
-          },
-          dependencies,
+            (bullet_id &&
+              (snapshot.visibility !== 'public' ||
+                snapshot.status !== 'ready')),
         );
+        if (hasReviewSnapshot)
+          throw new ConflictException(
+            '검토용 비공개 원본 snapshot은 새 공개 버전으로 저장하세요.',
+          );
       }
       await this.withdrawSources(manager);
       return result;
@@ -889,9 +835,8 @@ export class CareerDataService {
       body: string;
       locale: string | null;
       metadata: Record<string, unknown>;
-      resumeId?: string;
-      resumeVersionId?: string;
       isPublic: boolean;
+      contentHash?: string;
     },
     dependencies: Dependency[],
   ): Promise<string> {
@@ -903,14 +848,16 @@ export class CareerDataService {
         revision,
       })),
     };
-    const hash = careerContentHash({
-      body: input.body,
-      title: input.title,
-      locale: input.locale,
-      metadata,
-      resumeVersionId: input.resumeVersionId ?? null,
-      isPublic: input.isPublic,
-    });
+    const hash =
+      input.contentHash ??
+      careerContentHash({
+        body: input.body,
+        title: input.title,
+        locale: input.locale,
+        metadata,
+        resumeVersionId: null,
+        isPublic: input.isPublic,
+      });
     const [existing] = await manager.query<
       { id: string; isCurrent: boolean; deleted_at: string | null }[]
     >(
@@ -921,24 +868,31 @@ export class CareerDataService {
       throw new ConflictException(
         '삭제된 검색 원문은 다시 발행할 수 없습니다.',
       );
-    if (existing?.isCurrent) {
+    if (!existing?.isCurrent)
+      await manager.query(
+        `UPDATE resume_source_items SET "isCurrent"=false,status='inactive',vectorize=false,"updatedAt"=now() WHERE "sourceType"='career_data' AND "sourceKey"=$1 AND "isCurrent"`,
+        [input.key],
+      );
+    if (existing) {
+      // 같은 원문으로 돌아오면 기존 임베딩을 재사용한다. 공개 조건은 이후 withdrawSources가 다시 검사한다.
+      await manager.query(
+        `UPDATE resume_source_items SET "isCurrent"=true,status=$2,visibility=$3,vectorize=$4,"updatedAt"=now() WHERE id=$1`,
+        [
+          existing.id,
+          input.isPublic ? 'active' : 'inactive',
+          input.isPublic ? 'public' : 'private',
+          input.isPublic,
+        ],
+      );
       if (input.isPublic)
         await manager.query(
-          `UPDATE resume_source_items SET status='active',visibility='public',vectorize=true,"updatedAt"=now() WHERE id=$1`,
+          `UPDATE resume_vector_chunks SET status='active' WHERE "sourceItemId"=$1 AND deleted_at IS NULL AND status='inactive'`,
           [existing.id],
         );
       return existing.id;
     }
-    await manager.query(
-      `UPDATE resume_source_items SET "isCurrent"=false,status='inactive',vectorize=false,"updatedAt"=now() WHERE "sourceType"='career_data' AND "sourceKey"=$1 AND "isCurrent"`,
-      [input.key],
-    );
-    if (existing)
-      throw new ConflictException(
-        '이전 발행 원문을 되돌릴 수 없습니다. 새 버전을 저장하세요.',
-      );
     const [source] = await manager.query<{ id: string }[]>(
-      `INSERT INTO resume_source_items("sourceType","itemType","sourcePath","sourceKey",title,"bodyText",locale,status,visibility,vectorize,"contentHash",metadata,"resumeId","resumeVersionId","isCurrent") VALUES('career_data',$1,'career-data',$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12,true) RETURNING id`,
+      `INSERT INTO resume_source_items("sourceType","itemType","sourcePath","sourceKey",title,"bodyText",locale,status,visibility,vectorize,"contentHash",metadata,"isCurrent") VALUES('career_data',$1,'career-data',$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,true) RETURNING id`,
       [
         input.itemType,
         input.key,
@@ -950,8 +904,6 @@ export class CareerDataService {
         input.isPublic,
         hash,
         JSON.stringify(metadata),
-        input.resumeId ?? null,
-        input.resumeVersionId ?? null,
       ],
     );
     await this.saveDependencies(
@@ -960,6 +912,113 @@ export class CareerDataService {
       dependencies,
     );
     return source.id;
+  }
+
+  // 공개 가능한 현재 불렛을 RAG 원문으로 맞춘다. 원문이 같으면 기존 행과 임베딩을 유지한다.
+  private async syncBulletSources(manager: EntityManager): Promise<void> {
+    const bullets = await manager.query<
+      {
+        id: string;
+        revision: number;
+        text: string;
+        company: string;
+        public_title: string;
+      }[]
+    >(
+      `SELECT b.id,b.revision,b.text,e.company,e.public_title FROM career_bullets b JOIN career_experiences e ON e.id=b.experience_id WHERE ${publicBulletCondition('b.id')} ORDER BY b.id`,
+    );
+    if (!bullets.length) return;
+    const bulletIds = bullets.map(({ id }) => id);
+    const facts = await manager.query<
+      {
+        bullet_id: string;
+        content: string;
+        metric: unknown;
+        claim_boundary: string | null;
+      }[]
+    >(
+      'SELECT bf.bullet_id,f.content,f.metric,f.claim_boundary FROM career_bullet_facts bf JOIN career_facts f ON f.id=bf.fact_id WHERE bf.bullet_id=ANY($1) AND bf.deleted_at IS NULL ORDER BY bf.bullet_id,f.id',
+      [bulletIds],
+    );
+    const keywords = await manager.query<
+      { bullet_id: string; label: string }[]
+    >(
+      'SELECT bk.bullet_id,k.label FROM career_bullet_keywords bk JOIN career_keywords k ON k.id=bk.keyword_id WHERE bk.bullet_id=ANY($1) AND bk.deleted_at IS NULL AND k.deleted_at IS NULL ORDER BY bk.bullet_id,k.label',
+      [bulletIds],
+    );
+    const sources = await manager.query<
+      {
+        sourceKey: string;
+        contentHash: string;
+        isCurrent: boolean;
+        status: string;
+        deleted_at: string | null;
+      }[]
+    >(
+      `SELECT "sourceKey","contentHash","isCurrent",status,deleted_at FROM resume_source_items WHERE "sourceType"='career_data' AND "itemType"='career_bullet'`,
+    );
+    const sourceStates = new Map(
+      sources.map((source) => [
+        `${source.sourceKey}\n${source.contentHash}`,
+        source,
+      ]),
+    );
+    for (const bullet of bullets) {
+      const key = `career-bullet/${bullet.id}/ko-KR`;
+      const title = `${bullet.company} · ${bullet.public_title}`;
+      const labels = keywords
+        .filter((keyword) => keyword.bullet_id === bullet.id)
+        .map((keyword) => keyword.label);
+      const body = [
+        title,
+        bullet.text,
+        ...(labels.length ? [`관련 기술·역량: ${labels.join(', ')}`] : []),
+        [
+          '근거 사실:',
+          ...facts
+            .filter((fact) => fact.bullet_id === bullet.id)
+            .map((fact) =>
+              [
+                `- ${fact.content}`,
+                ...(fact.metric
+                  ? [`  수치와 측정 조건: ${JSON.stringify(fact.metric)}`]
+                  : []),
+                ...(fact.claim_boundary
+                  ? [`  표현 한계: ${fact.claim_boundary}`]
+                  : []),
+              ].join('\n'),
+            ),
+        ].join('\n'),
+      ].join('\n\n');
+      const contentHash = careerContentHash({
+        itemType: 'career_bullet',
+        key,
+        title,
+        body,
+      });
+      const state = sourceStates.get(`${key}\n${contentHash}`);
+      // 삭제된 원문은 되살리지 않는다. 같은 원문이 이미 활성이라면 다시 쓸 필요가 없다.
+      if (state?.deleted_at || (state?.isCurrent && state.status === 'active'))
+        continue;
+      await this.publishSource(
+        manager,
+        {
+          key,
+          itemType: 'career_bullet',
+          title,
+          body,
+          locale: 'ko-KR',
+          metadata: { bulletId: bullet.id },
+          isPublic: true,
+          contentHash,
+        },
+        await this.dependencies(
+          manager,
+          [{ kind: 'bullet', id: bullet.id, revision: bullet.revision }],
+          true,
+        ),
+      );
+    }
   }
 
   private async withdrawSources(manager: EntityManager): Promise<void> {
@@ -976,8 +1035,9 @@ export class CareerDataService {
       `UPDATE resume_vector_chunks c SET deleted_at=COALESCE(c.deleted_at,now()),status='inactive' WHERE EXISTS(SELECT 1 FROM resume_source_items s WHERE s.id=c."sourceItemId" AND s."sourceType"='career_data' AND s.deleted_at IS NOT NULL)`,
     );
     await manager.query(`UPDATE resume_source_items s SET status='inactive',vectorize=false,"updatedAt"=now() WHERE s."sourceType"='career_data' AND s.status='active' AND (
-   s.deleted_at IS NOT NULL OR NOT s."isCurrent" OR (s."resumeVersionId" IS NOT NULL AND NOT ${publicDependencyCondition('d.resume_version_id=s."resumeVersionId"')}) OR NOT ${publicDependencyCondition('d.source_item_id=s.id')} OR
-   (s."resumeId" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM resumes r WHERE r.id=s."resumeId" AND r.deleted_at IS NULL AND r.visibility='public' AND EXISTS(SELECT 1 FROM resume_versions v WHERE v.id=r.current_version_id AND v.deleted_at IS NULL) AND r.current_version_id=s."resumeVersionId")) OR
+   s.deleted_at IS NOT NULL OR NOT s."isCurrent" OR NOT ${publicDependencyCondition('d.source_item_id=s.id')} OR
+   s."itemType"='resume_version' OR
+   (s."itemType"='career_bullet' AND NOT ${publicBulletCondition(`(s.metadata->>'bulletId')::uuid`)}) OR
    (s."itemType"='career_fact' AND NOT EXISTS(SELECT 1 FROM resume_content_dependencies d JOIN career_facts f ON f.id=d.fact_id WHERE d.source_item_id=s.id AND d.deleted_at IS NULL AND f.deleted_at IS NULL AND f.revision=d.source_revision AND f.visibility='public' AND f.verification_status='confirmed')) OR
    (s."itemType"='project_detail' AND NOT EXISTS(SELECT 1 FROM resume_details detail WHERE detail.slug=s.metadata->>'slug' AND detail.deleted_at IS NULL AND detail.revision=(s.metadata->>'revision')::int AND detail.visibility='public' AND ${publicDependencyCondition('d.detail_slug=detail.slug AND d.detail_revision=detail.revision')}))
   )`);

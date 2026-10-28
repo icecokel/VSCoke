@@ -13,7 +13,7 @@
 | 채팅              | 진입점 / API                                            | 검색 자료                                                                    |
 | ----------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | 메인 (`main`)     | `/` / `POST /main-chat`                                 | 공개 프로젝트 상세(`public_resume_detail`), 사이트 안내(`public_site_guide`) |
-| 이력서 (`resume`) | `/readme`, `/resume/question` / `POST /resume-rag/chat` | 프로필·이력 데이터와 번역, 공개 최종 이력서·경력 원문 근거                   |
+| 이력서 (`resume`) | `/readme`, `/resume/question` / `POST /resume-rag/chat` | 공개 경험 불렛(`career_bullet`), 독립 공개 사실, DB 프로젝트 상세            |
 
 `apps/api/src/resume-rag/chat-definition.ts`에서 채팅별 자료 종류와 안내 주제를 정의한다.
 두 API는 `ResumeRagService`의 인사 처리 → 후속 질문 재작성 → 검색 → 근거 기반 답변 흐름을
@@ -25,7 +25,8 @@
 근거가 없거나 특정 채널 자료가 비어 있어도 다른 채널 자료로 대체하지 않는다.
 
 메인 자료는 `app_resume`의 프로젝트 상세와 `docs/public-site-guide.md`, 이력서 자료는
-`app_resume`의 프로필·이력과 허용된 `resume_workspace`의 공개 경력 자료다. 기존 자료는
+`career_data`의 공개 경험 불렛·독립 공개 사실·프로젝트 상세다. 이력서 문서 버전 본문은 검색하지
+않는다. 상세 계약은 [공통 경력 DB 계약](./shared-career-data-design.md)을 따른다. 기존 자료는
 마이그레이션이나 재임베딩 없이 분리된다. 새 사이트 안내는 API 빌드 후 기존 `resume:import`로
 가져오고 `resume:index`로 인덱싱한다. 운영 반영 전까지 새 사이트 안내는 검색되지 않는다.
 

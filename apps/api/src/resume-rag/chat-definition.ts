@@ -20,8 +20,9 @@ export const chatDefinitions: Record<ChatChannel, ChatDefinition> = {
   },
   resume: {
     sourceTypes: ['career_data'],
-    itemTypes: ['resume_version', 'career_fact'],
-    contextDescription: 'public resume, career summaries, and career evidence',
+    itemTypes: ['career_bullet', 'career_fact', 'project_detail'],
+    contextDescription:
+      'public career experience bullets, career evidence, and project details',
     topics: {
       'ko-KR': '경력과 담당 업무, 기술 경험, 업무 성과와 강점',
       'en-US':

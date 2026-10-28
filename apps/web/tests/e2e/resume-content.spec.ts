@@ -67,6 +67,9 @@ test("선택 문서의 metadata·상세 복귀·미리보기·언어 전환이 �
   const { data } = await (await request.get(`${apiUrl}/resume?locale=ko-KR&resume=fe`)).json();
   await gotoWithRetry(page, "/ko-KR/readme?resume=fe");
   await expect(page.getByRole("heading", { name: data.title, exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: messages.resume.personalProjects.title }),
+  ).toHaveCount(data.personalProjects.length > 0 ? 1 : 0);
   await expect(page).toHaveTitle(data.title);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
     "href",

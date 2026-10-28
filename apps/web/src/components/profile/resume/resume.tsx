@@ -85,31 +85,33 @@ const Resume = ({ document: resume }: { document: ResumeDocument }) => {
             resumeKey={resume.key}
           />
         ))}
-        <section aria-labelledby="personal-projects-title" className="mb-12">
-          <BaseText id="personal-projects-title" type="h5" className="mb-8 ml-2 text-yellow-200">
-            {t("personalProjects.title")}
-          </BaseText>
-          {personalProjects.map(project => (
-            <article key={project.id} className="mb-8 ml-4">
-              <BaseText type="h6" className="text-white">
-                {project.title}
-              </BaseText>
-              <BaseText type="body2" className="mt-2 block text-gray-300">
-                {project.description}
-              </BaseText>
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="mt-3 h-7 border-yellow-200/50 text-xs text-yellow-200 hover:bg-yellow-200/10 hover:text-yellow-100"
-              >
-                <CustomLink href={resumePath(`/resume/${project.fileRef}`, resume.key)}>
-                  {t("personalProjects.viewDescription")}
-                </CustomLink>
-              </Button>
-            </article>
-          ))}
-        </section>
+        {personalProjects.length > 0 && (
+          <section aria-labelledby="personal-projects-title" className="mb-12">
+            <BaseText id="personal-projects-title" type="h5" className="mb-8 ml-2 text-yellow-200">
+              {t("personalProjects.title")}
+            </BaseText>
+            {personalProjects.map(project => (
+              <article key={project.id} className="mb-8 ml-4">
+                <BaseText type="h6" className="text-white">
+                  {project.title}
+                </BaseText>
+                <BaseText type="body2" className="mt-2 block text-gray-300">
+                  {project.description}
+                </BaseText>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 h-7 border-yellow-200/50 text-xs text-yellow-200 hover:bg-yellow-200/10 hover:text-yellow-100"
+                >
+                  <CustomLink href={resumePath(`/resume/${project.fileRef}`, resume.key)}>
+                    {t("personalProjects.viewDescription")}
+                  </CustomLink>
+                </Button>
+              </article>
+            ))}
+          </section>
+        )}
       </div>
     </div>
   );

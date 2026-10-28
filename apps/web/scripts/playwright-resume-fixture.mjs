@@ -59,6 +59,7 @@ const documents = ["pe", "fe", "worxphere", "nexon", "ko-only"].flatMap((key, in
               name: `Fixture ${key}`,
               title: `Fixture ${key} · ${document.locale} · v1`,
               introduction: [`Synthetic ${key} resume fixture`],
+              personalProjects: key === "fe" ? [] : document.personalProjects,
             };
       return {
         ...content,

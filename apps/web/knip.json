@@ -1,6 +1,6 @@
 {
   "entry": ["src/app/**/*.{ts,tsx}", "src/**/*.{spec,test}.{ts,tsx}"],
-  "project": ["src/**/*.{ts,tsx}"],
+  "project": ["src/**/*.{ts,tsx}", "scripts/**/*.mjs"],
   "ignoreDependencies": [
     "eslint-config-next",
     "tailwindcss",

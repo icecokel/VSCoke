@@ -78,6 +78,7 @@ next-env.d.ts
 !/docs/public-resume-experience.md
 !/docs/public-resume-raw-data.md
 !/docs/resume-raw-data-coverage.json
+!/docs/resume-db-content-design.md
 !/docs/postgresql-clickhouse-comparison.md
 !/docs/operations-runbook.md
 !/docs/observability-and-usage.md
@@ -85,3 +86,5 @@ next-env.d.ts
 !/docs/licenses/
 !/docs/swagger-style-guide.md
 !/docs/vscoke-monorepo-concept.md
+!/docs/shared-career-data-design.md
+!/docs/resume-soft-delete-design.md

@@ -117,7 +117,7 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:37123 pnpm --filter @vscoke/web exec playwr
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | 스모크/i18n          | `i18n-integrity.spec.ts`                                                                                         |
 | 핵심 라우트/CTA      | `core-routes.spec.ts`, `deep-link.spec.ts`                                                                       |
-| 장애 복구/fallback   | `error-fallback.spec.ts`, `capability-fallback.spec.ts`, `not-found-recovery.spec.ts`                            |
+| 장애 복구/fallback   | `error-fallback.spec.ts`, `capability-fallback.spec.ts`, `not-found-recovery.spec.ts`, `resume-error.spec.ts`    |
 | API/client 계약      | `api-read-error.spec.ts`, `auth-token.spec.ts`, `server-route-fallback.spec.ts`                                  |
 | 상태 유지            | `history-tabs.spec.ts`, `state-persistence.spec.ts`                                                              |
 | 접근성/키보드        | `keyboard-only.spec.ts`                                                                                          |
@@ -125,6 +125,7 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:37123 pnpm --filter @vscoke/web exec playwr
 | 레이아웃/비주얼 회귀 | `layout-shift.spec.ts`, `visual-regression.spec.ts`                                                              |
 | 취미/게임 진입       | `hobby-games.spec.ts`, `sky-drop.spec.ts`, `beat-jev.spec.ts`, `hobby-recipes.spec.ts`, `hobby-espresso.spec.ts` |
 | 블로그 상세          | `blog-detail.spec.ts`                                                                                            |
+| 이력서 조회          | `resume-content.spec.ts`                                                                                         |
 | Resume RAG           | `resume-rag-chat-public.spec.ts`, `resume-conversation-persistence.spec.ts`                                      |
 | Analytics            | `google-analytics.spec.ts`, `google-tag-manager.spec.ts`, `usage-analytics.spec.ts`                              |
 
@@ -172,6 +173,13 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:37123 pnpm --filter @vscoke/web exec playwr
 - 인증 및 API 주소는 E2E 안전 기본값으로 주입한다.
 - `e2e:integration <spec> <Playwright args>`는 전달받은 spec과 인자를 그대로 실행한다.
 - 통합 실행의 DB 이름은 반드시 `_test`로 끝나야 하며 process group 종료 시 API와 Web child를 함께 정리한다.
+- `migration:run:test`는 테스트 전용 migration runner에서 역사적 이력서 seed migration을
+  같은 이름의 빈 legacy DDL로 치환한다. 운영 `migration:run`과 migration history는 바꾸지 않는다.
+- 통합 runner는 기존 취미 fixture를 유지하고 일회성 관리 키로 로컬 실제 API를 시작한 뒤
+  관리 API로 합성 경력 원본·PE/FE/Nexon의 세 locale 문서·연결 상세를 등록한다.
+  관리 키와 DB 설정은 Playwright 프로세스에 전달하지 않으며 운영 데이터나 resume 저장소를 읽지 않는다.
+- 합성 문서 버전은 불변이므로 같은 테스트 DB의 재실행은 새 합성 버전을 추가한다.
+  검증 종료 후 폐기용 테스트 DB 수명주기에서 제거한다.
 
 예시:
 

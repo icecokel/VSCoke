@@ -6,6 +6,7 @@ import {
   Inject,
   Injectable,
   Logger,
+  NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { ChatProvider } from './ai/chat-provider';
@@ -26,6 +27,7 @@ import { RESUME_RAG_RETRIEVED_CHUNK_MAX_CHARS } from './resume-rag.config';
 type AnswerRequest = {
   question: string;
   locale: string;
+  resumeKey?: string;
 };
 
 type AnswerOptions = {
@@ -50,7 +52,9 @@ const toSource = (chunk: RetrievedResumeChunk) => ({
   version:
     typeof chunk.citationMetadata.version === 'string'
       ? chunk.citationMetadata.version
-      : undefined,
+      : typeof chunk.citationMetadata.versionName === 'string'
+        ? chunk.citationMetadata.versionName
+        : undefined,
   caveats: toStringArray(chunk.citationMetadata.caveats),
   excerpt: chunk.content.slice(0, 240),
   similarity: Number(chunk.similarity),
@@ -88,6 +92,7 @@ export class ResumeRagService {
         );
       }
 
+      if (channel === 'resume') await this.retriever.assertSelection(request);
       const simpleReply = getChatSimpleReply(
         request.question,
         request.locale,
@@ -144,6 +149,11 @@ export class ResumeRagService {
         let remaining = 16_000;
         chunks = chunks
           .map((chunk) => {
+            if (
+              typeof chunk.citationMetadata.factId === 'string' &&
+              chunk.content.length > remaining
+            )
+              return { ...chunk, content: '' };
             const content = chunk.content.slice(
               0,
               Math.min(RESUME_RAG_RETRIEVED_CHUNK_MAX_CHARS, remaining),
@@ -160,6 +170,7 @@ export class ResumeRagService {
           durationMs: performance.now() - stageStartedAt,
         });
       } catch (error) {
+        if (error instanceof NotFoundException) throw error;
         throw new ServiceUnavailableException(
           error instanceof Error ? error.message : String(error),
         );

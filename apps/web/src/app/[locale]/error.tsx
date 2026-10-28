@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, startTransition } from "react";
 import { useTranslations } from "next-intl";
 import { reportException } from "@/lib/error-reporting";
+import { useCustomRouter } from "@/hooks/use-custom-router";
 
 type Props = {
   error: Error & { digest?: string };
@@ -11,6 +12,7 @@ type Props = {
 
 const LocaleError = ({ error, reset }: Props) => {
   const t = useTranslations("errorTracking");
+  const router = useCustomRouter();
   const [eventId, setEventId] = useState<string>();
 
   useEffect(() => {
@@ -24,7 +26,16 @@ const LocaleError = ({ error, reset }: Props) => {
       <h1 className="text-xl font-bold">{t("title")}</h1>
       <p>{t("description")}</p>
       {eventId && <p className="font-mono text-xs text-gray-400">{t("reference", { eventId })}</p>}
-      <button type="button" onClick={reset} className="rounded border px-4 py-2">
+      <button
+        type="button"
+        onClick={() =>
+          startTransition(() => {
+            router.refresh();
+            reset();
+          })
+        }
+        className="rounded border px-4 py-2"
+      >
         {t("retry")}
       </button>
     </main>

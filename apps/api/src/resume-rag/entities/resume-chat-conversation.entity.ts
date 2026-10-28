@@ -1,5 +1,6 @@
 import {
   Column,
+  DeleteDateColumn,
   CreateDateColumn,
   Entity,
   Index,
@@ -25,6 +26,9 @@ export class ResumeChatConversation {
   @Column({ type: 'varchar', length: 16 })
   locale: string;
 
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  resumeKey: string | null;
+
   @Column({ type: 'int', default: 0 })
   version: number;
 
@@ -33,4 +37,11 @@ export class ResumeChatConversation {
 
   @Column({ type: 'timestamptz' })
   expiresAt: Date;
+
+  @DeleteDateColumn({
+    name: 'deleted_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  deletedAt: Date | null;
 }

@@ -1,48 +1,60 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { MDXRemote } from "next-mdx-remote/rsc";
-import RESUME_DATA from "@/constants/resume-data.json";
-import type { Description } from "@/components/profile/resume/types";
 import { ResumePreviewActions } from "@/features/resume-preview/components/resume-preview-actions";
-import { getResumeDetailBySlug } from "@/lib/resume-detail";
+import { getResumePreview } from "@/services/resume-service";
+import { getResumeKey, type ResumeSearchParams } from "@/features/resume/lib/resume-selection";
+import { ApiError } from "@/lib/api-client";
+import { notFound } from "next/navigation";
+import { cache } from "react";
 
-type ResumeContact = {
-  email: string;
-  phone: string;
-};
+interface ResumePreviewPageProps {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<ResumeSearchParams>;
+}
 
-export const generateMetadata = async (): Promise<Metadata> => {
+const getPreview = cache(async (locale: string, key: string) => {
+  try {
+    return await getResumePreview(locale, key);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) notFound();
+    throw error;
+  }
+});
+
+export const dynamic = "force-dynamic";
+
+export const generateMetadata = async ({
+  params,
+  searchParams,
+}: ResumePreviewPageProps): Promise<Metadata> => {
+  const { locale } = await params;
+  const { document } = await getPreview(locale, getResumeKey((await searchParams).resume));
   const t = await getTranslations("resumePreview");
 
   return {
-    title: t("metaTitle"),
+    title: `${document.title} · ${t("metaTitle")}`,
     description: t("metaDescription"),
   };
 };
 
-const ResumePreviewPage = async () => {
-  const [t, tProfile, tResume] = await Promise.all([
-    getTranslations("resumePreview"),
-    getTranslations("profile"),
-    getTranslations("resume"),
-  ]);
+const ResumePreviewPage = async ({ params, searchParams }: ResumePreviewPageProps) => {
+  const { locale } = await params;
+  const key = getResumeKey((await searchParams).resume);
+  const [t, tProfile, tResume, tAchievement, { document, details: careerDetails }] =
+    await Promise.all([
+      getTranslations("resumePreview"),
+      getTranslations("profile"),
+      getTranslations("resume"),
+      getTranslations("achievement"),
+      getPreview(locale, key),
+    ]);
   const tDescription = await getTranslations("descriptionItem");
-  const contact = tResume.raw("contact") as ResumeContact;
-  const introduction = tResume.raw("introduction") as string[];
-  const careerDetails = RESUME_DATA.flatMap(career =>
-    career.projects.flatMap(project => {
-      if (!("fileRef" in project) || !project.fileRef) {
-        return [];
-      }
-
-      const detail = getResumeDetailBySlug(project.fileRef);
-      return detail ? [detail] : [];
-    }),
-  );
+  const { contact, introduction } = document;
 
   return (
     <main className="resume-preview-page min-h-full bg-gray-800 px-3 py-4 text-gray-100 md:px-5 md:py-8">
-      <ResumePreviewActions />
+      <ResumePreviewActions resumeKey={key} locale={locale} />
 
       <article
         className="resume-preview-document mx-auto w-full max-w-[210mm] bg-beige-400 px-6 py-8 text-gray-900 shadow-2xl shadow-black/30 sm:px-10 sm:py-12"
@@ -52,8 +64,8 @@ const ResumePreviewPage = async () => {
           <p className="text-xs font-bold tracking-[0.24em] text-blue-500">{t("documentType")}</p>
           <div className="resume-preview-header-content mt-4 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{tResume("name")}</h1>
-              <p className="mt-2 max-w-xl text-base leading-6 text-gray-700">{tResume("title")}</p>
+              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{document.name}</h1>
+              <p className="mt-2 max-w-xl text-base leading-6 text-gray-700">{document.title}</p>
             </div>
             <dl className="resume-preview-contact shrink-0 space-y-1 text-sm text-gray-700 sm:text-right">
               <div>
@@ -85,14 +97,12 @@ const ResumePreviewPage = async () => {
               {t("experience")}
             </h2>
             <p className="text-xs text-gray-600">
-              {t("totalExperience", { value: tResume("totalExperience") })}
+              {t("totalExperience", { value: document.totalExperience })}
             </p>
           </div>
 
           <div className="divide-y divide-gray-300">
-            {RESUME_DATA.map(career => {
-              const careerKey = `careers.${career.id}`;
-
+            {document.careers.map(career => {
               return (
                 <section
                   key={career.id}
@@ -100,34 +110,21 @@ const ResumePreviewPage = async () => {
                 >
                   <div className="resume-preview-career-heading flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                     <div>
-                      <h3 className="text-base font-bold text-gray-900">
-                        {tResume(`${careerKey}.company`)}
-                      </h3>
-                      <p className="mt-1 text-sm font-medium text-gray-700">
-                        {tResume(`${careerKey}.role`)}
-                      </p>
+                      <h3 className="text-base font-bold text-gray-900">{career.company}</h3>
+                      <p className="mt-1 text-sm font-medium text-gray-700">{career.role}</p>
                     </div>
-                    <p className="shrink-0 text-sm text-gray-600">
-                      {tResume(`${careerKey}.period`)}
-                    </p>
+                    <p className="shrink-0 text-sm text-gray-600">{career.period}</p>
                   </div>
 
                   <div className="mt-4 space-y-5">
                     {career.projects.map(project => {
-                      const projectKey = `${careerKey}.projects.${project.id}`;
-                      const descriptions = tResume.raw(
-                        `${projectKey}.descriptions`,
-                      ) as Description[];
+                      const { descriptions } = project;
 
                       return (
                         <article key={project.id} className="resume-preview-project">
-                          <h4 className="text-sm font-bold text-gray-900">
-                            {tResume(`${projectKey}.title`)}
-                          </h4>
-                          {tResume.has(`${projectKey}.period`) && (
-                            <p className="mt-1 text-xs text-gray-600">
-                              {tResume(`${projectKey}.period`)}
-                            </p>
+                          <h4 className="text-sm font-bold text-gray-900">{project.title}</h4>
+                          {project.period && (
+                            <p className="mt-1 text-xs text-gray-600">{project.period}</p>
                           )}
 
                           <div className="mt-3 space-y-4">
@@ -165,6 +162,16 @@ const ResumePreviewPage = async () => {
                                     ))}
                                   </ul>
                                 )}
+                                {description.achievement && (
+                                  <div className="mt-3 border-l-2 border-blue-400 bg-blue-50 px-3 py-2">
+                                    <p className="text-xs font-semibold text-blue-700">
+                                      {tAchievement("label")}
+                                    </p>
+                                    <p className="mt-1 whitespace-pre-line text-sm leading-6 text-gray-700">
+                                      {description.achievement}
+                                    </p>
+                                  </div>
+                                )}
                               </section>
                             ))}
                           </div>
@@ -172,35 +179,71 @@ const ResumePreviewPage = async () => {
                       );
                     })}
                   </div>
+                  {career.achievement && (
+                    <div className="mt-4 border-l-2 border-blue-400 bg-blue-50 px-3 py-2">
+                      <p className="text-xs font-semibold text-blue-700">{tAchievement("label")}</p>
+                      <p className="mt-1 whitespace-pre-line text-sm leading-6 text-gray-700">
+                        {career.achievement}
+                      </p>
+                    </div>
+                  )}
                 </section>
               );
             })}
           </div>
         </section>
 
-        <section className="border-t border-gray-300 py-6">
-          <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-blue-500">
-            {tProfile("education")}
-          </h2>
-          <div className="mt-4 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-            <div>
-              <h3 className="text-sm font-bold text-gray-900">{tProfile("hybridCourse")}</h3>
-              <ul className="mt-2 text-sm leading-6 text-gray-700">
-                <li className="flex gap-2">
-                  <span
-                    className="mt-2.5 size-1 shrink-0 rounded-full bg-blue-400"
-                    aria-hidden="true"
-                  />
-                  <span>{tProfile("hybridDesc")}</span>
-                </li>
-              </ul>
-            </div>
-            <p className="shrink-0 text-sm text-gray-600">2020.03</p>
-          </div>
-        </section>
+        {(document.education.length > 0 || document.certifications.length > 0) && (
+          <section className="border-t border-gray-300 py-6">
+            <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-blue-500">
+              {tProfile("education")}
+            </h2>
+            {document.education.map(education => (
+              <div
+                key={`${education.school}-${education.period}`}
+                className="mt-4 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
+              >
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">{education.school}</h3>
+                  {education.status && (
+                    <p className="mt-1 text-xs text-gray-600">{education.status}</p>
+                  )}
+                  {education.major && (
+                    <p className="mt-2 text-sm leading-6 text-gray-700">{education.major}</p>
+                  )}
+                </div>
+                {education.period && (
+                  <p className="shrink-0 text-sm text-gray-600">{education.period}</p>
+                )}
+              </div>
+            ))}
+            {document.certifications.map(certification => (
+              <div
+                key={certification.name}
+                className="mt-4 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
+              >
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">{certification.name}</h3>
+                  <ul className="mt-2 text-sm leading-6 text-gray-700">
+                    {certification.details.map(detail => (
+                      <li key={detail} className="flex gap-2">
+                        <span
+                          className="mt-2.5 size-1 shrink-0 rounded-full bg-blue-400"
+                          aria-hidden="true"
+                        />
+                        <span>{detail}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <p className="shrink-0 text-sm text-gray-600">{certification.date}</p>
+              </div>
+            ))}
+          </section>
+        )}
 
         <footer className="border-t border-gray-300 pt-4 text-xs text-gray-600">
-          {t("updatedAt")}
+          {t("updatedAt", { date: document.lastUpdated })}
         </footer>
       </article>
 

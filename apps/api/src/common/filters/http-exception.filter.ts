@@ -4,6 +4,7 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  PayloadTooLargeException,
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
@@ -22,6 +23,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
    * 예외 발생 시 호출되는 메서드
    */
   catch(exception: unknown, host: ArgumentsHost) {
+    if (
+      exception instanceof Error &&
+      'type' in exception &&
+      exception.type === 'entity.too.large' &&
+      'status' in exception &&
+      exception.status === 413
+    ) {
+      exception = new PayloadTooLargeException(
+        'Request body exceeds the allowed size',
+      );
+    }
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();

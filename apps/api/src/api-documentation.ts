@@ -69,6 +69,8 @@ export const createApiDocument = (app: INestApplication): OpenAPIObject => {
     .addTag('Game', 'Sky Drop 결과 저장과 최고점 랭킹')
     .addTag('Main Chat', '공개 프로젝트·사이트 안내 채팅')
     .addTag('Resume RAG', '공개 이력 근거 채팅')
+    .addTag('Career management', '서버 전용 공통 경력 원본과 문서 저장')
+    .addTag('Resume', '공개 이력서와 경력기술서 조회')
     .addTag('Resume conversations', '익명 대화 생성·복원·삭제')
     .addTag('Wordle', '랜덤 단어 제공과 사전 검증')
     .addTag('Beat Jev', 'JEV 게임 상태와 대결 진행')

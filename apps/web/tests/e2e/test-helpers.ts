@@ -269,6 +269,7 @@ export const mockResumeConversationStorage = async (page: Page) => {
       token: string;
       channel: string;
       locale: string;
+      resumeKey?: string;
       expiresAt: string;
       turns: MockResumeTurn[];
     }
@@ -279,7 +280,11 @@ export const mockResumeConversationStorage = async (page: Page) => {
     const request = route.request();
     const pathname = new URL(request.url()).pathname;
     if (request.method() === "POST" && pathname.endsWith("/conversations")) {
-      const input = request.postDataJSON() as { channel: string; locale: string };
+      const input = request.postDataJSON() as {
+        channel: string;
+        locale: string;
+        resumeKey?: string;
+      };
       const access = {
         id: randomUUID(),
         token: "a".repeat(64),

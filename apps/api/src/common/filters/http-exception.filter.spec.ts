@@ -110,6 +110,35 @@ describe('HttpExceptionFilter', () => {
     warnSpy.mockRestore();
   });
 
+  it('body parser 크기 초과는 본문 노출과 서버 알림 없이 413이다', () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    const error = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+    const fetch = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new global.Response());
+    process.env.NOTIFY_SERVICE_URL = 'https://notify.example.test/send';
+    process.env.NOTIFY_SERVICE_USER = 'notify';
+    process.env.NOTIFY_SERVICE_PASSWORD = 'secret';
+    const { status, json, host } = createContext();
+    const exception = Object.assign(new Error('private body content'), {
+      type: 'entity.too.large',
+      status: 413,
+      body: 'private-body',
+    });
+    new HttpExceptionFilter().catch(exception, host);
+    expect(status).toHaveBeenCalledWith(413);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: false, statusCode: 413 }),
+    );
+    expect(JSON.stringify(json.mock.calls)).not.toContain(
+      'private body content',
+    );
+    expect(JSON.stringify(json.mock.calls)).not.toContain('private-body');
+    expect(warn).toHaveBeenCalled();
+    expect(error).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('서버 오류의 유형과 메시지, 스택을 기록하며 비밀과 URL 쿼리는 가린다', () => {
     const errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
     const { status, json, host } = createContext();

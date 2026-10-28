@@ -1,3 +1,4 @@
+import { RESUME_RAG_RETRIEVED_CHUNK_MAX_CHARS } from '../resume-rag.config';
 import { createHash } from 'node:crypto';
 
 export type ResumeChunkerOptions = {
@@ -60,6 +61,21 @@ export class ResumeSourceItemChunker {
     const chunkOverlap = options.chunkOverlap ?? DEFAULT_OPTIONS.chunkOverlap;
     const text = normalizeText(input.bodyText);
     if (!text) return [];
+
+    if (typeof input.metadata.factId === 'string') {
+      if (text.length > RESUME_RAG_RETRIEVED_CHUNK_MAX_CHARS)
+        throw new Error(
+          'Published career fact exceeds the atomic context limit',
+        );
+      return [
+        {
+          chunkIndex: 0,
+          content: text,
+          contentHash: hashText(text),
+          citationMetadata: { ...input.metadata },
+        },
+      ];
+    }
 
     const paragraphs = text.split(/\n{2,}/).filter(Boolean);
     const chunks: string[] = [];

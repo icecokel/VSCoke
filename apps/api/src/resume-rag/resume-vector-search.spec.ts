@@ -75,7 +75,7 @@ describe('Resume vector retrieval', () => {
       expect(sql).toContain('embedding <=> $9::vector');
       expect(params).toEqual([
         ['public'],
-        ['app_resume'],
+        channel === 'resume' ? ['career_data'] : ['app_resume', 'career_data'],
         'ko-KR',
         profile.provider,
         profile.model,
@@ -172,16 +172,32 @@ describe('Resume vector retrieval', () => {
     }
   });
 
-  it('RRF는 중복 근거를 합치고 긴 원문보다 검색한 청크를 사용한다', () => {
-    const shared = chunk('shared', '짧은 벡터 청크');
+  it('RRF는 같은 청크를 합치고 한 원문의 서로 다른 청크를 함께 전달한다', () => {
+    const shared = chunk('shared', '공통 청크');
     const result = mergeResumeSearchResults(
       [chunk('vector-only'), shared],
-      [chunk('shared', '긴 전체 문서'), chunk('keyword-only')],
+      [chunk('shared', '공통 청크'), chunk('shared', '다른 관련 청크')],
+      5,
+    );
+    expect(result[0]).toEqual(shared);
+    expect(result.map((item) => item.content)).toEqual([
+      '공통 청크',
+      expect.any(String),
+      expect.any(String),
+    ]);
+    expect(result.filter((item) => item.sourceKey === 'shared')).toHaveLength(
       2,
     );
-    expect(result).toHaveLength(2);
-    expect(result[0]).toEqual(shared);
-    expect(new Set(result.map((item) => item.sourceKey)).size).toBe(2);
+  });
+
+  it('RRF는 한 원문이 결과를 독점하지 않게 원문당 3개까지만 전달한다', () => {
+    const result = mergeResumeSearchResults(
+      ['첫째', '둘째', '셋째', '넷째'].map((content) => chunk('long', content)),
+      [chunk('other')],
+      5,
+    );
+    expect(result.filter((item) => item.sourceKey === 'long')).toHaveLength(3);
+    expect(result).toContainEqual(chunk('other'));
   });
 
   it('분할 설정 해시는 모델·API 키 변경과 무관하며 잘못된 설정을 거부한다', () => {
@@ -213,6 +229,7 @@ describe('채팅 자료 범위', () => {
       config.allowedSourceTypes = [
         'app_resume',
         'resume_workspace',
+        'career_data',
         'unapproved',
       ];
       query.mockResolvedValue([]);
@@ -231,9 +248,7 @@ describe('채팅 자료 범위', () => {
         sql.includes('resume_vector_chunks'),
       );
       const sourceTypes =
-        channel === 'main'
-          ? ['app_resume']
-          : ['app_resume', 'resume_workspace'];
+        channel === 'main' ? ['app_resume', 'career_data'] : ['career_data'];
       expect(keyword?.[1][2]).toEqual(sourceTypes);
       expect(vector?.[1][1]).toEqual(sourceTypes);
       expect(keyword?.[1][3]).toEqual(chatDefinitions[channel].itemTypes);
@@ -241,4 +256,69 @@ describe('채팅 자료 범위', () => {
       expect(query).toHaveBeenCalledTimes(2);
     },
   );
+});
+
+describe('공통 DB 원문 선택', () => {
+  it.each(['keyword', 'vector', 'hybrid'])(
+    '%s는 현재 공개 불렛과 live 사실만 허용하고 철회된 상세 파일을 차단한다',
+    async (mode) => {
+      const { service, query } = createHarness(mode);
+      query.mockResolvedValue([]);
+      await service.retrieve({
+        channel: 'resume',
+        question: 'Oprimed',
+        locale: 'en-US',
+      });
+      for (const [sql, parameters] of query.mock.calls as Array<
+        [string, unknown[]]
+      >) {
+        expect(sql).toContain('"isCurrent" = TRUE');
+        expect(sql.indexOf('OR "isCurrent" = TRUE')).toBeLessThan(
+          sql.indexOf('ORDER BY "sourceType"'),
+        );
+        expect(sql).toContain("pb.status='ready' AND pb.visibility='public'");
+        expect(sql).toContain('pf.revision<>pbf.fact_revision');
+        expect(sql).not.toContain('resumeVersionId');
+        expect(sql).toContain('f.revision = dep.source_revision');
+        expect(sql).toContain("f.verification_status = 'confirmed'");
+        expect(sql).toContain('canonical."isCurrent" = TRUE');
+        expect(sql).toContain('starts_with(');
+        expect(sql).toContain("|| '#'");
+        expect(sql).not.toContain("canonical.status = 'active'");
+        expect(parameters).toContain('en-US');
+        expect(parameters).toContainEqual(['career_data']);
+      }
+    },
+  );
+
+  it('운영자가 career_data를 제외한 명시적 allowlist를 우회하지 않는다', async () => {
+    const { service, query, config } = createHarness('hybrid');
+    config.allowedSourceTypes = ['app_resume'];
+    query.mockResolvedValue([]);
+    await service.retrieve({
+      channel: 'resume',
+      locale: 'ko-KR',
+      question: '경력',
+    });
+    for (const [sql, parameters] of query.mock.calls as Array<
+      [string, unknown[]]
+    >) {
+      expect(parameters[sql.includes('resume_vector_chunks') ? 1 : 2]).toEqual(
+        [],
+      );
+    }
+  });
+
+  it('미등록·비공개 선택은 기존 원문으로 우회하지 않는다', async () => {
+    const { service, query, embed } = createHarness();
+    query.mockResolvedValue([]);
+    await expect(
+      service.assertSelection({ locale: 'ko-KR', resumeKey: 'private' }),
+    ).rejects.toThrow('Resume not found');
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("r.visibility = 'public'"),
+      ['private', 'ko-KR'],
+    );
+    expect(embed).not.toHaveBeenCalled();
+  });
 });

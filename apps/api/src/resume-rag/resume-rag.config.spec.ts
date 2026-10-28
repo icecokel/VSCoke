@@ -22,7 +22,7 @@ describe('resume rag config', () => {
 
     expect(config.minSimilarity).toBe(0.1);
     expect(config.allowedVisibilities).toEqual(['public']);
-    expect(config.allowedSourceTypes).toEqual(['app_resume']);
+    expect(config.allowedSourceTypes).toEqual(['app_resume', 'career_data']);
   });
 
   it('rejects an unsupported Codex reasoning effort', () => {

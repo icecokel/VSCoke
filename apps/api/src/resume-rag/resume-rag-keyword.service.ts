@@ -4,14 +4,17 @@ import {
   RESUME_RAG_KEYWORD_GROUPS,
   SEARCH_TOKEN_EXPANSIONS_BY_KEYWORD_GROUP,
   createResumeRagSearchTokens,
+  normalizeResumeRagSearchText,
   type ResumeRagKeywordGroup,
 } from './resume-rag-keyword-gate';
 
 type ResumeRagKeywordTermRow = {
   groupId: string;
   weight: number | string;
-  termType: string;
-  term: string;
+  termType: string | null;
+  term: string | null;
+  groupEnabled: boolean;
+  termEnabled: boolean;
 };
 
 type MutableKeywordGroup = {
@@ -26,12 +29,12 @@ const KEYWORD_TERM_QUERY = `
     groups."id" AS "groupId",
     groups."weight" AS "weight",
     terms."termType" AS "termType",
-    terms."term" AS "term"
+    terms."term" AS "term",
+    (groups.enabled AND groups.deleted_at IS NULL) AS "groupEnabled",
+    (terms.enabled AND terms.deleted_at IS NULL) AS "termEnabled"
   FROM resume_rag_keyword_groups groups
-  INNER JOIN resume_rag_keyword_terms terms
+  LEFT JOIN resume_rag_keyword_terms terms
     ON terms."groupId" = groups."id"
-  WHERE groups."enabled" = TRUE
-    AND terms."enabled" = TRUE
   ORDER BY groups."sortOrder" ASC, terms."sortOrder" ASC, terms."term" ASC
 `;
 
@@ -51,8 +54,8 @@ const readKeywordRow = (value: unknown): ResumeRagKeywordTermRow | null => {
   if (
     typeof value.groupId !== 'string' ||
     (typeof value.weight !== 'number' && typeof value.weight !== 'string') ||
-    typeof value.termType !== 'string' ||
-    typeof value.term !== 'string'
+    (value.termType !== null && typeof value.termType !== 'string') ||
+    (value.term !== null && typeof value.term !== 'string')
   ) {
     return null;
   }
@@ -62,6 +65,8 @@ const readKeywordRow = (value: unknown): ResumeRagKeywordTermRow | null => {
     weight: value.weight,
     termType: value.termType,
     term: value.term,
+    groupEnabled: value.groupEnabled !== false,
+    termEnabled: value.termEnabled !== false,
   };
 };
 
@@ -83,6 +88,7 @@ const toKeywordGroups = (
   const groupsById = new Map<string, MutableKeywordGroup>();
 
   for (const row of rows) {
+    if (!row.groupEnabled || !row.termEnabled || row.term === null) continue;
     const group =
       groupsById.get(row.groupId) ??
       ({
@@ -109,9 +115,7 @@ const toKeywordGroups = (
       id: group.id,
       weight: group.weight,
       aliases: group.aliases,
-      ...(group.searchExpansions.length > 0
-        ? { searchExpansions: group.searchExpansions }
-        : {}),
+      searchExpansions: group.searchExpansions,
     }));
 };
 
@@ -181,9 +185,41 @@ export class ResumeRagKeywordService {
         .filter((row): row is ResumeRagKeywordTermRow => row !== null);
       const groups = toKeywordGroups(rows);
 
-      return groups.length > 0
-        ? mergeKeywordGroups(RESUME_RAG_KEYWORD_GROUPS, groups)
-        : RESUME_RAG_KEYWORD_GROUPS;
+      const baseGroups = RESUME_RAG_KEYWORD_GROUPS.filter(
+        (group) =>
+          !rows.some((row) => row.groupId === group.id && !row.groupEnabled),
+      ).map((group) => {
+        const blocked = rows.filter(
+          (row) => row.groupId === group.id && !row.termEnabled,
+        );
+        const base = toMutableKeywordGroup(group);
+        return {
+          ...base,
+          aliases: base.aliases.filter(
+            (term) =>
+              !blocked.some(
+                (row) =>
+                  row.termType === 'alias' &&
+                  row.term !== null &&
+                  normalizeResumeRagSearchText(row.term).replaceAll(' ', '') ===
+                    normalizeResumeRagSearchText(term).replaceAll(' ', ''),
+              ),
+          ),
+          searchExpansions: base.searchExpansions.filter(
+            (term) =>
+              !blocked.some(
+                (row) =>
+                  row.termType === 'search_expansion' &&
+                  row.term !== null &&
+                  normalizeResumeRagSearchText(row.term).replaceAll(' ', '') ===
+                    normalizeResumeRagSearchText(term).replaceAll(' ', ''),
+              ),
+          ),
+        };
+      });
+      return mergeKeywordGroups(baseGroups, groups).filter(
+        (group) => group.aliases.length > 0,
+      );
     } catch (error) {
       if (isMissingKeywordTableError(error)) {
         return RESUME_RAG_KEYWORD_GROUPS;

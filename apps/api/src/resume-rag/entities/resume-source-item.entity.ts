@@ -1,5 +1,6 @@
 import {
   Column,
+  DeleteDateColumn,
   CreateDateColumn,
   Entity,
   Index,
@@ -18,6 +19,15 @@ import { ResumeImportBatch } from './resume-import-batch.entity';
 export class ResumeSourceItem {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  resumeId: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  resumeVersionId: string | null;
+
+  @Column({ type: 'boolean', default: true })
+  isCurrent: boolean;
 
   @Column({ type: 'uuid', nullable: true })
   importBatchId: string | null;
@@ -70,4 +80,11 @@ export class ResumeSourceItem {
 
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
+
+  @DeleteDateColumn({
+    name: 'deleted_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  deletedAt: Date | null;
 }

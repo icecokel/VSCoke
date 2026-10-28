@@ -1,5 +1,6 @@
 "use client";
 
+import { resumePath } from "@/features/resume/lib/resume-selection";
 import BaseText from "@/components/base-ui/text";
 import { CustomLink } from "@/components/custom-link";
 import { Button } from "@/components/ui/button";
@@ -7,11 +8,11 @@ import { CareerSection } from "./career-section";
 import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 import { useTranslations } from "next-intl";
-import RESUME_DATA from "@/constants/resume-data.json";
+import type { ResumeDocument } from "@/services/resume-service";
 
-const Resume = () => {
+const Resume = ({ document: resume }: { document: ResumeDocument }) => {
   const t = useTranslations("resume");
-  const careers = RESUME_DATA; // Use static data structure
+  const { careers, personalProjects } = resume;
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
@@ -57,7 +58,7 @@ const Resume = () => {
                     activeIndex === index ? "text-yellow-200" : "text-white hover:text-yellow-200",
                   )}
                 >
-                  {t(`careers.${career.id}.company`)}
+                  {career.company}
                 </BaseText>
                 <br />
                 <BaseText
@@ -67,7 +68,7 @@ const Resume = () => {
                     activeIndex === index ? "text-yellow-200/70" : "text-gray-300",
                   )}
                 >
-                  {t(`careers.${career.id}.period`)}
+                  {career.period}
                 </BaseText>
               </a>
             </div>
@@ -77,31 +78,40 @@ const Resume = () => {
       {/* 커리어 상세 */}
       <div className="flex-1">
         {careers.map((career, careerIndex) => (
-          <CareerSection key={careerIndex} careerData={career} index={careerIndex} />
+          <CareerSection
+            key={careerIndex}
+            careerData={career}
+            index={careerIndex}
+            resumeKey={resume.key}
+          />
         ))}
-        <section aria-labelledby="personal-projects-title" className="mb-12">
-          <BaseText id="personal-projects-title" type="h5" className="mb-8 ml-2 text-yellow-200">
-            {t("personalProjects.title")}
-          </BaseText>
-          <article className="mb-8 ml-4">
-            <BaseText type="h6" className="text-white">
-              {t("personalProjects.worxphere.title")}
+        {personalProjects.length > 0 && (
+          <section aria-labelledby="personal-projects-title" className="mb-12">
+            <BaseText id="personal-projects-title" type="h5" className="mb-8 ml-2 text-yellow-200">
+              {t("personalProjects.title")}
             </BaseText>
-            <BaseText type="body2" className="mt-2 block text-gray-300">
-              {t("personalProjects.worxphere.description")}
-            </BaseText>
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              className="mt-3 h-7 border-yellow-200/50 text-xs text-yellow-200 hover:bg-yellow-200/10 hover:text-yellow-100"
-            >
-              <CustomLink href="/resume/worxphere-recruitment-board">
-                {t("personalProjects.viewDescription")}
-              </CustomLink>
-            </Button>
-          </article>
-        </section>
+            {personalProjects.map(project => (
+              <article key={project.id} className="mb-8 ml-4">
+                <BaseText type="h6" className="text-white">
+                  {project.title}
+                </BaseText>
+                <BaseText type="body2" className="mt-2 block text-gray-300">
+                  {project.description}
+                </BaseText>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 h-7 border-yellow-200/50 text-xs text-yellow-200 hover:bg-yellow-200/10 hover:text-yellow-100"
+                >
+                  <CustomLink href={resumePath(`/resume/${project.fileRef}`, resume.key)}>
+                    {t("personalProjects.viewDescription")}
+                  </CustomLink>
+                </Button>
+              </article>
+            ))}
+          </section>
+        )}
       </div>
     </div>
   );

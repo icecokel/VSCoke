@@ -10,7 +10,7 @@ import {
   type OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThanOrEqual, Repository } from 'typeorm';
+import { IsNull, LessThanOrEqual, Repository } from 'typeorm';
 import {
   ResumeChatConversation,
   type ResumeChatChannel,
@@ -18,11 +18,13 @@ import {
 import { ResumeChatTurn } from './entities/resume-chat-turn.entity';
 import type {
   CreateResumeConversationDto,
+  ResumeConversationContextDto,
   ResumeConversationAccessDto,
   ResumeConversationHistoryDto,
 } from './dto/resume-conversation.dto';
 import type { ResumeRagChatRequestDto } from './dto/resume-rag-chat-request.dto';
 import type { ResumeRagChatResponseDto } from './dto/resume-rag-chat-response.dto';
+import { assertPublicResume } from './resume-source-eligibility';
 import { redactResumeRagChatQuestion } from './resume-rag-chat-log.service';
 import {
   buildResumeChatHistory,
@@ -83,6 +85,8 @@ export class ResumeConversationService
   async create(
     request: CreateResumeConversationDto,
   ): Promise<ResumeConversationAccessDto> {
+    if (request.channel === 'resume')
+      await this.assertSelection(request.resumeKey ?? 'pe', request.locale);
     await this.purgeExpired();
     const token = randomBytes(32).toString('hex');
     const conversation = await this.conversations.save(
@@ -90,6 +94,8 @@ export class ResumeConversationService
         tokenHash: tokenHash(token),
         channel: request.channel,
         locale: request.locale,
+        resumeKey:
+          request.channel === 'resume' ? (request.resumeKey ?? 'pe') : null,
         version: 0,
         expiresAt: new Date(
           Date.now() + RESUME_CHAT_RETENTION_DAYS * 24 * 60 * 60 * 1000,
@@ -101,6 +107,14 @@ export class ResumeConversationService
       token,
       expiresAt: conversation.expiresAt.toISOString(),
     };
+  }
+
+  private async assertSelection(key: string, locale: string): Promise<void> {
+    await assertPublicResume(
+      (sql, parameters) => this.conversations.query(sql, parameters),
+      key,
+      locale,
+    );
   }
 
   private async authorize(
@@ -120,8 +134,23 @@ export class ResumeConversationService
   async history(
     id: string,
     token: string | undefined,
+    context: ResumeConversationContextDto = {},
   ): Promise<ResumeConversationHistoryDto> {
     const conversation = await this.authorize(id, token);
+    if (
+      (context.channel !== undefined &&
+        context.channel !== conversation.channel) ||
+      (context.locale !== undefined &&
+        context.locale !== conversation.locale) ||
+      (context.resumeKey !== undefined &&
+        context.resumeKey !== (conversation.resumeKey ?? 'pe'))
+    )
+      throw unavailable();
+    if (conversation.channel === 'resume')
+      await this.assertSelection(
+        conversation.resumeKey ?? 'pe',
+        conversation.locale,
+      );
     const turns = await this.turns.find({
       where: { conversationId: id },
       order: { createdAt: 'DESC', id: 'DESC' },
@@ -131,6 +160,9 @@ export class ResumeConversationService
       id,
       locale: conversation.locale,
       channel: conversation.channel,
+      ...(conversation.channel === 'resume'
+        ? { resumeKey: conversation.resumeKey ?? 'pe' }
+        : {}),
       expiresAt: conversation.expiresAt.toISOString(),
       turns: turns.reverse().map((turn) => ({
         id: turn.id,
@@ -146,7 +178,19 @@ export class ResumeConversationService
 
   async remove(id: string, token: string | undefined): Promise<void> {
     await this.authorize(id, token);
-    await this.conversations.delete({ id });
+    await this.conversations.manager.transaction(async (manager) => {
+      const conversations = manager.getRepository(ResumeChatConversation);
+      const current = await conversations.findOne({
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!current || current.expiresAt.getTime() <= Date.now())
+        throw unavailable();
+      await manager
+        .getRepository(ResumeChatTurn)
+        .softDelete({ conversationId: id, deletedAt: IsNull() });
+      await conversations.softDelete({ id });
+    });
   }
 
   async runTurn(
@@ -158,6 +202,8 @@ export class ResumeConversationService
       question: string,
     ) => Promise<ResumeRagChatResponseDto>,
   ): Promise<ResumeRagChatResponseDto> {
+    if (channel === 'resume')
+      await this.assertSelection(request.resumeKey ?? 'pe', request.locale);
     if (!request.conversationId) {
       if (request.requestId || token)
         throw new BadRequestException('conversationId is required');
@@ -168,14 +214,18 @@ export class ResumeConversationService
     const conversation = await this.authorize(request.conversationId, token);
     if (
       conversation.channel !== channel ||
-      conversation.locale !== request.locale
+      conversation.locale !== request.locale ||
+      (channel === 'resume' &&
+        (conversation.resumeKey ?? 'pe') !== (request.resumeKey ?? 'pe'))
     )
       throw unavailable();
 
     const question = redactResumeRagChatQuestion(request.question);
     const requestId = request.requestId;
     const where = { conversationId: conversation.id, requestId };
-    const cached = await this.turns.findOneBy(where);
+    const cached = await this.turns.findOne({ where, withDeleted: true });
+    if (cached?.deletedAt)
+      throw new ConflictException('requestId is no longer available');
     if (cached) {
       if (cached.question !== question)
         throw new ConflictException(
@@ -208,7 +258,9 @@ export class ResumeConversationService
       });
       if (!current || current.expiresAt.getTime() <= Date.now())
         throw unavailable();
-      const completed = await turns.findOneBy(where);
+      const completed = await turns.findOne({ where, withDeleted: true });
+      if (completed?.deletedAt)
+        throw new ConflictException('requestId is no longer available');
       if (completed) {
         if (completed.question !== question)
           throw new ConflictException(
@@ -232,8 +284,9 @@ export class ResumeConversationService
       const saved = await turns.save(turn);
       await conversations.update(current.id, { version: current.version + 1 });
       await turns.query(
-        `DELETE FROM resume_chat_turns WHERE "conversationId" = $1
-        AND id NOT IN (SELECT id FROM resume_chat_turns WHERE "conversationId" = $1
+        `UPDATE resume_chat_turns SET deleted_at = CURRENT_TIMESTAMP
+        WHERE "conversationId" = $1 AND deleted_at IS NULL
+        AND id NOT IN (SELECT id FROM resume_chat_turns WHERE "conversationId" = $1 AND deleted_at IS NULL
           ORDER BY "createdAt" DESC, id DESC LIMIT $2)`,
         [current.id, RESUME_CHAT_STORED_TURNS],
       );

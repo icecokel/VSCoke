@@ -1,11 +1,17 @@
+import { notFound } from "next/navigation";
+import { ApiError } from "@/lib/api-client";
+import { getResumeDocument } from "@/services/resume-service";
+import { getResumeKey } from "@/features/resume/lib/resume-selection";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { ResumeRagPageViewTracker } from "@/features/resume-rag/components/resume-rag-page-view-tracker";
 import { ResumeQuestionChat } from "@/features/resume-rag/components/resume-question-chat";
 
 type ResumeQuestionPageProps = {
+  params: Promise<{ locale: string }>;
   searchParams?: Promise<{
     chatId?: string | string[];
+    resume?: string | string[];
   }>;
 };
 
@@ -23,9 +29,17 @@ export const generateMetadata = async (): Promise<Metadata> => {
   };
 };
 
-const ResumeQuestionPage = async ({ searchParams }: ResumeQuestionPageProps) => {
+const ResumeQuestionPage = async ({ params, searchParams }: ResumeQuestionPageProps) => {
   const t = await getTranslations("resumeRag");
   const resolvedSearchParams = await searchParams;
+  const { locale } = await params;
+  const resumeKey = getResumeKey(resolvedSearchParams?.resume);
+  try {
+    await getResumeDocument(locale, resumeKey);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) notFound();
+    throw error;
+  }
   const chatId = getSingleSearchParam(resolvedSearchParams?.chatId);
 
   return (
@@ -35,7 +49,11 @@ const ResumeQuestionPage = async ({ searchParams }: ResumeQuestionPageProps) => 
         <h1 className="text-xl font-semibold text-gray-100">{t("title")}</h1>
         <p className="mt-1 text-sm text-gray-400">{t("subtitle")}</p>
       </header>
-      <ResumeQuestionChat initialChatId={chatId} />
+      <ResumeQuestionChat
+        key={`${locale}:${resumeKey}`}
+        initialChatId={chatId}
+        resumeKey={resumeKey}
+      />
     </main>
   );
 };

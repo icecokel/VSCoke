@@ -28,6 +28,7 @@ describe('ResumeRagService', () => {
   it('searches every question and recommends related topics when no evidence is found', async () => {
     const retrieve = jest.fn().mockResolvedValue([]);
     const retriever = {
+      assertSelection: jest.fn().mockResolvedValue(undefined),
       retrieve,
     } as unknown as ResumeRagRetrieverService;
     const answer = jest.fn();
@@ -74,7 +75,10 @@ describe('ResumeRagService', () => {
     const chatProvider = { answer: jest.fn() } as unknown as ChatProvider;
     const { chatLogService, recordQuestion } = createChatLogService();
     const service = new ResumeRagService(
-      { retrieve } as unknown as ResumeRagRetrieverService,
+      {
+        retrieve,
+        assertSelection: jest.fn().mockResolvedValue(undefined),
+      } as unknown as ResumeRagRetrieverService,
       chatProvider,
       chatLogService,
     );
@@ -89,6 +93,7 @@ describe('ResumeRagService', () => {
 
   it('returns grounded false when no chunks are retrieved', async () => {
     const retriever = {
+      assertSelection: jest.fn().mockResolvedValue(undefined),
       retrieve: jest.fn().mockResolvedValue([]),
     } as unknown as ResumeRagRetrieverService;
     const answer = jest.fn();
@@ -115,6 +120,7 @@ describe('ResumeRagService', () => {
 
   it('passes retrieved chunks to the chat provider and returns source citations', async () => {
     const retriever = {
+      assertSelection: jest.fn().mockResolvedValue(undefined),
       retrieve: jest.fn().mockResolvedValue([
         {
           id: 'chunk-1',
@@ -200,7 +206,10 @@ describe('ResumeRagService', () => {
       if (stage === 'question-log') recordQuestion.mockRejectedValue(error);
       if (stage === 'retrieval') retrieve.mockRejectedValue(error);
       const service = new ResumeRagService(
-        { retrieve } as unknown as ResumeRagRetrieverService,
+        {
+          retrieve,
+          assertSelection: jest.fn().mockResolvedValue(undefined),
+        } as unknown as ResumeRagRetrieverService,
         { answer },
         chatLogService,
       );
@@ -236,6 +245,7 @@ describe('ResumeRagService', () => {
 
   it('surfaces missing chat model setup as service unavailable', async () => {
     const retriever = {
+      assertSelection: jest.fn().mockResolvedValue(undefined),
       retrieve: jest.fn().mockResolvedValue([
         {
           id: 'chunk-1',
@@ -291,7 +301,10 @@ describe('ResumeRagService conversational retrieval', () => {
         .mockResolvedValueOnce('Oprimed 프로젝트의 담당 역할')
         .mockResolvedValueOnce('새 근거를 따른 역할 설명');
       const service = new ResumeRagService(
-        { retrieve } as unknown as ResumeRagRetrieverService,
+        {
+          retrieve,
+          assertSelection: jest.fn().mockResolvedValue(undefined),
+        } as unknown as ResumeRagRetrieverService,
         { answer },
         createChatLogService().chatLogService,
       );
@@ -326,7 +339,10 @@ describe('ResumeRagService conversational retrieval', () => {
     const retrieve = jest.fn().mockResolvedValue([]);
     const answer = jest.fn().mockResolvedValue('Oprimed의 공개되지 않은 수치');
     const service = new ResumeRagService(
-      { retrieve } as unknown as ResumeRagRetrieverService,
+      {
+        retrieve,
+        assertSelection: jest.fn().mockResolvedValue(undefined),
+      } as unknown as ResumeRagRetrieverService,
       { answer },
       createChatLogService().chatLogService,
     );
@@ -347,7 +363,10 @@ describe('ResumeRagService conversational retrieval', () => {
     const retrieve = jest.fn().mockResolvedValue([]);
     const answer = jest.fn();
     const service = new ResumeRagService(
-      { retrieve } as unknown as ResumeRagRetrieverService,
+      {
+        retrieve,
+        assertSelection: jest.fn().mockResolvedValue(undefined),
+      } as unknown as ResumeRagRetrieverService,
       { answer },
       createChatLogService().chatLogService,
     );
@@ -375,7 +394,10 @@ describe('공통 채팅 인사 처리', () => {
       const retrieve = jest.fn();
       const answer = jest.fn();
       const service = new ResumeRagService(
-        { retrieve } as unknown as ResumeRagRetrieverService,
+        {
+          retrieve,
+          assertSelection: jest.fn().mockResolvedValue(undefined),
+        } as unknown as ResumeRagRetrieverService,
         { answer },
         createChatLogService().chatLogService,
       );
@@ -389,4 +411,52 @@ describe('공통 채팅 인사 처리', () => {
       expect(answer).not.toHaveBeenCalled();
     },
   );
+});
+
+describe('독립 사실의 맥락 경계', () => {
+  it('전체 context 예산에 못 들어가는 사실은 표현 한계를 자르지 않고 통째로 제외한다', async () => {
+    const fact = `${'승인된 공개 사실 '.repeat(220)}\n\n측정 조건: 제한된 테스트 환경\n\n표현 한계: 전체 트래픽으로 일반화하지 않는다`;
+    const contexts = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((index) => ({
+      id: `fact-${index}`,
+      title: '공개 사실',
+      sourcePath: 'career-data',
+      sourceKey: `fact-${index}`,
+      content: fact,
+      citationMetadata: { factId: `fact-${index}` },
+      similarity: 0.9,
+    }));
+    const answer = jest.fn().mockResolvedValue('현재 공개 근거 답변');
+    const service = new ResumeRagService(
+      {
+        assertSelection: jest.fn().mockResolvedValue(undefined),
+        retrieve: jest.fn().mockResolvedValue(contexts),
+      } as unknown as ResumeRagRetrieverService,
+      { answer },
+      createChatLogService().chatLogService,
+    );
+    await service.answer({
+      question: '공개 사실의 측정 조건은?',
+      locale: 'ko-KR',
+      resumeKey: 'fe',
+    });
+    const calls = answer.mock.calls as Array<
+      [{ contexts: { content: string }[] }]
+    >;
+    const provided = calls[0][0].contexts;
+    expect(provided.length).toBeGreaterThan(0);
+    expect(provided.length).toBeLessThan(contexts.length);
+    expect(provided.every((context) => context.content === fact)).toBe(true);
+    expect(
+      provided.every(
+        (context) =>
+          context.content.includes('측정 조건: 제한된 테스트 환경') &&
+          context.content.includes(
+            '표현 한계: 전체 트래픽으로 일반화하지 않는다',
+          ),
+      ),
+    ).toBe(true);
+    expect(
+      provided.reduce((length, context) => length + context.content.length, 0),
+    ).toBeLessThanOrEqual(16000);
+  });
 });

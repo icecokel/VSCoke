@@ -1,16 +1,30 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  assertPublicResume,
+  careerSourceCondition,
+  legacyDetailCondition,
+} from './resume-source-eligibility';
 import type { EmbeddingProvider } from './ai/embedding-provider';
 import {
   RESUME_RAG_EMBEDDING_PROVIDER,
   assertEmbeddingResultMatches,
 } from './ai/embedding-provider';
-import { requireEmbeddingModelConfig } from './resume-rag.config';
+import {
+  RESUME_RAG_RETRIEVED_CHUNK_MAX_CHARS,
+  requireEmbeddingModelConfig,
+} from './resume-rag.config';
 import { getResumeChunkConfigHash } from './indexing/resume-index-profile';
-import { RESUME_CHUNKER_VERSION } from './indexing/resume-source-item-chunker';
+import {
+  RESUME_CHUNKER_VERSION,
+  ResumeSourceItemChunker,
+} from './indexing/resume-source-item-chunker';
 import { DataSource } from 'typeorm';
 import { RESUME_RAG_CONFIG, type ResumeRagConfig } from './resume-rag.config';
 import { ResumeRagKeywordService } from './resume-rag-keyword.service';
-import { normalizeResumeRagSearchText } from './resume-rag-keyword-gate';
+import {
+  createResumeRagQueryTokens,
+  normalizeResumeRagSearchText,
+} from './resume-rag-keyword-gate';
 import { chatDefinitions, type ChatChannel } from './chat-definition';
 
 export type ResumeRagRetrieveRequest = {
@@ -72,7 +86,11 @@ const toSourceItemRow = (value: unknown): ResumeSourceItemRow | null => {
   };
 };
 
-const scoreRow = (row: ResumeSourceItemRow, tokens: string[]): number => {
+const scoreRow = (
+  row: ResumeSourceItemRow,
+  tokens: string[],
+  queryTokens: string[],
+): number => {
   if (tokens.length === 0) return 0;
 
   const title = normalizeResumeRagSearchText(row.title);
@@ -85,7 +103,12 @@ const scoreRow = (row: ResumeSourceItemRow, tokens: string[]): number => {
   const titleMatches = matchedTokens.filter((token) =>
     title.includes(token),
   ).length;
-  const baseScore = matchedTokens.length / tokens.length;
+  const directMatches = queryTokens.filter((token) =>
+    searchableText.includes(token),
+  );
+  const directScore =
+    queryTokens.length > 0 ? directMatches.length / queryTokens.length : 0;
+  const baseScore = Math.max(directScore, matchedTokens.length / tokens.length);
   const titleBoost = titleMatches > 0 ? 0.1 : 0;
 
   return Math.min(1, baseScore + titleBoost);
@@ -114,6 +137,17 @@ export class ResumeRagRetrieverService {
     @Inject(RESUME_RAG_EMBEDDING_PROVIDER)
     private readonly embeddingProvider: EmbeddingProvider,
   ) {}
+
+  async assertSelection(request: {
+    locale: string;
+    resumeKey?: string;
+  }): Promise<void> {
+    await assertPublicResume(
+      (sql, parameters) => this.dataSource.query(sql, parameters),
+      request.resumeKey ?? 'pe',
+      request.locale,
+    );
+  }
 
   async retrieve(
     request: ResumeRagRetrieveRequest,
@@ -158,10 +192,13 @@ export class ResumeRagRetrieverService {
           FROM resume_source_items
           WHERE "status" <> 'superseded'
             AND "sourceType" = ANY($3)
+            AND ("sourceType" <> 'career_data' OR "isCurrent" = TRUE)
           ORDER BY "sourceType", "sourceKey", "updatedAt" DESC, "id" DESC
         ) AS current_items
-        WHERE "status" = 'active'
+        WHERE deleted_at IS NULL AND "status" = 'active'
           AND "itemType" = ANY($4)
+          AND ${careerSourceCondition('current_items')}
+          AND ${legacyDetailCondition('current_items')}
           AND "vectorize" = TRUE
           AND "visibility" = 'public'
           AND "visibility" = ANY($1)
@@ -185,10 +222,37 @@ export class ResumeRagRetrieverService {
     return rows
       .map(toSourceItemRow)
       .filter((row): row is ResumeSourceItemRow => row !== null)
+      .flatMap((row) => {
+        const chunkSize = Math.min(
+          this.config.chunkSize,
+          RESUME_RAG_RETRIEVED_CHUNK_MAX_CHARS,
+        );
+        const chunks = new ResumeSourceItemChunker().chunk(
+          {
+            sourceItemId: row.id,
+            bodyText: row.bodyText,
+            metadata: row.metadata,
+          },
+          {
+            chunkSize,
+            chunkOverlap: Math.min(this.config.chunkOverlap, chunkSize - 1),
+          },
+        );
+        return chunks.map((chunk, index) => ({
+          ...row,
+          id: chunks.length === 1 ? row.id : `${row.id}:${index}`,
+          bodyText: chunk.content,
+          metadata: chunk.citationMetadata,
+        }));
+      })
       .map(
         (row): ScoredResumeSourceItem => ({
           ...row,
-          score: scoreRow(row, tokens),
+          score: scoreRow(
+            row,
+            tokens,
+            createResumeRagQueryTokens(request.question),
+          ),
         }),
       )
       .filter((row) => row.score >= this.config.minSimilarity)
@@ -212,13 +276,17 @@ export class ResumeRagRetrieverService {
         SELECT DISTINCT ON ("sourceType", "sourceKey") *
         FROM resume_source_items
           WHERE "status" <> 'superseded' AND "sourceType" = ANY($2)
+            AND ("sourceType" <> 'career_data' OR "isCurrent" = TRUE)
         ORDER BY "sourceType", "sourceKey", "updatedAt" DESC, "id" DESC
       ), eligible AS MATERIALIZED (
         SELECT chunk.*, source.title AS "sourceTitle", source.metadata AS "sourceMetadata"
         FROM resume_vector_chunks chunk
         INNER JOIN current_items source ON source.id = chunk."sourceItemId"
-        WHERE source.status = 'active' AND source.vectorize = TRUE
+        WHERE source.deleted_at IS NULL AND chunk.deleted_at IS NULL
+          AND source.status = 'active' AND source.vectorize = TRUE
           AND source."itemType" = ANY($12)
+          AND ${careerSourceCondition('source')}
+          AND ${legacyDetailCondition('source')}
           AND source.visibility = 'public' AND source.visibility = ANY($1)
           AND chunk.status = 'active' AND chunk.visibility = 'public'
           AND ($3::varchar IS NULL OR source.locale IS NULL OR source.locale = $3
@@ -271,6 +339,9 @@ export class ResumeRagRetrieverService {
   }
 }
 
+// 한 원문이 결과를 독점하지 않게 하되, 긴 원문의 여러 관련 청크는 함께 전달한다.
+const RESUME_MERGE_MAX_CHUNKS_PER_SOURCE = 3;
+
 export const mergeResumeSearchResults = (
   vectors: RetrievedResumeChunk[],
   keywords: RetrievedResumeChunk[],
@@ -283,17 +354,26 @@ export const mergeResumeSearchResults = (
   for (const results of [vectors, keywords]) {
     const seen = new Set<string>();
     results.forEach((chunk, index) => {
-      if (seen.has(chunk.sourceKey)) return;
-      seen.add(chunk.sourceKey);
-      const existing = scores.get(chunk.sourceKey);
-      scores.set(chunk.sourceKey, {
+      // 키워드 청크와 벡터 청크는 ID 체계가 달라 원문 key와 본문으로 같은 청크를 식별한다.
+      const chunkKey = `${chunk.sourceKey}\n${chunk.content}`;
+      if (seen.has(chunkKey)) return;
+      seen.add(chunkKey);
+      const existing = scores.get(chunkKey);
+      scores.set(chunkKey, {
         chunk: existing?.chunk ?? chunk,
         rank: (existing?.rank ?? 0) + 1 / (60 + index + 1),
       });
     });
   }
+  const perSource = new Map<string, number>();
   return [...scores.values()]
     .sort((a, b) => b.rank - a.rank)
+    .filter(({ chunk }) => {
+      const count = perSource.get(chunk.sourceKey) ?? 0;
+      if (count >= RESUME_MERGE_MAX_CHUNKS_PER_SOURCE) return false;
+      perSource.set(chunk.sourceKey, count + 1);
+      return true;
+    })
     .slice(0, topK)
     .map(({ chunk }) => chunk);
 };

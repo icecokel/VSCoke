@@ -1,58 +1,15 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+import { getResumeKey, resumePath } from "@/features/resume/lib/resume-selection";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import RESUME_DATA from "@/constants/resume-data.json";
 import { SearchPostsContext } from "@/contexts/app-provider";
-import type { ResumeCareerData } from "@/components/profile/resume/types";
 import type { SearchItem } from "@/types/search";
 import { useBeatJevAvailability } from "./use-beat-jev-availability";
 
-type ResumeDescription = {
-  subtitle?: string;
-  detail?: string;
-  skills?: string;
-  tasks?: string[];
-  achievement?: string;
-};
-
-const resumeData = RESUME_DATA as ResumeCareerData[];
-
 const isNonEmptyString = (value: unknown): value is string => {
   return typeof value === "string" && value.trim().length > 0;
-};
-
-const safeTranslate = (
-  translator: ((key: string) => string) & { has: (key: string) => boolean },
-  key: string,
-  fallback: string,
-): string => {
-  try {
-    return translator(key);
-  } catch {
-    return fallback;
-  }
-};
-
-const safeRaw = <T>(getter: () => T, fallback: T): T => {
-  try {
-    return getter();
-  } catch {
-    return fallback;
-  }
-};
-
-const collectDescriptionTexts = (description: unknown): string[] => {
-  if (!description || typeof description !== "object") {
-    return [];
-  }
-
-  const value = description as ResumeDescription;
-  const tasks = Array.isArray(value.tasks) ? value.tasks.filter(isNonEmptyString) : [];
-
-  return [value.subtitle, value.detail, value.skills, value.achievement, ...tasks].filter(
-    isNonEmptyString,
-  );
 };
 
 const uniqueStrings = (values: string[]): string[] => {
@@ -63,15 +20,21 @@ const uniqueStrings = (values: string[]): string[] => {
 export const useSearchIndex = (): SearchItem[] => {
   const isJevEnabled = useBeatJevAvailability();
   const locale = useLocale();
+  const selection = useSearchParams().getAll("resume");
+  const resumeKey = getResumeKey(selection.length > 1 ? selection : selection[0]);
   const posts = useContext(SearchPostsContext);
   const tBlog = useTranslations("blog");
   const tProfile = useTranslations("profile");
-  const tResume = useTranslations("resume");
   const tResumeRag = useTranslations("resumeRag");
   const tGame = useTranslations("Game");
   const tHobbyRecipes = useTranslations("hobby.recipes");
   const tHobbyEspresso = useTranslations("hobby.espresso");
   const [hobbyItems, setHobbyItems] = useState<SearchItem[]>([]);
+  const [resumeItems, setResumeItems] = useState<{
+    locale: string;
+    key: string;
+    items: SearchItem[];
+  } | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -99,6 +62,30 @@ export const useSearchIndex = (): SearchItem[] => {
       isMounted = false;
     };
   }, [locale]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    fetch(`/api/resume-search-index?${new URLSearchParams({ locale, resume: resumeKey })}`, {
+      cache: "no-store",
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Resume search index request failed: ${response.status}`);
+        }
+        return response.json() as Promise<{ data: SearchItem[] }>;
+      })
+      .then(({ data }) => {
+        if (isMounted) setResumeItems({ locale, key: resumeKey, items: data });
+      })
+      .catch(() => {
+        if (isMounted) setResumeItems(null);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [locale, resumeKey]);
 
   return useMemo(() => {
     const blogLanding: SearchItem = {
@@ -155,16 +142,13 @@ export const useSearchIndex = (): SearchItem[] => {
       priority: 382,
     };
 
-    const introLines = safeRaw(() => tResume.raw("introduction"), []);
-    const introduction = Array.isArray(introLines) ? introLines.filter(isNonEmptyString) : [];
-
     const profileLanding: SearchItem = {
       id: "profile:readme",
       type: "profile",
       title: "README.md",
-      description: [tProfile("developerName"), introduction[0] ?? ""].filter(Boolean).join(" "),
+      description: tProfile("introduction"),
       keywords: uniqueStrings([tProfile("introduction"), tProfile("education"), tProfile("links")]),
-      path: "/readme",
+      path: resumePath("/readme", resumeKey),
       featured: true,
       priority: 450,
     };
@@ -182,45 +166,10 @@ export const useSearchIndex = (): SearchItem[] => {
         tResumeRag("title"),
         tResumeRag("subtitle"),
       ]),
-      path: "/resume/question",
+      path: resumePath("/resume/question", resumeKey),
       featured: true,
       priority: 445,
     };
-
-    const profileProjects: SearchItem[] = resumeData.flatMap(career => {
-      const companyKey = `careers.${career.id}.company`;
-      const employmentTypeKey = `careers.${career.id}.employmentType`;
-      const company = safeTranslate(tResume, companyKey, career.id);
-      const employmentType = safeTranslate(tResume, employmentTypeKey, "");
-
-      return career.projects.map(project => {
-        const projectKey = `careers.${career.id}.projects.${project.id}`;
-        const title = safeTranslate(tResume, `${projectKey}.title`, project.id);
-        const period = tResume.has(`${projectKey}.period`)
-          ? safeTranslate(tResume, `${projectKey}.period`, "")
-          : "";
-
-        const descriptionTexts: string[] = [];
-        const rawDescriptions = safeRaw(() => tResume.raw(`${projectKey}.descriptions`), []);
-        if (Array.isArray(rawDescriptions)) {
-          for (const rawDescription of rawDescriptions) {
-            descriptionTexts.push(...collectDescriptionTexts(rawDescription));
-          }
-        }
-
-        const path = project.fileRef ? `/resume/${project.fileRef}` : "/readme";
-
-        return {
-          id: `profile:project:${career.id}:${project.id}`,
-          type: "profile",
-          title: `${company} · ${title}`,
-          description: [period, descriptionTexts[0] ?? ""].filter(Boolean).join(" | "),
-          keywords: uniqueStrings([company, employmentType, title, period, ...descriptionTexts]),
-          path,
-          priority: 240,
-        } satisfies SearchItem;
-      });
-    });
 
     const gameItems: SearchItem[] = [
       {
@@ -266,19 +215,23 @@ export const useSearchIndex = (): SearchItem[] => {
     ];
 
     return [
-      profileLanding,
+      ...(resumeItems?.locale === locale && resumeItems.key === resumeKey
+        ? resumeItems.items
+        : [profileLanding]),
       resumeQuestion,
       blogLanding,
       blogDashboard,
       hobbyRecipeLanding,
       hobbyEspressoLanding,
       ...blogPosts,
-      ...profileProjects,
       ...gameItems.filter(item => item.id !== "game:beat-jev" || isJevEnabled === true),
       ...hobbyItems,
     ];
   }, [
     isJevEnabled,
+    locale,
+    resumeKey,
+    resumeItems,
     hobbyItems,
     posts,
     tBlog,
@@ -286,7 +239,6 @@ export const useSearchIndex = (): SearchItem[] => {
     tHobbyEspresso,
     tHobbyRecipes,
     tProfile,
-    tResume,
     tResumeRag,
   ]);
 };

@@ -1,5 +1,6 @@
 import {
   Column,
+  DeleteDateColumn,
   CreateDateColumn,
   Entity,
   OneToMany,
@@ -38,4 +39,11 @@ export class ResumeImportBatch {
 
   @OneToMany(() => ResumeSourceItem, (sourceItem) => sourceItem.importBatch)
   sourceItems: ResumeSourceItem[];
+
+  @DeleteDateColumn({
+    name: 'deleted_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  deletedAt: Date | null;
 }

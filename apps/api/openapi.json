@@ -833,6 +833,1512 @@
         "tags": ["Resume RAG"]
       }
     },
+    "/resume": {
+      "get": {
+        "operationId": "ResumeController_getDocument",
+        "parameters": [
+          {
+            "name": "resume",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 80,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "default": "pe",
+              "type": "string"
+            }
+          },
+          {
+            "name": "locale",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "ko-KR",
+              "type": "string",
+              "enum": ["ko-KR", "en-US", "ja-JP"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "이력서 조회 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ResumeDocumentDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "지원하지 않는 언어",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "해당 언어의 이력서가 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "이력서 조회 중 서버 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "언어별 공개 이력서 조회",
+        "tags": ["Resume"]
+      }
+    },
+    "/resume/preview": {
+      "get": {
+        "operationId": "ResumeController_getPreview",
+        "parameters": [
+          {
+            "name": "resume",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 80,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "default": "pe",
+              "type": "string"
+            }
+          },
+          {
+            "name": "locale",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "ko-KR",
+              "type": "string",
+              "enum": ["ko-KR", "en-US", "ja-JP"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "문서와 상세 snapshot 조회 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ResumePreviewDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "공개 문서 또는 연결 상세 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "이력서 조회 중 서버 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "연결 상세를 구성할 수 없음. 다시 시도 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "선택 문서와 상세의 원자적 PDF 미리보기 조회",
+        "tags": ["Resume"]
+      }
+    },
+    "/resume/details": {
+      "get": {
+        "operationId": "ResumeController_getDetails",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "slug 오름차순 경력기술서 요약 목록",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ResumeDetailSummaryDto"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "이력서 조회 중 서버 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "경력기술서 요약 목록 조회",
+        "tags": ["Resume"]
+      }
+    },
+    "/resume/details/{slug}": {
+      "get": {
+        "operationId": "ResumeController_getDetail",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "maxLength": 160,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "경력기술서 조회 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ResumeDetailDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "slug 형식 또는 길이가 잘못됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "해당 경력기술서가 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "이력서 조회 중 서버 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "경력기술서 상세 조회",
+        "tags": ["Resume"]
+      }
+    },
+    "/career-data": {
+      "get": {
+        "operationId": "CareerDataController_getData",
+        "parameters": [
+          {
+            "name": "includeDeleted",
+            "required": false,
+            "in": "query",
+            "description": "삭제 원본·관계 포함 (기본 false)",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "관리 요청 처리 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CareerDataSnapshotDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "관리 입력 또는 JSON 구조 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "관리 Bearer 인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "대상 원본 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "revision, 현재 버전 또는 공개 조건 충돌",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "원본 저장 또는 조회 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "관리 키 미설정",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "내부 경력 원본 6개 테이블 조회 (snake_case)",
+        "tags": ["Career management"]
+      },
+      "put": {
+        "operationId": "CareerDataController_upsert",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CareerDataUpsertDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "관리 요청 처리 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CareerDataSnapshotDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "관리 입력 또는 JSON 구조 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "관리 Bearer 인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "대상 원본 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "revision, 현재 버전 또는 공개 조건 충돌",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "원본 저장 또는 조회 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "관리 키 미설정",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "경력 원본과 불렛 관계 원자적 upsert",
+        "tags": ["Career management"]
+      }
+    },
+    "/career-data/{kind}/{id}": {
+      "delete": {
+        "operationId": "CareerDataController_remove",
+        "parameters": [
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": ["experience", "fact", "bullet", "keyword"],
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "논리삭제 결과 (반복 요청은 기존 삭제 결과)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CareerDeleteResultDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "관리 입력 또는 JSON 구조 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "관리 Bearer 인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "대상 원본 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "revision, 현재 버전 또는 공개 조건 충돌",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "원본 저장 또는 조회 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "관리 키 미설정",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "경력 원본과 관련 후보 관계 논리삭제",
+        "tags": ["Career management"]
+      }
+    },
+    "/career-data/facts/{id}/publish": {
+      "post": {
+        "operationId": "CareerDataController_publish",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "관리 요청 처리 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CareerPublishResultDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "관리 입력 또는 JSON 구조 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "관리 Bearer 인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "대상 원본 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "revision, 현재 버전 또는 공개 조건 충돌",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "원본 저장 또는 조회 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "관리 키 미설정",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "현재 공개·확인된 사실을 독립 RAG 원문으로 등록",
+        "tags": ["Career management"]
+      }
+    },
+    "/resume-management/resumes": {
+      "get": {
+        "operationId": "ResumeManagementController_list",
+        "parameters": [
+          {
+            "name": "includeDeleted",
+            "required": false,
+            "in": "query",
+            "description": "삭제 문서 포함 (기본 false)",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "관리 요청 처리 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ManagedResumeDto"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "관리 입력 또는 JSON 구조 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "관리 Bearer 인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "대상 문서 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "revision, 현재 버전 또는 공개 조건 충돌",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "문서 저장 또는 조회 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "관리 키 미설정",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "내부 문서 목록과 현재 revision 조회",
+        "tags": ["Career management"]
+      }
+    },
+    "/resume-management/versions": {
+      "post": {
+        "operationId": "ResumeManagementController_save",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumeVersionSaveDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "관리 요청 처리 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ResumeSaveResultDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "관리 입력 또는 JSON 구조 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "관리 Bearer 인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "대상 문서 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "revision, 현재 버전 또는 공개 조건 충돌",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "문서 저장 또는 조회 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "관리 키 미설정",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "불변 완성 버전과 현재 포인터를 함께 저장",
+        "tags": ["Career management"]
+      }
+    },
+    "/resume-management/resumes/{id}": {
+      "delete": {
+        "operationId": "ResumeManagementController_removeResume",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "논리삭제 결과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CareerDeleteResultDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "관리 입력 또는 JSON 구조 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "관리 Bearer 인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "대상 문서 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "revision, 현재 버전 또는 공개 조건 충돌",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "문서 저장 또는 조회 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "관리 키 미설정",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "문서·소유 버전·의존성과 파생 원문 논리삭제",
+        "tags": ["Career management"]
+      },
+      "patch": {
+        "operationId": "ResumeManagementController_visibility",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumeVisibilityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "관리 요청 처리 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ManagedResumeDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "관리 입력 또는 JSON 구조 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "관리 Bearer 인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "대상 문서 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "revision, 현재 버전 또는 공개 조건 충돌",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "문서 저장 또는 조회 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "관리 키 미설정",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "문서 공개 범위 CAS 변경",
+        "tags": ["Career management"]
+      }
+    },
+    "/resume-management/versions/{id}": {
+      "delete": {
+        "operationId": "ResumeManagementController_removeVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "논리삭제 결과. 현재 버전이면 포인터 해제",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CareerDeleteResultDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "관리 입력 또는 JSON 구조 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "관리 Bearer 인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "대상 문서 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "revision, 현재 버전 또는 공개 조건 충돌",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "문서 저장 또는 조회 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "관리 키 미설정",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "불변 버전 논리삭제 (expectedRevision은 소유 문서 기준)",
+        "tags": ["Career management"]
+      }
+    },
+    "/resume-management/details/{slug}": {
+      "delete": {
+        "operationId": "ResumeManagementController_removeDetail",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "maxLength": 160,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "논리삭제 결과 (id는 slug)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CareerDeleteResultDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "관리 입력 또는 JSON 구조 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "관리 Bearer 인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "대상 문서 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "revision, 현재 버전 또는 공개 조건 충돌",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "문서 저장 또는 조회 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "관리 키 미설정",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "상세와 의존성·파생 원문 논리삭제",
+        "tags": ["Career management"]
+      },
+      "put": {
+        "operationId": "ResumeManagementController_detail",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "maxLength": 160,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumeDetailSaveDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "관리 요청 처리 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CareerDetailResultDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "관리 입력 또는 JSON 구조 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "관리 Bearer 인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "대상 문서 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "revision, 현재 버전 또는 공개 조건 충돌",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "문서 저장 또는 조회 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "관리 키 미설정",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "상세 본문·의존성·검색 원문 원자적 upsert",
+        "tags": ["Career management"]
+      }
+    },
     "/resume-rag/conversations": {
       "post": {
         "operationId": "ResumeConversationController_create",
@@ -917,6 +2423,34 @@
       "get": {
         "operationId": "ResumeConversationController_history",
         "parameters": [
+          {
+            "name": "channel",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["main", "resume"]
+            }
+          },
+          {
+            "name": "locale",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["ko-KR", "en-US", "ja-JP"]
+            }
+          },
+          {
+            "name": "resumeKey",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 80,
+              "example": "pe",
+              "type": "string"
+            }
+          },
           {
             "name": "id",
             "required": true,
@@ -1870,6 +3404,14 @@
       "description": "공개 이력 근거 채팅"
     },
     {
+      "name": "Career management",
+      "description": "서버 전용 공통 경력 원본과 문서 저장"
+    },
+    {
+      "name": "Resume",
+      "description": "공개 이력서와 경력기술서 조회"
+    },
+    {
       "name": "Resume conversations",
       "description": "익명 대화 생성·복원·삭제"
     },
@@ -2518,6 +4060,12 @@
       "ResumeRagChatRequestDto": {
         "type": "object",
         "properties": {
+          "resumeKey": {
+            "type": "string",
+            "example": "pe",
+            "maxLength": 80,
+            "description": "선택한 공개 이력서 key. 생략하면 pe."
+          },
           "conversationId": {
             "type": "string",
             "format": "uuid",
@@ -2675,9 +4223,973 @@
         },
         "required": ["id", "name", "tags", "ingredients", "recipe", "createdAt", "updatedAt"]
       },
+      "ResumeContactDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          }
+        },
+        "required": ["email", "phone"]
+      },
+      "ResumeProjectDescriptionDto": {
+        "type": "object",
+        "properties": {
+          "subtitle": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "skills": {
+            "type": "string"
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "achievement": {
+            "type": "string"
+          }
+        },
+        "required": ["subtitle"]
+      },
+      "ResumeProjectDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "period": {
+            "type": "string"
+          },
+          "fileRef": {
+            "type": "string"
+          },
+          "descriptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumeProjectDescriptionDto"
+            }
+          }
+        },
+        "required": ["id", "title", "descriptions"]
+      },
+      "ResumeCareerDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "company": {
+            "type": "string"
+          },
+          "period": {
+            "type": "string"
+          },
+          "employmentType": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "achievement": {
+            "type": "string"
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumeProjectDto"
+            }
+          }
+        },
+        "required": ["id", "company", "period", "employmentType", "role", "projects"]
+      },
+      "ResumeEducationDto": {
+        "type": "object",
+        "properties": {
+          "school": {
+            "type": "string"
+          },
+          "period": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "major": {
+            "type": "string"
+          }
+        },
+        "required": ["school", "period", "status", "major"]
+      },
+      "ResumeCertificationDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["name", "date", "type", "details"]
+      },
+      "ResumePersonalProjectDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "fileRef": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "title", "description", "fileRef"]
+      },
+      "ResumeDocumentDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/ResumeContactDto"
+          },
+          "introduction": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "totalExperience": {
+            "type": "string"
+          },
+          "lastUpdated": {
+            "type": "string",
+            "description": "이력서 내용 최종 갱신 연월"
+          },
+          "careers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumeCareerDto"
+            }
+          },
+          "education": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumeEducationDto"
+            }
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "certifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumeCertificationDto"
+            }
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "personalProjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumePersonalProjectDto"
+            }
+          },
+          "locale": {
+            "type": "string",
+            "enum": ["ko-KR", "en-US", "ja-JP"]
+          },
+          "documentId": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "versionId": {
+            "type": "string"
+          },
+          "versionName": {
+            "type": "string"
+          },
+          "contentHash": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "title",
+          "contact",
+          "introduction",
+          "totalExperience",
+          "lastUpdated",
+          "careers",
+          "education",
+          "skills",
+          "certifications",
+          "links",
+          "personalProjects",
+          "locale",
+          "documentId",
+          "key",
+          "versionId",
+          "versionName",
+          "contentHash"
+        ]
+      },
+      "ResumeDetailDto": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string",
+            "description": "운영자가 관리하는 신뢰된 MDX 본문"
+          }
+        },
+        "required": ["slug", "title", "content"]
+      },
+      "ResumePreviewDto": {
+        "type": "object",
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/ResumeDocumentDto"
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumeDetailDto"
+            }
+          }
+        },
+        "required": ["document", "details"]
+      },
+      "ResumeDetailSummaryDto": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
+          }
+        },
+        "required": ["slug", "title"]
+      },
+      "CareerDataSnapshotDto": {
+        "type": "object",
+        "properties": {
+          "experiences": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "facts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "bullets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "bulletFacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "bulletKeywords": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": ["experiences", "facts", "bullets", "bulletFacts", "keywords", "bulletKeywords"]
+      },
+      "CareerExperienceDto": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "number",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "company": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "project": {
+            "type": "string",
+            "nullable": true
+          },
+          "publicTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "periodStart": {
+            "type": "string",
+            "nullable": true
+          },
+          "periodEnd": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": ["expectedRevision", "id", "company", "title"]
+      },
+      "CareerFactDto": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "number",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "experienceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "context",
+              "decision",
+              "action",
+              "ownership",
+              "collaboration",
+              "validation",
+              "result",
+              "limitation"
+            ]
+          },
+          "content": {
+            "type": "string"
+          },
+          "verificationStatus": {
+            "type": "string",
+            "enum": ["confirmed", "needs_confirmation", "retracted"],
+            "default": "needs_confirmation"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "description": "kind, locator, as_of(YYYY-MM-DD) 필수. 추가 내부 JSON 필드 보존"
+          },
+          "metric": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true,
+            "description": "value, unit, measured_by, environment, period, conditions 필수. 미확인 측정 조건은 null"
+          },
+          "claimBoundary": {
+            "type": "string",
+            "nullable": true
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["private", "public"],
+            "default": "private"
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "id",
+          "experienceId",
+          "kind",
+          "content",
+          "verificationStatus",
+          "evidence",
+          "visibility"
+        ]
+      },
+      "CareerBulletFactDto": {
+        "type": "object",
+        "properties": {
+          "factId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "factRevision": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": ["factId", "factRevision"]
+      },
+      "CareerBulletDto": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "number",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "experienceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          },
+          "focus": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": ["draft", "ready", "needs_review", "retired"],
+            "default": "draft"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["private", "public"],
+            "default": "private"
+          },
+          "sourceRefs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "reviewNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "facts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CareerBulletFactDto"
+            }
+          },
+          "keywordIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "id",
+          "experienceId",
+          "text",
+          "status",
+          "visibility",
+          "facts",
+          "keywordIds"
+        ]
+      },
+      "CareerKeywordDto": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "number",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["technology", "task", "competency"]
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["expectedRevision", "id", "key", "label", "kind", "aliases"]
+      },
+      "CareerDataUpsertDto": {
+        "type": "object",
+        "properties": {
+          "experiences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CareerExperienceDto"
+            }
+          },
+          "facts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CareerFactDto"
+            }
+          },
+          "bullets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CareerBulletDto"
+            }
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CareerKeywordDto"
+            }
+          }
+        },
+        "required": ["experiences", "facts", "bullets", "keywords"]
+      },
+      "RevisionDto": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "number",
+            "example": 0,
+            "minimum": 0
+          }
+        },
+        "required": ["revision"]
+      },
+      "CareerDeleteResultDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "원본/문서/버전 ID 또는 상세 slug"
+          },
+          "revision": {
+            "type": "number",
+            "description": "삭제 후 revision. 버전 삭제는 소유 문서 revision"
+          },
+          "deletedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "revision", "deletedAt"]
+      },
+      "CareerPublishResultDto": {
+        "type": "object",
+        "properties": {
+          "sourceItemId": {
+            "type": "string"
+          }
+        },
+        "required": ["sourceItemId"]
+      },
+      "ManagedResumeDto": {
+        "type": "object",
+        "properties": {
+          "deletedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "track": {
+            "type": "string"
+          },
+          "targetKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "number"
+          },
+          "currentVersionId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "deletedAt",
+          "id",
+          "key",
+          "locale",
+          "kind",
+          "track",
+          "targetKey",
+          "visibility",
+          "revision",
+          "currentVersionId"
+        ]
+      },
+      "ResumeContentDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/ResumeContactDto"
+          },
+          "introduction": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "totalExperience": {
+            "type": "string"
+          },
+          "lastUpdated": {
+            "type": "string",
+            "description": "이력서 내용 최종 갱신 연월"
+          },
+          "careers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumeCareerDto"
+            }
+          },
+          "education": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumeEducationDto"
+            }
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "certifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumeCertificationDto"
+            }
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "personalProjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResumePersonalProjectDto"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "title",
+          "contact",
+          "introduction",
+          "totalExperience",
+          "lastUpdated",
+          "careers",
+          "education",
+          "skills",
+          "certifications",
+          "links",
+          "personalProjects"
+        ]
+      },
+      "CareerDependencyDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["experience", "fact", "bullet", "keyword"]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": ["kind", "id", "revision"]
+      },
+      "ResumeVersionSaveDto": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "number",
+            "minimum": 0
+          },
+          "key": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["base", "targeted"]
+          },
+          "track": {
+            "type": "string",
+            "enum": ["front-end", "product-engineer"]
+          },
+          "locale": {
+            "type": "string",
+            "enum": ["ko-KR", "en-US", "ja-JP"]
+          },
+          "targetKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["private", "public"],
+            "default": "private"
+          },
+          "expectedCurrentVersionId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "versionName": {
+            "type": "string"
+          },
+          "parentVersionId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "content": {
+            "$ref": "#/components/schemas/ResumeContentDto"
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CareerDependencyDto"
+            }
+          },
+          "sourceRef": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "key",
+          "kind",
+          "track",
+          "locale",
+          "visibility",
+          "expectedCurrentVersionId",
+          "versionName",
+          "content",
+          "dependencies"
+        ]
+      },
+      "ResumeSaveResultDto": {
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "number"
+          },
+          "versionId": {
+            "type": "string"
+          },
+          "versionName": {
+            "type": "string"
+          },
+          "currentVersionId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "contentHash": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "documentId",
+          "key",
+          "locale",
+          "revision",
+          "versionId",
+          "versionName",
+          "currentVersionId",
+          "contentHash"
+        ]
+      },
+      "ResumeVisibilityDto": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "number",
+            "minimum": 0
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["private", "public"]
+          }
+        },
+        "required": ["expectedRevision", "visibility"]
+      },
+      "ResumeDetailSaveDto": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "number",
+            "minimum": 0
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["private", "public"],
+            "default": "private"
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CareerDependencyDto"
+            }
+          }
+        },
+        "required": ["expectedRevision", "title", "content", "visibility", "dependencies"]
+      },
+      "CareerDetailResultDto": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "number"
+          }
+        },
+        "required": ["slug", "revision"]
+      },
       "CreateResumeConversationDto": {
         "type": "object",
         "properties": {
+          "resumeKey": {
+            "type": "string",
+            "example": "pe",
+            "maxLength": 80
+          },
           "locale": {
             "type": "string",
             "enum": ["ko-KR", "en-US", "ja-JP"]
@@ -2743,6 +5255,11 @@
       "ResumeConversationHistoryDto": {
         "type": "object",
         "properties": {
+          "resumeKey": {
+            "type": "string",
+            "example": "pe",
+            "maxLength": 80
+          },
           "locale": {
             "type": "string",
             "enum": ["ko-KR", "en-US", "ja-JP"]
@@ -2964,17 +5481,6 @@
           }
         },
         "required": ["revision", "action"]
-      },
-      "RevisionDto": {
-        "type": "object",
-        "properties": {
-          "revision": {
-            "type": "number",
-            "example": 0,
-            "minimum": 0
-          }
-        },
-        "required": ["revision"]
       },
       "ClientErrorDto": {
         "type": "object",

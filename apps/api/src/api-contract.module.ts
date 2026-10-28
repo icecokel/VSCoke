@@ -1,3 +1,9 @@
+import {
+  CareerDataController,
+  ResumeManagementController,
+} from './career-data/career-data.controller';
+import { CareerDataService } from './career-data/career-data.service';
+import { CareerDataGuard } from './career-data/career-data.guard';
 import { ResumeConversationController } from './resume-rag/resume-conversation.controller';
 import { ResumeConversationService } from './resume-rag/resume-conversation.service';
 import { ResumeConversationRateLimitGuard } from './resume-rag/resume-conversation-rate-limit.guard';
@@ -29,6 +35,8 @@ import { JevClientService } from './beat-jev/jev-client.service';
 import { UsageController } from './usage/usage.controller';
 import { UsageService } from './usage/usage.service';
 import { UsageIngestGuard, UsageReadGuard } from './usage/usage.guard';
+import { ResumeController } from './resume/resume.controller';
+import { ResumeService } from './resume/resume.service';
 import {
   ClientErrorController,
   ClientErrorRateLimitGuard,
@@ -54,6 +62,9 @@ const contractGuardStubProvider = (provide: InjectionToken): Provider => ({
     MainChatController,
     RecipeController,
     ResumeRagController,
+    ResumeController,
+    CareerDataController,
+    ResumeManagementController,
     ResumeConversationController,
     WordleController,
     BeatJevController,
@@ -72,6 +83,9 @@ const contractGuardStubProvider = (provide: InjectionToken): Provider => ({
     contractGuardStubProvider(ResumeRagOriginGuard),
     contractGuardStubProvider(ResumeRagRateLimitGuard),
     contractStubProvider(ResumeRagService),
+    contractStubProvider(ResumeService),
+    contractStubProvider(CareerDataService),
+    contractGuardStubProvider(CareerDataGuard),
     contractStubProvider(ResumeConversationService),
     contractGuardStubProvider(ResumeConversationRateLimitGuard),
     contractStubProvider(WordleService),

@@ -6,9 +6,21 @@ import {
   IsOptional,
   IsUUID,
   ValidateIf,
+  Matches,
 } from 'class-validator';
 
 export class ResumeRagChatRequestDto {
+  @ApiPropertyOptional({
+    example: 'pe',
+    maxLength: 80,
+    description: '선택한 공개 이력서 key. 생략하면 pe.',
+  })
+  @IsOptional()
+  @IsString()
+  @Length(1, 80)
+  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  resumeKey?: string;
+
   @ApiPropertyOptional({
     format: 'uuid',
     description: '생성한 대화 ID. 접근키 헤더와 함께 전달한다.',

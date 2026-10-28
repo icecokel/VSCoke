@@ -1,6 +1,10 @@
+import {
+  careerSourceCondition,
+  legacyDetailCondition,
+} from '../resume-source-eligibility';
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import type { EmbeddingProvider } from '../ai/embedding-provider';
 import {
   RESUME_RAG_EMBEDDING_PROVIDER,
@@ -41,6 +45,7 @@ export class ResumeVectorIndexerService {
   ) {}
 
   async indexAll(): Promise<IndexSummary> {
+    const allowedSourceTypes = this.config.allowedSourceTypes;
     const embeddingConfig = requireEmbeddingModelConfig(this.config);
     const profile = {
       ...embeddingConfig,
@@ -58,7 +63,7 @@ export class ResumeVectorIndexerService {
         vectorize: true,
         status: 'active',
         visibility: 'public',
-        sourceType: In(this.config.allowedSourceTypes),
+        sourceType: In(allowedSourceTypes),
       },
       order: { updatedAt: 'ASC' },
     });
@@ -70,17 +75,29 @@ export class ResumeVectorIndexerService {
     };
 
     await this.vectorChunkRepository.query(
-      `DELETE FROM resume_vector_chunks chunk
-      WHERE NOT EXISTS (
+      `UPDATE resume_vector_chunks chunk SET deleted_at = CURRENT_TIMESTAMP
+      WHERE chunk.deleted_at IS NULL AND NOT EXISTS (
         SELECT 1 FROM resume_source_items source
-        WHERE source.id = chunk."sourceItemId" AND source.status = 'active'
+        WHERE source.id = chunk."sourceItemId" AND source.deleted_at IS NULL AND source.status = 'active'
           AND source.visibility = 'public' AND source.vectorize = TRUE
           AND source."sourceType" = ANY($1)
+          AND ${careerSourceCondition('source')}
+          AND ${legacyDetailCondition('source')}
       )`,
-      [this.config.allowedSourceTypes],
+      [allowedSourceTypes],
     );
 
     for (const sourceItem of sourceItems) {
+      if (
+        sourceItem.sourceType === 'career_data' ||
+        sourceItem.itemType === 'public_resume_detail'
+      ) {
+        const eligible: unknown = await this.sourceItemRepository.query(
+          `SELECT source.id FROM resume_source_items source WHERE source.id=$1 AND ${careerSourceCondition('source')} AND ${legacyDetailCondition('source')}`,
+          [sourceItem.id],
+        );
+        if (!Array.isArray(eligible) || eligible.length === 0) continue;
+      }
       const where = { sourceItemId: sourceItem.id, ...profile };
       const previous = await this.vectorChunkRepository.find({ where });
       const byIndex = new Map(
@@ -139,6 +156,7 @@ export class ResumeVectorIndexerService {
       // API 호출 동안 DB 잠금을 유지하지 않고, 전 청크 준비가 끝난 뒤 원자적으로 교체한다.
       const wasPublished = await this.vectorChunkRepository.manager.transaction(
         async (manager) => {
+          await manager.query('SELECT pg_advisory_xact_lock(1795000000004)');
           const current = await manager
             .getRepository(ResumeSourceItem)
             .findOne({
@@ -147,15 +165,26 @@ export class ResumeVectorIndexerService {
             });
           if (
             !current ||
+            current.deletedAt ||
             current.status !== 'active' ||
             current.visibility !== 'public' ||
             !current.vectorize ||
-            !this.config.allowedSourceTypes.includes(current.sourceType) ||
+            !allowedSourceTypes.includes(current.sourceType) ||
             current.contentHash !== sourceItem.contentHash
           )
             return false;
+          if (
+            current.sourceType === 'career_data' ||
+            current.itemType === 'public_resume_detail'
+          ) {
+            const eligible: unknown = await manager.query(
+              `SELECT source.id FROM resume_source_items source WHERE source.id=$1 AND ${careerSourceCondition('source')} AND ${legacyDetailCondition('source')}`,
+              [current.id],
+            );
+            if (!Array.isArray(eligible) || eligible.length === 0) return false;
+          }
           const repository = manager.getRepository(ResumeVectorChunk);
-          await repository.delete(where);
+          await repository.softDelete({ ...where, deletedAt: IsNull() });
           if (prepared.length > 0) await repository.save(prepared);
           return true;
         },

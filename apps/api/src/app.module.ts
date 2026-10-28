@@ -15,6 +15,8 @@ import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/utils/winston.config';
 import { ClientErrorController } from './common/logging/client-error.controller';
 import { UsageModule } from './usage/usage.module';
+import { CareerDataModule } from './career-data/career-data.module';
+import { ResumeModule } from './resume/resume.module';
 
 /**
  * 애플리케이션의 루트 모듈
@@ -60,6 +62,8 @@ import { UsageModule } from './usage/usage.module';
     MainChatModule,
     RecipeModule,
     ResumeRagModule,
+    ResumeModule,
+    CareerDataModule,
     WordleModule,
     BeatJevModule,
     UsageModule,

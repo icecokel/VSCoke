@@ -53,6 +53,31 @@ describe('ResumeRagKeywordService', () => {
     );
   });
 
+  it.each([
+    ['삭제', false, true],
+    ['비활성', false, true],
+    ['단어 삭제', true, false],
+  ])(
+    '%s 항목은 코드 기본 별칭으로 복원하지 않는다',
+    async (_label, groupEnabled, termEnabled) => {
+      const service = new ResumeRagKeywordService({
+        query: jest.fn().mockResolvedValue([
+          {
+            groupId: 'delivery',
+            weight: 2,
+            termType: 'alias',
+            term: 'cicd',
+            groupEnabled,
+            termEnabled,
+          },
+        ]),
+      } as unknown as DataSource);
+      const tokens = await service.createSearchTokens('cicd경험');
+      expect(tokens).not.toContain('github');
+      expect(tokens).not.toContain('actions');
+    },
+  );
+
   it('키워드 테이블 부재가 아닌 데이터베이스 오류는 숨기지 않는다', async () => {
     const databaseError = Object.assign(new Error('connection refused'), {
       code: '08006',

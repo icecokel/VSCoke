@@ -1,3 +1,4 @@
+import { json, type Request, type Response, type NextFunction } from 'express';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -21,6 +22,19 @@ async function bootstrap() {
     logger: WinstonModule.createLogger(winstonConfig),
   });
   app.enableShutdownHooks();
+  for (const path of ['/career-data', '/resume-management']) {
+    app.use(
+      path,
+      (_request: Request, response: Response, next: NextFunction) => {
+        response.setHeader('Cache-Control', 'no-store');
+        next();
+      },
+      json({ limit: '2mb' }),
+    );
+  }
+
+  // 경로별 jsonParser도 Nest 자동 등록을 생략하므로 나머지 경로를 명시한다.
+  app.use(json());
 
   app.set('trust proxy', getTrustProxySetting(process.env.TRUST_PROXY));
   app.use(requestIdMiddleware);

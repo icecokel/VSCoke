@@ -408,12 +408,13 @@ const EmptyChatState = ({
 
 type ResumeQuestionChatProps = {
   initialChatId?: string;
+  resumeKey: string;
 };
 
-export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) => {
+export const ResumeQuestionChat = ({ initialChatId, resumeKey }: ResumeQuestionChatProps) => {
   const t = useTranslations("resumeRag");
   const locale = useLocale();
-  const conversation = useResumeConversation("resume", locale);
+  const conversation = useResumeConversation("resume", locale, resumeKey);
   const rawSuggestions = t.raw("suggestions");
   const suggestions = Array.isArray(rawSuggestions)
     ? rawSuggestions.filter((suggestion): suggestion is string => typeof suggestion === "string")
@@ -429,7 +430,7 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
   useEffect(() => {
     if (!initialChatId) return;
 
-    const storedChat = readResumeRagChat(initialChatId);
+    const storedChat = readResumeRagChat(initialChatId, resumeKey, locale);
     if (!storedChat) return;
     setMessages([
       {
@@ -447,19 +448,19 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
     ]);
     setQuestion("");
     setFailure(null);
-  }, [initialChatId]);
+  }, [initialChatId, resumeKey, locale]);
 
   useEffect(() => {
     if (conversation.restoredTurns === null) return;
     if (
       conversation.restoredTurns.length === 0 &&
       initialChatId &&
-      readResumeRagChat(initialChatId)
+      readResumeRagChat(initialChatId, resumeKey, locale)
     )
       return;
     setMessages(toResumeConversationMessages(conversation.restoredTurns));
     setFailure(null);
-  }, [conversation.restoredTurns, initialChatId]);
+  }, [conversation.restoredTurns, initialChatId, resumeKey, locale]);
 
   const canSubmit = useMemo(
     () =>
@@ -565,7 +566,9 @@ export const ResumeQuestionChat = ({ initialChatId }: ResumeQuestionChatProps) =
           if (await conversation.reset()) {
             if (initialChatId) {
               try {
-                window.sessionStorage.removeItem(createResumeRagChatStorageKey(initialChatId));
+                window.sessionStorage.removeItem(
+                  createResumeRagChatStorageKey(initialChatId, resumeKey, locale),
+                );
               } catch {
                 /* 저장소 차단 시 메모리만 초기화한다. */
               }

@@ -41,12 +41,14 @@ export const generateMetadata = async ({
 const ResumePreviewPage = async ({ params, searchParams }: ResumePreviewPageProps) => {
   const { locale } = await params;
   const key = getResumeKey((await searchParams).resume);
-  const [t, tProfile, tResume, { document, details: careerDetails }] = await Promise.all([
-    getTranslations("resumePreview"),
-    getTranslations("profile"),
-    getTranslations("resume"),
-    getPreview(locale, key),
-  ]);
+  const [t, tProfile, tResume, tAchievement, { document, details: careerDetails }] =
+    await Promise.all([
+      getTranslations("resumePreview"),
+      getTranslations("profile"),
+      getTranslations("resume"),
+      getTranslations("achievement"),
+      getPreview(locale, key),
+    ]);
   const tDescription = await getTranslations("descriptionItem");
   const { contact, introduction } = document;
 
@@ -160,6 +162,16 @@ const ResumePreviewPage = async ({ params, searchParams }: ResumePreviewPageProp
                                     ))}
                                   </ul>
                                 )}
+                                {description.achievement && (
+                                  <div className="mt-3 border-l-2 border-blue-400 bg-blue-50 px-3 py-2">
+                                    <p className="text-xs font-semibold text-blue-700">
+                                      {tAchievement("label")}
+                                    </p>
+                                    <p className="mt-1 whitespace-pre-line text-sm leading-6 text-gray-700">
+                                      {description.achievement}
+                                    </p>
+                                  </div>
+                                )}
                               </section>
                             ))}
                           </div>
@@ -167,6 +179,14 @@ const ResumePreviewPage = async ({ params, searchParams }: ResumePreviewPageProp
                       );
                     })}
                   </div>
+                  {career.achievement && (
+                    <div className="mt-4 border-l-2 border-blue-400 bg-blue-50 px-3 py-2">
+                      <p className="text-xs font-semibold text-blue-700">{tAchievement("label")}</p>
+                      <p className="mt-1 whitespace-pre-line text-sm leading-6 text-gray-700">
+                        {career.achievement}
+                      </p>
+                    </div>
+                  )}
                 </section>
               );
             })}

@@ -70,6 +70,22 @@ const documents = ["pe", "fe", "worxphere", "nexon", "ko-only"].flatMap((key, in
                         status: "Synthetic course",
                       },
                     ],
+                    careers: document.careers.map((career, careerIndex) => ({
+                      ...career,
+                      achievement: `Synthetic career achievement ${careerIndex + 1}: ${"Validated delivery and product improvements. ".repeat(6)}\nReact · TypeScript`,
+                      projects: career.projects.map((project, projectIndex) => ({
+                        ...project,
+                        descriptions: project.descriptions.map((description, descriptionIndex) => ({
+                          ...description,
+                          ...(careerIndex === 0 && projectIndex === 0 && descriptionIndex === 0
+                            ? {
+                                achievement:
+                                  "Synthetic description achievement\nPreserved result and technical context",
+                              }
+                            : {}),
+                        })),
+                      })),
+                    })),
                     certifications: [],
                     skills: [],
                     links: [],

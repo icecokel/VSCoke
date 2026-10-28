@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import messages from "../../messages/ko-KR.json";
+import type { ResumeDocument } from "@/services/resume-service";
 import { gotoWithRetry } from "./test-helpers";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -200,5 +201,33 @@ test("기존 certifications의 과정명과 세부내용도 README와 미리보�
       for (const detail of certification.details)
         await expect(page.getByText(detail, { exact: true })).toBeVisible();
     }
+  }
+});
+
+test("경력과 설명의 achievement를 README와 미리보기에 같은 원문으로 표시한다", async ({
+  page,
+  request,
+}) => {
+  test.skip(process.env.PLAYWRIGHT_RESUME_FIXTURE !== "1", "테스트 fixture 서버가 필요합니다.");
+  const { data }: { data: ResumeDocument } = await (
+    await request.get(`${apiUrl}/resume?locale=ko-KR&resume=fe`)
+  ).json();
+  const careerAchievements = data.careers.flatMap(career =>
+    career.achievement ? [career.achievement] : [],
+  );
+  const descriptionAchievements = data.careers.flatMap(career =>
+    career.projects.flatMap(project =>
+      project.descriptions.flatMap(description =>
+        description.achievement ? [description.achievement] : [],
+      ),
+    ),
+  );
+  expect(careerAchievements).toHaveLength(5);
+  expect(descriptionAchievements).toHaveLength(1);
+  for (const route of ["/ko-KR/readme?resume=fe", "/ko-KR/resume/preview?resume=fe"]) {
+    await gotoWithRetry(page, route);
+    for (const achievement of [...careerAchievements, ...descriptionAchievements])
+      await expect(page.getByText(achievement, { exact: true })).toBeVisible();
+    await expect(page.getByText(messages.achievement.label, { exact: true })).toHaveCount(6);
   }
 });

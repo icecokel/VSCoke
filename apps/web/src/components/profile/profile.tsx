@@ -127,6 +127,7 @@ const Profile = ({ document }: { document: ResumeDocument }) => {
                 <TooltipTrigger asChild>
                   <button
                     type="button"
+                    aria-label={t("copyPhone")}
                     className="cursor-pointer rounded p-1 transition-colors hover:bg-gray-700"
                     onClick={() => navigator.clipboard.writeText(contact.phone)}
                   >

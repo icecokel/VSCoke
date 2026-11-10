@@ -10,6 +10,7 @@ import { RefreshCw, Loader2 } from "lucide-react";
 import styles from "@/components/wordle/wordle.module.css";
 import { ShareLinkButton } from "@/components/share/share-link-button";
 import { useTranslations } from "next-intl";
+import { isIgnoredWordleKey } from "@/lib/wordle/wordle-key-guard";
 
 export default function WordlePage() {
   const tShare = useTranslations("Share");
@@ -30,16 +31,13 @@ export default function WordlePage() {
   // 윈도우 키보드 이벤트 리스너
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      if (isIgnoredWordleKey(e)) return;
       if (
         e.target instanceof HTMLElement &&
         e.target.closest("button, a, input, textarea, select, [contenteditable='true']")
       ) {
         return;
       }
-
-      const isAlphabeticKey = /^[A-Za-z]$/.test(e.key);
-      if (e.key !== "Enter" && e.key !== "Backspace" && !isAlphabeticKey) return;
 
       e.preventDefault();
       handleKeyup(e.key);
@@ -114,7 +112,7 @@ export default function WordlePage() {
         </div>
 
         {/* Keyboard - 하단 고정 */}
-        <footer className={`shrink-0 px-2 pb-4 pt-2 ${styles.footer}`}>
+        <footer className={`shrink-0 px-2 ${styles.footer}`}>
           <WordleKeyboard onKey={handleKeyup} usedKeys={usedKeys} />
         </footer>
       </div>

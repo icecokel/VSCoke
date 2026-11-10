@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { GameView, Side } from "@/services/beat-jev-service";
 import styles from "./beat-jev-board.module.css";
 import { PixelDie } from "./beat-jev-pixel-art";
+import { getSeaShotLabelKey, getSeaShotSymbol } from "./beat-jev-sea";
 
 interface BoardProps {
   game: GameView;
@@ -369,14 +370,14 @@ const BattleshipBoard = ({ game, onAction, isBusy }: BoardProps) => {
                   aria-label={t("seaCell", {
                     row: Math.floor(cell / 4) + 1,
                     column: (cell % 4) + 1,
-                    result: shot ? t(shot.sunk ? "sunk" : shot.hit ? "hit" : "miss") : t("untried"),
+                    result: shot ? t(getSeaShotLabelKey(shot)) : t("untried"),
                   })}
                 >
                   <span
                     key={shot ? `${shot.hit}-${shot.sunk}` : "untried"}
                     className={shot ? styles.shotReveal : ""}
                   >
-                    {shot ? (shot.sunk ? "◆" : shot.hit ? "✕" : "·") : "?"}
+                    {shot ? getSeaShotSymbol(shot) : "?"}
                   </span>
                 </button>
               );
@@ -398,14 +399,15 @@ const BattleshipBoard = ({ game, onAction, isBusy }: BoardProps) => {
                   aria-label={t("seaCell", {
                     row: Math.floor(cell / 4) + 1,
                     column: (cell % 4) + 1,
-                    result: shot ? t(shot.hit ? "hit" : "miss") : hasShip ? t("ship") : t("sea"),
+                    result: shot ? t(getSeaShotLabelKey(shot)) : hasShip ? t("ship") : t("sea"),
                   })}
                 >
                   <span
-                    key={shot ? `${shot.hit}` : "untried"}
+                    key={shot ? `${shot.hit}-${shot.sunk}` : "untried"}
                     className={shot ? styles.shotReveal : ""}
                   >
-                    {shot ? (shot.hit ? "✕" : "·") : hasShip ? "▣" : ""}
+                    {/* 내 바다도 상대 바다와 같은 기호로 격침·명중·빗나감을 구분한다 */}
+                    {shot ? getSeaShotSymbol(shot) : hasShip ? "▣" : ""}
                   </span>
                 </div>
               );

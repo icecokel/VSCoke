@@ -6,13 +6,17 @@ interface WordleTileProps {
   letter?: string;
   status?: LetterStatus;
   index?: number;
+  // 스크린리더용 설명. 글자와 판정 상태를 담는다.
+  label?: string;
 }
 
-export function WordleTile({ letter, status, index = 0 }: WordleTileProps) {
+export function WordleTile({ letter, status, index = 0, label }: WordleTileProps) {
   const animationDelay = `${index * 300}ms`;
 
   return (
     <div
+      role="img"
+      aria-label={label}
       style={{ animationDelay }}
       className={cn(
         "flex h-full w-full min-h-0 min-w-0 items-center justify-center",

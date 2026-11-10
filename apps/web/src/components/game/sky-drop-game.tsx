@@ -11,6 +11,7 @@ import { GameReadyScreen } from "./game-ready-screen";
 import { ResultScreen } from "./result-screen";
 import { SkyDropBoard } from "./sky-drop-board";
 import { createSkyDropState, skyDropReducer } from "./sky-drop-engine";
+import { readSkyDropMuted, resolveTrappedFocus, writeSkyDropMuted } from "./sky-drop-preferences";
 import { clearSkyDropPendingScore, parsePendingSkyDropScore } from "./sky-drop-storage";
 import { useSkyDropSound } from "./use-sky-drop-sound";
 import styles from "./sky-drop.module.css";
@@ -26,6 +27,7 @@ export const SkyDropGame = () => {
   const [isMuted, setIsMuted] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const resumeRef = useRef<HTMLButtonElement>(null);
+  const exitRef = useRef<HTMLButtonElement>(null);
   const unlockSound = useSkyDropSound(state.feedback, isMuted);
   const hasActiveGame = useRef(false);
 
@@ -44,6 +46,8 @@ export const SkyDropGame = () => {
     } catch {
       // 저장소 접근 실패는 새 게임을 막지 않는다.
     }
+    // 음소거는 사용자 설정이라 새로고침 뒤에도 유지한다. SSR 불일치를 피하려고 마운트 뒤에 읽는다.
+    setIsMuted(readSkyDropMuted());
     setIsRestored(true);
   }, []);
 
@@ -89,6 +93,25 @@ export const SkyDropGame = () => {
   const exit = () => {
     clearSkyDropPendingScore();
     router.push("/game");
+  };
+  const toggleMuted = () => {
+    setIsMuted(value => {
+      writeSkyDropMuted(!value);
+      return !value;
+    });
+  };
+  // 일시정지 중에는 포커스가 오버레이 밖(페이지 다른 요소)으로 나가지 않게 가둔다.
+  const onPausedKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Tab") return;
+    const target = resolveTrappedFocus({
+      shiftKey: event.shiftKey,
+      active: document.activeElement,
+      first: resumeRef.current,
+      last: exitRef.current,
+    });
+    if (!target) return;
+    event.preventDefault();
+    target.focus();
   };
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (
@@ -181,7 +204,7 @@ export const SkyDropGame = () => {
                 size="icon"
                 variant="ghost"
                 className="size-11"
-                onClick={() => setIsMuted(value => !value)}
+                onClick={toggleMuted}
                 aria-label={isMuted ? t("unmute") : t("mute")}
                 aria-pressed={isMuted}
               >
@@ -206,6 +229,7 @@ export const SkyDropGame = () => {
                 role="group"
                 aria-labelledby="sky-drop-paused"
                 data-testid="sky-drop-paused"
+                onKeyDown={onPausedKeyDown}
               >
                 <Pause className="size-8 text-muted-foreground" aria-hidden="true" />
                 <h2 id="sky-drop-paused" className="text-2xl font-bold">
@@ -224,6 +248,7 @@ export const SkyDropGame = () => {
                   {t("resume")}
                 </Button>
                 <Button
+                  ref={exitRef}
                   type="button"
                   variant="outline"
                   onClick={exit}

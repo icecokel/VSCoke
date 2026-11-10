@@ -1,5 +1,7 @@
+import { useTranslations } from "next-intl";
 import { LetterStatus } from "@/lib/wordle/wordle-logic";
 import { WordleTile } from "./wordle-tile";
+import { resolveWordleTileLabel } from "./wordle-tile-label";
 import styles from "./wordle.module.css";
 
 interface WordleBoardProps {
@@ -10,6 +12,8 @@ interface WordleBoardProps {
 }
 
 export function WordleBoard({ guesses, history, currentGuess, turn }: WordleBoardProps) {
+  const t = useTranslations("Game");
+
   return (
     // 사용 가능한 가로·세로 중 작은 쪽으로 30칸 전체를 맞춘다.
     <div className={styles.board} data-testid="wordle-board">
@@ -24,7 +28,13 @@ export function WordleBoard({ guesses, history, currentGuess, turn }: WordleBoar
             return (
               <div key={rowIndex} className="grid grid-cols-5 gap-2">
                 {guess.split("").map((letter, j) => (
-                  <WordleTile key={j} letter={letter} status={rowStatus[j]} index={j} />
+                  <WordleTile
+                    key={j}
+                    letter={letter}
+                    status={rowStatus[j]}
+                    index={j}
+                    label={resolveWordleTileLabel(letter, rowStatus[j], t)}
+                  />
                 ))}
               </div>
             );
@@ -35,7 +45,11 @@ export function WordleBoard({ guesses, history, currentGuess, turn }: WordleBoar
             return (
               <div key={rowIndex} className="grid grid-cols-5 gap-2">
                 {Array.from({ length: 5 }).map((_, j) => (
-                  <WordleTile key={j} letter={currentGuess[j]} />
+                  <WordleTile
+                    key={j}
+                    letter={currentGuess[j]}
+                    label={resolveWordleTileLabel(currentGuess[j], undefined, t)}
+                  />
                 ))}
               </div>
             );
@@ -45,7 +59,7 @@ export function WordleBoard({ guesses, history, currentGuess, turn }: WordleBoar
           return (
             <div key={rowIndex} className="grid grid-cols-5 gap-2">
               {Array.from({ length: 5 }).map((_, j) => (
-                <WordleTile key={j} />
+                <WordleTile key={j} label={resolveWordleTileLabel(undefined, undefined, t)} />
               ))}
             </div>
           );

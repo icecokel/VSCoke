@@ -3,6 +3,8 @@ import {
   Controller,
   Get,
   Header,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Post,
@@ -88,7 +90,9 @@ export class BeatJevController {
     return this.beatJevService.getMatch(id);
   }
 
+  // 기존 매치를 갱신하는 요청이라 생성(201)이 아닌 200으로 응답한다. continue·next도 같다.
   @Post('matches/:id/actions')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '플레이어 행동 적용' })
   @ApiOkResponse({ description: '행동이 반영된 매치', type: BeatJevMatchDto })
   @ApiBadRequestResponse({
@@ -107,6 +111,7 @@ export class BeatJevController {
   }
 
   @Post('matches/:id/continue')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(BeatJevRateLimitGuard)
   @ApiOperation({ summary: 'JEV의 차례 진행 또는 실패한 차례 재시도' })
   @ApiOkResponse({
@@ -129,6 +134,7 @@ export class BeatJevController {
   }
 
   @Post('matches/:id/next')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '다음 게임 또는 무승부 재경기 시작' })
   @ApiOkResponse({
     description: '다음 게임이 시작된 매치',

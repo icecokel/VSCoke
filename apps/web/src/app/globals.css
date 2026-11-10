@@ -489,4 +489,11 @@ body {
   .animate-flip {
     animation: flip 0.6s ease forwards;
   }
+
+  /* 움직임 줄이기 설정에서는 뒤집기 없이 결과 색만 바로 보여준다. */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-flip {
+      animation: none;
+    }
+  }
 }

@@ -30,7 +30,16 @@
 }
 
 .footer {
+  padding-top: 8px;
   padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+/* 가로로 눕힌 폰처럼 높이가 낮은 화면에서는 여백을 줄여 키보드 마지막 행이 잘리지 않게 한다. */
+@media (max-height: 500px) {
+  .footer {
+    padding-top: 4px;
+    padding-bottom: max(4px, env(safe-area-inset-bottom));
+  }
 }
 
 .boardArea {
@@ -51,4 +60,10 @@
 
 .tile {
   font-size: clamp(12px, calc(var(--wordle-tile-size) * 0.45), 26px);
+}
+
+/* 고대비(강제 색상) 모드에서도 판정 색이 사라지지 않게 한다. 상태는 aria-label로도 제공된다. */
+.tile,
+.key {
+  forced-color-adjust: none;
 }

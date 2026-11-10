@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { LetterStatus } from "@/lib/wordle/wordle-logic";
 import { Delete, CornerDownLeft } from "lucide-react";
+import styles from "./wordle.module.css";
 
 interface WordleKeyboardProps {
   onKey: (key: string) => void;
@@ -33,6 +34,7 @@ export function WordleKeyboard({ onKey, usedKeys }: WordleKeyboardProps) {
                   onKey(key);
                 }}
                 className={cn(
+                  styles.key,
                   "flex h-full min-h-9 cursor-pointer items-center justify-center rounded font-bold uppercase transition-all select-none active:scale-95",
                   "text-xs sm:text-sm",
                   isSpecial ? "flex-[1.25] px-1 sm:px-2" : "flex-1",

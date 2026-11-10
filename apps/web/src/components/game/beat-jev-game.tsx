@@ -18,13 +18,11 @@ import {
   type MatchSnapshot,
 } from "@/services/beat-jev-service";
 import { BeatJevBoard } from "./beat-jev-board";
+import { resolveBeatJevErrorMessage } from "./beat-jev-error";
 import { PixelGameIcon, PixelJev, PixelPlayer } from "./beat-jev-pixel-art";
 import styles from "./beat-jev-game.module.css";
 
 const storageKey = "beat-jev-match-id";
-
-const getErrorMessage = (error: unknown, fallback: string): string =>
-  error instanceof Error && error.message ? error.message : fallback;
 
 const forgetExpiredMatch = () => {
   sessionStorage.removeItem(storageKey);
@@ -74,7 +72,7 @@ export const BeatJevGame = () => {
           setMatch(null);
           setError(null);
         } else {
-          setError(getErrorMessage(cause, t("requestFailed")));
+          setError(resolveBeatJevErrorMessage(cause, t));
         }
       })
       .finally(() => {
@@ -109,7 +107,7 @@ export const BeatJevGame = () => {
         setMatch(null);
         setError(null);
       } else {
-        setError(getErrorMessage(cause, t("requestFailed")));
+        setError(resolveBeatJevErrorMessage(cause, t));
       }
     } finally {
       inFlight.current = false;
@@ -137,7 +135,7 @@ export const BeatJevGame = () => {
           setMatch(null);
           setError(null);
         } else if (match?.id && operation !== "start") {
-          setError(getErrorMessage(cause, t("requestFailed")));
+          setError(resolveBeatJevErrorMessage(cause, t));
           try {
             setMatch(await getBeatJevMatch(match.id));
           } catch (readError) {
@@ -148,7 +146,7 @@ export const BeatJevGame = () => {
             }
           }
         } else {
-          setError(getErrorMessage(cause, t("requestFailed")));
+          setError(resolveBeatJevErrorMessage(cause, t));
         }
       } finally {
         inFlight.current = false;

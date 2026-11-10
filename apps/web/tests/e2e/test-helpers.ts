@@ -1,4 +1,5 @@
 import type KoreanMessages from "../../messages/ko-KR.json";
+import type { ResumeRagSource } from "@/features/resume-rag/types";
 import fs from "node:fs";
 import { randomUUID } from "node:crypto";
 import type { Route } from "@playwright/test";
@@ -264,7 +265,7 @@ export type MockResumeTurn = {
   question: string;
   answer: string;
   grounded: boolean;
-  sources: [];
+  sources: ResumeRagSource[];
   createdAt: string;
 };
 

@@ -14,6 +14,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCustomRouter } from "@/hooks/use-custom-router";
 import { shouldSubmitMainChatKey } from "../lib/main-chat-keyboard";
+import { groupChatSources, getChatSourceLink } from "@/lib/chat-sources";
+import { CustomLink } from "@/components/custom-link";
+import type { MainChatSource } from "../types";
 import { askMainChat, readMainChatRateLimitFromError } from "../lib/main-chat-service";
 import {
   canSubmitMainChat,
@@ -28,6 +31,47 @@ const navigationItems = [
 ] as const;
 
 const guideItems = ["projects", "tech", "problemSolving", "career", "collaboration"] as const;
+
+const MainChatSources = ({ sources }: { sources: readonly MainChatSource[] }) => {
+  const t = useTranslations("home.mainChat");
+  const groups = groupChatSources(sources);
+  if (groups.length === 0) return null;
+
+  return (
+    <div className="mt-4 border-t border-gray-800 pt-3">
+      <p className="text-xs font-medium text-gray-300">{t("sources", { count: groups.length })}</p>
+      <ul className="mt-2 space-y-1 text-xs text-gray-200">
+        {groups.map(({ source, referenceNumbers }) => {
+          const label =
+            [source.title, source.sectionPath].filter(Boolean).join(" · ") || source.sourceKey;
+          const link = getChatSourceLink(source);
+          return (
+            <li key={referenceNumbers[0]} className="break-words">
+              <span className="mr-1 text-gray-300">
+                {referenceNumbers.map(number => `[${number}]`).join(" ")}
+              </span>
+              {link?.kind === "inferred" ? (
+                <CustomLink
+                  href={link.href}
+                  title={label}
+                  className="text-blue-100 underline-offset-2 hover:underline"
+                >
+                  {label}
+                </CustomLink>
+              ) : link ? (
+                <a href={link.href} className="text-blue-100 underline-offset-2 hover:underline">
+                  {label}
+                </a>
+              ) : (
+                <span>{label}</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+};
 
 export const MainChat = () => {
   const locale = useLocale();
@@ -210,20 +254,7 @@ export const MainChat = () => {
                     <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-gray-200 md:text-base">
                       {message.content}
                     </p>
-                    {message.sources.length > 0 ? (
-                      <div className="mt-4 border-t border-gray-800 pt-3">
-                        <p className="text-xs font-medium text-gray-400">
-                          {t("sources", { count: message.sources.length })}
-                        </p>
-                        <ul className="mt-2 space-y-1 text-xs text-gray-500">
-                          {message.sources.map((source, index) => (
-                            <li key={`${source.sourceKey}-${index}`}>
-                              {[source.title, source.sectionPath].filter(Boolean).join(" · ")}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : null}
+                    <MainChatSources sources={message.sources} />
                   </article>
                 ),
               )}

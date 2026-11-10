@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import ko from "../../messages/ko-KR.json";
+import en from "../../messages/en-US.json";
+import ja from "../../messages/ja-JP.json";
+import type { ResumeRagSource } from "@/features/resume-rag/types";
 import { gotoWithRetry, mockResumeConversationStorage } from "./test-helpers";
 
 type ChatRequest = {
@@ -11,6 +14,121 @@ type ChatRequest = {
   history?: unknown;
   resumeKey?: string;
 };
+
+for (const channel of ["main", "resume"] as const) {
+  test(`${channel} 출처는 원번호로 그룹화하고 저장된 원배열로 복원한다`, async ({
+    page,
+  }, testInfo) => {
+    const locale = channel === "main" ? "ja-JP" : "en-US";
+    const messages = channel === "main" ? ja : en;
+    const storage = await mockResumeConversationStorage(page);
+    const base: ResumeRagSource = {
+      title: "Shared source title",
+      sourcePath: "fixture/source.md",
+      sourceKey: "resume-detail/oprimed-medical-frontend-productization",
+      version: "v1",
+      excerpt: "Fixture excerpt",
+      similarity: 0.8,
+    };
+    const publicUrl = "/ko-KR/readme?resume=pe#career_1";
+    const sources: ResumeRagSource[] = [
+      base,
+      { ...base, title: "Unknown source", sourceKey: "private/unknown" },
+      { ...base, excerpt: "Second excerpt" },
+      { ...base, sourceKey: "resume-detail/commerce-backoffice-product" },
+      { ...base, excerpt: "Third excerpt" },
+      { ...base, title: "Unsafe source", sourceKey: "unsafe", publicUrl: "javascript:alert(1)" },
+      { ...base, title: "Legacy source", sourceKey: "legacy", publicUrl },
+    ];
+    const raw = JSON.stringify(sources);
+    const answer = "Answer cites [1], [3], [5] and a different document [4].";
+    let requests = 0;
+    await page.route(channel === "main" ? "**/main-chat" : "**/resume-rag/chat", async route => {
+      requests += 1;
+      const body = route.request().postDataJSON() as ChatRequest;
+      expect(body.resumeKey).toBe(channel === "resume" ? "fe" : undefined);
+      storage.conversations.get(body.conversationId)!.turns.push({
+        id: randomUUID(),
+        requestId: body.requestId,
+        question: body.question,
+        answer,
+        grounded: true,
+        sources,
+        createdAt: new Date().toISOString(),
+      });
+      await route.fulfill({
+        json: {
+          success: true,
+          data: {
+            conversationId: body.conversationId,
+            requestId: body.requestId,
+            answer,
+            grounded: true,
+            sources,
+          },
+        },
+      });
+    });
+    await gotoWithRetry(
+      page,
+      channel === "main" ? `/${locale}` : `/${locale}/resume/question?resume=fe`,
+    );
+    await page
+      .getByRole("textbox", {
+        name:
+          channel === "main"
+            ? messages.home.mainChat.placeholder
+            : messages.resumeRag.composerLabel,
+      })
+      .fill("Fixture source question");
+    await page
+      .getByRole("button", {
+        name: channel === "main" ? messages.home.mainChat.send : messages.resumeRag.submit,
+        exact: true,
+      })
+      .click();
+    const count = (
+      channel === "main" ? messages.home.mainChat.sources : messages.resumeRag.sources
+    ).replace("{count}", "5");
+    await expect(page.getByText(count, { exact: true })).toBeVisible();
+    if (channel === "main") {
+      await expect(page.getByText(count, { exact: true }).locator("..")).not.toContainText(
+        messages.resumeRag.similarity.replace("{score}", "80"),
+      );
+    }
+    await expect(page.getByText("[1] [3] [5]", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Shared source title", exact: true })).toHaveCount(
+      2,
+    );
+    await expect(page.getByRole("link", { name: "Unknown source", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Unsafe source", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Legacy source", exact: true })).toHaveAttribute(
+      "href",
+      publicUrl,
+    );
+    await expect(page.getByText(answer, { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByText(count, { exact: true })).toBeVisible();
+    await expect(page.getByText("[1] [3] [5]", { exact: true })).toBeVisible();
+    expect(requests).toBe(1);
+    expect(JSON.stringify(storage.conversations.values().next().value!.turns[0].sources)).toBe(raw);
+    await page.getByText(count, { exact: true }).scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: testInfo.outputPath(`${channel}-sources.png`),
+      animations: "disabled",
+    });
+    const sourceLink = page.getByRole("link", { name: "Shared source title", exact: true }).first();
+    const path = `/${locale}/resume/oprimed-medical-frontend-productization${channel === "resume" ? "?resume=fe" : ""}`;
+    await expect(sourceLink).toHaveAttribute("href", path);
+    await sourceLink.click();
+    await expect.poll(() => new URL(page.url()).pathname + new URL(page.url()).search).toBe(path);
+    if (channel === "resume")
+      await expect(
+        page.getByRole("link", { name: messages.resume.backToResume, exact: true }),
+      ).toHaveAttribute("href", `/${locale}/readme?resume=fe`);
+    expect(requests).toBe(1);
+  });
+}
 
 for (const channel of ["main", "resume"] as const) {
   test(`${channel} 채팅은 hydration 전에 입력과 전송을 허용하지 않는다`, async ({

@@ -43,6 +43,8 @@ import {
 import { readResumeRagChat } from "../lib/resume-rag-chat-storage";
 import type { ResumeRagSource } from "../types";
 import { ResumeRagRateLimitStatus } from "./resume-rag-rate-limit-status";
+import { groupChatSources, getChatSourceLink } from "@/lib/chat-sources";
+import { CustomLink } from "@/components/custom-link";
 
 type FailureKind =
   | "origin-blocked"
@@ -247,10 +249,17 @@ const PendingAnswer = () => {
   );
 };
 
-const SourceList = ({ sources }: { sources: ResumeRagSource[] }) => {
+const SourceList = ({
+  sources,
+  resumeKey,
+}: {
+  sources: readonly ResumeRagSource[];
+  resumeKey: string;
+}) => {
   const t = useTranslations("resumeRag");
+  const groups = groupChatSources(sources);
 
-  if (sources.length === 0) return null;
+  if (groups.length === 0) return null;
 
   return (
     <div className="mt-4 border-t border-gray-800 pt-3">
@@ -258,24 +267,33 @@ const SourceList = ({ sources }: { sources: ResumeRagSource[] }) => {
         <FileText className="size-3.5 text-blue-300" />
         <span>{t("evidenceLabel")}</span>
         <span className="text-gray-600">/</span>
-        <span className="text-gray-500">{t("sources", { count: sources.length })}</span>
+        <span className="text-gray-300">{t("sources", { count: groups.length })}</span>
       </div>
       <div className="space-y-2 border-l border-gray-700 pl-3">
-        {sources.map((source, index) => {
+        {groups.map(({ source, referenceNumbers }) => {
           const label =
             [source.title, source.sectionPath].filter(Boolean).join(" · ") || source.sourceKey;
           const score = Math.round(source.similarity * 100);
+          const link = getChatSourceLink(source, resumeKey);
 
           return (
-            <div
-              key={`${source.sourceKey}-${index}`}
-              className="min-w-0 text-xs leading-5 text-gray-400"
-            >
+            <div key={referenceNumbers[0]} className="min-w-0 text-xs leading-5 text-gray-400">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                {source.publicUrl ? (
+                <span className="text-gray-300">
+                  {referenceNumbers.map(number => `[${number}]`).join(" ")}
+                </span>
+                {link?.kind === "inferred" ? (
+                  <CustomLink
+                    href={link.href}
+                    title={label}
+                    className="min-w-0 break-words text-blue-100 underline-offset-2 hover:underline"
+                  >
+                    {label}
+                  </CustomLink>
+                ) : link ? (
                   <a
-                    href={source.publicUrl}
-                    className="text-blue-300 underline-offset-2 hover:underline"
+                    href={link.href}
+                    className="min-w-0 break-words text-blue-100 underline-offset-2 hover:underline"
                   >
                     {label}
                   </a>
@@ -614,7 +632,7 @@ export const ResumeQuestionChat = ({ initialChatId, resumeKey }: ResumeQuestionC
                   </div>
                   <div className="px-3 pb-3">
                     <GroundingNotice grounded={message.grounded} />
-                    <SourceList sources={message.sources} />
+                    <SourceList sources={message.sources} resumeKey={resumeKey} />
                   </div>
                 </div>
               )}

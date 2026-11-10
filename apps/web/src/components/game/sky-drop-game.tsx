@@ -21,15 +21,28 @@ export const SkyDropGame = () => {
   const game = useTranslations("Game");
   const t = useTranslations("Game.skyDrop");
   const router = useCustomRouter();
-  const { setGamePlaying } = useGame();
-  const [state, dispatch] = useReducer(skyDropReducer, undefined, createSkyDropState);
+  const { setGamePlaying, skyDropSession } = useGame();
+  const [state, dispatch] = useReducer(
+    skyDropReducer,
+    undefined,
+    () => skyDropSession.current ?? createSkyDropState(),
+  );
   const [isRestored, setIsRestored] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const resumeRef = useRef<HTMLButtonElement>(null);
   const exitRef = useRef<HTMLButtonElement>(null);
   const unlockSound = useSkyDropSound(state.feedback, isMuted);
-  const hasActiveGame = useRef(false);
+  const hasActiveGame = useRef(state.status === "paused" || state.status === "playing");
+
+  useEffect(() => {
+    skyDropSession.current =
+      state.status === "playing"
+        ? { ...state, status: "paused" }
+        : state.status === "paused"
+          ? state
+          : null;
+  }, [skyDropSession, state]);
 
   useEffect(() => {
     if (state.status === "over" && hasActiveGame.current) {
@@ -91,6 +104,7 @@ export const SkyDropGame = () => {
     dispatch({ type: "resume", now: performance.now() });
   };
   const exit = () => {
+    skyDropSession.current = null;
     clearSkyDropPendingScore();
     router.push("/game");
   };

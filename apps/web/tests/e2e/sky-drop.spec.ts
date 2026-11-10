@@ -45,6 +45,27 @@ const counts = (page: Page) =>
     .locator("[data-count]")
     .evaluateAll(elements => elements.map(el => Number(el.getAttribute("data-count"))));
 
+test("내부 탭으로 이동한 게임은 돌아오면 일시정지된 상태로 유지된다", async ({ page }) => {
+  await gotoWithRetry(page, "/ko-KR/game");
+  await start(page);
+  await page.clock.runFor(1000);
+  await page.keyboard.press("q");
+  const before = await counts(page);
+  await page.getByTestId("history-tab-rail").getByRole("button", { name: /game/i }).first().click();
+  await expect(page).toHaveURL(/\/game$/);
+  await page.clock.runFor(10000);
+  await page
+    .getByTestId("history-tab-rail")
+    .getByRole("button", { name: /sky.drop/i })
+    .first()
+    .click();
+  await expect(page.getByTestId("sky-drop-paused")).toBeVisible();
+  expect(await counts(page)).toEqual(before);
+  await expect(page.getByTestId("sky-drop-time")).toHaveText("00:01");
+  await page.getByRole("button", { name: game.skyDrop.resume, exact: true }).click();
+  await expect(page.getByTestId("sky-drop-game")).toHaveAttribute("data-state", "playing");
+});
+
 // 실제 DOM에 보이는 색을 이용해서 3개를 맞춘다. 런타임 상태·점수·판정은 조작하지 않는다.
 const matchThree = async (page: Page) => {
   const board = await page.getByTestId("sky-drop-block").evaluateAll(elements => {

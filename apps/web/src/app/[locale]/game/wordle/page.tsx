@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useWordle } from "@/hooks/use-wordle";
 import { WordleBoard } from "@/components/wordle/wordle-board";
 import { WordleKeyboard } from "@/components/wordle/wordle-keyboard";
@@ -15,6 +15,7 @@ import { CustomLink } from "@/components/custom-link";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function WordlePage() {
+  const gameRef = useRef<HTMLElement>(null);
   const tShare = useTranslations("Share");
   const tGame = useTranslations("Game");
   const {
@@ -29,6 +30,10 @@ export default function WordlePage() {
     answer,
     isLoading,
   } = useWordle();
+
+  useEffect(() => {
+    gameRef.current?.focus({ preventScroll: true });
+  }, []);
 
   // 윈도우 키보드 이벤트 리스너
   useEffect(() => {
@@ -61,7 +66,11 @@ export default function WordlePage() {
   }, [gameStatus, answer, tGame]);
 
   return (
-    <main className="flex h-full min-h-0 w-full min-w-0 items-center justify-center bg-background">
+    <main
+      ref={gameRef}
+      tabIndex={-1}
+      className="flex h-full min-h-0 w-full min-w-0 items-center justify-center bg-background"
+    >
       <div className={styles.frame} data-testid="wordle-frame">
         {/* Header */}
         <header

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { gotoWithRetry } from "./test-helpers";
+import messages from "../../messages/ko-KR.json";
 
 interface ShiftRect {
   x: number;
@@ -129,7 +130,9 @@ test.describe("레이아웃 쉬프트 회귀", () => {
       path: "/ko-KR",
       maxCls: 0.01,
       assertReady: async page => {
-        await expect(page.locator('[data-testid="home-hero"]')).toBeVisible();
+        await expect(
+          page.getByRole("heading", { name: messages.home.mainChat.workspaceTitle }),
+        ).toBeVisible();
       },
     },
     {

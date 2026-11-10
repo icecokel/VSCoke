@@ -14,12 +14,31 @@ import {
 test.describe.configure({ mode: "serial" });
 
 test.describe("키보드 전용 시나리오", () => {
+  for (const width of [767, 768, 899, 900]) {
+    test(`${width}px에서 탐색 메뉴를 열 수 있다`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await gotoWithRetry(page, "/ko-KR");
+      if (width < 900) {
+        await page.getByTestId("sidebar-trigger-mobile").click();
+        await expect(
+          page
+            .getByRole("dialog")
+            .getByRole("button", { name: loadMessages("ko-KR").sidebar.search }),
+        ).toBeVisible();
+      } else {
+        await expect(
+          page.getByRole("button", { name: loadMessages("ko-KR").sidebar.search }),
+        ).toBeVisible();
+      }
+    });
+  }
   test.describe("사이드바 검색", () => {
     test.beforeEach(async ({ page }) => {
       const { messages } = await resolveLocaleAndMessages(page);
       await mockWordleWord(page);
       await page.getByRole("button", { name: messages.sidebar.search, exact: true }).click();
       await expect(page.getByTestId("blog-dashboard-search-input")).toBeVisible();
+      await expect(page.getByTestId("blog-dashboard-search-input")).toBeFocused();
       await page.clock.install();
       await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000);
     });
@@ -75,6 +94,22 @@ test.describe("키보드 전용 시나리오", () => {
         /bg-blue-500\/20/,
       );
     });
+  });
+
+  test("Wordle 탭으로 돌아오면 게임 영역을 클릭하지 않고 입력한다", async ({ page }) => {
+    await mockWordleWord(page);
+    await gotoWithRetry(page, "/ko-KR/game/wordle");
+    await expect(page.getByTestId("wordle-loading")).toHaveCount(0);
+    await gotoWithRetry(page, "/ko-KR");
+    await page
+      .getByTestId("history-tab-rail")
+      .getByRole("button", { name: /wordle/i })
+      .first()
+      .click();
+    await expect(page.locator("main[tabindex='-1']")).toBeFocused();
+    await expect(page.getByTestId("wordle-loading")).toHaveCount(0);
+    await page.keyboard.press("A");
+    await expect(page.getByTestId("wordle-board")).toContainText("A");
   });
 
   test("히스토리 탭을 전환하고 닫을 수 있다", async ({ page }) => {

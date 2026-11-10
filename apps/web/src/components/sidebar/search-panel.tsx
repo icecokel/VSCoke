@@ -96,6 +96,7 @@ const SearchPanel = ({ onNavigate }: SearchPanelProps) => {
     <div className="flex h-full min-h-0 flex-col px-3 py-2">
       <div className="relative">
         <Input
+          autoFocus
           value={query}
           onChange={e => {
             setQuery(e.target.value);

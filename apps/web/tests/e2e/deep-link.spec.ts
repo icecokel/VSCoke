@@ -44,7 +44,7 @@ test.describe("딥링크 직접 진입", () => {
     await expect(page.getByTestId("game-exit-button")).toBeVisible();
   });
 
-  test("이력서 프리뷰에서 이력서만 PDF로 내려받는다", async ({ page }) => {
+  test("이력서만 인쇄할 수 있다", async ({ page }, testInfo) => {
     const { locale } = await resolveLocaleAndMessages(page);
 
     await gotoWithRetry(page, `/${locale}/resume/preview`);
@@ -52,16 +52,21 @@ test.describe("딥링크 직접 진입", () => {
     await page.getByTestId("resume-preview-save-pdf").click();
     await expect(page.getByRole("dialog")).toBeVisible();
 
-    const downloadPromise = page.waitForEvent("download");
+    await page.evaluate(() => {
+      window.print = () => {
+        document.body.dataset.printRequested = "true";
+      };
+    });
     await page.getByTestId("resume-preview-download-resume-only").click();
-    const download = await downloadPromise;
-    const downloadPath = await download.path();
-
-    expect(download.suggestedFilename()).toBe(`sangmin-lee-resume-pe-${locale}.pdf`);
-    expect(downloadPath).not.toBeNull();
-
-    const fileContents = await readFile(downloadPath!);
-    expect(fileContents.subarray(0, 4).toString()).toBe("%PDF");
+    await expect(page.locator("body")).toHaveAttribute("data-print-requested", "true");
+    await page.emulateMedia({ media: "print" });
+    await expect(page.getByTestId("resume-preview-document")).toBeVisible();
+    await expect(page.getByTestId("resume-preview-career-detail-document").first()).toBeHidden();
+    await page.pdf({
+      path: testInfo.outputPath("resume.pdf"),
+      printBackground: true,
+      preferCSSPageSize: true,
+    });
   });
 
   test("이력서에서 제안 연락 수단을 제공한다", async ({ page }) => {
@@ -82,7 +87,7 @@ test.describe("딥링크 직접 진입", () => {
     );
   });
 
-  test("현재 이력서에 연결된 경력기술서를 포함해 PDF로 내려받는다", async ({ page }) => {
+  test("현재 이력서에 연결된 경력기술서를 포함해 인쇄할 수 있다", async ({ page }, testInfo) => {
     const { locale } = await resolveLocaleAndMessages(page);
 
     await gotoWithRetry(page, `/${locale}/resume/preview`);
@@ -100,18 +105,20 @@ test.describe("딥링크 직접 진입", () => {
     await page.getByTestId("resume-preview-save-pdf").click();
     await expect(page.getByRole("dialog")).toBeVisible();
 
-    const downloadPromise = page.waitForEvent("download");
+    await page.evaluate(() => {
+      window.print = () => {
+        document.body.dataset.printRequested = "true";
+      };
+    });
     await page.getByTestId("resume-preview-download-with-career-details").click();
-    const download = await downloadPromise;
-    const downloadPath = await download.path();
-
-    expect(download.suggestedFilename()).toBe(
-      `sangmin-lee-resume-pe-${locale}-with-career-details.pdf`,
-    );
-    expect(downloadPath).not.toBeNull();
-
-    const fileContents = await readFile(downloadPath!);
-    expect(fileContents.subarray(0, 4).toString()).toBe("%PDF");
+    await expect(page.locator("body")).toHaveAttribute("data-print-requested", "true");
+    await page.emulateMedia({ media: "print" });
+    await expect(careerDetails.first()).toBeVisible();
+    await page.pdf({
+      path: testInfo.outputPath("resume-details.pdf"),
+      printBackground: true,
+      preferCSSPageSize: true,
+    });
   });
 
   test("TSX 블로그 포스트를 기존 URL과 공통 셸로 렌더링한다", async ({ page }) => {
@@ -165,12 +172,12 @@ test.describe("딥링크 직접 진입", () => {
     ).toBeVisible();
   });
 
-  test("존재하지 않는 블로그 slug는 404로 응답한다", async ({ page }) => {
-    const { locale, messages } = await resolveLocaleAndMessages(page);
+  test("존재하지 않는 블로그 slug는 404 응답 후 홈으로 복구한다", async ({ page }) => {
+    const { locale } = await resolveLocaleAndMessages(page);
     const response = await page.goto(`/${locale}/blog/journal/not-a-real-post`);
 
     expect(response?.status()).toBe(404);
-    await expect(page.getByRole("heading", { name: messages.notFound.title })).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`/${escapeRegExp(locale)}/?$`));
   });
 
   test("Code Crayon 상세 경력기술서의 대표 근거를 렌더링한다", async ({ page }) => {

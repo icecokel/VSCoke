@@ -35,7 +35,7 @@ const Profile = ({ document }: { document: ResumeDocument }) => {
   const { introduction, contact } = document;
 
   return (
-    <div className="p-3 flex flex-col gap-1 md:gap-5">
+    <div className="p-3 flex flex-col gap-1 md:gap-5 md:pb-[28rem]">
       <div className="flex flex-wrap justify-end gap-2">
         <Dialog>
           <DialogTrigger asChild>

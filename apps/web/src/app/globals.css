@@ -351,19 +351,22 @@ body {
 @media print {
   @page {
     size: A4;
-    margin: 0;
+    margin: 8mm 12mm;
   }
 
   #menubar,
   [data-slot="sidebar"],
   [data-testid="history-tab-rail"],
   [data-testid="sidebar-trigger-mobile"],
+  [data-slot="dialog-overlay"],
+  [data-slot="dialog-content"],
   .resume-preview-toolbar {
     display: none !important;
   }
 
   html,
   body,
+  body div:has(.resume-preview-page),
   [data-slot="sidebar-wrapper"],
   [data-slot="sidebar-inset"],
   #main-scroll-container,
@@ -379,18 +382,38 @@ body {
     background: #ffffff !important;
   }
 
+  body div:has(.resume-preview-page) {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
   .resume-preview-page {
     padding: 0 !important;
   }
 
   .resume-preview-document {
-    width: 210mm !important;
+    width: 100% !important;
     max-width: none !important;
-    min-height: 297mm;
-    padding: 8mm 12mm !important;
+    min-height: 0;
+    padding: 0 !important;
     box-shadow: none !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
+  }
+
+  .resume-print-with-details .resume-preview-career-detail-document {
+    display: block;
+    width: 100%;
+    max-width: none;
+    padding: 0;
+    break-before: page;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .resume-preview-career-detail-content {
+    line-height: 1.5 !important;
   }
 
   .resume-preview-header {
@@ -404,67 +427,24 @@ body {
   }
 
   .resume-preview-career {
-    break-inside: avoid;
     padding-top: 10px !important;
     padding-bottom: 10px !important;
   }
 
-  .resume-preview-project,
   .resume-preview-description {
     break-inside: avoid;
   }
-}
 
-.resume-preview-document--exporting {
-  width: 210mm !important;
-  max-width: none !important;
-  min-height: 297mm;
-  padding: 8mm 12mm !important;
-  box-shadow: none !important;
-}
-
-.resume-preview-document--exporting .resume-preview-header {
-  padding-bottom: 12px !important;
-}
-
-.resume-preview-document--exporting .resume-preview-summary,
-.resume-preview-document--exporting .resume-preview-experience {
-  padding-top: 16px !important;
-  padding-bottom: 16px !important;
-}
-
-.resume-preview-document--exporting .resume-preview-career {
-  padding-top: 10px !important;
-  padding-bottom: 10px !important;
-}
-
-.resume-preview-document--exporting .resume-preview-header-content,
-.resume-preview-document--exporting .resume-preview-career-heading {
-  flex-direction: row !important;
-  align-items: flex-start !important;
-  justify-content: space-between !important;
-}
-
-.resume-preview-document--exporting .resume-preview-header-content {
-  align-items: flex-end !important;
-}
-
-.resume-preview-document--exporting .resume-preview-contact {
-  text-align: right !important;
-}
-
-.resume-preview-document--exporting .resume-preview-project,
-.resume-preview-document--exporting .resume-preview-description {
-  break-inside: avoid;
+  .resume-preview-document h3,
+  .resume-preview-document h4,
+  .resume-preview-document h5,
+  .resume-preview-career-detail-content h2 {
+    break-after: avoid;
+  }
 }
 
 .resume-preview-career-detail-document {
   display: none;
-}
-
-.resume-preview-career-detail-document.resume-preview-document--exporting {
-  display: block;
-  min-height: 0;
 }
 
 @layer utilities {

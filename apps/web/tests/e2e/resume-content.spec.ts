@@ -89,6 +89,20 @@ for (const viewport of [
 }
 
 test.describe("이력서 조회", () => {
+  test("마지막 내용이 고정 채팅 패널 위로 스크롤된다", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await gotoWithRetry(page, "/ko-KR/readme");
+    const scroll = page.locator("#main-scroll-container");
+    await scroll.evaluate(element => {
+      element.scrollTop = element.scrollHeight;
+    });
+    const content = page.getByTestId("resume-rag-chat-composer");
+    const lastLink = page.locator('a[target="_blank"]').last();
+    const [linkBox, panelBox] = await Promise.all([lastLink.boundingBox(), content.boundingBox()]);
+    expect(linkBox).not.toBeNull();
+    expect(panelBox).not.toBeNull();
+    expect(linkBox!.y + linkBox!.height).toBeLessThan(panelBox!.y);
+  });
   for (const locale of ["ko-KR", "en-US", "ja-JP"]) {
     test(`${locale} 이력서와 검색 색인을 조회한다`, async ({ page, request }) => {
       const response = await request.get(`${apiUrl}/resume?locale=${locale}`);

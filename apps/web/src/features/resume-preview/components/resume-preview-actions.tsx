@@ -16,45 +16,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { downloadResumePdf } from "@/features/resume-preview/lib/resume-pdf";
 
-type PdfDownloadState = "idle" | "saving" | "error";
-
-export const ResumePreviewActions = ({
-  resumeKey,
-  locale,
-}: {
-  resumeKey: string;
-  locale: string;
-}) => {
+export const ResumePreviewActions = ({ resumeKey }: { resumeKey: string }) => {
   const t = useTranslations("resumePreview");
-  const [downloadState, setDownloadState] = useState<PdfDownloadState>("idle");
   const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false);
 
-  const handleSavePdf = async (includeCareerDetails: boolean) => {
+  const handleSavePdf = (includeCareerDetails: boolean) => {
     setIsDownloadDialogOpen(false);
-
-    const resumeDocument = document.querySelector<HTMLElement>(".resume-preview-document");
-    const careerDetailDocuments = includeCareerDetails
-      ? Array.from(document.querySelectorAll<HTMLElement>(".resume-preview-career-detail-document"))
-      : [];
-
-    if (!resumeDocument || (includeCareerDetails && careerDetailDocuments.length === 0)) {
-      setDownloadState("error");
-      return;
-    }
-
-    setDownloadState("saving");
-
-    try {
-      await downloadResumePdf(resumeDocument, careerDetailDocuments, { key: resumeKey, locale });
-      setDownloadState("idle");
-    } catch {
-      setDownloadState("error");
-    }
+    document.body.classList.toggle("resume-print-with-details", includeCareerDetails);
+    window.addEventListener(
+      "afterprint",
+      () => document.body.classList.remove("resume-print-with-details"),
+      { once: true },
+    );
+    window.print();
   };
-
-  const isSavingPdf = downloadState === "saving";
 
   return (
     <div className="resume-preview-toolbar relative mx-auto mb-4 min-h-9 w-full max-w-[210mm]">
@@ -63,11 +39,6 @@ export const ResumePreviewActions = ({
           {t("previewLabel")}
         </p>
         <p className="mt-1 text-sm text-gray-400">{t("saveHint")}</p>
-        {downloadState === "error" && (
-          <p className="mt-1 text-sm text-red-400" role="alert">
-            {t("savePdfFailed")}
-          </p>
-        )}
       </div>
       <Dialog open={isDownloadDialogOpen} onOpenChange={setIsDownloadDialogOpen}>
         <DialogTrigger asChild>
@@ -75,10 +46,9 @@ export const ResumePreviewActions = ({
             type="button"
             className="absolute top-0 right-0 bg-blue-300 text-gray-900 hover:bg-blue-200"
             data-testid="resume-preview-save-pdf"
-            disabled={isSavingPdf}
           >
             <DownloadIcon className="size-4" aria-hidden="true" />
-            {isSavingPdf ? t("savingPdf") : t("savePdf")}
+            {t("savePdf")}
           </Button>
         </DialogTrigger>
         <DialogContent

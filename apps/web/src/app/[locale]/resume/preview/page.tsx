@@ -94,7 +94,7 @@ const ResumePreviewPage = async ({ params, searchParams }: ResumePreviewPageProp
 
   return (
     <main className="resume-preview-page min-h-full bg-gray-800 px-3 py-4 text-gray-100 md:px-5 md:py-8">
-      <ResumePreviewActions resumeKey={key} locale={locale} />
+      <ResumePreviewActions resumeKey={key} />
 
       <article
         className="resume-preview-document mx-auto w-full max-w-[210mm] bg-beige-400 px-6 py-8 text-gray-900 shadow-2xl shadow-black/30 sm:px-10 sm:py-12"
@@ -289,7 +289,7 @@ const ResumePreviewPage = async ({ params, searchParams }: ResumePreviewPageProp
         </footer>
       </article>
 
-      <div aria-hidden="true">
+      <div>
         {careerDetails.map(detail => (
           <article
             key={detail.slug}

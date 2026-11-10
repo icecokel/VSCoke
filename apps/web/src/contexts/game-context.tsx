@@ -1,10 +1,21 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode, useCallback, useMemo } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useRef,
+  ReactNode,
+  useCallback,
+  useMemo,
+  type RefObject,
+} from "react";
+import type { SkyDropState } from "@/components/game/sky-drop-engine";
 
 interface GameContextValue {
   isGamePlaying: boolean;
   setGamePlaying: (playing: boolean) => void;
+  skyDropSession: RefObject<SkyDropState | null>;
 }
 
 const GameContext = createContext<GameContextValue | undefined>(undefined);
@@ -15,6 +26,7 @@ interface GameProviderProps {
 
 export const GameProvider = ({ children }: GameProviderProps) => {
   const [isGamePlaying, setIsGamePlaying] = useState(false);
+  const skyDropSession = useRef<SkyDropState | null>(null);
 
   const setGamePlaying = useCallback((playing: boolean) => {
     setIsGamePlaying(playing);
@@ -24,6 +36,7 @@ export const GameProvider = ({ children }: GameProviderProps) => {
     () => ({
       isGamePlaying,
       setGamePlaying,
+      skyDropSession,
     }),
     [isGamePlaying, setGamePlaying],
   );

@@ -1,21 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { getResumeKey, resumePath } from "./resume-selection";
-import { resumePdfFileName } from "@/features/resume-preview/lib/resume-pdf";
 import { resumeConversationStorageKey } from "@/features/resume-rag/lib/resume-conversation-client";
 import { createResumeRagChatStorageKey } from "@/features/resume-rag/lib/resume-rag-chat-storage";
 
-test("생략만 PE를 선택하고 명시한 key를 URL과 PDF에 유지한다", () => {
+test("생략만 PE를 선택하고 명시한 key를 URL에 유지한다", () => {
   assert.equal(getResumeKey(undefined), "pe");
   assert.equal(getResumeKey(""), "");
   assert.equal(getResumeKey(["nexon", "pe"]), "");
   assert.equal(
     resumePath("/resume/question?chatId=chat", "nexon"),
     "/resume/question?chatId=chat&resume=nexon",
-  );
-  assert.equal(
-    resumePdfFileName("nexon", "ja-JP", true),
-    "sangmin-lee-resume-nexon-ja-JP-with-career-details.pdf",
   );
 });
 

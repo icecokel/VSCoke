@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useBoolean } from "@/hooks/use-boolean";
+import { getHistoryPath } from "@/lib/history-path";
 
 // IHistoryItem 인터페이스에 lastAccessedAt 필드 추가
 export interface IHistoryItem {
@@ -32,12 +33,24 @@ export const HistoryProvider = ({ children }: { children: React.ReactNode }) => 
   // 만료된 항목 필터링
   const filterExpired = (items: IHistoryItem[]): IHistoryItem[] => {
     const now = Date.now();
-    return items.filter(
-      item =>
-        typeof item?.lastAccessedAt === "number" &&
-        Number.isFinite(item.lastAccessedAt) &&
-        now - item.lastAccessedAt < HISTORY_EXPIRE_MS,
-    );
+    const normalized = new Map<string, IHistoryItem>();
+    for (const item of items) {
+      if (
+        typeof item?.path !== "string" ||
+        typeof item.title !== "string" ||
+        typeof item.lastAccessedAt !== "number" ||
+        !Number.isFinite(item.lastAccessedAt) ||
+        now - item.lastAccessedAt >= HISTORY_EXPIRE_MS
+      )
+        continue;
+
+      const path = getHistoryPath(item.path);
+      const existing = normalized.get(path);
+      if (!existing || item.lastAccessedAt >= existing.lastAccessedAt) {
+        normalized.set(path, { ...item, path });
+      }
+    }
+    return [...normalized.values()];
   };
 
   // 초기 로드시 localStorage에서 데이터 가져오기

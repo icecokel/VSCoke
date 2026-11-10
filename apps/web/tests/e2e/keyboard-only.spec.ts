@@ -21,7 +21,7 @@ test.describe("키보드 전용 시나리오", () => {
       await page.getByRole("button", { name: messages.sidebar.search, exact: true }).click();
       await expect(page.getByTestId("blog-dashboard-search-input")).toBeVisible();
       await page.clock.install();
-      await page.clock.pauseAt(await page.evaluate(() => Date.now()));
+      await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000);
     });
 
     test("추천 목록에서 입력 직후 Enter를 누르면 현재 검색 결과를 연다", async ({ page }) => {

@@ -32,7 +32,11 @@ export const CareerProject = ({ projectData, resumeKey }: CareerProjectProps) =>
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => router.push(resumePath(`/resume/${fileRef}`, resumeKey))}
+              onClick={() =>
+                router.push(resumePath(`/resume/${fileRef}`, resumeKey), {
+                  title: projectData.title,
+                })
+              }
               className="h-7 border-yellow-200/50 text-xs text-yellow-200 hover:bg-yellow-200/10 hover:text-yellow-100"
             >
               {tResume("viewDescription")}

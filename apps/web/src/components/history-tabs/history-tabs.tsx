@@ -13,16 +13,18 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { usePathname, useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { useTranslations } from "next-intl";
 
+const getTabTitle = (path: string, fallback: string): string =>
+  /^\/share\/[^/]+$/.test(path) ? "share" : fallback;
+
 export const HistoryTabs = ({ children }: TParentNode) => {
-  const { history, change, remove, setHistory, isHydrated } = useHistory();
+  const { history, change, remove, setHistory, isHydrated, currentPath } = useHistory();
   const router = useRouter();
-  const pathname = usePathname();
   const t = useTranslations("historyTabs");
   const tabRailRef = useRef<HTMLDivElement>(null);
   const activeTabPath = history.find(item => item.isActive)?.path;
@@ -51,7 +53,7 @@ export const HistoryTabs = ({ children }: TParentNode) => {
     }
 
     // 현재 닫는 탭이 활성화 상태라면 이동할 경로 계산
-    const isActiveTab = item.path === pathname;
+    const isActiveTab = item.path === currentPath;
 
     if (isActiveTab) {
       const currentIndex = history.findIndex(h => h.path === item.path);
@@ -117,59 +119,31 @@ export const HistoryTabs = ({ children }: TParentNode) => {
     }
   };
 
-  const isSharePath = (path: string): boolean => /^\/share\/[^/]+$/.test(path);
-
-  const getTabTitle = (path: string, fallback: string): string => {
-    if (isSharePath(path)) {
-      return "share";
-    }
-    return fallback;
-  };
-
   // URL과 History 동기화 (URL이 진실의 원천)
   useEffect(() => {
     if (!isHydrated) return;
 
-    // 중복 체크를 위해 현재 history 상태를 기준으로 확인
-    const existingTab = history.find(item => item.path === pathname);
-
-    if (existingTab) {
-      // 이미 존재하는 탭이면 활성화하고 TTL 기준 시각을 갱신
-      setHistory(prev =>
-        prev.map(item => ({
+    setHistory(prev => {
+      if (prev.some(item => item.path === currentPath)) {
+        return prev.map(item => ({
           ...item,
-          isActive: item.path === pathname,
-          lastAccessedAt: item.path === pathname ? Date.now() : item.lastAccessedAt,
-        })),
-      );
-    } else {
-      // 탭이 없을 때만 새로 추가
+          isActive: item.path === currentPath,
+          lastAccessedAt: item.path === currentPath ? Date.now() : item.lastAccessedAt,
+        }));
+      }
+      const pathname = currentPath.split("?", 1)[0];
       const fallbackTitle = pathname === "/" ? "Home" : pathname.split("/").pop() || pathname;
-      const title = getTabTitle(pathname, fallbackTitle);
-
-      // setHistory로 직접 추가하여 중복 방지 (add 함수 대신)
-      setHistory(prev => {
-        // 다시 한번 중복 체크 (race condition 방지)
-        if (prev.some(item => item.path === pathname)) {
-          return prev.map(item => ({
-            ...item,
-            isActive: item.path === pathname,
-            lastAccessedAt: item.path === pathname ? Date.now() : item.lastAccessedAt,
-          }));
-        }
-        return [
-          ...prev.map(item => ({ ...item, isActive: false })),
-          {
-            isActive: true,
-            path: pathname,
-            title,
-            lastAccessedAt: Date.now(),
-          },
-        ];
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, isHydrated]);
+      return [
+        ...prev.map(item => ({ ...item, isActive: false })),
+        {
+          isActive: true,
+          path: currentPath,
+          title: getTabTitle(currentPath, fallbackTitle),
+          lastAccessedAt: Date.now(),
+        },
+      ];
+    });
+  }, [currentPath, isHydrated, setHistory]);
 
   // 탭이 많아 가로로 넘쳐도 방금 연 탭이 보이도록 탭 줄만 가로 스크롤한다.
   // scrollIntoView는 바깥 레이아웃 컨테이너까지 스크롤할 수 있어 쓰지 않는다.

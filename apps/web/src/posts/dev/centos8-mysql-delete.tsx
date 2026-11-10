@@ -22,13 +22,14 @@ const DevCentos8MysqlDeletePost = () => {
         }
       </PostParagraph>
       <PostParagraph>
-        위 명령어로 mysql 서버가 삭제가 되면 mysql 설정 파일 디렉토리를 날려야합니다.
+        위 명령어로 MySQL 서버를 삭제한 뒤, 데이터 디렉터리인 /var/lib/mysql의 내용을 확인합니다.
       </PostParagraph>
-      <PostCodeBlock
-        code={
-          "ls /var/lib/mysql\n\nmysql 디렉토리가 있는지 확인을 먼저 합니다. 디렉토리가 있는걸 확인 후\n\nrm -rf /var/lib/mysql"
-        }
-      />
+      <PostCodeBlock code={"ls /var/lib/mysql"} />
+      <PostParagraph>
+        디렉터리가 있는지 확인하고, 보존할 데이터가 있다면 먼저 백업합니다. 삭제해도 되는 데이터인지
+        확인한 뒤 다음 명령을 실행합니다.
+      </PostParagraph>
+      <PostCodeBlock code={"rm -rf /var/lib/mysql"} />
       <PostParagraph>
         옵션 -rf 를 주면 디렉토리의 하위항목을 까지 강제로 삭제가 진행이 됩니다. 다른 디렉토리가 지정되지 않도록 조심하세요.
       </PostParagraph>

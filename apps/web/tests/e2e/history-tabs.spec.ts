@@ -119,6 +119,118 @@ test.describe("히스토리 탭 상태머신", () => {
     await expect(rail.locator("div[id^='/resume/']")).toHaveCount(0);
   });
 
+  for (const query of ["", "?resume=pe"]) {
+    test(`이동 중인 상세 탭을 닫으면 늦은 RSC 응답이 탭을 다시 열지 않는다 (${query || "기본 경로"})`, async ({
+      page,
+      request,
+    }) => {
+      const locale = getTestLocale();
+      const messages = loadMessages(locale);
+      const { data }: { data: ResumeDocument } = await (
+        await request.get(`${process.env.NEXT_PUBLIC_API_URL}/resume?locale=${locale}`)
+      ).json();
+      const project = data.careers
+        .flatMap(career => career.projects)
+        .find(project => project.fileRef)!;
+      const detailPath = `/resume/${project.fileRef}`;
+      await installHistoryFixture(page, [
+        { path: "/readme", title: "README", isActive: true, lastAccessedAt: Date.now() },
+      ]);
+      await visit(page, `/${locale}/readme${query}`);
+      await waitForHistoryHydration(page);
+
+      let release = () => {};
+      const released = new Promise<void>(resolve => {
+        release = resolve;
+      });
+      let markStarted = () => {};
+      const started = new Promise<void>(resolve => {
+        markStarted = resolve;
+      });
+      const deliveries: Promise<void>[] = [];
+      await page.route(`**/${locale}${detailPath}**`, async route => {
+        if (route.request().headers().rsc !== "1") {
+          await route.continue();
+          return;
+        }
+        const delivery = (async () => {
+          const response = await route.fetch();
+          markStarted();
+          await released;
+          await route.fulfill({ response });
+        })();
+        deliveries.push(delivery);
+        await delivery;
+      });
+
+      const rail = page.getByTestId("history-tab-rail");
+      const detailTab = rail.locator(`div[id='${detailPath}']`);
+      try {
+        await page
+          .getByRole("button", { name: messages.resume.viewDescription, exact: true })
+          .first()
+          .click();
+        await started;
+        await expect(
+          detailTab.getByRole("button", { name: project.title, exact: true }),
+        ).toHaveAttribute("aria-current", "page");
+        await expect(page).toHaveURL(
+          new RegExp(`/${escapeRegExp(locale)}/readme${escapeRegExp(query)}$`),
+        );
+        await detailTab
+          .getByRole("button", {
+            name: `${messages.historyTabs.close}: ${project.title}`,
+            exact: true,
+          })
+          .click();
+        await expect(detailTab).toHaveCount(0);
+
+        release();
+        await Promise.all(deliveries);
+        await page.waitForLoadState("networkidle");
+        await expect(page).toHaveURL(
+          new RegExp(`/${escapeRegExp(locale)}/readme(?:\\?resume=pe)?$`),
+        );
+        await expect(page.getByRole("heading", { name: data.title, exact: true })).toBeVisible();
+        await expect(rail.locator("div[id='/readme'] button[aria-current='page']")).toHaveCount(1);
+        await expect(detailTab).toHaveCount(0);
+        await expect
+          .poll(async () =>
+            (await getHistorySnapshot(page)).some(
+              (item: { path: string }) => item.path === detailPath,
+            ),
+          )
+          .toBe(false);
+      } finally {
+        release();
+        await Promise.all(deliveries);
+      }
+    });
+  }
+
+  test("비활성 탭을 닫아도 현재 문서와 활성 탭은 유지한다", async ({ page }) => {
+    const locale = getTestLocale();
+    const messages = loadMessages(locale);
+    await installHistoryFixture(page, [
+      { path: "/readme", title: "README", isActive: true, lastAccessedAt: Date.now() },
+      { path: "/blog", title: "blog", isActive: false, lastAccessedAt: Date.now() },
+    ]);
+    await visit(page, `/${locale}/readme?resume=pe`);
+    const beforeUrl = page.url();
+    const heading = await page.getByRole("heading").first().textContent();
+    const rail = page.getByTestId("history-tab-rail");
+    const inactiveTab = rail.locator("div[id='/blog']");
+    await expect(inactiveTab.locator("button[aria-current='page']")).toHaveCount(0);
+    await inactiveTab.hover();
+    await inactiveTab
+      .getByRole("button", { name: `${messages.historyTabs.close}: blog`, exact: true })
+      .click();
+    await expect(inactiveTab).toHaveCount(0);
+    await expect(page).toHaveURL(beforeUrl);
+    await expect(page.getByRole("heading").first()).toHaveText(heading!);
+    await expect(rail.locator("div[id='/readme'] button[aria-current='page']")).toHaveCount(1);
+  });
+
   test("FE와 PE 문서는 별개 탭으로 새로고침과 뒤로·앞으로 이동에도 유지한다", async ({
     page,
     request,

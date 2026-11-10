@@ -53,7 +53,7 @@ export const HistoryTabs = ({ children }: TParentNode) => {
     }
 
     // 현재 닫는 탭이 활성화 상태라면 이동할 경로 계산
-    const isActiveTab = item.path === currentPath;
+    const isActiveTab = item.isActive || item.path === currentPath;
 
     if (isActiveTab) {
       const currentIndex = history.findIndex(h => h.path === item.path);
@@ -64,9 +64,10 @@ export const HistoryTabs = ({ children }: TParentNode) => {
         nextTab = history[currentIndex - 1];
       }
 
-      // 이동 (URL 변경 -> useEffect가 감지하여 active 상태 업데이트)
+      // 다음 탭을 활성화하고, 같은 경로에서도 대기 중인 이동을 무효화한다.
       if (nextTab) {
-        router.push(nextTab.path);
+        change(nextTab);
+        if (nextTab.path === currentPath) router.push(nextTab.path);
       } else {
         // 탭이 하나밖에 없는데 닫은 경우 (예: 홈으로 이동)
         router.push("/");

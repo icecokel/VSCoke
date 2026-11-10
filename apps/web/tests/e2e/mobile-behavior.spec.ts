@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { gotoWithRetry, loadMessages, type Locale } from "./test-helpers";
+import { escapeRegExp, gotoWithRetry, loadMessages, type Locale } from "./test-helpers";
+import type { ResumeDocument } from "@/services/resume-service";
 
 test.describe.configure({ mode: "serial" });
 
@@ -16,6 +17,110 @@ const getMobileTestLocale = (): Locale =>
   (process.env.PLAYWRIGHT_LOCALE as Locale | undefined) ?? "ko-KR";
 
 test.describe("모바일 전용 동작", () => {
+  test("탐색기를 키보드로 열고 Escape로 닫으면 트리거에 포커스가 돌아온다", async ({ page }) => {
+    const locale = getMobileTestLocale();
+    const messages = loadMessages(locale);
+    await gotoWithRetry(page, `/${locale}`);
+    const trigger = page.getByTestId("sidebar-trigger-mobile");
+    await expect(trigger).toBeVisible();
+    for (let index = 0; index < 60; index += 1) {
+      if (await trigger.evaluate(element => element === document.activeElement)) break;
+      await page.keyboard.press("Tab");
+    }
+    await expect(trigger).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toBeHidden();
+    await expect(trigger).toBeFocused();
+    await expect(trigger).toHaveAccessibleName(messages.sidebar.explorer);
+  });
+
+  test("탐색기를 포인터로 열고 바깥을 눌러 닫아도 트리거에 포커스가 돌아온다", async ({ page }) => {
+    await gotoWithRetry(page, `/${getMobileTestLocale()}`);
+    const trigger = page.getByTestId("sidebar-trigger-mobile");
+    await trigger.tap();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    const viewport = page.viewportSize()!;
+    await page.touchscreen.tap(viewport.width - 8, viewport.height / 2);
+    await expect(page.getByRole("dialog")).toBeHidden();
+    await expect(trigger).toBeFocused();
+  });
+
+  test("언어 메뉴는 탐색기와 검색에 고정되고 Escape는 메뉴부터 닫는다", async ({
+    page,
+  }, testInfo) => {
+    const locale = getMobileTestLocale();
+    const messages = loadMessages(locale);
+    await gotoWithRetry(page, `/${locale}/readme?resume=fe#career_1`);
+    const trigger = page.getByTestId("sidebar-trigger-mobile");
+    await trigger.tap();
+    const sidebar = page.getByRole("dialog");
+    const language = sidebar.getByRole("button", { name: messages.menu.language, exact: true });
+    await expect(language).toBeInViewport({ ratio: 1 });
+    await page.screenshot({
+      path: testInfo.outputPath("language-explorer.png"),
+      animations: "disabled",
+    });
+    await sidebar.getByRole("button", { name: messages.sidebar.search, exact: true }).tap();
+    await expect(page.getByTestId("blog-dashboard-search-input")).toBeVisible();
+    await expect(language).toBeInViewport({ ratio: 1 });
+    await language.tap();
+    const menu = page.getByRole("menu");
+    await expect(menu.getByRole("menuitem")).toHaveText([
+      messages.common.korean,
+      messages.common.english,
+      messages.common.japanese,
+    ]);
+    await page.screenshot({
+      path: testInfo.outputPath("language-search.png"),
+      animations: "disabled",
+    });
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
+    await expect(sidebar).toBeVisible();
+    await expect(language).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(sidebar).toBeHidden();
+    await expect(trigger).toBeFocused();
+  });
+
+  test("모바일 언어 왕복에서 FE 문서의 경로·query·hash와 쿠키를 유지한다", async ({
+    page,
+    request,
+  }) => {
+    let currentLocale: Locale = "ko-KR";
+    await gotoWithRetry(page, "/ko-KR/readme?resume=fe#career_1");
+    for (const [targetLocale, label] of [
+      ["en-US", "english"],
+      ["ja-JP", "japanese"],
+      ["ko-KR", "korean"],
+    ] as const) {
+      const messages = loadMessages(currentLocale);
+      await page.getByTestId("sidebar-trigger-mobile").tap();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: messages.menu.language, exact: true })
+        .tap();
+      await page.getByRole("menuitem", { name: messages.common[label], exact: true }).tap();
+      await expect(page).toHaveURL(
+        new RegExp(`/${escapeRegExp(targetLocale)}/readme\\?resume=fe#career_1$`),
+      );
+      const { data }: { data: ResumeDocument } = await (
+        await request.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/resume?locale=${targetLocale}&resume=fe`,
+        )
+      ).json();
+      await expect(page.getByRole("heading", { name: data.title, exact: true })).toBeVisible();
+      await expect(page.locator("#career_1")).toBeInViewport();
+      expect(
+        (await page.context().cookies()).find(cookie => cookie.name === "NEXT_LOCALE")?.value,
+      ).toBe(targetLocale);
+      await expect(page.locator("#menubar")).toHaveCount(1);
+      currentLocale = targetLocale;
+    }
+  });
+
   test("브라우저·사이즈별로 트리거 규칙이 맞다", async ({ page }, testInfo) => {
     const locale = getMobileTestLocale();
     const project = MOBILE_VIEWPORTS[testInfo.project.name];
@@ -44,6 +149,14 @@ test.describe("모바일 전용 동작", () => {
 
     await gotoWithRetry(page, `/${locale}/game/wordle`);
     await expect(mobileTrigger).toBeHidden();
+    const messages = loadMessages(locale);
+    await page.getByRole("link", { name: messages.Game.viewOtherGames, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/${escapeRegExp(locale)}/game$`));
+    await mobileTrigger.tap();
+    await expect(
+      page.getByRole("dialog").getByRole("button", { name: messages.menu.language, exact: true }),
+    ).toBeInViewport({ ratio: 1 });
+    await page.keyboard.press("Escape");
 
     await gotoWithRetry(page, `/${locale}/game/sky-drop`);
     await expect(mobileTrigger).toBeVisible();

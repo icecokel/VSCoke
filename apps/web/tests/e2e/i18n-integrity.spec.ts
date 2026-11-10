@@ -338,6 +338,12 @@ test.describe("i18n 무결성", () => {
     await visit(page, `/${currentLocale}/blog`);
 
     const menuBar = page.locator("#menubar");
+    await expect(menuBar).toHaveCount(1);
+    await expect(menuBar.getByRole("button")).toHaveText([
+      currentMessages.menu.file,
+      currentMessages.menu.language,
+      currentMessages.menu.help,
+    ]);
     await menuBar.getByText(currentMessages.menu.language, { exact: true }).click();
     await page.getByRole("menuitem", { name: targetLabel }).click();
 

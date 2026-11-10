@@ -6,6 +6,7 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarRail,
+  SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
 import Icon from "@/components/base-ui/icon";
@@ -13,6 +14,7 @@ import { useExplorer } from "@/hooks/use-explorer";
 import ExplorerItem from "@/components/sidebar/explorer-item";
 import SearchPanel from "@/components/sidebar/search-panel";
 import { useTranslations } from "next-intl";
+import { LanguageMenu } from "@/components/menubar/language-menu";
 
 export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
   const t = useTranslations("sidebar");
@@ -46,7 +48,18 @@ export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
   };
 
   return (
-    <Sidebar collapsible="icon" {...props} className="border-r-0 bg-gray-900 text-gray-100">
+    <Sidebar
+      collapsible="icon"
+      {...props}
+      onCloseAutoFocus={event => {
+        const trigger = document.getElementById("mobile-sidebar-trigger");
+        if (trigger) {
+          event.preventDefault();
+          trigger.focus();
+        }
+      }}
+      className="border-r-0 bg-gray-900 text-gray-100"
+    >
       <div className="flex h-full w-full flex-row overflow-hidden">
         {/* 활동 바 (아이콘) - 고정 너비 */}
         <div className="flex w-[3rem] flex-none flex-col items-center gap-2 border-r border-gray-800 bg-gray-900 py-2 z-20">
@@ -70,8 +83,8 @@ export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
 
         {/* 콘텐츠 패널 (Push) */}
         {(open || (isMobile && openMobile)) && (
-          <SidebarContent className="flex-1 bg-gray-900 border-r border-gray-500 min-w-0">
-            <SidebarGroup className="p-0 h-full">
+          <SidebarContent className="flex-1 overflow-hidden bg-gray-900 border-r border-gray-500 min-w-0">
+            <SidebarGroup className="min-h-0 flex-1 p-0">
               {activeTab === "explorer" && (
                 <div className="flex flex-col h-full overflow-y-auto py-2">
                   <div className="text-xs font-bold text-gray-400 mb-2 px-2">
@@ -104,6 +117,11 @@ export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
                 />
               )}
             </SidebarGroup>
+            {isMobile && (
+              <SidebarFooter className="shrink-0 border-t border-gray-700">
+                <LanguageMenu className="flex min-h-10 w-full items-center text-left" />
+              </SidebarFooter>
+            )}
           </SidebarContent>
         )}
       </div>

@@ -192,11 +192,13 @@ const Sidebar = ({
   collapsible = "offcanvas",
   className,
   children,
+  onCloseAutoFocus,
   ...props
 }: ComponentProps<"div"> & {
   side?: "left" | "right";
   variant?: "sidebar" | "floating" | "inset";
   collapsible?: "offcanvas" | "icon" | "none";
+  onCloseAutoFocus?: ComponentProps<typeof SheetContent>["onCloseAutoFocus"];
 }) => {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
 
@@ -219,6 +221,7 @@ const Sidebar = ({
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
         <SheetContent
+          onCloseAutoFocus={onCloseAutoFocus}
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"

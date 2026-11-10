@@ -6,8 +6,10 @@ import { useGame } from "@/contexts/game-context";
 import { usePathname } from "next/navigation";
 import { PanelLeftIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 
 export const MobileSidebarTrigger = () => {
+  const t = useTranslations("sidebar");
   const { openMobile, setOpenMobile } = useSidebar();
   const isMobile = useIsMobile();
   const { isGamePlaying } = useGame();
@@ -24,6 +26,7 @@ export const MobileSidebarTrigger = () => {
 
   return (
     <Button
+      id="mobile-sidebar-trigger"
       onClick={() => setOpenMobile(true)}
       size="icon"
       className={`fixed right-4 z-50 size-12 rounded-full shadow-lg ${
@@ -32,7 +35,7 @@ export const MobileSidebarTrigger = () => {
       data-testid="sidebar-trigger-mobile"
     >
       <PanelLeftIcon className="size-6" />
-      <span className="sr-only">Toggle Sidebar</span>
+      <span className="sr-only">{t("explorer")}</span>
     </Button>
   );
 };

@@ -12,6 +12,7 @@ import {
 } from "@/lib/wordle/wordle-session";
 
 const MAX_CHALLENGES = 6;
+const wordleErrorToastId = "wordle-error";
 
 export type GameStatus = "playing" | "won" | "lost";
 
@@ -82,12 +83,16 @@ export const useWordle = (): UseWordleReturn => {
       setIsLoading(true);
       setError(null);
       setAnswer("");
+      toast.dismiss(wordleErrorToastId);
       const word = await fetchRandomWord();
-      if (generationRef.current === generation) setAnswer(word.toUpperCase());
+      if (generationRef.current === generation) {
+        setAnswer(word.toUpperCase());
+        toast.dismiss(wordleErrorToastId);
+      }
     } catch (err) {
       if (generationRef.current === generation) {
         setError(err instanceof Error ? err : new Error("Failed to load word"));
-        toast.error(t("apiUnavailable"), { id: "api-unavailable" });
+        toast.error(t("apiUnavailable"), { id: wordleErrorToastId });
       }
     } finally {
       if (generationRef.current === generation) setIsLoading(false);
@@ -152,6 +157,7 @@ export const useWordle = (): UseWordleReturn => {
     else void loadNewWord();
     return () => {
       generationRef.current += 1;
+      toast.dismiss(wordleErrorToastId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -170,7 +176,7 @@ export const useWordle = (): UseWordleReturn => {
 
     // 단어 유효성 검사 (길이)
     if (currentGuess.length !== logic.getWordLength()) {
-      toast.error(t("notEnoughLetters"));
+      toast.error(t("notEnoughLetters"), { id: wordleErrorToastId });
       return;
     }
 
@@ -182,9 +188,10 @@ export const useWordle = (): UseWordleReturn => {
     try {
       const isValid = await checkWord(currentGuess);
       if (generationRef.current !== generation) return;
+      toast.dismiss(wordleErrorToastId);
 
       if (!isValid) {
-        toast.error(t("notInList"));
+        toast.error(t("notInList"), { id: wordleErrorToastId });
         setCurrentGuess(""); // 없는 단어 자동 삭제
         return;
       }
@@ -233,7 +240,7 @@ export const useWordle = (): UseWordleReturn => {
     } catch (err) {
       if (generationRef.current === generation) {
         console.error(err);
-        toast.error(t("apiUnavailable"), { id: "api-unavailable" });
+        toast.error(t("apiUnavailable"), { id: wordleErrorToastId });
       }
     } finally {
       if (generationRef.current === generation) {

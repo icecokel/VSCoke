@@ -14,6 +14,8 @@ import { isIgnoredWordleKey } from "@/lib/wordle/wordle-key-guard";
 import { CustomLink } from "@/components/custom-link";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
+const wordleResultToastId = "wordle-result";
+
 export default function WordlePage() {
   const gameRef = useRef<HTMLElement>(null);
   const tShare = useTranslations("Share");
@@ -29,7 +31,10 @@ export default function WordlePage() {
     resetGame,
     answer,
     isLoading,
+    isValidating,
+    error,
   } = useWordle();
+  const canInput = Boolean(answer) && gameStatus === "playing" && !isLoading && !isValidating;
 
   useEffect(() => {
     gameRef.current?.focus({ preventScroll: true });
@@ -57,12 +62,21 @@ export default function WordlePage() {
   // 게임 종료 시 자동 알림
   useEffect(() => {
     if (gameStatus === "won") {
-      toast.success(tGame("wordleWonTitle"), { description: tGame("wordleWonDescription") });
+      toast.success(tGame("wordleWonTitle"), {
+        id: wordleResultToastId,
+        description: tGame("wordleWonDescription"),
+      });
     } else if (gameStatus === "lost") {
       toast.error(tGame("wordleLostTitle"), {
+        id: wordleResultToastId,
         description: tGame("wordleLostDescription", { answer }),
       });
+    } else {
+      toast.dismiss(wordleResultToastId);
     }
+    return () => {
+      toast.dismiss(wordleResultToastId);
+    };
   }, [gameStatus, answer, tGame]);
 
   return (
@@ -138,6 +152,20 @@ export default function WordlePage() {
                 {tGame("loading")}
               </p>
             </div>
+          ) : !answer && error ? (
+            <div
+              data-testid="wordle-error"
+              className="flex flex-col items-center gap-4 px-4 text-center text-sm text-gray-200"
+            >
+              <p>{tGame("apiUnavailable")}</p>
+              <Button
+                onClick={() => {
+                  void resetGame();
+                }}
+              >
+                {tGame("restart")}
+              </Button>
+            </div>
           ) : (
             <WordleBoard
               guesses={guesses}
@@ -150,7 +178,7 @@ export default function WordlePage() {
 
         {/* Keyboard - 하단 고정 */}
         <footer className={`shrink-0 px-2 ${styles.footer}`}>
-          <WordleKeyboard onKey={handleKeyup} usedKeys={usedKeys} />
+          <WordleKeyboard onKey={handleKeyup} usedKeys={usedKeys} disabled={!canInput} />
         </footer>
       </div>
     </main>

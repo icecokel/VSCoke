@@ -426,7 +426,7 @@ test.describe("Wordle 완료한 판", () => {
       expect(word.getRequestCount()).toBe(1);
       await page.keyboard.type("XXXXX");
       await page.keyboard.press("Enter");
-      await page.getByRole("button", { name: "A", exact: true }).click();
+      await expect(page.getByRole("button", { name: "A", exact: true })).toBeDisabled();
       await expect(board).toHaveText(finishedBoard!);
       expect(checks).toBe(guesses.length);
       await page.getByTestId("wordle-header-restart").click();
@@ -440,3 +440,226 @@ test.describe("Wordle 완료한 판", () => {
     });
   }
 });
+
+test.describe("Wordle 준비와 오류 피드백", () => {
+  test("단어와 검증 응답을 기다리는 동안 화면 키는 비활성이다", async ({ page }) => {
+    const { locale } = await resolveLocaleAndMessages(page);
+    let releaseWord = () => {};
+    let wordStarted = () => {};
+    const wordGate = new Promise<void>(resolve => {
+      releaseWord = resolve;
+    });
+    const wordReady = new Promise<void>(resolve => {
+      wordStarted = resolve;
+    });
+    let releaseCheck = () => {};
+    let checkStarted = () => {};
+    const checkGate = new Promise<void>(resolve => {
+      releaseCheck = resolve;
+    });
+    const checkReady = new Promise<void>(resolve => {
+      checkStarted = resolve;
+    });
+    await page.route("**/wordle/word", async route => {
+      wordStarted();
+      await wordGate;
+      await route.fulfill({ json: { success: true, data: { word: "apple" } } });
+    });
+    await page.route("**/wordle/check", async route => {
+      checkStarted();
+      await checkGate;
+      await route.fulfill({ json: { success: true, data: { exists: true } } });
+    });
+    try {
+      await gotoWithRetry(page, `/${locale}/game/wordle`);
+      await wordReady;
+      const keys = page.getByTestId("wordle-frame").locator("footer button");
+      await expect(keys).toHaveCount(28);
+      await expect(page.getByRole("button", { name: "A", exact: true })).toBeDisabled();
+      await page.keyboard.type("CRANE");
+      releaseWord();
+      await expect(page.getByTestId("wordle-loading")).toBeHidden();
+      const board = page.getByTestId("wordle-board");
+      await expect(board).toHaveText("");
+      await expect(page.getByRole("button", { name: "A", exact: true })).toBeEnabled();
+      await page.keyboard.type("BREAD");
+      await page.keyboard.press("Enter");
+      await checkReady;
+      await expect(page.getByRole("button", { name: "A", exact: true })).toBeDisabled();
+      await page.keyboard.press("Backspace");
+      releaseCheck();
+      await expect(board.locator(".animate-flip")).toHaveCount(5);
+      await expect(board).toHaveText("BREAD");
+      await expect(page.getByRole("button", { name: "A", exact: true })).toBeEnabled();
+    } finally {
+      releaseWord();
+      releaseCheck();
+    }
+  });
+
+  test("최초 단어 실패 안내는 알림 종료 후에도 남고 재시작으로 복구한다", async ({ page }) => {
+    const { locale, messages } = await resolveLocaleAndMessages(page);
+    let fails = true;
+    await page.route("**/wordle/word", route =>
+      route.fulfill(
+        fails ? { status: 503, json: {} } : { json: { success: true, data: { word: "apple" } } },
+      ),
+    );
+    await page.clock.install();
+    await gotoWithRetry(page, `/${locale}/game/wordle`);
+    const apiToast = page
+      .locator("[data-sonner-toast]")
+      .filter({ hasText: messages.Game.apiUnavailable });
+    await expect(apiToast).toBeVisible();
+    await page.clock.runFor(6000);
+    await expect(apiToast).toHaveCount(0);
+    const error = page.getByTestId("wordle-error");
+    await expect(error).toContainText(messages.Game.apiUnavailable);
+    await expect(page.getByRole("button", { name: "A", exact: true })).toBeDisabled();
+    fails = false;
+    await error.getByRole("button").click();
+    await expect(error).toHaveCount(0);
+    await expect(page.getByTestId("wordle-loading")).toBeHidden();
+    await expect(page.getByRole("button", { name: "A", exact: true })).toBeEnabled();
+    await page.getByRole("button", { name: "A", exact: true }).click();
+    await expect(page.getByTestId("wordle-board")).toHaveText("A");
+    await expect(apiToast).toHaveCount(0);
+  });
+
+  test("단어 검증 실패는 입력을 유지하고 재Enter 성공 후 오류 알림을 지운다", async ({ page }) => {
+    const { locale, messages } = await resolveLocaleAndMessages(page);
+    await mockWordleWord(page);
+    let fails = true;
+    let checks = 0;
+    await page.route("**/wordle/check", route => {
+      checks += 1;
+      return route.fulfill(
+        fails ? { status: 503, json: {} } : { json: { success: true, data: { exists: true } } },
+      );
+    });
+    await page.clock.install();
+    await gotoWithRetry(page, `/${locale}/game/wordle`);
+    await expect(page.getByTestId("wordle-loading")).toBeHidden();
+    await page.keyboard.type("BREAD");
+    await page.keyboard.press("Enter");
+    const apiToast = page
+      .locator("[data-sonner-toast]")
+      .filter({ hasText: messages.Game.apiUnavailable });
+    await expect(apiToast).toBeVisible();
+    await expect(page.getByTestId("wordle-board")).toHaveText("BREAD");
+    await expect(page.getByRole("button", { name: "Enter", exact: true })).toBeEnabled();
+    await expect(page.getByTestId("wordle-error")).toHaveCount(0);
+    await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 100);
+    fails = false;
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("wordle-board").locator(".animate-flip")).toHaveCount(5);
+    await page.clock.runFor(50);
+    await expect(apiToast).toHaveAttribute("data-removed", "true");
+    await page.clock.runFor(300);
+    await expect(apiToast).toHaveCount(0);
+    expect(checks).toBe(2);
+    await expect(page.getByRole("button", { name: "A", exact: true })).toBeEnabled();
+  });
+
+  test("재시작과 이탈은 Wordle 결과 알림만 지우고 다른 알림은 유지한다", async ({ page }) => {
+    const { locale, messages } = await resolveLocaleAndMessages(page);
+    await page.addInitScript(() => {
+      sessionStorage.setItem(
+        "vscoke:wordle-session",
+        JSON.stringify({ answer: "APPLE", guesses: ["APPLE"], currentGuess: "", startedAt: 1000 }),
+      );
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: { writeText: async () => {} },
+      });
+      Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
+    });
+    const word = await mockWordleWord(page);
+    await page.route("**/wordle/check", route =>
+      route.fulfill({ json: { success: true, data: { exists: true } } }),
+    );
+    await page.clock.install();
+    await gotoWithRetry(page, `/${locale}/game/wordle`);
+    const resultToast = page
+      .locator("[data-sonner-toast]")
+      .filter({ hasText: messages.Game.wordleWonTitle });
+    await expect(resultToast).toBeVisible();
+    await page.getByTestId("share-link-button").click();
+    const copied = page.locator("[data-sonner-toast]").filter({ hasText: messages.Share.copied });
+    await expect(copied).toBeVisible();
+    await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 100);
+    await page.getByTestId("wordle-header-restart").click();
+    await expect.poll(() => word.getRequestCount()).toBe(1);
+    await expect(page.getByTestId("wordle-loading")).toBeHidden();
+    await page.clock.runFor(50);
+    await expect(resultToast).toHaveAttribute("data-removed", "true");
+    await page.clock.runFor(300);
+    await expect(resultToast).toHaveCount(0);
+    await expect(copied).toBeVisible();
+    await page.keyboard.type("APPLE");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("wordle-result")).toBeVisible();
+    await page.clock.runFor(100);
+    await expect(resultToast).toBeVisible();
+    await page.getByRole("link", { name: messages.Game.viewOtherGames, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/${escapeRegExp(locale)}/game$`));
+    await page.clock.runFor(50);
+    await expect(resultToast).toHaveAttribute("data-removed", "true");
+    await page.clock.runFor(300);
+    await expect(resultToast).toHaveCount(0);
+    await expect(copied).toBeVisible();
+  });
+});
+
+for (const hasTouch of [false, true]) {
+  test.describe(`Wordle 960px 완료판 높이 경계 ${hasTouch ? "touch" : "fine"}`, () => {
+    test.use({ hasTouch, isMobile: hasTouch });
+    test("500/501/550/600/601px에서 타일과 결과·키를 볼 수 있다", async ({ page }, testInfo) => {
+      const { locale, messages } = await resolveLocaleAndMessages(page);
+      await page.addInitScript(() =>
+        sessionStorage.setItem(
+          "vscoke:wordle-session",
+          JSON.stringify({
+            answer: "APPLE",
+            guesses: ["APPLE"],
+            currentGuess: "",
+            startedAt: 1000,
+          }),
+        ),
+      );
+      const word = await mockWordleWord(page);
+      await page.clock.install();
+      await page.setViewportSize({ width: 960, height: 500 });
+      await gotoWithRetry(page, `/${locale}/game/wordle`);
+      const toast = page
+        .locator("[data-sonner-toast]")
+        .filter({ hasText: messages.Game.wordleWonTitle });
+      await expect(toast).toBeVisible();
+      await page.clock.runFor(6000);
+      await expect(toast).toHaveCount(0);
+      for (const height of [500, 501, 550, 600, 601]) {
+        await page.setViewportSize({ width: 960, height });
+        await page.screenshot({
+          path: testInfo.outputPath(`wordle-960x${height}.png`),
+          animations: "disabled",
+        });
+        const tiles = page.getByTestId("wordle-board").getByRole("img");
+        const minTile = await tiles.evaluateAll(elements =>
+          Math.min(...elements.map(element => element.getBoundingClientRect().width)),
+        );
+        expect(minTile).toBeGreaterThanOrEqual(24);
+        await expect(page.getByTestId("wordle-result")).toBeInViewport({ ratio: 1 });
+        for (const control of await page
+          .getByTestId("wordle-frame")
+          .locator("header a, header button, footer button")
+          .all())
+          await expect(control).toBeInViewport({ ratio: 1 });
+        testInfo.annotations.push({
+          type: "wordle-boundary",
+          description: JSON.stringify({ hasTouch, height, minTile }),
+        });
+      }
+      expect(word.getRequestCount()).toBe(0);
+    });
+  });
+}

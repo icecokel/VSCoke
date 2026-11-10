@@ -6,9 +6,10 @@ import styles from "./wordle.module.css";
 interface WordleKeyboardProps {
   onKey: (key: string) => void;
   usedKeys: Record<string, LetterStatus>;
+  disabled: boolean;
 }
 
-export function WordleKeyboard({ onKey, usedKeys }: WordleKeyboardProps) {
+export function WordleKeyboard({ onKey, usedKeys, disabled }: WordleKeyboardProps) {
   const rows = [
     ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
@@ -28,6 +29,7 @@ export function WordleKeyboard({ onKey, usedKeys }: WordleKeyboardProps) {
               <button
                 key={key}
                 aria-label={key}
+                disabled={disabled}
                 onClick={event => {
                   // 포인터 조작 뒤에는 바로 물리 키보드로 이어간다. Tab·Enter·Space 포커스는 보존한다.
                   if (event.detail > 0) event.currentTarget.blur();
@@ -35,11 +37,11 @@ export function WordleKeyboard({ onKey, usedKeys }: WordleKeyboardProps) {
                 }}
                 className={cn(
                   styles.key,
-                  "flex h-full min-h-9 cursor-pointer items-center justify-center rounded font-bold uppercase transition-all select-none active:scale-95",
+                  "flex h-full min-h-9 cursor-pointer items-center justify-center rounded font-bold uppercase transition-all select-none enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-50",
                   "text-xs sm:text-sm",
                   isSpecial ? "flex-[1.25] px-1 sm:px-2" : "flex-1",
                   // 기본 배경색
-                  !status && "bg-gray-700 hover:bg-gray-600 text-white",
+                  !status && "bg-gray-700 enabled:hover:bg-gray-600 text-white",
                   // 상태별 배경색
                   status === "absent" && "bg-zinc-600 text-white",
                   status === "present" && "bg-yellow-600 text-white",

@@ -86,7 +86,7 @@ test.describe("오류/네트워크 장애 fallback", () => {
     await expect(page.getByText(messages.Game.leaderboardEmpty)).toBeVisible({ timeout: 15000 });
   });
 
-  test("Wordle 단어 API 실패 시 서버 이전 안내 토스트를 노출한다", async ({ page }) => {
+  test("Wordle 단어 API 실패 시 판 영역에 연결 안내를 유지한다", async ({ page }) => {
     const { locale, messages } = await resolveLocaleAndMessages(page);
 
     await page.route("**/wordle/word", async route => {
@@ -104,11 +104,11 @@ test.describe("오류/네트워크 장애 fallback", () => {
         name: new RegExp(`^${escapeRegExp(messages.Game.wordleTitle)}$`),
       }),
     ).toBeVisible();
-    await expect(page.getByText(messages.Game.apiUnavailable)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId("wordle-error")).toContainText(messages.Game.apiUnavailable);
     await expectWordleKeyboardButtons(page);
   });
 
-  test("Wordle 단어 검증 API 실패 시 서버 이전 안내 토스트를 노출한다", async ({ page }) => {
+  test("Wordle 단어 검증 API 실패 시 연결 안내 토스트를 노출한다", async ({ page }) => {
     const { locale, messages } = await resolveLocaleAndMessages(page);
 
     await page.route("**/wordle/word", async route => {

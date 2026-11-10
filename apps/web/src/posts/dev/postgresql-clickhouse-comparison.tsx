@@ -110,7 +110,7 @@ const PostgreSqlClickHouseComparisonPost = () => (
         {t("records.summary")}
       </summary>
       {benchmarkQueries.map(query => (
-        <PostTable key={query} data-testid={`benchmark-table-${query}`}>
+        <PostTable key={query} className="min-w-[36rem]" data-testid={`benchmark-table-${query}`}>
           <caption className="border-b border-border bg-muted/40 px-4 py-3 text-left text-sm font-medium">
             {t("records.caption", { query: t(`records.${query}`) })}
           </caption>
@@ -119,10 +119,10 @@ const PostgreSqlClickHouseComparisonPost = () => (
               <PostTableHeader scope="col" className="whitespace-nowrap">
                 {t("records.range")}
               </PostTableHeader>
-              <PostTableHeader scope="col" className="text-right">
+              <PostTableHeader scope="col" className="whitespace-nowrap text-right">
                 {benchmarkDatabaseNames.postgres}
               </PostTableHeader>
-              <PostTableHeader scope="col" className="text-right">
+              <PostTableHeader scope="col" className="whitespace-nowrap text-right">
                 {benchmarkDatabaseNames.clickhouse}
               </PostTableHeader>
               <PostTableHeader scope="col" className="whitespace-nowrap">
@@ -133,13 +133,16 @@ const PostgreSqlClickHouseComparisonPost = () => (
           <PostTableBody>
             {benchmarkMeasurements[query].map(row => (
               <PostTableRow key={row.rows}>
-                <PostTableHeader scope="row" className="font-mono font-normal tabular-nums">
+                <PostTableHeader
+                  scope="row"
+                  className="whitespace-nowrap font-mono font-normal tabular-nums"
+                >
                   {row.rows.toLocaleString("ko-KR")}
                 </PostTableHeader>
-                <PostTableCell className="text-right font-mono tabular-nums">
+                <PostTableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                   {row.postgres.toFixed(3)}
                 </PostTableCell>
-                <PostTableCell className="text-right font-mono tabular-nums">
+                <PostTableCell className="whitespace-nowrap text-right font-mono tabular-nums">
                   {row.clickhouse.toFixed(3)}
                 </PostTableCell>
                 <PostTableCell className="whitespace-nowrap">

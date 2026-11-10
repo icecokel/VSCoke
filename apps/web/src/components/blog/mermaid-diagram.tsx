@@ -39,6 +39,8 @@ export const MermaidDiagram = ({ chart, description }: MermaidDiagramProps) => {
             clusterBorder: token("--border"),
             fontFamily: style.fontFamily,
           },
+          flowchart: { useMaxWidth: false },
+          sequence: { useMaxWidth: false },
           securityLevel: "strict",
         });
         const rendered = await mermaid.render(`mermaid-${diagramId}`, chart);

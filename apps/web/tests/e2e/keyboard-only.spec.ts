@@ -14,6 +14,69 @@ import {
 test.describe.configure({ mode: "serial" });
 
 test.describe("키보드 전용 시나리오", () => {
+  test.describe("사이드바 검색", () => {
+    test.beforeEach(async ({ page }) => {
+      const { messages } = await resolveLocaleAndMessages(page);
+      await mockWordleWord(page);
+      await page.getByRole("button", { name: messages.sidebar.search, exact: true }).click();
+      await expect(page.getByTestId("blog-dashboard-search-input")).toBeVisible();
+      await page.clock.install();
+      await page.clock.pauseAt(await page.evaluate(() => Date.now()));
+    });
+
+    test("추천 목록에서 입력 직후 Enter를 누르면 현재 검색 결과를 연다", async ({ page }) => {
+      const locale = (process.env.PLAYWRIGHT_LOCALE as Locale | undefined) ?? "ko-KR";
+      const searchInput = page.getByTestId("blog-dashboard-search-input");
+
+      await searchInput.fill("wordle");
+      await searchInput.press("Enter");
+
+      await expect(page).toHaveURL(new RegExp(`/${escapeRegExp(locale)}/game/wordle$`));
+    });
+
+    test("검색어를 바꾸면 이전 선택을 초기화하고 새 결과를 연다", async ({ page }) => {
+      const locale = (process.env.PLAYWRIGHT_LOCALE as Locale | undefined) ?? "ko-KR";
+      const searchInput = page.getByTestId("blog-dashboard-search-input");
+
+      await searchInput.fill("blog");
+      await page.clock.runFor(180);
+      await searchInput.press("ArrowDown");
+      await searchInput.fill("puzzle");
+      await searchInput.press("Enter");
+
+      await expect(page).toHaveURL(new RegExp(`/${escapeRegExp(locale)}/game/sky-drop$`));
+    });
+
+    test("결과가 없는 검색어를 입력한 직후 Enter를 눌러도 이동하지 않는다", async ({ page }) => {
+      const searchInput = page.getByTestId("blog-dashboard-search-input");
+      const beforeUrl = page.url();
+
+      await searchInput.fill("no-matching-search-result-7391");
+      await searchInput.press("Enter");
+
+      await expect(page.locator("[data-slot='sidebar-content'] li > button")).toHaveCount(0);
+      await expect(page).toHaveURL(beforeUrl);
+    });
+
+    test("IME 조합 중 Enter와 화살표·Escape는 검색을 조작하지 않는다", async ({ page }) => {
+      const searchInput = page.getByTestId("blog-dashboard-search-input");
+      const beforeUrl = page.url();
+
+      await searchInput.fill("puzzle");
+      await page.clock.runFor(180);
+      for (const key of ["ArrowDown", "ArrowUp", "Escape", "Enter"]) {
+        await searchInput.dispatchEvent("keydown", { key, isComposing: true });
+      }
+      await searchInput.dispatchEvent("keydown", { key: "Enter", keyCode: 229 });
+
+      await expect(searchInput).toHaveValue("puzzle");
+      await expect(page).toHaveURL(beforeUrl);
+      await expect(page.locator("[data-slot='sidebar-content'] li > button").first()).toHaveClass(
+        /bg-blue-500\/20/,
+      );
+    });
+  });
+
   test("히스토리 탭을 전환하고 닫을 수 있다", async ({ page }) => {
     const locale = (process.env.PLAYWRIGHT_LOCALE as Locale | undefined) ?? "ko-KR";
     const messages = loadMessages(locale);

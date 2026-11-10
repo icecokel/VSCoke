@@ -31,28 +31,25 @@ const SearchPanel = ({ onNavigate }: SearchPanelProps) => {
   const router = useCustomRouter();
   const searchIndex = useSearchIndex();
   const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
+  const trimmedQuery = query.trim();
 
   useEffect(() => {
+    if (!trimmedQuery) return;
+
     const timeoutId = setTimeout(() => {
-      setDebouncedQuery(query.trim());
+      void trackUsageEvent("search_used", "site_search");
     }, 180);
 
     return () => clearTimeout(timeoutId);
-  }, [query]);
+  }, [trimmedQuery]);
 
   const results = useMemo(() => {
-    if (!debouncedQuery) {
+    if (!trimmedQuery) {
       return getRecommendedItems(searchIndex, 6);
     }
-    return searchItems(searchIndex, debouncedQuery, 40);
-  }, [debouncedQuery, searchIndex]);
-
-  useEffect(() => {
-    setActiveIndex(0);
-    if (debouncedQuery) void trackUsageEvent("search_used", "site_search");
-  }, [debouncedQuery]);
+    return searchItems(searchIndex, trimmedQuery, 40);
+  }, [trimmedQuery, searchIndex]);
 
   const handleNavigate = (item: SearchItem) => {
     router.push(item.path, { title: item.title });
@@ -60,8 +57,11 @@ const SearchPanel = ({ onNavigate }: SearchPanelProps) => {
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
+
     if (e.key === "Escape") {
       setQuery("");
+      setActiveIndex(0);
       return;
     }
 
@@ -90,14 +90,17 @@ const SearchPanel = ({ onNavigate }: SearchPanelProps) => {
     }
   };
 
-  const showRecommended = debouncedQuery.length === 0;
+  const showRecommended = trimmedQuery.length === 0;
 
   return (
     <div className="flex h-full min-h-0 flex-col px-3 py-2">
       <div className="relative">
         <Input
           value={query}
-          onChange={e => setQuery(e.target.value)}
+          onChange={e => {
+            setQuery(e.target.value);
+            setActiveIndex(0);
+          }}
           onKeyDown={handleKeyDown}
           aria-label={t("searchPlaceholder")}
           data-testid="blog-dashboard-search-input"

@@ -1,21 +1,11 @@
-import {
-  buildResumeChatPrompt,
-  getResumeChatInstructions,
-} from './resume-chat-prompt';
-import type { ChatAnswerRequest, ChatProvider } from './chat-provider';
 import type { EmbeddingProvider, EmbeddingResult } from './embedding-provider';
 import {
   type ResumeRagConfig,
-  requireOpenAiCompatibleChatModelConfig,
   requireEmbeddingModelConfig,
 } from '../resume-rag.config';
 
 type EmbeddingResponse = {
   data?: Array<{ embedding?: unknown }>;
-};
-
-type ChatResponse = {
-  choices?: Array<{ message?: { content?: unknown } }>;
 };
 
 const normalizeBaseUrl = (baseUrl: string): string =>
@@ -37,9 +27,7 @@ const getBaseProviderConfig = (
   };
 };
 
-export class OpenAiCompatibleProvider
-  implements EmbeddingProvider, ChatProvider
-{
+export class OpenAiCompatibleProvider implements EmbeddingProvider {
   constructor(private readonly config: ResumeRagConfig) {}
 
   async embed(input: string): Promise<EmbeddingResult> {
@@ -95,48 +83,5 @@ export class OpenAiCompatibleProvider
       dimensions: embeddingConfig.embeddingDimensions,
       vector: numericVector,
     };
-  }
-
-  async answer(request: ChatAnswerRequest): Promise<string> {
-    const chatConfig = requireOpenAiCompatibleChatModelConfig(this.config);
-    const baseConfig = getBaseProviderConfig(this.config);
-
-    const response = await fetch(
-      `${normalizeBaseUrl(baseConfig.baseUrl)}/chat/completions`,
-      {
-        signal: AbortSignal.timeout(this.config.codexTimeoutMs),
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${baseConfig.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: chatConfig.chatModel,
-          temperature: 0.2,
-          messages: [
-            {
-              role: 'system',
-              content: getResumeChatInstructions(request),
-            },
-            {
-              role: 'user',
-              content: buildResumeChatPrompt(request),
-            },
-          ],
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error(`Chat provider responded with ${response.status}`);
-    }
-
-    const json = (await response.json()) as ChatResponse;
-    const content = json.choices?.[0]?.message?.content;
-    if (typeof content !== 'string' || !content.trim()) {
-      throw new Error('Chat provider returned an empty answer');
-    }
-
-    return content.trim();
   }
 }

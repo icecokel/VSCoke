@@ -1,5 +1,5 @@
 import { LocalE5EmbeddingProvider } from './local-e5-embedding.provider';
-import { CodexAppServerProvider } from './codex-app-server.provider';
+import { ClaudeProvider } from './claude.provider';
 import { OpenAiCompatibleProvider } from './open-ai-compatible.provider';
 import type { ChatProvider } from './chat-provider';
 import type { EmbeddingProvider } from './embedding-provider';
@@ -64,12 +64,8 @@ export const createEmbeddingProvider = (
 };
 
 export const createChatProvider = (config: ResumeRagConfig): ChatProvider => {
-  if (config.chatProvider === 'openai-compatible') {
-    return new OpenAiCompatibleProvider(config);
-  }
-
-  if (config.chatProvider === 'codex-app-server') {
-    return new CodexAppServerProvider(config);
+  if (config.chatProvider === 'claude') {
+    return new ClaudeProvider(config);
   }
 
   return new MissingChatProvider(config);

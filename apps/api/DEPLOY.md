@@ -40,13 +40,23 @@ workflow의 `workflow_dispatch`를 사용하고, 완료 뒤 `pnpm smoke:api:remo
 4. 공개 health와 JEV 상태를 확인합니다. `JEV_API_KEY`가 비어 있으면 JEV 게임은 숨겨집니다.
 
 `NODE_ENV=production`, `DB_SYNCHRONIZE=false`와 DB·Google 인증 필수값을 포함합니다. Docker
-운영 필수값(`DB_HOST=postgres`, `RAG_CODEX_APP_SERVER_URL=ws://host.docker.internal:14561` 등)은
+운영 필수값(`DB_HOST=postgres`, `ANTHROPIC_API_KEY` 등)은
 [Mac mini 초기 준비](../../docs/deployment-and-env.md#mac-mini-초기-준비)의 표를 따릅니다.
 개발 인증 우회와 테스트 토큰은 제외합니다. 비밀값을 명령 인자, Git 파일 또는 로그에
 남기지 않습니다. 컨테이너 진입점은 dotenv를 셸로 실행하지 않고 파싱해 자식 프로세스에 전달합니다.
 
 Resume RAG와 메인 채팅 환경 변수는
 [현재 배포·검증 기준](../../docs/main-chat-ai-usage-guide.md#6-배포와-검증)을 따릅니다.
+
+### Claude API 전환 전 필수 작업
+
+이 코드를 배포하기 전에 `API_ENV_PRODUCTION`의 `RAG_CHAT_PROVIDER`를 `claude`,
+`RAG_CHAT_MODEL`을 `claude-sonnet-5-5`로 **교체**하고 유효한 `ANTHROPIC_API_KEY`와
+`RAG_CHAT_TIMEOUT_MS=45000`을 설정합니다. 기존 provider/model 값이 남으면 기본값이
+적용되지 않아 채팅이 실패합니다. `RAG_CODEX_*`는 제거하고 임베딩·DB 설정은 유지합니다.
+Secret 변경 후 workflow를 실행해야 컨테이너에 반영됩니다. 로컬 `.env` 변경만으로 운영이
+바뀌지 않습니다. 배포 후 첫 질문과 후속 질문을 확인하며 Codex app-server는 더 이상
+VSCoke 답변 생성의 필수 서비스가 아닙니다.
 
 ### 현재 릴리스 구성과 실행 순서
 
@@ -190,7 +200,7 @@ restore해 사용합니다.
 
 ## 4. Ubuntu host에서 Mac mini Docker로 전환
 
-한 번만 수행하는 전환 절차입니다. 사전 준비(OrbStack, runner, Codex app-server, cloudflared, Secret 갱신)는
+한 번만 수행하는 전환 절차입니다. 사전 준비(OrbStack, runner, cloudflared, Secret 갱신)는
 [Mac mini 초기 준비](../../docs/deployment-and-env.md#mac-mini-초기-준비)를 먼저 마칩니다.
 
 1. Ubuntu host에서 최종 backup을 만들어 Mac mini의 `backups/`로 옮깁니다. Ubuntu PostgreSQL은 18이라

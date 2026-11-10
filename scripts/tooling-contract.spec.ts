@@ -129,6 +129,7 @@ test("운영 환경은 Secret으로 교체되고 비밀값과 셸 문자를 그�
     "DB_DATABASE=fixture",
     "GOOGLE_CLIENT_ID=fixture",
     "JEV_API_KEY=fixture-jev-key",
+    "ANTHROPIC_API_KEY=fixture-claude-key",
   ].join("\n");
   const env = {
     ...process.env,
@@ -185,6 +186,7 @@ test("운영 환경은 Secret으로 교체되고 비밀값과 셸 문자를 그�
       const assert = require("node:assert/strict");
       assert.equal(process.env.DB_PASSWORD, ${JSON.stringify(password)});
       assert.equal(process.env.JEV_API_KEY, "fixture-jev-key");
+      assert.equal(process.env.ANTHROPIC_API_KEY, "fixture-claude-key");
       assert.equal(process.env.API_ENV_PRODUCTION, undefined);
       console.log("passed");
     `,

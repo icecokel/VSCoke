@@ -103,7 +103,6 @@ mac-mini
 | `vscoke-api-api-1`, `vscoke-api-postgres-1` | `running (healthy)` | `restart: unless-stopped`로 OrbStack 시작 시 복구된다   |
 | `actions.runner.icecokel-VSCoke.*` launchd  | 실행 중             | 다른 저장소 runner와 같은 `svc.sh` 설치 방식            |
 | `cloudflared` (`brew services`)             | `started`           | `api.icecoke.kr` 터널, ingress `http://localhost:$PORT` |
-| Codex app-server launchd                    | 실행 중             | `codex app-server --listen ws://127.0.0.1:14561`        |
 
 Docker 운영 기준:
 
@@ -111,7 +110,7 @@ Docker 운영 기준:
 - PostgreSQL 데이터는 named volume `vscoke-api_postgres-data`에 있다. 컨테이너를 지워도 volume을 지우지 않는 한 데이터는 남는다. `docker compose down --volumes`는 운영에서 사용하지 않는다.
 - 로그는 호스트 `$API_DEPLOY_DIR/logs`에 bind mount되며 `rsync --delete`가 보존한다.
 - 로컬 E5 임베딩 캐시는 named volume `vscoke-api_embedding-cache`를 `/app/.cache/embeddings`에 mount한다.
-- Codex app-server는 컨테이너가 아니라 호스트 loopback에서 실행하고, 컨테이너는 `host.docker.internal`로 접근한다.
+- 답변 생성은 API 컨테이너에서 공식 Claude API로 연결한다. Codex CLI 로그인·호스트 listener는 필요하지 않다.
 - 컨테이너는 Docker 게이트웨이를 거쳐 요청을 받으므로 compose가 `TRUST_PROXY=loopback, uniquelocal`을 주입한다. 이 값이 없으면 모든 요청이 게이트웨이 IP로 보여 rate limit이 한 사용자로 묶인다.
 
 #### Mac mini 초기 준비
@@ -121,7 +120,7 @@ Docker 운영 기준:
 1. OrbStack 설치 후 `orb config set app.start_at_login true`로 재부팅 복구를 켠다.
 2. `mkdir -p /Users/smlee/projects/vscoke-api`를 만든다. 다른 경로를 쓰면 repository variable `API_DEPLOY_DIR`를 같은 값으로 설정한다.
 3. GitHub **Settings → Actions → Runners → New self-hosted runner**에서 macOS arm64 runner를 받아 설치한다. 이름은 `vscoke-api-mac-mini`, label은 `vscoke-api`, `mac-mini`를 추가한다. `./svc.sh install && ./svc.sh start`로 launchd 서비스로 등록한다.
-4. Codex CLI에 로그인한 뒤 `codex app-server --listen ws://127.0.0.1:14561`을 launchd로 상시 실행한다. `RAG_CODEX_CWD`에 지정한 작업 경로를 미리 만든다.
+4. Claude API 키를 발급해 `API_ENV_PRODUCTION`의 `ANTHROPIC_API_KEY`에 서버 전용으로 등록한다.
 5. Cloudflare Zero Trust에서 Mac mini용 tunnel을 만들고 `api.icecoke.kr` public hostname을 `http://localhost:3000`으로 연결한다. cloudflared를 `brew services start cloudflared`로 실행한다. 기존 Ubuntu tunnel의 `api.icecoke.kr` route는 전환 시점에 제거한다.
 6. Repository Secret `API_ENV_PRODUCTION`을 Docker 기준으로 갱신한다. 아래 표의 값이 다르면 배포가 실패하거나 AI 답변이 동작하지 않는다.
 
@@ -130,9 +129,16 @@ Docker 운영 기준:
 | `DB_HOST`                       | `postgres`                           | compose 네트워크의 서비스 이름                                                                                                            |
 | `DB_PORT`                       | `5432`                               | 컨테이너 내부 포트. 호스트에 publish하지 않는다                                                                                           |
 | `PORT`                          | `3000` 또는 cloudflared ingress 포트 | compose가 같은 값으로 호스트 loopback에 publish한다                                                                                       |
-| `RAG_CODEX_APP_SERVER_URL`      | `ws://host.docker.internal:14561`    | Codex app-server는 호스트에서 실행된다                                                                                                    |
-| `RAG_CODEX_CWD`                 | 호스트의 sandbox 경로                | Codex 프로세스가 호스트에서 읽는다                                                                                                        |
+| `RAG_CHAT_PROVIDER`             | `claude`                             | 기존 `codex-app-server` 값을 교체한다                                                                                                     |
+| `RAG_CHAT_MODEL`                | `claude-sonnet-5-5`                  | 기존 Codex 모델 값을 교체한다                                                                                                             |
+| `ANTHROPIC_API_KEY`             | 유효한 서버 전용 키                  | Claude 답변 생성·후속 질문 재작성                                                                                                         |
+| `RAG_CHAT_TIMEOUT_MS`           | `45000`                              | 호출별 timeout이며 자동 재시도는 하지 않는다                                                                                              |
 | `RAG_LOCAL_EMBEDDING_CACHE_DIR` | `/app/.cache/embeddings`             | named volume mount 경로. 최초 배포는 volume이 비어 있으므로 `RAG_LOCAL_EMBEDDING_LOCAL_FILES_ONLY=false`로 모델을 받은 뒤 `true`로 바꾼다 |
+
+기존 운영 Secret에는 `RAG_CHAT_PROVIDER`와 `RAG_CHAT_MODEL`이 남아 있을 수 있다. Claude 전환
+코드를 배포하기 전에 두 값을 위 표처럼 **교체**하고 `ANTHROPIC_API_KEY`를 추가해야 한다.
+기존 값은 기본값보다 우선하므로 키만 추가하면 채팅이 실패할 수 있다. `RAG_CODEX_*`는 제거하고
+임베딩 설정은 유지한다. Secret 수정 후 배포 workflow를 실행해야 적용된다.
 
 전환 절차(DB 이관 포함)는 [API 배포 가이드](../apps/api/DEPLOY.md#4-ubuntu-host에서-mac-mini-docker로-전환)를 따른다.
 

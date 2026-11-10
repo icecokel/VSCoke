@@ -43,12 +43,12 @@ PORT="$PORT" node -e "fetch('http://127.0.0.1:' + process.env.PORT + '/health').
 ```bash
 cd /Users/smlee/projects/vscoke-api
 docker compose ps
-launchctl list | grep -E 'actions.runner.icecokel-VSCoke|codex'
+launchctl list | grep actions.runner.icecokel-VSCoke
 brew services info cloudflared
 ```
 
-기대값은 `vscoke-api-api-1`, `vscoke-api-postgres-1`이 `running (healthy)`, VSCoke runner와 Codex
-app-server launchd 항목이 있고, cloudflared가 `started`다.
+기대값은 `vscoke-api-api-1`, `vscoke-api-postgres-1`이 `running (healthy)`, VSCoke runner
+launchd 항목이 있고, cloudflared가 `started`다.
 
 ## 웹 배포 실패
 
@@ -145,17 +145,20 @@ curl -fsS http://127.0.0.1:3000/health
 OrbStack이 꺼져 있으면 `docker` 명령 자체가 실패한다. OrbStack 앱을 실행하면 `restart: unless-stopped`
 컨테이너가 자동으로 복구된다. `orb config get app.start_at_login`이 `true`인지 확인한다.
 
-## Codex app-server 장애
+## Claude 답변 생성 장애
 
-이력 질문·메인 채팅 답변이 timeout이나 공급자 오류로 실패하고 health는 정상이면 호스트 Codex app-server를
-확인한다. API 컨테이너는 `ws://host.docker.internal:14561`로 접근한다.
+이력 질문·메인 채팅 답변이 timeout이나 공급자 오류로 실패하고 health는 정상이면 API의
+`chat.answer` 로그에서 stage가 `query-rewrite`인지 `answer`인지 확인한다. 질문·대화·키 원문을
+로그에 추가하지 않는다. upstream 오류 원문은 API 응답에 포함하지 않는다.
 
-```bash
-launchctl list | grep codex
-lsof -nP -iTCP:14561 -sTCP:LISTEN
-```
+1. 운영 Secret의 `RAG_CHAT_PROVIDER=claude`, `RAG_CHAT_MODEL=claude-sonnet-5-5`와
+   `ANTHROPIC_API_KEY` 설정 여부를 확인한다. 이전 Codex 값이 남아 있으면 교체한다.
+2. Anthropic Console에서 키 유효성, 크레딧·요청 한도와 모델 접근 권한을 확인한다.
+3. 컨테이너에서 `https://api.anthropic.com`으로 HTTPS 연결이 가능한지 확인한다.
+4. `RAG_CHAT_TIMEOUT_MS` 기본값은 45000이며 자동 재시도하지 않는다. 후속 질문에는
+   재작성·답변 두 번의 호출이 있을 수 있다. 키·모델 변경은 Secret 수정 후 재배포한다.
 
-listener가 없으면 launchd 항목을 다시 올린다. Codex 로그인 만료는 Mac mini에서 `codex login`으로 갱신한다.
+Codex app-server나 CLI 로그인은 현재 답변 생성 경로에 사용하지 않는다.
 
 ## FE·BE 오류 추적
 

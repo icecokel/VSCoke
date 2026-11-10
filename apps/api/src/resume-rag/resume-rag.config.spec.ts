@@ -1,20 +1,19 @@
 import {
   getResumeRagConfig,
-  requireChatProviderConfig,
-  requireOpenAiCompatibleChatModelConfig,
+  requireClaudeConfig,
   requireEmbeddingModelConfig,
-  requireCodexAppServerConfig,
 } from './resume-rag.config';
 
 describe('resume rag config', () => {
-  it('does not default provider, model, or dimensions', () => {
+  it('defaults Claude generation without defaulting embedding settings', () => {
     const config = getResumeRagConfig({});
 
     expect(config.embeddingProvider).toBeUndefined();
     expect(config.embeddingModel).toBeUndefined();
     expect(config.embeddingDimensions).toBeUndefined();
-    expect(config.chatProvider).toBeUndefined();
-    expect(config.chatModel).toBeUndefined();
+    expect(config.chatProvider).toBe('claude');
+    expect(config.chatModel).toBe('claude-sonnet-5-5');
+    expect(config.chatTimeoutMs).toBe(45_000);
   });
 
   it('defaults retrieval and source safety settings', () => {
@@ -25,35 +24,36 @@ describe('resume rag config', () => {
     expect(config.allowedSourceTypes).toEqual(['app_resume', 'career_data']);
   });
 
-  it('rejects an unsupported Codex reasoning effort', () => {
-    expect(() =>
-      getResumeRagConfig({ RAG_CODEX_REASONING_EFFORT: 'fast' }),
-    ).toThrow('RAG_CODEX_REASONING_EFFORT');
-  });
+  it.each(['0', '-1', '1.5', '45000ms', 'NaN', 'Infinity', '2147483648'])(
+    'rejects invalid chat timeout %s',
+    (timeout) => {
+      expect(() =>
+        getResumeRagConfig({ RAG_CHAT_TIMEOUT_MS: timeout }),
+      ).toThrow('RAG_CHAT_TIMEOUT_MS');
+    },
+  );
 
   it('parses numeric retrieval and model settings from strings', () => {
     const config = getResumeRagConfig({
       RAG_EMBEDDING_PROVIDER: 'openai-compatible',
       RAG_EMBEDDING_MODEL: 'embedding-model',
       RAG_EMBEDDING_DIMENSIONS: '1536',
-      RAG_CHAT_PROVIDER: 'codex-app-server',
-      RAG_CHAT_MODEL: 'codex-model',
-      RAG_CODEX_APP_SERVER_URL: 'ws://127.0.0.1:14561',
-      RAG_CODEX_CWD: '/home/icenux/projects/vscoke-api',
-      RAG_CODEX_TIMEOUT_MS: '45000',
-      RAG_CODEX_REASONING_EFFORT: 'low',
+      RAG_CHAT_PROVIDER: 'claude',
+      RAG_CHAT_MODEL: 'claude-model',
+      RAG_CHAT_TIMEOUT_MS: '30000',
+      ANTHROPIC_API_KEY: ' claude-key ',
+      RAG_AI_API_KEY: 'embedding-key',
       RAG_TOP_K: '7',
       RAG_MIN_SIMILARITY: '0.73',
       RAG_ALLOWED_SOURCE_TYPES: 'app_resume,curated_resume',
     });
 
     expect(config.embeddingDimensions).toBe(1536);
-    expect(config.chatProvider).toBe('codex-app-server');
-    expect(config.chatModel).toBe('codex-model');
-    expect(config.codexAppServerUrl).toBe('ws://127.0.0.1:14561');
-    expect(config.codexCwd).toBe('/home/icenux/projects/vscoke-api');
-    expect(config.codexTimeoutMs).toBe(45000);
-    expect(config.codexReasoningEffort).toBe('low');
+    expect(config.chatProvider).toBe('claude');
+    expect(config.chatModel).toBe('claude-model');
+    expect(config.chatTimeoutMs).toBe(30_000);
+    expect(config.anthropicApiKey).toBe('claude-key');
+    expect(config.aiApiKey).toBe('embedding-key');
     expect(config.topK).toBe(7);
     expect(config.minSimilarity).toBe(0.73);
     expect(config.allowedSourceTypes).toEqual(['app_resume', 'curated_resume']);
@@ -65,36 +65,19 @@ describe('resume rag config', () => {
     );
   });
 
-  it('fails clearly when chat provider settings are missing', () => {
-    expect(() => requireChatProviderConfig(getResumeRagConfig({}))).toThrow(
-      'RAG_CHAT_PROVIDER',
-    );
-  });
-
-  it('allows codex chat provider without a separate chat model env', () => {
+  it('requires a Claude key independently from embedding credentials', () => {
     expect(() =>
-      requireChatProviderConfig(
-        getResumeRagConfig({ RAG_CHAT_PROVIDER: 'codex-app-server' }),
+      requireClaudeConfig(
+        getResumeRagConfig({ RAG_AI_API_KEY: 'embedding-key' }),
       ),
-    ).not.toThrow();
-  });
-
-  it('requires an isolated working directory for Codex app-server', () => {
-    expect(() =>
-      requireCodexAppServerConfig(
-        getResumeRagConfig({
-          RAG_CHAT_PROVIDER: 'codex-app-server',
-          RAG_CODEX_APP_SERVER_URL: 'ws://127.0.0.1:14561',
-        }),
-      ),
-    ).toThrow('RAG_CODEX_CWD');
-  });
-
-  it('still requires chat model settings for openai-compatible chat', () => {
-    expect(() =>
-      requireOpenAiCompatibleChatModelConfig(
-        getResumeRagConfig({ RAG_CHAT_PROVIDER: 'openai-compatible' }),
-      ),
-    ).toThrow('RAG_CHAT_MODEL');
+    ).toThrow('ANTHROPIC_API_KEY');
+    expect(
+      requireClaudeConfig(getResumeRagConfig({ ANTHROPIC_API_KEY: 'key' })),
+    ).toEqual({
+      chatProvider: 'claude',
+      chatModel: 'claude-sonnet-5-5',
+      chatTimeoutMs: 45_000,
+      anthropicApiKey: 'key',
+    });
   });
 });

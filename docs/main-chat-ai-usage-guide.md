@@ -1,6 +1,6 @@
 # 메인 채팅·이력 질문 AI 사용 지침
 
-확인 기준일: 2026-10-23
+확인 기준일: 2026-11-10
 
 이 문서는 채팅 구조, 검색·저장 정책과 운영 시 주의사항을 설명한다. 실행·복구 기준은
 [6절](#6-배포와-검증)과 [API 배포 가이드](../apps/api/DEPLOY.md)를 따른다.
@@ -81,7 +81,7 @@ manifest에서 빠진 공개 앱 원본도 자동 비활성화한다. 단, 해�
 ### 서버 내부 임베딩
 
 운영 임베딩은 서버 CPU의 `local-e5-q8` 공급자를 사용한다. 질문·이력 본문은 임베딩 외부 API에
-전송하지 않고 모델 파일만 공개 저장소에서 사전 다운로드한다. 답변 생성은 Codex 공급자를 사용한다.
+전송하지 않고 모델 파일만 공개 저장소에서 사전 다운로드한다. 답변 생성은 Claude API를 사용한다.
 
 ```dotenv
 RAG_RETRIEVAL_MODE=hybrid
@@ -101,8 +101,8 @@ E5의 query/passage 접두사, mean pooling, 정규화와 q8 정밀도를 고정
 CPU 연산은 직렬화하고 ONNX intra-op thread는 2개로 제한한다. 청크 크기를 바꾸면 실제
 토큰 수가 E5의 512토큰 한도를 넘지 않는지 확인한다. 0.85는 운영 초기 기준이며 정확도 보증이 아니다.
 
-OpenAI 호환 임베딩을 선택하면 `RAG_AI_BASE_URL/API_KEY`를 호환 채팅 공급자와 공유한다.
-두 호환 공급자를 함께 사용할 때 이 설정 제약을 확인하고, 임베딩 키를 `NEXT_PUBLIC_*`에 넣지 않는다.
+OpenAI 호환 임베딩을 선택하면 `RAG_AI_BASE_URL/API_KEY`를 사용한다. Claude 답변 생성의
+`ANTHROPIC_API_KEY`와 독립적이며 두 키 모두 `NEXT_PUBLIC_*`에 넣지 않는다.
 
 ## 3. 저장 대화 API와 접근 제어
 
@@ -164,12 +164,22 @@ AI에 전달하는 대화는 최근 6개 턴, 총 12,000자 이하로 제한한�
 최종 답변 생성기를 호출하지 않고 기존 근거 부족 답변을 반환한다. 후속 검색 질문 재작성은
 이 단계 이전에 이미 호출되었을 수 있다.
 
-Codex app-server는 기존처럼 ephemeral/read-only/networkAccess:false 스레드를 사용한다.
-스레드 자체를 영구 세션으로 만들지 않고 API가 DB의 허용된 맥락을 전달한다. 모델은
-`RAG_CHAT_MODEL`, 추론 강도는 `RAG_CODEX_REASONING_EFFORT`를 따른다.
-OpenAI 호환 공급자도 동일한 질문 재작성·근거 제한 프롬프트를 사용한다.
-read-only 설정과 프롬프트의 도구 금지만으로 비공개 파일 읽기까지 차단된다고 가정하지 않는다.
-Codex 작업 경로에 민감한 파일을 두지 않고 접근 경계를 별도로 관리한다.
+답변 생성과 후속 검색 질문 재작성은 Claude Messages API를 사용한다. 매 호출에 현재 질문,
+허용된 대화 기록과 검색 근거만 전달하며 파일·네트워크 도구와 영구 모델 세션은 사용하지 않는다.
+기존 근거 제한 프롬프트를 유지하고 JSON schema의 `answer` 문자열을 검증한 뒤 기존 API 응답에
+담는다. `end_turn`으로 완료되지 않은 응답, 빈 문자열과 잘못된 JSON은 실패로 처리한다.
+
+```dotenv
+RAG_CHAT_PROVIDER=claude
+RAG_CHAT_MODEL=claude-sonnet-5-5
+RAG_CHAT_TIMEOUT_MS=45000
+ANTHROPIC_API_KEY=서버에만_보관할_키
+```
+
+provider/model/timeout의 기본값은 위와 같다. 공식 `https://api.anthropic.com` endpoint를
+고정하고 SDK 자동 재시도를 끈다. SDK 디버그 로그와 upstream 오류 원문을 노출하지 않는다.
+공급자 오류·timeout은 기존 503 경로로 전달되고 실패한 턴은 저장하지 않는다.
+현재 질문과 제한된 대화 기록·공개 검색 근거는 답변 생성을 위해 Anthropic에 전송된다.
 
 `grounded`는 현재 검색 근거와 생성 성공 여부를 나타내는 기존 계약이다. 문장별 사실 검증이
 완료되었다는 뜻은 아니며 sources는 답변에 전달한 자료 목록이다. 문장별 출처 검증은 별도 과제다.
@@ -197,9 +207,8 @@ keyword 모드가 아니고 임베딩 공급자가 설정된 경우 index를 갱
 ### 로컬 API 연결
 
 로컬 API 환경 파일과 DB 준비는 [Local Development](./local-development.md#api만-실행)를
-따른다. `RAG_CHAT_PROVIDER`와 선택한 공급자의 설정을 `apps/api/.env.example`에서 확인한다.
-Codex 경로는 기존 loopback listener와 승인된 작업 경로를 사용하며 새 외부 listener를 열지
-않는다. 일반 API 테스트는 공급자를 모킹하고 별도 테스트 DB를 사용한다.
+따른다. `apps/api/.env.example`의 Claude 설정과 `ANTHROPIC_API_KEY`를 API 서버에 설정한다.
+일반 API 테스트는 공급자를 모킹하고 별도 테스트 DB를 사용한다.
 
 웹의 `NEXT_PUBLIC_API_URL`을 해당 로컬 API로 맞춘다. 실제 웹 origin을
 `CORS_ORIGINS`와 `RAG_PUBLIC_CHAT_ORIGINS` 양쪽에 명시한다. 임의로 운영 DB를 테스트
@@ -218,8 +227,9 @@ import/index는 `TEST_DATABASE_URL`만으로 테스트 DB를 선택하지 않으
 저장·접근키·동시성·삭제·보존을 검증한다. 운영 smoke 세트에는 후속 질문·복원·삭제 및 테스트
 대화 정리가 포함되어 있으나 모든 언어·모든 생성 결과를 평가하는 것은 아니다.
 
-Codex app-server listener는 loopback에 둔다. 서버·모델 변경은 별도 운영 결정이며 transport
-지원 범위와 버전 고정 정책을 유지한다.
+기존 운영 Secret의 `RAG_CHAT_PROVIDER=codex-app-server`와 Codex 모델 값은 새 기본값보다
+우선하므로 배포 전에 반드시 Claude provider/model로 교체하고 `ANTHROPIC_API_KEY`를 추가한다.
+`RAG_CODEX_*`를 제거한다. 임베딩 변경이나 재인덱싱은 이번 공급자 전환에 필요하지 않다.
 
 첫 질문과 후속 질문의 지연은 구분한다. 후속 질문은 검색 질문 재작성과 답변 생성에 AI를
 각각 사용할 수 있다. 공급자 timeout은 전체 HTTP 요청 deadline이 아니며, hybrid는 양쪽

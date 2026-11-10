@@ -56,6 +56,8 @@
 
 Resume RAG와 메인 채팅의 동작·환경 변수·검증 기준은
 [메인 채팅 AI 사용 지침](../../docs/main-chat-ai-usage-guide.md)을 따른다.
+답변 생성과 후속 검색 질문 재작성에는 Claude API를 사용하며 API 서버의
+`ANTHROPIC_API_KEY`가 필요하다. 임베딩은 기존 공급자 설정을 유지한다.
 
 공개 이력서는 `resumes`의 선택 key/locale과 현재 불변 `resume_versions`만 조회한다.
 `GET /resume?resume=pe&locale=ko-KR`가 기본이며 미등록·비공개·철회 문서는 404다.

@@ -86,7 +86,7 @@ Web
 -> POST /main-chat or /resume-rag/chat
 -> apps/api conversation storage / contextual query rewrite
 -> keyword + pgvector hybrid retrieval
--> Codex app-server grounded answer generation
+-> Claude API grounded answer generation
 ```
 
 ## 배포 경계

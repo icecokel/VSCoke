@@ -1,14 +1,3 @@
-export const codexReasoningEfforts = [
-  'none',
-  'minimal',
-  'low',
-  'medium',
-  'high',
-  'xhigh',
-] as const;
-
-export type CodexReasoningEffort = (typeof codexReasoningEfforts)[number];
-
 export type ResumeRagConfig = {
   retrievalMode?: 'keyword' | 'vector' | 'hybrid';
   vectorMinSimilarity?: number;
@@ -20,11 +9,8 @@ export type ResumeRagConfig = {
   embeddingDimensions?: number;
   chatProvider?: string;
   chatModel?: string;
-  codexModelProvider?: string;
-  codexAppServerUrl?: string;
-  codexCwd?: string;
-  codexTimeoutMs: number;
-  codexReasoningEffort: CodexReasoningEffort;
+  chatTimeoutMs: number;
+  anthropicApiKey?: string;
   aiBaseUrl?: string;
   aiApiKey?: string;
   topK: number;
@@ -41,23 +27,15 @@ export type RequiredEmbeddingModelConfig = {
   embeddingDimensions: number;
 };
 
-export type RequiredChatModelConfig = {
-  chatProvider: string;
-  chatModel: string;
-};
-
 export type RequiredChatProviderConfig = {
   chatProvider: string;
 };
 
-export type RequiredCodexAppServerConfig = {
+export type RequiredClaudeConfig = {
   chatProvider: string;
-  chatModel?: string;
-  codexModelProvider?: string;
-  codexAppServerUrl: string;
-  codexCwd: string;
-  codexTimeoutMs: number;
-  codexReasoningEffort: CodexReasoningEffort;
+  chatModel: string;
+  chatTimeoutMs: number;
+  anthropicApiKey: string;
 };
 
 export const RESUME_RAG_CONFIG = 'RESUME_RAG_CONFIG';
@@ -65,10 +43,6 @@ export const RESUME_RAG_CONFIG = 'RESUME_RAG_CONFIG';
 // 프롬프트에 넣는 검색 청크 하나의 최대 길이. keyword 검색은 항목 본문 전체를
 // 청크로 돌려주므로 공개 원천 기록은 이 길이 안에 있어야 잘리지 않는다.
 export const RESUME_RAG_RETRIEVED_CHUNK_MAX_CHARS = 4000;
-
-const DEFAULT_CODEX_APP_SERVER_URL = 'ws://127.0.0.1:14561';
-const DEFAULT_CODEX_TIMEOUT_MS = 120_000;
-const DEFAULT_CODEX_REASONING_EFFORT: CodexReasoningEffort = 'low';
 
 const parseOptionalInt = (value: string | undefined): number | undefined => {
   if (!value) return undefined;
@@ -82,18 +56,16 @@ const parseOptionalFloat = (value: string | undefined): number | undefined => {
   return Number.isNaN(parsed) ? undefined : parsed;
 };
 
-const parseCodexReasoningEffort = (
-  value: string | undefined,
-): CodexReasoningEffort => {
-  if (!value) return DEFAULT_CODEX_REASONING_EFFORT;
-
-  if (codexReasoningEfforts.includes(value as CodexReasoningEffort)) {
-    return value as CodexReasoningEffort;
+const parseChatTimeout = (value: string | undefined): number => {
+  const timeout = value?.trim() ? Number(value) : 45_000;
+  if (
+    !Number.isSafeInteger(timeout) ||
+    timeout <= 0 ||
+    timeout > 2_147_483_647
+  ) {
+    throw new Error('Invalid RAG_CHAT_TIMEOUT_MS');
   }
-
-  throw new Error(
-    `Invalid RAG_CODEX_REASONING_EFFORT: ${value}. Expected one of ${codexReasoningEfforts.join(', ')}`,
-  );
+  return timeout;
 };
 
 const splitCsv = (value: string | undefined, fallback: string[]): string[] => {
@@ -135,17 +107,10 @@ export const getResumeRagConfig = (
   embeddingProvider: env.RAG_EMBEDDING_PROVIDER || undefined,
   embeddingModel: env.RAG_EMBEDDING_MODEL || undefined,
   embeddingDimensions: parseOptionalInt(env.RAG_EMBEDDING_DIMENSIONS),
-  chatProvider: env.RAG_CHAT_PROVIDER || undefined,
-  chatModel: env.RAG_CHAT_MODEL || undefined,
-  codexModelProvider: env.RAG_CODEX_MODEL_PROVIDER || undefined,
-  codexAppServerUrl:
-    env.RAG_CODEX_APP_SERVER_URL || DEFAULT_CODEX_APP_SERVER_URL,
-  codexCwd: env.RAG_CODEX_CWD || undefined,
-  codexTimeoutMs:
-    parseOptionalInt(env.RAG_CODEX_TIMEOUT_MS) ?? DEFAULT_CODEX_TIMEOUT_MS,
-  codexReasoningEffort: parseCodexReasoningEffort(
-    env.RAG_CODEX_REASONING_EFFORT,
-  ),
+  chatProvider: env.RAG_CHAT_PROVIDER || 'claude',
+  chatModel: env.RAG_CHAT_MODEL || 'claude-sonnet-5-5',
+  chatTimeoutMs: parseChatTimeout(env.RAG_CHAT_TIMEOUT_MS),
+  anthropicApiKey: env.ANTHROPIC_API_KEY?.trim() || undefined,
   aiBaseUrl: env.RAG_AI_BASE_URL || undefined,
   aiApiKey: env.RAG_AI_API_KEY || undefined,
   topK: parseOptionalInt(env.RAG_TOP_K) ?? 5,
@@ -197,39 +162,22 @@ export const requireChatProviderConfig = (
   };
 };
 
-export const requireOpenAiCompatibleChatModelConfig = (
+export const requireClaudeConfig = (
   config: ResumeRagConfig,
-): RequiredChatModelConfig => {
-  const providerConfig = requireChatProviderConfig(config);
-  if (!config.chatModel) {
-    throw new Error('Missing Resume RAG chat config: RAG_CHAT_MODEL');
-  }
-
-  return {
-    chatProvider: providerConfig.chatProvider,
-    chatModel: config.chatModel,
-  };
-};
-
-export const requireCodexAppServerConfig = (
-  config: ResumeRagConfig,
-): RequiredCodexAppServerConfig => {
+): RequiredClaudeConfig => {
   const providerConfig = requireChatProviderConfig(config);
   const missing = [
-    config.codexAppServerUrl ? null : 'RAG_CODEX_APP_SERVER_URL',
-    config.codexCwd ? null : 'RAG_CODEX_CWD',
+    config.chatModel ? null : 'RAG_CHAT_MODEL',
+    config.anthropicApiKey ? null : 'ANTHROPIC_API_KEY',
   ].filter((value): value is string => Boolean(value));
   if (missing.length > 0) {
-    throw new Error(`Missing Resume RAG Codex config: ${missing.join(', ')}`);
+    throw new Error(`Missing Resume RAG Claude config: ${missing.join(', ')}`);
   }
 
   return {
     chatProvider: providerConfig.chatProvider,
-    chatModel: config.chatModel,
-    codexModelProvider: config.codexModelProvider,
-    codexAppServerUrl: config.codexAppServerUrl as string,
-    codexCwd: config.codexCwd as string,
-    codexTimeoutMs: config.codexTimeoutMs,
-    codexReasoningEffort: config.codexReasoningEffort,
+    chatModel: config.chatModel as string,
+    chatTimeoutMs: config.chatTimeoutMs,
+    anthropicApiKey: config.anthropicApiKey as string,
   };
 };

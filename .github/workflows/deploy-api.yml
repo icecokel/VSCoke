@@ -116,7 +116,8 @@ jobs:
       - name: Restart API container
         run: |
           cd "$API_DEPLOY_DIR"
-          docker compose up --detach --wait api
+          # api.env 원자 교체 후 같은 이미지라도 새 파일을 bind mount하도록 컨테이너를 다시 만든다.
+          docker compose up --detach --no-deps --force-recreate --wait api
           docker compose ps
 
       - name: Verify local API health

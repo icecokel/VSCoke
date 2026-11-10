@@ -197,6 +197,11 @@ test("운영 환경은 Secret으로 교체되고 비밀값과 셸 문자를 그�
     assert.equal(existsSync(join(app, "unexpected")), false);
     assert.doesNotMatch(workflow, /\. \.\/\.env/);
     assert.match(workflow, /API_ENV_PRODUCTION: \$\{\{ secrets\.API_ENV_PRODUCTION \}\}/);
+    assert.match(
+      stepScript("Restart API container"),
+      /docker compose up --detach --no-deps --force-recreate --wait api/,
+    );
+    assert.ok(workflow.indexOf("Start database") < workflow.indexOf("Restart API container"));
     assert.ok(
       workflow.indexOf("Validate production environment secret") <
         workflow.indexOf("Build API image"),

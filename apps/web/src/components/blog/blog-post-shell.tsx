@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { ArrowLeft, Clock3 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { BLOG_SPEECH_CONTENT_ID } from "@/components/blog/blog-speech";
@@ -137,12 +138,12 @@ export const BlogPostShell = async ({
           </article>
           <footer className="mt-16 flex items-center justify-between gap-4 border-t border-border pt-6">
             <p className="text-sm text-muted-foreground">{t("endOfArticle")}</p>
-            <a
+            <Link
               href="#blog-post-top"
               className="inline-flex min-h-10 items-center rounded-md px-2 text-sm text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {t("backToTop")}
-            </a>
+            </Link>
           </footer>
         </div>
         <BlogTableOfContents key={post.slug} />

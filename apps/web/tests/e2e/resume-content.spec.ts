@@ -5,6 +5,89 @@ import { gotoWithRetry } from "./test-helpers";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
+for (const viewport of [
+  { name: "desktop", width: 1440, height: 900, isMobile: false },
+  { name: "mobile", width: 390, height: 844, isMobile: true },
+]) {
+  test.describe(`경력 fragment 복원 ${viewport.name}`, () => {
+    test.use({
+      viewport: { width: viewport.width, height: viewport.height },
+      isMobile: viewport.isMobile,
+      hasTouch: viewport.isMobile,
+    });
+
+    test("직접 진입과 새로고침에서 경력을 내부 스크롤 영역에 복원한다", async ({ page }) => {
+      await gotoWithRetry(page, "/ko-KR/readme?resume=pe#career_1");
+      const target = page.locator("#career_1");
+      const container = page.locator("#main-scroll-container");
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        if (attempt > 0) await page.reload();
+        await expect(target).toBeAttached();
+        await expect
+          .poll(async () => {
+            const [targetBox, containerBox] = await Promise.all([
+              target.boundingBox(),
+              container.boundingBox(),
+            ]);
+            return targetBox!.y - containerBox!.y;
+          })
+          .toBeGreaterThanOrEqual(-1);
+        await expect
+          .poll(async () => {
+            const [targetBox, containerBox] = await Promise.all([
+              target.boundingBox(),
+              container.boundingBox(),
+            ]);
+            return targetBox!.y - containerBox!.y;
+          })
+          .toBeLessThanOrEqual(32);
+        await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+        if (viewport.isMobile) {
+          await expect(page.getByTestId("sidebar-trigger-mobile")).toBeVisible();
+        } else {
+          await expect(page.locator("#menubar")).toBeInViewport();
+          await expect(page.getByTestId("history-tab-rail")).toBeInViewport();
+        }
+      }
+    });
+
+    test("잘못된 인코딩과 존재하지 않는 경력 hash는 무시한다", async ({ page }) => {
+      const errors: Error[] = [];
+      page.on("pageerror", error => errors.push(error));
+      await gotoWithRetry(page, "/ko-KR/readme?resume=pe");
+      for (const hash of ["%E0%A4%A", "career_999"]) {
+        await page.goto(`/ko-KR/readme?resume=pe#${hash}`);
+        await expect.poll(() => page.evaluate(() => location.hash)).toBe(`#${hash}`);
+        await expect(page.locator("#career_0")).toBeAttached();
+        await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+      }
+      expect(errors).toEqual([]);
+    });
+
+    if (!viewport.isMobile) {
+      test("경력 목차는 문서 query와 탭을 유지하며 뒤로·앞으로 이동한다", async ({ page }) => {
+        await gotoWithRetry(page, "/ko-KR/readme?resume=fe");
+        const rail = page.getByTestId("history-tab-rail");
+        await expect(rail.locator("button[aria-current='page']")).toHaveCount(1);
+        const tabCount = await rail.locator("div[id]").count();
+        await page.locator('a[href="#career_1"]').click();
+        await expect(page).toHaveURL(/\/readme\?resume=fe#career_1$/);
+        await page.locator('a[href="#career_2"]').click();
+        await expect(page).toHaveURL(/\/readme\?resume=fe#career_2$/);
+        await page.goBack();
+        await expect(page).toHaveURL(/\/readme\?resume=fe#career_1$/);
+        await expect(page.locator("#career_1")).toBeInViewport();
+        await page.goForward();
+        await expect(page).toHaveURL(/\/readme\?resume=fe#career_2$/);
+        await expect(page.locator("#career_2")).toBeInViewport();
+        await expect(rail.locator("div[id]")).toHaveCount(tabCount);
+        await expect(page.locator("#menubar")).toBeInViewport();
+        await expect(rail).toBeInViewport();
+      });
+    }
+  });
+}
+
 test.describe("이력서 조회", () => {
   for (const locale of ["ko-KR", "en-US", "ja-JP"]) {
     test(`${locale} 이력서와 검색 색인을 조회한다`, async ({ page, request }) => {

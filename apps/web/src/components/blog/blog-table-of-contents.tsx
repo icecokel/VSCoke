@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown, List } from "lucide-react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { createBlogOutline, type BlogOutlineItem } from "@/components/blog/blog-outline";
@@ -78,17 +79,17 @@ export const BlogTableOfContents = () => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     if (mobileDetails.current) mobileDetails.current.open = false;
     document.getElementById(id)?.focus({ preventScroll: true });
-    // 기본 fragment 이동을 유지하여 URL·뒤로가기·키보드 탐색을 함께 지원한다.
     setActiveId(id);
   };
 
   if (items.length < 2) return null;
 
+  // fragment는 탭을 추가하지 않고 Next 라우터의 뒤로가기 복원 정보만 유지한다.
   const links = (
     <ol className="space-y-1 border-l border-border">
       {items.map((item, index) => (
         <li key={item.id}>
-          <a
+          <Link
             href={`#${encodeURIComponent(item.id)}`}
             aria-current={activeId === item.id ? "location" : undefined}
             onClick={event => handleNavigate(event, item.id)}
@@ -107,7 +108,7 @@ export const BlogTableOfContents = () => {
               {String(index + 1).padStart(2, "0")}
             </span>
             <span>{item.text}</span>
-          </a>
+          </Link>
         </li>
       ))}
     </ol>
@@ -149,12 +150,12 @@ export const BlogTableOfContents = () => {
         <div className="max-h-[calc(100dvh-12rem)] overflow-y-auto overscroll-contain pb-2">
           {links}
         </div>
-        <a
+        <Link
           href="#blog-post-top"
           className="mt-5 inline-flex min-h-10 items-center rounded-md px-2 text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {t("backToTop")}
-        </a>
+        </Link>
       </nav>
     </aside>
   );

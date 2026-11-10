@@ -1,6 +1,7 @@
 "use client";
 
 import { resumePath } from "@/features/resume/lib/resume-selection";
+import Link from "next/link";
 import BaseText from "@/components/base-ui/text";
 import { CustomLink } from "@/components/custom-link";
 import { Button } from "@/components/ui/button";
@@ -18,9 +19,9 @@ const Resume = ({ document: resume }: { document: ResumeDocument }) => {
   useEffect(() => {
     const scrollContainer = document.getElementById("main-scroll-container");
     const scrollTarget = scrollContainer ?? window;
+    const careerElements = careers.map((_, index) => document.getElementById(`career_${index}`));
 
     const handleScroll = () => {
-      const careerElements = careers.map((_, index) => document.getElementById(`career_${index}`));
       const threshold = (scrollContainer?.getBoundingClientRect().top ?? 0) + 150;
 
       // 현재 뷰포트에서 가장 위에 있는 섹션 찾기
@@ -33,13 +34,32 @@ const Resume = ({ document: resume }: { document: ResumeDocument }) => {
       }
     };
 
+    const restoreFragment = () => {
+      if (!scrollContainer) return;
+      let id: string;
+      try {
+        id = decodeURIComponent(window.location.hash.slice(1));
+      } catch {
+        return;
+      }
+      const target = careerElements.find(element => element?.id === id);
+      if (!target) return;
+      scrollContainer.scrollTop +=
+        target.getBoundingClientRect().top - scrollContainer.getBoundingClientRect().top;
+      handleScroll();
+    };
+
     scrollTarget.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("resize", handleScroll);
+    window.addEventListener("hashchange", restoreFragment);
     handleScroll(); // 초기 실행
+    const frame = requestAnimationFrame(restoreFragment);
 
     return () => {
       scrollTarget.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleScroll);
+      window.removeEventListener("hashchange", restoreFragment);
+      cancelAnimationFrame(frame);
     };
   }, [careers]);
 
@@ -50,7 +70,7 @@ const Resume = ({ document: resume }: { document: ResumeDocument }) => {
         <div className="sticky top-[100px] bg-gray-800/95 p-4 rounded-lg backdrop-blur-xs">
           {careers.map((career, index) => (
             <div key={index} className="mb-4">
-              <a href={`#career_${index}`}>
+              <Link href={`#career_${index}`}>
                 <BaseText
                   type="body1"
                   className={twMerge(
@@ -70,7 +90,7 @@ const Resume = ({ document: resume }: { document: ResumeDocument }) => {
                 >
                   {career.period}
                 </BaseText>
-              </a>
+              </Link>
             </div>
           ))}
         </div>

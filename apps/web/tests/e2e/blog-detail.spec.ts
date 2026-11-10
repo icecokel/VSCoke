@@ -2,12 +2,76 @@ import { expect, test } from "@playwright/test";
 import ko from "../../messages/ko-KR.json";
 import en from "../../messages/en-US.json";
 import ja from "../../messages/ja-JP.json";
-import { gotoWithRetry } from "./test-helpers";
+import { escapeRegExp, gotoWithRetry } from "./test-helpers";
 
 const articlePath = "/ko-KR/blog/journal/hello-world";
 
 test.describe("블로그 상세 읽기 경험", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
+
+  for (const viewport of [
+    { name: "desktop", width: 1440, height: 900, isMobile: false },
+    { name: "mobile", width: 390, height: 844, isMobile: true },
+  ]) {
+    test.describe(`fragment 복원 ${viewport.name}`, () => {
+      test.use({
+        viewport: { width: viewport.width, height: viewport.height },
+        isMobile: viewport.isMobile,
+        hasTouch: viewport.isMobile,
+      });
+
+      test("목차 뒤 다른 글로 이동해도 뒤로·앞으로에서 URL과 본문이 함께 복원된다", async ({
+        page,
+      }, testInfo) => {
+        const originalPath = "/ko-KR/blog/journal/user-flow-logging-429-investigation";
+        await gotoWithRetry(page, originalPath);
+        const originalTitle = await page.locator("h1").textContent();
+        const originalLead = await page.locator("article p").first().textContent();
+        const before = await page.evaluate(() => Boolean(history.state?.__NA));
+        const outline = page.getByTestId("blog-outline");
+        await expect(outline).toBeVisible();
+        const summary = outline.locator("summary");
+        if (await summary.isVisible()) await summary.click();
+        const link = outline.locator("ol a").filter({ visible: true }).nth(1);
+        const fragment = (await link.getAttribute("href"))!;
+        await link.click();
+        await expect
+          .poll(() => page.evaluate(() => decodeURIComponent(location.hash)))
+          .toBe(decodeURIComponent(fragment));
+        const after = await page.evaluate(() => Boolean(history.state?.__NA));
+        testInfo.annotations.push({
+          type: "history-state",
+          description: JSON.stringify({ before, after }),
+        });
+
+        if (viewport.isMobile) await page.getByTestId("sidebar-trigger-mobile").click();
+        await page.getByRole("button", { name: ko.sidebar.search, exact: true }).click();
+        await page.getByTestId("blog-dashboard-search-input").fill("PostgreSQL");
+        await page
+          .locator("[data-slot='sidebar-content'] li > button")
+          .filter({ hasText: "/blog/dev/postgresql-clickhouse-comparison" })
+          .click();
+        await expect(page).toHaveURL(/\/blog\/dev\/postgresql-clickhouse-comparison$/);
+        await expect(page.locator("h1")).not.toHaveText(originalTitle!);
+        const nextTitle = await page.locator("h1").textContent();
+        const nextLead = await page.locator("article p").first().textContent();
+
+        await page.goBack();
+        await expect(page).toHaveURL(
+          new RegExp(`${escapeRegExp(originalPath)}${escapeRegExp(fragment)}$`),
+        );
+        await expect(page.locator("h1")).toHaveText(originalTitle!);
+        await expect(page.locator("article p").first()).toHaveText(originalLead!);
+        await expect(
+          page.locator(`[id="${decodeURIComponent(fragment.slice(1))}"]`),
+        ).toBeInViewport();
+        await page.goForward();
+        await expect(page).toHaveURL(/\/blog\/dev\/postgresql-clickhouse-comparison$/);
+        await expect(page.locator("h1")).toHaveText(nextTitle!);
+        await expect(page.locator("article p").first()).toHaveText(nextLead!);
+      });
+    });
+  }
 
   test("제목·메타·도구·본문 순서와 의미 있는 제목 계층을 제공한다", async ({ page }) => {
     await gotoWithRetry(page, articlePath);
@@ -62,6 +126,39 @@ test.describe("블로그 상세 읽기 경험", () => {
       .poll(() => page.locator("#main-scroll-container").evaluate(element => element.scrollTop))
       .toBeGreaterThan(100);
     await expect(target).toBeInViewport();
+    const nextLink = outline.locator("ol a").nth(2);
+    const nextFragment = (await nextLink.getAttribute("href"))!;
+    await nextLink.click();
+    await expect.poll(() => page.evaluate(() => location.hash)).toBe(nextFragment);
+    await page.goBack();
+    await expect.poll(() => page.evaluate(() => location.hash)).toBe(fragment);
+    await expect(target).toBeInViewport();
+    await page.goForward();
+    await expect.poll(() => page.evaluate(() => location.hash)).toBe(nextFragment);
+    await outline.getByRole("link", { name: ko.blog.detail.backToTop, exact: true }).click();
+    await expect.poll(() => page.evaluate(() => location.hash)).toBe("#blog-post-top");
+    await expect(page.getByTestId("blog-post-header")).toBeInViewport();
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  });
+
+  test("수정키로 목차를 열면 원래 글의 fragment와 초점을 바꾸지 않는다", async ({
+    page,
+    context,
+  }) => {
+    await gotoWithRetry(page, articlePath);
+    const link = page.getByTestId("blog-outline-desktop").locator("ol a").nth(1);
+    await link.focus();
+    const [opened] = await Promise.all([
+      context.waitForEvent("page"),
+      link.click({ modifiers: ["ControlOrMeta"] }),
+    ]);
+    try {
+      await expect(opened.locator("h1")).toHaveCount(1);
+      await expect(page).toHaveURL(new RegExp(`${escapeRegExp(articlePath)}$`));
+      await expect(link).toBeFocused();
+    } finally {
+      await opened.close();
+    }
   });
 
   test("목차로 이동해도 탭 줄이 메뉴바 아래에 그대로 보인다", async ({ page }) => {

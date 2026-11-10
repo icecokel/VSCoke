@@ -49,6 +49,8 @@ export interface AppMessages {
     explorer: string;
     search: string;
     searchPlaceholder: string;
+    searchResultCount: string;
+    searchNoResult: string;
   };
   Share: {
     share: string;

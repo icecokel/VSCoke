@@ -129,7 +129,7 @@ test.describe("취미 원두 기록 페이지", () => {
     await expect(searchInput).toBeVisible();
     await searchInput.fill("프릳츠");
     await page
-      .getByRole("button", { name: /프릳츠 잘 되어 가시나/ })
+      .getByRole("option", { name: /프릳츠 잘 되어 가시나/ })
       .first()
       .click();
     await expectPath(

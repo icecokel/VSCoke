@@ -96,7 +96,7 @@ test.describe("취미 레시피 페이지", () => {
     await expect(searchInput).toBeVisible();
     await searchInput.fill("부타동");
     await page
-      .getByRole("button", { name: /부타동/ })
+      .getByRole("option", { name: /부타동/ })
       .first()
       .click();
     await expectPath(page, new RegExp(`^/${localeRegex}/hobby/recipes$`));

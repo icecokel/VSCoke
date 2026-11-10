@@ -43,6 +43,64 @@ test.describe("키보드 전용 시나리오", () => {
       await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000);
     });
 
+    test("combobox의 현재 선택과 키보드 이동·스크롤·Enter 대상이 일치한다", async ({ page }) => {
+      const input = page.getByTestId("blog-dashboard-search-input");
+      await expect(input).toHaveAttribute("role", "combobox");
+      await expect(input).toHaveAttribute("aria-autocomplete", "list");
+      await expect(input).toHaveAttribute("aria-expanded", "true");
+      const list = page.getByRole("listbox");
+      await expect(input).toHaveAttribute("aria-controls", (await list.getAttribute("id"))!);
+      await input.fill("a");
+      const options = list.getByRole("option");
+      await expect.poll(() => options.count()).toBeGreaterThan(15);
+      await input.focus();
+      await input.press("ArrowDown");
+      await expect(options.nth(1)).toHaveAttribute("aria-selected", "true");
+      await expect(input).toHaveAttribute(
+        "aria-activedescendant",
+        (await options.nth(1).getAttribute("id"))!,
+      );
+      await input.press("ArrowUp");
+      await expect(options.first()).toHaveAttribute("aria-selected", "true");
+      for (let index = 0; index < 15; index += 1) await input.press("ArrowDown");
+      const selected = list.getByRole("option", { selected: true });
+      await expect(selected).toHaveCount(1);
+      await expect(input).toHaveAttribute(
+        "aria-activedescendant",
+        (await selected.getAttribute("id"))!,
+      );
+      await expect(selected).toHaveClass(/bg-blue-500\/20/);
+      await expect(selected).toBeInViewport({ ratio: 1 });
+      await expect(input).toBeFocused();
+      const path = (await selected.locator("span").last().textContent())!;
+      const locale = (process.env.PLAYWRIGHT_LOCALE as Locale | undefined) ?? "ko-KR";
+      await input.press("Enter");
+      await expect(page).toHaveURL(new RegExp(`/${escapeRegExp(locale)}${escapeRegExp(path)}$`));
+    });
+
+    test("검색 사용 집계는 입력이 멈춘 180ms 뒤 한 번만 보낸다", async ({ page }) => {
+      let searches = 0;
+      await page.route("**/usage/events", route => {
+        const event = route.request().postDataJSON() as { eventName: string };
+        if (event.eventName === "search_used") searches += 1;
+        return route.fulfill({ status: 202, json: {} });
+      });
+      const input = page.getByTestId("blog-dashboard-search-input");
+      await input.fill("w");
+      await page.clock.runFor(100);
+      await input.fill("wordle");
+      await page.clock.runFor(179);
+      expect(searches).toBe(0);
+      await page.clock.runFor(1);
+      await expect.poll(() => searches).toBe(1);
+      await input.press("ArrowDown");
+      await page.clock.runFor(180);
+      expect(searches).toBe(1);
+      await input.press("Escape");
+      await page.clock.runFor(180);
+      expect(searches).toBe(1);
+    });
+
     test("추천 목록에서 입력 직후 Enter를 누르면 현재 검색 결과를 연다", async ({ page }) => {
       const locale = (process.env.PLAYWRIGHT_LOCALE as Locale | undefined) ?? "ko-KR";
       const searchInput = page.getByTestId("blog-dashboard-search-input");
@@ -75,6 +133,23 @@ test.describe("키보드 전용 시나리오", () => {
 
       await expect(page.locator("[data-slot='sidebar-content'] li > button")).toHaveCount(0);
       await expect(page).toHaveURL(beforeUrl);
+      await expect(searchInput).toHaveAttribute("aria-expanded", "false");
+      expect(await searchInput.getAttribute("aria-activedescendant")).toBeNull();
+      const status = page.locator("[data-slot='sidebar-content']").getByRole("status");
+      const messages = loadMessages(
+        (process.env.PLAYWRIGHT_LOCALE as Locale | undefined) ?? "ko-KR",
+      );
+      await expect(status).toHaveCount(1);
+      await expect(status).toHaveText(messages.sidebar.searchResultCount.replace("{count}", "0"));
+      await expect(
+        page
+          .locator("[data-slot='sidebar-content']")
+          .getByText(messages.sidebar.searchNoResult, { exact: true }),
+      ).toBeVisible();
+      await searchInput.press("Escape");
+      await expect(searchInput).toHaveValue("");
+      await expect(searchInput).toHaveAttribute("aria-expanded", "true");
+      expect(await searchInput.getAttribute("aria-activedescendant")).toBeTruthy();
     });
 
     test("IME 조합 중 Enter와 화살표·Escape는 검색을 조작하지 않는다", async ({ page }) => {

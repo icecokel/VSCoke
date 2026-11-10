@@ -165,3 +165,100 @@ test.describe("블로그 읽기 도구 호환성", () => {
     await expect(page.getByRole("dialog")).toBeVisible();
   });
 });
+
+for (const viewport of [
+  { width: 780, height: 360 },
+  { width: 844, height: 390 },
+]) {
+  test.describe(`QR 포커스 ${viewport.width}×${viewport.height}`, () => {
+    test.use({ viewport, hasTouch: true, isMobile: true });
+    for (const destination of [
+      { name: "긴 429 글", path: "/ko-KR/blog/journal/user-flow-logging-429-investigation" },
+      { name: "README", path: "/ko-KR/readme?resume=pe" },
+    ]) {
+      test(`${destination.name}에서 처음부터 양방향 Tab 순환의 초점이 보인다`, async ({
+        page,
+      }, testInfo) => {
+        await gotoWithRetry(page, destination.path);
+        const trigger = page.getByRole("button", { name: ko.Share.qr, exact: true });
+        await trigger.click();
+        const dialog = page.getByRole("dialog");
+        await expect(dialog).toBeVisible();
+        await page.evaluate(() => document.fonts.ready);
+        await expect
+          .poll(() => dialog.evaluate(element => element.contains(document.activeElement)))
+          .toBe(true);
+        const readFocus = () =>
+          dialog.evaluate(element => {
+            const active = document.activeElement;
+            const bounds = element.getBoundingClientRect();
+            const target = active?.getBoundingClientRect();
+            return {
+              inside: Boolean(active && element.contains(active)),
+              visible: Boolean(
+                target &&
+                target.top >= bounds.top - 1 &&
+                target.bottom <= bounds.bottom + 1 &&
+                target.left >= bounds.left - 1 &&
+                target.right <= bounds.right + 1,
+              ),
+              active: active === element ? "dialog" : active?.textContent?.trim(),
+              target: target
+                ? { top: target.top, bottom: target.bottom, left: target.left, right: target.right }
+                : null,
+              bounds: {
+                top: bounds.top,
+                bottom: bounds.bottom,
+                left: bounds.left,
+                right: bounds.right,
+              },
+              scrollTop: element.scrollTop,
+            };
+          });
+        const steps: Awaited<ReturnType<typeof readFocus>>[] = [];
+        const expectVisibleFocus = async () => {
+          steps.push(await readFocus());
+          await expect.poll(readFocus).toMatchObject({ inside: true, visible: true });
+        };
+        try {
+          await expectVisibleFocus();
+          await expect(dialog.locator("[data-slot='dialog-title']")).toBeInViewport({ ratio: 1 });
+          await expect(dialog.locator("[data-slot='dialog-close']")).toBeInViewport({ ratio: 1 });
+          await page.screenshot({
+            path: testInfo.outputPath("qr-initial-focus.png"),
+            animations: "disabled",
+          });
+          const copy = dialog.getByRole("button", { name: ko.Share.copyLink, exact: true });
+          for (let index = 0; index < 6; index += 1) {
+            await page.keyboard.press("Tab");
+            if (index === 0) await expect(copy).toBeFocused();
+            await expectVisibleFocus();
+            if (index === 0)
+              await page.screenshot({
+                path: testInfo.outputPath("qr-copy-focus.png"),
+                animations: "disabled",
+              });
+          }
+          for (let index = 0; index < 6; index += 1) {
+            await page.keyboard.press("Shift+Tab");
+            await expectVisibleFocus();
+          }
+          const beforeWheel = await dialog.evaluate(element => element.scrollTop);
+          await dialog.hover();
+          await page.mouse.wheel(0, 160);
+          await expect
+            .poll(() => dialog.evaluate(element => element.scrollTop))
+            .toBeGreaterThan(beforeWheel);
+          await page.keyboard.press("Escape");
+          await expect(dialog).toBeHidden();
+          await expect(trigger).toBeFocused();
+        } finally {
+          await testInfo.attach("focus-steps", {
+            body: JSON.stringify(steps, null, 2),
+            contentType: "application/json",
+          });
+        }
+      });
+    }
+  });
+}

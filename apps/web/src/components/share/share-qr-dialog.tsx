@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { QrCode, Copy } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -33,6 +33,7 @@ export const ShareQrDialog = ({
   const t = useTranslations("Share");
   const { resolveUrl, copyLink } = useLinkShare();
   const [resolvedUrl, setResolvedUrl] = useState("");
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setResolvedUrl(resolveUrl(url));
@@ -57,7 +58,28 @@ export const ShareQrDialog = ({
           <span className={triggerLabelClassName}>{triggerLabel ?? t("qr")}</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
+      <DialogContent
+        ref={dialogRef}
+        tabIndex={-1}
+        onOpenAutoFocus={event => {
+          event.preventDefault();
+          dialogRef.current?.focus({ preventScroll: true });
+        }}
+        onFocusCapture={event => {
+          const dialog = event.currentTarget;
+          const target = event.target;
+          if (target === dialog) return;
+          const bounds = dialog.getBoundingClientRect();
+          const focused = target.getBoundingClientRect();
+          const inset = 4;
+          if (focused.top < bounds.top + inset) {
+            dialog.scrollTop -= bounds.top + inset - focused.top;
+          } else if (focused.bottom > bounds.bottom - inset) {
+            dialog.scrollTop += focused.bottom - bounds.bottom + inset;
+          }
+        }}
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md"
+      >
         <DialogHeader className="pr-6">
           <DialogTitle className="break-words">{title ?? t("qrTitle")}</DialogTitle>
           <DialogDescription>{t("qrDescription")}</DialogDescription>

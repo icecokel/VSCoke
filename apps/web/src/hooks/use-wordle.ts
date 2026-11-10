@@ -4,6 +4,12 @@ import { fetchRandomWord, checkWord } from "@/lib/wordle/wordle-service";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { trackUsageEvent } from "@/lib/usage-analytics";
+import {
+  clearWordleSession,
+  readWordleSession,
+  saveWordleSession,
+  type WordleSession,
+} from "@/lib/wordle/wordle-session";
 
 const MAX_CHALLENGES = 6;
 
@@ -27,6 +33,30 @@ export interface UseWordleReturn {
 
 // 판정기는 판별 상태를 보관하지 않으므로 컴포넌트 간 공유한다.
 const logic: WordleLogic = new EnglishWordleLogic();
+
+const mergeUsedKeys = (
+  usedKeys: Record<string, LetterStatus>,
+  guess: string,
+  result: LetterStatus[],
+): Record<string, LetterStatus> => {
+  const nextKeys = { ...usedKeys };
+
+  result.forEach((status, i) => {
+    const letter = guess[i];
+    const currentStatus = nextKeys[letter];
+
+    if (status === "correct") {
+      nextKeys[letter] = "correct";
+    } else if (status === "present" && currentStatus !== "correct") {
+      nextKeys[letter] = "present";
+    } else if (status === "absent" && currentStatus !== "correct" && currentStatus !== "present") {
+      nextKeys[letter] = "absent";
+    }
+  });
+  return nextKeys;
+};
+
+const padRows = <T>(rows: T[]): T[] => [...rows, ...Array(MAX_CHALLENGES - rows.length)];
 
 export const useWordle = (): UseWordleReturn => {
   const path = `/${useLocale()}/game/wordle`;
@@ -76,13 +106,52 @@ export const useWordle = (): UseWordleReturn => {
     setGameStatus("playing");
     startedAt.current = null;
     setUsedKeys({});
+    clearWordleSession();
     await loadNewWord();
   }, [loadNewWord]);
+
+  useEffect(() => {
+    if (!answer) return;
+    if (gameStatus !== "playing") {
+      clearWordleSession();
+      return;
+    }
+    saveWordleSession({
+      answer,
+      guesses: guesses.slice(0, turn),
+      currentGuess,
+      startedAt: startedAt.current,
+    });
+  }, [answer, guesses, turn, currentGuess, gameStatus]);
+
+  // 다른 탭에 다녀와 다시 마운트되면 같은 브라우저 탭에 저장된 진행 중인 판을 복원한다.
+  const restoreSession = useCallback((session: WordleSession) => {
+    const results = session.guesses.map(guess => logic.checkGuess(guess, session.answer));
+    setAnswer(session.answer);
+    setGuesses(padRows(session.guesses));
+    setHistory(padRows(results));
+    setTurn(session.guesses.length);
+    setCurrentGuess(session.currentGuess);
+    setUsedKeys(
+      session.guesses.reduce(
+        (keys, guess, index) => mergeUsedKeys(keys, guess, results[index]),
+        {} as Record<string, LetterStatus>,
+      ),
+    );
+    startedAt.current = session.startedAt;
+    setIsLoading(false);
+  }, []);
 
   // 최초 진입 시 단어 설정
   useEffect(() => {
     // 마운트 시 한 번만 실행
-    void loadNewWord();
+    const session = readWordleSession(logic.getWordLength(), MAX_CHALLENGES);
+    const isUnfinished =
+      session &&
+      session.guesses.length < MAX_CHALLENGES &&
+      !session.guesses.includes(session.answer);
+    if (isUnfinished) restoreSession(session);
+    else void loadNewWord();
     return () => {
       generationRef.current += 1;
     };
@@ -160,27 +229,7 @@ export const useWordle = (): UseWordleReturn => {
       setTurn(prev => prev + 1);
 
       // 키보드 색상 업데이트
-      setUsedKeys(prev => {
-        const newKeys = { ...prev };
-
-        result.forEach((status, i) => {
-          const letter = guessUpper[i];
-          const currentStatus = newKeys[letter];
-
-          if (status === "correct") {
-            newKeys[letter] = "correct";
-          } else if (status === "present" && currentStatus !== "correct") {
-            newKeys[letter] = "present";
-          } else if (
-            status === "absent" &&
-            currentStatus !== "correct" &&
-            currentStatus !== "present"
-          ) {
-            newKeys[letter] = "absent";
-          }
-        });
-        return newKeys;
-      });
+      setUsedKeys(prev => mergeUsedKeys(prev, guessUpper, result));
 
       setCurrentGuess("");
     } catch (err) {

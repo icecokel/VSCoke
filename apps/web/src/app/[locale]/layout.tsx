@@ -86,7 +86,8 @@ const LocaleLayout = async ({ children, params }: Props) => {
               <div className="flex flex-col h-screen overflow-hidden">
                 <Menubar />
                 <div className="flex-1 overflow-hidden">
-                  <SidebarProvider defaultOpen={false}>
+                  {/* 메뉴바 아래 남은 높이만 쓴다. 기본 min-h-svh는 뷰포트 전체를 차지해 게임 화면 하단이 잘렸다. */}
+                  <SidebarProvider defaultOpen={false} className="h-full min-h-0">
                     <AppSidebar />
                     <SidebarInset>
                       <div className="flex flex-col h-full overflow-hidden">

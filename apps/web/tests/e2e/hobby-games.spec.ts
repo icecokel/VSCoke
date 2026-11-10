@@ -64,6 +64,47 @@ test.describe("취미 게임 섹션", () => {
     await expect(board.locator(".bg-green-600")).toHaveCount(5);
   });
 
+  test("Wordle 진행 중인 판은 다른 탭에 다녀와도 이어지고 재시작하면 새 판이 된다", async ({
+    page,
+  }) => {
+    const { locale } = await resolveLocaleAndMessages(page);
+    let wordRequests = 0;
+    await page.route("**/wordle/word", async route => {
+      const requestNumber = ++wordRequests;
+      await route.fulfill({
+        json: { success: true, data: { word: requestNumber === 1 ? "apple" : "bread" } },
+      });
+    });
+    await page.route("**/wordle/check", route =>
+      route.fulfill({ json: { success: true, data: { exists: true } } }),
+    );
+
+    await gotoWithRetry(page, `/${locale}/game/wordle`);
+    await expect(page.getByTestId("wordle-loading")).toBeHidden();
+    const board = page.getByTestId("wordle-board");
+    await page.keyboard.type("PLANT");
+    await page.keyboard.press("Enter");
+    await expect(board.locator(".animate-flip")).toHaveCount(5);
+    await page.keyboard.type("AP");
+    await expect(board).toContainText("PLANTAP");
+
+    await gotoWithRetry(page, `/${locale}/game`);
+    await page
+      .getByTestId("history-tab-rail")
+      .getByRole("button", { name: "wordle", exact: true })
+      .click();
+    await expect(page).toHaveURL(new RegExp(`/${escapeRegExp(locale)}/game/wordle$`));
+    await expect(page.getByTestId("wordle-loading")).toBeHidden();
+    await expect(board).toContainText("PLANTAP");
+    await expect(board.locator(".animate-flip")).toHaveCount(5);
+    expect(wordRequests).toBe(1);
+
+    await page.getByTestId("wordle-header-restart").click();
+    await expect.poll(() => wordRequests).toBe(2);
+    await expect(page.getByTestId("wordle-loading")).toBeHidden();
+    await expect(board).not.toContainText("PLANT");
+  });
+
   test("Wordle 연속 재시작 후 이전 단어 로딩 결과를 버린다", async ({ page }) => {
     const { locale } = await resolveLocaleAndMessages(page);
     let releaseFirstWord!: () => void;

@@ -2,8 +2,18 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import { ResumePreviewActions } from "@/features/resume-preview/components/resume-preview-actions";
-import { getResumePreview } from "@/services/resume-service";
-import { getResumeKey, type ResumeSearchParams } from "@/features/resume/lib/resume-selection";
+import { ResumeLocaleUnavailable } from "@/features/resume/components/resume-locale-unavailable";
+import { calculateTotalExperience } from "@/features/resume/lib/total-experience";
+import {
+  getResumePreview,
+  isResumeOnlyInDefaultLocale,
+  type ResumePreview,
+} from "@/services/resume-service";
+import {
+  getResumeKey,
+  resumePath,
+  type ResumeSearchParams,
+} from "@/features/resume/lib/resume-selection";
 import { ApiError } from "@/lib/api-client";
 import { notFound } from "next/navigation";
 import { cache } from "react";
@@ -13,14 +23,37 @@ interface ResumePreviewPageProps {
   searchParams: Promise<ResumeSearchParams>;
 }
 
+// 기본 언어에만 공개된 이력서는 null로 구분해 404 대신 기본 언어 이력서 안내를 보여 준다.
 const getPreview = cache(async (locale: string, key: string) => {
   try {
     return await getResumePreview(locale, key);
   } catch (error) {
-    if (error instanceof ApiError && error.status === 404) notFound();
+    if (error instanceof ApiError && error.status === 404) {
+      if (await isResumeOnlyInDefaultLocale(locale, key)) return null;
+      notFound();
+    }
     throw error;
   }
 });
+
+type ResumePreviewTranslator = Awaited<ReturnType<typeof getTranslations<"resumePreview">>>;
+
+// 문서에 총 경력이 비어 있으면 같은 문서의 경력 기간으로 계산하고, 계산할 수 없으면 숨긴다.
+const getTotalExperienceLabel = (
+  document: ResumePreview["document"],
+  t: ResumePreviewTranslator,
+): string | null => {
+  const storedValue = document.totalExperience.trim();
+  if (storedValue) return storedValue;
+  const duration = calculateTotalExperience(
+    document.careers.map(career => career.period),
+    new Date(),
+  );
+  if (!duration) return null;
+  if (duration.years === 0) return t("experienceMonths", { months: duration.months });
+  if (duration.months === 0) return t("experienceYears", { years: duration.years });
+  return t("experienceYearsMonths", { years: duration.years, months: duration.months });
+};
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +62,12 @@ export const generateMetadata = async ({
   searchParams,
 }: ResumePreviewPageProps): Promise<Metadata> => {
   const { locale } = await params;
-  const { document } = await getPreview(locale, getResumeKey((await searchParams).resume));
+  const preview = await getPreview(locale, getResumeKey((await searchParams).resume));
+  if (!preview) {
+    const tUnavailable = await getTranslations("resumeLocaleUnavailable");
+    return { title: tUnavailable("title"), robots: { index: false, follow: true } };
+  }
+  const { document } = preview;
   const t = await getTranslations("resumePreview");
 
   return {
@@ -41,16 +79,18 @@ export const generateMetadata = async ({
 const ResumePreviewPage = async ({ params, searchParams }: ResumePreviewPageProps) => {
   const { locale } = await params;
   const key = getResumeKey((await searchParams).resume);
-  const [t, tProfile, tResume, tAchievement, { document, details: careerDetails }] =
-    await Promise.all([
-      getTranslations("resumePreview"),
-      getTranslations("profile"),
-      getTranslations("resume"),
-      getTranslations("achievement"),
-      getPreview(locale, key),
-    ]);
+  const [t, tProfile, tResume, tAchievement, preview] = await Promise.all([
+    getTranslations("resumePreview"),
+    getTranslations("profile"),
+    getTranslations("resume"),
+    getTranslations("achievement"),
+    getPreview(locale, key),
+  ]);
+  if (!preview) return <ResumeLocaleUnavailable path={resumePath("/resume/preview", key)} />;
+  const { document, details: careerDetails } = preview;
   const tDescription = await getTranslations("descriptionItem");
   const { contact, introduction } = document;
+  const totalExperience = getTotalExperienceLabel(document, t);
 
   return (
     <main className="resume-preview-page min-h-full bg-gray-800 px-3 py-4 text-gray-100 md:px-5 md:py-8">
@@ -96,9 +136,11 @@ const ResumePreviewPage = async ({ params, searchParams }: ResumePreviewPageProp
             <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-blue-500">
               {t("experience")}
             </h2>
-            <p className="text-xs text-gray-600">
-              {t("totalExperience", { value: document.totalExperience })}
-            </p>
+            {totalExperience && (
+              <p className="text-xs text-gray-600">
+                {t("totalExperience", { value: totalExperience })}
+              </p>
+            )}
           </div>
 
           <div className="divide-y divide-gray-300">

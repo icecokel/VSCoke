@@ -775,7 +775,15 @@
     "summary": "概要",
     "experience": "職務経歴",
     "totalExperience": "経験 {value}",
-    "updatedAt": "最終更新 · {date}"
+    "updatedAt": "最終更新 · {date}",
+    "experienceYearsMonths": "{years}年{months}か月",
+    "experienceYears": "{years}年",
+    "experienceMonths": "{months}か月"
+  },
+  "resumeLocaleUnavailable": {
+    "title": "この言語の履歴書はまだ公開されていません",
+    "description": "現在、履歴書は韓国語のみで公開しています。同じ内容は韓国語の履歴書でご確認いただけます。",
+    "openDefaultLocale": "韓国語の履歴書を見る"
   },
   "resume": {
     "name": "イ・サンミン",

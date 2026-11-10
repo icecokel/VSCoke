@@ -2,7 +2,6 @@
 
 import OpenProjectModal from "./open-project-modal";
 import { useBoolean } from "@/hooks/use-boolean";
-import BaseText from "@/components/base-ui/text";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,11 +75,12 @@ const Menubar = () => {
         {MENULIST.map((item, index) => (
           <DropdownMenu key={`${item.key}_${index}`}>
             <DropdownMenuTrigger asChild>
-              <div className="hover:bg-gray-300 text-gray-300 hover:text-black hover:rounded-xs cursor-pointer">
-                <BaseText type="body1" className="px-3 select-none">
-                  {item.name}
-                </BaseText>
-              </div>
+              <button
+                type="button"
+                className="cursor-pointer text-gray-300 hover:rounded-xs hover:bg-gray-300 hover:text-black focus-visible:rounded-xs focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:outline-none"
+              >
+                <span className="block px-3 text-base leading-6 select-none">{item.name}</span>
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-gray-800 border-gray-700 text-white">
               {item.items.map((menuItem, menuIndex) => (

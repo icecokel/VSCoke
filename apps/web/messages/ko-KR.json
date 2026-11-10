@@ -775,7 +775,15 @@
     "summary": "소개",
     "experience": "경력",
     "totalExperience": "총 경력 {value}",
-    "updatedAt": "최종 업데이트 · {date}"
+    "updatedAt": "최종 업데이트 · {date}",
+    "experienceYearsMonths": "{years}년 {months}개월",
+    "experienceYears": "{years}년",
+    "experienceMonths": "{months}개월"
+  },
+  "resumeLocaleUnavailable": {
+    "title": "이력서를 아직 이 언어로 제공하지 않습니다",
+    "description": "현재 이력서는 한국어로만 공개되어 있습니다. 한국어 이력서에서 같은 내용을 확인할 수 있습니다.",
+    "openDefaultLocale": "한국어 이력서 보기"
   },
   "resume": {
     "name": "이상민",

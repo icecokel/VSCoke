@@ -14,7 +14,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { useTranslations } from "next-intl";
@@ -24,6 +24,8 @@ export const HistoryTabs = ({ children }: TParentNode) => {
   const router = useRouter();
   const pathname = usePathname();
   const t = useTranslations("historyTabs");
+  const tabRailRef = useRef<HTMLDivElement>(null);
+  const activeTabPath = history.find(item => item.isActive)?.path;
 
   const handleClickTab = change;
 
@@ -169,11 +171,31 @@ export const HistoryTabs = ({ children }: TParentNode) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, isHydrated]);
 
+  // 탭이 많아 가로로 넘쳐도 방금 연 탭이 보이도록 탭 줄만 가로 스크롤한다.
+  // scrollIntoView는 바깥 레이아웃 컨테이너까지 스크롤할 수 있어 쓰지 않는다.
+  useEffect(() => {
+    const rail = tabRailRef.current;
+    if (!rail || !activeTabPath) return;
+    const activeTab = Array.from(rail.children).find(
+      (tab): tab is HTMLElement => tab instanceof HTMLElement && tab.id === activeTabPath,
+    );
+    if (!activeTab) return;
+
+    const tabStart = activeTab.offsetLeft;
+    const tabEnd = tabStart + activeTab.offsetWidth;
+    if (tabStart < rail.scrollLeft) {
+      rail.scrollLeft = tabStart;
+    } else if (tabEnd > rail.scrollLeft + rail.clientWidth) {
+      rail.scrollLeft = tabEnd - rail.clientWidth;
+    }
+  }, [activeTabPath, history.length]);
+
   return (
-    <div className="flex flex-col h-screen w-full bg-gray-800">
+    <div className="flex flex-col h-full w-full bg-gray-800">
       <div
+        ref={tabRailRef}
         data-testid="history-tab-rail"
-        className="flex h-8 min-h-8 flex-shrink-0 overflow-x-auto bg-gray-900"
+        className="relative flex h-8 min-h-8 flex-shrink-0 overflow-x-auto bg-gray-900"
       >
         {history.map(item => (
           <ContextMenu key={`tab_${item.path}`}>

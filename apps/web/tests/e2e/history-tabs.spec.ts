@@ -162,6 +162,41 @@ test.describe("히스토리 탭 상태머신", () => {
     await expect(shareTab).not.toContainText(shareId);
   });
 
+  test("탭이 많아 넘쳐도 새로 연 탭이 탭 줄 안에 보인다", async ({ page }) => {
+    await page.setViewportSize({ width: 1180, height: 757 });
+    await installHistoryFixture(
+      page,
+      Array.from({ length: 16 }, (_, index) => ({
+        path: `/blog/fixture-${index}`,
+        title: `fixture-tab-${index}`,
+        isActive: index === 0,
+        lastAccessedAt: Date.now(),
+      })),
+    );
+    const locale = getTestLocale();
+
+    await visit(page, `/${locale}/game`);
+    await waitForHistoryHydration(page);
+    const rail = page.getByTestId("history-tab-rail");
+    const activeTab = rail.locator("div[id='/game']");
+    await expect(activeTab.getByRole("button", { name: "game", exact: true })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await expect
+      .poll(() => rail.evaluate(element => element.scrollWidth > element.clientWidth))
+      .toBe(true);
+    await expect
+      .poll(async () => {
+        const [railBox, tabBox] = await Promise.all([rail.boundingBox(), activeTab.boundingBox()]);
+        return (
+          tabBox!.x >= railBox!.x - 1 &&
+          tabBox!.x + tabBox!.width <= railBox!.x + railBox!.width + 1
+        );
+      })
+      .toBe(true);
+  });
+
   test("탭 추가/활성화/스마트 닫기 동작이 일관되다", async ({ page }) => {
     await installHistoryFixture(page, []);
 

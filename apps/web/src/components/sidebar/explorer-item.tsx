@@ -3,8 +3,7 @@
 import { ITree } from "@/hooks/use-explorer";
 import { useCustomRouter } from "@/hooks/use-custom-router";
 import Icon from "@/components/base-ui/icon";
-import BaseText from "@/components/base-ui/text";
-import { MouseEvent, useState } from "react";
+import { useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ExplorerItemProps extends ITree {
@@ -31,6 +30,10 @@ const convertIcon = (icon?: string) => {
   }
 };
 
+// 폴더와 파일 행은 Tab 탐색과 Enter·Space 실행을 위해 기본 button으로 렌더링한다.
+const explorerRowClassName =
+  "flex w-full min-w-0 cursor-pointer items-center gap-x-1.5 rounded-xs text-left focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-inset focus-visible:outline-none";
+
 const ExplorerItem = ({
   id,
   label,
@@ -44,12 +47,8 @@ const ExplorerItem = ({
   const url = !items ? (path ?? "") : "";
   const router = useCustomRouter();
 
-  const handleClickTree = ({ currentTarget: { ariaValueText } }: MouseEvent<HTMLDivElement>) => {
-    setOpenedId(prev => {
-      if (!ariaValueText) return "";
-
-      return prev === ariaValueText ? "" : ariaValueText;
-    });
+  const handleClickTree = () => {
+    setOpenedId(prev => (prev === id ? "" : id));
   };
 
   const handleClickItem = () => {
@@ -71,17 +70,18 @@ const ExplorerItem = ({
       <TooltipProvider delayDuration={500}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div
-              className="flex items-center gap-x-1.5 min-w-0"
+            <button
+              type="button"
+              className={explorerRowClassName}
               onClick={handleClickItem}
               onMouseEnter={handlePrefetchItem}
               onFocus={handlePrefetchItem}
             >
-              <div className="shrink-0 flex items-center justify-center size-4">
+              <span className="shrink-0 flex items-center justify-center size-4">
                 {convertIcon(icon)}
-              </div>
+              </span>
               <span className="truncate text-sm">{label}</span>
-            </div>
+            </button>
           </TooltipTrigger>
           <TooltipContent side="right">
             <p>{label}</p>
@@ -93,23 +93,22 @@ const ExplorerItem = ({
 
   return (
     <div className="flex flex-col gap-y-1.5 cursor-pointer select-none">
-      <div
-        className="flex items-center gap-x-1 hover:bg-blue-300/10 rounded-xs overflow-hidden"
-        aria-valuetext={id}
-        onClick={items ? handleClickTree : undefined}
-      >
+      <div className="flex items-center gap-x-1 hover:bg-blue-300/10 rounded-xs overflow-hidden">
         {items ? (
-          <div className="flex items-center gap-x-1.5 w-full min-w-0">
-            <div className="shrink-0 flex items-center justify-center size-4">
+          <button
+            type="button"
+            aria-expanded={openedId === id}
+            className={explorerRowClassName}
+            onClick={handleClickTree}
+          >
+            <span className="shrink-0 flex items-center justify-center size-4">
               <Icon
                 kind={openedId === id ? "keyboard_arrow_down" : "keyboard_arrow_right"}
                 style={{ fontSize: "20px" }}
               />
-            </div>
-            <BaseText type="body1" className="truncate flex-1">
-              {id}
-            </BaseText>
-          </div>
+            </span>
+            <span className="truncate flex-1 text-base leading-6">{id}</span>
+          </button>
         ) : (
           renderLeaf()
         )}

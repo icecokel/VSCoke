@@ -775,7 +775,15 @@
     "summary": "Summary",
     "experience": "Experience",
     "totalExperience": "{value} total experience",
-    "updatedAt": "Last updated · {date}"
+    "updatedAt": "Last updated · {date}",
+    "experienceYearsMonths": "{years, plural, one {# year} other {# years}} {months, plural, one {# month} other {# months}}",
+    "experienceYears": "{years, plural, one {# year} other {# years}}",
+    "experienceMonths": "{months, plural, one {# month} other {# months}}"
+  },
+  "resumeLocaleUnavailable": {
+    "title": "This resume is not available in English yet",
+    "description": "The resume is currently published in Korean only. You can read the same content in the Korean resume.",
+    "openDefaultLocale": "Open the Korean resume"
   },
   "resume": {
     "name": "Sangmin Lee",

@@ -57,6 +57,39 @@ test.describe("키보드 전용 시나리오", () => {
     await expect(blogTab).toHaveCount(0);
   });
 
+  test("상단 메뉴와 탐색기 폴더·파일에 Tab으로 이동해 README를 연다", async ({ page }) => {
+    const locale = (process.env.PLAYWRIGHT_LOCALE as Locale | undefined) ?? "ko-KR";
+    const messages = loadMessages(locale);
+    await page.setViewportSize({ width: 1180, height: 757 });
+    await visit(page, `/${locale}`);
+    await waitForHistoryHydration(page);
+
+    const focusByTab = async (target: ReturnType<typeof page.getByRole>) => {
+      for (let index = 0; index < 60; index += 1) {
+        if (await target.evaluate(element => element === document.activeElement)) return;
+        await page.keyboard.press("Tab");
+      }
+      await expect(target).toBeFocused();
+    };
+
+    await focusByTab(page.locator("#menubar").getByRole("button", { name: messages.menu.file }));
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("menuitem", { name: messages.menu.openProject })).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    await page.getByRole("button", { name: messages.sidebar.explorer }).click();
+    const hobbyFolder = page.getByRole("button", { name: "hobby", exact: true });
+    await focusByTab(hobbyFolder);
+    await expect(hobbyFolder).toHaveAttribute("aria-expanded", "false");
+    await page.keyboard.press("Enter");
+    await expect(hobbyFolder).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByRole("button", { name: "recipes.json", exact: true })).toBeVisible();
+
+    await focusByTab(page.getByRole("button", { name: "README.md", exact: true }));
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(new RegExp(`/${escapeRegExp(locale)}/readme`));
+  });
+
   test("블로그 대시보드 자동완성을 선택할 수 있다", async ({ page }) => {
     const { locale } = await resolveLocaleAndMessages(page);
     await visit(page, `/${locale}/blog/dashboard`);

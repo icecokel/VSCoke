@@ -64,6 +64,24 @@ test.describe("블로그 상세 읽기 경험", () => {
     await expect(target).toBeInViewport();
   });
 
+  test("목차로 이동해도 탭 줄이 메뉴바 아래에 그대로 보인다", async ({ page }) => {
+    await page.setViewportSize({ width: 1180, height: 757 });
+    await gotoWithRetry(page, articlePath);
+    const outline = page.getByTestId("blog-outline");
+    await expect(outline).toBeVisible();
+    // 창 너비에 따라 데스크톱 목차 또는 접힌 목차가 보이므로 보이는 쪽으로 이동한다.
+    const summary = outline.locator("summary");
+    if (await summary.isVisible()) await summary.click();
+    await outline.locator("ol a").filter({ visible: true }).nth(2).click();
+    await expect.poll(() => page.evaluate(() => location.hash)).not.toBe("");
+
+    const [menubarBox, railBox] = await Promise.all([
+      page.locator("#menubar").boundingBox(),
+      page.getByTestId("history-tab-rail").boundingBox(),
+    ]);
+    expect(railBox!.y).toBeGreaterThanOrEqual(menubarBox!.y + menubarBox!.height - 1);
+  });
+
   test("코드 복사는 본문만 복사하고 완료 상태를 알린다", async ({ page }) => {
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "clipboard", {

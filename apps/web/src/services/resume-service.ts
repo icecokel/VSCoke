@@ -1,3 +1,4 @@
+import { routing } from "@/i18n/routing";
 import { ApiError, apiClient } from "@/lib/api-client";
 import type { components } from "@/types/api";
 
@@ -16,6 +17,23 @@ export const getResumeDocument = async (locale: string, resume = "pe"): Promise<
     resumeRequestOptions,
   );
 };
+
+export const hasResumeDocument = async (locale: string, resume: string): Promise<boolean> => {
+  try {
+    await getResumeDocument(locale, resume);
+    return true;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return false;
+    throw error;
+  }
+};
+
+/** 요청 언어에는 없지만 기본 언어로는 공개된 이력서인지 확인한다. */
+export const isResumeOnlyInDefaultLocale = async (
+  locale: string,
+  resume: string,
+): Promise<boolean> =>
+  locale !== routing.defaultLocale && hasResumeDocument(routing.defaultLocale, resume);
 
 export const getResumePreview = async (locale: string, resume = "pe"): Promise<ResumePreview> => {
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(resume) || resume.length > 80)

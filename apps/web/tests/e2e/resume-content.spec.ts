@@ -120,7 +120,19 @@ test("미등록·비공개·현재 버전 없음과 없는 locale은 다른 문�
       404,
     );
   }
-  expect((await page.goto("/en-US/readme?resume=ko-only"))?.status()).toBe(404);
+});
+
+test("기본 언어에만 공개된 이력서는 404 대신 한국어 이력서로 안내한다", async ({ page }) => {
+  for (const path of ["/readme", "/resume/preview"]) {
+    const response = await page.goto(`/en-US${path}?resume=ko-only`);
+    expect(response?.status()).toBe(200);
+    const notice = page.getByTestId("resume-locale-unavailable");
+    await expect(notice).toBeVisible();
+    expect(new URL(page.url()).pathname).toBe(`/en-US${path}`);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    await expect(notice.getByRole("link")).toHaveAttribute("href", `/ko-KR${path}?resume=ko-only`);
+  }
+  expect((await page.goto("/en-US/readme?resume=missing"))?.status()).toBe(404);
 });
 
 test("문서 버전 갱신이 다음 조회에 반영되고 다른 문서는 바뀌지 않는다", async ({

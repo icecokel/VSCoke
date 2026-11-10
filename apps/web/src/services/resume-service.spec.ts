@@ -107,3 +107,30 @@ test("잘못된 명시 key는 요청하지 않고 누락 상세 bundle503은 재
     error => error instanceof ApiError && error.status === 503,
   );
 });
+
+test("요청 언어에 없는 이력서는 기본 언어 공개 여부만 확인하고 API 장애는 전달한다", async () => {
+  const { isResumeOnlyInDefaultLocale } = await import("./resume-service");
+  const { ApiError } = await import("@/lib/api-client");
+  const requests: string[] = [];
+  let status = 200;
+  globalThis.fetch = async input => {
+    if (String(input).endsWith("/client-errors")) return new Response(null, { status: 202 });
+    requests.push(String(input));
+    if (status !== 200) return Response.json({ message: "Unavailable" }, { status });
+    return Response.json({ success: true, data: { key: "pe", locale: "ko-KR" } });
+  };
+
+  assert.equal(await isResumeOnlyInDefaultLocale("ko-KR", "pe"), false);
+  assert.equal(await isResumeOnlyInDefaultLocale("en-US", "pe"), true);
+  status = 404;
+  assert.equal(await isResumeOnlyInDefaultLocale("ja-JP", "missing"), false);
+  assert.deepEqual(requests, [
+    "https://api.example.com/resume?locale=ko-KR&resume=pe",
+    "https://api.example.com/resume?locale=ko-KR&resume=missing",
+  ]);
+  status = 503;
+  await assert.rejects(
+    isResumeOnlyInDefaultLocale("en-US", "pe"),
+    error => error instanceof ApiError && error.status === 503,
+  );
+});

@@ -216,13 +216,10 @@ test.describe("Wordle 판 전체 비주얼", () => {
       await page.keyboard.press("Enter");
       await expect(page.locator(".grid-rows-6 .animate-flip")).toHaveCount(5);
       await page.evaluate(() => document.fonts.ready);
-      await expect(page.getByTestId("wordle-title").locator("xpath=../..")).toHaveScreenshot(
-        `wordle-${layout.name}.png`,
-        {
-          animations: "disabled",
-          caret: "hide",
-        },
-      );
+      await expect(page.getByTestId("wordle-frame")).toHaveScreenshot(`wordle-${layout.name}.png`, {
+        animations: "disabled",
+        caret: "hide",
+      });
     });
   }
 });

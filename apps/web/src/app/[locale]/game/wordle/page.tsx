@@ -6,11 +6,13 @@ import { WordleBoard } from "@/components/wordle/wordle-board";
 import { WordleKeyboard } from "@/components/wordle/wordle-keyboard";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Loader2 } from "lucide-react";
+import { ArrowLeft, RefreshCw, Loader2 } from "lucide-react";
 import styles from "@/components/wordle/wordle.module.css";
 import { ShareLinkButton } from "@/components/share/share-link-button";
 import { useTranslations } from "next-intl";
 import { isIgnoredWordleKey } from "@/lib/wordle/wordle-key-guard";
+import { CustomLink } from "@/components/custom-link";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function WordlePage() {
   const tShare = useTranslations("Share");
@@ -60,12 +62,26 @@ export default function WordlePage() {
 
   return (
     <main className="flex h-full min-h-0 w-full min-w-0 items-center justify-center bg-background">
-      <div className={styles.frame}>
+      <div className={styles.frame} data-testid="wordle-frame">
         {/* Header */}
-        <header className={`flex shrink-0 items-center justify-between px-4 py-3 ${styles.header}`}>
-          <h1 className="text-xl font-bold tracking-tight" data-testid="wordle-title">
-            Wordle
-          </h1>
+        <header
+          className={`flex shrink-0 flex-wrap items-center justify-between gap-y-2 px-4 py-3 ${styles.header}`}
+        >
+          <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                  <CustomLink href="/game" aria-label={tGame("viewOtherGames")}>
+                    <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                  </CustomLink>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{tGame("viewOtherGames")}</TooltipContent>
+            </Tooltip>
+            <h1 className="text-xl font-bold tracking-tight" data-testid="wordle-title">
+              Wordle
+            </h1>
+          </div>
           <div className="flex items-center gap-1">
             <ShareLinkButton
               variant="ghost"
@@ -90,6 +106,18 @@ export default function WordlePage() {
               <RefreshCw className="w-4 h-4" />
             </Button>
           </div>
+          {gameStatus !== "playing" && (
+            <div role="status" data-testid="wordle-result" className="w-full text-center text-sm">
+              <p className="font-semibold">
+                {tGame(gameStatus === "won" ? "wordleWonTitle" : "wordleLostTitle")}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {gameStatus === "won"
+                  ? tGame("wordleWonDescription")
+                  : tGame("wordleLostDescription", { answer })}
+              </p>
+            </div>
+          )}
         </header>
 
         {/* Board - flex-1로 남은 공간 채움 */}

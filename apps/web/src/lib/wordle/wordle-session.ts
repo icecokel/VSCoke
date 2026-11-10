@@ -5,7 +5,7 @@ export interface WordleSession {
   startedAt: number | null;
 }
 
-// 탭을 오가며 페이지가 다시 마운트되어도 같은 브라우저 탭에서는 진행 중인 판을 이어 간다.
+// 페이지가 다시 마운트되어도 같은 브라우저 탭에서는 완료한 판까지 유지한다.
 const WORDLE_SESSION_KEY = "vscoke:wordle-session";
 
 const isWord = (value: unknown, length: number): value is string =>

@@ -66,6 +66,11 @@ export interface AppMessages {
     resultNotFoundTitle: string;
     notEnoughLetters: string;
     wordleTitle: string;
+    viewOtherGames: string;
+    wordleWonTitle: string;
+    wordleWonDescription: string;
+    wordleLostTitle: string;
+    wordleLostDescription: string;
   };
   blog: {
     backToList: string;

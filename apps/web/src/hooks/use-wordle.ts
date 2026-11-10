@@ -112,26 +112,28 @@ export const useWordle = (): UseWordleReturn => {
 
   useEffect(() => {
     if (!answer) return;
-    if (gameStatus !== "playing") {
-      clearWordleSession();
-      return;
-    }
     saveWordleSession({
       answer,
       guesses: guesses.slice(0, turn),
       currentGuess,
       startedAt: startedAt.current,
     });
-  }, [answer, guesses, turn, currentGuess, gameStatus]);
+  }, [answer, guesses, turn, currentGuess]);
 
-  // 다른 탭에 다녀와 다시 마운트되면 같은 브라우저 탭에 저장된 진행 중인 판을 복원한다.
+  // 완료 여부도 제출 기록에서 계산해 같은 브라우저 탭의 판을 복원한다.
   const restoreSession = useCallback((session: WordleSession) => {
     const results = session.guesses.map(guess => logic.checkGuess(guess, session.answer));
+    const status = session.guesses.includes(session.answer)
+      ? "won"
+      : session.guesses.length === MAX_CHALLENGES
+        ? "lost"
+        : "playing";
     setAnswer(session.answer);
     setGuesses(padRows(session.guesses));
     setHistory(padRows(results));
     setTurn(session.guesses.length);
-    setCurrentGuess(session.currentGuess);
+    setCurrentGuess(status === "playing" ? session.currentGuess : "");
+    setGameStatus(status);
     setUsedKeys(
       session.guesses.reduce(
         (keys, guess, index) => mergeUsedKeys(keys, guess, results[index]),
@@ -146,11 +148,7 @@ export const useWordle = (): UseWordleReturn => {
   useEffect(() => {
     // 마운트 시 한 번만 실행
     const session = readWordleSession(logic.getWordLength(), MAX_CHALLENGES);
-    const isUnfinished =
-      session &&
-      session.guesses.length < MAX_CHALLENGES &&
-      !session.guesses.includes(session.answer);
-    if (isUnfinished) restoreSession(session);
+    if (session) restoreSession(session);
     else void loadNewWord();
     return () => {
       generationRef.current += 1;

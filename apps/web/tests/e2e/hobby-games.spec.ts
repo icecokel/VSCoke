@@ -3,6 +3,7 @@ import {
   escapeRegExp,
   expectWordleKeyboardButtons,
   gotoWithRetry,
+  loadMessages,
   mockWordleWord,
   resolveLocaleAndMessages,
 } from "./test-helpers";
@@ -256,51 +257,186 @@ test.describe("Wordle 입력과 화면 크기", () => {
     await expect(page.locator(".grid-rows-6 .bg-green-600")).toHaveCount(5);
   });
 
+  test("모바일 직접 진입 후 키보드로 같은 언어의 게임 센터에 복귀한다", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoWithRetry(page, "/en-US/game/wordle");
+    const link = page.getByRole("link", {
+      name: loadMessages("en-US").Game.viewOtherGames,
+      exact: true,
+    });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", "/en-US/game");
+    await link.hover();
+    await expect(page.getByRole("tooltip")).toContainText(
+      loadMessages("en-US").Game.viewOtherGames,
+    );
+    for (let index = 0; index < 20; index += 1) {
+      if (await link.evaluate(element => element === document.activeElement)) break;
+      await page.keyboard.press("Tab");
+    }
+    await expect(link).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/en-US\/game$/);
+  });
+
   for (const viewport of [
-    { width: 1440, height: 900 },
-    { width: 360, height: 780 },
-    { width: 390, height: 844 },
-    { width: 768, height: 1024 },
-    { width: 844, height: 390 },
+    { width: 1440, height: 900, hasTouch: false },
+    { width: 360, height: 780, hasTouch: true },
+    { width: 390, height: 844, hasTouch: true },
+    { width: 768, height: 1024, hasTouch: true },
+    { width: 780, height: 360, hasTouch: false },
+    { width: 844, height: 390, hasTouch: false },
+    { width: 780, height: 360, hasTouch: true },
+    { width: 844, height: 390, hasTouch: true },
   ]) {
-    test(`${viewport.width}×${viewport.height}에서 타일과 키보드가 겹치지 않는다`, async ({
-      page,
-    }) => {
-      await page.setViewportSize(viewport);
-      const tiles = page.locator(".grid-rows-6 > .grid-cols-5 > div");
-      await expect(tiles).toHaveCount(30);
-      const geometry = await tiles.evaluateAll(elements => {
-        const main = elements[0].closest("main")!;
-        const header = main.querySelector("header")!.getBoundingClientRect();
-        const footer = main.querySelector("footer")!.getBoundingClientRect();
-        return elements.map(element => {
-          const tile = element.getBoundingClientRect();
-          return {
-            left: tile.left,
-            right: tile.right,
-            top: tile.top,
-            bottom: tile.bottom,
-            width: tile.width,
-            height: tile.height,
-            headerBottom: header.bottom,
-            footerTop: footer.top,
-            viewportWidth: innerWidth,
-            viewportHeight: innerHeight,
-          };
+    test.describe(`${viewport.width}×${viewport.height} ${viewport.hasTouch ? "touch" : "fine"}`, () => {
+      test.use({ hasTouch: viewport.hasTouch, isMobile: viewport.hasTouch });
+      test("타일과 키보드가 겹치지 않고 조작 영역이 화면 안에 있다", async ({ page }, testInfo) => {
+        await page.setViewportSize(viewport);
+        const tiles = page.locator(".grid-rows-6 > .grid-cols-5 > div");
+        await expect(tiles).toHaveCount(30);
+        const geometry = await tiles.evaluateAll(elements => {
+          const main = elements[0].closest("main")!;
+          const header = main.querySelector("header")!.getBoundingClientRect();
+          const footer = main.querySelector("footer")!.getBoundingClientRect();
+          return elements.map(element => {
+            const tile = element.getBoundingClientRect();
+            return {
+              left: tile.left,
+              right: tile.right,
+              top: tile.top,
+              bottom: tile.bottom,
+              width: tile.width,
+              height: tile.height,
+              headerBottom: header.bottom,
+              footerTop: footer.top,
+              footerBottom: footer.bottom,
+              footerLeft: footer.left,
+              footerRight: footer.right,
+              viewportWidth: innerWidth,
+              viewportHeight: innerHeight,
+            };
+          });
         });
+        testInfo.annotations.push({
+          type: "wordle-layout",
+          description: JSON.stringify({
+            ...viewport,
+            minTile: Math.min(...geometry.map(tile => tile.width)),
+          }),
+        });
+        for (const tile of geometry) {
+          expect.soft(tile.left).toBeGreaterThanOrEqual(0);
+          expect.soft(tile.right).toBeLessThanOrEqual(tile.viewportWidth);
+          expect.soft(tile.top).toBeGreaterThanOrEqual(tile.headerBottom - 1);
+          expect.soft(tile.bottom).toBeLessThanOrEqual(tile.viewportHeight + 1);
+          expect
+            .soft(
+              tile.left < tile.footerRight &&
+                tile.right > tile.footerLeft &&
+                tile.top < tile.footerBottom &&
+                tile.bottom > tile.footerTop,
+            )
+            .toBe(false);
+          expect.soft(tile.width).toBeGreaterThanOrEqual(24);
+          expect.soft(Math.abs(tile.width - tile.height)).toBeLessThanOrEqual(1);
+        }
+        await expect(page.getByRole("button", { name: "Enter", exact: true })).toBeInViewport();
+        await expect(page.getByRole("button", { name: "Backspace", exact: true })).toBeInViewport();
+        const controls = page.locator("main header a, main header button, main footer button");
+        for (const control of await controls.all())
+          await expect(control).toBeInViewport({ ratio: 1 });
+        if (viewport.height <= 500) {
+          await page.screenshot({ path: testInfo.outputPath("wordle-layout.png") });
+        }
       });
-      for (const tile of geometry) {
-        expect.soft(tile.left).toBeGreaterThanOrEqual(0);
-        expect.soft(tile.right).toBeLessThanOrEqual(tile.viewportWidth);
-        expect.soft(tile.top).toBeGreaterThanOrEqual(tile.headerBottom - 1);
-        expect
-          .soft(tile.bottom)
-          .toBeLessThanOrEqual(Math.min(tile.footerTop, tile.viewportHeight) + 1);
-        expect.soft(tile.width).toBeGreaterThan(0);
-        expect.soft(Math.abs(tile.width - tile.height)).toBeLessThanOrEqual(1);
+    });
+  }
+});
+
+test.describe("Wordle 완료한 판", () => {
+  test.use({ viewport: { width: 780, height: 360 } });
+  for (const outcome of ["won", "lost"] as const) {
+    test(`${outcome} 결과는 알림 종료·새로고침·재진입 후에도 유지하고 재시작으로만 초기화한다`, async ({
+      page,
+    }, testInfo) => {
+      const { locale, messages } = await resolveLocaleAndMessages(page);
+      const word = await mockWordleWord(page);
+      let checks = 0;
+      await page.route("**/wordle/check", route => {
+        checks += 1;
+        return route.fulfill({ json: { success: true, data: { exists: true } } });
+      });
+      let completed = 0;
+      await page.route("**/usage/events", route => {
+        const event = route.request().postDataJSON() as { eventName: string; feature?: string };
+        if (event.eventName === "game_completed" && event.feature === "wordle") completed += 1;
+        return route.fulfill({ status: 202, json: {} });
+      });
+      await gotoWithRetry(page, `/${locale}/game/wordle`);
+      await expect(page.getByTestId("wordle-loading")).toBeHidden();
+      await page.clock.install();
+      const board = page.getByTestId("wordle-board");
+      const guesses =
+        outcome === "won" ? ["APPLE"] : ["BREAD", "COAST", "PLANT", "SHORE", "SLATE", "CRANE"];
+      for (const [index, guess] of guesses.entries()) {
+        await page.keyboard.type(guess);
+        await page.keyboard.press("Enter");
+        await expect(board.locator(".animate-flip")).toHaveCount((index + 1) * 5);
       }
-      await expect(page.getByRole("button", { name: "Enter", exact: true })).toBeInViewport();
-      await expect(page.getByRole("button", { name: "Backspace", exact: true })).toBeInViewport();
+      const result = page.getByTestId("wordle-result");
+      const title =
+        outcome === "won" ? messages.Game.wordleWonTitle : messages.Game.wordleLostTitle;
+      const description =
+        outcome === "won"
+          ? messages.Game.wordleWonDescription
+          : messages.Game.wordleLostDescription.replace("{answer}", "APPLE");
+      await expect(result).toHaveAttribute("role", "status");
+      await expect(result).toContainText(title);
+      await expect(result).toContainText(description);
+      await expect(page.locator("[data-sonner-toast]")).toBeVisible();
+      await page.clock.runFor(6000);
+      await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
+      await expect(result).toBeVisible();
+      await expect
+        .poll(async () => (await board.getByRole("img").first().boundingBox())!.width)
+        .toBeGreaterThanOrEqual(24);
+      for (const control of await page
+        .locator("main header a, main header button, main footer button")
+        .all())
+        await expect(control).toBeInViewport({ ratio: 1 });
+      await page.screenshot({
+        path: testInfo.outputPath("wordle-finished.png"),
+        animations: "disabled",
+      });
+      await expect.poll(() => completed).toBe(1);
+      const finishedBoard = await board.textContent();
+
+      await page.reload();
+      await expect(result).toContainText(title);
+      await expect(board).toHaveText(finishedBoard!);
+      expect(word.getRequestCount()).toBe(1);
+      await page.getByRole("link", { name: messages.Game.viewOtherGames, exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`/${escapeRegExp(locale)}/game$`));
+      await page
+        .getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.wordleTitle)) })
+        .click();
+      await expect(result).toContainText(title);
+      await expect(board).toHaveText(finishedBoard!);
+      expect(word.getRequestCount()).toBe(1);
+      await page.keyboard.type("XXXXX");
+      await page.keyboard.press("Enter");
+      await page.getByRole("button", { name: "A", exact: true }).click();
+      await expect(board).toHaveText(finishedBoard!);
+      expect(checks).toBe(guesses.length);
+      await page.getByTestId("wordle-header-restart").click();
+      await expect.poll(() => word.getRequestCount()).toBe(2);
+      await expect(page.getByTestId("wordle-loading")).toBeHidden();
+      await expect(result).toHaveCount(0);
+      await expect(board).toHaveText("");
+      await page.keyboard.press("A");
+      await expect(board).toHaveText("A");
+      expect(completed).toBe(1);
     });
   }
 });

@@ -67,3 +67,24 @@
 .key {
   forced-color-adjust: none;
 }
+
+@media (min-width: 640px) and (max-height: 500px) {
+  .frame {
+    display: grid;
+    width: min(100%, 960px);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .header {
+    grid-column: 1 / -1;
+    padding-top: max(4px, env(safe-area-inset-top));
+    padding-bottom: 4px;
+    row-gap: 4px;
+  }
+
+  .footer {
+    min-width: 0;
+    align-self: center;
+  }
+}

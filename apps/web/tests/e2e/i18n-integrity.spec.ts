@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import type { ResumeDocument } from "@/services/resume-service";
 import {
   escapeRegExp,
   expectPath,
@@ -291,52 +292,40 @@ test.describe("i18n 무결성", () => {
     }
   });
 
-  test("공개 이력서에 최신 제목과 회사별 역할이 표시된다", async ({ page }) => {
+  test("공개 이력서에 API 문서의 제목과 회사별 역할·프로젝트가 표시된다", async ({
+    page,
+    request,
+  }) => {
+    // 이력서 본문은 DB 버전으로 바뀌므로 고정 문구 대신 같은 API 응답을 기준으로 확인한다.
+    const response = await request.get(`${process.env.NEXT_PUBLIC_API_URL}/resume?locale=ko-KR`);
+    expect(response.ok()).toBeTruthy();
+    const { data: document } = (await response.json()) as { data: ResumeDocument };
+
     await visit(page, "/ko-KR/readme");
     await page.setViewportSize({ width: 390, height: 844 });
 
-    await expect(
-      page.getByRole("heading", {
-        name: "비즈니스 가치를 만들고, 팀의 고통을 줄이는 개발자",
-      }),
-    ).toBeVisible();
-    await expect(page.getByText("풀스택 개발자")).toBeVisible();
-    await expect(
-      page
-        .getByRole("heading", {
-          name: "외교부 영사콜센터 유지보수",
-          exact: true,
-        })
-        .first(),
-    ).toBeVisible();
-    await expect(
-      page
-        .getByRole("heading", {
-          name: "Smart-DIS 데이터 마이그레이션과 실행 환경 전환",
-          exact: true,
-        })
-        .first(),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: document.title, exact: true })).toBeVisible();
+    for (const career of document.careers) {
+      await expect(page.getByText(`${career.period} · ${career.role}`).first()).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: career.projects[0].title, exact: true }).first(),
+      ).toBeVisible();
+    }
 
-    const descriptionSubtitle = page.getByRole("heading", {
-      name: "의료·임상 분석 화면 개발",
-      exact: true,
-    });
-    const descriptionDetail = page.getByText(
-      "의료·임상 분석 제품의 화면 개발과 접근성·성능 개선, 개발 환경 개선과 백엔드 작업을 함께 맡고 있습니다.",
-      { exact: true },
-    );
-    const [subtitleBox, detailBox] = await Promise.all([
-      descriptionSubtitle.boundingBox(),
-      descriptionDetail.boundingBox(),
+    const description = document.careers
+      .flatMap(career => career.projects)
+      .flatMap(project => project.descriptions)
+      .find(item => item.subtitle && (item.detail || item.tasks?.length));
+    expect(description).toBeDefined();
+    const body = description!.detail ?? description!.tasks![0];
+    const [subtitleBox, bodyBox] = await Promise.all([
+      page.getByRole("heading", { name: description!.subtitle, exact: true }).first().boundingBox(),
+      page.getByText(body, { exact: true }).first().boundingBox(),
     ]);
 
     expect(subtitleBox).not.toBeNull();
-    expect(detailBox).not.toBeNull();
-    if (!subtitleBox || !detailBox) {
-      throw new Error("이력서 소제목과 본문 위치를 확인할 수 없습니다.");
-    }
-    expect(detailBox.y).toBeGreaterThanOrEqual(subtitleBox.y + subtitleBox.height);
+    expect(bodyBox).not.toBeNull();
+    expect(bodyBox!.y).toBeGreaterThanOrEqual(subtitleBox!.y + subtitleBox!.height);
   });
 
   test("언어 전환 후 URL/쿠키/새로고침/루트 리다이렉트가 일치한다", async ({ page }) => {

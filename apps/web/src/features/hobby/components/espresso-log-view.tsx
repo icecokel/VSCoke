@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowLeft,
   ChevronDown,
   Coffee,
   FlaskConical,
@@ -19,6 +20,7 @@ import {
   type EspressoFormatOptions,
 } from "@/features/hobby/lib/espresso";
 import type { EspressoBean, EspressoLog, EspressoRound } from "@/features/hobby/types/espresso";
+import { CustomLink } from "@/components/custom-link";
 
 type EspressoLogViewProps = {
   bean: EspressoBean;
@@ -466,6 +468,14 @@ export const EspressoLogView = ({ bean }: EspressoLogViewProps) => {
     <div className="min-h-full bg-gray-950 text-gray-100">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 md:px-6 md:py-8">
         <header className="border-b border-gray-800 pb-5">
+          <CustomLink
+            href="/hobby/espresso"
+            title={t("title")}
+            className="mb-4 inline-flex min-h-9 items-center gap-2 rounded-md text-sm font-medium text-gray-200 hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-100"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            {t("backToList")}
+          </CustomLink>
           <p className="text-xs font-semibold tracking-[0.18em] text-blue-200 uppercase">
             Hobby / Espresso
           </p>
@@ -482,89 +492,95 @@ export const EspressoLogView = ({ bean }: EspressoLogViewProps) => {
           </div>
         </header>
 
-        <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <aside
-            data-testid="espresso-navigation-tree"
-            className="h-fit rounded-lg border border-gray-700 bg-gray-900 p-3"
-          >
-            <div className="mb-3 flex items-center gap-2 px-2 text-xs font-semibold tracking-[0.16em] text-blue-200 uppercase">
-              <SlidersHorizontal className="size-4" />
-              {t("extractionSettings")}
-            </div>
+        {bean.logs.length === 0 ? (
+          <p className="rounded-lg border border-gray-700 bg-gray-900 p-6 text-sm leading-6 text-gray-200">
+            {t("noLogs")}
+          </p>
+        ) : (
+          <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
+            <aside
+              data-testid="espresso-navigation-tree"
+              className="h-fit rounded-lg border border-gray-700 bg-gray-900 p-3"
+            >
+              <div className="mb-3 flex items-center gap-2 px-2 text-xs font-semibold tracking-[0.16em] text-blue-200 uppercase">
+                <SlidersHorizontal className="size-4" />
+                {t("extractionSettings")}
+              </div>
 
-            <div className="space-y-1">
-              {bean.logs.map(log => {
-                const sortedRounds = sortEspressoRoundsByRecent(log.rounds);
+              <div className="space-y-1">
+                {bean.logs.map(log => {
+                  const sortedRounds = sortEspressoRoundsByRecent(log.rounds);
 
-                return (
-                  <div key={log.id} className="space-y-1">
-                    <TreeButton
-                      depth={0}
-                      isActive={context.log?.id === log.id}
-                      onClick={() => select({ type: "current", beanId: bean.id, logId: log.id })}
-                    >
-                      <ChevronDown className="size-4 shrink-0" />
-                      <span>{t("extractionSettings")}</span>
-                    </TreeButton>
-
-                    <TreeButton
-                      depth={1}
-                      isActive={isActive("current", bean.id, log.id)}
-                      onClick={() => select({ type: "current", beanId: bean.id, logId: log.id })}
-                    >
-                      <FlaskConical className="size-4 shrink-0" />
-                      <span>{t("currentBasisSettings")}</span>
-                    </TreeButton>
-                    <TreeButton
-                      depth={1}
-                      isActive={isActive("next", bean.id, log.id)}
-                      onClick={() => select({ type: "next", beanId: bean.id, logId: log.id })}
-                    >
-                      <ListChecks className="size-4 shrink-0" />
-                      <span>{t("nextTestSettings")}</span>
-                    </TreeButton>
-                    <TreeButton
-                      depth={1}
-                      isActive={isActive("guide", bean.id, log.id)}
-                      onClick={() => select({ type: "guide", beanId: bean.id, logId: log.id })}
-                    >
-                      <SlidersHorizontal className="size-4 shrink-0" />
-                      <span>{t("adjustmentGuide")}</span>
-                    </TreeButton>
-                    <TreeButton
-                      depth={1}
-                      isActive={isActive("history", bean.id, log.id)}
-                      onClick={() => select({ type: "history", beanId: bean.id, logId: log.id })}
-                    >
-                      <History className="size-4 shrink-0" />
-                      <span>{t("history")}</span>
-                    </TreeButton>
-                    {sortedRounds.map(round => (
+                  return (
+                    <div key={log.id} className="space-y-1">
                       <TreeButton
-                        key={round.id}
-                        depth={2}
-                        isActive={isActive("round", bean.id, log.id, round.id)}
-                        onClick={() =>
-                          select({
-                            type: "round",
-                            beanId: bean.id,
-                            logId: log.id,
-                            roundId: round.id,
-                          })
-                        }
+                        depth={0}
+                        isActive={context.log?.id === log.id}
+                        onClick={() => select({ type: "current", beanId: bean.id, logId: log.id })}
                       >
-                        <Gauge className="size-4 shrink-0" />
-                        <span>{t("roundLabel", { number: round.roundNumber })}</span>
+                        <ChevronDown className="size-4 shrink-0" />
+                        <span>{t("extractionSettings")}</span>
                       </TreeButton>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          </aside>
 
-          {activeSelection && <DetailPanel context={context} selection={activeSelection} />}
-        </div>
+                      <TreeButton
+                        depth={1}
+                        isActive={isActive("current", bean.id, log.id)}
+                        onClick={() => select({ type: "current", beanId: bean.id, logId: log.id })}
+                      >
+                        <FlaskConical className="size-4 shrink-0" />
+                        <span>{t("currentBasisSettings")}</span>
+                      </TreeButton>
+                      <TreeButton
+                        depth={1}
+                        isActive={isActive("next", bean.id, log.id)}
+                        onClick={() => select({ type: "next", beanId: bean.id, logId: log.id })}
+                      >
+                        <ListChecks className="size-4 shrink-0" />
+                        <span>{t("nextTestSettings")}</span>
+                      </TreeButton>
+                      <TreeButton
+                        depth={1}
+                        isActive={isActive("guide", bean.id, log.id)}
+                        onClick={() => select({ type: "guide", beanId: bean.id, logId: log.id })}
+                      >
+                        <SlidersHorizontal className="size-4 shrink-0" />
+                        <span>{t("adjustmentGuide")}</span>
+                      </TreeButton>
+                      <TreeButton
+                        depth={1}
+                        isActive={isActive("history", bean.id, log.id)}
+                        onClick={() => select({ type: "history", beanId: bean.id, logId: log.id })}
+                      >
+                        <History className="size-4 shrink-0" />
+                        <span>{t("history")}</span>
+                      </TreeButton>
+                      {sortedRounds.map(round => (
+                        <TreeButton
+                          key={round.id}
+                          depth={2}
+                          isActive={isActive("round", bean.id, log.id, round.id)}
+                          onClick={() =>
+                            select({
+                              type: "round",
+                              beanId: bean.id,
+                              logId: log.id,
+                              roundId: round.id,
+                            })
+                          }
+                        >
+                          <Gauge className="size-4 shrink-0" />
+                          <span>{t("roundLabel", { number: round.roundNumber })}</span>
+                        </TreeButton>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            </aside>
+
+            {activeSelection && <DetailPanel context={context} selection={activeSelection} />}
+          </div>
+        )}
       </div>
     </div>
   );

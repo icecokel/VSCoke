@@ -546,6 +546,8 @@
       "detailDescription": "A bean log that accumulates espresso extraction settings, taste changes, and next test direction.",
       "total": "{count} beans",
       "empty": "Bean records could not be loaded or no beans have been added yet.",
+      "noLogs": "No extraction records yet.",
+      "backToList": "Back to beans",
       "round": "Round",
       "roundLabel": "Round {number}",
       "roundCount": "{count} rounds",

@@ -546,6 +546,8 @@
       "detailDescription": "エスプレッソの抽出条件、味の変化、次のテスト方針を蓄積した豆の記録です。",
       "total": "全{count}件の豆",
       "empty": "豆の記録を読み込めなかったか、まだ登録された豆がありません。",
+      "noLogs": "抽出記録はまだありません。",
+      "backToList": "コーヒー豆一覧に戻る",
       "round": "ラウンド",
       "roundLabel": "ラウンド {number}",
       "roundCount": "{count}ラウンド",

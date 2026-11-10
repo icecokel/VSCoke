@@ -546,6 +546,8 @@
       "detailDescription": "에스프레소 추출 조건, 맛 변화, 다음 테스트 방향을 누적한 원두 기록입니다.",
       "total": "총 {count}개 원두",
       "empty": "원두 기록을 불러오지 못했거나 아직 등록된 원두가 없습니다.",
+      "noLogs": "아직 등록된 추출 기록이 없습니다.",
+      "backToList": "원두 목록으로",
       "round": "라운드",
       "roundLabel": "라운드 {number}",
       "roundCount": "{count} rounds",

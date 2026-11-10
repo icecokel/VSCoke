@@ -57,9 +57,9 @@ export const ShareQrDialog = ({
           <span className={triggerLabelClassName}>{triggerLabel ?? t("qr")}</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{title ?? t("qrTitle")}</DialogTitle>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
+        <DialogHeader className="pr-6">
+          <DialogTitle className="break-words">{title ?? t("qrTitle")}</DialogTitle>
           <DialogDescription>{t("qrDescription")}</DialogDescription>
         </DialogHeader>
 

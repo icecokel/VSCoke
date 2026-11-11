@@ -10,6 +10,7 @@ const configuredRetries = Number.parseInt(process.env.PLAYWRIGHT_RETRIES ?? "", 
 const mobileTestMatch = /mobile-behavior\.spec\.ts$/;
 const mobileHobbyTestMatch = [
   mobileTestMatch,
+  /package-json\.spec\.ts$/,
   /recipe-history\.spec\.ts$/,
   /espresso-selection\.spec\.ts$/,
 ];

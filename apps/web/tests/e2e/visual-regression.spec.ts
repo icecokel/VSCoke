@@ -20,7 +20,8 @@ test.describe("비주얼 회귀", () => {
   ];
 
   for (const pageCase of pages) {
-    test(`${pageCase.path} 화면 시각 회귀 체크`, async ({ page }) => {
+    const title = pageCase.ready === "package" ? "웹 앱 package.json" : "화면";
+    test(`${pageCase.path} ${title} 시각 회귀 체크`, async ({ page }) => {
       if (pageCase.ready === "game") await mockBeatJevAvailability(page);
       await page.addInitScript(() => {
         localStorage.setItem(

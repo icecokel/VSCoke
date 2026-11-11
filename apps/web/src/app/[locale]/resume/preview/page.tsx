@@ -104,7 +104,9 @@ const ResumePreviewPage = async ({ params, searchParams }: ResumePreviewPageProp
           <p className="text-xs font-bold tracking-[0.24em] text-blue-500">{t("documentType")}</p>
           <div className="resume-preview-header-content mt-4 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{document.name}</h1>
+              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                {document.name.trim() ? document.name : document.title.trim() || t("documentType")}
+              </h1>
               <p className="mt-2 max-w-xl text-base leading-6 text-gray-700">{document.title}</p>
             </div>
             <dl className="resume-preview-contact shrink-0 space-y-1 text-sm text-gray-700 sm:text-right">
@@ -145,6 +147,7 @@ const ResumePreviewPage = async ({ params, searchParams }: ResumePreviewPageProp
 
           <div className="divide-y divide-gray-300">
             {document.careers.map(career => {
+              const ProjectHeading = career.company.trim() ? "h4" : "h3";
               return (
                 <section
                   key={career.id}
@@ -152,7 +155,9 @@ const ResumePreviewPage = async ({ params, searchParams }: ResumePreviewPageProp
                 >
                   <div className="resume-preview-career-heading flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                     <div>
-                      <h3 className="text-base font-bold text-gray-900">{career.company}</h3>
+                      {career.company.trim() && (
+                        <h3 className="text-base font-bold text-gray-900">{career.company}</h3>
+                      )}
                       <p className="mt-1 text-sm font-medium text-gray-700">{career.role}</p>
                     </div>
                     <p className="shrink-0 text-sm text-gray-600">{career.period}</p>
@@ -161,10 +166,19 @@ const ResumePreviewPage = async ({ params, searchParams }: ResumePreviewPageProp
                   <div className="mt-4 space-y-5">
                     {career.projects.map(project => {
                       const { descriptions } = project;
+                      const DescriptionHeading = project.title.trim()
+                        ? ProjectHeading === "h4"
+                          ? "h5"
+                          : "h4"
+                        : ProjectHeading;
 
                       return (
                         <article key={project.id} className="resume-preview-project">
-                          <h4 className="text-sm font-bold text-gray-900">{project.title}</h4>
+                          {project.title.trim() && (
+                            <ProjectHeading className="text-sm font-bold text-gray-900">
+                              {project.title}
+                            </ProjectHeading>
+                          )}
                           {project.period && (
                             <p className="mt-1 text-xs text-gray-600">{project.period}</p>
                           )}
@@ -175,9 +189,11 @@ const ResumePreviewPage = async ({ params, searchParams }: ResumePreviewPageProp
                                 key={`${description.subtitle}-${descriptionIndex}`}
                                 className="resume-preview-description"
                               >
-                                <h5 className="text-sm font-medium text-gray-800">
-                                  {description.subtitle}
-                                </h5>
+                                {description.subtitle.trim() && (
+                                  <DescriptionHeading className="text-sm font-medium text-gray-800">
+                                    {description.subtitle}
+                                  </DescriptionHeading>
+                                )}
                                 {description.detail && (
                                   <p className="mt-2 text-sm leading-6 text-gray-700">
                                     {description.detail}
@@ -246,7 +262,9 @@ const ResumePreviewPage = async ({ params, searchParams }: ResumePreviewPageProp
                 className="mt-4 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
               >
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900">{education.school}</h3>
+                  {education.school.trim() && (
+                    <h3 className="text-sm font-bold text-gray-900">{education.school}</h3>
+                  )}
                   {education.status && (
                     <p className="mt-1 text-xs text-gray-600">{education.status}</p>
                   )}
@@ -265,7 +283,9 @@ const ResumePreviewPage = async ({ params, searchParams }: ResumePreviewPageProp
                 className="mt-4 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
               >
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900">{certification.name}</h3>
+                  {certification.name.trim() && (
+                    <h3 className="text-sm font-bold text-gray-900">{certification.name}</h3>
+                  )}
                   <ul className="mt-2 text-sm leading-6 text-gray-700">
                     {certification.details.map(detail => (
                       <li key={detail} className="flex gap-2">

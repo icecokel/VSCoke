@@ -17,9 +17,11 @@ export const CareerSection = ({ careerData, index, resumeKey, projectIds }: Care
   return (
     <section id={`career_${index}`} className="mb-12">
       <header className="mb-8 ml-2">
-        <BaseText type="h5" className="text-yellow-200">
-          {careerData.company}
-        </BaseText>
+        {careerData.company.trim() && (
+          <BaseText type="h5" as="h2" className="text-yellow-200">
+            {careerData.company}
+          </BaseText>
+        )}
         <BaseText type="body1" className="mt-2 block text-gray-300">
           {careerData.period} · {careerData.role}
         </BaseText>
@@ -31,6 +33,7 @@ export const CareerSection = ({ careerData, index, resumeKey, projectIds }: Care
           projectData={projectData}
           projectId={projectIds[projectIndex]}
           resumeKey={resumeKey}
+          heading={careerData.company.trim() ? "h3" : "h2"}
         />
       ))}
 

@@ -12,6 +12,137 @@ for (const [locale, localeMessages] of [
   ["en-US", englishMessages],
   ["ja-JP", japaneseMessages],
 ] as const) {
+  for (const key of ["empty-title", "empty-name", "empty-headings"]) {
+    test(`${locale} ${key} 빈 제목 fixture도 문서 제목과 연속된 계층을 유지한다`, async ({
+      page,
+      request,
+    }) => {
+      test.skip(process.env.PLAYWRIGHT_RESUME_FIXTURE !== "1", "테스트 fixture 서버가 필요합니다.");
+      const { data: document }: { data: ResumeDocument } = await (
+        await request.get(`${apiUrl}/resume?locale=${locale}&resume=${key}`)
+      ).json();
+      for (const path of ["readme", "resume/preview"]) {
+        await gotoWithRetry(page, `/${locale}/${path}?resume=${key}`);
+        const content =
+          path === "readme" ? page.getByRole("main") : page.getByTestId("resume-preview-document");
+        const documentTitle =
+          path === "readme"
+            ? document.title.trim() || document.name.trim()
+            : document.name.trim() || document.title.trim();
+        await expect.soft(content.locator("h1")).toHaveCount(1);
+        await expect
+          .soft(content.locator("h1"))
+          .toHaveText(documentTitle || localeMessages.resumePreview.documentType);
+        const headings = await content.getByRole("heading").evaluateAll(elements =>
+          elements.map(element => ({
+            level: Number(element.tagName.slice(1)),
+            text: element.textContent?.trim() ?? "",
+          })),
+        );
+        expect.soft(headings.filter(heading => !heading.text)).toEqual([]);
+        for (let index = 1; index < headings.length; index += 1) {
+          expect
+            .soft(headings[index].level, headings[index].text)
+            .toBeLessThanOrEqual(headings[index - 1].level + 1);
+        }
+        for (const [index, career] of document.careers.entries()) {
+          const section =
+            path === "readme"
+              ? content.locator(`#career_${index}`)
+              : content.locator(".resume-preview-career").nth(index);
+          const project = career.projects[0];
+          const companyLevel = path === "readme" ? 2 : 3;
+          const projectLevel = companyLevel + (career.company.trim() ? 1 : 0);
+          const descriptionLevel = projectLevel + (project.title.trim() ? 1 : 0);
+          const careerHeadings = await section.getByRole("heading").evaluateAll(elements =>
+            elements.map(element => ({
+              level: Number(element.tagName.slice(1)),
+              text: element.textContent?.trim() ?? "",
+            })),
+          );
+          expect
+            .soft(careerHeadings)
+            .toEqual([
+              ...(career.company.trim() ? [{ level: companyLevel, text: career.company }] : []),
+              ...(project.title.trim() ? [{ level: projectLevel, text: project.title }] : []),
+              { level: descriptionLevel, text: "Synthetic subtitle" },
+            ]);
+          for (const description of project.descriptions) {
+            await expect(section.getByText(description.detail!, { exact: true })).toBeVisible();
+          }
+        }
+      }
+    });
+  }
+}
+
+for (const locale of ["ko-KR", "en-US", "ja-JP"]) {
+  for (const key of ["pe", "fe"]) {
+    test(`${locale} ${key} 이력서 제목 계층은 비어 있거나 단계를 건너뛰지 않는다`, async ({
+      page,
+      request,
+    }) => {
+      const { data: document }: { data: ResumeDocument } = await (
+        await request.get(`${apiUrl}/resume?locale=${locale}&resume=${key}`)
+      ).json();
+      const query = locale === "ja-JP" && key === "pe" ? "" : `?resume=${key}`;
+      for (const path of ["readme", "resume/preview"]) {
+        await gotoWithRetry(page, `/${locale}/${path}${query}`);
+        const content =
+          path === "readme" ? page.getByRole("main") : page.getByTestId("resume-preview-document");
+        await expect(content.locator("h1")).toHaveCount(1);
+        await expect(content.locator("h1")).toHaveText(
+          path === "readme" ? document.title : document.name,
+        );
+        const headings = await content.locator("h1, h2, h3, h4, h5, h6").evaluateAll(elements =>
+          elements.map(element => ({
+            level: Number(element.tagName.slice(1)),
+            text: element.textContent?.trim() ?? "",
+          })),
+        );
+        expect(headings.filter(heading => !heading.text)).toEqual([]);
+        for (let index = 1; index < headings.length; index += 1) {
+          expect(headings[index].level, headings[index].text).toBeLessThanOrEqual(
+            headings[index - 1].level + 1,
+          );
+        }
+        const companyLevel = path === "readme" ? 2 : 3;
+        for (const [index, career] of document.careers.entries()) {
+          const section =
+            path === "readme"
+              ? content.locator(`#career_${index}`)
+              : content.locator(".resume-preview-career").nth(index);
+          const careerHeadings = await section
+            .locator("h1, h2, h3, h4, h5, h6")
+            .evaluateAll(elements =>
+              elements.map(element => ({
+                level: Number(element.tagName.slice(1)),
+                text: element.textContent?.trim() ?? "",
+              })),
+            );
+          expect(careerHeadings).toEqual([
+            { level: companyLevel, text: career.company },
+            ...career.projects.flatMap(project => [
+              { level: companyLevel + 1, text: project.title },
+              ...project.descriptions
+                .filter(description => description.subtitle.trim())
+                .map(description => ({
+                  level: companyLevel + 2,
+                  text: description.subtitle.trim(),
+                })),
+            ]),
+          ]);
+        }
+      }
+    });
+  }
+}
+
+for (const [locale, localeMessages] of [
+  ["ko-KR", messages],
+  ["en-US", englishMessages],
+  ["ja-JP", japaneseMessages],
+] as const) {
   test(`${locale} 공통 경력 상세는 한국어 본문 언어와 선택 문서 복귀를 유지한다`, async ({
     page,
     request,

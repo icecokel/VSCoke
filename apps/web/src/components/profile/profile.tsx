@@ -90,8 +90,10 @@ const Profile = ({ document }: { document: ResumeDocument }) => {
           size={180}
         />
         <div className="md:ml-3 mt-[25px] md:mt-0">
-          <BaseText type="h5" className="text-center">
-            {document.title}
+          <BaseText type="h5" as="h1" className="text-center">
+            {document.title.trim()
+              ? document.title
+              : document.name.trim() || tPreview("documentType")}
           </BaseText>
           <div className="mt-5 w-full max-w-sm bg-blue-100/20 rounded-sm p-4 gap-4 flex flex-col">
             <Tooltip>
@@ -167,7 +169,11 @@ const Profile = ({ document }: { document: ResumeDocument }) => {
             >
               {education.period && <div className="min-w-[140px]">{education.period}</div>}
               <div>
-                <BaseText type="h6">{education.school}</BaseText>
+                {education.school.trim() && (
+                  <BaseText type="h6" as="h3">
+                    {education.school}
+                  </BaseText>
+                )}
                 {education.status && (
                   <BaseText type="caption" className="mt-1 block text-gray-400">
                     {education.status}
@@ -188,7 +194,11 @@ const Profile = ({ document }: { document: ResumeDocument }) => {
             >
               <div className="mb-5 min-w-[140px]">{certification.date}</div>
               <div className="mb-5">
-                <BaseText type="h6">{certification.name}</BaseText>
+                {certification.name.trim() && (
+                  <BaseText type="h6" as="h3">
+                    {certification.name}
+                  </BaseText>
+                )}
                 <ul className="mt-2 ml-4 list-disc">
                   {certification.details.map(detail => (
                     <li key={detail} className="text-sm text-gray-300">

@@ -14,20 +14,29 @@ interface CareerProjectProps {
   projectData: ResumeProjectData;
   projectId: string;
   resumeKey: string;
+  heading: "h2" | "h3";
 }
 
-export const CareerProject = ({ projectData, projectId, resumeKey }: CareerProjectProps) => {
+export const CareerProject = ({
+  projectData,
+  projectId,
+  resumeKey,
+  heading,
+}: CareerProjectProps) => {
   const tResume = useTranslations("resume");
   const router = useCustomRouter();
   const { fileRef, descriptions } = projectData;
+  const descriptionHeading = projectData.title.trim() ? (heading === "h2" ? "h3" : "h4") : heading;
 
   return (
     <article id={projectId} className="mb-8 ml-4 scroll-mt-16">
       <header className="mb-4">
         <div className="flex items-center gap-3">
-          <BaseText type="h6" className="text-white">
-            {projectData.title}
-          </BaseText>
+          {projectData.title.trim() && (
+            <BaseText type="h6" as={heading} className="text-white">
+              {projectData.title}
+            </BaseText>
+          )}
           {fileRef && (
             <Button
               type="button"
@@ -52,7 +61,11 @@ export const CareerProject = ({ projectData, projectId, resumeKey }: CareerProje
       </header>
 
       {descriptions.map((description, index) => (
-        <DescriptionItem key={`${description.subtitle}-${index}`} description={description} />
+        <DescriptionItem
+          key={`${description.subtitle}-${index}`}
+          description={description}
+          heading={descriptionHeading}
+        />
       ))}
     </article>
   );

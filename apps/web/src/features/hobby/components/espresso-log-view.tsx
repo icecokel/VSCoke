@@ -11,8 +11,9 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 
 import {
   espressoParamsToPairs,
@@ -21,17 +22,15 @@ import {
 } from "@/features/hobby/lib/espresso";
 import type { EspressoBean, EspressoLog, EspressoRound } from "@/features/hobby/types/espresso";
 import { CustomLink } from "@/components/custom-link";
+import {
+  getEspressoSelection,
+  type DetailSelection,
+} from "@/features/hobby/lib/espresso-selection";
+import { usePathname, useRouter } from "@/i18n/navigation";
 
 type EspressoLogViewProps = {
   bean: EspressoBean;
 };
-
-type DetailSelection =
-  | { type: "current"; beanId: string; logId: string }
-  | { type: "next"; beanId: string; logId: string }
-  | { type: "guide"; beanId: string; logId: string }
-  | { type: "history"; beanId: string; logId: string }
-  | { type: "round"; beanId: string; logId: string; roundId: string };
 
 type ActiveContext = {
   bean?: EspressoBean;
@@ -409,6 +408,10 @@ const DetailPanel = ({
 
 export const EspressoLogView = ({ bean }: EspressoLogViewProps) => {
   const t = useTranslations("hobby.espresso");
+  // 같은 탭의 선택만 교체하므로 탭 이력을 수정하는 공통 라우터를 우회한다.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const initialSelection = useMemo<DetailSelection | null>(() => {
     const log = bean?.logs[0];
 
@@ -418,7 +421,18 @@ export const EspressoLogView = ({ bean }: EspressoLogViewProps) => {
 
     return { type: "current", beanId: bean.id, logId: log.id };
   }, [bean]);
-  const [selection, setSelection] = useState<DetailSelection | null>(initialSelection);
+  const selection = getEspressoSelection(bean, searchParams);
+
+  useEffect(() => {
+    if (selection || !["log", "round", "detail"].some(key => searchParams.has(key))) return;
+    const params = new URLSearchParams(searchParams);
+    params.delete("log");
+    params.delete("round");
+    params.delete("detail");
+    router.replace(`${pathname}${params.size ? `?${params}` : ""}${window.location.hash}`, {
+      scroll: false,
+    });
+  }, [pathname, router, searchParams, selection]);
 
   const activeSelection = selection ?? initialSelection;
   const context = useMemo<ActiveContext>(() => {
@@ -461,7 +475,13 @@ export const EspressoLogView = ({ bean }: EspressoLogViewProps) => {
   };
 
   const select = (nextSelection: DetailSelection) => {
-    setSelection(nextSelection);
+    const params = new URLSearchParams(searchParams);
+    params.set("log", nextSelection.logId);
+    params.delete("round");
+    params.delete("detail");
+    if (nextSelection.type === "round") params.set("round", nextSelection.roundId);
+    else params.set("detail", nextSelection.type);
+    router.replace(`${pathname}?${params}${window.location.hash}`, { scroll: false });
   };
 
   return (

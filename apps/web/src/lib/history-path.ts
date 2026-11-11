@@ -9,6 +9,11 @@ export const getHistoryPath = (path: string): string => {
     searchParams.delete("q");
     searchParams.delete("recipe");
   }
+  if (/^\/hobby\/espresso\/[^/]+$/.test(pathname)) {
+    searchParams.delete("log");
+    searchParams.delete("round");
+    searchParams.delete("detail");
+  }
   const resumeKeys = searchParams.getAll("resume");
   if (
     (pathname === "/readme" || pathname.startsWith("/resume/")) &&

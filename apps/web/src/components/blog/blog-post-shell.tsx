@@ -50,7 +50,10 @@ export const BlogPostShell = async ({
       />
       <ScrollProgress label={t("progress")} />
 
-      <nav aria-label={backToListLabel} className="pt-6 pb-8 @4xl/blog:pt-8 @4xl/blog:pb-12">
+      <nav
+        aria-label={backToListLabel}
+        className="pt-0 pb-2 md:pt-6 md:pb-8 @4xl/blog:pt-8 @4xl/blog:pb-12"
+      >
         <CustomLink
           href={`/blog/dashboard?category=${encodeURIComponent(post.category)}`}
           title="Blog"

@@ -17,25 +17,26 @@ export const MobileSidebarTrigger = () => {
 
   // Wordle 페이지인지 확인 (모바일에서 숨김)
   const isWordlePage = pathname?.includes("/game/wordle");
-  const isResumeQuestionPage = pathname?.includes("/resume/question");
 
-  // 모바일이 아니거나, 사이드바가 열려있거나, 게임 진행 중이거나, Wordle 페이지일 때 숨김
-  if (!isMobile || openMobile || isGamePlaying || isWordlePage) {
+  // 게임 화면은 기존처럼 탐색 영역 없이 전체 높이를 사용한다.
+  if (!isMobile || isGamePlaying || isWordlePage) {
     return null;
   }
 
   return (
-    <Button
-      id="mobile-sidebar-trigger"
-      onClick={() => setOpenMobile(true)}
-      size="icon"
-      className={`fixed right-4 z-50 size-12 rounded-full shadow-lg ${
-        isResumeQuestionPage ? "top-4" : "bottom-4"
-      }`}
-      data-testid="sidebar-trigger-mobile"
-    >
-      <PanelLeftIcon className="size-6" />
-      <span className="sr-only">{t("explorer")}</span>
-    </Button>
+    <div className="flex size-12 shrink-0 items-center justify-center print:hidden">
+      {!openMobile && (
+        <Button
+          id="mobile-sidebar-trigger"
+          onClick={() => setOpenMobile(true)}
+          size="icon"
+          className="size-11"
+          data-testid="sidebar-trigger-mobile"
+        >
+          <PanelLeftIcon className="size-6" />
+          <span className="sr-only">{t("explorer")}</span>
+        </Button>
+      )}
+    </div>
   );
 };

@@ -1,16 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowLeft, ExternalLink, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { filterRecipes } from "@/features/hobby/lib/recipes";
 import type { Recipe } from "@/features/hobby/types/recipe";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 
 type RecipeBrowserProps = {
   recipes: Recipe[];
+  hasLoadedRecipes: boolean;
 };
 
 const sourceLabelMap: Record<string, string> = {
@@ -161,13 +164,79 @@ const RecipeDetail = ({
   );
 };
 
-export const RecipeBrowser = ({ recipes }: RecipeBrowserProps) => {
+export const RecipeBrowser = ({ recipes, hasLoadedRecipes }: RecipeBrowserProps) => {
   const t = useTranslations("hobby.recipes");
-  const [query, setQuery] = useState("");
-  const [selectedRecipeName, setSelectedRecipeName] = useState<string | null>(null);
+  // 공통 라우터의 back은 탭도 닫으므로 같은 탭의 query 이동은 Next 라우터로 처리한다.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const urlQuery = searchParams.get("q") ?? "";
+  const recipeId = searchParams.get("recipe");
+  const [query, setQuery] = useState(urlQuery);
+  const [pendingRecipeId, setPendingRecipeId] = useState<string | null>(null);
+  const openedFromList = useRef<string | null>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestedQuery = useRef<string | null>(null);
 
   const filteredRecipes = useMemo(() => filterRecipes(recipes, query), [query, recipes]);
-  const selectedRecipe = recipes.find(recipe => recipe.name === selectedRecipeName);
+  const selectedRecipe = recipes.find(recipe => recipe.id === recipeId);
+  const getSearchUrl = (value: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (value) params.set("q", value);
+    else params.delete("q");
+    params.delete("recipe");
+    const queryString = params.toString();
+    return `${pathname}${queryString ? `?${queryString}` : ""}`;
+  };
+
+  useEffect(() => {
+    // 직접 요청한 query의 응답이 늦어져도 그 사이 입력한 검색어는 유지한다.
+    if (requestedQuery.current === urlQuery) {
+      requestedQuery.current = null;
+      return;
+    }
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    setQuery(urlQuery);
+  }, [recipeId, urlQuery]);
+
+  useEffect(
+    () => () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (hasLoadedRecipes && recipeId !== null && !selectedRecipe) {
+      const params = new URLSearchParams(searchParams);
+      params.delete("recipe");
+      router.replace(`${pathname}${params.size ? `?${params}` : ""}`, { scroll: false });
+    }
+  }, [hasLoadedRecipes, pathname, recipeId, router, searchParams, selectedRecipe]);
+
+  useEffect(() => {
+    if (!pendingRecipeId || urlQuery !== query || recipeId !== null) return;
+    const params = new URLSearchParams(searchParams);
+    params.set("recipe", pendingRecipeId);
+    openedFromList.current = pendingRecipeId;
+    setPendingRecipeId(null);
+    router.push(`${pathname}?${params}`, { scroll: false });
+  }, [pathname, pendingRecipeId, query, recipeId, router, searchParams, urlQuery]);
+
+  useEffect(() => {
+    if (!recipeId || openedFromList.current !== recipeId) return;
+    const listUrl = new URL(window.location.href);
+    listUrl.searchParams.delete("recipe");
+    // 현재 항목에 복귀 출처만 붙여 Next 복원 정보와 history 항목 수를 보존한다.
+    window.history.replaceState(
+      {
+        ...window.history.state,
+        recipeListEntry: { listUrl: listUrl.href, detailUrl: window.location.href },
+      },
+      "",
+    );
+    openedFromList.current = null;
+  }, [recipeId]);
   const emptyMessage = recipes.length === 0 ? t("empty") : t("noResults");
   const labels = {
     backToList: t("backToList"),
@@ -182,7 +251,33 @@ export const RecipeBrowser = ({ recipes }: RecipeBrowserProps) => {
 
   const handleSearch = (value: string) => {
     setQuery(value);
-    setSelectedRecipeName(null);
+    setPendingRecipeId(null);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      requestedQuery.current = value;
+      router.replace(getSearchUrl(value), { scroll: false });
+    }, 300);
+  };
+
+  const handleSelect = (id: string) => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    setPendingRecipeId(id);
+    // 상세 push 전에 검색어 replace를 확정해 Back으로 돌아갈 목록을 남긴다.
+    if (query !== urlQuery) {
+      requestedQuery.current = query;
+      router.replace(getSearchUrl(query), { scroll: false });
+    }
+  };
+
+  const handleBack = () => {
+    const entry = window.history.state?.recipeListEntry;
+    const listUrl = new URL(window.location.href);
+    listUrl.searchParams.delete("recipe");
+    if (entry?.detailUrl === window.location.href && entry.listUrl === listUrl.href) {
+      router.back();
+    } else {
+      router.replace(`${pathname}${listUrl.search}${listUrl.hash}`, { scroll: false });
+    }
   };
 
   return (
@@ -225,19 +320,15 @@ export const RecipeBrowser = ({ recipes }: RecipeBrowserProps) => {
         </div>
 
         {selectedRecipe ? (
-          <RecipeDetail
-            recipe={selectedRecipe}
-            labels={labels}
-            onBack={() => setSelectedRecipeName(null)}
-          />
+          <RecipeDetail recipe={selectedRecipe} labels={labels} onBack={handleBack} />
         ) : filteredRecipes.length > 0 ? (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {filteredRecipes.map(recipe => (
               <RecipeListItem
-                key={recipe.name}
+                key={recipe.id}
                 recipe={recipe}
                 labels={labels}
-                onSelect={() => setSelectedRecipeName(recipe.name)}
+                onSelect={() => handleSelect(recipe.id)}
               />
             ))}
           </div>

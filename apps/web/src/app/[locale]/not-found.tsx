@@ -5,44 +5,31 @@ import Container from "@/components/base-ui/container";
 import BaseText from "@/components/base-ui/text";
 import Icon from "@/components/base-ui/icon";
 import { useEffect, useRef } from "react";
-import { usePathname, useRouter } from "@/i18n/navigation";
-import { useTranslations } from "next-intl";
+import { getPathname, usePathname, useRouter } from "@/i18n/navigation";
+import { useLocale, useTranslations } from "next-intl";
 
 const NotFound = () => {
-  const { history, remove, setHistory, isHydrated, currentPath } = useHistory();
+  const { recoverFromNotFound, isHydrated, currentPath } = useHistory();
   const pathname = usePathname();
   const router = useRouter();
+  const locale = useLocale();
   const t = useTranslations("notFound");
-  const hasRecoveredRef = useRef(false);
-  const invalidPathRef = useRef(currentPath);
+  const recoveredPathRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const invalidPath = invalidPathRef.current;
-    // URL 동기화가 복구 중 다시 추가한 실패 탭도 페이지 이탈 시 정리한다.
-    return () => setHistory(prev => prev.filter(item => item.path !== invalidPath));
-  }, [setHistory]);
+    if (!isHydrated || recoveredPathRef.current === currentPath) return;
 
-  // 존재하지 않는 경로의 탭 자동 제거 및 다음 탭으로 이동 (1회만 실행)
-  useEffect(() => {
-    if (!isHydrated || hasRecoveredRef.current) return;
+    recoveredPathRef.current = currentPath;
+    const target = recoverFromNotFound(currentPath);
+    if (target === currentPath) return;
 
-    hasRecoveredRef.current = true;
-    const invalidTabIndex = history.findIndex(item => item.path === currentPath);
-
-    if (invalidTabIndex !== -1) {
-      // 다음 이동할 탭 결정 (오른쪽 → 왼쪽 → 홈)
-      const nextTab = history[invalidTabIndex + 1] || history[invalidTabIndex - 1];
-
-      // 탭 제거
-      remove(history[invalidTabIndex]);
-
-      // 다음 탭으로 이동 (없으면 홈으로)
-      router.replace(nextTab?.path || "/");
-      return;
+    if (target.split("?", 1)[0] === pathname) {
+      // Next 15의 404 경계는 query 변경만으로 초기화되지 않는다.
+      window.location.replace(getPathname({ locale, href: target }));
+    } else {
+      router.replace(target);
     }
-
-    router.replace("/");
-  }, [currentPath, history, isHydrated, remove, router]);
+  }, [currentPath, isHydrated, locale, pathname, recoverFromNotFound, router]);
 
   return (
     <Container className="min-h-screen flex flex-col items-center justify-center text-white">

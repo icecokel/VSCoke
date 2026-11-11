@@ -23,7 +23,8 @@ const getTabTitle = (path: string, fallback: string): string =>
   /^\/share\/[^/]+$/.test(path) ? "share" : fallback;
 
 export const HistoryTabs = ({ children }: TParentNode) => {
-  const { history, change, remove, setHistory, isHydrated, currentPath } = useHistory();
+  const { history, change, remove, setHistory, isHydrated, currentPath, syncCurrentPath } =
+    useHistory();
   const router = useRouter();
   const t = useTranslations("historyTabs");
   const tabRailRef = useRef<HTMLDivElement>(null);
@@ -124,6 +125,7 @@ export const HistoryTabs = ({ children }: TParentNode) => {
   useEffect(() => {
     if (!isHydrated) return;
 
+    syncCurrentPath(currentPath);
     setHistory(prev => {
       if (prev.some(item => item.path === currentPath)) {
         return prev.map(item => ({
@@ -144,7 +146,7 @@ export const HistoryTabs = ({ children }: TParentNode) => {
         },
       ];
     });
-  }, [currentPath, isHydrated, setHistory]);
+  }, [currentPath, isHydrated, setHistory, syncCurrentPath]);
 
   // 탭이 많아 가로로 넘쳐도 방금 연 탭이 보이도록 탭 줄만 가로 스크롤한다.
   // scrollIntoView는 바깥 레이아웃 컨테이너까지 스크롤할 수 있어 쓰지 않는다.

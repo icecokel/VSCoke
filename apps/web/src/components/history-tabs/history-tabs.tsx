@@ -19,6 +19,7 @@ import { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
 import { getHistoryTitle } from "@/lib/history-title";
 import { getHistoryTabKey } from "@/lib/history-path";
+import { MobileSidebarTrigger } from "@/components/mobile-sidebar-trigger";
 
 import { useTranslations } from "next-intl";
 
@@ -177,77 +178,81 @@ export const HistoryTabs = ({ children }: TParentNode) => {
 
   return (
     <div className="flex flex-col h-full w-full bg-gray-800">
-      <div
-        ref={tabRailRef}
-        data-testid="history-tab-rail"
-        className="relative flex h-8 min-h-8 flex-shrink-0 overflow-x-auto bg-gray-900"
-      >
-        {history.map(item => (
-          <ContextMenu key={`tab_${item.path}`}>
-            <ContextMenuTrigger asChild>
-              <div
-                id={`${item.path}`}
-                className={twMerge(
-                  "group relative flex h-8 shrink-0 truncate border border-l-0 border-gray-300/60",
-                  item.isActive ? "border-b-0 bg-gray-800" : "hover:bg-gray-600",
-                )}
-                onMouseDown={handleMouseDown}
-                onAuxClick={event => handleAuxClickTab(event, item)}
-                onDragStart={handleDragStart}
-                onDragEnterCapture={handleDragEnter}
-                onDragEnd={handleDragEnd}
-                draggable
-              >
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      aria-current={item.isActive ? "page" : undefined}
-                      onClick={() => handleClickTab(item)}
-                      className="h-full"
-                    >
-                      <BaseText
-                        className={twMerge(
-                          "flex items-center py-1 pr-7 pl-2 text-sm text-gray-300/80 md:px-9 md:py-1.5 md:pl-5",
-                          item.isActive &&
-                            "border-t border-t-blue-300 pt-px font-medium text-yellow-200/95 md:pt-[5px]",
-                        )}
-                      >
-                        {getTabTitle(item.path, item.title)}
-                      </BaseText>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    className="border-gray-700 bg-gray-900 text-white"
-                    showArrow={false}
-                  >
-                    {item.path}
-                  </TooltipContent>
-                </Tooltip>
-                <button
-                  type="button"
-                  aria-label={`${t("close")}: ${getTabTitle(item.path, item.title)}`}
+      <div className="flex shrink-0 items-center bg-gray-900">
+        <MobileSidebarTrigger />
+        <div
+          ref={tabRailRef}
+          data-testid="history-tab-rail"
+          className="relative flex h-8 min-h-8 min-w-0 flex-1 overflow-x-auto bg-gray-900"
+        >
+          {history.map(item => (
+            <ContextMenu key={`tab_${item.path}`}>
+              <ContextMenuTrigger asChild>
+                <div
+                  id={`${item.path}`}
                   className={twMerge(
-                    "absolute top-1/2 right-1 inline-flex -translate-y-1/2 rounded-sm text-gray-300/80 focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:outline-none",
-                    !item.isActive && "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
+                    "group relative flex h-8 shrink-0 truncate border border-l-0 border-gray-300/60",
+                    item.isActive ? "border-b-0 bg-gray-800" : "hover:bg-gray-600",
                   )}
-                  onClick={event => handleSmartClose(event, item)}
+                  onMouseDown={handleMouseDown}
+                  onAuxClick={event => handleAuxClickTab(event, item)}
+                  onDragStart={handleDragStart}
+                  onDragEnterCapture={handleDragEnter}
+                  onDragEnd={handleDragEnd}
+                  draggable
                 >
-                  <Icon kind="close" size={18} aria-hidden="true" />
-                </button>
-              </div>
-            </ContextMenuTrigger>
-            <ContextMenuContent className="bg-gray-800 border-gray-700 text-white">
-              <ContextMenuItem onClick={() => handleSmartClose(null, item)}>
-                {t("close")}
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => handleCloseOthers(item.path)}>
-                {t("closeOthers")}
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => handleCloseAll()}>{t("closeAll")}</ContextMenuItem>
-            </ContextMenuContent>
-          </ContextMenu>
-        ))}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-current={item.isActive ? "page" : undefined}
+                        onClick={() => handleClickTab(item)}
+                        className="h-full"
+                      >
+                        <BaseText
+                          className={twMerge(
+                            "flex items-center py-1 pr-7 pl-2 text-sm text-gray-300/80 md:px-9 md:py-1.5 md:pl-5",
+                            item.isActive &&
+                              "border-t border-t-blue-300 pt-px font-medium text-yellow-200/95 md:pt-[5px]",
+                          )}
+                        >
+                          {getTabTitle(item.path, item.title)}
+                        </BaseText>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      className="border-gray-700 bg-gray-900 text-white"
+                      showArrow={false}
+                    >
+                      {item.path}
+                    </TooltipContent>
+                  </Tooltip>
+                  <button
+                    type="button"
+                    aria-label={`${t("close")}: ${getTabTitle(item.path, item.title)}`}
+                    className={twMerge(
+                      "absolute top-1/2 right-1 inline-flex -translate-y-1/2 rounded-sm text-gray-300/80 focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:outline-none",
+                      !item.isActive &&
+                        "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
+                    )}
+                    onClick={event => handleSmartClose(event, item)}
+                  >
+                    <Icon kind="close" size={18} aria-hidden="true" />
+                  </button>
+                </div>
+              </ContextMenuTrigger>
+              <ContextMenuContent className="bg-gray-800 border-gray-700 text-white">
+                <ContextMenuItem onClick={() => handleSmartClose(null, item)}>
+                  {t("close")}
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleCloseOthers(item.path)}>
+                  {t("closeOthers")}
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleCloseAll()}>{t("closeAll")}</ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
+          ))}
+        </div>
       </div>
 
       <Container

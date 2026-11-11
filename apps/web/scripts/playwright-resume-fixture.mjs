@@ -65,6 +65,7 @@ const resumeKeys = [
   "empty-name",
   "empty-headings",
   "anchor-collisions",
+  "print",
 ];
 const documents = resumeKeys.flatMap((key, index) =>
   legacyDocuments
@@ -109,6 +110,19 @@ const documents = resumeKeys.flatMap((key, index) =>
                     certifications: [],
                     skills: [],
                     links: [],
+                  }
+                : {}),
+              ...(key === "print"
+                ? {
+                    careers: document.careers.map((career, careerIndex) => ({
+                      ...career,
+                      projects: career.projects.map(project => ({
+                        ...project,
+                        ...(project.fileRef
+                          ? { fileRef: careerIndex === 0 ? "print-figure" : "print-markdown" }
+                          : {}),
+                      })),
+                    })),
                   }
                 : {}),
               ...(key === "ko-only" ? { education: [], certifications: [], links: [] } : {}),
@@ -174,6 +188,36 @@ const details = readdirSync(`${webRoot}/resume-detail`)
     const { data, content } = matter(readFileSync(`${webRoot}/resume-detail/${file}`, "utf8"));
     return { slug: file.slice(0, -4), ...data, content };
   });
+
+// API→MDX 정상 경로에서 이미지만 들어가고 캡션은 넘치는 인쇄 경계를 재현한다.
+const printImage = `data:image/svg+xml;base64,${Buffer.from(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="160"><rect width="100" height="160" fill="steelblue"/></svg>',
+).toString("base64")}`;
+for (const format of ["figure", "markdown"]) {
+  details.push({
+    slug: `print-${format}`,
+    title: `Print ${format} boundary`,
+    content: `<div>
+
+${Array.from(
+  { length: 23 },
+  (_, index) =>
+    `<p>Print boundary context ${index + 1}.${format === "figure" && index === 0 ? "<br />Continued context." : ""}</p>`,
+).join("\n\n")}
+
+</div>
+
+${
+  format === "figure"
+    ? `<figure><img src="${printImage}" alt="Print figure" width="100" height="160" /><figcaption>Figure boundary caption</figcaption></figure>`
+    : `![Print markdown](${printImage})
+
+Markdown boundary caption`
+}
+
+End of ${format} detail.`,
+  });
+}
 
 export const startResumeFixture = async () => {
   let isAvailable = true;

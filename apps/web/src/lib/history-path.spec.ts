@@ -2,6 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { getHistoryPath } from "./history-path";
 
+test("원두의 log·round·상세 유형 선택은 같은 탭으로 정규화한다", () => {
+  const path = "/hobby/espresso/bean-id";
+  for (const query of ["log=log-id&round=round-id", "log=log-id&detail=guide"]) {
+    assert.equal(getHistoryPath(`${path}?${query}#detail`), path);
+    assert.equal(getHistoryPath(`${path}?${query}&other=keep`), `${path}?other=keep`);
+  }
+  assert.equal(getHistoryPath("/blog?log=keep&round=3"), "/blog?log=keep&round=3");
+  assert.equal(getHistoryPath("/hobby/espresso?detail=keep"), "/hobby/espresso?detail=keep");
+});
+
 test("레시피 검색과 상세 선택은 같은 탭으로 정규화한다", () => {
   for (const query of ["q=돼지고기", "recipe=recipe-id", "q=돼지고기&recipe=recipe-id"]) {
     assert.equal(getHistoryPath(`/hobby/recipes?${query}#detail`), "/hobby/recipes");

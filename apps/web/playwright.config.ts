@@ -8,7 +8,11 @@ const enableCrossBrowser = process.env.PLAYWRIGHT_ENABLE_CROSS_BROWSER === "1";
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${playwrightPort}`;
 const configuredRetries = Number.parseInt(process.env.PLAYWRIGHT_RETRIES ?? "", 10);
 const mobileTestMatch = /mobile-behavior\.spec\.ts$/;
-const mobileRecipeTestMatch = [mobileTestMatch, /recipe-history\.spec\.ts$/];
+const mobileHobbyTestMatch = [
+  mobileTestMatch,
+  /recipe-history\.spec\.ts$/,
+  /espresso-selection\.spec\.ts$/,
+];
 const visualRegressionTestMatch = /visual-regression\.spec\.ts$/;
 const playwrightOutputRoot = process.env.PLAYWRIGHT_OUTPUT_DIR ?? "../../output/playwright";
 
@@ -53,7 +57,7 @@ export default defineConfig({
       : []),
     {
       name: "chromium-mobile-sm",
-      testMatch: mobileRecipeTestMatch,
+      testMatch: mobileHobbyTestMatch,
       use: {
         ...devices["iPhone 13"],
         browserName: "chromium" as const,
@@ -65,7 +69,7 @@ export default defineConfig({
     },
     {
       name: "chromium-mobile-md",
-      testMatch: mobileRecipeTestMatch,
+      testMatch: mobileHobbyTestMatch,
       use: {
         ...devices["iPhone 13"],
         browserName: "chromium" as const,
@@ -77,7 +81,7 @@ export default defineConfig({
     },
     {
       name: "chromium-mobile-lg",
-      testMatch: mobileRecipeTestMatch,
+      testMatch: mobileHobbyTestMatch,
       use: {
         ...devices["iPhone 13"],
         browserName: "chromium" as const,
@@ -91,7 +95,7 @@ export default defineConfig({
       ? [
           {
             name: "webkit-mobile-sm",
-            testMatch: mobileRecipeTestMatch,
+            testMatch: mobileHobbyTestMatch,
             use: {
               ...devices["iPhone 13"],
               browserName: "webkit" as const,
@@ -103,7 +107,7 @@ export default defineConfig({
           },
           {
             name: "webkit-mobile-md",
-            testMatch: mobileRecipeTestMatch,
+            testMatch: mobileHobbyTestMatch,
             use: {
               ...devices["iPhone 13"],
               browserName: "webkit" as const,
@@ -115,7 +119,7 @@ export default defineConfig({
           },
           {
             name: "webkit-mobile-lg",
-            testMatch: mobileRecipeTestMatch,
+            testMatch: mobileHobbyTestMatch,
             use: {
               ...devices["iPhone 13"],
               browserName: "webkit" as const,

@@ -7,7 +7,8 @@ import { useSearchParams } from "next/navigation";
 import { getHistoryPath } from "@/lib/history-path";
 
 export const useHistory = () => {
-  const { history, setHistory, isHydrated } = useHistoryContext();
+  const { history, setHistory, isHydrated, recoverFromNotFound, syncCurrentPath } =
+    useHistoryContext();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -65,5 +66,7 @@ export const useHistory = () => {
     remove,
     change,
     isHydrated,
+    recoverFromNotFound,
+    syncCurrentPath,
   };
 };

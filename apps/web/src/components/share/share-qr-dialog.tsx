@@ -31,6 +31,7 @@ export const ShareQrDialog = ({
   triggerLabelClassName,
 }: ShareQrDialogProps) => {
   const t = useTranslations("Share");
+  const tCommon = useTranslations("common");
   const { resolveUrl, copyLink } = useLinkShare();
   const [resolvedUrl, setResolvedUrl] = useState("");
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -59,6 +60,7 @@ export const ShareQrDialog = ({
         </Button>
       </DialogTrigger>
       <DialogContent
+        closeLabel={tCommon("close")}
         ref={dialogRef}
         tabIndex={-1}
         onOpenAutoFocus={event => {

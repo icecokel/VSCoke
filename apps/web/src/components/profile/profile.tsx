@@ -31,6 +31,7 @@ import type { ResumeDocument } from "@/services/resume-service";
  */
 const Profile = ({ document }: { document: ResumeDocument }) => {
   const t = useTranslations("profile");
+  const tCommon = useTranslations("common");
   const tPreview = useTranslations("resumePreview");
   const { introduction, contact } = document;
 
@@ -44,7 +45,10 @@ const Profile = ({ document }: { document: ResumeDocument }) => {
               {t("proposal")}
             </Button>
           </DialogTrigger>
-          <DialogContent className="border-gray-600 bg-gray-800 text-gray-100 sm:max-w-sm">
+          <DialogContent
+            closeLabel={tCommon("close")}
+            className="border-gray-600 bg-gray-800 text-gray-100 sm:max-w-sm"
+          >
             <DialogHeader>
               <DialogTitle>{t("proposalTitle")}</DialogTitle>
               <DialogDescription>{t("proposalDescription")}</DialogDescription>

@@ -15,6 +15,7 @@ export interface AppMessages {
   hobby: typeof KoreanMessages.hobby;
   resumePreview: typeof KoreanMessages.resumePreview;
   common: {
+    close: string;
     korean: string;
     english: string;
     japanese: string;
@@ -50,6 +51,7 @@ export interface AppMessages {
   };
   sidebar: {
     explorer: string;
+    mobileDescription: string;
     search: string;
     searchPlaceholder: string;
     searchResultCount: string;
@@ -59,6 +61,8 @@ export interface AppMessages {
     searchNoResult: string;
   };
   Share: {
+    qrTitle: string;
+    qrDescription: string;
     share: string;
     copied: string;
     qr: string;

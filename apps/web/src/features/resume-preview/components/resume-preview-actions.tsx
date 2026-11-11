@@ -19,6 +19,7 @@ import {
 
 export const ResumePreviewActions = ({ resumeKey }: { resumeKey: string }) => {
   const t = useTranslations("resumePreview");
+  const tCommon = useTranslations("common");
   const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false);
 
   const handleSavePdf = (includeCareerDetails: boolean) => {
@@ -52,6 +53,7 @@ export const ResumePreviewActions = ({ resumeKey }: { resumeKey: string }) => {
           </Button>
         </DialogTrigger>
         <DialogContent
+          closeLabel={tCommon("close")}
           className="border-gray-600 bg-gray-800 text-gray-100 sm:max-w-md"
           showCloseButton={false}
         >

@@ -3,6 +3,7 @@ import {
   escapeRegExp,
   gotoWithRetry,
   loadMessages,
+  SUPPORTED_LOCALES,
   verifyResumeSearchAnchors,
   type Locale,
 } from "./test-helpers";
@@ -25,6 +26,21 @@ const getMobileTestLocale = (): Locale =>
   (process.env.PLAYWRIGHT_LOCALE as Locale | undefined) ?? "ko-KR";
 
 test.describe("모바일 전용 동작", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    test(`${locale} 탐색기의 접근 이름과 설명은 현재 언어를 따른다`, async ({ page }) => {
+      await gotoWithRetry(page, `/${locale}`);
+      const messages = loadMessages(locale);
+      const trigger = page.getByTestId("sidebar-trigger-mobile");
+      await trigger.tap();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toHaveAccessibleName(messages.sidebar.explorer);
+      await expect(dialog).toHaveAccessibleDescription(messages.sidebar.mobileDescription);
+      await page.keyboard.press("Escape");
+      await expect(dialog).toBeHidden();
+      await expect(trigger).toBeFocused();
+    });
+  }
+
   test("홈 검색의 프로젝트 anchor는 새로고침·언어 전환과 단일 탭을 유지한다", async ({ page }) => {
     await verifyResumeSearchAnchors(page, "fe", true);
   });

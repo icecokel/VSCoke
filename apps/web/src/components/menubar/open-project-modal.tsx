@@ -34,6 +34,7 @@ interface IProject {
 const OpenProjectModal = (props: IOpenProjectModalProps) => {
   const locale = useLocale();
   const t = useTranslations("menu");
+  const tCommon = useTranslations("common");
   const categories = useMemo<ICategory[]>(
     () => [
       {
@@ -108,6 +109,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
   return (
     <Dialog open={props.open} onOpenChange={isOpen => !isOpen && onClose()}>
       <DialogContent
+        closeLabel={tCommon("close")}
         className="bg-gray-750 border-gray-500 max-w-3xl p-0 rounded-xl"
         showCloseButton={false}
         aria-describedby={undefined}

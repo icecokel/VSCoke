@@ -18,6 +18,7 @@ import { LanguageMenu } from "@/components/menubar/language-menu";
 
 export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
   const t = useTranslations("sidebar");
+  const tCommon = useTranslations("common");
   const { setOpen, open, openMobile, isMobile, setOpenMobile } = useSidebar();
   const [activeTab, setActiveTab] = useState<"explorer" | "search" | "none">("explorer");
   const { itemList } = useExplorer();
@@ -51,6 +52,9 @@ export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
     <Sidebar
       collapsible="icon"
       {...props}
+      closeLabel={tCommon("close")}
+      mobileTitle={t("explorer")}
+      mobileDescription={t("mobileDescription")}
       onCloseAutoFocus={event => {
         const trigger = document.getElementById("mobile-sidebar-trigger");
         if (trigger) {

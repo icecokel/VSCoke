@@ -87,6 +87,34 @@ API 배포의 trigger, runner와 release 단계는 `.github/workflows/deploy-api
 
 수동 재실행은 GitHub Actions의 `workflow_dispatch`를 사용한다.
 
+### 메시지 변경의 API 배포 범위
+
+push 배포는 `scripts/api-deploy-scope.mjs`가 `github.event.before`와 현재 커밋의 차이를 확인하고,
+배포 디렉터리의 `.last-successful-deploy`에 기록된 마지막 성공 배포 커밋과 현재 커밋의 누적
+차이도 확인한다. 어느 비교에서든 API 배포 대상 변경이 있으면 배포한다. push 이전 커밋이
+없거나 0인 SHA이거나 조회할 수 없으면 성공 배포 기록과 무관하게 안전하게 배포한다.
+대기 중 API 배포가 후속 UI push로 대체되어도 아직 배포하지 않은 API 변경은 다음 실행에 포함된다.
+`apps/web/messages/*.json`만 배포 경로 필터에 해당하면 RAG loader가 읽는
+최상위 `profile`, `resume` 값이 바뀔 때만 API를 배포한다. 나머지 UI 문구 변경은 API 빌드와
+재시작을 생략하고 Actions 요약에 이유를 남긴다. 웹 검증·배포는 기존대로 수행한다.
+
+API 코드·계약·배포 설정과 이력 원본 등 기존 배포 대상이 함께 바뀌면 API를 배포한다.
+배포 시작 시 성공 기록을 무효화하고 로컬·공개 health 검사가 모두 통과한 뒤 현재 커밋을
+기록한다. 생략한 실행은 기록을 갱신하지 않으며, release 동기화는 기록 파일을 보존한다.
+실패·실행 중 취소 뒤에는 성공 기록이 없으므로 다음 실행에서 안전하게 배포한다. UI 변경이나
+원복만 이어져도 동일하다. 최초 적용·배포 디렉터리 교체로 기록이 없어도 한 번 배포한다.
+
+기록·커밋 조회 또는 JSON·git 비교에 실패하면 안전하게 배포하며, `workflow_dispatch`는 항상
+배포한다. 판정 키 범위와 loader manifest, workflow 경로 필터는 `pnpm test:tooling`의 계약
+테스트로 일치 여부를 확인한다.
+
+### Beat Jev 대전의 재시작 정책
+
+진행 중 Beat Jev 대전은 API 프로세스의 메모리 `Map`에만 보관한다. API 배포·컨테이너 재시작·
+호스트 재부팅으로 진행 상태가 사라지며 복구하지 않는다. 사용자는 새 대전을 시작해야 한다.
+UI 전용 변경은 불필요한 재시작을 피하지만, 필요한 API 배포에서는 이 유실 정책이 적용된다.
+대전 상태의 DB 저장이나 migration은 현재 배포 정책의 범위에 포함하지 않는다.
+
 ## Mac mini runner offline
 
 서비스 이름과 runner label은 [API 배포 기준](./deployment-and-env.md#api-mac-mini-docker)을 확인한다.

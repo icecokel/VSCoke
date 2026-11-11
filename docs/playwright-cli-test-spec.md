@@ -122,7 +122,7 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:37123 pnpm --filter @vscoke/web exec playwr
 | 상태 유지            | `history-tabs.spec.ts`, `state-persistence.spec.ts`                                                              |
 | 접근성/키보드        | `keyboard-only.spec.ts`                                                                                          |
 | 모바일 동작          | `mobile-behavior.spec.ts`                                                                                        |
-| 레이아웃/비주얼 회귀 | `layout-shift.spec.ts`, `visual-regression.spec.ts`                                                              |
+| 레이아웃/비주얼 회귀 | `layout-shift.spec.ts`, `visual-regression.spec.ts`, `resume-print.spec.ts`                                      |
 | 취미/게임 진입       | `hobby-games.spec.ts`, `sky-drop.spec.ts`, `beat-jev.spec.ts`, `hobby-recipes.spec.ts`, `hobby-espresso.spec.ts` |
 | 블로그 상세          | `blog-detail.spec.ts`                                                                                            |
 | 이력서 조회          | `resume-content.spec.ts`                                                                                         |
@@ -228,6 +228,42 @@ NEXT_PUBLIC_API_URL=https://api.icecoke.kr PLAYWRIGHT_PORT=37203 \
 - 스냅샷 기준선은 Chromium만 유지한다.
 - 스냅샷 갱신은 `pnpm e2e:update-snapshots`로만 수행한다.
 - 레이아웃이 변하는 UI 변경은 코드 변경과 기준선 갱신을 한 세트로 취급한다.
+
+### 이력서 인쇄 회귀
+
+`resume-print.spec.ts`는 UI에서 이력서만/경력 포함을 선택하고 native A4 PDF를 테스트
+산출물로 저장한다. PDF 파서 의존성을 추가하지 않고 print 미디어에서 A4 본문 크기
+186×281mm(`@page`의 좌우 12mm, 상하 8mm 여백 제외)의 고정 높이 CSS 단으로 분할을
+측정한다. `floor((요소의 x - 첫 단의 x) / 단 너비)`를 페이지 번호로 사용하며,
+경력기술서의 명시적 `break-before: page`만 측정 중 `column`으로 대응시킨다.
+
+전체 본문의 회사 제목/첫 설명 페이지 일치와 빈 단 부재를 확인하고, 회사 제목만 남는
+경계를 각 회사의 복제본으로 재현한다. 긴 회사는 다음 단으로 이어질 수 있어야 한다.
+인쇄 전용 `?resume=print` fixture는 기존 이력서의 경력 본문을 유지하고 상세 연결만
+`print-figure`와 `print-markdown`으로 바꾼다. 로컬 fixture API가 고정된 문단, 내장 SVG 이미지와
+캡션을 MDX 원문으로 응답하므로, 일반 `MDXRemote` 렌더링을 거친 두 상세가 생성 PDF에도
+포함된다. 이미지 로딩을 기다린 뒤 PDF를 만들며, DOM에 합성 이미지 HTML을 삽입하지 않는다.
+
+경력 포함 모드에서는 전체 문서 안의 `figure`와 Markdown 이미지 문단+캡션 문단의 페이지
+일치를 검사한다. 같은 MDX 노드의 보호 CSS만 일시적으로 해제했을 때는 두 캡션이 각각 이미지의
+다음 페이지로 분리되는지도 확인해, 실제 경계가 없는 fixture가 통과하는 것을 막는다. 정상
+문서의 빈 페이지 검사와 회사 제목 경계 검사도 유지한다. 제품 화면과 시각 스냅샷은 바꾸지 않는다.
+
+단 분할 검사는 OS 인쇄 창의 실제 페이지 분할과 동일하다고 보장하지 않는다. 저장된
+`resume.pdf`는 로컬 Poppler가 있으면 `pdfinfo <파일>`과 `pdftotext -layout <파일> -`로
+A4 크기, 텍스트 추출, 페이지별 본문과 빈 페이지를 추가 확인할 수 있다. 실제 OS 인쇄 창의
+대표 설정과 프린터별 출력은 별도 수동 확인 대상이다.
+
+2026-11-12 수정 라운드 2에서는 위 spec의 Chromium 2건이 통과했다. 생성한 A4 PDF는
+이력서만 5쪽, 경력 포함 9쪽이며, `pdfinfo`·`pdftotext -layout`으로 모든 쪽의 텍스트 추출과
+빈 페이지 부재를 확인했다. 경력 포함본의 이미지·캡션 경계 페이지도 PNG로 렌더링해 함께
+다음 페이지로 이동하는 것을 확인했다. `Tagged: no`는 이 `page.pdf` 생성 옵션의 결과이며
+제품의 태그 결함 판정으로 사용하지 않는다.
+
+같은 라운드의 OS 창 확인은 미완료다. 이 실행 환경에서 native UI 도구의 Chrome과
+ego lite 창 조회가 모두 `cgWindowNotFound`로 실패했다. 로컬 fixture 페이지를 열어 사용자에게
+제어를 넘겼으며, 실제 OS 인쇄 창에서 두 모드의 A4·세로·100% 결과를 확인하도록 요청했다.
+자동 PDF·단 분할 검사를 OS 창 확인 완료로 간주하지 않는다.
 
 ## 11. 로컬 완료 기준
 

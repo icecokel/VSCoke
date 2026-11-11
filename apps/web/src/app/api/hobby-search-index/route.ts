@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
   ]);
 
   return NextResponse.json({
-    data: buildHobbySearchItems(recipes, espressoBeans, {
+    data: buildHobbySearchItems(recipes ?? [], espressoBeans, {
       recipeSummary: (ingredients, steps) => tRecipes("summary", { ingredients, steps }),
       espressoSummary: (roaster, rounds) =>
         tEspresso("searchSummary", {

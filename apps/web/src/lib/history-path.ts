@@ -5,6 +5,10 @@ export const getHistoryPath = (path: string): string => {
 
   const pathname = withoutHash.slice(0, queryIndex);
   const searchParams = new URLSearchParams(withoutHash.slice(queryIndex + 1));
+  if (pathname === "/hobby/recipes") {
+    searchParams.delete("q");
+    searchParams.delete("recipe");
+  }
   const resumeKeys = searchParams.getAll("resume");
   if (
     (pathname === "/readme" || pathname.startsWith("/resume/")) &&

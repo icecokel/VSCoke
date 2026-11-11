@@ -6,13 +6,13 @@ const recipeRequestOptions = {
   next: { revalidate: 60 },
 } as const;
 
-export const getRecipes = async (): Promise<Recipe[]> => {
+export const getRecipes = async (): Promise<Recipe[] | null> => {
   try {
     return await apiClient.get<Recipe[]>("/recipes", recipeRequestOptions);
   } catch (error) {
     if (isRecoverableReadError(error)) {
       logRecoverableReadError("recipe", error);
-      return [];
+      return null;
     }
 
     throw error;

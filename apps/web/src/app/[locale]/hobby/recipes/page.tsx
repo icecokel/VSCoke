@@ -6,5 +6,5 @@ export const dynamic = "force-dynamic";
 export default async function HobbyRecipesPage() {
   const recipes = await getRecipes();
 
-  return <RecipeBrowser recipes={recipes} />;
+  return <RecipeBrowser recipes={recipes ?? []} hasLoadedRecipes={recipes !== null} />;
 }

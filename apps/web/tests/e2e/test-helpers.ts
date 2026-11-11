@@ -11,6 +11,7 @@ export type Locale = (typeof SUPPORTED_LOCALES)[number];
 const DEFAULT_PLAYWRIGHT_LOCALE: Locale = "ko-KR";
 
 export interface AppMessages {
+  hobby: typeof KoreanMessages.hobby;
   resumePreview: typeof KoreanMessages.resumePreview;
   common: {
     korean: string;

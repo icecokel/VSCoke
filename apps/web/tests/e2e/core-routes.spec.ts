@@ -284,7 +284,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
       .getByRole("link", { name: new RegExp(escapeRegExp(messages.blog.backToList)) })
       .first()
       .click();
-    await expectPath(page, new RegExp(`^/${localeRegex}/blog$`));
+    await expectPath(page, new RegExp(`^/${localeRegex}/blog/dashboard$`));
   });
 
   test("블로그 대시보드 CTA 전체 동작", async ({ page }) => {

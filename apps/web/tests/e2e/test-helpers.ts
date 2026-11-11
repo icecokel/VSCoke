@@ -81,6 +81,7 @@ export interface AppMessages {
     wordleLostDescription: string;
   };
   blog: {
+    title: string;
     backToList: string;
     detail: { copyCode: string };
   };

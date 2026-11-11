@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCustomRouter } from "@/hooks/use-custom-router";
 import { shouldSubmitMainChatKey } from "../lib/main-chat-keyboard";
 import { groupChatSources, getChatSourceLink } from "@/lib/chat-sources";
+import { renderChatAnswer } from "@/lib/chat-answer";
 import { CustomLink } from "@/components/custom-link";
 import type { MainChatSource } from "../types";
 import { askMainChat, readMainChatRateLimitFromError } from "../lib/main-chat-service";
@@ -251,9 +252,9 @@ export const MainChat = () => {
                 ) : (
                   <article key={message.id} className="max-w-3xl border-l border-blue-300/60 pl-4">
                     <p className="text-xs font-medium text-blue-200">VSCOKE</p>
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-gray-200 md:text-base">
-                      {message.content}
-                    </p>
+                    <div className="mt-2 space-y-3 text-sm leading-7 break-words text-gray-200 md:text-base">
+                      {renderChatAnswer(message.content)}
+                    </div>
                     <MainChatSources sources={message.sources} />
                   </article>
                 ),

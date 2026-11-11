@@ -1,5 +1,6 @@
 "use client";
 
+import { renderChatAnswer } from "@/lib/chat-answer";
 import { ResumeConversationToolbar } from "./resume-conversation-toolbar";
 import {
   useResumeConversation,
@@ -627,8 +628,8 @@ export const ResumeQuestionChat = ({ initialChatId, resumeKey }: ResumeQuestionC
                       {message.grounded ? t("groundedBadge") : t("noEvidence.title")}
                     </span>
                   </div>
-                  <div className="px-3 py-3 text-sm leading-6 break-words whitespace-pre-wrap">
-                    {message.content}
+                  <div className="space-y-3 px-3 py-3 text-sm leading-6 break-words">
+                    {renderChatAnswer(message.content)}
                   </div>
                   <div className="px-3 pb-3">
                     <GroundingNotice grounded={message.grounded} />

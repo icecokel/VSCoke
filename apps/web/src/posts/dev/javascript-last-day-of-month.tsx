@@ -62,7 +62,7 @@ const DevJavascriptLastDayOfMonthPost = () => {
       </PostParagraph>
       <PostCodeBlock
         code={
-          "const getLastDayFromMonth = (month = 1) => {\n  return new Date(2022,month,0).getDate();   <== 이쪽부분\n}"
+          "const getLastDayFromMonth = (month = 1) => {\n  return new Date(2022,month,0).getDate();   // <== 이쪽부분\n}"
         }
       />
       <PostHorizontalRule />

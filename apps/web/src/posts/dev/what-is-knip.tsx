@@ -33,7 +33,7 @@ const DevWhatIsKnipPost = () => {
       <PostParagraph>
         {"오늘은 이런 고민을 말끔히 씻어줄 도구, "}
         <PostStrong>Knip</PostStrong>에 대해 이야기해 보려 합니다. 단순히 안 쓰는 파일을 찾는 것을
-        넘어, **&quot;코드의 구조를 이해하는 청소부&quot;**라고 할 수 있죠.
+        넘어, <PostStrong>&quot;코드의 구조를 이해하는 청소부&quot;</PostStrong>라고 할 수 있죠.
       </PostParagraph>
       <PostHeading2>2. 핵심 원리와 특징 (Deep Dive)</PostHeading2>
       <PostParagraph>
@@ -80,8 +80,8 @@ const DevWhatIsKnipPost = () => {
         </PostListItem>
       </PostOrderedList>
       <PostParagraph>
-        즉, **&quot;컴파일러의 눈&quot;**으로 프로젝트 전체를 스캔하여, 실제로 실행될 가능성이 없는
-        코드를 핀셋으로 집어내듯 찾아내는 원리입니다.
+        즉, <PostStrong>&quot;컴파일러의 눈&quot;</PostStrong>으로 프로젝트 전체를 스캔하여, 실제로
+        실행될 가능성이 없는 코드를 핀셋으로 집어내듯 찾아내는 원리입니다.
       </PostParagraph>
       <PostHeading2>3. 실무 적용 가이드 (With Code)</PostHeading2>
       <PostParagraph>
@@ -90,8 +90,8 @@ const DevWhatIsKnipPost = () => {
       <PostHeading3>3-1. 설치 및 설정</PostHeading3>
       <PostParagraph>
         {"먼저 "}
-        <PostInlineCode>npm</PostInlineCode>으로 설치합니다. 배포 환경엔 필요 없으니 **개발
-        의존성(-D)**으로 설치하는 것, 잊지 마세요!
+        <PostInlineCode>npm</PostInlineCode>으로 설치합니다. 배포 환경엔 필요 없으니{" "}
+        <PostStrong>개발 의존성(-D)</PostStrong>으로 설치하는 것, 잊지 마세요!
       </PostParagraph>
       <PostCodeBlock code={"npm install -D knip"} language={"bash"} />
       <PostParagraph>
@@ -151,7 +151,8 @@ const DevWhatIsKnipPost = () => {
       </PostUnorderedList>
       <PostHeading2>5. 마치며</PostHeading2>
       <PostParagraph>
-        프로젝트의 건강을 지키는 가장 쉬운 방법은 **불필요한 지방(Dead Code)**을 걷어내는 것입니다.
+        프로젝트의 건강을 지키는 가장 쉬운 방법은 <PostStrong>불필요한 지방(Dead Code)</PostStrong>
+        을 걷어내는 것입니다.
       </PostParagraph>
       <PostParagraph>
         {

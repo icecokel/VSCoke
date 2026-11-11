@@ -11,6 +11,7 @@ import type {
   ThHTMLAttributes,
 } from "react";
 import { PhotoIcon } from "@heroicons/react/24/outline";
+import { useTranslations } from "next-intl";
 import { PreBlock } from "@/components/blog/pre-block";
 import { cn } from "@/lib/utils";
 
@@ -170,23 +171,26 @@ export const PostEmphasis = ({ children }: PostElementProps) => (
   <em className="italic">{children}</em>
 );
 
-const PostLegacyImageNotice = ({ alt }: Pick<PostImageProps, "alt">) => (
-  <div
-    className="my-7 flex items-start gap-3 rounded-xl border border-border bg-muted/40 p-5 text-muted-foreground"
-    data-blog-speech-exclude
-    data-testid="blog-legacy-image-notice"
-  >
-    <PhotoIcon aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
-    <div>
-      <p className="m-0 font-semibold text-foreground">이전 스크린샷 안내</p>
-      <p className="m-0 mt-1 text-sm leading-6">
-        원본 스크린샷은 만료된 외부 링크라 표시하지 않습니다. 본문의 명령과 설명을 기준으로 진행해
-        주세요.
-      </p>
-      {alt && <p className="m-0 mt-2 text-sm text-muted-foreground">설명: {alt}</p>}
+export const PostLegacyImageNotice = ({ alt }: Pick<PostImageProps, "alt">) => {
+  const t = useTranslations("blog.detail");
+
+  return (
+    <div
+      className="my-7 flex items-start gap-3 rounded-xl border border-border bg-muted/40 p-5 text-muted-foreground"
+      data-blog-speech-exclude
+      data-testid="blog-legacy-image-notice"
+    >
+      <PhotoIcon aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
+      <div>
+        <p className="m-0 font-semibold text-foreground">{t("legacyImageTitle")}</p>
+        <p className="m-0 mt-1 text-sm leading-6">{t("imageUnavailable")}</p>
+        {alt && (
+          <p className="m-0 mt-2 text-sm text-muted-foreground">{t("imageDescription", { alt })}</p>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export const PostImage = ({ alt, className, src, ...props }: PostImageProps) => {
   if (isLegacyBlogImageUrl(src)) return <PostLegacyImageNotice alt={alt} />;

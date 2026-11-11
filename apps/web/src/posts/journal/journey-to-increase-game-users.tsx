@@ -2,8 +2,8 @@ import {
   PostEmphasis,
   PostHeading1,
   PostHeading2,
-  PostImage,
   PostInlineCode,
+  PostLegacyImageNotice,
   PostListItem,
   PostOrderedList,
   PostParagraph,
@@ -16,15 +16,17 @@ const JournalJourneyToIncreaseGameUsersPost = () => {
     <>
       <PostHeading1>게임 유저를 늘리기위한 여정</PostHeading1>
       <PostParagraph>
+        {'단순히 "게임을 만들었다"에서 끝나는 것이 아니라, '}
+        <PostStrong>&quot;사람들이 이 게임을 어떻게 공유하고 즐길까?&quot;</PostStrong>
         {
-          '단순히 "게임을 만들었다"에서 끝나는 것이 아니라, **"사람들이 이 게임을 어떻게 공유하고 즐길까?"**를 고민하며 기능을 붙여나간 과정입니다.\n(그리고 그 과정에서 마주친 수많은 버그와 삽질의 기록이기도 합니다.)'
+          "를 고민하며 기능을 붙여나간 과정입니다.\n(그리고 그 과정에서 마주친 수많은 버그와 삽질의 기록이기도 합니다.)"
         }
       </PostParagraph>
       <PostHeading2>1. &quot;자랑하기&quot;와 &quot;이미지 다운로드&quot; 개발</PostHeading2>
       <PostParagraph>
-        {
-          "게임의 핵심 바이럴 요소는 **'점수 자랑'**이라고 생각했습니다.\n그래서 게임 오버 화면에 두 가지 핵심 기능을 넣었습니다."
-        }
+        {"게임의 핵심 바이럴 요소는 "}
+        <PostStrong>&apos;점수 자랑&apos;</PostStrong>
+        {"이라고 생각했습니다.\n그래서 게임 오버 화면에 두 가지 핵심 기능을 넣었습니다."}
       </PostParagraph>
       <PostOrderedList start={1}>
         <PostListItem>
@@ -52,7 +54,8 @@ const JournalJourneyToIncreaseGameUsersPost = () => {
         <PostStrong>&quot;다시 하기&quot; 버튼을 눌렀는데 게임이 멈춰버리는 현상.</PostStrong>
       </PostParagraph>
       <PostParagraph>
-        원인은 **React와 Phaser 엔진 사이의 타이밍 미스매치(Race Condition)**였습니다.
+        원인은 <PostStrong>React와 Phaser 엔진 사이의 타이밍 미스매치(Race Condition)</PostStrong>
+        였습니다.
       </PostParagraph>
       <PostUnorderedList>
         <PostListItem>
@@ -82,14 +85,13 @@ const JournalJourneyToIncreaseGameUsersPost = () => {
         {" 이렇게 이미지가 뜨면 클릭률이 200% 오를 거라 확신했거든요."}
       </PostParagraph>
       <PostParagraph>하지만 현실은...</PostParagraph>
+      <PostLegacyImageNotice alt={"0점 이미지"} />
       <PostParagraph>
-        <PostImage alt={"0점 이미지"} src={"/images/blog/og-fail.png"} />
-        {"\n"}
         <PostEmphasis>(상상도: 모든 공유 이미지에 0점이 찍혀 나가는 상황)</PostEmphasis>
       </PostParagraph>
       <PostParagraph>
-        친구에게 &quot;나 5000점 찍었어!&quot; 하고 보냈는데, 정작 썸네일에는
-        **&quot;0점&quot;**이라고 박혀있는 상황.
+        친구에게 &quot;나 5000점 찍었어!&quot; 하고 보냈는데, 정작 썸네일에는{" "}
+        <PostStrong>&quot;0점&quot;</PostStrong>이라고 박혀있는 상황.
       </PostParagraph>
       <PostHeading2>4. OG 삽질과 대공사</PostHeading2>
       <PostParagraph>

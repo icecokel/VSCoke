@@ -183,7 +183,10 @@
       "code": "コード",
       "copyCode": "コードをコピー",
       "copied": "コピーしました",
-      "copyFailed": "コピーできませんでした。コードを選択してコピーしてください。"
+      "copyFailed": "コピーできませんでした。コードを選択してコピーしてください。",
+      "legacyImageTitle": "以前の画像について",
+      "imageUnavailable": "元の画像は現在提供していません。本文の説明をご参照ください。",
+      "imageDescription": "説明: {alt}"
     },
     "benchmark": {
       "title": "記録した測定結果を比較する",

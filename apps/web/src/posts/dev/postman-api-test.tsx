@@ -66,15 +66,13 @@ const DevPostmanApiTestPost = () => {
       <PostParagraph>{" POSTMAN 설치 주소입니다."}</PostParagraph>
       <PostParagraph>
         <PostLink href={"https://www.postman.com/downloads/"}>
-          https:&#47;&#47;www.postman.com/downloads/
+          Download Postman | Try Postman for Free
         </PostLink>
       </PostParagraph>
-      <PostParagraph>{" [Download Postman | Try Postman for Free"}</PostParagraph>
       <PostParagraph>
         Try Postman for free! Join 17 million developers who rely on Postman, the collaboration
         platform for API development. Create better APIs—faster.
       </PostParagraph>
-      <PostParagraph>www.postman.com](https:&#47;&#47;www.postman.com/downloads/)</PostParagraph>
       <PostParagraph>본인 OS 환경에 맞게 설치 하시면 됩니다.</PostParagraph>
       <PostImage
         alt={""}

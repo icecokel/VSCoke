@@ -51,7 +51,12 @@ test.describe("비주얼 회귀", () => {
       });
 
       if (pageCase.ready === "home") {
-        await expect(page.locator('[data-testid="home-hero"]')).toBeVisible();
+        await expect(
+          page.getByRole("heading", { level: 1, name: ko.home.mainChat.workspaceTitle }),
+        ).toBeVisible();
+        await expect(
+          page.getByRole("textbox", { name: ko.home.mainChat.placeholder }),
+        ).toBeEnabled();
       } else if (pageCase.ready === "blog") {
         await expect(page.getByRole("heading", { level: 3, name: "블로그" })).toBeVisible();
       } else if (pageCase.ready === "dashboard") {
@@ -65,7 +70,8 @@ test.describe("비주얼 회귀", () => {
         await expect(page.locator("code").first()).toContainText('"name"');
       }
 
-      await page.evaluate(() => {
+      await page.evaluate(async () => {
+        await document.fonts.ready;
         window.scrollTo(0, 0);
       });
 
@@ -128,7 +134,7 @@ test.describe("Sky Drop DOM 비주얼", () => {
       await page.evaluate(() => document.fonts.ready);
       await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000);
       const game = page.getByTestId("sky-drop-game");
-      await expect(game).toHaveScreenshot(`sky-drop-${layout.name}-ready.png`, {
+      await expect.soft(game).toHaveScreenshot(`sky-drop-${layout.name}-ready.png`, {
         animations: "disabled",
       });
       await page.getByTestId("game-start-button").click();
@@ -159,10 +165,22 @@ test.describe("PostgreSQL ClickHouse 비교 화면 비주얼", () => {
       );
       await expect(page.getByTestId("benchmark-value-postgres")).toHaveText("11.847");
       await page.evaluate(() => document.fonts.ready);
+      // 고정 높이 앱의 스크롤 영역이 컴포넌트를 자르지 않도록 전체 캡처 공간을 확보한다.
+      const explorerHeight = await explorer.evaluate(
+        element => element.getBoundingClientRect().height,
+      );
+      await page.setViewportSize({
+        width: layout.width,
+        height: Math.max(layout.height, Math.ceil(explorerHeight) + 180),
+      });
       await explorer.scrollIntoViewIfNeeded();
+      await expect(explorer).toBeInViewport({ ratio: 1 });
       // 요소 캡처에 겹치는 페이지 진행률은 이 컴포넌트 비교에서 제외한다.
       await page.addStyleTag({
-        content: "[data-testid=blog-post] > [role=progressbar] { visibility: hidden !important; }",
+        content: `
+          nextjs-portal, [data-nextjs-dev-overlay] { display: none !important; }
+          [data-testid=blog-post] > [role=progressbar] { visibility: hidden !important; }
+        `,
       });
       await expect(explorer).toHaveScreenshot(`postgresql-clickhouse-${layout.name}.png`, {
         animations: "disabled",

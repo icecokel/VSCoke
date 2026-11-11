@@ -125,7 +125,7 @@ for (const channel of ["main", "resume"] as const) {
     if (channel === "resume")
       await expect(
         page.getByRole("link", { name: messages.resume.backToResume, exact: true }),
-      ).toHaveAttribute("href", `/${locale}/readme?resume=fe`);
+      ).toHaveAttribute("href", new RegExp(`^/${locale}/readme\\?resume=fe#career_\\d+$`));
     expect(requests).toBe(1);
   });
 }

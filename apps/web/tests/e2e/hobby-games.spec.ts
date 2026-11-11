@@ -68,7 +68,7 @@ test.describe("취미 게임 섹션", () => {
   test("Wordle 진행 중인 판은 다른 탭에 다녀와도 이어지고 재시작하면 새 판이 된다", async ({
     page,
   }) => {
-    const { locale } = await resolveLocaleAndMessages(page);
+    const { locale, messages } = await resolveLocaleAndMessages(page);
     let wordRequests = 0;
     await page.route("**/wordle/word", async route => {
       const requestNumber = ++wordRequests;
@@ -92,7 +92,7 @@ test.describe("취미 게임 섹션", () => {
     await gotoWithRetry(page, `/${locale}/game`);
     await page
       .getByTestId("history-tab-rail")
-      .getByRole("button", { name: "wordle", exact: true })
+      .getByRole("button", { name: messages.Game.wordleTitle, exact: true })
       .click();
     await expect(page).toHaveURL(new RegExp(`/${escapeRegExp(locale)}/game/wordle$`));
     await expect(page.getByTestId("wordle-loading")).toBeHidden();
@@ -419,6 +419,7 @@ test.describe("Wordle 완료한 판", () => {
       await page.getByRole("link", { name: messages.Game.viewOtherGames, exact: true }).click();
       await expect(page).toHaveURL(new RegExp(`/${escapeRegExp(locale)}/game$`));
       await page
+        .locator("main.bg-slate-900")
         .getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.wordleTitle)) })
         .click();
       await expect(result).toContainText(title);

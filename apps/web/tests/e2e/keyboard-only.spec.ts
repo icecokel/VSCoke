@@ -216,13 +216,13 @@ test.describe("키보드 전용 시나리오", () => {
     await waitForHistoryPaths(page, ["/blog", "/game"]);
 
     const tabRail = page.getByTestId("history-tab-rail");
-    const blogTab = tabRail.getByRole("button", { name: "blog", exact: true });
+    const blogTab = tabRail.getByRole("button", { name: messages.blog.title, exact: true });
     await blogTab.focus();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(new RegExp(`/${escapeRegExp(locale)}/blog$`));
 
     const closeBlog = tabRail.getByRole("button", {
-      name: `${messages.historyTabs.close}: blog`,
+      name: `${messages.historyTabs.close}: ${messages.blog.title}`,
     });
     await closeBlog.focus();
     await page.keyboard.press("Enter");

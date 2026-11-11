@@ -131,6 +131,11 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:37123 pnpm --filter @vscoke/web exec playwr
 
 신규 테스트는 반드시 위 범주 중 하나에 속해야 하며, 성격이 다르면 새 범주를 문서에 추가한 뒤 도입한다.
 
+`hobby-recipes.spec.ts`와 `hobby-espresso.spec.ts`는 기본 실행에서 로컬 API fixture의
+목록·상세·사이드바 검색과 530 장애 fallback·복구를 모두 검증한다. API 의존 시나리오를
+skip하지 않으며, 원두의 여러 라운드와 레시피 재료 검색 데이터는
+`apps/web/tests/fixtures/hobby-api.ts`에서 고정한다. 이 데이터는 생성 API 타입으로 검사한다.
+
 ## 8. 테스트 파일 작성 규칙
 
 ### 8-1. 파일 규칙
@@ -147,6 +152,14 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:37123 pnpm --filter @vscoke/web exec playwr
 - 상태 공유가 큰 시나리오는 `test.describe.configure({ mode: "serial" })`를 사용한다.
 - 테스트 내부에서 외부 API 의존성을 새로 늘리지 않는다.
 - 실패 재현을 위해 필요한 mocking은 `page.route` 또는 `page.addInitScript` 수준에서 국소적으로 처리한다.
+- Server Component의 서버 측 fetch는 브라우저 route로 가로채지 않고 로컬 fixture API로
+  제어한다. 취미 장애 테스트는 `POST /__test__/hobby-availability?available=false`로
+  취미 API만 530으로 바꾸고, 각 테스트 종료 시 `available=true`로 복구한다. 이 제어는
+  fixture에서만 제공하며 공유 상태이므로 worker 1개로 실행한다. 기존 서비스는 503을 오류로
+  전파하고 530·연결 실패를 빈 상태로 복구하므로 fixture도 530을 사용한다.
+- 취미 spec은 `Cache-Control: no-cache`로 요청한다. Next 개발 서버의 hard refresh는
+  `next.revalidate: 60`인 서버 fetch 캐시도 우회하므로 런타임 캐시 정책을 바꾸지 않고
+  정상→장애→복구 응답을 같은 URL에서 검증한다.
 
 ### 8-3. 금지 규칙
 
@@ -163,6 +176,8 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:37123 pnpm --filter @vscoke/web exec playwr
 - `PLAYWRIGHT_WORKERS`
 - `PLAYWRIGHT_ENABLE_CROSS_BROWSER`
 - `PLAYWRIGHT_REUSE_EXISTING_SERVER`
+- `NEXT_PUBLIC_API_URL` (명시하면 해당 API를 사용하는 별도 연동 실행)
+- `PLAYWRIGHT_RESUME_FIXTURE` (러너가 로컬 이력서·취미 fixture 사용 시 `1`로 주입)
 - `NEXT_DIST_DIR`
 - `TEST_DATABASE_URL` (`_test` suffix가 있는 통합 테스트 DB)
 
@@ -171,7 +186,18 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:37123 pnpm --filter @vscoke/web exec playwr
 - 자동 실행 시 포트와 dist 디렉토리는 프로세스 단위로 격리한다.
 - 반복 검증 서버는 고정 포트 `37123`, 고정 산출물 `.next-e2e`를 사용한다.
 - 인증 및 API 주소는 E2E 안전 기본값으로 주입한다.
+- 자동 서버 실행에서 API 주소가 없거나 `http://127.0.0.1:65535`이면
+  `apps/web/scripts/playwright-resume-fixture.mjs`를 loopback 임의 포트에 시작한다.
+  이력서와 원두 목록·상세, 레시피 목록·상세를 `{ success, data }` 계약으로 응답하며,
+  그 주소를 Next와 Playwright의 `NEXT_PUBLIC_API_URL`에 함께 전달한다. 종료 시 fixture도 정리한다.
+  기본 취미 검증에는 외부 네트워크·DB가 필요하지 않다.
+- `PLAYWRIGHT_BASE_URL`로 외부 서버를 재사용하면 fixture를 자동 기동하지 않는다.
+  해당 서버의 API 환경을 별도로 준비해야 한다.
 - `e2e:integration <spec> <Playwright args>`는 전달받은 spec과 인자를 그대로 실행한다.
+- 실제 API 검증은 기본 스위트와 분리된 `e2e:integration`에서 로컬 테스트 DB의 seed로
+  수행한다. 이 모드에서는 fixture 전용 장애 제어 시나리오만 skip하고 목록·상세·검색을
+  실행한다. 운영 공개 API smoke가 필요하면 아래처럼 API URL을 명시하고 정상 시나리오만
+  선택해 별도로 실행한다. 운영 API는 기본 E2E에 사용하지 않는다.
 - 통합 실행의 DB 이름은 반드시 `_test`로 끝나야 하며 process group 종료 시 API와 Web child를 함께 정리한다.
 - `migration:run:test`는 테스트 전용 migration runner에서 역사적 이력서 seed migration을
   같은 이름의 빈 legacy DDL로 치환한다. 운영 `migration:run`과 migration history는 바꾸지 않는다.
@@ -188,6 +214,12 @@ TEST_DATABASE_URL="$TEST_DATABASE_URL" PLAYWRIGHT_WORKERS=1 \
   pnpm --filter @vscoke/web e2e:integration \
   tests/e2e/hobby-espresso.spec.ts \
   --project=chromium
+
+# 선택적 공개 API 읽기 smoke: 고정 데이터 기대값은 운영 데이터 변경의 영향을 받는다.
+NEXT_PUBLIC_API_URL=https://api.icecoke.kr PLAYWRIGHT_PORT=37203 \
+  pnpm --filter @vscoke/web e2e \
+  tests/e2e/hobby-espresso.spec.ts tests/e2e/hobby-recipes.spec.ts \
+  --project=chromium --grep-invert 'API 장애'
 ```
 
 ## 10. 비주얼 회귀 규칙

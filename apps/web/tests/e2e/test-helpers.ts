@@ -2,7 +2,7 @@ import type KoreanMessages from "../../messages/ko-KR.json";
 import type { ResumeRagSource } from "@/features/resume-rag/types";
 import fs from "node:fs";
 import { randomUUID } from "node:crypto";
-import type { Route } from "@playwright/test";
+import type { APIRequestContext, Route } from "@playwright/test";
 import path from "node:path";
 import { expect, Page } from "@playwright/test";
 
@@ -152,6 +152,14 @@ export const gotoWithRetry = async (page: Page, routePath: string, attempts = 4,
 export const visit = async (page: Page, routePath: string) => {
   await gotoWithRetry(page, routePath);
   await expect(page.locator("#menubar")).toBeVisible();
+};
+
+export const setHobbyApiAvailable = async (request: APIRequestContext, available: boolean) => {
+  expect(process.env.PLAYWRIGHT_RESUME_FIXTURE).toBe("1");
+  const response = await request.post(
+    `${process.env.NEXT_PUBLIC_API_URL}/__test__/hobby-availability?available=${available}`,
+  );
+  expect(response.status()).toBe(204);
 };
 
 export const readFirstBlogSlug = (): string => {

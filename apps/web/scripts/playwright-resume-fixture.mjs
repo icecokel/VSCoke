@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import matter from "gray-matter";
+import { espressoBeans, recipes } from "../tests/fixtures/hobby-api.ts";
 
 const webRoot = fileURLToPath(new URL("..", import.meta.url));
 const readJson = path => JSON.parse(readFileSync(`${webRoot}/${path}`, "utf8"));
@@ -114,12 +115,29 @@ const details = readdirSync(`${webRoot}/resume-detail`)
 
 export const startResumeFixture = async () => {
   let isAvailable = true;
+  let isHobbyAvailable = true;
   const currentDocuments = structuredClone(documents);
   const unavailableDetails = new Set();
   const server = createServer((request, response) => {
     const url = new URL(request.url, "http://127.0.0.1");
     let data;
 
+    if (request.method === "POST" && url.pathname === "/__test__/hobby-availability") {
+      isHobbyAvailable = url.searchParams.get("available") === "true";
+      response.writeHead(204).end();
+      return;
+    }
+    if (
+      !isHobbyAvailable &&
+      (url.pathname === "/recipes" ||
+        url.pathname.startsWith("/recipes/") ||
+        url.pathname.startsWith("/espresso-history/beans"))
+    ) {
+      // 취미 서비스가 복구 가능한 장애로 분류하는 기존 530 정책을 따른다.
+      response.writeHead(530, { "Content-Type": "application/json" });
+      response.end(JSON.stringify({ success: false }));
+      return;
+    }
     if (request.method === "POST" && url.pathname === "/__test__/resume-availability") {
       isAvailable = url.searchParams.get("available") === "true";
       response.writeHead(204).end();
@@ -158,7 +176,17 @@ export const startResumeFixture = async () => {
       response.end(JSON.stringify({ success: false }));
       return;
     }
-    if (url.pathname === "/resume" || url.pathname === "/resume/preview") {
+    if (url.pathname === "/recipes") {
+      data = recipes;
+    } else if (url.pathname.startsWith("/recipes/")) {
+      data = recipes.find(recipe => recipe.id === url.pathname.slice("/recipes/".length));
+    } else if (url.pathname === "/espresso-history/beans") {
+      data = espressoBeans;
+    } else if (url.pathname.startsWith("/espresso-history/beans/")) {
+      data = espressoBeans.find(
+        bean => bean.id === url.pathname.slice("/espresso-history/beans/".length),
+      );
+    } else if (url.pathname === "/resume" || url.pathname === "/resume/preview") {
       const document = currentDocuments.find(
         item =>
           item.locale === (url.searchParams.get("locale") ?? "ko-KR") &&

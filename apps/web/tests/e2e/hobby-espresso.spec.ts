@@ -1,16 +1,35 @@
 import { expect, test } from "@playwright/test";
-import { escapeRegExp, expectPath, resolveLocaleAndMessages, visit } from "./test-helpers";
+import {
+  escapeRegExp,
+  expectPath,
+  resolveLocaleAndMessages,
+  setHobbyApiAvailable,
+  visit,
+} from "./test-helpers";
 
-const usesUnavailableHobbyApi =
-  process.env.PLAYWRIGHT_RESUME_FIXTURE === "1" ||
-  process.env.NEXT_PUBLIC_API_URL === "http://127.0.0.1:65535";
+// Next 개발 서버의 60초 fetch 캐시를 우회해 모드 전환을 즉시 검증한다.
+test.use({ extraHTTPHeaders: { "Cache-Control": "no-cache" } });
+
+test.afterEach(async ({ request }) => {
+  if (process.env.PLAYWRIGHT_RESUME_FIXTURE === "1") await setHobbyApiAvailable(request, true);
+});
 
 test.describe("취미 원두 기록 페이지", () => {
-  test("API 장애 시 원두 기록 페이지가 500 대신 빈 상태를 렌더링한다", async ({ page }) => {
-    test.skip(!usesUnavailableHobbyApi, "API 미연결 E2E 환경에서만 fallback을 검증한다.");
+  test("API 장애 시 원두 기록 페이지가 500 대신 빈 상태를 렌더링한다", async ({
+    page,
+    request,
+  }) => {
+    test.skip(
+      process.env.PLAYWRIGHT_RESUME_FIXTURE !== "1",
+      "장애 제어는 기본 fixture E2E에서 검증한다.",
+    );
 
     const { locale } = await resolveLocaleAndMessages(page);
     const localeRegex = escapeRegExp(locale);
+
+    await visit(page, `/${locale}/hobby/espresso`);
+    await expect(page.getByRole("link", { name: /프릳츠 잘 되어 가시나/ })).toBeVisible();
+    await setHobbyApiAvailable(request, false);
 
     await visit(page, `/${locale}/hobby/espresso`);
     await expectPath(page, new RegExp(`^/${localeRegex}/hobby/espresso$`));
@@ -20,14 +39,13 @@ test.describe("취미 원두 기록 페이지", () => {
       page.getByText("원두 기록을 불러오지 못했거나 아직 등록된 원두가 없습니다."),
     ).toBeVisible();
     await expect(page.getByText(/Application error/i)).toHaveCount(0);
+
+    await setHobbyApiAvailable(request, true);
+    await page.reload();
+    await expect(page.getByRole("link", { name: /프릳츠 잘 되어 가시나/ })).toBeVisible();
   });
 
   test("원두 리스트에서 디테일 페이지로 이동해 추출 기록을 확인한다", async ({ page }) => {
-    test.skip(
-      usesUnavailableHobbyApi,
-      "API 의존 상세 시나리오는 fixture 분리 후 기본 E2E에 포함한다.",
-    );
-
     const { locale } = await resolveLocaleAndMessages(page);
     const localeRegex = escapeRegExp(locale);
     const beanId = "bean-fritz-jal-doeeo-gasina";
@@ -97,11 +115,6 @@ test.describe("취미 원두 기록 페이지", () => {
   });
 
   test("사이드바와 검색에서 원두 기록 페이지로 이동한다", async ({ page }) => {
-    test.skip(
-      usesUnavailableHobbyApi,
-      "API 의존 검색 상세 시나리오는 fixture 분리 후 기본 E2E에 포함한다.",
-    );
-
     const { locale, messages } = await resolveLocaleAndMessages(page);
     const localeRegex = escapeRegExp(locale);
 

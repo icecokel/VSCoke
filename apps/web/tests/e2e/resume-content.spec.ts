@@ -148,12 +148,13 @@ for (const [locale, localeMessages] of [
     request,
   }) => {
     for (const key of ["pe", "fe"]) {
-      const { data: document } = await (
+      const { data: document }: { data: ResumeDocument } = await (
         await request.get(`${apiUrl}/resume?locale=${locale}&resume=${key}`)
       ).json();
-      const project = document.careers
-        .flatMap((career: { projects: { fileRef?: string }[] }) => career.projects)
-        .find((item: { fileRef?: string }) => item.fileRef);
+      const careerIndex = document.careers.findIndex(career =>
+        career.projects.some(project => project.fileRef),
+      );
+      const project = document.careers[careerIndex].projects.find(project => project.fileRef)!;
       const { data: detail } = await (
         await request.get(`${apiUrl}/resume/details/${project.fileRef}`)
       ).json();
@@ -172,10 +173,11 @@ for (const [locale, localeMessages] of [
       );
       expect(jsonLd.inLanguage).toBe("ko-KR");
       const back = page.getByRole("link", { name: localeMessages.resume.backToResume });
-      await expect(back).toHaveAttribute("href", `/${locale}/readme?resume=${key}`);
+      const returnPath = `/${locale}/readme?resume=${key}#career_${careerIndex}`;
+      await expect(back).toHaveAttribute("href", returnPath);
       await back.click();
-      await expect(page).toHaveURL(new RegExp(`/${locale}/readme\\?resume=${key}$`));
-      await expect(page.getByRole("heading", { name: document.title, exact: true })).toBeVisible();
+      await expect(page).toHaveURL(returnPath);
+      await expect(page.locator(`#career_${careerIndex} > header`)).toBeInViewport();
     }
   });
 }
@@ -343,7 +345,9 @@ test("선택 문서의 metadata·상세 복귀·미리보기·언어 전환이 �
   page,
   request,
 }) => {
-  const { data } = await (await request.get(`${apiUrl}/resume?locale=ko-KR&resume=fe`)).json();
+  const { data }: { data: ResumeDocument } = await (
+    await request.get(`${apiUrl}/resume?locale=ko-KR&resume=fe`)
+  ).json();
   await gotoWithRetry(page, "/ko-KR/readme?resume=fe");
   await expect(page.getByRole("heading", { name: data.title, exact: true })).toBeVisible();
   await expect(
@@ -357,13 +361,14 @@ test("선택 문서의 metadata·상세 복귀·미리보기·언어 전환이 �
   await expect(
     page.getByRole("link", { name: messages.resumePreview.openPreview }),
   ).toHaveAttribute("href", "/ko-KR/resume/preview?resume=fe");
-  const fileRef = data.careers
-    .flatMap((career: { projects: Array<{ fileRef?: string }> }) => career.projects)
-    .find((project: { fileRef?: string }) => project.fileRef).fileRef;
+  const careerIndex = data.careers.findIndex(career =>
+    career.projects.some(project => project.fileRef),
+  );
+  const fileRef = data.careers[careerIndex].projects.find(project => project.fileRef)!.fileRef;
   await gotoWithRetry(page, `/ko-KR/resume/${fileRef}?resume=fe`);
   await expect(page.getByRole("link", { name: messages.resume.backToResume })).toHaveAttribute(
     "href",
-    "/ko-KR/readme?resume=fe",
+    `/ko-KR/readme?resume=fe#career_${careerIndex}`,
   );
   await gotoWithRetry(page, "/ko-KR/resume/preview?resume=fe");
   await expect(

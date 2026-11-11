@@ -19,6 +19,8 @@ import { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
 import { getHistoryTitle } from "@/lib/history-title";
 import { getHistoryTabKey } from "@/lib/history-path";
+import { useBlogReadingPosition } from "@/hooks/use-blog-reading-position";
+import { requestBlogReadingRestore } from "@/lib/blog-reading-state";
 import { MobileSidebarTrigger } from "@/components/mobile-sidebar-trigger";
 
 import { useTranslations } from "next-intl";
@@ -33,6 +35,7 @@ export const HistoryTabs = ({ children }: TParentNode) => {
     getHistoryTitle(path, t, { documentTitle: title, documents });
   const tabRailRef = useRef<HTMLDivElement>(null);
   const activeTabPath = history.find(item => item.isActive)?.path;
+  useBlogReadingPosition(currentPath);
 
   const handleClickTab = change;
 
@@ -87,6 +90,7 @@ export const HistoryTabs = ({ children }: TParentNode) => {
     const foundTab = history.find(({ path }) => path === tabPath);
     if (foundTab) {
       setHistory([{ ...foundTab, isActive: true, lastAccessedAt: Date.now() }]);
+      requestBlogReadingRestore(foundTab.path);
       router.push(foundTab.path);
     }
   };

@@ -5,6 +5,9 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { usePathname } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
+import { getBlogDocumentKey } from "@/lib/blog-reading-state";
 import {
   benchmarkDatabaseNames,
   benchmarkMeasurements,
@@ -346,10 +349,49 @@ export const PostgreSqlClickHouseBenchmark = () => {
   const t = useTranslations("blog.benchmark");
   const locale = useLocale();
   const id = useId();
-  const [isReady, setIsReady] = useState(false);
-  useEffect(() => setIsReady(true), []);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const storageKey = `vscoke-blog-benchmark:${getBlogDocumentKey(`${pathname}?${searchParams}`)}`;
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const isReady = loadedKey === storageKey;
   const [query, setQuery] = useState<BenchmarkQuery>("group");
   const [rangeIndex, setRangeIndex] = useState(6);
+
+  useEffect(() => {
+    let nextQuery: BenchmarkQuery = "group";
+    let nextRangeIndex = 6;
+    try {
+      const saved: { query?: unknown; rangeIndex?: unknown } | null = JSON.parse(
+        sessionStorage.getItem(storageKey) ?? "null",
+      );
+      const savedQuery = benchmarkQueries.find(item => item === saved?.query);
+      if (
+        savedQuery &&
+        typeof saved?.rangeIndex === "number" &&
+        Number.isInteger(saved.rangeIndex) &&
+        saved.rangeIndex >= 0 &&
+        saved.rangeIndex < benchmarkMeasurements[savedQuery].length
+      ) {
+        nextQuery = savedQuery;
+        nextRangeIndex = saved.rangeIndex;
+      }
+    } catch {
+      // 저장소가 차단되거나 값이 손상되면 기본 조건을 사용한다.
+    }
+    setQuery(nextQuery);
+    setRangeIndex(nextRangeIndex);
+    setLoadedKey(storageKey);
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!isReady) return;
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify({ query, rangeIndex }));
+    } catch {
+      // 조건을 저장하지 못해도 현재 비교 도구는 계속 사용할 수 있다.
+    }
+  }, [isReady, query, rangeIndex, storageKey]);
+
   const measurements = benchmarkMeasurements[query];
   const measurement = measurements[rangeIndex];
   const comparison = getBenchmarkComparison(measurement);

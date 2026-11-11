@@ -23,9 +23,11 @@ import { HistoryDocumentTitle } from "@/components/history-tabs/history-document
 
 export const dynamic = "force-dynamic";
 
+const getDocument = cache(getResumeDocument);
+
 const getDetail = cache(async (slug: string, locale: string, key?: string) => {
   try {
-    if (key !== undefined) await getResumeDocument(locale, key);
+    if (key !== undefined) await getDocument(locale, key);
     return await getResumeDetailBySlug(slug);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) notFound();
@@ -86,6 +88,12 @@ const ResumeDetailPage = async ({ params, searchParams }: ResumeDetailPageProps)
     notFound();
   }
 
+  const resume = await getDocument(locale, key);
+  const careerIndex = resume.careers.findIndex(career =>
+    career.projects.some(project => project.fileRef === slug),
+  );
+  const returnPath = `${resumePath("/readme", key)}${careerIndex >= 0 ? `#career_${careerIndex}` : ""}`;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -106,7 +114,7 @@ const ResumeDetailPage = async ({ params, searchParams }: ResumeDetailPageProps)
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
       <CustomLink
-        href={resumePath("/readme", key)}
+        href={returnPath}
         title="README"
         className="inline-flex items-center gap-1 text-gray-400 hover:text-yellow-200 mb-6"
       >

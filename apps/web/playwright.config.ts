@@ -12,6 +12,7 @@ const mobileHobbyTestMatch = [
   mobileTestMatch,
   /mobile-trigger-placement\.spec\.ts$/,
   /package-json\.spec\.ts$/,
+  /reading-state\.spec\.ts$/,
   /recipe-history\.spec\.ts$/,
   /espresso-selection\.spec\.ts$/,
 ];

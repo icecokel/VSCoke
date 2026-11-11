@@ -152,6 +152,7 @@ export const BlogTableOfContents = () => {
         </div>
         <Link
           href="#blog-post-top"
+          onClick={event => handleNavigate(event, "blog-post-top")}
           className="mt-5 inline-flex min-h-10 items-center rounded-md px-2 text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {t("backToTop")}

@@ -48,7 +48,7 @@ export const BlogPostShell = async ({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
-      <ScrollProgress label={t("progress")} />
+      <ScrollProgress key={post.slug} label={t("progress")} />
 
       <nav
         aria-label={backToListLabel}

@@ -17,6 +17,39 @@ const getMobileTestLocale = (): Locale =>
   (process.env.PLAYWRIGHT_LOCALE as Locale | undefined) ?? "ko-KR";
 
 test.describe("모바일 전용 동작", () => {
+  test("검색 색인 실패 안내의 재시도 버튼을 터치해 결과를 복구한다", async ({ page }) => {
+    const locale = getMobileTestLocale();
+    const messages = loadMessages(locale);
+    const company = messages.resume.careers.oprimed.company;
+    let requests = 0;
+    await page.route("**/api/hobby-search-index**", route => route.fulfill({ json: { data: [] } }));
+    await page.route("**/api/resume-search-index**", async route => {
+      requests += 1;
+      if (requests === 1) await route.abort();
+      else await route.fulfill({ response: await route.fetch() });
+    });
+    await gotoWithRetry(page, `/${locale}`);
+    await page.getByTestId("sidebar-trigger-mobile").tap();
+    const sidebar = page.getByRole("dialog");
+    await sidebar.getByRole("button", { name: messages.sidebar.search, exact: true }).tap();
+    await sidebar.getByRole("combobox").fill(company);
+    const status = sidebar.getByRole("status");
+    await expect(status).toContainText(messages.sidebar.searchLoadError);
+    await expect(sidebar.getByText(messages.sidebar.searchNoResult, { exact: true })).toHaveCount(
+      0,
+    );
+    const retry = sidebar.getByRole("button", { name: messages.sidebar.searchRetry });
+    await expect(retry).toBeInViewport({ ratio: 1 });
+    await retry.tap();
+    const options = sidebar.getByRole("option");
+    await expect(options.first()).toContainText(company);
+    await expect(status).toHaveText(
+      messages.sidebar.searchResultCount.replace("{count}", String(await options.count())),
+    );
+    await expect(retry).toHaveCount(0);
+    expect(requests).toBe(2);
+  });
+
   test("탐색기를 키보드로 열고 Escape로 닫으면 트리거에 포커스가 돌아온다", async ({ page }) => {
     const locale = getMobileTestLocale();
     const messages = loadMessages(locale);

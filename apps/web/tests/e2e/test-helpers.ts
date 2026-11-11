@@ -51,6 +51,9 @@ export interface AppMessages {
     search: string;
     searchPlaceholder: string;
     searchResultCount: string;
+    searchLoading: string;
+    searchLoadError: string;
+    searchRetry: string;
     searchNoResult: string;
   };
   Share: {

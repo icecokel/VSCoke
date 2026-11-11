@@ -17,7 +17,63 @@ const uniqueStrings = (values: string[]): string[] => {
   return [...set];
 };
 
-export const useSearchIndex = (): SearchItem[] => {
+type SearchIndexStatus = "loading" | "ready" | "error";
+
+interface RemoteSearchIndex {
+  items: SearchItem[];
+  status: SearchIndexStatus;
+  retry: () => void;
+}
+
+interface SearchIndex {
+  items: SearchItem[];
+  sources: { static: "ready"; hobby: SearchIndexStatus; resume: SearchIndexStatus };
+  retry: () => void;
+}
+
+const useRemoteSearchIndex = (url: string): RemoteSearchIndex => {
+  const [request, setRequest] = useState({ url });
+  const [state, setState] = useState<{
+    request: typeof request;
+    items: SearchItem[];
+    status: "ready" | "error";
+  } | null>(null);
+
+  if (request.url !== url) {
+    setRequest({ url });
+  }
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch(request.url, { cache: "no-store", signal: controller.signal })
+      .then(response => {
+        if (!response.ok) throw new Error(`Search index request failed: ${response.status}`);
+        return response.json() as Promise<{ data?: SearchItem[] }>;
+      })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) {
+          setState({ request, items: data ?? [], status: "ready" });
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setState({ request, items: [], status: "error" });
+        }
+      });
+
+    return () => controller.abort();
+  }, [request]);
+
+  const isCurrent = state?.request === request;
+  return {
+    items: isCurrent ? state.items : [],
+    status: isCurrent ? state.status : "loading",
+    retry: () => setRequest({ url }),
+  };
+};
+
+export const useSearchIndex = (): SearchIndex => {
   const isJevEnabled = useBeatJevAvailability();
   const locale = useLocale();
   const selection = useSearchParams().getAll("resume");
@@ -29,65 +85,14 @@ export const useSearchIndex = (): SearchItem[] => {
   const tGame = useTranslations("Game");
   const tHobbyRecipes = useTranslations("hobby.recipes");
   const tHobbyEspresso = useTranslations("hobby.espresso");
-  const [hobbyItems, setHobbyItems] = useState<SearchItem[]>([]);
-  const [resumeItems, setResumeItems] = useState<{
-    locale: string;
-    key: string;
-    items: SearchItem[];
-  } | null>(null);
+  const hobby = useRemoteSearchIndex(
+    `/api/hobby-search-index?locale=${encodeURIComponent(locale)}`,
+  );
+  const resume = useRemoteSearchIndex(
+    `/api/resume-search-index?${new URLSearchParams({ locale, resume: resumeKey })}`,
+  );
 
-  useEffect(() => {
-    let isMounted = true;
-
-    fetch(`/api/hobby-search-index?locale=${encodeURIComponent(locale)}`, { cache: "no-store" })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`Search index request failed: ${response.status}`);
-        }
-
-        return response.json() as Promise<{ data?: SearchItem[] }>;
-      })
-      .then(({ data }) => {
-        if (isMounted) {
-          setHobbyItems(data ?? []);
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setHobbyItems([]);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [locale]);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    fetch(`/api/resume-search-index?${new URLSearchParams({ locale, resume: resumeKey })}`, {
-      cache: "no-store",
-    })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`Resume search index request failed: ${response.status}`);
-        }
-        return response.json() as Promise<{ data: SearchItem[] }>;
-      })
-      .then(({ data }) => {
-        if (isMounted) setResumeItems({ locale, key: resumeKey, items: data });
-      })
-      .catch(() => {
-        if (isMounted) setResumeItems(null);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [locale, resumeKey]);
-
-  return useMemo(() => {
+  const items = useMemo(() => {
     const blogLanding: SearchItem = {
       id: "blog:index",
       type: "blog",
@@ -215,9 +220,7 @@ export const useSearchIndex = (): SearchItem[] => {
     ];
 
     return [
-      ...(resumeItems?.locale === locale && resumeItems.key === resumeKey
-        ? resumeItems.items
-        : [profileLanding]),
+      ...(resume.status === "ready" ? resume.items : [profileLanding]),
       resumeQuestion,
       blogLanding,
       blogDashboard,
@@ -225,14 +228,14 @@ export const useSearchIndex = (): SearchItem[] => {
       hobbyEspressoLanding,
       ...blogPosts,
       ...gameItems.filter(item => item.id !== "game:beat-jev" || isJevEnabled === true),
-      ...hobbyItems,
+      ...hobby.items,
     ];
   }, [
     isJevEnabled,
-    locale,
     resumeKey,
-    resumeItems,
-    hobbyItems,
+    resume.status,
+    resume.items,
+    hobby.items,
     posts,
     tBlog,
     tGame,
@@ -241,4 +244,13 @@ export const useSearchIndex = (): SearchItem[] => {
     tProfile,
     tResumeRag,
   ]);
+
+  return {
+    items,
+    sources: { static: "ready", hobby: hobby.status, resume: resume.status },
+    retry: () => {
+      if (hobby.status === "error") hobby.retry();
+      if (resume.status === "error") resume.retry();
+    },
+  };
 };

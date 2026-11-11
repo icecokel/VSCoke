@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { escapeRegExp, gotoWithRetry, loadMessages, type Locale } from "./test-helpers";
+import {
+  escapeRegExp,
+  gotoWithRetry,
+  loadMessages,
+  verifyResumeSearchAnchors,
+  type Locale,
+} from "./test-helpers";
 import type { ResumeDocument } from "@/services/resume-service";
 import { getAllPosts } from "../../src/lib/blog";
 import ko from "../../messages/ko-KR.json";
@@ -19,6 +25,10 @@ const getMobileTestLocale = (): Locale =>
   (process.env.PLAYWRIGHT_LOCALE as Locale | undefined) ?? "ko-KR";
 
 test.describe("모바일 전용 동작", () => {
+  test("홈 검색의 프로젝트 anchor는 새로고침·언어 전환과 단일 탭을 유지한다", async ({ page }) => {
+    await verifyResumeSearchAnchors(page, "fe", true);
+  });
+
   test("블로그 폴더 더 보기와 글 목록 복귀에서 범주와 검색을 유지한다", async ({ page }) => {
     await gotoWithRetry(page, "/ko-KR/blog/dashboard");
     await page.getByTestId("sidebar-trigger-mobile").tap();

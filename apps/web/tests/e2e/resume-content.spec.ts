@@ -100,9 +100,15 @@ for (const viewport of [
       page.on("pageerror", error => errors.push(error));
       await gotoWithRetry(page, "/ko-KR/readme?resume=pe");
       for (const hash of ["%E0%A4%A", "career_999"]) {
+        await page.locator("#main-scroll-container").evaluate(element => {
+          element.scrollTop = 400;
+        });
         await page.goto(`/ko-KR/readme?resume=pe#${hash}`);
         await expect.poll(() => page.evaluate(() => location.hash)).toBe(`#${hash}`);
         await expect(page.locator("#career_0")).toBeAttached();
+        await expect
+          .poll(() => page.locator("#main-scroll-container").evaluate(element => element.scrollTop))
+          .toBe(0);
         await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
       }
       expect(errors).toEqual([]);

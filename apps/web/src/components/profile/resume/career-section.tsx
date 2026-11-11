@@ -10,9 +10,10 @@ interface CareerSectionProps {
   careerData: ResumeCareerData;
   index: number;
   resumeKey: string;
+  projectIds: string[];
 }
 
-export const CareerSection = ({ careerData, index, resumeKey }: CareerSectionProps) => {
+export const CareerSection = ({ careerData, index, resumeKey, projectIds }: CareerSectionProps) => {
   return (
     <section id={`career_${index}`} className="mb-12">
       <header className="mb-8 ml-2">
@@ -24,8 +25,13 @@ export const CareerSection = ({ careerData, index, resumeKey }: CareerSectionPro
         </BaseText>
       </header>
 
-      {careerData.projects.map(projectData => (
-        <CareerProject key={projectData.id} projectData={projectData} resumeKey={resumeKey} />
+      {careerData.projects.map((projectData, projectIndex) => (
+        <CareerProject
+          key={projectIds[projectIndex]}
+          projectData={projectData}
+          projectId={projectIds[projectIndex]}
+          resumeKey={resumeKey}
+        />
       ))}
 
       {careerData.achievement && (

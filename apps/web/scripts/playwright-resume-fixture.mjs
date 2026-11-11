@@ -23,11 +23,19 @@ const legacyDocuments = ["ko-KR", "en-US", "ja-JP"].map(locale => {
       return {
         id: career.id,
         ...content,
-        projects: career.projects.map(project => ({
-          id: project.id,
-          ...projects[project.id],
-          ...(project.fileRef ? { fileRef: project.fileRef } : {}),
-        })),
+        projects: [
+          ...career.projects.map(project => ({
+            id: project.id,
+            ...projects[project.id],
+            ...(project.fileRef ? { fileRef: project.fileRef } : {}),
+          })),
+          ...(career.id === "oprimed"
+            ? ["developmentTooling", "backendOperations"].map((id, index) => {
+                const description = projects.medicalFrontendProductization.descriptions[index + 1];
+                return { id, title: description.subtitle, descriptions: [description] };
+              })
+            : []),
+        ],
       };
     }),
     education: resume.education,
@@ -47,7 +55,8 @@ const legacyDocuments = ["ko-KR", "en-US", "ja-JP"].map(locale => {
     ],
   };
 });
-const documents = ["pe", "fe", "worxphere", "nexon", "ko-only"].flatMap((key, index) =>
+const resumeKeys = ["pe", "fe", "worxphere", "nexon", "ko-only", "anchor-collisions"];
+const documents = resumeKeys.flatMap((key, index) =>
   legacyDocuments
     .filter(document => key !== "ko-only" || document.locale === "ko-KR")
     .map(document => {
@@ -93,6 +102,20 @@ const documents = ["pe", "fe", "worxphere", "nexon", "ko-only"].flatMap((key, in
                   }
                 : {}),
               ...(key === "ko-only" ? { education: [], certifications: [], links: [] } : {}),
+              ...(key === "anchor-collisions"
+                ? {
+                    careers: document.careers
+                      .filter(career => career.id === "oprimed")
+                      .map(career => ({
+                        ...career,
+                        projects: ["", "duplicate"].flatMap(id =>
+                          career.projects
+                            .filter(project => !project.fileRef)
+                            .map(project => ({ ...project, id })),
+                        ),
+                      })),
+                  }
+                : {}),
             };
       return {
         ...content,

@@ -1,4 +1,5 @@
 import type KoreanMessages from "../../messages/ko-KR.json";
+import type { ResumeDocument } from "@/services/resume-service";
 import type { ResumeRagSource } from "@/features/resume-rag/types";
 import fs from "node:fs";
 import { randomUUID } from "node:crypto";
@@ -348,4 +349,108 @@ export const mockResumeConversationStorage = async (page: Page) => {
     });
   });
   return { conversations, deleted, restored };
+};
+
+export const verifyResumeSearchAnchors = async (
+  page: Page,
+  resumeKey: "pe" | "fe",
+  isMobile = false,
+) => {
+  const messages = loadMessages("ko-KR");
+  const readDocument = async (locale: Locale) => {
+    const response = await page.request.get(
+      `${process.env.NEXT_PUBLIC_API_URL}/resume?locale=${locale}&resume=${resumeKey}`,
+    );
+    expect(response.ok()).toBe(true);
+    return (await response.json()).data as ResumeDocument;
+  };
+  const document = await readDocument("ko-KR");
+  const career = document.careers.find(item => item.id === "oprimed")!;
+  const projects = career.projects.filter(project => !project.fileRef);
+  expect(projects.length).toBeGreaterThanOrEqual(2);
+  const fragment = (projectId: string) =>
+    `#${encodeURIComponent(`resume-project:oprimed:${projectId}`)}`;
+  const path = (projectId: string) => `/readme?resume=${resumeKey}${fragment(projectId)}`;
+  const expectTarget = async (projectId: string, locale: Locale = "ko-KR") => {
+    const localized = await readDocument(locale);
+    const project = localized.careers
+      .find(item => item.id === career.id)!
+      .projects.find(item => item.id === projectId)!;
+    const heading = page
+      .locator(`[id="resume-project:oprimed:${projectId}"] > header`)
+      .getByRole("heading", { name: project.title, exact: true });
+    await expect(heading).toBeInViewport({ ratio: 1 });
+    await expect
+      .poll(async () => {
+        const [target, container] = await Promise.all([
+          heading.boundingBox(),
+          page.locator("#main-scroll-container").boundingBox(),
+        ]);
+        return Math.round(target!.y - container!.y);
+      })
+      .toBeGreaterThanOrEqual(0);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  };
+  const selectProject = async (projectId: string) => {
+    if (isMobile) await page.getByTestId("sidebar-trigger-mobile").click();
+    const panel = isMobile
+      ? page.getByRole("dialog")
+      : page.locator("[data-slot='sidebar-content']");
+    await (isMobile ? panel : page)
+      .getByRole("button", { name: messages.sidebar.search, exact: true })
+      .click();
+    await panel.getByRole("combobox").fill(career.company);
+    const option = panel.getByRole("option").filter({ hasText: path(projectId) });
+    await expect(option).toBeVisible();
+    await option.click();
+    if (isMobile) await expect(panel).toBeHidden();
+    await expect(page).toHaveURL(`/ko-KR${path(projectId)}`);
+    await expectTarget(projectId);
+  };
+
+  await gotoWithRetry(page, `/ko-KR?resume=${resumeKey}`);
+  const first = projects[1].id;
+  const second = projects[0].id;
+  await selectProject(first);
+  const projectIds = await page
+    .locator('article[id^="resume-project:"]')
+    .evaluateAll(elements => elements.map(element => element.id));
+  expect(projectIds).toHaveLength(document.careers.flatMap(item => item.projects).length);
+  expect(new Set(projectIds).size).toBe(projectIds.length);
+  const tabs = page.getByTestId("history-tab-rail").locator("div[id]");
+  const tabCount = await tabs.count();
+  await page.reload();
+  await expectTarget(first);
+  await expect(tabs).toHaveCount(tabCount);
+  await selectProject(second);
+  await expect(tabs).toHaveCount(tabCount);
+  await page.goBack();
+  await expect(page).toHaveURL(`/ko-KR${path(first)}`);
+  await expectTarget(first);
+  await page.goForward();
+  await expect(page).toHaveURL(`/ko-KR${path(second)}`);
+  await expectTarget(second);
+
+  let currentLocale: Locale = "ko-KR";
+  for (const [locale, language] of [
+    ["en-US", "english"],
+    ["ja-JP", "japanese"],
+    ["ko-KR", "korean"],
+  ] as const) {
+    const currentMessages = loadMessages(currentLocale);
+    if (isMobile) await page.getByTestId("sidebar-trigger-mobile").click();
+    const menu = isMobile ? page.getByRole("dialog") : page.locator("#menubar");
+    await menu.getByRole("button", { name: currentMessages.menu.language, exact: true }).click();
+    await page
+      .getByRole("menuitem", { name: currentMessages.common[language], exact: true })
+      .click();
+    await expect(page).toHaveURL(`/${locale}${path(second)}`);
+    await expectTarget(second, locale);
+    await expect(tabs).toHaveCount(tabCount);
+    currentLocale = locale;
+  }
+  await gotoWithRetry(page, `/ko-KR?resume=${resumeKey}`);
+  await gotoWithRetry(page, `/ko-KR${path(second)}`);
+  await expectTarget(second);
+  await expect(tabs).toHaveCount(tabCount);
 };

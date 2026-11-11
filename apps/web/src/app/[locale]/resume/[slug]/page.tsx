@@ -19,6 +19,7 @@ import { cache } from "react";
 
 import { mdxComponents } from "@/components/profile/resume/resume-mdx-components";
 import { siteUrl } from "@/lib/site-url";
+import { HistoryDocumentTitle } from "@/components/history-tabs/history-document-title";
 
 export const dynamic = "force-dynamic";
 
@@ -99,6 +100,7 @@ const ResumeDetailPage = async ({ params, searchParams }: ResumeDetailPageProps)
 
   return (
     <div className="p-3 md:p-5 max-w-4xl mx-auto">
+      <HistoryDocumentTitle path={resumePath(`/resume/${slug}`, key)} title={detail.title} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}

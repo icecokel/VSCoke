@@ -2,6 +2,7 @@
 
 import { IHistoryItem } from "@/contexts/history-context";
 import { useHistory } from "@/hooks/use-history";
+import { useStaticSearchIndex } from "@/hooks/use-search-index";
 import { TParentNode } from "@/models/common";
 import Container from "@/components/base-ui/container";
 import Icon from "@/components/base-ui/icon";
@@ -16,18 +17,19 @@ import {
 import { useRouter } from "@/i18n/navigation";
 import { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
+import { getHistoryTitle } from "@/lib/history-title";
 import { getHistoryTabKey } from "@/lib/history-path";
 
 import { useTranslations } from "next-intl";
 
-const getTabTitle = (path: string, fallback: string): string =>
-  /^\/share\/[^/]+$/.test(path) ? "share" : fallback;
-
 export const HistoryTabs = ({ children }: TParentNode) => {
   const { history, change, remove, setHistory, isHydrated, currentPath, syncCurrentPath } =
     useHistory();
+  const documents = useStaticSearchIndex();
   const router = useRouter();
   const t = useTranslations("historyTabs");
+  const getTabTitle = (path: string, title: string): string =>
+    getHistoryTitle(path, t, { documentTitle: title, documents });
   const tabRailRef = useRef<HTMLDivElement>(null);
   const activeTabPath = history.find(item => item.isActive)?.path;
 
@@ -132,23 +134,27 @@ export const HistoryTabs = ({ children }: TParentNode) => {
       if (prev.some(item => getHistoryTabKey(item.path) === tabKey)) {
         return prev.map(item =>
           getHistoryTabKey(item.path) === tabKey
-            ? { ...item, path: currentPath, isActive: true, lastAccessedAt: Date.now() }
+            ? {
+                ...item,
+                path: currentPath,
+                title: getHistoryTitle(currentPath, t, { documentTitle: item.title, documents }),
+                isActive: true,
+                lastAccessedAt: Date.now(),
+              }
             : { ...item, isActive: false },
         );
       }
-      const pathname = currentPath.split("?", 1)[0];
-      const fallbackTitle = pathname === "/" ? "Home" : pathname.split("/").pop() || pathname;
       return [
         ...prev.map(item => ({ ...item, isActive: false })),
         {
           isActive: true,
           path: currentPath,
-          title: getTabTitle(currentPath, fallbackTitle),
+          title: getHistoryTitle(currentPath, t, { documents }),
           lastAccessedAt: Date.now(),
         },
       ];
     });
-  }, [currentPath, isHydrated, setHistory, syncCurrentPath]);
+  }, [currentPath, documents, isHydrated, setHistory, syncCurrentPath, t]);
 
   // 탭이 많아 가로로 넘쳐도 방금 연 탭이 보이도록 탭 줄만 가로 스크롤한다.
   // scrollIntoView는 바깥 레이아웃 컨테이너까지 스크롤할 수 있어 쓰지 않는다.

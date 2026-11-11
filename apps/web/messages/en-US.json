@@ -517,6 +517,9 @@
     "button": "Go to Main Page"
   },
   "historyTabs": {
+    "readmeTitle": "README.md",
+    "readmeFrontendTitle": "README.md · FE",
+    "readmeVariantTitle": "README.md · {variant}",
     "close": "Close",
     "closeOthers": "Close Others",
     "closeAll": "Close All"

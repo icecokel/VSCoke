@@ -517,6 +517,9 @@
     "button": "메인 페이지로 이동"
   },
   "historyTabs": {
+    "readmeTitle": "README.md",
+    "readmeFrontendTitle": "README.md · FE",
+    "readmeVariantTitle": "README.md · {variant}",
     "close": "닫기",
     "closeOthers": "나머지 닫기",
     "closeAll": "모두 닫기"

@@ -5,17 +5,20 @@ import { useHistoryContext } from "@/contexts/history-context";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import { getHistoryPath, getHistoryTabKey } from "@/lib/history-path";
+import { getHistoryTitle } from "@/lib/history-title";
+import { useTranslations } from "next-intl";
 
 export const useHistory = () => {
   const { history, setHistory, isHydrated, recoverFromNotFound, syncCurrentPath } =
     useHistoryContext();
   const router = useRouter();
+  const t = useTranslations("historyTabs");
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const query = searchParams.toString();
   const currentPath = getHistoryPath(`${pathname}${query ? `?${query}` : ""}`);
 
-  const add = ({ path, title }: Pick<IHistoryItem, "path" | "title">) => {
+  const add = ({ path, title }: { path: string; title?: string }) => {
     const now = Date.now();
     const historyPath = getHistoryPath(path);
     const tabKey = getHistoryTabKey(historyPath);
@@ -29,7 +32,12 @@ export const useHistory = () => {
       }
       return [
         ...prev.map((item: IHistoryItem) => ({ ...item, isActive: false })),
-        { isActive: true, path: historyPath, title, lastAccessedAt: now },
+        {
+          isActive: true,
+          path: historyPath,
+          title: getHistoryTitle(historyPath, t, { navigationTitle: title }),
+          lastAccessedAt: now,
+        },
       ];
     });
   };

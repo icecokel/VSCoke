@@ -73,9 +73,7 @@ const useRemoteSearchIndex = (url: string): RemoteSearchIndex => {
   };
 };
 
-export const useSearchIndex = (): SearchIndex => {
-  const isJevEnabled = useBeatJevAvailability();
-  const locale = useLocale();
+export const useStaticSearchIndex = (): SearchItem[] => {
   const selection = useSearchParams().getAll("resume");
   const resumeKey = getResumeKey(selection.length > 1 ? selection : selection[0]);
   const posts = useContext(SearchPostsContext);
@@ -85,12 +83,6 @@ export const useSearchIndex = (): SearchIndex => {
   const tGame = useTranslations("Game");
   const tHobbyRecipes = useTranslations("hobby.recipes");
   const tHobbyEspresso = useTranslations("hobby.espresso");
-  const hobby = useRemoteSearchIndex(
-    `/api/hobby-search-index?locale=${encodeURIComponent(locale)}`,
-  );
-  const resume = useRemoteSearchIndex(
-    `/api/resume-search-index?${new URLSearchParams({ locale, resume: resumeKey })}`,
-  );
 
   const items = useMemo(() => {
     const blogLanding: SearchItem = {
@@ -220,30 +212,44 @@ export const useSearchIndex = (): SearchIndex => {
     ];
 
     return [
-      ...(resume.status === "ready" ? resume.items : [profileLanding]),
+      profileLanding,
       resumeQuestion,
       blogLanding,
       blogDashboard,
       hobbyRecipeLanding,
       hobbyEspressoLanding,
       ...blogPosts,
-      ...gameItems.filter(item => item.id !== "game:beat-jev" || isJevEnabled === true),
-      ...hobby.items,
+      ...gameItems,
     ];
-  }, [
-    isJevEnabled,
-    resumeKey,
-    resume.status,
-    resume.items,
-    hobby.items,
-    posts,
-    tBlog,
-    tGame,
-    tHobbyEspresso,
-    tHobbyRecipes,
-    tProfile,
-    tResumeRag,
-  ]);
+  }, [resumeKey, posts, tBlog, tGame, tHobbyEspresso, tHobbyRecipes, tProfile, tResumeRag]);
+
+  return items;
+};
+
+export const useSearchIndex = (): SearchIndex => {
+  const staticItems = useStaticSearchIndex();
+  const isJevEnabled = useBeatJevAvailability();
+  const locale = useLocale();
+  const selection = useSearchParams().getAll("resume");
+  const resumeKey = getResumeKey(selection.length > 1 ? selection : selection[0]);
+  const hobby = useRemoteSearchIndex(
+    `/api/hobby-search-index?locale=${encodeURIComponent(locale)}`,
+  );
+  const resume = useRemoteSearchIndex(
+    `/api/resume-search-index?${new URLSearchParams({ locale, resume: resumeKey })}`,
+  );
+  const items = useMemo(
+    () => [
+      ...(resume.status === "ready" ? resume.items : []),
+      ...staticItems.filter(
+        item =>
+          (item.id !== "profile:readme" || resume.status !== "ready") &&
+          (item.id !== "game:beat-jev" || isJevEnabled === true),
+      ),
+      ...hobby.items,
+    ],
+    [staticItems, isJevEnabled, resume.status, resume.items, hobby.items],
+  );
 
   return {
     items,

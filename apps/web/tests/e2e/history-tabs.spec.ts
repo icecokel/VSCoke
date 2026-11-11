@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
-import type { ResumeDocument } from "@/services/resume-service";
+import { getAllPosts } from "@/lib/blog";
+import type { ResumeDetail, ResumeDocument } from "@/services/resume-service";
 import {
   escapeRegExp,
   getHistorySnapshot,
@@ -33,6 +34,375 @@ const installHistoryFixture = async (
 };
 
 test.describe("히스토리 탭 상태머신", () => {
+  test("손상된 저장 경로를 제외하고 정상 탭과 본문을 복원한다", async ({ page }) => {
+    const locale = getTestLocale();
+    const messages = loadMessages(locale);
+    await installHistoryFixture(
+      page,
+      [
+        "/readme?resume=pe#career_1",
+        "http://[",
+        "",
+        "readme",
+        "https://example.com/readme",
+        "//example.com/readme",
+        "//[",
+        "/\\example.com/readme",
+        "/game",
+      ].map(path => ({ path, title: path, isActive: false, lastAccessedAt: Date.now() })),
+    );
+
+    await visit(page, `/${locale}/game`);
+    const rail = page.getByTestId("history-tab-rail");
+    for (const shouldReload of [false, true]) {
+      if (shouldReload) await page.reload();
+      await expect(page.locator("main").getByRole("heading", { level: 1 })).toHaveText(
+        messages.home.cards.gameTitle,
+      );
+      await expect(rail.locator("div[id]")).toHaveCount(2);
+      await expect(
+        rail.locator("div[id='/readme']").getByRole("button", {
+          name: messages.historyTabs.readmeTitle,
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        rail.locator("div[id='/game']").getByRole("button", {
+          name: messages.home.cards.gameTitle,
+          exact: true,
+        }),
+      ).toHaveAttribute("aria-current", "page");
+      await expect
+        .poll(async () =>
+          (await getHistorySnapshot(page)).map((item: { path: string }) => item.path),
+        )
+        .toEqual(["/readme", "/game"]);
+    }
+  });
+
+  for (const key of ["pe", "fe"]) {
+    test(`${key} README의 직접·검색·탐색기 진입은 같은 탭 제목을 쓴다`, async ({
+      page,
+      browser,
+    }) => {
+      const locale = getTestLocale();
+      const messages = loadMessages(locale);
+      const expectedTitle =
+        key === "pe" ? messages.historyTabs.readmeTitle : messages.historyTabs.readmeFrontendTitle;
+      const path = key === "pe" ? "/readme" : "/readme?resume=fe";
+      await installHistoryFixture(page, []);
+      await visit(page, `/${locale}/readme?resume=${key}`);
+      const directTab = page.getByTestId("history-tab-rail").locator(`div[id='${path}']`);
+      const directButton = directTab.getByRole("button", { name: expectedTitle, exact: true });
+      await expect(directButton).toHaveAttribute("aria-current", "page");
+      const directTitle = await directButton.textContent();
+
+      const searchPage = await browser.newPage();
+      try {
+        await installHistoryFixture(searchPage, []);
+        await visit(searchPage, `/${locale}?resume=${key}`);
+        const rail = searchPage.getByTestId("history-tab-rail");
+        const tab = rail.locator(`div[id='${path}']`);
+        await waitForHistoryHydration(searchPage);
+        await expect(rail.locator("div[id^='/readme']")).toHaveCount(0);
+        await searchPage
+          .getByRole("button", { name: messages.sidebar.search, exact: true })
+          .click();
+        await searchPage
+          .getByTestId("blog-dashboard-search-input")
+          .fill(messages.historyTabs.readmeTitle);
+        await searchPage
+          .getByRole("option")
+          .filter({ hasText: `/readme?resume=${key}` })
+          .first()
+          .click();
+        await expect(searchPage).toHaveURL(
+          new RegExp(`/${escapeRegExp(locale)}/readme\\?resume=${key}$`),
+        );
+        const searchButton = tab.getByRole("button", { name: expectedTitle, exact: true });
+        await expect(searchButton).toHaveAttribute("aria-current", "page");
+        await expect(searchButton).toHaveText(directTitle!);
+        await expect(rail.locator("div[id^='/readme']")).toHaveCount(1);
+        await expect
+          .poll(
+            async () =>
+              (await getHistorySnapshot(searchPage)).find(
+                (item: { path: string }) => item.path === path,
+              )?.title,
+          )
+          .toBe(expectedTitle);
+        if (key === "pe") {
+          await searchPage.waitForLoadState("networkidle");
+          await searchPage
+            .getByRole("button", { name: messages.sidebar.explorer, exact: true })
+            .click();
+          await searchPage
+            .locator("[data-slot='sidebar-content']")
+            .getByText(expectedTitle, { exact: true })
+            .click();
+          await expect(searchPage).toHaveURL(new RegExp(`/${escapeRegExp(locale)}/readme$`));
+          await expect(searchButton).toHaveText(directTitle!);
+          await expect(rail.locator("div[id^='/readme']")).toHaveCount(1);
+        }
+      } finally {
+        await searchPage.close();
+      }
+    });
+  }
+
+  for (const entry of ["direct", "search"]) {
+    test(`일반 탭은 URL로 의미 있는 제목을 표시한다 (${entry})`, async ({ page }) => {
+      const locale = getTestLocale();
+      const messages = loadMessages(locale);
+      await installHistoryFixture(page, []);
+      if (entry === "direct") {
+        await visit(page, `/${locale}/game`);
+      } else {
+        await visit(page, `/${locale}`);
+        await waitForHistoryHydration(page);
+        await expect(page.getByTestId("history-tab-rail").locator("div[id='/game']")).toHaveCount(
+          0,
+        );
+        await page.getByRole("button", { name: messages.sidebar.search, exact: true }).click();
+        await page.getByTestId("blog-dashboard-search-input").fill("game");
+        await page.getByRole("option").filter({ hasText: "/game" }).first().click();
+      }
+      await expect(page).toHaveURL(new RegExp(`/${escapeRegExp(locale)}/game$`));
+      const tab = page.getByTestId("history-tab-rail").locator("div[id='/game']");
+      await expect(
+        tab.getByRole("button", { name: messages.home.cards.gameTitle, exact: true }),
+      ).toHaveAttribute("aria-current", "page");
+      await expect
+        .poll(
+          async () =>
+            (await getHistorySnapshot(page)).find((item: { path: string }) => item.path === "/game")
+              ?.title,
+        )
+        .toBe(messages.home.cards.gameTitle);
+    });
+  }
+
+  for (const entry of ["direct", "search"]) {
+    test(`블로그 탭은 slug 대신 글 제목을 표시한다 (${entry})`, async ({ page }) => {
+      const locale = getTestLocale();
+      const messages = loadMessages(locale);
+      const post = getAllPosts().find(post => post.slug === "journal/hello-world")!;
+      const path = `/blog/${post.slug}`;
+      await installHistoryFixture(page, []);
+      if (entry === "direct") {
+        await visit(page, `/${locale}${path}`);
+      } else {
+        await visit(page, `/${locale}`);
+        await waitForHistoryHydration(page);
+        await page.getByRole("button", { name: messages.sidebar.search, exact: true }).click();
+        await page.getByTestId("blog-dashboard-search-input").fill(post.title);
+        await page.getByRole("option").filter({ hasText: path }).click();
+      }
+      const title = post.title;
+      await expect(page.locator("h1")).toHaveText(title);
+      const rail = page.getByTestId("history-tab-rail");
+      const tab = rail.locator(`div[id='${path}']`);
+      await expect(tab.getByRole("button", { name: title, exact: true })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      await expect
+        .poll(
+          async () =>
+            (await getHistorySnapshot(page)).find((item: { path: string }) => item.path === path)
+              ?.title,
+        )
+        .toBe(title);
+      await page.reload();
+      await expect(tab.getByRole("button", { name: title, exact: true })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      await expect(rail.locator(`div[id='${path}']`)).toHaveCount(1);
+    });
+  }
+
+  test("색인에 없는 일반 탭도 저장된 제목을 보존한다", async ({ page }) => {
+    const locale = getTestLocale();
+    const path = "/package";
+    const title = "package.json";
+    await installHistoryFixture(page, [
+      { path, title, isActive: false, lastAccessedAt: Date.now() },
+    ]);
+    await visit(page, `/${locale}/game`);
+    const tab = page.getByTestId("history-tab-rail").locator(`div[id='${path}']`);
+    await expect(tab.getByRole("button", { name: title, exact: true })).toBeVisible();
+    await tab.getByRole("button", { name: title, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/${escapeRegExp(locale)}${path}$`));
+    await expect(tab.getByRole("button", { name: title, exact: true })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await page.reload();
+    await expect(tab.getByRole("button", { name: title, exact: true })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await expect
+      .poll(
+        async () =>
+          (await getHistorySnapshot(page)).find((item: { path: string }) => item.path === path)
+            ?.title,
+      )
+      .toBe(title);
+  });
+
+  for (const key of ["pe", "fe"]) {
+    for (const hasStoredTab of [false, true]) {
+      test(`추가 쿼리가 있는 경력 제목을 현재 탭에 반영한다 (${key}, 저장 ${hasStoredTab})`, async ({
+        page,
+        request,
+      }) => {
+        const locale = getTestLocale();
+        const { data }: { data: ResumeDocument } = await (
+          await request.get(
+            `${process.env.NEXT_PUBLIC_API_URL}/resume?locale=${locale}&resume=${key}`,
+          )
+        ).json();
+        const project = data.careers
+          .flatMap(career => career.projects)
+          .find(project => project.fileRef)!;
+        const { data: detail }: { data: ResumeDetail } = await (
+          await request.get(`${process.env.NEXT_PUBLIC_API_URL}/resume/details/${project.fileRef}`)
+        ).json();
+        const query = key === "pe" ? "?utm_source=test" : "?utm_source=test&resume=fe";
+        const path = `/resume/${project.fileRef}${query}`;
+        await installHistoryFixture(
+          page,
+          hasStoredTab
+            ? [
+                {
+                  path: `${path}#section`,
+                  title: project.fileRef!,
+                  isActive: false,
+                  lastAccessedAt: Date.now(),
+                },
+              ]
+            : [],
+        );
+        await visit(page, `/${locale}${path}`);
+        await expect(page.getByRole("heading", { name: detail.title, exact: true })).toBeVisible();
+        const rail = page.getByTestId("history-tab-rail");
+        const tab = rail.locator(`div[id='${path}']`);
+        await expect(tab.getByRole("button", { name: detail.title, exact: true })).toHaveAttribute(
+          "aria-current",
+          "page",
+        );
+        await expect(rail.locator("div[id^='/resume/']")).toHaveCount(1);
+        await expect
+          .poll(async () =>
+            (await getHistorySnapshot(page))
+              .filter((item: { path: string }) => item.path.startsWith("/resume/"))
+              .map((item: { path: string; title: string }) => [item.path, item.title]),
+          )
+          .toEqual([[path, detail.title]]);
+        await page.reload();
+        await expect(tab.getByRole("button", { name: detail.title, exact: true })).toHaveAttribute(
+          "aria-current",
+          "page",
+        );
+        await expect(rail.locator("div[id^='/resume/']")).toHaveCount(1);
+      });
+    }
+  }
+
+  for (const entry of ["direct", "career-button", "search"]) {
+    test(`저장된 경력 slug 제목을 중복 없이 문서 이름으로 갱신한다 (${entry})`, async ({
+      page,
+      request,
+    }) => {
+      const locale = getTestLocale();
+      const messages = loadMessages(locale);
+      const { data }: { data: ResumeDocument } = await (
+        await request.get(`${process.env.NEXT_PUBLIC_API_URL}/resume?locale=${locale}`)
+      ).json();
+      const project = data.careers
+        .flatMap(career => career.projects)
+        .find(project => project.fileRef)!;
+      const { data: detail }: { data: ResumeDetail } = await (
+        await request.get(`${process.env.NEXT_PUBLIC_API_URL}/resume/details/${project.fileRef}`)
+      ).json();
+      const path = `/resume/${project.fileRef}`;
+      await installHistoryFixture(page, [
+        {
+          path: `${path}?resume=pe#section`,
+          title: project.fileRef!,
+          isActive: false,
+          lastAccessedAt: Date.now(),
+        },
+      ]);
+      if (entry === "direct") {
+        await visit(page, `/${locale}${path}?resume=pe`);
+      } else {
+        await visit(page, `/${locale}/readme?resume=pe`);
+        if (entry === "career-button") {
+          await page
+            .getByRole("button", { name: messages.resume.viewDescription, exact: true })
+            .first()
+            .click();
+        } else {
+          await page.getByRole("button", { name: messages.sidebar.search, exact: true }).click();
+          await page.getByTestId("blog-dashboard-search-input").fill(project.title);
+          await page.getByRole("option").filter({ hasText: path }).first().click();
+        }
+      }
+      await expect(page).toHaveURL(
+        new RegExp(`/${escapeRegExp(locale)}${escapeRegExp(path)}\\?resume=pe$`),
+      );
+      const rail = page.getByTestId("history-tab-rail");
+      const tab = rail.locator(`div[id='${path}']`);
+      await expect(tab.getByRole("button", { name: detail.title, exact: true })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      await expect(rail.locator("div[id^='/resume/']")).toHaveCount(1);
+      await expect
+        .poll(
+          async () =>
+            (await getHistorySnapshot(page)).find((item: { path: string }) => item.path === path)
+              ?.title,
+        )
+        .toBe(detail.title);
+      await page.reload();
+      await expect(tab.getByRole("button", { name: detail.title, exact: true })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      await expect(rail.locator("div[id^='/resume/']")).toHaveCount(1);
+    });
+  }
+
+  test("이미 이름이 있는 경력 탭은 URL 동기화 때 덮어쓰지 않는다", async ({ page, request }) => {
+    const locale = getTestLocale();
+    const { data }: { data: ResumeDocument } = await (
+      await request.get(`${process.env.NEXT_PUBLIC_API_URL}/resume?locale=${locale}&resume=fe`)
+    ).json();
+    const project = data.careers
+      .flatMap(career => career.projects)
+      .find(project => project.fileRef)!;
+    const path = `/resume/${project.fileRef}?resume=fe`;
+    await installHistoryFixture(page, [
+      { path, title: project.title, isActive: false, lastAccessedAt: Date.now() },
+    ]);
+    await visit(page, `/${locale}${path}`);
+    const rail = page.getByTestId("history-tab-rail");
+    await expect(rail.getByRole("button", { name: project.title, exact: true })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await expect(rail.locator("div[id^='/resume/']")).toHaveCount(1);
+    await page.reload();
+    await expect(rail.getByRole("button", { name: project.title, exact: true })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
   test("기본 README의 과거 중복 탭은 최근 제목과 순서를 보존해 합친다", async ({ page }) => {
     const now = Date.now();
     await installHistoryFixture(page, [
@@ -56,7 +426,7 @@ test.describe("히스토리 탭 상태머신", () => {
       .toEqual([
         ["/readme", "recent title"],
         ["/blog", "blog"],
-        ["/game", "game"],
+        ["/game", loadMessages(getTestLocale()).home.cards.gameTitle],
       ]);
   });
 
@@ -92,6 +462,9 @@ test.describe("히스토리 탭 상태머신", () => {
       .flatMap(career => career.projects)
       .find(project => project.fileRef)!;
     const detailPath = `/resume/${project.fileRef}`;
+    const { data: detail }: { data: ResumeDetail } = await (
+      await request.get(`${process.env.NEXT_PUBLIC_API_URL}/resume/details/${project.fileRef}`)
+    ).json();
     await visit(page, `/${locale}/readme?resume=pe`);
     await page
       .getByRole("button", { name: messages.resume.viewDescription, exact: true })
@@ -105,14 +478,14 @@ test.describe("히스토리 탭 상태머신", () => {
     const detailTab = rail.locator(`div[id='${detailPath}']`);
     await expect(rail.locator("div[id^='/resume/']")).toHaveCount(1);
     await expect(
-      detailTab.getByRole("button", { name: project.title, exact: true }),
+      detailTab.getByRole("button", { name: detail.title, exact: true }),
     ).toHaveAttribute("aria-current", "page");
     await page.reload();
     await expect(
-      detailTab.getByRole("button", { name: project.title, exact: true }),
+      detailTab.getByRole("button", { name: detail.title, exact: true }),
     ).toHaveAttribute("aria-current", "page");
     await detailTab
-      .getByRole("button", { name: `${messages.historyTabs.close}: ${project.title}`, exact: true })
+      .getByRole("button", { name: `${messages.historyTabs.close}: ${detail.title}`, exact: true })
       .click();
     await expect(page).toHaveURL(new RegExp(`/${escapeRegExp(locale)}/readme$`));
     await expect(rail.locator("div[id='/readme'] button[aria-current='page']")).toHaveCount(1);
@@ -172,14 +545,14 @@ test.describe("히스토리 탭 상태머신", () => {
           .click();
         await started;
         await expect(
-          detailTab.getByRole("button", { name: project.title, exact: true }),
+          detailTab.getByRole("button", { name: project.fileRef!, exact: true }),
         ).toHaveAttribute("aria-current", "page");
         await expect(page).toHaveURL(
           new RegExp(`/${escapeRegExp(locale)}/readme${escapeRegExp(query)}$`),
         );
         await detailTab
           .getByRole("button", {
-            name: `${messages.historyTabs.close}: ${project.title}`,
+            name: `${messages.historyTabs.close}: ${project.fileRef}`,
             exact: true,
           })
           .click();
@@ -223,7 +596,9 @@ test.describe("히스토리 탭 상태머신", () => {
     await expect(inactiveTab.locator("button[aria-current='page']")).toHaveCount(0);
     await inactiveTab.hover();
     await inactiveTab
-      .getByRole("button", { name: `${messages.historyTabs.close}: blog`, exact: true })
+      .getByRole("button", {
+        name: new RegExp(`^${escapeRegExp(messages.historyTabs.close)}: `),
+      })
       .click();
     await expect(inactiveTab).toHaveCount(0);
     await expect(page).toHaveURL(beforeUrl);
@@ -246,6 +621,17 @@ test.describe("히스토리 탭 상태머신", () => {
     await visit(page, `/${locale}/readme?resume=fe`);
     const rail = page.getByTestId("history-tab-rail");
     await expect(rail.locator("div[id^='/readme']")).toHaveCount(2);
+    await expect(
+      rail
+        .locator("div[id='/readme']")
+        .getByRole("button", { name: loadMessages(locale).historyTabs.readmeTitle, exact: true }),
+    ).toBeVisible();
+    await expect(
+      rail.locator("div[id='/readme?resume=fe']").getByRole("button", {
+        name: loadMessages(locale).historyTabs.readmeFrontendTitle,
+        exact: true,
+      }),
+    ).toBeVisible();
     await expect(
       rail.locator("div[id='/readme?resume=fe'] button[aria-current='page']"),
     ).toHaveCount(1);
@@ -308,10 +694,16 @@ test.describe("히스토리 탭 상태머신", () => {
         ["/readme?resume=fe", true],
       ]);
     await expect(
-      page.getByTestId("history-tab-rail").getByRole("button", { name: "PE", exact: true }),
+      page.getByTestId("history-tab-rail").getByRole("button", {
+        name: loadMessages(getTestLocale()).historyTabs.readmeTitle,
+        exact: true,
+      }),
     ).toBeVisible();
     await expect(
-      page.getByTestId("history-tab-rail").getByRole("button", { name: "FE", exact: true }),
+      page.getByTestId("history-tab-rail").getByRole("button", {
+        name: loadMessages(getTestLocale()).historyTabs.readmeFrontendTitle,
+        exact: true,
+      }),
     ).toHaveAttribute("aria-current", "page");
   });
 
@@ -339,7 +731,7 @@ test.describe("히스토리 탭 상태머신", () => {
     await visit(page, `/${getTestLocale()}/game`);
     await expect(
       page.getByTestId("history-tab-rail").locator('button[aria-current="page"]'),
-    ).toContainText("game");
+    ).toContainText(loadMessages(getTestLocale()).home.cards.gameTitle);
     expect(errors).toEqual([]);
   });
 
@@ -357,7 +749,7 @@ test.describe("히스토리 탭 상태머신", () => {
     await visit(page, `/${getTestLocale()}/game`);
     await expect(
       page.getByTestId("history-tab-rail").locator('button[aria-current="page"]'),
-    ).toContainText("game");
+    ).toContainText(loadMessages(getTestLocale()).home.cards.gameTitle);
     expect(errors).toEqual([]);
   });
 
@@ -463,10 +855,12 @@ test.describe("히스토리 탭 상태머신", () => {
     await waitForHistoryHydration(page);
     const rail = page.getByTestId("history-tab-rail");
     const activeTab = rail.locator("div[id='/game']");
-    await expect(activeTab.getByRole("button", { name: "game", exact: true })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    await expect(
+      activeTab.getByRole("button", {
+        name: loadMessages(locale).home.cards.gameTitle,
+        exact: true,
+      }),
+    ).toHaveAttribute("aria-current", "page");
     await expect
       .poll(() => rail.evaluate(element => element.scrollWidth > element.clientWidth))
       .toBe(true);

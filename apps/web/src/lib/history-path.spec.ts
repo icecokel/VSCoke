@@ -1,6 +1,52 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getHistoryPath, getHistoryTabKey } from "./history-path";
+import { getHistoryPath, getHistoryTabKey, parseHistoryUrl } from "./history-path";
+
+test("이력 URL은 내부 경로만 파싱하고 손상된 값은 제외한다", () => {
+  for (const path of ["/", "/readme?resume=fe#career_1", "/resume/career-document", "/unknown"]) {
+    assert.equal(parseHistoryUrl(path)?.href, new URL(path, "https://history.local").href);
+  }
+  for (const path of [
+    "http://[",
+    "",
+    "readme",
+    "https://history.local/readme",
+    "//history.local/readme",
+    "//[",
+    "/\\example.com/readme",
+  ]) {
+    assert.equal(parseHistoryUrl(path), null);
+  }
+});
+
+test("정상 탭과 섞여 저장된 역슬래시·제어 문자·네트워크 경로는 복원에서 제외한다", () => {
+  const storedPaths = [
+    "/readme?resume=fe",
+    "/\\history.local/game",
+    "/\t/history.local/game",
+    "//history.local",
+    "/\\\\x",
+    "/game",
+  ];
+
+  assert.deepEqual(
+    storedPaths.filter(path => parseHistoryUrl(path)),
+    ["/readme?resume=fe", "/game"],
+  );
+});
+
+test("경로 어디에든 역슬래시나 제어 문자가 있으면 제외한다", () => {
+  const forbiddenCharacters = [
+    "\\",
+    ...Array.from({ length: 32 }, (_, code) => String.fromCharCode(code)),
+    "\u007f",
+  ];
+  for (const character of forbiddenCharacters) {
+    for (const path of [`/${character}game`, `/game?query=${character}`, `/game#${character}`]) {
+      assert.equal(parseHistoryUrl(path), null, JSON.stringify(path));
+    }
+  }
+});
 
 test("원두의 log·round·상세 유형 선택은 같은 탭으로 정규화한다", () => {
   const path = "/hobby/espresso/bean-id";

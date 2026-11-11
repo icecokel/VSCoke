@@ -3,6 +3,7 @@
 import { KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import BaseText from "@/components/base-ui/text";
 import Icon from "@/components/base-ui/icon";
 import { useCustomRouter } from "@/hooks/use-custom-router";
@@ -29,7 +30,7 @@ const TYPE_STYLE_MAP: Record<
 const SearchPanel = ({ onNavigate }: SearchPanelProps) => {
   const t = useTranslations("sidebar");
   const router = useCustomRouter();
-  const searchIndex = useSearchIndex();
+  const { items: searchIndex, sources, retry } = useSearchIndex();
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const listId = useId();
@@ -109,6 +110,8 @@ const SearchPanel = ({ onNavigate }: SearchPanelProps) => {
   };
 
   const showRecommended = trimmedQuery.length === 0;
+  const isLoading = !showRecommended && Object.values(sources).includes("loading");
+  const hasError = !showRecommended && Object.values(sources).includes("error");
 
   return (
     <div className="flex h-full min-h-0 flex-col px-3 py-2">
@@ -138,7 +141,7 @@ const SearchPanel = ({ onNavigate }: SearchPanelProps) => {
         />
       </div>
 
-      <div className="mt-2 flex items-center justify-between px-1">
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-1 px-1">
         <BaseText type="caption" className="text-gray-200">
           {showRecommended ? t("searchRecommended") : t("searchResults")}
         </BaseText>
@@ -148,15 +151,28 @@ const SearchPanel = ({ onNavigate }: SearchPanelProps) => {
           aria-live="polite"
           className={cn("text-gray-200", showRecommended && "sr-only")}
         >
-          {t("searchResultCount", { count: results.length })}
+          {t(isLoading ? "searchLoading" : "searchResultCount", { count: results.length })}
+          {hasError && <span className="mt-1 block">{t("searchLoadError")}</span>}
         </BaseText>
       </div>
+
+      {hasError && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={retry}
+          className="mt-2 self-start border-gray-700 bg-gray-800 text-xs text-gray-100 hover:bg-gray-700"
+        >
+          {t("searchRetry")}
+        </Button>
+      )}
 
       <div
         ref={resultsRef}
         className="mt-2 min-h-0 flex-1 overflow-y-auto rounded-md border border-gray-700 bg-gray-900/60"
       >
-        {results.length === 0 && (
+        {results.length === 0 && !isLoading && !hasError && (
           <div className="flex h-full items-center justify-center px-4 text-center text-xs text-gray-200">
             {t("searchNoResult")}
           </div>

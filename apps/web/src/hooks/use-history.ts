@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { getHistoryPath, getHistoryTabKey } from "@/lib/history-path";
 import { getHistoryTitle } from "@/lib/history-title";
 import { useTranslations } from "next-intl";
+import { requestBlogReadingRestore } from "@/lib/blog-reading-state";
 
 export const useHistory = () => {
   const { history, setHistory, isHydrated, recoverFromNotFound, syncCurrentPath } =
@@ -60,6 +61,7 @@ export const useHistory = () => {
     );
 
     if (currentPath !== historyPath) {
+      requestBlogReadingRestore(path);
       router.push(path);
     }
   };

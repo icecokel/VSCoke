@@ -84,7 +84,8 @@ const LocaleLayout = async ({ children, params }: Props) => {
               <Toaster position="top-center" richColors />
               <div className="flex flex-col h-screen overflow-hidden">
                 <Menubar />
-                <div className="flex-1 overflow-hidden">
+                {/* overflow-hidden은 문서 복원 시 프로그램 스크롤로 탭 줄까지 밀어낼 수 있다. */}
+                <div className="min-h-0 flex-1 overflow-clip">
                   {/* 메뉴바 아래 남은 높이만 쓴다. 기본 min-h-svh는 뷰포트 전체를 차지해 게임 화면 하단이 잘렸다. */}
                   <SidebarProvider defaultOpen={false} className="h-full min-h-0">
                     <AppSidebar />

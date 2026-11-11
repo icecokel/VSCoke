@@ -9,6 +9,7 @@ import {
 import { routing, type Locale } from "@/i18n/routing";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
+import { requestBlogReadingRestore } from "@/lib/blog-reading-state";
 
 interface LanguageMenuProps {
   className?: string;
@@ -30,6 +31,7 @@ export const LanguageMenu = ({ className }: LanguageMenuProps) => {
     const nextPath = normalizedPath === "/" ? `/${newLocale}` : `/${newLocale}${normalizedPath}`;
 
     document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000`;
+    requestBlogReadingRestore(`${nextPath}${window.location.search}`);
     window.location.href = `${nextPath}${window.location.search}${window.location.hash}`;
   };
 

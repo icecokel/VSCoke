@@ -1,3 +1,23 @@
+export const parseHistoryUrl = (path: string): URL | null => {
+  if (
+    !path.startsWith("/") ||
+    path.startsWith("//") ||
+    path.includes("\\") ||
+    Array.from(path).some(character => {
+      const code = character.charCodeAt(0);
+      return code < 32 || code === 127;
+    })
+  )
+    return null;
+
+  try {
+    const url = new URL(path, "https://history.local");
+    return url.origin === "https://history.local" ? url : null;
+  } catch {
+    return null;
+  }
+};
+
 export const getHistoryPath = (path: string): string => {
   const withoutHash = path.split("#", 1)[0];
   const queryIndex = withoutHash.indexOf("?");

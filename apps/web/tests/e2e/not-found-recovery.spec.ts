@@ -9,22 +9,29 @@ import {
   waitForHistoryHydration,
 } from "./test-helpers";
 
+// README 탭 제목은 URL의 variant로 구분한다.
+const PE_TITLE = "README.md";
+const FE_TITLE = "README.md · FE";
+
 const installHistoryFixture = async (page: Page, paths: string[]) => {
-  await page.addInitScript(items => {
-    if (sessionStorage.getItem("__not-found-history-installed")) return;
-    localStorage.setItem(
-      "vscoke-history",
-      JSON.stringify(
-        items.map((path, index) => ({
-          path,
-          title: path === "/readme" ? "PE" : path === "/readme?resume=fe" ? "FE" : path,
-          isActive: index === 1,
-          lastAccessedAt: Date.now(),
-        })),
-      ),
-    );
-    sessionStorage.setItem("__not-found-history-installed", "true");
-  }, paths);
+  await page.addInitScript(
+    ({ paths, peTitle, feTitle }) => {
+      if (sessionStorage.getItem("__not-found-history-installed")) return;
+      localStorage.setItem(
+        "vscoke-history",
+        JSON.stringify(
+          paths.map((path, index) => ({
+            path,
+            title: path === "/readme" ? peTitle : path === "/readme?resume=fe" ? feTitle : path,
+            isActive: index === 1,
+            lastAccessedAt: Date.now(),
+          })),
+        ),
+      );
+      sessionStorage.setItem("__not-found-history-installed", "true");
+    },
+    { paths, peTitle: PE_TITLE, feTitle: FE_TITLE },
+  );
 };
 
 test.describe.configure({ mode: "serial" });
@@ -35,12 +42,22 @@ test.describe("404 자동 복구", () => {
       page,
       request,
     }) => {
+      const errors: Error[] = [];
+      page.on("pageerror", error => errors.push(error));
+      const documentUrls: string[] = [];
+      page.on("request", request => {
+        if (request.isNavigationRequest() && request.frame() === page.mainFrame()) {
+          const { pathname, search } = new URL(request.url());
+          documentUrls.push(`${pathname}${search}`);
+        }
+      });
       const { data: fe } = await (
         await request.get(`${process.env.NEXT_PUBLIC_API_URL}/resume?locale=${locale}&resume=fe`)
       ).json();
       await installHistoryFixture(page, ["/readme", "/readme?resume=missing", "/readme?resume=fe"]);
       const response = await page.goto(`/${locale}/readme?resume=missing`);
       expect(response?.status()).toBe(404);
+      expect(errors).toEqual([]);
 
       for (let attempt = 0; attempt < 2; attempt += 1) {
         if (attempt > 0) await page.reload();
@@ -61,13 +78,19 @@ test.describe("404 자동 복구", () => {
             ["/readme?resume=fe", true],
           ]);
         const rail = page.getByTestId("history-tab-rail");
-        await expect(rail.getByRole("button", { name: "PE", exact: true })).toBeVisible();
-        await expect(rail.getByRole("button", { name: "FE", exact: true })).toHaveAttribute(
+        await expect(rail.getByRole("button", { name: PE_TITLE, exact: true })).toBeVisible();
+        await expect(rail.getByRole("button", { name: FE_TITLE, exact: true })).toHaveAttribute(
           "aria-current",
           "page",
         );
         await expect(rail.locator("div[id='/readme?resume=missing']")).toHaveCount(0);
       }
+      expect(documentUrls).toEqual([
+        `/${locale}/readme?resume=missing`,
+        `/${locale}/readme?resume=fe`,
+        `/${locale}/readme?resume=fe`,
+      ]);
+      expect(errors).toEqual([]);
     });
   }
 
@@ -112,7 +135,7 @@ test.describe("404 자동 복구", () => {
           await expect(page.getByRole("heading", { name: fe.title, exact: true })).toBeVisible();
           const rail = page.getByTestId("history-tab-rail");
           await expect(
-            rail.getByRole("button", { name: "FE", exact: true, includeHidden: true }),
+            rail.getByRole("button", { name: FE_TITLE, exact: true, includeHidden: true }),
           ).toHaveAttribute("aria-current", "page");
           await expect
             .poll(() => rail.locator("[id]").evaluateAll(tabs => tabs.map(tab => tab.id)))
@@ -236,7 +259,7 @@ test.describe("404 자동 복구", () => {
     await page.goto("/ko-KR/readme?resume=missing");
     await expect(page).toHaveURL(/\/ko-KR\/readme\?resume=fe$/);
     await expect(
-      page.getByTestId("history-tab-rail").getByRole("button", { name: "FE", exact: true }),
+      page.getByTestId("history-tab-rail").getByRole("button", { name: FE_TITLE, exact: true }),
     ).toHaveAttribute("aria-current", "page");
     await page.goBack();
     await expect(page).toHaveURL(/\/ko-KR\/?$/);
@@ -244,7 +267,7 @@ test.describe("404 자동 복구", () => {
     await page.goForward();
     await expect(page).toHaveURL(/\/ko-KR\/readme\?resume=fe$/);
     await expect(
-      page.getByTestId("history-tab-rail").getByRole("button", { name: "FE", exact: true }),
+      page.getByTestId("history-tab-rail").getByRole("button", { name: FE_TITLE, exact: true }),
     ).toHaveAttribute("aria-current", "page");
     await expect
       .poll(async () => (await getHistorySnapshot(page)).map(item => item.path))

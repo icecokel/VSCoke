@@ -5,6 +5,8 @@ import { useHistory } from "./use-history";
 import { useLoader } from "@/contexts/loader-context";
 import { useCallback } from "react";
 import { getHistoryPath } from "@/lib/history-path";
+import { getHistoryTitle } from "@/lib/history-title";
+import { useTranslations } from "next-intl";
 
 interface NavigateOptions {
   title?: string;
@@ -12,6 +14,7 @@ interface NavigateOptions {
 
 export const useCustomRouter = () => {
   const router = useRouter();
+  const t = useTranslations("historyTabs");
   const { history, setHistory, add, remove, current, currentPath } = useHistory();
   const { startLoader } = useLoader();
 
@@ -24,7 +27,7 @@ export const useCustomRouter = () => {
 
   const push = useCallback(
     (path: string, options?: NavigateOptions) => {
-      const title = options?.title || path;
+      const title = options?.title;
       add({ path, title });
       if (currentPath !== getHistoryPath(path)) {
         prefetch(path);
@@ -36,8 +39,8 @@ export const useCustomRouter = () => {
   );
 
   const replace = useCallback(
-    (path: string, options?: NavigateOptions) => {
-      const title = options?.title || path;
+    (path: string) => {
+      const title = getHistoryTitle(path, t);
       const historyPath = getHistoryPath(path);
       setHistory(prev => {
         const existing = prev.find(item => item.path === historyPath);
@@ -59,7 +62,7 @@ export const useCustomRouter = () => {
       });
       router.replace(path);
     },
-    [currentPath, router, setHistory],
+    [currentPath, router, setHistory, t],
   );
 
   const back = useCallback(() => {

@@ -39,11 +39,7 @@ export interface AppMessages {
       gameTitle: string;
     };
   };
-  historyTabs: {
-    close: string;
-    closeOthers: string;
-    closeAll: string;
-  };
+  historyTabs: typeof KoreanMessages.historyTabs;
   notFound: {
     title: string;
     descPrefix: string;

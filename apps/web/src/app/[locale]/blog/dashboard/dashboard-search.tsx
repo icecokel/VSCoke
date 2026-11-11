@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import PostList from "@/components/blog/post-list";
 import BaseText from "@/components/base-ui/text";
 import { PostMeta } from "@/types/blog";
 import { useBoolean } from "@/hooks/use-boolean";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 interface DashboardSearchProps {
   posts: PostMeta[];
@@ -14,12 +14,28 @@ interface DashboardSearchProps {
 
 export default function DashboardSearch({ posts }: DashboardSearchProps) {
   const t = useTranslations("blog");
+  const storageKey = `vscoke:blog-dashboard-query:${useLocale()}`;
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [filtered, setFiltered] = useState(posts);
+  const filtered = useMemo(() => {
+    if (!debouncedQuery) return posts;
+    const lowerQuery = debouncedQuery.toLowerCase();
+    return posts.filter(post => post.title.toLowerCase().includes(lowerQuery));
+  }, [debouncedQuery, posts]);
   const [suggestions, setSuggestions] = useState<PostMeta[]>([]);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const dropdown = useBoolean(false);
+
+  useEffect(() => {
+    let savedQuery = "";
+    try {
+      savedQuery = sessionStorage.getItem(storageKey) ?? "";
+    } catch {
+      // 저장소가 차단되면 빈 검색으로 시작한다.
+    }
+    setQuery(savedQuery);
+    setDebouncedQuery(savedQuery);
+  }, [storageKey]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -29,32 +45,29 @@ export default function DashboardSearch({ posts }: DashboardSearchProps) {
     return () => clearTimeout(timeoutId);
   }, [query]);
 
-  const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+  const updateQuery = (value: string) => {
     setQuery(value);
+    try {
+      if (value) sessionStorage.setItem(storageKey, value);
+      else sessionStorage.removeItem(storageKey);
+    } catch {
+      // 저장 실패와 관계없이 현재 화면의 검색은 계속 동작한다.
+    }
+  };
+
+  const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    updateQuery(e.target.value);
     dropdown.onTrue();
   };
 
   useEffect(() => {
-    // 쿼리가 비어있으면 전체 목록 & 제안 닫기
-    if (!debouncedQuery) {
-      setFiltered(posts);
-      setSuggestions([]);
-      setActiveSuggestionIndex(-1);
-      return;
-    }
-
-    const lowerQuery = debouncedQuery.toLowerCase();
-    const results = posts.filter(p => p.title.toLowerCase().includes(lowerQuery));
-
-    setFiltered(results);
-    setSuggestions(results.slice(0, 5)); // 상위 5개 제안
+    setSuggestions(debouncedQuery ? filtered.slice(0, 5) : []);
     setActiveSuggestionIndex(-1);
-  }, [debouncedQuery, posts]);
+  }, [debouncedQuery, filtered]);
 
   // Handle suggestion click
   const handleSelect = (title: string) => {
-    setQuery(title);
+    updateQuery(title);
     setDebouncedQuery(title);
     setActiveSuggestionIndex(-1);
     dropdown.onFalse();

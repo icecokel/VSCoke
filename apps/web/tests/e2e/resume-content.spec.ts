@@ -1,9 +1,53 @@
 import { expect, test } from "@playwright/test";
 import messages from "../../messages/ko-KR.json";
+import englishMessages from "../../messages/en-US.json";
+import japaneseMessages from "../../messages/ja-JP.json";
 import type { ResumeDocument } from "@/services/resume-service";
 import { gotoWithRetry } from "./test-helpers";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+for (const [locale, localeMessages] of [
+  ["ko-KR", messages],
+  ["en-US", englishMessages],
+  ["ja-JP", japaneseMessages],
+] as const) {
+  test(`${locale} 공통 경력 상세는 한국어 본문 언어와 선택 문서 복귀를 유지한다`, async ({
+    page,
+    request,
+  }) => {
+    for (const key of ["pe", "fe"]) {
+      const { data: document } = await (
+        await request.get(`${apiUrl}/resume?locale=${locale}&resume=${key}`)
+      ).json();
+      const project = document.careers
+        .flatMap((career: { projects: { fileRef?: string }[] }) => career.projects)
+        .find((item: { fileRef?: string }) => item.fileRef);
+      const { data: detail } = await (
+        await request.get(`${apiUrl}/resume/details/${project.fileRef}`)
+      ).json();
+      await gotoWithRetry(page, `/${locale}/resume/${detail.slug}?resume=${key}`);
+      await expect(page.locator("html")).toHaveAttribute("lang", locale);
+      await expect(page.getByRole("heading", { name: detail.title, exact: true })).toHaveAttribute(
+        "lang",
+        "ko-KR",
+      );
+      await expect(page.locator("article.prose")).toHaveAttribute("lang", "ko-KR");
+      const notice = page.getByTestId("resume-detail-language-notice");
+      if (locale === "ko-KR") await expect(notice).toHaveCount(0);
+      else await expect(notice).toHaveText(localeMessages.resumeDetail.languageNotice);
+      const jsonLd = JSON.parse(
+        (await page.locator('script[type="application/ld+json"]').textContent())!,
+      );
+      expect(jsonLd.inLanguage).toBe("ko-KR");
+      const back = page.getByRole("link", { name: localeMessages.resume.backToResume });
+      await expect(back).toHaveAttribute("href", `/${locale}/readme?resume=${key}`);
+      await back.click();
+      await expect(page).toHaveURL(new RegExp(`/${locale}/readme\\?resume=${key}$`));
+      await expect(page.getByRole("heading", { name: document.title, exact: true })).toBeVisible();
+    }
+  });
+}
 
 for (const viewport of [
   { name: "desktop", width: 1440, height: 900, isMobile: false },

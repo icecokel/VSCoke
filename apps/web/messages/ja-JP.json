@@ -793,6 +793,9 @@
     "description": "現在、履歴書は韓国語のみで公開しています。同じ内容は韓国語の履歴書でご確認いただけます。",
     "openDefaultLocale": "韓国語の履歴書を見る"
   },
+  "resumeDetail": {
+    "languageNotice": "この文書の原文は韓国語です。"
+  },
   "resume": {
     "name": "イ・サンミン",
     "title": "ビジネス価値を生み出し、チームの負担を減らす開発者",

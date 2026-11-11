@@ -793,6 +793,9 @@
     "description": "The resume is currently published in Korean only. You can read the same content in the Korean resume.",
     "openDefaultLocale": "Open the Korean resume"
   },
+  "resumeDetail": {
+    "languageNotice": "The original document is in Korean."
+  },
   "resume": {
     "name": "Sangmin Lee",
     "title": "A developer who creates business value and reduces team pain points",

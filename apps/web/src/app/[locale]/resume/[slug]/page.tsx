@@ -79,6 +79,7 @@ const ResumeDetailPage = async ({ params, searchParams }: ResumeDetailPageProps)
   const key = getResumeKey(selection.resume);
   const detail = await getDetail(slug, locale, selection.resume === undefined ? undefined : key);
   const t = await getTranslations("resume");
+  const tDetail = await getTranslations("resumeDetail");
 
   if (!detail) {
     notFound();
@@ -88,6 +89,7 @@ const ResumeDetailPage = async ({ params, searchParams }: ResumeDetailPageProps)
     "@context": "https://schema.org",
     "@type": "Article",
     headline: detail.title,
+    inLanguage: "ko-KR",
     author: {
       "@type": "Person",
       name: "icecokel",
@@ -115,8 +117,14 @@ const ResumeDetailPage = async ({ params, searchParams }: ResumeDetailPageProps)
         <ShareQrDialog title={detail.title} />
       </div>
 
+      {locale !== "ko-KR" && (
+        <p data-testid="resume-detail-language-notice" className="mb-4 text-sm text-gray-300">
+          {tDetail("languageNotice")}
+        </p>
+      )}
+
       <header className="mb-8 pb-6 border-b border-gray-700">
-        <BaseText type="h2" className="text-yellow-200 mb-4">
+        <BaseText type="h2" lang="ko-KR" className="text-yellow-200 mb-4">
           {detail.title}
         </BaseText>
         {(detail.startDate || detail.endDate) && (
@@ -129,7 +137,7 @@ const ResumeDetailPage = async ({ params, searchParams }: ResumeDetailPageProps)
         )}
       </header>
 
-      <article className="prose prose-invert max-w-none pb-20">
+      <article lang="ko-KR" className="prose prose-invert max-w-none pb-20">
         <MDXRemote source={detail.content} components={mdxComponents} />
       </article>
     </div>

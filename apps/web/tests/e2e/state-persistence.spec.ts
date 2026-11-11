@@ -130,6 +130,9 @@ test.describe("블로그 대시보드 검색 복원", () => {
   });
 
   test("세션 저장소가 차단되어도 입력·자동완성·비우기가 동작한다", async ({ page }) => {
+    await page.route("**/usage/events", route =>
+      route.fulfill({ status: 202, contentType: "application/json", body: "{}" }),
+    );
     await page.addInitScript(() => {
       Object.defineProperty(window, "sessionStorage", {
         get: () => {

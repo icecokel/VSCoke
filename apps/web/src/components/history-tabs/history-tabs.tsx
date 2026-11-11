@@ -16,6 +16,7 @@ import {
 import { useRouter } from "@/i18n/navigation";
 import { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
+import { getHistoryTabKey } from "@/lib/history-path";
 
 import { useTranslations } from "next-intl";
 
@@ -127,12 +128,13 @@ export const HistoryTabs = ({ children }: TParentNode) => {
 
     syncCurrentPath(currentPath);
     setHistory(prev => {
-      if (prev.some(item => item.path === currentPath)) {
-        return prev.map(item => ({
-          ...item,
-          isActive: item.path === currentPath,
-          lastAccessedAt: item.path === currentPath ? Date.now() : item.lastAccessedAt,
-        }));
+      const tabKey = getHistoryTabKey(currentPath);
+      if (prev.some(item => getHistoryTabKey(item.path) === tabKey)) {
+        return prev.map(item =>
+          getHistoryTabKey(item.path) === tabKey
+            ? { ...item, path: currentPath, isActive: true, lastAccessedAt: Date.now() }
+            : { ...item, isActive: false },
+        );
       }
       const pathname = currentPath.split("?", 1)[0];
       const fallbackTitle = pathname === "/" ? "Home" : pathname.split("/").pop() || pathname;

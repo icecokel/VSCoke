@@ -353,7 +353,7 @@ test.describe("블로그 상세 읽기 경험", () => {
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).not.toBeVisible();
     await page.getByRole("link", { name: ko.blog.backToList, exact: true }).click();
-    await expect(page).toHaveURL(/\/ko-KR\/blog$/);
+    await expect(page).toHaveURL(/\/ko-KR\/blog\/dashboard\?category=journal$/);
   });
 
   test("내부 스크롤 진행률과 마지막 목차 항목을 갱신한다", async ({ page }) => {

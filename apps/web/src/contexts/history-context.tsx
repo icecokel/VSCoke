@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useBoolean } from "@/hooks/use-boolean";
-import { getHistoryPath } from "@/lib/history-path";
+import { getHistoryPath, getHistoryTabKey } from "@/lib/history-path";
 
 // IHistoryItem 인터페이스에 lastAccessedAt 필드 추가
 export interface IHistoryItem {
@@ -109,9 +109,10 @@ export const HistoryProvider = ({ children }: { children: React.ReactNode }) => 
         continue;
 
       const path = getHistoryPath(item.path);
-      const existing = normalized.get(path);
+      const tabKey = getHistoryTabKey(path);
+      const existing = normalized.get(tabKey);
       if (!existing || item.lastAccessedAt >= existing.lastAccessedAt) {
-        normalized.set(path, { ...item, path });
+        normalized.set(tabKey, { ...item, path });
       }
     }
     return [...normalized.values()];

@@ -25,7 +25,7 @@ export const useExplorer = () => {
 
   useEffect(() => {
     if (explorer) {
-      const limitItemsRecursively = (items: ITree[]): ITree[] => {
+      const limitItemsRecursively = (items: ITree[], morePath = "/blog/dashboard"): ITree[] => {
         const sorted = sortByKey([...items], "index");
         let result = sorted;
 
@@ -34,7 +34,7 @@ export const useExplorer = () => {
           sliced.push({
             id: "(more)",
             label: t("more"),
-            path: "/blog/dashboard",
+            path: morePath,
             icon: "none",
           });
           result = sliced;
@@ -42,7 +42,7 @@ export const useExplorer = () => {
 
         return result.map(item => {
           if (item.items) {
-            return { ...item, items: limitItemsRecursively(item.items) };
+            return { ...item, items: limitItemsRecursively(item.items, item.path) };
           }
           return item;
         });

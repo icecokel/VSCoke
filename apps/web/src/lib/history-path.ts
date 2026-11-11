@@ -26,3 +26,14 @@ export const getHistoryPath = (path: string): string => {
   const remainingQuery = searchParams.toString();
   return `${pathname}${remainingQuery ? `?${remainingQuery}` : ""}`;
 };
+
+export const getHistoryTabKey = (path: string): string => {
+  const historyPath = getHistoryPath(path);
+  const pathname = historyPath.split("?", 1)[0];
+  if (pathname !== "/blog/dashboard") return historyPath;
+
+  const searchParams = new URLSearchParams(historyPath.slice(pathname.length + 1));
+  searchParams.delete("category");
+  const query = searchParams.toString();
+  return `${pathname}${query ? `?${query}` : ""}`;
+};

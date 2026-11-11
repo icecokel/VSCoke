@@ -4,7 +4,7 @@ import { IHistoryItem } from "@/contexts/history-context";
 import { useHistoryContext } from "@/contexts/history-context";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
-import { getHistoryPath } from "@/lib/history-path";
+import { getHistoryPath, getHistoryTabKey } from "@/lib/history-path";
 
 export const useHistory = () => {
   const { history, setHistory, isHydrated, recoverFromNotFound, syncCurrentPath } =
@@ -18,13 +18,14 @@ export const useHistory = () => {
   const add = ({ path, title }: Pick<IHistoryItem, "path" | "title">) => {
     const now = Date.now();
     const historyPath = getHistoryPath(path);
+    const tabKey = getHistoryTabKey(historyPath);
     setHistory((prev: IHistoryItem[]) => {
-      if (prev.some(item => item.path === historyPath)) {
-        return prev.map(item => ({
-          ...item,
-          isActive: item.path === historyPath,
-          lastAccessedAt: item.path === historyPath ? now : item.lastAccessedAt,
-        }));
+      if (prev.some(item => getHistoryTabKey(item.path) === tabKey)) {
+        return prev.map(item =>
+          getHistoryTabKey(item.path) === tabKey
+            ? { ...item, path: historyPath, isActive: true, lastAccessedAt: now }
+            : { ...item, isActive: false },
+        );
       }
       return [
         ...prev.map((item: IHistoryItem) => ({ ...item, isActive: false })),

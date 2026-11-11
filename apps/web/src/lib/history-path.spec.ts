@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getHistoryPath } from "./history-path";
+import { getHistoryPath, getHistoryTabKey } from "./history-path";
 
 test("원두의 log·round·상세 유형 선택은 같은 탭으로 정규화한다", () => {
   const path = "/hobby/espresso/bean-id";
@@ -26,6 +26,25 @@ test("기본 PE 문서와 해시만 같은 탭으로 정규화한다", () => {
     assert.equal(getHistoryPath(`${path}#career_1`), path);
     assert.equal(getHistoryPath(`${path}?chatId=a%20b&resume=pe`), `${path}?chatId=a+b`);
   }
+});
+
+test("대시보드 범주만 탭 정체성에서 제외하고 이동 URL은 보존한다", () => {
+  for (const query of ["category=dev", "category=journal", "category=invalid", "category="]) {
+    const path = `/blog/dashboard?${query}`;
+    assert.equal(getHistoryTabKey(path), "/blog/dashboard");
+    assert.equal(getHistoryPath(path), path);
+  }
+  assert.equal(
+    getHistoryTabKey("/blog/dashboard?category=dev&view=list"),
+    "/blog/dashboard?view=list",
+  );
+  assert.equal(
+    getHistoryTabKey("/blog/dashboard?category=dev&category=journal"),
+    "/blog/dashboard",
+  );
+  assert.equal(getHistoryTabKey("/blog?category=dev"), "/blog?category=dev");
+  assert.equal(getHistoryTabKey("/readme?resume=fe"), "/readme?resume=fe");
+  assert.equal(getHistoryTabKey("/readme?resume=pe#career"), "/readme");
 });
 
 test("명시한 다른 문서와 잘못된 선택, 다른 쿼리는 유지한다", () => {

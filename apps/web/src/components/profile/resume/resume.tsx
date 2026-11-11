@@ -1,5 +1,6 @@
 "use client";
 
+import { getResumeProjectAnchorIds } from "@/features/resume/lib/project-anchor";
 import { resumePath } from "@/features/resume/lib/resume-selection";
 import Link from "next/link";
 import BaseText from "@/components/base-ui/text";
@@ -14,6 +15,7 @@ import type { ResumeDocument } from "@/services/resume-service";
 const Resume = ({ document: resume }: { document: ResumeDocument }) => {
   const t = useTranslations("resume");
   const { careers, personalProjects } = resume;
+  const projectIds = getResumeProjectAnchorIds(resume);
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
@@ -40,12 +42,17 @@ const Resume = ({ document: resume }: { document: ResumeDocument }) => {
       try {
         id = decodeURIComponent(window.location.hash.slice(1));
       } catch {
+        scrollContainer.scrollTop = 0;
         return;
       }
-      const target = careerElements.find(element => element?.id === id);
-      if (!target) return;
+      const target = document.getElementById(id);
+      if (!target || !scrollContainer.contains(target)) {
+        scrollContainer.scrollTop = 0;
+        return;
+      }
+      const margin = Number.parseFloat(window.getComputedStyle(target).scrollMarginTop) || 0;
       scrollContainer.scrollTop +=
-        target.getBoundingClientRect().top - scrollContainer.getBoundingClientRect().top;
+        target.getBoundingClientRect().top - scrollContainer.getBoundingClientRect().top - margin;
       handleScroll();
     };
 
@@ -103,6 +110,7 @@ const Resume = ({ document: resume }: { document: ResumeDocument }) => {
             careerData={career}
             index={careerIndex}
             resumeKey={resume.key}
+            projectIds={projectIds[careerIndex]}
           />
         ))}
         {personalProjects.length > 0 && (

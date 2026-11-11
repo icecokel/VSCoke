@@ -12,16 +12,17 @@ import type { ResumeProjectData } from "./types";
 
 interface CareerProjectProps {
   projectData: ResumeProjectData;
+  projectId: string;
   resumeKey: string;
 }
 
-export const CareerProject = ({ projectData, resumeKey }: CareerProjectProps) => {
+export const CareerProject = ({ projectData, projectId, resumeKey }: CareerProjectProps) => {
   const tResume = useTranslations("resume");
   const router = useCustomRouter();
   const { fileRef, descriptions } = projectData;
 
   return (
-    <article className="mb-8 ml-4">
+    <article id={projectId} className="mb-8 ml-4 scroll-mt-16">
       <header className="mb-4">
         <div className="flex items-center gap-3">
           <BaseText type="h6" className="text-white">

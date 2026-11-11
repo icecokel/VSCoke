@@ -115,14 +115,21 @@ const Resume = ({ document: resume }: { document: ResumeDocument }) => {
         ))}
         {personalProjects.length > 0 && (
           <section aria-labelledby="personal-projects-title" className="mb-12">
-            <BaseText id="personal-projects-title" type="h5" className="mb-8 ml-2 text-yellow-200">
+            <BaseText
+              id="personal-projects-title"
+              type="h5"
+              as="h2"
+              className="mb-8 ml-2 text-yellow-200"
+            >
               {t("personalProjects.title")}
             </BaseText>
             {personalProjects.map(project => (
               <article key={project.id} className="mb-8 ml-4">
-                <BaseText type="h6" className="text-white">
-                  {project.title}
-                </BaseText>
+                {project.title.trim() && (
+                  <BaseText type="h6" as="h3" className="text-white">
+                    {project.title}
+                  </BaseText>
+                )}
                 <BaseText type="body2" className="mt-2 block text-gray-300">
                   {project.description}
                 </BaseText>

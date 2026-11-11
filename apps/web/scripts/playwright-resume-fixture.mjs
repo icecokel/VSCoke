@@ -55,7 +55,17 @@ const legacyDocuments = ["ko-KR", "en-US", "ja-JP"].map(locale => {
     ],
   };
 });
-const resumeKeys = ["pe", "fe", "worxphere", "nexon", "ko-only", "anchor-collisions"];
+const resumeKeys = [
+  "pe",
+  "fe",
+  "worxphere",
+  "nexon",
+  "ko-only",
+  "empty-title",
+  "empty-name",
+  "empty-headings",
+  "anchor-collisions",
+];
 const documents = resumeKeys.flatMap((key, index) =>
   legacyDocuments
     .filter(document => key !== "ko-only" || document.locale === "ko-KR")
@@ -102,6 +112,35 @@ const documents = resumeKeys.flatMap((key, index) =>
                   }
                 : {}),
               ...(key === "ko-only" ? { education: [], certifications: [], links: [] } : {}),
+              ...(key.startsWith("empty-")
+                ? {
+                    title: key === "empty-name" ? document.title : "",
+                    name: key === "empty-title" ? document.name : "   ",
+                    careers: [
+                      { company: "", title: "" },
+                      { company: "   ", title: "Synthetic project" },
+                      { company: "Synthetic company", title: "   " },
+                      { company: "Synthetic company", title: "Synthetic project" },
+                    ].map((headings, careerIndex) => ({
+                      ...document.careers[0],
+                      id: `empty-career-${careerIndex}`,
+                      company: headings.company,
+                      projects: [
+                        {
+                          ...document.careers[0].projects[0],
+                          title: headings.title,
+                          descriptions: ["", "   ", "Synthetic subtitle"].map(
+                            (subtitle, descriptionIndex) => ({
+                              ...document.careers[0].projects[0].descriptions[0],
+                              subtitle,
+                              detail: `Synthetic detail ${careerIndex}-${descriptionIndex}`,
+                            }),
+                          ),
+                        },
+                      ],
+                    })),
+                  }
+                : {}),
               ...(key === "anchor-collisions"
                 ? {
                     careers: document.careers

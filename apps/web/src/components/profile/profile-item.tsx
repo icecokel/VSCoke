@@ -8,7 +8,11 @@ interface ProfileItemProps extends TParentNode {
 const ProfileItem = ({ title, children }: ProfileItemProps) => {
   return (
     <div className="mt-10">
-      <BaseText type="h5">{title}</BaseText>
+      {title.trim() && (
+        <BaseText type="h5" as="h2">
+          {title}
+        </BaseText>
+      )}
       <hr className="my-5 border-white" />
       <div>{children}</div>
     </div>

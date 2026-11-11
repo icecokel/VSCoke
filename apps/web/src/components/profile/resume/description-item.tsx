@@ -9,14 +9,19 @@ import type { Description } from "./types";
 
 interface DescriptionItemProps {
   description: Description;
+  heading: "h2" | "h3" | "h4";
 }
 
-const DescriptionItem = ({ description }: DescriptionItemProps) => {
+const DescriptionItem = ({ description, heading: Heading }: DescriptionItemProps) => {
   const t = useTranslations("descriptionItem");
 
   return (
     <section className="mb-4 ml-4">
-      <h6 className="mb-2 text-base font-medium leading-6 text-white">{description.subtitle}</h6>
+      {description.subtitle.trim() && (
+        <Heading className="mb-2 text-base font-medium leading-6 text-white">
+          {description.subtitle}
+        </Heading>
+      )}
 
       {description.detail && (
         <p className="mb-2 text-sm leading-6 text-gray-300">{description.detail}</p>

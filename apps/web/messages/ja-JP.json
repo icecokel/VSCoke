@@ -1,5 +1,6 @@
 {
   "common": {
+    "close": "閉じる",
     "language": "言語",
     "korean": "한국어",
     "english": "English",
@@ -33,6 +34,7 @@
   },
   "sidebar": {
     "explorer": "エクスプローラー",
+    "mobileDescription": "エクスプローラーと検索でページを探して移動します。",
     "search": "検索",
     "searchDisabled": "検索機能は現在無効です。",
     "searchPlaceholder": "ブログ、プロフィール、ゲーム、趣味を検索...",

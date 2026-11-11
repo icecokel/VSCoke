@@ -1,5 +1,6 @@
 {
   "common": {
+    "close": "Close",
     "language": "Language",
     "korean": "한국어",
     "english": "English",
@@ -33,6 +34,7 @@
   },
   "sidebar": {
     "explorer": "Explorer",
+    "mobileDescription": "Find and navigate to pages using the explorer and search.",
     "search": "Search",
     "searchDisabled": "Search is currently disabled.",
     "searchPlaceholder": "Search blog, profile, games, and hobby...",

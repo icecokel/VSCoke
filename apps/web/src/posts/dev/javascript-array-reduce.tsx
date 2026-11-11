@@ -114,16 +114,12 @@ const DevJavascriptArrayReducePost = () => {
             "https://developer.mozilla.org/ko/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce"
           }
         >
-          https:&#47;&#47;developer.mozilla.org/ko/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce
+          Array.prototype.reduce() - JavaScript | MDN
         </PostLink>
       </PostParagraph>
-      <PostParagraph>{" [Array.prototype.reduce() - JavaScript | MDN"}</PostParagraph>
       <PostParagraph>
         reduce() 메서드는 배열의 각 요소에 대해 주어진 리듀서 (reducer) 함수를 실행하고, 하나의
         결과값을 반환합니다.
-      </PostParagraph>
-      <PostParagraph>
-        developer.mozilla.org](https:&#47;&#47;developer.mozilla.org/ko/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce)
       </PostParagraph>
       <PostHorizontalRule />
       <PostParagraph>

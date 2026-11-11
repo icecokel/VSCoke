@@ -183,7 +183,10 @@
       "code": "코드",
       "copyCode": "코드 복사",
       "copied": "복사 완료",
-      "copyFailed": "복사하지 못했습니다. 코드를 선택해 복사해 주세요."
+      "copyFailed": "복사하지 못했습니다. 코드를 선택해 복사해 주세요.",
+      "legacyImageTitle": "이전 이미지 안내",
+      "imageUnavailable": "원본 이미지를 더 이상 제공하지 않습니다. 본문 설명을 참고해 주세요.",
+      "imageDescription": "설명: {alt}"
     },
     "benchmark": {
       "title": "기록으로 보는 성능 비교",

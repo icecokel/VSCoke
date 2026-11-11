@@ -16,7 +16,7 @@ const DevTypescriptExpressSetupPost = () => {
       <PostHeading2>1. 프로젝트와 의존성 만들기</PostHeading2>
       <PostCodeBlock
         code={
-          "mkdir my-express-api\\ncd my-express-api\\nnpm init -y\\nnpm install express\\nnpm install -D typescript tsx @types/express @types/node\\nnpx tsc --init"
+          "mkdir my-express-api\ncd my-express-api\nnpm init -y\nnpm install express\nnpm install -D typescript tsx @types/express @types/node\nnpx tsc --init"
         }
         language={"bash"}
       />
@@ -31,13 +31,13 @@ const DevTypescriptExpressSetupPost = () => {
       </PostParagraph>
       <PostCodeBlock
         code={
-          '{\\n  "compilerOptions": {\\n    "target": "ES2022",\\n    "module": "NodeNext",\\n    "moduleResolution": "NodeNext",\\n    "outDir": "dist",\\n    "strict": true,\\n    "esModuleInterop": true,\\n    "skipLibCheck": true\\n  },\\n  "include": ["src"]\\n}'
+          '{\n  "compilerOptions": {\n    "target": "ES2022",\n    "module": "NodeNext",\n    "moduleResolution": "NodeNext",\n    "outDir": "dist",\n    "strict": true,\n    "esModuleInterop": true,\n    "skipLibCheck": true\n  },\n  "include": ["src"]\n}'
         }
         language={"json"}
       />
       <PostCodeBlock
         code={
-          '{\\n  "scripts": {\\n    "dev": "tsx watch src/server.ts",\\n    "build": "tsc",\\n    "start": "node dist/server.js"\\n  }\\n}'
+          '{\n  "scripts": {\n    "dev": "tsx watch src/server.ts",\n    "build": "tsc",\n    "start": "node dist/server.js"\n  }\n}'
         }
         language={"json"}
       />
@@ -48,7 +48,7 @@ const DevTypescriptExpressSetupPost = () => {
       <PostHeading2>3. Express 서버 작성</PostHeading2>
       <PostCodeBlock
         code={
-          'import express from "express";\\n\\nconst app = express();\\nconst port = Number(process.env.PORT ?? 3000);\\n\\napp.get("/", (_request, response) => {\\n  response.json({ ok: true });\\n});\\n\\napp.listen(port, () => {\\n  console.log("Server listening on port " + port);\\n});'
+          'import express from "express";\n\nconst app = express();\nconst port = Number(process.env.PORT ?? 3000);\n\napp.get("/", (_request, response) => {\n  response.json({ ok: true });\n});\n\napp.listen(port, () => {\n  console.log("Server listening on port " + port);\n});'
         }
         language={"ts"}
       />

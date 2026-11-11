@@ -9,6 +9,7 @@ export const getExplorer = cache(async (): Promise<ITree[]> => {
   const blogItems: ITree[] = categoryGroups.map((group, categoryIndex) => ({
     id: `${group.category}`,
     label: group.category,
+    path: `/blog/dashboard?category=${encodeURIComponent(group.category)}`,
     index: categoryIndex,
     items: group.posts.map((post, postIndex) => ({
       icon: "article",

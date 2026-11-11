@@ -52,7 +52,7 @@ export const BlogPostShell = async ({
 
       <nav aria-label={backToListLabel} className="pt-6 pb-8 @4xl/blog:pt-8 @4xl/blog:pb-12">
         <CustomLink
-          href="/blog"
+          href={`/blog/dashboard?category=${encodeURIComponent(post.category)}`}
           title="Blog"
           className="inline-flex min-h-10 items-center gap-2 rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >

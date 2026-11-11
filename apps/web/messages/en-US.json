@@ -154,6 +154,8 @@
     "dashboardTitle": "Dashboard",
     "dashboardDescription": "Admin dashboard for blog posts",
     "dashboardSearchPlaceholder": "Search by title...",
+    "dashboardCategory": "Category: {category}",
+    "dashboardViewAll": "View all",
     "showAllTags": "+ Show all tags ({count})",
     "hideAllTags": "Collapse",
     "speech": {

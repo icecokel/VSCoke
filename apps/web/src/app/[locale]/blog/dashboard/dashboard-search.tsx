@@ -7,6 +7,8 @@ import BaseText from "@/components/base-ui/text";
 import { PostMeta } from "@/types/blog";
 import { useBoolean } from "@/hooks/use-boolean";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
+import { CustomLink } from "@/components/custom-link";
 
 interface DashboardSearchProps {
   posts: PostMeta[];
@@ -14,14 +16,28 @@ interface DashboardSearchProps {
 
 export default function DashboardSearch({ posts }: DashboardSearchProps) {
   const t = useTranslations("blog");
+  const searchParams = useSearchParams();
+  const requestedCategory = searchParams.get("category");
+  const category = posts.some(post => post.category === requestedCategory)
+    ? requestedCategory
+    : null;
+  const categoryLabel =
+    category === "dev"
+      ? t("detail.development")
+      : category === "journal"
+        ? t("detail.journal")
+        : category;
   const storageKey = `vscoke:blog-dashboard-query:${useLocale()}`;
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [isSearchReady, setIsSearchReady] = useState(false);
   const filtered = useMemo(() => {
-    if (!debouncedQuery) return posts;
     const lowerQuery = debouncedQuery.toLowerCase();
-    return posts.filter(post => post.title.toLowerCase().includes(lowerQuery));
-  }, [debouncedQuery, posts]);
+    return posts.filter(
+      post =>
+        (!category || post.category === category) && post.title.toLowerCase().includes(lowerQuery),
+    );
+  }, [category, debouncedQuery, posts]);
   const [suggestions, setSuggestions] = useState<PostMeta[]>([]);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const dropdown = useBoolean(false);
@@ -35,6 +51,7 @@ export default function DashboardSearch({ posts }: DashboardSearchProps) {
     }
     setQuery(savedQuery);
     setDebouncedQuery(savedQuery);
+    setIsSearchReady(true);
   }, [storageKey]);
 
   useEffect(() => {
@@ -111,6 +128,18 @@ export default function DashboardSearch({ posts }: DashboardSearchProps) {
 
   return (
     <div className="space-y-6">
+      {category && (
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <span>{t("dashboardCategory", { category: categoryLabel ?? category })}</span>
+          <CustomLink
+            href="/blog/dashboard"
+            title={t("dashboardTitle")}
+            className="inline-flex min-h-10 items-center rounded-md px-2 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {t("dashboardViewAll")}
+          </CustomLink>
+        </div>
+      )}
       <div
         className="relative"
         onBlur={event => {
@@ -132,6 +161,7 @@ export default function DashboardSearch({ posts }: DashboardSearchProps) {
           }
           aria-label={t("dashboardSearchPlaceholder")}
           placeholder={t("dashboardSearchPlaceholder")}
+          disabled={!isSearchReady}
           value={query}
           onChange={handleQueryChange}
           onFocus={dropdown.onTrue}

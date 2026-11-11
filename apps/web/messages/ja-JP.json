@@ -154,6 +154,8 @@
     "dashboardTitle": "ダッシュボード",
     "dashboardDescription": "ブログ投稿の管理ページ",
     "dashboardSearchPlaceholder": "タイトルで検索...",
+    "dashboardCategory": "カテゴリ: {category}",
+    "dashboardViewAll": "すべて表示",
     "showAllTags": "+ すべてのタグを見る（{count}）",
     "hideAllTags": "閉じる",
     "speech": {

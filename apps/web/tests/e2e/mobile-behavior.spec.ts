@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { escapeRegExp, gotoWithRetry, loadMessages, type Locale } from "./test-helpers";
 import type { ResumeDocument } from "@/services/resume-service";
+import { getAllPosts } from "../../src/lib/blog";
+import ko from "../../messages/ko-KR.json";
 
 test.describe.configure({ mode: "serial" });
 
@@ -17,6 +19,36 @@ const getMobileTestLocale = (): Locale =>
   (process.env.PLAYWRIGHT_LOCALE as Locale | undefined) ?? "ko-KR";
 
 test.describe("모바일 전용 동작", () => {
+  test("블로그 폴더 더 보기와 글 목록 복귀에서 범주와 검색을 유지한다", async ({ page }) => {
+    await gotoWithRetry(page, "/ko-KR/blog/dashboard");
+    await page.getByTestId("sidebar-trigger-mobile").tap();
+    const folder = page.getByRole("button", { name: "dev", exact: true });
+    await folder.tap();
+    await folder.locator("../..").getByRole("button", { name: ko.sidebar.more, exact: true }).tap();
+    await expect(page.getByRole("dialog")).toBeHidden();
+    await expect(page).toHaveURL("/ko-KR/blog/dashboard?category=dev");
+    const titles = page.locator("article h5");
+    await expect(titles).toHaveText(
+      getAllPosts()
+        .filter(post => post.category === "dev")
+        .map(post => post.title),
+    );
+    const input = page.getByTestId("blog-dashboard-title-search-input");
+    await input.fill("ClickHouse");
+    await expect(titles).toHaveCount(1);
+    await page
+      .getByRole("link")
+      .filter({ has: page.locator("article") })
+      .tap();
+    await expect(page).toHaveURL(/\/blog\/dev\/postgresql-clickhouse-comparison$/, {
+      timeout: 15_000,
+    });
+    await page.getByRole("link", { name: ko.blog.backToList, exact: true }).tap();
+    await expect(page).toHaveURL("/ko-KR/blog/dashboard?category=dev");
+    await expect(input).toHaveValue("ClickHouse");
+    await expect(titles).toHaveCount(1);
+  });
+
   test("검색 색인 실패 안내의 재시도 버튼을 터치해 결과를 복구한다", async ({ page }) => {
     const locale = getMobileTestLocale();
     const messages = loadMessages(locale);

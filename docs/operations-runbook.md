@@ -6,49 +6,22 @@
 [Deployment and Environment Plan](./deployment-and-env.md)을 기준으로 한다. 이 문서는 장애가
 발생했을 때의 확인·복구 순서만 다룬다.
 
-## 서버 접속
+## 서버 접속과 빠른 상태 확인
 
-운영 API는 Mac mini의 Docker Compose에서 실행된다. Mac mini 터미널을 직접 쓰거나 Cloudflare Access SSH로
-접속한다. 아래 명령은 모두 Mac mini에서 실행하며 배포 디렉터리는 `/Users/smlee/projects/vscoke-api`다.
-
-```bash
-cd /Users/smlee/projects/vscoke-api
-```
-
-## 빠른 상태 확인
-
-웹:
-
-```txt
-Vercel Project -> Deployments -> latest production or preview deployment
-```
-
-API 공개 health:
+공개 운영의 데이터·터널은 최종 전환 전까지 Mac mini에 남는다. 아래는 OCI 대상의 상태 점검이며
+최종 데이터 전환과 별개다. 인프라·권한 기준은 [API 배포 가이드](../apps/api/DEPLOY.md)를 따른다.
 
 ```bash
-API_HEALTH_URL=https://api.icecoke.kr/health pnpm smoke:api:remote
+ssh -F /Users/smlee/icecoke-ops/config/ssh-config oci-01
+cd /home/ubuntu/vscoke-api
+systemctl is-active vscoke-api.service postgresql@16-main.service
+systemctl is-enabled vscoke-api.service
+readlink -f current
+curl -fsS http://127.0.0.1:3000/health
 ```
 
-API 로컬 health on Mac mini:
-
-```bash
-cd /Users/smlee/projects/vscoke-api
-PORT="$(sed -n 's/^PORT=//p' .env)"
-PORT="${PORT:-3000}"
-PORT="$PORT" node -e "fetch('http://127.0.0.1:' + process.env.PORT + '/health').then((res) => { console.log(res.status); if (!res.ok) process.exit(1); })"
-```
-
-운영 컨테이너와 호스트 서비스 기준:
-
-```bash
-cd /Users/smlee/projects/vscoke-api
-docker compose ps
-launchctl list | grep actions.runner.icecokel-VSCoke
-brew services info cloudflared
-```
-
-기대값은 `vscoke-api-api-1`, `vscoke-api-postgres-1`이 `running (healthy)`, VSCoke runner
-launchd 항목이 있고, cloudflared가 `started`다.
+웹은 Vercel Deployments의 Ready 상태를 확인한다. 공개 API 검사는 checkout에서
+`pnpm smoke:api:remote`로 실행한다. 터널 전환 전 공개 응답은 Mac이므로 OCI 증거로 사용하지 않는다.
 
 ## 웹 배포 실패
 
@@ -83,7 +56,7 @@ API 배포의 trigger, runner와 release 단계는 `.github/workflows/deploy-api
 1. GitHub Actions run 로그에서 실패 step을 확인한다.
 2. self-hosted runner가 online이고 workflow 요구 label을 만족하는지 확인한다.
 3. workflow의 사전 조건 검사 결과를 확인한다.
-4. 실패가 이미지 build인지, import/index인지, 컨테이너 교체인지, health check인지 분류한다. 이미지 build 실패는 기존 컨테이너를 건드리지 않는다.
+4. 실패가 lint/test/build인지, migration 누락인지, import/index인지, systemd 교체/health인지 확인한다. build 실패는 기존 서비스를 건드리지 않는다.
 
 수동 재실행은 GitHub Actions의 `workflow_dispatch`를 사용한다.
 
@@ -99,7 +72,7 @@ push 배포는 `scripts/api-deploy-scope.mjs`가 `github.event.before`와 현재
 재시작을 생략하고 Actions 요약에 이유를 남긴다. 웹 검증·배포는 기존대로 수행한다.
 
 API 코드·계약·배포 설정과 이력 원본 등 기존 배포 대상이 함께 바뀌면 API를 배포한다.
-배포 시작 시 성공 기록을 무효화하고 로컬·공개 health 검사가 모두 통과한 뒤 현재 커밋을
+배포 시작 시 성공 기록을 무효화하고 로컬 health와 선택한 공개 검사가 통과한 뒤 현재 커밋을
 기록한다. 생략한 실행은 기록을 갱신하지 않으며, release 동기화는 기록 파일을 보존한다.
 실패·실행 중 취소 뒤에는 성공 기록이 없으므로 다음 실행에서 안전하게 배포한다. UI 변경이나
 원복만 이어져도 동일하다. 최초 적용·배포 디렉터리 교체로 기록이 없어도 한 번 배포한다.
@@ -110,68 +83,40 @@ API 코드·계약·배포 설정과 이력 원본 등 기존 배포 대상이 �
 
 ### Beat Jev 대전의 재시작 정책
 
-진행 중 Beat Jev 대전은 API 프로세스의 메모리 `Map`에만 보관한다. API 배포·컨테이너 재시작·
+진행 중 Beat Jev 대전은 API 프로세스의 메모리 `Map`에만 보관한다. API 배포·서비스 재시작·
 호스트 재부팅으로 진행 상태가 사라지며 복구하지 않는다. 사용자는 새 대전을 시작해야 한다.
 UI 전용 변경은 불필요한 재시작을 피하지만, 필요한 API 배포에서는 이 유실 정책이 적용된다.
 대전 상태의 DB 저장이나 migration은 현재 배포 정책의 범위에 포함하지 않는다.
 
-## Mac mini runner offline
+## OCI runner offline
 
-서비스 이름과 runner label은 [API 배포 기준](./deployment-and-env.md#api-mac-mini-docker)을 확인한다.
-Mac mini에서 runner launchd 상태를 확인한다.
-
-```bash
-launchctl list | grep actions.runner.icecokel-VSCoke
-cd ~/actions-runner-vscoke-api && ./svc.sh status
-```
-
-재시작:
+GitHub runner 이름은 `vscoke-api-oci-01`, labels는 `self-hosted,Linux,ARM64,vscoke-api,oci-01`이다.
+OCI에서 전용 설치 경로의 서비스만 확인한다. Discord runner를 재시작하지 않는다.
 
 ```bash
-cd ~/actions-runner-vscoke-api && ./svc.sh stop && ./svc.sh start
+cd /home/ubuntu/actions-runner-vscoke-api
+./svc.sh status
 ```
 
-그래도 offline이면 GitHub repository settings의 self-hosted runner 상태와 Mac mini 네트워크·로그인 세션
-상태를 같이 확인한다. runner는 사용자 launchd 에이전트이므로 해당 사용자가 로그인돼 있어야 한다.
+서비스 재시작은 인프라 관리자에게 요청한다. 등록 토큰/인증 파일을 로그로 출력하지 않는다.
 
-## API 컨테이너 장애
-
-Mac mini에서 확인:
+## API systemd 장애와 배포 복구
 
 ```bash
-cd /Users/smlee/projects/vscoke-api
-docker compose ps
-docker compose logs --tail 100 api
+systemctl status vscoke-api.service --no-pager
+journalctl -u vscoke-api.service -n 100 --no-pager
+readlink -f /home/ubuntu/vscoke-api/current
 ```
 
-모든 HTTP 응답은 `X-Request-Id`를 포함한다. `docker compose logs api` 또는
-`/Users/smlee/projects/vscoke-api/logs/combined-YYYY-MM-DD.log`에서 같은 ID를 찾아
-요청의 method, route template, statusCode, durationMs를 확인한다. access log에는 query,
-body, IP, 인증 정보, 이메일을 기록하지 않는다. 파일 로그는 일별·20MB 단위로 압축 회전하며
-180일 동안 보관한다. 배포의 `rsync --delete`는 `logs`를 보존한다. 이는 파일 회전 정책이며
-별도 백업·호스트 장애 복구를 보장하지 않는다. 이전 배포로 이미 유실된 로그는 이 설정으로
-복원되지 않는다. `LOG_LEVEL` 미설정·빈값은 운영 info/개발 debug를 사용하고 잘못된 값은
-시작을 실패시킨다. `pnpm test:tooling`에서 임시 릴리스로 보존 정책을 회귀 검증한다.
+`logs/combined-YYYY-MM-DD.log`에서 X-Request-Id를 찾는다. 로그는 공유 디렉터리에 일별·20MB
+압축 회전으로 180일 보관하며 배포가 삭제하지 않는다. 이는 호스트 장애에 대한 별도 백업이 아니다.
+LOG_LEVEL 미설정은 운영 info이며 잘못된 값은 시작을 실패시킨다. 환경은 Secret 변경 후 재배포한다.
 
-환경변수 변경은 Repository Secret `API_ENV_PRODUCTION`을 수정하고 API 배포 workflow를
-수동 재실행한다. 서버 `.env`를 직접 편집하거나 재시작만으로 Secret 변경을 적용하지 않는다.
-
-컨테이너가 반복 재시작하면 시작 로그의 첫 오류를 본다. `운영 환경변수가 필요합니다` 또는
-`NODE_ENV=production, DB_SYNCHRONIZE=false가 필요합니다`는 mount된 `api.env`가 Secret 검증을 통과하지
-못한 상태다. DB 연결 오류는 `postgres` 컨테이너의 health와 `api.env`의 `DB_HOST=postgres`를 확인한다.
-
-컨테이너가 없으면 마지막 배포 이미지와 compose 파일로 다시 올린다.
-
-```bash
-cd /Users/smlee/projects/vscoke-api
-docker image ls vscoke-api
-docker compose up --detach --wait
-docker compose ps
-curl -fsS http://127.0.0.1:3000/health
-```
-
-OrbStack이 꺼져 있으면 `docker` 명령 자체가 실패한다. OrbStack 앱을 실행하면 `restart: unless-stopped`
-컨테이너가 자동으로 복구된다. `orb config get app.start_at_login`이 `true`인지 확인한다.
+배포 스크립트가 이전 current/env를 복구했는지 확인한다. systemd 재시작 권한 실패 또는 SIGKILL·
+호스트 장애가 있으면 `.local/deploy-<release-id>`의 복구 기록과
+[수동 복구 명령](../apps/api/DEPLOY.md#3-빌드배포와-실패-복구)을 사용한다. 코드 복구는 DB 쓰기나
+migration을 되돌리지 않는다. 반복 시작 제한에 걸리면 관리자가 원인을 해결하고 reset-failed/start를
+수행한다. runner에는 이 관리자 권한을 포괄적으로 주지 않는다.
 
 ## Claude 답변 생성 장애
 
@@ -182,7 +127,7 @@ OrbStack이 꺼져 있으면 `docker` 명령 자체가 실패한다. OrbStack �
 1. 운영 Secret의 `RAG_CHAT_PROVIDER=claude`, `RAG_CHAT_MODEL=claude-sonnet-5-5`와
    `ANTHROPIC_API_KEY` 설정 여부를 확인한다. 이전 Codex 값이 남아 있으면 교체한다.
 2. Anthropic Console에서 키 유효성, 크레딧·요청 한도와 모델 접근 권한을 확인한다.
-3. 컨테이너에서 `https://api.anthropic.com`으로 HTTPS 연결이 가능한지 확인한다.
+3. OCI 호스트에서 `https://api.anthropic.com`으로 HTTPS 연결이 가능한지 확인한다.
 4. `RAG_CHAT_TIMEOUT_MS` 기본값은 45000이며 자동 재시도하지 않는다. 후속 질문에는
    재작성·답변 두 번의 호출이 있을 수 있다. 키·모델 변경은 Secret 수정 후 재배포한다.
 
@@ -198,7 +143,7 @@ API 요청 종료는 `api.request`, API 예외는 `api.error`로 기록된다.
 `requestId`를 연결한다.
 
 ```bash
-cd /Users/smlee/projects/vscoke-api
+cd /home/ubuntu/vscoke-api
 TRACE_ID='사용자가 전달한 오류 번호 또는 API requestId'
 grep -F "$TRACE_ID" logs/error-$(date +%F).log logs/combined-$(date +%F).log
 ```
@@ -216,40 +161,22 @@ Vercel Runtime Logs에 `Web error report could not reach the API`가 남는다.
 
 ## Cloudflare Tunnel 장애
 
-증상:
-
-- Mac mini 내부 `http://127.0.0.1:$PORT/health`는 성공한다.
-- 외부 `https://api.icecoke.kr/health`는 실패한다.
-
-이 경우 API 컨테이너보다 Cloudflare Tunnel, DNS, ingress 설정을 먼저 본다.
-
-확인 순서:
-
-1. `brew services info cloudflared`로 호스트 cloudflared가 실행 중인지 확인한다.
-2. ingress가 `http://localhost:$PORT`로 연결되어 있는지 확인한다.
-3. `api.icecoke.kr` DNS가 Mac mini tunnel로 연결되어 있는지 확인한다. 이전 Ubuntu tunnel route가 남아 있으면 제거한다.
-4. Secret의 `PORT`와 tunnel target port가 같은지 확인한다. compose는 `.env`에 생성된 `PORT`를 `127.0.0.1`에 publish한다.
+OCI loopback health가 성공하고 공개 API가 실패하면 서비스보다 DNS·cloudflared·ingress를 먼저 본다.
+최종 전환 전에는 공개 hostname이 Mac을 향하는 것이 정상이다. 전환 후 OCI의 전용 cloudflared
+서비스와 `http://127.0.0.1:3000` ingress, api.icecoke.kr의 tunnel route를 확인한다.
+서비스·인증 원본은 icecoke-ops가 관리한다. API 배포가 터널 설정을 바꾸지 않는다.
 
 ## DB 접속 장애
 
-API 운영 환경에서는 PostgreSQL이 같은 compose 네트워크의 컨테이너다.
-
-```txt
-api container -> DB_HOST=postgres -> postgres container (pgvector/pgvector:pg16)
-```
-
-확인 순서:
-
-1. `docker compose ps`에서 `vscoke-api-postgres-1`이 `healthy`인지 확인한다.
-2. `api.env`의 `DB_HOST=postgres`, `DB_PORT=5432`인지 확인한다. 호스트 포트는 publish하지 않는다.
-3. `postgres.env`가 `api.env`의 `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`와 같은지 확인한다. 둘 다 배포 workflow가 같은 Secret에서 생성한다.
-4. DB 자격 증명을 바꾼 뒤에는 postgres 컨테이너 안에서 `ALTER ROLE`로 실제 비밀번호를 바꿔야 한다. `postgres.env`는 최초 초기화에만 적용된다.
-
-운영 DB 확인:
+OCI의 PostgreSQL은 네이티브 `postgresql@16-main.service`이며 `127.0.0.1:5432`에서만 받는다.
+`.local/db.env`가 OCI role·DB 자격 증명의 원본이다. write-native가 이를 앱 env에 적용하며 기존
+Secret의 Docker `DB_HOST=postgres`는 덮어쓴다. 비밀번호 원문을 출력하지 말고 서비스·바인딩·파일
+권한을 확인한다. role 암호 변경은 DB와 `.local/db.env`를 인프라 절차로 함께 변경한 후 재배포한다.
 
 ```bash
-cd /Users/smlee/projects/vscoke-api
-docker compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c 'select count(*) from migrations'
+systemctl is-active postgresql@16-main.service
+ss -ltn '( sport = :5432 )'
+stat -c '%a %U' /home/ubuntu/vscoke-api/.local/db.env /home/ubuntu/vscoke-api/api.env
 ```
 
 ## DB migration 실패

@@ -88,7 +88,7 @@ RAG_RETRIEVAL_MODE=hybrid
 RAG_EMBEDDING_PROVIDER=local-e5-q8
 RAG_EMBEDDING_MODEL=Xenova/multilingual-e5-small@761b726dd34fb83930e26aab4e9ac3899aa1fa78
 RAG_EMBEDDING_DIMENSIONS=384
-RAG_LOCAL_EMBEDDING_CACHE_DIR=/app/.cache/embeddings
+RAG_LOCAL_EMBEDDING_CACHE_DIR=/home/ubuntu/vscoke-api/.cache/embeddings
 RAG_LOCAL_EMBEDDING_LOCAL_FILES_ONLY=true
 RAG_VECTOR_MIN_SIMILARITY=0.85
 RAG_CHUNK_SIZE=600
@@ -188,7 +188,7 @@ provider/model/timeout의 기본값은 위와 같다. 공식 `https://api.anthro
 
 ### 현재 운영 배포
 
-신규 DB schema는 [API 배포 가이드](../apps/api/DEPLOY.md#3-db-schema-변경)에 따라 먼저
+신규 DB schema는 [API 배포 가이드](../apps/api/DEPLOY.md#4-db-schema-변경)에 따라 먼저
 백업·migration을 수행한다. 자동 workflow는 공개 웹 원본을 포함하고 import를 실행하며,
 keyword 모드가 아니고 임베딩 공급자가 설정된 경우 index를 갱신한다. 실패하면 API 재시작
 단계로 진행하지 않는다. 운영 릴리스에 개인 작업공간을 복사하지 않는다.

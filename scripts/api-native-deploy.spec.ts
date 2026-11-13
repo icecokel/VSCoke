@@ -123,8 +123,10 @@ for (const scenario of [
         );
       }
       symlinkSync(previous, join(root, "current"));
-      // macOS에서도 셸 경로를 실행한다. Linux의 flock 자체는 대상 호스트에서 별도 검증한다.
-      write(join(commands, "flock"), "#!/bin/sh\nexit 0\n", 0o700);
+      // Linux CI는 실제 flock을 사용하며 macOS만 대역으로 셸 흐름을 검증한다.
+      if (process.platform !== "linux") {
+        write(join(commands, "flock"), "#!/bin/sh\nexit 0\n", 0o700);
+      }
       write(
         join(commands, "sudo"),
         `#!/bin/sh
@@ -171,6 +173,7 @@ for (const scenario of [
           /synthetic-api-key|synthetic-old-password|bbbbbbbbbbbbbbbb/,
         );
         assert.equal(realpathSync(join(root, "current")), release);
+        assert.equal(readFileSync(join(release, "revision"), "utf8"), `${revision}\n`);
         assert.equal(realpathSync(join(release, ".env")), join(root, "api.env"));
         assert.equal(realpathSync(join(release, "logs")), join(root, "logs"));
         assert.match(

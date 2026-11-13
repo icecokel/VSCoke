@@ -16,6 +16,10 @@ mkdirSync(join(root, "output"), { recursive: true });
 const workflow = readFileSync(join(root, ".github/workflows/deploy-api.yml"), "utf8");
 const messagePath = "apps/web/messages/ko-KR.json";
 const original = { profile: { name: "이상민" }, resume: { title: "경력" }, navigation: "메뉴" };
+const writeCurrentRevision = (deployDir: string, sha: string): void => {
+  mkdirSync(join(deployDir, "current"), { recursive: true });
+  writeFileSync(join(deployDir, "current/revision"), `${sha}\n`);
+};
 const decideMessage = (before: unknown, after: unknown, path = messagePath) =>
   decideApiDeployment({
     changedFiles: [path],
@@ -159,6 +163,7 @@ test("성공 배포 기록 없음·잘못된 SHA·접근 불가능한 커밋은 
   const fixture = mkdtempSync(join(root, "output/vscoke-deploy-baseline-"));
   const after = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
   try {
+    writeCurrentRevision(fixture, after);
     for (const before of [undefined, "", "invalid", "0".repeat(40), "f".repeat(40)]) {
       if (before !== undefined) writeFileSync(join(fixture, ".last-successful-deploy"), before);
       assert.equal(
@@ -192,6 +197,7 @@ test("workflow 판정 단계는 push 이전 커밋이 없거나 조회 불가하
   const fixture = mkdtempSync(join(root, "output/vscoke-deploy-scope-"));
   const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
   try {
+    writeCurrentRevision(fixture, head);
     writeFileSync(join(fixture, ".last-successful-deploy"), `${head}\n`);
     const step = workflow
       .split("      - name: Decide API deployment\n")[1]
@@ -239,6 +245,7 @@ test("workflow 판정 단계는 push 이전 커밋이 없거나 조회 불가하
 });
 
 const runDeploymentStep = (name: string, deployDir: string, sha: string): void => {
+  if (name === "Record successful API deployment") writeCurrentRevision(deployDir, sha);
   const step = workflow.split(`      - name: ${name}\n`)[1]?.split("\n      - name:")[0];
   const script = step?.split("        run: |\n")[1];
   assert.ok(script, `배포 단계가 없음: ${name}`);
@@ -312,6 +319,30 @@ test("배포 실패·실행 중 취소 후에는 UI push와 원복도 다시 배
         true,
       );
     }
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});
+
+test("수동 복구로 실제 current와 성공 기록이 다르면 UI 변경도 재배포한다", () => {
+  const fixture = mkdtempSync(join(root, "output/vscoke-deploy-rollback-"));
+  const sha = "a".repeat(40);
+  try {
+    writeFileSync(join(fixture, ".last-successful-deploy"), `${sha}\n`);
+    const decide = () =>
+      getApiDeployment({
+        deployDir: fixture,
+        before: sha,
+        after: sha,
+        eventName: "push",
+        git: () => "",
+      });
+    assert.equal(decide().shouldDeploy, true, "현재 릴리스를 확인할 수 없으면 재배포");
+    mkdirSync(join(fixture, "current"));
+    writeFileSync(join(fixture, "current/revision"), `${"b".repeat(40)}\n`);
+    assert.equal(decide().shouldDeploy, true, "수동 복구 이후에는 성공 기록만 신뢰하지 않음");
+    writeFileSync(join(fixture, "current/revision"), `${sha}\n`);
+    assert.equal(decide().shouldDeploy, false, "실제 릴리스와 기록이 같을 때만 UI 배포 생략");
   } finally {
     rmSync(fixture, { recursive: true, force: true });
   }

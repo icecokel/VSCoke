@@ -92,6 +92,14 @@ export const getApiDeployment = ({
   if (!/^[a-f\d]{40}$/i.test(lastSuccessfulDeploy) || /^0+$/.test(lastSuccessfulDeploy)) {
     return { shouldDeploy: true, reason: "성공 배포 커밋 없음: 안전하게 API 배포" };
   }
+  try {
+    const currentRevision = readFileSync(resolve(deployDir, "current/revision"), "utf8").trim();
+    if (currentRevision !== lastSuccessfulDeploy) {
+      return { shouldDeploy: true, reason: "현재 릴리스와 성공 기록 불일치: 안전하게 API 배포" };
+    }
+  } catch {
+    return { shouldDeploy: true, reason: "현재 릴리스 조회 불가: 안전하게 API 배포" };
+  }
   for (const [baseline, label] of [
     [before, "push 이전 커밋"],
     [lastSuccessfulDeploy, "성공 배포 커밋"],

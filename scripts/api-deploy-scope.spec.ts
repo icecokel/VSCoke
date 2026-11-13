@@ -324,9 +324,11 @@ test("성공 커밋은 직렬 배포의 health 검사 뒤에만 기록하고 rel
   assert.ok(
     index("Invalidate API deployment baseline") > index("Verify self-hosted runner prerequisites"),
   );
-  assert.ok(index("Invalidate API deployment baseline") < index("Build API image"));
-  assert.ok(index("Record successful API deployment") > index("Verify local API health"));
-  assert.ok(index("Record successful API deployment") > index("Verify public API health"));
+  assert.ok(index("Invalidate API deployment baseline") < index("Build API native release"));
+  assert.ok(index("Record successful API deployment") > index("Deploy API native release"));
   assert.doesNotMatch(steps[index("Record successful API deployment")], /always\(\)|failure\(\)/);
-  assert.match(steps[index("Promote release")], /--exclude '\.last-successful-deploy'/);
+  assert.doesNotMatch(
+    readFileSync(join(root, "scripts/deploy-api-native.sh"), "utf8"),
+    /rsync|--delete/,
+  );
 });

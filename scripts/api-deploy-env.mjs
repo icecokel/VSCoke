@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { parseEnv } from "node:util";
 
 // 배포 디렉터리에 생성하는 파일. api.env는 API 컨테이너에 /app/.env로 mount되는 운영 secret 전체,
@@ -68,7 +68,9 @@ try {
       );
     } else if (action === "write-native") {
       const directory = process.env.API_DEPLOY_DIR;
-      if (!directory) throw new Error("API_DEPLOY_DIR가 필요합니다.");
+      if (!directory || !isAbsolute(directory) || /[\r\n"\\]/.test(directory)) {
+        throw new Error("API_DEPLOY_DIR에 안전한 절대 경로가 필요합니다.");
+      }
       const database = parseEnv(readFileSync(join(directory, ".local/db.env"), "utf8"));
       if (
         database.DB_HOST !== "127.0.0.1" ||

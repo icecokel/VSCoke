@@ -9,7 +9,7 @@ import { parseEnv } from "node:util";
 
 const script = join(dirname(fileURLToPath(import.meta.url)), "api-deploy-env.mjs");
 const source =
-  'DB_HOST=postgres\nDB_USERNAME=original\nDB_DATABASE=original\nDB_PASSWORD="original$secret#value"\nGOOGLE_CLIENT_ID=test.invalid\nNODE_ENV=production\nDB_SYNCHRONIZE=false\nANTHROPIC_API_KEY="synthetic-key"\n';
+  'DB_HOST=postgres\nDB_USERNAME=original\nDB_DATABASE=original\nDB_PASSWORD="original$secret#value"\nGOOGLE_CLIENT_ID=test.invalid\nNODE_ENV=production\nDB_SYNCHRONIZE=false\nANTHROPIC_API_KEY="synthetic-key"\nGOOGLE_CLIENT_SECRET=\'fixture $value #literal `command`\'\nCORS_ORIGINS=https://vscoke.icecoke.kr\nMULTILINE="line one\nline two"\n';
 
 test("OCI 설정에서만 DB·네트워크·캐시 경로를 교체하고 비밀값을 보존한다", () => {
   const dir = mkdtempSync(join(tmpdir(), "vscoke-native-"));
@@ -36,11 +36,22 @@ test("OCI 설정에서만 DB·네트워크·캐시 경로를 교체하고 비밀
     const parsed = parseEnv(readFileSync(output, "utf8"));
     assert.equal(parsed.DB_PASSWORD, password);
     assert.equal(parsed.ANTHROPIC_API_KEY, "synthetic-key");
+    for (const key of ["GOOGLE_CLIENT_SECRET", "CORS_ORIGINS", "MULTILINE"]) {
+      assert.equal(parsed[key], parseEnv(source)[key]);
+    }
     assert.equal(parsed.API_HOST, "127.0.0.1");
     assert.equal(parsed.DB_HOST, "127.0.0.1");
     assert.equal(parsed.RAG_LOCAL_EMBEDDING_CACHE_DIR, join(dir, ".cache/embeddings"));
     assert.equal(parsed.UNRELATED_VALUE, undefined);
     assert.equal(statSync(output).mode & 0o777, 0o600);
+    for (const directory of ["relative-path", `${dir}/bad"path`, `${dir}\ninvalid`]) {
+      const invalid = spawnSync(process.execPath, [script, "write-native"], {
+        env: { ...env, API_DEPLOY_DIR: directory },
+        encoding: "utf8",
+      });
+      assert.notEqual(invalid.status, 0);
+      assert.equal(parseEnv(readFileSync(output, "utf8")).DB_PASSWORD, password);
+    }
     writeFileSync(db, readFileSync(db, "utf8").replace("127.0.0.1", "public-host.invalid"));
     const failure = spawnSync(process.execPath, [script, "write-native"], {
       env,

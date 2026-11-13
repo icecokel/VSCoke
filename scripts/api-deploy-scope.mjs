@@ -16,6 +16,8 @@ export const apiDeployPaths = [
   "scripts/api-health-checker.mjs",
   "scripts/api-deploy-env.mjs",
   "scripts/api-deploy-scope.mjs",
+  "scripts/package-api-native.sh",
+  "scripts/deploy-api-native.sh",
   ".nvmrc",
   "package.json",
   "pnpm-lock.yaml",

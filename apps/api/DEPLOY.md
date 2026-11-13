@@ -96,11 +96,11 @@ ONNX 네이티브 모듈 로드도 검사한다.
 배포 순서:
 
 1. flock으로 중복 실행을 막고 이전 current·API env를 `.local/deploy-<release-id>`에 보존한다.
-2. `releases/<sha>-<run-id>-<attempt>`에 번들을 두고 `.env`·`logs`를 공유 경로에 연결한다.
+2. `releases/<sha>-<run-id>-<attempt>`에 번들을 두고 `revision`에 커밋을 기록한다. `.env`·`logs`는 공유 경로에 연결한다.
 3. write-native → 미적용 migration 확인 → 공개 이력 import → 필요한 vector index를 수행한다.
 4. current symlink 원자 교체 후 허용된 systemd restart 한 명령을 수행한다.
 5. 로컬 health·resume·recipes·espresso-history/beans와 선택적 공개 endpoint를 검사한다.
-6. 성공 시에만 workflow가 `.last-successful-deploy`를 기록한다. 이전 릴리스는 보존한다.
+6. 성공 시에만 workflow가 `.last-successful-deploy`를 기록한다. 다음 배포 판정은 `current/revision`과 이 기록이 일치할 때만 생략할 수 있다. 수동 복구 뒤의 오래된 성공 기록은 신뢰하지 않는다. 이전 릴리스는 보존한다.
 
 실패·일반 종료 신호에서는 이전 env·current를 복구한다. 교체 이후면 이전 서비스를 재시작·검사한다.
 import/index의 DB 쓰기와 migration은 코드 복구로 되돌리지 않는다. 이전 코드와 호환되는 schema를
@@ -217,9 +217,10 @@ pnpm --filter @vscoke/api migration:run
 코드 기준점은 로컬 main `e3dc9afd`와 준비 커밋 `39efa56b`다. 원래 작업 트리의 변경은 보존했다.
 
 - Node 24.22.1에서 API lint, API 단위 테스트 64개 suite/484개 test 통과.
-- `pnpm test:tooling` 30개 통과. 실제 배포 셸/환경 변환/HTTP 검사를 실행하고 DB·systemd 경계를
+- `pnpm test:tooling` 31개 통과. 수동 복구 후 current/성공 기록 불일치도 재현·검증했다.
+  실제 배포 셸/환경 변환/HTTP 검사를 실행하고 DB·systemd 경계를
   합성해 migration/import/index/restart/local/public health/Secret 실패에서 이전 코드·환경 복구,
-  cache·DB 설정·로그·백업 보존을 확인했다. macOS 하네스의 flock은 대역이다.
+  cache·DB 설정·로그·백업 보존을 확인했다. macOS 하네스의 flock은 대역이고 Linux CI는 실제 flock을 사용한다.
 - `pnpm build`로 웹과 API 모두 빌드. health 도구 테스트 8개, bash 문법, Prettier, git diff 검사 통과.
 - actionlint 1.7.12로 새 workflow의 문법·표현식·사용자 runner label 검사 통과. ShellCheck는 미실행.
 - 고정 lockfile로 독립 production 번들을 실제 생성하고 경로 이동 후 의존성 symlink 902개가
@@ -231,3 +232,11 @@ pnpm --filter @vscoke/api migration:run
   전용 OCI runner·최소 sudoers·cloudflared 준비, 새 workflow 실제 실행, 최신 데이터/터널 전환은 남아 있다.
 
 새 코드의 검증 과정에서 운영 env·DB·DNS·서비스·GitHub Secret을 변경하지 않았다.
+
+관리자 인계: 이 세션의 `PreToolUse` 셸 훅이 아래 권한 조회도 `Blocked sudo from Codex shell hooks`로
+차단했다. 조회를 우회하지 않았다. OCI 전용 runner 디렉터리도 아직 없다. 관리자가 직접 아래 명령을
+실행해 재시작 권한을 확인한 뒤 1절의 전용 runner 설치·sudoers 설정을 완료해야 새 workflow를 실행할 수 있다.
+
+```bash
+ssh -F /Users/smlee/icecoke-ops/config/ssh-config oci-01 'sudo -n -l /usr/bin/systemctl restart vscoke-api.service'
+```

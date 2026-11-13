@@ -80,6 +80,7 @@ trap 'exit 143' TERM
 mkdir -p "$root/releases" "$root/logs"
 mkdir "$release"
 cp -a "$bundle/." "$release/"
+printf '%s\n' "$revision" > "$release/revision"
 ln -s "$root/api.env" "$release/.env"
 ln -s "$root/logs" "$release/logs"
 test -x "$release/bin/node"

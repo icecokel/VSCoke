@@ -22,6 +22,12 @@ API_HOST와 write-native를 재사용하고 최신 로컬 main에 통합했다. 
 | 캐시·로그   | `.cache/embeddings`, `logs` (릴리스 밖)                                 |
 | 활성화 신호 | `.local/activate` (인프라 검증 완료 후 생성)                            |
 
+2026-11-14 17:35 KST 관리자가 직접 설치한 뒤 GitHub에서 `vscoke-api-oci-01`의 online 상태와
+필요한 Linux/ARM64/vscoke-api/oci-01 label을 확인했다. systemd는 active/running·enabled다.
+API·PostgreSQL·Discord 봇과 로컬 API health도 정상이다. 최초 설치 스크립트 마지막의
+`Must run as sudo`는 비관리자 `svc.sh status` 호출에서 발생했으며 서비스 시작 실패가 아니다.
+스크립트의 상태 조회를 읽기 전용 systemctl 명령으로 수정했다. 실제 workflow 실행 검증은 남아 있다.
+
 인프라 담당자는 GitHub 저장소 **Settings → Actions → Runners**의 공식 Linux ARM64 다운로드·
 체크섬 검증 명령으로 전용 디렉터리에 설치한다. 등록 토큰은 config.sh의 대화형 입력으로 전달하고
 로그·셸 이력에 남기지 않는다. 등록 및 관리자 서비스 설치 명령:
@@ -210,7 +216,7 @@ pnpm --filter @vscoke/api migration:run
 
 아래는 아직 미완료인 인프라·운영 작업이다. 리허설 DB에 바로 트래픽을 보내지 않는다.
 
-1. OCI 전용 runner/서비스·최소 sudoers 설치 후 새 workflow를 실제 실행한다.
+1. 설치한 OCI 전용 runner에서 재시작 권한을 확인하고 새 workflow를 실제 실행한다.
 2. 새 release의 Node 버전·ARM64·loopback·공유 로그·offline E5 모델 로드를 확인한다.
 3. Origin `https://vscoke.icecoke.kr`을 포함해 실제 `/resume-rag/chat`의 첫 질문·후속 질문,
    grounded/출처를 검사한다. OAuth·인증 경로와 Discord 서비스도 확인한다.
@@ -240,14 +246,15 @@ pnpm --filter @vscoke/api migration:run
   이 패키징 검사는 macOS ARM64이며 OCI Linux ARM64에서의 새 번들 실행 검증은 남아 있다.
 - OCI 읽기 점검: Node 24.22.1, API·PostgreSQL active, `/resume`·`/recipes` HTTP 200.
   이는 기존 `39efa56b` 서비스의 점검이다. 새 workflow의 실배포 결과는 아니다.
-- GitHub에는 VSCoke Mac runner만 있고 OCI에는 Discord runner만 실행 중임을 재확인했다.
-  전용 OCI runner·최소 sudoers·cloudflared 준비, 새 workflow 실제 실행, 최신 데이터/터널 전환은 남아 있다.
+- 초기 검증 당시 GitHub에는 VSCoke Mac runner만 있었고 OCI에는 Discord runner만 실행 중이었다.
+  이후 관리자가 전용 OCI runner와 재시작 sudoers를 설치했다. runner의 online·active·enabled 상태는
+  확인했으며, 재시작 권한 조회·새 workflow 실제 실행·cloudflared·최신 데이터/터널 전환은 남아 있다.
 
 새 코드의 검증 과정에서 운영 env·DB·DNS·서비스·GitHub Secret을 변경하지 않았다.
 
 관리자 인계: 이 세션의 `PreToolUse` 셸 훅이 아래 권한 조회도 `Blocked sudo from Codex shell hooks`로
-차단했다. 조회를 우회하지 않았다. OCI 전용 runner 디렉터리도 아직 없다. 관리자가 직접 아래 명령을
-실행해 재시작 권한을 확인한 뒤 1절의 전용 runner 설치·sudoers 설정을 완료해야 새 workflow를 실행할 수 있다.
+차단했다. 조회를 우회하지 않았다. 이후 관리자가 runner 설치를 완료했으므로 아래 명령으로
+재시작 권한을 확인하면 새 workflow 실행 단계로 진행할 수 있다.
 
 ```bash
 ssh -F /Users/smlee/icecoke-ops/config/ssh-config oci-01 'sudo -n -l /usr/bin/systemctl restart vscoke-api.service'

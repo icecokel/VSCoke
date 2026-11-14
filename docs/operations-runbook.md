@@ -98,7 +98,7 @@ OCI에서 전용 설치 경로의 서비스만 확인한다. Discord runner를 �
 
 ```bash
 cd /home/ubuntu/actions-runner-vscoke-api
-./svc.sh status
+systemctl status actions.runner.icecokel-VSCoke.vscoke-api-oci-01.service --no-pager
 ```
 
 서비스 재시작은 인프라 관리자에게 요청한다. 등록 토큰/인증 파일을 로그로 출력하지 않는다.

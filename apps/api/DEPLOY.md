@@ -26,7 +26,8 @@ API_HOST와 write-native를 재사용하고 최신 로컬 main에 통합했다. 
 필요한 Linux/ARM64/vscoke-api/oci-01 label을 확인했다. systemd는 active/running·enabled다.
 API·PostgreSQL·Discord 봇과 로컬 API health도 정상이다. 최초 설치 스크립트 마지막의
 `Must run as sudo`는 비관리자 `svc.sh status` 호출에서 발생했으며 서비스 시작 실패가 아니다.
-스크립트의 상태 조회를 읽기 전용 systemctl 명령으로 수정했다. 실제 workflow 실행 검증은 남아 있다.
+스크립트의 상태 조회를 읽기 전용 systemctl 명령으로 수정했다. 같은 날 19:03 KST OCI 전용
+runner에서 새 workflow의 테스트·빌드·배포와 로컬 endpoint 검증까지 통과했다(7절 참조).
 
 인프라 담당자는 GitHub 저장소 **Settings → Actions → Runners**의 공식 Linux ARM64 다운로드·
 체크섬 검증 명령으로 전용 디렉터리에 설치한다. 등록 토큰은 config.sh의 대화형 입력으로 전달하고
@@ -216,7 +217,7 @@ pnpm --filter @vscoke/api migration:run
 
 아래는 아직 미완료인 인프라·운영 작업이다. 리허설 DB에 바로 트래픽을 보내지 않는다.
 
-1. 설치한 OCI 전용 runner에서 재시작 권한을 확인하고 새 workflow를 실제 실행한다.
+1. OCI 전용 runner의 권한·새 workflow 실행 검증은 완료했다. 운영 전환 시 사용할 커밋과 main 반영 순서를 확정한다.
 2. 새 release의 Node 버전·ARM64·loopback·공유 로그·offline E5 모델 로드를 확인한다.
 3. Origin `https://vscoke.icecoke.kr`을 포함해 실제 `/resume-rag/chat`의 첫 질문·후속 질문,
    grounded/출처를 검사한다. OAuth·인증 경로와 Discord 서비스도 확인한다.
@@ -243,19 +244,43 @@ pnpm --filter @vscoke/api migration:run
 - actionlint 1.7.12로 새 workflow의 문법·표현식·사용자 runner label 검사 통과. ShellCheck는 미실행.
 - 고정 lockfile로 독립 production 번들을 실제 생성하고 경로 이동 후 의존성 symlink 902개가
   번들 안을 가리키는지 확인했다. 이동한 번들에서 Nest·TypeORM·ONNX 모듈을 로드했다.
-  이 패키징 검사는 macOS ARM64이며 OCI Linux ARM64에서의 새 번들 실행 검증은 남아 있다.
+  이 초기 패키징 검사는 macOS ARM64이며 이후 OCI Linux ARM64 검증 결과는 7절에 기록했다.
 - OCI 읽기 점검: Node 24.22.1, API·PostgreSQL active, `/resume`·`/recipes` HTTP 200.
   이는 기존 `39efa56b` 서비스의 점검이다. 새 workflow의 실배포 결과는 아니다.
 - 초기 검증 당시 GitHub에는 VSCoke Mac runner만 있었고 OCI에는 Discord runner만 실행 중이었다.
   이후 관리자가 전용 OCI runner와 재시작 sudoers를 설치했다. runner의 online·active·enabled 상태는
-  확인했으며, 재시작 권한 조회·새 workflow 실제 실행·cloudflared·최신 데이터/터널 전환은 남아 있다.
+  확인했다. 이후 권한·새 workflow 실행 검증을 완료했고 cloudflared·최신 데이터/터널 전환은 남아 있다.
 
-새 코드의 검증 과정에서 운영 env·DB·DNS·서비스·GitHub Secret을 변경하지 않았다.
+초기 로컬 검증에서는 운영 env·DB·DNS·서비스·GitHub Secret을 변경하지 않았다.
 
 관리자 인계: 이 세션의 `PreToolUse` 셸 훅이 아래 권한 조회도 `Blocked sudo from Codex shell hooks`로
 차단했다. 조회를 우회하지 않았다. 이후 관리자가 runner 설치를 완료했으므로 아래 명령으로
-재시작 권한을 확인하면 새 workflow 실행 단계로 진행할 수 있다.
+재시작 권한을 확인했고, 실제 workflow의 사전 조건 검사와 서비스 재시작도 통과했다.
 
 ```bash
 ssh -F /Users/smlee/icecoke-ops/config/ssh-config oci-01 'sudo -n -l /usr/bin/systemctl restart vscoke-api.service'
 ```
+
+## 7. OCI 실제 배포 검증 (2026-11-14 19:03 KST)
+
+[GitHub Actions run 43583243297](https://github.com/icecokel/VSCoke/actions/runs/43583243297)은
+`codex/ci/oci-native`의 `06bedfc95e6514fed676a85dbb5733b00cdcde79`를 대상으로 성공했다.
+job의 실제 runner는 `vscoke-api-oci-01`이며 Linux ARM64에서 설치·검사·빌드·배포를 모두 수행했다.
+
+- API lint, 단위 테스트 64 suite/484 test, 배포 계약 테스트 34개, health 도구 테스트 8개 통과.
+- frozen lockfile production 설치, API 빌드, ONNX 로드를 포함한 독립 네이티브 패키징 통과.
+- 미적용 migration 검사, 공개 이력 import, 필요한 vector index, current 교체, systemd 재시작과
+  로컬 health 검사, 성공 커밋 기록까지 통과.
+- 실행 후 `current`는 `releases/06bedfc95e6514fed676a85dbb5733b00cdcde79-43583243297-1`을 가리키고
+  `revision`도 해당 커밋과 일치한다. 실제 Node는 24.22.1, 아키텍처는 aarch64다.
+- `/health`, `/resume`, `/recipes`, `/espresso-history/beans`가 HTTP 200이다.
+  API·PostgreSQL·Discord 봇 모두 active다.
+- API·DB host는 127.0.0.1, 포트는 각각 3000·5432, trust proxy는 loopback이다.
+  캐시는 호스트의 `.cache/embeddings`, offline 모드는 true다.
+- 릴리스의 `.env`·`logs`는 공유 경로를 가리킨다. `api.env`·`.local/db.env`는 ubuntu 소유 600,
+  캐시·로그 디렉터리는 ubuntu 소유 700이다. Secret·DB 암호 원문은 검증 출력에 포함하지 않았다.
+
+이 실행은 `verify_public=false`인 OCI 리허설 배포다. 공개 도메인 검증·최신 운영 DB 동기화·
+터널 최종 전환·main 워크플로 반영은 별도 작업이다. 새 릴리스의 실제 AI 첫 질문·후속 질문과
+OAuth 경로는 이 읽기 점검에서 실행하지 않았다. 실제 실패 주입으로 운영 서비스를 되돌리지는 않았으며,
+자동 복구·상태 보존 동작은 Linux에서 통과한 배포 하네스 검증을 근거로 한다.

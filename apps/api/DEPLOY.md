@@ -335,3 +335,21 @@ metrics/readiness는 loopback 20242 포트만 사용한다. 자격 증명·dump�
 격리 복원본과 내용 해시까지 일치했다. 사전 사본 검증은 쓰기 중단 후의 최종 검증을 대체하지 않는다.
 복원 하네스는 관리자/PG 명령을 대역으로 바꿔 unfrozen 거절·잘못된 백업의 파괴 작업 차단·
 manifest 불일치 시 기동 차단·성공 경로를 검사했다. 실제 OCI 최종 복원은 아직 실행하지 않았다.
+
+관리자 준비 후 `scripts/cutover-api-to-oci.py`를 Mac 터미널에서 실행한다.
+이 명령은 실제 운영 API를 잠시 중단하고 최종 동기화와 DNS 전환을 이어서 수행한다.
+
+```bash
+python3 /Users/smlee/vscoke/worktrees/ci/oci-cutover/scripts/cutover-api-to-oci.py
+```
+
+전환 전 공개 health가 Mac 원본의 프로세스와 일치하는지, OCI tunnel/readiness가 정상인지 확인한다.
+Mac API를 중지한 뒤 새 snapshot을 생성·격리 검증하고 SSH로 OCI에 복원한다. 복원 내용 대조와
+OCI health를 통과한 경우에만 api.icecoke.kr의 DNS를 OCI 전용 터널로 변경한다.
+공개 응답의 timestamp/uptime에서 계산한 프로세스 시작 시각을 OCI 응답과 대조하고 주요 endpoint도 확인한다.
+
+DNS 요청 전 실패는 Mac API를 재시작·health 검증하며, 이후 재시도는 새 snapshot으로 시작한다.
+DNS 요청 시점부터는 OCI에 쓰기가 생겼을 수 있으므로 Mac을 자동으로 재개하지 않는다.
+`output/cutover/final-*/state.json`의 전환 기록이 DNS 요청 이후 상태이면 반복 실행도 차단한다.
+이 상태에서 복귀하려면 실제 DNS·OCI 쓰기를 확인하고 최신 OCI 데이터를 Mac에 역동기화해야 한다.
+최종 전환 성공 뒤 Mac API는 중지 상태로 유지하며, PR CI 검증과 main 반영은 이어서 수행한다.

@@ -44,6 +44,7 @@ if [[ ! -f .service ]]; then
   sudo ./svc.sh install ubuntu
 fi
 sudo ./svc.sh start
-./svc.sh status
+systemctl is-active "actions.runner.icecokel-VSCoke.${runnerName}.service"
+systemctl is-enabled "actions.runner.icecokel-VSCoke.${runnerName}.service"
 sudo -n -l /usr/bin/systemctl restart vscoke-api.service
 echo 'OCI VSCoke runner 준비 완료. GitHub에서 online 상태를 확인하세요.'

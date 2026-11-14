@@ -123,34 +123,33 @@ export const seedSyntheticResumes = async (apiUrl, writeKey, testDatabaseUrl) =>
         introduction: [`Synthetic ${key} career summary for ${locale}`],
         totalExperience: "Synthetic period",
         lastUpdated: "2026.10",
-        careers: [
-          {
-            id: "synthetic-career",
-            company: "Synthetic Example Co",
-            period: "2026",
-            employmentType: "Synthetic",
-            role: "Synthetic developer",
-            projects: [
-              {
-                id: "synthetic-project",
-                title: "Synthetic public project",
-                fileRef: careerSlug,
-                descriptions: [
-                  {
-                    subtitle: "Synthetic implementation",
-                    detail: "Synthetic approved career evidence",
-                    skills: "TypeScript",
-                    tasks: ["Synthetic browser verification"],
-                  },
-                ],
-              },
-            ],
-          },
-        ],
+        // fragment 이동과 긴 문서 스크롤 검증에 필요한 최소 합성 경력을 등록한다.
+        careers: Array.from({ length: 3 }, (_, careerIndex) => ({
+          id: `synthetic-career-${careerIndex}`,
+          company: "Synthetic Example Co",
+          period: "2026",
+          employmentType: "Synthetic",
+          role: "Synthetic developer",
+          projects: [
+            {
+              id: `synthetic-project-${careerIndex}`,
+              title: "Synthetic public project",
+              fileRef: careerSlug,
+              descriptions: [
+                {
+                  subtitle: "Synthetic implementation",
+                  detail: "Synthetic approved career evidence",
+                  skills: "TypeScript",
+                  tasks: ["Synthetic browser verification"],
+                },
+              ],
+            },
+          ],
+        })),
         education: [],
         skills: ["TypeScript"],
         certifications: [],
-        links: [],
+        links: ["https://example.test/synthetic-portfolio"],
         personalProjects: [
           {
             id: "synthetic-personal",

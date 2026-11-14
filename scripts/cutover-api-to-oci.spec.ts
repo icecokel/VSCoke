@@ -27,7 +27,14 @@ const oci = {
   data: { status: "ok", timestamp: "2026-11-14T10:00:30Z", uptime: 30 },
 };
 
-for (const scenario of ["before-dns", "after-dns", "success", "prior-cutover", "wrong-origin"]) {
+for (const scenario of [
+  "before-dns",
+  "after-dns",
+  "source-restarted",
+  "success",
+  "prior-cutover",
+  "wrong-origin",
+]) {
   test(`최종 전환 ${scenario}: 원본 재개와 DNS 이후 중지 정책을 확인한다`, async () => {
     const fixture = mkdtempSync(join(tmpdir(), "vscoke-cutover-"));
     const commands = join(fixture, "commands");
@@ -100,6 +107,7 @@ for name in ['database.dump', 'database.sha256', 'manifest.txt', 'api-db-manifes
             if (args.includes("dns")) {
               fs.writeFileSync(process.env.CUTOVER_ROUTED, "true");
               if (process.env.CUTOVER_SCENARIO === "after-dns") process.exitCode = 1;
+              if (process.env.CUTOVER_SCENARIO === "source-restarted") fs.writeFileSync(process.env.CUTOVER_RUNNING, "true");
             }
           }
           if (${JSON.stringify(name)} === "ssh") {
@@ -143,7 +151,7 @@ for name in ['database.dump', 'database.sha256', 'manifest.txt', 'api-db-manifes
         assert.equal(readFileSync(running, "utf8"), "true");
         assert.equal(existsSync(routed), false);
         assert.equal(phase, "failed_before_dns_mac_resumed");
-      } else if (["after-dns", "success"].includes(scenario)) {
+      } else if (["after-dns", "source-restarted", "success"].includes(scenario)) {
         assert.equal(starts, 0);
         assert.equal(readFileSync(running, "utf8"), "false");
         assert.equal(existsSync(routed), true);
@@ -151,6 +159,12 @@ for name in ['database.dump', 'database.sha256', 'manifest.txt', 'api-db-manifes
           phase,
           scenario === "success" ? "cutover_complete" : "failed_after_dns_request_mac_stopped",
         );
+        if (scenario === "source-restarted") {
+          assert.equal(
+            records.filter(args => args[0] === "docker" && args[1] === "stop").length,
+            2,
+          );
+        }
       } else {
         assert.equal(starts, 0);
         assert.equal(

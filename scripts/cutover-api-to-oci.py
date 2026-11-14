@@ -62,7 +62,7 @@ def cutover():
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         for journal in folder.glob("final-*/state.json"):
             phase = json.loads(journal.read_text(encoding="utf-8")).get("phase")
-            if phase in ["dns_requested", "cutover_complete", "failed_after_dns_request_mac_stopped"]:
+            if phase in ["dns_requested", "cutover_complete", "failed_after_dns_request_mac_stopped", "failed_after_dns_request_source_state_unknown"]:
                 raise RuntimeError("이전 DNS 전환 기록이 있습니다. 현재 운영 DB를 확인하기 전에는 반복 실행할 수 없습니다.")
         # 관리자 준비·터널 연결을 확인한 뒤에만 원본 쓰기를 중단한다.
         if not running():
@@ -155,8 +155,16 @@ def cutover():
                     record("failed_before_dns_mac_restart_failed")
                     raise RuntimeError("DNS는 전환하지 않았으나 Mac API 복구 검증에 실패했습니다. 전환 기록을 확인하세요.") from None
             elif dns_attempted:
-                record("failed_after_dns_request_mac_stopped")
-                print("DNS 요청 이후 실패했습니다. Mac API를 중지 상태로 유지합니다. OCI 쓰기·DNS를 확인하고 데이터 역동기화 없이 Mac을 재개하지 마세요.", file=sys.stderr)
+                try:
+                    if running():
+                        checked(["docker", "stop", "--time", "120", SOURCE], timeout=180)
+                    if running():
+                        raise RuntimeError("Mac API 중지 확인 실패")
+                    record("failed_after_dns_request_mac_stopped")
+                    print("DNS 요청 이후 실패했습니다. Mac API를 중지 상태로 유지합니다. OCI 쓰기·DNS를 확인하고 데이터 역동기화 없이 Mac을 재개하지 마세요.", file=sys.stderr)
+                except Exception:
+                    record("failed_after_dns_request_source_state_unknown")
+                    print("DNS 요청 이후 실패했고 Mac API 중지 상태를 확인하지 못했습니다. 이중 쓰기를 막도록 양쪽 API·DB를 즉시 확인하세요.", file=sys.stderr)
             raise
 
 

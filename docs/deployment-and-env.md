@@ -52,8 +52,9 @@ Vercel 프로젝트는 monorepo 루트가 아니라 웹 앱 디렉터리를 루�
 
 ### API: OCI 네이티브 systemd
 
-2026-11-14 기준 코드의 배포 대상은 춘천 OCI 1호기다. **공개 운영 트래픽·원본 DB는 아직 Mac mini에
-있고 OCI DB는 리허설 사본**이다. 코드 변경이 데이터·DNS 전환을 수행하지 않는다.
+2026-11-14 20:14 KST 최종 DB 동기화와 DNS 전환을 완료했다. **공개 운영 API·DB·터널은
+춘천 OCI 1호기에서 실행한다.** Mac API는 중지했고 기존 DB·백업은 보존한다.
+전환 검증과 복구 기준은 [API 배포 가이드](../apps/api/DEPLOY.md#9-운영-db터널-전환-완료)를 따른다.
 
 | 항목          | 기준                                                               |
 | ------------- | ------------------------------------------------------------------ |
@@ -77,9 +78,9 @@ current 원자 교체 → systemd 재시작 → 로컬 health/이력/취미 endp
 import/index의 DB 쓰기는 코드 복구로 되돌리지 않는다. breaking 변경은 expand/contract로 나눈다.
 SIGKILL·호스트 장애는 trap으로 복구할 수 없으므로 수동 복구 기록을 사용한다.
 
-터널 전환 전에는 수동 `verify_public=false`, repository variable `API_VERIFY_PUBLIC=false` 또는
-미설정으로 둔다. 공개 도메인의 성공 응답은 Mac일 수 있어 OCI 배포 증거가 아니다. 전환 후
-`API_VERIFY_PUBLIC=true`를 설정하고 수동 실행도 `verify_public=true`로 검증한다.
+운영 repository variable `API_VERIFY_PUBLIC=true`를 유지하고 수동 실행도 `verify_public=true`로
+공개 endpoint를 검증한다. 초기 리허설에서만 false를 사용했으며 현재 운영 검사를 생략하는 기준으로
+사용하지 않는다. 코드 배포는 최종 DB 동기화나 DNS 변경을 반복하지 않는다.
 
 정확한 러너·권한 설치, 배포·복구·최종 전환 절차는 [API 배포 가이드](../apps/api/DEPLOY.md)를 따른다.
 

@@ -100,6 +100,6 @@ revision을 사용한다. 응답은 `id/revision/deletedAt`이고 상세의 id�
 ## 배포
 
 배포 대상은 OCI Linux ARM64에서 빌드한 네이티브 릴리스와 `vscoke-api.service`다.
-공개 운영 전환 전까지 Mac mini가 트래픽을 처리한다. 배포 구조와 환경은 [Deployment and Environment Plan](../../docs/deployment-and-env.md),
+2026-11-14 운영 DB·터널 전환을 완료했다. 배포 구조와 환경은 [Deployment and Environment Plan](../../docs/deployment-and-env.md),
 실행 절차는 [DEPLOY.md](DEPLOY.md), 장애 대응은
 [Operations Runbook](../../docs/operations-runbook.md)을 따른다.

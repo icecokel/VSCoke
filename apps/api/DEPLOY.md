@@ -1,7 +1,8 @@
 # API 배포 가이드
 
-배포 목표는 춘천 OCI 1호기의 네이티브 systemd다. 2026-11-14 현재 공개 운영은 Mac mini에
-남아 있으며 OCI DB는 리허설 사본이다. 코드 배포와 최종 데이터·DNS 전환을 구분한다.
+운영 API와 PostgreSQL은 춘천 OCI 1호기의 네이티브 systemd에서 실행한다.
+2026-11-14 20:14 KST 최종 DB 동기화와 공개 DNS 전환을 완료했다. Mac API는 중지·보존 상태다.
+아래 초기 설치·리허설 기록은 당시의 검증이며 현재 운영 전환 결과는 9절을 따른다.
 
 ## 1. OCI 인프라 인계
 
@@ -215,7 +216,7 @@ pnpm --filter @vscoke/api migration:run
 
 ## 5. 최종 운영 전환 (icecoke-ops)
 
-아래는 아직 미완료인 인프라·운영 작업이다. 리허설 DB에 바로 트래픽을 보내지 않는다.
+아래는 이번 전환에서 따른 실행·복구 기준이다. 사전 사본 대신 쓰기 중단 후의 최종 DB를 사용한다.
 
 1. OCI 전용 runner의 권한·새 workflow 실행 검증은 완료했다. 운영 전환 시 사용할 커밋과 main 반영 순서를 확정한다.
 2. 새 release의 Node 버전·ARM64·loopback·공유 로그·offline E5 모델 로드를 확인한다.
@@ -304,8 +305,8 @@ OS가 로케일을 인식해도 오래 실행된 PostgreSQL은 새 locale archiv
 인덱스·확장·마이그레이션을 비교한다. 이 준비 단계에서는 운영 API를 중지하지 않는다.
 
 OCI 전용 새 터널은 `vscoke-api-oci-01` (`cc5f9f8e-fe12-436b-b243-be03466df18c`)이다.
-현재 공개 도메인은 기존 Mac 터널을 유지한다. 새 터널을 미리 연결해 두고 최종 DB 검증 뒤
-DNS를 전환한다. 다른 ID의 전용 터널을 사용해 양쪽 DB에 트래픽이 섞이지 않게 한다.
+준비 단계에서는 기존 Mac 터널을 유지했고, 새 터널을 미리 연결한 뒤 최종 DB 검증 후 DNS를
+전환했다. 다른 ID의 전용 터널을 사용해 양쪽 DB에 트래픽이 섞이지 않게 했다.
 
 관리자 준비용 CLI(전용 터널 서비스·cloudflared 2026.11.0·DB 로케일만 설치):
 
@@ -334,7 +335,7 @@ metrics/readiness는 loopback 20242 포트만 사용한다. 자격 증명·dump�
 사전 점검에서는 현재 Mac DB의 테이블 28개·인덱스 64개·시퀀스 2개·migration 10개·vector 6,988개가
 격리 복원본과 내용 해시까지 일치했다. 사전 사본 검증은 쓰기 중단 후의 최종 검증을 대체하지 않는다.
 복원 하네스는 관리자/PG 명령을 대역으로 바꿔 unfrozen 거절·잘못된 백업의 파괴 작업 차단·
-manifest 불일치 시 기동 차단·성공 경로를 검사했다. 실제 OCI 최종 복원은 아직 실행하지 않았다.
+manifest 불일치 시 기동 차단·성공 경로를 검사했다. 실제 OCI 최종 복원 결과는 9절에 기록했다.
 
 관리자 준비 후 `scripts/cutover-api-to-oci.py`를 Mac 터미널에서 실행한다.
 이 명령은 실제 운영 API를 잠시 중단하고 최종 동기화와 DNS 전환을 이어서 수행한다.
@@ -360,3 +361,31 @@ main 반영 전 CI에서 기존 합성 이력서가 경력 한 개·외부 링�
 문서 끝 스크롤 검사 네 개가 실패하는 것을 확인했다. 통합 fixture에 세 경력과 합성 외부 링크를
 등록하고 전제 조건을 단위 테스트로 고정했다. 운영 화면 코드는 변경하지 않았다.
 격리 PostgreSQL과 실제 API를 사용한 해당 브라우저 시나리오 네 개가 로컬에서 통과했다.
+
+## 9. 운영 DB·터널 전환 완료
+
+2026-11-14 20:12 KST Mac API 쓰기를 중단하고 최종 snapshot을 생성했다. 같은 snapshot의
+격리 복원과 OCI 복원본에서 아래 항목을 내용 해시까지 대조한 뒤, 20:14 KST 공개 DNS를 전환했다.
+
+| 검증 항목 | 결과                                                         |
+| --------- | ------------------------------------------------------------ |
+| 테이블    | 28개, 행 수·내용 해시 일치                                   |
+| 인덱스    | 64개 정의 일치                                               |
+| 시퀀스    | 2개 값·is_called 일치                                        |
+| migration | 10개 ledger 일치                                             |
+| 임베딩    | vector 6,988개 일치                                          |
+| locale    | UTF8 / en_US.utf8 / libc                                     |
+| 공개 터널 | `cc5f9f8e-fe12-436b-b243-be03466df18c` (`vscoke-api-oci-01`) |
+
+전환 기록은 worktree의 `output/cutover/final-1794654741048630000/state.json`이며 phase는
+`cutover_complete`다. source 폴더의 최종 dump·manifest·SHA-256은 비공개로 보존하고 Git에 넣지 않는다.
+교체 전 OCI 사본은 `/home/ubuntu/vscoke-api/backups/before-final-sync-1794654866927135484.dump`에
+600 권한으로 보존했으며 이후 SHA-256과 archive 목록 검사를 다시 통과했다.
+
+공개·내부 health의 프로세스 시작 시각을 대조해 OCI 도달을 확인했고 `/resume`, `/recipes`,
+`/espresso-history/beans`도 정상 응답했다. OCI 호스트의 Node health 도구도 공개 endpoint 검사를
+통과했다. API·PostgreSQL·cloudflared·Discord 봇은 active이고 Mac API는 exited/unless-stopped다.
+
+Mac DB는 전환 시점에서 멈춘 보존본이다. 이후 운영 쓰기는 OCI에서만 받는다. 복귀할 경우 OCI 쓰기를
+중단하고 최신 데이터를 Mac에 역동기화해야 하며, DNS만 원복하거나 Mac API를 임의로 재개하지 않는다.
+이후 코드 배포는 최종 DB 복원·DNS 전환을 반복하지 않고 OCI 릴리스 교체만 수행한다.

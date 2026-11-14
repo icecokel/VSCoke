@@ -8,20 +8,22 @@
 
 ## 서버 접속과 빠른 상태 확인
 
-공개 운영의 데이터·터널은 최종 전환 전까지 Mac mini에 남는다. 아래는 OCI 대상의 상태 점검이며
-최종 데이터 전환과 별개다. 인프라·권한 기준은 [API 배포 가이드](../apps/api/DEPLOY.md)를 따른다.
+공개 운영 API·DB·터널은 OCI 1호기에서 실행한다. Mac API는 중지 상태이며 보존한 DB를
+최신 운영 DB로 간주하지 않는다. 인프라·권한 기준은 [API 배포 가이드](../apps/api/DEPLOY.md)를 따른다.
 
 ```bash
 ssh -F /Users/smlee/icecoke-ops/config/ssh-config oci-01
 cd /home/ubuntu/vscoke-api
 systemctl is-active vscoke-api.service postgresql@16-main.service
+systemctl is-active cloudflared-vscoke-api.service
 systemctl is-enabled vscoke-api.service
 readlink -f current
 curl -fsS http://127.0.0.1:3000/health
 ```
 
 웹은 Vercel Deployments의 Ready 상태를 확인한다. 공개 API 검사는 checkout에서
-`pnpm smoke:api:remote`로 실행한다. 터널 전환 전 공개 응답은 Mac이므로 OCI 증거로 사용하지 않는다.
+`pnpm smoke:api:remote`로 실행한다. 내부·공개 health의 timestamp/uptime으로 같은 OCI 프로세스인지
+대조한다. Mac으로 되돌리려면 OCI의 새 쓰기를 중단하고 최신 데이터를 먼저 역동기화한다.
 
 ## 웹 배포 실패
 
@@ -165,7 +167,7 @@ Vercel Runtime Logs에 `Web error report could not reach the API`가 남는다.
 ## Cloudflare Tunnel 장애
 
 OCI loopback health가 성공하고 공개 API가 실패하면 서비스보다 DNS·cloudflared·ingress를 먼저 본다.
-최종 전환 전에는 공개 hostname이 Mac을 향하는 것이 정상이다. 전환 후 OCI의 전용 cloudflared
+공개 hostname은 OCI 전용 터널 `cc5f9f8e-fe12-436b-b243-be03466df18c`를 향한다. OCI의 전용 cloudflared
 서비스와 `http://127.0.0.1:3000` ingress, api.icecoke.kr의 tunnel route를 확인한다.
 서비스·인증 원본은 icecoke-ops가 관리한다. API 배포가 터널 설정을 바꾸지 않는다.
 

@@ -37,6 +37,18 @@ sudo ./svc.sh start
 서비스를 분리한다. `git`, `curl`, `tar`, `xz-utils`, `util-linux`(flock), `sudo`가 필요하다.
 Node/pnpm은 Actions가 설치한다. Mac·Docker·SSH 빌드에 의존하지 않는다.
 
+직접 실행용 `scripts/setup-api-oci-runner.sh`는 공식 runner 2.338.2 Linux ARM64 배포본의
+SHA-256을 검증한 뒤 의존성·등록·서비스·아래 sudoers를 준비한다. 다른 저장소의 runner가
+같은 경로에 등록돼 있으면 중단한다. 기존 VSCoke 등록이 있으면 검증 후 서비스 설치를 이어간다.
+Mac 터미널에서 다음 명령을 실행하고, 등록 토큰을 물으면 클립보드 내용을 붙여넣는다.
+토큰을 명령 인자·셸 이력·채팅에 직접 쓰지 않는다.
+
+```bash
+gh api --method POST repos/icecokel/VSCoke/actions/runners/registration-token --jq .token | pbcopy
+scp -F /Users/smlee/icecoke-ops/config/ssh-config /Users/smlee/vscoke/worktrees/ci/oci-native/scripts/setup-api-oci-runner.sh oci-01:/home/ubuntu/vscoke-api-rehearsal/admin/setup-api-oci-runner.sh
+ssh -t -F /Users/smlee/icecoke-ops/config/ssh-config oci-01 'bash /home/ubuntu/vscoke-api-rehearsal/admin/setup-api-oci-runner.sh'
+```
+
 기존 unit의 실행 계약을 유지한다. unit의 전체 관리 원본은 icecoke-ops에 있다.
 
 ```ini

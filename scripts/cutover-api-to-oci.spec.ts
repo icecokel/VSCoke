@@ -44,6 +44,10 @@ for (const scenario of [
     const routed = join(fixture, "routed");
     const server = createServer((request, response) => {
       response.setHeader("Content-Type", "application/json");
+      if (request.headers["user-agent"] !== "VSCoke-Cutover/1.0") {
+        response.writeHead(403).end(JSON.stringify({ success: false }));
+        return;
+      }
       const payload =
         request.url === "/source-health"
           ? mac

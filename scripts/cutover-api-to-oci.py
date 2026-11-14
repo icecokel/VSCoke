@@ -18,6 +18,7 @@ TUNNEL = "cc5f9f8e-fe12-436b-b243-be03466df18c"
 PUBLIC = "https://api.icecoke.kr"
 SOURCE_HEALTH = "http://127.0.0.1:3000/health"
 SOURCE = "vscoke-api-api-1"
+HTTP_HEADERS = {"User-Agent": "VSCoke-Cutover/1.0", "Accept": "application/json", "Cache-Control": "no-cache"}
 
 
 def checked(args, **options):
@@ -42,7 +43,7 @@ def running():
 
 
 def health(url):
-    request = Request(url, headers={"Cache-Control": "no-cache"})
+    request = Request(url, headers=HTTP_HEADERS)
     with urlopen(request, timeout=10) as response:
         payload = json.load(response)
     if payload.get("success") is not True or payload.get("data", {}).get("status") != "ok":
@@ -132,7 +133,7 @@ def cutover():
             else:
                 raise RuntimeError("공개 API가 OCI 프로세스에 도달하는지 확인하지 못했습니다.")
             for path in ["resume", "recipes", "espresso-history/beans"]:
-                with urlopen(PUBLIC + "/" + path, timeout=15) as response:
+                with urlopen(Request(PUBLIC + "/" + path, headers=HTTP_HEADERS), timeout=15) as response:
                     if response.status != 200:
                         raise RuntimeError("공개 endpoint 검사 실패")
             if running():

@@ -1,7 +1,12 @@
-name: Deploy API to Mac mini (Docker)
+name: Deploy API to OCI (native)
 
 on:
   workflow_dispatch:
+    inputs:
+      verify_public:
+        description: "터널 전환 후 공개 API도 검사"
+        type: boolean
+        default: false
   push:
     branches: ["main"]
     paths:
@@ -15,11 +20,17 @@ on:
       - "scripts/check-api-health.mjs"
       - "scripts/api-health-checker.mjs"
       - "scripts/api-deploy-env.mjs"
+      - "scripts/api-deploy-scope.mjs"
+      - "scripts/package-api-native.sh"
+      - "scripts/deploy-api-native.sh"
       - ".nvmrc"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - ".github/workflows/deploy-api.yml"
+
+permissions:
+  contents: read
 
 concurrency:
   group: deploy-api-host
@@ -27,140 +38,84 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: [self-hosted, vscoke-api, mac-mini]
+    runs-on: [self-hosted, Linux, ARM64, vscoke-api, oci-01]
+    timeout-minutes: 45
     env:
-      API_DEPLOY_DIR: ${{ vars.API_DEPLOY_DIR || '/Users/smlee/projects/vscoke-api' }}
+      API_DEPLOY_DIR: ${{ vars.API_DEPLOY_DIR || '/home/ubuntu/vscoke-api' }}
       API_HEALTH_URL: ${{ vars.API_HEALTH_URL || 'https://api.icecoke.kr/health' }}
       API_LOCAL_HEALTH_URL: ${{ vars.API_LOCAL_HEALTH_URL || 'http://127.0.0.1:3000/health' }}
-      API_IMAGE: vscoke-api
+      API_VERIFY_PUBLIC: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_public || github.event_name == 'push' && vars.API_VERIFY_PUBLIC == 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
 
+      - name: Decide API deployment
+        id: scope
+        env:
+          API_DEPLOY_BEFORE: ${{ github.event.before }}
+        run: node scripts/api-deploy-scope.mjs
+
       - name: Validate production environment secret
+        if: steps.scope.outputs.should_deploy == 'true'
         env:
           API_ENV_PRODUCTION: ${{ secrets.API_ENV_PRODUCTION }}
         run: node scripts/api-deploy-env.mjs check
 
       - name: Verify self-hosted runner prerequisites
+        if: steps.scope.outputs.should_deploy == 'true'
         run: |
-          command -v docker
-          command -v rsync
-          docker version --format '{{.Server.Version}}'
-          docker compose version
-          test -d "$API_DEPLOY_DIR"
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = aarch64
+          test -f "$API_DEPLOY_DIR/.local/activate"
+          test -f "$API_DEPLOY_DIR/.local/db.env"
+          test -x "$API_DEPLOY_DIR/current/bin/node"
+          systemctl is-active --quiet postgresql@16-main.service
+          sudo -n -l /usr/bin/systemctl restart vscoke-api.service
 
-      - name: Build API image
+      - name: Setup pnpm
+        if: steps.scope.outputs.should_deploy == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Install dependencies
+        if: steps.scope.outputs.should_deploy == 'true'
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Validate API and deployment
+        if: steps.scope.outputs.should_deploy == 'true'
         run: |
-          docker build \
-            --file apps/api/Dockerfile \
-            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
-            --tag "$API_IMAGE:$GITHUB_SHA" \
-            --tag "$API_IMAGE:latest" \
-            .
-          docker run --rm "$API_IMAGE:$GITHUB_SHA" test -f apps/api/dist/src/main.js
+          pnpm --filter @vscoke/api lint
+          pnpm --filter @vscoke/api exec jest --runInBand
+          pnpm test:tooling
+          node --test scripts/api-health-checker.test.mjs
 
-      - name: Create staged release
+      - name: Invalidate API deployment baseline
+        if: steps.scope.outputs.should_deploy == 'true'
         run: |
-          RELEASE_DIR="$API_DEPLOY_DIR/.next-release"
-          rm -rf "$RELEASE_DIR"
-          mkdir -p "$RELEASE_DIR/scripts"
+          # 실패·취소 후에는 UI 변경이나 원복도 다시 배포해야 한다.
+          rm -f "$API_DEPLOY_DIR/.last-successful-deploy"
 
-          # 코드와 공개 자료는 이미지에 들어 있다. 호스트에는 compose 파일과 health 도구만 둔다.
-          cp apps/api/docker-compose.yml "$RELEASE_DIR/docker-compose.yml"
-          cp scripts/check-api-health.mjs scripts/api-health-checker.mjs scripts/api-deploy-env.mjs "$RELEASE_DIR/scripts/"
-          test -f "$RELEASE_DIR/docker-compose.yml"
-
-      - name: Promote release
+      - name: Build API native release
+        if: steps.scope.outputs.should_deploy == 'true'
         run: |
-          RELEASE_DIR="$API_DEPLOY_DIR/.next-release"
-          test -f "$RELEASE_DIR/docker-compose.yml"
+          pnpm build:api
+          bash scripts/package-api-native.sh "$RUNNER_TEMP/vscoke-native-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
 
-          rsync -a --delete \
-            --exclude '.env' \
-            --exclude 'api.env' \
-            --exclude 'postgres.env' \
-            --exclude '.next-release' \
-            --exclude 'backups' \
-            --exclude 'logs' \
-            "$RELEASE_DIR"/ \
-            "$API_DEPLOY_DIR"/
-
-      - name: Apply production environment secret
+      - name: Deploy API native release
+        if: steps.scope.outputs.should_deploy == 'true'
         env:
           API_ENV_PRODUCTION: ${{ secrets.API_ENV_PRODUCTION }}
-        run: node scripts/api-deploy-env.mjs write
+        run: bash scripts/deploy-api-native.sh "$RUNNER_TEMP/vscoke-native-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
 
-      - name: Start database
+      - name: Record successful API deployment
+        if: steps.scope.outputs.should_deploy == 'true'
         run: |
-          cd "$API_DEPLOY_DIR"
-          docker compose config --quiet
-          docker compose up --detach --wait postgres
-
-      - name: Synchronize public resume sources and index
-        run: |
-          cd "$API_DEPLOY_DIR"
-          docker compose run --rm --no-deps --env RESUME_WORKSPACE_ROOT= api \
-            node scripts/api-deploy-env.mjs run node apps/api/dist/scripts/import-resume-source-items.js
-          if docker compose run --rm --no-deps api \
-            node scripts/api-deploy-env.mjs run node -e 'process.exit(process.env.RAG_RETRIEVAL_MODE !== "keyword" && process.env.RAG_EMBEDDING_PROVIDER ? 0 : 1)'; then
-            docker compose run --rm --no-deps api \
-              node scripts/api-deploy-env.mjs run node apps/api/dist/scripts/index-resume-vectors.js
-          fi
-
-      - name: Restart API container
-        run: |
-          cd "$API_DEPLOY_DIR"
-          # api.env 원자 교체 후 같은 이미지라도 새 파일을 bind mount하도록 컨테이너를 다시 만든다.
-          docker compose up --detach --no-deps --force-recreate --wait api
-          docker compose ps
-
-      - name: Verify local API health
-        run: |
-          for attempt in $(seq 1 30); do
-            if node - <<'NODE'
-          (async () => {
-            const response = await fetch(process.env.API_LOCAL_HEALTH_URL);
-            if (!response.ok) {
-              throw new Error(`HTTP ${response.status}`);
-            }
-
-            const payload = await response.json();
-            if (payload?.success !== true || payload?.data?.status !== 'ok') {
-              throw new Error(`Unexpected health payload: ${JSON.stringify(payload)}`);
-            }
-          })().catch((error) => {
-            console.error(error.message);
-            process.exit(1);
-          });
-          NODE
-            then
-              exit 0
-            fi
-
-            sleep 2
-          done
-
-          exit 1
-
-      - name: Verify public API health
-        run: |
-          API_HEALTH_URL="$API_HEALTH_URL" \
-            API_HEALTH_RETRIES=30 \
-            API_HEALTH_RETRY_DELAY_MS=2000 \
-            node scripts/check-api-health.mjs
-
-      - name: Remove superseded API images
-        run: |
-          docker images "$API_IMAGE" --format '{{.Tag}}' | while read -r tag; do
-            case "$tag" in
-              latest|"$GITHUB_SHA") ;;
-              *) docker image rm "$API_IMAGE:$tag" ;;
-            esac
-          done
-          docker image prune --force
+          printf '%s\n' "$GITHUB_SHA" > "$API_DEPLOY_DIR/.last-successful-deploy"

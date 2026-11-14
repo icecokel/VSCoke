@@ -56,7 +56,7 @@ async function bootstrap() {
   // 지정된 포트에서 서버 실행
   const port = process.env.PORT ?? 3000;
 
-  await app.listen(port);
+  await app.listen(port, process.env.API_HOST ?? '::');
 }
 
 // 애플리케이션 실행

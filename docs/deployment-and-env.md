@@ -4,7 +4,7 @@ VSCoke monorepo의 배포와 환경 변수 관리는 앱별로 분리한다.
 
 ```txt
 apps/web -> Vercel
-apps/api -> GitHub Actions self-hosted runner on Mac mini -> Docker Compose -> Cloudflare Tunnel
+apps/api -> OCI Linux ARM64 runner -> native release -> systemd -> Cloudflare Tunnel
 ```
 
 루트 GitHub 저장소는 하나만 유지하되, 웹과 API는 서로 다른 배포 주체를 가진다.
@@ -50,97 +50,39 @@ Vercel 프로젝트는 monorepo 루트가 아니라 웹 앱 디렉터리를 루�
 - [Vercel Monorepos](https://vercel.com/docs/monorepos)
 - [Vercel Configuring a Build](https://vercel.com/docs/builds/configure-a-build)
 
-### API: Mac mini Docker
+### API: OCI 네이티브 systemd
 
-API는 Mac mini(Apple Silicon)에 설치된 GitHub Actions self-hosted runner가
-`.github/workflows/deploy-api.yml`을 실행해 Docker 이미지로 빌드하고 Docker Compose로 운영한다.
-Docker 런타임은 OrbStack이며 `docker`, `docker compose` 명령은 OrbStack context를 사용한다.
+2026-11-14 20:14 KST 최종 DB 동기화와 DNS 전환을 완료했다. **공개 운영 API·DB·터널은
+춘천 OCI 1호기에서 실행한다.** Mac API는 중지했고 기존 DB·백업은 보존한다.
+전환 검증과 복구 기준은 [API 배포 가이드](../apps/api/DEPLOY.md#9-운영-db터널-전환-완료)를 따른다.
 
-필수 runner labels:
+| 항목          | 기준                                                               |
+| ------------- | ------------------------------------------------------------------ |
+| 호스트        | `oci-01` (`ubuntu@140.245.73.237`), Ubuntu 24.04 ARM64             |
+| runner labels | `self-hosted`, `Linux`, `ARM64`, `vscoke-api`, `oci-01`            |
+| 앱 루트       | `/home/ubuntu/vscoke-api`                                          |
+| 실행 경로     | `current` -> `releases/<sha>-<run-id>-<attempt>`                   |
+| 서비스        | `vscoke-api.service`, 사용자 `ubuntu`                              |
+| Node          | `.nvmrc` 버전, 각 릴리스의 `bin/node`                              |
+| PostgreSQL    | `postgresql@16-main.service`, 16.15 + pgvector 0.8.7               |
+| 바인딩        | API `127.0.0.1:3000`, DB `127.0.0.1:5432`                          |
+| 영속 경로     | `api.env`, `.local/db.env`, `.cache/embeddings`, `logs`, `backups` |
 
-```txt
-self-hosted
-vscoke-api
-mac-mini
-```
+워크플로는 전용 OCI 러너에서 API lint·단위 테스트, 배포 계약 테스트, 빌드, 독립 의존성
+패키징과 배포를 수행한다. Mac·Docker·SSH 빌드에 의존하지 않는다. UI 메시지 변경의 배포 생략과
+성공 커밋 기준 누적 변경 검사는 기존대로 유지한다.
 
-이전 Ubuntu host runner의 label은 `host`였으므로 새 workflow는 Ubuntu host에서 실행되지 않는다.
+배포는 write-native → 미적용 migration 차단 → 공개 이력 import → 필요한 vector index →
+current 원자 교체 → systemd 재시작 → 로컬 health/이력/취미 endpoint 순서다. 운영 migration은
+자동 실행하지 않는다. 실패 시 이전 코드·env를 복구하며 공유 경로·이전 릴리스는 삭제하지 않는다.
+import/index의 DB 쓰기는 코드 복구로 되돌리지 않는다. breaking 변경은 expand/contract로 나눈다.
+SIGKILL·호스트 장애는 trap으로 복구할 수 없으므로 수동 복구 기록을 사용한다.
 
-현재 워크플로 기준:
+운영 repository variable `API_VERIFY_PUBLIC=true`를 유지하고 수동 실행도 `verify_public=true`로
+공개 endpoint를 검증한다. 초기 리허설에서만 false를 사용했으며 현재 운영 검사를 생략하는 기준으로
+사용하지 않는다. 코드 배포는 최종 DB 동기화나 DNS 변경을 반복하지 않는다.
 
-1. `main`에 API, 루트 패키지/락파일, API 배포 workflow 또는 공개 웹 이력 자료 변경이 push된다. 실제 경로 필터는 workflow를 따른다.
-2. Mac mini의 self-hosted runner가 job을 실행한다. runner는 launchd 서비스로 관리한다.
-3. Repository Secret `API_ENV_PRODUCTION`과 운영 필수값을 검증한다. Secret이 없으면 기존 서버 `.env`로 대체하지 않고 실패한다.
-4. `apps/api/Dockerfile`로 저장소 루트를 컨텍스트 삼아 이미지를 빌드한다. 이미지에는 API dist, production 의존성, `scripts/api-deploy-env.mjs`와 health 도구, 공개 웹 이력 JSON/메시지/MDX/공개 문서만 포함된다. 포함 목록은 `apps/api/Dockerfile.dockerignore` 허용 목록이 기준이며 개인 이력 작업공간은 포함하지 않는다.
-5. 이미지는 `vscoke-api:<commit sha>`와 `vscoke-api:latest`로 태그한다. compose는 `latest`를 사용한다.
-6. `$API_DEPLOY_DIR/.next-release`에 `docker-compose.yml`과 health 도구만 staging한 뒤 `.env`, `api.env`, `postgres.env`, `.next-release`, `backups`, `logs`를 보존하며 release를 복사한다.
-7. Secret으로 `api.env`를 권한 `600`으로 원자적으로 교체하고, 같은 Secret에서 postgres 초기화용 `postgres.env`(`DB_*` 값)와 compose 보간용 `.env`(`PORT`만)를 생성한다.
-8. `docker compose up --wait postgres`로 DB를 올린 뒤 API 이미지로 공개 앱 이력을 import한다. 임베딩이 설정된 hybrid/vector 모드에서는 index도 갱신한다.
-9. `docker compose up --wait api`로 API 컨테이너를 새 이미지로 교체한다.
-10. Mac mini 내부 `http://127.0.0.1:$PORT/health`와 공개 `API_HEALTH_URL`을 smoke test한 뒤 현재 sha와 `latest` 외의 이전 이미지를 제거한다.
-
-컨테이너 안에서는 `scripts/api-deploy-env.mjs run`이 `api.env`를 읽기 전용으로 mount한 `/app/.env`를
-파싱해 API 프로세스에 주입한다. compose가 자동 로드하는 `.env`에는 `PORT`만 있으므로 비밀값은 compose
-보간을 거치지 않는다.
-
-운영 프로세스 기준:
-
-| 항목             | 값                                                       |
-| ---------------- | -------------------------------------------------------- |
-| 서버             | Mac mini (Apple Silicon), OrbStack Docker                |
-| 서버 경로        | `/Users/smlee/projects/vscoke-api`                       |
-| compose 프로젝트 | `vscoke-api` (`$API_DEPLOY_DIR/docker-compose.yml`)      |
-| API 컨테이너     | `vscoke-api-api-1`, 이미지 `vscoke-api:latest`           |
-| DB 컨테이너      | `vscoke-api-postgres-1`, 이미지 `pgvector/pgvector:pg16` |
-| 기본 포트        | 호스트 `127.0.0.1:3000` 또는 Secret의 `PORT`             |
-| 외부 노출        | 호스트 cloudflared -> `http://127.0.0.1:$PORT`           |
-
-호스트 서비스 기준:
-
-| 항목                                        | 기대 상태           | 설명                                                    |
-| ------------------------------------------- | ------------------- | ------------------------------------------------------- |
-| OrbStack                                    | 로그인 시 자동 시작 | `orb config set app.start_at_login true`                |
-| `vscoke-api-api-1`, `vscoke-api-postgres-1` | `running (healthy)` | `restart: unless-stopped`로 OrbStack 시작 시 복구된다   |
-| `actions.runner.icecokel-VSCoke.*` launchd  | 실행 중             | 다른 저장소 runner와 같은 `svc.sh` 설치 방식            |
-| `cloudflared` (`brew services`)             | `started`           | `api.icecoke.kr` 터널, ingress `http://localhost:$PORT` |
-
-Docker 운영 기준:
-
-- 이미지 빌드와 import가 성공하기 전에는 기존 API 컨테이너를 건드리지 않는다. 빌드 실패 시 기존 컨테이너가 계속 응답한다.
-- PostgreSQL 데이터는 named volume `vscoke-api_postgres-data`에 있다. 컨테이너를 지워도 volume을 지우지 않는 한 데이터는 남는다. `docker compose down --volumes`는 운영에서 사용하지 않는다.
-- 로그는 호스트 `$API_DEPLOY_DIR/logs`에 bind mount되며 `rsync --delete`가 보존한다.
-- 로컬 E5 임베딩 캐시는 named volume `vscoke-api_embedding-cache`를 `/app/.cache/embeddings`에 mount한다.
-- 답변 생성은 API 컨테이너에서 공식 Claude API로 연결한다. Codex CLI 로그인·호스트 listener는 필요하지 않다.
-- 컨테이너는 Docker 게이트웨이를 거쳐 요청을 받으므로 compose가 `TRUST_PROXY=loopback, uniquelocal`을 주입한다. 이 값이 없으면 모든 요청이 게이트웨이 IP로 보여 rate limit이 한 사용자로 묶인다.
-
-#### Mac mini 초기 준비
-
-한 번만 수행한다. 비밀값은 셸 히스토리나 문서에 남기지 않는다.
-
-1. OrbStack 설치 후 `orb config set app.start_at_login true`로 재부팅 복구를 켠다.
-2. `mkdir -p /Users/smlee/projects/vscoke-api`를 만든다. 다른 경로를 쓰면 repository variable `API_DEPLOY_DIR`를 같은 값으로 설정한다.
-3. GitHub **Settings → Actions → Runners → New self-hosted runner**에서 macOS arm64 runner를 받아 설치한다. 이름은 `vscoke-api-mac-mini`, label은 `vscoke-api`, `mac-mini`를 추가한다. `./svc.sh install && ./svc.sh start`로 launchd 서비스로 등록한다.
-4. Claude API 키를 발급해 `API_ENV_PRODUCTION`의 `ANTHROPIC_API_KEY`에 서버 전용으로 등록한다.
-5. Cloudflare Zero Trust에서 Mac mini용 tunnel을 만들고 `api.icecoke.kr` public hostname을 `http://localhost:3000`으로 연결한다. cloudflared를 `brew services start cloudflared`로 실행한다. 기존 Ubuntu tunnel의 `api.icecoke.kr` route는 전환 시점에 제거한다.
-6. Repository Secret `API_ENV_PRODUCTION`을 Docker 기준으로 갱신한다. 아래 표의 값이 다르면 배포가 실패하거나 AI 답변이 동작하지 않는다.
-
-| 변수                            | Docker 운영 값                       | 이유                                                                                                                                      |
-| ------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `DB_HOST`                       | `postgres`                           | compose 네트워크의 서비스 이름                                                                                                            |
-| `DB_PORT`                       | `5432`                               | 컨테이너 내부 포트. 호스트에 publish하지 않는다                                                                                           |
-| `PORT`                          | `3000` 또는 cloudflared ingress 포트 | compose가 같은 값으로 호스트 loopback에 publish한다                                                                                       |
-| `RAG_CHAT_PROVIDER`             | `claude`                             | 기존 `codex-app-server` 값을 교체한다                                                                                                     |
-| `RAG_CHAT_MODEL`                | `claude-sonnet-5-5`                  | 기존 Codex 모델 값을 교체한다                                                                                                             |
-| `ANTHROPIC_API_KEY`             | 유효한 서버 전용 키                  | Claude 답변 생성·후속 질문 재작성                                                                                                         |
-| `RAG_CHAT_TIMEOUT_MS`           | `45000`                              | 호출별 timeout이며 자동 재시도는 하지 않는다                                                                                              |
-| `RAG_LOCAL_EMBEDDING_CACHE_DIR` | `/app/.cache/embeddings`             | named volume mount 경로. 최초 배포는 volume이 비어 있으므로 `RAG_LOCAL_EMBEDDING_LOCAL_FILES_ONLY=false`로 모델을 받은 뒤 `true`로 바꾼다 |
-
-기존 운영 Secret에는 `RAG_CHAT_PROVIDER`와 `RAG_CHAT_MODEL`이 남아 있을 수 있다. Claude 전환
-코드를 배포하기 전에 두 값을 위 표처럼 **교체**하고 `ANTHROPIC_API_KEY`를 추가해야 한다.
-기존 값은 기본값보다 우선하므로 키만 추가하면 채팅이 실패할 수 있다. `RAG_CODEX_*`는 제거하고
-임베딩 설정은 유지한다. Secret 수정 후 배포 workflow를 실행해야 적용된다.
-
-전환 절차(DB 이관 포함)는 [API 배포 가이드](../apps/api/DEPLOY.md#4-ubuntu-host에서-mac-mini-docker로-전환)를 따른다.
+정확한 러너·권한 설치, 배포·복구·최종 전환 절차는 [API 배포 가이드](../apps/api/DEPLOY.md)를 따른다.
 
 ## 환경 변수 관리 기준
 
@@ -180,25 +122,22 @@ NEXT_PUBLIC_API_URL=http://127.0.0.1:65535 pnpm build:web
 
 ### API 환경 변수
 
-API 로컬 개발 값은 `apps/api/.env`에 둔다. 시작점은 `apps/api/.env.example`을 복사해 사용한다.
-
-API 운영값의 원본은 GitHub Repository Secret `API_ENV_PRODUCTION`이다. dotenv 전체 내용을
-한 Secret으로 관리하며, 배포마다 Mac mini의 `$API_DEPLOY_DIR/api.env`, postgres 초기화용
-`postgres.env`, compose 보간용 `.env`를 생성한다. 서버 파일은 실행용 결과물이며 직접 편집하지
-않는다. API 컨테이너와 공개 원본 import/index는 컨테이너 안의 `api-deploy-env.mjs run`이 mount된
-`/app/.env`를 파싱해 주입한 환경을 사용한다. compose `environment`보다 파일값이 우선하며 dotenv
-내용은 셸 명령으로 실행하지 않는다.
+로컬은 `apps/api/.env.example`을 복사한다. 앱 비밀값의 운영 원본은 Repository Secret
+`API_ENV_PRODUCTION`이다. write-native가 OCI `.local/db.env`의 DB 자격 증명, loopback 바인딩,
+포트 3000, `TRUST_PROXY=loopback`, 호스트 임베딩 캐시와 offline 모드만 덮어쓴다. 인증·Claude·CORS
+등은 보존한다. 결과 `api.env`는 600 권한으로 원자 교체하고 릴리스 `.env`가 이를 가리킨다.
+OCI DB 비밀번호를 GitHub Secret에 복제하지 않는다. dotenv를 shell로 source하지 않는다.
 
 | 이름                      | 필수                  | 기본값                                 | 설명                                                                                       |
 | ------------------------- | --------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `NODE_ENV`                | 권장                  | `development`                          | 운영에서는 `production`                                                                    |
-| `PORT`                    | 권장                  | `3000`                                 | API 리슨 포트. compose가 같은 값을 호스트 loopback에 publish한다                           |
-| `TRUST_PROXY`             | 운영 compose 주입     | `loopback`                             | Express trust proxy. Docker에서는 `loopback, uniquelocal`                                  |
+| `PORT`                    | 권장                  | `3000`                                 | API 리슨 포트. OCI 운영에서는 3000                                                         |
+| `TRUST_PROXY`             | 운영 native 주입      | `loopback`                             | Express trust proxy. OCI에서는 `loopback`                                                  |
 | `LOG_LEVEL`               | 선택                  | `development=debug`, `production=info` | Winston 콘솔·일별 파일 로그 최소 레벨 (`error`, `warn`, `info`, `debug` 등)                |
 | `CORS_ORIGINS`            | 권장                  | 기본 허용 origin + 추가 없음           | 쉼표로 구분한 추가 허용 origin                                                             |
 | `GOOGLE_CLIENT_ID`        | 필수                  | 없음                                   | Google OAuth 토큰 검증                                                                     |
-| `DB_HOST`                 | 필수                  | `localhost`                            | PostgreSQL host. Docker 운영은 `postgres`                                                  |
-| `DB_PORT`                 | 필수                  | `5432`                                 | PostgreSQL port. Docker 운영은 `5432`                                                      |
+| `DB_HOST`                 | 필수                  | `localhost`                            | PostgreSQL host. OCI 운영은 `127.0.0.1`                                                    |
+| `DB_PORT`                 | 필수                  | `5432`                                 | PostgreSQL port. OCI 운영은 `5432`                                                         |
 | `DB_USERNAME`             | 필수                  | `postgres`                             | PostgreSQL user                                                                            |
 | `DB_PASSWORD`             | 필수                  | `postgres`                             | PostgreSQL password                                                                        |
 | `DB_DATABASE`             | 필수                  | `vscoke`                               | PostgreSQL database                                                                        |
@@ -242,28 +181,22 @@ Resume RAG와 메인 채팅 변수, 기본값과 데이터 정책은
 ### 운영 DB migration
 
 backup, legacy baseline, 실행과 rollback 절차는
-[API 배포 가이드](../apps/api/DEPLOY.md#3-db-schema-변경)를 따른다.
+[API 배포 가이드](../apps/api/DEPLOY.md#4-db-schema-변경)를 따른다.
 
 Secret 수정과 재배포 절차는 [API 배포 가이드](../apps/api/DEPLOY.md#2-환경-변수-배포-github-secret)를
 따른다.
 
 ### GitHub Actions Runner and Variables
 
-API 배포는 Mac mini self-hosted runner에서 직접 실행하므로 SSH 접속용 GitHub Actions secrets를 사용하지 않는다. 애플리케이션 런타임 환경변수는 Repository Secret `API_ENV_PRODUCTION`에서만 관리하며, workflow가 서버 `.env`로 전달한다.
+runner 이름은 `vscoke-api-oci-01`, 설치 경로는 `/home/ubuntu/actions-runner-vscoke-api`다.
+Discord의 `discord-bot-oci`와 설치·work 디렉터리·서비스를 분리한다. 관리자 권한은
+`/usr/bin/systemctl restart vscoke-api.service` 한 명령만 비대화식으로 허용한다.
 
-필수 runner 조건:
+| 변수                   | 기준                                                                      |
+| ---------------------- | ------------------------------------------------------------------------- |
+| `API_DEPLOY_DIR`       | `/home/ubuntu/vscoke-api` 또는 미설정. 기존 Mac 경로 override를 제거한다. |
+| `API_LOCAL_HEALTH_URL` | `http://127.0.0.1:3000/health`                                            |
+| `API_HEALTH_URL`       | `https://api.icecoke.kr/health`                                           |
+| `API_VERIFY_PUBLIC`    | 전환 전 `false`, 최종 데이터·터널 전환 후 `true`                          |
 
-| 항목        | 값                                                                     |
-| ----------- | ---------------------------------------------------------------------- |
-| runner type | repository self-hosted runner                                          |
-| labels      | `self-hosted`, `vscoke-api`, `mac-mini`                                |
-| runtime     | macOS arm64, OrbStack Docker 29 이상, Docker Compose v2.30 이상, rsync |
-
-`actions/setup-node@v4`가 `.nvmrc`의 Node.js를 받아 Secret 검증과 health 검사에 사용한다. 애플리케이션 Node.js는 이미지 안의 `node:24.22.1-bookworm-slim`이다.
-
-선택 값:
-
-| 이름             | 설명                                                                                                                                            |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `API_HEALTH_URL` | 공개 API smoke test URL. GitHub Actions repository variable이다. 기본값은 `https://api.icecoke.kr/health`                                       |
-| `API_DEPLOY_DIR` | Mac mini 배포 디렉터리. GitHub Actions repository variable이다. 기본값은 `/Users/smlee/projects/vscoke-api`. Ubuntu 경로가 남아 있으면 제거한다 |
+Repository Secret은 기존 `API_ENV_PRODUCTION`을 사용한다. 외부 PR 코드는 운영 러너에서 실행하지 않는다.

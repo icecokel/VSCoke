@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { execFile, execFileSync } from "node:child_process";
 import { once } from "node:events";
 import {
-  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -22,96 +21,10 @@ const run = promisify(execFile);
 const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const read = (path: string): string => readFileSync(join(root, path), "utf8");
 const workflow = read(".github/workflows/deploy-api.yml");
-const stepScript = (name: string): string => {
-  const section = workflow.split(`      - name: ${name}\n`)[1]?.split("\n      - name:")[0];
-  const script = section?.split("        run: |\n")[1];
-  assert.ok(script, `배포 단계가 없음: ${name}`);
-  return script
-    .split("\n")
-    .map(line => line.replace(/^ {10}/, ""))
-    .join("\n");
-};
 const write = (path: string, content: string): void => {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, content);
 };
-
-// 운영 호스트 대신 임시 checkout/release에서 실제 workflow의 두 단계를 실행한다.
-test("배포는 secret·로그·백업을 보존하고 릴리스에서 health 검사를 실행할 수 있다", async () => {
-  const fixture = mkdtempSync(join(tmpdir(), "vscoke-release-contract-"));
-  const checkout = join(fixture, "checkout");
-  const live = join(fixture, "live");
-  const server = createServer((_request, response) => {
-    response.setHeader("Content-Type", "application/json");
-    response.end(
-      JSON.stringify({
-        success: true,
-        data: { status: "ok", uptime: 1, timestamp: new Date().toISOString() },
-      }),
-    );
-  });
-  try {
-    const released = [
-      "apps/api/docker-compose.yml",
-      "scripts/check-api-health.mjs",
-      "scripts/api-health-checker.mjs",
-      "scripts/api-deploy-env.mjs",
-    ];
-    for (const path of released) {
-      const target = join(checkout, path);
-      mkdirSync(dirname(target), { recursive: true });
-      copyFileSync(join(root, path), target);
-    }
-    const preserved = [
-      ".env",
-      "api.env",
-      "postgres.env",
-      "logs/combined.log",
-      "logs/nested/old.log.gz",
-      "backups/fixture.dump",
-    ];
-    for (const path of preserved) write(join(live, path), `preserve:${path}`);
-    write(join(live, "obsolete.js"), "remove stale release file");
-    const env = { ...process.env, API_DEPLOY_DIR: live };
-    for (const name of ["Create staged release", "Promote release"]) {
-      await run("bash", ["-eu", "-c", stepScript(name)], { cwd: checkout, env, timeout: 30_000 });
-    }
-    for (const path of preserved) {
-      assert.equal(readFileSync(join(live, path), "utf8"), `preserve:${path}`);
-    }
-    assert.equal(existsSync(join(live, "obsolete.js")), false);
-    assert.equal(readFileSync(join(live, "docker-compose.yml"), "utf8"), read(released[0]));
-    for (const path of released.slice(1)) {
-      assert.equal(readFileSync(join(live, path), "utf8"), read(path));
-    }
-    // 코드와 공개 자료는 이미지에만 있으므로 호스트 릴리스에 복사하지 않는다.
-    assert.equal(existsSync(join(live, "apps")), false);
-    assert.equal(existsSync(join(live, "docs")), false);
-    server.listen(0, "127.0.0.1");
-    await once(server, "listening");
-    const address = server.address();
-    assert.ok(address && typeof address !== "string");
-    const { stdout } = await run(process.execPath, ["scripts/check-api-health.mjs"], {
-      cwd: live,
-      env: {
-        ...process.env,
-        API_HEALTH_URL: `http://127.0.0.1:${address.port}/health`,
-        API_ENDPOINT_CHECKS: "/health",
-        API_REQUIRED_PATHS: "",
-        API_HEALTH_RETRIES: "1",
-        API_HEALTH_TIMEOUT_MS: "2000",
-      },
-      timeout: 10_000,
-    });
-    assert.match(stdout, /API health check passed/);
-  } finally {
-    if (server.listening)
-      await new Promise<void>((resolve, reject) =>
-        server.close(error => (error ? reject(error) : resolve())),
-      );
-    rmSync(fixture, { recursive: true, force: true });
-  }
-});
 
 test("운영 환경은 Secret으로 교체되고 비밀값과 셸 문자를 그대로 자식 프로세스에 전달한다", async () => {
   const fixture = mkdtempSync(join(tmpdir(), "vscoke-env-contract-"));
@@ -197,19 +110,12 @@ test("운영 환경은 Secret으로 교체되고 비밀값과 셸 문자를 그�
     assert.equal(existsSync(join(app, "unexpected")), false);
     assert.doesNotMatch(workflow, /\. \.\/\.env/);
     assert.match(workflow, /API_ENV_PRODUCTION: \$\{\{ secrets\.API_ENV_PRODUCTION \}\}/);
-    assert.match(
-      stepScript("Restart API container"),
-      /docker compose up --detach --no-deps --force-recreate --wait api/,
-    );
-    assert.ok(workflow.indexOf("Start database") < workflow.indexOf("Restart API container"));
+    assert.match(workflow, /runs-on: \[self-hosted, Linux, ARM64, vscoke-api, oci-01\]/);
     assert.ok(
       workflow.indexOf("Validate production environment secret") <
-        workflow.indexOf("Build API image"),
+        workflow.indexOf("Build API native release"),
     );
-    assert.ok(
-      workflow.indexOf("Apply production environment secret") <
-        workflow.indexOf("Synchronize public resume sources and index"),
-    );
+    assert.match(workflow, /bash scripts\/deploy-api-native\.sh/);
   } finally {
     rmSync(fixture, { recursive: true, force: true });
   }

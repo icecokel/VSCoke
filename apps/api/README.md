@@ -50,7 +50,7 @@
 ## DB와 migration
 
 운영에서는 `DB_SYNCHRONIZE=false`를 유지하고 schema 변경은 TypeORM migration으로 반영한다.
-생성, dry run, 운영 반영과 rollback은 [API 배포 가이드](DEPLOY.md#3-db-schema-변경)를 따른다.
+생성, dry run, 운영 반영과 rollback은 [API 배포 가이드](DEPLOY.md#4-db-schema-변경)를 따른다.
 
 랭킹 정책은 [Game Score Policy](../../docs/game-score-policy.md)를 따른다.
 
@@ -99,7 +99,7 @@ revision을 사용한다. 응답은 `id/revision/deletedAt`이고 상세의 id�
 
 ## 배포
 
-운영은 `apps/api/Dockerfile`로 빌드한 이미지를 Mac mini의 Docker Compose(`docker-compose.yml`)로
-실행한다. 배포 구조와 환경은 [Deployment and Environment Plan](../../docs/deployment-and-env.md),
+배포 대상은 OCI Linux ARM64에서 빌드한 네이티브 릴리스와 `vscoke-api.service`다.
+2026-11-14 운영 DB·터널 전환을 완료했다. 배포 구조와 환경은 [Deployment and Environment Plan](../../docs/deployment-and-env.md),
 실행 절차는 [DEPLOY.md](DEPLOY.md), 장애 대응은
 [Operations Runbook](../../docs/operations-runbook.md)을 따른다.

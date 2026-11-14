@@ -88,3 +88,8 @@ next-env.d.ts
 !/docs/vscoke-monorepo-concept.md
 !/docs/shared-career-data-design.md
 !/docs/resume-soft-delete-design.md
+
+# OCI 배포 작업의 로컬 자격 증명·검증 임시 파일
+/.local/
+api.env
+postgres.env

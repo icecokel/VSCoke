@@ -56,6 +56,15 @@ test("통합 fixture는 loopback 실제 관리 API로 합성 원본·문서·상
   assert.match(core.facts[0].content, /^Synthetic/);
   const versions = requests.filter(request => request.path === "/resume-management/versions");
   assert.equal(versions.length, 11);
+  for (const version of versions) {
+    const content = version.payload?.content as { careers: { id: string }[]; links: string[] };
+    assert.ok(content.careers.length >= 3, "경력 fragment 이동 검증에는 세 경력이 필요하다");
+    assert.equal(new Set(content.careers.map(career => career.id)).size, content.careers.length);
+    assert.ok(
+      content.links.includes("https://example.test/synthetic-portfolio"),
+      "문서 끝 링크의 스크롤 검증 전제",
+    );
+  }
   for (const key of ["pe", "fe", "nexon"]) {
     assert.deepEqual(
       versions

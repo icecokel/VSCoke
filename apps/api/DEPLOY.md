@@ -1,87 +1,166 @@
 # API 배포 가이드
 
-이 문서는 API 코드·환경 변수·DB schema를 운영에 반영하는 실행 절차만 다룹니다.
+운영 API와 PostgreSQL은 춘천 OCI 1호기의 네이티브 systemd에서 실행한다.
+2026-11-14 20:14 KST 최종 DB 동기화와 공개 DNS 전환을 완료했다. Mac API는 중지·보존 상태다.
+아래 초기 설치·리허설 기록은 당시의 검증이며 현재 운영 전환 결과는 9절을 따른다.
 
-전체 monorepo 배포/환경 변수 기준은 [Deployment and Environment Plan](../../docs/deployment-and-env.md)을 우선합니다.
+## 1. OCI 인프라 인계
 
-## 운영 서버 접속
+icecoke-ops의 기준 기록은 `docs/plans/oci-migration/vscoke-api-01.md`다. VSCoke 변경은
+`worktrees/ci/oci-native`, 브랜치 `codex/ci/oci-native`에서 준비했다. 준비 커밋 `39efa56b`의
+API_HOST와 write-native를 재사용하고 최신 로컬 main에 통합했다. 원래 작업 브랜치의
+미커밋 변경은 별도로 보존했다.
 
-운영 API는 Mac mini의 Docker Compose에서 실행됩니다. 아래 명령은 Mac mini의 배포 디렉터리에서
-실행합니다.
+| 구분        | 설치·확인 기준                                                          |
+| ----------- | ----------------------------------------------------------------------- |
+| SSH         | `ssh -F /Users/smlee/icecoke-ops/config/ssh-config oci-01`              |
+| 앱 루트     | `/home/ubuntu/vscoke-api`, ubuntu 소유·700                              |
+| runner      | `/home/ubuntu/actions-runner-vscoke-api`, 이름 `vscoke-api-oci-01`      |
+| labels      | `self-hosted,Linux,ARM64,vscoke-api,oci-01`                             |
+| 서비스      | `vscoke-api.service`, `postgresql@16-main.service`                      |
+| DB 환경     | `/home/ubuntu/vscoke-api/.local/db.env`, 600, 전용 `vscoke_api` role·DB |
+| 앱 환경     | `/home/ubuntu/vscoke-api/api.env`, 600                                  |
+| 캐시·로그   | `.cache/embeddings`, `logs` (릴리스 밖)                                 |
+| 활성화 신호 | `.local/activate` (인프라 검증 완료 후 생성)                            |
+
+2026-11-14 17:35 KST 관리자가 직접 설치한 뒤 GitHub에서 `vscoke-api-oci-01`의 online 상태와
+필요한 Linux/ARM64/vscoke-api/oci-01 label을 확인했다. systemd는 active/running·enabled다.
+API·PostgreSQL·Discord 봇과 로컬 API health도 정상이다. 최초 설치 스크립트 마지막의
+`Must run as sudo`는 비관리자 `svc.sh status` 호출에서 발생했으며 서비스 시작 실패가 아니다.
+스크립트의 상태 조회를 읽기 전용 systemctl 명령으로 수정했다. 같은 날 19:03 KST OCI 전용
+runner에서 새 workflow의 테스트·빌드·배포와 로컬 endpoint 검증까지 통과했다(7절 참조).
+
+인프라 담당자는 GitHub 저장소 **Settings → Actions → Runners**의 공식 Linux ARM64 다운로드·
+체크섬 검증 명령으로 전용 디렉터리에 설치한다. 등록 토큰은 config.sh의 대화형 입력으로 전달하고
+로그·셸 이력에 남기지 않는다. 등록 및 관리자 서비스 설치 명령:
 
 ```bash
-cd /Users/smlee/projects/vscoke-api
+cd /home/ubuntu/actions-runner-vscoke-api
+./config.sh --url https://github.com/icecokel/VSCoke --name vscoke-api-oci-01 --labels vscoke-api,oci-01 --work _work
+sudo ./svc.sh install ubuntu
+sudo ./svc.sh start
 ```
 
-서버 경로, 컨테이너와 runner 기준값은
-[Deployment and Environment Plan](../../docs/deployment-and-env.md#api-mac-mini-docker)을 확인합니다.
+기본 Linux/ARM64 label을 유지한다. Discord의 `discord-bot-oci` 러너와 설치·work 디렉터리·
+서비스를 분리한다. `git`, `curl`, `tar`, `xz-utils`, `util-linux`(flock), `sudo`가 필요하다.
+Node/pnpm은 Actions가 설치한다. Mac·Docker·SSH 빌드에 의존하지 않는다.
 
-## 1. 소스 코드 배포 (자동)
+직접 실행용 `scripts/setup-api-oci-runner.sh`는 공식 runner 2.338.2 Linux ARM64 배포본의
+SHA-256을 검증한 뒤 의존성·등록·서비스·아래 sudoers를 준비한다. 다른 저장소의 runner가
+같은 경로에 등록돼 있으면 중단한다. 기존 VSCoke 등록이 있으면 검증 후 서비스 설치를 이어간다.
+Mac 터미널에서 다음 명령을 실행하고, 등록 토큰을 물으면 클립보드 내용을 붙여넣는다.
+토큰을 명령 인자·셸 이력·채팅에 직접 쓰지 않는다.
 
-`main` 반영 뒤 `.github/workflows/deploy-api.yml`이 배포를 수행합니다. 수동 재실행은 해당
-workflow의 `workflow_dispatch`를 사용하고, 완료 뒤 `pnpm smoke:api:remote`로 공개 health를
-확인합니다. workflow 단계와 trigger가 바뀌면 workflow 파일을 기준으로 판단합니다.
+```bash
+gh api --method POST repos/icecokel/VSCoke/actions/runners/registration-token --jq .token | pbcopy
+scp -F /Users/smlee/icecoke-ops/config/ssh-config /Users/smlee/vscoke/worktrees/ci/oci-native/scripts/setup-api-oci-runner.sh oci-01:/home/ubuntu/vscoke-api-rehearsal/admin/setup-api-oci-runner.sh
+ssh -t -F /Users/smlee/icecoke-ops/config/ssh-config oci-01 'bash /home/ubuntu/vscoke-api-rehearsal/admin/setup-api-oci-runner.sh'
+```
+
+기존 unit의 실행 계약을 유지한다. unit의 전체 관리 원본은 icecoke-ops에 있다.
+
+```ini
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/vscoke-api/current
+ExecStartPre=/usr/bin/test -f /home/ubuntu/vscoke-api/current/.env
+ExecStart=/home/ubuntu/vscoke-api/current/bin/node scripts/api-deploy-env.mjs run bin/node apps/api/dist/src/main.js
+Restart=always
+RestartSec=10
+UMask=0077
+```
+
+관리자는 `/etc/sudoers.d/vscoke-api-deploy`에 아래 한 명령만 허용하고
+`sudo visudo -cf /etc/sudoers.d/vscoke-api-deploy`로 검증한다. API/runner는 ubuntu 권한으로
+실행되므로 외부 PR 코드는 운영 러너에서 실행하지 않는다.
+
+```sudoers
+ubuntu ALL=(root) NOPASSWD: /usr/bin/systemctl restart vscoke-api.service
+```
+
+점검(키·환경 내용을 출력하지 않음):
+
+```bash
+systemctl is-active vscoke-api.service postgresql@16-main.service
+systemctl is-enabled vscoke-api.service
+sudo -n -l /usr/bin/systemctl restart vscoke-api.service
+ss -ltn '( sport = :3000 or sport = :5432 )'
+curl -fsS http://127.0.0.1:3000/health
+```
+
+관리자 실행이 거절되면 우회하지 않고 정확한 명령과 거절 이유를 인계한다. cloudflared 서비스·
+인증·터널 route 설치는 icecoke-ops에서 처리한다. 이 코드가 해당 서비스를 설치하거나 운영 도메인을
+전환하지 않는다.
 
 ## 2. 환경 변수 배포 (GitHub Secret)
 
-운영 환경변수의 원본은 `icecokel/VSCoke`의 Repository Secret `API_ENV_PRODUCTION`입니다.
-서버 `api.env`, `postgres.env`, `.env`는 배포 결과물이며 직접 수정하거나 수동으로 전송하지
-않습니다. 로컬 개발은 기존처럼 `apps/api/.env`를 사용합니다.
+앱 비밀값의 원본은 기존 Repository Secret `API_ENV_PRODUCTION`이다. write-native는
+`.local/db.env`의 DB host/port/user/database/password와 `API_HOST=127.0.0.1`, `PORT=3000`,
+`TRUST_PROXY=loopback`, 호스트 캐시 `.cache/embeddings`, offline 모드만 덮어쓴다.
+Claude·Google·JEV·CORS 값은 보존한다. 설치 계약의 DB 암호는 64자리 소문자 hex이며
+host/role이 다르면 자동 적용을 거절한다. `api.env`는 600 권한으로 원자 교체하며 shell로 source하지 않는다.
 
-1. GitHub의 **Settings → Secrets and variables → Actions → API_ENV_PRODUCTION**에서
-   운영용 dotenv 전체 내용을 수정합니다. 예제와 변수 기준은
-   [Deployment and Environment Plan](../../docs/deployment-and-env.md#api-환경-변수)을 따릅니다.
-2. **Actions → Deploy API to Mac mini (Docker) → Run workflow**로 `main`을 다시 배포합니다.
-3. workflow가 Secret을 검증하고 서버 `api.env`를 권한 `600`으로 원자적으로 교체한 뒤
-   import/index와 API 컨테이너 교체를 수행합니다. Secret이 비어 있으면 기존 파일로 대체하지 않고
-   릴리스 변경 전에 실패합니다. `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`는 postgres 컨테이너의
-   최초 초기화에만 쓰이므로 이미 초기화된 DB의 비밀번호를 바꾸려면 DB에서 `ALTER ROLE`을 먼저
-   실행합니다.
-4. 공개 health와 JEV 상태를 확인합니다. `JEV_API_KEY`가 비어 있으면 JEV 게임은 숨겨집니다.
+`API_DEPLOY_DIR`는 `/home/ubuntu/vscoke-api` 또는 미설정으로 둔다. 최초 리허설은
+**Deploy API to OCI (native)**의 workflow_dispatch, `verify_public=false`로 실행한다.
+Repository variable `API_VERIFY_PUBLIC`도 미설정 또는 `false`로 둔다. 전환 후 push 배포용
+variable을 `true`로 바꾸고 수동 실행도 `verify_public=true`를 사용한다. 전환 전 공개 health는
+Mac의 응답일 수 있으므로 OCI 배포 증거로 사용하지 않는다.
 
-`NODE_ENV=production`, `DB_SYNCHRONIZE=false`와 DB·Google 인증 필수값을 포함합니다. Docker
-운영 필수값(`DB_HOST=postgres`, `ANTHROPIC_API_KEY` 등)은
-[Mac mini 초기 준비](../../docs/deployment-and-env.md#mac-mini-초기-준비)의 표를 따릅니다.
-개발 인증 우회와 테스트 토큰은 제외합니다. 비밀값을 명령 인자, Git 파일 또는 로그에
-남기지 않습니다. 컨테이너 진입점은 dotenv를 셸로 실행하지 않고 파싱해 자식 프로세스에 전달합니다.
+## 3. 빌드·배포와 실패 복구
 
-Resume RAG와 메인 채팅 환경 변수는
-[현재 배포·검증 기준](../../docs/main-chat-ai-usage-guide.md#6-배포와-검증)을 따릅니다.
+전용 OCI 러너에서 API lint·전체 단위 테스트, `pnpm test:tooling`, health 도구 테스트 후 빌드한다.
+`package-api-native.sh`는 고정 lockfile로 production 의존성을 독립 설치하고 API dist·package.json·
+node_modules, Node, 환경/health 도구, 공개 이력 자료만 남긴다. env·개인 원본·DB·인증 상태는 제외한다.
+ONNX 네이티브 모듈 로드도 검사한다.
 
-### Claude API 전환 전 필수 작업
+배포 순서:
 
-이 코드를 배포하기 전에 `API_ENV_PRODUCTION`의 `RAG_CHAT_PROVIDER`를 `claude`,
-`RAG_CHAT_MODEL`을 `claude-sonnet-5-5`로 **교체**하고 유효한 `ANTHROPIC_API_KEY`와
-`RAG_CHAT_TIMEOUT_MS=45000`을 설정합니다. 기존 provider/model 값이 남으면 기본값이
-적용되지 않아 채팅이 실패합니다. `RAG_CODEX_*`는 제거하고 임베딩·DB 설정은 유지합니다.
-Secret 변경 후 workflow를 실행해야 컨테이너에 반영됩니다. 로컬 `.env` 변경만으로 운영이
-바뀌지 않습니다. 배포 후 첫 질문과 후속 질문을 확인하며 Codex app-server는 더 이상
-VSCoke 답변 생성의 필수 서비스가 아닙니다.
+1. flock으로 중복 실행을 막고 이전 current·API env를 `.local/deploy-<release-id>`에 보존한다.
+2. `releases/<sha>-<run-id>-<attempt>`에 번들을 두고 `revision`에 커밋을 기록한다. `.env`·`logs`는 공유 경로에 연결한다.
+3. write-native → 미적용 migration 확인 → 공개 이력 import → 필요한 vector index를 수행한다.
+4. current symlink 원자 교체 후 허용된 systemd restart 한 명령을 수행한다.
+5. 로컬 health·resume·recipes·espresso-history/beans와 선택적 공개 endpoint를 검사한다.
+6. 성공 시에만 workflow가 `.last-successful-deploy`를 기록한다. 다음 배포 판정은 `current/revision`과 이 기록이 일치할 때만 생략할 수 있다. 수동 복구 뒤의 오래된 성공 기록은 신뢰하지 않는다. 이전 릴리스는 보존한다.
 
-### 현재 릴리스 구성과 실행 순서
+실패·일반 종료 신호에서는 이전 env·current를 복구한다. 교체 이후면 이전 서비스를 재시작·검사한다.
+import/index의 DB 쓰기와 migration은 코드 복구로 되돌리지 않는다. 이전 코드와 호환되는 schema를
+유지한다. 재시작 시 메모리의 진행 중 Beat Jev 매치는 유실된다. SIGKILL·호스트 장애는 자동 trap
+대상이 아니므로 실패 배포의 복구 기록을 사용한다.
 
-| 구분         | 현재 동작                                                                                                            |
-| ------------ | -------------------------------------------------------------------------------------------------------------------- |
-| DB migration | 자동 실행하지 않습니다. 신규 schema는 백업·ledger 확인 후 API보다 먼저 적용합니다.                                   |
-| 이미지       | `apps/api/Dockerfile`로 빌드하고 `vscoke-api:<sha>`, `vscoke-api:latest`로 태그합니다.                               |
-| 공개 원본    | 웹 이력 JSON·번역 메시지·경력 MDX·공개 안내 문서를 이미지에 포함합니다. 개인 이력 작업공간은 제외합니다.             |
-| import       | DB 기동 후 API 이미지로 공개 원본을 `resume:import`와 같은 스크립트로 동기화합니다. 실패하면 배포를 실패 처리합니다. |
-| index        | keyword 모드가 아니고 임베딩 공급자가 설정됐을 때 실행합니다.                                                        |
-| API 교체     | import와 필요한 index가 성공한 뒤 `docker compose up --wait api`로 컨테이너를 교체합니다.                            |
-| health 도구  | `scripts/check-api-health.mjs`, `api-health-checker.mjs`, `api-deploy-env.mjs`를 릴리스와 이미지에 포함합니다.       |
-| 보존 경로    | `rsync --delete`에서 `.env`, `api.env`, `postgres.env`, `.next-release`, `backups`, `logs`를 제외합니다.             |
+활성 배포가 없는지 확인하고 같은 flock을 확보한 뒤 수동 복구한다. `<release-id>`는 실패 배포의 ID다.
 
-신규 기능 릴리스는 **migration → API → 웹** 순서를 확보합니다. API와 Vercel 사이의 자동
-순서 보장은 없습니다. 소스 빌드 도구나 개인 원본을 운영 릴리스에 임의로 추가하지 않습니다.
-현재 자동화의 판단 기준은 위 표와 workflow입니다.
+```bash
+cd /home/ubuntu/vscoke-api
+exec 9>.local/deploy.lock
+flock -n 9
+STATE=.local/deploy-<release-id>
+PREVIOUS="$(cat "$STATE/previous-release")"
+cp -p "$STATE/api.env" api.env.rollback
+mv -f api.env.rollback api.env
+"$PREVIOUS/bin/node" -e 'const fs=require("node:fs"); fs.symlinkSync(process.argv[1], "current.rollback"); fs.renameSync("current.rollback", "current");' "$PREVIOUS"
+sudo -n /usr/bin/systemctl restart vscoke-api.service
+API_HEALTH_URL=http://127.0.0.1:3000/health current/bin/node current/scripts/check-api-health.mjs
+```
 
-health 검사는 checkout 루트 또는 새 릴리스 루트에서 `pnpm smoke:api:remote`로 실행합니다.
-이전 릴리스로 롤백해 health 파일이 없으면 검증된 checkout에서 대상 `API_HEALTH_URL`을
-지정해 실행합니다. health 성공은 DB migration·RAG 검색 품질 검증을 대체하지 않습니다.
+## 4. DB schema 변경
 
-## 3. DB schema 변경
+운영 migration 자동 실행은 추가하지 않는다. 백업·ledger 확인 후 후보 릴리스의 TypeORM CLI로
+수동 적용하고 workflow를 다시 실행한다. 미적용 migration으로 중단한 후보는 releases에 보존된다.
+DB 백업/복원은 icecoke-ops 검증 도구를 사용하며 dump를 Git·Actions artifact로 업로드하지 않는다.
 
-운영 API는 `DB_SYNCHRONIZE=false`를 기본으로 유지합니다. schema 변경은 TypeORM migration 파일로 추적하고, 운영 DB에는 backup을 만든 뒤 migration 명령으로만 반영합니다. 운영 DB에서 `psql`로 직접 DDL을 실행하는 방식은 긴급 복구 상황이 아니면 사용하지 않습니다.
+```bash
+cd /home/ubuntu/vscoke-api/releases/<candidate-release-id>
+bin/node scripts/api-deploy-env.mjs run bin/node apps/api/node_modules/typeorm/cli.js -d apps/api/dist/src/data-source.js migration:show
+# backup 확인 및 migration 검토 후에만 실행
+bin/node scripts/api-deploy-env.mjs run bin/node apps/api/node_modules/typeorm/cli.js -d apps/api/dist/src/data-source.js migration:run
+```
+
+후보 `.env`는 공유 env를 가리킨다. 최초 OCI env를 아직 만들지 않았거나 실패 복구로 이전 env가
+복원된 경우 OCI 변환 결과인지 먼저 확인한다. Mac DB 자격 증명으로 migration을 실행하지 않는다.
+코드 롤백과 DB 복원을 구분하고 breaking 변경은 expand/contract로 나눈다. rollback 가능한 마지막
+migration은 같은 명령에서 `migration:run`을 `migration:revert`로 바꿔 실행한다. destructive baseline의
+revert는 의도적으로 실패한다. backup 복구가 필요하면 API 쓰기를 멈추고 ops의 snapshot 검증·복원
+절차를 수행한 뒤 서비스를 시작한다. schema와 ledger를 수동으로 맞춰 통과시키지 않는다.
 
 ### Legacy baseline 주의
 
@@ -117,7 +196,7 @@ pnpm --filter @vscoke/api migration:generate 'src/migrations/<kebab-summary>'
 ```
 
 `migration:generate`는 `apps/api/.env`의 `DB_*`가 가리키는 로컬 DB schema와 entity 차이를 비교합니다.
-운영 PostgreSQL은 호스트에 포트를 publish하지 않으므로 운영 schema와 비교하려면 운영 backup을 로컬 DB에
+운영 PostgreSQL은 OCI loopback에서만 받으므로 운영 schema와 비교하려면 운영 backup을 로컬 DB에
 restore한 뒤 실행합니다. 생성된 migration의 `up`, `down`을 모두 검토하고, rollback이 불가능한 변경은
 배포 전에 별도 수동 복구 절차를 이 문서나 PR에 남깁니다.
 
@@ -135,151 +214,178 @@ pnpm --filter @vscoke/api migration:run
 
 `migration:show`, `migration:run`, `migration:revert`는 `dist/src/data-source.js`를 사용하므로 먼저 API를 build합니다.
 
-### 운영 backup
+## 5. 최종 운영 전환 (icecoke-ops)
 
-운영 migration을 실행하기 직전에 Mac mini에서 postgres 컨테이너로 backup을 생성합니다. 컨테이너의
-`/backups`는 호스트 `backups/`에 bind mount되어 있고 배포가 보존합니다. `$POSTGRES_*`는 컨테이너
-환경에서 해석되므로 호스트 셸에 비밀값을 두지 않습니다.
+아래는 이번 전환에서 따른 실행·복구 기준이다. 사전 사본 대신 쓰기 중단 후의 최종 DB를 사용한다.
+
+1. OCI 전용 runner의 권한·새 workflow 실행 검증은 완료했다. 운영 전환 시 사용할 커밋과 main 반영 순서를 확정한다.
+2. 새 release의 Node 버전·ARM64·loopback·공유 로그·offline E5 모델 로드를 확인한다.
+3. Origin `https://vscoke.icecoke.kr`을 포함해 실제 `/resume-rag/chat`의 첫 질문·후속 질문,
+   grounded/출처를 검사한다. OAuth·인증 경로와 Discord 서비스도 확인한다.
+4. Mac 쓰기를 중단하고 최신 dump를 만든 뒤 OCI API를 중지하고 복원한다. 최신 snapshot의
+   테이블 행 수·인덱스·ledger·벡터를 다시 대조한다.
+5. OCI용 cloudflared 서비스·인증을 준비하고 ingress를 `http://127.0.0.1:3000`으로 설정한 뒤
+   public hostname을 전환한다. 같은 hostname의 Mac route를 함께 남기지 않는다.
+6. `API_VERIFY_PUBLIC=true`, 수동 `verify_public=true`로 새 배포·공개 endpoint·채팅·로그인을 검사한다.
+7. OCI에 새 쓰기가 생긴 뒤 Mac으로 복귀하려면 OCI 쓰기를 중단하고 최신 데이터를 Mac에 먼저
+   반영한다. DNS만 되돌려 데이터가 분기되지 않게 한다.
+
+39efa56b의 기존 systemd·DB·벡터 리허설 증거는 새 workflow 배포 성공 증거를 대체하지 않는다.
+
+## 6. 이번 변경의 검증 기록 (2026-11-14)
+
+코드 기준점은 로컬 main `e3dc9afd`와 준비 커밋 `39efa56b`다. 원래 작업 트리의 변경은 보존했다.
+
+- Node 24.22.1에서 API lint, API 단위 테스트 64개 suite/484개 test 통과.
+- `pnpm test:tooling` 31개 통과. 수동 복구 후 current/성공 기록 불일치도 재현·검증했다.
+  실제 배포 셸/환경 변환/HTTP 검사를 실행하고 DB·systemd 경계를
+  합성해 migration/import/index/restart/local/public health/Secret 실패에서 이전 코드·환경 복구,
+  cache·DB 설정·로그·백업 보존을 확인했다. macOS 하네스의 flock은 대역이고 Linux CI는 실제 flock을 사용한다.
+- `pnpm build`로 웹과 API 모두 빌드. health 도구 테스트 8개, bash 문법, Prettier, git diff 검사 통과.
+- actionlint 1.7.12로 새 workflow의 문법·표현식·사용자 runner label 검사 통과. ShellCheck는 미실행.
+- 고정 lockfile로 독립 production 번들을 실제 생성하고 경로 이동 후 의존성 symlink 902개가
+  번들 안을 가리키는지 확인했다. 이동한 번들에서 Nest·TypeORM·ONNX 모듈을 로드했다.
+  이 초기 패키징 검사는 macOS ARM64이며 이후 OCI Linux ARM64 검증 결과는 7절에 기록했다.
+- OCI 읽기 점검: Node 24.22.1, API·PostgreSQL active, `/resume`·`/recipes` HTTP 200.
+  이는 기존 `39efa56b` 서비스의 점검이다. 새 workflow의 실배포 결과는 아니다.
+- 초기 검증 당시 GitHub에는 VSCoke Mac runner만 있었고 OCI에는 Discord runner만 실행 중이었다.
+  이후 관리자가 전용 OCI runner와 재시작 sudoers를 설치했다. runner의 online·active·enabled 상태는
+  확인했다. 이후 권한·새 workflow 실행 검증을 완료했고 cloudflared·최신 데이터/터널 전환은 남아 있다.
+
+초기 로컬 검증에서는 운영 env·DB·DNS·서비스·GitHub Secret을 변경하지 않았다.
+
+관리자 인계: 이 세션의 `PreToolUse` 셸 훅이 아래 권한 조회도 `Blocked sudo from Codex shell hooks`로
+차단했다. 조회를 우회하지 않았다. 이후 관리자가 runner 설치를 완료했으므로 아래 명령으로
+재시작 권한을 확인했고, 실제 workflow의 사전 조건 검사와 서비스 재시작도 통과했다.
 
 ```bash
-cd /Users/smlee/projects/vscoke-api
-BACKUP_NAME="vscoke-$(date +%Y%m%d-%H%M%S).dump"
-docker compose exec postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom --no-owner --no-acl --file "/backups/'"$BACKUP_NAME"'"'
-docker compose exec postgres pg_restore --list "/backups/$BACKUP_NAME" | head
+ssh -F /Users/smlee/icecoke-ops/config/ssh-config oci-01 'sudo -n -l /usr/bin/systemctl restart vscoke-api.service'
 ```
 
-backup 파일이 `backups/`에 생성되고 `pg_restore --list`가 archive 내용을 출력해야 migration을 진행합니다.
+## 7. OCI 실제 배포 검증 (2026-11-14 19:03 KST)
 
-### 운영 migration 실행
+[GitHub Actions run 43583243297](https://github.com/icecokel/VSCoke/actions/runs/43583243297)은
+`codex/ci/oci-native`의 `06bedfc95e6514fed676a85dbb5733b00cdcde79`를 대상으로 성공했다.
+job의 실제 runner는 `vscoke-api-oci-01`이며 Linux ARM64에서 설치·검사·빌드·배포를 모두 수행했다.
 
-API 이미지로 일회성 컨테이너를 띄워 migration 상태를 확인한 뒤 실행합니다. 컨테이너 진입점과 같은
-`api-deploy-env.mjs run`이 mount된 secret을 주입합니다.
+- API lint, 단위 테스트 64 suite/484 test, 배포 계약 테스트 34개, health 도구 테스트 8개 통과.
+- frozen lockfile production 설치, API 빌드, ONNX 로드를 포함한 독립 네이티브 패키징 통과.
+- 미적용 migration 검사, 공개 이력 import, 필요한 vector index, current 교체, systemd 재시작과
+  로컬 health 검사, 성공 커밋 기록까지 통과.
+- 실행 후 `current`는 `releases/06bedfc95e6514fed676a85dbb5733b00cdcde79-43583243297-1`을 가리키고
+  `revision`도 해당 커밋과 일치한다. 실제 Node는 24.22.1, 아키텍처는 aarch64다.
+- `/health`, `/resume`, `/recipes`, `/espresso-history/beans`가 HTTP 200이다.
+  API·PostgreSQL·Discord 봇 모두 active다.
+- API·DB host는 127.0.0.1, 포트는 각각 3000·5432, trust proxy는 loopback이다.
+  캐시는 호스트의 `.cache/embeddings`, offline 모드는 true다.
+- 릴리스의 `.env`·`logs`는 공유 경로를 가리킨다. `api.env`·`.local/db.env`는 ubuntu 소유 600,
+  캐시·로그 디렉터리는 ubuntu 소유 700이다. Secret·DB 암호 원문은 검증 출력에 포함하지 않았다.
+
+이 실행은 `verify_public=false`인 OCI 리허설 배포다. 공개 도메인 검증·최신 운영 DB 동기화·
+터널 최종 전환·main 워크플로 반영은 별도 작업이다. 새 릴리스의 실제 AI 첫 질문·후속 질문과
+OAuth 경로는 이 읽기 점검에서 실행하지 않았다. 실제 실패 주입으로 운영 서비스를 되돌리지는 않았으며,
+자동 복구·상태 보존 동작은 Linux에서 통과한 배포 하네스 검증을 근거로 한다.
+
+## 8. 최종 전환 준비
+
+최종 반영용 `codex/ci/oci-cutover`는 원격 main `3af37ca5`에서 OCI 이관과 필요한 CI 변경만
+가져왔다. 로컬 main의 미배포 웹 변경 18개 커밋과 원래 작업 트리의 미커밋 변경은 보존한다.
+이 브랜치에서도 API lint/단위 테스트 484개, 기존 배포 계약 테스트 34개, 웹·API 빌드를 확인했다.
+
+Mac 원본 DB의 encoding/LC_COLLATE/LC_CTYPE은 `UTF8/en_US.utf8/en_US.utf8`이다.
+OCI에는 해당 로케일이 없어 최종 복원 전에 준비하고 임시 DB 생성으로 PostgreSQL에서 검증한다.
+OS가 로케일을 인식해도 오래 실행된 PostgreSQL은 새 locale archive를 인식하지 못할 수 있다.
+준비 스크립트는 기존 로케일을 재생성하지 않으며, probe가 `invalid LC_COLLATE locale name`으로
+실패한 경우에만 OCI PostgreSQL·API를 재시작하고 한 번 재검증한다. 권한 오류 등 다른 실패는
+재시작으로 우회하지 않고 그대로 중단한다. 최종 createdb는 원본과 같은 libc provider를 명시한다.
+관리자 도구는 일반 `sudo -v` 사전 인증을 요구하지 않는다. 명령별 NOPASSWD 허용과 사전 인증의
+정책이 다를 수 있으므로 실제 관리자 명령에 `sudo -n`을 붙이고, 암호가 필요하면 즉시 중단해
+정확한 권한 오류를 표시한다. 비밀번호 재입력이나 포괄적인 권한 확대를 자동으로 시도하지 않는다.
+최종 동기화 시에는 API 쓰기를 중단한 snapshot과 복원본의 테이블 내용 해시·행 수·시퀀스·
+인덱스·확장·마이그레이션을 비교한다. 이 준비 단계에서는 운영 API를 중지하지 않는다.
+
+OCI 전용 새 터널은 `vscoke-api-oci-01` (`cc5f9f8e-fe12-436b-b243-be03466df18c`)이다.
+준비 단계에서는 기존 Mac 터널을 유지했고, 새 터널을 미리 연결한 뒤 최종 DB 검증 후 DNS를
+전환했다. 다른 ID의 전용 터널을 사용해 양쪽 DB에 트래픽이 섞이지 않게 했다.
+
+관리자 준비용 CLI(전용 터널 서비스·cloudflared 2026.11.0·DB 로케일만 설치):
 
 ```bash
-cd /Users/smlee/projects/vscoke-api
-docker compose run --rm --no-deps api node scripts/api-deploy-env.mjs run pnpm --filter @vscoke/api migration:show
-docker compose run --rm --no-deps api node scripts/api-deploy-env.mjs run pnpm --filter @vscoke/api migration:run
-docker compose restart api
-pnpm smoke:api:remote
+ssh -F /Users/smlee/icecoke-ops/config/ssh-config oci-01 'umask 077; mkdir -p /home/ubuntu/vscoke-api-rehearsal/cutover; chmod 700 /home/ubuntu/vscoke-api-rehearsal/cutover'
+scp -F /Users/smlee/icecoke-ops/config/ssh-config /Users/smlee/vscoke/worktrees/ci/oci-cutover/scripts/prepare-api-oci-cutover.sh /Users/smlee/vscoke/worktrees/ci/oci-cutover/output/cutover/oci-tunnel-credentials.json oci-01:/home/ubuntu/vscoke-api-rehearsal/cutover/
+ssh -t -F /Users/smlee/icecoke-ops/config/ssh-config oci-01 'bash /home/ubuntu/vscoke-api-rehearsal/cutover/prepare-api-oci-cutover.sh'
 ```
 
-기본 흐름은 backward-compatible migration을 먼저 적용하고, 코드가 새 schema를 사용하도록 배포하는 방식입니다. 기존 코드와 새 코드 중 한쪽이 깨지는 breaking schema 변경은 expand/contract 단계로 나누어 별도 PR로 처리합니다.
+이 스크립트는 credential 형식/터널 ID와 배포본 SHA-256을 먼저 검증한다. 파일은
+`/home/ubuntu/vscoke-api/.local/cloudflared-credentials.json`(600)과 `cloudflared.yml`에 설치하고,
+systemd unit은 `/etc/systemd/system/cloudflared-vscoke-api.service`에 설치한다.
+metrics/readiness는 loopback 20242 포트만 사용한다. 자격 증명·dump는 Git에 추가하지 않는다.
 
-### Rollback
+최종 데이터 도구는 다음 두 파일이다. 관리자 준비가 끝난 뒤 전체 전환 절차에서 사용하며,
+현재 `output/cutover/preflight`는 `source_frozen=false`인 사전 사본이므로 최종 복원에 사용할 수 없다.
 
-마지막 migration만 되돌리면 되는 경우:
+- `scripts/snapshot-api-db.py`: 기본 모드는 Mac API가 정지됐는지 확인한 후 동일 PostgreSQL snapshot의
+  custom dump·내용 해시 manifest를 만들고, network가 없는 임시 PostgreSQL에서 복원·대조한다.
+  dump와 검증 결과는 이 worktree의 `output/cutover` 안에만 600/700 권한으로 저장한다.
+- `scripts/restore-api-db-oci.py`: 관리자가 OCI에서 실행한다. frozen/검증 metadata·SHA-256 확인 후
+  기존 OCI 사본을 먼저 `backups/before-final-sync-*.dump`에 백업·확인하고 전용 `vscoke_api` DB를
+  다시 만든다. role·암호·공유 env/cache/logs는 유지한다. 내용·schema·sequence가 원본과 일치한 뒤에만
+  API를 시작한다. 불일치 시 OCI API를 중지하며, 교체 전 백업 검증 실패라면 이전 API를 다시 시작한다.
+
+사전 점검에서는 현재 Mac DB의 테이블 28개·인덱스 64개·시퀀스 2개·migration 10개·vector 6,988개가
+격리 복원본과 내용 해시까지 일치했다. 사전 사본 검증은 쓰기 중단 후의 최종 검증을 대체하지 않는다.
+복원 하네스는 관리자/PG 명령을 대역으로 바꿔 unfrozen 거절·잘못된 백업의 파괴 작업 차단·
+manifest 불일치 시 기동 차단·성공 경로를 검사했다. 실제 OCI 최종 복원 결과는 9절에 기록했다.
+
+관리자 준비 후 `scripts/cutover-api-to-oci.py`를 Mac 터미널에서 실행한다.
+이 명령은 실제 운영 API를 잠시 중단하고 최종 동기화와 DNS 전환을 이어서 수행한다.
 
 ```bash
-cd /Users/smlee/projects/vscoke-api
-docker compose run --rm --no-deps api node scripts/api-deploy-env.mjs run pnpm --filter @vscoke/api migration:revert
-docker compose restart api
-pnpm smoke:api:remote
+python3 /Users/smlee/vscoke/worktrees/ci/oci-cutover/scripts/cutover-api-to-oci.py
 ```
 
-backup으로 복구해야 하는 경우에는 API를 멈추고 restore한 뒤 다시 시작합니다.
+전환 전 공개 health가 Mac 원본의 프로세스와 일치하는지, OCI tunnel/readiness가 정상인지 확인한다.
+기존 Mac 배포가 원본 API를 다시 시작하지 않도록 API 배포 workflow를 잠시 disabled_manually로
+전환한 상태에서만 진행한다. PR 검사는 유지하며, main을 OCI workflow로 반영한 후 다시 활성화한다.
+Mac API를 중지한 뒤 새 snapshot을 생성·격리 검증하고 SSH로 OCI에 복원한다. 복원 내용 대조와
+OCI health를 통과한 경우에만 api.icecoke.kr의 DNS를 OCI 전용 터널로 변경한다.
+공개 응답의 timestamp/uptime에서 계산한 프로세스 시작 시각을 OCI 응답과 대조하고 주요 endpoint도 확인한다.
 
-```bash
-cd /Users/smlee/projects/vscoke-api
-docker compose stop api
-docker compose exec postgres sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner --no-acl "/backups/'"$BACKUP_NAME"'"'
-docker compose up --detach --wait api
-pnpm smoke:api:remote
-```
+DNS 요청 전 실패는 Mac API를 재시작·health 검증하며, 이후 재시도는 새 snapshot으로 시작한다.
+DNS 요청 시점부터는 OCI에 쓰기가 생겼을 수 있으므로 Mac을 자동으로 재개하지 않는다.
+`output/cutover/final-*/state.json`의 전환 기록이 DNS 요청 이후 상태이면 반복 실행도 차단한다.
+이 상태에서 복귀하려면 실제 DNS·OCI 쓰기를 확인하고 최신 OCI 데이터를 Mac에 역동기화해야 한다.
+최종 전환 성공 뒤 Mac API는 중지 상태로 유지하며, PR CI 검증과 main 반영은 이어서 수행한다.
 
-restore에 사용할 `BACKUP_NAME`은 운영 backup 단계에서 생성한 파일 이름으로 설정합니다.
+main 반영 전 CI에서 기존 합성 이력서가 경력 한 개·외부 링크 없음으로 등록돼 경력 fragment와
+문서 끝 스크롤 검사 네 개가 실패하는 것을 확인했다. 통합 fixture에 세 경력과 합성 외부 링크를
+등록하고 전제 조건을 단위 테스트로 고정했다. 운영 화면 코드는 변경하지 않았다.
+격리 PostgreSQL과 실제 API를 사용한 해당 브라우저 시나리오 네 개가 로컬에서 통과했다.
 
-코드 롤백은 이전 이미지를 되살리지 않고 `main`에 revert 커밋을 올려 workflow를 다시 실행합니다.
-직전 sha 이미지는 workflow 끝에서 제거되므로 수동 롤백 수단으로 가정하지 않습니다.
+## 9. 운영 DB·터널 전환 완료
 
-### DB 접속 기준
+2026-11-14 20:12 KST Mac API 쓰기를 중단하고 최종 snapshot을 생성했다. 같은 snapshot의
+격리 복원과 OCI 복원본에서 아래 항목을 내용 해시까지 대조한 뒤, 20:14 KST 공개 DNS를 전환했다.
 
-운영 PostgreSQL은 compose 네트워크 안의 `postgres` 컨테이너이며 호스트 포트를 publish하지 않습니다.
-확인 명령은 `docker compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"`로 실행합니다.
-`migration:generate`는 로컬 개발 DB를 기준으로 하고, 운영 schema 비교가 필요하면 backup을 로컬 DB에
-restore해 사용합니다.
+| 검증 항목 | 결과                                                         |
+| --------- | ------------------------------------------------------------ |
+| 테이블    | 28개, 행 수·내용 해시 일치                                   |
+| 인덱스    | 64개 정의 일치                                               |
+| 시퀀스    | 2개 값·is_called 일치                                        |
+| migration | 10개 ledger 일치                                             |
+| 임베딩    | vector 6,988개 일치                                          |
+| locale    | UTF8 / en_US.utf8 / libc                                     |
+| 공개 터널 | `cc5f9f8e-fe12-436b-b243-be03466df18c` (`vscoke-api-oci-01`) |
 
-## 4. Ubuntu host에서 Mac mini Docker로 전환
+전환 기록은 worktree의 `output/cutover/final-1794654741048630000/state.json`이며 phase는
+`cutover_complete`다. source 폴더의 최종 dump·manifest·SHA-256은 비공개로 보존하고 Git에 넣지 않는다.
+교체 전 OCI 사본은 `/home/ubuntu/vscoke-api/backups/before-final-sync-1794654866927135484.dump`에
+600 권한으로 보존했으며 이후 SHA-256과 archive 목록 검사를 다시 통과했다.
 
-한 번만 수행하는 전환 절차입니다. 사전 준비(OrbStack, runner, cloudflared, Secret 갱신)는
-[Mac mini 초기 준비](../../docs/deployment-and-env.md#mac-mini-초기-준비)를 먼저 마칩니다.
+공개·내부 health의 프로세스 시작 시각을 대조해 OCI 도달을 확인했고 `/resume`, `/recipes`,
+`/espresso-history/beans`도 정상 응답했다. OCI 호스트의 Node health 도구도 공개 endpoint 검사를
+통과했다. API·PostgreSQL·cloudflared·Discord 봇은 active이고 Mac API는 exited/unless-stopped다.
 
-1. Ubuntu host에서 최종 backup을 만들어 Mac mini의 `backups/`로 옮깁니다. Ubuntu PostgreSQL은 18이라
-   `pg_dump` 결과(archive 1.16)를 pg16 `pg_restore`가 읽지 못합니다. restore 전에 `postgres:18` 이미지의
-   `pg_restore`로 plain SQL로 바꿔 둡니다.
-
-   ```bash
-   ssh icenux-external 'export LD_LIBRARY_PATH=/home/icenux/.local/pgsql-root/usr/lib/x86_64-linux-gnu:/home/icenux/.local/pgsql-root/usr/lib/postgresql/18/lib; /home/icenux/.local/pgsql-root/usr/lib/postgresql/18/bin/pg_dump -h /home/icenux/postgresql/18/run -U vscoke-api -d vscoke-api --format=custom --no-owner --no-acl' > /Users/smlee/projects/vscoke-api/backups/cutover.dump
-   docker run --rm -v /Users/smlee/projects/vscoke-api/backups:/backups postgres:18 pg_restore --no-owner --no-acl -f /backups/cutover.sql /backups/cutover.dump
-   sed -i '' '/^SET transaction_timeout = 0;$/d' /Users/smlee/projects/vscoke-api/backups/cutover.sql
-   ```
-
-2. Mac mini 저장소 checkout에서 compose 파일과 Secret 파일을 수동으로 한 번 준비합니다. `API_ENV_PRODUCTION`
-   값은 GitHub Secret과 같은 내용을 사용하고 파일로 남기지 않습니다.
-
-   ```bash
-   cd /Users/smlee/vscoke
-   cp apps/api/docker-compose.yml /Users/smlee/projects/vscoke-api/
-   API_DEPLOY_DIR=/Users/smlee/projects/vscoke-api API_ENV_PRODUCTION="$(pbpaste)" node scripts/api-deploy-env.mjs write
-   ```
-
-3. postgres만 올리고 backup을 restore합니다. `CREATE EXTENSION vector`는 dump에 포함되며
-   `pgvector/pgvector:pg16` 이미지가 지원합니다.
-
-   ```bash
-   cd /Users/smlee/projects/vscoke-api
-   docker compose up --detach --wait postgres
-   docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 --single-transaction -f /backups/cutover.sql'
-   docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select count(*) from migrations"'
-   ```
-
-4. GitHub Actions에서 **Deploy API to Mac mini (Docker)**를 수동 실행합니다. 이미지 빌드, import, API
-   컨테이너 기동과 내부 health까지 통과한 뒤 공개 health는 tunnel 전환 전이라 실패할 수 있습니다.
-5. Cloudflare에서 `api.icecoke.kr` route를 Mac mini tunnel로 옮기고 Ubuntu tunnel의 route를 제거합니다.
-   `pnpm smoke:api:remote`로 공개 health를 확인한 뒤 workflow를 한 번 더 실행해 전체 통과를 확인합니다.
-6. Ubuntu host에서 `pm2 delete vscoke-api`, runner 서비스 제거(`config.sh remove`)와 프로젝트 디렉터리 삭제를
-   수행합니다. Ubuntu PostgreSQL은 전환 검증이 끝날 때까지 읽기 전용 비교 용도로 유지한 뒤 정리합니다.
-
-### 전환 실행 기록 (2026-10-24 ~ 2026-10-25)
-
-Ubuntu host가 꺼진 상태에서 전환을 시작해 위 1·3단계를 그대로 수행하지 못했습니다. 실제 진행은
-다음과 같습니다.
-
-- Mac mini DB는 빈 DB에 migration을 적용해 schema를 만들었습니다. Ubuntu DB의 `migrations`에는 현재
-  저장소에 없는 Poke Lounge migration 10개가 더 있어 dump 전체 restore 대신 table 단위로 옮겼습니다.
-- 2026-10-25 Ubuntu host가 켜진 뒤 `backups/icenux-20261025*.dump`를 받아 `backups/merge-icenux-dump.sh`로
-  `user`, `game_history`, `resume_rag_keyword_groups`, `resume_rag_keyword_terms`, `resume_rag_chat_logs`,
-  `resume_chat_conversations`, `resume_chat_turns`를 `id` 기준으로 병합했습니다. DNS 전환 뒤 최종 dump로
-  한 번 더 실행해 건수가 Ubuntu 실서버와 일치하는 것을 확인했습니다. 스크립트는 여러 번 실행해도
-  안전합니다(`ON CONFLICT DO NOTHING`).
-- 첫 전환 직후 `/espresso-history/beans`가 500을 냈습니다. 기존 baseline migration이 `user`와
-  `game_history`만 만들어 hobby table이 없었기 때문입니다. dump에서 `espresso_bean`, `espresso_history`,
-  `espresso_round`, `recipe`, `word`를 schema와 데이터까지 복원하고(`backups/legacy-hobby.sql`),
-  `CreateLegacyHobbySchema1795000000002`를 추가해 새 DB에서도 같은 table이 만들어지게 했습니다.
-- import/index가 다시 만드는 `resume_source_items`, `resume_vector_chunks`, `resume_import_batches`와 현재
-  API에 없는 `espresso_beans`, `espresso_raw_entries`, `geek_news_article`, `poke_lounge_*`는 옮기지 않았습니다.
-  원본 dump는 `backups/`와 `~/icecoke-ops/docker/backups/`에, Ubuntu의 마지막 `.env`는
-  `backups/icenux-legacy.env`에 남겼습니다. Ubuntu PostgreSQL 자체는 삭제하지 않았습니다.
-- 2026-10-25 `api.icecoke.kr` DNS를 Mac mini tunnel `vscoke-api-mac`으로 옮기고 `pnpm smoke:api:remote`를
-  통과했습니다. 옛 Secret에서 `CORS_ORIGINS`, `RAG_PUBLIC_CHAT_ORIGINS`, `RAG_CHAT_MODEL`,
-  `RAG_CODEX_REASONING_EFFORT`를 새 Secret으로 옮겼습니다. `NOTIFY_*`는 Ubuntu의 localhost 알림 서비스가
-  이미 없어 비워 두었습니다.
-- 2026-10-25 Codex app-server를 launchd `kr.icecoke.vscoke-api-codex`로 등록하고 공개 `/resume-rag/chat`
-  질문이 근거와 함께 답하는 것을 확인했습니다. 같은 날 icenux에서 pm2 앱, runner 2개(`icenux-vscoke-api`,
-  `icenux-vscoke-api-host`), `vscoke-api-native.service`, 프로젝트·runner 디렉터리를 제거했습니다. 이어서
-  drop 직전 dump(`backups/icenux-20261025-predrop.dump`)를 받은 뒤 Ubuntu PostgreSQL의 `vscoke-api` DB와
-  role, `codex-app-server.service`, `vscoke-api-local-proxy.service`, `~/.cache/vscoke`와 옛 backup(Mac
-  `backups/icenux-old/`로 복사)을 지워 Ubuntu에는 vscoke-api 관련 항목이 남아 있지 않습니다.
-- 주의: `apps/api/**`를 건드린 push는 배포 workflow를 자동 실행하고, workflow는 GitHub Secret으로 env
-  파일을 다시 씁니다. Secret이 옛 값인 채로 실행되면 `postgres.env`의 계정이 data volume의 계정과 달라져
-  healthcheck와 import가 실패합니다(2026-10-24 run 40080041431). Secret을 먼저 갱신해야 합니다.
-
-## 요약
-
-| 변경 유형                    | 배포 방법                                                      | 비고                              |
-| :--------------------------- | :------------------------------------------------------------- | :-------------------------------- |
-| **코드 (`apps/api/src` 등)** | `git push`                                                     | GitHub Actions가 이미지 빌드·교체 |
-| **환경 변수 (`api.env`)**    | Repository Secret `API_ENV_PRODUCTION` 수정 후 workflow 재실행 | Actions가 생성 및 컨테이너 교체   |
-| **DB schema**                | TypeORM migration + backup                                     | 운영 반영 직전 backup 필수        |
-
-배포 실패, 컨테이너 복구와 Cloudflare Tunnel 장애 대응은
-[Operations Runbook](../../docs/operations-runbook.md)을 따릅니다.
+Mac DB는 전환 시점에서 멈춘 보존본이다. 이후 운영 쓰기는 OCI에서만 받는다. 복귀할 경우 OCI 쓰기를
+중단하고 최신 데이터를 Mac에 역동기화해야 하며, DNS만 원복하거나 Mac API를 임의로 재개하지 않는다.
+이후 코드 배포는 최종 DB 복원·DNS 전환을 반복하지 않고 OCI 릴리스 교체만 수행한다.

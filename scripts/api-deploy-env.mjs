@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { parseEnv } from "node:util";
 
 // 배포 디렉터리에 생성하는 파일. api.env는 API 컨테이너에 /app/.env로 mount되는 운영 secret 전체,
@@ -50,7 +50,7 @@ const writeFileAtomically = (target, content) => {
 
 try {
   const [action, ...args] = process.argv.slice(2);
-  if (action === "check" || action === "write") {
+  if (action === "check" || action === "write" || action === "write-native") {
     const content = process.env.API_ENV_PRODUCTION;
     const env = validate(content);
     if (action === "write") {
@@ -66,6 +66,39 @@ try {
         join(process.env.API_DEPLOY_DIR, ".env"),
         `PORT=${env.PORT?.trim() || "3000"}\n`,
       );
+    } else if (action === "write-native") {
+      const directory = process.env.API_DEPLOY_DIR;
+      if (!directory || !isAbsolute(directory) || /[\r\n"\\]/.test(directory)) {
+        throw new Error("API_DEPLOY_DIR에 안전한 절대 경로가 필요합니다.");
+      }
+      const database = parseEnv(readFileSync(join(directory, ".local/db.env"), "utf8"));
+      if (
+        database.DB_HOST !== "127.0.0.1" ||
+        database.DB_PORT !== "5432" ||
+        database.DB_USERNAME !== "vscoke_api" ||
+        database.DB_DATABASE !== "vscoke_api" ||
+        !/^[a-f0-9]{64}$/.test(database.DB_PASSWORD ?? "")
+      ) {
+        throw new Error("OCI DB 설정을 확인하세요.");
+      }
+      const overrides = {
+        DB_HOST: database.DB_HOST,
+        DB_PORT: database.DB_PORT,
+        DB_USERNAME: database.DB_USERNAME,
+        DB_DATABASE: database.DB_DATABASE,
+        DB_PASSWORD: database.DB_PASSWORD,
+        API_HOST: "127.0.0.1",
+        PORT: "3000",
+        TRUST_PROXY: "loopback",
+        RAG_LOCAL_EMBEDDING_CACHE_DIR: join(directory, ".cache/embeddings"),
+        RAG_LOCAL_EMBEDDING_LOCAL_FILES_ONLY: "true",
+      };
+      const output = Object.entries(overrides)
+        .map(([key, value]) => `${key}="${value}"\n`)
+        .join("");
+      const nativeContent = `${content.trimEnd()}\n${output}`;
+      validate(nativeContent);
+      writeFileAtomically(join(directory, apiEnvFile), nativeContent);
     }
   } else if (action === "run" && args.length > 0) {
     const env = { ...process.env, ...validate(readFileSync(".env", "utf8")) };
@@ -75,7 +108,9 @@ try {
     if (child.error) throw new Error("운영 명령을 실행할 수 없습니다.");
     process.exitCode = child.status ?? 1;
   } else {
-    throw new Error("사용법: api-deploy-env.mjs check | write | run <command> [args]");
+    throw new Error(
+      "사용법: api-deploy-env.mjs check | write | write-native | run <command> [args]",
+    );
   }
 } catch (error) {
   // 파일/프로세스 예외에는 비밀값이 포함될 수 있으므로 검증 오류 외에는 원문을 남기지 않는다.

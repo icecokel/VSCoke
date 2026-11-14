@@ -44,7 +44,8 @@ workspace 명령의 공통 진입점이다.
 
 ### API: `apps/api`
 
-API는 Mac mini의 Docker Compose에서 실행되는 NestJS 앱이다.
+API는 춘천 OCI 1호기의 네이티브 systemd에서 실행한다. 2026-11-14 운영 DB와 공개 터널 전환을
+완료했으며 상세 기준과 복구 절차는 배포 문서를 따른다.
 
 - 취미 데이터, 인증, 게임 결과와 이력 질문 API를 제공한다.
 - TypeORM과 PostgreSQL로 영속 상태를 관리한다.
@@ -98,7 +99,7 @@ flowchart LR
   Api["apps/api"]
   Vercel["Vercel"]
   Runner["self-hosted runner"]
-  Host["Mac mini Docker Compose"]
+  Host["OCI native systemd"]
   Tunnel["Cloudflare Tunnel"]
 
   Repo --> Web --> Vercel

@@ -312,3 +312,19 @@ ssh -t -F /Users/smlee/icecoke-ops/config/ssh-config oci-01 'bash /home/ubuntu/v
 `/home/ubuntu/vscoke-api/.local/cloudflared-credentials.json`(600)과 `cloudflared.yml`에 설치하고,
 systemd unit은 `/etc/systemd/system/cloudflared-vscoke-api.service`에 설치한다.
 metrics/readiness는 loopback 20242 포트만 사용한다. 자격 증명·dump는 Git에 추가하지 않는다.
+
+최종 데이터 도구는 다음 두 파일이다. 관리자 준비가 끝난 뒤 전체 전환 절차에서 사용하며,
+현재 `output/cutover/preflight`는 `source_frozen=false`인 사전 사본이므로 최종 복원에 사용할 수 없다.
+
+- `scripts/snapshot-api-db.py`: 기본 모드는 Mac API가 정지됐는지 확인한 후 동일 PostgreSQL snapshot의
+  custom dump·내용 해시 manifest를 만들고, network가 없는 임시 PostgreSQL에서 복원·대조한다.
+  dump와 검증 결과는 이 worktree의 `output/cutover` 안에만 600/700 권한으로 저장한다.
+- `scripts/restore-api-db-oci.py`: 관리자가 OCI에서 실행한다. frozen/검증 metadata·SHA-256 확인 후
+  기존 OCI 사본을 먼저 `backups/before-final-sync-*.dump`에 백업·확인하고 전용 `vscoke_api` DB를
+  다시 만든다. role·암호·공유 env/cache/logs는 유지한다. 내용·schema·sequence가 원본과 일치한 뒤에만
+  API를 시작한다. 불일치 시 OCI API를 중지하며, 교체 전 백업 검증 실패라면 이전 API를 다시 시작한다.
+
+사전 점검에서는 현재 Mac DB의 테이블 28개·인덱스 64개·시퀀스 2개·migration 10개·vector 6,988개가
+격리 복원본과 내용 해시까지 일치했다. 사전 사본 검증은 쓰기 중단 후의 최종 검증을 대체하지 않는다.
+복원 하네스는 관리자/PG 명령을 대역으로 바꿔 unfrozen 거절·잘못된 백업의 파괴 작업 차단·
+manifest 불일치 시 기동 차단·성공 경로를 검사했다. 실제 OCI 최종 복원은 아직 실행하지 않았다.

@@ -12,7 +12,13 @@ import { promisify } from "node:util";
 const run = promisify(execFile);
 const source = readFileSync(resolve(import.meta.dirname, "restore-api-db-oci.py"), "utf8");
 
-for (const scenario of ["unfrozen", "backup-invalid", "manifest-mismatch", "success"]) {
+for (const scenario of [
+  "unfrozen",
+  "permission-denied",
+  "backup-invalid",
+  "manifest-mismatch",
+  "success",
+]) {
   test(`OCI DB 복원 ${scenario}: 백업·원본 대조·API 기동 순서를 확인한다`, async () => {
     const fixture = mkdtempSync(join(tmpdir(), "vscoke-restore-"));
     const server = createServer((_request, response) => {
@@ -76,6 +82,10 @@ for (const scenario of ["unfrozen", "backup-invalid", "manifest-mismatch", "succ
         const fs = require("node:fs");
         const args = process.argv.slice(2);
         fs.appendFileSync(process.env.RESTORE_CALLS, JSON.stringify(args) + "\\n");
+        if (args[0] !== "-n" || process.env.RESTORE_SCENARIO === "permission-denied") {
+          console.error("sudo: a password is required");
+          process.exit(1);
+        }
         if (args.includes("pg_dump")) process.stdout.write("synthetic prior backup");
         if (args.includes("psql") && args.includes("-XqAt")) {
           process.stdout.write(process.env.RESTORE_SCENARIO === "manifest-mismatch" ? "different" : process.env.RESTORE_MANIFEST);
@@ -109,14 +119,19 @@ for (const scenario of ["unfrozen", "backup-invalid", "manifest-mismatch", "succ
         : [];
       const has = (name: string): boolean => commandsCalled.some(args => args.includes(name));
       if (scenario === "unfrozen") assert.equal(commandsCalled.length, 0);
+      if (scenario === "permission-denied") {
+        assert.equal(has("pg_dump"), false);
+        assert.equal(has("dropdb"), false);
+        assert.deepEqual(commandsCalled, [["-n", "systemctl", "stop", "vscoke-api.service"]]);
+      }
       if (scenario === "backup-invalid") {
         assert.equal(has("dropdb"), false);
-        assert.deepEqual(commandsCalled.at(-1), ["systemctl", "start", "vscoke-api.service"]);
+        assert.deepEqual(commandsCalled.at(-1), ["-n", "systemctl", "start", "vscoke-api.service"]);
       }
       if (scenario === "manifest-mismatch") {
         assert.equal(has("dropdb"), true);
         assert.equal(has("start"), false);
-        assert.deepEqual(commandsCalled.at(-1), ["systemctl", "stop", "vscoke-api.service"]);
+        assert.deepEqual(commandsCalled.at(-1), ["-n", "systemctl", "stop", "vscoke-api.service"]);
       }
       if (scenario === "success") {
         assert.ok(

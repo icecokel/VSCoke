@@ -21,7 +21,7 @@ def checked(args, **options):
         # pg_restore의 DETAIL에는 운영 행이 들어갈 수 있으므로 stderr를 그대로 전달하지 않는다.
         reason = "; ".join(line for line in result.stderr.decode(errors="replace").splitlines()
                            if line.startswith("sudo:"))
-        raise RuntimeError("명령 실패: " + " ".join(args[:4]) + ("; " + reason if reason else ""))
+        raise RuntimeError("명령 실패: " + " ".join(args[:5]) + ("; " + reason if reason else ""))
     return result
 
 
@@ -30,7 +30,7 @@ def output(args, **options):
 
 
 def pg(command, *args):
-    return ["sudo", "-u", "postgres", command, *PG, *args]
+    return ["sudo", "-n", "-u", "postgres", command, *PG, *args]
 
 
 def digest(path):
@@ -61,7 +61,7 @@ def main():
         api_stopped = False
         database_replaced = False
         try:
-            checked(["sudo", "systemctl", "stop", "vscoke-api.service"], stdout=sp.DEVNULL)
+            checked(["sudo", "-n", "systemctl", "stop", "vscoke-api.service"], stdout=sp.DEVNULL)
             api_stopped = True
             with backup.open("xb") as target:
                 checked(pg("pg_dump", "--format=custom", "--no-owner", "--no-acl", "--dbname=vscoke_api"),
@@ -85,7 +85,7 @@ def main():
             (STAGE / "restored-manifest.txt").write_text(actual + "\n", encoding="utf-8")
             if actual != (STAGE / "manifest.txt").read_text(encoding="utf-8").strip():
                 raise RuntimeError("OCI의 테이블 내용·schema·sequence가 원본과 다릅니다. API를 중지 상태로 유지합니다.")
-            checked(["sudo", "systemctl", "start", "vscoke-api.service"], stdout=sp.DEVNULL)
+            checked(["sudo", "-n", "systemctl", "start", "vscoke-api.service"], stdout=sp.DEVNULL)
             for attempt in range(30):
                 try:
                     with urlopen("http://127.0.0.1:3000/health", timeout=2) as response:
@@ -109,9 +109,9 @@ def main():
             print(json.dumps(result))
         except Exception:
             if api_stopped and not database_replaced:
-                checked(["sudo", "systemctl", "start", "vscoke-api.service"], stdout=sp.DEVNULL)
+                checked(["sudo", "-n", "systemctl", "start", "vscoke-api.service"], stdout=sp.DEVNULL)
             elif database_replaced:
-                checked(["sudo", "systemctl", "stop", "vscoke-api.service"], stdout=sp.DEVNULL)
+                checked(["sudo", "-n", "systemctl", "stop", "vscoke-api.service"], stdout=sp.DEVNULL)
             raise
 
 

@@ -57,6 +57,10 @@ for (const scenario of ["credentials", "checksum", "locale-cache", "probe-denied
           const args = process.argv.slice(2);
           const calls = process.env.CUTOVER_PRIVILEGED_MARKER;
           fs.appendFileSync(calls, JSON.stringify(args) + "\\n");
+          if (args[0] !== "-n") {
+            console.error("sudo: interactive authentication is not allowed in this fixture");
+            process.exit(1);
+          }
           if (args.includes("createdb") && !fs.existsSync(calls + ".failed")) {
             fs.writeFileSync(calls + ".failed", "once");
             console.error(process.env.CUTOVER_SCENARIO === "probe-denied" ? "createdb: permission denied" : 'createdb: invalid LC_COLLATE locale name: "en_US.utf8"');
@@ -82,7 +86,11 @@ for (const scenario of ["credentials", "checksum", "locale-cache", "probe-denied
         const calls = readFileSync(privileged, "utf8")
           .trim()
           .split("\n")
-          .map(line => JSON.parse(line) as string[]);
+          .map(line => {
+            const args = JSON.parse(line) as string[];
+            assert.equal(args[0], "-n");
+            return args.slice(1);
+          });
         const firstProbe = calls.findIndex(args => args.includes("createdb"));
         const restart = calls.findIndex(args => args[0] === "systemctl" && args[1] === "restart");
         const startApi = calls.findIndex(args => args[0] === "systemctl" && args[1] === "start");
@@ -99,6 +107,7 @@ for (const scenario of ["credentials", "checksum", "locale-cache", "probe-denied
         assert.equal(existsSync(join(app, ".local/cloudflared-credentials.json")), false);
         if (scenario === "probe-denied") {
           assert.doesNotMatch(readFileSync(privileged, "utf8"), /restart/);
+          assert.match(result.stderr, /permission denied/);
         } else {
           assert.equal(existsSync(privileged), false);
         }

@@ -37,23 +37,22 @@ printf '%s  %s\n' ce671bc2b4afbd16b43f9a3c279527e9e2be8b30b87648047a1f95cccfbacd
 if [[ -x /usr/bin/cloudflared ]]; then
   /usr/bin/cloudflared --version | grep -F '2026.11.0'
 else
-  sudo dpkg -i "$package"
+  sudo -n dpkg -i "$package"
 fi
 
 # 원본 DB의 libc 정렬 설정을 복원할 수 있는지 쓰기 중단 전에 검증한다.
-sudo -v
 if ! command -v locale-gen >/dev/null; then
-  sudo apt-get install -y --no-install-recommends locales
+  sudo -n apt-get install -y --no-install-recommends locales
 fi
 if ! locale -a | grep -Fxq en_US.utf8; then
-  sudo locale-gen en_US.UTF-8
+  sudo -n locale-gen en_US.UTF-8
 fi
 locale -a | grep -Fx en_US.utf8
 probe="vscoke_cutover_probe_$$"
 probeError="$(mktemp "$stage/locale-probe.XXXXXX")"
 trap 'rm -f "$probeError"' EXIT
 createProbe() {
-  sudo -u postgres createdb --template=template0 --owner=vscoke_api --encoding=UTF8 \
+  sudo -n -u postgres createdb --template=template0 --owner=vscoke_api --encoding=UTF8 \
     --locale-provider=libc --lc-collate=en_US.utf8 --lc-ctype=en_US.utf8 "$probe"
 }
 if ! createProbe 2>"$probeError"; then
@@ -63,12 +62,12 @@ if ! createProbe 2>"$probeError"; then
   fi
   # 새 locale archive를 인식하지 못하는 오래된 postmaster를 한 번 재시작한다.
   echo 'OCI PostgreSQL이 새 로케일을 인식하도록 재시작한 뒤 다시 검증합니다.'
-  sudo systemctl restart postgresql@16-main.service
-  sudo systemctl start vscoke-api.service
+  sudo -n systemctl restart postgresql@16-main.service
+  sudo -n systemctl start vscoke-api.service
   createProbe
 fi
-trap 'sudo -u postgres dropdb "$probe"; rm -f "$probeError"' EXIT
-sudo -u postgres dropdb "$probe"
+trap 'sudo -n -u postgres dropdb "$probe"; rm -f "$probeError"' EXIT
+sudo -n -u postgres dropdb "$probe"
 rm -f "$probeError"
 trap - EXIT
 
@@ -102,9 +101,9 @@ PrivateTmp=true
 WantedBy=multi-user.target
 UNIT
 systemd-analyze verify "$stage/cloudflared-vscoke-api.service"
-sudo install -m 644 cloudflared-vscoke-api.service /etc/systemd/system/cloudflared-vscoke-api.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now cloudflared-vscoke-api.service
+sudo -n install -m 644 cloudflared-vscoke-api.service /etc/systemd/system/cloudflared-vscoke-api.service
+sudo -n systemctl daemon-reload
+sudo -n systemctl enable --now cloudflared-vscoke-api.service
 systemctl is-enabled cloudflared-vscoke-api.service
 systemctl is-active cloudflared-vscoke-api.service
 for attempt in $(seq 1 30); do

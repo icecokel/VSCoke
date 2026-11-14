@@ -284,3 +284,31 @@ job의 실제 runner는 `vscoke-api-oci-01`이며 Linux ARM64에서 설치·검�
 터널 최종 전환·main 워크플로 반영은 별도 작업이다. 새 릴리스의 실제 AI 첫 질문·후속 질문과
 OAuth 경로는 이 읽기 점검에서 실행하지 않았다. 실제 실패 주입으로 운영 서비스를 되돌리지는 않았으며,
 자동 복구·상태 보존 동작은 Linux에서 통과한 배포 하네스 검증을 근거로 한다.
+
+## 8. 최종 전환 준비
+
+최종 반영용 `codex/ci/oci-cutover`는 원격 main `3af37ca5`에서 OCI 이관과 필요한 CI 변경만
+가져왔다. 로컬 main의 미배포 웹 변경 18개 커밋과 원래 작업 트리의 미커밋 변경은 보존한다.
+이 브랜치에서도 API lint/단위 테스트 484개, 기존 배포 계약 테스트 34개, 웹·API 빌드를 확인했다.
+
+Mac 원본 DB의 encoding/LC_COLLATE/LC_CTYPE은 `UTF8/en_US.utf8/en_US.utf8`이다.
+OCI에는 해당 로케일이 없어 최종 복원 전에 준비하고 임시 DB 생성으로 PostgreSQL에서 검증한다.
+최종 동기화 시에는 API 쓰기를 중단한 snapshot과 복원본의 테이블 내용 해시·행 수·시퀀스·
+인덱스·확장·마이그레이션을 비교한다. 이 준비 단계에서는 운영 API를 중지하지 않는다.
+
+OCI 전용 새 터널은 `vscoke-api-oci-01` (`cc5f9f8e-fe12-436b-b243-be03466df18c`)이다.
+현재 공개 도메인은 기존 Mac 터널을 유지한다. 새 터널을 미리 연결해 두고 최종 DB 검증 뒤
+DNS를 전환한다. 다른 ID의 전용 터널을 사용해 양쪽 DB에 트래픽이 섞이지 않게 한다.
+
+관리자 준비용 CLI(전용 터널 서비스·cloudflared 2026.11.0·DB 로케일만 설치):
+
+```bash
+ssh -F /Users/smlee/icecoke-ops/config/ssh-config oci-01 'umask 077; mkdir -p /home/ubuntu/vscoke-api-rehearsal/cutover; chmod 700 /home/ubuntu/vscoke-api-rehearsal/cutover'
+scp -F /Users/smlee/icecoke-ops/config/ssh-config /Users/smlee/vscoke/worktrees/ci/oci-cutover/scripts/prepare-api-oci-cutover.sh /Users/smlee/vscoke/worktrees/ci/oci-cutover/output/cutover/oci-tunnel-credentials.json oci-01:/home/ubuntu/vscoke-api-rehearsal/cutover/
+ssh -t -F /Users/smlee/icecoke-ops/config/ssh-config oci-01 'bash /home/ubuntu/vscoke-api-rehearsal/cutover/prepare-api-oci-cutover.sh'
+```
+
+이 스크립트는 credential 형식/터널 ID와 배포본 SHA-256을 먼저 검증한다. 파일은
+`/home/ubuntu/vscoke-api/.local/cloudflared-credentials.json`(600)과 `cloudflared.yml`에 설치하고,
+systemd unit은 `/etc/systemd/system/cloudflared-vscoke-api.service`에 설치한다.
+metrics/readiness는 loopback 20242 포트만 사용한다. 자격 증명·dump는 Git에 추가하지 않는다.

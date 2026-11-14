@@ -41,16 +41,35 @@ else
 fi
 
 # 원본 DB의 libc 정렬 설정을 복원할 수 있는지 쓰기 중단 전에 검증한다.
+sudo -v
 if ! command -v locale-gen >/dev/null; then
   sudo apt-get install -y --no-install-recommends locales
 fi
-sudo locale-gen en_US.UTF-8
+if ! locale -a | grep -Fxq en_US.utf8; then
+  sudo locale-gen en_US.UTF-8
+fi
 locale -a | grep -Fx en_US.utf8
 probe="vscoke_cutover_probe_$$"
-sudo -u postgres createdb --template=template0 --owner=vscoke_api --encoding=UTF8 \
-  --lc-collate=en_US.utf8 --lc-ctype=en_US.utf8 "$probe"
-trap 'sudo -u postgres dropdb "$probe"' EXIT
+probeError="$(mktemp "$stage/locale-probe.XXXXXX")"
+trap 'rm -f "$probeError"' EXIT
+createProbe() {
+  sudo -u postgres createdb --template=template0 --owner=vscoke_api --encoding=UTF8 \
+    --locale-provider=libc --lc-collate=en_US.utf8 --lc-ctype=en_US.utf8 "$probe"
+}
+if ! createProbe 2>"$probeError"; then
+  if ! grep -Fq 'invalid LC_COLLATE locale name' "$probeError"; then
+    cat "$probeError" >&2
+    exit 1
+  fi
+  # 새 locale archive를 인식하지 못하는 오래된 postmaster를 한 번 재시작한다.
+  echo 'OCI PostgreSQL이 새 로케일을 인식하도록 재시작한 뒤 다시 검증합니다.'
+  sudo systemctl restart postgresql@16-main.service
+  sudo systemctl start vscoke-api.service
+  createProbe
+fi
+trap 'sudo -u postgres dropdb "$probe"; rm -f "$probeError"' EXIT
 sudo -u postgres dropdb "$probe"
+rm -f "$probeError"
 trap - EXIT
 
 install -m 600 oci-tunnel-credentials.json "$app/.local/cloudflared-credentials.json"

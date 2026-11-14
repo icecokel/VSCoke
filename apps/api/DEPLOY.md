@@ -293,6 +293,10 @@ OAuth 경로는 이 읽기 점검에서 실행하지 않았다. 실제 실패 �
 
 Mac 원본 DB의 encoding/LC_COLLATE/LC_CTYPE은 `UTF8/en_US.utf8/en_US.utf8`이다.
 OCI에는 해당 로케일이 없어 최종 복원 전에 준비하고 임시 DB 생성으로 PostgreSQL에서 검증한다.
+OS가 로케일을 인식해도 오래 실행된 PostgreSQL은 새 locale archive를 인식하지 못할 수 있다.
+준비 스크립트는 기존 로케일을 재생성하지 않으며, probe가 `invalid LC_COLLATE locale name`으로
+실패한 경우에만 OCI PostgreSQL·API를 재시작하고 한 번 재검증한다. 권한 오류 등 다른 실패는
+재시작으로 우회하지 않고 그대로 중단한다. 최종 createdb는 원본과 같은 libc provider를 명시한다.
 최종 동기화 시에는 API 쓰기를 중단한 snapshot과 복원본의 테이블 내용 해시·행 수·시퀀스·
 인덱스·확장·마이그레이션을 비교한다. 이 준비 단계에서는 운영 API를 중지하지 않는다.
 

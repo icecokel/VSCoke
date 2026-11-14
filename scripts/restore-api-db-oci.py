@@ -71,7 +71,7 @@ def main():
             # 전용 DB만 교체한다. role·암호·공유 env/cache/logs와 다른 DB는 유지한다.
             database_replaced = True
             checked(pg("dropdb", "--if-exists", "--force", "vscoke_api"), stdout=sp.DEVNULL)
-            checked(pg("createdb", "--template=template0", "--owner=vscoke_api", "--encoding=UTF8",
+            checked(pg("createdb", "--template=template0", "--owner=vscoke_api", "--encoding=UTF8", "--locale-provider=libc",
                        "--lc-collate=en_US.utf8", "--lc-ctype=en_US.utf8", "vscoke_api"), stdout=sp.DEVNULL)
             checked(pg("psql", "-Xq", "-v", "ON_ERROR_STOP=1", "--dbname=vscoke_api"),
                     input=b'CREATE EXTENSION vector; CREATE EXTENSION pgcrypto; CREATE EXTENSION "uuid-ossp";',

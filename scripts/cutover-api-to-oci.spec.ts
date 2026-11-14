@@ -34,6 +34,7 @@ for (const scenario of [
   "success",
   "prior-cutover",
   "wrong-origin",
+  "workflow-active",
 ]) {
   test(`최종 전환 ${scenario}: 원본 재개와 DNS 이후 중지 정책을 확인한다`, async () => {
     const fixture = mkdtempSync(join(tmpdir(), "vscoke-cutover-"));
@@ -90,13 +91,14 @@ for name in ['database.dump', 'database.sha256', 'manifest.txt', 'api-db-manifes
         mkdirSync(prior, { recursive: true });
         writeFileSync(join(prior, "state.json"), JSON.stringify({ phase: "cutover_complete" }));
       }
-      for (const name of ["docker", "cloudflared", "ssh", "scp"]) {
+      for (const name of ["docker", "cloudflared", "ssh", "scp", "gh"]) {
         writeFileSync(
           join(commands, name),
           `#!/usr/bin/env node
           const fs = require("node:fs");
           const args = process.argv.slice(2);
           fs.appendFileSync(process.env.CUTOVER_CALLS, JSON.stringify([${JSON.stringify(name)}, ...args]) + "\\n");
+          if (${JSON.stringify(name)} === "gh") console.log(process.env.CUTOVER_SCENARIO === "workflow-active" ? "active" : "disabled_manually");
           if (${JSON.stringify(name)} === "docker") {
             if (args[0] === "inspect") console.log(fs.readFileSync(process.env.CUTOVER_RUNNING, "utf8"));
             if (args[0] === "stop") fs.writeFileSync(process.env.CUTOVER_RUNNING, "false");

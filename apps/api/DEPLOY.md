@@ -344,6 +344,8 @@ python3 /Users/smlee/vscoke/worktrees/ci/oci-cutover/scripts/cutover-api-to-oci.
 ```
 
 전환 전 공개 health가 Mac 원본의 프로세스와 일치하는지, OCI tunnel/readiness가 정상인지 확인한다.
+기존 Mac 배포가 원본 API를 다시 시작하지 않도록 API 배포 workflow를 잠시 disabled_manually로
+전환한 상태에서만 진행한다. PR 검사는 유지하며, main을 OCI workflow로 반영한 후 다시 활성화한다.
 Mac API를 중지한 뒤 새 snapshot을 생성·격리 검증하고 SSH로 OCI에 복원한다. 복원 내용 대조와
 OCI health를 통과한 경우에만 api.icecoke.kr의 DNS를 OCI 전용 터널로 변경한다.
 공개 응답의 timestamp/uptime에서 계산한 프로세스 시작 시각을 OCI 응답과 대조하고 주요 endpoint도 확인한다.

@@ -65,6 +65,9 @@ def cutover():
             if phase in ["dns_requested", "cutover_complete", "failed_after_dns_request_mac_stopped", "failed_after_dns_request_source_state_unknown"]:
                 raise RuntimeError("이전 DNS 전환 기록이 있습니다. 현재 운영 DB를 확인하기 전에는 반복 실행할 수 없습니다.")
         # 관리자 준비·터널 연결을 확인한 뒤에만 원본 쓰기를 중단한다.
+        workflow = output(["gh", "api", "repos/icecokel/VSCoke/actions/workflows/deploy-api.yml", "--jq", ".state"])
+        if workflow != "disabled_manually":
+            raise RuntimeError("동기화 중 Mac 재배포를 막도록 API 배포 workflow를 먼저 중지하세요.")
         if not running():
             raise RuntimeError("Mac API가 이미 중지돼 있습니다. 이전 전환 기록을 확인한 뒤 진행하세요.")
         tunnels = json.loads(output(["cloudflared", "tunnel", "list", "--output", "json"]))

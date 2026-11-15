@@ -1,3 +1,6 @@
+import { chatDefinitions, type ChatChannel } from './chat-definition';
+import { getResumeChunkConfigHash } from './indexing/resume-index-profile';
+
 export type ResumeRagConfig = {
   retrievalMode?: 'keyword' | 'vector' | 'hybrid';
   vectorMinSimilarity?: number;
@@ -39,6 +42,12 @@ export type RequiredClaudeConfig = {
 };
 
 export const RESUME_RAG_CONFIG = 'RESUME_RAG_CONFIG';
+
+// 운영 Secret 값과 같은 기본값이다. 환경 변수 한 줄이 빠져도 검색 기준이나
+// 청크 설정 해시가 조용히 바뀌어 색인된 벡터가 검색에서 빠지지 않게 한다.
+export const RESUME_RAG_DEFAULT_VECTOR_MIN_SIMILARITY = 0.85;
+export const RESUME_RAG_DEFAULT_CHUNK_SIZE = 600;
+export const RESUME_RAG_DEFAULT_CHUNK_OVERLAP = 80;
 
 // 프롬프트에 넣는 검색 청크 하나의 최대 길이. keyword 검색은 항목 본문 전체를
 // 청크로 돌려주므로 공개 원천 기록은 이 길이 안에 있어야 잘리지 않는다.
@@ -88,7 +97,10 @@ const parseRetrievalMode = (
 };
 
 const parseVectorThreshold = (value: string | undefined): number => {
-  const threshold = value === undefined || value === '' ? 0.3 : Number(value);
+  const threshold =
+    value === undefined || value === ''
+      ? RESUME_RAG_DEFAULT_VECTOR_MIN_SIMILARITY
+      : Number(value);
   if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1) {
     throw new Error('Invalid RAG_VECTOR_MIN_SIMILARITY');
   }
@@ -115,8 +127,10 @@ export const getResumeRagConfig = (
   aiApiKey: env.RAG_AI_API_KEY || undefined,
   topK: parseOptionalInt(env.RAG_TOP_K) ?? 5,
   minSimilarity: parseOptionalFloat(env.RAG_MIN_SIMILARITY) ?? 0.1,
-  chunkSize: parseOptionalInt(env.RAG_CHUNK_SIZE) ?? 1200,
-  chunkOverlap: parseOptionalInt(env.RAG_CHUNK_OVERLAP) ?? 120,
+  chunkSize:
+    parseOptionalInt(env.RAG_CHUNK_SIZE) ?? RESUME_RAG_DEFAULT_CHUNK_SIZE,
+  chunkOverlap:
+    parseOptionalInt(env.RAG_CHUNK_OVERLAP) ?? RESUME_RAG_DEFAULT_CHUNK_OVERLAP,
   allowedVisibilities: splitCsv(env.RAG_ALLOWED_VISIBILITIES, ['public']),
   allowedSourceTypes: splitCsv(env.RAG_ALLOWED_SOURCE_TYPES, [
     'app_resume',
@@ -181,3 +195,70 @@ export const requireClaudeConfig = (
     anthropicApiKey: config.anthropicApiKey as string,
   };
 };
+
+export const getChatChannelSourceTypes = (
+  config: Pick<ResumeRagConfig, 'allowedSourceTypes'>,
+  channel: ChatChannel,
+): string[] =>
+  config.allowedSourceTypes.filter((sourceType) =>
+    chatDefinitions[channel].sourceTypes.includes(sourceType),
+  );
+
+const chatChannels = Object.keys(chatDefinitions) as ChatChannel[];
+
+// 검색 대상이 구조적으로 비는 설정은 200 + "근거 없음"으로 조용히 응답하게 만든다.
+// 2026-10-29 장애처럼 배포가 성공한 것처럼 보이지 않도록 기동과 배포 검증에서 거부한다.
+export const assertResumeRagSearchScope = (
+  config: Pick<
+    ResumeRagConfig,
+    'allowedSourceTypes' | 'allowedVisibilities' | 'topK'
+  >,
+): void => {
+  const problems: string[] = [];
+  if (!config.allowedVisibilities.includes('public')) {
+    problems.push(
+      `RAG_ALLOWED_VISIBILITIES must include public (current: ${config.allowedVisibilities.join(',')})`,
+    );
+  }
+  for (const channel of chatChannels) {
+    if (getChatChannelSourceTypes(config, channel).length > 0) continue;
+    problems.push(
+      `${channel} channel: RAG_ALLOWED_SOURCE_TYPES (current: ${config.allowedSourceTypes.join(',')}) must include one of ${chatDefinitions[channel].sourceTypes.join(',')}`,
+    );
+  }
+  if (!Number.isSafeInteger(config.topK) || config.topK < 1) {
+    problems.push(`RAG_TOP_K must be at least 1 (current: ${config.topK})`);
+  }
+  if (problems.length > 0) {
+    throw new Error(
+      `Resume RAG 검색 범위가 비어 있습니다 / search scope is empty: ${problems.join('; ')}`,
+    );
+  }
+};
+
+// 기동 로그용 유효 설정. 키·인증 정보가 들어갈 수 있는 URL과 경로는 넣지 않는다.
+export const describeResumeRagConfig = (config: ResumeRagConfig) => ({
+  retrievalMode: config.retrievalMode,
+  embeddingProvider: config.embeddingProvider ?? null,
+  embeddingModel: config.embeddingModel ?? null,
+  embeddingDimensions: config.embeddingDimensions ?? null,
+  embeddingSendDimensions: config.embeddingSendDimensions,
+  localEmbeddingLocalFilesOnly: config.localEmbeddingLocalFilesOnly,
+  vectorMinSimilarity: config.vectorMinSimilarity,
+  minSimilarity: config.minSimilarity,
+  topK: config.topK,
+  chunkSize: config.chunkSize,
+  chunkOverlap: config.chunkOverlap,
+  chunkConfigHash: getResumeChunkConfigHash(config),
+  allowedVisibilities: config.allowedVisibilities,
+  allowedSourceTypes: config.allowedSourceTypes,
+  channelSourceTypes: Object.fromEntries(
+    chatChannels.map((channel) => [
+      channel,
+      getChatChannelSourceTypes(config, channel),
+    ]),
+  ),
+  chatProvider: config.chatProvider,
+  chatModel: config.chatModel,
+  chatTimeoutMs: config.chatTimeoutMs,
+});

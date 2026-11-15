@@ -107,4 +107,16 @@ describe('Resume RAG schema entities', () => {
       ]),
     );
   });
+
+  it('stores the chat outcome next to the masked question', () => {
+    expect(columnNamesFor(ResumeRagChatLog)).toEqual(
+      expect.arrayContaining([
+        'channel',
+        'outcome',
+        'sourceCount',
+        'durationMs',
+        'failureStage',
+      ]),
+    );
+  });
 });

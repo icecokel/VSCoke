@@ -1,6 +1,6 @@
 # 메인 채팅·이력 질문 AI 사용 지침
 
-확인 기준일: 2026-11-10
+확인 기준일: 2026-11-15
 
 이 문서는 채팅 구조, 검색·저장 정책과 운영 시 주의사항을 설명한다. 실행·복구 기준은
 [6절](#6-배포와-검증)과 [API 배포 가이드](../apps/api/DEPLOY.md)를 따른다.
@@ -23,6 +23,8 @@
 사용할 수 없다. 키워드·벡터·hybrid 검색 모두 최신 원본의 `itemType`과 채널별 `sourceType`을
 제한한다. `RAG_ALLOWED_SOURCE_TYPES`는 전체 허용 목록이며 채널 범위와 교집합으로 적용한다.
 근거가 없거나 특정 채널 자료가 비어 있어도 다른 채널 자료로 대체하지 않는다.
+교집합이 빈 채널이 있거나 `RAG_ALLOWED_VISIBILITIES`에 `public`이 없거나 `RAG_TOP_K`가 1 미만이면
+API 기동이 실패한다. 2026-10-29~11-14처럼 모든 질문에 200 + 근거 없음으로 응답하는 상태를 막는다.
 
 메인 자료는 `app_resume`의 프로젝트 상세와 `docs/public-site-guide.md`, 이력서 자료는
 `career_data`의 공개 경험 불렛·독립 공개 사실·프로젝트 상세다. 이력서 문서 버전 본문은 검색하지
@@ -57,8 +59,9 @@
 요청 locale과 같은 언어 또는 locale이 없는 원본만 검색한다. 다국어 임베딩을 사용해도
 다른 locale의 자료가 자동으로 포함되는 것은 아니다.
 
-코사인 점수 기준은 `RAG_VECTOR_MIN_SIMILARITY`(초기값 0.3), 키워드 기준은 기존
-`RAG_MIN_SIMILARITY`(0.1)다. 두 값을 동일한 신뢰도로 취급하지 않는다. 검색 결과는
+코사인 점수 기준은 `RAG_VECTOR_MIN_SIMILARITY`(기본값 0.85), 키워드 기준은 기존
+`RAG_MIN_SIMILARITY`(0.1)다. 벡터 기준과 `RAG_CHUNK_SIZE`/`RAG_CHUNK_OVERLAP`(600/80)의 코드
+기본값은 운영 값과 같다. 환경 변수가 빠져도 청크 설정 해시가 바뀌어 벡터가 조용히 0건이 되지 않게 한다. 두 값을 동일한 신뢰도로 취급하지 않는다. 검색 결과는
 RRF로 합치고 sourceKey별 중복을 제거한 뒤 `RAG_TOP_K`(5)개를 선택한다. 수치는 실제
 질문 평가로 조정하며 사용자에게 정확도 백분율로 표시하지 않는다.
 
@@ -142,7 +145,7 @@ localStorage의 접근키는 같은 origin의 script가 읽을 수 있다. 브�
 삭제된 대화는 접근키가 있어도 복원·재시도·추가 질문을 할 수 없다.
 질문과 답변의 이메일·전화번호·일부 자격증명 패턴은 기존 마스킹 함수를 적용한다. 패턴 기반
 마스킹이 모든 개인정보를 제거하는 것은 아니므로 민감한 정보를 입력하지 말라는 안내를 유지한다.
-저장 대화는 보존 기간이 다른 기존 질문 로그에 중복 기록하지 않는다.
+저장 대화의 질문은 보존 기간이 다른 기존 질문 로그에 중복 기록하지 않는다(결과 지표만 기록, 7절).
 
 AI에 전달하는 대화는 최근 6개 턴, 총 12,000자 이하로 제한한다. 질문은 턴당 1,000자,
 이전 답변은 4,000자까지 사용한다. 검색 근거는 항목당 4,000자, 전체 16,000자로 제한한다.
@@ -203,6 +206,18 @@ keyword 모드가 아니고 임베딩 공급자가 설정된 경우 index를 갱
 벡터 장애는 검증된 `keyword` 모드로 전환할 수 있지만 대화 저장과 후속 질문 AI는 계속 실행된다.
 환경 변경은 [API 배포 가이드](../apps/api/DEPLOY.md#2-환경-변수-배포-github-secret)의 Secret
 반영 절차를 따르고, 코드 롤백은 호환 웹을 먼저 복원한 뒤 API를 되돌리는 순서를 검토한다.
+
+### 기동·배포 검증
+
+API는 기동 시 `rag.config` 로그 한 줄로 검색 모드, 임베딩 공급자·모델·차원, 기준값, topK,
+청크 크기·겹침·설정 해시, 허용 공개 범위·자료 종류, 채널별 검색 자료 종류와 채팅 공급자·모델을
+기록한다. API 키, 공급자 URL, 캐시 경로는 기록하지 않는다.
+
+배포는 import/index 뒤 서비스 교체 전에 `resume:verify`(`dist/scripts/verify-resume-rag-readiness.js`)를
+실행한다. 채널마다 검색기와 같은 조건(언어 조건 제외)의 공개 활성 원문 수를 세고, 벡터를 검색하는
+설정이면 현재 임베딩 프로필·chunkerVersion·chunkConfigHash의 활성 벡터 청크 수를 센다. 하나라도
+0이면 배포를 중단하고 이전 릴리스를 유지한다. keyword 모드와 임베딩 공급자 없는 hybrid는 벡터 수를
+검사하지 않는다. 벡터 장애를 바로 복구할 수 없으면 검증된 `keyword` 모드로 전환해 배포할 수 있다.
 
 ### 로컬 API 연결
 
@@ -266,17 +281,35 @@ GA만 연결하면 같은 이벤트를 `gtag`로 보내고, GA와 GTM을 함께 
 새 키워드는 `resume-rag-chat-analytics.ts`의 허용 목록에 정규화 값과 matcher를 추가한다. 점검
 모드에서 차단된 요청은 전송·완료·실패 이벤트를 만들지 않는다.
 
-`resume_rag_chat_logs`는 conversationId 없는 기존 단일 턴 이력 질문만 기록한다. 저장 대화 요청은 이 로그에 중복 기록하지 않고, 삭제·보존 정책이 적용되는 resume_chat_turns에만 저장한다. 이메일,
-전화번호, Bearer/API key·token·secret은 마스킹하고 동일한 마스킹 결과의 반복 수는
-`questionHash`로 집계한다. 메인 채팅 질문은 이 로그에 저장하지 않는다.
+`resume_rag_chat_logs`는 origin·rate limit·입력 검증을 통과해 답변 단계에 들어온 두 채널 요청의 결과를 한 행씩 기록한다. 응답 직전(실패는 오류
+전달 직전)에 `channel`, `locale`, `outcome`(`simple-reply`/`no-evidence`/`answered`/`rejected`/`failed`),
+`sourceCount`, `durationMs`, 실패 단계 `failureStage`를 저장한다. 같은 요청을 두 번 기록하지 않으며,
+보존 중인 requestId 재시도처럼 답변 생성을 다시 하지 않는 요청은 기록하지 않는다. 결과 기록 실패는
+경고 로그만 남기고 응답을 바꾸지 않는다. 저장 대화 저장 단계의 409처럼 기록 뒤의 실패는 반영하지 않는다.
 
-최근 질문은 다음 조회로 확인한다.
+질문 원문은 conversationId 없는 단일 턴 이력 질문에만 남긴다. 저장 대화와 메인 채팅 요청은
+`questionText`/`questionHash` 없이 결과만 기록한다. 질문은 삭제·보존 정책이 적용되는
+resume_chat_turns에만 저장하며 보존 기간이 다른 이 로그에 중복하지 않는다. 결과 행에는 대화 ID도
+넣지 않는다. 이메일, 전화번호, Bearer/API key·token·secret은 마스킹하고 동일한 마스킹 결과의
+반복 수는 `questionHash`로 집계한다. migration 이전 행의 결과 컬럼은 NULL이다.
+
+같은 값으로 `chat.answer` 구조화 로그(channel, locale, outcome, grounded, sourceCount, durationMs)를
+한 줄 남긴다. 질문·답변 원문과 출처 경로는 로그에 넣지 않는다.
+
+최근 질문과 근거 없음 비율은 다음 조회로 확인한다.
 
 ```sql
-SELECT "createdAt", "locale", "questionText"
+SELECT "createdAt", "locale", "outcome", "sourceCount", "questionText"
 FROM "resume_rag_chat_logs"
+WHERE "questionText" IS NOT NULL
 ORDER BY "createdAt" DESC
 LIMIT 100;
+
+SELECT "channel", "outcome", count(*)
+FROM "resume_rag_chat_logs"
+WHERE "createdAt" > now() - interval '1 day' AND "outcome" IS NOT NULL
+GROUP BY 1, 2
+ORDER BY 1, 2;
 ```
 
 ## 8. 구현과 회귀 검사
@@ -285,6 +318,8 @@ LIMIT 100;
 - 검색: resume-rag-retriever.service.ts, indexing/resume-vector-indexer.service.ts
 - 맥락·프롬프트: resume-chat-history.ts, ai/resume-chat-prompt.ts
 - 웹 복원: use-resume-conversation.ts, resume-conversation-client.ts
+- 운영 가드: resume-rag.config.ts(검색 범위·유효 설정), resume-rag-readiness.ts,
+  scripts/verify-resume-rag-readiness.ts, test/resume-rag-ops.integration-spec.ts
 - 회귀: resume-conversation.service.spec.ts, resume-vector-search.spec.ts,
   resume-vector-indexer.service.spec.ts, resume-conversation-persistence.spec.ts
 

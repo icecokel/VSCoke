@@ -3,6 +3,7 @@ import {
   type ResumeChatHistoryMessage,
 } from './resume-chat-history';
 import {
+  HttpException,
   Inject,
   Injectable,
   Logger,
@@ -17,6 +18,7 @@ import {
 } from './resume-rag-retriever.service';
 import type { ResumeRagChatResponseDto } from './dto/resume-rag-chat-response.dto';
 import { ResumeRagChatLogService } from './resume-rag-chat-log.service';
+import type { ResumeRagChatOutcome } from './entities/resume-rag-chat-log.entity';
 import {
   getChatSimpleReply,
   getChatNoEvidenceAnswer,
@@ -32,6 +34,7 @@ type AnswerRequest = {
 
 type AnswerOptions = {
   channel?: ChatChannel;
+  // false면 질문 원문 없이 결과만 기록한다. 저장 대화와 메인 채팅이 사용한다.
   recordQuestion?: boolean;
   history?: ResumeChatHistoryMessage[];
 };
@@ -79,19 +82,49 @@ export class ResumeRagService {
     const channel = options.channel ?? 'resume';
     const logContext = {
       channel,
+      locale: request.locale,
       questionLength: request.question.length,
       historyMessageCount: options.history?.length ?? 0,
     };
-    let stage = 'question-log';
+    let stage = 'selection';
     let stageStartedAt = startedAt;
-    try {
-      if (options.recordQuestion !== false) {
-        await this.chatLogService.recordQuestion(
-          request.question,
-          request.locale,
-        );
-      }
+    const record = (
+      outcome: ResumeRagChatOutcome,
+      sourceCount: number,
+      durationMs: number,
+      failureStage?: string,
+    ) =>
+      this.recordOutcome({
+        ...(options.recordQuestion === false
+          ? {}
+          : { question: request.question }),
+        locale: request.locale,
+        channel,
+        outcome,
+        sourceCount,
+        durationMs,
+        failureStage,
+      });
+    const finish = async (
+      outcome: Exclude<ResumeRagChatOutcome, 'rejected' | 'failed'>,
+      response: ResumeRagChatResponseDto,
+      details: Record<string, unknown> = {},
+    ): Promise<ResumeRagChatResponseDto> => {
+      const durationMs = performance.now() - startedAt;
+      this.logger.log({
+        event: 'chat.answer',
+        ...logContext,
+        outcome,
+        grounded: response.grounded,
+        sourceCount: response.sources.length,
+        ...details,
+        durationMs,
+      });
+      await record(outcome, response.sources.length, durationMs);
+      return response;
+    };
 
+    try {
       if (channel === 'resume') await this.retriever.assertSelection(request);
       const simpleReply = getChatSimpleReply(
         request.question,
@@ -99,15 +132,11 @@ export class ResumeRagService {
         channel,
       );
       if (simpleReply) {
-        this.logger.log({
-          event: 'chat.answer',
-          ...logContext,
-          outcome: 'simple-reply',
+        return await finish('simple-reply', {
+          answer: simpleReply,
           grounded: false,
-          sourceCount: 0,
-          durationMs: performance.now() - startedAt,
+          sources: [],
         });
-        return { answer: simpleReply, grounded: false, sources: [] };
       }
 
       let chunks: RetrievedResumeChunk[];
@@ -177,64 +206,74 @@ export class ResumeRagService {
       }
 
       if (chunks.length === 0) {
-        this.logger.log({
-          event: 'chat.answer',
-          ...logContext,
-          outcome: 'no-evidence',
-          grounded: false,
-          sourceCount: 0,
-          durationMs: performance.now() - startedAt,
-        });
-        return {
+        return await finish('no-evidence', {
           answer: getChatNoEvidenceAnswer(request.locale, channel),
           grounded: false,
           sources: [],
-        };
+        });
       }
 
+      stage = 'answer';
+      stageStartedAt = performance.now();
+      let answer: string;
       try {
-        stage = 'answer';
-        stageStartedAt = performance.now();
-        const answer = await this.chatProvider.answer({
+        answer = await this.chatProvider.answer({
           channel,
           question: request.question,
           locale: request.locale,
           contexts: chunks,
           ...(options.history?.length ? { history: options.history } : {}),
         });
-
-        this.logger.log({
-          event: 'chat.answer',
-          ...logContext,
-          outcome: 'completed',
-          provider: this.chatProvider.constructor.name,
-          grounded: true,
-          sourceCount: chunks.length,
-          answerLength: answer.length,
-          providerDurationMs: performance.now() - stageStartedAt,
-          durationMs: performance.now() - startedAt,
-        });
-        return {
-          answer,
-          grounded: true,
-          sources: chunks.map(toSource),
-        };
       } catch (error) {
         throw new ServiceUnavailableException(
           error instanceof Error ? error.message : String(error),
         );
       }
+      return await finish(
+        'answered',
+        { answer, grounded: true, sources: chunks.map(toSource) },
+        {
+          provider: this.chatProvider.constructor.name,
+          answerLength: answer.length,
+          providerDurationMs: performance.now() - stageStartedAt,
+        },
+      );
     } catch (error) {
-      this.logger.error({
+      // 4xx(선택한 이력서 없음 등)는 요청 거부로, 그 외는 장애로 구분해 집계한다.
+      const outcome =
+        error instanceof HttpException && error.getStatus() < 500
+          ? 'rejected'
+          : 'failed';
+      const durationMs = performance.now() - startedAt;
+      const failure = {
         event: 'chat.answer',
         ...logContext,
-        outcome: 'failed',
+        outcome,
         provider: this.chatProvider.constructor.name,
         stage,
         stageDurationMs: performance.now() - stageStartedAt,
-        durationMs: performance.now() - startedAt,
-      });
+        durationMs,
+      };
+      if (outcome === 'rejected') this.logger.warn(failure);
+      else this.logger.error(failure);
+      await record(outcome, 0, durationMs, stage);
       throw error;
+    }
+  }
+
+  // 결과 기록 실패가 이미 만든 답변이나 원래 오류를 바꾸지 않게 한다.
+  private async recordOutcome(
+    entry: Parameters<ResumeRagChatLogService['recordOutcome']>[0],
+  ): Promise<void> {
+    try {
+      await this.chatLogService.recordOutcome(entry);
+    } catch {
+      this.logger.warn({
+        event: 'chat.log',
+        outcome: 'failed',
+        channel: entry.channel,
+        chatOutcome: entry.outcome,
+      });
     }
   }
 }

@@ -1,4 +1,8 @@
-import { Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ResumeRagService } from './resume-rag.service';
 import type { ChatProvider } from './ai/chat-provider';
 import type { ResumeRagRetrieverService } from './resume-rag-retriever.service';
@@ -7,19 +11,22 @@ import type { ResumeRagChatLogService } from './resume-rag-chat-log.service';
 const numberMatcher: unknown = expect.any(Number);
 let logSpy: jest.SpiedFunction<Logger['log']>;
 let errorSpy: jest.SpiedFunction<Logger['error']>;
+let warnSpy: jest.SpiedFunction<Logger['warn']>;
 
 const createChatLogService = () => {
-  const recordQuestion = jest.fn().mockResolvedValue(undefined);
+  const recordOutcome = jest.fn<Promise<void>, [Record<string, unknown>]>();
+  recordOutcome.mockResolvedValue(undefined);
 
   return {
-    chatLogService: { recordQuestion } as unknown as ResumeRagChatLogService,
-    recordQuestion,
+    chatLogService: { recordOutcome } as unknown as ResumeRagChatLogService,
+    recordOutcome,
   };
 };
 
 beforeEach(() => {
   logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
   errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+  warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
 });
 
 afterEach(() => jest.restoreAllMocks());
@@ -36,7 +43,7 @@ describe('ResumeRagService', () => {
       answer,
     } as unknown as ChatProvider;
 
-    const { chatLogService, recordQuestion } = createChatLogService();
+    const { chatLogService, recordOutcome } = createChatLogService();
     const service = new ResumeRagService(
       retriever,
       chatProvider,
@@ -57,11 +64,21 @@ describe('ResumeRagService', () => {
       locale: 'ko-KR',
     });
     expect(answer).not.toHaveBeenCalled();
-    expect(recordQuestion).toHaveBeenCalledWith('오늘 날씨 어때?', 'ko-KR');
+    expect(recordOutcome).toHaveBeenCalledTimes(1);
+    expect(recordOutcome).toHaveBeenCalledWith({
+      question: '오늘 날씨 어때?',
+      locale: 'ko-KR',
+      channel: 'resume',
+      outcome: 'no-evidence',
+      sourceCount: 0,
+      durationMs: numberMatcher,
+      failureStage: undefined,
+    });
     expect(logSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         event: 'chat.answer',
         channel: 'resume',
+        locale: 'ko-KR',
         outcome: 'no-evidence',
         grounded: false,
         sourceCount: 0,
@@ -70,10 +87,10 @@ describe('ResumeRagService', () => {
     );
   });
 
-  it('can answer without recording a question for a memory-only chat surface', async () => {
+  it('records only the outcome without question text when the question is stored elsewhere', async () => {
     const retrieve = jest.fn().mockResolvedValue([]);
     const chatProvider = { answer: jest.fn() } as unknown as ChatProvider;
-    const { chatLogService, recordQuestion } = createChatLogService();
+    const { chatLogService, recordOutcome } = createChatLogService();
     const service = new ResumeRagService(
       {
         retrieve,
@@ -88,7 +105,74 @@ describe('ResumeRagService', () => {
       { recordQuestion: false },
     );
 
-    expect(recordQuestion).not.toHaveBeenCalled();
+    expect(recordOutcome).toHaveBeenCalledTimes(1);
+    expect(recordOutcome).toHaveBeenCalledWith(
+      expect.not.objectContaining({ question: expect.anything() as unknown }),
+    );
+    expect(recordOutcome).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: 'no-evidence', sourceCount: 0 }),
+    );
+  });
+
+  it('keeps the answer when recording the outcome fails', async () => {
+    const { chatLogService, recordOutcome } = createChatLogService();
+    recordOutcome.mockRejectedValue(new Error('private-db-error'));
+    const service = new ResumeRagService(
+      {
+        retrieve: jest.fn().mockResolvedValue([]),
+        assertSelection: jest.fn().mockResolvedValue(undefined),
+      } as unknown as ResumeRagRetrieverService,
+      { answer: jest.fn() },
+      chatLogService,
+    );
+
+    await expect(
+      service.answer({ question: '오늘 날씨 어때?', locale: 'ko-KR' }),
+    ).resolves.toMatchObject({ grounded: false });
+    expect(warnSpy).toHaveBeenCalledWith({
+      event: 'chat.log',
+      outcome: 'failed',
+      channel: 'resume',
+      chatOutcome: 'no-evidence',
+    });
+    expect(JSON.stringify(warnSpy.mock.calls)).not.toMatch(/private-|날씨/);
+  });
+
+  it('records a missing resume selection as rejected with its stage', async () => {
+    const { chatLogService, recordOutcome } = createChatLogService();
+    const retrieve = jest.fn();
+    const service = new ResumeRagService(
+      {
+        retrieve,
+        assertSelection: jest
+          .fn()
+          .mockRejectedValue(new NotFoundException('Resume not found')),
+      } as unknown as ResumeRagRetrieverService,
+      { answer: jest.fn() },
+      chatLogService,
+    );
+
+    await expect(
+      service.answer({ question: '경력 알려줘', locale: 'ja-JP' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(retrieve).not.toHaveBeenCalled();
+    expect(recordOutcome).toHaveBeenCalledWith({
+      question: '경력 알려줘',
+      locale: 'ja-JP',
+      channel: 'resume',
+      outcome: 'rejected',
+      sourceCount: 0,
+      durationMs: numberMatcher,
+      failureStage: 'selection',
+    });
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'chat.answer',
+        outcome: 'rejected',
+        stage: 'selection',
+      }),
+    );
+    expect(errorSpy).not.toHaveBeenCalled();
   });
 
   it('returns grounded false when no chunks are retrieved', async () => {
@@ -135,11 +219,12 @@ describe('ResumeRagService', () => {
     } as unknown as ResumeRagRetrieverService;
     const answer = jest.fn().mockResolvedValue('근거 기반 답변');
     const chatProvider: ChatProvider = { answer };
+    const { chatLogService, recordOutcome } = createChatLogService();
 
     const service = new ResumeRagService(
       retriever,
       chatProvider,
-      createChatLogService().chatLogService,
+      chatLogService,
     );
 
     await expect(
@@ -175,18 +260,25 @@ describe('ResumeRagService', () => {
     expect(logSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         event: 'chat.answer',
-        outcome: 'completed',
+        channel: 'resume',
+        locale: 'ko-KR',
+        outcome: 'answered',
         grounded: true,
         sourceCount: 1,
         providerDurationMs: numberMatcher,
+        durationMs: numberMatcher,
       }),
+    );
+    expect(recordOutcome).toHaveBeenCalledTimes(1);
+    expect(recordOutcome).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: 'answered', sourceCount: 1 }),
     );
     expect(JSON.stringify(logSpy.mock.calls)).not.toMatch(
       /Oprimed에서 맡은 업무 질문|근거 내용|근거 기반 답변|docs\/source.md/,
     );
   });
 
-  it.each(['question-log', 'query-rewrite', 'retrieval', 'answer'])(
+  it.each(['query-rewrite', 'retrieval', 'answer'])(
     '%s 실패 단계만 기록하고 질문과 공급자 오류 내용은 남기지 않는다',
     async (stage) => {
       const error = new Error('private-provider-secret');
@@ -202,8 +294,7 @@ describe('ResumeRagService', () => {
         },
       ]);
       const answer = jest.fn().mockRejectedValue(error);
-      const { chatLogService, recordQuestion } = createChatLogService();
-      if (stage === 'question-log') recordQuestion.mockRejectedValue(error);
+      const { chatLogService, recordOutcome } = createChatLogService();
       if (stage === 'retrieval') retrieve.mockRejectedValue(error);
       const service = new ResumeRagService(
         {
@@ -224,11 +315,7 @@ describe('ResumeRagService', () => {
         },
       );
 
-      if (stage === 'question-log') await expect(result).rejects.toBe(error);
-      else
-        await expect(result).rejects.toBeInstanceOf(
-          ServiceUnavailableException,
-        );
+      await expect(result).rejects.toBeInstanceOf(ServiceUnavailableException);
       expect(errorSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           event: 'chat.answer',
@@ -240,6 +327,14 @@ describe('ResumeRagService', () => {
         }),
       );
       expect(JSON.stringify(errorSpy.mock.calls)).not.toMatch(/private-/);
+      expect(recordOutcome).toHaveBeenCalledTimes(1);
+      expect(recordOutcome).toHaveBeenCalledWith(
+        expect.objectContaining({
+          outcome: 'failed',
+          sourceCount: 0,
+          failureStage: stage,
+        }),
+      );
     },
   );
 
@@ -409,6 +504,14 @@ describe('공통 채팅 인사 처리', () => {
       expect(result.answer).toContain(channel === 'main' ? '사이트' : '경력');
       expect(retrieve).not.toHaveBeenCalled();
       expect(answer).not.toHaveBeenCalled();
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: 'chat.answer',
+          channel,
+          outcome: 'simple-reply',
+          sourceCount: 0,
+        }),
+      );
     },
   );
 });

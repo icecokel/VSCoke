@@ -3,7 +3,7 @@ import { ResumeChatTurn } from './entities/resume-chat-turn.entity';
 import { ResumeConversationController } from './resume-conversation.controller';
 import { ResumeConversationService } from './resume-conversation.service';
 import { ResumeConversationRateLimitGuard } from './resume-conversation-rate-limit.guard';
-import { Module } from '@nestjs/common';
+import { Inject, Logger, Module, type OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import {
   RESUME_RAG_CHAT_PROVIDER,
@@ -29,6 +29,8 @@ import { ResumeVectorIndexerService } from './indexing/resume-vector-indexer.ser
 import {
   RESUME_RAG_CONFIG,
   type ResumeRagConfig,
+  assertResumeRagSearchScope,
+  describeResumeRagConfig,
   getResumeRagConfig,
 } from './resume-rag.config';
 import { ResumeRagController } from './resume-rag.controller';
@@ -90,4 +92,19 @@ import { ResumeRagService } from './resume-rag.service';
     ResumeVectorIndexerService,
   ],
 })
-export class ResumeRagModule {}
+export class ResumeRagModule implements OnModuleInit {
+  private readonly logger = new Logger(ResumeRagModule.name);
+
+  constructor(
+    @Inject(RESUME_RAG_CONFIG) private readonly config: ResumeRagConfig,
+  ) {}
+
+  // 검색 범위가 빈 설정은 기동을 실패시켜 배포 health 검사와 자동 복구가 동작하게 한다.
+  onModuleInit(): void {
+    assertResumeRagSearchScope(this.config);
+    this.logger.log({
+      event: 'rag.config',
+      ...describeResumeRagConfig(this.config),
+    });
+  }
+}

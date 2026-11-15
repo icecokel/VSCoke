@@ -58,7 +58,8 @@ API 배포의 trigger, runner와 release 단계는 `.github/workflows/deploy-api
 1. GitHub Actions run 로그에서 실패 step을 확인한다.
 2. self-hosted runner가 online이고 workflow 요구 label을 만족하는지 확인한다.
 3. workflow의 사전 조건 검사 결과를 확인한다.
-4. 실패가 lint/test/build인지, migration 누락인지, import/index인지, systemd 교체/health인지 확인한다. build 실패는 기존 서비스를 건드리지 않는다.
+4. 실패가 lint/test/build인지, migration 누락인지, import/index인지, 검색 준비 검증인지, systemd 교체/health인지 확인한다. build 실패는 기존 서비스를 건드리지 않는다.
+   검색 준비 검증 실패는 채널별 원문·벡터 수와 조치를 출력한다. 교체 후 health 실패는 `RAG_ALLOWED_SOURCE_TYPES` 등 검색 범위 설정 오류로 API 기동이 거부됐는지 journal에서 확인한다.
 
 수동 재실행은 GitHub Actions의 `workflow_dispatch`를 사용한다.
 

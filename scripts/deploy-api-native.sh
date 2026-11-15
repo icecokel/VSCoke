@@ -108,6 +108,8 @@ run -e '
     require("./apps/api/dist/scripts/index-resume-vectors.js");
   }
 '
+# 채널별 공개 원문·현재 프로필 벡터가 0건이면 서비스 교체 전에 중단한다.
+run -e 'require("./apps/api/dist/scripts/verify-resume-rag-readiness.js")'
 promoted=true
 switchRelease "$release"
 sudo -n /usr/bin/systemctl restart vscoke-api.service

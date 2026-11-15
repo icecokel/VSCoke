@@ -21,6 +21,7 @@ cp -R apps/web/resume-detail "$release/apps/web/"
 cp docs/public-{site-guide,resume-experience,resume-raw-data}.md "$release/docs/"
 test -f "$release/apps/api/dist/scripts/import-resume-source-items.js"
 test -f "$release/apps/api/dist/scripts/index-resume-vectors.js"
+test -f "$release/apps/api/dist/scripts/verify-resume-rag-readiness.js"
 "$release/bin/node" -e '
   const {createRequire} = require("node:module");
   const api = createRequire(process.argv[1]);

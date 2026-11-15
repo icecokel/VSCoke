@@ -45,6 +45,7 @@ for (const scenario of [
   "migration",
   "import",
   "index",
+  "verify",
   "restart",
   "health",
   "public",
@@ -111,6 +112,7 @@ for (const scenario of [
       for (const [script, phase] of [
         ["import-resume-source-items", "import"],
         ["index-resume-vectors", "index"],
+        ["verify-resume-rag-readiness", "verify"],
       ]) {
         write(
           join(bundle, `apps/api/dist/scripts/${script}.js`),
@@ -178,7 +180,9 @@ for (const scenario of [
         assert.equal(realpathSync(join(release, "logs")), join(root, "logs"));
         assert.match(
           readFileSync(calls, "utf8"),
-          scenario === "keyword" ? /^import\nrestart\n$/ : /^import\nindex\nrestart\n$/,
+          scenario === "keyword"
+            ? /^import\nverify\nrestart\n$/
+            : /^import\nindex\nverify\nrestart\n$/,
         );
         assert.equal(statSync(join(root, "api.env")).mode & 0o777, 0o600);
       } else {
@@ -197,6 +201,9 @@ for (const scenario of [
           assert.equal(readFileSync(calls, "utf8").match(/restart/g)?.length, 2);
         }
         if (scenario === "migration") assert.equal(existsSync(calls), false);
+        // 검색 준비 검증 실패는 서비스 교체·재시작 전에 중단한다.
+        if (scenario === "verify")
+          assert.equal(readFileSync(calls, "utf8"), "import\nindex\nverify\n");
       }
       for (const [index, path] of preserved.entries())
         assert.equal(readFileSync(join(root, path), "utf8"), contents[index]);

@@ -117,7 +117,7 @@ ONNX 네이티브 모듈 로드도 검사한다.
 
 1. flock으로 중복 실행을 막고 이전 current·API env를 `.local/deploy-<release-id>`에 보존한다.
 2. `releases/<sha>-<run-id>-<attempt>`에 번들을 두고 `revision`에 커밋을 기록한다. `.env`·`logs`는 공유 경로에 연결한다.
-3. write-native → 미적용 migration 확인 → 공개 이력 import → 필요한 vector index를 수행한다.
+3. write-native → 미적용 migration 확인 → 공개 이력 import → 필요한 vector index → 검색 준비 검증(`verify-resume-rag-readiness`)을 수행한다. 채널별 공개 원문이나 현재 프로필 벡터가 0건이면 교체 전에 중단한다.
 4. current symlink 원자 교체 후 허용된 systemd restart 한 명령을 수행한다.
 5. 로컬 health·resume·recipes·espresso-history/beans와 선택적 공개 endpoint를 검사한다.
 6. 성공 시에만 workflow가 `.last-successful-deploy`를 기록한다. 다음 배포 판정은 `current/revision`과 이 기록이 일치할 때만 생략할 수 있다. 수동 복구 뒤의 오래된 성공 기록은 신뢰하지 않는다. 이전 릴리스는 보존한다.

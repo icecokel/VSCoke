@@ -31,6 +31,7 @@ const profile = {
 const createHarness = (mode = 'vector') => {
   const config = getResumeRagConfig({
     RAG_RETRIEVAL_MODE: mode,
+    RAG_VECTOR_MIN_SIMILARITY: '0.3',
     RAG_EMBEDDING_PROVIDER: profile.provider,
     RAG_EMBEDDING_MODEL: profile.model,
     RAG_EMBEDDING_DIMENSIONS: '2',

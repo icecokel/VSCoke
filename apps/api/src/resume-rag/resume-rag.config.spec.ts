@@ -1,4 +1,6 @@
 import {
+  assertResumeRagSearchScope,
+  describeResumeRagConfig,
   getResumeRagConfig,
   requireClaudeConfig,
   requireEmbeddingModelConfig,
@@ -22,6 +24,87 @@ describe('resume rag config', () => {
     expect(config.minSimilarity).toBe(0.1);
     expect(config.allowedVisibilities).toEqual(['public']);
     expect(config.allowedSourceTypes).toEqual(['app_resume', 'career_data']);
+  });
+
+  it('defaults vector threshold and chunking to the production values', () => {
+    const config = getResumeRagConfig({});
+
+    expect(config.vectorMinSimilarity).toBe(0.85);
+    expect(config.chunkSize).toBe(600);
+    expect(config.chunkOverlap).toBe(80);
+  });
+
+  it('accepts the default search scope for every chat channel', () => {
+    expect(() =>
+      assertResumeRagSearchScope(getResumeRagConfig({})),
+    ).not.toThrow();
+    expect(() =>
+      assertResumeRagSearchScope(
+        getResumeRagConfig({ RAG_ALLOWED_SOURCE_TYPES: 'career_data' }),
+      ),
+    ).not.toThrow();
+  });
+
+  it('rejects a source type list that leaves the resume channel empty', () => {
+    // 2026-10-29 장애 설정: resume 채널은 career_data만 검색한다.
+    expect(() =>
+      assertResumeRagSearchScope(
+        getResumeRagConfig({ RAG_ALLOWED_SOURCE_TYPES: 'app_resume' }),
+      ),
+    ).toThrow(
+      /resume channel: RAG_ALLOWED_SOURCE_TYPES \(current: app_resume\) must include one of career_data/,
+    );
+  });
+
+  it.each([
+    [
+      { RAG_ALLOWED_SOURCE_TYPES: 'resume_workspace' },
+      /main channel.*resume channel/,
+    ],
+    [{ RAG_ALLOWED_VISIBILITIES: 'private' }, /RAG_ALLOWED_VISIBILITIES/],
+    [{ RAG_TOP_K: '0' }, /RAG_TOP_K/],
+  ])(
+    'rejects a search scope that can never return evidence: %j',
+    (env, message) => {
+      expect(() => assertResumeRagSearchScope(getResumeRagConfig(env))).toThrow(
+        message,
+      );
+    },
+  );
+
+  it('describes the effective config without keys or credential-bearing URLs', () => {
+    const description = describeResumeRagConfig(
+      getResumeRagConfig({
+        RAG_EMBEDDING_PROVIDER: 'openai-compatible',
+        RAG_EMBEDDING_MODEL: 'embedding-model',
+        RAG_EMBEDDING_DIMENSIONS: '384',
+        ANTHROPIC_API_KEY: 'private-claude-key',
+        RAG_AI_API_KEY: 'private-embedding-key',
+        RAG_AI_BASE_URL: 'https://user:private-password@example.test/v1',
+        RAG_LOCAL_EMBEDDING_CACHE_DIR: '/private/cache',
+        RAG_ALLOWED_SOURCE_TYPES: 'career_data',
+      }),
+    );
+
+    expect(description).toMatchObject({
+      retrievalMode: 'hybrid',
+      embeddingProvider: 'openai-compatible',
+      embeddingModel: 'embedding-model',
+      embeddingDimensions: 384,
+      vectorMinSimilarity: 0.85,
+      minSimilarity: 0.1,
+      topK: 5,
+      chunkSize: 600,
+      chunkOverlap: 80,
+      chunkConfigHash: expect.stringMatching(/^[a-f0-9]{64}$/) as unknown,
+      allowedVisibilities: ['public'],
+      allowedSourceTypes: ['career_data'],
+      channelSourceTypes: { main: ['career_data'], resume: ['career_data'] },
+      chatProvider: 'claude',
+      chatModel: 'claude-sonnet-5-5',
+      chatTimeoutMs: 45_000,
+    });
+    expect(JSON.stringify(description)).not.toMatch(/private/);
   });
 
   it.each(['0', '-1', '1.5', '45000ms', 'NaN', 'Infinity', '2147483648'])(

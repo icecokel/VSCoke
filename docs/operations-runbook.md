@@ -11,15 +11,40 @@
 공개 운영 API·DB·터널은 OCI 1호기에서 실행한다. Mac API는 중지 상태이며 보존한 DB를
 최신 운영 DB로 간주하지 않는다. 인프라·권한 기준은 [API 배포 가이드](../apps/api/DEPLOY.md)를 따른다.
 
+VSCoke 작업은 전용 계정 `vscoke-api`로 접속한다. API·Cloudflare 터널·배포 runner가 모두 이
+계정으로 실행되며 홈 디렉터리가 앱 루트 `/srv/vscoke-api`다. 접속 설정과 키는 Mac의
+`/Users/smlee/icecoke-ops/config/`에 있다(`oci-01-vscoke`, 키 `oci_vscoke_api_key`). 키 파일은
+복사하거나 출력하지 않는다.
+
+| 가능                                                    | 불가 (인프라 관리자 `oci-01`에게 요청)           |
+| ------------------------------------------------------- | ------------------------------------------------ |
+| 앱 루트 읽기·쓰기, 서비스 상태·자기 서비스 journal 조회 | runner·cloudflared·PostgreSQL 재시작             |
+| `sudo -n /usr/bin/systemctl restart vscoke-api.service` | 그 밖의 `sudo`, 패키지 설치, systemd unit 변경   |
+| `.local/db.env`의 전용 role로 DB 접속                   | 다른 프로젝트(`/srv/discord-bot`)·관리자 홈 접근 |
+
 ```bash
-ssh -F /Users/smlee/icecoke-ops/config/ssh-config oci-01
-cd /srv/vscoke-api
+ssh -F /Users/smlee/icecoke-ops/config/ssh-config oci-01-vscoke
 systemctl is-active vscoke-api.service postgresql@16-main.service
 systemctl is-active cloudflared-vscoke-api.service
 systemctl is-enabled vscoke-api.service
 readlink -f current
 curl -fsS http://127.0.0.1:3000/health
 ```
+
+DB를 조회할 때는 자격 증명을 출력하지 않고 `.local/db.env`를 환경으로만 읽는다. 로컬 DB 도구가
+필요하면 포트 포워딩을 사용한다. 운영 데이터를 바꾸는 쓰기·migration은
+[DB migration 실패](#db-migration-실패)의 절차를 따른다.
+
+```bash
+# 서버에서
+(set -a; . .local/db.env; set +a
+ PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USERNAME" -d "$DB_DATABASE")
+# Mac에서: localhost:15432 → OCI 127.0.0.1:5432
+ssh -F /Users/smlee/icecoke-ops/config/ssh-config -N -L 15432:127.0.0.1:5432 oci-01-vscoke
+```
+
+배포는 GitHub Actions(`Deploy API to OCI (native)`)로만 한다. 서버에서 `current`를 직접 바꾸거나
+릴리스를 수동으로 만들지 않는다.
 
 웹은 Vercel Deployments의 Ready 상태를 확인한다. 공개 API 검사는 checkout에서
 `pnpm smoke:api:remote`로 실행한다. 내부·공개 health의 timestamp/uptime으로 같은 OCI 프로세스인지

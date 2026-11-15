@@ -56,8 +56,9 @@ API 기동이 실패한다. 2026-10-29~11-14처럼 모든 질문에 200 + 근거
 모두 최신의 active/public/vectorize 자료만 허용한다. 벡터 검색은 원본 테이블과 JOIN하고,
 임베딩 provider/model/dimensions 및 chunkerVersion/chunkConfigHash가 일치하는 청크만 검색한다.
 서로 다른 차원의 벡터를 비교하지 않도록 eligible CTE를 먼저 materialize한다.
-요청 locale과 같은 언어 또는 locale이 없는 원본만 검색한다. 다국어 임베딩을 사용해도
-다른 locale의 자료가 자동으로 포함되는 것은 아니다.
+`app_resume`처럼 언어별 사본이 있는 자료는 요청 locale과 같은 언어 또는 locale이 없는 원본만 검색한다.
+`career_data` 원문(불렛·사실·상세)은 번역본 없이 한 언어로만 발행하므로 요청 locale과 무관하게 검색하고,
+답변 언어는 생성 프롬프트가 요청 locale로 맞춘다.
 
 코사인 점수 기준은 `RAG_VECTOR_MIN_SIMILARITY`(기본값 0.85), 키워드 기준은 기존
 `RAG_MIN_SIMILARITY`(0.1)다. 벡터 기준과 `RAG_CHUNK_SIZE`/`RAG_CHUNK_OVERLAP`(600/80)의 코드

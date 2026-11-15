@@ -149,6 +149,8 @@ export class ResumeRagRetrieverService {
     );
   }
 
+  // career_data 원문(불렛·사실·상세)은 번역본 없이 한 언어로만 발행하는 원본이므로 요청 언어로 거르지 않는다.
+  // 언어별 사본이 있는 app_resume 자료만 요청 언어로 거르고, 답변 언어는 생성 프롬프트가 맞춘다.
   async retrieve(
     request: ResumeRagRetrieveRequest,
   ): Promise<RetrievedResumeChunk[]> {
@@ -203,7 +205,8 @@ export class ResumeRagRetrieverService {
           AND "visibility" = 'public'
           AND "visibility" = ANY($1)
           AND (
-            $2::varchar IS NULL
+            "sourceType" = 'career_data'
+            OR $2::varchar IS NULL
             OR "locale" IS NULL OR "locale" = $2
             OR split_part("locale", '-', 1) = split_part($2, '-', 1)
           )
@@ -289,7 +292,8 @@ export class ResumeRagRetrieverService {
           AND ${legacyDetailCondition('source')}
           AND source.visibility = 'public' AND source.visibility = ANY($1)
           AND chunk.status = 'active' AND chunk.visibility = 'public'
-          AND ($3::varchar IS NULL OR source.locale IS NULL OR source.locale = $3
+          AND (source."sourceType" = 'career_data' OR $3::varchar IS NULL
+            OR source.locale IS NULL OR source.locale = $3
             OR split_part(source.locale, '-', 1) = split_part($3, '-', 1))
           AND chunk."embeddingProvider" = $4 AND chunk."embeddingModel" = $5
           AND chunk."embeddingDimensions" = $6 AND vector_dims(chunk.embedding) = $6

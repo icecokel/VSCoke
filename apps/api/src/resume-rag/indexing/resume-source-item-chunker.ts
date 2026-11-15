@@ -1,5 +1,6 @@
 import { RESUME_RAG_RETRIEVED_CHUNK_MAX_CHARS } from '../resume-rag.config';
 import { createHash } from 'node:crypto';
+import { toResumeSourceText } from './resume-source-text';
 
 export type ResumeChunkerOptions = {
   chunkSize: number;
@@ -59,7 +60,9 @@ export class ResumeSourceItemChunker {
   ): ResumeSourceItemChunk[] {
     const chunkSize = options.chunkSize ?? DEFAULT_OPTIONS.chunkSize;
     const chunkOverlap = options.chunkOverlap ?? DEFAULT_OPTIONS.chunkOverlap;
-    const text = normalizeText(input.bodyText);
+    // 키워드 검색과 임베딩이 같은 평문을 보도록 청킹 전에 MDX JSX 블록을 평문으로 바꾼다.
+    // 바뀐 청크는 다음 색인에서 내용 해시가 달라져 다시 임베딩된다.
+    const text = normalizeText(toResumeSourceText(input.bodyText));
     if (!text) return [];
 
     if (typeof input.metadata.factId === 'string') {

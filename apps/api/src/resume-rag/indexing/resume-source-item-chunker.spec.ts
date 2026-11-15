@@ -29,6 +29,28 @@ describe('ResumeSourceItemChunker', () => {
     ]);
     expect(chunks[0].citationMetadata).toEqual({ sectionPath: 'A' });
   });
+  it('MDX 상세의 JSX 블록은 태그 없이 대체 텍스트와 캡션만 청크에 남긴다', () => {
+    const chunks = chunker.chunk(
+      {
+        sourceItemId: 'detail-1',
+        bodyText: [
+          '레이아웃을 바꿨습니다.',
+          '',
+          '<figure className="my-6">',
+          '  <img src="/a.png" alt="전환 전 화면" className="w-full" />',
+          '  <figcaption className="mt-3">전환 비교</figcaption>',
+          '</figure>',
+        ].join('\n'),
+        metadata: { slug: 'detail' },
+      },
+      { chunkSize: 600, chunkOverlap: 80 },
+    );
+
+    expect(chunks.map((chunk) => chunk.content)).toEqual([
+      '레이아웃을 바꿨습니다.\n\n전환 전 화면\n전환 비교',
+    ]);
+  });
+
   it('독립 사실은 작은 chunkSize에서도 근거와 표현 한계를 분리하지 않는다', () => {
     const bodyText =
       '주장: 렌더링 개선\n\n측정 조건: 제한된 테스트 환경\n\n표현 한계: 전체 트래픽 성능으로 일반화하지 않는다';

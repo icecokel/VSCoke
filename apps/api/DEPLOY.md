@@ -389,3 +389,20 @@ main 반영 전 CI에서 기존 합성 이력서가 경력 한 개·외부 링�
 Mac DB는 전환 시점에서 멈춘 보존본이다. 이후 운영 쓰기는 OCI에서만 받는다. 복귀할 경우 OCI 쓰기를
 중단하고 최신 데이터를 Mac에 역동기화해야 하며, DNS만 원복하거나 Mac API를 임의로 재개하지 않는다.
 이후 코드 배포는 최종 DB 복원·DNS 전환을 반복하지 않고 OCI 릴리스 교체만 수행한다.
+
+## 10. 이력 채팅 결과 기록 migration 적용 (2026-11-15)
+
+`AddResumeRagChatOutcomes1795000000007`(이력 채팅 결과 기록 컬럼)을 4절 절차대로 적용했다.
+
+1. `e65987dd` push 후 배포가 미적용 migration 검사에서 중단되고 이전 릴리스(`83bcf175`)가 유지됐다.
+2. 적용 전 `/srv/vscoke-api/backups/pre-migration-007-20261115T095707Z.dump`(custom format,
+   600 권한, SHA-256 기록)를 만들고 테이블 데이터 28개 항목과 질문 로그 36행·migration 11개·
+   vector 9,649개 시점을 확인했다.
+3. 후보 릴리스의 TypeORM CLI로 migration을 적용했다. 기존 36행은 값이 유지되고 결과 컬럼만 NULL이다.
+   이전 API의 질문 로그 쓰기도 새 제약과 호환된다.
+4. 같은 run을 재실행해 색인(신규 청크 163개: 오늘 적재된 경력 불렛 108개 원문, 마크업을 뺀 상세)과
+   검색 준비 검증(resume 채널 원문 139개, main 16개)을 통과한 뒤 교체했다.
+
+교체 후 `rag.config` 기동 로그, 경력 불렛 벡터 160청크, 상세 청크의 마크업 0건, 질문 로그의
+channel·outcome·sourceCount·durationMs 기록, 이력 채팅 출처의 `career-bullet/*` 등장을 확인했다.
+Production Chat Smoke는 ko 근거 답변 통과, en-US·ja-JP는 키워드 관문 때문에 예상된 실패(`test.fail()`)다.

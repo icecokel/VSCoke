@@ -253,6 +253,35 @@ import/index는 `TEST_DATABASE_URL`만으로 테스트 DB를 선택하지 않으
 요청 ID·단계·지연·프로필로 원인을 좁히되 질문·대화 원문과 접근키·API 키는 로그에 남기지 않는다.
 rate limit은 프로세스 메모리 기반이므로 여러 인스턴스에서 공유되는 전역 제한으로 간주하지 않는다.
 
+### 검색 품질 평가
+
+`pnpm --filter @vscoke/api rag:eval`은 LLM 없이 이력서 채널 검색만 평가한다. 공개 자료로 만든
+대리 corpus를 일회용 `_test` DB의 임시 schema에 운영과 같은 저장·색인 경로로 넣고, 골든 질문
+세트를 `ResumeRagRetrieverService.retrieve()`에 보낸다. 데이터와 실행 스크립트는
+`apps/api/test/rag-eval/`, 지표 계산은 `apps/api/src/resume-rag/evaluation/`에 있다. 골든 세트는
+같은 주제를 ko-KR·en-US·ja-JP로 묻고 사이트 추천 질문 22개와 답변 불가 질문 10개를 포함한다.
+운영 프로필(hybrid, local-e5-q8, 벡터 0.85, 키워드 0.1, topK 5, 청크 600/80)을 고정하며
+`--vector-min-similarity`, `--mode`로만 바꾼다. 로컬 E5 모델 캐시가 필요하고 모델을 내려받지
+않으므로 기본 CI와 `pnpm test`에서 실행하지 않는다. 지표 계산과 골든 세트 정합성은
+`pnpm test:api`가 검사한다.
+
+```bash
+TEST_DATABASE_URL=postgresql://<user>:<password>@127.0.0.1:<port>/<name>_test \
+RAG_LOCAL_EMBEDDING_CACHE_DIR=<Xenova/multilingual-e5-small 캐시 경로> \
+pnpm --filter @vscoke/api rag:eval
+```
+
+결과 JSON은 `output/rag-eval/`에 저장한다. 관문 통과는 키워드 관문이 토큰을 만든 비율, recall@5는
+상위 5개 원문 중 정답 원문 비율(정답이 5개보다 많으면 5로 나눔), 오탐률은 답변 불가 질문에서
+청크가 1개 이상 검색된 비율이다. 대리 corpus는 운영 불렛 문구·키워드·독립 사실을 포함하지 않으므로
+수치는 같은 corpus의 변경 전후 비교에만 사용한다. 기준선(2026-11-15, main `83bcf175`):
+
+| locale | 관문 통과 | recall@5 | hit@5 | MRR   | 오탐률 |
+| ------ | --------- | -------- | ----- | ----- | ------ |
+| ko-KR  | 97.1%     | 0.672    | 97.0% | 0.894 | 20.0%  |
+| en-US  | 61.8%     | 0.258    | 57.6% | 0.518 | 10.0%  |
+| ja-JP  | 35.3%     | 0.107    | 27.3% | 0.273 | 10.0%  |
+
 ## 7. 분석과 기존 질문 로그
 
 이력 질문 화면은 다음 `dataLayer` 이벤트를 사용한다.

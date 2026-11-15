@@ -26,6 +26,7 @@
     "resume:import": "node dist/scripts/import-resume-source-items.js",
     "resume:index": "node dist/scripts/index-resume-vectors.js",
     "resume:verify": "node dist/scripts/verify-resume-rag-readiness.js",
+    "rag:eval": "ts-node -r tsconfig-paths/register test/rag-eval/run-resume-rag-eval.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",

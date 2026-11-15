@@ -105,7 +105,7 @@ describe('resume rag config', () => {
       embeddingDimensions: 384,
       vectorSelection: 'rank',
       minSimilarity: 0.1,
-      topK: 5,
+      topK: 10,
       chunkSize: 600,
       chunkOverlap: 80,
       chunkConfigHash: expect.stringMatching(/^[a-f0-9]{64}$/) as unknown,

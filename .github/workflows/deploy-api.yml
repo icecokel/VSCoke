@@ -119,20 +119,3 @@ jobs:
         if: steps.scope.outputs.should_deploy == 'true'
         run: |
           printf '%s\n' "$GITHUB_SHA" > "$API_DEPLOY_DIR/.last-successful-deploy"
-
-  notify-failure:
-    needs: deploy
-    if: failure()
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout alert script
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: scripts/discord-failure-alert.mjs
-          sparse-checkout-cone-mode: false
-
-      - name: Send Discord failure alert
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: node scripts/discord-failure-alert.mjs

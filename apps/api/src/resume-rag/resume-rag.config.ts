@@ -122,7 +122,7 @@ export const getResumeRagConfig = (
   anthropicApiKey: env.ANTHROPIC_API_KEY?.trim() || undefined,
   aiBaseUrl: env.RAG_AI_BASE_URL || undefined,
   aiApiKey: env.RAG_AI_API_KEY || undefined,
-  topK: parseOptionalInt(env.RAG_TOP_K) ?? 5,
+  topK: parseOptionalInt(env.RAG_TOP_K) ?? 10,
   minSimilarity: parseOptionalFloat(env.RAG_MIN_SIMILARITY) ?? 0.1,
   chunkSize:
     parseOptionalInt(env.RAG_CHUNK_SIZE) ?? RESUME_RAG_DEFAULT_CHUNK_SIZE,

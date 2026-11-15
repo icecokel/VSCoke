@@ -76,19 +76,14 @@ NEXT_PUBLIC_API_URL=http://127.0.0.1:65535 pnpm build:web
 
 ## GitHub Actions 실패 알림
 
-`Production Chat Smoke`의 `smoke` job이나 `Deploy API to OCI (native)`의 `deploy` job이 실패하면
-같은 run의 `notify-failure` job이 GitHub-hosted runner에서 `scripts/discord-failure-alert.mjs`로
-Discord에 한 건을 보낸다. 메시지에는 workflow 이름, 브랜치·짧은 SHA, 트리거, 실행 URL만 담고
-로그·응답 본문·Secret은 담지 않는다. 멘션과 링크 미리보기는 끈다. OCI 러너는 알림에 관여하지 않는다.
+`Production Chat Smoke`와 `Deploy API to OCI (native)`의 실패는 개인 Discord 봇(`icecokel/discord-bot`,
+OCI `discord-bot` 계정에서 실행)이 GitHub 공개 API로 주기적으로 확인해 관리자 DM으로 보낸다.
+VSCoke workflow에는 알림 job이나 Secret이 없다. 감시 주기·대상 workflow·이력 저장 방식은
+discord-bot 저장소 문서를 따른다.
 
-- Repository Secret `DISCORD_WEBHOOK_URL`에 Discord 채널 설정 > 연동 > 웹후크에서 만든 URL을
-  등록한다. 미설정이면 알림 job은 건너뛴다는 로그만 남기고 성공하며 run은 원래대로 실패로 남는다.
-- 실패만 알린다. 성공·취소·UI 전용 배포 생략과 runner offline으로 대기 중인 배포는 알리지 않는다.
-  실패한 run을 재실행해 다시 실패하면 회차마다 한 건씩 보낸다.
-- 전송이 HTTP 오류·timeout·URL 형식 오류로 실패하면 `notify-failure` job이 상태 코드만 남기고
-  실패한다. 자동 재시도하지 않는다. 404면 webhook이 삭제된 것이므로 새로 만들어 Secret을 교체한다.
 - 확인은 Actions에서 `Production Chat Smoke`를 `force_failure=true`로 수동 실행한다. 운영 smoke를
-  실행하지 않고 실패하며 알림 비고에 강제 실패가 표시된다. 배포 workflow에는 강제 실패 입력이 없다.
+  실행하지 않고 첫 단계에서 실패하므로 LLM 비용이 없다. 봇의 다음 감시 주기에 DM이 와야 한다.
+- 배포 workflow에는 강제 실패 입력이 없다. 수동 실행은 항상 실제 배포다.
 
 ## API GitHub Actions 실패
 

@@ -50,7 +50,8 @@ import { createLegacyResumeTables } from '../support/synthetic-resume-migration'
 const repositoryRoot = resolve(__dirname, '..', '..', '..', '..');
 const fixtureDirectory = __dirname;
 
-// docs/main-chat-ai-usage-guide.md 2절의 운영 값. topK·키워드 기준은 운영 Secret에서 바꾸지 않은 코드 기본값이다.
+// docs/main-chat-ai-usage-guide.md 2절의 운영 값. 단 topK는 이전 기준선과 비교할 수 있도록 recall@5 기준(5)을
+// 유지한다. 운영은 RAG_TOP_K=10이므로 운영에서 전달되는 근거는 이 평가보다 넓다.
 // 벡터는 절대 기준 없이 순위로 고르므로 폐지된 RAG_VECTOR_MIN_SIMILARITY는 넣지 않는다.
 const productionProfile = {
   RAG_RETRIEVAL_MODE: 'hybrid',

@@ -86,7 +86,7 @@ describe('Resume vector retrieval', () => {
         'resume-source-item-chunker-v1',
         getResumeChunkConfigHash(config),
         '[1,0]',
-        15,
+        config.topK * 3,
         chatDefinitions[channel].itemTypes,
       ]);
     },

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { gotoWithRetry } from "./test-helpers";
+import { chatAnswerText, gotoWithRetry } from "./test-helpers";
 
 test.skip(
   process.env.PLAYWRIGHT_PRODUCTION_SMOKE !== "1",
@@ -42,7 +42,8 @@ test("이력 질문 채팅이 운영 근거 답변과 출처를 표시한다", a
   expect(data.sources.length).toBeGreaterThan(0);
 
   const chat = page.getByTestId("resume-rag-chat-scroll-region");
-  await expect(chat).toContainText(data.answer);
+  // 화면은 강조·목록을 렌더하므로 원문 대신 렌더 후 텍스트와 비교한다.
+  await expect(chat).toContainText(chatAnswerText(data.answer));
   await expect(chat).toContainText(data.sources[0].title);
 
   console.info(

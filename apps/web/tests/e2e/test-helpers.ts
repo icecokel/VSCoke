@@ -6,6 +6,8 @@ import { randomUUID } from "node:crypto";
 import type { APIRequestContext, Route } from "@playwright/test";
 import path from "node:path";
 import { expect, Page } from "@playwright/test";
+import { isValidElement, type ReactNode } from "react";
+import { renderChatAnswer } from "../../src/lib/chat-answer";
 
 export const SUPPORTED_LOCALES = ["ko-KR", "en-US", "ja-JP"] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
@@ -455,3 +457,14 @@ export const verifyResumeSearchAnchors = async (
   await expectTarget(second);
   await expect(tabs).toHaveCount(tabCount);
 };
+
+const reactNodeText = (node: ReactNode): string => {
+  if (node === null || node === undefined || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(reactNodeText).join("");
+  if (isValidElement<{ children?: ReactNode }>(node)) return reactNodeText(node.props.children);
+  return "";
+};
+
+/** 채팅 화면이 답변의 강조·목록을 렌더한 뒤 보이는 텍스트. 원문 마크다운과 화면 텍스트를 비교할 때 쓴다. */
+export const chatAnswerText = (answer: string): string => reactNodeText(renderChatAnswer(answer));

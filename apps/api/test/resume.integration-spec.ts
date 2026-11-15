@@ -11,6 +11,7 @@ import { CreateResumeRagTables1760000000000 } from '../src/migrations/1760000000
 import { CreateResumeChatConversations1795000000000 } from '../src/migrations/1795000000000-create-resume-chat-conversations';
 import { CreateSharedCareerData1795000000004 } from '../src/migrations/1795000000004-create-shared-career-data';
 import { AddResumeSoftDelete1795000000005 } from '../src/migrations/1795000000005-add-resume-soft-delete';
+import { AddCareerCuration1795000000006 } from '../src/migrations/1795000000006-add-career-curation';
 import { CreateResumeRagKeywords1793836800000 } from '../src/migrations/1793836800000-create-resume-rag-keywords';
 import { CreateResumeRagChatLogs1794873600000 } from '../src/migrations/1794873600000-create-resume-rag-chat-logs';
 import { CareerDataService } from '../src/career-data/career-data.service';
@@ -89,6 +90,7 @@ describe('공통 경력 PostgreSQL 원자적 저장', () => {
       await new CreateResumeRagKeywords1793836800000().up(runner);
       await new CreateResumeRagChatLogs1794873600000().up(runner);
       await new AddResumeSoftDelete1795000000005().up(runner);
+      await new AddCareerCuration1795000000006().up(runner);
     } finally {
       await runner.release();
     }

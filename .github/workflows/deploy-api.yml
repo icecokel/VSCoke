@@ -41,7 +41,7 @@ jobs:
     runs-on: [self-hosted, Linux, ARM64, vscoke-api, oci-01]
     timeout-minutes: 45
     env:
-      API_DEPLOY_DIR: ${{ vars.API_DEPLOY_DIR || '/home/ubuntu/vscoke-api' }}
+      API_DEPLOY_DIR: ${{ vars.API_DEPLOY_DIR || '/srv/vscoke-api' }}
       API_HEALTH_URL: ${{ vars.API_HEALTH_URL || 'https://api.icecoke.kr/health' }}
       API_LOCAL_HEALTH_URL: ${{ vars.API_LOCAL_HEALTH_URL || 'http://127.0.0.1:3000/health' }}
       API_VERIFY_PUBLIC: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_public || github.event_name == 'push' && vars.API_VERIFY_PUBLIC == 'true' }}

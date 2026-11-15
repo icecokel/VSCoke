@@ -13,7 +13,7 @@
 
 ```bash
 ssh -F /Users/smlee/icecoke-ops/config/ssh-config oci-01
-cd /home/ubuntu/vscoke-api
+cd /srv/vscoke-api
 systemctl is-active vscoke-api.service postgresql@16-main.service
 systemctl is-active cloudflared-vscoke-api.service
 systemctl is-enabled vscoke-api.service
@@ -99,7 +99,7 @@ GitHub runner 이름은 `vscoke-api-oci-01`, labels는 `self-hosted,Linux,ARM64,
 OCI에서 전용 설치 경로의 서비스만 확인한다. Discord runner를 재시작하지 않는다.
 
 ```bash
-cd /home/ubuntu/actions-runner-vscoke-api
+cd /srv/vscoke-api/.local/actions-runner
 systemctl status actions.runner.icecokel-VSCoke.vscoke-api-oci-01.service --no-pager
 ```
 
@@ -110,7 +110,7 @@ systemctl status actions.runner.icecokel-VSCoke.vscoke-api-oci-01.service --no-p
 ```bash
 systemctl status vscoke-api.service --no-pager
 journalctl -u vscoke-api.service -n 100 --no-pager
-readlink -f /home/ubuntu/vscoke-api/current
+readlink -f /srv/vscoke-api/current
 ```
 
 `logs/combined-YYYY-MM-DD.log`에서 X-Request-Id를 찾는다. 로그는 공유 디렉터리에 일별·20MB
@@ -148,7 +148,7 @@ API 요청 종료는 `api.request`, API 예외는 `api.error`로 기록된다.
 `requestId`를 연결한다.
 
 ```bash
-cd /home/ubuntu/vscoke-api
+cd /srv/vscoke-api
 TRACE_ID='사용자가 전달한 오류 번호 또는 API requestId'
 grep -F "$TRACE_ID" logs/error-$(date +%F).log logs/combined-$(date +%F).log
 ```
@@ -181,7 +181,7 @@ Secret의 Docker `DB_HOST=postgres`는 덮어쓴다. 비밀번호 원문을 출�
 ```bash
 systemctl is-active postgresql@16-main.service
 ss -ltn '( sport = :5432 )'
-stat -c '%a %U' /home/ubuntu/vscoke-api/.local/db.env /home/ubuntu/vscoke-api/api.env
+stat -c '%a %U' /srv/vscoke-api/.local/db.env /srv/vscoke-api/api.env
 ```
 
 ## DB migration 실패

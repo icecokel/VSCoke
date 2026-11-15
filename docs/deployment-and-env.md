@@ -60,9 +60,9 @@ Vercel 프로젝트는 monorepo 루트가 아니라 웹 앱 디렉터리를 루�
 | ------------- | ------------------------------------------------------------------ |
 | 호스트        | `oci-01` (`ubuntu@140.245.73.237`), Ubuntu 24.04 ARM64             |
 | runner labels | `self-hosted`, `Linux`, `ARM64`, `vscoke-api`, `oci-01`            |
-| 앱 루트       | `/home/ubuntu/vscoke-api`                                          |
+| 앱 루트       | `/srv/vscoke-api`                                                  |
 | 실행 경로     | `current` -> `releases/<sha>-<run-id>-<attempt>`                   |
-| 서비스        | `vscoke-api.service`, 사용자 `ubuntu`                              |
+| 서비스        | `vscoke-api.service`, 사용자 `vscoke-api`                          |
 | Node          | `.nvmrc` 버전, 각 릴리스의 `bin/node`                              |
 | PostgreSQL    | `postgresql@16-main.service`, 16.15 + pgvector 0.8.7               |
 | 바인딩        | API `127.0.0.1:3000`, DB `127.0.0.1:5432`                          |
@@ -188,15 +188,15 @@ Secret 수정과 재배포 절차는 [API 배포 가이드](../apps/api/DEPLOY.m
 
 ### GitHub Actions Runner and Variables
 
-runner 이름은 `vscoke-api-oci-01`, 설치 경로는 `/home/ubuntu/actions-runner-vscoke-api`다.
+runner 이름은 `vscoke-api-oci-01`, 설치 경로는 `/srv/vscoke-api/.local/actions-runner`다.
 Discord의 `discord-bot-oci`와 설치·work 디렉터리·서비스를 분리한다. 관리자 권한은
 `/usr/bin/systemctl restart vscoke-api.service` 한 명령만 비대화식으로 허용한다.
 
-| 변수                   | 기준                                                                      |
-| ---------------------- | ------------------------------------------------------------------------- |
-| `API_DEPLOY_DIR`       | `/home/ubuntu/vscoke-api` 또는 미설정. 기존 Mac 경로 override를 제거한다. |
-| `API_LOCAL_HEALTH_URL` | `http://127.0.0.1:3000/health`                                            |
-| `API_HEALTH_URL`       | `https://api.icecoke.kr/health`                                           |
-| `API_VERIFY_PUBLIC`    | 전환 전 `false`, 최종 데이터·터널 전환 후 `true`                          |
+| 변수                   | 기준                                                              |
+| ---------------------- | ----------------------------------------------------------------- |
+| `API_DEPLOY_DIR`       | `/srv/vscoke-api` 또는 미설정. 기존 Mac 경로 override를 제거한다. |
+| `API_LOCAL_HEALTH_URL` | `http://127.0.0.1:3000/health`                                    |
+| `API_HEALTH_URL`       | `https://api.icecoke.kr/health`                                   |
+| `API_VERIFY_PUBLIC`    | 전환 전 `false`, 최종 데이터·터널 전환 후 `true`                  |
 
 Repository Secret은 기존 `API_ENV_PRODUCTION`을 사용한다. 외부 PR 코드는 운영 러너에서 실행하지 않는다.

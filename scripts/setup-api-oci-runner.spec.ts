@@ -17,7 +17,7 @@ for (const scenario of ["checksum", "existing-runner", "configured-runner"]) {
       mkdirSync(runner);
       mkdirSync(commands);
       const script = join(fixture, "setup.sh");
-      writeFileSync(script, source.replaceAll("/home/ubuntu/actions-runner-vscoke-api", runner));
+      writeFileSync(script, source.replaceAll("/srv/vscoke-api/.local/actions-runner", runner));
       const command = (name: string, content: string): void => {
         writeFileSync(join(commands, name), `#!/bin/sh\n${content}\n`, { mode: 0o700 });
       };
@@ -25,11 +25,15 @@ for (const scenario of ["checksum", "existing-runner", "configured-runner"]) {
       command("id", "echo ubuntu");
       command("curl", "exit 0");
       command("sha256sum", "exit 1");
+      // `sudo -u vscoke-api -- ...`는 전용 계정 권한이므로 그대로 실행하고, 그 밖의 sudo는 관리자 권한으로 본다.
       command(
         "sudo",
-        scenario === "configured-runner"
-          ? 'if [ "$1" = ./svc.sh ]; then shift; exec ./svc.sh "$@"; fi; exit 0'
-          : 'touch "$SETUP_PRIVILEGED_MARKER"; exit 1',
+        [
+          'if [ "$1" = -u ]; then shift 3; exec "$@"; fi',
+          scenario === "configured-runner"
+            ? 'if [ "$1" = env ] && [ "$2" = -C ]; then cd "$3"; shift 3; if [ "$1" = ./svc.sh ]; then shift; exec ./svc.sh "$@"; fi; fi; exit 0'
+            : 'touch "$SETUP_PRIVILEGED_MARKER"; exit 1',
+        ].join("\n"),
       );
       command("systemctl", 'echo "runner active"');
       if (scenario === "existing-runner") {

@@ -11,17 +11,17 @@ icecoke-ops의 기준 기록은 `docs/plans/oci-migration/vscoke-api-01.md`다. 
 API_HOST와 write-native를 재사용하고 최신 로컬 main에 통합했다. 원래 작업 브랜치의
 미커밋 변경은 별도로 보존했다.
 
-| 구분        | 설치·확인 기준                                                          |
-| ----------- | ----------------------------------------------------------------------- |
-| SSH         | `ssh -F /Users/smlee/icecoke-ops/config/ssh-config oci-01`              |
-| 앱 루트     | `/home/ubuntu/vscoke-api`, ubuntu 소유·700                              |
-| runner      | `/home/ubuntu/actions-runner-vscoke-api`, 이름 `vscoke-api-oci-01`      |
-| labels      | `self-hosted,Linux,ARM64,vscoke-api,oci-01`                             |
-| 서비스      | `vscoke-api.service`, `postgresql@16-main.service`                      |
-| DB 환경     | `/home/ubuntu/vscoke-api/.local/db.env`, 600, 전용 `vscoke_api` role·DB |
-| 앱 환경     | `/home/ubuntu/vscoke-api/api.env`, 600                                  |
-| 캐시·로그   | `.cache/embeddings`, `logs` (릴리스 밖)                                 |
-| 활성화 신호 | `.local/activate` (인프라 검증 완료 후 생성)                            |
+| 구분        | 설치·확인 기준                                                    |
+| ----------- | ----------------------------------------------------------------- |
+| SSH         | `ssh -F /Users/smlee/icecoke-ops/config/ssh-config oci-01`        |
+| 앱 루트     | `/srv/vscoke-api`, vscoke-api 소유·700                            |
+| runner      | `/srv/vscoke-api/.local/actions-runner`, 이름 `vscoke-api-oci-01` |
+| labels      | `self-hosted,Linux,ARM64,vscoke-api,oci-01`                       |
+| 서비스      | `vscoke-api.service`, `postgresql@16-main.service`                |
+| DB 환경     | `/srv/vscoke-api/.local/db.env`, 600, 전용 `vscoke_api` role·DB   |
+| 앱 환경     | `/srv/vscoke-api/api.env`, 600                                    |
+| 캐시·로그   | `.cache/embeddings`, `logs` (릴리스 밖)                           |
+| 활성화 신호 | `.local/activate` (인프라 검증 완료 후 생성)                      |
 
 2026-11-14 17:35 KST 관리자가 직접 설치한 뒤 GitHub에서 `vscoke-api-oci-01`의 online 상태와
 필요한 Linux/ARM64/vscoke-api/oci-01 label을 확인했다. systemd는 active/running·enabled다.
@@ -35,9 +35,9 @@ runner에서 새 workflow의 테스트·빌드·배포와 로컬 endpoint 검증
 로그·셸 이력에 남기지 않는다. 등록 및 관리자 서비스 설치 명령:
 
 ```bash
-cd /home/ubuntu/actions-runner-vscoke-api
-./config.sh --url https://github.com/icecokel/VSCoke --name vscoke-api-oci-01 --labels vscoke-api,oci-01 --work _work
-sudo ./svc.sh install ubuntu
+cd /srv/vscoke-api/.local/actions-runner
+sudo -u vscoke-api ./config.sh --url https://github.com/icecokel/VSCoke --name vscoke-api-oci-01 --labels vscoke-api,oci-01 --work _work
+sudo ./svc.sh install vscoke-api
 sudo ./svc.sh start
 ```
 
@@ -60,22 +60,22 @@ ssh -t -F /Users/smlee/icecoke-ops/config/ssh-config oci-01 'bash /home/ubuntu/v
 기존 unit의 실행 계약을 유지한다. unit의 전체 관리 원본은 icecoke-ops에 있다.
 
 ```ini
-User=ubuntu
-Group=ubuntu
-WorkingDirectory=/home/ubuntu/vscoke-api/current
-ExecStartPre=/usr/bin/test -f /home/ubuntu/vscoke-api/current/.env
-ExecStart=/home/ubuntu/vscoke-api/current/bin/node scripts/api-deploy-env.mjs run bin/node apps/api/dist/src/main.js
+User=vscoke-api
+Group=vscoke-api
+WorkingDirectory=/srv/vscoke-api/current
+ExecStartPre=/usr/bin/test -f /srv/vscoke-api/current/.env
+ExecStart=/srv/vscoke-api/current/bin/node scripts/api-deploy-env.mjs run bin/node apps/api/dist/src/main.js
 Restart=always
 RestartSec=10
 UMask=0077
 ```
 
 관리자는 `/etc/sudoers.d/vscoke-api-deploy`에 아래 한 명령만 허용하고
-`sudo visudo -cf /etc/sudoers.d/vscoke-api-deploy`로 검증한다. API/runner는 ubuntu 권한으로
+`sudo visudo -cf /etc/sudoers.d/vscoke-api-deploy`로 검증한다. API/runner는 전용 `vscoke-api` 계정 권한으로
 실행되므로 외부 PR 코드는 운영 러너에서 실행하지 않는다.
 
 ```sudoers
-ubuntu ALL=(root) NOPASSWD: /usr/bin/systemctl restart vscoke-api.service
+vscoke-api ALL=(root) NOPASSWD: /usr/bin/systemctl restart vscoke-api.service
 ```
 
 점검(키·환경 내용을 출력하지 않음):
@@ -100,7 +100,7 @@ curl -fsS http://127.0.0.1:3000/health
 Claude·Google·JEV·CORS 값은 보존한다. 설치 계약의 DB 암호는 64자리 소문자 hex이며
 host/role이 다르면 자동 적용을 거절한다. `api.env`는 600 권한으로 원자 교체하며 shell로 source하지 않는다.
 
-`API_DEPLOY_DIR`는 `/home/ubuntu/vscoke-api` 또는 미설정으로 둔다. 최초 리허설은
+`API_DEPLOY_DIR`는 `/srv/vscoke-api` 또는 미설정으로 둔다. 최초 리허설은
 **Deploy API to OCI (native)**의 workflow_dispatch, `verify_public=false`로 실행한다.
 Repository variable `API_VERIFY_PUBLIC`도 미설정 또는 `false`로 둔다. 전환 후 push 배포용
 variable을 `true`로 바꾸고 수동 실행도 `verify_public=true`를 사용한다. 전환 전 공개 health는
@@ -130,7 +130,7 @@ import/index의 DB 쓰기와 migration은 코드 복구로 되돌리지 않는�
 활성 배포가 없는지 확인하고 같은 flock을 확보한 뒤 수동 복구한다. `<release-id>`는 실패 배포의 ID다.
 
 ```bash
-cd /home/ubuntu/vscoke-api
+cd /srv/vscoke-api
 exec 9>.local/deploy.lock
 flock -n 9
 STATE=.local/deploy-<release-id>
@@ -149,7 +149,7 @@ API_HEALTH_URL=http://127.0.0.1:3000/health current/bin/node current/scripts/che
 DB 백업/복원은 icecoke-ops 검증 도구를 사용하며 dump를 Git·Actions artifact로 업로드하지 않는다.
 
 ```bash
-cd /home/ubuntu/vscoke-api/releases/<candidate-release-id>
+cd /srv/vscoke-api/releases/<candidate-release-id>
 bin/node scripts/api-deploy-env.mjs run bin/node apps/api/node_modules/typeorm/cli.js -d apps/api/dist/src/data-source.js migration:show
 # backup 확인 및 migration 검토 후에만 실행
 bin/node scripts/api-deploy-env.mjs run bin/node apps/api/node_modules/typeorm/cli.js -d apps/api/dist/src/data-source.js migration:run
@@ -317,7 +317,7 @@ ssh -t -F /Users/smlee/icecoke-ops/config/ssh-config oci-01 'bash /home/ubuntu/v
 ```
 
 이 스크립트는 credential 형식/터널 ID와 배포본 SHA-256을 먼저 검증한다. 파일은
-`/home/ubuntu/vscoke-api/.local/cloudflared-credentials.json`(600)과 `cloudflared.yml`에 설치하고,
+`/srv/vscoke-api/.local/cloudflared-credentials.json`(600)과 `cloudflared.yml`에 설치하고,
 systemd unit은 `/etc/systemd/system/cloudflared-vscoke-api.service`에 설치한다.
 metrics/readiness는 loopback 20242 포트만 사용한다. 자격 증명·dump는 Git에 추가하지 않는다.
 
@@ -379,7 +379,7 @@ main 반영 전 CI에서 기존 합성 이력서가 경력 한 개·외부 링�
 
 전환 기록은 worktree의 `output/cutover/final-1794654741048630000/state.json`이며 phase는
 `cutover_complete`다. source 폴더의 최종 dump·manifest·SHA-256은 비공개로 보존하고 Git에 넣지 않는다.
-교체 전 OCI 사본은 `/home/ubuntu/vscoke-api/backups/before-final-sync-1794654866927135484.dump`에
+교체 전 OCI 사본은 `/srv/vscoke-api/backups/before-final-sync-1794654866927135484.dump`에
 600 권한으로 보존했으며 이후 SHA-256과 archive 목록 검사를 다시 통과했다.
 
 공개·내부 health의 프로세스 시작 시각을 대조해 OCI 도달을 확인했고 `/resume`, `/recipes`,

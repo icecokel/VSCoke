@@ -26,12 +26,24 @@ describe('resume rag config', () => {
     expect(config.allowedSourceTypes).toEqual(['app_resume', 'career_data']);
   });
 
-  it('defaults vector threshold and chunking to the production values', () => {
+  it('defaults chunking to the production values', () => {
     const config = getResumeRagConfig({});
 
-    expect(config.vectorMinSimilarity).toBe(0.85);
     expect(config.chunkSize).toBe(600);
     expect(config.chunkOverlap).toBe(80);
+    expect(config.ignoredSettings).toEqual([]);
+  });
+
+  it('ignores the retired vector threshold instead of filtering vector search', () => {
+    // 운영 Secret에 남은 0.85가 순위 기반 벡터 검색을 다시 거르지 않게 한다.
+    const config = getResumeRagConfig({ RAG_VECTOR_MIN_SIMILARITY: '0.85' });
+
+    expect(config).not.toHaveProperty('vectorMinSimilarity');
+    expect(config.ignoredSettings).toEqual(['RAG_VECTOR_MIN_SIMILARITY']);
+    expect(describeResumeRagConfig(config)).toMatchObject({
+      vectorSelection: 'rank',
+      ignoredSettings: ['RAG_VECTOR_MIN_SIMILARITY'],
+    });
   });
 
   it('accepts the default search scope for every chat channel', () => {
@@ -91,7 +103,7 @@ describe('resume rag config', () => {
       embeddingProvider: 'openai-compatible',
       embeddingModel: 'embedding-model',
       embeddingDimensions: 384,
-      vectorMinSimilarity: 0.85,
+      vectorSelection: 'rank',
       minSimilarity: 0.1,
       topK: 5,
       chunkSize: 600,

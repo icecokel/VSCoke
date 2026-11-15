@@ -106,5 +106,11 @@ export class ResumeRagModule implements OnModuleInit {
       event: 'rag.config',
       ...describeResumeRagConfig(this.config),
     });
+    if (this.config.ignoredSettings?.length) {
+      this.logger.warn({
+        event: 'rag.config.ignored',
+        settings: this.config.ignoredSettings,
+      });
+    }
   }
 }

@@ -10,7 +10,7 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import type { ChatProvider } from './ai/chat-provider';
+import type { ChatAnswer, ChatProvider } from './ai/chat-provider';
 import { RESUME_RAG_CHAT_PROVIDER } from './ai/chat-provider';
 import {
   ResumeRagRetrieverService,
@@ -43,6 +43,26 @@ const toStringArray = (value: unknown): string[] | undefined =>
   Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string')
     : undefined;
+
+// 검색 근거 예산(문자 수). 답변에 전달하는 청크 전체 길이의 상한이다.
+const RESUME_RAG_CONTEXT_MAX_CHARS = 16_000;
+
+// 모델이 돌려준 1부터 시작하는 reference 번호를 전달한 청크로 바꾼다. 범위 밖·중복 번호는
+// 버리고 검색 순위 순서를 유지한다.
+const selectUsedChunks = (
+  chunks: RetrievedResumeChunk[],
+  references: number[],
+): RetrievedResumeChunk[] => {
+  const used = new Set(
+    references.filter(
+      (reference) =>
+        Number.isSafeInteger(reference) &&
+        reference >= 1 &&
+        reference <= chunks.length,
+    ),
+  );
+  return chunks.filter((_, index) => used.has(index + 1));
+};
 
 const toSource = (chunk: RetrievedResumeChunk) => ({
   title: chunk.title,
@@ -149,13 +169,11 @@ export class ResumeRagService {
           stage = 'query-rewrite';
           stageStartedAt = performance.now();
           searchQuestion = (
-            await this.chatProvider.answer({
+            await this.chatProvider.rewriteQuery({
               channel,
-              task: 'rewrite-query',
               question: request.question,
               locale: request.locale,
               history: options.history,
-              contexts: [],
             })
           ).trim();
           if (!searchQuestion || searchQuestion.length > 1000)
@@ -175,7 +193,7 @@ export class ResumeRagService {
           question: searchQuestion,
           locale: request.locale,
         });
-        let remaining = 16_000;
+        let remaining = RESUME_RAG_CONTEXT_MAX_CHARS;
         chunks = chunks
           .map((chunk) => {
             if (
@@ -195,7 +213,7 @@ export class ResumeRagService {
           event: 'chat.retrieval',
           ...logContext,
           sourceCount: chunks.length,
-          contextCharacters: 16_000 - remaining,
+          contextCharacters: RESUME_RAG_CONTEXT_MAX_CHARS - remaining,
           durationMs: performance.now() - stageStartedAt,
         });
       } catch (error) {
@@ -215,9 +233,9 @@ export class ResumeRagService {
 
       stage = 'answer';
       stageStartedAt = performance.now();
-      let answer: string;
+      let generated: ChatAnswer;
       try {
-        answer = await this.chatProvider.answer({
+        generated = await this.chatProvider.answer({
           channel,
           question: request.question,
           locale: request.locale,
@@ -229,12 +247,23 @@ export class ResumeRagService {
           error instanceof Error ? error.message : String(error),
         );
       }
+      const usedChunks = selectUsedChunks(chunks, generated.usedReferences);
+      const grounded = generated.answerable && usedChunks.length > 0;
+      // 근거가 없다고 판단한 답변도 모델 문장을 그대로 돌려준다. 요청 언어로 무엇이 공개 자료에
+      // 없는지 설명하거나 되묻는 문장이 고정 안내문보다 정확하다. 출처와 grounded만 거둔다.
       return await finish(
-        'answered',
-        { answer, grounded: true, sources: chunks.map(toSource) },
+        grounded ? 'answered' : 'no-evidence',
+        {
+          answer: generated.answer,
+          grounded,
+          sources: grounded ? usedChunks.map(toSource) : [],
+        },
         {
           provider: this.chatProvider.constructor.name,
-          answerLength: answer.length,
+          answerLength: generated.answer.length,
+          answerable: generated.answerable,
+          retrievedSourceCount: chunks.length,
+          usedReferenceCount: usedChunks.length,
           providerDurationMs: performance.now() - stageStartedAt,
         },
       );

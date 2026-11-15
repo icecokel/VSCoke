@@ -23,6 +23,19 @@ const createChatLogService = () => {
   };
 };
 
+const createChatProvider = (
+  overrides: Partial<Record<keyof ChatProvider, jest.Mock>> = {},
+): ChatProvider => ({
+  answer: overrides.answer ?? jest.fn(),
+  rewriteQuery: overrides.rewriteQuery ?? jest.fn(),
+});
+
+const groundedAnswer = (answer: string, usedReferences = [1]) => ({
+  answer,
+  answerable: true,
+  usedReferences,
+});
+
 beforeEach(() => {
   logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
   errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
@@ -39,9 +52,7 @@ describe('ResumeRagService', () => {
       retrieve,
     } as unknown as ResumeRagRetrieverService;
     const answer = jest.fn();
-    const chatProvider = {
-      answer,
-    } as unknown as ChatProvider;
+    const chatProvider = createChatProvider({ answer });
 
     const { chatLogService, recordOutcome } = createChatLogService();
     const service = new ResumeRagService(
@@ -89,7 +100,7 @@ describe('ResumeRagService', () => {
 
   it('records only the outcome without question text when the question is stored elsewhere', async () => {
     const retrieve = jest.fn().mockResolvedValue([]);
-    const chatProvider = { answer: jest.fn() } as unknown as ChatProvider;
+    const chatProvider = createChatProvider();
     const { chatLogService, recordOutcome } = createChatLogService();
     const service = new ResumeRagService(
       {
@@ -122,7 +133,7 @@ describe('ResumeRagService', () => {
         retrieve: jest.fn().mockResolvedValue([]),
         assertSelection: jest.fn().mockResolvedValue(undefined),
       } as unknown as ResumeRagRetrieverService,
-      { answer: jest.fn() },
+      createChatProvider(),
       chatLogService,
     );
 
@@ -148,7 +159,7 @@ describe('ResumeRagService', () => {
           .fn()
           .mockRejectedValue(new NotFoundException('Resume not found')),
       } as unknown as ResumeRagRetrieverService,
-      { answer: jest.fn() },
+      createChatProvider(),
       chatLogService,
     );
 
@@ -181,9 +192,7 @@ describe('ResumeRagService', () => {
       retrieve: jest.fn().mockResolvedValue([]),
     } as unknown as ResumeRagRetrieverService;
     const answer = jest.fn();
-    const chatProvider = {
-      answer,
-    } as unknown as ChatProvider;
+    const chatProvider = createChatProvider({ answer });
 
     const service = new ResumeRagService(
       retriever,
@@ -217,8 +226,10 @@ describe('ResumeRagService', () => {
         },
       ]),
     } as unknown as ResumeRagRetrieverService;
-    const answer = jest.fn().mockResolvedValue('근거 기반 답변');
-    const chatProvider: ChatProvider = { answer };
+    const answer = jest
+      .fn()
+      .mockResolvedValue(groundedAnswer('근거 기반 답변'));
+    const chatProvider = createChatProvider({ answer });
     const { chatLogService, recordOutcome } = createChatLogService();
 
     const service = new ResumeRagService(
@@ -301,7 +312,7 @@ describe('ResumeRagService', () => {
           retrieve,
           assertSelection: jest.fn().mockResolvedValue(undefined),
         } as unknown as ResumeRagRetrieverService,
-        { answer },
+        createChatProvider({ answer, rewriteQuery: answer }),
         chatLogService,
       );
 
@@ -353,11 +364,11 @@ describe('ResumeRagService', () => {
         },
       ]),
     } as unknown as ResumeRagRetrieverService;
-    const chatProvider: ChatProvider = {
+    const chatProvider = createChatProvider({
       answer: jest
         .fn()
         .mockRejectedValue(new Error('RAG_CHAT_PROVIDER missing')),
-    };
+    });
 
     const service = new ResumeRagService(
       retriever,
@@ -391,54 +402,60 @@ describe('ResumeRagService conversational retrieval', () => {
         },
       ];
       const retrieve = jest.fn().mockResolvedValue(contexts);
+      const rewriteQuery = jest
+        .fn()
+        .mockResolvedValue('Oprimed 프로젝트의 담당 역할');
       const answer = jest
         .fn()
-        .mockResolvedValueOnce('Oprimed 프로젝트의 담당 역할')
-        .mockResolvedValueOnce('새 근거를 따른 역할 설명');
+        .mockResolvedValue(groundedAnswer('새 근거를 따른 역할 설명'));
       const service = new ResumeRagService(
         {
           retrieve,
           assertSelection: jest.fn().mockResolvedValue(undefined),
         } as unknown as ResumeRagRetrieverService,
-        { answer },
+        createChatProvider({ answer, rewriteQuery }),
         createChatLogService().chatLogService,
       );
       const result = await service.answer(
         { question: '거기서 맡은 역할은?', locale: 'ko-KR' },
         { channel, history },
       );
-      expect(answer).toHaveBeenNthCalledWith(1, {
+      expect(rewriteQuery).toHaveBeenCalledWith({
         channel,
-        task: 'rewrite-query',
         question: '거기서 맡은 역할은?',
         locale: 'ko-KR',
         history,
-        contexts: [],
       });
       expect(retrieve).toHaveBeenCalledWith({
         channel,
         question: 'Oprimed 프로젝트의 담당 역할',
         locale: 'ko-KR',
       });
-      expect(answer).toHaveBeenNthCalledWith(2, {
+      expect(answer).toHaveBeenCalledWith({
         channel,
         question: '거기서 맡은 역할은?',
         locale: 'ko-KR',
         history,
         contexts,
       });
-      expect(result.answer).toBe('새 근거를 따른 역할 설명');
+      expect(result).toMatchObject({
+        answer: '새 근거를 따른 역할 설명',
+        grounded: true,
+        sources: [expect.objectContaining({ sourceKey: 'role' })],
+      });
     },
   );
   it('이전 답변이 있어도 새로운 근거가 없으면 경력 답변을 생성하지 않는다', async () => {
     const retrieve = jest.fn().mockResolvedValue([]);
-    const answer = jest.fn().mockResolvedValue('Oprimed의 공개되지 않은 수치');
+    const answer = jest
+      .fn()
+      .mockResolvedValue(groundedAnswer('Oprimed의 공개되지 않은 수치'));
     const service = new ResumeRagService(
       {
         retrieve,
         assertSelection: jest.fn().mockResolvedValue(undefined),
       } as unknown as ResumeRagRetrieverService,
-      { answer },
+      createChatProvider({ answer }),
       createChatLogService().chatLogService,
     );
     const result = await service.answer(
@@ -462,7 +479,7 @@ describe('ResumeRagService conversational retrieval', () => {
         retrieve,
         assertSelection: jest.fn().mockResolvedValue(undefined),
       } as unknown as ResumeRagRetrieverService,
-      { answer },
+      createChatProvider({ answer }),
       createChatLogService().chatLogService,
     );
     const result = await service.answer(
@@ -493,7 +510,7 @@ describe('공통 채팅 인사 처리', () => {
           retrieve,
           assertSelection: jest.fn().mockResolvedValue(undefined),
         } as unknown as ResumeRagRetrieverService,
-        { answer },
+        createChatProvider({ answer }),
         createChatLogService().chatLogService,
       );
       const result = await service.answer(
@@ -528,13 +545,15 @@ describe('독립 사실의 맥락 경계', () => {
       citationMetadata: { factId: `fact-${index}` },
       similarity: 0.9,
     }));
-    const answer = jest.fn().mockResolvedValue('현재 공개 근거 답변');
+    const answer = jest
+      .fn()
+      .mockResolvedValue(groundedAnswer('현재 공개 근거 답변'));
     const service = new ResumeRagService(
       {
         assertSelection: jest.fn().mockResolvedValue(undefined),
         retrieve: jest.fn().mockResolvedValue(contexts),
       } as unknown as ResumeRagRetrieverService,
-      { answer },
+      createChatProvider({ answer }),
       createChatLogService().chatLogService,
     );
     await service.answer({
@@ -562,4 +581,116 @@ describe('독립 사실의 맥락 경계', () => {
       provided.reduce((length, context) => length + context.content.length, 0),
     ).toBeLessThanOrEqual(16000);
   });
+});
+
+describe('모델 판단에 따른 근거 표시', () => {
+  const contexts = ['first', 'second', 'third'].map((key, index) => ({
+    id: key,
+    title: `Source ${key}`,
+    content: `${key} 근거`,
+    sourcePath: `${key}.md`,
+    sourceKey: `source/${key}`,
+    citationMetadata: {},
+    similarity: 0.9 - index / 10,
+  }));
+  const createService = (generated: unknown) => {
+    const { chatLogService, recordOutcome } = createChatLogService();
+    const answer = jest.fn().mockResolvedValue(generated);
+    const service = new ResumeRagService(
+      {
+        assertSelection: jest.fn().mockResolvedValue(undefined),
+        retrieve: jest.fn().mockResolvedValue(contexts),
+      } as unknown as ResumeRagRetrieverService,
+      createChatProvider({ answer }),
+      chatLogService,
+    );
+    return { service, recordOutcome, answer };
+  };
+
+  it('모델이 사용한 reference의 청크만 검색 순위대로 출처로 돌려준다', async () => {
+    const { service, recordOutcome, answer } = createService({
+      answer: '세 번째와 첫 번째 근거 답변',
+      answerable: true,
+      usedReferences: [3, 1, 3, 0, 4, -1],
+    });
+
+    const result = await service.answer({
+      question: '사용한 근거만 보여줘',
+      locale: 'en-US',
+    });
+
+    expect(answer).toHaveBeenCalledWith(
+      expect.objectContaining({ contexts, locale: 'en-US' }),
+    );
+    expect(result.grounded).toBe(true);
+    expect(result.sources.map((source) => source.sourceKey)).toEqual([
+      'source/first',
+      'source/third',
+    ]);
+    expect(recordOutcome).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: 'answered', sourceCount: 2 }),
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'chat.answer',
+        outcome: 'answered',
+        grounded: true,
+        sourceCount: 2,
+        retrievedSourceCount: 3,
+        usedReferenceCount: 2,
+        answerable: true,
+      }),
+    );
+  });
+
+  it.each([
+    ['답할 수 없다고 판단한 답변', { answerable: false, usedReferences: [] }],
+    [
+      '답할 수 없다면서 근거 번호를 낸 답변',
+      { answerable: false, usedReferences: [1, 2] },
+    ],
+    [
+      '답할 수 있다면서 근거 번호가 없는 답변',
+      { answerable: true, usedReferences: [] },
+    ],
+    [
+      '범위 밖 근거 번호만 낸 답변',
+      { answerable: true, usedReferences: [0, 4, 99] },
+    ],
+  ])(
+    '%s은 모델 문장을 유지하되 근거 없음으로 기록하고 출처를 비운다',
+    async (_, judgement) => {
+      const modelAnswer =
+        'The public material available to this chat does not cover that question.';
+      const { service, recordOutcome } = createService({
+        answer: modelAnswer,
+        ...judgement,
+      });
+
+      await expect(
+        service.answer({
+          question: 'What is your favorite food?',
+          locale: 'en-US',
+        }),
+      ).resolves.toEqual({ answer: modelAnswer, grounded: false, sources: [] });
+      expect(recordOutcome).toHaveBeenCalledTimes(1);
+      expect(recordOutcome).toHaveBeenCalledWith(
+        expect.objectContaining({
+          outcome: 'no-evidence',
+          sourceCount: 0,
+          failureStage: undefined,
+        }),
+      );
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: 'chat.answer',
+          outcome: 'no-evidence',
+          grounded: false,
+          sourceCount: 0,
+          retrievedSourceCount: 3,
+        }),
+      );
+      expect(JSON.stringify(logSpy.mock.calls)).not.toContain(modelAnswer);
+    },
+  );
 });

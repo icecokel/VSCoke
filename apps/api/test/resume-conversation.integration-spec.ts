@@ -14,6 +14,9 @@ import {
   RESUME_CHAT_STORED_TURNS,
 } from '../src/resume-rag/resume-chat-history';
 import { ResumeConversationService } from '../src/resume-rag/resume-conversation.service';
+import { ResumeRagService } from '../src/resume-rag/resume-rag.service';
+import type { ResumeRagRetrieverService } from '../src/resume-rag/resume-rag-retriever.service';
+import type { ResumeRagChatLogService } from '../src/resume-rag/resume-rag-chat-log.service';
 
 const resumeKey = `conversation-test-${randomUUID()}`;
 const resumeId = randomUUID();
@@ -101,6 +104,78 @@ describe('ResumeConversationService PostgreSQL integration', () => {
     } finally {
       if (testDataSource.isInitialized) await testDataSource.destroy();
     }
+  });
+
+  it('모델이 사용한 근거만 저장하고 답할 수 없는 턴은 근거 없음으로 복원한다', async () => {
+    const contexts = ['used', 'unused'].map((key) => ({
+      id: key,
+      title: `공개 근거 ${key}`,
+      content: `${key} 공개 근거`,
+      sourcePath: 'career-data',
+      sourceKey: `career-bullet/${key}`,
+      citationMetadata: {},
+      similarity: 0.8,
+    }));
+    const providerAnswer = jest
+      .fn()
+      .mockResolvedValueOnce({
+        answer: '사용한 근거로 답변',
+        answerable: true,
+        usedReferences: [1],
+      })
+      .mockResolvedValueOnce({
+        answer: '공개 자료에서 다루지 않는 질문입니다.',
+        answerable: false,
+        usedReferences: [2],
+      });
+    const ragService = new ResumeRagService(
+      {
+        assertSelection: jest.fn().mockResolvedValue(undefined),
+        retrieve: jest.fn().mockResolvedValue(contexts),
+      } as unknown as ResumeRagRetrieverService,
+      { answer: providerAnswer, rewriteQuery: jest.fn() },
+      {
+        recordOutcome: jest.fn().mockResolvedValue(undefined),
+      } as unknown as ResumeRagChatLogService,
+    );
+    const access = await createConversation();
+    for (const question of ['Oprimed 역할을 알려줘', '좋아하는 음식은 뭐야']) {
+      await service.runTurn(
+        {
+          conversationId: access.id,
+          requestId: randomUUID(),
+          question,
+          locale: 'ko-KR',
+          resumeKey,
+        },
+        access.token,
+        'resume',
+        (history, current) =>
+          ragService.answer(
+            { question: current, locale: 'ko-KR', resumeKey },
+            { channel: 'resume', recordQuestion: false, history },
+          ),
+      );
+    }
+
+    const { turns } = await service.history(access.id, access.token);
+    expect(turns).toHaveLength(2);
+    expect(turns).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          answer: '사용한 근거로 답변',
+          grounded: true,
+          sources: [
+            expect.objectContaining({ sourceKey: 'career-bullet/used' }),
+          ],
+        }),
+        expect.objectContaining({
+          answer: '공개 자료에서 다루지 않는 질문입니다.',
+          grounded: false,
+          sources: [],
+        }),
+      ]),
+    );
   });
 
   it('대화 맥락·재시도·접근키·CASCADE 삭제를 실제 제약으로 보장한다', async () => {

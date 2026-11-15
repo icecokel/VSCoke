@@ -2,7 +2,8 @@ import type { ResumeRagEvalCase } from './resume-rag-eval-dataset';
 
 export type ResumeRagEvalObservation = {
   caseId: string;
-  // 키워드 관문(createSearchTokens)이 토큰을 만들었는지. 비면 검색 전체가 생략된다.
+  // 키워드 별칭(createSearchTokens)이 일치해 확장 토큰을 만들었는지. 검색 여부와는 무관하고
+  // 키워드 점수의 확장어 입력만 바뀐다.
   isGatePassed: boolean;
   // 검색 결과 청크 순서의 평가 key. 한 원문의 여러 청크가 연속으로 올 수 있다.
   retrievedSources: string[];
@@ -13,7 +14,7 @@ export type ResumeRagEvalSummary = {
   questions: number;
   answerable: number;
   unanswerable: number;
-  // 답할 수 있는 질문 중 키워드 관문을 통과한 비율
+  // 답할 수 있는 질문 중 키워드 별칭이 일치한 비율
   gatePassRate: number | null;
   // 답할 수 있는 질문 중 청크가 1개 이상 검색된 비율
   retrievedRate: number | null;
@@ -23,7 +24,8 @@ export type ResumeRagEvalSummary = {
   hitRateAtK: number | null;
   mrr: number | null;
   mustMentionRate: number | null;
-  // 답할 수 없는 질문 중 청크가 1개 이상 검색된 비율
+  // 답할 수 없는 질문 중 청크가 1개 이상 검색된 비율. 검색 전용 지표다. 순위 기반 검색은 늘
+  // 후보를 돌려주고 답변 가능 여부는 답변 모델이 판단하므로 최종 답변의 오답률이 아니다.
   falsePositiveRate: number | null;
   unanswerableGatePassRate: number | null;
 };

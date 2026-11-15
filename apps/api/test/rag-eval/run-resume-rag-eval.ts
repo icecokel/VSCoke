@@ -51,13 +51,13 @@ const repositoryRoot = resolve(__dirname, '..', '..', '..', '..');
 const fixtureDirectory = __dirname;
 
 // docs/main-chat-ai-usage-guide.md 2절의 운영 값. topK·키워드 기준은 운영 Secret에서 바꾸지 않은 코드 기본값이다.
+// 벡터는 절대 기준 없이 순위로 고르므로 폐지된 RAG_VECTOR_MIN_SIMILARITY는 넣지 않는다.
 const productionProfile = {
   RAG_RETRIEVAL_MODE: 'hybrid',
   RAG_EMBEDDING_PROVIDER: 'local-e5-q8',
   RAG_EMBEDDING_MODEL:
     'Xenova/multilingual-e5-small@761b726dd34fb83930e26aab4e9ac3899aa1fa78',
   RAG_EMBEDDING_DIMENSIONS: '384',
-  RAG_VECTOR_MIN_SIMILARITY: '0.85',
   RAG_CHUNK_SIZE: '600',
   RAG_CHUNK_OVERLAP: '80',
   RAG_TOP_K: '5',
@@ -79,7 +79,7 @@ const parseOptions = (argv: string[]): EvalOptions => {
     if (!match) throw new Error(`알 수 없는 인자: ${argument}`);
     flags.set(match[1], match[2]);
   }
-  const allowed = ['cache-dir', 'output', 'mode', 'vector-min-similarity'];
+  const allowed = ['cache-dir', 'output', 'mode'];
   const unknown = [...flags.keys()].find((name) => !allowed.includes(name));
   if (unknown) throw new Error(`알 수 없는 옵션: --${unknown}`);
 
@@ -92,8 +92,6 @@ const parseOptions = (argv: string[]): EvalOptions => {
   const overrides: Record<string, string> = {};
   const mode = flags.get('mode');
   if (mode) overrides.RAG_RETRIEVAL_MODE = mode;
-  const threshold = flags.get('vector-min-similarity');
-  if (threshold) overrides.RAG_VECTOR_MIN_SIMILARITY = threshold;
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const output =
     flags.get('output') ??
@@ -236,13 +234,13 @@ const formatSummaryTable = (
   const header = [
     'locale',
     '질문(답변 가능/불가)',
-    '관문 통과',
+    '별칭 일치',
     '검색 반환',
     `recall@${k}`,
     `hit@${k}`,
     'MRR',
     '필수 언급',
-    '오탐률',
+    '답변 불가 검색 반환(검색 전용)',
   ];
   const rows = Object.entries(summaries).map(([locale, summary]) => [
     locale,
@@ -259,6 +257,11 @@ const formatSummaryTable = (
     .map((row) => `| ${row.join(' | ')} |`)
     .join('\n');
 };
+
+// 순위 기반 검색은 답변 불가 질문에도 후보를 돌려준다. 답할지 여부는 답변 모델이 정하므로
+// 표의 마지막 열을 최종 오탐률로 읽지 않게 결과와 함께 안내한다.
+const RETRIEVAL_ONLY_NOTE =
+  '답변 불가 검색 반환은 검색 전용 지표다. 검색은 질문을 거르지 않고 순위만 매기며, 답변 가능 여부(answerable)와 사용 근거(usedReferences)는 답변 모델이 판단한다. 최종 근거 없음 비율은 운영 resume_rag_chat_logs의 outcome으로 확인한다.';
 
 const main = async (): Promise<void> => {
   const options = parseOptions(process.argv.slice(2));
@@ -382,7 +385,7 @@ const main = async (): Promise<void> => {
             retrievalMode: config.retrievalMode,
             embeddingProvider: config.embeddingProvider,
             embeddingModel: config.embeddingModel,
-            vectorMinSimilarity: config.vectorMinSimilarity,
+            vectorSelection: 'rank',
             minSimilarity: config.minSimilarity,
             topK: config.topK,
             chunkSize: config.chunkSize,
@@ -395,13 +398,16 @@ const main = async (): Promise<void> => {
           },
           summaries,
           table,
+          notes: [RETRIEVAL_ONLY_NOTE],
           cases: details,
         },
         null,
         2,
       )}\n`,
     );
-    console.log(`\n${table}\n\n결과 JSON: ${options.outputPath}`);
+    console.log(
+      `\n${table}\n\n${RETRIEVAL_ONLY_NOTE}\n결과 JSON: ${options.outputPath}`,
+    );
   } finally {
     await db.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
     await db.destroy();

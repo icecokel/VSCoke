@@ -31,7 +31,6 @@ const profile = {
 const createHarness = (mode = 'vector') => {
   const config = getResumeRagConfig({
     RAG_RETRIEVAL_MODE: mode,
-    RAG_VECTOR_MIN_SIMILARITY: '0.3',
     RAG_EMBEDDING_PROVIDER: profile.provider,
     RAG_EMBEDDING_MODEL: profile.model,
     RAG_EMBEDDING_DIMENSIONS: '2',
@@ -67,13 +66,16 @@ describe('Resume vector retrieval', () => {
       const [sql, params] = query.mock.calls[0] as [string, unknown[]];
       expect(sql).toContain('AS MATERIALIZED');
       expect(sql).toContain('INNER JOIN current_items');
-      expect(sql).toContain('AND source."itemType" = ANY($12)');
+      expect(sql).toContain('AND source."itemType" = ANY($11)');
       expect(sql).toContain("source.visibility = 'public'");
       expect(sql).toContain("source.status = 'active'");
       expect(sql).toContain('source.vectorize = TRUE');
       expect(sql).toContain('"sourceType" = ANY($2)');
       expect(sql).toContain('vector_dims(chunk.embedding) = $6');
       expect(sql).toContain('embedding <=> $9::vector');
+      // 절대 점수 기준 없이 코사인 순위 상위 후보(topK * 3)만 고른다.
+      expect(sql).not.toMatch(/WHERE 1 - \(embedding <=>/);
+      expect(sql).toContain('LIMIT $10');
       expect(params).toEqual([
         ['public'],
         channel === 'resume' ? ['career_data'] : ['app_resume', 'career_data'],
@@ -84,7 +86,6 @@ describe('Resume vector retrieval', () => {
         'resume-source-item-chunker-v1',
         getResumeChunkConfigHash(config),
         '[1,0]',
-        0.3,
         15,
         chatDefinitions[channel].itemTypes,
       ]);
@@ -92,24 +93,92 @@ describe('Resume vector retrieval', () => {
   );
 
   it.each(['vector', 'hybrid'])(
-    '이력 의도가 없으면 %s 모드도 임베딩을 실행하지 않는다',
+    '별칭이 일치하지 않는 질문도 %s 모드는 벡터 순위로 검색한다',
     async (mode) => {
       const { service, embed, query } = createHarness(mode);
       const keywordService = Reflect.get(service, 'keywordService') as {
         createSearchTokens: jest.Mock;
       };
       keywordService.createSearchTokens.mockResolvedValue([]);
+      query.mockImplementation((sql: string) =>
+        Promise.resolve(
+          sql.includes('resume_vector_chunks') ? [chunk('source-a')] : [],
+        ),
+      );
       expect(
         await service.retrieve({
           channel: 'resume',
-          question: '내일 비트코인 가격을 알려줘',
-          locale: 'ko-KR',
+          question: 'What did you work on at Oprimed?',
+          locale: 'en-US',
         }),
-      ).toEqual([]);
-      expect(embed).not.toHaveBeenCalled();
-      expect(query).not.toHaveBeenCalled();
+      ).toEqual([chunk('source-a')]);
+      expect(embed).toHaveBeenCalledWith('What did you work on at Oprimed?');
     },
   );
+
+  it('키워드 검색은 별칭이 없어도 질문의 직접 토큰으로 점수를 매기고 영어 기능어는 무시한다', async () => {
+    const { service, query } = createHarness('keyword');
+    const keywordService = Reflect.get(service, 'keywordService') as {
+      createSearchTokens: jest.Mock;
+    };
+    keywordService.createSearchTokens.mockResolvedValue([]);
+    query.mockResolvedValue([
+      {
+        id: 'layout',
+        title: 'Layout',
+        bodyText: 'Your layout of the page',
+        sourceKey: 'layout',
+        sourcePath: 'layout.md',
+        metadata: {},
+      },
+      {
+        id: 'graphql',
+        title: 'API',
+        bodyText: 'GraphQL schema migration',
+        sourceKey: 'graphql',
+        sourcePath: 'graphql.md',
+        metadata: {},
+      },
+    ]);
+    const result = await service.retrieve({
+      channel: 'resume',
+      question: 'What did you do with GraphQL?',
+      locale: 'en-US',
+    });
+    expect(result.map((item) => item.id)).toEqual(['graphql']);
+  });
+
+  it('영문 토큰은 단어 앞부분부터 일치해야 점수를 얻는다', async () => {
+    const { service, query } = createHarness('keyword');
+    const keywordService = Reflect.get(service, 'keywordService') as {
+      createSearchTokens: jest.Mock;
+    };
+    keywordService.createSearchTokens.mockResolvedValue([]);
+    query.mockResolvedValue([
+      {
+        id: 'restart',
+        title: 'Restart',
+        bodyText: 'restart the server',
+        sourceKey: 'restart',
+        sourcePath: 'restart.md',
+        metadata: {},
+      },
+      {
+        id: 'artifact',
+        title: 'Build',
+        bodyText: 'artifact upload',
+        sourceKey: 'artifact',
+        sourcePath: 'artifact.md',
+        metadata: {},
+      },
+    ]);
+    const result = await service.retrieve({
+      channel: 'resume',
+      question: 'art',
+      locale: 'en-US',
+    });
+    expect(result.map((item) => item.id)).toEqual(['artifact']);
+  });
 
   it('벡터 모드는 공급자 실패를 숨기지 않고 DB를 조회하지 않는다', async () => {
     const { service, embed, query } = createHarness();
@@ -216,9 +285,10 @@ describe('Resume vector retrieval', () => {
     expect(() =>
       getResumeRagConfig({ RAG_RETRIEVAL_MODE: 'invalid' }),
     ).toThrow();
-    expect(() =>
-      getResumeRagConfig({ RAG_VECTOR_MIN_SIMILARITY: 'NaN' }),
-    ).toThrow();
+    // 폐지된 벡터 기준값은 읽지 않으므로 잘못된 값이어도 기동을 막지 않는다.
+    expect(
+      getResumeRagConfig({ RAG_VECTOR_MIN_SIMILARITY: 'NaN' }).ignoredSettings,
+    ).toEqual(['RAG_VECTOR_MIN_SIMILARITY']);
   });
 });
 
@@ -253,7 +323,7 @@ describe('채팅 자료 범위', () => {
       expect(keyword?.[1][2]).toEqual(sourceTypes);
       expect(vector?.[1][1]).toEqual(sourceTypes);
       expect(keyword?.[1][3]).toEqual(chatDefinitions[channel].itemTypes);
-      expect(vector?.[1][11]).toEqual(chatDefinitions[channel].itemTypes);
+      expect(vector?.[1][10]).toEqual(chatDefinitions[channel].itemTypes);
       expect(query).toHaveBeenCalledTimes(2);
     },
   );

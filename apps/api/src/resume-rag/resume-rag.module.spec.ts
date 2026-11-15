@@ -28,6 +28,19 @@ describe('ResumeRagModule startup', () => {
     expect(JSON.stringify(logSpy.mock.calls)).not.toContain('private-key');
   });
 
+  it('warns once when a retired setting is still configured', () => {
+    const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    new ResumeRagModule(
+      getResumeRagConfig({ RAG_VECTOR_MIN_SIMILARITY: '0.85' }),
+    ).onModuleInit();
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith({
+      event: 'rag.config.ignored',
+      settings: ['RAG_VECTOR_MIN_SIMILARITY'],
+    });
+  });
+
   it('fails startup when a chat channel has nothing to search', () => {
     const module = new ResumeRagModule(
       getResumeRagConfig({ RAG_ALLOWED_SOURCE_TYPES: 'app_resume' }),

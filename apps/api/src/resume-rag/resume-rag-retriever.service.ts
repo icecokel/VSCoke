@@ -86,6 +86,13 @@ const toSourceItemRow = (value: unknown): ResumeSourceItemRow | null => {
   };
 };
 
+// 영문·숫자 토큰은 단어 앞부분부터 일치해야 한다. `you`가 `layout`에, `art`가 `start`에
+// 걸리는 부분 문자열 잡음을 막는다. 한글·일본어는 조사·복합어 때문에 부분 일치를 유지한다.
+const isAsciiToken = (token: string): boolean => /^[a-z0-9]+$/.test(token);
+
+const matchesSearchToken = (paddedText: string, token: string): boolean =>
+  paddedText.includes(isAsciiToken(token) ? ` ${token}` : token);
+
 const scoreRow = (
   row: ResumeSourceItemRow,
   tokens: string[],
@@ -93,18 +100,18 @@ const scoreRow = (
 ): number => {
   if (tokens.length === 0) return 0;
 
-  const title = normalizeResumeRagSearchText(row.title);
-  const searchableText = normalizeResumeRagSearchText(
+  const title = ` ${normalizeResumeRagSearchText(row.title)}`;
+  const searchableText = ` ${normalizeResumeRagSearchText(
     `${row.title} ${row.bodyText} ${row.sourceKey}`,
-  );
+  )}`;
   const matchedTokens = tokens.filter((token) =>
-    searchableText.includes(token),
+    matchesSearchToken(searchableText, token),
   );
   const titleMatches = matchedTokens.filter((token) =>
-    title.includes(token),
+    matchesSearchToken(title, token),
   ).length;
   const directMatches = queryTokens.filter((token) =>
-    searchableText.includes(token),
+    matchesSearchToken(searchableText, token),
   );
   const directScore =
     queryTokens.length > 0 ? directMatches.length / queryTokens.length : 0;
@@ -125,6 +132,11 @@ const toRetrievedChunk = (
   citationMetadata: row.metadata,
   similarity: Number(row.score.toFixed(4)),
 });
+
+// 벡터 검색은 절대 점수 기준 없이 코사인 순위 상위 후보만 고른다. 로컬 E5 점수는 0.75~0.90에
+// 몰려 있어 교차 언어 정답과 무관한 질문을 한 기준값으로 가를 수 없다. 후보는 RRF 결합과
+// 원문별 상한을 거친 뒤 topK개로 줄어든다.
+const RESUME_VECTOR_CANDIDATE_MULTIPLIER = 3;
 
 @Injectable()
 export class ResumeRagRetrieverService {
@@ -151,21 +163,25 @@ export class ResumeRagRetrieverService {
 
   // career_data 원문(불렛·사실·상세)은 번역본 없이 한 언어로만 발행하는 원본이므로 요청 언어로 거르지 않는다.
   // 언어별 사본이 있는 app_resume 자료만 요청 언어로 거르고, 답변 언어는 생성 프롬프트가 맞춘다.
+  // 검색은 질문을 거르지 않고 순위만 매긴다. 답할 수 있는지는 답변 모델이 판단한다.
   async retrieve(
     request: ResumeRagRetrieveRequest,
   ): Promise<RetrievedResumeChunk[]> {
-    const tokens = await this.keywordService.createSearchTokens(
+    const queryTokens = createResumeRagQueryTokens(request.question);
+    // 별칭 관문은 검색 여부를 정하지 않는다. 일치한 별칭 묶음의 확장어만 키워드 점수에 더한다.
+    const aliasTokens = await this.keywordService.createSearchTokens(
       request.question,
     );
-    if (tokens.length === 0) return [];
+    const tokens = [...new Set([...queryTokens, ...aliasTokens])];
 
     const mode = this.config.retrievalMode ?? 'keyword';
-    if (mode === 'keyword') return this.retrieveKeywords(request, tokens);
+    if (mode === 'keyword')
+      return this.retrieveKeywords(request, tokens, queryTokens);
     if (mode === 'vector')
       return (await this.retrieveVectors(request)).slice(0, this.config.topK);
 
     const [keywords, vectors] = await Promise.all([
-      this.retrieveKeywords(request, tokens),
+      this.retrieveKeywords(request, tokens, queryTokens),
       this.retrieveVectors(request).catch(() => {
         this.logger.warn(
           'Resume vector search unavailable; using keyword retrieval',
@@ -179,7 +195,9 @@ export class ResumeRagRetrieverService {
   private async retrieveKeywords(
     request: ResumeRagRetrieveRequest,
     tokens: string[],
+    queryTokens: string[],
   ): Promise<RetrievedResumeChunk[]> {
+    if (tokens.length === 0) return [];
     const rows: unknown = await this.dataSource.query(
       `
         SELECT
@@ -251,11 +269,7 @@ export class ResumeRagRetrieverService {
       .map(
         (row): ScoredResumeSourceItem => ({
           ...row,
-          score: scoreRow(
-            row,
-            tokens,
-            createResumeRagQueryTokens(request.question),
-          ),
+          score: scoreRow(row, tokens, queryTokens),
         }),
       )
       .filter((row) => row.score >= this.config.minSimilarity)
@@ -287,7 +301,7 @@ export class ResumeRagRetrieverService {
         INNER JOIN current_items source ON source.id = chunk."sourceItemId"
         WHERE source.deleted_at IS NULL AND chunk.deleted_at IS NULL
           AND source.status = 'active' AND source.vectorize = TRUE
-          AND source."itemType" = ANY($12)
+          AND source."itemType" = ANY($11)
           AND ${careerSourceCondition('source')}
           AND ${legacyDetailCondition('source')}
           AND source.visibility = 'public' AND source.visibility = ANY($1)
@@ -302,9 +316,8 @@ export class ResumeRagRetrieverService {
       SELECT id, content, "sourceTitle" AS title, "sourcePath", "sourceKey",
         "sourceMetadata" AS "citationMetadata", 1 - (embedding <=> $9::vector) AS similarity
       FROM eligible
-      WHERE 1 - (embedding <=> $9::vector) >= $10
       ORDER BY embedding <=> $9::vector, id
-      LIMIT $11`,
+      LIMIT $10`,
       [
         this.config.allowedVisibilities,
         this.allowedSourceTypes(request.channel),
@@ -315,8 +328,7 @@ export class ResumeRagRetrieverService {
         RESUME_CHUNKER_VERSION,
         getResumeChunkConfigHash(this.config),
         JSON.stringify(embedding.vector),
-        this.config.vectorMinSimilarity ?? 0.3,
-        this.config.topK * 3,
+        this.config.topK * RESUME_VECTOR_CANDIDATE_MULTIPLIER,
         chatDefinitions[request.channel].itemTypes,
       ],
     );

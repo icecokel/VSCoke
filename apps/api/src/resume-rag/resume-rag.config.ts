@@ -3,7 +3,8 @@ import { getResumeChunkConfigHash } from './indexing/resume-index-profile';
 
 export type ResumeRagConfig = {
   retrievalMode?: 'keyword' | 'vector' | 'hybrid';
-  vectorMinSimilarity?: number;
+  // 값이 있어도 동작에 쓰지 않는 폐지된 환경 변수 이름. 기동 로그로 정리를 안내한다.
+  ignoredSettings?: string[];
   embeddingSendDimensions?: boolean;
   localEmbeddingCacheDir?: string;
   localEmbeddingLocalFilesOnly?: boolean;
@@ -43,9 +44,8 @@ export type RequiredClaudeConfig = {
 
 export const RESUME_RAG_CONFIG = 'RESUME_RAG_CONFIG';
 
-// 운영 Secret 값과 같은 기본값이다. 환경 변수 한 줄이 빠져도 검색 기준이나
-// 청크 설정 해시가 조용히 바뀌어 색인된 벡터가 검색에서 빠지지 않게 한다.
-export const RESUME_RAG_DEFAULT_VECTOR_MIN_SIMILARITY = 0.85;
+// 운영 Secret 값과 같은 기본값이다. 환경 변수 한 줄이 빠져도 청크 설정 해시가
+// 조용히 바뀌어 색인된 벡터가 검색에서 빠지지 않게 한다.
 export const RESUME_RAG_DEFAULT_CHUNK_SIZE = 600;
 export const RESUME_RAG_DEFAULT_CHUNK_OVERLAP = 80;
 
@@ -96,22 +96,19 @@ const parseRetrievalMode = (
   return mode;
 };
 
-const parseVectorThreshold = (value: string | undefined): number => {
-  const threshold =
-    value === undefined || value === ''
-      ? RESUME_RAG_DEFAULT_VECTOR_MIN_SIMILARITY
-      : Number(value);
-  if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1) {
-    throw new Error('Invalid RAG_VECTOR_MIN_SIMILARITY');
-  }
-  return threshold;
-};
+// 벡터 검색은 절대 점수 기준 대신 순위로 후보를 고른다. 이전 기준값 설정이 남아 있어도
+// 검색을 거르지 않도록 읽지 않고 이름만 기동 로그에 남긴다.
+const DEPRECATED_SETTINGS = ['RAG_VECTOR_MIN_SIMILARITY'] as const;
+
+const findIgnoredSettings = (
+  env: NodeJS.ProcessEnv | Record<string, string | undefined>,
+): string[] => DEPRECATED_SETTINGS.filter((name) => Boolean(env[name]?.trim()));
 
 export const getResumeRagConfig = (
   env: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env,
 ): ResumeRagConfig => ({
   retrievalMode: parseRetrievalMode(env.RAG_RETRIEVAL_MODE),
-  vectorMinSimilarity: parseVectorThreshold(env.RAG_VECTOR_MIN_SIMILARITY),
+  ignoredSettings: findIgnoredSettings(env),
   embeddingSendDimensions: env.RAG_EMBEDDING_SEND_DIMENSIONS === 'true',
   localEmbeddingCacheDir: env.RAG_LOCAL_EMBEDDING_CACHE_DIR || undefined,
   localEmbeddingLocalFilesOnly:
@@ -244,7 +241,7 @@ export const describeResumeRagConfig = (config: ResumeRagConfig) => ({
   embeddingDimensions: config.embeddingDimensions ?? null,
   embeddingSendDimensions: config.embeddingSendDimensions,
   localEmbeddingLocalFilesOnly: config.localEmbeddingLocalFilesOnly,
-  vectorMinSimilarity: config.vectorMinSimilarity,
+  vectorSelection: 'rank',
   minSimilarity: config.minSimilarity,
   topK: config.topK,
   chunkSize: config.chunkSize,
@@ -261,4 +258,5 @@ export const describeResumeRagConfig = (config: ResumeRagConfig) => ({
   chatProvider: config.chatProvider,
   chatModel: config.chatModel,
   chatTimeoutMs: config.chatTimeoutMs,
+  ignoredSettings: config.ignoredSettings ?? [],
 });

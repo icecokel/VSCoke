@@ -31,7 +31,6 @@ const config = getResumeRagConfig({
   RAG_EMBEDDING_PROVIDER: 'synthetic-embedding',
   RAG_EMBEDDING_MODEL: 'synthetic-model@rev',
   RAG_EMBEDDING_DIMENSIONS: '2',
-  RAG_VECTOR_MIN_SIMILARITY: '0',
   RAG_MIN_SIMILARITY: '0',
   RAG_TOP_K: '50',
 });

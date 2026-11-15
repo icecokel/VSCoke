@@ -55,10 +55,9 @@ test("이력 질문 채팅이 운영 근거 답변과 출처를 표시한다", a
   await expect(chat).toContainText(data.sources[0].title);
 });
 
-// 공개 FE 이력서가 답하는 질문이지만 현재 운영 검색에서는 근거 없음으로 끝난다.
-// 키워드 관문이 영어·일본어 질문의 토큰을 만들지 못하고, locale 필터가 ko-KR 불렛 원문을 제외한다.
-// 관문·절대 기준을 순위 기반 검색으로 바꾸고 locale 필터를 제거해 배포하면 이 검사가 통과하므로,
-// test.fail()이 "통과했지만 실패 예상" 오류로 알린다. 그때 test.fail() 호출을 지운다.
+// 공개 FE 이력서가 답하는 영어·일본어 질문이다. 불렛·상세 원문은 ko-KR로만 발행되므로
+// 언어와 무관한 순위 기반 검색이 한국어 근거를 찾고, 답변 모델이 사용한 근거를 출처로 돌려줘야 한다.
+// 오프라인 평가(rag:eval)에서 두 질문 모두 보험 가입 상세·초기 로딩 불렛을 상위 5개 안에 검색한다.
 const crossLocaleQuestions = [
   {
     locale: "en-US",
@@ -70,8 +69,6 @@ const crossLocaleQuestions = [
 for (const { locale, question } of crossLocaleQuestions) {
   test(`${locale} 이력 질문이 공개 이력서 근거와 출처를 반환한다`, async ({ page }) => {
     const data = await askResumeQuestion(page, locale, question);
-    // 상태·응답 형식 오류는 실제 실패로 남기고 근거 판정만 알려진 실패로 표시한다.
-    test.fail(true, "locale 필터와 키워드 관문 때문에 현재는 근거 없음 응답이 반환된다.");
     expect(data.grounded).toBe(true);
     expect(data.sources.length).toBeGreaterThan(0);
   });

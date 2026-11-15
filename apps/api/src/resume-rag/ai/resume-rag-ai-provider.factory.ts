@@ -33,6 +33,14 @@ class MissingChatProvider implements ChatProvider {
   constructor(private readonly config: ResumeRagConfig) {}
 
   answer(): Promise<never> {
+    return this.reject();
+  }
+
+  rewriteQuery(): Promise<never> {
+    return this.reject();
+  }
+
+  private reject(): Promise<never> {
     try {
       requireChatProviderConfig(this.config);
     } catch (error) {

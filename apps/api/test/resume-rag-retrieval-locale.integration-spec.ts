@@ -34,7 +34,6 @@ describe('이력 채팅 검색의 언어 범위 (PostgreSQL)', () => {
       RAG_EMBEDDING_PROVIDER: embeddingProfile.provider,
       RAG_EMBEDDING_MODEL: embeddingProfile.model,
       RAG_EMBEDDING_DIMENSIONS: String(embeddingProfile.dimensions),
-      RAG_VECTOR_MIN_SIMILARITY: '0.5',
       RAG_ALLOWED_SOURCE_TYPES: 'app_resume,career_data',
     });
     const keywordService = {

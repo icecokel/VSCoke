@@ -81,6 +81,10 @@ Bearer CAREER_DATA_WRITE_KEY(32자 이상, 서버 전용)로 아래 조회·쓰�
   bullet은 facts[{factId,factRevision}], keywordIds의 전체 연결을 함께 받아 원자적으로 교체한다.
   관계 변경도 bullet revision을 올린다. 배열에서 누락했다고 기존 원본을 삭제하지 않는다.
   concrete DTO를 정의하고 정확한 필드/예제는 구현 OpenAPI와 이 문서의 후속 예제로 인계한다.
+- PATCH /career-data/curation: 불렛의 tracks/tier/variantGroup/aiInvolvement/curationNote와
+  사실의 evidenceLevel만 바꾼다. 행마다 expectedCurationRevision을 받아 curation_revision을
+  올리고 curated_at을 기록한다. 내용 revision·status·updated_at·사실 연결·RAG 원문은 바꾸지
+  않는다. 불일치·삭제 원본은 409, 값 위반은 400이며 하나라도 실패하면 전체를 되돌린다.
 - POST /resume-management/versions: resume 메타정보(key/kind/track/locale/targetKey/visibility),
   expectedRevision, expectedCurrentVersionId(null 허용), versionName, parentVersionId?,
   content(기존 공개 Resume content), dependencies[{kind,id,revision}], sourceRef?를 받는다.

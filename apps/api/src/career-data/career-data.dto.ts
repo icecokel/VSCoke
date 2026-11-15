@@ -472,6 +472,121 @@ export class CareerDataSnapshotDto {
   })
   bulletKeywords: Record<string, unknown>[];
 }
+export const careerBulletTracks = ['fe', 'pe'] as const;
+export const careerBulletTiers = [
+  'representative',
+  'supporting',
+  'hold',
+] as const;
+export const careerAiInvolvements = ['none', 'assisted', 'directed'] as const;
+export const careerEvidenceLevels = [
+  'source_verified',
+  'document_reuse',
+  'user_statement',
+  'external_report',
+] as const;
+// 분류 값은 생략으로 지워지지 않도록 모든 필드를 필수로 받고, 미분류는 명시적 null로 표현한다.
+const isPresent = (_object: object, value: unknown): boolean => value !== null;
+export class CareerCurationIdentityDto {
+  @ApiProperty({ format: 'uuid' }) @IsUUID() id: string;
+  @ApiProperty({
+    minimum: 0,
+    description: '현재 curation_revision. 내용 revision과 별개',
+  })
+  @IsInt()
+  @Min(0)
+  @Max(2147483646)
+  expectedCurationRevision: number;
+}
+export class CareerBulletCurationDto extends CareerCurationIdentityDto {
+  @ApiProperty({
+    type: [String],
+    enum: careerBulletTracks,
+    description: '빈 배열은 트랙 미분류. 저장 순서는 fe, pe로 정규화',
+  })
+  @IsArray()
+  @ArrayMaxSize(2)
+  @ArrayUnique()
+  @IsIn(careerBulletTracks, { each: true })
+  tracks: string[];
+  @ApiProperty({
+    type: String,
+    enum: careerBulletTiers,
+    nullable: true,
+    description: 'null은 미분류',
+  })
+  @ValidateIf(isPresent)
+  @IsIn(careerBulletTiers)
+  tier: string | null;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    maxLength: 80,
+    pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$',
+    description: '같은 사실의 변형 문장 묶음 키. 변형이 없으면 null',
+  })
+  @ValidateIf(isPresent)
+  @IsString()
+  @MaxLength(80)
+  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  variantGroup: string | null;
+  @ApiProperty({
+    type: String,
+    enum: careerAiInvolvements,
+    nullable: true,
+    description: 'null은 미확인',
+  })
+  @ValidateIf(isPresent)
+  @IsIn(careerAiInvolvements)
+  aiInvolvement: string | null;
+  @ApiProperty({ type: String, nullable: true, maxLength: 2000 })
+  @ValidateIf(isPresent)
+  @IsString()
+  @Matches(/\S/)
+  @MaxLength(2000)
+  curationNote: string | null;
+}
+export class CareerFactCurationDto extends CareerCurationIdentityDto {
+  @ApiProperty({
+    type: String,
+    enum: careerEvidenceLevels,
+    nullable: true,
+    description: '여러 근거가 있으면 가장 강한 수준. null은 미분류',
+  })
+  @ValidateIf(isPresent)
+  @IsIn(careerEvidenceLevels)
+  evidenceLevel: string | null;
+}
+export class CareerCurationDto {
+  @ApiProperty({ type: [CareerBulletCurationDto] })
+  @IsArray()
+  @ArrayMaxSize(500)
+  @ArrayUnique((row: unknown) => (object(row) ? row.id : row))
+  @IsObject({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CareerBulletCurationDto)
+  bullets: CareerBulletCurationDto[];
+  @ApiProperty({ type: [CareerFactCurationDto] })
+  @IsArray()
+  @ArrayMaxSize(500)
+  @ArrayUnique((row: unknown) => (object(row) ? row.id : row))
+  @IsObject({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CareerFactCurationDto)
+  facts: CareerFactCurationDto[];
+}
+export class CareerCurationRowResultDto {
+  @ApiProperty({ format: 'uuid' }) id: string;
+  @ApiProperty({ description: '갱신 후 curation_revision' })
+  curationRevision: number;
+  @ApiProperty({ type: String, format: 'date-time' }) curatedAt: string;
+}
+export class CareerCurationResultDto {
+  @ApiProperty({ type: [CareerCurationRowResultDto] })
+  bullets: CareerCurationRowResultDto[];
+  @ApiProperty({ type: [CareerCurationRowResultDto] })
+  facts: CareerCurationRowResultDto[];
+}
 export class CareerPublishResultDto {
   @ApiProperty() sourceItemId: string;
 }

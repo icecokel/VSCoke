@@ -35,6 +35,8 @@ import { ResumeSlugParamsDto } from '../resume/resume.dto';
 import { CareerDataGuard } from './career-data.guard';
 import { CareerDataService } from './career-data.service';
 import {
+  CareerCurationDto,
+  CareerCurationResultDto,
   CareerDataSnapshotDto,
   CareerDeleteResultDto,
   CareerDataUpsertDto,
@@ -107,6 +109,20 @@ export class CareerDataController {
   })
   upsert(@Body() body: CareerDataUpsertDto): Promise<CareerDataSnapshotDto> {
     return this.service.upsertData(body);
+  }
+  @Patch('curation')
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({
+    summary: '불렛·사실 분류 메타데이터 원자적 CAS 변경',
+    description:
+      '내용 revision·status·updated_at·사실 연결과 공개 출력은 바꾸지 않는다. 하나라도 curation_revision 불일치·삭제 원본·제약 위반이면 전체를 되돌린다.',
+  })
+  @ApiOkResponse({
+    description: '갱신된 행의 curation_revision과 curated_at',
+    type: CareerCurationResultDto,
+  })
+  curate(@Body() body: CareerCurationDto): Promise<CareerCurationResultDto> {
+    return this.service.curateData(body);
   }
   @Delete(':kind/:id')
   @Header('Cache-Control', 'no-store')

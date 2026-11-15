@@ -277,6 +277,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/career-data/curation": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * 불렛·사실 분류 메타데이터 원자적 CAS 변경
+     * @description 내용 revision·status·updated_at·사실 연결과 공개 출력은 바꾸지 않는다. 하나라도 curation_revision 불일치·삭제 원본·제약 위반이면 전체를 되돌린다.
+     */
+    patch: operations["CareerDataController_curate"];
+    trace?: never;
+  };
   "/career-data/{kind}/{id}": {
     parameters: {
       query?: never;
@@ -1271,6 +1291,59 @@ export interface components {
       facts: components["schemas"]["CareerFactDto"][];
       bullets: components["schemas"]["CareerBulletDto"][];
       keywords: components["schemas"]["CareerKeywordDto"][];
+    };
+    CareerBulletCurationDto: {
+      /** Format: uuid */
+      id: string;
+      /** @description 현재 curation_revision. 내용 revision과 별개 */
+      expectedCurationRevision: number;
+      /** @description 빈 배열은 트랙 미분류. 저장 순서는 fe, pe로 정규화 */
+      tracks: ("fe" | "pe")[];
+      /**
+       * @description null은 미분류
+       * @enum {string|null}
+       */
+      tier: "representative" | "supporting" | "hold" | null;
+      /** @description 같은 사실의 변형 문장 묶음 키. 변형이 없으면 null */
+      variantGroup: string | null;
+      /**
+       * @description null은 미확인
+       * @enum {string|null}
+       */
+      aiInvolvement: "none" | "assisted" | "directed" | null;
+      curationNote: string | null;
+    };
+    CareerFactCurationDto: {
+      /** Format: uuid */
+      id: string;
+      /** @description 현재 curation_revision. 내용 revision과 별개 */
+      expectedCurationRevision: number;
+      /**
+       * @description 여러 근거가 있으면 가장 강한 수준. null은 미분류
+       * @enum {string|null}
+       */
+      evidenceLevel:
+        | "source_verified"
+        | "document_reuse"
+        | "user_statement"
+        | "external_report"
+        | null;
+    };
+    CareerCurationDto: {
+      bullets: components["schemas"]["CareerBulletCurationDto"][];
+      facts: components["schemas"]["CareerFactCurationDto"][];
+    };
+    CareerCurationRowResultDto: {
+      /** Format: uuid */
+      id: string;
+      /** @description 갱신 후 curation_revision */
+      curationRevision: number;
+      /** Format: date-time */
+      curatedAt: string;
+    };
+    CareerCurationResultDto: {
+      bullets: components["schemas"]["CareerCurationRowResultDto"][];
+      facts: components["schemas"]["CareerCurationRowResultDto"][];
     };
     RevisionDto: {
       /** @example 0 */
@@ -2511,6 +2584,88 @@ export interface operations {
             /** @enum {boolean} */
             success: true;
             data: components["schemas"]["CareerDataSnapshotDto"];
+          };
+        };
+      };
+      /** @description 관리 입력 또는 JSON 구조 오류 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 관리 Bearer 인증 실패 */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 대상 원본 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description revision, 현재 버전 또는 공개 조건 충돌 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 원본 저장 또는 조회 실패 */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+      /** @description 관리 키 미설정 */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponseDto"];
+        };
+      };
+    };
+  };
+  CareerDataController_curate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CareerCurationDto"];
+      };
+    };
+    responses: {
+      /** @description 갱신된 행의 curation_revision과 curated_at */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: true;
+            data: components["schemas"]["CareerCurationResultDto"];
           };
         };
       };

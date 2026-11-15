@@ -89,6 +89,7 @@ describe('Local OpenAPI contract generation', () => {
         '/main-chat',
         '/recipes',
         '/career-data',
+        '/career-data/curation',
         '/career-data/{kind}/{id}',
         '/career-data/facts/{id}/publish',
         '/resume-management/resumes',
@@ -227,6 +228,13 @@ describe('OpenAPI 의미 계약', () => {
       ],
       CareerFactDto: ['claimBoundary'],
       CareerBulletDto: ['focus', 'reviewNote'],
+      CareerBulletCurationDto: [
+        'tier',
+        'variantGroup',
+        'aiInvolvement',
+        'curationNote',
+      ],
+      CareerFactCurationDto: ['evidenceLevel'],
       ResumeVersionSaveDto: [
         'targetKey',
         'expectedCurrentVersionId',
@@ -276,7 +284,7 @@ describe('OpenAPI 의미 계약', () => {
         }
       }
     }
-    expect(operations).toBe(40);
+    expect(operations).toBe(41);
   });
 
   it('점수·시간·등수는 정수이며 시간만 null을 허용한다', async () => {

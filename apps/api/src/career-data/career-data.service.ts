@@ -7,6 +7,10 @@ import {
 import { createHash, randomUUID } from 'node:crypto';
 import { DataSource, type EntityManager } from 'typeorm';
 import type {
+  CareerCurationDto,
+  CareerCurationIdentityDto,
+  CareerCurationResultDto,
+  CareerCurationRowResultDto,
   CareerDataSnapshotDto,
   CareerDataUpsertDto,
   CareerDependencyDto,
@@ -427,6 +431,63 @@ export class CareerDataService {
       await this.withdrawSources(manager);
       return this.readSnapshot(manager);
     });
+  }
+
+  // 분류 값만 CAS로 바꾼다. 내용 revision·status·updated_at·사실 연결을 건드리지 않으므로
+  // 연쇄 검토 표시나 RAG 원문 동기화(syncBulletSources/withdrawSources)를 실행하지 않는다.
+  curateData(input: CareerCurationDto): Promise<CareerCurationResultDto> {
+    return this.write(async (manager) => {
+      const bullets: CareerCurationRowResultDto[] = [];
+      for (const row of input.bullets)
+        bullets.push(
+          await this.curateRow(manager, tables.bullet, row, {
+            // fe, pe 순서로 정규화한다. 잘못된 값은 버리지 않고 DB CHECK가 거부하게 둔다.
+            tracks: [...row.tracks].sort(),
+            tier: row.tier,
+            variant_group: row.variantGroup,
+            ai_involvement: row.aiInvolvement,
+            curation_note: row.curationNote,
+          }),
+        );
+      const facts: CareerCurationRowResultDto[] = [];
+      for (const row of input.facts)
+        facts.push(
+          await this.curateRow(manager, tables.fact, row, {
+            evidence_level: row.evidenceLevel,
+          }),
+        );
+      return { bullets, facts };
+    });
+  }
+
+  private async curateRow(
+    manager: EntityManager,
+    table: string,
+    input: CareerCurationIdentityDto,
+    values: Record<string, unknown>,
+  ): Promise<CareerCurationRowResultDto> {
+    const entries = Object.entries(values);
+    const [changed] = await manager.query<CareerCurationRowResultDto[]>(
+      `WITH changed AS (UPDATE ${table} SET ${entries.map(([key], index) => `${key}=$${index + 3}`).join(',')},curation_revision=curation_revision+1,curated_at=now() WHERE id=$1 AND deleted_at IS NULL AND curation_revision=$2 RETURNING id,curation_revision AS "curationRevision",curated_at AS "curatedAt") SELECT * FROM changed`,
+      [
+        input.id,
+        input.expectedCurationRevision,
+        ...entries.map(([, value]) => value),
+      ],
+    );
+    if (changed) return changed;
+    const [row] = await manager.query<
+      { deleted_at: string | null; curation_revision: number }[]
+    >(`SELECT deleted_at,curation_revision FROM ${table} WHERE id=$1`, [
+      input.id,
+    ]);
+    if (!row || row.deleted_at)
+      throw new ConflictException(
+        `${table}: 삭제됐거나 없는 원본입니다. (${input.id})`,
+      );
+    throw new ConflictException(
+      `${table}: curation_revision 불일치 (${input.id}: ${row.curation_revision})`,
+    );
   }
 
   private async dependencies(

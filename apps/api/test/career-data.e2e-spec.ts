@@ -47,6 +47,7 @@ describe('경력 관리 HTTP trust boundary', () => {
     deleteResume: jest.fn(),
     deleteVersion: jest.fn(),
     deleteDetail: jest.fn(),
+    curateData: jest.fn(),
   };
   beforeAll(async () => {
     const module = await Test.createTestingModule({
@@ -182,6 +183,67 @@ describe('경력 관리 HTTP trust boundary', () => {
       .send({ expectedRevision: 1 })
       .expect(200);
     expect(response.headers['cache-control']).toBe('no-store');
+  });
+  describe('PATCH /career-data/curation', () => {
+    const curation = {
+      bullets: [
+        {
+          id: '5bb2635b-3510-51a8-8ded-0b9d3bbb3c76',
+          expectedCurationRevision: 0,
+          tracks: ['fe', 'pe'],
+          tier: 'supporting',
+          variantGroup: null,
+          aiInvolvement: 'assisted',
+          curationNote: '하위 근거',
+        },
+      ],
+      facts: [
+        {
+          id: '6bb2635b-3510-51a8-8ded-0b9d3bbb3c76',
+          expectedCurationRevision: 0,
+          evidenceLevel: 'document_reuse',
+        },
+      ],
+    };
+    it('관리 Bearer 없이는 service 실행 전에 거부한다', async () => {
+      await request(app.getHttpServer())
+        .patch('/career-data/curation')
+        .send(curation)
+        .expect(401);
+      delete process.env.CAREER_DATA_WRITE_KEY;
+      await request(app.getHttpServer())
+        .patch('/career-data/curation')
+        .set('Authorization', `Bearer ${token}`)
+        .send(curation)
+        .expect(503);
+      expect(service.curateData).not.toHaveBeenCalled();
+    });
+    it.each([
+      { ...curation, bullets: [{ ...curation.bullets[0], tier: 'top' }] },
+      { ...curation, bullets: [{ ...curation.bullets[0], status: 'ready' }] },
+      { ...curation, facts: [{ ...curation.facts[0], revision: 2 }] },
+      { bullets: curation.bullets },
+      { ...curation, bullets: [null] },
+    ])('잘못된 분류 입력 %j는 400', async (invalid: object) => {
+      await request(app.getHttpServer())
+        .patch('/career-data/curation')
+        .set('Authorization', `Bearer ${token}`)
+        .send(invalid)
+        .expect(400);
+      expect(service.curateData).not.toHaveBeenCalled();
+    });
+    it('검증된 입력을 그대로 전달하고 캐시하지 않는다', async () => {
+      service.curateData.mockResolvedValue({ bullets: [], facts: [] });
+      const response = await request(app.getHttpServer())
+        .patch('/career-data/curation')
+        .set('Authorization', `Bearer ${token}`)
+        .send(curation)
+        .expect(200);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(service.curateData).toHaveBeenCalledWith(
+        expect.objectContaining(curation),
+      );
+    });
   });
   it('원본 kind와 UUID 경계는 임의 SQL 식별자를 허용하지 않는다', async () => {
     await request(app.getHttpServer())

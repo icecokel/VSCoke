@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { CareerDataGuard } from './career-data.guard';
 import {
+  CareerCurationDto,
   CareerDataUpsertDto,
   ResumeVersionSaveDto,
   ResumeDetailSaveDto,
@@ -129,6 +130,83 @@ describe('경력 관리 입력과 인증', () => {
         { whitelist: true, forbidNonWhitelisted: true },
       ),
     ).not.toEqual([]);
+  });
+  describe('분류 메타데이터 입력', () => {
+    const bullet = {
+      id: '5bb2635b-3510-51a8-8ded-0b9d3bbb3c76',
+      expectedCurationRevision: 0,
+      tracks: ['pe', 'fe'],
+      tier: 'representative',
+      variantGroup: 'oprimed-pre-push-gate',
+      aiInvolvement: 'directed',
+      curationNote: '대표 항목 근거',
+    };
+    const fact = {
+      id: '6bb2635b-3510-51a8-8ded-0b9d3bbb3c76',
+      expectedCurationRevision: 3,
+      evidenceLevel: 'source_verified',
+    };
+    const validateCuration = (value: unknown) =>
+      validate(plainToInstance(CareerCurationDto, value), {
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      });
+    it('계약의 값 집합과 명시적 null을 수용한다', async () => {
+      expect(
+        await validateCuration({ bullets: [bullet], facts: [fact] }),
+      ).toEqual([]);
+      expect(
+        await validateCuration({
+          bullets: [
+            {
+              ...bullet,
+              tracks: [],
+              tier: null,
+              variantGroup: null,
+              aiInvolvement: null,
+              curationNote: null,
+            },
+          ],
+          facts: [{ ...fact, evidenceLevel: null }],
+        }),
+      ).toEqual([]);
+      expect(await validateCuration({ bullets: [], facts: [] })).toEqual([]);
+    });
+    it.each([
+      ['알 수 없는 트랙', { tracks: ['be'] }],
+      ['중복 트랙', { tracks: ['fe', 'fe'] }],
+      ['트랙 배열 아님', { tracks: 'fe' }],
+      ['잘못된 등급', { tier: 'top' }],
+      ['대문자 변형 키', { variantGroup: 'Oprimed' }],
+      ['81자 변형 키', { variantGroup: 'a'.repeat(81) }],
+      ['잘못된 AI 관여', { aiInvolvement: 'partial' }],
+      ['공백 메모', { curationNote: '  ' }],
+      ['2001자 메모', { curationNote: 'a'.repeat(2001) }],
+      ['음수 revision', { expectedCurationRevision: -1 }],
+      ['생략한 등급', { tier: undefined }],
+      ['내용 status 동봉', { status: 'ready' }],
+      ['내용 revision 동봉', { expectedRevision: 1 }],
+    ])('불렛 %s는 거부한다', async (_name, patch) => {
+      expect(
+        await validateCuration({
+          bullets: [{ ...bullet, ...patch }],
+          facts: [],
+        }),
+      ).not.toEqual([]);
+    });
+    it('사실의 잘못된 근거 수준, 생략, 내용 필드와 중복 ID를 거부한다', async () => {
+      for (const facts of [
+        [{ ...fact, evidenceLevel: 'inference' }],
+        [{ ...fact, evidenceLevel: undefined }],
+        [{ ...fact, content: 'changed' }],
+        [fact, fact],
+      ])
+        expect(await validateCuration({ bullets: [], facts })).not.toEqual([]);
+      expect(
+        await validateCuration({ bullets: [bullet, bullet], facts: [] }),
+      ).not.toEqual([]);
+      expect(await validateCuration({ bullets: [bullet] })).not.toEqual([]);
+    });
   });
   it('출처 날짜와 측정 조건의 명시적 null을 검사한다', () => {
     expect(

@@ -13,7 +13,10 @@ import {
 
 const root = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim();
 mkdirSync(join(root, "output"), { recursive: true });
-const workflow = readFileSync(join(root, ".github/workflows/deploy-api.yml"), "utf8");
+// 배포 job 단계만 검사한다. 뒤따르는 실패 알림 job은 discord-failure-alert.spec.ts가 검사한다.
+const workflow = readFileSync(join(root, ".github/workflows/deploy-api.yml"), "utf8").split(
+  "\n  notify-failure:\n",
+)[0];
 const messagePath = "apps/web/messages/ko-KR.json";
 const original = { profile: { name: "이상민" }, resume: { title: "경력" }, navigation: "메뉴" };
 const writeCurrentRevision = (deployDir: string, sha: string): void => {

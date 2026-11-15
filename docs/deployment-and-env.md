@@ -200,3 +200,6 @@ Discord의 `discord-bot-oci`와 설치·work 디렉터리·서비스를 분리�
 | `API_VERIFY_PUBLIC`    | 전환 전 `false`, 최종 데이터·터널 전환 후 `true`                  |
 
 Repository Secret은 기존 `API_ENV_PRODUCTION`을 사용한다. 외부 PR 코드는 운영 러너에서 실행하지 않는다.
+선택 Secret `DISCORD_WEBHOOK_URL`은 workflow 실패 알림 job(GitHub-hosted)에서만 읽고 OCI 러너에
+전달하지 않는다. 알림 대상과 확인 방법은
+[Operations Runbook](./operations-runbook.md#github-actions-실패-알림)을 따른다.

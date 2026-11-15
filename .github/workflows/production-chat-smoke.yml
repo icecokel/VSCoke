@@ -5,6 +5,11 @@ on:
     - cron: "17 9 * * *"
       timezone: "Asia/Seoul"
   workflow_dispatch:
+    inputs:
+      force_failure:
+        description: "smoke를 실행하지 않고 실패 처리해 Discord 알림만 확인"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -23,6 +28,12 @@ jobs:
       PLAYWRIGHT_PRODUCTION_SMOKE: "1"
       PLAYWRIGHT_RETRIES: "1"
     steps:
+      - name: Fail on purpose for alert check
+        if: inputs.force_failure
+        run: |
+          echo "::error::force_failure 입력으로 알림 확인용 실패를 발생시킵니다."
+          exit 1
+
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
@@ -51,3 +62,21 @@ jobs:
           path: output/playwright
           if-no-files-found: ignore
           retention-days: 7
+
+  notify-failure:
+    needs: smoke
+    if: failure()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout alert script
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/discord-failure-alert.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Send Discord failure alert
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ALERT_NOTE: ${{ inputs.force_failure && '알림 확인용 강제 실패(force_failure)' || '' }}
+        run: node scripts/discord-failure-alert.mjs

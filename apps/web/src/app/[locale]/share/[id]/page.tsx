@@ -102,7 +102,7 @@ const SharePage = async ({ params }: Props) => {
 
       <div className="max-w-md w-full text-center animate-in fade-in slide-in-from-bottom-8 duration-700">
         {/* 날짜 */}
-        <p className="text-gray-500 mb-2 font-medium">{date}</p>
+        <p className="text-gray-400 mb-2 font-medium">{date}</p>
 
         {/* 게임 로고 */}
         <div className={`text-5xl font-bold mb-4 tracking-wider ${colorClass}`}>{gameTitle}</div>

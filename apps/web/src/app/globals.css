@@ -10,8 +10,8 @@
   --color-gray-50: #d7d7d7;
   --color-gray-100: #cccccc;
   --color-gray-200: #aaaaaa; /* Added */
-  --color-gray-300: #8c8c8c;
-  --color-gray-400: #6e6e6e; /* Added */
+  --color-gray-300: #a3a3a3; /* 어두운 배경 보조 문구 4.5:1 이상 */
+  --color-gray-400: #929292; /* 어두운 배경(#2a2a2a까지) 3단계 문구 4.5:1 이상 */
   --color-gray-500: #4c4c4c;
   --color-gray-600: #323232;
   --color-gray-700: #2a2a2a;

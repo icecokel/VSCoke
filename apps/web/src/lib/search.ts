@@ -74,7 +74,7 @@ export const searchItems = (items: SearchItem[], query: string, limit = 30): Sea
 
 export const getRecommendedItems = (items: SearchItem[], limit = 6): SearchItem[] => {
   const uniqueByPath = new Map<string, SearchItem>();
-  const sorted = [...items].sort((a, b) => {
+  const sorted = items.toSorted((a, b) => {
     if ((a.featured ?? false) !== (b.featured ?? false)) {
       return a.featured ? -1 : 1;
     }

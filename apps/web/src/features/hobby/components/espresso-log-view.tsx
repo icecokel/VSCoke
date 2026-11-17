@@ -118,7 +118,7 @@ const SpecGrid = ({ pairs }: { pairs: Array<{ label: string; value: string }> })
           key={`${pair.label}-${pair.value}`}
           className="rounded-md border border-gray-800 bg-gray-950 p-3"
         >
-          <dt className="text-xs text-gray-500">{pair.label}</dt>
+          <dt className="text-xs text-gray-400">{pair.label}</dt>
           <dd className="mt-1 text-sm font-semibold text-gray-100">{pair.value}</dd>
         </div>
       ))}
@@ -234,7 +234,7 @@ const RoundCard = ({ round }: { round: EspressoRound }) => {
           <h4 className="text-lg font-semibold text-gray-50">
             {t("roundLabel", { number: round.roundNumber })}
           </h4>
-          {round.date && <p className="mt-1 text-xs text-gray-500">{round.date}</p>}
+          {round.date && <p className="mt-1 text-xs text-gray-400">{round.date}</p>}
         </div>
         {round.recipe.grind && <Chip>{t("grind", { value: round.recipe.grind })}</Chip>}
       </div>
@@ -348,7 +348,7 @@ const HistoryDetail = ({ log }: { log: EspressoLog }) => {
               <h4 className="text-lg font-semibold text-gray-50">
                 {t("roundLabel", { number: round.roundNumber })}
               </h4>
-              {round.date && <p className="mt-1 text-xs text-gray-500">{round.date}</p>}
+              {round.date && <p className="mt-1 text-xs text-gray-400">{round.date}</p>}
             </div>
             {round.recipe.grind && <Chip>{t("grind", { value: round.recipe.grind })}</Chip>}
           </div>
@@ -386,7 +386,7 @@ const DetailPanel = ({
     <section className="min-w-0 rounded-lg border border-gray-700 bg-gray-900 p-4 md:p-5">
       <div className="mb-5 flex flex-col gap-3 border-b border-gray-800 pb-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <p className="text-xs font-semibold tracking-[0.16em] text-gray-500 uppercase">
+          <p className="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">
             {context.bean.roaster ?? t("roasterFallback")}
           </p>
           <h2 className="mt-1 text-2xl font-bold text-gray-50">{titleMap[selection.type]}</h2>

@@ -33,11 +33,11 @@ const NotFound = () => {
 
   return (
     <Container className="min-h-screen flex flex-col items-center justify-center text-white">
-      <Icon kind="folder" size={64} className="text-gray-500 mb-4" />
+      <Icon kind="folder" size={64} className="text-gray-400 mb-4" />
       <BaseText type="h5" className="text-gray-300 mb-2">
         {t("title")}
       </BaseText>
-      <BaseText type="body2" className="text-gray-500">
+      <BaseText type="body2" className="text-gray-400">
         {t("descPrefix")}
         {pathname}
         {t("descSuffix")}

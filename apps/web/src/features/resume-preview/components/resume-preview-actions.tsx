@@ -45,7 +45,7 @@ export const ResumePreviewActions = ({ resumeKey }: { resumeKey: string }) => {
         <DialogTrigger asChild>
           <Button
             type="button"
-            className="absolute top-0 right-0 bg-blue-300 text-gray-900 hover:bg-blue-200"
+            className="absolute top-0 right-0 bg-blue-300 text-white hover:bg-blue-200"
             data-testid="resume-preview-save-pdf"
           >
             <DownloadIcon className="size-4" aria-hidden="true" />
@@ -77,7 +77,7 @@ export const ResumePreviewActions = ({ resumeKey }: { resumeKey: string }) => {
             </Button>
             <Button
               type="button"
-              className="bg-blue-300 text-gray-900 hover:bg-blue-200"
+              className="bg-blue-300 text-white hover:bg-blue-200"
               data-testid="resume-preview-download-with-career-details"
               onClick={() => handleSavePdf(true)}
             >

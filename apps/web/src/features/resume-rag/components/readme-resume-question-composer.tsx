@@ -180,7 +180,7 @@ export const ReadmeResumeQuestionComposer = ({ resumeKey }: { resumeKey: string 
             type="button"
             size="icon"
             onClick={handleMobileChatClick}
-            className="fixed right-20 bottom-4 z-40 size-12 rounded-full bg-blue-300 text-gray-950 shadow-lg hover:bg-blue-200 md:hidden"
+            className="fixed right-20 bottom-4 z-40 size-12 rounded-full bg-blue-300 text-white shadow-lg hover:bg-blue-200 md:hidden"
             data-testid="resume-rag-chat-trigger"
           >
             <MessageCircle className="size-6" />
@@ -209,6 +209,7 @@ export const ReadmeResumeQuestionComposer = ({ resumeKey }: { resumeKey: string 
           </div>
           <div className="px-3">
             <ResumeConversationToolbar
+              tone="light"
               isRestoring={conversation.isRestoring}
               isWorking={conversation.isWorking}
               hasError={Boolean(conversation.restoreError)}

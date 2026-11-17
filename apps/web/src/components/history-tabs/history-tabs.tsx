@@ -215,7 +215,7 @@ export const HistoryTabs = ({ children }: TParentNode) => {
                       >
                         <BaseText
                           className={twMerge(
-                            "flex items-center py-1 pr-7 pl-2 text-sm text-gray-300/80 md:px-9 md:py-1.5 md:pl-5",
+                            "flex items-center py-1 pr-7 pl-2 text-sm text-gray-300 md:px-9 md:py-1.5 md:pl-5",
                             item.isActive &&
                               "border-t border-t-blue-300 pt-px font-medium text-yellow-200/95 md:pt-[5px]",
                           )}

@@ -92,7 +92,7 @@ const Resume = ({ document: resume }: { document: ResumeDocument }) => {
                   type="caption"
                   className={twMerge(
                     "transition-colors",
-                    activeIndex === index ? "text-yellow-200/70" : "text-gray-300",
+                    activeIndex === index ? "text-yellow-200" : "text-gray-300",
                   )}
                 >
                   {career.period}

@@ -17,7 +17,7 @@ export const ResumeLocaleUnavailable = async ({ path }: ResumeLocaleUnavailableP
       className="flex min-h-full flex-col items-center justify-center gap-3 px-4 py-16 text-center text-gray-100"
       data-testid="resume-locale-unavailable"
     >
-      <LanguagesIcon className="size-12 text-gray-500" aria-hidden="true" />
+      <LanguagesIcon className="size-12 text-gray-400" aria-hidden="true" />
       <h1 className="text-xl font-bold">{t("title")}</h1>
       <p className="max-w-md text-sm leading-6 text-gray-400">{t("description")}</p>
       {/* 언어 전환은 메뉴바와 같이 전체 문서를 다시 받아 UI 언어도 함께 바꾼다. */}

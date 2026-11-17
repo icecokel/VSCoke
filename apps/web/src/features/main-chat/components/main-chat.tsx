@@ -178,7 +178,7 @@ export const MainChat = () => {
             <p className="text-xs font-semibold tracking-[0.24em] text-blue-200">VSCOKE</p>
             <h1 className="mt-1 text-lg font-semibold text-gray-100">{t("workspaceTitle")}</h1>
           </div>
-          <span className="flex items-center gap-1.5 text-xs text-gray-500">
+          <span className="flex items-center gap-1.5 text-xs text-gray-400">
             <span className="size-1.5 rounded-full bg-blue-300" />
             {t("publicAccess")}
           </span>
@@ -244,7 +244,7 @@ export const MainChat = () => {
               {state.messages.map(message =>
                 message.role === "user" ? (
                   <div key={message.id} className="ml-auto max-w-[85%] text-right md:max-w-[70%]">
-                    <p className="mb-2 text-xs font-medium text-gray-500">{t("you")}</p>
+                    <p className="mb-2 text-xs font-medium text-gray-400">{t("you")}</p>
                     <p className="inline-block rounded-2xl rounded-tr-sm bg-blue-300 px-4 py-3 text-left text-sm font-medium text-gray-950">
                       {message.content}
                     </p>
@@ -293,7 +293,7 @@ export const MainChat = () => {
 
         <div className="border-t border-gray-800 pt-4">
           {state.rateLimit ? (
-            <p className="mb-2 flex items-center gap-1.5 text-xs text-gray-500" aria-live="polite">
+            <p className="mb-2 flex items-center gap-1.5 text-xs text-gray-400" aria-live="polite">
               <Clock className="size-3.5" />
               {t("rateLimit", { count: state.rateLimit.remaining, time: resetAt ?? "-" })}
             </p>
@@ -305,7 +305,7 @@ export const MainChat = () => {
               disabled={isRateLimited || conversation.isRestoring}
               placeholder={t("placeholder")}
               aria-label={t("placeholder")}
-              className="min-h-12 resize-none border-gray-700 bg-gray-900 px-4 py-3 text-sm text-gray-100 placeholder:text-gray-500 focus-visible:border-blue-300 focus-visible:ring-blue-300/20"
+              className="min-h-12 resize-none border-gray-700 bg-gray-900 px-4 py-3 text-sm text-gray-100 placeholder:text-gray-400 focus-visible:border-blue-300 focus-visible:ring-blue-300/20"
               onChange={event => setQuestion(event.target.value)}
               onKeyDown={event => {
                 if (
@@ -326,7 +326,7 @@ export const MainChat = () => {
               type="submit"
               size="icon"
               disabled={!canSubmit}
-              className="size-12 shrink-0 bg-blue-300 text-gray-950 hover:bg-blue-200 disabled:bg-gray-800 disabled:text-gray-500"
+              className="size-12 shrink-0 bg-blue-300 text-white hover:bg-blue-200 disabled:bg-gray-800 disabled:text-gray-400"
               aria-label={t("send")}
             >
               <Send className="size-4" />

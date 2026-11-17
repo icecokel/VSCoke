@@ -10,6 +10,8 @@ type ResumeConversationToolbarProps = {
   memoryOnly: boolean;
   onReset: () => Promise<void>;
   onRestore: () => Promise<void>;
+  // README 패널처럼 밝은 배경에 놓일 때 글자·구분선 명암비를 유지한다.
+  tone?: "dark" | "light";
 };
 
 export const ResumeConversationToolbar = ({
@@ -19,11 +21,16 @@ export const ResumeConversationToolbar = ({
   memoryOnly,
   onReset,
   onRestore,
+  tone = "dark",
 }: ResumeConversationToolbarProps) => {
   const t = useTranslations("resumeRag.conversation");
   return (
     <div
-      className="shrink-0 border-b border-gray-800 py-3 text-xs text-gray-400"
+      className={
+        tone === "light"
+          ? "shrink-0 border-b border-gray-200 py-3 text-xs text-gray-600"
+          : "shrink-0 border-b border-gray-800 py-3 text-xs text-gray-400"
+      }
       data-testid="resume-conversation-toolbar"
     >
       <div className="flex items-center justify-between gap-3">

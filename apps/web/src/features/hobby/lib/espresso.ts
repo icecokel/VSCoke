@@ -61,7 +61,7 @@ export const getRoundRecencyValue = (round: EspressoRound) => {
 };
 
 export const sortEspressoRoundsByRecent = (rounds: EspressoRound[]) => {
-  return [...rounds].sort((a, b) => {
+  return rounds.toSorted((a, b) => {
     const recencyDiff = getRoundRecencyValue(b) - getRoundRecencyValue(a);
 
     if (recencyDiff !== 0) {
@@ -77,7 +77,7 @@ export const getLatestEspressoRound = (bean: EspressoBean) => {
 };
 
 export const sortEspressoBeansByRecent = (beans: EspressoBean[]) => {
-  return [...beans].sort((a, b) => {
+  return beans.toSorted((a, b) => {
     const latestRoundA = getLatestEspressoRound(a);
     const latestRoundB = getLatestEspressoRound(b);
     const recencyA = latestRoundA ? getRoundRecencyValue(latestRoundA) : Number.NEGATIVE_INFINITY;

@@ -40,7 +40,7 @@ const Profile = ({ document }: { document: ResumeDocument }) => {
       <div className="flex flex-wrap justify-end gap-2">
         <Dialog>
           <DialogTrigger asChild>
-            <Button type="button" size="sm" className="bg-blue-300 text-gray-900 hover:bg-blue-200">
+            <Button type="button" size="sm" className="bg-blue-300 text-white hover:bg-blue-200">
               <Icon kind="mail" size={16} />
               {t("proposal")}
             </Button>
@@ -54,7 +54,7 @@ const Profile = ({ document }: { document: ResumeDocument }) => {
               <DialogDescription>{t("proposalDescription")}</DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-2">
-              <Button asChild className="bg-blue-300 text-gray-900 hover:bg-blue-200">
+              <Button asChild className="bg-blue-300 text-white hover:bg-blue-200">
                 <a href={`mailto:${contact.email}`}>
                   <Icon kind="mail" size={16} />
                   {t("sendEmail")}

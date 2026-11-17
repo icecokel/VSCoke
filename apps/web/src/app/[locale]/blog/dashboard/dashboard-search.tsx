@@ -166,7 +166,7 @@ export default function DashboardSearch({ posts }: DashboardSearchProps) {
           onChange={handleQueryChange}
           onFocus={dropdown.onTrue}
           onKeyDown={handleKeyDown}
-          className="bg-gray-800 border-gray-700 text-gray-100 placeholder:text-gray-500"
+          className="bg-gray-800 border-gray-700 text-gray-100 placeholder:text-gray-400"
         />
 
         {/* Autocomplete Dropdown */}

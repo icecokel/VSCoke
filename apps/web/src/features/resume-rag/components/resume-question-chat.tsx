@@ -221,7 +221,7 @@ const PendingAnswer = () => {
 
   return (
     <div className="mr-auto w-full max-w-3xl overflow-hidden border border-gray-700 bg-gray-950/80 text-gray-100">
-      <div className="border-b border-gray-800 bg-gray-900 px-3 py-2 text-xs text-gray-500">
+      <div className="border-b border-gray-800 bg-gray-900 px-3 py-2 text-xs text-gray-400">
         codex.response
       </div>
       <div className="p-3">
@@ -229,7 +229,7 @@ const PendingAnswer = () => {
           <Loader2 className="mt-0.5 size-4 animate-spin text-blue-300" />
           <div>
             <div className="font-medium">{t("pending.title")}</div>
-            <div className="mt-1 text-gray-500">{t("pending.description")}</div>
+            <div className="mt-1 text-gray-400">{t("pending.description")}</div>
           </div>
         </div>
         <div className="mt-4 space-y-2">
@@ -301,10 +301,10 @@ const SourceList = ({
                 ) : (
                   <span className="text-gray-300">{label}</span>
                 )}
-                <span className="text-gray-500">{t("similarity", { score })}</span>
+                <span className="text-gray-400">{t("similarity", { score })}</span>
               </div>
               {source.caveats?.length ? (
-                <div className="mt-1 text-gray-500">{source.caveats.join(", ")}</div>
+                <div className="mt-1 text-gray-400">{source.caveats.join(", ")}</div>
               ) : null}
             </div>
           );
@@ -355,7 +355,7 @@ const EmptyChatState = ({
 
   return (
     <div className="min-h-72 overflow-hidden border border-gray-800 bg-gray-950/70 text-gray-100">
-      <div className="flex items-center gap-2 border-b border-gray-800 bg-gray-900 px-3 py-2 text-xs text-gray-500">
+      <div className="flex items-center gap-2 border-b border-gray-800 bg-gray-900 px-3 py-2 text-xs text-gray-400">
         <span className="size-2 rounded-full bg-blue-300" />
         <span>resume-rag.question</span>
       </div>
@@ -366,7 +366,7 @@ const EmptyChatState = ({
         </div>
 
         <div className="mt-5">
-          <div className="mb-2 text-xs font-medium uppercase text-gray-500">{t("topicsLabel")}</div>
+          <div className="mb-2 text-xs font-medium uppercase text-gray-400">{t("topicsLabel")}</div>
           <div className="grid gap-2 md:grid-cols-2">
             {questionTopics.map((topic, index) => (
               <Button
@@ -616,7 +616,7 @@ export const ResumeQuestionChat = ({ initialChatId, resumeKey }: ResumeQuestionC
                 </div>
               ) : (
                 <div className="w-full max-w-3xl overflow-hidden border border-gray-700 bg-gray-950/80 text-gray-100">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-800 bg-gray-900 px-3 py-2 text-xs text-gray-500">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-800 bg-gray-900 px-3 py-2 text-xs text-gray-400">
                     <span>codex.response</span>
                     <span
                       className={
@@ -664,7 +664,7 @@ export const ResumeQuestionChat = ({ initialChatId, resumeKey }: ResumeQuestionC
             placeholder={t("placeholder")}
             aria-label={t("composerLabel")}
             rows={1}
-            className="max-h-36 min-h-11 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-sm text-gray-100 shadow-none placeholder:text-gray-500 focus-visible:border-transparent focus-visible:ring-0 md:min-h-11"
+            className="max-h-36 min-h-11 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-sm text-gray-100 shadow-none placeholder:text-gray-400 focus-visible:border-transparent focus-visible:ring-0 md:min-h-11"
             disabled={isSubmitting || conversation.isRestoring}
           />
           <Button
@@ -672,14 +672,14 @@ export const ResumeQuestionChat = ({ initialChatId, resumeKey }: ResumeQuestionC
             size="icon"
             disabled={!canSubmit}
             aria-label={isSubmitting ? t("submitting") : t("submit")}
-            className="size-10 shrink-0 rounded-md bg-blue-300 text-gray-950 hover:bg-blue-200"
+            className="size-10 shrink-0 rounded-md bg-blue-300 text-white hover:bg-blue-200"
           >
             {isSubmitting ? <Loader2 className="animate-spin" /> : <Send />}
           </Button>
         </div>
         <ResumeRagRateLimitStatus
           rateLimit={rateLimit}
-          className="px-1 pt-2 text-xs text-gray-500"
+          className="px-1 pt-2 text-xs text-gray-400"
         />
       </form>
     </section>

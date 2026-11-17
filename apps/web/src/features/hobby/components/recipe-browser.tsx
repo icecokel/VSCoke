@@ -301,7 +301,7 @@ export const RecipeBrowser = ({ recipes, hasLoadedRecipes }: RecipeBrowserProps)
         <div className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-gray-900/70 p-3 md:flex-row md:items-center">
           <label className="relative block flex-1">
             <span className="sr-only">{t("searchLabel")}</span>
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-gray-500" />
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-gray-400" />
             <Input
               type="search"
               role="searchbox"
@@ -309,7 +309,7 @@ export const RecipeBrowser = ({ recipes, hasLoadedRecipes }: RecipeBrowserProps)
               value={query}
               onChange={event => handleSearch(event.target.value)}
               placeholder={t("searchPlaceholder")}
-              className="border-gray-700 bg-gray-950 pl-9 text-gray-100 placeholder:text-gray-500"
+              className="border-gray-700 bg-gray-950 pl-9 text-gray-100 placeholder:text-gray-400"
             />
           </label>
           <div className="text-sm text-gray-400">

@@ -60,7 +60,27 @@ export const createProductionDomainRedirects = () => [
 
 const connectSources = createConnectSources(process.env.NEXT_PUBLIC_API_URL);
 
-const contentSecurityPolicy = `connect-src ${connectSources.join(" ")};`;
+// 스크립트 nonce CSP는 GA·GTM 연동 확인이 필요해 아직 적용하지 않는다. 지금은 연결 대상 제한과
+// 클릭재킹·플러그인·<base> 주입을 막는 지시어만 둔다. 이 사이트는 다른 사이트의 iframe에 넣지 않는다.
+export const createContentSecurityPolicy = (sources: readonly string[]): string =>
+  [
+    `connect-src ${sources.join(" ")}`,
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    "base-uri 'none'",
+  ].join("; ") + ";";
+
+// 사이트가 쓰지 않는 강력한 기능은 막고, 공유·클립보드처럼 쓰는 기능은 브라우저 기본값을 둔다.
+export const securityHeaders = (sources: readonly string[]) => [
+  { key: "Content-Security-Policy", value: createContentSecurityPolicy(sources) },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()",
+  },
+];
 
 const nextConfig: NextConfig = {
   // React Strict Mode (개발 환경에서 잠재적 문제 감지)
@@ -96,12 +116,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/:path*",
-        headers: [
-          {
-            key: "Content-Security-Policy",
-            value: contentSecurityPolicy,
-          },
-        ],
+        headers: securityHeaders(connectSources),
       },
     ];
   },

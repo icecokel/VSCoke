@@ -37,6 +37,8 @@ async function bootstrap() {
   app.use(json());
 
   app.set('trust proxy', getTrustProxySetting(process.env.TRUST_PROXY));
+  // 응답에 서버 프레임워크(Express)를 드러내지 않는다.
+  app.disable('x-powered-by');
   app.use(requestIdMiddleware);
   app.enableCors(getCorsOptions(process.env.CORS_ORIGINS));
 

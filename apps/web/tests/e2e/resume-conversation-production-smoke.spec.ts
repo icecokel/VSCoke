@@ -1,6 +1,6 @@
 import { expect, test, type Page, type Response } from "@playwright/test";
 import ko from "../../messages/ko-KR.json";
-import { gotoWithRetry } from "./test-helpers";
+import { chatAnswerText, gotoWithRetry } from "./test-helpers";
 
 test.skip(
   process.env.PLAYWRIGHT_PRODUCTION_SMOKE !== "1",
@@ -64,12 +64,13 @@ for (const channel of ["main", "resume"] as const) {
           { timeout: 130_000 },
         );
 
+      // 답변은 강조·목록·문단을 렌더하므로 원문 정확 일치 대신 렌더 후 텍스트 포함 여부로 비교한다.
       await input.fill("Oprimed 프로젝트를 두 문장으로 설명해줘");
       await expect(submit).toBeEnabled();
       const firstResponse = waitForAnswer();
       await submit.click();
       const first = await readAnswer(await firstResponse);
-      await expect(page.getByText(first.answer, { exact: true })).toBeVisible();
+      await expect(page.locator("body")).toContainText(chatAnswerText(first.answer));
 
       await input.fill("그 프로젝트 이름을 다시 적고, 내가 맡은 역할을 두 문장으로 정리해줘");
       const secondResponse = waitForAnswer();
@@ -77,11 +78,11 @@ for (const channel of ["main", "resume"] as const) {
       const second = await readAnswer(await secondResponse);
       expect(second.conversationId).toBe(first.conversationId);
       expect(second.requestId).not.toBe(first.requestId);
-      await expect(page.getByText(second.answer, { exact: true })).toBeVisible();
+      await expect(page.locator("body")).toContainText(chatAnswerText(second.answer));
 
       await page.reload();
-      await expect(page.getByText(first.answer, { exact: true })).toBeVisible();
-      await expect(page.getByText(second.answer, { exact: true })).toBeVisible();
+      await expect(page.locator("body")).toContainText(chatAnswerText(first.answer));
+      await expect(page.locator("body")).toContainText(chatAnswerText(second.answer));
       const deletion = page.waitForResponse(
         response =>
           response.request().method() === "DELETE" &&
@@ -92,8 +93,8 @@ for (const channel of ["main", "resume"] as const) {
         .getByRole("button", { name: ko.resumeRag.conversation.newConversation, exact: true })
         .click();
       expect((await deletion).status()).toBe(200);
-      await expect(page.getByText(first.answer, { exact: true })).toHaveCount(0);
-      await expect(page.getByText(second.answer, { exact: true })).toHaveCount(0);
+      await expect(page.locator("body")).not.toContainText(chatAnswerText(first.answer));
+      await expect(page.locator("body")).not.toContainText(chatAnswerText(second.answer));
       console.info(`${channel}: real model answers=2, persisted=true, restored=true, deleted=true`);
     } finally {
       await cleanUpConversation(page, storageKey);

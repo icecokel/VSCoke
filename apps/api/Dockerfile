@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # 빌드 컨텍스트는 저장소 루트다: docker build --file apps/api/Dockerfile .
 # 포함 파일은 같은 디렉터리의 Dockerfile.dockerignore 허용 목록으로 제한한다.
-ARG NODE_VERSION=24.22.1
+ARG NODE_VERSION=24.22.3
 ARG PNPM_VERSION=9.12.0
 
 FROM node:${NODE_VERSION}-bookworm-slim AS base

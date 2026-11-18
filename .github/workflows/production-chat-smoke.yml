@@ -11,6 +11,11 @@ on:
         type: boolean
         default: false
 
+env:
+  # onnxruntime-node 설치 스크립트가 Linux x64에서 GPU(CUDA) 바이너리를 GitHub 릴리스에서 받는데,
+  # 해당 자산이 404라 설치가 실패한다. CI는 CPU 임베딩만 쓰므로 받지 않는다.
+  ONNXRUNTIME_NODE_INSTALL_CUDA: skip
+
 permissions:
   contents: read
 

@@ -3,7 +3,8 @@
 import type { CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import { GameConstants } from "./game-constants";
-import { isSkyDropInDanger, type SkyDropState } from "./sky-drop-engine";
+import { SkyDropBlockFace } from "./sky-drop-block-face";
+import { isSkyDropInDanger, type SkyDropBlock, type SkyDropState } from "./sky-drop-engine";
 import styles from "./sky-drop.module.css";
 
 interface SkyDropBoardProps {
@@ -11,11 +12,18 @@ interface SkyDropBoardProps {
   onSelect: (column: number) => void;
 }
 
-const blockStyle = (column: number, row: number, color: number): CSSProperties => ({
+const blockStyle = (
+  column: number,
+  row: number,
+  block: SkyDropBlock,
+): CSSProperties & { "--idle-delay": string } => ({
   left: `calc(${column} * (100% + 8px) / 3)`,
   top: `${(row / 13) * 100}%`,
-  backgroundColor: GameConstants.BLOCK_PALETTE[color],
+  backgroundColor: GameConstants.BLOCK_PALETTE[block.color],
+  "--idle-delay": `${(block.id % 13) * -410}ms`,
 });
+
+const surpriseDurationMs = 650;
 
 export const SkyDropBoard = ({ state, onSelect }: SkyDropBoardProps) => {
   const t = useTranslations("Game.skyDrop");
@@ -35,7 +43,10 @@ export const SkyDropBoard = ({ state, onSelect }: SkyDropBoardProps) => {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col" data-testid="sky-drop-playfield">
+    <div
+      className={`${styles.playfield} flex min-h-0 flex-1 flex-col`}
+      data-testid="sky-drop-playfield"
+    >
       <div
         className={`${styles.board} ${isDanger ? styles.danger : ""}`}
         data-testid="sky-drop-board"
@@ -70,19 +81,26 @@ export const SkyDropBoard = ({ state, onSelect }: SkyDropBoardProps) => {
               data-column={block.column}
               data-row={block.row}
               data-held={block.held}
-              className={`${styles.block} ${block.held ? styles.held : ""}`}
-              style={blockStyle(block.column, block.row, block.color)}
+              data-expression={
+                block.surprisedAt !== undefined &&
+                state.elapsedMs - block.surprisedAt < surpriseDurationMs
+                  ? "surprised"
+                  : "idle"
+              }
+              className={`${styles.tile} ${styles.block} ${block.held ? styles.held : ""}`}
+              style={blockStyle(block.column, block.row, block)}
             >
-              {GameConstants.BLOCK_SYMBOLS[block.color]}
+              <SkyDropBlockFace color={block.color} />
             </span>
           ))}
           {state.match?.blocks.map((block, row) => (
             <span
               key={`matched-${state.match!.id}-${block.id}`}
-              className={`${styles.block} ${styles.matched}`}
-              style={blockStyle(state.match!.column, state.match!.row + row, block.color)}
+              className={`${styles.tile} ${styles.block} ${styles.matched}`}
+              data-expression="happy"
+              style={blockStyle(state.match!.column, state.match!.row + row, block)}
             >
-              {GameConstants.BLOCK_SYMBOLS[block.color]}
+              <SkyDropBlockFace color={block.color} />
             </span>
           ))}
           {state.match && (
@@ -104,27 +122,29 @@ export const SkyDropBoard = ({ state, onSelect }: SkyDropBoardProps) => {
         <span className={isDanger ? "font-semibold text-destructive" : ""}>{game("deadline")}</span>
         <span>{t("limit", { count: GameConstants.MAX_STACK_HEIGHT })}</span>
       </div>
-      <div className="mt-2 grid shrink-0 grid-cols-3 gap-2" aria-hidden="true">
-        {["Q", "W", "E"].map((key, index) => (
-          <div
-            key={key}
-            className="flex items-center justify-center gap-2 rounded-lg border border-border py-2 text-xs text-muted-foreground"
-          >
-            <kbd className="font-mono font-semibold text-foreground">{key}</kbd>
-            <span>
-              {state.columns[index].length} / {GameConstants.MAX_STACK_HEIGHT}
-            </span>
-          </div>
-        ))}
+      <div className={`${styles.controls} flex shrink-0 flex-col`}>
+        <div className="mt-2 grid grid-cols-3 gap-2" aria-hidden="true">
+          {["Q", "W", "E"].map((key, index) => (
+            <div
+              key={key}
+              className="flex items-center justify-center gap-2 rounded-lg border border-border py-2 text-xs text-muted-foreground"
+            >
+              <kbd className="font-mono font-semibold text-foreground">{key}</kbd>
+              <span>
+                {state.columns[index].length} / {GameConstants.MAX_STACK_HEIGHT}
+              </span>
+            </div>
+          ))}
+        </div>
+        <p
+          className="mt-3 min-h-10 text-center text-xs leading-5 text-muted-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          {state.held ? t("placeHint") : t("pickHint")}
+          <span className="block">{t("keyboardHint")}</span>
+        </p>
       </div>
-      <p
-        className="mt-3 min-h-10 shrink-0 text-center text-xs leading-5 text-muted-foreground"
-        role="status"
-        aria-live="polite"
-      >
-        {state.held ? t("placeHint") : t("pickHint")}
-        <span className="block">{t("keyboardHint")}</span>
-      </p>
     </div>
   );
 };

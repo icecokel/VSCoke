@@ -8,7 +8,7 @@ export const GameConstants = {
   DIFFICULTY_RAMP_RATE: 100, // 100ms씩 간격 감소
   DIFFICULTY_RAMP_PERIOD: 10000, // 매 10초마다
   WARNING_THRESHOLD_ROWS: 2, // 데드라인으로부터 몇 줄 남았을 때 경고할지 설정
-  // 게임 블록도 프로젝트에 정의된 색상만 사용한다. 무늬로도 구분한다.
+  // 게임 블록도 프로젝트에 정의된 색상만 사용한다.
   BLOCK_PALETTE: [
     "var(--color-coral-400)",
     "var(--color-yellow-100)",
@@ -19,7 +19,6 @@ export const GameConstants = {
     "var(--color-beige-400)",
     "var(--color-red-400)",
   ],
-  BLOCK_SYMBOLS: ["●", "◆", "▲", "■", "✦", "✚", "♥", "✳"],
 
   // 점수 시스템 설정
   SCORE: {

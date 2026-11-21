@@ -3,6 +3,7 @@ import { GameConstants } from "./game-constants";
 export interface SkyDropBlock {
   id: number;
   color: number;
+  surprisedAt?: number;
 }
 
 interface MatchEffect {
@@ -89,7 +90,11 @@ const spawnRow = (state: SkyDropState): SkyDropState => {
   const columns = state.columns.map(column => {
     randomSeed = nextRandomSeed(randomSeed);
     const color = state.colors[Math.floor((randomSeed / 2 ** 32) * state.colors.length)];
-    return [{ id: nextBlockId++, color }, ...column];
+    const block = { id: nextBlockId++, color };
+    const neighbor = column[0];
+    return neighbor && state.elapsedMs > 0
+      ? [block, { ...neighbor, surprisedAt: state.elapsedMs }, ...column.slice(1)]
+      : [block, ...column];
   });
   return checkOverflow({ ...state, columns, randomSeed, nextBlockId });
 };
@@ -132,6 +137,10 @@ const selectColumn = (state: SkyDropState, columnIndex: number): SkyDropState =>
       : state;
   }
 
+  const neighbor = column.at(-1);
+  if (state.held.column !== columnIndex && neighbor) {
+    column[column.length - 1] = { ...neighbor, surprisedAt: state.elapsedMs };
+  }
   column.push(state.held.block);
   let next: SkyDropState = withFeedback({ ...state, columns, held: null }, "putdown");
   // 원래 열에 돌려놓기는 선택 취소다. 취소로 매칭을 새로 만들지 않는다.

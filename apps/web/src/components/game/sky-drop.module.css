@@ -11,7 +11,7 @@
   container-type: size;
 }
 
-@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
+@media (max-width: 767px), (max-height: 500px) {
   .frame {
     position: fixed;
     inset: 0;
@@ -46,21 +46,235 @@
   touch-action: manipulation;
 }
 
+@media (max-height: 500px) and (min-width: 600px) {
+  .playfield {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) min(32%, 240px);
+    grid-template-rows: minmax(130px, 1fr) auto;
+    column-gap: 16px;
+  }
+
+  .controls {
+    grid-area: 1 / 2 / -1;
+    align-self: center;
+  }
+}
+
+.tile {
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-black) 18%, transparent);
+  border-radius: 8px;
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--color-white) 22%, transparent),
+    transparent 65%,
+    color-mix(in srgb, var(--color-black) 8%, transparent)
+  );
+  color: var(--color-gray-900);
+  box-shadow:
+    inset 0 1px color-mix(in srgb, var(--color-white) 55%, transparent),
+    inset 0 -2px color-mix(in srgb, var(--color-black) 13%, transparent);
+}
+
+.face {
+  --cheek-color: color-mix(in srgb, var(--color-red-400) 75%, transparent);
+  position: relative;
+  height: min(78%, 26px);
+  aspect-ratio: 1.65;
+  background:
+    radial-gradient(ellipse, var(--cheek-color) 35%, transparent 70%) 0 78% / 24% 29% no-repeat,
+    radial-gradient(ellipse, var(--cheek-color) 35%, transparent 70%) 100% 78% / 24% 29% no-repeat;
+}
+
+.face::before,
+.face::after {
+  position: absolute;
+  top: var(--eye-top, 11%);
+  width: var(--eye-width, 17%);
+  height: var(--eye-height, 42%);
+  border-radius: var(--eye-radius, 50%);
+  background: currentColor;
+  content: "";
+}
+
+.face::before {
+  left: var(--eye-inset, 20%);
+  rotate: var(--eye-tilt, 0deg);
+}
+
+.face::after {
+  right: var(--eye-inset, 20%);
+  rotate: calc(-1 * var(--eye-tilt, 0deg));
+}
+
+.mouth {
+  position: absolute;
+  bottom: 7%;
+  left: var(--mouth-center, 50%);
+  width: var(--mouth-width, 29%);
+  height: var(--mouth-height, 28%);
+  border-radius: var(--mouth-radius, 20% 20% 50% 50% / 30% 30% 85% 85%);
+  background: currentColor;
+  translate: -50%;
+  rotate: var(--mouth-tilt, 0deg);
+}
+
+.face[data-personality="playful"] {
+  --eye-inset: 16%;
+  --eye-width: 22%;
+  --mouth-center: 56%;
+  --mouth-tilt: -17deg;
+  --idle-duration: 3.8s;
+  --eye-sweep: 45%;
+}
+
+.face[data-personality="sleepy"] {
+  --eye-top: 33%;
+  --eye-width: 24%;
+  --eye-height: 12%;
+  --mouth-width: 20%;
+  --mouth-height: 36%;
+  --mouth-radius: 50%;
+  --idle-duration: 7.2s;
+  --eye-sweep: 5%;
+}
+
+.face[data-personality="cheerful"] {
+  --eye-inset: 14%;
+  --eye-top: 14%;
+  --eye-height: 28%;
+  --eye-width: 25%;
+  --mouth-width: 46%;
+  --mouth-height: 36%;
+  --idle-duration: 4.4s;
+  --eye-sweep: 10%;
+  --smile-height: 1.3;
+}
+
+.face[data-personality="playful"]::after,
+.face[data-personality="cheerful"]::before,
+.face[data-personality="cheerful"]::after {
+  border-top: max(1px, 0.3cqh) solid currentColor;
+  background: transparent;
+}
+
+.face[data-personality="playful"]::after {
+  top: 25%;
+  height: 24%;
+}
+
+.face[data-personality="shy"] {
+  --cheek-color: var(--color-red-400);
+  --eye-inset: 26%;
+  --eye-top: 24%;
+  --eye-width: 14%;
+  --eye-height: 28%;
+  --mouth-width: 17%;
+  --mouth-height: 12%;
+  --mouth-radius: 999px;
+  --idle-duration: 5.3s;
+  --eye-sweep: -42%;
+}
+
+.face[data-personality="curious"] {
+  --eye-inset: 14%;
+  --eye-width: 26%;
+  --eye-height: 50%;
+  --mouth-width: 19%;
+  --mouth-height: 25%;
+  --mouth-radius: 50%;
+  --idle-duration: 4.8s;
+  --eye-sweep: 55%;
+}
+
+.face[data-personality="curious"]::after {
+  scale: 0.76;
+}
+
+.face[data-personality="cool"] {
+  --cheek-color: transparent;
+  --eye-inset: 15%;
+  --eye-top: 23%;
+  --eye-width: 26%;
+  --eye-height: 24%;
+  --eye-radius: 25% 25% 60% 60%;
+  --mouth-center: 58%;
+  --mouth-height: 12%;
+  --mouth-radius: 999px;
+  --mouth-tilt: -10deg;
+  --idle-duration: 6.8s;
+  --eye-sweep: -25%;
+}
+
+.face[data-personality="calm"] {
+  --cheek-color: color-mix(in srgb, var(--color-red-400) 52%, transparent);
+  --eye-top: 23%;
+  --eye-width: 22%;
+  --eye-height: 19%;
+  --eye-radius: 20% 20% 65% 65%;
+  --mouth-width: 30%;
+  --mouth-height: 25%;
+  --idle-duration: 6.3s;
+  --eye-sweep: 12%;
+}
+
+.face[data-personality="grumpy"] {
+  --cheek-color: transparent;
+  --eye-inset: 15%;
+  --eye-top: 18%;
+  --eye-width: 24%;
+  --eye-height: 27%;
+  --eye-radius: 18% 18% 62% 62%;
+  --eye-tilt: 22deg;
+  --mouth-width: 27%;
+  --mouth-height: 17%;
+  --mouth-radius: 70% 70% 12% 12%;
+  --eye-sweep: -24%;
+}
+
+.tile[data-expression="surprised"] .face::before,
+.tile[data-expression="surprised"] .face::after {
+  top: 7%;
+  height: 47%;
+  border: 0;
+  border-radius: 50%;
+  background: currentColor;
+  scale: 1.14;
+  rotate: 0deg;
+}
+
+.tile[data-expression="surprised"] .mouth {
+  bottom: 0;
+  left: 50%;
+  width: clamp(16%, var(--mouth-width, 23%), 29%);
+  height: 37%;
+  border-radius: 50%;
+  rotate: 0deg;
+}
+
+.tile[data-expression="happy"] .face::before,
+.tile[data-expression="happy"] .face::after {
+  top: 26%;
+  height: 27%;
+  border-top: max(1px, 0.28cqh) solid currentColor;
+  border-radius: 50%;
+  background: transparent;
+  scale: 1;
+  rotate: 0deg;
+}
+
+.tile[data-expression="happy"] .mouth {
+  left: 50%;
+  width: max(32%, var(--mouth-width, 40%));
+  height: 36%;
+  border-radius: 20% 20% 50% 50% / 30% 30% 85% 85%;
+  rotate: 0deg;
+}
+
 .block {
   position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: calc((100% - 16px) / 3);
   height: calc(100% / 13 - 4px);
-  border: 1px solid color-mix(in srgb, var(--color-black) 20%, transparent);
-  border-radius: 6px;
-  color: var(--color-gray-900);
-  font-size: clamp(10px, 2.5cqh, 18px);
-  font-weight: 700;
-  box-shadow:
-    inset 0 2px color-mix(in srgb, var(--color-white) 25%, transparent),
-    inset 0 -2px color-mix(in srgb, var(--color-black) 15%, transparent);
   transition:
     top 140ms ease-out,
     left 140ms ease-out,
@@ -108,9 +322,94 @@
   animation: warning 1.2s ease-in-out infinite alternate;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .tile[data-expression="idle"] .face::before,
+  .tile[data-expression="idle"] .face::after {
+    animation: glance var(--idle-duration, 5.8s) ease-in-out var(--idle-delay) infinite;
+  }
+
+  .tile[data-expression="idle"] .mouth {
+    animation: smile var(--idle-duration, 5.8s) ease-in-out var(--idle-delay) infinite;
+  }
+
+  .tile[data-expression="idle"] .face[data-personality="sleepy"] .mouth {
+    animation-name: yawn;
+  }
+
+  .tile[data-expression="surprised"] .face {
+    animation: surprise 280ms ease-out;
+  }
+}
+
 .board[data-paused="true"] *,
+.board[data-paused="true"] .face,
+.board[data-paused="true"] .face::before,
+.board[data-paused="true"] .face::after,
+.board[data-paused="true"] .mouth,
 .board[data-paused="true"]::after {
   animation-play-state: paused;
+}
+
+@keyframes glance {
+  0%,
+  27%,
+  32%,
+  73%,
+  100% {
+    transform: none;
+  }
+  30% {
+    transform: scaleY(0.16);
+  }
+  45%,
+  64% {
+    transform: translateX(var(--eye-sweep, 32%)) scaleY(0.8);
+  }
+  83%,
+  93% {
+    transform: translateX(calc(-0.8 * var(--eye-sweep, 32%)));
+  }
+}
+
+@keyframes smile {
+  0%,
+  32%,
+  73%,
+  100% {
+    scale: 1;
+  }
+  45%,
+  64% {
+    scale: 0.8 0.38;
+  }
+  83%,
+  93% {
+    scale: 1.25 var(--smile-height, 1.1);
+  }
+}
+
+@keyframes yawn {
+  0%,
+  73%,
+  100% {
+    scale: 1 0.55;
+  }
+  34%,
+  56% {
+    scale: 1.2 1.55;
+  }
+}
+
+@keyframes surprise {
+  0% {
+    scale: 1.15 0.76;
+  }
+  48% {
+    scale: 0.94 1.13;
+  }
+  100% {
+    scale: 1;
+  }
 }
 
 @keyframes arrive {
@@ -177,5 +476,9 @@
   .content {
     padding-top: 6px;
     padding-bottom: 6px;
+  }
+
+  .block {
+    height: calc(100% / 13 - 2px);
   }
 }

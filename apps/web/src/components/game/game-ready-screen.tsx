@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { GameConstants } from "./game-constants";
 import { getGameRanking, type GameHistory } from "@/services/score-service";
 import { toast } from "sonner";
+import { SkyDropBlockFace } from "./sky-drop-block-face";
+import styles from "./sky-drop.module.css";
 
 interface GameReadyScreenProps {
   onStart: () => void;
@@ -59,13 +61,13 @@ export const GameReadyScreen = ({ onStart, isReady }: GameReadyScreenProps) => {
           className="grid w-full max-w-52 grid-cols-3 gap-2 rounded-xl border border-border bg-muted/30 p-4"
           aria-hidden="true"
         >
-          {[0, 3, 2, 2, 4, 0, 3, 3, 3].map((color, index) => (
+          {[0, 3, 2, 5, 6, 7, 1, 4, 3].map((color, index) => (
             <span
               key={index}
-              className="flex h-6 items-center justify-center rounded text-xs text-gray-900"
+              className={`${styles.tile} h-6`}
               style={{ backgroundColor: GameConstants.BLOCK_PALETTE[color] }}
             >
-              {GameConstants.BLOCK_SYMBOLS[color]}
+              <SkyDropBlockFace color={color} />
             </span>
           ))}
         </div>

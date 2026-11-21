@@ -123,6 +123,60 @@ test("DOM 보드가 Canvas 없이 시작하고 QWE·취소·키 반복 방지가
   await expect(page.locator('[data-held="true"]')).toHaveCount(0);
 });
 
+test("새 줄과 맞닿은 블록이 놀라고 일시정지 후 표정이 돌아온다", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await start(page);
+  const blocks = page.getByTestId("sky-drop-block");
+  const surprised = blocks.and(page.locator('[data-expression="surprised"]'));
+  const animationStates = () =>
+    page.getByTestId("sky-drop-board").evaluate(board =>
+      board
+        .getAnimations({ subtree: true })
+        .filter(animation => animation.effect?.getTiming().iterations === Infinity)
+        .map(animation => animation.playState),
+    );
+
+  await expect.poll(animationStates).toContain("running");
+  await expect(surprised).toHaveCount(0);
+  await page.clock.runFor(3100);
+  await expect(surprised).toHaveCount(3);
+  await expect(surprised.and(page.locator('[data-row="1"]'))).toHaveCount(3);
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("sky-drop-paused")).toBeVisible();
+  await expect.poll(animationStates).not.toContain("running");
+  await page.clock.runFor(10000);
+  await expect(surprised).toHaveCount(3);
+  await page.keyboard.press("Escape");
+  await page.clock.runFor(700);
+  await expect(surprised).toHaveCount(0);
+  await expect.poll(animationStates).toContain("running");
+});
+
+test("동작 줄이기에서도 바로 아래에 놓인 블록에 표정으로 반응한다", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await start(page);
+  await page.keyboard.press("q");
+  await page.keyboard.press("w");
+  expect(await counts(page)).toEqual([2, 4, 3]);
+  const surprised = page
+    .getByTestId("sky-drop-block")
+    .and(page.locator('[data-expression="surprised"]'));
+  await expect(surprised).toHaveCount(1);
+  await expect(surprised).toHaveAttribute("data-column", "1");
+  await expect(surprised).toHaveAttribute("data-row", "2");
+  expect(
+    await page
+      .getByTestId("sky-drop-board")
+      .evaluate(
+        board =>
+          board
+            .getAnimations({ subtree: true })
+            .filter(animation => animation instanceof CSSAnimation).length,
+      ),
+  ).toBe(0);
+});
+
 test("실제 DOM 블록을 매칭하고 게임 오버·결과·재시작까지 완주한다", async ({ page }) => {
   await start(page);
   await matchThree(page);

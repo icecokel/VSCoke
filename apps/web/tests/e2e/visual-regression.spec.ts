@@ -335,3 +335,37 @@ test.describe("JEV 픽셀 아케이드 비주얼", () => {
     }
   }
 });
+
+test.describe("아케이드 농구 픽셀아트", () => {
+  for (const layout of [
+    { name: "desktop", width: 1440, height: 900 },
+    { name: "mobile", width: 390, height: 844 },
+  ]) {
+    test(`${layout.name} 충전 화면`, async ({ page }) => {
+      await page.setViewportSize({ width: layout.width, height: layout.height });
+      await gotoWithRetry(page, "/ko-KR/game/arcade-basketball");
+      await page.addStyleTag({
+        content: "nextjs-portal, [data-nextjs-dev-overlay] { display: none !important; }",
+      });
+      const time = Date.UTC(2026, 10, 21);
+      await page.clock.install({ time });
+      await page.clock.pauseAt(time + 1_000);
+      const game = page.getByTestId("arcade-basketball");
+      await game.getByRole("button", { name: ko.Game.arcadeBasketball.start }).click();
+      await page.clock.runFor(9_040);
+      await game.getByRole("button", { name: ko.Game.arcadeBasketball.shoot }).hover();
+      await page.mouse.down();
+      await page.clock.runFor(670);
+      await expect(game.getByRole("meter")).toHaveAttribute("data-perfect", "true");
+      await page.evaluate(async () => {
+        await document.fonts.ready;
+        await Promise.all(
+          [
+            ...document.querySelectorAll<HTMLImageElement>('[data-testid="arcade-basketball"] img'),
+          ].map(img => img.decode()),
+        );
+      });
+      await expect(game).toHaveScreenshot(`arcade-basketball-${layout.name}-charging.png`);
+    });
+  }
+});

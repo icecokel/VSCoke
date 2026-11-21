@@ -200,6 +200,16 @@ export const useStaticSearchIndex = (): SearchItem[] => {
         priority: 390,
       },
       {
+        id: "game:arcade-basketball",
+        type: "game",
+        title: tGame("arcadeBasketball.title"),
+        description: tGame("arcadeBasketball.description"),
+        keywords: ["basketball", "arcade", "농구", "バスケ"],
+        path: "/game/arcade-basketball",
+        featured: true,
+        priority: 385,
+      },
+      {
         id: "game:beat-jev",
         type: "game",
         title: tGame("beatJev.title"),

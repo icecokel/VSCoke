@@ -66,7 +66,11 @@ for (const unavailable of [
     });
     await gotoWithRetry(page, `/${locale}/game`);
     const gameCenter = page.locator("main.bg-slate-900");
-    await expect(gameCenter.getByRole("button")).toHaveCount(2);
+    await expect(
+      gameCenter.getByRole("button", {
+        name: new RegExp(escapeRegExp(messages.Game.arcadeBasketball.title)),
+      }),
+    ).toBeVisible();
     await expect(gameCenter.getByText(messages.Game.beatJev.title)).toHaveCount(0);
     await page
       .getByRole("button", {

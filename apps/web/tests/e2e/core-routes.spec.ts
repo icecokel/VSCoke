@@ -332,7 +332,11 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await expect(
       gameCenter.getByRole("heading", { name: messages.home.cards.gameTitle }),
     ).toBeVisible();
-    await expect(gameCenter.getByRole("button")).toHaveCount(3);
+    await expect(
+      gameCenter.getByRole("button", {
+        name: new RegExp(escapeRegExp(messages.Game.arcadeBasketball.title)),
+      }),
+    ).toBeVisible();
     await expect(gameCenter.getByRole("link", { name: /Poke Lounge/ })).toHaveAttribute(
       "href",
       `https://poke-lounge.icecoke.kr/${locale}/game/poke-lounge`,

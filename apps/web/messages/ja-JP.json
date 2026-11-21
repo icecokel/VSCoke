@@ -290,7 +290,7 @@
     "arcadeBasketball": {
       "title": "アーケードバスケ",
       "description": "長押しして離すタイミングを合わせ、30秒で何本決められるか挑戦しよう。",
-      "start": "スタート",
+      "start": "ゲーム開始",
       "score": "スコア",
       "remainingTime": "残り時間",
       "power": "シュートパワー",
@@ -311,7 +311,18 @@
       "resume": "再開",
       "finished": "タイムアップ",
       "best": "ベストスコア",
-      "restart": "もう一度"
+      "restart": "もう一度",
+      "lobbyRules": "ボールを取り、タイミングを合わせてシュート。\n30秒でベストスコアに挑戦。",
+      "lobbyControls": "タッチ · マウス · キーボード",
+      "rankingTitle": "ランキング",
+      "topTen": "TOP 10",
+      "rankingHint": "プレイヤーごとのベストスコア",
+      "rankColumn": "順位",
+      "playerColumn": "プレイヤー",
+      "rankingLoginHint": "Googleログイン後、スコアを登録できます。",
+      "retry": "再読み込み",
+      "rankResult": "全体{rank}位 · ベスト{best}点",
+      "loginStorageError": "ログイン用にスコアを保存できません。ブラウザーの保存を許可して再試行してください。"
     },
     "beatJev": {
       "arcade": {

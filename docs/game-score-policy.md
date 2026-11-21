@@ -6,13 +6,14 @@
 
 ## 현재 정책
 
-현재 API에서 영속 랭킹으로 저장하는 게임 타입은 `SKY_DROP`이다. Wordle은 현재 `POST /game/result` 랭킹 저장 타입에 포함되지 않는다.
+현재 API에서 영속 랭킹으로 저장하는 게임 타입은 `SKY_DROP`과 `ARCADE_BASKETBALL`이다. Wordle은 현재 `POST /game/result` 랭킹 저장 타입에 포함되지 않는다.
 
 Wordle은 서버 저장만 빠진 것이 아니라 점수 계산·누적·연승·랭킹 기능 자체가 없다. 성공·실패와 해당 판의 시도 횟수만 관리하며, 반복 플레이해도 점수는 쌓이지 않는다. 상세 동작은 [Wordle 게임 규칙](./wordle-game-rules.md)을 따른다.
 
-| gameType | score min | score max | playTime min | playTime max | max score/sec |
-| -------- | --------- | --------- | ------------ | ------------ | ------------- |
-| SKY_DROP | 1         | 100000    | 1초          | 86400초      | 2000          |
+| gameType          | score min | score max | playTime min | playTime max | max score/sec |
+| ----------------- | --------- | --------- | ------------ | ------------ | ------------- |
+| SKY_DROP          | 1         | 100000    | 1초          | 86400초      | 2000          |
+| ARCADE_BASKETBALL | 1         | 42        | 30초         | 30초         | 2             |
 
 서버는 다음 조건을 강제한다.
 
@@ -22,6 +23,10 @@ Wordle은 서버 저장만 빠진 것이 아니라 점수 계산·누적·연승
 - `playTime` 값이 있으면 `score / playTime`으로 계산한 전체 플레이의 평균 초당 점수가 상한을 넘을 수 없다. 실제 매초의 득점을 관찰하는 방식은 아니다.
 - 정책이 등록되지 않은 `gameType`은 저장을 거부한다.
 - 랭킹, 최고 점수, 등수 산정은 위 정책에 맞는 기존 기록만 사용한다.
+
+농구는 플레이 시간 30초를 필수로 제출한다. 비행 680ms와 회수 780ms 동안 각 공은 다시 사용할
+수 없으므로 두 공을 즉시 던져도 30초 안의 최대 슛은 42회다. 난이도 추첨값과 실제 플레이를
+서버에서 재현하지 않으므로 이 정책은 점수 범위 검증이다.
 
 ## 제한값의 의미와 선정 근거
 
@@ -58,7 +63,8 @@ Wordle은 서버 저장만 빠진 것이 아니라 점수 계산·누적·연승
 ```sql
 WITH policy(game_type, min_score, max_score, min_play_time, max_play_time, max_score_per_second) AS (
   VALUES
-    ('SKY_DROP', 1, 100000, 1, 86400, 2000)
+    ('SKY_DROP', 1, 100000, 1, 86400, 2000),
+    ('ARCADE_BASKETBALL', 1, 42, 30, 30, 2)
 )
 SELECT h.id, h.score, h."playTime", h."gameType", h."userId", h."createdAt"
 FROM game_history h
@@ -87,7 +93,8 @@ WHERE false;
 
 WITH policy(game_type, min_score, max_score, min_play_time, max_play_time, max_score_per_second) AS (
   VALUES
-    ('SKY_DROP', 1, 100000, 1, 86400, 2000)
+    ('SKY_DROP', 1, 100000, 1, 86400, 2000),
+    ('ARCADE_BASKETBALL', 1, 42, 30, 30, 2)
 )
 INSERT INTO game_history_invalid_backup
 SELECT h.*

@@ -54,6 +54,7 @@ export type BasketballState =
   | { phase: "finished"; score: number };
 
 export type BasketballAction =
+  | { type: "restore-result"; score: number }
   | { type: "pick"; now: number; side: TraySide; difficulty: ShotDifficulty }
   | { type: "start" | "tick" | "press" | "release" | "cancel" | "pause" | "resume"; now: number };
 
@@ -98,6 +99,10 @@ export const basketballReducer = (
   state: BasketballState,
   action: BasketballAction,
 ): BasketballState => {
+  if (action.type === "restore-result") {
+    if (state.phase !== "ready") return state;
+    return { phase: "finished", score: action.score };
+  }
   const { type, now } = action;
   if (type === "start" && (state.phase === "ready" || state.phase === "finished")) {
     return {

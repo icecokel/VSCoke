@@ -346,6 +346,8 @@ test.describe("아케이드 농구 픽셀아트", () => {
       await page.addInitScript(() => {
         Math.random = () => 0.7;
       });
+      await page.route("**/game/ranking*", route => route.fulfill({ json: [] }));
+      await page.route("**/api/auth/session", route => route.fulfill({ json: null }));
       await gotoWithRetry(page, "/ko-KR/game/arcade-basketball");
       await page.addStyleTag({
         content: "nextjs-portal, [data-nextjs-dev-overlay] { display: none !important; }",
@@ -354,7 +356,7 @@ test.describe("아케이드 농구 픽셀아트", () => {
       await page.clock.install({ time });
       await page.clock.pauseAt(time + 1_000);
       const game = page.getByTestId("arcade-basketball");
-      await game.getByRole("button", { name: ko.Game.arcadeBasketball.start }).click();
+      await page.getByRole("button", { name: ko.Game.arcadeBasketball.start }).click();
       await page.clock.runFor(9_040);
       const rightBall = game.getByRole("button", { name: ko.Game.arcadeBasketball.pickRight });
       await expect(rightBall).toBeVisible();
@@ -373,6 +375,59 @@ test.describe("아케이드 농구 픽셀아트", () => {
         );
       });
       await expect(game).toHaveScreenshot(`arcade-basketball-${layout.name}-charging.png`);
+    });
+  }
+});
+
+test.describe("농구 랭킹 시작 화면", () => {
+  for (const layout of [
+    { name: "desktop", width: 1440, height: 900 },
+    { name: "mobile", width: 390, height: 844 },
+  ]) {
+    test(`${layout.name} 랭킹 미리보기`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width: layout.width, height: layout.height });
+      const names = [
+        "JUMP SHOT",
+        "민트초코",
+        "buzzer",
+        "오렌지",
+        "pixelhoop",
+        "스위시",
+        "rimshot",
+        "농구하는곰",
+        "afterwork",
+        "한판더",
+      ];
+      await page.route("**/game/ranking*", route =>
+        route.fulfill({
+          json: names.map((name, index) => ({
+            rank: index + 1,
+            score: 24 - index * 2,
+            createdAt: "2026-11-21T00:00:00Z",
+            user: { displayName: name },
+          })),
+        }),
+      );
+      await page.route("**/api/auth/session", route => route.fulfill({ json: null }));
+      await gotoWithRetry(page, "/ko-KR/game/arcade-basketball");
+      const lobby = page.getByTestId("basketball-ready");
+      await expect(lobby.getByRole("table")).toContainText("JUMP SHOT");
+      await page.addStyleTag({
+        content: "nextjs-portal, [data-nextjs-dev-overlay] { display: none !important; }",
+      });
+      await page.evaluate(async () => {
+        await document.fonts.ready;
+        await Promise.all(
+          [
+            ...document.querySelectorAll<HTMLImageElement>('[data-testid="basketball-ready"] img'),
+          ].map(img => img.decode()),
+        );
+      });
+      await expect(
+        lobby.getByRole("button", { name: ko.Game.arcadeBasketball.start }),
+      ).toBeInViewport({ ratio: 1 });
+      await expect(lobby).toHaveScreenshot(`basketball-ranking-${layout.name}.png`);
+      await lobby.screenshot({ path: testInfo.outputPath(`basketball-start-${layout.name}.png`) });
     });
   }
 });

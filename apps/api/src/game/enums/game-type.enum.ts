@@ -1,3 +1,4 @@
 export enum GameType {
   SKY_DROP = 'SKY_DROP',
+  ARCADE_BASKETBALL = 'ARCADE_BASKETBALL',
 }

@@ -7,6 +7,8 @@ import {
 } from "./test-helpers";
 
 test.beforeEach(async ({ page }) => {
+  await page.route("**/game/ranking*", route => route.fulfill({ json: [] }));
+  await page.route("**/api/auth/session", route => route.fulfill({ json: null }));
   await page.addInitScript(() => {
     Math.random = () => 0.7;
   });
@@ -338,4 +340,71 @@ test("공마다 폭·위치·속도를 추첨하고 좁고 빠른 조건도 그�
   await page.clock.runFor(1200);
   await pickBall(page, copy.pickRight);
   await expect(targets).toHaveCount(2);
+});
+
+for (const reducedMotion of ["no-preference", "reduce"] as const) {
+  test(`림 충돌의 흔들림과 득점 이펙트가 판정에 맞춰 나타난다 (${reducedMotion})`, async ({
+    page,
+  }, testInfo) => {
+    await page.emulateMedia({ reducedMotion });
+    const copy = await startRound(page);
+    const art = page.getByTestId("basketball-court-art");
+    const effect = page.getByTestId("basketball-score-effect");
+    await pickBall(page, copy.pickLeft);
+    await releaseShot(page, 280);
+    await expect(art).toHaveAttribute("data-impact", "false");
+    await page.clock.runFor(740);
+    await expect(art).toHaveAttribute("data-impact", "true");
+    await expect(effect).toHaveCount(0);
+    const translation = await art.evaluate(element => getComputedStyle(element).translate);
+    if (reducedMotion === "reduce") {
+      expect(translation).toBe("none");
+    } else {
+      expect(translation).not.toBe("0px");
+      expect(translation).not.toBe("none");
+    }
+    await page.clock.runFor(200);
+    await expect(art).toHaveAttribute("data-impact", "false");
+    await pickBall(page, copy.pickRight);
+    await releaseShot(page, 660);
+    await page.clock.runFor(740);
+    await expect(effect).toBeVisible();
+    await expect(art).toHaveAttribute("data-impact", "false");
+    if (reducedMotion === "no-preference") {
+      await page.getByTestId("arcade-basketball").screenshot({
+        path: testInfo.outputPath("basketball-scoring-effect.png"),
+      });
+    }
+    await page.keyboard.press("Escape");
+    const opacity = await effect.evaluate(element => getComputedStyle(element).opacity);
+    await page.clock.runFor(1000);
+    await expect(effect).toHaveCSS("opacity", opacity);
+    await page.getByRole("button", { name: copy.resume }).click();
+    await page.clock.runFor(500);
+    await expect(effect).toHaveCount(0);
+  });
+}
+
+test("플립 점수판은 09에서 10으로 넘어갈 때 두 자리를 함께 바꾼다", async ({ page }, testInfo) => {
+  const copy = await startRound(page);
+  const score = page.getByTestId("basketball-score");
+  for (let value = 1; value <= 10; value += 1) {
+    await pickBall(page, value % 2 ? copy.pickLeft : copy.pickRight);
+    await holdSpace(page, 660);
+    await expect(score).toHaveText(String(value).padStart(2, "0"));
+  }
+  const digits = score.getByTestId("basketball-score-digit");
+  await expect(digits).toHaveCount(2);
+  await expect(digits.first()).toHaveAttribute("data-value", "1");
+  await expect(digits.last()).toHaveAttribute("data-value", "0");
+  expect(
+    await score.evaluate(element => element.getAnimations({ subtree: true }).length),
+  ).toBeGreaterThanOrEqual(2);
+  await page.getByTestId("arcade-basketball").screenshot({
+    path: testInfo.outputPath("basketball-flip-score.png"),
+    animations: "disabled",
+  });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect(await score.evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0);
+  await expect(score).toHaveText("10");
 });

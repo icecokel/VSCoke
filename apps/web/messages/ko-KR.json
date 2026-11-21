@@ -290,7 +290,7 @@
     "arcadeBasketball": {
       "title": "아케이드 농구",
       "description": "꾹 눌렀다 놓는 타이밍으로 30초 동안 골을 넣으세요.",
-      "start": "시작",
+      "start": "게임 시작",
       "score": "점수",
       "remainingTime": "남은 시간",
       "power": "슛 파워",
@@ -311,7 +311,18 @@
       "resume": "계속하기",
       "finished": "시간 종료",
       "best": "최고 기록",
-      "restart": "다시 하기"
+      "restart": "다시 하기",
+      "lobbyRules": "공을 집고, 타이밍을 맞춰 슛.\n30초 동안 최고 기록에 도전하세요.",
+      "lobbyControls": "터치 · 마우스 · 키보드",
+      "rankingTitle": "최고 기록",
+      "topTen": "TOP 10",
+      "rankingHint": "사용자별 최고 점수 기준",
+      "rankColumn": "순위",
+      "playerColumn": "플레이어",
+      "rankingLoginHint": "Google 로그인 후 점수를 랭킹에 등록할 수 있어요.",
+      "retry": "다시 불러오기",
+      "rankResult": "전체 {rank}위 · 내 최고 {best}점",
+      "loginStorageError": "점수를 보관할 수 없습니다. 브라우저 저장소를 허용하고 다시 시도해 주세요."
     },
     "beatJev": {
       "arcade": {

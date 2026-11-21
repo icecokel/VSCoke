@@ -290,7 +290,7 @@
     "arcadeBasketball": {
       "title": "Arcade Basketball",
       "description": "Hold and release to sink as many shots as you can in 30 seconds.",
-      "start": "Start",
+      "start": "Start game",
       "score": "Score",
       "remainingTime": "Time left",
       "power": "Shot power",
@@ -311,7 +311,18 @@
       "resume": "Resume",
       "finished": "Time’s up",
       "best": "Best score",
-      "restart": "Play again"
+      "restart": "Play again",
+      "lobbyRules": "Pick up a ball and time your shot.\nGo for your best in 30 seconds.",
+      "lobbyControls": "Touch · Mouse · Keyboard",
+      "rankingTitle": "Leaderboard",
+      "topTen": "TOP 10",
+      "rankingHint": "Each player’s personal best",
+      "rankColumn": "Rank",
+      "playerColumn": "Player",
+      "rankingLoginHint": "Sign in with Google to submit your score.",
+      "retry": "Retry",
+      "rankResult": "Overall #{rank} · Personal best {best}",
+      "loginStorageError": "Your score could not be kept for sign-in. Allow browser storage and try again."
     },
     "beatJev": {
       "arcade": {

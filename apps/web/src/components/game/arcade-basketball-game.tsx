@@ -31,6 +31,13 @@ import {
 } from "./arcade-basketball-engine";
 import { getTrayBallPose } from "./arcade-basketball-motion";
 import styles from "./arcade-basketball.module.css";
+import { ArcadeBasketballReady } from "./arcade-basketball-ready";
+import { BasketballFlipScore } from "./basketball-flip-score";
+import { BasketballScoreSubmit } from "./basketball-score-submit";
+import {
+  readPendingBasketballScore,
+  clearPendingBasketballScore,
+} from "./basketball-pending-score";
 
 const bestScoreKey = "vscoke-arcade-basketball-best";
 const isShotKey = (key: string) => key === " " || key === "Enter";
@@ -87,6 +94,11 @@ export const ArcadeBasketballGame = () => {
     dispatch({ type: "pick", side, now: performance.now(), difficulty: createShotDifficulty() });
     shootRef.current?.focus({ preventScroll: true });
   };
+
+  useEffect(() => {
+    const pending = readPendingBasketballScore();
+    if (pending) dispatch({ type: "restore-result", score: pending.score });
+  }, []);
 
   useEffect(() => {
     if (phase !== "round") return;
@@ -149,6 +161,7 @@ export const ArcadeBasketballGame = () => {
   }, [phase, pause]);
 
   const start = () => {
+    clearPendingBasketballScore();
     shotInput.current = null;
     setPreviousBest(readBestScore());
     dispatch({ type: "start", now: performance.now() });
@@ -208,6 +221,8 @@ export const ArcadeBasketballGame = () => {
 
   const resume = () => dispatch({ type: "resume", now: performance.now() });
 
+  if (phase === "ready") return <ArcadeBasketballReady onStart={start} />;
+
   return (
     <section
       className={styles.frame}
@@ -218,7 +233,7 @@ export const ArcadeBasketballGame = () => {
       <header className={styles.header}>
         <div className={styles.score}>
           <span>{t("score")}</span>
-          <strong data-testid="basketball-score">{String(score).padStart(2, "0")}</strong>
+          <BasketballFlipScore score={score} isPaused={phase === "paused"} />
         </div>
         <div className={styles.clock}>
           <span className="sr-only">{t("remainingTime")}</span>
@@ -283,14 +298,6 @@ export const ArcadeBasketballGame = () => {
                 />
               );
             })}
-          {phase === "ready" && (
-            <div className={styles.overlay}>
-              <h1>{t("title")}</h1>
-              <Button size="lg" className={styles.primary} onClick={start}>
-                {t("start")}
-              </Button>
-            </div>
-          )}
           {isActive && countdown > 0 && (
             <div className={styles.countdown} aria-hidden="true" data-testid="basketball-countdown">
               {countdown}
@@ -320,6 +327,7 @@ export const ArcadeBasketballGame = () => {
                   <dd data-testid="basketball-best">{Math.max(score, previousBest)}</dd>
                 </div>
               </dl>
+              <BasketballScoreSubmit score={score} />
               <Button ref={restartRef} size="lg" className={styles.primary} onClick={start}>
                 {t("restart")}
               </Button>

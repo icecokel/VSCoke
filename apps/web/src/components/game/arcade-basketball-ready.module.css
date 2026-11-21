@@ -1,0 +1,281 @@
+.lobby {
+  --orange: #fc8f36;
+  width: min(100%, 880px);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: clamp(16px, 3vw, 32px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--background);
+  color: var(--foreground);
+  container-type: inline-size;
+}
+
+.back {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.back:hover {
+  color: var(--foreground);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 40px;
+  padding-top: 18px;
+}
+
+.intro h1 {
+  margin-bottom: 14px;
+  color: var(--orange);
+  font-size: clamp(24px, 4.5cqw, 38px);
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.05em;
+  text-wrap: balance;
+}
+
+.intro > p {
+  max-width: 32ch;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 1.8;
+  white-space: pre-line;
+  word-break: keep-all;
+}
+
+.cabinet {
+  position: relative;
+  width: min(100%, 240px);
+  aspect-ratio: 216 / 246;
+  margin: 22px auto 16px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #161b2a;
+  isolation: isolate;
+}
+
+.cabinet img {
+  image-rendering: pixelated;
+}
+
+.cabinet .rim {
+  position: absolute;
+  top: 30.9%;
+  left: 33.33%;
+  width: 33.33%;
+}
+
+.cabinet .ball {
+  position: absolute;
+  right: 9%;
+  bottom: 3%;
+  width: 24%;
+  height: auto;
+  rotate: -15deg;
+}
+
+.intro .controls {
+  max-width: none;
+  text-align: center;
+  font-size: 11px;
+}
+
+.leaderboard {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.rankingHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.rankingHeader h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 18px;
+  font-weight: 750;
+}
+
+.rankingHeader svg {
+  color: var(--orange);
+}
+
+.rankingHeader > span {
+  color: var(--orange);
+  font:
+    600 11px var(--font-mono),
+    monospace;
+  white-space: nowrap;
+}
+
+.rankingHint,
+.loginHint {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.rankingHint {
+  margin-block: 8px 20px;
+}
+
+.tableScroll {
+  min-height: 260px;
+  max-height: 360px;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+}
+
+.table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--background);
+  color: var(--muted-foreground);
+}
+
+.table thead th {
+  padding: 0 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.table thead th:last-child {
+  text-align: right;
+}
+
+.table tbody th,
+.table td {
+  padding: 13px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+
+.table tbody th {
+  max-width: 180px;
+  overflow-wrap: anywhere;
+  font-weight: 500;
+  text-align: left;
+}
+
+.place {
+  width: 44px;
+  color: var(--muted-foreground);
+  font-family: var(--font-mono), monospace;
+}
+
+.points {
+  width: 56px;
+  color: var(--foreground);
+  font-family: var(--font-mono), monospace;
+  font-weight: 700;
+  text-align: right;
+}
+
+.table tr[data-first="true"] {
+  background: color-mix(in srgb, var(--orange) 6%, var(--background));
+}
+
+.table tr[data-first="true"] .points,
+.table tr[data-first="true"] .place {
+  color: var(--orange);
+}
+
+.message {
+  display: grid;
+  min-height: 220px;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 20px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  text-align: center;
+}
+
+.loginHint {
+  margin-top: auto;
+  padding-block: 16px 12px;
+}
+
+.start {
+  width: 100%;
+  min-height: 48px;
+  justify-content: space-between;
+  padding-inline: 20px;
+  background: var(--orange);
+  color: #25190e;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.start:hover {
+  background: #ffad65;
+  color: #25190e;
+}
+
+@container (max-width: 570px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    padding-top: 10px;
+  }
+
+  .intro {
+    position: relative;
+    min-height: 124px;
+    padding-right: 110px;
+  }
+
+  .intro h1 {
+    font-size: 26px;
+  }
+
+  .intro > p {
+    font-size: 11px;
+  }
+
+  .cabinet {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 94px;
+    margin: 0;
+  }
+
+  .intro .controls {
+    margin-top: 10px;
+    text-align: left;
+  }
+
+  .tableScroll {
+    min-height: 190px;
+    max-height: 240px;
+  }
+
+  .message {
+    min-height: 150px;
+  }
+}

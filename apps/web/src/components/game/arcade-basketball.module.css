@@ -27,7 +27,7 @@
   margin-inline-end: auto;
 }
 
-.score span,
+.score > span,
 .footer p {
   color: var(--muted-foreground);
   font-size: 0.75rem;
@@ -76,6 +76,62 @@
   isolation: isolate;
   overflow: hidden;
   pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .art {
+    translate: var(--shake-x, 0px) var(--shake-y, 0px);
+  }
+}
+
+.scoreEffect {
+  position: absolute;
+  z-index: 6;
+  top: 35%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  translate: -50% -50%;
+}
+
+.scoreStar {
+  position: absolute;
+  inset: 0;
+  width: 14px;
+  height: 14px;
+}
+
+.scoreStar::before,
+.scoreStar::after {
+  position: absolute;
+  background: #fff0bb;
+  content: "";
+}
+
+.scoreStar::before {
+  inset: 5px 0;
+}
+
+.scoreStar::after {
+  inset: 0 5px;
+}
+
+.scoreSpark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: var(--basketball-orange);
+}
+
+.scoreSpark:nth-child(3n) {
+  background: #fff0bb;
+}
+
+.scoreSpark:nth-child(3n + 1) {
+  background: var(--basketball-target);
 }
 
 .art img {
@@ -359,6 +415,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .scoreSpark {
+    display: none;
+  }
+
   .rim[data-swish="true"] {
     animation: none;
   }

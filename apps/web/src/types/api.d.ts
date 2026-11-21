@@ -912,7 +912,7 @@ export interface components {
      * @description 서버에 등록된 게임 타입. 게임별 점수 정책은 서버에서 적용된다.
      * @enum {string}
      */
-    GameType: "SKY_DROP";
+    GameType: "SKY_DROP" | "ARCADE_BASKETBALL";
     CreateGameHistoryDto: {
       /**
        * Format: int32
@@ -955,7 +955,7 @@ export interface components {
        * @example SKY_DROP
        * @enum {string}
        */
-      gameType: "SKY_DROP";
+      gameType: "SKY_DROP" | "ARCADE_BASKETBALL";
       /**
        * Format: date-time
        * @description 생성 일시

@@ -34,6 +34,12 @@ interface BallProps {
 const spriteRoot = "/games/arcade-basketball";
 const handReleaseMs = 150;
 const trailDelays = [38, 76];
+const impactDurationMs = 180;
+const scoreEffectDurationMs = 450;
+const sparkDirections = Array.from({ length: 12 }, (_, index) => {
+  const angle = (index / 12) * Math.PI * 2;
+  return { x: Math.cos(angle), y: Math.sin(angle) };
+});
 
 const Ball = ({ pose, kind, isOccluded, outcome }: BallProps) => (
   <div
@@ -75,8 +81,23 @@ export const ArcadeBasketballCourt = ({
       elapsedMs - shot.startedAt < flightDurationMs + 270,
   );
 
+  const rimContact = shots.findLast(shot => {
+    const age = elapsedMs - shot.startedAt - flightDurationMs;
+    return shot.outcome === "short" && age >= 0 && age < impactDurationMs;
+  });
+  const impactAge = rimContact ? elapsedMs - rimContact.startedAt - flightDurationMs : 0;
+  const impactStrength = rimContact ? 1 - impactAge / impactDurationMs : 0;
+  const shakeX = Math.round(Math.sin(impactAge * 0.12 + 1) * 3 * impactStrength);
+  const shakeY = Math.round(Math.cos(impactAge * 0.09) * impactStrength);
+
   return (
-    <div className={styles.art} aria-hidden="true">
+    <div
+      className={styles.art}
+      aria-hidden="true"
+      data-testid="basketball-court-art"
+      data-impact={!!rimContact}
+      style={{ "--shake-x": `${shakeX}px`, "--shake-y": `${shakeY}px` } as CSSProperties}
+    >
       <Image
         src={`${spriteRoot}/court-back.png`}
         alt=""
@@ -128,6 +149,31 @@ export const ArcadeBasketballCourt = ({
                     />
                   );
                 })}
+            {shot.outcome === "basket" &&
+              age >= flightDurationMs &&
+              age < flightDurationMs + scoreEffectDurationMs && (
+                <div
+                  className={styles.scoreEffect}
+                  data-testid="basketball-score-effect"
+                  style={{ opacity: 1 - (age - flightDurationMs) / scoreEffectDurationMs }}
+                >
+                  <span className={styles.scoreStar} />
+                  {sparkDirections.map((direction, index) => {
+                    const progress = (age - flightDurationMs) / scoreEffectDurationMs;
+                    const distance = 8 + 46 * (1 - (1 - progress) ** 2);
+                    return (
+                      <span
+                        key={index}
+                        className={styles.scoreSpark}
+                        style={{
+                          translate: `${Math.round(direction.x * distance)}px ${Math.round(direction.y * distance * 0.7 + 16 * progress ** 2)}px`,
+                          rotate: `${Math.round(progress * 90)}deg`,
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              )}
             <Ball
               pose={pose}
               kind="shot"

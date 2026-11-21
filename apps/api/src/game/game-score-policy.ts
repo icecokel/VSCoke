@@ -10,7 +10,15 @@ export type GameScorePolicy = {
   maxScorePerSecond: number;
 };
 
+// 두 공을 1.46초마다 즉시 재사용해도 30초 동안 가능한 슛은 최대 42회다.
 const GAME_SCORE_POLICIES: Record<GameType, GameScorePolicy> = {
+  [GameType.ARCADE_BASKETBALL]: {
+    minScore: 1,
+    maxScore: 42,
+    minPlayTimeSeconds: 30,
+    maxPlayTimeSeconds: 30,
+    maxScorePerSecond: 2,
+  },
   [GameType.SKY_DROP]: {
     minScore: 1,
     maxScore: 100000,
@@ -73,6 +81,12 @@ export const validateGameScoreSubmission = (
 ): void => {
   const policy = getGameScorePolicy(dto.gameType);
   const prefix = `${dto.gameType} score`;
+
+  if (dto.gameType === GameType.ARCADE_BASKETBALL && dto.playTime !== 30) {
+    throw new BadRequestException(
+      'ARCADE_BASKETBALL playTime must be 30 seconds',
+    );
+  }
 
   if (!Number.isInteger(dto.score)) {
     throw new BadRequestException(`${prefix} must be an integer`);

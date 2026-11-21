@@ -2,7 +2,7 @@ export const countdownMs = 3_000;
 export const roundDurationMs = 30_000;
 export const chargeDurationMs = 900;
 export const sweetSpot = { start: 0.65, end: 0.85 };
-export const flightDurationMs = 500;
+export const flightDurationMs = 680;
 export const returnDurationMs = 420;
 
 const deadlineMs = countdownMs + roundDurationMs;
@@ -11,6 +11,7 @@ export type ShotOutcome = "short" | "basket" | "long";
 
 interface Shot {
   startedAt: number;
+  power: number;
   outcome: ShotOutcome;
   isResolved: boolean;
 }
@@ -106,7 +107,12 @@ export const basketballReducer = (
         round: {
           ...round,
           chargeStartedAt: null,
-          shot: { startedAt: round.elapsedMs, outcome: getShotOutcome(power), isResolved: false },
+          shot: {
+            startedAt: round.elapsedMs,
+            power,
+            outcome: getShotOutcome(power),
+            isResolved: false,
+          },
         },
       };
     }

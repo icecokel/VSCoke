@@ -27,7 +27,7 @@ const holdSpace = async (page: Page, durationMs: number) => {
   await page.keyboard.down("Space");
   await page.clock.runFor(durationMs);
   await page.keyboard.up("Space");
-  await page.clock.runFor(540);
+  await page.clock.runFor(740);
 };
 
 test("게임 센터에서 열고 카운트다운 뒤 키보드로 득점한다", async ({ page }) => {
@@ -59,10 +59,44 @@ test("게임 센터에서 열고 카운트다운 뒤 키보드로 득점한다",
   await expect(power).toHaveAttribute("data-perfect", "true");
   await expect(score).toHaveText("00");
   await page.keyboard.up("Space");
-  await page.clock.runFor(540);
+  await page.clock.runFor(740);
   await expect(page.getByTestId("basketball-feedback")).toContainText(copy.basket);
   await expect(score).toHaveText("01");
 });
+
+for (const reducedMotion of ["no-preference", "reduce"] as const) {
+  test(`슛을 놓으면 공이 올라갔다가 골대로 내려온다 (${reducedMotion})`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion });
+    await startRound(page);
+    const ball = page.getByTestId("basketball-ball");
+    const score = page.getByTestId("basketball-score");
+    const getBallCenter = async () => {
+      await expect(ball).toBeVisible();
+      const bounds = await ball.boundingBox();
+      if (!bounds) throw new Error("농구공이 표시되지 않았습니다.");
+      return bounds.y + bounds.height / 2;
+    };
+
+    await page.keyboard.down("Space");
+    await page.clock.runFor(660);
+    const heldCenter = await getBallCenter();
+    await page.keyboard.up("Space");
+
+    await page.clock.runFor(290);
+    const risingCenter = await getBallCenter();
+    await page.clock.runFor(160);
+    const apexCenter = await getBallCenter();
+    await page.clock.runFor(170);
+    const descendingCenter = await getBallCenter();
+
+    expect(risingCenter).toBeLessThan(heldCenter);
+    expect(apexCenter).toBeLessThan(risingCenter);
+    expect(descendingCenter).toBeGreaterThan(apexCenter);
+    await expect(score).toHaveText("00");
+    await page.clock.runFor(120);
+    await expect(score).toHaveText("01");
+  });
+}
 
 test("짧거나 길게 누른 슛은 실패하고 마우스가 코트 밖에서 놓여도 슛을 판정한다", async ({
   page,
@@ -78,12 +112,24 @@ test("짧거나 길게 누른 슛은 실패하고 마우스가 코트 밖에서 
   await page.clock.runFor(500);
 
   const court = page.getByRole("button", { name: copy.shoot });
+  const art = page.getByTestId("basketball-ball");
+  await expect(art).toHaveAttribute("draggable", "false");
+  const canStartDrag = await art.evaluate(element =>
+    element.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true })),
+  );
+  expect(canStartDrag).toBe(false);
+
   await court.hover();
   await page.mouse.down();
+  await page.mouse.move(2, 2, { steps: 8 });
   await page.clock.runFor(660);
-  await page.mouse.move(0, 0);
+  await expect(page.getByRole("meter", { name: copy.power })).toHaveAttribute(
+    "data-perfect",
+    "true",
+  );
+  expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("");
   await page.mouse.up();
-  await page.clock.runFor(540);
+  await page.clock.runFor(740);
   await expect(feedback).toContainText(copy.basket);
   await expect(page.getByTestId("basketball-score")).toHaveText("01");
 });
@@ -130,7 +176,7 @@ test("종료 전에 놓은 슛을 판정하고 최고 기록이 새로고침 뒤
   await page.clock.runFor(180);
   await expect(time).toHaveText("00:00");
   await expect(result).toBeHidden();
-  await page.clock.runFor(380);
+  await page.clock.runFor(560);
   await expect(result).toBeVisible();
   await expect(page.getByTestId("basketball-best")).toHaveText("1");
   await expect(page.getByTestId("basketball-score")).toHaveText("01");
@@ -167,13 +213,17 @@ test.describe("모바일 터치", () => {
       type: "touchStart",
       touchPoints: [{ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height * 0.8 }],
     });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: bounds.x + 10, y: Math.max(1, bounds.y - 15) }],
+    });
     await page.clock.runFor(700);
     await expect(page.getByRole("meter", { name: copy.power })).toHaveAttribute(
       "data-perfect",
       "true",
     );
     await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-    await page.clock.runFor(1_100);
+    await page.clock.runFor(1_250);
     await expect(page.getByTestId("basketball-score")).toHaveText("01");
   });
 });

@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   basketballReducer,
   countdownMs,
+  flightDurationMs,
   getShotOutcome,
   getShotPower,
   roundDurationMs,
@@ -27,12 +28,13 @@ test("일시정지 중에는 날아가는 공과 시간이 멈추고 재개 후 
   assert.equal(state.phase, "paused");
 
   const resumedAt = deadline + 10_000;
+  const remainingFlight = flightDurationMs - 100;
   assert.equal(basketballReducer(state, { type: "tick", now: resumedAt }), state);
   state = basketballReducer(state, { type: "resume", now: resumedAt });
-  state = basketballReducer(state, { type: "tick", now: resumedAt + 399 });
+  state = basketballReducer(state, { type: "tick", now: resumedAt + remainingFlight - 1 });
   assert.equal(state.phase, "round");
 
-  state = basketballReducer(state, { type: "tick", now: resumedAt + 400 });
+  state = basketballReducer(state, { type: "tick", now: resumedAt + remainingFlight });
   assert.deepEqual(state, { phase: "finished", score: 1 });
   assert.equal(basketballReducer(state, { type: "tick", now: resumedAt + 1_000 }), state);
 });

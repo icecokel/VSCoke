@@ -111,8 +111,36 @@
   width: 100%;
 }
 
+.ball,
+.trail {
+  position: absolute;
+  inset: 0;
+}
+
 .ball {
   z-index: 4;
+}
+
+.ball img {
+  top: 0;
+  left: 0;
+  width: 26%;
+  translate: -50% -50%;
+  rotate: var(--ball-rotation, 0deg);
+}
+
+.trail {
+  z-index: 3;
+}
+
+.trail::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  background: var(--basketball-orange);
+  content: "";
   translate: -50% -50%;
 }
 
@@ -128,6 +156,7 @@
   width: 59.26%;
   transform: scaleY(calc(1 + var(--lift, 0) * 0.25));
   transform-origin: bottom;
+  translate: 0 calc(var(--release, 0) * 85%);
 }
 
 .shoot {
@@ -138,6 +167,7 @@
   height: 100%;
   cursor: crosshair;
   touch-action: none;
+  -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
 }
@@ -308,12 +338,17 @@
     animation: none;
   }
 
-  .ball[data-flight="true"] {
-    visibility: hidden;
+  .ball img {
+    rotate: none;
+  }
+
+  .trail {
+    display: none;
   }
 
   .hands {
     transform: none;
+    translate: none;
   }
 }
 

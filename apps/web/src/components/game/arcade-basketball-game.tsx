@@ -65,7 +65,11 @@ export const ArcadeBasketballGame = () => {
   const power = isCharging ? getShotPower(elapsedMs - chargeStartedAt) : 0;
   const isInSweetSpot = power >= sweetSpot.start && power <= sweetSpot.end;
   const shot = round?.shot
-    ? { age: elapsedMs - round.shot.startedAt, outcome: round.shot.outcome }
+    ? {
+        age: elapsedMs - round.shot.startedAt,
+        outcome: round.shot.outcome,
+        power: round.shot.power,
+      }
     : null;
   const feedback = round?.shot?.isResolved ? round.shot.outcome : null;
   const canShoot = phase === "round" && countdown === 0 && remaining > 0 && !shot;
@@ -150,6 +154,7 @@ export const ArcadeBasketballGame = () => {
 
   const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
     if (event.button !== 0 || !event.isPrimary) return;
+    event.preventDefault();
     event.currentTarget.focus({ preventScroll: true });
     if (beginCharge({ type: "pointer", id: event.pointerId })) {
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -208,7 +213,7 @@ export const ArcadeBasketballGame = () => {
       </header>
 
       <div className={styles.courtArea}>
-        <div className={styles.court}>
+        <div className={styles.court} onDragStart={event => event.preventDefault()}>
           <ArcadeBasketballCourt power={power} shot={shot} />
           {isActive && (
             <button

@@ -353,6 +353,10 @@ test.describe("아케이드 농구 픽셀아트", () => {
       const game = page.getByTestId("arcade-basketball");
       await game.getByRole("button", { name: ko.Game.arcadeBasketball.start }).click();
       await page.clock.runFor(9_040);
+      const rightBall = game.getByRole("button", { name: ko.Game.arcadeBasketball.pickRight });
+      await expect(rightBall).toBeVisible();
+      await expect(game).toHaveScreenshot(`arcade-basketball-${layout.name}-pickup.png`);
+      await rightBall.click();
       await game.getByRole("button", { name: ko.Game.arcadeBasketball.shoot }).hover();
       await page.mouse.down();
       await page.clock.runFor(670);

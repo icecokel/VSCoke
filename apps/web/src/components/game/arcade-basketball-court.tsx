@@ -1,64 +1,79 @@
 import Image from "next/image";
-import type { CSSProperties } from "react";
-import { flightDurationMs, returnDurationMs, type ShotOutcome } from "./arcade-basketball-engine";
+import { Fragment, type CSSProperties } from "react";
+import {
+  flightDurationMs,
+  pickupDurationMs,
+  type HeldBall,
+  type Shot,
+  type TraySide,
+} from "./arcade-basketball-engine";
+import {
+  getFlightPose,
+  getHeldBallPose,
+  getShotPose,
+  getTrayBallPose,
+  type BallPose,
+} from "./arcade-basketball-motion";
 import styles from "./arcade-basketball.module.css";
 
-interface CourtShot {
-  age: number;
+interface CourtProps {
+  elapsedMs: number;
   power: number;
-  outcome: ShotOutcome;
+  trayBalls: TraySide[];
+  heldBall: HeldBall | null;
+  shots: Shot[];
 }
 
-interface CourtProps {
-  power: number;
-  shot: CourtShot | null;
+interface BallProps {
+  pose: BallPose;
+  kind: "tray" | "held" | "shot";
+  isOccluded?: boolean;
+  outcome?: Shot["outcome"];
 }
 
 const spriteRoot = "/games/arcade-basketball";
 const handReleaseMs = 150;
 const trailDelays = [38, 76];
-const rimBallScale = 0.35;
-const getHeldBallY = (power: number) => 81 - power * 7;
 
-const shots = {
-  short: { x: 44, y: 41, arcHeight: 25, drift: -4 },
-  basket: { x: 50, y: 35, arcHeight: 33, drift: 5 },
-  long: { x: 55, y: 29, arcHeight: 35, drift: 5 },
-} satisfies Record<ShotOutcome, { x: number; y: number; arcHeight: number; drift: number }>;
+const Ball = ({ pose, kind, isOccluded, outcome }: BallProps) => (
+  <div
+    className={styles.ball}
+    data-occluded={isOccluded}
+    style={{ translate: `${pose.x}% ${pose.y}%` }}
+  >
+    <Image
+      src={`${spriteRoot}/ball.png`}
+      alt=""
+      width={56}
+      height={56}
+      unoptimized
+      draggable={false}
+      data-testid={`basketball-${kind}-ball`}
+      data-outcome={outcome}
+      style={{ scale: pose.scale, "--ball-rotation": `${pose.rotation}deg` } as CSSProperties}
+    />
+  </div>
+);
 
-const getFlightPose = ({ outcome, age, power }: CourtShot) => {
-  const target = shots[outcome];
-  const progress = age / flightDurationMs;
-  const arc = 4 * progress * (1 - progress);
-  const startY = getHeldBallY(power);
-
-  return {
-    x: 50 + (target.x - 50) * progress + target.drift * arc,
-    y: startY + (target.y - startY) * progress - target.arcHeight * arc,
-    scale: 1 - (1 - rimBallScale) * progress,
-    rotation: -200 * progress,
-  };
-};
-
-const getBallPose = (power: number, shot: CourtShot | null) => {
-  if (!shot) return { x: 50, y: getHeldBallY(power), scale: 1, rotation: 0 };
-  if (shot.age < flightDurationMs) return getFlightPose(shot);
-
-  const target = shots[shot.outcome];
-  const progress = Math.min(1, (shot.age - flightDurationMs) / returnDurationMs);
-  const direction = shot.outcome === "long" ? 1 : -1;
-  return {
-    x: target.x + direction * progress ** 2 * 13,
-    y: target.y + (92 - target.y) * progress ** 1.35,
-    scale: rimBallScale + progress * 0.35,
-    rotation: -200 - 180 * progress,
-  };
-};
-
-export const ArcadeBasketballCourt = ({ power, shot }: CourtProps) => {
-  const pose = getBallPose(power, shot);
-  const hasLanded = !!shot && shot.age >= flightDurationMs;
-  const handRelease = shot ? Math.min(1, shot.age / handReleaseMs) : 0;
+export const ArcadeBasketballCourt = ({
+  elapsedMs,
+  power,
+  trayBalls,
+  heldBall,
+  shots,
+}: CourtProps) => {
+  const latestShot = shots.at(-1);
+  const release = latestShot ? Math.min(1, (elapsedMs - latestShot.startedAt) / handReleaseMs) : 1;
+  const pickupAge = heldBall ? elapsedMs - heldBall.pickedAt : 0;
+  const reach = heldBall
+    ? (heldBall.side === "left" ? -1 : 1) * Math.max(0, 1 - pickupAge / pickupDurationMs)
+    : 0;
+  const isSwishing = shots.some(
+    shot =>
+      shot.outcome === "basket" &&
+      elapsedMs - shot.startedAt >= flightDurationMs &&
+      elapsedMs - shot.startedAt < flightDurationMs + 270,
+  );
 
   return (
     <div className={styles.art} aria-hidden="true">
@@ -78,7 +93,7 @@ export const ArcadeBasketballCourt = ({ power, shot }: CourtProps) => {
         unoptimized
         draggable={false}
         className={styles.rim}
-        data-swish={hasLanded && shot.outcome === "basket"}
+        data-swish={isSwishing}
       />
       <Image
         src={`${spriteRoot}/court-tray.png`}
@@ -89,38 +104,42 @@ export const ArcadeBasketballCourt = ({ power, shot }: CourtProps) => {
         draggable={false}
         className={styles.tray}
       />
-      {shot &&
-        !hasLanded &&
-        trailDelays
-          .filter(delay => shot.age >= delay)
-          .map(delay => {
-            const { x, y } = getFlightPose({ ...shot, age: shot.age - delay });
-            return (
-              <span
-                key={delay}
-                className={styles.trail}
-                style={{ translate: `${x}% ${y}%`, opacity: 0.7 - delay / 160 }}
-              />
-            );
-          })}
-      <div
-        className={styles.ball}
-        data-behind-rim={shot?.outcome === "basket" && shot.age >= flightDurationMs - 50}
-        data-in-tray={hasLanded && pose.y >= 86}
-        style={{ translate: `${pose.x}% ${pose.y}%` }}
-      >
-        <Image
-          src={`${spriteRoot}/ball.png`}
-          alt=""
-          width={56}
-          height={56}
-          unoptimized
-          draggable={false}
-          data-testid="basketball-ball"
-          style={{ scale: pose.scale, "--ball-rotation": `${pose.rotation}deg` } as CSSProperties}
-        />
-      </div>
-      {handRelease < 1 && (
+
+      {trayBalls.map(side => (
+        <Ball key={side} pose={getTrayBallPose(side)} kind="tray" isOccluded />
+      ))}
+      {shots.map(shot => {
+        const age = elapsedMs - shot.startedAt;
+        const pose = getShotPose(shot, age);
+        const isBehindRim =
+          shot.outcome === "basket" && age >= flightDurationMs - 50 && pose.y < 53;
+        return (
+          <Fragment key={shot.side}>
+            {age < flightDurationMs &&
+              trailDelays
+                .filter(delay => age >= delay)
+                .map(delay => {
+                  const { x, y } = getFlightPose(shot, age - delay);
+                  return (
+                    <span
+                      key={delay}
+                      className={styles.trail}
+                      style={{ translate: `${x}% ${y}%`, opacity: 0.7 - delay / 160 }}
+                    />
+                  );
+                })}
+            <Ball
+              pose={pose}
+              kind="shot"
+              outcome={shot.outcome}
+              isOccluded={isBehindRim || (shot.isResolved && pose.y > 82)}
+            />
+          </Fragment>
+        );
+      })}
+      {heldBall && <Ball pose={getHeldBallPose(heldBall.side, pickupAge, power)} kind="held" />}
+
+      {(heldBall || release < 1) && (
         <Image
           src={`${spriteRoot}/hands.png`}
           alt=""
@@ -129,7 +148,13 @@ export const ArcadeBasketballCourt = ({ power, shot }: CourtProps) => {
           unoptimized
           draggable={false}
           className={styles.hands}
-          style={{ "--lift": shot?.power ?? power, "--release": handRelease } as CSSProperties}
+          style={
+            {
+              "--lift": heldBall ? power : latestShot?.power,
+              "--reach": reach,
+              "--release": heldBall ? 0 : release,
+            } as CSSProperties
+          }
         />
       )}
     </div>

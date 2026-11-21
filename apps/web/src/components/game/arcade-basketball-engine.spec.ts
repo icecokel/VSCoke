@@ -6,6 +6,8 @@ import {
   flightDurationMs,
   getShotOutcome,
   getShotPower,
+  isTrayBallAvailable,
+  returnDurationMs,
   roundDurationMs,
   type BasketballState,
 } from "./arcade-basketball-engine";
@@ -22,6 +24,7 @@ test("일시정지 중에는 날아가는 공과 시간이 멈추고 재개 후 
   const deadline = countdownMs + roundDurationMs;
   let state: BasketballState = { phase: "ready" };
   state = basketballReducer(state, { type: "start", now: 0 });
+  state = basketballReducer(state, { type: "pick", side: "left", now: deadline - 750 });
   state = basketballReducer(state, { type: "press", now: deadline - 700 });
   state = basketballReducer(state, { type: "release", now: deadline - 40 });
   state = basketballReducer(state, { type: "pause", now: deadline + 60 });
@@ -37,4 +40,26 @@ test("일시정지 중에는 날아가는 공과 시간이 멈추고 재개 후 
   state = basketballReducer(state, { type: "tick", now: resumedAt + remainingFlight });
   assert.deepEqual(state, { phase: "finished", score: 1 });
   assert.equal(basketballReducer(state, { type: "tick", now: resumedAt + 1_000 }), state);
+});
+
+test("공은 집거나 날고 있는 동안 같은 자리에서 다시 집을 수 없다", () => {
+  let state = basketballReducer({ phase: "ready" }, { type: "start", now: 0 });
+  state = basketballReducer(state, { type: "pick", side: "left", now: countdownMs });
+  assert.equal(basketballReducer(state, { type: "pick", side: "right", now: countdownMs }), state);
+  state = basketballReducer(state, { type: "press", now: countdownMs });
+  const releasedAt = countdownMs + 660;
+  state = basketballReducer(state, { type: "release", now: releasedAt });
+  assert.equal(basketballReducer(state, { type: "pick", side: "left", now: releasedAt }), state);
+  state = basketballReducer(state, { type: "tick", now: releasedAt + flightDurationMs });
+  assert.equal(state.phase, "round");
+  assert.equal(state.round.score, 1);
+  assert.equal(isTrayBallAvailable(state.round, "left"), false);
+  assert.equal(isTrayBallAvailable(state.round, "right"), true);
+  state = basketballReducer(state, {
+    type: "tick",
+    now: releasedAt + flightDurationMs + returnDurationMs,
+  });
+  assert.equal(state.phase, "round");
+  assert.equal(state.round.score, 1);
+  assert.equal(isTrayBallAvailable(state.round, "left"), true);
 });

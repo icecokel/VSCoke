@@ -19,10 +19,15 @@ import { ArcadeBasketballCourt } from "./arcade-basketball-court";
 import {
   basketballReducer,
   countdownMs,
+  flightDurationMs,
   getShotPower,
+  isTrayBallAvailable,
   roundDurationMs,
   sweetSpot,
+  traySides,
+  type TraySide,
 } from "./arcade-basketball-engine";
+import { getTrayBallPose } from "./arcade-basketball-motion";
 import styles from "./arcade-basketball.module.css";
 
 const bestScoreKey = "vscoke-arcade-basketball-best";
@@ -64,15 +69,21 @@ export const ArcadeBasketballGame = () => {
   const isCharging = chargeStartedAt != null;
   const power = isCharging ? getShotPower(elapsedMs - chargeStartedAt) : 0;
   const isInSweetSpot = power >= sweetSpot.start && power <= sweetSpot.end;
-  const shot = round?.shot
-    ? {
-        age: elapsedMs - round.shot.startedAt,
-        outcome: round.shot.outcome,
-        power: round.shot.power,
-      }
-    : null;
-  const feedback = round?.shot?.isResolved ? round.shot.outcome : null;
-  const canShoot = phase === "round" && countdown === 0 && remaining > 0 && !shot;
+  const shots = round?.shots ?? [];
+  const heldBall = round?.heldBall ?? null;
+  const trayBalls = traySides.filter(side => isTrayBallAvailable(round, side));
+  const feedback = shots.findLast(
+    shot => shot.isResolved && elapsedMs - shot.startedAt < flightDurationMs + 430,
+  )?.outcome;
+  const isPlaying = phase === "round" && countdown === 0 && remaining > 0;
+  const canPick = isPlaying && !heldBall;
+  const canShoot = isPlaying && !!heldBall;
+
+  const pickBall = (side: TraySide) => {
+    if (!canPick || !trayBalls.includes(side)) return;
+    dispatch({ type: "pick", side, now: performance.now() });
+    shootRef.current?.focus({ preventScroll: true });
+  };
 
   useEffect(() => {
     if (phase !== "round") return;
@@ -167,9 +178,22 @@ export const ArcadeBasketballGame = () => {
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (canPick && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+      event.preventDefault();
+      if (!event.repeat) pickBall(event.key === "ArrowLeft" ? "left" : "right");
+      return;
+    }
+
     if (!isShotKey(event.key)) return;
     event.preventDefault();
-    if (!event.repeat) beginCharge({ type: "key", key: event.key });
+    if (event.repeat) return;
+
+    const nextBall = trayBalls[0];
+    if (canPick && nextBall) {
+      pickBall(nextBall);
+    } else {
+      beginCharge({ type: "key", key: event.key });
+    }
   };
 
   const onKeyUp = (event: KeyboardEvent<HTMLButtonElement>) => {
@@ -214,7 +238,13 @@ export const ArcadeBasketballGame = () => {
 
       <div className={styles.courtArea}>
         <div className={styles.court} onDragStart={event => event.preventDefault()}>
-          <ArcadeBasketballCourt power={power} shot={shot} />
+          <ArcadeBasketballCourt
+            elapsedMs={elapsedMs}
+            power={power}
+            trayBalls={trayBalls}
+            heldBall={heldBall}
+            shots={shots}
+          />
           {isActive && (
             <button
               ref={shootRef}
@@ -235,6 +265,21 @@ export const ArcadeBasketballGame = () => {
               }}
             />
           )}
+          {canPick &&
+            trayBalls.map(side => {
+              const { x, y } = getTrayBallPose(side);
+              return (
+                <button
+                  key={side}
+                  type="button"
+                  className={styles.pickBall}
+                  style={{ left: `${x}%`, top: `${y}%` }}
+                  aria-label={t(side === "left" ? "pickLeft" : "pickRight")}
+                  aria-keyshortcuts={side === "left" ? "ArrowLeft" : "ArrowRight"}
+                  onClick={() => pickBall(side)}
+                />
+              );
+            })}
           {phase === "ready" && (
             <div className={styles.overlay}>
               <h1>{t("title")}</h1>
@@ -304,8 +349,8 @@ export const ArcadeBasketballGame = () => {
           {isCharging && <i aria-hidden="true" className={styles.marker} />}
         </div>
         <p id={instructionId}>
-          {t("instruction")}
-          <span className="sr-only"> {t("keyboardInstruction")}</span>
+          {t(heldBall ? "instruction" : trayBalls.length ? "pickInstruction" : "waitingForBall")}
+          <span className="sr-only"> {t(heldBall ? "keyboardInstruction" : "pickKeyboard")}</span>
         </p>
       </footer>
 

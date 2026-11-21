@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   escapeRegExp,
   gotoWithRetry,
@@ -23,11 +23,32 @@ const startRound = async (page: Page) => {
   return copy;
 };
 
-const holdSpace = async (page: Page, durationMs: number) => {
+const pickBall = async (page: Page, name: string) => {
+  await page.getByRole("button", { name, exact: true }).click();
+  await expect(page.getByTestId("basketball-held-ball")).toBeVisible();
+};
+
+const releaseShot = async (page: Page, durationMs: number) => {
   await page.keyboard.down("Space");
   await page.clock.runFor(durationMs);
   await page.keyboard.up("Space");
+};
+
+const holdSpace = async (page: Page, durationMs: number) => {
+  await releaseShot(page, durationMs);
   await page.clock.runFor(740);
+};
+
+const getBounds = async (ball: Locator) => {
+  await expect(ball).toBeVisible();
+  const bounds = await ball.boundingBox();
+  if (!bounds) throw new Error("농구공이 표시되지 않았습니다.");
+  return bounds;
+};
+
+const getBallCenterY = async (ball: Locator) => {
+  const bounds = await getBounds(ball);
+  return bounds.y + bounds.height / 2;
 };
 
 test("게임 센터에서 열고 카운트다운 뒤 키보드로 득점한다", async ({ page }) => {
@@ -53,6 +74,8 @@ test("게임 센터에서 열고 카운트다운 뒤 키보드로 득점한다",
   await page.clock.runFor(2_000);
   await expect(countdown).toBeHidden();
   await expect(page.getByRole("button", { name: copy.shoot })).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.getByTestId("basketball-held-ball")).toBeVisible();
 
   await page.keyboard.down("Space");
   await page.clock.runFor(660);
@@ -67,27 +90,23 @@ test("게임 센터에서 열고 카운트다운 뒤 키보드로 득점한다",
 for (const reducedMotion of ["no-preference", "reduce"] as const) {
   test(`슛을 놓으면 공이 올라갔다가 골대로 내려온다 (${reducedMotion})`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion });
-    await startRound(page);
-    const ball = page.getByTestId("basketball-ball");
+    const copy = await startRound(page);
+    await pickBall(page, copy.pickLeft);
+    const heldBall = page.getByTestId("basketball-held-ball");
+    const shotBall = page.getByTestId("basketball-shot-ball");
     const score = page.getByTestId("basketball-score");
-    const getBallCenter = async () => {
-      await expect(ball).toBeVisible();
-      const bounds = await ball.boundingBox();
-      if (!bounds) throw new Error("농구공이 표시되지 않았습니다.");
-      return bounds.y + bounds.height / 2;
-    };
 
     await page.keyboard.down("Space");
     await page.clock.runFor(660);
-    const heldCenter = await getBallCenter();
+    const heldCenter = await getBallCenterY(heldBall);
     await page.keyboard.up("Space");
 
     await page.clock.runFor(290);
-    const risingCenter = await getBallCenter();
+    const risingCenter = await getBallCenterY(shotBall);
     await page.clock.runFor(160);
-    const apexCenter = await getBallCenter();
+    const apexCenter = await getBallCenterY(shotBall);
     await page.clock.runFor(170);
-    const descendingCenter = await getBallCenter();
+    const descendingCenter = await getBallCenterY(shotBall);
 
     expect(risingCenter).toBeLessThan(heldCenter);
     expect(apexCenter).toBeLessThan(risingCenter);
@@ -98,21 +117,63 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
   });
 }
 
+test("양쪽 공을 집고 먼저 돌아온 공을 다시 사용할 수 있다", async ({ page }) => {
+  const copy = await startRound(page);
+  const left = page.getByRole("button", { name: copy.pickLeft, exact: true });
+  const right = page.getByRole("button", { name: copy.pickRight, exact: true });
+  const held = page.getByTestId("basketball-held-ball");
+  const shots = page.getByTestId("basketball-shot-ball");
+
+  await expect(page.getByTestId("basketball-tray-ball")).toHaveCount(2);
+  await page.keyboard.press("ArrowRight");
+  const beforePickup = await getBounds(held);
+  await page.clock.runFor(250);
+  const afterPickup = await getBounds(held);
+  expect(afterPickup.x + afterPickup.width / 2).toBeLessThan(
+    beforePickup.x + beforePickup.width / 2,
+  );
+  await expect(page.getByTestId("basketball-tray-ball")).toHaveCount(1);
+
+  await releaseShot(page, 280);
+  await expect(shots).toHaveCount(1);
+  await expect(right).toBeHidden();
+  await pickBall(page, copy.pickLeft);
+  await releaseShot(page, 280);
+  await expect(shots).toHaveCount(2);
+  await expect(left).toBeHidden();
+  await expect(right).toBeHidden();
+  await expect(page.getByText(copy.waitingForBall)).toBeVisible();
+
+  await page.clock.runFor(410);
+  const contactY = await getBallCenterY(shots.first());
+  await page.clock.runFor(100);
+  expect(await getBallCenterY(shots.first())).toBeLessThan(contactY);
+  await page.clock.runFor(235);
+  const rampContactY = await getBallCenterY(shots.first());
+  await page.clock.runFor(60);
+  expect(await getBallCenterY(shots.first())).toBeLessThan(rampContactY);
+  await page.clock.runFor(405);
+  await expect(right).toBeVisible();
+  await expect(left).toBeHidden();
+  await pickBall(page, copy.pickRight);
+});
+
 test("짧거나 길게 누른 슛은 실패하고 마우스가 코트 밖에서 놓여도 슛을 판정한다", async ({
   page,
 }) => {
   const copy = await startRound(page);
   const feedback = page.getByTestId("basketball-feedback");
+  await pickBall(page, copy.pickLeft);
   await holdSpace(page, 280);
   await expect(feedback).toHaveText(copy.short);
-  await page.clock.runFor(500);
+  await pickBall(page, copy.pickRight);
   await holdSpace(page, 1_050);
   await expect(feedback).toHaveText(copy.long);
   await expect(page.getByTestId("basketball-score")).toHaveText("00");
-  await page.clock.runFor(500);
+  await pickBall(page, copy.pickLeft);
 
   const court = page.getByRole("button", { name: copy.shoot });
-  const art = page.getByTestId("basketball-ball");
+  const art = page.getByTestId("basketball-held-ball");
   await expect(art).toHaveAttribute("draggable", "false");
   const canStartDrag = await art.evaluate(element =>
     element.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true })),
@@ -138,6 +199,7 @@ test("탭이 비활성화되면 시간은 멈추고 충전이 취소된다", asy
   const copy = await startRound(page);
   const time = page.getByTestId("basketball-time");
   const power = page.getByRole("meter", { name: copy.power });
+  await pickBall(page, copy.pickLeft);
   await page.keyboard.down("Space");
   await page.clock.runFor(660);
   await expect(power).toHaveAttribute("data-perfect", "true");
@@ -169,6 +231,7 @@ test("종료 전에 놓은 슛을 판정하고 최고 기록이 새로고침 뒤
   const copy = await startRound(page);
   const result = page.getByTestId("basketball-result");
   const time = page.getByTestId("basketball-time");
+  await pickBall(page, copy.pickLeft);
   await page.clock.fastForward(29_160);
   await page.keyboard.down("Space");
   await page.clock.runFor(660);
@@ -186,6 +249,7 @@ test("종료 전에 놓은 슛을 판정하고 최고 기록이 새로고침 뒤
   await page.getByRole("button", { name: copy.start, exact: true }).click();
   await page.clock.runFor(3_100);
   await expect(page.getByTestId("basketball-score")).toHaveText("00");
+  await pickBall(page, copy.pickRight);
   await page.clock.fastForward(29_500);
   await page.keyboard.down("Space");
   await page.clock.runFor(550);
@@ -205,6 +269,8 @@ test.describe("모바일 터치", () => {
   test("공을 길게 터치하고 떼면 한 번만 슛을 쏜다", async ({ page, browserName }) => {
     test.skip(browserName !== "chromium", "실제 터치 시퀀스는 Chromium CDP로 실행한다.");
     const copy = await startRound(page);
+    await page.getByRole("button", { name: copy.pickRight, exact: true }).tap();
+    await expect(page.getByTestId("basketball-held-ball")).toBeVisible();
     const court = page.getByRole("button", { name: copy.shoot });
     const bounds = await court.boundingBox();
     if (!bounds) throw new Error("농구 코트가 표시되지 않았습니다.");

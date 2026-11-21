@@ -23,7 +23,9 @@ import {
   getShotPower,
   isTrayBallAvailable,
   roundDurationMs,
-  sweetSpot,
+  createShotDifficulty,
+  getShotOutcome,
+  meterSegments,
   traySides,
   type TraySide,
 } from "./arcade-basketball-engine";
@@ -31,7 +33,6 @@ import { getTrayBallPose } from "./arcade-basketball-motion";
 import styles from "./arcade-basketball.module.css";
 
 const bestScoreKey = "vscoke-arcade-basketball-best";
-const meterSegments = 20;
 const isShotKey = (key: string) => key === " " || key === "Enter";
 
 type ShotInput = { type: "key"; key: string } | { type: "pointer"; id: number };
@@ -67,8 +68,10 @@ export const ArcadeBasketballGame = () => {
   const score = phase === "finished" ? state.score : (round?.score ?? 0);
   const chargeStartedAt = round?.chargeStartedAt;
   const isCharging = chargeStartedAt != null;
-  const power = isCharging ? getShotPower(elapsedMs - chargeStartedAt) : 0;
-  const isInSweetSpot = power >= sweetSpot.start && power <= sweetSpot.end;
+  const difficulty = round?.heldBall?.difficulty;
+  const power =
+    isCharging && difficulty ? getShotPower(elapsedMs - chargeStartedAt, difficulty) : 0;
+  const isInSweetSpot = !!difficulty && getShotOutcome(power, difficulty) === "basket";
   const shots = round?.shots ?? [];
   const heldBall = round?.heldBall ?? null;
   const trayBalls = traySides.filter(side => isTrayBallAvailable(round, side));
@@ -81,7 +84,7 @@ export const ArcadeBasketballGame = () => {
 
   const pickBall = (side: TraySide) => {
     if (!canPick || !trayBalls.includes(side)) return;
-    dispatch({ type: "pick", side, now: performance.now() });
+    dispatch({ type: "pick", side, now: performance.now(), difficulty: createShotDifficulty() });
     shootRef.current?.focus({ preventScroll: true });
   };
 
@@ -341,7 +344,9 @@ export const ArcadeBasketballGame = () => {
               key={index}
               aria-hidden="true"
               data-target={
-                index >= sweetSpot.start * meterSegments && index < sweetSpot.end * meterSegments
+                !!difficulty &&
+                index >= difficulty.startSegment &&
+                index < difficulty.startSegment + difficulty.segmentCount
               }
               data-filled={index < Math.floor(power * meterSegments)}
             />

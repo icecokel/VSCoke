@@ -6,6 +6,12 @@ import {
   resolveLocaleAndMessages,
 } from "./test-helpers";
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    Math.random = () => 0.7;
+  });
+});
+
 const prepareClock = async (page: Page) => {
   await page.clock.install();
   const now = await page.evaluate(() => Date.now());
@@ -292,4 +298,44 @@ test.describe("모바일 터치", () => {
     await page.clock.runFor(1_250);
     await expect(page.getByTestId("basketball-score")).toHaveText("01");
   });
+});
+
+test("공마다 폭·위치·속도를 추첨하고 좁고 빠른 조건도 그대로 반복한다", async ({ page }) => {
+  const copy = await startRound(page);
+  await page.evaluate(() => {
+    Math.random = () => 0;
+  });
+  const meter = page.getByRole("meter", { name: copy.power });
+  const targets = meter.locator('[data-target="true"]');
+  await pickBall(page, copy.pickLeft);
+  await expect(targets).toHaveCount(2);
+  expect(await targets.first().evaluate(el => el === el.parentElement?.firstElementChild)).toBe(
+    true,
+  );
+  await releaseShot(page, 30);
+  await page.evaluate(() => {
+    Math.random = () => 0.99;
+  });
+  await pickBall(page, copy.pickRight);
+  await expect(targets).toHaveCount(5);
+  expect(await targets.last().evaluate(el => el === el.parentElement?.lastElementChild)).toBe(true);
+  await page.keyboard.down("Space");
+  await page.clock.runFor(600);
+  const power = Number(await meter.getAttribute("aria-valuenow"));
+  expect(power).toBeGreaterThanOrEqual(49);
+  expect(power).toBeLessThanOrEqual(51);
+  await page.keyboard.up("Space");
+  await page.clock.runFor(1200);
+  await page.evaluate(() => {
+    Math.random = () => 0;
+  });
+  await pickBall(page, copy.pickLeft);
+  await expect(targets).toHaveCount(2);
+  await page.keyboard.down("Space");
+  await page.clock.runFor(300);
+  expect(Number(await meter.getAttribute("aria-valuenow"))).toBeGreaterThanOrEqual(48);
+  await page.keyboard.up("Space");
+  await page.clock.runFor(1200);
+  await pickBall(page, copy.pickRight);
+  await expect(targets).toHaveCount(2);
 });

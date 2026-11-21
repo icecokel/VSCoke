@@ -1,7 +1,19 @@
 export const countdownMs = 3_000;
 export const roundDurationMs = 30_000;
-export const chargeDurationMs = 900;
-export const sweetSpot = { start: 0.65, end: 0.85 };
+export const meterSegments = 20;
+
+export interface ShotDifficulty {
+  startSegment: number;
+  segmentCount: number;
+  chargeDurationMs: number;
+}
+
+export const createShotDifficulty = (random: () => number = Math.random): ShotDifficulty => {
+  const segmentCount = 2 + Math.floor(random() * 4);
+  const startSegment = Math.floor(random() * (meterSegments - segmentCount + 1));
+  const chargeDurationMs = 600 + random() * 600;
+  return { startSegment, segmentCount, chargeDurationMs };
+};
 export const pickupDurationMs = 240;
 export const flightDurationMs = 680;
 export const returnDurationMs = 780;
@@ -15,6 +27,7 @@ export type ShotOutcome = "short" | "basket" | "long";
 export interface HeldBall {
   side: TraySide;
   pickedAt: number;
+  difficulty: ShotDifficulty;
 }
 
 export interface Shot {
@@ -41,7 +54,7 @@ export type BasketballState =
   | { phase: "finished"; score: number };
 
 export type BasketballAction =
-  | { type: "pick"; now: number; side: TraySide }
+  | { type: "pick"; now: number; side: TraySide; difficulty: ShotDifficulty }
   | { type: "start" | "tick" | "press" | "release" | "cancel" | "pause" | "resume"; now: number };
 
 export const isTrayBallAvailable = (
@@ -50,12 +63,14 @@ export const isTrayBallAvailable = (
 ): boolean =>
   !round || (round.heldBall?.side !== side && !round.shots.some(shot => shot.side === side));
 
-export const getShotPower = (elapsedMs: number): number =>
-  Math.min(1, Math.max(0, elapsedMs / chargeDurationMs));
+export const getShotPower = (elapsedMs: number, difficulty: ShotDifficulty): number =>
+  Math.min(1, Math.max(0, elapsedMs / difficulty.chargeDurationMs));
 
-export const getShotOutcome = (power: number): ShotOutcome => {
-  if (power < sweetSpot.start) return "short";
-  if (power > sweetSpot.end) return "long";
+export const getShotOutcome = (power: number, difficulty: ShotDifficulty): ShotOutcome => {
+  const start = difficulty.startSegment / meterSegments;
+  const end = (difficulty.startSegment + difficulty.segmentCount) / meterSegments;
+  if (power < start) return "short";
+  if (power > end || (power === end && end < 1)) return "long";
   return "basket";
 };
 
@@ -130,20 +145,26 @@ export const basketballReducer = (
       if (!canPlay || round.heldBall || !isTrayBallAvailable(round, action.side)) return state;
       return {
         phase: "round",
-        round: { ...round, heldBall: { side: action.side, pickedAt: round.elapsedMs } },
+        round: {
+          ...round,
+          heldBall: { side: action.side, pickedAt: round.elapsedMs, difficulty: action.difficulty },
+        },
       };
     case "press":
       if (!canPlay || !round.heldBall || round.chargeStartedAt !== null) return state;
       return { phase: "round", round: { ...round, chargeStartedAt: round.elapsedMs } };
     case "release": {
       if (!canPlay || !round.heldBall || round.chargeStartedAt === null) return state;
-      const power = getShotPower(round.elapsedMs - round.chargeStartedAt);
+      const power = getShotPower(
+        round.elapsedMs - round.chargeStartedAt,
+        round.heldBall.difficulty,
+      );
       const shot: Shot = {
         side: round.heldBall.side,
         startedAt: round.elapsedMs,
         pickupAge: round.elapsedMs - round.heldBall.pickedAt,
         power,
-        outcome: getShotOutcome(power),
+        outcome: getShotOutcome(power, round.heldBall.difficulty),
         isResolved: false,
       };
       return {

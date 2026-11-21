@@ -343,6 +343,9 @@ test.describe("아케이드 농구 픽셀아트", () => {
   ]) {
     test(`${layout.name} 충전 화면`, async ({ page }) => {
       await page.setViewportSize({ width: layout.width, height: layout.height });
+      await page.addInitScript(() => {
+        Math.random = () => 0.7;
+      });
       await gotoWithRetry(page, "/ko-KR/game/arcade-basketball");
       await page.addStyleTag({
         content: "nextjs-portal, [data-nextjs-dev-overlay] { display: none !important; }",

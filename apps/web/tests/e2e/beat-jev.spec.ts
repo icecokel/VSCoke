@@ -326,8 +326,9 @@ test("10개 게임 화면에서 허용된 행동을 API로 보낸다", async ({ 
       await expect(guess.getByRole("img", { name: ui.colors.amber })).toHaveText("1");
       await expect(guess.getByRole("img", { name: ui.colors.teal })).toHaveText("2");
     }
+    const actionCount = actions.length;
     await page.getByRole("button", { name: gameCase.controlName(ui) }).click();
-    await expect.poll(() => actions.at(-1)).toBe(gameCase.action);
+    await expect.poll(() => actions.slice(actionCount)).toEqual([gameCase.action]);
   }
   expect(actions).toHaveLength(gameCases.length);
 });

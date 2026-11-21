@@ -148,11 +148,11 @@ test("양쪽 공을 집고 먼저 돌아온 공을 다시 사용할 수 있다",
   const contactY = await getBallCenterY(shots.first());
   await page.clock.runFor(100);
   expect(await getBallCenterY(shots.first())).toBeLessThan(contactY);
-  await page.clock.runFor(235);
+  await page.clock.runFor(250);
   const rampContactY = await getBallCenterY(shots.first());
-  await page.clock.runFor(60);
+  await page.clock.runFor(30);
   expect(await getBallCenterY(shots.first())).toBeLessThan(rampContactY);
-  await page.clock.runFor(405);
+  await page.clock.runFor(420);
   await expect(right).toBeVisible();
   await expect(left).toBeHidden();
   await pickBall(page, copy.pickRight);

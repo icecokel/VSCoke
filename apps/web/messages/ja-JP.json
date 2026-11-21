@@ -287,6 +287,27 @@
     "rankSuffix": "位",
     "wordleTitle": "Wordle",
     "wordleDesc": "6回のチャンスで5文字の英単語を当てるゲームです。",
+    "arcadeBasketball": {
+      "title": "アーケードバスケ",
+      "description": "長押しして離すタイミングを合わせ、30秒で何本決められるか挑戦しよう。",
+      "start": "スタート",
+      "score": "スコア",
+      "remainingTime": "残り時間",
+      "power": "シュートパワー",
+      "instruction": "長押しして、離すとシュート",
+      "keyboardInstruction": "スペースキーまたはEnterキーを押して離すとシュートできます。",
+      "shoot": "シュートする",
+      "basket": "ナイスシュート！",
+      "short": "短すぎる",
+      "long": "長すぎる",
+      "pause": "一時停止",
+      "paused": "一時停止",
+      "pauseDescription": "残り時間からゲームを再開できます。",
+      "resume": "再開",
+      "finished": "タイムアップ",
+      "best": "ベストスコア",
+      "restart": "もう一度"
+    },
     "beatJev": {
       "arcade": {
         "opponent": "TODAY’S OPPONENT",

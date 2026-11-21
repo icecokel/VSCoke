@@ -30,6 +30,12 @@ export default function GameDashboard() {
       route: "/game/wordle",
     },
     {
+      id: "arcade-basketball",
+      title: t("arcadeBasketball.title"),
+      description: t("arcadeBasketball.description"),
+      route: "/game/arcade-basketball",
+    },
+    {
       id: "beat-jev",
       title: t("beatJev.title"),
       description: t("beatJev.cardDescription"),
@@ -38,7 +44,7 @@ export default function GameDashboard() {
   ].filter(game => game.id !== "beat-jev" || isJevEnabled === true);
 
   useEffect(() => {
-    ["/game/sky-drop", "/game/wordle"].forEach(path => prefetch(path));
+    ["/game/sky-drop", "/game/wordle", "/game/arcade-basketball"].forEach(path => prefetch(path));
     if (isJevEnabled) prefetch("/game/beat-jev");
   }, [prefetch, isJevEnabled]);
 

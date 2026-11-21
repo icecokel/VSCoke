@@ -287,6 +287,27 @@
     "rankSuffix": "위",
     "wordleTitle": "Wordle",
     "wordleDesc": "6번의 기회 안에 5글자 영어 단어를 맞추는 게임입니다.",
+    "arcadeBasketball": {
+      "title": "아케이드 농구",
+      "description": "꾹 눌렀다 놓는 타이밍으로 30초 동안 골을 넣으세요.",
+      "start": "시작",
+      "score": "점수",
+      "remainingTime": "남은 시간",
+      "power": "슛 파워",
+      "instruction": "꾹 눌렀다 놓으면 슛",
+      "keyboardInstruction": "스페이스바나 Enter 키를 눌렀다 놓아 슛을 쏠 수 있습니다.",
+      "shoot": "슛 쏘기",
+      "basket": "득점!",
+      "short": "너무 짧아요",
+      "long": "너무 길어요",
+      "pause": "일시정지",
+      "paused": "일시정지",
+      "pauseDescription": "남은 시간부터 이어서 플레이할 수 있습니다.",
+      "resume": "계속하기",
+      "finished": "시간 종료",
+      "best": "최고 기록",
+      "restart": "다시 하기"
+    },
     "beatJev": {
       "arcade": {
         "opponent": "TODAY’S OPPONENT",

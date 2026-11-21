@@ -70,6 +70,7 @@ export interface AppMessages {
     start: string;
     exit: string;
     beatJev: typeof KoreanMessages.Game.beatJev;
+    arcadeBasketball: typeof KoreanMessages.Game.arcadeBasketball;
     apiUnavailable: string;
     leaderboardEmpty: string;
     loadFailed: string;

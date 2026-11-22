@@ -274,7 +274,10 @@ test("종료 전에 놓은 슛을 판정하고 최고 기록이 새로고침 뒤
 test.describe("모바일 터치", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-  test("공을 길게 터치하고 떼면 한 번만 슛을 쏜다", async ({ page, browserName }) => {
+  test("기본 터치 제스처를 막고 길게 눌렀다 떼면 한 번만 슛을 쏜다", async ({
+    page,
+    browserName,
+  }) => {
     test.skip(browserName !== "chromium", "실제 터치 시퀀스는 Chromium CDP로 실행한다.");
     const copy = await startRound(page);
     await page.getByRole("button", { name: copy.pickRight, exact: true }).tap();
@@ -282,11 +285,19 @@ test.describe("모바일 터치", () => {
     const court = page.getByRole("button", { name: copy.shoot });
     const bounds = await court.boundingBox();
     if (!bounds) throw new Error("농구 코트가 표시되지 않았습니다.");
+    await court.evaluate(button => {
+      button.addEventListener(
+        "touchstart",
+        event => button.setAttribute("data-touch-canceled", String(event.defaultPrevented)),
+        { once: true, passive: true },
+      );
+    });
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Input.dispatchTouchEvent", {
       type: "touchStart",
       touchPoints: [{ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height * 0.8 }],
     });
+    await expect(court).toHaveAttribute("data-touch-canceled", "true");
     await cdp.send("Input.dispatchTouchEvent", {
       type: "touchMove",
       touchPoints: [{ x: bounds.x + 10, y: Math.max(1, bounds.y - 15) }],

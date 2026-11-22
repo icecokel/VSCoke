@@ -124,6 +124,18 @@ export const ArcadeBasketballGame = () => {
   }, [phase]);
 
   useEffect(() => {
+    const shootButton = shootRef.current;
+    if (!isActive || !shootButton) return;
+
+    // iOS의 확대 제스처는 pointerdown을 취소한 뒤에도 시작될 수 있다.
+    const cancelTouchGesture = (event: TouchEvent) => {
+      if (event.cancelable) event.preventDefault();
+    };
+    shootButton.addEventListener("touchstart", cancelTouchGesture, { passive: false });
+    return () => shootButton.removeEventListener("touchstart", cancelTouchGesture);
+  }, [isActive]);
+
+  useEffect(() => {
     if (phase !== "finished" || score <= readBestScore()) return;
     try {
       localStorage.setItem(bestScoreKey, String(score));

@@ -260,6 +260,7 @@
     "goBack": "戻る",
     "exit": "終了",
     "skyDropDesc": "落ちてくるブロックを合わせてスコアを獲得するパズルゲームです。",
+    "pokeLoungeTitle": "Poke Lounge",
     "pokeLoungeDesc": "スターターを選び、ラウンジの世界とブラウザバトルを探索するファンゲームです。",
     "time": "時間: ",
     "share": "自慢する",
@@ -274,7 +275,7 @@
     },
     "copyLink": "リンクをコピー",
     "shareTitle": "自分のスコアを自慢する",
-    "shareDescription": "Sky Dropで{score}点を達成しました！私に勝てますか？",
+    "shareDescription": "{gameName}で{score}点を達成しました！私に勝てますか？",
     "tryIt": "挑戦してみてください！",
     "playNow": "今すぐプレイ",
     "beatThisScore": "このスコアを超えてみてください！",
@@ -288,7 +289,7 @@
     "wordleTitle": "Wordle",
     "wordleDesc": "6回のチャンスで5文字の英単語を当てるゲームです。",
     "arcadeBasketball": {
-      "title": "アーケードバスケ",
+      "title": "Arcade Basketball",
       "description": "長押しして離すタイミングを合わせ、30秒で何本決められるか挑戦しよう。",
       "start": "ゲーム開始",
       "score": "スコア",
@@ -334,7 +335,7 @@
         "firstToTwo": "先に2勝",
         "versus": "VS"
       },
-      "title": "JEVに勝て",
+      "title": "Beat JEV",
       "cardDescription": "ランダムなゲーム3種でJEVと対戦。先に2勝すれば勝利です。",
       "eyebrow": "JEV ARCADE",
       "backToGames": "ゲームセンター",
@@ -537,7 +538,7 @@
     "copyLink": "リンクをコピー",
     "copied": "リンクをコピーしました！",
     "shareFail": "共有に失敗しました。もう一度お試しください。",
-    "wordleText": "VSCoke Wordleに挑戦してみてください！"
+    "wordleText": "VSCoke {gameName}に挑戦してみてください！"
   },
   "intro": {
     "title": "Welcome VSCoke",

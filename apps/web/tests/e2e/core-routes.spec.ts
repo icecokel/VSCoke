@@ -88,7 +88,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await dialog.getByRole("button", { name: "Portfolio" }).first().click();
     await dialog.getByRole("button", { name: "VSCOKE" }).first().click();
     await expect(openButton).toBeEnabled();
-    await dialog.getByRole("button", { name: "Poke Lounge" }).first().click();
+    await dialog.getByRole("button", { name: messages.Game.pokeLoungeTitle }).first().click();
     await expect(
       dialog.getByText(`https://poke-lounge.icecoke.kr/${locale}/game/poke-lounge`, {
         exact: true,
@@ -328,6 +328,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     await visit(page, `/${locale}/game`);
 
     const gameCenter = page.locator("main.bg-slate-900");
+    const skyDropName = new RegExp(escapeRegExp(messages.Game.skyDrop.title));
 
     await expect(
       gameCenter.getByRole("heading", { name: messages.home.cards.gameTitle }),
@@ -337,10 +338,11 @@ test.describe("코어 라우트 CTA 시나리오", () => {
         name: new RegExp(escapeRegExp(messages.Game.arcadeBasketball.title)),
       }),
     ).toBeVisible();
-    await expect(gameCenter.getByRole("link", { name: /Poke Lounge/ })).toHaveAttribute(
-      "href",
-      `https://poke-lounge.icecoke.kr/${locale}/game/poke-lounge`,
-    );
+    await expect(
+      gameCenter.getByRole("link", {
+        name: new RegExp(escapeRegExp(messages.Game.pokeLoungeTitle)),
+      }),
+    ).toHaveAttribute("href", `https://poke-lounge.icecoke.kr/${locale}/game/poke-lounge`);
     const pokeLoungeRedirect = await page.request.get(`/${locale}/game/poke-lounge`, {
       maxRedirects: 0,
     });
@@ -349,9 +351,9 @@ test.describe("코어 라우트 CTA 시나리오", () => {
       `https://poke-lounge.icecoke.kr/${locale}/game/poke-lounge`,
     );
     await expect(gameCenter).toHaveCSS("padding-bottom", "100px");
-    await expect(gameCenter.getByRole("button").first()).toHaveAccessibleName(/Sky Drop/);
+    await expect(gameCenter.getByRole("button").first()).toHaveAccessibleName(skyDropName);
 
-    await expect(page.getByRole("button", { name: /Sky Drop/ })).toBeVisible();
+    await expect(gameCenter.getByRole("button", { name: skyDropName })).toBeVisible();
     await expect(
       page.getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.wordleTitle)) }),
     ).toBeVisible();
@@ -360,14 +362,12 @@ test.describe("코어 라우트 CTA 시나리오", () => {
     ).toBeVisible();
     await expect(page.getByRole("button", { name: /doom|둠/i })).toHaveCount(0);
 
-    await page
-      .getByRole("button", { name: /Sky Drop/i })
-      .first()
-      .click();
+    await gameCenter.getByRole("button", { name: skyDropName }).click();
     const skyDropStart = page.getByTestId("game-start-button");
     const skyDropExit = page.getByTestId("game-exit-button");
     await expect(skyDropStart).toBeVisible({ timeout: 30000 });
     await expectPath(page, new RegExp(`^/${localeRegex}/game/sky-drop$`), 30000);
+    await expect(page.getByRole("heading", { name: messages.Game.skyDrop.title })).toBeVisible();
     await expect(skyDropExit).toBeVisible();
     await skyDropExit.click();
     await expectPath(page, new RegExp(`^/${localeRegex}/game$`), 30000);
@@ -377,6 +377,7 @@ test.describe("코어 라우트 CTA 시나리오", () => {
       .getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.wordleTitle)) })
       .click();
     await expectPath(page, new RegExp(`^/${localeRegex}/game/wordle$`), 30000);
+    await expect(page.getByRole("heading", { name: messages.Game.wordleTitle })).toBeVisible();
 
     await expect(
       page.getByRole("button", { name: new RegExp(`^${escapeRegExp(messages.Share.share)}$`) }),

@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { getTranslations } from "next-intl/server";
 import { getSkyDropMedal } from "@/utils/sky-drop-util";
 import { getGameResult } from "@/services/score-service";
 import { siteHost } from "@/lib/site-url";
@@ -8,8 +9,8 @@ export const alt = "Game Result";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-const OGImage = async ({ params }: { params: Promise<{ id: string }> }) => {
-  const { id } = await params;
+const OGImage = async ({ params }: { params: Promise<{ id: string; locale: string }> }) => {
+  const { id, locale } = await params;
   const result = await getGameResult(id);
 
   if (!result) {
@@ -34,7 +35,8 @@ const OGImage = async ({ params }: { params: Promise<{ id: string }> }) => {
   }
 
   const isSkyDrop = (result.gameType as string) === "SKY_DROP";
-  const gameTitle = isSkyDrop ? "SKY DROP" : "GAME";
+  const t = await getTranslations({ locale, namespace: "Game" });
+  const gameTitle = isSkyDrop ? t("skyDrop.title") : "GAME";
   const medal = isSkyDrop ? getSkyDropMedal(result.score) : null;
 
   // Colors

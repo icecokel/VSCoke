@@ -69,6 +69,8 @@ export interface AppMessages {
   Game: {
     start: string;
     exit: string;
+    skyDrop: typeof KoreanMessages.Game.skyDrop;
+    pokeLoungeTitle: string;
     beatJev: typeof KoreanMessages.Game.beatJev;
     arcadeBasketball: typeof KoreanMessages.Game.arcadeBasketball;
     apiUnavailable: string;

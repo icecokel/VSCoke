@@ -178,7 +178,7 @@ test.describe("키보드 전용 시나리오", () => {
     await gotoWithRetry(page, "/ko-KR");
     await page
       .getByTestId("history-tab-rail")
-      .getByRole("button", { name: /wordle/i })
+      .getByRole("button", { name: loadMessages("ko-KR").Game.wordleTitle })
       .first()
       .click();
     await expect(page.locator("main[tabindex='-1']")).toBeFocused();

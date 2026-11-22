@@ -19,7 +19,7 @@ export default function GameDashboard() {
   const games = [
     {
       id: "sky-drop",
-      title: "Sky Drop",
+      title: t("skyDrop.title"),
       description: t("skyDropDesc"),
       route: "/game/sky-drop",
     },
@@ -61,7 +61,7 @@ export default function GameDashboard() {
         >
           <div className="flex flex-col md:items-center">
             <h2 className="text-xl md:text-2xl font-bold text-white mb-1 md:mb-2 leading-tight">
-              Poke Lounge
+              {t("pokeLoungeTitle")}
             </h2>
             <p className="text-xs md:text-base text-gray-400 group-hover:text-gray-200 transition-colors line-clamp-1 md:line-clamp-3">
               {t("pokeLoungeDesc")}

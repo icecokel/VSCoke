@@ -56,7 +56,7 @@ test("내부 탭으로 이동한 게임은 돌아오면 일시정지된 상태�
   await page.clock.runFor(10000);
   await page
     .getByTestId("history-tab-rail")
-    .getByRole("button", { name: /sky.drop/i })
+    .getByRole("button", { name: game.skyDrop.title })
     .first()
     .click();
   await expect(page.getByTestId("sky-drop-paused")).toBeVisible();

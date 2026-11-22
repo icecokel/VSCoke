@@ -146,7 +146,9 @@ test.describe("레이아웃 쉬프트 회귀", () => {
       path: "/ko-KR/game/sky-drop",
       maxCls: 0.01,
       assertReady: async page => {
-        await expect(page.getByRole("heading", { name: "Sky Drop" })).toBeVisible();
+        await expect(
+          page.getByRole("heading", { name: messages.Game.skyDrop.title }),
+        ).toBeVisible();
       },
     },
   ];

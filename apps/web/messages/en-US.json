@@ -260,6 +260,7 @@
     "goBack": "Go Back",
     "exit": "Exit Game",
     "skyDropDesc": "A puzzle game where you match falling blocks to score points.",
+    "pokeLoungeTitle": "Poke Lounge",
     "pokeLoungeDesc": "Choose a starter and explore a lounge world with browser-based battles.",
     "time": "Time: ",
     "share": "Show Off",
@@ -537,7 +538,7 @@
     "copyLink": "Copy Link",
     "copied": "Link copied!",
     "shareFail": "Failed to share. Please try again.",
-    "wordleText": "Try VSCoke Wordle!"
+    "wordleText": "Try VSCoke {gameName}!"
   },
   "intro": {
     "title": "Welcome VSCoke",

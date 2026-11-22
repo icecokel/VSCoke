@@ -176,7 +176,9 @@ test.describe("취미 게임 섹션", () => {
     await gotoWithRetry(page, `/${locale}/game`);
 
     await expect(page.getByRole("heading", { name: messages.home.cards.gameTitle })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Sky Drop/ })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.skyDrop.title)) }),
+    ).toBeVisible();
     await expect(
       page.getByRole("button", { name: new RegExp(escapeRegExp(messages.Game.wordleTitle)) }),
     ).toBeVisible();

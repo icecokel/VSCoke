@@ -28,21 +28,22 @@ export const generateMetadata = async ({ params }: Props): Promise<Metadata> => 
 
   const t = await getTranslations({ locale, namespace: "Game" });
 
-  const gameTitle = result.gameType === "SKY_DROP" ? "Sky Drop" : "Game";
+  const gameTitle = result.gameType === "SKY_DROP" ? t("skyDrop.title") : "Game";
   const scoreTitle = `${gameTitle} - ${result.score}${t("scorePointSuffix")}`;
+  const description = t("shareDescription", { gameName: gameTitle, score: result.score });
 
   return {
     title: scoreTitle,
-    description: t("shareDescription", { score: result.score }),
+    description,
     openGraph: {
       title: scoreTitle,
-      description: t("shareDescription", { score: result.score }),
+      description,
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
       title: scoreTitle,
-      description: t("shareDescription", { score: result.score }),
+      description,
     },
     robots: {
       index: false,
@@ -72,7 +73,7 @@ const SharePage = async ({ params }: Props) => {
     fromColor = "#9ca3af";
     toColor = "#4b5563";
   } else {
-    gameTitle = "🎮 SKY DROP";
+    gameTitle = `🎮 ${t("skyDrop.title")}`;
     playLink = "/game/sky-drop";
     colorClass = "text-[#4ECDC4]";
     fromColor = "#4ECDC4";

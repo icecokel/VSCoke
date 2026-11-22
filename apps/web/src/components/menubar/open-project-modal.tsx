@@ -35,6 +35,7 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
   const locale = useLocale();
   const t = useTranslations("menu");
   const tCommon = useTranslations("common");
+  const tGame = useTranslations("Game");
   const categories = useMemo<ICategory[]>(
     () => [
       {
@@ -42,14 +43,14 @@ const OpenProjectModal = (props: IOpenProjectModalProps) => {
         items: [
           { label: "VSCOKE", link: siteUrl },
           {
-            label: "Poke Lounge",
+            label: tGame("pokeLoungeTitle"),
             link: `${pokeLoungeSiteUrl}/${locale}/game/poke-lounge`,
           },
         ],
       },
       { label: "Users", items: [{ label: "Test", link: "" }] },
     ],
-    [locale],
+    [locale, tGame],
   );
   const sidebarSections = useMemo<
     { title: string; items: { icon: TKind; id: string; label: string }[] }[]

@@ -102,7 +102,7 @@ export default function WordlePage() {
               <TooltipContent>{tGame("viewOtherGames")}</TooltipContent>
             </Tooltip>
             <h1 className="text-xl font-bold tracking-tight" data-testid="wordle-title">
-              Wordle
+              {tGame("wordleTitle")}
             </h1>
           </div>
           <div className="flex items-center gap-1">
@@ -110,7 +110,7 @@ export default function WordlePage() {
               variant="ghost"
               size="icon"
               iconOnly
-              text={tShare("wordleText")}
+              text={tShare("wordleText", { gameName: tGame("wordleTitle") })}
               label={tShare("share")}
               className="max-md:h-8 max-md:w-8"
             />

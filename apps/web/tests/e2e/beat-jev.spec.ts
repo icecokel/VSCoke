@@ -36,11 +36,13 @@ test("설정 확인 전에는 숨기고 사용 가능한 게임만 카드와 검
     })
     .first()
     .click();
-  await page.getByTestId("blog-dashboard-search-input").fill("jev");
+  await page
+    .getByTestId("blog-dashboard-search-input")
+    .fill(locale === "ko-KR" ? "제브를 이겨라" : "jev");
   const result = page
     .locator("[data-slot='sidebar-content'] li > button")
     .filter({ hasText: "/game/beat-jev" });
-  await expect(result).toBeVisible();
+  await expect(result).toContainText(messages.Game.beatJev.title);
   await result.click();
   await expect(page.getByTestId("beat-jev-game")).toBeVisible();
 });

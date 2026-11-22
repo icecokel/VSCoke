@@ -36,12 +36,16 @@ export const useGameShare = (): UseGameShareReturn => {
   );
 
   // 게임 이름을 표시용으로 포맷팅
-  const formatGameTitle = (gameName: string): string => {
-    return gameName
-      .split("-")
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-  };
+  const formatGameTitle = useCallback(
+    (gameName: string): string => {
+      if (gameName === "sky-drop") return t("skyDrop.title");
+      return gameName
+        .split("-")
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+    },
+    [t],
+  );
 
   // 공유 텍스트 생성
   const getShareText = useCallback(
@@ -50,7 +54,7 @@ export const useGameShare = (): UseGameShareReturn => {
       const gameTitle = formatGameTitle(gameName);
       return t(`shareMessages.${randomIndex}`, { score, gameName: gameTitle });
     },
-    [t],
+    [formatGameTitle, t],
   );
 
   // 클립보드에 복사 (먼저 정의)
@@ -71,7 +75,7 @@ export const useGameShare = (): UseGameShareReturn => {
       const gameTitle = formatGameTitle(options.gameName);
       await shareLink({ title: gameTitle, text: shareText, url: shareUrl });
     },
-    [getShareUrl, getShareText, shareLink],
+    [formatGameTitle, getShareUrl, getShareText, shareLink],
   );
 
   return {

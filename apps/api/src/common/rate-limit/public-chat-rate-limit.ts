@@ -87,12 +87,20 @@ export class PublicChatRateLimitStore {
   }
 }
 
+type PublicChatRateLimitOptions = {
+  // 가드는 ValidationPipe보다 먼저 실행된다. 형식이 잘못돼 어차피 400으로 거절될 요청이
+  // 횟수를 차감하지 않도록, 이 함수가 false를 돌려주면 세지 않고 검증 단계로 넘긴다.
+  shouldCount?: (request: Request) => boolean;
+};
+
 export const enforcePublicChatRateLimit = (
   context: ExecutionContext,
   store: PublicChatRateLimitStore,
   errorMessage: string,
+  { shouldCount }: PublicChatRateLimitOptions = {},
 ): boolean => {
   const request = context.switchToHttp().getRequest<Request>();
+  if (shouldCount && !shouldCount(request)) return true;
   const response = context.switchToHttp().getResponse<Response>();
   const result = store.consume(getClientIp(request));
 

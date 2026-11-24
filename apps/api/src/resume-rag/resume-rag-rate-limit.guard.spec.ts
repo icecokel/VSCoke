@@ -1,13 +1,18 @@
 import { ExecutionContext, HttpException, HttpStatus } from '@nestjs/common';
 import { ResumeRagRateLimitGuard } from './resume-rag-rate-limit.guard';
 
-const createContext = (ip: string) => {
+const VALID_CHAT_BODY = {
+  question: '오프리메드 경험을 알려줘',
+  locale: 'ko-KR',
+};
+
+const createContext = (ip: string, body: unknown = VALID_CHAT_BODY) => {
   const responseHeaders = new Map<string, string | number>();
 
   return {
     context: {
       switchToHttp: () => ({
-        getRequest: () => ({ ip }),
+        getRequest: () => ({ ip, body }),
         getResponse: () => ({
           setHeader: (name: string, value: string | number) => {
             responseHeaders.set(name, value);
@@ -113,5 +118,46 @@ describe('ResumeRagRateLimitGuard', () => {
         ['X-RateLimit-Reset', Math.floor((now + 60 * 60 * 1000) / 1000)],
       ]),
     );
+  });
+
+  it.each([
+    [
+      '198.51.100.31',
+      '1,001자 질문',
+      { question: '가'.repeat(1001), locale: 'ko-KR' },
+    ],
+    [
+      '198.51.100.32',
+      '지원하지 않는 언어',
+      { question: '오프리메드 경험', locale: 'fr-FR' },
+    ],
+    [
+      '198.51.100.33',
+      '허용하지 않는 필드',
+      { question: '오프리메드 경험', locale: 'ko-KR', extra: 1 },
+    ],
+    ['198.51.100.34', '본문 없음', null],
+  ])(
+    '%s %s처럼 검증에서 거절될 요청은 횟수를 차감하지 않는다',
+    (ip, _, body) => {
+      const guard = new ResumeRagRateLimitGuard();
+
+      expect(guard.canActivate(createContext(ip, body).context)).toBe(true);
+
+      const { context, responseHeaders } = createContext(ip);
+      expect(guard.canActivate(context)).toBe(true);
+      expect(responseHeaders.get('X-RateLimit-Remaining')).toBe(19);
+    },
+  );
+
+  it('1,000자 질문은 정상 요청으로 횟수를 차감한다', () => {
+    const guard = new ResumeRagRateLimitGuard();
+    const { context, responseHeaders } = createContext('198.51.100.35', {
+      question: '가'.repeat(1000),
+      locale: 'ko-KR',
+    });
+
+    expect(guard.canActivate(context)).toBe(true);
+    expect(responseHeaders.get('X-RateLimit-Remaining')).toBe(19);
   });
 });

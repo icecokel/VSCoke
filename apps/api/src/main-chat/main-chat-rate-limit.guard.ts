@@ -3,6 +3,7 @@ import {
   PublicChatRateLimitStore,
   enforcePublicChatRateLimit,
 } from '../common/rate-limit/public-chat-rate-limit';
+import { isValidChatRequestBody } from '../resume-rag/resume-rag-chat-request-validity';
 
 export const MAIN_CHAT_REQUEST_LIMIT = 30;
 
@@ -17,6 +18,7 @@ export class MainChatRateLimitGuard implements CanActivate {
       context,
       this.store,
       '메인 채팅은 IP당 1시간에 30회까지 사용할 수 있습니다.',
+      { shouldCount: isValidChatRequestBody },
     );
   }
 }

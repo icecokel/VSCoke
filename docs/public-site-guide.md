@@ -17,8 +17,20 @@ README(`/readme`)에서 프로필과 경력 요약을 확인할 수 있다. 이�
 
 ## 게임
 
-Game Center(`/game`)에서 게임을 선택할 수 있다. Sky Drop은 `/game/sky-drop`,
-Wordle은 `/game/wordle`에 있다. Poke Lounge는 Game Center의 링크로 이동할 수 있다.
+Game Center(`/game`)에서 게임을 고를 수 있다. 화면 왼쪽 탐색기에서 `games` 폴더를 열고
+`index.tsx`를 누르면 Game Center로 이동한다. 모바일에서는 탐색기 버튼을 눌러 탐색기를 연다.
+
+Game Center에 있는 게임은 다음과 같다.
+
+- Poke Lounge: 스타터를 고르고 라운지 월드와 브라우저 배틀을 탐색하는 팬 게임. 별도 사이트로 이동한다.
+- Sky Drop(`/game/sky-drop`): 떨어지는 블록을 옮겨 같은 색 3개를 맞추는 퍼즐 게임.
+- Wordle(`/game/wordle`): 다섯 글자 영어 단어를 여섯 번 안에 맞히는 퍼즐.
+- Arcade Basketball(`/game/arcade-basketball`): 30초 동안 공을 집고 꾹 눌렀다 놓는 타이밍으로
+  슛해 골을 넣는 게임. 터치·마우스·키보드(방향키로 공 집기, 스페이스바나 Enter로 슛)로 할 수 있고,
+  슛마다 난이도가 무작위로 바뀐다. Google 로그인 후 점수를 기록하면 사용자별 최고 점수 TOP 10
+  랭킹에 오른다.
+- Beat JEV(`/game/beat-jev`): 무작위 게임 3개로 JEV와 대결해 먼저 2승하면 이기는 게임. 서비스가
+  켜져 있을 때만 Game Center 목록에 보인다.
 
 Sky Drop은 React·HTML·CSS로 렌더링하며 Canvas/WebGL이나 별도 게임 엔진을 사용하지 않는다.
 열을 클릭·탭하거나 Q/W/E를 눌러 맨 아래 블록을 집어 다른 열에 놓는다. 같은 색 3개를
@@ -28,7 +40,8 @@ Sky Drop은 React·HTML·CSS로 렌더링하며 Canvas/WebGL이나 별도 게임
 기존 점수·콤보·시간 보너스, Google 로그인 점수 기록과 결과 링크 공유를 유지한다.
 
 Wordle은 다섯 글자 영어 단어를 여섯 번 안에 맞히는 단판 퍼즐이다. 재시작마다 랜덤 단어를
-다시 요청하며 점수·누적 승수·연승·랭킹 기능은 없다. 진행 상태는 새로고침 후 복원되지 않는다.
+다시 요청하며 점수·누적 승수·연승·랭킹 기능은 없다. 진행 중이거나 끝난 판은 같은 브라우저 탭에서
+새로고침해도 복원된다.
 상세 입력·판정·재시작 규칙은 [Wordle 게임 규칙](./wordle-game-rules.md), Sky Drop의 서버
 점수 제한은 [게임 점수 정책](./game-score-policy.md)을 참고한다.
 

@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
-import { getChatSourceLink, groupChatSources } from "./chat-sources";
+import {
+  SITE_GUIDE_SECTION_PATHS,
+  getChatSourceLabel,
+  getChatSourceLink,
+  groupChatSources,
+} from "./chat-sources";
 
 const source = {
   title: "Same title",
@@ -107,4 +113,44 @@ test("unsafe publicUrl은 알려진 sourceKey라도 링크로 노출하지 않�
   ]) {
     assert.equal(getChatSourceLink({ ...source, publicUrl }, "fe"), undefined);
   }
+});
+
+test("사이트 안내 절 출처는 그 절이 설명하는 화면으로 연결한다", () => {
+  assert.deepEqual(
+    getChatSourceLink({ sourceKey: "app:site-guide#section-4", sectionPath: "게임" }),
+    { kind: "inferred", href: "/game" },
+  );
+  assert.equal(
+    getChatSourceLink({ sourceKey: "app:site-guide#section", sectionPath: "언어" }),
+    undefined,
+  );
+});
+
+test("사이트 안내 링크 표의 절 제목은 실제 안내 문서에 있다", () => {
+  const guide = readFileSync(
+    new URL("../../../../docs/public-site-guide.md", import.meta.url),
+    "utf8",
+  );
+  const headings = new Set(
+    guide
+      .split("\n")
+      .filter(line => line.startsWith("## "))
+      .map(line => line.slice(3).trim()),
+  );
+
+  Object.keys(SITE_GUIDE_SECTION_PATHS).forEach(heading => {
+    assert.ok(headings.has(heading), `${heading} 절이 docs/public-site-guide.md에 없습니다.`);
+  });
+});
+
+test("출처 제목과 절 이름이 같으면 한 번만 표시한다", () => {
+  assert.equal(
+    getChatSourceLabel({ title: "게임", sectionPath: "게임", sourceKey: "app:site-guide#section" }),
+    "게임",
+  );
+  assert.equal(
+    getChatSourceLabel({ title: "Oprimed", sectionPath: "성과", sourceKey: "resume-detail/a" }),
+    "Oprimed · 성과",
+  );
+  assert.equal(getChatSourceLabel({ sourceKey: "resume-detail/a" }), "resume-detail/a");
 });

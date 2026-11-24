@@ -6,6 +6,11 @@
     "english": "English",
     "japanese": "日本語"
   },
+  "chatComposer": {
+    "keyHint": "Enter to send · Shift+Enter for a new line",
+    "length": "{count, number} / {max, number} characters",
+    "tooLong": "Questions can be up to {max, number} characters. This one has {count, number}."
+  },
   "errorTracking": {
     "title": "Something went wrong.",
     "description": "Please try again shortly.",
@@ -120,10 +125,13 @@
       "you": "You",
       "pending": "Preparing an answer.",
       "sources": "{count} sources",
-      "rateLimit": "{count} questions remaining · Available again {time}",
+      "rateLimit": {
+        "remaining": "{count, plural, one {# question left} other {# questions left}}",
+        "nextAvailable": "Next question restored at {time}"
+      },
       "retry": "Try again",
       "failure": {
-        "invalid-request": "Check the question format and try again.",
+        "invalid-request": "Questions must be 2 to 1,000 characters. This attempt did not use a question.",
         "origin-blocked": "Chat is not available from this address.",
         "rate-limited": "You can ask up to 30 questions per hour.",
         "service-unavailable": "The answer service is temporarily unavailable.",
@@ -687,7 +695,8 @@
       "mobileTriggerLabel": "Open resume chat",
       "mobileHint": "Ask me anything about this resume!",
       "retry": "Retry",
-      "error": "Failed to request an answer."
+      "error": "Failed to request an answer.",
+      "invalidRequest": "Questions must be 2 to 1,000 characters. This attempt did not use a question."
     },
     "suggestions": [
       "What did you work on at Oprimed?",
@@ -774,6 +783,10 @@
       "description": "The retrieved public resume evidence is insufficient, so confidence is shown as low."
     },
     "failure": {
+      "invalid-request": {
+        "title": "The question could not be sent",
+        "description": "Questions must be 2 to 1,000 characters. This attempt did not use a question."
+      },
       "origin-blocked": {
         "title": "Request is not allowed",
         "description": "This question API only accepts requests sent from the official VSCoke production site."

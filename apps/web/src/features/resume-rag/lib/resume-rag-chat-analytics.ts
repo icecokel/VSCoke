@@ -22,6 +22,7 @@ export type ResumeRagChatKeyword =
   | "other";
 
 export type ResumeRagChatFailureReason =
+  | "invalid_request"
   | "origin_blocked"
   | "service_unavailable"
   | "rate_limited"

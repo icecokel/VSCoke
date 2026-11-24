@@ -162,6 +162,7 @@ test("429는 복구 시각까지 제출을 차단하고 reset action 뒤 다시 
 
   assert.equal(earlyResetState, rateLimitedState);
   assert.equal(resetState.status, "failed");
+  assert.equal(resetState.rateLimit, undefined);
   assert.equal(canSubmitMainChat(resetState), true);
 
   const resumedAfterResetState = mainChatReducer(resetState, {
@@ -210,4 +211,44 @@ test("초기 상태는 호출마다 빈 메모리 상태를 새로 만든다", (
     status: "empty",
     messages: [],
   });
+});
+
+test("1,000자를 넘는 질문은 제출 상태로 바꾸지 않는다", () => {
+  const initialState = createInitialMainChatState();
+
+  assert.equal(mainChatReducer(initialState, submitQuestion("가".repeat(1001))), initialState);
+  assert.equal(
+    mainChatReducer(initialState, submitQuestion("가".repeat(1000))).status,
+    "submitting",
+  );
+});
+
+test("저장된 남은 횟수를 복원하고 0회면 복구 시각까지 제출을 막는다", () => {
+  const occurredAt = new Date("2026-08-08T01:00:00.000Z");
+  const resetAt = new Date("2026-08-08T02:00:00.000Z");
+
+  const remainingState = mainChatReducer(createInitialMainChatState(), {
+    type: "rate-limit-restore",
+    rateLimit: { limit: 30, remaining: 27, resetAt },
+    occurredAt,
+  });
+  assert.equal(remainingState.status, "empty");
+  assert.equal(remainingState.rateLimit?.remaining, 27);
+  assert.equal(canSubmitMainChat(remainingState, occurredAt), true);
+
+  const exhaustedState = mainChatReducer(createInitialMainChatState(), {
+    type: "rate-limit-restore",
+    rateLimit: { limit: 30, remaining: 0, resetAt },
+    occurredAt,
+  });
+  assert.equal(exhaustedState.status, "rate-limited");
+  assert.equal(canSubmitMainChat(exhaustedState, occurredAt), false);
+  assert.equal(canSubmitMainChat(exhaustedState, resetAt), true);
+
+  const alreadyKnownState = mainChatReducer(remainingState, {
+    type: "rate-limit-restore",
+    rateLimit: { limit: 30, remaining: 0, resetAt },
+    occurredAt,
+  });
+  assert.equal(alreadyKnownState, remainingState);
 });

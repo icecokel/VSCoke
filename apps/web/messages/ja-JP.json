@@ -6,6 +6,11 @@
     "english": "English",
     "japanese": "日本語"
   },
+  "chatComposer": {
+    "keyHint": "Enterで送信 · Shift+Enterで改行",
+    "length": "{count, number} / {max, number}文字",
+    "tooLong": "質問は{max, number}文字まで送信できます。現在{count, number}文字です。"
+  },
   "errorTracking": {
     "title": "エラーが発生しました。",
     "description": "しばらくしてからもう一度お試しください。",
@@ -120,10 +125,13 @@
       "you": "あなた",
       "pending": "回答を準備しています。",
       "sources": "出典 {count}件",
-      "rateLimit": "残り {count} 回 · 次回利用可能 {time}",
+      "rateLimit": {
+        "remaining": "残り質問数 {count} 回",
+        "nextAvailable": "次の1回の復帰 {time}"
+      },
       "retry": "再試行",
       "failure": {
-        "invalid-request": "質問の形式を確認して再試行してください。",
+        "invalid-request": "質問は2文字以上1,000文字以内で入力してください。質問回数は消費されていません。",
         "origin-blocked": "このアドレスからはチャットを利用できません。",
         "rate-limited": "1時間に30回まで質問できます。",
         "service-unavailable": "回答サービスを一時的に利用できません。",
@@ -687,7 +695,8 @@
       "mobileTriggerLabel": "履歴書チャットを開く",
       "mobileHint": "気になることがあれば聞いてください！",
       "retry": "再試行",
-      "error": "回答リクエストに失敗しました。"
+      "error": "回答リクエストに失敗しました。",
+      "invalidRequest": "質問は2文字以上1,000文字以内で入力してください。質問回数は消費されていません。"
     },
     "suggestions": [
       "Oprimedではどんな業務をしましたか？",
@@ -774,6 +783,10 @@
       "description": "検索された公開履歴根拠が不足しているため、信頼度を低く表示します。"
     },
     "failure": {
+      "invalid-request": {
+        "title": "質問を送信できません",
+        "description": "質問は2文字以上1,000文字以内で入力してください。質問回数は消費されていません。"
+      },
       "origin-blocked": {
         "title": "許可されていないリクエストです",
         "description": "この質問APIは公式VSCoke本番サイトから送信されたリクエストのみ許可します。"

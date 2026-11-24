@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api-client";
+import { isChatQuestionSendable } from "@/lib/chat-composer";
 import { MainChatContractError } from "./main-chat-service";
 import type {
   MainChatFailure,
@@ -28,6 +29,12 @@ type MainChatAction =
     }
   | {
       type: "rate-limit-reset";
+      occurredAt: Date;
+    }
+  | {
+      // 새로고침 전에 받은 남은 횟수를 다시 보여준다.
+      type: "rate-limit-restore";
+      rateLimit: MainChatRateLimit;
       occurredAt: Date;
     };
 
@@ -77,13 +84,29 @@ export const mainChatReducer = (state: MainChatState, action: MainChatAction): M
       return state;
     }
 
-    return { ...state, status: "failed" };
+    // 복구 시각이 지나면 "남은 질문 0회"는 더 이상 맞지 않으므로 다음 응답까지 숨긴다.
+    return { ...state, status: "failed", rateLimit: undefined };
+  }
+
+  if (action.type === "rate-limit-restore") {
+    if (state.rateLimit || state.status === "submitting") return state;
+
+    const isExhausted =
+      action.rateLimit.remaining === 0 && action.rateLimit.resetAt > action.occurredAt;
+
+    return {
+      ...state,
+      status: isExhausted ? "rate-limited" : state.status,
+      rateLimit: action.rateLimit,
+    };
   }
 
   if (action.type === "submit") {
     const question = action.question.trim();
 
-    if (question.length < 2 || !canSubmitMainChat(state, action.submittedAt)) return state;
+    if (!isChatQuestionSendable(question) || !canSubmitMainChat(state, action.submittedAt)) {
+      return state;
+    }
 
     return {
       status: "submitting",

@@ -7,14 +7,20 @@ import {
   useResumeConversation,
   toResumeConversationMessages,
 } from "@/features/resume-rag/lib/use-resume-conversation";
-import { FormEvent, useEffect, useReducer, useRef, useState } from "react";
+import { FormEvent, useEffect, useId, useReducer, useRef, useState } from "react";
 import { ArrowUp, ChevronRight, Clock, RefreshCw, Send, Sparkles } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCustomRouter } from "@/hooks/use-custom-router";
-import { shouldSubmitMainChatKey } from "../lib/main-chat-keyboard";
-import { groupChatSources, getChatSourceLink } from "@/lib/chat-sources";
+import { ChatComposerMeta } from "@/components/chat/chat-composer-meta";
+import {
+  getChatComposerKeyAction,
+  isChatQuestionSendable,
+  isChatQuestionTooLong,
+} from "@/lib/chat-composer";
+import { readStoredChatRateLimit, storeChatRateLimit } from "@/lib/chat-rate-limit-storage";
+import { groupChatSources, getChatSourceLabel, getChatSourceLink } from "@/lib/chat-sources";
 import { renderChatAnswer } from "@/lib/chat-answer";
 import { CustomLink } from "@/components/custom-link";
 import type { MainChatSource } from "../types";
@@ -43,8 +49,7 @@ const MainChatSources = ({ sources }: { sources: readonly MainChatSource[] }) =>
       <p className="text-xs font-medium text-gray-300">{t("sources", { count: groups.length })}</p>
       <ul className="mt-2 space-y-1 text-xs text-gray-200">
         {groups.map(({ source, referenceNumbers }) => {
-          const label =
-            [source.title, source.sectionPath].filter(Boolean).join(" · ") || source.sourceKey;
+          const label = getChatSourceLabel(source);
           const link = getChatSourceLink(source);
           return (
             <li key={referenceNumbers[0]} className="break-words">
@@ -83,8 +88,10 @@ export const MainChat = () => {
   const [state, dispatch] = useReducer(mainChatReducer, undefined, createInitialMainChatState);
   const [question, setQuestion] = useState("");
   const isSubmittingRef = useRef(false);
+  const lengthMessageId = useId();
+  const isQuestionTooLong = isChatQuestionTooLong(question);
   const canSubmit =
-    question.trim().length >= 2 &&
+    isChatQuestionSendable(question) &&
     canSubmitMainChat(state) &&
     !conversation.isRestoring &&
     !conversation.restoreError;
@@ -96,6 +103,16 @@ export const MainChat = () => {
       messages: toResumeConversationMessages(conversation.restoredTurns),
     });
   }, [conversation.restoredTurns]);
+
+  useEffect(() => {
+    const storedRateLimit = readStoredChatRateLimit("main");
+    if (!storedRateLimit) return;
+    dispatch({ type: "rate-limit-restore", rateLimit: storedRateLimit, occurredAt: new Date() });
+  }, []);
+
+  useEffect(() => {
+    if (state.rateLimit) storeChatRateLimit("main", state.rateLimit);
+  }, [state.rateLimit]);
 
   useEffect(() => {
     if (state.status !== "rate-limited" || !state.rateLimit) return;
@@ -113,7 +130,7 @@ export const MainChat = () => {
     const trimmedQuestion = rawQuestion.trim();
 
     if (
-      trimmedQuestion.length < 2 ||
+      !isChatQuestionSendable(trimmedQuestion) ||
       isSubmittingRef.current ||
       !canSubmitMainChat(state) ||
       conversation.isRestoring ||
@@ -152,6 +169,8 @@ export const MainChat = () => {
         error,
         rateLimit: readMainChatRateLimitFromError(error),
       });
+      // 보내지 못한 질문을 고쳐 다시 보낼 수 있게 입력창에 되돌린다.
+      setQuestion(current => current || trimmedQuestion);
     } finally {
       isSubmittingRef.current = false;
     }
@@ -164,11 +183,12 @@ export const MainChat = () => {
 
   const isEmpty = state.messages.length === 0;
   const isRateLimited = state.status === "rate-limited" && !canSubmitMainChat(state);
-  const resetAt = state.rateLimit
-    ? new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(
-        state.rateLimit.resetAt,
-      )
-    : null;
+  const resetAt =
+    state.rateLimit?.remaining === 0
+      ? new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(
+          state.rateLimit.resetAt,
+        )
+      : null;
 
   return (
     <main className="min-h-full bg-gray-950 text-gray-100">
@@ -194,7 +214,7 @@ export const MainChat = () => {
           }}
         />
 
-        <div className="flex flex-1 flex-col justify-center py-10 md:py-14">
+        <div className="flex flex-1 flex-col justify-center py-8 md:py-10">
           {isEmpty ? (
             <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
               <div className="max-w-2xl">
@@ -295,7 +315,13 @@ export const MainChat = () => {
           {state.rateLimit ? (
             <p className="mb-2 flex items-center gap-1.5 text-xs text-gray-400" aria-live="polite">
               <Clock className="size-3.5" />
-              {t("rateLimit", { count: state.rateLimit.remaining, time: resetAt ?? "-" })}
+              {t("rateLimit.remaining", { count: state.rateLimit.remaining })}
+              {resetAt ? (
+                <>
+                  <span aria-hidden="true"> · </span>
+                  {t("rateLimit.nextAvailable", { time: resetAt })}
+                </>
+              ) : null}
             </p>
           ) : null}
           <form className="flex items-end gap-2" onSubmit={handleSubmit}>
@@ -305,21 +331,21 @@ export const MainChat = () => {
               disabled={isRateLimited || conversation.isRestoring}
               placeholder={t("placeholder")}
               aria-label={t("placeholder")}
+              aria-invalid={isQuestionTooLong || undefined}
+              aria-describedby={lengthMessageId}
               className="min-h-12 resize-none border-gray-700 bg-gray-900 px-4 py-3 text-sm text-gray-100 placeholder:text-gray-400 focus-visible:border-blue-300 focus-visible:ring-blue-300/20"
               onChange={event => setQuestion(event.target.value)}
               onKeyDown={event => {
-                if (
-                  !shouldSubmitMainChatKey({
-                    key: event.key,
-                    shiftKey: event.shiftKey,
-                    isComposing: event.nativeEvent.isComposing,
-                  })
-                ) {
-                  return;
-                }
+                const action = getChatComposerKeyAction({
+                  key: event.key,
+                  shiftKey: event.shiftKey,
+                  isComposing: event.nativeEvent.isComposing,
+                  keyCode: event.nativeEvent.keyCode,
+                });
+                if (!action) return;
 
                 event.preventDefault();
-                if (canSubmit) void submitQuestion(question);
+                if (action === "submit" && canSubmit) void submitQuestion(question);
               }}
             />
             <Button
@@ -332,6 +358,11 @@ export const MainChat = () => {
               <Send className="size-4" />
             </Button>
           </form>
+          <ChatComposerMeta
+            question={question}
+            lengthMessageId={lengthMessageId}
+            className="mt-2 pr-14"
+          />
         </div>
       </section>
     </main>

@@ -7,7 +7,7 @@ import {
   toResumeConversationMessages,
 } from "../lib/use-resume-conversation";
 import { createResumeRagChatStorageKey } from "../lib/resume-rag-chat-storage";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   ChevronRight,
@@ -20,6 +20,7 @@ import {
   SearchX,
   Send,
   ShieldAlert,
+  TextCursorInput,
   WifiOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,10 +45,18 @@ import {
 import { readResumeRagChat } from "../lib/resume-rag-chat-storage";
 import type { ResumeRagSource } from "../types";
 import { ResumeRagRateLimitStatus } from "./resume-rag-rate-limit-status";
-import { groupChatSources, getChatSourceLink } from "@/lib/chat-sources";
+import { groupChatSources, getChatSourceLabel, getChatSourceLink } from "@/lib/chat-sources";
 import { CustomLink } from "@/components/custom-link";
+import { ChatComposerMeta } from "@/components/chat/chat-composer-meta";
+import {
+  getChatComposerKeyAction,
+  isChatQuestionSendable,
+  isChatQuestionTooLong,
+} from "@/lib/chat-composer";
+import { readStoredChatRateLimit, storeChatRateLimit } from "@/lib/chat-rate-limit-storage";
 
 type FailureKind =
+  | "invalid-request"
   | "origin-blocked"
   | "service-unavailable"
   | "rate-limited"
@@ -114,6 +123,10 @@ const getFailureState = (caught: unknown, question: string): FailureState => {
   }
 
   if (caught instanceof ApiError) {
+    if (caught.status === 400) {
+      return { kind: "invalid-request", question };
+    }
+
     if (caught.status === 403) {
       return { kind: "origin-blocked", question };
     }
@@ -131,6 +144,7 @@ const getFailureState = (caught: unknown, question: string): FailureState => {
 };
 
 const toAnalyticsFailureReason = (kind: FailureKind): ResumeRagChatFailureReason => {
+  if (kind === "invalid-request") return "invalid_request";
   if (kind === "origin-blocked") return "origin_blocked";
   if (kind === "service-unavailable") return "service_unavailable";
   if (kind === "rate-limited") return "rate_limited";
@@ -150,6 +164,9 @@ const FailureIcon = ({ kind }: { kind: FailureKind }) => {
   if (kind === "rate-limited") {
     return <Clock className={className} />;
   }
+  if (kind === "invalid-request") {
+    return <TextCursorInput className={className} />;
+  }
   if (kind === "contract") {
     return <FileWarning className={className} />;
   }
@@ -165,7 +182,11 @@ const FailureNotice = ({
   onRetry: (question: string) => void;
 }) => {
   const t = useTranslations("resumeRag");
-  const canRetry = Boolean(failure.question) && failure.kind !== "origin-blocked";
+  // 형식 오류와 출처 차단은 같은 질문을 다시 보내도 결과가 같아 다시 시도를 띄우지 않는다.
+  const canRetry =
+    Boolean(failure.question) &&
+    failure.kind !== "origin-blocked" &&
+    failure.kind !== "invalid-request";
 
   return (
     <div
@@ -272,8 +293,7 @@ const SourceList = ({
       </div>
       <div className="space-y-2 border-l border-gray-700 pl-3">
         {groups.map(({ source, referenceNumbers }) => {
-          const label =
-            [source.title, source.sectionPath].filter(Boolean).join(" · ") || source.sourceKey;
+          const label = getChatSourceLabel(source);
           const score = Math.round(source.similarity * 100);
           const link = getChatSourceLink(source, resumeKey);
 
@@ -445,6 +465,16 @@ export const ResumeQuestionChat = ({ initialChatId, resumeKey }: ResumeQuestionC
   const [failure, setFailure] = useState<FailureState | null>(null);
   const [rateLimit, setRateLimit] = useState<ResumeRagRateLimit>();
   const hasTrackedComposerFocus = useRef(false);
+  const lengthMessageId = useId();
+  const isQuestionTooLong = isChatQuestionTooLong(question);
+
+  useEffect(() => {
+    setRateLimit(current => current ?? readStoredChatRateLimit("resume"));
+  }, []);
+
+  useEffect(() => {
+    if (rateLimit) storeChatRateLimit("resume", rateLimit);
+  }, [rateLimit]);
 
   useEffect(() => {
     if (!initialChatId) return;
@@ -483,7 +513,7 @@ export const ResumeQuestionChat = ({ initialChatId, resumeKey }: ResumeQuestionC
 
   const canSubmit = useMemo(
     () =>
-      question.trim().length >= 2 &&
+      isChatQuestionSendable(question) &&
       !isSubmitting &&
       !conversation.isRestoring &&
       !conversation.restoreError,
@@ -503,7 +533,7 @@ export const ResumeQuestionChat = ({ initialChatId, resumeKey }: ResumeQuestionC
   const submitQuestion = async (rawQuestion: string, options: { appendUserMessage: boolean }) => {
     const trimmedQuestion = rawQuestion.trim();
     if (
-      trimmedQuestion.length < 2 ||
+      !isChatQuestionSendable(trimmedQuestion) ||
       isSubmitting ||
       conversation.isWorking ||
       conversation.isRestoring ||
@@ -560,6 +590,8 @@ export const ResumeQuestionChat = ({ initialChatId, resumeKey }: ResumeQuestionC
         failureReason: toAnalyticsFailureReason(failureState.kind),
       });
       setFailure(failureState);
+      // 보내지 못한 질문을 고쳐 다시 보낼 수 있게 입력창에 되돌린다.
+      setQuestion(current => current || trimmedQuestion);
     } finally {
       setIsSubmitting(false);
     }
@@ -663,6 +695,22 @@ export const ResumeQuestionChat = ({ initialChatId, resumeKey }: ResumeQuestionC
             onChange={event => setQuestion(event.target.value)}
             placeholder={t("placeholder")}
             aria-label={t("composerLabel")}
+            aria-invalid={isQuestionTooLong || undefined}
+            aria-describedby={lengthMessageId}
+            onKeyDown={event => {
+              const action = getChatComposerKeyAction({
+                key: event.key,
+                shiftKey: event.shiftKey,
+                isComposing: event.nativeEvent.isComposing,
+                keyCode: event.nativeEvent.keyCode,
+              });
+              if (!action) return;
+
+              event.preventDefault();
+              if (action === "submit" && canSubmit) {
+                void submitQuestion(question, { appendUserMessage: true });
+              }
+            }}
             rows={1}
             className="max-h-36 min-h-11 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-sm text-gray-100 shadow-none placeholder:text-gray-400 focus-visible:border-transparent focus-visible:ring-0 md:min-h-11"
             disabled={isSubmitting || conversation.isRestoring}
@@ -677,9 +725,14 @@ export const ResumeQuestionChat = ({ initialChatId, resumeKey }: ResumeQuestionC
             {isSubmitting ? <Loader2 className="animate-spin" /> : <Send />}
           </Button>
         </div>
+        <ChatComposerMeta
+          question={question}
+          lengthMessageId={lengthMessageId}
+          className="px-1 pt-2"
+        />
         <ResumeRagRateLimitStatus
           rateLimit={rateLimit}
-          className="px-1 pt-2 text-xs text-gray-400"
+          className="px-1 pt-1 text-xs text-gray-400"
         />
       </form>
     </section>

@@ -45,9 +45,9 @@ export const ChatComposerMeta = ({
           {t("keyHint")}
         </span>
       )}
+      {/* 입력할 때마다 읽히지 않도록 aria-live 없이 aria-describedby로만 연결한다. */}
       <span
         id={lengthMessageId}
-        aria-live="polite"
         className={cn(
           "ml-auto min-w-0 text-right tabular-nums",
           isTooLong
